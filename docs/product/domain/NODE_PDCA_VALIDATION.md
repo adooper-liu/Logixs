@@ -1,0 +1,68 @@
+# 8 关键节点 · 样本回验底稿（NODE_PDCA_VALIDATION）
+
+> 状态：**回验底稿（样例级，待 P2-12 真实脱敏样本定稿）** · 2026-09-04 · 负责人：刘志高。
+> 方法：用现网 `D:/Github/logix`（锚点 `main acfb50a8`）的**种子/样例**回验 [NODE_PDCA](./NODE_PDCA.md) 的 8 关键节点
+> （要素可用性 → 阈值候选 → 缺口清单）。**样例为示例数据，仅供结构对照，非真实业务分布**；阈值最终须以 P2-12 真实脱敏样本 + P8 实测校准。
+
+## 1. 样本资产盘点（本次可用）
+
+| 源 | 内容 | 用于 |
+| --- | --- | --- |
+| `backend/scripts/init-database.sql` | 示例备货单×2（RO202402240001 FOB·美国、RO202402240002 CIF·德国）、货柜×3（40HQ×2/40GP×1）、海运×3（B/L、订舱、船名航次、POL/POD、eta/etd/ata/atd）、港口作业×4（origin/destination、清关状态、last_free_date、码头）、字典（港/船司/柜型/货代/拖车/仓库）、`sys_users/roles/user_roles`、滞港费标准×3 | K1/K2/K3/K4/K5/K6/K7、F1–F6 |
+| `backend/scripts/init-database-complete.sql` | dict_ports/shipping_companies/container_types 扩展字典（含 scac、max_weight_kg 等） | 字典初值 |
+| DDL/实体（03_create_tables、entities） | 各表权威列（含 ext_demurrage_standards、trucking/warehouse/empty 列集） | 要素→字段映射 |
+
+**明确缺口（真实业务样本）**：无真实脱敏 装箱/拖卡/仓库/还箱/异常/中转/标记(SKU) 样本；P2-12 尚未建（RAID R-05 占位）。
+
+### 1.1 补充真实样本（现网调查记录，docs-temp）
+
+- **全链真实样本 MRKU4896861**（`public/docs-temp/DATA_VERIFICATION_REPORT_MRKU4896861.md`，客户 AOSOM LLC，2025-06 出运，MAERSK SEVILLE 523E，盐田→纽瓦克，40HQ，B/L 254620074，HBL/AMS MAEU254620074）：
+  - K1 备货单 24DSA1954（605 件/65.98 CBM/8242.80kg 毛重合计/FOB·CIF 20089.91，FOB US，实际出运日期在订单缺失需从海运取）；
+  - K3/K4 海运（出运 06-11 vs 期望 06-12 差异；海运费 2749 缺币种存储）；
+  - K6 清关（ISF 已申报 06-09、传递 06-13、目的港清关公司 Sen Mart、customs 状态未清关、实际清关日期空）；
+  - K7 到港（ETA 修正 07-19 08:00、目的港到达 07-18 vs 期望 07-19、最后免费 07-24；拖卡提柜 07-21 16:30、计划 07-23、承运 SHANGHAI FLYING FISH）；
+  - K8 仓库/还箱（AOSOM NJ-1、入库 07-27、WMS 已完成/EBS 已入库/WMS confirm 07-23、**卸柜日期空**；还箱 07-25 17:26）。
+- **到港分布计数**（`debug-arrival-distribution.sql` 快照）：目标集 177（shipped 0 / in_transit 85 / at_port 92）；诊断含**中转类别**查询 → 现网确有中转数据（未见行级样例）。
+- **合柜证据**（见 §2 F7）：`MULTIPLE_ORDERS_PER_CONTAINER.md` 为一柜多备货单的已实现业务需求，真实例容器 MRSU8056445。
+
+**观察**：真实单柜**字段缺失率高**（柜级重量/品名/封条、清关实际日期、卸柜日期等空，而状态却为 returned_empty），日期常只到日、部分时序倒挂（MRKU 还箱 07-25 早于入库 07-27）→ 印证 A8，且"要素是否齐全"本身是主要风险与预检点。
+
+## 2. 回验发现（需负责人裁决/关注）
+
+| # | 发现 | 影响 |
+| --- | --- | --- |
+| F1 | **样例：`RO202402240001` ↔ 2 个货柜**（CNTR1234567、CNTR7654321，同一订舱/同一 B/L） | **已澄清（2026-09-04）：根因=「主备货单号」列在一票多柜时任取其一当票级代表**，误读为"一备货单多柜"。真实规则：**一备货单→一货柜（1:1）；一提单(B/L)→多货柜**。该样例为一票(B/L)两柜、各柜分属不同备货单的正常形态 |
+| F2 | 种子含 `sys_users/roles/user_roles`，但运行时代码（entities/middleware）无身份/鉴权使用 | 身份是**半成品**（schema 有、代码无）→ P5 迁移输入（补充 ASIS 判断：非"完全没有"，而是"未接线"） |
+| F3 | `ext_demurrage_standards`（滞港费/堆存费标准：目的港+船司+免费期+费率+币种，LAX 免费 5 天 Demurrage 80 USD/天）已存在 | 佐证 G4「费用对象」与 K7 免费期预警；费用标准列为现网资产 |
+| F4 | 柜型/港口/船司字典有真实码（20GP/40HQ/20HC/45HC、SZX/LAX/SHA/ROT/SIN、MAERSK/COSCO/MSC/HAPAG） | 字典别名初值可自此迁移（G3/P2-04） |
+| F5 | `sea_freight.ata` 语义疑似混乱（SF001 ata=2024-02-27 而 eta=03-05、PO 另有 ata_dest_port） | A8 时间口径证据：planned/actual 分列必须逐节点厘清 |
+| F6 | 样例缺 中转/装箱时间/拖卡/仓库/还箱/标记(SKU)数据；无危险品·植检·温控样例 | 构成 P2-12 采集清单 |
+| F7 | `MULTIPLE_ORDERS_PER_CONTAINER.md`（一柜多单/合柜）与真实例 MRSU8056445 | **已澄清（2026-09-04）：系「主备货单号」任意代表的误解产物**，非真实合柜。真实规则 = 一备货单→一货柜、一提单→多货柜；主备货单号仅为票级展示代表。TO-BE **不建模一柜多单**；历史/导入数据中若出现同箱跨多备货单 → 判数据异常清洗，不作业务关系 |
+| F8 | 真实单柜**字段缺失率高**（MRKU：柜级重量/品名/封条、清关实际日期、卸柜日期空，状态却 returned_empty；日期仅到日、部分时序倒挂） | K 要素「齐全性」本身为主要风险与预检点；阈值定稿须含完整率口径 |
+
+## 3. K1–K8 逐节点回验
+
+| 节点 | 样例证据（可用要素） | 缺口（样例未覆盖） | 阈值候选（临时，待样本定稿） | 定稿状态 |
+| --- | --- | --- | --- | --- |
+| K1 备货就绪 | 备货单号/客户/国别/金额(FOB·CIF)/expected vs actual_ship_date（样例差 1 天）/件数·CBM·毛重 | 供应商备货完成时间/就绪标志；货量与后续装柜数回对 | 备货延期 `actual-expected>0` 预警（临时） | 待样本 |
+| K2 装箱定稿 | 柜型 40HQ/40GP、箱号、封号、毛/净重、CBM、件数、品名（样例 CNTR1234567：40HQ 75CBM/18000kg/500 件） | 装箱时间/提空箱时间；真实 vs 计划；危险品/植检/致冷剂/超限样例；打托装配 | 体积利用率≥95% 预警（40HQ 76 vs 样例 75≈98.7% 超常规）；毛重上限利用候选 ≥95% | 待样本 |
+| K3 出运确认 | 订舱号、B/L、船名航次、船司(SC001 MAERSK)、POL/POD、etd | 出运确认单证/船期变更/甩柜样例；`shipment_date` 未在此种子子集 | 无（需船期变更分布） | 待样本 |
+| K4 离港 | atd（样例 02-26/02-21）、etd 对照 | atd 晚于 etd 超阈值样本；截关证据 | atd−etd 偏差 >0 关注（样例同日） | 待样本 |
+| K5 在途/中转 | origin/destination 港口作业、eta/ata | **中转（transit）样例缺失**；ETA 漂移/滞留样例 | 无（需中转/漂移分布） | 待样本 |
+| K6 清关 | customs_status 样例（LAX CLEARING / ROT PENDING）、isf ACCEPTED、last_free_date | 计划/实际清关日期字段值；查验/扣货样例 | 放行→拖卡前置；免堆剩余预警见 K7 | 待样本 |
+| K7 到港→提柜 | PO002 LAX：eta_dest 03-05、last_free 03-12；滞港费标准 LAX 免 5 天 Demurrage 80 USD、Storage 50；NYC 免 4 天 90 | ata/可提时间、派拖记录、滞留样例 | **免费期剩余 ≤2 天预警**（临时，依 LAX 免 5 天）；派拖超时可提→派拖（需样本） | 待样本 |
+| K8 卸空→还箱 | （无） | 拖卡送达/卸柜/卸空/还箱全部缺失；WMS 收货回传样例 | 无 | 待样本 |
+
+## 4. 汇总与行动
+
+- **样例可用度**：K1–K4/K6/K7 有结构样例；K5 中转、K8 后段、标记(SKU) 完全缺样例 → 需 P2-12 采集。
+- **F1/F7 已澄清**（2026-09-04）：一备货单→一柜、一提单→多柜；"主备货单号"是票级**任取代表**（误解源），不作业务关系与唯一键；不建模合柜。导入/迁移遇同备货单号多行或旧误解数据 → 判异常清洗，不进模型兜底。
+- **阈值统一注记（评审 A4）**：本文 95% / 免费期≤2d / 48h 等阈值均为**候选**，未样本/评测证实，不得作验收承诺；NFR 正式值待 P7/P8。
+- 采集清单（喂 P2-12）：真实脱敏 装箱（含危险品/植检/致冷剂/超限 SKU）、拖卡派单、仓库卸柜/卸空/收货、还箱、中转、甩柜/扣货异常、时间偏差（atd−etd、eta−ata、实际 vs last_free）。
+- 阈值候选均为临时值；定稿口径 = P2-12 样本分布 + P8 实测（RAID R-05、NFR §4/§7）。
+
+## 5. 关联与维护
+
+- 关联 [NODE_PDCA](./NODE_PDCA.md)、[TARGET_FIELD_CATALOG](./TARGET_FIELD_CATALOG.md)（要素→字段）、[P2_REVIEW_CHECKLIST](./P2_REVIEW_CHECKLIST.md) G5、AS-IS [快照](./AS_IS_LEGACY_BASELINE.md)。
+- 建议补记 AS-IS 快照：`ext_demurrage_standards`、身份种子(半成品)、`sea_freight.ata` 语义待厘。
+- P2-12 真实样本到位后：替换 §3 缺口、把 §4 阈值转正式并留痕（NFR §7）。

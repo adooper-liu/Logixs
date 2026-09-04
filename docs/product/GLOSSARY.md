@@ -1,6 +1,6 @@
 # 统一业务词汇表（P0-05）
 
-> 状态：**已确认（初版基线）** · v0.1.1 · 2026-09-04。词汇表是跨团队沟通的单一真相；本表指明权威定义位置与负责人（负责人按 [RAID](../planning/RAID.md) 占位跟踪），任何人不得在代码/文档中另起口径。
+> 状态：**已确认（初版基线）** · v0.1.1 · 2026-09-04 · **P2 增补 §5（2026-09-04，口径以 domain/ 文档为准）**。词汇表是跨团队沟通的单一真相；本表指明权威定义位置与负责人（负责人按 [RAID](../planning/RAID.md) 占位跟踪），任何人不得在代码/文档中另起口径。
 
 ## 1. 导入与数据
 
@@ -40,3 +40,21 @@
 - 业务词汇只在“权威位置”定义一次；其他文档用链接引用，不复制正文（ENGINEERING_RULES §12）。
 - 术语口径变化必须先改本表与权威代码契约，再改派生文档。
 - 本表负责人：刘志高（产品 + 数据负责人）。
+
+## 5. P2 领域设计增补术语（2026-09-04；权威正文在 domain/ 文档，本表只登记不抄正文）
+
+| 术语 | 一句话定义（权威口径） | 权威位置 |
+| --- | --- | --- |
+| 采购订单号（PO） | 采购阶段单据号，先于备货单产生 | [SHIPMENT_FLOW_OVERVIEW](./domain/SHIPMENT_FLOW_OVERVIEW.md) §3、INTEGRATION_BOUNDARIES |
+| 备货单号 | **备货阶段唯一建档身份**；一备货单→一货柜(1:1) | [CONTEXT_MAP](./domain/CONTEXT_MAP.md) §3.2、IMPORT_DOMAIN_MODEL §6.2 |
+| 主备货单号 | 一票(提单)多柜时**任取一柜备货单号**的票级展示代表；**不作归属关系/唯一键/外键**（曾致“一柜多单/一单多柜”误解） | SHIPMENT_FLOW_OVERVIEW §3 |
+| 提单归组 | 一提单(B/L)→多货柜；各柜各属其备货单 | SHIPMENT_FLOW_OVERVIEW §3 |
+| 箱号 | **迟绑定**：装箱后与外部（船司/海关/拖车）交换才进入系统 | [CONTAINER_LIFECYCLE](./domain/CONTAINER_LIFECYCLE.md) §3 |
+| 实际出运日期 | 迟绑定（装箱后）；备货/订舱阶段仅有预计 | LIFECYCLE_CONSISTENCY R0 |
+| ContainerRecord（货柜流转记录） | 一单一柜的记录单元，主锚=备货单号 | [CONTEXT_MAP](./domain/CONTEXT_MAP.md) §3.1 |
+| 入库 | WMS 收货/上架；货物侧交接终点，非容器主链 | [CONTAINER_LIFECYCLE](./domain/CONTAINER_LIFECYCLE.md) §2.1 |
+| 时间前缀 | `S计划/E预计/A实际 × TD离/TA抵`（std/etd/atd、sta/eta/ata）；预计≠计划 | [LIFECYCLE_CONSISTENCY](./domain/LIFECYCLE_CONSISTENCY.md) R0 |
+| 来源权威 | 手工最高(锁，仅手工可改)；导入首次/冲突填充优先、可被二次导入/手工/API 更新；API 可被三者更新 | [INTEGRATION_BOUNDARIES](./domain/INTEGRATION_BOUNDARIES.md) §3.1 |
+| 货柜标记 | 多变特征(危险品/需植检/含致冷剂/超限…)的受控集合，触发动作/卫式，不逐特征加列 | [CONTAINER_MARKERS](./domain/CONTAINER_MARKERS.md) |
+| 滞港费（Demurrage/Detention/堆存） | 免费期跟踪/费率标准/预估/预警/对账/一键处置的**核心费用能力** | [PRINCIPLES](./PRINCIPLES.md) §1 |
+| 交互身份切换 | 装箱后→卸柜前对外交互以**箱号**；卸柜后备货单号重新激活 | CONTAINER_LIFECYCLE §3 |
