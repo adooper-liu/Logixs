@@ -5,6 +5,7 @@
 > 落实：币种(定点)、时间口径(R0：S/E/A×TD/TA)、迟绑定、source、一备货单→一柜、主备货单号不作键。
 > 衔接：[DATA_CLEANUP_ORDER_CONTAINER](./DATA_CLEANUP_ORDER_CONTAINER.md)（先清洗后映射）、[TARGET_FIELD_CATALOG](./TARGET_FIELD_CATALOG.md)（标准字段）、AS-IS [快照](./AS_IS_LEGACY_BASELINE.md)。
 > 表列约定：`类型/时间`（R0 口径）、`币种`、`source/迟绑定`、`处置`（映射/派生/展示保留/弃用/待确认）。
+> 🗣️ 白话：这就是"老字段搬家清单"——老系统每列搬到新库哪里、是什么类型/币种、谁给的、能不能后补(迟绑定)，一列一行写清；搬不动/说不清的先标"待确认"，不许瞎编。
 
 ## 1. 映射规则（前置约定）
 

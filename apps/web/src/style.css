@@ -1,0 +1,203 @@
+/* Logix UI tokens v2（标准源：docs/product/UI_SYSTEM.md）
+   方向：深海青墨 —— 低饱和、强可读；主色 teal，语义绿/橙/红分离，克制强调。 */
+:root {
+  /* 品牌（青墨 teal） */
+  --brand: #0f766e;
+  --brand-strong: #0b5d57;
+  --brand-soft: #e4f3f0;
+  --brand-line: #b7ded7;
+
+  /* 中性（冷灰蓝纸面） */
+  --ink: #0d1b2a;
+  --ink-soft: #43506b;
+  --muted: #75839c;
+  --line: #e5e9f2;
+  --line-strong: #cdd5e3;
+  --surface: #ffffff;
+  --surface-2: #f7f9fc;
+  --ground: #eef1f6;
+
+  /* 语义 */
+  --ok: #12805c;
+  --warn: #b5651d;
+  --risk: #d63b3b;
+  --info: #2870c4;
+  --ok-bg: #e4f4ec;
+  --warn-bg: #fdf1e2;
+  --risk-bg: #fce8e8;
+  --info-bg: #e8f1fc;
+
+  --disabled: #b9c3d2;
+  --ring: 0 0 0 3px rgba(15, 118, 110, 0.18);
+  /* 平边框扁平口径（Linear/Stripe）：低对比边、几乎无阴影 */
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --shadow-card: none;
+  --shadow-pop: 0 6px 24px rgba(13, 27, 42, 0.08);
+
+  /* 数字/等宽 */
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: 'Manrope', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+
+  /* 兼容旧引用 */
+  --logix-ink: var(--ink);
+  --logix-ink-soft: var(--ink-soft);
+  --logix-muted: var(--muted);
+  --logix-line: var(--line);
+  --logix-surface: var(--surface);
+  --logix-ground: var(--ground);
+  --logix-accent: var(--brand);
+  --logix-accent-soft: var(--brand-soft);
+
+  /* Element Plus 对齐 */
+  --el-color-primary: var(--brand);
+  --el-color-primary-dark-2: var(--brand-strong);
+  --el-color-primary-light-3: #4aa298;
+  --el-color-primary-light-5: #7abfb7;
+  --el-color-primary-light-7: #b7ded7;
+  --el-color-primary-light-8: #cfeae5;
+  --el-color-primary-light-9: var(--brand-soft);
+  --el-color-success: var(--ok);
+  --el-color-warning: var(--warn);
+  --el-color-danger: var(--risk);
+  --el-color-error: var(--risk);
+  --el-color-info: var(--muted);
+  --el-text-color-primary: var(--ink);
+  --el-text-color-regular: var(--ink-soft);
+  --el-text-color-secondary: var(--muted);
+  --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-bg-color: var(--surface);
+  --el-fill-color-blank: var(--surface);
+  --el-font-family: var(--sans);
+  --el-border-radius-base: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --brand: #45b8a8;
+    --brand-strong: #6fd0c2;
+    --brand-soft: #12322e;
+    --brand-line: #1f4a44;
+    --ink: #e7edf6;
+    --ink-soft: #aebad0;
+    --muted: #7d8aa3;
+    --line: #232f45;
+    --line-strong: #33415b;
+    --surface: #101a2b;
+    --surface-2: #16213a;
+    --ground: #0a1220;
+    --ok: #4fd0a0;
+    --warn: #e0a158;
+    --risk: #ff7a6b;
+    --info: #6fb2ff;
+    --ok-bg: #0f3026;
+    --warn-bg: #32220e;
+    --risk-bg: #39181a;
+    --info-bg: #14273e;
+    --disabled: #46536b;
+    --ring: 0 0 0 3px rgba(69, 184, 168, 0.25);
+  }
+}
+:root[data-theme='dark'] {
+  --brand: #45b8a8;
+  --brand-strong: #6fd0c2;
+  --brand-soft: #12322e;
+  --brand-line: #1f4a44;
+  --ink: #e7edf6;
+  --ink-soft: #aebad0;
+  --muted: #7d8aa3;
+  --line: #232f45;
+  --line-strong: #33415b;
+  --surface: #101a2b;
+  --surface-2: #16213a;
+  --ground: #0a1220;
+  --ok: #4fd0a0;
+  --warn: #e0a158;
+  --risk: #ff7a6b;
+  --info: #6fb2ff;
+  --ok-bg: #0f3026;
+  --warn-bg: #32220e;
+  --risk-bg: #39181a;
+  --info-bg: #14273e;
+  --disabled: #46536b;
+  --ring: 0 0 0 3px rgba(69, 184, 168, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--sans);
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+
+.num,
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* Tooltip：恒浅底深字，保证可读（不随主题变黑底） */
+.el-popper,
+.el-popper.is-dark,
+.el-popper.is-light {
+  --el-tooltip-bg-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0d1b2a !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(13, 27, 42, 0.12);
+}
+.el-popper.is-dark .tip b,
+.el-popper .tip b {
+  color: #0d1b2a !important;
+}
+.el-popper.is-dark .tip span,
+.el-popper .tip span {
+  color: #43506b !important;
+}
+.el-popper .el-popper__arrow::before {
+  background: #ffffff !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}

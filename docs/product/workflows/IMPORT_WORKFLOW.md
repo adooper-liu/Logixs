@@ -1,7 +1,7 @@
 # 智能 Excel 导入工作流定义（P0-02 / P0-03 / P0-04）
 
 > 状态：**已确认（初版基线）** · v0.1.1 · 2026-09-04 · 首个纵向闭环。真实现状/样本等输入按 [RAID](../../planning/RAID.md) 占位跟踪。
-> 与实现一致性的锚点：[架构 §8.3 智能导入](../architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)、统一状态机 §11、风险分级 §9。
+> 与实现一致性的锚点：[架构 §8.3 智能导入](../../architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)、统一状态机 §11、风险分级 §9。
 
 ## 1. 场景
 

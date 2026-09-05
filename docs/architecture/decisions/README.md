@@ -19,7 +19,7 @@
 
 ## P1-09 模块依赖图（非 ADR 产物）
 
-P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。权威约束已固化于 [ENGINEERING_RULES §3](../../ENGINEERING_RULES.md) 与 [架构 §6.2](../AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)；实现期为各包 `package.json` 导出 + 依赖方向 lint（DEPCHECK）强制，产物随 P3-05 脚手架落地后在此补充链接。
+P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。权威约束已固化于 [ENGINEERING_RULES §3](../../../ENGINEERING_RULES.md) 与 [架构 §6.2](../AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)；实现期为各包 `package.json` 导出 + 依赖方向 lint（DEPCHECK）强制，产物随 P3-05 脚手架落地后在此补充链接。
 
 ## 模板
 

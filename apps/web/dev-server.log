@@ -1,0 +1,255 @@
+
+> @logix/web@0.1.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m727[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m08:02:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m08:06:15[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m08:06:15[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?
+[2m08:06:15[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:8:50
+[33m  4  |    routes: [
+  5  |      { path: "/", redirect: "/dashboard" },
+  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+     |                                                    ^
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 1)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:06:16[22m [36m[1m[vite][22m[39m [32m✨ new dependencies optimized: [33mvue-router[32m[39m
+[2m08:06:16[22m [36m[1m[vite][22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[2m08:06:16[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?
+[2m08:06:16[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:8:50
+[33m  4  |    routes: [
+  5  |      { path: "/", redirect: "/dashboard" },
+  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+     |                                                    ^
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 1)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:06:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue[22m
+[2m08:06:21[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "./components/AppShell.vue" from "src/App.vue". Does the file exist?
+[2m08:06:21[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?
+[2m08:06:21[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "./components/AppShell.vue" from "src/App.vue". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/App.vue[39m:2:21
+[33m  1  |  import { defineComponent as _defineComponent } from "vue";
+  2  |  import AppShell from "./components/AppShell.vue";
+     |                        ^
+  3  |  const _sfc_main = /* @__PURE__ */ _defineComponent({
+  4  |    __name: "App",[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 1)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:06:21[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:8:50
+[33m  4  |    routes: [
+  5  |      { path: "/", redirect: "/dashboard" },
+  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+     |                                                    ^
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 1)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:08:42[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/AppShell.vue.tmp.22260.7d81c31ae11d[22m
+[2m08:08:43[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?
+[2m08:08:43[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:8:50
+[33m  4  |    routes: [
+  5  |      { path: "/", redirect: "/dashboard" },
+  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+     |                                                    ^
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 1)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:08:44[22m [36m[1m[vite][22m[39m [32m✨ new dependencies optimized: [33m@element-plus/icons-vue[32m[39m
+[2m08:08:44[22m [36m[1m[vite][22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[2m08:08:44[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?
+[2m08:08:44[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:8:50
+[33m  4  |    routes: [
+  5  |      { path: "/", redirect: "/dashboard" },
+  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+     |                                                    ^
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 1)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:08:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ContainerWorkbench.vue[22m
+[2m08:08:54[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/DashboardGlobal.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:8:50
+[33m  4  |    routes: [
+  5  |      { path: "/", redirect: "/dashboard" },
+  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+     |                                                    ^
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 1)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:09:02[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/views/DashboardGlobal.vue[22m
+[2m08:09:03[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "../views/MesoPaper.vue" from "src/router/index.ts". Does the file exist?
+[2m08:09:03[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/MesoPaper.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:9:45
+[33m  5  |      { path: "/", redirect: "/dashboard" },
+  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+     |                                               ^
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }
+  9  |    ][39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:09:11[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/views/MesoPaper.vue[22m
+[2m08:09:11[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "../views/MicroWorkbench.vue" from "src/router/index.ts". Does the file exist?
+[2m08:09:11[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "../views/MicroWorkbench.vue" from "src/router/index.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/Logixs/apps/web/src/router/index.ts[39m:10:63
+[33m  6  |      { path: "/dashboard", component: () => import("../views/DashboardGlobal.vue"), meta: { title: "全局态势" } },
+  7  |      { path: "/meso", component: () => import("../views/MesoPaper.vue"), meta: { title: "中观 · 本票多柜" } },
+  8  |      { path: "/container/:orderNumber", component: () => import("../views/MicroWorkbench.vue"), meta: { title: "微观 · 货柜工作台" } }
+     |                                                                 ^
+  9  |    ]
+  10 |  });[39m
+      at TransformPluginContext._formatError (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///D:/Logixs/apps/web/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m08:09:31[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/views/MicroWorkbench.vue[22m
+[2m08:09:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ContainerWorkbench.vue, /src/components/ContainerWorkbench.vue?vue&type=style&index=0&scoped=8779b8a6&lang.css[22m
+[2m08:12:39[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m08:12:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m08:13:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue, /src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:24:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m08:24:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:24:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:24:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:24:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:27:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue, /src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:28:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:28:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:29:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:30:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue, /src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:34:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:34:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:38:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:38:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:38:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:41:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m08:42:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:42:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:44:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m08:44:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:48:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:48:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:51:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue[22m
+[2m08:51:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m08:56:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MicroWorkbench.vue, /src/views/MicroWorkbench.vue?vue&type=style&index=0&scoped=27b43a49&lang.css[22m
+[2m09:10:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:10:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/AppShell.vue[22m
+[2m09:10:52[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/router/index.ts[22m
+[2m09:21:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:28:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/DashboardGlobal.vue, /src/views/MicroWorkbench.vue, /src/views/MesoPaper.vue[22m
+[2m09:29:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:30:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:31:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:33:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:35:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:35:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:37:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:38:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:41:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:42:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m09:44:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/DashboardGlobal.vue, /src/views/MicroWorkbench.vue, /src/views/MesoPaper.vue[22m
+[2m09:45:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:45:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:45:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:50:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:50:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:50:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:51:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:51:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:51:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue[22m
+[2m09:51:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m
+[2m10:06:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/MesoPaper.vue, /src/views/MesoPaper.vue?vue&type=style&index=0&scoped=12776499&lang.css[22m

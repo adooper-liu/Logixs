@@ -104,4 +104,4 @@ P2-03（导入批次/行/预检/审核）、首批标准字段模板（对应 IM
 | 2026-09-04 | design | Claude | — | v8 出运日期迟绑定确认：实际出运日期与箱号一样装箱后外部交换才产生；匹配主锚收敛为**备货单号**（不再含出运日期）；预计/实际出运分列。同步 CONTEXT_MAP / IMPORT_DOMAIN_MODEL / SHIPMENT_FLOW_OVERVIEW / TARGET_FIELD_CATALOG；D-date-key 撤销 |
 | 2026-09-04 | design | Claude | — | v10 交互身份切换规则（负责人）：装箱后→卸柜前对外交互只能用**箱号**（备货单号不可用）；卸柜完成进上架/库存后备货单号重新激活；隐含货物/订单与设备/运输两条子生命周期。落 CONTAINER_LIFECYCLE §2.1 与 CONTEXT_MAP §3.1 |
 | 2026-09-04 | design | Claude | — | v14 AS-IS vs TO-BE 对照审计（ASIS_TOBE_GAP）：识别现网可复用资产（适配器主备/故障转移、通用字典别名、来源枚举、WMS 状态字段、HOLD/费用对象、监控）与 TO-BE 漏点 5 项；已并入评审清单 §3 待复核 |
-| 2026-09-04 | design | Claude | — | v37 G1 集成冗余/故障转移设计初稿 INTEGRATION_REDUNDANCY（Adapter 接口/Manager/主备回退/订阅·查询双通道/去重/降级矩阵）；清单 G1 ◐ |
+| 2026-09-05 | design | Claude | — | v48 UX_CONTAINER_WORKBENCH 增 1.1–1.3：聚焦对象单界面全览(不碎片)；按时间链+状态机构视觉路径所见即所得；节点 正常/预警/风险 三态 + 行动建议 + 闭环操作；全局→中观→微观 三层可视化层级与渐进披露不淹没 |
