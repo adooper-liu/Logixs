@@ -25,7 +25,7 @@ describe("TaskQueue", () => {
       "task_1026",
     ]);
     expect(wrapper.get('[data-testid="actionable-count"]').text()).toBe("3");
-    expect(wrapper.text()).not.toContain("发送清关资料并等待受理");
+    expect(wrapper.text()).not.toContain("发送清关资料");
     expect(wrapper.text()).not.toContain("现场人工执行");
   });
 });

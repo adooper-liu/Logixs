@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { ChevronRight, Container } from "@lucide/vue";
-import type { ContainerProjection, TaskItem } from "../../data/sample";
+import { ChevronRight, Container, ShieldAlert } from "@lucide/vue";
+import type {
+  ContainerProjection,
+  SubmissionView,
+  TaskItem,
+} from "../../data/sample";
+import { projectTaskLanguage } from "./taskLanguageContract";
 
 const props = defineProps<{
   task: TaskItem;
   container: ContainerProjection;
+  submission?: SubmissionView;
 }>();
+
+const language = computed(() =>
+  projectTaskLanguage(props.task, props.submission),
+);
 
 const showExecutionQualifier = computed(
   () =>
@@ -37,16 +47,31 @@ const dueLabel = computed(() =>
         </div>
       </div>
       <div class="task-title-row">
-        <h2>{{ task.title }}</h2>
+        <h2>{{ language.title }}</h2>
         <span
           class="task-state"
-          :class="task.tone"
-          :aria-label="`任务状态：${task.statusLabel}`"
+          :class="language.tone"
+          :aria-label="`任务状态：${language.statusLabel}`"
         >
-          <span>任务</span><b>{{ task.statusLabel }}</b>
+          <span>任务</span><b>{{ language.statusLabel }}</b>
         </span>
       </div>
-      <p>{{ task.instruction }}</p>
+      <div class="task-language">
+        <p v-if="language.showTriggerReason">
+          <span>原因</span>{{ language.triggerReason }}
+        </p>
+        <p class="guidance">
+          <span>{{ language.guidanceLabel }}</span
+          >{{ language.guidance }}
+        </p>
+        <p v-if="task.status !== 'completed'">
+          <span>完成标准</span>{{ language.completionCriteria }}
+        </p>
+        <p v-if="task.status !== 'completed'" class="guardrail">
+          <ShieldAlert :size="13" aria-hidden="true" />
+          <span>安全边界</span>{{ language.guardrail }}
+        </p>
+      </div>
     </div>
 
     <div class="identity">
@@ -178,14 +203,53 @@ const dueLabel = computed(() =>
   color: var(--muted);
 }
 
-.title-block p {
+.task-language {
   max-width: 760px;
+  display: grid;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.task-language p {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
   margin: 0;
-  overflow: hidden;
   color: var(--ink-soft);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.task-language p > span {
+  min-width: 48px;
+  flex: none;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.task-language .guidance {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.task-language .guidance > span {
+  color: var(--brand);
+}
+
+.task-language .guardrail {
+  align-items: center;
+  color: var(--warn);
+}
+
+.task-language .guardrail svg {
+  flex: none;
+}
+
+.task-language .guardrail > span {
+  min-width: 41px;
+  color: var(--warn);
 }
 
 .identity {
@@ -245,12 +309,8 @@ const dueLabel = computed(() =>
     flex-direction: column;
   }
 
-  .title-block p {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    white-space: normal;
+  .task-language p {
+    align-items: flex-start;
   }
 }
 </style>

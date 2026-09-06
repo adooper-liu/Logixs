@@ -27,12 +27,15 @@ test("task workbench remains readable", async ({ page }) => {
   await disableMotion(page);
 
   await expect(
-    page.getByRole("heading", { name: "复核离港时间冲突" }),
+    page.getByRole("heading", { name: "确认实际离港时间" }),
   ).toBeVisible();
-  await expect(
-    page.locator('[aria-label="任务状态：待复核结论"]'),
-  ).toBeVisible();
+  await expect(page.locator('[aria-label="任务状态：待复核"]')).toBeVisible();
   await expect(page.locator('[aria-label="货柜状态：在途"]')).toBeVisible();
+  await expect(page.getByText("原因", { exact: true })).toBeVisible();
+  await expect(page.getByText("下一步", { exact: true })).toBeVisible();
+  await expect(page.getByText("完成标准", { exact: true })).toBeVisible();
+  await expect(page.getByText("安全边界", { exact: true })).toBeVisible();
+  await expect(page.getByText("船司与码头离港记录相差 45 分钟")).toBeVisible();
   await expect(page.getByRole("heading", { name: "操作记录" })).toHaveCount(0);
   const guide = page.getByRole("navigation", { name: "任务执行导引" });
   await expect(guide).toBeVisible();

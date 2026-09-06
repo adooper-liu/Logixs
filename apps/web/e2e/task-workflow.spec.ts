@@ -29,6 +29,10 @@ test("employee completes unload and sees the container fact advance", async ({
   await expect(
     page.getByText("业务事件 unloaded 已落账，任务完成"),
   ).toBeVisible();
+  await expect(
+    page.getByText("卸柜结果已落账，实收数量已核对。"),
+  ).toBeVisible();
+  await expect(page.getByText("下一步", { exact: true })).toHaveCount(0);
   const receipt = page.getByTestId("submission-progress");
   await expect(receipt).toContainText("服务器已收到");
   await expect(receipt).toContainText("业务已接受");

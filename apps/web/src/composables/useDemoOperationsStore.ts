@@ -12,6 +12,7 @@ import {
   type TaskAction,
   type TaskItem,
 } from "../data/sample";
+import { getTaskStatusLanguage } from "../data/taskLanguageCatalog";
 
 interface DemoOperationsState {
   containers: ContainerProjection[];
@@ -83,10 +84,11 @@ const getContainer = (containerRecordId: string) =>
 const updateTaskProjection = (task: TaskItem) => {
   const container = getContainer(task.containerRecordId);
   if (!container) return;
+  const language = getTaskStatusLanguage(task.status);
   container.taskStatus = {
     code: task.status,
-    label: task.statusLabel,
-    tone: task.tone,
+    label: language.label,
+    tone: language.tone,
     changedAt: nowLabel(),
   };
 };
@@ -201,8 +203,6 @@ const claimTask = (taskId: string) => {
     () => {
       task.assignment.assignee = "当前员工";
       task.status = "in_progress";
-      task.statusLabel = "执行中";
-      task.tone = "info";
     },
   );
 };
@@ -323,8 +323,6 @@ const markAccepted = (taskId: string, action: TaskAction) => {
   });
   if (action.intent === "complete") {
     task.status = "reported";
-    task.statusLabel = "已提交·待落账";
-    task.tone = "warn";
     updateTaskProjection(task);
   }
   updateSyncProjection(task, submission);
@@ -389,8 +387,6 @@ const commitTaskResult = (taskId: string, action: TaskAction) => {
       canRetry: false,
     });
     task.status = "in_progress";
-    task.statusLabel = "需重新核对";
-    task.tone = "risk";
     updateTaskProjection(task);
     updateSyncProjection(task, submission);
     recordOperation(task, submission);
@@ -399,13 +395,9 @@ const commitTaskResult = (taskId: string, action: TaskAction) => {
 
   if (task.completionPolicy.outcome === "waiting_external") {
     task.status = "waiting_external";
-    task.statusLabel = "等待外部受理";
-    task.tone = "warn";
     submission.message = "发送事实已落账，正在等待外部业务受理";
   } else {
     task.status = "completed";
-    task.statusLabel = "已完成";
-    task.tone = "ok";
     submission.message = eventCode
       ? `业务事件 ${eventCode} 已落账，任务完成`
       : "任务结果已落账；本任务不直接推进货柜状态";
@@ -450,8 +442,6 @@ const commitException = (
 
   if (!["completed", "waiting_external"].includes(task.status)) {
     task.status = "blocked";
-    task.statusLabel = "异常处理中";
-    task.tone = "risk";
     updateTaskProjection(task);
   }
   Object.assign(submission, {

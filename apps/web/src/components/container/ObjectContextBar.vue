@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, MapPin } from "@lucide/vue";
+import { ArrowLeft, Container, MapPin } from "@lucide/vue";
 import type { ContainerProjection } from "../../data/sample";
 import StatusTriplet from "./StatusTriplet.vue";
 
@@ -16,22 +16,30 @@ defineProps<{ record: ContainerProjection }>();
       >
         <ArrowLeft :size="18" />
       </router-link>
-      <div>
-        <h3 class="mono">{{ record.containerNumber }}</h3>
-        <small class="mono"
-          >{{ record.orderNumber }} · {{ record.billOfLading }}</small
-        >
+      <span class="object-icon" aria-hidden="true">
+        <Container :size="20" />
+      </span>
+      <div class="identity-copy">
+        <div class="identity-title">
+          <h3 class="mono">{{ record.containerNumber }}</h3>
+          <span>{{ record.typeCode }}</span>
+        </div>
+        <small class="mono">
+          {{ record.orderNumber }} · {{ record.billOfLading }}
+        </small>
+        <span class="location">
+          <MapPin :size="13" />{{ record.location }}
+          <span class="mono">{{ record.containerRecordId }}</span>
+        </span>
       </div>
-      <span class="location"
-        ><MapPin :size="14" />{{ record.location }}
-        <span class="mono">{{ record.containerRecordId }}</span></span
-      >
     </div>
     <StatusTriplet
       :container-status="record.currentStatus"
       :task-status="record.taskStatus"
       :sync-status="record.syncStatus"
       compact
+      variant="context"
+      :show-idle-sync="false"
     />
   </section>
 </template>
@@ -39,7 +47,7 @@ defineProps<{ record: ContainerProjection }>();
 <style scoped>
 .object-context {
   display: grid;
-  grid-template-columns: minmax(320px, 0.8fr) minmax(480px, 1.5fr);
+  grid-template-columns: minmax(390px, 0.9fr) minmax(0, 1.5fr);
   border: 1px solid var(--line);
   border-left: 3px solid var(--brand);
   border-radius: var(--radius-card);
@@ -50,17 +58,18 @@ defineProps<{ record: ContainerProjection }>();
 .object-identity {
   min-width: 0;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 3px 10px;
+  grid-template-columns: 34px 38px minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
   padding: 7px 10px;
   border-right: 1px solid var(--line);
 }
 
-.object-identity > div {
+.identity-copy {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .object-identity small,
@@ -74,8 +83,32 @@ defineProps<{ record: ContainerProjection }>();
   font-size: 17px;
 }
 
+.object-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-s);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.identity-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.identity-title > span {
+  padding: 1px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 700;
+}
+
 .location {
-  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -86,11 +119,6 @@ defineProps<{ record: ContainerProjection }>();
   color: var(--muted);
 }
 
-:deep(.status-triplet) {
-  border: 0;
-  border-radius: 0;
-}
-
 @media (max-width: 1100px) {
   .object-context {
     grid-template-columns: 1fr;
@@ -99,6 +127,20 @@ defineProps<{ record: ContainerProjection }>();
   .object-identity {
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 520px) {
+  .object-identity {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .object-icon {
+    display: none;
+  }
+
+  .location > span {
+    display: none;
   }
 }
 </style>

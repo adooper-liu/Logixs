@@ -93,7 +93,11 @@ const submitException = () => {
 
 <template>
   <div class="execution">
-    <TaskContextHeader :task="task" :container="container" />
+    <TaskContextHeader
+      :task="task"
+      :container="container"
+      :submission="submission"
+    />
 
     <div class="focus-command">
       <TaskFocusFlow :steps="focus.steps" :current-code="focus.currentCode" />

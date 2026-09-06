@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { MonitorCog, TriangleAlert } from "@lucide/vue";
 import type { TaskItem } from "../../data/sample";
 import InfoTooltip from "../ui/InfoTooltip.vue";
+import { projectTaskLanguage } from "./taskLanguageContract";
 
 const props = defineProps<{
   tasks: TaskItem[];
@@ -28,6 +29,11 @@ const sortByRiskAndDueAt = (left: TaskItem, right: TaskItem) =>
   right.riskPriority - left.riskPriority ||
   Date.parse(left.dueAt) - Date.parse(right.dueAt);
 
+const withLanguage = (task: TaskItem) => ({
+  task,
+  language: projectTaskLanguage(task),
+});
+
 const humanTasks = computed(() =>
   props.tasks
     .filter(
@@ -35,7 +41,8 @@ const humanTasks = computed(() =>
         task.queueKind === "human" && actionableStatuses.has(task.status),
     )
     .slice()
-    .sort(sortByRiskAndDueAt),
+    .sort(sortByRiskAndDueAt)
+    .map(withLanguage),
 );
 const waitingTasks = computed(() =>
   props.tasks
@@ -43,10 +50,11 @@ const waitingTasks = computed(() =>
       (task) => task.queueKind === "human" && waitingStatuses.has(task.status),
     )
     .slice()
-    .sort(sortByRiskAndDueAt),
+    .sort(sortByRiskAndDueAt)
+    .map(withLanguage),
 );
 const monitorTasks = computed(() =>
-  props.tasks.filter((task) => task.queueKind === "monitor"),
+  props.tasks.filter((task) => task.queueKind === "monitor").map(withLanguage),
 );
 
 const dueLabel = (dueAt: string) =>
@@ -75,32 +83,38 @@ const dueLabel = (dueAt: string) =>
     <div class="queue-scroll" aria-label="任务列表" tabindex="0">
       <div class="task-list">
         <button
-          v-for="task in humanTasks"
-          :key="task.taskId"
+          v-for="item in humanTasks"
+          :key="item.task.taskId"
           class="task-row"
-          :class="{ active: task.taskId === activeTaskId }"
+          :class="{ active: item.task.taskId === activeTaskId }"
           type="button"
           :disabled="selectionLocked"
           data-testid="actionable-task"
-          :data-task-id="task.taskId"
-          @click="emit('select', task.taskId)"
+          :data-task-id="item.task.taskId"
+          @click="emit('select', item.task.taskId)"
         >
-          <span class="tone" :class="task.tone"></span>
+          <span class="tone" :class="item.language.tone"></span>
           <span class="task-copy">
             <span class="task-title">
-              <b>{{ task.title }}</b>
-              <strong :class="task.tone">{{ task.statusLabel }}</strong>
+              <b>{{ item.language.title }}</b>
+              <strong :class="item.language.tone">{{
+                item.language.statusLabel
+              }}</strong>
             </span>
             <span class="meta mono"
-              >{{ task.containerNumber }} · {{ task.nodeName }}</span
+              >{{ item.task.containerNumber }} · {{ item.task.nodeName }}</span
             >
-            <span v-if="task.risk" class="risk-copy">
-              <TriangleAlert :size="12" aria-hidden="true" />{{ task.risk }}
+            <span v-if="item.task.risk" class="risk-copy">
+              <TriangleAlert :size="12" aria-hidden="true" />{{
+                item.task.risk
+              }}
             </span>
           </span>
           <span class="task-state">
             <small>截止</small>
-            <time :datetime="task.dueAt">{{ dueLabel(task.dueAt) }}</time>
+            <time :datetime="item.task.dueAt">{{
+              dueLabel(item.task.dueAt)
+            }}</time>
           </span>
         </button>
       </div>
@@ -110,18 +124,20 @@ const dueLabel = (dueAt: string) =>
           <span>等待外部或落账</span><b>{{ waitingTasks.length }}</b>
         </div>
         <button
-          v-for="task in waitingTasks"
-          :key="task.taskId"
+          v-for="item in waitingTasks"
+          :key="item.task.taskId"
           class="waiting-row"
           type="button"
           :disabled="selectionLocked"
-          @click="emit('select', task.taskId)"
+          @click="emit('select', item.task.taskId)"
         >
           <span
-            ><b>{{ task.title }}</b
-            ><small class="mono">{{ task.containerNumber }}</small></span
+            ><b>{{ item.language.title }}</b
+            ><small class="mono">{{ item.task.containerNumber }}</small></span
           >
-          <strong :class="task.tone">{{ task.statusLabel }}</strong>
+          <strong :class="item.language.tone">{{
+            item.language.statusLabel
+          }}</strong>
         </button>
       </div>
 
@@ -131,15 +147,16 @@ const dueLabel = (dueAt: string) =>
           <small>异常 0 · {{ monitorTasks.length }} 项正常</small>
         </summary>
         <div
-          v-for="task in monitorTasks"
-          :key="task.taskId"
+          v-for="item in monitorTasks"
+          :key="item.task.taskId"
           class="monitor-row"
         >
-          <span class="tone" :class="task.tone"></span>
+          <span class="tone" :class="item.language.tone"></span>
           <span
-            ><b>{{ task.nodeName }} · {{ task.title }}</b
+            ><b>{{ item.task.nodeName }} · {{ item.language.title }}</b
             ><small
-              >{{ task.statusLabel }} · {{ dueLabel(task.dueAt) }}</small
+              >{{ item.language.statusLabel }} ·
+              {{ dueLabel(item.task.dueAt) }}</small
             ></span
           >
         </div>

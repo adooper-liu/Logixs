@@ -57,10 +57,10 @@ test("mobile task link opens the active work instead of the full queue", async (
   await expect(
     page.getByRole("heading", { name: "卸柜并核对实收数量" }),
   ).toBeVisible();
-  await expect(page.getByText("复核离港时间冲突")).toBeHidden();
+  await expect(page.getByText("确认实际离港时间")).toBeHidden();
 
   await page.getByRole("button", { name: /任务列表/ }).click();
-  await expect(page.getByText("复核离港时间冲突")).toBeVisible();
+  await expect(page.getByText("确认实际离港时间")).toBeVisible();
 });
 
 test("explanatory tooltips work with click and Escape", async ({ page }) => {

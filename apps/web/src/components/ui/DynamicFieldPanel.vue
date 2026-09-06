@@ -13,11 +13,13 @@ const props = withDefaults(
     columns?: 1 | 2 | 3 | 4;
     mobileColumns?: 1 | 2 | 3;
     locale?: string;
+    variant?: "table" | "signal";
   }>(),
   {
     columns: 3,
     mobileColumns: 1,
     locale: "zh-CN",
+    variant: "table",
   },
 );
 
@@ -41,7 +43,11 @@ const valueClass = (field: ResolvedDisplayField) => ({
 </script>
 
 <template>
-  <div class="dynamic-fields" :style="gridStyle">
+  <div
+    class="dynamic-fields"
+    :class="`dynamic-fields--${variant}`"
+    :style="gridStyle"
+  >
     <p v-if="resolution.issues.length" class="schema-error" role="alert">
       字段配置不可用：{{ resolution.issues.join("；") }}
     </p>
@@ -64,6 +70,7 @@ const valueClass = (field: ResolvedDisplayField) => ({
             v-for="field in group.primaryFields"
             :key="field.code"
             class="field"
+            :class="`field--${field.valueState}`"
             :style="fieldStyle(field)"
           >
             <dt>
@@ -87,6 +94,7 @@ const valueClass = (field: ResolvedDisplayField) => ({
               v-for="field in group.secondaryFields"
               :key="field.code"
               class="field"
+              :class="`field--${field.valueState}`"
               :style="fieldStyle(field)"
             >
               <dt>
@@ -178,6 +186,32 @@ const valueClass = (field: ResolvedDisplayField) => ({
 .field dd.invalid,
 .schema-error {
   color: var(--risk);
+}
+
+.dynamic-fields--signal .field-grid {
+  gap: 8px;
+  border: 0;
+}
+
+.dynamic-fields--signal .field {
+  min-height: 64px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+}
+
+.dynamic-fields--signal .field dd {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.dynamic-fields--signal .field--empty {
+  border-style: dashed;
+  background: var(--surface);
 }
 
 .empty-fields {

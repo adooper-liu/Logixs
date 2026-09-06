@@ -151,14 +151,11 @@ export interface TaskItem {
   orderNumber: string;
   nodeKey: string;
   nodeName: string;
-  title: string;
+  triggerReason: string;
   dueAt: string;
   status: TaskStatusCode;
-  statusLabel: string;
-  tone: Tone;
   riskPriority: number;
   location: string;
-  instruction: string;
   workCategory: string;
   executionMode: TaskExecutionMode;
   executionModeLabel: string;
@@ -182,6 +179,7 @@ export interface SubmissionView {
   acceptedAt?: string;
   committedAt?: string;
   message?: string;
+  resultSummary?: string;
   resultRef?: string;
   resultEventCode?: string;
   errorCode?: string;
@@ -548,7 +546,7 @@ export const createContainerSeed = (): ContainerProjection[] => [
     syncStatus: { code: "idle", label: "无待确认操作", tone: "muted" },
     location: "长滩港航线",
     markers: [],
-    nextActionHint: "复核离港时间冲突；状态投影只通过追加更正事件重放。",
+    nextActionHint: "确认实际离港时间；状态投影只通过追加更正事件重放。",
     eta: "09-12",
     risk: "两方 ATD 相差 45 分钟",
     tone: "risk",
@@ -612,14 +610,11 @@ export const createTaskSeed = (): TaskItem[] => [
     orderNumber: "24DSA1954",
     nodeKey: "customs",
     nodeName: "清关",
-    title: "发送清关资料并等待受理",
+    triggerReason: "本柜清关资料尚未发送，危险品声明待最终核对",
     dueAt: "2026-09-06T11:30:00+08:00",
     status: "in_progress",
-    statusLabel: "资料待核对",
-    tone: "risk",
     riskPriority: 3,
     location: "洛杉矶港 WWT",
-    instruction: "核对本柜适用资料并发送给清关行；发送完成不等于对方已受理。",
     workCategory: "信息 / 外发",
     executionMode: "hybrid",
     executionModeLabel: "人工处理 · 外部受理",
@@ -710,15 +705,11 @@ export const createTaskSeed = (): TaskItem[] => [
     orderNumber: "24DSA1954",
     nodeKey: "pickup",
     nodeName: "拖卡提柜",
-    title: "核对提柜前置条件",
+    triggerReason: "码头已开放提柜，但尚无海关放行事实",
     dueAt: "2026-09-06T15:00:00+08:00",
     status: "blocked",
-    statusLabel: "等待权威放行",
-    tone: "warn",
     riskPriority: 2,
     location: "洛杉矶港 WWT",
-    instruction:
-      "系统已汇总可提、放行、预约和费用条件；缺失条件解除后才开放派拖。",
     workCategory: "核验 / 协调",
     executionMode: "hybrid",
     executionModeLabel: "系统汇总 · 人工处置",
@@ -791,15 +782,11 @@ export const createTaskSeed = (): TaskItem[] => [
     orderNumber: "24DSA1955",
     nodeKey: "unload",
     nodeName: "卸柜",
-    title: "卸柜并核对实收数量",
+    triggerReason: "货柜已到达 4 号月台，卸柜作业尚未领取",
     dueAt: "2026-09-07T09:00:00+08:00",
     status: "available",
-    statusLabel: "待领取",
-    tone: "info",
     riskPriority: 1,
     location: "Ontario DC-02 · 4 号月台",
-    instruction:
-      "领取排他作业后，核对柜号与清单；全部卸完并完成差异核验后提交结果。",
     workCategory: "实物 / 核验",
     executionMode: "human",
     executionModeLabel: "现场人工执行",
@@ -894,15 +881,11 @@ export const createTaskSeed = (): TaskItem[] => [
     orderNumber: "24DSA1956",
     nodeKey: "depart",
     nodeName: "离港",
-    title: "复核离港时间冲突",
+    triggerReason: "船司与码头离港记录相差 45 分钟",
     dueAt: "2026-09-06T10:30:00+08:00",
     status: "under_review",
-    statusLabel: "待复核结论",
-    tone: "risk",
     riskPriority: 3,
     location: "宁波港 · 航次 6AB4E",
-    instruction:
-      "比较船司与码头原始事件，记录采纳依据；不得直接覆盖已密封历史。",
     workCategory: "异常 / 对账",
     executionMode: "human",
     executionModeLabel: "授权人员复核",
@@ -986,14 +969,11 @@ export const createTaskSeed = (): TaskItem[] => [
     orderNumber: "24DSA1956",
     nodeKey: "arrival",
     nodeName: "目的港到港",
-    title: "监听到港与卸船事件",
+    triggerReason: "预计 09-12 到港，系统正在等待权威到港或卸船事件",
     dueAt: "2026-09-12T23:59:00+08:00",
     status: "in_progress",
-    statusLabel: "自动监控",
-    tone: "ok",
     riskPriority: 0,
     location: "长滩港",
-    instruction: "系统订阅权威到港事件；正常运行不生成员工待办。",
     workCategory: "监控",
     executionMode: "system",
     executionModeLabel: "系统自动执行",
