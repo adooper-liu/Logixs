@@ -84,8 +84,20 @@ test("task queue keeps work items visually separated", async ({ page }) => {
   await disableMotion(page);
 
   const queue = page.getByRole("region", { name: "待处理任务" });
+  const queueViewport = queue.getByLabel("任务列表");
   const tasks = queue.getByTestId("actionable-task");
   await expect(tasks).toHaveCount(4);
+  const queueFrame = await queue.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      borderTopWidth: style.borderTopWidth,
+      borderTopStyle: style.borderTopStyle,
+    };
+  });
+  expect(queueFrame).toEqual({
+    borderTopWidth: "1px",
+    borderTopStyle: "solid",
+  });
   const gaps = await tasks.evaluateAll((items) =>
     items.slice(1).map((item, index) => {
       const previous = items[index].getBoundingClientRect();
@@ -94,6 +106,35 @@ test("task queue keeps work items visually separated", async ({ page }) => {
     }),
   );
   expect(gaps.every((gap) => gap >= 8)).toBe(true);
+
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    await expect(queueViewport).toHaveCSS("overflow-y", "auto");
+    const scrollMetrics = await queueViewport.evaluate((viewport) => {
+      const taskList = viewport.querySelector(".task-list");
+      const task = taskList?.querySelector(".task-row");
+      if (!taskList || !task) return null;
+
+      for (let index = 0; index < 12; index += 1) {
+        taskList.append(task.cloneNode(true));
+      }
+      viewport.scrollTop = viewport.scrollHeight;
+      return {
+        clientHeight: viewport.clientHeight,
+        scrollHeight: viewport.scrollHeight,
+        scrollTop: viewport.scrollTop,
+      };
+    });
+    expect(scrollMetrics).not.toBeNull();
+    expect(scrollMetrics!.scrollHeight).toBeGreaterThan(
+      scrollMetrics!.clientHeight,
+    );
+    expect(scrollMetrics!.scrollTop).toBeGreaterThan(0);
+    await page.reload();
+    await disableMotion(page);
+  } else {
+    await expect(queueViewport).toHaveCSS("overflow-y", "visible");
+  }
+
   await expect(queue).toHaveScreenshot("task-queue.png", {
     animations: "disabled",
   });

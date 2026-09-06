@@ -72,91 +72,113 @@ const dueLabel = (dueAt: string) =>
       />
     </header>
 
-    <div class="task-list">
-      <button
-        v-for="task in humanTasks"
-        :key="task.taskId"
-        class="task-row"
-        :class="{ active: task.taskId === activeTaskId }"
-        type="button"
-        :disabled="selectionLocked"
-        data-testid="actionable-task"
-        :data-task-id="task.taskId"
-        @click="emit('select', task.taskId)"
-      >
-        <span class="tone" :class="task.tone"></span>
-        <span class="task-copy">
-          <span class="task-title">
-            <b>{{ task.title }}</b>
-            <strong :class="task.tone">{{ task.statusLabel }}</strong>
+    <div class="queue-scroll" aria-label="任务列表" tabindex="0">
+      <div class="task-list">
+        <button
+          v-for="task in humanTasks"
+          :key="task.taskId"
+          class="task-row"
+          :class="{ active: task.taskId === activeTaskId }"
+          type="button"
+          :disabled="selectionLocked"
+          data-testid="actionable-task"
+          :data-task-id="task.taskId"
+          @click="emit('select', task.taskId)"
+        >
+          <span class="tone" :class="task.tone"></span>
+          <span class="task-copy">
+            <span class="task-title">
+              <b>{{ task.title }}</b>
+              <strong :class="task.tone">{{ task.statusLabel }}</strong>
+            </span>
+            <span class="meta mono"
+              >{{ task.containerNumber }} · {{ task.nodeName }}</span
+            >
+            <span v-if="task.risk" class="risk-copy">
+              <TriangleAlert :size="12" aria-hidden="true" />{{ task.risk }}
+            </span>
           </span>
-          <span class="meta mono"
-            >{{ task.containerNumber }} · {{ task.nodeName }}</span
+          <span class="task-state">
+            <small>截止</small>
+            <time :datetime="task.dueAt">{{ dueLabel(task.dueAt) }}</time>
+          </span>
+        </button>
+      </div>
+
+      <div v-if="waitingTasks.length" class="waiting-zone">
+        <div class="monitor-head">
+          <span>等待外部或落账</span><b>{{ waitingTasks.length }}</b>
+        </div>
+        <button
+          v-for="task in waitingTasks"
+          :key="task.taskId"
+          class="waiting-row"
+          type="button"
+          :disabled="selectionLocked"
+          @click="emit('select', task.taskId)"
+        >
+          <span
+            ><b>{{ task.title }}</b
+            ><small class="mono">{{ task.containerNumber }}</small></span
           >
-          <span v-if="task.risk" class="risk-copy">
-            <TriangleAlert :size="12" aria-hidden="true" />{{ task.risk }}
-          </span>
-        </span>
-        <span class="task-state">
-          <small>截止</small>
-          <time :datetime="task.dueAt">{{ dueLabel(task.dueAt) }}</time>
-        </span>
-      </button>
-    </div>
-
-    <div v-if="waitingTasks.length" class="waiting-zone">
-      <div class="monitor-head">
-        <span>等待外部或落账</span><b>{{ waitingTasks.length }}</b>
+          <strong :class="task.tone">{{ task.statusLabel }}</strong>
+        </button>
       </div>
-      <button
-        v-for="task in waitingTasks"
-        :key="task.taskId"
-        class="waiting-row"
-        type="button"
-        :disabled="selectionLocked"
-        @click="emit('select', task.taskId)"
-      >
-        <span
-          ><b>{{ task.title }}</b
-          ><small class="mono">{{ task.containerNumber }}</small></span
-        >
-        <strong :class="task.tone">{{ task.statusLabel }}</strong>
-      </button>
-    </div>
 
-    <details v-if="monitorTasks.length" class="monitor-zone">
-      <summary class="monitor-head">
-        <span><MonitorCog :size="15" aria-hidden="true" />自动监控</span>
-        <small>异常 0 · {{ monitorTasks.length }} 项正常</small>
-      </summary>
-      <div v-for="task in monitorTasks" :key="task.taskId" class="monitor-row">
-        <span class="tone" :class="task.tone"></span>
-        <span
-          ><b>{{ task.nodeName }} · {{ task.title }}</b
-          ><small
-            >{{ task.statusLabel }} · {{ dueLabel(task.dueAt) }}</small
-          ></span
+      <details v-if="monitorTasks.length" class="monitor-zone">
+        <summary class="monitor-head">
+          <span><MonitorCog :size="15" aria-hidden="true" />自动监控</span>
+          <small>异常 0 · {{ monitorTasks.length }} 项正常</small>
+        </summary>
+        <div
+          v-for="task in monitorTasks"
+          :key="task.taskId"
+          class="monitor-row"
         >
-      </div>
-    </details>
+          <span class="tone" :class="task.tone"></span>
+          <span
+            ><b>{{ task.nodeName }} · {{ task.title }}</b
+            ><small
+              >{{ task.statusLabel }} · {{ dueLabel(task.dueAt) }}</small
+            ></span
+          >
+        </div>
+      </details>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .queue {
   min-width: 0;
+  max-height: calc(100dvh - var(--topbar-height) - 112px);
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
 }
-
 .queue-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-height: 36px;
-  padding: 2px 4px 8px;
+  padding: 0 4px 8px;
 }
-
+.queue-scroll {
+  min-height: 0;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
 .task-list {
   display: grid;
   gap: 8px;
 }
-
 .queue-head div,
 .monitor-head,
 .monitor-head > span {
@@ -164,12 +186,10 @@ const dueLabel = (dueAt: string) =>
   align-items: center;
   gap: 7px;
 }
-
 .queue-head b,
 .monitor-head b {
   color: var(--brand);
 }
-
 .task-row {
   width: 100%;
   min-height: 68px;
@@ -290,14 +310,13 @@ const dueLabel = (dueAt: string) =>
 .muted {
   color: var(--muted);
 }
-
 .waiting-zone,
 .monitor-zone {
   margin-top: 12px;
   padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
-  background: var(--surface-2);
+  background: var(--surface);
 }
 
 .waiting-row {
@@ -320,7 +339,6 @@ const dueLabel = (dueAt: string) =>
   display: flex;
   flex-direction: column;
 }
-
 .waiting-row small {
   color: var(--muted);
   font-size: 10px;
@@ -330,7 +348,6 @@ const dueLabel = (dueAt: string) =>
   flex: none;
   font-size: 11px;
 }
-
 .monitor-head {
   justify-content: space-between;
   font-size: 12px;
@@ -341,7 +358,6 @@ const dueLabel = (dueAt: string) =>
 .monitor-head::-webkit-details-marker {
   display: none;
 }
-
 .monitor-head small {
   color: var(--muted);
 }
@@ -353,9 +369,19 @@ const dueLabel = (dueAt: string) =>
   border-top: 1px dashed var(--line);
   font-size: 11px;
 }
-
 .monitor-zone[open] .monitor-head {
   margin-bottom: 6px;
+}
+
+@media (max-width: 767px) {
+  .queue {
+    max-height: none;
+  }
+
+  .queue-scroll {
+    padding-right: 0;
+    overflow-y: visible;
+  }
 }
 
 @media (max-width: 720px) {

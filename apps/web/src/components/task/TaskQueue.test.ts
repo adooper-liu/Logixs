@@ -16,6 +16,9 @@ describe("TaskQueue", () => {
     expect(
       wrapper.get('[aria-label="待处理任务"]').attributes("aria-label"),
     ).toBe("待处理任务");
+    expect(wrapper.get('[aria-label="任务列表"]').attributes("tabindex")).toBe(
+      "0",
+    );
     expect(actionable.map((row) => row.attributes("data-task-id"))).toEqual([
       "task_1027",
       "task_1025",

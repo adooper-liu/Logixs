@@ -146,7 +146,7 @@ const handleSelect = (taskId: string) => {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(288px, 310px) minmax(0, 1fr);
+  grid-template-columns: minmax(312px, 336px) minmax(0, 1fr);
   gap: 12px;
   align-items: start;
 }
