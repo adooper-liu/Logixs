@@ -6,25 +6,25 @@
 
 ## ① 可落库清单：14 节点表（主链/可选/状态/时间/数据锚/来源）
 
-| # | 节点 | 可选 | currentStatus | 时间(planned·actual) | 数据锚(现网) | 来源 | 证实 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 备货 | 否 | not_shipped | ready | 备货单 | 计划系统/导入 | O·R |
-| 2 | 装箱 | 否 | not_shipped(已装) | stuffing | 定稿字段+箱号(迟绑定) | 导入/手工 | O·R |
-| 3 | 出运 | 否 | shipped | ship | 装船/发运 | 导入/API | S·O |
-| 4 | 离港 | 否 | shipped(离) | depart(atd) | sea_freight | API | S·R |
-| 5 | 海运 | 否 | in_transit | sailing | AIS/船司 | API | S·R |
-| 6 | 中转港 | 是 | at_port(中转) | transit | port_ops(transit) | API | S·R |
-| 7 | 清关 | 否* | at_port | customs | customs 日期/单据 | 海关/报关 | S·R |
-| 8 | 到港 | 否 | at_port(目的) | arrival(ata) | port_ops(dest) | API | S·R |
-| 9 | 海铁 | 是 | 内段 | rail | rail_yard | 铁路/API | S·C |
-| 10 | 拖卡(提柜) | 否 | picked_up | pickup(gate_out) | port_ops/trucking | 拖车/API | S·R |
-| 11 | 送仓 | 否 | picked_up | delivery | trucking | 拖车/API | S·R |
-| 12 | 卸柜 | 否 | unloaded | unload | warehouse | 仓库/WMS | S·R |
-| 13 | 卸空 | 否 | unloaded(净) | unstuff | unboxing | WMS/手工 | R |
-| 14 | 还箱 | 否 | returned_empty | return | empty_return | 承运/API | S·R |
-| — | 入库 | 否(WMS) | — | — | WMS 收货/上架 | WMS | O |
+| #   | 节点       | 可选    | currentStatus     | 时间(planned·actual) | 数据锚(现网)          | 来源          | 证实 |
+| --- | ---------- | ------- | ----------------- | -------------------- | --------------------- | ------------- | ---- |
+| 1   | 备货       | 否      | not_shipped       | ready                | 备货单                | 计划系统/导入 | O·R  |
+| 2   | 装箱       | 否      | not_shipped(已装) | stuffing             | 定稿字段+箱号(迟绑定) | 导入/手工     | O·R  |
+| 3   | 出运       | 否      | shipped           | ship                 | 装船/发运             | 导入/API      | S·O  |
+| 4   | 离港       | 否      | shipped(离)       | depart(atd)          | sea_freight           | API           | S·R  |
+| 5   | 海运       | 否      | in_transit        | sailing              | AIS/船司              | API           | S·R  |
+| 6   | 中转港     | 是      | at_port(中转)     | transit              | port_ops(transit)     | API           | S·R  |
+| 7   | 清关       | 否\*    | at_port           | customs              | customs 日期/单据     | 海关/报关     | S·R  |
+| 8   | 到港       | 否      | at_port(目的)     | arrival(ata)         | port_ops(dest)        | API           | S·R  |
+| 9   | 海铁       | 是      | 内段              | rail                 | rail_yard             | 铁路/API      | S·C  |
+| 10  | 拖卡(提柜) | 否      | picked_up         | pickup(gate_out)     | port_ops/trucking     | 拖车/API      | S·R  |
+| 11  | 送仓       | 否      | picked_up         | delivery             | trucking              | 拖车/API      | S·R  |
+| 12  | 卸柜       | 否      | unloaded          | unload               | warehouse             | 仓库/WMS      | S·R  |
+| 13  | 卸空       | 否      | unloaded(净)      | unstuff              | unboxing              | WMS/手工      | R    |
+| 14  | 还箱       | 否      | returned_empty    | return               | empty_return          | 承运/API      | S·R  |
+| —   | 入库       | 否(WMS) | —                 | —                    | WMS 收货/上架         | WMS           | O    |
 
-*清关特定条款可 N/A；放行(五主体齐全)是 #10 提柜前提。
+\*清关特定条款可 N/A；放行(五主体齐全)是 #10 提柜前提。
 
 ## ② 定义与澄清
 
@@ -56,12 +56,12 @@
 
 ## ⑦ 落库映射
 
-| 清单 | 落库 |
-| --- | --- |
+| 清单   | 落库                                                |
+| ------ | --------------------------------------------------- |
 | 节点表 | 阶段字典(L node) + node time 字段(NODE_TIME_FIELDS) |
-| 推进 | 时间线事件(TIMELINE/EVENT_CODES) |
-| 可选 | 事件按需，不入强制节点列 |
-| 入库 | WMS 交接记录（非主链表） |
+| 推进   | 时间线事件(TIMELINE/EVENT_CODES)                    |
+| 可选   | 事件按需，不入强制节点列                            |
+| 入库   | WMS 交接记录（非主链表）                            |
 
 ## ⑧ 待评审/关联
 

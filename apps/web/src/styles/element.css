@@ -1,0 +1,49 @@
+:root {
+  --el-color-primary: var(--brand);
+  --el-color-primary-dark-2: var(--brand-strong);
+  --el-color-primary-light-3: var(--brand-light-3);
+  --el-color-primary-light-5: var(--brand-light-5);
+  --el-color-primary-light-7: var(--brand-line);
+  --el-color-primary-light-8: var(--brand-light-8);
+  --el-color-primary-light-9: var(--brand-soft);
+  --el-color-success: var(--ok);
+  --el-color-warning: var(--warn);
+  --el-color-danger: var(--risk);
+  --el-color-error: var(--risk);
+  --el-color-info: var(--muted);
+  --el-text-color-primary: var(--ink);
+  --el-text-color-regular: var(--ink-soft);
+  --el-text-color-secondary: var(--muted);
+  --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-bg-color: var(--surface);
+  --el-fill-color-blank: var(--surface);
+  --el-font-family: var(--font-sans);
+  --el-border-radius-base: var(--radius-control);
+}
+
+/* Element Plus tooltip defaults fail contrast in the mixed light/dark shell. */
+.el-popper,
+.el-popper.is-dark,
+.el-popper.is-light {
+  --el-tooltip-bg-color: var(--tooltip-surface) !important;
+  border: 1px solid var(--tooltip-line) !important;
+  border-radius: var(--radius-card);
+  background: var(--tooltip-surface) !important;
+  color: var(--tooltip-ink) !important;
+  box-shadow: var(--shadow-overlay);
+}
+
+.el-popper.is-dark .tip b,
+.el-popper .tip b {
+  color: var(--tooltip-ink) !important;
+}
+
+.el-popper.is-dark .tip span,
+.el-popper .tip span {
+  color: var(--tooltip-ink-soft) !important;
+}
+
+.el-popper .el-popper__arrow::before {
+  background: var(--tooltip-surface) !important;
+}

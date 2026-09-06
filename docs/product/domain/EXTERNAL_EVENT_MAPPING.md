@@ -23,10 +23,12 @@
 映射查找(复合键: provider + rawCode + context[category/type/direction/party/laden/placeType…])
   │  命中 → 内部语义事件码 + 属性(isEsti/place/分类) ; 未命中 → 待处理
   ▼
-统一事件信封(code/time/isEsti/place/source/provenance/dbtype)   ← TIMELINE/事件模型
+内部规范事件信封（字段单一权威：CONTRACTS_DRAFT §2.2）
   ▼
 分类落点: L 节点/子里程碑 / 状态证据(推进·密封) / 异常(五主体扣留放行·甩柜) / 单证·费用 …
 ```
+
+供应商的 `eventTime/isEsti/dbtype` 等原始字段完整保留在接入证据中，但必须映射为内部语义；Adapter 不得把供应商 DTO 直接扩散为领域契约。乱序事件按 `occurredAt` 与领域规则重放投影，更正/撤回追加引用原事件的新记录，不原地改写历史。
 
 ## 3. 复合映射键与消歧规则
 
@@ -42,16 +44,17 @@
 `external_event_mapping { provider, provider_version, raw_code, raw_desc_cn/en, context(jsonb), semantic_code, is_estimated_default?, target(node|milestone|state_evidence|exception|doc|fee), maturity(confirmed|candidate), since, ref(doc/sample id), remarks }`
 
 示例（示意）：
-| provider | raw | context | semantic/落点 |
-| --- | --- | --- | --- |
-| FeiTuo | STSP | — | 提空箱（#2 前操作事件） |
-| FeiTuo | GITM | laden=EMPTY | 提空/进场 |
-| FeiTuo | LOBD | — | 装船（#3 出运证据） |
-| FeiTuo | DLPT | — | 离港（#4, atd） |
-| Terminal | GTOT | EMPTY | 提空箱 |
-| Terminal | GTOT | LADEN | 提柜/出场（#10） |
-| US Customs | 1H / 1I | — | 扣留中 / 解除（五主体异常） |
-| EIR | RELS | YAR | 放箱（首节点） |
+
+| provider   | raw     | context     | semantic/落点               |
+| ---------- | ------- | ----------- | --------------------------- |
+| FeiTuo     | STSP    | —           | 提空箱（#2 前操作事件）     |
+| FeiTuo     | GITM    | laden=EMPTY | 提空/进场                   |
+| FeiTuo     | LOBD    | —           | 装船（#3 出运证据）         |
+| FeiTuo     | DLPT    | —           | 离港（#4, atd）             |
+| Terminal   | GTOT    | EMPTY       | 提空箱                      |
+| Terminal   | GTOT    | LADEN       | 提柜/出场（#10）            |
+| US Customs | 1H / 1I | —           | 扣留中 / 解除（五主体异常） |
+| EIR        | RELS    | YAR         | 放箱（首节点）              |
 
 > 完整条目以 P2-12 对拍样例 + 各供应商文档为准填充；勿臆造未证实码。
 

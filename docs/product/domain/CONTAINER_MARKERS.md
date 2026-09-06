@@ -2,7 +2,7 @@
 
 > 状态：**候选（初稿，待 P2 评审）** · v0.1 · 2026-09-04 · 负责人：刘志高。
 > 定位：把「多变、无规则的业务特征」以**受控标记**承载，并让**不同标记触发不同动作**。全局纪律见
-> `ENGINEERING_RULES` §3.3 与决策 D12/D13；本节是 D12「属性/标记扩展字段」的具体领域形态。
+> `ENGINEERING_RULES` §3.3 与追踪项 D12/D13；本节是 D12「属性/标记扩展字段」的具体领域形态。
 > 关联：[CONTAINER_LIFECYCLE](./CONTAINER_LIFECYCLE.md)、[CONTAINER_STATUS_MODEL](./CONTAINER_STATUS_MODEL.md)、[INTEGRATION_BOUNDARIES](./INTEGRATION_BOUNDARIES.md)、[LIFECYCLE_CONSISTENCY](./LIFECYCLE_CONSISTENCY.md)。
 
 ## 1. 场景与动机
@@ -16,7 +16,7 @@
 - 标记是 `ContainerRecord` 上的**集合属性**（逻辑上为一组条目，物理落点 P2-06 定：可为独立子表或受控 attributes）。
 - 条目 = `{ markerKey, appliedAt, source, status }`：
   - `markerKey` 为**受控字典键**（单一权威，枚举/字典数据），代码内不写死特征分支；
-  - `source` 遵循来源权威 D7（手工/导入/API），标记应用与撤销留审计。
+  - 标记事实按 D7 记录来源主体、操作者与接入渠道，并由标记类型的权威/证据策略裁决；标记应用与撤销留审计。
 - 一个标记可重复打上或撤销（沿生命周期），撤标同样走来源权威与审计。
 
 ## 3. SKU/货物特征 → 货柜标记（聚合打标规则）
@@ -30,12 +30,12 @@
 - 每个标记与「动作/校验/卫式/文档要求」的绑定存于**配置/字典**：`markerKey → actionBindings[]`。
 - **动作码为有限稳定集合**（对应有实现的执行器），示例：
 
-| 标记（示例） | 触发动作（示例，动作码候选） | 说明 |
-| --- | --- | --- |
-| `dangerous_goods` | 危险品校验/申报要求/DG 字段必填、运输限制提示 | 与危险品等级字段联动 |
-| `phytosanitary` | 植检预约/证书要求/相关时间节点提示 | 影响预检与文档清单 |
-| `refrigerant` | 温控要求（柜型/温度记录校验或提示） | 含致冷剂需温控关注 |
-| `over_limit`（超限） | 尺寸校验、承运/码头二次确认 | 超长/超高需确认 |
+| 标记（示例）         | 触发动作（示例，动作码候选）                  | 说明                 |
+| -------------------- | --------------------------------------------- | -------------------- |
+| `dangerous_goods`    | 危险品校验/申报要求/DG 字段必填、运输限制提示 | 与危险品等级字段联动 |
+| `phytosanitary`      | 植检预约/证书要求/相关时间节点提示            | 影响预检与文档清单   |
+| `refrigerant`        | 温控要求（柜型/温度记录校验或提示）           | 含致冷剂需温控关注   |
+| `over_limit`（超限） | 尺寸校验、承运/码头二次确认                   | 超长/超高需确认      |
 
 - 动作类型覆盖：**校验（必填/一致）、文档要求、流程卫式、审批/风险提示、AI/能力建议是否需要**。
 - 标记可作为**状态机转换卫式**：例如危险品标记下「出运」需 DG 声明完成才允许推进（卫式条件引用标记，不新增状态）。
@@ -57,7 +57,7 @@
 
 ## 7. 关联与维护
 
-- 上链：任务 brief `p2-shipment-import-domain.md`；决策 D12/D13；[CONTEXT_MAP](./CONTEXT_MAP.md)（ContainerRecord 双键/属性）。
+- 上链：任务 brief `p2-shipment-import-domain.md`；追踪项 D12/D13；[CONTEXT_MAP](./CONTEXT_MAP.md)（ContainerRecord 双键/属性）。
 - 初值清单：标记见 [MARKER_CATALOG](./MARKER_CATALOG.md)、动作见 [ACTION_CATALOG](./ACTION_CATALOG.md)。
 - 派生：P2-04 字典（标记/动作）、P2-06 数据模型、P2-09 契约、P6 预检。
 - 变更须评审；维护纪律见 `ENGINEERING_RULES` §12/§3.3。

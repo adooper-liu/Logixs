@@ -1,0 +1,121 @@
+:root[data-ui-theme="logix"] {
+  --brand: #0f766e;
+  --brand-strong: #0b5d57;
+  --brand-soft: #e4f3f0;
+  --brand-line: #b7ded7;
+  --brand-light-3: #4aa298;
+  --brand-light-5: #7abfb7;
+  --brand-light-8: #cfeae5;
+  --on-brand: #ffffff;
+  --on-ok: #ffffff;
+  --on-warn: #ffffff;
+  --on-risk: #ffffff;
+  --on-status: #ffffff;
+
+  --ink: #0d1b2a;
+  --ink-soft: #43506b;
+  --muted: #6f7d94;
+  --line: #dfe5ee;
+  --line-strong: #c7d0df;
+  --surface: #ffffff;
+  --surface-2: #f7f9fc;
+  --ground: #eef1f6;
+  --overlay: rgba(13, 27, 42, 0.42);
+
+  --ok: #16794e;
+  --warn: #b45f06;
+  --risk: #c93434;
+  --info: #2868b2;
+  --ok-bg: #e4f4ec;
+  --warn-bg: #fdf1e2;
+  --risk-bg: #fce8e8;
+  --info-bg: #e8f1fc;
+  --disabled: #b9c3d2;
+
+  --font-sans:
+    system-ui, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  --sidebar-width: 232px;
+  --sidebar-folded-width: 64px;
+  --topbar-height: 56px;
+  --control-height: 34px;
+  --touch-target: 44px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --shadow-card: none;
+  --shadow-overlay: 0 8px 24px rgba(13, 27, 42, 0.12);
+  --focus-ring: 0 0 0 3px rgba(15, 118, 110, 0.2);
+  --motion-fast: 120ms ease;
+  --motion-normal: 180ms ease;
+  --z-backdrop: 30;
+  --z-sidebar: 40;
+  --z-command: 60;
+  --z-content-raised: 1;
+  --tooltip-surface: #ffffff;
+  --tooltip-ink: #0d1b2a;
+  --tooltip-ink-soft: #43506b;
+  --tooltip-line: #dfe5ee;
+
+  /* Compatibility aliases retained while feature components migrate. */
+  --radius-s: var(--radius-control);
+  --radius-m: var(--radius-card);
+  --ring: var(--focus-ring);
+  --mono: var(--font-mono);
+  --sans: var(--font-sans);
+  --logix-ink: var(--ink);
+  --logix-ink-soft: var(--ink-soft);
+  --logix-muted: var(--muted);
+  --logix-line: var(--line);
+  --logix-surface: var(--surface);
+  --logix-ground: var(--ground);
+  --logix-accent: var(--brand);
+  --logix-accent-soft: var(--brand-soft);
+}
+
+:root[data-ui-theme="logix"][data-theme="dark"] {
+  --brand: #45b8a8;
+  --brand-strong: #6fd0c2;
+  --brand-soft: #12322e;
+  --brand-line: #1f4a44;
+  --brand-light-3: #4aa298;
+  --brand-light-5: #7abfb7;
+  --brand-light-8: #cfeae5;
+  --on-brand: #071816;
+  --on-ok: #071816;
+  --on-warn: #1f1407;
+  --on-risk: #261010;
+  --on-status: #ffffff;
+  --ink: #e7edf6;
+  --ink-soft: #aebad0;
+  --muted: #8c99b0;
+  --line: #263249;
+  --line-strong: #394761;
+  --surface: #101a2b;
+  --surface-2: #16213a;
+  --ground: #0a1220;
+  --overlay: rgba(2, 8, 18, 0.68);
+  --ok: #4fd0a0;
+  --warn: #e0a158;
+  --risk: #ff7a6b;
+  --info: #6fb2ff;
+  --ok-bg: #0f3026;
+  --warn-bg: #32220e;
+  --risk-bg: #39181a;
+  --info-bg: #14273e;
+  --disabled: #46536b;
+  --focus-ring: 0 0 0 3px rgba(69, 184, 168, 0.25);
+  --shadow-overlay: 0 8px 28px rgba(0, 0, 0, 0.32);
+}
+
+@media (max-width: 959px) {
+  :root[data-ui-theme="logix"] {
+    --topbar-height: 52px;
+  }
+}
+
+@media (max-width: 767px) {
+  :root[data-ui-theme="logix"] {
+    --topbar-height: 48px;
+  }
+}

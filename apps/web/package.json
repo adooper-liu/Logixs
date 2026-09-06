@@ -6,22 +6,30 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "validate": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.1",
+    "@lucide/vue": "1.41.0",
     "element-plus": "^2.8.8",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^18.0.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
+    "vitest": "^2.1.9",
     "vue-tsc": "^2.1.10"
-  },
-  "allowScripts": {
-    "esbuild@0.21.5": true
   }
 }

@@ -1,9 +1,9 @@
 # 老库表与字典目录（LEGACY_DB_CATALOG）
 
 > 状态：**现状快照（审计基线）** · 2026-09-05 · 源 `D:/Github/logix @ main acfb50a8`。
-> 用途：迁移/映射（FIELD_MIGRATION_MAP）与 P2-04/06 的**权威表·字典目录**；含表关系、主/外键、字段定义与用途。
+> 用途：迁移/映射（FIELD*MIGRATION_MAP）与 P2-04/06 的**权威表·字典目录**；含表关系、主/外键、字段定义与用途。
 > 权威定义文件：`backend/03_create_tables.sql`（dict/biz/process/ext 主体）· `backend/src/entities/*.ts`（实体）·
-> `backend/scripts/init-database*.sql`（sys_/demurrage/早期字典变体）· `backend/migrations/`（映射/补丁）。
+> `backend/scripts/init-database*.sql`（sys*/demurrage/早期字典变体）· `backend/migrations/`（映射/补丁）。
 > ⚠️ 存在多处 schema 漂移（见 §7），迁移前必须先对齐权威列。
 > 🗣️ 白话：这就是老系统"每张表是干嘛的、主键是什么、跟谁挂钩、有哪些列"的家底目录；照它才能把老数据搬到新库时不漏不串。看到"漂移/没币种/名单复数对不上"这些标记，就是搬家前要先处理的坑。
 
@@ -28,7 +28,7 @@ biz_replenishment_orders ── 1:1(按 order_number 绑) ──▶ biz_containe
 别名：dict_universal_mapping / dict_port_name_mapping    身份：sys_users/roles/user_roles/audit_logs/configs/notifications
 ```
 
-## 2. 字典表（dict_*）
+## 2. 字典表（dict\_\*）
 
 ### dict_countries（国家）
 
@@ -70,11 +70,11 @@ PK `warehouse_code`。`warehouse_name/en、short_name`、`property_type(自营/�
 - `dict_universal_mapping`：`dict_type + target_table/target_field + standard_code/name + name_cn/en/local`，通用"名称→标准码"框架。
 - `dict_port_name_mapping`：`port_code + name + port_code_old + is_primary`，港口新旧码/别名主映射。
 
-## 3. 业务表（biz_*）
+## 3. 业务表（biz\_\*）
 
 ### biz_customers（客户）
 
-PK `customer_code`。`customer_name`、`customer_type_code`(FK→类型)、`country`(FK→dict_countries SET NULL)、`overseas_company_code`(FK SET NULL)、`customer_category/address/contact_*`、`payment_term/price_term/tax_number/customs_code/status`。用途：客户主数据。
+PK `customer_code`。`customer_name`、`customer_type_code`(FK→类型)、`country`(FK→dict*countries SET NULL)、`overseas_company_code`(FK SET NULL)、`customer_category/address/contact*\*`、`payment_term/price_term/tax_number/customs_code/status`。用途：客户主数据。
 
 ### biz_replenishment_orders（备货单）
 
@@ -89,9 +89,9 @@ PK `container_number`；FK `order_number→replenishment`(级联删)、`containe
 - 操作标志：`inspection_required、is_unboxing、requires_pallet(EXCEL)、requires_assembly(EXCEL)`
 - 状态：`logistics_status(默认 not_shipped，派生缓存)、current_status_desc_cn/en`
 - 飞驼外接：`container_size、is_rolled、operator、container_holder、tare_weight、total_weight、over_length、over_height、danger_class`
-索引：order/status/type。⚠️ 03 中 `order_number NOT NULL`；Entity 却可空 → 漂移。
+  索引：order/status/type。⚠️ 03 中 `order_number NOT NULL`；Entity 却可空 → 漂移。
 
-## 4. 流程表（process_*，均按 container_number 关联）
+## 4. 流程表（process\_\*，均按 container_number 关联）
 
 ### process_sea_freight（海运 1:1，PK container_number；FK CASCADE）
 
@@ -114,7 +114,7 @@ PK `container_number`；FK `order_number→replenishment`(级联删)、`containe
 `return_time/planned/last_return_date`、`notification_return_date/time`、`return_terminal_code/name`、`container_condition`。用途：还箱（`returned_empty` 的证据）。
 ⚠️ 表名 `process_empty_return`（03 DDL）vs 实体 `process_empty_returns` → 漂移。
 
-## 5. 扩展/外部表（ext_*）
+## 5. 扩展/外部表（ext\_\*）
 
 ### ext_container_status_events（外部状态事件流，FK container CASCADE）
 
@@ -125,15 +125,15 @@ PK `container_number`；FK `order_number→replenishment`(级联删)、`containe
 - loading：`load_number、loading/discharge_port、loading/discharge_date`（装载记录）。
 - hold：`hold_type、hold_reason、hold_date、release_date、status`（扣留/放行）。
 - charges：`charge_type、charge_amount、charge_currency、charge_date、status`（费用，含币种）。
-用途：外部装载/HOLD/费用对象（扣留五主体与费用治理源）。
+  用途：外部装载/HOLD/费用对象（扣留五主体与费用治理源）。
 
 ### ext_demurrage_standards / ext_demurrage_records（滞港费标准/记录；定义于 init-database-complete.sql）
 
 - standards：`overseas_company、destination_port、shipping_company、freight_forwarder、transport_mode、charge_type(DEMU/STOR)、is_chargeable、free_days_basis、free_days、calculation_basis、rate_per_day、currency、process_status`。
 - records：费用产生/记录明细。
-用途：**滞港费（P4 原则）** 标准与计费/对账输入。
+  用途：**滞港费（P4 原则）** 标准与计费/对账输入。
 
-## 6. 系统表（sys_*，定义于 init-database-complete.sql；运行时代码未接线=半成品）
+## 6. 系统表（sys\_\*，定义于 init-database-complete.sql；运行时代码未接线=半成品）
 
 `sys_users(username/password_hash/full_name/department…)`、`sys_roles(role_code…)`、`sys_user_roles`、`sys_audit_logs`、`sys_configs`、`sys_notifications`。用途：P5 身份/审计/配置的设计输入。
 

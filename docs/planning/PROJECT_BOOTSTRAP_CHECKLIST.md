@@ -24,7 +24,7 @@
 - [x] B-03 确认 AI 工作流型目标架构和技术选型。
 - [x] B-04 建立项目及技术文档导航。
 - [x] P0 项目定义与成功标准：产品简报/词汇/导入工作流/NFR 初版基线已确认（2026-09-04），见 [P0 清单 §4](#4-p0-项目定义与成功标准) 产物与 [PRODUCT_BRIEF](../product/PRODUCT_BRIEF.md)。
-- [x] P1 决策冻结：ADR-001~009 已接受（P1-01~P1-08、P1-10）+ P1-09 模块依赖图，见 [ADR 索引](../architecture/decisions/README.md) 与 [MODULE_DEPENDENCIES](../architecture/MODULE_DEPENDENCIES.md)。
+- [x] P1 决策冻结：ADR-001 至 ADR-009 已接受（P1-01 至 P1-08、P1-10）+ P1-09 模块依赖图，见 [ADR 索引](../architecture/decisions/README.md) 与 [MODULE_DEPENDENCIES](../architecture/MODULE_DEPENDENCIES.md)。
 - [x] P0-09 四类负责人已指定：刘志高（见 [RAID §1](./RAID.md)）。
 
 尚未完成：P2 数据模型 → P3 底座 → P4 基础设施 → P5 安全 → P6 首个纵向闭环 → P7 评测门禁 → P8 可观测性 → P9 生产就绪。
@@ -123,16 +123,16 @@ P0 至 P3 是开始规模开发前的必要工作。P6 完成之前，不并行�
 
 - [ ] P3-01 初始化 Git，配置主分支保护和 CODEOWNERS。
 - [ ] P3-02 固定 Node.js、pnpm、Python 和 uv 版本。
-- [ ] P3-03 初始化 pnpm Workspace 和 Turborepo。
+- [x] P3-03 初始化 pnpm Workspace 和 Turborepo。
 - [ ] P3-04 创建 `apps/web`、`apps/api`、`apps/ai-service` 和 Workers。
 - [ ] P3-05 创建 contracts、domain、config、testing 等共享包。
-- [ ] P3-06 建立 EditorConfig、格式化、Lint 和严格类型检查。
-- [ ] P3-07 建立无副作用的 `lint`、`format:check` 和 `validate`。
+- [x] P3-06 建立 EditorConfig、格式化、Lint 和严格类型检查。
+- [x] P3-07 建立无副作用的 `lint`、`format:check` 和 `validate`。
 - [ ] P3-08 配置 pre-commit 轻量检查，不重复执行完整 CI。
 - [ ] P3-09 建立环境变量 Schema、`.env.example` 和启动时校验。
 - [ ] P3-10 建立 Conventional Commits、PR 模板、ADR 模板和任务 brief 模板（`docs/planning/tasks/_template.md`），并提供任务状态校验（同一时刻单进行中、`done` 需验证证据）。
 - [ ] P3-11 配置依赖更新、许可证检查、秘密扫描和漏洞扫描。
-- [ ] P3-12 创建最小 CI：安装、格式、Lint、类型、测试和构建。
+- [x] P3-12 创建最小 CI：安装、格式、Lint、类型、测试和构建。
 - [ ] P3-13 建立 Contract Parity 一致性测试：TS 契约 ↔ Python Schema ↔ JSON Schema/OpenAPI ↔ 评测数据集由单一权威源生成或派生，CI 对比防漂移，注册项缺失即失败（见 ENGINEERING_RULES §7）。
 - [ ] P3-14 建立编码代理 SKILL 集（位置 `.claude/skills/<name>/SKILL.md`）：
   - `logix-rules`：开工前加载 AGENTS / ENGINEERING_RULES / 架构文档 / 任务 brief，规范“先理解再改、保持范围、小步验证、改契约必同步文档”。

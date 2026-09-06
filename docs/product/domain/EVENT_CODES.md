@@ -10,57 +10,57 @@
 
 ### A. 起运/陆侧
 
-| 码 | 中文 | 定义(一句话) | 角色 | L节点 | 推进/证据 | 源码示例 | 证实 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| empty_picked_up | 提空箱 | 从堆场/场站提走空箱 | 里程碑 | #2前 | — | STSP / GTOT·EMPTY | S·R |
-| stuffed | 装箱完成 | 装柜定稿（真实重量/件数/封号/箱号） | 里程碑+定稿 | #2 | not_shipped 已装 | (导入/手工) | O·R |
-| loaded | 装船/装车 | 装载上船/车 | 状态证据 | #3 | shipped | LOBD / LOAD | S |
-| departed | 离港/离站 | 实际离开起运港 | 状态证据 | #4 | shipped(离) | DLPT / DEPA·TD | S |
-| sailing | 在途航行 | 海运途中 | 里程碑 | #5 | in_transit | SAILING | R |
-| gate_in | 进港/进场 | 货柜进码头/场站 | 里程碑 | #2后 | — | GITM / GTIN·LADEN | S·R |
+| 码              | 中文      | 定义(一句话)                        | 角色        | L节点 | 推进/证据        | 源码示例          | 证实 |
+| --------------- | --------- | ----------------------------------- | ----------- | ----- | ---------------- | ----------------- | ---- |
+| empty_picked_up | 提空箱    | 从堆场/场站提走空箱                 | 里程碑      | #2前  | —                | STSP / GTOT·EMPTY | S·R  |
+| stuffed         | 装箱完成  | 装柜定稿（真实重量/件数/封号/箱号） | 里程碑+定稿 | #2    | not_shipped 已装 | (导入/手工)       | O·R  |
+| loaded          | 装船/装车 | 装载上船/车                         | 状态证据    | #3    | shipped          | LOBD / LOAD       | S    |
+| departed        | 离港/离站 | 实际离开起运港                      | 状态证据    | #4    | shipped(离)      | DLPT / DEPA·TD    | S    |
+| sailing         | 在途航行  | 海运途中                            | 里程碑      | #5    | in_transit       | SAILING           | R    |
+| gate_in         | 进港/进场 | 货柜进码头/场站                     | 里程碑      | #2后  | —                | GITM / GTIN·LADEN | S·R  |
 
 ### B. 中转/到港
 
-| 码 | 中文 | 定义(一句话) | 角色 | L节点 | 推进/证据 | 源码示例 | 证实 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| transit_arrived | 中转抵港 | 到中转港 | 里程碑 | #6 | — | TRANSIT_ARRIVED | R |
-| transit_departed | 中转离港 | 离中转港 | 里程碑 | #6 | — | TRANSIT_DEPARTED | R |
-| arrived | 抵港 | 到达目的港 | 状态证据 | #8 | at_port | ARRIVED / BDAR | S·R |
-| berthed | 靠泊 | 靠泊码头 | 里程碑 | #8前 | — | POCA / BRTH·ARRI | S |
-| discharged | 卸船 | 卸下船 | 里程碑 | #8后 | — | DSCH / DISC | S·R |
-| available | 可提货 | 码头放行可提 | 里程碑 | #10前 | — | AVAILABLE | S·R |
+| 码               | 中文     | 定义(一句话) | 角色     | L节点 | 推进/证据 | 源码示例         | 证实 |
+| ---------------- | -------- | ------------ | -------- | ----- | --------- | ---------------- | ---- |
+| transit_arrived  | 中转抵港 | 到中转港     | 里程碑   | #6    | —         | TRANSIT_ARRIVED  | R    |
+| transit_departed | 中转离港 | 离中转港     | 里程碑   | #6    | —         | TRANSIT_DEPARTED | R    |
+| arrived          | 抵港     | 到达目的港   | 状态证据 | #8    | at_port   | ARRIVED / BDAR   | S·R  |
+| berthed          | 靠泊     | 靠泊码头     | 里程碑   | #8前  | —         | POCA / BRTH·ARRI | S    |
+| discharged       | 卸船     | 卸下船       | 里程碑   | #8后  | —         | DSCH / DISC      | S·R  |
+| available        | 可提货   | 码头放行可提 | 里程碑   | #10前 | —         | AVAILABLE        | S·R  |
 
 ### C. 清关/放行/扣留（五主体）
 
-| 码 | 中文 | 定义(一句话) | 角色 | L节点 | 推进/证据 | 源码示例 | 证实 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| release | 放行 | 主体放行(海关/船司/码头/海事/运费) | 前提+里程碑 | #7前 | — | PASS·SRRS·TMPS·MCRP·SRSE | S |
-| hold | 扣留/滞留 | 主体扣留(查验/扣货/费用) | 异常 | — | — | HOLD·1H·CUIP | S·R |
-| hold_released | 扣留解除 | 扣留解除 | 异常 | — | — | 1I·6I | S |
-| customs_filed | 舱单/申报 | AMS/ISF/报关申报 | 里程碑 | #7 | — | 55/69/3Z·BLA | S |
-| inspection | 查验 | 海关查验(X光/尾门/强化) | 异常 | #7 | — | 1A/1B·CES | S |
+| 码            | 中文      | 定义(一句话)                       | 角色        | L节点 | 推进/证据 | 源码示例                 | 证实 |
+| ------------- | --------- | ---------------------------------- | ----------- | ----- | --------- | ------------------------ | ---- |
+| release       | 放行      | 主体放行(海关/船司/码头/海事/运费) | 前提+里程碑 | #7前  | —         | PASS·SRRS·TMPS·MCRP·SRSE | S    |
+| hold          | 扣留/滞留 | 主体扣留(查验/扣货/费用)           | 异常        | —     | —         | HOLD·1H·CUIP             | S·R  |
+| hold_released | 扣留解除  | 扣留解除                           | 异常        | —     | —         | 1I·6I                    | S    |
+| customs_filed | 舱单/申报 | AMS/ISF/报关申报                   | 里程碑      | #7    | —         | 55/69/3Z·BLA             | S    |
+| inspection    | 查验      | 海关查验(X光/尾门/强化)            | 异常        | #7    | —         | 1A/1B·CES                | S    |
 
 ### D. 提柜/送仓/卸空/还箱
 
-| 码 | 中文 | 定义(一句话) | 角色 | L节点 | 推进/证据 | 源码示例 | 证实 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| gate_out | 提柜/出场 | 从码头提走重箱 | 状态证据 | #10 | picked_up | GATE_OUT / GTOT·LADEN | S·R |
-| delivered | 送仓/送达 | 拖卡送达仓库 | 里程碑 | #11 | — | DELIVERED | S·R |
-| warehouse_arrival | 到仓入库 | 货到仓库 | 里程碑 | #11 | — | WAREHOUSE_ARRIVAL | R |
-| unloaded | 卸柜 | 仓库卸货 | 状态证据 | #12 | unloaded | UNLOADED | S·R |
-| unstuffed | 卸空 | 箱内卸净(可还箱) | 里程碑 | #13 | — | UNBOXED / STRIPPED | R |
-| returned_empty | 还箱 | 空箱归还 | 状态证据(终) | #14 | returned_empty | RETURNED_EMPTY | S·R |
+| 码                | 中文      | 定义(一句话)     | 角色         | L节点 | 推进/证据      | 源码示例              | 证实 |
+| ----------------- | --------- | ---------------- | ------------ | ----- | -------------- | --------------------- | ---- |
+| gate_out          | 提柜/出场 | 从码头提走重箱   | 状态证据     | #10   | picked_up      | GATE_OUT / GTOT·LADEN | S·R  |
+| delivered         | 送仓/送达 | 拖卡送达仓库     | 里程碑       | #11   | —              | DELIVERED             | S·R  |
+| warehouse_arrival | 到仓入库  | 货到仓库         | 里程碑       | #11   | —              | WAREHOUSE_ARRIVAL     | R    |
+| unloaded          | 卸柜      | 仓库卸货         | 状态证据     | #12   | unloaded       | UNLOADED              | S·R  |
+| unstuffed         | 卸空      | 箱内卸净(可还箱) | 里程碑       | #13   | —              | UNBOXED / STRIPPED    | R    |
+| returned_empty    | 还箱      | 空箱归还         | 状态证据(终) | #14   | returned_empty | RETURNED_EMPTY        | S·R  |
 
 ### E. 计划/取消/异常
 
-| 码 | 中文 | 定义(一句话) | 角色 | L节点 | 推进/证据 | 源码示例 | 证实 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| dumped | 甩柜 | 甩柜(预计/实际由 isEsti 分) | 异常 | 出运前 | — | DUMP·offLoad | S·R |
-| rolled | 漏装/改配 | 甩柜后改船期/漏装 | 异常 | 出运前 | — | 漏装-改船名航次 | S |
-| cancelled | 取消 | 运单/记录取消 | 异常→终态 | 计划段 | cancelled | CANCEL·退关 | O·R |
-| changed | 计划变更 | 开/截港·到离泊·港口变更 | 里程碑(预计) | 动态 | — | CHANGE 类 | S |
-| delay | 延误 | 时间偏差预警 | 异常 | 动态 | — | DELAY 类 | S |
-| overdue | 超期 | 滞留/免费期超限 | 异常 | #10–14 | — | OVERDUE/DETENTION | S |
+| 码        | 中文      | 定义(一句话)                | 角色         | L节点  | 推进/证据 | 源码示例          | 证实 |
+| --------- | --------- | --------------------------- | ------------ | ------ | --------- | ----------------- | ---- |
+| dumped    | 甩柜      | 甩柜(预计/实际由 isEsti 分) | 异常         | 出运前 | —         | DUMP·offLoad      | S·R  |
+| rolled    | 漏装/改配 | 甩柜后改船期/漏装           | 异常         | 出运前 | —         | 漏装-改船名航次   | S    |
+| cancelled | 取消      | 运单/记录取消               | 异常→终态    | 计划段 | cancelled | CANCEL·退关       | O·R  |
+| changed   | 计划变更  | 开/截港·到离泊·港口变更     | 里程碑(预计) | 动态   | —         | CHANGE 类         | S    |
+| delay     | 延误      | 时间偏差预警                | 异常         | 动态   | —         | DELAY 类          | S    |
+| overdue   | 超期      | 滞留/免费期超限             | 异常         | #10–14 | —         | OVERDUE/DETENTION | S    |
 
 ## ② 定义与澄清
 
@@ -102,17 +102,17 @@
 
 ## ⑦ 落库映射（示例）
 
-| 清单列 | 落库 | 示例值 |
-| --- | --- | --- |
-| 码 | `internal_event_code.code`(PK,固定) | `departed` |
-| 中文 | `.name_cn` | 离港 |
-| 定义 | `.definition` | 实际离开起运港 |
-| 角色 | `.role`(milestone/evidence/exception/prerequisite) | evidence |
-| 归属 | `.node`(L # 或段) | #4 |
-| 推进到 | `.advances_to`(可空) | shipped |
-| 源码示例 | 映射表(EXTERNAL_EVENT_MAPPING) 引用 | DLPT / DEPA·TD |
-| 证实度 | `.provenance`(S/R/O/C) | S |
-| isEsti | 事件信封字段，不入本表 | — |
+| 清单列   | 落库                                               | 示例值         |
+| -------- | -------------------------------------------------- | -------------- |
+| 码       | `internal_event_code.code`(PK,固定)                | `departed`     |
+| 中文     | `.name_cn`                                         | 离港           |
+| 定义     | `.definition`                                      | 实际离开起运港 |
+| 角色     | `.role`(milestone/evidence/exception/prerequisite) | evidence       |
+| 归属     | `.node`(L # 或段)                                  | #4             |
+| 推进到   | `.advances_to`(可空)                               | shipped        |
+| 源码示例 | 映射表(EXTERNAL_EVENT_MAPPING) 引用                | DLPT / DEPA·TD |
+| 证实度   | `.provenance`(S/R/O/C)                             | S              |
+| isEsti   | 事件信封字段，不入本表                             | —              |
 
 ## ⑧ 待对拍（P2-12）与变更
 

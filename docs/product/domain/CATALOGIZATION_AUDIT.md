@@ -6,43 +6,43 @@
 
 ## 1. 已有清单（可直接落库/转 Seed/契约）
 
-| 主题 | 文档 | 形态 |
-| --- | --- | --- |
-| 状态码 | CONTAINER_STATUS_MODEL | 枚举 8 值（DB enum 值） |
-| 内部事件语义码 | EVENT_CODES | 清单 v0.1（A–E ~29） |
-| 动作码 | ACTION_CATALOG | 清单（组 A–E） |
-| 标记码 | MARKER_CATALOG | 清单初值 |
-| 来源枚举 | INTEGRATION §3.2 | 枚举初值 |
-| 生命周期节点 L | LIFECYCLE_CONSISTENCY §2 | 14 节点 + 可选 + 状态 |
-| 柜型/港口/船司/仓库 字典 | 现网 seed + LEGACY_DB_CATALOG | 数据（含漂移待清） |
-| 字段级迁移映射 | FIELD_MIGRATION_MAP | 表（列→落点→口径） |
-| 箱-单关系约束 | DATA_CLEANUP_ORDER_CONTAINER | 约束+检测 SQL |
-| 标准字段目录 | TARGET_FIELD_CATALOG | 表 v0.1 |
+| 主题                     | 文档                          | 形态                    |
+| ------------------------ | ----------------------------- | ----------------------- |
+| 状态码                   | CONTAINER_STATUS_MODEL        | 枚举 8 值（DB enum 值） |
+| 内部事件语义码           | EVENT_CODES                   | 清单 v0.1（A–E ~29）    |
+| 动作码                   | ACTION_CATALOG                | 清单（组 A–E）          |
+| 标记码                   | MARKER_CATALOG                | 清单初值                |
+| 来源枚举                 | INTEGRATION §3.2              | 枚举初值                |
+| 生命周期节点 L           | LIFECYCLE_CONSISTENCY §2      | 14 节点 + 可选 + 状态   |
+| 柜型/港口/船司/仓库 字典 | 现网 seed + LEGACY_DB_CATALOG | 数据（含漂移待清）      |
+| 字段级迁移映射           | FIELD_MIGRATION_MAP           | 表（列→落点→口径）      |
+| 箱-单关系约束            | DATA_CLEANUP_ORDER_CONTAINER  | 约束+检测 SQL           |
+| 标准字段目录             | TARGET_FIELD_CATALOG          | 表 v0.1                 |
 
 ## 2. 只有叙述/部分、需要产出"完整清单"的（本盘点结论）
 
-| # | 主题 | 现状 | 需要产出的清单（形态） | 状态 |
-| --- | --- | --- | --- | --- |
-| C1 | 错误码 | CONTRACTS_DRAFT 仅族 | **完整错误码清单**（码/HTTP/说明） | 待产出→本次 |
-| C2 | 每 L 节点 计划/实际时间字段 | 叙述散落 | **NODE_TIME_FIELDS 清单**（节点→planned/actual 字段/类型/来源） | 待产出→本次 |
-| C3 | 预检/校验规则 | IMPORT 叙述 | **PRECHECK_RULES 规则清单**（ruleCode/级别/判断/落点→可落规则表） | 待产出→本次 |
-| C4 | 五主体 放行/扣留/查验 | STATUS §5 叙述 | **FIVE_PARTY_CODES 清单**（主体×扣留/放行/事件码） | 待产出→本次 |
-| C5 | 合法转换+卫式完整表 | STATUS §3 有主链，缺卫式全集 | **TRANSITIONS 全表**（from×event×to×guard×证据） | 部分（并入状态文档补卫式列） |
-| C6 | 标记→动作绑定矩阵 | MARKER/ACTION 分列 | **绑定矩阵**（marker×action×卫式×去标规则） | 部分（并入 MARKER 或矩阵表） |
-| C7 | 预警规则码/阈值 | NODE_PDCA 叙述 | **预警规则清单**（code/类别/触发/阈值） | 部分（外部枚举未全→待对拍） |
-| C8 | 港口/船司能力矩阵 | 概念 | 能力矩阵 **数据**（Seed 来源=现网/规范清单） | 数据抽取（非本文） |
-| C9 | 角色/权限 | 无 | 角色/权限清单 | 待 P5 产出 |
-| C10 | 各节点 planned/actual→契约字段命名 | 部分 | 契约字段表（并入 CONTRACTS） | 部分 |
-| C11 | 库表值 Seed 全集（ports/carrier/type…） | 现网有 | 迁移 Seed 脚本 | P3/P2-04 |
+| #   | 主题                                    | 现状                         | 需要产出的清单（形态）                                            | 状态                         |
+| --- | --------------------------------------- | ---------------------------- | ----------------------------------------------------------------- | ---------------------------- |
+| C1  | 错误码                                  | CONTRACTS_DRAFT 仅族         | **完整错误码清单**（码/HTTP/说明）                                | 待产出→本次                  |
+| C2  | 每 L 节点 计划/实际时间字段             | 叙述散落                     | **NODE_TIME_FIELDS 清单**（节点→planned/actual 字段/类型/来源）   | 待产出→本次                  |
+| C3  | 预检/校验规则                           | IMPORT 叙述                  | **PRECHECK_RULES 规则清单**（ruleCode/级别/判断/落点→可落规则表） | 待产出→本次                  |
+| C4  | 五主体 放行/扣留/查验                   | STATUS §5 叙述               | **FIVE_PARTY_CODES 清单**（主体×扣留/放行/事件码）                | 待产出→本次                  |
+| C5  | 合法转换+卫式完整表                     | STATUS §3 有主链，缺卫式全集 | **TRANSITIONS 全表**（from×event×to×guard×证据）                  | 部分（并入状态文档补卫式列） |
+| C6  | 标记→动作绑定矩阵                       | MARKER/ACTION 分列           | **绑定矩阵**（marker×action×卫式×去标规则）                       | 部分（并入 MARKER 或矩阵表） |
+| C7  | 预警规则码/阈值                         | NODE_PDCA 叙述               | **预警规则清单**（code/类别/触发/阈值）                           | 部分（外部枚举未全→待对拍）  |
+| C8  | 港口/船司能力矩阵                       | 概念                         | 能力矩阵 **数据**（Seed 来源=现网/规范清单）                      | 数据抽取（非本文）           |
+| C9  | 角色/权限                               | 无                           | 角色/权限清单                                                     | 待 P5 产出                   |
+| C10 | 各节点 planned/actual→契约字段命名      | 部分                         | 契约字段表（并入 CONTRACTS）                                      | 部分                         |
+| C11 | 库表值 Seed 全集（ports/carrier/type…） | 现网有                       | 迁移 Seed 脚本                                                    | P3/P2-04                     |
 
 ## 3. 产出物（本批新增，见各文件）
 
-| 清单 | 文件 | 形态 |
-| --- | --- | --- |
-| 错误码 | ERROR_CODES_CATALOG | 码+HTTP+说明（Seed/契约） |
-| 节点时间字段 | NODE_TIME_FIELDS | 表（14 行×planned/actual/type/source） |
-| 预检规则 | PRECHECK_RULES | 规则行（ruleCode/级别/判断/落点） |
-| 五主体码 | FIVE_PARTY_CODES | 主体×扣留/放行/查验码（映射 legacy/规范） |
+| 清单         | 文件                | 形态                                      |
+| ------------ | ------------------- | ----------------------------------------- |
+| 错误码       | ERROR_CODES_CATALOG | 码+HTTP+说明（Seed/契约）                 |
+| 节点时间字段 | NODE_TIME_FIELDS    | 表（14 行×planned/actual/type/source）    |
+| 预检规则     | PRECHECK_RULES      | 规则行（ruleCode/级别/判断/落点）         |
+| 五主体码     | FIVE_PARTY_CODES    | 主体×扣留/放行/查验码（映射 legacy/规范） |
 
 ## 4. 约定（写所有清单文档时遵守）
 

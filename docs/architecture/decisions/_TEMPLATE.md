@@ -1,7 +1,7 @@
 ---
-status: proposed          # proposed | accepted | superseded | deprecated
+status: proposed # proposed | accepted | superseded | deprecated
 date: YYYY-MM-DD
-decider: 【待指定】         # 决定人姓名（按 RAID P0-09）
+decider: 【待指定】 # 决定人姓名（按 RAID P0-09）
 ---
 
 # ADR-NNN：<标题>
@@ -26,14 +26,14 @@ decider: 【待指定】         # 决定人姓名（按 RAID P0-09）
 ## 备选方案（Alternatives）
 
 | 方案 | 取舍 | 为何未选 |
-| --- | --- | --- |
-| … | … | … |
+| ---- | ---- | -------- |
+| …    | …    | …        |
 
 ## 风险与缓解（Risks）
 
 | 风险 | 缓解 |
-| --- | --- |
-| … | … |
+| ---- | ---- |
+| …    | …    |
 
 ## 迁移与撤销条件（Migration & Reversal）
 

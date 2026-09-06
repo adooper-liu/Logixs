@@ -1,16 +1,16 @@
-# 首批目标对象标准字段目录 v0.1（TARGET_FIELD_CATALOG）
+# 首批目标对象标准字段目录（TARGET_FIELD_CATALOG · v0.4）
 
-> 状态：**候选（初稿，待 P2 评审）** · v0.2 · 2026-09-04 · 负责人：刘志高。
-> 关键决策（负责人已确认 2026-09-04，含细化）：物流状态文本列 = 真实当前状态；**匹配主锚 = 备货单号**（备货阶段唯一建档身份；采购阶段=采购订单号 PO）；**箱号与实际出运日期均迟绑定**（装箱后与外部交换才进入；备货/订舱阶段仅预计出运日期）；一行 = 一份货柜流转记录整体（见 [CONTEXT_MAP](./CONTEXT_MAP.md) §3.1 与 [IMPORT_DOMAIN_MODEL](./IMPORT_DOMAIN_MODEL.md) §6.2）。
+> 状态：**候选（初稿，待 P2 评审）** · v0.4 · 2026-09-06 · 负责人：刘志高。
+> 关键输入（负责人确认，系统映射待 Decision）：物流状态文本列声明来源方认为的实际状态，但须经权威/证据/状态机校验；**匹配主锚 = 备货单号**（备货阶段唯一建档身份；采购阶段=采购订单号 PO）；**箱号与实际出运日期均迟绑定**（装箱后与外部交换才进入；备货/订舱阶段仅预计出运日期）；一行 = 一份货柜流转记录整体（见 [CONTEXT_MAP](./CONTEXT_MAP.md) §3.1 与 [IMPORT_DOMAIN_MODEL](./IMPORT_DOMAIN_MODEL.md) §6.2）。
 > 上游：`IMPORT_WORKFLOW` §8 跟踪项 #2（首批目标对象定稿）、现状基线 [AS_IS_LEGACY_BASELINE](./AS_IS_LEGACY_BASELINE.md) §3（真实列）、[GLOSSARY](../GLOSSARY.md) §1「标准字段」。
 > 读者：业务管理员/字典维护者、P2-06 数据模型、P2-10 `suggest_import_mapping` 契约、P6 导入切片、P7 评测关键字段口径。
 > 用途：本目录是首期导入**目标字段模板的单一权威初稿**（对应 `GLOSSARY`「标准字段 = 字典 + 字段模板」），评审定稿后将实例化为 `dictionary` 的模板数据与 `packages/contracts` 字段契约。
-> 锚点：目标对象 = **货柜全流程信息**（一行 = 一个货柜的一次完整流转），由四个分组节组成（对照 AS-IS 多表结构）。
+> 锚点：当前目标对象 = **已出运货柜全流程信息**（一行 = 一个已出运货柜的一次完整流转），导入后形成所有后续节点的数据起点；字段结构仍覆盖四个分组节（对照 AS-IS 多表结构）。
 
 ## 1. 目标对象与分节
 
 ```text
-货柜全流程信息（目标对象）
+已出运货柜全流程信息（当前目标对象）
 ├── A 货柜与柜况（≈ AS-IS biz_containers）
 ├── B 航次/海运/单证（≈ AS-IS process_sea_freight）
 ├── C 港口作业序列（≈ AS-IS process_port_operations，重复块 origin/transit/destination）
@@ -25,74 +25,74 @@
 
 ### A 货柜与柜况
 
-| 字段 code | 语义 | 类型 | 必填 | 来源/字典 | 关键 | 备注 |
-| --- | --- | --- | --- | --- | --- | --- |
-| containerNumber | 箱号（**迟绑定**：装箱后与外部交换才进入系统） | string | 导入文件✅（装箱后数据通常已带） | 校验（前缀+数字规则候选） | ✅ | 物理箱业务标识；非建档前提，已有时参与一致性判定 |
-| containerTypeCode | 箱型 | dictCode | ✅ | 柜型字典；标准码 `GP/HC/RH/FR/FQ/OT/OQ/TK/TQ/RF/HT/HH`（尺寸 20/40/45/53），`40HQ/20DV` 等仅作外部别名 | | 未知不得静默回退；别名映射见 [INDUSTRY_STANDARDS_ALIGN](./INDUSTRY_STANDARDS_ALIGN.md) P5 |
-| orderNumber | 备货单号（**备货阶段唯一建档身份**，先于箱号） | string | ✅ | 备货单域 | ✅ | 匹配主锚；采购阶段为采购订单号(PO)，属不同对象；见 [SHIPMENT_FLOW_OVERVIEW](./SHIPMENT_FLOW_OVERVIEW.md) §3 |
-| cargoDescription | 品名/货物描述 | string | | | | |
-| grossWeight/netWeight | 毛重/净重(kg) | decimal | 候选 | 单位 kg | ✅(毛重) | 定点数 |
-| cbm | 体积 | decimal | | | | |
-| packages | 件数 | int | | | ✅ | |
-| sealNumber | 封号 | string | | | | |
-| tareWeight/totalWeight | 皮重/总重(kg) | decimal | | | | AS-IS 外接字段 |
-| overLength/overHeight | 超长/超高 | decimal | | | | 危险品等需二次确认候选 |
-| dangerClass | 危险品等级 | string | 候选 | 字典候选 | | |
-| containerHolder/operator | 持箱人/运营方 | string | | | | AS-IS 外接字段 |
-| requiresPallet/requiresAssembly/inspectionRequired | 打托/装配件/查验 | boolean | | | | 语义需业务复核 |
-| isRolled | 甩柜标记 | boolean | | | | AS-IS 外接 |
+| 字段 code                                          | 语义                                           | 类型     | 必填                     | 来源/字典                                                                                              | 关键     | 备注                                                                                                        |
+| -------------------------------------------------- | ---------------------------------------------- | -------- | ------------------------ | ------------------------------------------------------------------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------- |
+| containerNumber                                    | 箱号（**迟绑定**：装箱后与外部交换才进入系统） | string   | 候选（当前数据通常应有） | 校验（前缀+数字规则候选）                                                                              | ✅       | 物理箱业务标识；非建档前提，已有时参与一致性判定                                                            |
+| containerTypeCode                                  | 箱型                                           | dictCode | ✅                       | 柜型字典；标准码 `GP/HC/RH/FR/FQ/OT/OQ/TK/TQ/RF/HT/HH`（尺寸 20/40/45/53），`40HQ/20DV` 等仅作外部别名 |          | 未知不得静默回退；别名映射见 [INDUSTRY_STANDARDS_ALIGN](./INDUSTRY_STANDARDS_ALIGN.md) P5                   |
+| orderNumber                                        | 备货单号（**备货阶段唯一建档身份**，先于箱号） | string   | ✅                       | 备货单域                                                                                               | ✅       | 匹配主锚；采购阶段为采购订单号(PO)，属不同对象；见 [SHIPMENT_FLOW_OVERVIEW](./SHIPMENT_FLOW_OVERVIEW.md) §3 |
+| cargoDescription                                   | 品名/货物描述                                  | string   |                          |                                                                                                        |          |                                                                                                             |
+| grossWeight/netWeight                              | 毛重/净重(kg)                                  | decimal  | 候选                     | 单位 kg                                                                                                | ✅(毛重) | 定点数                                                                                                      |
+| cbm                                                | 体积                                           | decimal  |                          |                                                                                                        |          |                                                                                                             |
+| packages                                           | 件数                                           | int      |                          |                                                                                                        | ✅       |                                                                                                             |
+| sealNumber                                         | 封号                                           | string   |                          |                                                                                                        |          |                                                                                                             |
+| tareWeight/totalWeight                             | 皮重/总重(kg)                                  | decimal  |                          |                                                                                                        |          | AS-IS 外接字段                                                                                              |
+| overLength/overHeight                              | 超长/超高                                      | decimal  |                          |                                                                                                        |          | 危险品等需二次确认候选                                                                                      |
+| dangerClass                                        | 危险品等级                                     | string   | 候选                     | 字典候选                                                                                               |          |                                                                                                             |
+| containerHolder/operator                           | 持箱人/运营方                                  | string   |                          |                                                                                                        |          | AS-IS 外接字段                                                                                              |
+| requiresPallet/requiresAssembly/inspectionRequired | 打托/装配件/查验                               | boolean  |                          |                                                                                                        |          | 语义需业务复核                                                                                              |
+| isRolled                                           | 甩柜标记                                       | boolean  |                          |                                                                                                        |          | AS-IS 外接                                                                                                  |
 
 ### B 航次/海运/单证
 
-| 字段 code | 语义 | 类型 | 必填 | 来源/字典 | 关键 | 备注 |
-| --- | --- | --- | --- | --- | --- | --- |
-| bookingNumber / billOfLadingNumber | 订舱号 / 提单号 | string | 候选 | | ✅ | |
-| shippingCompanyCode | 船司 | dictCode | 候选 | 船司字典（含 scac/名称别名） | | 未知进队列（修 A2） |
-| vesselName + voyageNumber | 船名/航次 | string | 候选 | | ✅(组合) | |
-| portOfLoadingCode / portOfDischargeCode | 起运港/目的港 | dictCode | ✅ | 港口字典（别名如 `Yantian/盐田`） | ✅ | 未命中未知队列 |
-| transitPortCode | 途经港 | dictCode | | 港口字典 | | |
-| freightForwarderCode | 货代 | dictCode | | | | |
-| mblScac+mblNumber / hblScac+hblNumber / amsNumber | 母/子提单 SCAC 与号 / AMS | string | | | ✅(单证号) | |
-| eta/etd/ata/atd | 预计/实际到离港时间 | datetime(ISO,UTC) | 候选 | | ✅ | AS-IS DATE 列按 UTC/时区规则收口（A8） |
-| shipmentDate | 出运日期（**实际，迟绑定**：装箱后与外部交换产生） | date | | | ✅ | 状态证据；备货/订舱阶段的预计值在备货单层 |
-| customsClearanceDate | 清关日期 | date | | | | |
-| portOpenDate/portCloseDate | 开港/截港时间 | datetime | | | | |
-| freightCurrency | 海运费币种 | dictCode | 候选 | 币种字典 | ✅(币种) | 与金额成对 |
-| standardFreightAmount | 标准海运费金额 | decimal | | | ✅(金额) | 定点+币种（修 A6） |
-| transportMode / routeCode | 运输方式/航线代码 | string | | | | |
-| motherVesselName/motherVoyageNumber | 母船船名/航次 | string | | | | 中转场景候选 |
+| 字段 code                                         | 语义                                               | 类型              | 必填 | 来源/字典                         | 关键       | 备注                                      |
+| ------------------------------------------------- | -------------------------------------------------- | ----------------- | ---- | --------------------------------- | ---------- | ----------------------------------------- |
+| bookingNumber / billOfLadingNumber                | 订舱号 / 提单号                                    | string            | 候选 |                                   | ✅         |                                           |
+| shippingCompanyCode                               | 船司                                               | dictCode          | 候选 | 船司字典（含 scac/名称别名）      |            | 未知进队列（修 A2）                       |
+| vesselName + voyageNumber                         | 船名/航次                                          | string            | 候选 |                                   | ✅(组合)   |                                           |
+| portOfLoadingCode / portOfDischargeCode           | 起运港/目的港                                      | dictCode          | ✅   | 港口字典（别名如 `Yantian/盐田`） | ✅         | 未命中未知队列                            |
+| transitPortCode                                   | 途经港                                             | dictCode          |      | 港口字典                          |            |                                           |
+| freightForwarderCode                              | 货代                                               | dictCode          |      |                                   |            |                                           |
+| mblScac+mblNumber / hblScac+hblNumber / amsNumber | 母/子提单 SCAC 与号 / AMS                          | string            |      |                                   | ✅(单证号) |                                           |
+| eta/etd/ata/atd                                   | 预计/实际到离港时间                                | datetime(ISO,UTC) | 候选 |                                   | ✅         | AS-IS DATE 列按 UTC/时区规则收口（A8）    |
+| shipmentDate                                      | 出运日期（**实际，迟绑定**：装箱后与外部交换产生） | date              |      |                                   | ✅         | 状态证据；备货/订舱阶段的预计值在备货单层 |
+| customsClearanceDate                              | 清关日期                                           | date              |      |                                   |            |                                           |
+| portOpenDate/portCloseDate                        | 开港/截港时间                                      | datetime          |      |                                   |            |                                           |
+| freightCurrency                                   | 海运费币种                                         | dictCode          | 候选 | 币种字典                          | ✅(币种)   | 与金额成对                                |
+| standardFreightAmount                             | 标准海运费金额                                     | decimal           |      |                                   | ✅(金额)   | 定点+币种（修 A6）                        |
+| transportMode / routeCode                         | 运输方式/航线代码                                  | string            |      |                                   |            |                                           |
+| motherVesselName/motherVoyageNumber               | 母船船名/航次                                      | string            |      |                                   |            | 中转场景候选                              |
 
 ### C 港口作业序列（重复块，最多按 origin/transit/destination 逐港一列组）
 
-| 字段 code | 语义 | 类型 | 备注 |
-| --- | --- | --- | --- |
-| portType | 港口角色(origin/transit/destination) | enum | 分组键 |
-| portSequence | 顺序 | int | 排序 |
-| portCode | 港口 | dictCode | 与 B 港口字典同源 |
-| etaDestPort/ataDestPort | 目的港预计/实际到港 | datetime | 状态证据 |
-| transitArrivalDate | 中转港到达 | datetime | 状态证据 |
-| gateInTime/gateOutTime | 进/出闸 | datetime | 状态证据 |
-| dischargedTime/availableTime | 卸船/可提 | datetime | 状态证据 |
-| customsStatus | 清关状态 | enum 候选 | exception 输入 |
-| freeStorageDays/freeDetentionDays/freeOffTerminalDays | 免堆/场内/场外免箱期 | int | |
+| 字段 code                                             | 语义                                 | 类型      | 备注              |
+| ----------------------------------------------------- | ------------------------------------ | --------- | ----------------- |
+| portType                                              | 港口角色(origin/transit/destination) | enum      | 分组键            |
+| portSequence                                          | 顺序                                 | int       | 排序              |
+| portCode                                              | 港口                                 | dictCode  | 与 B 港口字典同源 |
+| etaDestPort/ataDestPort                               | 目的港预计/实际到港                  | datetime  | 状态证据          |
+| transitArrivalDate                                    | 中转港到达                           | datetime  | 状态证据          |
+| gateInTime/gateOutTime                                | 进/出闸                              | datetime  | 状态证据          |
+| dischargedTime/availableTime                          | 卸船/可提                            | datetime  | 状态证据          |
+| customsStatus                                         | 清关状态                             | enum 候选 | exception 输入    |
+| freeStorageDays/freeDetentionDays/freeOffTerminalDays | 免堆/场内/场外免箱期                 | int       |                   |
 
 ### D 运营后段
 
-| 字段 code | 语义 | 类型 | 备注 |
-| --- | --- | --- | --- |
-| pickupDate（trucking） | 提柜时间 | datetime | 状态证据 |
-| deliveryDate（trucking） | 派送时间 | datetime | |
-| unloadDate（warehouse） | 仓库卸柜时间 | datetime | 状态证据 |
-| unboxingTime（warehouse） | 开箱时间 | datetime | |
-| returnTime（emptyReturn） | 还空箱时间 | datetime | `returned_empty` 必须证据 |
-| notificationReturnDate/time | 通知取空日期/时间 | date/datetime | |
-| unloadMode | 卸柜方式(Drop off/Live load) | enum | 计划/实际两态候选 |
+| 字段 code                   | 语义                         | 类型          | 备注                      |
+| --------------------------- | ---------------------------- | ------------- | ------------------------- |
+| pickupDate（trucking）      | 提柜时间                     | datetime      | 状态证据                  |
+| deliveryDate（trucking）    | 派送时间                     | datetime      |                           |
+| unloadDate（warehouse）     | 仓库卸柜时间                 | datetime      | 状态证据                  |
+| unboxingTime（warehouse）   | 开箱时间                     | datetime      |                           |
+| returnTime（emptyReturn）   | 还空箱时间                   | datetime      | `returned_empty` 必须证据 |
+| notificationReturnDate/time | 通知取空日期/时间            | date/datetime |                           |
+| unloadMode                  | 卸柜方式(Drop off/Live load) | enum          | 计划/实际两态候选         |
 
 ### 状态证据列（E）
 
-| 字段 | 语义 | 备注 |
-| --- | --- | --- |
-| logisticsStatusText（源） | 物流状态文本列（**真实当前状态**，负责人已确认） | 经字典归一后直接落 `currentStatus`；`returned_empty` 等需证据口径做强校验，冲突走低置信/人工，见 [CONTAINER_STATUS_MODEL](./CONTAINER_STATUS_MODEL.md) §6 |
+| 字段                      | 语义                                                          | 备注                                                                                                                                                                                               |
+| ------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| logisticsStatusText（源） | 来源方声明的实际状态（不是计划/预计，也不是自动成为最终权威） | 经字典归一、D7 来源权威、证据一致性与状态机合法转换后生成业务事件；通过事件推进 `currentStatus`。未知、出运前或冲突时不得静默进入列表，见 [CONTAINER_STATUS_MODEL](./CONTAINER_STATUS_MODEL.md) §6 |
 
 ## 3. 记录匹配键 / 重复判定（负责人已确认，2026-09-04 细化）
 
@@ -101,11 +101,13 @@
 - 同文件内多行命中同一备货单号 → 标 `duplicate`，只写一条。
 - 批次级幂等键 = 来源 + 文件指纹（同文件重复上传不重复处理）。
 - 预计出运日期（备货/订舱阶段）与实际出运日期（装箱后）分列字段，不用迟绑定值作身份。
+- 当前模板只形成已到出运节点或合法后继节点的列表；出运前数据留待未来上游前端/接入范围处理，不得靠默认状态混入。
 
 ## 4. 必填 / 预检初稿（候选）
 
 - 必填硬闸（建议首期）：`orderNumber`（备货单号）、`containerTypeCode`、起运港或目的港任一、承运（船司或船名航次）。
-- `containerNumber`：装箱后数据应带；缺失不阻断建档（迟绑定），标记待补。
+- `containerNumber`：箱号在装箱后才绑定，因此不能作为永久主键；但当前对象已经出运，缺失时必须进入待补/复核，是否构成 blocker 由已出运样本与外部关联需求定稿，不能静默放行。
+- 已出运边界预检：状态未知、仍在出运前或状态与实际出运证据冲突时，至少转人工且不得静默进入列表；哪些情形直接 blocker 待真实样本评审。
 - 冲突类进低置信/人工而非直接失败：同义词歧义、状态文本与时间证据冲突、币种缺失（金额存在时）。
 
 ## 5. 关键字段口径（P7 评测）
@@ -117,7 +119,7 @@
 ### 已确认（2026-09-04，负责人）
 
 - 匹配主锚 = 备货单号（唯一建档身份）；箱号与实际出运日期迟绑定——§3。
-- 物流状态文本列 = 真实当前状态——§2-E。
+- 物流状态文本列声明实际状态语义；能否成为内部事实由字段权威、证据与状态机校验决定——§2-E。
 
 ### 仍待评审
 
@@ -125,6 +127,7 @@
 - 必填硬闸与冲突降级清单（§4）。
 - 各字典（柜型/港口/船司/币种）别名初始化范围（从 AS-IS 别名表迁移，P2-04/P2-12）。
 - 时间列口径（DATE vs 时刻、时区）逐字段定稿。
+- 已出运准入所需的最小证据集，以及缺失/冲突时 blocker 与人工复核的分界。
 
 ## 7. 关联与维护
 

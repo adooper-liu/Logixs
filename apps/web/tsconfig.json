@@ -9,8 +9,15 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client"],
+    "types": ["vite/client", "vitest/globals"],
     "lib": ["ES2020", "DOM", "DOM.Iterable"]
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.vue",
+    "e2e/**/*.ts",
+    "eslint.config.js",
+    "playwright.config.ts",
+    "vite.config.ts"
+  ]
 }

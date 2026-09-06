@@ -1,0 +1,12 @@
+.agents
+.claude
+.turbo
+# Workspace-only disposable design references; never project source.
+adminator
+node_modules
+dist
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+*.log

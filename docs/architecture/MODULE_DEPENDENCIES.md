@@ -30,15 +30,15 @@ identity  shipment  logistics-status  import  dictionary  integration
 exception-management  notification  reporting  ai-governance  audit
 ```
 
-| 规则 | 说明 |
-| --- | --- |
-| 公共入口 | 每个模块只从公开入口（模块 `index`）导出；内部文件默认私有 |
-| 跨模块 | 只经 `packages/contracts`、领域事件与 Domain 能力，禁止 import 他模块内部路径 |
-| Domain | 纯业务规则，不依赖 NestJS/Prisma |
-| Infrastructure | 实现 Port/Adapter，被本模块 Domain/Application 反转依赖 |
-| ai-governance | 只被 AI Gateway/治理面引用，业务模块不得绕过 |
-| workflow | 启动/查询/取消 Temporal 的唯一代理，其余模块经它 |
-| audit | 写操作审计的公共服务，供各模块调用 |
+| 规则           | 说明                                                                          |
+| -------------- | ----------------------------------------------------------------------------- |
+| 公共入口       | 每个模块只从公开入口（模块 `index`）导出；内部文件默认私有                    |
+| 跨模块         | 只经 `packages/contracts`、领域事件与 Domain 能力，禁止 import 他模块内部路径 |
+| Domain         | 纯业务规则，不依赖 NestJS/Prisma                                              |
+| Infrastructure | 实现 Port/Adapter，被本模块 Domain/Application 反转依赖                       |
+| ai-governance  | 只被 AI Gateway/治理面引用，业务模块不得绕过                                  |
+| workflow       | 启动/查询/取消 Temporal 的唯一代理，其余模块经它                              |
+| audit          | 写操作审计的公共服务，供各模块调用                                            |
 
 ## 3. 禁止依赖
 

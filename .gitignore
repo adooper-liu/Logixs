@@ -1,0 +1,21 @@
+# Dependencies and generated outputs
+node_modules/
+dist/
+coverage/
+.turbo/
+playwright-report/
+test-results/
+*.log
+
+# Workspace-only disposable design references; never project source.
+adminator/
+
+# Local environment and editor state
+.env
+.env.*
+!.env.example
+!.env.*.example
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

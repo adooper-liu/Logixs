@@ -2,12 +2,12 @@
 
 ## 1. 文档状态
 
-| 项目 | 内容 |
-| --- | --- |
-| 状态 | 已接受，作为项目底座实施依据 |
+| 项目     | 内容                                           |
+| -------- | ---------------------------------------------- |
+| 状态     | 已接受，作为项目底座实施依据                   |
 | 适用范围 | Web、业务 API、AI 服务、工作流、数据及基础设施 |
-| 架构风格 | 模块化单体 + 持久化工作流 + 独立 AI 能力服务 |
-| 核心原则 | AI 参与业务流程，但不拥有业务事实和最终执行权 |
+| 架构风格 | 模块化单体 + 持久化工作流 + 独立 AI 能力服务   |
+| 核心原则 | AI 参与业务流程，但不拥有业务事实和最终执行权  |
 
 本文件描述当前目标架构。具体版本在工程初始化时通过锁文件固定，不在本文中维护易过期的版本号。
 
@@ -59,31 +59,31 @@ Vue 3 Web -- REST / SSE / WebSocket --> NestJS Business API
 
 ## 4. 最终技术选型
 
-| 层级 | 技术 | 决策理由 |
-| --- | --- | --- |
-| Monorepo | pnpm Workspace + Turborepo | 统一 TypeScript 依赖、任务和构建缓存 |
-| Python 工具链 | uv | 快速、确定性的环境和依赖管理 |
-| Web | Vue 3 + TypeScript + Vite | 适合密集型运营后台及渐进式模块化 |
-| UI | Element Plus + 业务组件层 | 提供基础控件，业务语义由项目组件封装 |
-| 服务端状态 | TanStack Query for Vue | 管理请求缓存、刷新、失效和异步状态 |
-| 客户端状态 | Pinia | 仅保存会话、权限和全局偏好 |
-| 业务后端 | NestJS + Fastify | 强模块边界、依赖注入、鉴权和高效 HTTP |
-| ORM/迁移 | Prisma | 类型化查询和集中迁移工作流 |
-| AI 服务 | Python + FastAPI + Pydantic | 适配文档、NLP、检索、预测和模型生态 |
-| 持久化工作流 | Temporal | 支持长流程、人工审批、重试、补偿和恢复 |
-| 主数据库 | PostgreSQL | 保存业务事实、审计、审批及 AI 元数据 |
-| 向量检索 | pgvector | 初期复用 PostgreSQL 的事务、权限和运维能力 |
-| 缓存 | Redis | 仅用于缓存、限流和可丢失短期状态 |
-| 对象存储 | S3 API / MinIO | 保存原始文档、导入文件和 AI 产物 |
-| 模型入口 | LiteLLM Proxy + 业务 AI Gateway | 分离供应商路由与业务治理 |
-| API 契约 | OpenAPI + JSON Schema | 生成客户端并校验 Tool 和 AI 输出 |
-| AI 可观测性 | Langfuse | 记录 Prompt、模型、Token、成本和评测 |
-| 全链路观测 | OpenTelemetry | 统一 API、Workflow、Activity 和 AI Trace |
-| 监控 | Prometheus + Grafana | 指标、仪表板和告警 |
-| 日志与 Trace | Pino + Loki + Tempo | 结构化日志和跨组件追踪 |
-| 测试 | Vitest + pytest + Testcontainers | 覆盖 TS、Python 和真实基础设施集成 |
-| E2E | Playwright | 验证关键业务及人工审核流程 |
-| 身份协议 | OIDC / OAuth 2.1 | 支持企业身份源及 Keycloak 等实现 |
+| 层级          | 技术                             | 决策理由                                   |
+| ------------- | -------------------------------- | ------------------------------------------ |
+| Monorepo      | pnpm Workspace + Turborepo       | 统一 TypeScript 依赖、任务和构建缓存       |
+| Python 工具链 | uv                               | 快速、确定性的环境和依赖管理               |
+| Web           | Vue 3 + TypeScript + Vite        | 适合密集型运营后台及渐进式模块化           |
+| UI            | Element Plus + 业务组件层        | 提供基础控件，业务语义由项目组件封装       |
+| 服务端状态    | TanStack Query for Vue           | 管理请求缓存、刷新、失效和异步状态         |
+| 客户端状态    | Pinia                            | 仅保存会话、权限和全局偏好                 |
+| 业务后端      | NestJS + Fastify                 | 强模块边界、依赖注入、鉴权和高效 HTTP      |
+| ORM/迁移      | Prisma                           | 类型化查询和集中迁移工作流                 |
+| AI 服务       | Python + FastAPI + Pydantic      | 适配文档、NLP、检索、预测和模型生态        |
+| 持久化工作流  | Temporal                         | 支持长流程、人工审批、重试、补偿和恢复     |
+| 主数据库      | PostgreSQL                       | 保存业务事实、审计、审批及 AI 元数据       |
+| 向量检索      | pgvector                         | 初期复用 PostgreSQL 的事务、权限和运维能力 |
+| 缓存          | Redis                            | 仅用于缓存、限流和可丢失短期状态           |
+| 对象存储      | S3 API / MinIO                   | 保存原始文档、导入文件和 AI 产物           |
+| 模型入口      | LiteLLM Proxy + 业务 AI Gateway  | 分离供应商路由与业务治理                   |
+| API 契约      | OpenAPI + JSON Schema            | 生成客户端并校验 Tool 和 AI 输出           |
+| AI 可观测性   | Langfuse                         | 记录 Prompt、模型、Token、成本和评测       |
+| 全链路观测    | OpenTelemetry                    | 统一 API、Workflow、Activity 和 AI Trace   |
+| 监控          | Prometheus + Grafana             | 指标、仪表板和告警                         |
+| 日志与 Trace  | Pino + Loki + Tempo              | 结构化日志和跨组件追踪                     |
+| 测试          | Vitest + pytest + Testcontainers | 覆盖 TS、Python 和真实基础设施集成         |
+| E2E           | Playwright                       | 验证关键业务及人工审核流程                 |
+| 身份协议      | OIDC / OAuth 2.1                 | 支持企业身份源及 Keycloak 等实现           |
 
 ## 5. 仓库结构
 
@@ -222,17 +222,17 @@ Workflow 代码必须保持确定性。模型调用、数据库访问、网络�
 
 ```typescript
 interface AiWorkflowStep<I, O> {
-  id: string
-  version: string
-  riskLevel: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' // 执行时自动化模式由 §9 分级推导
-  inputSchema: Schema<I>
-  outputSchema: Schema<O>
-  requiredPermissions: string[]
-  timeoutMs: number
-  maxCost: number
-  execute(input: I, context: WorkflowContext): Promise<O>
-  validate(output: O): ValidationResult
-  fallback(input: I, error: Error): Promise<O | null>
+  id: string;
+  version: string;
+  riskLevel: "L0" | "L1" | "L2" | "L3" | "L4"; // 执行时自动化模式由 §9 分级推导
+  inputSchema: Schema<I>;
+  outputSchema: Schema<O>;
+  requiredPermissions: string[];
+  timeoutMs: number;
+  maxCost: number;
+  execute(input: I, context: WorkflowContext): Promise<O>;
+  validate(output: O): ValidationResult;
+  fallback(input: I, error: Error): Promise<O | null>;
 }
 ```
 
@@ -276,13 +276,13 @@ interface AiWorkflowStep<I, O> {
 
 ## 9. AI 风险分级
 
-| 等级 | 定义 | 处理方式 |
-| --- | --- | --- |
-| L0 | 摘要、翻译、解释 | 可直接展示，标识 AI 生成 |
-| L1 | 抽取、分类和映射建议 | Schema 校验，低置信度人工确认 |
-| L2 | 异常判断、ETA 和处置建议 | 必须提供证据、范围或影响因子 |
-| L3 | 修改数据、发送通知、触发同步 | 必须审批，由业务 API 执行 |
-| L4 | 删除、付款、权限及合规决定 | 禁止 AI 自主执行 |
+| 等级 | 定义                         | 处理方式                      |
+| ---- | ---------------------------- | ----------------------------- |
+| L0   | 摘要、翻译、解释             | 可直接展示，标识 AI 生成      |
+| L1   | 抽取、分类和映射建议         | Schema 校验，低置信度人工确认 |
+| L2   | 异常判断、ETA 和处置建议     | 必须提供证据、范围或影响因子  |
+| L3   | 修改数据、发送通知、触发同步 | 必须审批，由业务 API 执行     |
+| L4   | 删除、付款、权限及合规决定   | 禁止 AI 自主执行              |
 
 执行时的自动化模式（`assist` / `review` / `automatic` / `prohibited`）由风险分级推导，不允许独立配置，也不得突破上表处置要求：
 
@@ -386,15 +386,15 @@ TanStack Query 保存服务端数据；Pinia 不得复制完整服务端实体�
 
 ### 13.2 AI 评测
 
-| 能力 | 核心指标 |
-| --- | --- |
+| 能力     | 核心指标                             |
+| -------- | ------------------------------------ |
 | 字段抽取 | 逐字段准确率、召回率、关键字段漏提率 |
 | 字段映射 | Top-1 准确率、人工修改率、错误写入率 |
-| RAG | 检索召回率、引用正确率、答案忠实度 |
-| 分类 | 混淆矩阵、关键类别漏判率 |
-| ETA | MAE、分位误差、不同路线分层表现 |
-| Tool | 选择正确率、参数正确率、越权率 |
-| 运营 | 延迟、失败率、单任务成本、人工驳回率 |
+| RAG      | 检索召回率、引用正确率、答案忠实度   |
+| 分类     | 混淆矩阵、关键类别漏判率             |
+| ETA      | MAE、分位误差、不同路线分层表现      |
+| Tool     | 选择正确率、参数正确率、越权率       |
+| 运营     | 延迟、失败率、单任务成本、人工驳回率 |
 
 Prompt、模型、Tool、Embedding、切分器或检索策略变更必须运行对应回归评测。上线判定依据固定数据集和阈值，不得只依赖人工主观体验。
 
@@ -450,16 +450,16 @@ tempo
 
 ## 16. 延后引入的技术
 
-| 技术 | 当前决定 | 引入条件 |
-| --- | --- | --- |
-| Kubernetes | 延后 | 多服务高可用及独立扩缩容成为实际需求 |
-| Kafka | 延后 | 出现高吞吐事件流、多消费者和长期回放需求 |
-| 独立向量数据库 | 延后 | pgvector 无法满足规模、延迟或混合检索需求 |
-| Elasticsearch/OpenSearch | 延后 | PostgreSQL 全文检索无法满足明确业务指标 |
-| TimescaleDB | 延后 | 事件规模和时间桶查询证明需要时序扩展 |
-| LangGraph | 按能力采用 | 单个 AI Activity 确需有限多步推理 |
-| 自训练模型平台 | 延后 | 累积可靠标注数据并证明通用模型不足 |
-| 微服务拆分 | 延后 | 存在团队、部署、故障或扩缩容隔离证据 |
+| 技术                     | 当前决定   | 引入条件                                  |
+| ------------------------ | ---------- | ----------------------------------------- |
+| Kubernetes               | 延后       | 多服务高可用及独立扩缩容成为实际需求      |
+| Kafka                    | 延后       | 出现高吞吐事件流、多消费者和长期回放需求  |
+| 独立向量数据库           | 延后       | pgvector 无法满足规模、延迟或混合检索需求 |
+| Elasticsearch/OpenSearch | 延后       | PostgreSQL 全文检索无法满足明确业务指标   |
+| TimescaleDB              | 延后       | 事件规模和时间桶查询证明需要时序扩展      |
+| LangGraph                | 按能力采用 | 单个 AI Activity 确需有限多步推理         |
+| 自训练模型平台           | 延后       | 累积可靠标注数据并证明通用模型不足        |
+| 微服务拆分               | 延后       | 存在团队、部署、故障或扩缩容隔离证据      |
 
 ## 17. 分阶段实施
 

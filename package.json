@@ -1,0 +1,37 @@
+{
+  "name": "logixs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19 <25",
+    "pnpm": ">=10 <11"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "dev": "turbo run dev --filter=@logix/web",
+    "lint": "eslint scripts eslint.config.js && turbo run lint",
+    "lint:fix": "eslint scripts eslint.config.js --fix && turbo run lint:fix",
+    "format:check": "prettier --check . --ignore-unknown",
+    "format": "prettier --write . --ignore-unknown",
+    "typecheck": "turbo run typecheck",
+    "test": "node --test scripts/check-repository.test.mjs && turbo run test",
+    "test:e2e": "turbo run test:e2e --filter=@logix/web",
+    "playwright:install": "pnpm --filter @logix/web exec playwright install chromium",
+    "build": "turbo run build",
+    "docs:check": "node scripts/check-repository.mjs --docs-only",
+    "repo:check": "node scripts/check-repository.mjs",
+    "security:audit": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level high",
+    "validate": "pnpm repo:check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.10.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-vue": "10.10.0",
+    "globals": "16.5.0",
+    "prettier": "3.9.6",
+    "turbo": "2.10.12",
+    "typescript-eslint": "8.69.0"
+  }
+}

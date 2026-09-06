@@ -9,12 +9,12 @@
 
 Express + TypeORM（PostgreSQL）单体，前端另起。核心对象是**货柜**，围绕货柜用四类表组织：
 
-| 表类别 | 前缀 | 表 | 角色 |
-| --- | --- | --- | --- |
-| 业务主表 | `biz_` | `biz_containers`（货柜）、`biz_replenishment_orders`（备货单）、`biz_customers` | 业务事实 |
-| 流程表 | `process_` | `process_sea_freight`、`process_port_operations`、`process_trucking_transport`、`process_warehouse_operations`、`process_empty_returns` | 一条货柜的完整流转上下文 |
-| 外部记录 | `ext_` | `ext_container_status_events`、`ext_container_loading_records`、`ext_container_hold_records`、`ext_container_charges` | 外部/事件原始数据 |
-| 字典 | `dict_` | `dict_ports`、`dict_shipping_companies`、`dict_freight_forwarders`、`dict_container_types`、`dict_warehouses`、`dict_countries` 等 | 主数据 |
+| 表类别   | 前缀       | 表                                                                                                                                      | 角色                     |
+| -------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 业务主表 | `biz_`     | `biz_containers`（货柜）、`biz_replenishment_orders`（备货单）、`biz_customers`                                                         | 业务事实                 |
+| 流程表   | `process_` | `process_sea_freight`、`process_port_operations`、`process_trucking_transport`、`process_warehouse_operations`、`process_empty_returns` | 一条货柜的完整流转上下文 |
+| 外部记录 | `ext_`     | `ext_container_status_events`、`ext_container_loading_records`、`ext_container_hold_records`、`ext_container_charges`                   | 外部/事件原始数据        |
+| 字典     | `dict_`    | `dict_ports`、`dict_shipping_companies`、`dict_freight_forwarders`、`dict_container_types`、`dict_warehouses`、`dict_countries` 等      | 主数据                   |
 
 外部数据经适配器（`FeiTuoAdapter` 等，见 `backend/src/adapters/`、`backend/docs/LogiX 外部数据适配器架构.md`）接入；另有 `logistics-path-system` 子项目提供详细状态与路径。
 
@@ -79,13 +79,13 @@ biz_replenishment_orders(备货单)  ⇄  biz_containers(货柜)     [多对多�
 
 ### 3.1 `biz_containers`（货柜）
 
-| 分组 | 字段 | 备注 |
-| --- | --- | --- |
-| 标识/关联 | `container_number`(PK)、`order_number`(NN→备货单)、`container_type_code`(FK 柜型字典) | |
-| 货物 | `cargo_description`、`gross_weight/net_weight/cbm/packages`、`seal_number` | |
-| 操作标志 | `inspection_required`、`is_unboxing`、`requires_pallet`(EXCEL)、`requires_assembly`(EXCEL) | |
-| 状态 | `logistics_status`(DERIVE 缓存)、`current_status_desc_cn/en` | 外部状态中文描述 |
-| 外接/超限 | `container_size`、`is_rolled` 甩柜、`operator`、`container_holder` 持箱人、`tare_weight` 皮重、`total_weight` 总重、`over_length/over_height` 超长/超高、`danger_class` 危险品 | FEITUO |
+| 分组      | 字段                                                                                                                                                                           | 备注             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| 标识/关联 | `container_number`(PK)、`order_number`(NN→备货单)、`container_type_code`(FK 柜型字典)                                                                                          |                  |
+| 货物      | `cargo_description`、`gross_weight/net_weight/cbm/packages`、`seal_number`                                                                                                     |                  |
+| 操作标志  | `inspection_required`、`is_unboxing`、`requires_pallet`(EXCEL)、`requires_assembly`(EXCEL)                                                                                     |                  |
+| 状态      | `logistics_status`(DERIVE 缓存)、`current_status_desc_cn/en`                                                                                                                   | 外部状态中文描述 |
+| 外接/超限 | `container_size`、`is_rolled` 甩柜、`operator`、`container_holder` 持箱人、`tare_weight` 皮重、`total_weight` 总重、`over_length/over_height` 超长/超高、`danger_class` 危险品 | FEITUO           |
 
 ### 3.2 流程表（均 `container_number` 关联；时间列 DATE 与 TIMESTAMP 混用）
 
@@ -117,27 +117,27 @@ biz_replenishment_orders(备货单)  ⇄  biz_containers(货柜)     [多对多�
 
 以下违反 Logixs `AGENTS.md` / `ENGINEERING_RULES`，是 TO-BE 必须修复、且可作 P2-04 主数据与 P2 预检规则的输入：
 
-| # | 反例（AS-IS） | Logixs 处置方向 |
-| --- | --- | --- |
-| A1 | 非法/未知柜型、状态**静默回退** `20GP` / `not_shipped` | 未知值进待处理队列，明确失败，禁止静默默认（`ENGINEERING_RULES` §4.3） |
-| A2 | 未匹配船司**自动创建字典项**（`NEW_*`） | 人工补主数据或进未知队列，禁止自动生成含糊字典项 |
-| A3 | 同义词映射**两份重复**（utils 与 import.controller）且漂移（`已装船`、`cancelled` 缺失） | 单一权威源（字典别名 + 共享状态契约），Contract Parity 防漂移 |
-| A4 | `cancelled` 不在简化态枚举，`已取消` 被归成 `not_shipped`，取消语义丢失 | TO-BE 状态模型显式含取消终态并定折叠口径 |
-| A5 | `logistics_status` 是读时投影缓存，无受约束转换、无审计 | TO-BE 定「事件推进 vs 投影」边界；转换受约束、留痕 |
-| A6 | 金额多处**无币种列**（备货单金额）；仅 `sea_freight.freight_currency`、`charges.charge_currency` 带币种 | 定点数 + 币种强制（`ENGINEERING_RULES` §4.1） |
-| A7 | 直接 upsert 覆盖、无批次幂等/审计；曾出现重复 `container_number` 列需修复迁移 | TO-BE 批次幂等键、行级结果、可审计事务导入（P2-03） |
-| A8 | 时间 DATE/TIMESTAMP 混用、跨表时间字段命名不统一（已有 `convert_date_to_timestamp` 演进迁移） | UTC 存储、ISO-8601 交换、统一命名（`ENGINEERING_RULES` §4.1） |
-| A9 | 货柜↔备货单多对多用**字符串互指** | 关系以 ID/值对象建模，明确聚合边界与不变量 |
+| #   | 反例（AS-IS）                                                                                           | Logixs 处置方向                                                        |
+| --- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| A1  | 非法/未知柜型、状态**静默回退** `20GP` / `not_shipped`                                                  | 未知值进待处理队列，明确失败，禁止静默默认（`ENGINEERING_RULES` §4.3） |
+| A2  | 未匹配船司**自动创建字典项**（`NEW_*`）                                                                 | 人工补主数据或进未知队列，禁止自动生成含糊字典项                       |
+| A3  | 同义词映射**两份重复**（utils 与 import.controller）且漂移（`已装船`、`cancelled` 缺失）                | 单一权威源（字典别名 + 共享状态契约），Contract Parity 防漂移          |
+| A4  | `cancelled` 不在简化态枚举，`已取消` 被归成 `not_shipped`，取消语义丢失                                 | TO-BE 状态模型显式含取消终态并定折叠口径                               |
+| A5  | `logistics_status` 是读时投影缓存，无受约束转换、无审计                                                 | TO-BE 定「事件推进 vs 投影」边界；转换受约束、留痕                     |
+| A6  | 金额多处**无币种列**（备货单金额）；仅 `sea_freight.freight_currency`、`charges.charge_currency` 带币种 | 定点数 + 币种强制（`ENGINEERING_RULES` §4.1）                          |
+| A7  | 直接 upsert 覆盖、无批次幂等/审计；曾出现重复 `container_number` 列需修复迁移                           | TO-BE 批次幂等键、行级结果、可审计事务导入（P2-03）                    |
+| A8  | 时间 DATE/TIMESTAMP 混用、跨表时间字段命名不统一（已有 `convert_date_to_timestamp` 演进迁移）           | UTC 存储、ISO-8601 交换、统一命名（`ENGINEERING_RULES` §4.1）          |
+| A9  | 货柜↔备货单多对多用**字符串互指**                                                                       | 关系以 ID/值对象建模，明确聚合边界与不变量                             |
 
 ## 6. AS-IS → TO-BE 对照结论
 
-| 主题 | 直接复用（词汇/字段/规则） | 需重新设计 |
-| --- | --- | --- |
-| 状态机 | 简化 7 层、详细 33、外部码、异常折叠、跳步直觉 | 受约束转换 + 取消/异常口径 + 事件/投影边界 + 单一权威（P2-02） |
-| 目标对象 | 一行=一货柜全流程信息（多表分组字段） | 聚合边界、批次/预检/审核/对账（P2-01/P2-03） |
-| 字段模板 | 上述真实列 + 别名/同义词集合 | 标准字段目录（类型/必填/字典/唯一键/关键字段，见 TARGET_FIELD_CATALOG） |
-| 主数据 | 港口/船司/柜型字典结构 | 未知值策略、别名单一权威、币种/时间纪律（P2-04 输入） |
-| 导入 | 六子结构行模型、柜型/状态/船司别名直觉 | 批次幂等、预检硬闸、AI 映射建议、逐行审核与对账 |
+| 主题     | 直接复用（词汇/字段/规则）                     | 需重新设计                                                              |
+| -------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| 状态机   | 简化 7 层、详细 33、外部码、异常折叠、跳步直觉 | 受约束转换 + 取消/异常口径 + 事件/投影边界 + 单一权威（P2-02）          |
+| 目标对象 | 一行=一货柜全流程信息（多表分组字段）          | 聚合边界、批次/预检/审核/对账（P2-01/P2-03）                            |
+| 字段模板 | 上述真实列 + 别名/同义词集合                   | 标准字段目录（类型/必填/字典/唯一键/关键字段，见 TARGET_FIELD_CATALOG） |
+| 主数据   | 港口/船司/柜型字典结构                         | 未知值策略、别名单一权威、币种/时间纪律（P2-04 输入）                   |
+| 导入     | 六子结构行模型、柜型/状态/船司别名直觉         | 批次幂等、预检硬闸、AI 映射建议、逐行审核与对账                         |
 
 ## 7. 关联与维护
 
