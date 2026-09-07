@@ -39,6 +39,7 @@
 | [IMPORT_WORKFLOW](./product/workflows/IMPORT_WORKFLOW.md)                     | 首个闭环流程叙事                                                                                     | 基线                         |
 | [First Mile/清关证据链 7 组](./product/workflows/CUSTOMS_OPERATION_CHAINS.md) | 原表单证据→统一对象→角色视图与非线性闭环                                                             | 负责人业务规则+候选映射 v0.3 |
 | [UX 工作台](./product/UX_CONTAINER_WORKBENCH.md)                              | 已出运入口 + 三状态/三段确认 + 动态任务配方与角色化节点工作区                                        | 候选 v0.8                    |
+| [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)               | 电商货柜全生命周期运营手册:节点/KPI·SLA/RACI/风险/应急SOP(22 节点管理视图)                           | 候选 v0.1                    |
 | [UI 体系标准](./product/UI_SYSTEM.md)                                         | Operations Shell、页面模板、三状态视觉、token、组件分层与质量门禁                                    | 设计决策 v1.0                |
 | 人话速查                                                                      | 见本 INDEX（每行"一句话+状态"即人话速查）                                                            | —                            |
 
@@ -95,17 +96,19 @@
 | [NODE_PDCA](product/domain/NODE_PDCA.md)                               | 七组完整性检查 + 动态任务定义 + 14 节点任务拆分 + 非线性闭环 | 候选 v0.8 |
 | [NODE_PDCA_VALIDATION](product/domain/NODE_PDCA_VALIDATION.md)         | 样本回验 F1–F8                                               | 回验      |
 | [INDUSTRY_STANDARDS_ALIGN](product/domain/INDUSTRY_STANDARDS_ALIGN.md) | 行业规范对标 W1–W14                                          | 对标      |
+| [OPERATIONS_ALIGNMENT](product/domain/OPERATIONS_ALIGNMENT.md)         | 22 节点运营框架 → 14 节点主链 对拍映射+缺口报告(五档分类)    | 候选 v0.1 |
 | [CATALOGIZATION_AUDIT](product/domain/CATALOGIZATION_AUDIT.md)         | 清单化盘点+人话重构队列                                      | 盘点      |
 
 ## 六、规划/路线/任务
 
-| 文档                                                        | 一句话              | 状态   |
-| ----------------------------------------------------------- | ------------------- | ------ |
-| [启动清单](./planning/PROJECT_BOOTSTRAP_CHECKLIST.md)       | P0–P9 推进主线      | 进行中 |
-| [RAID](./planning/RAID.md)                                  | 风险/假设/问题/依赖 | 跟踪   |
-| [P2 一页总览](./planning/P2_SLICE1_SUMMARY.md)              | 本批摘要(对外)      | 候选   |
-| [任务 brief](./planning/tasks/p2-shipment-import-domain.md) | P2 切片一交接单     | 进行中 |
-| [任务模板](./planning/tasks/_template.md)                   | 任务载体模板        | 规范   |
+| 文档                                                                  | 一句话                           | 状态   |
+| --------------------------------------------------------------------- | -------------------------------- | ------ |
+| [启动清单](./planning/PROJECT_BOOTSTRAP_CHECKLIST.md)                 | P0–P9 推进主线                   | 进行中 |
+| [RAID](./planning/RAID.md)                                            | 风险/假设/问题/依赖              | 跟踪   |
+| [P2 一页总览](./planning/P2_SLICE1_SUMMARY.md)                        | 本批摘要(对外)                   | 候选   |
+| [任务 brief](./planning/tasks/p2-shipment-import-domain.md)           | P2 切片一交接单                  | 进行中 |
+| [任务 brief-管理视图](./planning/tasks/p2-web-management-kpi-raci.md) | 补看板KPI+RACI管理投影，交 Codex | design |
+| [任务模板](./planning/tasks/_template.md)                             | 任务载体模板                     | 规范   |
 
 ## 七、维护
 
