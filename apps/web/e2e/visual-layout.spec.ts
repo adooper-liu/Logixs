@@ -150,16 +150,26 @@ test("container record remains readable", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "TCLU-2387642" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "当前节点事实" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("节点关键事实")).toBeVisible();
+  const eventTimeline = page.getByRole("region", { name: "事件时间证据" });
+  await expect(eventTimeline).toContainText("事实时间轴");
+  await expect(page.getByText("最近操作已落账", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("container-record.png", {
     animations: "disabled",
   });
   await expectNoHorizontalOverflow(page);
-  await page
-    .getByText("计划、预计与实际", { exact: true })
-    .scrollIntoViewIfNeeded();
-  await expect(
-    page.getByText("计划、预计与实际", { exact: true }),
-  ).toBeVisible();
+  await page.getByText("事实时间轴", { exact: true }).scrollIntoViewIfNeeded();
+  await expect(page.getByText("事实时间轴", { exact: true })).toBeVisible();
+  await expect(eventTimeline).toHaveScreenshot("container-event-timeline.png", {
+    animations: "disabled",
+  });
+
+  await page.goto("/container/cr_01J9LAX8M5Q7");
+  await expect(page.getByText("无待确认操作", { exact: true })).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
 });
 
 test("dark task shell remains readable", async ({ page }) => {

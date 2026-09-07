@@ -3,7 +3,8 @@ import { computed, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import LifecycleRail from "../components/container/LifecycleRail.vue";
 import ObjectContextBar from "../components/container/ObjectContextBar.vue";
-import DynamicFieldPanel from "../components/ui/DynamicFieldPanel.vue";
+import NodeFactPanel from "../components/container/NodeFactPanel.vue";
+import EventEvidenceTimeline from "../components/container/EventEvidenceTimeline.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import InfoTooltip from "../components/ui/InfoTooltip.vue";
 import { createDisplayFieldSet } from "../components/ui/displayFieldContract";
@@ -30,6 +31,11 @@ const activeNodeFields = computed(() => {
     record.value.nodeDisplaySchema,
     activeNode.value,
   );
+});
+const activeNodeIndex = computed(() => {
+  const nodes = record.value?.rail ?? [];
+  const index = nodes.findIndex((node) => node.key === activeNode.value?.key);
+  return index >= 0 ? index + 1 : 1;
 });
 const linkedTaskId = computed(() => {
   const taskId = activeNode.value?.taskId;
@@ -95,40 +101,15 @@ watch(
         </aside>
 
         <main class="node-workspace">
-          <section v-if="activeNode" class="node-summary">
-            <header class="section-head">
-              <div>
-                <b>{{ activeNode.name }}</b
-                ><span>节点事实</span>
-              </div>
-              <InfoTooltip
-                v-if="activeNode.note"
-                label="查看节点说明"
-                :text="activeNode.note"
-              />
-            </header>
-
-            <DynamicFieldPanel
-              v-if="activeNodeFields"
-              class="node-facts"
-              :field-set="activeNodeFields"
-              :columns="3"
-              :mobile-columns="3"
-            />
-
-            <div class="next-action">
-              <div>
-                <span>下一步</span>
-                <p>{{ record.nextActionHint }}</p>
-              </div>
-              <router-link
-                v-if="linkedTaskId"
-                :to="`/tasks?task=${linkedTaskId}`"
-                >进入关联任务</router-link
-              >
-              <span v-else class="read-only">当前节点无可执行任务</span>
-            </div>
-          </section>
+          <NodeFactPanel
+            v-if="activeNode && activeNodeFields"
+            :node="activeNode"
+            :field-set="activeNodeFields"
+            :node-index="activeNodeIndex"
+            :node-count="record.rail.length"
+            :next-action-hint="record.nextActionHint"
+            :linked-task-id="linkedTaskId"
+          />
 
           <section
             v-if="activeNode?.key === 'customs' && record.checklist.length"
@@ -156,33 +137,10 @@ watch(
             </div>
           </section>
 
-          <section v-if="record.timeline.length" class="time-evidence">
-            <header class="section-head">
-              <div><b>计划、预计与实际</b><span>时间证据</span></div>
-              <InfoTooltip
-                label="查看时间证据口径"
-                text="计划、预计和实际时间分开记录，实际时间必须能追溯到来源证据。"
-              />
-            </header>
-            <div class="event-table" role="table" aria-label="节点时间证据">
-              <div class="event-row event-header" role="row">
-                <span>事件</span><span>计划</span><span>预计</span
-                ><span>实际</span><span>证据</span>
-              </div>
-              <div
-                v-for="event in record.timeline"
-                :key="event.eventRef ?? event.eventCode"
-                class="event-row"
-                role="row"
-              >
-                <b>{{ event.label }}</b>
-                <span>{{ event.planned || "—" }}</span>
-                <span>{{ event.estimated || "—" }}</span>
-                <span>{{ event.actual || "待发生" }}</span>
-                <span>{{ event.evidence || "待补" }}</span>
-              </div>
-            </div>
-          </section>
+          <EventEvidenceTimeline
+            v-if="record.timeline.length"
+            :events="record.timeline"
+          />
 
           <p v-else class="projection-note">
             该记录尚无可展示的权威事件；节点只呈现计划与任务关注项。
@@ -203,19 +161,13 @@ watch(
   min-height: 100%;
 }
 .markers,
-.section-head,
-.next-action {
+.section-head {
   display: flex;
   align-items: center;
 }
-.section-head span,
-.next-action span {
+.section-head span {
   color: var(--muted);
   font-size: 11px;
-}
-.next-action p {
-  margin: 0;
-  color: var(--ink-soft);
 }
 .markers {
   flex-wrap: wrap;
@@ -231,14 +183,12 @@ watch(
 }
 .workspace-grid {
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
 }
 .lifecycle-panel,
-.node-summary,
 .customs-detail,
-.time-evidence,
 .projection-note {
   min-width: 0;
   border: 1px solid var(--line);
@@ -246,16 +196,14 @@ watch(
   background: var(--surface);
 }
 .lifecycle-panel,
-.node-summary,
-.customs-detail,
-.time-evidence {
+.customs-detail {
   padding: 10px;
 }
 .node-workspace {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 .section-head {
   justify-content: space-between;
@@ -270,27 +218,6 @@ watch(
   align-items: baseline;
   flex-direction: row;
   gap: 7px;
-}
-.node-facts {
-  margin-top: 8px;
-}
-
-.next-action {
-  justify-content: space-between;
-  gap: 14px;
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-left: 3px solid var(--brand);
-  background: var(--brand-soft);
-}
-.next-action a {
-  flex: none;
-  color: var(--brand-strong);
-  font-weight: 700;
-  text-decoration: none;
-}
-.read-only {
-  flex: none;
 }
 .check-list {
   display: grid;
@@ -328,31 +255,6 @@ watch(
 .check-list .risk strong {
   color: var(--risk);
 }
-.event-table {
-  margin-top: 8px;
-  min-width: 660px;
-}
-.time-evidence {
-  overflow-x: auto;
-}
-.event-row {
-  display: grid;
-  grid-template-columns: 0.8fr repeat(3, 1fr) 1.3fr;
-  gap: 10px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--line);
-}
-.event-row:last-child {
-  border-bottom: 0;
-}
-.event-row span {
-  color: var(--ink-soft);
-  font-size: 12px;
-}
-.event-header span {
-  color: var(--muted);
-  font-size: 10px;
-}
 .projection-note {
   margin: 0;
   padding: 16px;
@@ -381,10 +283,6 @@ watch(
 @media (max-width: 720px) {
   .check-list {
     grid-template-columns: 1fr;
-  }
-  .next-action {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
 </style>

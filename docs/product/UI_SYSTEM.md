@@ -117,6 +117,12 @@ TaskWorkspaceLayout 的待办队列是独立工作区：使用单一外框明确
 进度段连接起点与当前事实节点。编号和节点名在桌面端必须直接可读；颜色只表达当前货柜的业务语义，
 进度段不得暗示尚未发生的计划节点已经完成。移动端隐藏密集总轴时，仍须保留当前节点事实文字。
 
+一柜一档使用“货柜身份 → 货柜事实/任务状态/相关同步 → 生命周期定位 → 当前节点事实 → 下一步动作
+→ 事件时间证据”的物流事实主轴。当前节点必须显示稳定序号和节点总数，计划、预计、实际、来源、
+接入渠道和业务证据保持可区分；普通节点字段可使用 schema 驱动的 `signal` 投影增强扫描，但不得在
+页面模板硬编码数据库字段。事件历史使用有顺序的事实时间轴，已发生与待发生同时用文字和形态区分，
+窄屏不得因单行布局截断证据。同步为空闲态时不占醒目空间，存在待确认、失败或最近落账操作时才恢复。
+
 驾驶舱顶部只保留少量、可直接驱动判断的关键运营信号。允许用语义色实底形成醒目分块，但
 `brand / ok / warn / risk / info` 必须继续表达既有业务含义。指标卡默认只显示标签、数值、业务解释
 和下钻入口；没有明确比较维度、刻度或直接决策价值时，不得附加迷你图、趋势线或装饰图形。七组 SOP
@@ -282,12 +288,12 @@ interface UiThemeAdapter {
 
 ### 8.4 组件目录
 
-| 层       | 组件                                                                                                         |
-| -------- | ------------------------------------------------------------------------------------------------------------ |
-| 壳层     | AppShell、AppSidebar、AppTopbar、PageHeader、ObjectContextBar、MobileActionDock                              |
-| 通用模式 | DataToolbar、FilterBar、MetricStrip、StateBadge、DynamicFieldPanel、DynamicDataTable、EmptyState、ErrorState |
-| 领域     | StatusTriplet、LifecycleRail、TaskQueue、SubmissionProgress、EvidencePanel、ExceptionPanel                   |
-| 视图     | ContainerFlowTable、PlanVsActualTable、CycleTrend、CostBreakdown、ImprovementRegister                        |
+| 层       | 组件                                                                                                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 壳层     | AppShell、AppSidebar、AppTopbar、PageHeader、ObjectContextBar、MobileActionDock                                                  |
+| 通用模式 | DataToolbar、FilterBar、MetricStrip、StateBadge、DynamicFieldPanel、DynamicDataTable、EmptyState、ErrorState                     |
+| 领域     | StatusTriplet、LifecycleRail、NodeFactPanel、EventEvidenceTimeline、TaskQueue、SubmissionProgress、EvidencePanel、ExceptionPanel |
+| 视图     | ContainerFlowTable、PlanVsActualTable、CycleTrend、CostBreakdown、ImprovementRegister                                            |
 
 StateBadge 只负责视觉语义；业务状态到语义的映射必须来自一个适配器或公共契约，禁止各页面
 复制 switch。StatusTriplet、生命周期和任务动作不得从显示文案反推状态。
@@ -297,6 +303,10 @@ StateBadge 只负责视觉语义；业务状态到语义的映射必须来自一
 `DynamicFieldPanel` 只消费 [受控动态字段投影](./domain/CONTRACTS_DRAFT.md#41-受控动态字段投影候选)，
 用于货柜节点详情等普通只读标量区域。页面传入 `DisplayFieldSet` 和列数，不逐字段写模板；字段新增、
 排序、分组和主次层级由展示 schema 决定。
+
+`table` 投影适合逐项核对，`signal` 投影适合当前节点的少量关键事实。两者只改变视觉呈现，不改变
+字段授权、来源权威、空值或格式错误语义；当主字段数量增长到无法快速扫描时，必须由展示 schema
+重新划分主次字段，禁止靠继续缩小字号或无限增加列数容纳。
 
 - 主字段直接显示，次字段进入“更多字段”，防止数据库字段增长重新造成信息过载。
 - 组件负责受控类型格式化、空值、格式错误、响应式跨度和无障碍语义，不负责字段授权或业务推导。

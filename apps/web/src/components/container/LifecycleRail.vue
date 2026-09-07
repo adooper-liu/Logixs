@@ -36,7 +36,7 @@ watch(
 <template>
   <nav ref="railElement" class="rail" aria-label="货柜生命周期">
     <button
-      v-for="node in nodes"
+      v-for="(node, index) in nodes"
       :key="node.key"
       type="button"
       class="rail-node"
@@ -45,9 +45,12 @@ watch(
       @click="emit('select', node)"
     >
       <i><span v-if="node.attention" class="attention-dot"></span></i>
-      <span>
-        <b>{{ node.name }}</b>
-        <small>{{
+      <span class="node-copy">
+        <span class="node-title">
+          <small>{{ String(index + 1).padStart(2, "0") }}</small>
+          <b>{{ node.name }}</b>
+        </span>
+        <small class="node-time">{{
           node.actual || node.estimated || node.planned || "待发生"
         }}</small>
       </span>
@@ -89,6 +92,10 @@ watch(
 .rail-node:hover,
 .rail-node.active {
   background: var(--surface-2);
+}
+
+.rail-node.active {
+  box-shadow: inset 3px 0 var(--brand);
 }
 
 .rail-node i {
@@ -140,17 +147,31 @@ watch(
   border-style: dashed;
 }
 
-.rail-node span {
+.node-copy {
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+
+.node-title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.node-title small {
+  flex: none;
+  color: var(--muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
 }
 
 .rail-node b {
   font-size: 12px;
 }
 
-.rail-node small {
+.node-time {
   color: var(--muted);
   font-size: 10px;
   overflow-wrap: anywhere;
