@@ -52,7 +52,7 @@ defineProps<{
       />
     </header>
     <div class="analysis-grid">
-      <section class="analysis-section">
+      <section id="cycles" class="analysis-section">
         <div class="subhead">
           <b>周期时效</b>
           <InfoTooltip
@@ -69,7 +69,7 @@ defineProps<{
           ><small>{{ row.basis }} · {{ row.eventRefs }}</small>
         </article>
       </section>
-      <section class="analysis-section">
+      <section id="fees" class="analysis-section">
         <div class="subhead">
           <b>费用风险</b>
           <InfoTooltip
@@ -89,7 +89,7 @@ defineProps<{
           </div>
         </article>
       </section>
-      <section class="analysis-section">
+      <section id="exceptions" class="analysis-section">
         <div class="subhead">
           <b>异常与改善</b>
           <InfoTooltip
@@ -116,7 +116,7 @@ defineProps<{
           >
         </article>
       </section>
-      <section class="analysis-section">
+      <section id="decisions" class="analysis-section">
         <div class="subhead">
           <b>会议决议</b>
           <InfoTooltip

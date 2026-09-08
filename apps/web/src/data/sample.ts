@@ -3,6 +3,7 @@ import type {
   AchievementCalendarDimension,
   AchievementCalendarView,
 } from "../components/management/achievementCalendarContract";
+import type { RaciNodeRow } from "./raciContract";
 
 export type Tone = "ok" | "warn" | "risk" | "info" | "muted";
 
@@ -207,7 +208,7 @@ export interface ExceptionRecord {
   resultRef?: string;
 }
 
-const railDefinitions = [
+export const railDefinitions = [
   ["ready", "备货就绪"],
   ["stuffing", "装箱定稿"],
   ["shipment", "出运"],
@@ -223,6 +224,155 @@ const railDefinitions = [
   ["unstuff", "卸空"],
   ["return", "还箱"],
 ] as const;
+
+// candidate 演示值；来源=框架 RACI 表 22→14 收敛，待负责人回验。
+export const raciRows: RaciNodeRow[] = [
+  {
+    nodeKey: "ready",
+    nodeName: "备货就绪",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "R" },
+      { role: "finance", code: "I" },
+      { role: "sales", code: "C" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "stuffing",
+    nodeName: "装箱定稿",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "warehouse", code: "R" },
+      { role: "sales", code: "C" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "shipment",
+    nodeName: "出运",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "R" },
+      { role: "customs", code: "C" },
+      { role: "trucking", code: "C" },
+      { role: "finance", code: "I" },
+      { role: "sales", code: "I" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "depart",
+    nodeName: "离港",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "R" },
+      { role: "sales", code: "I" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "sailing",
+    nodeName: "海运在途",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "R" },
+      { role: "sales", code: "I" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "transit",
+    nodeName: "中转港(可选)",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "R" },
+      { role: "sales", code: "I" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "customs",
+    nodeName: "清关",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "C" },
+      { role: "customs", code: "R" },
+      { role: "finance", code: "C" },
+      { role: "sales", code: "I" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "arrival",
+    nodeName: "目的港到港",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "R" },
+      { role: "customs", code: "I" },
+      { role: "sales", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "rail",
+    nodeName: "海铁联运(可选)",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "R" },
+      { role: "trucking", code: "C" },
+      { role: "sales", code: "I" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "pickup",
+    nodeName: "拖卡提柜",
+    cells: [
+      { role: "ops", code: "I" },
+      { role: "forwarder", code: "C" },
+      { role: "trucking", code: "A" },
+    ],
+  },
+  {
+    nodeKey: "delivery",
+    nodeName: "送仓",
+    cells: [
+      { role: "ops", code: "A" },
+      { role: "forwarder", code: "C" },
+      { role: "trucking", code: "R" },
+      { role: "sales", code: "I" },
+      { role: "manager", code: "I" },
+    ],
+  },
+  {
+    nodeKey: "unload",
+    nodeName: "卸柜",
+    cells: [
+      { role: "ops", code: "I" },
+      { role: "trucking", code: "C" },
+      { role: "warehouse", code: "A" },
+    ],
+  },
+  {
+    nodeKey: "unstuff",
+    nodeName: "卸空",
+    cells: [
+      { role: "ops", code: "I" },
+      { role: "trucking", code: "C" },
+      { role: "warehouse", code: "A" },
+    ],
+  },
+  {
+    nodeKey: "return",
+    nodeName: "还箱",
+    cells: [
+      { role: "ops", code: "I" },
+      { role: "forwarder", code: "C" },
+      { role: "trucking", code: "A" },
+      { role: "finance", code: "I" },
+    ],
+  },
+];
 
 const nodeDisplaySchema: DisplayFieldSchema = {
   schemaId: "container-work-node",

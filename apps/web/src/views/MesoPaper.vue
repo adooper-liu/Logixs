@@ -2,6 +2,7 @@
 import AnalysisClosurePanel from "../components/management/AnalysisClosurePanel.vue";
 import ContainerFlowTable from "../components/management/ContainerFlowTable.vue";
 import PlanningExecutionPanel from "../components/management/PlanningExecutionPanel.vue";
+import RaciMatrixPanel from "../components/management/RaciMatrixPanel.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import InfoTooltip from "../components/ui/InfoTooltip.vue";
 import {
@@ -10,6 +11,7 @@ import {
   cycleRows,
   feeRows,
   meetingDecisions,
+  raciRows,
 } from "../data/sample";
 import { useDemoOperationsStore } from "../composables/useDemoOperationsStore";
 
@@ -36,6 +38,10 @@ const { containers, exceptions } = useDemoOperationsStore();
       :fees="feeRows"
       :exceptions="exceptions"
       :decisions="meetingDecisions"
+    />
+    <RaciMatrixPanel
+      :rows="raciRows"
+      :container-record-id="containers[0]?.containerRecordId"
     />
   </div>
 </template>

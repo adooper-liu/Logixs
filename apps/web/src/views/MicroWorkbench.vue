@@ -50,10 +50,13 @@ const selectNode = (node: WorkNode) => {
 };
 
 watch(
-  record,
-  (nextRecord) => {
+  [record, () => route.query.node],
+  ([nextRecord, nodeQuery]) => {
     const nodes = nextRecord?.rail ?? [];
     activeKey.value =
+      nodes.find(
+        (node) => typeof nodeQuery === "string" && node.key === nodeQuery,
+      )?.key ??
       nodes.find(
         (node) => node.attention === "risk" || node.attention === "current",
       )?.key ??

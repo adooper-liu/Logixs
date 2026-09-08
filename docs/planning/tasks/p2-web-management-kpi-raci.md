@@ -1,7 +1,7 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: review # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/<任务名>（RAID I-04 / P3-01）
-verification: # status: done 时填写；当前仍在 coding
+verification: pnpm validate（2026-09-08 通过；repo/lint/format/typecheck/unit/E2E/build 全绿）
 ---
 
 # 任务：补管理视图——Web 演示 看板 KPI 指标 + RACI 责任投影（运营框架对齐）
@@ -105,3 +105,4 @@ export interface RaciNodeRow {
 | ---------- | ------ | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-09-07 | design | Claude | —      | 对齐核查（Web 演示缺管理视图投影）→ 方案设计 → brief 定稿。因 ENGINEERING_RULES §10 串行化（前序任务 `p2-shipment-import-domain` 进行中），状态标 `blocked` 排队，Review notes 记录解除条件 |
 | 2026-09-07 | coding | Claude | —      | 负责人决定启动本切片：前序任务 `p2-shipment-import-domain.md` 转 `blocked` 归档，本任务转 `coding` 成为唯一进行中任务。Review notes 记录解除，交由 Codex 实现                               |
+| 2026-09-08 | review | Codex  | —      | 完成 5 项 KPI 信号条、14×8 RACI 投影、管理下钻与三视口/深色视觉基线；`pnpm validate` 全绿（仓库测试 6、前端单测 54、E2E 51 通过/6 条件跳过、构建通过）                                      |

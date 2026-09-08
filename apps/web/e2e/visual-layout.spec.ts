@@ -243,6 +243,11 @@ for (const overview of overviewPages) {
       );
     }
     if (overview.name === "management-dashboard") {
+      const kpis = page.getByRole("navigation", { name: "管理看板 KPI" });
+      await expect(kpis.getByRole("link")).toHaveCount(5);
+      await expect(kpis).toContainText("滞箱滞港费用占比76%");
+      await expect(kpis).toContainText("未关闭异常数2 项");
+      await expect(kpis).not.toContainText("周计划达成");
       await expect(
         page.getByRole("heading", { name: "货柜流向扫描" }),
       ).toBeVisible();
@@ -262,6 +267,16 @@ for (const overview of overviewPages) {
         3,
       );
       await expect(page.getByRole("progressbar")).toHaveCount(3);
+    }
+    if (overview.name === "planning-workbench") {
+      const raci = page.getByRole("region", { name: "RACI 责任投影" });
+      await expect(raci.getByRole("row")).toHaveCount(15);
+      await expect(raci.getByRole("columnheader")).toHaveCount(9);
+      await expect(raci.locator(".accountable")).toHaveCount(14);
+      await expect(raci.getByTestId("raci-scroll")).toHaveCSS(
+        "overflow-x",
+        "auto",
+      );
     }
     await expect(page).toHaveScreenshot(`${overview.name}.png`, {
       animations: "disabled",
@@ -359,9 +374,9 @@ test("management dashboard uses a wide viewport as an operations canvas", async 
   await disableMotion(page);
 
   const signals = page
-    .getByRole("navigation", { name: "关键运营信号" })
+    .getByRole("navigation", { name: "管理看板 KPI" })
     .getByRole("link");
-  await expect(signals).toHaveCount(4);
+  await expect(signals).toHaveCount(5);
   const signalPositions = await signals.evaluateAll((links) =>
     links.map((link) => Math.round(link.getBoundingClientRect().top)),
   );
@@ -386,4 +401,24 @@ test("management dashboard uses a wide viewport as an operations canvas", async 
     fullPage: true,
   });
   await expectNoHorizontalOverflow(page);
+});
+
+test("management RACI supports node drill-down and dark mode", async ({
+  page,
+}) => {
+  await page.goto("/meso");
+  await disableMotion(page);
+
+  const raci = page.getByRole("region", { name: "RACI 责任投影" });
+  await raci.scrollIntoViewIfNeeded();
+  await page.getByRole("button", { name: "切换深色主题" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(raci).toHaveScreenshot("management-raci-dark.png", {
+    animations: "disabled",
+  });
+  await expectNoHorizontalOverflow(page);
+
+  await raci.locator("tbody tr").nth(6).getByRole("link").click();
+  await expect(page).toHaveURL(/\/container\/cr_01J9LAX7K2D4\?node=customs$/);
+  await expect(page.locator(".rail-node.active")).toContainText("清关");
 });

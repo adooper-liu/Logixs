@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import {
-  ArrowRight,
-  ChartNoAxesCombined,
-  Container,
-  Clock,
-  TriangleAlert,
-} from "@lucide/vue";
+import { ArrowRight } from "@lucide/vue";
 import DecisionQueue from "../components/management/DecisionQueue.vue";
-import ManagementSignalStrip from "../components/management/ManagementSignalStrip.vue";
+import KpiSignalStrip from "../components/management/KpiSignalStrip.vue";
 import OperationsAnalytics from "../components/management/OperationsAnalytics.vue";
 import OperationsFlowMap from "../components/management/OperationsFlowMap.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useDemoOperationsStore } from "../composables/useDemoOperationsStore";
+import { createKpiSignals } from "../data/kpiProjection";
 import {
   achievementCalendars,
   capabilityRows,
   feeRows,
   meetingDecisions,
-  weeklyAchievementSummary,
   type Tone,
 } from "../data/sample";
 
@@ -30,43 +24,13 @@ const pendingSync = computed(
       (row) => !["committed", "idle"].includes(row.syncStatus.code),
     ).length,
 );
-const riskContainers = computed(
-  () => containers.value.filter((row) => row.tone === "risk").length,
+const signals = computed(() =>
+  createKpiSignals({
+    containers: containers.value,
+    fees: feeRows,
+    exceptions: exceptions.value,
+  }),
 );
-const signals = computed(() => [
-  {
-    label: "在线货柜",
-    value: `${containers.value.length} 柜`,
-    helpText: "按货柜流转记录的当前生命周期事实汇总。",
-    tone: "brand" as const,
-    icon: Container,
-    to: "/containers",
-  },
-  {
-    label: "高风险货柜",
-    value: `${riskContainers.value} 柜`,
-    helpText: "存在高风险信号的货柜优先进入决策队列。",
-    tone: "risk" as const,
-    icon: TriangleAlert,
-    to: "/containers?filter=risk",
-  },
-  {
-    label: "周计划达成",
-    value: weeklyAchievementSummary.rate,
-    supportingText: `完成 ${weeklyAchievementSummary.completed} / 计划 ${weeklyAchievementSummary.planned}`,
-    tone: "warn" as const,
-    icon: ChartNoAxesCombined,
-    to: "/meso?dimension=achievement",
-  },
-  {
-    label: "待服务器确认",
-    value: `${pendingSync.value} 项`,
-    supportingText: pendingSync.value ? "尚未计入完成事实" : "全部已落账",
-    tone: pendingSync.value ? ("warn" as const) : ("ok" as const),
-    icon: Clock,
-    to: "/tasks",
-  },
-]);
 
 const firstRiskContainer = computed(
   () =>
@@ -139,11 +103,11 @@ const decisionItems = computed(() => {
       </template>
     </PageHeader>
 
-    <ManagementSignalStrip :items="signals" />
+    <KpiSignalStrip :items="signals" />
 
     <div class="operations-grid">
       <OperationsFlowMap :rows="containers" />
-      <DecisionQueue :items="decisionItems" />
+      <DecisionQueue id="decision-queue" :items="decisionItems" />
     </div>
 
     <OperationsAnalytics
