@@ -25,7 +25,7 @@
 | [docs/README](./README.md)                                       | docs 导航+写作纪律+消费链         | 导航          |
 | [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md) | 目标架构总览(分层/模块/AI/工作流) | 已接受        |
 | [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)              | 模块/包依赖与禁止依赖             | 已接受(P1-09) |
-| [ADR 索引](./architecture/decisions/README.md) + ADR-001~009     | 架构决策记录                      | 已接受(P1)    |
+| [ADR 索引](./architecture/decisions/README.md) + ADR-001~010     | 架构决策记录（含模块化单体限界上下文） | 已接受(P1)    |
 
 ## 四、产品/理念/流程
 
@@ -86,6 +86,7 @@
 | [INTEGRATION_BOUNDARIES](product/domain/INTEGRATION_BOUNDARIES.md)             | 导入→直连边界/字段与事件级来源权威 | 候选 v0.4 |
 | [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)             | 集成冗余/故障转移                  | 候选      |
 | [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                               | 现网 vs 新设计差距                 | 评审输入  |
+| [飞驼知识库](integrations/freightower/README.md)                               | 飞驼接口、事件码、字段、同步与安全 | 外部供应商核验知识库 |
 
 ### 5.4 治理/评审/对照
 
@@ -109,6 +110,20 @@
 | [任务 brief](./planning/tasks/p2-shipment-import-domain.md)           | P2 切片一交接单                  | 进行中 |
 | [任务 brief-管理视图](./planning/tasks/p2-web-management-kpi-raci.md) | 补看板KPI+RACI管理投影，交 Codex | design |
 | [任务模板](./planning/tasks/_template.md)                             | 任务载体模板                     | 规范   |
+| [模块实施规格模板](./planning/tasks/_module-implementation-spec-template.md) | 限界上下文的数据、规则、接口、前端、测试与验收统一模板 | 规范 |
+| [海关放行纵向切片](./product/domain/CUSTOMS_RELEASE_VERTICAL_SLICE.md) | 四模块贯通的首个可执行工序任务/工单/权威事件闭环 | 设计稿 |
+| [海关业务样本 001](./product/domain/CUSTOMS_BUSINESS_SAMPLE_001.md) | ISF、海运单、发票和装箱单的脱敏对象关联与证据缺口 | 真实脱敏样本·待确认 |
+| [海关业务样本 002](./product/domain/CUSTOMS_BUSINESS_SAMPLE_002.md) | 美国进口申报资料、HTS 估价和最终用途声明对账 | 真实脱敏样本·待确认 |
+| [海关业务样本 003](./product/domain/CUSTOMS_BUSINESS_SAMPLE_003.md) | 三票 CBP Form 7501 字段、税费结构及非放行边界 | 真实脱敏批量样本·待确认 |
+| [海关业务样本 004](./product/domain/CUSTOMS_BUSINESS_SAMPLE_004.md) | 意大利 H1 申报、税费和货代关税借记的证据边界 | 真实脱敏批量样本·待确认 |
+| [海关业务样本 005](./product/domain/CUSTOMS_BUSINESS_SAMPLE_005.md) | 西班牙 DUA 黄色/红色通道及 Levante 放行候选 | 真实脱敏双场景样本·待确认 |
+| [海关业务样本 006](./product/domain/CUSTOMS_BUSINESS_SAMPLE_006.md) | 英国 CDS Customs Cleared 批量放行候选 | 真实脱敏批量样本·待确认 |
+| [海关业务样本 007](./product/domain/CUSTOMS_BUSINESS_SAMPLE_007.md) | 中国出口报关平台的分票、明细聚合、对账与状态边界 | 真实脱敏现网界面样本·待确认 |
+| [海关业务样本 008](./product/domain/CUSTOMS_BUSINESS_SAMPLE_008.md) | 飞驼海外码头多类别 Hold 与可提箱守卫 | 真实脱敏现网界面样本·待确认 |
+| [业务样本 009](./product/domain/CUSTOMS_BUSINESS_SAMPLE_009.md) | 飞驼船公司跟踪的部分数据、空数据和投影结构 | 真实脱敏现网界面样本·待确认 |
+| [海关业务样本 010](./product/domain/CUSTOMS_BUSINESS_SAMPLE_010.md) | 出口商检申请、工厂装箱和箱况检查的证据边界 | 真实脱敏局部样本·待确认 |
+| [业务样本 011](./product/domain/CUSTOMS_BUSINESS_SAMPLE_011.md) | LMS 八国清关单据矩阵、生成传递规则和状态拆分 | 真实需求工作簿·评审输入 |
+| [海关业务样本 012](./product/domain/CUSTOMS_BUSINESS_SAMPLE_012.md) | 中国出口双报关单审核放行、CIF 单证和议付费用边界 | 真实脱敏纵向样本·待确认 |
 
 ## 七、维护
 

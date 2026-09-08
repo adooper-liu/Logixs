@@ -26,8 +26,11 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 依赖方向固定 `Controller → Application Use Case → Domain ← Infrastructure`。
 
 ```text
-identity  shipment  logistics-status  import  dictionary  integration
-exception-management  notification  reporting  ai-governance  audit
+核心：shipment-registry  lifecycle-control  work-execution  booking-origin
+      ocean-port-visibility  customs-compliance  inland-fulfillment
+      charges-settlement  document-records  performance-improvement
+支撑：integration-import  exception-management  identity  master-data
+      notification  audit  workflow  ai-governance
 ```
 
 | 规则           | 说明                                                                          |
@@ -40,6 +43,19 @@ exception-management  notification  reporting  ai-governance  audit
 | workflow       | 启动/查询/取消 Temporal 的唯一代理，其余模块经它                              |
 | audit          | 写操作审计的公共服务，供各模块调用                                            |
 
+### 2.1 所有权和调用方向
+
+| 所有者 | 只能通过 |
+| ------ | -------- |
+| shipment-registry：ContainerRecord | Shipment公共查询/写端口 |
+| lifecycle-control：FlowInstance、14节点状态机 | 流程命令和规范事件端口 |
+| work-execution：NodeTask、WorkOrder、工单聚合 | 工单命令、任务查询和结果事件端口 |
+| 专业模块：订舱/海运/清关/内陆作业事实 | 各自公开用例和领域事件 |
+| charges/document/exception/performance | 事实引用和幂等事件消费者 |
+| integration-import | 各业务模块的写端口，不直写业务表 |
+
+正常推进方向：WorkOrder结果 → NodeTask聚合 → 规范业务事件 → lifecycle-control合法转换。反向触发只发送“节点已进入”事件，由work-execution按节点任务定义生成工单。跨事务使用Transactional Outbox；禁止双向同步调用环和分布式事务。
+
 ## 3. 禁止依赖
 
 - 禁止跨包引用对方内部实现（只走公共入口）。
@@ -51,6 +67,6 @@ exception-management  notification  reporting  ai-governance  audit
 
 ## 4. 落地与校验
 
-- P3-05：为各包配置 `package.json` 导出与依赖方向；DEPCHECK/lint 规则注册到 `validate`。
+- P3-05：按 [ADR-010](./decisions/ADR-010-bounded-context-modules.md) 创建模块公开入口、自有持久化目录和契约；依赖检查禁止跨模块内部路径及 Repository 访问。
 - P1-10 / ADR-009：契约改动走单一权威源 + Parity 测试。
 - 本图变更须评审，涉及架构 §19 触发条件时须新增 ADR。

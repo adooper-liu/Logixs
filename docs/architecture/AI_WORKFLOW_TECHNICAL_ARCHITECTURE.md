@@ -126,21 +126,29 @@ TypeScript 包由根 `pnpm-lock.yaml` 锁定。Python 项目使用各自明确�
 
 ### 6.1 模块划分
 
-```text
+~~~text
 apps/api/src/modules/
-|-- identity/                     # 用户、组织、角色和权限
-|-- shipment/                     # 订单、货柜和运输
-|-- logistics-status/             # 状态事件与状态机
-|-- import/                       # 导入批次、预检和审核
-|-- dictionary/                   # 港口、船司、仓库等主数据
-|-- integration/                  # 外部供应商 Adapter
-|-- exception-management/         # 异常、处置和升级
-|-- notification/                 # 通知草稿、审批和发送
-|-- reporting/                    # 指标和统计口径
-|-- workflow/                     # 工作流启动、查询和取消
-|-- ai-governance/                # AI 权限、策略和配额
-`-- audit/                        # 操作审计
-```
+|-- shipment-registry/           # 一柜一档身份与关联
+|-- lifecycle-control/           # 14节点主流程与状态机
+|-- work-execution/              # 工序任务、作业工单与动作
+|-- booking-origin/              # 订舱至起运前作业
+|-- ocean-port-visibility/       # 海运与港口可视化事实
+|-- customs-compliance/          # 报关、换单、缴税与放行
+|-- inland-fulfillment/          # 提柜、派送、卸柜、验箱与还箱
+|-- charges-settlement/          # 超期费用、账单与对账
+|-- document-records/            # 单证、证据与归档
+|-- performance-improvement/     # KPI、绩效、复盘与改善
+|-- integration-import/          # 导入与外部适配器
+|-- exception-management/        # 异常、恢复与升级
+|-- identity/                    # 租户、用户、角色与权限
+|-- master-data/                 # 港口、船司、仓库等字典
+|-- notification/               # 通知编排与发送记录
+|-- workflow/                   # Temporal启动、查询与取消
+|-- ai-governance/              # AI权限、策略和配额
++-- audit/                       # 操作审计
+~~~
+
+模块所有权、公开端口、调用方向和拆分禁令以 [ADR-010](./decisions/ADR-010-bounded-context-modules.md) 与 [MODULE_DEPENDENCIES](./MODULE_DEPENDENCIES.md) 为准。模块数量不代表部署单元数量，当前仍为模块化单体。
 
 ### 6.2 分层及依赖
 
