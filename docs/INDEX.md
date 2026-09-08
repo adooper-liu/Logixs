@@ -32,7 +32,7 @@
 | 文档                                                                          | 一句话                                                                                               | 状态                         |
 | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------- |
 | [VISION](./product/VISION.md)                                                 | 品牌/愿景/节点操作/仓储图谱 → 落地对照                                                               | 候选                         |
-| [PRINCIPLES](./product/PRINCIPLES.md)                                         | 元治理M0 + 十原则P1–P10(时序/权威/确认三档/费用类型/复核/表单即证据) + 三状态/三层映射 + 节点七组SOP | 负责人确认(M0 + P1–P10)      |
+| [PRINCIPLES](./product/PRINCIPLES.md)                                         | 元治理M0 + 十原则P1–P10(时序/权威/确认三档/费用类型/复核/表单即证据) + 主流程/工序任务/工单/动作模型 + 节点七组SOP | 负责人确认(M0 + P1–P10)      |
 | [PRODUCT_BRIEF](./product/PRODUCT_BRIEF.md)                                   | 产品定位/当前起点/接入与前端演进                                                                     | 初版基线                     |
 | [GLOSSARY](./product/GLOSSARY.md)                                             | 术语单一真相(含 P2 §5)                                                                               | 基线+P2 增补 v0.1.6          |
 | [NFR](./product/NON_FUNCTIONAL_REQUIREMENTS.md)                               | 数字承诺(待校准)                                                                                     | 初版基线                     |
@@ -96,7 +96,7 @@
 | [NODE_PDCA](product/domain/NODE_PDCA.md)                               | 七组完整性检查 + 动态任务定义 + 14 节点任务拆分 + 非线性闭环 | 候选 v0.8 |
 | [NODE_PDCA_VALIDATION](product/domain/NODE_PDCA_VALIDATION.md)         | 样本回验 F1–F8                                               | 回验      |
 | [INDUSTRY_STANDARDS_ALIGN](product/domain/INDUSTRY_STANDARDS_ALIGN.md) | 行业规范对标 W1–W14                                          | 对标      |
-| [OPERATIONS_ALIGNMENT](product/domain/OPERATIONS_ALIGNMENT.md)         | 22 节点运营框架 → 14 节点主链 对拍映射+缺口报告(五档分类)    | 候选 v0.1 |
+| [OPERATIONS_ALIGNMENT](product/domain/OPERATIONS_ALIGNMENT.md)         | 22个运营环节→14节点主链映射及工序任务/工单执行模型       | 已定 v1.0 |
 | [CATALOGIZATION_AUDIT](product/domain/CATALOGIZATION_AUDIT.md)         | 清单化盘点+人话重构队列                                      | 盘点      |
 
 ## 六、规划/路线/任务

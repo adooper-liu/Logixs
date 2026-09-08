@@ -64,13 +64,14 @@
 响应走统一信封并返回提交结果；该结果至少能表达“请求已接收、业务已接受/拒绝、业务事实已落账/未落账”及各自时间/原因/结果引用，并关联 `clientOperationId`、幂等结果与 `traceId`。具体字段名与枚举待 P2-08/09 定稿，不将本句示例当作物理 Schema。服务端校验：可写窗口 R4/密封 R3、来源权威 D7、权限/二次确认（confirm\_\* 默认需二次确认，D14）、审计留痕。
 动作码固定集见 [ACTION_CATALOG](./ACTION_CATALOG.md)（新增=加字典+绑定，不改核心）。
 
-### 3.1 三种状态的契约边界（负责人确认，具体枚举待设计）
+### 3.1 分层状态的契约边界（负责人确认，具体枚举待设计）
 
-- `currentStatus`：货柜业务状态，唯一权威仍为 [CONTAINER_STATUS_MODEL](./CONTAINER_STATUS_MODEL.md)，只由合法事件/证据推进。
-- `taskStatus`：任务作业状态，必须拥有独立状态机；不得复用 `currentStatus`。具体状态码、领取并发与异常恢复转换待任务领域模型定稿。
-- `syncStatus`：客户端根据本地待提交记录与服务端提交结果表达确认进度，不写成货柜或任务业务结果；至少区分请求接收、业务决定和事实落账，超时只表示相应阶段“未确认”，不得推定失败或成功。
-- 扫描/报工类命令至少关联 `clientOperationId + taskId + contextRef + evidence + occurredAt`，重复提交返回同一幂等结果并可用 `traceId` 追踪。
-
+- processStatus：主流程实例状态，只由合法实际事件与证据推进。
+- taskStatus：节点工序任务状态，由必要工单聚合规则和完成政策推进。
+- workOrderStatus：作业工单状态，由工单动作、结果、证据及异常恢复规则推进。
+- syncStatus：单次 ClientOperation 的三段确认进度，不代表业务完成。
+- dataStatus：数据版本有效性，由来源权威、校验、版本和更正关系决定。
+- 写命令关联 clientOperationId + flowInstanceId + nodeTaskId + workOrderId + actionCode + evidence + occurredAt。
 #### 3.1.1 提交结果的最小确认链
 
 | 阶段                  | 契约必须提供的语义                                        | 失败/重试语义                                                                       |
@@ -85,11 +86,11 @@
 - `occurredAt` 表示现场业务发生时间；接收、业务决定与落账时间表示系统处理证据。离线补报或延迟回调时必须同时保留，契约不得用落账时间覆盖业务发生时间。
 - 任务报工、外部里程碑、单证传送、异常关闭和费用确认等相似语义统一引用 [PRINCIPLES §1.1](../PRINCIPLES.md) 的适度拆分判据；本草案不提前生成对应状态枚举。
 
-### 3.2 三层映射的契约边界（负责人确认，具体字段待设计）
+### 3.2 主流程、工序任务与工单的契约边界（负责人确认，具体字段待设计）
 
 - 管理层以维度查询/聚合，不产生另一套业务事实；任何指标行必须能定位其统计时点/周期及对应的货柜、节点与动作集合。
 - 主流程以生命周期节点引用（候选字段 `nodeKey`）与事件时序承载信息、数据和货柜状态；节点枚举与顺序引用 LIFECYCLE_CONSISTENCY，不在契约中复制。
-- 作业以 `taskId + actionCode` 关联 `contextRef + nodeKey`；扫描、报工、异常、任务结果和同步回执沿此关联回到主流程节点，具体引用字段随任务契约定稿。
+- 作业以 flowInstanceId + nodeTaskId + workOrderId + actionCode 关联；工单结果聚合为工序任务结果，只有合法结果事件可推进主流程。
 - 投影应区分原始数据/证据与派生信息，并保留状态、发生时间、提交时间、确认时间和来源，具体 Schema 待 P2-08/09 定稿。
 - 每个节点投影必须覆盖 [PRINCIPLES §1.6](../PRINCIPLES.md) 的七组 SOP，并以引用关联计划、任务、事件、时间、费用、异常、人工复核和会议决议；具体字段名待定，不得把七组实现成七份互相复制的货柜事实。
 
@@ -97,7 +98,7 @@
 
 `GET /containers/:orderNumber/workbench`（或按记录 id）返回（草案字段）：
 `identity{orderNumber, containerNumber?, carrierB/L?}`、`currentStatus`、`rail(node[], planned/actual, sealed, optional, abnormal)`、
-`taskSummary{taskId, taskStatus, assignee, dueAt, evidenceSummary}`、`submissionProgress{最小三段确认投影，字段待定}`、`nodeSopSummary{七组引用与适用性，字段待定}`、`markers[]`、`exceptions[]`、
+`nodeTaskSummary{nodeTaskId, taskStatus, workOrderCounts}、workOrders[]{workOrderId, workOrderStatus, assignee, dueAt}`、`submissionProgress{最小三段确认投影，字段待定}`、`nodeSopSummary{七组引用与适用性，字段待定}`、`markers[]`、`exceptions[]`、
 `nextActions[]{actionCode, reason, severity}`、`timeline[]`。
 （前端只消费只读投影；动作另走 §3。）
 
@@ -118,7 +119,7 @@
   UTC/ISO 8601 交换，`timeZone` 只决定用户展示。
 - 非法 schema、重复字段码、未知类型和类型不匹配必须显式失败或标记格式错误；不得静默猜测、
   自动降级为文本或回退到数据库字段名。
-- 该投影只适用于普通只读标量事实。货柜/任务/同步三状态、动作能力、提交三段确认、生命周期、
+- 该投影只适用于普通只读标量事实。流程/工序任务/工单/同步/数据五类状态、动作能力、提交三段确认、生命周期、
   异常处置、证据操作、费用计算和指标口径继续使用正式领域契约及专用组件。
 - `schemaVersion` 用于兼容缓存和演进；破坏性变化遵守 §6。正式 OpenAPI/JSON Schema 与生成客户端
   仍属 P3，当前 Vue 类型只是候选契约的演示实现，不是跨端单一权威。
@@ -139,7 +140,7 @@
 
 - 错误码全集与 HTTP 映射；事件码全集（对齐规范详情页枚举后再补，勿臆造数量）。
 - 投影字段集/动作中心推导规则输入（接 LIFECYCLE_CONSISTENCY R4、NODE_PDCA）。
-- 任务状态码/转换、物料与扫描证据 Schema、异常阻塞/恢复以及同步回执错误映射。
+- 工序任务与工单状态码/转换、工单聚合规则、证据 Schema、异常恢复和同步回执映射。
 - 内部事件信封字段、去重键、更正/撤回操作码、乱序窗口和投影重放契约；当前为行为变化候选，尚无运行时消费者或生成物。
 - 管理维度目录、节点/动作映射键与指标下钻契约。
 - 节点七组 SOP 的适用性、计划/费用/复核/会议引用与权限契约。
