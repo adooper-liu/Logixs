@@ -87,12 +87,14 @@
 | [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)             | 集成冗余/故障转移                  | 候选      |
 | [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                               | 现网 vs 新设计差距                 | 评审输入  |
 | [飞驼知识库](integrations/freightower/README.md)                               | 飞驼接口、事件码、字段、同步与安全 | 外部供应商核验知识库 |
+| [飞驼海关证据映射 V1](integrations/freightower/CUSTOMS_EVIDENCE_MAPPING_V1.md) | 官网海关接口证据索引、复合码映射与工单驱动规则 | 外部供应商映射 V1 |
 
 ### 5.4 治理/评审/对照
 
 | 文档                                                                   | 一句话                                                       | 状态      |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------ | --------- |
 | [P2_REVIEW_CHECKLIST](product/domain/P2_REVIEW_CHECKLIST.md)           | D1–D21 追踪、V1–V4 样本与 Decision 门禁                      | 载体 v1.4 |
+| [GLOBAL_CONTRACT_REGISTRY](product/domain/GLOBAL_CONTRACT_REGISTRY.md) | 11 项全局公共契约的唯一治理入口：门禁、所有者、权威文档、阻断与下一动作 | 治理基线 V1 |
 | [PROPOSAL_SELF_AUDIT](product/domain/PROPOSAL_SELF_AUDIT.md)           | 对抗评审 A/H                                                 | 记录      |
 | [NODE_PDCA](product/domain/NODE_PDCA.md)                               | 七组完整性检查 + 动态任务定义 + 14 节点任务拆分 + 非线性闭环 | 候选 v0.8 |
 | [NODE_PDCA_VALIDATION](product/domain/NODE_PDCA_VALIDATION.md)         | 样本回验 F1–F8                                               | 回验      |
@@ -124,6 +126,11 @@
 | [海关业务样本 010](./product/domain/CUSTOMS_BUSINESS_SAMPLE_010.md) | 出口商检申请、工厂装箱和箱况检查的证据边界 | 真实脱敏局部样本·待确认 |
 | [业务样本 011](./product/domain/CUSTOMS_BUSINESS_SAMPLE_011.md) | LMS 八国清关单据矩阵、生成传递规则和状态拆分 | 真实需求工作簿·评审输入 |
 | [海关业务样本 012](./product/domain/CUSTOMS_BUSINESS_SAMPLE_012.md) | 中国出口双报关单审核放行、CIF 单证和议付费用边界 | 真实脱敏纵向样本·待确认 |
+| [海关业务契约定稿包 V1](./product/domain/CUSTOMS_BUSINESS_CONTRACT_V1.md) | 海关案卷、证据、事件、任务/工单、同步和主链守卫的实现前基线 | 业务契约 V1·待负责人评审 |
+| [海关公共契约实例化设计 V1](./product/domain/CUSTOMS_PUBLIC_CONTRACT_DESIGN_V1.md) | 海关状态枚举、事件信封、DTO、错误码与 JSON Schema 对照 | 公共契约设计 V1·待实现 |
+| [海关数据库结构与迁移设计 V1](./product/domain/CUSTOMS_DATABASE_MIGRATION_DESIGN_V1.md) | 案卷、观察、证据、事实应用、回执、幂等、Outbox 与审计的物理设计 | 数据库设计 V1·待迁移实现 |
+| [货柜生命周期时间线契约 V1](./product/domain/CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md) | 统一事实事件信封、时间语义、14节点推进、纠偏与当前投影 | 公共契约设计 V1·待负责人评审 |
+| [货柜生命周期状态机契约 V1](./product/domain/CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md) | 主流程、节点实例、货柜状态投影、转换守卫、阻断与纠偏 | 公共领域契约 V1·待负责人评审 |
 
 ## 七、维护
 

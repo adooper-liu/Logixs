@@ -2,6 +2,7 @@
 
 > 本稿是首个可执行纵向切片，不占用新的执行中任务槽位。
 > 覆盖模块：`shipment-registry`、`lifecycle-control`、`work-execution`、`customs-compliance`。
+> 主流程转换唯一服从[货柜生命周期状态机契约 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)；本文中的候选转换描述不得覆盖公共状态机。
 
 ## 1. 目标与验收边界
 
@@ -24,7 +25,7 @@ ContainerRecord（货柜主任务）
   -> FlowInstance 进入提柜节点并激活下一 NodeTask
 ```
 
-核心不变量：`WorkOrder` 和 `NodeTask` 不得直接修改 `FlowInstance`。只有通过来源、证据、时效、关联对象和幂等校验的权威规范事件才能推进主链。外部放行事实可以先于内部工单到达；此时生命周期先推进，再创建补录/对账工单，不得伪造历史完成顺序。
+核心不变量：`WorkOrder` 和 `NodeTask` 不得直接修改 `FlowInstance`。只有通过来源、证据、时效、关联对象、幂等和公共状态机守卫校验的权威规范事件才能推进主链。外部放行事实可以先于内部工单到达；若流程当前位于清关节点，可先于工单完成推进；若流程仍在更早节点，则保存为待应用事实，不能越过缺失的主链实际事实。两种情况都不得伪造历史完成顺序。
 
 ## 3. 模块责任
 

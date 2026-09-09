@@ -33,6 +33,7 @@ ContainerRecord -> FlowInstance -> NodeTask -> WorkOrder(s)
 - [飞驼.md](./飞驼.md)：外部资料登记、跨能力研判与开发准入底稿。
 - [API_CATALOG.md](./API_CATALOG.md)：接口和能力域目录。
 - [EVENT_CODE_CATALOG.md](./EVENT_CODE_CATALOG.md)：综合跟踪、港区、EIR、中美海关状态码。
+- [CUSTOMS_EVIDENCE_MAPPING_V1.md](./CUSTOMS_EVIDENCE_MAPPING_V1.md)：飞驼官网海关接口证据索引、批准复合映射及工单驱动规则。
 - [FIELD_AND_TIME_SEMANTICS.md](./FIELD_AND_TIME_SEMANTICS.md)：字段、时间、标识符和冲突处理。
 - [ADAPTER_AND_SYNC_DESIGN.md](./ADAPTER_AND_SYNC_DESIGN.md)：Port/Adapter、订阅、推送、幂等和对账。
 - [SECURITY_AND_OPERATIONS.md](./SECURITY_AND_OPERATIONS.md)：安全、审计、监控及待供应商确认项。

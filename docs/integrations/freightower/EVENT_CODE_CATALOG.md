@@ -40,7 +40,7 @@
 ## 美国海关与海外码头
 
 - 美国海关事件码：`69 19 1C 7H 7I 1H 1I 2H 2I 1X 4E 1S`。应按提单和 hold 类别构建状态投影，不能因单个 release 事件清空其他扣留。
-- 海外码头 `holdCategory`：`CUS` 海关、`SRM` 其他监管、`TML` 码头；`holdStatus`：`Release`、`Hold`、`Inbond`。
+- 海外码头 `holdCategory`：`CUS` 海关、`SRM` 船公司、`TML` 码头；`holdStatus`：`Release`、`Hold`、`Inbond`。海关接口级批准映射见 [CUSTOMS_EVIDENCE_MAPPING_V1](./CUSTOMS_EVIDENCE_MAPPING_V1.md)。
 - 只有对象匹配且有效的 `CUS + Release` 才能成为海关放行候选，仍须通过 Logixs 生命周期守卫。
 - Bond `queryResultCode=0..4`、`importerStatus=A/T`、`isSufficient=Y/N` 只描述担保资格，不代表货物放行。
 

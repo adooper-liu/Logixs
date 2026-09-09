@@ -10,13 +10,13 @@
 | 2   | 装箱       | `stuffing_plan`    | `stuffing_actual`    | ts   | 实际迟绑定 | 导入/手工   | 定稿点（含封号/重量）   |
 | 3   | 出运       | `ship_plan`        | `ship_actual`        | d    | 实际迟绑定 | 导入/API    | 装船/发运确认；≤#4      |
 | 4   | 离港       | `depart_plan`      | `depart_actual`      | ts   | 实际迟绑定 | API         | atd；出运同刻可相等(A6) |
-| 5   | 海运在途   | `sailing_eta`      | `sailing_actual`     | ts   | —          | API         | 到港预计为主            |
+| 5   | 海运在途   | `sailing_eta`      | `sailing_actual`     | ts   | —          | API         | sailing 为开始/进行中；下一港实际抵达完成阶段 |
 | 6   | 中转(可选) | `transit_eta_plan` | `transit_arr_actual` | ts   | —          | API         | 中转到；离为次要        |
 | 7   | 清关       | `customs_plan`     | `customs_actual`     | ts   | 实际迟绑定 | 海关/报关   | 放行须先于提柜          |
 | 8   | 到港       | `arrival_plan`     | `arrival_actual`     | ts   | 实际迟绑定 | API         | ata                     |
-| 9   | 海铁(可选) | `rail_plan`        | `rail_actual`        | ts   | —          | API/铁路    | 进铁路堆场等            |
+| 9   | 海铁(可选) | `rail_plan`        | `rail_actual`        | ts   | —          | API/铁路    | 铁路实际接收货柜；订单受理不算 |
 | 10  | 拖卡提柜   | `pickup_plan`      | `pickup_actual`      | ts   | —          | 拖车/API    | gate_out                |
-| 11  | 送仓       | `delivery_plan`    | `delivery_actual`    | ts   | —          | 拖车/API    | 送达仓库                |
+| 11  | 送仓       | `delivery_plan`    | `delivery_actual`    | ts   | —          | 拖车/仓库/WMS | POD/签收 delivered 或权威 warehouse_arrival |
 | 12  | 卸柜       | `unload_plan`      | `unload_actual`      | ts   | —          | 仓库/WMS    | —                       |
 | 13  | 卸空       | `unstuff_actual`   | —                    | ts   | 迟绑定     | WMS/手工    | 可还箱前提              |
 | 14  | 还箱       | `return_plan`      | `return_actual`      | ts   | 实际迟绑定 | 承运/API    | returned_empty 证据     |

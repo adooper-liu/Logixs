@@ -1,10 +1,10 @@
-# 内部事件语义码清单 v0.2（EVENT_CODES · 新规则示范格式）
+# 内部事件语义码清单 v0.3（EVENT_CODES · 新规则示范格式）
 
-> 状态：**候选 v0.2（示范格式）** · 2026-09-05 · 负责人：刘志高。
+> 状态：**候选 v0.3（示范格式）** · 2026-09-09 · 负责人：刘志高。
 > 📐 本文是**新文档规则的示范样板**：清单(可落库)为主 → 定义与澄清 → 规则与约束/边界 → 流程 → 注意事项 → 白话注解 → 落库映射（见 [ENGINEERING_RULES §12](../../../ENGINEERING_RULES.md)）。
 > 定位：事件语义码 = **映射字典的目标侧（单一权威）**；三方码先经 [EXTERNAL_EVENT_MAPPING](./EXTERNAL_EVENT_MAPPING.md) 归一到本表。
 > 证实度：`S`=规范证实 · `R`=现网证实 · `O`=负责人原话 · `C`=候选(待对拍)。
-> 版本：v0.1（初列，29 行）→ v0.2（按新规则重组格式，码集不变，行列对齐落库）。
+> 版本：v0.1（初列）→ v0.2（按新规则重组）→ v0.3（负责人确认备货、海铁事件；增加货柜级清关聚合事件及节点完成资格属性）。
 
 ## ① 可落库清单（主表 = 就是库里的值）
 
@@ -12,6 +12,7 @@
 
 | 码              | 中文      | 定义(一句话)                        | 角色        | L节点 | 推进/证据        | 源码示例          | 证实 |
 | --------------- | --------- | ----------------------------------- | ----------- | ----- | ---------------- | ----------------- | ---- |
+| cargo_ready     | 备货完成  | 一张备货单一次有效完成确认，建柜后挂接 | 里程碑 | #1 | not_shipped | 人工/ERP/供应链/导入 | O·R |
 | empty_picked_up | 提空箱    | 从堆场/场站提走空箱                 | 里程碑      | #2前  | —                | STSP / GTOT·EMPTY | S·R  |
 | stuffed         | 装箱完成  | 装柜定稿（真实重量/件数/封号/箱号） | 里程碑+定稿 | #2    | not_shipped 已装 | (导入/手工)       | O·R  |
 | loaded          | 装船/装车 | 装载上船/车                         | 状态证据    | #3    | shipped          | LOBD / LOAD       | S    |
@@ -39,11 +40,13 @@
 | hold_released | 扣留解除  | 扣留解除                           | 异常        | —     | —         | 1I·6I                    | S    |
 | customs_filed | 舱单/申报 | AMS/ISF/报关申报                   | 里程碑      | #7    | —         | 55/69/3Z·BLA             | S    |
 | inspection    | 查验      | 海关查验(X光/尾门/强化)            | 异常        | #7    | —         | 1A/1B·CES                | S    |
+| container_customs_completed | 货柜清关完成 | 全部必需案卷已放行且无有效海关阻断 | 状态证据 | #7 | 清关节点完成候选 | 海关案卷聚合事实 | O·R |
 
 ### D. 提柜/送仓/卸空/还箱
 
 | 码                | 中文      | 定义(一句话)     | 角色         | L节点 | 推进/证据      | 源码示例              | 证实 |
 | ----------------- | --------- | ---------------- | ------------ | ----- | -------------- | --------------------- | ---- |
+| rail_handover     | 海铁交接完成 | 铁路主体或场站实际接收指定货柜 | 状态证据 | #9 | 海铁节点完成候选 | 铁路接收/场站交接实际回执 | O·R |
 | gate_out          | 提柜/出场 | 从码头提走重箱   | 状态证据     | #10   | picked_up      | GATE_OUT / GTOT·LADEN | S·R  |
 | delivered         | 送仓/送达 | 拖卡送达仓库     | 里程碑       | #11   | —              | DELIVERED             | S·R  |
 | warehouse_arrival | 到仓入库  | 货到仓库         | 里程碑       | #11   | —              | WAREHOUSE_ARRIVAL     | R    |
@@ -62,6 +65,47 @@
 | delay     | 延误      | 时间偏差预警                | 异常         | 动态   | —         | DELAY 类          | S    |
 | overdue   | 超期      | 滞留/免费期超限             | 异常         | #10–14 | —         | OVERDUE/DETENTION | S    |
 
+### F. 节点完成资格注册
+
+`completionEligibleNodeCodes` 是每个事件码的必填数组属性，表示该事件在满足实际时间、来源、证据和状态机守卫后，有资格申请完成哪些节点。空数组必须显式保存；`role`、`推进/证据` 展示列和货柜状态不能替代该属性。
+
+一个事件可以列出多个节点，例如直达 `arrived` 可先完成 `ocean_transit`，待前序条件满足后再完成 `destination_arrival`。事件本身只接收一次，节点应用按事件与节点实例组合幂等。
+
+| 事件码 | `completionEligibleNodeCodes` | 状态/说明 |
+| --- | --- | --- |
+| `cargo_ready` | `[cargo_ready]` | 已确认 |
+| `empty_picked_up` | `[]` | 子里程碑 |
+| `stuffed` | `[container_stuffing]` | 已确认 |
+| `loaded` | `[shipment_dispatch]` | 已确认 |
+| `departed` | `[origin_departure]` | 已确认 |
+| `sailing` | `[]` | 只表示海运进行中，不完成节点 |
+| `gate_in` | `[]` | 子里程碑 |
+| `transit_arrived` | `[ocean_transit]` | 中转航线完成抵达中转港的海运阶段 |
+| `transit_departed` | `[transshipment]` | 已确认 |
+| `arrived` | `[ocean_transit,destination_arrival]` | 直达时结束海运；前序满足后完成目的港到港 |
+| `berthed` | `[]` | 子里程碑 |
+| `discharged` | `[]` | 子里程碑 |
+| `available` | `[]` | 提柜前置，不等于提柜 |
+| `release` | `[]` | 单主体/单案卷放行不直接完成清关节点 |
+| `hold` | `[]` | 异常/阻断 |
+| `hold_released` | `[]` | 解除阻断不等于放行 |
+| `customs_filed` | `[]` | 清关子里程碑 |
+| `inspection` | `[]` | 异常/阻断 |
+| `container_customs_completed` | `[customs_clearance]` | 货柜级案卷聚合事实 |
+| `rail_handover` | `[rail_transfer]` | 已确认 |
+| `gate_out` | `[container_pickup]` | 已确认，仍须联合守卫 |
+| `delivered` | `[warehouse_delivery]` | 必须带 POD、门岗或仓库签收等有效交付证据 |
+| `warehouse_arrival` | `[warehouse_delivery]` | 必须来自仓库、WMS 或门岗权威实际到场事实 |
+| `unloaded` | `[container_unloading]` | 已确认 |
+| `unstuffed` | `[container_unstuffing]` | 已确认 |
+| `returned_empty` | `[empty_return]` | 已确认 |
+| `dumped` | `[]` | 异常 |
+| `rolled` | `[]` | 异常 |
+| `cancelled` | `[]` | 流程取消使用专用命令，不作为节点完成 |
+| `changed` | `[]` | 计划变更 |
+| `delay` | `[]` | 异常/预警 |
+| `overdue` | `[]` | 异常/预警 |
+
 ## ② 定义与澄清
 
 - **事件码 ≠ 状态码 ≠ 动作码 ≠ 标记码**：事件码是"路上发生的每一件事"（证据/里程碑），状态码是"货柜当前到哪一步"，动作码是"人能一键点的事"，标记码是"这柜带不带某特征"。别混。
@@ -74,7 +118,7 @@
 - 码只增不减；删码须评审并处理历史数据。
 - 新增/改名 = 评审；语义不可与现有码重复或含义重叠。
 - 只有**实际**(isEsti=N)事件可 推进/密封(R3)；**预计**只预告、不密封。
-- 每个码必须有：中文名、一句话定义、角色、归属(L 节点或段)、来源示例、证实度；缺定义不得入表。
+- 每个码必须有：中文名、一句话定义、角色、归属(L 节点或段)、来源示例、证实度和 `completionEligibleNodeCodes`；缺定义不得入表。
 - 源码 → 本表 不得"裸码一一对应"：歧义须复合键消歧后再指到码（EXTERNAL_EVENT_MAPPING §3）。
 - 码全集**不得臆造**；未由 规范/现网/负责人 证实的一律 `C`，P2-12 对拍后转 `S/R`。
 
@@ -113,11 +157,13 @@
 | 源码示例 | 映射表(EXTERNAL_EVENT_MAPPING) 引用                | DLPT / DEPA·TD |
 | 证实度   | `.provenance`(S/R/O/C)                             | S              |
 | isEsti   | 事件信封字段，不入本表                             | —              |
+| 完成资格 | `.completion_eligible_node_codes`（契约为数组；物理实现可规范化关联表） | `[origin_departure]` |
 
 ## ⑧ 待对拍（P2-12）与变更
 
 - C 级行：见上表 `C`；对拍真实样本后转 S/R。
 - v0.1→v0.2：仅格式重组（新规则示范），码集与定义未变；后续变更在此追加。
+- v0.2→v0.3：新增 `cargo_ready`、`rail_handover`、`container_customs_completed`，批准 `completionEligibleNodeCodes` 属性；负责人确认海运采用到港完成、送仓采用双事件加差异证据守卫。
 
 ## ⑨ 沿链去向（可视化 → UI）
 
