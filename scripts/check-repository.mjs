@@ -239,6 +239,20 @@ export function findAmbiguousContractPhaseReferences(records) {
   return errors;
 }
 
+export function findMisleadingContractPackageScripts(packageManifest) {
+  const contractValidator = "node ../../scripts/validate-contract-schemas.mjs";
+  const standardCommands = ["lint", "typecheck", "test", "build"];
+
+  return standardCommands
+    .filter(
+      (command) => packageManifest.scripts?.[command] === contractValidator,
+    )
+    .map(
+      (command) =>
+        `packages/contracts/package.json: '${command}' must not alias contract:check; leave it unconfigured until the capability exists`,
+    );
+}
+
 function walkFiles(directory, predicate) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -317,6 +331,14 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
           ),
           source: readFileSync(path, "utf8"),
         })),
+      ),
+      ...findMisleadingContractPackageScripts(
+        JSON.parse(
+          readFileSync(
+            resolve(repositoryRoot, "packages/contracts/package.json"),
+            "utf8",
+          ),
+        ),
       ),
     );
   }

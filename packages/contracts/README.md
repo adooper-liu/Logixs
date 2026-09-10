@@ -5,7 +5,9 @@
 权威入口：
 
 - `schemas/v1/index.json`
-- 验证命令：`pnpm contract:check`
+- 包级验证命令：`pnpm --filter @logix/contracts contract:check`
+
+包级 `lint`、`typecheck`、`test` 和 `build` 当前未配置；G7 生成对应技术载体并建立真实检查前，不使用 Schema 校验器冒充这些能力。根级 `pnpm validate` 会通过独立的 `pnpm contract:check` 执行当前 Schema 校验。
 
 TypeScript、OpenAPI、Python 和数据库显式映射属于任务阶段 G7，当前目录不存在生成产物。
 

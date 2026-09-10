@@ -8,6 +8,7 @@ import {
   findAmbiguousContractPhaseReferences,
   findBrokenMarkdownLinks,
   findForbiddenTrackedPaths,
+  findMisleadingContractPackageScripts,
   findUiThemeBoundaryViolations,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
@@ -134,6 +135,30 @@ test("qualifies explicit project phases and still catches lowercase tokens", () 
     [
       "ambiguous.md:1: ambiguous phase 'p6'; use 'G6' for global-contract task stages or qualify it as a project phase",
     ],
+  );
+});
+
+test("rejects contract schema validation aliases for unimplemented package capabilities", () => {
+  assert.deepEqual(
+    findMisleadingContractPackageScripts({
+      scripts: {
+        "contract:check": "node ../../scripts/validate-contract-schemas.mjs",
+        lint: "node ../../scripts/validate-contract-schemas.mjs",
+        typecheck: "tsc --noEmit",
+        test: "node --test",
+      },
+    }),
+    [
+      "packages/contracts/package.json: 'lint' must not alias contract:check; leave it unconfigured until the capability exists",
+    ],
+  );
+  assert.deepEqual(
+    findMisleadingContractPackageScripts({
+      scripts: {
+        "contract:check": "node ../../scripts/validate-contract-schemas.mjs",
+      },
+    }),
+    [],
   );
 });
 

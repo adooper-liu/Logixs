@@ -1,7 +1,7 @@
 ---
 status: coding # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/global-contract-convergence-v1
-verification: P6.1 编号与契约一致性复核、tmp 索引清理及全仓格式修复完成；pnpm validate 已通过（61 项仓库/Web 测试，E2E 51 通过/6 按配置跳过）
+verification: P6.1 编号与契约一致性复核、tmp 索引清理、格式与命令契约修复完成；pnpm validate 已通过（63 项仓库/Web 测试，E2E 51 通过/6 按配置跳过）；contracts 包 lint/typecheck/test/build 待 G7 配置
 ---
 
 # 任务：全局公共契约收敛 V1
@@ -129,3 +129,4 @@ verification: P6.1 编号与契约一致性复核、tmp 索引清理及全仓格
 | 2026-09-10 | coding | 刘志高 / Codex | —      | P6.1 签署：生命周期状态机 `GC-002` 与时间线 `GC-004` 完成业务签署和技术边界复核，均由 `D2` 升至 `D3`；明确事件归属与跨节点事实应用目标分离，未将局部 Schema、实现、迁移或验证越级标记完成。                                                                                     |
 | 2026-09-10 | coding | Codex          | —      | P6.1 验证：docs-only、contract、diff check、受影响文件格式、lint、typecheck、test 和 build 通过；Web 54 项测试通过，E2E 51 项通过/6 项按配置跳过。全量 validate 在 32 个本次未修改文件的既有格式问题处停止，后续门禁已分别补跑通过。                                            |
 | 2026-09-10 | coding | Codex          | —      | 评审闭环：GC-001/GC-003 的局部阶段编号统一为 G6/G7，所有公共节点应用键统一为 `targetNodeInstanceId`，并新增裸 `P6/P7` 回归门禁；Prettier 修复 32 个既有失败文件，10 个 `tmp/` PNG 删除已暂存。完整 `pnpm validate` 通过：61 项仓库/Web 测试通过，E2E 51 项通过/6 项按配置跳过。 |
+| 2026-09-10 | coding | Codex          | —      | 命令契约纠偏：contracts 包只保留 `contract:check`，四个标准脚本明确为 G7 前未配置，并新增防别名门禁。完整 validate 通过：仓库/Web 63 项，E2E 51/6；Turbo 四项仅执行 Web 真实任务。                                                                                              |
