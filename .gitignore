@@ -5,6 +5,7 @@ coverage/
 .turbo/
 playwright-report/
 test-results/
+tmp/
 *.log
 
 # Workspace-only disposable design references; never project source.
