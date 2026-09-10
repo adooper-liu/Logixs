@@ -1,1 +1,16 @@
-{"scenario":"correction","description":"A correction appends a new fact and references the original.","inputs":[{"eventId":"22222222-2222-4222-8222-222222222222","validity":"effective"},{"eventId":"33333333-3333-4333-8333-333333333333","relationType":"corrects","relatedEventId":"22222222-2222-4222-8222-222222222222"}],"expected":{"outcome":"corrected"}}
+{
+  "scenario": "correction",
+  "description": "A correction appends a new fact and references the original.",
+  "inputs": [
+    {
+      "eventId": "22222222-2222-4222-8222-222222222222",
+      "validity": "effective"
+    },
+    {
+      "eventId": "33333333-3333-4333-8333-333333333333",
+      "relationType": "corrects",
+      "relatedEventId": "22222222-2222-4222-8222-222222222222"
+    }
+  ],
+  "expected": { "outcome": "corrected" }
+}

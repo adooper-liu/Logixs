@@ -8,18 +8,18 @@
 
 ### A. 核心业务上下文
 
-| 上下文 | 聚合根/核心对象 | 业务所有权 |
-| ------ | ------------- | ---------- |
-| Shipment Registry | ContainerRecord | 一柜一档身份、订单/提单关联 |
-| Lifecycle Control | FlowInstance、CanonicalEvent | 14节点、流程状态机和实际事件推进 |
-| Work Execution | NodeTask、WorkOrder、ClientOperation | 工序任务、工单、动作与聚合政策 |
-| Booking & Origin | Booking/OriginOperation（后续切片） | 订舱至起运前专业事实 |
-| Ocean & Port Visibility | OceanLeg、PortCall | 开船、在途、到港和港口事实 |
-| Customs Compliance | CustomsCase | 申报、换单、缴税、查验与放行 |
-| Inland Fulfillment | InlandMove | 提柜、派送、卸柜、验箱与还箱 |
-| Charges Settlement | ChargeCase | 三类超期费用、修箱费、账单和对账 |
-| Document Records | DocumentRecord | 单证、附件、EIR、证据版本与归档 |
-| Performance Improvement | ImprovementCase | KPI、SLA、绩效、复盘和改善 |
+| 上下文                  | 聚合根/核心对象                      | 业务所有权                       |
+| ----------------------- | ------------------------------------ | -------------------------------- |
+| Shipment Registry       | ContainerRecord                      | 一柜一档身份、订单/提单关联      |
+| Lifecycle Control       | FlowInstance、CanonicalEvent         | 14节点、流程状态机和实际事件推进 |
+| Work Execution          | NodeTask、WorkOrder、ClientOperation | 工序任务、工单、动作与聚合政策   |
+| Booking & Origin        | Booking/OriginOperation（后续切片）  | 订舱至起运前专业事实             |
+| Ocean & Port Visibility | OceanLeg、PortCall                   | 开船、在途、到港和港口事实       |
+| Customs Compliance      | CustomsCase                          | 申报、换单、缴税、查验与放行     |
+| Inland Fulfillment      | InlandMove                           | 提柜、派送、卸柜、验箱与还箱     |
+| Charges Settlement      | ChargeCase                           | 三类超期费用、修箱费、账单和对账 |
+| Document Records        | DocumentRecord                       | 单证、附件、EIR、证据版本与归档  |
+| Performance Improvement | ImprovementCase                      | KPI、SLA、绩效、复盘和改善       |
 
 ### A1. 支撑上下文
 
@@ -27,15 +27,16 @@ Identity、Master Data、Integration Import、Exception Management、Notificatio
 
 ### A2. 跨上下文执行链
 
-~~~text
+```text
 ContainerRecord -> FlowInstance -> NodeTask -> WorkOrder -> ClientOperation
 工单结果 -> 工序任务聚合 -> 规范业务事件 -> 主流程合法转换
-~~~
+```
 
 - 每个上下文拥有自己的数据写边界，禁止跨上下文直写表或Repository。
 - 同步写链使用Application层同库事务；跨事务使用Outbox和幂等消费者。
 - 外部权威事件可以先推进主流程，再创建补录、关闭或对账工单。
 - 管理投影只消费事实引用，不反向改写业务底数。
+
 ### B. ContainerRecord 组成（Shipment Registry 内）
 
 | 部分         | 内容                                                                    | 备注              |

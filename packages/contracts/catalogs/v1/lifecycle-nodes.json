@@ -1,16 +1,52 @@
 [
-  {"sequence":1,"nodeCode":"cargo_ready","applicability":"required"},
-  {"sequence":2,"nodeCode":"container_stuffing","applicability":"required"},
-  {"sequence":3,"nodeCode":"shipment_dispatch","applicability":"required"},
-  {"sequence":4,"nodeCode":"origin_departure","applicability":"required"},
-  {"sequence":5,"nodeCode":"ocean_transit","applicability":"required"},
-  {"sequence":6,"nodeCode":"transshipment","applicability":"optional"},
-  {"sequence":7,"nodeCode":"customs_clearance","applicability":"required"},
-  {"sequence":8,"nodeCode":"destination_arrival","applicability":"required"},
-  {"sequence":9,"nodeCode":"rail_transfer","applicability":"optional"},
-  {"sequence":10,"nodeCode":"container_pickup","applicability":"required"},
-  {"sequence":11,"nodeCode":"warehouse_delivery","applicability":"required"},
-  {"sequence":12,"nodeCode":"container_unloading","applicability":"required"},
-  {"sequence":13,"nodeCode":"container_unstuffing","applicability":"required"},
-  {"sequence":14,"nodeCode":"empty_return","applicability":"required"}
+  { "sequence": 1, "nodeCode": "cargo_ready", "applicability": "required" },
+  {
+    "sequence": 2,
+    "nodeCode": "container_stuffing",
+    "applicability": "required"
+  },
+  {
+    "sequence": 3,
+    "nodeCode": "shipment_dispatch",
+    "applicability": "required"
+  },
+  {
+    "sequence": 4,
+    "nodeCode": "origin_departure",
+    "applicability": "required"
+  },
+  { "sequence": 5, "nodeCode": "ocean_transit", "applicability": "required" },
+  { "sequence": 6, "nodeCode": "transshipment", "applicability": "optional" },
+  {
+    "sequence": 7,
+    "nodeCode": "customs_clearance",
+    "applicability": "required"
+  },
+  {
+    "sequence": 8,
+    "nodeCode": "destination_arrival",
+    "applicability": "required"
+  },
+  { "sequence": 9, "nodeCode": "rail_transfer", "applicability": "optional" },
+  {
+    "sequence": 10,
+    "nodeCode": "container_pickup",
+    "applicability": "required"
+  },
+  {
+    "sequence": 11,
+    "nodeCode": "warehouse_delivery",
+    "applicability": "required"
+  },
+  {
+    "sequence": 12,
+    "nodeCode": "container_unloading",
+    "applicability": "required"
+  },
+  {
+    "sequence": 13,
+    "nodeCode": "container_unstuffing",
+    "applicability": "required"
+  },
+  { "sequence": 14, "nodeCode": "empty_return", "applicability": "required" }
 ]

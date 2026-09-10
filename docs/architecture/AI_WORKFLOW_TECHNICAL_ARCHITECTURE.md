@@ -126,7 +126,7 @@ TypeScript 包由根 `pnpm-lock.yaml` 锁定。Python 项目使用各自明确�
 
 ### 6.1 模块划分
 
-~~~text
+```text
 apps/api/src/modules/
 |-- shipment-registry/           # 一柜一档身份与关联
 |-- lifecycle-control/           # 14节点主流程与状态机
@@ -146,7 +146,7 @@ apps/api/src/modules/
 |-- workflow/                   # Temporal启动、查询与取消
 |-- ai-governance/              # AI权限、策略和配额
 +-- audit/                       # 操作审计
-~~~
+```
 
 模块所有权、公开端口、调用方向和拆分禁令以 [ADR-010](./decisions/ADR-010-bounded-context-modules.md) 与 [MODULE_DEPENDENCIES](./MODULE_DEPENDENCIES.md) 为准。模块数量不代表部署单元数量，当前仍为模块化单体。
 

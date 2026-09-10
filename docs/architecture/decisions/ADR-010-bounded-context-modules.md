@@ -12,18 +12,18 @@
 
 ### 核心业务模块
 
-| 模块 | 拥有的数据与规则 | 不负责 |
-| ---- | -------------- | ------ |
-| shipment-registry | ContainerRecord、流转身份、订单/提单关联 | 流程转换、工单执行 |
-| lifecycle-control | FlowInstance、14节点、流程状态机、实际事件推进 | 人员工单、专业作业规则 |
-| work-execution | NodeTask、WorkOrder、动作授权、工单聚合与完成政策 | 直接改流程状态 |
-| booking-origin | 订舱、放箱、提空箱、装柜与起运前协同 | 海运跟踪、进口清关 |
-| ocean-port-visibility | 开船、在途、到港、靠泊、卸船、可提事实 | 清关决定、拖卡执行 |
-| customs-compliance | 出口申报、换单、进口清关、缴税与主体放行 | 费用结算、流程状态机 |
-| inland-fulfillment | 提柜、派送、卸柜、卸空、验箱、还箱 | 港口和海关事实 |
-| charges-settlement | Demurrage、Detention、Storage、修箱费、账单与对账 | 以费用状态推进主流程 |
-| document-records | 单证、附件、EIR、证据版本、归档和保留策略 | 决定业务状态 |
-| performance-improvement | KPI、SLA、供应商绩效、复盘与改善措施 | 保存或改写业务底数 |
+| 模块                    | 拥有的数据与规则                                  | 不负责                 |
+| ----------------------- | ------------------------------------------------- | ---------------------- |
+| shipment-registry       | ContainerRecord、流转身份、订单/提单关联          | 流程转换、工单执行     |
+| lifecycle-control       | FlowInstance、14节点、流程状态机、实际事件推进    | 人员工单、专业作业规则 |
+| work-execution          | NodeTask、WorkOrder、动作授权、工单聚合与完成政策 | 直接改流程状态         |
+| booking-origin          | 订舱、放箱、提空箱、装柜与起运前协同              | 海运跟踪、进口清关     |
+| ocean-port-visibility   | 开船、在途、到港、靠泊、卸船、可提事实            | 清关决定、拖卡执行     |
+| customs-compliance      | 出口申报、换单、进口清关、缴税与主体放行          | 费用结算、流程状态机   |
+| inland-fulfillment      | 提柜、派送、卸柜、卸空、验箱、还箱                | 港口和海关事实         |
+| charges-settlement      | Demurrage、Detention、Storage、修箱费、账单与对账 | 以费用状态推进主流程   |
+| document-records        | 单证、附件、EIR、证据版本、归档和保留策略         | 决定业务状态           |
+| performance-improvement | KPI、SLA、供应商绩效、复盘与改善措施              | 保存或改写业务底数     |
 
 ### 支撑模块
 
@@ -33,12 +33,12 @@ integration-import、exception-management、identity、master-data、notificatio
 
 ## 协作规则
 
-~~~text
+```text
 shipment-registry -> lifecycle-control -> work-execution
                                         -> 专业业务模块提供工单定义/规则
 WorkOrder结果 -> NodeTask聚合 -> 规范事件 -> lifecycle-control
 业务事实/事件 -> 费用/单证/异常/绩效投影或后续动作
-~~~
+```
 
 - 模块只通过公开Application Port、共享契约或领域事件协作，禁止引用其他模块内部路径或Repository。
 - 每个模块拥有自己的表和显式映射；可共享PostgreSQL实例，但禁止跨模块直接写表。

@@ -6,62 +6,151 @@
   "additionalProperties": false,
   "required": ["success", "error", "traceId", "timestamp"],
   "properties": {
-    "success": {"const": false},
+    "success": { "const": false },
     "error": {
       "type": "object",
       "additionalProperties": false,
       "required": ["code", "message", "category", "retryable", "details"],
       "properties": {
-        "code": {"$ref": "#/$defs/PublicErrorCode"},
-        "message": {"type": "string", "minLength": 1, "maxLength": 500},
-        "category": {"$ref": "common.schema.json#/$defs/ErrorCategory"},
-        "retryable": {"type": "boolean"},
-        "details": {"type": "array", "items": {"$ref": "#/$defs/ErrorDetail"}},
-        "conflict": {"$ref": "#/$defs/ConflictDescriptor"}
+        "code": { "$ref": "#/$defs/PublicErrorCode" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "category": { "$ref": "common.schema.json#/$defs/ErrorCategory" },
+        "retryable": { "type": "boolean" },
+        "details": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ErrorDetail" }
+        },
+        "conflict": { "$ref": "#/$defs/ConflictDescriptor" }
       }
     },
-    "traceId": {"type": "string", "minLength": 1, "maxLength": 128},
-    "clientOperationId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "timestamp": {"$ref": "common.schema.json#/$defs/DateTime"}
+    "traceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "clientOperationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "timestamp": { "$ref": "common.schema.json#/$defs/DateTime" }
   },
   "$defs": {
     "PublicErrorCode": {
       "type": "string",
       "enum": [
-        "VALIDATION_REQUIRED", "VALIDATION_FORMAT", "VALIDATION_RANGE", "VALIDATION_FIELD_CONFLICT",
-        "AUTHENTICATION_REQUIRED", "AUTHENTICATION_EXPIRED", "AUTHORIZATION_FORBIDDEN", "AUTHORIZATION_SCOPE_DENIED",
-        "RESOURCE_NOT_FOUND", "RATE_LIMIT_EXCEEDED", "SERVICE_UNAVAILABLE", "INTERNAL_ERROR",
-        "IDEMPOTENCY_KEY_CONFLICT", "VERSION_CONFLICT", "HISTORY_SEALED", "MANUAL_LOCK_CONFLICT", "REVIEW_REQUIRED",
-        "CURSOR_INVALID", "CURSOR_EXPIRED", "PROJECTION_VERSION_CONFLICT", "PROJECTION_UNAVAILABLE",
-        "ACTION_UNKNOWN", "ACTION_TARGET_MISMATCH", "ACTION_CONFIRMATION_REQUIRED", "ACTION_REVIEW_REQUIRED",
-        "BUSINESS_STATE_VIOLATION", "BUSINESS_PRECONDITION_FAILED", "EVIDENCE_REQUIRED", "SOURCE_NOT_AUTHORIZED", "UNKNOWN_EXTERNAL_MAPPING",
-        "LIFECYCLE_FLOW_NOT_FOUND", "LIFECYCLE_FLOW_ALREADY_ACTIVE", "LIFECYCLE_DEFINITION_VERSION_UNSUPPORTED",
-        "LIFECYCLE_NODE_NOT_CURRENT", "LIFECYCLE_NODE_NOT_OPTIONAL", "LIFECYCLE_NODE_APPLICABILITY_CONFLICT",
-        "LIFECYCLE_EVENT_TYPE_UNKNOWN", "LIFECYCLE_EVENT_NOT_STATE_EVIDENCE", "LIFECYCLE_EVENT_PENDING_PREDECESSOR",
-        "LIFECYCLE_SOURCE_NOT_AUTHORIZED", "LIFECYCLE_EVIDENCE_REQUIRED", "LIFECYCLE_GUARD_NOT_SATISFIED",
-        "LIFECYCLE_ACTIVE_BLOCK_EXISTS", "LIFECYCLE_TIME_ORDER_CONFLICT", "LIFECYCLE_HISTORY_SEALED",
-        "LIFECYCLE_IDEMPOTENCY_CONFLICT", "LIFECYCLE_VERSION_CONFLICT", "LIFECYCLE_REENTRY_NOT_ALLOWED",
-        "LIFECYCLE_MANUAL_REVIEW_REQUIRED", "TIMELINE_EVENT_INVALID", "TIMELINE_TIMEZONE_UNKNOWN",
-        "TIMELINE_EVENT_DUPLICATE_CONFLICT", "TIMELINE_EVENT_RELATION_INVALID", "TIMELINE_PROJECTION_VERSION_CONFLICT",
-        "TIMELINE_MANUAL_REVIEW_REQUIRED", "CUSTOMS_CASE_NOT_FOUND", "CUSTOMS_WORK_ORDER_NOT_FOUND",
-        "CUSTOMS_EXTERNAL_PAYLOAD_INVALID", "CUSTOMS_REQUIRED_CASE_MISSING", "CUSTOMS_RELEASE_EVIDENCE_MISSING",
-        "CUSTOMS_EVIDENCE_SCOPE_MISMATCH", "CUSTOMS_WORK_ORDER_EVIDENCE_MISMATCH", "CUSTOMS_EXTERNAL_MAPPING_UNKNOWN",
-        "CUSTOMS_INVALID_TRANSITION", "CUSTOMS_ACTIVE_BLOCK_EXISTS", "CUSTOMS_IDEMPOTENCY_CONFLICT",
-        "CUSTOMS_VERSION_CONFLICT", "CUSTOMS_MANUAL_REVIEW_REQUIRED", "DEPENDENCY_UNAVAILABLE", "DEPENDENCY_TIMEOUT",
-        "DEPENDENCY_RESPONSE_INVALID", "SYNC_MESSAGE_CONFLICT", "SYNC_DEAD_LETTERED", "SYNC_COMMIT_FAILED"
+        "VALIDATION_REQUIRED",
+        "VALIDATION_FORMAT",
+        "VALIDATION_RANGE",
+        "VALIDATION_FIELD_CONFLICT",
+        "AUTHENTICATION_REQUIRED",
+        "AUTHENTICATION_EXPIRED",
+        "AUTHORIZATION_FORBIDDEN",
+        "AUTHORIZATION_SCOPE_DENIED",
+        "RESOURCE_NOT_FOUND",
+        "RATE_LIMIT_EXCEEDED",
+        "SERVICE_UNAVAILABLE",
+        "INTERNAL_ERROR",
+        "IDEMPOTENCY_KEY_CONFLICT",
+        "VERSION_CONFLICT",
+        "HISTORY_SEALED",
+        "MANUAL_LOCK_CONFLICT",
+        "REVIEW_REQUIRED",
+        "CURSOR_INVALID",
+        "CURSOR_EXPIRED",
+        "PROJECTION_VERSION_CONFLICT",
+        "PROJECTION_UNAVAILABLE",
+        "ACTION_UNKNOWN",
+        "ACTION_TARGET_MISMATCH",
+        "ACTION_CONFIRMATION_REQUIRED",
+        "ACTION_REVIEW_REQUIRED",
+        "BUSINESS_STATE_VIOLATION",
+        "BUSINESS_PRECONDITION_FAILED",
+        "EVIDENCE_REQUIRED",
+        "SOURCE_NOT_AUTHORIZED",
+        "UNKNOWN_EXTERNAL_MAPPING",
+        "LIFECYCLE_FLOW_NOT_FOUND",
+        "LIFECYCLE_FLOW_ALREADY_ACTIVE",
+        "LIFECYCLE_DEFINITION_VERSION_UNSUPPORTED",
+        "LIFECYCLE_NODE_NOT_CURRENT",
+        "LIFECYCLE_NODE_NOT_OPTIONAL",
+        "LIFECYCLE_NODE_APPLICABILITY_CONFLICT",
+        "LIFECYCLE_EVENT_TYPE_UNKNOWN",
+        "LIFECYCLE_EVENT_NOT_STATE_EVIDENCE",
+        "LIFECYCLE_EVENT_PENDING_PREDECESSOR",
+        "LIFECYCLE_SOURCE_NOT_AUTHORIZED",
+        "LIFECYCLE_EVIDENCE_REQUIRED",
+        "LIFECYCLE_GUARD_NOT_SATISFIED",
+        "LIFECYCLE_ACTIVE_BLOCK_EXISTS",
+        "LIFECYCLE_TIME_ORDER_CONFLICT",
+        "LIFECYCLE_HISTORY_SEALED",
+        "LIFECYCLE_IDEMPOTENCY_CONFLICT",
+        "LIFECYCLE_VERSION_CONFLICT",
+        "LIFECYCLE_REENTRY_NOT_ALLOWED",
+        "LIFECYCLE_MANUAL_REVIEW_REQUIRED",
+        "TIMELINE_EVENT_INVALID",
+        "TIMELINE_TIMEZONE_UNKNOWN",
+        "TIMELINE_EVENT_DUPLICATE_CONFLICT",
+        "TIMELINE_EVENT_RELATION_INVALID",
+        "TIMELINE_PROJECTION_VERSION_CONFLICT",
+        "TIMELINE_MANUAL_REVIEW_REQUIRED",
+        "CUSTOMS_CASE_NOT_FOUND",
+        "CUSTOMS_WORK_ORDER_NOT_FOUND",
+        "CUSTOMS_EXTERNAL_PAYLOAD_INVALID",
+        "CUSTOMS_REQUIRED_CASE_MISSING",
+        "CUSTOMS_RELEASE_EVIDENCE_MISSING",
+        "CUSTOMS_EVIDENCE_SCOPE_MISMATCH",
+        "CUSTOMS_WORK_ORDER_EVIDENCE_MISMATCH",
+        "CUSTOMS_EXTERNAL_MAPPING_UNKNOWN",
+        "CUSTOMS_INVALID_TRANSITION",
+        "CUSTOMS_ACTIVE_BLOCK_EXISTS",
+        "CUSTOMS_IDEMPOTENCY_CONFLICT",
+        "CUSTOMS_VERSION_CONFLICT",
+        "CUSTOMS_MANUAL_REVIEW_REQUIRED",
+        "DEPENDENCY_UNAVAILABLE",
+        "DEPENDENCY_TIMEOUT",
+        "DEPENDENCY_RESPONSE_INVALID",
+        "SYNC_MESSAGE_CONFLICT",
+        "SYNC_DEAD_LETTERED",
+        "SYNC_COMMIT_FAILED"
       ]
     },
     "ErrorDetail": {
       "type": "object",
       "additionalProperties": false,
       "required": ["reasonCode", "message"],
-      "properties": {"field": {"type": "string", "pattern": "^(/([^/~]|~[01])*)*$"}, "reasonCode": {"type": "string", "minLength": 1, "maxLength": 100}, "message": {"type": "string", "minLength": 1, "maxLength": 500}, "rejectedValueSummary": {"type": "string", "maxLength": 200}}
+      "properties": {
+        "field": { "type": "string", "pattern": "^(/([^/~]|~[01])*)*$" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "rejectedValueSummary": { "type": "string", "maxLength": 200 }
+      }
     },
     "ConflictDescriptor": {
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "resolution"],
-      "properties": {"type": {"enum": ["idempotency", "optimistic_concurrency", "sealed_history", "manual_lock", "manual_review", "snapshot_expired", "projection_version", "message_payload"]}, "expectedVersion": {"type": "integer", "minimum": 0}, "actualVersion": {"type": "integer", "minimum": 0}, "existingResourceRef": {"$ref": "common.schema.json#/$defs/EntityRef"}, "resolution": {"enum": ["refresh", "use_existing", "submit_new_key", "request_review", "correct_source", "wait_and_retry"]}}
+      "properties": {
+        "type": {
+          "enum": [
+            "idempotency",
+            "optimistic_concurrency",
+            "sealed_history",
+            "manual_lock",
+            "manual_review",
+            "snapshot_expired",
+            "projection_version",
+            "message_payload"
+          ]
+        },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "actualVersion": { "type": "integer", "minimum": 0 },
+        "existingResourceRef": {
+          "$ref": "common.schema.json#/$defs/EntityRef"
+        },
+        "resolution": {
+          "enum": [
+            "refresh",
+            "use_existing",
+            "submit_new_key",
+            "request_review",
+            "correct_source",
+            "wait_and_retry"
+          ]
+        }
+      }
     }
   }
 }

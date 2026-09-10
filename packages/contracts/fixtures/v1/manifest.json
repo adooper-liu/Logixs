@@ -1,1 +1,14 @@
-{"fixtureVersion":"1.0.0","schema":"../../schemas/v1/scenario-fixture.schema.json","fixtures":["success.json","rejection.json","boundary.json","duplicate.json","out-of-order.json","correction.json","revocation.json","conflict.json"]}
+{
+  "fixtureVersion": "1.0.0",
+  "schema": "../../schemas/v1/scenario-fixture.schema.json",
+  "fixtures": [
+    "success.json",
+    "rejection.json",
+    "boundary.json",
+    "duplicate.json",
+    "out-of-order.json",
+    "correction.json",
+    "revocation.json",
+    "conflict.json"
+  ]
+}

@@ -1,1 +1,16 @@
-{"scenario":"revocation","description":"A revocation remains auditable and does not delete history.","inputs":[{"eventId":"44444444-4444-4444-8444-444444444444","validity":"effective"},{"eventId":"55555555-5555-4555-8555-555555555555","relationType":"revokes","relatedEventId":"44444444-4444-4444-8444-444444444444"}],"expected":{"outcome":"revoked"}}
+{
+  "scenario": "revocation",
+  "description": "A revocation remains auditable and does not delete history.",
+  "inputs": [
+    {
+      "eventId": "44444444-4444-4444-8444-444444444444",
+      "validity": "effective"
+    },
+    {
+      "eventId": "55555555-5555-4555-8555-555555555555",
+      "relationType": "revokes",
+      "relatedEventId": "44444444-4444-4444-8444-444444444444"
+    }
+  ],
+  "expected": { "outcome": "revoked" }
+}
