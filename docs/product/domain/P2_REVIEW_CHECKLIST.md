@@ -27,8 +27,8 @@
 | D14 | 状态推进动作（confirm\_\*）默认二次确认/可撤销窗口（防 R3 密封误点）——负责人采纳 2026-09-04                                                                        | ACTION_CATALOG / 评审 A3                                           |
 | D15 | 当前实施从备货单转出运形成的**已出运货柜列表**起步；列表是后续节点数据起点；当前文件导入、后续直连，未来前端向计划→采购→备货→订舱→出运延伸                         | PRINCIPLES §1.5 / SHIPMENT_FLOW_OVERVIEW A0                        |
 | D16 | 七组 SOP 是节点设计完整性框架，不机械生成七张表/对象/页签；运行时只实例化真实业务对象，界面按角色与场景裁剪，员工只见最小操作闭环                                  | PRINCIPLES §1.6 / NODE_PDCA / CUSTOMS_OPERATION_CHAINS             |
-| D17 | 提交至少区分请求已接收、业务已接受、业务事实已落账；同类语义只在权限/流程、责任、恢复、用户动作、SLA、统计或审计结论确有差异时继续细分，不把内部步骤扩散成业务状态 | PRINCIPLES §1.1 / CONTRACTS_DRAFT §3.1.1                           |
-| D18 | PDCA 是因果闭环而非固定收数顺序；支持状态事件先到、任务后补、乱序/迟到、撤船/甩柜/查验/返工、更正/撤回、重放与对账                                                 | PRINCIPLES §1.7 / CONTRACTS_DRAFT §2.2                             |
+| D17 | 提交至少区分请求已接收、业务已接受、业务事实已落账；同类语义只在权限/流程、责任、恢复、用户动作、SLA、统计或审计结论确有差异时继续细分，不把内部步骤扩散成业务状态 | PRINCIPLES §1.1 / SYNC_RELIABILITY_CONTRACT_V1                     |
+| D18 | PDCA 是因果闭环而非固定收数顺序；支持状态事件先到、任务后补、乱序/迟到、撤船/甩柜/查验/返工、更正/撤回、重放与对账                                                 | PRINCIPLES §1.7 / TASK_WORK_ORDER_CONTRACT_V1 / 时间线契约 V1      |
 | D19 | 人工复核按风险与冲突触发；同值重复、幂等重放和规则可确定的低风险动作不统一审批                                                                                     | PRINCIPLES §1.7 / PRECHECK_RULES                                   |
 | D20 | Demurrage/Detention/Storage 按合同分别定义责任段、起止事件、免费期、日历、阶梯、币种与账单权威；预计/应计/账单/审核/支付不得混同                                   | PRINCIPLES §2 / FEE_DEMURRAGE                                      |
 | D21 | `O/S/R/C/Decision` 严格分级；原表单是 R 级证据和迁移素材，不是目标表结构/UI 菜单；统一模型按角色投影                                                               | PRINCIPLES §1.8 / CUSTOMS_OPERATION_CHAINS                         |

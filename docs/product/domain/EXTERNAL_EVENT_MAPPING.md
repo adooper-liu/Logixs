@@ -3,7 +3,7 @@
 > 状态：**候选（机制设计）** · 2026-09-05 · 负责人：刘志高。
 > 需求：**事件代号与飞驼等三方 API 代码对齐**，建立一套**适用于任意三方 API 对接**的映射机制。
 > 依据：D11–D13（固定内部码+映射字典）、[INDUSTRY_STANDARDS_ALIGN](./INDUSTRY_STANDARDS_ALIGN.md) W2/W11（上下文复合键、歧义消歧）、
-> [TIMELINE_MAPPING](./TIMELINE_MAPPING.md)（统一事件信封）、[CONTRACTS_DRAFT](./CONTRACTS_DRAFT.md)、[INTEGRATION_REDUNDANCY](./INTEGRATION_REDUNDANCY.md)（接入归一）。
+> [TIMELINE_MAPPING](./TIMELINE_MAPPING.md)（统一事件信封）、[EVENT_CODES](./EVENT_CODES.md)、[时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md)、[INTEGRATION_REDUNDANCY](./INTEGRATION_REDUNDANCY.md)（接入归一）。
 
 ## 1. 设计原则
 
@@ -23,7 +23,7 @@
 映射查找(复合键: provider + rawCode + context[category/type/direction/party/laden/placeType…])
   │  命中 → 内部语义事件码 + 属性(isEsti/place/分类) ; 未命中 → 待处理
   ▼
-内部规范事件信封（字段单一权威：CONTRACTS_DRAFT §2.2）
+内部规范事件信封（字段权威：[时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md) §4）
   ▼
 分类落点: L 节点/子里程碑 / 状态证据(推进·密封) / 异常(五主体扣留放行·甩柜) / 单证·费用 …
 ```
@@ -41,7 +41,7 @@
 
 ## 4. 映射条目结构（草案）
 
-`external_event_mapping { provider, provider_version, raw_code, raw_desc_cn/en, context(jsonb), semantic_code, is_estimated_default?, target(node|milestone|state_evidence|exception|doc|fee), maturity(confirmed|candidate), since, ref(doc/sample id), remarks }`
+`external_event_mapping { provider, provider_version, raw_code, raw_desc_cn/en, context(jsonb), semantic_code, is_estimated_default?, target(node|milestone|evidence|exception|doc|fee), maturity(confirmed|candidate), since, ref(doc/sample id), remarks }`
 
 示例（示意）：
 
@@ -79,4 +79,4 @@
 
 ## 8. 关联与维护
 
-- 上链：D11–D13 / [INDUSTRY_STANDARDS_ALIGN](./INDUSTRY_STANDARDS_ALIGN.md) W2/W11 / [TIMELINE_MAPPING](./TIMELINE_MAPPING.md) / [CONTRACTS_DRAFT](./CONTRACTS_DRAFT.md)。
+- 上链：D11–D13 / [INDUSTRY_STANDARDS_ALIGN](./INDUSTRY_STANDARDS_ALIGN.md) W2/W11 / [TIMELINE_MAPPING](./TIMELINE_MAPPING.md) / [EVENT_CODES](./EVENT_CODES.md) / [时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md)。

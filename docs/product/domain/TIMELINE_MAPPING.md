@@ -2,7 +2,7 @@
 
 > 状态：**候选 v0.2（关系映射）** · 2026-09-06 · 源 `D:/Github/logix`（container.service.ts + StatusEventsTimeline/KeyDatesTimeline）。
 > 用途：把现网"时间线"定义接到 TO-BE 状态机/生命周期，避免"事件流"与"当前状态"混用。
-> 关联：[CONTAINER_STATUS_MODEL](./CONTAINER_STATUS_MODEL.md)、[CONTAINER_LIFECYCLE](./CONTAINER_LIFECYCLE.md)、[LIFECYCLE_CONSISTENCY](./LIFECYCLE_CONSISTENCY.md)、[UX_CONTAINER_WORKBENCH](../UX_CONTAINER_WORKBENCH.md)、[CONTRACTS_DRAFT](./CONTRACTS_DRAFT.md)。
+> 关联：[CONTAINER_STATUS_MODEL](./CONTAINER_STATUS_MODEL.md)、[CONTAINER_LIFECYCLE](./CONTAINER_LIFECYCLE.md)、[LIFECYCLE_CONSISTENCY](./LIFECYCLE_CONSISTENCY.md)、[UX_CONTAINER_WORKBENCH](../UX_CONTAINER_WORKBENCH.md)、[时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md)。
 
 ## 1. 现网"时间线"定义（AS-IS 摘要）
 
@@ -61,7 +61,7 @@
 
 ## 4. 需转正的差异（AS-IS → TO-BE）
 
-- 旧时间线由字段**现场合成**：无稳定事件 ID、可重复、`isEstimated` 靠字段拼；TO-BE 存**内部规范事件**（字段引用 CONTRACTS_DRAFT 单一权威），支持来源幂等、乱序重放和追加式更正。
+- 旧时间线由字段**现场合成**：无稳定事件 ID、可重复、`isEstimated` 靠字段拼；TO-BE 存**内部规范事件**（字段引用时间线契约 V1），支持来源幂等、乱序重放和追加式更正。
 - 旧"字段优先级推导状态+静默写回" → 改为 事件证据→受约束推进/密封（LIFECYCLE R1–R4）。
 - KeyDates 倒计时（红≤0/橙≤3/绿）可复用到我们 planned 时间与免费期预警（滞港费 P4 / NODE_PDCA K7）。
 
@@ -69,7 +69,7 @@
 
 ## 5. 落点与待定
 
-- 时间线事件模型进 [DATA_MODEL_P2-06](./DATA_MODEL_P2-06.md)（作为 ContainerRecord 事件子表/信封）与 [CONTRACTS_DRAFT](./CONTRACTS_DRAFT.md)。
+- 时间线事件模型进 [DATA_MODEL_P2-06](./DATA_MODEL_P2-06.md)（作为 ContainerRecord 事件子表/信封）与[时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md)。
 - TimelineDrawer/rail 进 UX V1；证据链进 PDCA Check。
 - 待定：事件类型全集、无 `sourceEventId` 时的确定性指纹、乱序窗口、重放范围及更正/撤回权限；用正常、迟到、重复和撤回样本验证。
 

@@ -1,27 +1,21 @@
 # 契约草案（P2-08/09 前身）——API/事件/状态码
 
-> 状态：**候选（草案）** · 2026-09-06 · 负责人：刘志高。
-> 定位：把 O/S/R 证据与 C 级映射整理成**可评审契约初稿**（固定内部码 + 映射字典 + 统一信封 + 稳定错误码 + 版本策略），
-> 作为 P2-08/09/10 与 P3 `packages/contracts` 的输入。物理 Schema/OpenAPI 生成见 P3-05/P3-13；跨语言 Parity 见 ADR-009。
+> 状态：**已取代（历史草案，不得作为实现或对接依据）** · 2026-09-10 · 负责人：刘志高。
+> 定位：本文件仅保留 P2-08/09 的历史推导过程。正式定义已拆分到 `GC-003`、`GC-005` 至 `GC-011` 及 `packages/contracts`；任何线值冲突均以后者为准。
 > 依据：D1–D21 追踪项、R0–R6、[CONTAINER_STATUS_MODEL](./CONTAINER_STATUS_MODEL.md)、[ACTION_CATALOG](./ACTION_CATALOG.md)、[IMPORT_DOMAIN_MODEL](./IMPORT_DOMAIN_MODEL.md)、[DATA_MODEL_P2-06](./DATA_MODEL_P2-06.md)、[INDUSTRY_STANDARDS_ALIGN](./INDUSTRY_STANDARDS_ALIGN.md)；追踪项在通过 Decision 门禁前仍是候选契约输入。
 
-## 1. 统一信封与错误码
+## 1. 正式替代入口
 
-- 成功/失败统一信封：`{ code, message, traceId, data }`；列表加 `{ page, pageSize, total }`（分页、最大页、稳定排序）。
-- 业务成功码 `0`；非零为稳定业务错误码；HTTP 用于传输语义，业务成败看 `code`（对齐外部规范习惯，但以我方码为准）。
-- 错误码族（草案）：
+| 历史内容               | 当前唯一权威                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
+| 规范事件与信封         | [EVENT_CODES](./EVENT_CODES.md)、[时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md) |
+| 任务与工单             | [TASK_WORK_ORDER_CONTRACT_V1](./TASK_WORK_ORDER_CONTRACT_V1.md)                                 |
+| 动作、权限与命令       | [ACTION_PERMISSION_CONTRACT_V1](./ACTION_PERMISSION_CONTRACT_V1.md)                             |
+| 三阶段回执、幂等与同步 | [SYNC_RELIABILITY_CONTRACT_V1](./SYNC_RELIABILITY_CONTRACT_V1.md)                               |
+| 查询投影               | [QUERY_PROJECTION_CONTRACT_V1](./QUERY_PROJECTION_CONTRACT_V1.md)                               |
+| 错误信封与稳定错误码   | [PUBLIC_ERROR_CONTRACT_V1](./PUBLIC_ERROR_CONTRACT_V1.md)                                       |
 
-| 族        | code 前缀 | 示例（稳定）                                                                                      |
-| --------- | --------- | ------------------------------------------------------------------------------------------------- |
-| 校验      | `VAL`     | `VAL_REQUIRED`、`VAL_FORMAT`、`VAL_CURRENCY`                                                      |
-| 认证/授权 | `AUTH`    | `AUTH_UNAUTH`、`AUTH_FORBIDDEN`、`AUTH_OBJECT_SCOPE`                                              |
-| 业务规则  | `BIZ`     | `BIZ_STATE_VIOLATION`、`BIZ_SEALED`、`BIZ_SOURCE_LOCKED`(来源权威/纠偏锁冲突)、`BIZ_UNKNOWN_DICT` |
-| 幂等/并发 | `IDEM`    | `IDEM_DUPLICATE`、`IDEM_CONFLICT`、`IDEM_STALE_VERSION`                                           |
-| 未找到    | `NF`      | `NF_RECORD`                                                                                       |
-| 限流      | `RATE`    | `RATE_LIMIT`                                                                                      |
-| 外部依赖  | `EXT`     | `EXT_DOWN`、`EXT_TIMEOUT`                                                                         |
-
-- 错误响应不泄露栈/SQL；携带 traceId（AGENTS §5、架构 §14）。
+旧 `VAL_*`、`AUTH_*`、`BIZ_*`、`IDEM_*`、`NF_*`、`EXT_*` 族已被 GC-011 禁止用于新 V1 API，不在本历史草案继续发布。
 
 ## 2. 状态码与事件码（固定内部单一权威，外部经映射字典）
 
@@ -72,6 +66,7 @@
 - syncStatus：单次 ClientOperation 的三段确认进度，不代表业务完成。
 - dataStatus：数据版本有效性，由来源权威、校验、版本和更正关系决定。
 - 写命令关联 clientOperationId + flowInstanceId + nodeTaskId + workOrderId + actionCode + evidence + occurredAt。
+
 #### 3.1.1 提交结果的最小确认链
 
 | 阶段                  | 契约必须提供的语义                                        | 失败/重试语义                                                                       |

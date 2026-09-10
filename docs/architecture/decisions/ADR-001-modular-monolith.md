@@ -14,7 +14,7 @@ Logix 首次有清晰业务闭环（智能导入），架构必须支持强模�
 
 ## 决策
 
-`apps/api` 以**模块化单体**实现，内部按业务能力划分为强边界模块（identity / shipment / logistics-status / import / dictionary / integration / exception-management / notification / reporting / workflow / ai-governance / audit）。依赖方向固定为 `Controller → Application Use Case → Domain ← Infrastructure`，跨模块只经各自公开入口与公共契约包，禁止跨包引用对方内部路径。仅当出现独立部署/扩缩容/故障隔离证据时才拆分为服务（见 ADR-001 撤销条件与架构 §16）。
+`apps/api` 以**模块化单体**实现。本文最初列出的模块名称已由 [ADR-010](./ADR-010-bounded-context-modules.md) 补充并替代；当前限界上下文只以 ADR-010 为准。依赖方向固定为 `Controller → Application Use Case → Domain ← Infrastructure`，跨模块只经各自公开入口与公共契约包，禁止跨包引用对方内部路径。仅当出现独立部署/扩缩容/故障隔离证据时才拆分为服务（见 ADR-001 撤销条件与架构 §16）。
 
 ## 后果
 

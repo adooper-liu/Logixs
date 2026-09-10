@@ -1,7 +1,7 @@
 # 模块依赖图 / 公共入口 / 禁止依赖（P1-09）
 
 > 状态：**已接受** · P1-09 · 2026-09-04 · 负责人：刘志高。
-> 依据：ADR-001~009、ENGINEERING_RULES §3、架构 §6.2 与 §7.2。实现期（P3-05）以各包 `package.json` 导出 + DEPCHECK/lint 强制，本图为权威约束的可读表述。
+> 依据：ADR-001~010、ENGINEERING_RULES §3、架构 §6.2 与 §7.2。实现期（P3-05）以各包 `package.json` 导出 + DEPCHECK/lint 强制，本图为权威约束的可读表述。
 
 ## 1. 顶层层级（App / Package）
 
@@ -45,14 +45,14 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 
 ### 2.1 所有权和调用方向
 
-| 所有者 | 只能通过 |
-| ------ | -------- |
-| shipment-registry：ContainerRecord | Shipment公共查询/写端口 |
-| lifecycle-control：FlowInstance、14节点状态机 | 流程命令和规范事件端口 |
+| 所有者                                        | 只能通过                         |
+| --------------------------------------------- | -------------------------------- |
+| shipment-registry：ContainerRecord            | Shipment公共查询/写端口          |
+| lifecycle-control：FlowInstance、14节点状态机 | 流程命令和规范事件端口           |
 | work-execution：NodeTask、WorkOrder、工单聚合 | 工单命令、任务查询和结果事件端口 |
-| 专业模块：订舱/海运/清关/内陆作业事实 | 各自公开用例和领域事件 |
-| charges/document/exception/performance | 事实引用和幂等事件消费者 |
-| integration-import | 各业务模块的写端口，不直写业务表 |
+| 专业模块：订舱/海运/清关/内陆作业事实         | 各自公开用例和领域事件           |
+| charges/document/exception/performance        | 事实引用和幂等事件消费者         |
+| integration-import                            | 各业务模块的写端口，不直写业务表 |
 
 正常推进方向：WorkOrder结果 → NodeTask聚合 → 规范业务事件 → lifecycle-control合法转换。反向触发只发送“节点已进入”事件，由work-execution按节点任务定义生成工单。跨事务使用Transactional Outbox；禁止双向同步调用环和分布式事务。
 

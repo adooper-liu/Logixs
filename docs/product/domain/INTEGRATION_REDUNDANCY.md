@@ -17,7 +17,7 @@
 
 - **IExternalDataAdapter（统一接口）**：每源一个实现，暴露
   `subscribe(businessNumber, …)→subscriptionId`、`queryStatus`、`events(增量)`、`health()`、`webhook(payload)`、`sync`。
-  返回外部原始证据，由 Adapter 映射为内部规范事件（唯一 ID/版本/发生与接收时间/来源与渠道/证据/更正关系，见 [CONTRACTS_DRAFT](./CONTRACTS_DRAFT.md)）。
+  返回外部原始证据，由 Adapter 映射为内部规范事件（唯一 ID/版本/发生与接收时间/来源与渠道/证据/更正关系，见 [时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md)）。
 - **AdapterManager**：注册/启停/默认/健康检查（周期）/状态；策略数据可配：
   - 每个能力维护 主(Primary)/备(Secondary)/回退(Fallback) 列表；
   - 健康失败 → 自动切换备用 → 全失败 → 走降级（明确失败/人工兜底，不静默写默认）；
@@ -54,5 +54,5 @@
 
 ## 6. 关联与维护
 
-- 上链 G1 / [INTEGRATION_BOUNDARIES](./INTEGRATION_BOUNDARIES.md) / [CONTRACTS_DRAFT](./CONTRACTS_DRAFT.md) / ASIS GAP §2。
+- 上链 G1 / [INTEGRATION_BOUNDARIES](./INTEGRATION_BOUNDARIES.md) / [时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md) / ASIS GAP §2。
 - 变更须评审；涉及架构 §19 先走 ADR。

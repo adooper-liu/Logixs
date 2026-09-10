@@ -24,7 +24,7 @@
 - [x] B-03 确认 AI 工作流型目标架构和技术选型。
 - [x] B-04 建立项目及技术文档导航。
 - [x] P0 项目定义与成功标准：产品简报/词汇/导入工作流/NFR 初版基线已确认（2026-09-04），见 [P0 清单 §4](#4-p0-项目定义与成功标准) 产物与 [PRODUCT_BRIEF](../product/PRODUCT_BRIEF.md)。
-- [x] P1 决策冻结：ADR-001 至 ADR-009 已接受（P1-01 至 P1-08、P1-10）+ P1-09 模块依赖图，见 [ADR 索引](../architecture/decisions/README.md) 与 [MODULE_DEPENDENCIES](../architecture/MODULE_DEPENDENCIES.md)。
+- [x] P1 决策冻结：ADR-001 至 ADR-010 已接受（ADR-010 补充 P1-09 限界上下文）+ P1-09 模块依赖图，见 [ADR 索引](../architecture/decisions/README.md) 与 [MODULE_DEPENDENCIES](../architecture/MODULE_DEPENDENCIES.md)。
 - [x] P0-09 四类负责人已指定：刘志高（见 [RAID §1](./RAID.md)）。
 
 尚未完成：P2 数据模型 → P3 底座 → P4 基础设施 → P5 安全 → P6 首个纵向闭环 → P7 评测门禁 → P8 可观测性 → P9 生产就绪。
@@ -94,6 +94,8 @@ P0 至 P3 是开始规模开发前的必要工作。P6 完成之前，不并行�
 
 目标：在写控制器和页面前建立稳定的业务语义和数据边界。
 
+当前已有多份候选文档及部分公共 JSON Schema，但 P2-01 至 P2-09 的负责人评审、OpenAPI、数据库与运行时验收尚未完成；以下未勾选是门禁状态，不表示没有草案。
+
 - [ ] P2-01 建立物流领域上下文和聚合边界。
 - [ ] P2-02 定义货柜状态事件模型及合法状态转换。
 - [ ] P2-03 定义导入批次、导入行、预检和审核模型。
@@ -121,7 +123,7 @@ P0 至 P3 是开始规模开发前的必要工作。P6 完成之前，不并行�
 
 目标：让所有开发者和 CI 使用相同、可重复的工具链。
 
-- [ ] P3-01 初始化 Git，配置主分支保护和 CODEOWNERS。
+- [ ] P3-01 配置主分支保护和 CODEOWNERS（Git、main 与 origin 已存在）。
 - [ ] P3-02 固定 Node.js、pnpm、Python 和 uv 版本。
 - [x] P3-03 初始化 pnpm Workspace 和 Turborepo。
 - [ ] P3-04 创建 `apps/web`、`apps/api`、`apps/ai-service` 和 Workers。

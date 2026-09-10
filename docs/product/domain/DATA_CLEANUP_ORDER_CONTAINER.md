@@ -1,7 +1,7 @@
 # 数据治理：备货单-货柜 关系清洗与校验（P2-06 首任务细则）
 
 > 状态：**候选（细则）** · 2026-09-04 · 负责人：刘志高。
-> 背景：真实规则 = **一备货单→一货柜(1:1)、一提单(B/L)→多货柜**；现网旧数据/误解曾因「主备货单号」任取代表而产生
+> 背景：负责人确认的 TO-BE 业务目标 = **一备货单→一货柜(1:1)、一提单(B/L)→多货柜**；现网快照对旧库物理基数存在冲突，且原证据仓库当前不可复现。「主备货单号」任取代表曾产生
 > 「一单多柜 / 一柜多单」表象（[SHIPMENT_FLOW_OVERVIEW](./SHIPMENT_FLOW_OVERVIEW.md) §3、NODE_PDCA_VALIDATION F1/F7）。
 > 本文件是 P2-06 **首项任务**的清洗与校验细则，遵循 `ENGINEERING_RULES` §4.3（阻止污染→证据→范围→根因→回归→重放→对账）。
 
@@ -10,10 +10,11 @@
 - 对现网旧数据（D:/Github/logix）与未来导入，保证"备货单-货柜"唯一对应、主备货单号不被当作业务关系使用。
 - 范围：`biz_replenishment_orders`、`biz_containers` 及导入映射中的 备货单号/箱号/主备货单号/提单 关系。
 - 不做：合并或拆分业务对象、新增货柜明细模型（如确认无合柜则不需要）。
+- 实施阻断：取得原始 DDL、唯一约束和 a–d 探查结果前，不得建立 `UNIQUE(order_number)`、自动拆并关系或执行数据修复。
 
 ## 2. 校验约束（进入系统即强制）
 
-1. **一备货单 ≤ 一货柜记录**：同一 `orderNumber` 不得命中多条 ContainerRecord（导入按备货单号命中更新/新建，见 IMPORT §6.2）。
+1. **TO-BE 一备货单 ≤ 一货柜记录**：新导入同一 `orderNumber` 不得静默命中多条 ContainerRecord；旧数据先探查、分类和评审，不能用未验证假设直接加唯一约束。
 2. **主备货单号不作键**：任何业务判断/去重/外键不得使用 `main_order_number`；其仅作票级展示代表。
 3. **提单归组以提单号(B/L)聚合**：`B/L → (order, container)` 对集合；货柜→备货单 由 ContainerRecord 自身唯一决定，不由主备货单号推导。
 4. 若导入行/旧数据出现 同备货单号多行 或 同箱跨多备货单 → **对账异常，进人工处置**，不静默采纳（A1–A9 修复延续）。
@@ -23,11 +24,11 @@
 ```sql
 -- a) 一个备货单对应多个货柜（违反 1:1）
 SELECT order_number, COUNT(DISTINCT container_number) cnt
-FROM biz_containers GROUP BY order_number HAVING cnt > 1;
+FROM biz_containers GROUP BY order_number HAVING COUNT(DISTINCT container_number) > 1;
 
 -- b) 一个货柜被多个备货单引用（旧误解"一柜多单"）
 SELECT container_number, COUNT(DISTINCT order_number) cnt
-FROM biz_replenishment_orders GROUP BY container_number HAVING cnt > 1;
+FROM biz_replenishment_orders GROUP BY container_number HAVING COUNT(DISTINCT order_number) > 1;
 
 -- c) 主备货单号指向其它票的备货单（疑似任取代表误用）
 SELECT b.order_number, b.main_order_number, c.container_number

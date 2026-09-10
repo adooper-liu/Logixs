@@ -8,17 +8,17 @@
 
 ## 1. 一页差异对照（TO-BE 决策 vs AS-IS 现状）
 
-| 维度       | AS-IS（现网）                                                                                                        | TO-BE（评审清单/文档）                                               | 关系                                      |
-| ---------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------- |
-| 对象单位   | `biz_containers`，`container_number` 为主键                                                                          | ContainerRecord，**主锚=备货单号**（一单一柜），允许同箱历史         | **冲突→TO-BE 更普适，但需数据迁移键映射** |
-| 计划层     | **无** ShipmentPlan/出运计划表；仅 `biz_replenishment_orders` 备货单（含 main_order）                                | 新增 ShipmentPlan 顶层聚合（候选）                                   | TO-BE 补足                                |
-| 导入       | 单箱 Excel 直 upsert 六表，无批次/幂等/预检/审核/对账                                                                | ImportBatch + 幂等 + 预检硬闸 + 审核 + 对账 + 来源权威               | TO-BE 补足（修 A7）                       |
-| 身份/租户  | 运行时无 User/Role/权限/租户实体与鉴权中间件；但种子含 `sys_users/roles/user_roles`（schema 有、代码未接线，半成品） | Identity/RBAC/租户（P2-05/P5）                                       | TO-BE 补足；迁移输入                      |
-| 外部集成   | **已有适配器层**：IExternalDataAdapter + AdapterManager + 主备/故障转移 + webhook + 健康检查                         | INTEGRATION_BOUNDARIES 仅列数据源，**无故障转移/适配器生命周期设计** | AS-IS 强 → **TO-BE 应复用/继承**          |
-| 状态       | 三层（7 简化/33 详细/外部码）+ 读时推导投影                                                                          | 词汇复用 + 取消/异常正交 + 受约束推进 vs 投影（候选）                | 兼容方向一致，TO-BE 补纪律                |
-| 主数据别名 | `dict_universal_mapping`（通用框架：dict_type/多语言别名）、`dict_port_name_mapping`                                 | Dictionary 上下文 + 未知值队列（P2-04 未写）                         | **现网已有资产待复用**                    |
-| 仓库       | `WarehouseOperation` 含 `wms_status/ebs_status`、卸柜/开箱/仓租/出入库类型                                           | ④ 卸柜后归 WMS，Logix 收卸柜完成/还箱                                | 映射点（字段复用/迁移）                   |
-| 观测       | 已配 Prometheus/Grafana/TimescaleDB、monitoring.controller、桑基统计                                                 | P8 才定义                                                            | AS-IS 资产可继承                          |
+| 维度       | AS-IS（现网）                                                                                                        | TO-BE（评审清单/文档）                                                 | 关系                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| 对象单位   | `biz_containers`，`container_number` 为主键                                                                          | ContainerRecord，**主锚=备货单号**（一单一柜），允许同箱历史           | **冲突→TO-BE 更普适，但需数据迁移键映射** |
+| 计划层     | **无** ShipmentPlan/出运计划表；仅 `biz_replenishment_orders` 备货单（含 main_order）                                | 新增 ShipmentPlan 顶层聚合（候选）                                     | TO-BE 补足                                |
+| 导入       | 单箱 Excel 直 upsert 六表，无批次/幂等/预检/审核/对账                                                                | ImportBatch + 幂等 + 预检硬闸 + 审核 + 对账 + 来源权威                 | TO-BE 补足（修 A7）                       |
+| 身份/租户  | 运行时无 User/Role/权限/租户实体与鉴权中间件；但种子含 `sys_users/roles/user_roles`（schema 有、代码未接线，半成品） | Identity/RBAC/租户（P2-05/P5）                                         | TO-BE 补足；迁移输入                      |
+| 外部集成   | **已有适配器层**：IExternalDataAdapter + AdapterManager + 主备/故障转移 + webhook + 健康检查                         | INTEGRATION_REDUNDANCY 已补故障转移/适配器生命周期设计；仍待运行时实现 | AS-IS 复用方向已进入 TO-BE 设计           |
+| 状态       | 三层（7 简化/已列详细态 27 个/外部码）+ 读时推导投影                                                                 | 词汇复用 + 取消/异常正交 + 受约束推进 vs 投影（候选）                  | 兼容方向一致，TO-BE 补纪律                |
+| 主数据别名 | `dict_universal_mapping`（通用框架：dict_type/多语言别名）、`dict_port_name_mapping`                                 | Dictionary 上下文 + 未知值队列（P2-04 未写）                           | **现网已有资产待复用**                    |
+| 仓库       | `WarehouseOperation` 含 `wms_status/ebs_status`、卸柜/开箱/仓租/出入库类型                                           | ④ 卸柜后归 WMS，Logix 收卸柜完成/还箱                                  | 映射点（字段复用/迁移）                   |
+| 观测       | 已配 Prometheus/Grafana/TimescaleDB、monitoring.controller、桑基统计                                                 | P8 才定义                                                              | AS-IS 资产可继承                          |
 
 ## 2. AS-IS 强项 · TO-BE 评审清单的「漏点」（应复用未复用）
 
@@ -43,7 +43,7 @@
 
 ## 4. TO-BE 相对 AS-IS 的「不足/待补」（本批评审要回查的洞）
 
-1. **集成冗余/故障转移缺失**：INTEGRATION_BOUNDARIES 未定义 主备适配器/健康检查/自动故障转移/重试（现网已有，勿重造）。
+1. **集成冗余/故障转移实现待办**：设计已由 INTEGRATION_REDUNDANCY 补齐，后续应按该文档实现并验证主备适配器、健康检查、自动故障转移和重试。
 2. **数据迁移映射未列**：现网 6 张流程表 + dict 框架 + wms 字段 → ContainerRecord 各节点/字段的**字段级迁移映射**尚未规划（P2-06 必须接盘，否则丢历史数据语义）。
 3. **多源冲突语义需接现网来源集**：D7 权威矩阵需绑定具体 `source` 枚举（Feituo/AIS/ShipCompany/Terminal/User/Excel）。
 4. **扣货/费用/装载/出库逆向**未显式收边：要么纳入 scope，要么写入"明确不做"（PRODUCT_BRIEF §4 需补）。

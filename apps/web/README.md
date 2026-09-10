@@ -26,10 +26,12 @@ pnpm validate               # 根级完整质量门禁
 ```
 src/
 ├─ main.ts            # 挂 Element + router
-├─ App.vue            # 只渲染 <AppShell/>
-├─ style.css          # UI 令牌（CSS 变量，明/暗/跟随系统）+ Element Plus 对齐
+├─ App.vue            # 通过 UiThemeProvider 渲染活动主题壳
+├─ styles/            # 全局基础、Element 对齐与通用样式
 ├─ components/
-│  ├─ AppShell.vue    # 壳：角色导航 + 顶栏(页名) + <router-view>
+│  ├─ AppShell.vue    # 稳定壳门面
+│  ├─ shell/          # 业务无关的导航、顶栏与命令面板
+│  ├─ ui/             # 稳定 UI 门面组件及展示契约
 │  ├─ task/           # 动态任务上下文、前置、资料资源、证据、结果与同步回执
 │  ├─ container/      # 生命周期轨道与三状态
 │  └─ management/     # 计划/执行/分析闭环投影
@@ -37,6 +39,8 @@ src/
 │  ├─ useDemoOperationsStore.ts # 跨路由共享的演示状态、操作与异常记录
 │  └─ useTaskWorkflow.ts # 动态任务编排与三段提交确认
 ├─ router/index.ts    # /tasks · /containers · /dashboard · /meso · /container/:containerRecordId
+├─ ui-theme/          # 主题契约、Provider 与活动主题注册入口
+├─ themes/            # 令牌、应用壳和无业务判断的主题实现
 ├─ views/             # 纯内容视图（不含壳）
 │  ├─ TaskWorkbench.vue     # 员工作业入口（动态任务定义投影）
 │  ├─ ContainerList.vue     # 已出运货柜列表
@@ -48,9 +52,9 @@ src/
 
 ## 说明与约定
 
-- **视图不画壳、壳不含业务**：换主题/布局只改 `AppShell.vue` 与 `style.css` 令牌，视图零改动。
+- **视图不画壳、壳不含业务**：业务视图只依赖稳定 UI 门面；主题注册只经 `ui-theme/`，令牌和主题壳位于 `themes/`。
 - 视觉一律用令牌，禁止裸色/临时十六进制（见 UI_SYSTEM）。
-- 演示数据源在 `src/data/sample.ts`，`useDemoOperationsStore.ts` 只是在当前浏览器页面内模拟服务端操作日志、业务结果、异常和货柜投影；刷新页面会重置，不能作为持久化、并发、权限或真实幂等实现。后续接后端：工作台读 `GET /containers/:id/workbench`、动作 `POST /actions/:code/confirm`（契约见 [docs/product/domain/CONTRACTS_DRAFT.md](../../docs/product/domain/CONTRACTS_DRAFT.md)）。
+- 演示数据源在 `src/data/sample.ts`，`useDemoOperationsStore.ts` 只是在当前浏览器页面内模拟服务端操作日志、业务结果、异常和货柜投影；刷新页面会重置，不能作为持久化、并发、权限或真实幂等实现。后续接后端时，读模型遵守 [查询投影契约 V1](../../docs/product/domain/QUERY_PROJECTION_CONTRACT_V1.md)，写命令遵守 [动作与权限契约 V1](../../docs/product/domain/ACTION_PERMISSION_CONTRACT_V1.md)，端点路径须由后续 OpenAPI 定稿，不能沿用原型占位路径作为契约。
 - UI/交互依据：[UX_CONTAINER_WORKBENCH](../../docs/product/UX_CONTAINER_WORKBENCH.md)、[NODE_PDCA](../../docs/product/domain/NODE_PDCA.md)。
 - 任务台按任务定义决定是否出现领取、资料/资源交接、扫描、附件/照片和结果提交；系统监控正常时不进入员工队列。
 - 当前测试覆盖动态待办排序、错柜业务拒绝、每任务独立操作回执、完成后异常独立记录、卸柜事实推进及跨柜任务链接防护；这些是演示适配器验证，不替代未来服务端的事务、授权、幂等和真实数据库集成测试。

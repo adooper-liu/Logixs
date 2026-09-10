@@ -21,7 +21,7 @@ Express + TypeORM（PostgreSQL）单体，前端另起。核心对象是**货柜
 ### 1.1 货柜对象关系（AS-IS，重要）
 
 ```text
-biz_replenishment_orders(备货单)  ⇄  biz_containers(货柜)     [多对多：互以 order_number/container_number 字符串互指]
+biz_replenishment_orders(备货单)  ⇄  biz_containers(货柜)     [双向字符串引用；实际基数未在本仓库复现]
         │ 订单事实（金额/日期/柜型要求）
         ▼
    biz_containers.container_number = 主键
@@ -48,7 +48,7 @@ biz_replenishment_orders(备货单)  ⇄  biz_containers(货柜)     [多对多�
 - **简化状态（7 层）**＝ 落库值（`biz_containers.logistics_status`，默认 `not_shipped`）+ UI/桑基/筛选：
   `not_shipped 未出运 → shipped 已出运 → in_transit 在途 → at_port 已到港 → picked_up 已提柜 → unloaded 已卸柜 → returned_empty 已还箱`。
   ⚠️ 枚举无 `cancelled`；但导入规范化可产生 `cancelled`（不一致，见 §5）。
-- **详细状态（33）**＝ 外部/微服务流转语言：基础 16（`NOT_SHIPPED, EMPTY_PICKED_UP, GATE_IN, LOADED, DEPARTED, SAILING, TRANSIT_ARRIVED, TRANSIT_DEPARTED, ARRIVED, DISCHARGED, AVAILABLE, GATE_OUT, DELIVERY_ARRIVED, STRIPPED, RETURNED_EMPTY, COMPLETED`）+ 异常 9（`CUSTOMS_HOLD, CARRIER_HOLD, TERMINAL_HOLD, CHARGES_HOLD, DUMPED, DELAYED, DETENTION, OVERDUE, CONGESTION`）+ 通用 `HOLD, UNKNOWN`。
+- **详细状态（已列 27）**＝ 外部/微服务流转语言：基础 16（`NOT_SHIPPED, EMPTY_PICKED_UP, GATE_IN, LOADED, DEPARTED, SAILING, TRANSIT_ARRIVED, TRANSIT_DEPARTED, ARRIVED, DISCHARGED, AVAILABLE, GATE_OUT, DELIVERY_ARRIVED, STRIPPED, RETURNED_EMPTY, COMPLETED`）+ 异常 9（`CUSTOMS_HOLD, CARRIER_HOLD, TERMINAL_HOLD, CHARGES_HOLD, DUMPED, DELAYED, DETENTION, OVERDUE, CONGESTION`）+ 通用 2（`HOLD, UNKNOWN`）。旧资料称“33”但未列出另外 6 个值，因此不得按 33 作为迁移验收数。
 - **外部事件码**＝ 飞驼/船公司/AIS/码头原始码（`BO 装船, DLPT 航行, ARRIVE, ATA 实际到港, ETA 预计到港, GATE_IN, GATE_OUT, DISCHARGED, AVAIL 可提, EMPTY_RETURN, HOLD/CUSTOMS_HOLD/CARRIER_HOLD/TERMINAL_HOLD`）。
 
 ### 2.2 映射（合成方向：外部码 → 详细 → 简化；Excel 中文 → 简化）
@@ -117,27 +117,27 @@ biz_replenishment_orders(备货单)  ⇄  biz_containers(货柜)     [多对多�
 
 以下违反 Logixs `AGENTS.md` / `ENGINEERING_RULES`，是 TO-BE 必须修复、且可作 P2-04 主数据与 P2 预检规则的输入：
 
-| #   | 反例（AS-IS）                                                                                           | Logixs 处置方向                                                        |
-| --- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| A1  | 非法/未知柜型、状态**静默回退** `20GP` / `not_shipped`                                                  | 未知值进待处理队列，明确失败，禁止静默默认（`ENGINEERING_RULES` §4.3） |
-| A2  | 未匹配船司**自动创建字典项**（`NEW_*`）                                                                 | 人工补主数据或进未知队列，禁止自动生成含糊字典项                       |
-| A3  | 同义词映射**两份重复**（utils 与 import.controller）且漂移（`已装船`、`cancelled` 缺失）                | 单一权威源（字典别名 + 共享状态契约），Contract Parity 防漂移          |
-| A4  | `cancelled` 不在简化态枚举，`已取消` 被归成 `not_shipped`，取消语义丢失                                 | TO-BE 状态模型显式含取消终态并定折叠口径                               |
-| A5  | `logistics_status` 是读时投影缓存，无受约束转换、无审计                                                 | TO-BE 定「事件推进 vs 投影」边界；转换受约束、留痕                     |
-| A6  | 金额多处**无币种列**（备货单金额）；仅 `sea_freight.freight_currency`、`charges.charge_currency` 带币种 | 定点数 + 币种强制（`ENGINEERING_RULES` §4.1）                          |
-| A7  | 直接 upsert 覆盖、无批次幂等/审计；曾出现重复 `container_number` 列需修复迁移                           | TO-BE 批次幂等键、行级结果、可审计事务导入（P2-03）                    |
-| A8  | 时间 DATE/TIMESTAMP 混用、跨表时间字段命名不统一（已有 `convert_date_to_timestamp` 演进迁移）           | UTC 存储、ISO-8601 交换、统一命名（`ENGINEERING_RULES` §4.1）          |
-| A9  | 货柜↔备货单多对多用**字符串互指**                                                                       | 关系以 ID/值对象建模，明确聚合边界与不变量                             |
+| #   | 反例（AS-IS）                                                                                                      | Logixs 处置方向                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| A1  | 非法/未知柜型、状态**静默回退** `20GP` / `not_shipped`                                                             | 未知值进待处理队列，明确失败，禁止静默默认（`ENGINEERING_RULES` §4.3）         |
+| A2  | 未匹配船司**自动创建字典项**（`NEW_*`）                                                                            | 人工补主数据或进未知队列，禁止自动生成含糊字典项                               |
+| A3  | 同义词映射**两份重复**（utils 与 import.controller）且漂移（`已装船`、`cancelled` 缺失）                           | 单一权威源（字典别名 + 共享状态契约），Contract Parity 防漂移                  |
+| A4  | `cancelled` 不在简化态枚举，`已取消` 被归成 `not_shipped`，取消语义丢失                                            | TO-BE 状态模型显式含取消终态并定折叠口径                                       |
+| A5  | `logistics_status` 是读时投影缓存，无受约束转换、无审计                                                            | TO-BE 定「事件推进 vs 投影」边界；转换受约束、留痕                             |
+| A6  | 金额多处**无币种列**（备货单金额）；仅 `sea_freight.freight_currency`、`charges.charge_currency` 带币种            | 定点数 + 币种强制（`ENGINEERING_RULES` §4.1）                                  |
+| A7  | 直接 upsert 覆盖、无批次幂等/审计；曾出现重复 `container_number` 列需修复迁移                                      | TO-BE 批次幂等键、行级结果、可审计事务导入（P2-03）                            |
+| A8  | 时间 DATE/TIMESTAMP 混用、跨表时间字段命名不统一（已有 `convert_date_to_timestamp` 演进迁移）                      | UTC 存储、ISO-8601 交换、统一命名（`ENGINEERING_RULES` §4.1）                  |
+| A9  | 货柜↔备货单使用**双向字符串引用**；本快照曾解读为多对多，LEGACY_DB_CATALOG 又解读为 1:1，原始 DDL/数据当前不可复现 | 先以原始 DDL、唯一约束和双向数据探查确定物理基数；TO-BE 关系再以 ID/值对象建模 |
 
 ## 6. AS-IS → TO-BE 对照结论
 
-| 主题     | 直接复用（词汇/字段/规则）                     | 需重新设计                                                              |
-| -------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| 状态机   | 简化 7 层、详细 33、外部码、异常折叠、跳步直觉 | 受约束转换 + 取消/异常口径 + 事件/投影边界 + 单一权威（P2-02）          |
-| 目标对象 | 一行=一货柜全流程信息（多表分组字段）          | 聚合边界、批次/预检/审核/对账（P2-01/P2-03）                            |
-| 字段模板 | 上述真实列 + 别名/同义词集合                   | 标准字段目录（类型/必填/字典/唯一键/关键字段，见 TARGET_FIELD_CATALOG） |
-| 主数据   | 港口/船司/柜型字典结构                         | 未知值策略、别名单一权威、币种/时间纪律（P2-04 输入）                   |
-| 导入     | 六子结构行模型、柜型/状态/船司别名直觉         | 批次幂等、预检硬闸、AI 映射建议、逐行审核与对账                         |
+| 主题     | 直接复用（词汇/字段/规则）                              | 需重新设计                                                              |
+| -------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 状态机   | 简化 7 层、已列详细态 27 个、外部码、异常折叠、跳步直觉 | 受约束转换 + 取消/异常口径 + 事件/投影边界 + 单一权威（P2-02）          |
+| 目标对象 | 一行=一货柜全流程信息（多表分组字段）                   | 聚合边界、批次/预检/审核/对账（P2-01/P2-03）                            |
+| 字段模板 | 上述真实列 + 别名/同义词集合                            | 标准字段目录（类型/必填/字典/唯一键/关键字段，见 TARGET_FIELD_CATALOG） |
+| 主数据   | 港口/船司/柜型字典结构                                  | 未知值策略、别名单一权威、币种/时间纪律（P2-04 输入）                   |
+| 导入     | 六子结构行模型、柜型/状态/船司别名直觉                  | 批次幂等、预检硬闸、AI 映射建议、逐行审核与对账                         |
 
 ## 7. 关联与维护
 

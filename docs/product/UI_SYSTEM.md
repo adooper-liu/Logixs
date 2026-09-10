@@ -300,7 +300,7 @@ StateBadge 只负责视觉语义；业务状态到语义的映射必须来自一
 
 ### 8.5 动态字段纪律
 
-`DynamicFieldPanel` 只消费 [受控动态字段投影](./domain/CONTRACTS_DRAFT.md#41-受控动态字段投影候选)，
+`DynamicFieldPanel` 只消费本节定义的受控展示投影；业务事实、字段授权和裁剪遵守[查询投影契约 V1](./domain/QUERY_PROJECTION_CONTRACT_V1.md)，
 用于货柜节点详情等普通只读标量区域。页面传入 `DisplayFieldSet` 和列数，不逐字段写模板；字段新增、
 排序、分组和主次层级由展示 schema 决定。
 

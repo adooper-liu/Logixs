@@ -2,28 +2,28 @@
 
 > 状态：**候选 v0.4** · 2026-09-05 · 负责人：刘志高。
 > V1 主流程节点代码、顺序、可选性和所有者以[货柜生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)为唯一权威，合法转换以[状态机契约 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)为权威；本表只保留业务对照与证据来源。
-> 一句话：货柜从备货到还箱共 14 个节点（2 个可选），本文件是"每段走什么、记什么、谁来触发"的对照表；规范节点枚举以 LIFECYCLE_CONSISTENCY §2 为单一权威。
+> 一句话：货柜从备货到还箱共 14 个节点（2 个可选），本文件是"每段走什么、记什么、谁来触发"的候选对照表；规范节点枚举只以 LIFECYCLE_NODE_CATALOG_V1 为权威。
 > 证实度 S·R·O·C。入库归 WMS，不在容器主链。
 
 ## ① 可落库清单：14 节点表（主链/可选/状态/时间/数据锚/来源）
 
-| #   | 节点       | 可选    | currentStatus     | 时间(planned·actual) | 数据锚(现网)          | 来源          | 证实 |
-| --- | ---------- | ------- | ----------------- | -------------------- | --------------------- | ------------- | ---- |
+| #   | 节点       | 可选    | currentStatus     | 时间(planned·actual) | 数据锚(现网)          | 来源                 | 证实 |
+| --- | ---------- | ------- | ----------------- | -------------------- | --------------------- | -------------------- | ---- |
 | 1   | 备货       | 否      | not_shipped       | ready                | 一备货单一确认        | 人工/ERP/供应链/导入 | O·R  |
-| 2   | 装箱       | 否      | not_shipped(已装) | stuffing             | 定稿字段+箱号(迟绑定) | 导入/手工     | O·R  |
-| 3   | 出运       | 否      | shipped           | ship                 | 装船/发运             | 导入/API      | S·O  |
-| 4   | 离港       | 否      | shipped(离)       | depart(atd)          | sea_freight           | API           | S·R  |
-| 5   | 海运       | 否      | in_transit        | sailing              | AIS/船司              | API           | S·R  |
-| 6   | 中转港     | 是      | at_port(中转)     | transit              | port_ops(transit)     | API           | S·R  |
-| 7   | 清关       | 否\*    | at_port           | customs              | customs 日期/单据     | 海关/报关     | S·R  |
-| 8   | 到港       | 否      | at_port(目的)     | arrival(ata)         | port_ops(dest)        | API           | S·R  |
-| 9   | 海铁       | 是      | 内段              | rail_handover        | 铁路实际接收货柜      | 铁路/场站/API | O·R  |
-| 10  | 拖卡(提柜) | 否      | picked_up         | pickup(gate_out)     | port_ops/trucking     | 拖车/API      | S·R  |
-| 11  | 送仓       | 否      | picked_up         | delivery             | trucking              | 拖车/API      | S·R  |
-| 12  | 卸柜       | 否      | unloaded          | unload               | warehouse             | 仓库/WMS      | S·R  |
-| 13  | 卸空       | 否      | unloaded(净)      | unstuff              | unboxing              | WMS/手工      | R    |
-| 14  | 还箱       | 否      | returned_empty    | return               | empty_return          | 承运/API      | S·R  |
-| —   | 入库       | 否(WMS) | —                 | —                    | WMS 收货/上架         | WMS           | O    |
+| 2   | 装箱       | 否      | not_shipped(已装) | stuffing             | 定稿字段+箱号(迟绑定) | 导入/手工            | O·R  |
+| 3   | 出运       | 否      | shipped           | ship                 | 装船/发运             | 导入/API             | S·O  |
+| 4   | 离港       | 否      | shipped(离)       | depart(atd)          | sea_freight           | API                  | S·R  |
+| 5   | 海运       | 否      | in_transit        | sailing              | AIS/船司              | API                  | S·R  |
+| 6   | 中转港     | 是      | in_transit        | transit              | port_ops(transit)     | API                  | S·R  |
+| 7   | 清关       | 否\*    | at_port           | customs              | customs 日期/单据     | 海关/报关            | S·R  |
+| 8   | 到港       | 否      | at_port(目的)     | arrival(ata)         | port_ops(dest)        | API                  | S·R  |
+| 9   | 海铁       | 是      | at_port           | rail_handover        | 铁路实际接收货柜      | 铁路/场站/API        | O·R  |
+| 10  | 拖卡(提柜) | 否      | picked_up         | pickup(gate_out)     | port_ops/trucking     | 拖车/API             | S·R  |
+| 11  | 送仓       | 否      | picked_up         | delivery             | trucking              | 拖车/API             | S·R  |
+| 12  | 卸柜       | 否      | unloaded          | unload               | warehouse             | 仓库/WMS             | S·R  |
+| 13  | 卸空       | 否      | unloaded(净)      | unstuff              | unboxing              | WMS/手工             | R    |
+| 14  | 还箱       | 否      | returned_empty    | return               | empty_return          | 承运/API             | S·R  |
+| —   | 入库       | 否(WMS) | —                 | —                    | WMS 收货/上架         | WMS                  | O    |
 
 \*清关特定条款可 N/A；放行(五主体齐全)是 #10 提柜前提。
 

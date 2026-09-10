@@ -13,7 +13,7 @@
 biz_customers(客户) 1:N biz_replenishment_orders(备货单, PK order_number; 冗余 container_number)
       │ customer_code
       ▼
-biz_replenishment_orders ── 1:1(按 order_number 绑) ──▶ biz_containers(货柜, PK container_number, FK order_number→备货单, FK container_type_code→柜型)
+biz_replenishment_orders ── 按 order_number 关联 ──▶ biz_containers(货柜, PK container_number, FK order_number→备货单, FK container_type_code→柜型)
       │                                                                            │
       │ main_order_number(票级代表,勿作键)                                          │
       ▼                                                                            ▼
@@ -27,6 +27,8 @@ biz_replenishment_orders ── 1:1(按 order_number 绑) ──▶ biz_containe
 主数据引用：dict_countries/customer_types/ports/shipping_companies/freight_forwarders/customs_brokers/trucking_companies/container_types/overseas_companies/warehouses
 别名：dict_universal_mapping / dict_port_name_mapping    身份：sys_users/roles/user_roles/audit_logs/configs/notifications
 ```
+
+该图只能证明关联字段与外键方向，不能单独证明 `biz_containers.order_number` 是否有唯一约束。与 AS_IS_LEGACY_BASELINE 的旧“多对多”解读冲突；在原始仓库 DDL 和数据探查可复现前，物理基数标记为未验证，不得据此直接创建唯一约束。
 
 ## 2. 字典表（dict\_\*）
 

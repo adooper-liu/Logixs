@@ -16,11 +16,11 @@
 | [ADR-007](./ADR-007-pgvector.md)                  | P1-07  | 初期用 pgvector 承担向量检索，规模/延迟/混合检索触发后再迁独立向量库。                        | accepted |
 | [ADR-008](./ADR-008-oidc-oauth.md)                | P1-08  | OIDC/OAuth 2.1 + 自托管 IdP（Keycloak），RBAC/ABAC 服务端授权并预留租户维度。                 | accepted |
 | [ADR-009](./ADR-009-versioning-strategy.md)       | P1-10  | 契约与运行物（Prompt/模型/Tool/Schema/评测）统一语义化版本，单一权威源 + Parity 防漂移。      | accepted |
-| [ADR-010](./ADR-010-bounded-context-modules.md)   | P1-09  | 模块化单体划分10个核心业务限界上下文和8个支撑模块，禁止按节点拆模块或跨模块直写。            | accepted |
+| [ADR-010](./ADR-010-bounded-context-modules.md)   | P1-09  | 模块化单体划分10个核心业务限界上下文和8个支撑模块，禁止按节点拆模块或跨模块直写。             | accepted |
 
-## P1-09 模块依赖图（非 ADR 产物）
+## P1-09 模块依赖图（ADR-010 的配套产物）
 
-P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。权威约束已固化于 [ENGINEERING_RULES §3](../../../ENGINEERING_RULES.md) 与 [架构 §6.2](../AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)；实现期为各包 `package.json` 导出 + 依赖方向 lint（DEPCHECK）强制，产物随 P3-05 脚手架落地后在此补充链接。
+P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。限界上下文决策由 ADR-010 承载，可读依赖图由 MODULE_DEPENDENCIES 承载；实现期再以各包 `package.json` 导出 + 依赖方向 lint（DEPCHECK）强制。
 
 ## 模板
 
@@ -29,6 +29,6 @@ P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。权威�
 ## 评审记录
 
 - 2026-09-04：ADR-001~009 草拟（proposed）。
-- 2026-09-04：ADR-001~~009 经项目负责人评审**接受**（accepted），对应 P1-01~~P1-08 / P1-10 已勾选（见 [PROJECT_BOOTSTRAP_CHECKLIST](../../planning/PROJECT_BOOTSTRAP_CHECKLIST.md)）。P1-09 模块依赖图仍待随 P3-05 落地。
+- 2026-09-04：ADR-001~~009 经项目负责人评审**接受**（accepted），对应 P1-01~~P1-08 / P1-10 已勾选（见 [PROJECT_BOOTSTRAP_CHECKLIST](../../planning/PROJECT_BOOTSTRAP_CHECKLIST.md)）。
 
-- 2026-09-08：ADR-010 经负责人确认接受，作为 P3 模块脚手架、公共入口和依赖检查的实施依据。
+- 2026-09-08：ADR-010 经负责人确认接受，补充 P1-09 的限界上下文决策，并作为 P3 模块脚手架、公共入口和依赖检查的实施依据。

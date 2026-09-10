@@ -5,9 +5,9 @@
 
 ## 结构速览
 
-- 架构：AI 工作流技术架构 · 模块依赖 · ADR-001~009（索引见 INDEX §三）
+- 架构：AI 工作流技术架构 · 模块依赖 · ADR-001~010（索引见 INDEX §三）
 - 产品/理念：VISION · PRINCIPLES · PRODUCT_BRIEF · GLOSSARY · NFR · UX 工作台（INDEX §四）
-- 领域 domain（~30 份）：对象模型 / 清单字典族 / 集成迁移现网 / 治理评审（INDEX §五）
+- 领域 domain：对象模型 / 清单字典族 / 集成迁移现网 / 治理评审（数量以 INDEX §五为准）
 - 规划：启动清单 · RAID · P2 摘要 · 任务 brief（INDEX §六）
 
 ## 文档约定与写作纪律
