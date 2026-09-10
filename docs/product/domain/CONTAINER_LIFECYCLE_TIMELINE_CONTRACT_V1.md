@@ -60,13 +60,7 @@ milestone | state_evidence | prerequisite | exception
 
 ### 3.3 来源、权威与确认状态
 
-```text
-CaptureSource = external_evidence | manual_backfill | internal_operation | system_derived
-AuthorityLevel = authoritative | corroborating | operational | contextual
-VerificationState = pending | verified | rejected | revoked
-ConfidenceState = confirmed | provisional | disputed | unknown
-EventValidity = effective | corrected | revoked
-```
+来源、权威、验证、置信、有效性和采集方式的线值唯一引用[证据与来源权威契约 V1](./EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md)。时间线只消费这些裁决结果，不维护第二份枚举。
 
 - `provider` 是传输方，例如飞驼；`authoritySystem` 是事实来源，例如港区、码头、船公司、海关或 WMS，两者必须分列。
 - `system_derived` 只能形成预计、预警或解释，不能形成实际到达、放行、提柜、卸柜或还箱事实。

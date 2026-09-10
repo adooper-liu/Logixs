@@ -1,5 +1,6 @@
 # 动作目录 v0.1（ACTION_CATALOG，首期候选）
 
+> V1 动作定义、授权、复核、补录和审计规则唯一引用[动作与权限契约 V1](./ACTION_PERMISSION_CONTRACT_V1.md)；本文件仅保留具体动作码候选目录。
 > 状态：**候选（初稿，待 P2 评审）** · v0.1 · 2026-09-04 · 负责人：刘志高。
 > 定位：「一键动作」的**有限稳定 actionCode 单一权威初稿**；动作由服务端推导并执行（见
 > [UX_CONTAINER_WORKBENCH](../UX_CONTAINER_WORKBENCH.md) §4），执行受状态机/密封/来源权威/权限约束。

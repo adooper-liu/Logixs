@@ -64,6 +64,10 @@
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------------- |
 | [EVENT_CODES](product/domain/EVENT_CODES.md)                       | 规范事件代码、版本、角色和节点完成资格唯一权威 | 正式 V1 |
 | [TASK_WORK_ORDER_CONTRACT_V1](product/domain/TASK_WORK_ORDER_CONTRACT_V1.md) | 节点任务、作业工单、状态机、聚合和事实应用唯一权威 | 正式 V1 |
+| [EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1](product/domain/EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md) | 证据、来源身份、权威资格、验证、冲突和历史密封唯一权威 | 正式 V1 |
+| [CROSS_MODULE_REFERENCE_CONTRACT_V1](product/domain/CROSS_MODULE_REFERENCE_CONTRACT_V1.md) | 跨模块对象 ID、所有权、父链与引用完整性唯一权威 | 正式 V1 |
+| [ACTION_PERMISSION_CONTRACT_V1](product/domain/ACTION_PERMISSION_CONTRACT_V1.md) | 动作定义、服务端授权、复核、补录和审计唯一权威 | 正式 V1 |
+| [SYNC_RELIABILITY_CONTRACT_V1](product/domain/SYNC_RELIABILITY_CONTRACT_V1.md) | 三阶段回执、幂等、Inbox/Outbox、重试、死信和补偿唯一权威 | 正式 V1 |
 | [STATUS→](product/domain/CONTAINER_STATUS_MODEL.md)                | 状态码枚举(见 5.1)                                                         | —              |
 | [ACTION_CATALOG](product/domain/ACTION_CATALOG.md)                 | 一键动作码(组 A–E)                                                         | 候选           |
 | [MARKER_CATALOG](product/domain/MARKER_CATALOG.md)                 | 货柜标记字典                                                               | 候选           |

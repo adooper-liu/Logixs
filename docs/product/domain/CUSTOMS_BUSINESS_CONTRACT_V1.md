@@ -34,6 +34,7 @@
 
 现有权威关系：
 
+- 证据来源、权威资格、验证、冲突、人工锁和密封以[证据与来源权威契约 V1](./EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md)为唯一权威。
 - 事件语义码以 [EVENT_CODES](./EVENT_CODES.md) 为唯一权威，本文不复制另一套枚举。
 - 主流程节点、状态与转换守卫以[货柜生命周期状态机契约 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)为唯一权威；海关只形成清关专业事实。
 - 模块边界及“外部事实先到”规则以 [CUSTOMS_RELEASE_VERTICAL_SLICE](./CUSTOMS_RELEASE_VERTICAL_SLICE.md) 为实现基线。

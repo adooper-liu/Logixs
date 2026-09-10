@@ -186,7 +186,7 @@ evaluatedAt
 工单完成依据是不可变业务事实，不是按钮、同步成功或字段被填写。事实可以来自：
 
 ```text
-external_evidence | manual_backfill | controlled_import | internal_system
+external_evidence | manual_backfill | controlled_import | internal_operation
 ```
 
 外部权威证据与授权人工后补录表达同一业务事实时，使用相同：
@@ -326,6 +326,5 @@ P5 将定稿统一查询 Schema；P2 先锁定必须可见的业务语义：
 
 - V1 状态线值不得原地改义。新增状态或转换是行为变更；删除、改名或改变终态语义是破坏性变更。
 - 当前为业务契约 `D3`，尚无 JSON Schema、生成类型、OpenAPI、数据库迁移或运行时实现。
-- P3 的证据与来源权威契约将补齐 `verifiedFactRef` 的来源资格和冲突裁决，不改变本文件的状态机所有权。
+- [证据与来源权威契约 V1](./EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md)已补齐事实来源资格和冲突裁决，不改变本文件的状态机所有权。
 - P4 将定稿跨模块 ID、动作权限和同步可靠性；P5 将定稿查询与错误；P6/P7 才实例化并生成技术载体。
-

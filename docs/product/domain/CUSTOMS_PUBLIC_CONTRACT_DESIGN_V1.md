@@ -58,15 +58,14 @@ packages/contracts/schemas/customs/v1/*.schema.json
 CustomsOperationState = requested | submitted | accepted | rejected | completed | failed | cancelled
 CustomsReceiptStage = server_received | business_accepted | final_result
 SyncState = pending | processing | retrying | succeeded | failed | dead_letter | compensated
-EvidenceLevel = a | b | c | d
-EvidenceVerification = pending | verified | rejected | revoked
-CaptureSource = external_evidence | manual_backfill
 CustomsDirection = import | export
 AuthoritySubject = customs | carrier | terminal | maritime | freight | inspection_agency | other
 MappingDecision = approved | manual_review | rejected
 ```
 
 `submitted` 仅表示已发送，`accepted` 仅表示业务受理，操作 `completed` 不自动等于放行，`SyncState.succeeded` 仅表示数据传输成功。
+
+证据来源、权威等级、验证、置信、有效性和采集方式统一引用[证据与来源权威契约 V1](./EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md)。海关不得继续发布 `a/b/c/d` 平行等级。
 
 海关允许事件码引用 `EVENT_CODES`：
 
@@ -166,7 +165,7 @@ mappingDecision: MappingDecision
 ```text
 customsCaseId: UUID
 evidenceType: string
-evidenceLevel: EvidenceLevel
+authorityLevel: AuthorityLevel
 sourceSystem: string
 jurisdiction: string
 direction: CustomsDirection

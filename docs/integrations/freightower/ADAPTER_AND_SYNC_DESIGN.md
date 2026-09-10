@@ -1,5 +1,7 @@
 # 飞驼适配与同步设计
 
+> 公共同步阶段、幂等、Inbox/Outbox、重试、死信与补偿唯一引用[同步可靠性契约 V1](../../product/domain/SYNC_RELIABILITY_CONTRACT_V1.md)；本文只定义飞驼供应商适配细节。
+
 ## 边界
 
 飞驼通过 `FreightowerPort` 接入 Infrastructure Adapter。供应商 DTO、状态码和重试细节不得进入 Domain。建议持久化对象：
