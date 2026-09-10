@@ -3,7 +3,7 @@
 > 状态：数据库设计 V1（已定，待迁移实现）  
 > 日期：2026-09-09  
 > 技术基线：PostgreSQL + Prisma；唯一迁移入口 `database/migrations/`  
-> 上游：[公共契约 V1](./CUSTOMS_PUBLIC_CONTRACT_DESIGN_V1.md)
+> 上游：[海关公共契约 V1](./CUSTOMS_PUBLIC_CONTRACT_DESIGN_V1.md)、[任务与工单契约 V1](./TASK_WORK_ORDER_CONTRACT_V1.md)、[证据与来源权威契约 V1](./EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md)、[同步可靠性契约 V1](./SYNC_RELIABILITY_CONTRACT_V1.md)
 
 ## 1. 范围与所有权
 
@@ -11,11 +11,11 @@
 
 按限界上下文使用 PostgreSQL schema：
 
-| schema | 所有者 | 表 |
-| --- | --- | --- |
+| schema               | 所有者   | 表                                                                                     |
+| -------------------- | -------- | -------------------------------------------------------------------------------------- |
 | `customs_compliance` | 海关模块 | case、hold、evidence、observation、operation、receipt、fact、idempotency、outbox/inbox |
-| `work_execution` | 作业模块 | node_task、work_order、fact_application、idempotency、outbox/inbox |
-| `audit` | 审计模块 | audit_entry、audit_inbox |
+| `work_execution`     | 作业模块 | node_task、work_order、fact_application、idempotency、outbox/inbox                     |
+| `audit`              | 审计模块 | audit_entry、audit_inbox                                                               |
 
 模块只能写自己 schema。跨模块 ID 是稳定逻辑引用，不建跨 schema 外键；一致性由 Application、Inbox 幂等、对账任务和监控保证。模块内关系必须使用外键。
 
@@ -138,11 +138,17 @@ external_observation_id uuid PK
 tenant_id uuid not null
 customs_case_id uuid null FK customs_case
 provider varchar(64) not null
+api_version varchar(64) not null
 interface_code varchar(100) not null
-provider_event_code varchar(100) null
-provider_subject varchar(64) null
-provider_reference varchar(200) null
+jurisdiction varchar(16) not null
+direction varchar(16) not null
+subject varchar(64) not null
+raw_status_code varchar(100) not null
+raw_status_text varchar(500) null
+source_event_id varchar(200) null
+business_reference varchar(200) null
 observed_at timestamptz null
+provider_updated_at timestamptz null
 received_at timestamptz not null
 payload_object_key varchar(500) not null
 payload_sha256 char(64) not null
@@ -152,7 +158,7 @@ qualifiers jsonb not null default '{}'
 created_at timestamptz not null
 ```
 
-Observation 完全不可变，未知值不得静默映射。唯一 `(tenant_id,provider,interface_code,payload_sha256)`；索引 `(tenant_id,provider,provider_reference,received_at desc)`、`(tenant_id,mapping_result,received_at)`、`(tenant_id,customs_case_id,observed_at)`。`qualifiers` 必须为 JSON object，并由入口 schema 限制键集合。
+Observation 完全不可变，未知值不得静默映射。映射按 `provider + api_version + interface_code + jurisdiction + direction + subject + raw_status_code` 查找版本化规则。`source_event_id` 存在时唯一 `(tenant_id,provider,interface_code,source_event_id)`；缺失时使用经批准的版本化业务指纹，且唯一 `(tenant_id,provider,interface_code,payload_sha256)`。索引 `(tenant_id,provider,business_reference,received_at desc)`、`(tenant_id,mapping_result,received_at)`、`(tenant_id,customs_case_id,observed_at)`。`qualifiers` 必须为 JSON object，并由入口 schema 限制键集合。
 
 ### 3.7 `customs_compliance.client_operation`
 
@@ -160,20 +166,32 @@ Observation 完全不可变，未知值不得静默映射。唯一 `(tenant_id,p
 client_operation_id uuid PK
 tenant_id uuid not null
 customs_case_id uuid not null FK customs_case
-operation_type varchar(64) not null
-state varchar(24) not null
-sync_state varchar(16) not null
-provider varchar(64) not null
+action_code varchar(100) not null
+action_version integer not null
+target_type varchar(64) not null
+target_id uuid not null
+correlation_id uuid not null
+causation_id uuid null
+trace_id varchar(128) not null
+idempotency_key varchar(200) not null
+request_hash char(64) not null
+reception_state varchar(24) not null
+business_decision_state varchar(24) not null
+commit_state varchar(24) not null
+result_refs jsonb not null default '[]'
+rejection_reason_code varchar(100) null
+attempt_count integer not null default 0
+last_attempt_at / next_attempt_at timestamptz null
+provider varchar(64) null
 external_operation_reference varchar(200) null
 request_object_key varchar(500) not null
 request_sha256 char(64) not null
-requested_at / submitted_at / completed_at timestamptz null
-failure_code varchar(100) null
+received_at / decided_at / committed_at timestamptz null
 version bigint not null default 0
 created_at / updated_at timestamptz not null
 ```
 
-`state` 取 `CustomsOperationState`，`sync_state` 取 `SyncState`，两者不得互相推导。时间列必须与操作状态演进相容；失败态必须有 `failure_code`。外部引用存在时唯一 `(tenant_id,provider,external_operation_reference)`；索引 `(tenant_id,customs_case_id,created_at desc)`、`(tenant_id,state,updated_at)`、`(tenant_id,sync_state,updated_at)`。
+三阶段状态分别取 `ReceptionState`、`BusinessDecisionState` 和 `CommitState`，不得折叠或互相推导。唯一 `(tenant_id,action_code,idempotency_key)` 并保存 `request_hash`：同键同哈希返回原记录和 `result_refs`，同键异哈希明确冲突。时间列必须与阶段演进相容；业务拒绝必须有 `rejection_reason_code`。外部引用存在时唯一 `(tenant_id,provider,external_operation_reference)`；索引 `(tenant_id,customs_case_id,created_at desc)`、三阶段状态与 `next_attempt_at`。
 
 ### 3.8 `customs_compliance.customs_receipt`
 
@@ -204,8 +222,8 @@ tenant_id uuid not null
 customs_case_id uuid not null FK customs_case
 business_fact_key varchar(200) not null
 fact_type varchar(64) not null
-canonical_event_type varchar(100) not null
-capture_source varchar(24) not null     -- external_evidence | manual_backfill
+canonical_event_code varchar(100) not null
+capture_source varchar(24) not null     -- external_evidence | manual_backfill | controlled_import | internal_operation | system_derived
 business_occurred_at timestamptz not null
 recorded_at timestamptz not null
 source_system varchar(64) not null
@@ -220,7 +238,7 @@ version bigint not null default 0
 created_at / updated_at timestamptz not null
 ```
 
-`business_fact_key` 由规范事实类型、案卷适用范围、业务发生时间和权威业务引用按公共契约规则生成，不包含采集来源。唯一 `(tenant_id,business_fact_key)`，确保外部证据和人工后补录同一事实只形成一个业务结果。相同键且哈希相同返回既有事实；相同键但哈希不同返回 `CUSTOMS_IDEMPOTENCY_CONFLICT`，不得覆盖。`manual_backfill` 必须有 `actor_id/reason`；`external_evidence` 必须至少关联一条当前为 verified 的证据。索引 `(tenant_id,customs_case_id,business_occurred_at desc)`、`(tenant_id,canonical_event_type,recorded_at)`。
+`business_fact_key` 由规范事实类型、案卷适用范围、业务发生时间和权威业务引用按公共契约规则生成，不包含采集来源。唯一 `(tenant_id,business_fact_key)`，确保不同采集渠道表达的同一事实只形成一个业务结果。相同键且哈希相同返回既有事实；相同键但哈希不同返回 `CUSTOMS_IDEMPOTENCY_CONFLICT`，不得覆盖。`manual_backfill` 必须有 `actor_id/reason`；`external_evidence` 必须至少关联一条当前为 verified 的证据；`system_derived` 只能形成预计、风险或解释，不能独立形成实际放行事实。索引 `(tenant_id,customs_case_id,business_occurred_at desc)`、`(tenant_id,canonical_event_code,recorded_at)`。
 
 ### 3.10 `customs_compliance.customs_fact_evidence`
 
@@ -244,14 +262,19 @@ node_task_id uuid PK
 tenant_id uuid not null
 container_id uuid not null             -- shipment-registry 逻辑引用
 flow_instance_id uuid not null         -- lifecycle-control 逻辑引用
+node_instance_id uuid not null         -- lifecycle-control 逻辑引用
 node_code varchar(64) not null
+task_definition_key varchar(100) not null
+task_definition_version integer not null
+policy_snapshot_hash char(64) not null
 state varchar(24) not null
+aggregation_version bigint not null default 0
 started_at / completed_at timestamptz null
 version bigint not null default 0
 created_at / updated_at timestamptz not null
 ```
 
-`state` 取 `NodeTaskState`。唯一 `(tenant_id,flow_instance_id,node_code)`；索引 `(tenant_id,container_id,updated_at desc)`、`(tenant_id,state,updated_at)`。
+`state` 取 `NodeTaskState`。唯一 `(tenant_id,node_instance_id,task_definition_key,task_definition_version)`，节点重入时创建新实例，不能复用旧任务；索引 `(tenant_id,container_id,updated_at desc)`、`(tenant_id,state,updated_at)`。
 
 ### 4.2 `work_execution.work_order`
 
@@ -259,7 +282,12 @@ created_at / updated_at timestamptz not null
 work_order_id uuid PK
 tenant_id uuid not null
 node_task_id uuid not null FK node_task
-work_order_type varchar(64) not null
+work_order_definition_key varchar(100) not null
+work_order_definition_version integer not null
+policy_snapshot_hash char(64) not null
+applicability varchar(32) not null
+applicability_rule_version integer null
+applicability_fact_refs jsonb not null default '[]'
 state varchar(24) not null
 business_date timestamptz null
 blocked_reason_code varchar(64) null
@@ -267,9 +295,29 @@ version bigint not null default 0
 created_at / updated_at timestamptz not null
 ```
 
-`state` 取 `WorkOrderState`。`blocked` 必须有原因，其他状态不得遗留阻断原因；`completed` 必须有 `business_date`。唯一 `(tenant_id,node_task_id,work_order_type)`；索引 `(tenant_id,node_task_id,state)`、`(tenant_id,state,updated_at)`。
+`state` 取 `WorkOrderState`，`applicability` 取 `WorkOrderApplicability`。`not_applicable` 必须保存规则版本、判定事实和时间；`blocked` 必须有原因，其他状态不得遗留阻断原因；`completed` 必须有 `business_date`。唯一 `(tenant_id,node_task_id,work_order_definition_key,work_order_definition_version)`；索引 `(tenant_id,node_task_id,state)`、`(tenant_id,state,updated_at)`。
 
-### 4.3 `work_execution.work_order_evidence_ref`
+### 4.3 `work_execution.node_task_aggregation_snapshot`
+
+```text
+node_task_aggregation_snapshot_id uuid PK
+tenant_id uuid not null
+node_task_id uuid not null FK node_task
+aggregation_version bigint not null
+policy_snapshot_hash char(64) not null
+required_work_order_ids uuid[] not null
+completed_work_order_ids uuid[] not null
+blocking_refs uuid[] not null
+evaluated_fact_refs uuid[] not null
+previous_state varchar(24) not null
+next_state varchar(24) not null
+evaluated_at timestamptz not null
+created_at timestamptz not null
+```
+
+聚合快照 append-only，唯一 `(tenant_id,node_task_id,aggregation_version)`；同一输入集合与政策哈希必须确定性得到相同结果。该表记录聚合证据，不允许直接驱动 `FlowInstance`。
+
+### 4.4 `work_execution.work_order_evidence_ref`
 
 ```text
 work_order_evidence_ref_id uuid PK
@@ -282,7 +330,7 @@ linked_at timestamptz not null
 
 唯一 `(tenant_id,work_order_id,external_evidence_id)`。逻辑引用失效由定期对账发现，不允许通过跨 schema FK 耦合所有权。
 
-### 4.4 `work_execution.work_order_fact_application`
+### 4.5 `work_execution.work_order_fact_application`
 
 ```text
 work_order_fact_application_id uuid PK
@@ -345,7 +393,7 @@ causation_id uuid null
 idempotency_key varchar(200) not null
 payload_object_key varchar(500) not null
 payload_sha256 char(64) not null
-status varchar(16) not null             -- pending | publishing | published | failed | dead_letter
+status varchar(16) not null             -- pending | publishing | published | retry_wait | dead_letter
 attempt_count integer not null default 0
 next_attempt_at timestamptz null
 locked_at timestamptz null
@@ -355,7 +403,7 @@ last_error_code varchar(100) null
 created_at timestamptz not null
 ```
 
-唯一 `(tenant_id,event_type,idempotency_key)` 与 `(tenant_id,aggregate_type,aggregate_id,aggregate_version,event_type)`。`attempt_count >= 0`；`published` 必须有 `published_at`；`dead_letter` 必须有错误码。轮询索引 `(status,next_attempt_at,created_at)` where status in pending/failed，领取使用 `FOR UPDATE SKIP LOCKED`。
+唯一 `(tenant_id,event_type,idempotency_key)` 与 `(tenant_id,aggregate_type,aggregate_id,aggregate_version,event_type)`。`attempt_count >= 0`；`published` 必须有 `published_at`；`dead_letter` 必须有错误码。轮询索引 `(status,next_attempt_at,created_at)` where status in pending/retry_wait，领取使用 `FOR UPDATE SKIP LOCKED`。
 
 ### 5.3 `<module>.inbox_message`
 
@@ -366,7 +414,7 @@ consumer_name varchar(100) not null
 source_event_id uuid not null
 source_event_type varchar(100) not null
 payload_sha256 char(64) not null
-status varchar(16) not null             -- processing | processed | failed | dead_letter
+status varchar(16) not null             -- received | processing | processed | retry_wait | dead_letter
 attempt_count integer not null default 0
 next_attempt_at timestamptz null
 locked_at timestamptz null

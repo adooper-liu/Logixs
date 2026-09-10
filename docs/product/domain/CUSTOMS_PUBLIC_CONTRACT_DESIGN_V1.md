@@ -17,17 +17,17 @@ packages/contracts/schemas/customs/v1/*.schema.json
 
 正式实现只能保留一个可编辑权威源。`EVENT_CODES.md` 继续拥有事件语义码全集，本文只引用海关子集。
 
-| 项目 | V1 规则 |
-| --- | --- |
-| Schema | JSON Schema Draft 2020-12 |
-| JSON 字段/枚举 | `camelCase` / lowercase `snake_case` |
-| 标识符 | 内部 ID 使用 UUID string |
-| 时间 | UTC RFC 3339 `date-time`，输出含 `Z` |
-| 可选字段 | 缺失时省略；命令不以 `null` 代替缺失 |
-| 查询投影 | 稳定列可显式 `null`，须在 Schema 声明 |
-| 集合 | 无值为 `[]`，不返回 `null` |
-| 未知值/字段 | 未知枚举失败；写 DTO `additionalProperties:false` |
-| 并发/幂等 | `expectedVersion`；`idempotencyKey` 或 HTTP Header |
+| 项目           | V1 规则                                            |
+| -------------- | -------------------------------------------------- |
+| Schema         | JSON Schema Draft 2020-12                          |
+| JSON 字段/枚举 | `camelCase` / lowercase `snake_case`               |
+| 标识符         | 内部 ID 使用 UUID string                           |
+| 时间           | UTC RFC 3339 `date-time`，输出含 `Z`               |
+| 可选字段       | 缺失时省略；命令不以 `null` 代替缺失               |
+| 查询投影       | 稳定列可显式 `null`，须在 Schema 声明              |
+| 集合           | 无值为 `[]`，不返回 `null`                         |
+| 未知值/字段    | 未知枚举失败；写 DTO `additionalProperties:false`  |
+| 并发/幂等      | `expectedVersion`；`idempotencyKey` 或 HTTP Header |
 
 原始供应商载荷不得进入公共 DTO，只暴露受控引用和 SHA-256。
 
@@ -35,16 +35,16 @@ packages/contracts/schemas/customs/v1/*.schema.json
 
 ### 2.1 `CustomsCaseState`
 
-| 线值 | 含义 | 可进入 |
-| --- | --- | --- |
-| `not_filed` | 未申报 | `filed,cancelled` |
-| `filed` | 已申报 | `under_review,inspection,held,rejected,released,cancelled` |
-| `under_review` | 处理中 | `inspection,held,rejected,released` |
-| `inspection` | 查验中 | `under_review,held,rejected,released` |
-| `held` | 有效扣留 | `under_review,inspection,rejected,released` |
-| `rejected` | 退单/拒绝/需重报 | `filed,cancelled` |
-| `released` | 有效案卷放行 | 更正走复核，不原地回退 |
-| `cancelled` | 取消/作废 | 终态 |
+| 线值           | 含义             | 可进入                                                     |
+| -------------- | ---------------- | ---------------------------------------------------------- |
+| `not_filed`    | 未申报           | `filed,cancelled`                                          |
+| `filed`        | 已申报           | `under_review,inspection,held,rejected,released,cancelled` |
+| `under_review` | 处理中           | `inspection,held,rejected,released`                        |
+| `inspection`   | 查验中           | `under_review,held,rejected,released`                      |
+| `held`         | 有效扣留         | `under_review,inspection,rejected,released`                |
+| `rejected`     | 退单/拒绝/需重报 | `filed,cancelled`                                          |
+| `released`     | 有效案卷放行     | 更正走复核，不原地回退                                     |
+| `cancelled`    | 取消/作废        | 终态                                                       |
 
 `hold_released` 是解除特定 Hold 的事件，不是案卷状态。
 
@@ -77,22 +77,22 @@ customs_filed | inspection | hold | hold_released | release | container_customs_
 
 `CanonicalEventEnvelopeV1<TData>` 是[货柜生命周期统一事件信封](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md#4-统一事件信封)的海关 profile。实例化时必须通过 `$ref`/组合派生，不得维护第二份公共信封；下表仅列海关约束和海关上下文。
 
-| 字段 | 类型 | 必填 | 规则 |
-| --- | --- | --- | --- |
-| `eventId` | UUID | 是 | 全局唯一 |
-| `eventType` | allowed event code | 是 | §2.3 子集 |
-| `eventVersion` | integer | 是 | V1 固定 `1` |
-| `aggregateType` | enum | 是 | `customs_case,container,node_task,work_order` |
-| `aggregateId` | UUID | 是 | 归属聚合 |
-| `occurredAt` | date-time | 是 | 业务实际发生时间 |
-| `recordedAt` | date-time | 是 | 系统持久化时间 |
-| `correlationId` | UUID | 是 | 跨链路关联 |
-| `causationId` | UUID | 否 | 无上游时省略 |
-| `idempotencyKey` | string 1..200 | 是 | 业务幂等键 |
-| `source` | `EventSourceV1` | 是 | 来源和采集方式 |
-| `context` | `CustomsEventContextV1` | 是 | 海关范围 |
-| `evidenceRefs` | unique UUID[1..] | 是 | 至少一条 |
-| `data` | discriminated object | 是 | 按事件码判别 |
+| 字段             | 类型                    | 必填 | 规则                                          |
+| ---------------- | ----------------------- | ---- | --------------------------------------------- |
+| `eventId`        | UUID                    | 是   | 全局唯一                                      |
+| `eventCode`      | allowed event code      | 是   | §2.3 子集                                     |
+| `eventVersion`   | integer                 | 是   | V1 固定 `1`                                   |
+| `aggregateType`  | enum                    | 是   | `customs_case,container,node_task,work_order` |
+| `aggregateId`    | UUID                    | 是   | 归属聚合                                      |
+| `occurredAt`     | date-time               | 是   | 业务实际发生时间                              |
+| `recordedAt`     | date-time               | 是   | 系统持久化时间                                |
+| `correlationId`  | UUID                    | 是   | 跨链路关联                                    |
+| `causationId`    | UUID                    | 否   | 无上游时省略                                  |
+| `idempotencyKey` | string 1..200           | 是   | 业务幂等键                                    |
+| `source`         | `EventSourceV1`         | 是   | 来源和采集方式                                |
+| `context`        | `CustomsEventContextV1` | 是   | 海关范围                                      |
+| `evidenceRefs`   | unique UUID[1..]        | 是   | 至少一条                                      |
+| `data`           | discriminated object    | 是   | 按事件码判别                                  |
 
 ```text
 EventSourceV1:
@@ -118,13 +118,13 @@ CustomsEventContextV1:
   operationId?: UUID
 ```
 
-| 事件码 | `data` 必填字段 |
-| --- | --- |
-| `customs_filed` | `filingType,externalReference` |
-| `inspection` | `inspectionType,status=started|completed` |
-| `hold` | `holdKey,holdType` |
-| `hold_released` | `holdKey,releasedHoldEventId` |
-| `release` | `releaseScope=customs_case,externalReference` |
+| 事件码                        | `data` 必填字段                                                   |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `customs_filed`               | `filingType,externalReference`                                    |
+| `inspection`                  | `inspectionType,status=started                                    | completed` |
+| `hold`                        | `holdKey,holdType`                                                |
+| `hold_released`               | `holdKey,releasedHoldEventId`                                     |
+| `release`                     | `releaseScope=customs_case,externalReference`                     |
 | `container_customs_completed` | `caseSetVersion,requiredCaseIds,releasedFactIds,status=completed` |
 
 除 `container_customs_completed` 外，海关事件必须有 `customsCaseId`；货柜级聚合事件不得伪造单一案卷 ID，并要求 `requiredCaseIds` 非空且与已验证 `releasedFactIds` 完整对应。该事件的 `completionEligibleNodeCodes=[customs_clearance]`；单案卷 `release` 保持空数组。
@@ -253,16 +253,16 @@ packages/contracts/schemas/customs/v1/
   error-response.schema.json
 ```
 
-| Schema | 根类型 |
-| --- | --- |
-| `common` | 枚举、UUID、UTC 时间、SHA-256、小对象 |
-| `canonical-event-envelope` | 事件信封和事件数据判别联合 |
-| `external-customs-observation` | Adapter 写入边界 |
-| `register-customs-evidence-request` | 证据登记命令 |
-| `apply-customs-fact-to-work-order-command` | 外部/人工统一命令 |
-| `customs-case-view` | 案卷查询投影 |
-| `customs-task-status-view` | 海关操作台投影 |
-| `error-response` | 失败响应 |
+| Schema                                     | 根类型                                |
+| ------------------------------------------ | ------------------------------------- |
+| `common`                                   | 枚举、UUID、UTC 时间、SHA-256、小对象 |
+| `canonical-event-envelope`                 | 事件信封和事件数据判别联合            |
+| `external-customs-observation`             | Adapter 写入边界                      |
+| `register-customs-evidence-request`        | 证据登记命令                          |
+| `apply-customs-fact-to-work-order-command` | 外部/人工统一命令                     |
+| `customs-case-view`                        | 案卷查询投影                          |
+| `customs-task-status-view`                 | 海关操作台投影                        |
+| `error-response`                           | 失败响应                              |
 
 每个 `$id` 使用 `https://logixs.local/schemas/customs/v1/{name}`。正式 Schema 必须声明 Draft 2020-12，以 `$defs/$ref` 引用唯一枚举，并为字符串、数组和数值设置边界。
 
@@ -271,20 +271,20 @@ Schema 强制规则：
 - 根对象 `additionalProperties:false`。
 - 证据数组 `minItems:1` 且 `uniqueItems:true`。
 - `manual_backfill` 以 `if/then` 要求 `actorId/reason`。
-- 事件 `data` 以 `eventType` 判别，禁止任意对象。
+- 事件 `data` 以 `eventCode` 判别，禁止任意对象。
 - 日期时间必须有时区；SHA-256 使用小写十六进制 pattern。
 - 命令可选字段省略；只有查询投影声明 nullable。
 
 ## 7. 跨语言与 OpenAPI 对照
 
-| JSON Schema | TypeScript | Python | OpenAPI |
-| --- | --- | --- | --- |
-| string enum | 字符串联合/生成枚举 | `StrEnum` | string enum |
-| uuid | branded string | `UUID` | string/uuid |
-| date-time | ISO string | aware `datetime` | string/date-time |
-| required | 必填属性 | 必填字段 | required |
-| 非 required | `?:` | optional | 非 required |
-| string/null | `string/null` | `str/None` | nullable 投影 |
+| JSON Schema | TypeScript          | Python           | OpenAPI          |
+| ----------- | ------------------- | ---------------- | ---------------- |
+| string enum | 字符串联合/生成枚举 | `StrEnum`        | string enum      |
+| uuid        | branded string      | `UUID`           | string/uuid      |
+| date-time   | ISO string          | aware `datetime` | string/date-time |
+| required    | 必填属性            | 必填字段         | required         |
+| 非 required | `?:`                | optional         | 非 required      |
+| string/null | `string/null`       | `str/None`       | nullable 投影    |
 
 生成后必须用同一 fixture 在 JSON Schema、TypeScript、Python 和 OpenAPI 契约测试中对拍。
 

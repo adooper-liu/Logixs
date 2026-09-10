@@ -45,11 +45,11 @@ freshness: ProjectionFreshnessV1
 
 四类状态必须分字段返回，禁止合并为单一 `status`：
 
-| 轨道 | 字段 | 权威来源 | 回答的问题 |
-| --- | --- | --- | --- |
-| 主流程 | `flow.state`、`currentNode.state` | `lifecycle-control` | 货柜走到哪一步 |
-| 节点任务 | `tasks[].state` | `work-execution` | 当前工序子任务做到哪 |
-| 作业工单 | `workOrders[].state` | `work-execution` | 具体作业是否完成 |
+| 轨道     | 字段                                                                        | 权威来源            | 回答的问题               |
+| -------- | --------------------------------------------------------------------------- | ------------------- | ------------------------ |
+| 主流程   | `flow.state`、`currentNode.state`                                           | `lifecycle-control` | 货柜走到哪一步           |
+| 节点任务 | `tasks[].state`                                                             | `work-execution`    | 当前工序子任务做到哪     |
+| 作业工单 | `workOrders[].state`                                                        | `work-execution`    | 具体作业是否完成         |
 | 数据同步 | `syncSummary.operations[].receptionState/businessDecisionState/commitState` | 操作所有者/集成平台 | 请求是否接收、接受、落账 |
 
 同步完成不代表工单、任务或流程完成。异常与 Block 是正交事实，分别通过 `activeExceptions` 和 `activeBlocks` 展示，不得伪装成主状态。
@@ -63,7 +63,7 @@ nodeInstanceId: UUID
 nodeCode: registered node code
 sequence: integer
 activationNo: integer >= 1
-applicability: required | optional | not_applicable
+applicability: required | optional_applicable | optional_not_applicable
 state: registered node state
 plannedAt?: date-time
 estimatedAt?: date-time
@@ -82,7 +82,7 @@ version: integer >= 0
 `TimelineItemViewV1` 至少包含：
 
 ```text
-eventId, eventType, eventVersion
+eventId, eventCode, eventVersion
 containerId, flowInstanceId, nodeCode, nodeInstanceId?
 role, timeKind, occurredAt, recordedAt, receivedAt?
 validity, confidenceState, domain, domainFactId?
@@ -194,5 +194,5 @@ projectionVersion?: integer
 
 - 新增可选字段通常是加法兼容；新增必填字段、改变可空性、状态含义、默认排序、权限可见性或 cursor 语义是行为变更或破坏性变更。
 - V1 不承诺数据库结构；实体、DTO 和 API 必须显式映射。
-- 当前公共读模型已在 P6 达到 `D4`；尚无 OpenAPI、生成类型、数据库投影或运行时实现。
-- P7 将实现投影器、API、前端消费者及契约/E2E 测试。
+- 当前主视图已有局部 Schema，但仍缺 `currentTimes`、完整任务/工单摘要、时间线和分页模型，门禁保持 `D3`；尚无 OpenAPI、生成类型、数据库投影或运行时实现。
+- 任务阶段 G7 将实现投影器、API、前端消费者及契约/E2E 测试。

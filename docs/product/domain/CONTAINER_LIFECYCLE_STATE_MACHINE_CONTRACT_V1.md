@@ -1,8 +1,6 @@
 # 货柜生命周期状态机契约 V1
 
-> 状态：公共领域契约 V1（已定，待负责人评审与实例化）  
-> 日期：2026-09-09  
-> 所有者：`lifecycle-control`；公共类型目标位置：`packages/contracts`  
+> 状态：**正式 V1（负责人批准）** · 契约 ID：`GC-002` · 版本：`1.0.0` · 定稿日期：2026-09-10 · 所有者：生命周期域负责人（刘志高） · 实现所有者：`lifecycle-control` · 公共类型目标位置：`packages/contracts`
 > 消费者：`shipment-registry`、`work-execution`、专业业务模块、Integration Adapter、Web、审计和生命周期投影
 
 ## 1. 目的与权威边界
@@ -19,20 +17,20 @@
 - 时间线保存事实；状态机决定事实是否造成转换；状态投影不得反向制造事实。
 - WorkOrder、NodeTask、海关案卷、同步状态和异常状态各自独立，不进入本状态枚举。
 - 专业模块只能发布规范事实；Adapter、UI、工作流引擎和数据库触发器不得绕过本状态机。
-- 本轮不创建运行时代码、JSON Schema、数据库迁移或 API。
+- 本次签署只升格业务语义，不新增运行时代码、JSON Schema、数据库迁移或 API；现有 Schema 仅局部覆盖公共枚举和查询投影。
 
 ## 2. 单一权威关系与兼容性
 
-| 内容 | 权威来源 | 本文处理 |
-| --- | --- | --- |
-| 主流程、节点和转换 | 本文 | 唯一转换规则 |
-| 规范事件信封与时间 | [时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md) | 作为状态机输入 |
-| 事件码及角色 | [事件码目录](./EVENT_CODES.md) | 只引用批准线值 |
-| 专业事实及证据 | 各专业模块契约 | 通过 `domainFactId` 引用 |
-| 海关案卷放行 | [海关业务契约 V1](./CUSTOMS_BUSINESS_CONTRACT_V1.md) | 作为清关节点完成事实 |
-| 工单与子任务 | `work-execution` 公共契约 | 只作作业上下文，不直接转换主流程 |
+| 内容               | 权威来源                                                       | 本文处理                         |
+| ------------------ | -------------------------------------------------------------- | -------------------------------- |
+| 主流程、节点和转换 | 本文                                                           | 唯一转换规则                     |
+| 规范事件信封与时间 | [时间线契约 V1](./CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md) | 作为状态机输入                   |
+| 事件码及角色       | [事件码目录](./EVENT_CODES.md)                                 | 只引用批准线值                   |
+| 专业事实及证据     | 各专业模块契约                                                 | 通过 `domainFactId` 引用         |
+| 海关案卷放行       | [海关业务契约 V1](./CUSTOMS_BUSINESS_CONTRACT_V1.md)           | 作为清关节点完成事实             |
+| 工单与子任务       | [任务与工单契约 V1](./TASK_WORK_ORDER_CONTRACT_V1.md)          | 只作作业上下文，不直接转换主流程 |
 
-这是行为变更型设计：它把现有候选文档中的转换说明收敛为一个版本化契约。实施不得直接重释已有数据；必须保存原流程定义版本，采用新建 V1 流程或经审计迁移后切换。负责人批准前，本文仍不授权代码或数据变更。
+这是行为变更型契约：它把现有候选文档中的转换说明收敛为一个版本化 V1。实施不得直接重释已有数据；必须保存原流程定义版本，采用新建 V1 流程或经审计迁移后切换。进入 `D3` 只授权后续 Schema 实例化，不代表运行时、数据库或历史数据已经迁移。
 
 ## 3. 三层状态模型
 
@@ -42,12 +40,12 @@
 draft | active | completed | cancelled
 ```
 
-| 状态 | 含义 | 可进入 |
-| --- | --- | --- |
-| `draft` | 已创建但尚未启动 | `active,cancelled` |
-| `active` | 主流程运行中且恰有一个当前节点 | `completed,cancelled` |
-| `completed` | 必需节点完成且终点成立 | 终态；纠偏走受控重算，不原地回退 |
-| `cancelled` | 在允许阶段经授权取消 | 终态 |
+| 状态        | 含义                           | 可进入                           |
+| ----------- | ------------------------------ | -------------------------------- |
+| `draft`     | 已创建但尚未启动               | `active,cancelled`               |
+| `active`    | 主流程运行中且恰有一个当前节点 | `completed,cancelled`            |
+| `completed` | 必需节点完成且终点成立         | 终态；纠偏走受控重算，不原地回退 |
+| `cancelled` | 在允许阶段经授权取消           | 终态                             |
 
 ### 3.2 `LifecycleNodeState`
 
@@ -55,14 +53,14 @@ draft | active | completed | cancelled
 pending | active | blocked | completed | skipped | cancelled
 ```
 
-| 当前状态 | 命令/事实 | 下一状态 | 核心条件 |
-| --- | --- | --- | --- |
-| `pending` | activate | `active` | 前置节点完成或合法跳过 |
-| `pending` | skip | `skipped` | 节点定义为可选、适用性为 false、证据与原因齐全 |
-| `active` | block | `blocked` | 存在有效阻断事实 |
-| `blocked` | unblock | `active` | 指定阻断已解除；不得清空全部未知阻断 |
-| `active` | accept completion fact | `completed` | 事件、时间、来源、证据与节点守卫全部通过 |
-| `active/blocked` | cancel flow | `cancelled` | 整个流程被合法取消 |
+| 当前状态         | 命令/事实              | 下一状态    | 核心条件                                       |
+| ---------------- | ---------------------- | ----------- | ---------------------------------------------- |
+| `pending`        | activate               | `active`    | 前置节点完成或合法跳过                         |
+| `pending`        | skip                   | `skipped`   | 节点定义为可选、适用性为 false、证据与原因齐全 |
+| `active`         | block                  | `blocked`   | 存在有效阻断事实                               |
+| `blocked`        | unblock                | `active`    | 指定阻断已解除；不得清空全部未知阻断           |
+| `active`         | accept completion fact | `completed` | 事件、时间、来源、证据与节点守卫全部通过       |
+| `active/blocked` | cancel flow            | `cancelled` | 整个流程被合法取消                             |
 
 `completed/skipped/cancelled` 不接受普通回退。更正或撤销事实通过纠偏流程重建投影；是否生成新的节点实例由批准的重入规则决定。
 
@@ -81,22 +79,22 @@ picked_up | unloaded | returned_empty | cancelled
 
 节点代码、顺序、可选性、所有者和主要完成事实唯一引用[货柜生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)。状态机负责节点实例、转换和守卫；下表是 V1 目录的评审快照，不得作为第二份枚举源。流程实例保存 `definitionVersion=1`。
 
-| sequence | `nodeCode` | 名称 | 可选 | 所有者/事实模块 | 主要完成事实 | 完成后的货柜状态 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | `cargo_ready` | 备货 | 否 | booking-origin | `cargo_ready`（由备货单完成事实挂接） | `not_shipped` |
-| 2 | `container_stuffing` | 装箱 | 否 | booking-origin | `stuffed` | `not_shipped` |
-| 3 | `shipment_dispatch` | 出运 | 否 | booking-origin | `loaded` | `shipped` |
-| 4 | `origin_departure` | 离港 | 否 | ocean-port-visibility | `departed` | `shipped` |
-| 5 | `ocean_transit` | 海运 | 否 | ocean-port-visibility | 直达为 `arrived`；中转为匹配航段的 `transit_arrived`；`sailing` 只表示进行中 | `in_transit` |
-| 6 | `transshipment` | 中转港 | 是 | ocean-port-visibility | `transit_departed`，且适用时已有匹配 `transit_arrived` | `in_transit` |
-| 7 | `customs_clearance` | 清关 | 否 | customs-compliance | 货柜级海关完成事实 | 不单独推导提柜状态 |
-| 8 | `destination_arrival` | 到港 | 否 | ocean-port-visibility | `arrived`/ATA | `at_port` |
-| 9 | `rail_transfer` | 海铁 | 是 | ocean-port-visibility/inland-fulfillment 公开端口 | `rail_handover` | 保持 `at_port` |
-| 10 | `container_pickup` | 拖卡提柜 | 否 | inland-fulfillment | `gate_out` 且联合守卫通过 | `picked_up` |
-| 11 | `warehouse_delivery` | 送仓 | 否 | inland-fulfillment | 有签收证据的 `delivered`，或仓库/WMS/门岗权威 `warehouse_arrival` | `picked_up` |
-| 12 | `container_unloading` | 卸柜 | 否 | inland-fulfillment | `unloaded` | `unloaded` |
-| 13 | `container_unstuffing` | 卸空 | 否 | inland-fulfillment | `unstuffed` | `unloaded` |
-| 14 | `empty_return` | 还箱 | 否 | inland-fulfillment | `returned_empty` | `returned_empty` |
+| sequence | `nodeCode`             | 名称     | 可选 | 所有者/事实模块                                   | 主要完成事实                                                                 | 完成后的货柜状态   |
+| -------- | ---------------------- | -------- | ---- | ------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------ |
+| 1        | `cargo_ready`          | 备货     | 否   | booking-origin                                    | `cargo_ready`（由备货单完成事实挂接）                                        | `not_shipped`      |
+| 2        | `container_stuffing`   | 装箱     | 否   | booking-origin                                    | `stuffed`                                                                    | `not_shipped`      |
+| 3        | `shipment_dispatch`    | 出运     | 否   | booking-origin                                    | `loaded`                                                                     | `shipped`          |
+| 4        | `origin_departure`     | 离港     | 否   | ocean-port-visibility                             | `departed`                                                                   | `shipped`          |
+| 5        | `ocean_transit`        | 海运     | 否   | ocean-port-visibility                             | 直达为 `arrived`；中转为匹配航段的 `transit_arrived`；`sailing` 只表示进行中 | `in_transit`       |
+| 6        | `transshipment`        | 中转港   | 是   | ocean-port-visibility                             | `transit_departed`，且适用时已有匹配 `transit_arrived`                       | `in_transit`       |
+| 7        | `customs_clearance`    | 清关     | 否   | customs-compliance                                | 货柜级海关完成事实                                                           | 不单独推导提柜状态 |
+| 8        | `destination_arrival`  | 到港     | 否   | ocean-port-visibility                             | `arrived`/ATA                                                                | `at_port`          |
+| 9        | `rail_transfer`        | 海铁     | 是   | ocean-port-visibility/inland-fulfillment 公开端口 | `rail_handover`                                                              | 保持 `at_port`     |
+| 10       | `container_pickup`     | 拖卡提柜 | 否   | inland-fulfillment                                | `gate_out` 且联合守卫通过                                                    | `picked_up`        |
+| 11       | `warehouse_delivery`   | 送仓     | 否   | inland-fulfillment                                | 有签收证据的 `delivered`，或仓库/WMS/门岗权威 `warehouse_arrival`            | `picked_up`        |
+| 12       | `container_unloading`  | 卸柜     | 否   | inland-fulfillment                                | `unloaded`                                                                   | `unloaded`         |
+| 13       | `container_unstuffing` | 卸空     | 否   | inland-fulfillment                                | `unstuffed`                                                                  | `unloaded`         |
+| 14       | `empty_return`         | 还箱     | 否   | inland-fulfillment                                | `returned_empty`                                                             | `returned_empty`   |
 
 节点 #1 的 `cargo_ready` 已由负责人确认：一张备货单形成一次有效完成确认，来源可为授权人工、ERP、供应链系统或受控导入。箱号未产生时它只属于备货域，不创建货柜、FlowInstance 或货柜时间线；箱号产生并建档后才挂接为生命周期事件。节点 #9 已确认使用 `rail_handover`，以铁路实际接收指定货柜为完成点。负责人已批准事件目录使用版本化的 `completionEligibleNodeCodes`：事件 `role` 只描述语义角色，不能单独授予状态转换权限。
 
@@ -170,8 +168,8 @@ version: integer >= 0
 3. 同一流程的 `(nodeCode,activationNo)` 唯一；重入必须增加 `activationNo`。
 4. 只有 `actual + effective + verified/confirmed` 且在节点策略中登记为 `completionEligible` 的事件可申请完成节点；`role` 不是转换权限。
 5. `estimated/planned`、同步成功、工单完成或 UI 操作成功都不能直接完成节点。
-6. 事件必须匹配 tenant、container、flow、nodeInstance 和流程定义版本。
-7. 事件接收在流程内按 `eventId` 唯一；节点应用按 `(eventId,nodeInstanceId)` 唯一。同一事件可按 `completionEligibleNodeCodes` 依次应用到不同节点，但每个节点最多产生一次转换。
+6. 事件必须匹配 tenant、container、flow 和流程定义版本；事件归属的 `nodeInstanceId` 必须有效，节点应用目标则按完成资格、当前节点和航段/地点守卫独立判定。
+7. 事件接收在流程内按 `eventId` 唯一；节点应用按 `(eventId,targetNodeInstanceId)` 唯一。同一事件可按 `completionEligibleNodeCodes` 依次应用到不同目标节点，但每个目标节点最多产生一次转换。
 8. 前序实际时间不得晚于后序实际时间；无法确认时进入复核，不使用接收时间替代。
 9. 异常和阻断正交保存，不把 Hold、查验、延误或甩柜加入主链状态枚举。
 10. 每次聚合更新使用 `expectedVersion` 乐观并发并在同一事务写 Outbox。
@@ -232,7 +230,7 @@ idempotencyKey: string(1..200)
 
 1. 校验 Schema、租户、对象级权限和流程版本。
 2. Inbox/消费记录按 `eventId + payloadHash` 去重；同 ID 异载荷拒绝。
-3. 校验事件码已登记，且角色、timeKind、nodeCode 与目录一致；需要完成节点时还必须校验该事件对目标节点的 `completionEligible` 注册。
+3. 校验事件码已登记，且角色、timeKind、归属 nodeCode 与目录一致；需要完成节点时还必须校验该事件对目标节点的 `completionEligible` 注册。
 4. 校验 `domainFactId`、来源权威、验证状态、置信状态和证据适用性。
 5. 保存事件已接收事实；预计、里程碑或异常进入时间线/投影，但不自动完成节点。
 6. 若事件属于未来节点，保存为 `pending_application`；不得跳过中间必需节点。
@@ -249,7 +247,7 @@ idempotencyKey: string(1..200)
 
 ```text
 eventIsRegisteredAndCompletionEligibleForNode
-AND eventMatchesCurrentNodeInstance
+AND eventIsApplicableToCurrentNodeInstance
 AND eventIsActualEffectiveFact
 AND sourcePolicySatisfied
 AND evidenceApplicableAndEffective
@@ -260,20 +258,20 @@ AND expectedVersionMatches
 
 ### 8.2 专项守卫
 
-| 节点 | 附加守卫 |
-| --- | --- |
-| 装箱 | 货柜身份已迟绑定且装箱定稿事实适用于该柜 |
-| 备货 | `cargo_ready` 引用一备货单唯一有效确认，且备货单与当前货柜关联一致 |
-| 出运/离港 | 实际装载/离港对象、航段和起运港匹配 |
-| 海运 | `sailing` 只更新进行中投影；直达 `arrived` 必须匹配目的港航段，中转 `transit_arrived` 必须匹配中转港航段 |
-| 中转 | 节点适用，`transit_departed` 的航段与中转港匹配；要求到达事实时必须指向同一港口调用 |
-| 清关 | 全部必需案卷已有效放行，案卷集合版本一致，无有效海关阻断 |
-| 到港 | ATA 属于目的港及当前航段；AIS 推算、ETA、ATB 不替代 ATA |
-| 海铁 | 节点适用；`rail_handover` 必须证明铁路主体或铁路场站实际接收指定货柜，且货柜、铁路运输段、接收主体/场站和实际时间匹配 |
-| 提柜 | 海关、船司、码头、海事、运费等适用主体守卫均通过，并有重柜 `gate_out` |
-| 送仓 | 货柜与目的仓匹配；`delivered` 必须带 POD、门岗或仓库签收，`warehouse_arrival` 必须来自仓库、WMS 或门岗权威来源；GPS 围栏或司机单方点击只能 provisional |
-| 卸柜/卸空 | 仓库与货柜匹配；部分卸货不等于卸空 |
-| 还箱 | 指定空箱场站接受事实，且箱号/设备身份匹配 |
+| 节点      | 附加守卫                                                                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 装箱      | 货柜身份已迟绑定且装箱定稿事实适用于该柜                                                                                                               |
+| 备货      | `cargo_ready` 引用一备货单唯一有效确认，且备货单与当前货柜关联一致                                                                                     |
+| 出运/离港 | 实际装载/离港对象、航段和起运港匹配                                                                                                                    |
+| 海运      | `sailing` 只更新进行中投影；直达 `arrived` 必须匹配目的港航段，中转 `transit_arrived` 必须匹配中转港航段                                               |
+| 中转      | 节点适用，`transit_departed` 的航段与中转港匹配；要求到达事实时必须指向同一港口调用                                                                    |
+| 清关      | 全部必需案卷已有效放行，案卷集合版本一致，无有效海关阻断                                                                                               |
+| 到港      | ATA 属于目的港及当前航段；AIS 推算、ETA、ATB 不替代 ATA                                                                                                |
+| 海铁      | 节点适用；`rail_handover` 必须证明铁路主体或铁路场站实际接收指定货柜，且货柜、铁路运输段、接收主体/场站和实际时间匹配                                  |
+| 提柜      | 海关、船司、码头、海事、运费等适用主体守卫均通过，并有重柜 `gate_out`                                                                                  |
+| 送仓      | 货柜与目的仓匹配；`delivered` 必须带 POD、门岗或仓库签收，`warehouse_arrival` 必须来自仓库、WMS 或门岗权威来源；GPS 围栏或司机单方点击只能 provisional |
+| 卸柜/卸空 | 仓库与货柜匹配；部分卸货不等于卸空                                                                                                                     |
+| 还箱      | 指定空箱场站接受事实，且箱号/设备身份匹配                                                                                                              |
 
 “海关放行”和“可提柜”分离：清关完成只允许进入后续到港阶段；提柜节点仍必须等待实际到港、可提及全部适用主体守卫。
 
@@ -345,7 +343,7 @@ allowedActions: LifecycleActionCapabilityV1[]
 
 状态机本地事务必须原子完成：Inbox/消费登记、事件应用结果、节点转换、FlowInstance 版本、货柜状态投影、转换历史和 Outbox。跨模块只保存稳定逻辑 ID，不建立跨 schema 外键。
 
-事件接收幂等范围为 `tenantId + flowInstanceId + eventId`；节点应用幂等范围为 `tenantId + flowInstanceId + eventId + nodeInstanceId`。同事件 ID 同哈希返回已有接收结果，并继续检查是否存在尚未应用的合格目标节点；同 ID 异哈希拒绝并告警。并发更新以 `expectedVersion` 控制，失败方重读后重新判断，不自动覆盖。
+事件接收幂等范围为 `tenantId + flowInstanceId + eventId`；节点应用幂等范围为 `tenantId + flowInstanceId + eventId + targetNodeInstanceId`。同事件 ID 同哈希返回已有接收结果，并继续检查是否存在尚未应用的合格目标节点；同 ID 异哈希拒绝并告警。并发更新以 `expectedVersion` 控制，失败方重读后重新判断，不自动覆盖。
 
 审计至少保存命令、操作者/服务身份、原因、触发事实、前后状态摘要、守卫判定、证据引用、关联 ID 和时间。敏感原文只保存受控引用及哈希。
 
@@ -374,8 +372,8 @@ allowedActions: LifecycleActionCapabilityV1[]
 ## 17. 实例化与实施顺序
 
 ```text
-负责人批准本文及四个目录缺口
--> JSON Schema 单一权威源
+GC-001 / GC-003 / GC-002 / GC-004 业务语义已批准
+-> 补齐 JSON Schema 单一权威源
 -> TS/OpenAPI/Python 派生和 Contract Parity
 -> lifecycle-control 数据库结构与迁移设计
 -> Domain 状态机及 fixture
@@ -385,4 +383,4 @@ allowedActions: LifecycleActionCapabilityV1[]
 -> 全链路 E2E、历史回放和恢复演练
 ```
 
-`completionEligibleNodeCodes` 的 V1 属性及节点映射已经完成负责人确认。当前唯一活动任务释放前，不派生代码实施任务；本文不修改活动任务状态。
+P6.1 已由生命周期域负责人刘志高签署，Codex 完成技术边界复核，结论为批准 `GC-002` 进入 `D3`。`completionEligibleNodeCodes` 的 V1 属性及节点映射已纳入本次整体批准；剩余 Schema、实现、迁移和验证缺口不随签署自动关闭。当前唯一活动任务释放前，不派生代码实施任务；本文不修改活动任务状态。

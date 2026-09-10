@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import {
   extractMarkdownTargets,
+  findAmbiguousContractPhaseReferences,
   findBrokenMarkdownLinks,
   findForbiddenTrackedPaths,
   findUiThemeBoundaryViolations,
@@ -18,12 +19,13 @@ after(() => {
   );
 });
 
-test("rejects generated output, competing lockfiles, logs, and real env files", () => {
+test("rejects generated output, evidence scratch files, competing lockfiles, logs, and real env files", () => {
   assert.deepEqual(
     findForbiddenTrackedPaths([
       "apps/web/src/main.ts",
       "apps/web/node_modules/vue/index.js",
       "apps/web/dist/index.html",
+      "tmp/pdfs/customs-batch-012/customs-1.png",
       "server.log",
       "apps/web/package-lock.json",
       "packages/domain/pnpm-lock.yaml",
@@ -33,6 +35,7 @@ test("rejects generated output, competing lockfiles, logs, and real env files", 
     [
       "apps/web/node_modules/vue/index.js",
       "apps/web/dist/index.html",
+      "tmp/pdfs/customs-batch-012/customs-1.png",
       "server.log",
       "apps/web/package-lock.json",
       "packages/domain/pnpm-lock.yaml",
@@ -94,6 +97,44 @@ test("reports missing relative markdown targets and ignores external links", () 
   const errors = findBrokenMarkdownLinks([sourcePath]);
   assert.equal(errors.length, 1);
   assert.match(errors[0], /missing\.md/);
+});
+
+test("rejects ambiguous P6/P7 references in global contract authorities", () => {
+  assert.deepEqual(
+    findAmbiguousContractPhaseReferences([
+      {
+        path: "node-catalog.md",
+        source: "P6 creates schemas; types remain for P7.",
+      },
+      {
+        path: "qualified.md",
+        source: "项目 `P6` is a vertical slice; P6.1 is a sign-off record.",
+      },
+    ]),
+    [
+      "node-catalog.md:1: ambiguous phase 'P6'; use 'G6' for global-contract task stages or qualify it as a project phase",
+      "node-catalog.md:1: ambiguous phase 'P7'; use 'G7' for global-contract task stages or qualify it as a project phase",
+    ],
+  );
+});
+
+test("qualifies explicit project phases and still catches lowercase tokens", () => {
+  assert.deepEqual(
+    findAmbiguousContractPhaseReferences([
+      {
+        path: "qualified.md",
+        source:
+          "项目阶段 P6 与项目**P7** 顺序固定；见（项目 P6）记录；G6 建源，G7 派生；P6.1 已签署。",
+      },
+      {
+        path: "ambiguous.md",
+        source: "该项目不使用 p6 阶段号。",
+      },
+    ]),
+    [
+      "ambiguous.md:1: ambiguous phase 'p6'; use 'G6' for global-contract task stages or qualify it as a project phase",
+    ],
+  );
 });
 
 test("enforces the stable UI theme boundary", () => {

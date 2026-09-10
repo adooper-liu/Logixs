@@ -1,8 +1,6 @@
 # 货柜生命周期时间线契约 V1
 
-> 状态：公共契约设计 V1（已定，待负责人评审与实例化）  
-> 日期：2026-09-09  
-> 所有者：`lifecycle-control`；公共类型目标位置：`packages/contracts`  
+> 状态：**正式 V1（负责人批准）** · 契约 ID：`GC-004` · 版本：`1.0.0` · 定稿日期：2026-09-10 · 所有者：生命周期域负责人（刘志高） · 实现所有者：`lifecycle-control` · 公共类型目标位置：`packages/contracts`
 > 适用消费者：`shipment-registry`、`lifecycle-control`、`work-execution`、各专业业务模块、Integration Adapter、Web、审计与分析投影  
 > 状态转换权威：[货柜生命周期状态机契约 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)
 
@@ -24,19 +22,19 @@
 - Integration Adapter 只保存和翻译供应商观察，不能让供应商模型侵入公共契约。
 - 海关是节点 #7 的专业切片；本契约不复制海关案卷、Hold 或回执结构。
 
-本轮只定稿设计，不创建 JSON Schema、TypeScript、OpenAPI、数据库迁移或运行时代码。
+本次签署只升格业务语义，不新增 JSON Schema、TypeScript、OpenAPI、数据库迁移或运行时代码；现有事件信封 Schema 仍是局部实例化。
 
 ## 2. 单一权威与兼容性
 
-| 内容 | 唯一来源 | 本文职责 |
-| --- | --- | --- |
-| 14 节点及顺序 | [生命周期一致性](./LIFECYCLE_CONSISTENCY.md)、[节点对照](./CONTAINER_LIFECYCLE.md) | 引用并规定接受/推进方式 |
-| 规范事件码 | [事件码目录](./EVENT_CODES.md) | 引用，不复制供应商码 |
-| 外部码映射 | [外部事件映射](./EXTERNAL_EVENT_MAPPING.md)及供应商 Adapter | 要求版本化映射与未知值隔离 |
-| 海关事件载荷 | [海关公共契约 V1](./CUSTOMS_PUBLIC_CONTRACT_DESIGN_V1.md) | 通过专业事实引用挂接 |
-| 数据库存储 | 后续时间线数据库设计/迁移 | 本文定义公共线语义，不把实体当 DTO |
+| 内容          | 唯一来源                                                    | 本文职责                                              |
+| ------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
+| 14 节点及顺序 | [生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)       | 引用并规定接受/推进方式；候选对照文档不再作为枚举来源 |
+| 规范事件码    | [事件码目录](./EVENT_CODES.md)                              | 引用，不复制供应商码                                  |
+| 外部码映射    | [外部事件映射](./EXTERNAL_EVENT_MAPPING.md)及供应商 Adapter | 要求版本化映射与未知值隔离                            |
+| 海关事件载荷  | [海关公共契约 V1](./CUSTOMS_PUBLIC_CONTRACT_DESIGN_V1.md)   | 通过专业事实引用挂接                                  |
+| 数据库存储    | 后续时间线数据库设计/迁移                                   | 本文定义公共线语义，不把实体当 DTO                    |
 
-这是新增公共契约。V1 实例化后，字段含义、枚举线值和事件版本不得静默改变；新增必填字段、收紧可空性、修改类型或重释既有事件必须发布 V2 并提供兼容期。当前节点及事件目录仍含候选来源，负责人批准前不得据本文启动运行时实现。
+这是新增公共契约。V1 实例化后，字段含义、枚举线值和事件版本不得静默改变；新增必填字段、收紧可空性、修改类型或重释既有事件必须发布 V2 并提供兼容期。进入 `D3` 只授权后续 Schema 实例化，不代表运行时、数据库或历史数据已经迁移。
 
 ## 3. 核心类型
 
@@ -53,7 +51,7 @@ planned | estimated | actual
 ### 3.2 `LifecycleEventRole`
 
 ```text
-milestone | state_evidence | prerequisite | exception
+milestone | evidence | prerequisite | exception
 ```
 
 事件角色只描述事实用途，不授予转换权限。只有 `actual + effective` 且被状态机节点策略登记为 `completionEligible` 的事件具备申请推进资格；是否推进仍由来源、证据、节点状态机及联合守卫决定。
@@ -81,37 +79,43 @@ EventRelationType = corrects | revokes | supersedes_estimate
 
 `CanonicalLifecycleEventV1<TData>`：
 
-| 字段 | 类型 | 必填 | 规则 |
-| --- | --- | --- | --- |
-| `eventId` | UUID | 是 | 全局唯一；同时作为 Outbox 事件 ID |
-| `eventType` | registered event code | 是 | 必须来自事件码目录 |
-| `eventVersion` | integer | 是 | V1 固定 `1` |
-| `role` | `LifecycleEventRole` | 是 | 与事件目录登记一致 |
-| `timeKind` | `LifecycleTimeKind` | 是 | 计划、预计、实际不可混用 |
-| `occurredAt` | date-time | 是 | 该计划/预计/实际时间，ISO 8601 且带时区 |
-| `recordedAt` | date-time | 是 | Logix 首次持久化时间 |
-| `receivedAt` | date-time | 否 | 外部数据到达 Logix 的时间；外部采集必填 |
-| `providerUpdatedAt` | date-time | 否 | 供应商声明的更新时间 |
-| `eventSequence` | integer >= 1 | 是 | 同一货柜生命周期内的持久化顺序，不代表业务顺序 |
-| `containerId` | UUID | 是 | `shipment-registry` 稳定货柜 ID |
-| `flowInstanceId` | UUID | 是 | 生命周期实例 ID |
-| `nodeCode` | registered node code | 是 | 归属节点；子里程碑仍归属一个节点 |
-| `nodeInstanceId` | UUID | 是 | 节点实例；重入时不得复用旧实例 |
-| `nodeTaskId` | UUID | 否 | 引发或对账到的节点任务 |
-| `workOrderId` | UUID | 否 | 引发或被事实完成的工单 |
-| `domain` | string 1..64 | 是 | 事实所有者模块 |
-| `domainFactId` | UUID | 是 | 专业模块不可变规范事实 ID |
-| `domainFactType` | string 1..64 | 是 | 专业事实类型 |
-| `correlationId` | UUID | 是 | 一次业务链路关联 ID |
-| `causationId` | UUID | 否 | 直接原因事件/命令 ID |
-| `idempotencyKey` | string 1..200 | 是 | 规范事实业务幂等键 |
-| `source` | `LifecycleEventSourceV1` | 是 | 来源、映射和验证信息 |
-| `location` | `LifecycleLocationV1` | 否 | 港口/场站/仓库及航段语义 |
-| `evidenceRefs` | unique UUID[] | 是 | `actual` 至少一条；预计可为空 |
-| `relation` | `LifecycleEventRelationV1` | 否 | 更正、撤销或预计替换关系 |
-| `data` | discriminated object | 是 | 按事件码注册的载荷 Schema |
+| 字段                | 类型                       | 必填 | 规则                                            |
+| ------------------- | -------------------------- | ---- | ----------------------------------------------- |
+| `eventId`           | UUID                       | 是   | 全局唯一；同时作为 Outbox 事件 ID               |
+| `eventCode`         | registered event code      | 是   | 必须来自事件码目录                              |
+| `eventVersion`      | integer                    | 是   | V1 固定 `1`                                     |
+| `role`              | `LifecycleEventRole`       | 是   | 与事件目录登记一致                              |
+| `timeKind`          | `LifecycleTimeKind`        | 是   | 计划、预计、实际不可混用                        |
+| `occurredAt`        | date-time                  | 是   | 该计划/预计/实际时间，ISO 8601 且带时区         |
+| `recordedAt`        | date-time                  | 是   | Logix 首次持久化时间                            |
+| `receivedAt`        | date-time                  | 否   | 外部数据到达 Logix 的时间；外部采集必填         |
+| `providerUpdatedAt` | date-time                  | 否   | 供应商声明的更新时间                            |
+| `eventSequence`     | integer >= 1               | 是   | 同一货柜生命周期内的持久化顺序，不代表业务顺序  |
+| `tenantId`          | UUID                       | 是   | 租户边界；所有引用对象必须属于同一租户          |
+| `containerId`       | UUID                       | 是   | `shipment-registry` 稳定货柜 ID                 |
+| `flowInstanceId`    | UUID                       | 是   | 生命周期实例 ID                                 |
+| `nodeCode`          | registered node code       | 是   | 归属节点；子里程碑仍归属一个节点                |
+| `nodeInstanceId`    | UUID                       | 是   | 节点实例；重入时不得复用旧实例                  |
+| `nodeTaskId`        | UUID                       | 否   | 引发或对账到的节点任务                          |
+| `workOrderId`       | UUID                       | 否   | 引发或被事实完成的工单                          |
+| `domain`            | string 1..64               | 是   | 事实所有者模块                                  |
+| `domainFactId`      | UUID                       | 是   | 专业模块不可变规范事实 ID                       |
+| `domainFactType`    | string 1..64               | 是   | 专业事实类型                                    |
+| `correlationId`     | UUID                       | 是   | 一次业务链路关联 ID                             |
+| `causationId`       | UUID                       | 否   | 直接原因事件/命令 ID                            |
+| `idempotencyKey`    | string 1..200              | 是   | 规范事实业务幂等键                              |
+| `source`            | `LifecycleEventSourceV1`   | 是   | 来源、映射和验证信息                            |
+| `location`          | `LifecycleLocationV1`      | 否   | 港口/场站/仓库及航段语义                        |
+| `evidenceRefs`      | unique UUID[]              | 是   | `actual` 至少一条；预计可为空                   |
+| `confidenceState`   | registered confidence code | 是   | 规范事实采用结论；`provisional/disputed` 不推进 |
+| `validity`          | registered validity code   | 是   | 当前事件版本的有效性；更正和撤销保留原事件      |
+| `relation`          | `LifecycleEventRelationV1` | 否   | 更正、撤销或预计替换关系                        |
+| `data`              | discriminated object       | 是   | 按事件码注册的载荷 Schema                       |
+| `traceId`           | string 1..128              | 是   | 贯穿接收、裁决、应用和投影的追踪 ID             |
 
 `eventSequence` 只提供稳定游标和审计顺序。时间线业务排序必须使用 `occurredAt,eventSequence,eventId`，不能按接收先后推断发生先后。
+
+`nodeCode/nodeInstanceId` 表示事件事实的默认归属，不等于状态机的节点应用目标。对 `arrived`、`transit_arrived` 等可跨节点申请完成的事件，状态机必须另存目标 `targetNodeInstanceId`，并按 `(eventId,targetNodeInstanceId)` 幂等应用；目标仍须通过完成资格、当前节点、航段、地点和时间守卫。
 
 ### 4.1 `LifecycleEventSourceV1`
 
@@ -159,15 +163,15 @@ authorizedBy?: UUID
 
 ## 5. 时间语义与记录规则
 
-| 代码 | 含义 | `timeKind` | 典型节点 | 推进资格 |
-| --- | --- | --- | --- | --- |
-| `STA` | 计划抵达 | planned | 中转/到港 | 无 |
-| `ETA` | 预计抵达 | estimated | 海运/中转/到港 | 无 |
-| `ATA` | 实际抵达 | actual | 中转/到港 | 核验后有 |
-| `STD` | 计划离开 | planned | 离港/中转 | 无 |
-| `ETD` | 预计离开 | estimated | 离港/中转 | 无 |
-| `ATD` | 实际离开 | actual | 离港/中转 | 核验后有 |
-| `ETB/ATB` | 预计/实际靠泊 | estimated/actual | 到港子里程碑 | 默认不直接推进 |
+| 代码      | 含义          | `timeKind`       | 典型节点       | 推进资格       |
+| --------- | ------------- | ---------------- | -------------- | -------------- |
+| `STA`     | 计划抵达      | planned          | 中转/到港      | 无             |
+| `ETA`     | 预计抵达      | estimated        | 海运/中转/到港 | 无             |
+| `ATA`     | 实际抵达      | actual           | 中转/到港      | 核验后有       |
+| `STD`     | 计划离开      | planned          | 离港/中转      | 无             |
+| `ETD`     | 预计离开      | estimated        | 离港/中转      | 无             |
+| `ATD`     | 实际离开      | actual           | 离港/中转      | 核验后有       |
+| `ETB/ATB` | 预计/实际靠泊 | estimated/actual | 到港子里程碑   | 默认不直接推进 |
 
 记录必须同时保留：原始时间文本、原始时区、解析后的带时区时间、UTC 持久化值、业务发生时间、供应商更新时间、接收时间和系统记录时间。无法确认时区时不得假定 UTC。
 
@@ -186,7 +190,7 @@ tenant + provider + interfaceCode + sourceEventId
 没有稳定事件 ID 时使用版本化确定性指纹：
 
 ```text
-tenant + containerId + nodeInstanceId + eventType + timeKind
+tenant + containerId + nodeInstanceId + eventCode + timeKind
 + occurredAt + location/segment + authoritySystem + normalized business reference
 ```
 
@@ -194,15 +198,15 @@ tenant + containerId + nodeInstanceId + eventType + timeKind
 
 ### 6.2 处理规则
 
-| 场景 | 处理 |
-| --- | --- |
-| 完全重复 | 幂等返回既有事件和投影版本 |
-| 乱序/迟到 | 追加保存，按业务时间重放受影响节点区间 |
-| 新预计 | 以 `supersedes_estimate` 关联旧预计，重算当前 ETA/ETD |
-| 实际事实更正 | 新事件 `corrects` 旧事件，经授权后重放 |
-| 撤销误报 | 新事件 `revokes` 旧事件；已密封区间进入人工纠偏 |
-| 来源冲突 | 两条事实均保留，标记 disputed，不自动选择更方便的值 |
-| 暂无数据 | 保存同步结果，不生成“未发生”事实，不清空现有投影 |
+| 场景         | 处理                                                  |
+| ------------ | ----------------------------------------------------- |
+| 完全重复     | 幂等返回既有事件和投影版本                            |
+| 乱序/迟到    | 追加保存，按业务时间重放受影响节点区间                |
+| 新预计       | 以 `supersedes_estimate` 关联旧预计，重算当前 ETA/ETD |
+| 实际事实更正 | 新事件 `corrects` 旧事件，经授权后重放                |
+| 撤销误报     | 新事件 `revokes` 旧事件；已密封区间进入人工纠偏       |
+| 来源冲突     | 两条事实均保留，标记 disputed，不自动选择更方便的值   |
+| 暂无数据     | 保存同步结果，不生成“未发生”事实，不清空现有投影      |
 
 Outbox 发布至少一次，消费者 Inbox 幂等；消费者业务更新和 Inbox 完成必须在同一本地事务中。
 
@@ -232,22 +236,22 @@ Outbox 发布至少一次，消费者 Inbox 幂等；消费者业务更新和 In
 
 节点代码引用[生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)，事件码引用正式 V1 `EVENT_CODES`。本表只规定时间种类、事实接受和投影口径；实际转换唯一服从[生命周期状态机 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)。
 
-| # | 节点 | 接受的主要事件/时间 | 推进依据 | 不得误用 |
-| --- | --- | --- | --- | --- |
-| 1 | 备货 | `cargo_ready` actual | 一备货单一次有效完成确认，建柜后挂接 | 无箱号时不进入货柜时间线 |
-| 2 | 装箱 | stuffed actual；gate_in 子里程碑 | 装箱定稿事实 | 预计进港不等于装箱 |
-| 3 | 出运 | loaded actual | 已装载发运事实 | 订舱/船期不等于出运 |
-| 4 | 离港 | departed/ATD actual | 实际离开起运港 | ETD 不推进 |
-| 5 | 海运 | sailing actual；ETA estimated；transit_arrived/arrived actual | `sailing` 只表示进行中；实际抵达匹配的下一港完成海运阶段 | ETA 漂移不推进 |
-| 6 | 中转港，可选 | transit_arrived/ATA、transit_departed/ATD | 匹配航段的实际离开事实；需要时先有同港到达事实 | 不得与目的港 ATA 合并 |
-| 7 | 清关 | customs_filed、inspection、hold、hold_released、release | 全部必需案卷放行及无活动阻断 | 单证、同步成功不等于放行 |
-| 8 | 到港 | arrived/ATA；berthed/ATB、discharged 子里程碑 | 目的港实际到达 | ETA/AIS 推算不推进 |
-| 9 | 海铁，可选 | `rail_handover` actual | 铁路主体或铁路场站实际接收匹配货柜 | 订单受理、预约、计划或公路位置不等于铁路接收 |
-| 10 | 拖卡提柜 | gate_out actual；available 前置 | 重柜实际出场且联合守卫通过 | 海关放行或可提不等于提柜 |
-| 11 | 送仓 | delivered/warehouse_arrival actual | 有效 POD/签收的 delivered，或仓库/WMS/门岗权威到场事实 | 司机点击、GPS 围栏不等于交付完成 |
-| 12 | 卸柜 | unloaded actual | 仓库卸货事实 | 到仓不等于卸柜 |
-| 13 | 卸空 | unstuffed actual | 箱内卸净事实 | 部分卸货不等于卸空 |
-| 14 | 还箱 | returned_empty actual | 空箱被指定场站接受 | 预约还箱不等于完成 |
+| #   | 节点         | 接受的主要事件/时间                                           | 推进依据                                                 | 不得误用                                     |
+| --- | ------------ | ------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------- |
+| 1   | 备货         | `cargo_ready` actual                                          | 一备货单一次有效完成确认，建柜后挂接                     | 无箱号时不进入货柜时间线                     |
+| 2   | 装箱         | stuffed actual；gate_in 子里程碑                              | 装箱定稿事实                                             | 预计进港不等于装箱                           |
+| 3   | 出运         | loaded actual                                                 | 已装载发运事实                                           | 订舱/船期不等于出运                          |
+| 4   | 离港         | departed/ATD actual                                           | 实际离开起运港                                           | ETD 不推进                                   |
+| 5   | 海运         | sailing actual；ETA estimated；transit_arrived/arrived actual | `sailing` 只表示进行中；实际抵达匹配的下一港完成海运阶段 | ETA 漂移不推进                               |
+| 6   | 中转港，可选 | transit_arrived/ATA、transit_departed/ATD                     | 匹配航段的实际离开事实；需要时先有同港到达事实           | 不得与目的港 ATA 合并                        |
+| 7   | 清关         | customs_filed、inspection、hold、hold_released、release       | 全部必需案卷放行及无活动阻断                             | 单证、同步成功不等于放行                     |
+| 8   | 到港         | arrived/ATA；berthed/ATB、discharged 子里程碑                 | 目的港实际到达                                           | ETA/AIS 推算不推进                           |
+| 9   | 海铁，可选   | `rail_handover` actual                                        | 铁路主体或铁路场站实际接收匹配货柜                       | 订单受理、预约、计划或公路位置不等于铁路接收 |
+| 10  | 拖卡提柜     | gate_out actual；available 前置                               | 重柜实际出场且联合守卫通过                               | 海关放行或可提不等于提柜                     |
+| 11  | 送仓         | delivered/warehouse_arrival actual                            | 有效 POD/签收的 delivered，或仓库/WMS/门岗权威到场事实   | 司机点击、GPS 围栏不等于交付完成             |
+| 12  | 卸柜         | unloaded actual                                               | 仓库卸货事实                                             | 到仓不等于卸柜                               |
+| 13  | 卸空         | unstuffed actual                                              | 箱内卸净事实                                             | 部分卸货不等于卸空                           |
+| 14  | 还箱         | returned_empty actual                                         | 空箱被指定场站接受                                       | 预约还箱不等于完成                           |
 
 异常事件 `hold/dumped/rolled/delay/overdue/cancelled` 与主链节点正交，由异常或专业状态机处理；只有批准的转换规则才能阻断、重入或终止流程。
 
@@ -261,7 +265,7 @@ Outbox 发布至少一次，消费者 Inbox 幂等；消费者业务更新和 In
 domain = customs-compliance
 domainFactId = customsFactId
 domainFactType = customs_filed | inspection | hold | hold_released | release
-nodeCode = customs (#7)
+nodeCode = customs_clearance (#7)
 nodeTaskId/workOrderId = 对应作业逻辑引用
 evidenceRefs = 已验证海关证据
 occurredAt = 海关业务发生时间
@@ -278,7 +282,7 @@ recordedAt = Logix 事实记录时间
 ### 11.1 `ContainerTimelineItemV1`
 
 ```text
-eventId, eventType, eventVersion
+eventId, eventCode, eventVersion
 containerId, flowInstanceId, nodeCode, nodeInstanceId
 role, timeKind, occurredAt, recordedAt, receivedAt?
 validity, confidenceState
@@ -294,7 +298,7 @@ flowInstanceId: UUID
 currentNodeCode: registered node code
 currentContainerState: registered lifecycle state
 nodeTimes: [{nodeCode, plannedAt?, estimatedAt?, actualAt?, confidenceState}]
-activeExceptions: [{eventId,eventType,nodeCode,severity}]
+activeExceptions: [{eventId,eventCode,nodeCode,severity}]
 disputes: [{eventIds,reasonCode}]
 projectionVersion: integer >= 0
 asOf: date-time
@@ -328,8 +332,8 @@ asOf: date-time
 ## 14. 后续实施顺序
 
 ```text
-负责人批准节点/事件目录及本文
--> JSON Schema 单一权威源
+GC-001 / GC-003 / GC-002 / GC-004 业务语义已批准
+-> 补齐 JSON Schema 单一权威源
 -> TS/OpenAPI/Python 派生与 parity fixture
 -> 时间线数据库结构与迁移设计
 -> lifecycle-control Domain/Application
@@ -339,4 +343,4 @@ asOf: date-time
 -> 全链路 E2E 与历史回放
 ```
 
-实施仍须遵守唯一活动任务门禁；本文不修改当前任务状态，也不授权数据库或外部系统变更。
+P6.1 已由生命周期域负责人刘志高签署，Codex 完成技术边界复核，结论为批准 `GC-004` 进入 `D3`。剩余 Schema、实现、迁移和验证缺口不随签署自动关闭。实施仍须遵守唯一活动任务门禁；本文不修改当前任务状态，也不授权数据库或外部系统变更。

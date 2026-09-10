@@ -74,17 +74,45 @@
     "TimeKind": {
       "enum": ["planned", "estimated", "actual"]
     },
+    "EventRole": {
+      "enum": ["milestone", "evidence", "exception", "prerequisite"]
+    },
+    "NodeApplicability": {
+      "enum": ["required", "optional_applicable", "optional_not_applicable"]
+    },
     "NodeTaskState": {
-      "enum": ["pending", "in_progress", "blocked", "completed", "reopened", "cancelled"]
+      "enum": [
+        "pending",
+        "in_progress",
+        "blocked",
+        "completed",
+        "reopened",
+        "cancelled"
+      ]
     },
     "WorkOrderState": {
-      "enum": ["draft", "ready", "in_progress", "blocked", "completed", "failed", "reopened", "cancelled"]
+      "enum": [
+        "draft",
+        "ready",
+        "in_progress",
+        "blocked",
+        "completed",
+        "failed",
+        "reopened",
+        "cancelled"
+      ]
     },
     "WorkOrderApplicability": {
       "enum": ["required", "optional", "conditional_required", "not_applicable"]
     },
     "CaptureSource": {
-      "enum": ["external_evidence", "manual_backfill", "controlled_import", "internal_operation", "system_derived"]
+      "enum": [
+        "external_evidence",
+        "manual_backfill",
+        "controlled_import",
+        "internal_operation",
+        "system_derived"
+      ]
     },
     "AuthorityLevel": {
       "enum": ["authoritative", "corroborating", "operational", "contextual"]
@@ -98,6 +126,9 @@
     "EvidenceValidity": {
       "enum": ["effective", "superseded", "corrected", "revoked"]
     },
+    "EventRelationType": {
+      "enum": ["corrects", "revokes", "supersedes_estimate"]
+    },
     "ReceptionState": {
       "enum": ["pending", "received", "duplicate", "boundary_rejected"]
     },
@@ -108,17 +139,27 @@
       "enum": ["pending", "committed", "commit_failed"]
     },
     "ErrorCategory": {
-      "enum": ["validation", "authentication", "authorization", "not_found", "conflict", "precondition", "rate_limit", "dependency", "internal"]
+      "enum": [
+        "validation",
+        "authentication",
+        "authorization",
+        "not_found",
+        "conflict",
+        "precondition",
+        "rate_limit",
+        "dependency",
+        "internal"
+      ]
     },
     "EntityRef": {
       "type": "object",
       "additionalProperties": false,
       "required": ["tenantId", "entityType", "entityId", "ownerModule"],
       "properties": {
-        "tenantId": {"$ref": "#/$defs/Uuid"},
-        "entityType": {"$ref": "#/$defs/StableCode"},
-        "entityId": {"$ref": "#/$defs/Uuid"},
-        "ownerModule": {"$ref": "#/$defs/StableCode"}
+        "tenantId": { "$ref": "#/$defs/Uuid" },
+        "entityType": { "$ref": "#/$defs/StableCode" },
+        "entityId": { "$ref": "#/$defs/Uuid" },
+        "ownerModule": { "$ref": "#/$defs/StableCode" }
       }
     }
   }

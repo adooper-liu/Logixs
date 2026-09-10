@@ -57,6 +57,7 @@ AuthorizationContextV1:
 
 ```text
 clientOperationId: UUID
+tenantId: UUID
 actionCode, actionVersion
 target: EntityRefV1
 containerId, flowInstanceId?
@@ -65,6 +66,9 @@ occurredAt: date-time
 submittedAt: date-time
 idempotencyKey: string(1..200)
 expectedVersion: integer >= 0
+correlationId: UUID
+causationId?: UUID
+traceId: string(1..128)
 reasonCode?, reason?
 evidenceRefs[]
 confirmationToken?
@@ -88,11 +92,11 @@ payload: schema-bound object
 
 ## 6. 风险、确认与四眼复核
 
-| 风险 | 最低控制 |
-| --- | --- |
-| low | 正常授权与审计 |
-| medium | 明确对象和影响；按定义要求显式确认 |
-| high | 必填原因和证据；必要时 designated reviewer |
+| 风险     | 最低控制                                            |
+| -------- | --------------------------------------------------- |
+| low      | 正常授权与审计                                      |
+| medium   | 明确对象和影响；按定义要求显式确认                  |
+| high     | 必填原因和证据；必要时 designated reviewer          |
 | critical | four-eyes、不可由发起人自批、短时有效批准、完整审计 |
 
 撤销实际事实、解封历史、越过人工锁、取消已开始流程、费用核销和高风险人工纠偏默认不得低于 high。批准记录绑定命令哈希、对象、动作版本和有效期；payload 改变后原批准失效。
@@ -117,4 +121,4 @@ payload: schema-bound object
 
 覆盖合法动作、未认证、缺能力、跨租户、对象越权、字段越权、过期委托、错状态、缺证据、密封冲突、四眼同人拒绝、批准后 payload 改变、幂等重放、并发冲突、人工补录同规则、break-glass 到期和前端伪造 allowedAction。
 
-当前公共命令与错误 Schema 已在 P6 达到 `D4`；具体动作目录和服务端策略实现仍待 P7。
+当前公共命令已有局部 Schema，但动作定义、授权决定和复核模型尚未完整实例化，门禁保持 `D3`；具体动作目录和服务端策略实现仍待后续阶段。

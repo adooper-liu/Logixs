@@ -1,1 +1,15 @@
-{"scenario":"rejection","description":"Estimated arrival cannot complete a lifecycle node.","inputs":[{"eventType":"arrived","timeKind":"estimated","confidenceState":"provisional"}],"expected":{"outcome":"rejected","errorCode":"LIFECYCLE_EVENT_NOT_STATE_EVIDENCE"}}
+{
+  "scenario": "rejection",
+  "description": "Estimated arrival cannot complete a lifecycle node.",
+  "inputs": [
+    {
+      "eventCode": "arrived",
+      "timeKind": "estimated",
+      "confidenceState": "provisional"
+    }
+  ],
+  "expected": {
+    "outcome": "rejected",
+    "errorCode": "LIFECYCLE_EVENT_NOT_STATE_EVIDENCE"
+  }
+}

@@ -16,22 +16,22 @@
 
 `definitionVersion = 1` 的节点集合和顺序固定如下：
 
-| sequence | `nodeCode` | 名称 | 可选性 | 所有者 / 事实模块 | 可完成该节点的规范事件 | 完成后的货柜状态投影 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | `cargo_ready` | 备货 | required | `booking-origin` | `cargo_ready` | `not_shipped` |
-| 2 | `container_stuffing` | 装箱 | required | `booking-origin` | `stuffed` | `not_shipped` |
-| 3 | `shipment_dispatch` | 出运 | required | `booking-origin` | `loaded` | `shipped` |
-| 4 | `origin_departure` | 离港 | required | `ocean-port-visibility` | `departed` | `shipped` |
-| 5 | `ocean_transit` | 海运 | required | `ocean-port-visibility` | `transit_arrived` 或 `arrived` | `in_transit` |
-| 6 | `transshipment` | 中转港 | optional | `ocean-port-visibility` | `transit_departed` | `in_transit` |
-| 7 | `customs_clearance` | 清关 | required，可按已批准业务适用性规则标记 N/A | `customs-compliance` | `container_customs_completed` | 不单独推导提柜状态 |
-| 8 | `destination_arrival` | 到港 | required | `ocean-port-visibility` | `arrived` | `at_port` |
-| 9 | `rail_transfer` | 海铁 | optional | `ocean-port-visibility` 与 `inland-fulfillment` 的公开端口 | `rail_handover` | 保持 `at_port` |
-| 10 | `container_pickup` | 拖卡提柜 | required | `inland-fulfillment` | `gate_out` | `picked_up` |
-| 11 | `warehouse_delivery` | 送仓 | required | `inland-fulfillment` | `delivered` 或 `warehouse_arrival` | 保持 `picked_up` |
-| 12 | `container_unloading` | 卸柜 | required | `inland-fulfillment` | `unloaded` | `unloaded` |
-| 13 | `container_unstuffing` | 卸空 | required | `inland-fulfillment` | `unstuffed` | 保持 `unloaded` |
-| 14 | `empty_return` | 还箱 | required | `inland-fulfillment` | `returned_empty` | `returned_empty` |
+| sequence | `nodeCode`             | 名称     | 可选性                                     | 所有者 / 事实模块                                          | 可完成该节点的规范事件             | 完成后的货柜状态投影 |
+| -------- | ---------------------- | -------- | ------------------------------------------ | ---------------------------------------------------------- | ---------------------------------- | -------------------- |
+| 1        | `cargo_ready`          | 备货     | required                                   | `booking-origin`                                           | `cargo_ready`                      | `not_shipped`        |
+| 2        | `container_stuffing`   | 装箱     | required                                   | `booking-origin`                                           | `stuffed`                          | `not_shipped`        |
+| 3        | `shipment_dispatch`    | 出运     | required                                   | `booking-origin`                                           | `loaded`                           | `shipped`            |
+| 4        | `origin_departure`     | 离港     | required                                   | `ocean-port-visibility`                                    | `departed`                         | `shipped`            |
+| 5        | `ocean_transit`        | 海运     | required                                   | `ocean-port-visibility`                                    | `transit_arrived` 或 `arrived`     | `in_transit`         |
+| 6        | `transshipment`        | 中转港   | optional                                   | `ocean-port-visibility`                                    | `transit_departed`                 | `in_transit`         |
+| 7        | `customs_clearance`    | 清关     | required，可按已批准业务适用性规则标记 N/A | `customs-compliance`                                       | `container_customs_completed`      | 不单独推导提柜状态   |
+| 8        | `destination_arrival`  | 到港     | required                                   | `ocean-port-visibility`                                    | `arrived`                          | `at_port`            |
+| 9        | `rail_transfer`        | 海铁     | optional                                   | `ocean-port-visibility` 与 `inland-fulfillment` 的公开端口 | `rail_handover`                    | 保持 `at_port`       |
+| 10       | `container_pickup`     | 拖卡提柜 | required                                   | `inland-fulfillment`                                       | `gate_out`                         | `picked_up`          |
+| 11       | `warehouse_delivery`   | 送仓     | required                                   | `inland-fulfillment`                                       | `delivered` 或 `warehouse_arrival` | 保持 `picked_up`     |
+| 12       | `container_unloading`  | 卸柜     | required                                   | `inland-fulfillment`                                       | `unloaded`                         | `unloaded`           |
+| 13       | `container_unstuffing` | 卸空     | required                                   | `inland-fulfillment`                                       | `unstuffed`                        | 保持 `unloaded`      |
+| 14       | `empty_return`         | 还箱     | required                                   | `inland-fulfillment`                                       | `returned_empty`                   | `returned_empty`     |
 
 表中的事件只表示完成资格，不表示事件到达后必然完成节点；最终仍必须通过状态机的实际时间、来源、证据、前序、阻断、适用性和并发守卫。
 
@@ -39,7 +39,7 @@
 
 - `sailing` 只记录海运已经开始或正在进行，`completionEligibleNodeCodes = []`，不得完成 `ocean_transit`。
 - 直达航线以匹配目的港航段的实际 `arrived` 完成 `ocean_transit`；中转航线以匹配当前航段中转港的实际 `transit_arrived` 完成该海运阶段。
-- `arrived` 可依次申请完成 `ocean_transit` 和 `destination_arrival`，每个节点应用独立执行守卫并按 `(eventId,nodeInstanceId)` 幂等。
+- `arrived` 可依次申请完成 `ocean_transit` 和 `destination_arrival`，每个节点应用独立执行守卫并按 `(eventId,targetNodeInstanceId)` 幂等。
 - `delivered` 只有携带有效 POD、门岗或仓库签收证据时，才可完成 `warehouse_delivery`。
 - `warehouse_arrival` 只有来自仓库、WMS 或门岗权威来源且证明指定货柜实际到场时，才可完成 `warehouse_delivery`。
 - 司机单方点击、GPS 围栏、订单受理、预约、计划、预计时间和同步成功都不能完成节点。
@@ -65,26 +65,26 @@
 
 ## 6. 消费者
 
-| 消费者 | 允许消费 | 禁止行为 |
-| --- | --- | --- |
-| 状态机 | 节点集合、顺序、可选性、所有者 | 复制或扩展节点枚举 |
-| 规范事件目录 | `completionEligibleNodeCodes` 的目标集合 | 指向未登记节点 |
-| 时间线 | `nodeCode` 归属与节点时间投影 | 用预计时间完成节点 |
-| 任务与工单 | 节点实例关联与完成事实目标 | 让工单状态直接改节点 |
-| API / 前端 | 稳定代码及本地化名称 | 从显示文案反推代码 |
-| 数据库 | 通过显式映射持久化代码和版本 | 依赖偶然同名或 ORM 自动同步 |
+| 消费者       | 允许消费                                 | 禁止行为                    |
+| ------------ | ---------------------------------------- | --------------------------- |
+| 状态机       | 节点集合、顺序、可选性、所有者           | 复制或扩展节点枚举          |
+| 规范事件目录 | `completionEligibleNodeCodes` 的目标集合 | 指向未登记节点              |
+| 时间线       | `nodeCode` 归属与节点时间投影            | 用预计时间完成节点          |
+| 任务与工单   | 节点实例关联与完成事实目标               | 让工单状态直接改节点        |
+| API / 前端   | 稳定代码及本地化名称                     | 从显示文案反推代码          |
+| 数据库       | 通过显式映射持久化代码和版本             | 依赖偶然同名或 ORM 自动同步 |
 
 ## 7. 反向一致性校验
 
-| 校验项 | 状态机 V1 | 时间线 V1 | 事件目录 V1 | 结论 |
-| --- | --- | --- | --- | --- |
-| 14 个代码、顺序与 2 个可选节点 | 一致 | 14 行矩阵一致 | 资格目标均属于目录 | 通过 |
-| 海运完成口径 | `sailing` 不完成，到下一港实际抵达完成 | 同口径 | `sailing=[]`，抵达事件有资格 | 通过 |
-| 送仓双事件口径 | 证据与来源差异守卫 | 同口径 | 两事件均只对 `warehouse_delivery` 有资格 | 通过 |
-| 备货生命周期边界 | 建柜后挂接 | 无箱号不进入时间线 | `cargo_ready` 只完成节点 #1 | 通过 |
-| 海铁实际交接 | 铁路实际接收 | 取实际接收时间 | `rail_handover=[rail_transfer]` | 通过 |
-| 清关聚合事实 | 货柜级案卷聚合 | 专业事实挂接 | 单 `release=[]`，聚合事件完成 | 通过 |
+| 校验项                         | 状态机 V1                              | 时间线 V1          | 事件目录 V1                              | 结论 |
+| ------------------------------ | -------------------------------------- | ------------------ | ---------------------------------------- | ---- |
+| 14 个代码、顺序与 2 个可选节点 | 一致                                   | 14 行矩阵一致      | 资格目标均属于目录                       | 通过 |
+| 海运完成口径                   | `sailing` 不完成，到下一港实际抵达完成 | 同口径             | `sailing=[]`，抵达事件有资格             | 通过 |
+| 送仓双事件口径                 | 证据与来源差异守卫                     | 同口径             | 两事件均只对 `warehouse_delivery` 有资格 | 通过 |
+| 备货生命周期边界               | 建柜后挂接                             | 无箱号不进入时间线 | `cargo_ready` 只完成节点 #1              | 通过 |
+| 海铁实际交接                   | 铁路实际接收                           | 取实际接收时间     | `rail_handover=[rail_transfer]`          | 通过 |
+| 清关聚合事实                   | 货柜级案卷聚合                         | 专业事实挂接       | 单 `release=[]`，聚合事件完成            | 通过 |
 
 ## 8. 后续实例化
 
-P6 已将本目录实例化到 `packages/contracts` JSON Schema 单一源并完成目录一致性校验；TypeScript、Python、OpenAPI、Seed 和数据库枚举映射仍待 P7。任何演示 `railDefinitions` 只是消费者投影，不能成为反向权威。
+G6 已将本目录实例化到 `packages/contracts` JSON Schema 单一源并完成目录一致性校验；TypeScript、Python、OpenAPI、Seed 和数据库枚举映射仍待 G7。任何演示 `railDefinitions` 只是消费者投影，不能成为反向权威。

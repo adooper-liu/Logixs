@@ -30,15 +30,15 @@ provenance: unique (S | R | O | C)[]
 
 ### A. 起运/陆侧
 
-| 码              | 中文      | 定义(一句话)                        | 角色        | L节点 | 推进/证据        | 源码示例          | 证实 |
-| --------------- | --------- | ----------------------------------- | ----------- | ----- | ---------------- | ----------------- | ---- |
-| cargo_ready     | 备货完成  | 一张备货单一次有效完成确认，建柜后挂接 | 里程碑 | #1 | not_shipped | 人工/ERP/供应链/导入 | O·R |
-| empty_picked_up | 提空箱    | 从堆场/场站提走空箱                 | 里程碑      | #2前  | —                | STSP / GTOT·EMPTY | S·R  |
-| stuffed         | 装箱完成  | 装柜定稿（真实重量/件数/封号/箱号） | 里程碑+定稿 | #2    | not_shipped 已装 | (导入/手工)       | O·R  |
-| loaded          | 装船/装车 | 装载上船/车                         | 状态证据    | #3    | shipped          | LOBD / LOAD       | S    |
-| departed        | 离港/离站 | 实际离开起运港                      | 状态证据    | #4    | shipped(离)      | DLPT / DEPA·TD    | S    |
-| sailing         | 在途航行  | 海运途中                            | 里程碑      | #5    | in_transit       | SAILING           | R    |
-| gate_in         | 进港/进场 | 货柜进码头/场站                     | 里程碑      | #2后  | —                | GITM / GTIN·LADEN | S·R  |
+| 码              | 中文      | 定义(一句话)                           | 角色        | L节点 | 推进/证据        | 源码示例             | 证实 |
+| --------------- | --------- | -------------------------------------- | ----------- | ----- | ---------------- | -------------------- | ---- |
+| cargo_ready     | 备货完成  | 一张备货单一次有效完成确认，建柜后挂接 | 里程碑      | #1    | not_shipped      | 人工/ERP/供应链/导入 | O·R  |
+| empty_picked_up | 提空箱    | 从堆场/场站提走空箱                    | 里程碑      | #2前  | —                | STSP / GTOT·EMPTY    | S·R  |
+| stuffed         | 装箱完成  | 装柜定稿（真实重量/件数/封号/箱号）    | 里程碑+定稿 | #2    | not_shipped 已装 | (导入/手工)          | O·R  |
+| loaded          | 装船/装车 | 装载上船/车                            | 状态证据    | #3    | shipped          | LOBD / LOAD          | S    |
+| departed        | 离港/离站 | 实际离开起运港                         | 状态证据    | #4    | shipped(离)      | DLPT / DEPA·TD       | S    |
+| sailing         | 在途航行  | 海运途中                               | 里程碑      | #5    | in_transit       | SAILING              | R    |
+| gate_in         | 进港/进场 | 货柜进码头/场站                        | 里程碑      | #2后  | —                | GITM / GTIN·LADEN    | S·R  |
 
 ### B. 中转/到港
 
@@ -53,37 +53,37 @@ provenance: unique (S | R | O | C)[]
 
 ### C. 清关/放行/扣留（五主体）
 
-| 码            | 中文      | 定义(一句话)                       | 角色        | L节点 | 推进/证据 | 源码示例                 | 证实 |
-| ------------- | --------- | ---------------------------------- | ----------- | ----- | --------- | ------------------------ | ---- |
-| release       | 放行      | 主体放行(海关/船司/码头/海事/运费) | 前提+里程碑 | #7前  | —         | PASS·SRRS·TMPS·MCRP·SRSE | S    |
-| hold          | 扣留/滞留 | 主体扣留(查验/扣货/费用)           | 异常        | —     | —         | HOLD·1H·CUIP             | S·R  |
-| hold_released | 扣留解除  | 扣留解除                           | 异常        | —     | —         | 1I·6I                    | S    |
-| customs_filed | 舱单/申报 | AMS/ISF/报关申报                   | 里程碑      | #7    | —         | 55/69/3Z·BLA             | S    |
-| inspection    | 查验      | 海关查验(X光/尾门/强化)            | 异常        | #7    | —         | 1A/1B·CES                | S    |
-| container_customs_completed | 货柜清关完成 | 全部必需案卷已放行且无有效海关阻断 | 状态证据 | #7 | 清关节点完成候选 | 海关案卷聚合事实 | O·R |
+| 码                          | 中文         | 定义(一句话)                       | 角色        | L节点 | 推进/证据        | 源码示例                 | 证实 |
+| --------------------------- | ------------ | ---------------------------------- | ----------- | ----- | ---------------- | ------------------------ | ---- |
+| release                     | 放行         | 主体放行(海关/船司/码头/海事/运费) | 前提+里程碑 | #7前  | —                | PASS·SRRS·TMPS·MCRP·SRSE | S    |
+| hold                        | 扣留/滞留    | 主体扣留(查验/扣货/费用)           | 异常        | —     | —                | HOLD·1H·CUIP             | S·R  |
+| hold_released               | 扣留解除     | 扣留解除                           | 异常        | —     | —                | 1I·6I                    | S    |
+| customs_filed               | 舱单/申报    | AMS/ISF/报关申报                   | 里程碑      | #7    | —                | 55/69/3Z·BLA             | S    |
+| inspection                  | 查验         | 海关查验(X光/尾门/强化)            | 异常        | #7    | —                | 1A/1B·CES                | S    |
+| container_customs_completed | 货柜清关完成 | 全部必需案卷已放行且无有效海关阻断 | 状态证据    | #7    | 清关节点完成候选 | 海关案卷聚合事实         | O·R  |
 
 ### D. 提柜/送仓/卸空/还箱
 
-| 码                | 中文      | 定义(一句话)     | 角色         | L节点 | 推进/证据      | 源码示例              | 证实 |
-| ----------------- | --------- | ---------------- | ------------ | ----- | -------------- | --------------------- | ---- |
-| rail_handover     | 海铁交接完成 | 铁路主体或场站实际接收指定货柜 | 状态证据 | #9 | 海铁节点完成候选 | 铁路接收/场站交接实际回执 | O·R |
-| gate_out          | 提柜/出场 | 从码头提走重箱   | 状态证据     | #10   | picked_up      | GATE_OUT / GTOT·LADEN | S·R  |
-| delivered         | 送仓/送达 | 拖卡送达仓库     | 里程碑       | #11   | —              | DELIVERED             | S·R  |
-| warehouse_arrival | 到仓入库  | 货到仓库         | 里程碑       | #11   | —              | WAREHOUSE_ARRIVAL     | R    |
-| unloaded          | 卸柜      | 仓库卸货         | 状态证据     | #12   | unloaded       | UNLOADED              | S·R  |
-| unstuffed         | 卸空      | 箱内卸净(可还箱) | 里程碑       | #13   | —              | UNBOXED / STRIPPED    | R    |
-| returned_empty    | 还箱      | 空箱归还         | 状态证据(终) | #14   | returned_empty | RETURNED_EMPTY        | S·R  |
+| 码                | 中文         | 定义(一句话)                   | 角色         | L节点 | 推进/证据        | 源码示例                  | 证实 |
+| ----------------- | ------------ | ------------------------------ | ------------ | ----- | ---------------- | ------------------------- | ---- |
+| rail_handover     | 海铁交接完成 | 铁路主体或场站实际接收指定货柜 | 状态证据     | #9    | 海铁节点完成候选 | 铁路接收/场站交接实际回执 | O·R  |
+| gate_out          | 提柜/出场    | 从码头提走重箱                 | 状态证据     | #10   | picked_up        | GATE_OUT / GTOT·LADEN     | S·R  |
+| delivered         | 送仓/送达    | 拖卡送达仓库                   | 里程碑       | #11   | —                | DELIVERED                 | S·R  |
+| warehouse_arrival | 到仓入库     | 货到仓库                       | 里程碑       | #11   | —                | WAREHOUSE_ARRIVAL         | R    |
+| unloaded          | 卸柜         | 仓库卸货                       | 状态证据     | #12   | unloaded         | UNLOADED                  | S·R  |
+| unstuffed         | 卸空         | 箱内卸净(可还箱)               | 里程碑       | #13   | —                | UNBOXED / STRIPPED        | R    |
+| returned_empty    | 还箱         | 空箱归还                       | 状态证据(终) | #14   | returned_empty   | RETURNED_EMPTY            | S·R  |
 
 ### E. 计划/取消/异常
 
-| 码        | 中文      | 定义(一句话)                | 角色         | L节点  | 推进/证据 | 源码示例          | 证实 |
-| --------- | --------- | --------------------------- | ------------ | ------ | --------- | ----------------- | ---- |
-| dumped    | 甩柜      | 甩柜（预计/实际由 `timeKind` 区分） | 异常 | 出运前 | — | DUMP·offLoad | S·R |
-| rolled    | 漏装/改配 | 甩柜后改船期/漏装           | 异常         | 出运前 | —         | 漏装-改船名航次   | S    |
-| cancelled | 取消      | 运单/记录取消               | 异常→终态    | 计划段 | cancelled | CANCEL·退关       | O·R  |
-| changed   | 计划变更  | 开/截港·到离泊·港口变更     | 里程碑(预计) | 动态   | —         | CHANGE 类         | S    |
-| delay     | 延误      | 时间偏差预警                | 异常         | 动态   | —         | DELAY 类          | S    |
-| overdue   | 超期      | 滞留/免费期超限             | 异常         | #10–14 | —         | OVERDUE/DETENTION | S    |
+| 码        | 中文      | 定义(一句话)                        | 角色         | L节点  | 推进/证据 | 源码示例          | 证实 |
+| --------- | --------- | ----------------------------------- | ------------ | ------ | --------- | ----------------- | ---- |
+| dumped    | 甩柜      | 甩柜（预计/实际由 `timeKind` 区分） | 异常         | 出运前 | —         | DUMP·offLoad      | S·R  |
+| rolled    | 漏装/改配 | 甩柜后改船期/漏装                   | 异常         | 出运前 | —         | 漏装-改船名航次   | S    |
+| cancelled | 取消      | 运单/记录取消                       | 异常→终态    | 计划段 | cancelled | CANCEL·退关       | O·R  |
+| changed   | 计划变更  | 开/截港·到离泊·港口变更             | 里程碑(预计) | 动态   | —         | CHANGE 类         | S    |
+| delay     | 延误      | 时间偏差预警                        | 异常         | 动态   | —         | DELAY 类          | S    |
+| overdue   | 超期      | 滞留/免费期超限                     | 异常         | #10–14 | —         | OVERDUE/DETENTION | S    |
 
 ### F. 节点完成资格注册
 
@@ -91,40 +91,40 @@ provenance: unique (S | R | O | C)[]
 
 一个事件可以列出多个节点，例如直达 `arrived` 可先完成 `ocean_transit`，待前序条件满足后再完成 `destination_arrival`。事件本身只接收一次，节点应用按事件与节点实例组合幂等。
 
-| 事件码 | `completionEligibleNodeCodes` | 状态/说明 |
-| --- | --- | --- |
-| `cargo_ready` | `[cargo_ready]` | 已确认 |
-| `empty_picked_up` | `[]` | 子里程碑 |
-| `stuffed` | `[container_stuffing]` | 已确认 |
-| `loaded` | `[shipment_dispatch]` | 已确认 |
-| `departed` | `[origin_departure]` | 已确认 |
-| `sailing` | `[]` | 只表示海运进行中，不完成节点 |
-| `gate_in` | `[]` | 子里程碑 |
-| `transit_arrived` | `[ocean_transit]` | 中转航线完成抵达中转港的海运阶段 |
-| `transit_departed` | `[transshipment]` | 已确认 |
-| `arrived` | `[ocean_transit,destination_arrival]` | 直达时结束海运；前序满足后完成目的港到港 |
-| `berthed` | `[]` | 子里程碑 |
-| `discharged` | `[]` | 子里程碑 |
-| `available` | `[]` | 提柜前置，不等于提柜 |
-| `release` | `[]` | 单主体/单案卷放行不直接完成清关节点 |
-| `hold` | `[]` | 异常/阻断 |
-| `hold_released` | `[]` | 解除阻断不等于放行 |
-| `customs_filed` | `[]` | 清关子里程碑 |
-| `inspection` | `[]` | 异常/阻断 |
-| `container_customs_completed` | `[customs_clearance]` | 货柜级案卷聚合事实 |
-| `rail_handover` | `[rail_transfer]` | 已确认 |
-| `gate_out` | `[container_pickup]` | 已确认，仍须联合守卫 |
-| `delivered` | `[warehouse_delivery]` | 必须带 POD、门岗或仓库签收等有效交付证据 |
-| `warehouse_arrival` | `[warehouse_delivery]` | 必须来自仓库、WMS 或门岗权威实际到场事实 |
-| `unloaded` | `[container_unloading]` | 已确认 |
-| `unstuffed` | `[container_unstuffing]` | 已确认 |
-| `returned_empty` | `[empty_return]` | 已确认 |
-| `dumped` | `[]` | 异常 |
-| `rolled` | `[]` | 异常 |
-| `cancelled` | `[]` | 流程取消使用专用命令，不作为节点完成 |
-| `changed` | `[]` | 计划变更 |
-| `delay` | `[]` | 异常/预警 |
-| `overdue` | `[]` | 异常/预警 |
+| 事件码                        | `completionEligibleNodeCodes`         | 状态/说明                                |
+| ----------------------------- | ------------------------------------- | ---------------------------------------- |
+| `cargo_ready`                 | `[cargo_ready]`                       | 已确认                                   |
+| `empty_picked_up`             | `[]`                                  | 子里程碑                                 |
+| `stuffed`                     | `[container_stuffing]`                | 已确认                                   |
+| `loaded`                      | `[shipment_dispatch]`                 | 已确认                                   |
+| `departed`                    | `[origin_departure]`                  | 已确认                                   |
+| `sailing`                     | `[]`                                  | 只表示海运进行中，不完成节点             |
+| `gate_in`                     | `[]`                                  | 子里程碑                                 |
+| `transit_arrived`             | `[ocean_transit]`                     | 中转航线完成抵达中转港的海运阶段         |
+| `transit_departed`            | `[transshipment]`                     | 已确认                                   |
+| `arrived`                     | `[ocean_transit,destination_arrival]` | 直达时结束海运；前序满足后完成目的港到港 |
+| `berthed`                     | `[]`                                  | 子里程碑                                 |
+| `discharged`                  | `[]`                                  | 子里程碑                                 |
+| `available`                   | `[]`                                  | 提柜前置，不等于提柜                     |
+| `release`                     | `[]`                                  | 单主体/单案卷放行不直接完成清关节点      |
+| `hold`                        | `[]`                                  | 异常/阻断                                |
+| `hold_released`               | `[]`                                  | 解除阻断不等于放行                       |
+| `customs_filed`               | `[]`                                  | 清关子里程碑                             |
+| `inspection`                  | `[]`                                  | 异常/阻断                                |
+| `container_customs_completed` | `[customs_clearance]`                 | 货柜级案卷聚合事实                       |
+| `rail_handover`               | `[rail_transfer]`                     | 已确认                                   |
+| `gate_out`                    | `[container_pickup]`                  | 已确认，仍须联合守卫                     |
+| `delivered`                   | `[warehouse_delivery]`                | 必须带 POD、门岗或仓库签收等有效交付证据 |
+| `warehouse_arrival`           | `[warehouse_delivery]`                | 必须来自仓库、WMS 或门岗权威实际到场事实 |
+| `unloaded`                    | `[container_unloading]`               | 已确认                                   |
+| `unstuffed`                   | `[container_unstuffing]`              | 已确认                                   |
+| `returned_empty`              | `[empty_return]`                      | 已确认                                   |
+| `dumped`                      | `[]`                                  | 异常                                     |
+| `rolled`                      | `[]`                                  | 异常                                     |
+| `cancelled`                   | `[]`                                  | 流程取消使用专用命令，不作为节点完成     |
+| `changed`                     | `[]`                                  | 计划变更                                 |
+| `delay`                       | `[]`                                  | 异常/预警                                |
+| `overdue`                     | `[]`                                  | 异常/预警                                |
 
 ## ② 定义与澄清
 
@@ -147,7 +147,7 @@ provenance: unique (S | R | O | C)[]
 
 1. **对接三方**：拉取对方事件码 → 与本表对拍 → 写映射条目（补 EXTERNAL_EVENT_MAPPING 示例表）。
 2. **发布前**：本表 C 级码 → 用真实样本(P2-12)对拍 → 标 S/R；未覆盖码进待处理。
-3. **实现**：P6 从本表形成 JSON Schema 单一源，Seed、事件信封值域和各语言类型只能由该源派生。
+3. **实现**：G6 从本表形成 JSON Schema 单一源，G7 从该源派生 Seed、事件信封值域和各语言类型。
 4. **演进**：新事件 → 评审加行(补定义/角色/归属/证实) → Seed 更新 → 影响契约/前端文案。
 
 ## ⑤ 注意事项（坑）
@@ -167,17 +167,17 @@ provenance: unique (S | R | O | C)[]
 
 ## ⑦ 落库映射（示例）
 
-| 清单列   | 落库                                               | 示例值         |
-| -------- | -------------------------------------------------- | -------------- |
-| 码       | `internal_event_code.code`(PK,固定)                | `departed`     |
-| 中文     | `.name_cn`                                         | 离港           |
-| 定义     | `.definition`                                      | 实际离开起运港 |
-| 角色     | `.role`(milestone/evidence/exception/prerequisite) | evidence       |
-| 归属     | `.node`(L # 或段)                                  | #4             |
-| 推进到   | `.advances_to`(可空)                               | shipped        |
-| 源码示例 | 映射表(EXTERNAL_EVENT_MAPPING) 引用                | DLPT / DEPA·TD |
-| 证实度   | `.provenance`(S/R/O/C)                             | S              |
-| timeKind | 事件实例字段；目录登记允许的时间种类               | `actual`       |
+| 清单列   | 落库                                                                    | 示例值               |
+| -------- | ----------------------------------------------------------------------- | -------------------- |
+| 码       | `internal_event_code.code`(PK,固定)                                     | `departed`           |
+| 中文     | `.name_cn`                                                              | 离港                 |
+| 定义     | `.definition`                                                           | 实际离开起运港       |
+| 角色     | `.role`(milestone/evidence/exception/prerequisite)                      | evidence             |
+| 归属     | `.node`(L # 或段)                                                       | #4                   |
+| 推进到   | `.advances_to`(可空)                                                    | shipped              |
+| 源码示例 | 映射表(EXTERNAL_EVENT_MAPPING) 引用                                     | DLPT / DEPA·TD       |
+| 证实度   | `.provenance`(S/R/O/C)                                                  | S                    |
+| timeKind | 事件实例字段；目录登记允许的时间种类                                    | `actual`             |
 | 完成资格 | `.completion_eligible_node_codes`（契约为数组；物理实现可规范化关联表） | `[origin_departure]` |
 
 ## ⑧ 待对拍（P2-12）与变更
@@ -193,11 +193,11 @@ provenance: unique (S | R | O | C)[]
 - 改变既有码定义、角色、允许时间种类或完成资格属于行为变更；不得原地改义，必须增加 `eventVersion` 或发布目录主版本。
 - 删除、重命名或合并已发布线值属于破坏性变更，必须提供历史事件、持久化数据、映射和消费者迁移方案。
 - 未知 `eventCode`、未知 `eventVersion` 或不在允许集合内的 `timeKind/nodeCode` 必须明确拒绝或进入复核队列，不得静默映射。
-- 同一流程按 `eventId` 接收幂等；同 ID 异载荷明确冲突。节点事实应用按 `(eventId,nodeInstanceId)` 幂等。
+- 同一流程按 `eventId` 接收幂等；同 ID 异载荷明确冲突。节点事实应用按 `(eventId,targetNodeInstanceId)` 幂等。
 
 ## ⑨ 沿链去向（可视化 → UI）
 
-- 本表码 → 事件信封 `eventCode` → 入库 `internal_event_code` Seed（P2-06）。
+- 本表码 → 事件信封 `eventCode` → 入库 `internal_event_code` Seed（项目 P2-06）。
 - → 可视化：工作台 rail 显示推进到状态、TimelineDrawer 按事件流展示本表事件、异常码上挂 exception 红点。
 - → UI 交互：事件即"证据"供 PDCA Check 展示；动作中心按缺失事件推导下一步一键动作（UX V1/V2）。
 

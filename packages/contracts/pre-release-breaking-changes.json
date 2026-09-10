@@ -1,0 +1,26 @@
+[
+  {
+    "schema": "packages/contracts/schemas/v1/canonical-event-envelope.schema.json",
+    "pointer": "#/required",
+    "removed": "eventType",
+    "reason": "Unreleased V1 correction: GC-003 defines eventCode as the canonical wire field."
+  },
+  {
+    "schema": "packages/contracts/schemas/v1/container-operational-view.schema.json",
+    "pointer": "#/$defs/NodeSummary/properties/applicability/enum",
+    "removed": "required",
+    "reason": "Unreleased V1 correction: values moved to the shared NodeApplicability definition."
+  },
+  {
+    "schema": "packages/contracts/schemas/v1/container-operational-view.schema.json",
+    "pointer": "#/$defs/NodeSummary/properties/applicability/enum",
+    "removed": "optional",
+    "reason": "Unreleased V1 correction: optional is split into applicable and not-applicable states."
+  },
+  {
+    "schema": "packages/contracts/schemas/v1/container-operational-view.schema.json",
+    "pointer": "#/$defs/NodeSummary/properties/applicability/enum",
+    "removed": "not_applicable",
+    "reason": "Unreleased V1 correction: values moved to the shared NodeApplicability definition."
+  }
+]

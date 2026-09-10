@@ -4,31 +4,144 @@
   "title": "CanonicalEventEnvelopeV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["eventId", "eventType", "eventVersion", "tenantId", "containerId", "flowInstanceId", "timeKind", "occurredAt", "recordedAt", "source", "evidenceRefs", "confidenceState", "validity", "correlationId", "traceId"],
+  "required": [
+    "eventId",
+    "eventCode",
+    "eventVersion",
+    "tenantId",
+    "containerId",
+    "flowInstanceId",
+    "nodeCode",
+    "nodeInstanceId",
+    "role",
+    "timeKind",
+    "occurredAt",
+    "recordedAt",
+    "eventSequence",
+    "domain",
+    "domainFactId",
+    "domainFactType",
+    "correlationId",
+    "idempotencyKey",
+    "source",
+    "evidenceRefs",
+    "confidenceState",
+    "validity",
+    "data",
+    "traceId"
+  ],
   "properties": {
-    "eventId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "eventType": {"$ref": "common.schema.json#/$defs/CanonicalEventCode"},
-    "eventVersion": {"const": 1},
-    "tenantId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "containerId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "flowInstanceId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "nodeCode": {"$ref": "common.schema.json#/$defs/LifecycleNodeCode"},
-    "nodeInstanceId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "domainFactId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "timeKind": {"$ref": "common.schema.json#/$defs/TimeKind"},
-    "occurredAt": {"$ref": "common.schema.json#/$defs/DateTime"},
-    "recordedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
-    "receivedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
-    "source": {"$ref": "common.schema.json#/$defs/EntityRef"},
+    "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },
+    "eventVersion": { "const": 1 },
+    "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+    "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "domainFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "domainFactType": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "domain": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "role": { "$ref": "common.schema.json#/$defs/EventRole" },
+    "timeKind": { "$ref": "common.schema.json#/$defs/TimeKind" },
+    "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+    "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+    "receivedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+    "providerUpdatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+    "eventSequence": { "type": "integer", "minimum": 1 },
+    "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceSystem",
+        "authoritySystem",
+        "captureSource",
+        "authorityLevel",
+        "verificationState",
+        "confidenceState"
+      ],
+      "properties": {
+        "sourceSystem": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "authoritySystem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "provider": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "providerVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "interfaceCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "sourceEventId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "mappingVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "captureSource": { "$ref": "common.schema.json#/$defs/CaptureSource" },
+        "authorityLevel": {
+          "$ref": "common.schema.json#/$defs/AuthorityLevel"
+        },
+        "verificationState": {
+          "$ref": "common.schema.json#/$defs/VerificationState"
+        },
+        "confidenceState": {
+          "$ref": "common.schema.json#/$defs/ConfidenceState"
+        },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locationType", "timezone"],
+      "properties": {
+        "locationType": {
+          "enum": [
+            "port",
+            "terminal",
+            "rail_yard",
+            "warehouse",
+            "depot",
+            "in_transit"
+          ]
+        },
+        "unlocode": { "type": "string", "pattern": "^[A-Z]{2}[A-Z0-9]{3}$" },
+        "locationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "segmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "portCallId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "timezone": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
     "evidenceRefs": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"$ref": "common.schema.json#/$defs/Uuid"}
+      "items": { "$ref": "common.schema.json#/$defs/Uuid" }
     },
-    "confidenceState": {"$ref": "common.schema.json#/$defs/ConfidenceState"},
-    "validity": {"$ref": "common.schema.json#/$defs/EvidenceValidity"},
-    "correlationId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "causationId": {"$ref": "common.schema.json#/$defs/Uuid"},
-    "traceId": {"type": "string", "minLength": 1, "maxLength": 128}
+    "confidenceState": { "$ref": "common.schema.json#/$defs/ConfidenceState" },
+    "validity": { "$ref": "common.schema.json#/$defs/EvidenceValidity" },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationType", "relatedEventId", "reasonCode", "reason"],
+      "properties": {
+        "relationType": {
+          "$ref": "common.schema.json#/$defs/EventRelationType"
+        },
+        "relatedEventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "authorizedBy": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "data": { "type": "object" },
+    "correlationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "causationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
   }
 }

@@ -16,11 +16,11 @@ BusinessDecisionState = pending | accepted | rejected
 CommitState = pending | committed | commit_failed
 ```
 
-| 阶段 | 必须提供 | 不代表 |
-| --- | --- | --- |
-| Reception | clientOperationId、receivedAt、幂等结果、traceId | 业务接受 |
-| Business Decision | accepted/rejected、decidedAt、稳定原因 | 事实已落账 |
-| Commit | committed/commit_failed、committedAt?、resultRefs[] | 下游投影全部刷新 |
+| 阶段              | 必须提供                                            | 不代表           |
+| ----------------- | --------------------------------------------------- | ---------------- |
+| Reception         | clientOperationId、receivedAt、幂等结果、traceId    | 业务接受         |
+| Business Decision | accepted/rejected、decidedAt、稳定原因              | 事实已落账       |
+| Commit            | committed/commit_failed、committedAt?、resultRefs[] | 下游投影全部刷新 |
 
 同步事务可以一次返回三阶段；异步处理必须允许按 clientOperationId 查询。网络超时表示结果未知，客户端使用同一 clientOperationId/idempotencyKey 查询或重试，不创建新操作。
 
@@ -50,7 +50,7 @@ createdAt, updatedAt
 - Inbox：`consumerName + messageId`，并保存 payloadHash。
 - Outbox：eventId 全局唯一；一次本地事务只产生一个同义业务事件。
 - 工单事实应用：`tenantId + workOrderId + businessFactKey`。
-- 生命周期节点应用：`tenantId + flowInstanceId + eventId + nodeInstanceId`。
+- 生命周期节点应用：`tenantId + flowInstanceId + eventId + targetNodeInstanceId`。
 
 ## 5. Inbox
 
@@ -108,4 +108,4 @@ CompensationState = not_required | pending | in_progress
 
 覆盖同步三阶段、异步查询、响应丢失后同 ID 重试、同键异载荷、并发重复、业务拒绝不重试、暂时错误退避、限流、Inbox 崩溃接管、Outbox 发布后确认丢失、死信授权重放、修正消息新 ID、补偿成功/失败、乱序、NODATA、不清空有效事实以及业务提交与 Outbox 原子性。
 
-当前三阶段操作与错误 Schema 已在 P6 达到 `D4`；重试参数、数据库表和运行时发布器仍待 P7。
+当前三阶段操作记录已有局部 Schema，但 Inbox、Outbox、重试、死信和补偿模型尚未完整实例化，门禁保持 `D3`；数据库表和运行时发布器仍待后续阶段。

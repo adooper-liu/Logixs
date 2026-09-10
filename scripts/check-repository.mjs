@@ -24,7 +24,7 @@ const allowedTaskStatuses = new Set([
 ]);
 const activeTaskStatuses = new Set(["design", "coding", "review", "fix"]);
 const forbiddenDirectoryPattern =
-  /(^|\/)(node_modules|dist|coverage|playwright-report|test-results)(\/|$)/;
+  /(^|\/)(node_modules|dist|coverage|playwright-report|test-results|tmp)(\/|$)/;
 const allowedEnvironmentFilePattern = /\.env(?:\..+)?\.example$/;
 const sensitiveFilePattern = /(^|\/)(\.env(?:\..+)?|id_rsa|id_ed25519)$/;
 const sensitiveExtensionPattern = /\.(key|p12|pfx|pem)$/i;
@@ -216,6 +216,29 @@ export function findUiThemeBoundaryViolations(records) {
   return errors;
 }
 
+export function findAmbiguousContractPhaseReferences(records) {
+  const errors = [];
+  const ambiguousPhasePattern = /\b[pP]([67])\b(?!\.\d)/g;
+  // "项目" may be followed by emphasis, bracketing or the words 第 N 阶段 before the token.
+  // Any other filler (e.g. "本项目不使用 P6") keeps the reference ambiguous and is reported.
+  const projectQualifierPattern = /项目[\s`*（(【第阶段之的]*$/;
+
+  for (const record of records) {
+    const lines = record.source.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      for (const match of line.matchAll(ambiguousPhasePattern)) {
+        const prefix = line.slice(0, match.index);
+        if (projectQualifierPattern.test(prefix)) continue;
+        errors.push(
+          `${record.path}:${index + 1}: ambiguous phase '${match[0]}'; use 'G${match[1]}' for global-contract task stages or qualify it as a project phase`,
+        );
+      }
+    });
+  }
+
+  return errors;
+}
+
 function walkFiles(directory, predicate) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -250,13 +273,33 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
   const markdownFiles = walkFiles(repositoryRoot, (path) =>
     path.endsWith(".md"),
   );
+  const contractAuthorityFiles = markdownFiles.filter((absolutePath) => {
+    const path = normalizePath(absolutePath).replace(
+      `${normalizePath(repositoryRoot)}/`,
+      "",
+    );
+    return /^docs\/product\/domain\/(?:.*_CONTRACT_V1|LIFECYCLE_NODE_CATALOG_V1|EVENT_CODES|GLOBAL_CONTRACT_REGISTRY)\.md$/.test(
+      path,
+    );
+  });
   const errors = [
     ...findBrokenMarkdownLinks(markdownFiles),
     ...taskStatusErrors(),
+    ...findAmbiguousContractPhaseReferences(
+      contractAuthorityFiles.map((path) => ({
+        path: normalizePath(path).replace(
+          `${normalizePath(repositoryRoot)}/`,
+          "",
+        ),
+        source: readFileSync(path, "utf8"),
+      })),
+    ),
   ];
 
   if (!docsOnly) {
-    const trackedFiles = listTrackedFiles();
+    const trackedFiles = listTrackedFiles().filter((path) =>
+      existsSync(resolve(repositoryRoot, path)),
+    );
     const webSourceFiles = walkFiles(
       resolve(repositoryRoot, "apps/web/src"),
       (path) => [".css", ".ts", ".vue"].includes(extname(path).toLowerCase()),

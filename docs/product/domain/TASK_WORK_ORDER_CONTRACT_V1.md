@@ -26,27 +26,27 @@ V1 不发布独立 `containerTaskId`。历史草案或演示字段必须显式�
 
 ## 2. 模块责任
 
-| 模块 | 拥有 | 不得负责 |
-| --- | --- | --- |
-| `shipment-registry` | `ContainerRecord` 与货柜业务关联 | 任务、工单或流程转换 |
-| `lifecycle-control` | `FlowInstance`、节点实例和流程状态机 | 工单执行和专业事实判断 |
-| `work-execution` | `NodeTask`、`WorkOrder`、状态机、分派、聚合和事实应用 | 解释供应商裸码、直接写流程状态 |
-| 专业业务模块 | 版本化任务/工单定义、专业事实及完成政策输入 | 直接更新任务、工单或流程表 |
-| Integration Adapter | 原始载荷保存与外部值规范化候选 | 直接完成工单、任务或节点 |
-| Application | 权限、幂等、事务、命令编排和跨模块公开端口 | 绕过领域状态机 UPDATE 终态 |
+| 模块                | 拥有                                                  | 不得负责                       |
+| ------------------- | ----------------------------------------------------- | ------------------------------ |
+| `shipment-registry` | `ContainerRecord` 与货柜业务关联                      | 任务、工单或流程转换           |
+| `lifecycle-control` | `FlowInstance`、节点实例和流程状态机                  | 工单执行和专业事实判断         |
+| `work-execution`    | `NodeTask`、`WorkOrder`、状态机、分派、聚合和事实应用 | 解释供应商裸码、直接写流程状态 |
+| 专业业务模块        | 版本化任务/工单定义、专业事实及完成政策输入           | 直接更新任务、工单或流程表     |
+| Integration Adapter | 原始载荷保存与外部值规范化候选                        | 直接完成工单、任务或节点       |
+| Application         | 权限、幂等、事务、命令编排和跨模块公开端口            | 绕过领域状态机 UPDATE 终态     |
 
 依赖方向固定为 `UI / Transport -> Application -> Domain <- Infrastructure`。模块之间只交换稳定逻辑 ID、公共命令、查询和事件，不跨模块写表。
 
 ## 3. 核心对象与基数
 
-| 对象 | 标识 | 基数与不变量 |
-| --- | --- | --- |
-| 货柜流转主任务视图 | `containerId + flowInstanceId` | 一个货柜同一时刻最多一个 active FlowInstance |
-| 节点实例 | `nodeInstanceId` | 属于一个 FlowInstance；以 `nodeCode + activationNo` 区分重入 |
-| 工序子任务 | `nodeTaskId` | 一个 nodeInstance 最多一个当前有效 NodeTask |
-| 作业工单 | `workOrderId` | 一个 NodeTask 至少一张 required 或 conditional-required 工单；纯外部监控任务也必须有监控工单 |
-| 客户操作 | `clientOperationId` | 一张 WorkOrder 可有多次命令操作；同步状态独立 |
-| 工单事实应用 | `factApplicationId` | 同一 `workOrderId + businessFactKey` 最多一条有效应用记录 |
+| 对象               | 标识                           | 基数与不变量                                                                                 |
+| ------------------ | ------------------------------ | -------------------------------------------------------------------------------------------- |
+| 货柜流转主任务视图 | `containerId + flowInstanceId` | 一个货柜同一时刻最多一个 active FlowInstance                                                 |
+| 节点实例           | `nodeInstanceId`               | 属于一个 FlowInstance；以 `nodeCode + activationNo` 区分重入                                 |
+| 工序子任务         | `nodeTaskId`                   | 一个 nodeInstance 最多一个当前有效 NodeTask                                                  |
+| 作业工单           | `workOrderId`                  | 一个 NodeTask 至少一张 required 或 conditional-required 工单；纯外部监控任务也必须有监控工单 |
+| 客户操作           | `clientOperationId`            | 一张 WorkOrder 可有多次命令操作；同步状态独立                                                |
+| 工单事实应用       | `factApplicationId`            | 同一 `workOrderId + businessFactKey` 最多一条有效应用记录                                    |
 
 NodeTask 与 WorkOrder 均保存创建时采用的定义键、定义版本和完成政策快照哈希。定义后续升级不得静默改变在途实例；迁移必须使用显式命令、原因和审计。
 
@@ -90,25 +90,25 @@ duePolicyRef?: string
 pending | in_progress | blocked | completed | reopened | cancelled
 ```
 
-| 状态 | 含义 |
-| --- | --- |
-| `pending` | 已创建，必需工单集合已确定，尚无工单开始或被事实满足 |
+| 状态          | 含义                                                           |
+| ------------- | -------------------------------------------------------------- |
+| `pending`     | 已创建，必需工单集合已确定，尚无工单开始或被事实满足           |
 | `in_progress` | 至少一张适用工单已开始、完成或正在等待非阻断结果，整体尚未完成 |
-| `blocked` | 存在阻断任务完成的有效 Block、失败的必需工单或缺失强制输入 |
-| `completed` | 所有必需完成条件已由有效事实满足，完成快照已密封 |
-| `reopened` | 原完成后因新必需事实、撤销、更正、补录或返工要求重新打开 |
-| `cancelled` | 因流程取消、节点不适用或授权业务终止而关闭；不表示工序完成 |
+| `blocked`     | 存在阻断任务完成的有效 Block、失败的必需工单或缺失强制输入     |
+| `completed`   | 所有必需完成条件已由有效事实满足，完成快照已密封               |
+| `reopened`    | 原完成后因新必需事实、撤销、更正、补录或返工要求重新打开       |
+| `cancelled`   | 因流程取消、节点不适用或授权业务终止而关闭；不表示工序完成     |
 
 合法转换：
 
-| 起点 | 允许终点 |
-| --- | --- |
-| `pending` | `in_progress,blocked,completed,cancelled` |
-| `in_progress` | `blocked,completed,cancelled` |
-| `blocked` | `pending,in_progress,completed,cancelled` |
-| `completed` | `reopened` |
-| `reopened` | `in_progress,blocked,completed,cancelled` |
-| `cancelled` | 无；需要恢复时创建新的节点激活或经后续版本批准专用恢复规则 |
+| 起点          | 允许终点                                                   |
+| ------------- | ---------------------------------------------------------- |
+| `pending`     | `in_progress,blocked,completed,cancelled`                  |
+| `in_progress` | `blocked,completed,cancelled`                              |
+| `blocked`     | `pending,in_progress,completed,cancelled`                  |
+| `completed`   | `reopened`                                                 |
+| `reopened`    | `in_progress,blocked,completed,cancelled`                  |
+| `cancelled`   | 无；需要恢复时创建新的节点激活或经后续版本批准专用恢复规则 |
 
 `pending/blocked/reopened -> completed` 只允许聚合器证明全部完成条件已被权威事实满足时发生，不允许普通“完成任务”按钮直接指定。
 
@@ -118,29 +118,29 @@ pending | in_progress | blocked | completed | reopened | cancelled
 draft | ready | in_progress | blocked | completed | failed | reopened | cancelled
 ```
 
-| 状态 | 含义 |
-| --- | --- |
-| `draft` | 工单已创建，定义、条件或必需输入尚未完成校验 |
-| `ready` | 校验通过，可领取、自动执行或接受匹配事实 |
-| `in_progress` | 已开始执行或正在采集必需结果 |
-| `blocked` | 存在可解除的外部等待、资料缺失、退单或业务阻断 |
-| `completed` | 全部完成谓词已由有效事实满足，结果快照已密封 |
-| `failed` | 本次执行尝试失败且需要明确重试、替换或终止决策 |
-| `reopened` | 原完成/失败后因撤销、更正、返工或补录要求重新打开 |
-| `cancelled` | 经授权终止或判定不再适用；不等于完成 |
+| 状态          | 含义                                              |
+| ------------- | ------------------------------------------------- |
+| `draft`       | 工单已创建，定义、条件或必需输入尚未完成校验      |
+| `ready`       | 校验通过，可领取、自动执行或接受匹配事实          |
+| `in_progress` | 已开始执行或正在采集必需结果                      |
+| `blocked`     | 存在可解除的外部等待、资料缺失、退单或业务阻断    |
+| `completed`   | 全部完成谓词已由有效事实满足，结果快照已密封      |
+| `failed`      | 本次执行尝试失败且需要明确重试、替换或终止决策    |
+| `reopened`    | 原完成/失败后因撤销、更正、返工或补录要求重新打开 |
+| `cancelled`   | 经授权终止或判定不再适用；不等于完成              |
 
 合法转换：
 
-| 起点 | 允许终点 |
-| --- | --- |
-| `draft` | `ready,cancelled` |
-| `ready` | `in_progress,blocked,completed,cancelled` |
-| `in_progress` | `blocked,completed,failed,cancelled` |
-| `blocked` | `ready,in_progress,completed,failed,cancelled` |
-| `completed` | `reopened` |
-| `failed` | `reopened,cancelled` |
-| `reopened` | `ready,in_progress,blocked,completed,failed,cancelled` |
-| `cancelled` | 无 |
+| 起点          | 允许终点                                               |
+| ------------- | ------------------------------------------------------ |
+| `draft`       | `ready,cancelled`                                      |
+| `ready`       | `in_progress,blocked,completed,cancelled`              |
+| `in_progress` | `blocked,completed,failed,cancelled`                   |
+| `blocked`     | `ready,in_progress,completed,failed,cancelled`         |
+| `completed`   | `reopened`                                             |
+| `failed`      | `reopened,cancelled`                                   |
+| `reopened`    | `ready,in_progress,blocked,completed,failed,cancelled` |
+| `cancelled`   | 无                                                     |
 
 `ready/blocked/reopened -> completed` 允许权威事实直接满足全部完成谓词，但仍必须经过 `ApplyFactToWorkOrder`、状态机、版本检查和审计。
 
@@ -225,19 +225,19 @@ appliedAt, actorOrServiceId, traceId
 
 所有写命令必须包含 `tenantId`、`idempotencyKey`、`expectedVersion`、操作者/服务身份和 `traceId`；对象引用必须属于同一租户和同一关联链。
 
-| 命令 | 作用 | 关键约束 |
-| --- | --- | --- |
-| `CreateNodeTaskCommandV1` | 为已激活节点创建任务与工单集合 | `nodeInstanceId + taskDefinitionVersion` 幂等 |
-| `AssignWorkOrderCommandV1` | 分派个人、团队或池 | 不改变业务完成状态 |
-| `StartWorkOrderCommandV1` | `ready/reopened -> in_progress` | 校验分派、权限和前置条件 |
-| `ApplyFactToWorkOrderCommandV1` | 应用外部/人工/导入/系统事实 | 统一事实语义、来源验证和业务键 |
-| `BlockWorkOrderCommandV1` | 添加指定 Block | 必须有原因、来源、时间和恢复责任 |
-| `ResolveWorkOrderBlockCommandV1` | 解除指定 Block | 不允许“全部解除” |
-| `FailWorkOrderAttemptCommandV1` | 记录执行失败 | 失败原因和 attempt 必填 |
-| `CancelWorkOrderCommandV1` | 授权取消 | required 工单取消后任务不得自动完成，除非适用性另行批准 |
-| `ReopenWorkOrderCommandV1` | 更正、撤销或返工 | 引用原完成/失败事实及原因 |
-| `CancelNodeTaskCommandV1` | 流程取消或节点不适用 | 不发布完成结果 |
-| `ReopenNodeTaskCommandV1` | 完成后重新聚合 | 引用触发事实并保留原完成快照 |
+| 命令                             | 作用                            | 关键约束                                                |
+| -------------------------------- | ------------------------------- | ------------------------------------------------------- |
+| `CreateNodeTaskCommandV1`        | 为已激活节点创建任务与工单集合  | `nodeInstanceId + taskDefinitionVersion` 幂等           |
+| `AssignWorkOrderCommandV1`       | 分派个人、团队或池              | 不改变业务完成状态                                      |
+| `StartWorkOrderCommandV1`        | `ready/reopened -> in_progress` | 校验分派、权限和前置条件                                |
+| `ApplyFactToWorkOrderCommandV1`  | 应用外部/人工/导入/系统事实     | 统一事实语义、来源验证和业务键                          |
+| `BlockWorkOrderCommandV1`        | 添加指定 Block                  | 必须有原因、来源、时间和恢复责任                        |
+| `ResolveWorkOrderBlockCommandV1` | 解除指定 Block                  | 不允许“全部解除”                                        |
+| `FailWorkOrderAttemptCommandV1`  | 记录执行失败                    | 失败原因和 attempt 必填                                 |
+| `CancelWorkOrderCommandV1`       | 授权取消                        | required 工单取消后任务不得自动完成，除非适用性另行批准 |
+| `ReopenWorkOrderCommandV1`       | 更正、撤销或返工                | 引用原完成/失败事实及原因                               |
+| `CancelNodeTaskCommandV1`        | 流程取消或节点不适用            | 不发布完成结果                                          |
+| `ReopenNodeTaskCommandV1`        | 完成后重新聚合                  | 引用触发事实并保留原完成快照                            |
 
 NodeTask 状态不提供任意 `SetStatus` 命令；它只能由创建、取消、重开和聚合器改变。WorkOrder 同样禁止通用状态写入接口。
 
@@ -260,7 +260,7 @@ NodeTask 状态不提供任意 `SetStatus` 命令；它只能由创建、取消�
 - 每个 `NodeTaskDefinitionV1.resultPolicy` 必须声明：`none | emit_canonical_event | reference_existing_event`、规范 `eventCode@eventVersion`、所需专业事实类型和事件业务键算法。
 - `work-execution` 不解释供应商码、不伪造海关/港口/仓库专业事实。需要专业裁决时，只发布任务结果并由所有者模块形成规范事件。
 - 外部规范事件已存在时使用 `reference_existing_event`；不得因工单随后完成而发布第二个同义事件。
-- 事件接收按 `eventId` 幂等，节点应用按 `eventId + nodeInstanceId` 幂等；工单聚合不能绕过生命周期顺序、来源、证据或 Block 守卫。
+- 事件接收按 `eventId` 幂等，节点应用按 `eventId + targetNodeInstanceId` 幂等；工单聚合不能绕过生命周期顺序、来源、证据或 Block 守卫。
 
 ## 11. 事务、并发和 Outbox
 
@@ -325,6 +325,6 @@ P5 将定稿统一查询 Schema；P2 先锁定必须可见的业务语义：
 ## 15. 版本与后续实例化
 
 - V1 状态线值不得原地改义。新增状态或转换是行为变更；删除、改名或改变终态语义是破坏性变更。
-- 当前公共枚举与读模型已在 P6 达到 `D4`；尚无生成类型、OpenAPI、数据库迁移或运行时实现。
+- 当前公共枚举与精简读模型已有局部 Schema，但定义/政策/聚合快照尚未完整实例化，门禁保持 `D3`；尚无生成类型、OpenAPI、数据库迁移或运行时实现。
 - [证据与来源权威契约 V1](./EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md)已补齐事实来源资格和冲突裁决，不改变本文件的状态机所有权。
-- P7 将从 Schema 派生技术载体、显式数据库映射和运行时实现。
+- 任务阶段 G7 将从 Schema 派生技术载体、显式数据库映射和运行时实现。

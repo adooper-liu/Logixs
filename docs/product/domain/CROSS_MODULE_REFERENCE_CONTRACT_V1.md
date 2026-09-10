@@ -26,20 +26,20 @@ ownerModule: registered bounded-context code
 
 ## 3. 所有权目录
 
-| entityType | ID | 所有者 |
-| --- | --- | --- |
-| `container` | `containerId` | `shipment-registry` |
-| `flow_instance` | `flowInstanceId` | `lifecycle-control` |
-| `node_instance` | `nodeInstanceId` | `lifecycle-control` |
-| `node_task` | `nodeTaskId` | `work-execution` |
-| `work_order` | `workOrderId` | `work-execution` |
-| `domain_fact` | `domainFactId` | 对应专业业务模块 |
-| `evidence` | `evidenceId` | `document-records` 或经 ADR 批准的专业证据所有者 |
-| `canonical_event` | `eventId` | 事件事实所有者；生命周期接收后保持原 ID |
-| `client_operation` | `clientOperationId` | 接收命令的 Application 模块 |
-| `receipt` | `receiptId` | 产生回执的集成/专业模块 |
-| `exception` | `exceptionId` | `exception-management` |
-| `audit_entry` | `auditEntryId` | `audit` |
+| entityType         | ID                  | 所有者                                           |
+| ------------------ | ------------------- | ------------------------------------------------ |
+| `container`        | `containerId`       | `shipment-registry`                              |
+| `flow_instance`    | `flowInstanceId`    | `lifecycle-control`                              |
+| `node_instance`    | `nodeInstanceId`    | `lifecycle-control`                              |
+| `node_task`        | `nodeTaskId`        | `work-execution`                                 |
+| `work_order`       | `workOrderId`       | `work-execution`                                 |
+| `domain_fact`      | `domainFactId`      | 对应专业业务模块                                 |
+| `evidence`         | `evidenceId`        | `document-records` 或经 ADR 批准的专业证据所有者 |
+| `canonical_event`  | `eventId`           | 事件事实所有者；生命周期接收后保持原 ID          |
+| `client_operation` | `clientOperationId` | 接收命令的 Application 模块                      |
+| `receipt`          | `receiptId`         | 产生回执的集成/专业模块                          |
+| `exception`        | `exceptionId`       | `exception-management`                           |
+| `audit_entry`      | `auditEntryId`      | `audit`                                          |
 
 ## 4. 必须可追溯的主链
 
@@ -92,4 +92,4 @@ traceId: string
 
 覆盖同租户合法链、跨租户拒绝、错父级拒绝、业务编号更正 ID 不变、跨模块无外键、孤儿对账、归档保留、同 ID 异类型、事件因果链和重放 ID 稳定。
 
-当前公共引用已在 P6 达到 `D4`；数据库映射和运行时对账仍待 P7。
+当前公共 ID 和实体引用已有局部 Schema，但所有权目录、父链和对账模型尚未完整实例化，门禁保持 `D3`；数据库映射和运行时对账仍待 G7。
