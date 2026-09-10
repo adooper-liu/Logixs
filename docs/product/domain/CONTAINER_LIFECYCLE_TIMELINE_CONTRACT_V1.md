@@ -236,7 +236,7 @@ Outbox 发布至少一次，消费者 Inbox 幂等；消费者业务更新和 In
 
 ## 9. 14 节点接受与推进矩阵
 
-事件码引用 `EVENT_CODES`，本表只规定时间种类与推进候选；最终线值以事件码目录批准版本为准，实际转换唯一服从[生命周期状态机 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)。
+节点代码引用[生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)，事件码引用正式 V1 `EVENT_CODES`。本表只规定时间种类、事实接受和投影口径；实际转换唯一服从[生命周期状态机 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)。
 
 | # | 节点 | 接受的主要事件/时间 | 推进依据 | 不得误用 |
 | --- | --- | --- | --- | --- |

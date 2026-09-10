@@ -1,7 +1,7 @@
 # 货柜全生命周期（CONTAINER_LIFECYCLE · v0.4 人话重构）
 
 > 状态：**候选 v0.4** · 2026-09-05 · 负责人：刘志高。
-> V1 主流程节点代码、状态与合法转换以[货柜生命周期状态机契约 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)为实现权威；本表保留业务对照与证据来源，不另建转换规则。
+> V1 主流程节点代码、顺序、可选性和所有者以[货柜生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)为唯一权威，合法转换以[状态机契约 V1](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)为权威；本表只保留业务对照与证据来源。
 > 一句话：货柜从备货到还箱共 14 个节点（2 个可选），本文件是"每段走什么、记什么、谁来触发"的对照表；规范节点枚举以 LIFECYCLE_CONSISTENCY §2 为单一权威。
 > 证实度 S·R·O·C。入库归 WMS，不在容器主链。
 

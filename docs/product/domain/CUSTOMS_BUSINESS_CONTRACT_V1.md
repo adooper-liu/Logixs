@@ -64,7 +64,7 @@ UI / Transport -> Application -> Domain <- Infrastructure
 
 | 对象 | 定义 | 标识 |
 | --- | --- | --- |
-| 货柜主任务 | 一只货柜在主链上的业务执行实例 | `containerTaskId` |
+| 货柜主任务视图 | 一只货柜在主链上的业务执行实例；V1 不建立独立聚合 | `containerId + flowInstanceId` |
 | 流程节点实例 | 货柜进入海关节点的一次停留 | `nodeInstanceId` |
 | 海关子任务 | 节点触发的海关工序执行实例 | `nodeTaskId` |
 | 报关案卷 | 按管辖区、方向和申报引用区分的裁决单元 | `customsCaseId` |
@@ -84,6 +84,8 @@ UI / Transport -> Application -> Domain <- Infrastructure
 
 ### 5.2 海关子任务
 
+状态枚举、合法转换和聚合规则唯一引用[任务与工单契约 V1](./TASK_WORK_ORDER_CONTRACT_V1.md)。下列内容仅说明海关场景语义，不构成第二份状态目录。
+
 ```text
 pending -> in_progress -> completed
                |          -> reopened
@@ -102,7 +104,7 @@ pending -> in_progress -> completed
 
 ### 5.3 作业工单
 
-具体枚举由 `work-execution` 单一权威状态机定义。V1 锁定：
+具体枚举、合法转换、事实应用和聚合规则以[任务与工单契约 V1](./TASK_WORK_ORDER_CONTRACT_V1.md)为唯一权威。海关 V1 追加以下专业约束：
 
 - 工单可创建、分派、开始、完成、失败、取消和重开。
 - 工单状态既可以由授权人员操作推进，也可以由已验真并与该工单规则匹配的外部权威证据推进。

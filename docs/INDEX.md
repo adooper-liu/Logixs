@@ -52,6 +52,7 @@
 | [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                       | 当前/未来上下文边界与聚合(P2-01)                           | 候选 v0.5 |
 | [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md) | 已出运数据起点/上游演进/箱单关系                           | 候选 v0.4 |
 | [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)       | 14 节点全生命周期(P2 对象表)                               | 候选 v0.4 |
+| [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md) | 14 节点代码、顺序、可选性、所有者和完成口径唯一权威 | 正式 V1 |
 | [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)   | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏) | 候选 v0.4 |
 | [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md) | 状态码 8 + 合法转换(权威)                                  | 候选 v0.5 |
 | [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)       | 已出运列表导入/预检/审核/对账(P2-03)                       | 候选 v0.5 |
@@ -61,7 +62,8 @@
 
 | 文档                                                               | 一句话                                                                     | 状态           |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------------- |
-| [EVENT_CODES](product/domain/EVENT_CODES.md)                       | 内部事件语义码(映射目标侧)                                                 | 候选 v0.2 示范 |
+| [EVENT_CODES](product/domain/EVENT_CODES.md)                       | 规范事件代码、版本、角色和节点完成资格唯一权威 | 正式 V1 |
+| [TASK_WORK_ORDER_CONTRACT_V1](product/domain/TASK_WORK_ORDER_CONTRACT_V1.md) | 节点任务、作业工单、状态机、聚合和事实应用唯一权威 | 正式 V1 |
 | [STATUS→](product/domain/CONTAINER_STATUS_MODEL.md)                | 状态码枚举(见 5.1)                                                         | —              |
 | [ACTION_CATALOG](product/domain/ACTION_CATALOG.md)                 | 一键动作码(组 A–E)                                                         | 候选           |
 | [MARKER_CATALOG](product/domain/MARKER_CATALOG.md)                 | 货柜标记字典                                                               | 候选           |
@@ -110,7 +112,8 @@
 | [RAID](./planning/RAID.md)                                            | 风险/假设/问题/依赖              | 跟踪   |
 | [P2 一页总览](./planning/P2_SLICE1_SUMMARY.md)                        | 本批摘要(对外)                   | 候选   |
 | [任务 brief](./planning/tasks/p2-shipment-import-domain.md)           | P2 切片一交接单                  | 进行中 |
-| [任务 brief-管理视图](./planning/tasks/p2-web-management-kpi-raci.md) | 补看板KPI+RACI管理投影，交 Codex | design |
+| [任务 brief-管理视图](./planning/tasks/p2-web-management-kpi-raci.md) | 补看板 KPI + RACI 管理投影 | 已完成 |
+| [全局公共契约收敛 V1](./planning/tasks/global-contract-convergence-v1.md) | 依次定稿全局契约、Schema 权威源及多技术载体生成 | coding |
 | [任务模板](./planning/tasks/_template.md)                             | 任务载体模板                     | 规范   |
 | [模块实施规格模板](./planning/tasks/_module-implementation-spec-template.md) | 限界上下文的数据、规则、接口、前端、测试与验收统一模板 | 规范 |
 | [海关放行纵向切片](./product/domain/CUSTOMS_RELEASE_VERTICAL_SLICE.md) | 四模块贯通的首个可执行工序任务/工单/权威事件闭环 | 设计稿 |

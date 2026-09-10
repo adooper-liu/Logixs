@@ -67,7 +67,7 @@ ContainerRecord（货柜主任务）
 | `WorkOrder` | `work_order_id`, `node_task_id`, `work_type`, `state`, `assignee`, `due_at`, `version` | 必须属于一个 NodeTask；终态不可被普通命令改写 |
 | `WorkOrderEvidenceRef` | `work_order_id`, `evidence_id`, `evidence_type` | 仅保存跨模块稳定引用，不复制证据正文 |
 
-候选状态语义：NodeTask `pending/active/completed/failed/cancelled/reconciliation_required`；WorkOrder `draft/ready/in_progress/waiting_external/completed/failed/cancelled`。具体代码以权威状态模型为准。
+NodeTask、WorkOrder 的正式状态线值、合法转换和外部事实直接满足规则统一引用[任务与工单契约 V1](./TASK_WORK_ORDER_CONTRACT_V1.md)，本切片不保留候选状态集合。
 
 聚合策略必须显式存储：`all_required_completed`、`required_subset_completed` 或经评审的其他策略。工单完成只触发 NodeTask 重新聚合；NodeTask 完成只发布“作业完成事实”，不直接发布生命周期转移。
 

@@ -50,28 +50,7 @@ packages/contracts/schemas/customs/v1/*.schema.json
 
 ### 2.2 作业状态
 
-```text
-NodeTaskState =
-  pending | in_progress | blocked | completed | reopened | cancelled
-
-WorkOrderState =
-  draft | ready | in_progress | blocked | completed | failed | cancelled | reopened
-```
-
-工单合法转换：
-
-| 起点 | 终点 |
-| --- | --- |
-| `draft` | `ready,cancelled` |
-| `ready` | `in_progress,blocked,completed,cancelled` |
-| `in_progress` | `blocked,completed,failed,cancelled` |
-| `blocked` | `ready,in_progress,failed,cancelled` |
-| `completed` | `reopened` |
-| `failed` | `ready,reopened,cancelled` |
-| `reopened` | `in_progress,blocked,completed,failed,cancelled` |
-| `cancelled` | 无 |
-
-`ready -> completed` 仅用于权威证据直接满足全部完成条件，仍须经过工单状态机。
+正式状态线值、合法转换、聚合和事实应用唯一引用[任务与工单契约 V1](./TASK_WORK_ORDER_CONTRACT_V1.md)。海关 Schema 后续直接引用该公共源，不在本设计中保存第二份枚举或转换表。
 
 ### 2.3 操作、同步与分类
 

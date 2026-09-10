@@ -79,7 +79,7 @@ picked_up | unloaded | returned_empty | cancelled
 
 ## 4. V1 节点定义
 
-节点代码是公共线值；`sequence` 固定主链顺序，流程实例保存 `definitionVersion=1`。
+节点代码、顺序、可选性、所有者和主要完成事实唯一引用[货柜生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)。状态机负责节点实例、转换和守卫；下表是 V1 目录的评审快照，不得作为第二份枚举源。流程实例保存 `definitionVersion=1`。
 
 | sequence | `nodeCode` | 名称 | 可选 | 所有者/事实模块 | 主要完成事实 | 完成后的货柜状态 |
 | --- | --- | --- | --- | --- | --- | --- |
