@@ -87,5 +87,4 @@
 
 ## 8. 后续实例化
 
-P6 将本目录实例化为 JSON Schema 单一源；在此之前不存在已批准的 TypeScript、Python、OpenAPI 或数据库枚举实现。任何演示 `railDefinitions` 只是消费者投影，不能成为反向权威。
-
+P6 已将本目录实例化到 `packages/contracts` JSON Schema 单一源并完成目录一致性校验；TypeScript、Python、OpenAPI、Seed 和数据库枚举映射仍待 P7。任何演示 `railDefinitions` 只是消费者投影，不能成为反向权威。

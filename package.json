@@ -20,9 +20,10 @@
     "playwright:install": "pnpm --filter @logix/web exec playwright install chromium",
     "build": "turbo run build",
     "docs:check": "node scripts/check-repository.mjs --docs-only",
+    "contract:check": "node scripts/validate-contract-schemas.mjs",
     "repo:check": "node scripts/check-repository.mjs",
     "security:audit": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level high",
-    "validate": "pnpm repo:check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
+    "validate": "pnpm repo:check && pnpm contract:check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

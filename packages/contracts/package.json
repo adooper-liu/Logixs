@@ -1,0 +1,12 @@
+{
+  "name": "@logix/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "node ../../scripts/validate-contract-schemas.mjs",
+    "typecheck": "node ../../scripts/validate-contract-schemas.mjs",
+    "test": "node ../../scripts/validate-contract-schemas.mjs",
+    "build": "node ../../scripts/validate-contract-schemas.mjs"
+  }
+}

@@ -108,4 +108,4 @@ CompensationState = not_required | pending | in_progress
 
 覆盖同步三阶段、异步查询、响应丢失后同 ID 重试、同键异载荷、并发重复、业务拒绝不重试、暂时错误退避、限流、Inbox 崩溃接管、Outbox 发布后确认丢失、死信授权重放、修正消息新 ID、补偿成功/失败、乱序、NODATA、不清空有效事实以及业务提交与 Outbox 原子性。
 
-当前为 `D3`，重试参数、错误码、Schema、数据库表和运行时发布器在 P5/P6/P7 实例化。
+当前三阶段操作与错误 Schema 已在 P6 达到 `D4`；重试参数、数据库表和运行时发布器仍待 P7。

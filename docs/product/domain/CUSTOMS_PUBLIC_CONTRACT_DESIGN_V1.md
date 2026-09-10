@@ -237,35 +237,7 @@ CustomsTaskStatusViewV1:
 
 ## 5. ErrorResponseV1
 
-```text
-success: false
-error.code: CustomsErrorCode
-error.message: string
-error.details: ErrorDetailV1[]
-traceId: string
-```
-
-`CustomsErrorCode`：
-
-```text
-CUSTOMS_CASE_NOT_FOUND
-CUSTOMS_WORK_ORDER_NOT_FOUND
-CUSTOMS_EXTERNAL_PAYLOAD_INVALID
-CUSTOMS_REQUIRED_CASE_MISSING
-CUSTOMS_RELEASE_EVIDENCE_MISSING
-CUSTOMS_EVIDENCE_SCOPE_MISMATCH
-CUSTOMS_WORK_ORDER_EVIDENCE_MISMATCH
-CUSTOMS_EXTERNAL_MAPPING_UNKNOWN
-CUSTOMS_INVALID_TRANSITION
-CUSTOMS_ACTIVE_BLOCK_EXISTS
-CUSTOMS_IDEMPOTENCY_CONFLICT
-CUSTOMS_VERSION_CONFLICT
-CUSTOMS_MANUAL_REVIEW_REQUIRED
-```
-
-404 用于对象不存在；400 用于非法载荷；422 用于结构有效但业务前置条件不满足；409 用于状态、幂等、版本和人工复核冲突。认证、授权、限流及通用校验使用平台错误码。
-
-`details` 无内容时返回 `[]`。响应不得包含栈、SQL、Token、原始载荷或内部结构。
+海关 API 使用[公共错误契约 V1](./PUBLIC_ERROR_CONTRACT_V1.md)的 `ErrorResponseV1`、公共码及海关命名空间码。本文件只负责海关错误的领域触发条件，不再维护平行的错误信封、线值或 HTTP 映射。
 
 ## 6. JSON Schema 对照
 

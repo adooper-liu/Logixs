@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/common.schema.json",
+  "title": "Logix Common Types V1",
+  "$defs": {
+    "Uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "DateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "StableCode": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,99}$"
+    },
+    "LifecycleNodeCode": {
+      "type": "string",
+      "enum": [
+        "cargo_ready",
+        "container_stuffing",
+        "shipment_dispatch",
+        "origin_departure",
+        "ocean_transit",
+        "transshipment",
+        "customs_clearance",
+        "destination_arrival",
+        "rail_transfer",
+        "container_pickup",
+        "warehouse_delivery",
+        "container_unloading",
+        "container_unstuffing",
+        "empty_return"
+      ]
+    },
+    "CanonicalEventCode": {
+      "type": "string",
+      "enum": [
+        "cargo_ready",
+        "empty_picked_up",
+        "stuffed",
+        "loaded",
+        "departed",
+        "sailing",
+        "gate_in",
+        "transit_arrived",
+        "transit_departed",
+        "arrived",
+        "berthed",
+        "discharged",
+        "available",
+        "release",
+        "hold",
+        "hold_released",
+        "customs_filed",
+        "inspection",
+        "container_customs_completed",
+        "rail_handover",
+        "gate_out",
+        "delivered",
+        "warehouse_arrival",
+        "unloaded",
+        "unstuffed",
+        "returned_empty",
+        "dumped",
+        "rolled",
+        "cancelled",
+        "changed",
+        "delay",
+        "overdue"
+      ]
+    },
+    "TimeKind": {
+      "enum": ["planned", "estimated", "actual"]
+    },
+    "NodeTaskState": {
+      "enum": ["pending", "in_progress", "blocked", "completed", "reopened", "cancelled"]
+    },
+    "WorkOrderState": {
+      "enum": ["draft", "ready", "in_progress", "blocked", "completed", "failed", "reopened", "cancelled"]
+    },
+    "WorkOrderApplicability": {
+      "enum": ["required", "optional", "conditional_required", "not_applicable"]
+    },
+    "CaptureSource": {
+      "enum": ["external_evidence", "manual_backfill", "controlled_import", "internal_operation", "system_derived"]
+    },
+    "AuthorityLevel": {
+      "enum": ["authoritative", "corroborating", "operational", "contextual"]
+    },
+    "VerificationState": {
+      "enum": ["pending", "verified", "rejected", "revoked"]
+    },
+    "ConfidenceState": {
+      "enum": ["confirmed", "provisional", "disputed", "unknown"]
+    },
+    "EvidenceValidity": {
+      "enum": ["effective", "superseded", "corrected", "revoked"]
+    },
+    "ReceptionState": {
+      "enum": ["pending", "received", "duplicate", "boundary_rejected"]
+    },
+    "BusinessDecisionState": {
+      "enum": ["pending", "accepted", "rejected"]
+    },
+    "CommitState": {
+      "enum": ["pending", "committed", "commit_failed"]
+    },
+    "ErrorCategory": {
+      "enum": ["validation", "authentication", "authorization", "not_found", "conflict", "precondition", "rate_limit", "dependency", "internal"]
+    },
+    "EntityRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "entityType", "entityId", "ownerModule"],
+      "properties": {
+        "tenantId": {"$ref": "#/$defs/Uuid"},
+        "entityType": {"$ref": "#/$defs/StableCode"},
+        "entityId": {"$ref": "#/$defs/Uuid"},
+        "ownerModule": {"$ref": "#/$defs/StableCode"}
+      }
+    }
+  }
+}

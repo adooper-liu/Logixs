@@ -68,10 +68,12 @@
 | [CROSS_MODULE_REFERENCE_CONTRACT_V1](product/domain/CROSS_MODULE_REFERENCE_CONTRACT_V1.md) | 跨模块对象 ID、所有权、父链与引用完整性唯一权威 | 正式 V1 |
 | [ACTION_PERMISSION_CONTRACT_V1](product/domain/ACTION_PERMISSION_CONTRACT_V1.md) | 动作定义、服务端授权、复核、补录和审计唯一权威 | 正式 V1 |
 | [SYNC_RELIABILITY_CONTRACT_V1](product/domain/SYNC_RELIABILITY_CONTRACT_V1.md) | 三阶段回执、幂等、Inbox/Outbox、重试、死信和补偿唯一权威 | 正式 V1 |
+| [QUERY_PROJECTION_CONTRACT_V1](product/domain/QUERY_PROJECTION_CONTRACT_V1.md) | 生命周期状态、任务工单、时间线、证据、同步及允许动作公共读模型唯一权威 | 正式 V1 |
+| [PUBLIC_ERROR_CONTRACT_V1](product/domain/PUBLIC_ERROR_CONTRACT_V1.md) | 公共错误信封、稳定码、HTTP、冲突与重试语义唯一权威 | 正式 V1 |
 | [STATUS→](product/domain/CONTAINER_STATUS_MODEL.md)                | 状态码枚举(见 5.1)                                                         | —              |
 | [ACTION_CATALOG](product/domain/ACTION_CATALOG.md)                 | 一键动作码(组 A–E)                                                         | 候选           |
 | [MARKER_CATALOG](product/domain/MARKER_CATALOG.md)                 | 货柜标记字典                                                               | 候选           |
-| [ERROR_CODES_CATALOG](product/domain/ERROR_CODES_CATALOG.md)       | 稳定错误码 23                                                              | 候选           |
+| [ERROR_CODES_CATALOG](product/domain/ERROR_CODES_CATALOG.md)       | 旧候选错误码兼容导航，权威已迁移至 GC-011                                  | 已取代         |
 | [NODE_TIME_FIELDS](product/domain/NODE_TIME_FIELDS.md)             | 14 节点 planned/actual 字段                                                | 候选           |
 | [PRECHECK_RULES](product/domain/PRECHECK_RULES.md)                 | 预检/校验规则行 17                                                         | 候选           |
 | [FIVE_PARTY_CODES](product/domain/FIVE_PARTY_CODES.md)             | 五主体扣留/放行/查验码                                                     | 候选           |
@@ -101,6 +103,7 @@
 | ---------------------------------------------------------------------- | ------------------------------------------------------------ | --------- |
 | [P2_REVIEW_CHECKLIST](product/domain/P2_REVIEW_CHECKLIST.md)           | D1–D21 追踪、V1–V4 样本与 Decision 门禁                      | 载体 v1.4 |
 | [GLOBAL_CONTRACT_REGISTRY](product/domain/GLOBAL_CONTRACT_REGISTRY.md) | 11 项全局公共契约的唯一治理入口：门禁、所有者、权威文档、阻断与下一动作 | 治理基线 V1 |
+| [公共 JSON Schema V1](../packages/contracts/README.md) | GC-001、003、005 至 011 的 Draft 2020-12 单一技术权威源、目录与 fixtures | Schema 已实例化 |
 | [PROPOSAL_SELF_AUDIT](product/domain/PROPOSAL_SELF_AUDIT.md)           | 对抗评审 A/H                                                 | 记录      |
 | [NODE_PDCA](product/domain/NODE_PDCA.md)                               | 七组完整性检查 + 动态任务定义 + 14 节点任务拆分 + 非线性闭环 | 候选 v0.8 |
 | [NODE_PDCA_VALIDATION](product/domain/NODE_PDCA_VALIDATION.md)         | 样本回验 F1–F8                                               | 回验      |
@@ -133,6 +136,7 @@
 | [海关业务样本 010](./product/domain/CUSTOMS_BUSINESS_SAMPLE_010.md) | 出口商检申请、工厂装箱和箱况检查的证据边界 | 真实脱敏局部样本·待确认 |
 | [业务样本 011](./product/domain/CUSTOMS_BUSINESS_SAMPLE_011.md) | LMS 八国清关单据矩阵、生成传递规则和状态拆分 | 真实需求工作簿·评审输入 |
 | [海关业务样本 012](./product/domain/CUSTOMS_BUSINESS_SAMPLE_012.md) | 中国出口双报关单审核放行、CIF 单证和议付费用边界 | 真实脱敏纵向样本·待确认 |
+| [费用与对账业务样本 013](./product/domain/COST_SETTLEMENT_BUSINESS_SAMPLE_013.md) | 七类费用引出、货柜/费目/SKU 多粒度及标准、审核、分摊、请款、支付分轨 | 真实脱敏样本·待确认 |
 | [海关业务契约定稿包 V1](./product/domain/CUSTOMS_BUSINESS_CONTRACT_V1.md) | 海关案卷、证据、事件、任务/工单、同步和主链守卫的实现前基线 | 业务契约 V1·待负责人评审 |
 | [海关公共契约实例化设计 V1](./product/domain/CUSTOMS_PUBLIC_CONTRACT_DESIGN_V1.md) | 海关状态枚举、事件信封、DTO、错误码与 JSON Schema 对照 | 公共契约设计 V1·待实现 |
 | [海关数据库结构与迁移设计 V1](./product/domain/CUSTOMS_DATABASE_MIGRATION_DESIGN_V1.md) | 案卷、观察、证据、事实应用、回执、幂等、Outbox 与审计的物理设计 | 数据库设计 V1·待迁移实现 |

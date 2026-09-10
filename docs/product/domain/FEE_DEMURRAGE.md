@@ -1,7 +1,7 @@
 # 超期费用（Demurrage/Detention/Storage）清单与口径 · v0.3 候选
 
 > 状态：**候选 v0.3** · 2026-09-06 · 负责人：刘志高。
-> 事实来源：`D:/Github/logix`（`ext_demurrage_standards`/`ext_demurrage_records`/`ext_container_charges`/`sys_configs`，两版 schema + seed；锚点 acfb50a8）。
+> 事实来源：`D:/Github/logix`（`ext_demurrage_standards`/`ext_demurrage_records`/`ext_container_charges`/`sys_configs`，两版 schema + seed；锚点 acfb50a8）及[费用与对账业务样本 013](./COST_SETTLEMENT_BUSINESS_SAMPLE_013.md)。
 > 计算实现现状：legacy 该功能标“待开发 0%”（PROJECT_STATUS），故现网仅提供 R 级数据结构与种子示例；三类费用必须分开的边界为 O，具体公式、参数和物理模型仍为 C。
 > 🗣️ 白话：Demurrage、Detention、Storage 看似都按超期天数收费，但占用对象、责任区间、起止事件和账单主体可能不同，不能共用一条“到港到提柜乘日费率”的硬公式。
 
@@ -79,4 +79,5 @@
 ## ⑧ 待定/关联
 
 - 待定：三类费用稳定码、合同匹配键、起止事件、首尾日、日历/假日、阶梯、暂停/豁免、税费、汇率、账单与支付系统边界；用真实脱敏合同和账单逐笔回验。
+- 样本 013 已证明滞港、堆存、滞箱及组合收费以不同列组存在，并证明标准、审核、分摊、请款与支付需要分轨；该导出没有公式，仍不能确认具体计费规则。
 - 关联：PRINCIPLES(P4/P8)、CUSTOMS_OPERATION_CHAINS §⑤、FIELD_MIGRATION_MAP(§2.4/费用)、DATA_MODEL_P2-06、FIVE_PARTY_CODES、NODE_TIME_FIELDS(#10 提柜时间)。

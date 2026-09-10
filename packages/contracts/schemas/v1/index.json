@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/index.json",
+  "title": "Logix Public Contracts V1",
+  "type": "object",
+  "x-contractVersion": "1.0.0",
+  "x-authoritativeDocuments": [
+    "GC-001",
+    "GC-003",
+    "GC-005",
+    "GC-006",
+    "GC-007",
+    "GC-008",
+    "GC-009",
+    "GC-010",
+    "GC-011"
+  ],
+  "$defs": {
+    "common": {
+      "$ref": "common.schema.json"
+    },
+    "canonicalEventEnvelope": {
+      "$ref": "canonical-event-envelope.schema.json"
+    },
+    "actionCommand": {
+      "$ref": "action-command.schema.json"
+    },
+    "clientOperation": {
+      "$ref": "client-operation.schema.json"
+    },
+    "workExecution": {
+      "$ref": "work-execution.schema.json"
+    },
+    "evidenceRecord": {
+      "$ref": "evidence-record.schema.json"
+    },
+    "containerOperationalView": {
+      "$ref": "container-operational-view.schema.json"
+    },
+    "errorResponse": {
+      "$ref": "error-response.schema.json"
+    }
+  }
+}

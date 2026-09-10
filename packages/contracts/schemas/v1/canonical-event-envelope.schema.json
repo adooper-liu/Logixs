@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/canonical-event-envelope.schema.json",
+  "title": "CanonicalEventEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "eventVersion", "tenantId", "containerId", "flowInstanceId", "timeKind", "occurredAt", "recordedAt", "source", "evidenceRefs", "confidenceState", "validity", "correlationId", "traceId"],
+  "properties": {
+    "eventId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "eventType": {"$ref": "common.schema.json#/$defs/CanonicalEventCode"},
+    "eventVersion": {"const": 1},
+    "tenantId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "containerId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "flowInstanceId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "nodeCode": {"$ref": "common.schema.json#/$defs/LifecycleNodeCode"},
+    "nodeInstanceId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "domainFactId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "timeKind": {"$ref": "common.schema.json#/$defs/TimeKind"},
+    "occurredAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "recordedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "receivedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "source": {"$ref": "common.schema.json#/$defs/EntityRef"},
+    "evidenceRefs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "common.schema.json#/$defs/Uuid"}
+    },
+    "confidenceState": {"$ref": "common.schema.json#/$defs/ConfidenceState"},
+    "validity": {"$ref": "common.schema.json#/$defs/EvidenceValidity"},
+    "correlationId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "causationId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "traceId": {"type": "string", "minLength": 1, "maxLength": 128}
+  }
+}

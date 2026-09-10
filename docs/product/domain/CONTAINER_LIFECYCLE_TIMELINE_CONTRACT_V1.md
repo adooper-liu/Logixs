@@ -304,18 +304,7 @@ asOf: date-time
 
 ## 12. 错误码
 
-时间线自身只定义采集、关系和投影错误；状态转换错误统一引用[生命周期状态机 V1 §14](./CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md#14-错误码)。
-
-```text
-TIMELINE_EVENT_INVALID
-TIMELINE_TIMEZONE_UNKNOWN
-TIMELINE_EVENT_DUPLICATE_CONFLICT
-TIMELINE_EVENT_RELATION_INVALID
-TIMELINE_PROJECTION_VERSION_CONFLICT
-TIMELINE_MANUAL_REVIEW_REQUIRED
-```
-
-结构错误返回 400，对象不存在返回 404，状态/幂等/版本冲突返回 409，结构有效但业务前置不满足返回 422。错误响应必须包含稳定错误码和追踪 ID，不泄露载荷、SQL 或内部结构。
+时间线及状态转换错误统一引用[公共错误契约 V1](./PUBLIC_ERROR_CONTRACT_V1.md)。本文件只负责采集、关系、投影和时间语义的领域触发条件。
 
 ## 13. Schema、Fixture 与验收
 

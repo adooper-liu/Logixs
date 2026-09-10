@@ -1,0 +1,1 @@
+{"scenario":"success","description":"Verified actual arrival applies to eligible nodes in order.","inputs":[{"eventType":"arrived","timeKind":"actual","confidenceState":"confirmed"}],"expected":{"outcome":"accepted","appliedNodeCodes":["ocean_transit","destination_arrival"]}}

@@ -1,0 +1,1 @@
+{"scenario":"boundary","description":"Unknown external code fails at the adapter boundary.","inputs":[{"provider":"freightower","externalCode":"UNMAPPED_SAMPLE"}],"expected":{"outcome":"rejected","errorCode":"UNKNOWN_EXTERNAL_MAPPING"}}

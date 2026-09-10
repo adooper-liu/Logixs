@@ -1,0 +1,1 @@
+{"scenario":"out_of_order","description":"Future-node fact is retained until predecessors complete.","inputs":[{"eventType":"gate_out","timeKind":"actual"},{"eventType":"arrived","timeKind":"actual"}],"expected":{"outcome":"pending","appliedNodeCodes":[]}}

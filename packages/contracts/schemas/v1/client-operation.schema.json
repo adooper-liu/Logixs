@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/client-operation.schema.json",
+  "title": "ClientOperationV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["clientOperationId", "tenantId", "actionCode", "actionVersion", "target", "correlationId", "traceId", "idempotencyKey", "requestHash", "receptionState", "businessDecisionState", "commitState", "resultRefs", "attemptCount", "createdAt", "updatedAt"],
+  "properties": {
+    "clientOperationId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "tenantId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "actionCode": {"$ref": "common.schema.json#/$defs/StableCode"},
+    "actionVersion": {"type": "integer", "minimum": 1},
+    "target": {"$ref": "common.schema.json#/$defs/EntityRef"},
+    "correlationId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "causationId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "traceId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "idempotencyKey": {"type": "string", "minLength": 1, "maxLength": 200},
+    "requestHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "receptionState": {"$ref": "common.schema.json#/$defs/ReceptionState"},
+    "businessDecisionState": {"$ref": "common.schema.json#/$defs/BusinessDecisionState"},
+    "commitState": {"$ref": "common.schema.json#/$defs/CommitState"},
+    "resultRefs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/EntityRef"}},
+    "rejectionReasonCode": {"type": "string", "minLength": 1, "maxLength": 100},
+    "attemptCount": {"type": "integer", "minimum": 0},
+    "receivedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "decidedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "committedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "createdAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "updatedAt": {"$ref": "common.schema.json#/$defs/DateTime"}
+  }
+}

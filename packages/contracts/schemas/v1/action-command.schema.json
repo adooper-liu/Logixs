@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/action-command.schema.json",
+  "title": "ActionCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["clientOperationId", "actionCode", "actionVersion", "target", "containerId", "occurredAt", "submittedAt", "idempotencyKey", "expectedVersion", "evidenceRefs", "payload"],
+  "properties": {
+    "clientOperationId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "actionCode": {"$ref": "common.schema.json#/$defs/StableCode"},
+    "actionVersion": {"type": "integer", "minimum": 1},
+    "target": {"$ref": "common.schema.json#/$defs/EntityRef"},
+    "containerId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "flowInstanceId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "nodeInstanceId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "nodeTaskId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "workOrderId": {"$ref": "common.schema.json#/$defs/Uuid"},
+    "occurredAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "submittedAt": {"$ref": "common.schema.json#/$defs/DateTime"},
+    "idempotencyKey": {"type": "string", "minLength": 1, "maxLength": 200},
+    "expectedVersion": {"type": "integer", "minimum": 0},
+    "reasonCode": {"$ref": "common.schema.json#/$defs/StableCode"},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+    "evidenceRefs": {"type": "array", "uniqueItems": true, "items": {"$ref": "common.schema.json#/$defs/Uuid"}},
+    "confirmationToken": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "payload": {"type": "object"}
+  }
+}
