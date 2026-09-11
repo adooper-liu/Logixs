@@ -2,7 +2,189 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.logixs.internal/contracts/v1/work-execution.schema.json",
   "title": "WorkExecutionV1",
+  "oneOf": [
+    { "$ref": "#/$defs/NodeTaskDefinition" },
+    { "$ref": "#/$defs/WorkOrderDefinition" },
+    { "$ref": "#/$defs/NodeTaskView" },
+    { "$ref": "#/$defs/WorkOrderView" },
+    { "$ref": "#/$defs/NodeTaskAggregationSnapshot" },
+    { "$ref": "#/$defs/WorkOrderFactApplication" },
+    { "$ref": "#/$defs/WorkExecutionCommand" }
+  ],
   "$defs": {
+    "NodeTaskCompletionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyCode",
+        "policyVersion",
+        "taskPredicateCodes",
+        "dynamicRequirementRuleCodes"
+      ],
+      "properties": {
+        "policyCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "policyVersion": { "type": "integer", "minimum": 1 },
+        "taskPredicateCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "dynamicRequirementRuleCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        }
+      }
+    },
+    "NodeTaskResultPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "requiredDomainFactTypes"],
+      "properties": {
+        "mode": {
+          "enum": ["none", "emit_canonical_event", "reference_existing_event"]
+        },
+        "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },
+        "eventVersion": { "const": 1 },
+        "requiredDomainFactTypes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        },
+        "eventBusinessKeyAlgorithm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "enum": ["emit_canonical_event", "reference_existing_event"]
+              }
+            },
+            "required": ["mode"]
+          },
+          "then": {
+            "required": [
+              "eventCode",
+              "eventVersion",
+              "eventBusinessKeyAlgorithm"
+            ]
+          }
+        }
+      ]
+    },
+    "NodeTaskDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskDefinitionKey",
+        "taskDefinitionVersion",
+        "nodeCode",
+        "ownerDomain",
+        "workOrderDefinitions",
+        "completionPolicy",
+        "resultPolicy"
+      ],
+      "properties": {
+        "taskDefinitionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "taskDefinitionVersion": { "type": "integer", "minimum": 1 },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "ownerDomain": {
+          "$ref": "common.schema.json#/$defs/BoundedContextCode"
+        },
+        "workOrderDefinitions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/WorkOrderDefinitionRef" }
+        },
+        "completionPolicy": { "$ref": "#/$defs/NodeTaskCompletionPolicy" },
+        "resultPolicy": { "$ref": "#/$defs/NodeTaskResultPolicy" }
+      }
+    },
+    "WorkOrderDefinitionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workOrderDefinitionKey", "workOrderDefinitionVersion"],
+      "properties": {
+        "workOrderDefinitionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "workOrderDefinitionVersion": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "WorkOrderDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workOrderDefinitionKey",
+        "workOrderDefinitionVersion",
+        "ownerDomain",
+        "requirement",
+        "executionMode",
+        "assignmentPolicy",
+        "completionPredicates",
+        "acceptedFactTypes",
+        "allowedActionCodes"
+      ],
+      "properties": {
+        "workOrderDefinitionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "workOrderDefinitionVersion": { "type": "integer", "minimum": 1 },
+        "ownerDomain": {
+          "$ref": "common.schema.json#/$defs/BoundedContextCode"
+        },
+        "requirement": {
+          "$ref": "common.schema.json#/$defs/WorkOrderRequirement"
+        },
+        "conditionCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "executionMode": { "$ref": "common.schema.json#/$defs/ExecutionMode" },
+        "assignmentPolicy": {
+          "$ref": "common.schema.json#/$defs/AssignmentPolicy"
+        },
+        "completionPredicates": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "acceptedFactTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        },
+        "allowedActionCodes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "duePolicyRef": { "type": "string", "minLength": 1, "maxLength": 100 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "requirement": { "const": "conditional" } },
+            "required": ["requirement"]
+          },
+          "then": { "required": ["conditionCode"] }
+        }
+      ]
+    },
     "NodeTaskView": {
       "type": "object",
       "additionalProperties": false,
@@ -13,6 +195,9 @@
         "nodeInstanceId",
         "nodeTaskId",
         "nodeCode",
+        "taskDefinitionKey",
+        "taskDefinitionVersion",
+        "policySnapshotHash",
         "state",
         "version",
         "updatedAt"
@@ -24,7 +209,26 @@
         "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "taskDefinitionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "taskDefinitionVersion": { "type": "integer", "minimum": 1 },
+        "policySnapshotHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "state": { "$ref": "common.schema.json#/$defs/NodeTaskState" },
+        "ownerRef": { "$ref": "common.schema.json#/$defs/EntityRef" },
+        "dueAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "activeBlockRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "factApplicationRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
         "version": { "type": "integer", "minimum": 0 },
         "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
       }
@@ -39,8 +243,12 @@
         "nodeInstanceId",
         "nodeTaskId",
         "workOrderId",
+        "workOrderDefinitionKey",
+        "workOrderDefinitionVersion",
+        "policySnapshotHash",
         "state",
         "applicability",
+        "assignmentState",
         "evidenceRefs",
         "version",
         "updatedAt"
@@ -52,9 +260,26 @@
         "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "workOrderDefinitionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "workOrderDefinitionVersion": { "type": "integer", "minimum": 1 },
+        "policySnapshotHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "state": { "$ref": "common.schema.json#/$defs/WorkOrderState" },
         "applicability": {
           "$ref": "common.schema.json#/$defs/WorkOrderApplicability"
+        },
+        "assignmentState": {
+          "$ref": "common.schema.json#/$defs/AssignmentState"
+        },
+        "assigneeRef": { "$ref": "common.schema.json#/$defs/EntityRef" },
+        "dueAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "activeBlockRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
         },
         "evidenceRefs": {
           "type": "array",
@@ -64,6 +289,179 @@
         "version": { "type": "integer", "minimum": 0 },
         "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
       }
+    },
+    "NodeTaskAggregationSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeTaskId",
+        "aggregationVersion",
+        "policySnapshotHash",
+        "requiredWorkOrderIds",
+        "completedWorkOrderIds",
+        "blockingRefs",
+        "evaluatedFactRefs",
+        "previousState",
+        "nextState",
+        "evaluatedAt"
+      ],
+      "properties": {
+        "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "aggregationVersion": { "type": "integer", "minimum": 1 },
+        "policySnapshotHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "requiredWorkOrderIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "completedWorkOrderIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "blockingRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "evaluatedFactRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "previousState": { "$ref": "common.schema.json#/$defs/NodeTaskState" },
+        "nextState": { "$ref": "common.schema.json#/$defs/NodeTaskState" },
+        "evaluatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "WorkOrderFactApplication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "factApplicationId",
+        "tenantId",
+        "workOrderId",
+        "businessFactType",
+        "businessFactKey",
+        "domainFactId",
+        "captureSource",
+        "evidenceRefs",
+        "occurredAt",
+        "receivedAt",
+        "recordedAt",
+        "requestHash",
+        "decision",
+        "previousState",
+        "resultingState",
+        "appliedAt",
+        "actorOrServiceId",
+        "traceId"
+      ],
+      "properties": {
+        "factApplicationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "businessFactType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "businessFactKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "domainFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "captureSource": { "$ref": "common.schema.json#/$defs/CaptureSource" },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "receivedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "requestHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "decision": {
+          "$ref": "common.schema.json#/$defs/FactApplicationDecision"
+        },
+        "decisionReason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "previousState": { "$ref": "common.schema.json#/$defs/WorkOrderState" },
+        "resultingState": {
+          "$ref": "common.schema.json#/$defs/WorkOrderState"
+        },
+        "appliedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "actorOrServiceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "WorkExecutionCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commandCode",
+        "tenantId",
+        "idempotencyKey",
+        "expectedVersion",
+        "actorOrServiceId",
+        "traceId",
+        "payload"
+      ],
+      "properties": {
+        "commandCode": {
+          "enum": [
+            "create_node_task",
+            "assign_work_order",
+            "start_work_order",
+            "apply_fact_to_work_order",
+            "block_work_order",
+            "resolve_work_order_block",
+            "fail_work_order_attempt",
+            "cancel_work_order",
+            "reopen_work_order",
+            "cancel_node_task",
+            "reopen_node_task"
+          ]
+        },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "actorOrServiceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "payload": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "commandCode": { "const": "create_node_task" } },
+            "required": ["commandCode"]
+          },
+          "then": { "required": ["nodeInstanceId"] },
+          "else": {
+            "if": {
+              "properties": {
+                "commandCode": {
+                  "enum": ["cancel_node_task", "reopen_node_task"]
+                }
+              },
+              "required": ["commandCode"]
+            },
+            "then": { "required": ["nodeTaskId"] },
+            "else": { "required": ["workOrderId"] }
+          }
+        }
+      ]
     }
   }
 }

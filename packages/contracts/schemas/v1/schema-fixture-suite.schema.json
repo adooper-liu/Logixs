@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/schema-fixture-suite.schema.json",
+  "title": "Contract Schema Fixture Suite V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["fixtureVersion", "cases"],
+  "properties": {
+    "fixtureVersion": { "const": "1.0.0" },
+    "cases": {
+      "type": "array",
+      "minItems": 11,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contractId", "name", "schemaRef", "data"],
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "pattern": "^GC-0(?:0[1-9]|1[01])$"
+          },
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "schemaRef": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "valid": { "type": "boolean", "default": true },
+          "data": true
+        }
+      }
+    }
+  }
+}

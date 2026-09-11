@@ -83,9 +83,9 @@ version: integer >= 0
 
 ```text
 eventId, eventCode, eventVersion
-containerId, flowInstanceId, nodeCode, nodeInstanceId?
+containerId, flowInstanceId, nodeCode, nodeInstanceId
 role, timeKind, occurredAt, recordedAt, receivedAt?
-validity, confidenceState, domain, domainFactId?
+validity, confidenceState, domain, domainFactId
 sourceSummary, evidenceRefs[], relation?
 eventSequence, projectionVersion
 ```
@@ -147,7 +147,7 @@ pageInfo:
   hasNextPage: boolean
   pageSize: integer
 asOf: date-time
-projectionVersion?: integer
+projectionVersion: integer
 ```
 
 - 默认 `pageSize=50`，最小 1，最大 200；超过上限返回公共校验错误。
@@ -194,5 +194,5 @@ projectionVersion?: integer
 
 - 新增可选字段通常是加法兼容；新增必填字段、改变可空性、状态含义、默认排序、权限可见性或 cursor 语义是行为变更或破坏性变更。
 - V1 不承诺数据库结构；实体、DTO 和 API 必须显式映射。
-- 当前主视图已有局部 Schema，但仍缺 `currentTimes`、完整任务/工单摘要、时间线和分页模型，门禁保持 `D3`；尚无 OpenAPI、生成类型、数据库投影或运行时实现。
+- G6 已补齐主视图、`currentTimes`、完整任务/工单摘要、时间线和游标分页 Schema，并通过覆盖索引及正负向 fixture 自校验，门禁为 `D4`；尚无 OpenAPI、生成类型、数据库投影或运行时实现。
 - 任务阶段 G7 将实现投影器、API、前端消费者及契约/E2E 测试。

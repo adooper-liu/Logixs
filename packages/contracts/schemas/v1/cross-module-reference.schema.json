@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/cross-module-reference.schema.json",
+  "title": "Cross-module Reference Contracts V1",
+  "oneOf": [
+    { "$ref": "#/$defs/OwnedEntityRef" },
+    { "$ref": "#/$defs/MainReferenceChain" },
+    { "$ref": "#/$defs/DomainFactEvidenceLinks" },
+    { "$ref": "#/$defs/ClientOperationReceiptLinks" },
+    { "$ref": "#/$defs/EventNodeApplicationLink" },
+    { "$ref": "#/$defs/TraceContext" },
+    { "$ref": "#/$defs/BusinessKeyReference" }
+  ],
+  "$defs": {
+    "OwnedEntityRef": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/EntityRef" },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "container" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "ownerModule": { "const": "shipment-registry" } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entityType": { "enum": ["flow_instance", "node_instance"] }
+            },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "ownerModule": { "const": "lifecycle-control" } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entityType": { "enum": ["node_task", "work_order"] }
+            },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "ownerModule": { "const": "work-execution" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "exception" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "ownerModule": { "const": "exception-management" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "audit_entry" } },
+            "required": ["entityType"]
+          },
+          "then": { "properties": { "ownerModule": { "const": "audit" } } }
+        }
+      ]
+    },
+    "MainReferenceChain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "containerId",
+        "flowInstanceId",
+        "nodeInstanceId",
+        "nodeTaskId",
+        "workOrderId",
+        "clientOperationId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "clientOperationId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "DomainFactEvidenceLinks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "domainFactId", "evidenceIds", "eventId"],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "domainFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "evidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "ClientOperationReceiptLinks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "clientOperationId", "receiptIds"],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "clientOperationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "receiptIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        }
+      }
+    },
+    "EventNodeApplicationLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "flowInstanceId",
+        "eventId",
+        "targetNodeInstanceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "targetNodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "TraceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correlationId", "traceId"],
+      "properties": {
+        "correlationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "causationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "BusinessKeyReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "entityType",
+        "businessKey",
+        "validFrom",
+        "entityId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "entityType": { "$ref": "common.schema.json#/$defs/EntityType" },
+        "businessKey": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "validFrom": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "validTo": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "entityId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    }
+  }
+}

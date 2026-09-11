@@ -1,0 +1,470 @@
+{
+  "fixtureVersion": "1.0.0",
+  "cases": [
+    {
+      "contractId": "GC-001",
+      "name": "registered lifecycle node code",
+      "schemaRef": "common.schema.json#/$defs/LifecycleNodeCode",
+      "data": "cargo_ready"
+    },
+    {
+      "contractId": "GC-002",
+      "name": "active lifecycle flow",
+      "schemaRef": "lifecycle-state-machine.schema.json#/$defs/FlowInstance",
+      "data": {
+        "flowInstanceId": "10000000-0000-4000-8000-000000000001",
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "containerId": "10000000-0000-4000-8000-000000000003",
+        "definitionVersion": 1,
+        "state": "active",
+        "currentNodeCode": "rail_transfer",
+        "currentNodeInstanceId": "10000000-0000-4000-8000-000000000004",
+        "version": 4,
+        "startedAt": "2026-09-10T01:00:00Z"
+      }
+    },
+    {
+      "contractId": "GC-003",
+      "name": "registered canonical event code",
+      "schemaRef": "common.schema.json#/$defs/CanonicalEventCode",
+      "data": "rail_handover"
+    },
+    {
+      "contractId": "GC-004",
+      "name": "verified rail handover event",
+      "schemaRef": "canonical-event-envelope.schema.json",
+      "data": {
+        "eventId": "20000000-0000-4000-8000-000000000001",
+        "eventCode": "rail_handover",
+        "eventVersion": 1,
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "containerId": "10000000-0000-4000-8000-000000000003",
+        "flowInstanceId": "10000000-0000-4000-8000-000000000001",
+        "nodeCode": "rail_transfer",
+        "nodeInstanceId": "10000000-0000-4000-8000-000000000004",
+        "role": "evidence",
+        "timeKind": "actual",
+        "occurredAt": "2026-09-10T02:00:00Z",
+        "recordedAt": "2026-09-10T02:00:03Z",
+        "receivedAt": "2026-09-10T02:00:02Z",
+        "eventSequence": 9,
+        "domain": "inland-fulfillment",
+        "domainFactId": "20000000-0000-4000-8000-000000000002",
+        "domainFactType": "rail_handover",
+        "correlationId": "20000000-0000-4000-8000-000000000003",
+        "idempotencyKey": "rail-handover-001",
+        "source": {
+          "sourceSystem": "rail-visibility",
+          "authoritySystem": "rail-yard-a",
+          "provider": "integration-provider",
+          "interfaceCode": "rail-events-v1",
+          "mappingVersion": "1.0.0",
+          "captureSource": "external_evidence",
+          "authorityLevel": "authoritative",
+          "verificationState": "verified",
+          "confidenceState": "confirmed"
+        },
+        "location": {
+          "locationType": "rail_yard",
+          "locationId": "20000000-0000-4000-8000-000000000004",
+          "segmentId": "20000000-0000-4000-8000-000000000005",
+          "timezone": "Asia/Shanghai"
+        },
+        "evidenceRefs": ["20000000-0000-4000-8000-000000000006"],
+        "confidenceState": "confirmed",
+        "validity": "effective",
+        "data": {
+          "railSegmentId": "20000000-0000-4000-8000-000000000005",
+          "receivingRailPartyId": "20000000-0000-4000-8000-000000000007",
+          "receivingRailYardId": "20000000-0000-4000-8000-000000000004",
+          "handoverReference": "RAIL-ACCEPT-001",
+          "receiptType": "physical_container_acceptance"
+        },
+        "traceId": "trace-rail-handover-001"
+      }
+    },
+    {
+      "contractId": "GC-005",
+      "name": "node task definition and result policy",
+      "schemaRef": "work-execution.schema.json#/$defs/NodeTaskDefinition",
+      "data": {
+        "taskDefinitionKey": "rail_handover_task",
+        "taskDefinitionVersion": 1,
+        "nodeCode": "rail_transfer",
+        "ownerDomain": "inland-fulfillment",
+        "workOrderDefinitions": [
+          {
+            "workOrderDefinitionKey": "verify_rail_receipt",
+            "workOrderDefinitionVersion": 1
+          }
+        ],
+        "completionPolicy": {
+          "policyCode": "all_required_work_orders",
+          "policyVersion": 1,
+          "taskPredicateCodes": ["required_orders_completed"],
+          "dynamicRequirementRuleCodes": []
+        },
+        "resultPolicy": {
+          "mode": "emit_canonical_event",
+          "eventCode": "rail_handover",
+          "eventVersion": 1,
+          "requiredDomainFactTypes": ["rail_handover"],
+          "eventBusinessKeyAlgorithm": "rail_handover_v1"
+        }
+      }
+    },
+    {
+      "contractId": "GC-006",
+      "name": "source authority policy",
+      "schemaRef": "evidence-record.schema.json#/$defs/SourceAuthorityPolicy",
+      "data": {
+        "policyId": "30000000-0000-4000-8000-000000000001",
+        "policyVersion": 1,
+        "effectiveFrom": "2026-09-10T00:00:00Z",
+        "eventCode": "rail_handover",
+        "subjectType": "container",
+        "direction": "import",
+        "locationRole": "transit",
+        "transportMode": "rail",
+        "timeKind": "actual",
+        "allowedAuthoritySystems": ["rail-yard-a"],
+        "allowedSourceTypes": ["authority", "system"],
+        "minimumAuthorityLevel": "authoritative",
+        "requiredEvidenceTypes": ["receipt"],
+        "verificationRequirements": ["subject_match", "location_match"],
+        "conflictAction": "review",
+        "manualCorrectionPolicyRef": "manual-correction-v1",
+        "sealingPolicyRef": "actual-node-fact-v1"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "full work execution reference chain",
+      "schemaRef": "cross-module-reference.schema.json#/$defs/MainReferenceChain",
+      "data": {
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "containerId": "10000000-0000-4000-8000-000000000003",
+        "flowInstanceId": "10000000-0000-4000-8000-000000000001",
+        "nodeInstanceId": "10000000-0000-4000-8000-000000000004",
+        "nodeTaskId": "40000000-0000-4000-8000-000000000001",
+        "workOrderId": "40000000-0000-4000-8000-000000000002",
+        "clientOperationId": "40000000-0000-4000-8000-000000000003"
+      }
+    },
+    {
+      "contractId": "GC-006",
+      "name": "evidence record with explicit subject identity",
+      "schemaRef": "evidence-record.schema.json",
+      "data": {
+        "evidenceId": "35000000-0000-4000-8000-000000000001",
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "evidenceType": "receipt",
+        "subjectType": "container",
+        "subjectId": "10000000-0000-4000-8000-000000000003",
+        "source": {
+          "sourceId": "35000000-0000-4000-8000-000000000002",
+          "sourceType": "authority",
+          "originatorSystem": "rail-yard-a",
+          "authoritySystem": "rail-yard-a",
+          "provider": "integration-provider",
+          "interfaceCode": "rail-events-v1",
+          "mappingVersion": "1.0.0",
+          "ingestionChannel": "api",
+          "captureSource": "external_evidence"
+        },
+        "authorityLevel": "authoritative",
+        "contentRef": "evidence/rail/receipt-001",
+        "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "receivedAt": "2026-09-10T02:00:02Z",
+        "recordedAt": "2026-09-10T02:00:03Z",
+        "verificationState": "verified",
+        "confidenceState": "confirmed",
+        "validity": "effective",
+        "sensitivityClass": "internal",
+        "retentionPolicyRef": "operations-evidence-v1"
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "critical action definition",
+      "schemaRef": "action-command.schema.json#/$defs/ActionDefinition",
+      "data": {
+        "actionCode": "unseal_lifecycle_history",
+        "actionVersion": 1,
+        "ownerModule": "lifecycle-control",
+        "targetEntityTypes": ["flow_instance"],
+        "requiredCapabilities": ["lifecycle_history_unseal"],
+        "riskLevel": "critical",
+        "confirmationPolicy": "reason_required",
+        "reviewPolicy": "four_eyes",
+        "evidencePolicyRef": "history-unseal-evidence-v1",
+        "allowedStatePredicates": ["history_is_sealed"],
+        "businessPreconditionCodes": ["reconciliation_case_approved"],
+        "idempotencyScope": "tenant_actor_action_target",
+        "resultPolicy": "append_correction_event"
+      }
+    },
+    {
+      "contractId": "GC-009",
+      "name": "leased inbox processing record",
+      "schemaRef": "client-operation.schema.json#/$defs/InboxRecord",
+      "data": {
+        "inboxRecordId": "50000000-0000-4000-8000-000000000001",
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "consumerName": "lifecycle-control",
+        "messageId": "50000000-0000-4000-8000-000000000002",
+        "payloadHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "state": "processing",
+        "lease": {
+          "owner": "worker-01",
+          "lockedAt": "2026-09-10T03:00:00Z",
+          "expiresAt": "2026-09-10T03:01:00Z"
+        },
+        "attemptCount": 1,
+        "receivedAt": "2026-09-10T02:59:58Z",
+        "updatedAt": "2026-09-10T03:00:00Z",
+        "traceId": "trace-inbox-001"
+      }
+    },
+    {
+      "contractId": "GC-010",
+      "name": "container operational projection",
+      "schemaRef": "container-operational-view.schema.json",
+      "data": {
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "containerId": "10000000-0000-4000-8000-000000000003",
+        "containerNumber": "MSCU1234567",
+        "flow": null,
+        "currentNode": null,
+        "nodes": [],
+        "currentTimes": { "nodeTimes": [], "segmentTimes": [] },
+        "tasks": [],
+        "workOrders": [],
+        "professionalFacts": [],
+        "evidenceSummary": {
+          "total": 0,
+          "effective": 0,
+          "pending": 0,
+          "disputed": 0,
+          "evidenceRefs": [],
+          "restrictedEvidencePresent": false
+        },
+        "syncSummary": { "operations": [] },
+        "activeBlocks": [],
+        "activeExceptions": [],
+        "allowedActions": [],
+        "projectionVersion": 0,
+        "sourceVersions": [],
+        "asOf": "2026-09-10T04:00:00Z",
+        "freshness": {
+          "state": "current",
+          "projectedAt": "2026-09-10T04:00:00Z",
+          "lagSeconds": 0
+        }
+      }
+    },
+    {
+      "contractId": "GC-011",
+      "name": "stable public error response",
+      "schemaRef": "error-response.schema.json",
+      "data": {
+        "success": false,
+        "error": {
+          "code": "LIFECYCLE_GUARD_NOT_SATISFIED",
+          "message": "Lifecycle guard was not satisfied.",
+          "category": "precondition",
+          "retryable": false,
+          "details": []
+        },
+        "traceId": "trace-error-001",
+        "timestamp": "2026-09-10T04:01:00Z"
+      }
+    },
+    {
+      "contractId": "GC-002",
+      "name": "active flow without current node is invalid",
+      "schemaRef": "lifecycle-state-machine.schema.json#/$defs/FlowInstance",
+      "valid": false,
+      "data": {
+        "flowInstanceId": "61000000-0000-4000-8000-000000000001",
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "containerId": "10000000-0000-4000-8000-000000000003",
+        "definitionVersion": 1,
+        "state": "active",
+        "version": 0
+      }
+    },
+    {
+      "contractId": "GC-004",
+      "name": "actual event without evidence is invalid",
+      "schemaRef": "canonical-event-envelope.schema.json",
+      "valid": false,
+      "data": {
+        "eventId": "62000000-0000-4000-8000-000000000001",
+        "eventCode": "arrived",
+        "eventVersion": 1,
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "containerId": "10000000-0000-4000-8000-000000000003",
+        "flowInstanceId": "10000000-0000-4000-8000-000000000001",
+        "nodeCode": "destination_arrival",
+        "nodeInstanceId": "10000000-0000-4000-8000-000000000004",
+        "role": "evidence",
+        "timeKind": "actual",
+        "occurredAt": "2026-09-10T05:00:00Z",
+        "recordedAt": "2026-09-10T05:00:01Z",
+        "eventSequence": 10,
+        "domain": "ocean-port-visibility",
+        "domainFactId": "62000000-0000-4000-8000-000000000002",
+        "domainFactType": "arrived",
+        "correlationId": "62000000-0000-4000-8000-000000000003",
+        "idempotencyKey": "arrival-without-evidence",
+        "source": {
+          "sourceSystem": "port-visibility",
+          "authoritySystem": "destination-port",
+          "captureSource": "internal_operation",
+          "authorityLevel": "authoritative",
+          "verificationState": "verified",
+          "confidenceState": "confirmed"
+        },
+        "evidenceRefs": [],
+        "confidenceState": "confirmed",
+        "validity": "effective",
+        "data": {},
+        "traceId": "trace-invalid-arrival"
+      }
+    },
+    {
+      "contractId": "GC-005",
+      "name": "conditional work order definition without condition is invalid",
+      "schemaRef": "work-execution.schema.json#/$defs/WorkOrderDefinition",
+      "valid": false,
+      "data": {
+        "workOrderDefinitionKey": "conditional_check",
+        "workOrderDefinitionVersion": 1,
+        "ownerDomain": "work-execution",
+        "requirement": "conditional",
+        "executionMode": "human",
+        "assignmentPolicy": "pool",
+        "completionPredicates": ["check_completed"],
+        "acceptedFactTypes": ["check_result"],
+        "allowedActionCodes": ["complete_check"]
+      }
+    },
+    {
+      "contractId": "GC-006",
+      "name": "authority policy without fact event or field target is invalid",
+      "schemaRef": "evidence-record.schema.json#/$defs/SourceAuthorityPolicy",
+      "valid": false,
+      "data": {
+        "policyId": "64000000-0000-4000-8000-000000000001",
+        "policyVersion": 1,
+        "effectiveFrom": "2026-09-10T00:00:00Z",
+        "subjectType": "container",
+        "allowedAuthoritySystems": ["warehouse-a"],
+        "allowedSourceTypes": ["system"],
+        "minimumAuthorityLevel": "authoritative",
+        "requiredEvidenceTypes": [],
+        "verificationRequirements": ["subject_match"],
+        "conflictAction": "review",
+        "manualCorrectionPolicyRef": "manual-v1",
+        "sealingPolicyRef": "actual-v1"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "container reference with wrong owner is invalid",
+      "schemaRef": "cross-module-reference.schema.json#/$defs/OwnedEntityRef",
+      "valid": false,
+      "data": {
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "entityType": "container",
+        "entityId": "10000000-0000-4000-8000-000000000003",
+        "ownerModule": "work-execution"
+      }
+    },
+    {
+      "contractId": "GC-006",
+      "name": "legacy composite evidence subject is invalid",
+      "schemaRef": "evidence-record.schema.json",
+      "valid": false,
+      "data": {
+        "evidenceId": "66000000-0000-4000-8000-000000000001",
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "evidenceType": "receipt",
+        "subject": {
+          "tenantId": "10000000-0000-4000-8000-000000000002",
+          "entityType": "container",
+          "entityId": "10000000-0000-4000-8000-000000000003",
+          "ownerModule": "shipment-registry"
+        },
+        "source": {
+          "sourceId": "66000000-0000-4000-8000-000000000002",
+          "sourceType": "authority",
+          "originatorSystem": "rail-yard-a",
+          "authoritySystem": "rail-yard-a",
+          "ingestionChannel": "system_internal",
+          "captureSource": "internal_operation"
+        },
+        "authorityLevel": "authoritative",
+        "contentRef": "evidence/legacy",
+        "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "receivedAt": "2026-09-10T02:00:02Z",
+        "recordedAt": "2026-09-10T02:00:03Z",
+        "verificationState": "verified",
+        "confidenceState": "confirmed",
+        "validity": "effective",
+        "sensitivityClass": "internal",
+        "retentionPolicyRef": "operations-evidence-v1"
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "critical action without four eyes is invalid",
+      "schemaRef": "action-command.schema.json#/$defs/ActionDefinition",
+      "valid": false,
+      "data": {
+        "actionCode": "unseal_lifecycle_history",
+        "actionVersion": 1,
+        "ownerModule": "lifecycle-control",
+        "targetEntityTypes": ["flow_instance"],
+        "requiredCapabilities": ["lifecycle_history_unseal"],
+        "riskLevel": "critical",
+        "confirmationPolicy": "reason_required",
+        "reviewPolicy": "designated_reviewer",
+        "allowedStatePredicates": ["history_is_sealed"],
+        "businessPreconditionCodes": ["reconciliation_case_approved"],
+        "idempotencyScope": "tenant_actor_action_target",
+        "resultPolicy": "append_correction_event"
+      }
+    },
+    {
+      "contractId": "GC-009",
+      "name": "processing inbox record without lease is invalid",
+      "schemaRef": "client-operation.schema.json#/$defs/InboxRecord",
+      "valid": false,
+      "data": {
+        "inboxRecordId": "67000000-0000-4000-8000-000000000001",
+        "tenantId": "10000000-0000-4000-8000-000000000002",
+        "consumerName": "lifecycle-control",
+        "messageId": "67000000-0000-4000-8000-000000000002",
+        "payloadHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "state": "processing",
+        "attemptCount": 1,
+        "receivedAt": "2026-09-10T05:00:00Z",
+        "updatedAt": "2026-09-10T05:00:01Z",
+        "traceId": "trace-invalid-inbox"
+      }
+    },
+    {
+      "contractId": "GC-010",
+      "name": "page size above platform maximum is invalid",
+      "schemaRef": "container-operational-view.schema.json#/$defs/PageInfo",
+      "valid": false,
+      "data": {
+        "nextCursor": null,
+        "hasNextPage": false,
+        "pageSize": 201
+      }
+    }
+  ]
+}

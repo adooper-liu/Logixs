@@ -48,10 +48,249 @@
       "maxLength": 100
     },
     "attemptCount": { "type": "integer", "minimum": 0 },
+    "lastAttemptAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+    "nextAttemptAt": { "$ref": "common.schema.json#/$defs/DateTime" },
     "receivedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
     "decidedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
     "committedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
     "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
     "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+  },
+  "$defs": {
+    "ProcessingLease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "lockedAt", "expiresAt"],
+      "properties": {
+        "owner": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "lockedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "InboxRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inboxRecordId",
+        "tenantId",
+        "consumerName",
+        "messageId",
+        "payloadHash",
+        "state",
+        "attemptCount",
+        "receivedAt",
+        "updatedAt",
+        "traceId"
+      ],
+      "properties": {
+        "inboxRecordId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "consumerName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "messageId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "payloadHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "state": { "$ref": "common.schema.json#/$defs/InboxState" },
+        "lease": { "$ref": "#/$defs/ProcessingLease" },
+        "attemptCount": { "type": "integer", "minimum": 0 },
+        "nextAttemptAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "processedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "receivedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "processing" } },
+            "required": ["state"]
+          },
+          "then": { "required": ["lease"] }
+        }
+      ]
+    },
+    "OutboxRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outboxRecordId",
+        "tenantId",
+        "eventId",
+        "eventType",
+        "eventVersion",
+        "payloadRef",
+        "payloadHash",
+        "state",
+        "attemptCount",
+        "createdAt",
+        "updatedAt",
+        "traceId"
+      ],
+      "properties": {
+        "outboxRecordId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventType": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "eventVersion": { "type": "integer", "minimum": 1 },
+        "payloadRef": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "payloadHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "state": { "$ref": "common.schema.json#/$defs/OutboxState" },
+        "lease": { "$ref": "#/$defs/ProcessingLease" },
+        "attemptCount": { "type": "integer", "minimum": 0 },
+        "nextAttemptAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "brokerReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "publishedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "publishing" } },
+            "required": ["state"]
+          },
+          "then": { "required": ["lease"] }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "published" } },
+            "required": ["state"]
+          },
+          "then": { "required": ["brokerReference", "publishedAt"] }
+        }
+      ]
+    },
+    "RetryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyCode",
+        "policyVersion",
+        "retryableFailureCodes",
+        "initialDelaySeconds",
+        "backoffMultiplier",
+        "jitterRatio",
+        "maximumAttempts",
+        "totalTimeoutSeconds"
+      ],
+      "properties": {
+        "policyCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "policyVersion": { "type": "integer", "minimum": 1 },
+        "retryableFailureCodes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "initialDelaySeconds": { "type": "integer", "minimum": 1 },
+        "backoffMultiplier": { "type": "number", "minimum": 1 },
+        "jitterRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximumAttempts": { "type": "integer", "minimum": 1 },
+        "totalTimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "providerRateLimitPolicyRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "DeadLetterRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deadLetterId",
+        "tenantId",
+        "messageId",
+        "messageRef",
+        "payloadHash",
+        "failureCategory",
+        "lastErrorCode",
+        "attemptCount",
+        "objectRefs",
+        "traceId",
+        "deadLetteredAt",
+        "ownerQueue"
+      ],
+      "properties": {
+        "deadLetterId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "messageId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "messageRef": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "payloadHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "failureCategory": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "lastErrorCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "attemptCount": { "type": "integer", "minimum": 1 },
+        "objectRefs": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/EntityRef" }
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "deadLetteredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "ownerQueue": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
+    "ReplayRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deadLetterId",
+        "targetConsumerVersion",
+        "requestedBy",
+        "reasonCode",
+        "requestedAt",
+        "traceId"
+      ],
+      "properties": {
+        "deadLetterId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "targetConsumerVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "requestedBy": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "requestedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "CompensationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compensationId",
+        "tenantId",
+        "originalClientOperationId",
+        "compensationActionCode",
+        "state",
+        "reasonCode",
+        "requestedBy",
+        "createdAt",
+        "updatedAt",
+        "traceId"
+      ],
+      "properties": {
+        "compensationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "originalClientOperationId": {
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "compensationActionCode": {
+          "$ref": "common.schema.json#/$defs/StableCode"
+        },
+        "state": { "$ref": "common.schema.json#/$defs/CompensationState" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "requestedBy": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "resultRefs": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/EntityRef" }
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    }
   }
 }

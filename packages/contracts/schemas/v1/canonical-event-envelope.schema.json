@@ -143,5 +143,71 @@
     "correlationId": { "$ref": "common.schema.json#/$defs/Uuid" },
     "causationId": { "$ref": "common.schema.json#/$defs/Uuid" },
     "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "timeKind": { "const": "actual" } },
+        "required": ["timeKind"]
+      },
+      "then": {
+        "properties": { "evidenceRefs": { "minItems": 1 } }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": { "captureSource": { "const": "manual_backfill" } },
+            "required": ["captureSource"]
+          }
+        },
+        "required": ["source"]
+      },
+      "then": {
+        "properties": { "source": { "required": ["actorId"] } }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": { "captureSource": { "const": "external_evidence" } },
+            "required": ["captureSource"]
+          }
+        },
+        "required": ["source"]
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "required": ["provider", "interfaceCode", "mappingVersion"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "eventCode": { "const": "rail_handover" } },
+        "required": ["eventCode"]
+      },
+      "then": {
+        "properties": {
+          "timeKind": { "const": "actual" },
+          "data": {
+            "$ref": "lifecycle-state-machine.schema.json#/$defs/RailHandoverData"
+          }
+        }
+      },
+      "else": {
+        "properties": { "data": { "$ref": "#/$defs/EmptyEventData" } }
+      }
+    }
+  ],
+  "$defs": {
+    "EmptyEventData": {
+      "type": "object",
+      "additionalProperties": false
+    }
   }
 }

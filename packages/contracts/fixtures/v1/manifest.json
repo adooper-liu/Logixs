@@ -1,6 +1,7 @@
 {
   "fixtureVersion": "1.0.0",
   "schema": "../../schemas/v1/scenario-fixture.schema.json",
+  "schemaFixtures": ["schema-instances.json"],
   "fixtures": [
     "success.json",
     "rejection.json",

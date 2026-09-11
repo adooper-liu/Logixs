@@ -108,4 +108,4 @@ CompensationState = not_required | pending | in_progress
 
 覆盖同步三阶段、异步查询、响应丢失后同 ID 重试、同键异载荷、并发重复、业务拒绝不重试、暂时错误退避、限流、Inbox 崩溃接管、Outbox 发布后确认丢失、死信授权重放、修正消息新 ID、补偿成功/失败、乱序、NODATA、不清空有效事实以及业务提交与 Outbox 原子性。
 
-当前三阶段操作记录已有局部 Schema，但 Inbox、Outbox、重试、死信和补偿模型尚未完整实例化，门禁保持 `D3`；数据库表和运行时发布器仍待后续阶段。
+G6 已补齐三阶段操作记录、Inbox、Outbox、租约、重试、死信、重放和补偿 Schema，并通过覆盖索引及正负向 fixture 自校验，门禁为 `D4`；数据库表和运行时发布器仍待 G7。

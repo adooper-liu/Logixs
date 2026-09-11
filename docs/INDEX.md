@@ -100,17 +100,17 @@
 
 ### 5.4 治理/评审/对照
 
-| 文档                                                                   | 一句话                                                                      | 状态         |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------ |
-| [P2_REVIEW_CHECKLIST](product/domain/P2_REVIEW_CHECKLIST.md)           | D1–D21 追踪、V1–V4 样本与 Decision 门禁                                     | 载体 v1.4    |
-| [GLOBAL_CONTRACT_REGISTRY](product/domain/GLOBAL_CONTRACT_REGISTRY.md) | 11 项全局公共契约的唯一治理入口：门禁、所有者、权威文档、阻断与下一动作     | 治理基线 V1  |
-| [公共 JSON Schema V1](../packages/contracts/README.md)                 | GC-001、003、011 已完整实例化；GC-005 至 010 为局部 Schema、目录与 fixtures | 部分实例化   |
-| [PROPOSAL_SELF_AUDIT](product/domain/PROPOSAL_SELF_AUDIT.md)           | 对抗评审 A/H                                                                | 记录         |
-| [NODE_PDCA](product/domain/NODE_PDCA.md)                               | 七组完整性检查 + 动态任务定义 + 14 节点任务拆分 + 非线性闭环                | 候选 v0.8    |
-| [NODE_PDCA_VALIDATION](product/domain/NODE_PDCA_VALIDATION.md)         | 历史外部样本回验 F1–F8；当前证据源不可复现                                  | 历史评审输入 |
-| [INDUSTRY_STANDARDS_ALIGN](product/domain/INDUSTRY_STANDARDS_ALIGN.md) | 行业规范对标 W1–W14                                                         | 对标         |
-| [OPERATIONS_ALIGNMENT](product/domain/OPERATIONS_ALIGNMENT.md)         | 22个运营环节→14节点主链映射及工序任务/工单执行模型                          | 已定 v1.0    |
-| [CATALOGIZATION_AUDIT](product/domain/CATALOGIZATION_AUDIT.md)         | 清单化盘点+人话重构队列                                                     | 盘点         |
+| 文档                                                                   | 一句话                                                                  | 状态         |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------ |
+| [P2_REVIEW_CHECKLIST](product/domain/P2_REVIEW_CHECKLIST.md)           | D1–D21 追踪、V1–V4 样本与 Decision 门禁                                 | 载体 v1.4    |
+| [GLOBAL_CONTRACT_REGISTRY](product/domain/GLOBAL_CONTRACT_REGISTRY.md) | 11 项全局公共契约的唯一治理入口：门禁、所有者、权威文档、阻断与下一动作 | 治理基线 V1  |
+| [公共 JSON Schema V1](../packages/contracts/README.md)                 | GC-001～011 的 Draft 2020-12 Schema、目录与 fixtures 单一入口           | 已实例化 D4  |
+| [PROPOSAL_SELF_AUDIT](product/domain/PROPOSAL_SELF_AUDIT.md)           | 对抗评审 A/H                                                            | 记录         |
+| [NODE_PDCA](product/domain/NODE_PDCA.md)                               | 七组完整性检查 + 动态任务定义 + 14 节点任务拆分 + 非线性闭环            | 候选 v0.8    |
+| [NODE_PDCA_VALIDATION](product/domain/NODE_PDCA_VALIDATION.md)         | 历史外部样本回验 F1–F8；当前证据源不可复现                              | 历史评审输入 |
+| [INDUSTRY_STANDARDS_ALIGN](product/domain/INDUSTRY_STANDARDS_ALIGN.md) | 行业规范对标 W1–W14                                                     | 对标         |
+| [OPERATIONS_ALIGNMENT](product/domain/OPERATIONS_ALIGNMENT.md)         | 22个运营环节→14节点主链映射及工序任务/工单执行模型                      | 已定 v1.0    |
+| [CATALOGIZATION_AUDIT](product/domain/CATALOGIZATION_AUDIT.md)         | 清单化盘点+人话重构队列                                                 | 盘点         |
 
 ## 六、规划/路线/任务
 

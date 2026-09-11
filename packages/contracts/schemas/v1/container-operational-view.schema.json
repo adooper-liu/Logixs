@@ -11,6 +11,7 @@
     "flow",
     "currentNode",
     "nodes",
+    "currentTimes",
     "tasks",
     "workOrders",
     "professionalFacts",
@@ -34,7 +35,7 @@
       "required": ["flowInstanceId", "state", "definitionVersion", "version"],
       "properties": {
         "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
-        "state": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "state": { "$ref": "common.schema.json#/$defs/FlowInstanceState" },
         "definitionVersion": { "type": "integer", "minimum": 1 },
         "version": { "type": "integer", "minimum": 0 }
       }
@@ -43,6 +44,7 @@
       "oneOf": [{ "$ref": "#/$defs/NodeSummary" }, { "type": "null" }]
     },
     "nodes": { "type": "array", "items": { "$ref": "#/$defs/NodeSummary" } },
+    "currentTimes": { "$ref": "#/$defs/CurrentTimeSummary" },
     "tasks": { "type": "array", "items": { "$ref": "#/$defs/TaskSummary" } },
     "workOrders": {
       "type": "array",
@@ -54,12 +56,26 @@
     },
     "evidenceSummary": {
       "type": "object",
-      "required": ["total", "effective", "pending", "disputed"],
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "effective",
+        "pending",
+        "disputed",
+        "evidenceRefs",
+        "restrictedEvidencePresent"
+      ],
       "properties": {
         "total": { "type": "integer", "minimum": 0 },
         "effective": { "type": "integer", "minimum": 0 },
         "pending": { "type": "integer", "minimum": 0 },
-        "disputed": { "type": "integer", "minimum": 0 }
+        "disputed": { "type": "integer", "minimum": 0 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "restrictedEvidencePresent": { "type": "boolean" }
       }
     },
     "syncSummary": {
@@ -72,8 +88,14 @@
         }
       }
     },
-    "activeBlocks": { "type": "array", "items": { "type": "object" } },
-    "activeExceptions": { "type": "array", "items": { "type": "object" } },
+    "activeBlocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/BlockSummary" }
+    },
+    "activeExceptions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ExceptionSummary" }
+    },
     "allowedActions": {
       "type": "array",
       "items": { "$ref": "#/$defs/AllowedAction" }
@@ -83,6 +105,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["source", "version"],
         "properties": {
           "source": { "$ref": "common.schema.json#/$defs/StableCode" },
@@ -116,7 +139,7 @@
         "applicability": {
           "$ref": "common.schema.json#/$defs/NodeApplicability"
         },
-        "state": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "state": { "$ref": "common.schema.json#/$defs/LifecycleNodeState" },
         "plannedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
         "estimatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
         "actualAt": { "$ref": "common.schema.json#/$defs/DateTime" },
@@ -135,35 +158,99 @@
     },
     "TaskSummary": {
       "type": "object",
-      "required": ["nodeTaskId", "nodeInstanceId", "state", "version"],
+      "additionalProperties": false,
+      "required": [
+        "nodeTaskId",
+        "nodeInstanceId",
+        "taskDefinitionKey",
+        "taskDefinitionVersion",
+        "state",
+        "requiredWorkOrderCount",
+        "completedWorkOrderCount",
+        "activeBlockRefs",
+        "factApplicationRefs",
+        "version"
+      ],
       "properties": {
         "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "taskDefinitionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "taskDefinitionVersion": { "type": "integer", "minimum": 1 },
         "state": { "$ref": "common.schema.json#/$defs/NodeTaskState" },
+        "ownerRef": { "$ref": "common.schema.json#/$defs/EntityRef" },
+        "dueAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "requiredWorkOrderCount": { "type": "integer", "minimum": 0 },
+        "completedWorkOrderCount": { "type": "integer", "minimum": 0 },
+        "activeBlockRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "factApplicationRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
         "version": { "type": "integer", "minimum": 0 }
       }
     },
     "WorkOrderSummary": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "workOrderId",
         "nodeTaskId",
+        "workOrderDefinitionKey",
+        "workOrderDefinitionVersion",
         "state",
         "applicability",
+        "assignmentState",
+        "completionPredicateCount",
+        "satisfiedPredicateCount",
+        "activeBlockRefs",
+        "factApplicationRefs",
         "version"
       ],
       "properties": {
         "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "nodeTaskId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "workOrderDefinitionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "workOrderDefinitionVersion": { "type": "integer", "minimum": 1 },
         "state": { "$ref": "common.schema.json#/$defs/WorkOrderState" },
         "applicability": {
           "$ref": "common.schema.json#/$defs/WorkOrderApplicability"
+        },
+        "assignmentState": {
+          "$ref": "common.schema.json#/$defs/AssignmentState"
+        },
+        "assigneeRef": { "$ref": "common.schema.json#/$defs/EntityRef" },
+        "dueAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "completionPredicateCount": { "type": "integer", "minimum": 0 },
+        "satisfiedPredicateCount": { "type": "integer", "minimum": 0 },
+        "activeBlockRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "factApplicationRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
         },
         "version": { "type": "integer", "minimum": 0 }
       }
     },
     "ProfessionalFactSummary": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "domainFactId",
         "factType",
@@ -188,11 +275,13 @@
     },
     "SyncOperationSummary": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "clientOperationId",
         "receptionState",
         "businessDecisionState",
         "commitState",
+        "attemptCount",
         "traceId"
       ],
       "properties": {
@@ -204,11 +293,16 @@
           "$ref": "common.schema.json#/$defs/BusinessDecisionState"
         },
         "commitState": { "$ref": "common.schema.json#/$defs/CommitState" },
+        "attemptCount": { "type": "integer", "minimum": 0 },
+        "lastAttemptAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "nextAttemptAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "failureCode": { "type": "string", "minLength": 1, "maxLength": 100 },
         "traceId": { "type": "string", "minLength": 1 }
       }
     },
     "AllowedAction": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "actionCode",
         "actionVersion",
@@ -223,30 +317,126 @@
         "actionVersion": { "type": "integer", "minimum": 1 },
         "executable": { "type": "boolean" },
         "denialCategory": {
-          "enum": [
-            "authentication",
-            "scope",
-            "capability",
-            "state",
-            "precondition",
-            "evidence",
-            "lock",
-            "review",
-            "concurrency"
-          ]
+          "$ref": "common.schema.json#/$defs/DenialCategory"
         },
         "confirmationPolicy": {
-          "enum": ["none", "explicit", "reason_required"]
+          "$ref": "common.schema.json#/$defs/ConfirmationPolicy"
         },
         "reviewPolicy": {
-          "enum": ["none", "four_eyes", "designated_reviewer"]
+          "$ref": "common.schema.json#/$defs/ReviewPolicy"
         },
         "requiredEvidenceTypes": {
           "type": "array",
           "uniqueItems": true,
           "items": { "$ref": "common.schema.json#/$defs/StableCode" }
         },
-        "expectedVersion": { "type": "integer", "minimum": 0 }
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "TimeSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeCode"],
+      "properties": {
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "segmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "plannedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "estimatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "actualAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "CurrentTimeSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeTimes", "segmentTimes"],
+      "properties": {
+        "nodeTimes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TimeSlot" }
+        },
+        "segmentTimes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TimeSlot" }
+        }
+      }
+    },
+    "BlockSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockId",
+        "target",
+        "blockType",
+        "reasonCode",
+        "occurredAt"
+      ],
+      "properties": {
+        "blockId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "target": { "$ref": "common.schema.json#/$defs/EntityRef" },
+        "blockType": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "ownerRef": { "$ref": "common.schema.json#/$defs/EntityRef" }
+      }
+    },
+    "ExceptionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exceptionId",
+        "target",
+        "exceptionCode",
+        "severity",
+        "occurredAt"
+      ],
+      "properties": {
+        "exceptionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "target": { "$ref": "common.schema.json#/$defs/EntityRef" },
+        "exceptionCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "severity": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "PageInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nextCursor", "hasNextPage", "pageSize"],
+      "properties": {
+        "nextCursor": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "hasNextPage": { "type": "boolean" },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 200 }
+      }
+    },
+    "ContainerOperationalPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "pageInfo", "asOf", "projectionVersion"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#" } },
+        "pageInfo": { "$ref": "#/$defs/PageInfo" },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "TimelinePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "pageInfo", "asOf", "projectionVersion"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "lifecycle-timeline.schema.json#/$defs/ContainerTimelineItem"
+          }
+        },
+        "pageInfo": { "$ref": "#/$defs/PageInfo" },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 0 }
       }
     },
     "Freshness": {

@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/lifecycle-timeline.schema.json",
+  "title": "Lifecycle Timeline Contracts V1",
+  "oneOf": [
+    { "$ref": "#/$defs/ContainerTimelineItem" },
+    { "$ref": "#/$defs/ContainerTimeProjection" },
+    { "$ref": "#/$defs/NodeEventApplication" },
+    { "$ref": "#/$defs/TimelineReplayRequest" }
+  ],
+  "$defs": {
+    "ContainerTimelineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "eventCode",
+        "eventVersion",
+        "containerId",
+        "flowInstanceId",
+        "nodeCode",
+        "nodeInstanceId",
+        "role",
+        "timeKind",
+        "occurredAt",
+        "recordedAt",
+        "validity",
+        "confidenceState",
+        "sourceSummary",
+        "evidenceRefs",
+        "domain",
+        "domainFactId",
+        "eventSequence",
+        "projectionVersion"
+      ],
+      "properties": {
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },
+        "eventVersion": { "const": 1 },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "role": { "$ref": "common.schema.json#/$defs/EventRole" },
+        "timeKind": { "$ref": "common.schema.json#/$defs/TimeKind" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "receivedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "validity": { "$ref": "common.schema.json#/$defs/EvidenceValidity" },
+        "confidenceState": {
+          "$ref": "common.schema.json#/$defs/ConfidenceState"
+        },
+        "sourceSummary": {
+          "$ref": "canonical-event-envelope.schema.json#/properties/source"
+        },
+        "location": {
+          "$ref": "canonical-event-envelope.schema.json#/properties/location"
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "relation": {
+          "$ref": "canonical-event-envelope.schema.json#/properties/relation"
+        },
+        "domain": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "domainFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventSequence": { "type": "integer", "minimum": 1 },
+        "projectionVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "NodeTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeCode", "confidenceState"],
+      "properties": {
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "segmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "plannedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "estimatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "actualAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "confidenceState": {
+          "$ref": "common.schema.json#/$defs/ConfidenceState"
+        }
+      }
+    },
+    "ActiveException": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventId", "eventCode", "nodeCode", "severity"],
+      "properties": {
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "severity": { "$ref": "common.schema.json#/$defs/StableCode" }
+      }
+    },
+    "Dispute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventIds", "reasonCode"],
+      "properties": {
+        "eventIds": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "ContainerTimeProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containerId",
+        "flowInstanceId",
+        "currentNodeCode",
+        "currentContainerState",
+        "nodeTimes",
+        "activeExceptions",
+        "disputes",
+        "projectionVersion",
+        "asOf"
+      ],
+      "properties": {
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "currentNodeCode": {
+          "$ref": "common.schema.json#/$defs/LifecycleNodeCode"
+        },
+        "currentContainerState": {
+          "$ref": "common.schema.json#/$defs/ContainerLifecycleState"
+        },
+        "nodeTimes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NodeTime" }
+        },
+        "activeExceptions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ActiveException" }
+        },
+        "disputes": { "type": "array", "items": { "$ref": "#/$defs/Dispute" } },
+        "projectionVersion": { "type": "integer", "minimum": 0 },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "NodeEventApplication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "targetNodeInstanceId",
+        "state",
+        "evaluatedAt",
+        "guardResults"
+      ],
+      "properties": {
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "targetNodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "state": { "enum": ["pending_application", "applied", "rejected"] },
+        "evaluatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "guardResults": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
+    "TimelineReplayRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "flowInstanceId",
+        "projectionName",
+        "fromEventSequence",
+        "expectedProjectionVersion",
+        "reasonCode",
+        "actorId",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "projectionName": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "fromEventSequence": { "type": "integer", "minimum": 1 },
+        "expectedProjectionVersion": { "type": "integer", "minimum": 0 },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    }
+  }
+}

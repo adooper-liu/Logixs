@@ -51,5 +51,200 @@
       "maxLength": 2048
     },
     "payload": { "type": "object" }
+  },
+  "$defs": {
+    "ActionDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actionCode",
+        "actionVersion",
+        "ownerModule",
+        "targetEntityTypes",
+        "requiredCapabilities",
+        "riskLevel",
+        "confirmationPolicy",
+        "reviewPolicy",
+        "allowedStatePredicates",
+        "businessPreconditionCodes",
+        "idempotencyScope",
+        "resultPolicy"
+      ],
+      "properties": {
+        "actionCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "actionVersion": { "type": "integer", "minimum": 1 },
+        "ownerModule": {
+          "$ref": "common.schema.json#/$defs/BoundedContextCode"
+        },
+        "targetEntityTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/EntityType" }
+        },
+        "requiredCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "riskLevel": { "$ref": "common.schema.json#/$defs/RiskLevel" },
+        "confirmationPolicy": {
+          "$ref": "common.schema.json#/$defs/ConfirmationPolicy"
+        },
+        "reviewPolicy": { "$ref": "common.schema.json#/$defs/ReviewPolicy" },
+        "evidencePolicyRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "allowedStatePredicates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "businessPreconditionCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "idempotencyScope": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "resultPolicy": { "$ref": "common.schema.json#/$defs/StableCode" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "riskLevel": { "const": "critical" } },
+            "required": ["riskLevel"]
+          },
+          "then": { "properties": { "reviewPolicy": { "const": "four_eyes" } } }
+        }
+      ]
+    },
+    "AuthorizationContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "actorType",
+        "actorId",
+        "authenticatedAt",
+        "authenticationMethod",
+        "roles",
+        "capabilities",
+        "organizationScope",
+        "locationScope",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "actorType": { "$ref": "common.schema.json#/$defs/ActorType" },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "authenticatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "authenticationMethod": {
+          "$ref": "common.schema.json#/$defs/StableCode"
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "organizationScope": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "locationScope": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "delegatedBy": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "delegationExpiresAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "dependentRequired": {
+        "delegatedBy": ["delegationExpiresAt"],
+        "delegationExpiresAt": ["delegatedBy"]
+      }
+    },
+    "ApprovalRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approvalId",
+        "tenantId",
+        "clientOperationId",
+        "actionCode",
+        "actionVersion",
+        "target",
+        "commandHash",
+        "reviewPolicy",
+        "requestedBy",
+        "approvedBy",
+        "approvedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "approvalId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "clientOperationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "actionCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "actionVersion": { "type": "integer", "minimum": 1 },
+        "target": { "$ref": "common.schema.json#/$defs/EntityRef" },
+        "commandHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "reviewPolicy": { "$ref": "common.schema.json#/$defs/ReviewPolicy" },
+        "requestedBy": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "approvedBy": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "approvedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "AuthorizationDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientOperationId",
+        "decision",
+        "checks",
+        "policyVersion",
+        "decidedAt",
+        "traceId"
+      ],
+      "properties": {
+        "clientOperationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "decision": { "enum": ["authorized", "denied", "review_required"] },
+        "denialCategory": {
+          "$ref": "common.schema.json#/$defs/DenialCategory"
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "policyVersion": { "type": "integer", "minimum": 1 },
+        "approvalId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "decidedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "decision": { "const": "denied" } },
+            "required": ["decision"]
+          },
+          "then": { "required": ["denialCategory"] }
+        }
+      ]
+    }
   }
 }

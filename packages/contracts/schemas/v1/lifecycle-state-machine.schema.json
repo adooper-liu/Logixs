@@ -1,0 +1,507 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/lifecycle-state-machine.schema.json",
+  "title": "Lifecycle State Machine Contracts V1",
+  "oneOf": [
+    { "$ref": "#/$defs/CargoReadinessFact" },
+    { "$ref": "#/$defs/FlowInstance" },
+    { "$ref": "#/$defs/LifecycleNodeInstance" },
+    { "$ref": "#/$defs/StartLifecycleCommand" },
+    { "$ref": "#/$defs/ApplyLifecycleEventCommand" },
+    { "$ref": "#/$defs/SetNodeApplicabilityCommand" },
+    { "$ref": "#/$defs/BlockNodeCommand" },
+    { "$ref": "#/$defs/ResolveNodeBlockCommand" },
+    { "$ref": "#/$defs/CancelLifecycleCommand" },
+    { "$ref": "#/$defs/LifecycleTransitioned" },
+    { "$ref": "#/$defs/LifecycleReconciliationCase" },
+    { "$ref": "#/$defs/LifecycleStateView" }
+  ],
+  "$defs": {
+    "CargoReadinessFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cargoReadinessFactId",
+        "tenantId",
+        "preparationOrderId",
+        "occurredAt",
+        "captureSource",
+        "sourceReference",
+        "evidenceRefs",
+        "idempotencyKey",
+        "version"
+      ],
+      "properties": {
+        "cargoReadinessFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "preparationOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "captureSource": { "$ref": "common.schema.json#/$defs/CaptureSource" },
+        "sourceReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "version": { "type": "integer", "minimum": 0 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "captureSource": { "const": "manual_backfill" } },
+            "required": ["captureSource"]
+          },
+          "then": { "required": ["actorId"] }
+        }
+      ]
+    },
+    "RailHandoverData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "railSegmentId",
+        "receivingRailPartyId",
+        "handoverReference",
+        "receiptType"
+      ],
+      "properties": {
+        "railSegmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "receivingRailPartyId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "receivingRailYardId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "handoverReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "receiptType": { "const": "physical_container_acceptance" }
+      }
+    },
+    "FlowInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "flowInstanceId",
+        "tenantId",
+        "containerId",
+        "definitionVersion",
+        "state",
+        "version"
+      ],
+      "properties": {
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "definitionVersion": { "const": 1 },
+        "state": { "$ref": "common.schema.json#/$defs/FlowInstanceState" },
+        "currentNodeCode": {
+          "$ref": "common.schema.json#/$defs/LifecycleNodeCode"
+        },
+        "currentNodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 0 },
+        "startedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "completedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "cancelledAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "active" } },
+            "required": ["state"]
+          },
+          "then": {
+            "required": [
+              "currentNodeCode",
+              "currentNodeInstanceId",
+              "startedAt"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "completed" } },
+            "required": ["state"]
+          },
+          "then": { "required": ["completedAt"] }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "cancelled" } },
+            "required": ["state"]
+          },
+          "then": { "required": ["cancelledAt"] }
+        }
+      ]
+    },
+    "LifecycleNodeInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeInstanceId",
+        "flowInstanceId",
+        "nodeCode",
+        "activationNo",
+        "state",
+        "applicability",
+        "blockedReasonRefs",
+        "version"
+      ],
+      "properties": {
+        "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "activationNo": { "type": "integer", "minimum": 1 },
+        "state": { "$ref": "common.schema.json#/$defs/LifecycleNodeState" },
+        "applicability": {
+          "$ref": "common.schema.json#/$defs/NodeApplicability"
+        },
+        "activatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "completedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "completionEventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "blockedReasonRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "version": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "StartLifecycleCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "containerId",
+        "definitionVersion",
+        "initialFacts",
+        "preparationOrderId",
+        "idempotencyKey",
+        "expectedContainerVersion",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "definitionVersion": { "const": 1 },
+        "initialFacts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "cargoReadinessFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "preparationOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedContainerVersion": { "type": "integer", "minimum": 0 },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "ApplyLifecycleEventCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "flowInstanceId",
+        "eventId",
+        "expectedVersion",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "SetNodeApplicabilityCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "flowInstanceId",
+        "nodeCode",
+        "applicability",
+        "evidenceRefs",
+        "reasonCode",
+        "actorId",
+        "expectedVersion",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "applicability": {
+          "enum": ["optional_applicable", "optional_not_applicable"]
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "NodeBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockId",
+        "blockType",
+        "sourceFactId",
+        "occurredAt",
+        "nodeInstanceId"
+      ],
+      "properties": {
+        "blockId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "blockType": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "sourceFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "BlockNodeCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "flowInstanceId",
+        "block",
+        "expectedVersion",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "block": { "$ref": "#/$defs/NodeBlock" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "ResolveNodeBlockCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "flowInstanceId",
+        "blockId",
+        "resolvedAt",
+        "reasonCode",
+        "expectedVersion",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "blockId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "resolvedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "CancelLifecycleCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "flowInstanceId",
+        "actorId",
+        "reasonCode",
+        "reason",
+        "evidenceRefs",
+        "expectedVersion",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "evidenceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "LifecycleTransitioned": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "flowInstanceId",
+        "containerId",
+        "definitionVersion",
+        "fromNodeCode",
+        "fromNodeInstanceId",
+        "fromNodeState",
+        "previousContainerState",
+        "resultingContainerState",
+        "triggerEventId",
+        "triggerDomainFactId",
+        "transitionedAt",
+        "projectionVersion"
+      ],
+      "properties": {
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "definitionVersion": { "const": 1 },
+        "fromNodeCode": {
+          "$ref": "common.schema.json#/$defs/LifecycleNodeCode"
+        },
+        "fromNodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "fromNodeState": {
+          "$ref": "common.schema.json#/$defs/LifecycleNodeState"
+        },
+        "toNodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "toNodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "toNodeState": {
+          "$ref": "common.schema.json#/$defs/LifecycleNodeState"
+        },
+        "previousContainerState": {
+          "$ref": "common.schema.json#/$defs/ContainerLifecycleState"
+        },
+        "resultingContainerState": {
+          "$ref": "common.schema.json#/$defs/ContainerLifecycleState"
+        },
+        "triggerEventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "triggerDomainFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "transitionedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "LifecycleReconciliationCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reconciliationCaseId",
+        "tenantId",
+        "flowInstanceId",
+        "triggerEventId",
+        "affectedNodeInstanceIds",
+        "suggestedProjection",
+        "downstreamImpactRefs",
+        "state",
+        "createdAt",
+        "version"
+      ],
+      "properties": {
+        "reconciliationCaseId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "triggerEventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "affectedNodeInstanceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "suggestedProjection": { "type": "object" },
+        "downstreamImpactRefs": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/EntityRef" }
+        },
+        "state": {
+          "enum": ["pending_review", "approved", "rejected", "applied"]
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "version": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "LifecycleStateView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "flowInstanceId",
+        "containerId",
+        "definitionVersion",
+        "flowState",
+        "containerState",
+        "nodes",
+        "pendingEventCount",
+        "disputedEventCount",
+        "allowedActions",
+        "projectionVersion",
+        "asOf"
+      ],
+      "properties": {
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "definitionVersion": { "const": 1 },
+        "flowState": { "$ref": "common.schema.json#/$defs/FlowInstanceState" },
+        "currentNodeCode": {
+          "$ref": "common.schema.json#/$defs/LifecycleNodeCode"
+        },
+        "currentNodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerState": {
+          "$ref": "common.schema.json#/$defs/ContainerLifecycleState"
+        },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LifecycleNodeInstance" }
+        },
+        "pendingEventCount": { "type": "integer", "minimum": 0 },
+        "disputedEventCount": { "type": "integer", "minimum": 0 },
+        "allowedActions": {
+          "type": "array",
+          "items": {
+            "$ref": "container-operational-view.schema.json#/$defs/AllowedAction"
+          }
+        },
+        "projectionVersion": { "type": "integer", "minimum": 0 },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 ---
 status: coding # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/global-contract-convergence-v1
-verification: P6.1 编号与契约一致性复核、tmp 索引清理、格式与命令契约修复完成；pnpm validate 已通过（63 项仓库/Web 测试，E2E 51 通过/6 按配置跳过）；contracts 包 lint/typecheck/test/build 待 G7 配置
+verification: G6 已完成，GC-001 至 GC-011 均为 D4；14 个 Draft 2020-12 Schema、21 个正负向实例及完整 pnpm validate 已通过（仓库/Web 63 项，E2E 51 通过/6 跳过）；G7 技术载体未实现
 ---
 
 # 任务：全局公共契约收敛 V1
@@ -76,7 +76,7 @@ verification: P6.1 编号与契约一致性复核、tmp 索引清理、格式与
 ### G6 JSON Schema 权威源
 
 - [x] 明确 Schema 包位置、版本策略、命名规则和 `$id`。
-- [ ] 以 JSON Schema 完整表达公共 ID、枚举、事件信封、DTO、错误及约束；GC-001、GC-003、GC-011 已完成，GC-002、GC-004 至 GC-010 仍是局部 Schema。
+- [x] 以 JSON Schema 完整表达公共 ID、枚举、事件信封、DTO、错误及约束；GC-001 至 GC-011 已完成实例化并登记覆盖关系。
 - [x] 提供成功、拒绝、边界、重复、乱序、更正、撤销和冲突 fixtures。
 - [x] 建立 Schema 自校验、引用完整性和破坏性变更检查。
 
@@ -130,3 +130,4 @@ verification: P6.1 编号与契约一致性复核、tmp 索引清理、格式与
 | 2026-09-10 | coding | Codex          | —      | P6.1 验证：docs-only、contract、diff check、受影响文件格式、lint、typecheck、test 和 build 通过；Web 54 项测试通过，E2E 51 项通过/6 项按配置跳过。全量 validate 在 32 个本次未修改文件的既有格式问题处停止，后续门禁已分别补跑通过。                                            |
 | 2026-09-10 | coding | Codex          | —      | 评审闭环：GC-001/GC-003 的局部阶段编号统一为 G6/G7，所有公共节点应用键统一为 `targetNodeInstanceId`，并新增裸 `P6/P7` 回归门禁；Prettier 修复 32 个既有失败文件，10 个 `tmp/` PNG 删除已暂存。完整 `pnpm validate` 通过：61 项仓库/Web 测试通过，E2E 51 项通过/6 项按配置跳过。 |
 | 2026-09-10 | coding | Codex          | —      | 命令契约纠偏：contracts 包只保留 `contract:check`，四个标准脚本明确为 G7 前未配置，并新增防别名门禁。完整 validate 通过：仓库/Web 63 项，E2E 51/6；Turbo 四项仅执行 Web 真实任务。                                                                                              |
+| 2026-09-10 | coding | Codex          | —      | G6 闭环：GC-001～011 均升至 D4；Ajv 编译 14 个 Schema，并验证 8 个行为场景及 21 个正负向实例。完整 validate 通过：仓库/Web 63 项，E2E 51/6；G7 未开始。                                                                                                                         |

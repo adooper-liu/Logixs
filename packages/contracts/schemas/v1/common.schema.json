@@ -15,6 +15,11 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]{0,99}$"
     },
+    "BoundedContextCode": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
     "LifecycleNodeCode": {
       "type": "string",
       "enum": [
@@ -80,6 +85,31 @@
     "NodeApplicability": {
       "enum": ["required", "optional_applicable", "optional_not_applicable"]
     },
+    "FlowInstanceState": {
+      "enum": ["draft", "active", "completed", "cancelled"]
+    },
+    "LifecycleNodeState": {
+      "enum": [
+        "pending",
+        "active",
+        "blocked",
+        "completed",
+        "skipped",
+        "cancelled"
+      ]
+    },
+    "ContainerLifecycleState": {
+      "enum": [
+        "not_shipped",
+        "shipped",
+        "in_transit",
+        "at_port",
+        "picked_up",
+        "unloaded",
+        "returned_empty",
+        "cancelled"
+      ]
+    },
     "NodeTaskState": {
       "enum": [
         "pending",
@@ -105,6 +135,21 @@
     "WorkOrderApplicability": {
       "enum": ["required", "optional", "conditional_required", "not_applicable"]
     },
+    "WorkOrderRequirement": {
+      "enum": ["required", "optional", "conditional"]
+    },
+    "ExecutionMode": {
+      "enum": ["human", "system", "external", "hybrid"]
+    },
+    "AssignmentPolicy": {
+      "enum": ["named", "team", "pool", "automatic"]
+    },
+    "AssignmentState": {
+      "enum": ["unassigned", "assigned", "pool", "automatic"]
+    },
+    "FactApplicationDecision": {
+      "enum": ["applied", "rejected", "no_op"]
+    },
     "CaptureSource": {
       "enum": [
         "external_evidence",
@@ -126,6 +171,9 @@
     "EvidenceValidity": {
       "enum": ["effective", "superseded", "corrected", "revoked"]
     },
+    "EvidenceRelationType": {
+      "enum": ["supports", "contradicts", "corrects", "revokes", "supersedes"]
+    },
     "EventRelationType": {
       "enum": ["corrects", "revokes", "supersedes_estimate"]
     },
@@ -137,6 +185,75 @@
     },
     "CommitState": {
       "enum": ["pending", "committed", "commit_failed"]
+    },
+    "InboxState": {
+      "enum": [
+        "received",
+        "processing",
+        "processed",
+        "retry_wait",
+        "dead_letter"
+      ]
+    },
+    "OutboxState": {
+      "enum": [
+        "pending",
+        "publishing",
+        "published",
+        "retry_wait",
+        "dead_letter"
+      ]
+    },
+    "CompensationState": {
+      "enum": [
+        "not_required",
+        "pending",
+        "in_progress",
+        "compensated",
+        "failed",
+        "manual_review"
+      ]
+    },
+    "ActorType": {
+      "enum": ["user", "service", "integration", "scheduled_job"]
+    },
+    "RiskLevel": {
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "ConfirmationPolicy": {
+      "enum": ["none", "explicit", "reason_required"]
+    },
+    "ReviewPolicy": {
+      "enum": ["none", "four_eyes", "designated_reviewer"]
+    },
+    "DenialCategory": {
+      "enum": [
+        "authentication",
+        "scope",
+        "capability",
+        "state",
+        "precondition",
+        "evidence",
+        "lock",
+        "review",
+        "concurrency"
+      ]
+    },
+    "EntityType": {
+      "enum": [
+        "container",
+        "flow_instance",
+        "node_instance",
+        "node_task",
+        "work_order",
+        "domain_fact",
+        "evidence",
+        "canonical_event",
+        "client_operation",
+        "receipt",
+        "exception",
+        "audit_entry"
+      ]
     },
     "ErrorCategory": {
       "enum": [
@@ -157,9 +274,9 @@
       "required": ["tenantId", "entityType", "entityId", "ownerModule"],
       "properties": {
         "tenantId": { "$ref": "#/$defs/Uuid" },
-        "entityType": { "$ref": "#/$defs/StableCode" },
+        "entityType": { "$ref": "#/$defs/EntityType" },
         "entityId": { "$ref": "#/$defs/Uuid" },
-        "ownerModule": { "$ref": "#/$defs/StableCode" }
+        "ownerModule": { "$ref": "#/$defs/BoundedContextCode" }
       }
     }
   }
