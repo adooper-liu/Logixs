@@ -1,7 +1,7 @@
 ---
-status: blocked # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/<任务名>（RAID I-04 / P3-01）
-verification: # status: done 时填写；当前仍在 blocked（未过 P2 评审门禁，不标 done）
+verification: P2 评审终勾完成（2026-09-12）：P2_REVIEW_CHECKLIST §4 十份文档全部「通过」，五个待定点（批次状态次序/审核升级/写端口命名/准入证据集/必填硬闸）按候选口径标注「真实样本回验后再校准」；领域文档 v1–v90 主体 + Web 演示已交付（pnpm validate 通过，E2E 51 通过/6 跳过）
 ---
 
 # 任务：P2 切片一——货柜/舱单导入闭环领域模型（P2-01~03 + 首批字段模板锚点）
