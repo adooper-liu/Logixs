@@ -1,0 +1,48 @@
+// Logix 数据库 schema（ADR-003：PostgreSQL + Prisma，唯一迁移入口 database/migrations/）。
+// 命名：DB 列 snake_case（@map），Prisma/代码属性 camelCase；DTO 与实体显式映射，禁止偶然同名。
+// 单一权威源：packages/contracts/schemas/v1/*.schema.json（字段/枚举口径）。
+// 状态：本文件是「数据库字段优先」的第一步——只落已定稿字段，物理形态待评审项显式注明。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 货柜当前阶段：8 态，与 packages/contracts/schemas/v1/common.schema.json 的
+// ContainerLifecycleState 枚举严格一致（G7 显式映射 parity 门禁校验，禁止漂移）。
+enum ContainerStatus {
+  not_shipped
+  shipped
+  in_transit
+  at_port
+  picked_up
+  unloaded
+  returned_empty
+  cancelled
+}
+
+// 货柜业务事实主记录（shipment-registry 拥有）。
+// 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
+model ContainerRecord {
+  id               String          @id @default(uuid()) @map("id")
+  tenantId         String          @map("tenant_id")
+  // 备货单号：建档身份主锚。TO-BE 目标 UNIQUE，但须旧库 DDL/数据清洗通过后才建立（DATA_MODEL 不变量 1）。
+  orderNumber      String          @map("order_number")
+  // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
+  mainOrderNumber  String?         @map("main_order_number")
+  // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
+  containerNumber  String?         @map("container_number")
+  // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
+  currentStatus    ContainerStatus @map("current_status")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@map("container_record")
+  // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
+  // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
+  // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
+  // TODO(D20 物理形态)：金额 decimal + currency（超期费用，独立边界）
+}
