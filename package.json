@@ -8,6 +8,13 @@
     "pnpm": ">=10 <11"
   },
   "packageManager": "pnpm@10.15.1",
+  "pnpm": {
+    "overrides": {
+      "mysql2": "^3.22.0",
+      "deepmerge-ts": "^8.0.0",
+      "multer": "^2.3.0"
+    }
+  },
   "scripts": {
     "dev": "turbo run dev --filter=@logix/web --filter=@logix/api",
     "dev:worker": "turbo run dev --filter=@logix/business-worker",
