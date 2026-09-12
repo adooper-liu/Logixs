@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { LifecycleNodeCode } from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type {
+  CanonicalEventRecord,
   FlowWithNodes,
   LifecycleRepository,
 } from "../domain/lifecycle.repository";
@@ -48,10 +49,14 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     occurredAt: Date,
   ): Promise<void> {
     for (const nodeCode of nodeCodes) {
+      // R3 密封：已完成的节点不重复完成、completedAt 不覆盖。
+      const existing = await this.prisma.nodeInstance.findUnique({
+        where: { flowInstanceId_nodeCode: { flowInstanceId, nodeCode } },
+      });
+      if (existing?.state === "completed") continue;
+
       await this.prisma.nodeInstance.upsert({
-        where: {
-          flowInstanceId_nodeCode: { flowInstanceId, nodeCode },
-        },
+        where: { flowInstanceId_nodeCode: { flowInstanceId, nodeCode } },
         create: {
           flowInstanceId,
           nodeCode,
@@ -89,6 +94,42 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       containerNumber: container.containerNumber,
       currentStatus: container.currentStatus,
     };
+  }
+
+  async findEventByIdempotencyKey(
+    key: string,
+  ): Promise<CanonicalEventRecord | null> {
+    const event = await this.prisma.canonicalEvent.findUnique({
+      where: { idempotencyKey: key },
+    });
+    return event
+      ? {
+          id: event.id,
+          containerId: event.containerId,
+          eventCode: event.eventCode as CanonicalEventRecord["eventCode"],
+          occurredAt: event.occurredAt,
+          idempotencyKey: event.idempotencyKey,
+        }
+      : null;
+  }
+
+  async saveEvent(event: CanonicalEventRecord): Promise<void> {
+    await this.prisma.canonicalEvent.create({
+      data: {
+        containerId: event.containerId,
+        eventCode: event.eventCode,
+        occurredAt: event.occurredAt,
+        idempotencyKey: event.idempotencyKey,
+      },
+    });
+  }
+
+  async findLatestEventTime(containerId: string): Promise<Date | null> {
+    const latest = await this.prisma.canonicalEvent.findFirst({
+      where: { containerId },
+      orderBy: { occurredAt: "desc" },
+    });
+    return latest?.occurredAt ?? null;
   }
 }
 

@@ -24,6 +24,7 @@ export class LifecycleController {
       containerId,
       eventCode: body.eventCode as CanonicalEventCode,
       occurredAt: new Date(body.occurredAt),
+      idempotencyKey: body.idempotencyKey,
     });
   }
 }

@@ -138,3 +138,15 @@ model NodeInstance {
   @@unique([flowInstanceId, nodeCode])
   @@map("node_instance")
 }
+
+// 规范事件流水账（lifecycle-control 拥有）：不可变事件留痕，可追溯/重放/幂等。
+model CanonicalEvent {
+  id             String   @id @default(uuid()) @map("id")
+  containerId    String   @map("container_id")
+  eventCode      String   @map("event_code")
+  occurredAt     DateTime @map("occurred_at")
+  idempotencyKey String   @unique @map("idempotency_key")
+  appliedAt      DateTime @default(now()) @map("applied_at")
+
+  @@map("canonical_event")
+}

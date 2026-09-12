@@ -8,6 +8,9 @@ export class ApplyLifecycleEventRequestDto {
 
   @ApiProperty({ description: "发生时间（ISO 8601 UTC）" })
   occurredAt!: string;
+
+  @ApiProperty({ description: "幂等键（同键重复提交不重复应用）" })
+  idempotencyKey!: string;
 }
 
 export class ApplyLifecycleEventResponseDto {

@@ -25,6 +25,7 @@ export interface ApplyLifecycleEventInput {
   containerId: string;
   eventCode: CanonicalEventCode;
   occurredAt: Date;
+  idempotencyKey: string;
 }
 
 export interface ApplyLifecycleEventResult {
@@ -32,10 +33,11 @@ export interface ApplyLifecycleEventResult {
   eventCode: CanonicalEventCode;
   completedNodes: LifecycleNodeCode[];
   resultingStatus: string | null; // null = 本次事件不推进 8 态
+  applied: boolean; // false = 幂等命中（已应用过）
 }
 
-// 应用生命周期事件（第一刀）：事件 → 完成 eligible 节点 → 推进 currentStatus。
-// 时间单调/密封/来源权威延后。
+// 应用生命周期事件：事件 → 完成 eligible 节点 → 推进 currentStatus。
+// 不变量：幂等（idempotencyKey）、R1 时间单调、R3 密封、R2 状态单调。
 @Injectable()
 export class ApplyLifecycleEventService {
   constructor(
@@ -56,10 +58,35 @@ export class ApplyLifecycleEventService {
       );
     }
 
+    // 幂等：同 idempotencyKey 不重复应用
+    const existing = await this.repository.findEventByIdempotencyKey(
+      input.idempotencyKey,
+    );
+    if (existing) {
+      return {
+        containerId: input.containerId,
+        eventCode: input.eventCode,
+        completedNodes: [],
+        resultingStatus: null,
+        applied: false,
+      };
+    }
+
     const container = await this.repository.findContainerBase(
       input.containerId,
     );
     if (!container) throw new NotFoundException("RESOURCE_NOT_FOUND");
+
+    // R1 时间单调：occurredAt ≥ 已应用事件的最晚时间
+    const latestTime = await this.repository.findLatestEventTime(
+      input.containerId,
+    );
+    if (latestTime && input.occurredAt < latestTime) {
+      throw new HttpException(
+        "TIME_ORDER_CONFLICT: 事件时间早于已应用事件",
+        HttpStatus.CONFLICT,
+      );
+    }
 
     const flow = await this.repository.ensureFlow(input.containerId);
 
@@ -71,7 +98,6 @@ export class ApplyLifecycleEventService {
         input.occurredAt,
       );
       completedNodes.push(...eligibleNodes);
-      // 更新当前节点为「最远的已完成节点」
       const farthest = farthestNode(completedNodes);
       if (farthest) {
         await this.repository.updateCurrentNode(flow.flow.id, farthest);
@@ -98,11 +124,21 @@ export class ApplyLifecycleEventService {
       }
     }
 
+    // 事件流水账（不可变留痕）
+    await this.repository.saveEvent({
+      id: "", // DB 生成
+      containerId: input.containerId,
+      eventCode: input.eventCode,
+      occurredAt: input.occurredAt,
+      idempotencyKey: input.idempotencyKey,
+    });
+
     return {
       containerId: input.containerId,
       eventCode: input.eventCode,
       completedNodes,
       resultingStatus,
+      applied: true,
     };
   }
 }

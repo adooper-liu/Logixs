@@ -1,7 +1,15 @@
-import type { LifecycleNodeCode } from "@logix/contracts";
+import type { CanonicalEventCode, LifecycleNodeCode } from "@logix/contracts";
 
 // 生命周期持久化端口（Port/Adapter）。
 export const LIFECYCLE_REPOSITORY = Symbol("LifecycleRepository");
+
+export interface CanonicalEventRecord {
+  id: string;
+  containerId: string;
+  eventCode: CanonicalEventCode;
+  occurredAt: Date;
+  idempotencyKey: string;
+}
 
 export interface FlowWithNodes {
   flow: {
@@ -36,4 +44,8 @@ export interface LifecycleRepository {
     containerNumber: string | null;
     currentStatus: string;
   } | null>;
+  // 事件流水账：幂等 + R1 时间单调
+  findEventByIdempotencyKey(key: string): Promise<CanonicalEventRecord | null>;
+  saveEvent(event: CanonicalEventRecord): Promise<void>;
+  findLatestEventTime(containerId: string): Promise<Date | null>;
 }
