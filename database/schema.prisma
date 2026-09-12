@@ -49,3 +49,66 @@ model ContainerRecord {
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
   // TODO(D20 物理形态)：金额 decimal + currency（超期费用，独立边界）
 }
+
+// 导入批次（integration-import 拥有）：一次上传的全生命周期（P6 阶段 A 读链路最小集）。
+// 完整批次状态机在阶段 C 对齐 IMPORT_WORKFLOW §4；阶段 A 仅 pending → parsed。
+model ImportBatch {
+  id             String      @id @default(uuid()) @map("id")
+  tenantId       String      @map("tenant_id")
+  operatorId     String      @map("operator_id") // 开发期身份，审计
+  idempotencyKey String      @unique @map("idempotency_key")
+  fileName       String      @map("file_name")
+  fileHash       String      @map("file_hash") // 文件内容指纹，幂等判定
+  status         String      @map("status") // parsed | confirmed | approved | executing | completed
+  rowCount       Int         @map("row_count")
+  columnCount    Int         @map("column_count")
+  // AI 字段映射建议（阶段 B 留痕）：[{ column, fieldCode, confidence }]，阶段 C 审核指向它
+  mappingSuggestions Json     @default("[]") @map("mapping_suggestions")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  rows           ImportRow[]
+  reviews        ImportReview[]
+  rowResults     ImportRowResult[]
+
+  @@map("import_batch")
+}
+
+// 导入行（integration-import 拥有）：一行 = 一个已出运货柜候选（阶段 A 只存解析快照，不落账）。
+model ImportRow {
+  id        String      @id @default(uuid()) @map("id")
+  batchId   String      @map("batch_id")
+  batch     ImportBatch @relation(fields: [batchId], references: [id])
+  rowNo     Int         @map("row_no")
+  snapshot  Json        @map("snapshot") // 解析出的该行各列值（原始快照）
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@unique([batchId, rowNo])
+  @@map("import_row")
+}
+
+// 映射审核（integration-import 拥有）：人确认/修正列→字段映射（阶段 C）。
+model ImportReview {
+  id         String      @id @default(uuid()) @map("id")
+  batchId    String      @map("batch_id")
+  batch      ImportBatch @relation(fields: [batchId], references: [id])
+  column     String      @map("column")
+  fieldCode  String?     @map("field_code") // 确认/修正后的字段码；null=跳过该列
+  operatorId String      @map("operator_id")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@map("import_review")
+}
+
+// 行落账结果（integration-import 拥有）：逐行写端口结局（阶段 C）。
+model ImportRowResult {
+  id                String      @id @default(uuid()) @map("id")
+  batchId           String      @map("batch_id")
+  batch             ImportBatch @relation(fields: [batchId], references: [id])
+  rowId             String      @map("row_id")
+  outcome           String      @map("outcome") // success | failed | duplicate
+  containerRecordId String?     @map("container_record_id")
+  detail            String?     @map("detail")
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  @@map("import_row_result")
+}

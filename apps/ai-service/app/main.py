@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
 
-from .capabilities import CAPABILITIES, Capability, EchoRequest, EchoResponse
+from .capabilities import (
+    CAPABILITIES,
+    Capability,
+    EchoRequest,
+    EchoResponse,
+    SuggestMappingRequest,
+    SuggestMappingResponse,
+)
 
 app = FastAPI(title="Logix AI Service", version="0.1.0")
 
@@ -23,6 +30,19 @@ def list_capabilities() -> list[Capability]:
 @app.post("/capabilities/echo", response_model=EchoResponse)
 def echo(request: EchoRequest) -> EchoResponse:
     capability = CAPABILITIES.get("echo")
+    if capability is None:
+        raise HTTPException(status_code=404, detail="capability not found")
+    return capability["handler"](request)
+
+
+@app.post(
+    "/capabilities/suggest-import-mapping",
+    response_model=SuggestMappingResponse,
+)
+def suggest_import_mapping(
+    request: SuggestMappingRequest,
+) -> SuggestMappingResponse:
+    capability = CAPABILITIES.get("suggest_import_mapping")
     if capability is None:
         raise HTTPException(status_code=404, detail="capability not found")
     return capability["handler"](request)

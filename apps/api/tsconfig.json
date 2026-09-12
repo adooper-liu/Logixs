@@ -15,7 +15,7 @@
     "removeComments": false,
     "outDir": "dist",
     "baseUrl": ".",
-    "types": ["node"]
+    "types": ["node", "multer"]
   },
   "include": ["src/**/*.ts"]
 }
