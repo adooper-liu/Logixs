@@ -33,6 +33,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/real-containers",
+      component: () => import("../views/RealContainerList.vue"),
+      meta: {
+        title: "真实货柜（API 接线）",
+        section: "货柜",
+        navLabel: "真实货柜",
+        navIcon: "container",
+        navOrder: 25,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/dashboard",
       component: () => import("../views/DashboardGlobal.vue"),
       meta: {

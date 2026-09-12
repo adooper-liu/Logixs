@@ -17,6 +17,7 @@
     "validate": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
   },
   "dependencies": {
+    "@logix/contracts": "workspace:*",
     "@lucide/vue": "1.41.0",
     "element-plus": "^2.8.8",
     "vue": "^3.5.13",
