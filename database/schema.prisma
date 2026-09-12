@@ -112,3 +112,41 @@ model ImportRowResult {
 
   @@map("import_row_result")
 }
+
+// 流程实例（lifecycle-control 拥有）：一个货柜的生命周期流程（1:1 货柜）。
+model FlowInstance {
+  id              String         @id @default(uuid()) @map("id")
+  containerId     String         @unique @map("container_id")
+  state           String         @map("state") // draft | active | completed | cancelled
+  currentNodeCode String         @map("current_node_code") // LifecycleNodeCode
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  nodes           NodeInstance[]
+
+  @@map("flow_instance")
+}
+
+// 节点实例（lifecycle-control 拥有）：流程在某个节点的状态（第一刀只 pending/active/completed）。
+model NodeInstance {
+  id             String       @id @default(uuid()) @map("id")
+  flowInstanceId String       @map("flow_instance_id")
+  flow           FlowInstance @relation(fields: [flowInstanceId], references: [id])
+  nodeCode       String       @map("node_code")
+  state          String       @map("state") // pending | active | completed
+  completedAt    DateTime?    @map("completed_at")
+
+  @@unique([flowInstanceId, nodeCode])
+  @@map("node_instance")
+}
+
+// 规范事件流水账（lifecycle-control 拥有）：不可变事件留痕，可追溯/重放/幂等。
+model CanonicalEvent {
+  id             String   @id @default(uuid()) @map("id")
+  containerId    String   @map("container_id")
+  eventCode      String   @map("event_code")
+  occurredAt     DateTime @map("occurred_at")
+  idempotencyKey String   @unique @map("idempotency_key")
+  appliedAt      DateTime @default(now()) @map("applied_at")
+
+  @@map("canonical_event")
+}
