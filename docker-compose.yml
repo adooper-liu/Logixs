@@ -1,0 +1,74 @@
+# 本地开发基础设施（阶段 P4）。
+# 用法：docker compose up -d postgres temporal temporal-ui
+# 镜像经 DaoCloud 源可拉（本机 Docker Hub 被墙）：docker pull docker.m.daocloud.io/<image>
+services:
+  postgres:
+    # 业务库：官方 postgres:16（本机 Docker Hub 不可达时经 DaoCloud 镜像可拉）。
+    # TODO(P4/ADR-007)：RAG 阶段需 pgvector 时换 pgvector/pgvector:pg16 并 CREATE EXTENSION vector。
+    image: postgres:16
+    environment:
+      POSTGRES_USER: logix
+      POSTGRES_PASSWORD: logix
+      POSTGRES_DB: logix
+    ports:
+      # 5433：避开本机 WSL Ubuntu 旧系统 PostgreSQL 占用的 5432（AS-IS 基线库）
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logix -d logix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  temporal-db:
+    # Temporal 自己的持久化库（独立于业务库；Temporal 1.27 不支持 SQLite，用 postgres12 驱动）。
+    image: postgres:16
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    ports:
+      - "5434:5432"
+    volumes:
+      - temporal-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    # Temporal 服务（ADR-004）：本地骨架用 postgres12 驱动 + auto-setup 自动迁移。
+    image: temporalio/auto-setup:1.27.0
+    environment:
+      AUTO_SETUP: "true"
+      DB: "postgres12"
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: "temporal-db"
+      POSTGRES_USER: "temporal"
+      POSTGRES_PWD: "temporal"
+    ports:
+      - "7233:7233" # gRPC frontend
+    depends_on:
+      temporal-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "namespace", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  temporal-ui:
+    image: temporalio/ui:2.34.0
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8233:8080"
+    depends_on:
+      - temporal
+
+volumes:
+  postgres-data:
+  temporal-db-data:

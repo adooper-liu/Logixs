@@ -1,0 +1,16 @@
+[project]
+name = "logix-ai-worker"
+version = "0.1.0"
+description = "Logix Python AI Worker（ADR-005：执行 AI Activity，调用 ai-service 能力）"
+requires-python = ">=3.11"
+dependencies = [
+    "temporalio>=1.8",
+    "httpx>=0.27",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
