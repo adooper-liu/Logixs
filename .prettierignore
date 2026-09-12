@@ -10,3 +10,8 @@ playwright-report
 test-results
 pnpm-lock.yaml
 *.log
+# Python 虚拟环境与产物（prettier 不处理 Python）
+.venv
+__pycache__
+# 由 scripts/generate-contracts.mjs 生成的派生产物，不手工格式化
+packages/contracts/generated

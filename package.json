@@ -21,19 +21,29 @@
     "build": "turbo run build",
     "docs:check": "node scripts/check-repository.mjs --docs-only",
     "contract:check": "node scripts/validate-contract-schemas.mjs",
+    "contract:generate": "node scripts/generate-contracts.mjs",
+    "contract:drift": "node scripts/generate-contracts.mjs --check",
+    "db:generate": "prisma generate --schema database/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema database/schema.prisma",
+    "db:seed": "tsx database/seed.ts",
     "repo:check": "node scripts/check-repository.mjs",
     "security:audit": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level high",
-    "validate": "pnpm repo:check && pnpm contract:check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
+    "validate": "pnpm repo:check && pnpm contract:check && pnpm contract:drift && pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "ajv": "8.17.1",
     "ajv-formats": "3.0.1",
     "eslint": "10.10.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-vue": "10.10.0",
     "globals": "16.5.0",
+    "json-schema-to-typescript": "16.0.0",
     "prettier": "3.9.6",
+    "prisma": "7.10.0",
+    "tsx": "^4.23.13",
     "turbo": "2.10.12",
     "typescript-eslint": "8.69.0"
   }

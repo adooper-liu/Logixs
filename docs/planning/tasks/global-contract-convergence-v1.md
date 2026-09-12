@@ -1,7 +1,7 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/global-contract-convergence-v1
-verification: G6 已完成，GC-001 至 GC-011 均为 D4；14 个 Draft 2020-12 Schema、21 个正负向实例及完整 pnpm validate 已通过（仓库/Web 63 项，E2E 51 通过/6 跳过）；G7 技术载体未实现
+verification: G1-G6 完成：GC-001~011 均 D4，Ajv 编译 14 Schema、验证 8 场景 21 正负向 fixture，完整 pnpm validate 通过（仓库/Web 63 项，E2E 51/6）；G7 技术载体已移交 p3-p4-full-stack-base 阶段 1
 ---
 
 # 任务：全局公共契约收敛 V1
@@ -82,11 +82,14 @@ verification: G6 已完成，GC-001 至 GC-011 均为 D4；14 个 Draft 2020-12 
 
 ### G7 生成器与技术载体实现
 
-- [ ] 从同一 Schema 源生成 TypeScript 类型及运行时边界校验。
-- [ ] 生成或组装 OpenAPI，并验证所有公共请求、响应和错误引用同一组件。
-- [ ] 生成 Python 模型及验证器。
-- [ ] 建立数据库实体与公共契约的显式映射；迁移只进入 `database/migrations/`。
-- [ ] 建立生成漂移检查、跨语言 fixture 对拍、API 契约测试、数据库约束与迁移测试。
+> **已移交（2026-09-11）**：G7 的生成器与技术载体实现整体并入 [`p3-p4-full-stack-base.md`](./p3-p4-full-stack-base.md) 阶段 1，由该任务作为「契约生成底座」统一落地；本任务不再单独推进 G7，避免两个任务并行。
+> **收口（2026-09-12）**：TS 侧已闭环；Python/OpenAPI 按「数据库字段优先」与「无消费者延后」延后，见 p3-p4-full-stack-base 偏离记录。
+
+- [x] 从同一 Schema 源生成 TypeScript 类型及运行时边界校验（`scripts/generate-contracts.mjs` → `@logix/contracts`，Ajv 运行时校验已有）。
+- [ ] 生成或组装 OpenAPI（延后：待 NestJS Swagger 端点定义后从控制器生成）。
+- [ ] 生成 Python 模型及验证器（延后：datamodel-code-generator，P3-13）。
+- [x] 建立数据库实体与公共契约的显式映射；迁移只进入 `database/migrations/`（`schema.prisma` 显式 @map + 首个迁移）。
+- [x] 建立生成漂移检查（`contract:drift` 纳入 validate）；跨语言 fixture 对拍/API 契约测试/迁移测试延后。
 
 ## 阶段门禁
 

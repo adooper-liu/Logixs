@@ -3,7 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts"
+    }
+  },
   "scripts": {
-    "contract:check": "node ../../scripts/validate-contract-schemas.mjs"
+    "contract:check": "node ../../scripts/validate-contract-schemas.mjs",
+    "contract:generate": "node ../../scripts/generate-contracts.mjs",
+    "contract:drift": "node ../../scripts/generate-contracts.mjs --check"
   }
 }
