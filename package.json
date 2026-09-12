@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "turbo run dev --filter=@logix/web --filter=@logix/api",
     "dev:worker": "turbo run dev --filter=@logix/business-worker",
-    "dev:all": "pnpm infra:up && pnpm db:setup && concurrently -n api,web,worker,ai-svc,ai-worker -c auto \"pnpm --filter @logix/api dev\" \"pnpm --filter @logix/web dev\" \"pnpm --filter @logix/business-worker dev\" \"cd apps/ai-service && uv run uvicorn app.main:app --host 127.0.0.1 --port 8001\" \"cd workers/ai-worker && uv run python worker.py\"",
+    "dev:all": "pnpm infra:up && pnpm db:setup && concurrently -n api,web,worker,ai-svc,ai-worker,studio -c auto \"pnpm --filter @logix/api dev\" \"pnpm --filter @logix/web dev\" \"pnpm --filter @logix/business-worker dev\" \"cd apps/ai-service && uv run uvicorn app.main:app --host 127.0.0.1 --port 8001\" \"cd workers/ai-worker && uv run python worker.py\" \"prisma studio --port 5555 --browser none\"",
     "infra:up": "docker compose up -d --wait postgres && docker compose up -d temporal temporal-ui",
     "infra:down": "docker compose down",
     "db:setup": "pnpm db:generate && pnpm db:migrate && pnpm db:seed",
@@ -31,7 +31,7 @@
     "db:generate": "prisma generate --schema database/schema.prisma",
     "db:migrate": "prisma migrate dev --schema database/schema.prisma",
     "db:seed": "tsx database/seed.ts",
-    "db:studio": "prisma studio --schema database/schema.prisma",
+    "db:studio": "prisma studio --port 5555 --browser none",
     "repo:check": "node scripts/check-repository.mjs",
     "security:audit": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level high",
     "validate": "pnpm repo:check && pnpm contract:check && pnpm contract:drift && pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build"
