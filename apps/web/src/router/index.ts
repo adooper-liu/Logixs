@@ -79,6 +79,16 @@ const router = createRouter({
       },
     },
     {
+      path: "/import",
+      component: () => import("../views/ImportUpload.vue"),
+      meta: { title: "智能导入", section: "导入" },
+    },
+    {
+      path: "/import/:batchId",
+      component: () => import("../views/ImportBatchDetail.vue"),
+      meta: { title: "导入批次", section: "导入" },
+    },
+    {
       path: "/container/:containerRecordId",
       component: () => import("../views/MicroWorkbench.vue"),
       meta: { title: "一柜一档", section: "货柜" },

@@ -10,9 +10,9 @@
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
     "overrides": {
-      "mysql2": "^3.22.0",
-      "deepmerge-ts": "^8.0.0",
-      "multer": "^2.3.0"
+      "deepmerge-ts": "8.0.0",
+      "multer": "2.3.0",
+      "mysql2": "3.22.0"
     }
   },
   "scripts": {
@@ -47,6 +47,7 @@
     "@eslint/js": "10.0.1",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "@prisma/client-runtime-utils": "7.10.0",
     "ajv": "8.17.1",
     "ajv-formats": "3.0.1",
     "concurrently": "10.0.5",
