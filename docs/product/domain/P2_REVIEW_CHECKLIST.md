@@ -53,7 +53,7 @@
 
 - **AS-IS 对照发现（2026-09-04）**：现网有适配器故障转移/通用字典别名/WMS 状态字段/HOLD·费用对象/监控资产，评审清单需回查 5 项（集成冗余、字段级迁移映射、来源枚举、扣货费用与出库逆向收边、备货单字段细化）——详见 [ASIS_TOBE_GAP](./ASIS_TOBE_GAP.md)。
 - **行业规范纠偏 W1–W8（2026-09-04）**：外部 15 页规范对标后待采纳项（事件信封/isEsti、上下文复合映射键、分域跟踪、港口能力差异、放行查验深化、进口链路里程碑、订阅邮件交付、状态码场景化）——详见 [INDUSTRY_STANDARDS_ALIGN](./INDUSTRY_STANDARDS_ALIGN.md) 附录 B。
-- D-portname：Shipment 写端口命名（候选 `applyContainerRecordPlan`）。
+- D-portname：Shipment 写端口命名（冻结首选 `applyContainerRecord`；旧候选 `applyContainerRecordPlan` 已弃用）。
 - 首批字段/事件权威策略：责任主体、证据、事件时间、冲突动作、人工纠偏权限和密封后更正方式。
 - R1 等值时间允许 or 严格递增；R3 密封时间粒度（LIFECYCLE_CONSISTENCY §6）。
 - 海铁/中转多段路由表达深度（CONTAINER_LIFECYCLE §6）。

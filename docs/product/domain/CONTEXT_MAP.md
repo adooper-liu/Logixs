@@ -50,14 +50,14 @@ ContainerRecord -> FlowInstance -> NodeTask -> WorkOrder -> ClientOperation
 
 ### C. 公共端口（块与块怎么传，禁直连）
 
-| 调用方 → 端口                                           | 用途                                |
-| ------------------------------------------------------- | ----------------------------------- |
-| Import → Shipment 写端口(applyContainerRecordPlan 候选) | 导入写入唯一通道；命中更新/未中新建 |
-| Import/Dictionary 解析端口                              | 主数据归一，未命中→未知队列         |
-| → Identity 授权                                         | 服务端对象级授权                    |
-| Shipment → Dictionary                                   | 港口/船司/柜型校验引用              |
-| → AI Governance                                         | AI 调用前置治理                     |
-| 各写 → Audit                                            | 留痕                                |
+| 调用方 → 端口                                             | 用途                                |
+| --------------------------------------------------------- | ----------------------------------- |
+| Import → Shipment 写端口(`applyContainerRecord` 冻结首选) | 导入写入唯一通道；命中更新/未中新建 |
+| Import/Dictionary 解析端口                                | 主数据归一，未命中→未知队列         |
+| → Identity 授权                                           | 服务端对象级授权                    |
+| Shipment → Dictionary                                     | 港口/船司/柜型校验引用              |
+| → AI Governance                                           | AI 调用前置治理                     |
+| 各写 → Audit                                              | 留痕                                |
 
 ### D. 四对象追踪（P2 门禁）
 

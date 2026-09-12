@@ -37,11 +37,17 @@ verification: # 仅 status: done 时必填
 
 ## Review notes（review 阶段填写，只读不改代码）
 
-（缺陷优先，每条对应文件/行号或 commit）
+2026-09-12 规格评审（已回写文档，本阶段仍为 design）：
+
+1. 硬伤：§3.2 曾自写 `awaiting_precheck` 且与 IMPORT_WORKFLOW §4 的 `awaiting_validation` 顺序相反。已拍板「审核 → 预检」，权威与规格、架构 §11 同步。
+2. 开发期身份未落地机制：已定为 header `X-Tenant-Id` + `X-Operator-Id`。
+3. MinIO 为阶段 A 前置（compose + P4-06 最小集），已写入规格 §12。
+4. 写端口冻结首选 `applyContainerRecord`，废弃带 Plan 的旧候选。
 
 ## 进度 log（谁改谁 append，一行一条）
 
-| 日期       | 阶段   | 负责 | commit | 说明                                  |
-| ---------- | ------ | ---- | ------ | ------------------------------------- |
-| 2026-09-12 | design | —    | —      | 初稿：P6 导入第一刀实施规格           |
-| 2026-09-12 | design | —    | —      | 吸收四阶段 MVP；并行 brief 标 blocked |
+| 日期       | 阶段   | 负责 | commit | 说明                                                  |
+| ---------- | ------ | ---- | ------ | ----------------------------------------------------- |
+| 2026-09-12 | design | —    | —      | 初稿：P6 导入第一刀实施规格                           |
+| 2026-09-12 | design | —    | —      | 吸收四阶段 MVP；并行 brief 标 blocked                 |
+| 2026-09-12 | design | —    | —      | 评审回写：状态机审核→预检；开发期身份；MinIO 进阶段 A |

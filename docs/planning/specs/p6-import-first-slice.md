@@ -15,7 +15,7 @@
 | 负责人     | 刘志高                                                                                  |
 | 关联 ADR   | ADR-001、ADR-003、ADR-004、ADR-005、ADR-006、ADR-010                                    |
 | 任务 brief | [p6-import-first-slice.md](../tasks/p6-import-first-slice.md)                           |
-| 版本与日期 | 0.2 / 2026-09-12                                                                        |
+| 版本与日期 | 0.3 / 2026-09-12                                                                        |
 
 权威输入：
 
@@ -51,17 +51,17 @@
 | 预检报告、对账报告、映射建议留痕   | 14 节点完成、工单、费用账单      | TARGET_FIELD_CATALOG 字段模板      |
 | 原始文件对象键（MinIO）            | 模型供应商会话                   | AI 能力目录                        |
 
-依赖方向：`UI / Transport -> Application -> Domain <- Infrastructure`。`integration-import` 不得直写 `container_record`；只调用 `shipment-registry` 公开写端口。写端口候选名 `applyContainerRecordPlan`（D-portname，候选，实现前在契约中定一个名字并登记，不得同时保留两个）。
+依赖方向：`UI / Transport -> Application -> Domain <- Infrastructure`。`integration-import` 不得直写 `container_record`；只调用 `shipment-registry` 公开写端口。写端口冻结首选 `applyContainerRecord`（按 `orderNumber` upsert）。旧候选 `applyContainerRecordPlan` 的「Plan」易读成计划对象，不再使用。D-portname 仍为候选，契约冻结时只公布这一个名字。
 
 ### 2.3 评审留下的候选（实现纪律）
 
-| 项           | 实现时做法                                      |
-| ------------ | ----------------------------------------------- |
-| 批次状态次序 | 按 IMPORT_WORKFLOW §4 状态机落库；未知状态拒绝  |
-| 审核升级路径 | 第一刀不设自动升级；全部人工确认                |
-| 写端口命名   | 契约只公布一个名字，文档其余处只引用            |
-| 准入证据集   | 说不清是否已出运 → blocker 或复核，不静默已出运 |
-| 必填硬闸     | 采用 PRECHECK 已有 O 级 blocker；其余保持候选   |
+| 项           | 实现时做法                                                                        |
+| ------------ | --------------------------------------------------------------------------------- |
+| 批次状态次序 | 主路径已冻结为 IMPORT_WORKFLOW §4；未知状态拒绝。P2 候选项不再指「审核/预检谁先」 |
+| 审核升级路径 | 第一刀不设自动升级；全部人工确认                                                  |
+| 写端口命名   | 冻结首选 `applyContainerRecord`；文档其余处只引用，不得并行第二个名字             |
+| 准入证据集   | 说不清是否已出运 → blocker 或复核，不静默已出运                                   |
+| 必填硬闸     | 采用 PRECHECK 已有 O 级 blocker；其余保持候选                                     |
 
 ## 3. 领域模型
 
@@ -94,7 +94,11 @@
 
 ### 3.2 状态机
 
-批次状态引用 IMPORT_WORKFLOW §4，不在此复制枚举。第一刀合法主路径：
+批次状态以 [IMPORT_WORKFLOW §4](../../product/workflows/IMPORT_WORKFLOW.md) 为唯一权威，不另定枚举。主路径一字不差：
+
+`pending → running → awaiting_review → awaiting_precheck → approved → executing → completed`
+
+第一刀合法转换（实现本权威，不发明第三套名字）：
 
 | 当前状态            | 命令/权威事件     | 前置条件       | 下一状态            | 副作用                  | 拒绝码                     |
 | ------------------- | ----------------- | -------------- | ------------------- | ----------------------- | -------------------------- |
@@ -118,7 +122,8 @@
 | `import_review`     | 列/行审核        | `id` | `batch_id` / `row_id`                |                         | operator、reason、UTC         |
 | `import_row_result` | 执行结局         | `id` | `row_id`；`container_record_id` 引用 | `(row_id)` 当前结果一条 | 指向审核                      |
 
-- 原始文件进 MinIO（本切片产生消费者，启用 P4-01 中延后的 MinIO）；业务表只存 bucket/key/checksum。
+- 原始文件进 MinIO（本切片产生消费者；阶段 A 必须先做 P4-01 MinIO compose + P4-06 最小集）。业务表只存 bucket/key/checksum。
+- 第一刀最小集：compose 增加 MinIO；bucket `logix-import`；对象键 `{tenantId}/{batchId}/{originalFileName}`；仅 API 服务账号读写；保留 ≥90 天（NFR §5）。不在本切片铺多环境策略。
 - `container_record` 仍由 `shipment-registry` 拥有；导入表不得复制状态机。
 - 金额若出现必须定点十进制 + 币种；缺币种走 `CUR_AMOUNT` blocker。
 - 迁移只追加 `database/migrations/`。
@@ -173,7 +178,12 @@ Application 编排权限、事务和 Port。Controller 只解析、调用例、�
 
 列表类查询分页、最大页大小、稳定排序。错误用 GC-011 信封 + `traceId`。响应不得返回 Prisma 实体或证据原文。
 
-第一刀认证：禁止匿名写。正式 OIDC 属 P5-02；本切片必须有服务端可验证的开发期身份（谁操作、属于哪个 tenant），并写入审计。不得把前端路由守卫当安全边界。
+第一刀认证：禁止匿名写。正式 OIDC 属 P5-02，本切片不发 JWT、不用 API key。开发期身份（阶段 A 即对所有写接口生效）：
+
+- 请求必须带非空 header `X-Tenant-Id`、`X-Operator-Id`（可审计的稳定字符串，长度与字符集在契约中限定）。
+- 服务端校验后写入审计字段 `tenantId` / `actorId`；缺任一或非法 → `AUTHENTICATION_REQUIRED`。
+- 不接受匿名、不把前端路由守卫当安全边界。
+- P5-02 OIDC 落地后用令牌声明替换这两个 header，审计字段名不变。
 
 文件：只接受 `.xlsx` / `.xls` / `.csv`；≤10MB、≤5000 行、≤50 列（NFR §3）。隔离解析，禁止执行宏。病毒扫描接口留 Port，第一刀可返回“未配置扫描”的明确策略，但类型/大小检查不可缺。
 
@@ -225,21 +235,22 @@ Application 编排权限、事务和 Port。Controller 只解析、调用例、�
 
 四个阶段（同一时刻一个进行中任务，作本 brief 子步骤，不另开并行 brief）。`p6-smart-import-slice` 的四阶段草案已并入此处。
 
-| 阶段          | 目标                                                         | 对应清单            | 完成定义                         |
-| ------------- | ------------------------------------------------------------ | ------------------- | -------------------------------- |
-| A 读链路      | 上传 → 幂等 → 安全解析 → 展示样本；不落账                    | P6-01/02/04/07 读侧 | 真实文件可上传、可解析、可展示   |
-| B AI 建议     | `suggest_import_mapping` + 置信度/证据；模型不可用则人工映射 | P6-05/07            | 建议可展示；不自动执行           |
-| C 审核+落账   | 映射确认 → 预检硬闸 → 写端口 → 对账                          | P6-06/08/09/10/11   | blocker 禁写；成功后真实货柜可读 |
-| D 可靠性+测试 | 取消/超时/重试/恢复 + Trace + §10 + S1–S8                    | P6-12/13/14         | 门禁与样本证据齐全               |
+| 阶段          | 目标                                                               | 对应清单                                | 完成定义                         |
+| ------------- | ------------------------------------------------------------------ | --------------------------------------- | -------------------------------- |
+| A 读链路      | 前置 MinIO + 开发期身份；上传 → 幂等 → 安全解析 → 展示样本；不落账 | P6-01/02/04/07 读侧；P4-01/P4-06 最小集 | 真实文件可上传、可解析、可展示   |
+| B AI 建议     | `suggest_import_mapping` + 置信度/证据；模型不可用则人工映射       | P6-05/07                                | 建议可展示；不自动执行           |
+| C 审核+落账   | 映射确认 → 预检硬闸 → 写端口 → 对账                                | P6-06/08/09/10/11                       | blocker 禁写；成功后真实货柜可读 |
+| D 可靠性+测试 | 取消/超时/重试/恢复 + Trace + §10 + S1–S8                          | P6-12/13/14                             | 门禁与样本证据齐全               |
 
 阶段内编码切片：
 
-1. 契约：ImportBatch DTO + `suggest_import_mapping` Schema + 写端口命令（单一权威源）。
-2. 迁移：`import_*` 表 + MinIO compose。
-3. Domain：批次不变量、匹配、预检应用。
-4. Application / Adapter：上传、Workflow、写端口、Mock 映射。
-5. API + 开发期身份。
-6. Web：上传 / 审核 / 对账三页。
-7. 测试：§10 + S1–S8；E2E 一条主路径。
+1. 阶段 A 前置：MinIO compose + bucket `logix-import` / 路径 / 服务账号权限 / 保留期（P4-06 最小集）。
+2. 阶段 A 前置：开发期身份中间件（`X-Tenant-Id` + `X-Operator-Id`，写接口强制）。
+3. 契约：ImportBatch 状态枚举与 IMPORT_WORKFLOW §4 一致 + `suggest_import_mapping` Schema + 写端口命令 `applyContainerRecord`。
+4. 迁移：`import_*` 表（含对象键，不存文件体）。
+5. Domain：批次不变量、匹配、预检应用。
+6. Application / Adapter：上传、Workflow、写端口、Mock 映射。
+7. Web：上传 / 审核 / 对账三页。
+8. 测试：§10 + S1–S8；E2E 一条主路径。
 
 进入 `ready` 前：本规格评审，五个候选项仍标候选。进入实现 `done` 前：契约无漂移、迁移可空库升级、预检硬闸有回归、写路径有认证、UI 四态可验收、INDEX 已更新。

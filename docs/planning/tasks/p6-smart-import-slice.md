@@ -34,7 +34,7 @@ verification: # 仅 status: done 时必填
 - **阶段 C（审核+落账）**：审核 Signal → 预检 → 事务落账 → 对账（P6-06/08/09/10/11）。
 - **阶段 D（可靠性+测试）**：取消/超时/重试/恢复 + Trace + 完整测试（P6-12/13/14）。
 
-数据：新增 `import_batch` / `import_row` / `ai_artifact` / 审核与行结果（迁移进 `database/migrations/`）；落账仍经 Shipment 的 `applyContainerRecordPlan`（候选命名，随导入第一刀冻结）。
+数据：新增 `import_batch` / `import_row` / `ai_artifact` / 审核与行结果（迁移进 `database/migrations/`）；落账仍经 Shipment 的 `applyContainerRecord`（冻结首选，D-portname 仍为候选）。
 
 ## Review notes（review 阶段填写，只读不改代码）
 
