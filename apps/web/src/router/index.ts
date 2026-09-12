@@ -74,9 +74,7 @@ const router = createRouter({
       meta: {
         title: "开发控制台",
         section: "开发",
-        navLabel: "开发控制台",
-        navIcon: "wrench",
-        navOrder: 90,
+        // 只走 URL（README 已登记），不进作业导航，避免污染运营壳和视觉基线。
         roles: ["operator", "planner", "manager"],
       },
     },

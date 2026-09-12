@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// GHA windows-latest 与本机 Microsoft YaHei 光栅约差 2%；超过此值视为布局回归。
+// 导航项增减不靠像素兜底，见「operations shell does not advertise the developer console」。
+const screenshotOptions = {
+  animations: "disabled" as const,
+  maxDiffPixelRatio: 0.03,
+};
+
 const disableMotion = async (page: Page) => {
   await page.addStyleTag({
     content:
@@ -21,6 +28,15 @@ const expectNoHorizontalOverflow = async (page: Page) => {
   expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
   expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
 };
+
+test("operations shell does not advertise the developer console", async ({
+  page,
+}) => {
+  await page.goto("/tasks");
+  await expect(page.getByRole("link", { name: "开发控制台" })).toHaveCount(0);
+  await page.goto("/dev");
+  await expect(page.getByRole("heading", { name: "开发控制台" })).toBeVisible();
+});
 
 test("task workbench remains readable", async ({ page }) => {
   await page.goto("/tasks?task=task_1027");
@@ -49,9 +65,7 @@ test("task workbench remains readable", async ({ page }) => {
   await expect(
     currentWorkspace.getByRole("button", { name: "确认完成" }),
   ).toBeVisible();
-  await expect(page).toHaveScreenshot("task-workbench.png", {
-    animations: "disabled",
-  });
+  await expect(page).toHaveScreenshot("task-workbench.png", screenshotOptions);
   await expectNoHorizontalOverflow(page);
 
   await page.getByRole("button", { name: /全部要求/ }).click();
@@ -72,9 +86,10 @@ test("operation record remains readable", async ({ page }) => {
   await expect(record).toContainText("业务已接受");
   await expect(record).toContainText("结果已落账");
   await expect(record).not.toContainText("candidate_recheck_pickup_readiness");
-  await expect(record).toHaveScreenshot("task-operation-record.png", {
-    animations: "disabled",
-  });
+  await expect(record).toHaveScreenshot(
+    "task-operation-record.png",
+    screenshotOptions,
+  );
 
   await record.getByRole("button", { name: "了解操作记录" }).click();
   await expect(page.getByRole("tooltip")).toContainText(
@@ -138,9 +153,7 @@ test("task queue keeps work items visually separated", async ({ page }) => {
     await expect(queueViewport).toHaveCSS("overflow-y", "visible");
   }
 
-  await expect(queue).toHaveScreenshot("task-queue.png", {
-    animations: "disabled",
-  });
+  await expect(queue).toHaveScreenshot("task-queue.png", screenshotOptions);
 });
 
 test("container record remains readable", async ({ page }) => {
@@ -157,15 +170,17 @@ test("container record remains readable", async ({ page }) => {
   const eventTimeline = page.getByRole("region", { name: "事件时间证据" });
   await expect(eventTimeline).toContainText("事实时间轴");
   await expect(page.getByText("最近操作已落账", { exact: true })).toBeVisible();
-  await expect(page).toHaveScreenshot("container-record.png", {
-    animations: "disabled",
-  });
+  await expect(page).toHaveScreenshot(
+    "container-record.png",
+    screenshotOptions,
+  );
   await expectNoHorizontalOverflow(page);
   await page.getByText("事实时间轴", { exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByText("事实时间轴", { exact: true })).toBeVisible();
-  await expect(eventTimeline).toHaveScreenshot("container-event-timeline.png", {
-    animations: "disabled",
-  });
+  await expect(eventTimeline).toHaveScreenshot(
+    "container-event-timeline.png",
+    screenshotOptions,
+  );
 
   await page.goto("/container/cr_01J9LAX8M5Q7");
   await expect(page.getByText("无待确认操作", { exact: true })).toHaveCount(0);
@@ -182,9 +197,10 @@ test("dark task shell remains readable", async ({ page }) => {
     page.getByRole("heading", { name: "卸柜并核对实收数量" }),
   ).toBeVisible();
   await expect(page.getByText("现场人工执行", { exact: true })).toHaveCount(0);
-  await expect(page).toHaveScreenshot("task-workbench-dark.png", {
-    animations: "disabled",
-  });
+  await expect(page).toHaveScreenshot(
+    "task-workbench-dark.png",
+    screenshotOptions,
+  );
   await expectNoHorizontalOverflow(page);
 });
 
@@ -279,7 +295,7 @@ for (const overview of overviewPages) {
       );
     }
     await expect(page).toHaveScreenshot(`${overview.name}.png`, {
-      animations: "disabled",
+      ...screenshotOptions,
       fullPage: true,
     });
     await expectNoHorizontalOverflow(page);
@@ -339,9 +355,7 @@ test("management achievement calendar remains readable", async ({ page }) => {
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
   await expect(achievement).toHaveScreenshot(
     "management-achievement-calendar.png",
-    {
-      animations: "disabled",
-    },
+    screenshotOptions,
   );
 
   await achievement.getByRole("button", { name: "周", exact: true }).click();
@@ -354,14 +368,14 @@ test("management achievement calendar remains readable", async ({ page }) => {
   expect(weeklyWidths.scroll).toBeLessThanOrEqual(weeklyWidths.client + 1);
   await expect(achievement).toHaveScreenshot(
     "management-achievement-calendar-week.png",
-    { animations: "disabled" },
+    screenshotOptions,
   );
 
   await achievement.getByRole("button", { name: "日", exact: true }).click();
   await expect(calendar).toContainText("节点08:0010:0012:0014:0016:0018:00");
   await expect(achievement).toHaveScreenshot(
     "management-achievement-calendar-day.png",
-    { animations: "disabled" },
+    screenshotOptions,
   );
 });
 
@@ -397,7 +411,7 @@ test("management dashboard uses a wide viewport as an operations canvas", async 
   expect(flowBox!.width).toBeGreaterThan(decisionBox!.width * 1.8);
 
   await expect(page).toHaveScreenshot("management-dashboard-wide.png", {
-    animations: "disabled",
+    ...screenshotOptions,
     fullPage: true,
   });
   await expectNoHorizontalOverflow(page);
@@ -413,9 +427,10 @@ test("management RACI supports node drill-down and dark mode", async ({
   await raci.scrollIntoViewIfNeeded();
   await page.getByRole("button", { name: "切换深色主题" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(raci).toHaveScreenshot("management-raci-dark.png", {
-    animations: "disabled",
-  });
+  await expect(raci).toHaveScreenshot(
+    "management-raci-dark.png",
+    screenshotOptions,
+  );
   await expectNoHorizontalOverflow(page);
 
   await raci.locator("tbody tr").nth(6).getByRole("link").click();
