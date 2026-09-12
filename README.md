@@ -23,22 +23,26 @@ corepack enable
 pnpm install --frozen-lockfile
 
 # 2) 基础设施（业务库 postgres:5433 + Temporal:7233 + UI:8233；镜像经 DaoCloud 可拉）
-docker compose up -d postgres temporal temporal-ui
+pnpm infra:up
 
-# 3) 数据库：生成 client、迁移、幂等 seed
-pnpm db:generate && pnpm db:migrate && pnpm db:seed
+# 3) 数据库：生成 client + 迁移 + 幂等 seed（一条命令）
+pnpm db:setup
 
 # 4) Python 依赖（AI 服务 + AI Worker）
 cd apps/ai-service && uv sync && cd ../..
 cd workers/ai-worker && uv sync && cd ../..
 
 # 5) 开发运行
-pnpm dev                                   # 前端（web）
-pnpm --filter @logix/api dev               # API（http://localhost:3000/api）
-cd apps/ai-service && uv run uvicorn app.main:app --port 8001   # AI 服务
-cd workers/ai-worker && uv run python worker.py                 # AI Worker
-pnpm --filter @logix/business-worker dev   # 业务 Worker（Temporal）
+pnpm dev                                   # 同时起前端(5173) + API(3000)
+pnpm dev:worker                            # 业务 Worker（Temporal，可选）
+cd apps/ai-service && uv run uvicorn app.main:app --port 8001   # AI 服务（可选）
+cd workers/ai-worker && uv run python worker.py                 # AI Worker（可选）
+
+# 或一键全起（含基础设施 + 数据库 + 全部 5 个服务；依赖已装好时直接这一步即可）
+pnpm dev:all
 ```
+
+> 最小验证只需 1→2→3→`pnpm dev`，即可看到「前端 → API → 数据库」真实链路（`/real-containers` 页）；`pnpm dev:all` 则把基础设施、数据库初始化与 5 个服务（前端/API/业务 Worker/AI 服务/AI Worker）一条命令全部拉起，适合一键起完整环境。
 
 质量门禁：
 

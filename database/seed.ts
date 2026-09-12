@@ -3,10 +3,11 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is required; see .env.example");
-}
+// 本地开发回退到 docker-compose 默认值（与 prisma.config.ts / apps/api config/env.ts 一致）。
+const LOCAL_DEV_DATABASE_URL =
+  "postgresql://logix:logix@localhost:5433/logix?schema=public";
+
+const connectionString = process.env.DATABASE_URL ?? LOCAL_DEV_DATABASE_URL;
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),

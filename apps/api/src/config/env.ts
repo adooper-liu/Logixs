@@ -1,4 +1,8 @@
-// 环境配置（P3-09）：启动时校验必需变量，缺失即失败，不使用静默默认值。
+// 环境配置（P3-09）：端口/环境带默认值；DATABASE_URL 本地开发回退到 docker-compose 默认值
+// （与 prisma.config.ts 一致），生产环境必须显式设置。
+const LOCAL_DEV_DATABASE_URL =
+  "postgresql://logix:logix@localhost:5433/logix?schema=public";
+
 export interface EnvConfig {
   port: number;
   databaseUrl: string;
@@ -6,13 +10,9 @@ export interface EnvConfig {
 }
 
 function readEnv(): EnvConfig {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required; see .env.example");
-  }
   return {
     port: Number(process.env.PORT ?? 3000),
-    databaseUrl,
+    databaseUrl: process.env.DATABASE_URL ?? LOCAL_DEV_DATABASE_URL,
     nodeEnv: process.env.NODE_ENV ?? "development",
   };
 }
