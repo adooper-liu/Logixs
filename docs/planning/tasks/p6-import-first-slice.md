@@ -1,7 +1,7 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: # 实现开始后填 feat/p6-import-first-slice
-verification: # 仅 status: done 时必填
+verification: 本地验证（2026-09-12）：pnpm typecheck/lint/test/build 全绿；API vitest 9 项通过（预检/落账/幂等/写端口）；端到端实测「上传→解析→AI建议→确认→预检blocker→落账→对账」全链路，缺单号禁写(409)、补全后落账成功且 /api/containers 可读新货柜；AI pytest 5 项通过
 ---
 
 # 任务：P6 导入第一刀
@@ -26,10 +26,10 @@ verification: # 仅 status: done 时必填
 
 ## 验收
 
-- [ ] 规格 §11 样本 S1–S8 有自动化或可重复手工证据
-- [ ] 预检 blocker 时业务表无新行
-- [ ] 未认证不能上传
-- [ ] `pnpm repo:check` / 受影响模块测试通过（实现阶段列出实际命令）
+- [~] 规格 §11 样本 S1–S8：S3 幂等/S4 预检/S5 迟绑定/S7 降级/S8 未认证 有测试+端到端证据；S1 同义列/S2 字典/S6 冲突复核延后（Mock 与字典未做，写端口不复核）
+- [x] 预检 blocker 时业务表无新行（缺单号 → 409 禁写，已验证）
+- [x] 未认证不能上传（缺 header → 401，已验证）
+- [x] `pnpm repo:check` / 受影响模块测试通过（api vitest 9 + 前端 54 + AI pytest 5）
 
 ## 方案（design 阶段填写）
 
@@ -54,3 +54,4 @@ verification: # 仅 status: done 时必填
 | 2026-09-12 | coding | —    | —      | 阶段 A 读链路完成：上传→幂等→解析→展示（exceljs 解析 .xlsx/.csv）；import_batch/import_row 迁移；开发期身份 guard；前端 /import + /import/:batchId。端到端验证通过（3 行 3 列、同 key 幂等返回原批次、缺 header 401）。偏离：MinIO 按计划延后阶段 C（阶段 A 内存解析）、.xls 首版不支持、ImportBatch 用 API DTO 未进 JSON Schema 契约                                                                                         |
 | 2026-09-12 | coding | —    | —      | 阶段 B AI 建议完成：ai-service 加 suggest_import_mapping 能力（Mock 关键词规则，pytest 5 项过）；ai-governance 补 AiGatewayService 转发；import_batch 加 mapping_suggestions Json 留痕；前端详情页展示建议+置信度。端到端验证：中文 CSV 三列全部命中（备货单号→orderNumber 等 0.9）。偏离：真实模型/LiteLLM 延后 P7、完整 AI 治理延后 P5                                                                                      |
 | 2026-09-12 | coding | —    | —      | 阶段 C 审核+落账完成：shipment-registry 加写端口 applyContainerRecord（hit 更新/miss 新建）；integration-import 加 ConfirmMappings/RunPrecheck/ExecuteImport 三用例；import_review/import_row_result 表；前端详情页加确认/预检/执行/对账。端到端验证：缺单号→REQ_ORDER blocker 且执行被拒(409)；补全后预检通过→逐行落账→/api/containers 读到新货柜(shipped)。偏离：建档统一 currentStatus=shipped、预检只做 REQ_ORDER+DUP_ROW |
+| 2026-09-12 | done   | —    | —      | 阶段 D 测试+收口：apps/api 加 vitest+@nestjs/testing，4 个测试文件 9 项（预检 blocker/落账硬闸/幂等/写端口 hit-miss）；统一给靠类型的 DI 参数加 @Inject（vitest/esbuild 不 emit metadata）。偏离登记：P6-12 Temporal 化（同步实现已验闭环，异步工作流延后）、P6-13 完整 Trace（属 P8）、S1 同义列/S2 字典/S6 冲突复核（Mock/字典/写端口不复核的缺口）。P6 四阶段全部完成                                                      |

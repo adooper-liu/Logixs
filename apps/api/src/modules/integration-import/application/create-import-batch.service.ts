@@ -43,6 +43,7 @@ export class CreateImportBatchService {
   constructor(
     @Inject(IMPORT_REPOSITORY)
     private readonly repository: ImportRepository,
+    @Inject(AiGatewayService)
     private readonly aiGateway: AiGatewayService,
   ) {}
 

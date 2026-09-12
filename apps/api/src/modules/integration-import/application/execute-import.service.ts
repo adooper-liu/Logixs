@@ -20,6 +20,7 @@ export class ExecuteImportService {
   constructor(
     @Inject(IMPORT_REPOSITORY)
     private readonly repository: ImportRepository,
+    @Inject(ApplyContainerRecordService)
     private readonly applyContainerRecord: ApplyContainerRecordService,
   ) {}
 

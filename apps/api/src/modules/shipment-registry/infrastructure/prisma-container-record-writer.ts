@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type {
   ApplyContainerRecordCommand,
@@ -8,7 +8,8 @@ import type {
 
 @Injectable()
 export class PrismaContainerRecordWriter implements ContainerRecordWriter {
-  constructor(private readonly prisma: PrismaService) {}
+  // 显式 @Inject：vitest/esbuild 不 emit 参数类型 metadata，靠类型无法解析。
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async apply(
     command: ApplyContainerRecordCommand,

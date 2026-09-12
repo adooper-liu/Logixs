@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type {
   ImportBatch,
@@ -15,7 +15,7 @@ import type {
 
 @Injectable()
 export class PrismaImportRepository implements ImportRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByIdempotencyKey(key: string): Promise<ImportBatch | null> {
     const row = await this.prisma.importBatch.findUnique({
