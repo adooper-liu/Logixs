@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { findArchitectureBoundaryViolations } from "./check-architecture-boundaries.mjs";
 import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
@@ -200,6 +201,137 @@ test("enforces the stable UI theme boundary", () => {
       "apps/web/src/components/Remote.vue: runtime import from an external URL 'https://cdn.example.com/template.css'",
       "apps/web/src/styles/legacy.css: runtime import outside the web source boundary '../../../../workspace-reference/style.css'",
       "apps/web/src/views/Lazy.vue: must use the stable UI facade instead of '../themes/logix/LogixAppShell.vue'",
+    ],
+  );
+});
+
+test("allows the current composition-root and shipment-registry skeleton", () => {
+  assert.deepEqual(
+    findArchitectureBoundaryViolations([
+      {
+        path: "apps/api/src/app.module.ts",
+        source:
+          'import { ShipmentRegistryModule } from "./modules/shipment-registry";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/domain/container-summary.ts",
+        source:
+          'import type { ContainerLifecycleState } from "@logix/contracts";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/application/list-containers.service.ts",
+        source:
+          'import { Inject, Injectable } from "@nestjs/common";\nimport type { ContainerSummary } from "../domain/container-summary";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/infrastructure/prisma-container.repository.ts",
+        source:
+          'import { PrismaService } from "../../../prisma/prisma.service";\nimport { PrismaClient } from "@prisma/client";',
+      },
+      {
+        path: "apps/api/src/modules/workflow/workflow.service.ts",
+        source: 'import { Client } from "@temporalio/client";',
+      },
+      {
+        path: "apps/web/src/api/containers.ts",
+        source:
+          'import type { ContainerLifecycleState } from "@logix/contracts";',
+      },
+      {
+        path: "apps/ai-service/app/main.py",
+        source:
+          "from fastapi import FastAPI\nfrom .capabilities import CAPABILITIES",
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/application/list-containers.service.ts",
+        source: 'import type { PublicPort } from "../../lifecycle-control";',
+      },
+    ]),
+    [],
+  );
+});
+
+test("rejects domain frameworks, Prisma leaks, and cross-module internals", () => {
+  assert.deepEqual(
+    findArchitectureBoundaryViolations([
+      {
+        path: "apps/api/src/modules/shipment-registry/domain/container-summary.ts",
+        source: 'import { Injectable } from "@nestjs/common";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/domain/container-summary.ts",
+        source: 'import { PrismaClient } from "@prisma/client";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/application/list-containers.service.ts",
+        source:
+          'import { PrismaContainerRepository } from "../../lifecycle-control/infrastructure/store";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/domain/rules.ts",
+        source:
+          'import { LifecycleControlModule } from "../../lifecycle-control";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/domain/rules.ts",
+        source:
+          'import { PrismaContainerRepository } from "../infrastructure/prisma-container.repository";',
+      },
+    ]),
+    [
+      "apps/api/src/modules/shipment-registry/domain/container-summary.ts: domain cannot import web or application frameworks '@nestjs/common'",
+      "apps/api/src/modules/shipment-registry/domain/container-summary.ts: Prisma is limited to infrastructure, prisma, and health '@prisma/client'",
+      "apps/api/src/modules/shipment-registry/domain/container-summary.ts: domain cannot import persistence or workflow runtimes '@prisma/client'",
+      "apps/api/src/modules/shipment-registry/application/list-containers.service.ts: cannot import another module's internal path '../../lifecycle-control/infrastructure/store'",
+      "apps/api/src/modules/shipment-registry/domain/rules.ts: domain cannot import other modules '../../lifecycle-control'",
+      "apps/api/src/modules/shipment-registry/domain/rules.ts: domain cannot depend on application, presentation, or infrastructure '../infrastructure/prisma-container.repository'",
+    ],
+  );
+});
+
+test("rejects web, package, AI, vendor, and Temporal boundary leaks", () => {
+  assert.deepEqual(
+    findArchitectureBoundaryViolations([
+      {
+        path: "apps/web/src/api/containers.ts",
+        source: 'import { PrismaClient } from "@prisma/client";',
+      },
+      {
+        path: "apps/web/src/views/RealContainerList.vue",
+        source:
+          'import { ContainersController } from "../../../api/src/modules/shipment-registry/presentation/containers.controller";',
+      },
+      {
+        path: "packages/contracts/index.d.ts",
+        source: 'import { AppModule } from "../../apps/api/src/app.module";',
+      },
+      {
+        path: "apps/ai-service/app/main.py",
+        source: "from prisma import Client",
+      },
+      {
+        path: "apps/api/src/modules/customs-compliance/customs-compliance.module.ts",
+        source: 'import OpenAI from "openai";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/application/list-containers.service.ts",
+        source: 'import { Client } from "@temporalio/client";',
+      },
+      {
+        path: "apps/api/src/modules/shipment-registry/presentation/containers.controller.ts",
+        source: 'import { WorkflowModule } from "../../workflow";',
+      },
+    ]),
+    [
+      "apps/web/src/api/containers.ts: web must reach the business API over HTTP, not import '@prisma/client'",
+      "apps/web/src/api/containers.ts: Prisma is limited to infrastructure, prisma, and health '@prisma/client'",
+      "apps/web/src/views/RealContainerList.vue: web cannot import the business API or database '../../../api/src/modules/shipment-registry/presentation/containers.controller'",
+      "packages/contracts/index.d.ts: packages cannot depend on apps or workers '../../apps/api/src/app.module'",
+      "apps/ai-service/app/main.py: Prisma is limited to infrastructure, prisma, and health 'prisma'",
+      "apps/ai-service/app/main.py: AI surfaces cannot import business persistence 'prisma'",
+      "apps/api/src/modules/customs-compliance/customs-compliance.module.ts: business code cannot call model vendors; use AI Gateway / AI Service 'openai'",
+      "apps/api/src/modules/shipment-registry/application/list-containers.service.ts: only the workflow module and workers may import Temporal '@temporalio/client'",
+      "apps/api/src/modules/shipment-registry/presentation/containers.controller.ts: controllers cannot import other modules; call the local use case '../../workflow'",
     ],
   );
 });

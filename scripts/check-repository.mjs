@@ -2,12 +2,19 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  findArchitectureBoundaryViolations,
+  toRepositoryRelativePath,
+} from "./check-architecture-boundaries.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const ignoredDirectories = new Set([
   ".agents",
   ".claude",
   ".git",
+  ".pytest_cache",
+  ".venv",
+  "__pycache__",
   "coverage",
   "dist",
   "node_modules",
@@ -24,7 +31,7 @@ const allowedTaskStatuses = new Set([
 ]);
 const activeTaskStatuses = new Set(["design", "coding", "review", "fix"]);
 const forbiddenDirectoryPattern =
-  /(^|\/)(node_modules|dist|coverage|playwright-report|test-results|tmp)(\/|$)/;
+  /(^|\/)(node_modules|dist|coverage|playwright-report|test-results|tmp|\.venv|__pycache__)(\/|$)/;
 const allowedEnvironmentFilePattern = /\.env(?:\..+)?\.example$/;
 const sensitiveFilePattern = /(^|\/)(\.env(?:\..+)?|id_rsa|id_ed25519)$/;
 const sensitiveExtensionPattern = /\.(key|p12|pfx|pem)$/i;
@@ -283,15 +290,45 @@ function taskStatusErrors() {
   );
 }
 
+const architectureSourceExtensions = new Set([
+  ".js",
+  ".mjs",
+  ".py",
+  ".ts",
+  ".tsx",
+  ".vue",
+]);
+
+function architectureSourceFiles() {
+  const roots = [
+    "apps/api/src",
+    "apps/web/src",
+    "apps/ai-service",
+    "workers",
+    "packages",
+  ];
+  const files = [];
+  for (const root of roots) {
+    const absoluteRoot = resolve(repositoryRoot, root);
+    if (!existsSync(absoluteRoot)) continue;
+    files.push(
+      ...walkFiles(absoluteRoot, (path) =>
+        architectureSourceExtensions.has(extname(path).toLowerCase()),
+      ),
+    );
+  }
+  return files.map((absolutePath) => ({
+    path: toRepositoryRelativePath(absolutePath),
+    source: readFileSync(absolutePath, "utf8"),
+  }));
+}
+
 export function runRepositoryChecks({ docsOnly = false } = {}) {
   const markdownFiles = walkFiles(repositoryRoot, (path) =>
     path.endsWith(".md"),
   );
   const contractAuthorityFiles = markdownFiles.filter((absolutePath) => {
-    const path = normalizePath(absolutePath).replace(
-      `${normalizePath(repositoryRoot)}/`,
-      "",
-    );
+    const path = toRepositoryRelativePath(absolutePath);
     return /^docs\/product\/domain\/(?:.*_CONTRACT_V1|LIFECYCLE_NODE_CATALOG_V1|EVENT_CODES|GLOBAL_CONTRACT_REGISTRY)\.md$/.test(
       path,
     );
@@ -301,10 +338,7 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
     ...taskStatusErrors(),
     ...findAmbiguousContractPhaseReferences(
       contractAuthorityFiles.map((path) => ({
-        path: normalizePath(path).replace(
-          `${normalizePath(repositoryRoot)}/`,
-          "",
-        ),
+        path: toRepositoryRelativePath(path),
         source: readFileSync(path, "utf8"),
       })),
     ),
@@ -325,13 +359,11 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
       ...findSecretContent(trackedFiles),
       ...findUiThemeBoundaryViolations(
         webSourceFiles.map((path) => ({
-          path: normalizePath(path).replace(
-            `${normalizePath(repositoryRoot)}/`,
-            "",
-          ),
+          path: toRepositoryRelativePath(path),
           source: readFileSync(path, "utf8"),
         })),
       ),
+      ...findArchitectureBoundaryViolations(architectureSourceFiles()),
       ...findMisleadingContractPackageScripts(
         JSON.parse(
           readFileSync(

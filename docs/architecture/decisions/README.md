@@ -20,7 +20,7 @@
 
 ## P1-09 模块依赖图（ADR-010 的配套产物）
 
-P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。限界上下文决策由 ADR-010 承载，可读依赖图由 MODULE_DEPENDENCIES 承载；实现期再以各包 `package.json` 导出 + 依赖方向 lint（DEPCHECK）强制。
+P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。限界上下文决策由 ADR-010 承载，可读依赖图由 MODULE_DEPENDENCIES 承载；依赖方向由 `pnpm repo:check`（`scripts/check-architecture-boundaries.mjs`）强制。
 
 ## 模板
 

@@ -67,6 +67,7 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 
 ## 4. 落地与校验
 
-- P3-05：按 [ADR-010](./decisions/ADR-010-bounded-context-modules.md) 创建模块公开入口、自有持久化目录和契约；依赖检查禁止跨模块内部路径及 Repository 访问。
+- P3-05：按 [ADR-010](./decisions/ADR-010-bounded-context-modules.md) 创建模块公开入口、自有持久化目录和契约。
+- 依赖方向由 `pnpm repo:check` 强制（`scripts/check-architecture-boundaries.mjs`）：禁止跨模块内部路径、Domain 引用框架/Prisma、Web 直连 `apps/api` 或数据库、`packages/*` 依赖 `apps/*`、AI 面写业务库、业务模块直连模型供应商、非 workflow/worker 引用 Temporal。合法样板是 `shipment-registry` 的 Controller → Use Case → Port ← Adapter。
 - P1-10 / ADR-009：契约改动走单一权威源 + Parity 测试。
 - 本图变更须评审，涉及架构 §19 触发条件时须新增 ADR。
