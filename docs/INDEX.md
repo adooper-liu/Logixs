@@ -121,7 +121,9 @@
 | [P2 一页总览](./planning/P2_SLICE1_SUMMARY.md)                                                 | 本批摘要(对外)                                                       | 候选                        |
 | [任务 brief](./planning/tasks/p2-shipment-import-domain.md)                                    | P2 切片一交接单                                                      | blocked                     |
 | [任务 brief-管理视图](./planning/tasks/p2-web-management-kpi-raci.md)                          | 补看板 KPI + RACI 管理投影                                           | 已完成                      |
-| [全局公共契约收敛 V1](./planning/tasks/global-contract-convergence-v1.md)                      | 依次定稿全局契约、Schema 权威源及多技术载体生成                      | coding                      |
+| [全局公共契约收敛 V1](./planning/tasks/global-contract-convergence-v1.md)                      | 依次定稿全局契约、Schema 权威源及多技术载体生成                      | 已完成                      |
+| [全栈底层基座](./planning/tasks/p3-p4-full-stack-base.md)                                      | TS/Python/DB/Temporal 骨架与薄真实读链路                             | 已完成                      |
+| [架构依赖方向门禁](./planning/tasks/p3-architecture-dependency-gates.md)                       | MODULE_DEPENDENCIES 禁止依赖写入 repo:check                          | 已完成                      |
 | [任务模板](./planning/tasks/_template.md)                                                      | 任务载体模板                                                         | 规范                        |
 | [模块实施规格模板](./planning/tasks/_module-implementation-spec-template.md)                   | 限界上下文的数据、规则、接口、前端、测试与验收统一模板               | 规范                        |
 | [海关放行纵向切片](./product/domain/CUSTOMS_RELEASE_VERTICAL_SLICE.md)                         | 四模块贯通的首个可执行工序任务/工单/权威事件闭环                     | 设计稿                      |

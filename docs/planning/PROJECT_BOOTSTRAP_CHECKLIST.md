@@ -126,16 +126,16 @@ P0 至 P3 是开始规模开发前的必要工作。P6 完成之前，不并行�
 - [ ] P3-01 配置主分支保护和 CODEOWNERS（Git、main 与 origin 已存在）。
 - [ ] P3-02 固定 Node.js、pnpm、Python 和 uv 版本。
 - [x] P3-03 初始化 pnpm Workspace 和 Turborepo。
-- [ ] P3-04 创建 `apps/web`、`apps/api`、`apps/ai-service` 和 Workers。
-- [ ] P3-05 创建 contracts、domain、config、testing 等共享包。
+- [x] P3-04 创建 `apps/web`、`apps/api`、`apps/ai-service` 和 Workers —— [apps/api](../../apps/api)、[apps/ai-service](../../apps/ai-service)、[workers](../../workers)（business-worker + ai-worker）。
+- [~] P3-05 创建 contracts、domain、config、testing 等共享包 —— `@logix/contracts` 已建；domain/config/testing 未建（业务领域落库后再抽）。依赖方向门禁已由 `pnpm repo:check` 强制，见 [MODULE_DEPENDENCIES §4](../architecture/MODULE_DEPENDENCIES.md) 与 [任务 brief](./tasks/p3-architecture-dependency-gates.md)。
 - [x] P3-06 建立 EditorConfig、格式化、Lint 和严格类型检查。
 - [x] P3-07 建立无副作用的 `lint`、`format:check` 和 `validate`。
 - [ ] P3-08 配置 pre-commit 轻量检查，不重复执行完整 CI。
-- [ ] P3-09 建立环境变量 Schema、`.env.example` 和启动时校验。
+- [x] P3-09 建立环境变量 Schema、`.env.example` 和启动时校验 —— [config/env.ts](../../apps/api/src/config/env.ts)、[.env.example](../../.env.example)。
 - [ ] P3-10 建立 Conventional Commits、PR 模板、ADR 模板和任务 brief 模板（`docs/planning/tasks/_template.md`），并提供任务状态校验（同一时刻单进行中、`done` 需验证证据）。
 - [ ] P3-11 配置依赖更新、许可证检查、秘密扫描和漏洞扫描。
 - [x] P3-12 创建最小 CI：安装、格式、Lint、类型、测试和构建。
-- [ ] P3-13 建立 Contract Parity 一致性测试：TS 契约 ↔ Python Schema ↔ JSON Schema/OpenAPI ↔ 评测数据集由单一权威源生成或派生，CI 对比防漂移，注册项缺失即失败（见 ENGINEERING_RULES §7）。
+- [~] P3-13 建立 Contract Parity 一致性测试：TS 契约 ↔ Python Schema ↔ JSON Schema/OpenAPI ↔ 评测数据集由单一权威源生成或派生，CI 对比防漂移，注册项缺失即失败（见 ENGINEERING_RULES §7）。 —— TS 侧已闭环（`contract:generate`/`contract:drift` 纳入 validate）；Python/OpenAPI 生成延后（见 p3-p4-full-stack-base 偏离记录）。
 - [ ] P3-14 建立编码代理 SKILL 集（位置 `.claude/skills/<name>/SKILL.md`）：
   - `logix-rules`：开工前加载 AGENTS / ENGINEERING_RULES / 架构文档 / 任务 brief，规范“先理解再改、保持范围、小步验证、改契约必同步文档”。
   - `review-ts`：TS 侧评审清单——NestJS DI/Prisma/事务、Temporal Workflow 确定性（模型/IO/网络全部进 Activity）、金额/UTC/币种规则。
@@ -150,14 +150,14 @@ P0 至 P3 是开始规模开发前的必要工作。P6 完成之前，不并行�
 
 目标：提供可运行、可诊断且接近生产语义的开发环境。
 
-- [ ] P4-01 建立 PostgreSQL、Redis、MinIO 和 Temporal Compose。
-- [ ] P4-02 增加 LiteLLM、Langfuse 和 OpenTelemetry Collector Profile。
-- [ ] P4-03 建立容器健康检查、依赖等待和初始化流程。
-- [ ] P4-04 创建第一条 Prisma 迁移和幂等 Seed。
+- [~] P4-01 建立 PostgreSQL、Redis、MinIO 和 Temporal Compose。 —— PostgreSQL + Temporal(+temporal-db/ui) 已起；Redis/MinIO 无消费者延后（[docker-compose.yml](../../docker-compose.yml)）。
+- [ ] P4-02 增加 LiteLLM、Langfuse 和 OpenTelemetry Collector Profile。 —— 按「延后启用」记录（ADR 保留，P5/P6/P8 再启）。
+- [x] P4-03 建立容器健康检查、依赖等待和初始化流程。
+- [x] P4-04 创建第一条 Prisma 迁移和幂等 Seed —— [database/migrations](../../database/migrations)、[database/seed.ts](../../database/seed.ts)。
 - [ ] P4-05 使用 Testcontainers 建立数据库及集成测试基类。
 - [ ] P4-06 定义对象存储 Bucket、路径、权限和保留策略。
 - [ ] P4-07 定义备份、恢复、本地重置和测试数据生成命令。
-- [ ] P4-08 验证空库升级和已有版本升级路径。
+- [~] P4-08 验证空库升级和已有版本升级路径。 —— 空库升级已验（migrate 应用成功）；已有版本升级延后。
 - [ ] P4-09 为开发环境提供模型 Mock，默认不调用付费模型。
 - [ ] P4-10 建立模型凭据、对象存储凭据和数据库凭据的秘密管理方式。
 

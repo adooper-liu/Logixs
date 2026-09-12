@@ -8,6 +8,13 @@ test-results/
 tmp/
 *.log
 
+# Python (uv)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
 # Workspace-only disposable design references; never project source.
 adminator/
 
