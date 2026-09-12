@@ -4,12 +4,17 @@ import {
   ChartNoAxesCombined,
   ClipboardCheck,
   Container,
+  Wrench,
 } from "@lucide/vue";
 import type { RouteRecordNormalized } from "vue-router";
 import type { DemoRole } from "../../composables/useDemoRole";
 
 export type NavigationIcon =
-  "calendar-range" | "chart-no-axes-combined" | "clipboard-check" | "container";
+  | "calendar-range"
+  | "chart-no-axes-combined"
+  | "clipboard-check"
+  | "container"
+  | "wrench";
 
 export interface AppNavigationItem {
   label: string;
@@ -24,6 +29,7 @@ const icons: Record<NavigationIcon, Component> = {
   "chart-no-axes-combined": ChartNoAxesCombined,
   "clipboard-check": ClipboardCheck,
   container: Container,
+  wrench: Wrench,
 };
 
 export function navigationForRole(

@@ -12,6 +12,17 @@ export default defineConfig({
         target: "http://localhost:3000",
         changeOrigin: true,
       },
+      // 开发控制台的实时服务探测（避免跨域）
+      "/ai": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ai/, ""),
+      },
+      "/temporal": {
+        target: "http://localhost:8233",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/temporal/, ""),
+      },
     },
   },
   test: {
