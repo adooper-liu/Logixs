@@ -1,0 +1,23 @@
+[project]
+name = "logix-ai-service"
+version = "0.1.0"
+description = "Logix AI 能力服务（ADR-005：FastAPI 独立实现 AI 业务能力，经 LiteLLM 调模型）"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
