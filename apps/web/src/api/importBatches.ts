@@ -62,3 +62,75 @@ export async function getImportBatch(
   }
   return (await response.json()) as ImportBatchDetailDto;
 }
+
+export interface PrecheckBlocker {
+  ruleCode: string;
+  rowNo: number | null;
+  message: string;
+}
+
+export interface ReconciliationResult {
+  results: {
+    rowId: string;
+    outcome: string;
+    containerRecordId: string | null;
+    detail: string | null;
+  }[];
+  success: number;
+  failed: number;
+  duplicate: number;
+}
+
+async function postJson<T>(url: string, body?: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Tenant-Id": DEV_TENANT_ID,
+      "X-Operator-Id": DEV_OPERATOR_ID,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`请求失败（${response.status}）：${text}`);
+  }
+  return (await response.json()) as T;
+}
+
+export function confirmMappings(
+  batchId: string,
+  reviews: { column: string; fieldCode: string | null }[],
+): Promise<ImportBatchDto> {
+  return postJson(`/api/import-batches/${batchId}/mapping-reviews`, {
+    reviews,
+  });
+}
+
+export function runPrecheck(
+  batchId: string,
+): Promise<{ blockers: PrecheckBlocker[] }> {
+  return postJson(`/api/import-batches/${batchId}/precheck`);
+}
+
+export function executeImport(batchId: string): Promise<ReconciliationResult> {
+  return postJson(`/api/import-batches/${batchId}/execute`);
+}
+
+export async function getReconciliation(
+  batchId: string,
+): Promise<ReconciliationResult> {
+  const response = await fetch(
+    `/api/import-batches/${batchId}/reconciliation`,
+    {
+      headers: {
+        "X-Tenant-Id": DEV_TENANT_ID,
+        "X-Operator-Id": DEV_OPERATOR_ID,
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`对账查询失败（${response.status}）`);
+  }
+  return (await response.json()) as ReconciliationResult;
+}

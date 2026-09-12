@@ -3,11 +3,13 @@ import { PrismaService } from "../../../prisma/prisma.service";
 import type {
   ImportBatch,
   ImportMappingSuggestion,
-  ImportRow,
+  NewImportRow,
 } from "../domain/import-batch";
 import type {
   ImportRepository,
   ImportBatchWithRows,
+  ImportReviewInput,
+  ImportRowResultInput,
   NewImportBatch,
 } from "../domain/import.repository";
 
@@ -31,13 +33,17 @@ export class PrismaImportRepository implements ImportRepository {
     return {
       batch: toBatch(batch),
       rows: batch.rows.map((row) => ({
+        id: row.id,
         rowNo: row.rowNo,
         values: row.snapshot as Record<string, string>,
       })),
     };
   }
 
-  async create(input: NewImportBatch, rows: ImportRow[]): Promise<ImportBatch> {
+  async create(
+    input: NewImportBatch,
+    rows: NewImportRow[],
+  ): Promise<ImportBatch> {
     // nested create 单语句，Prisma 内部原子，batch 与 rows 同生共死。
     const batch = await this.prisma.importBatch.create({
       data: {
@@ -60,6 +66,54 @@ export class PrismaImportRepository implements ImportRepository {
       },
     });
     return toBatch(batch);
+  }
+
+  async saveReviews(
+    batchId: string,
+    reviews: ImportReviewInput[],
+  ): Promise<void> {
+    await this.prisma.importReview.createMany({
+      data: reviews.map((review) => ({
+        batchId,
+        column: review.column,
+        fieldCode: review.fieldCode,
+        operatorId: review.operatorId,
+      })),
+    });
+  }
+
+  async updateStatus(batchId: string, status: string): Promise<void> {
+    await this.prisma.importBatch.update({
+      where: { id: batchId },
+      data: { status },
+    });
+  }
+
+  async saveRowResults(
+    batchId: string,
+    results: ImportRowResultInput[],
+  ): Promise<void> {
+    await this.prisma.importRowResult.createMany({
+      data: results.map((result) => ({
+        batchId,
+        rowId: result.rowId,
+        outcome: result.outcome,
+        containerRecordId: result.containerRecordId,
+        detail: result.detail,
+      })),
+    });
+  }
+
+  async getRowResults(batchId: string): Promise<ImportRowResultInput[]> {
+    const results = await this.prisma.importRowResult.findMany({
+      where: { batchId },
+    });
+    return results.map((result) => ({
+      rowId: result.rowId,
+      outcome: result.outcome as ImportRowResultInput["outcome"],
+      containerRecordId: result.containerRecordId,
+      detail: result.detail,
+    }));
   }
 }
 

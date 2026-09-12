@@ -12,7 +12,7 @@ import ExcelJS from "exceljs";
 import type {
   ImportBatch,
   ImportMappingSuggestion,
-  ImportRow,
+  NewImportRow,
 } from "../domain/import-batch";
 import {
   IMPORT_REPOSITORY,
@@ -118,7 +118,7 @@ export class CreateImportBatchService {
 async function parseWorkbook(
   buffer: Buffer,
   ext: string,
-): Promise<{ headers: string[]; rows: ImportRow[] }> {
+): Promise<{ headers: string[]; rows: NewImportRow[] }> {
   const workbook = new ExcelJS.Workbook();
   // exceljs 的 csv.read 运行时要求 Stream（调用 stream.pipe）；xlsx.load 接受 Buffer。
   if (ext === ".csv") {
@@ -149,7 +149,7 @@ async function parseWorkbook(
     );
   }
 
-  const rows: ImportRow[] = [];
+  const rows: NewImportRow[] = [];
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return; // 跳过表头
     const values: Record<string, string> = {};

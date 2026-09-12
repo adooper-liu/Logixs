@@ -59,7 +59,7 @@ model ImportBatch {
   idempotencyKey String      @unique @map("idempotency_key")
   fileName       String      @map("file_name")
   fileHash       String      @map("file_hash") // 文件内容指纹，幂等判定
-  status         String      @map("status") // pending | parsed
+  status         String      @map("status") // parsed | confirmed | approved | executing | completed
   rowCount       Int         @map("row_count")
   columnCount    Int         @map("column_count")
   // AI 字段映射建议（阶段 B 留痕）：[{ column, fieldCode, confidence }]，阶段 C 审核指向它
@@ -67,6 +67,8 @@ model ImportBatch {
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
   rows           ImportRow[]
+  reviews        ImportReview[]
+  rowResults     ImportRowResult[]
 
   @@map("import_batch")
 }
@@ -82,4 +84,31 @@ model ImportRow {
 
   @@unique([batchId, rowNo])
   @@map("import_row")
+}
+
+// 映射审核（integration-import 拥有）：人确认/修正列→字段映射（阶段 C）。
+model ImportReview {
+  id         String      @id @default(uuid()) @map("id")
+  batchId    String      @map("batch_id")
+  batch      ImportBatch @relation(fields: [batchId], references: [id])
+  column     String      @map("column")
+  fieldCode  String?     @map("field_code") // 确认/修正后的字段码；null=跳过该列
+  operatorId String      @map("operator_id")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@map("import_review")
+}
+
+// 行落账结果（integration-import 拥有）：逐行写端口结局（阶段 C）。
+model ImportRowResult {
+  id                String      @id @default(uuid()) @map("id")
+  batchId           String      @map("batch_id")
+  batch             ImportBatch @relation(fields: [batchId], references: [id])
+  rowId             String      @map("row_id")
+  outcome           String      @map("outcome") // success | failed | duplicate
+  containerRecordId String?     @map("container_record_id")
+  detail            String?     @map("detail")
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  @@map("import_row_result")
 }
