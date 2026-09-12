@@ -1,6 +1,6 @@
 // 幂等种子：按固定 id upsert，重复执行不产生重复行（P4-04）。
 // 运行：pnpm db:seed（需 DATABASE_URL 指向运行中的 PostgreSQL）。
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 // 本地开发回退到 docker-compose 默认值（与 prisma.config.ts / apps/api config/env.ts 一致）。

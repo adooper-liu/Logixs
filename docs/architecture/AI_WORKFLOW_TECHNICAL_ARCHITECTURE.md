@@ -360,14 +360,16 @@ apps/web/src/features/
 
 AI 结果必须紧邻业务对象展示，并包含原始值、建议值、差异、证据、状态和最终执行结果。聊天组件只用于确有多轮探索价值的局部场景，不能成为所有 AI 能力的统一入口。
 
-统一状态为：
+导入批次统一状态（权威：[IMPORT_WORKFLOW §4](../product/workflows/IMPORT_WORKFLOW.md)），禁止在实现或规格中另写一套：
 
 ```text
-pending -> running -> awaiting_validation -> awaiting_review
+pending -> running -> awaiting_review -> awaiting_precheck
         -> approved -> executing -> completed
 
 任意阶段可以进入 failed、rejected、cancelled 或 expired。
 ```
+
+`awaiting_validation` 已废止。没有已确认映射不得进入预检。
 
 TanStack Query 保存服务端数据；Pinia 不得复制完整服务端实体，只保存会话、权限和用户偏好。
 

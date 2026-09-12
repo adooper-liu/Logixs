@@ -47,7 +47,7 @@
 
 ## ② 定义与澄清
 
-- 导入只"把数据可靠放进来"，**不拥有业务事实**；写业务事实唯一通道 = Shipment 端口(候选 `applyContainerRecordPlan`)。
+- 导入只"把数据可靠放进来"，**不拥有业务事实**；写业务事实唯一通道 = Shipment 端口（冻结首选 `applyContainerRecord`，D-portname 仍为候选）。
 - 批次=一批文件；行=一柜；一次文件可命中更新也可新建（判定见 C）。
 - AI 只产"建议"，全部人工确认后才预检/写入（首批策略）。
 - 文件「物流状态」列：表达来源方声明的实际状态而非计划/预计；归一后作为状态证据，必须经 D7 字段/事件权威、证据一致性和状态机合法转换校验。通过后由业务事件推进 `currentStatus`，冲突进入对账/复核。
@@ -92,5 +92,5 @@
 
 ## ⑧ 待评审/关联
 
-- 待定：批次状态次序与叙事对齐(D7)、审核升级路径(D8)、写端口命名(D-portname)、已出运准入证据与 blocker/转人工边界。
+- 2026-09-12：批次主路径已与 §④ / IMPORT_WORKFLOW §4 对齐为 `awaiting_review → awaiting_precheck`。审核升级路径(D8)、写端口命名(D-portname)、准入证据与必填硬闸仍为候选。
 - 关联：CONTAINER_STATUS_MODEL(状态文本)、PRECHECK_RULES、DATA_CLEANUP_ORDER_CONTAINER、FIELD_MIGRATION_MAP、TARGET_FIELD_CATALOG、EXTERNAL_EVENT_MAPPING。

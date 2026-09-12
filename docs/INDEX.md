@@ -22,6 +22,7 @@
 
 | 文档                                                             | 一句话                                 | 状态          |
 | ---------------------------------------------------------------- | -------------------------------------- | ------------- |
+| [人话导读](./人话导读.md)                                        | 大白话讲全系统+文档地图（新人先读）    | 导航          |
 | [docs/README](./README.md)                                       | docs 导航+写作纪律+消费链              | 导航          |
 | [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md) | 目标架构总览(分层/模块/AI/工作流)      | 已接受        |
 | [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)              | 模块/包依赖与禁止依赖                  | 已接受(P1-09) |
@@ -119,7 +120,11 @@
 | [启动清单](./planning/PROJECT_BOOTSTRAP_CHECKLIST.md)                                          | P0–P9 推进主线                                                       | 进行中                      |
 | [RAID](./planning/RAID.md)                                                                     | 风险/假设/问题/依赖                                                  | 跟踪                        |
 | [P2 一页总览](./planning/P2_SLICE1_SUMMARY.md)                                                 | 本批摘要(对外)                                                       | 候选                        |
-| [任务 brief](./planning/tasks/p2-shipment-import-domain.md)                                    | P2 切片一交接单                                                      | blocked                     |
+| [任务 brief](./planning/tasks/p2-shipment-import-domain.md)                                    | P2 切片一交接单                                                      | 已完成                      |
+| [P3-01 主分支保护](./planning/tasks/p3-01-branch-protection.md)                                | CODEOWNERS + main 禁止强推，合入须 PR 与 quality                     | 已完成                      |
+| [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                     | 上传→预检→写端口→对账的首个可写库闭环                                | design                      |
+| [P6 导入第一刀实施规格](./planning/specs/p6-import-first-slice.md)                             | integration-import 与 shipment-registry 写端口的排期规格             | 设计稿                      |
+| [P6 智能导入切片（已并入）](./planning/tasks/p6-smart-import-slice.md)                         | 四阶段 MVP 草案，已并入导入第一刀                                    | blocked                     |
 | [任务 brief-管理视图](./planning/tasks/p2-web-management-kpi-raci.md)                          | 补看板 KPI + RACI 管理投影                                           | 已完成                      |
 | [全局公共契约收敛 V1](./planning/tasks/global-contract-convergence-v1.md)                      | 依次定稿全局契约、Schema 权威源及多技术载体生成                      | 已完成                      |
 | [全栈底层基座](./planning/tasks/p3-p4-full-stack-base.md)                                      | TS/Python/DB/Temporal 骨架与薄真实读链路                             | 已完成                      |

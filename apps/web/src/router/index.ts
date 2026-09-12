@@ -69,6 +69,16 @@ const router = createRouter({
       },
     },
     {
+      path: "/dev",
+      component: () => import("../views/DevConsole.vue"),
+      meta: {
+        title: "开发控制台",
+        section: "开发",
+        // 只走 URL（README 已登记），不进作业导航，避免污染运营壳和视觉基线。
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/container/:containerRecordId",
       component: () => import("../views/MicroWorkbench.vue"),
       meta: { title: "一柜一档", section: "货柜" },

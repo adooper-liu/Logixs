@@ -1,6 +1,6 @@
 # 智能 Excel 导入工作流定义（P0-02 / P0-03 / P0-04）
 
-> 状态：**已确认（初版基线）** · v0.1.1 · 2026-09-04 · 首个纵向闭环。真实现状/样本等输入按 [RAID](../../planning/RAID.md) 占位跟踪。
+> 状态：**已确认（初版基线）** · v0.1.2 · 2026-09-12 · 首个纵向闭环。真实现状/样本等输入按 [RAID](../../planning/RAID.md) 占位跟踪。
 > 与实现一致性的锚点：[架构 §8.3 智能导入](../../architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)、统一状态机 §11、风险分级 §9。
 
 ## 1. 场景
@@ -57,7 +57,23 @@
 2. **预检失败项**：不提供“忽略强制校验”的绕过开关；必须修正源或模板后重试。
 3. 高影响写入（L3 语义）：由业务 API 按审批令牌执行，AI 不绕过。
 
-> 对应架构状态机：`pending -> running -> awaiting_validation -> awaiting_review -> approved -> executing -> completed`；任意阶段可进入 `failed / rejected / cancelled / expired`。
+批次状态主路径（本段是状态码唯一权威，与 §2.2 叙事一致）：
+
+`pending → running → awaiting_review → awaiting_precheck → approved → executing → completed`
+
+任意阶段可进入 `failed / rejected / cancelled / expired`。
+
+| 状态                | 含义                               |
+| ------------------- | ---------------------------------- |
+| `pending`           | 批次已建，文件验收中或刚入队       |
+| `running`           | 确定性解析或生成映射建议           |
+| `awaiting_review`   | 映射建议待人工确认（首批全部确认） |
+| `awaiting_precheck` | 映射已确认，待预检或预检进行中     |
+| `approved`          | 预检无 blocker，允许执行写入       |
+| `executing`         | 经业务写端口逐行落账               |
+| `completed`         | 对账齐全                           |
+
+顺序不得颠倒：没有已确认的列映射，不能对行值做预检。废止 `awaiting_validation`（曾出现在架构一览：既与上传期 `VALIDATION_*` 撞名，又把预检放在审核之前）。
 
 ## 5. 异常路径与处理
 
@@ -95,6 +111,7 @@
 1. 首个闭环 = “智能 Excel 导入与审核”；泛物流、多格式多 Sheet、全部人工确认。
 2. 输入/输出、异常路径与人工审批点按本文件执行。
 3. “低置信度”与“风险”判定初值：以规则 + 评测阈值为主，P7 收敛。
+4. 2026-09-12：批次主路径定为「映射审核 → 预检」，状态码见 §4。废止 `awaiting_validation`。与 [架构 §11](../../architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md) 及 [P6 规格 §3.2](../../planning/specs/p6-import-first-slice.md) 同步，禁止第三套枚举。
 
 ### 跟踪中（不阻塞，占位推进）
 

@@ -1,0 +1,15 @@
+# 默认责任人（P3-01）。GitHub 用户与仓库 owner 对齐。
+* @adooper-liu
+
+# 公共契约与生成物：改动须契约负责人评审。
+/packages/contracts/ @adooper-liu
+
+# 唯一迁移入口与 Prisma 配置。
+/database/ @adooper-liu
+/prisma.config.ts @adooper-liu
+
+# 工程规则、代理约束与质量门禁。
+/AGENTS.md @adooper-liu
+/ENGINEERING_RULES.md @adooper-liu
+/.github/ @adooper-liu
+/scripts/ @adooper-liu
