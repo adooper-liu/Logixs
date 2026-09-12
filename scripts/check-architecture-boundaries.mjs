@@ -92,6 +92,9 @@ const isModulePublicEntry = (path) => {
 
 const isCompositionRoot = (path) => COMPOSITION_ROOTS.has(path);
 
+const isGeneratedPrismaClient = (resolved) =>
+  /(^|\/)generated\/prisma(\/|$)/.test(normalizePath(resolved));
+
 const isPrismaAllowedImporter = (path) =>
   path.startsWith("apps/api/src/prisma/") ||
   path.startsWith("apps/api/src/health/") ||
@@ -299,7 +302,9 @@ function collectPathViolations(path, specifier, resolved) {
 
   if (
     path.startsWith("apps/web/") &&
-    (resolved.startsWith("apps/api/") || resolved.startsWith("database/"))
+    (resolved.startsWith("apps/api/") ||
+      resolved.startsWith("database/") ||
+      isGeneratedPrismaClient(resolved))
   ) {
     errors.push(
       report(path, specifier, "web cannot import the business API or database"),
@@ -308,7 +313,9 @@ function collectPathViolations(path, specifier, resolved) {
 
   if (
     path.startsWith("packages/") &&
-    (resolved.startsWith("apps/") || resolved.startsWith("workers/"))
+    (resolved.startsWith("apps/") ||
+      resolved.startsWith("workers/") ||
+      isGeneratedPrismaClient(resolved))
   ) {
     errors.push(
       report(path, specifier, "packages cannot depend on apps or workers"),
@@ -319,7 +326,8 @@ function collectPathViolations(path, specifier, resolved) {
     isAiSurface(path) &&
     (resolved.startsWith("apps/api/") ||
       resolved.startsWith("database/") ||
-      resolved.startsWith("apps/api/src/prisma/"))
+      resolved.startsWith("apps/api/src/prisma/") ||
+      isGeneratedPrismaClient(resolved))
   ) {
     errors.push(
       report(path, specifier, "AI surfaces cannot import business persistence"),
@@ -327,7 +335,8 @@ function collectPathViolations(path, specifier, resolved) {
   }
 
   if (
-    resolved.startsWith("apps/api/src/prisma/") &&
+    (resolved.startsWith("apps/api/src/prisma/") ||
+      isGeneratedPrismaClient(resolved)) &&
     !isPrismaAllowedImporter(path) &&
     !isCompositionRoot(path)
   ) {

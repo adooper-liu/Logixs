@@ -27,7 +27,7 @@
 - [x] P1 决策冻结：ADR-001 至 ADR-010 已接受（ADR-010 补充 P1-09 限界上下文）+ P1-09 模块依赖图，见 [ADR 索引](../architecture/decisions/README.md) 与 [MODULE_DEPENDENCIES](../architecture/MODULE_DEPENDENCIES.md)。
 - [x] P0-09 四类负责人已指定：刘志高（见 [RAID §1](./RAID.md)）。
 
-尚未完成：P2 数据模型 → P3 底座 → P4 基础设施 → P5 安全 → P6 首个纵向闭环 → P7 评测门禁 → P8 可观测性 → P9 生产就绪。
+尚未完成：P2 余项（04–12）随导入切片按需补齐 → P3 余项（08/10/11/13/14）→ P5 薄控制随 P6 写入 → P6 首个纵向闭环 → P7 评测门禁 → P8 可观测性 → P9 生产就绪。
 
 ## 3. 总体推进顺序
 
@@ -123,7 +123,7 @@ P0 至 P3 是开始规模开发前的必要工作。P6 完成之前，不并行�
 
 目标：让所有开发者和 CI 使用相同、可重复的工具链。
 
-- [ ] P3-01 配置主分支保护和 CODEOWNERS（Git、main 与 origin 已存在）。
+- [x] P3-01 配置主分支保护和 CODEOWNERS —— [CODEOWNERS](../../.github/CODEOWNERS)、[任务 brief](./tasks/p3-01-branch-protection.md)、[Ruleset protect-main](https://github.com/adooper-liu/Logixs/rules/23014320)；`main` 禁止强推/删除，合入须 PR 且 `quality` 通过。
 - [ ] P3-02 固定 Node.js、pnpm、Python 和 uv 版本。
 - [x] P3-03 初始化 pnpm Workspace 和 Turborepo。
 - [x] P3-04 创建 `apps/web`、`apps/api`、`apps/ai-service` 和 Workers —— [apps/api](../../apps/api)、[apps/ai-service](../../apps/ai-service)、[workers](../../workers)（business-worker + ai-worker）。
@@ -261,10 +261,10 @@ P0 至 P3 是开始规模开发前的必要工作。P6 完成之前，不并行�
 
 ## 15. 建议立即推进
 
-**P0/P1 已完成（2026-09-04）。** 下一项是 **P2 领域与数据设计**：在写控制器/页面与迁移前定稿业务语义、数据边界与首个契约。
+**P0/P1 已完成；P2 切片一评审已通过（2026-09-12）；P3-01 主分支保护已落地。** 下一项是 **P6 导入第一刀**：规格见 [p6-import-first-slice.md](./specs/p6-import-first-slice.md)，任务 brief 为 `design`。
 
-P2 期间并行跟踪（不阻塞）：
+并行跟踪（不阻塞实现开工评审）：
 
 1. 真实现状导入流程与错误点现场观察（[RAID](./RAID.md) I-02，负责人：刘志高）。
-2. 首批目标对象/字段模板集合在 P2 内定稿（IMPORT_WORKFLOW §8）。
-3. 黄金样本与主数据采集（P2-12 / P7）。
+2. 黄金样本与主数据采集（P2-12 / P7）。
+3. 历史 CI 失败的根因之一是 Prisma Client 双副本；`database/schema.prisma` 已改为单一输出 `generated/prisma`。此后合入仍须 `quality` 通过。

@@ -15,3 +15,5 @@ pnpm-lock.yaml
 __pycache__
 # 由 scripts/generate-contracts.mjs 生成的派生产物，不手工格式化
 packages/contracts/generated
+# Prisma Client 单一输出（见 database/schema.prisma generator output）
+generated

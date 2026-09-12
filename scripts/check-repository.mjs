@@ -20,6 +20,7 @@ const ignoredDirectories = new Set([
   "node_modules",
   "playwright-report",
   "test-results",
+  "generated",
 ]);
 const allowedTaskStatuses = new Set([
   "design",
@@ -66,6 +67,8 @@ export function findForbiddenTrackedPaths(paths) {
     const path = normalizePath(rawPath);
     if (
       forbiddenDirectoryPattern.test(path) ||
+      path === "generated" ||
+      path.startsWith("generated/") ||
       forbiddenLockfilePattern.test(path) ||
       path.endsWith(".log") ||
       (path.endsWith("pnpm-lock.yaml") && path !== "pnpm-lock.yaml")
@@ -246,6 +249,15 @@ export function findAmbiguousContractPhaseReferences(records) {
   return errors;
 }
 
+const requiredPolicyFiles = [".github/CODEOWNERS"];
+
+export function findMissingRequiredPolicyFiles(paths) {
+  const normalized = new Set(paths.map((path) => normalizePath(path)));
+  return requiredPolicyFiles
+    .filter((file) => !normalized.has(file))
+    .map((file) => `${file}: required repository policy file is missing`);
+}
+
 export function findMisleadingContractPackageScripts(packageManifest) {
   const contractValidator = "node ../../scripts/validate-contract-schemas.mjs";
   const standardCommands = ["lint", "typecheck", "test", "build"];
@@ -353,6 +365,12 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
       (path) => [".css", ".ts", ".vue"].includes(extname(path).toLowerCase()),
     );
     errors.push(
+      ...findMissingRequiredPolicyFiles([
+        ...trackedFiles,
+        ...requiredPolicyFiles.filter((file) =>
+          existsSync(resolve(repositoryRoot, file)),
+        ),
+      ]),
       ...findForbiddenTrackedPaths(trackedFiles).map(
         (path) => `${path}: generated or sensitive file is tracked`,
       ),

@@ -5,6 +5,9 @@
 
 generator client {
   provider = "prisma-client-js"
+  // 单一输出，避免 pnpm 在根包和 @logix/api 各放一份 @prisma/client 时，
+  // generate 更新其中一份、tsc 读另一份空桩（CI typecheck 会报 PrismaClient 不存在）。
+  output   = "../generated/prisma"
 }
 
 datasource db {

@@ -10,6 +10,7 @@ import {
   findBrokenMarkdownLinks,
   findForbiddenTrackedPaths,
   findMisleadingContractPackageScripts,
+  findMissingRequiredPolicyFiles,
   findUiThemeBoundaryViolations,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
@@ -21,12 +22,23 @@ after(() => {
   );
 });
 
+test("requires CODEOWNERS as a tracked policy file", () => {
+  assert.deepEqual(findMissingRequiredPolicyFiles(["README.md"]), [
+    ".github/CODEOWNERS: required repository policy file is missing",
+  ]);
+  assert.deepEqual(
+    findMissingRequiredPolicyFiles([".github/CODEOWNERS", "README.md"]),
+    [],
+  );
+});
+
 test("rejects generated output, evidence scratch files, competing lockfiles, logs, and real env files", () => {
   assert.deepEqual(
     findForbiddenTrackedPaths([
       "apps/web/src/main.ts",
       "apps/web/node_modules/vue/index.js",
       "apps/web/dist/index.html",
+      "generated/prisma/index.d.ts",
       "tmp/pdfs/customs-batch-012/customs-1.png",
       "server.log",
       "apps/web/package-lock.json",
@@ -37,6 +49,7 @@ test("rejects generated output, evidence scratch files, competing lockfiles, log
     [
       "apps/web/node_modules/vue/index.js",
       "apps/web/dist/index.html",
+      "generated/prisma/index.d.ts",
       "tmp/pdfs/customs-batch-012/customs-1.png",
       "server.log",
       "apps/web/package-lock.json",
@@ -226,7 +239,11 @@ test("allows the current composition-root and shipment-registry skeleton", () =>
       {
         path: "apps/api/src/modules/shipment-registry/infrastructure/prisma-container.repository.ts",
         source:
-          'import { PrismaService } from "../../../prisma/prisma.service";\nimport { PrismaClient } from "@prisma/client";',
+          'import { PrismaService } from "../../../prisma/prisma.service";\nimport { PrismaClient } from "../../../../../generated/prisma";',
+      },
+      {
+        path: "apps/api/src/prisma/prisma.service.ts",
+        source: 'import { PrismaClient } from "../../../../generated/prisma";',
       },
       {
         path: "apps/api/src/modules/workflow/workflow.service.ts",
@@ -263,6 +280,11 @@ test("rejects domain frameworks, Prisma leaks, and cross-module internals", () =
         source: 'import { PrismaClient } from "@prisma/client";',
       },
       {
+        path: "apps/api/src/modules/shipment-registry/domain/container-summary.ts",
+        source:
+          'import { PrismaClient } from "../../../../../../generated/prisma";',
+      },
+      {
         path: "apps/api/src/modules/shipment-registry/application/list-containers.service.ts",
         source:
           'import { PrismaContainerRepository } from "../../lifecycle-control/infrastructure/store";',
@@ -282,6 +304,7 @@ test("rejects domain frameworks, Prisma leaks, and cross-module internals", () =
       "apps/api/src/modules/shipment-registry/domain/container-summary.ts: domain cannot import web or application frameworks '@nestjs/common'",
       "apps/api/src/modules/shipment-registry/domain/container-summary.ts: Prisma is limited to infrastructure, prisma, and health '@prisma/client'",
       "apps/api/src/modules/shipment-registry/domain/container-summary.ts: domain cannot import persistence or workflow runtimes '@prisma/client'",
+      "apps/api/src/modules/shipment-registry/domain/container-summary.ts: Prisma is limited to infrastructure, prisma, and health '../../../../../../generated/prisma'",
       "apps/api/src/modules/shipment-registry/application/list-containers.service.ts: cannot import another module's internal path '../../lifecycle-control/infrastructure/store'",
       "apps/api/src/modules/shipment-registry/domain/rules.ts: domain cannot import other modules '../../lifecycle-control'",
       "apps/api/src/modules/shipment-registry/domain/rules.ts: domain cannot depend on application, presentation, or infrastructure '../infrastructure/prisma-container.repository'",
