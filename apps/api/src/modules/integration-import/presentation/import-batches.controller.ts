@@ -87,6 +87,7 @@ function toBatchDto(batch: ImportBatch): ImportBatchDto {
     status: batch.status,
     rowCount: batch.rowCount,
     columnCount: batch.columnCount,
+    mappingSuggestions: batch.mappingSuggestions,
     createdAt: batch.createdAt.toISOString(),
   };
 }

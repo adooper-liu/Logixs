@@ -9,11 +9,16 @@ import { createHash } from "node:crypto";
 import { extname } from "node:path";
 import { Readable } from "node:stream";
 import ExcelJS from "exceljs";
-import type { ImportBatch, ImportRow } from "../domain/import-batch";
+import type {
+  ImportBatch,
+  ImportMappingSuggestion,
+  ImportRow,
+} from "../domain/import-batch";
 import {
   IMPORT_REPOSITORY,
   type ImportRepository,
 } from "../domain/import.repository";
+import { AiGatewayService } from "../../ai-governance";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB（NFR §3）
 const MAX_ROWS = 5000; // NFR §3
@@ -38,6 +43,7 @@ export class CreateImportBatchService {
   constructor(
     @Inject(IMPORT_REPOSITORY)
     private readonly repository: ImportRepository,
+    private readonly aiGateway: AiGatewayService,
   ) {}
 
   async execute(
@@ -78,6 +84,8 @@ export class CreateImportBatchService {
       );
     }
 
+    const mappingSuggestions = await this.suggestMapping(headers);
+
     const batch = await this.repository.create(
       {
         tenantId: input.tenantId,
@@ -88,10 +96,22 @@ export class CreateImportBatchService {
         status: "parsed",
         rowCount: rows.length,
         columnCount: headers.length,
+        mappingSuggestions,
       },
       rows,
     );
     return { batch, created: true };
+  }
+
+  // AI 建议（Mock）失败时降级为空建议，不阻断上传、不写业务表。
+  private async suggestMapping(
+    headers: string[],
+  ): Promise<ImportMappingSuggestion[]> {
+    try {
+      return await this.aiGateway.suggestImportMapping(headers);
+    } catch {
+      return [];
+    }
   }
 }
 

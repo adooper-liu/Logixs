@@ -3,6 +3,13 @@
 
 export type ImportBatchStatus = "pending" | "parsed";
 
+// AI 字段映射建议（阶段 B）：哪一列对应哪个标准字段。
+export interface ImportMappingSuggestion {
+  column: string;
+  fieldCode: string | null; // null = 未识别，待人工
+  confidence: number;
+}
+
 export interface ImportBatch {
   id: string;
   tenantId: string;
@@ -13,6 +20,7 @@ export interface ImportBatch {
   status: ImportBatchStatus;
   rowCount: number;
   columnCount: number;
+  mappingSuggestions: ImportMappingSuggestion[];
   createdAt: Date;
 }
 

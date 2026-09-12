@@ -1,12 +1,19 @@
 // 导入批次前端只读/上传客户端（P6 阶段 A 读链路）。
 // 开发期身份用固定值（正式 OIDC 属 P5-02）。
 
+export interface ImportMappingSuggestion {
+  column: string;
+  fieldCode: string | null;
+  confidence: number;
+}
+
 export interface ImportBatchDto {
   id: string;
   fileName: string;
   status: string;
   rowCount: number;
   columnCount: number;
+  mappingSuggestions: ImportMappingSuggestion[];
   createdAt: string;
 }
 

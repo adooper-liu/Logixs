@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import type { ImportBatch, ImportRow } from "../domain/import-batch";
+import type {
+  ImportBatch,
+  ImportMappingSuggestion,
+  ImportRow,
+} from "../domain/import-batch";
 import type {
   ImportRepository,
   ImportBatchWithRows,
@@ -45,6 +49,8 @@ export class PrismaImportRepository implements ImportRepository {
         status: input.status,
         rowCount: input.rowCount,
         columnCount: input.columnCount,
+        // Prisma Json 字段类型不接受 interface 数组，断言为可序列化值（运行时正确）
+        mappingSuggestions: input.mappingSuggestions as never,
         rows: {
           create: rows.map((row) => ({
             rowNo: row.rowNo,
@@ -67,6 +73,7 @@ function toBatch(row: {
   status: string;
   rowCount: number;
   columnCount: number;
+  mappingSuggestions: unknown;
   createdAt: Date;
 }): ImportBatch {
   return {
@@ -79,6 +86,7 @@ function toBatch(row: {
     status: row.status as ImportBatch["status"],
     rowCount: row.rowCount,
     columnCount: row.columnCount,
+    mappingSuggestions: row.mappingSuggestions as ImportMappingSuggestion[],
     createdAt: row.createdAt,
   };
 }

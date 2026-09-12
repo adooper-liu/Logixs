@@ -48,6 +48,26 @@ onMounted(async () => {
         </div>
       </dl>
 
+      <h2 class="block-title">字段映射建议（AI，待确认）</h2>
+      <div v-if="detail.batch.mappingSuggestions.length" class="suggestions">
+        <div
+          v-for="suggestion in detail.batch.mappingSuggestions"
+          :key="suggestion.column"
+          class="suggestion-item"
+        >
+          <span class="sug-column">{{ suggestion.column }}</span>
+          <span class="sug-arrow">→</span>
+          <span v-if="suggestion.fieldCode" class="sug-field">
+            {{ suggestion.fieldCode }}
+          </span>
+          <span v-else class="sug-null">待人工</span>
+          <span class="sug-conf">
+            {{ Math.round(suggestion.confidence * 100) }}%
+          </span>
+        </div>
+      </div>
+      <p v-else class="hint">无映射建议（AI 服务不可用或未生成）</p>
+
       <h2 class="block-title">解析样本（前 {{ detail.rows.length }} 行）</h2>
       <div v-if="detail.columns.length" class="table-wrap">
         <table class="table">
@@ -104,6 +124,37 @@ onMounted(async () => {
   font-weight: 600;
   color: var(--app-text-secondary, #6b7280);
   margin: 0 0 10px;
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--app-border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.sug-column {
+  color: var(--app-text-secondary, #6b7280);
+}
+.sug-arrow {
+  color: #9ca3af;
+}
+.sug-field {
+  font-weight: 600;
+}
+.sug-null {
+  color: var(--app-warn, #d97706);
+  font-weight: 600;
+}
+.sug-conf {
+  color: var(--app-text-secondary, #6b7280);
 }
 .table-wrap {
   overflow-x: auto;

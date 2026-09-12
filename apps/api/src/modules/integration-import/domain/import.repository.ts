@@ -1,4 +1,8 @@
-import type { ImportBatch, ImportRow } from "./import-batch";
+import type {
+  ImportBatch,
+  ImportMappingSuggestion,
+  ImportRow,
+} from "./import-batch";
 
 // 导入持久化端口（Port/Adapter）：Application 依赖此抽象，Infrastructure 用 Prisma 实现。
 export const IMPORT_REPOSITORY = Symbol("ImportRepository");
@@ -12,6 +16,7 @@ export interface NewImportBatch {
   status: ImportBatch["status"];
   rowCount: number;
   columnCount: number;
+  mappingSuggestions: ImportMappingSuggestion[];
 }
 
 export interface ImportBatchWithRows {

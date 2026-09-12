@@ -1,5 +1,19 @@
 import { ApiProperty } from "@nestjs/swagger";
 
+export class ImportMappingSuggestionDto {
+  @ApiProperty({ description: "原始列头" })
+  column!: string;
+
+  @ApiProperty({
+    description: "建议的标准字段码（null=待人工）",
+    nullable: true,
+  })
+  fieldCode!: string | null;
+
+  @ApiProperty({ description: "置信度 0~1" })
+  confidence!: number;
+}
+
 export class ImportBatchDto {
   @ApiProperty({ description: "批次 ID（UUID）" })
   id!: string;
@@ -15,6 +29,12 @@ export class ImportBatchDto {
 
   @ApiProperty({ description: "列数" })
   columnCount!: number;
+
+  @ApiProperty({
+    description: "AI 字段映射建议",
+    type: [ImportMappingSuggestionDto],
+  })
+  mappingSuggestions!: ImportMappingSuggestionDto[];
 
   @ApiProperty({ description: "创建时间（ISO 8601 UTC）" })
   createdAt!: string;

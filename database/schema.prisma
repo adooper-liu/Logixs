@@ -62,6 +62,8 @@ model ImportBatch {
   status         String      @map("status") // pending | parsed
   rowCount       Int         @map("row_count")
   columnCount    Int         @map("column_count")
+  // AI 字段映射建议（阶段 B 留痕）：[{ column, fieldCode, confidence }]，阶段 C 审核指向它
+  mappingSuggestions Json     @default("[]") @map("mapping_suggestions")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
   rows           ImportRow[]
