@@ -128,7 +128,7 @@ export interface TaskEvidenceRequirement {
 export interface TaskAction {
   actionCode: string;
   label: string;
-  intent: "complete" | "exception";
+  intent: "claim" | "complete" | "exception";
   tone: "primary" | "secondary" | "danger";
   confirmation: "none" | "review";
   catalogStatus: "catalog" | "candidate";

@@ -22,6 +22,7 @@ function existingBundle() {
         workOrderDefinitionKey: "wo-customs_clearance",
         state: "ready" as const,
         assignmentState: "unassigned" as const,
+        assigneeId: null,
         completedAt: null,
       },
     ],

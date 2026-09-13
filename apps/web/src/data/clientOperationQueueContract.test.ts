@@ -44,6 +44,12 @@ describe("clientOperationQueueContract", () => {
       createdAt: "2026-09-13T03:00:00.000Z",
     });
     expect(row.actionLabel).toBe("完成工单");
+    expect(
+      toOperationRow({
+        ...operation(),
+        actionCode: "work_execution.claim_work_order",
+      }).actionLabel,
+    ).toBe("领取工单");
     expect(row.receptionLabel).toBe("已收到");
     expect(row.decisionLabel).toBe("已接受");
     expect(row.commitLabel).toBe("已落账");

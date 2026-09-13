@@ -33,6 +33,7 @@ function readyBundle(
         workOrderDefinitionKey: "wo-customs_clearance",
         state: "ready",
         assignmentState: "unassigned",
+        assigneeId: null,
         completedAt: null,
       },
     ],

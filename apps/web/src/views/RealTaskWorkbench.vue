@@ -3,12 +3,22 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { listContainers, type ContainerSummary } from "../api/containers";
 import {
+  claimWorkOrder,
   completeWorkOrder,
+  DEV_OPERATOR_ID,
   listNodeTasks,
   type NodeTaskDetail,
+  type WorkOrderSummary,
 } from "../api/nodeTasks";
 import SubmissionProgress from "../components/task/SubmissionProgress.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
+import {
+  canClaimWorkOrder,
+  CLAIM_WORK_ORDER_ACTION,
+  CLAIM_WORK_ORDER_LABEL,
+  isAssignedTo,
+  toClaimSubmission,
+} from "../data/claimReceiptContract";
 import {
   canCompleteWorkOrder,
   COMPLETE_WORK_ORDER_LABEL,
@@ -109,6 +119,65 @@ function rememberSubmission(
   submissions.value = { ...submissions.value, [workOrderId]: submission };
 }
 
+function canShowClaim(workOrder: WorkOrderSummary): boolean {
+  return canClaimWorkOrder({
+    state: workOrder.state,
+    assignmentState: workOrder.assignmentState,
+  });
+}
+
+function canShowComplete(workOrder: WorkOrderSummary): boolean {
+  if (!canCompleteWorkOrder(workOrder.state)) return false;
+  if (workOrder.assignmentState === "automatic") return true;
+  return (
+    workOrder.assignmentState === "assigned" &&
+    isAssignedTo(workOrder.assigneeId, DEV_OPERATOR_ID)
+  );
+}
+
+async function submitClaim(
+  task: NodeTaskDetail,
+  workOrderId: string,
+  reuseKey: boolean,
+): Promise<void> {
+  submittingId.value = workOrderId;
+  rememberSubmission(
+    workOrderId,
+    toSendingSubmission(task.id, CLAIM_WORK_ORDER_ACTION),
+  );
+  const idempotencyKey = nextIdempotencyKey(workOrderId, reuseKey);
+  try {
+    const result = await claimWorkOrder(workOrderId, { idempotencyKey });
+    const submission = toClaimSubmission({
+      taskId: task.id,
+      result,
+      observedAt: new Date().toLocaleTimeString(),
+    });
+    rememberSubmission(workOrderId, submission);
+    if (submission.stage === "committed") {
+      const next = { ...idempotencyKeys.value };
+      delete next[workOrderId];
+      idempotencyKeys.value = next;
+      await loadTasks(containerId.value);
+    } else if (!submission.canRetry) {
+      const next = { ...idempotencyKeys.value };
+      delete next[workOrderId];
+      idempotencyKeys.value = next;
+    }
+  } catch (cause) {
+    rememberSubmission(
+      workOrderId,
+      toFailedSubmission({
+        taskId: task.id,
+        message: cause instanceof Error ? cause.message : "领取工单失败",
+        actionCode: CLAIM_WORK_ORDER_ACTION,
+      }),
+    );
+  } finally {
+    submittingId.value = "";
+  }
+}
+
 async function submitComplete(
   task: NodeTaskDetail,
   workOrderId: string,
@@ -157,7 +226,7 @@ async function submitComplete(
     <PageHeader eyebrow="薄真实链路验证" title="真实任务（API 接线）" />
 
     <p class="hint">
-      按货柜列出节点任务。完成工单后在动作旁显示三段回执；空闲不占位。装箱/出运/离港需要合格证据引用。
+      按货柜列出节点任务。可领时先领取，领完再完成。动作旁显示三段回执；空闲不占位。装箱/出运/离港需要合格证据引用。
     </p>
 
     <label class="picker">
@@ -203,17 +272,29 @@ async function submitComplete(
               <span class="mono">{{ workOrder.state }}</span>
             </div>
             <button
-              v-if="canCompleteWorkOrder(workOrder.state)"
+              v-if="canShowClaim(workOrder)"
               type="button"
               class="complete-button"
               :data-work-order-id="workOrder.id"
+              data-action="claim"
+              :disabled="submittingId === workOrder.id"
+              @click="submitClaim(task, workOrder.id, false)"
+            >
+              {{ CLAIM_WORK_ORDER_LABEL }}
+            </button>
+            <button
+              v-else-if="canShowComplete(workOrder)"
+              type="button"
+              class="complete-button"
+              :data-work-order-id="workOrder.id"
+              data-action="complete"
               :disabled="submittingId === workOrder.id"
               @click="submitComplete(task, workOrder.id, false)"
             >
               {{ COMPLETE_WORK_ORDER_LABEL }}
             </button>
           </div>
-          <label v-if="canCompleteWorkOrder(workOrder.state)" class="evidence">
+          <label v-if="canShowComplete(workOrder)" class="evidence">
             证据引用
             <input
               :data-testid="`evidence-${workOrder.id}`"
@@ -231,8 +312,16 @@ async function submitComplete(
             v-if="submissions[workOrder.id]"
             data-testid="submission-progress"
             :submission="submissions[workOrder.id]!"
-            :action-label="COMPLETE_WORK_ORDER_LABEL"
-            @retry="submitComplete(task, workOrder.id, true)"
+            :action-label="
+              canShowClaim(workOrder)
+                ? CLAIM_WORK_ORDER_LABEL
+                : COMPLETE_WORK_ORDER_LABEL
+            "
+            @retry="
+              canShowClaim(workOrder)
+                ? submitClaim(task, workOrder.id, true)
+                : submitComplete(task, workOrder.id, true)
+            "
           />
         </li>
       </ul>

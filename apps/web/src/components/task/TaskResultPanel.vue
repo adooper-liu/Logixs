@@ -19,12 +19,13 @@ const emit = defineEmits<{
 
 const pendingAction = shallowRef<TaskAction>();
 const visibleActions = computed(() =>
-  props.task.actions.filter(
-    (action) =>
-      action.intent === "exception" ||
-      (props.canSubmit &&
-        !["completed", "waiting_external"].includes(props.task.status)),
-  ),
+  props.task.actions.filter((action) => {
+    if (["completed", "waiting_external"].includes(props.task.status)) {
+      return action.intent === "exception";
+    }
+    if (action.intent === "exception" || action.intent === "claim") return true;
+    return props.canSubmit && action.intent === "complete";
+  }),
 );
 
 const isDisabled = (action: TaskAction) =>
@@ -77,15 +78,6 @@ const confirmAction = () => {
     </div>
 
     <div class="actions">
-      <button
-        v-if="task.assignment.mode === 'pool' && !task.assignment.assignee"
-        class="primary"
-        type="button"
-        :disabled="isSubmitting"
-        @click="emit('claim')"
-      >
-        领取任务
-      </button>
       <button
         v-for="action in visibleActions"
         :key="action.actionCode"

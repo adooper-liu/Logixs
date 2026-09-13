@@ -1,15 +1,28 @@
 import type { ContainerLifecycleState } from "@logix/contracts";
 import type { ContainerSummary } from "../api/containers";
 import type { LifecycleNodeItem } from "../api/lifecycleNodes";
-import type { NodeTaskDetail, WorkOrderSummary } from "../api/nodeTasks";
+import {
+  DEV_OPERATOR_ID,
+  type NodeTaskDetail,
+  type WorkOrderSummary,
+} from "../api/nodeTasks";
 import type { DisplayFieldSchema } from "../components/ui/displayFieldContract";
+import {
+  canClaimWorkOrder,
+  CLAIM_WORK_ORDER_ACTION,
+  CLAIM_WORK_ORDER_LABEL,
+  isAssignedTo,
+} from "./claimReceiptContract";
 import {
   canCompleteWorkOrder,
   COMPLETE_WORK_ORDER_ACTION,
+  COMPLETE_WORK_ORDER_LABEL,
 } from "./completeReceiptContract";
 import type {
   ContainerProjection,
   StatusView,
+  TaskAction,
+  TaskAssignment,
   TaskItem,
   TaskStatusCode,
   Tone,
@@ -68,8 +81,23 @@ export function completeActionCode(workOrderId: string): string {
   return `${COMPLETE_WORK_ORDER_ACTION}:${workOrderId}`;
 }
 
+export function claimActionCode(workOrderId: string): string {
+  return `${CLAIM_WORK_ORDER_ACTION}:${workOrderId}`;
+}
+
 export function parseCompleteActionCode(actionCode: string): string | null {
-  const prefix = `${COMPLETE_WORK_ORDER_ACTION}:`;
+  return parsePrefixedActionCode(COMPLETE_WORK_ORDER_ACTION, actionCode);
+}
+
+export function parseClaimActionCode(actionCode: string): string | null {
+  return parsePrefixedActionCode(CLAIM_WORK_ORDER_ACTION, actionCode);
+}
+
+function parsePrefixedActionCode(
+  action: string,
+  actionCode: string,
+): string | null {
+  const prefix = `${action}:`;
   if (!actionCode.startsWith(prefix)) return null;
   const workOrderId = actionCode.slice(prefix.length).trim();
   return workOrderId || null;
@@ -211,8 +239,65 @@ export function attachOpenTasks(
   });
 }
 
+function claimableWorkOrders(detail: NodeTaskDetail): WorkOrderSummary[] {
+  return detail.workOrders.filter((item) =>
+    canClaimWorkOrder({
+      state: item.state,
+      assignmentState: item.assignmentState,
+    }),
+  );
+}
+
 function completableWorkOrders(detail: NodeTaskDetail): WorkOrderSummary[] {
-  return detail.workOrders.filter((item) => canCompleteWorkOrder(item.state));
+  return detail.workOrders.filter((item) => {
+    if (!canCompleteWorkOrder(item.state)) return false;
+    if (item.assignmentState === "automatic") return true;
+    return (
+      item.assignmentState === "assigned" &&
+      isAssignedTo(item.assigneeId, DEV_OPERATOR_ID)
+    );
+  });
+}
+
+function toAssignment(detail: NodeTaskDetail): TaskAssignment {
+  const claimed = detail.workOrders.find(
+    (item) =>
+      item.assignmentState === "assigned" &&
+      isAssignedTo(item.assigneeId, DEV_OPERATOR_ID),
+  );
+  if (claimableWorkOrders(detail).length > 0) {
+    return { mode: "pool", label: "待领取" };
+  }
+  if (claimed) {
+    return {
+      mode: "assigned",
+      label: "已领取",
+      assignee: claimed.assigneeId ?? DEV_OPERATOR_ID,
+    };
+  }
+  return { mode: "assigned", label: "已分配" };
+}
+
+function toActions(detail: NodeTaskDetail): TaskAction[] {
+  const claims = claimableWorkOrders(detail).map((workOrder) => ({
+    actionCode: claimActionCode(workOrder.id),
+    label: CLAIM_WORK_ORDER_LABEL,
+    intent: "claim" as const,
+    tone: "primary" as const,
+    confirmation: "none" as const,
+    catalogStatus: "catalog" as const,
+    summary: workOrder.workOrderDefinitionKey,
+  }));
+  if (claims.length > 0) return claims;
+  return completableWorkOrders(detail).map((workOrder) => ({
+    actionCode: completeActionCode(workOrder.id),
+    label: COMPLETE_WORK_ORDER_LABEL,
+    intent: "complete" as const,
+    tone: "primary" as const,
+    confirmation: "none" as const,
+    catalogStatus: "catalog" as const,
+    summary: workOrder.workOrderDefinitionKey,
+  }));
 }
 
 export interface TaskContainerRef {
@@ -226,6 +311,7 @@ export function toLiveTask(
   container: TaskContainerRef,
 ): TaskItem {
   const nodeName = NODE_CODE_LABELS[detail.nodeCode] ?? detail.nodeCode;
+  const actions = toActions(detail);
   const completable = completableWorkOrders(detail);
   return {
     taskId: detail.id,
@@ -245,11 +331,7 @@ export function toLiveTask(
     executionMode: "human",
     executionModeLabel: "现场作业",
     queueKind: "human",
-    assignment: {
-      mode: "assigned",
-      label: "已分配",
-      assignee: "dev-operator",
-    },
+    assignment: toAssignment(detail),
     preconditions: [],
     requiredInputs: [],
     evidenceRequirements: completable.length
@@ -264,15 +346,7 @@ export function toLiveTask(
           },
         ]
       : [],
-    actions: completable.map((workOrder) => ({
-      actionCode: completeActionCode(workOrder.id),
-      label: "完成工单",
-      intent: "complete",
-      tone: "primary",
-      confirmation: "none",
-      catalogStatus: "catalog",
-      summary: workOrder.workOrderDefinitionKey,
-    })),
+    actions,
     completionPolicy: {
       summary: "点完成后，这一步才算做完。",
       outcome: "complete",

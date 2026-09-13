@@ -4,6 +4,7 @@ export interface WorkOrderSummary {
   workOrderDefinitionKey: string;
   state: string;
   assignmentState: string;
+  assigneeId: string | null;
   completedAt: string | null;
 }
 
@@ -41,6 +42,25 @@ export interface NodeTaskPage {
   projectionVersion: number;
 }
 
+export interface ClaimWorkOrderInput {
+  idempotencyKey?: string;
+}
+
+export interface ClaimWorkOrderResult {
+  workOrderId: string;
+  workOrderState: string;
+  assignmentState: string;
+  assigneeId: string | null;
+  taskId: string;
+  taskState: string;
+  applied: boolean;
+  clientOperationId: string;
+  receptionState: string;
+  businessDecisionState: string;
+  commitState: string;
+  rejectionReasonCode: string | null;
+}
+
 export interface CompleteWorkOrderInput {
   evidenceRefs?: string[];
   idempotencyKey?: string;
@@ -66,7 +86,7 @@ export interface CompleteWorkOrderResult {
 }
 
 const DEV_TENANT_ID = "dev-tenant";
-const DEV_OPERATOR_ID = "dev-operator";
+export const DEV_OPERATOR_ID = "dev-operator";
 
 function identityHeaders(): HeadersInit {
   return {
@@ -102,6 +122,27 @@ export async function listNodeTasks(input?: {
     throw new Error(await readError(response, "列节点任务失败"));
   }
   return (await response.json()) as NodeTaskPage;
+}
+
+export async function claimWorkOrder(
+  workOrderId: string,
+  input: ClaimWorkOrderInput = {},
+): Promise<ClaimWorkOrderResult> {
+  const body: ClaimWorkOrderInput = {};
+  if (input.idempotencyKey) body.idempotencyKey = input.idempotencyKey;
+
+  const response = await fetch(`/api/work-orders/${workOrderId}/claim`, {
+    method: "POST",
+    headers: {
+      ...identityHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "领取工单失败"));
+  }
+  return (await response.json()) as ClaimWorkOrderResult;
 }
 
 export async function completeWorkOrder(

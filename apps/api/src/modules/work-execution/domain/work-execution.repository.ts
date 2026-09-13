@@ -26,6 +26,7 @@ export interface WorkOrderRecord {
   workOrderDefinitionKey: string;
   state: WorkOrderState;
   assignmentState: AssignmentState;
+  assigneeId: string | null;
   completedAt: Date | null;
 }
 
@@ -47,6 +48,16 @@ export interface CreateTaskInput {
   containerId: string | null;
   taskDefinitionKey: string;
   workOrderDefinitionKey: string;
+}
+
+export interface ApplyWorkOrderClaimInput {
+  workOrderId: string;
+  workOrderState: WorkOrderState;
+  assignmentState: AssignmentState;
+  assigneeId: string;
+  taskId: string;
+  taskState: NodeTaskState;
+  clientOperation?: ClientOperationRecord;
 }
 
 export interface ApplyWorkOrderCompletionInput {
@@ -86,5 +97,6 @@ export interface WorkExecutionRepository {
   createTaskWithRequiredWorkOrder(
     input: CreateTaskInput,
   ): Promise<NodeTaskWithWorkOrders>;
+  applyWorkOrderClaim(input: ApplyWorkOrderClaimInput): Promise<boolean>;
   applyWorkOrderCompletion(input: ApplyWorkOrderCompletionInput): Promise<void>;
 }

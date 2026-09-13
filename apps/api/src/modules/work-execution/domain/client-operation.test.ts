@@ -3,9 +3,13 @@ import {
   buildCommittedClientOperation,
   buildRejectedClientOperation,
   decideClientIdempotency,
+  defaultClaimIdempotencyKey,
   defaultCompleteIdempotencyKey,
+  hashClaimRequest,
   hashCompleteRequest,
+  parseClaimIdempotencyKey,
   parseCompleteIdempotencyKey,
+  WORK_CLAIM_ACTION,
   WORK_COMPLETE_ACTION,
 } from "./client-operation";
 
@@ -52,12 +56,25 @@ describe("complete ClientOperation", () => {
     ).toBe("conflict");
   });
 
+  it("领取默认幂等键按工单，空串回退默认", () => {
+    expect(defaultClaimIdempotencyKey("w1")).toBe("work-order:w1:claim");
+    expect(parseClaimIdempotencyKey("  ", "w1")).toBe("work-order:w1:claim");
+    expect(hashClaimRequest({ workOrderId: "w1" })).toHaveLength(64);
+  });
+
   it("成功记录 actionCode 为工单完成", () => {
     const record = buildCommittedClientOperation({
       ...BASE,
       resultRefs: [{ entityType: "work_order", entityId: "w1" }],
     });
     expect(record.actionCode).toBe(WORK_COMPLETE_ACTION);
+    expect(
+      buildCommittedClientOperation({
+        ...BASE,
+        actionCode: WORK_CLAIM_ACTION,
+        resultRefs: [{ entityType: "work_order", entityId: "w1" }],
+      }).actionCode,
+    ).toBe(WORK_CLAIM_ACTION);
     expect(record.receptionState).toBe("received");
     expect(record.businessDecisionState).toBe("accepted");
     expect(record.commitState).toBe("committed");

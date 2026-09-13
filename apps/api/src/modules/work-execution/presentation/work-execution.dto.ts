@@ -14,6 +14,7 @@ export class WorkOrderDto {
   @ApiProperty() workOrderDefinitionKey!: string;
   @ApiProperty() state!: string;
   @ApiProperty() assignmentState!: string;
+  @ApiProperty({ nullable: true }) assigneeId!: string | null;
   @ApiProperty({ nullable: true }) completedAt!: string | null;
 }
 
@@ -52,6 +53,26 @@ export class NodeTaskPageDto {
   @ApiProperty({ type: PageInfoDto }) pageInfo!: PageInfoDto;
   @ApiProperty() asOf!: string;
   @ApiProperty() projectionVersion!: number;
+}
+
+export class ClaimWorkOrderRequestDto {
+  @ApiProperty({ required: false })
+  idempotencyKey?: string;
+}
+
+export class ClaimWorkOrderResponseDto {
+  @ApiProperty() workOrderId!: string;
+  @ApiProperty() workOrderState!: string;
+  @ApiProperty() assignmentState!: string;
+  @ApiProperty({ nullable: true }) assigneeId!: string | null;
+  @ApiProperty() taskId!: string;
+  @ApiProperty() taskState!: string;
+  @ApiProperty() applied!: boolean;
+  @ApiProperty() clientOperationId!: string;
+  @ApiProperty() receptionState!: string;
+  @ApiProperty() businessDecisionState!: string;
+  @ApiProperty() commitState!: string;
+  @ApiProperty({ nullable: true }) rejectionReasonCode!: string | null;
 }
 
 export class CompleteWorkOrderRequestDto {
