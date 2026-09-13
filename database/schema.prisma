@@ -213,6 +213,7 @@ model CanonicalEvent {
   idempotencyKey String   @unique @map("idempotency_key")
   appliedAt      DateTime @default(now()) @map("applied_at")
 
+  @@index([containerId, occurredAt, id], map: "canonical_event_container_occurred_idx")
   @@map("canonical_event")
 }
 
@@ -296,6 +297,7 @@ model InboxMessage {
   failureCategory  String?   @map("failure_category")
   deadLetteredAt   DateTime? @map("dead_lettered_at")
   ownerQueue       String?   @map("owner_queue")
+  causationId      String?   @map("causation_id")
   traceId          String    @map("trace_id")
   receivedAt       DateTime  @map("received_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
@@ -304,11 +306,32 @@ model InboxMessage {
   @@index([tenantId, consumerName, state], map: "inbox_message_tenant_state_idx")
   @@index([tenantId, consumerName, state, leaseExpiresAt, receivedAt], map: "inbox_message_lease_idx")
   @@index([state, nextAttemptAt], map: "inbox_message_retry_idx")
+  @@index([tenantId, consumerName, state, deadLetteredAt, id], map: "inbox_message_dead_letter_list_idx")
   @@map("inbox_message")
 }
 
-// 契约：GC-009 ClientOperationV1。本刀由 lifecycle-control 写入 lifecycle.apply_event。
-// 工单动作仍归 work-execution，不在本刀展开。
+// Inbox 死信人工重放请求：原消息不可改，重放生成新 Inbox received。
+model InboxReplayRequest {
+  id                    String   @id @default(uuid()) @map("id")
+  tenantId              String   @map("tenant_id")
+  deadLetterId          String   @map("dead_letter_id")
+  replayedInboxId       String   @map("replayed_inbox_id")
+  replayedMessageId     String   @map("replayed_message_id")
+  targetConsumerVersion String   @map("target_consumer_version")
+  requestedBy           String   @map("requested_by")
+  reasonCode            String   @map("reason_code")
+  requestedAt           DateTime @map("requested_at")
+  traceId               String   @map("trace_id")
+  idempotencyKey        String   @map("idempotency_key")
+  requestHash           String   @map("request_hash")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, deadLetterId, idempotencyKey], map: "inbox_replay_idempotency_key")
+  @@map("inbox_replay_request")
+}
+
+// 契约：GC-009 ClientOperationV1。
+// lifecycle-control 写入 lifecycle.apply_event；work-execution 写入 work_execution.complete_work_order。
 model ClientOperation {
   id                     String    @id @map("id")
   tenantId               String    @map("tenant_id")
@@ -341,6 +364,27 @@ model ClientOperation {
   @@unique([tenantId, actorId, actionCode, idempotencyKey], map: "client_operation_idempotency_key")
   @@index([tenantId, createdAt, id], map: "client_operation_tenant_created_idx")
   @@map("client_operation")
+}
+
+// 契约：GC-009 CompensationRecord。补偿是新事实，不回写 ClientOperation。
+model CompensationRecord {
+  id                        String   @id @map("id")
+  tenantId                  String   @map("tenant_id")
+  originalClientOperationId String   @map("original_client_operation_id")
+  compensationActionCode    String   @map("compensation_action_code")
+  state                     String   @map("state")
+  reasonCode                String   @map("reason_code")
+  requestedBy               String   @map("requested_by")
+  resultRefs                Json     @map("result_refs")
+  idempotencyKey            String   @map("idempotency_key")
+  requestHash               String   @map("request_hash")
+  traceId                   String   @map("trace_id")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, originalClientOperationId, idempotencyKey], map: "compensation_idempotency_key")
+  @@index([tenantId, originalClientOperationId, createdAt, id], map: "compensation_original_idx")
+  @@map("compensation_record")
 }
 
 // 节点任务（work-execution 拥有）：货柜到节点的工序任务（第一刀最小集）。

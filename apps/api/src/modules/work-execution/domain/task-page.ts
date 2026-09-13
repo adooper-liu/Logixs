@@ -3,9 +3,14 @@ export const MIN_PAGE_SIZE = 1;
 export const MAX_PAGE_SIZE = 200;
 
 export interface TaskListCursor {
-  containerId: string;
+  containerId?: string;
+  tenantId?: string;
   createdAt: Date;
   id: string;
+}
+
+function hasText(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }
 
 export function parsePageSize(raw: string | undefined): number {
@@ -21,9 +26,14 @@ export function parsePageSize(raw: string | undefined): number {
 }
 
 export function encodeTaskCursor(cursor: TaskListCursor): string {
+  const containerId = cursor.containerId?.trim() ?? "";
+  const tenantId = cursor.tenantId?.trim() ?? "";
+  if ((containerId && tenantId) || (!containerId && !tenantId)) {
+    throw new Error("VALIDATION_FORMAT: cursor 范围无效");
+  }
   return Buffer.from(
     JSON.stringify({
-      containerId: cursor.containerId,
+      ...(containerId ? { containerId } : { tenantId }),
       createdAt: cursor.createdAt.toISOString(),
       id: cursor.id,
     }),
@@ -37,12 +47,17 @@ export function decodeTaskCursor(raw: string): TaskListCursor {
       Buffer.from(raw, "base64url").toString("utf8"),
     ) as {
       containerId?: unknown;
+      tenantId?: unknown;
       createdAt?: unknown;
       id?: unknown;
     };
+    const containerId = hasText(parsed.containerId)
+      ? parsed.containerId
+      : undefined;
+    const tenantId = hasText(parsed.tenantId) ? parsed.tenantId : undefined;
     if (
-      typeof parsed.containerId !== "string" ||
-      parsed.containerId.length === 0 ||
+      (containerId && tenantId) ||
+      (!containerId && !tenantId) ||
       typeof parsed.createdAt !== "string" ||
       typeof parsed.id !== "string" ||
       parsed.id.length === 0
@@ -51,7 +66,9 @@ export function decodeTaskCursor(raw: string): TaskListCursor {
     }
     const createdAt = new Date(parsed.createdAt);
     if (Number.isNaN(createdAt.getTime())) throw new Error("invalid");
-    return { containerId: parsed.containerId, createdAt, id: parsed.id };
+    return containerId
+      ? { containerId, createdAt, id: parsed.id }
+      : { tenantId, createdAt, id: parsed.id };
   } catch {
     throw new Error("VALIDATION_FORMAT: cursor 无效");
   }

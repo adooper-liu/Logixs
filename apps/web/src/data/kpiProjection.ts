@@ -89,10 +89,10 @@ export const createKpiSignals = ({
   return [
     {
       key: "online",
-      label: "在线货柜数",
+      label: "货柜",
       value: `${containers.length} 柜`,
-      supportingText: "当前生命周期投影",
-      helpText: "来源：useDemoOperationsStore 的货柜流转记录总数。",
+      supportingText: "去干活",
+      helpText: "当前租户已经记下的货柜数量。",
       tone: "brand",
       to: "/containers",
     },
@@ -111,7 +111,7 @@ export const createKpiSignals = ({
       value: feeExposure.value,
       supportingText: feeExposure.supportingText,
       helpText:
-        "演示口径：feeRows 中 Demurrage 与 Detention 已有金额之和除以同币种费用总额；合同样本待回验。",
+        "口径：同币种费用中滞箱与滞港金额之和除以总额。没有费用数据时不展示。",
       tone: feeExposure.value === "—" ? "info" : "warn",
       to: "/meso?dimension=fees#fees",
     },
@@ -130,9 +130,40 @@ export const createKpiSignals = ({
       label: "未关闭异常数",
       value: `${openExceptionCount} 项`,
       supportingText: "进入待决策队列",
-      helpText: "来源：异常投影中状态非 verified_closed 的记录数。",
+      helpText: "尚未关闭的异常数量。没有异常数据时不展示。",
       tone: openExceptionCount > 0 ? "risk" : "ok",
       to: "/dashboard#decision-queue",
     },
   ];
 };
+
+export function createWorkspaceOverviewSignals(
+  containers: readonly ContainerProjection[],
+  options?: { syncReady?: boolean },
+): KpiSignal[] {
+  const signals = createKpiSignals({
+    containers,
+    fees: [],
+    exceptions: [],
+  }).filter((signal) => signal.key === "online");
+  if (options?.syncReady !== true) return signals;
+
+  const pending = containers.filter(
+    (row) => !["committed", "idle"].includes(row.syncStatus.code),
+  ).length;
+  if (pending === 0) return signals;
+
+  return [
+    ...signals,
+    {
+      key: "pendingSync",
+      label: "还没记下",
+      value: `${pending} 柜`,
+      supportingText: "去看提交",
+      helpText:
+        "最近一页提交里，这些柜最新一次还没落账。不是全库总数。请求已收到不等于已经记下。",
+      tone: "warn",
+      to: "/real-operations",
+    },
+  ];
+}

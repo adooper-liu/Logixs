@@ -20,9 +20,9 @@ describe("parseInboxClaimLimit", () => {
 
 describe("isInboxClaimable", () => {
   it("received 与到期 retry_wait 可领，processed/dead_letter 不可领", () => {
-    expect(
-      isInboxClaimable({ state: "received", lease: null, now: NOW }),
-    ).toBe(true);
+    expect(isInboxClaimable({ state: "received", lease: null, now: NOW })).toBe(
+      true,
+    );
     expect(
       isInboxClaimable({ state: "retry_wait", lease: null, now: NOW }),
     ).toBe(true);

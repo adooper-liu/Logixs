@@ -23,9 +23,12 @@ function readEnv(): EnvConfig {
     databaseUrl: process.env.DATABASE_URL ?? LOCAL_DEV_DATABASE_URL,
     aiServiceUrl: process.env.AI_SERVICE_URL ?? LOCAL_DEV_AI_SERVICE_URL,
     nodeEnv,
-    serviceId: process.env.LOGIX_SERVICE_ID ?? (isProduction ? "" : LOCAL_DEV_SERVICE_ID),
+    serviceId:
+      process.env.LOGIX_SERVICE_ID ??
+      (isProduction ? "" : LOCAL_DEV_SERVICE_ID),
     serviceKey:
-      process.env.LOGIX_SERVICE_KEY ?? (isProduction ? "" : LOCAL_DEV_SERVICE_KEY),
+      process.env.LOGIX_SERVICE_KEY ??
+      (isProduction ? "" : LOCAL_DEV_SERVICE_KEY),
   };
 }
 

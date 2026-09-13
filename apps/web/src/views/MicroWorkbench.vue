@@ -1,68 +1,103 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-import LifecycleRail from "../components/container/LifecycleRail.vue";
-import ObjectContextBar from "../components/container/ObjectContextBar.vue";
-import NodeFactPanel from "../components/container/NodeFactPanel.vue";
+import { listClientOperations } from "../api/clientOperations";
+import { getContainer } from "../api/containers";
+import { listLifecycleEvents } from "../api/lifecycleEvents";
+import { listLifecycleNodes } from "../api/lifecycleNodes";
+import { listNodeTasks } from "../api/nodeTasks";
 import EventEvidenceTimeline from "../components/container/EventEvidenceTimeline.vue";
+import LiveNodeRail from "../components/container/LiveNodeRail.vue";
+import ObjectContextBar from "../components/container/ObjectContextBar.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
-import InfoTooltip from "../components/ui/InfoTooltip.vue";
-import { createDisplayFieldSet } from "../components/ui/displayFieldContract";
-import type { WorkNode } from "../data/sample";
-import { useDemoOperationsStore } from "../composables/useDemoOperationsStore";
+import { attachLatestSync } from "../data/clientOperationQueueContract";
+import { toLiveEvent } from "../data/liveEventProjection";
+import { toLiveNode, type LiveNodeView } from "../data/liveNodeProjection";
+import {
+  attachOpenTasks,
+  toLiveContainer,
+} from "../data/liveWorkspaceProjection";
+import type { ContainerProjection, EventRow } from "../data/sample";
 
 const route = useRoute();
-const store = useDemoOperationsStore();
-const activeKey = shallowRef("");
+const loading = ref(true);
+const error = ref("");
+const record = ref<ContainerProjection | null>(null);
+const nodes = ref<LiveNodeView[]>([]);
+const events = ref<EventRow[]>([]);
 
 const containerRecordId = computed(() =>
-  String(route.params.containerRecordId ?? ""),
+  String(route.params.containerRecordId ?? "").trim(),
 );
-const record = computed(
-  () => store.getContainer(containerRecordId.value) ?? null,
-);
-const activeNode = computed<WorkNode | undefined>(() => {
-  const nodes = record.value?.rail ?? [];
-  return nodes.find((node) => node.key === activeKey.value) ?? nodes[0];
-});
-const activeNodeFields = computed(() => {
-  if (!record.value || !activeNode.value) return undefined;
-  return createDisplayFieldSet(
-    record.value.nodeDisplaySchema,
-    activeNode.value,
-  );
-});
-const activeNodeIndex = computed(() => {
-  const nodes = record.value?.rail ?? [];
-  const index = nodes.findIndex((node) => node.key === activeNode.value?.key);
-  return index >= 0 ? index + 1 : 1;
-});
-const linkedTaskId = computed(() => {
-  const taskId = activeNode.value?.taskId;
-  if (!taskId) return undefined;
-  return store.getTask(taskId)?.containerRecordId === containerRecordId.value
-    ? taskId
-    : undefined;
-});
 
-const selectNode = (node: WorkNode) => {
-  activeKey.value = node.key;
-};
+async function load(): Promise<void> {
+  loading.value = true;
+  error.value = "";
+  record.value = null;
+  nodes.value = [];
+  events.value = [];
+  if (!containerRecordId.value) {
+    loading.value = false;
+    return;
+  }
+  try {
+    let row = toLiveContainer(await getContainer(containerRecordId.value));
+    const extras = await Promise.allSettled([
+      listLifecycleNodes(containerRecordId.value),
+      listLifecycleEvents(containerRecordId.value, { pageSize: 200 }),
+      listNodeTasks({
+        containerId: containerRecordId.value,
+        pageSize: 200,
+      }),
+      listClientOperations({ pageSize: 200 }),
+    ]);
+    const nodePage = extras[0];
+    const eventPage = extras[1];
+    const taskPage = extras[2];
+    const operationPage = extras[3];
+    nodes.value =
+      nodePage.status === "fulfilled"
+        ? nodePage.value.nodes.map(toLiveNode)
+        : [];
+    events.value =
+      eventPage.status === "fulfilled"
+        ? eventPage.value.items.map(toLiveEvent)
+        : [];
+    if (taskPage.status === "fulfilled") {
+      row = attachOpenTasks([row], taskPage.value.items)[0] ?? row;
+    }
+    if (operationPage.status === "fulfilled") {
+      const hints =
+        taskPage.status === "fulfilled"
+          ? taskPage.value.items.flatMap((task) => {
+              const containerId = task.containerId?.trim() ?? "";
+              if (!containerId) return [];
+              return [
+                {
+                  containerId,
+                  taskId: task.id,
+                  workOrderIds: task.workOrders.map((item) => item.id),
+                },
+              ];
+            })
+          : [];
+      row = attachLatestSync([row], operationPage.value.items, hints)[0] ?? row;
+    }
+    record.value = row;
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : "";
+    if (message !== "RESOURCE_NOT_FOUND") {
+      error.value = message || "加载失败，请确认 API 已启动";
+    }
+  } finally {
+    loading.value = false;
+  }
+}
 
 watch(
-  [record, () => route.query.node],
-  ([nextRecord, nodeQuery]) => {
-    const nodes = nextRecord?.rail ?? [];
-    activeKey.value =
-      nodes.find(
-        (node) => typeof nodeQuery === "string" && node.key === nodeQuery,
-      )?.key ??
-      nodes.find(
-        (node) => node.attention === "risk" || node.attention === "current",
-      )?.key ??
-      nodes.find((node) => node.isCurrentStatus)?.key ??
-      nodes[0]?.key ??
-      "";
+  containerRecordId,
+  () => {
+    void load();
   },
   { immediate: true },
 );
@@ -70,91 +105,30 @@ watch(
 
 <template>
   <div class="workbench page-frame">
-    <template v-if="record">
-      <PageHeader eyebrow="货柜全生命周期" title="一柜一档">
-        <template #actions>
-          <div
-            v-if="record.markers.length"
-            class="markers"
-            aria-label="货柜标记"
-          >
-            <span v-for="marker in record.markers" :key="marker.key">{{
-              marker.name
-            }}</span>
-          </div>
-        </template>
-      </PageHeader>
-
+    <p v-if="loading" class="hint">加载中…</p>
+    <p v-else-if="error" class="hint hint--error">{{ error }}</p>
+    <template v-else-if="record">
+      <PageHeader title="一柜一档" />
       <ObjectContextBar :record="record" />
-
-      <div class="workspace-grid">
-        <aside class="lifecycle-panel">
-          <header class="section-head">
-            <div><b>生命周期</b><span>实际节点</span></div>
-            <InfoTooltip
-              label="查看生命周期投影口径"
-              text="节点由实际事件投影；计划、预计和任务关注项不会自动改写货柜事实。"
-            />
-          </header>
-          <LifecycleRail
-            :nodes="record.rail"
-            :active-key="activeKey"
-            @select="selectNode"
-          />
-        </aside>
-
-        <main class="node-workspace">
-          <NodeFactPanel
-            v-if="activeNode && activeNodeFields"
-            :node="activeNode"
-            :field-set="activeNodeFields"
-            :node-index="activeNodeIndex"
-            :node-count="record.rail.length"
-            :next-action-hint="record.nextActionHint"
-            :linked-task-id="linkedTaskId"
-          />
-
-          <section
-            v-if="activeNode?.key === 'customs' && record.checklist.length"
-            class="customs-detail"
-          >
-            <header class="section-head">
-              <div><b>清关检查</b><span>执行与达成</span></div>
-              <InfoTooltip
-                label="查看清关检查规则"
-                text="优先展示未达成、冲突和需要行动的检查项。"
-              />
-            </header>
-            <div class="check-list">
-              <article
-                v-for="item in record.checklist"
-                :key="item.q"
-                :class="item.state"
-              >
-                <div>
-                  <b>{{ item.q }}</b
-                  ><span>{{ item.answer }}</span>
-                </div>
-                <strong>{{ item.action }}</strong>
-              </article>
-            </div>
-          </section>
-
-          <EventEvidenceTimeline
-            v-if="record.timeline.length"
-            :events="record.timeline"
-          />
-
-          <p v-else class="projection-note">
-            该记录尚无可展示的权威事件；节点只呈现计划与任务关注项。
-          </p>
-        </main>
-      </div>
+      <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
+      <EventEvidenceTimeline v-if="events.length" :events="events" />
+      <section class="next-step" aria-label="下一步">
+        <p v-if="!nodes.length">这一柜还没有流程。</p>
+        <p v-else-if="!events.length">这一柜还没有事件记录。</p>
+        <router-link
+          :to="{
+            path: '/tasks',
+            query: { containerId: record.containerRecordId },
+          }"
+        >
+          去做这柜的任务
+        </router-link>
+      </section>
     </template>
     <section v-else class="not-found">
-      <b>未找到货柜流转记录</b>
+      <b>找不到这只货柜</b>
       <p class="mono">{{ containerRecordId }}</p>
-      <router-link to="/containers">返回已出运货柜列表</router-link>
+      <router-link to="/containers">回干活</router-link>
     </section>
   </div>
 </template>
@@ -163,129 +137,42 @@ watch(
 .workbench {
   min-height: 100%;
 }
-.markers,
-.section-head {
-  display: flex;
-  align-items: center;
-}
-.section-head span {
-  color: var(--muted);
-  font-size: 11px;
-}
-.markers {
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.markers span {
-  padding: 3px 7px;
-  border: 1px solid var(--warn);
-  border-radius: var(--radius-s);
-  color: var(--warn);
-  background: var(--warn-bg);
-  font-size: 11px;
-}
-.workspace-grid {
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-}
-.lifecycle-panel,
-.customs-detail,
-.projection-note {
-  min-width: 0;
+
+.hint,
+.next-step,
+.not-found {
+  padding: 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
 }
-.lifecycle-panel,
-.customs-detail {
-  padding: 10px;
-}
-.node-workspace {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.section-head {
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 32px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--line);
-}
-.section-head div {
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  flex-direction: row;
-  gap: 7px;
-}
-.check-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  margin-top: 8px;
-  background: var(--line);
-  border: 1px solid var(--line);
-}
-.check-list article {
-  min-width: 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 8px;
-  background: var(--surface);
-}
-.check-list article > div {
-  display: flex;
-  flex-direction: column;
-}
-.check-list span,
-.check-list strong {
-  font-size: 11px;
-}
-.check-list span {
+
+.hint {
   color: var(--muted);
 }
-.check-list .ok strong {
-  color: var(--ok);
-}
-.check-list .warn strong {
-  color: var(--warn);
-}
-.check-list .risk strong {
+
+.hint--error {
   color: var(--risk);
 }
-.projection-note {
-  margin: 0;
-  padding: 16px;
-  color: var(--muted);
+
+.next-step {
+  margin-top: 12px;
 }
-.not-found {
-  padding: 36px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-  background: var(--surface);
-  text-align: center;
-}
+
+.next-step p,
 .not-found p {
-  margin: 5px 0 12px;
+  margin: 0 0 12px;
   color: var(--muted);
 }
+
+.next-step a,
 .not-found a {
   color: var(--brand);
   text-decoration: none;
 }
-@media (max-width: 900px) {
-  .workspace-grid {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 720px) {
-  .check-list {
-    grid-template-columns: 1fr;
-  }
+
+.not-found {
+  padding: 36px 16px;
+  text-align: center;
 }
 </style>

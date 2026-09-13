@@ -246,7 +246,9 @@ describe("PrismaOutboxRepository", () => {
 
   it("到期租户查询不带调用方 tenant_id", async () => {
     const prisma = {
-      $queryRaw: vi.fn().mockResolvedValue([{ tenant_id: "t1" }, { tenant_id: "t2" }]),
+      $queryRaw: vi
+        .fn()
+        .mockResolvedValue([{ tenant_id: "t1" }, { tenant_id: "t2" }]),
     };
     const repository = new PrismaOutboxRepository(prisma as never);
     const tenants = await repository.listDueTenantIds({

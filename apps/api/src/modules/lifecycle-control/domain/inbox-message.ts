@@ -14,6 +14,7 @@ export interface InboxReceivedRecord {
   messageId: string;
   payloadHash: string;
   payloadJson: unknown;
+  causationId: string | null;
   state: InboxReceiveState;
   attemptCount: 0;
   traceId: string;
@@ -59,6 +60,10 @@ export function decideInboxIdempotency(
   return existingHash === incomingHash ? "reuse" : "conflict";
 }
 
+export function inboxPayloadRef(inboxRecordId: string): string {
+  return `inbox/${inboxRecordId}`;
+}
+
 export function buildInboxReceived(input: {
   id: string;
   tenantId: string;
@@ -66,6 +71,7 @@ export function buildInboxReceived(input: {
   messageId: string;
   payloadHash: string;
   payloadJson: unknown;
+  causationId?: string | null;
   traceId: string;
   receivedAt: Date;
 }): InboxReceivedRecord {
@@ -80,6 +86,7 @@ export function buildInboxReceived(input: {
     messageId: parseInboxMessageId(input.messageId),
     payloadHash: parseInboxPayloadHash(input.payloadHash),
     payloadJson: input.payloadJson,
+    causationId: input.causationId ?? null,
     state: INBOX_RECEIVED_STATE,
     attemptCount: 0,
     traceId: parseInboxTraceId(input.traceId),

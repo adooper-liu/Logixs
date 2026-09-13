@@ -25,4 +25,21 @@ describe("task cursor", () => {
   it("损坏的 cursor 明确失败", () => {
     expect(() => decodeTaskCursor("not-a-cursor")).toThrow("VALIDATION_FORMAT");
   });
+
+  it("租户 cursor 往返，且不能和货柜范围并存", () => {
+    const cursor = {
+      tenantId: "t1",
+      createdAt: new Date("2026-09-12T10:00:00.000Z"),
+      id: "t1",
+    };
+    expect(decodeTaskCursor(encodeTaskCursor(cursor))).toEqual(cursor);
+    expect(() =>
+      encodeTaskCursor({
+        containerId: "c1",
+        tenantId: "t1",
+        createdAt: cursor.createdAt,
+        id: "t1",
+      }),
+    ).toThrow("VALIDATION_FORMAT");
+  });
 });

@@ -89,14 +89,16 @@ export class WorkExecutionController {
   @ApiOkResponse({ type: CompleteWorkOrderResponseDto })
   complete(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
     @Body() body?: CompleteWorkOrderRequestDto,
   ): Promise<CompleteWorkOrderResponseDto> {
-    return this.completeWorkOrder.execute(
-      id,
-      request.devIdentity.tenantId,
-      body?.evidenceRefs ?? [],
-    );
+    return this.completeWorkOrder.execute({
+      workOrderId: id,
+      tenantId: request.devIdentity.tenantId,
+      actorId: request.devIdentity.operatorId,
+      evidenceRefs: body?.evidenceRefs ?? [],
+      idempotencyKey: body?.idempotencyKey,
+    });
   }
 }
 

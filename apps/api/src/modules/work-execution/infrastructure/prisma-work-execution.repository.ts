@@ -6,6 +6,7 @@ import type {
   WorkOrderState,
 } from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
+import { clientOperationCreateData } from "./client-operation-persist";
 import type {
   ApplyWorkOrderCompletionInput,
   CreateTaskInput,
@@ -46,6 +47,46 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
     const tasks = await this.prisma.nodeTask.findMany({
       where: {
         containerId: input.containerId,
+        ...(input.after
+          ? {
+              OR: [
+                { createdAt: { gt: input.after.createdAt } },
+                {
+                  AND: [
+                    { createdAt: input.after.createdAt },
+                    { id: { gt: input.after.id } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      include: { workOrders: true, outcome: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: input.take,
+    });
+    return tasks.map((task) => ({
+      task: mapTask(task),
+      workOrders: task.workOrders.map(mapWorkOrder),
+      outcome: task.outcome ? mapOutcome(task.outcome) : null,
+    }));
+  }
+
+  async listTasksByTenant(input: {
+    tenantId: string;
+    after?: { createdAt: Date; id: string };
+    take: number;
+  }): Promise<NodeTaskWithWorkOrders[]> {
+    const owned = await this.prisma.containerRecord.findMany({
+      where: { tenantId: input.tenantId },
+      select: { id: true },
+    });
+    const containerIds = owned.map((row) => row.id);
+    if (containerIds.length === 0) return [];
+
+    const tasks = await this.prisma.nodeTask.findMany({
+      where: {
+        containerId: { in: containerIds },
         ...(input.after
           ? {
               OR: [
@@ -129,6 +170,11 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
             completedWorkOrderIds: input.outcome.completedWorkOrderIds,
             evaluatedAt: input.completedAt,
           },
+        });
+      }
+      if (input.clientOperation) {
+        await tx.clientOperation.create({
+          data: clientOperationCreateData(input.clientOperation),
         });
       }
     });

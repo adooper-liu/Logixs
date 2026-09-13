@@ -66,3 +66,51 @@ export class ProcessInboxBatchResponseDto {
   @ApiProperty({ type: [ProcessInboxBatchItemDto] })
   items!: ProcessInboxBatchItemDto[];
 }
+
+export class InboxDeadLetterItemDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() messageId!: string;
+  @ApiProperty() consumerName!: string;
+  @ApiProperty() payloadRef!: string;
+  @ApiProperty() payloadHash!: string;
+  @ApiProperty() attemptCount!: number;
+  @ApiProperty({ nullable: true }) lastErrorCode!: string | null;
+  @ApiProperty({ nullable: true }) failureCategory!: string | null;
+  @ApiProperty({ nullable: true }) ownerQueue!: string | null;
+  @ApiProperty() deadLetteredAt!: string;
+  @ApiProperty() receivedAt!: string;
+  @ApiProperty({ nullable: true }) causationId!: string | null;
+  @ApiProperty() traceId!: string;
+}
+
+export class InboxDeadLetterPageInfoDto {
+  @ApiProperty({ nullable: true }) nextCursor!: string | null;
+  @ApiProperty() hasNextPage!: boolean;
+  @ApiProperty() pageSize!: number;
+}
+
+export class InboxDeadLetterPageDto {
+  @ApiProperty({ type: [InboxDeadLetterItemDto] })
+  items!: InboxDeadLetterItemDto[];
+  @ApiProperty({ type: InboxDeadLetterPageInfoDto })
+  pageInfo!: InboxDeadLetterPageInfoDto;
+  @ApiProperty() asOf!: string;
+  @ApiProperty() projectionVersion!: number;
+}
+
+export class ReplayInboxDeadLetterRequestDto {
+  @ApiProperty() reasonCode!: string;
+  @ApiProperty() targetConsumerVersion!: string;
+  @ApiProperty() idempotencyKey!: string;
+  @ApiProperty({ required: false }) payloadRef?: string;
+  @ApiProperty({ required: false }) payloadHash?: string;
+}
+
+export class ReplayInboxDeadLetterResponseDto {
+  @ApiProperty() deadLetterId!: string;
+  @ApiProperty() replayedInboxId!: string;
+  @ApiProperty() replayedMessageId!: string;
+  @ApiProperty() applied!: boolean;
+  @ApiProperty() corrected!: boolean;
+  @ApiProperty() targetConsumerVersion!: string;
+}

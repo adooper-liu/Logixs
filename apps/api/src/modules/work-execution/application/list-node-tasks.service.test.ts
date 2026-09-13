@@ -40,13 +40,57 @@ async function buildService(
 }
 
 describe("ListNodeTasksService", () => {
-  it("缺 containerId 拒绝", async () => {
+  it("缺租户拒绝", async () => {
     const service = await buildService({
       listTasksByContainer: vi.fn(),
+      listTasksByTenant: vi.fn(),
     });
-    await expect(service.execute({ tenantId: "t1" })).rejects.toThrow(
+    await expect(service.execute({ containerId: "c1" })).rejects.toThrow(
+      "AUTHORIZATION_SCOPE_DENIED",
+    );
+  });
+
+  it("无 containerId 按租户列，不写货柜", async () => {
+    const first = taskBundle("t1", "2026-09-12T10:00:00Z");
+    const second = taskBundle("t2", "2026-09-12T11:00:00Z");
+    const repository = {
+      listTasksByContainer: vi.fn(),
+      listTasksByTenant: vi.fn().mockResolvedValue([first, second]),
+    };
+    const service = await buildService(repository);
+    const page = await service.execute({ tenantId: "t1", pageSize: "1" });
+    expect(page.items.map((item) => item.task.id)).toEqual(["t1"]);
+    expect(page.pageInfo.hasNextPage).toBe(true);
+    expect(page.pageInfo.nextCursor).toBe(
+      encodeTaskCursor({
+        tenantId: "t1",
+        createdAt: first.task.createdAt,
+        id: first.task.id,
+      }),
+    );
+    expect(repository.listTasksByContainer).not.toHaveBeenCalled();
+    expect(repository.listTasksByTenant).toHaveBeenCalledWith({
+      tenantId: "t1",
+      after: undefined,
+      take: 2,
+    });
+  });
+
+  it("租户 cursor 与租户不一致拒绝", async () => {
+    const repository = {
+      listTasksByContainer: vi.fn(),
+      listTasksByTenant: vi.fn(),
+    };
+    const service = await buildService(repository);
+    const cursor = encodeTaskCursor({
+      tenantId: "other",
+      createdAt: new Date("2026-09-12T10:00:00Z"),
+      id: "t1",
+    });
+    await expect(service.execute({ tenantId: "t1", cursor })).rejects.toThrow(
       "VALIDATION_FORMAT",
     );
+    expect(repository.listTasksByTenant).not.toHaveBeenCalled();
   });
 
   it("pageSize 超过 200 拒绝", async () => {

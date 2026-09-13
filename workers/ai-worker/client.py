@@ -9,7 +9,7 @@ async def main() -> None:
     client = await Client.connect("localhost:7233")
     handle = await client.start_workflow(
         "EchoAiWorkflow",
-        "hello from ai-worker",
+        {"message": "hello from ai-worker"},
         id=f"echo-ai-{int(time.time() * 1000)}",
         task_queue="logix-ai",
     )

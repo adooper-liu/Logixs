@@ -6,12 +6,13 @@ import type {
   CommitState,
   ReceptionState,
 } from "../domain/client-operation";
-import type { ClientOperationRepository } from "../domain/client-operation.repository";
+import type {
+  ClientOperationListItem,
+  ClientOperationRepository,
+} from "../domain/client-operation.repository";
 
 @Injectable()
-export class PrismaClientOperationRepository
-  implements ClientOperationRepository
-{
+export class PrismaClientOperationRepository implements ClientOperationRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByIdempotency(input: {
@@ -36,6 +37,34 @@ export class PrismaClientOperationRepository
   async findById(id: string): Promise<ClientOperationRecord | null> {
     const row = await this.prisma.clientOperation.findUnique({ where: { id } });
     return row ? toRecord(row) : null;
+  }
+
+  async listByTenant(query: {
+    tenantId: string;
+    after?: { createdAt: Date; id: string };
+    take: number;
+  }): Promise<ClientOperationListItem[]> {
+    const rows = await this.prisma.clientOperation.findMany({
+      where: {
+        tenantId: query.tenantId,
+        ...(query.after
+          ? {
+              OR: [
+                { createdAt: { lt: query.after.createdAt } },
+                {
+                  AND: [
+                    { createdAt: query.after.createdAt },
+                    { id: { lt: query.after.id } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: query.take,
+    });
+    return rows.map(toListItem);
   }
 
   async insert(record: ClientOperationRecord): Promise<void> {
@@ -67,6 +96,35 @@ export class PrismaClientOperationRepository
       },
     });
   }
+}
+
+function toListItem(row: {
+  id: string;
+  tenantId: string;
+  actorType: string;
+  actorId: string;
+  actionCode: string;
+  actionVersion: number;
+  targetType: string;
+  targetId: string;
+  targetOwnerModule: string;
+  correlationId: string;
+  causationId: string | null;
+  traceId: string;
+  idempotencyKey: string;
+  requestHash: string;
+  receptionState: string;
+  businessDecisionState: string;
+  commitState: string;
+  resultRefs: unknown;
+  rejectionReasonCode: string | null;
+  attemptCount: number;
+  receivedAt: Date | null;
+  decidedAt: Date | null;
+  committedAt: Date | null;
+  createdAt: Date;
+}): ClientOperationListItem {
+  return { ...toRecord(row), createdAt: row.createdAt };
 }
 
 function toRecord(row: {

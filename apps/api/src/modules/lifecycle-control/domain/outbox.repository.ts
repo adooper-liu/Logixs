@@ -30,7 +30,10 @@ export interface OutboxRepository {
     id: string;
     owner: string;
     decision: OutboxDeliveryDecision;
-  }): Promise<{ eventId: string; state: OutboxDeliveryDecision["state"] } | null>;
+  }): Promise<{
+    eventId: string;
+    state: OutboxDeliveryDecision["state"];
+  } | null>;
 
   findById(id: string): Promise<StoredOutboxMessage | null>;
 

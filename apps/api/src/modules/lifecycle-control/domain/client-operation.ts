@@ -5,7 +5,8 @@ export const FIRST_SLICE_CLIENT_ACTION_VERSION = 1;
 export const FIRST_SLICE_CLIENT_TARGET_TYPE = "container";
 export const FIRST_SLICE_CLIENT_TARGET_OWNER = "shipment-registry";
 
-export type ReceptionState = "pending" | "received" | "duplicate" | "boundary_rejected";
+export type ReceptionState =
+  "pending" | "received" | "duplicate" | "boundary_rejected";
 export type BusinessDecisionState = "pending" | "accepted" | "rejected";
 export type CommitState = "pending" | "committed" | "commit_failed";
 
@@ -126,7 +127,8 @@ export function buildBoundaryRejectedClientOperation(input: {
     businessDecisionState: "pending",
     commitState: "pending",
     resultRefs: [],
-    rejectionReasonCode: input.rejectionReasonCode.trim() || "VALIDATION_FORMAT",
+    rejectionReasonCode:
+      input.rejectionReasonCode.trim() || "VALIDATION_FORMAT",
     receivedAt: input.now,
     decidedAt: null,
     committedAt: null,

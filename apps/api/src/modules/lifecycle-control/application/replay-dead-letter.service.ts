@@ -108,7 +108,10 @@ export class ReplayDeadLetterService {
       idempotencyKey: command.idempotencyKey,
     });
     if (existing) {
-      if (compareReplayIdempotency(existing.requestHash, requestHash) === "conflict") {
+      if (
+        compareReplayIdempotency(existing.requestHash, requestHash) ===
+        "conflict"
+      ) {
         throw new HttpException(
           "IDEMPOTENCY_CONFLICT: 同键异载荷",
           HttpStatus.CONFLICT,

@@ -398,3 +398,6 @@ export const extractDataTableRouteFilters = (
         : [];
     }),
   );
+
+export const defaultDataTableFilter = (schema: DataTableSchema): string =>
+  schema.quickFilters?.find((item) => item.matchAll)?.code ?? "";

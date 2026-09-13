@@ -57,6 +57,8 @@ export class NodeTaskPageDto {
 export class CompleteWorkOrderRequestDto {
   @ApiProperty({ type: [String], required: false })
   evidenceRefs?: string[];
+  @ApiProperty({ required: false })
+  idempotencyKey?: string;
 }
 
 export class CompleteWorkOrderResponseDto {
@@ -71,4 +73,9 @@ export class CompleteWorkOrderResponseDto {
   @ApiProperty({ nullable: true }) lifecycleDetail!: string | null;
   @ApiProperty({ nullable: true }) activatedNodeCode!: string | null;
   @ApiProperty({ nullable: true }) activatedNodeTaskId!: string | null;
+  @ApiProperty() clientOperationId!: string;
+  @ApiProperty() receptionState!: string;
+  @ApiProperty() businessDecisionState!: string;
+  @ApiProperty() commitState!: string;
+  @ApiProperty({ nullable: true }) rejectionReasonCode!: string | null;
 }

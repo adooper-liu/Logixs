@@ -25,9 +25,13 @@ const waitingStatuses = new Set<TaskItem["status"]>([
   "reported",
   "waiting_external",
 ]);
+const dueTime = (dueAt: string) => {
+  const time = Date.parse(dueAt);
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+};
 const sortByRiskAndDueAt = (left: TaskItem, right: TaskItem) =>
   right.riskPriority - left.riskPriority ||
-  Date.parse(left.dueAt) - Date.parse(right.dueAt);
+  dueTime(left.dueAt) - dueTime(right.dueAt);
 
 const withLanguage = (task: TaskItem) => ({
   task,
@@ -112,9 +116,10 @@ const dueLabel = (dueAt: string) =>
           </span>
           <span class="task-state">
             <small>截止</small>
-            <time :datetime="item.task.dueAt">{{
+            <time v-if="item.task.dueAt" :datetime="item.task.dueAt">{{
               dueLabel(item.task.dueAt)
             }}</time>
+            <span v-else>无</span>
           </span>
         </button>
       </div>

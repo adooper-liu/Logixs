@@ -1,11 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type {
-  LifecycleNodeCode,
-  NodeApplicability,
-} from "@logix/contracts";
+import type { LifecycleNodeCode, NodeApplicability } from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { defaultApplicability } from "../domain/node-applicability";
 import type {
+  CanonicalEventListItem,
+  CanonicalEventListQuery,
   CanonicalEventRecord,
   FlowWithNodes,
   LifecycleRepository,
@@ -26,6 +25,62 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     });
     if (!flow) return null;
     return toFlowWithNodes(flow);
+  }
+
+  async listCurrentNodes(query: {
+    tenantId: string;
+    containerIds: string[];
+  }): Promise<
+    Array<{
+      containerId: string;
+      currentNodeCode: string;
+      flowState: string;
+    }>
+  > {
+    if (query.containerIds.length === 0) return [];
+    const owned = await this.prisma.containerRecord.findMany({
+      where: {
+        tenantId: query.tenantId,
+        id: { in: query.containerIds },
+      },
+      select: { id: true },
+    });
+    const ownedIds = owned.map((row) => row.id);
+    if (ownedIds.length === 0) return [];
+    const flows = await this.prisma.flowInstance.findMany({
+      where: { containerId: { in: ownedIds } },
+      select: {
+        containerId: true,
+        currentNodeCode: true,
+        state: true,
+      },
+    });
+    return flows.map((flow) => ({
+      containerId: flow.containerId,
+      currentNodeCode: flow.currentNodeCode,
+      flowState: flow.state,
+    }));
+  }
+
+  async listFlowsWithNodes(query: {
+    tenantId: string;
+    containerIds: string[];
+  }): Promise<FlowWithNodes[]> {
+    if (query.containerIds.length === 0) return [];
+    const owned = await this.prisma.containerRecord.findMany({
+      where: {
+        tenantId: query.tenantId,
+        id: { in: query.containerIds },
+      },
+      select: { id: true },
+    });
+    const ownedIds = owned.map((row) => row.id);
+    if (ownedIds.length === 0) return [];
+    const flows = await this.prisma.flowInstance.findMany({
+      where: { containerId: { in: ownedIds } },
+      include: { nodes: true },
+    });
+    return flows.map((flow) => toFlowWithNodes(flow));
   }
 
   async ensureFlow(containerId: string): Promise<FlowWithNodes> {
@@ -124,6 +179,41 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       containerNumber: container.containerNumber,
       currentStatus: container.currentStatus,
     };
+  }
+
+  async listEvents(
+    query: CanonicalEventListQuery,
+  ): Promise<CanonicalEventListItem[]> {
+    const rows = await this.prisma.canonicalEvent.findMany({
+      where: {
+        containerId: query.containerId,
+        ...(query.after
+          ? {
+              OR: [
+                { occurredAt: { lt: query.after.occurredAt } },
+                {
+                  AND: [
+                    { occurredAt: query.after.occurredAt },
+                    { id: { lt: query.after.id } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+      take: query.take,
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      containerId: row.containerId,
+      eventCode: row.eventCode as CanonicalEventListItem["eventCode"],
+      occurredAt: row.occurredAt,
+      recordedAt: row.appliedAt,
+      evidenceRefs: Array.isArray(row.evidenceRefs)
+        ? (row.evidenceRefs as string[])
+        : [],
+    }));
   }
 
   async findEventByIdempotencyKey(

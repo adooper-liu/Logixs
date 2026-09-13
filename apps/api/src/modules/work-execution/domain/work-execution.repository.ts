@@ -4,6 +4,7 @@ import type {
   NodeTaskState,
   WorkOrderState,
 } from "@logix/contracts";
+import type { ClientOperationRecord } from "./client-operation";
 import type { NodeTaskOutcomeDraft } from "./task-outcome";
 
 export const WORK_EXECUTION_REPOSITORY = Symbol("WorkExecutionRepository");
@@ -55,10 +56,17 @@ export interface ApplyWorkOrderCompletionInput {
   taskId: string;
   taskState: NodeTaskState;
   outcome: NodeTaskOutcomeDraft | null;
+  clientOperation?: ClientOperationRecord;
 }
 
 export interface ListTasksByContainerInput {
   containerId: string;
+  after?: { createdAt: Date; id: string };
+  take: number;
+}
+
+export interface ListTasksByTenantInput {
+  tenantId: string;
   after?: { createdAt: Date; id: string };
   take: number;
 }
@@ -71,6 +79,9 @@ export interface WorkExecutionRepository {
   findWorkOrderById(id: string): Promise<WorkOrderRecord | null>;
   listTasksByContainer(
     input: ListTasksByContainerInput,
+  ): Promise<NodeTaskWithWorkOrders[]>;
+  listTasksByTenant(
+    input: ListTasksByTenantInput,
   ): Promise<NodeTaskWithWorkOrders[]>;
   createTaskWithRequiredWorkOrder(
     input: CreateTaskInput,

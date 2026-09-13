@@ -53,12 +53,12 @@ async function buildService(overrides?: {
       }),
     markConsumptionFailed:
       overrides?.markConsumptionFailed ??
-      vi.fn().mockImplementation(
-        async (input: { decision: { state: string } }) => ({
+      vi
+        .fn()
+        .mockImplementation(async (input: { decision: { state: string } }) => ({
           messageId: MESSAGE_ID,
           state: input.decision.state,
-        }),
-      ),
+        })),
   };
   const consumption = {
     consume: overrides?.consume ?? vi.fn().mockResolvedValue(undefined),
@@ -116,9 +116,7 @@ describe("ProcessInboxBatchService", () => {
 
   it("可重试失败进入 retry_wait；未知失败进入 dead_letter", async () => {
     const retry = await buildService({
-      consume: vi
-        .fn()
-        .mockRejectedValue(new InboxConsumptionError("timeout")),
+      consume: vi.fn().mockRejectedValue(new InboxConsumptionError("timeout")),
     });
     const retried = await retry.service.execute(validInput());
     expect(retry.inbox.markProcessed).not.toHaveBeenCalled();

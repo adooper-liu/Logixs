@@ -10,25 +10,32 @@ const props = withDefaults(
     syncStatus: StatusView;
     compact?: boolean;
     showIdleSync?: boolean;
+    showIdleTask?: boolean;
     variant?: "default" | "context";
   }>(),
   {
     compact: false,
     showIdleSync: true,
+    showIdleTask: true,
     variant: "default",
   },
 );
 
-const statusItems = computed(() => {
-  const items = [
+const statusItems = computed(() =>
+  [
     { key: "container", label: "货柜状态", value: props.containerStatus },
     { key: "task", label: "任务状态", value: props.taskStatus },
     { key: "sync", label: "同步状态", value: props.syncStatus },
-  ];
-  return props.showIdleSync || props.syncStatus.code !== "idle"
-    ? items
-    : items.filter((item) => item.key !== "sync");
-});
+  ].filter((item) => {
+    if (item.key === "sync" && !props.showIdleSync && item.value.code === "idle") {
+      return false;
+    }
+    if (item.key === "task" && !props.showIdleTask && item.value.code === "idle") {
+      return false;
+    }
+    return true;
+  }),
+);
 </script>
 
 <template>
@@ -38,7 +45,8 @@ const statusItems = computed(() => {
       `status-triplet--${variant}`,
       { 'status-triplet--compact': compact },
     ]"
-    aria-label="货柜、任务和同步状态"
+    :style="{ '--status-count': String(statusItems.length) }"
+    aria-label="货柜状态"
   >
     <div
       v-for="item in statusItems"
@@ -65,7 +73,7 @@ const statusItems = computed(() => {
 <style scoped>
 .status-triplet {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--status-count, 3), minmax(0, 1fr));
   border: 1px solid var(--line);
   background: var(--surface);
   border-radius: var(--radius-m);

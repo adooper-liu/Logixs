@@ -47,7 +47,7 @@ const describeCell = (cell: RaciCell, nodeName: string) => {
         <h2 id="raci-title">RACI 责任投影</h2>
         <InfoTooltip
           label="查看 RACI 投影来源"
-          text="candidate 演示值；来源为运营框架 RACI 表从 22 个运营节点收敛到 14 个系统主链节点，待负责人回验。"
+          text="运行时无 RACI 查询投影；空表表示尚未提供权威责任矩阵。"
         />
       </div>
       <span><b>A</b> 拍板 · <strong>R</strong> 执行</span>

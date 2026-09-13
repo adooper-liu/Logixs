@@ -83,6 +83,17 @@ const definitions = [
     guardrail: "正常监控不生成员工待办；超时或冲突才派生人工任务。",
     completionResult: "权威到港或卸船事件已落账。",
   },
+  {
+    taskDefinitionKey: "live_node_task",
+    version: 1,
+    title: "节点任务",
+    activeGuidance: "完成可执行工单。只有结果落账才计入业务事实。",
+    blockedGuidance: "工单已阻塞，处理后才能继续。",
+    waitingGuidance: "等待工单结果落账。",
+    completionCriteria: "可执行工单已完成且三段回执落账。",
+    guardrail: "HTTP 成功不代表业务完成；缺字段不在界面上编造。",
+    completionResult: "工单完成已落账。",
+  },
 ] as const satisfies readonly TaskLanguageDefinition[];
 
 const taskLanguageByVersion = new Map(

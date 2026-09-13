@@ -9,11 +9,7 @@ export const MIN_DRAIN_ROUNDS = 1;
 export const MAX_DRAIN_ROUNDS = 20;
 
 export type OutboxPublishState =
-  | "pending"
-  | "publishing"
-  | "published"
-  | "retry_wait"
-  | "dead_letter";
+  "pending" | "publishing" | "published" | "retry_wait" | "dead_letter";
 
 export interface OutboxLease {
   owner: string;
@@ -40,7 +36,9 @@ export interface ClaimedOutbox {
   traceId: string;
 }
 
-export function parsePublishBatchLimit(raw: number | string | undefined): number {
+export function parsePublishBatchLimit(
+  raw: number | string | undefined,
+): number {
   if (raw === undefined || raw === "") return DEFAULT_PUBLISH_BATCH_LIMIT;
   const text = typeof raw === "number" ? String(raw) : raw;
   if (!/^\d+$/.test(text)) {

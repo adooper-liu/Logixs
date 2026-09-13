@@ -48,6 +48,7 @@ describe("PrismaInboxRepository", () => {
       messageId: "11111111-1111-4111-8111-111111111111",
       payloadHash: "a".repeat(64),
       payloadJson: { containerId: "c1" },
+      causationId: null,
       state: "received",
       attemptCount: 0,
       traceId: "trace-1",
@@ -160,5 +161,104 @@ describe("PrismaInboxRepository", () => {
       processedAt: NOW,
     });
     expect(processed).toBeNull();
+  });
+
+  it("列死信只返回引用，不读载荷正文", async () => {
+    const prisma = {
+      inboxMessage: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "in-1",
+            messageId: "11111111-1111-4111-8111-111111111111",
+            consumerName: "lifecycle-control-inbox",
+            payloadHash: "a".repeat(64),
+            attemptCount: 3,
+            lastErrorCode: "timeout",
+            failureCategory: "transient_technical",
+            ownerQueue: "lifecycle-control-inbox",
+            deadLetteredAt: NOW,
+            receivedAt: NOW,
+            causationId: null,
+            traceId: "trace-1",
+          },
+        ]),
+      },
+    };
+    const repository = new PrismaInboxRepository(prisma as never);
+    const items = await repository.listDeadLetters({
+      tenantId: "t1",
+      consumerName: "lifecycle-control-inbox",
+      take: 50,
+    });
+    expect(prisma.inboxMessage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "t1",
+          state: "dead_letter",
+        }),
+      }),
+    );
+    expect(items).toEqual([
+      expect.objectContaining({
+        id: "in-1",
+        payloadRef: "inbox/in-1",
+      }),
+    ]);
+    expect(items[0]).not.toHaveProperty("payloadJson");
+  });
+
+  it("重放同事务插入新 received 与 replay 记录", async () => {
+    const inboxMessageCreate = vi.fn();
+    const replayCreate = vi.fn();
+    const prisma = {
+      $transaction: vi.fn(async (fn: (tx: unknown) => Promise<void>) => {
+        await fn({
+          inboxMessage: { create: inboxMessageCreate },
+          inboxReplayRequest: { create: replayCreate },
+        });
+      }),
+    };
+    const repository = new PrismaInboxRepository(prisma as never);
+    await repository.insertReplay({
+      replay: {
+        id: "in-2",
+        tenantId: "t1",
+        consumerName: "lifecycle-control-inbox",
+        messageId: "44444444-4444-4444-8444-444444444444",
+        payloadHash: "a".repeat(64),
+        payloadJson: { containerId: "c1" },
+        causationId: "11111111-1111-4111-8111-111111111111",
+        state: "received",
+        attemptCount: 0,
+        traceId: "trace-new",
+        receivedAt: NOW,
+      },
+      request: {
+        tenantId: "t1",
+        deadLetterId: "in-1",
+        replayedInboxId: "in-2",
+        replayedMessageId: "44444444-4444-4444-8444-444444444444",
+        targetConsumerVersion: "consumer-v1",
+        requestedBy: "op-1",
+        reasonCode: "manual_replay",
+        requestedAt: NOW,
+        traceId: "trace-new",
+        idempotencyKey: "replay-1",
+        requestHash: "b".repeat(64),
+      },
+    });
+    expect(inboxMessageCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        id: "in-2",
+        state: "received",
+        causationId: "11111111-1111-4111-8111-111111111111",
+      }),
+    });
+    expect(replayCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        deadLetterId: "in-1",
+        replayedInboxId: "in-2",
+      }),
+    });
   });
 });

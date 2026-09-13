@@ -51,7 +51,8 @@ async function buildService(overrides?: {
     findById: overrides?.findById ?? vi.fn().mockResolvedValue(ORIGINAL),
     findReplayByIdempotency:
       overrides?.findReplayByIdempotency ?? vi.fn().mockResolvedValue(null),
-    insertReplay: overrides?.insertReplay ?? vi.fn().mockResolvedValue(undefined),
+    insertReplay:
+      overrides?.insertReplay ?? vi.fn().mockResolvedValue(undefined),
   };
   const module = await Test.createTestingModule({
     providers: [
@@ -110,7 +111,9 @@ describe("ReplayDeadLetterService", () => {
         requestHash: "e".repeat(64),
       }),
     });
-    await expect(service.execute(COMMAND)).rejects.toThrow("IDEMPOTENCY_CONFLICT");
+    await expect(service.execute(COMMAND)).rejects.toThrow(
+      "IDEMPOTENCY_CONFLICT",
+    );
     expect(outbox.insertReplay).not.toHaveBeenCalled();
   });
 
@@ -163,6 +166,8 @@ describe("ReplayDeadLetterService", () => {
     const { service } = await buildService({
       findById: vi.fn().mockResolvedValue(null),
     });
-    await expect(service.execute(COMMAND)).rejects.toThrow("RESOURCE_NOT_FOUND");
+    await expect(service.execute(COMMAND)).rejects.toThrow(
+      "RESOURCE_NOT_FOUND",
+    );
   });
 });

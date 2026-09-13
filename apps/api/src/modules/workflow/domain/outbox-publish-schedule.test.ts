@@ -24,7 +24,9 @@ describe("parseScheduleIntervalSeconds", () => {
   it("默认 30 秒，拒绝越界与非整数", () => {
     expect(parseScheduleIntervalSeconds(undefined)).toBe(30);
     expect(parseScheduleIntervalSeconds("60")).toBe(60);
-    expect(() => parseScheduleIntervalSeconds("4")).toThrow("VALIDATION_FORMAT");
+    expect(() => parseScheduleIntervalSeconds("4")).toThrow(
+      "VALIDATION_FORMAT",
+    );
     expect(() => parseScheduleIntervalSeconds("3601")).toThrow(
       "VALIDATION_FORMAT",
     );

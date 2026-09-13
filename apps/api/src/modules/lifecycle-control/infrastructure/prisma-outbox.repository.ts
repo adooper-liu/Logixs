@@ -2,7 +2,10 @@ import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type { DeadLetterSummary } from "../domain/outbox-page";
 import type { OutboxDeliveryDecision } from "../domain/outbox-failure";
-import type { ClaimedOutbox, OutboxPublishState } from "../domain/outbox-publish";
+import type {
+  ClaimedOutbox,
+  OutboxPublishState,
+} from "../domain/outbox-publish";
 import type {
   ReplayOutboxDraft,
   ReplayRequestDraft,
@@ -154,7 +157,10 @@ export class PrismaOutboxRepository implements OutboxRepository {
     id: string;
     owner: string;
     decision: OutboxDeliveryDecision;
-  }): Promise<{ eventId: string; state: OutboxDeliveryDecision["state"] } | null> {
+  }): Promise<{
+    eventId: string;
+    state: OutboxDeliveryDecision["state"];
+  } | null> {
     const data =
       input.decision.state === "retry_wait"
         ? {

@@ -73,7 +73,8 @@ export class DeadLetterPageInfoDto {
 
 export class DeadLetterPageDto {
   @ApiProperty({ type: [DeadLetterItemDto] }) items!: DeadLetterItemDto[];
-  @ApiProperty({ type: DeadLetterPageInfoDto }) pageInfo!: DeadLetterPageInfoDto;
+  @ApiProperty({ type: DeadLetterPageInfoDto })
+  pageInfo!: DeadLetterPageInfoDto;
   @ApiProperty() asOf!: string;
   @ApiProperty() projectionVersion!: number;
 }

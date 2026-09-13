@@ -46,6 +46,7 @@ onMounted(async () => {
           <th>箱号</th>
           <th>当前状态</th>
           <th>更新时间</th>
+          <th>作业</th>
         </tr>
       </thead>
       <tbody>
@@ -54,6 +55,13 @@ onMounted(async () => {
           <td>{{ item.containerNumber ?? "—" }}</td>
           <td>{{ STATUS_LABELS[item.currentStatus] ?? item.currentStatus }}</td>
           <td>{{ new Date(item.updatedAt).toLocaleString() }}</td>
+          <td>
+            <router-link
+              :to="{ path: '/real-tasks', query: { containerId: item.id } }"
+            >
+              任务
+            </router-link>
+          </td>
         </tr>
       </tbody>
     </table>

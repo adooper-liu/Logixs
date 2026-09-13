@@ -17,7 +17,8 @@ export class OutboxSystemController {
   @ApiOkResponse({ type: PublishDueSystemOutboxResponseDto })
   async publishDue(
     @Body() body: PublishDueSystemOutboxRequestDto,
-    @Req() request: { devServiceIdentity: { actorType: string; actorId: string } },
+    @Req()
+    request: { devServiceIdentity: { actorType: string; actorId: string } },
   ): Promise<PublishDueSystemOutboxResponseDto> {
     return this.drainDueSystemOutbox.execute({
       actorType: request.devServiceIdentity.actorType,

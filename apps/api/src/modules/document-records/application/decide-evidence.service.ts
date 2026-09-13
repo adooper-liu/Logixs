@@ -42,7 +42,10 @@ export class DecideEvidenceService {
     if (!input.tenantId) {
       throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
     }
-    if (!input.actorOrServiceId?.trim() || input.actorOrServiceId.length > 128) {
+    if (
+      !input.actorOrServiceId?.trim() ||
+      input.actorOrServiceId.length > 128
+    ) {
       throw new HttpException(
         "VALIDATION_FORMAT: actorOrServiceId 无效",
         HttpStatus.BAD_REQUEST,

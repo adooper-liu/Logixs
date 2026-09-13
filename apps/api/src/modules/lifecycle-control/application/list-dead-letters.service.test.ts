@@ -73,9 +73,7 @@ describe("ListDeadLettersService", () => {
     const first = summary("dl-1", "2026-09-13T02:00:00.000Z");
     const second = summary("dl-2", "2026-09-13T01:00:00.000Z");
     const third = summary("dl-3", "2026-09-13T00:00:00.000Z");
-    const listDeadLetters = vi
-      .fn()
-      .mockResolvedValue([first, second, third]);
+    const listDeadLetters = vi.fn().mockResolvedValue([first, second, third]);
     const service = await buildService({ listDeadLetters });
     const page = await service.execute({ tenantId: "t1", pageSize: "2" });
     expect(page.items.map((item) => item.id)).toEqual(["dl-1", "dl-2"]);

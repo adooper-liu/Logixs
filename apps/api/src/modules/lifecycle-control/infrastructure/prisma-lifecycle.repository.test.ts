@@ -25,9 +25,7 @@ describe("PrismaLifecycleRepository.saveEvent", () => {
         fn(tx),
       ),
     };
-    const repository = new PrismaLifecycleRepository(
-      prisma as never,
-    );
+    const repository = new PrismaLifecycleRepository(prisma as never);
 
     await repository.saveEvent(EVENT);
 
@@ -108,5 +106,77 @@ describe("PrismaLifecycleRepository.saveEvent", () => {
     await expect(repository.saveEvent(EVENT)).rejects.toThrow(
       "outbox write failed",
     );
+  });
+});
+
+describe("PrismaLifecycleRepository.listFlowsWithNodes", () => {
+  it("只读本租户已有流程，不 ensureFlow", async () => {
+    const prisma = {
+      containerRecord: {
+        findMany: vi.fn().mockResolvedValue([{ id: "c1" }]),
+      },
+      flowInstance: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "f1",
+            containerId: "c1",
+            state: "active",
+            currentNodeCode: "cargo_ready",
+            version: 0,
+            nodes: [
+              {
+                id: "n1",
+                nodeCode: "cargo_ready",
+                state: "active",
+                completedAt: null,
+                applicability: "required",
+              },
+            ],
+          },
+        ]),
+        create: vi.fn(),
+      },
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+    const flows = await repository.listFlowsWithNodes({
+      tenantId: "t1",
+      containerIds: ["c1", "c2"],
+    });
+    expect(flows).toEqual([
+      {
+        flow: {
+          id: "f1",
+          containerId: "c1",
+          state: "active",
+          currentNodeCode: "cargo_ready",
+          version: 0,
+        },
+        nodes: [
+          {
+            id: "n1",
+            nodeCode: "cargo_ready",
+            state: "active",
+            completedAt: null,
+            applicability: "required",
+          },
+        ],
+      },
+    ]);
+    expect(prisma.flowInstance.create).not.toHaveBeenCalled();
+  });
+
+  it("他租户货柜直接省略", async () => {
+    const prisma = {
+      containerRecord: { findMany: vi.fn().mockResolvedValue([]) },
+      flowInstance: { findMany: vi.fn(), create: vi.fn() },
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+    await expect(
+      repository.listFlowsWithNodes({
+        tenantId: "other",
+        containerIds: ["c1"],
+      }),
+    ).resolves.toEqual([]);
+    expect(prisma.flowInstance.findMany).not.toHaveBeenCalled();
   });
 });

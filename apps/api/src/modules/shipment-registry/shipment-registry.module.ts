@@ -7,6 +7,7 @@ import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { ApplyContainerRecordService } from "./application/apply-container-record.service";
 import { AssertContainerTenantService } from "./application/assert-container-tenant.service";
 import { ASSERT_CONTAINER_TENANT } from "./assert-container-tenant.port";
+import { GetContainerService } from "./application/get-container.service";
 import { ListContainersService } from "./application/list-containers.service";
 import { CONTAINER_RECORD_WRITER } from "./domain/apply-container-record";
 import { CONTAINER_REPOSITORY } from "./domain/container.repository";
@@ -19,6 +20,7 @@ import { ContainersController } from "./presentation/containers.controller";
   controllers: [ContainersController],
   providers: [
     ListContainersService,
+    GetContainerService,
     ApplyContainerRecordService,
     AssertContainerTenantService,
     {

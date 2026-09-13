@@ -109,6 +109,76 @@ const toTableStatus = (status: StatusView): DataTableStatusValue => ({
   changedAt: status.changedAt,
 });
 
+const liveContainerTableSchema: DataTableSchema = {
+  schemaId: "live.container.list",
+  schemaVersion: 4,
+  label: "干活",
+  searchPlaceholder: "柜号 / 备货单",
+  rowLabelColumnCode: "container",
+  defaultSort: { columnCode: "container", direction: "asc" },
+  columns: [
+    {
+      code: "container",
+      label: "货柜",
+      kind: "entity",
+      order: 10,
+      width: 260,
+      searchable: true,
+      sortable: true,
+      pinned: "left",
+      rowAction: "open",
+      description: "柜号和备货单。点开去做这一柜的任务。",
+    },
+    {
+      code: "containerStatus",
+      label: "状态",
+      kind: "status",
+      order: 20,
+      width: 140,
+      sortable: true,
+      queryKey: "status",
+      description: "货柜生命周期八态。",
+    },
+    {
+      code: "currentStation",
+      label: "当前站",
+      kind: "text",
+      order: 22,
+      width: 120,
+      emptyLabel: "还没有流程",
+      description: "流程实例上的当前节点。",
+    },
+    {
+      code: "openTask",
+      label: "待办",
+      kind: "text",
+      order: 25,
+      width: 168,
+      emptyLabel: "没有待办",
+      description: "这一柜还没做完的节点任务。",
+    },
+    {
+      code: "latestSync",
+      label: "同步",
+      kind: "text",
+      order: 27,
+      width: 140,
+      emptyLabel: "最近没有提交",
+      description: "最近一页提交里，这一柜记没记下。",
+    },
+    {
+      code: "open",
+      label: "查看",
+      kind: "action",
+      order: 30,
+      width: 56,
+      pinned: "right",
+      rowAction: "open",
+      dividerBefore: true,
+    },
+  ],
+};
+
 export const createContainerTableProjection = (
   containers: readonly ContainerProjection[],
 ): DataTableProjection => ({
@@ -134,6 +204,54 @@ export const createContainerTableProjection = (
       eta: container.eta,
       actualAt: container.actualAt,
       risk: { label: container.risk, tone: container.tone },
+      open: null,
+    },
+  })),
+  pageInfo: {
+    total: containers.length,
+    offset: 0,
+    limit: 25,
+    hasPrevious: false,
+    hasNext: false,
+  },
+});
+
+export const createLiveContainerTableProjection = (
+  containers: readonly ContainerProjection[],
+  options?: {
+    tasksReady?: boolean;
+    stationsReady?: boolean;
+    syncReady?: boolean;
+  },
+): DataTableProjection => ({
+  schema: liveContainerTableSchema,
+  rows: containers.map((container) => ({
+    rowId: container.containerRecordId,
+    tone: container.tone,
+    filterKeys: [],
+    values: {
+      container: {
+        primary: container.containerNumber,
+        supportingValues: [container.orderNumber].filter(Boolean),
+        context: container.currentNode,
+      },
+      containerStatus: toTableStatus(container.currentStatus),
+      currentStation:
+        options?.stationsReady === false
+          ? "当前站没能加载"
+          : container.currentNode,
+      openTask:
+        options?.tasksReady === false
+          ? "待办没能加载"
+          : container.taskStatus.code === "idle"
+            ? ""
+            : container.taskStatus.label,
+      latestSync:
+        options?.syncReady === false
+          ? "同步没能加载"
+          : container.syncStatus.code === "idle"
+            ? ""
+            : container.syncStatus.label,
       open: null,
     },
   })),

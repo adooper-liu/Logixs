@@ -17,7 +17,8 @@ export class OutboxPublishSystemScheduleController {
   @ApiOkResponse({ type: EnsureOutboxPublishSystemScheduleResponseDto })
   async ensure(
     @Body() body: EnsureOutboxPublishSystemScheduleRequestDto,
-    @Req() request: { devServiceIdentity: { actorType: string; actorId: string } },
+    @Req()
+    request: { devServiceIdentity: { actorType: string; actorId: string } },
   ): Promise<EnsureOutboxPublishSystemScheduleResponseDto> {
     return this.ensureOutboxPublishSystemSchedule.execute({
       actorType: request.devServiceIdentity.actorType,

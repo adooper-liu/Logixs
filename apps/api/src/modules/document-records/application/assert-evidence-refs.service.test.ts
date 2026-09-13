@@ -45,9 +45,9 @@ describe("AssertEvidenceRefsService", () => {
 
   it("跨租户 → AUTHORIZATION_SCOPE_DENIED", async () => {
     const service = await buildService({
-      findByIds: vi.fn().mockResolvedValue([
-        { ...qualified(), tenantId: "other" },
-      ]),
+      findByIds: vi
+        .fn()
+        .mockResolvedValue([{ ...qualified(), tenantId: "other" }]),
     });
     await expect(
       service.execute({
@@ -61,9 +61,9 @@ describe("AssertEvidenceRefsService", () => {
 
   it("pending 或对象不匹配 → EVIDENCE_REQUIRED", async () => {
     const pending = await buildService({
-      findByIds: vi.fn().mockResolvedValue([
-        { ...qualified(), verificationState: "pending" },
-      ]),
+      findByIds: vi
+        .fn()
+        .mockResolvedValue([{ ...qualified(), verificationState: "pending" }]),
     });
     await expect(
       pending.execute({
@@ -75,9 +75,11 @@ describe("AssertEvidenceRefsService", () => {
     ).rejects.toThrow("EVIDENCE_REQUIRED");
 
     const mismatch = await buildService({
-      findByIds: vi.fn().mockResolvedValue([
-        { ...qualified(), subjectId: "20000000-0000-4000-8000-000000000002" },
-      ]),
+      findByIds: vi
+        .fn()
+        .mockResolvedValue([
+          { ...qualified(), subjectId: "20000000-0000-4000-8000-000000000002" },
+        ]),
     });
     await expect(
       mismatch.execute({

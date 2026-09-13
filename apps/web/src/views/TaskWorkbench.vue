@@ -4,9 +4,14 @@ import { useRoute, useRouter } from "vue-router";
 import TaskExecutionPanel from "../components/task/TaskExecutionPanel.vue";
 import TaskQueue from "../components/task/TaskQueue.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
-import { useTaskWorkflow } from "../composables/useTaskWorkflow";
+import { useTaskWorkspace } from "../composables/useTaskWorkspace";
 
 const {
+  loading,
+  loadingMore,
+  moreError,
+  hasMore,
+  error,
   tasks,
   activeTaskId,
   activeTask,
@@ -21,10 +26,14 @@ const {
   executeAction,
   reportException,
   retrySubmission,
-} = useTaskWorkflow();
+  loadMore,
+} = useTaskWorkspace();
 
 const route = useRoute();
 const router = useRouter();
+const scopedContainer = computed(() =>
+  String(route.query.containerId ?? "").trim(),
+);
 const mobilePane = shallowRef<"queue" | "detail">("queue");
 const actionableStatuses = new Set([
   "available",
@@ -44,15 +53,17 @@ const monitorCount = computed(
 );
 
 watch(
-  () => route.query.task,
-  (taskId) => {
+  [() => route.query.task, tasks],
+  ([taskId]) => {
     if (
       typeof taskId === "string" &&
       tasks.value.some((task) => task.taskId === taskId)
     ) {
       selectTask(taskId);
       mobilePane.value = "detail";
-    } else {
+    } else if (tasks.value.length && !taskId) {
+      mobilePane.value = "queue";
+    } else if (typeof taskId !== "string") {
       mobilePane.value = "queue";
     }
   },
@@ -68,7 +79,10 @@ const handleSelect = (taskId: string) => {
 
 <template>
   <div class="task-workbench page-frame">
-    <PageHeader eyebrow="今日作业" title="我的任务">
+    <PageHeader
+      title="我的任务"
+      :summary="scopedContainer ? '只看这一柜。' : undefined"
+    >
       <template #actions>
         <p class="workload">
           <b class="num">{{ humanTaskCount }}</b> 待处理
@@ -94,7 +108,13 @@ const handleSelect = (taskId: string) => {
       </button>
     </div>
 
-    <div class="layout">
+    <p v-if="loading" class="workspace-hint">加载中…</p>
+    <p v-else-if="error" class="workspace-hint workspace-hint--error">
+      {{ error }}
+    </p>
+    <p v-else-if="!tasks.length" class="workspace-hint">这一范围还没有待办。</p>
+
+    <div v-else class="layout">
       <div
         class="pane queue-pane"
         :class="{ 'pane--active': mobilePane === 'queue' }"
@@ -105,12 +125,25 @@ const handleSelect = (taskId: string) => {
           :selection-locked="isSubmitting"
           @select="handleSelect"
         />
+        <p v-if="moreError" class="workspace-hint workspace-hint--error">
+          {{ moreError }}
+        </p>
+        <button
+          v-if="hasMore"
+          type="button"
+          class="load-more"
+          :disabled="loadingMore"
+          @click="loadMore"
+        >
+          {{ loadingMore ? "加载中…" : "再看后面" }}
+        </button>
       </div>
       <div
         class="pane detail-pane"
         :class="{ 'pane--active': mobilePane === 'detail' }"
       >
         <TaskExecutionPanel
+          v-if="activeTask && activeContainer"
           :task="activeTask"
           :container="activeContainer"
           :submission="activeSubmission"
@@ -131,6 +164,30 @@ const handleSelect = (taskId: string) => {
 <style scoped>
 .task-workbench {
   min-height: 100%;
+}
+
+.workspace-hint {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.workspace-hint--error {
+  color: var(--risk);
+}
+
+.load-more {
+  margin-top: 8px;
+  min-height: var(--touch-target, 40px);
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.load-more:disabled {
+  color: var(--muted);
 }
 
 .workload {

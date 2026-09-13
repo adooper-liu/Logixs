@@ -271,4 +271,22 @@ describe("DynamicDataTable", () => {
     expect(wrapper.get('[role="alert"]').text()).toContain("列码重复");
     expect(wrapper.find("table").exists()).toBe(false);
   });
+
+  it("distinguishes an empty catalog from a failed filter", () => {
+    const projection = createProjection();
+    const empty = mount(DynamicDataTable, {
+      props: {
+        projection: { ...projection, rows: [], pageInfo: { ...projection.pageInfo, total: 0 } },
+        filter: "",
+      },
+    });
+    expect(empty.get(".empty-state").text()).toBe("还没有货柜。");
+
+    const missed = mount(DynamicDataTable, {
+      props: { projection, filter: "missing" },
+    });
+    expect(missed.get(".empty-state").text()).toBe(
+      "没有匹配的货柜，请调整筛选条件。",
+    );
+  });
 });

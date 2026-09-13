@@ -79,6 +79,9 @@ describe("AppShell", () => {
       "shell--collapsed",
     );
     expect(wrapper.get('[aria-label="展开侧栏"]')).toBeTruthy();
+    expect(wrapper.get('a[href="/tasks"]').attributes("aria-label")).toBe(
+      "我的任务",
+    );
 
     await wrapper.get('[aria-label="展开侧栏"]').trigger("click");
     expect(wrapper.get('[data-testid="app-shell"]').classes()).not.toContain(

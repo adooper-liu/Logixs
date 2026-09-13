@@ -4,6 +4,7 @@ import {
   ChartNoAxesCombined,
   ClipboardCheck,
   Container,
+  ListChecks,
   TriangleAlert,
 } from "@lucide/vue";
 import type { RouteRecordNormalized } from "vue-router";
@@ -14,6 +15,7 @@ export type NavigationIcon =
   | "chart-no-axes-combined"
   | "clipboard-check"
   | "container"
+  | "list-checks"
   | "triangle-alert";
 
 export interface AppNavigationItem {
@@ -29,6 +31,7 @@ const icons: Record<NavigationIcon, Component> = {
   "chart-no-axes-combined": ChartNoAxesCombined,
   "clipboard-check": ClipboardCheck,
   container: Container,
+  "list-checks": ListChecks,
   "triangle-alert": TriangleAlert,
 };
 

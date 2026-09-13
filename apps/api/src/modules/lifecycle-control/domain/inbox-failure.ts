@@ -28,7 +28,9 @@ export function decideInboxFailure(input: {
   });
 }
 
-export function classifyHttpConsumeError(error: unknown): InboxConsumptionError {
+export function classifyHttpConsumeError(
+  error: unknown,
+): InboxConsumptionError {
   if (error instanceof InboxConsumptionError) return error;
   const message = error instanceof Error ? error.message : "";
   if (message.startsWith("VALIDATION_FORMAT")) {

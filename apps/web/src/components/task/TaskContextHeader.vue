@@ -24,14 +24,18 @@ const showExecutionQualifier = computed(
     props.task.status === "under_review",
 );
 
-const dueLabel = computed(() =>
-  new Intl.DateTimeFormat("zh-CN", {
+const dueLabel = computed(() => {
+  if (!props.task.dueAt) return "";
+  return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(new Date(props.task.dueAt)),
+  }).format(new Date(props.task.dueAt));
+});
+const containerHref = computed(
+  () => `/container/${props.task.containerRecordId}`,
 );
 </script>
 
@@ -77,15 +81,16 @@ const dueLabel = computed(() =>
     <div class="identity">
       <router-link
         class="container-link mono"
-        :to="`/container/${task.containerRecordId}`"
-        aria-label="查看一柜一档"
+        :to="containerHref"
+        aria-label="查看货柜档案"
       >
         <Container :size="14" aria-hidden="true" />
         {{ task.containerNumber }}
         <ChevronRight :size="14" aria-hidden="true" />
       </router-link>
       <small>{{ task.location }}</small>
-      <time :datetime="task.dueAt">截止 {{ dueLabel }}</time>
+      <time v-if="task.dueAt" :datetime="task.dueAt">截止 {{ dueLabel }}</time>
+      <span v-else>无截止</span>
       <span
         class="container-state"
         :aria-label="`货柜状态：${container.currentStatus.label}`"

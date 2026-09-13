@@ -23,7 +23,10 @@ async function buildService(input: {
   const module = await Test.createTestingModule({
     providers: [
       DrainDueSystemOutboxService,
-      { provide: OUTBOX_REPOSITORY, useValue: { listDueTenantIds: input.listDueTenantIds } },
+      {
+        provide: OUTBOX_REPOSITORY,
+        useValue: { listDueTenantIds: input.listDueTenantIds },
+      },
       { provide: DrainDueOutboxService, useValue: { execute: input.drain } },
     ],
   }).compile();

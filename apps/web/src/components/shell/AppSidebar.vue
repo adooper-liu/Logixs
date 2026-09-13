@@ -33,7 +33,7 @@ const changeRole = (event: Event) => {
       <div class="brand-symbol" aria-hidden="true">LX</div>
       <div class="brand-copy">
         <b>LogiX</b>
-        <span>货柜 PDCA 工作系统</span>
+        <span>货柜作业</span>
       </div>
       <button
         class="icon-button close-drawer"
@@ -48,10 +48,10 @@ const changeRole = (event: Event) => {
     <div class="workspace-switcher">
       <span class="workspace-label">工作区</span>
       <div class="workspace-name">
-        <strong>First Mile</strong>
+        <strong>已出运</strong>
         <InfoTooltip
           label="查看工作区范围"
-          text="当前工作区聚焦已出运后的货柜履约、现场作业与管理闭环。"
+          text="看出运后的货柜，并做这一柜的任务。"
         />
       </div>
     </div>
@@ -63,7 +63,8 @@ const changeRole = (event: Event) => {
         :to="item.path"
         class="nav-item"
         active-class="nav-item--active"
-        :title="collapsed ? item.label : undefined"
+        :aria-label="item.label"
+        :title="item.label"
         @click="emit('navigate')"
       >
         <component :is="item.icon" :size="18" aria-hidden="true" />

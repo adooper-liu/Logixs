@@ -3,6 +3,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type { ContainerSummary } from "../domain/container-summary";
 import type {
+  ContainerByIdQuery,
   ContainerListQuery,
   ContainerRepository,
 } from "../domain/container.repository";
@@ -32,14 +33,14 @@ export class PrismaContainerRepository implements ContainerRepository {
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: query.take,
     });
-    return rows.map((row) => ({
-      id: row.id,
-      orderNumber: row.orderNumber,
-      containerNumber: row.containerNumber,
-      // DB enum 与契约枚举值一致（G7 parity 门禁校验），显式映射而非偶然同名。
-      currentStatus: row.currentStatus as ContainerLifecycleState,
-      updatedAt: row.updatedAt.toISOString(),
-    }));
+    return rows.map((row) => toSummary(row));
+  }
+
+  async findById(query: ContainerByIdQuery): Promise<ContainerSummary | null> {
+    const row = await this.prisma.containerRecord.findFirst({
+      where: { id: query.id, tenantId: query.tenantId },
+    });
+    return row ? toSummary(row) : null;
   }
 
   async findTenantId(containerId: string): Promise<string | null> {
@@ -49,4 +50,21 @@ export class PrismaContainerRepository implements ContainerRepository {
     });
     return row?.tenantId ?? null;
   }
+}
+
+function toSummary(row: {
+  id: string;
+  orderNumber: string;
+  containerNumber: string | null;
+  currentStatus: string;
+  updatedAt: Date;
+}): ContainerSummary {
+  return {
+    id: row.id,
+    orderNumber: row.orderNumber,
+    containerNumber: row.containerNumber,
+    // DB enum 与契约枚举值一致（G7 parity 门禁校验），显式映射而非偶然同名。
+    currentStatus: row.currentStatus as ContainerLifecycleState,
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }

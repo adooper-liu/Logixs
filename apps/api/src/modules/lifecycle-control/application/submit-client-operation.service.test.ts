@@ -3,7 +3,10 @@ import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import { APPLY_LIFECYCLE_EVENT } from "../apply-lifecycle-event.port";
 import { CLIENT_OPERATION_REPOSITORY } from "../domain/client-operation.repository";
-import { hashInboxApplyPayload, parseInboxApplyPayload } from "../domain/inbox-apply-payload";
+import {
+  hashInboxApplyPayload,
+  parseInboxApplyPayload,
+} from "../domain/inbox-apply-payload";
 import { SubmitClientOperationService } from "./submit-client-operation.service";
 
 const PAYLOAD = {
@@ -114,7 +117,10 @@ describe("SubmitClientOperationService", () => {
       apply: vi
         .fn()
         .mockRejectedValue(
-          new HttpException("EVIDENCE_REQUIRED", HttpStatus.UNPROCESSABLE_ENTITY),
+          new HttpException(
+            "EVIDENCE_REQUIRED",
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          ),
         ),
     });
     await expect(service.execute(validInput())).rejects.toThrow(

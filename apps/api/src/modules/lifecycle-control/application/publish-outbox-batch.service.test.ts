@@ -46,12 +46,12 @@ async function buildService(overrides?: {
       }),
     markDeliveryFailed:
       overrides?.markDeliveryFailed ??
-      vi.fn().mockImplementation(
-        async (input: { decision: { state: string } }) => ({
+      vi
+        .fn()
+        .mockImplementation(async (input: { decision: { state: string } }) => ({
           eventId: "evt-1",
           state: input.decision.state,
-        }),
-      ),
+        })),
   };
   const delivery = {
     deliver:
@@ -114,9 +114,7 @@ describe("PublishOutboxBatchService", () => {
 
   it("可重试失败进入 retry_wait", async () => {
     const { service, outbox } = await buildService({
-      deliver: vi
-        .fn()
-        .mockRejectedValue(new OutboxDeliveryError("timeout")),
+      deliver: vi.fn().mockRejectedValue(new OutboxDeliveryError("timeout")),
     });
     const result = await service.execute({
       tenantId: "t1",
@@ -168,9 +166,7 @@ describe("PublishOutboxBatchService", () => {
 
   it("丢失租约保持 publishing leftover", async () => {
     const { service } = await buildService({
-      deliver: vi
-        .fn()
-        .mockRejectedValue(new OutboxDeliveryError("timeout")),
+      deliver: vi.fn().mockRejectedValue(new OutboxDeliveryError("timeout")),
       markDeliveryFailed: vi.fn().mockResolvedValue(null),
     });
     const result = await service.execute({

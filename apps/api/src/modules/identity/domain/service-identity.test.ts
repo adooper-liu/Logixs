@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  serviceActorId,
-  serviceCredentialsMatch,
-} from "./service-identity";
+import { serviceActorId, serviceCredentialsMatch } from "./service-identity";
 
 describe("serviceActorId", () => {
   it("生成 service: 前缀，拒绝空 id", () => {

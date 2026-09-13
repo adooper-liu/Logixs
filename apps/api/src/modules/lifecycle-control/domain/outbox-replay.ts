@@ -76,10 +76,7 @@ export function assertReplayCommand(input: {
   if (reasonCode.length === 0 || reasonCode.length > 64) {
     throw new Error("VALIDATION_FORMAT: reasonCode 无效");
   }
-  if (
-    targetConsumerVersion.length === 0 ||
-    targetConsumerVersion.length > 64
-  ) {
+  if (targetConsumerVersion.length === 0 || targetConsumerVersion.length > 64) {
     throw new Error("VALIDATION_FORMAT: targetConsumerVersion 无效");
   }
   if (idempotencyKey.length === 0 || idempotencyKey.length > 200) {
@@ -93,7 +90,9 @@ export function assertReplayCommand(input: {
   const hasRef = payloadRef !== undefined && payloadRef.length > 0;
   const hasHash = payloadHash !== undefined && payloadHash.length > 0;
   if (hasRef !== hasHash) {
-    throw new Error("VALIDATION_FORMAT: payloadRef 与 payloadHash 必须同时提供");
+    throw new Error(
+      "VALIDATION_FORMAT: payloadRef 与 payloadHash 必须同时提供",
+    );
   }
   if (hasRef && hasHash) {
     if (payloadRef.length > 500) {

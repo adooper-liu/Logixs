@@ -45,13 +45,8 @@ export class ListNodeTasksService {
 
   async execute(input: ListNodeTasksInput): Promise<NodeTaskPage> {
     const containerId = input.containerId?.trim() ?? "";
-    if (!containerId) {
-      throw new HttpException(
-        "VALIDATION_FORMAT: containerId 必填",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    if (!input.tenantId) {
+    const tenantId = input.tenantId?.trim() ?? "";
+    if (!tenantId) {
       throw new HttpException(
         "AUTHORIZATION_SCOPE_DENIED: 缺少租户",
         HttpStatus.FORBIDDEN,
@@ -71,11 +66,10 @@ export class ListNodeTasksService {
     let after: { createdAt: Date; id: string } | undefined;
     if (input.cursor) {
       try {
-        const cursor = decodeTaskCursor(input.cursor);
-        if (cursor.containerId !== containerId) {
-          throw new Error("VALIDATION_FORMAT: cursor 与过滤条件不匹配");
-        }
-        after = { createdAt: cursor.createdAt, id: cursor.id };
+        after = this.readCursor(input.cursor, {
+          tenantId,
+          containerId: containerId || undefined,
+        });
       } catch (error) {
         throw new HttpException(
           error instanceof Error ? error.message : "VALIDATION_FORMAT",
@@ -84,16 +78,13 @@ export class ListNodeTasksService {
       }
     }
 
-    await this.assertContainerTenant.execute({
-      containerId,
-      tenantId: input.tenantId,
-    });
-
-    const rows = await this.repository.listTasksByContainer({
-      containerId,
-      after,
-      take: pageSize + 1,
-    });
+    const rows = containerId
+      ? await this.listByContainer(containerId, tenantId, after, pageSize)
+      : await this.repository.listTasksByTenant({
+          tenantId,
+          after,
+          take: pageSize + 1,
+        });
     const hasNextPage = rows.length > pageSize;
     const items = hasNextPage ? rows.slice(0, pageSize) : rows;
     const last = items[items.length - 1];
@@ -104,7 +95,7 @@ export class ListNodeTasksService {
         nextCursor:
           hasNextPage && last
             ? encodeTaskCursor({
-                containerId,
+                ...(containerId ? { containerId } : { tenantId }),
                 createdAt: last.task.createdAt,
                 id: last.task.id,
               })
@@ -115,5 +106,37 @@ export class ListNodeTasksService {
       asOf: new Date(),
       projectionVersion: 0,
     };
+  }
+
+  private readCursor(
+    raw: string,
+    filter: { tenantId: string; containerId?: string },
+  ): { createdAt: Date; id: string } {
+    const cursor = decodeTaskCursor(raw);
+    if (filter.containerId) {
+      if (cursor.containerId !== filter.containerId) {
+        throw new Error("VALIDATION_FORMAT: cursor 与过滤条件不匹配");
+      }
+    } else if (cursor.tenantId !== filter.tenantId) {
+      throw new Error("VALIDATION_FORMAT: cursor 与过滤条件不匹配");
+    }
+    return { createdAt: cursor.createdAt, id: cursor.id };
+  }
+
+  private async listByContainer(
+    containerId: string,
+    tenantId: string,
+    after: { createdAt: Date; id: string } | undefined,
+    pageSize: number,
+  ) {
+    await this.assertContainerTenant.execute({
+      containerId,
+      tenantId,
+    });
+    return this.repository.listTasksByContainer({
+      containerId,
+      after,
+      take: pageSize + 1,
+    });
   }
 }

@@ -13,7 +13,9 @@ import { CreateNodeTaskService } from "./application/create-node-task.service";
 import { GetNodeTaskService } from "./application/get-node-task.service";
 import { ListNodeTasksService } from "./application/list-node-tasks.service";
 import { CREATE_NODE_TASK } from "./create-node-task.port";
+import { WORK_CLIENT_OPERATION_REPOSITORY } from "./domain/client-operation.repository";
 import { WORK_EXECUTION_REPOSITORY } from "./domain/work-execution.repository";
+import { PrismaWorkClientOperationRepository } from "./infrastructure/prisma-client-operation.repository";
 import { PrismaWorkExecutionRepository } from "./infrastructure/prisma-work-execution.repository";
 import { WorkExecutionController } from "./presentation/work-execution.controller";
 
@@ -33,6 +35,10 @@ import { WorkExecutionController } from "./presentation/work-execution.controlle
     {
       provide: WORK_EXECUTION_REPOSITORY,
       useClass: PrismaWorkExecutionRepository,
+    },
+    {
+      provide: WORK_CLIENT_OPERATION_REPOSITORY,
+      useClass: PrismaWorkClientOperationRepository,
     },
     { provide: CREATE_NODE_TASK, useExisting: CreateNodeTaskService },
   ],

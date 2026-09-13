@@ -31,7 +31,7 @@ async function onFileChange(event: Event): Promise<void> {
 
 <template>
   <div class="import-upload page-frame">
-    <PageHeader eyebrow="P6 智能导入 · 阶段 A" title="上传已出运货柜表" />
+    <PageHeader title="导入货柜" summary="上传表格，建成货柜档案。" />
 
     <p class="hint">
       选择一份 <code>.xlsx</code> / <code>.csv</code> 文件（≤10MB、≤5000 行、≤50

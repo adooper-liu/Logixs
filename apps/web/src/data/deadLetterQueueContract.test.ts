@@ -34,4 +34,21 @@ describe("toDeadLetterRow", () => {
     expect(JSON.stringify(row)).not.toContain("a".repeat(64));
     expect(() => assertDeadLetterRowSafe(row)).not.toThrow();
   });
+
+  it("Inbox 行也只投影受控引用", () => {
+    const row = toDeadLetterRow({
+      ...item,
+      id: "in-1",
+      eventId: "msg-1",
+      eventType: "lifecycle-control-inbox",
+      aggregateType: "inbox",
+      aggregateId: "msg-1",
+      payloadRef: "inbox/in-1",
+      ownerQueue: "lifecycle-control-inbox",
+    });
+    expect(row.objectRef).toBe("inbox/msg-1");
+    expect(row.payloadRef).toBe("inbox/in-1");
+    expect(JSON.stringify(row)).not.toContain("a".repeat(64));
+    expect(() => assertDeadLetterRowSafe(row)).not.toThrow();
+  });
 });

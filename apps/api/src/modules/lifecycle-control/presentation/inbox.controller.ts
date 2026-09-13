@@ -25,7 +25,8 @@ export class InboxController {
   @ApiOkResponse({ type: ReceiveInboxMessageResponseDto })
   async receive(
     @Body() body: ReceiveInboxMessageRequestDto,
-    @Req() request: { devServiceIdentity: { actorType: string; actorId: string } },
+    @Req()
+    request: { devServiceIdentity: { actorType: string; actorId: string } },
   ): Promise<ReceiveInboxMessageResponseDto> {
     return this.receiveInboxMessage.execute({
       actorType: request.devServiceIdentity.actorType,
@@ -43,7 +44,8 @@ export class InboxController {
   @ApiOkResponse({ type: ClaimInboxBatchResponseDto })
   async claimBatch(
     @Body() body: ClaimInboxBatchRequestDto,
-    @Req() request: { devServiceIdentity: { actorType: string; actorId: string } },
+    @Req()
+    request: { devServiceIdentity: { actorType: string; actorId: string } },
   ): Promise<ClaimInboxBatchResponseDto> {
     return this.claimInboxBatch.execute({
       actorType: request.devServiceIdentity.actorType,
@@ -58,7 +60,8 @@ export class InboxController {
   @ApiOkResponse({ type: ProcessInboxBatchResponseDto })
   async processBatch(
     @Body() body: ProcessInboxBatchRequestDto,
-    @Req() request: { devServiceIdentity: { actorType: string; actorId: string } },
+    @Req()
+    request: { devServiceIdentity: { actorType: string; actorId: string } },
   ): Promise<ProcessInboxBatchResponseDto> {
     return this.processInboxBatch.execute({
       actorType: request.devServiceIdentity.actorType,

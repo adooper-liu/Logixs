@@ -29,7 +29,11 @@ const displayItems = computed(() =>
 </script>
 
 <template>
-  <nav class="kpi-strip" aria-label="管理看板 KPI">
+  <nav
+    class="kpi-strip"
+    aria-label="管理看板 KPI"
+    :style="{ '--kpi-count': String(displayItems.length || 1) }"
+  >
     <div
       v-for="item in displayItems"
       :key="item.key"
@@ -58,7 +62,7 @@ const displayItems = computed(() =>
 .kpi-strip {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--kpi-count, 1), minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -159,11 +163,7 @@ const displayItems = computed(() =>
 
 @media (max-width: 1180px) {
   .kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .kpi-signal:last-child {
-    grid-column: 1 / -1;
+    grid-template-columns: repeat(min(2, var(--kpi-count, 2)), minmax(0, 1fr));
   }
 }
 

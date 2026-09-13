@@ -48,7 +48,10 @@ export function decideVerificationTransition(input: {
   }
 
   if (input.currentState === "revoked") return { kind: "already_done" };
-  if (input.currentState !== "verified" || input.currentValidity !== "effective") {
+  if (
+    input.currentState !== "verified" ||
+    input.currentValidity !== "effective"
+  ) {
     return {
       kind: "reject",
       code: "BUSINESS_STATE_VIOLATION",

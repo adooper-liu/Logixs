@@ -10,7 +10,13 @@ export interface ContainerListQuery {
   take: number;
 }
 
+export interface ContainerByIdQuery {
+  tenantId: string;
+  id: string;
+}
+
 export interface ContainerRepository {
   list(query: ContainerListQuery): Promise<ContainerSummary[]>;
+  findById(query: ContainerByIdQuery): Promise<ContainerSummary | null>;
   findTenantId(containerId: string): Promise<string | null>;
 }

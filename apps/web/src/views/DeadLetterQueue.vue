@@ -2,7 +2,9 @@
 import { onMounted, ref } from "vue";
 import {
   listDeadLetters,
+  listInboxDeadLetters,
   replayDeadLetter,
+  replayInboxDeadLetter,
   type DeadLetterPage,
 } from "../api/deadLetters";
 import PageHeader from "../components/ui/PageHeader.vue";
@@ -11,6 +13,7 @@ import {
   type DeadLetterRow,
 } from "../data/deadLetterQueueContract";
 
+const queue = ref<"outbox" | "inbox">("outbox");
 const rows = ref<DeadLetterRow[]>([]);
 const page = ref<DeadLetterPage | null>(null);
 const loading = ref(true);
@@ -24,7 +27,10 @@ async function load(cursor?: string): Promise<void> {
   loading.value = true;
   error.value = "";
   try {
-    const next = await listDeadLetters({ pageSize: 50, cursor });
+    const next =
+      queue.value === "inbox"
+        ? await listInboxDeadLetters({ pageSize: 50, cursor })
+        : await listDeadLetters({ pageSize: 50, cursor });
     page.value = next;
     rows.value = next.items.map(toDeadLetterRow);
   } catch (cause) {
@@ -33,6 +39,14 @@ async function load(cursor?: string): Promise<void> {
   } finally {
     loading.value = false;
   }
+}
+
+function switchQueue(next: "outbox" | "inbox"): void {
+  if (queue.value === next) return;
+  queue.value = next;
+  replayingId.value = "";
+  replayMessage.value = "";
+  void load();
 }
 
 onMounted(() => {
@@ -52,14 +66,25 @@ async function confirmReplay(): Promise<void> {
     return;
   }
   try {
-    const result = await replayDeadLetter(replayingId.value, {
-      reasonCode,
-      targetConsumerVersion,
-      idempotencyKey: crypto.randomUUID(),
-    });
+    const result =
+      queue.value === "inbox"
+        ? await replayInboxDeadLetter(replayingId.value, {
+            reasonCode,
+            targetConsumerVersion,
+            idempotencyKey: crypto.randomUUID(),
+          })
+        : await replayDeadLetter(replayingId.value, {
+            reasonCode,
+            targetConsumerVersion,
+            idempotencyKey: crypto.randomUUID(),
+          });
+    const replayedId =
+      queue.value === "inbox"
+        ? (result as { replayedMessageId: string }).replayedMessageId
+        : (result as { replayedEventId: string }).replayedEventId;
     replayMessage.value = result.applied
-      ? `已重放为 ${result.replayedEventId}`
-      : `已返回原重放 ${result.replayedEventId}`;
+      ? `已重放为 ${replayedId}`
+      : `已返回原重放 ${replayedId}`;
     replayingId.value = "";
   } catch (cause) {
     replayMessage.value = cause instanceof Error ? cause.message : "重放失败";
@@ -74,15 +99,35 @@ function formatTime(value: string): string {
 <template>
   <div class="dead-letter-page page-frame">
     <PageHeader
-      eyebrow="同步健康"
-      title="死信队列"
-      summary="只显示受控引用和失败摘要。重放会生成新消息，不会改写原死信。"
+      title="看失败"
+      summary="反复失败、需要重试的消息。重试会发一条新消息。"
       :updated-at="page?.asOf ? formatTime(page.asOf) : undefined"
     />
 
+    <div class="queue-switch" role="tablist" aria-label="看失败">
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="queue === 'outbox'"
+        :class="{ active: queue === 'outbox' }"
+        @click="switchQueue('outbox')"
+      >
+        发出失败
+      </button>
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="queue === 'inbox'"
+        :class="{ active: queue === 'inbox' }"
+        @click="switchQueue('inbox')"
+      >
+        接收失败
+      </button>
+    </div>
+
     <p v-if="loading" class="hint">加载中…</p>
     <p v-else-if="error" class="hint hint--error">{{ error }}</p>
-    <p v-else-if="rows.length === 0" class="hint">当前租户没有死信。</p>
+    <p v-else-if="rows.length === 0" class="hint">没有需要处理的失败。</p>
 
     <div v-else class="table-wrap">
       <table class="dead-table">
@@ -93,7 +138,7 @@ function formatTime(value: string): string {
             <th>失败</th>
             <th>尝试</th>
             <th>引用</th>
-            <th>入死信</th>
+            <th>失败时间</th>
             <th>动作</th>
           </tr>
         </thead>
@@ -160,6 +205,22 @@ function formatTime(value: string): string {
 .dead-letter-page {
   min-width: 0;
   min-height: 100%;
+}
+.queue-switch {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+.queue-switch button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--app-border, #d1d5db);
+  background: var(--app-surface, #fff);
+  color: inherit;
+}
+.queue-switch button.active {
+  border-color: var(--app-text, #111827);
+  font-weight: 600;
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);

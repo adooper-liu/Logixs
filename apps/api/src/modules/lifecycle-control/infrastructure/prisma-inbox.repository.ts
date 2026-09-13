@@ -1,12 +1,18 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type { InboxReceivedRecord } from "../domain/inbox-message";
+import { inboxPayloadRef } from "../domain/inbox-message";
 import type { OutboxDeliveryDecision } from "../domain/outbox-failure";
 import {
   beginInboxProcessing,
   completeInboxProcessed,
 } from "../domain/inbox-processing";
 import type { ClaimedInbox } from "../domain/inbox-processing";
+import type {
+  InboxDeadLetterSummary,
+  InboxReplayRequestDraft,
+  StoredInboxDeadLetter,
+} from "../domain/inbox-replay";
 import type {
   InboxRepository,
   StoredInboxMessage,
@@ -59,6 +65,7 @@ export class PrismaInboxRepository implements InboxRepository {
           record.payloadJson === undefined || record.payloadJson === null
             ? undefined
             : JSON.parse(JSON.stringify(record.payloadJson)),
+        causationId: record.causationId,
         state: record.state,
         attemptCount: record.attemptCount,
         traceId: record.traceId,
@@ -177,7 +184,10 @@ export class PrismaInboxRepository implements InboxRepository {
     id: string;
     owner: string;
     decision: OutboxDeliveryDecision;
-  }): Promise<{ messageId: string; state: OutboxDeliveryDecision["state"] } | null> {
+  }): Promise<{
+    messageId: string;
+    state: OutboxDeliveryDecision["state"];
+  } | null> {
     const data =
       input.decision.state === "retry_wait"
         ? {
@@ -223,6 +233,132 @@ export class PrismaInboxRepository implements InboxRepository {
       state: current.state,
     };
   }
+
+  async findById(id: string): Promise<StoredInboxDeadLetter | null> {
+    const row = await this.prisma.inboxMessage.findUnique({
+      where: { id },
+    });
+    return row ? toDeadLetter(row) : null;
+  }
+
+  async listDeadLetters(query: {
+    tenantId: string;
+    consumerName: string;
+    after?: { deadLetteredAt: Date; id: string };
+    take: number;
+  }): Promise<InboxDeadLetterSummary[]> {
+    const rows = await this.prisma.inboxMessage.findMany({
+      where: {
+        tenantId: query.tenantId,
+        consumerName: query.consumerName,
+        state: "dead_letter",
+        deadLetteredAt: { not: null },
+        ...(query.after
+          ? {
+              OR: [
+                { deadLetteredAt: { lt: query.after.deadLetteredAt } },
+                {
+                  AND: [
+                    { deadLetteredAt: query.after.deadLetteredAt },
+                    { id: { lt: query.after.id } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ deadLetteredAt: "desc" }, { id: "desc" }],
+      take: query.take,
+    });
+    return rows.flatMap((row) => {
+      if (!row.deadLetteredAt) return [];
+      return [
+        {
+          id: row.id,
+          messageId: row.messageId,
+          consumerName: row.consumerName,
+          payloadRef: inboxPayloadRef(row.id),
+          payloadHash: row.payloadHash,
+          attemptCount: row.attemptCount,
+          lastErrorCode: row.lastErrorCode,
+          failureCategory: row.failureCategory,
+          ownerQueue: row.ownerQueue,
+          deadLetteredAt: row.deadLetteredAt,
+          receivedAt: row.receivedAt,
+          causationId: row.causationId,
+          traceId: row.traceId,
+        },
+      ];
+    });
+  }
+
+  async findReplayByIdempotency(input: {
+    tenantId: string;
+    deadLetterId: string;
+    idempotencyKey: string;
+  }): Promise<{
+    replayedInboxId: string;
+    replayedMessageId: string;
+    requestHash: string | null;
+  } | null> {
+    const row = await this.prisma.inboxReplayRequest.findUnique({
+      where: {
+        tenantId_deadLetterId_idempotencyKey: {
+          tenantId: input.tenantId,
+          deadLetterId: input.deadLetterId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      },
+    });
+    if (!row) return null;
+    return {
+      replayedInboxId: row.replayedInboxId,
+      replayedMessageId: row.replayedMessageId,
+      requestHash: row.requestHash,
+    };
+  }
+
+  async insertReplay(input: {
+    replay: InboxReceivedRecord;
+    request: InboxReplayRequestDraft;
+  }): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.inboxMessage.create({
+        data: {
+          id: input.replay.id,
+          tenantId: input.replay.tenantId,
+          consumerName: input.replay.consumerName,
+          messageId: input.replay.messageId,
+          payloadHash: input.replay.payloadHash,
+          payloadJson:
+            input.replay.payloadJson === undefined ||
+            input.replay.payloadJson === null
+              ? undefined
+              : JSON.parse(JSON.stringify(input.replay.payloadJson)),
+          causationId: input.replay.causationId,
+          state: input.replay.state,
+          attemptCount: input.replay.attemptCount,
+          traceId: input.replay.traceId,
+          receivedAt: input.replay.receivedAt,
+        },
+      });
+      await tx.inboxReplayRequest.create({
+        data: {
+          tenantId: input.request.tenantId,
+          deadLetterId: input.request.deadLetterId,
+          replayedInboxId: input.request.replayedInboxId,
+          replayedMessageId: input.request.replayedMessageId,
+          targetConsumerVersion: input.request.targetConsumerVersion,
+          requestedBy: input.request.requestedBy,
+          reasonCode: input.request.reasonCode,
+          requestedAt: input.request.requestedAt,
+          traceId: input.request.traceId,
+          idempotencyKey: input.request.idempotencyKey,
+          requestHash: input.request.requestHash,
+        },
+      });
+    });
+  }
 }
 
 function toClaimed(row: ClaimRow): ClaimedInbox | null {
@@ -250,6 +386,51 @@ function toClaimed(row: ClaimRow): ClaimedInbox | null {
     },
     traceId: row.trace_id,
     receivedAt: row.received_at,
+  };
+}
+
+function toDeadLetter(row: {
+  id: string;
+  tenantId: string;
+  consumerName: string;
+  messageId: string;
+  payloadHash: string;
+  payloadJson: unknown;
+  state: string;
+  attemptCount: number;
+  lastErrorCode: string | null;
+  failureCategory: string | null;
+  ownerQueue: string | null;
+  deadLetteredAt: Date | null;
+  receivedAt: Date;
+  causationId: string | null;
+  traceId: string;
+}): StoredInboxDeadLetter | null {
+  if (
+    row.state !== "received" &&
+    row.state !== "processing" &&
+    row.state !== "processed" &&
+    row.state !== "retry_wait" &&
+    row.state !== "dead_letter"
+  ) {
+    return null;
+  }
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    consumerName: row.consumerName,
+    messageId: row.messageId,
+    payloadHash: row.payloadHash,
+    payloadJson: row.payloadJson,
+    state: row.state,
+    attemptCount: row.attemptCount,
+    lastErrorCode: row.lastErrorCode,
+    failureCategory: row.failureCategory,
+    ownerQueue: row.ownerQueue,
+    deadLetteredAt: row.deadLetteredAt,
+    receivedAt: row.receivedAt,
+    causationId: row.causationId,
+    traceId: row.traceId,
   };
 }
 

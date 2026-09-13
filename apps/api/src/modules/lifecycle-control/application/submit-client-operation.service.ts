@@ -90,7 +90,10 @@ export class SubmitClientOperationService {
       idempotencyKey: payload.idempotencyKey,
     });
     if (existing) {
-      if (decideClientIdempotency(existing.requestHash, requestHash) === "conflict") {
+      if (
+        decideClientIdempotency(existing.requestHash, requestHash) ===
+        "conflict"
+      ) {
         throw new HttpException(
           "IDEMPOTENCY_CONFLICT: 同键异载荷",
           HttpStatus.CONFLICT,
@@ -128,7 +131,12 @@ export class SubmitClientOperationService {
         resultRefs: [
           { entityType: "container", entityId: payload.containerId },
           ...(applied.applied
-            ? [{ entityType: "canonical_event", entityId: payload.idempotencyKey }]
+            ? [
+                {
+                  entityType: "canonical_event",
+                  entityId: payload.idempotencyKey,
+                },
+              ]
             : []),
         ],
       });
@@ -139,7 +147,10 @@ export class SubmitClientOperationService {
       const record = classifyClientFailure(base, message);
       await this.operations.insert(record);
       if (error instanceof HttpException) throw error;
-      throw new HttpException("INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        "INTERNAL_ERROR",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
@@ -157,7 +168,8 @@ function classifyClientFailure(
   ) {
     return buildBoundaryRejectedClientOperation({
       ...base,
-      rejectionReasonCode: message.split(":")[0] ?? "AUTHORIZATION_SCOPE_DENIED",
+      rejectionReasonCode:
+        message.split(":")[0] ?? "AUTHORIZATION_SCOPE_DENIED",
     });
   }
   if (message.startsWith("VALIDATION_FORMAT")) {
@@ -166,8 +178,7 @@ function classifyClientFailure(
       rejectionReasonCode: "VALIDATION_FORMAT",
     });
   }
-  const reason =
-    message.split(":")[0]?.trim() || "BUSINESS_REJECTED";
+  const reason = message.split(":")[0]?.trim() || "BUSINESS_REJECTED";
   return buildRejectedClientOperation({
     ...base,
     rejectionReasonCode: reason,

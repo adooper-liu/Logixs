@@ -41,7 +41,8 @@
 | [First Mile/清关证据链 7 组](./product/workflows/CUSTOMS_OPERATION_CHAINS.md) | 原表单证据→统一对象→角色视图与非线性闭环                                                                           | 负责人业务规则+候选映射 v0.3 |
 | [UX 工作台](./product/UX_CONTAINER_WORKBENCH.md)                              | 已出运入口 + 三状态/三段确认 + 动态任务配方与角色化节点工作区                                                      | 候选 v0.8                    |
 | [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)               | 电商货柜全生命周期运营手册:节点/KPI·SLA/RACI/风险/应急SOP(22 节点管理视图)                                         | 候选 v0.1                    |
-| [UI 体系标准](./product/UI_SYSTEM.md)                                         | Operations Shell、页面模板、三状态视觉、token、组件分层与质量门禁                                                  | 设计决策 v1.0                |
+| [UI 体系标准](./product/UI_SYSTEM.md)                                         | Operations Shell、页面模板、表面命名 UI-D09、三状态视觉、token、组件分层                                           | 设计决策 v1.0                |
+| [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                         | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                                                | 快照 2026-09-13              |
 | 人话速查                                                                      | 见本 INDEX（每行"一句话+状态"即人话速查）                                                                          | —                            |
 
 ## 五、领域（docs/product/domain，按逻辑簇）
@@ -143,23 +144,41 @@
 | [货柜列表游标分页](./planning/tasks/p6-list-containers-page.md)                                | GET /api/containers 按 GC-010 游标分页                               | 已完成                      |
 | [证据登记与适用性核验](./planning/tasks/p6-evidence-first-slice.md)                            | document-records 首刀；适用性命令核验 evidenceRefs                   | 已完成                      |
 | [规范事件与工单完成证据](./planning/tasks/p6-lifecycle-event-evidence.md)                      | 申请事件/发事件工单完成前核验 evidenceRefs                           | 已完成                      |
-| [证据核验 append-only 裁决](./planning/tasks/p6-evidence-verification-decision.md)            | verify 追加不可变决定行，不再只改状态                                | 已完成                      |
+| [证据核验 append-only 裁决](./planning/tasks/p6-evidence-verification-decision.md)             | verify 追加不可变决定行，不再只改状态                                | 已完成                      |
 | [证据拒绝与撤销](./planning/tasks/p6-evidence-reject-revoke.md)                                | rejected/revoked 命令与原决定引用                                    | 已完成                      |
 | [生命周期事件 Outbox 第一刀](./planning/tasks/p6-lifecycle-outbox-first-slice.md)              | 规范事件与 Outbox pending 同事务插入，不做发布器                     | 已完成                      |
-| [Outbox 发布器第一刀](./planning/tasks/p6-outbox-publisher-first-slice.md)                    | 领取 pending/过期租约，占位投递后标 published                        | 已完成                      |
-| [Outbox 重试与死信](./planning/tasks/p6-outbox-retry-dead-letter.md)                          | 暂时失败 retry_wait，不可重试/用尽 dead_letter                       | 已完成                      |
-| [Outbox 死信人工重放](./planning/tasks/p6-outbox-dead-letter-replay.md)                       | 新 eventId + causationId 重放，不改原死信                            | 已完成                      |
-| [死信重放同键异载荷](./planning/tasks/p6-outbox-replay-payload-conflict.md)                   | 同键异哈希冲突；可选修正载荷仍用新 eventId                           | 已完成                      |
-| [按租户列死信](./planning/tasks/p6-list-dead-letters.md)                                      | GET /api/outbox/dead-letters 按 GC-010 游标分页                      | 已完成                      |
-| [本租户到期 Outbox 排空](./planning/tasks/p6-outbox-publish-due.md)                           | 循环领取到期 pending/retry_wait，不做 Temporal 调度                  | 已完成                      |
-| [本租户 Outbox Temporal 周期调度](./planning/tasks/p6-outbox-temporal-schedule.md)            | workflow 保证 Schedule，worker Activity HTTP 调 publish-due          | 已完成                      |
-| [服务身份跨租户 Outbox 系统排空](./planning/tasks/p6-outbox-system-drain.md)                  | 服务身份列出到期租户并逐个 publish-due，用户头不能扫库               | 已完成                      |
-| [系统排空 Temporal 周期调度](./planning/tasks/p6-outbox-system-temporal-schedule.md)          | 服务身份保证系统 Schedule，Activity 不把密钥写入工作流               | 已完成                      |
-| [死信操作台第一刀](./planning/tasks/p6-dead-letter-ops-ui.md)                                 | 计划/管理列死信并人工重放，不展示载荷正文                            | 已完成                      |
-| [Inbox 接收第一刀](./planning/tasks/p6-inbox-first-slice.md)                                  | 服务身份接收 Inbox，同键幂等，不做 broker/消费                       | 已完成                      |
+| [Outbox 发布器第一刀](./planning/tasks/p6-outbox-publisher-first-slice.md)                     | 领取 pending/过期租约，占位投递后标 published                        | 已完成                      |
+| [Outbox 重试与死信](./planning/tasks/p6-outbox-retry-dead-letter.md)                           | 暂时失败 retry_wait，不可重试/用尽 dead_letter                       | 已完成                      |
+| [Outbox 死信人工重放](./planning/tasks/p6-outbox-dead-letter-replay.md)                        | 新 eventId + causationId 重放，不改原死信                            | 已完成                      |
+| [死信重放同键异载荷](./planning/tasks/p6-outbox-replay-payload-conflict.md)                    | 同键异哈希冲突；可选修正载荷仍用新 eventId                           | 已完成                      |
+| [按租户列死信](./planning/tasks/p6-list-dead-letters.md)                                       | GET /api/outbox/dead-letters 按 GC-010 游标分页                      | 已完成                      |
+| [本租户到期 Outbox 排空](./planning/tasks/p6-outbox-publish-due.md)                            | 循环领取到期 pending/retry_wait，不做 Temporal 调度                  | 已完成                      |
+| [本租户 Outbox Temporal 周期调度](./planning/tasks/p6-outbox-temporal-schedule.md)             | workflow 保证 Schedule，worker Activity HTTP 调 publish-due          | 已完成                      |
+| [服务身份跨租户 Outbox 系统排空](./planning/tasks/p6-outbox-system-drain.md)                   | 服务身份列出到期租户并逐个 publish-due，用户头不能扫库               | 已完成                      |
+| [系统排空 Temporal 周期调度](./planning/tasks/p6-outbox-system-temporal-schedule.md)           | 服务身份保证系统 Schedule，Activity 不把密钥写入工作流               | 已完成                      |
+| [死信操作台第一刀](./planning/tasks/p6-dead-letter-ops-ui.md)                                  | 计划/管理列死信并人工重放，不展示载荷正文                            | 已完成                      |
+| [Inbox 接收第一刀](./planning/tasks/p6-inbox-first-slice.md)                                   | 服务身份接收 Inbox，同键幂等，不做 broker/消费                       | 已完成                      |
 | [Inbox processing 租约第一刀](./planning/tasks/p6-inbox-processing-lease.md)                   | 领取 received/过期租约，写入 processing，不做业务消费                | 已完成                      |
 | [Inbox 占位消费第一刀](./planning/tasks/p6-inbox-process-first-slice.md)                       | 领取后占位消费并标 processed，失败保留租约                           | 已完成                      |
 | [Inbox 消费/死信与 ClientOperation](./planning/tasks/p6-inbox-consume-client-operation.md)     | 三阶段操作 + Inbox 真消费同事务 Outbox + 重试/死信                   | 已完成                      |
+| [Inbox 死信列表与重放](./planning/tasks/p6-inbox-dead-letter-replay.md)                        | 并入现有死信页；新 messageId + causationId，不改原死信               | 已完成                      |
+| [工单完成写入 ClientOperation](./planning/tasks/p6-work-execution-client-operation.md)         | 完成工单落三阶段回执，work-execution 拥有                            | 已完成                      |
+| [任务台接真实完成与三段回执](./planning/tasks/p6-task-workbench-complete-receipt.md)           | /real-tasks 完成工单，动作旁显示三阶段                               | 已完成                      |
+| [本地迁移改为 deploy 对齐](./planning/tasks/p6-migrate-deploy-local.md)                        | db:migrate 走 deploy，避开影子库重放旧迁移                           | 已完成                      |
+| [E2E 开发服务器回环对齐](./planning/tasks/p6-e2e-dev-server-loopback.md)                       | Vite 听全部回环；探测 127.0.0.1 与 localhost                         | 已完成                      |
+| [EchoAiWorkflow 入参对齐](./planning/tasks/p6-echo-ai-workflow-input.md)                       | 入参改为 { message }，避免 Temporal 把对象当成 str                   | 已完成                      |
+| [E2E 对齐真实任务导航](./planning/tasks/p6-e2e-visual-real-task-nav.md)                       | 侧栏「真实任务」用语义断言；壳层覆盖 /real-tasks                     | 已完成                      |
+| [Inbox 死信重放修正载荷](./planning/tasks/p6-inbox-replay-payload-conflict.md)                 | 按 inbox/{id} 引用修正；新 messageId，不改原死信                     | 已完成                      |
+| [补偿记录第一刀](./planning/tasks/p6-compensation-first-slice.md)                             | 已落账 ClientOperation 登记 pending 补偿，不执行反向事件             | 已完成                      |
+| [补偿状态推进](./planning/tasks/p6-compensation-resolve.md)                                   | pending 推进到终态；失败可进人工复核                                 | 已完成                      |
+| [按原操作列/读补偿](./planning/tasks/p6-list-compensations.md)                                | 游标分页列出补偿，并可按 id 读取                                     | 已完成                      |
+| [按租户列 ClientOperation](./planning/tasks/p6-list-client-operations.md)                     | GET /api/client-operations 按 GC-010 游标分页                        | 已完成                      |
+| [同步操作薄页](./planning/tasks/p6-client-operation-ops-ui.md)                                | /real-operations 列三阶段操作并展开补偿                              | 暂停                        |
+| [作业 UI 与真实 API 合并](./planning/tasks/p6-workspace-api-ui-merge.md)                       | /tasks /containers 默认吃 API；演示仅 ?demo=1                        | 已完成                      |
+| [作业壳人话与空模块](./planning/tasks/p6-workspace-ui-clarity.md)                              | 按职务命名；总览/流转去掉空 KPI 与空 RACI                            | 已完成                      |
+| [货柜表空筛选回归](./planning/tasks/p6-container-list-empty-filter.md)                        | 无「全部」快筛时不得把已有货柜滤空                                   | 已完成                      |
+| [作业壳页面清单登记](./planning/tasks/p6-workspace-ui-inventory.md)                            | 把页面定位与可补回块写成快照                                         | 已完成                      |
+| [作业壳表面命名](./planning/tasks/p6-ui-surface-naming.md)                                     | UI-D09：干活/看档等表面用名                                          | 已完成                      |
 | [任务模板](./planning/tasks/_template.md)                                                      | 任务载体模板                                                         | 规范                        |
 | [模块实施规格模板](./planning/tasks/_module-implementation-spec-template.md)                   | 限界上下文的数据、规则、接口、前端、测试与验收统一模板               | 规范                        |
 | [海关放行纵向切片](./product/domain/CUSTOMS_RELEASE_VERTICAL_SLICE.md)                         | 四模块贯通的首个可执行工序任务/工单/权威事件闭环                     | 设计稿                      |

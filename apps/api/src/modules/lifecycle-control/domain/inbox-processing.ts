@@ -4,11 +4,7 @@ export const MIN_INBOX_CLAIM_LIMIT = 1;
 export const MAX_INBOX_CLAIM_LIMIT = 200;
 
 export type InboxClaimState =
-  | "received"
-  | "processing"
-  | "processed"
-  | "retry_wait"
-  | "dead_letter";
+  "received" | "processing" | "processed" | "retry_wait" | "dead_letter";
 
 export interface InboxLease {
   owner: string;
@@ -79,9 +75,10 @@ export function beginInboxProcessing(input: {
   };
 }
 
-export function completeInboxProcessed(input: {
+export function completeInboxProcessed(input: { processedAt: Date }): {
+  state: "processed";
   processedAt: Date;
-}): { state: "processed"; processedAt: Date } {
+} {
   if (Number.isNaN(input.processedAt.getTime())) {
     throw new Error("VALIDATION_FORMAT: processedAt 无效");
   }

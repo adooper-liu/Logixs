@@ -93,7 +93,10 @@ export class ReceiveInboxMessageService {
         messageId: record.messageId,
       });
       if (raced) return reuseOrConflict(raced, record.payloadHash);
-      throw new HttpException("INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        "INTERNAL_ERROR",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     return {
@@ -109,7 +112,9 @@ function reuseOrConflict(
   existing: StoredInboxMessage,
   incomingHash: string,
 ): ReceiveInboxMessageResult {
-  if (decideInboxIdempotency(existing.payloadHash, incomingHash) === "conflict") {
+  if (
+    decideInboxIdempotency(existing.payloadHash, incomingHash) === "conflict"
+  ) {
     throw new HttpException(
       "IDEMPOTENCY_CONFLICT: 同键异载荷",
       HttpStatus.CONFLICT,

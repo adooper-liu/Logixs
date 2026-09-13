@@ -3,11 +3,14 @@ from datetime import timedelta
 
 from temporalio import workflow
 
+from echo_input import EchoAiInput, parse_echo_ai_input
+
 
 @workflow.defn
 class EchoAiWorkflow:
     @workflow.run
-    async def run(self, message: str) -> str:
+    async def run(self, input: EchoAiInput) -> str:
+        message = parse_echo_ai_input(input)
         echoed = await workflow.execute_activity(
             "echo_ai_activity",
             message,
