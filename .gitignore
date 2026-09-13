@@ -29,7 +29,4 @@ Thumbs.db
 .idea/
 .vscode/
 .windsurf/
-
-# Vendor Prisma skills are canonical under .agents/skills/. Local installer copies stay out of git.
-.claude/skills/prisma-*/
 .review-worktree-src.diff
