@@ -1,5 +1,10 @@
-import { Module } from "@nestjs/common";
+import {
+  Module,
+  type MiddlewareConsumer,
+  type NestModule,
+} from "@nestjs/common";
 import { AiGovernanceModule } from "../ai-governance";
+import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { ShipmentRegistryModule } from "../shipment-registry";
 import { ConfirmMappingsService } from "./application/confirm-mappings.service";
 import { CreateImportBatchService } from "./application/create-import-batch.service";
@@ -11,7 +16,7 @@ import { PrismaImportRepository } from "./infrastructure/prisma-import.repositor
 import { ImportBatchesController } from "./presentation/import-batches.controller";
 
 @Module({
-  imports: [AiGovernanceModule, ShipmentRegistryModule],
+  imports: [AiGovernanceModule, IdentityModule, ShipmentRegistryModule],
   controllers: [ImportBatchesController],
   providers: [
     CreateImportBatchService,
@@ -22,4 +27,8 @@ import { ImportBatchesController } from "./presentation/import-batches.controlle
     { provide: IMPORT_REPOSITORY, useClass: PrismaImportRepository },
   ],
 })
-export class IntegrationImportModule {}
+export class IntegrationImportModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(DevIdentityMiddleware).forRoutes(ImportBatchesController);
+  }
+}

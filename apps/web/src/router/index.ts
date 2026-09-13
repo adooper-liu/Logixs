@@ -69,6 +69,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/dead-letters",
+      component: () => import("../views/DeadLetterQueue.vue"),
+      meta: {
+        title: "死信队列",
+        section: "管理",
+        navLabel: "死信队列",
+        navIcon: "triangle-alert",
+        navOrder: 40,
+        roles: ["planner", "manager"],
+      },
+    },
+    {
       path: "/dev",
       component: () => import("../views/DevConsole.vue"),
       meta: {

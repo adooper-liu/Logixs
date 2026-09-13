@@ -21,7 +21,7 @@ const error = ref("");
 
 onMounted(async () => {
   try {
-    containers.value = await listContainers();
+    containers.value = (await listContainers()).items;
   } catch (cause) {
     error.value =
       cause instanceof Error ? cause.message : "加载失败，请确认 API 已启动";

@@ -13,7 +13,8 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
 });
 
-const TENANT_ID = "00000000-0000-4000-8000-000000000001";
+// 与开发期身份头 X-Tenant-Id=dev-tenant 对齐，薄真实列表才能读到种子行。
+const TENANT_ID = "dev-tenant";
 
 // 薄真实切片验证用的最小样本：3 个货柜覆盖不同状态，字段口径见 DATA_MODEL_P2-06。
 const samples = [

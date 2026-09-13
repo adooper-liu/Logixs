@@ -9,7 +9,6 @@ import {
   Post,
   Req,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
@@ -21,7 +20,6 @@ import { GetImportBatchService } from "../application/get-import-batch.service";
 import { RunPrecheckService } from "../application/run-precheck.service";
 import type { ImportBatch, ImportRow } from "../domain/import-batch";
 import type { ImportRowResultInput } from "../domain/import.repository";
-import { DevIdentityGuard, type DevIdentity } from "./dev-identity.guard";
 import {
   ConfirmMappingsRequestDto,
   ImportBatchDetailDto,
@@ -35,7 +33,6 @@ const SAMPLE_ROW_LIMIT = 20;
 
 @ApiTags("import-batches")
 @Controller("import-batches")
-@UseGuards(DevIdentityGuard)
 export class ImportBatchesController {
   constructor(
     private readonly createImportBatch: CreateImportBatchService,
@@ -52,7 +49,7 @@ export class ImportBatchesController {
   async upload(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Headers("idempotency-key") idempotencyKey: string | undefined,
-    @Req() request: { devIdentity: DevIdentity },
+    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
   ): Promise<ImportBatchDto> {
     if (!file) {
       throw new HttpException(
@@ -95,7 +92,7 @@ export class ImportBatchesController {
   async postMappingReviews(
     @Param("id") id: string,
     @Body() body: ConfirmMappingsRequestDto,
-    @Req() request: { devIdentity: DevIdentity },
+    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
   ): Promise<ImportBatchDto> {
     await this.confirmMappings.execute({
       batchId: id,

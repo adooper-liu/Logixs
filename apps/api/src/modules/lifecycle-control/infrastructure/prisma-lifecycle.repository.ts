@@ -1,11 +1,17 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { LifecycleNodeCode } from "@logix/contracts";
+import type {
+  LifecycleNodeCode,
+  NodeApplicability,
+} from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
+import { defaultApplicability } from "../domain/node-applicability";
 import type {
   CanonicalEventRecord,
   FlowWithNodes,
   LifecycleRepository,
+  SaveCanonicalEventInput,
 } from "../domain/lifecycle.repository";
+import { buildLifecycleOutboxPending } from "../domain/outbox-message";
 
 @Injectable()
 export class PrismaLifecycleRepository implements LifecycleRepository {
@@ -35,7 +41,13 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
         state: "active",
         currentNodeCode: "cargo_ready",
         nodes: {
-          create: [{ nodeCode: "cargo_ready", state: "active" }],
+          create: [
+            {
+              nodeCode: "cargo_ready",
+              state: "active",
+              applicability: "required",
+            },
+          ],
         },
       },
       include: { nodes: true },
@@ -62,6 +74,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           nodeCode,
           state: "completed",
           completedAt: occurredAt,
+          applicability: defaultApplicability(nodeCode),
         },
         update: { state: "completed", completedAt: occurredAt },
       });
@@ -76,6 +89,23 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       where: { id: flowInstanceId },
       data: { currentNodeCode: nodeCode },
     });
+  }
+
+  async ensureNode(
+    flowInstanceId: string,
+    nodeCode: LifecycleNodeCode,
+  ): Promise<{ id: string; nodeCode: LifecycleNodeCode }> {
+    const node = await this.prisma.nodeInstance.upsert({
+      where: { flowInstanceId_nodeCode: { flowInstanceId, nodeCode } },
+      create: {
+        flowInstanceId,
+        nodeCode,
+        state: "pending",
+        applicability: defaultApplicability(nodeCode),
+      },
+      update: {},
+    });
+    return { id: node.id, nodeCode };
   }
 
   async findContainerBase(containerId: string): Promise<{
@@ -108,19 +138,74 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           containerId: event.containerId,
           eventCode: event.eventCode as CanonicalEventRecord["eventCode"],
           occurredAt: event.occurredAt,
+          evidenceRefs: Array.isArray(event.evidenceRefs)
+            ? (event.evidenceRefs as string[])
+            : [],
           idempotencyKey: event.idempotencyKey,
         }
       : null;
   }
 
-  async saveEvent(event: CanonicalEventRecord): Promise<void> {
-    await this.prisma.canonicalEvent.create({
-      data: {
+  async saveEvent(event: SaveCanonicalEventInput): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const created = await tx.canonicalEvent.create({
+        data: {
+          containerId: event.containerId,
+          eventCode: event.eventCode,
+          occurredAt: event.occurredAt,
+          evidenceRefs: event.evidenceRefs,
+          idempotencyKey: event.idempotencyKey,
+        },
+      });
+      const outbox = buildLifecycleOutboxPending({
+        eventId: created.id,
+        tenantId: event.tenantId,
         containerId: event.containerId,
         eventCode: event.eventCode,
         occurredAt: event.occurredAt,
+        evidenceRefs: event.evidenceRefs,
         idempotencyKey: event.idempotencyKey,
-      },
+        traceId: event.traceId,
+      });
+      await tx.outboxMessage.create({
+        data: {
+          id: outbox.id,
+          tenantId: outbox.tenantId,
+          ownerModule: outbox.ownerModule,
+          eventId: outbox.eventId,
+          eventType: outbox.eventType,
+          eventVersion: outbox.eventVersion,
+          aggregateType: outbox.aggregateType,
+          aggregateId: outbox.aggregateId,
+          payloadRef: outbox.payloadRef,
+          payloadHash: outbox.payloadHash,
+          state: outbox.state,
+          attemptCount: outbox.attemptCount,
+          occurredAt: outbox.occurredAt,
+          idempotencyKey: outbox.idempotencyKey,
+          traceId: outbox.traceId,
+        },
+      });
+      if (event.completeInbox) {
+        const completed = await tx.inboxMessage.updateMany({
+          where: {
+            id: event.completeInbox.id,
+            state: "processing",
+            leaseOwner: event.completeInbox.owner,
+          },
+          data: {
+            state: "processed",
+            processedAt: event.completeInbox.processedAt,
+            leaseOwner: null,
+            leaseLockedAt: null,
+            leaseExpiresAt: null,
+            nextAttemptAt: null,
+          },
+        });
+        if (completed.count !== 1) {
+          throw new Error("INBOX_LEASE_LOST");
+        }
+      }
     });
   }
 
@@ -131,6 +216,71 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     });
     return latest?.occurredAt ?? null;
   }
+
+  async findApplicabilityDecision(idempotencyKey: string): Promise<{
+    flowInstanceId: string;
+    nodeCode: LifecycleNodeCode;
+    applicability: NodeApplicability;
+    version: number;
+  } | null> {
+    const decision = await this.prisma.nodeApplicabilityDecision.findUnique({
+      where: { idempotencyKey },
+    });
+    if (!decision) return null;
+    const flow = await this.prisma.flowInstance.findUnique({
+      where: { id: decision.flowInstanceId },
+    });
+    return {
+      flowInstanceId: decision.flowInstanceId,
+      nodeCode: decision.nodeCode as LifecycleNodeCode,
+      applicability: decision.applicability as NodeApplicability,
+      version: flow?.version ?? 0,
+    };
+  }
+
+  async applyNodeApplicability(input: {
+    flowInstanceId: string;
+    nodeCode: LifecycleNodeCode;
+    applicability: NodeApplicability;
+    evidenceRefs: string[];
+    reasonCode: string;
+    actorId: string;
+    idempotencyKey: string;
+  }): Promise<{ version: number }> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.nodeInstance.upsert({
+        where: {
+          flowInstanceId_nodeCode: {
+            flowInstanceId: input.flowInstanceId,
+            nodeCode: input.nodeCode,
+          },
+        },
+        create: {
+          flowInstanceId: input.flowInstanceId,
+          nodeCode: input.nodeCode,
+          state: "pending",
+          applicability: input.applicability,
+        },
+        update: { applicability: input.applicability },
+      });
+      await tx.nodeApplicabilityDecision.create({
+        data: {
+          flowInstanceId: input.flowInstanceId,
+          nodeCode: input.nodeCode,
+          applicability: input.applicability,
+          evidenceRefs: input.evidenceRefs,
+          reasonCode: input.reasonCode,
+          actorId: input.actorId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      });
+      const flow = await tx.flowInstance.update({
+        where: { id: input.flowInstanceId },
+        data: { version: { increment: 1 } },
+      });
+      return { version: flow.version };
+    });
+  }
 }
 
 function toFlowWithNodes(flow: {
@@ -138,7 +288,14 @@ function toFlowWithNodes(flow: {
   containerId: string;
   state: string;
   currentNodeCode: string;
-  nodes: { nodeCode: string; state: string; completedAt: Date | null }[];
+  version: number;
+  nodes: {
+    id: string;
+    nodeCode: string;
+    state: string;
+    completedAt: Date | null;
+    applicability: string;
+  }[];
 }): FlowWithNodes {
   return {
     flow: {
@@ -146,11 +303,14 @@ function toFlowWithNodes(flow: {
       containerId: flow.containerId,
       state: flow.state,
       currentNodeCode: flow.currentNodeCode,
+      version: flow.version,
     },
     nodes: flow.nodes.map((node) => ({
+      id: node.id,
       nodeCode: node.nodeCode as LifecycleNodeCode,
       state: node.state,
       completedAt: node.completedAt,
+      applicability: node.applicability as NodeApplicability,
     })),
   };
 }

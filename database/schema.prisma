@@ -43,11 +43,58 @@ model ContainerRecord {
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
 
+  @@index([tenantId, updatedAt, id])
   @@map("container_record")
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
   // TODO(D20 物理形态)：金额 decimal + currency（超期费用，独立边界）
+}
+
+// 证据主记录（document-records 拥有）：第一刀只落核验所需字段，不做对象存储。
+model EvidenceRecord {
+  id                 String   @id @default(uuid()) @map("id")
+  tenantId           String   @map("tenant_id")
+  evidenceType       String   @map("evidence_type")
+  subjectType        String   @map("subject_type")
+  subjectId          String   @map("subject_id")
+  authorityLevel     String   @map("authority_level")
+  contentRef         String   @map("content_ref")
+  contentHash        String   @map("content_hash")
+  source             Json     @map("source")
+  verificationState  String   @map("verification_state")
+  confidenceState    String   @map("confidence_state")
+  validity           String   @map("validity")
+  receivedAt         DateTime @map("received_at")
+  recordedAt         DateTime @map("recorded_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  decisions          EvidenceVerificationDecision[]
+
+  @@index([tenantId, subjectType, subjectId])
+  @@map("evidence_record")
+}
+
+// 核验裁决（document-records 拥有）：append-only，不更新、不删除。
+model EvidenceVerificationDecision {
+  id                    String         @id @default(uuid()) @map("id")
+  evidenceId            String         @map("evidence_id")
+  evidence              EvidenceRecord @relation(fields: [evidenceId], references: [id])
+  verificationSequence  Int            @map("verification_sequence")
+  decision              String         @map("decision")
+  checks                Json           @map("checks")
+  policyId              String         @map("policy_id")
+  policyVersion         Int            @map("policy_version")
+  decidedAt             DateTime       @map("decided_at")
+  actorOrServiceId      String         @map("actor_or_service_id")
+  reasonCode            String         @map("reason_code")
+  reason                String?        @map("reason")
+  previousDecisionId    String?        @map("previous_decision_id")
+  createdAt             DateTime       @default(now()) @map("created_at")
+
+  @@unique([evidenceId, verificationSequence], map: "evidence_decision_seq_key")
+  @@map("evidence_verification_decision")
 }
 
 // 导入批次（integration-import 拥有）：一次上传的全生命周期（P6 阶段 A 读链路最小集）。
@@ -119,6 +166,7 @@ model FlowInstance {
   containerId     String         @unique @map("container_id")
   state           String         @map("state") // draft | active | completed | cancelled
   currentNodeCode String         @map("current_node_code") // LifecycleNodeCode
+  version         Int            @default(0) @map("version")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   nodes           NodeInstance[]
@@ -133,10 +181,26 @@ model NodeInstance {
   flow           FlowInstance @relation(fields: [flowInstanceId], references: [id])
   nodeCode       String       @map("node_code")
   state          String       @map("state") // pending | active | completed
+  applicability  String       @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
   completedAt    DateTime?    @map("completed_at")
 
   @@unique([flowInstanceId, nodeCode])
   @@map("node_instance")
+}
+
+// 可选节点适用性决策留痕（lifecycle-control 拥有）。
+model NodeApplicabilityDecision {
+  id             String   @id @default(uuid()) @map("id")
+  flowInstanceId String   @map("flow_instance_id")
+  nodeCode       String   @map("node_code")
+  applicability  String   @map("applicability")
+  evidenceRefs   Json     @map("evidence_refs")
+  reasonCode     String   @map("reason_code")
+  actorId        String   @map("actor_id")
+  idempotencyKey String   @unique @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("node_applicability_decision")
 }
 
 // 规范事件流水账（lifecycle-control 拥有）：不可变事件留痕，可追溯/重放/幂等。
@@ -145,8 +209,189 @@ model CanonicalEvent {
   containerId    String   @map("container_id")
   eventCode      String   @map("event_code")
   occurredAt     DateTime @map("occurred_at")
+  evidenceRefs   Json     @map("evidence_refs")
   idempotencyKey String   @unique @map("idempotency_key")
   appliedAt      DateTime @default(now()) @map("applied_at")
 
   @@map("canonical_event")
+}
+
+// 跨模块通知 Outbox（本刀由 lifecycle-control 写入）。
+// 契约：GC-009 OutboxRecord；物理形态参考 CUSTOMS_DATABASE §5.2。
+// 领域事件插入与 pending 同行。发布器领取后写入 publishing 租约，成功则 published。
+// 单体用 owner_module 区分写入方。
+model OutboxMessage {
+  id              String    @id @map("id")
+  tenantId        String    @map("tenant_id")
+  ownerModule     String    @map("owner_module")
+  eventId         String    @unique @map("event_id")
+  eventType       String    @map("event_type")
+  eventVersion    Int       @map("event_version")
+  aggregateType   String    @map("aggregate_type")
+  aggregateId     String    @map("aggregate_id")
+  payloadRef      String    @map("payload_ref")
+  payloadHash     String    @map("payload_hash")
+  causationId     String?   @map("causation_id")
+  state           String    @map("state") // pending | publishing | published | retry_wait | dead_letter
+  attemptCount    Int       @default(0) @map("attempt_count")
+  nextAttemptAt   DateTime? @map("next_attempt_at")
+  occurredAt      DateTime  @map("occurred_at")
+  idempotencyKey  String    @map("idempotency_key")
+  leaseOwner      String?   @map("locked_by")
+  leaseLockedAt   DateTime? @map("locked_at")
+  leaseExpiresAt  DateTime? @map("lease_expires_at")
+  brokerReference String?   @map("broker_reference")
+  publishedAt     DateTime? @map("published_at")
+  lastErrorCode   String?   @map("last_error_code")
+  failureCategory String?   @map("failure_category")
+  deadLetteredAt  DateTime? @map("dead_lettered_at")
+  ownerQueue      String?   @map("owner_queue")
+  traceId         String    @map("trace_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, ownerModule, eventType, idempotencyKey], map: "outbox_message_idempotency_key")
+  @@index([state, nextAttemptAt, createdAt], map: "outbox_message_poll_idx")
+  @@index([state, leaseExpiresAt], map: "outbox_message_lease_idx")
+  @@index([tenantId, ownerModule, state, deadLetteredAt, id], map: "outbox_message_dead_letter_list_idx")
+  @@map("outbox_message")
+}
+
+// 死信人工重放请求（lifecycle-control 拥有）：原消息不可改，重放生成新 Outbox。
+model OutboxReplayRequest {
+  id                    String   @id @default(uuid()) @map("id")
+  tenantId              String   @map("tenant_id")
+  deadLetterId          String   @map("dead_letter_id")
+  replayedOutboxId      String   @map("replayed_outbox_id")
+  targetConsumerVersion String   @map("target_consumer_version")
+  requestedBy           String   @map("requested_by")
+  reasonCode            String   @map("reason_code")
+  requestedAt           DateTime @map("requested_at")
+  traceId               String   @map("trace_id")
+  idempotencyKey        String   @map("idempotency_key")
+  requestHash           String   @map("request_hash")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, deadLetterId, idempotencyKey], map: "outbox_replay_idempotency_key")
+  @@map("outbox_replay_request")
+}
+
+// 契约：GC-009 InboxRecord。单体用 consumer_name 区分消费者，不按模块拆物理表。
+// 消费申请生命周期事件；processed 与规范事件/Outbox 同事务。
+model InboxMessage {
+  id               String    @id @map("id")
+  tenantId         String    @map("tenant_id")
+  consumerName     String    @map("consumer_name")
+  messageId        String    @map("message_id")
+  payloadHash      String    @map("payload_hash")
+  payloadJson      Json?     @map("payload_json")
+  state            String    @map("state") // received | processing | processed | retry_wait | dead_letter
+  attemptCount     Int       @default(0) @map("attempt_count")
+  leaseOwner       String?   @map("locked_by")
+  leaseLockedAt    DateTime? @map("locked_at")
+  leaseExpiresAt   DateTime? @map("lease_expires_at")
+  nextAttemptAt    DateTime? @map("next_attempt_at")
+  processedAt      DateTime? @map("processed_at")
+  lastErrorCode    String?   @map("last_error_code")
+  failureCategory  String?   @map("failure_category")
+  deadLetteredAt   DateTime? @map("dead_lettered_at")
+  ownerQueue       String?   @map("owner_queue")
+  traceId          String    @map("trace_id")
+  receivedAt       DateTime  @map("received_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@unique([consumerName, messageId], map: "inbox_message_consumer_message_key")
+  @@index([tenantId, consumerName, state], map: "inbox_message_tenant_state_idx")
+  @@index([tenantId, consumerName, state, leaseExpiresAt, receivedAt], map: "inbox_message_lease_idx")
+  @@index([state, nextAttemptAt], map: "inbox_message_retry_idx")
+  @@map("inbox_message")
+}
+
+// 契约：GC-009 ClientOperationV1。本刀由 lifecycle-control 写入 lifecycle.apply_event。
+// 工单动作仍归 work-execution，不在本刀展开。
+model ClientOperation {
+  id                     String    @id @map("id")
+  tenantId               String    @map("tenant_id")
+  actorType              String    @map("actor_type")
+  actorId                String    @map("actor_id")
+  actionCode             String    @map("action_code")
+  actionVersion          Int       @map("action_version")
+  targetType             String    @map("target_type")
+  targetId               String    @map("target_id")
+  targetOwnerModule      String    @map("target_owner_module")
+  correlationId          String    @map("correlation_id")
+  causationId            String?   @map("causation_id")
+  traceId                String    @map("trace_id")
+  idempotencyKey         String    @map("idempotency_key")
+  requestHash            String    @map("request_hash")
+  receptionState         String    @map("reception_state")
+  businessDecisionState  String    @map("business_decision_state")
+  commitState            String    @map("commit_state")
+  resultRefs             Json      @map("result_refs")
+  rejectionReasonCode    String?   @map("rejection_reason_code")
+  attemptCount           Int       @default(0) @map("attempt_count")
+  lastAttemptAt          DateTime? @map("last_attempt_at")
+  nextAttemptAt          DateTime? @map("next_attempt_at")
+  receivedAt             DateTime? @map("received_at")
+  decidedAt              DateTime? @map("decided_at")
+  committedAt            DateTime? @map("committed_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, actorId, actionCode, idempotencyKey], map: "client_operation_idempotency_key")
+  @@index([tenantId, createdAt, id], map: "client_operation_tenant_created_idx")
+  @@map("client_operation")
+}
+
+// 节点任务（work-execution 拥有）：货柜到节点的工序任务（第一刀最小集）。
+model NodeTask {
+  id                String      @id @default(uuid()) @map("id")
+  flowInstanceId    String      @map("flow_instance_id")
+  nodeInstanceId    String      @map("node_instance_id")
+  nodeCode          String      @map("node_code")
+  containerId       String?     @map("container_id") // 逻辑引用，无跨模块外键
+  taskDefinitionKey String      @map("task_definition_key")
+  state             String      @map("state") // pending | in_progress | completed
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  workOrders        WorkOrder[]
+  outcome           NodeTaskOutcome?
+
+  @@unique([nodeInstanceId])
+  @@index([containerId, createdAt, id])
+  @@map("node_task")
+}
+
+// 作业工单（work-execution 拥有）：任务拆出的工单（第一刀最小集）。
+model WorkOrder {
+  id                      String    @id @default(uuid()) @map("id")
+  nodeTaskId              String    @map("node_task_id")
+  nodeTask                NodeTask  @relation(fields: [nodeTaskId], references: [id])
+  workOrderDefinitionKey  String    @map("work_order_definition_key")
+  state                   String    @map("state") // ready | in_progress | completed
+  assignmentState         String    @map("assignment_state") // unassigned | assigned
+  completedAt             DateTime? @map("completed_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  @@map("work_order")
+}
+
+// 任务结果快照（work-execution 拥有）：工序聚合结果，不推进生命周期。
+// 第一刀 resultPolicy=none；同任务最多一条，重放不重复写。
+model NodeTaskOutcome {
+  id                    String   @id @default(uuid()) @map("id")
+  nodeTaskId            String   @unique @map("node_task_id")
+  nodeTask              NodeTask @relation(fields: [nodeTaskId], references: [id])
+  previousState         String   @map("previous_state")
+  nextState             String   @map("next_state")
+  resultPolicyMode      String   @map("result_policy_mode") // none | emit_canonical_event
+  eventCode             String?  @map("event_code")
+  policySnapshotHash    String   @map("policy_snapshot_hash")
+  requiredWorkOrderIds  Json     @map("required_work_order_ids")
+  completedWorkOrderIds Json     @map("completed_work_order_ids")
+  evaluatedAt           DateTime @map("evaluated_at")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@map("node_task_outcome")
 }

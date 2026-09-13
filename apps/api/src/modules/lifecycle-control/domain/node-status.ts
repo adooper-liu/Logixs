@@ -33,6 +33,16 @@ export const NODE_SEQUENCE: Record<LifecycleNodeCode, number> = {
   empty_return: 14,
 };
 
+export function nextLifecycleNode(
+  nodeCode: LifecycleNodeCode,
+): LifecycleNodeCode | null {
+  const current = NODE_SEQUENCE[nodeCode];
+  const found = (
+    Object.entries(NODE_SEQUENCE) as [LifecycleNodeCode, number][]
+  ).find(([, sequence]) => sequence === current + 1);
+  return found?.[0] ?? null;
+}
+
 // 节点 → 容器 8 态 的映射（来源：CONTAINER_LIFECYCLE 14 节点表，单一权威）。
 // 第一刀硬编码；后续若需数据驱动，升格为配置/Seed。
 export const NODE_TO_CONTAINER_STATUS: Record<

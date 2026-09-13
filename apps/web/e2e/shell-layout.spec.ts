@@ -83,6 +83,7 @@ test("all migrated workspaces keep the shared shell and bounded overflow", async
     ["/containers", "已出运货柜"],
     ["/dashboard", "货柜运营态势"],
     ["/meso", "First Mile PDCA 运营"],
+    ["/dead-letters", "死信队列"],
   ] as const;
 
   for (const [path, heading] of routes) {

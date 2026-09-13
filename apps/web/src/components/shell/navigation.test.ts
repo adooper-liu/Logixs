@@ -10,4 +10,15 @@ describe("navigationForRole", () => {
       expect(items.map((item) => item.label)).not.toContain("开发控制台");
     }
   });
+
+  it("keeps the dead-letter queue off the operator home navigation", () => {
+    const operator = navigationForRole(router.getRoutes(), "operator").map(
+      (item) => item.path,
+    );
+    const planner = navigationForRole(router.getRoutes(), "planner").map(
+      (item) => item.path,
+    );
+    expect(operator).not.toContain("/dead-letters");
+    expect(planner).toContain("/dead-letters");
+  });
 });
