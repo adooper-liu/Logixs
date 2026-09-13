@@ -1,13 +1,12 @@
 ---
-status: review # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/claim-work-order
 verification: |
-  pnpm --filter @logix/api test -- src/modules/work-execution  # 60 passed
-  pnpm --filter @logix/web test -- src/api/nodeTasks.test.ts src/data/claimReceiptContract.test.ts src/data/liveWorkspaceProjection.test.ts src/data/completeReceiptContract.test.ts src/data/clientOperationQueueContract.test.ts src/composables/useLiveWorkspace.test.ts src/views/RealTaskWorkbench.test.ts  # 34 passed
-  pnpm --filter @logix/api typecheck
-  pnpm --filter @logix/web typecheck
-  pnpm db:generate && pnpm db:migrate  # 20260913210000_add_work_order_assignee applied
-  POST /api/work-orders/:id/claim  # ready+unassigned → assigned+in_progress+assigneeId; 同键复用; 他人 409
+  远端 CI quality 通过：https://github.com/adooper-liu/Logixs/actions/runs/34762473837
+  本地：pnpm --filter @logix/api test -- src/modules/work-execution 60 通过
+  相关 web 测试 34 通过；api/web typecheck 通过
+  HTTP：POST /api/work-orders/:id/claim ready+unassigned → assigned+in_progress+assigneeId；同键复用；他人 409
+  未执行：任务台浏览器点击
 ---
 
 # 任务：领取工单
@@ -46,7 +45,9 @@ verification: |
 
 ## Review notes（review 阶段填写，只读不改代码）
 
-（缺陷优先）
+无阻断缺陷。条件 `updateMany` 防双领，领域拒绝 `automatic` 与他人已领，任务台可领只出「领取」。
+
+已知限制（本刀边界，不改）：完成命令仍不校验领取人，未领也可 `POST complete`；任务台已隐藏完成。无货柜工单的租户校验与 complete 相同，有柜才 `assertContainerTenant`。任务台按钮未在浏览器点过。
 
 ## 进度 log
 
@@ -55,3 +56,4 @@ verification: |
 | 2026-09-13 | coding | —    | —       | 开工领取                                       |
 | 2026-09-13 | coding | —    | —       | 命令+投影+任务台已接线，近端测试与本地领取通过 |
 | 2026-09-13 | review | —    | d0761d9 | 实现已提交，进入评审；资源约束规划不在本刀     |
+| 2026-09-14 | done   | —    | 3f06f09 | 评审无阻断缺陷；CI quality 已绿，准备合入      |
