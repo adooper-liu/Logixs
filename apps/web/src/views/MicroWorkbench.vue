@@ -87,7 +87,7 @@ async function load(): Promise<void> {
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "";
     if (message !== "RESOURCE_NOT_FOUND") {
-      error.value = message || "加载失败，请确认 API 已启动";
+      error.value = "货柜没能加载";
     }
   } finally {
     loading.value = false;

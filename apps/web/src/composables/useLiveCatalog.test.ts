@@ -306,6 +306,23 @@ describe("useLiveCatalog", () => {
     app.unmount();
   });
 
+  it("货柜列表失败时只说没能加载", async () => {
+    listContainers.mockRejectedValue(new Error("Failed to fetch"));
+    let catalog: ReturnType<typeof useLiveCatalog> | undefined;
+    const app = createApp({
+      setup() {
+        catalog = useLiveCatalog();
+        return () => undefined;
+      },
+    });
+    app.mount(document.createElement("div"));
+    await catalog!.reload();
+    await flushPromises();
+    expect(catalog!.error.value).toBe("货柜没能加载");
+    expect(catalog!.containers.value).toEqual([]);
+    app.unmount();
+  });
+
   it("任务接口失败时货柜仍在，不把待办标成已查空", async () => {
     listNodeTasks.mockRejectedValue(new Error("列节点任务失败"));
     let catalog: ReturnType<typeof useLiveCatalog> | undefined;

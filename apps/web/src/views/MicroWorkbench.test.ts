@@ -262,6 +262,14 @@ describe("MicroWorkbench", () => {
     expect(failed.text()).not.toContain("加载失败");
   });
 
+  it("读柜失败只说货柜没能加载", async () => {
+    getContainer.mockRejectedValue(new Error("Failed to fetch"));
+    const wrapper = await mountPage("c1");
+    expect(wrapper.text()).toContain("货柜没能加载");
+    expect(wrapper.text()).not.toContain("Failed to fetch");
+    expect(wrapper.text()).not.toContain("加载失败");
+  });
+
   it("不存在显示未找到，不扫列表", async () => {
     getContainer.mockRejectedValue(new Error("RESOURCE_NOT_FOUND"));
     const wrapper = await mountPage("missing");

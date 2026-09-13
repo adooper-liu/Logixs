@@ -83,6 +83,16 @@ describe("useLiveWorkspace", () => {
     });
   });
 
+  it("首屏失败时只说任务没能加载", async () => {
+    listNodeTasks.mockRejectedValue(new Error("Failed to fetch"));
+    const { workspace, app } = await setupWorkspace();
+    await workspace.reload();
+    await flushPromises();
+    expect(workspace.error.value).toBe("任务没能加载");
+    expect(workspace.tasks.value).toEqual([]);
+    app.unmount();
+  });
+
   it("未限定货柜时一次按租户列任务，不按柜扇出", async () => {
     completeWorkOrder.mockResolvedValue({
       workOrderId: "w1",

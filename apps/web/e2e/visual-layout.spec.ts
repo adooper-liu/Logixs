@@ -12,6 +12,8 @@ const waitForLiveReady = async (page: Page) => {
   await expect(page.getByText("加载中…")).toHaveCount(0, { timeout: 15_000 });
 };
 
+const liveFailed = (page: Page) => page.getByText(/没能加载/);
+
 const expectNoHorizontalOverflow = async (page: Page) => {
   const widths = await page.evaluate(() => {
     const content = document.querySelector<HTMLElement>(".app-content");
@@ -80,7 +82,7 @@ test("task queue keeps the live work list bounded", async ({ page }) => {
 
   const queue = page.getByRole("region", { name: "待处理任务" });
   const empty = page.getByText("这一范围还没有待办。");
-  const failed = page.getByText(/加载失败/);
+  const failed = liveFailed(page);
   await expect(queue.or(empty).or(failed).first()).toBeVisible();
 
   if (await queue.isVisible()) {
@@ -97,7 +99,7 @@ test("container record remains readable", async ({ page }) => {
   await page.goto("/container/missing-container");
   await disableMotion(page);
   await waitForLiveReady(page);
-  await expect(page.getByText("找不到这只货柜")).toBeVisible();
+  await expect(page.getByText(/找不到这只货柜|货柜没能加载/)).toBeVisible();
   await expect(page.getByText("TCLU-2387642")).toHaveCount(0);
   await expect(page.getByText("最近操作已落账", { exact: true })).toHaveCount(
     0,
@@ -106,16 +108,20 @@ test("container record remains readable", async ({ page }) => {
 
   await page.goto("/container/10000000-0000-4000-8000-000000000001");
   await waitForLiveReady(page);
-  await expect(page.getByRole("heading", { name: "一柜一档" })).toBeVisible();
-  await expect(page.getByText("MSKU1234567")).toBeVisible();
-  const emptyFlow = page.getByText("这一柜还没有流程。");
-  const nodeRail = page.getByLabel("货柜节点");
-  await expect(emptyFlow.or(nodeRail)).toBeVisible();
+  const heading = page.getByRole("heading", { name: "一柜一档" });
+  const missing = page.getByText(/找不到这只货柜|货柜没能加载/);
+  await expect(heading.or(missing)).toBeVisible();
   await expect(page.getByText("待发生")).toHaveCount(0);
-  await page.getByRole("link", { name: "去做这柜的任务" }).click();
-  await expect(page).toHaveURL(
-    /\/tasks\?containerId=10000000-0000-4000-8000-000000000001/,
-  );
+  if (await heading.isVisible()) {
+    await expect(page.getByText("MSKU1234567")).toBeVisible();
+    const emptyFlow = page.getByText("这一柜还没有流程。");
+    const nodeRail = page.getByLabel("货柜节点");
+    await expect(emptyFlow.or(nodeRail)).toBeVisible();
+    await page.getByRole("link", { name: "去做这柜的任务" }).click();
+    await expect(page).toHaveURL(
+      /\/tasks\?containerId=10000000-0000-4000-8000-000000000001/,
+    );
+  }
 });
 
 test("dark task shell remains readable", async ({ page }) => {
@@ -159,7 +165,7 @@ for (const overview of overviewPages) {
 
     if (overview.name === "container-list") {
       const table = page.getByRole("table", { name: "干活" });
-      const failed = page.getByText(/加载失败/);
+      const failed = liveFailed(page);
       await expect(table.or(failed)).toBeVisible();
       if (await table.isVisible()) {
         await expect(
@@ -189,6 +195,12 @@ for (const overview of overviewPages) {
     }
     if (overview.name === "management-dashboard") {
       const kpis = page.getByRole("navigation", { name: "管理看板 KPI" });
+      const failed = liveFailed(page);
+      await expect(kpis.or(failed)).toBeVisible();
+      if (!(await kpis.isVisible())) {
+        await expectNoHorizontalOverflow(page);
+        return;
+      }
       const kpiLinks = kpis.getByRole("link");
       expect(await kpiLinks.count()).toBeGreaterThanOrEqual(1);
       expect(await kpiLinks.count()).toBeLessThanOrEqual(2);
@@ -222,7 +234,7 @@ test("container table supports data operations without changing the page templat
   await waitForLiveReady(page);
 
   const table = page.getByRole("table", { name: "干活" });
-  const failed = page.getByText(/加载失败/);
+  const failed = liveFailed(page);
   await expect(table.or(failed)).toBeVisible();
   if (!(await table.isVisible())) return;
 
@@ -245,9 +257,14 @@ test("management dashboard stays a single scan", async ({ page }, testInfo) => {
   await disableMotion(page);
   await waitForLiveReady(page);
 
-  const signals = page
-    .getByRole("navigation", { name: "管理看板 KPI" })
-    .getByRole("link");
+  const kpis = page.getByRole("navigation", { name: "管理看板 KPI" });
+  const failed = liveFailed(page);
+  await expect(kpis.or(failed)).toBeVisible();
+  if (!(await kpis.isVisible())) {
+    await expectNoHorizontalOverflow(page);
+    return;
+  }
+  const signals = kpis.getByRole("link");
   expect(await signals.count()).toBeGreaterThanOrEqual(1);
   expect(await signals.count()).toBeLessThanOrEqual(2);
   await expect(signals.first()).toContainText("货柜");

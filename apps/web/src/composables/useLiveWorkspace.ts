@@ -147,9 +147,8 @@ export function useLiveWorkspace() {
         : page.items;
       rebuild(scoped, taskPage.items);
       rememberPage(taskPage);
-    } catch (cause) {
-      error.value =
-        cause instanceof Error ? cause.message : "加载失败，请确认 API 已启动";
+    } catch {
+      error.value = "任务没能加载";
       rebuild([], []);
     } finally {
       loading.value = false;

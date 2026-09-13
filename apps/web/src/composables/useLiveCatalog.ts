@@ -86,10 +86,9 @@ export function useLiveCatalog() {
         railsReady.value = true;
       }
       containers.value = rows;
-    } catch (cause) {
+    } catch {
       containers.value = [];
-      error.value =
-        cause instanceof Error ? cause.message : "加载失败，请确认 API 已启动";
+      error.value = "货柜没能加载";
     } finally {
       loading.value = false;
     }

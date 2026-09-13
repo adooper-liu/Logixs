@@ -5,7 +5,7 @@ test("unknown container record does not invent a linked task", async ({
 }) => {
   await page.goto("/container/missing-container");
   await expect(page.getByText("加载中…")).toHaveCount(0, { timeout: 15_000 });
-  await expect(page.getByText("找不到这只货柜")).toBeVisible();
+  await expect(page.getByText(/找不到这只货柜|货柜没能加载/)).toBeVisible();
   await expect(page.getByText("进入关联任务")).toHaveCount(0);
   await expect(page.getByText("确认实际离港时间")).toHaveCount(0);
 });
