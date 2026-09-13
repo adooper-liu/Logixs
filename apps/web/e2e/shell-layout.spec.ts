@@ -57,9 +57,16 @@ test("mobile task panes stay available", async ({ page }) => {
 });
 
 test("explanatory tooltips work with click and Escape", async ({ page }) => {
-  await page.goto("/meso");
-  const explanation = "看出运后的货柜，并做这一柜的任务。";
+  const width = page.viewportSize()?.width ?? 0;
+  test.skip(width >= 960 && width < 1280, "folded rail hides workspace help");
 
+  await page.goto("/meso");
+  if (width < 960) {
+    await page.getByRole("button", { name: "打开主导航" }).click();
+    await expect(page.getByTestId("app-sidebar")).toBeInViewport();
+  }
+
+  const explanation = "看出运后的货柜，并做这一柜的任务。";
   await expect(page.getByText(explanation)).toHaveCount(0);
   await page.getByRole("button", { name: "查看工作区范围" }).click();
   await expect(page.getByRole("tooltip")).toHaveText(explanation);
