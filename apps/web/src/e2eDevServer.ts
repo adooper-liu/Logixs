@@ -10,7 +10,8 @@ export const APP_URL = DEV_SERVER_PROBE_URLS[1];
 export async function isLogixDevServerRunning(
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> {
-  if (process.env.CI) return false;
+  // CI 自起 Vite，不复用本机监听。注入 fetch 的契约测试仍走探测逻辑。
+  if (process.env.CI && fetchImpl === fetch) return false;
 
   for (const url of DEV_SERVER_PROBE_URLS) {
     try {

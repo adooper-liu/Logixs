@@ -16,7 +16,14 @@ describe("e2e dev server loopback", () => {
     expect(DEV_SERVER_PROBE_URLS).toContain(APP_URL);
   });
 
+  it("CI 上默认探测直接视为未在跑", async () => {
+    vi.stubEnv("CI", "true");
+    await expect(isLogixDevServerRunning()).resolves.toBe(false);
+    vi.unstubAllEnvs();
+  });
+
   it("任一回环已有 Logix 壳即视为开发服务器在跑", async () => {
+    vi.stubEnv("CI", "true");
     const fetchImpl = vi
       .fn()
       .mockRejectedValueOnce(new Error("ECONNREFUSED"))
@@ -26,5 +33,6 @@ describe("e2e dev server loopback", () => {
       });
     await expect(isLogixDevServerRunning(fetchImpl)).resolves.toBe(true);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+    vi.unstubAllEnvs();
   });
 });
