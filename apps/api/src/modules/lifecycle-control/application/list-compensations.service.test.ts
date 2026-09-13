@@ -64,8 +64,7 @@ async function buildService(overrides?: {
   const compensations = {
     findByIdempotency: vi.fn(),
     findById: vi.fn(),
-    listByOriginal:
-      overrides?.listByOriginal ?? vi.fn().mockResolvedValue([]),
+    listByOriginal: overrides?.listByOriginal ?? vi.fn().mockResolvedValue([]),
     insert: vi.fn(),
     updateState: vi.fn(),
   };

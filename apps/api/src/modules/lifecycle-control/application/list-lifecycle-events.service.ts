@@ -66,7 +66,10 @@ export class ListLifecycleEventsService {
     if (input.cursor) {
       try {
         const cursor = decodeLifecycleEventCursor(input.cursor);
-        if (cursor.tenantId !== tenantId || cursor.containerId !== containerId) {
+        if (
+          cursor.tenantId !== tenantId ||
+          cursor.containerId !== containerId
+        ) {
           throw new Error("VALIDATION_FORMAT: cursor 与过滤条件不匹配");
         }
         after = { occurredAt: cursor.occurredAt, id: cursor.id };

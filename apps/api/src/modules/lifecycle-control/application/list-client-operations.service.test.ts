@@ -79,9 +79,9 @@ describe("ListClientOperationsService", () => {
       createdAt: new Date("2026-09-13T03:00:00.000Z"),
       id: "op-1",
     });
-    await expect(
-      service.execute({ tenantId: "t1", cursor }),
-    ).rejects.toThrow("VALIDATION_FORMAT");
+    await expect(service.execute({ tenantId: "t1", cursor })).rejects.toThrow(
+      "VALIDATION_FORMAT",
+    );
     expect(listByTenant).not.toHaveBeenCalled();
   });
 

@@ -30,7 +30,8 @@ export class GetCompensationService {
     if (
       !record ||
       record.tenantId !== tenantId ||
-      record.originalClientOperationId !== input.originalClientOperationId.trim()
+      record.originalClientOperationId !==
+        input.originalClientOperationId.trim()
     ) {
       throw new HttpException("RESOURCE_NOT_FOUND", HttpStatus.NOT_FOUND);
     }

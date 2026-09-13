@@ -164,7 +164,9 @@ export class ClientOperationController {
   }
 }
 
-function toListDto(record: ClientOperationListItem): ClientOperationListItemDto {
+function toListDto(
+  record: ClientOperationListItem,
+): ClientOperationListItemDto {
   return {
     ...toDto(record),
     targetType: record.targetType,

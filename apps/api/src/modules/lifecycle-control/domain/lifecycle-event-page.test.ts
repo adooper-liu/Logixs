@@ -12,9 +12,9 @@ describe("lifecycle-event-page", () => {
       occurredAt: new Date("2026-09-13T03:00:00.000Z"),
       id: "evt-1",
     };
-    expect(decodeLifecycleEventCursor(encodeLifecycleEventCursor(cursor))).toEqual(
-      cursor,
-    );
+    expect(
+      decodeLifecycleEventCursor(encodeLifecycleEventCursor(cursor)),
+    ).toEqual(cursor);
   });
 
   it("损坏 cursor 明确失败", () => {

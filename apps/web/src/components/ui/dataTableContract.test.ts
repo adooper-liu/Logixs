@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createLiveContainerTableProjection,
-} from "../../data/containerTableSample";
+import { createLiveContainerTableProjection } from "../../data/containerTableSample";
 import { toLiveContainer } from "../../data/liveWorkspaceProjection";
 import {
   defaultDataTableFilter,

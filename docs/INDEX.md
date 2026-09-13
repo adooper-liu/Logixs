@@ -167,16 +167,16 @@
 | [本地迁移改为 deploy 对齐](./planning/tasks/p6-migrate-deploy-local.md)                        | db:migrate 走 deploy，避开影子库重放旧迁移                           | 已完成                      |
 | [E2E 开发服务器回环对齐](./planning/tasks/p6-e2e-dev-server-loopback.md)                       | Vite 听全部回环；探测 127.0.0.1 与 localhost                         | 已完成                      |
 | [EchoAiWorkflow 入参对齐](./planning/tasks/p6-echo-ai-workflow-input.md)                       | 入参改为 { message }，避免 Temporal 把对象当成 str                   | 已完成                      |
-| [E2E 对齐真实任务导航](./planning/tasks/p6-e2e-visual-real-task-nav.md)                       | 侧栏「真实任务」用语义断言；壳层覆盖 /real-tasks                     | 已完成                      |
+| [E2E 对齐真实任务导航](./planning/tasks/p6-e2e-visual-real-task-nav.md)                        | 侧栏「真实任务」用语义断言；壳层覆盖 /real-tasks                     | 已完成                      |
 | [Inbox 死信重放修正载荷](./planning/tasks/p6-inbox-replay-payload-conflict.md)                 | 按 inbox/{id} 引用修正；新 messageId，不改原死信                     | 已完成                      |
-| [补偿记录第一刀](./planning/tasks/p6-compensation-first-slice.md)                             | 已落账 ClientOperation 登记 pending 补偿，不执行反向事件             | 已完成                      |
-| [补偿状态推进](./planning/tasks/p6-compensation-resolve.md)                                   | pending 推进到终态；失败可进人工复核                                 | 已完成                      |
-| [按原操作列/读补偿](./planning/tasks/p6-list-compensations.md)                                | 游标分页列出补偿，并可按 id 读取                                     | 已完成                      |
-| [按租户列 ClientOperation](./planning/tasks/p6-list-client-operations.md)                     | GET /api/client-operations 按 GC-010 游标分页                        | 已完成                      |
-| [同步操作薄页](./planning/tasks/p6-client-operation-ops-ui.md)                                | /real-operations 列三阶段操作并展开补偿                              | 暂停                        |
+| [补偿记录第一刀](./planning/tasks/p6-compensation-first-slice.md)                              | 已落账 ClientOperation 登记 pending 补偿，不执行反向事件             | 已完成                      |
+| [补偿状态推进](./planning/tasks/p6-compensation-resolve.md)                                    | pending 推进到终态；失败可进人工复核                                 | 已完成                      |
+| [按原操作列/读补偿](./planning/tasks/p6-list-compensations.md)                                 | 游标分页列出补偿，并可按 id 读取                                     | 已完成                      |
+| [按租户列 ClientOperation](./planning/tasks/p6-list-client-operations.md)                      | GET /api/client-operations 按 GC-010 游标分页                        | 已完成                      |
+| [同步操作薄页](./planning/tasks/p6-client-operation-ops-ui.md)                                 | /real-operations 列三阶段操作并展开补偿                              | 暂停                        |
 | [作业 UI 与真实 API 合并](./planning/tasks/p6-workspace-api-ui-merge.md)                       | /tasks /containers 默认吃 API；演示仅 ?demo=1                        | 已完成                      |
 | [作业壳人话与空模块](./planning/tasks/p6-workspace-ui-clarity.md)                              | 按职务命名；总览/流转去掉空 KPI 与空 RACI                            | 已完成                      |
-| [货柜表空筛选回归](./planning/tasks/p6-container-list-empty-filter.md)                        | 无「全部」快筛时不得把已有货柜滤空                                   | 已完成                      |
+| [货柜表空筛选回归](./planning/tasks/p6-container-list-empty-filter.md)                         | 无「全部」快筛时不得把已有货柜滤空                                   | 已完成                      |
 | [作业壳页面清单登记](./planning/tasks/p6-workspace-ui-inventory.md)                            | 把页面定位与可补回块写成快照                                         | 已完成                      |
 | [作业壳表面命名](./planning/tasks/p6-ui-surface-naming.md)                                     | UI-D09：干活/看档等表面用名                                          | 已完成                      |
 | [任务模板](./planning/tasks/_template.md)                                                      | 任务载体模板                                                         | 规范                        |

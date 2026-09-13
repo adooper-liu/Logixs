@@ -276,7 +276,11 @@ describe("DynamicDataTable", () => {
     const projection = createProjection();
     const empty = mount(DynamicDataTable, {
       props: {
-        projection: { ...projection, rows: [], pageInfo: { ...projection.pageInfo, total: 0 } },
+        projection: {
+          ...projection,
+          rows: [],
+          pageInfo: { ...projection.pageInfo, total: 0 },
+        },
         filter: "",
       },
     });

@@ -27,10 +27,18 @@ const statusItems = computed(() =>
     { key: "task", label: "任务状态", value: props.taskStatus },
     { key: "sync", label: "同步状态", value: props.syncStatus },
   ].filter((item) => {
-    if (item.key === "sync" && !props.showIdleSync && item.value.code === "idle") {
+    if (
+      item.key === "sync" &&
+      !props.showIdleSync &&
+      item.value.code === "idle"
+    ) {
       return false;
     }
-    if (item.key === "task" && !props.showIdleTask && item.value.code === "idle") {
+    if (
+      item.key === "task" &&
+      !props.showIdleTask &&
+      item.value.code === "idle"
+    ) {
       return false;
     }
     return true;

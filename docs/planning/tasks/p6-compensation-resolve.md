@@ -43,4 +43,4 @@ Domain 保存转换表。`POST .../compensations/:compensationId/resolve`。Repo
 | 日期       | 阶段   | 负责 | commit | 说明               |
 | ---------- | ------ | ---- | ------ | ------------------ |
 | 2026-09-13 | coding | —    | —      | 开工：补偿状态推进 |
-| 2026-09-13 | done   | —    | —      | resolve 推进终态     |
+| 2026-09-13 | done   | —    | —      | resolve 推进终态   |

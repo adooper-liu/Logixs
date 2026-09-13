@@ -40,7 +40,7 @@ verification: 本地验证（2026-09-13）：pnpm db:migrate（migrate deploy）
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明                 |
-| ---------- | ------ | ---- | ------ | -------------------- |
-| 2026-09-13 | coding | —    | —      | 开工：migrate deploy |
+| 日期       | 阶段   | 负责 | commit | 说明                   |
+| ---------- | ------ | ---- | ------ | ---------------------- |
+| 2026-09-13 | coding | —    | —      | 开工：migrate deploy   |
 | 2026-09-13 | done   | —    | —      | db:migrate 改为 deploy |
