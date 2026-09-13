@@ -1,126 +1,38 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { ArrowRight } from "@lucide/vue";
-import DecisionQueue from "../components/management/DecisionQueue.vue";
 import KpiSignalStrip from "../components/management/KpiSignalStrip.vue";
-import OperationsAnalytics from "../components/management/OperationsAnalytics.vue";
-import OperationsFlowMap from "../components/management/OperationsFlowMap.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
-import { useDemoOperationsStore } from "../composables/useDemoOperationsStore";
-import { createKpiSignals } from "../data/kpiProjection";
-import {
-  achievementCalendars,
-  capabilityRows,
-  feeRows,
-  meetingDecisions,
-  type Tone,
-} from "../data/sample";
+import { useLiveCatalog } from "../composables/useLiveCatalog";
+import { createWorkspaceOverviewSignals } from "../data/kpiProjection";
 
-const { containers, exceptions } = useDemoOperationsStore();
+const { containers, loading, error, syncReady, reload } = useLiveCatalog();
 
-const pendingSync = computed(
-  () =>
-    containers.value.filter(
-      (row) => !["committed", "idle"].includes(row.syncStatus.code),
-    ).length,
-);
+onMounted(() => {
+  void reload();
+});
+
 const signals = computed(() =>
-  createKpiSignals({
-    containers: containers.value,
-    fees: feeRows,
-    exceptions: exceptions.value,
+  createWorkspaceOverviewSignals(containers.value, {
+    syncReady: syncReady.value,
   }),
 );
-
-const firstRiskContainer = computed(
-  () =>
-    containers.value.find((row) => row.tone === "risk") ?? containers.value[0],
-);
-const constrainedResource = computed(
-  () =>
-    capabilityRows
-      .filter((row) => row.warning)
-      .sort(
-        (left, right) =>
-          right.assigned / right.capacity - left.assigned / left.capacity,
-      )[0],
-);
-const exposedFee = computed(
-  () => feeRows.find((row) => row.tone === "risk") ?? feeRows[0],
-);
-
-const decisionItems = computed(() => {
-  const items = [];
-  if (firstRiskContainer.value) {
-    items.push({
-      id: "customs-evidence",
-      title: "清关资料缺失",
-      context: `${firstRiskContainer.value.containerNumber} · ${firstRiskContainer.value.risk}`,
-      metric: `${firstRiskContainer.value.freeDaysLeft ?? "?"} 天`,
-      metricLabel: "免堆窗口",
-      action: "查看证据",
-      tone: "risk" as const,
-      to: `/container/${firstRiskContainer.value.containerRecordId}`,
-    });
-  }
-  if (constrainedResource.value) {
-    items.push({
-      id: constrainedResource.value.planId,
-      title: `${constrainedResource.value.resource}接近上限`,
-      context: `${constrainedResource.value.provider} · ${constrainedResource.value.assigned}/${constrainedResource.value.capacity}`,
-      metric: `${Math.round((constrainedResource.value.assigned / constrainedResource.value.capacity) * 100)}%`,
-      metricLabel: "资源负荷",
-      action: "调整计划",
-      tone: "warn" as const,
-      to: "/meso?dimension=capacity",
-    });
-  }
-  if (exposedFee.value) {
-    const tone: Tone = exposedFee.value.tone === "risk" ? "risk" : "warn";
-    items.push({
-      id: exposedFee.value.feeId,
-      title: `${exposedFee.value.type}账单待核`,
-      context: `${exposedFee.value.amount} · ${exposedFee.value.authority}`,
-      metric: exposedFee.value.amount,
-      metricLabel: "待核金额",
-      action: "核对依据",
-      tone,
-      to: "/meso?dimension=fees",
-    });
-  }
-  return items;
-});
 </script>
 
 <template>
   <div class="dashboard page-frame">
-    <PageHeader eyebrow="管理驾驶舱" title="货柜运营态势">
+    <PageHeader title="货柜" summary="当前租户已经记下的货柜。">
       <template #actions>
         <router-link class="page-link" to="/containers">
-          查看已出运货柜
+          去干活
           <ArrowRight :size="15" aria-hidden="true" />
         </router-link>
       </template>
     </PageHeader>
 
-    <KpiSignalStrip :items="signals" />
-
-    <div class="operations-grid">
-      <OperationsFlowMap :rows="containers" />
-      <DecisionQueue id="decision-queue" :items="decisionItems" />
-    </div>
-
-    <OperationsAnalytics
-      :achievement-calendars="achievementCalendars"
-      :capabilities="capabilityRows"
-      :fees="feeRows"
-      :exceptions="exceptions"
-      :decisions="meetingDecisions"
-    />
-
-    <p v-if="pendingSync" class="sync-notice" role="status">
-      {{ pendingSync }} 个操作仍在等待服务器确认，未计入完成事实。
-    </p>
+    <p v-if="loading" class="hint">加载中…</p>
+    <p v-else-if="error" class="hint hint--error">{{ error }}</p>
+    <KpiSignalStrip v-else :items="signals" />
   </div>
 </template>
 
@@ -129,25 +41,23 @@ const decisionItems = computed(() => {
   min-height: 100%;
 }
 
-.operations-grid {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 2.15fr) minmax(300px, 0.85fr);
-  gap: 12px;
-}
-
-.sync-notice {
+.hint {
   margin: 0;
   padding: 8px 10px;
-  border-left: 3px solid var(--warn);
-  background: var(--surface);
-  color: var(--ink-soft);
+  color: var(--muted);
   font-size: 11px;
 }
 
-@media (max-width: 1180px) {
-  .operations-grid {
-    grid-template-columns: 1fr;
-  }
+.hint--error {
+  color: var(--risk);
+}
+
+.page-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand);
+  text-decoration: none;
+  font-size: 13px;
 }
 </style>

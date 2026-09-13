@@ -12,7 +12,7 @@ defineProps<{ record: ContainerProjection }>();
       <router-link
         to="/containers"
         class="icon-button back"
-        aria-label="返回已出运货柜"
+        aria-label="回干活"
       >
         <ArrowLeft :size="18" />
       </router-link>
@@ -22,14 +22,16 @@ defineProps<{ record: ContainerProjection }>();
       <div class="identity-copy">
         <div class="identity-title">
           <h3 class="mono">{{ record.containerNumber }}</h3>
-          <span>{{ record.typeCode }}</span>
+          <span v-if="record.typeCode">{{ record.typeCode }}</span>
         </div>
-        <small class="mono">
-          {{ record.orderNumber }} · {{ record.billOfLading }}
+        <small v-if="record.orderNumber" class="mono">
+          {{ record.orderNumber
+          }}<template v-if="record.billOfLading">
+            · {{ record.billOfLading }}</template
+          >
         </small>
-        <span class="location">
+        <span v-if="record.location" class="location">
           <MapPin :size="13" />{{ record.location }}
-          <span class="mono">{{ record.containerRecordId }}</span>
         </span>
       </div>
     </div>
@@ -40,6 +42,7 @@ defineProps<{ record: ContainerProjection }>();
       compact
       variant="context"
       :show-idle-sync="false"
+      :show-idle-task="false"
     />
   </section>
 </template>

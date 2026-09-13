@@ -31,4 +31,21 @@ describe("StatusTriplet", () => {
     expect(wrapper.findAll('[data-testid="status-cell"]')).toHaveLength(3);
     expect(wrapper.text()).toContain("最近操作已落账");
   });
+
+  it("hides idle task status when the page has no task fact", () => {
+    const wrapper = mount(StatusTriplet, {
+      props: {
+        containerStatus: status("in_transit", "在途", "info"),
+        taskStatus: status("idle", "无投影", "muted"),
+        syncStatus: status("idle", "无投影", "muted"),
+        showIdleSync: false,
+        showIdleTask: false,
+        compact: true,
+      },
+    });
+
+    expect(wrapper.findAll('[data-testid="status-cell"]')).toHaveLength(1);
+    expect(wrapper.text()).toContain("在途");
+    expect(wrapper.text()).not.toContain("无投影");
+  });
 });

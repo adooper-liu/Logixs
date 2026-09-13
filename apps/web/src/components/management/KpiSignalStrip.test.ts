@@ -37,6 +37,6 @@ describe("KpiSignalStrip", () => {
       .trigger("click");
     expect(
       document.body.querySelector('[role="tooltip"]')?.textContent,
-    ).toContain("Demurrage 与 Detention");
+    ).toContain("滞箱与滞港");
   });
 });

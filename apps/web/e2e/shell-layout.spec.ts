@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("shell follows the responsive navigation contract", async ({
   page,
 }, testInfo) => {
-  await page.goto("/tasks?task=task_1026");
+  await page.goto("/tasks");
   await expect(page.getByRole("heading", { name: "我的任务" })).toBeVisible();
   const sidebar = page.getByTestId("app-sidebar");
   const viewportWidth = page.viewportSize()!.width;
@@ -20,7 +20,7 @@ test("shell follows the responsive navigation contract", async ({
     await expect(sidebar).not.toBeInViewport();
     await page.getByRole("button", { name: "打开主导航" }).click();
     await expect(sidebar).toBeInViewport();
-    await page.getByRole("link", { name: "已出运货柜" }).click();
+    await page.getByRole("link", { name: "干活" }).click();
     await expect(page).toHaveURL(/\/containers$/);
     await expect(sidebar).not.toBeInViewport();
   }
@@ -48,28 +48,27 @@ test("mobile drawer closes with Escape", async ({ page }) => {
   await expect(sidebar).not.toBeInViewport();
 });
 
-test("mobile task link opens the active work instead of the full queue", async ({
-  page,
-}) => {
+test("mobile task panes stay available", async ({ page }) => {
   test.skip(page.viewportSize()!.width >= 768, "mobile task panes only");
-  await page.goto("/tasks?task=task_1026");
-
-  await expect(
-    page.getByRole("heading", { name: "卸柜并核对实收数量" }),
-  ).toBeVisible();
-  await expect(page.getByText("确认实际离港时间")).toBeHidden();
-
-  await page.getByRole("button", { name: /任务列表/ }).click();
-  await expect(page.getByText("确认实际离港时间")).toBeVisible();
+  await page.goto("/tasks");
+  await expect(page.getByRole("heading", { name: "我的任务" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /任务列表/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /当前任务/ })).toBeVisible();
 });
 
 test("explanatory tooltips work with click and Escape", async ({ page }) => {
-  await page.goto("/meso");
-  const explanation =
-    "完整性范围：计划、达成、状态、时效、费用、异常与复盘；管理维度映射到流程节点和责任动作。";
+  const width = page.viewportSize()?.width ?? 0;
+  test.skip(width >= 960 && width < 1280, "folded rail hides workspace help");
 
+  await page.goto("/meso");
+  if (width < 960) {
+    await page.getByRole("button", { name: "打开主导航" }).click();
+    await expect(page.getByTestId("app-sidebar")).toBeInViewport();
+  }
+
+  const explanation = "看出运后的货柜，并做这一柜的任务。";
   await expect(page.getByText(explanation)).toHaveCount(0);
-  await page.getByRole("button", { name: "查看七维管理范围" }).click();
+  await page.getByRole("button", { name: "查看工作区范围" }).click();
   await expect(page.getByRole("tooltip")).toHaveText(explanation);
 
   await page.keyboard.press("Escape");
@@ -80,9 +79,13 @@ test("all migrated workspaces keep the shared shell and bounded overflow", async
   page,
 }) => {
   const routes = [
-    ["/containers", "已出运货柜"],
-    ["/dashboard", "货柜运营态势"],
-    ["/meso", "First Mile PDCA 运营"],
+    ["/containers", "干活"],
+    ["/real-tasks", "我的任务"],
+    ["/real-containers", "干活"],
+    ["/dashboard", "货柜"],
+    ["/meso", "看档"],
+    ["/real-operations", "看提交"],
+    ["/dead-letters", "看失败"],
   ] as const;
 
   for (const [path, heading] of routes) {

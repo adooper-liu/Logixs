@@ -9,10 +9,54 @@ export interface ContainerSummary {
   updatedAt: string;
 }
 
-export async function listContainers(): Promise<ContainerSummary[]> {
-  const response = await fetch("/api/containers");
+export interface ContainerPage {
+  items: ContainerSummary[];
+  pageInfo: {
+    nextCursor: string | null;
+    hasNextPage: boolean;
+    pageSize: number;
+  };
+  asOf: string;
+  projectionVersion: number;
+}
+
+// 开发期身份与导入写路径对齐（正式 OIDC 属 P5-02）。
+const DEV_TENANT_ID = "dev-tenant";
+const DEV_OPERATOR_ID = "dev-operator";
+
+export async function listContainers(query?: {
+  pageSize?: number;
+  cursor?: string;
+}): Promise<ContainerPage> {
+  const params = new URLSearchParams();
+  if (query?.pageSize != null) params.set("pageSize", String(query.pageSize));
+  if (query?.cursor) params.set("cursor", query.cursor);
+  const queryString = params.toString();
+  const suffix = queryString ? `?${queryString}` : "";
+  const response = await fetch(`/api/containers${suffix}`, {
+    headers: {
+      "X-Tenant-Id": DEV_TENANT_ID,
+      "X-Operator-Id": DEV_OPERATOR_ID,
+    },
+  });
   if (!response.ok) {
     throw new Error(`GET /api/containers failed: ${response.status}`);
   }
-  return (await response.json()) as ContainerSummary[];
+  return (await response.json()) as ContainerPage;
+}
+
+export async function getContainer(id: string): Promise<ContainerSummary> {
+  const response = await fetch(`/api/containers/${encodeURIComponent(id)}`, {
+    headers: {
+      "X-Tenant-Id": DEV_TENANT_ID,
+      "X-Operator-Id": DEV_OPERATOR_ID,
+    },
+  });
+  if (response.status === 404) {
+    throw new Error("RESOURCE_NOT_FOUND");
+  }
+  if (!response.ok) {
+    throw new Error(`GET /api/containers/${id} failed: ${response.status}`);
+  }
+  return (await response.json()) as ContainerSummary;
 }

@@ -74,6 +74,19 @@ describe("projectTaskLanguage", () => {
     expect(language.guidance).not.toContain("未落账");
   });
 
+  it("真实节点任务用节点名作标题，不套演示文案", () => {
+    const language = projectTaskLanguage({
+      ...getTask("task_1027"),
+      taskDefinitionKey: "live_node_task",
+      taskDefinitionVersion: 1,
+      nodeName: "清关",
+      triggerReason: "",
+    });
+    expect(language.title).toBe("清关");
+    expect(language.guidance).toContain("落账");
+    expect(language.title).not.toBe("确认实际离港时间");
+  });
+
   it("fails explicitly for an unknown definition version", () => {
     const task = getTask("task_1027");
     task.taskDefinitionVersion = 99;

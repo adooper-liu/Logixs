@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -20,6 +26,12 @@ after(() => {
   temporaryDirectories.forEach((directory) =>
     rmSync(directory, { force: true, recursive: true }),
   );
+});
+
+test("db:migrate applies pending history without a shadow database", () => {
+  const manifest = JSON.parse(readFileSync(join("package.json"), "utf8"));
+  assert.match(manifest.scripts["db:migrate"], /migrate deploy/);
+  assert.doesNotMatch(manifest.scripts["db:migrate"], /migrate dev/);
 });
 
 test("requires CODEOWNERS as a tracked policy file", () => {

@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/worker.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import tsx --test src/outbox-publish-due.test.ts src/outbox-publish-due-system.test.ts",
     "lint": "eslint src --max-warnings=0",
     "format:check": "prettier --check src"
   },

@@ -1,4 +1,5 @@
 import type { SubmissionView, TaskItem, Tone } from "../../data/sample";
+import { LIVE_TASK_DEFINITION_KEY } from "../../data/liveWorkspaceProjection";
 import {
   getTaskLanguageDefinition,
   getTaskStatusLanguage,
@@ -26,11 +27,16 @@ export const projectTaskLanguage = (
   );
   const status = getTaskStatusLanguage(task.status);
 
+  const title =
+    task.taskDefinitionKey === LIVE_TASK_DEFINITION_KEY
+      ? task.nodeName
+      : definition.title;
+
   if (task.status === "completed") {
     const committedResult =
       submission?.stage === "committed" ? submission.resultSummary : undefined;
     return {
-      title: definition.title,
+      title,
       statusLabel: status.label,
       tone: status.tone,
       triggerReason: task.triggerReason,
@@ -55,7 +61,7 @@ export const projectTaskLanguage = (
           : definition.activeGuidance;
 
   return {
-    title: definition.title,
+    title,
     statusLabel: status.label,
     tone: status.tone,
     triggerReason: task.triggerReason,

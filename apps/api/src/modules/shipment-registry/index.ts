@@ -2,6 +2,11 @@
 export * from "./shipment-registry.module";
 export type { ContainerSummary } from "./domain/container-summary";
 export { ApplyContainerRecordService } from "./application/apply-container-record.service";
+export { AssertContainerTenantService } from "./application/assert-container-tenant.service";
+export {
+  ASSERT_CONTAINER_TENANT,
+  type AssertContainerTenantPort,
+} from "./assert-container-tenant.port";
 export type {
   ApplyContainerRecordCommand,
   ApplyContainerRecordResult,

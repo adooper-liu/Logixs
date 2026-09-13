@@ -28,3 +28,5 @@ adminator/
 Thumbs.db
 .idea/
 .vscode/
+.windsurf/
+.review-worktree-src.diff

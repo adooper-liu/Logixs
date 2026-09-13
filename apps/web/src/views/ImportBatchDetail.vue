@@ -90,7 +90,7 @@ const canExecute = computed(() => detail.value?.batch.status === "approved");
 
 <template>
   <div class="import-batch-detail page-frame">
-    <PageHeader eyebrow="P6 智能导入 · 阶段 C" title="导入批次详情" />
+    <PageHeader title="导入批次" />
 
     <p v-if="loading" class="hint">加载中…</p>
     <p v-else-if="error" class="hint hint--error">{{ error }}</p>

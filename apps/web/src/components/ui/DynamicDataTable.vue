@@ -166,7 +166,11 @@ const nextPage = () => {
         </table>
 
         <div v-if="!table.displayedRows.value.length" class="empty-state">
-          没有匹配的货柜，请调整筛选条件。
+          {{
+            projection.rows.length
+              ? "没有匹配的货柜，请调整筛选条件。"
+              : "还没有货柜。"
+          }}
         </div>
       </div>
 

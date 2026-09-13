@@ -1,0 +1,158 @@
+import { flushPromises, mount } from "@vue/test-utils";
+import { createMemoryHistory, createRouter } from "vue-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import RealTaskWorkbench from "./RealTaskWorkbench.vue";
+
+const listContainers = vi.fn();
+const listNodeTasks = vi.fn();
+const completeWorkOrder = vi.fn();
+
+vi.mock("../api/containers", () => ({
+  listContainers: (...args: unknown[]) => listContainers(...args),
+}));
+
+vi.mock("../api/nodeTasks", () => ({
+  listNodeTasks: (...args: unknown[]) => listNodeTasks(...args),
+  completeWorkOrder: (...args: unknown[]) => completeWorkOrder(...args),
+}));
+
+const readyTask = {
+  id: "t1",
+  flowInstanceId: "f1",
+  nodeInstanceId: "n1",
+  nodeCode: "customs_clearance",
+  containerId: "c1",
+  taskDefinitionKey: "node-customs_clearance",
+  state: "pending",
+  workOrders: [
+    {
+      id: "w1",
+      workOrderDefinitionKey: "wo-customs",
+      state: "ready",
+      assignmentState: "unassigned",
+      completedAt: null,
+    },
+    {
+      id: "w2",
+      workOrderDefinitionKey: "wo-done",
+      state: "completed",
+      assignmentState: "done",
+      completedAt: "2026-09-13T00:00:00.000Z",
+    },
+  ],
+  outcome: null,
+};
+
+async function mountPage(path = "/real-tasks?containerId=c1") {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: "/real-tasks", component: RealTaskWorkbench }],
+  });
+  await router.push(path);
+  await router.isReady();
+  return mount(RealTaskWorkbench, {
+    global: {
+      plugins: [router],
+      stubs: {
+        PageHeader: {
+          props: ["title", "eyebrow"],
+          template: "<header><h2>{{ title }}</h2></header>",
+        },
+      },
+    },
+  });
+}
+
+describe("RealTaskWorkbench", () => {
+  beforeEach(() => {
+    listContainers.mockReset();
+    listNodeTasks.mockReset();
+    completeWorkOrder.mockReset();
+    listContainers.mockResolvedValue({
+      items: [
+        {
+          id: "c1",
+          orderNumber: "PO-1",
+          containerNumber: "MSCU1",
+          currentStatus: "not_shipped",
+          updatedAt: "2026-09-13T00:00:00.000Z",
+        },
+      ],
+    });
+    listNodeTasks.mockResolvedValue({
+      items: [readyTask],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-09-13T00:00:00.000Z",
+      projectionVersion: 0,
+    });
+    vi.stubGlobal("crypto", { randomUUID: () => "complete-key-1" });
+  });
+
+  it("无货柜时不列任务、不占回执位", async () => {
+    const wrapper = await mountPage("/real-tasks");
+    await flushPromises();
+    expect(listNodeTasks).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain("先选择货柜再查看任务");
+    expect(wrapper.find('[data-testid="submission-progress"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it("完成 ready 工单后在动作旁显示已落账三段回执", async () => {
+    completeWorkOrder.mockResolvedValue({
+      workOrderId: "w1",
+      workOrderState: "completed",
+      taskId: "t1",
+      taskState: "completed",
+      applied: true,
+      outcomeRecorded: true,
+      lifecycleApply: "not_applicable",
+      lifecycleEventCode: null,
+      lifecycleDetail: null,
+      activatedNodeCode: null,
+      activatedNodeTaskId: null,
+      clientOperationId: "op-1",
+      receptionState: "received",
+      businessDecisionState: "accepted",
+      commitState: "committed",
+      rejectionReasonCode: null,
+    });
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect(wrapper.get("h2").text()).toBe("真实任务（API 接线）");
+    expect(wrapper.text()).toContain("customs_clearance");
+    expect(wrapper.find('[data-testid="submission-progress"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.find('[data-work-order-id="w2"]').exists()).toBe(false);
+
+    await wrapper.get('[data-work-order-id="w1"]').trigger("click");
+    await flushPromises();
+
+    expect(completeWorkOrder).toHaveBeenCalledWith("w1", {
+      evidenceRefs: [],
+      idempotencyKey: "complete-key-1",
+    });
+    const receipt = wrapper.get('[data-testid="submission-progress"]');
+    expect(receipt.text()).toContain("完成工单");
+    expect(receipt.text()).toContain("已落账");
+    expect(receipt.text()).toContain("服务器已收到");
+    expect(receipt.text()).toContain("业务已接受");
+    expect(receipt.text()).toContain("结果已落账");
+    expect(receipt.text()).not.toContain("op-1");
+  });
+
+  it("业务拒绝显示错误且不改写成完成", async () => {
+    completeWorkOrder.mockRejectedValue(
+      new Error("完成工单失败（409）：EVIDENCE_REQUIRED: 缺少合格证据"),
+    );
+    const wrapper = await mountPage();
+    await flushPromises();
+    await wrapper.get('[data-work-order-id="w1"]').trigger("click");
+    await flushPromises();
+    const receipt = wrapper.get('[data-testid="submission-progress"]');
+    expect(receipt.get(".message.error").text()).toContain("EVIDENCE_REQUIRED");
+    expect(receipt.get(".message.error").text()).not.toContain("已落账");
+    expect(receipt.find("button.retry").exists()).toBe(false);
+  });
+});

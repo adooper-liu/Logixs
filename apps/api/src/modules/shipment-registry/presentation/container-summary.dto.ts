@@ -39,3 +39,16 @@ export class ContainerSummaryDto {
   @ApiProperty({ description: "更新时间（ISO 8601 UTC）" })
   updatedAt!: string;
 }
+
+export class ContainerPageInfoDto {
+  @ApiProperty({ nullable: true }) nextCursor!: string | null;
+  @ApiProperty() hasNextPage!: boolean;
+  @ApiProperty() pageSize!: number;
+}
+
+export class ContainerPageDto {
+  @ApiProperty({ type: [ContainerSummaryDto] }) items!: ContainerSummaryDto[];
+  @ApiProperty({ type: ContainerPageInfoDto }) pageInfo!: ContainerPageInfoDto;
+  @ApiProperty() asOf!: string;
+  @ApiProperty() projectionVersion!: number;
+}

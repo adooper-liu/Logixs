@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { APP_URL } from "./src/e2eDevServer";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -8,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: APP_URL,
     colorScheme: "light",
     locale: "zh-CN",
     reducedMotion: "reduce",

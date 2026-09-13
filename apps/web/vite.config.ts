@@ -4,6 +4,8 @@ import vue from "@vitejs/plugin-vue";
 export default defineConfig({
   plugins: [vue()],
   server: {
+    // 同时听 IPv4/IPv6，避免 Windows 上 localhost=::1 而 Playwright 走 127.0.0.1。
+    host: true,
     port: 5173,
     open: false,
     // 薄真实链路：/api 代理到本地 NestJS API（apps/api，端口 3000）。
