@@ -5,6 +5,7 @@ import RealTaskWorkbench from "./RealTaskWorkbench.vue";
 
 const listContainers = vi.fn();
 const listNodeTasks = vi.fn();
+const claimWorkOrder = vi.fn();
 const completeWorkOrder = vi.fn();
 
 vi.mock("../api/containers", () => ({
@@ -13,7 +14,9 @@ vi.mock("../api/containers", () => ({
 
 vi.mock("../api/nodeTasks", () => ({
   listNodeTasks: (...args: unknown[]) => listNodeTasks(...args),
+  claimWorkOrder: (...args: unknown[]) => claimWorkOrder(...args),
   completeWorkOrder: (...args: unknown[]) => completeWorkOrder(...args),
+  DEV_OPERATOR_ID: "dev-operator",
 }));
 
 const readyTask = {
@@ -30,6 +33,7 @@ const readyTask = {
       workOrderDefinitionKey: "wo-customs",
       state: "ready",
       assignmentState: "unassigned",
+      assigneeId: null,
       completedAt: null,
     },
     {
@@ -37,10 +41,25 @@ const readyTask = {
       workOrderDefinitionKey: "wo-done",
       state: "completed",
       assignmentState: "done",
+      assigneeId: "dev-operator",
       completedAt: "2026-09-13T00:00:00.000Z",
     },
   ],
   outcome: null,
+};
+
+const claimedTask = {
+  ...readyTask,
+  state: "in_progress",
+  workOrders: [
+    {
+      ...readyTask.workOrders[0]!,
+      state: "in_progress",
+      assignmentState: "assigned",
+      assigneeId: "dev-operator",
+    },
+    readyTask.workOrders[1]!,
+  ],
 };
 
 async function mountPage(path = "/real-tasks?containerId=c1") {
@@ -67,6 +86,7 @@ describe("RealTaskWorkbench", () => {
   beforeEach(() => {
     listContainers.mockReset();
     listNodeTasks.mockReset();
+    claimWorkOrder.mockReset();
     completeWorkOrder.mockReset();
     listContainers.mockResolvedValue({
       items: [
@@ -98,7 +118,55 @@ describe("RealTaskWorkbench", () => {
     );
   });
 
-  it("完成 ready 工单后在动作旁显示已落账三段回执", async () => {
+  it("可领工单只出领取，不出现完成工单", async () => {
+    claimWorkOrder.mockResolvedValue({
+      workOrderId: "w1",
+      workOrderState: "in_progress",
+      assignmentState: "assigned",
+      assigneeId: "dev-operator",
+      taskId: "t1",
+      taskState: "in_progress",
+      applied: true,
+      clientOperationId: "op-1",
+      receptionState: "received",
+      businessDecisionState: "accepted",
+      commitState: "committed",
+      rejectionReasonCode: null,
+    });
+    listNodeTasks
+      .mockResolvedValueOnce({
+        items: [readyTask],
+        pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+        asOf: "2026-09-13T00:00:00.000Z",
+        projectionVersion: 0,
+      })
+      .mockResolvedValueOnce({
+        items: [claimedTask],
+        pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+        asOf: "2026-09-13T00:00:00.000Z",
+        projectionVersion: 0,
+      });
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect(wrapper.get('[data-work-order-id="w1"]').text()).toBe("领取");
+    expect(wrapper.find('[data-action="complete"]').exists()).toBe(false);
+
+    await wrapper.get('[data-work-order-id="w1"]').trigger("click");
+    await flushPromises();
+    expect(claimWorkOrder).toHaveBeenCalledWith("w1", {
+      idempotencyKey: "complete-key-1",
+    });
+    expect(completeWorkOrder).not.toHaveBeenCalled();
+    expect(wrapper.get('[data-action="complete"]').text()).toBe("完成工单");
+  });
+
+  it("完成已领工单后在动作旁显示已落账三段回执", async () => {
+    listNodeTasks.mockResolvedValue({
+      items: [claimedTask],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-09-13T00:00:00.000Z",
+      projectionVersion: 0,
+    });
     completeWorkOrder.mockResolvedValue({
       workOrderId: "w1",
       workOrderState: "completed",
@@ -143,6 +211,12 @@ describe("RealTaskWorkbench", () => {
   });
 
   it("业务拒绝显示错误且不改写成完成", async () => {
+    listNodeTasks.mockResolvedValue({
+      items: [claimedTask],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-09-13T00:00:00.000Z",
+      projectionVersion: 0,
+    });
     completeWorkOrder.mockRejectedValue(
       new Error("完成工单失败（409）：EVIDENCE_REQUIRED: 缺少合格证据"),
     );

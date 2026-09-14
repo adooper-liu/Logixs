@@ -413,7 +413,8 @@ model WorkOrder {
   nodeTask                NodeTask  @relation(fields: [nodeTaskId], references: [id])
   workOrderDefinitionKey  String    @map("work_order_definition_key")
   state                   String    @map("state") // ready | in_progress | completed
-  assignmentState         String    @map("assignment_state") // unassigned | assigned
+  assignmentState         String    @map("assignment_state") // unassigned | assigned | pool | automatic
+  assigneeId              String?   @map("assignee_id")
   completedAt             DateTime? @map("completed_at")
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")

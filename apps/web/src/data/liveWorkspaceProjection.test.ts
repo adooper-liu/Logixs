@@ -4,6 +4,7 @@ import {
   attachLiveNodes,
   attachOpenTasks,
   LIVE_TASK_DEFINITION_KEY,
+  parseClaimActionCode,
   parseCompleteActionCode,
   toLiveContainer,
   toLiveTask,
@@ -31,6 +32,7 @@ const detail = {
       workOrderDefinitionKey: "wo-customs",
       state: "ready",
       assignmentState: "unassigned",
+      assigneeId: null,
       completedAt: null,
     },
   ],
@@ -125,16 +127,48 @@ describe("liveWorkspaceProjection", () => {
     );
   });
 
-  it("节点任务映成可完成动作，不用演示任务定义键", () => {
+  it("可领工单只出领取，不出现完成工单", () => {
     const task = toLiveTask(detail, container);
     expect(task.taskDefinitionKey).toBe(LIVE_TASK_DEFINITION_KEY);
     expect(task.nodeName).toBe("清关");
     expect(task.status).toBe("in_progress");
     expect(task.dueAt).toBe("");
     expect(task.preconditions).toEqual([]);
+    expect(task.assignment.mode).toBe("pool");
+    expect(task.assignment.assignee).toBeUndefined();
+    expect(task.actions).toEqual([
+      expect.objectContaining({
+        actionCode: "work_execution.claim_work_order:w1",
+        intent: "claim",
+        label: "领取",
+      }),
+    ]);
+    expect(parseClaimActionCode(task.actions[0]!.actionCode)).toBe("w1");
+    expect(task.evidenceRequirements).toEqual([]);
+  });
+
+  it("自己已领才出完成工单", () => {
+    const task = toLiveTask(
+      {
+        ...detail,
+        workOrders: [
+          {
+            ...detail.workOrders[0]!,
+            assignmentState: "assigned",
+            assigneeId: "dev-operator",
+          },
+        ],
+      },
+      container,
+    );
+    expect(task.assignment.mode).toBe("assigned");
+    expect(task.assignment.assignee).toBe("dev-operator");
     expect(task.actions[0]?.actionCode).toBe(
       "work_execution.complete_work_order:w1",
     );
     expect(parseCompleteActionCode(task.actions[0]!.actionCode)).toBe("w1");
+    expect(task.actions.every((action) => action.intent !== "claim")).toBe(
+      true,
+    );
   });
 });

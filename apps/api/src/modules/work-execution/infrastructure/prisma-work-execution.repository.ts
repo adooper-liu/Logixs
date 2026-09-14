@@ -8,6 +8,7 @@ import type {
 import { PrismaService } from "../../../prisma/prisma.service";
 import { clientOperationCreateData } from "./client-operation-persist";
 import type {
+  ApplyWorkOrderClaimInput,
   ApplyWorkOrderCompletionInput,
   CreateTaskInput,
   NodeTaskOutcomeRecord,
@@ -142,6 +143,34 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
     });
   }
 
+  async applyWorkOrderClaim(input: ApplyWorkOrderClaimInput): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.workOrder.updateMany({
+        where: {
+          id: input.workOrderId,
+          assignmentState: { in: ["unassigned", "pool"] },
+          state: { in: ["ready", "reopened", "in_progress"] },
+        },
+        data: {
+          state: input.workOrderState,
+          assignmentState: input.assignmentState,
+          assigneeId: input.assigneeId,
+        },
+      });
+      if (updated.count === 0) return false;
+      await tx.nodeTask.update({
+        where: { id: input.taskId },
+        data: { state: input.taskState },
+      });
+      if (input.clientOperation) {
+        await tx.clientOperation.create({
+          data: clientOperationCreateData(input.clientOperation),
+        });
+      }
+      return true;
+    });
+  }
+
   async applyWorkOrderCompletion(
     input: ApplyWorkOrderCompletionInput,
   ): Promise<void> {
@@ -224,6 +253,7 @@ function mapWorkOrder(workOrder: {
   workOrderDefinitionKey: string;
   state: string;
   assignmentState: string;
+  assigneeId?: string | null;
   completedAt: Date | null;
 }): WorkOrderRecord {
   return {
@@ -232,6 +262,7 @@ function mapWorkOrder(workOrder: {
     workOrderDefinitionKey: workOrder.workOrderDefinitionKey,
     state: workOrder.state as WorkOrderState,
     assignmentState: workOrder.assignmentState as AssignmentState,
+    assigneeId: workOrder.assigneeId ?? null,
     completedAt: workOrder.completedAt,
   };
 }

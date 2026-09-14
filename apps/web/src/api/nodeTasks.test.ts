@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { completeWorkOrder, listNodeTasks } from "./nodeTasks";
+import { claimWorkOrder, completeWorkOrder, listNodeTasks } from "./nodeTasks";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -47,6 +47,37 @@ describe("listNodeTasks", () => {
         "X-Operator-Id": "dev-operator",
       },
     });
+  });
+});
+
+describe("claimWorkOrder", () => {
+  it("提交幂等键，不带载荷正文", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        workOrderId: "w1",
+        workOrderState: "in_progress",
+        assignmentState: "assigned",
+        assigneeId: "dev-operator",
+        taskId: "t1",
+        taskState: "in_progress",
+        applied: true,
+        clientOperationId: "op-1",
+        receptionState: "received",
+        businessDecisionState: "accepted",
+        commitState: "committed",
+        rejectionReasonCode: null,
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await claimWorkOrder("w1", { idempotencyKey: "claim-1" });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/work-orders/w1/claim");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({
+      idempotencyKey: "claim-1",
+    });
+    expect(String(init.body)).not.toContain("payload");
   });
 });
 

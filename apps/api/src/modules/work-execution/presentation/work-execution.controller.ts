@@ -9,12 +9,15 @@ import {
   Req,
 } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ClaimWorkOrderService } from "../application/claim-work-order.service";
 import { CompleteWorkOrderService } from "../application/complete-work-order.service";
 import { CreateNodeTaskService } from "../application/create-node-task.service";
 import { GetNodeTaskService } from "../application/get-node-task.service";
 import { ListNodeTasksService } from "../application/list-node-tasks.service";
 import type { NodeTaskWithWorkOrders } from "../domain/work-execution.repository";
 import {
+  ClaimWorkOrderRequestDto,
+  ClaimWorkOrderResponseDto,
   CompleteWorkOrderRequestDto,
   CompleteWorkOrderResponseDto,
   CreateNodeTaskRequestDto,
@@ -30,6 +33,7 @@ export class WorkExecutionController {
     private readonly getNodeTask: GetNodeTaskService,
     private readonly listNodeTasks: ListNodeTasksService,
     private readonly completeWorkOrder: CompleteWorkOrderService,
+    private readonly claimWorkOrder: ClaimWorkOrderService,
   ) {}
 
   @Get("node-tasks")
@@ -85,6 +89,21 @@ export class WorkExecutionController {
     return toDetail(bundle);
   }
 
+  @Post("work-orders/:id/claim")
+  @ApiOkResponse({ type: ClaimWorkOrderResponseDto })
+  claim(
+    @Param("id") id: string,
+    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Body() body?: ClaimWorkOrderRequestDto,
+  ): Promise<ClaimWorkOrderResponseDto> {
+    return this.claimWorkOrder.execute({
+      workOrderId: id,
+      tenantId: request.devIdentity.tenantId,
+      actorId: request.devIdentity.operatorId,
+      idempotencyKey: body?.idempotencyKey,
+    });
+  }
+
   @Post("work-orders/:id/complete")
   @ApiOkResponse({ type: CompleteWorkOrderResponseDto })
   complete(
@@ -116,6 +135,7 @@ function toDetail(bundle: NodeTaskWithWorkOrders): NodeTaskDetailDto {
       workOrderDefinitionKey: workOrder.workOrderDefinitionKey,
       state: workOrder.state,
       assignmentState: workOrder.assignmentState,
+      assigneeId: workOrder.assigneeId,
       completedAt: workOrder.completedAt
         ? workOrder.completedAt.toISOString()
         : null,

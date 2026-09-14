@@ -6,6 +6,7 @@ import { useLiveWorkspace } from "./useLiveWorkspace";
 
 const listContainers = vi.fn();
 const listNodeTasks = vi.fn();
+const claimWorkOrder = vi.fn();
 const completeWorkOrder = vi.fn();
 const getContainer = vi.fn();
 
@@ -16,7 +17,9 @@ vi.mock("../api/containers", () => ({
 
 vi.mock("../api/nodeTasks", () => ({
   listNodeTasks: (...args: unknown[]) => listNodeTasks(...args),
+  claimWorkOrder: (...args: unknown[]) => claimWorkOrder(...args),
   completeWorkOrder: (...args: unknown[]) => completeWorkOrder(...args),
+  DEV_OPERATOR_ID: "dev-operator",
 }));
 
 async function setupWorkspace() {
@@ -42,6 +45,7 @@ describe("useLiveWorkspace", () => {
   beforeEach(() => {
     listContainers.mockReset();
     listNodeTasks.mockReset();
+    claimWorkOrder.mockReset();
     completeWorkOrder.mockReset();
     getContainer.mockReset();
     listContainers.mockResolvedValue({
@@ -71,6 +75,7 @@ describe("useLiveWorkspace", () => {
               workOrderDefinitionKey: "wo-customs",
               state: "ready",
               assignmentState: "unassigned",
+              assigneeId: null,
               completedAt: null,
             },
           ],
@@ -93,7 +98,69 @@ describe("useLiveWorkspace", () => {
     app.unmount();
   });
 
-  it("未限定货柜时一次按租户列任务，不按柜扇出", async () => {
+  it("未限定货柜时一次按租户列任务，可领只出领取", async () => {
+    claimWorkOrder.mockResolvedValue({
+      workOrderId: "w1",
+      workOrderState: "in_progress",
+      assignmentState: "assigned",
+      assigneeId: "dev-operator",
+      taskId: "t1",
+      taskState: "in_progress",
+      applied: true,
+      clientOperationId: "op-1",
+      receptionState: "received",
+      businessDecisionState: "accepted",
+      commitState: "committed",
+      rejectionReasonCode: null,
+    });
+    const { workspace, app } = await setupWorkspace();
+    await workspace.reload();
+    await flushPromises();
+    expect(listContainers).toHaveBeenCalledWith({ pageSize: 200 });
+    expect(listNodeTasks).toHaveBeenCalledTimes(1);
+    expect(listNodeTasks).toHaveBeenCalledWith({ pageSize: 200 });
+    expect(workspace.tasks.value[0]?.nodeName).toBe("清关");
+    expect(workspace.tasks.value[0]?.actions[0]?.intent).toBe("claim");
+    expect(workspace.canSubmit.value).toBe(false);
+    expect(workspace.hasMore.value).toBe(false);
+    await workspace.executeAction("work_execution.claim_work_order:w1");
+    await flushPromises();
+    expect(claimWorkOrder).toHaveBeenCalledWith(
+      "w1",
+      expect.objectContaining({ idempotencyKey: expect.any(String) }),
+    );
+    expect(completeWorkOrder).not.toHaveBeenCalled();
+    app.unmount();
+  });
+
+  it("已领取后才能完成工单", async () => {
+    listNodeTasks.mockResolvedValue({
+      items: [
+        {
+          id: "t1",
+          flowInstanceId: "f1",
+          nodeInstanceId: "n1",
+          nodeCode: "customs_clearance",
+          containerId: "c1",
+          taskDefinitionKey: "node-customs_clearance",
+          state: "in_progress",
+          workOrders: [
+            {
+              id: "w1",
+              workOrderDefinitionKey: "wo-customs",
+              state: "in_progress",
+              assignmentState: "assigned",
+              assigneeId: "dev-operator",
+              completedAt: null,
+            },
+          ],
+          outcome: null,
+        },
+      ],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-09-13T03:00:00.000Z",
+      projectionVersion: 0,
+    });
     completeWorkOrder.mockResolvedValue({
       workOrderId: "w1",
       workOrderState: "completed",
@@ -115,11 +182,7 @@ describe("useLiveWorkspace", () => {
     const { workspace, app } = await setupWorkspace();
     await workspace.reload();
     await flushPromises();
-    expect(listContainers).toHaveBeenCalledWith({ pageSize: 200 });
-    expect(listNodeTasks).toHaveBeenCalledTimes(1);
-    expect(listNodeTasks).toHaveBeenCalledWith({ pageSize: 200 });
-    expect(workspace.tasks.value[0]?.nodeName).toBe("清关");
-    expect(workspace.hasMore.value).toBe(false);
+    expect(workspace.canSubmit.value).toBe(true);
     await workspace.executeAction("work_execution.complete_work_order:w1");
     await flushPromises();
     expect(completeWorkOrder).toHaveBeenCalledWith(

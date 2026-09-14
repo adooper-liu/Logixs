@@ -259,6 +259,7 @@ describe("useLiveCatalog", () => {
               workOrderDefinitionKey: "wo-stuffing",
               state: "completed",
               assignmentState: "unassigned",
+              assigneeId: null,
               completedAt: "2026-09-13T03:00:00.000Z",
             },
           ],

@@ -40,10 +40,13 @@ export function extractErrorCode(message: string): string {
   return match?.[1] ?? "REQUEST_FAILED";
 }
 
-export function toSendingSubmission(taskId: string): SubmissionView {
+export function toSendingSubmission(
+  taskId: string,
+  actionCode = COMPLETE_WORK_ORDER_ACTION,
+): SubmissionView {
   return {
     taskId,
-    actionCode: COMPLETE_WORK_ORDER_ACTION,
+    actionCode,
     stage: "sending",
     message: "正在提交…",
   };
@@ -113,11 +116,12 @@ export function toCompleteSubmission(input: {
 export function toFailedSubmission(input: {
   taskId: string;
   message: string;
+  actionCode?: string;
 }): SubmissionView {
   const errorCode = extractErrorCode(input.message);
   return {
     taskId: input.taskId,
-    actionCode: COMPLETE_WORK_ORDER_ACTION,
+    actionCode: input.actionCode ?? COMPLETE_WORK_ORDER_ACTION,
     stage: "rejected",
     errorCode,
     message: input.message,

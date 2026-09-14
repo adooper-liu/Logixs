@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 export const WORK_COMPLETE_ACTION = "work_execution.complete_work_order";
+export const WORK_CLAIM_ACTION = "work_execution.claim_work_order";
 export const WORK_COMPLETE_ACTION_VERSION = 1;
 export const WORK_COMPLETE_TARGET_TYPE = "work_order";
 export const WORK_COMPLETE_TARGET_OWNER = "work-execution";
@@ -38,6 +39,28 @@ export interface ClientOperationRecord {
 
 export function defaultCompleteIdempotencyKey(workOrderId: string): string {
   return `work-order:${workOrderId}:complete`;
+}
+
+export function defaultClaimIdempotencyKey(workOrderId: string): string {
+  return `work-order:${workOrderId}:claim`;
+}
+
+export function parseClaimIdempotencyKey(
+  raw: string | undefined,
+  workOrderId: string,
+): string {
+  const idempotencyKey =
+    (raw ?? "").trim() || defaultClaimIdempotencyKey(workOrderId);
+  if (idempotencyKey.length === 0 || idempotencyKey.length > 200) {
+    throw new Error("VALIDATION_FORMAT: idempotencyKey 无效");
+  }
+  return idempotencyKey;
+}
+
+export function hashClaimRequest(input: { workOrderId: string }): string {
+  return createHash("sha256")
+    .update(JSON.stringify({ workOrderId: input.workOrderId }), "utf8")
+    .digest("hex");
 }
 
 export function parseCompleteIdempotencyKey(
@@ -79,6 +102,8 @@ export function buildCommittedClientOperation(input: {
   tenantId: string;
   actorType: string;
   actorId: string;
+  actionCode?: string;
+  actionVersion?: number;
   targetId: string;
   correlationId: string;
   traceId: string;
@@ -104,6 +129,8 @@ export function buildRejectedClientOperation(input: {
   tenantId: string;
   actorType: string;
   actorId: string;
+  actionCode?: string;
+  actionVersion?: number;
   targetId: string;
   correlationId: string;
   traceId: string;
@@ -133,6 +160,8 @@ export function buildBoundaryRejectedClientOperation(input: {
   tenantId: string;
   actorType: string;
   actorId: string;
+  actionCode?: string;
+  actionVersion?: number;
   targetId: string;
   correlationId: string;
   traceId: string;
@@ -160,6 +189,8 @@ function baseOperation(
     tenantId: string;
     actorType: string;
     actorId: string;
+    actionCode?: string;
+    actionVersion?: number;
     targetId: string;
     correlationId: string;
     traceId: string;
@@ -190,8 +221,8 @@ function baseOperation(
     tenantId,
     actorType: input.actorType,
     actorId,
-    actionCode: WORK_COMPLETE_ACTION,
-    actionVersion: WORK_COMPLETE_ACTION_VERSION,
+    actionCode: input.actionCode ?? WORK_COMPLETE_ACTION,
+    actionVersion: input.actionVersion ?? WORK_COMPLETE_ACTION_VERSION,
     targetType: WORK_COMPLETE_TARGET_TYPE,
     targetId,
     targetOwnerModule: WORK_COMPLETE_TARGET_OWNER,

@@ -6,10 +6,15 @@ import {
   type ContainerSummary,
 } from "../api/containers";
 import {
+  claimWorkOrder,
   completeWorkOrder,
   listNodeTasks,
   type NodeTaskDetail,
 } from "../api/nodeTasks";
+import {
+  CLAIM_WORK_ORDER_ACTION,
+  toClaimSubmission,
+} from "../data/claimReceiptContract";
 import {
   parseEvidenceInput,
   toCompleteSubmission,
@@ -17,6 +22,7 @@ import {
   toSendingSubmission,
 } from "../data/completeReceiptContract";
 import {
+  parseClaimActionCode,
   parseCompleteActionCode,
   toLiveContainer,
   toLiveTask,
@@ -197,8 +203,14 @@ export function useLiveWorkspace() {
     }
   };
 
-  const canExecuteAction = (action: TaskAction) =>
-    action.intent === "complete" && canSubmit.value;
+  const canExecuteAction = (action: TaskAction) => {
+    if (isSubmitting.value) return false;
+    if (["blocked", "completed"].includes(activeTask.value?.status ?? "")) {
+      return false;
+    }
+    if (action.intent === "claim") return true;
+    return action.intent === "complete" && canSubmit.value;
+  };
 
   const nextIdempotencyKey = (workOrderId: string, reuse: boolean) => {
     const existing = idempotencyKeys.value[workOrderId];
@@ -212,16 +224,39 @@ export function useLiveWorkspace() {
     const task = activeTask.value;
     const action = task?.actions.find((item) => item.actionCode === actionCode);
     if (!task || !action || !canExecuteAction(action)) return;
-    const workOrderId = parseCompleteActionCode(actionCode);
+    const claimId = parseClaimActionCode(actionCode);
+    const completeId = parseCompleteActionCode(actionCode);
+    const workOrderId = claimId ?? completeId;
     if (!workOrderId) return;
     const reuse = Boolean(submissions.value[task.taskId]?.canRetry);
     submitting.value = true;
     submissions.value = {
       ...submissions.value,
-      [task.taskId]: toSendingSubmission(task.taskId),
+      [task.taskId]: toSendingSubmission(
+        task.taskId,
+        claimId ? CLAIM_WORK_ORDER_ACTION : undefined,
+      ),
     };
-    const evidence = task.evidenceRequirements[0]?.capturedValue ?? "";
     try {
+      if (claimId) {
+        const result = await claimWorkOrder(claimId, {
+          idempotencyKey: nextIdempotencyKey(claimId, reuse),
+        });
+        const submission = toClaimSubmission({
+          taskId: task.taskId,
+          result,
+          observedAt: new Date().toLocaleTimeString(),
+        });
+        submissions.value = { ...submissions.value, [task.taskId]: submission };
+        if (submission.stage === "committed" || !submission.canRetry) {
+          const next = { ...idempotencyKeys.value };
+          delete next[claimId];
+          idempotencyKeys.value = next;
+        }
+        if (submission.stage === "committed") await reload();
+        return;
+      }
+      const evidence = task.evidenceRequirements[0]?.capturedValue ?? "";
       const result = await completeWorkOrder(workOrderId, {
         evidenceRefs: parseEvidenceInput(evidence),
         idempotencyKey: nextIdempotencyKey(workOrderId, reuse),
@@ -243,7 +278,13 @@ export function useLiveWorkspace() {
         ...submissions.value,
         [task.taskId]: toFailedSubmission({
           taskId: task.taskId,
-          message: cause instanceof Error ? cause.message : "完成工单失败",
+          message:
+            cause instanceof Error
+              ? cause.message
+              : claimId
+                ? "领取工单失败"
+                : "完成工单失败",
+          actionCode: claimId ? CLAIM_WORK_ORDER_ACTION : undefined,
         }),
       };
     } finally {
@@ -291,7 +332,12 @@ export function useLiveWorkspace() {
     error,
     canExecuteAction,
     selectTask,
-    claimTask: () => undefined,
+    claimTask: () => {
+      const action = activeTask.value?.actions.find(
+        (item) => item.intent === "claim",
+      );
+      if (action) void executeAction(action.actionCode);
+    },
     acknowledgeInput: () => undefined,
     verifyEvidence,
     executeAction,

@@ -8,6 +8,7 @@ import { DocumentRecordsModule } from "../document-records";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { LifecycleControlModule } from "../lifecycle-control";
 import { ShipmentRegistryModule } from "../shipment-registry";
+import { ClaimWorkOrderService } from "./application/claim-work-order.service";
 import { CompleteWorkOrderService } from "./application/complete-work-order.service";
 import { CreateNodeTaskService } from "./application/create-node-task.service";
 import { GetNodeTaskService } from "./application/get-node-task.service";
@@ -32,6 +33,7 @@ import { WorkExecutionController } from "./presentation/work-execution.controlle
     GetNodeTaskService,
     ListNodeTasksService,
     CompleteWorkOrderService,
+    ClaimWorkOrderService,
     {
       provide: WORK_EXECUTION_REPOSITORY,
       useClass: PrismaWorkExecutionRepository,

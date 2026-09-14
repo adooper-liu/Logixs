@@ -36,6 +36,7 @@ const COMMIT_LABELS: Record<string, string> = {
 const ACTION_LABELS: Record<string, string> = {
   "lifecycle.apply_event": "申请生命周期事件",
   "work_execution.complete_work_order": "完成工单",
+  "work_execution.claim_work_order": "领取工单",
   "lifecycle.compensate_apply_event": "补偿申请事件",
 };
 
