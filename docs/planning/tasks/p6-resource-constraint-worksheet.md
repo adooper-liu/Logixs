@@ -1,7 +1,7 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: review # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/resource-constraint-worksheet
-verification:
+verification: 文档登记。无代码行为变更。变更 Markdown 已过 Prettier。
 ---
 
 # 任务：收资源约束拆解工作纸
@@ -23,15 +23,16 @@ verification:
 
 - 不建产能/预约模块，不写迁移、API、页面。
 - 不把工作纸晋升为业务规则；不改 lifecycle-control / work-execution。
-- 不拍板备选堆场是「一仓对一个」还是「一组里人当时选」。
+- 备选缓冲跟车队走：不设具体堆场，只设车队堆场能力；港口-车队-仓库用分配表。细节见计划引擎候选文。
 - 不把演示页产能数字或默认免费天数写进表。
+- 规划口径拒绝硬编码：凡能做成参数或策略的，必须做成参数或策略；不在候选文里把业务数字或唯一排法写成实现约定。
 
 ## 验收
 
-- [ ] `docs/planning/RESOURCE_CONSTRAINT_DECOMPOSITION.md` 含空白表、送仓+卸柜样例、14 节点一览。
-- [ ] INDEX 登记一句话 +「候选工作纸」。
-- [ ] 正文写明预约不能完成节点；Demurrage / Detention / Storage 分项。
-- [ ] 变更文件 `prettier --check` 通过。
+- [x] `docs/planning/RESOURCE_CONSTRAINT_DECOMPOSITION.md` 含空白表、送仓+卸柜样例、14 节点一览。
+- [x] INDEX 登记一句话 +「候选工作纸」。
+- [x] 正文写明预约不能完成节点；Demurrage / Detention / Storage 分项。
+- [x] 变更文件 `prettier --check` 通过。
 
 ## 方案
 
@@ -43,6 +44,8 @@ verification:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明         |
-| ---------- | ------ | ---- | ------ | ------------ |
-| 2026-09-14 | coding | —    | —      | 开工收工作纸 |
+| 日期       | 阶段   | 负责 | commit  | 说明                                      |
+| ---------- | ------ | ---- | ------- | ----------------------------------------- |
+| 2026-09-14 | coding | —    | —       | 开工收工作纸                              |
+| 2026-09-14 | review | —    | ef82ce6 | 工作纸与 INDEX 已提交，进入评审；不建模块 |
+| 2026-09-14 | review | —    | —       | 收计划引擎候选文；拒绝硬编码为封闭规则    |

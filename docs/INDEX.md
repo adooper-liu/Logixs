@@ -122,7 +122,8 @@
 | [RAID](./planning/RAID.md)                                                                     | 风险/假设/问题/依赖                                                  | 跟踪                        |
 | [P2 一页总览](./planning/P2_SLICE1_SUMMARY.md)                                                 | 本批摘要(对外)                                                       | 候选                        |
 | [节点资源约束拆解表](./planning/RESOURCE_CONSTRAINT_DECOMPOSITION.md)                          | 14 节点共用的资源/门槛/约满比价工作纸；送仓+卸柜为样例               | 候选工作纸                  |
-| [收资源约束工作纸](./planning/tasks/p6-resource-constraint-worksheet.md)                       | 把候选工作纸收入规划目录，不建产能模块                               | coding                      |
+| [收资源约束工作纸](./planning/tasks/p6-resource-constraint-worksheet.md)                       | 把候选工作纸收入规划目录，不建产能模块                               | review                      |
+| [提送卸还联立计划引擎](./planning/INLAND_FOUR_NODE_PLANNING_ENGINE.md)                         | 以 ETA 正排并倒推清关必完日；能配的一律参数或策略，拒绝硬编码        | 候选规划                    |
 | [任务 brief](./planning/tasks/p2-shipment-import-domain.md)                                    | P2 切片一交接单                                                      | 已完成                      |
 | [P3-01 主分支保护](./planning/tasks/p3-01-branch-protection.md)                                | CODEOWNERS + main 禁止强推，合入须 PR 与 quality                     | 已完成                      |
 | [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                     | 上传→预检→写端口→对账的首个可写库闭环                                | design                      |
