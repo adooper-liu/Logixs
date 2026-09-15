@@ -4,6 +4,7 @@ import type {
   DataTableStatusValue,
 } from "../components/ui/dataTableContract";
 import type { ContainerProjection, StatusView } from "./sample";
+import { uiCopy } from "./uiCopyCatalog";
 
 // 演示适配器模拟未来 API 的受控 schema + rows 投影，不代表数据库实体或正式 API 契约。
 const containerTableSchema: DataTableSchema = {
@@ -40,7 +41,7 @@ const containerTableSchema: DataTableSchema = {
       sortable: true,
       queryKey: "status",
       dividerBefore: true,
-      description: "货柜实际走到哪里，以已落账业务事实为准。",
+      description: "货柜实际走到哪里，以已经记下的结果为准。",
     },
     {
       code: "taskStatus",
@@ -58,7 +59,7 @@ const containerTableSchema: DataTableSchema = {
       order: 40,
       width: 166,
       sortable: true,
-      description: "区分请求已接收、业务已接受与业务事实已落账。",
+      description: "看这次有没有被接到、规则通不通、有没有记进这一柜。",
     },
     {
       code: "eta",
@@ -145,8 +146,8 @@ const liveContainerTableSchema: DataTableSchema = {
       kind: "text",
       order: 22,
       width: 120,
-      emptyLabel: "还没有流程",
-      description: "流程实例上的当前节点。",
+      emptyLabel: uiCopy.chrome.columnStationEmpty,
+      description: uiCopy.column.currentStation,
     },
     {
       code: "openTask",
@@ -154,8 +155,8 @@ const liveContainerTableSchema: DataTableSchema = {
       kind: "text",
       order: 25,
       width: 168,
-      emptyLabel: "没有待办",
-      description: "这一柜还没做完的节点任务。",
+      emptyLabel: uiCopy.chrome.columnTaskEmpty,
+      description: uiCopy.column.openTask,
     },
     {
       code: "latestSync",
@@ -163,8 +164,8 @@ const liveContainerTableSchema: DataTableSchema = {
       kind: "text",
       order: 27,
       width: 140,
-      emptyLabel: "最近没有提交",
-      description: "最近一页提交里，这一柜记没记下。",
+      emptyLabel: uiCopy.chrome.columnSyncEmpty,
+      description: uiCopy.column.syncStatus,
     },
     {
       code: "open",

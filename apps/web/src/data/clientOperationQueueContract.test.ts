@@ -49,10 +49,10 @@ describe("clientOperationQueueContract", () => {
         ...operation(),
         actionCode: "work_execution.claim_work_order",
       }).actionLabel,
-    ).toBe("领取工单");
-    expect(row.receptionLabel).toBe("已收到");
-    expect(row.decisionLabel).toBe("已接受");
-    expect(row.commitLabel).toBe("已落账");
+    ).toBe("领取");
+    expect(row.receptionLabel).toBe("已接收");
+    expect(row.decisionLabel).toBe("已确认");
+    expect(row.commitLabel).toBe("已入账");
     expect(row).not.toHaveProperty("requestHash");
     expect(() => assertOperationRowSafe(row)).not.toThrow();
   });
@@ -70,17 +70,17 @@ describe("clientOperationQueueContract", () => {
       updatedAt: "2026-09-13T03:00:00.000Z",
       traceId: "trace-1",
     });
-    expect(row.actionLabel).toBe("补偿申请事件");
+    expect(row.actionLabel).toBe("需修正");
     expect(row.stateLabel).toBe("待处理");
   });
 
   it("落账列只回答记没记下，不合成假总状态", () => {
-    expect(toContainerSyncStatus(operation()).label).toBe("已落账");
+    expect(toContainerSyncStatus(operation()).label).toBe("已入账");
     expect(
       toContainerSyncStatus(
         operation({ commitState: "pending", receptionState: "received" }),
       ).label,
-    ).toBe("已收到，待落账");
+    ).toBe("已接收，待入账");
     expect(
       toContainerSyncStatus(
         operation({
@@ -91,7 +91,7 @@ describe("clientOperationQueueContract", () => {
     ).toBe("已拒绝");
     expect(
       toContainerSyncStatus(operation({ commitState: "commit_failed" })).label,
-    ).toBe("落账失败");
+    ).toBe("入账失败");
   });
 
   it("只把列表里最新一条挂到对应货柜", () => {
@@ -131,8 +131,8 @@ describe("clientOperationQueueContract", () => {
         }),
       ],
     );
-    expect(rows[0]?.syncStatus.label).toBe("已收到，待落账");
-    expect(rows[1]?.syncStatus.label).toBe("落账失败");
+    expect(rows[0]?.syncStatus.label).toBe("已接收，待入账");
+    expect(rows[1]?.syncStatus.label).toBe("入账失败");
     expect(
       attachLatestSync(
         [
@@ -172,7 +172,7 @@ describe("clientOperationQueueContract", () => {
       ],
       [{ containerId: "c1", taskId: "t1", workOrderIds: ["w1"] }],
     );
-    expect(rows[0]?.syncStatus.label).toBe("已落账");
+    expect(rows[0]?.syncStatus.label).toBe("已入账");
     expect(
       attachLatestSync(
         [

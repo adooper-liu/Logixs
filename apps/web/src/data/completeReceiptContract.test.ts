@@ -52,7 +52,7 @@ describe("completeReceiptContract", () => {
       result: committed({ lifecycleEventCode: "stuffed" }),
     });
     expect(view.stage).toBe("committed");
-    expect(view.message).toBe("已落账");
+    expect(view.message).toBe("已入账");
     expect(view.receivedAt).toBe("09:07:00");
     expect(view.acceptedAt).toBe("09:07:00");
     expect(view.committedAt).toBe("09:07:00");
@@ -92,7 +92,13 @@ describe("completeReceiptContract", () => {
       stage: "rejected",
       errorCode: "EVIDENCE_REQUIRED",
       canRetry: false,
+      message: "缺少合格证据。装箱、出运、离港必须先填本柜单证并核对。",
     });
+    expect(
+      extractErrorCode(
+        '完成工单失败（422）：{"statusCode":422,"message":"EVIDENCE_REQUIRED: 缺少合格证据"}',
+      ),
+    ).toBe("EVIDENCE_REQUIRED");
     expect(extractErrorCode("完成工单失败（500）")).toBe("REQUEST_FAILED");
   });
 

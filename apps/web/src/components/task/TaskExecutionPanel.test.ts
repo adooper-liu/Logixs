@@ -67,7 +67,7 @@ describe("TaskExecutionPanel", () => {
       },
     });
     expect(wrapper.get('[data-testid="submission-progress"]').text()).toContain(
-      "服务器已收到",
+      "已接收",
     );
     expect(wrapper.get('[data-testid="submission-progress"]').text()).toContain(
       "操作记录",

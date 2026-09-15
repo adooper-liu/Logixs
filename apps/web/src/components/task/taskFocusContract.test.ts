@@ -62,7 +62,10 @@ describe("buildTaskFocus", () => {
       "sync",
     ]);
     expect(focus.currentCode).toBe("preconditions");
-    expect(focus.steps[0]).toMatchObject({ state: "blocked", label: "前置" });
+    expect(focus.steps[0]).toMatchObject({
+      state: "blocked",
+      label: "前置条件",
+    });
     expect(focus.attentionLabel).toBe("处理海关放行");
   });
 
@@ -86,7 +89,7 @@ describe("buildTaskFocus", () => {
     const focus = buildTaskFocus(task, { stage: "committed" });
 
     expect(focus.currentCode).toBe("sync");
-    expect(focus.attentionLabel).toBe("闭环完成");
+    expect(focus.attentionLabel).toBe("已入账");
     expect(focus.steps.every((step) => step.state === "done")).toBe(true);
   });
 });

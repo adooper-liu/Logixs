@@ -13,6 +13,7 @@ import PageHeader from "../components/ui/PageHeader.vue";
 import { attachLatestSync } from "../data/clientOperationQueueContract";
 import { toLiveEvent } from "../data/liveEventProjection";
 import { toLiveNode, type LiveNodeView } from "../data/liveNodeProjection";
+import { uiCopy } from "../data/uiCopyCatalog";
 import {
   attachOpenTasks,
   toLiveContainer,
@@ -113,8 +114,8 @@ watch(
       <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
       <EventEvidenceTimeline v-if="events.length" :events="events" />
       <section class="next-step" aria-label="下一步">
-        <p v-if="!nodes.length">这一柜还没有流程。</p>
-        <p v-else-if="!events.length">这一柜还没有事件记录。</p>
+        <p v-if="!nodes.length">{{ uiCopy.chrome.emptyFlow }}</p>
+        <p v-else-if="!events.length">{{ uiCopy.chrome.emptyEvents }}</p>
         <router-link
           :to="{
             path: '/tasks',

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { listContainers, type ContainerSummary } from "../api/containers";
+import { resolveCompleteEvidenceRefs } from "../api/evidence";
 import {
   claimWorkOrder,
   completeWorkOrder,
@@ -10,6 +11,7 @@ import {
   type NodeTaskDetail,
   type WorkOrderSummary,
 } from "../api/nodeTasks";
+import { completionRequiresEvidence } from "../data/completionEvidencePolicy";
 import SubmissionProgress from "../components/task/SubmissionProgress.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import {
@@ -22,12 +24,12 @@ import {
 import {
   canCompleteWorkOrder,
   COMPLETE_WORK_ORDER_LABEL,
-  parseEvidenceInput,
   toCompleteSubmission,
   toFailedSubmission,
   toSendingSubmission,
 } from "../data/completeReceiptContract";
 import type { SubmissionView } from "../data/sample";
+import { uiCopy } from "../data/uiCopyCatalog";
 
 const route = useRoute();
 const router = useRouter();
@@ -169,7 +171,7 @@ async function submitClaim(
       workOrderId,
       toFailedSubmission({
         taskId: task.id,
-        message: cause instanceof Error ? cause.message : "领取工单失败",
+        message: cause instanceof Error ? cause.message : uiCopy.chrome.claimFailed,
         actionCode: CLAIM_WORK_ORDER_ACTION,
       }),
     );
@@ -187,8 +189,13 @@ async function submitComplete(
   rememberSubmission(workOrderId, toSendingSubmission(task.id));
   const idempotencyKey = nextIdempotencyKey(workOrderId, reuseKey);
   try {
+    const evidenceRefs = await resolveCompleteEvidenceRefs({
+      nodeCode: task.nodeCode,
+      containerId: task.containerId,
+      raw: evidenceFor(workOrderId),
+    });
     const result = await completeWorkOrder(workOrderId, {
-      evidenceRefs: parseEvidenceInput(evidenceFor(workOrderId)),
+      evidenceRefs,
       idempotencyKey,
     });
     const submission = toCompleteSubmission({
@@ -212,7 +219,7 @@ async function submitComplete(
       workOrderId,
       toFailedSubmission({
         taskId: task.id,
-        message: cause instanceof Error ? cause.message : "完成工单失败",
+        message: cause instanceof Error ? cause.message : uiCopy.chrome.completeFailed,
       }),
     );
   } finally {
@@ -223,10 +230,10 @@ async function submitComplete(
 
 <template>
   <div class="real-tasks-page page-frame">
-    <PageHeader eyebrow="薄真实链路验证" title="真实任务（API 接线）" />
+    <PageHeader eyebrow="薄真实链路验证" :title="uiCopy.chrome.debugTitle" />
 
     <p class="hint">
-      按货柜列出节点任务。可领时先领取，领完再完成。动作旁显示三段回执；空闲不占位。装箱/出运/离港需要合格证据引用。
+      {{ uiCopy.chrome.debugHint }}
     </p>
 
     <label class="picker">
@@ -295,11 +302,19 @@ async function submitComplete(
             </button>
           </div>
           <label v-if="canShowComplete(workOrder)" class="evidence">
-            证据引用
+            {{
+              completionRequiresEvidence(task.nodeCode)
+                ? uiCopy.chrome.evidenceRequired
+                : uiCopy.chrome.evidenceOptional
+            }}
             <input
               :data-testid="`evidence-${workOrder.id}`"
               :value="evidenceFor(workOrder.id)"
-              placeholder="可选，空格或逗号分隔 UUID"
+              :placeholder="
+                completionRequiresEvidence(task.nodeCode)
+                  ? uiCopy.chrome.evidenceRequiredHint
+                  : uiCopy.chrome.evidenceHint
+              "
               @input="
                 setEvidence(
                   workOrder.id,

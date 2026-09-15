@@ -114,7 +114,7 @@ test("container record remains readable", async ({ page }) => {
   await expect(page.getByText("待发生")).toHaveCount(0);
   if (await heading.isVisible()) {
     await expect(page.getByText("MSKU1234567")).toBeVisible();
-    const emptyFlow = page.getByText("这一柜还没有流程。");
+    const emptyFlow = page.getByText("本柜尚未开始流程。");
     const nodeRail = page.getByLabel("货柜节点");
     await expect(emptyFlow.or(nodeRail)).toBeVisible();
     await page.getByRole("link", { name: "去做这柜的任务" }).click();

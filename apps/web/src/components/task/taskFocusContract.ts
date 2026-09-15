@@ -1,4 +1,5 @@
 import type { SubmissionView, TaskItem } from "../../data/sample";
+import { uiCopy } from "../../data/uiCopyCatalog";
 
 export type TaskFocusStepCode =
   "claim" | "preconditions" | "inputs" | "evidence" | "submit" | "sync";
@@ -35,7 +36,7 @@ export const buildTaskFocus = (
   if (task.assignment.mode === "pool") {
     steps.push({
       code: "claim",
-      label: "领取",
+      label: uiCopy.focus.claim,
       state: task.assignment.assignee ? "done" : "upcoming",
     });
   }
@@ -51,7 +52,7 @@ export const buildTaskFocus = (
         : "waiting";
     steps.push({
       code: "preconditions",
-      label: "前置",
+      label: uiCopy.focus.preconditions,
       state,
       progress: `${met}/${task.preconditions.length}`,
     });
@@ -68,7 +69,7 @@ export const buildTaskFocus = (
         : "upcoming";
     steps.push({
       code: "inputs",
-      label: "资料",
+      label: uiCopy.focus.inputs,
       state,
       progress: `${ready}/${task.requiredInputs.length}`,
     });
@@ -91,7 +92,7 @@ export const buildTaskFocus = (
           : "upcoming";
     steps.push({
       code: "evidence",
-      label: "证据",
+      label: uiCopy.focus.evidence,
       state,
       progress: `${verified}/${required.length}`,
     });
@@ -99,12 +100,12 @@ export const buildTaskFocus = (
 
   steps.push({
     code: "submit",
-    label: "提交",
+    label: uiCopy.focus.submit,
     state: isSubmissionStarted(submission.stage) ? "done" : "upcoming",
   });
   steps.push({
     code: "sync",
-    label: "落账",
+    label: uiCopy.focus.sync,
     state:
       submission.stage === "committed"
         ? "done"
@@ -134,10 +135,10 @@ export const buildTaskFocus = (
     (item) => item.required && item.state !== "verified",
   );
   const attentionLabel = (() => {
-    if (firstUnresolved === -1) return "闭环完成";
-    if (current.code === "claim") return "领取任务";
-    if (current.code === "sync") return "等待业务落账";
-    if (current.code === "submit") return "提交业务结果";
+    if (firstUnresolved === -1) return uiCopy.focus.attentionDone;
+    if (current.code === "claim") return uiCopy.focus.attentionClaim;
+    if (current.code === "sync") return uiCopy.focus.attentionSync;
+    if (current.code === "submit") return uiCopy.focus.attentionSubmit;
     if (current.code === "preconditions" && unresolvedCondition) {
       return current.state === "waiting"
         ? `等待${unresolvedCondition.label}`

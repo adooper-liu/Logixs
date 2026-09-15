@@ -62,9 +62,9 @@ describe("RealOperations", () => {
     const wrapper = await mountPage();
     expect(wrapper.get("h2").text()).toBe("看提交");
     expect(wrapper.text()).toContain("完成工单");
-    expect(wrapper.text()).toContain("已收到");
-    expect(wrapper.text()).toContain("已接受");
-    expect(wrapper.text()).toContain("已落账");
+    expect(wrapper.text()).toContain("已接收");
+    expect(wrapper.text()).toContain("已确认");
+    expect(wrapper.text()).toContain("已入账");
     expect(wrapper.text()).not.toContain("should-not-render");
     expect(wrapper.text()).not.toContain("requestHash");
   });

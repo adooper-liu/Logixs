@@ -1,4 +1,8 @@
+import { uiCopy } from "../data/uiCopyCatalog";
+import { formatHttpError } from "./httpError";
+
 // 薄真实任务台 DTO：与 work-execution 控制器响应形状一致。
+
 export interface WorkOrderSummary {
   id: string;
   workOrderDefinitionKey: string;
@@ -99,10 +103,7 @@ async function readError(
   response: Response,
   fallback: string,
 ): Promise<string> {
-  const text = (await response.text()).slice(0, 200);
-  return text
-    ? `${fallback}（${response.status}）：${text}`
-    : `${fallback}（${response.status}）`;
+  return formatHttpError(response.status, await response.text(), fallback);
 }
 
 export async function listNodeTasks(input?: {
@@ -140,7 +141,7 @@ export async function claimWorkOrder(
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await readError(response, "领取工单失败"));
+    throw new Error(await readError(response, uiCopy.chrome.claimFailed));
   }
   return (await response.json()) as ClaimWorkOrderResult;
 }
@@ -164,7 +165,7 @@ export async function completeWorkOrder(
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await readError(response, "完成工单失败"));
+    throw new Error(await readError(response, uiCopy.chrome.completeFailed));
   }
   return (await response.json()) as CompleteWorkOrderResult;
 }

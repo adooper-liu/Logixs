@@ -133,7 +133,7 @@ describe("useLiveCatalog", () => {
     await catalog!.reload();
     await flushPromises();
     expect(catalog!.containers.value[0]?.taskStatus.label).toBe(
-      "装箱定稿 · 进行中",
+      "装箱完成 · 进行中",
     );
     app.unmount();
   });
@@ -237,7 +237,7 @@ describe("useLiveCatalog", () => {
     app.mount(document.createElement("div"));
     await catalog!.reload();
     await flushPromises();
-    expect(catalog!.containers.value[0]?.syncStatus.label).toBe("已落账");
+    expect(catalog!.containers.value[0]?.syncStatus.label).toBe("已入账");
     expect(catalog!.syncReady.value).toBe(true);
     app.unmount();
   });
@@ -303,7 +303,7 @@ describe("useLiveCatalog", () => {
     app.mount(document.createElement("div"));
     await catalog!.reload();
     await flushPromises();
-    expect(catalog!.containers.value[0]?.syncStatus.label).toBe("已落账");
+    expect(catalog!.containers.value[0]?.syncStatus.label).toBe("已入账");
     app.unmount();
   });
 

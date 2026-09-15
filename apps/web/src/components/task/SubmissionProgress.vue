@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { SubmissionStage, SubmissionView } from "../../data/sample";
+import { uiCopy } from "../../data/uiCopyCatalog";
 import InfoTooltip from "../ui/InfoTooltip.vue";
 
 const props = defineProps<{
@@ -28,7 +29,7 @@ const helpText = computed(() => {
       : undefined,
   ].filter(Boolean);
   return [
-    "用于核对本次动作是否被服务器收到、业务规则接受并写入正式记录。只有结果落账才计入业务事实。",
+    uiCopy.receipt.help,
     references.join(" · "),
   ]
     .filter(Boolean)
@@ -71,21 +72,21 @@ const stateOf = (index: number) => {
       <li :class="stateOf(0)">
         <i>1</i>
         <div class="stage-copy">
-          <b>服务器已收到</b
+          <b>{{ uiCopy.receipt.received }}</b
           ><span v-if="submission.receivedAt">{{ submission.receivedAt }}</span>
         </div>
       </li>
       <li :class="stateOf(1)">
         <i>2</i>
         <div class="stage-copy">
-          <b>业务已接受</b
+          <b>{{ uiCopy.receipt.accepted }}</b
           ><span v-if="submission.acceptedAt">{{ submission.acceptedAt }}</span>
         </div>
       </li>
       <li :class="stateOf(2)">
         <i>3</i>
         <div class="stage-copy">
-          <b>结果已落账</b
+          <b>{{ uiCopy.receipt.committed }}</b
           ><span v-if="submission.committedAt">{{
             submission.committedAt
           }}</span>

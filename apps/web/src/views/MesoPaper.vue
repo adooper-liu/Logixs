@@ -3,6 +3,7 @@ import { onMounted } from "vue";
 import ContainerFlowTable from "../components/management/ContainerFlowTable.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useLiveCatalog } from "../composables/useLiveCatalog";
+import { uiCopy } from "../data/uiCopyCatalog";
 
 const { containers, loading, error, railsReady, reload } = useLiveCatalog();
 
@@ -18,7 +19,7 @@ onMounted(() => {
     <p v-else-if="error" class="hint hint--error">{{ error }}</p>
     <p v-else-if="!containers.length" class="hint">还没有货柜。</p>
     <template v-else>
-      <p v-if="!railsReady" class="hint">节点没能加载</p>
+      <p v-if="!railsReady" class="hint">{{ uiCopy.chrome.railsFailed }}</p>
       <ContainerFlowTable :rows="containers" />
     </template>
   </div>

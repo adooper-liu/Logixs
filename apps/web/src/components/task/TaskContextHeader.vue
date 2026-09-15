@@ -7,6 +7,7 @@ import type {
   TaskItem,
 } from "../../data/sample";
 import { projectTaskLanguage } from "./taskLanguageContract";
+import { uiCopy } from "../../data/uiCopyCatalog";
 
 const props = defineProps<{
   task: TaskItem;
@@ -73,7 +74,7 @@ const containerHref = computed(
         </p>
         <p v-if="task.status !== 'completed'" class="guardrail">
           <ShieldAlert :size="13" aria-hidden="true" />
-          <span>安全边界</span>{{ language.guardrail }}
+          <span>{{ uiCopy.chrome.guardrail }}</span>{{ language.guardrail }}
         </p>
       </div>
     </div>
@@ -89,8 +90,10 @@ const containerHref = computed(
         <ChevronRight :size="14" aria-hidden="true" />
       </router-link>
       <small>{{ task.location }}</small>
-      <time v-if="task.dueAt" :datetime="task.dueAt">截止 {{ dueLabel }}</time>
-      <span v-else>无截止</span>
+      <time v-if="task.dueAt" :datetime="task.dueAt"
+        >{{ uiCopy.chrome.dueLabel }} {{ dueLabel }}</time
+      >
+      <span v-else>{{ uiCopy.chrome.dueNone }}</span>
       <span
         class="container-state"
         :aria-label="`货柜状态：${container.currentStatus.label}`"

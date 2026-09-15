@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { uiCopy } from "../data/uiCopyCatalog";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -101,7 +102,7 @@ const router = createRouter({
     {
       path: "/import",
       component: () => import("../views/ImportUpload.vue"),
-      meta: { title: "智能导入", section: "导入" },
+      meta: { title: uiCopy.chrome.importTitle, section: "导入" },
     },
     {
       path: "/import/:batchId",

@@ -12,6 +12,7 @@ import {
   type CompensationRow,
   type ClientOperationRow,
 } from "../data/clientOperationQueueContract";
+import { uiCopy } from "../data/uiCopyCatalog";
 
 const rows = ref<ClientOperationRow[]>([]);
 const page = ref<ClientOperationPage | null>(null);
@@ -75,7 +76,7 @@ onMounted(() => {
   <div class="real-operations-page page-frame">
     <PageHeader
       title="看提交"
-      summary="已经提交的操作，以及系统有没有记下。"
+      :summary="uiCopy.chrome.operationsSummary"
       :updated-at="page?.asOf ? formatTime(page.asOf) : undefined"
     />
 
@@ -90,8 +91,8 @@ onMounted(() => {
             <th>动作</th>
             <th>对象</th>
             <th>收到</th>
-            <th>接受</th>
-            <th>记下</th>
+            <th>确认</th>
+            <th>入账</th>
             <th>时间</th>
             <th>补偿</th>
           </tr>

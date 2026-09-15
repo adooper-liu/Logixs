@@ -187,7 +187,7 @@ describe("RealTaskWorkbench", () => {
     });
     const wrapper = await mountPage();
     await flushPromises();
-    expect(wrapper.get("h2").text()).toBe("真实任务（API 接线）");
+    expect(wrapper.get("h2").text()).toBe("按柜查看任务");
     expect(wrapper.text()).toContain("customs_clearance");
     expect(wrapper.find('[data-testid="submission-progress"]').exists()).toBe(
       false,
@@ -203,10 +203,9 @@ describe("RealTaskWorkbench", () => {
     });
     const receipt = wrapper.get('[data-testid="submission-progress"]');
     expect(receipt.text()).toContain("完成工单");
-    expect(receipt.text()).toContain("已落账");
-    expect(receipt.text()).toContain("服务器已收到");
-    expect(receipt.text()).toContain("业务已接受");
-    expect(receipt.text()).toContain("结果已落账");
+    expect(receipt.text()).toContain("已入账");
+    expect(receipt.text()).toContain("已接收");
+    expect(receipt.text()).toContain("已确认");
     expect(receipt.text()).not.toContain("op-1");
   });
 
@@ -225,8 +224,30 @@ describe("RealTaskWorkbench", () => {
     await wrapper.get('[data-work-order-id="w1"]').trigger("click");
     await flushPromises();
     const receipt = wrapper.get('[data-testid="submission-progress"]');
-    expect(receipt.get(".message.error").text()).toContain("EVIDENCE_REQUIRED");
-    expect(receipt.get(".message.error").text()).not.toContain("已落账");
+    expect(receipt.get(".message.error").text()).toContain("缺少合格证据");
+    expect(receipt.get(".message.error").text()).not.toContain("已入账");
     expect(receipt.find("button.retry").exists()).toBe(false);
+  });
+
+  it("装箱空单证不提交完成工单", async () => {
+    const stuffing = {
+      ...claimedTask,
+      nodeCode: "container_stuffing",
+      taskDefinitionKey: "node-container_stuffing",
+    };
+    listNodeTasks.mockResolvedValue({
+      items: [stuffing],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-09-13T00:00:00.000Z",
+      projectionVersion: 0,
+    });
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect(wrapper.get(".evidence").text()).toContain("单证编号");
+    await wrapper.get('[data-work-order-id="w1"]').trigger("click");
+    await flushPromises();
+    expect(completeWorkOrder).not.toHaveBeenCalled();
+    const receipt = wrapper.get('[data-testid="submission-progress"]');
+    expect(receipt.get(".message.error").text()).toContain("缺少合格证据");
   });
 });
