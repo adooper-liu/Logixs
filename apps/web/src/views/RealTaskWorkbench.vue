@@ -171,7 +171,8 @@ async function submitClaim(
       workOrderId,
       toFailedSubmission({
         taskId: task.id,
-        message: cause instanceof Error ? cause.message : uiCopy.chrome.claimFailed,
+        message:
+          cause instanceof Error ? cause.message : uiCopy.chrome.claimFailed,
         actionCode: CLAIM_WORK_ORDER_ACTION,
       }),
     );
@@ -219,7 +220,8 @@ async function submitComplete(
       workOrderId,
       toFailedSubmission({
         taskId: task.id,
-        message: cause instanceof Error ? cause.message : uiCopy.chrome.completeFailed,
+        message:
+          cause instanceof Error ? cause.message : uiCopy.chrome.completeFailed,
       }),
     );
   } finally {

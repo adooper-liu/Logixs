@@ -41,7 +41,10 @@ async function sha256Hex(value: string): Promise<string> {
     .join("");
 }
 
-async function readError(response: Response, fallback: string): Promise<string> {
+async function readError(
+  response: Response,
+  fallback: string,
+): Promise<string> {
   return formatHttpError(response.status, await response.text(), fallback);
 }
 
@@ -76,7 +79,9 @@ export async function registerEvidence(input: {
   return (await response.json()) as EvidenceRecord;
 }
 
-export async function verifyEvidence(evidenceId: string): Promise<EvidenceRecord> {
+export async function verifyEvidence(
+  evidenceId: string,
+): Promise<EvidenceRecord> {
   const response = await fetch(`/api/evidence/${evidenceId}/verify`, {
     method: "POST",
     headers: {

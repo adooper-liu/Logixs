@@ -143,8 +143,7 @@ const uiCopyZhCN = {
     manual_review: "人工复核",
   },
   error: {
-    evidenceRequired:
-      "缺少合格证据。装箱、出运、离港必须先填本柜单证并核对。",
+    evidenceRequired: "缺少合格证据。装箱、出运、离港必须先填本柜单证并核对。",
   },
   chrome: {
     dueLabel: "应完成",
@@ -156,8 +155,7 @@ const uiCopyZhCN = {
     liveGuidance: "做完后完成工单。只有已入账才算生效。",
     liveBlocked: "当前操作受阻，处理后方可继续。",
     liveWaiting: "等待系统将结果记入本柜。",
-    liveCompletion:
-      "工单已完成，已入账，且收到、确认、入账三步均通过。",
+    liveCompletion: "工单已完成，已入账，且收到、确认、入账三步均通过。",
     liveGuardrail: "页面显示成功不等于完成。未填字段不在屏幕上虚构。",
     liveDone: "已入账。",
     completePolicy: "完成工单后，已入账才算生效。",
@@ -174,7 +172,8 @@ const uiCopyZhCN = {
     railsFailed: "各步骤加载失败",
     importTitle: "导入货柜",
     debugTitle: "按柜查看任务",
-    debugHint: "领取后完成工单，查看入账状态。空闲不占位。装箱、出运、离港必须先填单证并核对。",
+    debugHint:
+      "领取后完成工单，查看入账状态。空闲不占位。装箱、出运、离港必须先填单证并核对。",
     operationsSummary: "已提交操作及系统入账状态。",
     containersSummary: "当前已记录的货柜列表。",
     claimFailed: "领取失败",
@@ -184,8 +183,7 @@ const uiCopyZhCN = {
     columnSyncEmpty: "最近没有提交",
   },
   column: {
-    containerStatus:
-      "货柜实际走到哪里，以已入账的结果为准。",
+    containerStatus: "货柜实际走到哪里，以已入账的结果为准。",
     syncStatus: "看这次有没有被接收、规则通不通、有没有入账。",
     currentStation: "这一柜现在走到哪一站。",
     openTask: "这一柜还没做完的活。",

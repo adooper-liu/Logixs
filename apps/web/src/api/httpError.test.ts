@@ -18,9 +18,9 @@ describe("httpError", () => {
   });
 
   it("数组 message 与纯文本原文都能读", () => {
-    expect(
-      parseHttpErrorDetail('{"statusCode":400,"message":["a","b"]}'),
-    ).toBe("a；b");
+    expect(parseHttpErrorDetail('{"statusCode":400,"message":["a","b"]}')).toBe(
+      "a；b",
+    );
     expect(parseHttpErrorDetail("RESOURCE_NOT_FOUND")).toBe(
       "RESOURCE_NOT_FOUND",
     );

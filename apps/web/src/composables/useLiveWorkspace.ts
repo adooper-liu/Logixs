@@ -96,7 +96,8 @@ export function useLiveWorkspace() {
     return task.evidenceRequirements
       .filter((item) => item.required)
       .every(
-        (item) => item.state === "verified" && Boolean(item.capturedValue?.trim()),
+        (item) =>
+          item.state === "verified" && Boolean(item.capturedValue?.trim()),
       );
   });
 

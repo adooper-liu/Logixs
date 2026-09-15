@@ -409,8 +409,7 @@ test("keeps engines pure and isolated from each other", () => {
       },
       {
         path: "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts",
-        source:
-          'import { evaluateDailySlots } from "../occupancy-slot";',
+        source: 'import { evaluateDailySlots } from "../occupancy-slot";',
       },
       {
         path: "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts",

@@ -74,7 +74,8 @@ const containerHref = computed(
         </p>
         <p v-if="task.status !== 'completed'" class="guardrail">
           <ShieldAlert :size="13" aria-hidden="true" />
-          <span>{{ uiCopy.chrome.guardrail }}</span>{{ language.guardrail }}
+          <span>{{ uiCopy.chrome.guardrail }}</span
+          >{{ language.guardrail }}
         </p>
       </div>
     </div>

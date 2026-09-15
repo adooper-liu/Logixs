@@ -96,7 +96,9 @@ describe("registerAndVerifyFloorEvidence", () => {
     vi.stubGlobal("fetch", fetchMock);
     await expect(
       registerAndVerifyFloorEvidence("c1", "PACK-1"),
-    ).rejects.toThrow("登记证据失败（400）：VALIDATION_FORMAT: subjectId 必须是 UUID");
+    ).rejects.toThrow(
+      "登记证据失败（400）：VALIDATION_FORMAT: subjectId 必须是 UUID",
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

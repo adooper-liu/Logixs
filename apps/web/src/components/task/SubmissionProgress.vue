@@ -28,10 +28,7 @@ const helpText = computed(() => {
       ? `结果 ${props.submission.resultRef}`
       : undefined,
   ].filter(Boolean);
-  return [
-    uiCopy.receipt.help,
-    references.join(" · "),
-  ]
+  return [uiCopy.receipt.help, references.join(" · ")]
     .filter(Boolean)
     .join(" ");
 });

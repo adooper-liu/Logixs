@@ -53,7 +53,9 @@ const LIFECYCLE_STATUS: Record<
 const emptyNodeDisplaySchema: DisplayFieldSchema = {
   schemaId: "live-container-node",
   schemaVersion: 1,
-  groups: [{ code: "nodeFacts", label: uiCopy.chrome.nodeFactsGroup, order: 1 }],
+  groups: [
+    { code: "nodeFacts", label: uiCopy.chrome.nodeFactsGroup, order: 1 },
+  ],
   fields: [],
 };
 
