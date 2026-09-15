@@ -4,6 +4,7 @@ import {
   getTaskLanguageDefinition,
   getTaskStatusLanguage,
 } from "../../data/taskLanguageCatalog";
+import { NODE_PURPOSE_LABELS, uiCopy } from "../../data/uiCopyCatalog";
 
 export interface TaskLanguageProjection {
   title: string;
@@ -29,7 +30,7 @@ export const projectTaskLanguage = (
 
   const title =
     task.taskDefinitionKey === LIVE_TASK_DEFINITION_KEY
-      ? task.nodeName
+      ? (NODE_PURPOSE_LABELS[task.nodeKey] ?? task.nodeName)
       : definition.title;
 
   if (task.status === "completed") {
@@ -55,7 +56,7 @@ export const projectTaskLanguage = (
     task.status === "blocked"
       ? definition.blockedGuidance
       : task.status === "reported"
-        ? "服务器正在处理本次提交，结果落账前不计为完成。"
+        ? uiCopy.receipt.reported
         : task.status === "waiting_external"
           ? definition.waitingGuidance
           : definition.activeGuidance;

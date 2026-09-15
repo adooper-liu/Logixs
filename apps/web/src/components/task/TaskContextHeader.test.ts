@@ -61,9 +61,9 @@ describe("TaskContextHeader", () => {
     expect(wrapper.text()).toContain(
       "核对两条离港记录，选择采用时间并填写理由。",
     );
-    expect(wrapper.text()).toContain("采用时间、来源和理由形成对账结论。");
+    expect(wrapper.text()).toContain("采用时间、来源和理由形成核对结论。");
     expect(wrapper.text()).toContain(
-      "如需修正已入账时间，系统新增更正记录并保留原记录。",
+      "如需修正已入账的时间，系统新增更正记录并保留原记录。",
     );
   });
 

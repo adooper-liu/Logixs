@@ -2,6 +2,7 @@
 import { computed, shallowRef } from "vue";
 import { CircleCheck, Crosshair, TriangleAlert } from "@lucide/vue";
 import type { TaskAction, TaskItem } from "../../data/sample";
+import { uiCopy } from "../../data/uiCopyCatalog";
 import InfoTooltip from "../ui/InfoTooltip.vue";
 
 const props = defineProps<{
@@ -65,8 +66,8 @@ const confirmAction = () => {
           >
             {{
               task.completionPolicy.advancesContainerStatus
-                ? "落账后推进货柜"
-                : "不推进货柜"
+                ? uiCopy.chrome.resultAdvances
+                : uiCopy.chrome.resultNeutral
             }}
           </span>
           <InfoTooltip

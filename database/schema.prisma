@@ -30,47 +30,47 @@ enum ContainerStatus {
 // 货柜业务事实主记录（shipment-registry 拥有）。
 // 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
 model ContainerRecord {
-  id               String          @id @default(uuid()) @map("id")
-  tenantId         String          @map("tenant_id")
+  id              String          @id @default(uuid()) @map("id")
+  tenantId        String          @map("tenant_id")
   // 备货单号：建档身份主锚。TO-BE 目标 UNIQUE，但须旧库 DDL/数据清洗通过后才建立（DATA_MODEL 不变量 1）。
-  orderNumber      String          @map("order_number")
+  orderNumber     String          @map("order_number")
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
-  mainOrderNumber  String?         @map("main_order_number")
+  mainOrderNumber String?         @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
-  containerNumber  String?         @map("container_number")
+  containerNumber String?         @map("container_number")
   // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
-  currentStatus    ContainerStatus @map("current_status")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-
-  @@index([tenantId, updatedAt, id])
-  @@map("container_record")
+  currentStatus   ContainerStatus @map("current_status")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
   // TODO(D20 物理形态)：金额 decimal + currency（超期费用，独立边界）
+
+  @@index([tenantId, updatedAt, id])
+  @@map("container_record")
 }
 
 // 证据主记录（document-records 拥有）：第一刀只落核验所需字段，不做对象存储。
 model EvidenceRecord {
-  id                 String   @id @default(uuid()) @map("id")
-  tenantId           String   @map("tenant_id")
-  evidenceType       String   @map("evidence_type")
-  subjectType        String   @map("subject_type")
-  subjectId          String   @map("subject_id")
-  authorityLevel     String   @map("authority_level")
-  contentRef         String   @map("content_ref")
-  contentHash        String   @map("content_hash")
-  source             Json     @map("source")
-  verificationState  String   @map("verification_state")
-  confidenceState    String   @map("confidence_state")
-  validity           String   @map("validity")
-  receivedAt         DateTime @map("received_at")
-  recordedAt         DateTime @map("recorded_at")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid()) @map("id")
+  tenantId          String   @map("tenant_id")
+  evidenceType      String   @map("evidence_type")
+  subjectType       String   @map("subject_type")
+  subjectId         String   @map("subject_id")
+  authorityLevel    String   @map("authority_level")
+  contentRef        String   @map("content_ref")
+  contentHash       String   @map("content_hash")
+  source            Json     @map("source")
+  verificationState String   @map("verification_state")
+  confidenceState   String   @map("confidence_state")
+  validity          String   @map("validity")
+  receivedAt        DateTime @map("received_at")
+  recordedAt        DateTime @map("recorded_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  decisions          EvidenceVerificationDecision[]
+  decisions EvidenceVerificationDecision[]
 
   @@index([tenantId, subjectType, subjectId])
   @@map("evidence_record")
@@ -78,20 +78,20 @@ model EvidenceRecord {
 
 // 核验裁决（document-records 拥有）：append-only，不更新、不删除。
 model EvidenceVerificationDecision {
-  id                    String         @id @default(uuid()) @map("id")
-  evidenceId            String         @map("evidence_id")
-  evidence              EvidenceRecord @relation(fields: [evidenceId], references: [id])
-  verificationSequence  Int            @map("verification_sequence")
-  decision              String         @map("decision")
-  checks                Json           @map("checks")
-  policyId              String         @map("policy_id")
-  policyVersion         Int            @map("policy_version")
-  decidedAt             DateTime       @map("decided_at")
-  actorOrServiceId      String         @map("actor_or_service_id")
-  reasonCode            String         @map("reason_code")
-  reason                String?        @map("reason")
-  previousDecisionId    String?        @map("previous_decision_id")
-  createdAt             DateTime       @default(now()) @map("created_at")
+  id                   String         @id @default(uuid()) @map("id")
+  evidenceId           String         @map("evidence_id")
+  evidence             EvidenceRecord @relation(fields: [evidenceId], references: [id])
+  verificationSequence Int            @map("verification_sequence")
+  decision             String         @map("decision")
+  checks               Json           @map("checks")
+  policyId             String         @map("policy_id")
+  policyVersion        Int            @map("policy_version")
+  decidedAt            DateTime       @map("decided_at")
+  actorOrServiceId     String         @map("actor_or_service_id")
+  reasonCode           String         @map("reason_code")
+  reason               String?        @map("reason")
+  previousDecisionId   String?        @map("previous_decision_id")
+  createdAt            DateTime       @default(now()) @map("created_at")
 
   @@unique([evidenceId, verificationSequence], map: "evidence_decision_seq_key")
   @@map("evidence_verification_decision")
@@ -100,22 +100,22 @@ model EvidenceVerificationDecision {
 // 导入批次（integration-import 拥有）：一次上传的全生命周期（P6 阶段 A 读链路最小集）。
 // 完整批次状态机在阶段 C 对齐 IMPORT_WORKFLOW §4；阶段 A 仅 pending → parsed。
 model ImportBatch {
-  id             String      @id @default(uuid()) @map("id")
-  tenantId       String      @map("tenant_id")
-  operatorId     String      @map("operator_id") // 开发期身份，审计
-  idempotencyKey String      @unique @map("idempotency_key")
-  fileName       String      @map("file_name")
-  fileHash       String      @map("file_hash") // 文件内容指纹，幂等判定
-  status         String      @map("status") // parsed | confirmed | approved | executing | completed
-  rowCount       Int         @map("row_count")
-  columnCount    Int         @map("column_count")
+  id                 String            @id @default(uuid()) @map("id")
+  tenantId           String            @map("tenant_id")
+  operatorId         String            @map("operator_id") // 开发期身份，审计
+  idempotencyKey     String            @unique @map("idempotency_key")
+  fileName           String            @map("file_name")
+  fileHash           String            @map("file_hash") // 文件内容指纹，幂等判定
+  status             String            @map("status") // parsed | confirmed | approved | executing | completed
+  rowCount           Int               @map("row_count")
+  columnCount        Int               @map("column_count")
   // AI 字段映射建议（阶段 B 留痕）：[{ column, fieldCode, confidence }]，阶段 C 审核指向它
-  mappingSuggestions Json     @default("[]") @map("mapping_suggestions")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
-  rows           ImportRow[]
-  reviews        ImportReview[]
-  rowResults     ImportRowResult[]
+  mappingSuggestions Json              @default("[]") @map("mapping_suggestions")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  rows               ImportRow[]
+  reviews            ImportReview[]
+  rowResults         ImportRowResult[]
 
   @@map("import_batch")
 }
@@ -280,27 +280,27 @@ model OutboxReplayRequest {
 // 契约：GC-009 InboxRecord。单体用 consumer_name 区分消费者，不按模块拆物理表。
 // 消费申请生命周期事件；processed 与规范事件/Outbox 同事务。
 model InboxMessage {
-  id               String    @id @map("id")
-  tenantId         String    @map("tenant_id")
-  consumerName     String    @map("consumer_name")
-  messageId        String    @map("message_id")
-  payloadHash      String    @map("payload_hash")
-  payloadJson      Json?     @map("payload_json")
-  state            String    @map("state") // received | processing | processed | retry_wait | dead_letter
-  attemptCount     Int       @default(0) @map("attempt_count")
-  leaseOwner       String?   @map("locked_by")
-  leaseLockedAt    DateTime? @map("locked_at")
-  leaseExpiresAt   DateTime? @map("lease_expires_at")
-  nextAttemptAt    DateTime? @map("next_attempt_at")
-  processedAt      DateTime? @map("processed_at")
-  lastErrorCode    String?   @map("last_error_code")
-  failureCategory  String?   @map("failure_category")
-  deadLetteredAt   DateTime? @map("dead_lettered_at")
-  ownerQueue       String?   @map("owner_queue")
-  causationId      String?   @map("causation_id")
-  traceId          String    @map("trace_id")
-  receivedAt       DateTime  @map("received_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id              String    @id @map("id")
+  tenantId        String    @map("tenant_id")
+  consumerName    String    @map("consumer_name")
+  messageId       String    @map("message_id")
+  payloadHash     String    @map("payload_hash")
+  payloadJson     Json?     @map("payload_json")
+  state           String    @map("state") // received | processing | processed | retry_wait | dead_letter
+  attemptCount    Int       @default(0) @map("attempt_count")
+  leaseOwner      String?   @map("locked_by")
+  leaseLockedAt   DateTime? @map("locked_at")
+  leaseExpiresAt  DateTime? @map("lease_expires_at")
+  nextAttemptAt   DateTime? @map("next_attempt_at")
+  processedAt     DateTime? @map("processed_at")
+  lastErrorCode   String?   @map("last_error_code")
+  failureCategory String?   @map("failure_category")
+  deadLetteredAt  DateTime? @map("dead_lettered_at")
+  ownerQueue      String?   @map("owner_queue")
+  causationId     String?   @map("causation_id")
+  traceId         String    @map("trace_id")
+  receivedAt      DateTime  @map("received_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@unique([consumerName, messageId], map: "inbox_message_consumer_message_key")
   @@index([tenantId, consumerName, state], map: "inbox_message_tenant_state_idx")
@@ -333,33 +333,33 @@ model InboxReplayRequest {
 // 契约：GC-009 ClientOperationV1。
 // lifecycle-control 写入 lifecycle.apply_event；work-execution 写入 work_execution.complete_work_order。
 model ClientOperation {
-  id                     String    @id @map("id")
-  tenantId               String    @map("tenant_id")
-  actorType              String    @map("actor_type")
-  actorId                String    @map("actor_id")
-  actionCode             String    @map("action_code")
-  actionVersion          Int       @map("action_version")
-  targetType             String    @map("target_type")
-  targetId               String    @map("target_id")
-  targetOwnerModule      String    @map("target_owner_module")
-  correlationId          String    @map("correlation_id")
-  causationId            String?   @map("causation_id")
-  traceId                String    @map("trace_id")
-  idempotencyKey         String    @map("idempotency_key")
-  requestHash            String    @map("request_hash")
-  receptionState         String    @map("reception_state")
-  businessDecisionState  String    @map("business_decision_state")
-  commitState            String    @map("commit_state")
-  resultRefs             Json      @map("result_refs")
-  rejectionReasonCode    String?   @map("rejection_reason_code")
-  attemptCount           Int       @default(0) @map("attempt_count")
-  lastAttemptAt          DateTime? @map("last_attempt_at")
-  nextAttemptAt          DateTime? @map("next_attempt_at")
-  receivedAt             DateTime? @map("received_at")
-  decidedAt              DateTime? @map("decided_at")
-  committedAt            DateTime? @map("committed_at")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @map("id")
+  tenantId              String    @map("tenant_id")
+  actorType             String    @map("actor_type")
+  actorId               String    @map("actor_id")
+  actionCode            String    @map("action_code")
+  actionVersion         Int       @map("action_version")
+  targetType            String    @map("target_type")
+  targetId              String    @map("target_id")
+  targetOwnerModule     String    @map("target_owner_module")
+  correlationId         String    @map("correlation_id")
+  causationId           String?   @map("causation_id")
+  traceId               String    @map("trace_id")
+  idempotencyKey        String    @map("idempotency_key")
+  requestHash           String    @map("request_hash")
+  receptionState        String    @map("reception_state")
+  businessDecisionState String    @map("business_decision_state")
+  commitState           String    @map("commit_state")
+  resultRefs            Json      @map("result_refs")
+  rejectionReasonCode   String?   @map("rejection_reason_code")
+  attemptCount          Int       @default(0) @map("attempt_count")
+  lastAttemptAt         DateTime? @map("last_attempt_at")
+  nextAttemptAt         DateTime? @map("next_attempt_at")
+  receivedAt            DateTime? @map("received_at")
+  decidedAt             DateTime? @map("decided_at")
+  committedAt           DateTime? @map("committed_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@unique([tenantId, actorId, actionCode, idempotencyKey], map: "client_operation_idempotency_key")
   @@index([tenantId, createdAt, id], map: "client_operation_tenant_created_idx")
@@ -389,15 +389,15 @@ model CompensationRecord {
 
 // 节点任务（work-execution 拥有）：货柜到节点的工序任务（第一刀最小集）。
 model NodeTask {
-  id                String      @id @default(uuid()) @map("id")
-  flowInstanceId    String      @map("flow_instance_id")
-  nodeInstanceId    String      @map("node_instance_id")
-  nodeCode          String      @map("node_code")
-  containerId       String?     @map("container_id") // 逻辑引用，无跨模块外键
-  taskDefinitionKey String      @map("task_definition_key")
-  state             String      @map("state") // pending | in_progress | completed
-  createdAt         DateTime    @default(now()) @map("created_at")
-  updatedAt         DateTime    @updatedAt @map("updated_at")
+  id                String           @id @default(uuid()) @map("id")
+  flowInstanceId    String           @map("flow_instance_id")
+  nodeInstanceId    String           @map("node_instance_id")
+  nodeCode          String           @map("node_code")
+  containerId       String?          @map("container_id") // 逻辑引用，无跨模块外键
+  taskDefinitionKey String           @map("task_definition_key")
+  state             String           @map("state") // pending | in_progress | completed
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
   workOrders        WorkOrder[]
   outcome           NodeTaskOutcome?
 
@@ -408,16 +408,16 @@ model NodeTask {
 
 // 作业工单（work-execution 拥有）：任务拆出的工单（第一刀最小集）。
 model WorkOrder {
-  id                      String    @id @default(uuid()) @map("id")
-  nodeTaskId              String    @map("node_task_id")
-  nodeTask                NodeTask  @relation(fields: [nodeTaskId], references: [id])
-  workOrderDefinitionKey  String    @map("work_order_definition_key")
-  state                   String    @map("state") // ready | in_progress | completed
-  assignmentState         String    @map("assignment_state") // unassigned | assigned | pool | automatic
-  assigneeId              String?   @map("assignee_id")
-  completedAt             DateTime? @map("completed_at")
-  createdAt               DateTime  @default(now()) @map("created_at")
-  updatedAt               DateTime  @updatedAt @map("updated_at")
+  id                     String    @id @default(uuid()) @map("id")
+  nodeTaskId             String    @map("node_task_id")
+  nodeTask               NodeTask  @relation(fields: [nodeTaskId], references: [id])
+  workOrderDefinitionKey String    @map("work_order_definition_key")
+  state                  String    @map("state") // ready | in_progress | completed
+  assignmentState        String    @map("assignment_state") // unassigned | assigned | pool | automatic
+  assigneeId             String?   @map("assignee_id")
+  completedAt            DateTime? @map("completed_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   @@map("work_order")
 }
@@ -439,4 +439,158 @@ model NodeTaskOutcome {
   createdAt             DateTime @default(now()) @map("created_at")
 
   @@map("node_task_outcome")
+}
+
+// 计划参数（inland-fulfillment 拥有）：租户键值，禁止源码默认。
+model InlandPlanningParameter {
+  id        String   @id @default(uuid()) @map("id")
+  tenantId  String   @map("tenant_id")
+  key       String   @map("key")
+  valueText String   @map("value_text")
+  unit      String   @map("unit")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, key], map: "inland_planning_parameter_tenant_key")
+  @@map("inland_planning_parameter")
+}
+
+// 计划策略（inland-fulfillment 拥有）：租户策略码，须在注册表内。
+model InlandPlanningStrategy {
+  id        String   @id @default(uuid()) @map("id")
+  tenantId  String   @map("tenant_id")
+  key       String   @map("key")
+  code      String   @map("code")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, key], map: "inland_planning_strategy_tenant_key")
+  @@map("inland_planning_strategy")
+}
+
+// 仓库卸柜日限额（本刀 inland-fulfillment 读写；后续经 master-data 端口）。
+model WarehouseUnloadCapacity {
+  id          String   @id @default(uuid()) @map("id")
+  tenantId    String   @map("tenant_id")
+  warehouseId String   @map("warehouse_id")
+  dailyLimit  Int      @map("daily_limit")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, warehouseId], map: "warehouse_unload_capacity_tenant_wh")
+  @@map("warehouse_unload_capacity")
+}
+
+// 车队运力与是否声明场外缓冲。
+model FleetHaulageCapacity {
+  id             String   @id @default(uuid()) @map("id")
+  tenantId       String   @map("tenant_id")
+  fleetId        String   @map("fleet_id")
+  dailyTrips     Int      @map("daily_trips")
+  bufferDeclared Boolean  @map("buffer_declared")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, fleetId], map: "fleet_haulage_capacity_tenant_fleet")
+  @@map("fleet_haulage_capacity")
+}
+
+// 港口-车队-仓库分配。没分配的车队不上场。
+model PortFleetWarehouseAllocation {
+  id             String   @id @default(uuid()) @map("id")
+  tenantId       String   @map("tenant_id")
+  portId         String   @map("port_id")
+  warehouseId    String   @map("warehouse_id")
+  fleetId        String   @map("fleet_id")
+  assignmentRole String   @map("assignment_role")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, portId, warehouseId, fleetId], map: "port_fleet_wh_alloc_unique")
+  @@map("port_fleet_warehouse_allocation")
+}
+
+// 内陆计划版本。草稿不完成节点。
+model InlandPlan {
+  id                    String    @id @default(uuid()) @map("id")
+  tenantId              String    @map("tenant_id")
+  containerId           String    @map("container_id")
+  version               Int       @map("version")
+  status                String    @map("status")
+  warehouseId           String    @map("warehouse_id")
+  portId                String    @map("port_id")
+  fleetId               String?   @map("fleet_id")
+  pickupAt              DateTime? @map("pickup_at")
+  deliveryAt            DateTime? @map("delivery_at")
+  unloadAt              DateTime? @map("unload_at")
+  returnAt              DateTime? @map("return_at")
+  customsMustCompleteBy DateTime? @map("customs_must_complete_by")
+  latestPickupAt        DateTime? @map("latest_pickup_at")
+  latestReturnAt        DateTime? @map("latest_return_at")
+  overdueDeadlinesCode  String?   @map("overdue_deadlines_code")
+  schemeCode            String    @map("scheme_code")
+  needsHumanDecision    Boolean   @map("needs_human_decision")
+  occupied              Boolean   @map("occupied")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, containerId, version], map: "inland_plan_container_version")
+  @@index([tenantId, containerId, createdAt, id], map: "inland_plan_container_idx")
+  @@map("inland_plan")
+}
+
+// 资源占用日历。本刀 confirm_before_occupy 不写入。
+model InlandResourceOccupancy {
+  id            String   @id @default(uuid()) @map("id")
+  tenantId      String   @map("tenant_id")
+  resourceType  String   @map("resource_type")
+  resourceId    String   @map("resource_id")
+  occupancyDate DateTime @map("occupancy_date") @db.Date
+  quantity      Int      @map("quantity")
+  planId        String   @map("plan_id")
+  state         String   @map("state")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, resourceType, resourceId, occupancyDate], map: "inland_occupancy_resource_day")
+  @@map("inland_resource_occupancy")
+}
+
+// 超期费用标准（charges-settlement 拥有）：免费期与匹配键。费率在阶梯子表。
+model OverdueChargeStandard {
+  id                 String                  @id @default(uuid()) @map("id")
+  tenantId           String                  @map("tenant_id")
+  portId             String                  @map("port_id")
+  shippingCompanyId  String                  @map("shipping_company_id")
+  freightForwarderId String                  @map("freight_forwarder_id")
+  chargeType         String                  @map("charge_type")
+  freeDays           Int                     @map("free_days")
+  freeDaysBasis      String                  @map("free_days_basis")
+  calculationBasis   String                  @map("calculation_basis")
+  includeStartDay    Boolean                 @map("include_start_day")
+  effectiveFrom      DateTime                @map("effective_from")
+  effectiveTo        DateTime?               @map("effective_to")
+  transportMode      String?                 @map("transport_mode")
+  terminalId         String?                 @map("terminal_id")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  rateTiers          OverdueChargeRateTier[]
+
+  @@index([tenantId, portId, shippingCompanyId, freightForwarderId], map: "overdue_standard_match_idx")
+  @@map("overdue_charge_standard")
+}
+
+// 超期费用阶梯（charges-settlement 拥有）。金额定点两位小数 + ISO 币种；不算进账单。
+model OverdueChargeRateTier {
+  id         String                @id @default(uuid()) @map("id")
+  tenantId   String                @map("tenant_id")
+  standardId String                @map("standard_id")
+  fromDay    Int                   @map("from_day")
+  toDay      Int?                  @map("to_day")
+  amount     Decimal               @map("amount") @db.Decimal(18, 2)
+  currency   String                @map("currency")
+  createdAt  DateTime              @default(now()) @map("created_at")
+  standard   OverdueChargeStandard @relation(fields: [standardId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, standardId], map: "overdue_rate_tier_standard_idx")
+  @@map("overdue_charge_rate_tier")
 }

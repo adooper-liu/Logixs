@@ -13,11 +13,13 @@ import {
   CLAIM_WORK_ORDER_LABEL,
   isAssignedTo,
 } from "./claimReceiptContract";
+import { completionRequiresEvidence } from "./completionEvidencePolicy";
 import {
   canCompleteWorkOrder,
   COMPLETE_WORK_ORDER_ACTION,
   COMPLETE_WORK_ORDER_LABEL,
 } from "./completeReceiptContract";
+import { nodePurposeName, nodeScreenName, uiCopy } from "./uiCopyCatalog";
 import type {
   ContainerProjection,
   StatusView,
@@ -32,22 +34,7 @@ import type {
 export const LIVE_TASK_DEFINITION_KEY = "live_node_task";
 export const LIVE_TASK_DEFINITION_VERSION = 1;
 
-export const NODE_CODE_LABELS: Record<string, string> = {
-  cargo_ready: "备货就绪",
-  container_stuffing: "装箱定稿",
-  shipment_dispatch: "出运",
-  origin_departure: "离港",
-  ocean_transit: "海运在途",
-  transshipment: "中转港",
-  customs_clearance: "清关",
-  destination_arrival: "目的港到港",
-  rail_transfer: "海铁联运",
-  container_pickup: "拖卡提柜",
-  warehouse_delivery: "送仓",
-  container_unloading: "卸柜",
-  container_unstuffing: "卸空",
-  empty_return: "还箱",
-};
+export { NODE_CODE_LABELS, NODE_PURPOSE_LABELS } from "./uiCopyCatalog";
 
 const LIFECYCLE_STATUS: Record<
   ContainerLifecycleState,
@@ -66,13 +53,15 @@ const LIFECYCLE_STATUS: Record<
 const emptyNodeDisplaySchema: DisplayFieldSchema = {
   schemaId: "live-container-node",
   schemaVersion: 1,
-  groups: [{ code: "nodeFacts", label: "节点事实", order: 1 }],
+  groups: [
+    { code: "nodeFacts", label: uiCopy.chrome.nodeFactsGroup, order: 1 },
+  ],
   fields: [],
 };
 
 const idleStatus = (changedAt?: string): StatusView => ({
   code: "idle",
-  label: "无投影",
+  label: uiCopy.chrome.idle,
   tone: "muted",
   changedAt,
 });
@@ -148,15 +137,7 @@ function toTaskStatus(detail: NodeTaskDetail): TaskStatusCode {
   return "in_progress";
 }
 
-const OPEN_TASK_LABELS: Record<TaskStatusCode, string> = {
-  available: "待做",
-  in_progress: "进行中",
-  blocked: "受阻",
-  reported: "已上报",
-  waiting_external: "等外部",
-  under_review: "复核中",
-  completed: "已完成",
-};
+const OPEN_TASK_LABELS = uiCopy.taskStatus;
 
 export function attachCurrentNodes(
   containers: readonly ContainerProjection[],
@@ -167,7 +148,7 @@ export function attachCurrentNodes(
     const containerId = item.containerId.trim();
     const code = item.currentNodeCode.trim();
     if (!containerId || !code) continue;
-    labels.set(containerId, NODE_CODE_LABELS[code] ?? code);
+    labels.set(containerId, nodeScreenName(code));
   }
   return containers.map((container) => {
     const name = labels.get(container.containerRecordId);
@@ -179,7 +160,7 @@ export function attachCurrentNodes(
 function toRailNode(node: LifecycleNodeItem): WorkNode {
   return {
     key: node.nodeCode,
-    name: NODE_CODE_LABELS[node.nodeCode] ?? node.nodeCode,
+    name: nodeScreenName(node.nodeCode),
     phase:
       node.applicability === "optional_not_applicable"
         ? "skipped"
@@ -227,12 +208,12 @@ export function attachOpenTasks(
     const open = openByContainer.get(container.containerRecordId);
     if (!open) return container;
     const code = toTaskStatus(open);
-    const nodeName = NODE_CODE_LABELS[open.nodeCode] ?? open.nodeCode;
+    const purpose = nodePurposeName(open.nodeCode);
     return {
       ...container,
       taskStatus: {
         code,
-        label: `${nodeName} · ${OPEN_TASK_LABELS[code]}`,
+        label: `${purpose} · ${OPEN_TASK_LABELS[code]}`,
         tone: code === "blocked" ? "risk" : "info",
       },
     };
@@ -266,16 +247,16 @@ function toAssignment(detail: NodeTaskDetail): TaskAssignment {
       isAssignedTo(item.assigneeId, DEV_OPERATOR_ID),
   );
   if (claimableWorkOrders(detail).length > 0) {
-    return { mode: "pool", label: "待领取" };
+    return { mode: "pool", label: uiCopy.assignment.pool };
   }
   if (claimed) {
     return {
       mode: "assigned",
-      label: "已领取",
+      label: uiCopy.assignment.claimed,
       assignee: claimed.assigneeId ?? DEV_OPERATOR_ID,
     };
   }
-  return { mode: "assigned", label: "已分配" };
+  return { mode: "assigned", label: uiCopy.assignment.assigned };
 }
 
 function toActions(detail: NodeTaskDetail): TaskAction[] {
@@ -310,7 +291,7 @@ export function toLiveTask(
   detail: NodeTaskDetail,
   container: TaskContainerRef,
 ): TaskItem {
-  const nodeName = NODE_CODE_LABELS[detail.nodeCode] ?? detail.nodeCode;
+  const nodeName = nodeScreenName(detail.nodeCode);
   const actions = toActions(detail);
   const completable = completableWorkOrders(detail);
   return {
@@ -338,17 +319,21 @@ export function toLiveTask(
       ? [
           {
             id: `evidence-${detail.id}`,
-            label: "凭证编号（可选）",
-            detail: "没有可以不填。多个编号用空格或逗号分开。",
-            kind: "document",
-            required: false,
+            label: completionRequiresEvidence(detail.nodeCode)
+              ? uiCopy.chrome.evidenceRequired
+              : uiCopy.chrome.evidenceOptional,
+            detail: completionRequiresEvidence(detail.nodeCode)
+              ? uiCopy.chrome.evidenceRequiredHint
+              : uiCopy.chrome.evidenceHint,
+            kind: "scan",
+            required: completionRequiresEvidence(detail.nodeCode),
             state: "pending",
           },
         ]
       : [],
     actions,
     completionPolicy: {
-      summary: "点完成后，这一步才算做完。",
+      summary: uiCopy.chrome.completePolicy,
       outcome: "complete",
       advancesContainerStatus: false,
     },

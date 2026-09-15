@@ -1,7 +1,9 @@
 ---
-status: review # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/resource-constraint-worksheet
-verification: 文档登记。无代码行为变更。变更 Markdown 已过 Prettier。
+verification: |
+  已合入 main：https://github.com/adooper-liu/Logixs/pull/6
+  merge 7425309；CI quality 通过。文档登记，无代码行为变更。
 ---
 
 # 任务：收资源约束拆解工作纸
@@ -49,3 +51,4 @@ verification: 文档登记。无代码行为变更。变更 Markdown 已过 Pret
 | 2026-09-14 | coding | —    | —       | 开工收工作纸                              |
 | 2026-09-14 | review | —    | ef82ce6 | 工作纸与 INDEX 已提交，进入评审；不建模块 |
 | 2026-09-14 | review | —    | 101c088 | 收计划引擎候选文；拒绝硬编码为封闭规则    |
+| 2026-09-14 | done   | —    | 7425309 | PR #6 已合入 main；工作纸与计划引擎为候选 |

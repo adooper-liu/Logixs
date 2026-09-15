@@ -12,7 +12,7 @@ describe("toLiveNode", () => {
       completedAt: null,
       isCurrent: true,
     });
-    expect(view.name).toBe("备货就绪");
+    expect(view.name).toBe("备货");
     expect(view.stateLabel).toBe("进行中");
     expect(view.completedAt).toBeNull();
     expect(view.isCurrent).toBe(true);

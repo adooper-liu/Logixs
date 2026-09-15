@@ -7,6 +7,7 @@ import {
   TriangleAlert,
 } from "@lucide/vue";
 import type { TaskFocusStep, TaskFocusStepCode } from "./taskFocusContract";
+import { uiCopy } from "../../data/uiCopyCatalog";
 
 defineProps<{
   steps: TaskFocusStep[];
@@ -17,7 +18,7 @@ defineProps<{
 <template>
   <nav class="focus-flow" aria-label="任务执行导引">
     <div class="focus-label">
-      <strong>作业路径</strong>
+      <strong>{{ uiCopy.focus.heading }}</strong>
     </div>
     <ol class="focus-steps" :style="{ '--step-count': steps.length }">
       <li

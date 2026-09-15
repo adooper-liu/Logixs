@@ -23,8 +23,8 @@ describe("projectTaskLanguage", () => {
         showTriggerReason: true,
         guidanceLabel: "下一步",
         guidance: "核对两条离港记录，选择采用时间并填写理由。",
-        completionCriteria: "采用时间、来源和理由形成对账结论。",
-        guardrail: "如需修正已入账时间，系统新增更正记录并保留原记录。",
+        completionCriteria: "采用时间、来源和理由形成核对结论。",
+        guardrail: "如需修正已入账的时间，系统新增更正记录并保留原记录。",
       }),
     );
   });
@@ -53,10 +53,10 @@ describe("projectTaskLanguage", () => {
   it("states the waiting object and release condition for blocked work", () => {
     const language = projectTaskLanguage(getTask("task_1025"));
 
-    expect(language.statusLabel).toBe("已阻塞");
+    expect(language.statusLabel).toBe("受阻");
     expect(language.tone).toBe("risk");
     expect(language.guidanceLabel).toBe("当前等待");
-    expect(language.guidance).toBe("等待海关放行；条件齐全后才能安排派拖。");
+    expect(language.guidance).toBe("等海关放行；条件齐了才能派拖车。");
     expect(language.guardrail).toBe("可以派拖不代表已经提柜。");
   });
 
@@ -70,20 +70,22 @@ describe("projectTaskLanguage", () => {
       resultSummary: "这条结果未落账",
     });
 
-    expect(language.guidance).toBe("离港时间对账结论已落账，原记录已保留。");
+    expect(language.guidance).toBe("离港时间已入账，原记录保留。");
     expect(language.guidance).not.toContain("未落账");
   });
 
-  it("真实节点任务用节点名作标题，不套演示文案", () => {
+  it("真实节点任务用目的作标题，站名不顶上去", () => {
     const language = projectTaskLanguage({
       ...getTask("task_1027"),
       taskDefinitionKey: "live_node_task",
       taskDefinitionVersion: 1,
+      nodeKey: "customs_clearance",
       nodeName: "清关",
       triggerReason: "",
     });
-    expect(language.title).toBe("清关");
-    expect(language.guidance).toContain("落账");
+    expect(language.title).toBe("清关完成");
+    expect(language.guidance).not.toContain("落账");
+    expect(language.guidance).toContain("已入账");
     expect(language.title).not.toBe("确认实际离港时间");
   });
 

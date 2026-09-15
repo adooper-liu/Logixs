@@ -4,6 +4,7 @@ import { MonitorCog, TriangleAlert } from "@lucide/vue";
 import type { TaskItem } from "../../data/sample";
 import InfoTooltip from "../ui/InfoTooltip.vue";
 import { projectTaskLanguage } from "./taskLanguageContract";
+import { uiCopy } from "../../data/uiCopyCatalog";
 
 const props = defineProps<{
   tasks: TaskItem[];
@@ -115,18 +116,19 @@ const dueLabel = (dueAt: string) =>
             </span>
           </span>
           <span class="task-state">
-            <small>截止</small>
+            <small>{{ uiCopy.chrome.dueLabel }}</small>
             <time v-if="item.task.dueAt" :datetime="item.task.dueAt">{{
               dueLabel(item.task.dueAt)
             }}</time>
-            <span v-else>无</span>
+            <span v-else>{{ uiCopy.chrome.dueNone }}</span>
           </span>
         </button>
       </div>
 
       <div v-if="waitingTasks.length" class="waiting-zone">
         <div class="monitor-head">
-          <span>等待外部或落账</span><b>{{ waitingTasks.length }}</b>
+          <span>{{ uiCopy.chrome.waitingQueue }}</span>
+          <b>{{ waitingTasks.length }}</b>
         </div>
         <button
           v-for="item in waitingTasks"

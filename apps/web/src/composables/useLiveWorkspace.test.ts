@@ -192,6 +192,75 @@ describe("useLiveWorkspace", () => {
     app.unmount();
   });
 
+  it("装箱未核对准单证则不能完成工单", async () => {
+    listNodeTasks.mockResolvedValue({
+      items: [
+        {
+          id: "t1",
+          flowInstanceId: "f1",
+          nodeInstanceId: "n1",
+          nodeCode: "container_stuffing",
+          containerId: "c1",
+          taskDefinitionKey: "node-container_stuffing",
+          state: "in_progress",
+          workOrders: [
+            {
+              id: "w1",
+              workOrderDefinitionKey: "wo-stuffing",
+              state: "in_progress",
+              assignmentState: "assigned",
+              assigneeId: "dev-operator",
+              completedAt: null,
+            },
+          ],
+          outcome: null,
+        },
+      ],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-09-13T03:00:00.000Z",
+      projectionVersion: 0,
+    });
+    const { workspace, app } = await setupWorkspace();
+    await workspace.reload();
+    await flushPromises();
+    expect(workspace.canSubmit.value).toBe(false);
+    await workspace.executeAction("work_execution.complete_work_order:w1");
+    await flushPromises();
+    expect(completeWorkOrder).not.toHaveBeenCalled();
+    workspace.verifyEvidence(
+      "evidence-t1",
+      "11111111-1111-4111-8111-111111111111",
+    );
+    expect(workspace.canSubmit.value).toBe(true);
+    completeWorkOrder.mockResolvedValue({
+      workOrderId: "w1",
+      workOrderState: "completed",
+      taskId: "t1",
+      taskState: "completed",
+      applied: true,
+      outcomeRecorded: true,
+      lifecycleApply: "applied",
+      lifecycleEventCode: "stuffed",
+      lifecycleDetail: null,
+      activatedNodeCode: "shipment_dispatch",
+      activatedNodeTaskId: "t2",
+      clientOperationId: "op-1",
+      receptionState: "received",
+      businessDecisionState: "accepted",
+      commitState: "committed",
+      rejectionReasonCode: null,
+    });
+    await workspace.executeAction("work_execution.complete_work_order:w1");
+    await flushPromises();
+    expect(completeWorkOrder).toHaveBeenCalledWith(
+      "w1",
+      expect.objectContaining({
+        evidenceRefs: ["11111111-1111-4111-8111-111111111111"],
+      }),
+    );
+    app.unmount();
+  });
+
   it("有下一页时追加任务，并补没有柜号的货柜", async () => {
     listNodeTasks
       .mockResolvedValueOnce({

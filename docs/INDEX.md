@@ -5,10 +5,10 @@
 
 ## 一、怎么看（按角色/目标给路径）
 
-- **新成员/实现者（先读）**：规则(AGENTS/ENGINEERING) → 产品(PRINCIPLES/VISION/PRODUCT_BRIEF/GLOSSARY) → 架构(架构文档/模块依赖) → 领域(CONTEXT→LIFECYCLE→STATUS→…) → 规划。
+- **新成员/实现者（先读）**：人话导读（含货柜主链）→ 规则(AGENTS/ENGINEERING) → 产品(PRINCIPLES/VISION/PRODUCT_BRIEF/GLOSSARY) → 架构(架构文档/模块依赖) → 领域(CONTEXT→LIFECYCLE→STATUS→…) → 规划。
 - **业务/评审（验收）**：P2_REVIEW_CHECKLIST → PROPOSAL_SELF_AUDIT → 各领域文档核对。
 - **逻辑链（事实→清单→可视化→UI）**：事实(AS_IS/LEGACY_DB/回验) → 清单(domain 各 catalog) → 可视化(UX) → UI 交互(UX §组件/现网附录A)。
-- **按阶段**：P0 产品定义 → P1 决策(ADR) → P2 领域与数据(本批) → P3+ 底座/实现（见 PROJECT_BOOTSTRAP_CHECKLIST）。
+- **按阶段**：P0 产品定义 → P1 决策(ADR) → P2 领域与数据(本批) → P3+ 底座/实现（见 PROJECT_BOOTSTRAP_CHECKLIST；人话见 PROJECT_BOOTSTRAP_PLAIN_LANGUAGE）。
 
 ## 二、仓库根 · 规则与纪律
 
@@ -20,13 +20,14 @@
 
 ## 三、docs 导航与架构
 
-| 文档                                                             | 一句话                                 | 状态          |
-| ---------------------------------------------------------------- | -------------------------------------- | ------------- |
-| [人话导读](./人话导读.md)                                        | 大白话讲全系统+文档地图（新人先读）    | 导航          |
-| [docs/README](./README.md)                                       | docs 导航+写作纪律+消费链              | 导航          |
-| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md) | 目标架构总览(分层/模块/AI/工作流)      | 已接受        |
-| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)              | 模块/包依赖与禁止依赖                  | 已接受(P1-09) |
-| [ADR 索引](./architecture/decisions/README.md) + ADR-001~010     | 架构决策记录（含模块化单体限界上下文） | 已接受(P1)    |
+| 文档                                                             | 一句话                                   | 状态          |
+| ---------------------------------------------------------------- | ---------------------------------------- | ------------- |
+| [人话导读](./人话导读.md)                                        | 大白话讲全系统+文档地图（新人先读）      | 导航          |
+| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)               | 进站派活、核过才过站；外部接口不是遥控器 | 人话对照      |
+| [docs/README](./README.md)                                       | docs 导航+写作纪律+消费链                | 导航          |
+| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md) | 目标架构总览(分层/模块/AI/工作流)        | 已接受        |
+| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)              | 模块/包依赖与禁止依赖                    | 已接受(P1-09) |
+| [ADR 索引](./architecture/decisions/README.md) + ADR-001~010     | 架构决策记录（含模块化单体限界上下文）   | 已接受(P1)    |
 
 ## 四、产品/理念/流程
 
@@ -35,7 +36,7 @@
 | [VISION](./product/VISION.md)                                                 | 品牌/愿景/节点操作/仓储图谱 → 落地对照                                                                             | 候选                         |
 | [PRINCIPLES](./product/PRINCIPLES.md)                                         | 元治理M0 + 十原则P1–P10(时序/权威/确认三档/费用类型/复核/表单即证据) + 主流程/工序任务/工单/动作模型 + 节点七组SOP | 负责人确认(M0 + P1–P10)      |
 | [PRODUCT_BRIEF](./product/PRODUCT_BRIEF.md)                                   | 产品定位/当前起点/接入与前端演进                                                                                   | 初版基线                     |
-| [GLOSSARY](./product/GLOSSARY.md)                                             | 术语单一真相(含 P2 §5)                                                                                             | 基线+P2 增补 v0.1.6          |
+| [GLOSSARY](./product/GLOSSARY.md)                                             | 术语单一真相(含 P2 §5、过站)                                                                                       | 基线+P2 增补 v0.1.10         |
 | [NFR](./product/NON_FUNCTIONAL_REQUIREMENTS.md)                               | 数字承诺(待校准)                                                                                                   | 初版基线                     |
 | [IMPORT_WORKFLOW](./product/workflows/IMPORT_WORKFLOW.md)                     | 首个闭环流程叙事                                                                                                   | 基线                         |
 | [First Mile/清关证据链 7 组](./product/workflows/CUSTOMS_OPERATION_CHAINS.md) | 原表单证据→统一对象→角色视图与非线性闭环                                                                           | 负责人业务规则+候选映射 v0.3 |
@@ -43,22 +44,24 @@
 | [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)               | 电商货柜全生命周期运营手册:节点/KPI·SLA/RACI/风险/应急SOP(22 节点管理视图)                                         | 候选 v0.1                    |
 | [UI 体系标准](./product/UI_SYSTEM.md)                                         | Operations Shell、页面模板、表面命名 UI-D09、三状态视觉、token、组件分层                                           | 设计决策 v1.0                |
 | [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                         | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                                                | 快照 2026-09-13              |
+| [作业界面人话对照](./product/UI_COPY_PLAIN_LANGUAGE.md)                       | 屏幕字对照；显示字典 `apps/web/src/data/uiCopyCatalog.ts`                                                          | 定稿工作纸                   |
 | 人话速查                                                                      | 见本 INDEX（每行"一句话+状态"即人话速查）                                                                          | —                            |
 
 ## 五、领域（docs/product/domain，按逻辑簇）
 
 ### 5.1 对象/边界/模型
 
-| 文档                                                                     | 一句话                                                     | 状态      |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------- | --------- |
-| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                             | 当前/未来上下文边界与聚合(P2-01)                           | 候选 v0.5 |
-| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)       | 已出运数据起点/上游演进/箱单关系                           | 候选 v0.4 |
-| [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)             | 14 节点全生命周期(P2 对象表)                               | 候选 v0.4 |
-| [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md) | 14 节点代码、顺序、可选性、所有者和完成口径唯一权威        | 正式 V1   |
-| [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)         | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏) | 候选 v0.4 |
-| [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)       | 状态码 8 + 合法转换参考；权威见 GC-002                     | 候选 v0.5 |
-| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)             | 已出运列表导入/预检/审核/对账(P2-03)                       | 候选 v0.5 |
-| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                   | 逻辑库图纸 + 事件/来源/可靠提交关系占位                    | 候选 v0.5 |
+| 文档                                                                     | 一句话                                                                                                       | 状态       |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ---------- |
+| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                             | 当前/未来上下文边界与聚合(P2-01)                                                                             | 候选 v0.5  |
+| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)       | 已出运数据起点/上游演进/箱单关系                                                                             | 候选 v0.4  |
+| [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)             | 14 节点全生命周期(P2 对象表)                                                                                 | 候选 v0.4  |
+| [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md) | 14 流程节点代码、顺序、可选性、所有者和完成口径唯一权威                                                      | 正式 V1    |
+| [LIFECYCLE_NODE_IO_CATALOG](product/domain/LIFECYCLE_NODE_IO_CATALOG.md) | 14 流程节点「一站一张填空表」查阅入口；§2.1 锁定到港/提柜/送仓/卸柜/还箱的计划与实际、ETA、最晚提柜日/还箱日 | 完整性规划 |
+| [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)         | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4  |
+| [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)       | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5  |
+| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)             | 已出运列表导入/预检/审核/对账(P2-03)                                                                         | 候选 v0.5  |
+| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                   | 逻辑库图纸 + 事件/来源/可靠提交关系占位                                                                      | 候选 v0.5  |
 
 ### 5.2 清单/字典族（可落 Seed/契约）
 
@@ -77,7 +80,7 @@
 | [MARKER_CATALOG](product/domain/MARKER_CATALOG.md)                                               | 货柜标记字典                                                               | 候选      |
 | [ERROR_CODES_CATALOG](product/domain/ERROR_CODES_CATALOG.md)                                     | 旧候选错误码兼容导航，权威已迁移至 GC-011                                  | 已取代    |
 | [CONTRACTS_DRAFT](product/domain/CONTRACTS_DRAFT.md)                                             | P2-08/09 历史草案；正式契约已拆分至 GC-003/005–011                         | 已取代    |
-| [NODE_TIME_FIELDS](product/domain/NODE_TIME_FIELDS.md)                                           | 14 节点 planned/actual 字段                                                | 候选      |
+| [NODE_TIME_FIELDS](product/domain/NODE_TIME_FIELDS.md)                                           | 14 节点计划/实际字段草案；ETA 与 STA 分列；最晚提柜/还箱日是计算截止       | 候选      |
 | [PRECHECK_RULES](product/domain/PRECHECK_RULES.md)                                               | 预检/校验规则行 17                                                         | 候选      |
 | [FIVE_PARTY_CODES](product/domain/FIVE_PARTY_CODES.md)                                           | 五主体扣留/放行/查验码                                                     | 候选      |
 | [FEE_DEMURRAGE](product/domain/FEE_DEMURRAGE.md)                                                 | 超期费用三类型分开(P8):起算/免费期/阶梯/日历/账单权威 + 预计·应计·账单分轨 | 候选 v0.3 |
@@ -119,11 +122,17 @@
 | 文档                                                                                           | 一句话                                                               | 状态                        |
 | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------- |
 | [启动清单](./planning/PROJECT_BOOTSTRAP_CHECKLIST.md)                                          | P0–P9 推进主线                                                       | 进行中                      |
+| [代码怎么往前推（人话）](./planning/PROJECT_BOOTSTRAP_PLAIN_LANGUAGE.md)                       | 用白话说明启动清单：阶段门禁 ≠ 货柜 14 站                            | 人话对照                    |
 | [RAID](./planning/RAID.md)                                                                     | 风险/假设/问题/依赖                                                  | 跟踪                        |
 | [P2 一页总览](./planning/P2_SLICE1_SUMMARY.md)                                                 | 本批摘要(对外)                                                       | 候选                        |
 | [节点资源约束拆解表](./planning/RESOURCE_CONSTRAINT_DECOMPOSITION.md)                          | 14 节点共用的资源/门槛/约满比价工作纸；送仓+卸柜为样例               | 候选工作纸                  |
-| [收资源约束工作纸](./planning/tasks/p6-resource-constraint-worksheet.md)                       | 把候选工作纸收入规划目录，不建产能模块                               | review                      |
+| [收资源约束工作纸](./planning/tasks/p6-resource-constraint-worksheet.md)                       | 把候选工作纸收入规划目录，不建产能模块                               | 已完成                      |
 | [提送卸还联立计划引擎](./planning/INLAND_FOUR_NODE_PLANNING_ENGINE.md)                         | 以 ETA 正排并倒推清关必完日；能配的一律参数或策略，拒绝硬编码        | 候选规划                    |
+| [内陆计划第一刀](./planning/tasks/p6-inland-plan-first-slice.md)                               | 按配置起草提送卸还；缺配置失败，不硬编码                             | blocked                     |
+| [超期截止日](./planning/tasks/p6-overdue-lfd-deadlines.md)                                     | 按标准算最晚提柜/还箱日；计划只读，不算钱                            | blocked                     |
+| [超期预计应计](./planning/tasks/p6-overdue-accrual.md)                                         | 同一核按阶梯逐日求和；预计/应计只换钟，不算进账单                    | blocked                     |
+| [作业壳人话第一刀](./planning/tasks/p6-ui-copy-plain-language.md)                              | 任务五问 + 现场用词落到作业壳                                        | blocked                     |
+| [14流程节点填空表](./planning/tasks/p6-lifecycle-node-io-catalog.md)                           | 一站一张作业表：正式口径 + 行业完整性规划                            | coding                      |
 | [任务 brief](./planning/tasks/p2-shipment-import-domain.md)                                    | P2 切片一交接单                                                      | 已完成                      |
 | [P3-01 主分支保护](./planning/tasks/p3-01-branch-protection.md)                                | CODEOWNERS + main 禁止强推，合入须 PR 与 quality                     | 已完成                      |
 | [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                     | 上传→预检→写端口→对账的首个可写库闭环                                | design                      |

@@ -48,8 +48,8 @@ describe("liveWorkspaceProjection", () => {
     expect(row.eta).toBe("");
     expect(row.rail).toEqual([]);
     expect(row.currentNode).toBe("");
-    expect(row.taskStatus.label).toBe("无投影");
-    expect(row.syncStatus.label).toBe("无投影");
+    expect(row.taskStatus.label).toBe("");
+    expect(row.syncStatus.label).toBe("");
   });
 
   it("只把未完成任务挂到对应货柜，不把已完成当成待办", () => {
@@ -65,7 +65,7 @@ describe("liveWorkspaceProjection", () => {
         },
       ],
     );
-    expect(rows[0]?.taskStatus.label).toBe("装箱定稿 · 进行中");
+    expect(rows[0]?.taskStatus.label).toBe("装箱完成 · 进行中");
     expect(rows[0]?.taskStatus.code).toBe("in_progress");
     expect(
       attachOpenTasks([toLiveContainer(container)], []).map(
@@ -114,10 +114,7 @@ describe("liveWorkspaceProjection", () => {
         },
       ],
     );
-    expect(rows[0]?.rail.map((node) => node.name)).toEqual([
-      "备货就绪",
-      "出运",
-    ]);
+    expect(rows[0]?.rail.map((node) => node.name)).toEqual(["备货", "出运"]);
     expect(rows[0]?.rail[1]?.isCurrentStatus).toBe(true);
     expect(
       rows[0]?.rail.every((node) => !node.planned && !node.estimated),
@@ -170,5 +167,36 @@ describe("liveWorkspaceProjection", () => {
     expect(task.actions.every((action) => action.intent !== "claim")).toBe(
       true,
     );
+    expect(task.evidenceRequirements).toEqual([
+      expect.objectContaining({
+        required: false,
+        kind: "scan",
+        label: "单证编号（可选）",
+      }),
+    ]);
+  });
+
+  it("装箱已领后单证为必填", () => {
+    const task = toLiveTask(
+      {
+        ...detail,
+        nodeCode: "container_stuffing",
+        workOrders: [
+          {
+            ...detail.workOrders[0]!,
+            assignmentState: "assigned",
+            assigneeId: "dev-operator",
+          },
+        ],
+      },
+      container,
+    );
+    expect(task.evidenceRequirements).toEqual([
+      expect.objectContaining({
+        required: true,
+        kind: "scan",
+        label: "单证编号",
+      }),
+    ]);
   });
 });

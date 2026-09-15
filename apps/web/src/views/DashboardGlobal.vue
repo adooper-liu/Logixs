@@ -5,6 +5,7 @@ import KpiSignalStrip from "../components/management/KpiSignalStrip.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useLiveCatalog } from "../composables/useLiveCatalog";
 import { createWorkspaceOverviewSignals } from "../data/kpiProjection";
+import { uiCopy } from "../data/uiCopyCatalog";
 
 const { containers, loading, error, syncReady, reload } = useLiveCatalog();
 
@@ -21,7 +22,7 @@ const signals = computed(() =>
 
 <template>
   <div class="dashboard page-frame">
-    <PageHeader title="货柜" summary="当前租户已经记下的货柜。">
+    <PageHeader title="货柜" :summary="uiCopy.chrome.containersSummary">
       <template #actions>
         <router-link class="page-link" to="/containers">
           去干活

@@ -1,8 +1,9 @@
 import type { CompleteWorkOrderResult } from "../api/nodeTasks";
 import type { SubmissionView } from "./sample";
+import { uiCopy } from "./uiCopyCatalog";
 
 export const COMPLETE_WORK_ORDER_ACTION = "work_execution.complete_work_order";
-export const COMPLETE_WORK_ORDER_LABEL = "完成工单";
+export const COMPLETE_WORK_ORDER_LABEL = uiCopy.action.complete;
 
 const COMPLETABLE_WORK_ORDER_STATES = new Set([
   "ready",
@@ -48,7 +49,7 @@ export function toSendingSubmission(
     taskId,
     actionCode,
     stage: "sending",
-    message: "正在提交…",
+    message: uiCopy.receipt.sending,
   };
 }
 
@@ -75,8 +76,8 @@ export function toCompleteSubmission(input: {
       committedAt: observedAt,
       message:
         result.lifecycleApply === "rejected"
-          ? "已落账；生命周期申请未成功"
-          : "已落账",
+          ? uiCopy.outcome.committedNodeHeld
+          : uiCopy.outcome.committed,
     };
   }
 
@@ -101,7 +102,7 @@ export function toCompleteSubmission(input: {
       stage: "accepted",
       receivedAt: observedAt,
       acceptedAt: observedAt,
-      message: "业务已接受",
+      message: uiCopy.receipt.accepted,
     };
   }
 
@@ -109,7 +110,7 @@ export function toCompleteSubmission(input: {
     ...base,
     stage: "received",
     receivedAt: observedAt,
-    message: "服务器已收到",
+    message: uiCopy.receipt.received,
   };
 }
 
@@ -124,7 +125,10 @@ export function toFailedSubmission(input: {
     actionCode: input.actionCode ?? COMPLETE_WORK_ORDER_ACTION,
     stage: "rejected",
     errorCode,
-    message: input.message,
+    message:
+      errorCode === "EVIDENCE_REQUIRED"
+        ? uiCopy.error.evidenceRequired
+        : input.message,
     canRetry: !BUSINESS_NO_RETRY.has(errorCode),
   };
 }

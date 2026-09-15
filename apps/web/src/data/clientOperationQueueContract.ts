@@ -3,6 +3,7 @@ import type {
   CompensationItem,
 } from "../api/clientOperations";
 import type { ContainerProjection, StatusView, Tone } from "./sample";
+import { uiCopy } from "./uiCopyCatalog";
 
 export const OPERATION_FORBIDDEN_RENDER_KEYS = [
   "requestHash",
@@ -14,39 +15,21 @@ export const OPERATION_FORBIDDEN_RENDER_KEYS = [
   "password",
 ] as const;
 
-const RECEPTION_LABELS: Record<string, string> = {
-  pending: "待接收",
-  received: "已收到",
-  duplicate: "重复",
-  boundary_rejected: "边界拒绝",
-};
+const RECEPTION_LABELS: Record<string, string> = { ...uiCopy.reception };
 
-const DECISION_LABELS: Record<string, string> = {
-  pending: "待裁决",
-  accepted: "已接受",
-  rejected: "已拒绝",
-};
+const DECISION_LABELS: Record<string, string> = { ...uiCopy.decision };
 
-const COMMIT_LABELS: Record<string, string> = {
-  pending: "待落账",
-  committed: "已落账",
-  commit_failed: "落账失败",
-};
+const COMMIT_LABELS: Record<string, string> = { ...uiCopy.commit };
 
 const ACTION_LABELS: Record<string, string> = {
-  "lifecycle.apply_event": "申请生命周期事件",
-  "work_execution.complete_work_order": "完成工单",
-  "work_execution.claim_work_order": "领取工单",
-  "lifecycle.compensate_apply_event": "补偿申请事件",
+  "lifecycle.apply_event": uiCopy.action.applyEvent,
+  "work_execution.complete_work_order": uiCopy.action.complete,
+  "work_execution.claim_work_order": uiCopy.action.claimWorkOrder,
+  "lifecycle.compensate_apply_event": uiCopy.action.compensate,
 };
 
 const COMPENSATION_STATE_LABELS: Record<string, string> = {
-  not_required: "不需要",
-  pending: "待处理",
-  in_progress: "处理中",
-  compensated: "已补偿",
-  failed: "失败",
-  manual_review: "人工复核",
+  ...uiCopy.compensation,
 };
 
 export interface ClientOperationRow {
@@ -151,7 +134,7 @@ export function toContainerSyncStatus(item: ClientOperationItem): StatusView {
     } else if (item.businessDecisionState === "rejected") {
       label = DECISION_LABELS.rejected;
     } else if (item.receptionState === "received") {
-      label = "已收到，待落账";
+      label = uiCopy.sync.receivedPending;
     }
   }
   const tone: Tone =

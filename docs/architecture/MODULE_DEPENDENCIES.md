@@ -23,7 +23,7 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 
 ## 2. 业务 API 内部模块（apps/api）
 
-依赖方向固定 `Controller → Application Use Case → Domain ← Infrastructure`。
+依赖方向固定 `Controller → Application Use Case → Domain / Engine ← Infrastructure`。
 
 ```text
 核心：shipment-registry  lifecycle-control  work-execution  booking-origin
@@ -33,15 +33,16 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
       notification  audit  workflow  ai-governance
 ```
 
-| 规则           | 说明                                                                          |
-| -------------- | ----------------------------------------------------------------------------- |
-| 公共入口       | 每个模块只从公开入口（模块 `index`）导出；内部文件默认私有                    |
-| 跨模块         | 只经 `packages/contracts`、领域事件与 Domain 能力，禁止 import 他模块内部路径 |
-| Domain         | 纯业务规则，不依赖 NestJS/Prisma                                              |
-| Infrastructure | 实现 Port/Adapter，被本模块 Domain/Application 反转依赖                       |
-| ai-governance  | 只被 AI Gateway/治理面引用，业务模块不得绕过                                  |
-| workflow       | 启动/查询/取消 Temporal 的唯一代理，其余模块经它                              |
-| audit          | 写操作审计的公共服务，供各模块调用                                            |
+| 规则           | 说明                                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 公共入口       | 每个模块只从公开入口（模块 `index`）导出；内部文件默认私有                                                            |
+| 跨模块         | 只经 `packages/contracts`、领域事件与 Domain 能力，禁止 import 他模块内部路径                                         |
+| Domain         | 纯业务规则，不依赖 NestJS/Prisma                                                                                      |
+| Engine         | 模块内 `engines/<name>`：一事一核纯求值；禁止 Nest/Prisma；引擎之间不得互调；他模块不得 import 引擎路径，只问公开端口 |
+| Infrastructure | 实现 Port/Adapter，被本模块 Domain/Application 反转依赖                                                               |
+| ai-governance  | 只被 AI Gateway/治理面引用，业务模块不得绕过                                                                          |
+| workflow       | 启动/查询/取消 Temporal 的唯一代理，其余模块经它                                                                      |
+| audit          | 写操作审计的公共服务，供各模块调用                                                                                    |
 
 ### 2.1 所有权和调用方向
 

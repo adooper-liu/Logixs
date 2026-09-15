@@ -1,8 +1,9 @@
 import type { ClaimWorkOrderResult } from "../api/nodeTasks";
 import type { SubmissionView } from "./sample";
+import { uiCopy } from "./uiCopyCatalog";
 
 export const CLAIM_WORK_ORDER_ACTION = "work_execution.claim_work_order";
-export const CLAIM_WORK_ORDER_LABEL = "领取";
+export const CLAIM_WORK_ORDER_LABEL = uiCopy.action.claim;
 
 const CLAIMABLE_ASSIGNMENT = new Set(["unassigned", "pool"]);
 const CLAIMABLE_STATE = new Set(["ready", "reopened", "in_progress"]);
@@ -44,7 +45,7 @@ export function toClaimSubmission(input: {
       receivedAt: observedAt,
       acceptedAt: observedAt,
       committedAt: observedAt,
-      message: "已领取",
+      message: uiCopy.outcome.claimed,
     };
   }
 
@@ -67,6 +68,6 @@ export function toClaimSubmission(input: {
     ...base,
     stage: "received",
     receivedAt: observedAt,
-    message: "服务器已收到",
+    message: uiCopy.receipt.received,
   };
 }

@@ -5,6 +5,7 @@ import {
   listContainers,
   type ContainerSummary,
 } from "../api/containers";
+import { resolveCompleteEvidenceRefs } from "../api/evidence";
 import {
   claimWorkOrder,
   completeWorkOrder,
@@ -16,7 +17,6 @@ import {
   toClaimSubmission,
 } from "../data/claimReceiptContract";
 import {
-  parseEvidenceInput,
   toCompleteSubmission,
   toFailedSubmission,
   toSendingSubmission,
@@ -33,6 +33,7 @@ import type {
   TaskAction,
   TaskItem,
 } from "../data/sample";
+import { uiCopy } from "../data/uiCopyCatalog";
 
 const idleSubmission = (taskId: string): SubmissionView => ({
   taskId,
@@ -89,7 +90,15 @@ export function useLiveWorkspace() {
     const task = activeTask.value;
     if (!task || isSubmitting.value) return false;
     if (["blocked", "completed"].includes(task.status)) return false;
-    return task.actions.some((action) => action.intent === "complete");
+    if (!task.actions.some((action) => action.intent === "complete")) {
+      return false;
+    }
+    return task.evidenceRequirements
+      .filter((item) => item.required)
+      .every(
+        (item) =>
+          item.state === "verified" && Boolean(item.capturedValue?.trim()),
+      );
   });
 
   const taskQuery = (cursor?: string | null) => ({
@@ -257,8 +266,13 @@ export function useLiveWorkspace() {
         return;
       }
       const evidence = task.evidenceRequirements[0]?.capturedValue ?? "";
+      const evidenceRefs = await resolveCompleteEvidenceRefs({
+        nodeCode: task.nodeKey,
+        containerId: task.containerRecordId,
+        raw: evidence,
+      });
       const result = await completeWorkOrder(workOrderId, {
-        evidenceRefs: parseEvidenceInput(evidence),
+        evidenceRefs,
         idempotencyKey: nextIdempotencyKey(workOrderId, reuse),
       });
       const submission = toCompleteSubmission({
@@ -282,8 +296,8 @@ export function useLiveWorkspace() {
             cause instanceof Error
               ? cause.message
               : claimId
-                ? "领取工单失败"
-                : "完成工单失败",
+                ? uiCopy.chrome.claimFailed
+                : uiCopy.chrome.completeFailed,
           actionCode: claimId ? CLAIM_WORK_ORDER_ACTION : undefined,
         }),
       };

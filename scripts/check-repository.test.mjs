@@ -370,3 +370,59 @@ test("rejects web, package, AI, vendor, and Temporal boundary leaks", () => {
     ],
   );
 });
+
+test("keeps engines pure and isolated from each other", () => {
+  assert.deepEqual(
+    findArchitectureBoundaryViolations([
+      {
+        path: "apps/api/src/modules/inland-fulfillment/application/draft-inland-plan.service.ts",
+        source:
+          'import { draftInlandPlan } from "../engines/inland-plan";\nimport { evaluateDailySlots } from "../engines/occupancy-slot";\nimport { COMPUTE_OVERDUE_DEADLINES } from "../../charges-settlement";',
+      },
+      {
+        path: "apps/api/src/modules/charges-settlement/application/compute-overdue-accrual.service.ts",
+        source:
+          'import { applyFreePeriod } from "../engines/overdue-deadlines";\nimport { computeOverdueAccrual } from "../engines/overdue-accrual";',
+      },
+      {
+        path: "apps/api/src/modules/charges-settlement/engines/overdue-deadlines/compute-overdue-deadlines.ts",
+        source: 'import { applyFreePeriod } from "./apply-free-period";',
+      },
+    ]),
+    [],
+  );
+
+  assert.deepEqual(
+    findArchitectureBoundaryViolations([
+      {
+        path: "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts",
+        source: 'import { Injectable } from "@nestjs/common";',
+      },
+      {
+        path: "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts",
+        source:
+          'import { computeOverdueDeadlines } from "../../../charges-settlement/engines/overdue-deadlines";',
+      },
+      {
+        path: "apps/api/src/modules/charges-settlement/engines/overdue-accrual/compute-overdue-accrual.ts",
+        source: 'import { applyFreePeriod } from "../overdue-deadlines";',
+      },
+      {
+        path: "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts",
+        source: 'import { evaluateDailySlots } from "../occupancy-slot";',
+      },
+      {
+        path: "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts",
+        source:
+          'import { COMPUTE_OVERDUE_DEADLINES } from "../../../charges-settlement";',
+      },
+    ]),
+    [
+      "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts: engine cannot import web or application frameworks '@nestjs/common'",
+      "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts: engines cannot import other engines; the use case orchestrates '../../../charges-settlement/engines/overdue-deadlines'",
+      "apps/api/src/modules/charges-settlement/engines/overdue-accrual/compute-overdue-accrual.ts: engines cannot import other engines; the use case orchestrates '../overdue-deadlines'",
+      "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts: engines cannot import other engines; the use case orchestrates '../occupancy-slot'",
+      "apps/api/src/modules/inland-fulfillment/engines/inland-plan/draft-inland-plan.ts: engines cannot import other modules; the use case orchestrates '../../../charges-settlement'",
+    ],
+  );
+});

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, CircleDot, ShieldAlert } from "@lucide/vue";
 import { computed } from "vue";
+import { uiCopy } from "../../data/uiCopyCatalog";
 import type { WorkNode } from "../../data/sample";
 import type { DisplayFieldSet } from "../ui/displayFieldContract";
 import DynamicFieldPanel from "../ui/DynamicFieldPanel.vue";
@@ -70,7 +71,7 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
       <router-link v-if="linkedTaskId" :to="'/tasks?task=' + linkedTaskId">
         进入关联任务<ArrowRight :size="15" aria-hidden="true" />
       </router-link>
-      <span v-else class="read-only">当前节点无可执行任务</span>
+      <span v-else class="read-only">{{ uiCopy.chrome.emptyNodeTask }}</span>
     </div>
   </section>
 </template>

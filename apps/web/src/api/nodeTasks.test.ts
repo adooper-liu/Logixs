@@ -119,4 +119,20 @@ describe("completeWorkOrder", () => {
     expect(String(init.body)).not.toContain("payload");
     expect(String(init.body)).not.toContain("service-key");
   });
+
+  it("422 JSON 只抽出业务说明", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      text: async () =>
+        JSON.stringify({
+          statusCode: 422,
+          message: "EVIDENCE_REQUIRED: 缺少合格证据",
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(completeWorkOrder("w1")).rejects.toThrow(
+      "完成工单失败（422）：EVIDENCE_REQUIRED: 缺少合格证据",
+    );
+  });
 });

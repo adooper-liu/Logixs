@@ -125,7 +125,7 @@ describe("MicroWorkbench", () => {
     expect(listClientOperations).toHaveBeenCalledWith({ pageSize: 200 });
     expect(wrapper.text()).toContain("MSKU1");
     expect(wrapper.text()).not.toContain("无投影");
-    expect(wrapper.text()).toContain("这一柜还没有流程。");
+    expect(wrapper.text()).toContain("本柜尚未开始流程。");
     expect(wrapper.text()).not.toContain("待发生");
     expect(wrapper.get("a").attributes("href")).toBe("/tasks?containerId=c1");
   });
@@ -160,10 +160,10 @@ describe("MicroWorkbench", () => {
       projectionVersion: 0,
     });
     const wrapper = await mountPage("c1");
-    expect(wrapper.text()).toContain("备货就绪");
+    expect(wrapper.text()).toContain("备货");
     expect(wrapper.text()).toContain("进行中");
-    expect(wrapper.text()).toContain("这一柜还没有事件记录。");
-    expect(wrapper.text()).not.toContain("这一柜还没有流程。");
+    expect(wrapper.text()).toContain("本柜尚无操作记录。");
+    expect(wrapper.text()).not.toContain("本柜尚未开始流程。");
     expect(wrapper.text()).not.toContain("待发生");
     expect(wrapper.text()).not.toContain("海运在途");
   });
@@ -195,7 +195,7 @@ describe("MicroWorkbench", () => {
     expect(wrapper.text()).toContain("离港/离站");
     expect(wrapper.text()).toContain("去做这柜的任务");
     expect(wrapper.text()).not.toContain("这一柜还没有节点记录。");
-    expect(wrapper.text()).toContain("这一柜还没有流程。");
+    expect(wrapper.text()).toContain("本柜尚未开始流程。");
     expect(wrapper.text()).not.toContain("最近操作已落账");
     expect(wrapper.text()).not.toContain("已落账");
   });
@@ -247,8 +247,8 @@ describe("MicroWorkbench", () => {
       projectionVersion: 0,
     });
     const shown = await mountPage("c1");
-    expect(shown.text()).toContain("装箱定稿 · 进行中");
-    expect(shown.text()).toContain("已落账");
+    expect(shown.text()).toContain("装箱完成 · 进行中");
+    expect(shown.text()).toContain("已入账");
     expect(shown.text()).not.toContain("无投影");
     shown.unmount();
 
@@ -256,8 +256,8 @@ describe("MicroWorkbench", () => {
     listClientOperations.mockRejectedValue(new Error("列同步操作失败"));
     const failed = await mountPage("c1");
     expect(failed.text()).toContain("MSKU1");
-    expect(failed.text()).not.toContain("装箱定稿");
-    expect(failed.text()).not.toContain("已落账");
+    expect(failed.text()).not.toContain("装箱完成");
+    expect(failed.text()).not.toContain("已入账");
     expect(failed.text()).not.toContain("无投影");
     expect(failed.text()).not.toContain("加载失败");
   });

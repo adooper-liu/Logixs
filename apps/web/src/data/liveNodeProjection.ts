@@ -1,5 +1,5 @@
 import type { LifecycleNodeItem } from "../api/lifecycleNodes";
-import { NODE_CODE_LABELS } from "./liveWorkspaceProjection";
+import { nodeScreenName } from "./uiCopyCatalog";
 
 export interface LiveNodeView {
   nodeInstanceId: string;
@@ -23,7 +23,7 @@ export function toLiveNode(item: LifecycleNodeItem): LiveNodeView {
     nodeInstanceId: item.nodeInstanceId,
     nodeCode: item.nodeCode,
     sequence: item.sequence,
-    name: NODE_CODE_LABELS[item.nodeCode] ?? item.nodeCode,
+    name: nodeScreenName(item.nodeCode),
     stateLabel: notApplicable
       ? "不适用"
       : (NODE_STATE_LABELS[item.state] ?? item.state),
