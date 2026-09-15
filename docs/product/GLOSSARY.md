@@ -1,6 +1,6 @@
 # 统一业务词汇表（P0-05）
 
-> 状态：**已确认（初版基线）** · v0.1.7 · 2026-09-10 · **P2 增补 §5（口径以权威原则与 domain/ 文档为准）**。词汇表是跨团队沟通的单一真相；本表指明权威定义位置与负责人（负责人按 [RAID](../planning/RAID.md) 占位跟踪），任何人不得在代码/文档中另起口径。
+> 状态：**已确认（初版基线）** · v0.1.10 · 2026-09-15 · **P2 增补 §5（口径以权威原则与 domain/ 文档为准）**。词汇表是跨团队沟通的单一真相；本表指明权威定义位置与负责人（负责人按 [RAID](../planning/RAID.md) 占位跟踪），任何人不得在代码/文档中另起口径。集合名「14流程节点」与「主流程节点」同义。
 
 ## 1. 导入与数据
 
@@ -68,7 +68,11 @@
 | 工序子任务                      | 主流程进入节点后激活，聚合一张或多张作业工单                                                                        | [PRINCIPLES](./PRINCIPLES.md) §1.1；NODE_PDCA                                                                                                           |
 | 作业工单                        | 工序任务内部按责任、事务或独立验收结果拆出的执行单元                                                                | [PRINCIPLES](./PRINCIPLES.md) §1.1；NODE_PDCA                                                                                                           |
 | 管理维度                        | 对节点、工序任务、工单与动作进行聚合、比较和下钻的管理视角                                                          | [PRINCIPLES](./PRINCIPLES.md) §1.2                                                                                                                      |
-| 主流程节点                      | 从备货到还箱的14道顺序工序                                                                                          | [PRINCIPLES](./PRINCIPLES.md) §1.2；LIFECYCLE_CONSISTENCY                                                                                               |
+| 14流程节点 / 主流程节点         | 货柜主管道上从备货到还箱的 14 个顺序节点，与屏幕「站」一一对应；集合名称统一叫 **14流程节点**。码是 `LifecycleNodeCode`，单站屏幕名仍用装箱、提柜等短名。不是货柜 8 态，也不是 22 个运营环节，更不是工单。中转港、海铁两站在这 14 个之内，但是可选。每站交什么、记下什么查 [LIFECYCLE_NODE_IO_CATALOG](./domain/LIFECYCLE_NODE_IO_CATALOG.md)。 | [LIFECYCLE_NODE_CATALOG_V1](./domain/LIFECYCLE_NODE_CATALOG_V1.md)（唯一枚举权威）；[PRINCIPLES](./PRINCIPLES.md) §1.2 称「主流程节点」，同义 |
+| 过站                            | 把当前这一站做成完成（节点实例 `active` → `completed`）。做成之后，同一事务里通常跳过不适用的可选站并打开下一站；还箱过站后没有下一站，整条流程结束。过站不等于货柜 8 态翻页（例如送仓过了仍可能是已提柜）。有完成资格的发生记录仍须通过本站守卫，才算已经过站。计划、ETA、最晚提柜日/还箱日、点按钮、同步成功、工单做完，都不能单独过站。口语「过了这一站」≈「可以进下一站」，精确说法是先完成本站，再打开下一站。 | [GC-002](./domain/CONTAINER_LIFECYCLE_STATE_MACHINE_CONTRACT_V1.md)（完成节点 / 进入下一节点）；填空表释义备注 [LIFECYCLE_NODE_IO_CATALOG](./domain/LIFECYCLE_NODE_IO_CATALOG.md) §1.1 |
+| ETA（预计到港）                 | 预计抵达目的港的滚动时间，`timeKind = estimated`。挂海运滚动槽和到港站当前预计。不能当实际到港，也不能当最晚提柜日。送仓的预计到仓不叫 ETA。 | [GC-004](./domain/CONTAINER_LIFECYCLE_TIMELINE_CONTRACT_V1.md) §5；填空表 [LIFECYCLE_NODE_IO_CATALOG](./domain/LIFECYCLE_NODE_IO_CATALOG.md) §2.1 |
+| 最晚提柜日                      | 按超期费用标准算出的提柜 Last Free Day，是计算截止日，不是计划提柜，也不能过站。缺标准必须显式失败。 | [FEE_DEMURRAGE](./domain/FEE_DEMURRAGE.md)；填空表挂提柜站 |
+| 最晚还箱日                      | 按超期费用标准算出的还箱 Last Free Day，是计算截止日，不是计划还箱，也不能过站。 | 同上；填空表挂还箱站 |
 | 作业动作                        | 人员或系统在具体工单内执行的动作，形成记录、数据、证据和同步回执                                                    | [PRINCIPLES](./PRINCIPLES.md) §1.1/§1.2；ACTION_CATALOG                                                                                                 |
 | 管理映射                        | 管理维度 × 主流程节点 × 工序任务/工单/动作的关联模型                                                                | [PRINCIPLES](./PRINCIPLES.md) §1.2                                                                                                                      |
 | 节点七组 SOP                    | 节点设计的完整性检查框架；不等于七张表、七个对象或七个固定页签，运行时与 UI 按适用性、角色和场景裁剪                | [PRINCIPLES](./PRINCIPLES.md) §1.6；清关实例见 [CUSTOMS_OPERATION_CHAINS](./workflows/CUSTOMS_OPERATION_CHAINS.md) / [NODE_PDCA](./domain/NODE_PDCA.md) |
