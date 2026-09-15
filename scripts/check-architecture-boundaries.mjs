@@ -62,6 +62,7 @@ const isPythonFile = (path) => path.endsWith(".py");
 const hasPathSegment = (path, segment) => path.split("/").includes(segment);
 
 const layerOf = (path) => {
+  if (hasPathSegment(path, "engines")) return "engine";
   if (hasPathSegment(path, "domain")) return "domain";
   if (hasPathSegment(path, "infrastructure")) return "infrastructure";
   if (hasPathSegment(path, "application")) return "application";
@@ -71,6 +72,11 @@ const layerOf = (path) => {
   if (path.endsWith(".module.ts")) return "composition";
   if (/^apps\/api\/src\/modules\/[^/]+\/index\.ts$/.test(path)) return "facade";
   return "other";
+};
+
+const engineNameOf = (path) => {
+  const match = normalizePath(path).match(/\/engines\/([^/]+)(?:\/|$)/);
+  return match ? match[1] : null;
 };
 
 const apiModuleOf = (path) => {
@@ -194,14 +200,14 @@ function collectPackageViolations(path, specifier) {
   }
 
   if (
-    layer === "domain" &&
+    (layer === "domain" || layer === "engine") &&
     (isNestjs(specifier) || matchesAnyPackage(specifier, FRAMEWORK_PACKAGES))
   ) {
     errors.push(
       report(
         path,
         specifier,
-        "domain cannot import web or application frameworks",
+        `${layer} cannot import web or application frameworks`,
       ),
     );
   }
@@ -253,14 +259,14 @@ function collectPackageViolations(path, specifier) {
 
   if (
     moduleInfo &&
-    layer === "domain" &&
+    (layer === "domain" || layer === "engine") &&
     (matchesAnyPackage(specifier, PRISMA_PACKAGES) || isTemporal(specifier))
   ) {
     errors.push(
       report(
         path,
         specifier,
-        "domain cannot import persistence or workflow runtimes",
+        `${layer} cannot import persistence or workflow runtimes`,
       ),
     );
   }
@@ -351,6 +357,35 @@ function collectPathViolations(path, specifier, resolved) {
 
   if (!importerModule || !targetModule) return errors;
   if (importerModule.module === targetModule.module) {
+    if (layer === "engine") {
+      if (
+        hasPathSegment(resolved, "infrastructure") ||
+        hasPathSegment(resolved, "application") ||
+        hasPathSegment(resolved, "presentation") ||
+        hasPathSegment(resolved, "domain") ||
+        resolved.endsWith(".module.ts") ||
+        resolved.endsWith(".controller.ts")
+      ) {
+        errors.push(
+          report(
+            path,
+            specifier,
+            "engines cannot depend on application, presentation, domain ports, or infrastructure",
+          ),
+        );
+      }
+      const fromEngine = engineNameOf(path);
+      const toEngine = engineNameOf(resolved);
+      if (fromEngine && toEngine && fromEngine !== toEngine) {
+        errors.push(
+          report(
+            path,
+            specifier,
+            "engines cannot import other engines; the use case orchestrates",
+          ),
+        );
+      }
+    }
     if (
       layer === "domain" &&
       (hasPathSegment(resolved, "infrastructure") ||
@@ -375,6 +410,14 @@ function collectPathViolations(path, specifier, resolved) {
       errors.push(
         report(path, specifier, "domain cannot import other modules"),
       );
+    } else if (layer === "engine") {
+      errors.push(
+        report(
+          path,
+          specifier,
+          "engines cannot import other modules; the use case orchestrates",
+        ),
+      );
     } else if (layer === "presentation") {
       errors.push(
         report(
@@ -392,6 +435,17 @@ function collectPathViolations(path, specifier, resolved) {
         ),
       );
     }
+    return errors;
+  }
+
+  if (layer === "engine" && engineNameOf(resolved)) {
+    errors.push(
+      report(
+        path,
+        specifier,
+        "engines cannot import other engines; the use case orchestrates",
+      ),
+    );
     return errors;
   }
 
