@@ -37,4 +37,23 @@ describe("navigationForRole", () => {
       ),
     ).toEqual(expect.arrayContaining(["我的任务", "干活"]));
   });
+
+  it("shows one import entry to every demo role after the work list", () => {
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      const importItems = items.filter((item) =>
+        item.path.startsWith("/import"),
+      );
+
+      expect(importItems).toHaveLength(1);
+      expect(importItems[0]).toMatchObject({
+        label: "导入货柜",
+        path: "/import",
+        section: "作业",
+      });
+      expect(
+        items.findIndex((item) => item.path === "/import"),
+      ).toBeGreaterThan(items.findIndex((item) => item.path === "/containers"));
+    }
+  });
 });
