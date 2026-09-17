@@ -9,3 +9,8 @@ export {
   APPLY_LIFECYCLE_EVENT,
   type ApplyLifecycleEventPort,
 } from "./apply-lifecycle-event.port";
+export { InitializeContainerFlowService } from "./application/initialize-container-flow.service";
+export type {
+  InitializeContainerFlowInput,
+  InitializeContainerFlowResult,
+} from "./application/initialize-container-flow.service";

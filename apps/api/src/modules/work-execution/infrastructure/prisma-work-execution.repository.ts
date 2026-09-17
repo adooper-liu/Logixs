@@ -2,7 +2,10 @@ import { Inject, Injectable } from "@nestjs/common";
 import type {
   AssignmentState,
   LifecycleNodeCode,
+  NodeApplicability,
   NodeTaskState,
+  TaskCompletionEligibility,
+  TaskReadinessState,
   WorkOrderState,
 } from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
@@ -113,10 +116,57 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
     }));
   }
 
-  async createTaskWithRequiredWorkOrder(
+  async upsertTaskWithRequiredWorkOrder(
     input: CreateTaskInput,
   ): Promise<NodeTaskWithWorkOrders> {
     return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.nodeTask.findUnique({
+        where: { nodeInstanceId: input.nodeInstanceId },
+        include: { workOrders: true, outcome: true },
+      });
+      if (existing) {
+        const readinessState =
+          existing.readinessState === "ready" ||
+          input.readinessState === "ready"
+            ? "ready"
+            : "waiting_conditions";
+        const completionEligibility =
+          existing.completionEligibility === "eligible" ||
+          input.completionEligibility === "eligible"
+            ? "eligible"
+            : "awaiting_evidence";
+        const conditionFactRefs = [
+          ...new Set([
+            ...asStringArray(existing.conditionFactRefs),
+            ...input.conditionFactRefs,
+          ]),
+        ];
+        const task = await tx.nodeTask.update({
+          where: { id: existing.id },
+          data: {
+            containerId: input.containerId ?? existing.containerId,
+            applicability: input.applicability,
+            readinessState,
+            completionEligibility,
+            conditionFactRefs,
+          },
+        });
+        if (readinessState === "ready") {
+          await tx.workOrder.updateMany({
+            where: { nodeTaskId: task.id, state: "draft" },
+            data: { state: "ready" },
+          });
+        }
+        const workOrders = await tx.workOrder.findMany({
+          where: { nodeTaskId: task.id },
+        });
+        return {
+          task: mapTask(task),
+          workOrders: workOrders.map(mapWorkOrder),
+          outcome: existing.outcome ? mapOutcome(existing.outcome) : null,
+        };
+      }
+
       const task = await tx.nodeTask.create({
         data: {
           flowInstanceId: input.flowInstanceId,
@@ -125,13 +175,17 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
           containerId: input.containerId,
           taskDefinitionKey: input.taskDefinitionKey,
           state: "pending",
+          applicability: input.applicability,
+          readinessState: input.readinessState,
+          completionEligibility: input.completionEligibility,
+          conditionFactRefs: input.conditionFactRefs,
         },
       });
       const workOrder = await tx.workOrder.create({
         data: {
           nodeTaskId: task.id,
           workOrderDefinitionKey: input.workOrderDefinitionKey,
-          state: "ready",
+          state: input.readinessState === "ready" ? "ready" : "draft",
           assignmentState: "unassigned",
         },
       });
@@ -233,6 +287,10 @@ function mapTask(task: {
   containerId: string | null;
   taskDefinitionKey: string;
   state: string;
+  applicability: string;
+  readinessState: string;
+  completionEligibility: string;
+  conditionFactRefs: unknown;
   createdAt: Date;
 }): NodeTaskRecord {
   return {
@@ -243,6 +301,11 @@ function mapTask(task: {
     containerId: task.containerId,
     taskDefinitionKey: task.taskDefinitionKey,
     state: task.state as NodeTaskState,
+    applicability: task.applicability as NodeApplicability,
+    readinessState: task.readinessState as TaskReadinessState,
+    completionEligibility:
+      task.completionEligibility as TaskCompletionEligibility,
+    conditionFactRefs: asStringArray(task.conditionFactRefs),
     createdAt: task.createdAt,
   };
 }

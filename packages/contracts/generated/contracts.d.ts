@@ -69,6 +69,16 @@ export type ContainerLifecycleState = ("not_shipped" | "shipped" | "in_transit" 
 export type NodeTaskState = ("pending" | "in_progress" | "blocked" | "completed" | "reopened" | "cancelled")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskReadinessState".
+ */
+export type TaskReadinessState = ("waiting_conditions" | "ready")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskCompletionEligibility".
+ */
+export type TaskCompletionEligibility = ("awaiting_evidence" | "eligible")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "WorkOrderState".
  */
 export type WorkOrderState = ("draft" | "ready" | "in_progress" | "blocked" | "completed" | "failed" | "reopened" | "cancelled")
@@ -679,6 +689,10 @@ taskDefinitionKey: string
 taskDefinitionVersion: number
 policySnapshotHash: string
 state: NodeTaskState
+applicability: NodeApplicability
+readinessState: TaskReadinessState
+completionEligibility: TaskCompletionEligibility
+conditionFactRefs: Uuid[]
 ownerRef?: EntityRef
 dueAt?: DateTime
 activeBlockRefs?: Uuid[]
@@ -1150,6 +1164,10 @@ nodeInstanceId: Uuid
 taskDefinitionKey: string
 taskDefinitionVersion: number
 state: NodeTaskState
+applicability: NodeApplicability
+readinessState: TaskReadinessState
+completionEligibility: TaskCompletionEligibility
+conditionFactRefs: Uuid[]
 ownerRef?: EntityRef
 dueAt?: DateTime
 requiredWorkOrderCount: number

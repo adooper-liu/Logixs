@@ -130,6 +130,12 @@ export function toLiveContainer(
 
 function toTaskStatus(detail: NodeTaskDetail): TaskStatusCode {
   if (detail.state === "completed") return "completed";
+  if (
+    detail.applicability === "optional_not_applicable" ||
+    detail.readinessState === "waiting_conditions"
+  ) {
+    return "waiting_external";
+  }
   if (detail.workOrders.some((item) => item.state === "blocked")) {
     return "blocked";
   }
@@ -200,7 +206,8 @@ export function attachOpenTasks(
   for (const detail of details) {
     const containerId = detail.containerId?.trim() ?? "";
     if (!containerId || detail.state === "completed") continue;
-    if (!openByContainer.has(containerId)) {
+    const current = openByContainer.get(containerId);
+    if (!current || taskDisplayRank(detail) < taskDisplayRank(current)) {
       openByContainer.set(containerId, detail);
     }
   }
@@ -218,6 +225,17 @@ export function attachOpenTasks(
       },
     };
   });
+}
+
+function taskDisplayRank(detail: NodeTaskDetail): number {
+  if (
+    detail.applicability !== "optional_not_applicable" &&
+    detail.readinessState === "ready"
+  ) {
+    return 0;
+  }
+  if (detail.applicability !== "optional_not_applicable") return 1;
+  return 2;
 }
 
 function claimableWorkOrders(detail: NodeTaskDetail): WorkOrderSummary[] {

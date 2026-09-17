@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { LifecycleNodeCode, NodeApplicability } from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { defaultApplicability } from "../domain/node-applicability";
+import { NODE_SEQUENCE } from "../domain/node-status";
 import type {
   CanonicalEventListItem,
   CanonicalEventListQuery,
@@ -84,30 +85,31 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
   }
 
   async ensureFlow(containerId: string): Promise<FlowWithNodes> {
-    const existing = await this.prisma.flowInstance.findUnique({
-      where: { containerId },
-      include: { nodes: true },
-    });
-    if (existing) return toFlowWithNodes(existing);
-
-    const flow = await this.prisma.flowInstance.create({
-      data: {
-        containerId,
-        state: "active",
-        currentNodeCode: "cargo_ready",
-        nodes: {
-          create: [
-            {
-              nodeCode: "cargo_ready",
-              state: "active",
-              applicability: "required",
-            },
-          ],
+    return this.prisma.$transaction(async (transaction) => {
+      const flow = await transaction.flowInstance.upsert({
+        where: { containerId },
+        create: {
+          containerId,
+          state: "active",
+          currentNodeCode: "cargo_ready",
         },
-      },
-      include: { nodes: true },
+        update: {},
+      });
+      await transaction.nodeInstance.createMany({
+        data: lifecycleNodeCodes().map((nodeCode) => ({
+          flowInstanceId: flow.id,
+          nodeCode,
+          state: nodeCode === flow.currentNodeCode ? "active" : "pending",
+          applicability: defaultApplicability(nodeCode),
+        })),
+        skipDuplicates: true,
+      });
+      const persisted = await transaction.flowInstance.findUniqueOrThrow({
+        where: { id: flow.id },
+        include: { nodes: true },
+      });
+      return toFlowWithNodes(persisted);
     });
-    return toFlowWithNodes(flow);
   }
 
   async completeNodes(
@@ -371,6 +373,12 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       return { version: flow.version };
     });
   }
+}
+
+function lifecycleNodeCodes(): LifecycleNodeCode[] {
+  return (Object.entries(NODE_SEQUENCE) as [LifecycleNodeCode, number][])
+    .sort((left, right) => left[1] - right[1])
+    .map(([nodeCode]) => nodeCode);
 }
 
 function toFlowWithNodes(flow: {

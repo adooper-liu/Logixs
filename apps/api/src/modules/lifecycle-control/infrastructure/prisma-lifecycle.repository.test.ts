@@ -180,3 +180,46 @@ describe("PrismaLifecycleRepository.listFlowsWithNodes", () => {
     expect(prisma.flowInstance.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe("PrismaLifecycleRepository.ensureFlow", () => {
+  it("首次初始化一次创建完整14节点管道", async () => {
+    const flow = {
+      id: "f1",
+      containerId: "c1",
+      state: "active",
+      currentNodeCode: "cargo_ready",
+      version: 0,
+    };
+    const tx = {
+      flowInstance: {
+        upsert: vi.fn().mockResolvedValue(flow),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ ...flow, nodes: [] }),
+      },
+      nodeInstance: {
+        createMany: vi.fn().mockResolvedValue({ count: 14 }),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) =>
+        fn(tx),
+      ),
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+
+    await repository.ensureFlow("c1");
+
+    expect(tx.nodeInstance.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({ nodeCode: "cargo_ready", state: "active" }),
+        expect.objectContaining({
+          nodeCode: "transshipment",
+          state: "pending",
+          applicability: "optional_applicable",
+        }),
+        expect.objectContaining({ nodeCode: "empty_return", state: "pending" }),
+      ]),
+      skipDuplicates: true,
+    });
+    expect(tx.nodeInstance.createMany.mock.calls[0]?.[0].data).toHaveLength(14);
+  });
+});

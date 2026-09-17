@@ -130,6 +130,10 @@ function toDetail(bundle: NodeTaskWithWorkOrders): NodeTaskDetailDto {
     containerId: bundle.task.containerId,
     taskDefinitionKey: bundle.task.taskDefinitionKey,
     state: bundle.task.state,
+    applicability: bundle.task.applicability,
+    readinessState: bundle.task.readinessState,
+    completionEligibility: bundle.task.completionEligibility,
+    conditionFactRefs: bundle.task.conditionFactRefs,
     workOrders: bundle.workOrders.map((workOrder) => ({
       id: workOrder.id,
       workOrderDefinitionKey: workOrder.workOrderDefinitionKey,

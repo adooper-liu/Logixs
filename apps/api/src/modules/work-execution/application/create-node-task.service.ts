@@ -1,6 +1,8 @@
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import type { LifecycleNodeCode } from "@logix/contracts";
+import type { CreateNodeTaskInput } from "../create-node-task.port";
 import { isLifecycleNodeCode } from "../domain/lifecycle-node-codes";
+import { evaluateTaskConditions } from "../domain/task-conditions";
 
 const ASSERT_CONTAINER_TENANT = Symbol.for("logix.AssertContainerTenant");
 
@@ -12,14 +14,6 @@ import {
   type NodeTaskWithWorkOrders,
   type WorkExecutionRepository,
 } from "../domain/work-execution.repository";
-
-export interface CreateNodeTaskInput {
-  flowInstanceId: string;
-  nodeInstanceId: string;
-  nodeCode: string;
-  containerId?: string;
-  tenantId?: string;
-}
 
 @Injectable()
 export class CreateNodeTaskService {
@@ -44,19 +38,21 @@ export class CreateNodeTaskService {
       );
     }
 
-    const existing = await this.repository.findTaskByNodeInstanceId(
-      input.nodeInstanceId,
-    );
-    if (existing) return existing;
-
     const nodeCode: LifecycleNodeCode = input.nodeCode;
-    return this.repository.createTaskWithRequiredWorkOrder({
+    const conditions = evaluateTaskConditions({
+      nodeCode,
+      isCurrent: input.isCurrent ?? true,
+      facts: input.conditionFacts ?? [],
+    });
+    return this.repository.upsertTaskWithRequiredWorkOrder({
       flowInstanceId: input.flowInstanceId,
       nodeInstanceId: input.nodeInstanceId,
       nodeCode,
       containerId: input.containerId ?? null,
       taskDefinitionKey: `node-${nodeCode}`,
       workOrderDefinitionKey: `wo-${nodeCode}`,
+      applicability: input.applicability ?? "required",
+      ...conditions,
     });
   }
 }

@@ -37,6 +37,10 @@ export class NodeTaskDetailDto {
   @ApiProperty({ nullable: true }) containerId!: string | null;
   @ApiProperty() taskDefinitionKey!: string;
   @ApiProperty() state!: string;
+  @ApiProperty() applicability!: string;
+  @ApiProperty() readinessState!: string;
+  @ApiProperty() completionEligibility!: string;
+  @ApiProperty({ type: [String] }) conditionFactRefs!: string[];
   @ApiProperty({ type: [WorkOrderDto] }) workOrders!: WorkOrderDto[];
   @ApiProperty({ type: NodeTaskOutcomeDto, nullable: true })
   outcome!: NodeTaskOutcomeDto | null;

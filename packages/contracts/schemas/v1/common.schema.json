@@ -120,6 +120,12 @@
         "cancelled"
       ]
     },
+    "TaskReadinessState": {
+      "enum": ["waiting_conditions", "ready"]
+    },
+    "TaskCompletionEligibility": {
+      "enum": ["awaiting_evidence", "eligible"]
+    },
     "WorkOrderState": {
       "enum": [
         "draft",

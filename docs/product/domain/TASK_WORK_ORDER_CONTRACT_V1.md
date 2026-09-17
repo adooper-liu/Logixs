@@ -1,9 +1,9 @@
 # 任务与工单契约 V1
 
-> 状态：**正式 V1（负责人批准）**  
-> 契约 ID：`GC-005`  
-> 版本：`1.0.0`  
-> 定稿日期：2026-09-10  
+> 状态：**正式 V1（负责人批准）**
+> 契约 ID：`GC-005`
+> 版本：`1.1.0`
+> 定稿日期：2026-09-17
 > 所有者：`work-execution`
 
 ## 1. 目的与权威边界
@@ -16,7 +16,7 @@
 ContainerRecord
   -> FlowInstance（货柜主任务的业务视图）
     -> LifecycleNodeInstance
-      -> NodeTask（当前节点的一道工序子任务）
+      -> NodeTask（管道节点的一道工序子任务，建柜后预生成）
         -> WorkOrder[1..n]（可分派作业单元）
           -> ClientOperation[0..n]（命令及三阶段回执）
           -> WorkOrderFactApplication[0..n]（不可变事实应用）
@@ -147,6 +147,8 @@ draft | ready | in_progress | blocked | completed | failed | reopened | cancelle
 ### 5.3 正交状态
 
 - 分派状态不是工单状态；单独记录 `unassigned | assigned | pool | automatic`。
+- 任务适用性、就绪度和完成资格不是任务状态；分别记录 `required | optional_applicable | optional_not_applicable`、`waiting_conditions | ready`、`awaiting_evidence | eligible`。
+- `waiting_conditions` 表示任务已进入全局计划池但当前不可领取；不是阻断。`eligible` 只表示现有事实足以申请完成判定，不等于任务完成，更不等于生命周期过站。
 - 同步状态不是工单状态；`received/accepted/committed/rejected/retrying/dead_letter` 只描述 ClientOperation 或消息处理。
 - 数据有效性、证据验证、专业案卷状态、异常状态和生命周期状态均保持独立。
 - 等待外部结果通常是 `in_progress` 加等待原因；只有该等待阻止完成且需要处置时才进入 `blocked`。
@@ -215,7 +217,7 @@ appliedAt, actorOrServiceId, traceId
 
 ## 8. 外部事实先到与迟到
 
-1. 外部事实先于工单到达时，专业模块先保存规范事实，`work-execution` 在节点任务/工单创建后按业务键对账并应用。
+1. 外部事实先于管道初始化到达时，专业模块先保存规范事实；任务池展开时按业务键对账。任务已存在时，事实立即重算其就绪度和完成资格。
 2. 外部事实已经合法推进生命周期时，匹配工单仍可由同一事实完成；这是内部作业对账，不得再次推进节点。
 3. 工单先完成、权威事实后到时，事实按相同业务键合并并提升来源证据，不重复完成、聚合或发布结果。
 4. 无法唯一关联的事实进入复核队列，不猜测工单、不按箱号裸匹配。
@@ -225,19 +227,19 @@ appliedAt, actorOrServiceId, traceId
 
 所有写命令必须包含 `tenantId`、`idempotencyKey`、`expectedVersion`、操作者/服务身份和 `traceId`；对象引用必须属于同一租户和同一关联链。
 
-| 命令                             | 作用                            | 关键约束                                                |
-| -------------------------------- | ------------------------------- | ------------------------------------------------------- |
-| `CreateNodeTaskCommandV1`        | 为已激活节点创建任务与工单集合  | `nodeInstanceId + taskDefinitionVersion` 幂等           |
-| `AssignWorkOrderCommandV1`       | 分派个人、团队或池              | 不改变业务完成状态                                      |
-| `StartWorkOrderCommandV1`        | `ready/reopened -> in_progress` | 校验分派、权限和前置条件                                |
-| `ApplyFactToWorkOrderCommandV1`  | 应用外部/人工/导入/系统事实     | 统一事实语义、来源验证和业务键                          |
-| `BlockWorkOrderCommandV1`        | 添加指定 Block                  | 必须有原因、来源、时间和恢复责任                        |
-| `ResolveWorkOrderBlockCommandV1` | 解除指定 Block                  | 不允许“全部解除”                                        |
-| `FailWorkOrderAttemptCommandV1`  | 记录执行失败                    | 失败原因和 attempt 必填                                 |
-| `CancelWorkOrderCommandV1`       | 授权取消                        | required 工单取消后任务不得自动完成，除非适用性另行批准 |
-| `ReopenWorkOrderCommandV1`       | 更正、撤销或返工                | 引用原完成/失败事实及原因                               |
-| `CancelNodeTaskCommandV1`        | 流程取消或节点不适用            | 不发布完成结果                                          |
-| `ReopenNodeTaskCommandV1`        | 完成后重新聚合                  | 引用触发事实并保留原完成快照                            |
+| 命令                             | 作用                            | 关键约束                                                                      |
+| -------------------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| `CreateNodeTaskCommandV1`        | 为管道节点创建或调和任务与工单  | `nodeInstanceId + taskDefinitionVersion` 幂等；先行事实可提升就绪度与完成资格 |
+| `AssignWorkOrderCommandV1`       | 分派个人、团队或池              | 不改变业务完成状态                                                            |
+| `StartWorkOrderCommandV1`        | `ready/reopened -> in_progress` | 校验分派、权限和前置条件                                                      |
+| `ApplyFactToWorkOrderCommandV1`  | 应用外部/人工/导入/系统事实     | 统一事实语义、来源验证和业务键                                                |
+| `BlockWorkOrderCommandV1`        | 添加指定 Block                  | 必须有原因、来源、时间和恢复责任                                              |
+| `ResolveWorkOrderBlockCommandV1` | 解除指定 Block                  | 不允许“全部解除”                                                              |
+| `FailWorkOrderAttemptCommandV1`  | 记录执行失败                    | 失败原因和 attempt 必填                                                       |
+| `CancelWorkOrderCommandV1`       | 授权取消                        | required 工单取消后任务不得自动完成，除非适用性另行批准                       |
+| `ReopenWorkOrderCommandV1`       | 更正、撤销或返工                | 引用原完成/失败事实及原因                                                     |
+| `CancelNodeTaskCommandV1`        | 流程取消或节点不适用            | 不发布完成结果                                                                |
+| `ReopenNodeTaskCommandV1`        | 完成后重新聚合                  | 引用触发事实并保留原完成快照                                                  |
 
 NodeTask 状态不提供任意 `SetStatus` 命令；它只能由创建、取消、重开和聚合器改变。WorkOrder 同样禁止通用状态写入接口。
 
@@ -253,7 +255,8 @@ NodeTask 状态不提供任意 `SetStatus` 命令；它只能由创建、取消�
   -> 任务结果/专业事实引用
   -> 规范事件（若完成政策允许且尚未存在）
   -> lifecycle-control 校验 completionEligibleNodeCodes 与全部守卫
-  -> 完成节点并激活下一节点
+  -> 完成节点并进入下一节点
+  -> 重算已存在任务的适用性、就绪度和完成资格
 ```
 
 - NodeTask `completed` 只表示内部工序闭环，不天然等于节点完成。
@@ -290,7 +293,7 @@ Inbox/幂等判定
 
 统一查询 Schema 已由 `GC-010` 定稿；本契约锁定其中必须可见的任务工单业务语义：
 
-- 货柜与流程、当前节点、`nodeTaskId`、任务状态和定义版本；
+- 货柜与流程、当前节点、`nodeTaskId`、任务状态、适用性、就绪度、完成资格和定义版本；
 - 工单列表、适用性、状态、分派、截止时间、完成条件和完成进度；
 - required/optional/conditional 标识及当前聚合阻断；
 - 业务发生时间、系统记录时间、来源、证据和事实应用结果；
@@ -317,7 +320,7 @@ Inbox/幂等判定
 10. completed 工单收到撤销/更正后重开并重新聚合。
 11. NodeTask 完成但规范事件守卫失败时节点不推进。
 12. 外部事件已先推进节点，工单后补闭环不重复发布或推进。
-13. 未来节点事实先到时保存并在节点激活后对账。
+13. 未来节点事实先到时立即与已生成任务对账，允许提升就绪度或完成资格，但不得越序推进主链。
 14. 越权、跨租户、错货柜、错节点和过期版本明确拒绝。
 15. 事务故障时事实应用、状态、聚合与 Outbox 全部提交或全部回滚。
 16. 重放相同事实与任务定义得到相同聚合结果。

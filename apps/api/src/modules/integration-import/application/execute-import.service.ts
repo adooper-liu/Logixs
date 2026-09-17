@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ApplyReplenishmentOrderImportService } from "../../shipment-registry";
+import { InitializeContainerFlowService } from "../../lifecycle-control";
 import {
   IMPORT_REPOSITORY,
   type ImportRepository,
@@ -21,6 +22,8 @@ export class ExecuteImportService {
     private readonly repository: ImportRepository,
     @Inject(ApplyReplenishmentOrderImportService)
     private readonly applyOrderImport: ApplyReplenishmentOrderImportService,
+    @Inject(InitializeContainerFlowService)
+    private readonly initializeContainerFlow: InitializeContainerFlowService,
   ) {}
 
   async execute(
@@ -76,6 +79,10 @@ export class ExecuteImportService {
             ),
             mappings,
           ),
+        });
+        await this.initializeContainerFlow.execute({
+          containerId: applied.containerRecordId,
+          tenantId: batch.tenantId,
         });
         reconciliation.push(
           ...orderRows.map((row) => ({

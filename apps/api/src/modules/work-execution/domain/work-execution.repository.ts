@@ -1,7 +1,10 @@
 import type {
   AssignmentState,
   LifecycleNodeCode,
+  NodeApplicability,
   NodeTaskState,
+  TaskCompletionEligibility,
+  TaskReadinessState,
   WorkOrderState,
 } from "@logix/contracts";
 import type { ClientOperationRecord } from "./client-operation";
@@ -17,6 +20,10 @@ export interface NodeTaskRecord {
   containerId: string | null;
   taskDefinitionKey: string;
   state: NodeTaskState;
+  applicability: NodeApplicability;
+  readinessState: TaskReadinessState;
+  completionEligibility: TaskCompletionEligibility;
+  conditionFactRefs: string[];
   createdAt: Date;
 }
 
@@ -48,6 +55,10 @@ export interface CreateTaskInput {
   containerId: string | null;
   taskDefinitionKey: string;
   workOrderDefinitionKey: string;
+  applicability: NodeApplicability;
+  readinessState: TaskReadinessState;
+  completionEligibility: TaskCompletionEligibility;
+  conditionFactRefs: string[];
 }
 
 export interface ApplyWorkOrderClaimInput {
@@ -94,7 +105,7 @@ export interface WorkExecutionRepository {
   listTasksByTenant(
     input: ListTasksByTenantInput,
   ): Promise<NodeTaskWithWorkOrders[]>;
-  createTaskWithRequiredWorkOrder(
+  upsertTaskWithRequiredWorkOrder(
     input: CreateTaskInput,
   ): Promise<NodeTaskWithWorkOrders>;
   applyWorkOrderClaim(input: ApplyWorkOrderClaimInput): Promise<boolean>;
