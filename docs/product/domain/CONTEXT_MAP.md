@@ -1,6 +1,6 @@
-# 领域上下文与聚合边界（CONTEXT_MAP · v0.5 人话重构）
+# 领域上下文与聚合边界（CONTEXT_MAP · v1.1）
 
-> 状态：**已定 v1.0（限界上下文）** · 2026-09-08 · 负责人：刘志高。
+> 状态：**已定 v1.1（限界上下文与备货单产品明细）** · 2026-09-16 · 负责人：刘志高。
 > 一句话：把系统切成几块，说清每块管什么数据、和别块怎么传，谁也不能越界直连。
 > 依据：MODULE_DEPENDENCIES（模块→公共入口）、ENGINEERING §3（依赖方向）、GLOSSARY、VISION 产品边界（货柜收端+WMS 对接+控制塔）。
 
@@ -8,18 +8,18 @@
 
 ### A. 核心业务上下文
 
-| 上下文                  | 聚合根/核心对象                      | 业务所有权                       |
-| ----------------------- | ------------------------------------ | -------------------------------- |
-| Shipment Registry       | ContainerRecord                      | 一柜一档身份、订单/提单关联      |
-| Lifecycle Control       | FlowInstance、CanonicalEvent         | 14节点、流程状态机和实际事件推进 |
-| Work Execution          | NodeTask、WorkOrder、ClientOperation | 工序任务、工单、动作与聚合政策   |
-| Booking & Origin        | Booking/OriginOperation（后续切片）  | 订舱至起运前专业事实             |
-| Ocean & Port Visibility | OceanLeg、PortCall                   | 开船、在途、到港和港口事实       |
-| Customs Compliance      | CustomsCase                          | 申报、换单、缴税、查验与放行     |
-| Inland Fulfillment      | InlandMove                           | 提柜、派送、卸柜、验箱与还箱     |
-| Charges Settlement      | ChargeCase                           | 三类超期费用、修箱费、账单和对账 |
-| Document Records        | DocumentRecord                       | 单证、附件、EIR、证据版本与归档  |
-| Performance Improvement | ImprovementCase                      | KPI、SLA、绩效、复盘和改善       |
+| 上下文                  | 聚合根/核心对象                      | 业务所有权                                    |
+| ----------------------- | ------------------------------------ | --------------------------------------------- |
+| Shipment Registry       | ReplenishmentOrder、ContainerRecord  | 备货单及产品明细、一柜一档身份、订单/提单关联 |
+| Lifecycle Control       | FlowInstance、CanonicalEvent         | 14节点、流程状态机和实际事件推进              |
+| Work Execution          | NodeTask、WorkOrder、ClientOperation | 工序任务、工单、动作与聚合政策                |
+| Booking & Origin        | Booking/OriginOperation（后续切片）  | 订舱至起运前专业事实                          |
+| Ocean & Port Visibility | OceanLeg、PortCall                   | 开船、在途、到港和港口事实                    |
+| Customs Compliance      | CustomsCase                          | 申报、换单、缴税、查验与放行                  |
+| Inland Fulfillment      | InlandMove                           | 提柜、派送、卸柜、验箱与还箱                  |
+| Charges Settlement      | ChargeCase                           | 三类超期费用、修箱费、账单和对账              |
+| Document Records        | DocumentRecord                       | 单证、附件、EIR、证据版本与归档               |
+| Performance Improvement | ImprovementCase                      | KPI、SLA、绩效、复盘和改善                    |
 
 ### A1. 支撑上下文
 
@@ -37,16 +37,18 @@ ContainerRecord -> FlowInstance -> NodeTask -> WorkOrder -> ClientOperation
 - 外部权威事件可以先推进主流程，再创建补录、关闭或对账工单。
 - 管理投影只消费事实引用，不反向改写业务底数。
 
-### B. ContainerRecord 组成（Shipment Registry 内）
+### B. Shipment Registry 聚合组成
 
-| 部分         | 内容                                                                    | 备注              |
-| ------------ | ----------------------------------------------------------------------- | ----------------- |
-| 主键/身份    | surrogate id · orderNumber(唯一锚) · containerNumber(迟绑定,非全局唯一) | 一单一柜          |
-| 航次上下文   | 船司/船名航次/POL·POD/单证/时间(planned·actual)                         | ← sea_freight     |
-| 港口作业序列 | origin/transit/destination × 时间/清关/免费期                           | ← port_operations |
-| 运营后段     | 拖卡/卸柜/卸空/还箱（记录挂接）                                         | ← 三表            |
-| 状态/时间    | currentStatus(8) · 各节点时间字段                                       | NODE_TIME_FIELDS  |
-| 标记/扩展    | markers/attributes（受控键）                                            | CONTAINER_MARKERS |
+| 部分         | 内容                                                                            | 备注                     |
+| ------------ | ------------------------------------------------------------------------------- | ------------------------ |
+| 备货单       | ReplenishmentOrder · orderNumber(租户内唯一锚)                                  | 先于箱号存在             |
+| 产品明细     | ReplenishmentOrderLine · productNumber · shippedQuantity + unit · 合同/价格快照 | 一备货单多行；来源行留痕 |
+| 货柜身份     | ContainerRecord · containerNumber(迟绑定,非全局唯一)                            | 目标关系一单一柜         |
+| 航次上下文   | 船司/船名航次/POL·POD/单证/时间(planned·estimated·actual)                       | ← sea_freight            |
+| 港口作业序列 | origin/transit/destination × 时间/清关/免费期                                   | ← port_operations        |
+| 运营后段     | 拖卡/卸柜/卸空/还箱（记录挂接）                                                 | ← 三表                   |
+| 状态/时间    | currentStatus(8) · 各节点时间字段；实际值必须带来源时间元数据                   | NODE_TIME_FIELDS         |
+| 标记/扩展    | markers/attributes（受控键）                                                    | CONTAINER_MARKERS        |
 
 ### C. 公共端口（块与块怎么传，禁直连）
 
@@ -67,7 +69,7 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 
 | 决策         | 值                                                                                          |
 | ------------ | ------------------------------------------------------------------------------------------- |
-| 聚合形态     | ContainerRecord=一单一柜整体（拖卡/仓库/还箱在聚合内）                                      |
+| 聚合形态     | ReplenishmentOrder=备货单头+N 产品明细；ContainerRecord=一单一柜的出运后事实                |
 | 主锚         | orderNumber（备货单号）                                                                     |
 | 导入写       | 只经 Shipment 端口，Import 不持其仓储                                                       |
 | 当前实施边界 | 备货单→出运的转换结果（已出运货柜列表）起，至还空箱；列表是所有后续节点的数据起点           |
@@ -79,6 +81,7 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 
 - "上下文"≈一块只管自己的事；跨块只走 公共端口/事件/契约，不 import 对方内部。
 - ContainerRecord 管"货柜业务事实"；ImportBatch 管"导入这批活"，两者解耦。
+- 同一备货单号在源文件中可因多个产品货号出现多行；Import 按备货单聚合表头，并逐行保留产品明细。
 - 当前 Import 与后续 Integration 只是不同来源适配器；二者都不能拥有或直接修改 Shipment 内的货柜事实。
 - 相同箱号跨不同备货单＝不同记录（复用），非重复。
 
@@ -87,6 +90,7 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 - 依赖方向：UI→Application→Domain←Infrastructure；Domain 不碰 ORM/Web。
 - 业务 API 是认证/校验/最终写唯一入口；AI Service/Worker 不直写生产表。
 - 主备货单号不作键；一备货单≤一柜；迟绑定可空。
+- 产品明细属于备货单；不得把同备货单多产品行判为货柜重复，也不得把产品数量等同于整柜包装数。
 - 当前范围外的计划/采购/备货/订舱前端只保留扩展边界，不在本切片提前确定聚合或表结构。
 
 ## ④ 流程（怎么用）
@@ -105,12 +109,12 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 
 ## ⑦ 落库/实现映射
 
-| 清单        | 落库/包                                      |
-| ----------- | -------------------------------------------- |
-| 上下文/聚合 | packages/{domain,contracts,...} 模块划分(P3) |
-| 端口        | Application 用例/契约(public entry)          |
-| 容器记录    | container_record + 关联表(FIELD_MIGRATION)   |
-| 追踪键      | orderNumber→row→review→ai_artifact→audit     |
+| 清单        | 落库/包                                                           |
+| ----------- | ----------------------------------------------------------------- |
+| 上下文/聚合 | packages/{domain,contracts,...} 模块划分(P3)                      |
+| 端口        | Application 用例/契约(public entry)                               |
+| 备货/货柜   | replenishment_order + replenishment_order_line + container_record |
+| 追踪键      | orderNumber→row→review→ai_artifact→audit                          |
 
 ## ⑧ 待评审/关联
 
