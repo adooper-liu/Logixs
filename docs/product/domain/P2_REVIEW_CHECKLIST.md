@@ -1,6 +1,6 @@
 # P2 切片一 · 评审清单（P2-01~03 + 领域流程/生命周期/契约输入）
 
-> 状态：**评审清单** · v1.4 · 2026-09-06 · 评审人：刘志高（负责人）。
+> 状态：**评审清单** · v1.5 · 2026-09-16 · 评审人：刘志高（负责人）。
 > 用途：汇总本批 P2 候选文档，逐份给出「要点 / 评审重点 / 待确认项 / 影响后续」，供快速验收。
 > 门禁：评审通过前，清单 P2-01~03 复选框保持 `[ ]`；完成后按任务 brief `p2-shipment-import-domain.md` 更新状态。
 > 本清单只做**导航与核对**，不复制各文档正文（单一真相，见 `ENGINEERING_RULES` §12）。
@@ -14,7 +14,7 @@
 | D1  | 导入文件「物流状态」列声明来源方认为的实际状态（非计划/预计）；归一后仍须过字段级权威、证据一致性和合法转换，才能以业务事件推进 `currentStatus`                    | CONTAINER_STATUS_MODEL §6 / IMPORT_DOMAIN_MODEL                    |
 | D2  | 记录主锚 = **备货单号**（备货阶段唯一建档身份；采购阶段=采购订单号 PO）                                                                                            | 各领域文档                                                         |
 | D3  | **箱号与实际出运日期迟绑定**（装箱后与外部交换才进入系统）；建档可两者皆无                                                                                         | CONTAINER_LIFECYCLE / IMPORT_DOMAIN_MODEL                          |
-| D4  | D-聚合 = A：一行 = 一份货柜流转记录整体（ContainerRecord，一单一柜 1:1）                                                                                           | CONTEXT_MAP §3.1                                                   |
+| D4  | 备货单=表头+N 产品明细，来源行不等于货柜；产品文件按备货单聚合，同一备货单仍只对应一个 ContainerRecord                                                             | CONTEXT_MAP / IMPORT_DOMAIN_MODEL                                  |
 | D5  | 交互身份切换：①④ 备货单号、②③ 箱号；卸柜后备货单号重新激活                                                                                                         | CONTAINER_LIFECYCLE §3                                             |
 | D6  | 外部集成边界：当前在备货→出运边界接收已出运货柜列表（文件导入→后续直连）；海运段←海关/港口/航司/飞驼、提柜段←运输公司、卸柜后←WMS；手工兜底                        | INTEGRATION_BOUNDARIES                                             |
 | D7  | 来源权威按字段/事件类型、责任主体、发生时间、证据和适用范围配置；导入/API 是渠道，人工是受控纠偏方式，不存在全局“手工最高”或“最后写入胜出”                         | INTEGRATION_BOUNDARIES §D                                          |
@@ -32,6 +32,7 @@
 | D19 | 人工复核按风险与冲突触发；同值重复、幂等重放和规则可确定的低风险动作不统一审批                                                                                     | PRINCIPLES §1.7 / PRECHECK_RULES                                   |
 | D20 | Demurrage/Detention/Storage 按合同分别定义责任段、起止事件、免费期、日历、阶梯、币种与账单权威；预计/应计/账单/审核/支付不得混同                                   | PRINCIPLES §2 / FEE_DEMURRAGE                                      |
 | D21 | `O/S/R/C/Decision` 严格分级；原表单是 R 级证据和迁移素材，不是目标表结构/UI 菜单；统一模型按角色投影                                                               | PRINCIPLES §1.8 / CUSTOMS_OPERATION_CHAINS                         |
+| D22 | 产品数量与包装数分离；状态与实际时间成对；推导时间不冒充 actual；跨系统实际时间保留原值、来源时区、UTC、来源系统与证据                                             | TARGET_FIELD_CATALOG §0.5 / LIFECYCLE_CONSISTENCY R10–R12          |
 
 ## 2. 逐份评审项
 

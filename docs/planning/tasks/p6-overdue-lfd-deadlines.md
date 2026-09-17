@@ -1,7 +1,7 @@
 ---
-status: blocked # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/inland-plan-first-slice
-verification:
+verification: 已合入 main：https://github.com/adooper-liu/Logixs/pull/7（merge c946a6c，实现 d4c3baa）；2026-09-16 本地 `pnpm validate` 通过（API 84 文件/384 项、Web 50 文件/167 项、Worker 5 项、E2E 50 通过/7 跳过，生产构建通过）。
 ---
 
 # 任务：超期费用最晚提柜日 / 最晚还箱日
@@ -44,9 +44,10 @@ verification:
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责 | commit | 说明                                              |
-| ---------- | ------- | ---- | ------ | ------------------------------------------------- |
-| 2026-09-14 | coding  | —    | —      | 开工超期截止日                                    |
-| 2026-09-14 | coding  | —    | —      | 端口已接计划草稿只读两日期；测试与 typecheck 已过 |
-| 2026-09-14 | coding  | —    | —      | 截止日核与计划核迁入 engines/；引擎互调门禁       |
-| 2026-09-15 | blocked | —    | —      | 验收已勾；金额核另开 brief，本刀不算钱            |
+| 日期       | 阶段    | 负责 | commit  | 说明                                              |
+| ---------- | ------- | ---- | ------- | ------------------------------------------------- |
+| 2026-09-14 | coding  | —    | —       | 开工超期截止日                                    |
+| 2026-09-14 | coding  | —    | —       | 端口已接计划草稿只读两日期；测试与 typecheck 已过 |
+| 2026-09-14 | coding  | —    | —       | 截止日核与计划核迁入 engines/；引擎互调门禁       |
+| 2026-09-15 | blocked | —    | —       | 验收已勾；金额核另开 brief，本刀不算钱            |
+| 2026-09-16 | done    | —    | c946a6c | PR #7 已合入；完整质量门禁通过                    |

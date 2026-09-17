@@ -1,26 +1,57 @@
+import type {
+  ImportFieldCode,
+  ImportFieldScope,
+  QuantityUnitCode,
+} from "@logix/contracts/import-fields.json";
+
 // 导入批次前端只读/上传客户端（P6 阶段 A 读链路）。
 // 开发期身份用固定值（正式 OIDC 属 P5-02）。
 
 export interface ImportMappingSuggestion {
   column: string;
-  fieldCode: string | null;
+  fieldCode: ImportFieldCode | null;
   confidence: number;
 }
 
 export interface ImportBatchDto {
   id: string;
   fileName: string;
+  sourceFileStatus: "not_retained" | "retained";
+  sourceSizeBytes: number | null;
+  parserVersion: string;
+  replacesBatchId: string | null;
   status: string;
   rowCount: number;
   columnCount: number;
   mappingSuggestions: ImportMappingSuggestion[];
+  confirmedQuantityUnit: QuantityUnitCode | null;
   createdAt: string;
+}
+
+export interface ImportFieldDefinition {
+  code: ImportFieldCode;
+  label: string;
+  scope: ImportFieldScope;
+  required: boolean;
+}
+
+export interface QuantityUnitDefinition {
+  code: QuantityUnitCode;
+  label: string;
+}
+
+export interface ImportFieldCatalog {
+  version: string;
+  fields: ImportFieldDefinition[];
+  quantityUnits: QuantityUnitDefinition[];
 }
 
 export interface ImportBatchDetailDto {
   batch: ImportBatchDto;
   columns: string[];
   rows: { rowNo: number; values: Record<string, string> }[];
+  effectiveMappings: ImportMappingSuggestion[];
+  fieldCatalog: ImportFieldCatalog;
 }
 
 const DEV_TENANT_ID = "dev-tenant";
@@ -28,10 +59,19 @@ const DEV_OPERATOR_ID = "dev-operator";
 
 export async function uploadImportBatch(
   file: File,
-  idempotencyKey: string,
+  replacesBatchId?: string,
 ): Promise<ImportBatchDto> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    await file.arrayBuffer(),
+  );
+  const contentHash = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const idempotencyKey = `import:sha256:${contentHash}`;
   const formData = new FormData();
   formData.append("file", file);
+  if (replacesBatchId) formData.append("replacesBatchId", replacesBatchId);
   const response = await fetch("/api/import-batches", {
     method: "POST",
     headers: {
@@ -100,12 +140,16 @@ async function postJson<T>(url: string, body?: unknown): Promise<T> {
 
 export function confirmMappings(
   batchId: string,
-  reviews: { column: string; fieldCode: string | null }[],
+  reviews: { column: string; fieldCode: ImportFieldCode | null }[],
+  quantityUnit: QuantityUnitCode | null,
 ): Promise<ImportBatchDto> {
   return postJson(`/api/import-batches/${batchId}/mapping-reviews`, {
     reviews,
+    quantityUnit,
   });
 }
+
+export type { ImportFieldCode, QuantityUnitCode };
 
 export function runPrecheck(
   batchId: string,

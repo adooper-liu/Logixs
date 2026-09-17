@@ -1,112 +1,113 @@
 import {
-  HttpException,
-  HttpStatus,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { ApplyContainerRecordService } from "../../shipment-registry";
+import { ApplyReplenishmentOrderImportService } from "../../shipment-registry";
 import {
   IMPORT_REPOSITORY,
   type ImportRepository,
   type ImportRowResultInput,
 } from "../domain/import.repository";
-import { columnForField } from "./mapping.util";
+import { mapImportRow, type MappedImportRow } from "./import-row-mapper";
+import { collectImportTimeFacts } from "./import-time-facts";
+import { effectiveMappings } from "./mapping.util";
 
-// 落账（阶段 C）：逐行经 shipment-registry 写端口写 container_record，记录行结果。
-// 只读映射建议，不直写业务表；失败/重复不阻断其他行。
 @Injectable()
 export class ExecuteImportService {
   constructor(
     @Inject(IMPORT_REPOSITORY)
     private readonly repository: ImportRepository,
-    @Inject(ApplyContainerRecordService)
-    private readonly applyContainerRecord: ApplyContainerRecordService,
+    @Inject(ApplyReplenishmentOrderImportService)
+    private readonly applyOrderImport: ApplyReplenishmentOrderImportService,
   ) {}
 
-  async execute(batchId: string): Promise<{ results: ImportRowResultInput[] }> {
-    const result = await this.repository.findById(batchId);
+  async execute(
+    batchId: string,
+    tenantId: string,
+  ): Promise<{ results: ImportRowResultInput[] }> {
+    const result = await this.repository.findById(batchId, tenantId);
     if (!result) throw new NotFoundException("RESOURCE_NOT_FOUND");
-    const { batch, rows } = result;
-
-    // 预检硬闸：只有 approved（预检无 blocker）才可落账，服务端强制。
+    const { batch, rows, reviews } = result;
     if (batch.status !== "approved") {
-      throw new HttpException(
+      throw new ConflictException(
         "BUSINESS_PRECONDITION_FAILED: 预检未通过，禁止落账",
-        HttpStatus.CONFLICT,
       );
     }
 
-    const orderColumn = columnForField(batch.mappingSuggestions, "orderNumber");
-    const containerColumn = columnForField(
-      batch.mappingSuggestions,
-      "containerNumber",
-    );
+    const mappings = effectiveMappings(batch, reviews);
+    const grouped = new Map<string, MappedImportRow[]>();
+    for (const row of rows) {
+      const mapped = mapImportRow(batch, row, mappings);
+      const group = grouped.get(mapped.orderNumber) ?? [];
+      group.push(mapped);
+      grouped.set(mapped.orderNumber, group);
+    }
 
     await this.repository.updateStatus(batchId, "executing");
+    const reconciliation: ImportRowResultInput[] = [];
 
-    const results: ImportRowResultInput[] = [];
-    const seenOrderNumbers = new Set<string>();
-
-    for (const row of rows) {
-      const orderNumber = orderColumn
-        ? (row.values[orderColumn] ?? "").trim()
-        : "";
-      const containerNumber = containerColumn
-        ? (row.values[containerColumn] ?? "").trim()
-        : "";
-
-      if (!orderNumber) {
-        results.push({
-          rowId: row.id,
-          outcome: "failed",
-          containerRecordId: null,
-          detail: "缺备货单号",
-        });
-        continue;
-      }
-      if (seenOrderNumbers.has(orderNumber)) {
-        results.push({
-          rowId: row.id,
-          outcome: "duplicate",
-          containerRecordId: null,
-          detail: "文件内重复",
-        });
-        continue;
-      }
-      seenOrderNumbers.add(orderNumber);
-
+    for (const [orderNumber, orderRows] of grouped) {
       try {
-        const applied = await this.applyContainerRecord.execute({
+        const firstContainerNumber =
+          orderRows.find(({ containerNumber }) => containerNumber)
+            ?.containerNumber ?? null;
+        const applied = await this.applyOrderImport.execute({
           tenantId: batch.tenantId,
+          sourceBatchId: batch.id,
           orderNumber,
-          containerNumber: containerNumber || null,
-          currentStatus: "shipped",
+          containerNumber: firstContainerNumber,
+          lines: orderRows.map((row) => {
+            if (!row.quantityUnit) {
+              throw new ConflictException("PRECHECK_INVARIANT_VIOLATION");
+            }
+            return {
+              sourceRowId: row.sourceRowId,
+              productNumber: row.productNumber,
+              shippedQuantity: row.shippedQuantity,
+              quantityUnit: row.quantityUnit,
+              contractNumber: row.contractNumber,
+            };
+          }),
+          timeFacts: collectImportTimeFacts(
+            rows.filter((source) =>
+              orderRows.some((mapped) => mapped.sourceRowId === source.id),
+            ),
+            mappings,
+          ),
         });
-        results.push({
-          rowId: row.id,
-          outcome: "success",
-          containerRecordId: applied.containerRecordId,
-          detail: null,
-        });
+        reconciliation.push(
+          ...orderRows.map((row) => ({
+            rowId: row.sourceRowId,
+            outcome: "success" as const,
+            containerRecordId: applied.containerRecordId,
+            detail: null,
+          })),
+        );
       } catch (cause) {
-        results.push({
-          rowId: row.id,
-          outcome: "failed",
-          containerRecordId: null,
-          detail: cause instanceof Error ? cause.message : "写端口失败",
-        });
+        reconciliation.push(
+          ...orderRows.map((row) => ({
+            rowId: row.sourceRowId,
+            outcome: "failed" as const,
+            containerRecordId: null,
+            detail: cause instanceof Error ? cause.message : "写端口失败",
+          })),
+        );
       }
     }
 
-    await this.repository.saveRowResults(batchId, results);
+    await this.repository.saveRowResults(batchId, reconciliation);
     await this.repository.updateStatus(batchId, "completed");
-    return { results };
+    return { results: reconciliation };
   }
 
-  async getResults(batchId: string): Promise<{
-    results: ImportRowResultInput[];
-  }> {
+  async getResults(
+    batchId: string,
+    tenantId: string,
+  ): Promise<{ results: ImportRowResultInput[] }> {
+    const batch = await this.repository.findById(batchId, tenantId);
+    if (!batch) throw new NotFoundException("RESOURCE_NOT_FOUND");
     return { results: await this.repository.getRowResults(batchId) };
   }
 }

@@ -24,7 +24,7 @@
 
 ## 2. 当前页面定位
 
-屏幕用名以 [UI_SYSTEM UI-D09](./UI_SYSTEM.md) 为准：动作，或动作+对象，或对象。现场默认进任务台。计划/经理才看到货柜、看档、看提交、看失败。导入和开发台不进侧栏。
+屏幕用名以 [UI_SYSTEM UI-D09](./UI_SYSTEM.md) 为准：动作，或动作+对象，或对象。现场默认进任务台。计划/经理才看到货柜、看档、看提交、看失败。导入货柜对三个演示角色可见；开发台不进侧栏。
 
 ```text
 我的任务   正在做的活
@@ -37,17 +37,18 @@
 导入货柜   上传表格建柜
 ```
 
-| 路径                          | 侧栏名     | 给谁                       | 本页只回答               | 点下去                                       | 当前真实数据                                                                                                                                                                               |
-| ----------------------------- | ---------- | -------------------------- | ------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/tasks`                      | 我的任务   | 现场                       | 眼前这一件做什么         | 柜号 → 一柜一档                              | `GET /node-tasks`（租户页或按柜；`hasNextPage` 时「再看后面」）；`GET /containers` 只补柜号；可 `POST .../work-orders/:id/complete`                                                        |
-| `/containers`                 | 干活       | 现场/计划/经理             | 有哪些柜、去哪柜干活     | 行 → `/tasks?containerId=`                   | `GET /containers`；`GET /lifecycle-current-nodes` 填「当前站」；`GET /node-tasks` 填「待办」；`GET /client-operations` 填「同步」（最近一页）                                              |
-| `/dashboard`                  | 货柜       | 经理                       | 这个租户有几柜           | 「去干活」→ `/containers`；有未落账 → 看提交 | 同上；有未落账柜时加「还没记下」                                                                                                                                                           |
-| `/meso`                       | 看档       | 计划/经理                  | 各柜走到哪、去看档       | 柜号 → `/container/:id`                      | 同上；`GET /lifecycle-nodes?containerIds=` 画已落库迷你轨                                                                                                                                  |
-| `/container/:id`              | （无侧栏） | 从流转/任务台/完成回执进来 | 这一柜记下了什么         | 「去做这柜的任务」→ `/tasks?containerId=`    | `GET /containers/:id`；`GET /containers/:id/lifecycle-nodes`；`GET /containers/:id/lifecycle-events`；`GET /node-tasks?containerId=` 与最近一页 `GET /client-operations` 填对象头任务/同步 |
-| `/real-operations`            | 看提交     | 计划/经理                  | 提交收到/接受/记下了没有 | 展开看补偿（只读）                           | `GET /client-operations`、补偿列表                                                                                                                                                         |
-| `/dead-letters`               | 看失败     | 计划/经理                  | 哪条消息需要重试         | 重放                                         | 出站/入站死信列与重放                                                                                                                                                                      |
-| `/import`、`/import/:batchId` | 无         | URL 进入                   | 表格能不能建成柜         | 上传后进批次                                 | 导入批次 API                                                                                                                                                                               |
-| `/dev`                        | 无         | URL 进入                   | API/库活没活             | —                                            | `GET /health`                                                                                                                                                                              |
+| 路径               | 侧栏名     | 给谁                       | 本页只回答               | 点下去                                       | 当前真实数据                                                                                                                                                                               |
+| ------------------ | ---------- | -------------------------- | ------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/tasks`           | 我的任务   | 现场                       | 眼前这一件做什么         | 柜号 → 一柜一档                              | `GET /node-tasks`（租户页或按柜；`hasNextPage` 时「再看后面」）；`GET /containers` 只补柜号；可 `POST .../work-orders/:id/complete`                                                        |
+| `/containers`      | 干活       | 现场/计划/经理             | 有哪些柜、去哪柜干活     | 行 → `/tasks?containerId=`                   | `GET /containers`；`GET /lifecycle-current-nodes` 填「当前站」；`GET /node-tasks` 填「待办」；`GET /client-operations` 填「同步」（最近一页）                                              |
+| `/dashboard`       | 货柜       | 经理                       | 这个租户有几柜           | 「去干活」→ `/containers`；有未落账 → 看提交 | 同上；有未落账柜时加「还没记下」                                                                                                                                                           |
+| `/meso`            | 看档       | 计划/经理                  | 各柜走到哪、去看档       | 柜号 → `/container/:id`                      | 同上；`GET /lifecycle-nodes?containerIds=` 画已落库迷你轨                                                                                                                                  |
+| `/container/:id`   | （无侧栏） | 从流转/任务台/完成回执进来 | 这一柜记下了什么         | 「去做这柜的任务」→ `/tasks?containerId=`    | `GET /containers/:id`；`GET /containers/:id/lifecycle-nodes`；`GET /containers/:id/lifecycle-events`；`GET /node-tasks?containerId=` 与最近一页 `GET /client-operations` 填对象头任务/同步 |
+| `/real-operations` | 看提交     | 计划/经理                  | 提交收到/接受/记下了没有 | 展开看补偿（只读）                           | `GET /client-operations`、补偿列表                                                                                                                                                         |
+| `/dead-letters`    | 看失败     | 计划/经理                  | 哪条消息需要重试         | 重放                                         | 出站/入站死信列与重放                                                                                                                                                                      |
+| `/import`          | 导入货柜   | 现场/计划/经理             | 表格能不能建成柜         | 上传后进批次                                 | 导入批次 API                                                                                                                                                                               |
+| `/import/:batchId` | （无侧栏） | 从导入货柜进入             | 这批能否预检、落库和对账 | 确认映射 → 预检 → 执行 → 对账                | 导入批次 API                                                                                                                                                                               |
+| `/dev`             | 无         | URL 进入                   | API/库活没活             | —                                            | `GET /health`                                                                                                                                                                              |
 
 `/real-tasks`、`/real-containers` 只重定向，不进侧栏。`RealTaskWorkbench.vue` / `RealContainerList.vue` 是调试残留，不是产品入口。
 
@@ -144,7 +145,7 @@
 | ------ | --------------------- | ------------------------------------------------- |
 | 看提交 | 列三阶段、展开补偿    | 本页执行补偿；`p6-client-operation-ops-ui` 仍暂停 |
 | 看失败 | 列出发/接收失败并重放 | 无                                                |
-| 导入   | 上传与批次详情        | 侧栏入口（有意不进作业导航）                      |
+| 导入   | 上传与批次详情        | “导入货柜”进侧栏；批次详情只由上传页下钻          |
 
 Inbox 接收/领取/消费、Outbox 发布、写生命周期事件、证据核验：API 有，作业壳没有按钮。补作业入口时接到任务台或一柜一档动作中心，不要再开「API 接线」调试页。
 

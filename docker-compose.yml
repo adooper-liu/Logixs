@@ -1,5 +1,5 @@
 # 本地开发基础设施（阶段 P4）。
-# 用法：docker compose up -d postgres temporal temporal-ui
+# 用法：docker compose up -d postgres minio temporal temporal-ui
 # 镜像经 DaoCloud 源可拉（本机 Docker Hub 被墙）：docker pull docker.m.daocloud.io/<image>
 services:
   postgres:
@@ -17,6 +17,23 @@ services:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U logix -d logix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: logix
+      MINIO_ROOT_PASSWORD: logix-dev-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -71,4 +88,5 @@ services:
 
 volumes:
   postgres-data:
+  minio-data:
   temporal-db-data:

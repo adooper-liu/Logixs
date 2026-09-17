@@ -16,9 +16,7 @@ async function onFileChange(event: Event): Promise<void> {
   error.value = "";
   uploading.value = true;
   try {
-    // 开发期幂等键：文件名+大小；同一文件重传会命中幂等返回原批次。
-    const idempotencyKey = `${file.name}-${file.size}`;
-    const batch = await uploadImportBatch(file, idempotencyKey);
+    const batch = await uploadImportBatch(file);
     void router.push(`/import/${batch.id}`);
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : "上传失败";
@@ -34,8 +32,8 @@ async function onFileChange(event: Event): Promise<void> {
     <PageHeader title="导入货柜" summary="上传表格，建成货柜档案。" />
 
     <p class="hint">
-      选择一份 <code>.xlsx</code> / <code>.csv</code> 文件（≤10MB、≤5000 行、≤50
-      列），上传后会解析并展示样本。
+      选择一份 <code>.xlsx</code> / <code>.csv</code>
+      文件（≤10MB、≤5000 行、≤128 列），上传后会解析并展示样本。
     </p>
 
     <label class="picker">

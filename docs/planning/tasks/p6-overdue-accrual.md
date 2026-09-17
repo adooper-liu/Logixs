@@ -1,7 +1,7 @@
 ---
-status: blocked # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/inland-plan-first-slice
-verification:
+verification: 已合入 main：https://github.com/adooper-liu/Logixs/pull/7（merge c946a6c，实现 d4c3baa）；2026-09-16 本地 `pnpm validate` 通过（API 84 文件/384 项、Web 50 文件/167 项、Worker 5 项、E2E 50 通过/7 跳过，生产构建通过）。
 ---
 
 # 任务：超期费用预计 / 应计金额第一刀
@@ -29,11 +29,11 @@ verification:
 
 ## 验收
 
-- [ ] 同一套阶梯、两套钟：`purpose=estimate` 与 `purpose=accrual` 公式相同，只标签不同。
-- [ ] 按每个计费日命中的阶梯求和，分项列出，不合成一个「滞港费」。
-- [ ] 免费期内 asOf → 金额 `0.00`；计费日无阶梯 → `BUSINESS_PRECONDITION_FAILED`。
-- [ ] 截止日核与金额核互不 import；`inland-fulfillment` 不调用本端口。
-- [ ] `pnpm --filter @logix/api test -- src/modules/charges-settlement src/modules/inland-fulfillment` 与 typecheck 通过。
+- [x] 同一套阶梯、两套钟：`purpose=estimate` 与 `purpose=accrual` 公式相同，只标签不同。
+- [x] 按每个计费日命中的阶梯求和，分项列出，不合成一个「滞港费」。
+- [x] 免费期内 asOf → 金额 `0.00`；计费日无阶梯 → `BUSINESS_PRECONDITION_FAILED`。
+- [x] 截止日核与金额核互不 import；`inland-fulfillment` 不调用本端口。
+- [x] `pnpm --filter @logix/api test -- src/modules/charges-settlement src/modules/inland-fulfillment` 与 typecheck 通过。
 
 ## 方案
 
@@ -45,7 +45,8 @@ verification:
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责 | commit | 说明                                 |
-| ---------- | ------- | ---- | ------ | ------------------------------------ |
-| 2026-09-15 | coding  | —    | —      | 开工金额核第一刀                     |
-| 2026-09-15 | blocked | —    | —      | 作业壳人话先落；金额核代码留在同分支 |
+| 日期       | 阶段    | 负责 | commit  | 说明                                 |
+| ---------- | ------- | ---- | ------- | ------------------------------------ |
+| 2026-09-15 | coding  | —    | —       | 开工金额核第一刀                     |
+| 2026-09-15 | blocked | —    | —       | 作业壳人话先落；金额核代码留在同分支 |
+| 2026-09-16 | done    | —    | c946a6c | PR #7 已合入；完整质量门禁通过       |

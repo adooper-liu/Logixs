@@ -40,6 +40,7 @@
 4. UI 工作台：rail(状态/节点) + TimelineDrawer(事件流) + KeyDates 式倒计时预警；动作中心 = 由事件缺口/规则推导（UX V1/V2）。
 5. PDCA 的 Check：以时间线实际事件为证据校验（如 `returned_empty` 需有 RETURNED_EMPTY 证据）。
 6. 权威事件可先于任务、乱序或迟到；事件按业务发生语义重放投影，接收顺序只作审计。外部更正/撤回追加关联事件，不原地覆盖历史。
+7. AS-IS 的 `wo.unloadDate` 若由计划或规则推导，不具备 `UNLOADED` 实际事件资格；只有现场/WMS 可核验的卸货完成时间才能映射 `unloaded`，推导值按 `estimated + system_derived` 保存。
 
 ## 3. 事件 → 节点/状态映射
 

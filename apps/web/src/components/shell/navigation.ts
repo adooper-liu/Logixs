@@ -4,6 +4,7 @@ import {
   ChartNoAxesCombined,
   ClipboardCheck,
   Container,
+  FileUp,
   ListChecks,
   TriangleAlert,
 } from "@lucide/vue";
@@ -15,6 +16,7 @@ export type NavigationIcon =
   | "chart-no-axes-combined"
   | "clipboard-check"
   | "container"
+  | "file-up"
   | "list-checks"
   | "triangle-alert";
 
@@ -31,6 +33,7 @@ const icons: Record<NavigationIcon, Component> = {
   "chart-no-axes-combined": ChartNoAxesCombined,
   "clipboard-check": ClipboardCheck,
   container: Container,
+  "file-up": FileUp,
   "list-checks": ListChecks,
   "triangle-alert": TriangleAlert,
 };

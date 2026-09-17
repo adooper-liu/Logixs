@@ -102,7 +102,14 @@ const router = createRouter({
     {
       path: "/import",
       component: () => import("../views/ImportUpload.vue"),
-      meta: { title: uiCopy.chrome.importTitle, section: "导入" },
+      meta: {
+        title: uiCopy.chrome.importTitle,
+        section: "作业",
+        navLabel: uiCopy.chrome.importTitle,
+        navIcon: "file-up",
+        navOrder: 25,
+        roles: ["operator", "planner", "manager"],
+      },
     },
     {
       path: "/import/:batchId",

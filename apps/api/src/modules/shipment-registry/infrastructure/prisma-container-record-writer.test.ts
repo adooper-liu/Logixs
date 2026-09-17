@@ -8,7 +8,7 @@ function buildPrisma(
 ) {
   return {
     containerRecord: {
-      findFirst: vi.fn().mockResolvedValue(existing),
+      findMany: vi.fn().mockResolvedValue(existing ? [existing] : []),
       update: vi.fn().mockResolvedValue({
         id: existing?.id ?? "c1",
         containerNumber: "MSKU-NEW",
@@ -48,6 +48,12 @@ describe("PrismaContainerRecordWriter", () => {
     expect(result.containerRecordId).toBe("c1");
     expect(prisma.containerRecord.update).toHaveBeenCalled();
     expect(prisma.containerRecord.create).not.toHaveBeenCalled();
+    expect(prisma.containerRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "t1", orderNumber: "SO-1" },
+        take: 2,
+      }),
+    );
   });
 
   it("未命中 → 新建，created=true", async () => {

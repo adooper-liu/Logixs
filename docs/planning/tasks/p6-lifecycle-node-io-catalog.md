@@ -1,7 +1,7 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/inland-plan-first-slice
-verification: 2026-09-15 本地 `pnpm --filter @logix/web test` → 50 files / 166 tests passed。整分支另含未收口的内陆/超期/人话代码，本刀文档验收已满足，不能单独当作可合并发布。
+verification: 已合入 main：https://github.com/adooper-liu/Logixs/pull/7（merge c946a6c）；2026-09-16 本地 `pnpm validate` 通过（API 84 文件/384 项、Web 50 文件/166 项、Worker 5 项、E2E 50 通过/7 跳过，生产构建通过）。
 ---
 
 # 任务：14流程节点填空表权威入口
@@ -46,9 +46,10 @@ verification: 2026-09-15 本地 `pnpm --filter @logix/web test` → 50 files / 1
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明                                                |
-| ---------- | ------ | ---- | ------ | --------------------------------------------------- |
-| 2026-09-15 | coding | —    | —      | 开工：14 站填空表汇编                               |
-| 2026-09-15 | coding | —    | —      | 锁定五站计划/实际、最晚提柜日/还箱日、ETA           |
-| 2026-09-15 | coding | —    | —      | §1.1 过站释义备注；术语表 v0.1.10                   |
-| 2026-09-15 | coding | —    | —      | 验证：web test 166 passed；整分支未收口，不推不合并 |
+| 日期       | 阶段   | 负责 | commit  | 说明                                                |
+| ---------- | ------ | ---- | ------- | --------------------------------------------------- |
+| 2026-09-15 | coding | —    | —       | 开工：14 站填空表汇编                               |
+| 2026-09-15 | coding | —    | —       | 锁定五站计划/实际、最晚提柜日/还箱日、ETA           |
+| 2026-09-15 | coding | —    | —       | §1.1 过站释义备注；术语表 v0.1.10                   |
+| 2026-09-15 | coding | —    | —       | 验证：web test 166 passed；整分支未收口，不推不合并 |
+| 2026-09-16 | done   | —    | c946a6c | PR #7 已合入；完整 `pnpm validate` 通过             |

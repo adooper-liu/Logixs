@@ -6,7 +6,7 @@
 ## 结构速览
 
 - 人话：[人话导读](./人话导读.md)（含货柜主链）· [货柜怎么往前走](./人话-货柜怎么往前走.md) · [代码怎么往前推](./planning/PROJECT_BOOTSTRAP_PLAIN_LANGUAGE.md)
-- 架构：AI 工作流技术架构 · 模块依赖 · ADR-001~010（索引见 INDEX §三）
+- 架构：AI 工作流技术架构 · 模块依赖 · 安全威胁模型 · ADR-001~010（索引见 INDEX §三）
 - 产品/理念：VISION · PRINCIPLES · PRODUCT_BRIEF · GLOSSARY · NFR · UX 工作台（INDEX §四）
 - 领域 domain：对象模型 / 清单字典族 / 集成迁移现网 / 治理评审（数量以 INDEX §五为准）
 - 规划：启动清单 · 人话说明 · RAID · P2 摘要 · 任务 brief（INDEX §六）

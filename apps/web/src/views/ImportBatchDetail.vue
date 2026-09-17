@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   confirmMappings,
   executeImport,
   getImportBatch,
   getReconciliation,
   runPrecheck,
+  uploadImportBatch,
   type ImportBatchDetailDto,
+  type ImportFieldCode,
   type PrecheckBlocker,
+  type QuantityUnitCode,
   type ReconciliationResult,
 } from "../api/importBatches";
 import PageHeader from "../components/ui/PageHeader.vue";
+import ImportMappingEditor from "../components/imports/ImportMappingEditor.vue";
+import ImportReplacementUploader from "../components/imports/ImportReplacementUploader.vue";
 
 const route = useRoute();
-const batchId = route.params.batchId as string;
+const router = useRouter();
+const batchId = computed(() => route.params.batchId as string);
 
 const detail = ref<ImportBatchDetailDto | null>(null);
 const loading = ref(true);
@@ -24,32 +30,43 @@ const blockers = ref<PrecheckBlocker[]>([]);
 const reconciliation = ref<ReconciliationResult | null>(null);
 
 async function reload(): Promise<void> {
-  detail.value = await getImportBatch(batchId);
+  detail.value = await getImportBatch(batchId.value);
 }
 
-onMounted(async () => {
-  try {
-    await reload();
-    if (detail.value?.batch.status === "completed") {
-      reconciliation.value = await getReconciliation(batchId);
+watch(
+  batchId,
+  async (requestedBatchId) => {
+    loading.value = true;
+    error.value = "";
+    detail.value = null;
+    blockers.value = [];
+    reconciliation.value = null;
+    try {
+      const nextDetail = await getImportBatch(requestedBatchId);
+      if (batchId.value !== requestedBatchId) return;
+      detail.value = nextDetail;
+      if (nextDetail.batch.status === "completed") {
+        reconciliation.value = await getReconciliation(requestedBatchId);
+      }
+    } catch (cause) {
+      if (batchId.value !== requestedBatchId) return;
+      error.value = cause instanceof Error ? cause.message : "查询失败";
+    } finally {
+      if (batchId.value === requestedBatchId) loading.value = false;
     }
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : "查询失败";
-  } finally {
-    loading.value = false;
-  }
-});
+  },
+  { immediate: true },
+);
 
-async function onConfirm(): Promise<void> {
+async function onConfirm(payload: {
+  reviews: { column: string; fieldCode: ImportFieldCode | null }[];
+  quantityUnit: QuantityUnitCode | null;
+}): Promise<void> {
   if (!detail.value) return;
   busy.value = "确认中…";
   error.value = "";
   try {
-    const reviews = detail.value.batch.mappingSuggestions.map((s) => ({
-      column: s.column,
-      fieldCode: s.fieldCode,
-    }));
-    await confirmMappings(batchId, reviews);
+    await confirmMappings(batchId.value, payload.reviews, payload.quantityUnit);
     await reload();
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : "确认失败";
@@ -62,7 +79,7 @@ async function onPrecheck(): Promise<void> {
   busy.value = "预检中…";
   error.value = "";
   try {
-    const result = await runPrecheck(batchId);
+    const result = await runPrecheck(batchId.value);
     blockers.value = result.blockers;
     await reload();
   } catch (cause) {
@@ -76,7 +93,7 @@ async function onExecute(): Promise<void> {
   busy.value = "落账中…";
   error.value = "";
   try {
-    reconciliation.value = await executeImport(batchId);
+    reconciliation.value = await executeImport(batchId.value);
     await reload();
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : "落账失败";
@@ -85,7 +102,29 @@ async function onExecute(): Promise<void> {
   }
 }
 
+async function onReplace(file: File): Promise<void> {
+  busy.value = "上传中…";
+  error.value = "";
+  try {
+    const batch = await uploadImportBatch(file, batchId.value);
+    await router.push(`/import/${batch.id}`);
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : "替代上传失败";
+  } finally {
+    busy.value = "";
+  }
+}
+
 const canExecute = computed(() => detail.value?.batch.status === "approved");
+const mappingEditable = computed(() =>
+  ["parsed", "confirmed"].includes(detail.value?.batch.status ?? ""),
+);
+
+function formatFileSize(bytes: number | null): string {
+  if (bytes === null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
 </script>
 
 <template>
@@ -93,9 +132,10 @@ const canExecute = computed(() => detail.value?.batch.status === "approved");
     <PageHeader title="导入批次" />
 
     <p v-if="loading" class="hint">加载中…</p>
-    <p v-else-if="error" class="hint hint--error">{{ error }}</p>
+    <p v-else-if="error && !detail" class="hint hint--error">{{ error }}</p>
 
     <template v-else-if="detail">
+      <p v-if="error" class="hint hint--error">{{ error }}</p>
       <dl class="meta">
         <div class="meta-item">
           <dt>文件</dt>
@@ -109,36 +149,39 @@ const canExecute = computed(() => detail.value?.batch.status === "approved");
           <dt>行 / 列</dt>
           <dd>{{ detail.batch.rowCount }} / {{ detail.batch.columnCount }}</dd>
         </div>
+        <div class="meta-item">
+          <dt>解析版本</dt>
+          <dd>{{ detail.batch.parserVersion }}</dd>
+        </div>
+        <div class="meta-item">
+          <dt>原文件</dt>
+          <dd v-if="detail.batch.sourceFileStatus === 'retained'">
+            已留存 · {{ formatFileSize(detail.batch.sourceSizeBytes) }}
+          </dd>
+          <dd v-else>历史批次未留存</dd>
+        </div>
+        <div v-if="detail.batch.replacesBatchId" class="meta-item">
+          <dt>替代批次</dt>
+          <dd>
+            <RouterLink :to="`/import/${detail.batch.replacesBatchId}`">
+              {{ detail.batch.replacesBatchId }}
+            </RouterLink>
+          </dd>
+        </div>
       </dl>
 
-      <h2 class="block-title">字段映射建议（AI，待确认）</h2>
-      <div v-if="detail.batch.mappingSuggestions.length" class="suggestions">
-        <div
-          v-for="suggestion in detail.batch.mappingSuggestions"
-          :key="suggestion.column"
-          class="suggestion-item"
-        >
-          <span class="sug-column">{{ suggestion.column }}</span>
-          <span class="sug-arrow">→</span>
-          <span v-if="suggestion.fieldCode" class="sug-field">
-            {{ suggestion.fieldCode }}
-          </span>
-          <span v-else class="sug-null">待人工</span>
-          <span class="sug-conf">
-            {{ Math.round(suggestion.confidence * 100) }}%
-          </span>
-        </div>
-      </div>
-      <p v-else class="hint">无映射建议</p>
+      <ImportMappingEditor
+        :columns="detail.columns"
+        :suggestions="detail.batch.mappingSuggestions"
+        :effective-mappings="detail.effectiveMappings"
+        :field-catalog="detail.fieldCatalog"
+        :confirmed-quantity-unit="detail.batch.confirmedQuantityUnit"
+        :disabled="!!busy || !mappingEditable"
+        @confirm="onConfirm"
+      />
 
       <div class="actions">
-        <button
-          class="btn"
-          :disabled="!!busy || detail.batch.status !== 'parsed'"
-          @click="onConfirm"
-        >
-          确认映射
-        </button>
+        <ImportReplacementUploader :disabled="!!busy" @replace="onReplace" />
         <button
           class="btn"
           :disabled="!!busy || detail.batch.status === 'parsed'"
@@ -217,6 +260,7 @@ const canExecute = computed(() => detail.value?.batch.status === "approved");
 }
 .meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 32px;
   margin: 12px 0 20px;
 }
@@ -227,43 +271,13 @@ const canExecute = computed(() => detail.value?.batch.status === "approved");
 .meta-item dd {
   margin: 4px 0 0;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .block-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--app-text-secondary, #6b7280);
   margin: 0 0 10px;
-}
-.suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.suggestion-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--app-border, #e5e7eb);
-  border-radius: 6px;
-  font-size: 13px;
-}
-.sug-column {
-  color: var(--app-text-secondary, #6b7280);
-}
-.sug-arrow {
-  color: #9ca3af;
-}
-.sug-field {
-  font-weight: 600;
-}
-.sug-null {
-  color: var(--app-warn, #d97706);
-  font-weight: 600;
-}
-.sug-conf {
-  color: var(--app-text-secondary, #6b7280);
 }
 .actions {
   display: flex;

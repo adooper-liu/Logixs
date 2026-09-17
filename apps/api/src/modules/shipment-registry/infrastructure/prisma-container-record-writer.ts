@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type {
   ApplyContainerRecordCommand,
@@ -15,9 +15,18 @@ export class PrismaContainerRecordWriter implements ContainerRecordWriter {
     command: ApplyContainerRecordCommand,
   ): Promise<ApplyContainerRecordResult> {
     // orderNumber 尚未建 UNIQUE（DATA_MODEL 不变量 1：清洗通过后才建），用 findFirst 匹配。
-    const existing = await this.prisma.containerRecord.findFirst({
-      where: { orderNumber: command.orderNumber },
+    const matches = await this.prisma.containerRecord.findMany({
+      where: {
+        tenantId: command.tenantId,
+        orderNumber: command.orderNumber,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 2,
     });
+    if (matches.length > 1) {
+      throw new ConflictException("LEGACY_ORDER_CONTAINER_CONFLICT");
+    }
+    const existing = matches[0];
 
     if (existing) {
       const updated = await this.prisma.containerRecord.update({

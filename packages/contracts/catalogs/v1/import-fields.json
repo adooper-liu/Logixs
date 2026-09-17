@@ -1,0 +1,214 @@
+{
+  "version": "1.2.0",
+  "fields": [
+    {
+      "code": "orderNumber",
+      "label": "备货单号",
+      "scope": "header",
+      "required": true,
+      "aliases": ["备货单号", "备货单", "order number"]
+    },
+    {
+      "code": "containerNumber",
+      "label": "集装箱号",
+      "scope": "header",
+      "required": false,
+      "aliases": ["集装箱号", "箱号", "柜号", "container number"]
+    },
+    {
+      "code": "productNumber",
+      "label": "产品货号",
+      "scope": "line",
+      "required": true,
+      "aliases": ["货号.产品货号", "产品货号", "货号", "sku"]
+    },
+    {
+      "code": "shippedQuantity",
+      "label": "出运数量",
+      "scope": "line",
+      "required": true,
+      "aliases": ["出运数量", "发运数量", "shipped quantity"]
+    },
+    {
+      "code": "quantityUnit",
+      "label": "出运数量单位",
+      "scope": "line",
+      "required": true,
+      "aliases": ["出运数量单位", "数量单位", "单位", "quantity unit"]
+    },
+    {
+      "code": "contractNumber",
+      "label": "合同号",
+      "scope": "line",
+      "required": false,
+      "aliases": ["合同号", "合同编号", "contract number"]
+    },
+    {
+      "code": "customsClearanceStatus",
+      "label": "清关完成状态",
+      "scope": "header",
+      "required": false,
+      "aliases": ["清关状态", "清关完成状态", "customs clearance status"]
+    },
+    {
+      "code": "customsClearanceActualAt",
+      "label": "实际清关完成时间",
+      "scope": "header",
+      "required": false,
+      "aliases": ["实际清关日期", "实际清关完成时间", "customs cleared at"]
+    },
+    {
+      "code": "unloadCompletionStatus",
+      "label": "卸柜完成状态",
+      "scope": "header",
+      "required": false,
+      "aliases": ["卸柜状态", "卸柜完成状态", "unload status"]
+    },
+    {
+      "code": "unloadCompletedActualAt",
+      "label": "实际卸柜完成时间",
+      "scope": "header",
+      "required": false,
+      "aliases": ["实际卸柜时间", "实际卸柜完成时间", "unload completed at"]
+    },
+    {
+      "code": "emptyConfirmationStatus",
+      "label": "空箱确认状态",
+      "scope": "header",
+      "required": false,
+      "aliases": [
+        "空箱状态",
+        "卸空状态",
+        "空箱确认状态",
+        "empty confirmation status"
+      ]
+    },
+    {
+      "code": "emptyConfirmedActualAt",
+      "label": "实际空箱确认时间",
+      "scope": "header",
+      "required": false,
+      "aliases": ["实际卸空时间", "实际空箱确认时间", "empty confirmed at"]
+    },
+    {
+      "code": "emptyEstimatedAt",
+      "label": "推导空箱时间",
+      "scope": "header",
+      "required": false,
+      "aliases": [
+        "卸空日期",
+        "预计卸空时间",
+        "推导空箱时间",
+        "empty estimated at"
+      ]
+    },
+    {
+      "code": "timeSourceSystem",
+      "label": "时间来源系统",
+      "scope": "header",
+      "required": false,
+      "aliases": ["时间来源系统", "来源系统", "time source system"]
+    },
+    {
+      "code": "timeSourceUtcOffset",
+      "label": "时间来源 UTC 偏移",
+      "scope": "header",
+      "required": false,
+      "aliases": [
+        "时间来源UTC偏移",
+        "来源UTC偏移",
+        "UTC偏移",
+        "time source utc offset"
+      ]
+    },
+    {
+      "code": "timeEvidenceRef",
+      "label": "时间证据 ID",
+      "scope": "header",
+      "required": false,
+      "aliases": ["时间证据ID", "证据ID", "time evidence id"]
+    },
+    {
+      "code": "timeDerivationRuleVersion",
+      "label": "时间推导规则版本",
+      "scope": "header",
+      "required": false,
+      "aliases": [
+        "时间推导规则版本",
+        "推导规则版本",
+        "time derivation rule version"
+      ]
+    }
+  ],
+  "quantityUnits": [
+    { "code": "piece", "label": "件", "aliases": ["piece", "pcs", "pc", "件"] },
+    { "code": "carton", "label": "箱", "aliases": ["carton", "ctn", "箱"] },
+    { "code": "set", "label": "套", "aliases": ["set", "套"] },
+    {
+      "code": "pallet",
+      "label": "托",
+      "aliases": ["pallet", "plt", "托", "托盘"]
+    }
+  ],
+  "timeFacts": [
+    {
+      "code": "customs_clearance_completed",
+      "label": "实际清关完成",
+      "timeFieldCode": "customsClearanceActualAt",
+      "statusFieldCode": "customsClearanceStatus",
+      "completedStatusAliases": ["已完成", "已清关", "completed", "cleared"],
+      "timeKind": "actual",
+      "captureSource": "controlled_import",
+      "eventCode": "container_customs_completed",
+      "requiresEvidence": true,
+      "requiresDerivationRule": false
+    },
+    {
+      "code": "container_unloading_completed",
+      "label": "实际卸柜完成",
+      "timeFieldCode": "unloadCompletedActualAt",
+      "statusFieldCode": "unloadCompletionStatus",
+      "completedStatusAliases": [
+        "已完成",
+        "已卸柜",
+        "卸柜完成",
+        "completed",
+        "unloaded"
+      ],
+      "timeKind": "actual",
+      "captureSource": "controlled_import",
+      "eventCode": "unloaded",
+      "requiresEvidence": true,
+      "requiresDerivationRule": false
+    },
+    {
+      "code": "container_empty_confirmed",
+      "label": "实际空箱确认",
+      "timeFieldCode": "emptyConfirmedActualAt",
+      "statusFieldCode": "emptyConfirmationStatus",
+      "completedStatusAliases": [
+        "已完成",
+        "已卸空",
+        "空箱确认",
+        "completed",
+        "empty confirmed"
+      ],
+      "timeKind": "actual",
+      "captureSource": "controlled_import",
+      "eventCode": "unstuffed",
+      "requiresEvidence": true,
+      "requiresDerivationRule": false
+    },
+    {
+      "code": "container_empty_estimated",
+      "label": "推导空箱时间",
+      "timeFieldCode": "emptyEstimatedAt",
+      "completedStatusAliases": [],
+      "timeKind": "estimated",
+      "captureSource": "system_derived",
+      "eventCode": null,
+      "requiresEvidence": false,
+      "requiresDerivationRule": true
+    }
+  ]
+}

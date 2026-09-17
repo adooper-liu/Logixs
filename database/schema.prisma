@@ -30,25 +30,96 @@ enum ContainerStatus {
 // 货柜业务事实主记录（shipment-registry 拥有）。
 // 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
 model ContainerRecord {
-  id              String          @id @default(uuid()) @map("id")
-  tenantId        String          @map("tenant_id")
+  id                   String              @id @default(uuid()) @map("id")
+  tenantId             String              @map("tenant_id")
   // 备货单号：建档身份主锚。TO-BE 目标 UNIQUE，但须旧库 DDL/数据清洗通过后才建立（DATA_MODEL 不变量 1）。
-  orderNumber     String          @map("order_number")
+  orderNumber          String              @map("order_number")
+  replenishmentOrderId String?             @map("replenishment_order_id")
+  replenishmentOrder   ReplenishmentOrder? @relation(fields: [replenishmentOrderId], references: [id])
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
-  mainOrderNumber String?         @map("main_order_number")
+  mainOrderNumber      String?             @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
-  containerNumber String?         @map("container_number")
+  containerNumber      String?             @map("container_number")
   // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
-  currentStatus   ContainerStatus @map("current_status")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  currentStatus        ContainerStatus     @map("current_status")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  timeFacts            ShipmentTimeFact[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
   // TODO(D20 物理形态)：金额 decimal + currency（超期费用，独立边界）
 
   @@index([tenantId, updatedAt, id])
+  @@index([replenishmentOrderId])
   @@map("container_record")
+}
+
+// 导入时间事实（shipment-registry 拥有）：actual/estimated 分槽，保留来源原值和 UTC 标准值。
+// 这里只保存可追溯领域事实；生命周期事件晋升仍由 lifecycle-control 的证据与状态机守卫负责。
+model ShipmentTimeFact {
+  id                    String          @id @default(uuid()) @map("id")
+  tenantId              String          @map("tenant_id")
+  containerRecordId     String          @map("container_record_id")
+  containerRecord       ContainerRecord @relation(fields: [containerRecordId], references: [id])
+  factCode              String          @map("fact_code")
+  timeKind              String          @map("time_kind")
+  captureSource         String          @map("capture_source")
+  eventCode             String?         @map("event_code")
+  rawValue              String          @map("raw_value")
+  occurredAtUtc         DateTime        @map("occurred_at_utc") @db.Timestamptz
+  sourceUtcOffset       String          @map("source_utc_offset")
+  sourceSystem          String          @map("source_system")
+  sourceStatus          String?         @map("source_status")
+  evidenceRef           String?         @map("evidence_ref")
+  derivationRuleVersion String?         @map("derivation_rule_version")
+  sourceBatchId         String          @map("source_batch_id")
+  sourceRowId           String          @map("source_row_id")
+  isCurrent             Boolean         @default(true) @map("is_current")
+  supersededByBatchId   String?         @map("superseded_by_batch_id")
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([sourceBatchId, sourceRowId, factCode], map: "shipment_time_fact_source_key")
+  @@index([tenantId, containerRecordId], map: "shipment_time_fact_tenant_container_idx")
+  @@index([containerRecordId, factCode, isCurrent], map: "shipment_time_fact_current_idx")
+  @@map("shipment_time_fact")
+}
+
+// 备货单身份表（shipment-registry 拥有）：租户内备货单号唯一。
+// container_record 的 1:1 contract 约束要等历史重复清洗后再追加。
+model ReplenishmentOrder {
+  id               String                   @id @default(uuid()) @map("id")
+  tenantId         String                   @map("tenant_id")
+  orderNumber      String                   @map("order_number")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  containerRecords ContainerRecord[]
+  lines            ReplenishmentOrderLine[]
+
+  @@unique([tenantId, orderNumber], map: "replenishment_order_tenant_order_key")
+  @@map("replenishment_order")
+}
+
+// 产品明细（shipment-registry 拥有）：重导时保留历史版本，只切换 is_current。
+model ReplenishmentOrderLine {
+  id                   String             @id @default(uuid()) @map("id")
+  replenishmentOrderId String             @map("replenishment_order_id")
+  replenishmentOrder   ReplenishmentOrder @relation(fields: [replenishmentOrderId], references: [id])
+  productNumber        String             @map("product_number")
+  shippedQuantity      Decimal            @map("shipped_quantity") @db.Decimal(18, 3)
+  quantityUnit         String             @map("quantity_unit")
+  contractNumber       String?            @map("contract_number")
+  sourceBatchId        String             @map("source_batch_id")
+  sourceRowId          String             @map("source_row_id")
+  isCurrent            Boolean            @default(true) @map("is_current")
+  supersededByBatchId  String?            @map("superseded_by_batch_id")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  @@unique([sourceBatchId, sourceRowId], map: "replenishment_order_line_source_key")
+  @@index([replenishmentOrderId, isCurrent], map: "replenishment_order_line_current_idx")
+  @@map("replenishment_order_line")
 }
 
 // 证据主记录（document-records 拥有）：第一刀只落核验所需字段，不做对象存储。
@@ -100,27 +171,39 @@ model EvidenceVerificationDecision {
 // 导入批次（integration-import 拥有）：一次上传的全生命周期（P6 阶段 A 读链路最小集）。
 // 完整批次状态机在阶段 C 对齐 IMPORT_WORKFLOW §4；阶段 A 仅 pending → parsed。
 model ImportBatch {
-  id                 String            @id @default(uuid()) @map("id")
-  tenantId           String            @map("tenant_id")
-  operatorId         String            @map("operator_id") // 开发期身份，审计
-  idempotencyKey     String            @unique @map("idempotency_key")
-  fileName           String            @map("file_name")
-  fileHash           String            @map("file_hash") // 文件内容指纹，幂等判定
-  status             String            @map("status") // parsed | confirmed | approved | executing | completed
-  rowCount           Int               @map("row_count")
-  columnCount        Int               @map("column_count")
+  id                    String            @id @default(uuid()) @map("id")
+  tenantId              String            @map("tenant_id")
+  operatorId            String            @map("operator_id") // 开发期身份，审计
+  idempotencyKey        String            @map("idempotency_key")
+  fileName              String            @map("file_name")
+  fileHash              String            @map("file_hash") // 文件内容指纹，幂等判定
+  sourceFileStatus      String            @default("not_retained") @map("source_file_status")
+  sourceObjectKey       String?           @unique(map: "import_batch_source_object_key_key") @map("source_object_key")
+  sourceContentType     String?           @map("source_content_type")
+  sourceSizeBytes       Int?              @map("source_size_bytes")
+  sourceRetainedAt      DateTime?         @map("source_retained_at") @db.Timestamptz
+  parserVersion         String            @default("legacy-v1") @map("parser_version")
+  replacesBatchId       String?           @map("replaces_batch_id")
+  replacesBatch         ImportBatch?      @relation("ImportBatchReplacement", fields: [replacesBatchId], references: [id], onDelete: Restrict)
+  replacementBatches    ImportBatch[]     @relation("ImportBatchReplacement")
+  status                String            @map("status") // parsed | confirmed | approved | executing | completed
+  rowCount              Int               @map("row_count")
+  columnCount           Int               @map("column_count")
   // AI 字段映射建议（阶段 B 留痕）：[{ column, fieldCode, confidence }]，阶段 C 审核指向它
-  mappingSuggestions Json              @default("[]") @map("mapping_suggestions")
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
-  rows               ImportRow[]
-  reviews            ImportReview[]
-  rowResults         ImportRowResult[]
+  mappingSuggestions    Json              @default("[]") @map("mapping_suggestions")
+  confirmedQuantityUnit String?           @map("confirmed_quantity_unit")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  rows                  ImportRow[]
+  reviews               ImportReview[]
+  rowResults            ImportRowResult[]
 
+  @@unique([tenantId, idempotencyKey], map: "import_batch_tenant_idempotency_key")
+  @@index([replacesBatchId], map: "import_batch_replaces_batch_id_idx")
   @@map("import_batch")
 }
 
-// 导入行（integration-import 拥有）：一行 = 一个已出运货柜候选（阶段 A 只存解析快照，不落账）。
+// 导入行（integration-import 拥有）：一行 = 一个来源产品明细；同备货单可有多行。
 model ImportRow {
   id        String      @id @default(uuid()) @map("id")
   batchId   String      @map("batch_id")
