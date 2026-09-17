@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { findArchitectureBoundaryViolations } from "./check-architecture-boundaries.mjs";
+import { isKnownEmptyDatabaseFailure } from "./migrate-deploy.mjs";
 import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
@@ -30,8 +31,40 @@ after(() => {
 
 test("db:migrate applies pending history without a shadow database", () => {
   const manifest = JSON.parse(readFileSync(join("package.json"), "utf8"));
-  assert.match(manifest.scripts["db:migrate"], /migrate deploy/);
+  const migrationRunner = readFileSync(
+    join("scripts", "migrate-deploy.mjs"),
+    "utf8",
+  );
+  assert.equal(
+    manifest.scripts["db:migrate"],
+    "node scripts/migrate-deploy.mjs",
+  );
+  assert.match(migrationRunner, /"migrate", "deploy"/);
   assert.doesNotMatch(manifest.scripts["db:migrate"], /migrate dev/);
+});
+
+test("migration recovery matches only the immutable empty-database failure", () => {
+  const knownFailure = `
+Migration name: 20260913011044_inbox
+Database error code: 42P01
+ERROR: relation "outbox_replay_request" does not exist`;
+  assert.equal(isKnownEmptyDatabaseFailure(knownFailure), true);
+  assert.equal(
+    isKnownEmptyDatabaseFailure(knownFailure.replace("42P01", "42501")),
+    false,
+  );
+  assert.equal(
+    isKnownEmptyDatabaseFailure(
+      knownFailure.replace("20260913011044_inbox", "another_migration"),
+    ),
+    false,
+  );
+  assert.equal(
+    isKnownEmptyDatabaseFailure(
+      "P3009: 20260913011044_inbox previously failed",
+    ),
+    false,
+  );
 });
 
 test("requires CODEOWNERS as a tracked policy file", () => {

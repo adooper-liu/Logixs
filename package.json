@@ -36,7 +36,7 @@
     "contract:generate": "node scripts/generate-contracts.mjs",
     "contract:drift": "node scripts/generate-contracts.mjs --check",
     "db:generate": "prisma generate --schema database/schema.prisma",
-    "db:migrate": "prisma migrate deploy --schema database/schema.prisma",
+    "db:migrate": "node scripts/migrate-deploy.mjs",
     "db:migrate:status": "prisma migrate status --schema database/schema.prisma",
     "db:seed": "tsx database/seed.ts",
     "db:studio": "prisma studio --port 5555 --browser none",
