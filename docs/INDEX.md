@@ -23,7 +23,7 @@
 | 文档                                                                     | 一句话                                         | 状态          |
 | ------------------------------------------------------------------------ | ---------------------------------------------- | ------------- |
 | [人话导读](./人话导读.md)                                                | 大白话讲全系统+文档地图（新人先读）            | 导航          |
-| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                       | 进站派活、核过才过站；外部接口不是遥控器       | 人话对照      |
+| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                       | 建柜展任务、事实算条件、核验实际才过站         | 人话对照      |
 | [docs/README](./README.md)                                               | docs 导航+写作纪律+消费链                      | 导航          |
 | [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)         | 目标架构总览(分层/模块/AI/工作流)              | 已接受        |
 | [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                      | 模块/包依赖与禁止依赖                          | 已接受(P1-09) |
@@ -154,6 +154,7 @@
 | [架构依赖方向门禁](./planning/tasks/p3-architecture-dependency-gates.md)                       | MODULE_DEPENDENCIES 禁止依赖写入 repo:check                          | 已完成                      |
 | [work-execution 第一刀](./planning/tasks/p6-work-execution-first-slice.md)                     | 节点任务 + required 工单 + 聚合，不推进主流程                        | 已完成                      |
 | [work-execution 第二刀](./planning/tasks/p6-work-execution-emit-event.md)                      | 装箱任务完成后经公开端口申请 stuffed，不直写流程                     | 已完成                      |
+| [建柜展开管道任务池](./planning/tasks/p6-pipeline-task-pool.md)                                | 建柜自动启动流程、全管道任务池、事实条件投影                         | 实施中                      |
 | [节点进入激活工单](./planning/tasks/p6-activate-next-node-task.md)                             | 规范事件完成后为下一节点幂等建 NodeTask                              | 已完成                      |
 | [出运申请 loaded](./planning/tasks/p6-dispatch-emit-loaded.md)                                 | 出运工单完成后申请 loaded，并激活离港任务                            | 已完成                      |
 | [离港申请 departed](./planning/tasks/p6-departure-emit-departed.md)                            | 离港工单完成后申请 departed，并激活海运在途任务                      | 已完成                      |

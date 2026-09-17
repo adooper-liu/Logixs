@@ -1,6 +1,7 @@
 import { ConflictException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
+import { InitializeContainerFlowService } from "../../lifecycle-control";
 import { ApplyReplenishmentOrderImportService } from "../../shipment-registry";
 import { IMPORT_REPOSITORY } from "../domain/import.repository";
 import { ExecuteImportService } from "./execute-import.service";
@@ -62,12 +63,18 @@ function buildModule(status = "approved") {
       created: true,
     }),
   };
-  return { repository, applyOrderImport };
+  const initializeContainerFlow = {
+    execute: vi.fn().mockResolvedValue({ initialized: true, taskCount: 14 }),
+  };
+  return { repository, applyOrderImport, initializeContainerFlow };
 }
 
 async function buildService(
   repository: ReturnType<typeof buildModule>["repository"],
   applyOrderImport: ReturnType<typeof buildModule>["applyOrderImport"],
+  initializeContainerFlow: ReturnType<
+    typeof buildModule
+  >["initializeContainerFlow"],
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -77,6 +84,10 @@ async function buildService(
         provide: ApplyReplenishmentOrderImportService,
         useValue: applyOrderImport,
       },
+      {
+        provide: InitializeContainerFlowService,
+        useValue: initializeContainerFlow,
+      },
     ],
   }).compile();
   return module.get(ExecuteImportService);
@@ -84,8 +95,13 @@ async function buildService(
 
 describe("ExecuteImportService", () => {
   it("非 approved 批次拒绝落账", async () => {
-    const { repository, applyOrderImport } = buildModule("confirmed");
-    const service = await buildService(repository, applyOrderImport);
+    const { repository, applyOrderImport, initializeContainerFlow } =
+      buildModule("confirmed");
+    const service = await buildService(
+      repository,
+      applyOrderImport,
+      initializeContainerFlow,
+    );
 
     await expect(service.execute("batch1", "t1")).rejects.toThrow(
       ConflictException,
@@ -94,8 +110,13 @@ describe("ExecuteImportService", () => {
   });
 
   it("同单多行只调用一次事务写端口且逐行关联同一货柜", async () => {
-    const { repository, applyOrderImport } = buildModule();
-    const service = await buildService(repository, applyOrderImport);
+    const { repository, applyOrderImport, initializeContainerFlow } =
+      buildModule();
+    const service = await buildService(
+      repository,
+      applyOrderImport,
+      initializeContainerFlow,
+    );
 
     const { results } = await service.execute("batch1", "t1");
 
@@ -121,12 +142,21 @@ describe("ExecuteImportService", () => {
     expect(results.every((result) => result.containerRecordId === "c1")).toBe(
       true,
     );
+    expect(initializeContainerFlow.execute).toHaveBeenCalledWith({
+      containerId: "c1",
+      tenantId: "t1",
+    });
   });
 
   it("事务写端口失败时同一备货单全部来源行失败", async () => {
-    const { repository, applyOrderImport } = buildModule();
+    const { repository, applyOrderImport, initializeContainerFlow } =
+      buildModule();
     applyOrderImport.execute.mockRejectedValueOnce(new Error("rolled back"));
-    const service = await buildService(repository, applyOrderImport);
+    const service = await buildService(
+      repository,
+      applyOrderImport,
+      initializeContainerFlow,
+    );
 
     const { results } = await service.execute("batch1", "t1");
 
@@ -135,5 +165,6 @@ describe("ExecuteImportService", () => {
       "rolled back",
       "rolled back",
     ]);
+    expect(initializeContainerFlow.execute).not.toHaveBeenCalled();
   });
 });

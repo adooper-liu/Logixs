@@ -472,17 +472,22 @@ model CompensationRecord {
 
 // 节点任务（work-execution 拥有）：货柜到节点的工序任务（第一刀最小集）。
 model NodeTask {
-  id                String           @id @default(uuid()) @map("id")
-  flowInstanceId    String           @map("flow_instance_id")
-  nodeInstanceId    String           @map("node_instance_id")
-  nodeCode          String           @map("node_code")
-  containerId       String?          @map("container_id") // 逻辑引用，无跨模块外键
-  taskDefinitionKey String           @map("task_definition_key")
-  state             String           @map("state") // pending | in_progress | completed
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-  workOrders        WorkOrder[]
-  outcome           NodeTaskOutcome?
+  id                    String           @id @default(uuid()) @map("id")
+  flowInstanceId        String           @map("flow_instance_id")
+  nodeInstanceId        String           @map("node_instance_id")
+  nodeCode              String           @map("node_code")
+  containerId           String?          @map("container_id") // 逻辑引用，无跨模块外键
+  taskDefinitionKey     String           @map("task_definition_key")
+  state                 String           @map("state") // pending | in_progress | completed
+  applicability         String           @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
+  readinessState        String           @default("waiting_conditions") @map("readiness_state") // waiting_conditions | ready
+  completionEligibility String           @default("awaiting_evidence") @map("completion_eligibility") // awaiting_evidence | eligible
+  conditionFactRefs     Json             @default("[]") @map("condition_fact_refs")
+  conditionsEvaluatedAt DateTime         @default(now()) @map("conditions_evaluated_at") @db.Timestamptz
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+  workOrders            WorkOrder[]
+  outcome               NodeTaskOutcome?
 
   @@unique([nodeInstanceId])
   @@index([containerId, createdAt, id])

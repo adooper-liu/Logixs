@@ -7,6 +7,7 @@ import { config } from "../../config/env";
 import { AiGovernanceModule } from "../ai-governance";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { ShipmentRegistryModule } from "../shipment-registry";
+import { LifecycleControlModule } from "../lifecycle-control";
 import { ConfirmMappingsService } from "./application/confirm-mappings.service";
 import { CreateImportBatchService } from "./application/create-import-batch.service";
 import { ExecuteImportService } from "./application/execute-import.service";
@@ -19,7 +20,12 @@ import { S3ImportSourceStorage } from "./infrastructure/s3-import-source-storage
 import { ImportBatchesController } from "./presentation/import-batches.controller";
 
 @Module({
-  imports: [AiGovernanceModule, IdentityModule, ShipmentRegistryModule],
+  imports: [
+    AiGovernanceModule,
+    IdentityModule,
+    ShipmentRegistryModule,
+    LifecycleControlModule,
+  ],
   controllers: [ImportBatchesController],
   providers: [
     CreateImportBatchService,

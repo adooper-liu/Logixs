@@ -1,6 +1,6 @@
 # 货柜生命周期状态机契约 V1
 
-> 状态：**正式 V1（负责人批准）** · 契约 ID：`GC-002` · 版本：`1.0.0` · 定稿日期：2026-09-10 · 所有者：生命周期域负责人（刘志高） · 实现所有者：`lifecycle-control` · 公共类型目标位置：`packages/contracts`
+> 状态：**正式 V1（负责人批准）** · 契约 ID：`GC-002` · 版本：`1.1.0` · 定稿日期：2026-09-17 · 所有者：生命周期域负责人（刘志高） · 实现所有者：`lifecycle-control` · 公共类型目标位置：`packages/contracts`
 > 消费者：`shipment-registry`、`work-execution`、专业业务模块、Integration Adapter、Web、审计和生命周期投影
 
 ## 1. 目的与权威边界
@@ -190,7 +190,7 @@ idempotencyKey: string(1..200)
 expectedContainerVersion: integer >= 0
 ```
 
-命令前置条件是货柜已以真实箱号建档，且备货单与货柜关联一致。若已存在 `cargoReadinessFactId`，状态机挂接事实并生成 `cargo_ready` 生命周期事件，完成节点 #1、激活节点 #2；若尚未确认，则启动后停留节点 #1，等待该备货单唯一有效确认。不得为无箱号备货单创建 FlowInstance。导入快照可携带其他已验证实际事实并按本状态机顺序重放，不允许客户端直接指定最终状态。
+命令由真实箱号建档或迟绑定成功自动触发，不是人工“开始流程”按钮。前置条件是货柜已以真实箱号建档，且备货单与货柜关联一致；命令幂等创建 FlowInstance 和完整节点实例，并通知 `work-execution` 展开全管道任务。若已存在 `cargoReadinessFactId`，状态机挂接事实并生成 `cargo_ready` 生命周期事件，完成节点 #1、进入节点 #2；若尚未确认，则启动后停留节点 #1。不得为无箱号备货单创建 FlowInstance。导入快照中的人工或外部先行事实可以计算任务是否适用、可执行或具备完成资格；只有已验证实际事实才按本状态机顺序重放，不允许客户端直接指定最终状态。
 
 ### 6.2 `ApplyLifecycleEventCommandV1`
 

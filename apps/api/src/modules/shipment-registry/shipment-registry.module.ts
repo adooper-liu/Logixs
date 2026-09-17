@@ -10,6 +10,8 @@ import { AssertContainerTenantService } from "./application/assert-container-ten
 import { ASSERT_CONTAINER_TENANT } from "./assert-container-tenant.port";
 import { GetContainerService } from "./application/get-container.service";
 import { ListContainersService } from "./application/list-containers.service";
+import { ListContainerTaskFactsService } from "./application/list-container-task-facts.service";
+import { LIST_CONTAINER_TASK_FACTS } from "./list-container-task-facts.port";
 import { CONTAINER_RECORD_WRITER } from "./domain/apply-container-record";
 import { REPLENISHMENT_ORDER_IMPORT_WRITER } from "./domain/apply-replenishment-order-import";
 import { CONTAINER_REPOSITORY } from "./domain/container.repository";
@@ -23,6 +25,7 @@ import { ContainersController } from "./presentation/containers.controller";
   controllers: [ContainersController],
   providers: [
     ListContainersService,
+    ListContainerTaskFactsService,
     GetContainerService,
     ApplyContainerRecordService,
     ApplyReplenishmentOrderImportService,
@@ -37,6 +40,10 @@ import { ContainersController } from "./presentation/containers.controller";
       provide: REPLENISHMENT_ORDER_IMPORT_WRITER,
       useClass: PrismaReplenishmentOrderImportWriter,
     },
+    {
+      provide: LIST_CONTAINER_TASK_FACTS,
+      useExisting: ListContainerTaskFactsService,
+    },
   ],
   exports: [
     ListContainersService,
@@ -44,6 +51,8 @@ import { ContainersController } from "./presentation/containers.controller";
     ApplyReplenishmentOrderImportService,
     AssertContainerTenantService,
     ASSERT_CONTAINER_TENANT,
+    ListContainerTaskFactsService,
+    LIST_CONTAINER_TASK_FACTS,
   ],
 })
 export class ShipmentRegistryModule implements NestModule {

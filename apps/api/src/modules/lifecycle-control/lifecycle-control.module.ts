@@ -19,6 +19,7 @@ import {
   PublishOutboxBatchService,
 } from "./application/publish-outbox-batch.service";
 import { ApplyLifecycleEventService } from "./application/apply-lifecycle-event.service";
+import { InitializeContainerFlowService } from "./application/initialize-container-flow.service";
 import { DrainDueOutboxService } from "./application/drain-due-outbox.service";
 import { DrainDueSystemOutboxService } from "./application/drain-due-system-outbox.service";
 import { ListDeadLettersService } from "./application/list-dead-letters.service";
@@ -88,6 +89,7 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
   ],
   providers: [
     ApplyLifecycleEventService,
+    InitializeContainerFlowService,
     SetNodeApplicabilityService,
     SubmitClientOperationService,
     GetClientOperationService,
@@ -128,7 +130,11 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
       useExisting: ApplyLifecycleEventService,
     },
   ],
-  exports: [ApplyLifecycleEventService, APPLY_LIFECYCLE_EVENT],
+  exports: [
+    ApplyLifecycleEventService,
+    InitializeContainerFlowService,
+    APPLY_LIFECYCLE_EVENT,
+  ],
 })
 export class LifecycleControlModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
