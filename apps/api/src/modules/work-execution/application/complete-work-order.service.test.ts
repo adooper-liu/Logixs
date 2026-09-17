@@ -25,6 +25,11 @@ function readyBundle(
       state: "pending",
       createdAt: new Date("2026-09-12T10:00:00Z"),
       ...overrides,
+      applicability: overrides.applicability ?? "required",
+      readinessState: overrides.readinessState ?? "ready",
+      completionEligibility:
+        overrides.completionEligibility ?? "awaiting_evidence",
+      conditionFactRefs: overrides.conditionFactRefs ?? [],
     },
     workOrders: [
       {

@@ -4,10 +4,16 @@ export type { ContainerSummary } from "./domain/container-summary";
 export { ApplyContainerRecordService } from "./application/apply-container-record.service";
 export { ApplyReplenishmentOrderImportService } from "./application/apply-replenishment-order-import.service";
 export { AssertContainerTenantService } from "./application/assert-container-tenant.service";
+export { ListContainerTaskFactsService } from "./application/list-container-task-facts.service";
 export {
   ASSERT_CONTAINER_TENANT,
   type AssertContainerTenantPort,
 } from "./assert-container-tenant.port";
+export {
+  LIST_CONTAINER_TASK_FACTS,
+  type ContainerTaskFact,
+  type ListContainerTaskFactsPort,
+} from "./list-container-task-facts.port";
 export type {
   ApplyContainerRecordCommand,
   ApplyContainerRecordResult,

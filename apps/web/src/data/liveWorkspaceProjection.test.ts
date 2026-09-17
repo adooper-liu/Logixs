@@ -26,6 +26,10 @@ const detail = {
   containerId: "c1",
   taskDefinitionKey: "node-customs_clearance",
   state: "pending",
+  applicability: "required" as const,
+  readinessState: "ready" as const,
+  completionEligibility: "awaiting_evidence" as const,
+  conditionFactRefs: [],
   workOrders: [
     {
       id: "w1",
@@ -72,6 +76,24 @@ describe("liveWorkspaceProjection", () => {
         (row) => row.taskStatus.code,
       ),
     ).toEqual(["idle"]);
+  });
+
+  it("全管道任务优先显示可开工项，等待条件项进入等待区", () => {
+    const waiting = {
+      ...detail,
+      id: "t-waiting",
+      nodeCode: "empty_return",
+      readinessState: "waiting_conditions" as const,
+      workOrders: [{ ...detail.workOrders[0]!, state: "draft" }],
+    };
+    const rows = attachOpenTasks(
+      [toLiveContainer(container)],
+      [waiting, detail],
+    );
+
+    expect(rows[0]?.taskStatus.label).toBe("清关完成 · 进行中");
+    expect(toLiveTask(waiting, container).status).toBe("waiting_external");
+    expect(toLiveTask(waiting, container).actions).toEqual([]);
   });
 
   it("只把已有流程的当前站挂上，不把八态当成站点", () => {

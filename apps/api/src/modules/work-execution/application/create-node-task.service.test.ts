@@ -13,6 +13,10 @@ function existingBundle() {
       nodeCode: "customs_clearance" as const,
       taskDefinitionKey: "node-customs_clearance",
       state: "pending" as const,
+      applicability: "required" as const,
+      readinessState: "ready" as const,
+      completionEligibility: "awaiting_evidence" as const,
+      conditionFactRefs: [],
       createdAt: new Date("2026-09-12T10:00:00Z"),
     },
     workOrders: [
@@ -34,7 +38,7 @@ describe("CreateNodeTaskService", () => {
   it("未知节点码拒绝", async () => {
     const repository = {
       findTaskByNodeInstanceId: vi.fn(),
-      createTaskWithRequiredWorkOrder: vi.fn(),
+      upsertTaskWithRequiredWorkOrder: vi.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [
@@ -54,14 +58,14 @@ describe("CreateNodeTaskService", () => {
         nodeCode: "not_a_node",
       }),
     ).rejects.toThrow("VALIDATION_FORMAT");
-    expect(repository.createTaskWithRequiredWorkOrder).not.toHaveBeenCalled();
+    expect(repository.upsertTaskWithRequiredWorkOrder).not.toHaveBeenCalled();
   });
 
-  it("同 nodeInstanceId 重复创建返回已有任务", async () => {
+  it("同 nodeInstanceId 重放时幂等调和任务条件", async () => {
     const existing = existingBundle();
     const repository = {
       findTaskByNodeInstanceId: vi.fn().mockResolvedValue(existing),
-      createTaskWithRequiredWorkOrder: vi.fn(),
+      upsertTaskWithRequiredWorkOrder: vi.fn().mockResolvedValue(existing),
     };
     const module = await Test.createTestingModule({
       providers: [
@@ -81,6 +85,12 @@ describe("CreateNodeTaskService", () => {
     });
 
     expect(result.task.id).toBe("t1");
-    expect(repository.createTaskWithRequiredWorkOrder).not.toHaveBeenCalled();
+    expect(repository.upsertTaskWithRequiredWorkOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeInstanceId: "n1",
+        readinessState: "ready",
+        completionEligibility: "awaiting_evidence",
+      }),
+    );
   });
 });

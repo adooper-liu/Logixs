@@ -165,6 +165,10 @@
         "taskDefinitionKey",
         "taskDefinitionVersion",
         "state",
+        "applicability",
+        "readinessState",
+        "completionEligibility",
+        "conditionFactRefs",
         "requiredWorkOrderCount",
         "completedWorkOrderCount",
         "activeBlockRefs",
@@ -181,6 +185,20 @@
         },
         "taskDefinitionVersion": { "type": "integer", "minimum": 1 },
         "state": { "$ref": "common.schema.json#/$defs/NodeTaskState" },
+        "applicability": {
+          "$ref": "common.schema.json#/$defs/NodeApplicability"
+        },
+        "readinessState": {
+          "$ref": "common.schema.json#/$defs/TaskReadinessState"
+        },
+        "completionEligibility": {
+          "$ref": "common.schema.json#/$defs/TaskCompletionEligibility"
+        },
+        "conditionFactRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
         "ownerRef": { "$ref": "common.schema.json#/$defs/EntityRef" },
         "dueAt": { "$ref": "common.schema.json#/$defs/DateTime" },
         "requiredWorkOrderCount": { "type": "integer", "minimum": 0 },

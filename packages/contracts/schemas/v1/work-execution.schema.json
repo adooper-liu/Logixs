@@ -199,6 +199,10 @@
         "taskDefinitionVersion",
         "policySnapshotHash",
         "state",
+        "applicability",
+        "readinessState",
+        "completionEligibility",
+        "conditionFactRefs",
         "version",
         "updatedAt"
       ],
@@ -217,6 +221,20 @@
         "taskDefinitionVersion": { "type": "integer", "minimum": 1 },
         "policySnapshotHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "state": { "$ref": "common.schema.json#/$defs/NodeTaskState" },
+        "applicability": {
+          "$ref": "common.schema.json#/$defs/NodeApplicability"
+        },
+        "readinessState": {
+          "$ref": "common.schema.json#/$defs/TaskReadinessState"
+        },
+        "completionEligibility": {
+          "$ref": "common.schema.json#/$defs/TaskCompletionEligibility"
+        },
+        "conditionFactRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
         "ownerRef": { "$ref": "common.schema.json#/$defs/EntityRef" },
         "dueAt": { "$ref": "common.schema.json#/$defs/DateTime" },
         "activeBlockRefs": {

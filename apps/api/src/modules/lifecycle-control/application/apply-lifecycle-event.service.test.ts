@@ -165,6 +165,7 @@ describe("ApplyLifecycleEventService", () => {
       nodeCode: "shipment_dispatch",
       containerId: "c1",
       tenantId: "t1",
+      applicability: "required",
     });
   });
 
@@ -240,6 +241,7 @@ describe("ApplyLifecycleEventService", () => {
       nodeCode: "ocean_transit",
       containerId: "c1",
       tenantId: "t1",
+      applicability: "required",
     });
   });
 
@@ -295,6 +297,60 @@ describe("ApplyLifecycleEventService", () => {
       nodeCode: "customs_clearance",
       containerId: "c1",
       tenantId: "t1",
+      applicability: "required",
+    });
+  });
+
+  it("transit_arrived 激活中转任务时保留可选节点适用性", async () => {
+    const repository = buildRepository("in_transit");
+    repository.ensureFlow.mockResolvedValue({
+      flow: {
+        id: "f1",
+        containerId: "c1",
+        state: "active",
+        currentNodeCode: "ocean_transit",
+        version: 1,
+      },
+      nodes: [
+        {
+          id: "node-ts",
+          nodeCode: "transshipment",
+          state: "pending",
+          completedAt: null,
+          applicability: "optional_applicable",
+        },
+      ],
+    });
+    repository.ensureNode.mockResolvedValue({
+      id: "node-ts",
+      nodeCode: "transshipment",
+    });
+    const createNodeTask = {
+      execute: vi.fn().mockResolvedValue({
+        task: { id: "task-ts" },
+        workOrders: [],
+        outcome: null,
+      }),
+    };
+    const { service } = await buildService(
+      repository,
+      { execute: vi.fn() },
+      createNodeTask,
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "transit_arrived",
+    });
+
+    expect(result.activatedNodeCode).toBe("transshipment");
+    expect(createNodeTask.execute).toHaveBeenCalledWith({
+      flowInstanceId: "f1",
+      nodeInstanceId: "node-ts",
+      nodeCode: "transshipment",
+      containerId: "c1",
+      tenantId: "t1",
+      applicability: "optional_applicable",
     });
   });
 

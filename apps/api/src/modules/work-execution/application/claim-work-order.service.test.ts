@@ -20,6 +20,10 @@ function readyBundle(
       containerId: "c1",
       taskDefinitionKey: "node-customs_clearance",
       state: "pending",
+      applicability: "required",
+      readinessState: "ready",
+      completionEligibility: "awaiting_evidence",
+      conditionFactRefs: [],
       createdAt: new Date("2026-09-13T10:00:00Z"),
     },
     workOrders: [

@@ -55,7 +55,7 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 | charges/document/exception/performance        | 事实引用和幂等事件消费者         |
 | integration-import                            | 各业务模块的写端口，不直写业务表 |
 
-正常推进方向：WorkOrder结果 → NodeTask聚合 → 规范业务事件 → lifecycle-control合法转换。反向触发只发送“节点已进入”事件，由work-execution按节点任务定义生成工单。跨事务使用Transactional Outbox；禁止双向同步调用环和分布式事务。
+正常推进方向：WorkOrder结果 → NodeTask聚合 → 规范业务事件 → lifecycle-control合法转换。真实箱号建档后，单体 Application 编排经公开幂等命令初始化流程并由work-execution按完整管道定义展开任务和工单；跨进程接入时改用“流程已初始化”Outbox事件。后续“节点已进入”及专业事实只重算适用性、就绪度和完成资格。禁止双向同步调用环和分布式事务。
 
 ## 3. 禁止依赖
 

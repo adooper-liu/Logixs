@@ -2,6 +2,7 @@ import type { ContainerLifecycleState } from "@logix/contracts";
 import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type { ContainerSummary } from "../domain/container-summary";
+import type { ContainerTaskFact } from "../list-container-task-facts.port";
 import type {
   ContainerByIdQuery,
   ContainerListQuery,
@@ -49,6 +50,37 @@ export class PrismaContainerRepository implements ContainerRepository {
       select: { tenantId: true },
     });
     return row?.tenantId ?? null;
+  }
+
+  async listCurrentTaskFacts(
+    query: ContainerByIdQuery,
+  ): Promise<ContainerTaskFact[]> {
+    const rows = await this.prisma.shipmentTimeFact.findMany({
+      where: {
+        containerRecordId: query.id,
+        tenantId: query.tenantId,
+        isCurrent: true,
+      },
+      select: {
+        id: true,
+        factCode: true,
+        timeKind: true,
+        captureSource: true,
+        evidenceRef: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    return rows
+      .filter(
+        (row) => row.timeKind === "actual" || row.timeKind === "estimated",
+      )
+      .map((row) => ({
+        id: row.id,
+        factCode: row.factCode,
+        timeKind: row.timeKind as "actual" | "estimated",
+        captureSource: row.captureSource,
+        evidenceRef: row.evidenceRef,
+      }));
   }
 }
 

@@ -31,6 +31,10 @@ export interface NodeTaskDetail {
   containerId: string | null;
   taskDefinitionKey: string;
   state: string;
+  applicability: "required" | "optional_applicable" | "optional_not_applicable";
+  readinessState: "waiting_conditions" | "ready";
+  completionEligibility: "awaiting_evidence" | "eligible";
+  conditionFactRefs: string[];
   workOrders: WorkOrderSummary[];
   outcome: NodeTaskOutcome | null;
 }

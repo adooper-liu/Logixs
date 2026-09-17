@@ -13,6 +13,10 @@ import type {
 } from "@logix/contracts";
 import { ApplyContainerRecordService } from "../../shipment-registry";
 import {
+  CREATE_NODE_TASK,
+  type CreateNodeTaskPort,
+} from "../../work-execution";
+import {
   EVENT_TO_COMPLETION_NODES,
   EVENT_TO_CONTAINER_STATUS,
 } from "../domain/event-catalog";
@@ -27,7 +31,6 @@ import {
 import { parseEvidenceRefs } from "../domain/evidence-refs";
 import { CONTAINER_STATUS_ORDER, NODE_SEQUENCE } from "../domain/node-status";
 
-const CREATE_NODE_TASK = Symbol.for("logix.CreateNodeTask");
 const ASSERT_EVIDENCE_REFS = Symbol.for("logix.AssertEvidenceRefs");
 
 interface AssertEvidenceRefsPort {
@@ -37,16 +40,6 @@ interface AssertEvidenceRefsPort {
     subjectId: string;
     evidenceIds: string[];
   }): Promise<void>;
-}
-
-interface CreateNodeTaskPort {
-  execute(input: {
-    flowInstanceId: string;
-    nodeInstanceId: string;
-    nodeCode: string;
-    containerId?: string;
-    tenantId?: string;
-  }): Promise<{ task: { id: string } }>;
 }
 
 export interface ApplyLifecycleEventInput {
@@ -260,6 +253,9 @@ export class ApplyLifecycleEventService {
     }
 
     const node = await this.repository.ensureNode(flow.flow.id, nextNode);
+    const applicability =
+      flow.nodes.find((candidate) => candidate.nodeCode === nextNode)
+        ?.applicability ?? defaultApplicability(nextNode);
 
     try {
       const created = await this.createNodeTask.execute({
@@ -268,6 +264,7 @@ export class ApplyLifecycleEventService {
         nodeCode: nextNode,
         containerId,
         tenantId,
+        applicability,
       });
       return {
         activatedNodeCode: nextNode,
