@@ -15,12 +15,12 @@ export class ContainersController {
   @Get()
   @ApiOkResponse({ type: ContainerPageDto })
   async list(
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<ContainerPageDto> {
     const page = await this.listContainers.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       pageSize,
       cursor,
     });
@@ -35,11 +35,11 @@ export class ContainersController {
   @Get(":id")
   @ApiOkResponse({ type: ContainerSummaryDto })
   async get(
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Param("id") id: string,
   ): Promise<ContainerSummaryDto> {
     return this.getContainer.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       id,
     });
   }

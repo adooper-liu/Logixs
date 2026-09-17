@@ -25,11 +25,11 @@ export class EvidenceController {
   @ApiOkResponse({ type: EvidenceRecordDto })
   async register(
     @Body() body: RegisterEvidenceRequestDto,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<EvidenceRecordDto> {
     return toDto({
       record: await this.registerEvidence.execute({
-        tenantId: request.devIdentity.tenantId,
+        tenantId: request.identity.tenantId,
         evidenceType: body.evidenceType,
         subjectType: body.subjectType,
         subjectId: body.subjectId,
@@ -51,7 +51,7 @@ export class EvidenceController {
   verify(
     @Param("id") id: string,
     @Body() body: VerifyEvidenceRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<EvidenceRecordDto> {
     return this.decide(id, "verified", body, request);
   }
@@ -61,7 +61,7 @@ export class EvidenceController {
   reject(
     @Param("id") id: string,
     @Body() body: VerifyEvidenceRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<EvidenceRecordDto> {
     return this.decide(id, "rejected", body, request);
   }
@@ -71,7 +71,7 @@ export class EvidenceController {
   revoke(
     @Param("id") id: string,
     @Body() body: VerifyEvidenceRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<EvidenceRecordDto> {
     return this.decide(id, "revoked", body, request);
   }
@@ -80,13 +80,13 @@ export class EvidenceController {
     id: string,
     decision: VerificationDecision,
     body: VerifyEvidenceRequestDto,
-    request: { devIdentity: { tenantId: string; operatorId: string } },
+    request: { identity: { tenantId: string; actorId: string } },
   ): Promise<EvidenceRecordDto> {
     return toDto(
       await this.decideEvidence.execute({
         evidenceId: id,
-        tenantId: request.devIdentity.tenantId,
-        actorOrServiceId: request.devIdentity.operatorId,
+        tenantId: request.identity.tenantId,
+        actorOrServiceId: request.identity.actorId,
         reasonCode: body.reasonCode,
         reason: body.reason,
         decision,

@@ -19,12 +19,12 @@ export class InboxDeadLetterController {
   @Get("dead-letters")
   @ApiOkResponse({ type: InboxDeadLetterPageDto })
   async listDeadLettersPage(
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<InboxDeadLetterPageDto> {
     const page = await this.listInboxDeadLetters.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       pageSize,
       cursor,
     });
@@ -55,12 +55,12 @@ export class InboxDeadLetterController {
   async replay(
     @Param("deadLetterId") deadLetterId: string,
     @Body() body: ReplayInboxDeadLetterRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ReplayInboxDeadLetterResponseDto> {
     return this.replayInboxDeadLetter.execute({
       deadLetterId,
-      tenantId: request.devIdentity.tenantId,
-      operatorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      operatorId: request.identity.actorId,
       reasonCode: body.reasonCode,
       targetConsumerVersion: body.targetConsumerVersion,
       idempotencyKey: body.idempotencyKey,

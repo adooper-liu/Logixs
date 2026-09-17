@@ -27,16 +27,16 @@ export class OverdueAccrualController {
   @ApiOkResponse({ type: OverdueAccrualResponseDto })
   async compute(
     @Body() body: ComputeOverdueAccrualRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<OverdueAccrualResponseDto> {
-    if (!request.devIdentity.tenantId || !request.devIdentity.operatorId) {
+    if (!request.identity.tenantId || !request.identity.actorId) {
       throw new HttpException(
         "AUTHORIZATION_SCOPE_DENIED: 缺少租户或操作者",
         HttpStatus.FORBIDDEN,
       );
     }
     const decision = await this.computeAccrual.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       purpose: body.purpose,
       query: {
         portId: body.portId,

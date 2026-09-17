@@ -1,5 +1,5 @@
 export * from "./identity.module";
-export type { DevIdentity } from "./presentation/dev-identity";
+export type { AuthenticatedUserIdentity } from "./domain/authenticated-user-identity";
 export { attachDevIdentity } from "./presentation/dev-identity";
 export { DevIdentityMiddleware } from "./presentation/dev-identity.middleware";
 export type { ServiceIdentity } from "./presentation/dev-service-identity";

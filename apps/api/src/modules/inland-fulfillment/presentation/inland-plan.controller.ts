@@ -21,11 +21,11 @@ export class InlandPlanController {
   @ApiOkResponse({ type: ReplacePlanningSetupResponseDto })
   async setup(
     @Body() body: ReplacePlanningSetupRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ReplacePlanningSetupResponseDto> {
     return this.replaceSetup.execute({
-      tenantId: request.devIdentity.tenantId,
-      actorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
       setup: {
         parameters: body.parameters,
         strategies: body.strategies,
@@ -40,11 +40,11 @@ export class InlandPlanController {
   @ApiOkResponse({ type: InlandPlanDraftResponseDto })
   async draft(
     @Body() body: DraftInlandPlanRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<InlandPlanDraftResponseDto> {
     const plan = await this.draftPlan.execute({
-      tenantId: request.devIdentity.tenantId,
-      actorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
       containerId: body.containerId,
       warehouseId: body.warehouseId,
       portId: body.portId,

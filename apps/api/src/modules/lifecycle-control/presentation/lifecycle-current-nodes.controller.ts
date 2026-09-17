@@ -13,11 +13,11 @@ export class LifecycleCurrentNodesController {
   @Get()
   @ApiOkResponse({ type: ContainerCurrentNodesPageDto })
   async list(
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("containerIds") containerIds?: string,
   ): Promise<ContainerCurrentNodesPageDto> {
     const page = await this.listContainerCurrentNodes.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       containerIds,
     });
     return {

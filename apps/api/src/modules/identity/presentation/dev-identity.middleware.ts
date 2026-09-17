@@ -1,4 +1,5 @@
 import { Injectable, type NestMiddleware } from "@nestjs/common";
+import { config } from "../../../config/env";
 import { attachDevIdentity } from "./dev-identity";
 
 @Injectable()
@@ -10,7 +11,9 @@ export class DevIdentityMiddleware implements NestMiddleware {
     _response: unknown,
     next: () => void,
   ): void {
-    attachDevIdentity(request);
+    if (config.authentication.mode === "development") {
+      attachDevIdentity(request);
+    }
     next();
   }
 }

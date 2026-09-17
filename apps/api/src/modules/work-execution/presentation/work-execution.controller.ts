@@ -39,14 +39,14 @@ export class WorkExecutionController {
   @Get("node-tasks")
   @ApiOkResponse({ type: NodeTaskPageDto })
   async list(
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("containerId") containerId?: string,
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<NodeTaskPageDto> {
     const page = await this.listNodeTasks.execute({
       containerId,
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       pageSize,
       cursor,
     });
@@ -62,7 +62,7 @@ export class WorkExecutionController {
   @ApiOkResponse({ type: NodeTaskDetailDto })
   async create(
     @Body() body: CreateNodeTaskRequestDto,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<NodeTaskDetailDto> {
     return toDetail(
       await this.createNodeTask.execute({
@@ -70,7 +70,7 @@ export class WorkExecutionController {
         nodeInstanceId: body.nodeInstanceId,
         nodeCode: body.nodeCode,
         containerId: body.containerId,
-        tenantId: request.devIdentity.tenantId,
+        tenantId: request.identity.tenantId,
       }),
     );
   }
@@ -79,11 +79,11 @@ export class WorkExecutionController {
   @ApiOkResponse({ type: NodeTaskDetailDto })
   async get(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<NodeTaskDetailDto> {
     const bundle = await this.getNodeTask.execute(
       id,
-      request.devIdentity.tenantId,
+      request.identity.tenantId,
     );
     if (!bundle) throw new NotFoundException("RESOURCE_NOT_FOUND");
     return toDetail(bundle);
@@ -93,13 +93,13 @@ export class WorkExecutionController {
   @ApiOkResponse({ type: ClaimWorkOrderResponseDto })
   claim(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
     @Body() body?: ClaimWorkOrderRequestDto,
   ): Promise<ClaimWorkOrderResponseDto> {
     return this.claimWorkOrder.execute({
       workOrderId: id,
-      tenantId: request.devIdentity.tenantId,
-      actorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
       idempotencyKey: body?.idempotencyKey,
     });
   }
@@ -108,13 +108,13 @@ export class WorkExecutionController {
   @ApiOkResponse({ type: CompleteWorkOrderResponseDto })
   complete(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
     @Body() body?: CompleteWorkOrderRequestDto,
   ): Promise<CompleteWorkOrderResponseDto> {
     return this.completeWorkOrder.execute({
       workOrderId: id,
-      tenantId: request.devIdentity.tenantId,
-      actorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
       evidenceRefs: body?.evidenceRefs ?? [],
       idempotencyKey: body?.idempotencyKey,
     });

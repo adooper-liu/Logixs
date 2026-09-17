@@ -35,17 +35,17 @@ export class OverdueDeadlinesController {
   @ApiOkResponse({ type: ReplaceOverdueStandardsResponseDto })
   async replace(
     @Body() body: ReplaceOverdueStandardsRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ReplaceOverdueStandardsResponseDto> {
-    if (!request.devIdentity.tenantId || !request.devIdentity.operatorId) {
+    if (!request.identity.tenantId || !request.identity.actorId) {
       throw new HttpException(
         "AUTHORIZATION_SCOPE_DENIED: 缺少租户或操作者",
         HttpStatus.FORBIDDEN,
       );
     }
     return this.replaceStandards.execute({
-      tenantId: request.devIdentity.tenantId,
-      actorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
       standards: body.standards.map(toStandard),
     });
   }
@@ -54,16 +54,16 @@ export class OverdueDeadlinesController {
   @ApiOkResponse({ type: OverdueDeadlinesResponseDto })
   async compute(
     @Body() body: ComputeOverdueDeadlinesRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<OverdueDeadlinesResponseDto> {
-    if (!request.devIdentity.tenantId || !request.devIdentity.operatorId) {
+    if (!request.identity.tenantId || !request.identity.actorId) {
       throw new HttpException(
         "AUTHORIZATION_SCOPE_DENIED: 缺少租户或操作者",
         HttpStatus.FORBIDDEN,
       );
     }
     const decision = await this.computeDeadlines.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       query: {
         portId: body.portId,
         shippingCompanyId: body.shippingCompanyId,
