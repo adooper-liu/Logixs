@@ -2,8 +2,9 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 18 * * *"
 
 permissions:
   contents: read
@@ -13,9 +14,137 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+      production: ${{ steps.classify.outputs.production }}
+      e2e: ${{ steps.classify.outputs.e2e }}
+      dependencies: ${{ steps.classify.outputs.dependencies }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: classify
+        name: Classify changed paths
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if ($env:EVENT_NAME -eq "schedule") {
+            $code = $false
+            $production = $false
+            $e2e = $false
+            $dependencies = $true
+          } elseif ($env:EVENT_NAME -eq "workflow_dispatch") {
+            $code = $true
+            $production = $true
+            $e2e = $true
+            $dependencies = $true
+          } else {
+            $files = @(git diff --name-only --diff-filter=ACMR $env:BASE_SHA $env:HEAD_SHA)
+            if ($LASTEXITCODE -ne 0) {
+              throw "Unable to classify changed paths"
+            }
+
+            $code = @(
+              $files | Where-Object {
+                $_ -notmatch '(^|/)docs/' -and
+                $_ -notmatch '\.md$' -and
+                $_ -notmatch '^\.github/'
+              }
+            ).Count -gt 0
+            $production = @(
+              $files | Where-Object {
+                $_ -notmatch '(^|/)docs/' -and
+                $_ -notmatch '\.md$' -and
+                $_ -notmatch '^\.github/' -and
+                $_ -notmatch '\.(test|spec)\.[^/]+$' -and
+                $_ -notmatch '^apps/web/e2e/'
+              }
+            ).Count -gt 0
+            $e2e = @(
+              $files | Where-Object {
+                $_ -match '^apps/web/e2e/' -or
+                (
+                  $_ -match '^(apps/web|apps/api|packages/contracts)/' -and
+                  $_ -notmatch '\.(test|spec)\.[^/]+$'
+                ) -or
+                $_ -match '(^|/)playwright[^/]*\.(ts|js|json)$'
+              }
+            ).Count -gt 0
+            $dependencies = @(
+              $files | Where-Object {
+                $_ -match '(^|/)package\.json$' -or
+                $_ -match '^pnpm-lock\.yaml$' -or
+                $_ -match '^pnpm-workspace\.yaml$' -or
+                $_ -match '^\.nvmrc$'
+              }
+            ).Count -gt 0
+          }
+
+          "code=$($code.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "production=$($production.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "e2e=$($e2e.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "dependencies=$($dependencies.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+  static:
+    if: github.event_name != 'schedule'
+    needs: changes
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm repo:check
+      - run: pnpm format:check
+      - name: Validate production code
+        if: needs.changes.outputs.code == 'true'
+        run: pnpm contract:check && pnpm contract:drift && pnpm db:generate && pnpm lint && pnpm typecheck
+
+  unit:
+    if: needs.changes.outputs.code == 'true'
+    needs: changes
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  build:
+    if: needs.changes.outputs.production == 'true'
+    needs: changes
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+  e2e:
+    if: needs.changes.outputs.e2e == 'true'
+    needs: changes
+    runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -25,7 +154,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm playwright:install
-      - run: pnpm validate
+      - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -34,4 +163,44 @@ jobs:
             apps/web/test-results
             apps/web/playwright-report
           if-no-files-found: ignore
+
+  security:
+    if: needs.changes.outputs.dependencies == 'true'
+    needs: changes
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm security:audit
+
+  quality:
+    if: always()
+    needs: [changes, static, unit, build, e2e, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enforce required results
+        shell: bash
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          STATIC_RESULT: ${{ needs.static.result }}
+          UNIT_RESULT: ${{ needs.unit.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            exit 1
+          fi
+
+          for result in "$STATIC_RESULT" "$UNIT_RESULT" "$BUILD_RESULT" "$E2E_RESULT" "$SECURITY_RESULT"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              exit 1
+            fi
+          done
