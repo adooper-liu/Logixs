@@ -172,8 +172,95 @@ for (const [contractId, schemaRefs] of Object.entries(
 const common = readJson(resolve(schemaRoot, "common.schema.json"));
 const nodes = readJson(resolve(catalogRoot, "lifecycle-nodes.json"));
 const events = readJson(resolve(catalogRoot, "canonical-events.json"));
+const importFields = readJson(resolve(catalogRoot, "import-fields.json"));
 const nodeCodes = common?.$defs?.LifecycleNodeCode?.enum ?? [];
 const eventCodes = common?.$defs?.CanonicalEventCode?.enum ?? [];
+const expectedImportFieldCodes = [
+  "orderNumber",
+  "containerNumber",
+  "productNumber",
+  "shippedQuantity",
+  "quantityUnit",
+  "contractNumber",
+  "customsClearanceStatus",
+  "customsClearanceActualAt",
+  "unloadCompletionStatus",
+  "unloadCompletedActualAt",
+  "emptyConfirmationStatus",
+  "emptyConfirmedActualAt",
+  "emptyEstimatedAt",
+  "timeSourceSystem",
+  "timeSourceUtcOffset",
+  "timeEvidenceRef",
+  "timeDerivationRuleVersion",
+];
+const expectedQuantityUnitCodes = ["piece", "carton", "set", "pallet"];
+
+if (
+  JSON.stringify(importFields?.fields?.map(({ code }) => code)) !==
+  JSON.stringify(expectedImportFieldCodes)
+) {
+  errors.push("import field catalog codes or order differ from V1.2 authority");
+}
+const expectedTimeFactCodes = [
+  "customs_clearance_completed",
+  "container_unloading_completed",
+  "container_empty_confirmed",
+  "container_empty_estimated",
+];
+if (
+  JSON.stringify(importFields?.timeFacts?.map(({ code }) => code)) !==
+  JSON.stringify(expectedTimeFactCodes)
+) {
+  errors.push("import time-fact codes or order differ from V1.2 authority");
+}
+const importFieldCodeSet = new Set(expectedImportFieldCodes);
+for (const fact of importFields?.timeFacts ?? []) {
+  if (!importFieldCodeSet.has(fact.timeFieldCode)) {
+    errors.push(`${fact.code}: unknown timeFieldCode ${fact.timeFieldCode}`);
+  }
+  if (fact.statusFieldCode && !importFieldCodeSet.has(fact.statusFieldCode)) {
+    errors.push(
+      `${fact.code}: unknown statusFieldCode ${fact.statusFieldCode}`,
+    );
+  }
+  if (
+    fact.timeKind === "actual" &&
+    (!fact.statusFieldCode || !fact.requiresEvidence)
+  ) {
+    errors.push(`${fact.code}: actual facts require status and evidence`);
+  }
+  if (
+    fact.timeKind === "estimated" &&
+    (fact.captureSource !== "system_derived" || !fact.requiresDerivationRule)
+  ) {
+    errors.push(`${fact.code}: estimated derived facts require a rule version`);
+  }
+}
+if (
+  JSON.stringify(importFields?.quantityUnits?.map(({ code }) => code)) !==
+  JSON.stringify(expectedQuantityUnitCodes)
+) {
+  errors.push("import quantity-unit codes differ from V1.1 authority");
+}
+for (const item of [
+  ...(importFields?.fields ?? []),
+  ...(importFields?.quantityUnits ?? []),
+]) {
+  if (
+    !item.label ||
+    !Array.isArray(item.aliases) ||
+    item.aliases.length === 0
+  ) {
+    errors.push(`import catalog entry ${item.code ?? "unknown"} is incomplete`);
+  }
+  const normalizedAliases = item.aliases.map((alias) =>
+    alias.trim().toLowerCase(),
+  );
+  if (new Set(normalizedAliases).size !== normalizedAliases.length) {
+    errors.push(`import catalog entry ${item.code} contains duplicate aliases`);
+  }
+}
 const eventRoles = new Set([
   "milestone",
   "evidence",

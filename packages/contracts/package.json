@@ -4,9 +4,20 @@
   "private": true,
   "type": "module",
   "types": "./index.d.ts",
+  "typesVersions": {
+    "*": {
+      "import-fields.json": [
+        "import-fields-json.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts"
+    },
+    "./import-fields.json": {
+      "types": "./import-fields-json.d.ts",
+      "default": "./catalogs/v1/import-fields.json"
     }
   },
   "scripts": {

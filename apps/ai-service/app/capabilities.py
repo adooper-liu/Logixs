@@ -5,6 +5,8 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
+from app.generated_import_field_catalog import IMPORT_FIELD_ALIAS_RULES
+
 
 class EchoRequest(BaseModel):
     message: str = Field(min_length=1, max_length=1000)
@@ -67,24 +69,6 @@ class SuggestMappingResponse(BaseModel):
     suggestions: list[MappingSuggestion]
 
 
-# 列头 → 标准字段 的关键词规则（Mock，不调模型；真实模型 P7 替换）。
-# 规则按优先级排序，命中即 confidence 0.9，未命中 fieldCode=None / 0.0。
-_KEYWORD_RULES: list[tuple[str, tuple[str, ...]]] = [
-    ("containerNumber", ("箱号", "柜号", "container")),
-    ("containerTypeCode", ("箱型", "柜型", "container type")),
-    ("orderNumber", ("备货单", "备货", "order")),
-    ("portOfLoadingCode", ("起运港", "装货港", "pol")),
-    ("portOfDischargeCode", ("目的港", "卸货港", "pod")),
-    ("shippingCompanyCode", ("船司", "船公司", "carrier")),
-    ("vesselName", ("船名", "vessel")),
-    ("voyageNumber", ("航次", "voyage")),
-    ("logisticsStatusText", ("物流状态", "状态")),
-    ("shipmentDate", ("出运日期", "etd", "发运")),
-    ("grossWeight", ("毛重", "gross")),
-    ("netWeight", ("净重", "net")),
-]
-
-
 def suggest_mapping_handler(
     request: SuggestMappingRequest,
 ) -> SuggestMappingResponse:
@@ -93,11 +77,20 @@ def suggest_mapping_handler(
         lowered = column.lower()
         field_code = None
         confidence = 0.0
-        for code, keywords in _KEYWORD_RULES:
-            if any(keyword.lower() in lowered for keyword in keywords):
+        for code, aliases in IMPORT_FIELD_ALIAS_RULES:
+            if lowered in (alias.lower() for alias in aliases):
                 field_code = code
                 confidence = 0.9
                 break
+        if field_code is not None:
+            suggestions.append(
+                MappingSuggestion(
+                    column=column,
+                    fieldCode=field_code,
+                    confidence=confidence,
+                ),
+            )
+            continue
         suggestions.append(
             MappingSuggestion(
                 column=column,
