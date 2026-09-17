@@ -1,7 +1,7 @@
-# 增量模块开发手册（提纲 · 清单 · Odoo 能力采纳）
+# 增量模块开发手册
 
 > 状态：**已接受工作纸** · 2026-09-17 · 锚定 [MODULE_PLUGIN_CONVENTION](./MODULE_PLUGIN_CONVENTION.md)、[MODULE_DEPENDENCIES](./MODULE_DEPENDENCIES.md)、[ADR-010](./decisions/ADR-010-bounded-context-modules.md)、[AGENTS](../../AGENTS.md)、[IDENTITY_ACCESS_MODEL_V1](../product/domain/IDENTITY_ACCESS_MODEL_V1.md)、[GC-008](../product/domain/ACTION_PERMISSION_CONTRACT_V1.md)。
-> 🗣️ 白话：下一刀怎么切、先交什么、借 Odoo 哪些业务能力——按优先序照表做；不搬 ORM/XML/`_inherit`/热改 schema。
+> 白话：下一刀怎么切、先交什么、借 Odoo 哪些业务能力——按优先序照表做；不搬 ORM/XML/`_inherit`/热改 schema。
 
 ## 0. 怎么用本文
 
