@@ -11,7 +11,7 @@ export type { ServiceIdentity };
 export function attachDevServiceIdentity(
   request: {
     headers: Record<string, string | string[] | undefined>;
-    devServiceIdentity?: ServiceIdentity;
+    serviceIdentity?: ServiceIdentity;
   },
   expected: { serviceId: string; serviceKey: string },
 ): ServiceIdentity {
@@ -35,8 +35,8 @@ export function attachDevServiceIdentity(
     serviceId,
     actorId: serviceActorId(serviceId),
   };
-  request.devServiceIdentity = identity;
-  return identity;
+  request.serviceIdentity = identity;
+  return request.serviceIdentity;
 }
 
 function headerValue(value: string | string[] | undefined): string | undefined {

@@ -27,12 +27,12 @@ export class OutboxController {
   @Get("dead-letters")
   @ApiOkResponse({ type: DeadLetterPageDto })
   async listDeadLettersPage(
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<DeadLetterPageDto> {
     const page = await this.listDeadLetters.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       pageSize,
       cursor,
     });
@@ -64,11 +64,11 @@ export class OutboxController {
   @ApiOkResponse({ type: PublishOutboxBatchResponseDto })
   async publishBatch(
     @Body() body: PublishOutboxBatchRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<PublishOutboxBatchResponseDto> {
     return this.publishOutboxBatch.execute({
-      tenantId: request.devIdentity.tenantId,
-      operatorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      operatorId: request.identity.actorId,
       limit: body.limit,
     });
   }
@@ -77,11 +77,11 @@ export class OutboxController {
   @ApiOkResponse({ type: PublishDueOutboxResponseDto })
   async publishDue(
     @Body() body: PublishDueOutboxRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<PublishDueOutboxResponseDto> {
     return this.drainDueOutbox.execute({
-      tenantId: request.devIdentity.tenantId,
-      operatorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      operatorId: request.identity.actorId,
       limit: body.limit,
       maxRounds: body.maxRounds,
     });
@@ -92,12 +92,12 @@ export class OutboxController {
   async replay(
     @Param("deadLetterId") deadLetterId: string,
     @Body() body: ReplayDeadLetterRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ReplayDeadLetterResponseDto> {
     return this.replayDeadLetter.execute({
       deadLetterId,
-      tenantId: request.devIdentity.tenantId,
-      operatorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      operatorId: request.identity.actorId,
       reasonCode: body.reasonCode,
       targetConsumerVersion: body.targetConsumerVersion,
       idempotencyKey: body.idempotencyKey,

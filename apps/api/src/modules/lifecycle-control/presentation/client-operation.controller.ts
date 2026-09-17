@@ -39,12 +39,12 @@ export class ClientOperationController {
   @Get()
   @ApiOkResponse({ type: ClientOperationPageDto })
   async list(
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<ClientOperationPageDto> {
     const page = await this.listClientOperations.execute({
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       pageSize,
       cursor,
     });
@@ -60,11 +60,11 @@ export class ClientOperationController {
   @ApiOkResponse({ type: ClientOperationResponseDto })
   async submit(
     @Body() body: SubmitClientOperationRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ClientOperationResponseDto> {
     const record = await this.submitClientOperation.execute({
-      tenantId: request.devIdentity.tenantId,
-      actorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
       actionCode: body.actionCode,
       containerId: body.containerId,
       eventCode: body.eventCode,
@@ -82,12 +82,12 @@ export class ClientOperationController {
   async compensate(
     @Param("id") id: string,
     @Body() body: RequestCompensationRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<RequestCompensationResponseDto> {
     return this.requestCompensation.execute({
       originalClientOperationId: id,
-      tenantId: request.devIdentity.tenantId,
-      operatorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      operatorId: request.identity.actorId,
       reasonCode: body.reasonCode,
       idempotencyKey: body.idempotencyKey,
       traceId: body.traceId,
@@ -100,12 +100,12 @@ export class ClientOperationController {
     @Param("id") id: string,
     @Param("compensationId") compensationId: string,
     @Body() body: ResolveCompensationRequestDto,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<ResolveCompensationResponseDto> {
     return this.resolveCompensation.execute({
       originalClientOperationId: id,
       compensationId,
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       state: body.state,
       resultRefs: body.resultRefs,
     });
@@ -115,13 +115,13 @@ export class ClientOperationController {
   @ApiOkResponse({ type: CompensationPageDto })
   async listCompensationsPage(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<CompensationPageDto> {
     const page = await this.listCompensations.execute({
       originalClientOperationId: id,
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       pageSize,
       cursor,
     });
@@ -138,11 +138,11 @@ export class ClientOperationController {
   async getCompensationById(
     @Param("id") id: string,
     @Param("compensationId") compensationId: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<CompensationItemDto> {
     return toCompensationDto(
       await this.getCompensation.execute({
-        tenantId: request.devIdentity.tenantId,
+        tenantId: request.identity.tenantId,
         originalClientOperationId: id,
         compensationId,
       }),
@@ -153,11 +153,11 @@ export class ClientOperationController {
   @ApiOkResponse({ type: ClientOperationResponseDto })
   async getById(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<ClientOperationResponseDto> {
     return toDto(
       await this.getClientOperation.execute({
-        tenantId: request.devIdentity.tenantId,
+        tenantId: request.identity.tenantId,
         id,
       }),
     );

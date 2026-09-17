@@ -12,11 +12,11 @@ export class LifecycleNodesController {
   @ApiOkResponse({ type: LifecycleNodesPageDto })
   async list(
     @Param("containerId") containerId: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<LifecycleNodesPageDto> {
     const page = await this.listLifecycleNodes.execute({
       containerId,
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
     });
     return {
       flow: page.flow,

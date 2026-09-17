@@ -38,7 +38,7 @@ describe("attachDevServiceIdentity", () => {
     ).toThrow("AUTHENTICATION_REQUIRED");
   });
 
-  it("匹配凭据写入 request.devServiceIdentity", () => {
+  it("匹配凭据写入 request.serviceIdentity", () => {
     const request = {
       headers: { "x-service-id": " svc-1 ", "x-service-key": "key-1" },
     };
@@ -48,7 +48,7 @@ describe("attachDevServiceIdentity", () => {
       actorId: "service:svc-1",
     });
     expect(request).toMatchObject({
-      devServiceIdentity: {
+      serviceIdentity: {
         actorType: "service",
         actorId: "service:svc-1",
       },

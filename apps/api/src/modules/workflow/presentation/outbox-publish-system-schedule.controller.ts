@@ -1,5 +1,6 @@
 import { Body, Controller, Post, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ServiceEndpoint } from "../../../security/route-access.decorator";
 import { EnsureOutboxPublishSystemScheduleService } from "../application/ensure-outbox-publish-system-schedule.service";
 import {
   EnsureOutboxPublishSystemScheduleRequestDto,
@@ -7,6 +8,7 @@ import {
 } from "./outbox-publish-system-schedule.dto";
 
 @ApiTags("workflows")
+@ServiceEndpoint()
 @Controller("workflows/outbox-system")
 export class OutboxPublishSystemScheduleController {
   constructor(
@@ -18,11 +20,11 @@ export class OutboxPublishSystemScheduleController {
   async ensure(
     @Body() body: EnsureOutboxPublishSystemScheduleRequestDto,
     @Req()
-    request: { devServiceIdentity: { actorType: string; actorId: string } },
+    request: { serviceIdentity: { actorType: string; actorId: string } },
   ): Promise<EnsureOutboxPublishSystemScheduleResponseDto> {
     return this.ensureOutboxPublishSystemSchedule.execute({
-      actorType: request.devServiceIdentity.actorType,
-      actorId: request.devServiceIdentity.actorId,
+      actorType: request.serviceIdentity.actorType,
+      actorId: request.serviceIdentity.actorId,
       intervalSeconds: body.intervalSeconds,
       limit: body.limit,
       maxRounds: body.maxRounds,

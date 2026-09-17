@@ -36,7 +36,7 @@ export class WorkflowModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(DevIdentityMiddleware)
-      .forRoutes(OutboxPublishScheduleController);
+      .forRoutes(WorkflowController, OutboxPublishScheduleController);
     consumer
       .apply(DevServiceIdentityMiddleware)
       .forRoutes(OutboxPublishSystemScheduleController);

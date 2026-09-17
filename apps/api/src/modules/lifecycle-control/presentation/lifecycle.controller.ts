@@ -21,13 +21,13 @@ export class LifecycleController {
   @ApiOkResponse({ type: LifecycleEventPageDto })
   async list(
     @Param("containerId") containerId: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<LifecycleEventPageDto> {
     const page = await this.listLifecycleEvents.execute({
       containerId,
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       pageSize,
       cursor,
     });
@@ -51,11 +51,11 @@ export class LifecycleController {
   async applyEvent(
     @Param("containerId") containerId: string,
     @Body() body: ApplyLifecycleEventRequestDto,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<ApplyLifecycleEventResponseDto> {
     return this.applyLifecycleEvent.execute({
       containerId,
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       eventCode: body.eventCode as CanonicalEventCode,
       occurredAt: new Date(body.occurredAt),
       idempotencyKey: body.idempotencyKey,

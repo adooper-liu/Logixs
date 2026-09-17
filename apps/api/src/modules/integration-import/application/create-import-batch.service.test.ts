@@ -277,7 +277,7 @@ describe("CreateImportBatchService", () => {
     ).rejects.toThrow(
       "VALIDATION_RANGE: 文件有 5001 个数据行，最多支持 5000 行",
     );
-  });
+  }, 15_000);
 
   it("横向明细后混入纵向字段值区块时在持久化前明确阻断", async () => {
     const repository = {

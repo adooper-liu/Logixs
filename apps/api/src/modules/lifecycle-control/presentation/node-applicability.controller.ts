@@ -18,16 +18,16 @@ export class NodeApplicabilityController {
   apply(
     @Param("containerId") containerId: string,
     @Body() body: SetNodeApplicabilityRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<SetNodeApplicabilityResponseDto> {
     return this.setNodeApplicability.execute({
       containerId,
-      tenantId: request.devIdentity.tenantId,
+      tenantId: request.identity.tenantId,
       nodeCode: body.nodeCode,
       applicability: body.applicability,
       evidenceRefs: body.evidenceRefs,
       reasonCode: body.reasonCode,
-      actorId: request.devIdentity.operatorId,
+      actorId: request.identity.actorId,
       expectedVersion: body.expectedVersion,
       idempotencyKey: body.idempotencyKey,
     });

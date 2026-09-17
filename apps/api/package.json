@@ -25,6 +25,7 @@
     "@prisma/client": "7.10.0",
     "@temporalio/client": "^1.11.0",
     "exceljs": "4.4.0",
+    "jose": "5.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

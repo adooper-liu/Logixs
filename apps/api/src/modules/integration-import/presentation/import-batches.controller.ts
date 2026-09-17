@@ -91,7 +91,7 @@ export class ImportBatchesController {
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body("replacesBatchId") replacesBatchId: unknown,
     @Headers("idempotency-key") idempotencyKey: string | undefined,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ImportBatchDto> {
     if (!file) {
       throw new HttpException(
@@ -109,8 +109,8 @@ export class ImportBatchesController {
       fileName: normalizeMultipartFileName(file.originalname),
       buffer: file.buffer,
       idempotencyKey,
-      tenantId: request.devIdentity.tenantId,
-      operatorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      operatorId: request.identity.actorId,
       replacesBatchId: normalizeReplacementBatchId(replacesBatchId),
     });
     return toBatchDto(batch);
@@ -120,11 +120,11 @@ export class ImportBatchesController {
   @ApiOkResponse({ type: ImportBatchDetailDto })
   async get(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<ImportBatchDetailDto> {
     const result = await this.getImportBatch.execute(
       id,
-      request.devIdentity.tenantId,
+      request.identity.tenantId,
     );
     if (!result) {
       throw new HttpException("RESOURCE_NOT_FOUND", HttpStatus.NOT_FOUND);
@@ -143,18 +143,18 @@ export class ImportBatchesController {
   async postMappingReviews(
     @Param("id") id: string,
     @Body() body: ConfirmMappingsRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ImportBatchDto> {
     await this.confirmMappings.execute({
       batchId: id,
-      operatorId: request.devIdentity.operatorId,
-      tenantId: request.devIdentity.tenantId,
+      operatorId: request.identity.actorId,
+      tenantId: request.identity.tenantId,
       quantityUnit: body.quantityUnit,
       reviews: body.reviews,
     });
     const result = await this.getImportBatch.execute(
       id,
-      request.devIdentity.tenantId,
+      request.identity.tenantId,
     );
     if (!result) {
       throw new HttpException("RESOURCE_NOT_FOUND", HttpStatus.NOT_FOUND);
@@ -166,20 +166,20 @@ export class ImportBatchesController {
   @ApiOkResponse({ type: PrecheckResultDto })
   async precheck(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<PrecheckResultDto> {
-    return this.runPrecheck.execute(id, request.devIdentity.tenantId);
+    return this.runPrecheck.execute(id, request.identity.tenantId);
   }
 
   @Post(":id/execute")
   @ApiOkResponse({ type: ReconciliationResultDto })
   async execute(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<ReconciliationResultDto> {
     const { results } = await this.executeImport.execute(
       id,
-      request.devIdentity.tenantId,
+      request.identity.tenantId,
     );
     return toReconciliationDto(results);
   }
@@ -188,11 +188,11 @@ export class ImportBatchesController {
   @ApiOkResponse({ type: ReconciliationResultDto })
   async reconciliation(
     @Param("id") id: string,
-    @Req() request: { devIdentity: { tenantId: string } },
+    @Req() request: { identity: { tenantId: string } },
   ): Promise<ReconciliationResultDto> {
     const { results } = await this.executeImport.getResults(
       id,
-      request.devIdentity.tenantId,
+      request.identity.tenantId,
     );
     return toReconciliationDto(results);
   }

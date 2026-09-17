@@ -17,11 +17,11 @@ export class OutboxPublishScheduleController {
   @ApiOkResponse({ type: EnsureOutboxPublishScheduleResponseDto })
   async ensure(
     @Body() body: EnsureOutboxPublishScheduleRequestDto,
-    @Req() request: { devIdentity: { tenantId: string; operatorId: string } },
+    @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<EnsureOutboxPublishScheduleResponseDto> {
     return this.ensureOutboxPublishSchedule.execute({
-      tenantId: request.devIdentity.tenantId,
-      operatorId: request.devIdentity.operatorId,
+      tenantId: request.identity.tenantId,
+      operatorId: request.identity.actorId,
       intervalSeconds: body.intervalSeconds,
       limit: body.limit,
       maxRounds: body.maxRounds,

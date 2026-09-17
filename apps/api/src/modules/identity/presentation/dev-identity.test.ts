@@ -14,16 +14,23 @@ describe("attachDevIdentity", () => {
     ).toThrow("AUTHENTICATION_REQUIRED");
   });
 
-  it("双 header 写入 request.devIdentity", () => {
+  it("双 header 写入统一的 request.identity", () => {
     const request = {
       headers: { "x-tenant-id": " t1 ", "x-operator-id": "op1" },
     };
     expect(attachDevIdentity(request)).toEqual({
+      actorType: "user",
+      actorId: "op1",
       tenantId: "t1",
-      operatorId: "op1",
+      authenticationMethod: "development_headers",
     });
     expect(request).toMatchObject({
-      devIdentity: { tenantId: "t1", operatorId: "op1" },
+      identity: {
+        actorType: "user",
+        actorId: "op1",
+        tenantId: "t1",
+        authenticationMethod: "development_headers",
+      },
     });
   });
 });
