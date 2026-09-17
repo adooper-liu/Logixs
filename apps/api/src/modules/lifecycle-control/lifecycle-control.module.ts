@@ -10,6 +10,7 @@ import {
   DevIdentityMiddleware,
   DevServiceIdentityMiddleware,
 } from "../identity";
+import { NotificationModule } from "../notification";
 import { ShipmentRegistryModule } from "../shipment-registry";
 import { WorkExecutionModule } from "../work-execution";
 import { APPLY_LIFECYCLE_EVENT } from "./apply-lifecycle-event.port";
@@ -68,6 +69,7 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
 @Module({
   imports: [
     IdentityModule,
+    NotificationModule,
     DocumentRecordsModule,
     ShipmentRegistryModule,
     forwardRef(() => WorkExecutionModule),

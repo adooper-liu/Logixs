@@ -9,6 +9,7 @@ import {
 import { Test } from "@nestjs/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { IdentityModule } from "../identity.module";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { PublicEndpoint } from "../../../security/route-access.decorator";
 import { DevIdentityMiddleware } from "./dev-identity.middleware";
 
@@ -29,13 +30,28 @@ class PublicProbeController {
   }
 }
 
+@Controller("capability-probe")
+class CapabilityProbeController {
+  @Get()
+  @RequireCapabilities("planning.draft")
+  read(): { status: string } {
+    return { status: "capable" };
+  }
+}
+
 @Module({
   imports: [IdentityModule],
-  controllers: [PrivateProbeController, PublicProbeController],
+  controllers: [
+    PrivateProbeController,
+    PublicProbeController,
+    CapabilityProbeController,
+  ],
 })
 class AuthenticationTestModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(DevIdentityMiddleware).forRoutes(PrivateProbeController);
+    consumer
+      .apply(DevIdentityMiddleware)
+      .forRoutes(PrivateProbeController, CapabilityProbeController);
   }
 }
 
@@ -83,5 +99,34 @@ describe("IdentityModule authentication boundary", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ status: "public" });
+  });
+
+  it("denies protected writes that declare missing capabilities", async () => {
+    const response = await fetch(`${baseUrl}/capability-probe`, {
+      headers: {
+        "x-tenant-id": "tenant-1",
+        "x-operator-id": "operator-1",
+        "x-roles": "field_operator",
+      },
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      message: "CAPABILITY_DENIED",
+      statusCode: 403,
+    });
+  });
+
+  it("allows capability-protected routes when roles grant the capability", async () => {
+    const response = await fetch(`${baseUrl}/capability-probe`, {
+      headers: {
+        "x-tenant-id": "tenant-1",
+        "x-operator-id": "operator-1",
+        "x-roles": "operations_dispatcher",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "capable" });
   });
 });

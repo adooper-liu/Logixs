@@ -23,6 +23,8 @@ describe("attachDevIdentity", () => {
       actorId: "op1",
       tenantId: "t1",
       authenticationMethod: "development_headers",
+      roles: [],
+      capabilities: [],
     });
     expect(request).toMatchObject({
       identity: {
@@ -30,7 +32,35 @@ describe("attachDevIdentity", () => {
         actorId: "op1",
         tenantId: "t1",
         authenticationMethod: "development_headers",
+        roles: [],
+        capabilities: [],
       },
+    });
+  });
+
+  it("从 x-roles 推导能力，或接受 x-capabilities 显式覆盖", () => {
+    expect(
+      attachDevIdentity({
+        headers: {
+          "x-tenant-id": "t1",
+          "x-operator-id": "op1",
+          "x-roles": "operations_dispatcher",
+        },
+      }).capabilities,
+    ).toContain("planning.draft");
+
+    expect(
+      attachDevIdentity({
+        headers: {
+          "x-tenant-id": "t1",
+          "x-operator-id": "op1",
+          "x-roles": "operations_dispatcher",
+          "x-capabilities": "planning.read",
+        },
+      }),
+    ).toMatchObject({
+      roles: ["operations_dispatcher"],
+      capabilities: ["planning.read"],
     });
   });
 });

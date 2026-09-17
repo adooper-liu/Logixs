@@ -36,6 +36,8 @@ describe("AuthenticationGuard", () => {
       actorId: "operator-1",
       tenantId: "tenant-1",
       authenticationMethod: "development_headers" as const,
+      roles: [] as string[],
+      capabilities: [] as string[],
     };
     const developmentGuard = createGuard({ mode: "development" });
     const oidcGuard = createGuard(oidcConfig);
@@ -59,6 +61,8 @@ describe("AuthenticationGuard", () => {
       actorId: "user-1",
       tenantId: "tenant-1",
       authenticationMethod: "oidc" as const,
+      roles: [] as string[],
+      capabilities: [] as string[],
     };
     const verifier: UserTokenVerifier = {
       verify: vi.fn().mockResolvedValue(verifiedIdentity),
@@ -75,6 +79,8 @@ describe("AuthenticationGuard", () => {
         actorId: "spoofed-user",
         tenantId: "spoofed-tenant",
         authenticationMethod: "development_headers" as const,
+        roles: [],
+        capabilities: [],
       },
     };
 

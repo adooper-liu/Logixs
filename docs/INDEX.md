@@ -20,15 +20,17 @@
 
 ## 三、docs 导航与架构
 
-| 文档                                                             | 一句话                                         | 状态          |
-| ---------------------------------------------------------------- | ---------------------------------------------- | ------------- |
-| [人话导读](./人话导读.md)                                        | 大白话讲全系统+文档地图（新人先读）            | 导航          |
-| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)               | 进站派活、核过才过站；外部接口不是遥控器       | 人话对照      |
-| [docs/README](./README.md)                                       | docs 导航+写作纪律+消费链                      | 导航          |
-| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md) | 目标架构总览(分层/模块/AI/工作流)              | 已接受        |
-| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)              | 模块/包依赖与禁止依赖                          | 已接受(P1-09) |
-| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)    | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断 | 安全基线 V1   |
-| [ADR 索引](./architecture/decisions/README.md) + ADR-001~010     | 架构决策记录（含模块化单体限界上下文）         | 已接受(P1)    |
+| 文档                                                                     | 一句话                                         | 状态          |
+| ------------------------------------------------------------------------ | ---------------------------------------------- | ------------- |
+| [人话导读](./人话导读.md)                                                | 大白话讲全系统+文档地图（新人先读）            | 导航          |
+| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                       | 进站派活、核过才过站；外部接口不是遥控器       | 人话对照      |
+| [docs/README](./README.md)                                               | docs 导航+写作纪律+消费链                      | 导航          |
+| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)         | 目标架构总览(分层/模块/AI/工作流)              | 已接受        |
+| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                      | 模块/包依赖与禁止依赖                          | 已接受(P1-09) |
+| [模块插件约定](./architecture/MODULE_PLUGIN_CONVENTION.md)               | Odoo 式基础核+增量插件：manifest/目录/权限映射 | 已接受约定    |
+| [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md) | 问题通知总线与从通知打开的只读运营助手第一刀   | coding        |
+| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断 | 安全基线 V1   |
+| [ADR 索引](./architecture/decisions/README.md) + ADR-001~010             | 架构决策记录（含模块化单体限界上下文）         | 已接受(P1)    |
 
 ## 四、产品/理念/流程
 
