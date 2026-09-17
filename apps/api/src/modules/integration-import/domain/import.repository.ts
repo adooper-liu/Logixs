@@ -1,6 +1,7 @@
 import type {
   ImportBatch,
   ImportMappingSuggestion,
+  ImportReview,
   ImportRow,
   NewImportRow,
 } from "./import-batch";
@@ -9,11 +10,19 @@ import type {
 export const IMPORT_REPOSITORY = Symbol("ImportRepository");
 
 export interface NewImportBatch {
+  id: string;
   tenantId: string;
   operatorId: string;
   idempotencyKey: string;
   fileName: string;
   fileHash: string;
+  sourceFileStatus: "retained";
+  sourceObjectKey: string;
+  sourceContentType: string;
+  sourceSizeBytes: number;
+  sourceRetainedAt: Date;
+  parserVersion: string;
+  replacesBatchId: string | null;
   status: ImportBatch["status"];
   rowCount: number;
   columnCount: number;
@@ -23,6 +32,7 @@ export interface NewImportBatch {
 export interface ImportBatchWithRows {
   batch: ImportBatch;
   rows: ImportRow[];
+  reviews: ImportReview[];
 }
 
 // 阶段 C：映射审核（人确认/修正列→字段）。
@@ -41,10 +51,17 @@ export interface ImportRowResultInput {
 }
 
 export interface ImportRepository {
-  findByIdempotencyKey(key: string): Promise<ImportBatch | null>;
-  findById(id: string): Promise<ImportBatchWithRows | null>;
+  findByIdempotencyKey(
+    tenantId: string,
+    key: string,
+  ): Promise<ImportBatch | null>;
+  findById(id: string, tenantId: string): Promise<ImportBatchWithRows | null>;
   create(input: NewImportBatch, rows: NewImportRow[]): Promise<ImportBatch>;
-  saveReviews(batchId: string, reviews: ImportReviewInput[]): Promise<void>;
+  saveReviewDecision(
+    batchId: string,
+    confirmedQuantityUnit: string | null,
+    reviews: ImportReviewInput[],
+  ): Promise<void>;
   updateStatus(batchId: string, status: string): Promise<void>;
   saveRowResults(
     batchId: string,

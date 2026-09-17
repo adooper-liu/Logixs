@@ -1,76 +1,139 @@
-import { HttpException } from "@nestjs/common";
+import { ConflictException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
-import { ApplyContainerRecordService } from "../../shipment-registry";
+import { ApplyReplenishmentOrderImportService } from "../../shipment-registry";
 import { IMPORT_REPOSITORY } from "../domain/import.repository";
 import { ExecuteImportService } from "./execute-import.service";
 
-const suggestions = [
-  { column: "备货单号", fieldCode: "orderNumber", confidence: 0.9 },
-  { column: "箱号", fieldCode: "containerNumber", confidence: 0.9 },
-];
+const reviews = [
+  ["备货单号", "orderNumber"],
+  ["集装箱号", "containerNumber"],
+  ["货号", "productNumber"],
+  ["数量", "shippedQuantity"],
+].map(([column, fieldCode]) => ({
+  column,
+  fieldCode,
+  operatorId: "op1",
+  createdAt: new Date("2026-09-16T00:00:00Z"),
+}));
 
-function buildModule(overrides: { status?: string; rows?: unknown[] }) {
-  const rows = overrides.rows ?? [
-    { id: "r1", rowNo: 1, values: { 备货单号: "SO-1", 箱号: "MSKU1" } },
-    { id: "r2", rowNo: 2, values: { 备货单号: "", 箱号: "" } },
+function buildModule(status = "approved") {
+  const rows = [
+    {
+      id: "r1",
+      rowNo: 1,
+      values: {
+        备货单号: "SO-1",
+        集装箱号: "MSKU1",
+        货号: "SKU-1",
+        数量: "10",
+      },
+    },
+    {
+      id: "r2",
+      rowNo: 2,
+      values: {
+        备货单号: "SO-1",
+        集装箱号: "MSKU1",
+        货号: "SKU-2",
+        数量: "20",
+      },
+    },
   ];
   const repository = {
     findById: vi.fn().mockResolvedValue({
       batch: {
-        status: overrides.status ?? "approved",
+        id: "batch1",
+        status,
         tenantId: "t1",
-        mappingSuggestions: suggestions,
+        confirmedQuantityUnit: "piece",
+        mappingSuggestions: [],
       },
       rows,
+      reviews,
     }),
     updateStatus: vi.fn().mockResolvedValue(undefined),
     saveRowResults: vi.fn().mockResolvedValue(undefined),
   };
-  const applyContainerRecord = {
-    execute: vi
-      .fn()
-      .mockResolvedValue({ containerRecordId: "c1", created: true }),
+  const applyOrderImport = {
+    execute: vi.fn().mockResolvedValue({
+      replenishmentOrderId: "o1",
+      containerRecordId: "c1",
+      created: true,
+    }),
   };
-  return { repository, applyContainerRecord };
+  return { repository, applyOrderImport };
 }
 
 async function buildService(
   repository: ReturnType<typeof buildModule>["repository"],
-  applyContainerRecord: ReturnType<typeof buildModule>["applyContainerRecord"],
+  applyOrderImport: ReturnType<typeof buildModule>["applyOrderImport"],
 ) {
   const module = await Test.createTestingModule({
     providers: [
       ExecuteImportService,
       { provide: IMPORT_REPOSITORY, useValue: repository },
-      { provide: ApplyContainerRecordService, useValue: applyContainerRecord },
+      {
+        provide: ApplyReplenishmentOrderImportService,
+        useValue: applyOrderImport,
+      },
     ],
   }).compile();
   return module.get(ExecuteImportService);
 }
 
 describe("ExecuteImportService", () => {
-  it("非 approved → 拒绝落账", async () => {
-    const { repository, applyContainerRecord } = buildModule({
-      status: "confirmed",
-    });
-    const service = await buildService(repository, applyContainerRecord);
+  it("非 approved 批次拒绝落账", async () => {
+    const { repository, applyOrderImport } = buildModule("confirmed");
+    const service = await buildService(repository, applyOrderImport);
 
-    await expect(service.execute("batch1")).rejects.toThrow(HttpException);
-    expect(applyContainerRecord.execute).not.toHaveBeenCalled();
+    await expect(service.execute("batch1", "t1")).rejects.toThrow(
+      ConflictException,
+    );
+    expect(applyOrderImport.execute).not.toHaveBeenCalled();
   });
 
-  it("approved → 逐行落账，缺单号行 failed", async () => {
-    const { repository, applyContainerRecord } = buildModule({
-      status: "approved",
-    });
-    const service = await buildService(repository, applyContainerRecord);
+  it("同单多行只调用一次事务写端口且逐行关联同一货柜", async () => {
+    const { repository, applyOrderImport } = buildModule();
+    const service = await buildService(repository, applyOrderImport);
 
-    const { results } = await service.execute("batch1");
+    const { results } = await service.execute("batch1", "t1");
 
+    expect(applyOrderImport.execute).toHaveBeenCalledTimes(1);
+    expect(applyOrderImport.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "t1",
+        orderNumber: "SO-1",
+        lines: [
+          expect.objectContaining({
+            sourceRowId: "r1",
+            productNumber: "SKU-1",
+          }),
+          expect.objectContaining({
+            sourceRowId: "r2",
+            productNumber: "SKU-2",
+          }),
+        ],
+        timeFacts: [],
+      }),
+    );
     expect(results).toHaveLength(2);
-    expect(results[0].outcome).toBe("success");
-    expect(results[1].outcome).toBe("failed");
-    expect(repository.updateStatus).toHaveBeenCalledWith("batch1", "completed");
+    expect(results.every((result) => result.containerRecordId === "c1")).toBe(
+      true,
+    );
+  });
+
+  it("事务写端口失败时同一备货单全部来源行失败", async () => {
+    const { repository, applyOrderImport } = buildModule();
+    applyOrderImport.execute.mockRejectedValueOnce(new Error("rolled back"));
+    const service = await buildService(repository, applyOrderImport);
+
+    const { results } = await service.execute("batch1", "t1");
+
+    expect(results.map(({ outcome }) => outcome)).toEqual(["failed", "failed"]);
+    expect(results.map(({ detail }) => detail)).toEqual([
+      "rolled back",
+      "rolled back",
+    ]);
   });
 });

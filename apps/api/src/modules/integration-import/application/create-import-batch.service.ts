@@ -4,8 +4,10 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
+  NotFoundException,
 } from "@nestjs/common";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { Readable } from "node:stream";
 import ExcelJS from "exceljs";
@@ -18,12 +20,24 @@ import {
   IMPORT_REPOSITORY,
   type ImportRepository,
 } from "../domain/import.repository";
+import {
+  IMPORT_SOURCE_STORAGE,
+  type ImportSourceStorage,
+} from "../domain/import-source-storage";
 import { AiGatewayService } from "../../ai-governance";
+import { isImportFieldCode } from "../domain/import-field-catalog";
+import { detectMixedLayout } from "./import-layout-preflight";
 
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB（NFR §3）
+export const MAX_IMPORT_SOURCE_BYTES = 10 * 1024 * 1024; // 10MB（NFR §3）
 const MAX_ROWS = 5000; // NFR §3
-const MAX_COLUMNS = 50; // NFR §3
+const MAX_COLUMNS = 128; // NFR §3
 const ALLOWED_EXTENSIONS = new Set([".xlsx", ".csv"]);
+const CONTENT_TYPES = {
+  ".csv": "text/csv",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+} as const;
+// 改变表头、行快照或版式判定语义时必须升版，避免幂等命中旧解析结果。
+const IMPORT_PARSER_VERSION = "tabular-v2";
 
 export interface CreateImportBatchInput {
   fileName: string;
@@ -31,6 +45,7 @@ export interface CreateImportBatchInput {
   idempotencyKey: string;
   tenantId: string;
   operatorId: string;
+  replacesBatchId?: string | null;
 }
 
 export interface CreateImportBatchResult {
@@ -40,9 +55,13 @@ export interface CreateImportBatchResult {
 
 @Injectable()
 export class CreateImportBatchService {
+  private readonly logger = new Logger(CreateImportBatchService.name);
+
   constructor(
     @Inject(IMPORT_REPOSITORY)
     private readonly repository: ImportRepository,
+    @Inject(IMPORT_SOURCE_STORAGE)
+    private readonly sourceStorage: ImportSourceStorage,
     @Inject(AiGatewayService)
     private readonly aiGateway: AiGatewayService,
   ) {}
@@ -57,7 +76,7 @@ export class CreateImportBatchService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (input.buffer.length > MAX_SIZE) {
+    if (input.buffer.length > MAX_IMPORT_SOURCE_BYTES) {
       throw new HttpException(
         "VALIDATION_RANGE: 文件超过 10MB",
         HttpStatus.BAD_REQUEST,
@@ -65,10 +84,19 @@ export class CreateImportBatchService {
     }
 
     const fileHash = createHash("sha256").update(input.buffer).digest("hex");
+    if (input.replacesBatchId) {
+      const replaced = await this.repository.findById(
+        input.replacesBatchId,
+        input.tenantId,
+      );
+      if (!replaced) throw new NotFoundException("RESOURCE_NOT_FOUND");
+    }
+    const effectiveIdempotencyKey = buildParserScopedIdempotencyKey(input);
 
     // 幂等：同 key 同 hash → 返回原批次；同 key 异 hash → 冲突
     const existing = await this.repository.findByIdempotencyKey(
-      input.idempotencyKey,
+      input.tenantId,
+      effectiveIdempotencyKey,
     );
     if (existing) {
       if (existing.fileHash === fileHash) {
@@ -78,30 +106,73 @@ export class CreateImportBatchService {
     }
 
     const { headers, rows } = await parseWorkbook(input.buffer, ext);
-    if (headers.length > MAX_COLUMNS || rows.length > MAX_ROWS) {
+    if (rows.length > MAX_ROWS) {
       throw new HttpException(
-        "VALIDATION_RANGE: 超出 5000 行 / 50 列上限",
+        `VALIDATION_RANGE: 文件有 ${rows.length} 个数据行，最多支持 ${MAX_ROWS} 行`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (headers.length > MAX_COLUMNS) {
+      throw new HttpException(
+        `VALIDATION_RANGE: 文件有 ${headers.length} 列，最多支持 ${MAX_COLUMNS} 列`,
         HttpStatus.BAD_REQUEST,
       );
     }
 
     const mappingSuggestions = await this.suggestMapping(headers);
+    const batchId = randomUUID();
+    const objectKey = `imports/${batchId}/source`;
+    const contentType = CONTENT_TYPES[ext as keyof typeof CONTENT_TYPES];
 
-    const batch = await this.repository.create(
-      {
-        tenantId: input.tenantId,
-        operatorId: input.operatorId,
-        idempotencyKey: input.idempotencyKey,
-        fileName: input.fileName,
-        fileHash,
-        status: "parsed",
-        rowCount: rows.length,
-        columnCount: headers.length,
-        mappingSuggestions,
-      },
-      rows,
-    );
-    return { batch, created: true };
+    await this.sourceStorage.put({
+      objectKey,
+      contentType,
+      contentLength: input.buffer.length,
+      sha256: fileHash,
+      body: input.buffer,
+    });
+
+    try {
+      const batch = await this.repository.create(
+        {
+          id: batchId,
+          tenantId: input.tenantId,
+          operatorId: input.operatorId,
+          idempotencyKey: effectiveIdempotencyKey,
+          fileName: input.fileName,
+          fileHash,
+          sourceFileStatus: "retained",
+          sourceObjectKey: objectKey,
+          sourceContentType: contentType,
+          sourceSizeBytes: input.buffer.length,
+          sourceRetainedAt: new Date(),
+          parserVersion: IMPORT_PARSER_VERSION,
+          replacesBatchId: input.replacesBatchId ?? null,
+          status: "parsed",
+          rowCount: rows.length,
+          columnCount: headers.length,
+          mappingSuggestions,
+        },
+        rows,
+      );
+      return { batch, created: true };
+    } catch (cause) {
+      try {
+        await this.sourceStorage.delete(objectKey);
+      } catch (cleanupCause) {
+        this.logger.error(
+          JSON.stringify({
+            event: "import_source_cleanup_failed",
+            objectKey,
+            error:
+              cleanupCause instanceof Error
+                ? cleanupCause.message
+                : "unknown cleanup error",
+          }),
+        );
+      }
+      throw cause;
+    }
   }
 
   // AI 建议（Mock）失败时降级为空建议，不阻断上传、不写业务表。
@@ -109,11 +180,28 @@ export class CreateImportBatchService {
     headers: string[],
   ): Promise<ImportMappingSuggestion[]> {
     try {
-      return await this.aiGateway.suggestImportMapping(headers);
+      return (await this.aiGateway.suggestImportMapping(headers)).map(
+        (suggestion) => ({
+          ...suggestion,
+          fieldCode:
+            suggestion.fieldCode && isImportFieldCode(suggestion.fieldCode)
+              ? suggestion.fieldCode
+              : null,
+        }),
+      );
     } catch {
       return [];
     }
   }
+}
+
+function buildParserScopedIdempotencyKey(
+  input: Pick<CreateImportBatchInput, "idempotencyKey" | "replacesBatchId">,
+): string {
+  const replacementScope = input.replacesBatchId
+    ? `:replaces:${input.replacesBatchId}`
+    : "";
+  return `${input.idempotencyKey}:parser:${IMPORT_PARSER_VERSION}${replacementScope}`;
 }
 
 async function parseWorkbook(
@@ -155,10 +243,19 @@ async function parseWorkbook(
     if (rowNumber === 1) return; // 跳过表头
     const values: Record<string, string> = {};
     headers.forEach((header, index) => {
-      values[header] = row.getCell(index + 1).text.trim();
+      const value = row.getCell(index + 1).text.trim();
+      values[header] = value;
     });
     rows.push({ rowNo: rowNumber - 1, values });
   });
+
+  const mixedLayout = detectMixedLayout(headers, rows);
+  if (mixedLayout) {
+    throw new HttpException(
+      `VALIDATION_LAYOUT: 疑似混合版式，工作表第 ${mixedLayout.worksheetRowNo} 行起出现纵向字段值区块`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
 
   return { headers, rows };
 }

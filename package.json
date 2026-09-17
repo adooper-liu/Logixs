@@ -19,7 +19,7 @@
     "dev": "turbo run dev --filter=@logix/web --filter=@logix/api",
     "dev:worker": "turbo run dev --filter=@logix/business-worker",
     "dev:all": "pnpm infra:up && pnpm db:setup && concurrently -n api,web,worker,ai-svc,ai-worker,studio -c auto \"pnpm --filter @logix/api dev\" \"pnpm --filter @logix/web dev\" \"pnpm --filter @logix/business-worker dev\" \"cd apps/ai-service && uv run uvicorn app.main:app --host 127.0.0.1 --port 8001\" \"cd workers/ai-worker && uv run python worker.py\" \"prisma studio --port 5555 --browser none\"",
-    "infra:up": "docker compose up -d --wait postgres && docker compose up -d temporal temporal-ui",
+    "infra:up": "docker compose up -d --wait postgres minio && docker compose up -d temporal temporal-ui",
     "infra:down": "docker compose down",
     "db:setup": "pnpm db:generate && pnpm db:migrate && pnpm db:seed",
     "lint": "eslint scripts eslint.config.js && turbo run lint",

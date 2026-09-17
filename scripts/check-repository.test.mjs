@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   mkdtempSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -65,6 +66,25 @@ ERROR: relation "outbox_replay_request" does not exist`;
     ),
     false,
   );
+});
+
+test("retained import source metadata cannot contain null columns", () => {
+  const migrationRoot = join("database", "migrations");
+  const sourceRetentionSql = readdirSync(migrationRoot)
+    .filter((name) => name.includes("import_source_file"))
+    .map((name) =>
+      readFileSync(join(migrationRoot, name, "migration.sql"), "utf8"),
+    )
+    .join("\n");
+
+  for (const column of [
+    "source_object_key",
+    "source_content_type",
+    "source_size_bytes",
+    "source_retained_at",
+  ]) {
+    assert.match(sourceRetentionSql, new RegExp(`"${column}" IS NOT NULL`));
+  }
 });
 
 test("requires CODEOWNERS as a tracked policy file", () => {

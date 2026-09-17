@@ -4,6 +4,8 @@
 export type ImportBatchStatus =
   "parsed" | "confirmed" | "approved" | "executing" | "completed";
 
+export type ImportSourceFileStatus = "not_retained" | "retained";
+
 // AI 字段映射建议（阶段 B）：哪一列对应哪个标准字段。
 export interface ImportMappingSuggestion {
   column: string;
@@ -18,10 +20,25 @@ export interface ImportBatch {
   idempotencyKey: string;
   fileName: string;
   fileHash: string;
+  sourceFileStatus: ImportSourceFileStatus;
+  sourceObjectKey: string | null;
+  sourceContentType: string | null;
+  sourceSizeBytes: number | null;
+  sourceRetainedAt: Date | null;
+  parserVersion: string;
+  replacesBatchId: string | null;
   status: ImportBatchStatus;
   rowCount: number;
   columnCount: number;
   mappingSuggestions: ImportMappingSuggestion[];
+  confirmedQuantityUnit: string | null;
+  createdAt: Date;
+}
+
+export interface ImportReview {
+  column: string;
+  fieldCode: string | null;
+  operatorId: string;
   createdAt: Date;
 }
 

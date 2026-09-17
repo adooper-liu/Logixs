@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import type { ImportFieldCatalog } from "@logix/contracts/import-fields.json";
 
 export class ImportMappingSuggestionDto {
   @ApiProperty({ description: "原始列头" })
@@ -21,7 +22,27 @@ export class ImportBatchDto {
   @ApiProperty({ description: "原始文件名" })
   fileName!: string;
 
-  @ApiProperty({ description: "批次状态（阶段 A：pending | parsed）" })
+  @ApiProperty({
+    description: "原始文件留存状态：not_retained | retained",
+  })
+  sourceFileStatus!: string;
+
+  @ApiProperty({ nullable: true, description: "原始文件字节数" })
+  sourceSizeBytes!: number | null;
+
+  @ApiProperty({ description: "生成该批快照的解析器版本" })
+  parserVersion!: string;
+
+  @ApiProperty({
+    nullable: true,
+    description: "本批次替代的旧导入批次 ID",
+  })
+  replacesBatchId!: string | null;
+
+  @ApiProperty({
+    description:
+      "批次状态：parsed | confirmed | approved | executing | completed",
+  })
   status!: string;
 
   @ApiProperty({ description: "数据行数" })
@@ -35,6 +56,9 @@ export class ImportBatchDto {
     type: [ImportMappingSuggestionDto],
   })
   mappingSuggestions!: ImportMappingSuggestionDto[];
+
+  @ApiProperty({ nullable: true, description: "人工确认的整批数量单位" })
+  confirmedQuantityUnit!: string | null;
 
   @ApiProperty({ description: "创建时间（ISO 8601 UTC）" })
   createdAt!: string;
@@ -57,6 +81,12 @@ export class ImportBatchDetailDto {
 
   @ApiProperty({ description: "前若干行样本", type: [ImportRowSampleDto] })
   rows!: ImportRowSampleDto[];
+
+  @ApiProperty({ type: [ImportMappingSuggestionDto] })
+  effectiveMappings!: ImportMappingSuggestionDto[];
+
+  @ApiProperty({ description: "字段与数量单位目录" })
+  fieldCatalog!: ImportFieldCatalog;
 }
 
 export class MappingReviewInputDto {
@@ -73,10 +103,13 @@ export class MappingReviewInputDto {
 export class ConfirmMappingsRequestDto {
   @ApiProperty({ type: [MappingReviewInputDto] })
   reviews!: MappingReviewInputDto[];
+
+  @ApiProperty({ nullable: true, description: "人工确认的整批数量单位码" })
+  quantityUnit!: string | null;
 }
 
 export class PrecheckBlockerDto {
-  @ApiProperty({ description: "规则码（如 REQ_ORDER / DUP_ROW）" })
+  @ApiProperty({ description: "稳定规则码（如 REQ_ORDER / HEADER_CONFLICT）" })
   ruleCode!: string;
 
   @ApiProperty({ description: "行号（null=批次级）", nullable: true })

@@ -12,7 +12,7 @@ export class GetImportBatchService {
     private readonly repository: ImportRepository,
   ) {}
 
-  execute(id: string): Promise<ImportBatchWithRows | null> {
-    return this.repository.findById(id);
+  execute(id: string, tenantId: string): Promise<ImportBatchWithRows | null> {
+    return this.repository.findById(id, tenantId);
   }
 }
