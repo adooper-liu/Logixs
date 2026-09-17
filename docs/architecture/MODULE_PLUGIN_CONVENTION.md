@@ -99,3 +99,4 @@ defineModuleManifest({
 - `pnpm repo:check` 调用模块清单检查：每个含 `*.module.ts` 的业务目录必须有 `module.manifest.ts`，且 `depends` 合法。
 - 样板：`inland-fulfillment` 具备 `security/`、Web `modules/inland-fulfillment` 导航贡献，写接口挂能力守卫。
 - 变更本约定或模块分类须更新本文与 MODULE_DEPENDENCIES；触及部署边界时另立 ADR。
+- **怎么切下一刀、Odoo 业务能力采纳优先序**：见 [INCREMENTAL_MODULE_PLAYBOOK](./INCREMENTAL_MODULE_PLAYBOOK.md)。
