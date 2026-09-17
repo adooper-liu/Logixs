@@ -80,16 +80,16 @@
 
 `R`=读取，`W`=执行/写入，`A`=管理或复核；空白=默认拒绝。
 
-| 角色                    | 货柜/任务             | 证据        | 导入                               | 生命周期                   | 计划       | 费用        | 可靠性/审计          | 身份管理 |
-| ----------------------- | --------------------- | ----------- | ---------------------------------- | -------------------------- | ---------- | ----------- | -------------------- | -------- |
-| `field_operator`        | container R, task R/W | read/submit |                                    | read                       |            |             |                      |          |
-| `operations_dispatcher` | container R, task R/W | read/submit | read                               | read/operate               | read/draft | read        | read；通知 R         |          |
-| `import_operator`       | container R           |             | read/operate/execute               |                            |            |             |                      |          |
+| 角色                    | 货柜/任务             | 证据        | 导入                               | 生命周期                   | 计划       | 费用        | 可靠性/审计                  | 身份管理 |
+| ----------------------- | --------------------- | ----------- | ---------------------------------- | -------------------------- | ---------- | ----------- | ---------------------------- | -------- |
+| `field_operator`        | container R, task R/W | read/submit |                                    | read                       |            |             |                              |          |
+| `operations_dispatcher` | container R, task R/W | read/submit | read                               | read/operate               | read/draft | read        | read；通知 R                 |          |
+| `import_operator`       | container R           |             | read/operate/execute               |                            |            |             |                              |          |
 | `review_supervisor`     | container R, task R   | read/review | read；高风险例外复核由动作策略要求 | read；高风险动作按策略复核 | read       | read        | read/recover；审计 R；通知 R |          |
-| `finance_controller`    | container R           | read        |                                    | read                       | read       | read/manage | 审计 R               |          |
-| `manager`               | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R |          |
-| `business_admin`        | container R           |             | read                               | read                       | read       | read        | read；审计 R；通知 R | manage   |
-| `audit_analyst`         | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R |          |
+| `finance_controller`    | container R           | read        |                                    | read                       | read       | read/manage | 审计 R                       |          |
+| `manager`               | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R         |          |
+| `business_admin`        | container R           |             | read                               | read                       | read       | read        | read；审计 R；通知 R         | manage   |
+| `audit_analyst`         | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R         |          |
 
 具体动作若要求 four-eyes，拥有业务能力的发起人也不能自批；职责分离优先于角色能力并集。
 

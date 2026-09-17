@@ -33,7 +33,7 @@ verification:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明 |
-| ---------- | ------ | ---- | ------ | ---- |
-| 2026-09-17 | coding | agent | — | Phase A 收口后开工 |
-| 2026-09-17 | coding | agent | — | notification Port/表/死信投递 + 只读助手 + Web 入口已落地；repo:check、api/web typecheck、相关单测通过 |
+| 日期       | 阶段   | 负责  | commit | 说明                                                                                                   |
+| ---------- | ------ | ----- | ------ | ------------------------------------------------------------------------------------------------------ |
+| 2026-09-17 | coding | agent | —      | Phase A 收口后开工                                                                                     |
+| 2026-09-17 | coding | agent | —      | notification Port/表/死信投递 + 只读助手 + Web 入口已落地；repo:check、api/web typecheck、相关单测通过 |
