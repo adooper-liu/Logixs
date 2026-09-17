@@ -6,6 +6,7 @@ import {
   findArchitectureBoundaryViolations,
   toRepositoryRelativePath,
 } from "./check-architecture-boundaries.mjs";
+import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const ignoredDirectories = new Set([
@@ -382,6 +383,7 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
         })),
       ),
       ...findArchitectureBoundaryViolations(architectureSourceFiles()),
+      ...findModuleManifestViolations(),
       ...findMisleadingContractPackageScripts(
         JSON.parse(
           readFileSync(

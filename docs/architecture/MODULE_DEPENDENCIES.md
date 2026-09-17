@@ -66,9 +66,14 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 - 禁止 `packages/*` 依赖 `apps/*`；`contracts` 不带框架依赖。
 - 数据库实体不得直接作为 API / AI 契约返回。
 
-## 4. 落地与校验
+## 4. 模块插件清单
+
+每个 `apps/api/src/modules/<id>/` 须提供 `module.manifest.ts`（`id`/`kind`/`depends`/`permissions`）。语义、目录映射与权限约定见 [MODULE_PLUGIN_CONVENTION](./MODULE_PLUGIN_CONVENTION.md)。`pnpm repo:check` 同时校验清单存在性与 `depends` 合法性。
+
+## 5. 落地与校验
 
 - P3-05：按 [ADR-010](./decisions/ADR-010-bounded-context-modules.md) 创建模块公开入口、自有持久化目录和契约。
 - 依赖方向由 `pnpm repo:check` 强制（`scripts/check-architecture-boundaries.mjs`）：禁止跨模块内部路径、Domain 引用框架/Prisma、Web 直连 `apps/api` 或数据库、`packages/*` 依赖 `apps/*`、AI 面写业务库、业务模块直连模型供应商、非 workflow/worker 引用 Temporal。合法样板是 `shipment-registry` 的 Controller → Use Case → Port ← Adapter。
+- 模块清单由 `scripts/check-module-manifests.mjs` 强制：有 Nest `*.module.ts` 的目录必须有 `module.manifest.ts`，且 `depends` 指向已存在模块。
 - P1-10 / ADR-009：契约改动走单一权威源 + Parity 测试。
 - 本图变更须评审，涉及架构 §19 触发条件时须新增 ADR。

@@ -5,4 +5,8 @@ export interface AuthenticatedUserIdentity {
   actorId: string;
   tenantId: string;
   authenticationMethod: "development_headers" | "oidc";
+  /** Application role codes after IdP mapping (capability packs). */
+  roles: string[];
+  /** Effective capability codes used for server-side authorization. */
+  capabilities: string[];
 }

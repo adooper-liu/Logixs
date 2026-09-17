@@ -479,3 +479,51 @@ test("keeps engines pure and isolated from each other", () => {
     ],
   );
 });
+
+test("module manifests must exist and reference known module ids", async () => {
+  const { findModuleManifestViolations } =
+    await import("./check-module-manifests.mjs");
+  const root = mkdtempSync(join(tmpdir(), "logix-manifests-"));
+  temporaryDirectories.push(root);
+  const modulesDir = join(root, "modules");
+  mkdirSync(join(modulesDir, "identity"), { recursive: true });
+  writeFileSync(
+    join(modulesDir, "identity", "identity.module.ts"),
+    "export {}",
+  );
+  writeFileSync(
+    join(modulesDir, "identity", "module.manifest.ts"),
+    `export const moduleManifest = {
+  id: "identity",
+  kind: "base",
+  version: "1.0.0",
+  depends: [],
+  permissions: [],
+};`,
+  );
+  mkdirSync(join(modulesDir, "broken"), { recursive: true });
+  writeFileSync(join(modulesDir, "broken", "broken.module.ts"), "export {}");
+  writeFileSync(
+    join(modulesDir, "broken", "module.manifest.ts"),
+    `export const moduleManifest = {
+  id: "wrong",
+  kind: "incremental",
+  version: "1.0.0",
+  depends: ["missing-mod", "wrong"],
+  permissions: [],
+};`,
+  );
+  mkdirSync(join(modulesDir, "orphan"), { recursive: true });
+  writeFileSync(join(modulesDir, "orphan", "orphan.module.ts"), "export {}");
+
+  const errors = findModuleManifestViolations({
+    modulesDirectory: modulesDir,
+  }).sort();
+  assert.deepEqual(errors, [
+    "apps/api/src/modules/broken/module.manifest.ts: depends cannot include self",
+    "apps/api/src/modules/broken/module.manifest.ts: depends references unknown module 'missing-mod'",
+    "apps/api/src/modules/broken/module.manifest.ts: depends references unknown module 'wrong'",
+    "apps/api/src/modules/broken/module.manifest.ts: id 'wrong' must equal directory name 'broken'",
+    "apps/api/src/modules/orphan/module.manifest.ts: missing module.manifest.ts for Nest module directory",
+  ]);
+});

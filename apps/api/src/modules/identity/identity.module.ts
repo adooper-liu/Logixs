@@ -7,6 +7,7 @@ import {
   AUTHENTICATION_CONFIG,
   AuthenticationGuard,
 } from "./presentation/authentication.guard";
+import { AuthorizationGuard } from "./presentation/authorization.guard";
 import { DevIdentityMiddleware } from "./presentation/dev-identity.middleware";
 import { DevServiceIdentityMiddleware } from "./presentation/dev-service-identity.middleware";
 
@@ -28,6 +29,7 @@ import { DevServiceIdentityMiddleware } from "./presentation/dev-service-identit
             },
     },
     { provide: APP_GUARD, useClass: AuthenticationGuard },
+    { provide: APP_GUARD, useClass: AuthorizationGuard },
   ],
   exports: [DevIdentityMiddleware, DevServiceIdentityMiddleware],
 })

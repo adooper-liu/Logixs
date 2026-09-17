@@ -1,0 +1,45 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+
+export class NotificationItemDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() problemCode!: string;
+  @ApiProperty() severity!: string;
+  @ApiProperty() title!: string;
+  @ApiProperty() body!: string;
+  @ApiProperty() entityType!: string;
+  @ApiProperty() entityId!: string;
+  @ApiProperty({ type: [String] }) recipientRoleCodes!: string[];
+  @ApiPropertyOptional({ nullable: true }) conversationHint!: string | null;
+  @ApiProperty() createdAt!: string;
+}
+
+export class NotificationListDto {
+  @ApiProperty({ type: [NotificationItemDto] })
+  items!: NotificationItemDto[];
+}
+
+export class ListNotificationsQueryDto {
+  @ApiPropertyOptional() limit?: number;
+}
+
+export class OpenAssistantSessionRequestDto {
+  @ApiPropertyOptional() notificationId?: string;
+}
+
+export class AssistantMessageDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() role!: string;
+  @ApiProperty() body!: string;
+  @ApiProperty() createdAt!: string;
+}
+
+export class AssistantSessionResponseDto {
+  @ApiProperty() sessionId!: string;
+  @ApiPropertyOptional({ nullable: true }) notificationId!: string | null;
+  @ApiProperty({ type: [AssistantMessageDto] })
+  messages!: AssistantMessageDto[];
+}
+
+export class PostAssistantMessageRequestDto {
+  @ApiProperty() body!: string;
+}

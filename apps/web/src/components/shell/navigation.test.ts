@@ -56,4 +56,29 @@ describe("navigationForRole", () => {
       ).toBeGreaterThan(items.findIndex((item) => item.path === "/containers"));
     }
   });
+
+  it("shows inland-fulfillment module navigation for planners", () => {
+    const planner = navigationForRole(router.getRoutes(), "planner").map(
+      (item) => item.path,
+    );
+    const operator = navigationForRole(router.getRoutes(), "operator").map(
+      (item) => item.path,
+    );
+    expect(planner).toContain("/inland-planning");
+    expect(operator).not.toContain("/inland-planning");
+  });
+
+  it("shows notification center for planners and managers", () => {
+    expect(
+      navigationForRole(router.getRoutes(), "planner").map((item) => item.path),
+    ).toContain("/notifications");
+    expect(
+      navigationForRole(router.getRoutes(), "manager").map((item) => item.path),
+    ).toContain("/notifications");
+    expect(
+      navigationForRole(router.getRoutes(), "operator").map(
+        (item) => item.path,
+      ),
+    ).not.toContain("/notifications");
+  });
 });
