@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { uiCopy } from "../data/uiCopyCatalog";
+import { moduleRouteContributions } from "../modules/registry";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -121,6 +122,7 @@ const router = createRouter({
       component: () => import("../views/MicroWorkbench.vue"),
       meta: { title: "一柜一档", section: "货柜" },
     },
+    ...moduleRouteContributions,
   ],
 });
 

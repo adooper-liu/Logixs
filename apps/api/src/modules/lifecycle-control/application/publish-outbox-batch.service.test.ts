@@ -1,5 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
+import { POST_NOTIFICATION } from "../../notification";
 import { OutboxDeliveryError } from "../domain/outbox-failure";
 import { OUTBOX_REPOSITORY } from "../domain/outbox.repository";
 import {
@@ -35,6 +36,7 @@ async function buildService(overrides?: {
   markPublished?: ReturnType<typeof vi.fn>;
   markDeliveryFailed?: ReturnType<typeof vi.fn>;
   deliver?: ReturnType<typeof vi.fn>;
+  postNotification?: ReturnType<typeof vi.fn>;
 }) {
   const outbox = {
     claimBatch: overrides?.claimBatch ?? vi.fn().mockResolvedValue([CLAIMED]),
@@ -58,17 +60,23 @@ async function buildService(overrides?: {
       overrides?.deliver ??
       vi.fn().mockResolvedValue({ brokerReference: "stub:evt-1" }),
   };
+  const postNotification = {
+    execute:
+      overrides?.postNotification ?? vi.fn().mockResolvedValue({ id: "n1" }),
+  };
   const module = await Test.createTestingModule({
     providers: [
       PublishOutboxBatchService,
       { provide: OUTBOX_REPOSITORY, useValue: outbox },
       { provide: OUTBOX_DELIVERY, useValue: delivery },
+      { provide: POST_NOTIFICATION, useValue: postNotification },
     ],
   }).compile();
   return {
     service: module.get(PublishOutboxBatchService),
     outbox,
     delivery,
+    postNotification,
   };
 }
 
@@ -141,7 +149,7 @@ describe("PublishOutboxBatchService", () => {
   });
 
   it("未知失败进入 dead_letter", async () => {
-    const { service, outbox } = await buildService({
+    const { service, outbox, postNotification } = await buildService({
       deliver: vi.fn().mockRejectedValue(new Error("broker down")),
     });
     const result = await service.execute({
@@ -155,6 +163,14 @@ describe("PublishOutboxBatchService", () => {
           lastErrorCode: "unknown_code",
           ownerQueue: "lifecycle-control-outbox",
         }),
+      }),
+    );
+    expect(postNotification.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "t1",
+        problemCode: "outbox_dead_letter",
+        entityType: "outbox_message",
+        entityId: "evt-1",
       }),
     );
     expect(result.deadLetter).toBe(1);

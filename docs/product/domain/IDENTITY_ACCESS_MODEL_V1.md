@@ -70,6 +70,7 @@
 | `charges.manage`      | 维护授权范围的标准并触发确定性重算            | 审核付款或越过币种/生效期规则  |
 | `reliability.read`    | 查看 ClientOperation、死信、补偿与同步状态    | 重放或补偿                     |
 | `reliability.recover` | 重放死信、申请/推进补偿；按风险要求原因和复核 | 修改原消息、原操作或原死信     |
+| `notification.read`   | 读取本人租户内运营问题通知与助手只读会话      | 代发通知、触发业务写动作       |
 | `identity.manage`     | 管理租户内角色映射、委托和范围                | 给自己提权、跨租户或平台级授权 |
 | `audit.read`          | 读取脱敏审计、授权决定和对账记录              | 查看秘密、Token 或无关证据正文 |
 
@@ -82,13 +83,13 @@
 | 角色                    | 货柜/任务             | 证据        | 导入                               | 生命周期                   | 计划       | 费用        | 可靠性/审计          | 身份管理 |
 | ----------------------- | --------------------- | ----------- | ---------------------------------- | -------------------------- | ---------- | ----------- | -------------------- | -------- |
 | `field_operator`        | container R, task R/W | read/submit |                                    | read                       |            |             |                      |          |
-| `operations_dispatcher` | container R, task R/W | read/submit | read                               | read/operate               | read/draft | read        | read                 |          |
+| `operations_dispatcher` | container R, task R/W | read/submit | read                               | read/operate               | read/draft | read        | read；通知 R         |          |
 | `import_operator`       | container R           |             | read/operate/execute               |                            |            |             |                      |          |
-| `review_supervisor`     | container R, task R   | read/review | read；高风险例外复核由动作策略要求 | read；高风险动作按策略复核 | read       | read        | read/recover；审计 R |          |
+| `review_supervisor`     | container R, task R   | read/review | read；高风险例外复核由动作策略要求 | read；高风险动作按策略复核 | read       | read        | read/recover；审计 R；通知 R |          |
 | `finance_controller`    | container R           | read        |                                    | read                       | read       | read/manage | 审计 R               |          |
-| `manager`               | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R         |          |
-| `business_admin`        | container R           |             | read                               | read                       | read       | read        | read；审计 R         | manage   |
-| `audit_analyst`         | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R         |          |
+| `manager`               | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R |          |
+| `business_admin`        | container R           |             | read                               | read                       | read       | read        | read；审计 R；通知 R | manage   |
+| `audit_analyst`         | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R |          |
 
 具体动作若要求 four-eyes，拥有业务能力的发起人也不能自批；职责分离优先于角色能力并集。
 

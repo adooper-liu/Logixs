@@ -1,4 +1,8 @@
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import {
+  POST_NOTIFICATION,
+  type PostNotificationPort,
+} from "../../notification";
 import { decideOutboxFailure } from "../domain/outbox-failure";
 import type { ClaimedOutbox } from "../domain/outbox-publish";
 import {
@@ -46,6 +50,8 @@ export class PublishOutboxBatchService {
     private readonly outbox: OutboxRepository,
     @Inject(OUTBOX_DELIVERY)
     private readonly delivery: OutboxDeliveryPort,
+    @Inject(POST_NOTIFICATION)
+    private readonly postNotification: PostNotificationPort,
   ) {}
 
   async execute(
@@ -123,6 +129,22 @@ export class PublishOutboxBatchService {
             brokerReference: null,
             lastErrorCode: decision.lastErrorCode,
           });
+          if (marked.state === "dead_letter") {
+            await this.postNotification.execute({
+              tenantId: row.tenantId,
+              problemCode: "outbox_dead_letter",
+              severity: "high",
+              title: "出站消息进入死信",
+              body: `事件 ${marked.eventId}（${row.eventType}）投递失败并进入死信。错误码：${decision.lastErrorCode ?? "unknown"}。`,
+              entityType: "outbox_message",
+              entityId: row.id,
+              recipientRoleCodes: [
+                "operations_dispatcher",
+                "review_supervisor",
+              ],
+              conversationHint: `请在看失败队列定位死信 ${row.id}，核对后按授权重放。`,
+            });
+          }
         } else {
           items.push(leftoverItem(row.eventId, decision.lastErrorCode));
         }

@@ -11,6 +11,8 @@ declare module "vue-router" {
     navIcon?: NavigationIcon;
     navOrder?: number;
     roles?: DemoRole[];
+    moduleId?: string;
+    requiredCapabilities?: string[];
   }
 }
 

@@ -1,5 +1,6 @@
 import { Body, Controller, Post, Put, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { DraftInlandPlanService } from "../application/draft-inland-plan.service";
 import { ReplacePlanningSetupService } from "../application/replace-planning-setup.service";
 import {
@@ -18,6 +19,7 @@ export class InlandPlanController {
   ) {}
 
   @Put("inland-planning/setup")
+  @RequireCapabilities("planning.draft")
   @ApiOkResponse({ type: ReplacePlanningSetupResponseDto })
   async setup(
     @Body() body: ReplacePlanningSetupRequestDto,
@@ -37,6 +39,7 @@ export class InlandPlanController {
   }
 
   @Post("inland-plans/draft")
+  @RequireCapabilities("planning.draft")
   @ApiOkResponse({ type: InlandPlanDraftResponseDto })
   async draft(
     @Body() body: DraftInlandPlanRequestDto,

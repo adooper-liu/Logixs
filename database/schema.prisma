@@ -677,3 +677,48 @@ model OverdueChargeRateTier {
   @@index([tenantId, standardId], map: "overdue_rate_tier_standard_idx")
   @@map("overdue_charge_rate_tier")
 }
+
+// 运营问题通知（notification 拥有）：业务模块经 Port 投递，不直写表。
+model OpsNotification {
+  id                   String                @id @default(uuid()) @map("id")
+  tenantId             String                @map("tenant_id")
+  problemCode          String                @map("problem_code")
+  severity             String                @map("severity") // low | medium | high | critical
+  title                String                @map("title")
+  body                 String                @map("body")
+  entityType           String                @map("entity_type")
+  entityId             String                @map("entity_id")
+  recipientRoleCodes   String[]              @map("recipient_role_codes")
+  conversationHint     String?               @map("conversation_hint")
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  sessions             OpsAssistantSession[]
+
+  @@index([tenantId, createdAt, id], map: "ops_notification_list_idx")
+  @@map("ops_notification")
+}
+
+// 运营助手会话（notification 拥有）：可由通知打开；本刀只读问答。
+model OpsAssistantSession {
+  id             String                @id @default(uuid()) @map("id")
+  tenantId       String                @map("tenant_id")
+  actorId        String                @map("actor_id")
+  notificationId String?               @map("notification_id")
+  notification   OpsNotification?      @relation(fields: [notificationId], references: [id])
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  messages       OpsAssistantMessage[]
+
+  @@index([tenantId, actorId, createdAt], map: "ops_assistant_session_actor_idx")
+  @@map("ops_assistant_session")
+}
+
+model OpsAssistantMessage {
+  id        String              @id @default(uuid()) @map("id")
+  sessionId String              @map("session_id")
+  session   OpsAssistantSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String              @map("role") // system | user | assistant
+  body      String              @map("body")
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([sessionId, createdAt], map: "ops_assistant_message_session_idx")
+  @@map("ops_assistant_message")
+}

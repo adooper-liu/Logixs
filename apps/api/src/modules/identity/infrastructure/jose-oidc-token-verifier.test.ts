@@ -46,6 +46,21 @@ describe("JoseOidcTokenVerifier", () => {
       actorId: "user-1",
       tenantId: "tenant-1",
       authenticationMethod: "oidc",
+      roles: [],
+      capabilities: [],
+    });
+  });
+
+  it("maps roles claim into capabilities", async () => {
+    const token = await signToken(privateKey, {
+      sub: "user-1",
+      tenant_id: "tenant-1",
+      roles: ["operations_dispatcher"],
+    });
+
+    await expect(verifier.verify(token)).resolves.toMatchObject({
+      roles: ["operations_dispatcher"],
+      capabilities: expect.arrayContaining(["planning.draft"]),
     });
   });
 
