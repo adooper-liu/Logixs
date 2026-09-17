@@ -1,7 +1,7 @@
 ---
-status: blocked # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/inland-plan-first-slice
-verification:
+verification: 已合入 main：https://github.com/adooper-liu/Logixs/pull/7（merge c946a6c，实现 f4555e5）；2026-09-16 本地 `pnpm validate` 通过（API 84 文件/384 项、Web 50 文件/167 项、Worker 5 项、E2E 50 通过/7 跳过，生产构建通过）。
 ---
 
 # 任务：内陆四节点计划第一刀（起草）
@@ -32,11 +32,11 @@ verification:
 
 ## 验收
 
-- [ ] 缺参数或策略、策略码未注册 → `BUSINESS_PRECONDITION_FAILED`，不静默默认。
-- [ ] 参考日、清关与排程、内陆顺序、拖车时间、清关缓冲均来自配置；`warehouse_unload_first` 下仓有位且车队有趟则直送仓。
-- [ ] 仓满且车队有余力且声明缓冲 → 方案为比价建议，不自动选路。
-- [ ] 车队无余力 → 不算路 B。
-- [ ] 草稿不推进货柜节点；`pnpm --filter @logix/api test -- src/modules/inland-fulfillment` 与 typecheck 通过。
+- [x] 缺参数或策略、策略码未注册 → `BUSINESS_PRECONDITION_FAILED`，不静默默认。
+- [x] 参考日、清关与排程、内陆顺序、拖车时间、清关缓冲均来自配置；`warehouse_unload_first` 下仓有位且车队有趟则直送仓。
+- [x] 仓满且车队有余力且声明缓冲 → 方案为比价建议，不自动选路。
+- [x] 车队无余力 → 不算路 B。
+- [x] 草稿不推进货柜节点；`pnpm --filter @logix/api test -- src/modules/inland-fulfillment` 与 typecheck 通过。
 
 ## 方案
 
@@ -48,7 +48,8 @@ verification:
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责 | commit | 说明                                       |
-| ---------- | ------- | ---- | ------ | ------------------------------------------ |
-| 2026-09-14 | coding  | —    | —      | 开工起草第一刀                             |
-| 2026-09-15 | blocked | —    | —      | 占用核 occupancy-slot 已拆；计划核只吃余量 |
+| 日期       | 阶段    | 负责 | commit  | 说明                                       |
+| ---------- | ------- | ---- | ------- | ------------------------------------------ |
+| 2026-09-14 | coding  | —    | —       | 开工起草第一刀                             |
+| 2026-09-15 | blocked | —    | —       | 占用核 occupancy-slot 已拆；计划核只吃余量 |
+| 2026-09-16 | done    | —    | c946a6c | PR #7 已合入；完整质量门禁通过             |

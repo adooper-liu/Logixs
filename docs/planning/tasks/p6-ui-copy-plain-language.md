@@ -1,7 +1,7 @@
 ---
-status: blocked # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/inland-plan-first-slice
-verification:
+verification: 已合入 main：https://github.com/adooper-liu/Logixs/pull/7（merge c946a6c，实现 9add0c9）；2026-09-16 本地 `pnpm validate` 通过（API 84 文件/384 项、Web 50 文件/167 项、Worker 5 项、E2E 50 通过/7 跳过，生产构建通过）。
 ---
 
 # 任务：作业壳人话与任务五问第一刀
@@ -29,10 +29,10 @@ verification:
 
 ## 验收
 
-- [ ] 作业壳重复用词只来自 `uiCopyCatalog`，组件不再手写「领取 / 完成工单 / 已入账」第二套说法。
-- [ ] 站名「装箱」；任务标题「装箱完成」。
-- [ ] 主按钮「领取 / 完成工单」；回执三步「已接收 / 已确认 / 已入账」。
-- [ ] `pnpm --filter @logix/web test` 与 web typecheck 通过。
+- [x] 作业壳重复用词只来自 `uiCopyCatalog`，组件不再手写「领取 / 完成工单 / 已入账」第二套说法。
+- [x] 站名「装箱」；任务标题「装箱完成」。
+- [x] 主按钮「领取 / 完成工单」；回执三步「已接收 / 已确认 / 已入账」。
+- [x] `pnpm --filter @logix/web test` 与 web typecheck 通过。
 
 ## 方案
 
@@ -44,8 +44,9 @@ verification:
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责 | commit | 说明                                |
-| ---------- | ------- | ---- | ------ | ----------------------------------- |
-| 2026-09-15 | coding  | —    | —      | 按对照稿建议列落作业壳              |
-| 2026-09-15 | coding  | —    | —      | 改按定稿动词链；显示字典落地        |
-| 2026-09-15 | blocked | —    | —      | 暂停：先立 14流程节点填空表权威入口 |
+| 日期       | 阶段    | 负责 | commit  | 说明                                |
+| ---------- | ------- | ---- | ------- | ----------------------------------- |
+| 2026-09-15 | coding  | —    | —       | 按对照稿建议列落作业壳              |
+| 2026-09-15 | coding  | —    | —       | 改按定稿动词链；显示字典落地        |
+| 2026-09-15 | blocked | —    | —       | 暂停：先立 14流程节点填空表权威入口 |
+| 2026-09-16 | done    | —    | c946a6c | PR #7 已合入；完整质量门禁通过      |

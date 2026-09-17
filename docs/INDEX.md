@@ -83,10 +83,10 @@
 | [ERROR_CODES_CATALOG](product/domain/ERROR_CODES_CATALOG.md)                                     | 旧候选错误码兼容导航，权威已迁移至 GC-011                                  | 已取代    |
 | [CONTRACTS_DRAFT](product/domain/CONTRACTS_DRAFT.md)                                             | P2-08/09 历史草案；正式契约已拆分至 GC-003/005–011                         | 已取代    |
 | [NODE_TIME_FIELDS](product/domain/NODE_TIME_FIELDS.md)                                           | 14 节点计划/实际字段草案；ETA 与 STA 分列；最晚提柜/还箱日是计算截止       | 候选      |
-| [PRECHECK_RULES](product/domain/PRECHECK_RULES.md)                                               | 预检/校验规则行 17                                                         | 候选      |
+| [PRECHECK_RULES](product/domain/PRECHECK_RULES.md)                                               | 导入聚合、产品数量、时间证据与重复预检规则目录                             | 候选 v0.2 |
 | [FIVE_PARTY_CODES](product/domain/FIVE_PARTY_CODES.md)                                           | 五主体扣留/放行/查验码                                                     | 候选      |
 | [FEE_DEMURRAGE](product/domain/FEE_DEMURRAGE.md)                                                 | 超期费用三类型分开(P8):起算/免费期/阶梯/日历/账单权威 + 预计·应计·账单分轨 | 候选 v0.3 |
-| [TARGET_FIELD_CATALOG](product/domain/TARGET_FIELD_CATALOG.md)                                   | 已出运货柜首批标准字段                                                     | 候选 v0.4 |
+| [TARGET_FIELD_CATALOG](product/domain/TARGET_FIELD_CATALOG.md)                                   | V1.0 建档、V1.1 产品明细及 V1.2 首组时间事实字段目录                       | 正式 V1.2 |
 | [CONTAINER_MARKERS](product/domain/CONTAINER_MARKERS.md)                                         | 标记→动作机制                                                              | 候选      |
 | [TIMELINE_MAPPING](product/domain/TIMELINE_MAPPING.md)                                           | 不可变事件、乱序重放与状态机关系                                           | 候选 v0.2 |
 | [EXTERNAL_EVENT_MAPPING](product/domain/EXTERNAL_EVENT_MAPPING.md)                               | 三方码通用映射机制                                                         | 候选      |
@@ -130,14 +130,20 @@
 | [节点资源约束拆解表](./planning/RESOURCE_CONSTRAINT_DECOMPOSITION.md)                          | 14 节点共用的资源/门槛/约满比价工作纸；送仓+卸柜为样例               | 候选工作纸                  |
 | [收资源约束工作纸](./planning/tasks/p6-resource-constraint-worksheet.md)                       | 把候选工作纸收入规划目录，不建产能模块                               | 已完成                      |
 | [提送卸还联立计划引擎](./planning/INLAND_FOUR_NODE_PLANNING_ENGINE.md)                         | 以 ETA 正排并倒推清关必完日；能配的一律参数或策略，拒绝硬编码        | 候选规划                    |
-| [内陆计划第一刀](./planning/tasks/p6-inland-plan-first-slice.md)                               | 按配置起草提送卸还；缺配置失败，不硬编码                             | blocked                     |
-| [超期截止日](./planning/tasks/p6-overdue-lfd-deadlines.md)                                     | 按标准算最晚提柜/还箱日；计划只读，不算钱                            | blocked                     |
-| [超期预计应计](./planning/tasks/p6-overdue-accrual.md)                                         | 同一核按阶梯逐日求和；预计/应计只换钟，不算进账单                    | blocked                     |
-| [作业壳人话第一刀](./planning/tasks/p6-ui-copy-plain-language.md)                              | 任务五问 + 现场用词落到作业壳                                        | blocked                     |
-| [14流程节点填空表](./planning/tasks/p6-lifecycle-node-io-catalog.md)                           | 一站一张作业表：正式口径 + 行业完整性规划                            | coding                      |
+| [内陆计划第一刀](./planning/tasks/p6-inland-plan-first-slice.md)                               | 按配置起草提送卸还；缺配置失败，不硬编码                             | 已完成                      |
+| [超期截止日](./planning/tasks/p6-overdue-lfd-deadlines.md)                                     | 按标准算最晚提柜/还箱日；计划只读，不算钱                            | 已完成                      |
+| [超期预计应计](./planning/tasks/p6-overdue-accrual.md)                                         | 同一核按阶梯逐日求和；预计/应计只换钟，不算进账单                    | 已完成                      |
+| [作业壳人话第一刀](./planning/tasks/p6-ui-copy-plain-language.md)                              | 任务五问 + 现场用词落到作业壳                                        | 已完成                      |
+| [14流程节点填空表](./planning/tasks/p6-lifecycle-node-io-catalog.md)                           | 一站一张作业表：正式口径 + 行业完整性规划                            | 已完成                      |
 | [任务 brief](./planning/tasks/p2-shipment-import-domain.md)                                    | P2 切片一交接单                                                      | 已完成                      |
 | [P3-01 主分支保护](./planning/tasks/p3-01-branch-protection.md)                                | CODEOWNERS + main 禁止强推，合入须 PR 与 quality                     | 已完成                      |
-| [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                     | 上传→预检→写端口→对账的首个可写库闭环                                | design                      |
+| [P5 威胁与访问模型](./planning/tasks/p5-threat-access-model.md)                                | 威胁、上线阻断与最小角色/能力/范围基线                               | 已完成                      |
+| [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                     | 上传→预检→写端口→对账的首个可写库闭环                                | 已完成                      |
+| [智能导入导航入口](./planning/tasks/p6-import-navigation-entry.md)                             | 三个演示角色都可从主导航进入“导入货柜”                               | 已完成                      |
+| [导入目标字段目录 V1](./planning/tasks/p6-target-field-catalog-v1.md)                          | 冻结最小建档字段，扩展字段继续按版本治理                             | 已完成                      |
+| [产品明细与时间事实规则](./planning/tasks/p6-shipment-line-truth-rules.md)                     | 冻结多产品行、数量/包装分离及实际时间证据目标规则                    | 已完成                      |
+| [导入时间事实与来源追溯](./planning/tasks/p6-import-time-provenance.md)                        | 清关/卸柜/卸空时间分槽并保留原值、偏移、来源与证据                   | 已完成                      |
+| [导入原始文件留存](./planning/tasks/p6-import-source-file-retention.md)                        | MinIO/S3 留存原文件，批次保存校验元数据与失败补偿                    | 已完成                      |
 | [P6 导入第一刀实施规格](./planning/specs/p6-import-first-slice.md)                             | integration-import 与 shipment-registry 写端口的排期规格             | 设计稿                      |
 | [P6 智能导入切片（已并入）](./planning/tasks/p6-smart-import-slice.md)                         | 四阶段 MVP 草案，已并入导入第一刀                                    | blocked                     |
 | [任务 brief-管理视图](./planning/tasks/p2-web-management-kpi-raci.md)                          | 补看板 KPI + RACI 管理投影                                           | 已完成                      |
