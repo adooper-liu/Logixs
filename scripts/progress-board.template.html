@@ -1,0 +1,1092 @@
+<title>Logix 交付进度板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+  :root {
+    color-scheme: light;
+    --plane: #edf1f3;
+    --surface: #ffffff;
+    --surface-2: #f5f8f9;
+    --rule: #d5dde3;
+    --rule-soft: #e3e9ed;
+    --rule-strong: #b9c6cf;
+    --ink: #0f1a22;
+    --ink-2: #4e6172;
+    --ink-3: #64778a;
+    --accent: #12508f;
+    --accent-track: #d3e4ec;
+    --accent-wash: #e8f0f6;
+    --st-done: #17704a;
+    --st-active: #7e6508;
+    --st-blocked: #9b2242;
+    --st-idle: #5f7285;
+    --st-done-wash: #e3efe9;
+    --st-active-wash: #f4eeda;
+    --st-blocked-wash: #f8e5eb;
+    --st-idle-wash: #e8edf0;
+    --shadow:
+      0 1px 2px rgba(15, 26, 34, 0.05), 0 10px 28px -20px rgba(15, 26, 34, 0.3);
+
+    --font-display: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --plane: #0b131a;
+      --surface: #121e27;
+      --surface-2: #0f1a22;
+      --rule: #223340;
+      --rule-soft: #1b2a35;
+      --rule-strong: #35495a;
+      --ink: #e3eaef;
+      --ink-2: #9db0bc;
+      --ink-3: #7a8e9b;
+      --accent: #4fa8da;
+      --accent-track: #1b3446;
+      --accent-wash: #14293a;
+      --st-done: #45a87c;
+      --st-active: #d2a03e;
+      --st-blocked: #de7b7b;
+      --st-idle: #8a9ca9;
+      --st-done-wash: #122c22;
+      --st-active-wash: #2c2413;
+      --st-blocked-wash: #2e1a1d;
+      --st-idle-wash: #1a242c;
+      --shadow:
+        0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -20px rgba(0, 0, 0, 0.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane: #0b131a;
+    --surface: #121e27;
+    --surface-2: #0f1a22;
+    --rule: #223340;
+    --rule-soft: #1b2a35;
+    --rule-strong: #35495a;
+    --ink: #e3eaef;
+    --ink-2: #9db0bc;
+    --ink-3: #7a8e9b;
+    --accent: #4fa8da;
+    --accent-track: #1b3446;
+    --accent-wash: #14293a;
+    --st-done: #45a87c;
+    --st-active: #d2a03e;
+    --st-blocked: #de7b7b;
+    --st-idle: #8a9ca9;
+    --st-done-wash: #122c22;
+    --st-active-wash: #2c2413;
+    --st-blocked-wash: #2e1a1d;
+    --st-idle-wash: #1a242c;
+    --shadow:
+      0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -20px rgba(0, 0, 0, 0.8);
+  }
+
+  body {
+    margin: 0;
+    background: var(--plane);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 本页可能被直接双击打开（不经发布壳），筛选靠 hidden 属性，这里自带兜底。 */
+  [hidden] {
+    display: none !important;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  a {
+    color: var(--accent);
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+  }
+  a:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 32px;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-block: 40px 20px;
+    border-bottom: 3px solid var(--ink);
+  }
+
+  .mast-title {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .mark {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: var(--surface);
+    background: var(--ink);
+    padding: 5px 9px 4px;
+    border-radius: 2px;
+  }
+
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .mast-sub {
+    margin: 10px 0 0;
+    color: var(--ink-2);
+    font-size: 14px;
+    max-width: 62ch;
+  }
+
+  .mast-meta {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 14px;
+    margin: 0;
+    font-size: 12px;
+  }
+  .mast-meta dt {
+    font-family: var(--font-display);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    font-size: 11px;
+    padding-top: 2px;
+  }
+  .mast-meta dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  /* ---------- count band ---------- */
+
+  .band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .tile {
+    background: var(--surface);
+    padding: 14px 16px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .tile-label {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--ink-3);
+  }
+
+  .tile-value {
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .tile-value .unit {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink-3);
+    letter-spacing: 0;
+  }
+
+  .tile-note {
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- sections ---------- */
+
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--rule-strong);
+    padding-bottom: 8px;
+  }
+
+  .sec-head h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: 0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .sec-note {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lede {
+    margin: 0;
+    color: var(--ink-2);
+    max-width: 78ch;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+  }
+
+  /* ---------- module tables ---------- */
+
+  .layer + .layer {
+    margin-top: 26px;
+  }
+
+  .layer-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .layer-head h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .layer-head p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead th {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    text-align: left;
+    padding: 9px 12px 7px;
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .mod-name {
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .mod-name .mono {
+    display: block;
+    font-weight: 400;
+  }
+
+  .deps {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+  }
+
+  /* size bar: one series, one colour, 4px data-end, square at the baseline */
+  .size {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+  }
+
+  .size-track {
+    flex: 1 1 auto;
+    height: 10px;
+    background: var(--accent-wash);
+    border-radius: 1px;
+    min-width: 40px;
+  }
+
+  .size-fill {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    background: var(--accent);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .size-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+    min-width: 52px;
+    text-align: right;
+  }
+
+  /* ---------- chips (glyph + label: colour never carries meaning alone) ---------- */
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 4px 6px 3px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .chip .glyph {
+    font-size: 11px;
+  }
+
+  .chip[data-s="done"] {
+    color: var(--st-done);
+    background: var(--st-done-wash);
+  }
+  .chip[data-s="active"] {
+    color: var(--st-active);
+    background: var(--st-active-wash);
+  }
+  .chip[data-s="blocked"] {
+    color: var(--st-blocked);
+    background: var(--st-blocked-wash);
+  }
+  .chip[data-s="idle"] {
+    color: var(--st-idle);
+    background: var(--st-idle-wash);
+  }
+
+  /* ---------- the 14-station rail ---------- */
+
+  .rail {
+    list-style: none;
+    margin: 0;
+    padding: 18px 20px;
+    display: grid;
+    grid-template-rows: repeat(7, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    column-gap: 44px;
+  }
+
+  .station {
+    position: relative;
+    padding: 7px 0 7px 30px;
+    min-width: 0;
+  }
+
+  .station::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--rule);
+  }
+
+  .station::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-sizing: border-box;
+  }
+
+  .station[data-state="wired"]::after {
+    background: var(--st-done);
+    border: 3px solid var(--surface);
+  }
+  .station[data-state="partial"]::after {
+    background: var(--surface);
+    border: 4px solid var(--st-active);
+  }
+  .station[data-state="none"]::after {
+    background: var(--surface-2);
+    border: 3px solid var(--rule-strong);
+  }
+
+  .station-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .station-seq {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-3);
+  }
+
+  .station-cn {
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+
+  .station-code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  .station-by {
+    display: block;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    margin-top: 1px;
+  }
+  .station[data-state="none"] .station-by {
+    color: var(--ink-3);
+    font-style: italic;
+  }
+
+  /* ---------- phase meters ---------- */
+
+  .phases {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+  }
+
+  .phase {
+    display: grid;
+    grid-template-columns:
+      38px minmax(120px, 1.4fr) minmax(90px, 1fr)
+      62px minmax(150px, 1.3fr);
+    gap: 14px;
+    align-items: center;
+    padding: 7px 20px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 13.5px;
+  }
+  .phase:last-child {
+    border-bottom: 0;
+  }
+
+  .phase-id {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  .meter {
+    height: 8px;
+    background: var(--accent-track);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    background: var(--accent);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .phase-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--ink-2);
+    text-align: right;
+  }
+
+  .phase-note {
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  .flag {
+    color: var(--st-blocked);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* ---------- filters: one row, above everything it scopes ---------- */
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+  }
+
+  .filter-set {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .filter-set > .filter-label {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    margin-right: 2px;
+  }
+
+  button.fchip {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-2);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 5px 10px 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  button.fchip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  button.fchip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--surface);
+  }
+
+  button.fchip .tally {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+  }
+
+  .search {
+    flex: 1 1 200px;
+    min-width: 160px;
+  }
+
+  .search input {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 6px 10px;
+  }
+  .search input::placeholder {
+    color: var(--ink-3);
+  }
+
+  .result-count {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  /* ---------- task ledger ---------- */
+
+  .ledger-wrap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+
+  .ledger {
+    min-width: 720px;
+  }
+
+  .ledger th.sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+  .ledger th.sortable:hover {
+    color: var(--accent);
+  }
+  .ledger th .arrow {
+    font-size: 9px;
+    opacity: 0.45;
+    margin-left: 3px;
+  }
+  .ledger th[aria-sort] .arrow {
+    opacity: 1;
+    color: var(--accent);
+  }
+
+  .ledger td.id {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .ledger td.title {
+    min-width: 320px;
+  }
+
+  .ledger td.phase,
+  .ledger td.proof {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .tick {
+    color: var(--st-done);
+    font-weight: 600;
+  }
+  .dash {
+    color: var(--ink-3);
+  }
+
+  /* ---------- gaps ---------- */
+
+  .gaps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gap {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--st-idle);
+    border-radius: 3px;
+  }
+
+  .gap[data-sev="high"] {
+    border-left-color: var(--st-blocked);
+  }
+  .gap[data-sev="mid"] {
+    border-left-color: var(--st-active);
+  }
+
+  .gap-body h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+
+  .gap-body p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ink-2);
+    max-width: 84ch;
+  }
+
+  .gap-body p + p {
+    margin-top: 6px;
+  }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    border-top: 1px solid var(--rule-strong);
+    padding-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  footer p {
+    margin: 0;
+    max-width: 70ch;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    padding: 1px 4px;
+  }
+
+  @media (max-width: 900px) {
+    .rail {
+      grid-template-rows: none;
+      grid-auto-flow: row;
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 0;
+    }
+
+    .phase {
+      grid-template-columns: 34px 1fr 62px;
+      grid-template-areas:
+        "id name num"
+        "meter meter meter"
+        "note note note";
+      gap: 6px 10px;
+      padding: 10px 16px;
+    }
+    .phase .phase-id {
+      grid-area: id;
+    }
+    .phase .phase-name {
+      grid-area: name;
+    }
+    .phase .phase-num {
+      grid-area: num;
+    }
+    .phase .meter {
+      grid-area: meter;
+    }
+    .phase .phase-note {
+      grid-area: note;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .page {
+      gap: 32px;
+    }
+    .masthead {
+      padding-block: 28px 16px;
+    }
+    .mast-meta {
+      grid-template-columns: auto 1fr;
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div>
+      <div class="mast-title">
+        <span class="mark">LOGIX</span>
+        <h1>交付进度板</h1>
+      </div>
+      <p class="mast-sub">
+        按「基座 / 主链核 /
+        增量业务」分层看每一块的进度，并对照十四站主链与启动清单门禁。全部数字由仓库现场算出，页面不保存任何手工维护的副本。
+      </p>
+    </div>
+    <dl class="mast-meta">
+      <!--__META__-->
+    </dl>
+  </header>
+
+  <div class="band" aria-label="关键计数">
+    <!--__TILES__-->
+  </div>
+
+  <section id="modules">
+    <div class="sec-head">
+      <h2>分层模块进度</h2>
+      <span class="sec-note"><!--__MODULE_NOTE__--></span>
+    </div>
+    <p class="lede">
+      规模＝该模块非测试 TypeScript
+      的代码行数（条长按最大模块等比）。「空壳」指只有清单、入口与 Nest
+      模块文件，没有领域层或用例层——即尚未开工。
+    </p>
+    <!--__MODULES__-->
+  </section>
+
+  <section id="chain">
+    <div class="sec-head">
+      <h2>十四站主链</h2>
+      <span class="sec-note"><!--__CHAIN_NOTE__--></span>
+    </div>
+    <p class="lede">
+      节点机制由 lifecycle-control 统一提供，任一站点都能靠「工单完成 +
+      证据核验」过站。区别在于
+      <strong>有没有专业模块自动喂事实</strong
+      >：绿点为已有申请事件跑通，琥珀为只有计划与截止日、
+      事实仍靠人工录入，空圈为尚无任何模块承接。
+    </p>
+    <div class="panel">
+      <ol class="rail">
+        <!--__RAIL__-->
+      </ol>
+    </div>
+  </section>
+
+  <section id="phases">
+    <div class="sec-head">
+      <h2>启动清单门禁</h2>
+      <span class="sec-note"><!--__PHASE_NOTE__--></span>
+    </div>
+    <p class="lede">
+      取自 <code>PROJECT_BOOTSTRAP_CHECKLIST.md</code> 的勾选状态。<code
+        >[~]</code
+      >
+      记部分完成， <code>[-]</code> 为经 ADR
+      确认不适用，两者都算已了结。清单与任务台账是两套口径，差异在下方标出。
+    </p>
+    <div class="panel">
+      <ul class="phases">
+        <!--__PHASES__-->
+      </ul>
+    </div>
+  </section>
+
+  <div class="filters" role="group" aria-label="任务台账筛选">
+    <div class="filter-set">
+      <span class="filter-label">状态</span>
+      <!--__FILTERS__-->
+    </div>
+    <div class="search">
+      <label
+        for="q"
+        class="filter-label"
+        style="position: absolute; left: -9999px"
+        >搜索任务</label
+      >
+      <input
+        id="q"
+        type="search"
+        placeholder="搜索编号、标题或分支…"
+        autocomplete="off"
+      />
+    </div>
+    <span
+      class="result-count"
+      id="count"
+      role="status"
+      aria-live="polite"
+    ></span>
+  </div>
+
+  <section id="ledger">
+    <div class="sec-head">
+      <h2>任务台账</h2>
+      <span class="sec-note"><!--__LEDGER_NOTE__--></span>
+    </div>
+    <p class="lede">
+      每条任务就是
+      <code>docs/planning/tasks/</code> 下的一份交接单；状态取自文件顶部
+      frontmatter， 是仓库里唯一可机器校验的进度口径。点表头可排序。
+    </p>
+    <div class="ledger-wrap">
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="id" aria-sort="ascending">
+              编号<span class="arrow">▲</span>
+            </th>
+            <th>标题</th>
+            <th class="sortable" data-sort="status">
+              状态<span class="arrow">▲</span>
+            </th>
+            <th class="sortable" data-sort="phase">
+              阶段<span class="arrow">▲</span>
+            </th>
+            <th>验证证据</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--__TASKS__-->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="gaps">
+    <div class="sec-head">
+      <h2>落差与待决</h2>
+      <span class="sec-note"><!--__GAP_NOTE__--></span>
+    </div>
+    <p class="lede">
+      下面几条不是自动算出来的，是人工核对后写进生成脚本的判断，随脚本一起版本化——所以它们也会过期，
+      改的时候请连证据一起改。
+    </p>
+    <ul class="gaps">
+      <!--__GAPS__-->
+    </ul>
+  </section>
+
+  <footer>
+    <p>
+      <!--__FOOTER_NOTE__-->
+    </p>
+    <p>
+      重新生成：<code>pnpm board:build</code
+      >，然后用浏览器打开本文件；要发成链接时同一份文件直接发即可。
+    </p>
+  </footer>
+</div>
+
+<script>
+  (() => {
+    const rows = Array.from(document.querySelectorAll(".ledger tbody tr"));
+    const chips = Array.from(document.querySelectorAll("button.fchip"));
+    const input = document.getElementById("q");
+    const count = document.getElementById("count");
+    const tbody = document.querySelector(".ledger tbody");
+    let status = "all";
+    let query = "";
+
+    const render = () => {
+      let shown = 0;
+      for (const row of rows) {
+        const okStatus = status === "all" || row.dataset.status === status;
+        const okQuery = !query || row.dataset.text.includes(query);
+        const visible = okStatus && okQuery;
+        row.hidden = !visible;
+        if (visible) shown += 1;
+      }
+      count.textContent = "显示 " + shown + " / " + rows.length + " 条";
+    };
+
+    for (const chip of chips) {
+      chip.addEventListener("click", () => {
+        status = chip.dataset.filter;
+        for (const other of chips) {
+          other.setAttribute("aria-pressed", String(other === chip));
+        }
+        render();
+      });
+    }
+
+    input.addEventListener("input", () => {
+      query = input.value.trim().toLowerCase();
+      render();
+    });
+
+    const sorted = { id: "asc", status: "asc", phase: "asc" };
+    for (const th of document.querySelectorAll(".ledger th.sortable")) {
+      const key = th.dataset.sort;
+      th.addEventListener("click", () => {
+        const dir = sorted[key] === "asc" ? "desc" : "asc";
+        sorted[key] = dir;
+        for (const other of document.querySelectorAll(".ledger th.sortable")) {
+          other.removeAttribute("aria-sort");
+          other.querySelector(".arrow").textContent = "▲";
+        }
+        th.setAttribute(
+          "aria-sort",
+          dir === "asc" ? "ascending" : "descending",
+        );
+        th.querySelector(".arrow").textContent = dir === "asc" ? "▲" : "▼";
+        const sign = dir === "asc" ? 1 : -1;
+        rows
+          .slice()
+          .sort((a, b) => sign * a.dataset[key].localeCompare(b.dataset[key]))
+          .forEach((row) => tbody.appendChild(row));
+        render();
+      });
+    }
+
+    render();
+  })();
+</script>
