@@ -20,19 +20,19 @@
 
 ## 三、docs 导航与架构
 
-| 文档                                                                     | 一句话                                         | 状态          |
-| ------------------------------------------------------------------------ | ---------------------------------------------- | ------------- |
-| [人话导读](./人话导读.md)                                                | 大白话讲全系统+文档地图（新人先读）            | 导航          |
-| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                       | 建柜展任务、事实算条件、核验实际才过站         | 人话对照      |
-| [docs/README](./README.md)                                               | docs 导航+写作纪律+消费链                      | 导航          |
-| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)         | 目标架构总览(分层/模块/AI/工作流)              | 已接受        |
-| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                      | 模块/包依赖与禁止依赖                          | 已接受(P1-09) |
-| [模块插件约定](./architecture/MODULE_PLUGIN_CONVENTION.md)               | Odoo 式基础核+增量插件：manifest/目录/权限映射 | 已接受约定    |
-| [增量模块开发手册](./architecture/INCREMENTAL_MODULE_PLAYBOOK.md)        | 切片提纲+清单；Odoo 可借鉴能力全量采纳与优先序 | 已接受工作纸  |
-| [ADR-011 受控 UI 投影](./architecture/decisions/ADR-011-controlled-ui-projection.md) | 控件化+schema 投影；拒绝 Studio 选表/任意 JOIN | 候选(proposed) |
-| [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md) | 问题通知总线与从通知打开的只读运营助手第一刀   | 已合入 main   |
-| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断 | 安全基线 V1   |
-| [ADR 索引](./architecture/decisions/README.md) + ADR-001~011             | 架构决策记录（含受控 UI 投影 ADR-011）         | P1 已接受；011 候选 |
+| 文档                                                                                 | 一句话                                         | 状态                |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------- | ------------------- |
+| [人话导读](./人话导读.md)                                                            | 大白话讲全系统+文档地图（新人先读）            | 导航                |
+| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                                   | 建柜展任务、事实算条件、核验实际才过站         | 人话对照            |
+| [docs/README](./README.md)                                                           | docs 导航+写作纪律+消费链                      | 导航                |
+| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)                     | 目标架构总览(分层/模块/AI/工作流)              | 已接受              |
+| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                                  | 模块/包依赖与禁止依赖                          | 已接受(P1-09)       |
+| [模块插件约定](./architecture/MODULE_PLUGIN_CONVENTION.md)                           | Odoo 式基础核+增量插件：manifest/目录/权限映射 | 已接受约定          |
+| [增量模块开发手册](./architecture/INCREMENTAL_MODULE_PLAYBOOK.md)                    | 切片提纲+清单；Odoo 可借鉴能力全量采纳与优先序 | 已接受工作纸        |
+| [ADR-011 受控 UI 投影](./architecture/decisions/ADR-011-controlled-ui-projection.md) | 控件化+schema 投影；拒绝 Studio 选表/任意 JOIN | 候选(proposed)      |
+| [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md)             | 问题通知总线与从通知打开的只读运营助手第一刀   | 已合入 main         |
+| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                        | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断 | 安全基线 V1         |
+| [ADR 索引](./architecture/decisions/README.md) + ADR-001~011                         | 架构决策记录（含受控 UI 投影 ADR-011）         | P1 已接受；011 候选 |
 
 ## 四、产品/理念/流程
 
