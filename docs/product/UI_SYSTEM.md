@@ -350,6 +350,9 @@ StateBadge 只负责视觉语义；业务状态到语义的映射必须来自一
 
 ### 8.6 动态表格纪律
 
+架构边界（接受控件化与注册数据集、拒绝 Studio 式选表/任意 JOIN）见
+[ADR-011](../architecture/decisions/ADR-011-controlled-ui-projection.md)。
+
 `DynamicDataTable` 消费服务端受控的 `schema + rows + pageInfo` 展示投影。业务页面只装配投影、
 路由筛选和行级命令，不逐字段编写表头或单元格模板；列名、顺序、宽度、渲染类型、搜索、排序、
 显隐、固定位置和快速筛选均由展示 schema 决定。
