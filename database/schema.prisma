@@ -385,6 +385,8 @@ model InboxMessage {
   receivedAt      DateTime  @map("received_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
+  oceanProviderEventIngestion OceanProviderEventIngestion?
+
   @@unique([consumerName, messageId], map: "inbox_message_consumer_message_key")
   @@index([tenantId, consumerName, state], map: "inbox_message_tenant_state_idx")
   @@index([tenantId, consumerName, state, leaseExpiresAt, receivedAt], map: "inbox_message_lease_idx")
@@ -411,6 +413,46 @@ model InboxReplayRequest {
 
   @@unique([tenantId, deadLetterId, idempotencyKey], map: "inbox_replay_idempotency_key")
   @@map("inbox_replay_request")
+}
+
+// 海运供应商事件接入留痕（ocean-port-visibility 拥有）。
+// 原始载荷与来源裁决追加保存；本表不产生规范事件，也不推进生命周期。
+model OceanProviderEventIngestion {
+  id                   String       @id @map("id")
+  inboxMessageId       String       @unique @map("inbox_message_id")
+  inboxMessage         InboxMessage @relation(fields: [inboxMessageId], references: [id], onDelete: Restrict)
+  tenantId             String       @map("tenant_id")
+  provider             String       @map("provider")
+  interfaceCode        String       @map("interface_code")
+  providerEventIdRaw   String?      @map("provider_event_id_raw")
+  idempotencyKey       String?      @map("idempotency_key")
+  rawPayload           Json         @map("raw_payload")
+  payloadHash          String       @map("payload_hash")
+  payloadHashVersion   String       @map("payload_hash_version")
+  containerNumberRaw   String       @map("container_number_raw")
+  rawCode              String       @map("raw_code")
+  eventTimeRaw         String       @map("event_time_raw")
+  mappingVersion       String       @map("mapping_version")
+  normalizationKind    String       @map("normalization_kind")
+  canonicalEventCode   String?      @map("canonical_event_code")
+  occurredAt           DateTime?    @map("occurred_at") @db.Timestamptz
+  timeKind             String?      @map("time_kind")
+  sourceCodeRaw        String       @map("source_code_raw")
+  sourceSignal         String?      @map("source_signal")
+  authorityDecision    String       @map("authority_decision")
+  authorityPolicyRef   String?      @map("authority_policy_ref")
+  confidenceState      String       @map("confidence_state")
+  reasonCodes          Json         @map("reason_codes")
+  lifecycleApplication String       @map("lifecycle_application")
+  decidedBy            String       @map("decided_by")
+  traceId              String       @map("trace_id")
+  receivedAt           DateTime     @map("received_at") @db.Timestamptz
+  decidedAt            DateTime     @map("decided_at") @db.Timestamptz
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, authorityDecision, receivedAt, id], map: "ocean_provider_ingestion_tenant_decision_idx")
+  @@index([tenantId, provider, interfaceCode, idempotencyKey], map: "ocean_provider_ingestion_business_key_idx")
+  @@map("ocean_provider_event_ingestion")
 }
 
 // 契约：GC-009 ClientOperationV1。

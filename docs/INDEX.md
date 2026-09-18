@@ -190,6 +190,8 @@
 | [Inbox 占位消费第一刀](./planning/tasks/p6-inbox-process-first-slice.md)                       | 领取后占位消费并标 processed，失败保留租约                           | 已完成                      |
 | [Inbox 消费/死信与 ClientOperation](./planning/tasks/p6-inbox-consume-client-operation.md)     | 三阶段操作 + Inbox 真消费同事务 Outbox + 重试/死信                   | 已完成                      |
 | [Inbox 死信列表与重放](./planning/tasks/p6-inbox-dead-letter-replay.md)                        | 并入现有死信页；新 messageId + causationId，不改原死信               | 已完成                      |
+| [云当网事件候选归一化](./planning/tasks/p6-trackingeyes-event-candidate.md)                    | 原始码形成不可自动过站的规范事件候选                                 | 已完成                      |
+| [云当网接入、Inbox 与来源裁决](./planning/tasks/p6-trackingeyes-ingestion-authority.md)        | 原始载荷、消息幂等与来源资格裁决同事务留痕                           | 已完成                      |
 | [工单完成写入 ClientOperation](./planning/tasks/p6-work-execution-client-operation.md)         | 完成工单落三阶段回执，work-execution 拥有                            | 已完成                      |
 | [任务台接真实完成与三段回执](./planning/tasks/p6-task-workbench-complete-receipt.md)           | /real-tasks 完成工单，动作旁显示三阶段                               | 已完成                      |
 | [本地迁移改为 deploy 对齐](./planning/tasks/p6-migrate-deploy-local.md)                        | db:migrate 走 deploy，避开影子库重放旧迁移                           | 已完成                      |
