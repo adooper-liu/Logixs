@@ -18,6 +18,10 @@ export type {
   ApplyContainerRecordCommand,
   ApplyContainerRecordResult,
 } from "./domain/apply-container-record";
+export {
+  GET_CONTAINER_SUMMARY,
+  type GetContainerSummaryPort,
+} from "./get-container-summary.port";
 export type {
   ApplyReplenishmentOrderImportCommand,
   ApplyReplenishmentOrderImportResult,

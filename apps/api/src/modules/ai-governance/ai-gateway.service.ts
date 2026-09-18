@@ -1,16 +1,13 @@
 import { Injectable } from "@nestjs/common";
+import type { OpsQuestionInput } from "@logix/contracts";
 import { config } from "../../config/env";
+
+export type { OpsQuestionInput } from "@logix/contracts";
 
 export interface MappingSuggestion {
   column: string;
   fieldCode: string | null;
   confidence: number;
-}
-
-export interface OpsQuestionInput {
-  question: string;
-  notificationContext: string | null;
-  history: ReadonlyArray<{ role: string; body: string }>;
 }
 
 // 业务 AI Gateway 的最小转发（ADR-006）：integration-import 经此调用 AI 能力，
@@ -62,18 +59,29 @@ export class AiGatewayService {
 }
 
 export function buildDeterministicOpsAnswer(input: OpsQuestionInput): string {
-  const context = input.notificationContext?.trim();
-  if (context) {
-    return [
-      "这是只读摘要（AI 服务未返回时的回退）。",
-      `相关问题：${context}`,
-      `你的问题：${input.question}`,
-      "请到「看失败」核对死信并按授权重放；本助手本刀不能改写业务状态。",
-    ].join("\n");
+  const lines = ["这是只读摘要（AI 服务未返回时的回退）。"];
+  const notification = input.notificationContext?.trim();
+  if (notification) lines.push(`相关问题：${notification}`);
+  if (input.objectContext) {
+    const { summary, allowedActions, actionSummary, readOnlyPolicy } =
+      input.objectContext;
+    lines.push(
+      `货柜：${summary.containerNumber ?? "未绑定箱号"}（备货单 ${summary.orderNumber}）`,
+      `当前状态：${summary.currentStatus}${summary.currentNodeCode ? `；当前节点 ${summary.currentNodeCode}` : ""}`,
+      `下一动作：${actionSummary}`,
+    );
+    for (const action of allowedActions) {
+      lines.push(
+        `- ${action.explanation}${action.assigneeId ? `；负责人 ${action.assigneeId}` : ""}${action.dueAt ? `；截止 ${action.dueAt}` : ""}`,
+      );
+    }
+    lines.push(readOnlyPolicy.explanation);
+  } else if (!notification) {
+    lines.push("请从具体问题通知或货柜档案打开助手后再问。");
   }
-  return [
-    "这是只读摘要（AI 服务未返回时的回退）。",
+  lines.push(
     `你的问题：${input.question}`,
-    "请补充通知上下文或打开具体问题通知后再问。",
-  ].join("\n");
+    "助手只能解释服务端返回的事实，不能领取、提交或改变业务状态。",
+  );
+  return lines.join("\n");
 }

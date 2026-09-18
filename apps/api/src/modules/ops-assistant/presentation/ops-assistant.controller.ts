@@ -1,5 +1,6 @@
 import { Body, Controller, Param, Post, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import type { AssistantSessionResponse } from "@logix/contracts";
 import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { OpenAssistantSessionService } from "../application/open-assistant-session.service";
 import { PostAssistantMessageService } from "../application/post-assistant-message.service";
@@ -7,7 +8,16 @@ import {
   AssistantSessionResponseDto,
   OpenAssistantSessionRequestDto,
   PostAssistantMessageRequestDto,
-} from "./notification.dto";
+} from "./ops-assistant.dto";
+
+interface OpsAssistantRequest {
+  identity: {
+    tenantId: string;
+    actorId: string;
+    roles: string[];
+    capabilities: string[];
+  };
+}
 
 @ApiTags("ops-assistant")
 @Controller("ops-assistant")
@@ -20,50 +30,35 @@ export class OpsAssistantController {
   @Post("sessions")
   @RequireCapabilities("notification.read")
   @ApiOkResponse({ type: AssistantSessionResponseDto })
-  async open(
+  open(
     @Body() body: OpenAssistantSessionRequestDto,
-    @Req() request: { identity: { tenantId: string; actorId: string } },
-  ): Promise<AssistantSessionResponseDto> {
-    const result = await this.openSession.execute({
+    @Req() request: OpsAssistantRequest,
+  ): Promise<AssistantSessionResponse> {
+    return this.openSession.execute({
       tenantId: request.identity.tenantId,
       actorId: request.identity.actorId,
-      notificationId: body.notificationId ?? null,
+      actorRoles: request.identity.roles,
+      actorCapabilities: request.identity.capabilities,
+      notificationId: body.notificationId,
+      containerId: body.containerId,
     });
-    return {
-      sessionId: result.session.id,
-      notificationId: result.session.notificationId,
-      messages: result.messages.map((message) => ({
-        id: message.id,
-        role: message.role,
-        body: message.body,
-        createdAt: message.createdAt.toISOString(),
-      })),
-    };
   }
 
   @Post("sessions/:sessionId/messages")
   @RequireCapabilities("notification.read")
   @ApiOkResponse({ type: AssistantSessionResponseDto })
-  async message(
+  message(
     @Param("sessionId") sessionId: string,
     @Body() body: PostAssistantMessageRequestDto,
-    @Req() request: { identity: { tenantId: string; actorId: string } },
-  ): Promise<AssistantSessionResponseDto> {
-    const messages = await this.postMessage.execute({
+    @Req() request: OpsAssistantRequest,
+  ): Promise<AssistantSessionResponse> {
+    return this.postMessage.execute({
       tenantId: request.identity.tenantId,
       actorId: request.identity.actorId,
+      actorRoles: request.identity.roles,
+      actorCapabilities: request.identity.capabilities,
       sessionId,
       body: body.body,
     });
-    return {
-      sessionId,
-      notificationId: null,
-      messages: messages.map((message) => ({
-        id: message.id,
-        role: message.role,
-        body: message.body,
-        createdAt: message.createdAt.toISOString(),
-      })),
-    };
   }
 }

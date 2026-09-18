@@ -1,9 +1,14 @@
 from app.capabilities import (
     CAPABILITIES,
     EchoRequest,
+    AssistantObjectContext,
+    AssistantObjectSummary,
+    AssistantReadOnlyPolicy,
+    OpsQuestionRequest,
     SuggestMappingRequest,
     echo_handler,
     suggest_mapping_handler,
+    answer_ops_question_handler,
 )
 
 
@@ -63,3 +68,38 @@ def test_suggest_mapping_unknown_column():
 
 def test_registry_has_suggest_mapping():
     assert "suggest_import_mapping" in CAPABILITIES
+
+
+def test_answer_ops_question_keeps_object_context_read_only():
+    response = answer_ops_question_handler(
+        OpsQuestionRequest(
+            question="下一步是什么？",
+            notificationContext=None,
+            objectContext=AssistantObjectContext(
+                summary=AssistantObjectSummary(
+                    containerId="container-1",
+                    orderNumber="SO-1",
+                    containerNumber="MSKU1",
+                    currentStatus="in_transit",
+                    currentNodeCode="customs_clearance",
+                    flowState="active",
+                    updatedAt="2026-09-18T01:00:00.000Z",
+                ),
+                allowedActions=[],
+                actionSummary="当前没有可执行的下一动作。",
+                readOnlyPolicy=AssistantReadOnlyPolicy(
+                    assistantCanExecute=False,
+                    actorCanExecuteActions=False,
+                    explanation="助手只解释现状。",
+                ),
+            ),
+            history=[],
+        ),
+    )
+    assert "MSKU1" in response.answer
+    assert "当前没有可执行的下一动作" in response.answer
+    assert "不能领取、提交或改变业务状态" in response.answer
+
+
+def test_registry_has_answer_ops_question():
+    assert "answer_ops_question" in CAPABILITIES

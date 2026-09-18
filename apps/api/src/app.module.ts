@@ -15,6 +15,7 @@ import { LifecycleControlModule } from "./modules/lifecycle-control";
 import { MasterDataModule } from "./modules/master-data";
 import { NotificationModule } from "./modules/notification";
 import { OceanPortVisibilityModule } from "./modules/ocean-port-visibility";
+import { OpsAssistantModule } from "./modules/ops-assistant";
 import { PerformanceImprovementModule } from "./modules/performance-improvement";
 import { ShipmentRegistryModule } from "./modules/shipment-registry";
 import { WorkExecutionModule } from "./modules/work-execution";
@@ -37,6 +38,7 @@ import { WorkflowModule } from "./modules/workflow";
     MasterDataModule,
     NotificationModule,
     OceanPortVisibilityModule,
+    OpsAssistantModule,
     PerformanceImprovementModule,
     ShipmentRegistryModule,
     WorkExecutionModule,

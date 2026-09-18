@@ -37,7 +37,7 @@ export interface TaskNextAction {
   containerId: string;
   taskId: string;
   workOrderId: string;
-  nodeCode: string;
+  nodeCode: NodeTaskWithWorkOrders["task"]["nodeCode"];
   taskDefinitionKey: string;
   workOrderDefinitionKey: string;
   assignmentState: WorkOrderRecord["assignmentState"];

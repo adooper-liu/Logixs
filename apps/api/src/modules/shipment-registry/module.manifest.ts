@@ -6,4 +6,9 @@ export const moduleManifest = defineModuleManifest({
   version: "1.0.0",
   depends: ["identity"],
   permissions: ["container.read"],
+  publicPorts: [
+    "ASSERT_CONTAINER_TENANT",
+    "LIST_CONTAINER_TASK_FACTS",
+    "GET_CONTAINER_SUMMARY",
+  ],
 });

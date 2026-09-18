@@ -26,25 +26,3 @@ export class NotificationListDto {
 export class ListNotificationsQueryDto {
   @ApiPropertyOptional() limit?: number;
 }
-
-export class OpenAssistantSessionRequestDto {
-  @ApiPropertyOptional() notificationId?: string;
-}
-
-export class AssistantMessageDto {
-  @ApiProperty() id!: string;
-  @ApiProperty() role!: string;
-  @ApiProperty() body!: string;
-  @ApiProperty() createdAt!: string;
-}
-
-export class AssistantSessionResponseDto {
-  @ApiProperty() sessionId!: string;
-  @ApiPropertyOptional({ nullable: true }) notificationId!: string | null;
-  @ApiProperty({ type: [AssistantMessageDto] })
-  messages!: AssistantMessageDto[];
-}
-
-export class PostAssistantMessageRequestDto {
-  @ApiProperty() body!: string;
-}

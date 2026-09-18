@@ -13,6 +13,7 @@ import {
 import { NotificationModule } from "../notification";
 import { ShipmentRegistryModule } from "../shipment-registry";
 import { WorkExecutionModule } from "../work-execution";
+import { LIST_CONTAINER_CURRENT_NODES } from "./list-container-current-nodes.port";
 import { APPLY_LIFECYCLE_EVENT } from "./apply-lifecycle-event.port";
 import {
   OUTBOX_DELIVERY,
@@ -135,11 +136,17 @@ import { ObjectActivitiesController } from "./presentation/object-activities.con
       provide: APPLY_LIFECYCLE_EVENT,
       useExisting: ApplyLifecycleEventService,
     },
+    {
+      provide: LIST_CONTAINER_CURRENT_NODES,
+      useExisting: ListContainerCurrentNodesService,
+    },
   ],
   exports: [
     ApplyLifecycleEventService,
     InitializeContainerFlowService,
     APPLY_LIFECYCLE_EVENT,
+    LIST_CONTAINER_CURRENT_NODES,
+    ListContainerCurrentNodesService,
   ],
 })
 export class LifecycleControlModule implements NestModule {

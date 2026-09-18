@@ -39,6 +39,7 @@ export interface OpsAssistantSessionRecord {
   tenantId: string;
   actorId: string;
   notificationId: string | null;
+  containerId: string | null;
   createdAt: Date;
 }
 

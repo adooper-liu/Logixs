@@ -11,3 +11,10 @@ export {
   LIST_OBJECT_NOTIFICATIONS,
   type ListObjectNotificationsPort,
 } from "./list-object-notifications.port";
+export {
+  ASSISTANT_CONVERSATION,
+  type AssistantConversationMessage,
+  type AssistantConversationPort,
+  type AssistantConversationSession,
+  type AssistantVisibleNotification,
+} from "./assistant-conversation.port";

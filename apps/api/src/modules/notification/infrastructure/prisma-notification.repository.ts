@@ -110,12 +110,14 @@ export class PrismaNotificationRepository implements NotificationRepository {
     tenantId: string;
     actorId: string;
     notificationId: string | null;
+    containerId: string | null;
   }): Promise<OpsAssistantSessionRecord> {
     const row = await this.prisma.opsAssistantSession.create({
       data: {
         tenantId: input.tenantId,
         actorId: input.actorId,
         notificationId: input.notificationId,
+        containerId: input.containerId,
       },
     });
     return toSession(row);
@@ -201,6 +203,7 @@ function toSession(row: {
   tenantId: string;
   actorId: string;
   notificationId: string | null;
+  containerId: string | null;
   createdAt: Date;
 }): OpsAssistantSessionRecord {
   return {
@@ -208,6 +211,7 @@ function toSession(row: {
     tenantId: row.tenantId,
     actorId: row.actorId,
     notificationId: row.notificationId,
+    containerId: row.containerId,
     createdAt: row.createdAt,
   };
 }

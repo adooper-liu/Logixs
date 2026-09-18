@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field
 
@@ -106,4 +106,92 @@ register(
     "0.1.0",
     "列头→标准字段映射建议（Mock 关键词规则，不调模型）",
     suggest_mapping_handler,
+)
+
+
+class AssistantObjectSummary(BaseModel):
+    containerId: str
+    orderNumber: str
+    containerNumber: str | None
+    currentStatus: str
+    currentNodeCode: str | None
+    flowState: str | None
+    updatedAt: str
+
+
+class AssistantAllowedAction(BaseModel):
+    actionCode: Literal[
+        "work_execution.claim_work_order",
+        "work_execution.complete_work_order",
+    ]
+    explanation: str
+    containerId: str
+    taskId: str
+    workOrderId: str
+    nodeCode: str
+    assigneeId: str | None
+    dueAt: str | None
+    actorCanExecute: bool
+    targetPath: str
+
+
+class AssistantReadOnlyPolicy(BaseModel):
+    assistantCanExecute: Literal[False]
+    actorCanExecuteActions: bool
+    explanation: str
+
+
+class AssistantObjectContext(BaseModel):
+    summary: AssistantObjectSummary
+    allowedActions: list[AssistantAllowedAction]
+    actionSummary: str
+    readOnlyPolicy: AssistantReadOnlyPolicy
+
+
+class OpsQuestionHistoryMessage(BaseModel):
+    role: Literal["system", "user", "assistant"]
+    body: str
+
+
+class OpsQuestionRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=4000)
+    notificationContext: str | None = Field(default=None, max_length=10000)
+    objectContext: AssistantObjectContext | None
+    history: list[OpsQuestionHistoryMessage] = Field(max_length=100)
+
+
+class OpsQuestionResponse(BaseModel):
+    answer: str
+
+
+def answer_ops_question_handler(request: OpsQuestionRequest) -> OpsQuestionResponse:
+    lines = ["这是只读运营摘要。"]
+    if request.notificationContext:
+        lines.append(f"相关问题：{request.notificationContext}")
+    if request.objectContext:
+        context = request.objectContext
+        display_number = context.summary.containerNumber or "未绑定箱号"
+        lines.extend(
+            [
+                f"货柜：{display_number}（备货单 {context.summary.orderNumber}）",
+                f"当前状态：{context.summary.currentStatus}",
+                f"下一动作：{context.actionSummary}",
+            ],
+        )
+        lines.extend(f"- {action.explanation}" for action in context.allowedActions)
+        lines.append(context.readOnlyPolicy.explanation)
+    lines.extend(
+        [
+            f"你的问题：{request.question}",
+            "助手不能领取、提交或改变业务状态。",
+        ],
+    )
+    return OpsQuestionResponse(answer="\n".join(lines))
+
+
+register(
+    "answer_ops_question",
+    "0.1.0",
+    "对象上下文只读问答（确定性基线，不调模型）",
+    answer_ops_question_handler,
 )

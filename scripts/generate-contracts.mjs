@@ -24,7 +24,7 @@ const pythonImportFieldCatalogPath = resolve(
   "apps/ai-service/app/generated_import_field_catalog.py",
 );
 
-// 参与类型生成的是 11 份公共契约 Schema；index.json 只是治理索引，
+// 参与类型生成的是公共契约 Schema；index.json 只是治理索引，
 // scenario-fixture / schema-fixture-suite 是测试基础设施，均不生成业务类型。
 const CONTRACT_FILES = [
   "common.schema.json",
@@ -37,6 +37,7 @@ const CONTRACT_FILES = [
   "action-command.schema.json",
   "client-operation.schema.json",
   "container-operational-view.schema.json",
+  "ops-assistant.schema.json",
   "error-response.schema.json",
 ];
 

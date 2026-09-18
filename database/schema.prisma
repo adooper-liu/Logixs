@@ -715,11 +715,13 @@ model OpsAssistantSession {
   tenantId       String                @map("tenant_id")
   actorId        String                @map("actor_id")
   notificationId String?               @map("notification_id")
+  containerId    String?               @map("container_id") // 跨模块逻辑引用，无外键
   notification   OpsNotification?      @relation(fields: [notificationId], references: [id])
   createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
   messages       OpsAssistantMessage[]
 
   @@index([tenantId, actorId, createdAt], map: "ops_assistant_session_actor_idx")
+  @@index([tenantId, containerId, createdAt], map: "ops_assistant_session_container_idx")
   @@map("ops_assistant_session")
 }
 

@@ -8,6 +8,7 @@ const listLifecycleEvents = vi.fn();
 const listLifecycleNodes = vi.fn();
 const listNodeTasks = vi.fn();
 const listClientOperations = vi.fn();
+const openAssistantSession = vi.fn();
 
 vi.mock("../api/containers", () => ({
   getContainer: (...args: unknown[]) => getContainer(...args),
@@ -27,6 +28,11 @@ vi.mock("../api/nodeTasks", () => ({
 
 vi.mock("../api/clientOperations", () => ({
   listClientOperations: (...args: unknown[]) => listClientOperations(...args),
+}));
+
+vi.mock("../api/notifications", () => ({
+  openAssistantSession: (...args: unknown[]) => openAssistantSession(...args),
+  postAssistantMessage: vi.fn(),
 }));
 
 async function mountPage(id: string) {
@@ -85,6 +91,7 @@ describe("MicroWorkbench", () => {
     listLifecycleNodes.mockReset();
     listNodeTasks.mockReset();
     listClientOperations.mockReset();
+    openAssistantSession.mockReset();
     listNodeTasks.mockResolvedValue({
       items: [],
       pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 200 },
@@ -134,6 +141,49 @@ describe("MicroWorkbench", () => {
     expect(wrapper.text()).toContain("本柜尚未开始流程。");
     expect(wrapper.text()).not.toContain("待发生");
     expect(wrapper.get("a").attributes("href")).toBe("/tasks?containerId=c1");
+  });
+
+  it("从货柜档案按对象引用打开助手", async () => {
+    getContainer.mockResolvedValue({
+      id: "c1",
+      orderNumber: "SO-1",
+      containerNumber: "MSKU1",
+      currentStatus: "in_transit",
+      updatedAt: "2026-09-13T03:00:00.000Z",
+    });
+    openAssistantSession.mockResolvedValue({
+      sessionId: "s1",
+      notificationId: null,
+      containerId: "c1",
+      objectContext: {
+        summary: {
+          containerId: "c1",
+          orderNumber: "SO-1",
+          containerNumber: "MSKU1",
+          currentStatus: "in_transit",
+          currentNodeCode: null,
+          flowState: null,
+          updatedAt: "2026-09-13T03:00:00.000Z",
+        },
+        allowedActions: [],
+        actionSummary: "当前没有可执行的下一动作。",
+        readOnlyPolicy: {
+          assistantCanExecute: false,
+          actorCanExecuteActions: false,
+          explanation: "助手只解释现状。",
+        },
+      },
+      messages: [],
+    });
+    const wrapper = await mountPage("c1");
+    const button = wrapper
+      .findAll("button")
+      .find((item) => item.text().includes("询问助手"));
+    await button?.trigger("click");
+    await flushPromises();
+
+    expect(openAssistantSession).toHaveBeenCalledWith({ containerId: "c1" });
+    expect(wrapper.text()).toContain("当前没有可执行的下一动作");
   });
 
   it("有节点实例时展示轨道，不补未落库站点", async () => {

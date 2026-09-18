@@ -36,6 +36,7 @@ export interface NotificationRepository {
     tenantId: string;
     actorId: string;
     notificationId: string | null;
+    containerId: string | null;
   }): Promise<OpsAssistantSessionRecord>;
   findSession(query: {
     tenantId: string;

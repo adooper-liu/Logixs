@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { Bot } from "@lucide/vue";
 import { useRoute } from "vue-router";
 import { listClientOperations } from "../api/clientOperations";
 import { getContainer } from "../api/containers";
@@ -7,6 +8,7 @@ import { listLifecycleEvents } from "../api/lifecycleEvents";
 import { listLifecycleNodes } from "../api/lifecycleNodes";
 import { listNodeTasks } from "../api/nodeTasks";
 import EventEvidenceTimeline from "../components/container/EventEvidenceTimeline.vue";
+import OpsAssistantPanel from "../components/assistant/OpsAssistantPanel.vue";
 import LiveNodeRail from "../components/container/LiveNodeRail.vue";
 import ObjectActivityPanel from "../components/container/ObjectActivityPanel.vue";
 import ObjectContextBar from "../components/container/ObjectContextBar.vue";
@@ -15,6 +17,7 @@ import { attachLatestSync } from "../data/clientOperationQueueContract";
 import { toLiveEvent } from "../data/liveEventProjection";
 import { toLiveNode, type LiveNodeView } from "../data/liveNodeProjection";
 import { uiCopy } from "../data/uiCopyCatalog";
+import { useOpsAssistant } from "../composables/useOpsAssistant";
 import {
   attachOpenTasks,
   toLiveContainer,
@@ -27,6 +30,15 @@ const error = ref("");
 const record = ref<ContainerProjection | null>(null);
 const nodes = ref<LiveNodeView[]>([]);
 const events = ref<EventRow[]>([]);
+const {
+  session: assistantSession,
+  opening: assistantOpening,
+  sending: assistantSending,
+  error: assistantError,
+  open: openAssistantSession,
+  send: sendAssistantMessage,
+  close: closeAssistant,
+} = useOpsAssistant();
 
 const containerRecordId = computed(() =>
   String(route.params.containerRecordId ?? "").trim(),
@@ -96,6 +108,11 @@ async function load(): Promise<void> {
   }
 }
 
+async function openAssistant(): Promise<void> {
+  if (!record.value) return;
+  await openAssistantSession({ containerId: record.value.containerRecordId });
+}
+
 watch(
   containerRecordId,
   () => {
@@ -114,6 +131,27 @@ watch(
       <ObjectContextBar :record="record" />
       <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
       <ObjectActivityPanel :container-id="record.containerRecordId" />
+      <section class="assistant-entry" aria-label="运营助手">
+        <button
+          type="button"
+          :disabled="assistantOpening"
+          @click="openAssistant"
+        >
+          <Bot :size="16" aria-hidden="true" />
+          询问助手
+        </button>
+        <p v-if="assistantError && !assistantSession" role="alert">
+          {{ assistantError }}
+        </p>
+      </section>
+      <OpsAssistantPanel
+        v-if="assistantSession"
+        :session="assistantSession"
+        :sending="assistantSending"
+        :error="assistantError"
+        @send="sendAssistantMessage"
+        @close="closeAssistant"
+      />
       <EventEvidenceTimeline v-if="events.length" :events="events" />
       <section class="next-step" aria-label="下一步">
         <p v-if="!nodes.length">{{ uiCopy.chrome.emptyFlow }}</p>
@@ -160,6 +198,24 @@ watch(
 
 .next-step {
   margin-top: 12px;
+}
+
+.assistant-entry {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.assistant-entry button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assistant-entry p {
+  margin: 0;
+  color: var(--risk);
 }
 
 .next-step p,

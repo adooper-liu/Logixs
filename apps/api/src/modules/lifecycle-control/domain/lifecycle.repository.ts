@@ -1,5 +1,6 @@
 import type {
   CanonicalEventCode,
+  FlowInstanceState,
   LifecycleNodeCode,
   NodeApplicability,
 } from "@logix/contracts";
@@ -67,8 +68,8 @@ export interface LifecycleRepository {
   }): Promise<
     Array<{
       containerId: string;
-      currentNodeCode: string;
-      flowState: string;
+      currentNodeCode: LifecycleNodeCode;
+      flowState: FlowInstanceState;
     }>
   >;
   listFlowsWithNodes(query: {

@@ -1307,6 +1307,104 @@ reasonCode?: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "OpenAssistantSessionRequest".
+ */
+export interface OpenAssistantSessionRequest {
+notificationId?: string
+containerId?: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AssistantMessage".
+ */
+export interface AssistantMessage {
+id: string
+role: ("system" | "user" | "assistant")
+body: string
+createdAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AssistantObjectSummary".
+ */
+export interface AssistantObjectSummary {
+containerId: string
+orderNumber: string
+containerNumber: (string | null)
+currentStatus: ContainerLifecycleState
+currentNodeCode: (LifecycleNodeCode | null)
+flowState: (FlowInstanceState | null)
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AssistantAllowedAction".
+ */
+export interface AssistantAllowedAction {
+actionCode: ("work_execution.claim_work_order" | "work_execution.complete_work_order")
+explanation: string
+containerId: string
+taskId: string
+workOrderId: string
+nodeCode: LifecycleNodeCode
+assigneeId: (string | null)
+dueAt: (DateTime | null)
+actorCanExecute: boolean
+targetPath: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AssistantReadOnlyPolicy".
+ */
+export interface AssistantReadOnlyPolicy {
+assistantCanExecute: false
+actorCanExecuteActions: boolean
+explanation: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AssistantObjectContext".
+ */
+export interface AssistantObjectContext {
+summary: AssistantObjectSummary
+allowedActions: AssistantAllowedAction[]
+actionSummary: string
+readOnlyPolicy: AssistantReadOnlyPolicy
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AssistantSessionResponse".
+ */
+export interface AssistantSessionResponse {
+sessionId: string
+notificationId: (string | null)
+containerId: (string | null)
+objectContext: (AssistantObjectContext | null)
+messages: AssistantMessage[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "OpsQuestionHistoryMessage".
+ */
+export interface OpsQuestionHistoryMessage {
+role: ("system" | "user" | "assistant")
+body: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "OpsQuestionInput".
+ */
+export interface OpsQuestionInput {
+question: string
+notificationContext: (string | null)
+objectContext: (AssistantObjectContext | null)
+/**
+ * @maxItems 100
+ */
+history: OpsQuestionHistoryMessage[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ErrorDetail".
  */
 export interface ErrorDetail {
