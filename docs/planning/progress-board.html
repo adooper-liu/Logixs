@@ -1,0 +1,2296 @@
+<title>Logix 交付进度板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+  :root {
+    color-scheme: light;
+    --plane: #edf1f3;
+    --surface: #ffffff;
+    --surface-2: #f5f8f9;
+    --rule: #d5dde3;
+    --rule-soft: #e3e9ed;
+    --rule-strong: #b9c6cf;
+    --ink: #0f1a22;
+    --ink-2: #4e6172;
+    --ink-3: #64778a;
+    --accent: #12508f;
+    --accent-track: #d3e4ec;
+    --accent-wash: #e8f0f6;
+    --st-done: #17704a;
+    --st-active: #7e6508;
+    --st-blocked: #9b2242;
+    --st-idle: #5f7285;
+    --st-done-wash: #e3efe9;
+    --st-active-wash: #f4eeda;
+    --st-blocked-wash: #f8e5eb;
+    --st-idle-wash: #e8edf0;
+    --shadow:
+      0 1px 2px rgba(15, 26, 34, 0.05), 0 10px 28px -20px rgba(15, 26, 34, 0.3);
+
+    --font-display: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --plane: #0b131a;
+      --surface: #121e27;
+      --surface-2: #0f1a22;
+      --rule: #223340;
+      --rule-soft: #1b2a35;
+      --rule-strong: #35495a;
+      --ink: #e3eaef;
+      --ink-2: #9db0bc;
+      --ink-3: #7a8e9b;
+      --accent: #4fa8da;
+      --accent-track: #1b3446;
+      --accent-wash: #14293a;
+      --st-done: #45a87c;
+      --st-active: #d2a03e;
+      --st-blocked: #de7b7b;
+      --st-idle: #8a9ca9;
+      --st-done-wash: #122c22;
+      --st-active-wash: #2c2413;
+      --st-blocked-wash: #2e1a1d;
+      --st-idle-wash: #1a242c;
+      --shadow:
+        0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -20px rgba(0, 0, 0, 0.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane: #0b131a;
+    --surface: #121e27;
+    --surface-2: #0f1a22;
+    --rule: #223340;
+    --rule-soft: #1b2a35;
+    --rule-strong: #35495a;
+    --ink: #e3eaef;
+    --ink-2: #9db0bc;
+    --ink-3: #7a8e9b;
+    --accent: #4fa8da;
+    --accent-track: #1b3446;
+    --accent-wash: #14293a;
+    --st-done: #45a87c;
+    --st-active: #d2a03e;
+    --st-blocked: #de7b7b;
+    --st-idle: #8a9ca9;
+    --st-done-wash: #122c22;
+    --st-active-wash: #2c2413;
+    --st-blocked-wash: #2e1a1d;
+    --st-idle-wash: #1a242c;
+    --shadow:
+      0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -20px rgba(0, 0, 0, 0.8);
+  }
+
+  body {
+    margin: 0;
+    background: var(--plane);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 本页可能被直接双击打开（不经发布壳），筛选靠 hidden 属性，这里自带兜底。 */
+  [hidden] {
+    display: none !important;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  a {
+    color: var(--accent);
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+  }
+  a:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 32px;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-block: 40px 20px;
+    border-bottom: 3px solid var(--ink);
+  }
+
+  .mast-title {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .mark {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: var(--surface);
+    background: var(--ink);
+    padding: 5px 9px 4px;
+    border-radius: 2px;
+  }
+
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .mast-sub {
+    margin: 10px 0 0;
+    color: var(--ink-2);
+    font-size: 14px;
+    max-width: 62ch;
+  }
+
+  .mast-meta {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 14px;
+    margin: 0;
+    font-size: 12px;
+  }
+  .mast-meta dt {
+    font-family: var(--font-display);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    font-size: 11px;
+    padding-top: 2px;
+  }
+  .mast-meta dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  /* ---------- count band ---------- */
+
+  .band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .tile {
+    background: var(--surface);
+    padding: 14px 16px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .tile-label {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--ink-3);
+  }
+
+  .tile-value {
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .tile-value .unit {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink-3);
+    letter-spacing: 0;
+  }
+
+  .tile-note {
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- sections ---------- */
+
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--rule-strong);
+    padding-bottom: 8px;
+  }
+
+  .sec-head h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: 0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .sec-note {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lede {
+    margin: 0;
+    color: var(--ink-2);
+    max-width: 78ch;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+  }
+
+  /* ---------- module tables ---------- */
+
+  .layer + .layer {
+    margin-top: 26px;
+  }
+
+  .layer-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .layer-head h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .layer-head p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead th {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    text-align: left;
+    padding: 9px 12px 7px;
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .mod-name {
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .mod-name .mono {
+    display: block;
+    font-weight: 400;
+  }
+
+  .deps {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+  }
+
+  /* size bar: one series, one colour, 4px data-end, square at the baseline */
+  .size {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+  }
+
+  .size-track {
+    flex: 1 1 auto;
+    height: 10px;
+    background: var(--accent-wash);
+    border-radius: 1px;
+    min-width: 40px;
+  }
+
+  .size-fill {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    background: var(--accent);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .size-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+    min-width: 52px;
+    text-align: right;
+  }
+
+  /* ---------- chips (glyph + label: colour never carries meaning alone) ---------- */
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 4px 6px 3px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .chip .glyph {
+    font-size: 11px;
+  }
+
+  .chip[data-s="done"] {
+    color: var(--st-done);
+    background: var(--st-done-wash);
+  }
+  .chip[data-s="active"] {
+    color: var(--st-active);
+    background: var(--st-active-wash);
+  }
+  .chip[data-s="blocked"] {
+    color: var(--st-blocked);
+    background: var(--st-blocked-wash);
+  }
+  .chip[data-s="idle"] {
+    color: var(--st-idle);
+    background: var(--st-idle-wash);
+  }
+
+  /* ---------- the 14-station rail ---------- */
+
+  .rail {
+    list-style: none;
+    margin: 0;
+    padding: 18px 20px;
+    display: grid;
+    grid-template-rows: repeat(7, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    column-gap: 44px;
+  }
+
+  .station {
+    position: relative;
+    padding: 7px 0 7px 30px;
+    min-width: 0;
+  }
+
+  .station::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--rule);
+  }
+
+  .station::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-sizing: border-box;
+  }
+
+  .station[data-state="wired"]::after {
+    background: var(--st-done);
+    border: 3px solid var(--surface);
+  }
+  .station[data-state="partial"]::after {
+    background: var(--surface);
+    border: 4px solid var(--st-active);
+  }
+  .station[data-state="none"]::after {
+    background: var(--surface-2);
+    border: 3px solid var(--rule-strong);
+  }
+
+  .station-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .station-seq {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-3);
+  }
+
+  .station-cn {
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+
+  .station-code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  .station-by {
+    display: block;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    margin-top: 1px;
+  }
+  .station[data-state="none"] .station-by {
+    color: var(--ink-3);
+    font-style: italic;
+  }
+
+  /* ---------- phase meters ---------- */
+
+  .phases {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+  }
+
+  .phase {
+    display: grid;
+    grid-template-columns:
+      38px minmax(120px, 1.4fr) minmax(90px, 1fr)
+      62px minmax(150px, 1.3fr);
+    gap: 14px;
+    align-items: center;
+    padding: 7px 20px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 13.5px;
+  }
+  .phase:last-child {
+    border-bottom: 0;
+  }
+
+  .phase-id {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  .meter {
+    height: 8px;
+    background: var(--accent-track);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    background: var(--accent);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .phase-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--ink-2);
+    text-align: right;
+  }
+
+  .phase-note {
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  .flag {
+    color: var(--st-blocked);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* ---------- filters: one row, above everything it scopes ---------- */
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+  }
+
+  .filter-set {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .filter-set > .filter-label {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    margin-right: 2px;
+  }
+
+  button.fchip {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-2);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 5px 10px 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  button.fchip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  button.fchip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--surface);
+  }
+
+  button.fchip .tally {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+  }
+
+  .search {
+    flex: 1 1 200px;
+    min-width: 160px;
+  }
+
+  .search input {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 6px 10px;
+  }
+  .search input::placeholder {
+    color: var(--ink-3);
+  }
+
+  .result-count {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  /* ---------- task ledger ---------- */
+
+  .ledger-wrap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+
+  .ledger {
+    min-width: 720px;
+  }
+
+  .ledger th.sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+  .ledger th.sortable:hover {
+    color: var(--accent);
+  }
+  .ledger th .arrow {
+    font-size: 9px;
+    opacity: 0.45;
+    margin-left: 3px;
+  }
+  .ledger th[aria-sort] .arrow {
+    opacity: 1;
+    color: var(--accent);
+  }
+
+  .ledger td.id {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .ledger td.title {
+    min-width: 320px;
+  }
+
+  .ledger td.phase,
+  .ledger td.proof {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .tick {
+    color: var(--st-done);
+    font-weight: 600;
+  }
+  .dash {
+    color: var(--ink-3);
+  }
+
+  /* ---------- gaps ---------- */
+
+  .gaps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gap {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--st-idle);
+    border-radius: 3px;
+  }
+
+  .gap[data-sev="high"] {
+    border-left-color: var(--st-blocked);
+  }
+  .gap[data-sev="mid"] {
+    border-left-color: var(--st-active);
+  }
+
+  .gap-body h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+
+  .gap-body p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ink-2);
+    max-width: 84ch;
+  }
+
+  .gap-body p + p {
+    margin-top: 6px;
+  }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    border-top: 1px solid var(--rule-strong);
+    padding-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  footer p {
+    margin: 0;
+    max-width: 70ch;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    padding: 1px 4px;
+  }
+
+  @media (max-width: 900px) {
+    .rail {
+      grid-template-rows: none;
+      grid-auto-flow: row;
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 0;
+    }
+
+    .phase {
+      grid-template-columns: 34px 1fr 62px;
+      grid-template-areas:
+        "id name num"
+        "meter meter meter"
+        "note note note";
+      gap: 6px 10px;
+      padding: 10px 16px;
+    }
+    .phase .phase-id {
+      grid-area: id;
+    }
+    .phase .phase-name {
+      grid-area: name;
+    }
+    .phase .phase-num {
+      grid-area: num;
+    }
+    .phase .meter {
+      grid-area: meter;
+    }
+    .phase .phase-note {
+      grid-area: note;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .page {
+      gap: 32px;
+    }
+    .masthead {
+      padding-block: 28px 16px;
+    }
+    .mast-meta {
+      grid-template-columns: auto 1fr;
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div>
+      <div class="mast-title">
+        <span class="mark">LOGIX</span>
+        <h1>交付进度板</h1>
+      </div>
+      <p class="mast-sub">
+        按「基座 / 主链核 /
+        增量业务」分层看每一块的进度，并对照十四站主链与启动清单门禁。全部数字由仓库现场算出，页面不保存任何手工维护的副本。
+      </p>
+    </div>
+    <dl class="mast-meta">
+      <dt>生成于</dt><dd>2026-09-18 05:06 UTC</dd>
+      <dt>提交</dt><dd>33e1e06（含未提交改动）</dd>
+      <dt>分支</dt><dd>docs/adr-012-external-time</dd>
+      <dt>数据源</dt><dd>92 份任务 brief · 18 份模块清单</dd>
+    </dl>
+  </header>
+
+  <div class="band" aria-label="关键计数">
+    <div class="tile"><span class="tile-label">后端模块</span><span class="tile-value">18</span><span class="tile-note">9 基座 · 9 增量</span></div>
+        <div class="tile"><span class="tile-label">空壳模块</span><span class="tile-value">7</span><span class="tile-note">只有清单、入口与模块文件</span></div>
+        <div class="tile"><span class="tile-label">任务台账</span><span class="tile-value">92</span><span class="tile-note">88 完成 · 1 进行中 · 3 阻塞</span></div>
+        <div class="tile"><span class="tile-label">主链已通</span><span class="tile-value">5 / 14</span><span class="tile-note">5 站仅有计划，4 站无模块</span></div>
+        <div class="tile"><span class="tile-label">数据库迁移</span><span class="tile-value">41</span><span class="tile-note">单一 Prisma 入口</span></div>
+        <div class="tile"><span class="tile-label">清单已了结</span><span class="tile-value">31 / 114</span><span class="tile-note">与任务台账口径不同步</span></div>
+  </div>
+
+  <section id="modules">
+    <div class="sec-head">
+      <h2>分层模块进度</h2>
+      <span class="sec-note">18 个模块 · 按代码行数排序</span>
+    </div>
+    <p class="lede">
+      规模＝该模块非测试 TypeScript
+      的代码行数（条长按最大模块等比）。「空壳」指只有清单、入口与 Nest
+      模块文件，没有领域层或用例层——即尚未开工。
+    </p>
+    <div class="layer">
+        <div class="layer-head">
+          <h3>基座 · 平台</h3>
+          <p>始终启用，与业务无关的支撑面；业务模块不得绕过。</p>
+        </div>
+        <div class="panel" style="overflow-x: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>模块</th>
+                <th>规模</th>
+                <th class="num">测试</th>
+                <th>依赖</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+            <td class="mod-name">notification<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:8%"></span></span>
+                <span class="size-num">692 行</span>
+              </span>
+            </td>
+            <td class="num">1</td>
+            <td class="deps">identity, ai-governance</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">identity<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:7%"></span></span>
+                <span class="size-num">604 行</span>
+              </span>
+            </td>
+            <td class="num">8</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">workflow<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:6%"></span></span>
+                <span class="size-num">509 行</span>
+              </span>
+            </td>
+            <td class="num">3</td>
+            <td class="deps">identity</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">audit<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">17 行</span>
+              </span>
+            </td>
+            <td class="num">—</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="idle"><span class="glyph">○</span>未开工</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">exception-management<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">17 行</span>
+              </span>
+            </td>
+            <td class="num">—</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="idle"><span class="glyph">○</span>未开工</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">master-data<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">17 行</span>
+              </span>
+            </td>
+            <td class="num">—</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="idle"><span class="glyph">○</span>未开工</span>
+            </td>
+          </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-head">
+          <h3>主链核</h3>
+          <p>货柜对象、生命周期状态机与任务工单聚合的持有者。</p>
+        </div>
+        <div class="panel" style="overflow-x: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>模块</th>
+                <th>规模</th>
+                <th class="num">测试</th>
+                <th>依赖</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+            <td class="mod-name">lifecycle-control<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:100%"></span></span>
+                <span class="size-num">8,451 行</span>
+              </span>
+            </td>
+            <td class="num">47</td>
+            <td class="deps">identity, notification, document-records, shipment-registry, work-execution</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">work-execution<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:33%"></span></span>
+                <span class="size-num">2,763 行</span>
+              </span>
+            </td>
+            <td class="num">11</td>
+            <td class="deps">identity, document-records, shipment-registry, lifecycle-control</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">shipment-registry<span class="mono">base</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:12%"></span></span>
+                <span class="size-num">1,055 行</span>
+              </span>
+            </td>
+            <td class="num">7</td>
+            <td class="deps">identity</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-head">
+          <h3>增量业务</h3>
+          <p>按产品阶段启用，各自持有专业事实并经公开端口协作。</p>
+        </div>
+        <div class="panel" style="overflow-x: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>模块</th>
+                <th>规模</th>
+                <th class="num">测试</th>
+                <th>依赖</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+            <td class="mod-name">integration-import<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:25%"></span></span>
+                <span class="size-num">2,101 行</span>
+              </span>
+            </td>
+            <td class="num">7</td>
+            <td class="deps">identity, ai-governance, shipment-registry, lifecycle-control</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">inland-fulfillment<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:17%"></span></span>
+                <span class="size-num">1,471 行</span>
+              </span>
+            </td>
+            <td class="num">4</td>
+            <td class="deps">identity, shipment-registry, charges-settlement</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">charges-settlement<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:17%"></span></span>
+                <span class="size-num">1,439 行</span>
+              </span>
+            </td>
+            <td class="num">6</td>
+            <td class="deps">identity</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">document-records<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:11%"></span></span>
+                <span class="size-num">898 行</span>
+              </span>
+            </td>
+            <td class="num">5</td>
+            <td class="deps">identity</td>
+            <td>
+              <span class="chip" data-s="done"><span class="glyph">●</span>成形</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">ai-governance<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">124 行</span>
+              </span>
+            </td>
+            <td class="num">1</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="active"><span class="glyph">◐</span>骨架</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">booking-origin<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">17 行</span>
+              </span>
+            </td>
+            <td class="num">—</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="idle"><span class="glyph">○</span>未开工</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">customs-compliance<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">17 行</span>
+              </span>
+            </td>
+            <td class="num">—</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="idle"><span class="glyph">○</span>未开工</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">ocean-port-visibility<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">17 行</span>
+              </span>
+            </td>
+            <td class="num">—</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="idle"><span class="glyph">○</span>未开工</span>
+            </td>
+          </tr>
+              <tr>
+            <td class="mod-name">performance-improvement<span class="mono">incremental</span></td>
+            <td>
+              <span class="size">
+                <span class="size-track"><span class="size-fill" style="--w:1%"></span></span>
+                <span class="size-num">17 行</span>
+              </span>
+            </td>
+            <td class="num">—</td>
+            <td class="deps">—</td>
+            <td>
+              <span class="chip" data-s="idle"><span class="glyph">○</span>未开工</span>
+            </td>
+          </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+  </section>
+
+  <section id="chain">
+    <div class="sec-head">
+      <h2>十四站主链</h2>
+      <span class="sec-note">5 已通 · 5 仅有计划 · 4 无模块</span>
+    </div>
+    <p class="lede">
+      节点机制由 lifecycle-control 统一提供，任一站点都能靠「工单完成 +
+      证据核验」过站。区别在于
+      <strong>有没有专业模块自动喂事实</strong
+      >：绿点为已有申请事件跑通，琥珀为只有计划与截止日、
+      事实仍靠人工录入，空圈为尚无任何模块承接。
+    </p>
+    <div class="panel">
+      <ol class="rail">
+        <li class="station" data-state="wired">
+          <span class="station-head">
+            <span class="station-seq">01</span>
+            <span class="station-cn">备货就绪</span>
+            <span class="station-code">cargo_ready</span>
+            <span class="chip" data-s="done"><span class="glyph">●</span>已通</span>
+          </span>
+          <span class="station-by">建柜展开 + 导入时间事实</span>
+        </li>
+        <li class="station" data-state="wired">
+          <span class="station-head">
+            <span class="station-seq">02</span>
+            <span class="station-cn">工厂装箱</span>
+            <span class="station-code">container_stuffing</span>
+            <span class="chip" data-s="done"><span class="glyph">●</span>已通</span>
+          </span>
+          <span class="station-by">work-execution 申请 stuffed</span>
+        </li>
+        <li class="station" data-state="wired">
+          <span class="station-head">
+            <span class="station-seq">03</span>
+            <span class="station-cn">出运</span>
+            <span class="station-code">shipment_dispatch</span>
+            <span class="chip" data-s="done"><span class="glyph">●</span>已通</span>
+          </span>
+          <span class="station-by">work-execution 申请 loaded</span>
+        </li>
+        <li class="station" data-state="wired">
+          <span class="station-head">
+            <span class="station-seq">04</span>
+            <span class="station-cn">离港</span>
+            <span class="station-code">origin_departure</span>
+            <span class="chip" data-s="done"><span class="glyph">●</span>已通</span>
+          </span>
+          <span class="station-by">work-execution 申请 departed</span>
+        </li>
+        <li class="station" data-state="wired">
+          <span class="station-head">
+            <span class="station-seq">05</span>
+            <span class="station-cn">海运在途</span>
+            <span class="station-code">ocean_transit</span>
+            <span class="chip" data-s="done"><span class="glyph">●</span>已通</span>
+          </span>
+          <span class="station-by">departed 后自动激活</span>
+        </li>
+        <li class="station" data-state="none">
+          <span class="station-head">
+            <span class="station-seq">06</span>
+            <span class="station-cn">中转</span>
+            <span class="station-code">transshipment</span>
+            <span class="chip" data-s="idle"><span class="glyph">○</span>无模块</span>
+          </span>
+          <span class="station-by">无专业模块承接</span>
+        </li>
+        <li class="station" data-state="none">
+          <span class="station-head">
+            <span class="station-seq">07</span>
+            <span class="station-cn">清关</span>
+            <span class="station-code">customs_clearance</span>
+            <span class="chip" data-s="idle"><span class="glyph">○</span>无模块</span>
+          </span>
+          <span class="station-by">无专业模块承接</span>
+        </li>
+        <li class="station" data-state="none">
+          <span class="station-head">
+            <span class="station-seq">08</span>
+            <span class="station-cn">到港</span>
+            <span class="station-code">destination_arrival</span>
+            <span class="chip" data-s="idle"><span class="glyph">○</span>无模块</span>
+          </span>
+          <span class="station-by">无专业模块承接</span>
+        </li>
+        <li class="station" data-state="none">
+          <span class="station-head">
+            <span class="station-seq">09</span>
+            <span class="station-cn">铁路转运</span>
+            <span class="station-code">rail_transfer</span>
+            <span class="chip" data-s="idle"><span class="glyph">○</span>无模块</span>
+          </span>
+          <span class="station-by">无专业模块承接</span>
+        </li>
+        <li class="station" data-state="partial">
+          <span class="station-head">
+            <span class="station-seq">10</span>
+            <span class="station-cn">提柜</span>
+            <span class="station-code">container_pickup</span>
+            <span class="chip" data-s="active"><span class="glyph">◐</span>仅有计划</span>
+          </span>
+          <span class="station-by">inland 计划 + 最晚提柜日，事实靠人工</span>
+        </li>
+        <li class="station" data-state="partial">
+          <span class="station-head">
+            <span class="station-seq">11</span>
+            <span class="station-cn">送仓</span>
+            <span class="station-code">warehouse_delivery</span>
+            <span class="chip" data-s="active"><span class="glyph">◐</span>仅有计划</span>
+          </span>
+          <span class="station-by">inland 提送卸还计划，事实靠人工</span>
+        </li>
+        <li class="station" data-state="partial">
+          <span class="station-head">
+            <span class="station-seq">12</span>
+            <span class="station-cn">卸柜</span>
+            <span class="station-code">container_unloading</span>
+            <span class="chip" data-s="active"><span class="glyph">◐</span>仅有计划</span>
+          </span>
+          <span class="station-by">inland 提送卸还计划，事实靠人工</span>
+        </li>
+        <li class="station" data-state="partial">
+          <span class="station-head">
+            <span class="station-seq">13</span>
+            <span class="station-cn">卸空</span>
+            <span class="station-code">container_unstuffing</span>
+            <span class="chip" data-s="active"><span class="glyph">◐</span>仅有计划</span>
+          </span>
+          <span class="station-by">导入时间事实已有槽位</span>
+        </li>
+        <li class="station" data-state="partial">
+          <span class="station-head">
+            <span class="station-seq">14</span>
+            <span class="station-cn">还箱</span>
+            <span class="station-code">empty_return</span>
+            <span class="chip" data-s="active"><span class="glyph">◐</span>仅有计划</span>
+          </span>
+          <span class="station-by">inland 计划 + 最晚还箱日，事实靠人工</span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="phases">
+    <div class="sec-head">
+      <h2>启动清单门禁</h2>
+      <span class="sec-note">31 / 114 项已了结</span>
+    </div>
+    <p class="lede">
+      取自 <code>PROJECT_BOOTSTRAP_CHECKLIST.md</code> 的勾选状态。<code
+        >[~]</code
+      >
+      记部分完成， <code>[-]</code> 为经 ADR
+      确认不适用，两者都算已了结。清单与任务台账是两套口径，差异在下方标出。
+    </p>
+    <div class="panel">
+      <ul class="phases">
+        <li class="phase">
+          <span class="phase-id">P0</span>
+          <span class="phase-name">项目定义与成功标准</span>
+          <span class="meter" role="img" aria-label="10 / 10 已了结"><span class="meter-fill" style="--w:100%"></span></span>
+          <span class="phase-num">10/10</span>
+          <span class="phase-note">台账无对应任务 · 10 完成</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P1</span>
+          <span class="phase-name">架构决策冻结</span>
+          <span class="meter" role="img" aria-label="10 / 10 已了结"><span class="meter-fill" style="--w:100%"></span></span>
+          <span class="phase-num">10/10</span>
+          <span class="phase-note">台账无对应任务 · 10 完成</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P2</span>
+          <span class="phase-name">领域、数据与 AI 契约</span>
+          <span class="meter" role="img" aria-label="1 / 12 已了结"><span class="meter-fill" style="--w:8%"></span></span>
+          <span class="phase-num">1/12</span>
+          <span class="phase-note">台账 2 完成 · 1 完成，11 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P3</span>
+          <span class="phase-name">工程环境与仓库底座</span>
+          <span class="meter" role="img" aria-label="7 / 14 已了结"><span class="meter-fill" style="--w:50%"></span></span>
+          <span class="phase-num">7/14</span>
+          <span class="phase-note">台账 3 完成 · 7 完成，2 部分，5 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P4</span>
+          <span class="phase-name">本地基础设施与数据生命周期</span>
+          <span class="meter" role="img" aria-label="2 / 10 已了结"><span class="meter-fill" style="--w:20%"></span></span>
+          <span class="phase-num">2/10</span>
+          <span class="phase-note">台账无对应任务 · 2 完成，2 部分，6 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P5</span>
+          <span class="phase-name">安全、权限与 AI 治理</span>
+          <span class="meter" role="img" aria-label="1 / 10 已了结"><span class="meter-fill" style="--w:10%"></span></span>
+          <span class="phase-num">1/10</span>
+          <span class="phase-note">台账 2 完成 · 1 完成，9 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P6</span>
+          <span class="phase-name">首个纵向业务切片</span>
+          <span class="meter" role="img" aria-label="0 / 14 已了结"><span class="meter-fill" style="--w:0%"></span></span>
+          <span class="phase-num">0/14</span>
+          <span class="phase-note"><span class="flag">清单未同步</span> · 台账已 80 完成 · 0 完成，14 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P7</span>
+          <span class="phase-name">AI 评测与发布门禁</span>
+          <span class="meter" role="img" aria-label="0 / 9 已了结"><span class="meter-fill" style="--w:0%"></span></span>
+          <span class="phase-num">0/9</span>
+          <span class="phase-note">台账无对应任务 · 0 完成，9 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P8</span>
+          <span class="phase-name">可观测性与运行手册</span>
+          <span class="meter" role="img" aria-label="0 / 8 已了结"><span class="meter-fill" style="--w:0%"></span></span>
+          <span class="phase-num">0/8</span>
+          <span class="phase-note">台账无对应任务 · 0 完成，8 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">P9</span>
+          <span class="phase-name">生产就绪</span>
+          <span class="meter" role="img" aria-label="0 / 10 已了结"><span class="meter-fill" style="--w:0%"></span></span>
+          <span class="phase-num">0/10</span>
+          <span class="phase-note">台账无对应任务 · 0 完成，10 未开始</span>
+        </li>
+        <li class="phase">
+          <span class="phase-id">C</span>
+          <span class="phase-name">横向持续任务</span>
+          <span class="meter" role="img" aria-label="0 / 7 已了结"><span class="meter-fill" style="--w:0%"></span></span>
+          <span class="phase-num">0/7</span>
+          <span class="phase-note">台账无对应任务 · 0 完成，7 未开始</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="filters" role="group" aria-label="任务台账筛选">
+    <div class="filter-set">
+      <span class="filter-label">状态</span>
+      <button class="fchip" type="button" data-filter="all" aria-pressed="true">全部<span class="tally">92</span></button>
+      <button class="fchip" type="button" data-filter="done" aria-pressed="false">完成<span class="tally">88</span></button>
+      <button class="fchip" type="button" data-filter="coding" aria-pressed="false">进行中<span class="tally">1</span></button>
+      <button class="fchip" type="button" data-filter="blocked" aria-pressed="false">阻塞<span class="tally">3</span></button>
+    </div>
+    <div class="search">
+      <label
+        for="q"
+        class="filter-label"
+        style="position: absolute; left: -9999px"
+        >搜索任务</label
+      >
+      <input
+        id="q"
+        type="search"
+        placeholder="搜索编号、标题或分支…"
+        autocomplete="off"
+      />
+    </div>
+    <span
+      class="result-count"
+      id="count"
+      role="status"
+      aria-live="polite"
+    ></span>
+  </div>
+
+  <section id="ledger">
+    <div class="sec-head">
+      <h2>任务台账</h2>
+      <span class="sec-note">92 条 · 88 完成</span>
+    </div>
+    <p class="lede">
+      每条任务就是
+      <code>docs/planning/tasks/</code> 下的一份交接单；状态取自文件顶部
+      frontmatter， 是仓库里唯一可机器校验的进度口径。点表头可排序。
+    </p>
+    <div class="ledger-wrap">
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="id" aria-sort="ascending">
+              编号<span class="arrow">▲</span>
+            </th>
+            <th>标题</th>
+            <th class="sortable" data-sort="status">
+              状态<span class="arrow">▲</span>
+            </th>
+            <th class="sortable" data-sort="phase">
+              阶段<span class="arrow">▲</span>
+            </th>
+            <th>验证证据</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-status="done" data-id="global-contract-convergence-v1" data-phase="—" data-text="global-contract-convergence-v1 全局公共契约收敛 v1 # git 初始化后填：feat/global-contract-convergence-v1">
+            <td class="id">global-contract-convergence-v1</td>
+            <td class="title">全局公共契约收敛 V1</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">—</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p2-shipment-import-domain" data-phase="P2" data-text="p2-shipment-import-domain p2 切片一——货柜/舱单导入闭环领域模型（p2-01~03 + 首批字段模板锚点） # git 初始化后填：feat/&lt;任务名&gt;（raid i-04 / p3-01）">
+            <td class="id">p2-shipment-import-domain</td>
+            <td class="title">P2 切片一——货柜/舱单导入闭环领域模型（P2-01~03 + 首批字段模板锚点）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P2</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p2-web-management-kpi-raci" data-phase="P2" data-text="p2-web-management-kpi-raci 补管理视图——web 演示 看板 kpi 指标 + raci 责任投影（运营框架对齐） # git 初始化后填：feat/&lt;任务名&gt;（raid i-04 / p3-01）">
+            <td class="id">p2-web-management-kpi-raci</td>
+            <td class="title">补管理视图——Web 演示 看板 KPI 指标 + RACI 责任投影（运营框架对齐）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P2</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p3-01-branch-protection" data-phase="P3" data-text="p3-01-branch-protection p3-01 主分支保护与 codeowners main">
+            <td class="id">p3-01-branch-protection</td>
+            <td class="title">P3-01 主分支保护与 CODEOWNERS</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P3</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p3-architecture-dependency-gates" data-phase="P3" data-text="p3-architecture-dependency-gates 架构依赖方向门禁（p3-05 depcheck） # git 初始化后填：feat/architecture-dependency-gates">
+            <td class="id">p3-architecture-dependency-gates</td>
+            <td class="title">架构依赖方向门禁（P3-05 DEPCHECK）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P3</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p3-p4-full-stack-base" data-phase="P3" data-text="p3-p4-full-stack-base 全栈底层基座（服务 + 数据库 + 前端） # git 初始化后填：feat/full-stack-base">
+            <td class="id">p3-p4-full-stack-base</td>
+            <td class="title">全栈底层基座（服务 + 数据库 + 前端）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P3</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p5-02-oidc-authentication-baseline" data-phase="P5" data-text="p5-02-oidc-authentication-baseline p5-02 oidc 认证与默认拒绝基线 feat/p5-02-oidc-authorization">
+            <td class="id">p5-02-oidc-authentication-baseline</td>
+            <td class="title">P5-02 OIDC 认证与默认拒绝基线</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P5</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p5-threat-access-model" data-phase="P5" data-text="p5-threat-access-model p5 威胁模型与最小访问模型 main">
+            <td class="id">p5-threat-access-model</td>
+            <td class="title">P5 威胁模型与最小访问模型</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P5</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-activate-next-node-task" data-phase="P6" data-text="p6-activate-next-node-task 节点进入后激活下一道工单 feat/work-execution-first-slice">
+            <td class="id">p6-activate-next-node-task</td>
+            <td class="title">节点进入后激活下一道工单</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-claim-work-order" data-phase="P6" data-text="p6-claim-work-order 领取工单 feat/claim-work-order">
+            <td class="id">p6-claim-work-order</td>
+            <td class="title">领取工单</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="blocked" data-id="p6-client-operation-ops-ui" data-phase="P6" data-text="p6-client-operation-ops-ui 同步操作薄页 feat/work-execution-first-slice">
+            <td class="id">p6-client-operation-ops-ui</td>
+            <td class="title">同步操作薄页</td>
+            <td><span class="chip" data-s="blocked"><span class="glyph">✕</span>阻塞</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="dash">—</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-compensation-first-slice" data-phase="P6" data-text="p6-compensation-first-slice 补偿记录第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-compensation-first-slice</td>
+            <td class="title">补偿记录第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-compensation-resolve" data-phase="P6" data-text="p6-compensation-resolve 补偿状态推进 feat/work-execution-first-slice">
+            <td class="id">p6-compensation-resolve</td>
+            <td class="title">补偿状态推进</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-complete-return-activated-task" data-phase="P6" data-text="p6-complete-return-activated-task 工单完成响应带回激活任务 feat/work-execution-first-slice">
+            <td class="id">p6-complete-return-activated-task</td>
+            <td class="title">工单完成响应带回激活任务</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-container-list-empty-filter" data-phase="P6" data-text="p6-container-list-empty-filter 已出运货柜空表是筛选回归 feat/work-execution-first-slice">
+            <td class="id">p6-container-list-empty-filter</td>
+            <td class="title">已出运货柜空表是筛选回归</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-container-list-open-task" data-phase="P6" data-text="p6-container-list-open-task 干活表展示已落库待办 feat/work-execution-first-slice">
+            <td class="id">p6-container-list-open-task</td>
+            <td class="title">干活表展示已落库待办</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-container-list-sync-status" data-phase="P6" data-text="p6-container-list-sync-status 干活表展示最近提交落账 feat/work-execution-first-slice">
+            <td class="id">p6-container-list-sync-status</td>
+            <td class="title">干活表展示最近提交落账</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-container-record-task-sync" data-phase="P6" data-text="p6-container-record-task-sync 一柜一档对象头露出任务和同步 feat/work-execution-first-slice">
+            <td class="id">p6-container-record-task-sync</td>
+            <td class="title">一柜一档对象头露出任务和同步</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-dashboard-pending-sync" data-phase="P6" data-text="p6-dashboard-pending-sync 货柜页露出未落账数 feat/work-execution-first-slice">
+            <td class="id">p6-dashboard-pending-sync</td>
+            <td class="title">货柜页露出未落账数</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-dead-letter-ops-ui" data-phase="P6" data-text="p6-dead-letter-ops-ui 死信操作台第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-dead-letter-ops-ui</td>
+            <td class="title">死信操作台第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-departure-emit-departed" data-phase="P6" data-text="p6-departure-emit-departed 离港任务完成后申请 departed feat/work-execution-first-slice">
+            <td class="id">p6-departure-emit-departed</td>
+            <td class="title">离港任务完成后申请 departed</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-dispatch-emit-loaded" data-phase="P6" data-text="p6-dispatch-emit-loaded 出运任务完成后申请 loaded feat/work-execution-first-slice">
+            <td class="id">p6-dispatch-emit-loaded</td>
+            <td class="title">出运任务完成后申请 loaded</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-e2e-dev-server-loopback" data-phase="P6" data-text="p6-e2e-dev-server-loopback e2e 开发服务器同时可达 ipv4/ipv6 回环 feat/work-execution-first-slice">
+            <td class="id">p6-e2e-dev-server-loopback</td>
+            <td class="title">E2E 开发服务器同时可达 IPv4/IPv6 回环</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-e2e-visual-real-task-nav" data-phase="P6" data-text="p6-e2e-visual-real-task-nav e2e 对齐真实任务导航 feat/work-execution-first-slice">
+            <td class="id">p6-e2e-visual-real-task-nav</td>
+            <td class="title">E2E 对齐真实任务导航</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-echo-ai-workflow-input" data-phase="P6" data-text="p6-echo-ai-workflow-input echoaiworkflow 入参与业务 echo 对齐 feat/work-execution-first-slice">
+            <td class="id">p6-echo-ai-workflow-input</td>
+            <td class="title">EchoAiWorkflow 入参与业务 echo 对齐</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-empty-database-migration-recovery" data-phase="P6" data-text="p6-empty-database-migration-recovery 空库历史迁移恢复 main">
+            <td class="id">p6-empty-database-migration-recovery</td>
+            <td class="title">空库历史迁移恢复</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-evidence-first-slice" data-phase="P6" data-text="p6-evidence-first-slice 证据登记与适用性核验第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-evidence-first-slice</td>
+            <td class="title">证据登记与适用性核验第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-evidence-reject-revoke" data-phase="P6" data-text="p6-evidence-reject-revoke 证据拒绝与撤销 feat/work-execution-first-slice">
+            <td class="id">p6-evidence-reject-revoke</td>
+            <td class="title">证据拒绝与撤销</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-evidence-verification-decision" data-phase="P6" data-text="p6-evidence-verification-decision 证据核验 append-only 裁决 feat/work-execution-first-slice">
+            <td class="id">p6-evidence-verification-decision</td>
+            <td class="title">证据核验 append-only 裁决</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-frontend-live-only" data-phase="P6" data-text="p6-frontend-live-only 前端运行时全部改为真实 api feat/work-execution-first-slice">
+            <td class="id">p6-frontend-live-only</td>
+            <td class="title">前端运行时全部改为真实 API</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-get-container" data-phase="P6" data-text="p6-get-container 按 id 读取货柜摘要 feat/work-execution-first-slice">
+            <td class="id">p6-get-container</td>
+            <td class="title">按 id 读取货柜摘要</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-first-slice" data-phase="P6" data-text="p6-import-first-slice p6 导入第一刀 # 实现开始后填 feat/p6-import-first-slice">
+            <td class="id">p6-import-first-slice</td>
+            <td class="title">P6 导入第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-mixed-layout-preflight" data-phase="P6" data-text="p6-import-mixed-layout-preflight 导入混合版式预检 feat/work-execution-first-slice">
+            <td class="id">p6-import-mixed-layout-preflight</td>
+            <td class="title">导入混合版式预检</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-navigation-entry" data-phase="P6" data-text="p6-import-navigation-entry 智能导入主导航入口 main">
+            <td class="id">p6-import-navigation-entry</td>
+            <td class="title">智能导入主导航入口</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-product-lines" data-phase="P6" data-text="p6-import-product-lines 导入备货单产品明细闭环 ">
+            <td class="id">p6-import-product-lines</td>
+            <td class="title">导入备货单产品明细闭环</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-real-sample-boundary-fixes" data-phase="P6" data-text="p6-import-real-sample-boundary-fixes 真实导入样本的文件名与映射边界修复 feat/work-execution-first-slice">
+            <td class="id">p6-import-real-sample-boundary-fixes</td>
+            <td class="title">真实导入样本的文件名与映射边界修复</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-replacement-lineage" data-phase="P6" data-text="p6-import-replacement-lineage 导入替代批次与解析版本血缘 feat/work-execution-first-slice">
+            <td class="id">p6-import-replacement-lineage</td>
+            <td class="title">导入替代批次与解析版本血缘</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-source-column-capacity" data-phase="P6" data-text="p6-import-source-column-capacity 校准导入源文件列数上限 feat/work-execution-first-slice">
+            <td class="id">p6-import-source-column-capacity</td>
+            <td class="title">校准导入源文件列数上限</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-source-file-retention" data-phase="P6" data-text="p6-import-source-file-retention 导入原始文件留存 feat/work-execution-first-slice">
+            <td class="id">p6-import-source-file-retention</td>
+            <td class="title">导入原始文件留存</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-time-provenance" data-phase="P6" data-text="p6-import-time-provenance 导入时间事实与来源追溯 ">
+            <td class="id">p6-import-time-provenance</td>
+            <td class="title">导入时间事实与来源追溯</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-import-upload-idempotency-key" data-phase="P6" data-text="p6-import-upload-idempotency-key 导入上传幂等键兼容中文文件名 feat/work-execution-first-slice">
+            <td class="id">p6-import-upload-idempotency-key</td>
+            <td class="title">导入上传幂等键兼容中文文件名</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-inbox-consume-client-operation" data-phase="P6" data-text="p6-inbox-consume-client-operation inbox 消费 / 死信 与 clientoperation 三阶段 feat/work-execution-first-slice">
+            <td class="id">p6-inbox-consume-client-operation</td>
+            <td class="title">Inbox 消费 / 死信 与 ClientOperation 三阶段</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-inbox-dead-letter-replay" data-phase="P6" data-text="p6-inbox-dead-letter-replay inbox 死信列表与人工重放 feat/work-execution-first-slice">
+            <td class="id">p6-inbox-dead-letter-replay</td>
+            <td class="title">Inbox 死信列表与人工重放</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-inbox-first-slice" data-phase="P6" data-text="p6-inbox-first-slice inbox 接收第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-inbox-first-slice</td>
+            <td class="title">Inbox 接收第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-inbox-process-first-slice" data-phase="P6" data-text="p6-inbox-process-first-slice inbox 占位消费第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-inbox-process-first-slice</td>
+            <td class="title">Inbox 占位消费第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-inbox-processing-lease" data-phase="P6" data-text="p6-inbox-processing-lease inbox processing 租约第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-inbox-processing-lease</td>
+            <td class="title">Inbox processing 租约第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-inbox-replay-payload-conflict" data-phase="P6" data-text="p6-inbox-replay-payload-conflict inbox 死信重放修正载荷 feat/work-execution-first-slice">
+            <td class="id">p6-inbox-replay-payload-conflict</td>
+            <td class="title">Inbox 死信重放修正载荷</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-inland-plan-first-slice" data-phase="P6" data-text="p6-inland-plan-first-slice 内陆四节点计划第一刀（起草） feat/inland-plan-first-slice">
+            <td class="id">p6-inland-plan-first-slice</td>
+            <td class="title">内陆四节点计划第一刀（起草）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-lifecycle-event-evidence" data-phase="P6" data-text="p6-lifecycle-event-evidence 规范事件与工单完成证据核验 feat/work-execution-first-slice">
+            <td class="id">p6-lifecycle-event-evidence</td>
+            <td class="title">规范事件与工单完成证据核验</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-lifecycle-node-io-catalog" data-phase="P6" data-text="p6-lifecycle-node-io-catalog 14流程节点填空表权威入口 feat/inland-plan-first-slice">
+            <td class="id">p6-lifecycle-node-io-catalog</td>
+            <td class="title">14流程节点填空表权威入口</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-lifecycle-outbox-first-slice" data-phase="P6" data-text="p6-lifecycle-outbox-first-slice 生命周期事件 outbox 第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-lifecycle-outbox-first-slice</td>
+            <td class="title">生命周期事件 Outbox 第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-client-operations" data-phase="P6" data-text="p6-list-client-operations 按租户列 clientoperation feat/work-execution-first-slice">
+            <td class="id">p6-list-client-operations</td>
+            <td class="title">按租户列 ClientOperation</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-compensations" data-phase="P6" data-text="p6-list-compensations 按原操作列/读补偿 feat/work-execution-first-slice">
+            <td class="id">p6-list-compensations</td>
+            <td class="title">按原操作列/读补偿</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-container-current-nodes" data-phase="P6" data-text="p6-list-container-current-nodes 列表展示已落库当前站 feat/work-execution-first-slice">
+            <td class="id">p6-list-container-current-nodes</td>
+            <td class="title">列表展示已落库当前站</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-containers-page" data-phase="P6" data-text="p6-list-containers-page 货柜列表游标分页 feat/work-execution-first-slice">
+            <td class="id">p6-list-containers-page</td>
+            <td class="title">货柜列表游标分页</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-containers-tenant-scope" data-phase="P6" data-text="p6-list-containers-tenant-scope 货柜列表租户范围 feat/work-execution-first-slice">
+            <td class="id">p6-list-containers-tenant-scope</td>
+            <td class="title">货柜列表租户范围</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-dead-letters" data-phase="P6" data-text="p6-list-dead-letters 按租户列死信 feat/work-execution-first-slice">
+            <td class="id">p6-list-dead-letters</td>
+            <td class="title">按租户列死信</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-lifecycle-events" data-phase="P6" data-text="p6-list-lifecycle-events 按货柜列规范事件 feat/work-execution-first-slice">
+            <td class="id">p6-list-lifecycle-events</td>
+            <td class="title">按货柜列规范事件</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-lifecycle-nodes" data-phase="P6" data-text="p6-list-lifecycle-nodes 按货柜列已落库节点 feat/work-execution-first-slice">
+            <td class="id">p6-list-lifecycle-nodes</td>
+            <td class="title">按货柜列已落库节点</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-node-tasks-by-container" data-phase="P6" data-text="p6-list-node-tasks-by-container 按货柜列节点任务 feat/work-execution-first-slice">
+            <td class="id">p6-list-node-tasks-by-container</td>
+            <td class="title">按货柜列节点任务</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-list-node-tasks-by-tenant" data-phase="P6" data-text="p6-list-node-tasks-by-tenant 按租户列节点任务 feat/work-execution-first-slice">
+            <td class="id">p6-list-node-tasks-by-tenant</td>
+            <td class="title">按租户列节点任务</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-meso-live-node-rail" data-phase="P6" data-text="p6-meso-live-node-rail 看档展示已落库迷你轨 feat/work-execution-first-slice">
+            <td class="id">p6-meso-live-node-rail</td>
+            <td class="title">看档展示已落库迷你轨</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-migrate-deploy-local" data-phase="P6" data-text="p6-migrate-deploy-local 本地迁移改为 deploy 对齐 feat/work-execution-first-slice">
+            <td class="id">p6-migrate-deploy-local</td>
+            <td class="title">本地迁移改为 deploy 对齐</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="coding" data-id="p6-notification-ops-assistant" data-phase="P6" data-text="p6-notification-ops-assistant 通知总线 + 只读运营助手（第一刀） feat/notification-ops-assistant">
+            <td class="id">p6-notification-ops-assistant</td>
+            <td class="title">通知总线 + 只读运营助手（第一刀）</td>
+            <td><span class="chip" data-s="active"><span class="glyph">◐</span>进行中</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="dash">—</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-dead-letter-replay" data-phase="P6" data-text="p6-outbox-dead-letter-replay outbox 死信人工重放第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-dead-letter-replay</td>
+            <td class="title">Outbox 死信人工重放第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-publish-due" data-phase="P6" data-text="p6-outbox-publish-due 本租户到期 outbox 排空 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-publish-due</td>
+            <td class="title">本租户到期 Outbox 排空</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-publisher-first-slice" data-phase="P6" data-text="p6-outbox-publisher-first-slice outbox 发布器第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-publisher-first-slice</td>
+            <td class="title">Outbox 发布器第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-replay-payload-conflict" data-phase="P6" data-text="p6-outbox-replay-payload-conflict 死信重放同键异载荷与修正载荷 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-replay-payload-conflict</td>
+            <td class="title">死信重放同键异载荷与修正载荷</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-retry-dead-letter" data-phase="P6" data-text="p6-outbox-retry-dead-letter outbox 重试与死信第一刀 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-retry-dead-letter</td>
+            <td class="title">Outbox 重试与死信第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-system-drain" data-phase="P6" data-text="p6-outbox-system-drain 服务身份跨租户 outbox 系统排空 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-system-drain</td>
+            <td class="title">服务身份跨租户 Outbox 系统排空</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-system-temporal-schedule" data-phase="P6" data-text="p6-outbox-system-temporal-schedule 系统排空 temporal 周期调度 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-system-temporal-schedule</td>
+            <td class="title">系统排空 Temporal 周期调度</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-outbox-temporal-schedule" data-phase="P6" data-text="p6-outbox-temporal-schedule 本租户 outbox temporal 周期调度 feat/work-execution-first-slice">
+            <td class="id">p6-outbox-temporal-schedule</td>
+            <td class="title">本租户 Outbox Temporal 周期调度</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-overdue-accrual" data-phase="P6" data-text="p6-overdue-accrual 超期费用预计 / 应计金额第一刀 feat/inland-plan-first-slice">
+            <td class="id">p6-overdue-accrual</td>
+            <td class="title">超期费用预计 / 应计金额第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-overdue-lfd-deadlines" data-phase="P6" data-text="p6-overdue-lfd-deadlines 超期费用最晚提柜日 / 最晚还箱日 feat/inland-plan-first-slice">
+            <td class="id">p6-overdue-lfd-deadlines</td>
+            <td class="title">超期费用最晚提柜日 / 最晚还箱日</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="blocked" data-id="p6-pipeline-task-pool" data-phase="P6" data-text="p6-pipeline-task-pool 建柜即展开管道任务池 feat/pipeline-task-pool">
+            <td class="id">p6-pipeline-task-pool</td>
+            <td class="title">建柜即展开管道任务池</td>
+            <td><span class="chip" data-s="blocked"><span class="glyph">✕</span>阻塞</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-resource-constraint-worksheet" data-phase="P6" data-text="p6-resource-constraint-worksheet 收资源约束拆解工作纸 feat/resource-constraint-worksheet">
+            <td class="id">p6-resource-constraint-worksheet</td>
+            <td class="title">收资源约束拆解工作纸</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-set-node-applicability" data-phase="P6" data-text="p6-set-node-applicability 可选节点适用性（setnodeapplicability 第一刀） feat/work-execution-first-slice">
+            <td class="id">p6-set-node-applicability</td>
+            <td class="title">可选节点适用性（SetNodeApplicability 第一刀）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-shipment-line-truth-rules" data-phase="P6" data-text="p6-shipment-line-truth-rules 产品明细与时间事实目标规则 main">
+            <td class="id">p6-shipment-line-truth-rules</td>
+            <td class="title">产品明细与时间事实目标规则</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="blocked" data-id="p6-smart-import-slice" data-phase="P6" data-text="p6-smart-import-slice p6 首个纵向切片——智能 excel 导入与审核闭环 # 已并入 feat 待开的 p6-import-first-slice，本文件不再开独立分支">
+            <td class="id">p6-smart-import-slice</td>
+            <td class="title">P6 首个纵向切片——智能 Excel 导入与审核闭环</td>
+            <td><span class="chip" data-s="blocked"><span class="glyph">✕</span>阻塞</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-target-field-catalog-v1" data-phase="P6" data-text="p6-target-field-catalog-v1 冻结导入目标字段目录 v1 main">
+            <td class="id">p6-target-field-catalog-v1</td>
+            <td class="title">冻结导入目标字段目录 V1</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-task-queue-load-more" data-phase="P6" data-text="p6-task-queue-load-more 我的任务再看后面一页 feat/work-execution-first-slice">
+            <td class="id">p6-task-queue-load-more</td>
+            <td class="title">我的任务再看后面一页</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-task-workbench-complete-receipt" data-phase="P6" data-text="p6-task-workbench-complete-receipt 任务台接真实完成与三段回执 feat/work-execution-first-slice">
+            <td class="id">p6-task-workbench-complete-receipt</td>
+            <td class="title">任务台接真实完成与三段回执</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-tenant-container-scope" data-phase="P6" data-text="p6-tenant-container-scope 货柜对象租户范围 feat/work-execution-first-slice">
+            <td class="id">p6-tenant-container-scope</td>
+            <td class="title">货柜对象租户范围</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-ui-copy-plain-language" data-phase="P6" data-text="p6-ui-copy-plain-language 作业壳人话与任务五问第一刀 feat/inland-plan-first-slice">
+            <td class="id">p6-ui-copy-plain-language</td>
+            <td class="title">作业壳人话与任务五问第一刀</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-ui-surface-naming" data-phase="P6" data-text="p6-ui-surface-naming 作业壳表面命名规范 feat/work-execution-first-slice">
+            <td class="id">p6-ui-surface-naming</td>
+            <td class="title">作业壳表面命名规范</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-work-execution-client-operation" data-phase="P6" data-text="p6-work-execution-client-operation 工单完成写入 clientoperation feat/work-execution-first-slice">
+            <td class="id">p6-work-execution-client-operation</td>
+            <td class="title">工单完成写入 ClientOperation</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-work-execution-emit-event" data-phase="P6" data-text="p6-work-execution-emit-event work-execution 第二刀（结果政策发规范事件） feat/work-execution-first-slice">
+            <td class="id">p6-work-execution-emit-event</td>
+            <td class="title">work-execution 第二刀（结果政策发规范事件）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-work-execution-first-slice" data-phase="P6" data-text="p6-work-execution-first-slice work-execution 第一刀（任务/工单状态机） feat/work-execution-first-slice">
+            <td class="id">p6-work-execution-first-slice</td>
+            <td class="title">work-execution 第一刀（任务/工单状态机）</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-workspace-api-ui-merge" data-phase="P6" data-text="p6-workspace-api-ui-merge 作业 ui 与真实 api 合并 feat/work-execution-first-slice">
+            <td class="id">p6-workspace-api-ui-merge</td>
+            <td class="title">作业 UI 与真实 API 合并</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-workspace-ui-clarity" data-phase="P6" data-text="p6-workspace-ui-clarity 作业壳信息架构与人话文案 feat/work-execution-first-slice">
+            <td class="id">p6-workspace-ui-clarity</td>
+            <td class="title">作业壳信息架构与人话文案</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-workspace-ui-inventory" data-phase="P6" data-text="p6-workspace-ui-inventory 登记作业壳页面定位与可补回清单 feat/work-execution-first-slice">
+            <td class="id">p6-workspace-ui-inventory</td>
+            <td class="title">登记作业壳页面定位与可补回清单</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+          <tr data-status="done" data-id="p6-write-endpoint-dev-identity" data-phase="P6" data-text="p6-write-endpoint-dev-identity 工单与生命周期写接口开发期身份 feat/work-execution-first-slice">
+            <td class="id">p6-write-endpoint-dev-identity</td>
+            <td class="title">工单与生命周期写接口开发期身份</td>
+            <td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td>
+            <td class="phase mono">P6</td>
+            <td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="gaps">
+    <div class="sec-head">
+      <h2>落差与待决</h2>
+      <span class="sec-note">5 条</span>
+    </div>
+    <p class="lede">
+      下面几条不是自动算出来的，是人工核对后写进生成脚本的判断，随脚本一起版本化——所以它们也会过期，
+      改的时候请连证据一起改。
+    </p>
+    <ul class="gaps">
+      <li class="gap" data-sev="high">
+          <span class="chip" data-s="blocked"><span class="glyph">✕</span>高</span>
+          <div class="gap-body">
+            <h3>启动清单已失真，不再是可信的进度源</h3>
+            <p>P6 一节 14 项全部未勾，而 <code>tasks/</code> 下 p6-* 已有 80 条 done。第 15 节「建议立即推进」仍写着下一条主线是 P5-02 OIDC，而该任务已经完成。</p>
+            <p>要么重写清单，要么在顶部声明进度以 tasks frontmatter 为准、清单只作阶段门禁——现在两份口径并列，读者无法判断信哪个。</p>
+          </div>
+        </li>
+      <li class="gap" data-sev="high">
+          <span class="chip" data-s="blocked"><span class="glyph">✕</span>高</span>
+          <div class="gap-body">
+            <h3>7 个模块是空壳，其中 5 个是核心</h3>
+            <p>尤其 <a href="https://github.com/adooper-liu/Logixs/blob/33e1e06/apps/api/src/modules/audit">apps/api/src/modules/audit</a>（动作授权的落点）与 <a href="https://github.com/adooper-liu/Logixs/blob/33e1e06/apps/api/src/modules/master-data">apps/api/src/modules/master-data</a>（港口/船司/仓库主数据）。没有主数据，节点事实无法归一；没有审计，高风险写操作不能上。</p>
+          </div>
+        </li>
+      <li class="gap" data-sev="mid">
+          <span class="chip" data-s="active"><span class="glyph">◐</span>中</span>
+          <div class="gap-body">
+            <h3>P2 门禁大面积未勾，但实现已经跑在前面</h3>
+            <p>P2-01/02/03/06/07/08/09/10/11/12 未勾，对应文档却都是「候选 v0.5」。含义是设计稿有、负责人评审没走完，代码先跑了——后续契约反复改的概率留在这里。</p>
+          </div>
+        </li>
+      <li class="gap" data-sev="mid">
+          <span class="chip" data-s="active"><span class="glyph">◐</span>中</span>
+          <div class="gap-body">
+            <h3>AI 面是通路建好、模型没接</h3>
+            <p>导入映射建议走的是 Python 关键词规则（<code>suggest_mapping_handler</code> 自述「Mock 关键词规则，不调模型」），LiteLLM / Langfuse / OTel 未启用，P7 评测为零。如果对外说法里有「AI 智能导入」，目前名不副实。</p>
+          </div>
+        </li>
+      <li class="gap" data-sev="low">
+          <span class="chip" data-s="idle"><span class="glyph">○</span>低</span>
+          <div class="gap-body">
+            <h3>状态标注不一致，需要一次收口</h3>
+            <p>文档索引写 <code>p6-pipeline-task-pool</code> 是「实施中」，其 frontmatter 是 <code>blocked</code>（原因：串行槽位让给了通知助手），且验收项 <code>pnpm validate</code> 仍未勾。</p>
+          </div>
+        </li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>
+      本页由 <a href="https://github.com/adooper-liu/Logixs/blob/33e1e06/scripts/build-progress-board.mjs">scripts/build-progress-board.mjs</a> 从仓库生成，快照取自 <span class="mono">33e1e06</span>。frontmatter 变了要重跑生成再发布，页面本身不会自己去读仓库。
+    </p>
+    <p>
+      重新生成：<code>pnpm board:build</code
+      >，然后用浏览器打开本文件；要发成链接时同一份文件直接发即可。
+    </p>
+  </footer>
+</div>
+
+<script>
+  (() => {
+    const rows = Array.from(document.querySelectorAll(".ledger tbody tr"));
+    const chips = Array.from(document.querySelectorAll("button.fchip"));
+    const input = document.getElementById("q");
+    const count = document.getElementById("count");
+    const tbody = document.querySelector(".ledger tbody");
+    let status = "all";
+    let query = "";
+
+    const render = () => {
+      let shown = 0;
+      for (const row of rows) {
+        const okStatus = status === "all" || row.dataset.status === status;
+        const okQuery = !query || row.dataset.text.includes(query);
+        const visible = okStatus && okQuery;
+        row.hidden = !visible;
+        if (visible) shown += 1;
+      }
+      count.textContent = "显示 " + shown + " / " + rows.length + " 条";
+    };
+
+    for (const chip of chips) {
+      chip.addEventListener("click", () => {
+        status = chip.dataset.filter;
+        for (const other of chips) {
+          other.setAttribute("aria-pressed", String(other === chip));
+        }
+        render();
+      });
+    }
+
+    input.addEventListener("input", () => {
+      query = input.value.trim().toLowerCase();
+      render();
+    });
+
+    const sorted = { id: "asc", status: "asc", phase: "asc" };
+    for (const th of document.querySelectorAll(".ledger th.sortable")) {
+      const key = th.dataset.sort;
+      th.addEventListener("click", () => {
+        const dir = sorted[key] === "asc" ? "desc" : "asc";
+        sorted[key] = dir;
+        for (const other of document.querySelectorAll(".ledger th.sortable")) {
+          other.removeAttribute("aria-sort");
+          other.querySelector(".arrow").textContent = "▲";
+        }
+        th.setAttribute(
+          "aria-sort",
+          dir === "asc" ? "ascending" : "descending",
+        );
+        th.querySelector(".arrow").textContent = dir === "asc" ? "▲" : "▼";
+        const sign = dir === "asc" ? 1 : -1;
+        rows
+          .slice()
+          .sort((a, b) => sign * a.dataset[key].localeCompare(b.dataset[key]))
+          .forEach((row) => tbody.appendChild(row));
+        render();
+      });
+    }
+
+    render();
+  })();
+</script>

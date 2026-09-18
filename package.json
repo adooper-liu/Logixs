@@ -33,6 +33,7 @@
     "build": "turbo run build",
     "docs:check": "node scripts/check-repository.mjs --docs-only",
     "contract:check": "node scripts/validate-contract-schemas.mjs",
+    "board:build": "node scripts/build-progress-board.mjs",
     "contract:generate": "node scripts/generate-contracts.mjs",
     "contract:drift": "node scripts/generate-contracts.mjs --check",
     "db:generate": "prisma generate --schema database/schema.prisma",
