@@ -20,19 +20,21 @@
 
 ## 三、docs 导航与架构
 
-| 文档                                                                                     | 一句话                                         | 状态              |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------- |
-| [人话导读](./人话导读.md)                                                                | 大白话讲全系统+文档地图（新人先读）            | 导航              |
-| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                                       | 建柜展任务、事实算条件、核验实际才过站         | 人话对照          |
-| [docs/README](./README.md)                                                               | docs 导航+写作纪律+消费链                      | 导航              |
-| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)                         | 目标架构总览(分层/模块/AI/工作流)              | 已接受            |
-| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                                      | 模块/包依赖与禁止依赖                          | 已接受(P1-09)     |
-| [模块插件约定](./architecture/MODULE_PLUGIN_CONVENTION.md)                               | Odoo 式基础核+增量插件：manifest/目录/权限映射 | 已接受约定        |
-| [增量模块开发手册](./architecture/INCREMENTAL_MODULE_PLAYBOOK.md)                        | 切片提纲+清单；Odoo 可借鉴能力全量采纳与优先序 | 已接受工作纸      |
-| [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md)                 | 问题通知总线与从通知打开的只读运营助手第一刀   | 已合入 main       |
-| [任务：对象活动流+Activity 投影](./planning/tasks/p6-object-activity-task-projection.md) | 通知挂货柜/任务，并从现有工单投影下一动作      | 开发中（0.1+0.2） |
-| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断 | 安全基线 V1       |
-| [ADR 索引](./architecture/decisions/README.md) + ADR-001~010                             | 架构决策记录（含模块化单体限界上下文）         | 已接受(P1)        |
+| 文档                                                                                     | 一句话                                                   | 状态                            |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------- |
+| [人话导读](./人话导读.md)                                                                | 大白话讲全系统+文档地图（新人先读）                      | 导航                            |
+| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                                       | 建柜展任务、事实算条件、核验实际才过站                   | 人话对照                        |
+| [docs/README](./README.md)                                                               | docs 导航+写作纪律+消费链                                | 导航                            |
+| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)                         | 目标架构总览(分层/模块/AI/工作流)                        | 已接受                          |
+| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                                      | 模块/包依赖与禁止依赖                                    | 已接受(P1-09)                   |
+| [模块插件约定](./architecture/MODULE_PLUGIN_CONVENTION.md)                               | Odoo 式基础核+增量插件：manifest/目录/权限映射           | 已接受约定                      |
+| [增量模块开发手册](./architecture/INCREMENTAL_MODULE_PLAYBOOK.md)                        | 切片提纲+清单；Odoo 可借鉴能力全量采纳与优先序           | 已接受工作纸                    |
+| [ADR-011 受控 UI 投影](./architecture/decisions/ADR-011-controlled-ui-projection.md)     | 控件化+schema 投影；拒绝 Studio 选表/任意 JOIN           | 候选(proposed)                  |
+| [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md)                 | 问题通知总线与从通知打开的只读运营助手第一刀             | 已合入 main                     |
+| [任务：对象活动流+Activity 投影](./planning/tasks/p6-object-activity-task-projection.md) | 通知挂货柜/任务，并从现有工单投影下一动作                | 已合入 main                     |
+| [任务：只读助手对象上下文](./planning/tasks/p6-assistant-object-context.md)              | 助手会话挂对象上下文，只读投影与追问回退                 | 已合入 main                     |
+| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断           | 安全基线 V1                     |
+| [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                             | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定） | P1 已接受；011 候选、012 已接受 |
 
 ## 四、产品/理念/流程
 
@@ -66,7 +68,7 @@
 | [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)         | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4  |
 | [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)       | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5  |
 | [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)             | 已出运列表导入/预检/审核/对账(P2-03)                                                                         | 候选 v0.5  |
-| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                   | 逻辑库图纸 + 事件/来源/可靠提交关系占位                                                                      | 候选 v0.5  |
+| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                   | 逻辑库图纸 + 事件/来源/可靠提交关系占位 + 时间偏移来源与复核队列(ADR-012)                                    | 候选 v0.7  |
 
 ### 5.2 清单/字典族（可落 Seed/契约）
 
@@ -93,21 +95,22 @@
 | [TARGET_FIELD_CATALOG](product/domain/TARGET_FIELD_CATALOG.md)                                   | V1.0 建档、V1.1 产品明细及 V1.2 首组时间事实字段目录                       | 正式 V1.2 |
 | [CONTAINER_MARKERS](product/domain/CONTAINER_MARKERS.md)                                         | 标记→动作机制                                                              | 候选      |
 | [TIMELINE_MAPPING](product/domain/TIMELINE_MAPPING.md)                                           | 不可变事件、乱序重放与状态机关系                                           | 候选 v0.2 |
-| [EXTERNAL_EVENT_MAPPING](product/domain/EXTERNAL_EVENT_MAPPING.md)                               | 三方码通用映射机制                                                         | 候选      |
+| [EXTERNAL_EVENT_MAPPING](product/domain/EXTERNAL_EVENT_MAPPING.md)                               | 三方码通用映射机制 + 逐事件来源信号定级 + 更正撤回接收形态                 | 候选 v0.2 |
 
 ### 5.3 集成/迁移/现网
 
-| 文档                                                                           | 一句话                                         | 状态                 |
-| ------------------------------------------------------------------------------ | ---------------------------------------------- | -------------------- |
-| [AS_IS_LEGACY_BASELINE](product/domain/AS_IS_LEGACY_BASELINE.md)               | 现网系统快照(状态/字段/反例)                   | 快照                 |
-| [LEGACY_DB_CATALOG](product/domain/LEGACY_DB_CATALOG.md)                       | 老库表/字典家底                                | 快照                 |
-| [FIELD_MIGRATION_MAP](product/domain/FIELD_MIGRATION_MAP.md)                   | 老字段→新库映射                                | 候选                 |
-| [DATA_CLEANUP_ORDER_CONTAINER](product/domain/DATA_CLEANUP_ORDER_CONTAINER.md) | 箱-单关系清洗细则(P2-06 首任务)                | 候选                 |
-| [INTEGRATION_BOUNDARIES](product/domain/INTEGRATION_BOUNDARIES.md)             | 导入→直连边界/字段与事件级来源权威             | 候选 v0.4            |
-| [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)             | 集成冗余/故障转移                              | 候选                 |
-| [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                               | 现网 vs 新设计差距                             | 评审输入             |
-| [飞驼知识库](integrations/freightower/README.md)                               | 飞驼接口、事件码、字段、同步与安全             | 外部供应商核验知识库 |
-| [飞驼海关证据映射 V1](integrations/freightower/CUSTOMS_EVIDENCE_MAPPING_V1.md) | 官网海关接口证据索引、复合码映射与工单驱动规则 | 外部供应商映射 V1    |
+| 文档                                                                           | 一句话                                              | 状态                 |
+| ------------------------------------------------------------------------------ | --------------------------------------------------- | -------------------- |
+| [AS_IS_LEGACY_BASELINE](product/domain/AS_IS_LEGACY_BASELINE.md)               | 现网系统快照(状态/字段/反例)                        | 快照                 |
+| [LEGACY_DB_CATALOG](product/domain/LEGACY_DB_CATALOG.md)                       | 老库表/字典家底                                     | 快照                 |
+| [FIELD_MIGRATION_MAP](product/domain/FIELD_MIGRATION_MAP.md)                   | 老字段→新库映射                                     | 候选                 |
+| [DATA_CLEANUP_ORDER_CONTAINER](product/domain/DATA_CLEANUP_ORDER_CONTAINER.md) | 箱-单关系清洗细则(P2-06 首任务)                     | 候选                 |
+| [INTEGRATION_BOUNDARIES](product/domain/INTEGRATION_BOUNDARIES.md)             | 导入→直连边界/字段与事件级来源权威                  | 候选 v0.4            |
+| [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)             | 集成冗余/故障转移                                   | 候选                 |
+| [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                               | 现网 vs 新设计差距                                  | 评审输入             |
+| [飞驼知识库](integrations/freightower/README.md)                               | 飞驼接口、事件码、字段、同步与安全                  | 外部供应商核验知识库 |
+| [飞驼海关证据映射 V1](integrations/freightower/CUSTOMS_EVIDENCE_MAPPING_V1.md) | 官网海关接口证据索引、复合码映射与工单驱动规则      | 外部供应商映射 V1    |
+| [云当网知识库](integrations/trackingeyes/README.md)                            | 云当网 67 接口、42 码表、推送载荷与两供应商码表对照 | 外部供应商核验知识库 |
 
 ### 5.4 治理/评审/对照
 

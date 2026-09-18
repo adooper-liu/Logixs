@@ -1,6 +1,6 @@
-# 逻辑数据模型（DATA_MODEL_P2-06 · v0.6 人话重构）
+# 逻辑数据模型（DATA_MODEL_P2-06 · v0.7）
 
-> 状态：**候选 v0.6** · 2026-09-16 · 负责人：刘志高。
+> 状态：**候选 v0.7** · 2026-09-16 v0.6 人话重构 · 2026-09-18 增补 ADR-012 时间溯源（不变量 10–12 与两个新对象）· 负责人：刘志高。
 > 一句话：新库长什么样的"对象+约束"图纸；字段定义与列映射在 NODE_TIME_FIELDS / FIELD_MIGRATION_MAP，物理 DDL 在 P3。
 > 依据：D1–D21 追踪项、L 节点(R0–R6)、一单一柜业务目标=备货单号主锚、迟绑定、字段级来源权威、标记/费用。旧库物理基数因证据源不可复现而待验证；D15–D21 仅完成关系占位，具体聚合与物理结构仍待 P2-06 后续评审；追踪编号不表示已通过 Decision 门禁。
 
@@ -8,21 +8,23 @@
 
 ### A. 逻辑对象与关系（基数）
 
-| 对象                         | 角色                     | 关系                                                               | 状态                     |
-| ---------------------------- | ------------------------ | ------------------------------------------------------------------ | ------------------------ |
-| ReplenishmentOrder(备货单)   | 建档身份/产品明细聚合根  | 1:N ReplenishmentOrderLine；TO-BE 目标 1:1 → ContainerRecord       | O(目标)·C(迁移约束)      |
-| ReplenishmentOrderLine       | 产品出运明细             | 属 ReplenishmentOrder；保留产品、数量单位、合同/价格快照与来源行   | O(关系)·C(完整字段)      |
-| ContainerRecord              | 业务事实主记录           | TO-BE 目标 1:1 备货单；1:N 时间线事件                              | O(目标)·C(迁移约束)      |
-| B/L(提单归组)                | 单证(候选)               | 1:N ContainerRecord                                                | C                        |
-| ShipmentPlan                 | 计划层(候选)             | 1:N 备货单                                                         | C                        |
-| markers/attributes           | 扩展集                   | 属 ContainerRecord                                                 | O                        |
-| FeeStandard/Charge/Invoice   | 超期费用规则、计算与账单 | 相互引用；预计/应计/账单/审核/支付分段                             | O(边界)·C(物理形态)      |
-| FlowInstance                 | 主流程实例               | 1:1 ContainerRecord；引用当前节点与流程状态                        | O(语义)·C(物理形态)      |
-| NodeTask                     | 节点工序子任务           | 属 FlowInstance/节点；1:N WorkOrder                                | O(语义)·C(物理形态)      |
-| WorkOrder                    | 作业工单                 | 属 NodeTask；1:N SubmissionOperation                               | O(语义)·C(物理形态)      |
-| SubmissionOperation/提交操作 | 可靠提交与幂等追踪       | 挂 WorkOrder/动作与业务上下文；以 `clientOperationId` 关联三段确认 | O(语义)·C(物理形态)      |
-| CanonicalEvent/内部事件      | 不可变业务事件与更正链   | 属 ContainerRecord；外部源事件幂等映射；投影可重放                 | O(能力)·C(契约/物理形态) |
-| FactAuthorityPolicy          | 字段/事件级来源权威策略  | 关联字段/事件类型、来源、证据、冲突动作与版本                      | O(规则)·C(物理形态)      |
+| 对象                         | 角色                         | 关系                                                                                    | 状态                     |
+| ---------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- | ------------------------ |
+| ReplenishmentOrder(备货单)   | 建档身份/产品明细聚合根      | 1:N ReplenishmentOrderLine；TO-BE 目标 1:1 → ContainerRecord                            | O(目标)·C(迁移约束)      |
+| ReplenishmentOrderLine       | 产品出运明细                 | 属 ReplenishmentOrder；保留产品、数量单位、合同/价格快照与来源行                        | O(关系)·C(完整字段)      |
+| ContainerRecord              | 业务事实主记录               | TO-BE 目标 1:1 备货单；1:N 时间线事件                                                   | O(目标)·C(迁移约束)      |
+| B/L(提单归组)                | 单证(候选)                   | 1:N ContainerRecord                                                                     | C                        |
+| ShipmentPlan                 | 计划层(候选)                 | 1:N 备货单                                                                              | C                        |
+| markers/attributes           | 扩展集                       | 属 ContainerRecord                                                                      | O                        |
+| FeeStandard/Charge/Invoice   | 超期费用规则、计算与账单     | 相互引用；预计/应计/账单/审核/支付分段                                                  | O(边界)·C(物理形态)      |
+| FlowInstance                 | 主流程实例                   | 1:1 ContainerRecord；引用当前节点与流程状态                                             | O(语义)·C(物理形态)      |
+| NodeTask                     | 节点工序子任务               | 属 FlowInstance/节点；1:N WorkOrder                                                     | O(语义)·C(物理形态)      |
+| WorkOrder                    | 作业工单                     | 属 NodeTask；1:N SubmissionOperation                                                    | O(语义)·C(物理形态)      |
+| SubmissionOperation/提交操作 | 可靠提交与幂等追踪           | 挂 WorkOrder/动作与业务上下文；以 `clientOperationId` 关联三段确认                      | O(语义)·C(物理形态)      |
+| CanonicalEvent/内部事件      | 不可变业务事件与更正链       | 属 ContainerRecord；外部源事件幂等映射；投影可重放；事件时间须带偏移与偏移来源(ADR-012) | O(能力)·C(契约/物理形态) |
+| FactAuthorityPolicy          | 字段/事件级来源权威策略      | 关联字段/事件类型、来源、证据、冲突动作与版本                                           | O(规则)·C(物理形态)      |
+| TimeZoneResolutionConfig     | 「地点+接口→偏移」版本化配置 | 关联地点/接口/生效期；缺失即不解析，不得回退部署时区或 UTC                              | O(ADR-012)·C(物理形态)   |
+| UnresolvedTimeQueue          | 未解析时间的复核队列         | 挂原始载荷、来源与缺失原因；解析通过后方可写入时间事实表                                | O(ADR-012)·C(物理形态)   |
 
 ### A1. D16 七组 SOP 的关系占位（非物理表定稿）
 
@@ -70,18 +72,20 @@
 
 ### C. 逻辑不变量（数据库/应用可强制）
 
-| #   | 不变量                                                                                |
-| --- | ------------------------------------------------------------------------------------- |
-| 1   | TO-BE 一备货单 ≤ 一 ContainerRecord；旧库探查与清洗通过后才建立 `UNIQUE(orderNumber)` |
-| 2   | main_order_number 不作键/关系（仅票级展示）                                           |
-| 3   | 实际时间沿 L 单调(R1) + 密封(R3)，服务端                                              |
-| 4   | 标记键受控字典内；动作绑定数据可配(D13)                                               |
-| 5   | 金额定点+币种                                                                         |
-| 6   | 写前过字段/事件级来源权威(D7)/可写窗口(R4)；无策略或冲突不静默落账                    |
-| 7   | 时间按 R0 分列；DATE 无时刻显式标注                                                   |
-| 8   | 外部重复事件幂等；迟到/乱序可重放；更正/撤回追加引用原事件，不原地覆盖已消费事实      |
-| 9   | 同一备货单多产品行合法；表头按备货单聚合，产品明细逐行保存                            |
-| 10  | 实际时间必须携带原始值、来源时区/偏移、UTC 与来源证据；状态或推导值不得补造 actual    |
+| #   | 不变量                                                                                                                                                           |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | TO-BE 一备货单 ≤ 一 ContainerRecord；旧库探查与清洗通过后才建立 `UNIQUE(orderNumber)`                                                                            |
+| 2   | main_order_number 不作键/关系（仅票级展示）                                                                                                                      |
+| 3   | 实际时间沿 L 单调(R1) + 密封(R3)，服务端                                                                                                                         |
+| 4   | 标记键受控字典内；动作绑定数据可配(D13)                                                                                                                          |
+| 5   | 金额定点+币种                                                                                                                                                    |
+| 6   | 写前过字段/事件级来源权威(D7)/可写窗口(R4)；无策略或冲突不静默落账                                                                                               |
+| 7   | 时间按 R0 分列；DATE 无时刻显式标注                                                                                                                              |
+| 8   | 外部重复事件幂等；迟到/乱序可重放；更正/撤回追加引用原事件，不原地覆盖已消费事实                                                                                 |
+| 9   | 同一备货单多产品行合法；表头按备货单聚合，产品明细逐行保存                                                                                                       |
+| 10  | 实际时间必须携带原始值、来源时区/偏移、**偏移来源**（`supplier_declared`/`location_configured`/`manual_confirmed`）、UTC 与来源证据；状态或推导值不得补造 actual |
+| 11  | 未解析出偏移的时间**不得写入时间事实表**，进复核队列；事实表只存确定时刻，未解析值不参与过站、计费与 R1（ADR-012）                                               |
+| 12  | 按地点解析偏移必须用**版本化配置 + 事发当日 IANA 规则**；缺配置即不解析，不得回退部署时区或 UTC                                                                  |
 
 ## ② 定义与澄清
 
@@ -110,12 +114,13 @@
 
 ## ⑦ 落库映射
 
-| 清单      | 落库                              |
-| --------- | --------------------------------- |
-| 对象/关系 | schema(P3) 表 + FK                |
-| 约束      | UNIQUE/CHECK/枚举/版本            |
-| 枚举值    | EVENT_CODES/STATUS/SOURCE 等 Seed |
-| 标记/属性 | 受控键字典 + 扩展表/字段(P3 评审) |
+| 清单      | 落库                                                                               |
+| --------- | ---------------------------------------------------------------------------------- |
+| 对象/关系 | schema(P3) 表 + FK                                                                 |
+| 约束      | UNIQUE/CHECK/枚举/版本                                                             |
+| 枚举值    | EVENT_CODES/STATUS/SOURCE 等 Seed                                                  |
+| 标记/属性 | 受控键字典 + 扩展表/字段(P3 评审)                                                  |
+| 时间溯源  | rawValue + offset + timeZoneSource；「地点+接口」配置表；未解析进复核队列(ADR-012) |
 
 ## ⑧ 待评审/关联
 
@@ -125,4 +130,5 @@
 - D18/D19 后续设计：CanonicalEvent 的去重、更正、重放与任务对账；风险/冲突复核策略和权限。
 - D20 后续设计：三类超期费用的规则版本、逐日阶梯明细、账单/审核/支付边界。
 - D21 后续设计：设计治理记录如何保存 O/S/R/C 证据并形成正式 Decision；不把评审文档追踪号当运行时对象。
-- 关联：FIELD_MIGRATION_MAP、NODE_TIME_FIELDS、EVENT_CODES、DATA_CLEANUP_ORDER_CONTAINER、GLOBAL_CONTRACT_REGISTRY、INTEGRATION_BOUNDARIES。
+- ADR-012 后续设计：TimeZoneResolutionConfig 的物理形态与生效期管理、UnresolvedTimeQueue 的保留与权限、`canonical_event` 时区列迁移（含既有值是否 UTC 墙钟的抽样验证）。
+- 关联：FIELD_MIGRATION_MAP、NODE_TIME_FIELDS、EVENT_CODES、DATA_CLEANUP_ORDER_CONTAINER、GLOBAL_CONTRACT_REGISTRY、INTEGRATION_BOUNDARIES、[ADR-012](../../architecture/decisions/ADR-012-external-timestamp-timezone.md)。
