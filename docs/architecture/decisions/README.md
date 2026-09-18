@@ -18,6 +18,12 @@
 | [ADR-009](./ADR-009-versioning-strategy.md)       | P1-10  | 契约与运行物（Prompt/模型/Tool/Schema/评测）统一语义化版本，单一权威源 + Parity 防漂移。      | accepted |
 | [ADR-010](./ADR-010-bounded-context-modules.md)   | P1-09  | 模块化单体划分10个核心业务限界上下文和8个支撑模块，禁止按节点拆模块或跨模块直写。             | accepted |
 
+## 后续决策（P1 之后）
+
+| ADR                                                             | 一句话决策                                                                                         | 状态     |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------- |
+| [ADR-011](./ADR-011-controlled-ui-projection.md)                | 受控 UI 投影+控件化；拒绝 Odoo Studio 式选表/任意 JOIN/运行时绑库搭页；对照 UI_SYSTEM §8.5–8.6。 | proposed |
+
 ## P1-09 模块依赖图（ADR-010 的配套产物）
 
 P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。限界上下文决策由 ADR-010 承载，可读依赖图由 MODULE_DEPENDENCIES 承载；依赖方向由 `pnpm repo:check`（`scripts/check-architecture-boundaries.mjs`）强制。
@@ -32,3 +38,4 @@ P1-09 要求「定义模块依赖图、公共入口和禁止依赖」。限界�
 - 2026-09-04：ADR-001~~009 经项目负责人评审**接受**（accepted），对应 P1-01~~P1-08 / P1-10 已勾选（见 [PROJECT_BOOTSTRAP_CHECKLIST](../../planning/PROJECT_BOOTSTRAP_CHECKLIST.md)）。
 
 - 2026-09-08：ADR-010 经负责人确认接受，补充 P1-09 的限界上下文决策，并作为 P3 模块脚手架、公共入口和依赖检查的实施依据。
+- 2026-09-18：ADR-011 草拟（proposed）：受控 UI 投影与控件化，明确拒绝 Studio 式绑库搭页。

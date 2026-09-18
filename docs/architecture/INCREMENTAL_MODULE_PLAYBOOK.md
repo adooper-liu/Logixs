@@ -143,7 +143,7 @@
 | -------------------------------- | --------------------------------------- |
 | Discuss / Livechat               | 产品禁止统一聊天入口；能力须贴业务对象  |
 | mass_mailing / 营销自动化        | 非运营主链摩擦；与通知 Port 目标不符    |
-| Studio / 运行时改模型视图        | 与迁移唯一入口、代码化 UI、ADR 冲突     |
+| Studio / 运行时改模型视图        | 与迁移唯一入口、代码化 UI 冲突；见 [ADR-011](./decisions/ADR-011-controlled-ui-projection.md) |
 | 完整 MRP / Purchase / Sale / POS | 上游采购链属未来阶段；现会稀释货柜主链  |
 | Knowledge / Website              | 非当前运营摩擦主因                      |
 | 通用多层审批流引擎               | 原则 P9：按风险触发复核，非常规每单签核 |
