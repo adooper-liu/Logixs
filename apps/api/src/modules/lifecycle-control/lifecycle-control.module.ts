@@ -13,6 +13,7 @@ import {
 import { NotificationModule } from "../notification";
 import { ShipmentRegistryModule } from "../shipment-registry";
 import { WorkExecutionModule } from "../work-execution";
+import { LIST_CONTAINER_CURRENT_NODES } from "./list-container-current-nodes.port";
 import { APPLY_LIFECYCLE_EVENT } from "./apply-lifecycle-event.port";
 import {
   OUTBOX_DELIVERY,
@@ -32,6 +33,8 @@ import { ListLifecycleEventsService } from "./application/list-lifecycle-events.
 import { ListLifecycleNodesService } from "./application/list-lifecycle-nodes.service";
 import { ListContainerCurrentNodesService } from "./application/list-container-current-nodes.service";
 import { ListContainerLifecycleNodesService } from "./application/list-container-lifecycle-nodes.service";
+import { ListObjectActivitiesService } from "./application/list-object-activities.service";
+import { ResolveNotificationTargetService } from "./application/resolve-notification-target.service";
 import { RequestCompensationService } from "./application/request-compensation.service";
 import { ResolveCompensationService } from "./application/resolve-compensation.service";
 import {
@@ -66,6 +69,7 @@ import { ClientOperationController } from "./presentation/client-operation.contr
 import { InboxController } from "./presentation/inbox.controller";
 import { InboxDeadLetterController } from "./presentation/inbox-dead-letter.controller";
 import { OutboxSystemController } from "./presentation/outbox-system.controller";
+import { ObjectActivitiesController } from "./presentation/object-activities.controller";
 
 @Module({
   imports: [
@@ -86,6 +90,7 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
     InboxController,
     InboxDeadLetterController,
     ClientOperationController,
+    ObjectActivitiesController,
   ],
   providers: [
     ApplyLifecycleEventService,
@@ -100,6 +105,8 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
     ListLifecycleNodesService,
     ListContainerCurrentNodesService,
     ListContainerLifecycleNodesService,
+    ListObjectActivitiesService,
+    ResolveNotificationTargetService,
     RequestCompensationService,
     ResolveCompensationService,
     PublishOutboxBatchService,
@@ -129,11 +136,17 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
       provide: APPLY_LIFECYCLE_EVENT,
       useExisting: ApplyLifecycleEventService,
     },
+    {
+      provide: LIST_CONTAINER_CURRENT_NODES,
+      useExisting: ListContainerCurrentNodesService,
+    },
   ],
   exports: [
     ApplyLifecycleEventService,
     InitializeContainerFlowService,
     APPLY_LIFECYCLE_EVENT,
+    LIST_CONTAINER_CURRENT_NODES,
+    ListContainerCurrentNodesService,
   ],
 })
 export class LifecycleControlModule implements NestModule {
@@ -149,6 +162,7 @@ export class LifecycleControlModule implements NestModule {
         OutboxController,
         InboxDeadLetterController,
         ClientOperationController,
+        ObjectActivitiesController,
       );
     consumer
       .apply(DevServiceIdentityMiddleware)

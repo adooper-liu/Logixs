@@ -16,14 +16,27 @@ export interface NotificationRepository {
     actorRoles: readonly string[];
     limit: number;
   }): Promise<OpsNotificationRecord[]>;
+  listObjectNotifications(query: {
+    tenantId: string;
+    containerId: string;
+    actorRoles: readonly string[];
+    atOrBefore: Date;
+    take: number;
+  }): Promise<OpsNotificationRecord[]>;
   findNotification(query: {
     tenantId: string;
     id: string;
+  }): Promise<OpsNotificationRecord | null>;
+  findVisibleNotification(query: {
+    tenantId: string;
+    id: string;
+    actorRoles: readonly string[];
   }): Promise<OpsNotificationRecord | null>;
   createSession(input: {
     tenantId: string;
     actorId: string;
     notificationId: string | null;
+    containerId: string | null;
   }): Promise<OpsAssistantSessionRecord>;
   findSession(query: {
     tenantId: string;

@@ -6,22 +6,21 @@ export interface OpsNotificationItem {
   body: string;
   entityType: string;
   entityId: string;
+  containerId: string | null;
+  taskId: string | null;
+  workOrderId: string | null;
+  hasObjectTarget: boolean;
   recipientRoleCodes: string[];
   conversationHint: string | null;
+  occurredAt: string;
   createdAt: string;
 }
 
-export interface AssistantMessage {
-  id: string;
-  role: string;
-  body: string;
-  createdAt: string;
-}
-
-export interface AssistantSession {
-  sessionId: string;
-  notificationId: string | null;
-  messages: AssistantMessage[];
+export interface NotificationTarget {
+  containerId: string;
+  taskId: string | null;
+  workOrderId: string | null;
+  targetPath: string;
 }
 
 const DEV_TENANT_ID = "dev-tenant";
@@ -50,26 +49,42 @@ export async function listNotifications(
   return data.items;
 }
 
+export async function resolveNotificationTarget(
+  notificationId: string,
+): Promise<NotificationTarget> {
+  const response = await fetch(
+    `/api/notification-targets/${encodeURIComponent(notificationId)}`,
+    { headers: devHeaders() },
+  );
+  if (response.status === 404) throw new Error("RESOURCE_NOT_FOUND");
+  if (!response.ok) {
+    throw new Error(
+      `GET /api/notification-targets/${notificationId} failed: ${response.status}`,
+    );
+  }
+  return (await response.json()) as NotificationTarget;
+}
+
 export async function openAssistantSession(
-  notificationId?: string,
-): Promise<AssistantSession> {
+  input: OpenAssistantSessionRequest = {},
+): Promise<AssistantSessionResponse> {
   const response = await fetch("/api/ops-assistant/sessions", {
     method: "POST",
     headers: devHeaders(),
-    body: JSON.stringify(notificationId ? { notificationId } : {}),
+    body: JSON.stringify(input),
   });
   if (!response.ok) {
     throw new Error(
       `POST /api/ops-assistant/sessions failed: ${response.status}`,
     );
   }
-  return (await response.json()) as AssistantSession;
+  return (await response.json()) as AssistantSessionResponse;
 }
 
 export async function postAssistantMessage(
   sessionId: string,
   body: string,
-): Promise<AssistantSession> {
+): Promise<AssistantSessionResponse> {
   const response = await fetch(
     `/api/ops-assistant/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
@@ -83,5 +98,16 @@ export async function postAssistantMessage(
       `POST /api/ops-assistant/sessions/${sessionId}/messages failed: ${response.status}`,
     );
   }
-  return (await response.json()) as AssistantSession;
+  return (await response.json()) as AssistantSessionResponse;
 }
+
+export type {
+  AssistantMessage,
+  AssistantObjectContext,
+  AssistantSessionResponse,
+  OpenAssistantSessionRequest,
+} from "@logix/contracts";
+import type {
+  AssistantSessionResponse,
+  OpenAssistantSessionRequest,
+} from "@logix/contracts";

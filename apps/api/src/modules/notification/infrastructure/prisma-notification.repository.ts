@@ -25,8 +25,12 @@ export class PrismaNotificationRepository implements NotificationRepository {
         body: input.body,
         entityType: input.entityType,
         entityId: input.entityId,
+        containerId: input.containerId ?? null,
+        taskId: input.taskId ?? null,
+        workOrderId: input.workOrderId ?? null,
         recipientRoleCodes: [...input.recipientRoleCodes],
         conversationHint: input.conversationHint ?? null,
+        occurredAt: input.occurredAt,
       },
     });
     return toNotification(row);
@@ -61,16 +65,59 @@ export class PrismaNotificationRepository implements NotificationRepository {
     return row ? toNotification(row) : null;
   }
 
+  async listObjectNotifications(query: {
+    tenantId: string;
+    containerId: string;
+    actorRoles: readonly string[];
+    atOrBefore: Date;
+    take: number;
+  }): Promise<OpsNotificationRecord[]> {
+    const rows = await this.prisma.opsNotification.findMany({
+      where: {
+        tenantId: query.tenantId,
+        containerId: query.containerId,
+        occurredAt: { lte: query.atOrBefore },
+        OR: [
+          { recipientRoleCodes: { hasSome: [...query.actorRoles] } },
+          { recipientRoleCodes: { equals: [] } },
+        ],
+      },
+      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+      take: query.take,
+    });
+    return rows.map(toNotification);
+  }
+
+  async findVisibleNotification(query: {
+    tenantId: string;
+    id: string;
+    actorRoles: readonly string[];
+  }): Promise<OpsNotificationRecord | null> {
+    const row = await this.prisma.opsNotification.findFirst({
+      where: {
+        tenantId: query.tenantId,
+        id: query.id,
+        OR: [
+          { recipientRoleCodes: { hasSome: [...query.actorRoles] } },
+          { recipientRoleCodes: { equals: [] } },
+        ],
+      },
+    });
+    return row ? toNotification(row) : null;
+  }
+
   async createSession(input: {
     tenantId: string;
     actorId: string;
     notificationId: string | null;
+    containerId: string | null;
   }): Promise<OpsAssistantSessionRecord> {
     const row = await this.prisma.opsAssistantSession.create({
       data: {
         tenantId: input.tenantId,
         actorId: input.actorId,
         notificationId: input.notificationId,
+        containerId: input.containerId,
       },
     });
     return toSession(row);
@@ -124,8 +171,12 @@ function toNotification(row: {
   body: string;
   entityType: string;
   entityId: string;
+  containerId: string | null;
+  taskId: string | null;
+  workOrderId: string | null;
   recipientRoleCodes: string[];
   conversationHint: string | null;
+  occurredAt: Date;
   createdAt: Date;
 }): OpsNotificationRecord {
   return {
@@ -137,8 +188,12 @@ function toNotification(row: {
     body: row.body,
     entityType: row.entityType,
     entityId: row.entityId,
+    containerId: row.containerId,
+    taskId: row.taskId,
+    workOrderId: row.workOrderId,
     recipientRoleCodes: row.recipientRoleCodes,
     conversationHint: row.conversationHint,
+    occurredAt: row.occurredAt,
     createdAt: row.createdAt,
   };
 }
@@ -148,6 +203,7 @@ function toSession(row: {
   tenantId: string;
   actorId: string;
   notificationId: string | null;
+  containerId: string | null;
   createdAt: Date;
 }): OpsAssistantSessionRecord {
   return {
@@ -155,6 +211,7 @@ function toSession(row: {
     tenantId: row.tenantId,
     actorId: row.actorId,
     notificationId: row.notificationId,
+    containerId: row.containerId,
     createdAt: row.createdAt,
   };
 }

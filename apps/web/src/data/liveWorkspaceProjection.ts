@@ -1,21 +1,14 @@
 import type { ContainerLifecycleState } from "@logix/contracts";
 import type { ContainerSummary } from "../api/containers";
 import type { LifecycleNodeItem } from "../api/lifecycleNodes";
-import {
-  DEV_OPERATOR_ID,
-  type NodeTaskDetail,
-  type WorkOrderSummary,
-} from "../api/nodeTasks";
+import type { NodeTaskDetail } from "../api/nodeTasks";
 import type { DisplayFieldSchema } from "../components/ui/displayFieldContract";
 import {
-  canClaimWorkOrder,
   CLAIM_WORK_ORDER_ACTION,
   CLAIM_WORK_ORDER_LABEL,
-  isAssignedTo,
 } from "./claimReceiptContract";
 import { completionRequiresEvidence } from "./completionEvidencePolicy";
 import {
-  canCompleteWorkOrder,
   COMPLETE_WORK_ORDER_ACTION,
   COMPLETE_WORK_ORDER_LABEL,
 } from "./completeReceiptContract";
@@ -238,65 +231,53 @@ function taskDisplayRank(detail: NodeTaskDetail): number {
   return 2;
 }
 
-function claimableWorkOrders(detail: NodeTaskDetail): WorkOrderSummary[] {
-  return detail.workOrders.filter((item) =>
-    canClaimWorkOrder({
-      state: item.state,
-      assignmentState: item.assignmentState,
-    }),
-  );
-}
-
-function completableWorkOrders(detail: NodeTaskDetail): WorkOrderSummary[] {
-  return detail.workOrders.filter((item) => {
-    if (!canCompleteWorkOrder(item.state)) return false;
-    if (item.assignmentState === "automatic") return true;
-    return (
-      item.assignmentState === "assigned" &&
-      isAssignedTo(item.assigneeId, DEV_OPERATOR_ID)
-    );
-  });
-}
-
 function toAssignment(detail: NodeTaskDetail): TaskAssignment {
-  const claimed = detail.workOrders.find(
-    (item) =>
-      item.assignmentState === "assigned" &&
-      isAssignedTo(item.assigneeId, DEV_OPERATOR_ID),
-  );
-  if (claimableWorkOrders(detail).length > 0) {
+  const nextAction = detail.nextAction;
+  if (
+    nextAction?.actionCode === CLAIM_WORK_ORDER_ACTION ||
+    nextAction?.assignmentState === "unassigned" ||
+    nextAction?.assignmentState === "pool"
+  ) {
     return { mode: "pool", label: uiCopy.assignment.pool };
   }
-  if (claimed) {
+  if (nextAction?.assigneeId) {
     return {
       mode: "assigned",
       label: uiCopy.assignment.claimed,
-      assignee: claimed.assigneeId ?? DEV_OPERATOR_ID,
+      assignee: nextAction.assigneeId,
     };
   }
   return { mode: "assigned", label: uiCopy.assignment.assigned };
 }
 
 function toActions(detail: NodeTaskDetail): TaskAction[] {
-  const claims = claimableWorkOrders(detail).map((workOrder) => ({
-    actionCode: claimActionCode(workOrder.id),
-    label: CLAIM_WORK_ORDER_LABEL,
-    intent: "claim" as const,
-    tone: "primary" as const,
-    confirmation: "none" as const,
-    catalogStatus: "catalog" as const,
-    summary: workOrder.workOrderDefinitionKey,
-  }));
-  if (claims.length > 0) return claims;
-  return completableWorkOrders(detail).map((workOrder) => ({
-    actionCode: completeActionCode(workOrder.id),
-    label: COMPLETE_WORK_ORDER_LABEL,
-    intent: "complete" as const,
-    tone: "primary" as const,
-    confirmation: "none" as const,
-    catalogStatus: "catalog" as const,
-    summary: workOrder.workOrderDefinitionKey,
-  }));
+  const nextAction = detail.nextAction;
+  if (!nextAction) return [];
+  if (nextAction.actionCode === CLAIM_WORK_ORDER_ACTION) {
+    return [
+      {
+        actionCode: claimActionCode(nextAction.workOrderId),
+        label: CLAIM_WORK_ORDER_LABEL,
+        intent: "claim",
+        tone: "primary",
+        confirmation: "none",
+        catalogStatus: "catalog",
+        summary: nextAction.workOrderDefinitionKey,
+      },
+    ];
+  }
+  if (nextAction.actionCode !== COMPLETE_WORK_ORDER_ACTION) return [];
+  return [
+    {
+      actionCode: completeActionCode(nextAction.workOrderId),
+      label: COMPLETE_WORK_ORDER_LABEL,
+      intent: "complete",
+      tone: "primary",
+      confirmation: "none",
+      catalogStatus: "catalog",
+      summary: nextAction.workOrderDefinitionKey,
+    },
+  ];
 }
 
 export interface TaskContainerRef {
@@ -311,7 +292,8 @@ export function toLiveTask(
 ): TaskItem {
   const nodeName = nodeScreenName(detail.nodeCode);
   const actions = toActions(detail);
-  const completable = completableWorkOrders(detail);
+  const canComplete =
+    detail.nextAction?.actionCode === COMPLETE_WORK_ORDER_ACTION;
   return {
     taskId: detail.id,
     taskDefinitionKey: LIVE_TASK_DEFINITION_KEY,
@@ -322,7 +304,7 @@ export function toLiveTask(
     nodeKey: detail.nodeCode,
     nodeName,
     triggerReason: "",
-    dueAt: "",
+    dueAt: detail.nextAction?.dueAt ?? "",
     status: toTaskStatus(detail),
     riskPriority: 0,
     location: "",
@@ -333,7 +315,7 @@ export function toLiveTask(
     assignment: toAssignment(detail),
     preconditions: [],
     requiredInputs: [],
-    evidenceRequirements: completable.length
+    evidenceRequirements: canComplete
       ? [
           {
             id: `evidence-${detail.id}`,

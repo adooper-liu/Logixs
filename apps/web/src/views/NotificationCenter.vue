@@ -1,22 +1,31 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { ExternalLink } from "@lucide/vue";
+import { onMounted, shallowRef } from "vue";
+import { useRouter } from "vue-router";
 import {
   listNotifications,
-  openAssistantSession,
-  postAssistantMessage,
-  type AssistantMessage,
+  resolveNotificationTarget,
   type OpsNotificationItem,
 } from "../api/notifications";
+import OpsAssistantPanel from "../components/assistant/OpsAssistantPanel.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
+import { useOpsAssistant } from "../composables/useOpsAssistant";
 
-const items = ref<OpsNotificationItem[]>([]);
-const loading = ref(true);
-const error = ref("");
-const sessionId = ref("");
-const messages = ref<AssistantMessage[]>([]);
-const draft = ref("");
-const askingId = ref("");
-const sending = ref(false);
+const items = shallowRef<OpsNotificationItem[]>([]);
+const router = useRouter();
+const loading = shallowRef(true);
+const error = shallowRef("");
+const askingId = shallowRef("");
+const openingId = shallowRef("");
+const {
+  session: assistantSession,
+  opening: assistantOpening,
+  sending: assistantSending,
+  error: assistantError,
+  open: openAssistant,
+  send: sendAssistantMessage,
+  close: closeAssistant,
+} = useOpsAssistant();
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -36,29 +45,23 @@ async function load(): Promise<void> {
 async function askAssistant(item: OpsNotificationItem): Promise<void> {
   askingId.value = item.id;
   error.value = "";
-  try {
-    const session = await openAssistantSession(item.id);
-    sessionId.value = session.sessionId;
-    messages.value = session.messages;
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : "打开助手失败";
-  } finally {
-    askingId.value = "";
-  }
+  await openAssistant({ notificationId: item.id });
+  askingId.value = "";
 }
 
-async function send(): Promise<void> {
-  if (!sessionId.value || !draft.value.trim()) return;
-  sending.value = true;
+async function openObject(item: OpsNotificationItem): Promise<void> {
+  openingId.value = item.id;
   error.value = "";
   try {
-    const session = await postAssistantMessage(sessionId.value, draft.value);
-    messages.value = session.messages;
-    draft.value = "";
+    const target = await resolveNotificationTarget(item.id);
+    await router.push(target.targetPath);
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : "发送失败";
+    error.value =
+      cause instanceof Error && cause.message !== "RESOURCE_NOT_FOUND"
+        ? cause.message
+        : "关联对象不存在或不可访问";
   } finally {
-    sending.value = false;
+    openingId.value = "";
   }
 }
 
@@ -74,6 +77,9 @@ onMounted(() => {
       summary="出事时推送给调度/主管；可打开只读助手追问。"
     />
     <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <p v-if="assistantError && !assistantSession" class="error" role="alert">
+      {{ assistantError }}
+    </p>
     <p v-if="loading">加载中…</p>
     <ul v-else class="list" aria-label="问题通知列表">
       <li v-for="item in items" :key="item.id" class="card">
@@ -85,34 +91,36 @@ onMounted(() => {
             {{ item.createdAt }}</small
           >
         </div>
-        <button
-          type="button"
-          :disabled="askingId === item.id"
-          @click="askAssistant(item)"
-        >
-          询问助手
-        </button>
+        <div class="actions">
+          <button
+            v-if="item.hasObjectTarget"
+            type="button"
+            :disabled="openingId === item.id"
+            @click="openObject(item)"
+          >
+            <ExternalLink :size="15" aria-hidden="true" />
+            打开对象
+          </button>
+          <button
+            type="button"
+            :disabled="askingId === item.id || assistantOpening"
+            @click="askAssistant(item)"
+          >
+            询问助手
+          </button>
+        </div>
       </li>
       <li v-if="items.length === 0" class="empty">暂无问题通知</li>
     </ul>
 
-    <section v-if="sessionId" class="assistant" aria-label="运营助手会话">
-      <h2>只读助手</h2>
-      <div class="thread">
-        <article v-for="message in messages" :key="message.id" class="bubble">
-          <strong>{{ message.role }}</strong>
-          <pre>{{ message.body }}</pre>
-        </article>
-      </div>
-      <form class="composer" @submit.prevent="send">
-        <input
-          v-model="draft"
-          type="text"
-          placeholder="继续追问（只读，不会改业务）"
-        />
-        <button type="submit" :disabled="sending || !draft.trim()">发送</button>
-      </form>
-    </section>
+    <OpsAssistantPanel
+      v-if="assistantSession"
+      :session="assistantSession"
+      :sending="assistantSending"
+      :error="assistantError"
+      @send="sendAssistantMessage"
+      @close="closeAssistant"
+    />
   </section>
 </template>
 
@@ -128,8 +136,7 @@ onMounted(() => {
   display: grid;
   gap: 0.75rem;
 }
-.card,
-.assistant {
+.card {
   display: grid;
   gap: 0.75rem;
   padding: 1rem;
@@ -139,26 +146,30 @@ onMounted(() => {
   grid-template-columns: 1fr auto;
   align-items: start;
 }
+.actions,
+.actions button {
+  display: flex;
+  align-items: center;
+}
+.actions {
+  gap: 0.5rem;
+}
+.actions button {
+  gap: 0.3rem;
+}
 .error {
   color: crimson;
 }
-.thread {
-  display: grid;
-  gap: 0.75rem;
-  max-height: 24rem;
-  overflow: auto;
-}
-.bubble pre {
-  white-space: pre-wrap;
-  margin: 0.25rem 0 0;
-  font: inherit;
-}
-.composer {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem;
-}
 .empty {
   opacity: 0.7;
+}
+@media (max-width: 720px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
 }
 </style>

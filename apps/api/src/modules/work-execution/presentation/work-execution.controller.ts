@@ -15,6 +15,7 @@ import { CreateNodeTaskService } from "../application/create-node-task.service";
 import { GetNodeTaskService } from "../application/get-node-task.service";
 import { ListNodeTasksService } from "../application/list-node-tasks.service";
 import type { NodeTaskWithWorkOrders } from "../domain/work-execution.repository";
+import { projectNextActions } from "../domain/object-task-activity";
 import {
   ClaimWorkOrderRequestDto,
   ClaimWorkOrderResponseDto,
@@ -122,6 +123,7 @@ export class WorkExecutionController {
 }
 
 function toDetail(bundle: NodeTaskWithWorkOrders): NodeTaskDetailDto {
+  const nextAction = projectNextActions([bundle])[0] ?? null;
   return {
     id: bundle.task.id,
     flowInstanceId: bundle.task.flowInstanceId,
@@ -140,10 +142,21 @@ function toDetail(bundle: NodeTaskWithWorkOrders): NodeTaskDetailDto {
       state: workOrder.state,
       assignmentState: workOrder.assignmentState,
       assigneeId: workOrder.assigneeId,
+      dueAt: workOrder.dueAt ? workOrder.dueAt.toISOString() : null,
       completedAt: workOrder.completedAt
         ? workOrder.completedAt.toISOString()
         : null,
     })),
+    nextAction: nextAction
+      ? {
+          actionCode: nextAction.actionCode,
+          workOrderId: nextAction.workOrderId,
+          workOrderDefinitionKey: nextAction.workOrderDefinitionKey,
+          assignmentState: nextAction.assignmentState,
+          assigneeId: nextAction.assigneeId,
+          dueAt: nextAction.dueAt?.toISOString() ?? null,
+        }
+      : null,
     outcome: bundle.outcome
       ? {
           id: bundle.outcome.id,

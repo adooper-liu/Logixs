@@ -64,6 +64,9 @@
     "containerOperationalView": {
       "$ref": "container-operational-view.schema.json"
     },
+    "opsAssistant": {
+      "$ref": "ops-assistant.schema.json"
+    },
     "errorResponse": {
       "$ref": "error-response.schema.json"
     }

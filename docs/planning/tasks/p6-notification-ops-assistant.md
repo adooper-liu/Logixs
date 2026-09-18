@@ -1,7 +1,7 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/notification-ops-assistant
-verification:
+verification: PR #11 已合入 main（merge commit 98f0b62）；实现阶段已通过 repo:check、API/Web typecheck 与相关单测，CI 修正提交 ff6db88 随 PR 合入。
 ---
 
 # 任务：通知总线 + 只读运营助手（第一刀）
@@ -18,10 +18,10 @@ verification:
 
 ## 验收
 
-- [ ] `notification` 提供 `POST_NOTIFICATION` / 列表查询；死信进入时样板投递。
-- [ ] 用户可从通知创建只读助手会话并收发消息（AI Gateway 可 mock）。
-- [ ] Web 有通知入口与简易会话。
-- [ ] 相关 lint / typecheck / 单测通过；`repo:check` 通过。
+- [x] `notification` 提供 `POST_NOTIFICATION` / 列表查询；死信进入时样板投递。
+- [x] 用户可从通知创建只读助手会话并收发消息（AI Gateway 可 mock）。
+- [x] Web 有通知入口与简易会话。
+- [x] 相关 lint / typecheck / 单测通过；`repo:check` 通过。
 
 ## 方案
 
@@ -33,7 +33,8 @@ verification:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责  | commit | 说明                                                                                                   |
-| ---------- | ------ | ----- | ------ | ------------------------------------------------------------------------------------------------------ |
-| 2026-09-17 | coding | agent | —      | Phase A 收口后开工                                                                                     |
-| 2026-09-17 | coding | agent | —      | notification Port/表/死信投递 + 只读助手 + Web 入口已落地；repo:check、api/web typecheck、相关单测通过 |
+| 日期       | 阶段   | 负责  | commit  | 说明                                                                                                   |
+| ---------- | ------ | ----- | ------- | ------------------------------------------------------------------------------------------------------ |
+| 2026-09-17 | coding | agent | —       | Phase A 收口后开工                                                                                     |
+| 2026-09-17 | coding | agent | —       | notification Port/表/死信投递 + 只读助手 + Web 入口已落地；repo:check、api/web typecheck、相关单测通过 |
+| 2026-09-18 | done   | Codex | 98f0b62 | PR #11 已合入 `main`，按合入记录与既有验证证据收口串行任务槽位。                                       |

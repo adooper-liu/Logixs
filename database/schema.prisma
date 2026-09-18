@@ -503,6 +503,7 @@ model WorkOrder {
   state                  String    @map("state") // ready | in_progress | completed
   assignmentState        String    @map("assignment_state") // unassigned | assigned | pool | automatic
   assigneeId             String?   @map("assignee_id")
+  dueAt                  DateTime? @map("due_at") @db.Timestamptz
   completedAt            DateTime? @map("completed_at")
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
@@ -685,20 +686,26 @@ model OverdueChargeRateTier {
 
 // 运营问题通知（notification 拥有）：业务模块经 Port 投递，不直写表。
 model OpsNotification {
-  id                   String                @id @default(uuid()) @map("id")
-  tenantId             String                @map("tenant_id")
-  problemCode          String                @map("problem_code")
-  severity             String                @map("severity") // low | medium | high | critical
-  title                String                @map("title")
-  body                 String                @map("body")
-  entityType           String                @map("entity_type")
-  entityId             String                @map("entity_id")
-  recipientRoleCodes   String[]              @map("recipient_role_codes")
-  conversationHint     String?               @map("conversation_hint")
-  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz
-  sessions             OpsAssistantSession[]
+  id                 String                @id @default(uuid()) @map("id")
+  tenantId           String                @map("tenant_id")
+  problemCode        String                @map("problem_code")
+  severity           String                @map("severity") // low | medium | high | critical
+  title              String                @map("title")
+  body               String                @map("body")
+  entityType         String                @map("entity_type")
+  entityId           String                @map("entity_id")
+  containerId        String?               @map("container_id") // 跨模块逻辑引用，无外键
+  taskId             String?               @map("task_id") // 跨模块逻辑引用，无外键
+  workOrderId        String?               @map("work_order_id") // 跨模块逻辑引用，无外键
+  recipientRoleCodes String[]              @map("recipient_role_codes")
+  conversationHint   String?               @map("conversation_hint")
+  occurredAt         DateTime              @map("occurred_at") @db.Timestamptz
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  sessions           OpsAssistantSession[]
 
   @@index([tenantId, createdAt, id], map: "ops_notification_list_idx")
+  @@index([tenantId, containerId, occurredAt, id], map: "ops_notification_container_activity_idx")
+  @@index([tenantId, taskId], map: "ops_notification_task_idx")
   @@map("ops_notification")
 }
 
@@ -708,11 +715,13 @@ model OpsAssistantSession {
   tenantId       String                @map("tenant_id")
   actorId        String                @map("actor_id")
   notificationId String?               @map("notification_id")
+  containerId    String?               @map("container_id") // 跨模块逻辑引用，无外键
   notification   OpsNotification?      @relation(fields: [notificationId], references: [id])
   createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
   messages       OpsAssistantMessage[]
 
   @@index([tenantId, actorId, createdAt], map: "ops_assistant_session_actor_idx")
+  @@index([tenantId, containerId, createdAt], map: "ops_assistant_session_container_idx")
   @@map("ops_assistant_session")
 }
 

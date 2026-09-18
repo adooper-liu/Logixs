@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/ops-assistant.schema.json",
+  "title": "OpsAssistantV1",
+  "oneOf": [
+    { "$ref": "#/$defs/OpenAssistantSessionRequest" },
+    { "$ref": "#/$defs/AssistantSessionResponse" },
+    { "$ref": "#/$defs/OpsQuestionInput" }
+  ],
+  "$defs": {
+    "OpenAssistantSessionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "notificationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "containerId": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
+    "AssistantMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "body", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "role": { "enum": ["system", "user", "assistant"] },
+        "body": { "type": "string", "minLength": 1, "maxLength": 10000 },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "AssistantObjectSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containerId",
+        "orderNumber",
+        "containerNumber",
+        "currentStatus",
+        "currentNodeCode",
+        "flowState",
+        "updatedAt"
+      ],
+      "properties": {
+        "containerId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "orderNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "containerNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "currentStatus": {
+          "$ref": "common.schema.json#/$defs/ContainerLifecycleState"
+        },
+        "currentNodeCode": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+            { "type": "null" }
+          ]
+        },
+        "flowState": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/FlowInstanceState" },
+            { "type": "null" }
+          ]
+        },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "AssistantAllowedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actionCode",
+        "explanation",
+        "containerId",
+        "taskId",
+        "workOrderId",
+        "nodeCode",
+        "assigneeId",
+        "dueAt",
+        "actorCanExecute",
+        "targetPath"
+      ],
+      "properties": {
+        "actionCode": {
+          "enum": [
+            "work_execution.claim_work_order",
+            "work_execution.complete_work_order"
+          ]
+        },
+        "explanation": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "containerId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "taskId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "workOrderId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "assigneeId": { "type": ["string", "null"], "maxLength": 100 },
+        "dueAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "actorCanExecute": { "type": "boolean" },
+        "targetPath": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "AssistantReadOnlyPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assistantCanExecute",
+        "actorCanExecuteActions",
+        "explanation"
+      ],
+      "properties": {
+        "assistantCanExecute": { "const": false },
+        "actorCanExecuteActions": { "type": "boolean" },
+        "explanation": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "AssistantObjectContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "allowedActions",
+        "actionSummary",
+        "readOnlyPolicy"
+      ],
+      "properties": {
+        "summary": { "$ref": "#/$defs/AssistantObjectSummary" },
+        "allowedActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AssistantAllowedAction" }
+        },
+        "actionSummary": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "readOnlyPolicy": { "$ref": "#/$defs/AssistantReadOnlyPolicy" }
+      }
+    },
+    "AssistantSessionResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "notificationId",
+        "containerId",
+        "objectContext",
+        "messages"
+      ],
+      "properties": {
+        "sessionId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "notificationId": { "type": ["string", "null"], "maxLength": 100 },
+        "containerId": { "type": ["string", "null"], "maxLength": 100 },
+        "objectContext": {
+          "anyOf": [
+            { "$ref": "#/$defs/AssistantObjectContext" },
+            { "type": "null" }
+          ]
+        },
+        "messages": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AssistantMessage" }
+        }
+      }
+    },
+    "OpsQuestionHistoryMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "body"],
+      "properties": {
+        "role": { "enum": ["system", "user", "assistant"] },
+        "body": { "type": "string", "minLength": 1, "maxLength": 10000 }
+      }
+    },
+    "OpsQuestionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question",
+        "notificationContext",
+        "objectContext",
+        "history"
+      ],
+      "properties": {
+        "question": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "notificationContext": {
+          "type": ["string", "null"],
+          "maxLength": 10000
+        },
+        "objectContext": {
+          "anyOf": [
+            { "$ref": "#/$defs/AssistantObjectContext" },
+            { "type": "null" }
+          ]
+        },
+        "history": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/OpsQuestionHistoryMessage" }
+        }
+      }
+    }
+  }
+}

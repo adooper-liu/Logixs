@@ -9,8 +9,12 @@ export interface OpsNotificationRecord {
   body: string;
   entityType: string;
   entityId: string;
+  containerId: string | null;
+  taskId: string | null;
+  workOrderId: string | null;
   recipientRoleCodes: string[];
   conversationHint: string | null;
+  occurredAt: Date;
   createdAt: Date;
 }
 
@@ -22,8 +26,12 @@ export interface CreateOpsNotificationInput {
   body: string;
   entityType: string;
   entityId: string;
+  containerId?: string | null;
+  taskId?: string | null;
+  workOrderId?: string | null;
   recipientRoleCodes: readonly string[];
   conversationHint?: string | null;
+  occurredAt: Date;
 }
 
 export interface OpsAssistantSessionRecord {
@@ -31,6 +39,7 @@ export interface OpsAssistantSessionRecord {
   tenantId: string;
   actorId: string;
   notificationId: string | null;
+  containerId: string | null;
   createdAt: Date;
 }
 

@@ -4,26 +4,18 @@ import {
   LIFECYCLE_REPOSITORY,
   type LifecycleRepository,
 } from "../domain/lifecycle.repository";
+import type {
+  ContainerCurrentNodesPage,
+  ListContainerCurrentNodesPort,
+} from "../list-container-current-nodes.port";
 
 export interface ListContainerCurrentNodesInput {
   tenantId?: string;
   containerIds?: string;
 }
 
-export interface ContainerCurrentNodeItem {
-  containerId: string;
-  currentNodeCode: string;
-  flowState: string;
-}
-
-export interface ContainerCurrentNodesPage {
-  items: ContainerCurrentNodeItem[];
-  asOf: Date;
-  projectionVersion: number;
-}
-
 @Injectable()
-export class ListContainerCurrentNodesService {
+export class ListContainerCurrentNodesService implements ListContainerCurrentNodesPort {
   constructor(
     @Inject(LIFECYCLE_REPOSITORY)
     private readonly repository: LifecycleRepository,

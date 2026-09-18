@@ -1,5 +1,6 @@
 import type {
   CanonicalEventCode,
+  FlowInstanceState,
   LifecycleNodeCode,
   NodeApplicability,
 } from "@logix/contracts";
@@ -27,6 +28,7 @@ export interface CanonicalEventListItem {
 
 export interface CanonicalEventListQuery {
   containerId: string;
+  atOrBefore?: Date;
   after?: { occurredAt: Date; id: string };
   take: number;
 }
@@ -66,8 +68,8 @@ export interface LifecycleRepository {
   }): Promise<
     Array<{
       containerId: string;
-      currentNodeCode: string;
-      flowState: string;
+      currentNodeCode: LifecycleNodeCode;
+      flowState: FlowInstanceState;
     }>
   >;
   listFlowsWithNodes(query: {

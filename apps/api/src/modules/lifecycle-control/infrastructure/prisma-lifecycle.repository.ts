@@ -1,5 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { LifecycleNodeCode, NodeApplicability } from "@logix/contracts";
+import type {
+  FlowInstanceState,
+  LifecycleNodeCode,
+  NodeApplicability,
+} from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { defaultApplicability } from "../domain/node-applicability";
 import { NODE_SEQUENCE } from "../domain/node-status";
@@ -34,8 +38,8 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
   }): Promise<
     Array<{
       containerId: string;
-      currentNodeCode: string;
-      flowState: string;
+      currentNodeCode: LifecycleNodeCode;
+      flowState: FlowInstanceState;
     }>
   > {
     if (query.containerIds.length === 0) return [];
@@ -58,8 +62,8 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     });
     return flows.map((flow) => ({
       containerId: flow.containerId,
-      currentNodeCode: flow.currentNodeCode,
-      flowState: flow.state,
+      currentNodeCode: flow.currentNodeCode as LifecycleNodeCode,
+      flowState: flow.state as FlowInstanceState,
     }));
   }
 
@@ -189,6 +193,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     const rows = await this.prisma.canonicalEvent.findMany({
       where: {
         containerId: query.containerId,
+        ...(query.atOrBefore ? { occurredAt: { lte: query.atOrBefore } } : {}),
         ...(query.after
           ? {
               OR: [

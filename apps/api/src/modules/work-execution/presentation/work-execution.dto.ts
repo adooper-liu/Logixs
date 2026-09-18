@@ -15,7 +15,17 @@ export class WorkOrderDto {
   @ApiProperty() state!: string;
   @ApiProperty() assignmentState!: string;
   @ApiProperty({ nullable: true }) assigneeId!: string | null;
+  @ApiProperty({ nullable: true }) dueAt!: string | null;
   @ApiProperty({ nullable: true }) completedAt!: string | null;
+}
+
+export class NodeTaskNextActionDto {
+  @ApiProperty() actionCode!: string;
+  @ApiProperty() workOrderId!: string;
+  @ApiProperty() workOrderDefinitionKey!: string;
+  @ApiProperty() assignmentState!: string;
+  @ApiProperty({ nullable: true }) assigneeId!: string | null;
+  @ApiProperty({ nullable: true }) dueAt!: string | null;
 }
 
 export class NodeTaskOutcomeDto {
@@ -42,6 +52,8 @@ export class NodeTaskDetailDto {
   @ApiProperty() completionEligibility!: string;
   @ApiProperty({ type: [String] }) conditionFactRefs!: string[];
   @ApiProperty({ type: [WorkOrderDto] }) workOrders!: WorkOrderDto[];
+  @ApiProperty({ type: NodeTaskNextActionDto, nullable: true })
+  nextAction!: NodeTaskNextActionDto | null;
   @ApiProperty({ type: NodeTaskOutcomeDto, nullable: true })
   outcome!: NodeTaskOutcomeDto | null;
 }

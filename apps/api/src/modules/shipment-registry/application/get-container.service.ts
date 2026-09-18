@@ -4,6 +4,7 @@ import {
   CONTAINER_REPOSITORY,
   type ContainerRepository,
 } from "../domain/container.repository";
+import type { GetContainerSummaryPort } from "../get-container-summary.port";
 
 export interface GetContainerInput {
   tenantId?: string;
@@ -11,7 +12,7 @@ export interface GetContainerInput {
 }
 
 @Injectable()
-export class GetContainerService {
+export class GetContainerService implements GetContainerSummaryPort {
   constructor(
     @Inject(CONTAINER_REPOSITORY)
     private readonly repository: ContainerRepository,
