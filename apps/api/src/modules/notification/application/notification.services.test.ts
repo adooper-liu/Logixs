@@ -15,8 +15,12 @@ describe("notification application services", () => {
       body: "失败",
       entityType: "outbox_message",
       entityId: "o1",
+      containerId: null,
+      taskId: null,
+      workOrderId: null,
       recipientRoleCodes: ["operations_dispatcher"],
       conversationHint: null,
+      occurredAt: new Date("2026-09-17T00:00:00.000Z"),
       createdAt: new Date("2026-09-17T00:00:00.000Z"),
     };
     const repo = {
@@ -35,6 +39,7 @@ describe("notification application services", () => {
         body: "失败",
         entityType: "outbox_message",
         entityId: "o1",
+        occurredAt: new Date("2026-09-17T00:00:00.000Z"),
         recipientRoleCodes: ["operations_dispatcher"],
       }),
     ).resolves.toEqual(created);
@@ -57,8 +62,12 @@ describe("notification application services", () => {
       body: "投递失败",
       entityType: "outbox_message",
       entityId: "o1",
+      containerId: null,
+      taskId: null,
+      workOrderId: null,
       recipientRoleCodes: ["operations_dispatcher"],
       conversationHint: "去看失败",
+      occurredAt: new Date(),
       createdAt: new Date(),
     };
     const session = {

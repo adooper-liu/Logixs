@@ -1,15 +1,19 @@
 <script setup lang="ts">
+import { ExternalLink } from "@lucide/vue";
 import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import {
   listNotifications,
   openAssistantSession,
   postAssistantMessage,
+  resolveNotificationTarget,
   type AssistantMessage,
   type OpsNotificationItem,
 } from "../api/notifications";
 import PageHeader from "../components/ui/PageHeader.vue";
 
 const items = ref<OpsNotificationItem[]>([]);
+const router = useRouter();
 const loading = ref(true);
 const error = ref("");
 const sessionId = ref("");
@@ -17,6 +21,7 @@ const messages = ref<AssistantMessage[]>([]);
 const draft = ref("");
 const askingId = ref("");
 const sending = ref(false);
+const openingId = ref("");
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -44,6 +49,22 @@ async function askAssistant(item: OpsNotificationItem): Promise<void> {
     error.value = cause instanceof Error ? cause.message : "打开助手失败";
   } finally {
     askingId.value = "";
+  }
+}
+
+async function openObject(item: OpsNotificationItem): Promise<void> {
+  openingId.value = item.id;
+  error.value = "";
+  try {
+    const target = await resolveNotificationTarget(item.id);
+    await router.push(target.targetPath);
+  } catch (cause) {
+    error.value =
+      cause instanceof Error && cause.message !== "RESOURCE_NOT_FOUND"
+        ? cause.message
+        : "关联对象不存在或不可访问";
+  } finally {
+    openingId.value = "";
   }
 }
 
@@ -85,13 +106,24 @@ onMounted(() => {
             {{ item.createdAt }}</small
           >
         </div>
-        <button
-          type="button"
-          :disabled="askingId === item.id"
-          @click="askAssistant(item)"
-        >
-          询问助手
-        </button>
+        <div class="actions">
+          <button
+            v-if="item.hasObjectTarget"
+            type="button"
+            :disabled="openingId === item.id"
+            @click="openObject(item)"
+          >
+            <ExternalLink :size="15" aria-hidden="true" />
+            打开对象
+          </button>
+          <button
+            type="button"
+            :disabled="askingId === item.id"
+            @click="askAssistant(item)"
+          >
+            询问助手
+          </button>
+        </div>
       </li>
       <li v-if="items.length === 0" class="empty">暂无问题通知</li>
     </ul>
@@ -139,6 +171,17 @@ onMounted(() => {
   grid-template-columns: 1fr auto;
   align-items: start;
 }
+.actions,
+.actions button {
+  display: flex;
+  align-items: center;
+}
+.actions {
+  gap: 0.5rem;
+}
+.actions button {
+  gap: 0.3rem;
+}
 .error {
   color: crimson;
 }
@@ -160,5 +203,14 @@ onMounted(() => {
 }
 .empty {
   opacity: 0.7;
+}
+@media (max-width: 720px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
 }
 </style>

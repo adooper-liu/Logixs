@@ -6,9 +6,21 @@ export interface OpsNotificationItem {
   body: string;
   entityType: string;
   entityId: string;
+  containerId: string | null;
+  taskId: string | null;
+  workOrderId: string | null;
+  hasObjectTarget: boolean;
   recipientRoleCodes: string[];
   conversationHint: string | null;
+  occurredAt: string;
   createdAt: string;
+}
+
+export interface NotificationTarget {
+  containerId: string;
+  taskId: string | null;
+  workOrderId: string | null;
+  targetPath: string;
 }
 
 export interface AssistantMessage {
@@ -48,6 +60,22 @@ export async function listNotifications(
   }
   const data = (await response.json()) as { items: OpsNotificationItem[] };
   return data.items;
+}
+
+export async function resolveNotificationTarget(
+  notificationId: string,
+): Promise<NotificationTarget> {
+  const response = await fetch(
+    `/api/notification-targets/${encodeURIComponent(notificationId)}`,
+    { headers: devHeaders() },
+  );
+  if (response.status === 404) throw new Error("RESOURCE_NOT_FOUND");
+  if (!response.ok) {
+    throw new Error(
+      `GET /api/notification-targets/${notificationId} failed: ${response.status}`,
+    );
+  }
+  return (await response.json()) as NotificationTarget;
 }
 
 export async function openAssistantSession(

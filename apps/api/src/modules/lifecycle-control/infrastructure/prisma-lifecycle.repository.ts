@@ -189,6 +189,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     const rows = await this.prisma.canonicalEvent.findMany({
       where: {
         containerId: query.containerId,
+        ...(query.atOrBefore ? { occurredAt: { lte: query.atOrBefore } } : {}),
         ...(query.after
           ? {
               OR: [

@@ -11,4 +11,5 @@ export const moduleManifest = defineModuleManifest({
     "lifecycle-control",
   ],
   permissions: ["task.read", "task.execute"],
+  publicPorts: ["CREATE_NODE_TASK", "LIST_OBJECT_TASK_ACTIVITY"],
 });

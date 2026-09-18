@@ -21,6 +21,11 @@ import type {
   WorkOrderRecord,
 } from "../domain/work-execution.repository";
 import type { NodeTaskOutcomeDraft } from "../domain/task-outcome";
+import type { WorkActivityOperation } from "../domain/object-task-activity";
+import {
+  WORK_CLAIM_ACTION,
+  WORK_COMPLETE_ACTION,
+} from "../domain/client-operation";
 
 @Injectable()
 export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
@@ -114,6 +119,48 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
       workOrders: task.workOrders.map(mapWorkOrder),
       outcome: task.outcome ? mapOutcome(task.outcome) : null,
     }));
+  }
+
+  async listCommittedWorkActivityOperations(input: {
+    tenantId: string;
+    workOrderIds: string[];
+    atOrBefore: Date;
+    take: number;
+  }): Promise<WorkActivityOperation[]> {
+    if (input.workOrderIds.length === 0) return [];
+    const rows = await this.prisma.clientOperation.findMany({
+      where: {
+        tenantId: input.tenantId,
+        targetId: { in: input.workOrderIds },
+        actionCode: { in: [WORK_CLAIM_ACTION, WORK_COMPLETE_ACTION] },
+        commitState: "committed",
+        committedAt: { not: null, lte: input.atOrBefore },
+      },
+      orderBy: [{ committedAt: "desc" }, { id: "desc" }],
+      take: input.take,
+      select: {
+        id: true,
+        actionCode: true,
+        targetId: true,
+        actorId: true,
+        committedAt: true,
+        createdAt: true,
+      },
+    });
+    return rows.flatMap((row) =>
+      row.committedAt
+        ? [
+            {
+              id: row.id,
+              actionCode: row.actionCode,
+              targetId: row.targetId,
+              actorId: row.actorId,
+              committedAt: row.committedAt,
+              recordedAt: row.createdAt,
+            },
+          ]
+        : [],
+    );
   }
 
   async upsertTaskWithRequiredWorkOrder(
@@ -317,7 +364,9 @@ function mapWorkOrder(workOrder: {
   state: string;
   assignmentState: string;
   assigneeId?: string | null;
+  dueAt: Date | null;
   completedAt: Date | null;
+  createdAt: Date;
 }): WorkOrderRecord {
   return {
     id: workOrder.id,
@@ -326,7 +375,9 @@ function mapWorkOrder(workOrder: {
     state: workOrder.state as WorkOrderState,
     assignmentState: workOrder.assignmentState as AssignmentState,
     assigneeId: workOrder.assigneeId ?? null,
+    dueAt: workOrder.dueAt,
     completedAt: workOrder.completedAt,
+    createdAt: workOrder.createdAt,
   };
 }
 

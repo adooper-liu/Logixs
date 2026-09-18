@@ -32,6 +32,8 @@ import { ListLifecycleEventsService } from "./application/list-lifecycle-events.
 import { ListLifecycleNodesService } from "./application/list-lifecycle-nodes.service";
 import { ListContainerCurrentNodesService } from "./application/list-container-current-nodes.service";
 import { ListContainerLifecycleNodesService } from "./application/list-container-lifecycle-nodes.service";
+import { ListObjectActivitiesService } from "./application/list-object-activities.service";
+import { ResolveNotificationTargetService } from "./application/resolve-notification-target.service";
 import { RequestCompensationService } from "./application/request-compensation.service";
 import { ResolveCompensationService } from "./application/resolve-compensation.service";
 import {
@@ -66,6 +68,7 @@ import { ClientOperationController } from "./presentation/client-operation.contr
 import { InboxController } from "./presentation/inbox.controller";
 import { InboxDeadLetterController } from "./presentation/inbox-dead-letter.controller";
 import { OutboxSystemController } from "./presentation/outbox-system.controller";
+import { ObjectActivitiesController } from "./presentation/object-activities.controller";
 
 @Module({
   imports: [
@@ -86,6 +89,7 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
     InboxController,
     InboxDeadLetterController,
     ClientOperationController,
+    ObjectActivitiesController,
   ],
   providers: [
     ApplyLifecycleEventService,
@@ -100,6 +104,8 @@ import { OutboxSystemController } from "./presentation/outbox-system.controller"
     ListLifecycleNodesService,
     ListContainerCurrentNodesService,
     ListContainerLifecycleNodesService,
+    ListObjectActivitiesService,
+    ResolveNotificationTargetService,
     RequestCompensationService,
     ResolveCompensationService,
     PublishOutboxBatchService,
@@ -149,6 +155,7 @@ export class LifecycleControlModule implements NestModule {
         OutboxController,
         InboxDeadLetterController,
         ClientOperationController,
+        ObjectActivitiesController,
       );
     consumer
       .apply(DevServiceIdentityMiddleware)

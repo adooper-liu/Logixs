@@ -8,6 +8,7 @@ import { listLifecycleNodes } from "../api/lifecycleNodes";
 import { listNodeTasks } from "../api/nodeTasks";
 import EventEvidenceTimeline from "../components/container/EventEvidenceTimeline.vue";
 import LiveNodeRail from "../components/container/LiveNodeRail.vue";
+import ObjectActivityPanel from "../components/container/ObjectActivityPanel.vue";
 import ObjectContextBar from "../components/container/ObjectContextBar.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { attachLatestSync } from "../data/clientOperationQueueContract";
@@ -112,6 +113,7 @@ watch(
       <PageHeader title="一柜一档" />
       <ObjectContextBar :record="record" />
       <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
+      <ObjectActivityPanel :container-id="record.containerRecordId" />
       <EventEvidenceTimeline v-if="events.length" :events="events" />
       <section class="next-step" aria-label="下一步">
         <p v-if="!nodes.length">{{ uiCopy.chrome.emptyFlow }}</p>

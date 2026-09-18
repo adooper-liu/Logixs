@@ -138,6 +138,7 @@ export class PublishOutboxBatchService {
               body: `事件 ${marked.eventId}（${row.eventType}）投递失败并进入死信。错误码：${decision.lastErrorCode ?? "unknown"}。`,
               entityType: "outbox_message",
               entityId: row.id,
+              occurredAt: new Date(),
               recipientRoleCodes: [
                 "operations_dispatcher",
                 "review_supervisor",

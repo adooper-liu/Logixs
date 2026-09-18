@@ -36,8 +36,13 @@ export class NotificationsController {
         body: item.body,
         entityType: item.entityType,
         entityId: item.entityId,
+        containerId: item.containerId,
+        taskId: item.taskId,
+        workOrderId: item.workOrderId,
+        hasObjectTarget: item.containerId !== null,
         recipientRoleCodes: item.recipientRoleCodes,
         conversationHint: item.conversationHint,
+        occurredAt: item.occurredAt.toISOString(),
         createdAt: item.createdAt.toISOString(),
       })),
     };

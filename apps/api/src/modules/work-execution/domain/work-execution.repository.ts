@@ -9,6 +9,7 @@ import type {
 } from "@logix/contracts";
 import type { ClientOperationRecord } from "./client-operation";
 import type { NodeTaskOutcomeDraft } from "./task-outcome";
+import type { WorkActivityOperation } from "./object-task-activity";
 
 export const WORK_EXECUTION_REPOSITORY = Symbol("WorkExecutionRepository");
 
@@ -34,7 +35,9 @@ export interface WorkOrderRecord {
   state: WorkOrderState;
   assignmentState: AssignmentState;
   assigneeId: string | null;
+  dueAt: Date | null;
   completedAt: Date | null;
+  createdAt: Date;
 }
 
 export interface NodeTaskOutcomeRecord extends NodeTaskOutcomeDraft {
@@ -105,6 +108,12 @@ export interface WorkExecutionRepository {
   listTasksByTenant(
     input: ListTasksByTenantInput,
   ): Promise<NodeTaskWithWorkOrders[]>;
+  listCommittedWorkActivityOperations(input: {
+    tenantId: string;
+    workOrderIds: string[];
+    atOrBefore: Date;
+    take: number;
+  }): Promise<WorkActivityOperation[]>;
   upsertTaskWithRequiredWorkOrder(
     input: CreateTaskInput,
   ): Promise<NodeTaskWithWorkOrders>;

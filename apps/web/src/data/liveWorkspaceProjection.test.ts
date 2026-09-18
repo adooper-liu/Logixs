@@ -37,10 +37,19 @@ const detail = {
       state: "ready",
       assignmentState: "unassigned",
       assigneeId: null,
+      dueAt: null,
       completedAt: null,
     },
   ],
   outcome: null,
+  nextAction: {
+    actionCode: "work_execution.claim_work_order",
+    workOrderId: "w1",
+    workOrderDefinitionKey: "wo-customs",
+    assignmentState: "unassigned",
+    assigneeId: null,
+    dueAt: null,
+  },
 };
 
 describe("liveWorkspaceProjection", () => {
@@ -84,6 +93,7 @@ describe("liveWorkspaceProjection", () => {
       id: "t-waiting",
       nodeCode: "empty_return",
       readinessState: "waiting_conditions" as const,
+      nextAction: null,
       workOrders: [{ ...detail.workOrders[0]!, state: "draft" }],
     };
     const rows = attachOpenTasks(
@@ -170,6 +180,12 @@ describe("liveWorkspaceProjection", () => {
     const task = toLiveTask(
       {
         ...detail,
+        nextAction: {
+          ...detail.nextAction,
+          actionCode: "work_execution.complete_work_order",
+          assignmentState: "assigned",
+          assigneeId: "dev-operator",
+        },
         workOrders: [
           {
             ...detail.workOrders[0]!,
@@ -203,6 +219,12 @@ describe("liveWorkspaceProjection", () => {
       {
         ...detail,
         nodeCode: "container_stuffing",
+        nextAction: {
+          ...detail.nextAction,
+          actionCode: "work_execution.complete_work_order",
+          assignmentState: "assigned",
+          assigneeId: "dev-operator",
+        },
         workOrders: [
           {
             ...detail.workOrders[0]!,

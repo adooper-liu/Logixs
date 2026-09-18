@@ -7,3 +7,9 @@ export {
   type CreateNodeTaskPort,
   type TaskConditionFact,
 } from "./create-node-task.port";
+export {
+  LIST_OBJECT_TASK_ACTIVITY,
+  type ListObjectTaskActivityPort,
+  type ObjectTaskActivityPageSource,
+  type ObjectTaskTarget,
+} from "./list-object-task-activity.port";

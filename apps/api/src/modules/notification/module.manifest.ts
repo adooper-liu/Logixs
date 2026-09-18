@@ -6,6 +6,6 @@ export const moduleManifest = defineModuleManifest({
   version: "1.0.0",
   depends: ["identity", "ai-governance"],
   permissions: ["notification.read"],
-  publicPorts: ["POST_NOTIFICATION"],
+  publicPorts: ["POST_NOTIFICATION", "LIST_OBJECT_NOTIFICATIONS"],
   webNavContribution: true,
 });

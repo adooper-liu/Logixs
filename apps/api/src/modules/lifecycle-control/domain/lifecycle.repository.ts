@@ -27,6 +27,7 @@ export interface CanonicalEventListItem {
 
 export interface CanonicalEventListQuery {
   containerId: string;
+  atOrBefore?: Date;
   after?: { occurredAt: Date; id: string };
   take: number;
 }

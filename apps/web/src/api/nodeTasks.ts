@@ -9,7 +9,17 @@ export interface WorkOrderSummary {
   state: string;
   assignmentState: string;
   assigneeId: string | null;
+  dueAt: string | null;
   completedAt: string | null;
+}
+
+export interface NodeTaskNextAction {
+  actionCode: string;
+  workOrderId: string;
+  workOrderDefinitionKey: string;
+  assignmentState: string;
+  assigneeId: string | null;
+  dueAt: string | null;
 }
 
 export interface NodeTaskOutcome {
@@ -37,6 +47,7 @@ export interface NodeTaskDetail {
   conditionFactRefs: string[];
   workOrders: WorkOrderSummary[];
   outcome: NodeTaskOutcome | null;
+  nextAction: NodeTaskNextAction | null;
 }
 
 export interface NodeTaskPage {

@@ -66,6 +66,11 @@ async function mountPage(id: string) {
           template:
             '<nav aria-label="货柜节点">{{ nodes[0]?.name }} {{ nodes[0]?.stateLabel }}</nav>',
         },
+        ObjectActivityPanel: {
+          props: ["containerId"],
+          template:
+            '<section aria-label="对象动态">对象动态 {{ containerId }}</section>',
+        },
       },
     },
   });
@@ -124,6 +129,7 @@ describe("MicroWorkbench", () => {
     });
     expect(listClientOperations).toHaveBeenCalledWith({ pageSize: 200 });
     expect(wrapper.text()).toContain("MSKU1");
+    expect(wrapper.text()).toContain("对象动态 c1");
     expect(wrapper.text()).not.toContain("无投影");
     expect(wrapper.text()).toContain("本柜尚未开始流程。");
     expect(wrapper.text()).not.toContain("待发生");
