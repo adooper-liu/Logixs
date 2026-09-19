@@ -4,3 +4,8 @@ export {
   ASSERT_EVIDENCE_REFS,
   type AssertEvidenceRefsPort,
 } from "./assert-evidence-refs.port";
+export {
+  READ_EVIDENCE_AUTHORITY_CONTEXT,
+  type EvidenceAuthorityContext,
+  type ReadEvidenceAuthorityContextPort,
+} from "./read-evidence-authority-context.port";

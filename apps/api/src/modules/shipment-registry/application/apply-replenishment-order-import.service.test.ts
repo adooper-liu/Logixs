@@ -49,9 +49,12 @@ describe("ApplyReplenishmentOrderImportService", () => {
             occurredAtUtc: new Date("2026-04-23T07:19:30Z"),
             sourceUtcOffset: "+02:00",
             sourceSystem: "legacy-lms",
+            authoritySystem: "legacy-lms-derivation",
             sourceStatus: null,
             evidenceRef: null,
             derivationRuleVersion: "legacy-v1",
+            nodeCode: null,
+            mappingVersion: "1.3.0",
           },
         ],
       }),
@@ -75,13 +78,42 @@ describe("ApplyReplenishmentOrderImportService", () => {
           occurredAtUtc: new Date("2026-04-09T20:58:00Z"),
           sourceUtcOffset: "+02:00",
           sourceSystem: "legacy-lms",
+          authoritySystem: "customs-authority",
           sourceStatus: "已完成",
           evidenceRef: "11111111-1111-4111-8111-111111111111",
           derivationRuleVersion: null,
+          nodeCode: "customs_clearance",
+          mappingVersion: "1.3.0",
         },
       ],
     });
 
     expect(writer.apply).toHaveBeenCalledTimes(1);
+  });
+
+  it("写端口边界拒绝缺权威系统或错误节点映射", async () => {
+    const { service, writer } = await buildService();
+    const actual = {
+      sourceRowId: "row-1",
+      factCode: "customs_clearance_completed" as const,
+      timeKind: "actual" as const,
+      captureSource: "controlled_import" as const,
+      eventCode: "container_customs_completed",
+      rawValue: "2026-04-09 22:58:00",
+      occurredAtUtc: new Date("2026-04-09T20:58:00Z"),
+      sourceUtcOffset: "+02:00",
+      sourceSystem: "legacy-lms",
+      authoritySystem: "",
+      sourceStatus: "已完成",
+      evidenceRef: "11111111-1111-4111-8111-111111111111",
+      derivationRuleVersion: null,
+      nodeCode: "destination_arrival",
+      mappingVersion: "1.3.0",
+    };
+
+    expect(() => service.execute({ ...command, timeFacts: [actual] })).toThrow(
+      "INVALID_SHIPMENT_TIME_FACT",
+    );
+    expect(writer.apply).not.toHaveBeenCalled();
   });
 });

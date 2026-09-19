@@ -6,9 +6,161 @@
     { "$ref": "#/$defs/ContainerTimelineItem" },
     { "$ref": "#/$defs/ContainerTimeProjection" },
     { "$ref": "#/$defs/NodeEventApplication" },
-    { "$ref": "#/$defs/TimelineReplayRequest" }
+    { "$ref": "#/$defs/TimelineReplayRequest" },
+    { "$ref": "#/$defs/LifecycleDateFactCommand" },
+    { "$ref": "#/$defs/LifecycleDateFactInboxPayload" },
+    { "$ref": "#/$defs/LifecycleDateFactResult" }
   ],
   "$defs": {
+    "LifecycleDateFactCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "containerId",
+        "nodeCode",
+        "eventCode",
+        "timeKind",
+        "occurredAt",
+        "rawValue",
+        "sourceUtcOffset",
+        "ingestionChannel",
+        "captureSource",
+        "sourceSystem",
+        "authoritySystem",
+        "verificationState",
+        "confidenceState",
+        "validity",
+        "evidenceRefs",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },
+        "timeKind": { "$ref": "common.schema.json#/$defs/TimeKind" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "rawValue": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "sourceUtcOffset": {
+          "type": "string",
+          "pattern": "^(?:[+-](?:0[0-9]|1[0-3]):[0-5][0-9]|[+-]14:00)$"
+        },
+        "ingestionChannel": {
+          "enum": ["api", "webhook", "file_import", "manual_ui"]
+        },
+        "captureSource": { "$ref": "common.schema.json#/$defs/CaptureSource" },
+        "sourceSystem": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "authoritySystem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "provider": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "interfaceCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "sourceEventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "mappingVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "verificationState": {
+          "$ref": "common.schema.json#/$defs/VerificationState"
+        },
+        "confidenceState": {
+          "$ref": "common.schema.json#/$defs/ConfidenceState"
+        },
+        "validity": { "$ref": "common.schema.json#/$defs/EvidenceValidity" },
+        "authorityPolicyRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "上游可携带声明引用用于审计，但不得授予权威；运行时只保存服务端唯一策略裁决返回的 policyId:version。"
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "supersedesFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "timeKind": { "const": "actual" } },
+            "required": ["timeKind"]
+          },
+          "then": { "properties": { "evidenceRefs": { "minItems": 1 } } }
+        },
+        {
+          "if": {
+            "properties": { "ingestionChannel": { "const": "manual_ui" } },
+            "required": ["ingestionChannel"]
+          },
+          "then": {
+            "required": ["actorId", "reasonCode", "expectedVersion"]
+          }
+        }
+      ]
+    },
+    "LifecycleDateFactInboxPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "command"],
+      "properties": {
+        "kind": { "const": "lifecycle_date_fact.record_requested.v1" },
+        "command": { "$ref": "#/$defs/LifecycleDateFactCommand" }
+      }
+    },
+    "LifecycleDateFactResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "factId",
+        "recordState",
+        "applicationState",
+        "projectionVersion"
+      ],
+      "properties": {
+        "factId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "recordState": { "enum": ["recorded", "duplicate"] },
+        "applicationState": {
+          "enum": [
+            "not_applicable",
+            "review_required",
+            "pending_application",
+            "applied",
+            "rejected"
+          ]
+        },
+        "reasonCode": { "type": ["string", "null"], "maxLength": 100 },
+        "canonicalEventId": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "projectionVersion": { "type": "integer", "minimum": 1 }
+      }
+    },
     "ContainerTimelineItem": {
       "type": "object",
       "additionalProperties": false,

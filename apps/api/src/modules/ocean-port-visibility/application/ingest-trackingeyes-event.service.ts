@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
+  RESOLVE_CONTAINER_BY_NUMBER,
+  type ResolveContainerByNumberPort,
+} from "../../shipment-registry";
+import {
   normalizeTrackingEyesContainerStatus,
   TRACKINGEYES_OCEAN_MAPPING_VERSION,
   TRACKINGEYES_PROVIDER,
@@ -13,6 +17,7 @@ import {
   type ProviderEventIngestionRepository,
 } from "../domain/provider-event-ingestion.repository";
 import { decideTrackingEyesSourceAuthority } from "../domain/trackingeyes-source-authority";
+import type { TrackingEyesObjectResolution } from "../domain/trackingeyes-source-authority";
 
 export const TRACKINGEYES_CONTAINER_STATUS_CONSUMER =
   "ocean-port-visibility.trackingeyes.container-status.v1" as const;
@@ -49,6 +54,8 @@ export interface IngestTrackingEyesEventResult {
   confidenceState: ProviderEventIngestionRecord["confidenceState"];
   reasonCodes: string[];
   lifecycleApplication: "not_applied";
+  objectResolutionState: ProviderEventIngestionRecord["objectResolutionState"];
+  containerRecordId: string | null;
 }
 
 @Injectable()
@@ -56,6 +63,8 @@ export class IngestTrackingEyesEventService {
   constructor(
     @Inject(PROVIDER_EVENT_INGESTION_REPOSITORY)
     private readonly repository: ProviderEventIngestionRepository,
+    @Inject(RESOLVE_CONTAINER_BY_NUMBER)
+    private readonly resolveContainer: ResolveContainerByNumberPort,
   ) {}
 
   async execute(
@@ -77,7 +86,15 @@ export class IngestTrackingEyesEventService {
       ...input.payload,
       payloadHash,
     });
-    const authority = decideTrackingEyesSourceAuthority(normalization);
+    const objectResolution = await this.resolveBusinessObject(
+      tenantId,
+      input.payload.containerNumber,
+      normalization.kind,
+    );
+    const authority = decideTrackingEyesSourceAuthority(
+      normalization,
+      objectResolution,
+    );
     const now = new Date();
     const record = buildRecord({
       input,
@@ -86,6 +103,7 @@ export class IngestTrackingEyesEventService {
       rawPayload,
       payloadHash,
       normalization,
+      objectResolution,
       authority,
       now,
     });
@@ -105,6 +123,17 @@ export class IngestTrackingEyesEventService {
     }
 
     return toResult(record, "processed", true);
+  }
+
+  private async resolveBusinessObject(
+    tenantId: string,
+    containerNumber: string,
+    normalizationKind: TrackingEyesNormalizationResult["kind"],
+  ): Promise<TrackingEyesObjectResolution> {
+    if (normalizationKind === "rejected") {
+      return { state: "not_attempted", containerId: null };
+    }
+    return this.resolveContainer.execute({ tenantId, containerNumber });
   }
 }
 
@@ -167,6 +196,7 @@ function buildRecord(input: {
   rawPayload: Record<string, unknown>;
   payloadHash: string;
   normalization: TrackingEyesNormalizationResult;
+  objectResolution: TrackingEyesObjectResolution;
   authority: ReturnType<typeof decideTrackingEyesSourceAuthority>;
   now: Date;
 }): ProviderEventIngestionRecord {
@@ -185,6 +215,11 @@ function buildRecord(input: {
     payloadHash: input.payloadHash,
     payloadHashVersion: TRACKINGEYES_PAYLOAD_HASH_VERSION,
     containerNumberRaw: input.input.payload.containerNumber,
+    containerRecordId: input.objectResolution.containerId,
+    objectResolutionState: input.objectResolution.state,
+    objectResolutionReasonCode: objectResolutionReasonCode(
+      input.objectResolution.state,
+    ),
     rawCode: input.input.payload.rawCode,
     eventTimeRaw: input.input.payload.eventTime,
     mappingVersion: TRACKINGEYES_OCEAN_MAPPING_VERSION,
@@ -277,5 +312,15 @@ function toResult(
     confidenceState: record.confidenceState,
     reasonCodes: record.reasonCodes,
     lifecycleApplication: record.lifecycleApplication,
+    objectResolutionState: record.objectResolutionState,
+    containerRecordId: record.containerRecordId,
   };
+}
+
+function objectResolutionReasonCode(
+  state: ProviderEventIngestionRecord["objectResolutionState"],
+): string | null {
+  if (state === "not_found") return "business_object_not_found";
+  if (state === "ambiguous") return "business_object_ambiguous";
+  return null;
 }

@@ -3,7 +3,12 @@ import {
   assertInboxPayloadHash,
   hashInboxApplyPayload,
   parseInboxApplyPayload,
+  parseInboxMessagePayload,
 } from "./inbox-apply-payload";
+import {
+  LIFECYCLE_DATE_FACT_INBOX_KIND,
+  hashLifecycleDateFactInboxPayload,
+} from "@logix/contracts/lifecycle-date-fact-inbox";
 
 const PAYLOAD = {
   containerId: "c1",
@@ -29,5 +34,36 @@ describe("parseInboxApplyPayload / hash", () => {
     expect(() => assertInboxPayloadHash(parsed, "b".repeat(64))).toThrow(
       "payloadHash 与载荷不一致",
     );
+  });
+
+  it("解析并校验统一日期事实 Inbox 载荷", () => {
+    const payload = {
+      kind: LIFECYCLE_DATE_FACT_INBOX_KIND,
+      command: {
+        tenantId: "22222222-2222-4222-8222-222222222222",
+        containerId: "33333333-3333-4333-8333-333333333333",
+        nodeCode: "customs_clearance" as const,
+        eventCode: "container_customs_completed" as const,
+        timeKind: "actual" as const,
+        occurredAt: "2026-04-09T20:58:00.000Z",
+        rawValue: "2026-04-09 22:58:00",
+        sourceUtcOffset: "+02:00",
+        ingestionChannel: "file_import" as const,
+        captureSource: "controlled_import" as const,
+        sourceSystem: "legacy-lms",
+        authoritySystem: "customs-authority",
+        verificationState: "pending" as const,
+        confidenceState: "unknown" as const,
+        validity: "effective" as const,
+        evidenceRefs: ["11111111-1111-4111-8111-111111111111"],
+        idempotencyKey: "import-date-fact:1",
+        traceId: "import:1",
+      },
+    };
+
+    const parsed = parseInboxMessagePayload(payload);
+    expect(parsed).toEqual(payload);
+    const hash = hashLifecycleDateFactInboxPayload(payload);
+    expect(assertInboxPayloadHash(parsed, hash)).toBe(hash);
   });
 });

@@ -7,7 +7,7 @@
     "role": "milestone",
     "ownerDomain": "booking-origin",
     "defaultNodeCode": "cargo_ready",
-    "allowedTimeKinds": ["actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["cargo_ready"],
     "provenance": ["O", "R"]
   },
@@ -31,7 +31,7 @@
     "role": "milestone",
     "ownerDomain": "booking-origin",
     "defaultNodeCode": "container_stuffing",
-    "allowedTimeKinds": ["actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["container_stuffing"],
     "provenance": ["O", "R"]
   },
@@ -43,7 +43,7 @@
     "role": "evidence",
     "ownerDomain": "booking-origin",
     "defaultNodeCode": "shipment_dispatch",
-    "allowedTimeKinds": ["planned", "actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["shipment_dispatch"],
     "provenance": ["S"]
   },
@@ -223,7 +223,7 @@
     "role": "evidence",
     "ownerDomain": "customs-compliance",
     "defaultNodeCode": "customs_clearance",
-    "allowedTimeKinds": ["actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["customs_clearance"],
     "provenance": ["O", "R"]
   },
@@ -235,7 +235,7 @@
     "role": "evidence",
     "ownerDomain": "inland-fulfillment",
     "defaultNodeCode": "rail_transfer",
-    "allowedTimeKinds": ["actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["rail_transfer"],
     "provenance": ["O", "R"]
   },
@@ -247,7 +247,7 @@
     "role": "evidence",
     "ownerDomain": "inland-fulfillment",
     "defaultNodeCode": "container_pickup",
-    "allowedTimeKinds": ["planned", "actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["container_pickup"],
     "provenance": ["S", "R"]
   },
@@ -283,7 +283,7 @@
     "role": "evidence",
     "ownerDomain": "inland-fulfillment",
     "defaultNodeCode": "container_unloading",
-    "allowedTimeKinds": ["actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["container_unloading"],
     "provenance": ["S", "R"]
   },
@@ -295,7 +295,7 @@
     "role": "milestone",
     "ownerDomain": "inland-fulfillment",
     "defaultNodeCode": "container_unstuffing",
-    "allowedTimeKinds": ["actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["container_unstuffing"],
     "provenance": ["R"]
   },
@@ -307,7 +307,7 @@
     "role": "evidence",
     "ownerDomain": "inland-fulfillment",
     "defaultNodeCode": "empty_return",
-    "allowedTimeKinds": ["planned", "actual"],
+    "allowedTimeKinds": ["planned", "estimated", "actual"],
     "completionEligibleNodeCodes": ["empty_return"],
     "provenance": ["S", "R"]
   },

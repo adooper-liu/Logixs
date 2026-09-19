@@ -1,23 +1,18 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
+import { Controller, Get, Param, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
-import type { CanonicalEventCode } from "@logix/contracts";
-import { ApplyLifecycleEventService } from "../application/apply-lifecycle-event.service";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ListLifecycleEventsService } from "../application/list-lifecycle-events.service";
-import {
-  ApplyLifecycleEventRequestDto,
-  ApplyLifecycleEventResponseDto,
-  LifecycleEventPageDto,
-} from "./lifecycle.dto";
+import { LifecycleEventPageDto } from "./lifecycle.dto";
 
 @ApiTags("containers")
 @Controller("containers/:containerId/lifecycle-events")
 export class LifecycleController {
   constructor(
-    private readonly applyLifecycleEvent: ApplyLifecycleEventService,
     private readonly listLifecycleEvents: ListLifecycleEventsService,
   ) {}
 
   @Get()
+  @RequireCapabilities("lifecycle.read")
   @ApiOkResponse({ type: LifecycleEventPageDto })
   async list(
     @Param("containerId") containerId: string,
@@ -44,22 +39,5 @@ export class LifecycleController {
       asOf: page.asOf.toISOString(),
       projectionVersion: page.projectionVersion,
     };
-  }
-
-  @Post()
-  @ApiOkResponse({ type: ApplyLifecycleEventResponseDto })
-  async applyEvent(
-    @Param("containerId") containerId: string,
-    @Body() body: ApplyLifecycleEventRequestDto,
-    @Req() request: { identity: { tenantId: string } },
-  ): Promise<ApplyLifecycleEventResponseDto> {
-    return this.applyLifecycleEvent.execute({
-      containerId,
-      tenantId: request.identity.tenantId,
-      eventCode: body.eventCode as CanonicalEventCode,
-      occurredAt: new Date(body.occurredAt),
-      idempotencyKey: body.idempotencyKey,
-      evidenceRefs: body.evidenceRefs,
-    });
   }
 }

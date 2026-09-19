@@ -67,6 +67,9 @@ export class PrismaProviderEventIngestionRepository implements ProviderEventInge
           payloadHash: record.payloadHash,
           payloadHashVersion: record.payloadHashVersion,
           containerNumberRaw: record.containerNumberRaw,
+          containerRecordId: record.containerRecordId,
+          objectResolutionState: record.objectResolutionState,
+          objectResolutionReasonCode: record.objectResolutionReasonCode,
           rawCode: record.rawCode,
           eventTimeRaw: record.eventTimeRaw,
           mappingVersion: record.mappingVersion,
@@ -112,6 +115,9 @@ function toRecord(
     payloadHash: string;
     payloadHashVersion: string;
     containerNumberRaw: string;
+    containerRecordId: string | null;
+    objectResolutionState: string;
+    objectResolutionReasonCode: string | null;
     rawCode: string;
     eventTimeRaw: string;
     mappingVersion: string;
@@ -168,6 +174,13 @@ function toRecord(
   ) {
     throw new Error("INGESTION_TIME_KIND_INVARIANT_VIOLATION");
   }
+  if (
+    !["resolved", "not_found", "ambiguous", "not_attempted"].includes(
+      ingestion.objectResolutionState,
+    )
+  ) {
+    throw new Error("INGESTION_OBJECT_RESOLUTION_INVARIANT_VIOLATION");
+  }
   if (ingestion.lifecycleApplication !== "not_applied") {
     throw new Error("INGESTION_LIFECYCLE_INVARIANT_VIOLATION");
   }
@@ -199,6 +212,10 @@ function toRecord(
     payloadHash: ingestion.payloadHash,
     payloadHashVersion: ingestion.payloadHashVersion,
     containerNumberRaw: ingestion.containerNumberRaw,
+    containerRecordId: ingestion.containerRecordId,
+    objectResolutionState:
+      ingestion.objectResolutionState as ProviderEventIngestionRecord["objectResolutionState"],
+    objectResolutionReasonCode: ingestion.objectResolutionReasonCode,
     rawCode: ingestion.rawCode,
     eventTimeRaw: ingestion.eventTimeRaw,
     mappingVersion: ingestion.mappingVersion,

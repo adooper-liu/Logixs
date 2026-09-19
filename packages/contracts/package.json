@@ -8,6 +8,9 @@
     "*": {
       "import-fields.json": [
         "import-fields-json.d.ts"
+      ],
+      "canonical-events.json": [
+        "canonical-events-json.d.ts"
       ]
     }
   },
@@ -18,6 +21,14 @@
     "./import-fields.json": {
       "types": "./import-fields-json.d.ts",
       "default": "./catalogs/v1/import-fields.json"
+    },
+    "./canonical-events.json": {
+      "types": "./canonical-events-json.d.ts",
+      "default": "./catalogs/v1/canonical-events.json"
+    },
+    "./lifecycle-date-fact-inbox": {
+      "types": "./lifecycle-date-fact-inbox.d.ts",
+      "default": "./lifecycle-date-fact-inbox.js"
     }
   },
   "scripts": {

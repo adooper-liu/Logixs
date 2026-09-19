@@ -21,6 +21,7 @@
     "domain",
     "domainFactId",
     "domainFactType",
+    "authorityPolicyRef",
     "correlationId",
     "idempotencyKey",
     "source",
@@ -43,6 +44,11 @@
     "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
     "domainFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
     "domainFactType": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "authorityPolicyRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
     "domain": { "type": "string", "minLength": 1, "maxLength": 64 },
     "role": { "$ref": "common.schema.json#/$defs/EventRole" },
     "timeKind": { "$ref": "common.schema.json#/$defs/TimeKind" },

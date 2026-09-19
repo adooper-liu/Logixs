@@ -15,6 +15,7 @@ export type ImportFieldCode =
   | "emptyConfirmedActualAt"
   | "emptyEstimatedAt"
   | "timeSourceSystem"
+  | "timeAuthoritySystem"
   | "timeSourceUtcOffset"
   | "timeEvidenceRef"
   | "timeDerivationRuleVersion";

@@ -4,6 +4,6 @@ export const moduleManifest = defineModuleManifest({
   id: "ocean-port-visibility",
   kind: "incremental",
   version: "1.0.0",
-  depends: [],
+  depends: ["shipment-registry"],
   permissions: [],
 });

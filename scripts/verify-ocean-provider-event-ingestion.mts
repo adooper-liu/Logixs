@@ -4,6 +4,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/index.js";
 import { PrismaProviderEventIngestionRepository } from "../apps/api/src/modules/ocean-port-visibility/infrastructure/prisma-provider-event-ingestion.repository.js";
 import type { ProviderEventIngestionRecord } from "../apps/api/src/modules/ocean-port-visibility/domain/provider-event-ingestion.repository.js";
+import { ResolveContainerByNumberService } from "../apps/api/src/modules/shipment-registry/application/resolve-container-by-number.service.js";
+import { PrismaContainerRepository } from "../apps/api/src/modules/shipment-registry/infrastructure/prisma-container.repository.js";
 
 const connectionString =
   process.env.DATABASE_URL ??
@@ -35,6 +37,9 @@ async function verifyExistingDatabase(url: string): Promise<void> {
     payloadHash: "a".repeat(64),
     payloadHashVersion: "trackingeyes-container-status-canonical-v1",
     containerNumberRaw: "TEST0000001",
+    containerRecordId: null,
+    objectResolutionState: "not_attempted",
+    objectResolutionReasonCode: null,
     rawCode: "DLPT",
     eventTimeRaw: now.toISOString(),
     mappingVersion: "trackingeyes-ocean-reference-2026-09-18",
@@ -59,6 +64,7 @@ async function verifyExistingDatabase(url: string): Promise<void> {
     const repository = new PrismaProviderEventIngestionRepository(
       prisma as never,
     );
+    await verifyContainerResolution(prisma, id);
     await repository.insertProcessed(record);
     const stored = await repository.findByInboxMessage({
       consumerName: record.consumerName,
@@ -69,7 +75,8 @@ async function verifyExistingDatabase(url: string): Promise<void> {
       stored.id !== id ||
       stored.inboxRecordId !== inboxRecordId ||
       stored.lifecycleApplication !== "not_applied" ||
-      stored.authorityDecision !== "review_required"
+      stored.authorityDecision !== "review_required" ||
+      stored.objectResolutionState !== "not_attempted"
     ) {
       throw new Error("Ocean provider ingestion verification failed");
     }
@@ -80,6 +87,52 @@ async function verifyExistingDatabase(url: string): Promise<void> {
     await prisma.oceanProviderEventIngestion.deleteMany({ where: { id } });
     await prisma.inboxMessage.deleteMany({ where: { id: inboxRecordId } });
     await prisma.$disconnect();
+  }
+}
+
+async function verifyContainerResolution(
+  prisma: PrismaClient,
+  verificationId: string,
+): Promise<void> {
+  const tenantId = `verification-${verificationId}`;
+  const containerNumber = `TeSt${verificationId.slice(0, 7)}`;
+  const firstId = randomUUID();
+  const secondId = randomUUID();
+  const repository = new PrismaContainerRepository(prisma as never);
+  const service = new ResolveContainerByNumberService(repository);
+  try {
+    await prisma.containerRecord.create({
+      data: {
+        id: firstId,
+        tenantId,
+        orderNumber: `ORDER-${firstId}`,
+        containerNumber,
+        currentStatus: "not_shipped",
+      },
+    });
+    const resolved = await service.execute({
+      tenantId,
+      containerNumber: containerNumber.toUpperCase(),
+    });
+    if (resolved.state !== "resolved" || resolved.containerId !== firstId) {
+      throw new Error("Unique container object resolution failed");
+    }
+
+    await prisma.containerRecord.create({
+      data: {
+        id: secondId,
+        tenantId,
+        orderNumber: `ORDER-${secondId}`,
+        containerNumber: containerNumber.toLowerCase(),
+        currentStatus: "not_shipped",
+      },
+    });
+    const ambiguous = await service.execute({ tenantId, containerNumber });
+    if (ambiguous.state !== "ambiguous") {
+      throw new Error("Ambiguous container object resolution was not detected");
+    }
+  } finally {
+    await prisma.containerRecord.deleteMany({ where: { tenantId } });
   }
 }
 
@@ -118,12 +171,36 @@ async function verifyEmptyDatabaseMigration(url: string): Promise<void> {
 
     const target = createPrisma(targetUrl.toString());
     try {
-      const rows = await target.$queryRaw<Array<{ tableName: string | null }>>`
-        SELECT to_regclass('public.ocean_provider_event_ingestion')::text AS "tableName"
+      const rows = await target.$queryRaw<
+        Array<{
+          tableName: string | null;
+          objectResolutionColumn: string | null;
+          objectResolutionConstraint: string | null;
+        }>
+      >`
+        SELECT
+          to_regclass('public.ocean_provider_event_ingestion')::text AS "tableName",
+          (
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'ocean_provider_event_ingestion'
+              AND column_name = 'object_resolution_state'
+          ) AS "objectResolutionColumn",
+          (
+            SELECT conname
+            FROM pg_constraint
+            WHERE conname = 'ocean_provider_ingestion_object_resolution_check'
+          ) AS "objectResolutionConstraint"
       `;
-      if (rows[0]?.tableName !== "ocean_provider_event_ingestion") {
+      if (
+        rows[0]?.tableName !== "ocean_provider_event_ingestion" ||
+        rows[0]?.objectResolutionColumn !== "object_resolution_state" ||
+        rows[0]?.objectResolutionConstraint !==
+          "ocean_provider_ingestion_object_resolution_check"
+      ) {
         throw new Error(
-          "Empty database migration did not create ingestion table",
+          "Empty database migration did not create object resolution schema",
         );
       }
     } finally {

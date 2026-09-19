@@ -220,16 +220,21 @@ export class RunPrecheckService {
           mappings,
           "timeSourceSystem",
         );
+        const authoritySystem = firstNonEmpty(
+          orderRows,
+          mappings,
+          "timeAuthoritySystem",
+        );
         const sourceUtcOffset = firstNonEmpty(
           orderRows,
           mappings,
           "timeSourceUtcOffset",
         );
-        if (!sourceSystem || !sourceUtcOffset) {
+        if (!sourceSystem || !authoritySystem || !sourceUtcOffset) {
           blockers.push({
             ruleCode: "TIME_PROVENANCE",
             rowNo: orderRows[0]?.rowNo ?? null,
-            message: `备货单 ${orderNumber} 的${definition.label}缺来源系统或 UTC 偏移`,
+            message: `备货单 ${orderNumber} 的${definition.label}缺来源系统、权威系统或 UTC 偏移`,
           });
         }
         if (value && !normalizeSourceDateTime(value, sourceUtcOffset)) {

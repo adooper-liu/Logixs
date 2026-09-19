@@ -22,7 +22,7 @@
 - Integration Adapter 只保存和翻译供应商观察，不能让供应商模型侵入公共契约。
 - 海关是节点 #7 的专业切片；本契约不复制海关案卷、Hold 或回执结构。
 
-P6.1 签署只升格业务语义；后续 G6 已补齐事件信封条件、时间投影、节点应用和重放 Schema，但仍未新增 TypeScript、OpenAPI、数据库迁移或运行时代码。
+G6 已补齐事件信封条件、时间投影、节点应用和重放 Schema；当前运行时实施进度与尚未开放的时间种类由项目 P6 的统一日期事实 task brief 跟踪，不从本契约的目标语义反推已上线范围。
 
 ## 2. 单一权威与兼容性
 
@@ -30,9 +30,10 @@ P6.1 签署只升格业务语义；后续 G6 已补齐事件信封条件、时�
 | ------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
 | 14 节点及顺序 | [生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)       | 引用并规定接受/推进方式；候选对照文档不再作为枚举来源 |
 | 规范事件码    | [事件码目录](./EVENT_CODES.md)                              | 引用，不复制供应商码                                  |
+| 日期投影别名  | [节点日期投影别名目录 V1](./NODE_TIME_FIELDS.md)            | 规定统一事实语义，不复制字段映射                      |
 | 外部码映射    | [外部事件映射](./EXTERNAL_EVENT_MAPPING.md)及供应商 Adapter | 要求版本化映射与未知值隔离                            |
 | 海关事件载荷  | [海关公共契约 V1](./CUSTOMS_PUBLIC_CONTRACT_DESIGN_V1.md)   | 通过专业事实引用挂接                                  |
-| 数据库存储    | 后续时间线数据库设计/迁移                                   | 本文定义公共线语义，不把实体当 DTO                    |
+| 数据库存储    | `database/schema.prisma` 与追加迁移                         | 本文定义公共语义，不把数据库实体当 DTO                |
 
 这是新增公共契约。V1 实例化后，字段含义、枚举线值和事件版本不得静默改变；新增必填字段、收紧可空性、修改类型或重释既有事件必须发布 V2 并提供兼容期。进入 `D3` 只授权后续 Schema 实例化，不代表运行时、数据库或历史数据已经迁移。
 
@@ -79,39 +80,40 @@ EventRelationType = corrects | revokes | supersedes_estimate
 
 `CanonicalLifecycleEventV1<TData>`：
 
-| 字段                | 类型                       | 必填 | 规则                                            |
-| ------------------- | -------------------------- | ---- | ----------------------------------------------- |
-| `eventId`           | UUID                       | 是   | 全局唯一；同时作为 Outbox 事件 ID               |
-| `eventCode`         | registered event code      | 是   | 必须来自事件码目录                              |
-| `eventVersion`      | integer                    | 是   | V1 固定 `1`                                     |
-| `role`              | `LifecycleEventRole`       | 是   | 与事件目录登记一致                              |
-| `timeKind`          | `LifecycleTimeKind`        | 是   | 计划、预计、实际不可混用                        |
-| `occurredAt`        | date-time                  | 是   | 该计划/预计/实际时间，ISO 8601 且带时区         |
-| `recordedAt`        | date-time                  | 是   | Logix 首次持久化时间                            |
-| `receivedAt`        | date-time                  | 否   | 外部数据到达 Logix 的时间；外部采集必填         |
-| `providerUpdatedAt` | date-time                  | 否   | 供应商声明的更新时间                            |
-| `eventSequence`     | integer >= 1               | 是   | 同一货柜生命周期内的持久化顺序，不代表业务顺序  |
-| `tenantId`          | UUID                       | 是   | 租户边界；所有引用对象必须属于同一租户          |
-| `containerId`       | UUID                       | 是   | `shipment-registry` 稳定货柜 ID                 |
-| `flowInstanceId`    | UUID                       | 是   | 生命周期实例 ID                                 |
-| `nodeCode`          | registered node code       | 是   | 归属节点；子里程碑仍归属一个节点                |
-| `nodeInstanceId`    | UUID                       | 是   | 节点实例；重入时不得复用旧实例                  |
-| `nodeTaskId`        | UUID                       | 否   | 引发或对账到的节点任务                          |
-| `workOrderId`       | UUID                       | 否   | 引发或被事实完成的工单                          |
-| `domain`            | string 1..64               | 是   | 事实所有者模块                                  |
-| `domainFactId`      | UUID                       | 是   | 专业模块不可变规范事实 ID                       |
-| `domainFactType`    | string 1..64               | 是   | 专业事实类型                                    |
-| `correlationId`     | UUID                       | 是   | 一次业务链路关联 ID                             |
-| `causationId`       | UUID                       | 否   | 直接原因事件/命令 ID                            |
-| `idempotencyKey`    | string 1..200              | 是   | 规范事实业务幂等键                              |
-| `source`            | `LifecycleEventSourceV1`   | 是   | 来源、映射和验证信息                            |
-| `location`          | `LifecycleLocationV1`      | 否   | 港口/场站/仓库及航段语义                        |
-| `evidenceRefs`      | unique UUID[]              | 是   | `actual` 至少一条；预计可为空                   |
-| `confidenceState`   | registered confidence code | 是   | 规范事实采用结论；`provisional/disputed` 不推进 |
-| `validity`          | registered validity code   | 是   | 当前事件版本的有效性；更正和撤销保留原事件      |
-| `relation`          | `LifecycleEventRelationV1` | 否   | 更正、撤销或预计替换关系                        |
-| `data`              | discriminated object       | 是   | 按事件码注册的载荷 Schema                       |
-| `traceId`           | string 1..128              | 是   | 贯穿接收、裁决、应用和投影的追踪 ID             |
+| 字段                 | 类型                       | 必填 | 规则                                            |
+| -------------------- | -------------------------- | ---- | ----------------------------------------------- |
+| `eventId`            | UUID                       | 是   | 全局唯一；同时作为 Outbox 事件 ID               |
+| `eventCode`          | registered event code      | 是   | 必须来自事件码目录                              |
+| `eventVersion`       | integer                    | 是   | V1 固定 `1`                                     |
+| `role`               | `LifecycleEventRole`       | 是   | 与事件目录登记一致                              |
+| `timeKind`           | `LifecycleTimeKind`        | 是   | 计划、预计、实际不可混用                        |
+| `occurredAt`         | date-time                  | 是   | 该计划/预计/实际时间，ISO 8601 且带时区         |
+| `recordedAt`         | date-time                  | 是   | Logix 首次持久化时间                            |
+| `receivedAt`         | date-time                  | 否   | 外部数据到达 Logix 的时间；外部采集必填         |
+| `providerUpdatedAt`  | date-time                  | 否   | 供应商声明的更新时间                            |
+| `eventSequence`      | integer >= 1               | 是   | 同一货柜生命周期内的持久化顺序，不代表业务顺序  |
+| `tenantId`           | UUID                       | 是   | 租户边界；所有引用对象必须属于同一租户          |
+| `containerId`        | UUID                       | 是   | `shipment-registry` 稳定货柜 ID                 |
+| `flowInstanceId`     | UUID                       | 是   | 生命周期实例 ID                                 |
+| `nodeCode`           | registered node code       | 是   | 归属节点；子里程碑仍归属一个节点                |
+| `nodeInstanceId`     | UUID                       | 是   | 节点实例；重入时不得复用旧实例                  |
+| `nodeTaskId`         | UUID                       | 否   | 引发或对账到的节点任务                          |
+| `workOrderId`        | UUID                       | 否   | 引发或被事实完成的工单                          |
+| `domain`             | string 1..64               | 是   | 事实所有者模块                                  |
+| `domainFactId`       | UUID                       | 是   | 专业模块不可变规范事实 ID                       |
+| `domainFactType`     | string 1..64               | 是   | 专业事实类型                                    |
+| `authorityPolicyRef` | string 1..200              | 是   | 服务端实际采用的来源权威策略及版本引用          |
+| `correlationId`      | UUID                       | 是   | 一次业务链路关联 ID                             |
+| `causationId`        | UUID                       | 否   | 直接原因事件/命令 ID                            |
+| `idempotencyKey`     | string 1..200              | 是   | 规范事实业务幂等键                              |
+| `source`             | `LifecycleEventSourceV1`   | 是   | 来源、映射和验证信息                            |
+| `location`           | `LifecycleLocationV1`      | 否   | 港口/场站/仓库及航段语义                        |
+| `evidenceRefs`       | unique UUID[]              | 是   | `actual` 至少一条；预计可为空                   |
+| `confidenceState`    | registered confidence code | 是   | 规范事实采用结论；`provisional/disputed` 不推进 |
+| `validity`           | registered validity code   | 是   | 当前事件版本的有效性；更正和撤销保留原事件      |
+| `relation`           | `LifecycleEventRelationV1` | 否   | 更正、撤销或预计替换关系                        |
+| `data`               | discriminated object       | 是   | 按事件码注册的载荷 Schema                       |
+| `traceId`            | string 1..128              | 是   | 贯穿接收、裁决、应用和投影的追踪 ID             |
 
 `eventSequence` 只提供稳定游标和审计顺序。时间线业务排序必须使用 `occurredAt,eventSequence,eventId`，不能按接收先后推断发生先后。
 
@@ -176,6 +178,114 @@ authorizedBy?: UUID
 记录必须同时保留：原始时间文本、原始时区、解析后的带时区时间、UTC 持久化值、业务发生时间、供应商更新时间、接收时间和系统记录时间。无法确认时区时不得假定 UTC。
 
 ETA/ETD 的每次变化均追加事件；当前预计取同一货柜、节点实例、事件类型和航段下最新有效版本，而不是覆盖历史。ATA/ATD 到达后，预计仍保留用于准点率和预测偏差分析，但 UI 当前实际优先。
+
+### 5.1 API、导入与人工录入统一日期事实链
+
+> 负责人确认（2026-09-18）：货柜全生命周期日期可以从 API/Webhook、受控文件导入或人工界面进入；三种渠道必须复用同一日期事实命令、来源权威裁决、幂等与状态机守卫，渠道本身不授予事实权威。
+
+```text
+API / Webhook        受控文件导入        人工界面
+      \                   |                 /
+       -> 原始输入与渠道审计 -> 统一日期事实命令
+       -> 对象/时区/事件/来源/证据/版本校验
+       -> 追加保存日期事实并更新当前时间投影
+       -> confirmed actual 才生成或引用规范事件
+       -> lifecycle-control 按前序、适用性与状态机推进
+```
+
+| 入口          | 必须额外保留                                                                 | 禁止行为                                               |
+| ------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| API / Webhook | 原始载荷、provider、interface、来源事件 ID、映射版本、Inbox messageId 和哈希 | 供应商字段直接覆盖当前日期或货柜状态                   |
+| 受控文件导入  | 文件/批次/原始行、有效映射、预检、操作者、逐行结果和对账                     | 未预检落账、按最后一行覆盖、导入状态直接推进生命周期   |
+| 人工界面      | actorId、原因、对象级权限、证据、expectedVersion 和幂等键                    | 直接改库、无证据补实际、用页面成功或服务器时间冒充发生 |
+
+受控导入落备货单、产品明细和原始时间事实时，必须在同一本地事务写入日期事实 Inbox 命令；任一写入失败则整体回滚。Inbox 消费者只调用统一日期事实用例，并把日期事实落账与 Inbox `processed` 在同一事务确认。导入审核只证明文件通过预检，不等于来源权威核验；导入的实际日期先以 `pending/unknown` 留账并进入复核，不直接推进生命周期。
+
+三种入口统一输出日期事实，而不是直接输出货柜状态：
+
+- `planned`：追加计划版本并更新当前计划投影，不完成节点。
+- `estimated`：追加预计版本并通过 `supersedes_estimate` 取代当前预计投影，不完成节点。
+- `actual`：先保存实际声明；只有 `verified + confirmed + effective`、命中唯一来源策略且业务守卫通过时，才有资格形成规范事件并申请完成节点。
+- 前序尚未满足的合格实际事实保存为 `pending_application`；前序或适用性变化后按原业务幂等键重放，不丢弃、不跨站硬跳。
+- 待应用事实以 `occurredAt,projectionVersion,id` 稳定排序并通过短租约领取；生命周期事件成功或节点适用性变化后触发同柜重放。409/412 与暂时性依赖错误释放租约后保留 pending，永久业务拒绝转 rejected；每次仍使用原事实的稳定幂等键。
+- 更正和撤销追加关系记录；不得原地覆盖事实、证据或已密封历史。
+
+对外写入口不得直接调用生命周期事件应用能力。`ApplyLifecycleEvent` 是统一日期事实和专业事实核验后的内部能力；开发或运维接口也必须执行相同的时间种类、来源权威、证据和授权守卫。
+
+### 5.2 14 节点日期投影目录 V1
+
+> 负责人确认（2026-09-18）：14 个管道节点至少保留计划和实际两个日期槽；只有存在可靠业务来源时才提供滚动预计。这里的字段名是查询/API/UI 投影别名，不是物理列，也不是新的事件码。
+
+统一持久化键为：
+
+```text
+containerId + nodeCode + eventCode + timeKind + occurredAtUtc
+```
+
+完整的 14 节点别名与正式事件码映射唯一登记在 [节点日期投影别名目录 V1](./NODE_TIME_FIELDS.md)；本契约不复制第二份映射。投影别名只能由 `nodeCode + eventCode + timeKind` 显式得到，禁止依赖偶然同名。一个节点存在多个到/离事件或航段时，还必须用 `eventCode + segmentId/location` 消歧；不得把多个事实压成一个可覆盖日期。
+
+### 5.3 子里程碑日期
+
+下列时间不是第 15 个节点，继续使用正式 `eventCode` 挂在所属节点和航段；未登记事件码的业务语义必须先经事件目录评审，不能由界面或供应商字段临时造码：
+
+- 提空箱 `empty_picked_up`，重柜进港/进场 `gate_in`，装船 `loaded`，开航 `sailing`；
+- 中转到港、卸船、装船、离港；
+- 靠泊 `berthed`，卸船 `discharged`，可提 `available`；
+- 海关申报、查验、扣留、解除及各主体放行；
+- 铁路场站接收、发出，码头重柜出场 `gate_out`；
+- 仓库门岗到达、POD 签收、WMS 接收；
+- 卸柜开始、卸柜完成、卸空确认；
+- 空箱场站接收。
+
+同一业务动作既是节点完成事件又是运营子里程碑时只保存一条规范事实，由不同投影消费，禁止重复造事实。
+
+### 5.4 截止日期与免费期
+
+截止日期和计算结果不属于 `LifecycleDateFact` 的发生事实，不得生成节点完成事件：
+
+- 开港、截港、截单、截关；
+- 最晚提柜日 `latestPickupAt`、最晚送仓日、最晚卸柜日、最晚还箱日 `latestReturnAt`；
+- 免费期起止时间。
+
+这些值由对应计划、港口或费用专业模块按自己的版本和依据管理，时间线只读投影。尤其禁止把最晚提柜日当计划提柜日、把 ETA 当 ATA，或用默认免费天数编造截止日。
+
+### 5.5 日期事实最小证据字段
+
+统一日期事实至少保存下列业务键、来源和审计信息；公共 Schema 可以按对象分组，但不得丢失其语义：
+
+```text
+containerId
+nodeCode
+eventCode
+timeKind
+occurredAtUtc
+rawValue
+sourceUtcOffset
+sourceSystem
+authoritySystem
+provider
+ingestionChannel
+captureSource
+evidenceRefs
+verificationState
+confidenceState
+validity
+authorityPolicyRef
+idempotencyKey
+mappingVersion
+sourceEventId
+interfaceCode
+recordedAt
+receivedAt
+supersedesFactId
+traceId
+```
+
+`occurredAtUtc` 是领域语义名；V1 公共命令字段仍为带偏移的 ISO 8601 `occurredAt`，入库时规范化到 UTC 的 `occurred_at`，不得另造同义公共字段。外部值还应在可获得时保存原始时区名称、原始载荷引用、供应商更新时间和地点/航段。`ingestionChannel` 使用公共线值：API 为 `api`，Webhook 为 `webhook`，文件导入为 `file_import`，人工界面为 `manual_ui`；渠道只说明怎么进入系统，不决定谁更可信。
+
+### 5.6 当前运行时实施边界
+
+规范事件目录已为所有节点完成资格事件开放 `planned | estimated | actual`，统一日期事实用例按目录拒绝未知组合，并保证 planned/estimated 不申请过站。只有服务端回读到 `actual + verified + confirmed + effective`、命中已采用来源策略且对象、事件、时间和证据完全一致的日期事实，内部生命周期入口才接受过站申请；规范事件和 Outbox 完整性哈希必须保留 `domainFactId/nodeCode/timeKind/authorityPolicyRef`。工单完成和旧客户端/Inbox 直推事件均不得替代该事实链。开放时间种类不表示各入口、查询投影和界面已经采集全部日期；具体接入进度仍由 task brief 跟踪，禁止绕过统一用例直接写事实表。
 
 ## 6. 幂等、重复、乱序与冲突
 

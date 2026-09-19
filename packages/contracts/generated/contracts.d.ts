@@ -214,6 +214,42 @@ export type EntityType = ("container" | "flow_instance" | "node_instance" | "nod
 export type ErrorCategory = ("validation" | "authentication" | "authorization" | "not_found" | "conflict" | "precondition" | "rate_limit" | "dependency" | "internal")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleDateFactCommand".
+ */
+export type LifecycleDateFactCommand = {
+tenantId: Uuid
+containerId: Uuid
+nodeCode: LifecycleNodeCode
+eventCode: CanonicalEventCode
+timeKind: TimeKind
+occurredAt: DateTime
+rawValue: string
+sourceUtcOffset: string
+ingestionChannel: ("api" | "webhook" | "file_import" | "manual_ui")
+captureSource: CaptureSource
+sourceSystem: string
+authoritySystem: string
+provider?: string
+interfaceCode?: string
+sourceEventId?: string
+mappingVersion?: string
+verificationState: VerificationState
+confidenceState: ConfidenceState
+validity: EvidenceValidity
+/**
+ * 上游可携带声明引用用于审计，但不得授予权威；运行时只保存服务端唯一策略裁决返回的 policyId:version。
+ */
+authorityPolicyRef?: string
+evidenceRefs: Uuid[]
+actorId?: Uuid
+reasonCode?: string
+expectedVersion?: number
+supersedesFactId?: Uuid
+idempotencyKey: string
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "NodeTaskResultPolicy".
  */
 export type NodeTaskResultPolicy = {
@@ -486,6 +522,26 @@ expiresAt?: DateTime
  */
 export interface EmptyEventData {
 
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleDateFactInboxPayload".
+ */
+export interface LifecycleDateFactInboxPayload {
+kind: "lifecycle_date_fact.record_requested.v1"
+command: LifecycleDateFactCommand
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleDateFactResult".
+ */
+export interface LifecycleDateFactResult {
+factId: Uuid
+recordState: ("recorded" | "duplicate")
+applicationState: ("not_applicable" | "review_required" | "pending_application" | "applied" | "rejected")
+reasonCode?: (string | null)
+canonicalEventId?: (Uuid | null)
+projectionVersion: number
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -1437,6 +1493,7 @@ nodeTaskId?: Uuid
 workOrderId?: Uuid
 domainFactId: Uuid
 domainFactType: string
+authorityPolicyRef: string
 domain: string
 role: EventRole
 timeKind: TimeKind

@@ -18,6 +18,10 @@ export interface ProviderEventIngestionRecord {
   payloadHash: string;
   payloadHashVersion: string;
   containerNumberRaw: string;
+  containerRecordId: string | null;
+  objectResolutionState:
+    "resolved" | "not_found" | "ambiguous" | "not_attempted";
+  objectResolutionReasonCode: string | null;
   rawCode: string;
   eventTimeRaw: string;
   mappingVersion: string;

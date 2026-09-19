@@ -51,6 +51,7 @@
         "domain": "inland-fulfillment",
         "domainFactId": "20000000-0000-4000-8000-000000000002",
         "domainFactType": "rail_handover",
+        "authorityPolicyRef": "rail-yard-handover:3",
         "correlationId": "20000000-0000-4000-8000-000000000003",
         "idempotencyKey": "rail-handover-001",
         "source": {
@@ -316,6 +317,7 @@
         "domain": "ocean-port-visibility",
         "domainFactId": "62000000-0000-4000-8000-000000000002",
         "domainFactType": "arrived",
+        "authorityPolicyRef": "destination-arrival:2",
         "correlationId": "62000000-0000-4000-8000-000000000003",
         "idempotencyKey": "arrival-without-evidence",
         "source": {

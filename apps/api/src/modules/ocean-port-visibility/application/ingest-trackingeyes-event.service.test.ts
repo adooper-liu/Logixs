@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   ProviderEventIngestionRecord,
   ProviderEventIngestionRepository,
@@ -7,6 +7,7 @@ import {
   IngestTrackingEyesEventService,
   TRACKINGEYES_CONTAINER_STATUS_CONSUMER,
 } from "./ingest-trackingeyes-event.service";
+import type { ResolveContainerByNumberPort } from "../../shipment-registry";
 
 const MESSAGE_ID = "11111111-1111-4111-8111-111111111111";
 const BASE_INPUT = {
@@ -44,11 +45,20 @@ class MemoryProviderEventIngestionRepository implements ProviderEventIngestionRe
   }
 }
 
-function buildService() {
+function buildService(
+  resolution: Awaited<ReturnType<ResolveContainerByNumberPort["execute"]>> = {
+    state: "resolved",
+    containerId: "container-42",
+  },
+) {
   const repository = new MemoryProviderEventIngestionRepository();
+  const resolveContainer: ResolveContainerByNumberPort = {
+    execute: vi.fn().mockResolvedValue(resolution),
+  };
   return {
     repository,
-    service: new IngestTrackingEyesEventService(repository),
+    resolveContainer,
+    service: new IngestTrackingEyesEventService(repository, resolveContainer),
   };
 }
 
@@ -66,6 +76,8 @@ describe("IngestTrackingEyesEventService", () => {
       authorityDecision: "review_required",
       confidenceState: "unknown",
       lifecycleApplication: "not_applied",
+      objectResolutionState: "resolved",
+      containerRecordId: "container-42",
     });
     const stored = repository.records.get(
       `${TRACKINGEYES_CONTAINER_STATUS_CONSUMER}:${MESSAGE_ID}`,
@@ -82,11 +94,45 @@ describe("IngestTrackingEyesEventService", () => {
       reasonCodes: expect.arrayContaining([
         "mapping_pending_provider_validation",
         "source_authority_policy_required",
-        "business_object_resolution_required",
       ]),
+      objectResolutionState: "resolved",
+      containerRecordId: "container-42",
       lifecycleApplication: "not_applied",
     });
     expect(stored?.payloadHash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("箱号未找到时保留原始事件并进入对象复核", async () => {
+    const { service } = buildService({
+      state: "not_found",
+      containerId: null,
+    });
+
+    const result = await service.execute(BASE_INPUT);
+
+    expect(result).toMatchObject({
+      objectResolutionState: "not_found",
+      containerRecordId: null,
+      authorityDecision: "review_required",
+      lifecycleApplication: "not_applied",
+    });
+    expect(result.reasonCodes).toContain("business_object_not_found");
+  });
+
+  it("同租户箱号有多条记录时不猜测货柜", async () => {
+    const { service } = buildService({
+      state: "ambiguous",
+      containerId: null,
+    });
+
+    const result = await service.execute(BASE_INPUT);
+
+    expect(result).toMatchObject({
+      objectResolutionState: "ambiguous",
+      containerRecordId: null,
+      authorityDecision: "review_required",
+    });
+    expect(result.reasonCodes).toContain("business_object_ambiguous");
   });
 
   it("预计且供应商计算的事件最多形成 provisional", async () => {
@@ -146,6 +192,7 @@ describe("IngestTrackingEyesEventService", () => {
       lifecycleApplication: "not_applied",
     });
     expect(result.reasonCodes).toEqual(["VALIDATION_FORMAT"]);
+    expect(result.objectResolutionState).toBe("not_attempted");
   });
 
   it("同一 Inbox messageId 同载荷幂等返回原结果", async () => {

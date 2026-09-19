@@ -10,11 +10,18 @@ export interface TrackingEyesAuthorityDecision {
   lifecycleApplication: "not_applied";
 }
 
-const OBJECT_RESOLUTION_REQUIRED =
-  "business_object_resolution_required" as const;
+export type TrackingEyesObjectResolution =
+  | { state: "resolved"; containerId: string }
+  | { state: "not_found"; containerId: null }
+  | { state: "ambiguous"; containerId: null }
+  | { state: "not_attempted"; containerId: null };
 
 export function decideTrackingEyesSourceAuthority(
   normalization: TrackingEyesNormalizationResult,
+  objectResolution: TrackingEyesObjectResolution = {
+    state: "not_attempted",
+    containerId: null,
+  },
 ): TrackingEyesAuthorityDecision {
   if (normalization.kind === "rejected") {
     return {
@@ -34,7 +41,7 @@ export function decideTrackingEyesSourceAuthority(
       reasonCodes: uniqueReasons([
         normalization.reasonCode,
         "source_authority_policy_required",
-        OBJECT_RESOLUTION_REQUIRED,
+        objectResolutionReason(objectResolution),
       ]),
       lifecycleApplication: "not_applied",
     };
@@ -50,12 +57,21 @@ export function decideTrackingEyesSourceAuthority(
     confidenceState: provisional ? "provisional" : "unknown",
     reasonCodes: uniqueReasons([
       ...candidate.reviewReasons,
-      OBJECT_RESOLUTION_REQUIRED,
+      objectResolutionReason(objectResolution),
     ]),
     lifecycleApplication: "not_applied",
   };
 }
 
-function uniqueReasons(reasons: string[]): string[] {
-  return [...new Set(reasons)];
+function objectResolutionReason(
+  resolution: TrackingEyesObjectResolution,
+): string | null {
+  if (resolution.state === "resolved") return null;
+  if (resolution.state === "not_found") return "business_object_not_found";
+  if (resolution.state === "ambiguous") return "business_object_ambiguous";
+  return "business_object_resolution_required";
+}
+
+function uniqueReasons(reasons: Array<string | null>): string[] {
+  return [...new Set(reasons.filter((reason): reason is string => !!reason))];
 }
