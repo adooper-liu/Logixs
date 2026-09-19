@@ -26,6 +26,7 @@ const targetMigrationPaths = [
   "database/migrations/20260918183000_add_source_authority_and_application_leases/migration.sql",
   "database/migrations/20260918200000_add_node_event_applications/migration.sql",
   "database/migrations/20260919100000_add_canonical_event_fact_context/migration.sql",
+  "database/migrations/20260920120000_add_lifecycle_node_blocks/migration.sql",
 ];
 const migrationSql = targetMigrationPaths.map((path) =>
   readFileSync(path, "utf8"),
@@ -68,6 +69,7 @@ async function verifyUpgradeRollback(url: string): Promise<void> {
             await transaction.$executeRawUnsafe(sql);
           }
           await assertLifecycleDateFactSchema(transaction);
+          await assertNodeBlockPersistence(transaction);
           throw rollback;
         });
       } catch (error) {
@@ -202,6 +204,7 @@ async function verifyEmptyDatabaseMigration(url: string): Promise<void> {
     const target = createPrisma(targetUrl.toString());
     try {
       await assertLifecycleDateFactSchema(target);
+      await assertNodeBlockPersistence(target);
     } finally {
       await target.$disconnect();
     }
@@ -235,6 +238,11 @@ async function assertLifecycleDateFactSchema(
       pendingClaimIndex: string | null;
       nodeApplicationIndex: string | null;
       canonicalEventFactIndex: string | null;
+      nodeBlockTable: string | null;
+      nodeBlockResolutionTable: string | null;
+      nodeBlockConstraintCount: bigint;
+      nodeBlockResolutionConstraintCount: bigint;
+      nodeBlockIndexCount: bigint;
     }>
   >`
     SELECT
@@ -300,7 +308,44 @@ async function assertLifecycleDateFactSchema(
       to_regclass('public.node_event_application_target_state_idx')::text
         AS "nodeApplicationIndex",
       to_regclass('public.canonical_event_domain_fact_key')::text
-        AS "canonicalEventFactIndex"
+        AS "canonicalEventFactIndex",
+      to_regclass('public.node_block')::text AS "nodeBlockTable",
+      to_regclass('public.node_block_resolution')::text
+        AS "nodeBlockResolutionTable",
+      COUNT(*) FILTER (
+        WHERE conname IN (
+          'node_block_type_check',
+          'node_block_actor_check',
+          'node_block_idempotency_check',
+          'node_block_trace_check',
+          'node_block_projection_version_check',
+          'node_block_flow_instance_id_fkey',
+          'node_block_node_instance_id_fkey',
+          'node_block_source_fact_id_fkey'
+        )
+      ) AS "nodeBlockConstraintCount",
+      COUNT(*) FILTER (
+        WHERE conname IN (
+          'node_block_resolution_reason_check',
+          'node_block_resolution_actor_check',
+          'node_block_resolution_idempotency_check',
+          'node_block_resolution_trace_check',
+          'node_block_resolution_projection_version_check',
+          'node_block_resolution_block_id_fkey'
+        )
+      ) AS "nodeBlockResolutionConstraintCount",
+      (
+        SELECT COUNT(*)
+        FROM pg_indexes
+        WHERE schemaname = 'public'
+          AND indexname IN (
+            'node_block_tenant_idempotency_key',
+            'node_block_flow_node_idx',
+            'node_block_node_occurred_idx',
+            'node_block_resolution_block_key',
+            'node_block_resolution_tenant_idempotency_key'
+          )
+      ) AS "nodeBlockIndexCount"
     FROM pg_constraint
   `;
   if (
@@ -315,7 +360,12 @@ async function assertLifecycleDateFactSchema(
     rows[0]?.pendingClaimIndex !== "lifecycle_date_fact_pending_claim_idx" ||
     rows[0]?.nodeApplicationIndex !==
       "node_event_application_target_state_idx" ||
-    rows[0]?.canonicalEventFactIndex !== "canonical_event_domain_fact_key"
+    rows[0]?.canonicalEventFactIndex !== "canonical_event_domain_fact_key" ||
+    rows[0]?.nodeBlockTable !== "node_block" ||
+    rows[0]?.nodeBlockResolutionTable !== "node_block_resolution" ||
+    Number(rows[0]?.nodeBlockConstraintCount ?? 0) !== 8 ||
+    Number(rows[0]?.nodeBlockResolutionConstraintCount ?? 0) !== 6 ||
+    Number(rows[0]?.nodeBlockIndexCount ?? 0) !== 5
   ) {
     throw new Error("Lifecycle date fact migration verification failed");
   }
@@ -323,4 +373,74 @@ async function assertLifecycleDateFactSchema(
 
 function createPrisma(url: string): PrismaClient {
   return new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+}
+
+async function assertNodeBlockPersistence(
+  prisma: Pick<PrismaClient, "$executeRawUnsafe" | "$queryRaw">,
+): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    INSERT INTO "container_record"
+      ("id", "tenant_id", "order_number", "current_status", "created_at", "updated_at")
+    VALUES
+      ('10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'VERIFY-BLOCK-1', 'in_transit', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+    INSERT INTO "flow_instance"
+      ("id", "container_id", "state", "current_node_code", "version", "created_at", "updated_at")
+    VALUES
+      ('10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'active', 'customs_clearance', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+    INSERT INTO "node_instance"
+      ("id", "flow_instance_id", "node_code", "state", "applicability")
+    VALUES
+      ('10000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000003', 'customs_clearance', 'blocked', 'required');
+
+    INSERT INTO "lifecycle_date_fact" (
+      "id", "tenant_id", "container_id", "node_code", "event_code", "time_kind",
+      "occurred_at", "raw_value", "source_utc_offset", "ingestion_channel",
+      "capture_source", "source_system", "authority_system", "verification_state",
+      "confidence_state", "validity", "authority_policy_ref", "evidence_refs",
+      "actor_id", "reason_code", "idempotency_key", "payload_hash", "is_current",
+      "application_state", "projection_version", "trace_id", "received_at", "updated_at"
+    ) VALUES (
+      '10000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000002',
+      '10000000-0000-4000-8000-000000000001', 'customs_clearance', 'inspection', 'actual',
+      '2026-09-20T01:00:00Z', '2026-09-20T01:00:00Z', '+00:00', 'manual_ui',
+      'manual_backfill', 'logix', 'customs', 'verified', 'confirmed', 'effective',
+      'customs-inspection-v1', '["10000000-0000-4000-8000-000000000006"]'::jsonb,
+      '10000000-0000-4000-8000-000000000007', 'inspection_notice', 'verify-fact-1',
+      repeat('a', 64), true, 'pending_application', 1, 'verify-trace-1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    );
+
+    INSERT INTO "node_block" (
+      "id", "tenant_id", "flow_instance_id", "node_instance_id", "block_type",
+      "source_fact_id", "occurred_at", "actor_id", "idempotency_key", "trace_id",
+      "projection_version"
+    ) VALUES (
+      '10000000-0000-4000-8000-000000000008', '10000000-0000-4000-8000-000000000002',
+      '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000004',
+      'inspection', '10000000-0000-4000-8000-000000000005',
+      '2026-09-20T01:00:00Z', '10000000-0000-4000-8000-000000000007',
+      'verify-block-1', 'verify-trace-2', 2
+    );
+
+    INSERT INTO "node_block_resolution" (
+      "id", "tenant_id", "block_id", "resolved_at", "reason_code", "actor_id",
+      "idempotency_key", "trace_id", "projection_version"
+    ) VALUES (
+      '10000000-0000-4000-8000-000000000009', '10000000-0000-4000-8000-000000000002',
+      '10000000-0000-4000-8000-000000000008', '2026-09-20T02:00:00Z',
+      'customs_released', '10000000-0000-4000-8000-000000000007',
+      'verify-resolution-1', 'verify-trace-3', 3
+    );
+  `);
+  const rows = await prisma.$queryRaw<Array<{ unresolvedCount: bigint }>>`
+    SELECT COUNT(*) AS "unresolvedCount"
+    FROM "node_block" b
+    LEFT JOIN "node_block_resolution" r ON r."block_id" = b."id"
+    WHERE b."node_instance_id" = '10000000-0000-4000-8000-000000000004'
+      AND r."id" IS NULL
+  `;
+  if (Number(rows[0]?.unresolvedCount ?? -1) !== 0) {
+    throw new Error("Lifecycle node block persistence verification failed");
+  }
 }

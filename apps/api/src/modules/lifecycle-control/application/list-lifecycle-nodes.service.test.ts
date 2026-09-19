@@ -102,6 +102,7 @@ describe("ListLifecycleNodesService", () => {
         state: "active",
         applicability: "required",
         completedAt: null,
+        blockedReasonRefs: [],
         isCurrent: true,
       },
     ]);

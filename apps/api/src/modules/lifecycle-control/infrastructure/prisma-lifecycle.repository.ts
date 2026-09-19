@@ -27,7 +27,16 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
   ): Promise<FlowWithNodes | null> {
     const flow = await this.prisma.flowInstance.findUnique({
       where: { containerId },
-      include: { nodes: true },
+      include: {
+        nodes: {
+          include: {
+            blocks: {
+              where: { resolution: { is: null } },
+              select: { id: true },
+            },
+          },
+        },
+      },
     });
     if (!flow) return null;
     return toFlowWithNodes(flow);
@@ -84,7 +93,16 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     if (ownedIds.length === 0) return [];
     const flows = await this.prisma.flowInstance.findMany({
       where: { containerId: { in: ownedIds } },
-      include: { nodes: true },
+      include: {
+        nodes: {
+          include: {
+            blocks: {
+              where: { resolution: { is: null } },
+              select: { id: true },
+            },
+          },
+        },
+      },
     });
     return flows.map((flow) => toFlowWithNodes(flow));
   }
@@ -111,7 +129,16 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       });
       const persisted = await transaction.flowInstance.findUniqueOrThrow({
         where: { id: flow.id },
-        include: { nodes: true },
+        include: {
+          nodes: {
+            include: {
+              blocks: {
+                where: { resolution: { is: null } },
+                select: { id: true },
+              },
+            },
+          },
+        },
       });
       return toFlowWithNodes(persisted);
     });
@@ -577,6 +604,7 @@ function toFlowWithNodes(flow: {
     state: string;
     completedAt: Date | null;
     applicability: string;
+    blocks?: { id: string }[];
   }[];
 }): FlowWithNodes {
   return {
@@ -593,6 +621,7 @@ function toFlowWithNodes(flow: {
       state: node.state,
       completedAt: node.completedAt,
       applicability: node.applicability as NodeApplicability,
+      blockedReasonRefs: node.blocks?.map((block) => block.id) ?? [],
     })),
   };
 }

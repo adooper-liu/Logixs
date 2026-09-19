@@ -442,6 +442,43 @@ traceId: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleNodeBlocked".
+ */
+export interface LifecycleNodeBlocked {
+eventId: Uuid
+eventType: "lifecycle.node_blocked"
+eventVersion: 1
+tenantId: Uuid
+flowInstanceId: Uuid
+containerId: Uuid
+nodeInstanceId: Uuid
+blockId: Uuid
+blockType: StableCode
+sourceFactId: Uuid
+occurredAt: DateTime
+projectionVersion: number
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleNodeBlockResolved".
+ */
+export interface LifecycleNodeBlockResolved {
+eventId: Uuid
+eventType: "lifecycle.node_block_resolved"
+eventVersion: 1
+tenantId: Uuid
+flowInstanceId: Uuid
+containerId: Uuid
+nodeInstanceId: Uuid
+blockId: Uuid
+resolvedAt: DateTime
+reasonCode: string
+projectionVersion: number
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "LifecycleTransitioned".
  */
 export interface LifecycleTransitioned {
