@@ -1,5 +1,19 @@
 import { createHash, randomUUID } from "node:crypto";
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import type {
+  CanonicalEventCode,
+  LifecycleDateFactResult,
+  LifecycleNodeCode,
+} from "@logix/contracts";
+import canonicalEvents from "@logix/contracts/canonical-events.json";
+import {
+  REGISTER_EVIDENCE,
+  type RegisterEvidencePort,
+} from "../../document-records";
+import {
+  RECORD_LIFECYCLE_DATE_FACT,
+  type RecordLifecycleDateFactPort,
+} from "../../lifecycle-control";
 import {
   RESOLVE_CONTAINER_BY_NUMBER,
   type ResolveContainerByNumberPort,
@@ -28,6 +42,7 @@ export const TRACKINGEYES_PAYLOAD_HASH_VERSION =
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UNRESOLVED_AUTHORITY_SYSTEM = "unresolved";
 
 export type TrackingEyesIngressPayload = Omit<
   TrackingEyesContainerStatusInput,
@@ -56,6 +71,9 @@ export interface IngestTrackingEyesEventResult {
   lifecycleApplication: "not_applied";
   objectResolutionState: ProviderEventIngestionRecord["objectResolutionState"];
   containerRecordId: string | null;
+  evidenceId: string | null;
+  dateFactId: string | null;
+  dateFactApplicationState: LifecycleDateFactResult["applicationState"] | null;
 }
 
 @Injectable()
@@ -65,6 +83,10 @@ export class IngestTrackingEyesEventService {
     private readonly repository: ProviderEventIngestionRepository,
     @Inject(RESOLVE_CONTAINER_BY_NUMBER)
     private readonly resolveContainer: ResolveContainerByNumberPort,
+    @Inject(REGISTER_EVIDENCE)
+    private readonly registerEvidence: RegisterEvidencePort,
+    @Inject(RECORD_LIFECYCLE_DATE_FACT)
+    private readonly recordDateFact: RecordLifecycleDateFactPort,
   ) {}
 
   async execute(
@@ -80,7 +102,10 @@ export class IngestTrackingEyesEventService {
       consumerName: TRACKINGEYES_CONTAINER_STATUS_CONSUMER,
       messageId,
     });
-    if (existing) return reuseOrConflict(existing, tenantId, payloadHash);
+    if (existing) {
+      assertReplayCompatible(existing, tenantId, payloadHash);
+      return this.recordCandidateFact(existing, "duplicate", false);
+    }
 
     const normalization = normalizeTrackingEyesContainerStatus({
       ...input.payload,
@@ -115,14 +140,88 @@ export class IngestTrackingEyesEventService {
         consumerName: TRACKINGEYES_CONTAINER_STATUS_CONSUMER,
         messageId,
       });
-      if (raced) return reuseOrConflict(raced, tenantId, payloadHash);
+      if (raced) {
+        assertReplayCompatible(raced, tenantId, payloadHash);
+        return this.recordCandidateFact(raced, "duplicate", false);
+      }
       throw new HttpException(
         "INTERNAL_ERROR",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
-    return toResult(record, "processed", true);
+    return this.recordCandidateFact(record, "processed", true);
+  }
+
+  private async recordCandidateFact(
+    record: ProviderEventIngestionRecord,
+    receptionState: IngestTrackingEyesEventResult["receptionState"],
+    applied: boolean,
+  ): Promise<IngestTrackingEyesEventResult> {
+    if (!isRecordableCandidate(record)) {
+      return toResult(record, receptionState, applied, null);
+    }
+
+    const evidence = await this.registerEvidence.execute({
+      tenantId: record.tenantId,
+      idempotencyKey: `trackingeyes:evidence:${record.id}`,
+      evidenceType: "api_response",
+      subjectType: "container",
+      subjectId: record.containerRecordId,
+      authorityLevel: evidenceAuthorityLevel(record.sourceSignal),
+      contentRef: `ocean-provider-event/${record.id}`,
+      contentHash: record.payloadHash,
+      sourceType: "system",
+      originatorSystem: record.provider,
+      authoritySystem: UNRESOLVED_AUTHORITY_SYSTEM,
+      provider: record.provider,
+      interfaceCode: record.interfaceCode,
+      sourceReference: `ocean-provider-event/${record.id}`,
+      sourceEventId: record.providerEventIdRaw ?? record.id,
+      mappingVersion: record.mappingVersion,
+      ingestionChannel: "webhook",
+      captureSource: "external_evidence",
+    });
+    const event = canonicalEvents.find(
+      (candidate) => candidate.eventCode === record.canonicalEventCode,
+    ) as
+      | {
+          eventCode: CanonicalEventCode;
+          defaultNodeCode: LifecycleNodeCode | null;
+        }
+      | undefined;
+    if (!event?.defaultNodeCode) {
+      throw new Error("CANONICAL_EVENT_NODE_INVARIANT_VIOLATION");
+    }
+    const dateFact = await this.recordDateFact.execute({
+      tenantId: record.tenantId,
+      containerId: record.containerRecordId,
+      nodeCode: event.defaultNodeCode,
+      eventCode: event.eventCode,
+      timeKind: record.timeKind,
+      occurredAt: record.occurredAt.toISOString(),
+      rawValue: record.eventTimeRaw,
+      sourceUtcOffset: sourceUtcOffset(record.eventTimeRaw),
+      ingestionChannel: "webhook",
+      captureSource: "external_evidence",
+      sourceSystem: record.provider,
+      authoritySystem: UNRESOLVED_AUTHORITY_SYSTEM,
+      provider: record.provider,
+      interfaceCode: record.interfaceCode,
+      sourceEventId: record.providerEventIdRaw ?? record.id,
+      mappingVersion: record.mappingVersion,
+      verificationState: "pending",
+      confidenceState: record.confidenceState,
+      validity: "effective",
+      evidenceRefs: [evidence.id],
+      idempotencyKey: `trackingeyes:date-fact:${record.id}`,
+      traceId: record.traceId,
+    });
+    return toResult(record, receptionState, applied, {
+      evidenceId: evidence.id,
+      dateFactId: dateFact.factId,
+      dateFactApplicationState: dateFact.applicationState,
+    });
   }
 
   private async resolveBusinessObject(
@@ -275,11 +374,11 @@ function normalizedFields(normalization: TrackingEyesNormalizationResult): {
   };
 }
 
-function reuseOrConflict(
+function assertReplayCompatible(
   existing: ProviderEventIngestionRecord,
   tenantId: string,
   payloadHash: string,
-): IngestTrackingEyesEventResult {
+): void {
   if (existing.tenantId !== tenantId) {
     throw new HttpException(
       "IDEMPOTENCY_CONFLICT: Inbox messageId 租户范围冲突",
@@ -292,13 +391,17 @@ function reuseOrConflict(
       HttpStatus.CONFLICT,
     );
   }
-  return toResult(existing, "duplicate", false);
 }
 
 function toResult(
   record: ProviderEventIngestionRecord,
   receptionState: IngestTrackingEyesEventResult["receptionState"],
   applied: boolean,
+  downstream: {
+    evidenceId: string;
+    dateFactId: string;
+    dateFactApplicationState: LifecycleDateFactResult["applicationState"];
+  } | null,
 ): IngestTrackingEyesEventResult {
   return {
     ingestionId: record.id,
@@ -314,7 +417,45 @@ function toResult(
     lifecycleApplication: record.lifecycleApplication,
     objectResolutionState: record.objectResolutionState,
     containerRecordId: record.containerRecordId,
+    evidenceId: downstream?.evidenceId ?? null,
+    dateFactId: downstream?.dateFactId ?? null,
+    dateFactApplicationState: downstream?.dateFactApplicationState ?? null,
   };
+}
+
+function isRecordableCandidate(
+  record: ProviderEventIngestionRecord,
+): record is ProviderEventIngestionRecord & {
+  containerRecordId: string;
+  canonicalEventCode: NonNullable<
+    ProviderEventIngestionRecord["canonicalEventCode"]
+  >;
+  occurredAt: Date;
+  timeKind: NonNullable<ProviderEventIngestionRecord["timeKind"]>;
+} {
+  return (
+    record.normalizationKind === "candidate" &&
+    record.objectResolutionState === "resolved" &&
+    record.containerRecordId !== null &&
+    record.canonicalEventCode !== null &&
+    record.occurredAt !== null &&
+    record.timeKind !== null
+  );
+}
+
+function evidenceAuthorityLevel(
+  sourceSignal: string | null,
+): "corroborating" | "contextual" {
+  return sourceSignal === "carrier" || sourceSignal === "terminal"
+    ? "corroborating"
+    : "contextual";
+}
+
+function sourceUtcOffset(rawValue: string): string {
+  if (/Z$/i.test(rawValue)) return "+00:00";
+  const match = rawValue.match(/([+-]\d{2}:\d{2})$/);
+  if (!match) throw new Error("EXTERNAL_EVENT_TIME_ZONE_REQUIRED");
+  return match[1];
 }
 
 function objectResolutionReasonCode(

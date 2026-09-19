@@ -219,6 +219,7 @@ model ReplenishmentOrderLine {
 model EvidenceRecord {
   id                String   @id @default(uuid()) @map("id")
   tenantId          String   @map("tenant_id")
+  idempotencyKey    String   @map("idempotency_key")
   evidenceType      String   @map("evidence_type")
   subjectType       String   @map("subject_type")
   subjectId         String   @map("subject_id")
@@ -237,6 +238,7 @@ model EvidenceRecord {
   decisions EvidenceVerificationDecision[]
 
   @@index([tenantId, subjectType, subjectId])
+  @@unique([tenantId, idempotencyKey], map: "evidence_record_tenant_idempotency_key")
   @@map("evidence_record")
 }
 

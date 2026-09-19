@@ -5,6 +5,12 @@ export interface EvidenceSourceSnapshot {
   sourceType: string;
   originatorSystem: string;
   authoritySystem: string;
+  provider?: string;
+  providerVersion?: string;
+  interfaceCode?: string;
+  sourceReference?: string;
+  sourceEventId?: string;
+  mappingVersion?: string;
   ingestionChannel: string;
   captureSource: string;
 }
@@ -12,6 +18,7 @@ export interface EvidenceSourceSnapshot {
 export interface EvidenceRecord {
   id: string;
   tenantId: string;
+  idempotencyKey: string;
   evidenceType: string;
   subjectType: string;
   subjectId: string;
@@ -28,6 +35,7 @@ export interface EvidenceRecord {
 
 export interface CreateEvidenceInput {
   tenantId: string;
+  idempotencyKey: string;
   evidenceType: string;
   subjectType: string;
   subjectId: string;
@@ -59,6 +67,10 @@ export interface AppendDecisionResult {
 export interface EvidenceRepository {
   findById(id: string): Promise<EvidenceRecord | null>;
   findByIds(ids: string[]): Promise<EvidenceRecord[]>;
+  findByIdempotencyKey(
+    tenantId: string,
+    idempotencyKey: string,
+  ): Promise<EvidenceRecord | null>;
   create(input: CreateEvidenceInput): Promise<EvidenceRecord>;
   findLatestVerifiedDecisionId(evidenceId: string): Promise<string | null>;
   appendDecision(input: AppendDecisionInput): Promise<AppendDecisionResult>;

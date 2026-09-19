@@ -39,6 +39,7 @@
     "db:generate": "prisma generate --schema database/schema.prisma",
     "db:migrate": "node scripts/migrate-deploy.mjs",
     "db:migrate:status": "prisma migrate status --schema database/schema.prisma",
+    "db:verify:evidence-idempotency": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-evidence-registration-idempotency.mts",
     "db:verify:ocean-provider-events": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-ocean-provider-event-ingestion.mts",
     "db:verify:lifecycle-date-facts": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-lifecycle-date-facts.mts",
     "db:verify:pipeline-tasks": "tsx scripts/verify-pipeline-task-pool.mts",

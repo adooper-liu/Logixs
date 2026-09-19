@@ -9,3 +9,8 @@ export {
   type EvidenceAuthorityContext,
   type ReadEvidenceAuthorityContextPort,
 } from "./read-evidence-authority-context.port";
+export {
+  REGISTER_EVIDENCE,
+  type RegisterEvidencePort,
+} from "./register-evidence.port";
+export type { RegisterEvidenceInput } from "./application/register-evidence.service";

@@ -10,6 +10,12 @@ export class RegisterEvidenceRequestDto {
   @ApiProperty() sourceType!: string;
   @ApiProperty() originatorSystem!: string;
   @ApiProperty() authoritySystem!: string;
+  @ApiProperty({ required: false }) provider?: string;
+  @ApiProperty({ required: false }) providerVersion?: string;
+  @ApiProperty({ required: false }) interfaceCode?: string;
+  @ApiProperty({ required: false }) sourceReference?: string;
+  @ApiProperty({ required: false }) sourceEventId?: string;
+  @ApiProperty({ required: false }) mappingVersion?: string;
   @ApiProperty() ingestionChannel!: string;
   @ApiProperty() captureSource!: string;
 }

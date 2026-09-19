@@ -6,4 +6,9 @@ export const moduleManifest = defineModuleManifest({
   version: "1.0.0",
   depends: ["identity"],
   permissions: ["evidence.read", "evidence.submit", "evidence.review"],
+  publicPorts: [
+    "ASSERT_EVIDENCE_REFS",
+    "READ_EVIDENCE_AUTHORITY_CONTEXT",
+    "REGISTER_EVIDENCE",
+  ],
 });

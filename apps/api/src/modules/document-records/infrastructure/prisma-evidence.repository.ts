@@ -31,10 +31,21 @@ export class PrismaEvidenceRepository implements EvidenceRepository {
     return rows.map(mapRecord);
   }
 
+  async findByIdempotencyKey(
+    tenantId: string,
+    idempotencyKey: string,
+  ): Promise<EvidenceRecord | null> {
+    const row = await this.prisma.evidenceRecord.findUnique({
+      where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
+    });
+    return row ? mapRecord(row) : null;
+  }
+
   async create(input: CreateEvidenceInput): Promise<EvidenceRecord> {
     const row = await this.prisma.evidenceRecord.create({
       data: {
         tenantId: input.tenantId,
+        idempotencyKey: input.idempotencyKey,
         evidenceType: input.evidenceType,
         subjectType: input.subjectType,
         subjectId: input.subjectId,
@@ -104,6 +115,7 @@ export class PrismaEvidenceRepository implements EvidenceRepository {
 function mapRecord(row: {
   id: string;
   tenantId: string;
+  idempotencyKey: string;
   evidenceType: string;
   subjectType: string;
   subjectId: string;
@@ -120,6 +132,7 @@ function mapRecord(row: {
   return {
     id: row.id,
     tenantId: row.tenantId,
+    idempotencyKey: row.idempotencyKey,
     evidenceType: row.evidenceType,
     subjectType: row.subjectType,
     subjectId: row.subjectId,

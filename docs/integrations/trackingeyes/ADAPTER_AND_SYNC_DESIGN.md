@@ -1,6 +1,6 @@
 # 云当网适配与同步设计
 
-> 状态：**外部供应商适配设计（候选，接收/留痕/对象解析已部分实现）** · 2026-09-19
+> 状态：**外部供应商适配设计（候选，接收/留痕/对象解析/日期事实接入已部分实现）** · 2026-09-20
 > 公共同步阶段、幂等、Inbox/Outbox、重试、死信与补偿唯一引用[同步可靠性契约 V1](../../product/domain/SYNC_RELIABILITY_CONTRACT_V1.md)；本文只定义云当网供应商适配细节。
 
 ## 1. 边界
@@ -48,7 +48,11 @@ infrastructure/  TrackingEyesHttpClient（签名/token/限流）、映射表读�
 -> 复合键映射（provider + rawCode + context）-> 生命周期守卫 -> 领域事件/人工核查
 ```
 
-当前已实现到“对象消歧”第一刀：按 `tenantId + ctnrNo` 大小写不敏感查询，租户内唯一命中才保存稳定 `containerRecordId`；零命中保存 `not_found`，多命中保存 `ambiguous`，两者均进入复核且不猜测历史货柜。解析结果与原始载荷在同一供应商接入记录中留痕。映射仍处于待供应商样本核验，尚未自动注册 Evidence 或写入统一日期事实，因此即使对象解析成功也保持 `review_required / not_applied`。
+当前已实现到“Evidence + 统一日期事实”第一刀：按 `tenantId + ctnrNo` 大小写不敏感查询，租户内唯一命中才保存稳定 `containerRecordId`；零命中保存 `not_found`，多命中保存 `ambiguous`，两者均进入复核且不猜测历史货柜。只有“规范事件候选 + 唯一货柜”才幂等注册 Evidence，并调用 `RecordLifecycleDateFact` 公共 Port；未知码、无时区、删除/更正意图及对象未唯一解析时只保留接入记录，不生成下游业务事实。
+
+云当网在 Evidence 与日期事实中均保存为 `provider=trackingeyes`，接口、映射版本、供应商事件 ID 和原始接入记录引用一并留存。载荷目前只能给出 `sourceCd` 来源信号，不能识别具体船公司或码头主体，因此 `authoritySystem=unresolved`；不得把云当网或 `carrier/terminal` 信号冒充已核验权威主体。Evidence 初始为 `pending / unknown|provisional`，实际日期因此进入 `review_required`，不会直接推进生命周期。
+
+原始接入与下游事实采用分段幂等恢复：Inbox 同消息同载荷重试复用原接入记录、Evidence 和日期事实继续处理；同消息异载荷或同 Evidence 幂等键异内容返回 `IDEMPOTENCY_CONFLICT`。Evidence 使用 `(tenantId, idempotencyKey)` 数据库唯一约束，历史 Evidence 在迁移时回填为 `legacy:<evidenceId>`。
 
 按 [PUSH_PAYLOAD_STRUCTURE §11](./PUSH_PAYLOAD_STRUCTURE.md) 的优先级选幂等键：`ctnrStatus[].id` → `localKey + statusCd + eventTime` → `运单 id + dataUpdateTime + ctnrNo` → 载荷哈希。
 
