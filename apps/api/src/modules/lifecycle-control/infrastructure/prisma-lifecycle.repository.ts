@@ -432,6 +432,9 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       if (target.state === "completed") {
         throw new Error("LIFECYCLE_HISTORY_SEALED");
       }
+      if (target.state === "blocked") {
+        throw new Error("LIFECYCLE_NODE_BLOCKED");
+      }
 
       const advanced = await tx.flowInstance.updateMany({
         where: {

@@ -1,6 +1,6 @@
 ---
 status: coding # design | coding | review | fix | blocked | done（机器可校验）
-branch: feat/trackingeyes-evidence-date-facts
+branch: feat/lifecycle-specialized-guards
 verification:
   - "pnpm db:verify:lifecycle-date-facts：通过；验证旧库连续应用日期事实、来源权威/租约和逐目标节点应用迁移后事务回滚，以及临时空库完整迁移链；断言策略约束、租约字段、节点应用约束和索引。"
   - "pnpm validate：通过；包含仓库策略、契约漂移、格式、lint、类型、API/Web 全量测试、Playwright E2E 与全仓构建。"
@@ -21,6 +21,7 @@ verification:
   - "2026-09-20 pnpm db:verify:lifecycle-date-facts：通过；旧版本升级改用隔离临时数据库构造目标迁移前历史，可重复验证事务回滚和空库完整迁移链，不再依赖开发库恰好停留在旧版本。"
   - "2026-09-20 pnpm db:verify:evidence-idempotency：通过；隔离临时数据库验证旧 Evidence 回填、非空/长度约束、租户级唯一键、跨租户同键及空库完整迁移链。"
   - "2026-09-20 云当网 Evidence/日期事实接入 pnpm validate：通过；仓库策略、契约校验/漂移、Prisma 生成、lint、格式、类型、全量测试（API 124 文件/583 项、Web 59 文件/189 项）、Playwright E2E（50 通过、7 条件跳过）与构建全部完成。"
+  - "2026-09-20 blocked 节点守卫：生命周期模块定向测试 60 个文件/296 项通过；API lint、typecheck、build，pnpm docs:check 与 git diff --check 均通过。"
 ---
 
 # 任务：全生命周期统一日期事实
@@ -81,6 +82,7 @@ verification:
 - 工单完成只记录工作结果，不再把装箱、出运或离港工单完成冒充 `stuffed/loaded/departed`；旧客户端操作缺少专业事实时落拒绝审计，旧 Inbox 直推进入业务拒绝，日期事实 Inbox 不受影响。
 - Outbox 的载荷完整性哈希已包含 `domainFactId/nodeCode/timeKind/authorityPolicyRef`，防止事件发布时丢失服务端实际采用的事实与权威策略。
 - 云当网供应商接入已贯通“原始载荷 → 唯一货柜解析 → 幂等 Evidence → 统一日期事实”：未知码或对象未唯一解析时不生成下游事实；Evidence 与日期事实分开保存 provider 和未解析权威主体，初始核验状态确保供应商事件只进入 `review_required`。重复 Inbox 会复用原记录继续未完成后处理，同键异内容明确冲突。下一步仍需补齐完整节点专项守卫（地点、航段、主体、阻断等）；当前通用顺序守卫已成立，但不能把它等同于全部 14 节点专项业务守卫，因此本任务保持 `coding`。
+- 阻断守卫第一刀已封住两条路径：领域决策遇到 `blocked` 目标节点时保留 `pending_application`，Repository 在原子应用前再次发现并发阻断时返回 `LIFECYCLE_NODE_BLOCKED`，日期事实不会丢失且可后续重放。`BlockNode/ResolveNodeBlock` 的追加式持久化、来源事实校验和精确解除仍未实现，不能把本刀等同于完整阻断管理。
 
 ## 进度 log
 
@@ -97,3 +99,4 @@ verification:
 | 2026-09-19 | coding | Codex | —      | 完成云当网租户内货柜对象解析与歧义留痕第一刀         |
 | 2026-09-20 | coding | Codex | —      | 修复日期事实旧库升级验证的可重复执行性并完成合并门禁 |
 | 2026-09-20 | coding | Codex | —      | 云当网候选接入 Evidence 并进入统一日期事实与复核链   |
+| 2026-09-20 | coding | Codex | —      | 封堵 blocked 节点直接及并发过站路径                 |
