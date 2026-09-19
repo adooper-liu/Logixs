@@ -55,6 +55,8 @@ import { ListInboxDeadLettersService } from "./application/list-inbox-dead-lette
 import { ReplayInboxDeadLetterService } from "./application/replay-inbox-dead-letter.service";
 import { ReplayDeadLetterService } from "./application/replay-dead-letter.service";
 import { SetNodeApplicabilityService } from "./application/set-node-applicability.service";
+import { BlockNodeService } from "./application/block-node.service";
+import { ResolveNodeBlockService } from "./application/resolve-node-block.service";
 import { LIFECYCLE_REPOSITORY } from "./domain/lifecycle.repository";
 import { CLIENT_OPERATION_REPOSITORY } from "./domain/client-operation.repository";
 import { COMPENSATION_REPOSITORY } from "./domain/compensation.repository";
@@ -70,6 +72,7 @@ import { PrismaSourceAuthorityPolicyRepository } from "./infrastructure/prisma-s
 import { LifecycleInboxConsumption } from "./infrastructure/lifecycle-inbox-consumption";
 import { PrismaLifecycleRepository } from "./infrastructure/prisma-lifecycle.repository";
 import { PrismaOutboxRepository } from "./infrastructure/prisma-outbox.repository";
+import { PrismaNodeBlockRepository } from "./infrastructure/prisma-node-block.repository";
 import { StubOutboxDelivery } from "./infrastructure/stub-outbox-delivery";
 import { LifecycleController } from "./presentation/lifecycle.controller";
 import { LifecycleNodesController } from "./presentation/lifecycle-nodes.controller";
@@ -83,6 +86,8 @@ import { InboxDeadLetterController } from "./presentation/inbox-dead-letter.cont
 import { OutboxSystemController } from "./presentation/outbox-system.controller";
 import { ObjectActivitiesController } from "./presentation/object-activities.controller";
 import { LifecycleDateFactsController } from "./presentation/lifecycle-date-facts.controller";
+import { LifecycleNodeBlocksController } from "./presentation/lifecycle-node-blocks.controller";
+import { NODE_BLOCK_REPOSITORY } from "./domain/node-block.repository";
 
 @Module({
   imports: [
@@ -105,6 +110,7 @@ import { LifecycleDateFactsController } from "./presentation/lifecycle-date-fact
     ClientOperationController,
     ObjectActivitiesController,
     LifecycleDateFactsController,
+    LifecycleNodeBlocksController,
   ],
   providers: [
     ApplyLifecycleEventService,
@@ -115,6 +121,8 @@ import { LifecycleDateFactsController } from "./presentation/lifecycle-date-fact
     ListLifecycleDateFactsService,
     InitializeContainerFlowService,
     SetNodeApplicabilityService,
+    BlockNodeService,
+    ResolveNodeBlockService,
     SubmitClientOperationService,
     GetClientOperationService,
     GetCompensationService,
@@ -139,6 +147,7 @@ import { LifecycleDateFactsController } from "./presentation/lifecycle-date-fact
     ListInboxDeadLettersService,
     ReplayInboxDeadLetterService,
     { provide: LIFECYCLE_REPOSITORY, useClass: PrismaLifecycleRepository },
+    { provide: NODE_BLOCK_REPOSITORY, useClass: PrismaNodeBlockRepository },
     {
       provide: LIFECYCLE_DATE_FACT_REPOSITORY,
       useClass: PrismaLifecycleDateFactRepository,
@@ -203,6 +212,7 @@ export class LifecycleControlModule implements NestModule {
         ClientOperationController,
         ObjectActivitiesController,
         LifecycleDateFactsController,
+        LifecycleNodeBlocksController,
       );
     consumer
       .apply(DevServiceIdentityMiddleware)

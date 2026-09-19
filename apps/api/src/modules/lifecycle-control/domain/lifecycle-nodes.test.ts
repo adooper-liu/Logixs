@@ -59,4 +59,18 @@ describe("projectLifecycleNodes", () => {
     );
     expect(view.nodes).toHaveLength(3);
   });
+
+  it("投影未解除阻断的稳定引用", () => {
+    const blocked = structuredClone(flow);
+    const current = blocked.nodes.find(
+      (node) => node.nodeCode === blocked.flow.currentNodeCode,
+    )!;
+    current.state = "blocked";
+    current.blockedReasonRefs = ["block-1", "block-2"];
+
+    expect(
+      projectLifecycleNodes(blocked).nodes.find((node) => node.isCurrent)
+        ?.blockedReasonRefs,
+    ).toEqual(["block-1", "block-2"]);
+  });
 });

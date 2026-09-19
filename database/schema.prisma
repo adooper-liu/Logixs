@@ -126,6 +126,7 @@ model LifecycleDateFact {
   canonicalEventId      String?             @unique(map: "lifecycle_date_fact_canonical_event_key") @map("canonical_event_id")
   canonicalEvent        CanonicalEvent?     @relation("LifecycleDateFactAppliedEvent", fields: [canonicalEventId], references: [id])
   sourceCanonicalEvent  CanonicalEvent?     @relation("CanonicalEventDomainFact")
+  nodeBlocks            NodeBlock[]
   projectionVersion     Int                 @map("projection_version")
   traceId               String              @map("trace_id")
   receivedAt            DateTime            @map("received_at") @db.Timestamptz
@@ -348,6 +349,7 @@ model FlowInstance {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   nodes           NodeInstance[]
+  nodeBlocks      NodeBlock[]
 
   @@map("flow_instance")
 }
@@ -362,9 +364,53 @@ model NodeInstance {
   applicability     String                 @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
   completedAt       DateTime?              @map("completed_at")
   eventApplications NodeEventApplication[]
+  blocks            NodeBlock[]
 
   @@unique([flowInstanceId, nodeCode])
   @@map("node_instance")
+}
+
+// 节点阻断事实（lifecycle-control 拥有）：追加保存，节点 blocked 只是未解除阻断的投影。
+model NodeBlock {
+  id             String               @id @map("id")
+  tenantId       String               @map("tenant_id")
+  flowInstanceId String               @map("flow_instance_id")
+  flow           FlowInstance         @relation(fields: [flowInstanceId], references: [id], onDelete: Restrict)
+  nodeInstanceId String               @map("node_instance_id")
+  node           NodeInstance         @relation(fields: [nodeInstanceId], references: [id], onDelete: Restrict)
+  blockType      String               @map("block_type")
+  sourceFactId   String               @map("source_fact_id")
+  sourceFact     LifecycleDateFact    @relation(fields: [sourceFactId], references: [id], onDelete: Restrict)
+  occurredAt     DateTime             @map("occurred_at") @db.Timestamptz
+  actorId        String               @map("actor_id")
+  idempotencyKey String               @map("idempotency_key")
+  traceId        String               @map("trace_id")
+  projectionVersion Int               @map("projection_version")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  resolution     NodeBlockResolution?
+
+  @@unique([tenantId, idempotencyKey], map: "node_block_tenant_idempotency_key")
+  @@index([flowInstanceId, nodeInstanceId], map: "node_block_flow_node_idx")
+  @@index([nodeInstanceId, occurredAt], map: "node_block_node_occurred_idx")
+  @@map("node_block")
+}
+
+// 节点阻断解除事实：一个 blockId 最多追加一次解除，禁止覆盖原阻断。
+model NodeBlockResolution {
+  id             String    @id @default(uuid()) @map("id")
+  tenantId       String    @map("tenant_id")
+  blockId        String    @unique(map: "node_block_resolution_block_key") @map("block_id")
+  block          NodeBlock @relation(fields: [blockId], references: [id], onDelete: Restrict)
+  resolvedAt     DateTime  @map("resolved_at") @db.Timestamptz
+  reasonCode     String    @map("reason_code")
+  actorId        String    @map("actor_id")
+  idempotencyKey String    @map("idempotency_key")
+  traceId        String    @map("trace_id")
+  projectionVersion Int    @map("projection_version")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, idempotencyKey], map: "node_block_resolution_tenant_idempotency_key")
+  @@map("node_block_resolution")
 }
 
 // 可选节点适用性决策留痕（lifecycle-control 拥有）。

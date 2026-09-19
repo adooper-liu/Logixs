@@ -167,6 +167,7 @@ describe("PrismaLifecycleRepository.listFlowsWithNodes", () => {
             state: "active",
             completedAt: null,
             applicability: "required",
+            blockedReasonRefs: [],
           },
         ],
       },

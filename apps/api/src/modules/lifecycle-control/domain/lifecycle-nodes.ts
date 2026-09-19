@@ -9,6 +9,7 @@ export interface LifecycleNodeProjection {
   state: string;
   applicability: NodeApplicability;
   completedAt: Date | null;
+  blockedReasonRefs: string[];
   isCurrent: boolean;
 }
 
@@ -41,6 +42,7 @@ export function projectLifecycleNodes(
       state: node.state,
       applicability: node.applicability,
       completedAt: node.completedAt,
+      blockedReasonRefs: node.blockedReasonRefs ?? [],
       isCurrent: node.nodeCode === flow.flow.currentNodeCode,
     }))
     .sort((left, right) => {

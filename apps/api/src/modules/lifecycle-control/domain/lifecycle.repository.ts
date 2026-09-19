@@ -69,6 +69,7 @@ export interface FlowWithNodes {
     state: string;
     completedAt: Date | null;
     applicability: NodeApplicability;
+    blockedReasonRefs?: string[];
   }[];
 }
 

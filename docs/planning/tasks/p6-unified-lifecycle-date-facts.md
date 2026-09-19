@@ -1,6 +1,6 @@
 ---
 status: coding # design | coding | review | fix | blocked | done（机器可校验）
-branch: feat/lifecycle-specialized-guards
+branch: feat/lifecycle-node-blocks
 verification:
   - "pnpm db:verify:lifecycle-date-facts：通过；验证旧库连续应用日期事实、来源权威/租约和逐目标节点应用迁移后事务回滚，以及临时空库完整迁移链；断言策略约束、租约字段、节点应用约束和索引。"
   - "pnpm validate：通过；包含仓库策略、契约漂移、格式、lint、类型、API/Web 全量测试、Playwright E2E 与全仓构建。"
@@ -22,6 +22,11 @@ verification:
   - "2026-09-20 pnpm db:verify:evidence-idempotency：通过；隔离临时数据库验证旧 Evidence 回填、非空/长度约束、租户级唯一键、跨租户同键及空库完整迁移链。"
   - "2026-09-20 云当网 Evidence/日期事实接入 pnpm validate：通过；仓库策略、契约校验/漂移、Prisma 生成、lint、格式、类型、全量测试（API 124 文件/583 项、Web 59 文件/189 项）、Playwright E2E（50 通过、7 条件跳过）与构建全部完成。"
   - "2026-09-20 blocked 节点守卫：生命周期模块定向测试 60 个文件/296 项通过；API lint、typecheck、build，pnpm docs:check 与 git diff --check 均通过。"
+  - "2026-09-20 节点阻断管理定向测试：6 个文件/19 项通过；覆盖来源事实资格、当前节点守卫、幂等冲突、乐观并发、多个阻断、解除重放、错误脱敏、权限与阻断引用投影。"
+  - "2026-09-20 pnpm db:verify:lifecycle-date-facts：通过；旧库升级回滚与空库完整迁移均验证 node_block/node_block_resolution 约束、索引、真实写入和精确解除。"
+  - "2026-09-20 生命周期模块测试：65 个文件/313 项通过。"
+  - "2026-09-20 pnpm validate：通过；仓库政策、契约校验/漂移、Prisma 生成、lint、格式、类型、全量测试、Playwright E2E（50 通过、7 条件跳过）与生产构建全部完成。"
+  - "2026-09-20 节点阻断最终门禁：阻断定向测试 6 个文件/26 项、生命周期模块 65 个文件/313 项、真实 PostgreSQL 旧库升级回滚与空库迁移链均通过；pnpm validate 通过（API 129 个文件/602 项、Web 59 个文件/189 项、Playwright E2E 50 通过/7 条件跳过及生产构建）。"
 ---
 
 # 任务：全生命周期统一日期事实
@@ -82,7 +87,8 @@ verification:
 - 工单完成只记录工作结果，不再把装箱、出运或离港工单完成冒充 `stuffed/loaded/departed`；旧客户端操作缺少专业事实时落拒绝审计，旧 Inbox 直推进入业务拒绝，日期事实 Inbox 不受影响。
 - Outbox 的载荷完整性哈希已包含 `domainFactId/nodeCode/timeKind/authorityPolicyRef`，防止事件发布时丢失服务端实际采用的事实与权威策略。
 - 云当网供应商接入已贯通“原始载荷 → 唯一货柜解析 → 幂等 Evidence → 统一日期事实”：未知码或对象未唯一解析时不生成下游事实；Evidence 与日期事实分开保存 provider 和未解析权威主体，初始核验状态确保供应商事件只进入 `review_required`。重复 Inbox 会复用原记录继续未完成后处理，同键异内容明确冲突。下一步仍需补齐完整节点专项守卫（地点、航段、主体、阻断等）；当前通用顺序守卫已成立，但不能把它等同于全部 14 节点专项业务守卫，因此本任务保持 `coding`。
-- 阻断守卫第一刀已封住两条路径：领域决策遇到 `blocked` 目标节点时保留 `pending_application`，Repository 在原子应用前再次发现并发阻断时返回 `LIFECYCLE_NODE_BLOCKED`，日期事实不会丢失且可后续重放。`BlockNode/ResolveNodeBlock` 的追加式持久化、来源事实校验和精确解除仍未实现，不能把本刀等同于完整阻断管理。
+- 阻断守卫先封住两条过站路径：领域决策遇到 `blocked` 目标节点时保留 `pending_application`，Repository 在原子应用前再次发现并发阻断时返回 `LIFECYCLE_NODE_BLOCKED`，日期事实不会丢失且可后续重放。
+- `BlockNode/ResolveNodeBlock` 已按正式契约落地：阻断与解除追加保存，节点 `blocked` 仅是未解除阻断的投影；命令按 `blockId` 精确解除并使用流程版本防并发，最后一个阻断解除后自动重放待应用日期事实。当前来源事实只接受已核验、已确认、有效、当前版本且具备来源权威策略的 `actual LifecycleDateFact`，要求事件角色为 `exception`，且 `blockType` 必须等于来源事实的规范 `eventCode`；其他领域后续必须通过正式事实 Port 扩展，禁止把任意 UUID、普通证据或客户端自由文本当作阻断类型和事实。
 
 ## 进度 log
 
@@ -100,3 +106,4 @@ verification:
 | 2026-09-20 | coding | Codex | —      | 修复日期事实旧库升级验证的可重复执行性并完成合并门禁 |
 | 2026-09-20 | coding | Codex | —      | 云当网候选接入 Evidence 并进入统一日期事实与复核链   |
 | 2026-09-20 | coding | Codex | —      | 封堵 blocked 节点直接及并发过站路径                  |
+| 2026-09-20 | coding | Codex | —      | 完成追加式节点阻断、精确解除与 pending 自动重放      |

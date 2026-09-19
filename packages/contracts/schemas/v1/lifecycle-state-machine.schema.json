@@ -12,6 +12,8 @@
     { "$ref": "#/$defs/BlockNodeCommand" },
     { "$ref": "#/$defs/ResolveNodeBlockCommand" },
     { "$ref": "#/$defs/CancelLifecycleCommand" },
+    { "$ref": "#/$defs/LifecycleNodeBlocked" },
+    { "$ref": "#/$defs/LifecycleNodeBlockResolved" },
     { "$ref": "#/$defs/LifecycleTransitioned" },
     { "$ref": "#/$defs/LifecycleReconciliationCase" },
     { "$ref": "#/$defs/LifecycleStateView" }
@@ -373,6 +375,72 @@
           "minLength": 1,
           "maxLength": 200
         },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "LifecycleNodeBlocked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "eventType",
+        "eventVersion",
+        "tenantId",
+        "flowInstanceId",
+        "containerId",
+        "nodeInstanceId",
+        "blockId",
+        "blockType",
+        "sourceFactId",
+        "occurredAt",
+        "projectionVersion",
+        "traceId"
+      ],
+      "properties": {
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventType": { "const": "lifecycle.node_blocked" },
+        "eventVersion": { "const": 1 },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "blockId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "blockType": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "sourceFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 0 },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "LifecycleNodeBlockResolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "eventType",
+        "eventVersion",
+        "tenantId",
+        "flowInstanceId",
+        "containerId",
+        "nodeInstanceId",
+        "blockId",
+        "resolvedAt",
+        "reasonCode",
+        "projectionVersion",
+        "traceId"
+      ],
+      "properties": {
+        "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "eventType": { "const": "lifecycle.node_block_resolved" },
+        "eventVersion": { "const": 1 },
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "blockId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "resolvedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "projectionVersion": { "type": "integer", "minimum": 0 },
         "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
       }
     },

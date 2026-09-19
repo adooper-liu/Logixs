@@ -18,6 +18,49 @@ export class SetNodeApplicabilityResponseDto {
   @ApiProperty() version!: number;
 }
 
+export class NodeBlockDto {
+  @ApiProperty() blockId!: string;
+  @ApiProperty() blockType!: string;
+  @ApiProperty() sourceFactId!: string;
+  @ApiProperty() occurredAt!: string;
+  @ApiProperty() nodeInstanceId!: string;
+}
+
+export class BlockNodeRequestDto {
+  @ApiProperty({ type: NodeBlockDto }) block!: NodeBlockDto;
+  @ApiProperty() expectedVersion!: number;
+  @ApiProperty() idempotencyKey!: string;
+  @ApiProperty() traceId!: string;
+}
+
+export class BlockNodeResponseDto {
+  @ApiProperty() blockId!: string;
+  @ApiProperty() flowInstanceId!: string;
+  @ApiProperty() nodeInstanceId!: string;
+  @ApiProperty({ enum: ["active", "resolved"] })
+  state!: "active" | "resolved";
+  @ApiProperty() applied!: boolean;
+  @ApiProperty() version!: number;
+}
+
+export class ResolveNodeBlockRequestDto {
+  @ApiProperty() resolvedAt!: string;
+  @ApiProperty() reasonCode!: string;
+  @ApiProperty() expectedVersion!: number;
+  @ApiProperty() idempotencyKey!: string;
+  @ApiProperty() traceId!: string;
+}
+
+export class ResolveNodeBlockResponseDto {
+  @ApiProperty() blockId!: string;
+  @ApiProperty() flowInstanceId!: string;
+  @ApiProperty() nodeInstanceId!: string;
+  @ApiProperty() resolved!: true;
+  @ApiProperty() nodeUnblocked!: boolean;
+  @ApiProperty() applied!: boolean;
+  @ApiProperty() version!: number;
+}
+
 export class LifecycleEventItemDto {
   @ApiProperty() id!: string;
   @ApiProperty() containerId!: string;
@@ -49,6 +92,7 @@ export class LifecycleNodeItemDto {
   @ApiProperty() state!: string;
   @ApiProperty() applicability!: string;
   @ApiProperty({ nullable: true }) completedAt!: string | null;
+  @ApiProperty({ type: [String] }) blockedReasonRefs!: string[];
   @ApiProperty() isCurrent!: boolean;
 }
 

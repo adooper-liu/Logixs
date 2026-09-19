@@ -27,6 +27,7 @@ export class LifecycleNodesController {
         state: node.state,
         applicability: node.applicability,
         completedAt: node.completedAt?.toISOString() ?? null,
+        blockedReasonRefs: node.blockedReasonRefs,
         isCurrent: node.isCurrent,
       })),
       asOf: page.asOf.toISOString(),

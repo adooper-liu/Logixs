@@ -104,6 +104,7 @@ describe("ListContainerLifecycleNodesService", () => {
             state: "completed",
             applicability: "required",
             completedAt: new Date("2026-09-01T00:00:00.000Z"),
+            blockedReasonRefs: [],
             isCurrent: false,
           },
           {
@@ -113,6 +114,7 @@ describe("ListContainerLifecycleNodesService", () => {
             state: "active",
             applicability: "required",
             completedAt: null,
+            blockedReasonRefs: [],
             isCurrent: true,
           },
         ],
