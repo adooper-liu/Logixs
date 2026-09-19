@@ -359,4 +359,40 @@ describe("PrismaLifecycleRepository node event applications", () => {
       }),
     ).rejects.toThrow("LIFECYCLE_VERSION_CONFLICT");
   });
+
+  it("原子应用时目标节点已被并发阻断则拒绝转换", async () => {
+    const tx = {
+      nodeEventApplication: { findUnique: vi.fn().mockResolvedValue(null) },
+      nodeInstance: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "node-ocean",
+          flowInstanceId: "flow-1",
+          nodeCode: "ocean_transit",
+          state: "blocked",
+        }),
+      },
+      flowInstance: { updateMany: vi.fn() },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) =>
+        fn(tx),
+      ),
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+
+    await expect(
+      repository.applyEventToNode({
+        flowInstanceId: "flow-1",
+        expectedFlowVersion: 3,
+        eventId: "event-1",
+        targetNodeInstanceId: "node-ocean",
+        targetNodeCode: "ocean_transit",
+        nextNodeCode: "customs_clearance",
+        occurredAt: new Date("2026-09-18T10:00:00Z"),
+        evaluatedAt: new Date("2026-09-18T10:00:01Z"),
+        guardResults: [],
+      }),
+    ).rejects.toThrow("LIFECYCLE_NODE_BLOCKED");
+    expect(tx.flowInstance.updateMany).not.toHaveBeenCalled();
+  });
 });

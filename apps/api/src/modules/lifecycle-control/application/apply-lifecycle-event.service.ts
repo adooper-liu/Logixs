@@ -258,7 +258,8 @@ export class ApplyLifecycleEventService {
         if (
           code === "LIFECYCLE_VERSION_CONFLICT" ||
           code === "LIFECYCLE_HISTORY_SEALED" ||
-          code === "LIFECYCLE_GUARD_NOT_SATISFIED"
+          code === "LIFECYCLE_GUARD_NOT_SATISFIED" ||
+          code === "LIFECYCLE_NODE_BLOCKED"
         ) {
           throw new HttpException(code, HttpStatus.CONFLICT);
         }

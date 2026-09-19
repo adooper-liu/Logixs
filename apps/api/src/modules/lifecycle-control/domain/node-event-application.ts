@@ -38,6 +38,13 @@ export function decideNodeEventApplication(
   if (target.applicability === "optional_not_applicable") {
     return rejected("LIFECYCLE_GUARD_NOT_SATISFIED", ["TARGET_NODE_FOUND"]);
   }
+  if (target.state === "blocked") {
+    return {
+      kind: "pending_application",
+      guardResults: ["TARGET_NODE_FOUND", "TARGET_NODE_APPLICABLE"],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_NODE_BLOCK",
+    };
+  }
   if (target.state === "completed") {
     return rejected("LIFECYCLE_HISTORY_SEALED", [
       "TARGET_NODE_FOUND",

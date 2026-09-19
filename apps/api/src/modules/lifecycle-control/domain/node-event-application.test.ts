@@ -52,6 +52,25 @@ describe("decideNodeEventApplication", () => {
     expect(decision.kind).toBe("apply");
   });
 
+  it("目标节点被阻断时保留待应用，不允许过站", () => {
+    const decision = decideNodeEventApplication({
+      targetNodeCode: "container_stuffing",
+      occurredAt: new Date("2026-09-18T10:00:00Z"),
+      nodes: [
+        node("cargo_ready", "completed", {
+          completedAt: new Date("2026-09-18T08:00:00Z"),
+        }),
+        node("container_stuffing", "blocked"),
+      ],
+    });
+
+    expect(decision).toEqual({
+      kind: "pending_application",
+      guardResults: ["TARGET_NODE_FOUND", "TARGET_NODE_APPLICABLE"],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_NODE_BLOCK",
+    });
+  });
+
   it("前序实际时间晚于目标事件时拒绝", () => {
     const decision = decideNodeEventApplication({
       targetNodeCode: "container_stuffing",
