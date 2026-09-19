@@ -25,9 +25,14 @@ import {
   type LifecycleRepository,
 } from "../domain/lifecycle.repository";
 import {
+  ASSERT_LIFECYCLE_STATE_EVIDENCE,
+  type AssertLifecycleStateEvidencePort,
+} from "../assert-lifecycle-state-evidence.port";
+import {
   defaultApplicability,
   nextApplicableNode,
 } from "../domain/node-applicability";
+import { decideNodeEventApplication } from "../domain/node-event-application";
 import { parseEvidenceRefs } from "../domain/evidence-refs";
 import { CONTAINER_STATUS_ORDER, NODE_SEQUENCE } from "../domain/node-status";
 
@@ -49,6 +54,7 @@ export interface ApplyLifecycleEventInput {
   occurredAt: Date;
   idempotencyKey: string;
   evidenceRefs: string[];
+  domainFactId?: string;
   traceId?: string;
   completeInbox?: {
     id: string;
@@ -61,19 +67,23 @@ export interface ApplyLifecycleEventResult {
   containerId: string;
   eventCode: CanonicalEventCode;
   completedNodes: LifecycleNodeCode[];
+  pendingNodes: LifecycleNodeCode[];
   resultingStatus: string | null; // null = 本次事件不推进 8 态
   applied: boolean; // false = 幂等命中（已应用过）
   activatedNodeCode: LifecycleNodeCode | null;
   activatedNodeTaskId: string | null;
+  canonicalEventId: string;
 }
 
 // 应用生命周期事件：事件 → 完成 eligible 节点 → 推进 currentStatus。
-// 不变量：幂等（idempotencyKey）、R1 时间单调、R3 密封、R2 状态单调。
+// 不变量：事件与目标节点分别幂等、节点实际时间单调、R3 密封、R2 状态单调。
 @Injectable()
 export class ApplyLifecycleEventService {
   constructor(
     @Inject(LIFECYCLE_REPOSITORY)
     private readonly repository: LifecycleRepository,
+    @Inject(ASSERT_LIFECYCLE_STATE_EVIDENCE)
+    private readonly assertStateEvidence: AssertLifecycleStateEvidencePort,
     @Inject(ApplyContainerRecordService)
     private readonly applyContainerRecord: ApplyContainerRecordService,
     @Inject(CREATE_NODE_TASK)
@@ -88,7 +98,7 @@ export class ApplyLifecycleEventService {
     const eligibleNodes = EVENT_TO_COMPLETION_NODES[input.eventCode];
     if (!eligibleNodes) {
       throw new HttpException(
-        "VALIDATION_FORMAT: 未知事件码",
+        "LIFECYCLE_EVENT_TYPE_UNKNOWN: 未知事件码",
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -118,69 +128,153 @@ export class ApplyLifecycleEventService {
       );
     }
 
-    // 幂等：同 idempotencyKey 不重复应用
+    if (!input.domainFactId?.trim()) {
+      throw new HttpException(
+        "LIFECYCLE_EVENT_NOT_STATE_EVIDENCE: 缺少规范事实引用",
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    const stateEvidence = await this.assertStateEvidence.execute({
+      domainFactId: input.domainFactId,
+      tenantId: input.tenantId,
+      containerId: input.containerId,
+      eventCode: input.eventCode,
+      occurredAt: input.occurredAt,
+      evidenceRefs,
+    });
+
+    // 事件接收幂等与节点应用幂等分开：同一事件可在前序满足后继续应用后续目标。
     const existing = await this.repository.findEventByIdempotencyKey(
       input.idempotencyKey,
     );
-    if (existing) {
-      const flow = await this.repository.findFlowByContainer(input.containerId);
-      const completed =
-        flow?.nodes
-          .filter((node) => node.state === "completed")
-          .map((node) => node.nodeCode) ?? [];
-      const activated = await this.activateFollowingTask(
-        input.containerId,
-        input.tenantId,
-        completed,
-      );
-      return {
-        containerId: input.containerId,
-        eventCode: input.eventCode,
-        completedNodes: [],
-        resultingStatus: null,
-        applied: false,
-        ...activated,
-      };
-    }
-
-    // R1 时间单调：occurredAt ≥ 已应用事件的最晚时间
-    const latestTime = await this.repository.findLatestEventTime(
-      input.containerId,
-    );
-    if (latestTime && input.occurredAt < latestTime) {
+    if (existing && !sameEvent(existing, input, evidenceRefs)) {
       throw new HttpException(
-        "TIME_ORDER_CONFLICT: 事件时间早于已应用事件",
+        "LIFECYCLE_IDEMPOTENCY_CONFLICT: 同键异载荷",
         HttpStatus.CONFLICT,
       );
     }
 
-    await this.assertEvidenceRefs.execute({
-      tenantId: input.tenantId,
-      subjectType: "container",
-      subjectId: input.containerId,
-      evidenceIds: evidenceRefs,
-    });
+    let canonicalEventId = existing?.id;
+    if (!existing) {
+      await this.assertEvidenceRefs.execute({
+        tenantId: input.tenantId,
+        subjectType: "container",
+        subjectId: input.containerId,
+        evidenceIds: evidenceRefs,
+      });
+      canonicalEventId = (
+        await this.repository.saveEvent({
+          id: "",
+          containerId: input.containerId,
+          tenantId: input.tenantId,
+          eventCode: input.eventCode,
+          domainFactId: stateEvidence.domainFactId,
+          nodeCode: stateEvidence.nodeCode,
+          timeKind: "actual",
+          authorityPolicyRef: stateEvidence.authorityPolicyRef,
+          occurredAt: input.occurredAt,
+          evidenceRefs,
+          idempotencyKey: input.idempotencyKey,
+          traceId: input.traceId ?? randomUUID(),
+          completeInbox: input.completeInbox,
+        })
+      ).id;
+    }
+    if (!canonicalEventId) {
+      throw new Error("CANONICAL_EVENT_ID_MISSING");
+    }
 
-    const flow = await this.repository.ensureFlow(input.containerId);
+    let flow = await this.repository.ensureFlow(input.containerId);
 
     const completedNodes: LifecycleNodeCode[] = [];
-    if (eligibleNodes.length > 0) {
-      await this.repository.completeNodes(
-        flow.flow.id,
-        eligibleNodes,
-        input.occurredAt,
+    const pendingNodes: LifecycleNodeCode[] = [];
+    for (const targetNodeCode of [...eligibleNodes].sort(
+      (left, right) => NODE_SEQUENCE[left] - NODE_SEQUENCE[right],
+    )) {
+      const target = flow.nodes.find(
+        (node) => node.nodeCode === targetNodeCode,
       );
-      completedNodes.push(...eligibleNodes);
-      const farthest = farthestNode(completedNodes);
-      if (farthest) {
-        await this.repository.updateCurrentNode(flow.flow.id, farthest);
+      if (!target) {
+        throw new HttpException(
+          "LIFECYCLE_GUARD_NOT_SATISFIED: 目标节点不存在",
+          HttpStatus.CONFLICT,
+        );
       }
+      const priorApplication = await this.repository.findNodeEventApplication(
+        canonicalEventId,
+        target.id,
+      );
+      if (priorApplication?.state === "applied") continue;
+      if (priorApplication?.state === "rejected") {
+        throw new HttpException(
+          `${priorApplication.reasonCode ?? "BUSINESS_STATE_VIOLATION"}: 目标节点应用已拒绝`,
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const decision = decideNodeEventApplication({
+        targetNodeCode,
+        occurredAt: input.occurredAt,
+        nodes: flow.nodes,
+      });
+      if (decision.kind !== "apply") {
+        await this.repository.recordNodeEventApplication({
+          eventId: canonicalEventId,
+          targetNodeInstanceId: target.id,
+          state: decision.kind,
+          evaluatedAt: new Date(),
+          guardResults: decision.guardResults,
+          reasonCode: decision.reasonCode,
+        });
+        if (decision.kind === "pending_application") {
+          pendingNodes.push(targetNodeCode);
+          continue;
+        }
+        throw new HttpException(
+          `${decision.reasonCode}: 目标节点守卫拒绝`,
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const nextNodeCode = nextApplicableNode(targetNodeCode, (nodeCode) => {
+        const node = flow.nodes.find((item) => item.nodeCode === nodeCode);
+        return node?.applicability ?? defaultApplicability(nodeCode);
+      });
+      try {
+        const transition = await this.repository.applyEventToNode({
+          flowInstanceId: flow.flow.id,
+          expectedFlowVersion: flow.flow.version,
+          eventId: canonicalEventId,
+          targetNodeInstanceId: target.id,
+          targetNodeCode,
+          nextNodeCode,
+          occurredAt: input.occurredAt,
+          evaluatedAt: new Date(),
+          guardResults: decision.guardResults,
+        });
+        if (transition.applied) completedNodes.push(targetNodeCode);
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "";
+        if (
+          code === "LIFECYCLE_VERSION_CONFLICT" ||
+          code === "LIFECYCLE_HISTORY_SEALED" ||
+          code === "LIFECYCLE_GUARD_NOT_SATISFIED"
+        ) {
+          throw new HttpException(code, HttpStatus.CONFLICT);
+        }
+        throw error;
+      }
+      flow =
+        (await this.repository.findFlowByContainer(input.containerId)) ?? flow;
     }
 
     // currentStatus 推进：只有转换表里的事件才推进 8 态；R2 状态单调（不回退）
     const targetStatus = EVENT_TO_CONTAINER_STATUS[input.eventCode] ?? null;
     let resultingStatus: ContainerLifecycleState | null = null;
-    if (targetStatus) {
+    if (
+      targetStatus &&
+      ((eligibleNodes.length === 0 && !existing) || completedNodes.length > 0)
+    ) {
       const currentOrder =
         CONTAINER_STATUS_ORDER[
           container.currentStatus as ContainerLifecycleState
@@ -197,19 +291,6 @@ export class ApplyLifecycleEventService {
       }
     }
 
-    // 事件流水账（不可变留痕）
-    await this.repository.saveEvent({
-      id: "", // DB 生成；Outbox eventId 使用落账后的规范事件 id
-      containerId: input.containerId,
-      tenantId: input.tenantId,
-      eventCode: input.eventCode,
-      occurredAt: input.occurredAt,
-      evidenceRefs,
-      idempotencyKey: input.idempotencyKey,
-      traceId: input.traceId ?? randomUUID(),
-      completeInbox: input.completeInbox,
-    });
-
     const activated = await this.activateFollowingTask(
       input.containerId,
       input.tenantId,
@@ -220,8 +301,11 @@ export class ApplyLifecycleEventService {
       containerId: input.containerId,
       eventCode: input.eventCode,
       completedNodes,
+      pendingNodes,
       resultingStatus,
-      applied: true,
+      applied:
+        completedNodes.length > 0 || (eligibleNodes.length === 0 && !existing),
+      canonicalEventId,
       ...activated,
     };
   }
@@ -274,6 +358,27 @@ export class ApplyLifecycleEventService {
       return { activatedNodeCode: nextNode, activatedNodeTaskId: null };
     }
   }
+}
+
+function sameEvent(
+  existing: {
+    containerId: string;
+    eventCode: CanonicalEventCode;
+    domainFactId: string | null;
+    occurredAt: Date;
+    evidenceRefs: string[];
+  },
+  input: ApplyLifecycleEventInput,
+  evidenceRefs: string[],
+): boolean {
+  return (
+    existing.containerId === input.containerId &&
+    existing.eventCode === input.eventCode &&
+    existing.domainFactId === input.domainFactId &&
+    existing.occurredAt.getTime() === input.occurredAt.getTime() &&
+    [...existing.evidenceRefs].sort().join("\u0000") ===
+      [...evidenceRefs].sort().join("\u0000")
+  );
 }
 
 function farthestNode(nodes: LifecycleNodeCode[]): LifecycleNodeCode | null {

@@ -30,44 +30,16 @@ import {
   decideNodeTaskTransition,
   decideWorkOrderCompletion,
 } from "../domain/state-rules";
-import { parseEvidenceRefs } from "../domain/evidence-refs";
-import { decideTaskOutcome, resultPolicyForNode } from "../domain/task-outcome";
+import { decideTaskOutcome } from "../domain/task-outcome";
 import {
   WORK_EXECUTION_REPOSITORY,
-  type NodeTaskRecord,
   type WorkExecutionRepository,
 } from "../domain/work-execution.repository";
 
-const APPLY_LIFECYCLE_EVENT = Symbol.for("logix.ApplyLifecycleEvent");
 const ASSERT_CONTAINER_TENANT = Symbol.for("logix.AssertContainerTenant");
-const ASSERT_EVIDENCE_REFS = Symbol.for("logix.AssertEvidenceRefs");
 
 interface AssertContainerTenantPort {
   execute(input: { containerId: string; tenantId: string }): Promise<void>;
-}
-
-interface AssertEvidenceRefsPort {
-  execute(input: {
-    tenantId: string;
-    subjectType: string;
-    subjectId: string;
-    evidenceIds: string[];
-  }): Promise<void>;
-}
-
-interface ApplyLifecycleEventPort {
-  execute(input: {
-    containerId: string;
-    tenantId: string;
-    eventCode: string;
-    occurredAt: Date;
-    idempotencyKey: string;
-    evidenceRefs: string[];
-  }): Promise<{
-    applied: boolean;
-    activatedNodeCode?: string | null;
-    activatedNodeTaskId?: string | null;
-  }>;
 }
 
 export type LifecycleApplyStatus =
@@ -108,12 +80,8 @@ export class CompleteWorkOrderService {
     private readonly repository: WorkExecutionRepository,
     @Inject(WORK_CLIENT_OPERATION_REPOSITORY)
     private readonly operations: WorkClientOperationRepository,
-    @Inject(APPLY_LIFECYCLE_EVENT)
-    private readonly applyLifecycleEvent: ApplyLifecycleEventPort,
     @Inject(ASSERT_CONTAINER_TENANT)
     private readonly assertContainerTenant: AssertContainerTenantPort,
-    @Inject(ASSERT_EVIDENCE_REFS)
-    private readonly assertEvidenceRefs: AssertEvidenceRefsPort,
   ) {}
 
   async execute(
@@ -252,12 +220,6 @@ export class CompleteWorkOrderService {
       );
     }
     if (workOrderDecision.kind === "already_done") {
-      await this.requireEventEvidence(
-        bundle.task,
-        bundle.task.state,
-        tenantId,
-        evidenceRefs,
-      );
       const operation = buildCommittedClientOperation({
         ...base,
         resultRefs: completeResultRefs(
@@ -267,11 +229,6 @@ export class CompleteWorkOrderService {
         ),
       });
       await this.operations.insert(operation);
-      const lifecycle = await this.requestLifecycleEvent(
-        bundle.task,
-        tenantId,
-        evidenceRefs,
-      );
       return {
         workOrderId,
         workOrderState: workOrder.state,
@@ -279,7 +236,7 @@ export class CompleteWorkOrderService {
         taskState: bundle.task.state,
         applied: false,
         outcomeRecorded: false,
-        ...lifecycle,
+        ...noLifecycleApplication(),
         ...receipt(operation),
       };
     }
@@ -315,13 +272,6 @@ export class CompleteWorkOrderService {
       workOrders: nextWorkOrders,
     });
 
-    await this.requireEventEvidence(
-      bundle.task,
-      nextTaskState,
-      tenantId,
-      evidenceRefs,
-    );
-
     const operation = buildCommittedClientOperation({
       ...base,
       resultRefs: completeResultRefs(
@@ -340,15 +290,6 @@ export class CompleteWorkOrderService {
       clientOperation: operation,
     });
 
-    const lifecycle = await this.requestLifecycleEvent(
-      {
-        ...bundle.task,
-        state: nextTaskState,
-      },
-      tenantId,
-      evidenceRefs,
-    );
-
     return {
       workOrderId,
       workOrderState: "completed",
@@ -356,109 +297,26 @@ export class CompleteWorkOrderService {
       taskState: nextTaskState,
       applied: true,
       outcomeRecorded: outcome !== null,
-      ...lifecycle,
+      ...noLifecycleApplication(),
       ...receipt(operation),
     };
   }
+}
 
-  private async requireEventEvidence(
-    task: NodeTaskRecord,
-    nextTaskState: NodeTaskState,
-    tenantId: string,
-    evidenceRefs: string[],
-  ): Promise<void> {
-    const policy = resultPolicyForNode(task.nodeCode);
-    if (policy.mode !== "emit_canonical_event") return;
-    if (nextTaskState !== "completed" || !task.containerId) return;
-
-    let refs: string[];
-    try {
-      refs = parseEvidenceRefs(evidenceRefs);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "EVIDENCE_REQUIRED";
-      throw new HttpException(
-        message,
-        message.startsWith("EVIDENCE_REQUIRED")
-          ? HttpStatus.UNPROCESSABLE_ENTITY
-          : HttpStatus.BAD_REQUEST,
-      );
-    }
-    await this.assertEvidenceRefs.execute({
-      tenantId,
-      subjectType: "container",
-      subjectId: task.containerId,
-      evidenceIds: refs,
-    });
-  }
-
-  private async requestLifecycleEvent(
-    task: NodeTaskRecord,
-    tenantId: string,
-    evidenceRefs: string[],
-  ): Promise<{
-    lifecycleApply: LifecycleApplyStatus;
-    lifecycleEventCode: CanonicalEventCode | null;
-    lifecycleDetail: string | null;
-    activatedNodeCode: string | null;
-    activatedNodeTaskId: string | null;
-  }> {
-    const idle = {
-      activatedNodeCode: null as string | null,
-      activatedNodeTaskId: null as string | null,
-    };
-    const policy = resultPolicyForNode(task.nodeCode);
-    if (policy.mode !== "emit_canonical_event" || !policy.eventCode) {
-      return {
-        lifecycleApply: "not_applicable",
-        lifecycleEventCode: null,
-        lifecycleDetail: null,
-        ...idle,
-      };
-    }
-    if (task.state !== "completed") {
-      return {
-        lifecycleApply: "not_applicable",
-        lifecycleEventCode: policy.eventCode,
-        lifecycleDetail: null,
-        ...idle,
-      };
-    }
-    if (!task.containerId) {
-      return {
-        lifecycleApply: "skipped",
-        lifecycleEventCode: policy.eventCode,
-        lifecycleDetail: "MISSING_CONTAINER_ID",
-        ...idle,
-      };
-    }
-
-    try {
-      const result = await this.applyLifecycleEvent.execute({
-        containerId: task.containerId,
-        tenantId,
-        eventCode: policy.eventCode,
-        occurredAt: new Date(),
-        idempotencyKey: `work-execution:outcome:${task.id}:${policy.eventCode}`,
-        evidenceRefs,
-      });
-      return {
-        lifecycleApply: result.applied ? "applied" : "replayed",
-        lifecycleEventCode: policy.eventCode,
-        lifecycleDetail: null,
-        activatedNodeCode: result.activatedNodeCode ?? null,
-        activatedNodeTaskId: result.activatedNodeTaskId ?? null,
-      };
-    } catch (error) {
-      return {
-        lifecycleApply: "rejected",
-        lifecycleEventCode: policy.eventCode,
-        lifecycleDetail:
-          error instanceof Error ? error.message : "LIFECYCLE_APPLY_FAILED",
-        ...idle,
-      };
-    }
-  }
+function noLifecycleApplication(): {
+  lifecycleApply: LifecycleApplyStatus;
+  lifecycleEventCode: CanonicalEventCode | null;
+  lifecycleDetail: string | null;
+  activatedNodeCode: null;
+  activatedNodeTaskId: null;
+} {
+  return {
+    lifecycleApply: "not_applicable",
+    lifecycleEventCode: null,
+    lifecycleDetail: null,
+    activatedNodeCode: null,
+    activatedNodeTaskId: null,
+  };
 }
 
 function completeResultRefs(

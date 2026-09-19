@@ -11,6 +11,10 @@ const BASE = {
   tenantId: "t1",
   containerId: "c1",
   eventCode: "stuffed" as const,
+  domainFactId: "44444444-4444-4444-8444-444444444444",
+  nodeCode: "container_stuffing" as const,
+  timeKind: "actual" as const,
+  authorityPolicyRef: "warehouse-stuffing:1",
   occurredAt: new Date("2026-09-12T10:00:00.000Z"),
   evidenceRefs: ["22222222-2222-4222-8222-222222222222"],
   idempotencyKey: "key-1",
@@ -45,5 +49,21 @@ describe("buildLifecycleOutboxPending", () => {
       evidenceRefs: ["44444444-4444-4444-8444-444444444444"],
     }).payloadHash;
     expect(changed).not.toBe(original);
+  });
+
+  it("服务端采用的事实与权威策略属于消息完整性哈希", () => {
+    const original = buildLifecycleOutboxPending(BASE).payloadHash;
+    expect(
+      buildLifecycleOutboxPending({
+        ...BASE,
+        domainFactId: "55555555-5555-4555-8555-555555555555",
+      }).payloadHash,
+    ).not.toBe(original);
+    expect(
+      buildLifecycleOutboxPending({
+        ...BASE,
+        authorityPolicyRef: "warehouse-stuffing:2",
+      }).payloadHash,
+    ).not.toBe(original);
   });
 });

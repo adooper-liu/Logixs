@@ -1,5 +1,7 @@
 import type { ImportRow } from "../domain/import-batch";
+import canonicalEvents from "@logix/contracts/canonical-events.json";
 import {
+  IMPORT_FIELD_CATALOG,
   IMPORT_TIME_FACT_CATALOG,
   isCompletedTimeStatus,
   type ImportFieldCode,
@@ -17,10 +19,13 @@ export interface MappedImportTimeFact {
   occurredAtUtc: Date;
   sourceUtcOffset: string;
   sourceSystem: string;
+  authoritySystem: string;
   sourceStatus: string | null;
   evidenceRef: string | null;
   derivationRuleVersion: string | null;
   sourceRowId: string;
+  nodeCode: string | null;
+  mappingVersion: string;
 }
 
 export function collectImportTimeFacts(
@@ -43,6 +48,11 @@ export function collectImportTimeFacts(
     const occurredAtUtc = normalizeSourceDateTime(rawValue, sourceUtcOffset);
     const sourceStatus = definition.statusFieldCode
       ? mappedValue(sourceRow, mappings, definition.statusFieldCode)
+      : null;
+    const event = definition.eventCode
+      ? canonicalEvents.find(
+          (candidate) => candidate.eventCode === definition.eventCode,
+        )
       : null;
     const evidenceRef = mappedValue(sourceRow, mappings, "timeEvidenceRef");
     const derivationRuleVersion = mappedValue(
@@ -68,10 +78,13 @@ export function collectImportTimeFacts(
       occurredAtUtc,
       sourceUtcOffset: normalizeUtcOffset(sourceUtcOffset) ?? sourceUtcOffset,
       sourceSystem: mappedValue(sourceRow, mappings, "timeSourceSystem"),
+      authoritySystem: mappedValue(sourceRow, mappings, "timeAuthoritySystem"),
       sourceStatus,
       evidenceRef: evidenceRef || null,
       derivationRuleVersion: derivationRuleVersion || null,
       sourceRowId: sourceRow.id,
+      nodeCode: event?.defaultNodeCode ?? null,
+      mappingVersion: IMPORT_FIELD_CATALOG.version,
     });
   }
   return facts;

@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import { LIFECYCLE_REPOSITORY } from "../domain/lifecycle.repository";
 import { SetNodeApplicabilityService } from "./set-node-applicability.service";
+import { ReplayPendingLifecycleDateFactsService } from "./replay-pending-lifecycle-date-facts.service";
 
 const ASSERT_EVIDENCE_REFS = Symbol.for("logix.AssertEvidenceRefs");
 
@@ -27,12 +28,19 @@ async function buildService(
   assertEvidenceRefs: { execute: ReturnType<typeof vi.fn> } = {
     execute: vi.fn().mockResolvedValue(undefined),
   },
+  replayPending: { execute: ReturnType<typeof vi.fn> } = {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
 ) {
   const module = await Test.createTestingModule({
     providers: [
       SetNodeApplicabilityService,
       { provide: LIFECYCLE_REPOSITORY, useValue: repository },
       { provide: ASSERT_EVIDENCE_REFS, useValue: assertEvidenceRefs },
+      {
+        provide: ReplayPendingLifecycleDateFactsService,
+        useValue: replayPending,
+      },
     ],
   }).compile();
   return module.get(SetNodeApplicabilityService);
@@ -125,20 +133,25 @@ describe("SetNodeApplicabilityService", () => {
 
   it("首次写入成功", async () => {
     const applyNodeApplicability = vi.fn().mockResolvedValue({ version: 1 });
-    const service = await buildService({
-      findApplicabilityDecision: vi.fn().mockResolvedValue(null),
-      findContainerBase: vi.fn().mockResolvedValue({
-        tenantId: "t1",
-        orderNumber: "SO-1",
-        containerNumber: "MSKU1",
-        currentStatus: "shipped",
-      }),
-      findFlowByContainer: vi.fn().mockResolvedValue({
-        flow: { id: "f1", containerId: "c1", state: "active", version: 0 },
-        nodes: [],
-      }),
-      applyNodeApplicability,
-    });
+    const replayPending = { execute: vi.fn().mockResolvedValue(undefined) };
+    const service = await buildService(
+      {
+        findApplicabilityDecision: vi.fn().mockResolvedValue(null),
+        findContainerBase: vi.fn().mockResolvedValue({
+          tenantId: "t1",
+          orderNumber: "SO-1",
+          containerNumber: "MSKU1",
+          currentStatus: "shipped",
+        }),
+        findFlowByContainer: vi.fn().mockResolvedValue({
+          flow: { id: "f1", containerId: "c1", state: "active", version: 0 },
+          nodes: [],
+        }),
+        applyNodeApplicability,
+      },
+      undefined,
+      replayPending,
+    );
 
     const result = await service.execute(validInput());
 
@@ -150,6 +163,10 @@ describe("SetNodeApplicabilityService", () => {
       version: 1,
     });
     expect(applyNodeApplicability).toHaveBeenCalled();
+    expect(replayPending.execute).toHaveBeenCalledWith({
+      tenantId: "t1",
+      containerId: "c1",
+    });
   });
 
   it("不合格证据拒绝写入", async () => {

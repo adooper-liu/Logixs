@@ -4,6 +4,7 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { LIFECYCLE_DATE_FACT_INBOX_KIND } from "../packages/contracts/lifecycle-date-fact-inbox.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const contractRoot = resolve(root, "packages/contracts");
@@ -173,6 +174,9 @@ const common = readJson(resolve(schemaRoot, "common.schema.json"));
 const nodes = readJson(resolve(catalogRoot, "lifecycle-nodes.json"));
 const events = readJson(resolve(catalogRoot, "canonical-events.json"));
 const importFields = readJson(resolve(catalogRoot, "import-fields.json"));
+const lifecycleTimeline = readJson(
+  resolve(schemaRoot, "lifecycle-timeline.schema.json"),
+);
 const nodeCodes = common?.$defs?.LifecycleNodeCode?.enum ?? [];
 const eventCodes = common?.$defs?.CanonicalEventCode?.enum ?? [];
 const expectedImportFieldCodes = [
@@ -190,17 +194,27 @@ const expectedImportFieldCodes = [
   "emptyConfirmedActualAt",
   "emptyEstimatedAt",
   "timeSourceSystem",
+  "timeAuthoritySystem",
   "timeSourceUtcOffset",
   "timeEvidenceRef",
   "timeDerivationRuleVersion",
 ];
 const expectedQuantityUnitCodes = ["piece", "carton", "set", "pallet"];
 
+const lifecycleDateFactInboxKind =
+  lifecycleTimeline?.$defs?.LifecycleDateFactInboxPayload?.properties?.kind
+    ?.const;
+if (lifecycleDateFactInboxKind !== LIFECYCLE_DATE_FACT_INBOX_KIND) {
+  errors.push(
+    "lifecycle date fact Inbox runtime kind differs from JSON Schema authority",
+  );
+}
+
 if (
   JSON.stringify(importFields?.fields?.map(({ code }) => code)) !==
   JSON.stringify(expectedImportFieldCodes)
 ) {
-  errors.push("import field catalog codes or order differ from V1.2 authority");
+  errors.push("import field catalog codes or order differ from V1.3 authority");
 }
 const expectedTimeFactCodes = [
   "customs_clearance_completed",
@@ -212,7 +226,7 @@ if (
   JSON.stringify(importFields?.timeFacts?.map(({ code }) => code)) !==
   JSON.stringify(expectedTimeFactCodes)
 ) {
-  errors.push("import time-fact codes or order differ from V1.2 authority");
+  errors.push("import time-fact codes or order differ from V1.3 authority");
 }
 const importFieldCodeSet = new Set(expectedImportFieldCodes);
 for (const fact of importFields?.timeFacts ?? []) {
@@ -318,6 +332,15 @@ for (const event of events ?? []) {
     if (!timeKinds.has(timeKind))
       errors.push(`${event.eventCode}: invalid time kind ${timeKind}`);
   }
+  if (event.completionEligibleNodeCodes?.length > 0) {
+    for (const requiredTimeKind of ["planned", "estimated", "actual"]) {
+      if (!event.allowedTimeKinds?.includes(requiredTimeKind)) {
+        errors.push(
+          `${event.eventCode}: completion-eligible events must allow ${requiredTimeKind}`,
+        );
+      }
+    }
+  }
   if (
     event.defaultNodeCode !== null &&
     !nodeCodes.includes(event.defaultNodeCode)
@@ -358,6 +381,7 @@ const requiredCanonicalEnvelopeProperties = [
   "domain",
   "domainFactId",
   "domainFactType",
+  "authorityPolicyRef",
   "correlationId",
   "idempotencyKey",
   "source",

@@ -1,16 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
-import type { CanonicalEventCode } from "@logix/contracts";
-import {
-  APPLY_LIFECYCLE_EVENT,
-  type ApplyLifecycleEventPort,
-} from "../apply-lifecycle-event.port";
 import {
   buildBoundaryRejectedClientOperation,
-  buildCommittedClientOperation,
   buildRejectedClientOperation,
   decideClientIdempotency,
-  hashClientRequest,
   parseClientActionCode,
   type ClientOperationRecord,
 } from "../domain/client-operation";
@@ -20,9 +13,9 @@ import {
 } from "../domain/client-operation.repository";
 import {
   assertInboxPayloadHash,
+  hashInboxApplyPayload,
   parseInboxApplyPayload,
 } from "../domain/inbox-apply-payload";
-import { canonicalizeLifecycleOutboxPayload } from "../domain/outbox-message";
 
 export interface SubmitClientOperationInput {
   tenantId: string;
@@ -42,8 +35,6 @@ export class SubmitClientOperationService {
   constructor(
     @Inject(CLIENT_OPERATION_REPOSITORY)
     private readonly operations: ClientOperationRepository,
-    @Inject(APPLY_LIFECYCLE_EVENT)
-    private readonly applyLifecycleEvent: ApplyLifecycleEventPort,
   ) {}
 
   async execute(
@@ -70,9 +61,7 @@ export class SubmitClientOperationService {
         evidenceRefs: input.evidenceRefs,
         idempotencyKey: input.idempotencyKey,
       });
-      requestHash = hashClientRequest(
-        canonicalizeLifecycleOutboxPayload(payload),
-      );
+      requestHash = hashInboxApplyPayload(payload);
       if (input.payloadHash) {
         assertInboxPayloadHash(payload, input.payloadHash);
       }
@@ -116,42 +105,12 @@ export class SubmitClientOperationService {
       now,
     };
 
-    try {
-      const applied = await this.applyLifecycleEvent.execute({
-        containerId: payload.containerId,
-        tenantId,
-        eventCode: payload.eventCode as CanonicalEventCode,
-        occurredAt: payload.occurredAt,
-        idempotencyKey: payload.idempotencyKey,
-        evidenceRefs: payload.evidenceRefs,
-        traceId: base.traceId,
-      });
-      const record = buildCommittedClientOperation({
-        ...base,
-        resultRefs: [
-          { entityType: "container", entityId: payload.containerId },
-          ...(applied.applied
-            ? [
-                {
-                  entityType: "canonical_event",
-                  entityId: payload.idempotencyKey,
-                },
-              ]
-            : []),
-        ],
-      });
-      await this.operations.insert(record);
-      return record;
-    } catch (error) {
-      const message = error instanceof HttpException ? error.message : "";
-      const record = classifyClientFailure(base, message);
-      await this.operations.insert(record);
-      if (error instanceof HttpException) throw error;
-      throw new HttpException(
-        "INTERNAL_ERROR",
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const error = new HttpException(
+      "LIFECYCLE_EVENT_NOT_STATE_EVIDENCE: 客户端操作不能直接推进生命周期，请先提交日期事实",
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+    await this.operations.insert(classifyClientFailure(base, error.message));
+    throw error;
   }
 }
 

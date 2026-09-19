@@ -13,6 +13,7 @@ import type {
   CanonicalEventRecord,
   FlowWithNodes,
   LifecycleRepository,
+  NodeEventApplicationRecord,
   SaveCanonicalEventInput,
 } from "../domain/lifecycle.repository";
 import { buildLifecycleOutboxPending } from "../domain/outbox-message";
@@ -234,6 +235,10 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           id: event.id,
           containerId: event.containerId,
           eventCode: event.eventCode as CanonicalEventRecord["eventCode"],
+          domainFactId: event.domainFactId,
+          nodeCode: event.nodeCode as CanonicalEventRecord["nodeCode"],
+          timeKind: event.timeKind as CanonicalEventRecord["timeKind"],
+          authorityPolicyRef: event.authorityPolicyRef,
           occurredAt: event.occurredAt,
           evidenceRefs: Array.isArray(event.evidenceRefs)
             ? (event.evidenceRefs as string[])
@@ -243,12 +248,16 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       : null;
   }
 
-  async saveEvent(event: SaveCanonicalEventInput): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+  async saveEvent(event: SaveCanonicalEventInput): Promise<{ id: string }> {
+    return this.prisma.$transaction(async (tx) => {
       const created = await tx.canonicalEvent.create({
         data: {
           containerId: event.containerId,
           eventCode: event.eventCode,
+          domainFactId: event.domainFactId,
+          nodeCode: event.nodeCode,
+          timeKind: event.timeKind,
+          authorityPolicyRef: event.authorityPolicyRef,
           occurredAt: event.occurredAt,
           evidenceRefs: event.evidenceRefs,
           idempotencyKey: event.idempotencyKey,
@@ -259,6 +268,10 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
         tenantId: event.tenantId,
         containerId: event.containerId,
         eventCode: event.eventCode,
+        domainFactId: event.domainFactId,
+        nodeCode: event.nodeCode,
+        timeKind: event.timeKind,
+        authorityPolicyRef: event.authorityPolicyRef,
         occurredAt: event.occurredAt,
         evidenceRefs: event.evidenceRefs,
         idempotencyKey: event.idempotencyKey,
@@ -303,6 +316,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           throw new Error("INBOX_LEASE_LOST");
         }
       }
+      return { id: created.id };
     });
   }
 
@@ -312,6 +326,168 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       orderBy: { occurredAt: "desc" },
     });
     return latest?.occurredAt ?? null;
+  }
+
+  async findNodeEventApplication(
+    eventId: string,
+    targetNodeInstanceId: string,
+  ): Promise<NodeEventApplicationRecord | null> {
+    const application = await this.prisma.nodeEventApplication.findUnique({
+      where: {
+        eventId_targetNodeInstanceId: { eventId, targetNodeInstanceId },
+      },
+    });
+    if (!application) return null;
+    return {
+      eventId: application.eventId,
+      targetNodeInstanceId: application.targetNodeInstanceId,
+      state: application.state as NodeEventApplicationRecord["state"],
+      evaluatedAt: application.evaluatedAt,
+      guardResults: Array.isArray(application.guardResults)
+        ? (application.guardResults as string[])
+        : [],
+      reasonCode: application.reasonCode,
+    };
+  }
+
+  async recordNodeEventApplication(
+    input: NodeEventApplicationRecord,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.nodeEventApplication.updateMany({
+        where: {
+          eventId: input.eventId,
+          targetNodeInstanceId: input.targetNodeInstanceId,
+          state: "pending_application",
+        },
+        data: {
+          state: input.state,
+          evaluatedAt: input.evaluatedAt,
+          guardResults: input.guardResults,
+          reasonCode: input.reasonCode,
+          appliedAt: null,
+        },
+      });
+      if (updated.count === 1) return;
+
+      const existing = await tx.nodeEventApplication.findUnique({
+        where: {
+          eventId_targetNodeInstanceId: {
+            eventId: input.eventId,
+            targetNodeInstanceId: input.targetNodeInstanceId,
+          },
+        },
+      });
+      if (existing) return;
+      await tx.nodeEventApplication.create({
+        data: {
+          eventId: input.eventId,
+          targetNodeInstanceId: input.targetNodeInstanceId,
+          state: input.state,
+          evaluatedAt: input.evaluatedAt,
+          guardResults: input.guardResults,
+          reasonCode: input.reasonCode,
+        },
+      });
+    });
+  }
+
+  async applyEventToNode(input: {
+    flowInstanceId: string;
+    expectedFlowVersion: number;
+    eventId: string;
+    targetNodeInstanceId: string;
+    targetNodeCode: LifecycleNodeCode;
+    nextNodeCode: LifecycleNodeCode | null;
+    occurredAt: Date;
+    evaluatedAt: Date;
+    guardResults: string[];
+  }): Promise<{ applied: boolean; version: number }> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.nodeEventApplication.findUnique({
+        where: {
+          eventId_targetNodeInstanceId: {
+            eventId: input.eventId,
+            targetNodeInstanceId: input.targetNodeInstanceId,
+          },
+        },
+      });
+      if (existing?.state === "applied") {
+        const flow = await tx.flowInstance.findUniqueOrThrow({
+          where: { id: input.flowInstanceId },
+          select: { version: true },
+        });
+        return { applied: false, version: flow.version };
+      }
+
+      const target = await tx.nodeInstance.findUniqueOrThrow({
+        where: { id: input.targetNodeInstanceId },
+      });
+      if (
+        target.flowInstanceId !== input.flowInstanceId ||
+        target.nodeCode !== input.targetNodeCode
+      ) {
+        throw new Error("LIFECYCLE_GUARD_NOT_SATISFIED");
+      }
+      if (target.state === "completed") {
+        throw new Error("LIFECYCLE_HISTORY_SEALED");
+      }
+
+      const advanced = await tx.flowInstance.updateMany({
+        where: {
+          id: input.flowInstanceId,
+          version: input.expectedFlowVersion,
+          state: "active",
+        },
+        data: {
+          version: { increment: 1 },
+          currentNodeCode: input.nextNodeCode ?? input.targetNodeCode,
+          state: input.nextNodeCode ? "active" : "completed",
+        },
+      });
+      if (advanced.count !== 1) {
+        throw new Error("LIFECYCLE_VERSION_CONFLICT");
+      }
+
+      await tx.nodeInstance.update({
+        where: { id: input.targetNodeInstanceId },
+        data: { state: "completed", completedAt: input.occurredAt },
+      });
+      if (input.nextNodeCode) {
+        await tx.nodeInstance.updateMany({
+          where: {
+            flowInstanceId: input.flowInstanceId,
+            nodeCode: input.nextNodeCode,
+            state: { not: "completed" },
+          },
+          data: { state: "active" },
+        });
+      }
+      await tx.nodeEventApplication.upsert({
+        where: {
+          eventId_targetNodeInstanceId: {
+            eventId: input.eventId,
+            targetNodeInstanceId: input.targetNodeInstanceId,
+          },
+        },
+        create: {
+          eventId: input.eventId,
+          targetNodeInstanceId: input.targetNodeInstanceId,
+          state: "applied",
+          evaluatedAt: input.evaluatedAt,
+          guardResults: input.guardResults,
+          appliedAt: input.evaluatedAt,
+        },
+        update: {
+          state: "applied",
+          evaluatedAt: input.evaluatedAt,
+          guardResults: input.guardResults,
+          reasonCode: null,
+          appliedAt: input.evaluatedAt,
+        },
+      });
+      return { applied: true, version: input.expectedFlowVersion + 1 };
+    });
   }
 
   async findApplicabilityDecision(idempotencyKey: string): Promise<{

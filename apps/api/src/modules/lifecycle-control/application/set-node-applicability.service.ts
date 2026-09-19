@@ -12,6 +12,7 @@ import {
   type LifecycleRepository,
 } from "../domain/lifecycle.repository";
 import { NODE_SEQUENCE } from "../domain/node-status";
+import { ReplayPendingLifecycleDateFactsService } from "./replay-pending-lifecycle-date-facts.service";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,6 +55,8 @@ export class SetNodeApplicabilityService {
     private readonly repository: LifecycleRepository,
     @Inject(ASSERT_EVIDENCE_REFS)
     private readonly assertEvidenceRefs: AssertEvidenceRefsPort,
+    @Inject(ReplayPendingLifecycleDateFactsService)
+    private readonly replayPending: ReplayPendingLifecycleDateFactsService,
   ) {}
 
   async execute(
@@ -101,6 +104,10 @@ export class SetNodeApplicabilityService {
           HttpStatus.CONFLICT,
         );
       }
+      await this.replayPending.execute({
+        tenantId: input.tenantId,
+        containerId: input.containerId,
+      });
       return {
         flowInstanceId: existing.flowInstanceId,
         nodeCode: existing.nodeCode,
@@ -148,6 +155,10 @@ export class SetNodeApplicabilityService {
       reasonCode: input.reasonCode,
       actorId: input.actorId,
       idempotencyKey: input.idempotencyKey,
+    });
+    await this.replayPending.execute({
+      tenantId: input.tenantId,
+      containerId: input.containerId,
     });
 
     return {

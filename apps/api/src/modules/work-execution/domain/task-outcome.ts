@@ -24,21 +24,13 @@ export interface NodeResultPolicy {
   eventCode: CanonicalEventCode | null;
 }
 
-// 权威：canonical-events.json 的 completionEligibleNodeCodes。
-// 海关/放行等专业事件不在此列。工单完成按 GC-005 §7 视为同语义人工事实，只申请事件，不直写流程。
-const FIRST_SLICE_EMIT: Partial<Record<LifecycleNodeCode, CanonicalEventCode>> =
-  {
-    container_stuffing: "stuffed",
-    shipment_dispatch: "loaded",
-    origin_departure: "departed",
-  };
-
 export function resultPolicyForNode(
   nodeCode: LifecycleNodeCode,
 ): NodeResultPolicy {
-  const eventCode = FIRST_SLICE_EMIT[nodeCode];
-  if (!eventCode) return { mode: "none", eventCode: null };
-  return { mode: "emit_canonical_event", eventCode };
+  void nodeCode;
+  // 工单完成只证明工作已执行，不等于对应业务事实已经实际发生并被采信。
+  // 规范事件只能由统一日期事实链在来源权威裁决后申请。
+  return { mode: "none", eventCode: null };
 }
 
 export function policySnapshotHash(mode: ResultPolicyMode): string {

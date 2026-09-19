@@ -14,12 +14,20 @@ import { NotificationModule } from "../notification";
 import { ShipmentRegistryModule } from "../shipment-registry";
 import { WorkExecutionModule } from "../work-execution";
 import { LIST_CONTAINER_CURRENT_NODES } from "./list-container-current-nodes.port";
-import { APPLY_LIFECYCLE_EVENT } from "./apply-lifecycle-event.port";
+import { APPLY_LIFECYCLE_EVENT_ONCE } from "./apply-lifecycle-event-once.port";
+import { RECORD_LIFECYCLE_DATE_FACT } from "./record-lifecycle-date-fact.port";
+import { ASSERT_LIFECYCLE_STATE_EVIDENCE } from "./assert-lifecycle-state-evidence.port";
+import { EVALUATE_LIFECYCLE_DATE_AUTHORITY } from "./evaluate-lifecycle-date-authority.port";
 import {
   OUTBOX_DELIVERY,
   PublishOutboxBatchService,
 } from "./application/publish-outbox-batch.service";
 import { ApplyLifecycleEventService } from "./application/apply-lifecycle-event.service";
+import { AssertLifecycleStateEvidenceService } from "./application/assert-lifecycle-state-evidence.service";
+import { EvaluateLifecycleDateAuthorityService } from "./application/evaluate-lifecycle-date-authority.service";
+import { ReplayPendingLifecycleDateFactsService } from "./application/replay-pending-lifecycle-date-facts.service";
+import { ListLifecycleDateFactsService } from "./application/list-lifecycle-date-facts.service";
+import { RecordLifecycleDateFactService } from "./application/record-lifecycle-date-fact.service";
 import { InitializeContainerFlowService } from "./application/initialize-container-flow.service";
 import { DrainDueOutboxService } from "./application/drain-due-outbox.service";
 import { DrainDueSystemOutboxService } from "./application/drain-due-system-outbox.service";
@@ -52,9 +60,13 @@ import { CLIENT_OPERATION_REPOSITORY } from "./domain/client-operation.repositor
 import { COMPENSATION_REPOSITORY } from "./domain/compensation.repository";
 import { INBOX_REPOSITORY } from "./domain/inbox.repository";
 import { OUTBOX_REPOSITORY } from "./domain/outbox.repository";
+import { LIFECYCLE_DATE_FACT_REPOSITORY } from "./domain/lifecycle-date-fact.repository";
+import { SOURCE_AUTHORITY_POLICY_REPOSITORY } from "./domain/source-authority-policy.repository";
 import { PrismaClientOperationRepository } from "./infrastructure/prisma-client-operation.repository";
 import { PrismaCompensationRepository } from "./infrastructure/prisma-compensation.repository";
 import { PrismaInboxRepository } from "./infrastructure/prisma-inbox.repository";
+import { PrismaLifecycleDateFactRepository } from "./infrastructure/prisma-lifecycle-date-fact.repository";
+import { PrismaSourceAuthorityPolicyRepository } from "./infrastructure/prisma-source-authority-policy.repository";
 import { LifecycleInboxConsumption } from "./infrastructure/lifecycle-inbox-consumption";
 import { PrismaLifecycleRepository } from "./infrastructure/prisma-lifecycle.repository";
 import { PrismaOutboxRepository } from "./infrastructure/prisma-outbox.repository";
@@ -70,6 +82,7 @@ import { InboxController } from "./presentation/inbox.controller";
 import { InboxDeadLetterController } from "./presentation/inbox-dead-letter.controller";
 import { OutboxSystemController } from "./presentation/outbox-system.controller";
 import { ObjectActivitiesController } from "./presentation/object-activities.controller";
+import { LifecycleDateFactsController } from "./presentation/lifecycle-date-facts.controller";
 
 @Module({
   imports: [
@@ -91,9 +104,15 @@ import { ObjectActivitiesController } from "./presentation/object-activities.con
     InboxDeadLetterController,
     ClientOperationController,
     ObjectActivitiesController,
+    LifecycleDateFactsController,
   ],
   providers: [
     ApplyLifecycleEventService,
+    AssertLifecycleStateEvidenceService,
+    EvaluateLifecycleDateAuthorityService,
+    ReplayPendingLifecycleDateFactsService,
+    RecordLifecycleDateFactService,
+    ListLifecycleDateFactsService,
     InitializeContainerFlowService,
     SetNodeApplicabilityService,
     SubmitClientOperationService,
@@ -120,6 +139,14 @@ import { ObjectActivitiesController } from "./presentation/object-activities.con
     ListInboxDeadLettersService,
     ReplayInboxDeadLetterService,
     { provide: LIFECYCLE_REPOSITORY, useClass: PrismaLifecycleRepository },
+    {
+      provide: LIFECYCLE_DATE_FACT_REPOSITORY,
+      useClass: PrismaLifecycleDateFactRepository,
+    },
+    {
+      provide: SOURCE_AUTHORITY_POLICY_REPOSITORY,
+      useClass: PrismaSourceAuthorityPolicyRepository,
+    },
     { provide: OUTBOX_REPOSITORY, useClass: PrismaOutboxRepository },
     { provide: INBOX_REPOSITORY, useClass: PrismaInboxRepository },
     {
@@ -133,20 +160,32 @@ import { ObjectActivitiesController } from "./presentation/object-activities.con
     { provide: OUTBOX_DELIVERY, useClass: StubOutboxDelivery },
     { provide: INBOX_CONSUMPTION, useClass: LifecycleInboxConsumption },
     {
-      provide: APPLY_LIFECYCLE_EVENT,
+      provide: APPLY_LIFECYCLE_EVENT_ONCE,
       useExisting: ApplyLifecycleEventService,
+    },
+    {
+      provide: ASSERT_LIFECYCLE_STATE_EVIDENCE,
+      useExisting: AssertLifecycleStateEvidenceService,
+    },
+    {
+      provide: EVALUATE_LIFECYCLE_DATE_AUTHORITY,
+      useExisting: EvaluateLifecycleDateAuthorityService,
     },
     {
       provide: LIST_CONTAINER_CURRENT_NODES,
       useExisting: ListContainerCurrentNodesService,
     },
+    {
+      provide: RECORD_LIFECYCLE_DATE_FACT,
+      useExisting: RecordLifecycleDateFactService,
+    },
   ],
   exports: [
-    ApplyLifecycleEventService,
     InitializeContainerFlowService,
-    APPLY_LIFECYCLE_EVENT,
     LIST_CONTAINER_CURRENT_NODES,
+    RECORD_LIFECYCLE_DATE_FACT,
     ListContainerCurrentNodesService,
+    RecordLifecycleDateFactService,
   ],
 })
 export class LifecycleControlModule implements NestModule {
@@ -163,6 +202,7 @@ export class LifecycleControlModule implements NestModule {
         InboxDeadLetterController,
         ClientOperationController,
         ObjectActivitiesController,
+        LifecycleDateFactsController,
       );
     consumer
       .apply(DevServiceIdentityMiddleware)

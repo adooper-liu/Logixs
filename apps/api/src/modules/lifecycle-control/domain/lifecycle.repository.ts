@@ -4,6 +4,7 @@ import type {
   LifecycleNodeCode,
   NodeApplicability,
 } from "@logix/contracts";
+import type { NodeEventApplicationState } from "./node-event-application";
 
 // 生命周期持久化端口（Port/Adapter）。
 export const LIFECYCLE_REPOSITORY = Symbol("LifecycleRepository");
@@ -12,6 +13,10 @@ export interface CanonicalEventRecord {
   id: string;
   containerId: string;
   eventCode: CanonicalEventCode;
+  domainFactId: string | null;
+  nodeCode: LifecycleNodeCode | null;
+  timeKind: "actual" | null;
+  authorityPolicyRef: string | null;
   occurredAt: Date;
   evidenceRefs: string[];
   idempotencyKey: string;
@@ -33,7 +38,14 @@ export interface CanonicalEventListQuery {
   take: number;
 }
 
-export interface SaveCanonicalEventInput extends CanonicalEventRecord {
+export interface SaveCanonicalEventInput extends Omit<
+  CanonicalEventRecord,
+  "domainFactId" | "nodeCode" | "timeKind" | "authorityPolicyRef"
+> {
+  domainFactId: string;
+  nodeCode: LifecycleNodeCode;
+  timeKind: "actual";
+  authorityPolicyRef: string;
   tenantId: string;
   traceId: string;
   completeInbox?: {
@@ -58,6 +70,15 @@ export interface FlowWithNodes {
     completedAt: Date | null;
     applicability: NodeApplicability;
   }[];
+}
+
+export interface NodeEventApplicationRecord {
+  eventId: string;
+  targetNodeInstanceId: string;
+  state: NodeEventApplicationState;
+  evaluatedAt: Date;
+  guardResults: string[];
+  reasonCode: string | null;
 }
 
 export interface LifecycleRepository {
@@ -100,8 +121,24 @@ export interface LifecycleRepository {
   // 事件流水账：幂等 + R1 时间单调
   findEventByIdempotencyKey(key: string): Promise<CanonicalEventRecord | null>;
   listEvents(query: CanonicalEventListQuery): Promise<CanonicalEventListItem[]>;
-  saveEvent(event: SaveCanonicalEventInput): Promise<void>;
+  saveEvent(event: SaveCanonicalEventInput): Promise<{ id: string }>;
   findLatestEventTime(containerId: string): Promise<Date | null>;
+  findNodeEventApplication(
+    eventId: string,
+    targetNodeInstanceId: string,
+  ): Promise<NodeEventApplicationRecord | null>;
+  recordNodeEventApplication(input: NodeEventApplicationRecord): Promise<void>;
+  applyEventToNode(input: {
+    flowInstanceId: string;
+    expectedFlowVersion: number;
+    eventId: string;
+    targetNodeInstanceId: string;
+    targetNodeCode: LifecycleNodeCode;
+    nextNodeCode: LifecycleNodeCode | null;
+    occurredAt: Date;
+    evaluatedAt: Date;
+    guardResults: string[];
+  }): Promise<{ applied: boolean; version: number }>;
   findApplicabilityDecision(idempotencyKey: string): Promise<{
     flowInstanceId: string;
     nodeCode: LifecycleNodeCode;

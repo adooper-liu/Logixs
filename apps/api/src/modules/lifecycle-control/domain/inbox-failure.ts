@@ -33,7 +33,10 @@ export function classifyHttpConsumeError(
 ): InboxConsumptionError {
   if (error instanceof InboxConsumptionError) return error;
   const message = error instanceof Error ? error.message : "";
-  if (message.startsWith("VALIDATION_FORMAT")) {
+  if (
+    message.startsWith("VALIDATION_FORMAT") ||
+    message.startsWith("LIFECYCLE_EVENT_TYPE_UNKNOWN")
+  ) {
     return new InboxConsumptionError("schema_invalid", message);
   }
   if (message.startsWith("AUTHORIZATION_SCOPE_DENIED")) {
@@ -42,6 +45,11 @@ export function classifyHttpConsumeError(
   if (
     message.startsWith("EVIDENCE_REQUIRED") ||
     message.startsWith("TIME_ORDER_CONFLICT") ||
+    message.startsWith("LIFECYCLE_TIME_ORDER_CONFLICT") ||
+    message.startsWith("LIFECYCLE_HISTORY_SEALED") ||
+    message.startsWith("LIFECYCLE_GUARD_NOT_SATISFIED") ||
+    message.startsWith("LIFECYCLE_EVENT_NOT_STATE_EVIDENCE") ||
+    message.startsWith("LIFECYCLE_SOURCE_NOT_AUTHORIZED") ||
     message.startsWith("RESOURCE_NOT_FOUND")
   ) {
     return new InboxConsumptionError("business_rejected", message);

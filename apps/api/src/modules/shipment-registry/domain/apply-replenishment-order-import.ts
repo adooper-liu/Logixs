@@ -24,9 +24,12 @@ export interface ShipmentTimeFactImport {
   occurredAtUtc: Date;
   sourceUtcOffset: string;
   sourceSystem: string;
+  authoritySystem: string;
   sourceStatus: string | null;
   evidenceRef: string | null;
   derivationRuleVersion: string | null;
+  nodeCode: string | null;
+  mappingVersion: string;
 }
 
 export interface ApplyReplenishmentOrderImportCommand {

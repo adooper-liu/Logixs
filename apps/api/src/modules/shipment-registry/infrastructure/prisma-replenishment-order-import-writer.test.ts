@@ -30,6 +30,10 @@ function buildPrisma(options?: {
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    inboxMessage: {
+      findMany: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   };
   return {
     transaction,
@@ -123,9 +127,12 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
           occurredAtUtc: new Date("2026-04-09T20:58:00Z"),
           sourceUtcOffset: "+02:00",
           sourceSystem: "legacy-lms",
+          authoritySystem: "customs-authority",
           sourceStatus: "已完成",
           evidenceRef: "11111111-1111-4111-8111-111111111111",
           derivationRuleVersion: null,
+          nodeCode: "customs_clearance",
+          mappingVersion: "1.3.0",
         },
       ],
     });
@@ -146,6 +153,25 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
           timeKind: "actual",
           rawValue: "2026-04-09 22:58:00",
           sourceUtcOffset: "+02:00",
+        }),
+      ],
+    });
+    expect(transaction.inboxMessage.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          tenantId: "tenant-a",
+          consumerName: "lifecycle-control-inbox",
+          state: "received",
+          payloadJson: expect.objectContaining({
+            kind: "lifecycle_date_fact.record_requested.v1",
+            command: expect.objectContaining({
+              containerId: "c-new",
+              nodeCode: "customs_clearance",
+              ingestionChannel: "file_import",
+              verificationState: "pending",
+              confidenceState: "unknown",
+            }),
+          }),
         }),
       ],
     });

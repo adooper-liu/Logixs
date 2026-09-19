@@ -1,4 +1,5 @@
 import catalog from "@logix/contracts/import-fields.json";
+import canonicalEvents from "@logix/contracts/canonical-events.json";
 import type { ShipmentTimeFactImport } from "./apply-replenishment-order-import";
 
 const UUID_PATTERN =
@@ -14,6 +15,11 @@ export function assertValidShipmentTimeFacts(
     const definition = catalog.timeFacts.find(
       (candidate) => candidate.code === fact.factCode,
     );
+    const event = definition?.eventCode
+      ? canonicalEvents.find(
+          (candidate) => candidate.eventCode === definition.eventCode,
+        )
+      : null;
     if (
       !definition ||
       seenCodes.has(fact.factCode) ||
@@ -21,8 +27,13 @@ export function assertValidShipmentTimeFacts(
       fact.timeKind !== definition.timeKind ||
       fact.captureSource !== definition.captureSource ||
       fact.eventCode !== definition.eventCode ||
+      fact.nodeCode !== (event?.defaultNodeCode ?? null) ||
       !fact.rawValue.trim() ||
       !fact.sourceSystem.trim() ||
+      fact.sourceSystem.length > 64 ||
+      !fact.authoritySystem.trim() ||
+      fact.authoritySystem.length > 64 ||
+      !fact.mappingVersion.trim() ||
       !validOffset(fact.sourceUtcOffset) ||
       Number.isNaN(fact.occurredAtUtc.getTime())
     ) {

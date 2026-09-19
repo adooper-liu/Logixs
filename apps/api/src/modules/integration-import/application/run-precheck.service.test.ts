@@ -37,6 +37,7 @@ const ACTUAL_TIME_REVIEWS = [
   ["实际清关日期", "customsClearanceActualAt"],
   ["清关状态", "customsClearanceStatus"],
   ["来源系统", "timeSourceSystem"],
+  ["权威系统", "timeAuthoritySystem"],
   ["UTC偏移", "timeSourceUtcOffset"],
   ["证据ID", "timeEvidenceRef"],
 ].map((review) =>
@@ -144,6 +145,7 @@ describe("RunPrecheckService", () => {
       清关状态: "已完成",
       实际清关日期: "",
       来源系统: "legacy-lms",
+      权威系统: "customs-authority",
       UTC偏移: "+02:00",
       证据ID: "11111111-1111-4111-8111-111111111111",
     });
@@ -165,6 +167,7 @@ describe("RunPrecheckService", () => {
       清关状态: "已完成",
       实际清关日期: "2026-04-09 22:58:00",
       来源系统: "legacy-lms",
+      权威系统: "customs-authority",
       UTC偏移: "",
       证据ID: "",
     });
@@ -187,6 +190,7 @@ describe("RunPrecheckService", () => {
       ...[
         ["卸空日期", "emptyEstimatedAt"],
         ["来源系统", "timeSourceSystem"],
+        ["权威系统", "timeAuthoritySystem"],
         ["UTC偏移", "timeSourceUtcOffset"],
         ["规则版本", "timeDerivationRuleVersion"],
       ].map(([column, fieldCode]) => ({
@@ -200,6 +204,7 @@ describe("RunPrecheckService", () => {
     Object.assign(source.values, {
       卸空日期: "2026-04-23 09:19:30",
       来源系统: "legacy-lms",
+      权威系统: "legacy-lms-derivation",
       UTC偏移: "+02:00",
       规则版本: "",
     });

@@ -1,0 +1,59 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+
+export class RecordLifecycleDateFactRequestDto {
+  @ApiProperty() nodeCode!: string;
+  @ApiProperty() eventCode!: string;
+  @ApiProperty({ enum: ["planned", "estimated", "actual"] })
+  timeKind!: "planned" | "estimated" | "actual";
+  @ApiProperty({ description: "带时区的 ISO 8601 业务发生时间" })
+  occurredAt!: string;
+  @ApiProperty() rawValue!: string;
+  @ApiProperty({ example: "+08:00" }) sourceUtcOffset!: string;
+  @ApiProperty() authoritySystem!: string;
+  @ApiProperty({ type: [String] }) evidenceRefs!: string[];
+  @ApiProperty() reasonCode!: string;
+  @ApiProperty() expectedVersion!: number;
+  @ApiPropertyOptional() supersedesFactId?: string;
+  @ApiProperty() idempotencyKey!: string;
+}
+
+export class RecordLifecycleDateFactResponseDto {
+  @ApiProperty() factId!: string;
+  @ApiProperty({ enum: ["recorded", "duplicate"] }) recordState!:
+    "recorded" | "duplicate";
+  @ApiProperty() applicationState!: string;
+  @ApiProperty({ nullable: true }) reasonCode!: string | null;
+  @ApiProperty({ nullable: true }) canonicalEventId!: string | null;
+  @ApiProperty() projectionVersion!: number;
+}
+
+export class LifecycleDateFactItemDto {
+  @ApiProperty() factId!: string;
+  @ApiProperty() nodeCode!: string;
+  @ApiProperty() eventCode!: string;
+  @ApiProperty() timeKind!: string;
+  @ApiProperty() occurredAt!: string;
+  @ApiProperty() rawValue!: string;
+  @ApiProperty() sourceUtcOffset!: string;
+  @ApiProperty() ingestionChannel!: string;
+  @ApiProperty() captureSource!: string;
+  @ApiProperty() sourceSystem!: string;
+  @ApiProperty() authoritySystem!: string;
+  @ApiProperty() verificationState!: string;
+  @ApiProperty() confidenceState!: string;
+  @ApiProperty() validity!: string;
+  @ApiProperty({ nullable: true }) authorityPolicyRef!: string | null;
+  @ApiProperty({ type: [String] }) evidenceRefs!: string[];
+  @ApiProperty() applicationState!: string;
+  @ApiProperty({ nullable: true }) applicationReasonCode!: string | null;
+  @ApiProperty({ nullable: true }) canonicalEventId!: string | null;
+  @ApiProperty() projectionVersion!: number;
+  @ApiProperty() recordedAt!: string;
+}
+
+export class LifecycleDateFactProjectionDto {
+  @ApiProperty({ type: [LifecycleDateFactItemDto] })
+  items!: LifecycleDateFactItemDto[];
+  @ApiProperty() projectionVersion!: number;
+  @ApiProperty() asOf!: string;
+}

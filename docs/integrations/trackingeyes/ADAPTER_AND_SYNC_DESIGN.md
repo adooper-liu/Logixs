@@ -1,6 +1,6 @@
 # 云当网适配与同步设计
 
-> 状态：**外部供应商适配设计（候选，未实现）** · 2026-09-18
+> 状态：**外部供应商适配设计（候选，接收/留痕/对象解析已部分实现）** · 2026-09-19
 > 公共同步阶段、幂等、Inbox/Outbox、重试、死信与补偿唯一引用[同步可靠性契约 V1](../../product/domain/SYNC_RELIABILITY_CONTRACT_V1.md)；本文只定义云当网供应商适配细节。
 
 ## 1. 边界
@@ -48,6 +48,8 @@ infrastructure/  TrackingEyesHttpClient（签名/token/限流）、映射表读�
 -> 复合键映射（provider + rawCode + context）-> 生命周期守卫 -> 领域事件/人工核查
 ```
 
+当前已实现到“对象消歧”第一刀：按 `tenantId + ctnrNo` 大小写不敏感查询，租户内唯一命中才保存稳定 `containerRecordId`；零命中保存 `not_found`，多命中保存 `ambiguous`，两者均进入复核且不猜测历史货柜。解析结果与原始载荷在同一供应商接入记录中留痕。映射仍处于待供应商样本核验，尚未自动注册 Evidence 或写入统一日期事实，因此即使对象解析成功也保持 `review_required / not_applied`。
+
 按 [PUSH_PAYLOAD_STRUCTURE §11](./PUSH_PAYLOAD_STRUCTURE.md) 的优先级选幂等键：`ctnrStatus[].id` → `localKey + statusCd + eventTime` → `运单 id + dataUpdateTime + ctnrNo` → 载荷哈希。
 
 - 推送返回成功前必须完成耐久化，解析与业务处理异步执行。
@@ -68,7 +70,7 @@ Adapter 不直接写 `FlowInstance`、`NodeTask` 或 `WorkOrder` 状态。它只
 **云当网特有的三条推进约束**：
 
 1. **`sourceCd=4`（云当计算）与 `availableStatus` 等推断值不得单独驱动节点推进**，只能作为佐证进入核查。
-2. **港区/海关类回执的权威主体是海关与码头，云当网是传输方**——按证据来源权威契约，其可单独完成的范围由 `SourceAuthorityPolicyV1` 复合策略决定，**该策略层尚未实现**。
+2. **港区/海关类回执的权威主体是海关与码头，云当网是传输方**——按证据来源权威契约，其可单独完成的范围由运行时 `SourceAuthorityPolicy` 复合策略决定；对象解析成功不代表命中权威策略。
 3. **`deleteStatus[]` 表达更正与撤回**，必须追加引用原事件的新记录，禁止原地改写历史。
 
 ## 5. 失败与恢复

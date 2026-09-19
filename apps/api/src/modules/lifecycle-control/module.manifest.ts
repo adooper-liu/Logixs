@@ -17,5 +17,5 @@ export const moduleManifest = defineModuleManifest({
     "reliability.read",
     "reliability.recover",
   ],
-  publicPorts: ["APPLY_LIFECYCLE_EVENT", "LIST_CONTAINER_CURRENT_NODES"],
+  publicPorts: ["LIST_CONTAINER_CURRENT_NODES", "RECORD_LIFECYCLE_DATE_FACT"],
 });

@@ -5,6 +5,7 @@ import type { ContainerSummary } from "../domain/container-summary";
 import type { ContainerTaskFact } from "../list-container-task-facts.port";
 import type {
   ContainerByIdQuery,
+  ContainerByNumberQuery,
   ContainerListQuery,
   ContainerRepository,
 } from "../domain/container.repository";
@@ -50,6 +51,24 @@ export class PrismaContainerRepository implements ContainerRepository {
       select: { tenantId: true },
     });
     return row?.tenantId ?? null;
+  }
+
+  async findIdsByContainerNumber(
+    query: ContainerByNumberQuery,
+  ): Promise<string[]> {
+    const rows = await this.prisma.containerRecord.findMany({
+      where: {
+        tenantId: query.tenantId,
+        containerNumber: {
+          equals: query.containerNumber,
+          mode: "insensitive",
+        },
+      },
+      select: { id: true },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: query.take,
+    });
+    return rows.map((row) => row.id);
   }
 
   async listCurrentTaskFacts(

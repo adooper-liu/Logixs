@@ -10,5 +10,6 @@ export const moduleManifest = defineModuleManifest({
     "ASSERT_CONTAINER_TENANT",
     "LIST_CONTAINER_TASK_FACTS",
     "GET_CONTAINER_SUMMARY",
+    "RESOLVE_CONTAINER_BY_NUMBER",
   ],
 });

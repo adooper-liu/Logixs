@@ -7,18 +7,18 @@ import {
 } from "./task-outcome";
 
 describe("resultPolicyForNode", () => {
-  it("装箱申请 stuffed，出运申请 loaded，离港申请 departed，清关为 none", () => {
+  it("所有节点工单完成都不直接申请规范事件", () => {
     expect(resultPolicyForNode("container_stuffing")).toEqual({
-      mode: "emit_canonical_event",
-      eventCode: "stuffed",
+      mode: "none",
+      eventCode: null,
     });
     expect(resultPolicyForNode("shipment_dispatch")).toEqual({
-      mode: "emit_canonical_event",
-      eventCode: "loaded",
+      mode: "none",
+      eventCode: null,
     });
     expect(resultPolicyForNode("origin_departure")).toEqual({
-      mode: "emit_canonical_event",
-      eventCode: "departed",
+      mode: "none",
+      eventCode: null,
     });
     expect(resultPolicyForNode("ocean_transit")).toEqual({
       mode: "none",
@@ -32,7 +32,7 @@ describe("resultPolicyForNode", () => {
 });
 
 describe("decideTaskOutcome", () => {
-  it("装箱任务首次完成后带 emit 政策", () => {
+  it("装箱任务首次完成只记录工作结果，不带规范事件", () => {
     const outcome = decideTaskOutcome({
       previousState: "pending",
       nextState: "completed",
@@ -43,15 +43,15 @@ describe("decideTaskOutcome", () => {
     expect(outcome).toEqual({
       previousState: "pending",
       nextState: "completed",
-      resultPolicyMode: "emit_canonical_event",
-      eventCode: "stuffed",
-      policySnapshotHash: policySnapshotHash("emit_canonical_event"),
+      resultPolicyMode: "none",
+      eventCode: null,
+      policySnapshotHash: policySnapshotHash("none"),
       requiredWorkOrderIds: ["w1"],
       completedWorkOrderIds: ["w1"],
     });
   });
 
-  it("出运任务首次完成后带 loaded", () => {
+  it("出运任务首次完成不带 loaded", () => {
     expect(
       decideTaskOutcome({
         previousState: "pending",
@@ -60,12 +60,12 @@ describe("decideTaskOutcome", () => {
         workOrders: [{ id: "w1", state: "completed" }],
       }),
     ).toMatchObject({
-      resultPolicyMode: "emit_canonical_event",
-      eventCode: "loaded",
+      resultPolicyMode: "none",
+      eventCode: null,
     });
   });
 
-  it("离港任务首次完成后带 departed", () => {
+  it("离港任务首次完成不带 departed", () => {
     expect(
       decideTaskOutcome({
         previousState: "pending",
@@ -74,8 +74,8 @@ describe("decideTaskOutcome", () => {
         workOrders: [{ id: "w1", state: "completed" }],
       }),
     ).toMatchObject({
-      resultPolicyMode: "emit_canonical_event",
-      eventCode: "departed",
+      resultPolicyMode: "none",
+      eventCode: null,
     });
   });
 

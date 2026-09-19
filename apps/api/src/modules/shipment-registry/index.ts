@@ -22,6 +22,12 @@ export {
   GET_CONTAINER_SUMMARY,
   type GetContainerSummaryPort,
 } from "./get-container-summary.port";
+export {
+  RESOLVE_CONTAINER_BY_NUMBER,
+  type ResolveContainerByNumberInput,
+  type ResolveContainerByNumberPort,
+  type ResolveContainerByNumberResult,
+} from "./resolve-container-by-number.port";
 export type {
   ApplyReplenishmentOrderImportCommand,
   ApplyReplenishmentOrderImportResult,

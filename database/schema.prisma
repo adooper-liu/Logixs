@@ -45,6 +45,7 @@ model ContainerRecord {
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
   timeFacts            ShipmentTimeFact[]
+  lifecycleDateFacts   LifecycleDateFact[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -70,6 +71,7 @@ model ShipmentTimeFact {
   occurredAtUtc         DateTime        @map("occurred_at_utc") @db.Timestamptz
   sourceUtcOffset       String          @map("source_utc_offset")
   sourceSystem          String          @map("source_system")
+  authoritySystem       String?         @map("authority_system")
   sourceStatus          String?         @map("source_status")
   evidenceRef           String?         @map("evidence_ref")
   derivationRuleVersion String?         @map("derivation_rule_version")
@@ -84,6 +86,97 @@ model ShipmentTimeFact {
   @@index([tenantId, containerRecordId], map: "shipment_time_fact_tenant_container_idx")
   @@index([containerRecordId, factCode, isCurrent], map: "shipment_time_fact_current_idx")
   @@map("shipment_time_fact")
+}
+
+// 全生命周期日期事实（lifecycle-control 拥有）：三种入口共用，追加版本而不覆盖历史。
+model LifecycleDateFact {
+  id                    String              @id @default(uuid()) @map("id")
+  tenantId              String              @map("tenant_id")
+  containerId           String              @map("container_id")
+  container             ContainerRecord     @relation(fields: [containerId], references: [id])
+  nodeCode              String              @map("node_code")
+  eventCode             String              @map("event_code")
+  timeKind              String              @map("time_kind")
+  occurredAt            DateTime            @map("occurred_at") @db.Timestamptz
+  rawValue              String              @map("raw_value")
+  sourceUtcOffset       String              @map("source_utc_offset")
+  ingestionChannel      String              @map("ingestion_channel")
+  captureSource         String              @map("capture_source")
+  sourceSystem          String              @map("source_system")
+  authoritySystem       String              @map("authority_system")
+  provider              String?             @map("provider")
+  interfaceCode         String?             @map("interface_code")
+  sourceEventId         String?             @map("source_event_id")
+  mappingVersion        String?             @map("mapping_version")
+  verificationState     String              @map("verification_state")
+  confidenceState       String              @map("confidence_state")
+  validity              String              @map("validity")
+  authorityPolicyRef    String?             @map("authority_policy_ref")
+  evidenceRefs          Json                @map("evidence_refs")
+  actorId               String?             @map("actor_id")
+  reasonCode            String?             @map("reason_code")
+  idempotencyKey        String              @map("idempotency_key")
+  payloadHash           String              @map("payload_hash")
+  supersedesFactId      String?             @map("supersedes_fact_id")
+  supersedesFact        LifecycleDateFact?  @relation("LifecycleDateFactCorrections", fields: [supersedesFactId], references: [id])
+  corrections           LifecycleDateFact[] @relation("LifecycleDateFactCorrections")
+  isCurrent             Boolean             @default(true) @map("is_current")
+  applicationState      String              @map("application_state")
+  applicationReasonCode String?             @map("application_reason_code")
+  canonicalEventId      String?             @unique(map: "lifecycle_date_fact_canonical_event_key") @map("canonical_event_id")
+  canonicalEvent        CanonicalEvent?     @relation("LifecycleDateFactAppliedEvent", fields: [canonicalEventId], references: [id])
+  sourceCanonicalEvent  CanonicalEvent?     @relation("CanonicalEventDomainFact")
+  projectionVersion     Int                 @map("projection_version")
+  traceId               String              @map("trace_id")
+  receivedAt            DateTime            @map("received_at") @db.Timestamptz
+  recordedAt            DateTime            @default(now()) @map("recorded_at") @db.Timestamptz
+  updatedAt             DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  applicationLeaseOwner String?             @map("application_lease_owner")
+  applicationLeaseUntil DateTime?           @map("application_lease_until") @db.Timestamptz
+  applicationAttempts   Int                 @default(0) @map("application_attempts")
+  lastApplicationAt     DateTime?           @map("last_application_at") @db.Timestamptz
+
+  @@unique([tenantId, idempotencyKey], map: "lifecycle_date_fact_tenant_idempotency_key")
+  @@unique([containerId, projectionVersion], map: "lifecycle_date_fact_container_version_key")
+  @@index([tenantId, containerId, isCurrent], map: "lifecycle_date_fact_current_idx")
+  @@index([containerId, nodeCode, eventCode, timeKind, isCurrent], map: "lifecycle_date_fact_slot_idx")
+  @@index([applicationState, recordedAt, id], map: "lifecycle_date_fact_application_idx")
+  @@map("lifecycle_date_fact")
+}
+
+// 证据来源权威策略：版本化运行时配置；策略只决定事实资格，不直接推进生命周期。
+model SourceAuthorityPolicy {
+  id                        String    @id @default(uuid()) @map("id")
+  policyId                  String    @map("policy_id")
+  policyVersion             Int       @map("policy_version")
+  effectiveFrom             DateTime  @map("effective_from") @db.Timestamptz
+  effectiveTo               DateTime? @map("effective_to") @db.Timestamptz
+  tenantScope               String?   @map("tenant_scope")
+  factType                  String?   @map("fact_type")
+  eventCode                 String?   @map("event_code")
+  fieldCode                 String?   @map("field_code")
+  subjectType               String    @map("subject_type")
+  jurisdiction              String?   @map("jurisdiction")
+  direction                 String?   @map("direction")
+  locationRole              String?   @map("location_role")
+  transportMode             String?   @map("transport_mode")
+  timeKind                  String?   @map("time_kind")
+  allowedAuthoritySystems   Json      @map("allowed_authority_systems")
+  allowedSourceTypes        Json      @map("allowed_source_types")
+  minimumAuthorityLevel     String    @map("minimum_authority_level")
+  requiredEvidenceTypes     Json      @map("required_evidence_types")
+  verificationRequirements  Json      @map("verification_requirements")
+  corroborationRule         String?   @map("corroboration_rule")
+  conflictAction            String    @map("conflict_action")
+  manualCorrectionPolicyRef String    @map("manual_correction_policy_ref")
+  sealingPolicyRef          String    @map("sealing_policy_ref")
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([policyId, policyVersion], map: "source_authority_policy_version_key")
+  @@index([eventCode, subjectType, effectiveFrom], map: "source_authority_policy_event_idx")
+  @@index([tenantScope, eventCode, timeKind], map: "source_authority_policy_scope_idx")
+  @@map("source_authority_policy")
 }
 
 // 备货单身份表（shipment-registry 拥有）：租户内备货单号唯一。
@@ -259,13 +352,14 @@ model FlowInstance {
 
 // 节点实例（lifecycle-control 拥有）：流程在某个节点的状态（第一刀只 pending/active/completed）。
 model NodeInstance {
-  id             String       @id @default(uuid()) @map("id")
-  flowInstanceId String       @map("flow_instance_id")
-  flow           FlowInstance @relation(fields: [flowInstanceId], references: [id])
-  nodeCode       String       @map("node_code")
-  state          String       @map("state") // pending | active | completed
-  applicability  String       @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
-  completedAt    DateTime?    @map("completed_at")
+  id                String                 @id @default(uuid()) @map("id")
+  flowInstanceId    String                 @map("flow_instance_id")
+  flow              FlowInstance           @relation(fields: [flowInstanceId], references: [id])
+  nodeCode          String                 @map("node_code")
+  state             String                 @map("state") // pending | active | completed
+  applicability     String                 @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
+  completedAt       DateTime?              @map("completed_at")
+  eventApplications NodeEventApplication[]
 
   @@unique([flowInstanceId, nodeCode])
   @@map("node_instance")
@@ -288,16 +382,43 @@ model NodeApplicabilityDecision {
 
 // 规范事件流水账（lifecycle-control 拥有）：不可变事件留痕，可追溯/重放/幂等。
 model CanonicalEvent {
-  id             String   @id @default(uuid()) @map("id")
-  containerId    String   @map("container_id")
-  eventCode      String   @map("event_code")
-  occurredAt     DateTime @map("occurred_at")
-  evidenceRefs   Json     @map("evidence_refs")
-  idempotencyKey String   @unique @map("idempotency_key")
-  appliedAt      DateTime @default(now()) @map("applied_at")
+  id                 String                 @id @default(uuid()) @map("id")
+  containerId        String                 @map("container_id")
+  eventCode          String                 @map("event_code")
+  domainFactId       String?                @unique(map: "canonical_event_domain_fact_key") @map("domain_fact_id")
+  nodeCode           String?                @map("node_code")
+  timeKind           String?                @map("time_kind")
+  authorityPolicyRef String?                @map("authority_policy_ref")
+  domainFact         LifecycleDateFact?     @relation("CanonicalEventDomainFact", fields: [domainFactId], references: [id], onDelete: Restrict)
+  occurredAt         DateTime               @map("occurred_at")
+  evidenceRefs       Json                   @map("evidence_refs")
+  idempotencyKey     String                 @unique @map("idempotency_key")
+  appliedAt          DateTime               @default(now()) @map("applied_at")
+  dateFact           LifecycleDateFact?     @relation("LifecycleDateFactAppliedEvent")
+  nodeApplications   NodeEventApplication[]
 
   @@index([containerId, occurredAt, id], map: "canonical_event_container_occurred_idx")
   @@map("canonical_event")
+}
+
+// 规范事件对单个目标节点的应用结果；同一事件可随前序满足而逐节点重放。
+model NodeEventApplication {
+  id                   String         @id @default(uuid()) @map("id")
+  eventId              String         @map("event_id")
+  event                CanonicalEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  targetNodeInstanceId String         @map("target_node_instance_id")
+  targetNodeInstance   NodeInstance   @relation(fields: [targetNodeInstanceId], references: [id], onDelete: Restrict)
+  state                String         @map("state") // pending_application | applied | rejected
+  evaluatedAt          DateTime       @map("evaluated_at") @db.Timestamptz
+  guardResults         Json           @map("guard_results")
+  reasonCode           String?        @map("reason_code")
+  appliedAt            DateTime?      @map("applied_at") @db.Timestamptz
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([eventId, targetNodeInstanceId], map: "node_event_application_event_target_key")
+  @@index([targetNodeInstanceId, state, evaluatedAt], map: "node_event_application_target_state_idx")
+  @@map("node_event_application")
 }
 
 // 跨模块通知 Outbox（本刀由 lifecycle-control 写入）。
@@ -385,6 +506,8 @@ model InboxMessage {
   receivedAt      DateTime  @map("received_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
+  oceanProviderEventIngestion OceanProviderEventIngestion?
+
   @@unique([consumerName, messageId], map: "inbox_message_consumer_message_key")
   @@index([tenantId, consumerName, state], map: "inbox_message_tenant_state_idx")
   @@index([tenantId, consumerName, state, leaseExpiresAt, receivedAt], map: "inbox_message_lease_idx")
@@ -411,6 +534,50 @@ model InboxReplayRequest {
 
   @@unique([tenantId, deadLetterId, idempotencyKey], map: "inbox_replay_idempotency_key")
   @@map("inbox_replay_request")
+}
+
+// 海运供应商事件接入留痕（ocean-port-visibility 拥有）。
+// 原始载荷与来源裁决追加保存；本表不产生规范事件，也不推进生命周期。
+model OceanProviderEventIngestion {
+  id                   String       @id @map("id")
+  inboxMessageId       String       @unique @map("inbox_message_id")
+  inboxMessage         InboxMessage @relation(fields: [inboxMessageId], references: [id], onDelete: Restrict)
+  tenantId             String       @map("tenant_id")
+  provider             String       @map("provider")
+  interfaceCode        String       @map("interface_code")
+  providerEventIdRaw   String?      @map("provider_event_id_raw")
+  idempotencyKey       String?      @map("idempotency_key")
+  rawPayload           Json         @map("raw_payload")
+  payloadHash          String       @map("payload_hash")
+  payloadHashVersion   String       @map("payload_hash_version")
+  containerNumberRaw   String       @map("container_number_raw")
+  containerRecordId    String?      @map("container_record_id")
+  objectResolutionState String      @default("not_attempted") @map("object_resolution_state")
+  objectResolutionReasonCode String? @map("object_resolution_reason_code")
+  rawCode              String       @map("raw_code")
+  eventTimeRaw         String       @map("event_time_raw")
+  mappingVersion       String       @map("mapping_version")
+  normalizationKind    String       @map("normalization_kind")
+  canonicalEventCode   String?      @map("canonical_event_code")
+  occurredAt           DateTime?    @map("occurred_at") @db.Timestamptz
+  timeKind             String?      @map("time_kind")
+  sourceCodeRaw        String       @map("source_code_raw")
+  sourceSignal         String?      @map("source_signal")
+  authorityDecision    String       @map("authority_decision")
+  authorityPolicyRef   String?      @map("authority_policy_ref")
+  confidenceState      String       @map("confidence_state")
+  reasonCodes          Json         @map("reason_codes")
+  lifecycleApplication String       @map("lifecycle_application")
+  decidedBy            String       @map("decided_by")
+  traceId              String       @map("trace_id")
+  receivedAt           DateTime     @map("received_at") @db.Timestamptz
+  decidedAt            DateTime     @map("decided_at") @db.Timestamptz
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, authorityDecision, receivedAt, id], map: "ocean_provider_ingestion_tenant_decision_idx")
+  @@index([tenantId, provider, interfaceCode, idempotencyKey], map: "ocean_provider_ingestion_business_key_idx")
+  @@index([tenantId, containerRecordId], map: "ocean_provider_ingestion_container_idx")
+  @@map("ocean_provider_event_ingestion")
 }
 
 // 契约：GC-009 ClientOperationV1。

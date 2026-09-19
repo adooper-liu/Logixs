@@ -3,7 +3,7 @@ import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { SERVICE_ACTOR_TYPE } from "../../identity";
 import {
   assertInboxPayloadHash,
-  parseInboxApplyPayload,
+  parseInboxMessagePayload,
 } from "../domain/inbox-apply-payload";
 import {
   buildInboxReceived,
@@ -52,7 +52,7 @@ export class ReceiveInboxMessageService {
 
     let record;
     try {
-      const payload = parseInboxApplyPayload(input.payload);
+      const payload = parseInboxMessagePayload(input.payload);
       const payloadHash = assertInboxPayloadHash(payload, input.payloadHash);
       record = buildInboxReceived({
         id: randomUUID(),
@@ -60,13 +60,16 @@ export class ReceiveInboxMessageService {
         consumerName: input.consumerName,
         messageId: input.messageId,
         payloadHash,
-        payloadJson: {
-          containerId: payload.containerId,
-          eventCode: payload.eventCode,
-          occurredAt: payload.occurredAt.toISOString(),
-          evidenceRefs: payload.evidenceRefs,
-          idempotencyKey: payload.idempotencyKey,
-        },
+        payloadJson:
+          "kind" in payload
+            ? payload
+            : {
+                containerId: payload.containerId,
+                eventCode: payload.eventCode,
+                occurredAt: payload.occurredAt.toISOString(),
+                evidenceRefs: payload.evidenceRefs,
+                idempotencyKey: payload.idempotencyKey,
+              },
         traceId: input.traceId,
         receivedAt: new Date(),
       });

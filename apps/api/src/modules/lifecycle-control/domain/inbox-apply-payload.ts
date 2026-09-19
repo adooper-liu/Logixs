@@ -1,11 +1,13 @@
 import type { CanonicalEventCode } from "@logix/contracts";
+import type { LifecycleDateFactInboxPayload } from "@logix/contracts";
 import {
-  canonicalizeLifecycleOutboxPayload,
-  hashOutboxPayload,
-} from "./outbox-message";
+  LIFECYCLE_DATE_FACT_INBOX_KIND,
+  hashLifecycleDateFactInboxPayload,
+} from "@logix/contracts/lifecycle-date-fact-inbox";
+import { hashOutboxPayload } from "./outbox-message";
 import { parseInboxPayloadHash } from "./inbox-message";
 
-export interface InboxApplyPayload {
+export interface InboxLifecycleEventApplyPayload {
   containerId: string;
   eventCode: CanonicalEventCode;
   occurredAt: Date;
@@ -13,7 +15,29 @@ export interface InboxApplyPayload {
   idempotencyKey: string;
 }
 
-export function parseInboxApplyPayload(raw: unknown): InboxApplyPayload {
+export type InboxApplyPayload =
+  InboxLifecycleEventApplyPayload | LifecycleDateFactInboxPayload;
+
+export function parseInboxMessagePayload(raw: unknown): InboxApplyPayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("VALIDATION_FORMAT: payload 必须是对象");
+  }
+  const body = raw as Record<string, unknown>;
+  if (body.kind === LIFECYCLE_DATE_FACT_INBOX_KIND) {
+    if (!body.command || typeof body.command !== "object") {
+      throw new Error("VALIDATION_FORMAT: 日期事实命令缺失");
+    }
+    return {
+      kind: LIFECYCLE_DATE_FACT_INBOX_KIND,
+      command: body.command as LifecycleDateFactInboxPayload["command"],
+    };
+  }
+  return parseInboxApplyPayload(raw);
+}
+
+export function parseInboxApplyPayload(
+  raw: unknown,
+): InboxLifecycleEventApplyPayload {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error("VALIDATION_FORMAT: payload 必须是对象");
   }
@@ -52,13 +76,16 @@ export function parseInboxApplyPayload(raw: unknown): InboxApplyPayload {
 }
 
 export function hashInboxApplyPayload(payload: InboxApplyPayload): string {
+  if ("kind" in payload) {
+    return hashLifecycleDateFactInboxPayload(payload);
+  }
   return hashOutboxPayload(
-    canonicalizeLifecycleOutboxPayload({
+    JSON.stringify({
       containerId: payload.containerId,
       eventCode: payload.eventCode,
-      occurredAt: payload.occurredAt,
       evidenceRefs: payload.evidenceRefs,
       idempotencyKey: payload.idempotencyKey,
+      occurredAt: payload.occurredAt.toISOString(),
     }),
   );
 }

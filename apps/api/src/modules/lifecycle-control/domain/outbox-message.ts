@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { CanonicalEventCode } from "@logix/contracts";
+import type { CanonicalEventCode, LifecycleNodeCode } from "@logix/contracts";
 
 export const LIFECYCLE_OUTBOX_OWNER = "lifecycle-control";
 export const LIFECYCLE_OUTBOX_EVENT_VERSION = 1;
@@ -26,16 +26,24 @@ export interface LifecycleOutboxPending {
 export function canonicalizeLifecycleOutboxPayload(input: {
   containerId: string;
   eventCode: CanonicalEventCode;
+  domainFactId: string;
+  nodeCode: LifecycleNodeCode;
+  timeKind: "actual";
+  authorityPolicyRef: string;
   occurredAt: Date;
   evidenceRefs: string[];
   idempotencyKey: string;
 }): string {
   return JSON.stringify({
     containerId: input.containerId,
+    authorityPolicyRef: input.authorityPolicyRef,
+    domainFactId: input.domainFactId,
     eventCode: input.eventCode,
     evidenceRefs: input.evidenceRefs,
     idempotencyKey: input.idempotencyKey,
+    nodeCode: input.nodeCode,
     occurredAt: input.occurredAt.toISOString(),
+    timeKind: input.timeKind,
   });
 }
 
@@ -48,6 +56,10 @@ export function buildLifecycleOutboxPending(input: {
   tenantId: string;
   containerId: string;
   eventCode: CanonicalEventCode;
+  domainFactId: string;
+  nodeCode: LifecycleNodeCode;
+  timeKind: "actual";
+  authorityPolicyRef: string;
   occurredAt: Date;
   evidenceRefs: string[];
   idempotencyKey: string;

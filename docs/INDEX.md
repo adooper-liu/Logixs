@@ -33,6 +33,7 @@
 | [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md)                 | 问题通知总线与从通知打开的只读运营助手第一刀             | 已合入 main                     |
 | [任务：对象活动流+Activity 投影](./planning/tasks/p6-object-activity-task-projection.md) | 通知挂货柜/任务，并从现有工单投影下一动作                | 已合入 main                     |
 | [任务：只读助手对象上下文](./planning/tasks/p6-assistant-object-context.md)              | 助手会话挂对象上下文，只读投影与追问回退                 | 已合入 main                     |
+| [任务：全生命周期统一日期事实](./planning/tasks/p6-unified-lifecycle-date-facts.md)      | API、导入、人工共用日期事实链，核验实际日期才申请过站    | 开发中                          |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断           | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                             | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定） | P1 已接受；011 候选、012 已接受 |
 
@@ -58,17 +59,19 @@
 
 ### 5.1 对象/边界/模型
 
-| 文档                                                                     | 一句话                                                                                                       | 状态       |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ---------- |
-| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                             | 当前/未来上下文边界与聚合(P2-01)                                                                             | 候选 v0.5  |
-| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)       | 已出运数据起点/上游演进/箱单关系                                                                             | 候选 v0.4  |
-| [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)             | 14 节点全生命周期(P2 对象表)                                                                                 | 候选 v0.4  |
-| [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md) | 14 流程节点代码、顺序、可选性、所有者和完成口径唯一权威                                                      | 正式 V1    |
-| [LIFECYCLE_NODE_IO_CATALOG](product/domain/LIFECYCLE_NODE_IO_CATALOG.md) | 14 流程节点「一站一张填空表」查阅入口；§2.1 锁定到港/提柜/送仓/卸柜/还箱的计划与实际、ETA、最晚提柜日/还箱日 | 完整性规划 |
-| [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)         | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4  |
-| [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)       | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5  |
-| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)             | 已出运列表导入/预检/审核/对账(P2-03)                                                                         | 候选 v0.5  |
-| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                   | 逻辑库图纸 + 事件/来源/可靠提交关系占位 + 时间偏移来源与复核队列(ADR-012)                                    | 候选 v0.7  |
+| 文档                                                                           | 一句话                                                                                                       | 状态                 |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | -------------------- |
+| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                                   | 当前/未来上下文边界与聚合(P2-01)                                                                             | 候选 v0.5            |
+| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)             | 已出运数据起点/上游演进/箱单关系                                                                             | 候选 v0.4            |
+| [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)                   | 14 节点全生命周期(P2 对象表)                                                                                 | 候选 v0.4            |
+| [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md)       | 14 流程节点代码、顺序、可选性、所有者和完成口径唯一权威                                                      | 正式 V1              |
+| [LIFECYCLE_NODE_IO_CATALOG](product/domain/LIFECYCLE_NODE_IO_CATALOG.md)       | 14 流程节点「一站一张填空表」查阅入口；§2.1 锁定到港/提柜/送仓/卸柜/还箱的计划与实际、ETA、最晚提柜日/还箱日 | 完整性规划           |
+| [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)               | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4            |
+| [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)             | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5            |
+| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)                   | 已出运列表导入/预检/审核/对账(P2-03)                                                                         | 候选 v0.5            |
+| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                         | 逻辑库图纸 + 事件/来源/可靠提交关系占位 + 时间偏移来源与复核队列(ADR-012)                                    | 候选 v0.7            |
+| [COMPLIANCE_MANAGEMENT](product/domain/COMPLIANCE_MANAGEMENT.md)               | 合规横向轨道、规则/评审/证据、14 节点门禁与合规中心规划                                                      | 负责人方向+候选 v0.1 |
+| [PRODUCT_ATTRIBUTE_GOVERNANCE](product/domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md) | 强类型核心+结构化合规档案+JSONB 扩展属性+元数据表单边界                                                      | 负责人方向+候选 v0.1 |
 
 ### 5.2 清单/字典族（可落 Seed/契约）
 
@@ -88,7 +91,7 @@
 | [MARKER_CATALOG](product/domain/MARKER_CATALOG.md)                                               | 货柜标记字典                                                               | 候选      |
 | [ERROR_CODES_CATALOG](product/domain/ERROR_CODES_CATALOG.md)                                     | 旧候选错误码兼容导航，权威已迁移至 GC-011                                  | 已取代    |
 | [CONTRACTS_DRAFT](product/domain/CONTRACTS_DRAFT.md)                                             | P2-08/09 历史草案；正式契约已拆分至 GC-003/005–011                         | 已取代    |
-| [NODE_TIME_FIELDS](product/domain/NODE_TIME_FIELDS.md)                                           | 14 节点计划/实际字段草案；ETA 与 STA 分列；最晚提柜/还箱日是计算截止       | 候选      |
+| [NODE_TIME_FIELDS](product/domain/NODE_TIME_FIELDS.md)                                           | 14 节点日期投影别名；统一事实落库，不建 30 多个可覆盖日期列                | 正式 V1   |
 | [PRECHECK_RULES](product/domain/PRECHECK_RULES.md)                                               | 导入聚合、产品数量、时间证据与重复预检规则目录                             | 候选 v0.2 |
 | [FIVE_PARTY_CODES](product/domain/FIVE_PARTY_CODES.md)                                           | 五主体扣留/放行/查验码                                                     | 候选      |
 | [FEE_DEMURRAGE](product/domain/FEE_DEMURRAGE.md)                                                 | 超期费用三类型分开(P8):起算/免费期/阶梯/日历/账单权威 + 预计·应计·账单分轨 | 候选 v0.3 |
@@ -190,6 +193,8 @@
 | [Inbox 占位消费第一刀](./planning/tasks/p6-inbox-process-first-slice.md)                       | 领取后占位消费并标 processed，失败保留租约                           | 已完成                      |
 | [Inbox 消费/死信与 ClientOperation](./planning/tasks/p6-inbox-consume-client-operation.md)     | 三阶段操作 + Inbox 真消费同事务 Outbox + 重试/死信                   | 已完成                      |
 | [Inbox 死信列表与重放](./planning/tasks/p6-inbox-dead-letter-replay.md)                        | 并入现有死信页；新 messageId + causationId，不改原死信               | 已完成                      |
+| [云当网事件候选归一化](./planning/tasks/p6-trackingeyes-event-candidate.md)                    | 原始码形成不可自动过站的规范事件候选                                 | 已完成                      |
+| [云当网接入、Inbox 与来源裁决](./planning/tasks/p6-trackingeyes-ingestion-authority.md)        | 原始载荷、消息幂等与来源资格裁决同事务留痕                           | 已完成                      |
 | [工单完成写入 ClientOperation](./planning/tasks/p6-work-execution-client-operation.md)         | 完成工单落三阶段回执，work-execution 拥有                            | 已完成                      |
 | [任务台接真实完成与三段回执](./planning/tasks/p6-task-workbench-complete-receipt.md)           | /real-tasks 完成工单，动作旁显示三阶段                               | 已完成                      |
 | [本地迁移改为 deploy 对齐](./planning/tasks/p6-migrate-deploy-local.md)                        | db:migrate 走 deploy，避开影子库重放旧迁移                           | 已完成                      |

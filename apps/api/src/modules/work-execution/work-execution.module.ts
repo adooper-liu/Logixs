@@ -1,12 +1,10 @@
 import {
   Module,
-  forwardRef,
   type MiddlewareConsumer,
   type NestModule,
 } from "@nestjs/common";
 import { DocumentRecordsModule } from "../document-records";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
-import { LifecycleControlModule } from "../lifecycle-control";
 import { ShipmentRegistryModule } from "../shipment-registry";
 import { ClaimWorkOrderService } from "./application/claim-work-order.service";
 import { CompleteWorkOrderService } from "./application/complete-work-order.service";
@@ -23,12 +21,7 @@ import { PrismaWorkExecutionRepository } from "./infrastructure/prisma-work-exec
 import { WorkExecutionController } from "./presentation/work-execution.controller";
 
 @Module({
-  imports: [
-    IdentityModule,
-    DocumentRecordsModule,
-    ShipmentRegistryModule,
-    forwardRef(() => LifecycleControlModule),
-  ],
+  imports: [IdentityModule, DocumentRecordsModule, ShipmentRegistryModule],
   controllers: [WorkExecutionController],
   providers: [
     CreateNodeTaskService,

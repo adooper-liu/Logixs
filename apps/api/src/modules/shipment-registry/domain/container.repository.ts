@@ -16,9 +16,16 @@ export interface ContainerByIdQuery {
   id: string;
 }
 
+export interface ContainerByNumberQuery {
+  tenantId: string;
+  containerNumber: string;
+  take: number;
+}
+
 export interface ContainerRepository {
   list(query: ContainerListQuery): Promise<ContainerSummary[]>;
   findById(query: ContainerByIdQuery): Promise<ContainerSummary | null>;
   findTenantId(containerId: string): Promise<string | null>;
+  findIdsByContainerNumber(query: ContainerByNumberQuery): Promise<string[]>;
   listCurrentTaskFacts(query: ContainerByIdQuery): Promise<ContainerTaskFact[]>;
 }
