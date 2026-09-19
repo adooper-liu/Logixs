@@ -99,4 +99,4 @@ verification:
 | 2026-09-19 | coding | Codex | —      | 完成云当网租户内货柜对象解析与歧义留痕第一刀         |
 | 2026-09-20 | coding | Codex | —      | 修复日期事实旧库升级验证的可重复执行性并完成合并门禁 |
 | 2026-09-20 | coding | Codex | —      | 云当网候选接入 Evidence 并进入统一日期事实与复核链   |
-| 2026-09-20 | coding | Codex | —      | 封堵 blocked 节点直接及并发过站路径                 |
+| 2026-09-20 | coding | Codex | —      | 封堵 blocked 节点直接及并发过站路径                  |
