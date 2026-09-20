@@ -1,7 +1,9 @@
 ---
 status: coding # design | coding | review | fix | blocked | done（机器可校验）
-branch: feat/lifecycle-authoritative-route-segment-guard
+branch: feat/lifecycle-route-write-replay
 verification:
+  - "2026-09-20 权威路线受控写入：定向测试 5 文件/17 项、生命周期模块 70 文件/351 项通过；pnpm db:verify:lifecycle-date-facts 验证旧库升级回滚、空库完整迁移、来源审计、人工约束和幂等唯一性。"
+  - "2026-09-20 权威路线写入完整 pnpm validate：通过；仓库政策、契约校验/漂移、Prisma 生成、lint、格式、类型、全量测试（API 135 文件/644 项、Web 59 文件/189 项）、Playwright E2E（50 通过/7 条件跳过）与生产构建全部完成。"
   - "2026-09-20 权威海运路线/航段守卫：定向测试 3 文件/50 项、生命周期模块 66 文件/336 项通过；真实 PostgreSQL 旧库升级回滚与空库完整迁移链通过，并验证单一 active 路线、单一最终航段及码头身份约束。"
   - "2026-09-20 路线匹配最终 pnpm validate：仓库政策、契约、Prisma 生成、lint、格式、类型和全量单测通过（API 130 文件/627 项、Web 59 文件/189 项）；Playwright 49 通过/7 跳过、移动侧栏 1 项时序失败，故整条命令记为失败。该失败用例单独复跑通过，pnpm build 随后通过；不把复跑写成完整 validate 通过。"
   - "2026-09-20 地点航段专项：定向测试 8 个文件/72 项、生命周期模块 66 个文件/326 项通过；真实 PostgreSQL 旧库升级回滚与空库完整迁移链通过，断言日期事实/规范事件地点字段、约束、索引与真实复制。"
@@ -96,7 +98,8 @@ verification:
 - `BlockNode/ResolveNodeBlock` 已按正式契约落地：阻断与解除追加保存，节点 `blocked` 仅是未解除阻断的投影；命令按 `blockId` 精确解除并使用流程版本防并发，最后一个阻断解除后自动重放待应用日期事实。当前来源事实只接受已核验、已确认、有效、当前版本且具备来源权威策略的 `actual LifecycleDateFact`，要求事件角色为 `exception`，且 `blockType` 必须等于来源事实的规范 `eventCode`；其他领域后续必须通过正式事实 Port 扩展，禁止把任意 UUID、普通证据或客户端自由文本当作阻断类型和事实。
 - 装箱节点专项守卫已落地：`stuffed` 事实仍先落账，只有箱号已经迟绑定时才允许完成 `container_stuffing`；未绑定时保留 `pending_application`，并按真实原因区分前序未完成、节点阻断和货柜身份待绑定，禁止统一误记为前序未完成。
 - 地点/航段上下文第一刀已落地：公共日期事实命令、事实表、规范事件和 Outbox 完整性哈希统一携带结构化 `location`；`arrived/transit_arrived` 缺少可识别港口或 `segmentId` 时保留 `pending_application`。
-- 权威海运路线/航段守卫已进入实现：路线按货柜版本化，只允许一个 active 版本和一个最终航段；`arrived` 必须匹配当前最终航段目的港，`transit_arrived` 必须匹配当前非最终航段目的港。旧港口文本不会被自动升级为权威路线，路线缺失或不匹配的事实继续等待补证。
+- 权威海运路线/航段守卫已落地：路线按货柜版本化，只允许一个 active 版本和一个最终航段；`arrived` 必须匹配当前最终航段目的港，`transit_arrived` 必须匹配当前非最终航段目的港。旧港口文本不会被自动升级为权威路线，路线缺失或不匹配的事实继续等待补证。
+- 权威路线受控写端口已落地：API 适配、受控导入和人工界面共用 `REPLACE_OCEAN_ROUTE`；写入以货柜锁、预期版本和幂等键原子换版，保留来源、证据、操作者与原因，并提供当前 active 路线读投影供客户端取得预期版本。新版本提交后自动重放本柜待应用日期事实，重放不能绕过既有来源权威、节点前序、阻断和路线守卫。现有只有港口文本且缺少 UN/LOCODE、时区和航段身份的旧导入数据不会被自动提升为权威路线。
 
 ## 进度 log
 
@@ -118,3 +121,4 @@ verification:
 | 2026-09-20 | coding | Codex | —      | 完成装箱货柜身份专项守卫与 pending 原因精确留痕      |
 | 2026-09-20 | coding | Codex | —      | 贯通地点航段事实并封住缺上下文的到港过站             |
 | 2026-09-20 | coding | Codex | —      | 建立权威海运路线航段并收紧到港匹配守卫               |
+| 2026-09-20 | coding | Codex | —      | 接通权威路线原子换版与 pending 日期事实自动重放      |

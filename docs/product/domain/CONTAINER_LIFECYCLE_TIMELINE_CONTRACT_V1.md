@@ -287,6 +287,8 @@ traceId
 
 规范事件目录已为所有节点完成资格事件开放 `planned | estimated | actual`，统一日期事实用例按目录拒绝未知组合，并保证 planned/estimated 不申请过站。只有服务端回读到 `actual + verified + confirmed + effective`、命中已采用来源策略且对象、事件、时间和证据完全一致的日期事实，内部生命周期入口才接受过站申请；规范事件和 Outbox 完整性哈希必须保留 `domainFactId/nodeCode/timeKind/authorityPolicyRef/location`。日期事实与规范事件分列保存 `locationType/unlocode/locationId/segmentId/portCallId/timezone`；`arrived/transit_arrived` 缺少可识别港口或航段时只保留 `pending_application`，不得过站。运行时按货柜当前有效 `OceanRoutePlan` 读取指定 `OceanRouteSegment`：`arrived` 必须命中最终航段目的港，`transit_arrived` 必须命中非最终航段目的港；路线缺失或不匹配时保留事实并等待路线补录或纠正，禁止把“字段存在”冒充“路线匹配”。工单完成和旧客户端/Inbox 直推事件均不得替代该事实链。开放时间种类不表示各入口、查询投影和界面已经采集全部日期；具体接入进度仍由 task brief 跟踪，禁止绕过统一用例直接写事实表。
 
+权威海运路线通过同一个 `REPLACE_OCEAN_ROUTE` 写端口接收供应商 API 适配、受控文件导入和人工界面输入。写端口要求明确 UN/LOCODE、IANA 时区、连续航段、来源系统、证据、幂等键和预期路线版本；人工入口的租户、操作者、渠道和来源系统由服务端注入。每次更正追加新版本并在单事务内失效旧 active 版本，禁止覆盖历史。事务提交后自动重放本柜 `pending_application` 日期事实，但重放仍须重新通过来源权威、节点前序、阻断和当前路线匹配守卫。只有港口名称或旧 `routeCode`、缺少代码/时区/航段身份的导入数据不得自动提升为权威路线，应留在预检或人工映射环节。
+
 ## 6. 幂等、重复、乱序与冲突
 
 ### 6.1 业务幂等键

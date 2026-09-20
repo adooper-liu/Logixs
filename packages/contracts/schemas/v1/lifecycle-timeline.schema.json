@@ -9,9 +9,272 @@
     { "$ref": "#/$defs/TimelineReplayRequest" },
     { "$ref": "#/$defs/LifecycleDateFactCommand" },
     { "$ref": "#/$defs/LifecycleDateFactInboxPayload" },
-    { "$ref": "#/$defs/LifecycleDateFactResult" }
+    { "$ref": "#/$defs/LifecycleDateFactResult" },
+    { "$ref": "#/$defs/OceanRouteWriteCommand" },
+    { "$ref": "#/$defs/OceanRouteWriteResult" },
+    { "$ref": "#/$defs/OceanRouteProjection" }
   ],
   "$defs": {
+    "OceanRouteSegmentInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transportMode",
+        "originUnlocode",
+        "originTimezone",
+        "destinationLocationType",
+        "destinationUnlocode",
+        "destinationTimezone"
+      ],
+      "properties": {
+        "transportMode": { "enum": ["vessel", "feeder", "barge"] },
+        "originUnlocode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "originTimezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "destinationLocationType": { "enum": ["port", "terminal"] },
+        "destinationUnlocode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationLocationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "destinationPortCallId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "destinationTimezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "destinationLocationType": { "const": "terminal" }
+            },
+            "required": ["destinationLocationType"]
+          },
+          "then": { "required": ["destinationLocationId"] }
+        }
+      ]
+    },
+    "OceanRouteWriteCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "containerId",
+        "segments",
+        "ingestionChannel",
+        "sourceSystem",
+        "evidenceRefs",
+        "expectedVersion",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/OceanRouteSegmentInput" }
+        },
+        "ingestionChannel": { "enum": ["api", "file_import", "manual_ui"] },
+        "sourceSystem": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "evidenceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "ingestionChannel": { "const": "manual_ui" } },
+            "required": ["ingestionChannel"]
+          },
+          "then": { "required": ["actorId", "reasonCode"] }
+        }
+      ]
+    },
+    "OceanRouteWriteResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "routePlanId",
+        "recordState",
+        "version",
+        "segments",
+        "replay"
+      ],
+      "properties": {
+        "routePlanId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "recordState": { "enum": ["recorded", "duplicate"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "segmentId",
+              "sequence",
+              "isFinal",
+              "transportMode",
+              "originUnlocode",
+              "originTimezone",
+              "destinationLocationType",
+              "destinationUnlocode",
+              "destinationTimezone"
+            ],
+            "properties": {
+              "segmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+              "sequence": { "type": "integer", "minimum": 1 },
+              "isFinal": { "type": "boolean" },
+              "transportMode": { "enum": ["vessel", "feeder", "barge"] },
+              "originUnlocode": {
+                "type": "string",
+                "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+              },
+              "originTimezone": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "destinationLocationType": { "enum": ["port", "terminal"] },
+              "destinationUnlocode": {
+                "type": "string",
+                "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+              },
+              "destinationLocationId": {
+                "$ref": "common.schema.json#/$defs/Uuid"
+              },
+              "destinationPortCallId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "destinationTimezone": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "replay": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["claimed", "applied", "pending", "rejected"],
+          "properties": {
+            "claimed": { "type": "integer", "minimum": 0 },
+            "applied": { "type": "integer", "minimum": 0 },
+            "pending": { "type": "integer", "minimum": 0 },
+            "rejected": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "OceanRouteProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "routePlanId",
+        "version",
+        "activatedAt",
+        "ingestionChannel",
+        "sourceSystem",
+        "evidenceRefs",
+        "segments"
+      ],
+      "properties": {
+        "routePlanId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "activatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "ingestionChannel": { "enum": ["api", "file_import", "manual_ui"] },
+        "sourceSystem": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "actorId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "segmentId",
+              "sequence",
+              "isFinal",
+              "transportMode",
+              "originUnlocode",
+              "originTimezone",
+              "destinationLocationType",
+              "destinationUnlocode",
+              "destinationTimezone"
+            ],
+            "properties": {
+              "segmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+              "sequence": { "type": "integer", "minimum": 1 },
+              "isFinal": { "type": "boolean" },
+              "transportMode": { "enum": ["vessel", "feeder", "barge"] },
+              "originUnlocode": {
+                "type": "string",
+                "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+              },
+              "originTimezone": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "destinationLocationType": { "enum": ["port", "terminal"] },
+              "destinationUnlocode": {
+                "type": "string",
+                "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+              },
+              "destinationLocationId": {
+                "$ref": "common.schema.json#/$defs/Uuid"
+              },
+              "destinationPortCallId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "destinationTimezone": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        }
+      }
+    },
     "LifecycleDateFactCommand": {
       "type": "object",
       "additionalProperties": false,

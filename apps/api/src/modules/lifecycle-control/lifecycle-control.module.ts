@@ -57,6 +57,8 @@ import { ReplayDeadLetterService } from "./application/replay-dead-letter.servic
 import { SetNodeApplicabilityService } from "./application/set-node-applicability.service";
 import { BlockNodeService } from "./application/block-node.service";
 import { ResolveNodeBlockService } from "./application/resolve-node-block.service";
+import { ReplaceOceanRouteService } from "./application/replace-ocean-route.service";
+import { GetCurrentOceanRouteService } from "./application/get-current-ocean-route.service";
 import { LIFECYCLE_REPOSITORY } from "./domain/lifecycle.repository";
 import { CLIENT_OPERATION_REPOSITORY } from "./domain/client-operation.repository";
 import { COMPENSATION_REPOSITORY } from "./domain/compensation.repository";
@@ -88,6 +90,10 @@ import { ObjectActivitiesController } from "./presentation/object-activities.con
 import { LifecycleDateFactsController } from "./presentation/lifecycle-date-facts.controller";
 import { LifecycleNodeBlocksController } from "./presentation/lifecycle-node-blocks.controller";
 import { NODE_BLOCK_REPOSITORY } from "./domain/node-block.repository";
+import { OCEAN_ROUTE_REPOSITORY } from "./domain/ocean-route.repository";
+import { PrismaOceanRouteRepository } from "./infrastructure/prisma-ocean-route.repository";
+import { REPLACE_OCEAN_ROUTE } from "./replace-ocean-route.port";
+import { OceanRoutesController } from "./presentation/ocean-routes.controller";
 
 @Module({
   imports: [
@@ -111,6 +117,7 @@ import { NODE_BLOCK_REPOSITORY } from "./domain/node-block.repository";
     ObjectActivitiesController,
     LifecycleDateFactsController,
     LifecycleNodeBlocksController,
+    OceanRoutesController,
   ],
   providers: [
     ApplyLifecycleEventService,
@@ -123,6 +130,8 @@ import { NODE_BLOCK_REPOSITORY } from "./domain/node-block.repository";
     SetNodeApplicabilityService,
     BlockNodeService,
     ResolveNodeBlockService,
+    ReplaceOceanRouteService,
+    GetCurrentOceanRouteService,
     SubmitClientOperationService,
     GetClientOperationService,
     GetCompensationService,
@@ -148,6 +157,7 @@ import { NODE_BLOCK_REPOSITORY } from "./domain/node-block.repository";
     ReplayInboxDeadLetterService,
     { provide: LIFECYCLE_REPOSITORY, useClass: PrismaLifecycleRepository },
     { provide: NODE_BLOCK_REPOSITORY, useClass: PrismaNodeBlockRepository },
+    { provide: OCEAN_ROUTE_REPOSITORY, useClass: PrismaOceanRouteRepository },
     {
       provide: LIFECYCLE_DATE_FACT_REPOSITORY,
       useClass: PrismaLifecycleDateFactRepository,
@@ -188,11 +198,16 @@ import { NODE_BLOCK_REPOSITORY } from "./domain/node-block.repository";
       provide: RECORD_LIFECYCLE_DATE_FACT,
       useExisting: RecordLifecycleDateFactService,
     },
+    {
+      provide: REPLACE_OCEAN_ROUTE,
+      useExisting: ReplaceOceanRouteService,
+    },
   ],
   exports: [
     InitializeContainerFlowService,
     LIST_CONTAINER_CURRENT_NODES,
     RECORD_LIFECYCLE_DATE_FACT,
+    REPLACE_OCEAN_ROUTE,
     ListContainerCurrentNodesService,
     RecordLifecycleDateFactService,
   ],
@@ -213,6 +228,7 @@ export class LifecycleControlModule implements NestModule {
         ObjectActivitiesController,
         LifecycleDateFactsController,
         LifecycleNodeBlocksController,
+        OceanRoutesController,
       );
     consumer
       .apply(DevServiceIdentityMiddleware)

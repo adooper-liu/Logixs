@@ -29,6 +29,7 @@ const targetMigrationPaths = [
   "database/migrations/20260920120000_add_lifecycle_node_blocks/migration.sql",
   "database/migrations/20260920150000_add_lifecycle_location_context/migration.sql",
   "database/migrations/20260920170000_add_ocean_route_plans/migration.sql",
+  "database/migrations/20260920190000_add_ocean_route_write_audit/migration.sql",
 ];
 const migrationSql = targetMigrationPaths.map((path) =>
   readFileSync(path, "utf8"),
@@ -497,6 +498,8 @@ async function assertOceanRoutePersistence(
           'ocean_route_plan_activation_check',
           'ocean_route_plan_container_id_fkey',
           'ocean_route_plan_supersedes_route_id_fkey',
+          'ocean_route_plan_ingestion_check',
+          'ocean_route_plan_audit_check',
           'ocean_route_segment_sequence_check',
           'ocean_route_segment_mode_check',
           'ocean_route_segment_location_check',
@@ -512,6 +515,7 @@ async function assertOceanRoutePersistence(
             'ocean_route_plan_supersedes_key',
             'ocean_route_plan_one_active_key',
             'ocean_route_plan_container_status_idx',
+            'ocean_route_plan_idempotency_key',
             'ocean_route_segment_sequence_key',
             'ocean_route_segment_one_final_key',
             'ocean_route_segment_final_idx'
@@ -522,18 +526,22 @@ async function assertOceanRoutePersistence(
   if (
     schema[0]?.routeTable !== "ocean_route_plan" ||
     schema[0]?.segmentTable !== "ocean_route_segment" ||
-    Number(schema[0]?.constraintCount ?? 0) !== 9 ||
-    Number(schema[0]?.indexCount ?? 0) !== 7
+    Number(schema[0]?.constraintCount ?? 0) !== 11 ||
+    Number(schema[0]?.indexCount ?? 0) !== 8
   ) {
     throw new Error("Ocean route migration verification failed");
   }
 
   await prisma.$executeRawUnsafe(`
     INSERT INTO "ocean_route_plan" (
-      "id", "container_id", "version", "status", "activated_at"
+      "id", "container_id", "version", "status", "activated_at",
+      "ingestion_channel", "source_system", "evidence_refs",
+      "idempotency_key", "payload_hash", "trace_id"
     ) VALUES (
       '10000000-0000-4000-8000-000000000020',
-      '10000000-0000-4000-8000-000000000001', 1, 'active', CURRENT_TIMESTAMP
+      '10000000-0000-4000-8000-000000000001', 1, 'active', CURRENT_TIMESTAMP,
+      'api', 'verify.route', '["10000000-0000-4000-8000-000000000002"]'::jsonb,
+      'verify-route-1', repeat('a', 64), 'verify-route-trace-1'
     );
 
     INSERT INTO "ocean_route_segment" (
@@ -552,10 +560,14 @@ async function assertOceanRoutePersistence(
     BEGIN
       BEGIN
         INSERT INTO "ocean_route_plan" (
-          "id", "container_id", "version", "status", "activated_at"
+          "id", "container_id", "version", "status", "activated_at",
+          "ingestion_channel", "source_system", "evidence_refs",
+          "idempotency_key", "payload_hash", "trace_id"
         ) VALUES (
           '10000000-0000-4000-8000-000000000021',
-          '10000000-0000-4000-8000-000000000001', 2, 'active', CURRENT_TIMESTAMP
+          '10000000-0000-4000-8000-000000000001', 2, 'active', CURRENT_TIMESTAMP,
+          'api', 'verify.route', '[]'::jsonb,
+          'verify-route-2', repeat('b', 64), 'verify-route-trace-2'
         );
         RAISE EXCEPTION 'multiple active routes were accepted';
       EXCEPTION WHEN unique_violation THEN
@@ -563,6 +575,46 @@ async function assertOceanRoutePersistence(
       END;
     END
     $verify_one_active_route$;
+
+    DO $verify_manual_route_audit$
+    BEGIN
+      BEGIN
+        INSERT INTO "ocean_route_plan" (
+          "id", "container_id", "version", "status", "superseded_at", "activated_at",
+          "ingestion_channel", "source_system", "evidence_refs",
+          "idempotency_key", "payload_hash", "trace_id"
+        ) VALUES (
+          '10000000-0000-4000-8000-000000000024',
+          '10000000-0000-4000-8000-000000000001', 4, 'superseded', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+          'manual_ui', 'logix.manual', '[]'::jsonb,
+          'verify-route-4', repeat('c', 64), 'verify-route-trace-4'
+        );
+        RAISE EXCEPTION 'manual route without actor and reason was accepted';
+      EXCEPTION WHEN check_violation THEN
+        NULL;
+      END;
+    END
+    $verify_manual_route_audit$;
+
+    DO $verify_route_idempotency$
+    BEGIN
+      BEGIN
+        INSERT INTO "ocean_route_plan" (
+          "id", "container_id", "version", "status", "superseded_at", "activated_at",
+          "ingestion_channel", "source_system", "evidence_refs",
+          "idempotency_key", "payload_hash", "trace_id"
+        ) VALUES (
+          '10000000-0000-4000-8000-000000000025',
+          '10000000-0000-4000-8000-000000000001', 5, 'superseded', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+          'api', 'verify.route', '[]'::jsonb,
+          'verify-route-1', repeat('d', 64), 'verify-route-trace-5'
+        );
+        RAISE EXCEPTION 'duplicate route idempotency key was accepted';
+      EXCEPTION WHEN unique_violation THEN
+        NULL;
+      END;
+    END
+    $verify_route_idempotency$;
 
     DO $verify_one_final_segment$
     BEGIN

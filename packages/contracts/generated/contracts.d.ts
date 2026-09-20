@@ -214,6 +214,20 @@ export type EntityType = ("container" | "flow_instance" | "node_instance" | "nod
 export type ErrorCategory = ("validation" | "authentication" | "authorization" | "not_found" | "conflict" | "precondition" | "rate_limit" | "dependency" | "internal")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "OceanRouteSegmentInput".
+ */
+export type OceanRouteSegmentInput = {
+transportMode: ("vessel" | "feeder" | "barge")
+originUnlocode: string
+originTimezone: string
+destinationLocationType: ("port" | "terminal")
+destinationUnlocode: string
+destinationLocationId?: Uuid
+destinationPortCallId?: string
+destinationTimezone: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "LifecycleDateFactCommand".
  */
 export type LifecycleDateFactCommand = {
@@ -560,6 +574,111 @@ expiresAt?: DateTime
  */
 export interface EmptyEventData {
 
+}
+export interface OceanRouteWriteCommand {
+tenantId: Uuid
+containerId: Uuid
+/**
+ * @minItems 1
+ * @maxItems 20
+ */
+segments: [OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]|[OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput, OceanRouteSegmentInput]
+ingestionChannel: ("api" | "file_import" | "manual_ui")
+sourceSystem: string
+/**
+ * @minItems 1
+ */
+evidenceRefs: [Uuid, ...(Uuid)[]]
+actorId?: Uuid
+reasonCode?: string
+expectedVersion: number
+idempotencyKey: string
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "OceanRouteWriteResult".
+ */
+export interface OceanRouteWriteResult {
+routePlanId: Uuid
+recordState: ("recorded" | "duplicate")
+version: number
+/**
+ * @minItems 1
+ */
+segments: [{
+segmentId: Uuid
+sequence: number
+isFinal: boolean
+transportMode: ("vessel" | "feeder" | "barge")
+originUnlocode: string
+originTimezone: string
+destinationLocationType: ("port" | "terminal")
+destinationUnlocode: string
+destinationLocationId?: Uuid
+destinationPortCallId?: string
+destinationTimezone: string
+}, ...({
+segmentId: Uuid
+sequence: number
+isFinal: boolean
+transportMode: ("vessel" | "feeder" | "barge")
+originUnlocode: string
+originTimezone: string
+destinationLocationType: ("port" | "terminal")
+destinationUnlocode: string
+destinationLocationId?: Uuid
+destinationPortCallId?: string
+destinationTimezone: string
+})[]]
+replay: {
+claimed: number
+applied: number
+pending: number
+rejected: number
+}
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "OceanRouteProjection".
+ */
+export interface OceanRouteProjection {
+routePlanId: Uuid
+version: number
+activatedAt: DateTime
+ingestionChannel: ("api" | "file_import" | "manual_ui")
+sourceSystem: string
+evidenceRefs: Uuid[]
+actorId?: Uuid
+reasonCode?: string
+/**
+ * @minItems 1
+ */
+segments: [{
+segmentId: Uuid
+sequence: number
+isFinal: boolean
+transportMode: ("vessel" | "feeder" | "barge")
+originUnlocode: string
+originTimezone: string
+destinationLocationType: ("port" | "terminal")
+destinationUnlocode: string
+destinationLocationId?: Uuid
+destinationPortCallId?: string
+destinationTimezone: string
+}, ...({
+segmentId: Uuid
+sequence: number
+isFinal: boolean
+transportMode: ("vessel" | "feeder" | "barge")
+originUnlocode: string
+originTimezone: string
+destinationLocationType: ("port" | "terminal")
+destinationUnlocode: string
+destinationLocationId?: Uuid
+destinationPortCallId?: string
+destinationTimezone: string
+})[]]
 }
 export interface CanonicalEventEnvelopeLocation {
 locationType: ("port" | "terminal" | "rail_yard" | "warehouse" | "depot" | "in_transit")
