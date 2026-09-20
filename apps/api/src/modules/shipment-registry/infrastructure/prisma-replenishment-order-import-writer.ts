@@ -146,6 +146,7 @@ export class PrismaReplenishmentOrderImportWriter implements ReplenishmentOrderI
       });
       await transaction.replenishmentOrderLine.createMany({
         data: command.lines.map((line) => ({
+          tenantId: command.tenantId,
           replenishmentOrderId: order.id,
           sourceBatchId: command.sourceBatchId,
           sourceRowId: line.sourceRowId,

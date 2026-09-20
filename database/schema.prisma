@@ -61,28 +61,30 @@ enum ContainerStatus {
 // 货柜业务事实主记录（shipment-registry 拥有）。
 // 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
 model ContainerRecord {
-  id                   String              @id @default(uuid()) @map("id")
-  tenantId             String              @map("tenant_id")
-  // 备货单号：建档身份主锚。TO-BE 目标 UNIQUE，但须旧库 DDL/数据清洗通过后才建立（DATA_MODEL 不变量 1）。
-  orderNumber          String              @map("order_number")
-  replenishmentOrderId String?             @map("replenishment_order_id")
-  replenishmentOrder   ReplenishmentOrder? @relation(fields: [replenishmentOrderId], references: [id])
+  id                   String                        @id @default(uuid()) @map("id")
+  tenantId             String                        @map("tenant_id")
+  // 旧导入兼容锚；柜内货物与备货单的权威关系由 ContainerCargoAllocation 表达。
+  orderNumber          String                        @map("order_number")
+  replenishmentOrderId String?                       @map("replenishment_order_id")
+  replenishmentOrder   ReplenishmentOrder?           @relation(fields: [replenishmentOrderId], references: [id])
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
-  mainOrderNumber      String?             @map("main_order_number")
+  mainOrderNumber      String?                       @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
-  containerNumber      String?             @map("container_number")
+  containerNumber      String?                       @map("container_number")
   // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
-  currentStatus        ContainerStatus     @map("current_status")
-  createdAt            DateTime            @default(now()) @map("created_at")
-  updatedAt            DateTime            @updatedAt @map("updated_at")
+  currentStatus        ContainerStatus               @map("current_status")
+  createdAt            DateTime                      @default(now()) @map("created_at")
+  updatedAt            DateTime                      @updatedAt @map("updated_at")
   timeFacts            ShipmentTimeFact[]
   lifecycleDateFacts   LifecycleDateFact[]
   oceanRoutePlans      OceanRoutePlan[]
+  cargoAllocationSets  ContainerCargoAllocationSet[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
   // TODO(D20 物理形态)：金额 decimal + currency（超期费用，独立边界）
 
+  @@unique([id, tenantId], map: "container_record_id_tenant_key")
   @@index([tenantId, updatedAt, id])
   @@index([replenishmentOrderId])
   @@map("container_record")
@@ -272,7 +274,6 @@ model SourceAuthorityPolicy {
 }
 
 // 备货单身份表（shipment-registry 拥有）：租户内备货单号唯一。
-// container_record 的 1:1 contract 约束要等历史重复清洗后再追加。
 model ReplenishmentOrder {
   id               String                   @id @default(uuid()) @map("id")
   tenantId         String                   @map("tenant_id")
@@ -283,28 +284,80 @@ model ReplenishmentOrder {
   lines            ReplenishmentOrderLine[]
 
   @@unique([tenantId, orderNumber], map: "replenishment_order_tenant_order_key")
+  @@unique([id, tenantId], map: "replenishment_order_id_tenant_key")
   @@map("replenishment_order")
 }
 
 // 产品明细（shipment-registry 拥有）：重导时保留历史版本，只切换 is_current。
 model ReplenishmentOrderLine {
-  id                   String             @id @default(uuid()) @map("id")
-  replenishmentOrderId String             @map("replenishment_order_id")
-  replenishmentOrder   ReplenishmentOrder @relation(fields: [replenishmentOrderId], references: [id])
-  productNumber        String             @map("product_number")
-  shippedQuantity      Decimal            @map("shipped_quantity") @db.Decimal(18, 3)
-  quantityUnit         String             @map("quantity_unit")
-  contractNumber       String?            @map("contract_number")
-  sourceBatchId        String             @map("source_batch_id")
-  sourceRowId          String             @map("source_row_id")
-  isCurrent            Boolean            @default(true) @map("is_current")
-  supersededByBatchId  String?            @map("superseded_by_batch_id")
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
+  id                   String                     @id @default(uuid()) @map("id")
+  tenantId             String                     @map("tenant_id")
+  replenishmentOrderId String                     @map("replenishment_order_id")
+  replenishmentOrder   ReplenishmentOrder         @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productSkuId         String?                    @map("product_sku_id") @db.Uuid
+  productNumber        String                     @map("product_number")
+  shippedQuantity      Decimal                    @map("shipped_quantity") @db.Decimal(18, 3)
+  quantityUnit         String                     @map("quantity_unit")
+  contractNumber       String?                    @map("contract_number")
+  sourceBatchId        String                     @map("source_batch_id")
+  sourceRowId          String                     @map("source_row_id")
+  isCurrent            Boolean                    @default(true) @map("is_current")
+  supersededByBatchId  String?                    @map("superseded_by_batch_id")
+  version              Int                        @default(1) @map("version")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  updatedAt            DateTime                   @updatedAt @map("updated_at")
+  cargoAllocations     ContainerCargoAllocation[]
 
   @@unique([sourceBatchId, sourceRowId], map: "replenishment_order_line_source_key")
+  @@unique([id, tenantId], map: "replenishment_order_line_id_tenant_key")
   @@index([replenishmentOrderId, isCurrent], map: "replenishment_order_line_current_idx")
+  @@index([tenantId, productSkuId, isCurrent], map: "replenishment_order_line_sku_current_idx")
   @@map("replenishment_order_line")
+}
+
+// 货柜实际装载快照（shipment-registry 拥有）：每柜只有一个 active 版本，更正追加新集合。
+model ContainerCargoAllocationSet {
+  id                String                       @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String                       @map("tenant_id")
+  containerRecordId String                       @map("container_record_id")
+  containerRecord   ContainerRecord              @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version           Int                          @map("version")
+  state             String                       @map("state")
+  supersedesSetId   String?                      @map("supersedes_set_id") @db.Uuid
+  supersedesSet     ContainerCargoAllocationSet? @relation("ContainerCargoAllocationSetSupersession", fields: [supersedesSetId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  supersededBy      ContainerCargoAllocationSet? @relation("ContainerCargoAllocationSetSupersession")
+  ingestionChannel  String                       @map("ingestion_channel")
+  sourceSystem      String                       @map("source_system")
+  evidenceRefs      Json                         @map("evidence_refs")
+  idempotencyKey    String                       @map("idempotency_key")
+  payloadHash       String                       @map("payload_hash")
+  createdAt         DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  supersededAt      DateTime?                    @map("superseded_at") @db.Timestamptz
+  allocations       ContainerCargoAllocation[]
+
+  @@unique([id, tenantId], map: "container_cargo_set_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "container_cargo_set_tenant_idempotency_key")
+  @@unique([containerRecordId, version], map: "container_cargo_set_container_version_key")
+  @@unique([supersedesSetId, tenantId], map: "container_cargo_set_supersedes_tenant_key")
+  @@index([tenantId, containerRecordId, state], map: "container_cargo_set_active_lookup_idx")
+  @@map("container_cargo_allocation_set")
+}
+
+// 装载明细引用本模块产品行；Product/SKU 通过产品行的逻辑 UUID 引用解析，不建跨模块外键。
+model ContainerCargoAllocation {
+  id                       String                      @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                 String                      @map("tenant_id")
+  allocationSetId          String                      @map("allocation_set_id") @db.Uuid
+  allocationSet            ContainerCargoAllocationSet @relation(fields: [allocationSetId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  replenishmentOrderLineId String                      @map("replenishment_order_line_id")
+  replenishmentOrderLine   ReplenishmentOrderLine      @relation(fields: [replenishmentOrderLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  allocatedQuantity        Decimal                     @map("allocated_quantity") @db.Decimal(18, 3)
+  quantityUnit             String                      @map("quantity_unit")
+  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([allocationSetId, replenishmentOrderLineId], map: "container_cargo_allocation_set_line_key")
+  @@index([tenantId, replenishmentOrderLineId], map: "container_cargo_allocation_line_idx")
+  @@map("container_cargo_allocation")
 }
 
 // 证据主记录（document-records 拥有）：第一刀只落核验所需字段，不做对象存储。
@@ -476,7 +529,7 @@ model NodeBlock {
   actorId        String               @map("actor_id")
   idempotencyKey String               @map("idempotency_key")
   traceId        String               @map("trace_id")
-  projectionVersion Int               @map("projection_version")
+  projectionVersion Int                  @map("projection_version")
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   resolution     NodeBlockResolution?
 
@@ -497,7 +550,7 @@ model NodeBlockResolution {
   actorId        String    @map("actor_id")
   idempotencyKey String    @map("idempotency_key")
   traceId        String    @map("trace_id")
-  projectionVersion Int    @map("projection_version")
+  projectionVersion Int       @map("projection_version")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([tenantId, idempotencyKey], map: "node_block_resolution_tenant_idempotency_key")
@@ -697,8 +750,8 @@ model OceanProviderEventIngestion {
   payloadHashVersion   String       @map("payload_hash_version")
   containerNumberRaw   String       @map("container_number_raw")
   containerRecordId    String?      @map("container_record_id")
-  objectResolutionState String      @default("not_attempted") @map("object_resolution_state")
-  objectResolutionReasonCode String? @map("object_resolution_reason_code")
+  objectResolutionState      String       @default("not_attempted") @map("object_resolution_state")
+  objectResolutionReasonCode String?      @map("object_resolution_reason_code")
   rawCode              String       @map("raw_code")
   eventTimeRaw         String       @map("event_time_raw")
   mappingVersion       String       @map("mapping_version")

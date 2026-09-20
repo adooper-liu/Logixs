@@ -12,6 +12,24 @@ import {
 export class PrismaProductSkuRepository implements ProductSkuRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  async findById(input: {
+    tenantId: string;
+    productSkuId: string;
+  }): Promise<ProductSkuRecord | null> {
+    const productSku = await this.prisma.productSku.findUnique({
+      where: {
+        id_tenantId: { id: input.productSkuId, tenantId: input.tenantId },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        productNumber: true,
+        version: true,
+      },
+    });
+    return productSku ? toRecord(productSku) : null;
+  }
+
   register(input: NormalizedRegisterProductSkuCommand): Promise<{
     record: ProductSkuRecord;
     duplicate: boolean;
