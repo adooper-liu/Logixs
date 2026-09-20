@@ -252,6 +252,32 @@ describe("RecordLifecycleDateFactService", () => {
     );
   });
 
+  it("目标节点暂不可完成时保存状态机返回的真实 pending 原因", async () => {
+    const { service, applyLifecycleEvent } = await buildService();
+    applyLifecycleEvent.execute.mockResolvedValue({
+      applied: false,
+      canonicalEventId: "88888888-8888-4888-8888-888888888888",
+      pendingNodes: ["origin_departure"],
+      pendingReasonCodes: {
+        origin_departure: "LIFECYCLE_EVENT_PENDING_NODE_BLOCK",
+      },
+    });
+
+    const result = await service.execute({
+      ...baseInput(),
+      timeKind: "actual",
+      verificationState: "verified",
+      confidenceState: "confirmed",
+      evidenceRefs: [EVIDENCE_ID],
+    });
+
+    expect(result).toMatchObject({
+      applicationState: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PENDING_NODE_BLOCK",
+      canonicalEventId: null,
+    });
+  });
+
   it("事件、节点和时间种类组合不在目录中时明确失败", async () => {
     const { service } = await buildService();
 

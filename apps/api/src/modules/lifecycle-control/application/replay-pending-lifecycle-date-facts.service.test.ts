@@ -136,11 +136,14 @@ describe("ReplayPendingLifecycleDateFactsService", () => {
     expect(result).toMatchObject({ pending: 1, rejected: 1 });
   });
 
-  it("规范事件已接收但目标前序未满足时继续保持 pending", async () => {
+  it("规范事件已接收但目标节点仍被阻断时保留真实 pending 原因", async () => {
     const pending = fact("fact-1", "2026-09-18T01:00:00Z");
     const apply = vi.fn().mockResolvedValue({
       canonicalEventId: "event-1",
       pendingNodes: ["origin_departure"],
+      pendingReasonCodes: {
+        origin_departure: "LIFECYCLE_EVENT_PENDING_NODE_BLOCK",
+      },
     });
     const { service, repository } = await buildService([pending], apply);
 
@@ -152,7 +155,7 @@ describe("ReplayPendingLifecycleDateFactsService", () => {
     expect(repository.finishClaimedApplication).toHaveBeenCalledWith(
       expect.objectContaining({
         state: "pending_application",
-        reasonCode: "LIFECYCLE_EVENT_PENDING_PREDECESSOR",
+        reasonCode: "LIFECYCLE_EVENT_PENDING_NODE_BLOCK",
         canonicalEventId: null,
       }),
     );

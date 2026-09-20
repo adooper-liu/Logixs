@@ -175,10 +175,13 @@ export class RecordLifecycleDateFactService {
         traceId: normalized.traceId,
       });
       if ((lifecycle.pendingNodes?.length ?? 0) > 0) {
+        const pendingNode = lifecycle.pendingNodes[0];
         const pending = await this.repository.updateApplication({
           factId: appended.record.id,
           state: "pending_application",
-          reasonCode: "LIFECYCLE_EVENT_PENDING_PREDECESSOR",
+          reasonCode:
+            (pendingNode && lifecycle.pendingReasonCodes[pendingNode]) ??
+            "LIFECYCLE_EVENT_PENDING_PREDECESSOR",
           canonicalEventId: null,
         });
         return toResult(pending, "recorded");
