@@ -144,6 +144,14 @@ export class ApplyLifecycleEventService {
       occurredAt: input.occurredAt,
       evidenceRefs,
     });
+    const routeSegment =
+      ["arrived", "transit_arrived"].includes(input.eventCode) &&
+      stateEvidence.location?.segmentId
+        ? await this.repository.findActiveOceanRouteSegment(
+            input.containerId,
+            stateEvidence.location.segmentId,
+          )
+        : null;
 
     // 事件接收幂等与节点应用幂等分开：同一事件可在前序满足后继续应用后续目标。
     const existing = await this.repository.findEventByIdempotencyKey(
@@ -249,6 +257,7 @@ export class ApplyLifecycleEventService {
         eventCode: input.eventCode,
         containerNumber: container.containerNumber,
         location: stateEvidence.location,
+        routeSegment,
       });
       const guardResults = [
         ...decision.guardResults,
@@ -289,6 +298,7 @@ export class ApplyLifecycleEventService {
           occurredAt: input.occurredAt,
           evaluatedAt: new Date(),
           guardResults,
+          routeSegmentGuard: routeSegment,
         });
         if (transition.applied) completedNodes.push(targetNodeCode);
       } catch (error) {
@@ -297,7 +307,8 @@ export class ApplyLifecycleEventService {
           code === "LIFECYCLE_VERSION_CONFLICT" ||
           code === "LIFECYCLE_HISTORY_SEALED" ||
           code === "LIFECYCLE_GUARD_NOT_SATISFIED" ||
-          code === "LIFECYCLE_NODE_BLOCKED"
+          code === "LIFECYCLE_NODE_BLOCKED" ||
+          code === "LIFECYCLE_EVENT_ROUTE_MISMATCH"
         ) {
           throw new HttpException(code, HttpStatus.CONFLICT);
         }

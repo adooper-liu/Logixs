@@ -17,6 +17,17 @@ const ARRIVAL_LOCATION = {
   segmentId: "44444444-4444-4444-8444-444444444444",
   timezone: "America/Los_Angeles",
 };
+const FINAL_ROUTE_SEGMENT = {
+  routePlanId: "55555555-5555-4555-8555-555555555555",
+  routeVersion: 1,
+  segmentId: ARRIVAL_LOCATION.segmentId,
+  sequence: 1,
+  isFinal: true,
+  destinationLocationType: "port" as const,
+  destinationUnlocode: "USLAX",
+  destinationLocationId: null,
+  destinationPortCallId: null,
+};
 
 function buildRepository(
   currentStatus: string,
@@ -30,6 +41,7 @@ function buildRepository(
       containerNumber,
       currentStatus,
     }),
+    findActiveOceanRouteSegment: vi.fn().mockResolvedValue(FINAL_ROUTE_SEGMENT),
     ensureFlow: vi.fn().mockResolvedValue(flow),
     findFlowByContainer: vi.fn().mockResolvedValue(null),
     completeNodes: vi.fn().mockResolvedValue(undefined),
@@ -365,6 +377,10 @@ describe("ApplyLifecycleEventService", () => {
 
   it("transit_arrived 在中转 N/A 时激活清关任务", async () => {
     const repository = buildRepository("in_transit");
+    repository.findActiveOceanRouteSegment.mockResolvedValue({
+      ...FINAL_ROUTE_SEGMENT,
+      isFinal: false,
+    });
     useFlow(
       repository,
       flowAt("ocean_transit", {
@@ -409,6 +425,10 @@ describe("ApplyLifecycleEventService", () => {
 
   it("transit_arrived 激活中转任务时保留可选节点适用性", async () => {
     const repository = buildRepository("in_transit");
+    repository.findActiveOceanRouteSegment.mockResolvedValue({
+      ...FINAL_ROUTE_SEGMENT,
+      isFinal: false,
+    });
     useFlow(repository, flowAt("ocean_transit"));
     repository.ensureNode.mockResolvedValue({
       id: "node-ts",
@@ -567,7 +587,10 @@ describe("ApplyLifecycleEventService", () => {
     expect(result.pendingNodes).toEqual(["destination_arrival"]);
     expect(repository.applyEventToNode).toHaveBeenCalledTimes(1);
     expect(repository.applyEventToNode).toHaveBeenCalledWith(
-      expect.objectContaining({ targetNodeCode: "ocean_transit" }),
+      expect.objectContaining({
+        targetNodeCode: "ocean_transit",
+        routeSegmentGuard: FINAL_ROUTE_SEGMENT,
+      }),
     );
   });
 
@@ -602,6 +625,59 @@ describe("ApplyLifecycleEventService", () => {
     expect(result.completedNodes).toEqual([]);
     expect(result.pendingReasonCodes.ocean_transit).toBe(
       "LIFECYCLE_EVENT_PENDING_LOCATION_CONTEXT",
+    );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
+  });
+
+  it("arrived 找不到当前权威路线航段时保留待应用", async () => {
+    const repository = buildRepository("in_transit");
+    repository.findActiveOceanRouteSegment.mockResolvedValue(null);
+    useFlow(
+      repository,
+      flowAt("ocean_transit", {
+        transshipment: "optional_not_applicable",
+      }),
+    );
+    const { service } = await buildService(repository, { execute: vi.fn() });
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "arrived",
+    });
+
+    expect(repository.findActiveOceanRouteSegment).toHaveBeenCalledWith(
+      "c1",
+      ARRIVAL_LOCATION.segmentId,
+    );
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.ocean_transit).toBe(
+      "LIFECYCLE_EVENT_PENDING_ROUTE_CONTEXT",
+    );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
+  });
+
+  it("arrived 的目的港与当前最终航段不匹配时保留待应用", async () => {
+    const repository = buildRepository("in_transit");
+    repository.findActiveOceanRouteSegment.mockResolvedValue({
+      ...FINAL_ROUTE_SEGMENT,
+      destinationUnlocode: "USLGB",
+    });
+    useFlow(
+      repository,
+      flowAt("ocean_transit", {
+        transshipment: "optional_not_applicable",
+      }),
+    );
+    const { service } = await buildService(repository, { execute: vi.fn() });
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "arrived",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.ocean_transit).toBe(
+      "LIFECYCLE_EVENT_ROUTE_MISMATCH",
     );
     expect(repository.applyEventToNode).not.toHaveBeenCalled();
   });

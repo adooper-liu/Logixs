@@ -84,6 +84,18 @@ export interface NodeEventApplicationRecord {
   reasonCode: string | null;
 }
 
+export interface ActiveOceanRouteSegment {
+  routePlanId: string;
+  routeVersion: number;
+  segmentId: string;
+  sequence: number;
+  isFinal: boolean;
+  destinationLocationType: "port" | "terminal";
+  destinationUnlocode: string;
+  destinationLocationId: string | null;
+  destinationPortCallId: string | null;
+}
+
 export interface LifecycleRepository {
   findFlowByContainer(containerId: string): Promise<FlowWithNodes | null>;
   listCurrentNodes(query: {
@@ -121,6 +133,10 @@ export interface LifecycleRepository {
     containerNumber: string | null;
     currentStatus: string;
   } | null>;
+  findActiveOceanRouteSegment(
+    containerId: string,
+    segmentId: string,
+  ): Promise<ActiveOceanRouteSegment | null>;
   // 事件流水账：幂等 + R1 时间单调
   findEventByIdempotencyKey(key: string): Promise<CanonicalEventRecord | null>;
   listEvents(query: CanonicalEventListQuery): Promise<CanonicalEventListItem[]>;
@@ -141,6 +157,7 @@ export interface LifecycleRepository {
     occurredAt: Date;
     evaluatedAt: Date;
     guardResults: string[];
+    routeSegmentGuard: ActiveOceanRouteSegment | null;
   }): Promise<{ applied: boolean; version: number }>;
   findApplicabilityDecision(idempotencyKey: string): Promise<{
     flowInstanceId: string;

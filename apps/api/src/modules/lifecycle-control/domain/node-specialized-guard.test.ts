@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { decideNodeSpecializedGuard } from "./node-specialized-guard";
 
+const FINAL_ROUTE_SEGMENT = {
+  routePlanId: "22222222-2222-4222-8222-222222222222",
+  routeVersion: 1,
+  segmentId: "11111111-1111-4111-8111-111111111111",
+  sequence: 1,
+  isFinal: true,
+  destinationLocationType: "port" as const,
+  destinationUnlocode: "USLAX",
+  destinationLocationId: null,
+  destinationPortCallId: null,
+};
+
 describe("decideNodeSpecializedGuard", () => {
   it("箱号未迟绑定时保留 stuffed 待应用", () => {
     expect(
@@ -9,6 +21,7 @@ describe("decideNodeSpecializedGuard", () => {
         eventCode: "stuffed",
         containerNumber: null,
         location: null,
+        routeSegment: null,
       }),
     ).toEqual({
       kind: "pending_application",
@@ -24,6 +37,7 @@ describe("decideNodeSpecializedGuard", () => {
         eventCode: "stuffed",
         containerNumber: " MSKU1234567 ",
         location: null,
+        routeSegment: null,
       }),
     ).toEqual({
       kind: "apply",
@@ -38,6 +52,7 @@ describe("decideNodeSpecializedGuard", () => {
         eventCode: "loaded",
         containerNumber: null,
         location: null,
+        routeSegment: null,
       }),
     ).toEqual({ kind: "apply", guardResults: [] });
   });
@@ -53,6 +68,7 @@ describe("decideNodeSpecializedGuard", () => {
         eventCode,
         containerNumber: "MSKU1234567",
         location: null,
+        routeSegment: null,
       }),
     ).toEqual({
       kind: "pending_application",
@@ -73,12 +89,16 @@ describe("decideNodeSpecializedGuard", () => {
           segmentId: "11111111-1111-4111-8111-111111111111",
           timezone: "America/Los_Angeles",
         },
+        routeSegment: FINAL_ROUTE_SEGMENT,
       }),
     ).toEqual({
       kind: "apply",
       guardResults: [
         "ARRIVAL_LOCATION_IDENTIFIED",
         "ARRIVAL_SEGMENT_IDENTIFIED",
+        "ARRIVAL_ROUTE_ACTIVE",
+        "ARRIVAL_SEGMENT_MATCHED",
+        "ARRIVAL_DESTINATION_MATCHED",
       ],
     });
   });
@@ -97,6 +117,7 @@ describe("decideNodeSpecializedGuard", () => {
           unlocode: "USLAX",
           timezone: "America/Los_Angeles",
         },
+        routeSegment: null,
       }).kind,
     ).toBe("pending_application");
     expect(
@@ -107,7 +128,86 @@ describe("decideNodeSpecializedGuard", () => {
           segmentId: "11111111-1111-4111-8111-111111111111",
           timezone: "Etc/UTC",
         },
+        routeSegment: null,
       }).kind,
     ).toBe("pending_application");
+  });
+
+  it("地点航段齐全但没有当前权威路线时继续等待", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "destination_arrival",
+        eventCode: "arrived",
+        containerNumber: "MSKU1234567",
+        location: {
+          locationType: "port",
+          unlocode: "USLAX",
+          segmentId: FINAL_ROUTE_SEGMENT.segmentId,
+          timezone: "America/Los_Angeles",
+        },
+        routeSegment: null,
+      }),
+    ).toEqual({
+      kind: "pending_application",
+      guardResults: [
+        "ARRIVAL_LOCATION_IDENTIFIED",
+        "ARRIVAL_SEGMENT_IDENTIFIED",
+      ],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_ROUTE_CONTEXT",
+    });
+  });
+
+  it.each([
+    ["arrived", { ...FINAL_ROUTE_SEGMENT, isFinal: false }],
+    ["transit_arrived", FINAL_ROUTE_SEGMENT],
+    ["arrived", { ...FINAL_ROUTE_SEGMENT, destinationUnlocode: "USLGB" }],
+    [
+      "arrived",
+      {
+        ...FINAL_ROUTE_SEGMENT,
+        destinationLocationType: "terminal",
+        destinationLocationId: "33333333-3333-4333-8333-333333333333",
+      },
+    ],
+  ] as const)("%s 与权威路线不匹配时不允许过站", (eventCode, routeSegment) => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "ocean_transit",
+        eventCode,
+        containerNumber: "MSKU1234567",
+        location: {
+          locationType: "port",
+          unlocode: "USLAX",
+          segmentId: FINAL_ROUTE_SEGMENT.segmentId,
+          timezone: "America/Los_Angeles",
+        },
+        routeSegment,
+      }),
+    ).toEqual({
+      kind: "pending_application",
+      guardResults: ["ARRIVAL_ROUTE_ACTIVE"],
+      reasonCode: "LIFECYCLE_EVENT_ROUTE_MISMATCH",
+    });
+  });
+
+  it("中转到港只接受当前路线中的非最终航段", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "ocean_transit",
+        eventCode: "transit_arrived",
+        containerNumber: "MSKU1234567",
+        location: {
+          locationType: "port",
+          unlocode: "SGSIN",
+          segmentId: FINAL_ROUTE_SEGMENT.segmentId,
+          timezone: "Asia/Singapore",
+        },
+        routeSegment: {
+          ...FINAL_ROUTE_SEGMENT,
+          isFinal: false,
+          destinationUnlocode: "SGSIN",
+        },
+      }).kind,
+    ).toBe("apply");
   });
 });

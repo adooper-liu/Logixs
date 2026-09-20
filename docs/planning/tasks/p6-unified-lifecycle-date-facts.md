@@ -1,7 +1,9 @@
 ---
 status: coding # design | coding | review | fix | blocked | done（机器可校验）
-branch: feat/lifecycle-arrival-location-segment-guard
+branch: feat/lifecycle-authoritative-route-segment-guard
 verification:
+  - "2026-09-20 权威海运路线/航段守卫：定向测试 3 文件/50 项、生命周期模块 66 文件/336 项通过；真实 PostgreSQL 旧库升级回滚与空库完整迁移链通过，并验证单一 active 路线、单一最终航段及码头身份约束。"
+  - "2026-09-20 路线匹配最终 pnpm validate：仓库政策、契约、Prisma 生成、lint、格式、类型和全量单测通过（API 130 文件/627 项、Web 59 文件/189 项）；Playwright 49 通过/7 跳过、移动侧栏 1 项时序失败，故整条命令记为失败。该失败用例单独复跑通过，pnpm build 随后通过；不把复跑写成完整 validate 通过。"
   - "2026-09-20 地点航段专项：定向测试 8 个文件/72 项、生命周期模块 66 个文件/326 项通过；真实 PostgreSQL 旧库升级回滚与空库完整迁移链通过，断言日期事实/规范事件地点字段、约束、索引与真实复制。"
   - "2026-09-20 地点航段完整 pnpm validate：通过；仓库政策、契约校验/漂移、Prisma 生成、lint、格式、类型、全量测试（API 130 文件/616 项、Web 59 文件/189 项）、Playwright E2E（50 通过/7 条件跳过）与生产构建全部完成。"
   - "pnpm db:verify:lifecycle-date-facts：通过；验证旧库连续应用日期事实、来源权威/租约和逐目标节点应用迁移后事务回滚，以及临时空库完整迁移链；断言策略约束、租约字段、节点应用约束和索引。"
@@ -93,7 +95,8 @@ verification:
 - 阻断守卫先封住两条过站路径：领域决策遇到 `blocked` 目标节点时保留 `pending_application`，Repository 在原子应用前再次发现并发阻断时返回 `LIFECYCLE_NODE_BLOCKED`，日期事实不会丢失且可后续重放。
 - `BlockNode/ResolveNodeBlock` 已按正式契约落地：阻断与解除追加保存，节点 `blocked` 仅是未解除阻断的投影；命令按 `blockId` 精确解除并使用流程版本防并发，最后一个阻断解除后自动重放待应用日期事实。当前来源事实只接受已核验、已确认、有效、当前版本且具备来源权威策略的 `actual LifecycleDateFact`，要求事件角色为 `exception`，且 `blockType` 必须等于来源事实的规范 `eventCode`；其他领域后续必须通过正式事实 Port 扩展，禁止把任意 UUID、普通证据或客户端自由文本当作阻断类型和事实。
 - 装箱节点专项守卫已落地：`stuffed` 事实仍先落账，只有箱号已经迟绑定时才允许完成 `container_stuffing`；未绑定时保留 `pending_application`，并按真实原因区分前序未完成、节点阻断和货柜身份待绑定，禁止统一误记为前序未完成。
-- 地点/航段上下文第一刀已落地：公共日期事实命令、事实表、规范事件和 Outbox 完整性哈希统一携带结构化 `location`；`arrived/transit_arrived` 缺少可识别港口或 `segmentId` 时保留 `pending_application`。本刀只证明上下文齐全，不宣称已与目的港路线匹配；后者等待权威路线/航段模型。
+- 地点/航段上下文第一刀已落地：公共日期事实命令、事实表、规范事件和 Outbox 完整性哈希统一携带结构化 `location`；`arrived/transit_arrived` 缺少可识别港口或 `segmentId` 时保留 `pending_application`。
+- 权威海运路线/航段守卫已进入实现：路线按货柜版本化，只允许一个 active 版本和一个最终航段；`arrived` 必须匹配当前最终航段目的港，`transit_arrived` 必须匹配当前非最终航段目的港。旧港口文本不会被自动升级为权威路线，路线缺失或不匹配的事实继续等待补证。
 
 ## 进度 log
 
@@ -114,3 +117,4 @@ verification:
 | 2026-09-20 | coding | Codex | —      | 完成追加式节点阻断、精确解除与 pending 自动重放      |
 | 2026-09-20 | coding | Codex | —      | 完成装箱货柜身份专项守卫与 pending 原因精确留痕      |
 | 2026-09-20 | coding | Codex | —      | 贯通地点航段事实并封住缺上下文的到港过站             |
+| 2026-09-20 | coding | Codex | —      | 建立权威海运路线航段并收紧到港匹配守卫               |

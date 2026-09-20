@@ -46,6 +46,7 @@ model ContainerRecord {
   updatedAt            DateTime            @updatedAt @map("updated_at")
   timeFacts            ShipmentTimeFact[]
   lifecycleDateFacts   LifecycleDateFact[]
+  oceanRoutePlans      OceanRoutePlan[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -54,6 +55,49 @@ model ContainerRecord {
   @@index([tenantId, updatedAt, id])
   @@index([replenishmentOrderId])
   @@map("container_record")
+}
+
+// 货柜海运路线版本（lifecycle-control 读取，后续由受控路线写端口维护）。
+// 只有 active 版本参与过站；旧版本保留用于解释历史事实。
+model OceanRoutePlan {
+  id                String              @id @default(uuid()) @map("id")
+  containerId       String              @map("container_id")
+  container         ContainerRecord     @relation(fields: [containerId], references: [id], onDelete: Restrict)
+  version           Int                 @map("version")
+  status            String              @map("status")
+  supersedesRouteId String?             @unique(map: "ocean_route_plan_supersedes_key") @map("supersedes_route_id")
+  supersedesRoute   OceanRoutePlan?     @relation("OceanRoutePlanSupersession", fields: [supersedesRouteId], references: [id], onDelete: Restrict)
+  supersededBy      OceanRoutePlan?     @relation("OceanRoutePlanSupersession")
+  activatedAt       DateTime            @map("activated_at") @db.Timestamptz
+  supersededAt      DateTime?           @map("superseded_at") @db.Timestamptz
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  segments          OceanRouteSegment[]
+
+  @@unique([containerId, version], map: "ocean_route_plan_container_version_key")
+  @@index([containerId, status], map: "ocean_route_plan_container_status_idx")
+  @@map("ocean_route_plan")
+}
+
+// 路线内有序航段。日期事实的 segmentId 必须指向当前 active 路线中的一段。
+model OceanRouteSegment {
+  id                      String         @id @default(uuid()) @map("id")
+  routePlanId             String         @map("route_plan_id")
+  routePlan               OceanRoutePlan @relation(fields: [routePlanId], references: [id], onDelete: Restrict)
+  sequence                Int            @map("sequence")
+  transportMode           String         @map("transport_mode")
+  originUnlocode          String         @map("origin_unlocode")
+  originTimezone          String         @map("origin_timezone")
+  destinationLocationType String         @map("destination_location_type")
+  destinationUnlocode     String         @map("destination_unlocode")
+  destinationLocationId   String?        @map("destination_location_id")
+  destinationPortCallId   String?        @map("destination_port_call_id")
+  destinationTimezone     String         @map("destination_timezone")
+  isFinal                 Boolean        @default(false) @map("is_final")
+  createdAt               DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([routePlanId, sequence], map: "ocean_route_segment_sequence_key")
+  @@index([routePlanId, isFinal], map: "ocean_route_segment_final_idx")
+  @@map("ocean_route_segment")
 }
 
 // 导入时间事实（shipment-registry 拥有）：actual/estimated 分槽，保留来源原值和 UTC 标准值。
