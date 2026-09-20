@@ -70,10 +70,19 @@ model OceanRoutePlan {
   supersededBy      OceanRoutePlan?     @relation("OceanRoutePlanSupersession")
   activatedAt       DateTime            @map("activated_at") @db.Timestamptz
   supersededAt      DateTime?           @map("superseded_at") @db.Timestamptz
+  ingestionChannel  String              @map("ingestion_channel")
+  sourceSystem      String              @map("source_system")
+  evidenceRefs      Json                @map("evidence_refs")
+  actorId           String?             @map("actor_id")
+  reasonCode        String?             @map("reason_code")
+  idempotencyKey    String              @map("idempotency_key")
+  payloadHash       String              @map("payload_hash")
+  traceId           String              @map("trace_id")
   createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
   segments          OceanRouteSegment[]
 
   @@unique([containerId, version], map: "ocean_route_plan_container_version_key")
+  @@unique([containerId, idempotencyKey], map: "ocean_route_plan_idempotency_key")
   @@index([containerId, status], map: "ocean_route_plan_container_status_idx")
   @@map("ocean_route_plan")
 }

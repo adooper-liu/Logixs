@@ -16,3 +16,8 @@ export {
   type RecordLifecycleDateFactPort,
 } from "./record-lifecycle-date-fact.port";
 export type { RecordLifecycleDateFactInput } from "./application/record-lifecycle-date-fact.service";
+export {
+  REPLACE_OCEAN_ROUTE,
+  type ReplaceOceanRoutePort,
+} from "./replace-ocean-route.port";
+export type { ReplaceOceanRouteInput } from "./application/replace-ocean-route.service";
