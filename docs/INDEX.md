@@ -37,6 +37,7 @@
 | [业务纵向交付路线图](./planning/DOMAIN_VERTICAL_DELIVERY_PLAN.md)                        | 主数据/SKU装载→合规→门禁→岗位工作台；动态后台与自动化后置 | 负责人确认的实施路线 v1         |
 | [任务：Product/SKU 稳定身份](./planning/tasks/p6-product-sku-master-identity.md)         | master-data 建立租户内 SKU 稳定身份与幂等公开 Port        | 已完成                          |
 | [任务：备货单行 SKU 与货柜装载](./planning/tasks/p6-shipment-cargo-allocation.md)        | 产品行稳定引用 SKU，并版本化保存跨订单实际装载事实        | 已完成                          |
+| [任务：Product/SKU 结构化合规档案](./planning/tasks/p6-product-compliance-profile.md)    | 电池、危险品、制冷剂、检验要求及证书版本事实              | 已完成                          |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断            | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                             | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）  | P1 已接受；011 候选、012 已接受 |
 
@@ -72,7 +73,7 @@
 | [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)               | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4            |
 | [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)             | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5            |
 | [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)                   | 已出运列表导入/预检/审核/对账及装载关系边界                                                                  | 已定 v0.9            |
-| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                         | 逻辑库图纸 + SKU 引用/装载分配 + 时间溯源与可靠提交                                                          | 候选 v0.8            |
+| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                         | 逻辑库图纸 + SKU/装载/合规档案 + 时间溯源与可靠提交                                                          | 候选 v0.9            |
 | [COMPLIANCE_MANAGEMENT](product/domain/COMPLIANCE_MANAGEMENT.md)               | 合规横向轨道、规则/评审/证据、14 节点门禁与合规中心规划                                                      | 负责人方向+候选 v0.1 |
 | [PRODUCT_ATTRIBUTE_GOVERNANCE](product/domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md) | 强类型核心+结构化合规档案+JSONB 扩展属性+元数据表单边界                                                      | 负责人方向+候选 v0.1 |
 | [MASTER_DATA_DICTIONARY](product/domain/MASTER_DATA_DICTIONARY.md)             | 国家角色、港口/设施、船司及服务商主数据与外部候选治理                                                        | 负责人方向+候选 v0.1 |

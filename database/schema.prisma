@@ -16,13 +16,15 @@ datasource db {
 
 // Product/SKU 稳定身份（master-data 拥有）：交易行和合规档案只保存逻辑引用。
 model ProductSku {
-  id            String                   @id @default(uuid()) @map("id") @db.Uuid
-  tenantId      String                   @map("tenant_id")
-  productNumber String                   @map("product_number")
-  version       Int                      @default(1) @map("version")
-  createdAt     DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
-  registrations ProductSkuRegistration[]
+  id                  String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                     @map("tenant_id")
+  productNumber       String                     @map("product_number")
+  version             Int                        @default(1) @map("version")
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  registrations       ProductSkuRegistration[]
+  complianceProfiles  ProductComplianceProfile[]
+  productCertificates ProductCertificate[]
 
   @@unique([tenantId, productNumber], map: "product_sku_tenant_number_key")
   @@unique([id, tenantId], map: "product_sku_id_tenant_key")
@@ -43,6 +45,187 @@ model ProductSkuRegistration {
   @@unique([tenantId, idempotencyKey], map: "product_sku_registration_tenant_key")
   @@index([productSkuId], map: "product_sku_registration_product_idx")
   @@map("product_sku_registration")
+}
+
+// SKU 结构化合规档案版本头（master-data 拥有）：每个 SKU 仅一个 active 版本。
+model ProductComplianceProfile {
+  id                     String                                @id @default(uuid()) @map("id") @db.Uuid
+  tenantId               String                                @map("tenant_id")
+  productSkuId           String                                @map("product_sku_id") @db.Uuid
+  productSku             ProductSku                            @relation(fields: [productSkuId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version                Int                                   @map("version")
+  state                  String                                @map("state")
+  supersedesProfileId    String?                               @map("supersedes_profile_id") @db.Uuid
+  supersedesProfile      ProductComplianceProfile?             @relation("ProductComplianceProfileSupersession", fields: [supersedesProfileId, tenantId, productSkuId], references: [id, tenantId, productSkuId], onDelete: Restrict)
+  supersededBy           ProductComplianceProfile?             @relation("ProductComplianceProfileSupersession")
+  ingestionChannel       String                                @map("ingestion_channel")
+  sourceSystem           String                                @map("source_system")
+  evidenceRefs           Json                                  @map("evidence_refs")
+  verificationState      String                                @map("verification_state")
+  actorId                String                                @map("actor_id")
+  reasonCode             String                                @map("reason_code")
+  idempotencyKey         String                                @map("idempotency_key")
+  payloadHash            String                                @map("payload_hash")
+  createdAt              DateTime                              @default(now()) @map("created_at") @db.Timestamptz
+  supersededAt           DateTime?                             @map("superseded_at") @db.Timestamptz
+  battery                ProductBatteryProfile?
+  refrigerant            ProductRefrigerantProfile?
+  dangerousGoods         ProductDangerousGoodsProfile?
+  inspectionRequirements ProductInspectionRequirement[]
+  certificateLinks       ProductComplianceProfileCertificate[]
+
+  @@unique([id, tenantId], map: "product_compliance_profile_id_tenant_key")
+  @@unique([id, tenantId, productSkuId], map: "product_compliance_profile_id_tenant_sku_key")
+  @@unique([tenantId, idempotencyKey], map: "product_compliance_profile_tenant_idempotency_key")
+  @@unique([tenantId, productSkuId, version], map: "product_compliance_profile_sku_version_key")
+  @@unique([supersedesProfileId, tenantId, productSkuId], map: "product_compliance_profile_supersedes_tenant_sku_key")
+  @@index([tenantId, productSkuId, state], map: "product_compliance_profile_active_idx")
+  @@map("product_compliance_profile")
+}
+
+model ProductBatteryProfile {
+  id                  String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                   @map("tenant_id")
+  profileId           String                   @map("profile_id") @db.Uuid
+  profile             ProductComplianceProfile @relation(fields: [profileId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  presenceState       String                   @map("presence_state")
+  chemistryCode       String?                  @map("chemistry_code")
+  modelNumber         String?                  @map("model_number")
+  cellCount           Int?                     @map("cell_count")
+  batteryCount        Int?                     @map("battery_count")
+  wattHours           Decimal?                 @map("watt_hours") @db.Decimal(15, 3)
+  lithiumContentGrams Decimal?                 @map("lithium_content_grams") @db.Decimal(15, 3)
+  removable           Boolean?                 @map("removable")
+  packingMode         String?                  @map("packing_mode")
+
+  @@unique([profileId, tenantId], map: "product_battery_profile_profile_tenant_key")
+  @@index([tenantId, profileId], map: "product_battery_profile_tenant_profile_idx")
+  @@map("product_battery_profile")
+}
+
+model ProductRefrigerantProfile {
+  id                     String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId               String                   @map("tenant_id")
+  profileId              String                   @map("profile_id") @db.Uuid
+  profile                ProductComplianceProfile @relation(fields: [profileId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  presenceState          String                   @map("presence_state")
+  refrigerantCode        String?                  @map("refrigerant_code")
+  chargeQuantity         Decimal?                 @map("charge_quantity") @db.Decimal(15, 3)
+  chargeUnit             String?                  @map("charge_unit")
+  globalWarmingPotential Decimal?                 @map("global_warming_potential") @db.Decimal(15, 3)
+  hermeticallySealed     Boolean?                 @map("hermetically_sealed")
+
+  @@unique([profileId, tenantId], map: "product_refrigerant_profile_profile_tenant_key")
+  @@index([tenantId, profileId], map: "product_refrigerant_profile_tenant_profile_idx")
+  @@map("product_refrigerant_profile")
+}
+
+model ProductDangerousGoodsProfile {
+  id                  String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                   @map("tenant_id")
+  profileId           String                   @map("profile_id") @db.Uuid
+  profile             ProductComplianceProfile @relation(fields: [profileId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  classificationState String                   @map("classification_state")
+  unNumber            String?                  @map("un_number")
+  properShippingName  String?                  @map("proper_shipping_name")
+  hazardClass         String?                  @map("hazard_class")
+  division            String?                  @map("division")
+  packingGroup        String?                  @map("packing_group")
+  marinePollutant     Boolean?                 @map("marine_pollutant")
+  flashPointCelsius   Decimal?                 @map("flash_point_celsius") @db.Decimal(9, 3)
+
+  @@unique([profileId, tenantId], map: "product_dg_profile_profile_tenant_key")
+  @@index([tenantId, profileId], map: "product_dg_profile_tenant_profile_idx")
+  @@map("product_dangerous_goods_profile")
+}
+
+model ProductInspectionRequirement {
+  id                      String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                String                   @map("tenant_id")
+  profileId               String                   @map("profile_id") @db.Uuid
+  profile                 ProductComplianceProfile @relation(fields: [profileId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  requirementType         String                   @map("requirement_type")
+  requirementState        String                   @map("requirement_state")
+  jurisdictionCountryCode String?                  @map("jurisdiction_country_code")
+  notes                   String?                  @map("notes")
+
+  @@index([tenantId, profileId], map: "product_inspection_requirement_profile_idx")
+  @@map("product_inspection_requirement")
+}
+
+// 证书稳定身份与版本归 master-data；文件本体由 document-records 拥有。
+model ProductCertificate {
+  id              String                      @id @default(uuid()) @map("id") @db.Uuid
+  tenantId        String                      @map("tenant_id")
+  productSkuId    String                      @map("product_sku_id") @db.Uuid
+  productSku      ProductSku                  @relation(fields: [productSkuId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  certificateKey  String                      @map("certificate_key")
+  certificateType String                      @map("certificate_type")
+  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  versions        ProductCertificateVersion[]
+
+  @@unique([id, tenantId], map: "product_certificate_id_tenant_key")
+  @@unique([id, tenantId, productSkuId], map: "product_certificate_id_tenant_sku_key")
+  @@unique([tenantId, productSkuId, certificateKey], map: "product_certificate_sku_key")
+  @@index([tenantId, productSkuId], map: "product_certificate_sku_idx")
+  @@map("product_certificate")
+}
+
+model ProductCertificateVersion {
+  id                     String                                @id @default(uuid()) @map("id") @db.Uuid
+  tenantId               String                                @map("tenant_id")
+  productCertificateId   String                                @map("product_certificate_id") @db.Uuid
+  productSkuId           String                                @map("product_sku_id") @db.Uuid
+  productCertificate     ProductCertificate                    @relation(fields: [productCertificateId, tenantId, productSkuId], references: [id, tenantId, productSkuId], onDelete: Restrict)
+  version                Int                                   @map("version")
+  supersedesVersionId    String?                               @map("supersedes_version_id") @db.Uuid
+  supersedesVersion      ProductCertificateVersion?            @relation("ProductCertificateVersionSupersession", fields: [supersedesVersionId, tenantId, productCertificateId], references: [id, tenantId, productCertificateId], onDelete: Restrict)
+  supersededBy           ProductCertificateVersion?            @relation("ProductCertificateVersionSupersession")
+  certificateNumber      String                                @map("certificate_number")
+  issuerName             String                                @map("issuer_name")
+  coverageScope          String                                @map("coverage_scope")
+  validFrom              DateTime                              @map("valid_from") @db.Date
+  validUntil             DateTime?                             @map("valid_until") @db.Date
+  documentRecordId       String                                @map("document_record_id") @db.Uuid
+  verificationState      String                                @map("verification_state")
+  payloadHash            String                                @map("payload_hash")
+  createdAt              DateTime                              @default(now()) @map("created_at") @db.Timestamptz
+  countryCoverage        ProductCertificateCountryCoverage[]
+  complianceProfileLinks ProductComplianceProfileCertificate[]
+
+  @@unique([id, tenantId], map: "product_certificate_version_id_tenant_key")
+  @@unique([id, tenantId, productSkuId], map: "product_certificate_version_id_tenant_sku_key")
+  @@unique([id, tenantId, productCertificateId], map: "product_certificate_version_id_tenant_certificate_key")
+  @@unique([tenantId, productCertificateId, version], map: "product_certificate_version_number_key")
+  @@unique([supersedesVersionId, tenantId, productCertificateId], map: "product_certificate_version_supersedes_tenant_certificate_key")
+  @@index([tenantId, productCertificateId, version], map: "product_certificate_version_latest_idx")
+  @@map("product_certificate_version")
+}
+
+model ProductCertificateCountryCoverage {
+  id                   String                    @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                    @map("tenant_id")
+  certificateVersionId String                    @map("certificate_version_id") @db.Uuid
+  certificateVersion   ProductCertificateVersion @relation(fields: [certificateVersionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  countryCode          String                    @map("country_code")
+
+  @@unique([certificateVersionId, countryCode], map: "product_certificate_country_key")
+  @@index([tenantId, certificateVersionId], map: "product_certificate_country_tenant_idx")
+  @@map("product_certificate_country_coverage")
+}
+
+model ProductComplianceProfileCertificate {
+  id                   String                    @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                    @map("tenant_id")
+  productSkuId         String                    @map("product_sku_id") @db.Uuid
+  profileId            String                    @map("profile_id") @db.Uuid
+  profile              ProductComplianceProfile  @relation(fields: [profileId, tenantId, productSkuId], references: [id, tenantId, productSkuId], onDelete: Restrict)
+  certificateVersionId String                    @map("certificate_version_id") @db.Uuid
+  certificateVersion   ProductCertificateVersion @relation(fields: [certificateVersionId, tenantId, productSkuId], references: [id, tenantId, productSkuId], onDelete: Restrict)
+
+  @@unique([profileId, certificateVersionId], map: "product_compliance_profile_certificate_key")
+  @@index([tenantId, certificateVersionId], map: "product_compliance_certificate_version_idx")
+  @@map("product_compliance_profile_certificate")
 }
 
 // 货柜当前阶段：8 态，与 packages/contracts/schemas/v1/common.schema.json 的
@@ -382,8 +565,8 @@ model EvidenceRecord {
 
   decisions EvidenceVerificationDecision[]
 
-  @@index([tenantId, subjectType, subjectId])
   @@unique([tenantId, idempotencyKey], map: "evidence_record_tenant_idempotency_key")
+  @@index([tenantId, subjectType, subjectId])
   @@map("evidence_record")
 }
 
@@ -516,22 +699,22 @@ model NodeInstance {
 
 // 节点阻断事实（lifecycle-control 拥有）：追加保存，节点 blocked 只是未解除阻断的投影。
 model NodeBlock {
-  id             String               @id @map("id")
-  tenantId       String               @map("tenant_id")
-  flowInstanceId String               @map("flow_instance_id")
-  flow           FlowInstance         @relation(fields: [flowInstanceId], references: [id], onDelete: Restrict)
-  nodeInstanceId String               @map("node_instance_id")
-  node           NodeInstance         @relation(fields: [nodeInstanceId], references: [id], onDelete: Restrict)
-  blockType      String               @map("block_type")
-  sourceFactId   String               @map("source_fact_id")
-  sourceFact     LifecycleDateFact    @relation(fields: [sourceFactId], references: [id], onDelete: Restrict)
-  occurredAt     DateTime             @map("occurred_at") @db.Timestamptz
-  actorId        String               @map("actor_id")
-  idempotencyKey String               @map("idempotency_key")
-  traceId        String               @map("trace_id")
+  id                String               @id @map("id")
+  tenantId          String               @map("tenant_id")
+  flowInstanceId    String               @map("flow_instance_id")
+  flow              FlowInstance         @relation(fields: [flowInstanceId], references: [id], onDelete: Restrict)
+  nodeInstanceId    String               @map("node_instance_id")
+  node              NodeInstance         @relation(fields: [nodeInstanceId], references: [id], onDelete: Restrict)
+  blockType         String               @map("block_type")
+  sourceFactId      String               @map("source_fact_id")
+  sourceFact        LifecycleDateFact    @relation(fields: [sourceFactId], references: [id], onDelete: Restrict)
+  occurredAt        DateTime             @map("occurred_at") @db.Timestamptz
+  actorId           String               @map("actor_id")
+  idempotencyKey    String               @map("idempotency_key")
+  traceId           String               @map("trace_id")
   projectionVersion Int                  @map("projection_version")
-  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
-  resolution     NodeBlockResolution?
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  resolution        NodeBlockResolution?
 
   @@unique([tenantId, idempotencyKey], map: "node_block_tenant_idempotency_key")
   @@index([flowInstanceId, nodeInstanceId], map: "node_block_flow_node_idx")
@@ -541,17 +724,17 @@ model NodeBlock {
 
 // 节点阻断解除事实：一个 blockId 最多追加一次解除，禁止覆盖原阻断。
 model NodeBlockResolution {
-  id             String    @id @default(uuid()) @map("id")
-  tenantId       String    @map("tenant_id")
-  blockId        String    @unique(map: "node_block_resolution_block_key") @map("block_id")
-  block          NodeBlock @relation(fields: [blockId], references: [id], onDelete: Restrict)
-  resolvedAt     DateTime  @map("resolved_at") @db.Timestamptz
-  reasonCode     String    @map("reason_code")
-  actorId        String    @map("actor_id")
-  idempotencyKey String    @map("idempotency_key")
-  traceId        String    @map("trace_id")
+  id                String    @id @default(uuid()) @map("id")
+  tenantId          String    @map("tenant_id")
+  blockId           String    @unique(map: "node_block_resolution_block_key") @map("block_id")
+  block             NodeBlock @relation(fields: [blockId], references: [id], onDelete: Restrict)
+  resolvedAt        DateTime  @map("resolved_at") @db.Timestamptz
+  reasonCode        String    @map("reason_code")
+  actorId           String    @map("actor_id")
+  idempotencyKey    String    @map("idempotency_key")
+  traceId           String    @map("trace_id")
   projectionVersion Int       @map("projection_version")
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([tenantId, idempotencyKey], map: "node_block_resolution_tenant_idempotency_key")
   @@map("node_block_resolution")
@@ -737,40 +920,40 @@ model InboxReplayRequest {
 // 海运供应商事件接入留痕（ocean-port-visibility 拥有）。
 // 原始载荷与来源裁决追加保存；本表不产生规范事件，也不推进生命周期。
 model OceanProviderEventIngestion {
-  id                   String       @id @map("id")
-  inboxMessageId       String       @unique @map("inbox_message_id")
-  inboxMessage         InboxMessage @relation(fields: [inboxMessageId], references: [id], onDelete: Restrict)
-  tenantId             String       @map("tenant_id")
-  provider             String       @map("provider")
-  interfaceCode        String       @map("interface_code")
-  providerEventIdRaw   String?      @map("provider_event_id_raw")
-  idempotencyKey       String?      @map("idempotency_key")
-  rawPayload           Json         @map("raw_payload")
-  payloadHash          String       @map("payload_hash")
-  payloadHashVersion   String       @map("payload_hash_version")
-  containerNumberRaw   String       @map("container_number_raw")
-  containerRecordId    String?      @map("container_record_id")
+  id                         String       @id @map("id")
+  inboxMessageId             String       @unique @map("inbox_message_id")
+  inboxMessage               InboxMessage @relation(fields: [inboxMessageId], references: [id], onDelete: Restrict)
+  tenantId                   String       @map("tenant_id")
+  provider                   String       @map("provider")
+  interfaceCode              String       @map("interface_code")
+  providerEventIdRaw         String?      @map("provider_event_id_raw")
+  idempotencyKey             String?      @map("idempotency_key")
+  rawPayload                 Json         @map("raw_payload")
+  payloadHash                String       @map("payload_hash")
+  payloadHashVersion         String       @map("payload_hash_version")
+  containerNumberRaw         String       @map("container_number_raw")
+  containerRecordId          String?      @map("container_record_id")
   objectResolutionState      String       @default("not_attempted") @map("object_resolution_state")
   objectResolutionReasonCode String?      @map("object_resolution_reason_code")
-  rawCode              String       @map("raw_code")
-  eventTimeRaw         String       @map("event_time_raw")
-  mappingVersion       String       @map("mapping_version")
-  normalizationKind    String       @map("normalization_kind")
-  canonicalEventCode   String?      @map("canonical_event_code")
-  occurredAt           DateTime?    @map("occurred_at") @db.Timestamptz
-  timeKind             String?      @map("time_kind")
-  sourceCodeRaw        String       @map("source_code_raw")
-  sourceSignal         String?      @map("source_signal")
-  authorityDecision    String       @map("authority_decision")
-  authorityPolicyRef   String?      @map("authority_policy_ref")
-  confidenceState      String       @map("confidence_state")
-  reasonCodes          Json         @map("reason_codes")
-  lifecycleApplication String       @map("lifecycle_application")
-  decidedBy            String       @map("decided_by")
-  traceId              String       @map("trace_id")
-  receivedAt           DateTime     @map("received_at") @db.Timestamptz
-  decidedAt            DateTime     @map("decided_at") @db.Timestamptz
-  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  rawCode                    String       @map("raw_code")
+  eventTimeRaw               String       @map("event_time_raw")
+  mappingVersion             String       @map("mapping_version")
+  normalizationKind          String       @map("normalization_kind")
+  canonicalEventCode         String?      @map("canonical_event_code")
+  occurredAt                 DateTime?    @map("occurred_at") @db.Timestamptz
+  timeKind                   String?      @map("time_kind")
+  sourceCodeRaw              String       @map("source_code_raw")
+  sourceSignal               String?      @map("source_signal")
+  authorityDecision          String       @map("authority_decision")
+  authorityPolicyRef         String?      @map("authority_policy_ref")
+  confidenceState            String       @map("confidence_state")
+  reasonCodes                Json         @map("reason_codes")
+  lifecycleApplication       String       @map("lifecycle_application")
+  decidedBy                  String       @map("decided_by")
+  traceId                    String       @map("trace_id")
+  receivedAt                 DateTime     @map("received_at") @db.Timestamptz
+  decidedAt                  DateTime     @map("decided_at") @db.Timestamptz
+  createdAt                  DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([tenantId, authorityDecision, receivedAt, id], map: "ocean_provider_ingestion_tenant_decision_idx")
   @@index([tenantId, provider, interfaceCode, idempotencyKey], map: "ocean_provider_ingestion_business_key_idx")
