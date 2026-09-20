@@ -1,5 +1,5 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/lifecycle-route-write-replay
 verification:
   - "2026-09-20 权威路线受控写入：定向测试 5 文件/17 项、生命周期模块 70 文件/351 项通过；pnpm db:verify:lifecycle-date-facts 验证旧库升级回滚、空库完整迁移、来源审计、人工约束和幂等唯一性。"
@@ -93,7 +93,7 @@ verification:
 - `ApplyLifecycleEvent` 现在必须按 `domainFactId` 回读持久化事实；只有 `actual + verified + confirmed + effective + pending/applied` 且事实中的租户、货柜、事件、发生时间、证据和服务端采用策略全部一致才可继续。新规范事件强制持久化事实、节点、时间种类和策略上下文，并由数据库外键保证事实存在。
 - 工单完成只记录工作结果，不再把装箱、出运或离港工单完成冒充 `stuffed/loaded/departed`；旧客户端操作缺少专业事实时落拒绝审计，旧 Inbox 直推进入业务拒绝，日期事实 Inbox 不受影响。
 - Outbox 的载荷完整性哈希已包含 `domainFactId/nodeCode/timeKind/authorityPolicyRef/location`，防止事件发布时丢失服务端实际采用的事实、权威策略与地点航段上下文。
-- 云当网供应商接入已贯通“原始载荷 → 唯一货柜解析 → 幂等 Evidence → 统一日期事实”：未知码或对象未唯一解析时不生成下游事实；Evidence 与日期事实分开保存 provider 和未解析权威主体，初始核验状态确保供应商事件只进入 `review_required`。重复 Inbox 会复用原记录继续未完成后处理，同键异内容明确冲突。当前仍需补齐完整节点专项守卫（路线匹配、主体等）；通用顺序、阻断、装箱身份及到港上下文守卫已成立，但不能把它等同于全部 14 节点专项业务守卫，因此本任务保持 `coding`。
+- 云当网供应商接入已贯通“原始载荷 → 唯一货柜解析 → 幂等 Evidence → 统一日期事实”：未知码或对象未唯一解析时不生成下游事实；Evidence 与日期事实分开保存 provider 和未解析权威主体，初始核验状态确保供应商事件只进入 `review_required`。重复 Inbox 会复用原记录继续未完成后处理，同键异内容明确冲突。通用顺序、阻断、装箱身份、地点航段及到港路线守卫已经成立；其余 14 节点专业规则不再扩大本任务范围，改由业务纵向路线中的装箱/出运、清关/提柜、入库/还箱切片分别实现。
 - 阻断守卫先封住两条过站路径：领域决策遇到 `blocked` 目标节点时保留 `pending_application`，Repository 在原子应用前再次发现并发阻断时返回 `LIFECYCLE_NODE_BLOCKED`，日期事实不会丢失且可后续重放。
 - `BlockNode/ResolveNodeBlock` 已按正式契约落地：阻断与解除追加保存，节点 `blocked` 仅是未解除阻断的投影；命令按 `blockId` 精确解除并使用流程版本防并发，最后一个阻断解除后自动重放待应用日期事实。当前来源事实只接受已核验、已确认、有效、当前版本且具备来源权威策略的 `actual LifecycleDateFact`，要求事件角色为 `exception`，且 `blockType` 必须等于来源事实的规范 `eventCode`；其他领域后续必须通过正式事实 Port 扩展，禁止把任意 UUID、普通证据或客户端自由文本当作阻断类型和事实。
 - 装箱节点专项守卫已落地：`stuffed` 事实仍先落账，只有箱号已经迟绑定时才允许完成 `container_stuffing`；未绑定时保留 `pending_application`，并按真实原因区分前序未完成、节点阻断和货柜身份待绑定，禁止统一误记为前序未完成。

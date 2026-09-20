@@ -4,6 +4,8 @@
 > 已确认方向：借鉴元数据驱动以减少低频字段 DDL；不得把核心事实、状态机或合规决定做成无约束 EAV/JSON。
 > 消费者：产品主数据、Shipment Registry、Compliance Management、Integration Import、Web、数据分析。
 
+Product/SKU 稳定身份由 `master-data` 拥有；`shipment-registry` 只保存备货单行的逻辑引用和本次交易快照。国家、地点、设施、业务伙伴及外部别名统一引用[参考字典与业务伙伴主数据](./MASTER_DATA_DICTIONARY.md)。
+
 ## 1. 结论
 
 采用混合模型：
