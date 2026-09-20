@@ -23,7 +23,7 @@
 
 ### A1. 支撑上下文
 
-Identity、Master Data、Integration Import、Exception Management、Notification、Audit、Workflow、AI Governance。支撑上下文不拥有专业业务结论；完整职责和依赖见 [ADR-010](../../architecture/decisions/ADR-010-bounded-context-modules.md) 与 [MODULE_DEPENDENCIES](../../architecture/MODULE_DEPENDENCIES.md)。
+Identity、Master Data、Integration Import、Exception Management、Notification、Audit、Workflow、AI Governance。Master Data 拥有 Product/SKU 稳定身份、参考数据、地点设施、业务伙伴及外部别名映射，但不拥有出运交易行、合规决定或生命周期状态；其他支撑上下文同样不拥有专业业务结论。完整职责和依赖见 [ADR-010](../../architecture/decisions/ADR-010-bounded-context-modules.md)、[MODULE_DEPENDENCIES](../../architecture/MODULE_DEPENDENCIES.md) 与 [MASTER_DATA_DICTIONARY](./MASTER_DATA_DICTIONARY.md)。
 
 ### A2. 跨上下文执行链
 
@@ -91,6 +91,7 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 - 业务 API 是认证/校验/最终写唯一入口；AI Service/Worker 不直写生产表。
 - 主备货单号不作键；一备货单≤一柜；迟绑定可空。
 - 产品明细属于备货单；不得把同备货单多产品行判为货柜重复，也不得把产品数量等同于整柜包装数。
+- 产品明细保存 Product/SKU 稳定 ID 和本次交易快照，但不兼任 Product/SKU 主档；稳定身份由 Master Data 公共 Port 提供。
 - 当前范围外的计划/采购/备货/订舱前端只保留扩展边界，不在本切片提前确定聚合或表结构。
 
 ## ④ 流程（怎么用）

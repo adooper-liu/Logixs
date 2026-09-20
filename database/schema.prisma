@@ -14,6 +14,37 @@ datasource db {
   provider = "postgresql"
 }
 
+// Product/SKU 稳定身份（master-data 拥有）：交易行和合规档案只保存逻辑引用。
+model ProductSku {
+  id            String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId      String                   @map("tenant_id")
+  productNumber String                   @map("product_number")
+  version       Int                      @default(1) @map("version")
+  createdAt     DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  registrations ProductSkuRegistration[]
+
+  @@unique([tenantId, productNumber], map: "product_sku_tenant_number_key")
+  @@unique([id, tenantId], map: "product_sku_id_tenant_key")
+  @@index([tenantId, createdAt, id], map: "product_sku_tenant_created_idx")
+  @@map("product_sku")
+}
+
+// SKU 注册幂等结果：同键重放返回原身份，同键异载荷明确冲突。
+model ProductSkuRegistration {
+  id             String     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId       String     @map("tenant_id")
+  idempotencyKey String     @map("idempotency_key")
+  payloadHash    String     @map("payload_hash")
+  productSkuId   String     @map("product_sku_id") @db.Uuid
+  productSku     ProductSku @relation(fields: [productSkuId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, idempotencyKey], map: "product_sku_registration_tenant_key")
+  @@index([productSkuId], map: "product_sku_registration_product_idx")
+  @@map("product_sku_registration")
+}
+
 // 货柜当前阶段：8 态，与 packages/contracts/schemas/v1/common.schema.json 的
 // ContainerLifecycleState 枚举严格一致（G7 显式映射 parity 门禁校验，禁止漂移）。
 enum ContainerStatus {
