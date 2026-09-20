@@ -139,12 +139,14 @@ ReplenishmentOrderLine/SKU N <-> N ContainerRecord
 ## 8. 与现有模块的结合
 
 - `shipment-registry`：拥有备货单、产品明细、货柜身份和装载分配引用。
-- 产品/SKU 主数据：拥有长期产品属性；具体归属待上下文决策，不由出运明细代管。
+- `master-data`：拥有 Product/SKU 稳定身份及版本化结构合规档案；电池、危险品、制冷剂、检验要求和证书版本第一刀已落地，不由出运明细代管。
 - `document-records`：拥有证书、报告、回执和证据版本。
 - `compliance-management`（候选新模块）：拥有规则、适用性、评审、发现、决定和义务。
 - `work-execution`：把义务和整改投影为任务/工单；完成工单不自动形成放行。
 - `lifecycle-control`：只查询当前节点所需的有效合规决定/阻断，不解释法规原文。
 - API、导入、人工录入共用 Application 用例、幂等、授权、证据和审计；渠道不决定权威。
+
+当前实现边界：路线 `1.3` 只完成评审输入事实及公开读写 Port。规则适用性、评审、发现、整改、决定和 `cargo_ready` 门禁仍属于下一刀 `2.1`，不得因档案或证书标记为 `verified` 就直接推进生命周期。
 
 ## 9. 实施顺序
 

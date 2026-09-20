@@ -1,6 +1,6 @@
-# 逻辑数据模型（DATA_MODEL_P2-06 · v0.8）
+# 逻辑数据模型（DATA_MODEL_P2-06 · v0.9）
 
-> 状态：**候选 v0.8** · 2026-09-20 增补 SKU 逻辑引用与版本化装载分配 · 负责人：刘志高。
+> 状态：**候选 v0.9** · 2026-09-20 增补 SKU 逻辑引用、版本化装载分配与结构化合规档案 · 负责人：刘志高。
 > 一句话：新库长什么样的"对象+约束"图纸；字段定义与列映射在 NODE_TIME_FIELDS / FIELD_MIGRATION_MAP，物理 DDL 在 P3。
 > 依据：D1–D22 追踪项、L 节点(R0–R6)、SKU/装载事实路线、迟绑定、字段级来源权威、标记/费用。`orderNumber` 是备货单身份和旧导入兼容锚，柜内货物关系以版本化装载分配为权威。
 
@@ -15,6 +15,9 @@
 | ContainerRecord              | 业务事实主记录               | 一柜一档；1:N 时间线事件；旧备货单字段只作兼容锚                                        | O                        |
 | ContainerCargoAllocationSet  | 货柜装载版本                 | 每柜一个 active 版本；更正追加版本并关联旧集合                                          | O·R                      |
 | ContainerCargoAllocation     | 实际装载明细                 | 属装载集合并引用产品行；一柜可含多个备货单                                              | O·R                      |
+| ProductSku                   | 商品稳定身份                 | `master-data` 拥有；被交易行逻辑引用，1:N 合规档案版本和证书身份                        | O·R                      |
+| ProductComplianceProfile     | SKU 合规档案版本头           | 每 SKU 一个 active；1:1 电池/危险品/制冷剂，1:N 检验要求和证书版本引用                  | O·R                      |
+| ProductCertificate/Version   | 产品证书身份与追加版本       | 属 SKU；档案锁定具体版本，文件本体逻辑引用 `document-records`                           | O·R                      |
 | B/L(提单归组)                | 单证(候选)                   | 1:N ContainerRecord                                                                     | C                        |
 | ShipmentPlan                 | 计划层(候选)                 | 1:N 备货单                                                                              | C                        |
 | markers/attributes           | 扩展集                       | 属 ContainerRecord                                                                      | O                        |
