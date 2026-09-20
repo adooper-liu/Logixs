@@ -76,11 +76,14 @@ export class ReplayPendingLifecycleDateFactsService {
           traceId: fact.traceId,
         });
         if ((applied.pendingNodes?.length ?? 0) > 0) {
+          const pendingNode = applied.pendingNodes[0];
           await this.repository.finishClaimedApplication({
             factId: fact.id,
             owner,
             state: "pending_application",
-            reasonCode: "LIFECYCLE_EVENT_PENDING_PREDECESSOR",
+            reasonCode:
+              (pendingNode && applied.pendingReasonCodes[pendingNode]) ??
+              "LIFECYCLE_EVENT_PENDING_PREDECESSOR",
             canonicalEventId: null,
           });
           result.pending += 1;

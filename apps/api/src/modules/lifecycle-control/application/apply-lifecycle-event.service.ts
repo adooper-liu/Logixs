@@ -33,6 +33,7 @@ import {
   nextApplicableNode,
 } from "../domain/node-applicability";
 import { decideNodeEventApplication } from "../domain/node-event-application";
+import { decideNodeSpecializedGuard } from "../domain/node-specialized-guard";
 import { parseEvidenceRefs } from "../domain/evidence-refs";
 import { CONTAINER_STATUS_ORDER, NODE_SEQUENCE } from "../domain/node-status";
 
@@ -68,6 +69,7 @@ export interface ApplyLifecycleEventResult {
   eventCode: CanonicalEventCode;
   completedNodes: LifecycleNodeCode[];
   pendingNodes: LifecycleNodeCode[];
+  pendingReasonCodes: Partial<Record<LifecycleNodeCode, string>>;
   resultingStatus: string | null; // null = 本次事件不推进 8 态
   applied: boolean; // false = 幂等命中（已应用过）
   activatedNodeCode: LifecycleNodeCode | null;
@@ -188,6 +190,7 @@ export class ApplyLifecycleEventService {
 
     const completedNodes: LifecycleNodeCode[] = [];
     const pendingNodes: LifecycleNodeCode[] = [];
+    const pendingReasonCodes: Partial<Record<LifecycleNodeCode, string>> = {};
     for (const targetNodeCode of [...eligibleNodes].sort(
       (left, right) => NODE_SEQUENCE[left] - NODE_SEQUENCE[right],
     )) {
@@ -228,10 +231,40 @@ export class ApplyLifecycleEventService {
         });
         if (decision.kind === "pending_application") {
           pendingNodes.push(targetNodeCode);
+          pendingReasonCodes[targetNodeCode] = decision.reasonCode;
           continue;
         }
         throw new HttpException(
           `${decision.reasonCode}: 目标节点守卫拒绝`,
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const specializedDecision = decideNodeSpecializedGuard({
+        targetNodeCode,
+        eventCode: input.eventCode,
+        containerNumber: container.containerNumber,
+      });
+      const guardResults = [
+        ...decision.guardResults,
+        ...specializedDecision.guardResults,
+      ];
+      if (specializedDecision.kind !== "apply") {
+        await this.repository.recordNodeEventApplication({
+          eventId: canonicalEventId,
+          targetNodeInstanceId: target.id,
+          state: specializedDecision.kind,
+          evaluatedAt: new Date(),
+          guardResults,
+          reasonCode: specializedDecision.reasonCode,
+        });
+        if (specializedDecision.kind === "pending_application") {
+          pendingNodes.push(targetNodeCode);
+          pendingReasonCodes[targetNodeCode] = specializedDecision.reasonCode;
+          continue;
+        }
+        throw new HttpException(
+          `${specializedDecision.reasonCode}: 目标节点专项守卫拒绝`,
           HttpStatus.CONFLICT,
         );
       }
@@ -250,7 +283,7 @@ export class ApplyLifecycleEventService {
           nextNodeCode,
           occurredAt: input.occurredAt,
           evaluatedAt: new Date(),
-          guardResults: decision.guardResults,
+          guardResults,
         });
         if (transition.applied) completedNodes.push(targetNodeCode);
       } catch (error) {
@@ -303,6 +336,7 @@ export class ApplyLifecycleEventService {
       eventCode: input.eventCode,
       completedNodes,
       pendingNodes,
+      pendingReasonCodes,
       resultingStatus,
       applied:
         completedNodes.length > 0 || (eligibleNodes.length === 0 && !existing),

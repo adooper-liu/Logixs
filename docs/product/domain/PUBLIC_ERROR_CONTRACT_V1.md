@@ -108,33 +108,34 @@ rejectedValueSummary?: redacted string
 
 以下代码保留既有 V1 线值，具体触发条件仍由对应领域契约负责：
 
-| code                                       | HTTP | category     |
-| ------------------------------------------ | ---: | ------------ |
-| `LIFECYCLE_FLOW_NOT_FOUND`                 |  404 | not_found    |
-| `LIFECYCLE_FLOW_ALREADY_ACTIVE`            |  409 | conflict     |
-| `LIFECYCLE_DEFINITION_VERSION_UNSUPPORTED` |  422 | precondition |
-| `LIFECYCLE_NODE_NOT_CURRENT`               |  422 | precondition |
-| `LIFECYCLE_NODE_NOT_OPTIONAL`              |  422 | precondition |
-| `LIFECYCLE_NODE_APPLICABILITY_CONFLICT`    |  409 | conflict     |
-| `LIFECYCLE_EVENT_TYPE_UNKNOWN`             |  400 | validation   |
-| `LIFECYCLE_EVENT_NOT_STATE_EVIDENCE`       |  422 | precondition |
-| `LIFECYCLE_EVENT_PENDING_PREDECESSOR`      |  422 | precondition |
-| `LIFECYCLE_SOURCE_NOT_AUTHORIZED`          |  422 | precondition |
-| `LIFECYCLE_EVIDENCE_REQUIRED`              |  422 | precondition |
-| `LIFECYCLE_GUARD_NOT_SATISFIED`            |  422 | precondition |
-| `LIFECYCLE_ACTIVE_BLOCK_EXISTS`            |  422 | precondition |
-| `LIFECYCLE_TIME_ORDER_CONFLICT`            |  409 | conflict     |
-| `LIFECYCLE_HISTORY_SEALED`                 |  409 | conflict     |
-| `LIFECYCLE_IDEMPOTENCY_CONFLICT`           |  409 | conflict     |
-| `LIFECYCLE_VERSION_CONFLICT`               |  409 | conflict     |
-| `LIFECYCLE_REENTRY_NOT_ALLOWED`            |  422 | precondition |
-| `LIFECYCLE_MANUAL_REVIEW_REQUIRED`         |  409 | conflict     |
-| `TIMELINE_EVENT_INVALID`                   |  400 | validation   |
-| `TIMELINE_TIMEZONE_UNKNOWN`                |  422 | precondition |
-| `TIMELINE_EVENT_DUPLICATE_CONFLICT`        |  409 | conflict     |
-| `TIMELINE_EVENT_RELATION_INVALID`          |  422 | precondition |
-| `TIMELINE_PROJECTION_VERSION_CONFLICT`     |  409 | conflict     |
-| `TIMELINE_MANUAL_REVIEW_REQUIRED`          |  409 | conflict     |
+| code                                         | HTTP | category     |
+| -------------------------------------------- | ---: | ------------ |
+| `LIFECYCLE_FLOW_NOT_FOUND`                   |  404 | not_found    |
+| `LIFECYCLE_FLOW_ALREADY_ACTIVE`              |  409 | conflict     |
+| `LIFECYCLE_DEFINITION_VERSION_UNSUPPORTED`   |  422 | precondition |
+| `LIFECYCLE_NODE_NOT_CURRENT`                 |  422 | precondition |
+| `LIFECYCLE_NODE_NOT_OPTIONAL`                |  422 | precondition |
+| `LIFECYCLE_NODE_APPLICABILITY_CONFLICT`      |  409 | conflict     |
+| `LIFECYCLE_EVENT_TYPE_UNKNOWN`               |  400 | validation   |
+| `LIFECYCLE_EVENT_NOT_STATE_EVIDENCE`         |  422 | precondition |
+| `LIFECYCLE_EVENT_PENDING_PREDECESSOR`        |  422 | precondition |
+| `LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY` |  422 | precondition |
+| `LIFECYCLE_SOURCE_NOT_AUTHORIZED`            |  422 | precondition |
+| `LIFECYCLE_EVIDENCE_REQUIRED`                |  422 | precondition |
+| `LIFECYCLE_GUARD_NOT_SATISFIED`              |  422 | precondition |
+| `LIFECYCLE_ACTIVE_BLOCK_EXISTS`              |  422 | precondition |
+| `LIFECYCLE_TIME_ORDER_CONFLICT`              |  409 | conflict     |
+| `LIFECYCLE_HISTORY_SEALED`                   |  409 | conflict     |
+| `LIFECYCLE_IDEMPOTENCY_CONFLICT`             |  409 | conflict     |
+| `LIFECYCLE_VERSION_CONFLICT`                 |  409 | conflict     |
+| `LIFECYCLE_REENTRY_NOT_ALLOWED`              |  422 | precondition |
+| `LIFECYCLE_MANUAL_REVIEW_REQUIRED`           |  409 | conflict     |
+| `TIMELINE_EVENT_INVALID`                     |  400 | validation   |
+| `TIMELINE_TIMEZONE_UNKNOWN`                  |  422 | precondition |
+| `TIMELINE_EVENT_DUPLICATE_CONFLICT`          |  409 | conflict     |
+| `TIMELINE_EVENT_RELATION_INVALID`            |  422 | precondition |
+| `TIMELINE_PROJECTION_VERSION_CONFLICT`       |  409 | conflict     |
+| `TIMELINE_MANUAL_REVIEW_REQUIRED`            |  409 | conflict     |
 
 以上错误均为 `retryable=false`；发生并发或投影版本冲突时，调用方应先刷新再发起新的、重新校验过的命令，而不是自动重试原请求。
 

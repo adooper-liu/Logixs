@@ -12,13 +12,16 @@ import { ApplyLifecycleEventService } from "./apply-lifecycle-event.service";
 const EVIDENCE = "22222222-2222-4222-8222-222222222222";
 const DOMAIN_FACT = "33333333-3333-4333-8333-333333333333";
 
-function buildRepository(currentStatus: string) {
+function buildRepository(
+  currentStatus: string,
+  containerNumber: string | null = "MSKU1",
+) {
   const flow = flowAt("cargo_ready");
   return {
     findContainerBase: vi.fn().mockResolvedValue({
       tenantId: "t1",
       orderNumber: "SO-1",
-      containerNumber: "MSKU1",
+      containerNumber,
       currentStatus,
     }),
     ensureFlow: vi.fn().mockResolvedValue(flow),
@@ -242,6 +245,33 @@ describe("ApplyLifecycleEventService", () => {
       tenantId: "t1",
       applicability: "required",
     });
+  });
+
+  it("stuffed 事实先到但箱号未绑定时留待应用，不完成装箱节点", async () => {
+    const repository = buildRepository("not_shipped", null);
+    useFlow(repository, flowAt("container_stuffing"));
+    const { service, createNodeTask } = await buildService(repository, {
+      execute: vi.fn(),
+    });
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "stuffed",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingNodes).toEqual(["container_stuffing"]);
+    expect(result.pendingReasonCodes).toEqual({
+      container_stuffing: "LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY",
+    });
+    expect(repository.recordNodeEventApplication).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: "pending_application",
+        reasonCode: "LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY",
+      }),
+    );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
+    expect(createNodeTask.execute).not.toHaveBeenCalled();
   });
 
   it("loaded 完成后为离港节点建任务", async () => {
