@@ -39,12 +39,20 @@ function input(
     traceId: "trace-1",
     receivedAt: new Date("2026-09-18T10:00:01Z"),
     ...overrides,
+    location: overrides.location ?? null,
   };
 }
 
 function row(source: AppendLifecycleDateFactInput, projectionVersion = 1) {
+  const { location, ...record } = source;
   return {
-    ...source,
+    ...record,
+    locationType: location?.locationType ?? null,
+    unlocode: location?.unlocode ?? null,
+    locationId: location?.locationId ?? null,
+    segmentId: location?.segmentId ?? null,
+    portCallId: location?.portCallId ?? null,
+    locationTimezone: location?.timezone ?? null,
     isCurrent: true,
     projectionVersion,
     recordedAt: new Date("2026-09-18T10:00:02Z"),
@@ -95,6 +103,38 @@ function repositoryWith(tx: ReturnType<typeof transaction>) {
 }
 
 describe("PrismaLifecycleDateFactRepository.append", () => {
+  it("地点与航段分列写入并从事实记录重建", async () => {
+    const location = {
+      locationType: "port" as const,
+      unlocode: "USLAX",
+      segmentId: "66666666-6666-4666-8666-666666666666",
+      portCallId: "call-1",
+      timezone: "America/Los_Angeles",
+    };
+    const tx = transaction({
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        ...data,
+        isCurrent: true,
+        projectionVersion: 1,
+        recordedAt: new Date("2026-09-18T10:00:02Z"),
+      })),
+    });
+    const { repository } = repositoryWith(tx);
+
+    const result = await repository.append(input({ location }));
+
+    expect(tx.lifecycleDateFact.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        locationType: "port",
+        unlocode: "USLAX",
+        segmentId: location.segmentId,
+        portCallId: "call-1",
+        locationTimezone: "America/Los_Angeles",
+      }),
+    });
+    expect(result.record.location).toEqual(location);
+  });
+
   it("锁定货柜并为新投影分配单调版本", async () => {
     const old = row(
       input({
@@ -221,6 +261,62 @@ describe("PrismaLifecycleDateFactRepository.append", () => {
       ),
     ).rejects.toThrow("实际日期更正必须引用当前事实");
     expect(tx.lifecycleDateFact.update).not.toHaveBeenCalled();
+  });
+
+  it("显式更正地点航段时按 supersedesFactId 锁定旧槽", async () => {
+    const current = row(
+      input({
+        id: "55555555-5555-4555-8555-555555555555",
+        timeKind: "actual",
+        location: {
+          locationType: "port",
+          unlocode: "USLGB",
+          segmentId: "66666666-6666-4666-8666-666666666666",
+          timezone: "America/Los_Angeles",
+        },
+        evidenceRefs: ["77777777-7777-4777-8777-777777777777"],
+      }),
+      2,
+    );
+    const tx = transaction({
+      aggregate: vi.fn().mockResolvedValue({
+        _max: { projectionVersion: 2 },
+      }),
+      findFirst: vi.fn().mockResolvedValue(current),
+      update: vi.fn().mockResolvedValue({ ...current, isCurrent: false }),
+      create: vi.fn(async ({ data }: { data: AppendLifecycleDateFactInput }) =>
+        row(data, 3),
+      ),
+    });
+    const { repository } = repositoryWith(tx);
+
+    await repository.append(
+      input({
+        timeKind: "actual",
+        expectedVersion: 2,
+        supersedesFactId: current.id,
+        location: {
+          locationType: "port",
+          unlocode: "USLAX",
+          segmentId: "88888888-8888-4888-8888-888888888888",
+          timezone: "America/Los_Angeles",
+        },
+        evidenceRefs: ["99999999-9999-4999-8999-999999999999"],
+      }),
+    );
+
+    expect(tx.lifecycleDateFact.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: current.id,
+        containerId: current.containerId,
+        isCurrent: true,
+      }),
+      orderBy: [{ projectionVersion: "desc" }, { id: "desc" }],
+    });
+    expect(tx.lifecycleDateFact.update).toHaveBeenCalledWith({
+      where: { id: current.id },
+      data: { isCurrent: false },
+    });
   });
 });
 

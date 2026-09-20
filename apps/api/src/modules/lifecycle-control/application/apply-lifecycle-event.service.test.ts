@@ -11,6 +11,12 @@ import { ApplyLifecycleEventService } from "./apply-lifecycle-event.service";
 
 const EVIDENCE = "22222222-2222-4222-8222-222222222222";
 const DOMAIN_FACT = "33333333-3333-4333-8333-333333333333";
+const ARRIVAL_LOCATION = {
+  locationType: "port" as const,
+  unlocode: "USLAX",
+  segmentId: "44444444-4444-4444-8444-444444444444",
+  timezone: "America/Los_Angeles",
+};
 
 function buildRepository(
   currentStatus: string,
@@ -96,11 +102,16 @@ async function buildService(
   createNodeTask = { execute: vi.fn() },
   assertEvidenceRefs = { execute: vi.fn().mockResolvedValue(undefined) },
   assertStateEvidence = {
-    execute: vi.fn().mockResolvedValue({
-      domainFactId: DOMAIN_FACT,
-      nodeCode: "cargo_ready",
-      authorityPolicyRef: "policy-1:1",
-    }),
+    execute: vi
+      .fn()
+      .mockImplementation(async (input: { eventCode: string }) => ({
+        domainFactId: DOMAIN_FACT,
+        nodeCode: "cargo_ready",
+        authorityPolicyRef: "policy-1:1",
+        location: ["arrived", "transit_arrived"].includes(input.eventCode)
+          ? ARRIVAL_LOCATION
+          : null,
+      })),
   },
 ) {
   const module = await Test.createTestingModule({
@@ -486,6 +497,7 @@ describe("ApplyLifecycleEventService", () => {
       nodeCode: "cargo_ready",
       timeKind: "actual",
       authorityPolicyRef: "policy-1:1",
+      location: null,
       evidenceRefs: [EVIDENCE],
       idempotencyKey: "key-1",
     });
@@ -559,6 +571,41 @@ describe("ApplyLifecycleEventService", () => {
     );
   });
 
+  it("arrived 缺少持久化地点航段时保留待应用且不完成海运", async () => {
+    const repository = buildRepository("in_transit");
+    useFlow(
+      repository,
+      flowAt("ocean_transit", {
+        transshipment: "optional_not_applicable",
+      }),
+    );
+    const { service } = await buildService(
+      repository,
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      {
+        execute: vi.fn().mockResolvedValue({
+          domainFactId: DOMAIN_FACT,
+          nodeCode: "destination_arrival",
+          authorityPolicyRef: "policy-1:1",
+          location: null,
+        }),
+      },
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "arrived",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.ocean_transit).toBe(
+      "LIFECYCLE_EVENT_PENDING_LOCATION_CONTEXT",
+    );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
+  });
+
   it("同一 arrived 事件在前序满足后只应用尚未完成的第二个目标", async () => {
     const repository = buildRepository("at_port");
     const ready = flowAt("destination_arrival", {
@@ -581,6 +628,7 @@ describe("ApplyLifecycleEventService", () => {
       nodeCode: "destination_arrival",
       timeKind: "actual",
       authorityPolicyRef: "policy-1:1",
+      location: ARRIVAL_LOCATION,
       evidenceRefs: [EVIDENCE],
       idempotencyKey: "key-1",
     });
@@ -632,6 +680,7 @@ describe("ApplyLifecycleEventService", () => {
       nodeCode: "container_stuffing",
       timeKind: "actual",
       authorityPolicyRef: "policy-1:1",
+      location: null,
       evidenceRefs: [EVIDENCE],
       idempotencyKey: "key-1",
     });

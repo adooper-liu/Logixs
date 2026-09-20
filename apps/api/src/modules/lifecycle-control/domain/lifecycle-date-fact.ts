@@ -6,6 +6,10 @@ import type {
 export type LifecycleDateApplicationState =
   LifecycleDateFactResult["applicationState"];
 
+export type LifecycleLocationContext = NonNullable<
+  LifecycleDateFactCommand["location"]
+>;
+
 export interface LifecycleDateFactRecord {
   id: string;
   tenantId: string;
@@ -28,6 +32,7 @@ export interface LifecycleDateFactRecord {
   confidenceState: LifecycleDateFactCommand["confidenceState"];
   validity: LifecycleDateFactCommand["validity"];
   authorityPolicyRef: string | null;
+  location: LifecycleLocationContext | null;
   evidenceRefs: string[];
   actorId: string | null;
   reasonCode: string | null;

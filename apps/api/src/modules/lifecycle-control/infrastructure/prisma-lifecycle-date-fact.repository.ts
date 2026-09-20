@@ -89,13 +89,28 @@ export class PrismaLifecycleDateFactRepository implements LifecycleDateFactRepos
         }
 
         const current = await transaction.lifecycleDateFact.findFirst({
-          where: {
-            containerId: input.containerId,
-            nodeCode: input.nodeCode,
-            eventCode: input.eventCode,
-            timeKind: input.timeKind,
-            isCurrent: true,
-          },
+          where: input.supersedesFactId
+            ? {
+                id: input.supersedesFactId,
+                tenantId: input.tenantId,
+                containerId: input.containerId,
+                nodeCode: input.nodeCode,
+                eventCode: input.eventCode,
+                timeKind: input.timeKind,
+                isCurrent: true,
+              }
+            : {
+                containerId: input.containerId,
+                nodeCode: input.nodeCode,
+                eventCode: input.eventCode,
+                timeKind: input.timeKind,
+                locationType: input.location?.locationType ?? null,
+                unlocode: input.location?.unlocode ?? null,
+                locationId: input.location?.locationId ?? null,
+                segmentId: input.location?.segmentId ?? null,
+                portCallId: input.location?.portCallId ?? null,
+                isCurrent: true,
+              },
           orderBy: [{ projectionVersion: "desc" }, { id: "desc" }],
         });
         const supersedesFactId = correctionTarget(input, current);
@@ -129,6 +144,12 @@ export class PrismaLifecycleDateFactRepository implements LifecycleDateFactRepos
             confidenceState: input.confidenceState,
             validity: input.validity,
             authorityPolicyRef: input.authorityPolicyRef,
+            locationType: input.location?.locationType ?? null,
+            unlocode: input.location?.unlocode ?? null,
+            locationId: input.location?.locationId ?? null,
+            segmentId: input.location?.segmentId ?? null,
+            portCallId: input.location?.portCallId ?? null,
+            locationTimezone: input.location?.timezone ?? null,
             evidenceRefs: input.evidenceRefs,
             actorId: input.actorId,
             reasonCode: input.reasonCode,
@@ -369,6 +390,12 @@ function toRecord(row: {
   confidenceState: string;
   validity: string;
   authorityPolicyRef: string | null;
+  locationType: string | null;
+  unlocode: string | null;
+  locationId: string | null;
+  segmentId: string | null;
+  portCallId: string | null;
+  locationTimezone: string | null;
   evidenceRefs: unknown;
   actorId: string | null;
   reasonCode: string | null;
@@ -398,6 +425,19 @@ function toRecord(row: {
     confidenceState:
       row.confidenceState as LifecycleDateFactCommand["confidenceState"],
     validity: row.validity as LifecycleDateFactCommand["validity"],
+    location:
+      row.locationType && row.locationTimezone
+        ? {
+            locationType: row.locationType as NonNullable<
+              LifecycleDateFactCommand["location"]
+            >["locationType"],
+            ...(row.unlocode ? { unlocode: row.unlocode } : {}),
+            ...(row.locationId ? { locationId: row.locationId } : {}),
+            ...(row.segmentId ? { segmentId: row.segmentId } : {}),
+            ...(row.portCallId ? { portCallId: row.portCallId } : {}),
+            timezone: row.locationTimezone,
+          }
+        : null,
     evidenceRefs: Array.isArray(row.evidenceRefs)
       ? row.evidenceRefs.filter(
           (value): value is string => typeof value === "string",

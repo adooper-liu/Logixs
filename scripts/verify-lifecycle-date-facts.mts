@@ -27,6 +27,7 @@ const targetMigrationPaths = [
   "database/migrations/20260918200000_add_node_event_applications/migration.sql",
   "database/migrations/20260919100000_add_canonical_event_fact_context/migration.sql",
   "database/migrations/20260920120000_add_lifecycle_node_blocks/migration.sql",
+  "database/migrations/20260920150000_add_lifecycle_location_context/migration.sql",
 ];
 const migrationSql = targetMigrationPaths.map((path) =>
   readFileSync(path, "utf8"),
@@ -70,6 +71,7 @@ async function verifyUpgradeRollback(url: string): Promise<void> {
           }
           await assertLifecycleDateFactSchema(transaction);
           await assertNodeBlockPersistence(transaction);
+          await assertLifecycleLocationPersistence(transaction);
           throw rollback;
         });
       } catch (error) {
@@ -205,6 +207,7 @@ async function verifyEmptyDatabaseMigration(url: string): Promise<void> {
     try {
       await assertLifecycleDateFactSchema(target);
       await assertNodeBlockPersistence(target);
+      await assertLifecycleLocationPersistence(target);
     } finally {
       await target.$disconnect();
     }
@@ -238,6 +241,9 @@ async function assertLifecycleDateFactSchema(
       pendingClaimIndex: string | null;
       nodeApplicationIndex: string | null;
       canonicalEventFactIndex: string | null;
+      locationContextColumnCount: bigint;
+      locationContextConstraintCount: bigint;
+      locationSlotIndex: string | null;
       nodeBlockTable: string | null;
       nodeBlockResolutionTable: string | null;
       nodeBlockConstraintCount: bigint;
@@ -309,6 +315,28 @@ async function assertLifecycleDateFactSchema(
         AS "nodeApplicationIndex",
       to_regclass('public.canonical_event_domain_fact_key')::text
         AS "canonicalEventFactIndex",
+      (
+        SELECT COUNT(*)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name IN ('lifecycle_date_fact', 'canonical_event')
+          AND column_name IN (
+            'location_type',
+            'unlocode',
+            'location_id',
+            'segment_id',
+            'port_call_id',
+            'location_timezone'
+          )
+      ) AS "locationContextColumnCount",
+      COUNT(*) FILTER (
+        WHERE conname IN (
+          'lifecycle_date_fact_location_context_check',
+          'canonical_event_location_context_check'
+        )
+      ) AS "locationContextConstraintCount",
+      to_regclass('public.lifecycle_date_fact_segment_slot_idx')::text
+        AS "locationSlotIndex",
       to_regclass('public.node_block')::text AS "nodeBlockTable",
       to_regclass('public.node_block_resolution')::text
         AS "nodeBlockResolutionTable",
@@ -361,6 +389,9 @@ async function assertLifecycleDateFactSchema(
     rows[0]?.nodeApplicationIndex !==
       "node_event_application_target_state_idx" ||
     rows[0]?.canonicalEventFactIndex !== "canonical_event_domain_fact_key" ||
+    Number(rows[0]?.locationContextColumnCount ?? 0) !== 12 ||
+    Number(rows[0]?.locationContextConstraintCount ?? 0) !== 2 ||
+    rows[0]?.locationSlotIndex !== "lifecycle_date_fact_segment_slot_idx" ||
     rows[0]?.nodeBlockTable !== "node_block" ||
     rows[0]?.nodeBlockResolutionTable !== "node_block_resolution" ||
     Number(rows[0]?.nodeBlockConstraintCount ?? 0) !== 8 ||
@@ -368,6 +399,77 @@ async function assertLifecycleDateFactSchema(
     Number(rows[0]?.nodeBlockIndexCount ?? 0) !== 5
   ) {
     throw new Error("Lifecycle date fact migration verification failed");
+  }
+}
+
+async function assertLifecycleLocationPersistence(
+  prisma: Pick<PrismaClient, "$executeRawUnsafe" | "$queryRaw">,
+): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    DO $verify_location_fact$
+    BEGIN
+      BEGIN
+        UPDATE "lifecycle_date_fact"
+        SET "unlocode" = 'USLAX'
+        WHERE "id" = '10000000-0000-4000-8000-000000000005';
+        RAISE EXCEPTION 'location constraint accepted a partial fact context';
+      EXCEPTION WHEN check_violation THEN
+        NULL;
+      END;
+    END
+    $verify_location_fact$;
+
+    UPDATE "lifecycle_date_fact"
+    SET
+      "location_type" = 'port',
+      "unlocode" = 'USLAX',
+      "segment_id" = '10000000-0000-4000-8000-000000000010',
+      "port_call_id" = 'verify-port-call-1',
+      "location_timezone" = 'America/Los_Angeles'
+    WHERE "id" = '10000000-0000-4000-8000-000000000005';
+
+    INSERT INTO "canonical_event" (
+      "id", "container_id", "event_code", "domain_fact_id", "node_code",
+      "time_kind", "authority_policy_ref", "location_type", "unlocode",
+      "segment_id", "port_call_id", "location_timezone", "occurred_at",
+      "evidence_refs", "idempotency_key", "applied_at"
+    ) VALUES (
+      '10000000-0000-4000-8000-000000000011',
+      '10000000-0000-4000-8000-000000000001', 'inspection',
+      '10000000-0000-4000-8000-000000000005', 'customs_clearance', 'actual',
+      'customs-inspection-v1', 'port', 'USLAX',
+      '10000000-0000-4000-8000-000000000010', 'verify-port-call-1',
+      'America/Los_Angeles', '2026-09-20T01:00:00Z',
+      '["10000000-0000-4000-8000-000000000006"]'::jsonb,
+      'verify-location-event-1', CURRENT_TIMESTAMP
+    );
+
+    DO $verify_location_event$
+    BEGIN
+      BEGIN
+        UPDATE "canonical_event"
+        SET "location_timezone" = NULL
+        WHERE "id" = '10000000-0000-4000-8000-000000000011';
+        RAISE EXCEPTION 'location constraint accepted a partial event context';
+      EXCEPTION WHEN check_violation THEN
+        NULL;
+      END;
+    END
+    $verify_location_event$;
+  `);
+  const rows = await prisma.$queryRaw<Array<{ matchedCount: bigint }>>`
+    SELECT COUNT(*) AS "matchedCount"
+    FROM "canonical_event" e
+    JOIN "lifecycle_date_fact" f ON f."id" = e."domain_fact_id"
+    WHERE e."id" = '10000000-0000-4000-8000-000000000011'
+      AND e."location_type" = f."location_type"
+      AND e."unlocode" = f."unlocode"
+      AND e."segment_id" = f."segment_id"
+      AND e."port_call_id" = f."port_call_id"
+      AND e."location_timezone" = f."location_timezone"
+  `;
+  if (Number(rows[0]?.matchedCount ?? 0) !== 1) {
+    throw new Error("Lifecycle location persistence verification failed");
   }
 }
 

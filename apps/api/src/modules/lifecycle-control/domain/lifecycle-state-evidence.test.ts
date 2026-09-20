@@ -45,6 +45,7 @@ function fact(
     receivedAt: OCCURRED_AT,
     recordedAt: OCCURRED_AT,
     ...overrides,
+    location: overrides.location ?? null,
   };
 }
 

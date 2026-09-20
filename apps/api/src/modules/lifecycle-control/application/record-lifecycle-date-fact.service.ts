@@ -65,6 +65,17 @@ const CONFIDENCE_STATES = [
   "unknown",
 ] as const;
 const VALIDITIES = ["effective", "superseded", "corrected", "revoked"] as const;
+const LOCATION_TYPES = [
+  "port",
+  "terminal",
+  "rail_yard",
+  "warehouse",
+  "depot",
+  "in_transit",
+] as const;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UNLOCODE_PATTERN = /^[A-Z]{2}[A-Z0-9]{3}$/;
 
 export interface RecordLifecycleDateFactInput extends LifecycleDateFactCommand {
   actorCapabilities?: readonly string[];
@@ -140,6 +151,7 @@ export class RecordLifecycleDateFactService {
       sourceEventId: normalized.sourceEventId ?? null,
       mappingVersion: normalized.mappingVersion ?? null,
       authorityPolicyRef: application.policyRef,
+      location: normalized.location ?? null,
       actorId: normalized.actorId ?? null,
       reasonCode: normalized.reasonCode ?? null,
       payloadHash: hashCommand(normalized),
@@ -401,6 +413,7 @@ function normalizeCommand(
     100,
     "supersedesFactId",
   );
+  const location = normalizeLocation(command.location);
   const authorityContext = normalizeAuthorityContext(rawAuthorityContext);
   return {
     ...command,
@@ -422,7 +435,72 @@ function normalizeCommand(
     idempotencyKey: command.idempotencyKey.trim(),
     traceId: command.traceId.trim(),
     supersedesFactId,
+    location,
     authorityContext,
+  };
+}
+
+function normalizeLocation(
+  value: LifecycleDateFactCommand["location"],
+): LifecycleDateFactCommand["location"] {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new HttpException(
+      "VALIDATION_FORMAT: location 无效",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+  const locationType = normalizeOptional(
+    value.locationType,
+    32,
+    "location.locationType",
+  );
+  const timezone = normalizeOptional(value.timezone, 100, "location.timezone");
+  if (!locationType || !timezone) {
+    throw new HttpException(
+      "VALIDATION_FORMAT: location 缺少类型或时区",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+  assertEnum(locationType, LOCATION_TYPES, "location.locationType");
+  const unlocode = normalizeOptional(value.unlocode, 5, "location.unlocode");
+  const locationId = normalizeOptional(
+    value.locationId,
+    100,
+    "location.locationId",
+  );
+  const segmentId = normalizeOptional(
+    value.segmentId,
+    100,
+    "location.segmentId",
+  );
+  const portCallId = normalizeOptional(
+    value.portCallId,
+    200,
+    "location.portCallId",
+  );
+  if (unlocode && !UNLOCODE_PATTERN.test(unlocode)) {
+    throw new HttpException(
+      "VALIDATION_FORMAT: location.unlocode 无效",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+  if (
+    (locationId && !UUID_PATTERN.test(locationId)) ||
+    (segmentId && !UUID_PATTERN.test(segmentId))
+  ) {
+    throw new HttpException(
+      "VALIDATION_FORMAT: location 标识无效",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+  return {
+    locationType,
+    ...(unlocode ? { unlocode } : {}),
+    ...(locationId ? { locationId } : {}),
+    ...(segmentId ? { segmentId } : {}),
+    ...(portCallId ? { portCallId } : {}),
+    timezone,
   };
 }
 

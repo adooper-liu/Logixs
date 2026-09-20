@@ -104,6 +104,7 @@ function sourceFact(): LifecycleDateFactRecord {
     confidenceState: "confirmed",
     validity: "effective",
     authorityPolicyRef: "customs-inspection-v1",
+    location: null,
     evidenceRefs: ["evidence-1"],
     actorId: "actor-1",
     reasonCode: "inspection_notice",

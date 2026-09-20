@@ -266,6 +266,19 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           nodeCode: event.nodeCode as CanonicalEventRecord["nodeCode"],
           timeKind: event.timeKind as CanonicalEventRecord["timeKind"],
           authorityPolicyRef: event.authorityPolicyRef,
+          location:
+            event.locationType && event.locationTimezone
+              ? {
+                  locationType: event.locationType as NonNullable<
+                    CanonicalEventRecord["location"]
+                  >["locationType"],
+                  ...(event.unlocode ? { unlocode: event.unlocode } : {}),
+                  ...(event.locationId ? { locationId: event.locationId } : {}),
+                  ...(event.segmentId ? { segmentId: event.segmentId } : {}),
+                  ...(event.portCallId ? { portCallId: event.portCallId } : {}),
+                  timezone: event.locationTimezone,
+                }
+              : null,
           occurredAt: event.occurredAt,
           evidenceRefs: Array.isArray(event.evidenceRefs)
             ? (event.evidenceRefs as string[])
@@ -285,6 +298,12 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           nodeCode: event.nodeCode,
           timeKind: event.timeKind,
           authorityPolicyRef: event.authorityPolicyRef,
+          locationType: event.location?.locationType ?? null,
+          unlocode: event.location?.unlocode ?? null,
+          locationId: event.location?.locationId ?? null,
+          segmentId: event.location?.segmentId ?? null,
+          portCallId: event.location?.portCallId ?? null,
+          locationTimezone: event.location?.timezone ?? null,
           occurredAt: event.occurredAt,
           evidenceRefs: event.evidenceRefs,
           idempotencyKey: event.idempotencyKey,
@@ -299,6 +318,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
         nodeCode: event.nodeCode,
         timeKind: event.timeKind,
         authorityPolicyRef: event.authorityPolicyRef,
+        location: event.location,
         occurredAt: event.occurredAt,
         evidenceRefs: event.evidenceRefs,
         idempotencyKey: event.idempotencyKey,

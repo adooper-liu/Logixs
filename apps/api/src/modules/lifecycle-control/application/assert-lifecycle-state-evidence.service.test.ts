@@ -47,6 +47,7 @@ function fact(
     receivedAt: OCCURRED_AT,
     recordedAt: OCCURRED_AT,
     ...overrides,
+    location: overrides.location ?? null,
   };
 }
 
@@ -72,6 +73,7 @@ describe("AssertLifecycleStateEvidenceService", () => {
       domainFactId: FACT_ID,
       nodeCode: "origin_departure",
       authorityPolicyRef: "carrier-departure:1",
+      location: null,
     });
   });
 

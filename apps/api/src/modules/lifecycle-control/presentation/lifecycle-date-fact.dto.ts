@@ -1,5 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
+export class LifecycleLocationDto {
+  @ApiProperty({
+    enum: ["port", "terminal", "rail_yard", "warehouse", "depot", "in_transit"],
+  })
+  locationType!:
+    "port" | "terminal" | "rail_yard" | "warehouse" | "depot" | "in_transit";
+  @ApiPropertyOptional() unlocode?: string;
+  @ApiPropertyOptional() locationId?: string;
+  @ApiPropertyOptional() segmentId?: string;
+  @ApiPropertyOptional() portCallId?: string;
+  @ApiProperty() timezone!: string;
+}
+
 export class RecordLifecycleDateFactRequestDto {
   @ApiProperty() nodeCode!: string;
   @ApiProperty() eventCode!: string;
@@ -10,6 +23,8 @@ export class RecordLifecycleDateFactRequestDto {
   @ApiProperty() rawValue!: string;
   @ApiProperty({ example: "+08:00" }) sourceUtcOffset!: string;
   @ApiProperty() authoritySystem!: string;
+  @ApiPropertyOptional({ type: LifecycleLocationDto })
+  location?: LifecycleLocationDto;
   @ApiProperty({ type: [String] }) evidenceRefs!: string[];
   @ApiProperty() reasonCode!: string;
   @ApiProperty() expectedVersion!: number;
@@ -43,6 +58,8 @@ export class LifecycleDateFactItemDto {
   @ApiProperty() confidenceState!: string;
   @ApiProperty() validity!: string;
   @ApiProperty({ nullable: true }) authorityPolicyRef!: string | null;
+  @ApiPropertyOptional({ type: LifecycleLocationDto, nullable: true })
+  location!: LifecycleLocationDto | null;
   @ApiProperty({ type: [String] }) evidenceRefs!: string[];
   @ApiProperty() applicationState!: string;
   @ApiProperty({ nullable: true }) applicationReasonCode!: string | null;

@@ -34,6 +34,7 @@ export class AssertLifecycleStateEvidenceService implements AssertLifecycleState
       domainFactId: fact.id,
       nodeCode: fact.nodeCode,
       authorityPolicyRef: decision.authorityPolicyRef,
+      location: fact.location,
     };
   }
 }

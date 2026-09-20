@@ -48,6 +48,7 @@ function fact(
     receivedAt: new Date("2026-09-18T00:00:01Z"),
     recordedAt: new Date("2026-09-18T00:00:02Z"),
     ...overrides,
+    location: overrides.location ?? null,
   };
 }
 
