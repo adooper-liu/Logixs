@@ -1,7 +1,9 @@
 ---
 status: coding # design | coding | review | fix | blocked | done（机器可校验）
-branch: feat/lifecycle-stuffing-identity-guard
+branch: feat/lifecycle-arrival-location-segment-guard
 verification:
+  - "2026-09-20 地点航段专项：定向测试 8 个文件/72 项、生命周期模块 66 个文件/326 项通过；真实 PostgreSQL 旧库升级回滚与空库完整迁移链通过，断言日期事实/规范事件地点字段、约束、索引与真实复制。"
+  - "2026-09-20 地点航段完整 pnpm validate：通过；仓库政策、契约校验/漂移、Prisma 生成、lint、格式、类型、全量测试（API 130 文件/616 项、Web 59 文件/189 项）、Playwright E2E（50 通过/7 条件跳过）与生产构建全部完成。"
   - "pnpm db:verify:lifecycle-date-facts：通过；验证旧库连续应用日期事实、来源权威/租约和逐目标节点应用迁移后事务回滚，以及临时空库完整迁移链；断言策略约束、租约字段、节点应用约束和索引。"
   - "pnpm validate：通过；包含仓库策略、契约漂移、格式、lint、类型、API/Web 全量测试、Playwright E2E 与全仓构建。"
   - "API 测试：123 个测试文件、573 项测试通过。"
@@ -86,11 +88,12 @@ verification:
 - `ApplyLifecycleEvent` 已补齐节点前序和逐目标应用守卫：规范事件只接收一次，按 `(eventId,targetNodeInstanceId)` 记录 `pending_application / applied / rejected`；required 或适用的 optional 前序未完成时不得越站，`optional_not_applicable` 可跳过，前序时间晚于后序事件时明确冲突。多目标事件可在前序满足后用原幂等键继续应用，已完成目标不覆盖密封时间。
 - `ApplyLifecycleEvent` 现在必须按 `domainFactId` 回读持久化事实；只有 `actual + verified + confirmed + effective + pending/applied` 且事实中的租户、货柜、事件、发生时间、证据和服务端采用策略全部一致才可继续。新规范事件强制持久化事实、节点、时间种类和策略上下文，并由数据库外键保证事实存在。
 - 工单完成只记录工作结果，不再把装箱、出运或离港工单完成冒充 `stuffed/loaded/departed`；旧客户端操作缺少专业事实时落拒绝审计，旧 Inbox 直推进入业务拒绝，日期事实 Inbox 不受影响。
-- Outbox 的载荷完整性哈希已包含 `domainFactId/nodeCode/timeKind/authorityPolicyRef`，防止事件发布时丢失服务端实际采用的事实与权威策略。
-- 云当网供应商接入已贯通“原始载荷 → 唯一货柜解析 → 幂等 Evidence → 统一日期事实”：未知码或对象未唯一解析时不生成下游事实；Evidence 与日期事实分开保存 provider 和未解析权威主体，初始核验状态确保供应商事件只进入 `review_required`。重复 Inbox 会复用原记录继续未完成后处理，同键异内容明确冲突。下一步仍需补齐完整节点专项守卫（地点、航段、主体、阻断等）；当前通用顺序守卫已成立，但不能把它等同于全部 14 节点专项业务守卫，因此本任务保持 `coding`。
+- Outbox 的载荷完整性哈希已包含 `domainFactId/nodeCode/timeKind/authorityPolicyRef/location`，防止事件发布时丢失服务端实际采用的事实、权威策略与地点航段上下文。
+- 云当网供应商接入已贯通“原始载荷 → 唯一货柜解析 → 幂等 Evidence → 统一日期事实”：未知码或对象未唯一解析时不生成下游事实；Evidence 与日期事实分开保存 provider 和未解析权威主体，初始核验状态确保供应商事件只进入 `review_required`。重复 Inbox 会复用原记录继续未完成后处理，同键异内容明确冲突。当前仍需补齐完整节点专项守卫（路线匹配、主体等）；通用顺序、阻断、装箱身份及到港上下文守卫已成立，但不能把它等同于全部 14 节点专项业务守卫，因此本任务保持 `coding`。
 - 阻断守卫先封住两条过站路径：领域决策遇到 `blocked` 目标节点时保留 `pending_application`，Repository 在原子应用前再次发现并发阻断时返回 `LIFECYCLE_NODE_BLOCKED`，日期事实不会丢失且可后续重放。
 - `BlockNode/ResolveNodeBlock` 已按正式契约落地：阻断与解除追加保存，节点 `blocked` 仅是未解除阻断的投影；命令按 `blockId` 精确解除并使用流程版本防并发，最后一个阻断解除后自动重放待应用日期事实。当前来源事实只接受已核验、已确认、有效、当前版本且具备来源权威策略的 `actual LifecycleDateFact`，要求事件角色为 `exception`，且 `blockType` 必须等于来源事实的规范 `eventCode`；其他领域后续必须通过正式事实 Port 扩展，禁止把任意 UUID、普通证据或客户端自由文本当作阻断类型和事实。
 - 装箱节点专项守卫已落地：`stuffed` 事实仍先落账，只有箱号已经迟绑定时才允许完成 `container_stuffing`；未绑定时保留 `pending_application`，并按真实原因区分前序未完成、节点阻断和货柜身份待绑定，禁止统一误记为前序未完成。
+- 地点/航段上下文第一刀已落地：公共日期事实命令、事实表、规范事件和 Outbox 完整性哈希统一携带结构化 `location`；`arrived/transit_arrived` 缺少可识别港口或 `segmentId` 时保留 `pending_application`。本刀只证明上下文齐全，不宣称已与目的港路线匹配；后者等待权威路线/航段模型。
 
 ## 进度 log
 
@@ -110,3 +113,4 @@ verification:
 | 2026-09-20 | coding | Codex | —      | 封堵 blocked 节点直接及并发过站路径                  |
 | 2026-09-20 | coding | Codex | —      | 完成追加式节点阻断、精确解除与 pending 自动重放      |
 | 2026-09-20 | coding | Codex | —      | 完成装箱货柜身份专项守卫与 pending 原因精确留痕      |
+| 2026-09-20 | coding | Codex | —      | 贯通地点航段事实并封住缺上下文的到港过站             |

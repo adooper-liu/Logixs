@@ -15,6 +15,7 @@ const BASE = {
   nodeCode: "container_stuffing" as const,
   timeKind: "actual" as const,
   authorityPolicyRef: "warehouse-stuffing:1",
+  location: null,
   occurredAt: new Date("2026-09-12T10:00:00.000Z"),
   evidenceRefs: ["22222222-2222-4222-8222-222222222222"],
   idempotencyKey: "key-1",
@@ -63,6 +64,17 @@ describe("buildLifecycleOutboxPending", () => {
       buildLifecycleOutboxPending({
         ...BASE,
         authorityPolicyRef: "warehouse-stuffing:2",
+      }).payloadHash,
+    ).not.toBe(original);
+    expect(
+      buildLifecycleOutboxPending({
+        ...BASE,
+        location: {
+          locationType: "port",
+          unlocode: "USLAX",
+          segmentId: "55555555-5555-4555-8555-555555555555",
+          timezone: "America/Los_Angeles",
+        },
       }).payloadHash,
     ).not.toBe(original);
   });

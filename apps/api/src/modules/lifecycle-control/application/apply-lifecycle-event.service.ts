@@ -149,7 +149,10 @@ export class ApplyLifecycleEventService {
     const existing = await this.repository.findEventByIdempotencyKey(
       input.idempotencyKey,
     );
-    if (existing && !sameEvent(existing, input, evidenceRefs)) {
+    if (
+      existing &&
+      !sameEvent(existing, input, evidenceRefs, stateEvidence.location)
+    ) {
       throw new HttpException(
         "LIFECYCLE_IDEMPOTENCY_CONFLICT: 同键异载荷",
         HttpStatus.CONFLICT,
@@ -174,6 +177,7 @@ export class ApplyLifecycleEventService {
           nodeCode: stateEvidence.nodeCode,
           timeKind: "actual",
           authorityPolicyRef: stateEvidence.authorityPolicyRef,
+          location: stateEvidence.location,
           occurredAt: input.occurredAt,
           evidenceRefs,
           idempotencyKey: input.idempotencyKey,
@@ -244,6 +248,7 @@ export class ApplyLifecycleEventService {
         targetNodeCode,
         eventCode: input.eventCode,
         containerNumber: container.containerNumber,
+        location: stateEvidence.location,
       });
       const guardResults = [
         ...decision.guardResults,
@@ -402,18 +407,36 @@ function sameEvent(
     domainFactId: string | null;
     occurredAt: Date;
     evidenceRefs: string[];
+    location: Awaited<
+      ReturnType<AssertLifecycleStateEvidencePort["execute"]>
+    >["location"];
   },
   input: ApplyLifecycleEventInput,
   evidenceRefs: string[],
+  location: Awaited<
+    ReturnType<AssertLifecycleStateEvidencePort["execute"]>
+  >["location"],
 ): boolean {
   return (
     existing.containerId === input.containerId &&
     existing.eventCode === input.eventCode &&
     existing.domainFactId === input.domainFactId &&
     existing.occurredAt.getTime() === input.occurredAt.getTime() &&
+    sameLocation(existing.location, location) &&
     [...existing.evidenceRefs].sort().join("\u0000") ===
       [...evidenceRefs].sort().join("\u0000")
   );
+}
+
+function sameLocation(
+  left: Awaited<
+    ReturnType<AssertLifecycleStateEvidencePort["execute"]>
+  >["location"],
+  right: Awaited<
+    ReturnType<AssertLifecycleStateEvidencePort["execute"]>
+  >["location"],
+): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function farthestNode(nodes: LifecycleNodeCode[]): LifecycleNodeCode | null {

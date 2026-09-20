@@ -151,6 +151,31 @@ describe("RecordLifecycleDateFactService", () => {
     expect(applyLifecycleEvent.execute).not.toHaveBeenCalled();
   });
 
+  it("结构化地点与航段随日期事实一起规范化并持久化", async () => {
+    const { service, repository } = await buildService();
+    const location = {
+      locationType: "port" as const,
+      unlocode: "USLAX",
+      segmentId: "55555555-5555-4555-8555-555555555555",
+      portCallId: " call-1 ",
+      timezone: " America/Los_Angeles ",
+    };
+
+    await service.execute({ ...baseInput(), location });
+
+    expect(repository.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: {
+          locationType: "port",
+          unlocode: "USLAX",
+          segmentId: "55555555-5555-4555-8555-555555555555",
+          portCallId: "call-1",
+          timezone: "America/Los_Angeles",
+        },
+      }),
+    );
+  });
+
   it.each([
     ["cargo_ready", "cargo_ready", "planned"],
     ["stuffed", "container_stuffing", "estimated"],
@@ -305,5 +330,11 @@ describe("RecordLifecycleDateFactService", () => {
     await expect(
       service.execute({ ...baseInput(), reasonCode: undefined }),
     ).rejects.toThrow("人工录入缺少操作者、原因或版本");
+    await expect(
+      service.execute({
+        ...baseInput(),
+        location: { locationType: "port", timezone: "" },
+      }),
+    ).rejects.toThrow("location 缺少类型或时区");
   });
 });

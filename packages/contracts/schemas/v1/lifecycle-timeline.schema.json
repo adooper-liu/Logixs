@@ -86,6 +86,9 @@
           "maxLength": 200,
           "description": "上游可携带声明引用用于审计，但不得授予权威；运行时只保存服务端唯一策略裁决返回的 policyId:version。"
         },
+        "location": {
+          "$ref": "canonical-event-envelope.schema.json#/properties/location"
+        },
         "evidenceRefs": {
           "type": "array",
           "uniqueItems": true,

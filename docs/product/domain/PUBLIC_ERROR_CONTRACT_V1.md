@@ -120,6 +120,7 @@ rejectedValueSummary?: redacted string
 | `LIFECYCLE_EVENT_NOT_STATE_EVIDENCE`         |  422 | precondition |
 | `LIFECYCLE_EVENT_PENDING_PREDECESSOR`        |  422 | precondition |
 | `LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY` |  422 | precondition |
+| `LIFECYCLE_EVENT_PENDING_LOCATION_CONTEXT`   |  422 | precondition |
 | `LIFECYCLE_SOURCE_NOT_AUTHORIZED`            |  422 | precondition |
 | `LIFECYCLE_EVIDENCE_REQUIRED`                |  422 | precondition |
 | `LIFECYCLE_GUARD_NOT_SATISFIED`              |  422 | precondition |

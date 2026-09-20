@@ -5,6 +5,7 @@ import type {
   NodeApplicability,
 } from "@logix/contracts";
 import type { NodeEventApplicationState } from "./node-event-application";
+import type { LifecycleLocationContext } from "./lifecycle-date-fact";
 
 // 生命周期持久化端口（Port/Adapter）。
 export const LIFECYCLE_REPOSITORY = Symbol("LifecycleRepository");
@@ -17,6 +18,7 @@ export interface CanonicalEventRecord {
   nodeCode: LifecycleNodeCode | null;
   timeKind: "actual" | null;
   authorityPolicyRef: string | null;
+  location: LifecycleLocationContext | null;
   occurredAt: Date;
   evidenceRefs: string[];
   idempotencyKey: string;
