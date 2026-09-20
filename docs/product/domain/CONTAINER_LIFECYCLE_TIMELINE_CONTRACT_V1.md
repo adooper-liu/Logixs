@@ -285,7 +285,7 @@ traceId
 
 ### 5.6 当前运行时实施边界
 
-规范事件目录已为所有节点完成资格事件开放 `planned | estimated | actual`，统一日期事实用例按目录拒绝未知组合，并保证 planned/estimated 不申请过站。只有服务端回读到 `actual + verified + confirmed + effective`、命中已采用来源策略且对象、事件、时间和证据完全一致的日期事实，内部生命周期入口才接受过站申请；规范事件和 Outbox 完整性哈希必须保留 `domainFactId/nodeCode/timeKind/authorityPolicyRef/location`。日期事实与规范事件已分列保存 `locationType/unlocode/locationId/segmentId/portCallId/timezone`；`arrived/transit_arrived` 缺少可识别港口或航段时只保留 `pending_application`，不得过站。当前尚未建立权威路线/航段主模型，因此“与目的港及当前航段相等”的最终匹配守卫仍由 task brief 跟踪，不能把“字段存在”冒充“路线匹配”。工单完成和旧客户端/Inbox 直推事件均不得替代该事实链。开放时间种类不表示各入口、查询投影和界面已经采集全部日期；具体接入进度仍由 task brief 跟踪，禁止绕过统一用例直接写事实表。
+规范事件目录已为所有节点完成资格事件开放 `planned | estimated | actual`，统一日期事实用例按目录拒绝未知组合，并保证 planned/estimated 不申请过站。只有服务端回读到 `actual + verified + confirmed + effective`、命中已采用来源策略且对象、事件、时间和证据完全一致的日期事实，内部生命周期入口才接受过站申请；规范事件和 Outbox 完整性哈希必须保留 `domainFactId/nodeCode/timeKind/authorityPolicyRef/location`。日期事实与规范事件分列保存 `locationType/unlocode/locationId/segmentId/portCallId/timezone`；`arrived/transit_arrived` 缺少可识别港口或航段时只保留 `pending_application`，不得过站。运行时按货柜当前有效 `OceanRoutePlan` 读取指定 `OceanRouteSegment`：`arrived` 必须命中最终航段目的港，`transit_arrived` 必须命中非最终航段目的港；路线缺失或不匹配时保留事实并等待路线补录或纠正，禁止把“字段存在”冒充“路线匹配”。工单完成和旧客户端/Inbox 直推事件均不得替代该事实链。开放时间种类不表示各入口、查询投影和界面已经采集全部日期；具体接入进度仍由 task brief 跟踪，禁止绕过统一用例直接写事实表。
 
 ## 6. 幂等、重复、乱序与冲突
 

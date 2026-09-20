@@ -28,6 +28,7 @@ const targetMigrationPaths = [
   "database/migrations/20260919100000_add_canonical_event_fact_context/migration.sql",
   "database/migrations/20260920120000_add_lifecycle_node_blocks/migration.sql",
   "database/migrations/20260920150000_add_lifecycle_location_context/migration.sql",
+  "database/migrations/20260920170000_add_ocean_route_plans/migration.sql",
 ];
 const migrationSql = targetMigrationPaths.map((path) =>
   readFileSync(path, "utf8"),
@@ -71,6 +72,7 @@ async function verifyUpgradeRollback(url: string): Promise<void> {
           }
           await assertLifecycleDateFactSchema(transaction);
           await assertNodeBlockPersistence(transaction);
+          await assertOceanRoutePersistence(transaction);
           await assertLifecycleLocationPersistence(transaction);
           throw rollback;
         });
@@ -207,6 +209,7 @@ async function verifyEmptyDatabaseMigration(url: string): Promise<void> {
     try {
       await assertLifecycleDateFactSchema(target);
       await assertNodeBlockPersistence(target);
+      await assertOceanRoutePersistence(target);
       await assertLifecycleLocationPersistence(target);
     } finally {
       await target.$disconnect();
@@ -470,6 +473,149 @@ async function assertLifecycleLocationPersistence(
   `;
   if (Number(rows[0]?.matchedCount ?? 0) !== 1) {
     throw new Error("Lifecycle location persistence verification failed");
+  }
+}
+
+async function assertOceanRoutePersistence(
+  prisma: Pick<PrismaClient, "$executeRawUnsafe" | "$queryRaw">,
+): Promise<void> {
+  const schema = await prisma.$queryRaw<
+    Array<{
+      routeTable: string | null;
+      segmentTable: string | null;
+      constraintCount: bigint;
+      indexCount: bigint;
+    }>
+  >`
+    SELECT
+      to_regclass('public.ocean_route_plan')::text AS "routeTable",
+      to_regclass('public.ocean_route_segment')::text AS "segmentTable",
+      COUNT(*) FILTER (
+        WHERE conname IN (
+          'ocean_route_plan_version_check',
+          'ocean_route_plan_status_check',
+          'ocean_route_plan_activation_check',
+          'ocean_route_plan_container_id_fkey',
+          'ocean_route_plan_supersedes_route_id_fkey',
+          'ocean_route_segment_sequence_check',
+          'ocean_route_segment_mode_check',
+          'ocean_route_segment_location_check',
+          'ocean_route_segment_route_plan_id_fkey'
+        )
+      ) AS "constraintCount",
+      (
+        SELECT COUNT(*)
+        FROM pg_indexes
+        WHERE schemaname = 'public'
+          AND indexname IN (
+            'ocean_route_plan_container_version_key',
+            'ocean_route_plan_supersedes_key',
+            'ocean_route_plan_one_active_key',
+            'ocean_route_plan_container_status_idx',
+            'ocean_route_segment_sequence_key',
+            'ocean_route_segment_one_final_key',
+            'ocean_route_segment_final_idx'
+          )
+      ) AS "indexCount"
+    FROM pg_constraint
+  `;
+  if (
+    schema[0]?.routeTable !== "ocean_route_plan" ||
+    schema[0]?.segmentTable !== "ocean_route_segment" ||
+    Number(schema[0]?.constraintCount ?? 0) !== 9 ||
+    Number(schema[0]?.indexCount ?? 0) !== 7
+  ) {
+    throw new Error("Ocean route migration verification failed");
+  }
+
+  await prisma.$executeRawUnsafe(`
+    INSERT INTO "ocean_route_plan" (
+      "id", "container_id", "version", "status", "activated_at"
+    ) VALUES (
+      '10000000-0000-4000-8000-000000000020',
+      '10000000-0000-4000-8000-000000000001', 1, 'active', CURRENT_TIMESTAMP
+    );
+
+    INSERT INTO "ocean_route_segment" (
+      "id", "route_plan_id", "sequence", "transport_mode",
+      "origin_unlocode", "origin_timezone", "destination_location_type",
+      "destination_unlocode", "destination_port_call_id",
+      "destination_timezone", "is_final"
+    ) VALUES (
+      '10000000-0000-4000-8000-000000000010',
+      '10000000-0000-4000-8000-000000000020', 1, 'vessel',
+      'CNNGB', 'Asia/Shanghai', 'port', 'USLAX', 'verify-port-call-1',
+      'America/Los_Angeles', true
+    );
+
+    DO $verify_one_active_route$
+    BEGIN
+      BEGIN
+        INSERT INTO "ocean_route_plan" (
+          "id", "container_id", "version", "status", "activated_at"
+        ) VALUES (
+          '10000000-0000-4000-8000-000000000021',
+          '10000000-0000-4000-8000-000000000001', 2, 'active', CURRENT_TIMESTAMP
+        );
+        RAISE EXCEPTION 'multiple active routes were accepted';
+      EXCEPTION WHEN unique_violation THEN
+        NULL;
+      END;
+    END
+    $verify_one_active_route$;
+
+    DO $verify_one_final_segment$
+    BEGIN
+      BEGIN
+        INSERT INTO "ocean_route_segment" (
+          "id", "route_plan_id", "sequence", "transport_mode",
+          "origin_unlocode", "origin_timezone", "destination_location_type",
+          "destination_unlocode", "destination_timezone", "is_final"
+        ) VALUES (
+          '10000000-0000-4000-8000-000000000022',
+          '10000000-0000-4000-8000-000000000020', 2, 'vessel',
+          'USLAX', 'America/Los_Angeles', 'port', 'USLGB',
+          'America/Los_Angeles', true
+        );
+        RAISE EXCEPTION 'multiple final segments were accepted';
+      EXCEPTION WHEN unique_violation THEN
+        NULL;
+      END;
+    END
+    $verify_one_final_segment$;
+
+    DO $verify_terminal_identity$
+    BEGIN
+      BEGIN
+        INSERT INTO "ocean_route_segment" (
+          "id", "route_plan_id", "sequence", "transport_mode",
+          "origin_unlocode", "origin_timezone", "destination_location_type",
+          "destination_unlocode", "destination_timezone", "is_final"
+        ) VALUES (
+          '10000000-0000-4000-8000-000000000023',
+          '10000000-0000-4000-8000-000000000020', 3, 'vessel',
+          'USLAX', 'America/Los_Angeles', 'terminal', 'USLGB',
+          'America/Los_Angeles', false
+        );
+        RAISE EXCEPTION 'terminal segment without identity was accepted';
+      EXCEPTION WHEN check_violation THEN
+        NULL;
+      END;
+    END
+    $verify_terminal_identity$;
+  `);
+  const rows = await prisma.$queryRaw<Array<{ matchedCount: bigint }>>`
+    SELECT COUNT(*) AS "matchedCount"
+    FROM "ocean_route_segment" segment
+    JOIN "ocean_route_plan" route ON route."id" = segment."route_plan_id"
+    WHERE route."container_id" = '10000000-0000-4000-8000-000000000001'
+      AND route."status" = 'active'
+      AND segment."id" = '10000000-0000-4000-8000-000000000010'
+      AND segment."destination_unlocode" = 'USLAX'
+      AND segment."is_final" = true
+  `;
+  if (Number(rows[0]?.matchedCount ?? 0) !== 1) {
+    throw new Error("Ocean route persistence verification failed");
   }
 }
 

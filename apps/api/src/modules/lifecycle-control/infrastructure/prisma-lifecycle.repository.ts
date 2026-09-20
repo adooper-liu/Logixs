@@ -8,6 +8,7 @@ import { PrismaService } from "../../../prisma/prisma.service";
 import { defaultApplicability } from "../domain/node-applicability";
 import { NODE_SEQUENCE } from "../domain/node-status";
 import type {
+  ActiveOceanRouteSegment,
   CanonicalEventListItem,
   CanonicalEventListQuery,
   CanonicalEventRecord,
@@ -212,6 +213,41 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       orderNumber: container.orderNumber,
       containerNumber: container.containerNumber,
       currentStatus: container.currentStatus,
+    };
+  }
+
+  async findActiveOceanRouteSegment(
+    containerId: string,
+    segmentId: string,
+  ): Promise<ActiveOceanRouteSegment | null> {
+    const segment = await this.prisma.oceanRouteSegment.findFirst({
+      where: {
+        id: segmentId,
+        routePlan: { containerId, status: "active" },
+      },
+      select: {
+        id: true,
+        sequence: true,
+        isFinal: true,
+        destinationLocationType: true,
+        destinationUnlocode: true,
+        destinationLocationId: true,
+        destinationPortCallId: true,
+        routePlan: { select: { id: true, version: true } },
+      },
+    });
+    if (!segment) return null;
+    return {
+      routePlanId: segment.routePlan.id,
+      routeVersion: segment.routePlan.version,
+      segmentId: segment.id,
+      sequence: segment.sequence,
+      isFinal: segment.isFinal,
+      destinationLocationType:
+        segment.destinationLocationType as ActiveOceanRouteSegment["destinationLocationType"],
+      destinationUnlocode: segment.destinationUnlocode,
+      destinationLocationId: segment.destinationLocationId,
+      destinationPortCallId: segment.destinationPortCallId,
     };
   }
 
@@ -449,6 +485,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     occurredAt: Date;
     evaluatedAt: Date;
     guardResults: string[];
+    routeSegmentGuard: ActiveOceanRouteSegment | null;
   }): Promise<{ applied: boolean; version: number }> {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.nodeEventApplication.findUnique({
@@ -481,6 +518,29 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       }
       if (target.state === "blocked") {
         throw new Error("LIFECYCLE_NODE_BLOCKED");
+      }
+      if (input.routeSegmentGuard) {
+        const route = input.routeSegmentGuard;
+        const currentSegment = await tx.oceanRouteSegment.findFirst({
+          where: {
+            id: route.segmentId,
+            sequence: route.sequence,
+            isFinal: route.isFinal,
+            destinationLocationType: route.destinationLocationType,
+            destinationUnlocode: route.destinationUnlocode,
+            destinationLocationId: route.destinationLocationId,
+            destinationPortCallId: route.destinationPortCallId,
+            routePlan: {
+              id: route.routePlanId,
+              version: route.routeVersion,
+              status: "active",
+            },
+          },
+          select: { id: true },
+        });
+        if (!currentSegment) {
+          throw new Error("LIFECYCLE_EVENT_ROUTE_MISMATCH");
+        }
       }
 
       const advanced = await tx.flowInstance.updateMany({

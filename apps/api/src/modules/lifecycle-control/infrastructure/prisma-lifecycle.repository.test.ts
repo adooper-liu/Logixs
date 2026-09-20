@@ -130,6 +130,57 @@ describe("PrismaLifecycleRepository.saveEvent", () => {
   });
 });
 
+describe("PrismaLifecycleRepository.findActiveOceanRouteSegment", () => {
+  it("只返回指定货柜当前 active 路线中的航段", async () => {
+    const prisma = {
+      oceanRouteSegment: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "segment-1",
+          sequence: 2,
+          isFinal: true,
+          destinationLocationType: "terminal",
+          destinationUnlocode: "USLAX",
+          destinationLocationId: "terminal-1",
+          destinationPortCallId: "call-1",
+          routePlan: { id: "route-1", version: 3 },
+        }),
+      },
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+
+    await expect(
+      repository.findActiveOceanRouteSegment("container-1", "segment-1"),
+    ).resolves.toEqual({
+      routePlanId: "route-1",
+      routeVersion: 3,
+      segmentId: "segment-1",
+      sequence: 2,
+      isFinal: true,
+      destinationLocationType: "terminal",
+      destinationUnlocode: "USLAX",
+      destinationLocationId: "terminal-1",
+      destinationPortCallId: "call-1",
+    });
+    expect(prisma.oceanRouteSegment.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "segment-1",
+        routePlan: { containerId: "container-1", status: "active" },
+      },
+      select: expect.any(Object),
+    });
+  });
+
+  it("航段不属于当前 active 路线时返回空", async () => {
+    const prisma = {
+      oceanRouteSegment: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+    await expect(
+      repository.findActiveOceanRouteSegment("container-1", "segment-1"),
+    ).resolves.toBeNull();
+  });
+});
+
 describe("PrismaLifecycleRepository.listFlowsWithNodes", () => {
   it("只读本租户已有流程，不 ensureFlow", async () => {
     const prisma = {
@@ -313,6 +364,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
       occurredAt,
       evaluatedAt: occurredAt,
       guardResults: ["PREDECESSOR_NODES_COMPLETED"],
+      routeSegmentGuard: null,
     });
 
     expect(result).toEqual({ applied: true, version: 4 });
@@ -369,6 +421,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
         occurredAt: new Date("2026-09-18T10:00:00Z"),
         evaluatedAt: new Date("2026-09-18T10:00:01Z"),
         guardResults: [],
+        routeSegmentGuard: null,
       }),
     ).rejects.toThrow("LIFECYCLE_VERSION_CONFLICT");
   });
@@ -404,8 +457,57 @@ describe("PrismaLifecycleRepository node event applications", () => {
         occurredAt: new Date("2026-09-18T10:00:00Z"),
         evaluatedAt: new Date("2026-09-18T10:00:01Z"),
         guardResults: [],
+        routeSegmentGuard: null,
       }),
     ).rejects.toThrow("LIFECYCLE_NODE_BLOCKED");
+    expect(tx.flowInstance.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("节点事务提交前路线已换版则拒绝使用旧匹配结果", async () => {
+    const tx = {
+      nodeEventApplication: { findUnique: vi.fn().mockResolvedValue(null) },
+      nodeInstance: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "node-ocean",
+          flowInstanceId: "flow-1",
+          nodeCode: "ocean_transit",
+          state: "active",
+        }),
+      },
+      oceanRouteSegment: { findFirst: vi.fn().mockResolvedValue(null) },
+      flowInstance: { updateMany: vi.fn() },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) =>
+        fn(tx),
+      ),
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+
+    await expect(
+      repository.applyEventToNode({
+        flowInstanceId: "flow-1",
+        expectedFlowVersion: 3,
+        eventId: "event-1",
+        targetNodeInstanceId: "node-ocean",
+        targetNodeCode: "ocean_transit",
+        nextNodeCode: "customs_clearance",
+        occurredAt: new Date("2026-09-18T10:00:00Z"),
+        evaluatedAt: new Date("2026-09-18T10:00:01Z"),
+        guardResults: ["ARRIVAL_ROUTE_ACTIVE"],
+        routeSegmentGuard: {
+          routePlanId: "route-1",
+          routeVersion: 1,
+          segmentId: "segment-1",
+          sequence: 1,
+          isFinal: true,
+          destinationLocationType: "port",
+          destinationUnlocode: "USLAX",
+          destinationLocationId: null,
+          destinationPortCallId: null,
+        },
+      }),
+    ).rejects.toThrow("LIFECYCLE_EVENT_ROUTE_MISMATCH");
     expect(tx.flowInstance.updateMany).not.toHaveBeenCalled();
   });
 });
