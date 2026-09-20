@@ -1,6 +1,6 @@
-# 领域上下文与聚合边界（CONTEXT_MAP · v1.1）
+# 领域上下文与聚合边界（CONTEXT_MAP · v1.2）
 
-> 状态：**已定 v1.1（限界上下文与备货单产品明细）** · 2026-09-16 · 负责人：刘志高。
+> 状态：**已定 v1.2（限界上下文、产品明细与装载分配）** · 2026-09-20 · 负责人：刘志高。
 > 一句话：把系统切成几块，说清每块管什么数据、和别块怎么传，谁也不能越界直连。
 > 依据：MODULE_DEPENDENCIES（模块→公共入口）、ENGINEERING §3（依赖方向）、GLOSSARY、VISION 产品边界（货柜收端+WMS 对接+控制塔）。
 
@@ -8,18 +8,18 @@
 
 ### A. 核心业务上下文
 
-| 上下文                  | 聚合根/核心对象                      | 业务所有权                                    |
-| ----------------------- | ------------------------------------ | --------------------------------------------- |
-| Shipment Registry       | ReplenishmentOrder、ContainerRecord  | 备货单及产品明细、一柜一档身份、订单/提单关联 |
-| Lifecycle Control       | FlowInstance、CanonicalEvent         | 14节点、流程状态机和实际事件推进              |
-| Work Execution          | NodeTask、WorkOrder、ClientOperation | 工序任务、工单、动作与聚合政策                |
-| Booking & Origin        | Booking/OriginOperation（后续切片）  | 订舱至起运前专业事实                          |
-| Ocean & Port Visibility | OceanLeg、PortCall                   | 开船、在途、到港和港口事实                    |
-| Customs Compliance      | CustomsCase                          | 申报、换单、缴税、查验与放行                  |
-| Inland Fulfillment      | InlandMove                           | 提柜、派送、卸柜、验箱与还箱                  |
-| Charges Settlement      | ChargeCase                           | 三类超期费用、修箱费、账单和对账              |
-| Document Records        | DocumentRecord                       | 单证、附件、EIR、证据版本与归档               |
-| Performance Improvement | ImprovementCase                      | KPI、SLA、绩效、复盘和改善                    |
+| 上下文                  | 聚合根/核心对象                      | 业务所有权                                     |
+| ----------------------- | ------------------------------------ | ---------------------------------------------- |
+| Shipment Registry       | ReplenishmentOrder、ContainerRecord  | 备货单及产品明细、一柜一档身份、版本化装载分配 |
+| Lifecycle Control       | FlowInstance、CanonicalEvent         | 14节点、流程状态机和实际事件推进               |
+| Work Execution          | NodeTask、WorkOrder、ClientOperation | 工序任务、工单、动作与聚合政策                 |
+| Booking & Origin        | Booking/OriginOperation（后续切片）  | 订舱至起运前专业事实                           |
+| Ocean & Port Visibility | OceanLeg、PortCall                   | 开船、在途、到港和港口事实                     |
+| Customs Compliance      | CustomsCase                          | 申报、换单、缴税、查验与放行                   |
+| Inland Fulfillment      | InlandMove                           | 提柜、派送、卸柜、验箱与还箱                   |
+| Charges Settlement      | ChargeCase                           | 三类超期费用、修箱费、账单和对账               |
+| Document Records        | DocumentRecord                       | 单证、附件、EIR、证据版本与归档                |
+| Performance Improvement | ImprovementCase                      | KPI、SLA、绩效、复盘和改善                     |
 
 ### A1. 支撑上下文
 
@@ -43,7 +43,8 @@ ContainerRecord -> FlowInstance -> NodeTask -> WorkOrder -> ClientOperation
 | ------------ | ------------------------------------------------------------------------------- | ------------------------ |
 | 备货单       | ReplenishmentOrder · orderNumber(租户内唯一锚)                                  | 先于箱号存在             |
 | 产品明细     | ReplenishmentOrderLine · productNumber · shippedQuantity + unit · 合同/价格快照 | 一备货单多行；来源行留痕 |
-| 货柜身份     | ContainerRecord · containerNumber(迟绑定,非全局唯一)                            | 目标关系一单一柜         |
+| 货柜身份     | ContainerRecord · containerNumber(迟绑定,非全局唯一)                            | 一柜一档；稳定 id 为主锚 |
+| 实际装载     | ContainerCargoAllocationSet / ContainerCargoAllocation                          | 一柜多单；明细可拆多柜   |
 | 航次上下文   | 船司/船名航次/POL·POD/单证/时间(planned·estimated·actual)                       | ← sea_freight            |
 | 港口作业序列 | origin/transit/destination × 时间/清关/免费期                                   | ← port_operations        |
 | 运营后段     | 拖卡/卸柜/卸空/还箱（记录挂接）                                                 | ← 三表                   |
@@ -69,8 +70,8 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 
 | 决策         | 值                                                                                          |
 | ------------ | ------------------------------------------------------------------------------------------- |
-| 聚合形态     | ReplenishmentOrder=备货单头+N 产品明细；ContainerRecord=一单一柜的出运后事实                |
-| 主锚         | orderNumber（备货单号）                                                                     |
+| 聚合形态     | ReplenishmentOrder=备货单头+N 产品明细；ContainerRecord=一柜一档；装载分配表达二者 N:M      |
+| 主锚         | orderNumber 是备货单身份/旧导入分组锚；containerId 是货柜稳定身份                           |
 | 导入写       | 只经 Shipment 端口，Import 不持其仓储                                                       |
 | 当前实施边界 | 备货单→出运的转换结果（已出运货柜列表）起，至还空箱；列表是所有后续节点的数据起点           |
 | 接入演进     | 当前 Import 文件适配器；后续 Integration 直连适配器；二者进入同一 Shipment 应用写入边界     |
@@ -83,13 +84,14 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 - ContainerRecord 管"货柜业务事实"；ImportBatch 管"导入这批活"，两者解耦。
 - 同一备货单号在源文件中可因多个产品货号出现多行；Import 按备货单聚合表头，并逐行保留产品明细。
 - 当前 Import 与后续 Integration 只是不同来源适配器；二者都不能拥有或直接修改 Shipment 内的货柜事实。
-- 相同箱号跨不同备货单＝不同记录（复用），非重复。
+- 相同物理箱号且属于同一运输实例时只建一个 ContainerRecord；多个备货单通过装载分配关联，不按备货单复制货柜记录。
 
 ## ③ 规则与约束/边界
 
 - 依赖方向：UI→Application→Domain←Infrastructure；Domain 不碰 ORM/Web。
 - 业务 API 是认证/校验/最终写唯一入口；AI Service/Worker 不直写生产表。
-- 主备货单号不作键；一备货单≤一柜；迟绑定可空。
+- 主备货单号不作键；旧 `orderNumber/replenishmentOrderId` 只作兼容锚，不限制实际装载基数。
+- 装载分配必须版本化、带来源证据和幂等键；一柜可装多备货单，一条明细可按数量拆入多柜，跨柜合计不得超出出运数量。
 - 产品明细属于备货单；不得把同备货单多产品行判为货柜重复，也不得把产品数量等同于整柜包装数。
 - 产品明细保存 Product/SKU 稳定 ID 和本次交易快照，但不兼任 Product/SKU 主档；稳定身份由 Master Data 公共 Port 提供。
 - 当前范围外的计划/采购/备货/订舱前端只保留扩展边界，不在本切片提前确定聚合或表结构。
@@ -110,12 +112,12 @@ AI 产物(建议)→ 审核结果(人)→ 执行结果(行+orderNumber)→ 业�
 
 ## ⑦ 落库/实现映射
 
-| 清单        | 落库/包                                                           |
-| ----------- | ----------------------------------------------------------------- |
-| 上下文/聚合 | packages/{domain,contracts,...} 模块划分(P3)                      |
-| 端口        | Application 用例/契约(public entry)                               |
-| 备货/货柜   | replenishment_order + replenishment_order_line + container_record |
-| 追踪键      | orderNumber→row→review→ai_artifact→audit                          |
+| 清单        | 落库/包                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------- |
+| 上下文/聚合 | packages/{domain,contracts,...} 模块划分(P3)                                                                  |
+| 端口        | Application 用例/契约(public entry)                                                                           |
+| 备货/货柜   | replenishment_order + replenishment_order_line + container_record + container_cargo_allocation_set/allocation |
+| 追踪键      | orderNumber→row→review→ai_artifact→audit                                                                      |
 
 ## ⑧ 待评审/关联
 

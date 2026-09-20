@@ -39,6 +39,14 @@ function buildPrisma(
   return {
     transaction,
     prisma: {
+      productSku: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "11111111-1111-4111-8111-111111111111",
+          tenantId: "tenant-a",
+          productNumber: "SKU-1",
+          version: 1,
+        }),
+      },
       $transaction: vi.fn(
         async (callback: (tx: typeof transaction) => Promise<unknown>) =>
           callback(transaction),
@@ -58,6 +66,33 @@ async function buildRepository(prisma: object) {
 }
 
 describe("PrismaProductSkuRepository", () => {
+  it("按租户复合键读取并显式映射 SKU", async () => {
+    const { prisma } = buildPrisma();
+    const repository = await buildRepository(prisma);
+
+    await expect(
+      repository.findById({
+        tenantId: "tenant-a",
+        productSkuId: "11111111-1111-4111-8111-111111111111",
+      }),
+    ).resolves.toEqual({
+      productSkuId: "11111111-1111-4111-8111-111111111111",
+      tenantId: "tenant-a",
+      productNumber: "SKU-1",
+      version: 1,
+    });
+    expect(prisma.productSku.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id_tenantId: {
+            id: "11111111-1111-4111-8111-111111111111",
+            tenantId: "tenant-a",
+          },
+        },
+      }),
+    );
+  });
+
   it("在一个事务中解析 SKU 并登记幂等结果", async () => {
     const { prisma, transaction } = buildPrisma();
     const repository = await buildRepository(prisma);

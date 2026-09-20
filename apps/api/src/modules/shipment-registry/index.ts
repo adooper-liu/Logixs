@@ -3,6 +3,8 @@ export * from "./shipment-registry.module";
 export type { ContainerSummary } from "./domain/container-summary";
 export { ApplyContainerRecordService } from "./application/apply-container-record.service";
 export { ApplyReplenishmentOrderImportService } from "./application/apply-replenishment-order-import.service";
+export { BindReplenishmentLineProductSkuService } from "./application/bind-replenishment-line-product-sku.service";
+export { ReplaceContainerCargoAllocationsService } from "./application/replace-container-cargo-allocations.service";
 export { AssertContainerTenantService } from "./application/assert-container-tenant.service";
 export { ListContainerTaskFactsService } from "./application/list-container-task-facts.service";
 export {
@@ -34,3 +36,16 @@ export type {
   ReplenishmentOrderImportLine,
   ShipmentTimeFactImport,
 } from "./domain/apply-replenishment-order-import";
+export {
+  BIND_REPLENISHMENT_LINE_PRODUCT_SKU,
+  type BindReplenishmentLineProductSkuCommand,
+  type BindReplenishmentLineProductSkuPort,
+  type BoundReplenishmentLineProductSku,
+} from "./bind-replenishment-line-product-sku.port";
+export {
+  REPLACE_CONTAINER_CARGO_ALLOCATIONS,
+  type ContainerCargoAllocationInput,
+  type ContainerCargoAllocationResult,
+  type ReplaceContainerCargoAllocationsCommand,
+  type ReplaceContainerCargoAllocationsPort,
+} from "./replace-container-cargo-allocations.port";

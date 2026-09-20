@@ -6,5 +6,5 @@ export const moduleManifest = defineModuleManifest({
   version: "1.0.0",
   depends: [],
   permissions: [],
-  publicPorts: ["REGISTER_PRODUCT_SKU"],
+  publicPorts: ["GET_PRODUCT_SKU", "REGISTER_PRODUCT_SKU"],
 });

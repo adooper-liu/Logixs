@@ -44,6 +44,7 @@
     "db:verify:lifecycle-date-facts": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-lifecycle-date-facts.mts",
     "db:verify:pipeline-tasks": "tsx scripts/verify-pipeline-task-pool.mts",
     "db:verify:product-sku-master": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-product-sku-master.mts",
+    "db:verify:shipment-cargo-allocation": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-shipment-cargo-allocation.mts",
     "db:seed": "tsx database/seed.ts",
     "db:studio": "prisma studio --port 5555 --browser none",
     "repo:check": "node scripts/check-repository.mjs",

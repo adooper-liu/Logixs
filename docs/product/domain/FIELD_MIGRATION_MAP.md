@@ -2,14 +2,14 @@
 
 > 状态：**候选（初稿）** · 2026-09-04 · 负责人：刘志高。
 > 目的：把现网 6 流程表 + dict 框架 + wms 字段 + 费用标准 逐字段映射到 ContainerRecord/标准字段，
-> 落实：币种(定点)、时间口径(R0：S/E/A×TD/TA)、迟绑定、source、一备货单→一柜、主备货单号不作键。
-> 衔接：[DATA_CLEANUP_ORDER_CONTAINER](./DATA_CLEANUP_ORDER_CONTAINER.md)（先清洗后映射）、[TARGET_FIELD_CATALOG](./TARGET_FIELD_CATALOG.md)（标准字段）、AS-IS [快照](./AS_IS_LEGACY_BASELINE.md)。
+> 落实：币种(定点)、时间口径(R0：S/E/A×TD/TA)、迟绑定、source、版本化装载分配、主备货单号不作键。
+> 衔接：[SHIPMENT_FLOW_OVERVIEW](./SHIPMENT_FLOW_OVERVIEW.md)（当前箱货关系）、[TARGET_FIELD_CATALOG](./TARGET_FIELD_CATALOG.md)（标准字段）、AS-IS [快照](./AS_IS_LEGACY_BASELINE.md)。
 > 表列约定：`类型/时间`（R0 口径）、`币种`、`source/迟绑定`、`处置`（映射/派生/展示保留/弃用/待确认）。
 > 🗣️ 白话：这就是"老字段搬家清单"——老系统每列搬到新库哪里、是什么类型/币种、谁给的、能不能后补(迟绑定)，一列一行写清；搬不动/说不清的先标"待确认"，不许瞎编。
 
 ## 1. 映射规则（前置约定）
 
-1. **备货单→柜**：`biz_replenishment_orders.order_number` → ContainerRecord 主锚；`main_order_number` **不映射为键/关系**（仅票级展示，标记 legacy 弃用）。
+1. **备货单与柜**：`biz_replenishment_orders.order_number` → ReplenishmentOrder 身份及 ContainerRecord 兼容快照；实际内容必须映射到 `ContainerCargoAllocation`，不得从表头字段推定一单一柜；`main_order_number` **不映射为键/关系**。
 2. **时间**：凡 日期/时刻 按 R0 分 `计划(S)/预计(E)/实际(A) × 抵(TA)/离(TD)`，DATE 无时刻的按业务语义收口为 `date` 类型并显式标注（修 A8）。
 3. **币种**：金额一律 定点 + 币种；现网缺失币种的（如备货单金额）先标 `currency: 待确认`（默认候选 USD，待业务复核，A6）。
 4. **迟绑定**：箱号、实际出运日期等装箱后才有 → 标记 late，可空到外部交换。
@@ -22,7 +22,7 @@
 
 | 现网列                                | 落点                             | 类型/时间 | 币种                     | source/迟绑定 | 处置                    |
 | ------------------------------------- | -------------------------------- | --------- | ------------------------ | ------------- | ----------------------- |
-| order_number                          | 备货单号（主锚）                 | string    | —                        | 计划/导入     | 映射                    |
+| order_number                          | 备货单号（身份/导入分组锚）      | string    | —                        | 计划/导入     | 映射                    |
 | main_order_number                     | —（不映射为键）                  | string    | —                        | —             | **弃用/仅票级展示**     |
 | customer_code/name、sell_to_country   | 备货单客户/国别                  | string    | —                        | PlanSystem    | 映射（G5）              |
 | expected_ship_date / actual_ship_date | 预计出运(S) / 实际出运(A·迟绑定) | date      | —                        | 计划/导入     | 映射并拆计划/实际       |
@@ -36,7 +36,7 @@
 | 现网列                                                              | 落点                         | 类型/时间      | source/迟绑定 | 处置                                  |
 | ------------------------------------------------------------------- | ---------------------------- | -------------- | ------------- | ------------------------------------- |
 | container_number                                                    | containerNumber              | string         | 迟绑定        | 映射                                  |
-| order_number                                                        | orderNumber(主锚引用)        | string         | 导入          | 映射（须与备货单一致）                |
+| order_number                                                        | orderNumber(兼容快照)        | string         | 导入          | 映射；不得替代装载分配                |
 | container_type_code                                                 | containerTypeCode            | dict           | —             | 映射（标准码+别名，W?）               |
 | cargo/gross/net/cbm/packages/seal                                   | 对应柜况字段                 | decimal/string | 装箱后        | 映射                                  |
 | inspection*required/is_unboxing/requires*\*                         | 柜况布尔（或转标记候选）     | bool           | —             | 映射；装配/打托考虑转标记             |

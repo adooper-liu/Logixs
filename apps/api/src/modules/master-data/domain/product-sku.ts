@@ -10,7 +10,22 @@ export interface NormalizedRegisterProductSkuCommand extends RegisterProductSkuC
   payloadHash: string;
 }
 
+export interface GetProductSkuQuery {
+  tenantId: string;
+  productSkuId: string;
+}
+
 export class ProductSkuCommandError extends Error {}
+
+export function normalizeGetProductSkuQuery(
+  input: GetProductSkuQuery,
+): GetProductSkuQuery {
+  const tenantId = validatedText(input.tenantId, "tenantId", 128);
+  if (!UUID_PATTERN.test(input.productSkuId)) {
+    throw new ProductSkuCommandError("VALIDATION_FORMAT: productSkuId");
+  }
+  return { tenantId, productSkuId: input.productSkuId.toLowerCase() };
+}
 
 export function normalizeRegisterProductSkuCommand(
   input: RegisterProductSkuCommand,
@@ -66,3 +81,6 @@ function containsControlCharacter(value: string): boolean {
     return codePoint !== undefined && (codePoint <= 31 || codePoint === 127);
   });
 }
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

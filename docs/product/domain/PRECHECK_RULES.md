@@ -13,7 +13,7 @@
 | DICT_MASTER        | 主数据未命中进待处理                    | 字典      | conflict         | 港口/船司/仓库/标记等                                                      | 值      | O·R  |
 | FMT_TIME           | 时间格式/时区                           | 格式      | blocker          | 按 R0；无时刻须标注                                                        | 列      | O    |
 | CUR_AMOUNT         | 金额带币种                              | 格式      | blocker          | 缺币种或精度错拒绝                                                         | 列      | O    |
-| ONE_ORDER_ONE      | 一备货单≤一柜                           | 重复·幂等 | blocker          | 同 orderNumber 指向多个不同货柜才异常                                      | 聚合/库 | O    |
+| CARGO_ALLOCATION   | 装载分配数量与单位一致                  | 一致性    | blocker          | 行须已绑定 SKU；数量为正；跨柜当前分配合计不得超过出运数量，单位必须一致   | 写端口  | O    |
 | MAIN_ORDER_NO_KEY  | 主备货单号不作关系                      | 一致性    | conflict         | 出现跨票关系须清洗                                                         | 库      | O    |
 | SEALED_GUARD       | 密封区不可改                            | 卫式      | blocker          | R3                                                                         | 写端口  | O    |
 | STATE_VALID        | 转换合法                                | 卫式      | blocker          | R2/状态机                                                                  | 写端口  | O    |

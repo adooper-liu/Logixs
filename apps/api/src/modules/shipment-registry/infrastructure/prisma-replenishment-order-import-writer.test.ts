@@ -96,7 +96,10 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
     expect(transaction.replenishmentOrderLine.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.arrayContaining([
-          expect.objectContaining({ sourceRowId: "r1" }),
+          expect.objectContaining({
+            tenantId: "tenant-a",
+            sourceRowId: "r1",
+          }),
         ]),
       }),
     );

@@ -36,6 +36,7 @@
 | [任务：全生命周期统一日期事实](./planning/tasks/p6-unified-lifecycle-date-facts.md)      | API、导入、人工共用日期事实链，核验实际日期才申请过站     | 已完成                          |
 | [业务纵向交付路线图](./planning/DOMAIN_VERTICAL_DELIVERY_PLAN.md)                        | 主数据/SKU装载→合规→门禁→岗位工作台；动态后台与自动化后置 | 负责人确认的实施路线 v1         |
 | [任务：Product/SKU 稳定身份](./planning/tasks/p6-product-sku-master-identity.md)         | master-data 建立租户内 SKU 稳定身份与幂等公开 Port        | 已完成                          |
+| [任务：备货单行 SKU 与货柜装载](./planning/tasks/p6-shipment-cargo-allocation.md)        | 产品行稳定引用 SKU，并版本化保存跨订单实际装载事实        | 已完成                          |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断            | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                             | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）  | P1 已接受；011 候选、012 已接受 |
 
@@ -63,15 +64,15 @@
 
 | 文档                                                                           | 一句话                                                                                                       | 状态                 |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | -------------------- |
-| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                                   | 当前/未来上下文边界与聚合(P2-01)                                                                             | 候选 v0.5            |
-| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)             | 已出运数据起点/上游演进/箱单关系                                                                             | 候选 v0.4            |
+| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                                   | 当前/未来上下文边界、产品明细与装载分配                                                                      | 已定 v1.2            |
+| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)             | 已出运数据起点、版本化箱货关系与上游演进                                                                     | 候选 v0.6            |
 | [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)                   | 14 节点全生命周期(P2 对象表)                                                                                 | 候选 v0.4            |
 | [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md)       | 14 流程节点代码、顺序、可选性、所有者和完成口径唯一权威                                                      | 正式 V1              |
 | [LIFECYCLE_NODE_IO_CATALOG](product/domain/LIFECYCLE_NODE_IO_CATALOG.md)       | 14 流程节点「一站一张填空表」查阅入口；§2.1 锁定到港/提柜/送仓/卸柜/还箱的计划与实际、ETA、最晚提柜日/还箱日 | 完整性规划           |
 | [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)               | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4            |
 | [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)             | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5            |
-| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)                   | 已出运列表导入/预检/审核/对账(P2-03)                                                                         | 候选 v0.5            |
-| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                         | 逻辑库图纸 + 事件/来源/可靠提交关系占位 + 时间偏移来源与复核队列(ADR-012)                                    | 候选 v0.7            |
+| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)                   | 已出运列表导入/预检/审核/对账及装载关系边界                                                                  | 已定 v0.9            |
+| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                         | 逻辑库图纸 + SKU 引用/装载分配 + 时间溯源与可靠提交                                                          | 候选 v0.8            |
 | [COMPLIANCE_MANAGEMENT](product/domain/COMPLIANCE_MANAGEMENT.md)               | 合规横向轨道、规则/评审/证据、14 节点门禁与合规中心规划                                                      | 负责人方向+候选 v0.1 |
 | [PRODUCT_ATTRIBUTE_GOVERNANCE](product/domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md) | 强类型核心+结构化合规档案+JSONB 扩展属性+元数据表单边界                                                      | 负责人方向+候选 v0.1 |
 | [MASTER_DATA_DICTIONARY](product/domain/MASTER_DATA_DICTIONARY.md)             | 国家角色、港口/设施、船司及服务商主数据与外部候选治理                                                        | 负责人方向+候选 v0.1 |
@@ -105,18 +106,18 @@
 
 ### 5.3 集成/迁移/现网
 
-| 文档                                                                           | 一句话                                              | 状态                 |
-| ------------------------------------------------------------------------------ | --------------------------------------------------- | -------------------- |
-| [AS_IS_LEGACY_BASELINE](product/domain/AS_IS_LEGACY_BASELINE.md)               | 现网系统快照(状态/字段/反例)                        | 快照                 |
-| [LEGACY_DB_CATALOG](product/domain/LEGACY_DB_CATALOG.md)                       | 老库表/字典家底                                     | 快照                 |
-| [FIELD_MIGRATION_MAP](product/domain/FIELD_MIGRATION_MAP.md)                   | 老字段→新库映射                                     | 候选                 |
-| [DATA_CLEANUP_ORDER_CONTAINER](product/domain/DATA_CLEANUP_ORDER_CONTAINER.md) | 箱-单关系清洗细则(P2-06 首任务)                     | 候选                 |
-| [INTEGRATION_BOUNDARIES](product/domain/INTEGRATION_BOUNDARIES.md)             | 导入→直连边界/字段与事件级来源权威                  | 候选 v0.4            |
-| [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)             | 集成冗余/故障转移                                   | 候选                 |
-| [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                               | 现网 vs 新设计差距                                  | 评审输入             |
-| [飞驼知识库](integrations/freightower/README.md)                               | 飞驼接口、事件码、字段、同步与安全                  | 外部供应商核验知识库 |
-| [飞驼海关证据映射 V1](integrations/freightower/CUSTOMS_EVIDENCE_MAPPING_V1.md) | 官网海关接口证据索引、复合码映射与工单驱动规则      | 外部供应商映射 V1    |
-| [云当网知识库](integrations/trackingeyes/README.md)                            | 云当网 67 接口、42 码表、推送载荷与两供应商码表对照 | 外部供应商核验知识库 |
+| 文档                                                                           | 一句话                                               | 状态                 |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------- | -------------------- |
+| [AS_IS_LEGACY_BASELINE](product/domain/AS_IS_LEGACY_BASELINE.md)               | 现网系统快照(状态/字段/反例)                         | 快照                 |
+| [LEGACY_DB_CATALOG](product/domain/LEGACY_DB_CATALOG.md)                       | 老库表/字典家底                                      | 快照                 |
+| [FIELD_MIGRATION_MAP](product/domain/FIELD_MIGRATION_MAP.md)                   | 老字段→新库映射                                      | 候选                 |
+| [DATA_CLEANUP_ORDER_CONTAINER](product/domain/DATA_CLEANUP_ORDER_CONTAINER.md) | 旧一单一柜假设下的历史清洗调查；当前不得作为目标模型 | 已过时               |
+| [INTEGRATION_BOUNDARIES](product/domain/INTEGRATION_BOUNDARIES.md)             | 导入→直连边界/字段与事件级来源权威                   | 候选 v0.4            |
+| [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)             | 集成冗余/故障转移                                    | 候选                 |
+| [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                               | 现网 vs 新设计差距                                   | 评审输入             |
+| [飞驼知识库](integrations/freightower/README.md)                               | 飞驼接口、事件码、字段、同步与安全                   | 外部供应商核验知识库 |
+| [飞驼海关证据映射 V1](integrations/freightower/CUSTOMS_EVIDENCE_MAPPING_V1.md) | 官网海关接口证据索引、复合码映射与工单驱动规则       | 外部供应商映射 V1    |
+| [云当网知识库](integrations/trackingeyes/README.md)                            | 云当网 67 接口、42 码表、推送载荷与两供应商码表对照  | 外部供应商核验知识库 |
 
 ### 5.4 治理/评审/对照
 
