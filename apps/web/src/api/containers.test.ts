@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getContainer, listContainers } from "./containers";
+import { getContainer, getContainerCargo, listContainers } from "./containers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -80,5 +80,30 @@ describe("getContainer", () => {
       vi.fn().mockResolvedValue({ ok: false, status: 404 }),
     );
     await expect(getContainer("missing")).rejects.toThrow("RESOURCE_NOT_FOUND");
+  });
+});
+
+describe("getContainerCargo", () => {
+  it("按货柜读取活动装载 SKU 投影", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        containerRecordId: "c1",
+        allocationSetId: "a1",
+        allocationSetVersion: 2,
+        items: [],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getContainerCargo("c1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/containers/c1/cargo", {
+      headers: {
+        "X-Tenant-Id": "dev-tenant",
+        "X-Operator-Id": "dev-operator",
+      },
+    });
   });
 });

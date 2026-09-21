@@ -2,7 +2,7 @@
 import type { LiveNodeView } from "../../data/liveNodeProjection";
 
 defineProps<{
-  nodes: LiveNodeView[];
+  nodes: readonly LiveNodeView[];
 }>();
 </script>
 
