@@ -1638,10 +1638,12 @@ git commit -m "feat(web): 一柜一档改为竖向堆叠，补齐标记与异常
 
 ## 收尾校验
 
-- [ ] `pnpm contract:drift` —— 契约无漂移
-- [ ] `pnpm --filter @logix/api test` —— 后端全绿
+- [x] `pnpm contract:drift` —— 契约无漂移
+- [x] `pnpm --filter @logix/api test` —— 196 个测试文件 929 项全绿
+- [x] `pnpm --filter @logix/api test:integration` —— 3 个测试文件 16 项全绿
+- [x] `pnpm db:verify:work-order-fact-application` —— 隔离数据库当前结构、旧版本升级、空库迁移链及约束验证全绿
 - [x] `pnpm --filter @logix/web validate` —— lint、format、typecheck、93 个测试文件 273 项、E2E 77 项通过/7 项按既有条件跳过、build 全绿
-- [ ] `pnpm validate`（仓库根，高风险切片门禁）—— 全绿
+- [x] `pnpm validate`（仓库根，高风险切片门禁）—— 全绿
 - [ ] 手工确认：找一个已过站的柜，打开 `/container/:id`，确认那一站的任务不再出现在 `/tasks`
 - [ ] 手工确认：找一个刚建柜的柜，确认轨道**铺满 14 站**、三轨槽位全部在位且写作 `—`、中转/海铁显示"不适用"
 
