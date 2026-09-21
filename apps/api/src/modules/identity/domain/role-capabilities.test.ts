@@ -8,6 +8,18 @@ describe("role-capabilities", () => {
     );
   });
 
+  it("grants controlled container fact writes to operational roles", () => {
+    expect(capabilitiesForRoles(["field_operator"])).toContain(
+      "container.operate",
+    );
+    expect(capabilitiesForRoles(["operations_dispatcher"])).toContain(
+      "container.operate",
+    );
+    expect(capabilitiesForRoles(["manager"])).not.toContain(
+      "container.operate",
+    );
+  });
+
   it("keeps compliance review separate from operational read access", () => {
     expect(capabilitiesForRoles(["operations_dispatcher"])).toContain(
       "compliance.read",

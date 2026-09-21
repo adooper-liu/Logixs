@@ -61,6 +61,7 @@ test("explanatory tooltips work with click and Escape", async ({ page }) => {
   test.skip(width >= 960 && width < 1280, "folded rail hides workspace help");
 
   await page.goto("/meso");
+  await expect(page.getByRole("heading", { name: "看档" })).toBeVisible();
   if (width < 960) {
     await page.getByRole("button", { name: "打开主导航" }).click();
     await expect(page.getByTestId("app-sidebar")).toBeInViewport();
@@ -81,6 +82,7 @@ test("all migrated workspaces keep the shared shell and bounded overflow", async
   const routes = [
     ["/containers", "干活"],
     ["/workspaces/cargo-ready", "备货工作台"],
+    ["/workspaces/stuffing", "装箱工作台"],
     ["/real-tasks", "我的任务"],
     ["/real-containers", "干活"],
     ["/dashboard", "货柜"],

@@ -10,6 +10,10 @@ export function decideNodeSpecializedGuard(input: {
   location: LifecycleLocationContext | null;
   routeSegment: ActiveOceanRouteSegment | null;
   cargoReadyComplianceApproved?: boolean;
+  stuffingReadiness?: {
+    confirmed: boolean;
+    reasonCode: string | null;
+  } | null;
 }): NodeEventApplicationDecision {
   if (
     input.targetNodeCode === "cargo_ready" &&
@@ -35,7 +39,23 @@ export function decideNodeSpecializedGuard(input: {
         reasonCode: "LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY",
       };
     }
-    return { kind: "apply", guardResults: ["CONTAINER_IDENTITY_BOUND"] };
+    if (!input.stuffingReadiness?.confirmed) {
+      return {
+        kind: "pending_application",
+        guardResults: ["CONTAINER_IDENTITY_BOUND"],
+        reasonCode:
+          input.stuffingReadiness?.reasonCode ??
+          "LIFECYCLE_EVENT_PENDING_STUFFING_SNAPSHOT",
+      };
+    }
+    return {
+      kind: "apply",
+      guardResults: [
+        "CONTAINER_IDENTITY_BOUND",
+        "CONTAINER_STUFFING_SNAPSHOT_CURRENT",
+        "CONTAINER_STUFFING_EVIDENCE_LINKED",
+      ],
+    };
   }
 
   if (

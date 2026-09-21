@@ -5,7 +5,7 @@ export const moduleManifest = defineModuleManifest({
   kind: "base",
   version: "1.0.0",
   depends: ["identity", "master-data"],
-  permissions: ["container.read"],
+  permissions: ["container.read", "container.operate"],
   publicPorts: [
     "ASSERT_CONTAINER_TENANT",
     "LIST_CONTAINER_TASK_FACTS",
@@ -14,5 +14,7 @@ export const moduleManifest = defineModuleManifest({
     "BIND_REPLENISHMENT_LINE_PRODUCT_SKU",
     "REPLACE_CONTAINER_CARGO_ALLOCATIONS",
     "GET_CONTAINER_CARGO_COMPLIANCE_SCOPE",
+    "GET_CONTAINER_STUFFING_READINESS",
+    "REPLACE_CONTAINER_STUFFING_SNAPSHOT",
   ],
 });

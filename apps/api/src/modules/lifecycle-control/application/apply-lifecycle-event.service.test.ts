@@ -1,6 +1,9 @@
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
-import { ApplyContainerRecordService } from "../../shipment-registry";
+import {
+  ApplyContainerRecordService,
+  GET_CONTAINER_STUFFING_READINESS,
+} from "../../shipment-registry";
 import { EVALUATE_CARGO_READY_COMPLIANCE } from "../../compliance-management";
 const CREATE_NODE_TASK = Symbol.for("logix.CreateNodeTask");
 const ASSERT_EVIDENCE_REFS = Symbol.for("logix.AssertEvidenceRefs");
@@ -134,6 +137,13 @@ async function buildService(
       decisionId: "66666666-6666-4666-8666-666666666666",
     }),
   },
+  getContainerStuffingReadiness = {
+    execute: vi.fn().mockResolvedValue({
+      confirmed: true,
+      reasonCode: null,
+      snapshotId: "77777777-7777-4777-8777-777777777777",
+    }),
+  },
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -150,6 +160,10 @@ async function buildService(
         provide: EVALUATE_CARGO_READY_COMPLIANCE,
         useValue: evaluateCargoReadyCompliance,
       },
+      {
+        provide: GET_CONTAINER_STUFFING_READINESS,
+        useValue: getContainerStuffingReadiness,
+      },
     ],
   }).compile();
   return {
@@ -158,6 +172,7 @@ async function buildService(
     assertEvidenceRefs,
     assertStateEvidence,
     evaluateCargoReadyCompliance,
+    getContainerStuffingReadiness,
   };
 }
 
@@ -338,6 +353,41 @@ describe("ApplyLifecycleEventService", () => {
         reasonCode: "LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY",
       }),
     );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
+    expect(createNodeTask.execute).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "LIFECYCLE_EVENT_PENDING_STUFFING_SNAPSHOT",
+    "LIFECYCLE_EVENT_PENDING_STUFFING_SNAPSHOT_STALE",
+    "LIFECYCLE_EVENT_PENDING_STUFFING_EVIDENCE",
+  ])("stuffed 装箱事实未就绪时留待自动重放：%s", async (reasonCode) => {
+    const repository = buildRepository("not_shipped");
+    useFlow(repository, flowAt("container_stuffing"));
+    const getContainerStuffingReadiness = {
+      execute: vi.fn().mockResolvedValue({
+        confirmed: false,
+        reasonCode,
+        snapshotId: null,
+      }),
+    };
+    const { service, createNodeTask } = await buildService(
+      repository,
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      getContainerStuffingReadiness,
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "stuffed",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.container_stuffing).toBe(reasonCode);
     expect(repository.applyEventToNode).not.toHaveBeenCalled();
     expect(createNodeTask.execute).not.toHaveBeenCalled();
   });
