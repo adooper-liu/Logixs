@@ -9,6 +9,7 @@ import {
   PackageCheck,
   PackageOpen,
   ShieldCheck,
+  Ship,
   TriangleAlert,
 } from "@lucide/vue";
 import type { RouteRecordNormalized } from "vue-router";
@@ -24,6 +25,7 @@ export type NavigationIcon =
   | "package-check"
   | "package-open"
   | "shield-check"
+  | "ship"
   | "triangle-alert";
 
 export interface AppNavigationItem {
@@ -44,6 +46,7 @@ const icons: Record<NavigationIcon, Component> = {
   "package-check": PackageCheck,
   "package-open": PackageOpen,
   "shield-check": ShieldCheck,
+  ship: Ship,
   "triangle-alert": TriangleAlert,
 };
 

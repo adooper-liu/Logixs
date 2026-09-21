@@ -51,6 +51,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/workspaces/dispatch",
+      component: () => import("../views/DispatchWorkbench.vue"),
+      meta: {
+        title: "出运工作台",
+        section: "作业",
+        navLabel: "出运工作台",
+        navIcon: "ship",
+        navOrder: 17,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/containers",
       component: () => import("../views/ContainerList.vue"),
       meta: {
