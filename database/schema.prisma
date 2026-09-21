@@ -994,15 +994,16 @@ model FlowInstance {
 
 // 节点实例（lifecycle-control 拥有）：流程在某个节点的状态（第一刀只 pending/active/completed）。
 model NodeInstance {
-  id                String                 @id @default(uuid()) @map("id")
-  flowInstanceId    String                 @map("flow_instance_id")
-  flow              FlowInstance           @relation(fields: [flowInstanceId], references: [id])
-  nodeCode          String                 @map("node_code")
-  state             String                 @map("state") // pending | active | completed
-  applicability     String                 @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
-  completedAt       DateTime?              @map("completed_at")
-  eventApplications NodeEventApplication[]
-  blocks            NodeBlock[]
+  id                        String                     @id @default(uuid()) @map("id")
+  flowInstanceId            String                     @map("flow_instance_id")
+  flow                      FlowInstance               @relation(fields: [flowInstanceId], references: [id])
+  nodeCode                  String                     @map("node_code")
+  state                     String                     @map("state") // pending | active | completed
+  applicability             String                     @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
+  completedAt               DateTime?                  @map("completed_at")
+  eventApplications         NodeEventApplication[]
+  workOrderFactApplications WorkOrderFactApplication[]
+  blocks                    NodeBlock[]
 
   @@unique([flowInstanceId, nodeCode])
   @@map("node_instance")
@@ -1068,26 +1069,27 @@ model NodeApplicabilityDecision {
 
 // 规范事件流水账（lifecycle-control 拥有）：不可变事件留痕，可追溯/重放/幂等。
 model CanonicalEvent {
-  id                 String                 @id @default(uuid()) @map("id")
-  containerId        String                 @map("container_id")
-  eventCode          String                 @map("event_code")
-  domainFactId       String?                @unique(map: "canonical_event_domain_fact_key") @map("domain_fact_id")
-  nodeCode           String?                @map("node_code")
-  timeKind           String?                @map("time_kind")
-  authorityPolicyRef String?                @map("authority_policy_ref")
-  locationType       String?                @map("location_type")
-  unlocode           String?                @map("unlocode")
-  locationId         String?                @map("location_id")
-  segmentId          String?                @map("segment_id")
-  portCallId         String?                @map("port_call_id")
-  locationTimezone   String?                @map("location_timezone")
-  domainFact         LifecycleDateFact?     @relation("CanonicalEventDomainFact", fields: [domainFactId], references: [id], onDelete: Restrict)
-  occurredAt         DateTime               @map("occurred_at")
-  evidenceRefs       Json                   @map("evidence_refs")
-  idempotencyKey     String                 @unique @map("idempotency_key")
-  appliedAt          DateTime               @default(now()) @map("applied_at")
-  dateFact           LifecycleDateFact?     @relation("LifecycleDateFactAppliedEvent")
-  nodeApplications   NodeEventApplication[]
+  id                        String                     @id @default(uuid()) @map("id")
+  containerId               String                     @map("container_id")
+  eventCode                 String                     @map("event_code")
+  domainFactId              String?                    @unique(map: "canonical_event_domain_fact_key") @map("domain_fact_id")
+  nodeCode                  String?                    @map("node_code")
+  timeKind                  String?                    @map("time_kind")
+  authorityPolicyRef        String?                    @map("authority_policy_ref")
+  locationType              String?                    @map("location_type")
+  unlocode                  String?                    @map("unlocode")
+  locationId                String?                    @map("location_id")
+  segmentId                 String?                    @map("segment_id")
+  portCallId                String?                    @map("port_call_id")
+  locationTimezone          String?                    @map("location_timezone")
+  domainFact                LifecycleDateFact?         @relation("CanonicalEventDomainFact", fields: [domainFactId], references: [id], onDelete: Restrict)
+  occurredAt                DateTime                   @map("occurred_at")
+  evidenceRefs              Json                       @map("evidence_refs")
+  idempotencyKey            String                     @unique @map("idempotency_key")
+  appliedAt                 DateTime                   @default(now()) @map("applied_at")
+  dateFact                  LifecycleDateFact?         @relation("LifecycleDateFactAppliedEvent")
+  nodeApplications          NodeEventApplication[]
+  workOrderFactApplications WorkOrderFactApplication[]
 
   @@index([containerId, occurredAt, id], map: "canonical_event_container_occurred_idx")
   @@map("canonical_event")
@@ -1332,6 +1334,7 @@ model CompensationRecord {
 // 节点任务（work-execution 拥有）：货柜到节点的工序任务（第一刀最小集）。
 model NodeTask {
   id                    String           @id @default(uuid()) @map("id")
+  tenantId              String           @map("tenant_id")
   flowInstanceId        String           @map("flow_instance_id")
   nodeInstanceId        String           @map("node_instance_id")
   nodeCode              String           @map("node_code")
@@ -1341,6 +1344,7 @@ model NodeTask {
   applicability         String           @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
   readinessState        String           @default("waiting_conditions") @map("readiness_state") // waiting_conditions | ready
   completionEligibility String           @default("awaiting_evidence") @map("completion_eligibility") // awaiting_evidence | eligible
+  version               Int              @default(0) @map("version")
   conditionFactRefs     Json             @default("[]") @map("condition_fact_refs")
   conditionsEvaluatedAt DateTime         @default(now()) @map("conditions_evaluated_at") @db.Timestamptz
   createdAt             DateTime         @default(now()) @map("created_at")
@@ -1349,25 +1353,65 @@ model NodeTask {
   outcome               NodeTaskOutcome?
 
   @@unique([nodeInstanceId])
+  @@index([tenantId, containerId, flowInstanceId, nodeInstanceId], map: "node_task_tenant_container_flow_node_idx")
   @@index([containerId, createdAt, id])
   @@map("node_task")
 }
 
 // 作业工单（work-execution 拥有）：任务拆出的工单（第一刀最小集）。
 model WorkOrder {
-  id                     String    @id @default(uuid()) @map("id")
-  nodeTaskId             String    @map("node_task_id")
-  nodeTask               NodeTask  @relation(fields: [nodeTaskId], references: [id])
-  workOrderDefinitionKey String    @map("work_order_definition_key")
-  state                  String    @map("state") // ready | in_progress | completed
-  assignmentState        String    @map("assignment_state") // unassigned | assigned | pool | automatic
-  assigneeId             String?   @map("assignee_id")
-  dueAt                  DateTime? @map("due_at") @db.Timestamptz
-  completedAt            DateTime? @map("completed_at")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id                     String                     @id @default(uuid()) @map("id")
+  nodeTaskId             String                     @map("node_task_id")
+  nodeTask               NodeTask                   @relation(fields: [nodeTaskId], references: [id])
+  workOrderDefinitionKey String                     @map("work_order_definition_key")
+  state                  String                     @map("state") // ready | in_progress | completed
+  applicability          String                     @map("applicability")
+  assignmentState        String                     @map("assignment_state") // unassigned | assigned | pool | automatic
+  assigneeId             String?                    @map("assignee_id")
+  dueAt                  DateTime?                  @map("due_at") @db.Timestamptz
+  completedAt            DateTime?                  @map("completed_at")
+  version                Int                        @default(0) @map("version")
+  createdAt              DateTime                   @default(now()) @map("created_at")
+  updatedAt              DateTime                   @updatedAt @map("updated_at")
+  factApplications       WorkOrderFactApplication[]
 
+  @@index([nodeTaskId], map: "work_order_node_task_idx")
   @@map("work_order")
+}
+
+// 已采信生命周期事实对工单的不可变应用记录；同业务键重放只读取原决定。
+model WorkOrderFactApplication {
+  id               String         @id @default(uuid()) @map("id")
+  tenantId         String         @map("tenant_id")
+  workOrderId      String         @map("work_order_id")
+  workOrder        WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  canonicalEventId String         @map("canonical_event_id")
+  canonicalEvent   CanonicalEvent @relation(fields: [canonicalEventId], references: [id], onDelete: Restrict)
+  nodeInstanceId   String         @map("node_instance_id")
+  nodeInstance     NodeInstance   @relation(fields: [nodeInstanceId], references: [id], onDelete: Restrict)
+  businessFactType String         @map("business_fact_type")
+  businessFactKey  String         @map("business_fact_key")
+  domainFactId     String         @map("domain_fact_id")
+  captureSource    String         @map("capture_source")
+  evidenceRefs     Json           @map("evidence_refs")
+  occurredAt       DateTime       @map("occurred_at") @db.Timestamptz
+  receivedAt       DateTime       @map("received_at") @db.Timestamptz
+  recordedAt       DateTime       @default(now()) @map("recorded_at") @db.Timestamptz
+  requestHash      String         @map("request_hash")
+  decision         String         @map("decision")
+  decisionReason   String?        @map("decision_reason")
+  previousState    String         @map("previous_state")
+  resultingState   String         @map("resulting_state")
+  appliedAt        DateTime       @map("applied_at") @db.Timestamptz
+  actorOrServiceId String         @map("actor_or_service_id")
+  traceId          String         @map("trace_id")
+
+  @@unique([workOrderId, businessFactKey], map: "work_order_fact_application_business_key")
+  @@index([tenantId, canonicalEventId], map: "work_order_fact_application_tenant_event_idx")
+  @@index([canonicalEventId], map: "work_order_fact_application_event_idx")
+  @@index([nodeInstanceId], map: "work_order_fact_application_node_idx")
+  @@index([domainFactId], map: "work_order_fact_application_domain_fact_idx")
+  @@map("work_order_fact_application")
 }
 
 // 非生命周期工作项（work-execution 拥有）：专业模块把整改/义务投影到全局任务池。
@@ -1431,8 +1475,13 @@ model NodeTaskOutcome {
   policySnapshotHash    String   @map("policy_snapshot_hash")
   requiredWorkOrderIds  Json     @map("required_work_order_ids")
   completedWorkOrderIds Json     @map("completed_work_order_ids")
-  evaluatedAt           DateTime @map("evaluated_at")
-  createdAt             DateTime @default(now()) @map("created_at")
+  evaluatedFactRefs     Json     @default("[]") @map("evaluated_fact_refs")
+  canonicalEventId      String?  @map("canonical_event_id")
+  domainFactId          String?  @map("domain_fact_id")
+  actorOrServiceId      String?  @map("actor_or_service_id")
+  traceId               String?  @map("trace_id")
+  evaluatedAt           DateTime @map("evaluated_at") @db.Timestamptz
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("node_task_outcome")
 }

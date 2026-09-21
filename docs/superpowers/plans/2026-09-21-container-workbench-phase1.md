@@ -225,7 +225,7 @@ Expected: PASS。
 5. `NodeTaskOutcome` 补 `evaluatedFactRefs`、`canonicalEventId`、`domainFactId`、`actorOrServiceId`、`traceId`。已有结果采用可解释默认/nullable 回填，不伪造业务事实。
 6. 复用现有 `OutboxMessage` 保存逐 `canonicalEventId + nodeInstanceId` 的 reconciliation 消息；不在 `NodeEventApplication` 复制 retry/lease/dead-letter 状态机。迁移为既有 `applied` 节点应用补建未发布的专用 Outbox，确保历史滞留任务也可重放。
 
-- [ ] **Step 1: 写追加迁移**
+- [x] **Step 1: 写追加迁移**
 
 迁移必须采用 expand → backfill → constrain：
 
@@ -234,7 +234,7 @@ Expected: PASS。
 - version 从 0 开始。
 - 不修改已共享的历史迁移。
 
-- [ ] **Step 2: 写迁移验证脚本**
+- [x] **Step 2: 写迁移验证脚本**
 
 验证：
 
@@ -244,7 +244,7 @@ Expected: PASS。
 - NodeTaskOutcome 旧行可读，新行能保存完整因果。
 - 每条既有 `NodeEventApplication(applied)` 都有且只有一条可重放 reconciliation Outbox。
 
-- [ ] **Step 3: Prisma 校验与空库/旧库升级**
+- [x] **Step 3: Prisma 校验与空库/旧库升级**
 
 Run:
 

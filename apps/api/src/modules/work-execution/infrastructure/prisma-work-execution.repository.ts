@@ -7,6 +7,7 @@ import type {
   TaskCompletionEligibility,
   TaskReadinessState,
   WorkOrderState,
+  WorkOrderApplicability,
 } from "@logix/contracts";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { clientOperationCreateData } from "./client-operation-persist";
@@ -86,16 +87,9 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
     after?: { createdAt: Date; id: string };
     take: number;
   }): Promise<NodeTaskWithWorkOrders[]> {
-    const owned = await this.prisma.containerRecord.findMany({
-      where: { tenantId: input.tenantId },
-      select: { id: true },
-    });
-    const containerIds = owned.map((row) => row.id);
-    if (containerIds.length === 0) return [];
-
     const tasks = await this.prisma.nodeTask.findMany({
       where: {
-        containerId: { in: containerIds },
+        tenantId: input.tenantId,
         ...(input.after
           ? {
               OR: [
@@ -196,12 +190,13 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
             readinessState,
             completionEligibility,
             conditionFactRefs,
+            version: { increment: 1 },
           },
         });
         if (readinessState === "ready") {
           await tx.workOrder.updateMany({
             where: { nodeTaskId: task.id, state: "draft" },
-            data: { state: "ready" },
+            data: { state: "ready", version: { increment: 1 } },
           });
         }
         const workOrders = await tx.workOrder.findMany({
@@ -216,6 +211,7 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
 
       const task = await tx.nodeTask.create({
         data: {
+          tenantId: input.tenantId,
           flowInstanceId: input.flowInstanceId,
           nodeInstanceId: input.nodeInstanceId,
           nodeCode: input.nodeCode,
@@ -225,6 +221,7 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
           applicability: input.applicability,
           readinessState: input.readinessState,
           completionEligibility: input.completionEligibility,
+          version: 0,
           conditionFactRefs: input.conditionFactRefs,
         },
       });
@@ -233,7 +230,9 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
           nodeTaskId: task.id,
           workOrderDefinitionKey: input.workOrderDefinitionKey,
           state: input.readinessState === "ready" ? "ready" : "draft",
+          applicability: "required",
           assignmentState: "unassigned",
+          version: 0,
         },
       });
       return {
@@ -256,12 +255,13 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
           state: input.workOrderState,
           assignmentState: input.assignmentState,
           assigneeId: input.assigneeId,
+          version: { increment: 1 },
         },
       });
       if (updated.count === 0) return false;
       await tx.nodeTask.update({
         where: { id: input.taskId },
-        data: { state: input.taskState },
+        data: { state: input.taskState, version: { increment: 1 } },
       });
       if (input.clientOperation) {
         await tx.clientOperation.create({
@@ -281,11 +281,12 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
         data: {
           state: input.workOrderState,
           completedAt: input.completedAt,
+          version: { increment: 1 },
         },
       });
       await tx.nodeTask.update({
         where: { id: input.taskId },
-        data: { state: input.taskState },
+        data: { state: input.taskState, version: { increment: 1 } },
       });
       if (input.outcome) {
         await tx.nodeTaskOutcome.create({
@@ -298,6 +299,11 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
             policySnapshotHash: input.outcome.policySnapshotHash,
             requiredWorkOrderIds: input.outcome.requiredWorkOrderIds,
             completedWorkOrderIds: input.outcome.completedWorkOrderIds,
+            evaluatedFactRefs: input.outcome.evaluatedFactRefs ?? [],
+            canonicalEventId: input.outcome.canonicalEventId,
+            domainFactId: input.outcome.domainFactId,
+            actorOrServiceId: input.outcome.actorOrServiceId,
+            traceId: input.outcome.traceId,
             evaluatedAt: input.completedAt,
           },
         });
@@ -328,6 +334,7 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
 
 function mapTask(task: {
   id: string;
+  tenantId: string;
   flowInstanceId: string;
   nodeInstanceId: string;
   nodeCode: string;
@@ -338,10 +345,12 @@ function mapTask(task: {
   readinessState: string;
   completionEligibility: string;
   conditionFactRefs: unknown;
+  version: number;
   createdAt: Date;
 }): NodeTaskRecord {
   return {
     id: task.id,
+    tenantId: task.tenantId,
     flowInstanceId: task.flowInstanceId,
     nodeInstanceId: task.nodeInstanceId,
     nodeCode: task.nodeCode as LifecycleNodeCode,
@@ -353,6 +362,7 @@ function mapTask(task: {
     completionEligibility:
       task.completionEligibility as TaskCompletionEligibility,
     conditionFactRefs: asStringArray(task.conditionFactRefs),
+    version: task.version,
     createdAt: task.createdAt,
   };
 }
@@ -362,10 +372,12 @@ function mapWorkOrder(workOrder: {
   nodeTaskId: string;
   workOrderDefinitionKey: string;
   state: string;
+  applicability: string;
   assignmentState: string;
   assigneeId?: string | null;
   dueAt: Date | null;
   completedAt: Date | null;
+  version: number;
   createdAt: Date;
 }): WorkOrderRecord {
   return {
@@ -373,10 +385,12 @@ function mapWorkOrder(workOrder: {
     nodeTaskId: workOrder.nodeTaskId,
     workOrderDefinitionKey: workOrder.workOrderDefinitionKey,
     state: workOrder.state as WorkOrderState,
+    applicability: workOrder.applicability as WorkOrderApplicability,
     assignmentState: workOrder.assignmentState as AssignmentState,
     assigneeId: workOrder.assigneeId ?? null,
     dueAt: workOrder.dueAt,
     completedAt: workOrder.completedAt,
+    version: workOrder.version,
     createdAt: workOrder.createdAt,
   };
 }
@@ -390,6 +404,11 @@ function mapOutcome(outcome: {
   policySnapshotHash: string;
   requiredWorkOrderIds: unknown;
   completedWorkOrderIds: unknown;
+  evaluatedFactRefs: unknown;
+  canonicalEventId: string | null;
+  domainFactId: string | null;
+  actorOrServiceId: string | null;
+  traceId: string | null;
   evaluatedAt: Date;
 }): NodeTaskOutcomeRecord {
   return {
@@ -403,6 +422,15 @@ function mapOutcome(outcome: {
     policySnapshotHash: outcome.policySnapshotHash,
     requiredWorkOrderIds: asStringArray(outcome.requiredWorkOrderIds),
     completedWorkOrderIds: asStringArray(outcome.completedWorkOrderIds),
+    evaluatedFactRefs: asStringArray(outcome.evaluatedFactRefs),
+    ...(outcome.canonicalEventId
+      ? { canonicalEventId: outcome.canonicalEventId }
+      : {}),
+    ...(outcome.domainFactId ? { domainFactId: outcome.domainFactId } : {}),
+    ...(outcome.actorOrServiceId
+      ? { actorOrServiceId: outcome.actorOrServiceId }
+      : {}),
+    ...(outcome.traceId ? { traceId: outcome.traceId } : {}),
     evaluatedAt: outcome.evaluatedAt,
   };
 }

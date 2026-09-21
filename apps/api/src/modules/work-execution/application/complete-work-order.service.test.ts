@@ -15,6 +15,7 @@ function readyBundle(
   return {
     task: {
       id: "t1",
+      tenantId: overrides.tenantId ?? "t1",
       flowInstanceId: "f1",
       nodeInstanceId: "n1",
       nodeCode: "customs_clearance",
@@ -28,6 +29,7 @@ function readyBundle(
       completionEligibility:
         overrides.completionEligibility ?? "awaiting_evidence",
       conditionFactRefs: overrides.conditionFactRefs ?? [],
+      version: overrides.version ?? 0,
     },
     workOrders: [
       {
@@ -35,10 +37,12 @@ function readyBundle(
         nodeTaskId: "t1",
         workOrderDefinitionKey: "wo-customs_clearance",
         state: "ready",
+        applicability: "required",
         assignmentState: "unassigned",
         assigneeId: null,
         dueAt: null,
         completedAt: null,
+        version: 0,
         createdAt: new Date("2026-09-12T10:00:00Z"),
       },
     ],
@@ -119,6 +123,29 @@ describe("CompleteWorkOrderService", () => {
           ],
         }),
       }),
+    );
+  });
+
+  it("optional 工单未完成不阻断 required 工单聚合任务完成", async () => {
+    const bundle = readyBundle();
+    bundle.workOrders.push({
+      ...bundle.workOrders[0],
+      id: "w-optional",
+      applicability: "optional",
+    });
+    const repository = {
+      findWorkOrderById: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskById: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+    };
+    const { service } = await buildService(repository);
+
+    await expect(service.execute(command())).resolves.toMatchObject({
+      taskState: "completed",
+      outcomeRecorded: true,
+    });
+    expect(repository.applyWorkOrderCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({ taskState: "completed" }),
     );
   });
 

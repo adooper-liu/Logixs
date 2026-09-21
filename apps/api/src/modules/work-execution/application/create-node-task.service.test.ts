@@ -82,6 +82,7 @@ describe("CreateNodeTaskService", () => {
       flowInstanceId: "f1",
       nodeInstanceId: "n1",
       nodeCode: "customs_clearance",
+      tenantId: "tenant-1",
     });
 
     expect(result.task.id).toBe("t1");

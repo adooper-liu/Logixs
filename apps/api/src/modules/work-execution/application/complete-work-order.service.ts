@@ -247,7 +247,7 @@ export class CompleteWorkOrderService {
     const aggregated = aggregateNodeTaskState(
       nextWorkOrders.map((item) => ({
         state: item.state,
-        applicability: "required",
+        applicability: item.applicability,
       })),
     );
     const taskDecision = decideNodeTaskTransition(

@@ -6,6 +6,7 @@ import type {
   TaskCompletionEligibility,
   TaskReadinessState,
   WorkOrderState,
+  WorkOrderApplicability,
 } from "@logix/contracts";
 import type { ClientOperationRecord } from "./client-operation";
 import type { NodeTaskOutcomeDraft } from "./task-outcome";
@@ -15,6 +16,7 @@ export const WORK_EXECUTION_REPOSITORY = Symbol("WorkExecutionRepository");
 
 export interface NodeTaskRecord {
   id: string;
+  tenantId: string;
   flowInstanceId: string;
   nodeInstanceId: string;
   nodeCode: LifecycleNodeCode;
@@ -25,6 +27,7 @@ export interface NodeTaskRecord {
   readinessState: TaskReadinessState;
   completionEligibility: TaskCompletionEligibility;
   conditionFactRefs: string[];
+  version: number;
   createdAt: Date;
 }
 
@@ -33,10 +36,12 @@ export interface WorkOrderRecord {
   nodeTaskId: string;
   workOrderDefinitionKey: string;
   state: WorkOrderState;
+  applicability: WorkOrderApplicability;
   assignmentState: AssignmentState;
   assigneeId: string | null;
   dueAt: Date | null;
   completedAt: Date | null;
+  version: number;
   createdAt: Date;
 }
 
@@ -52,6 +57,7 @@ export interface NodeTaskWithWorkOrders {
 }
 
 export interface CreateTaskInput {
+  tenantId: string;
   flowInstanceId: string;
   nodeInstanceId: string;
   nodeCode: LifecycleNodeCode;

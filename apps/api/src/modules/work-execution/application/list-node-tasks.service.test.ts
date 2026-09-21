@@ -10,6 +10,7 @@ function taskBundle(id: string, createdAt: string): NodeTaskWithWorkOrders {
   return {
     task: {
       id,
+      tenantId: "t1",
       flowInstanceId: "f1",
       nodeInstanceId: `n-${id}`,
       nodeCode: "container_stuffing",
@@ -20,6 +21,7 @@ function taskBundle(id: string, createdAt: string): NodeTaskWithWorkOrders {
       readinessState: "ready",
       completionEligibility: "awaiting_evidence",
       conditionFactRefs: [],
+      version: 0,
       createdAt: new Date(createdAt),
     },
     workOrders: [],
