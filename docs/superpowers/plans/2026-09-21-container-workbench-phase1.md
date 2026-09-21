@@ -401,15 +401,16 @@ Expected: 原子建 Outbox、既有重试/死信/重放、历史补偿与 DI 装
 - Modify: `apps/api/src/modules/work-execution/domain/task-conditions.test.ts`
 - Modify: `apps/api/src/modules/shipment-registry/domain/container-task-fact.ts`
 - Modify: `apps/api/src/modules/shipment-registry/infrastructure/prisma-container.repository.ts:74-103`
+- Create: `apps/api/src/modules/shipment-registry/infrastructure/prisma-container.repository.test.ts`
 
 **Interfaces:**
 
 - Consumes: `packages/contracts/catalogs/v1/canonical-events.json`（经 `@logix/contracts/canonical-events.json` 导入）、`ShipmentTimeFact.eventCode`
-- Produces: `TaskConditionFact.nodeCode: LifecycleNodeCode | null`；`evaluateTaskConditions` 优先按 `nodeCode` 匹配
+- Produces: `TaskConditionFact.eventCode: string | null`、`TaskConditionFact.nodeCode: LifecycleNodeCode | null`；`evaluateTaskConditions` 优先按 `nodeCode` 匹配，且仅 `eventCode === null` 时允许旧事实码兜底
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
-在 `apps/api/src/modules/work-execution/domain/task-conditions.test.ts` 的 `facts` 数组里给两条 fixture 各加 `nodeCode`（`"customs_clearance"` 与 `"empty_return"`），并新增一条：
+在 `apps/api/src/modules/work-execution/domain/task-conditions.test.ts` 的 `facts` 数组里给两条 fixture 各加 `eventCode` 和 `nodeCode`，新增以下新旧路径测试，并补显式节点冲突、未知 `factCode`、未知 `eventCode` 不得回退三个边界：
 
 ```ts
 it("事实自带节点时按节点匹配，无需影子表", () => {
@@ -459,12 +460,12 @@ it("事实无节点时回退到既有影子表", () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `pnpm --filter @logix/api test -- src/modules/work-execution/domain/task-conditions.test.ts`
 Expected: FAIL —— `nodeCode` 不是已知属性 / 第一条断言拿到 `waiting_conditions`
 
-- [ ] **Step 3: 给事实类型加字段**
+- [x] **Step 3: 给事实类型加字段**
 
 `apps/api/src/modules/work-execution/domain/task-condition-fact.ts` 全文改为：
 
@@ -474,6 +475,7 @@ import type { LifecycleNodeCode } from "@logix/contracts";
 export interface TaskConditionFact {
   id: string;
   factCode: string;
+  eventCode: string | null;
   nodeCode: LifecycleNodeCode | null;
   timeKind: "actual" | "estimated";
   captureSource: string;
@@ -481,9 +483,9 @@ export interface TaskConditionFact {
 }
 ```
 
-同样地，给 `apps/api/src/modules/shipment-registry/domain/container-task-fact.ts` 的 `ContainerTaskFact` 加 `nodeCode: LifecycleNodeCode | null;`（该文件当前 7 行，字段与上表一致）。
+同样地，给 `apps/api/src/modules/shipment-registry/domain/container-task-fact.ts` 的 `ContainerTaskFact` 加 `eventCode: string | null` 和 `nodeCode: LifecycleNodeCode | null`（字段与上表一致）。
 
-- [ ] **Step 4: 改判定逻辑**
+- [x] **Step 4: 改判定逻辑**
 
 `apps/api/src/modules/work-execution/domain/task-conditions.ts` 全文改为：
 
@@ -515,6 +517,7 @@ function targetsNode(
   nodeCode: LifecycleNodeCode,
 ): boolean {
   if (fact.nodeCode) return fact.nodeCode === nodeCode;
+  if (fact.eventCode !== null) return false;
   return FACT_TARGET_NODE[fact.factCode] === nodeCode;
 }
 
@@ -541,12 +544,12 @@ export function evaluateTaskConditions(input: {
 }
 ```
 
-- [ ] **Step 5: 跑测试确认通过**
+- [x] **Step 5: 跑测试确认通过**
 
 Run: `pnpm --filter @logix/api test -- src/modules/work-execution/domain/task-conditions.test.ts`
-Expected: PASS（4 条既有 + 2 条新增）
+Expected: PASS（4 条既有 + 5 条新增）
 
-- [ ] **Step 6: 查询侧填 nodeCode**
+- [x] **Step 6: 查询侧填 nodeCode**
 
 在 `apps/api/src/modules/shipment-registry/infrastructure/prisma-container.repository.ts` 的 `listCurrentTaskFacts` 里：
 
@@ -570,6 +573,7 @@ const EVENT_DEFAULT_NODE = new Map<string, LifecycleNodeCode>(
       .map((row) => ({
         id: row.id,
         factCode: row.factCode,
+        eventCode: row.eventCode,
         nodeCode: row.eventCode
           ? (EVENT_DEFAULT_NODE.get(row.eventCode) ?? null)
           : null,
@@ -579,7 +583,9 @@ const EVENT_DEFAULT_NODE = new Map<string, LifecycleNodeCode>(
       }));
 ```
 
-- [ ] **Step 7: 全模块测试 + 提交**
+4. 新增 `prisma-container.repository.test.ts`，覆盖规范事件成功解析、未知事件和无默认节点事件均保持 `nodeCode: null`。
+
+- [x] **Step 7: 全模块测试 + 提交**
 
 Run: `pnpm --filter @logix/api test -- src/modules/work-execution src/modules/shipment-registry src/modules/lifecycle-control`
 Expected: PASS

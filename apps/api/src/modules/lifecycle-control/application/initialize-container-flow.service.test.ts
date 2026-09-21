@@ -46,6 +46,8 @@ async function buildService(containerNumber: string | null) {
       {
         id: "fact-1",
         factCode: "customs_clearance_completed",
+        eventCode: "container_customs_completed",
+        nodeCode: "customs_clearance",
         timeKind: "actual",
         captureSource: "controlled_import",
         evidenceRef: "11111111-1111-4111-8111-111111111111",

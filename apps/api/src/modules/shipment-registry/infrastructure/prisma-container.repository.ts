@@ -1,4 +1,8 @@
-import type { ContainerLifecycleState } from "@logix/contracts";
+import type {
+  ContainerLifecycleState,
+  LifecycleNodeCode,
+} from "@logix/contracts";
+import canonicalEvents from "@logix/contracts/canonical-events.json";
 import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type { ContainerSummary } from "../domain/container-summary";
@@ -9,6 +13,15 @@ import type {
   ContainerListQuery,
   ContainerRepository,
 } from "../domain/container.repository";
+
+const EVENT_DEFAULT_NODE = new Map<string, LifecycleNodeCode>(
+  canonicalEvents
+    .filter((event) => event.defaultNodeCode !== null)
+    .map((event) => [
+      event.eventCode,
+      event.defaultNodeCode as LifecycleNodeCode,
+    ]),
+);
 
 @Injectable()
 export class PrismaContainerRepository implements ContainerRepository {
@@ -83,6 +96,7 @@ export class PrismaContainerRepository implements ContainerRepository {
       select: {
         id: true,
         factCode: true,
+        eventCode: true,
         timeKind: true,
         captureSource: true,
         evidenceRef: true,
@@ -96,6 +110,10 @@ export class PrismaContainerRepository implements ContainerRepository {
       .map((row) => ({
         id: row.id,
         factCode: row.factCode,
+        eventCode: row.eventCode,
+        nodeCode: row.eventCode
+          ? (EVENT_DEFAULT_NODE.get(row.eventCode) ?? null)
+          : null,
         timeKind: row.timeKind as "actual" | "estimated",
         captureSource: row.captureSource,
         evidenceRef: row.evidenceRef,
