@@ -3,17 +3,17 @@
 > 状态：**待评审** · 2026-09-21 · 分支 `feat/warehouse-delivery-operational-flow`
 > 一句话：**货柜工作台看全局并指路，岗位工作台按节点干活；两者是同一任务池的两个投影；任务的完成由事实驱动，人只负责填事实。**
 >
-> 关联：[UX_CONTAINER_WORKBENCH](../product/UX_CONTAINER_WORKBENCH.md)、[WORKSPACE_UI_INVENTORY](../product/WORKSPACE_UI_INVENTORY.md)、[人话-货柜怎么往前走](../../人话-货柜怎么往前走.md)、[DOMAIN_VERTICAL_DELIVERY_PLAN](../planning/DOMAIN_VERTICAL_DELIVERY_PLAN.md)
+> 关联：[UX_CONTAINER_WORKBENCH](../../product/UX_CONTAINER_WORKBENCH.md)、[WORKSPACE_UI_INVENTORY](../../product/WORKSPACE_UI_INVENTORY.md)、[人话-货柜怎么往前走](../../人话-货柜怎么往前走.md)、[DOMAIN_VERTICAL_DELIVERY_PLAN](../../planning/DOMAIN_VERTICAL_DELIVERY_PLAN.md)
 
 ## 1. 问题：三个方向都是断的
 
 现状（截至 2026-09-21）的实测结论：
 
-| 方向 | 现状 | 证据 |
-| ---- | ---- | ---- |
-| 工作台 → 产生任务 | ❌ 不产生 | 任务由建柜一次展开 14 站 + 过站激活，工作台无写入 |
-| 任务 → 驱动工作台 | ❌ 不驱动 | 点击只是往 URL 写 `?containerId=&taskId=`，工作台按 containerId 加载 |
-| 任务 → 驱动流程 | ❌ 不驱动 | `complete-work-order.service.ts:306-320` 硬编码返回 `lifecycleApply: "not_applicable"` |
+| 方向              | 现状      | 证据                                                                                   |
+| ----------------- | --------- | -------------------------------------------------------------------------------------- |
+| 工作台 → 产生任务 | ❌ 不产生 | 任务由建柜一次展开 14 站 + 过站激活，工作台无写入                                      |
+| 任务 → 驱动工作台 | ❌ 不驱动 | 点击只是往 URL 写 `?containerId=&taskId=`，工作台按 containerId 加载                   |
+| 任务 → 驱动流程   | ❌ 不驱动 | `complete-work-order.service.ts:306-320` 硬编码返回 `lifecycleApply: "not_applicable"` |
 
 后端 `work-execution` 模块内搜 `workspace` / `工作台` **零命中**；唯一的 Task↔Workspace 关联是前端硬编码的 `1 nodeCode : 1 工作台`（`apps/web/src/data/*Workbench.ts`），14 站里只有 6 站有台。
 
@@ -82,7 +82,7 @@
 
 > 负责人 2026-09-21：**"不收敛，只分组导航。"**
 
-现有 6 个单节点台**不合并**，路由、页面、表单全不动。只在侧栏按 [COMPLIANCE_MANAGEMENT §7.1](../product/domain/COMPLIANCE_MANAGEMENT.md) 的组织映射分组，让人看得出哪几个台属于同一个组织。
+现有 6 个单节点台**不合并**，路由、页面、表单全不动。只在侧栏按 [COMPLIANCE_MANAGEMENT §7.1](../../product/domain/COMPLIANCE_MANAGEMENT.md) 的组织映射分组，让人看得出哪几个台属于同一个组织。
 
 **成本如实说明**：这不只是改 `section` 字段。`AppSidebar.vue` 现在是**平铺渲染**（`v-for="item in navigation"`），`AppNavigationItem.section` 是**死数据** —— 全仓只有 `navigation.test.ts` 断言它透传，没有任何组件渲染它。所以分组需要：`AppSidebar` 新增分组渲染 + `navigation.ts` 填新 section 值 + 更新 `navigation.test.ts`。
 
@@ -117,11 +117,11 @@
 
 复用 `/container/:id`（`apps/web/src/views/MicroWorkbench.vue`），改三处：
 
-| 块 | 现在 | 改后 | 数据来源 |
-| -- | ---- | ---- | -------- |
-| **轨道** | `LiveNodeRail.vue` 只画**已落库**的站（有 `node_instance` 才画） | 画**全 14 站**目录，叠加已落库状态 | 目录 `packages/contracts/catalogs/v1/lifecycle-nodes.json`；状态 `GET /containers/:id/lifecycle-nodes` |
-| **下一步清单** | 无 | 新增。每条 = 哪一站 + 缺什么 + 去哪个岗位台办 | 新增投影，见 §4.3 |
-| **标记 / 异常位** | 无 | 新增位（`WORKSPACE_UI_INVENTORY §4.4` 已登记为"补回条件"） | 待定，见 §7 |
+| 块                | 现在                                                             | 改后                                                       | 数据来源                                                                                               |
+| ----------------- | ---------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **轨道**          | `LiveNodeRail.vue` 只画**已落库**的站（有 `node_instance` 才画） | 画**全 14 站**目录，叠加已落库状态                         | 目录 `packages/contracts/catalogs/v1/lifecycle-nodes.json`；状态 `GET /containers/:id/lifecycle-nodes` |
+| **下一步清单**    | 无                                                               | 新增。每条 = 哪一站 + 缺什么 + 去哪个岗位台办              | 新增投影，见 §4.3                                                                                      |
+| **标记 / 异常位** | 无                                                               | 新增位（`WORKSPACE_UI_INVENTORY §4.4` 已登记为"补回条件"） | 待定，见 §7                                                                                            |
 
 目标形态：
 
@@ -150,11 +150,11 @@
 
 留空纪律（与仓库既有规则一致，务必让实施计划遵守）：
 
-| 允许 | 禁止 |
-| ---- | ---- |
+| 允许                                                 | 禁止                                                       |
+| ---------------------------------------------------- | ---------------------------------------------------------- |
 | 槽位常驻，无数据时显式留空（`计划 —` / `预计 待补`） | 用假值 / 演示数据填充（`WORKSPACE_UI_INVENTORY §4.4`、§6） |
-| 三轨框架一开始就画 | 在空轨道上画进度条（`WORKSPACE_UI_INVENTORY §6`） |
-| `不适用` 独立于"留空" | 把"无数据"渲染成"0 / 无风险"冒充分已接通 |
+| 三轨框架一开始就画                                   | 在空轨道上画进度条（`WORKSPACE_UI_INVENTORY §6`）          |
+| `不适用` 独立于"留空"                                | 把"无数据"渲染成"0 / 无风险"冒充分已接通                   |
 
 **`不适用` ≠ `留空`**：`applicability: optional_not_applicable` 的节点（中转 / 海铁）显示"不适用"，这是有意义的判定，不得与"暂无数据"混同，也不制造假取消。
 
@@ -164,11 +164,11 @@
 
 原型会话产物在 `.superpowers/brainstorm/234-1789986779/content/`（已 gitignore，不入库；结构与约束在此固化，保证脱离原例会话也能实施）。三项选择：
 
-| 项 | **选定** | 未采纳 |
-| -- | -------- | ------ |
-| 轨道形态 | **A 横向主轴**——14 站一条线铺开 | 垂直线性轨道（要滚动，丢掉"一眼看尽"） |
+| 项       | **选定**                                                                               | 未采纳                                     |
+| -------- | -------------------------------------------------------------------------------------- | ------------------------------------------ |
+| 轨道形态 | **A 横向主轴**——14 站一条线铺开                                                        | 垂直线性轨道（要滚动，丢掉"一眼看尽"）     |
 | 三轨落法 | **A3 主轴 + 展开卡**——主轴每站一个摘要日期或 `—`；展开卡常驻，含计划 / 预计 / 实际三行 | 三行全展（轨道变 5 行）、单行 + 三格存在条 |
-| 整页布局 | **L1 竖向堆叠**——柜头 → 轨道 + 展开卡 → 下一步清单 | 轨道通栏 + 下方两栏、左栏常驻 + 右主区 |
+| 整页布局 | **L1 竖向堆叠**——柜头 → 轨道 + 展开卡 → 下一步清单                                     | 轨道通栏 + 下方两栏、左栏常驻 + 右主区     |
 
 未采纳 C 的**组织色带**（顺序轴不动 + 色带表达组织）：因选定 A 而默认不加。若要加是纯增量，不改变本设计。
 
@@ -201,14 +201,14 @@
 
 ### 4.2 岗位工作台
 
-| 处 | 改动 |
-| -- | ---- |
-| **队列** | 每条从"任务标题"改为**缺口清单**：已收什么 / 缺什么 / 责任 / 时限 |
-| **行动栏** | 「完成工单」不再无条件出现。事实驱动的站不出按钮；事实源不可用时出「人工补录事实」 |
-| | ⚠️「人工补录事实」**不是新机制**——岗位台现有的表单本身就是人工录入事实（提交到 `/containers/:id/date-facts`）。此按钮只是**打开那个表单**，不需要新建通道。 |
-| **表单** | **不动** |
-| **顶部** | 新增"回货柜工作台"链接（当前两个入口互不链接） |
-| **侧栏** | 不属于本页，见 D5：AppSidebar 改为按组织分组渲染 |
+| 处         | 改动                                                                                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **队列**   | 每条从"任务标题"改为**缺口清单**：已收什么 / 缺什么 / 责任 / 时限                                                                                           |
+| **行动栏** | 「完成工单」不再无条件出现。事实驱动的站不出按钮；事实源不可用时出「人工补录事实」                                                                          |
+|            | ⚠️「人工补录事实」**不是新机制**——岗位台现有的表单本身就是人工录入事实（提交到 `/containers/:id/date-facts`）。此按钮只是**打开那个表单**，不需要新建通道。 |
+| **表单**   | **不动**                                                                                                                                                    |
+| **顶部**   | 新增"回货柜工作台"链接（当前两个入口互不链接）                                                                                                              |
+| **侧栏**   | 不属于本页，见 D5：AppSidebar 改为按组织分组渲染                                                                                                            |
 
 目标形态：
 
@@ -222,13 +222,13 @@
 
 ### 4.3 任务模型变化
 
-| | 现在 | 改后 |
-| -- | ---- | ---- |
-| 任务是什么 | 一件要你点「完成」的活 | **这一站还缺什么的清单** |
-| 谁判定完成 | 人点按钮 | 事实被采信时，系统自动完成 |
-| 完成与推进的关系 | 完成 → 什么也不发生 | 事实采信 → 任务完成 + 过站（同一件事） |
-| 「完成工单」按钮 | 无条件出现 | 移除；事实源不可用时改为「人工补录事实」 |
-| 人的动作 | 领活、干、点完成 | **只填事实** |
+|                  | 现在                   | 改后                                     |
+| ---------------- | ---------------------- | ---------------------------------------- |
+| 任务是什么       | 一件要你点「完成」的活 | **这一站还缺什么的清单**                 |
+| 谁判定完成       | 人点按钮               | 事实被采信时，系统自动完成               |
+| 完成与推进的关系 | 完成 → 什么也不发生    | 事实采信 → 任务完成 + 过站（同一件事）   |
+| 「完成工单」按钮 | 无条件出现             | 移除；事实源不可用时改为「人工补录事实」 |
+| 人的动作         | 领活、干、点完成       | **只填事实**                             |
 
 **工单（`WorkOrder`）保留**，但它不再是完成的判定者，只承载**分派 / 领取 / 责任人 / 时限**（`assigneeId` / `assignmentState` / `dueAt` 都在工单上，`NodeTask` 上没有）。事实到齐时任务与其工单**一并自动完成**。
 
@@ -294,10 +294,10 @@
 
 **三轨的数据源是 `LifecycleDateFact`（不是 `ShipmentTimeFact`）。** 仓库里有**两张**时间事实表，别搞混：
 
-| 表 | 归属 | 关键列 | 用来做什么 |
-| -- | ---- | ------ | ---------- |
-| `LifecycleDateFact` | `lifecycle-control` | `nodeCode`、`eventCode`、`timeKind`（**planned / estimated / actual**）、`occurredAt`、`verificationState`、`applicationState`、`isCurrent` | **三轨轨道的来源**——它有 `nodeCode` 和全部三种 `timeKind` |
-| `ShipmentTimeFact` | `shipment-registry` | `factCode`、`eventCode?`、`timeKind`（**只有 actual / estimated**）、`evidenceRef`、`isCurrent` | **任务条件计算**的来源（`TaskConditionFact`）——**没有 planned** |
+| 表                  | 归属                | 关键列                                                                                                                                      | 用来做什么                                                      |
+| ------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `LifecycleDateFact` | `lifecycle-control` | `nodeCode`、`eventCode`、`timeKind`（**planned / estimated / actual**）、`occurredAt`、`verificationState`、`applicationState`、`isCurrent` | **三轨轨道的来源**——它有 `nodeCode` 和全部三种 `timeKind`       |
+| `ShipmentTimeFact`  | `shipment-registry` | `factCode`、`eventCode?`、`timeKind`（**只有 actual / estimated**）、`evidenceRef`、`isCurrent`                                             | **任务条件计算**的来源（`TaskConditionFact`）——**没有 planned** |
 
 现成查询：`PrismaLifecycleDateFactRepository.listCurrent({ tenantId, containerId })`（`prisma-lifecycle-date-fact.repository.ts:227`）已按 `isCurrent: true` 过滤，但**硬编码 `take: 100`**（14 站 × 3 轨 = 42，够用，但实施时应意识到这个上限）。
 
@@ -307,45 +307,45 @@
 
 **后端**
 
-| 文件 | 改动 |
-| ---- | ---- |
-| `lifecycle-control/…/apply-lifecycle-event.service.ts:422` | 过站成功后，把该节点对应 `NodeTask` 置 `completed`（新增） |
-| `work-execution/infrastructure/prisma-work-execution.repository.ts` | 新增"按 nodeInstanceId 完成任务"的方法 |
-| `work-execution/domain/task-conditions.ts` | 废弃 `FACT_TARGET_NODE`（4 条影子表），改查 canonical-events 权威映射 |
-| 新增缺口清单投影 | 见 §4.4 |
-| 新增时间事实聚合投影（节点 × `timeKind`） | 三轨数据来源，见 §4.1。按 `containerId` 查 `date_fact`，按 `nodeCode` + `timeKind` 分组；事件→节点用 canonical-events 的 `defaultNodeCode`（权威，不新建映射） |
-| `packages/contracts/catalogs/v1/lifecycle-nodes.json` | 每个节点加 `completionMode`（初值全 `fact_driven`），D6。**契约包变更，需重新生成 `contracts.d.ts`** |
-| `work-execution/application/complete-work-order.service.ts` | 本期**保留不动**（`/tasks` 与 API 不改，避免一次动太多）；仅岗位台不再暴露入口。后续评估退役 |
+| 文件                                                                | 改动                                                                                                                                                           |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lifecycle-control/…/apply-lifecycle-event.service.ts:422`          | 过站成功后，把该节点对应 `NodeTask` 置 `completed`（新增）                                                                                                     |
+| `work-execution/infrastructure/prisma-work-execution.repository.ts` | 新增"按 nodeInstanceId 完成任务"的方法                                                                                                                         |
+| `work-execution/domain/task-conditions.ts`                          | 废弃 `FACT_TARGET_NODE`（4 条影子表），改查 canonical-events 权威映射                                                                                          |
+| 新增缺口清单投影                                                    | 见 §4.4                                                                                                                                                        |
+| 新增时间事实聚合投影（节点 × `timeKind`）                           | 三轨数据来源，见 §4.1。按 `containerId` 查 `date_fact`，按 `nodeCode` + `timeKind` 分组；事件→节点用 canonical-events 的 `defaultNodeCode`（权威，不新建映射） |
+| `packages/contracts/catalogs/v1/lifecycle-nodes.json`               | 每个节点加 `completionMode`（初值全 `fact_driven`），D6。**契约包变更，需重新生成 `contracts.d.ts`**                                                           |
+| `work-execution/application/complete-work-order.service.ts`         | 本期**保留不动**（`/tasks` 与 API 不改，避免一次动太多）；仅岗位台不再暴露入口。后续评估退役                                                                   |
 
 **前端**
 
-| 文件 | 改动 |
-| ---- | ---- |
-| `views/MicroWorkbench.vue` | 改为 **L1 竖向堆叠**：柜头（含标记 / 异常槽位）→ 轨道 + 展开卡 → 下一步清单（见 §4.1.1） |
-| `components/container/LiveNodeRail.vue` | 改画全 14 站目录；主轴每站显示摘要日期或 `—`；四态视觉（已完成 / 当前 / 未发生 / 不适用，见 §4.1.1 图例） |
-| **新增** 节点三轨展开卡组件 | **常驻结构**：每站都点得开，含计划 / 预计 / 实际三行（可为空）+ 该站异常。是"预埋"的判据，不得做成"有数据才出现" |
-| `api/lifecycleNodes.ts` + `data/liveNodeProjection.ts` | DTO 与视图模型各加 `plannedAt` / `estimatedAt` / `actualAt`（可空） |
-| `components/workbench/RoleWorkbenchFrame.vue` | 队列/行动栏插槽语义调整；顶部加回链 |
-| `components/shell/AppSidebar.vue` | 新增**分组渲染**（现为平铺 v-for，`section` 是死数据） |
-| `components/shell/navigation.ts` + `navigation.test.ts` | 按 D5 的组织映射填 `section` 值并更新断言 |
-| `components/{cargo-ready,stuffing,dispatch,customs,pickup,delivery}/*WorkQueue.vue` | 队列项改缺口清单形态 |
-| 各 `*ActionPanel.vue` | 移除无条件「完成工单」；按 `completionMode` 决定是否出「人工补录事实」 |
+| 文件                                                                                | 改动                                                                                                             |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `views/MicroWorkbench.vue`                                                          | 改为 **L1 竖向堆叠**：柜头（含标记 / 异常槽位）→ 轨道 + 展开卡 → 下一步清单（见 §4.1.1）                         |
+| `components/container/LiveNodeRail.vue`                                             | 改画全 14 站目录；主轴每站显示摘要日期或 `—`；四态视觉（已完成 / 当前 / 未发生 / 不适用，见 §4.1.1 图例）        |
+| **新增** 节点三轨展开卡组件                                                         | **常驻结构**：每站都点得开，含计划 / 预计 / 实际三行（可为空）+ 该站异常。是"预埋"的判据，不得做成"有数据才出现" |
+| `api/lifecycleNodes.ts` + `data/liveNodeProjection.ts`                              | DTO 与视图模型各加 `plannedAt` / `estimatedAt` / `actualAt`（可空）                                              |
+| `components/workbench/RoleWorkbenchFrame.vue`                                       | 队列/行动栏插槽语义调整；顶部加回链                                                                              |
+| `components/shell/AppSidebar.vue`                                                   | 新增**分组渲染**（现为平铺 v-for，`section` 是死数据）                                                           |
+| `components/shell/navigation.ts` + `navigation.test.ts`                             | 按 D5 的组织映射填 `section` 值并更新断言                                                                        |
+| `components/{cargo-ready,stuffing,dispatch,customs,pickup,delivery}/*WorkQueue.vue` | 队列项改缺口清单形态                                                                                             |
+| 各 `*ActionPanel.vue`                                                               | 移除无条件「完成工单」；按 `completionMode` 决定是否出「人工补录事实」                                           |
 
 **文档**
 
-| 文件 | 改动 |
-| ---- | ---- |
+| 文件                                     | 改动                                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
 | `docs/product/UX_CONTAINER_WORKBENCH.md` | §4「动作中心 + 一键执行」改为"下一步清单 + 跳转"（D3） |
-| `docs/product/UI_SYSTEM.md` §5 | 补入货柜工作台/岗位工作台的页面模板定义（现在缺） |
-| `docs/product/WORKSPACE_UI_INVENTORY.md` | 更新页面定位与拿掉/补回清单 |
+| `docs/product/UI_SYSTEM.md` §5           | 补入货柜工作台/岗位工作台的页面模板定义（现在缺）      |
+| `docs/product/WORKSPACE_UI_INVENTORY.md` | 更新页面定位与拿掉/补回清单                            |
 
 ## 6. 分期
 
-| 期 | 内容 | 可演示结果 |
-| -- | ---- | ---------- |
+| 期       | 内容                                                                                                                                                                                                                                                                                                               | 可演示结果                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | **一期** | 后端接"过站自动完成任务" + 任务条件用 `eventCode` 权威映射（`FACT_TARGET_NODE` 降为兜底）+ **时间事实聚合投影** + **节点目录加 `completionMode`**（D6）；货柜工作台按 **L1 竖向堆叠**重排，轨道画全 14 站、**预埋三轨 + 常驻展开卡**、**预埋标记槽位**（留空）、**接通异常槽位**（消费已有的 `blockedReasonRefs`） | 走完一站后任务自动消失；轨道看到全部 14 站与三轨（计划轨留空、差异可见）；未关闭异常在柜头可见，标记槽位在位留空 |
-| **二期** | **缺口清单投影** + 货柜工作台的"下一步"块 + 跳转 | 货柜工作台能指出下一步并跳到岗位台 |
-| **三期** | 岗位台队列改缺口清单形态；行动栏按 `completionMode` 出按钮；回链；**侧栏按组织分组（D5）** | 岗位台从"任务列表"变"缺什么清单"；侧栏看得出组织归属 |
+| **二期** | **缺口清单投影** + 货柜工作台的"下一步"块 + 跳转                                                                                                                                                                                                                                                                   | 货柜工作台能指出下一步并跳到岗位台                                                                               |
+| **三期** | 岗位台队列改缺口清单形态；行动栏按 `completionMode` 出按钮；回链；**侧栏按组织分组（D5）**                                                                                                                                                                                                                         | 岗位台从"任务列表"变"缺什么清单"；侧栏看得出组织归属                                                             |
 
 一期即产生可观察的正确性改善（任务不再永远挂着），建议先做。
 
@@ -353,29 +353,31 @@
 
 1. **标记 / 异常位——按负责人 2026-09-21 决定预埋为常驻槽位。**（**已修正**：初稿说"异常缺读投影"是错的，查证后两者处境如下。）
 
-   | | 模型 | 写路径 | 读路径 | 前端 |
-   | --- | --- | --- | --- | --- |
-   | **异常** | ✅ `NodeBlock` + `NodeBlockResolution` | ✅ 创建 / resolve | ✅ **已通**——`prisma-lifecycle.repository.ts:34` 的查询带 `where: { resolution: { is: null } }`，`blockedReasonRefs` **只含未关闭的阻塞**，且已出现在 `GET /containers/:id/lifecycle-nodes` 响应里 | ❌ **唯一断点**：`LifecycleNodeItem` 类型里没这个字段，前端没用 |
-   | **标记** | ❌ `schema.prisma:450` 只有一行 `TODO(D13 物理形态)` | — | — | — |
+   |          | 模型                                                 | 写路径            | 读路径                                                                                                                                                                                             | 前端                                                            |
+   | -------- | ---------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+   | **异常** | ✅ `NodeBlock` + `NodeBlockResolution`               | ✅ 创建 / resolve | ✅ **已通**——`prisma-lifecycle.repository.ts:34` 的查询带 `where: { resolution: { is: null } }`，`blockedReasonRefs` **只含未关闭的阻塞**，且已出现在 `GET /containers/:id/lifecycle-nodes` 响应里 | ❌ **唯一断点**：`LifecycleNodeItem` 类型里没这个字段，前端没用 |
+   | **标记** | ❌ `schema.prisma:450` 只有一行 `TODO(D13 物理形态)` | —                 | —                                                                                                                                                                                                  | —                                                               |
 
    所以：**异常一期就能接真数据**（补前端字段 + 消费即可，无需后端改动）；**标记是真·空槽位**，等 `CONTAINER_MARKERS` 落地。
 
    **共同的留空纪律**（同 §4.1）：空数组**不得**渲染成"0 项异常 / 无风险"（`WORKSPACE_UI_INVENTORY §4.1` 明写），必须是显式未知。
+
 2. **计划轨会长期空着——已知并接受。** 三轨槽位按 §4.1 **预埋**（不因当前无数据而省略），但三种时间的**供给**差别很大，实施与后续维护都要知道：
 
    **结构上必须新建三层**：`NodeInstance` 表只有 `state` / `applicability` / `completedAt`，**没有时间列**（时间属于事实流水账，不属于节点实例，这是有意的设计）。`LifecycleNodeItem` 与 `LiveNodeView` 同样除 `completedAt` 外无时间字段，`LiveNodeRail.vue` 模板里也没有渲染时间的标记。三轨 = 新增按节点聚合时间事实的投影 + 打通 DTO → 视图模型 → 组件三层。**已提到一期**（见 §6）。
 
    **数据供给上**：
 
-   | 轨道 | 生产者 | 现状 |
-   | ---- | ------ | ---- |
-   | 实际 `actual` | 导入、岗位台表单、外部追踪源（`ocean-port-visibility`） | ✅ 三个来源 |
-   | 预计 `estimated` | 导入（`import-time-facts.ts`）、外部追踪源 | ⚠️ 有来源，覆盖面窄 |
-   | 计划 `planned` | **无任何生产者** | ❌ 全仓 `"planned"` 只命中 `lifecycle-date-fact.dto.ts:19-20` 的枚举声明 |
+   | 轨道             | 生产者                                                  | 现状                                                                     |
+   | ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------------ |
+   | 实际 `actual`    | 导入、岗位台表单、外部追踪源（`ocean-port-visibility`） | ✅ 三个来源                                                              |
+   | 预计 `estimated` | 导入（`import-time-facts.ts`）、外部追踪源              | ⚠️ 有来源，覆盖面窄                                                      |
+   | 计划 `planned`   | **无任何生产者**                                        | ❌ 全仓 `"planned"` 只命中 `lifecycle-date-fact.dto.ts:19-20` 的枚举声明 |
 
    **接受的风险**：计划轨将**长期为空**，因为系统里没有"计划编制"这个业务动作。按 §4.1 留空纪律它必须显式留空而非隐藏——但实施与验收都必须知道"**空的计划轨是正常的，不是加载失败**"。界面上"暂无数据"与"加载失败"必须是两种可见状态，不得混同。
 
    若哪天要填满计划轨，需先发明"计划编制"这个业务动作，那是独立的一件事，不在本设计内。
+
 3. **`completionMode` 已按 D6 先立字段，判据后补。** 字段立在 `lifecycle-nodes.json`，初值全 `fact_driven`（见 §4.4 / D6）。
 
    **已知后果**：一期上线后 `needs_manual_fact` **没有生产者**，等于兜底按钮暂时不出现。这与 D4 的意图（事实优先）一致，但实施与验收必须知道——**和计划轨是同一类情况：槽位已立、暂无写入方**。
@@ -389,24 +391,27 @@
    倾向 **(a) 起步、(c) 以后补**。
 
    **将来要按柜覆盖**时，照 `applicability` 的模式在 `NodeInstance` 加列，不改目录语义。
+
 4. **前端 6 个台是同一骨架的六次换皮。** 本设计不动结构（表单是资产），但长期应评估是否收成一个页面参数化。不在本期。
 5. **已存在的并行数据**：`ExternalWorkItem`（跨模块整改/义务，按 `assignedRoleCode` 派，与 `NodeTask` 无 FK）走 `GET /work-items`，界面强制分栏。本期不合并两者。
-6. **未建的站属于未建的组织工作台，是排期问题，不是设计空洞。** 权威映射见 [COMPLIANCE_MANAGEMENT §7.1](../product/domain/COMPLIANCE_MANAGEMENT.md)（`UI_SYSTEM §8.5` 指定它为权威）：8 个组织工作台**分段覆盖**全部 14 个节点，不是一站一台。仍缺的 3 个组织台——
+6. **未建的站属于未建的组织工作台，是排期问题，不是设计空洞。** 权威映射见 [COMPLIANCE_MANAGEMENT §7.1](../../product/domain/COMPLIANCE_MANAGEMENT.md)（`UI_SYSTEM §8.5` 指定它为权威）：8 个组织工作台**分段覆盖**全部 14 个节点，不是一站一台。仍缺的 3 个组织台——
 
-   | 缺的组织台 | 覆盖节点 |
-   | ---------- | -------- |
-   | 船务 | `origin_departure`、`ocean_transit`、`transshipment`、`destination_arrival` |
-   | 入库 | `container_unloading`、`container_unstuffing` |
-   | 还箱 | `empty_return` |
+   | 缺的组织台 | 覆盖节点                                                                    |
+   | ---------- | --------------------------------------------------------------------------- |
+   | 船务       | `origin_departure`、`ocean_transit`、`transshipment`、`destination_arrival` |
+   | 入库       | `container_unloading`、`container_unstuffing`                               |
+   | 还箱       | `empty_return`                                                              |
 
    已在路线图 `DOMAIN_VERTICAL_DELIVERY_PLAN §3` 的 3.2 项（送仓到还箱）内。另 `rail_transfer` 归**内陆运输**（台已建，节点尚未接）。
 
    因此货柜工作台"下一步"清单里，未建组织中的节点，点击目标 = 待建台；一期标注"该组织工作台待建"即可，不阻塞轨道铺满 14 站。
+
 7. **现有 6 台与权威映射不一致：把"组织工作台"做成了"一站一台"。** 权威映射中**出运**拥有 `container_stuffing` + `shipment_dispatch` 两站，**内陆运输**拥有 `rail_transfer` + `container_pickup` + `warehouse_delivery` 三站；而现有实现拆成了 4 个独立的单节点台（装箱 / 出运 / 提柜 / 送仓）。
 
    **这正是"六个台长得一模一样"的根源**：一台只管一个节点时，台与台之间的差异就只剩中间那张事实表，骨架必然同形（见 §1.2）。组织台的意义在于"管一段"，那才会长出不同的形状。
 
    **已决策（D5）**：不收敛，只做分组导航。所以"六台同形"的观感在页面层保留，由侧栏分组与 §4.2 的队列改造缓解；收敛留待船务 / 入库 / 还箱建台时一并评估（那时反正要动一次）。
+
 8. **组织分段与节点顺序对不上**（原型评审时发现）。按权威顺序，`customs_clearance`⑦ 夹在船务的 `transshipment`⑥ 与 `destination_arrival`⑧ 之间，所以 **船务 = ④⑤⑥⑧，中间被清关打断**。
 
    侧栏按组织分组（D5）不受影响——那只是导航，不要求连续。但若将来要让**轨道**按组织分段，必然出现一个组被切成两截。原型选项 C 正是为解决它而设计（**顺序轴不动 + 组织色带**），本期选定 A 故未采纳，留作记录：真要做组织分段时，色带是正解，切轴是错的。

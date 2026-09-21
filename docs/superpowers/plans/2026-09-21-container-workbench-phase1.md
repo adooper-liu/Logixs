@@ -1,14 +1,16 @@
 # 货柜工作台一期 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **执行方式：** 每个 Task 使用一个全新子代理；主代理在进入下一 Task 前审查差异、权威契约和定向验证。共享文件任务不得并行写。步骤使用 checkbox（`- [ ]`）跟踪。
 
-**Goal:** 让"规范事件过站"自动完成对应节点任务（修掉"过站了任务还永远挂在池子里"的缺陷），并让货柜工作台首次铺满 14 站轨道，三轨（计划/预计/实际）预埋、无数据显式留空。
+**Goal:** 让已经合法应用的规范事件/日期事实经 `WorkOrderFactApplication` 对账到对应工单，严格经过 WorkOrder 状态机、NodeTask 聚合和 NodeTaskOutcome/审计闭环；同时让货柜工作台首次铺满 14 站轨道，三轨（计划/预计/实际）预埋、无数据显式留空。
 
-**Architecture:** 后端在既有跨模块端口模式上新增一个 `COMPLETE_NODE_TASK` 端口，由 `ApplyLifecycleEventService` 在 `transition.applied` 处调用；同时把"事实→节点"的判定依据从硬编码 4 条影子表改为 `ShipmentTimeFact.eventCode` → canonical-events 的权威映射（影子表降为兜底）。前端把 `MicroWorkbench` 重排为 L1 竖向堆叠，轨道改为画全 14 站的水平主轴，并新增一个**常驻**的三轨展开卡。
+**Architecture:** `lifecycle-control` 继续独占过站，`work-execution` 继续独占任务/工单。节点应用成功时，在同一 lifecycle 本地事务写 `NodeEventApplication(applied)` 与专用 reconciliation Outbox；现有 Outbox 租约、重试、死信和重放链把完整因果范围交给公开 `RECONCILE_APPLIED_LIFECYCLE_FACT` 端口。端口按 `workOrderId + businessFactKey` 幂等，事务内写不可变 `WorkOrderFactApplication`、执行合法 WorkOrder 转换、确定性聚合 NodeTask、写 NodeTaskOutcome/审计；即使 lifecycle 已先提交，Outbox 重放仍可补齐任务侧，且不会再次过站。事实→节点继续使用 `ShipmentTimeFact.eventCode` → canonical-events 权威映射（旧影子表只作兼容兜底）。前端把 `MicroWorkbench` 重排为 L1 竖向堆叠，轨道画全 14 站，并新增**常驻**三轨展开卡。
 
 **Tech Stack:** NestJS + Prisma + Vitest（后端）· Vue 3 `<script setup>` + vue-router + Vitest/happy-dom（前端）· pnpm workspace + turbo
 
 **Spec:** `docs/superpowers/specs/2026-09-21-container-workbench-task-driving-design.md`
+
+> 该 Spec 状态为待评审，仅提供产品方向。其“事实采信 → 任务完成 + 过站”的描述必须按正式 GC-005 展开为两条各自受控、可对账的链路，不授权 lifecycle 反向批量修改任务/工单；冲突时以 GC-005 和已接受模块依赖图为准。
 
 ## Global Constraints
 
@@ -17,424 +19,383 @@
 - **不适用 ≠ 留空**：`applicability === "optional_not_applicable"` 的节点（中转 / 海铁）显示"不适用"，与"暂无数据"是两种呈现。
 - **三轨槽位常驻**：`plannedAt` / `estimatedAt` / `actualAt` 三个字段始终存在于类型与模板中，无值时渲染 `—`，不因无数据而省略。
 - **不改领域规则**："工单完成 ≠ 过站"保持不变。人工兜底路径是"人工补录事实"，不是"手工完成工单"。
+- **禁止反向完成**：不得因为 lifecycle 节点已完成而直接 `UPDATE NodeTask/WorkOrder = completed`；节点应用只是可被工单完成谓词消费的业务事实。
+- **本地事务边界**：lifecycle 过站事务与 work-execution 对账事务不伪装成一个分布式事务。前者把 `NodeEventApplication(applied)` 与 reconciliation Outbox 原子提交；后者失败时复用现有 Outbox 重试、死信和重放补齐。
+- **同语义幂等**：同一 `workOrderId + businessFactKey`、同一 `requestHash` 返回原结果；同键异哈希明确 `IDEMPOTENCY_CONFLICT`，不得覆盖原应用。
+- **状态守卫**：`draft`、`failed`、`cancelled` 工单不得被事实对账强改为 completed；cancelled NodeTask 也不得复活。需要恢复时走正式 ready/reopen/适用性命令后再重放。
+- **正式 brief 顺序**：`p6-container-unloading-operational-flow.md` 已完成并由 `0b5b583` 实现、`9c2052e` 收口。因 GitHub CLI 登录失效，一期分支暂时叠在该精确提交之上继续开发；最终 PR 前必须确认前置提交已进入 `main`，不得把认证等待扩散成业务实现阻塞。
 - **不改现有表单**：六个岗位工作台的表单一行不改。
 - 后端测试：`pnpm --filter @logix/api test -- <path>`；前端测试：`pnpm --filter @logix/web test <path>`。
 - 契约包改动后必须跑 `pnpm contract:generate` 重新生成 `packages/contracts/generated/contracts.d.ts`。
 
 ---
 
+## 开工门禁与顺序
+
+1. 以包含 `0b5b583` 和 `9c2052e` 的 `feat/container-workbench-phase1` 为明确堆叠基线；保留两份用户 `uv.lock` 修改。
+2. 创建 `docs/planning/tasks/p6-container-workbench-phase1.md`，初始状态 `design`；`docs/INDEX.md` 同批登记。最终 PR 前先让前置卸柜提交进入 `main`，再核对本分支只剩一期差异。
+3. brief 必须引用 GC-005、模块依赖图、本设计和本计划，并包含范围、非目标、风险、验证及以下四者协同矩阵：
+
+| 岗位目标                           | 操作时需要看到什么                                                                   | 系统允许做什么                                                                      | 数据如何可靠保存                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 全局运营识别一柜当前站、历史和异常 | 14 站、当前/完成/不适用、计划/预计/实际、未关闭阻塞、数据来源/空态                   | 选择站点、查看三轨和缺口、跳转岗位台；本期不在货柜页直接办业务                      | lifecycle 查询投影；空值为 null；不从颜色或文案反推状态                         |
+| 对应岗位完成节点工作               | 当前工单、完成谓词、已收/缺失事实、责任/时限、证据和不可执行原因                     | 录入/导入/API 接收事实，按服务端 allowed actions 领取或处理；不得手工指定 completed | 规范事实 → FactApplication → 状态机 → 聚合 → Outcome/审计；事务、版本和幂等受控 |
+| 复核/运维处理失败和迟到事实        | 原规范事件、domain fact、target node、Outbox 状态、attempt、稳定 reasonCode、traceId | 重放 due/dead-letter 对账；更正走新事实，不覆盖历史                                 | 专用 reconciliation Outbox 复用既有租约/重试/死信；事实应用同键幂等、异载荷冲突 |
+
+4. 实施顺序固定：Task 1~~4（事实对账主链）→ Task 5~~7（权威映射/目录/三轨 API）→ Task 8~11（前端类型、水平轨道、常驻三轨卡、L1 页面）。每个 Task 完成后由主代理审查再提交单一主题 commit。
+
+---
+
 ## 文件结构
 
 **后端 · work-execution**
-| 文件 | 职责 |
-| --- | --- |
-| `complete-node-task.port.ts`（新建） | 对外端口：按 `nodeInstanceId` 完成任务 |
-| `application/complete-node-task.service.ts`（新建） | 端口实现：幂等、找不到即无操作 |
-| `application/complete-node-task.service.test.ts`（新建） | 服务单测 |
-| `domain/work-execution.repository.ts`（改） | 端口加一个方法 `completeTaskByNodeInstanceId` |
-| `infrastructure/prisma-work-execution.repository.ts`（改） | 事务实现：任务 + 其工单一并置完成 |
-| `domain/task-condition-fact.ts`（改） | 加 `nodeCode` 字段 |
-| `domain/task-conditions.ts`（改） | 优先按 `fact.nodeCode` 匹配，`FACT_TARGET_NODE` 降为兜底 |
-| `work-execution.module.ts` / `index.ts`（改） | 注册并导出新端口 |
+
+| 文件                                                                          | 职责                                                       |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `reconcile-applied-lifecycle-fact.port.ts`（新建）                            | 对外端口：把已应用 lifecycle business fact 对账到任务/工单 |
+| `application/reconcile-applied-lifecycle-fact.service.ts`（新建）             | 校验因果范围、幂等/冲突、状态守卫和事务编排                |
+| `domain/work-order-fact-application.ts`（新建）                               | 规范化业务键/哈希与事实应用决定                            |
+| `domain/state-rules.ts` / `domain/task-outcome.ts`（改）                      | 复用合法 WorkOrder 转换与 NodeTask 聚合，结果带事实因果    |
+| `domain/work-execution.repository.ts`（改）                                   | 增加按范围查任务及原子应用事实的端口                       |
+| `infrastructure/prisma-work-execution.repository.ts`（改）                    | 单事务写 FactApplication、状态、聚合、Outcome/审计         |
+| `infrastructure/prisma-work-execution.repository.integration.test.ts`（新建） | 真实 PostgreSQL 约束、回滚、重放和并发验证                 |
+| `domain/task-condition-fact.ts`（改）                                         | 加 `nodeCode` 字段                                         |
+| `domain/task-conditions.ts`（改）                                             | 优先按 `fact.nodeCode` 匹配，`FACT_TARGET_NODE` 降为兜底   |
+| `work-execution.module.ts` / `index.ts`（改）                                 | 注册并导出新端口                                           |
+| `module.manifest.ts`（改）                                                    | 登记 `RECONCILE_APPLIED_LIFECYCLE_FACT` 公共端口           |
 
 **后端 · shipment-registry**
-| 文件 | 职责 |
-| --- | --- |
-| `domain/container-task-fact.ts`（改） | 加 `nodeCode` 字段 |
+
+| 文件                                                  | 职责                                                    |
+| ----------------------------------------------------- | ------------------------------------------------------- |
+| `domain/container-task-fact.ts`（改）                 | 加 `nodeCode` 字段                                      |
 | `infrastructure/prisma-container.repository.ts`（改） | `listCurrentTaskFacts` 用 `eventCode` 解析出 `nodeCode` |
 
 **后端 · lifecycle-control**
-| 文件 | 职责 |
-| --- | --- |
-| `application/apply-lifecycle-event.service.ts`（改） | 过站成功后调用 `COMPLETE_NODE_TASK` |
-| `domain/lifecycle-nodes.ts`（改） | 投影加三轨时间字段 |
-| `application/list-lifecycle-nodes.service.ts`（改） | 取事实并传入投影 |
-| `domain/lifecycle-date-fact.repository.ts`（改） | 端口加批量按容器列当前事实的能力 |
-| `presentation/lifecycle-nodes.controller.ts`（改） | DTO 透出三轨时间 |
-| `domain/node-completion-mode.ts`（新建） | 从节点目录读 `completionMode` |
+
+| 文件                                                       | 职责                                               |
+| ---------------------------------------------------------- | -------------------------------------------------- |
+| `domain/work-fact-reconciliation-outbox.ts`（新建）        | 构造逐目标节点、可幂等重放的 reconciliation Outbox |
+| `infrastructure/work-execution-outbox-delivery.ts`（新建） | 路由专用 Outbox 到 work-execution 公共对账端口     |
+| `domain/lifecycle.repository.ts` / Prisma 实现（改）       | 节点应用与专用 Outbox 原子提交；读取完整因果范围   |
+| `domain/lifecycle-nodes.ts`（改）                          | 投影加三轨时间字段                                 |
+| `application/list-lifecycle-nodes.service.ts`（改）        | 取事实并传入投影                                   |
+| `domain/lifecycle-date-fact.repository.ts`（改）           | 端口加批量按容器列当前事实的能力                   |
+| `presentation/lifecycle-nodes.controller.ts`（改）         | DTO 透出三轨时间                                   |
+| `domain/node-completion-mode.ts`（新建）                   | 从节点目录读 `completionMode`                      |
 
 **契约**
-| 文件 | 职责 |
-| --- | --- |
+
+| 文件                                                        | 职责                                              |
+| ----------------------------------------------------------- | ------------------------------------------------- |
 | `packages/contracts/catalogs/v1/lifecycle-nodes.json`（改） | 每个节点加 `completionMode`，初值全 `fact_driven` |
-| `packages/contracts/generated/contracts.d.ts`（再生成） | — |
+| `packages/contracts/generated/contracts.d.ts`（再生成）     | —                                                 |
+
+**数据库**
+
+| 文件                                                                                    | 职责                                                                |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `database/schema.prisma`（改）                                                          | 落地 `WorkOrderFactApplication`、工单版本/适用性与 Outcome 因果字段 |
+| `database/migrations/<timestamp>_add_work_order_fact_application/migration.sql`（新建） | expand → backfill → constrain；只追加迁移                           |
+| `scripts/verify-work-order-fact-application.mts`（新建）                                | 验证租户范围、唯一键、状态与历史数据回填                            |
+| `package.json`（改）                                                                    | 新增 `db:verify:work-order-fact-application` 稳定入口               |
 
 **前端**
-| 文件 | 职责 |
-| --- | --- |
-| `api/lifecycleNodes.ts`（改） | `LifecycleNodeItem` 加三轨时间与 `blockedReasonRefs` |
-| `data/liveNodeProjection.ts`（改） | `LiveNodeView` 加三轨时间与异常数 |
-| `components/container/LiveNodeRail.vue`（重写） | 水平主轴：全 14 站、四态、每站摘要日期或 `—` |
-| `components/container/NodeTimeTrackCard.vue`（新建） | **常驻**三轨展开卡 |
-| `views/MicroWorkbench.vue`（改） | L1 竖向堆叠 + 标记 / 异常槽位 |
+
+| 文件                                                 | 职责                                                 |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| `api/lifecycleNodes.ts`（改）                        | `LifecycleNodeItem` 加三轨时间与 `blockedReasonRefs` |
+| `data/liveNodeProjection.ts`（改）                   | `LiveNodeView` 加三轨时间与异常数                    |
+| `components/container/LiveNodeRail.vue`（重写）      | 水平主轴：全 14 站、四态、每站摘要日期或 `—`         |
+| `components/container/NodeTimeTrackCard.vue`（新建） | **常驻**三轨展开卡                                   |
+| `views/MicroWorkbench.vue`（改）                     | L1 竖向堆叠 + 标记 / 异常槽位                        |
 
 ---
 
-### Task 1: work-execution 提供"按节点实例完成任务"的端口
+### Task 1: 冻结运行时对账命令与领域决定
+
+**Authority:**
+
+- `TASK_WORK_ORDER_CONTRACT_V1.md §5~§12`：工单合法转换、事实应用、聚合、结果和事务规则。
+- `MODULE_DEPENDENCIES.md §2.1`：`lifecycle-control` 独占过站，`work-execution` 独占任务/工单。
+- `packages/contracts/schemas/v1/work-execution.schema.json`：既有 `WorkOrderFactApplication` 与 `WorkExecutionCommand` 技术契约。本任务消费它们，不修改正式契约原文。
 
 **Files:**
-- Create: `apps/api/src/modules/work-execution/complete-node-task.port.ts`
-- Create: `apps/api/src/modules/work-execution/application/complete-node-task.service.ts`
-- Create: `apps/api/src/modules/work-execution/application/complete-node-task.service.test.ts`
+
+- Create: `apps/api/src/modules/work-execution/domain/work-order-fact-application.ts`
+- Create: `apps/api/src/modules/work-execution/domain/work-order-fact-application.test.ts`
+- Modify: `apps/api/src/modules/work-execution/domain/state-rules.ts`
+- Modify: `apps/api/src/modules/work-execution/domain/state-rules.test.ts`
+- Modify: `apps/api/src/modules/work-execution/domain/task-outcome.ts`
+- Modify: `apps/api/src/modules/work-execution/domain/task-outcome.test.ts`
+- Create: `apps/api/src/modules/work-execution/reconcile-applied-lifecycle-fact.port.ts`
+
+**Public command:**
+
+```ts
+export interface ReconcileAppliedLifecycleFactCommand {
+  tenantId: string;
+  containerId: string;
+  flowInstanceId: string;
+  nodeInstanceId: string;
+  nodeCode: LifecycleNodeCode;
+  canonicalEventId: string;
+  eventCode: CanonicalEventCode;
+  businessFactType: "lifecycle_date_fact" | "canonical_lifecycle_event";
+  domainFactId: string;
+  captureSource: CaptureSource;
+  evidenceRefs: string[];
+  occurredAt: Date;
+  receivedAt: Date;
+  actorOrServiceId: string;
+  traceId: string;
+  idempotencyKey: string;
+}
+```
+
+有已核验日期事实时，`businessFactType = "lifecycle_date_fact"` 且 `domainFactId = CanonicalEvent.domainFactId`；没有关联日期事实但规范事件本身已合法应用时，`businessFactType = "canonical_lifecycle_event"` 且 `domainFactId = CanonicalEvent.id`。两者都引用真实不可变记录，不伪造 UUID，也不靠 `containerId + eventCode` 猜事实。
+
+**稳定键与哈希：**
+
+- `businessFactType` 使用命令中的两种受控值；`NodeEventApplication` 只说明该事实已作用到哪个目标节点。
+- `businessFactKey = lifecycle-node-application/{canonicalEventId}/{nodeInstanceId}`。
+- 每张匹配工单分别用 `workOrderId + businessFactKey` 幂等。
+- `requestHash` 只覆盖规范化后的业务语义：tenant/container/flow/node instance/node code/event id/event code/domain fact/occurredAt/captureSource/排序去重后的 evidenceRefs；不把 traceId、receivedAt 或重试次数放进哈希。
+- 同键同哈希返回原 `applied | rejected | no_op` 决定；同键异哈希返回 `IDEMPOTENCY_CONFLICT`。
+
+- [ ] **Step 1: 先写纯领域失败测试**
+
+覆盖：
+
+1. `ready | in_progress | blocked | reopened -> completed` 仍使用 `decideWorkOrderCompletion`。
+2. `completed` 返回 `no_op`，不重复形成 Outcome。
+3. `draft | failed | cancelled` 明确拒绝，绝不批量改成 completed。
+4. cancelled NodeTask 不因迟到 lifecycle fact 复活。
+5. required/conditional-required 全部完成才聚合 NodeTask；optional 不阻断；required failed/cancelled 仍为 blocked。
+6. Outcome 只在 NodeTask 首次进入 completed 时产生，并携带 `evaluatedFactRefs`、`canonicalEventId`、`domainFactId`、`traceId`。
+7. 业务键/哈希与 evidenceRefs 输入顺序无关。
+
+Run: `pnpm --filter @logix/api test -- src/modules/work-execution/domain/work-order-fact-application.test.ts src/modules/work-execution/domain/state-rules.test.ts src/modules/work-execution/domain/task-outcome.test.ts`
+
+Expected: 新测试先 FAIL。
+
+- [ ] **Step 2: 实现纯规则和公开端口类型**
+
+公开端口只接收稳定命令并返回：
+
+```ts
+type ReconcileDecision = "applied" | "rejected" | "no_op";
+
+interface ReconcileAppliedLifecycleFactResult {
+  nodeTaskId: string | null;
+  factApplicationIds: string[];
+  decision: ReconcileDecision;
+  taskState: NodeTaskState | null;
+  outcomeId: string | null;
+  reasonCode: string | null;
+}
+```
+
+不得提供 `setTaskCompleted`、`setWorkOrdersCompleted` 或通用 `setStatus` 方法。
+
+- [ ] **Step 3: 纯领域测试通过**
+
+Run 同 Step 1。
+
+Expected: PASS。
+
+---
+
+### Task 2: 落地 FactApplication、版本和因果审计
+
+**Files:**
+
+- Modify: `database/schema.prisma`
+- Create: `database/migrations/<timestamp>_add_work_order_fact_application/migration.sql`
+- Create: `scripts/verify-work-order-fact-application.mts`
+- Modify: `package.json`
+- Modify: `apps/api/src/modules/work-execution/domain/work-execution.repository.ts`
+
+**Minimum physical parity with GC-005:**
+
+1. `NodeTask` 增加 `tenantId`、`version`；租户与 container/flow/node scope 一起查询。
+2. `WorkOrder` 增加 `version`、`applicability`；不得继续在聚合时把所有工单临时写死为 required。
+3. 新增不可变 `WorkOrderFactApplication`，字段与既有 JSON Schema 一致，另保存 `canonicalEventId`、`nodeInstanceId` 作为可查询因果引用。
+4. 唯一键至少为 `workOrderId + businessFactKey`；`requestHash` 使用 sha256 hex check。
+5. `NodeTaskOutcome` 补 `evaluatedFactRefs`、`canonicalEventId`、`domainFactId`、`actorOrServiceId`、`traceId`。已有结果采用可解释默认/nullable 回填，不伪造业务事实。
+6. 复用现有 `OutboxMessage` 保存逐 `canonicalEventId + nodeInstanceId` 的 reconciliation 消息；不在 `NodeEventApplication` 复制 retry/lease/dead-letter 状态机。迁移为既有 `applied` 节点应用补建未发布的专用 Outbox，确保历史滞留任务也可重放。
+
+- [ ] **Step 1: 写追加迁移**
+
+迁移必须采用 expand → backfill → constrain：
+
+- 从 `container_record.tenant_id` 回填既有 NodeTask 的 tenantId；无法唯一回填时迁移明确失败并给验证查询。
+- 既有 WorkOrder `applicability` 按当前第一刀定义回填为 required，并在迁移说明中标明这是现状恢复，不是未来默认。
+- version 从 0 开始。
+- 不修改已共享的历史迁移。
+
+- [ ] **Step 2: 写迁移验证脚本**
+
+验证：
+
+- NodeTask 无空 tenantId，且与对应 ContainerRecord 租户一致。
+- 没有重复 `work_order_id + business_fact_key`。
+- FactApplication 决定、状态、哈希和时间字段满足约束。
+- NodeTaskOutcome 旧行可读，新行能保存完整因果。
+- 每条既有 `NodeEventApplication(applied)` 都有且只有一条可重放 reconciliation Outbox。
+
+- [ ] **Step 3: Prisma 校验与空库/旧库升级**
+
+Run:
+
+```bash
+pnpm exec prisma validate --schema database/schema.prisma
+pnpm db:generate
+pnpm db:migrate
+pnpm db:verify:work-order-fact-application
+```
+
+Expected: 空库升级和含既有任务数据的升级均通过；若仓库没有独立旧库 fixture，任务 brief 必须记录如何构造旧版本快照，不得只跑 `prisma validate` 代替迁移验证。
+
+---
+
+### Task 3: 实现 work-execution 原子事实对账
+
+**Files:**
+
+- Create: `apps/api/src/modules/work-execution/application/reconcile-applied-lifecycle-fact.service.ts`
+- Create: `apps/api/src/modules/work-execution/application/reconcile-applied-lifecycle-fact.service.test.ts`
 - Modify: `apps/api/src/modules/work-execution/domain/work-execution.repository.ts`
 - Modify: `apps/api/src/modules/work-execution/infrastructure/prisma-work-execution.repository.ts`
+- Create: `apps/api/src/modules/work-execution/infrastructure/prisma-work-execution.repository.integration.test.ts`
 - Modify: `apps/api/src/modules/work-execution/work-execution.module.ts`
 - Modify: `apps/api/src/modules/work-execution/index.ts`
+- Modify: `apps/api/src/modules/work-execution/module.manifest.ts`
 
-**Interfaces:**
-- Consumes: `WORK_EXECUTION_REPOSITORY`（已有）、`findTaskByNodeInstanceId`（已有）
-- Produces: `COMPLETE_NODE_TASK` token、`CompleteNodeTaskPort.execute(input) => Promise<CompleteNodeTaskResult>`
+**Transaction:**
 
-- [ ] **Step 1: 写失败测试**
-
-新建 `apps/api/src/modules/work-execution/application/complete-node-task.service.test.ts`：
-
-```ts
-import { describe, expect, it, vi } from "vitest";
-import { CompleteNodeTaskService } from "./complete-node-task.service";
-import { WORK_EXECUTION_REPOSITORY } from "../domain/work-execution.repository";
-
-function buildRepository() {
-  return {
-    findTaskByNodeInstanceId: vi.fn(),
-    completeTaskByNodeInstanceId: vi.fn().mockResolvedValue(true),
-  };
-}
-
-function buildService(repository: ReturnType<typeof buildRepository>) {
-  return new CompleteNodeTaskService(repository as never);
-}
-
-const COMPLETED_AT = new Date("2026-09-21T08:00:00.000Z");
-
-describe("CompleteNodeTaskService", () => {
-  it("节点过站后把对应任务置为完成", async () => {
-    const repository = buildRepository();
-    repository.findTaskByNodeInstanceId.mockResolvedValue({
-      task: { id: "task-1", state: "pending" },
-      workOrders: [],
-      outcome: null,
-    });
-    const service = buildService(repository);
-
-    const result = await service.execute({
-      nodeInstanceId: "node-1",
-      completedAt: COMPLETED_AT,
-    });
-
-    expect(repository.completeTaskByNodeInstanceId).toHaveBeenCalledWith({
-      nodeInstanceId: "node-1",
-      completedAt: COMPLETED_AT,
-    });
-    expect(result).toEqual({ taskId: "task-1", completed: true });
-  });
-
-  it("找不到任务时不做任何写入", async () => {
-    const repository = buildRepository();
-    repository.findTaskByNodeInstanceId.mockResolvedValue(null);
-    const service = buildService(repository);
-
-    const result = await service.execute({
-      nodeInstanceId: "node-missing",
-      completedAt: COMPLETED_AT,
-    });
-
-    expect(repository.completeTaskByNodeInstanceId).not.toHaveBeenCalled();
-    expect(result).toEqual({ taskId: null, completed: false });
-  });
-
-  it("任务已完成时保持幂等，不重复写入", async () => {
-    const repository = buildRepository();
-    repository.findTaskByNodeInstanceId.mockResolvedValue({
-      task: { id: "task-1", state: "completed" },
-      workOrders: [],
-      outcome: null,
-    });
-    const service = buildService(repository);
-
-    const result = await service.execute({
-      nodeInstanceId: "node-1",
-      completedAt: COMPLETED_AT,
-    });
-
-    expect(repository.completeTaskByNodeInstanceId).not.toHaveBeenCalled();
-    expect(result).toEqual({ taskId: "task-1", completed: false });
-  });
-});
+```text
+按 tenantId + containerId + flowInstanceId + nodeInstanceId + nodeCode 找唯一 NodeTask
+-> 校验 canonical event / domain fact 的对象因果范围
+-> 按任务定义解析接受该 fact 的适用 WorkOrder，并检查 workOrderId + businessFactKey
+-> 同键同哈希返回旧决定；同键异哈希冲突
+-> expectedVersion 条件更新 WorkOrder
+-> 写不可变 WorkOrderFactApplication
+-> 用真实 applicability 确定性聚合 NodeTask
+-> expectedVersion 条件更新 NodeTask
+-> 首次 completed 时写 NodeTaskOutcome/审计
+-> 提交
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [ ] **Step 1: 写 Application 失败测试**
 
-Run: `pnpm --filter @logix/api test -- src/modules/work-execution/application/complete-node-task.service.test.ts`
-Expected: FAIL —— 找不到模块 `./complete-node-task.service`
+至少覆盖：
 
-- [ ] **Step 3: 建端口**
+1. tenant/container/flow/node 任一不匹配均为 `AUTHORIZATION_SCOPE_DENIED` 或 `FACT_CAUSATION_MISMATCH`。
+2. 找不到任务返回可重放的 `no_op/TASK_NOT_INITIALIZED`，不伪造任务；任务创建用例后续会按同一 business fact 重放。
+3. 一张 required 工单从 ready 完成，NodeTask 聚合完成并写 Outcome。
+4. 多 required 只匹配一张时其余未完成，NodeTask 保持 in_progress。
+5. optional 未完成不阻断。
+6. draft/failed/cancelled 工单和 cancelled NodeTask 均不误完成，并留下 rejected 决定与 reasonCode。
+7. completed 工单重放返回 no_op，不重复 Outcome。
+8. 同键同载荷返回原应用；同键异载荷 409。
+9. 任何一步失败，FactApplication、WorkOrder、NodeTask、Outcome 全部回滚。
+10. 一期现有实例只有一张 `required` 工单；仅当它的定义键与节点任务定义一致时才接受事实。出现多工单、零工单或定义不明时返回 `WORK_ORDER_DEFINITION_UNRESOLVED`，不得猜测或批量完成。后续多工单必须由版本化 `acceptedFactTypes/completionPredicates` 决定匹配范围。
 
-新建 `apps/api/src/modules/work-execution/complete-node-task.port.ts`：
+- [ ] **Step 2: 实现服务与 Repository 事务**
 
-```ts
-export const COMPLETE_NODE_TASK = Symbol.for("logix.CompleteNodeTask");
+业务判断留在 Domain/Application；Repository 只执行显式决定和条件写。禁止在 Prisma adapter 内用 `state != completed` 批量完成。
 
-export interface CompleteNodeTaskInput {
-  nodeInstanceId: string;
-  completedAt: Date;
-}
+并发策略：
 
-export interface CompleteNodeTaskResult {
-  taskId: string | null;
-  completed: boolean;
-}
+- WorkOrder/NodeTask 使用 version 条件更新。
+- 条件更新 0 行时重读事实应用：已存在同哈希则返回原结果；异哈希冲突；否则返回 `CONCURRENCY_VERSION_CONFLICT`，由用例进行有上限的重新求值。
+- 唯一键冲突不得吞掉，必须转为上述幂等/冲突结果。
 
-export interface CompleteNodeTaskPort {
-  execute(input: CompleteNodeTaskInput): Promise<CompleteNodeTaskResult>;
-}
-```
+- [ ] **Step 3: 注册公开 Port**
 
-- [ ] **Step 4: 仓储端口加方法**
+- `work-execution.module.ts` 同时注册 service 和 `{ provide: RECONCILE_APPLIED_LIFECYCLE_FACT, useExisting: ... }`，并 export token。
+- `index.ts` 只导出端口、命令和结果类型，不导出 repository/Prisma 内部实现。
+- `module.manifest.ts.publicPorts` 登记 `RECONCILE_APPLIED_LIFECYCLE_FACT`。
 
-在 `apps/api/src/modules/work-execution/domain/work-execution.repository.ts` 的 `WorkExecutionRepository` 接口里，`applyWorkOrderCompletion` 之后加：
+- [ ] **Step 4: 真实 Prisma 集成和并发测试**
 
-```ts
-  completeTaskByNodeInstanceId(input: {
-    nodeInstanceId: string;
-    completedAt: Date;
-  }): Promise<boolean>;
-```
+测试必须连接迁移后的 PostgreSQL，不能只 mock Prisma：
 
-- [ ] **Step 5: 实现服务**
+1. 两个并发同键同载荷请求最终只有一条 FactApplication、一次状态迁移、一个 Outcome，两者得到等价结果。
+2. 两个并发同键异载荷一方成功、一方 `IDEMPOTENCY_CONFLICT`。
+3. 中途抛错整笔回滚。
+4. required failed/cancelled/draft 不被 updateMany 越过。
+5. 租户/容器/节点错配没有写入。
+6. 已完成 lifecycle fact 在稍后创建任务后可重放完成。
 
-新建 `apps/api/src/modules/work-execution/application/complete-node-task.service.ts`：
-
-```ts
-import { Inject, Injectable } from "@nestjs/common";
-import type {
-  CompleteNodeTaskInput,
-  CompleteNodeTaskPort,
-  CompleteNodeTaskResult,
-} from "../complete-node-task.port";
-import {
-  WORK_EXECUTION_REPOSITORY,
-  type WorkExecutionRepository,
-} from "../domain/work-execution.repository";
-
-@Injectable()
-export class CompleteNodeTaskService implements CompleteNodeTaskPort {
-  constructor(
-    @Inject(WORK_EXECUTION_REPOSITORY)
-    private readonly repository: WorkExecutionRepository,
-  ) {}
-
-  async execute(
-    input: CompleteNodeTaskInput,
-  ): Promise<CompleteNodeTaskResult> {
-    const task = await this.repository.findTaskByNodeInstanceId(
-      input.nodeInstanceId,
-    );
-    if (!task) {
-      return { taskId: null, completed: false };
-    }
-    if (task.task.state === "completed") {
-      return { taskId: task.task.id, completed: false };
-    }
-    await this.repository.completeTaskByNodeInstanceId({
-      nodeInstanceId: input.nodeInstanceId,
-      completedAt: input.completedAt,
-    });
-    return { taskId: task.task.id, completed: true };
-  }
-}
-```
-
-- [ ] **Step 6: 跑测试确认通过**
-
-Run: `pnpm --filter @logix/api test -- src/modules/work-execution/application/complete-node-task.service.test.ts`
-Expected: PASS —— 3 passed
-
-- [ ] **Step 7: 写仓储实现**
-
-在 `apps/api/src/modules/work-execution/infrastructure/prisma-work-execution.repository.ts` 的 `applyWorkOrderCompletion` 方法之后加：
-
-```ts
-  async completeTaskByNodeInstanceId(input: {
-    nodeInstanceId: string;
-    completedAt: Date;
-  }): Promise<boolean> {
-    return this.prisma.$transaction(async (tx) => {
-      const task = await tx.nodeTask.findUnique({
-        where: { nodeInstanceId: input.nodeInstanceId },
-      });
-      if (!task || task.state === "completed") return false;
-      await tx.nodeTask.update({
-        where: { id: task.id },
-        data: { state: "completed" },
-      });
-      // 事实到齐时，任务与其工单一并完成：工单不再是完成的判定者，只留分派与时限。
-      await tx.workOrder.updateMany({
-        where: { nodeTaskId: task.id, state: { not: "completed" } },
-        data: { state: "completed", completedAt: input.completedAt },
-      });
-      return true;
-    });
-  }
-```
-
-- [ ] **Step 8: 注册并导出端口**
-
-在 `apps/api/src/modules/work-execution/work-execution.module.ts` 的 `providers` 数组里，紧跟 `CREATE_NODE_TASK` 那条之后加：
-
-```ts
-    { provide: COMPLETE_NODE_TASK, useExisting: CompleteNodeTaskService },
-```
-
-把 `CompleteNodeTaskService` 加进同一文件的 import 区（与 `CreateNodeTaskService` 同一行组），并在 `exports` 数组里加 `COMPLETE_NODE_TASK`。
-
-在 `apps/api/src/modules/work-execution/index.ts`（barrel）末尾加：
-
-```ts
-export {
-  COMPLETE_NODE_TASK,
-  type CompleteNodeTaskInput,
-  type CompleteNodeTaskPort,
-  type CompleteNodeTaskResult,
-} from "./complete-node-task.port";
-```
-
-- [ ] **Step 9: 全模块测试 + 提交**
-
-Run: `pnpm --filter @logix/api test -- src/modules/work-execution`
-Expected: PASS（含既有测试，无回归）
+Run:
 
 ```bash
-git add apps/api/src/modules/work-execution
-git commit -m "feat(work-execution): 新增按节点实例完成任务的端口"
+pnpm --filter @logix/api test -- src/modules/work-execution
+pnpm --filter @logix/api test:integration -- src/modules/work-execution/infrastructure/prisma-work-execution.repository.integration.test.ts
 ```
+
+若 `test:integration` 尚未配置，本任务需先增加稳定脚本入口；不得把 mock repository 测试称为数据库集成测试。
 
 ---
 
-### Task 2: 过站时自动完成任务
+### Task 4: 用现有 Outbox 可靠投递 lifecycle 事实对账
 
 **Files:**
-- Modify: `apps/api/src/modules/lifecycle-control/application/apply-lifecycle-event.service.ts`（构造函数 + 第 465 行处）
-- Modify: `apps/api/src/modules/lifecycle-control/application/apply-lifecycle-event.service.test.ts`
 
-**Interfaces:**
-- Consumes: Task 1 的 `COMPLETE_NODE_TASK` / `CompleteNodeTaskPort`
-- Produces: 过站即完成任务的行为；`ApplyLifecycleEventResult` **不变**
+- Create: `apps/api/src/modules/lifecycle-control/domain/work-fact-reconciliation-outbox.ts`
+- Create: `apps/api/src/modules/lifecycle-control/domain/work-fact-reconciliation-outbox.test.ts`
+- Create: `apps/api/src/modules/lifecycle-control/infrastructure/work-execution-outbox-delivery.ts`
+- Create: `apps/api/src/modules/lifecycle-control/infrastructure/work-execution-outbox-delivery.test.ts`
+- Modify: `apps/api/src/modules/lifecycle-control/domain/lifecycle.repository.ts`
+- Modify: `apps/api/src/modules/lifecycle-control/infrastructure/prisma-lifecycle.repository.ts`
+- Modify: `apps/api/src/modules/lifecycle-control/lifecycle-control.module.ts`
+- Modify: `apps/api/src/modules/lifecycle-control/application/publish-outbox-batch.service.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+**Behavior:**
 
-在 `apps/api/src/modules/lifecycle-control/application/apply-lifecycle-event.service.test.ts` 里，仿照既有 `it("stuffed 完成后为出运节点建任务", ...)` 的写法加一条。注意 `buildService` 有 13 个位置参数，新端口作为第 14 个参数追加在末尾，前面的照旧传 `undefined`：
+1. `applyEventToNode` 首次成功时，在同一 Prisma 事务写 `NodeEventApplication(applied)` 和一条逐目标节点的 reconciliation Outbox；事务任一步失败则两者都回滚。
+2. 专用 Outbox 使用稳定 `eventType`、`payloadRef`、`payloadHash` 和 `idempotencyKey`，完整引用 tenant/container/flow/node/canonical event/domain fact；不复制业务载荷到不可校验字符串。
+3. 现有 `PublishOutboxBatchService`、租约、退避、dead-letter 和 replay 机制保持唯一可靠投递实现。delivery adapter 只对专用事件调用 `RECONCILE_APPLIED_LIFECYCLE_FACT`，其他既有 canonical event 仍走原投递路径。
+4. work-execution 暂时失败时抛出可分类错误，由既有 Outbox 进入 `retry_wait`；节点不回退。`TASK_NOT_INITIALIZED` 视为可重试，不把消息提前标 published。
+5. 业务 rejected（如 task cancelled、required failed 或定义不明）使用稳定非重试错误码进入 dead-letter；人工重放沿用原 business fact key。
+6. 迁移为历史 `NodeEventApplication(applied)` 补建专用 reconciliation Outbox。重复送达由 FactApplication 幂等兜底，绝不再次调用 `applyEventToNode`、激活下一节点或重写日期事实。
 
-```ts
-  it("过站后把该节点的任务一并完成", async () => {
-    const repository = buildRepository("not_shipped");
-    useFlow(repository, flowAt("container_stuffing"));
-    const completeNodeTask = {
-      execute: vi.fn().mockResolvedValue({
-        taskId: "task-stuffing",
-        completed: true,
-      }),
-    };
-    const { service } = await buildService(
-      repository,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      completeNodeTask,
-    );
+- [ ] **Step 1: 写事务 Outbox 与投递失败测试**
 
-    const result = await service.execute({
-      ...baseInput(),
-      eventCode: "stuffed",
-    });
+覆盖：
 
-    expect(result.completedNodes).toEqual(["container_stuffing"]);
-    expect(completeNodeTask.execute).toHaveBeenCalledWith({
-      nodeInstanceId: "node-container_stuffing",
-      completedAt: baseInput().occurredAt,
-    });
-  });
-```
+- 节点应用与专用 Outbox 同事务提交，任一步失败全部回滚。
+- delivery 从权威记录组装命令，带完整 tenant/container/flow/node/event/domainFact scope。
+- 第一次对账抛错后既有 publisher 标记 retry_wait；再次 drain 成功并标 published。
+- 已应用 FactApplication 的 Outbox 重放返回同一业务结果，不重复 Outcome。
+- 对账失败不把 lifecycle 节点改回 active。
+- 同一事件可逐目标节点应用时，每个 target node 都有独立 business fact key。
+- 既有 canonical event 投递不被专用 adapter 吞掉或改义。
+- 历史 applied 节点应用的迁移回填无重复、可再次运行验证查询。
 
-> 注：`nodeInstanceId` 的字面量取决于 `flowAt` 生成的 id 规则——先跑一次看失败信息里的实际值，再把它写死在断言里。
+- [ ] **Step 2: 接线并补 Nest 装配测试**
 
-- [ ] **Step 2: 跑测试确认失败**
+`LifecycleControlModule` 注册组合 delivery adapter 并注入 `RECONCILE_APPLIED_LIFECYCLE_FACT`；`WorkExecutionModule` 必须实际 export 该 token。补模块编译测试，防止漏 provider/export 或形成新的内部路径依赖。
 
-Run: `pnpm --filter @logix/api test -- src/modules/lifecycle-control/application/apply-lifecycle-event.service.test.ts`
-Expected: FAIL —— `completeNodeTask.execute` 未被调用（或 `buildService` 不接受第 14 个参数）
+- [ ] **Step 3: 专项验证**
 
-- [ ] **Step 3: 注入端口**
-
-在 `apply-lifecycle-event.service.ts` 的 import 区（第 39-42 行那条 work-execution import）改为：
-
-```ts
-import {
-  COMPLETE_NODE_TASK,
-  CREATE_NODE_TASK,
-  type CompleteNodeTaskPort,
-  type CreateNodeTaskPort,
-} from "../../work-execution";
-```
-
-在构造函数里，紧跟 `createNodeTask` 那条之后加：
-
-```ts
-    @Inject(COMPLETE_NODE_TASK)
-    private readonly completeNodeTask: CompleteNodeTaskPort,
-```
-
-- [ ] **Step 4: 在过站成功处调用**
-
-把第 465 行：
-
-```ts
-        if (transition.applied) completedNodes.push(targetNodeCode);
-```
-
-改为：
-
-```ts
-        if (transition.applied) {
-          completedNodes.push(targetNodeCode);
-          // 规范事件过站即代表本站工作已完成：任务与其工单一并置为完成。
-          // 这是"事实驱动完成"的落点，工单不再是完成的判定者。
-          await this.completeNodeTask.execute({
-            nodeInstanceId: target.id,
-            completedAt: input.occurredAt,
-          });
-        }
-```
-
-- [ ] **Step 5: 更新测试装配器**
-
-在测试文件的 `buildService(...)` 里追加第 14 个参数 `completeNodeTask`（默认值 `{ execute: vi.fn().mockResolvedValue({ taskId: null, completed: false }) }`），并用 `{ provide: COMPLETE_NODE_TASK, useValue: completeNodeTask }` 注册；返回值对象里带上 `completeNodeTask`，供断言取用。**这一改动会让既有的 13 参数调用点仍然可用**，因为新参数有默认值。
-
-- [ ] **Step 6: 跑测试确认通过**
-
-Run: `pnpm --filter @logix/api test -- src/modules/lifecycle-control/application/apply-lifecycle-event.service.test.ts`
-Expected: PASS（含全部既有用例）
-
-- [ ] **Step 7: 提交**
+Run:
 
 ```bash
-git add apps/api/src/modules/lifecycle-control
-git commit -m "feat(lifecycle-control): 规范事件过站后自动完成对应节点任务"
+pnpm --filter @logix/api test -- src/modules/lifecycle-control/domain/work-fact-reconciliation-outbox.test.ts src/modules/lifecycle-control/infrastructure/work-execution-outbox-delivery.test.ts src/modules/lifecycle-control/application/publish-outbox-batch.service.test.ts
+pnpm repo:check
 ```
+
+Expected: 原子建 Outbox、既有重试/死信/重放、历史补偿与 DI 装配全部通过。
 
 ---
 
-### Task 3: 任务条件的"事实→节点"改用规范事件权威映射
+### Task 5: 任务条件的"事实→节点"改用规范事件权威映射
 
 **Files:**
+
 - Modify: `apps/api/src/modules/work-execution/domain/task-condition-fact.ts`
 - Modify: `apps/api/src/modules/work-execution/domain/task-conditions.ts`
 - Modify: `apps/api/src/modules/work-execution/domain/task-conditions.test.ts`
@@ -442,6 +403,7 @@ git commit -m "feat(lifecycle-control): 规范事件过站后自动完成对应�
 - Modify: `apps/api/src/modules/shipment-registry/infrastructure/prisma-container.repository.ts:74-103`
 
 **Interfaces:**
+
 - Consumes: `packages/contracts/catalogs/v1/canonical-events.json`（经 `@logix/contracts/canonical-events.json` 导入）、`ShipmentTimeFact.eventCode`
 - Produces: `TaskConditionFact.nodeCode: LifecycleNodeCode | null`；`evaluateTaskConditions` 优先按 `nodeCode` 匹配
 
@@ -450,51 +412,51 @@ git commit -m "feat(lifecycle-control): 规范事件过站后自动完成对应�
 在 `apps/api/src/modules/work-execution/domain/task-conditions.test.ts` 的 `facts` 数组里给两条 fixture 各加 `nodeCode`（`"customs_clearance"` 与 `"empty_return"`），并新增一条：
 
 ```ts
-  it("事实自带节点时按节点匹配，无需影子表", () => {
-    expect(
-      evaluateTaskConditions({
-        nodeCode: "container_unloading",
-        isCurrent: false,
-        facts: [
-          {
-            id: "fact-unload",
-            factCode: "some_import_code",
-            nodeCode: "container_unloading",
-            timeKind: "actual" as const,
-            captureSource: "controlled_import" as const,
-            evidenceRef: "22222222-2222-4222-8222-222222222222",
-          },
-        ],
-      }),
-    ).toEqual({
-      readinessState: "ready",
-      completionEligibility: "eligible",
-      conditionFactRefs: ["fact-unload"],
-    });
+it("事实自带节点时按节点匹配，无需影子表", () => {
+  expect(
+    evaluateTaskConditions({
+      nodeCode: "container_unloading",
+      isCurrent: false,
+      facts: [
+        {
+          id: "fact-unload",
+          factCode: "some_import_code",
+          nodeCode: "container_unloading",
+          timeKind: "actual" as const,
+          captureSource: "controlled_import" as const,
+          evidenceRef: "22222222-2222-4222-8222-222222222222",
+        },
+      ],
+    }),
+  ).toEqual({
+    readinessState: "ready",
+    completionEligibility: "eligible",
+    conditionFactRefs: ["fact-unload"],
   });
+});
 
-  it("事实无节点时回退到既有影子表", () => {
-    expect(
-      evaluateTaskConditions({
-        nodeCode: "customs_clearance",
-        isCurrent: false,
-        facts: [
-          {
-            id: "fact-legacy",
-            factCode: "customs_clearance_completed",
-            nodeCode: null,
-            timeKind: "actual" as const,
-            captureSource: "controlled_import" as const,
-            evidenceRef: "33333333-3333-4333-8333-333333333333",
-          },
-        ],
-      }),
-    ).toEqual({
-      readinessState: "ready",
-      completionEligibility: "eligible",
-      conditionFactRefs: ["fact-legacy"],
-    });
+it("事实无节点时回退到既有影子表", () => {
+  expect(
+    evaluateTaskConditions({
+      nodeCode: "customs_clearance",
+      isCurrent: false,
+      facts: [
+        {
+          id: "fact-legacy",
+          factCode: "customs_clearance_completed",
+          nodeCode: null,
+          timeKind: "actual" as const,
+          captureSource: "controlled_import" as const,
+          evidenceRef: "33333333-3333-4333-8333-333333333333",
+        },
+      ],
+    }),
+  ).toEqual({
+    readinessState: "ready",
+    completionEligibility: "eligible",
+    conditionFactRefs: ["fact-legacy"],
   });
+});
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
@@ -629,15 +591,17 @@ git commit -m "feat(work-execution): 任务条件改用规范事件解析节点�
 
 ---
 
-### Task 4: 节点目录加 `completionMode`
+### Task 6: 节点目录加 `completionMode`
 
 **Files:**
+
 - Modify: `packages/contracts/catalogs/v1/lifecycle-nodes.json`
 - Modify: `packages/contracts/generated/contracts.d.ts`（由脚本生成）
 - Create: `apps/api/src/modules/lifecycle-control/domain/node-completion-mode.ts`
 - Create: `apps/api/src/modules/lifecycle-control/domain/node-completion-mode.test.ts`
 
 **Interfaces:**
+
 - Produces: `CompletionMode = "fact_driven" | "needs_manual_fact"`；`completionModeOf(nodeCode): CompletionMode`
 
 - [ ] **Step 1: 改目录**
@@ -729,9 +693,10 @@ git commit -m "feat(contracts): 节点目录新增 completionMode，默认事实
 
 ---
 
-### Task 5: 时间事实聚合投影（三轨数据源）
+### Task 7: 时间事实聚合投影（三轨数据源）
 
 **Files:**
+
 - Modify: `apps/api/src/modules/lifecycle-control/domain/lifecycle-date-fact.repository.ts`
 - Modify: `apps/api/src/modules/lifecycle-control/infrastructure/prisma-lifecycle-date-fact.repository.ts`
 - Modify: `apps/api/src/modules/lifecycle-control/domain/lifecycle-nodes.ts`
@@ -742,6 +707,7 @@ git commit -m "feat(contracts): 节点目录新增 completionMode，默认事实
 - Modify: `apps/api/src/modules/lifecycle-control/presentation/lifecycle-nodes-batch.controller.ts`
 
 **Interfaces:**
+
 - Consumes: `LifecycleDateFactRecord[]`（已有类型，含 `nodeCode` / `timeKind` / `occurredAt` / `isCurrent`）
 - Produces: `LifecycleNodeTimeTrack { plannedAt: Date | null; estimatedAt: Date | null; actualAt: Date | null }`；`LifecycleNodeProjection` 上新增 `times: LifecycleNodeTimeTrack`
 
@@ -750,51 +716,51 @@ git commit -m "feat(contracts): 节点目录新增 completionMode，默认事实
 在 `apps/api/src/modules/lifecycle-control/domain/lifecycle-nodes.test.ts` 加（若文件不存在则新建，`FlowWithNodes` fixture 用现有测试里的写法造）：
 
 ```ts
-  it("三轨槽位常驻，无事实时显式留空", () => {
-    const view = projectLifecycleNodes(
-      flowWith({ nodeCode: "cargo_ready", state: "active" }),
-      {
-        facts: [],
-      },
-    );
-    expect(view.nodes[0]?.times).toEqual({
-      plannedAt: null,
-      estimatedAt: null,
-      actualAt: null,
-    });
+it("三轨槽位常驻，无事实时显式留空", () => {
+  const view = projectLifecycleNodes(
+    flowWith({ nodeCode: "cargo_ready", state: "active" }),
+    {
+      facts: [],
+    },
+  );
+  expect(view.nodes[0]?.times).toEqual({
+    plannedAt: null,
+    estimatedAt: null,
+    actualAt: null,
   });
+});
 
-  it("同一节点的三种时间各归各轨", () => {
-    const occurredAt = new Date("2026-09-21T00:00:00.000Z");
-    const view = projectLifecycleNodes(
-      flowWith({ nodeCode: "cargo_ready", state: "completed" }),
-      {
-        facts: [
-          fact("cargo_ready", "planned", occurredAt),
-          fact("cargo_ready", "estimated", occurredAt),
-          fact("cargo_ready", "actual", occurredAt),
-        ],
-      },
-    );
-    expect(view.nodes[0]?.times).toEqual({
-      plannedAt: occurredAt,
-      estimatedAt: occurredAt,
-      actualAt: occurredAt,
-    });
+it("同一节点的三种时间各归各轨", () => {
+  const occurredAt = new Date("2026-09-21T00:00:00.000Z");
+  const view = projectLifecycleNodes(
+    flowWith({ nodeCode: "cargo_ready", state: "completed" }),
+    {
+      facts: [
+        fact("cargo_ready", "planned", occurredAt),
+        fact("cargo_ready", "estimated", occurredAt),
+        fact("cargo_ready", "actual", occurredAt),
+      ],
+    },
+  );
+  expect(view.nodes[0]?.times).toEqual({
+    plannedAt: occurredAt,
+    estimatedAt: occurredAt,
+    actualAt: occurredAt,
   });
+});
 
-  it("不适用节点与留空是两种呈现", () => {
-    const view = projectLifecycleNodes(
-      flowWith({
-        nodeCode: "transshipment",
-        state: "pending",
-        applicability: "optional_not_applicable",
-      }),
-      { facts: [] },
-    );
-    expect(view.nodes[0]?.applicability).toBe("optional_not_applicable");
-    expect(view.nodes[0]?.times.actualAt).toBeNull();
-  });
+it("不适用节点与留空是两种呈现", () => {
+  const view = projectLifecycleNodes(
+    flowWith({
+      nodeCode: "transshipment",
+      state: "pending",
+      applicability: "optional_not_applicable",
+    }),
+    { facts: [] },
+  );
+  expect(view.nodes[0]?.applicability).toBe("optional_not_applicable");
+  expect(view.nodes[0]?.times.actualAt).toBeNull();
+});
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
@@ -834,23 +800,23 @@ export function projectLifecycleNodes(
 在 `map` 之前先按 `nodeCode` 归拢事实：
 
 ```ts
-  const timesByNode = new Map<string, LifecycleNodeTimeTrack>();
-  for (const fact of input.facts) {
-    const current = timesByNode.get(fact.nodeCode) ?? {
-      plannedAt: null,
-      estimatedAt: null,
-      actualAt: null,
-    };
-    // 同轨多条事实取最早一条；留空保持 null，不用 0 或假日期填充。
-    if (fact.timeKind === "planned" && !current.plannedAt) {
-      current.plannedAt = fact.occurredAt;
-    } else if (fact.timeKind === "estimated" && !current.estimatedAt) {
-      current.estimatedAt = fact.occurredAt;
-    } else if (fact.timeKind === "actual" && !current.actualAt) {
-      current.actualAt = fact.occurredAt;
-    }
-    timesByNode.set(fact.nodeCode, current);
+const timesByNode = new Map<string, LifecycleNodeTimeTrack>();
+for (const fact of input.facts) {
+  const current = timesByNode.get(fact.nodeCode) ?? {
+    plannedAt: null,
+    estimatedAt: null,
+    actualAt: null,
+  };
+  // 同轨多条事实取最早一条；留空保持 null，不用 0 或假日期填充。
+  if (fact.timeKind === "planned" && !current.plannedAt) {
+    current.plannedAt = fact.occurredAt;
+  } else if (fact.timeKind === "estimated" && !current.estimatedAt) {
+    current.estimatedAt = fact.occurredAt;
+  } else if (fact.timeKind === "actual" && !current.actualAt) {
+    current.actualAt = fact.occurredAt;
   }
+  timesByNode.set(fact.nodeCode, current);
+}
 ```
 
 在 `map` 的返回对象里加：
@@ -931,11 +897,11 @@ Expected: PASS
 `execute` 里 `projectLifecycleNodes` 调用改为：
 
 ```ts
-    const facts = await this.dateFacts.listCurrentByContainer({
-      tenantId,
-      containerId,
-    });
-    const view = projectLifecycleNodes(flow, { facts });
+const facts = await this.dateFacts.listCurrentByContainer({
+  tenantId,
+  containerId,
+});
+const view = projectLifecycleNodes(flow, { facts });
 ```
 
 - [ ] **Step 7: DTO 透出**
@@ -975,15 +941,17 @@ git commit -m "feat(lifecycle): 节点投影补三轨时间，无数据显式留
 
 ---
 
-### Task 6: 前端类型与视图模型带上三轨与异常
+### Task 8: 前端类型与视图模型带上三轨与异常
 
 **Files:**
+
 - Modify: `apps/web/src/api/lifecycleNodes.ts`
 - Modify: `apps/web/src/data/liveNodeProjection.ts`
 - Modify: `apps/web/src/data/liveNodeProjection.test.ts`（若无则新建）
 
 **Interfaces:**
-- Consumes: Task 5 的 DTO 形状
+
+- Consumes: Task 7 的 DTO 形状
 - Produces: `LiveNodeView.times` / `LiveNodeView.blockedCount` / `LiveNodeView.isNotApplicable`
 
 - [ ] **Step 1: 写失败测试**
@@ -1067,7 +1035,10 @@ export interface LifecycleNodeItem {
 `apps/web/src/data/liveNodeProjection.ts` 改为：
 
 ```ts
-import type { LifecycleNodeItem, LifecycleNodeTimes } from "../api/lifecycleNodes";
+import type {
+  LifecycleNodeItem,
+  LifecycleNodeTimes,
+} from "../api/lifecycleNodes";
 import { nodeScreenName } from "./uiCopyCatalog";
 
 export interface LiveNodeView {
@@ -1128,14 +1099,16 @@ git commit -m "feat(web): 节点视图模型补三轨时间与未关闭阻塞计
 
 ---
 
-### Task 7: 轨道改成水平主轴，铺满 14 站
+### Task 9: 轨道改成水平主轴，铺满 14 站
 
 **Files:**
+
 - Rewrite: `apps/web/src/components/container/LiveNodeRail.vue`
 - Create: `apps/web/src/components/container/LiveNodeRail.test.ts`
 
 **Interfaces:**
-- Consumes: `LiveNodeView`（Task 6）
+
+- Consumes: `LiveNodeView`（Task 8）
 - Produces: `LiveNodeRail` 组件；`emits: select: [nodeInstanceId: string]`
 
 - [ ] **Step 1: 写失败测试**
@@ -1173,7 +1146,12 @@ describe("LiveNodeRail", () => {
             nodeInstanceId: "n1",
             completedAt: "2026-09-19T00:00:00.000Z",
           }),
-          node({ nodeInstanceId: "n2", nodeCode: "container_stuffing", sequence: 2, name: "装箱" }),
+          node({
+            nodeInstanceId: "n2",
+            nodeCode: "container_stuffing",
+            sequence: 2,
+            name: "装箱",
+          }),
         ],
       },
     });
@@ -1265,8 +1243,15 @@ function tone(node: LiveNodeView): string {
         <span class="dot" aria-hidden="true" />
         <span class="copy">
           <b>{{ node.name }}</b>
-          <span class="date">{{ node.isNotApplicable ? "不适用" : summaryDate(node) }}</span>
-          <span v-if="node.blockedCount > 0" class="blocked-mark" aria-hidden="true">⚠</span>
+          <span class="date">{{
+            node.isNotApplicable ? "不适用" : summaryDate(node)
+          }}</span>
+          <span
+            v-if="node.blockedCount > 0"
+            class="blocked-mark"
+            aria-hidden="true"
+            >⚠</span
+          >
         </span>
       </li>
     </ol>
@@ -1415,14 +1400,16 @@ git commit -m "feat(web): 轨道改为水平主轴，铺满 14 站并显式留�
 
 ---
 
-### Task 8: 常驻的三轨展开卡
+### Task 10: 常驻的三轨展开卡
 
 **Files:**
+
 - Create: `apps/web/src/components/container/NodeTimeTrackCard.vue`
 - Create: `apps/web/src/components/container/NodeTimeTrackCard.test.ts`
 
 **Interfaces:**
-- Consumes: `LiveNodeView`（Task 6）
+
+- Consumes: `LiveNodeView`（Task 8）
 - Produces: `NodeTimeTrackCard` 组件；props `{ node: LiveNodeView | null }`
 
 - [ ] **Step 1: 写失败测试**
@@ -1508,16 +1495,33 @@ function show(value: string | null): string {
 
 <template>
   <section class="track-card" aria-label="节点三轨时间">
-    <p v-if="!node" class="empty">选择上方任一站点，查看它的计划 / 预计 / 实际时间。</p>
+    <p v-if="!node" class="empty">
+      选择上方任一站点，查看它的计划 / 预计 / 实际时间。
+    </p>
     <template v-else>
       <header>
         <b>{{ node.sequence.toString().padStart(2, "0") }} {{ node.name }}</b>
         <span>{{ node.stateLabel }}</span>
       </header>
       <dl class="tracks">
-        <div><dt>计划</dt><dd :class="{ blank: !node.times.plannedAt }">{{ node.isNotApplicable ? "不适用" : show(node.times.plannedAt) }}</dd></div>
-        <div><dt>预计</dt><dd :class="{ blank: !node.times.estimatedAt }">{{ node.isNotApplicable ? "不适用" : show(node.times.estimatedAt) }}</dd></div>
-        <div><dt>实际</dt><dd :class="{ blank: !node.times.actualAt }">{{ node.isNotApplicable ? "不适用" : show(node.times.actualAt) }}</dd></div>
+        <div>
+          <dt>计划</dt>
+          <dd :class="{ blank: !node.times.plannedAt }">
+            {{ node.isNotApplicable ? "不适用" : show(node.times.plannedAt) }}
+          </dd>
+        </div>
+        <div>
+          <dt>预计</dt>
+          <dd :class="{ blank: !node.times.estimatedAt }">
+            {{ node.isNotApplicable ? "不适用" : show(node.times.estimatedAt) }}
+          </dd>
+        </div>
+        <div>
+          <dt>实际</dt>
+          <dd :class="{ blank: !node.times.actualAt }">
+            {{ node.isNotApplicable ? "不适用" : show(node.times.actualAt) }}
+          </dd>
+        </div>
       </dl>
       <p v-if="node.blockedCount > 0" class="blocked" role="alert">
         有 {{ node.blockedCount }} 项未关闭的阻塞
@@ -1543,14 +1547,16 @@ git commit -m "feat(web): 新增常驻的节点三轨展开卡"
 
 ---
 
-### Task 9: 一柜一档改成 L1 竖向堆叠
+### Task 11: 一柜一档改成 L1 竖向堆叠
 
 **Files:**
+
 - Modify: `apps/web/src/views/MicroWorkbench.vue`
 - Modify: `apps/web/src/views/MicroWorkbench.test.ts`
 
 **Interfaces:**
-- Consumes: `LiveNodeRail`（Task 7）、`NodeTimeTrackCard`（Task 8）
+
+- Consumes: `LiveNodeRail`（Task 9）、`NodeTimeTrackCard`（Task 10）
 - Produces: 页面结构 = 柜头（含标记 / 异常槽位）→ 轨道 + 展开卡 → 下一步
 
 - [ ] **Step 1: 写失败测试**
@@ -1558,49 +1564,54 @@ git commit -m "feat(web): 新增常驻的节点三轨展开卡"
 在 `apps/web/src/views/MicroWorkbench.test.ts` 加两条：
 
 ```ts
-  it("标记槽位常驻，无数据写 —", async () => {
-    getContainer.mockResolvedValue({
-      id: "c1",
-      orderNumber: "SO-1",
-      containerNumber: "MSKU1",
-      currentStatus: "in_transit",
-      updatedAt: "2026-09-13T03:00:00.000Z",
-    });
-    const wrapper = await mountPage("c1");
-    expect(wrapper.text()).toContain("标记");
-    expect(wrapper.text()).toContain("—");
+it("标记槽位常驻，无数据写 —", async () => {
+  getContainer.mockResolvedValue({
+    id: "c1",
+    orderNumber: "SO-1",
+    containerNumber: "MSKU1",
+    currentStatus: "in_transit",
+    updatedAt: "2026-09-13T03:00:00.000Z",
   });
+  const wrapper = await mountPage("c1");
+  expect(wrapper.text()).toContain("标记");
+  expect(wrapper.text()).toContain("—");
+});
 
-  it("有未关闭阻塞时异常槽位露出数量", async () => {
-    getContainer.mockResolvedValue({
-      id: "c1",
-      orderNumber: "SO-1",
-      containerNumber: "MSKU1",
-      currentStatus: "in_transit",
-      updatedAt: "2026-09-13T03:00:00.000Z",
-    });
-    listLifecycleNodes.mockResolvedValue({
-      flow: { id: "f1", state: "active", currentNodeCode: "cargo_ready", version: 0 },
-      nodes: [
-        {
-          nodeInstanceId: "n1",
-          nodeCode: "cargo_ready",
-          sequence: 1,
-          state: "active",
-          applicability: "required",
-          completedAt: null,
-          blockedReasonRefs: ["b1"],
-          isCurrent: true,
-          times: { plannedAt: null, estimatedAt: null, actualAt: null },
-        },
-      ],
-      asOf: "2026-09-13T03:00:00.000Z",
-      projectionVersion: 0,
-    });
-    const wrapper = await mountPage("c1");
-    expect(wrapper.text()).toContain("异常");
-    expect(wrapper.text()).toContain("1");
+it("有未关闭阻塞时异常槽位露出数量", async () => {
+  getContainer.mockResolvedValue({
+    id: "c1",
+    orderNumber: "SO-1",
+    containerNumber: "MSKU1",
+    currentStatus: "in_transit",
+    updatedAt: "2026-09-13T03:00:00.000Z",
   });
+  listLifecycleNodes.mockResolvedValue({
+    flow: {
+      id: "f1",
+      state: "active",
+      currentNodeCode: "cargo_ready",
+      version: 0,
+    },
+    nodes: [
+      {
+        nodeInstanceId: "n1",
+        nodeCode: "cargo_ready",
+        sequence: 1,
+        state: "active",
+        applicability: "required",
+        completedAt: null,
+        blockedReasonRefs: ["b1"],
+        isCurrent: true,
+        times: { plannedAt: null, estimatedAt: null, actualAt: null },
+      },
+    ],
+    asOf: "2026-09-13T03:00:00.000Z",
+    projectionVersion: 0,
+  });
+  const wrapper = await mountPage("c1");
+  expect(wrapper.text()).toContain("异常");
+  expect(wrapper.text()).toContain("1");
+});
 ```
 
 同时，`mountPage` 里既有的 `LiveNodeRail` stub 需要改成暴露 `nodes` 的写法（保持既有断言可过）；并给 `NodeTimeTrackCard` 加一个 stub：
@@ -1624,11 +1635,11 @@ Expected: FAIL —— 页面里没有"标记"槽位
 `apps/web/src/views/MicroWorkbench.vue` 的 `<template>` 里，`<PageHeader>` 之后改为：
 
 ```vue
-      <PageHeader title="一柜一档" />
+<PageHeader title="一柜一档" />
 
-      <ObjectContextBar :record="record" />
+<ObjectContextBar :record="record" />
 
-      <section class="slot-band" aria-label="标记与异常">
+<section class="slot-band" aria-label="标记与异常">
         <span><small>标记</small><b>—</b></span>
         <span>
           <small>异常</small>
@@ -1636,14 +1647,14 @@ Expected: FAIL —— 页面里没有"标记"槽位
         </span>
       </section>
 
-      <LiveNodeRail
-        v-if="nodes.length"
-        :nodes="nodes"
-        @select="selectedNodeId = $event"
-      />
-      <p v-else class="hint">{{ uiCopy.chrome.emptyFlow }}</p>
+<LiveNodeRail
+  v-if="nodes.length"
+  :nodes="nodes"
+  @select="selectedNodeId = $event"
+/>
+<p v-else class="hint">{{ uiCopy.chrome.emptyFlow }}</p>
 
-      <NodeTimeTrackCard :node="selectedNode" />
+<NodeTimeTrackCard :node="selectedNode" />
 ```
 
 `<script setup>` 里加：
@@ -1701,6 +1712,6 @@ git commit -m "feat(web): 一柜一档改为竖向堆叠，补齐标记与异常
 
 - **`标记` 的真实数据**：模型不存在（spec §7.1），槽位先立、留空。
 - **缺口清单与"下一步"块**：二期。
-- **`completionMode` 的判据**：字段已立于节点目录（Task 4），但一期没有生产者，`needs_manual_fact` 不会被写入（spec §7.3 已记录为预期）。
+- **`completionMode` 的判据**：字段已立于节点目录（Task 6），但一期没有生产者，`needs_manual_fact` 不会被写入（spec §7.3 已记录为预期）。
 - **计划轨的数据**：全系统无 `planned` 事实生产者，该轨将长期留空（spec §7.2 已记录为预期）。
 - **侧栏按组织分组**：D5 已决策，排在三期。
