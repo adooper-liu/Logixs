@@ -541,21 +541,22 @@ function assertManualAuthorization(
       HttpStatus.BAD_REQUEST,
     );
   }
-  if (!capabilities.includes("lifecycle.operate")) {
-    throw new ForbiddenException("CAPABILITY_DENIED");
+  if (input.timeKind === "actual" && input.confidenceState === "confirmed") {
+    if (!capabilities.includes("evidence.review")) {
+      throw new ForbiddenException("CAPABILITY_DENIED");
+    }
+    return;
   }
-  if (
-    input.timeKind === "actual" &&
-    input.confidenceState === "confirmed" &&
-    !capabilities.includes("evidence.review")
-  ) {
+  if (!capabilities.includes("lifecycle.operate")) {
     throw new ForbiddenException("CAPABILITY_DENIED");
   }
 }
 
 function hashCommand(input: NormalizedLifecycleDateFactCommand): string {
+  const { traceId: _traceId, ...businessInput } = input;
+  void _traceId;
   const payload = {
-    ...input,
+    ...businessInput,
     occurredAt: input.occurredAt.toISOString(),
     evidenceRefs: [...input.evidenceRefs].sort(),
   };

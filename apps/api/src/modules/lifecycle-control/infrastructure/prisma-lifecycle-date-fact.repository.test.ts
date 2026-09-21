@@ -94,6 +94,7 @@ function repositoryWith(tx: ReturnType<typeof transaction>) {
       findUnique: vi.fn(),
       update: vi.fn(),
       findMany: vi.fn(),
+      groupBy: vi.fn(),
     },
   };
   return {
@@ -421,5 +422,72 @@ describe("PrismaLifecycleDateFactRepository.claimPendingApplications", () => {
       ],
     });
     expect(result.map((item) => item.id)).toEqual([first.id, second.id]);
+  });
+});
+
+describe("PrismaLifecycleDateFactRepository.listReviewRequired", () => {
+  it("只按租户读取当前人工实际待复核事实并稳定翻页", async () => {
+    const candidate = {
+      ...row(
+        input({
+          timeKind: "actual",
+          ingestionChannel: "manual_ui",
+          applicationState: "review_required",
+        }),
+        3,
+      ),
+      container: { orderNumber: "SO-1", containerNumber: "MSCU1234567" },
+    };
+    const tx = transaction();
+    const { repository, prisma } = repositoryWith(tx);
+    prisma.lifecycleDateFact.findMany.mockResolvedValue([candidate]);
+    prisma.lifecycleDateFact.groupBy.mockResolvedValue([
+      {
+        containerId: candidate.containerId,
+        _max: { projectionVersion: 8 },
+      },
+    ]);
+    const after = { recordedAt: new Date("2026-09-18T09:00:00Z"), id: "a" };
+
+    const result = await repository.listReviewRequired({
+      tenantId: candidate.tenantId,
+      after,
+      take: 31,
+    });
+
+    expect(prisma.lifecycleDateFact.findMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: candidate.tenantId,
+        isCurrent: true,
+        timeKind: "actual",
+        ingestionChannel: "manual_ui",
+        applicationState: "review_required",
+        OR: [
+          { recordedAt: { gt: after.recordedAt } },
+          { recordedAt: after.recordedAt, id: { gt: "a" } },
+        ],
+      },
+      include: {
+        container: { select: { orderNumber: true, containerNumber: true } },
+      },
+      orderBy: [{ recordedAt: "asc" }, { id: "asc" }],
+      take: 31,
+    });
+    expect(prisma.lifecycleDateFact.groupBy).toHaveBeenCalledWith({
+      by: ["containerId"],
+      where: {
+        tenantId: candidate.tenantId,
+        containerId: { in: [candidate.containerId] },
+      },
+      _max: { projectionVersion: true },
+    });
+    expect(result).toEqual([
+      {
+        fact: expect.objectContaining({ id: candidate.id }),
+        orderNumber: "SO-1",
+        containerNumber: "MSCU1234567",
+        currentProjectionVersion: 8,
+      },
+    ]);
   });
 });

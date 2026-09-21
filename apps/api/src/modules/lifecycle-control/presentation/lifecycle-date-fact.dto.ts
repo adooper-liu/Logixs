@@ -74,3 +74,55 @@ export class LifecycleDateFactProjectionDto {
   @ApiProperty() projectionVersion!: number;
   @ApiProperty() asOf!: string;
 }
+
+export class LifecycleDateFactReviewEvidenceDto {
+  @ApiProperty() evidenceId!: string;
+  @ApiProperty() evidenceType!: string;
+  @ApiProperty() verificationState!: string;
+  @ApiProperty() validity!: string;
+  @ApiProperty() qualified!: boolean;
+}
+
+export class LifecycleDateFactReviewItemDto {
+  @ApiProperty() factId!: string;
+  @ApiProperty() containerId!: string;
+  @ApiProperty() orderNumber!: string;
+  @ApiProperty({ nullable: true }) containerNumber!: string | null;
+  @ApiProperty() nodeCode!: string;
+  @ApiProperty() eventCode!: string;
+  @ApiProperty() occurredAt!: string;
+  @ApiProperty() rawValue!: string;
+  @ApiProperty() sourceUtcOffset!: string;
+  @ApiProperty() captureSource!: string;
+  @ApiProperty() sourceSystem!: string;
+  @ApiProperty() authoritySystem!: string;
+  @ApiPropertyOptional({ type: LifecycleLocationDto, nullable: true })
+  location!: LifecycleLocationDto | null;
+  @ApiProperty({ nullable: true }) submittedBy!: string | null;
+  @ApiProperty() recordedAt!: string;
+  @ApiProperty() projectionVersion!: number;
+  @ApiProperty({ type: [LifecycleDateFactReviewEvidenceDto] })
+  evidence!: LifecycleDateFactReviewEvidenceDto[];
+  @ApiProperty({ type: [String] }) blockingReasons!: string[];
+  @ApiProperty({ type: [String] }) allowedActions!: string[];
+}
+
+export class LifecycleDateFactReviewPageInfoDto {
+  @ApiProperty({ nullable: true }) nextCursor!: string | null;
+  @ApiProperty() hasNextPage!: boolean;
+  @ApiProperty() pageSize!: number;
+}
+
+export class LifecycleDateFactReviewPageDto {
+  @ApiProperty({ type: [LifecycleDateFactReviewItemDto] })
+  items!: LifecycleDateFactReviewItemDto[];
+  @ApiProperty({ type: LifecycleDateFactReviewPageInfoDto })
+  pageInfo!: LifecycleDateFactReviewPageInfoDto;
+  @ApiProperty() asOf!: string;
+}
+
+export class ApproveLifecycleDateFactReviewRequestDto {
+  @ApiProperty() reasonCode!: string;
+  @ApiProperty() expectedVersion!: number;
+  @ApiProperty() idempotencyKey!: string;
+}

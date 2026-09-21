@@ -710,6 +710,64 @@ projectionVersion: number
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleDateFactReviewEvidence".
+ */
+export interface LifecycleDateFactReviewEvidence {
+evidenceId: Uuid
+evidenceType: string
+verificationState: VerificationState
+validity: EvidenceValidity
+qualified: boolean
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleDateFactReviewItem".
+ */
+export interface LifecycleDateFactReviewItem {
+factId: Uuid
+containerId: Uuid
+orderNumber: string
+containerNumber: (string | null)
+nodeCode: LifecycleNodeCode
+eventCode: CanonicalEventCode
+occurredAt: DateTime
+rawValue: string
+sourceUtcOffset: string
+captureSource: CaptureSource
+sourceSystem: string
+authoritySystem: string
+location: (CanonicalEventEnvelopeLocation | null)
+submittedBy: (Uuid | null)
+recordedAt: DateTime
+projectionVersion: number
+evidence: LifecycleDateFactReviewEvidence[]
+blockingReasons: string[]
+allowedActions: ("approve")[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "LifecycleDateFactReviewPage".
+ */
+export interface LifecycleDateFactReviewPage {
+items: LifecycleDateFactReviewItem[]
+pageInfo: {
+nextCursor: (string | null)
+hasNextPage: boolean
+pageSize: number
+}
+asOf: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ApproveLifecycleDateFactReviewCommand".
+ */
+export interface ApproveLifecycleDateFactReviewCommand {
+reasonCode: string
+expectedVersion: number
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ContainerTimelineItem".
  */
 export interface ContainerTimelineItem {

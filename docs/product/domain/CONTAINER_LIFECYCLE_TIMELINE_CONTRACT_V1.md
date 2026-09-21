@@ -208,6 +208,7 @@ API / Webhook        受控文件导入        人工界面
 - `actual`：先保存实际声明；只有 `verified + confirmed + effective`、命中唯一来源策略且业务守卫通过时，才有资格形成规范事件并申请完成节点。
 - 前序尚未满足的合格实际事实保存为 `pending_application`；前序或适用性变化后按原业务幂等键重放，不丢弃、不跨站硬跳。
 - 待应用事实以 `occurredAt,projectionVersion,id` 稳定排序并通过短租约领取；生命周期事件成功或节点适用性变化后触发同柜重放。409/412 与暂时性依赖错误释放租约后保留 pending，永久业务拒绝转 rejected；每次仍使用原事实的稳定幂等键。
+- 人工录入的 `actual` 初始保存为 `pending + unknown + review_required`。复核队列只暴露租户内当前人工实际声明，并实时展示证据资格；批准要求 `evidence.review`、原录入人与复核人分离、全部证据 `verified + effective` 以及当前货柜投影版本。批准不得原地修改旧事实，而是通过 `supersedesFactId` 追加 `verified + confirmed + effective` 版本，再调用同一来源权威裁决、生命周期应用和 pending 重放链；审批页面或“证据已核验”本身均不等于过站。
 - 更正和撤销追加关系记录；不得原地覆盖事实、证据或已密封历史。
 
 对外写入口不得直接调用生命周期事件应用能力。`ApplyLifecycleEvent` 是统一日期事实和专业事实核验后的内部能力；开发或运维接口也必须执行相同的时间种类、来源权威、证据和授权守卫。

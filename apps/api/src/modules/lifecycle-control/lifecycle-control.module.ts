@@ -30,6 +30,8 @@ import { EvaluateLifecycleDateAuthorityService } from "./application/evaluate-li
 import { ReplayPendingLifecycleDateFactsService } from "./application/replay-pending-lifecycle-date-facts.service";
 import { ListLifecycleDateFactsService } from "./application/list-lifecycle-date-facts.service";
 import { RecordLifecycleDateFactService } from "./application/record-lifecycle-date-fact.service";
+import { ApproveLifecycleDateFactReviewService } from "./application/approve-lifecycle-date-fact-review.service";
+import { ListLifecycleDateFactReviewsService } from "./application/list-lifecycle-date-fact-reviews.service";
 import { InitializeContainerFlowService } from "./application/initialize-container-flow.service";
 import { DrainDueOutboxService } from "./application/drain-due-outbox.service";
 import { DrainDueSystemOutboxService } from "./application/drain-due-system-outbox.service";
@@ -90,6 +92,7 @@ import { InboxDeadLetterController } from "./presentation/inbox-dead-letter.cont
 import { OutboxSystemController } from "./presentation/outbox-system.controller";
 import { ObjectActivitiesController } from "./presentation/object-activities.controller";
 import { LifecycleDateFactsController } from "./presentation/lifecycle-date-facts.controller";
+import { LifecycleDateFactReviewsController } from "./presentation/lifecycle-date-fact-reviews.controller";
 import { LifecycleNodeBlocksController } from "./presentation/lifecycle-node-blocks.controller";
 import { NODE_BLOCK_REPOSITORY } from "./domain/node-block.repository";
 import { OCEAN_ROUTE_REPOSITORY } from "./domain/ocean-route.repository";
@@ -119,6 +122,7 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
     ClientOperationController,
     ObjectActivitiesController,
     LifecycleDateFactsController,
+    LifecycleDateFactReviewsController,
     LifecycleNodeBlocksController,
     OceanRoutesController,
   ],
@@ -128,6 +132,8 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
     EvaluateLifecycleDateAuthorityService,
     ReplayPendingLifecycleDateFactsService,
     RecordLifecycleDateFactService,
+    ApproveLifecycleDateFactReviewService,
+    ListLifecycleDateFactReviewsService,
     ListLifecycleDateFactsService,
     InitializeContainerFlowService,
     SetNodeApplicabilityService,
@@ -235,6 +241,7 @@ export class LifecycleControlModule implements NestModule {
         ClientOperationController,
         ObjectActivitiesController,
         LifecycleDateFactsController,
+        LifecycleDateFactReviewsController,
         LifecycleNodeBlocksController,
         OceanRoutesController,
       );

@@ -427,6 +427,127 @@
         "projectionVersion": { "type": "integer", "minimum": 1 }
       }
     },
+    "LifecycleDateFactReviewEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "evidenceType",
+        "verificationState",
+        "validity",
+        "qualified"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "evidenceType": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "verificationState": {
+          "$ref": "common.schema.json#/$defs/VerificationState"
+        },
+        "validity": { "$ref": "common.schema.json#/$defs/EvidenceValidity" },
+        "qualified": { "type": "boolean" }
+      }
+    },
+    "LifecycleDateFactReviewItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "factId",
+        "containerId",
+        "orderNumber",
+        "containerNumber",
+        "nodeCode",
+        "eventCode",
+        "occurredAt",
+        "rawValue",
+        "sourceUtcOffset",
+        "captureSource",
+        "sourceSystem",
+        "authoritySystem",
+        "location",
+        "submittedBy",
+        "recordedAt",
+        "projectionVersion",
+        "evidence",
+        "blockingReasons",
+        "allowedActions"
+      ],
+      "properties": {
+        "factId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "orderNumber": { "type": "string", "minLength": 1 },
+        "containerNumber": { "type": ["string", "null"] },
+        "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+        "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "rawValue": { "type": "string" },
+        "sourceUtcOffset": { "type": "string" },
+        "captureSource": { "$ref": "common.schema.json#/$defs/CaptureSource" },
+        "sourceSystem": { "type": "string" },
+        "authoritySystem": { "type": "string" },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "canonical-event-envelope.schema.json#/properties/location"
+            },
+            { "type": "null" }
+          ]
+        },
+        "submittedBy": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 1 },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LifecycleDateFactReviewEvidence" }
+        },
+        "blockingReasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "allowedActions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["approve"] }
+        }
+      }
+    },
+    "LifecycleDateFactReviewPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "pageInfo", "asOf"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LifecycleDateFactReviewItem" }
+        },
+        "pageInfo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["nextCursor", "hasNextPage", "pageSize"],
+          "properties": {
+            "nextCursor": { "type": ["string", "null"] },
+            "hasNextPage": { "type": "boolean" },
+            "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ApproveLifecycleDateFactReviewCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reasonCode", "expectedVersion", "idempotencyKey"],
+      "properties": {
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "expectedVersion": { "type": "integer", "minimum": 1 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
     "ContainerTimelineItem": {
       "type": "object",
       "additionalProperties": false,
