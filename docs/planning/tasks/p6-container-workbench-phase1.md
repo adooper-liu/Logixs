@@ -1,0 +1,94 @@
+---
+status: coding
+branch: feat/container-workbench-phase1
+---
+
+# 任务：货柜工作台一期与生命周期事实对账
+
+## 目标
+
+让已经合法应用到生命周期节点的规范事件或日期事实，可靠对账到对应工单，并严格经过 `WorkOrderFactApplication -> WorkOrder 状态机 -> NodeTask 聚合 -> NodeTaskOutcome/审计` 闭环；同时让全局运营在“一柜一档”看到完整 14 站、计划/预计/实际三轨和未关闭阻塞，能够判断当前进度并跳转到对应岗位工作台。
+
+本 brief 是一期执行、评审和跨子任务交接的唯一状态载体。逐文件步骤、测试样例和提交边界见[一期实施计划](../../superpowers/plans/2026-09-21-container-workbench-phase1.md)。
+
+## 权威与影响范围
+
+- `TASK_WORK_ORDER_CONTRACT_V1.md`（GC-005）是任务、工单、事实应用、合法转换、聚合、结果和事务的唯一业务权威。
+- `MODULE_DEPENDENCIES.md §2.1` 规定 `lifecycle-control` 独占过站，`work-execution` 独占任务、工单和聚合；跨模块只经公开 Port 与 Outbox 协作。
+- 一期设计输入来自 `2026-09-21-container-workbench-task-driving-design.md`，执行顺序和文件级要求来自上述一期实施计划；二者与 GC-005 或模块依赖图冲突时，以上位权威为准。
+- 影响 `work-execution`、`lifecycle-control`、`shipment-registry`、公共节点目录、Prisma schema/追加迁移、生命周期节点 API，以及 Web 一柜一档视图。
+- 这是数据库、公共契约、跨模块核心工作流和关键 UI 的高风险切片，最终需要完整门禁、专项迁移/契约验证和岗位主路径验收。
+
+## 边界 / 不做
+
+- 不因节点已经完成而直接批量更新 `NodeTask` 或 `WorkOrder` 为 `completed`；不新增通用 `setStatus`，不绕过 GC-005 的状态机、版本检查、聚合和审计。
+- lifecycle 的本地事务只原子提交节点应用与专用 reconciliation Outbox；work-execution 在自己的事务内完成事实应用。两者不伪装成分布式事务。
+- 工单完成不等于过站，对账已应用的 lifecycle 事实不得再次推进节点、激活下一节点或重写日期事实。
+- 不把 `draft`、`failed`、`cancelled` 工单强改为完成，不复活 cancelled NodeTask；恢复必须走正式 ready/reopen/适用性命令后重放。
+- 不猜测事实与任务的关联，不以裸箱号或 `containerId + eventCode` 代替 tenant/container/flow/node/event/domain fact 的完整因果范围。
+- 不修改六个岗位工作台现有业务表单，不建设标记真实数据、二期缺口/下一步块、侧栏组织分组或 `completionMode` 配置后台。
+- 无数据必须返回 `null` 并显示 `—`；`optional_not_applicable` 必须显示“不适用”，不得用 0、假日期、演示值或进度条冒充数据。
+- 实施分支当前叠在卸柜切片提交之上；最终 PR 前必须确认前置卸柜提交已进入 `main`，再核对一期差异范围。
+- 保留并隔离用户已有的 `apps/ai-service/uv.lock` 与 `workers/ai-worker/uv.lock` 修改。
+
+## 验收
+
+- [ ] 已合法应用的规范事件/日期事实可经耐久 Outbox 对账到匹配工单；临时失败可重试、死信可重放，生命周期节点不回退且不重复过站。
+- [ ] 同一 `workOrderId + businessFactKey` 同载荷重放返回原结果；同键异载荷明确 `IDEMPOTENCY_CONFLICT`，并发请求不产生重复 FactApplication、状态迁移或 Outcome。
+- [ ] 工单只经合法状态转换完成；全部 required/conditional-required 完成后 NodeTask 才聚合完成，optional 不阻断，失败/取消/draft 和 cancelled NodeTask 不被误完成。
+- [ ] 首次完成才形成带 canonical event、domain fact、证据、操作者和 trace 因果的 Outcome/审计；事务故障时事实应用、工单、任务和 Outcome 全部回滚。
+- [ ] 任务条件优先使用规范事件目录解析出的 `nodeCode`，旧影子映射仅作兼容兜底；14 节点目录均有受控 `completionMode`。
+- [ ] 生命周期节点 API 始终返回 planned/estimated/actual 三轨槽位和未关闭阻塞；只投影当前权威事实，不用假值填空。
+- [ ] 全局运营打开“一柜一档”可看到完整 14 站、完成/当前/未发生/不适用四态、摘要日期、异常数量和所选站点三轨，并能跳往对应岗位台完成实际业务。
+- [ ] 空态、阻塞、不可执行、重试和不适用有不同且可行动的反馈；窄屏仍能浏览完整轨道且文字、动作不重叠。
+- [ ] 数据库追加迁移通过空库升级、旧版本升级、约束、回滚与并发验证；公共契约生成物无漂移。
+- [ ] API、Web、E2E、迁移、契约、架构和仓库完整质量门禁通过，实际证据写回本 brief 后才能标记 `done`。
+
+## 业务与数据协同设计
+
+| 业务岗位要完成什么               | 操作时需要看到什么                                                             | 系统允许做什么                                                                                   | 数据如何可靠保存与反馈                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| 全局运营判断一柜走到哪、哪里异常 | 14 站完整轨道、当前/完成/未发生/不适用、三轨时间、未关闭阻塞、空值与来源       | 选择站点、查看三轨与阻塞、跳转对应岗位工作台；本期不在货柜页直接办理专业业务                     | 读取 lifecycle 权威投影；三轨缺值为 `null`；状态、日期和异常不从颜色或文案反推                    |
+| 对应岗位用事实完成节点工作       | 当前工单、完成谓词、已有/缺失事实、责任与时限、证据、不可执行原因              | 通过人工、导入或 API 形成事实；按服务端 allowed actions 领取、处理或恢复；不得手工指定 completed | 规范事实经 FactApplication、状态机、确定性聚合和 Outcome/审计落库；事务、版本、幂等和租户范围受控 |
+| 复核岗位判断实际日期是否可采信   | 原始值、时区、来源、证据、核验/确认状态、目标节点和冲突原因                    | 核验、拒绝或追加更正；合格 actual 才进入规范事件和节点应用链                                     | 不可变日期事实保留版本与 supersedes 关系；已应用事实通过 Outbox 对账，不覆盖历史                  |
+| 运维处理迟到事实和失败对账       | canonical event、domain fact、目标节点、Outbox 状态/attempt/reasonCode/traceId | 排空到期消息、重放死信；定义未解析或对象错配时转人工处理                                         | 节点应用与 reconciliation Outbox 同事务；消费端按业务键幂等，暂时失败重试，业务拒绝留稳定原因     |
+
+## 方案与 11 Task 摘要
+
+执行顺序固定为事实对账主链（Task 1-4）→ 权威映射与三轨 API（Task 5-7）→ 前端投影和一柜一档（Task 8-11）。每个 Task 使用全新子代理实现，主代理在进入下一 Task 前审查权威边界、差异和定向验证；共享文件不得并行编辑。
+
+| Task                                    | 交付摘要                                                                                                                           | 完成证据                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 1. 冻结运行时对账命令与领域决定         | 定义含完整租户/货柜/流程/节点/事件/事实因果的公开命令、稳定业务键和请求哈希；复用 WorkOrder 合法转换、NodeTask 聚合和 Outcome 规则 | 纯领域测试覆盖成功、拒绝、no-op、取消、聚合边界、Outcome 因果与顺序无关哈希   |
+| 2. 落地 FactApplication、版本和因果审计 | 追加 `WorkOrderFactApplication`、任务/工单版本与适用性、Outcome 因果字段、历史 applied 节点的 reconciliation Outbox 回填           | Prisma 校验、专项验证脚本、空库与旧库升级、唯一/哈希/租户约束通过             |
+| 3. 实现 work-execution 原子事实对账     | 在本地事务内查唯一任务、校验范围、匹配工单、写不可变应用、合法转换、聚合和首次 Outcome；注册公开 Port                              | Application 测试及真实 PostgreSQL 集成/并发/回滚测试通过，Nest 公共端口已登记 |
+| 4. 用现有 Outbox 可靠投递               | 节点首次应用时同事务写专用 Outbox，由既有租约、退避、死信和重放链调用 work-execution；不复制第二套投递状态机                       | 原子提交、暂时失败重试、业务拒绝死信、重放幂等、历史回填和 DI 装配测试通过    |
+| 5. 事实到节点改用权威映射               | `ShipmentTimeFact.eventCode` 经 canonical-events 目录解析为 `nodeCode`，任务条件优先按节点匹配，旧影子表仅兜底                     | 新旧路径、未知事件、节点匹配和兼容回退测试通过                                |
+| 6. 节点目录增加 `completionMode`        | 14 个节点目录加入 `fact_driven` 与 `needs_manual_fact`，一期默认 `fact_driven`，运行时只读权威目录                                 | Schema/fixture/生成类型一致，14 节点目录与读取测试、契约漂移检查通过          |
+| 7. 生命周期节点 API 提供三轨            | 聚合每节点当前 planned/estimated/actual 事实并透出常驻三槽；不适用与留空分离                                                       | 领域投影、Repository、Service、DTO/Controller 测试及 API 模块测试通过         |
+| 8. 前端视图模型承接三轨与异常           | 扩展 API 类型和 `LiveNodeView`，保留三轨 null、阻塞数量与不适用语义                                                                | 前端纯映射测试、类型检查通过                                                  |
+| 9. 轨道铺满 14 站                       | 将 `LiveNodeRail` 改为可横向浏览的 14 站主轴，区分四态、显示摘要日期/空值和阻塞提示                                                | 组件交互、空值、不适用和选择事件测试通过，并完成桌面/窄屏视觉检查             |
+| 10. 新增常驻三轨展开卡                  | 所选站点始终展示计划/预计/实际三行；无数据为 `—`，未选中时给出人话空态                                                             | 三轨有值、全空、不适用和无选择组件测试通过                                    |
+| 11. 一柜一档 L1 竖向堆叠                | 页面按柜头/标记异常槽位 → 14 站轨道 → 三轨卡 → 下一步排列；默认选择当前站                                                          | 页面主路径、异常计数、空态和窄屏 E2E 通过，Web 完整门禁通过                   |
+
+## 验证路径
+
+按任务从窄到宽执行；检查命令不得修改文件，失败结果不得隐藏或以放宽断言绕过。
+
+1. Task 1-4：运行对应 Domain/Application/Outbox 单测、真实数据库集成与并发测试、Nest 装配测试、`pnpm repo:check`。
+2. Task 2：运行 `pnpm exec prisma validate --schema database/schema.prisma`、`pnpm db:generate`、`pnpm db:migrate`、`pnpm db:verify:work-order-fact-application`，并验证空库和旧版本升级。
+3. Task 5-7：运行相关 API 模块测试；Task 6 另运行 `pnpm contract:generate`、`pnpm contract:check`、`pnpm contract:drift`。
+4. Task 8-11：运行相关 Web 映射/组件/页面测试、`pnpm --filter @logix/web validate` 和一柜一档关键 E2E；用桌面与窄屏视口核对轨道、三轨、空态和交互。
+5. 收尾运行 `pnpm --filter @logix/api test`、`pnpm contract:drift`、迁移专项门禁及根目录 `pnpm validate`。
+6. 手工验收：已过站货柜的匹配任务已正确对账且不会再次过站；新建货柜铺满 14 站，三轨槽位常驻为空时显示 `—`，中转/海铁在不适用时显示“不适用”。
+
+## Review notes（review 阶段填写，只读不改代码）
+
+- 2026-09-21：主审确认 brief 与 GC-005、模块依赖图和修订后计划一致；修正 Task 6 表格显示后进入 coding。
+
+## 进度 log（谁改谁 append，一行一条）
+
+| 日期       | 阶段   | 负责  | commit | 说明                                                                             |
+| ---------- | ------ | ----- | ------ | -------------------------------------------------------------------------------- |
+| 2026-09-21 | design | Codex | —      | 建立一期正式 brief，冻结 GC-005/模块所有权边界、四者协同、11 Task 摘要与验证路径 |
+| 2026-09-21 | coding | Codex | —      | 主审通过，开始按全新子代理逐 Task 串行实现                                       |

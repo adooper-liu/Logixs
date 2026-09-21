@@ -48,6 +48,7 @@
 | [任务：码头可提、Gate Out 门禁与提柜工作台](./planning/tasks/p6-container-pickup-operational-flow.md) | 可提事实、重柜出场联合门禁与内陆运输岗位操作闭环          | 已完成                          |
 | [任务：实际送仓/POD 门禁与送仓工作台](./planning/tasks/p6-warehouse-delivery-operational-flow.md)     | 版本化目的仓、实际到仓证据、送仓门禁与内陆运输岗位闭环    | 已完成，待合入                  |
 | [任务：实际卸柜、部分卸货与卸柜完成](./planning/tasks/p6-container-unloading-operational-flow.md)     | 版本化卸货进度、实收差异、卸柜门禁与仓库收货岗位闭环      | 已完成，待合入                  |
+| [任务：货柜工作台一期与生命周期事实对账](./planning/tasks/p6-container-workbench-phase1.md)           | 已应用事实可靠对账工单，并铺满一柜一档 14 站与三轨        | 设计中                          |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                         | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断            | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                                          | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）  | P1 已接受；011 候选、012 已接受 |
 
@@ -176,6 +177,7 @@
 | [全局公共契约收敛 V1](./planning/tasks/global-contract-convergence-v1.md)                      | 依次定稿全局契约、Schema 权威源及多技术载体生成                      | 已完成                      |
 | [全栈底层基座](./planning/tasks/p3-p4-full-stack-base.md)                                      | TS/Python/DB/Temporal 骨架与薄真实读链路                             | 已完成                      |
 | [架构依赖方向门禁](./planning/tasks/p3-architecture-dependency-gates.md)                       | MODULE_DEPENDENCIES 禁止依赖写入 repo:check                          | 已完成                      |
+| [货柜工作台一期与生命周期事实对账](./planning/tasks/p6-container-workbench-phase1.md)          | lifecycle 事实经 Outbox 对账任务，并补齐 14 站三轨工作台             | 设计中                      |
 | [work-execution 第一刀](./planning/tasks/p6-work-execution-first-slice.md)                     | 节点任务 + required 工单 + 聚合，不推进主流程                        | 已完成                      |
 | [work-execution 第二刀](./planning/tasks/p6-work-execution-emit-event.md)                      | 装箱任务完成后经公开端口申请 stuffed，不直写流程                     | 已完成                      |
 | [建柜展开管道任务池](./planning/tasks/p6-pipeline-task-pool.md)                                | 建柜自动启动流程、全管道任务池、事实条件投影                         | 实施中                      |
