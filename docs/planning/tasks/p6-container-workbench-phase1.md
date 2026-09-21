@@ -1,6 +1,11 @@
 ---
-status: review
+status: done
 branch: feat/container-workbench-phase1
+verification:
+  - pnpm validate 通过（2026-09-22）
+  - API 196 文件 929 项、数据库集成 3 文件 16 项通过
+  - Web 93 文件 273 项、E2E 77 项通过且 7 项按条件跳过
+  - 运行态 API 样本与前端 5 文件 26 项定向回归通过
 ---
 
 # 任务：货柜工作台一期与生命周期事实对账
@@ -80,7 +85,7 @@ branch: feat/container-workbench-phase1
 3. Task 5-7：运行相关 API 模块测试；Task 6 另运行 `pnpm contract:generate`、`pnpm contract:check`、`pnpm contract:drift`。
 4. Task 8-11：运行相关 Web 映射/组件/页面测试、`pnpm --filter @logix/web validate` 和一柜一档关键 E2E；用桌面与窄屏视口核对轨道、三轨、空态和交互。
 5. 收尾运行 `pnpm --filter @logix/api test`、`pnpm contract:drift`、迁移专项门禁及根目录 `pnpm validate`。
-6. 手工验收：已过站货柜的匹配任务已正确对账且不会再次过站；新建货柜铺满 14 站，三轨槽位常驻为空时显示 `—`，中转/海铁在不适用时显示“不适用”。
+6. 运行态验收：已过站货柜的匹配任务已正确对账且不会再次过站；新建货柜铺满 14 站，三轨槽位常驻且为空时显示 `—`。中转/海铁默认保持 `optional_applicable`，只有适用性证据和受控命令确认后才成为 `optional_not_applicable`，届时界面显示“不适用”。
 
 ## Review notes（review 阶段填写，只读不改代码）
 
@@ -97,6 +102,7 @@ branch: feat/container-workbench-phase1
 - 2026-09-22：Task 10 新增只读三轨展开卡；计划、预计、实际三槽始终占位，缺值显示 `—`，不适用显示“不适用”，未选站点给出下一步提示。日期按显式用户 IANA 时区显示，阻断数量保留独立警示；组件不读取数据、不判断权限、不改变节点状态。
 - 2026-09-22：Task 11 将“一柜一档”收敛为柜头、标记/异常、14 站轨道、所选节点三轨、动态/助手和下一步的单列工作流；当前站默认展开，无当前站时退回第一站，轨道选择只改变只读详情。标记模型尚未落地时明确显示 `—`，异常数量来自节点未关闭阻断汇总。新增页面级 Playwright 用例，在桌面、窄屏和移动端验证 14 站完整、当前站与切站三轨、轨道内部横向滚动及页面无横向溢出；Web E2E 77 项通过、7 项按既有视口条件跳过。
 - 2026-09-22：一期自动化收尾通过：`contract:drift`；API 196 个测试文件 929 项；数据库集成 3 个文件 16 项；Web 完整门禁 93 个测试文件 273 项、E2E 77 项通过/7 项按既有条件跳过；根级 `pnpm validate` 全绿。事实应用专项在隔离数据库完成当前结构、旧版本升级、空库 69 迁移和约束验证。默认 `logix/public` 因迁移后写入的历史测试夹具缺 reconciliation Outbox 而据实失败，未修改或删除该现有数据；该环境问题不影响隔离迁移结论。两项真实业务数据人工确认仍留在实施计划，brief 进入 `review` 而非 `done`。
+- 2026-09-22：运行态验收完成。租户 `tenant-211ea031-50c6-4225-b25d-0eed8ae88711` 的货柜 `458df02f-3b59-435f-950a-3d7321795310` 显示 `container_unloading` 节点、匹配 NodeTask 与工单均为 `completed`，且无下一动作；前端 `TaskQueue` 回归确认 completed 不进入待处理区。`dev-tenant` 的新柜 `10000000-0000-4000-8000-000000000001` 返回完整 14 节点和 14 组全空三轨；节点投影、轨道、三轨卡和页面测试确认空值显示 `—`。本库没有已标 N/A 的真实柜，未修改数据制造样本；正式 GC-001 要求中转/海铁默认 `optional_applicable`，只有带证据的受控适用性命令才能改为 `optional_not_applicable`，对应“不适用”显示已由组件和页面级 E2E 覆盖。当前会话无可连接交互式浏览器，未声称新增实机目视证据；此前页面级 Playwright 桌面、窄屏和移动端门禁仍有效。定向前端回归 5 个文件 26 项通过，brief 收口为 `done`。
 
 ## 进度 log（谁改谁 append，一行一条）
 
@@ -116,3 +122,4 @@ branch: feat/container-workbench-phase1
 | 2026-09-22 | coding | Codex | —      | Task 10 完成：新增常驻节点三轨卡，覆盖有值、全空、不适用、阻断与未选择状态；组件 5 项测试及 Web 全量 93 个测试文件 269 项、lint/typecheck/build、格式和仓库政策检查通过。                                                                    |
 | 2026-09-22 | coding | Codex | —      | Task 11 完成：一柜一档按业务判断顺序纵向组合柜头、标记/异常、14 站轨道、三轨详情、动态/助手和下一步；Web 完整门禁通过：93 个测试文件 273 项、E2E 77 项通过/7 项按既有条件跳过，以及 lint、format、typecheck、build 全绿。                    |
 | 2026-09-22 | review | Codex | —      | 一期自动化收尾完成：契约漂移、API 全测、数据库集成、隔离迁移专项与根级 `validate` 全绿；保留默认 public 库既有缺 Outbox 测试夹具，未改数据。待两项真实业务数据人工确认后方可转 `done`。                                                      |
+| 2026-09-22 | done   | Codex | —      | 真实运行态样本确认已完成任务、14 节点及空三轨；N/A 验收按 GC-001 修正为证据驱动，不以新建柜默认推断。前端 5 个定向文件 26 项通过；无交互式浏览器时保留既有 Playwright 证据并如实记录边界。                                                   |
