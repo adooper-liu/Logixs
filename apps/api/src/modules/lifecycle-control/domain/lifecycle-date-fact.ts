@@ -49,6 +49,20 @@ export interface LifecycleDateFactRecord {
   recordedAt: Date;
 }
 
+export type LifecycleDateFactProjectionRecord = Pick<
+  LifecycleDateFactRecord,
+  | "containerId"
+  | "nodeCode"
+  | "eventCode"
+  | "timeKind"
+  | "occurredAt"
+  | "verificationState"
+  | "confidenceState"
+  | "validity"
+  | "authorityPolicyRef"
+  | "applicationState"
+>;
+
 export interface AppendLifecycleDateFactInput extends Omit<
   LifecycleDateFactRecord,
   "projectionVersion" | "recordedAt" | "isCurrent"

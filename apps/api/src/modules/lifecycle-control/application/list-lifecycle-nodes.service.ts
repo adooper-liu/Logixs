@@ -4,6 +4,10 @@ import {
   type LifecycleNodesView,
 } from "../domain/lifecycle-nodes";
 import {
+  LIFECYCLE_DATE_FACT_REPOSITORY,
+  type LifecycleDateFactRepository,
+} from "../domain/lifecycle-date-fact.repository";
+import {
   LIFECYCLE_REPOSITORY,
   type LifecycleRepository,
 } from "../domain/lifecycle.repository";
@@ -23,6 +27,8 @@ export class ListLifecycleNodesService {
   constructor(
     @Inject(LIFECYCLE_REPOSITORY)
     private readonly repository: LifecycleRepository,
+    @Inject(LIFECYCLE_DATE_FACT_REPOSITORY)
+    private readonly dateFacts: LifecycleDateFactRepository,
   ) {}
 
   async execute(input: ListLifecycleNodesInput): Promise<LifecycleNodesPage> {
@@ -42,8 +48,14 @@ export class ListLifecycleNodesService {
       throw new HttpException("RESOURCE_NOT_FOUND", HttpStatus.NOT_FOUND);
     }
 
-    const flow = await this.repository.findFlowByContainer(containerId);
-    const view = projectLifecycleNodes(flow);
+    const [flow, facts] = await Promise.all([
+      this.repository.findFlowByContainer(containerId),
+      this.dateFacts.listCurrentForNodeProjection({
+        tenantId,
+        containerIds: [containerId],
+      }),
+    ]);
+    const view = projectLifecycleNodes(flow, { facts });
     return {
       ...view,
       asOf: new Date(),

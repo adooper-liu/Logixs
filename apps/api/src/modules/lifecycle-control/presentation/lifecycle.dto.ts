@@ -85,6 +85,12 @@ export class LifecycleEventPageDto {
   @ApiProperty() projectionVersion!: number;
 }
 
+export class LifecycleNodeTimeTrackDto {
+  @ApiProperty({ nullable: true }) plannedAt!: string | null;
+  @ApiProperty({ nullable: true }) estimatedAt!: string | null;
+  @ApiProperty({ nullable: true }) actualAt!: string | null;
+}
+
 export class LifecycleNodeItemDto {
   @ApiProperty() nodeInstanceId!: string;
   @ApiProperty() nodeCode!: string;
@@ -94,6 +100,11 @@ export class LifecycleNodeItemDto {
   @ApiProperty({ nullable: true }) completedAt!: string | null;
   @ApiProperty({ type: [String] }) blockedReasonRefs!: string[];
   @ApiProperty() isCurrent!: boolean;
+  @ApiProperty({
+    type: LifecycleNodeTimeTrackDto,
+    description: "节点完成摘要三轨；缺失或无法唯一判定时为 null",
+  })
+  times!: LifecycleNodeTimeTrackDto;
 }
 
 export class LifecycleFlowSummaryDto {

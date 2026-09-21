@@ -719,16 +719,19 @@ git commit -m "feat(contracts): 节点目录新增 completionMode，默认事实
 - Modify: `apps/api/src/modules/lifecycle-control/domain/lifecycle-nodes.ts`
 - Modify: `apps/api/src/modules/lifecycle-control/domain/lifecycle-nodes.test.ts`（若无则新建）
 - Modify: `apps/api/src/modules/lifecycle-control/application/list-lifecycle-nodes.service.ts`
+- Modify: `apps/api/src/modules/lifecycle-control/application/list-container-lifecycle-nodes.service.ts`
 - Modify: `apps/api/src/modules/lifecycle-control/presentation/lifecycle-nodes.controller.ts`
 - Modify: `apps/api/src/modules/lifecycle-control/presentation/lifecycle.dto.ts`
 - Modify: `apps/api/src/modules/lifecycle-control/presentation/lifecycle-nodes-batch.controller.ts`
 
 **Interfaces:**
 
-- Consumes: `LifecycleDateFactRecord[]`（已有类型，含 `nodeCode` / `timeKind` / `occurredAt` / `isCurrent`）
+- Consumes: `LifecycleDateFactProjectionRecord[]`（含 `containerId / nodeCode / eventCode / timeKind / occurredAt / verificationState / confidenceState / validity / authorityPolicyRef / applicationState`）
 - Produces: `LifecycleNodeTimeTrack { plannedAt: Date | null; estimatedAt: Date | null; actualAt: Date | null }`；`LifecycleNodeProjection` 上新增 `times: LifecycleNodeTimeTrack`
 
-- [ ] **Step 1: 写失败测试**
+> 2026-09-21 实施裁决：三轨是“节点完成摘要轨”，只消费公共事件目录中对该节点 `completionEligible` 的当前有效事实，按 `completionEligibleNodeCodes` 投影全部完成目标，不把事实默认 `nodeCode` 误当唯一目标；子里程碑不进入摘要。actual 还须 `verified + confirmed + effective`、命中来源权威策略，并已进入 `pending_application | applied | rejected`；`review_required` 不得展示为权威 actual。同一节点同一轨若仍有多个完成候选，V1 返回 `null`，不按数据库顺序、最早或最晚时间猜测；后续明细投影须显式返回歧义及候选。单柜和批量接口共用一次批量查询，不设会静默截断事实的固定 `take`。
+
+- [x] **Step 1: 写失败测试**
 
 在 `apps/api/src/modules/lifecycle-control/domain/lifecycle-nodes.test.ts` 加（若文件不存在则新建，`FlowWithNodes` fixture 用现有测试里的写法造）：
 
@@ -780,12 +783,12 @@ it("不适用节点与留空是两种呈现", () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `pnpm --filter @logix/api test -- src/modules/lifecycle-control/domain/lifecycle-nodes.test.ts`
 Expected: FAIL —— `projectLifecycleNodes` 只接受 1 个参数 / `times` 不存在
 
-- [ ] **Step 3: 改投影为纯函数（新增第二参数）**
+- [x] **Step 3: 改投影为纯函数（新增第二参数）**
 
 `apps/api/src/modules/lifecycle-control/domain/lifecycle-nodes.ts` —— 在 `LifecycleNodeProjection` 上加：
 
@@ -801,11 +804,7 @@ export interface LifecycleNodeTimeTrack {
 
 ```ts
 export interface LifecycleNodeFactsInput {
-  facts: readonly {
-    nodeCode: LifecycleNodeCode;
-    timeKind: string;
-    occurredAt: Date;
-  }[];
+  facts: readonly LifecycleNodeTimeFact[];
 }
 
 export function projectLifecycleNodes(
@@ -814,27 +813,7 @@ export function projectLifecycleNodes(
 ): LifecycleNodesView {
 ```
 
-在 `map` 之前先按 `nodeCode` 归拢事实：
-
-```ts
-const timesByNode = new Map<string, LifecycleNodeTimeTrack>();
-for (const fact of input.facts) {
-  const current = timesByNode.get(fact.nodeCode) ?? {
-    plannedAt: null,
-    estimatedAt: null,
-    actualAt: null,
-  };
-  // 同轨多条事实取最早一条；留空保持 null，不用 0 或假日期填充。
-  if (fact.timeKind === "planned" && !current.plannedAt) {
-    current.plannedAt = fact.occurredAt;
-  } else if (fact.timeKind === "estimated" && !current.estimatedAt) {
-    current.estimatedAt = fact.occurredAt;
-  } else if (fact.timeKind === "actual" && !current.actualAt) {
-    current.actualAt = fact.occurredAt;
-  }
-  timesByNode.set(fact.nodeCode, current);
-}
-```
+在 `map` 之前按 `nodeCode + timeKind` 归拢通过上述资格判定的完成事实。每槽恰有一个候选才赋值；零个或多个候选都保持 `null`，不得依赖查询顺序选择。
 
 在 `map` 的返回对象里加：
 
@@ -846,63 +825,16 @@ for (const fact of input.facts) {
       },
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `pnpm --filter @logix/api test -- src/modules/lifecycle-control/domain/lifecycle-nodes.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: 仓储端口暴露"列当前事实"**
+- [x] **Step 5: 仓储端口暴露“列当前事实”**
 
-在 `apps/api/src/modules/lifecycle-control/domain/lifecycle-date-fact.repository.ts` 的接口里加：
+仓储实现 `listCurrentForNodeProjection({ tenantId, containerIds })`，一次返回单柜或批量货柜的全部 current 候选，并携带 `eventCode / verificationState / confidenceState / validity / authorityPolicyRef / applicationState`。查询不设固定 `take`，避免合法航段或候选被静默截断。
 
-```ts
-  listCurrentByContainer(input: {
-    tenantId: string;
-    containerId: string;
-  }): Promise<
-    Array<{
-      nodeCode: LifecycleNodeCode;
-      timeKind: string;
-      occurredAt: Date;
-    }>
-  >;
-```
-
-在 `prisma-lifecycle-date-fact.repository.ts` 里实现（复用既有 `listCurrent` 的 where，但只取三列，并**把 `take` 提到 500**，避免 14 站 × 3 轨被 100 的硬上限截断）：
-
-```ts
-  async listCurrentByContainer(input: {
-    tenantId: string;
-    containerId: string;
-  }): Promise<
-    Array<{
-      nodeCode: LifecycleNodeCode;
-      timeKind: string;
-      occurredAt: Date;
-    }>
-  > {
-    return this.prisma.lifecycleDateFact.findMany({
-      where: {
-        tenantId: input.tenantId,
-        containerId: input.containerId,
-        isCurrent: true,
-      },
-      select: { nodeCode: true, timeKind: true, occurredAt: true },
-      orderBy: [{ projectionVersion: "asc" }, { id: "asc" }],
-      take: 500,
-    }) as Promise<
-      Array<{
-        nodeCode: LifecycleNodeCode;
-        timeKind: string;
-        occurredAt: Date;
-      }>
-    >;
-  }
-```
-
-> 实施时若 `LifecycleDateFactRepository` 的实现类没有直接持有 `prisma`，按该文件既有方法的取用方式调整。
-
-- [ ] **Step 6: 服务接线**
+- [x] **Step 6: 服务接线**
 
 `apps/api/src/modules/lifecycle-control/application/list-lifecycle-nodes.service.ts`：构造函数加
 
@@ -911,17 +843,9 @@ Expected: PASS
     private readonly dateFacts: LifecycleDateFactRepository,
 ```
 
-`execute` 里 `projectLifecycleNodes` 调用改为：
+单柜服务与批量服务都注入日期事实仓储。批量端点对全部 `containerIds` 只查一次，再按 `containerId` 分组交给纯投影。
 
-```ts
-const facts = await this.dateFacts.listCurrentByContainer({
-  tenantId,
-  containerId,
-});
-const view = projectLifecycleNodes(flow, { facts });
-```
-
-- [ ] **Step 7: DTO 透出**
+- [x] **Step 7: DTO 透出**
 
 `lifecycle.dto.ts` 的 `LifecycleNodeItemDto` 加：
 
@@ -946,7 +870,7 @@ const view = projectLifecycleNodes(flow, { facts });
         },
 ```
 
-- [ ] **Step 8: 全模块测试 + 提交**
+- [x] **Step 8: 全模块测试 + 提交**
 
 Run: `pnpm --filter @logix/api test -- src/modules/lifecycle-control`
 Expected: PASS
