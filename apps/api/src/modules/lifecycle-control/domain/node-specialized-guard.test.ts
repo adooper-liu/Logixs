@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { decideNodeSpecializedGuard } from "./node-specialized-guard";
+import { decideNodeSpecializedGuard as decideGuard } from "./node-specialized-guard";
+
+function decideNodeSpecializedGuard(
+  input: Omit<Parameters<typeof decideGuard>[0], "occurredAt"> & {
+    occurredAt?: Date;
+  },
+) {
+  return decideGuard({
+    occurredAt: new Date("2026-09-12T10:00:00Z"),
+    ...input,
+  });
+}
 
 const FINAL_ROUTE_SEGMENT = {
   routePlanId: "22222222-2222-4222-8222-222222222222",
@@ -12,8 +23,92 @@ const FINAL_ROUTE_SEGMENT = {
   destinationLocationId: null,
   destinationPortCallId: null,
 };
+const PICKUP_LOCATION = {
+  locationType: "terminal" as const,
+  unlocode: "USLAX",
+  locationId: "33333333-3333-4333-8333-333333333333",
+  portCallId: "port-call-1",
+  timezone: "America/Los_Angeles",
+};
+const AVAILABLE = {
+  occurredAt: new Date("2026-09-12T09:00:00Z"),
+  verificationState: "verified",
+  confidenceState: "confirmed",
+  validity: "effective",
+  applicationState: "applied",
+  location: PICKUP_LOCATION,
+};
 
 describe("decideNodeSpecializedGuard", () => {
+  it("gate_out 缺少已采信可提事实时保留待应用", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "container_pickup",
+        eventCode: "gate_out",
+        containerNumber: "MSCU1234567",
+        location: PICKUP_LOCATION,
+        routeSegment: null,
+        occurredAt: new Date("2026-09-12T10:00:00Z"),
+        pickupAvailability: null,
+      }),
+    ).toEqual({
+      kind: "pending_application",
+      guardResults: [],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_TERMINAL_AVAILABILITY",
+    });
+  });
+
+  it("gate_out 与可提事实地点不一致或时间倒序时不推进", () => {
+    const base = {
+      targetNodeCode: "container_pickup" as const,
+      eventCode: "gate_out" as const,
+      containerNumber: "MSCU1234567",
+      routeSegment: null,
+      pickupAvailability: AVAILABLE,
+    };
+    expect(
+      decideNodeSpecializedGuard({
+        ...base,
+        location: { ...PICKUP_LOCATION, locationId: undefined },
+        occurredAt: new Date("2026-09-12T10:00:00Z"),
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PICKUP_LOCATION_MISMATCH",
+    });
+    expect(
+      decideNodeSpecializedGuard({
+        ...base,
+        location: PICKUP_LOCATION,
+        occurredAt: new Date("2026-09-12T08:59:59Z"),
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PICKUP_BEFORE_AVAILABLE",
+    });
+  });
+
+  it("同一目的码头且 gate_out 不早于可提时间时允许提柜", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "container_pickup",
+        eventCode: "gate_out",
+        containerNumber: "MSCU1234567",
+        location: PICKUP_LOCATION,
+        routeSegment: null,
+        occurredAt: new Date("2026-09-12T10:00:00Z"),
+        pickupAvailability: AVAILABLE,
+      }),
+    ).toEqual({
+      kind: "apply",
+      guardResults: [
+        "PICKUP_TERMINAL_AVAILABILITY_CONFIRMED",
+        "PICKUP_LOCATION_MATCHED",
+        "PICKUP_AFTER_AVAILABLE",
+      ],
+    });
+  });
+
   it("keeps customs completion pending until filing, release and evidence are ready", () => {
     expect(
       decideNodeSpecializedGuard({

@@ -10,6 +10,7 @@ import { EVALUATE_CARGO_READY_COMPLIANCE } from "../../compliance-management";
 const CREATE_NODE_TASK = Symbol.for("logix.CreateNodeTask");
 const ASSERT_EVIDENCE_REFS = Symbol.for("logix.AssertEvidenceRefs");
 import { LIFECYCLE_REPOSITORY } from "../domain/lifecycle.repository";
+import { LIFECYCLE_DATE_FACT_REPOSITORY } from "../domain/lifecycle-date-fact.repository";
 import { ASSERT_LIFECYCLE_STATE_EVIDENCE } from "../assert-lifecycle-state-evidence.port";
 import { defaultApplicability } from "../domain/node-applicability";
 import { NODE_SEQUENCE } from "../domain/node-status";
@@ -21,6 +22,12 @@ const ARRIVAL_LOCATION = {
   locationType: "port" as const,
   unlocode: "USLAX",
   segmentId: "44444444-4444-4444-8444-444444444444",
+  timezone: "America/Los_Angeles",
+};
+const PICKUP_LOCATION = {
+  locationType: "terminal" as const,
+  unlocode: "USLAX",
+  locationId: "77777777-7777-4777-8777-777777777777",
   timezone: "America/Los_Angeles",
 };
 const FINAL_ROUTE_SEGMENT = {
@@ -128,7 +135,9 @@ async function buildService(
         authorityPolicyRef: "policy-1:1",
         location: ["arrived", "transit_arrived"].includes(input.eventCode)
           ? ARRIVAL_LOCATION
-          : null,
+          : input.eventCode === "gate_out"
+            ? PICKUP_LOCATION
+            : null,
       })),
   },
   evaluateCargoReadyCompliance = {
@@ -160,6 +169,7 @@ async function buildService(
       caseId: "99999999-9999-4999-8999-999999999999",
     }),
   },
+  lifecycleDateFacts = { listCurrent: vi.fn().mockResolvedValue([]) },
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -188,6 +198,10 @@ async function buildService(
         provide: GET_CUSTOMS_CLEARANCE_READINESS,
         useValue: getCustomsClearanceReadiness,
       },
+      {
+        provide: LIFECYCLE_DATE_FACT_REPOSITORY,
+        useValue: lifecycleDateFacts,
+      },
     ],
   }).compile();
   return {
@@ -198,6 +212,7 @@ async function buildService(
     evaluateCargoReadyCompliance,
     getContainerStuffingReadiness,
     getContainerDispatchReadiness,
+    lifecycleDateFacts,
   };
 }
 
@@ -214,6 +229,87 @@ function baseInput() {
 }
 
 describe("ApplyLifecycleEventService", () => {
+  it("gate_out 读取当前可提事实并完成提柜节点", async () => {
+    const repository = buildRepository("at_port");
+    useFlow(repository, flowAt("container_pickup"));
+    const lifecycleDateFacts = {
+      listCurrent: vi.fn().mockResolvedValue([
+        {
+          id: "available-fact",
+          tenantId: "t1",
+          containerId: "c1",
+          nodeCode: "container_pickup",
+          eventCode: "available",
+          timeKind: "actual",
+          occurredAt: new Date("2026-09-12T09:00:00Z"),
+          verificationState: "verified",
+          confidenceState: "confirmed",
+          validity: "effective",
+          applicationState: "applied",
+          location: PICKUP_LOCATION,
+          isCurrent: true,
+        },
+      ]),
+    };
+    const applyContainerRecord = { execute: vi.fn() };
+    const { service } = await buildService(
+      repository,
+      applyContainerRecord,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      lifecycleDateFacts,
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "gate_out",
+      occurredAt: new Date("2026-09-12T10:00:00Z"),
+    });
+
+    expect(lifecycleDateFacts.listCurrent).toHaveBeenCalledWith({
+      tenantId: "t1",
+      containerId: "c1",
+    });
+    expect(result.completedNodes).toEqual(["container_pickup"]);
+    expect(applyContainerRecord.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ currentStatus: "picked_up" }),
+    );
+  });
+
+  it("gate_out 缺少可提事实时保持待应用", async () => {
+    const repository = buildRepository("at_port");
+    useFlow(repository, flowAt("container_pickup"));
+    const lifecycleDateFacts = { listCurrent: vi.fn().mockResolvedValue([]) };
+    const { service } = await buildService(
+      repository,
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      lifecycleDateFacts,
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "gate_out",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.container_pickup).toBe(
+      "LIFECYCLE_EVENT_PENDING_TERMINAL_AVAILABILITY",
+    );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
+  });
+
   it("cargo_ready 合规未放行时保存事件但保留待应用", async () => {
     const repository = buildRepository("not_shipped");
     const gate = {
