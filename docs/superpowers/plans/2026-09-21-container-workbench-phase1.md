@@ -1349,7 +1349,7 @@ git commit -m "feat(web): 轨道改为水平主轴，铺满 14 站并显式留�
 - Consumes: `LiveNodeView`（Task 8）
 - Produces: `NodeTimeTrackCard` 组件；props `{ node: LiveNodeView | null }`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 新建 `apps/web/src/components/container/NodeTimeTrackCard.test.ts`：
 
@@ -1407,12 +1407,12 @@ describe("NodeTimeTrackCard", () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `pnpm --filter @logix/web test src/components/container/NodeTimeTrackCard.test.ts`
 Expected: FAIL —— 找不到模块
 
-- [ ] **Step 3: 实现组件**
+- [x] **Step 3: 实现组件**
 
 新建 `apps/web/src/components/container/NodeTimeTrackCard.vue`：
 
@@ -1470,12 +1470,12 @@ function show(value: string | null): string {
 
 样式用 `--surface` / `--line` / `--muted` / `--risk` 变量，`.blank` 用 `color: var(--muted)`。
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `pnpm --filter @logix/web test src/components/container/NodeTimeTrackCard.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add apps/web/src/components/container/NodeTimeTrackCard.vue apps/web/src/components/container/NodeTimeTrackCard.test.ts
