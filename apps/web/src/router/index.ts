@@ -99,6 +99,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/workspaces/unloading",
+      component: () => import("../views/ContainerUnloadingWorkbench.vue"),
+      meta: {
+        title: "卸柜工作台",
+        section: "作业",
+        navLabel: "卸柜工作台",
+        navIcon: "package-open",
+        navOrder: 21,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/containers",
       component: () => import("../views/ContainerList.vue"),
       meta: {
@@ -106,7 +118,7 @@ const router = createRouter({
         section: "货柜",
         navLabel: "干活",
         navIcon: "container",
-        navOrder: 21,
+        navOrder: 22,
         roles: ["operator", "planner", "manager"],
       },
     },
