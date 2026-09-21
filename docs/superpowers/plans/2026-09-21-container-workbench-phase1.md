@@ -163,7 +163,7 @@ export interface ReconcileAppliedLifecycleFactCommand {
 - `requestHash` 只覆盖规范化后的业务语义：tenant/container/flow/node instance/node code/event id/event code/domain fact/occurredAt/captureSource/排序去重后的 evidenceRefs；不把 traceId、receivedAt 或重试次数放进哈希。
 - 同键同哈希返回原 `applied | rejected | no_op` 决定；同键异哈希返回 `IDEMPOTENCY_CONFLICT`。
 
-- [ ] **Step 1: 先写纯领域失败测试**
+- [x] **Step 1: 先写纯领域失败测试**
 
 覆盖：
 
@@ -179,7 +179,7 @@ Run: `pnpm --filter @logix/api test -- src/modules/work-execution/domain/work-or
 
 Expected: 新测试先 FAIL。
 
-- [ ] **Step 2: 实现纯规则和公开端口类型**
+- [x] **Step 2: 实现纯规则和公开端口类型**
 
 公开端口只接收稳定命令并返回：
 
@@ -198,7 +198,7 @@ interface ReconcileAppliedLifecycleFactResult {
 
 不得提供 `setTaskCompleted`、`setWorkOrdersCompleted` 或通用 `setStatus` 方法。
 
-- [ ] **Step 3: 纯领域测试通过**
+- [x] **Step 3: 纯领域测试通过**
 
 Run 同 Step 1。
 

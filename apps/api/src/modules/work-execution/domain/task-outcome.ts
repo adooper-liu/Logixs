@@ -7,7 +7,8 @@ import type {
 } from "@logix/contracts";
 
 export const FIRST_SLICE_COMPLETION_POLICY = "all_required_completed";
-export type ResultPolicyMode = "none" | "emit_canonical_event";
+export type ResultPolicyMode =
+  "none" | "emit_canonical_event" | "reference_existing_event";
 
 export interface NodeTaskOutcomeDraft {
   previousState: NodeTaskState;
@@ -17,6 +18,11 @@ export interface NodeTaskOutcomeDraft {
   policySnapshotHash: string;
   requiredWorkOrderIds: string[];
   completedWorkOrderIds: string[];
+  evaluatedFactRefs?: string[];
+  canonicalEventId?: string;
+  domainFactId?: string;
+  actorOrServiceId?: string;
+  traceId?: string;
 }
 
 export interface NodeResultPolicy {
@@ -48,12 +54,25 @@ export function decideTaskOutcome(input: {
   nextState: NodeTaskState;
   nodeCode: LifecycleNodeCode;
   workOrders: Array<{ id: string; state: WorkOrderState }>;
+  factCausation?: {
+    factApplicationIds: string[];
+    canonicalEventId: string;
+    eventCode: CanonicalEventCode;
+    domainFactId: string;
+    actorOrServiceId: string;
+    traceId: string;
+  };
 }): NodeTaskOutcomeDraft | null {
   if (input.nextState !== "completed") return null;
   if (input.previousState === "completed") return null;
 
-  const policy = resultPolicyForNode(input.nodeCode);
-  return {
+  const policy: NodeResultPolicy = input.factCausation
+    ? {
+        mode: "reference_existing_event",
+        eventCode: input.factCausation.eventCode,
+      }
+    : resultPolicyForNode(input.nodeCode);
+  const outcome: NodeTaskOutcomeDraft = {
     previousState: input.previousState,
     nextState: input.nextState,
     resultPolicyMode: policy.mode,
@@ -64,4 +83,14 @@ export function decideTaskOutcome(input: {
       .filter((workOrder) => workOrder.state === "completed")
       .map((workOrder) => workOrder.id),
   };
+  if (input.factCausation) {
+    outcome.evaluatedFactRefs = [
+      ...new Set(input.factCausation.factApplicationIds),
+    ].sort();
+    outcome.canonicalEventId = input.factCausation.canonicalEventId;
+    outcome.domainFactId = input.factCausation.domainFactId;
+    outcome.actorOrServiceId = input.factCausation.actorOrServiceId;
+    outcome.traceId = input.factCausation.traceId;
+  }
+  return outcome;
 }

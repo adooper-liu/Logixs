@@ -85,6 +85,7 @@ branch: feat/container-workbench-phase1
 ## Review notes（review 阶段填写，只读不改代码）
 
 - 2026-09-21：主审确认 brief 与 GC-005、模块依赖图和修订后计划一致；修正 Task 6 表格显示后进入 coding。
+- 2026-09-21：Task 1 主审修正事实型 Outcome 为 `reference_existing_event`，并改用共享 `CaptureSource`；领域测试、API lint/typecheck/format 与 repo:check 通过。
 
 ## 进度 log（谁改谁 append，一行一条）
 
@@ -92,3 +93,4 @@ branch: feat/container-workbench-phase1
 | ---------- | ------ | ----- | ------ | -------------------------------------------------------------------------------- |
 | 2026-09-21 | design | Codex | —      | 建立一期正式 brief，冻结 GC-005/模块所有权边界、四者协同、11 Task 摘要与验证路径 |
 | 2026-09-21 | coding | Codex | —      | 主审通过，开始按全新子代理逐 Task 串行实现                                       |
+| 2026-09-21 | coding | Codex | —      | Task 1 完成：冻结事实对账身份、领域决定、既有事件引用 Outcome 与公共 Port        |
