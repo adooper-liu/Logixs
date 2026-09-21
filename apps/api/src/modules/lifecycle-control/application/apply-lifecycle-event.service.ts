@@ -49,6 +49,10 @@ import {
 import { decideNodeEventApplication } from "../domain/node-event-application";
 import { decideNodeSpecializedGuard } from "../domain/node-specialized-guard";
 import { parseEvidenceRefs } from "../domain/evidence-refs";
+import {
+  LIFECYCLE_DATE_FACT_REPOSITORY,
+  type LifecycleDateFactRepository,
+} from "../domain/lifecycle-date-fact.repository";
 import { CONTAINER_STATUS_ORDER, NODE_SEQUENCE } from "../domain/node-status";
 
 const ASSERT_EVIDENCE_REFS = Symbol.for("logix.AssertEvidenceRefs");
@@ -114,6 +118,8 @@ export class ApplyLifecycleEventService {
     private readonly getContainerDispatchReadiness: GetContainerDispatchReadinessPort,
     @Inject(GET_CUSTOMS_CLEARANCE_READINESS)
     private readonly getCustomsClearanceReadiness: GetCustomsClearanceReadinessPort,
+    @Inject(LIFECYCLE_DATE_FACT_REPOSITORY)
+    private readonly lifecycleDateFacts: LifecycleDateFactRepository,
   ) {}
 
   async execute(
@@ -221,6 +227,21 @@ export class ApplyLifecycleEventService {
     }
 
     let flow = await this.repository.ensureFlow(input.containerId);
+    const pickupAvailability =
+      input.eventCode === "gate_out"
+        ? ((
+            await this.lifecycleDateFacts.listCurrent({
+              tenantId: input.tenantId,
+              containerId: input.containerId,
+            })
+          ).find(
+            (fact) =>
+              fact.nodeCode === "container_pickup" &&
+              fact.eventCode === "available" &&
+              fact.timeKind === "actual" &&
+              fact.isCurrent,
+          ) ?? null)
+        : null;
 
     const completedNodes: LifecycleNodeCode[] = [];
     const pendingNodes: LifecycleNodeCode[] = [];
@@ -314,6 +335,8 @@ export class ApplyLifecycleEventService {
                 evidenceRefs,
               })
             : null,
+        pickupAvailability,
+        occurredAt: input.occurredAt,
       });
       const guardResults = [
         ...decision.guardResults,

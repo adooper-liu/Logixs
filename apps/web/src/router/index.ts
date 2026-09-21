@@ -75,6 +75,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/workspaces/pickup",
+      component: () => import("../views/PickupWorkbench.vue"),
+      meta: {
+        title: "提柜工作台",
+        section: "作业",
+        navLabel: "提柜工作台",
+        navIcon: "truck",
+        navOrder: 19,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/containers",
       component: () => import("../views/ContainerList.vue"),
       meta: {

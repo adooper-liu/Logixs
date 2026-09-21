@@ -101,6 +101,28 @@ describe("registerAndVerifyFloorEvidence", () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("登记时可携带受控来源上下文", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ evidenceId: EVIDENCE }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await registerAndVerifyFloorEvidence(CONTAINER, "EIR-1", {
+      evidenceType: "receipt",
+      authoritySystem: "terminal-operator",
+      captureSource: "manual_backfill",
+    });
+
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+    ).toMatchObject({
+      evidenceType: "receipt",
+      authoritySystem: "terminal-operator",
+      captureSource: "manual_backfill",
+    });
+  });
 });
 
 describe("isEvidenceUuid", () => {

@@ -1,3 +1,8 @@
+import type {
+  AuthorityLevel,
+  CaptureSource,
+  EvidenceRecord as ContractEvidenceRecord,
+} from "@logix/contracts";
 import { completionRequiresEvidence } from "../data/completionEvidencePolicy";
 import { parseEvidenceInput } from "../data/completeReceiptContract";
 import { formatHttpError } from "./httpError";
@@ -18,6 +23,14 @@ export interface EvidenceRecord {
   validity: string;
   recordedAt: string;
   verificationDecisionId: string | null;
+}
+
+interface EvidenceSourceContext {
+  evidenceType?: ContractEvidenceRecord["evidenceType"];
+  authorityLevel?: AuthorityLevel;
+  sourceType?: ContractEvidenceRecord["source"]["sourceType"];
+  authoritySystem?: string;
+  captureSource?: CaptureSource;
 }
 
 function identityHeaders(): HeadersInit {
@@ -48,10 +61,12 @@ async function readError(
   return formatHttpError(response.status, await response.text(), fallback);
 }
 
-export async function registerEvidence(input: {
-  subjectId: string;
-  contentRef: string;
-}): Promise<EvidenceRecord> {
+export async function registerEvidence(
+  input: {
+    subjectId: string;
+    contentRef: string;
+  } & EvidenceSourceContext,
+): Promise<EvidenceRecord> {
   const contentRef = input.contentRef.trim().slice(0, 500);
   const response = await fetch("/api/evidence", {
     method: "POST",
@@ -60,17 +75,17 @@ export async function registerEvidence(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      evidenceType: "document",
+      evidenceType: input.evidenceType ?? "document",
       subjectType: "container",
       subjectId: input.subjectId,
-      authorityLevel: "operational",
+      authorityLevel: input.authorityLevel ?? "operational",
       contentRef,
       contentHash: await sha256Hex(`floor:${input.subjectId}:${contentRef}`),
-      sourceType: "person",
+      sourceType: input.sourceType ?? "person",
       originatorSystem: "logix-web",
-      authoritySystem: "ops-team",
+      authoritySystem: input.authoritySystem ?? "ops-team",
       ingestionChannel: "manual_ui",
-      captureSource: "internal_operation",
+      captureSource: input.captureSource ?? "internal_operation",
     }),
   });
   if (!response.ok) {
@@ -102,10 +117,12 @@ export async function verifyEvidence(
 export async function registerAndVerifyFloorEvidence(
   containerId: string,
   contentRef: string,
+  context: EvidenceSourceContext = {},
 ): Promise<string> {
   const record = await registerEvidence({
     subjectId: containerId,
     contentRef,
+    ...context,
   });
   const verified = await verifyEvidence(record.evidenceId);
   return verified.evidenceId;

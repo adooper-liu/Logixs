@@ -16,12 +16,23 @@ export interface LifecycleDateFact {
   confidenceState: string;
   validity: string;
   authorityPolicyRef: string | null;
+  location: LifecycleLocation | null;
   evidenceRefs: readonly string[];
   applicationState: string;
   applicationReasonCode: string | null;
   canonicalEventId: string | null;
   projectionVersion: number;
   recordedAt: string;
+}
+
+export interface LifecycleLocation {
+  locationType:
+    "port" | "terminal" | "rail_yard" | "warehouse" | "depot" | "in_transit";
+  unlocode?: string;
+  locationId?: string;
+  segmentId?: string;
+  portCallId?: string;
+  timezone: string;
 }
 
 export interface LifecycleDateFactProjection {
@@ -38,6 +49,7 @@ export interface RecordLifecycleDateFactInput {
   rawValue: string;
   sourceUtcOffset: string;
   authoritySystem: string;
+  location?: LifecycleLocation;
   evidenceRefs: string[];
   reasonCode: string;
   expectedVersion: number;
@@ -92,7 +104,7 @@ export async function recordLifecycleDateFact(
       await formatHttpError(
         response.status,
         await response.text(),
-        "提交实际装箱时间失败",
+        "提交日期事实失败",
       ),
     );
   }

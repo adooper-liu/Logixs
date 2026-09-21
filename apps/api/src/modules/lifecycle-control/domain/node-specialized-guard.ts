@@ -3,6 +3,15 @@ import type { LifecycleLocationContext } from "./lifecycle-date-fact";
 import type { ActiveOceanRouteSegment } from "./lifecycle.repository";
 import type { NodeEventApplicationDecision } from "./node-event-application";
 
+export interface PickupAvailabilityContext {
+  occurredAt: Date;
+  verificationState: string;
+  confidenceState: string;
+  validity: string;
+  applicationState: string;
+  location: LifecycleLocationContext | null;
+}
+
 export function decideNodeSpecializedGuard(input: {
   targetNodeCode: LifecycleNodeCode;
   eventCode: CanonicalEventCode;
@@ -22,6 +31,8 @@ export function decideNodeSpecializedGuard(input: {
     confirmed: boolean;
     reasonCode: string | null;
   } | null;
+  pickupAvailability?: PickupAvailabilityContext | null;
+  occurredAt: Date;
 }): NodeEventApplicationDecision {
   if (
     input.targetNodeCode === "cargo_ready" &&
@@ -115,6 +126,17 @@ export function decideNodeSpecializedGuard(input: {
   }
 
   if (
+    input.targetNodeCode === "container_pickup" &&
+    input.eventCode === "gate_out"
+  ) {
+    return decidePickupAvailability(
+      input.pickupAvailability ?? null,
+      input.location,
+      input.occurredAt,
+    );
+  }
+
+  if (
     input.targetNodeCode === "ocean_transit" &&
     input.eventCode === "transit_arrived"
   ) {
@@ -137,6 +159,86 @@ export function decideNodeSpecializedGuard(input: {
   }
 
   return { kind: "apply", guardResults: [] };
+}
+
+function decidePickupAvailability(
+  availability: PickupAvailabilityContext | null,
+  gateOutLocation: LifecycleLocationContext | null,
+  gateOutAt: Date,
+): NodeEventApplicationDecision {
+  if (
+    !availability ||
+    availability.verificationState !== "verified" ||
+    availability.confidenceState !== "confirmed" ||
+    availability.validity !== "effective" ||
+    availability.applicationState !== "applied"
+  ) {
+    return {
+      kind: "pending_application",
+      guardResults: [],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_TERMINAL_AVAILABILITY",
+    };
+  }
+  if (
+    !isPortLocation(availability.location) ||
+    !isPortLocation(gateOutLocation)
+  ) {
+    return {
+      kind: "pending_application",
+      guardResults: ["PICKUP_TERMINAL_AVAILABILITY_CONFIRMED"],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_PICKUP_LOCATION_CONTEXT",
+    };
+  }
+  if (!sameOperationalLocation(availability.location, gateOutLocation)) {
+    return {
+      kind: "pending_application",
+      guardResults: ["PICKUP_TERMINAL_AVAILABILITY_CONFIRMED"],
+      reasonCode: "LIFECYCLE_EVENT_PICKUP_LOCATION_MISMATCH",
+    };
+  }
+  if (gateOutAt.getTime() < availability.occurredAt.getTime()) {
+    return {
+      kind: "pending_application",
+      guardResults: [
+        "PICKUP_TERMINAL_AVAILABILITY_CONFIRMED",
+        "PICKUP_LOCATION_MATCHED",
+      ],
+      reasonCode: "LIFECYCLE_EVENT_PICKUP_BEFORE_AVAILABLE",
+    };
+  }
+  return {
+    kind: "apply",
+    guardResults: [
+      "PICKUP_TERMINAL_AVAILABILITY_CONFIRMED",
+      "PICKUP_LOCATION_MATCHED",
+      "PICKUP_AFTER_AVAILABLE",
+    ],
+  };
+}
+
+function isPortLocation(
+  location: LifecycleLocationContext | null,
+): location is LifecycleLocationContext & { unlocode: string } {
+  return Boolean(
+    location &&
+    ["port", "terminal"].includes(location.locationType) &&
+    location.unlocode,
+  );
+}
+
+function sameOperationalLocation(
+  availability: LifecycleLocationContext & { unlocode: string },
+  gateOut: LifecycleLocationContext & { unlocode: string },
+): boolean {
+  if (availability.unlocode !== gateOut.unlocode) return false;
+  if (!sameOptionalIdentity(availability.locationId, gateOut.locationId))
+    return false;
+  return sameOptionalIdentity(availability.portCallId, gateOut.portCallId);
+}
+
+function sameOptionalIdentity(left?: string, right?: string): boolean {
+  if (!left && !right) return true;
+  return Boolean(left && right && left === right);
 }
 
 function decideArrivalContext(

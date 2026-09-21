@@ -155,4 +155,18 @@ describe("navigationForRole", () => {
       expect(items[dispatch]?.label).toBe("出运工作台");
     }
   });
+
+  it("shows the pickup workbench immediately after customs", () => {
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      const customs = items.findIndex(
+        (item) => item.path === "/workspaces/customs",
+      );
+      const pickup = items.findIndex(
+        (item) => item.path === "/workspaces/pickup",
+      );
+      expect(pickup).toBe(customs + 1);
+      expect(items[pickup]?.label).toBe("提柜工作台");
+    }
+  });
 });
