@@ -248,7 +248,15 @@
 
    **没有一处来自生命周期事件。** 所以事实过站后，那一站的任务永远停在 `pending`。这是"事实自动完成"唯一需要新接的线，位置在 `apps/api/src/modules/lifecycle-control/application/apply-lifecycle-event.service.ts:422`（`if (transition.applied)` 过站成功处）。
 
-2. **`FACT_TARGET_NODE` 是需要废弃的冗余影子表。** `apps/api/src/modules/work-execution/domain/task-conditions.ts:8-13` 只有 4 条映射（`customs_clearance_completed` / `container_unloading_completed` / `container_empty_confirmed` / `container_empty_estimated`），仅用于算任务红绿灯，与真正的过站无关。应改为查 canonical-events 的权威映射。
+2. **`FACT_TARGET_NODE` 不能简单"换成 canonical-events 查表"——查证后有条坎。** `apps/api/src/modules/work-execution/domain/task-conditions.ts:8-13` 的 4 条映射只有 4 个站。原以为可以直接改用 canonical-events 的权威映射，但：
+
+   - 那 4 个 code（`customs_clearance_completed` 等）是 **`ImportTimeFactCode`**（`integration-import/domain/import-field-catalog.ts` 的 `IMPORT_TIME_FACT_CATALOG`），**不是规范事件码** —— 在 `canonical-events.json` 里 0 命中。
+   - **但 `ShipmentTimeFact` 表有一列 `eventCode`**（nullable），导入时由 `definition.eventCode` 解析得到 —— 这才是与规范事件的权威连接点。
+   - `TaskConditionFact`（`evaluateTaskConditions` 的入参）**不带** `eventCode` 也不带 `nodeCode`，只有 `{ id, factCode, timeKind, captureSource, evidenceRef }`。
+
+   **做法（增量而非替换）**：给 `TaskConditionFact` 加 `nodeCode: LifecycleNodeCode | null`，在 `PrismaContainerRepository.listCurrentTaskFacts` 里用 `ShipmentTimeFact.eventCode` → canonical-events 的 `defaultNodeCode` 填上；`evaluateTaskConditions` **优先按 `fact.nodeCode` 匹配，`FACT_TARGET_NODE` 降为兜底**（覆盖 `eventCode` 为空的 system_derived 事实）。
+
+   这样 14 站全部可由事实驱动，且不丢掉现有覆盖。**直接删表会在 `eventCode` 为空的事实上丢覆盖**，所以是"降级为兜底"而非"删除"。
 
 **C. 一个站卡住会锁死后面所有站。**
 
@@ -284,9 +292,16 @@
 
 **字段立在哪**（D6，见 §3）：`packages/contracts/catalogs/v1/lifecycle-nodes.json` 每个节点加 `completionMode`，与 `sequence` / `nodeCode` / `applicability` 并列。它是**站的性质**（"这站的事实源可用吗"），不是单件任务的性质，因此**不给 `NodeTask` 加 DB 列**。仓库已有"目录给默认、实例可覆盖"的现成模式（`apps/api/src/modules/lifecycle-control/domain/node-applicability.ts` 的 `defaultApplicability`），将来要按柜覆盖时照 `applicability` 加列即可。
 
-**事实录入通道本来就是通用的**：`record-lifecycle-date-fact.service.ts:304-306` 按 canonical-events 目录校验 `eventCode` + `allowedTimeKinds`，**任何一站都能录**，没有按节点写死的白名单。所以"人工补录事实"不需要新机制——岗位台那些表单本身就是人工录入事实。
+**三轨的数据源是 `LifecycleDateFact`（不是 `ShipmentTimeFact`）。** 仓库里有**两张**时间事实表，别搞混：
 
-由此暴露一个空洞，见 §7.6：**8 个没有岗位台的站，不是没通道，是没界面。**
+| 表 | 归属 | 关键列 | 用来做什么 |
+| -- | ---- | ------ | ---------- |
+| `LifecycleDateFact` | `lifecycle-control` | `nodeCode`、`eventCode`、`timeKind`（**planned / estimated / actual**）、`occurredAt`、`verificationState`、`applicationState`、`isCurrent` | **三轨轨道的来源**——它有 `nodeCode` 和全部三种 `timeKind` |
+| `ShipmentTimeFact` | `shipment-registry` | `factCode`、`eventCode?`、`timeKind`（**只有 actual / estimated**）、`evidenceRef`、`isCurrent` | **任务条件计算**的来源（`TaskConditionFact`）——**没有 planned** |
+
+现成查询：`PrismaLifecycleDateFactRepository.listCurrent({ tenantId, containerId })`（`prisma-lifecycle-date-fact.repository.ts:227`）已按 `isCurrent: true` 过滤，但**硬编码 `take: 100`**（14 站 × 3 轨 = 42，够用，但实施时应意识到这个上限）。
+
+**事实录入通道本来就是通用的**：`record-lifecycle-date-fact.service.ts:304-306` 按 canonical-events 目录校验 `eventCode` + `allowedTimeKinds`，**任何一站都能录**，没有按节点写死的白名单。所以"人工补录事实"不需要新机制——岗位台那些表单本身就是人工录入事实。由此暴露一个空洞，见 §7.6：**8 个没有岗位台的站，不是没通道，是没界面。**
 
 ## 5. 改动清单
 
@@ -328,26 +343,24 @@
 
 | 期 | 内容 | 可演示结果 |
 | -- | ---- | ---------- |
-| **一期** | 后端接"过站自动完成任务" + 废弃 `FACT_TARGET_NODE` + **时间事实聚合投影** + **节点目录加 `completionMode`**（D6）；货柜工作台按 **L1 竖向堆叠**重排，轨道画全 14 站、**预埋三轨 + 常驻展开卡**、**预埋标记 / 异常槽位**（只读，显示留空） | 走完一站后任务自动消失；轨道看到全部 14 站与三轨（计划轨留空、差异可见）；标记 / 异常槽位在位 |
-| **二期** | **缺口清单投影** + **异常读投影**（`NodeBlock` 现只有写路径）+ 货柜工作台的"下一步"块 + 跳转 | 货柜工作台能指出下一步并跳到岗位台；异常看到真实的未关闭阻塞 |
+| **一期** | 后端接"过站自动完成任务" + 任务条件用 `eventCode` 权威映射（`FACT_TARGET_NODE` 降为兜底）+ **时间事实聚合投影** + **节点目录加 `completionMode`**（D6）；货柜工作台按 **L1 竖向堆叠**重排，轨道画全 14 站、**预埋三轨 + 常驻展开卡**、**预埋标记槽位**（留空）、**接通异常槽位**（消费已有的 `blockedReasonRefs`） | 走完一站后任务自动消失；轨道看到全部 14 站与三轨（计划轨留空、差异可见）；未关闭异常在柜头可见，标记槽位在位留空 |
+| **二期** | **缺口清单投影** + 货柜工作台的"下一步"块 + 跳转 | 货柜工作台能指出下一步并跳到岗位台 |
 | **三期** | 岗位台队列改缺口清单形态；行动栏按 `completionMode` 出按钮；回链；**侧栏按组织分组（D5）** | 岗位台从"任务列表"变"缺什么清单"；侧栏看得出组织归属 |
 
 一期即产生可观察的正确性改善（任务不再永远挂着），建议先做。
 
 ## 7. 风险与未决
 
-1. **标记 / 异常位——按负责人 2026-09-21 决定预埋为常驻槽位，但两者处境完全不同，不可一刀切。**
+1. **标记 / 异常位——按负责人 2026-09-21 决定预埋为常驻槽位。**（**已修正**：初稿说"异常缺读投影"是错的，查证后两者处境如下。）
 
-   | | 模型 | 写路径 | 读路径 |
-   | --- | --- | --- | --- |
-   | **异常** | ✅ 已有 `NodeBlock` + `NodeBlockResolution`（`blockType` / `sourceFactId` / `occurredAt` / 是否已 resolution），`schema.prisma:1012` / `:1037` | ✅ 已有 `POST /lifecycle-flows/:flowInstanceId/node-blocks` 与 `:blockId/resolve` | ❌ **没有**——该 controller 只有两个 POST，无任何查询接口 |
-   | **标记** | ❌ **完全不存在**——`schema.prisma:450` 只有一行 `TODO(D13 物理形态)` | — | — |
+   | | 模型 | 写路径 | 读路径 | 前端 |
+   | --- | --- | --- | --- | --- |
+   | **异常** | ✅ `NodeBlock` + `NodeBlockResolution` | ✅ 创建 / resolve | ✅ **已通**——`prisma-lifecycle.repository.ts:34` 的查询带 `where: { resolution: { is: null } }`，`blockedReasonRefs` **只含未关闭的阻塞**，且已出现在 `GET /containers/:id/lifecycle-nodes` 响应里 | ❌ **唯一断点**：`LifecycleNodeItem` 类型里没这个字段，前端没用 |
+   | **标记** | ❌ `schema.prisma:450` 只有一行 `TODO(D13 物理形态)` | — | — | — |
 
-   所以：**异常**是"有数据、缺读投影"（新建读投影 + 查询接口即可填满）；**标记**是**真·空槽位**，要等 `CONTAINER_MARKERS` 落地才有数据。
+   所以：**异常一期就能接真数据**（补前端字段 + 消费即可，无需后端改动）；**标记是真·空槽位**，等 `CONTAINER_MARKERS` 落地。
 
    **共同的留空纪律**（同 §4.1）：空数组**不得**渲染成"0 项异常 / 无风险"（`WORKSPACE_UI_INVENTORY §4.1` 明写），必须是显式未知。
-
-   排期调整：标记槽位**一期预埋**（显示留空）；异常读投影进**二期**（与缺口清单投影同批，都是"给货柜工作台喂数据"）。
 2. **计划轨会长期空着——已知并接受。** 三轨槽位按 §4.1 **预埋**（不因当前无数据而省略），但三种时间的**供给**差别很大，实施与后续维护都要知道：
 
    **结构上必须新建三层**：`NodeInstance` 表只有 `state` / `applicability` / `completedAt`，**没有时间列**（时间属于事实流水账，不属于节点实例，这是有意的设计）。`LifecycleNodeItem` 与 `LiveNodeView` 同样除 `completedAt` 外无时间字段，`LiveNodeRail.vue` 模板里也没有渲染时间的标记。三轨 = 新增按节点聚合时间事实的投影 + 打通 DTO → 视图模型 → 组件三层。**已提到一期**（见 §6）。
