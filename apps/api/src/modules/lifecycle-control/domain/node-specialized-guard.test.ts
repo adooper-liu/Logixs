@@ -14,6 +14,36 @@ const FINAL_ROUTE_SEGMENT = {
 };
 
 describe("decideNodeSpecializedGuard", () => {
+  it("cargo_ready 只有当前合规决定已放行才允许过站", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "cargo_ready",
+        eventCode: "cargo_ready",
+        containerNumber: null,
+        location: null,
+        routeSegment: null,
+        cargoReadyComplianceApproved: false,
+      }),
+    ).toEqual({
+      kind: "pending_application",
+      guardResults: [],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_COMPLIANCE",
+    });
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "cargo_ready",
+        eventCode: "cargo_ready",
+        containerNumber: null,
+        location: null,
+        routeSegment: null,
+        cargoReadyComplianceApproved: true,
+      }),
+    ).toEqual({
+      kind: "apply",
+      guardResults: ["CARGO_READY_COMPLIANCE_APPROVED"],
+    });
+  });
+
   it("箱号未迟绑定时保留 stuffed 待应用", () => {
     expect(
       decideNodeSpecializedGuard({

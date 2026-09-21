@@ -5,6 +5,8 @@ import { AiGovernanceModule } from "./modules/ai-governance";
 import { AuditModule } from "./modules/audit";
 import { BookingOriginModule } from "./modules/booking-origin";
 import { ChargesSettlementModule } from "./modules/charges-settlement";
+import { ComplianceManagementModule } from "./modules/compliance-management";
+import { ComplianceLifecycleOrchestrationModule } from "./modules/compliance-lifecycle-orchestration";
 import { CustomsComplianceModule } from "./modules/customs-compliance";
 import { DocumentRecordsModule } from "./modules/document-records";
 import { ExceptionManagementModule } from "./modules/exception-management";
@@ -28,6 +30,8 @@ import { WorkflowModule } from "./modules/workflow";
     AuditModule,
     BookingOriginModule,
     ChargesSettlementModule,
+    ComplianceManagementModule,
+    ComplianceLifecycleOrchestrationModule,
     CustomsComplianceModule,
     DocumentRecordsModule,
     ExceptionManagementModule,

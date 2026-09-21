@@ -79,6 +79,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/compliance",
+      component: () => import("../views/ComplianceWorkbench.vue"),
+      meta: {
+        title: "合规评审",
+        section: "计划与管理",
+        navLabel: "合规评审",
+        navIcon: "shield-check",
+        navOrder: 32,
+        roles: ["planner", "manager"],
+      },
+    },
+    {
       path: "/dead-letters",
       component: () => import("../views/DeadLetterQueue.vue"),
       meta: {

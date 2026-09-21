@@ -13,6 +13,10 @@ import type {
 } from "@logix/contracts";
 import { ApplyContainerRecordService } from "../../shipment-registry";
 import {
+  EVALUATE_CARGO_READY_COMPLIANCE,
+  type EvaluateCargoReadyCompliancePort,
+} from "../../compliance-management";
+import {
   CREATE_NODE_TASK,
   type CreateNodeTaskPort,
 } from "../../work-execution";
@@ -92,6 +96,8 @@ export class ApplyLifecycleEventService {
     private readonly createNodeTask: CreateNodeTaskPort,
     @Inject(ASSERT_EVIDENCE_REFS)
     private readonly assertEvidenceRefs: AssertEvidenceRefsPort,
+    @Inject(EVALUATE_CARGO_READY_COMPLIANCE)
+    private readonly evaluateCargoReadyCompliance: EvaluateCargoReadyCompliancePort,
   ) {}
 
   async execute(
@@ -258,6 +264,14 @@ export class ApplyLifecycleEventService {
         containerNumber: container.containerNumber,
         location: stateEvidence.location,
         routeSegment,
+        cargoReadyComplianceApproved:
+          targetNodeCode !== "cargo_ready" ||
+          (
+            await this.evaluateCargoReadyCompliance.execute({
+              tenantId: input.tenantId,
+              containerRecordId: input.containerId,
+            })
+          ).approved,
       });
       const guardResults = [
         ...decision.guardResults,

@@ -228,6 +228,185 @@ model ProductComplianceProfileCertificate {
   @@map("product_compliance_profile_certificate")
 }
 
+// 合规规则稳定身份与追加版本（compliance-management 拥有）。规则只有经过证据核验和授权发布后才参与评审。
+model ComplianceRule {
+  id        String                  @id @default(uuid()) @map("id") @db.Uuid
+  tenantId  String                  @map("tenant_id")
+  ruleCode  String                  @map("rule_code")
+  createdAt DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  versions  ComplianceRuleVersion[]
+
+  @@unique([id, tenantId], map: "compliance_rule_id_tenant_key")
+  @@unique([tenantId, ruleCode], map: "compliance_rule_tenant_code_key")
+  @@map("compliance_rule")
+}
+
+model ComplianceRuleVersion {
+  id                        String                               @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                  String                               @map("tenant_id")
+  ruleId                    String                               @map("rule_id") @db.Uuid
+  rule                      ComplianceRule                       @relation(fields: [ruleId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version                   Int                                  @map("version")
+  state                     String                               @map("state")
+  requirementLayer          String                               @map("requirement_layer")
+  jurisdictionCountryCode   String                               @map("jurisdiction_country_code") @db.Char(2)
+  effectiveFrom             DateTime                             @map("effective_from") @db.Date
+  effectiveTo               DateTime?                            @map("effective_to") @db.Date
+  appliesToAllSkus          Boolean                              @map("applies_to_all_skus")
+  batteryRequirement        String                               @map("battery_requirement")
+  refrigerantRequirement    String                               @map("refrigerant_requirement")
+  dangerousGoodsRequirement String                               @map("dangerous_goods_requirement")
+  requiredCertificateTypes  Json                                 @map("required_certificate_types")
+  blockingNodeCodes         Json                                 @map("blocking_node_codes")
+  severity                  String                               @map("severity")
+  officialSourceUrl         String                               @map("official_source_url")
+  legalCitation             String                               @map("legal_citation")
+  owner                     String                               @map("owner")
+  approvedBy                String                               @map("approved_by")
+  approvedAt                DateTime                             @default(now()) @map("approved_at") @db.Timestamptz
+  supersedesRuleVersionId   String?                              @map("supersedes_rule_version_id") @db.Uuid
+  supersedesRuleVersion     ComplianceRuleVersion?               @relation("ComplianceRuleVersionSupersession", fields: [supersedesRuleVersionId, tenantId, ruleId], references: [id, tenantId, ruleId], onDelete: Restrict)
+  supersededBy              ComplianceRuleVersion?               @relation("ComplianceRuleVersionSupersession")
+  evidenceRefs              Json                                 @map("evidence_refs")
+  reasonCode                String                               @map("reason_code")
+  idempotencyKey            String                               @map("idempotency_key")
+  payloadHash               String                               @map("payload_hash")
+  createdAt                 DateTime                             @default(now()) @map("created_at") @db.Timestamptz
+  retiredAt                 DateTime?                            @map("retired_at") @db.Timestamptz
+  skuScopes                 ComplianceRuleVersionSkuScope[]
+  assessmentRules           CargoReadyComplianceAssessmentRule[]
+
+  @@unique([id, tenantId], map: "compliance_rule_version_id_tenant_key")
+  @@unique([id, tenantId, ruleId], map: "compliance_rule_version_id_scope_key")
+  @@unique([tenantId, ruleId, version], map: "compliance_rule_version_number_key")
+  @@unique([tenantId, idempotencyKey], map: "compliance_rule_version_idempotency_key")
+  @@unique([supersedesRuleVersionId, tenantId, ruleId], map: "compliance_rule_version_supersedes_key")
+  @@index([tenantId, jurisdictionCountryCode, state, effectiveFrom], map: "compliance_rule_version_applicability_idx")
+  @@map("compliance_rule_version")
+}
+
+model ComplianceRuleVersionSkuScope {
+  id            String                @id @default(uuid()) @map("id") @db.Uuid
+  tenantId      String                @map("tenant_id")
+  ruleVersionId String                @map("rule_version_id") @db.Uuid
+  ruleVersion   ComplianceRuleVersion @relation(fields: [ruleVersionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productSkuId  String                @map("product_sku_id") @db.Uuid
+
+  @@unique([ruleVersionId, productSkuId], map: "compliance_rule_version_sku_key")
+  @@index([tenantId, productSkuId], map: "compliance_rule_sku_tenant_idx")
+  @@map("compliance_rule_version_sku_scope")
+}
+
+// cargo_ready 合规评审（compliance-management 拥有）：锁定装载与 SKU 档案快照。
+model CargoReadyComplianceAssessment {
+  id                      String                               @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                String                               @map("tenant_id")
+  containerRecordId       String                               @map("container_record_id")
+  version                 Int                                  @map("version")
+  state                   String                               @map("state")
+  jurisdictionCountryCode String                               @map("jurisdiction_country_code") @db.Char(2)
+  assessmentDate          DateTime                             @map("assessment_date") @db.Date
+  allocationSetId         String?                              @map("allocation_set_id") @db.Uuid
+  allocationSetVersion    Int?                                 @map("allocation_set_version")
+  supersedesAssessmentId  String?                              @map("supersedes_assessment_id") @db.Uuid
+  supersedesAssessment    CargoReadyComplianceAssessment?      @relation("CargoReadyAssessmentSupersession", fields: [supersedesAssessmentId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  supersededBy            CargoReadyComplianceAssessment?      @relation("CargoReadyAssessmentSupersession")
+  evidenceRefs            Json                                 @map("evidence_refs")
+  actorId                 String                               @map("actor_id")
+  reasonCode              String                               @map("reason_code")
+  idempotencyKey          String                               @map("idempotency_key")
+  payloadHash             String                               @map("payload_hash")
+  createdAt               DateTime                             @default(now()) @map("created_at") @db.Timestamptz
+  supersededAt            DateTime?                            @map("superseded_at") @db.Timestamptz
+  items                   CargoReadyComplianceAssessmentItem[]
+  ruleSnapshots           CargoReadyComplianceAssessmentRule[]
+  findings                CargoReadyComplianceFinding[]
+  decisions               CargoReadyComplianceDecision[]
+
+  @@unique([id, tenantId], map: "cargo_ready_assessment_id_tenant_key")
+  @@unique([id, tenantId, containerRecordId], map: "cargo_ready_assessment_id_scope_key")
+  @@unique([tenantId, idempotencyKey], map: "cargo_ready_assessment_tenant_idempotency_key")
+  @@unique([tenantId, containerRecordId, version], map: "cargo_ready_assessment_container_version_key")
+  @@unique([supersedesAssessmentId, tenantId, containerRecordId], map: "cargo_ready_assessment_supersedes_scope_key")
+  @@index([tenantId, containerRecordId, state], map: "cargo_ready_assessment_current_idx")
+  @@map("cargo_ready_compliance_assessment")
+}
+
+model CargoReadyComplianceAssessmentItem {
+  id                       String                         @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                 String                         @map("tenant_id")
+  assessmentId             String                         @map("assessment_id") @db.Uuid
+  assessment               CargoReadyComplianceAssessment @relation(fields: [assessmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  replenishmentOrderLineId String                         @map("replenishment_order_line_id")
+  productSkuId             String                         @map("product_sku_id") @db.Uuid
+  productNumber            String                         @map("product_number")
+  complianceProfileId      String?                        @map("compliance_profile_id") @db.Uuid
+  complianceProfileVersion Int?                           @map("compliance_profile_version")
+
+  @@unique([assessmentId, replenishmentOrderLineId], map: "cargo_ready_assessment_item_line_key")
+  @@unique([id, assessmentId], map: "cargo_ready_assessment_item_id_assessment_key")
+  @@index([tenantId, productSkuId], map: "cargo_ready_assessment_item_sku_idx")
+  @@map("cargo_ready_compliance_assessment_item")
+}
+
+model CargoReadyComplianceFinding {
+  id            String                         @id @default(uuid()) @map("id") @db.Uuid
+  tenantId      String                         @map("tenant_id")
+  assessmentId  String                         @map("assessment_id") @db.Uuid
+  assessment    CargoReadyComplianceAssessment @relation(fields: [assessmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  code          String                         @map("code")
+  productSkuId  String?                        @map("product_sku_id") @db.Uuid
+  ruleVersionId String?                        @map("rule_version_id") @db.Uuid
+  detail        String                         @map("detail")
+  state         String                         @default("open") @map("state")
+  createdAt     DateTime                       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, assessmentId, state], map: "cargo_ready_finding_assessment_idx")
+  @@map("cargo_ready_compliance_finding")
+}
+
+model CargoReadyComplianceAssessmentRule {
+  id            String                         @id @default(uuid()) @map("id") @db.Uuid
+  tenantId      String                         @map("tenant_id")
+  assessmentId  String                         @map("assessment_id") @db.Uuid
+  assessment    CargoReadyComplianceAssessment @relation(fields: [assessmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  ruleVersionId String                         @map("rule_version_id") @db.Uuid
+  ruleVersion   ComplianceRuleVersion          @relation(fields: [ruleVersionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productSkuId  String                         @map("product_sku_id") @db.Uuid
+
+  @@unique([assessmentId, ruleVersionId, productSkuId], map: "cargo_ready_assessment_rule_sku_key")
+  @@index([tenantId, ruleVersionId], map: "cargo_ready_assessment_rule_tenant_idx")
+  @@map("cargo_ready_compliance_assessment_rule")
+}
+
+model CargoReadyComplianceDecision {
+  id                   String                         @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                         @map("tenant_id")
+  assessmentId         String                         @map("assessment_id") @db.Uuid
+  assessment           CargoReadyComplianceAssessment @relation(fields: [assessmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version              Int                            @map("version")
+  decisionCode         String                         @map("decision_code")
+  conditionRefs        Json                           @map("condition_refs")
+  supersedesDecisionId String?                        @map("supersedes_decision_id") @db.Uuid
+  supersedesDecision   CargoReadyComplianceDecision?  @relation("CargoReadyDecisionSupersession", fields: [supersedesDecisionId, tenantId, assessmentId], references: [id, tenantId, assessmentId], onDelete: Restrict)
+  supersededBy         CargoReadyComplianceDecision?  @relation("CargoReadyDecisionSupersession")
+  evidenceRefs         Json                           @map("evidence_refs")
+  actorId              String                         @map("actor_id")
+  reasonCode           String                         @map("reason_code")
+  idempotencyKey       String                         @map("idempotency_key")
+  payloadHash          String                         @map("payload_hash")
+  decidedAt            DateTime                       @default(now()) @map("decided_at") @db.Timestamptz
+  supersededAt         DateTime?                      @map("superseded_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "cargo_ready_decision_id_tenant_key")
+  @@unique([id, tenantId, assessmentId], map: "cargo_ready_decision_id_scope_key")
+  @@unique([tenantId, idempotencyKey], map: "cargo_ready_decision_tenant_idempotency_key")
+  @@unique([assessmentId, version], map: "cargo_ready_decision_assessment_version_key")
+  @@unique([supersedesDecisionId, tenantId, assessmentId], map: "cargo_ready_decision_supersedes_scope_key")
+  @@index([tenantId, assessmentId, supersededAt], map: "cargo_ready_decision_current_idx")
+  @@map("cargo_ready_compliance_decision")
+}
+
 // 货柜当前阶段：8 态，与 packages/contracts/schemas/v1/common.schema.json 的
 // ContainerLifecycleState 枚举严格一致（G7 显式映射 parity 门禁校验，禁止漂移）。
 enum ContainerStatus {
@@ -1057,6 +1236,54 @@ model WorkOrder {
   updatedAt              DateTime  @updatedAt @map("updated_at")
 
   @@map("work_order")
+}
+
+// 非生命周期工作项（work-execution 拥有）：专业模块把整改/义务投影到全局任务池。
+// 来源事实仍由专业模块拥有；新版本投影取消旧开放项，不覆盖历史。
+model ExternalWorkItemProjection {
+  id             String   @id @map("id")
+  tenantId       String   @map("tenant_id")
+  sourceModule   String   @map("source_module")
+  sourceType     String   @map("source_type")
+  sourceScopeId  String   @map("source_scope_id")
+  sourceRecordId String   @map("source_record_id")
+  sourceVersion  Int      @map("source_version")
+  payloadHash    String   @map("payload_hash")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, sourceModule, sourceScopeId], map: "external_work_item_projection_scope_key")
+  @@map("external_work_item_projection")
+}
+
+model ExternalWorkItem {
+  id                String    @id @map("id")
+  tenantId          String    @map("tenant_id")
+  sourceModule      String    @map("source_module")
+  sourceType        String    @map("source_type")
+  sourceScopeId     String    @map("source_scope_id")
+  sourceRecordId    String    @map("source_record_id")
+  sourceVersion     Int       @map("source_version")
+  sourceItemKey     String    @map("source_item_key")
+  containerId       String    @map("container_id") // 跨模块逻辑引用，无外键
+  taskDefinitionKey String    @map("task_definition_key")
+  title             String    @map("title")
+  detail            String    @map("detail")
+  priority          String    @map("priority") // low | medium | high | critical
+  state             String    @map("state") // open | completed | cancelled
+  assignedRoleCode  String    @map("assigned_role_code")
+  evidenceRefs      Json      @default("[]") @map("evidence_refs")
+  dueAt             DateTime? @map("due_at") @db.Timestamptz
+  payloadHash       String    @map("payload_hash")
+  closedAt          DateTime? @map("closed_at") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, sourceModule, sourceRecordId, sourceItemKey], map: "external_work_item_source_key")
+  @@index([tenantId, state, createdAt, id], map: "external_work_item_tenant_state_idx")
+  @@index([tenantId, containerId, state, createdAt, id], map: "external_work_item_container_state_idx")
+  @@index([tenantId, sourceModule, sourceScopeId, state], map: "external_work_item_scope_state_idx")
+  @@map("external_work_item")
 }
 
 // 任务结果快照（work-execution 拥有）：工序聚合结果，不推进生命周期。

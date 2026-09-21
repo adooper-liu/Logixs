@@ -119,6 +119,7 @@ rejectedValueSummary?: redacted string
 | `LIFECYCLE_EVENT_TYPE_UNKNOWN`               |  400 | validation   |
 | `LIFECYCLE_EVENT_NOT_STATE_EVIDENCE`         |  422 | precondition |
 | `LIFECYCLE_EVENT_PENDING_PREDECESSOR`        |  422 | precondition |
+| `LIFECYCLE_EVENT_PENDING_COMPLIANCE`         |  422 | precondition |
 | `LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY` |  422 | precondition |
 | `LIFECYCLE_EVENT_PENDING_LOCATION_CONTEXT`   |  422 | precondition |
 | `LIFECYCLE_EVENT_PENDING_ROUTE_CONTEXT`      |  422 | precondition |

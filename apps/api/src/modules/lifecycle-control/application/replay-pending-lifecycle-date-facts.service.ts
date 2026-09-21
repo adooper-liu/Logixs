@@ -9,26 +9,18 @@ import {
   LIFECYCLE_DATE_FACT_REPOSITORY,
   type LifecycleDateFactRepository,
 } from "../domain/lifecycle-date-fact.repository";
-
-export interface ReplayPendingLifecycleDateFactsInput {
-  tenantId: string;
-  containerId: string;
-  limit?: number;
-}
-
-export interface ReplayPendingLifecycleDateFactsResult {
-  claimed: number;
-  applied: number;
-  pending: number;
-  rejected: number;
-}
+import type {
+  ReplayPendingLifecycleDateFactsInput,
+  ReplayPendingLifecycleDateFactsPort,
+  ReplayPendingLifecycleDateFactsResult,
+} from "../replay-pending-lifecycle-date-facts.port";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 const LEASE_MILLISECONDS = 30_000;
 
 @Injectable()
-export class ReplayPendingLifecycleDateFactsService {
+export class ReplayPendingLifecycleDateFactsService implements ReplayPendingLifecycleDateFactsPort {
   constructor(
     @Inject(LIFECYCLE_DATE_FACT_REPOSITORY)
     private readonly repository: LifecycleDateFactRepository,

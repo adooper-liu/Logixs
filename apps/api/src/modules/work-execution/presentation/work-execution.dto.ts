@@ -71,6 +71,31 @@ export class NodeTaskPageDto {
   @ApiProperty() projectionVersion!: number;
 }
 
+export class ExternalWorkItemDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() sourceModule!: string;
+  @ApiProperty() sourceType!: string;
+  @ApiProperty() sourceRecordId!: string;
+  @ApiProperty() sourceVersion!: number;
+  @ApiProperty() containerId!: string;
+  @ApiProperty() taskDefinitionKey!: string;
+  @ApiProperty() title!: string;
+  @ApiProperty() detail!: string;
+  @ApiProperty() priority!: string;
+  @ApiProperty() state!: string;
+  @ApiProperty() assignedRoleCode!: string;
+  @ApiProperty({ type: [String] }) evidenceRefs!: string[];
+  @ApiProperty({ nullable: true }) dueAt!: string | null;
+  @ApiProperty() createdAt!: string;
+}
+
+export class ExternalWorkItemPageDto {
+  @ApiProperty({ type: [ExternalWorkItemDto] }) items!: ExternalWorkItemDto[];
+  @ApiProperty({ type: PageInfoDto }) pageInfo!: PageInfoDto;
+  @ApiProperty() asOf!: string;
+  @ApiProperty() projectionVersion!: number;
+}
+
 export class ClaimWorkOrderRequestDto {
   @ApiProperty({ required: false })
   idempotencyKey?: string;
