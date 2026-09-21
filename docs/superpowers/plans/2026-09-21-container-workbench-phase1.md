@@ -1496,7 +1496,7 @@ git commit -m "feat(web): 新增常驻的节点三轨展开卡"
 - Consumes: `LiveNodeRail`（Task 9）、`NodeTimeTrackCard`（Task 10）
 - Produces: 页面结构 = 柜头（含标记 / 异常槽位）→ 轨道 + 展开卡 → 下一步
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 在 `apps/web/src/views/MicroWorkbench.test.ts` 加两条：
 
@@ -1562,12 +1562,12 @@ it("有未关闭阻塞时异常槽位露出数量", async () => {
 
 另外，既有 fixture `listLifecycleNodes.mockResolvedValue` 里的每个 node 都要补 `blockedReasonRefs: []` 与 `times: { plannedAt: null, estimatedAt: null, actualAt: null }`，否则类型不过。
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `pnpm --filter @logix/web test src/views/MicroWorkbench.test.ts`
 Expected: FAIL —— 页面里没有"标记"槽位
 
-- [ ] **Step 3: 改页面**
+- [x] **Step 3: 改页面**
 
 `apps/web/src/views/MicroWorkbench.vue` 的 `<template>` 里，`<PageHeader>` 之后改为：
 
@@ -1619,12 +1619,12 @@ const selectedNode = computed(
 
 原有 `<section class="next-step">` 保留在最后；其中 `v-if="!nodes.length"` 那条空态提示已上移到轨道处，去重后只留事件为空与"去做这柜的任务"链接。
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `pnpm --filter @logix/web test src/views/MicroWorkbench.test.ts`
 Expected: PASS（含全部既有用例）
 
-- [ ] **Step 5: 全量校验 + 提交**
+- [x] **Step 5: 全量校验 + 提交**
 
 Run: `pnpm --filter @logix/web validate`
 Expected: lint / format / typecheck / test / e2e / build 全通过
@@ -1640,7 +1640,7 @@ git commit -m "feat(web): 一柜一档改为竖向堆叠，补齐标记与异常
 
 - [ ] `pnpm contract:drift` —— 契约无漂移
 - [ ] `pnpm --filter @logix/api test` —— 后端全绿
-- [ ] `pnpm --filter @logix/web validate` —— 前端全绿
+- [x] `pnpm --filter @logix/web validate` —— lint、format、typecheck、93 个测试文件 273 项、E2E 77 项通过/7 项按既有条件跳过、build 全绿
 - [ ] `pnpm validate`（仓库根，高风险切片门禁）—— 全绿
 - [ ] 手工确认：找一个已过站的柜，打开 `/container/:id`，确认那一站的任务不再出现在 `/tasks`
 - [ ] 手工确认：找一个刚建柜的柜，确认轨道**铺满 14 站**、三轨槽位全部在位且写作 `—`、中转/海铁显示"不适用"

@@ -69,8 +69,14 @@ async function mountPage(id: string) {
         },
         LiveNodeRail: {
           props: ["nodes"],
+          emits: ["select"],
           template:
-            '<nav aria-label="货柜节点">{{ nodes[0]?.name }} {{ nodes[0]?.stateLabel }}</nav>',
+            '<nav aria-label="货柜节点"><button v-for="node in nodes" :key="node.nodeInstanceId" type="button" @click="$emit(\'select\', node.nodeInstanceId)">{{ node.name }} {{ node.stateLabel }}</button></nav>',
+        },
+        NodeTimeTrackCard: {
+          props: ["node"],
+          template:
+            '<section aria-label="节点三轨时间"><span v-if="node">展开 {{ node.name }}</span><span v-else>未选择节点</span></section>',
         },
         ObjectActivityPanel: {
           props: ["containerId"],
@@ -224,6 +230,166 @@ describe("MicroWorkbench", () => {
     expect(wrapper.text()).not.toContain("本柜尚未开始流程。");
     expect(wrapper.text()).not.toContain("待发生");
     expect(wrapper.text()).not.toContain("海运在途");
+  });
+
+  it("标记槽位常驻，无数据明确留空", async () => {
+    getContainer.mockResolvedValue({
+      id: "c1",
+      orderNumber: "SO-1",
+      containerNumber: "MSKU1",
+      currentStatus: "in_transit",
+      updatedAt: "2026-09-13T03:00:00.000Z",
+    });
+
+    const wrapper = await mountPage("c1");
+    const statusSlots = wrapper.get('[aria-label="标记与异常"]');
+
+    expect(statusSlots.text()).toContain("标记");
+    expect(statusSlots.text()).toContain("—");
+  });
+
+  it("异常槽位汇总全部节点的未关闭阻断", async () => {
+    getContainer.mockResolvedValue({
+      id: "c1",
+      orderNumber: "SO-1",
+      containerNumber: "MSKU1",
+      currentStatus: "in_transit",
+      updatedAt: "2026-09-13T03:00:00.000Z",
+    });
+    listLifecycleNodes.mockResolvedValue({
+      flow: {
+        id: "f1",
+        state: "active",
+        currentNodeCode: "cargo_ready",
+        version: 0,
+      },
+      nodes: [
+        {
+          nodeInstanceId: "n1",
+          nodeCode: "cargo_ready",
+          sequence: 1,
+          state: "active",
+          applicability: "required",
+          completedAt: null,
+          blockedReasonRefs: ["b1", "b2"],
+          isCurrent: true,
+          times: { plannedAt: null, estimatedAt: null, actualAt: null },
+        },
+      ],
+      asOf: "2026-09-13T03:00:00.000Z",
+      projectionVersion: 0,
+    });
+
+    const wrapper = await mountPage("c1");
+    const statusSlots = wrapper.get('[aria-label="标记与异常"]');
+
+    expect(statusSlots.text()).toContain("异常");
+    expect(statusSlots.text()).toContain("2");
+  });
+
+  it("三轨卡默认展开当前站，选择轨道节点后随之切换", async () => {
+    getContainer.mockResolvedValue({
+      id: "c1",
+      orderNumber: "SO-1",
+      containerNumber: "MSKU1",
+      currentStatus: "in_transit",
+      updatedAt: "2026-09-13T03:00:00.000Z",
+    });
+    listLifecycleNodes.mockResolvedValue({
+      flow: {
+        id: "f1",
+        state: "active",
+        currentNodeCode: "container_stuffing",
+        version: 0,
+      },
+      nodes: [
+        {
+          nodeInstanceId: "n1",
+          nodeCode: "cargo_ready",
+          sequence: 1,
+          state: "completed",
+          applicability: "required",
+          completedAt: "2026-09-12T03:00:00.000Z",
+          blockedReasonRefs: [],
+          isCurrent: false,
+          times: {
+            plannedAt: null,
+            estimatedAt: null,
+            actualAt: "2026-09-12T03:00:00.000Z",
+          },
+        },
+        {
+          nodeInstanceId: "n2",
+          nodeCode: "container_stuffing",
+          sequence: 2,
+          state: "active",
+          applicability: "required",
+          completedAt: null,
+          blockedReasonRefs: [],
+          isCurrent: true,
+          times: { plannedAt: null, estimatedAt: null, actualAt: null },
+        },
+      ],
+      asOf: "2026-09-13T03:00:00.000Z",
+      projectionVersion: 0,
+    });
+
+    const wrapper = await mountPage("c1");
+    const timeCard = wrapper.get('[aria-label="节点三轨时间"]');
+
+    expect(timeCard.text()).toContain("展开 装箱");
+
+    const cargoReadyButton = wrapper
+      .findAll('[aria-label="货柜节点"] button')
+      .find((button) => button.text().includes("备货"));
+    expect(cargoReadyButton).toBeDefined();
+    await cargoReadyButton?.trigger("click");
+
+    expect(timeCard.text()).toContain("展开 备货");
+    expect(timeCard.text()).not.toContain("展开 装箱");
+  });
+
+  it("没有当前站时三轨卡退回展开第一站", async () => {
+    getContainer.mockResolvedValue({
+      id: "c1",
+      orderNumber: "SO-1",
+      containerNumber: "MSKU1",
+      currentStatus: "in_transit",
+      updatedAt: "2026-09-13T03:00:00.000Z",
+    });
+    listLifecycleNodes.mockResolvedValue({
+      flow: {
+        id: "f1",
+        state: "completed",
+        currentNodeCode: null,
+        version: 1,
+      },
+      nodes: [
+        {
+          nodeInstanceId: "n1",
+          nodeCode: "cargo_ready",
+          sequence: 1,
+          state: "completed",
+          applicability: "required",
+          completedAt: "2026-09-12T03:00:00.000Z",
+          blockedReasonRefs: [],
+          isCurrent: false,
+          times: {
+            plannedAt: null,
+            estimatedAt: null,
+            actualAt: "2026-09-12T03:00:00.000Z",
+          },
+        },
+      ],
+      asOf: "2026-09-13T03:00:00.000Z",
+      projectionVersion: 1,
+    });
+
+    const wrapper = await mountPage("c1");
+
+    expect(wrapper.get('[aria-label="节点三轨时间"]').text()).toContain(
+      "展开 备货",
+    );
   });
 
   it("有规范事件时展示时间轴，不编造计划时间", async () => {
