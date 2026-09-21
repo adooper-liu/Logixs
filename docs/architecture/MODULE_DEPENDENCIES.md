@@ -27,7 +27,8 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 
 ```text
 核心：shipment-registry  lifecycle-control  work-execution  booking-origin
-      ocean-port-visibility  customs-compliance  inland-fulfillment
+      ocean-port-visibility  customs-compliance  compliance-management  inland-fulfillment
+编排：compliance-lifecycle-orchestration（只组合公开 Port，不拥有领域事实）
       charges-settlement  document-records  performance-improvement
 支撑：integration-import  exception-management  identity  master-data
       notification  audit  workflow  ai-governance
@@ -46,16 +47,19 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 
 ### 2.1 所有权和调用方向
 
-| 所有者                                        | 只能通过                         |
-| --------------------------------------------- | -------------------------------- |
-| shipment-registry：ContainerRecord            | Shipment公共查询/写端口          |
-| lifecycle-control：FlowInstance、14节点状态机 | 流程命令和规范事件端口           |
-| work-execution：NodeTask、WorkOrder、工单聚合 | 工单命令、任务查询和结果事件端口 |
-| 专业模块：订舱/海运/清关/内陆作业事实         | 各自公开用例和领域事件           |
-| charges/document/exception/performance        | 事实引用和幂等事件消费者         |
-| integration-import                            | 各业务模块的写端口，不直写业务表 |
+| 所有者                                                    | 只能通过                                         |
+| --------------------------------------------------------- | ------------------------------------------------ |
+| shipment-registry：ContainerRecord                        | Shipment公共查询/写端口                          |
+| lifecycle-control：FlowInstance、14节点状态机             | 流程命令和规范事件端口                           |
+| work-execution：NodeTask、WorkOrder、外部工作项与工单聚合 | 工单命令、任务查询、外部工作项投影和结果事件端口 |
+| 专业模块：订舱/海运/清关/内陆作业事实                     | 各自公开用例和领域事件                           |
+| compliance-management：规则、评审、发现与决定             | 合规公开查询/命令 Port                           |
+| charges/document/exception/performance                    | 事实引用和幂等事件消费者                         |
+| integration-import                                        | 各业务模块的写端口，不直写业务表                 |
 
 正常推进方向：WorkOrder结果 → NodeTask聚合 → 规范业务事件 → lifecycle-control合法转换。真实箱号建档后，单体 Application 编排经公开幂等命令初始化流程并由work-execution按完整管道定义展开任务和工单；跨进程接入时改用“流程已初始化”Outbox事件。后续“节点已进入”及专业事实只重算适用性、就绪度和完成资格。禁止双向同步调用环和分布式事务。
+
+`compliance-lifecycle-orchestration` 编排两条跨模块用例：“创建合规评审 -> 向 work-execution 投影整改工作项”和“提交合规决定 -> 请求 lifecycle-control 重放既有 pending 日期事实”。`compliance-management` 不反向依赖 `work-execution` 或 `lifecycle-control`；评审/决定、工作项、日期事实和生命周期事务仍由各自模块拥有。
 
 ## 3. 禁止依赖
 

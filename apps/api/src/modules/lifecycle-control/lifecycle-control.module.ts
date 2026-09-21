@@ -5,6 +5,7 @@ import {
   type NestModule,
 } from "@nestjs/common";
 import { DocumentRecordsModule } from "../document-records";
+import { ComplianceManagementModule } from "../compliance-management";
 import {
   IdentityModule,
   DevIdentityMiddleware,
@@ -16,6 +17,7 @@ import { WorkExecutionModule } from "../work-execution";
 import { LIST_CONTAINER_CURRENT_NODES } from "./list-container-current-nodes.port";
 import { APPLY_LIFECYCLE_EVENT_ONCE } from "./apply-lifecycle-event-once.port";
 import { RECORD_LIFECYCLE_DATE_FACT } from "./record-lifecycle-date-fact.port";
+import { REPLAY_PENDING_LIFECYCLE_DATE_FACTS } from "./replay-pending-lifecycle-date-facts.port";
 import { ASSERT_LIFECYCLE_STATE_EVIDENCE } from "./assert-lifecycle-state-evidence.port";
 import { EVALUATE_LIFECYCLE_DATE_AUTHORITY } from "./evaluate-lifecycle-date-authority.port";
 import {
@@ -100,6 +102,7 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
     IdentityModule,
     NotificationModule,
     DocumentRecordsModule,
+    ComplianceManagementModule,
     ShipmentRegistryModule,
     forwardRef(() => WorkExecutionModule),
   ],
@@ -199,6 +202,10 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
       useExisting: RecordLifecycleDateFactService,
     },
     {
+      provide: REPLAY_PENDING_LIFECYCLE_DATE_FACTS,
+      useExisting: ReplayPendingLifecycleDateFactsService,
+    },
+    {
       provide: REPLACE_OCEAN_ROUTE,
       useExisting: ReplaceOceanRouteService,
     },
@@ -207,6 +214,7 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
     InitializeContainerFlowService,
     LIST_CONTAINER_CURRENT_NODES,
     RECORD_LIFECYCLE_DATE_FACT,
+    REPLAY_PENDING_LIFECYCLE_DATE_FACTS,
     REPLACE_OCEAN_ROUTE,
     ListContainerCurrentNodesService,
     RecordLifecycleDateFactService,

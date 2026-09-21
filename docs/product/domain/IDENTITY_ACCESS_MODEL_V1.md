@@ -51,28 +51,31 @@
 
 ## 4. 最小能力目录
 
-| capabilityCode        | 允许的能力边界                                | 不自动包含                     |
-| --------------------- | --------------------------------------------- | ------------------------------ |
-| `container.read`      | 按范围读取货柜及其投影                        | 修改状态、读取原文件           |
-| `task.read`           | 按范围读取节点任务和工单                      | 领取或完成                     |
-| `task.execute`        | 领取/完成授权范围内的工单                     | 越过证据、状态机或并发守卫     |
-| `evidence.read`       | 读取授权对象的证据元数据                      | 下载原件、核验                 |
-| `evidence.submit`     | 登记证据或补充引用                            | 自行核验                       |
-| `evidence.review`     | verify/reject/revoke；按风险执行职责分离      | 修改历史证据                   |
-| `import.read`         | 查看批次、预检和对账                          | 读取对象存储内部键             |
-| `import.operate`      | 上传、确认映射、运行预检                      | 绕过 blocker、直接写业务表     |
-| `import.execute`      | 执行已确认且预检通过的批次                    | 修改已执行批次或伪造来源       |
-| `lifecycle.read`      | 读取节点、事件和当前投影                      | 推进状态                       |
-| `lifecycle.operate`   | 申请合法事件、设置适用性等受控动作            | 直接改 `currentStatus`         |
-| `planning.read`       | 查看计划、容量与截止日                        | 占用资源                       |
-| `planning.draft`      | 生成或修改未确认计划草稿                      | 确认、占用或取消已执行计划     |
-| `charges.read`        | 查看费用标准、预计、应计和对账投影            | 改标准或确认账单               |
-| `charges.manage`      | 维护授权范围的标准并触发确定性重算            | 审核付款或越过币种/生效期规则  |
-| `reliability.read`    | 查看 ClientOperation、死信、补偿与同步状态    | 重放或补偿                     |
-| `reliability.recover` | 重放死信、申请/推进补偿；按风险要求原因和复核 | 修改原消息、原操作或原死信     |
-| `notification.read`   | 读取本人租户内运营问题通知与助手只读会话      | 代发通知、触发业务写动作       |
-| `identity.manage`     | 管理租户内角色映射、委托和范围                | 给自己提权、跨租户或平台级授权 |
-| `audit.read`          | 读取脱敏审计、授权决定和对账记录              | 查看秘密、Token 或无关证据正文 |
+| capabilityCode           | 允许的能力边界                                | 不自动包含                     |
+| ------------------------ | --------------------------------------------- | ------------------------------ |
+| `container.read`         | 按范围读取货柜及其投影                        | 修改状态、读取原文件           |
+| `task.read`              | 按范围读取节点任务和工单                      | 领取或完成                     |
+| `task.execute`           | 领取/完成授权范围内的工单                     | 越过证据、状态机或并发守卫     |
+| `evidence.read`          | 读取授权对象的证据元数据                      | 下载原件、核验                 |
+| `evidence.submit`        | 登记证据或补充引用                            | 自行核验                       |
+| `evidence.review`        | verify/reject/revoke；按风险执行职责分离      | 修改历史证据                   |
+| `import.read`            | 查看批次、预检和对账                          | 读取对象存储内部键             |
+| `import.operate`         | 上传、确认映射、运行预检                      | 绕过 blocker、直接写业务表     |
+| `import.execute`         | 执行已确认且预检通过的批次                    | 修改已执行批次或伪造来源       |
+| `lifecycle.read`         | 读取节点、事件和当前投影                      | 推进状态                       |
+| `lifecycle.operate`      | 申请合法事件、设置适用性等受控动作            | 直接改 `currentStatus`         |
+| `planning.read`          | 查看计划、容量与截止日                        | 占用资源                       |
+| `planning.draft`         | 生成或修改未确认计划草稿                      | 确认、占用或取消已执行计划     |
+| `charges.read`           | 查看费用标准、预计、应计和对账投影            | 改标准或确认账单               |
+| `charges.manage`         | 维护授权范围的标准并触发确定性重算            | 审核付款或越过币种/生效期规则  |
+| `compliance.read`        | 查看适用规则、评审、发现、决定及有效性        | 发布规则或作出放行决定         |
+| `compliance.review`      | 创建评审并作出有证据的合规决定                | 绕过发现、替代生命周期过站     |
+| `compliance.rule.manage` | 发布有官方来源、证据和生效期的规则新版本      | 修改历史版本、发布任意脚本规则 |
+| `reliability.read`       | 查看 ClientOperation、死信、补偿与同步状态    | 重放或补偿                     |
+| `reliability.recover`    | 重放死信、申请/推进补偿；按风险要求原因和复核 | 修改原消息、原操作或原死信     |
+| `notification.read`      | 读取本人租户内运营问题通知与助手只读会话      | 代发通知、触发业务写动作       |
+| `identity.manage`        | 管理租户内角色映射、委托和范围                | 给自己提权、跨租户或平台级授权 |
+| `audit.read`             | 读取脱敏审计、授权决定和对账记录              | 查看秘密、Token 或无关证据正文 |
 
 能力码是访问控制稳定键，不是 `actionCode`。一个动作可要求多个能力；动作、目标类型、风险和业务前置由 `GC-008 ActionDefinitionV1` 绑定。
 
@@ -92,6 +95,8 @@
 | `audit_analyst`         | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R         |          |
 
 具体动作若要求 four-eyes，拥有业务能力的发起人也不能自批；职责分离优先于角色能力并集。
+
+当前 `cargo_ready` V1 仅授予 `review_supervisor` 规则发布能力；`compliance.review` 与 `compliance.rule.manage` 分离，后续组织若要求起草人与批准人分离，应在动作策略中进一步收紧，不能靠前端隐藏按钮代替。
 
 ## 6. 数据范围模型
 

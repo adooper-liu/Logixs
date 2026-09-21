@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import { ApplyContainerRecordService } from "../../shipment-registry";
+import { EVALUATE_CARGO_READY_COMPLIANCE } from "../../compliance-management";
 const CREATE_NODE_TASK = Symbol.for("logix.CreateNodeTask");
 const ASSERT_EVIDENCE_REFS = Symbol.for("logix.AssertEvidenceRefs");
 import { LIFECYCLE_REPOSITORY } from "../domain/lifecycle.repository";
@@ -125,6 +126,14 @@ async function buildService(
           : null,
       })),
   },
+  evaluateCargoReadyCompliance = {
+    execute: vi.fn().mockResolvedValue({
+      approved: true,
+      reasonCode: "CARGO_READY_COMPLIANCE_APPROVED",
+      assessmentId: "55555555-5555-4555-8555-555555555555",
+      decisionId: "66666666-6666-4666-8666-666666666666",
+    }),
+  },
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -137,6 +146,10 @@ async function buildService(
         provide: ASSERT_LIFECYCLE_STATE_EVIDENCE,
         useValue: assertStateEvidence,
       },
+      {
+        provide: EVALUATE_CARGO_READY_COMPLIANCE,
+        useValue: evaluateCargoReadyCompliance,
+      },
     ],
   }).compile();
   return {
@@ -144,6 +157,7 @@ async function buildService(
     createNodeTask,
     assertEvidenceRefs,
     assertStateEvidence,
+    evaluateCargoReadyCompliance,
   };
 }
 
@@ -160,6 +174,37 @@ function baseInput() {
 }
 
 describe("ApplyLifecycleEventService", () => {
+  it("cargo_ready 合规未放行时保存事件但保留待应用", async () => {
+    const repository = buildRepository("not_shipped");
+    const gate = {
+      execute: vi.fn().mockResolvedValue({
+        approved: false,
+        reasonCode: "CARGO_READY_COMPLIANCE_NOT_APPROVED",
+        assessmentId: "55555555-5555-4555-8555-555555555555",
+        decisionId: null,
+      }),
+    };
+    const { service } = await buildService(
+      repository,
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      undefined,
+      gate,
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "cargo_ready",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.cargo_ready).toBe(
+      "LIFECYCLE_EVENT_PENDING_COMPLIANCE",
+    );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
+  });
+
   it("缺少规范事实引用时禁止直接申请状态推进", async () => {
     const repository = buildRepository("shipped");
     const { service, assertStateEvidence } = await buildService(repository, {

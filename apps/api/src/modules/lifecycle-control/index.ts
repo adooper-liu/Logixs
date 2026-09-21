@@ -17,6 +17,12 @@ export {
 } from "./record-lifecycle-date-fact.port";
 export type { RecordLifecycleDateFactInput } from "./application/record-lifecycle-date-fact.service";
 export {
+  REPLAY_PENDING_LIFECYCLE_DATE_FACTS,
+  type ReplayPendingLifecycleDateFactsInput,
+  type ReplayPendingLifecycleDateFactsPort,
+  type ReplayPendingLifecycleDateFactsResult,
+} from "./replay-pending-lifecycle-date-facts.port";
+export {
   REPLACE_OCEAN_ROUTE,
   type ReplaceOceanRoutePort,
 } from "./replace-ocean-route.port";

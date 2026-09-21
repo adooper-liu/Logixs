@@ -8,6 +8,18 @@ describe("role-capabilities", () => {
     );
   });
 
+  it("keeps compliance review separate from operational read access", () => {
+    expect(capabilitiesForRoles(["operations_dispatcher"])).toContain(
+      "compliance.read",
+    );
+    expect(capabilitiesForRoles(["operations_dispatcher"])).not.toContain(
+      "compliance.review",
+    );
+    expect(capabilitiesForRoles(["review_supervisor"])).toContain(
+      "compliance.review",
+    );
+  });
+
   it("unions capabilities across roles and ignores unknown roles", () => {
     const caps = capabilitiesForRoles([
       "field_operator",

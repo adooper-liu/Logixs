@@ -8,6 +8,13 @@ export {
   type TaskConditionFact,
 } from "./create-node-task.port";
 export {
+  PROJECT_EXTERNAL_WORK_ITEMS,
+  type ExternalWorkItemDraft,
+  type ProjectExternalWorkItemsCommand,
+  type ProjectExternalWorkItemsPort,
+  type ProjectExternalWorkItemsResult,
+} from "./project-external-work-items.port";
+export {
   LIST_OBJECT_TASK_ACTIVITY,
   type ListObjectTaskActivityPort,
   type ObjectTaskActivityPageSource,

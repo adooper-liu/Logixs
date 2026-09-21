@@ -8,6 +8,7 @@ export const moduleManifest = defineModuleManifest({
     "identity",
     "notification",
     "document-records",
+    "compliance-management",
     "shipment-registry",
     "work-execution",
   ],
@@ -20,6 +21,7 @@ export const moduleManifest = defineModuleManifest({
   publicPorts: [
     "LIST_CONTAINER_CURRENT_NODES",
     "RECORD_LIFECYCLE_DATE_FACT",
+    "REPLAY_PENDING_LIFECYCLE_DATE_FACTS",
     "REPLACE_OCEAN_ROUTE",
   ],
 });

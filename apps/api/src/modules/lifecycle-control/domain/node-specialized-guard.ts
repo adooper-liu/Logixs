@@ -9,7 +9,21 @@ export function decideNodeSpecializedGuard(input: {
   containerNumber: string | null;
   location: LifecycleLocationContext | null;
   routeSegment: ActiveOceanRouteSegment | null;
+  cargoReadyComplianceApproved?: boolean;
 }): NodeEventApplicationDecision {
+  if (
+    input.targetNodeCode === "cargo_ready" &&
+    input.eventCode === "cargo_ready"
+  ) {
+    return input.cargoReadyComplianceApproved
+      ? { kind: "apply", guardResults: ["CARGO_READY_COMPLIANCE_APPROVED"] }
+      : {
+          kind: "pending_application",
+          guardResults: [],
+          reasonCode: "LIFECYCLE_EVENT_PENDING_COMPLIANCE",
+        };
+  }
+
   if (
     input.targetNodeCode === "container_stuffing" &&
     input.eventCode === "stuffed"

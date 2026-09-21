@@ -81,4 +81,18 @@ describe("navigationForRole", () => {
       ),
     ).not.toContain("/notifications");
   });
+
+  it("shows compliance review to planners and managers only", () => {
+    expect(
+      navigationForRole(router.getRoutes(), "planner").map((item) => item.path),
+    ).toContain("/compliance");
+    expect(
+      navigationForRole(router.getRoutes(), "manager").map((item) => item.path),
+    ).toContain("/compliance");
+    expect(
+      navigationForRole(router.getRoutes(), "operator").map(
+        (item) => item.path,
+      ),
+    ).not.toContain("/compliance");
+  });
 });

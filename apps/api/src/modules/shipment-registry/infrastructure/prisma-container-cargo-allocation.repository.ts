@@ -9,10 +9,64 @@ import {
   type NormalizedReplaceContainerCargoAllocationsCommand,
 } from "../domain/container-cargo-allocation";
 import type { ContainerCargoAllocationRepository } from "../domain/container-cargo-allocation.repository";
+import type { ContainerCargoComplianceScope } from "../get-container-cargo-compliance-scope.port";
 
 @Injectable()
 export class PrismaContainerCargoAllocationRepository implements ContainerCargoAllocationRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  async findActiveComplianceScope(input: {
+    tenantId: string;
+    containerRecordId: string;
+  }): Promise<ContainerCargoComplianceScope | null> {
+    const active = await this.prisma.containerCargoAllocationSet.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        containerRecordId: input.containerRecordId,
+        state: "active",
+      },
+      orderBy: [{ version: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        containerRecordId: true,
+        version: true,
+        allocations: {
+          orderBy: [
+            { replenishmentOrderLine: { productNumber: "asc" } },
+            { replenishmentOrderLineId: "asc" },
+          ],
+          select: {
+            replenishmentOrderLineId: true,
+            allocatedQuantity: true,
+            quantityUnit: true,
+            replenishmentOrderLine: {
+              select: { productSkuId: true, productNumber: true },
+            },
+          },
+        },
+      },
+    });
+    if (!active) return null;
+
+    const items = active.allocations.map((allocation) => {
+      if (!allocation.replenishmentOrderLine.productSkuId) {
+        throw new Error("REPLENISHMENT_ORDER_LINE_SKU_UNBOUND");
+      }
+      return {
+        replenishmentOrderLineId: allocation.replenishmentOrderLineId,
+        productSkuId: allocation.replenishmentOrderLine.productSkuId,
+        productNumber: allocation.replenishmentOrderLine.productNumber,
+        allocatedQuantity: allocation.allocatedQuantity.toString(),
+        quantityUnit: allocation.quantityUnit,
+      };
+    });
+    return {
+      containerRecordId: active.containerRecordId,
+      allocationSetId: active.id,
+      allocationSetVersion: active.version,
+      items,
+    };
+  }
 
   replace(
     command: NormalizedReplaceContainerCargoAllocationsCommand,

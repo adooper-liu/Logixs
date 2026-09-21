@@ -141,12 +141,41 @@ ReplenishmentOrderLine/SKU N <-> N ContainerRecord
 - `shipment-registry`：拥有备货单、产品明细、货柜身份和装载分配引用。
 - `master-data`：拥有 Product/SKU 稳定身份及版本化结构合规档案；电池、危险品、制冷剂、检验要求和证书版本第一刀已落地，不由出运明细代管。
 - `document-records`：拥有证书、报告、回执和证据版本。
-- `compliance-management`（候选新模块）：拥有规则、适用性、评审、发现、决定和义务。
+- `compliance-management`：拥有规则、适用性、评审、发现、决定和义务；`cargo_ready` 第一段运行时已经落地。
 - `work-execution`：把义务和整改投影为任务/工单；完成工单不自动形成放行。
 - `lifecycle-control`：只查询当前节点所需的有效合规决定/阻断，不解释法规原文。
 - API、导入、人工录入共用 Application 用例、幂等、授权、证据和审计；渠道不决定权威。
 
-当前实现边界：路线 `1.3` 只完成评审输入事实及公开读写 Port。规则适用性、评审、发现、整改、决定和 `cargo_ready` 门禁仍属于下一刀 `2.1`，不得因档案或证书标记为 `verified` 就直接推进生命周期。
+### 8.1 `cargo_ready` 已实现规则子集 V1
+
+当前运行时不是任意表达式规则引擎，只允许以下受控条件：
+
+| 运行时字段                         | V1 语义                                                                    |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `ruleCode + version`               | 租户内稳定规则身份与追加版本；发布新版后旧版只退役、不覆盖                 |
+| `jurisdictionCountryCode`          | ISO 3166-1 alpha-2 司法辖区；不得从仓库、租户或币种猜测                    |
+| `effectiveFrom / effectiveTo`      | 日期有效期；按评审业务日期匹配，不按服务器当地时间                         |
+| `appliesToAllSkus / productSkuIds` | 二选一；SKU 范围为空时不得解释成“全部”                                     |
+| 电池/制冷剂/DG 条件                | 固定枚举 `any/present/absent`、`any/regulated/not_regulated`；未知即待整改 |
+| `requiredCertificateTypes`         | 证书同时满足类型、已核验、有效期和国家覆盖才算满足                         |
+| `blockingNodeCodes`                | 本子集只允许 `cargo_ready`；其他节点随对应纵向切片单独冻结                 |
+| 来源与批准                         | HTTPS 官方来源、法律引用、负责人、证据、批准人和批准时间均必须保存         |
+
+评审把命中的 `ruleVersionId + productSkuId` 固化为快照。没有任何已发布规则覆盖司法辖区，或某个 SKU 没有适用规则、属性不足以判断、所需证书无效时，均形成明确发现，禁止把“规则库为空”当作合规。装载集合、SKU 合规档案版本或当前适用规则版本变化后，旧放行决定自动失效。
+
+运行入口：
+
+```text
+POST /compliance/rules/{ruleCode}/versions        compliance.rule.manage
+POST /containers/{id}/compliance/cargo-ready/assessments
+GET  /containers/{id}/compliance/cargo-ready
+POST /containers/{id}/compliance/cargo-ready/decisions  -> 决定提交后自动尝试重放 pending 日期事实
+GET  /work-items?containerId={id}                       -> 查询开放的非生命周期工作项
+```
+
+决定写入成功后，上层编排用例调用生命周期公开重放 Port；只有之前已经保存为 `pending_application` 的实际日期事实才会重新申请过站。重放响应区分 `completed / deferred / retry_required`，重放失败不会回滚或伪装已经提交的合规决定，也不会丢失待应用日期事实。
+
+当前实现边界：路线 `1.3` 已完成评审输入事实及公开读写 Port；`2.1` 已完成基础事实评审、追加式规则版本、国家/日期/SKU/结构化属性适用性、证书校验、版本化发现/决定、受权限保护的 API、`cargo_ready` 生命周期查询门禁、决定后自动重放、整改工作项投影和备货合规最小 UI。整改项进入 `work-execution` 独立的 `ExternalWorkItem` 全局开放池，不伪装成 `NodeTask`；新评审版本取消旧版本仍开放的整改项，空发现也会关闭旧项，重复和旧版本投影由版本检查保护。当前只提供查询，不包含领取、完成或把“任务完成”解释成合规放行。档案、证书、整改任务或合规决定本身仍不会凭空生成实际日期或直接改生命周期状态。
 
 ## 9. 实施顺序
 

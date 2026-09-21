@@ -49,3 +49,9 @@ export {
   type ReplaceContainerCargoAllocationsCommand,
   type ReplaceContainerCargoAllocationsPort,
 } from "./replace-container-cargo-allocations.port";
+export {
+  GET_CONTAINER_CARGO_COMPLIANCE_SCOPE,
+  type ContainerCargoComplianceScope,
+  type ContainerCargoComplianceScopeItem,
+  type GetContainerCargoComplianceScopePort,
+} from "./get-container-cargo-compliance-scope.port";

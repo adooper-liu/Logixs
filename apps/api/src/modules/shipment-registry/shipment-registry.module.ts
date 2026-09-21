@@ -15,6 +15,7 @@ import { ListContainerTaskFactsService } from "./application/list-container-task
 import { ResolveContainerByNumberService } from "./application/resolve-container-by-number.service";
 import { BindReplenishmentLineProductSkuService } from "./application/bind-replenishment-line-product-sku.service";
 import { ReplaceContainerCargoAllocationsService } from "./application/replace-container-cargo-allocations.service";
+import { GetContainerCargoComplianceScopeService } from "./application/get-container-cargo-compliance-scope.service";
 import { BIND_REPLENISHMENT_LINE_PRODUCT_SKU } from "./bind-replenishment-line-product-sku.port";
 import { CONTAINER_CARGO_ALLOCATION_REPOSITORY } from "./domain/container-cargo-allocation.repository";
 import { REPLENISHMENT_LINE_SKU_BINDER } from "./domain/replenishment-line-sku-binding.repository";
@@ -31,6 +32,7 @@ import { PrismaReplenishmentLineSkuBinder } from "./infrastructure/prisma-replen
 import { PrismaContainerRepository } from "./infrastructure/prisma-container.repository";
 import { ContainersController } from "./presentation/containers.controller";
 import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-allocations.port";
+import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-compliance-scope.port";
 
 @Module({
   imports: [IdentityModule, MasterDataModule],
@@ -45,6 +47,7 @@ import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-a
     ResolveContainerByNumberService,
     BindReplenishmentLineProductSkuService,
     ReplaceContainerCargoAllocationsService,
+    GetContainerCargoComplianceScopeService,
     {
       provide: ASSERT_CONTAINER_TENANT,
       useExisting: AssertContainerTenantService,
@@ -72,6 +75,10 @@ import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-a
       useExisting: ReplaceContainerCargoAllocationsService,
     },
     {
+      provide: GET_CONTAINER_CARGO_COMPLIANCE_SCOPE,
+      useExisting: GetContainerCargoComplianceScopeService,
+    },
+    {
       provide: LIST_CONTAINER_TASK_FACTS,
       useExisting: ListContainerTaskFactsService,
     },
@@ -93,9 +100,11 @@ import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-a
     RESOLVE_CONTAINER_BY_NUMBER,
     BIND_REPLENISHMENT_LINE_PRODUCT_SKU,
     REPLACE_CONTAINER_CARGO_ALLOCATIONS,
+    GET_CONTAINER_CARGO_COMPLIANCE_SCOPE,
     GetContainerService,
     BindReplenishmentLineProductSkuService,
     ReplaceContainerCargoAllocationsService,
+    GetContainerCargoComplianceScopeService,
   ],
 })
 export class ShipmentRegistryModule implements NestModule {

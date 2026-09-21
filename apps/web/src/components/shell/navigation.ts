@@ -6,6 +6,7 @@ import {
   Container,
   FileUp,
   ListChecks,
+  ShieldCheck,
   TriangleAlert,
 } from "@lucide/vue";
 import type { RouteRecordNormalized } from "vue-router";
@@ -18,6 +19,7 @@ export type NavigationIcon =
   | "container"
   | "file-up"
   | "list-checks"
+  | "shield-check"
   | "triangle-alert";
 
 export interface AppNavigationItem {
@@ -35,6 +37,7 @@ const icons: Record<NavigationIcon, Component> = {
   container: Container,
   "file-up": FileUp,
   "list-checks": ListChecks,
+  "shield-check": ShieldCheck,
   "triangle-alert": TriangleAlert,
 };
 

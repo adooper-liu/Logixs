@@ -38,6 +38,7 @@
 | [任务：Product/SKU 稳定身份](./planning/tasks/p6-product-sku-master-identity.md)         | master-data 建立租户内 SKU 稳定身份与幂等公开 Port        | 已完成                          |
 | [任务：备货单行 SKU 与货柜装载](./planning/tasks/p6-shipment-cargo-allocation.md)        | 产品行稳定引用 SKU，并版本化保存跨订单实际装载事实        | 已完成                          |
 | [任务：Product/SKU 结构化合规档案](./planning/tasks/p6-product-compliance-profile.md)    | 电池、危险品、制冷剂、检验要求及证书版本事实              | 已完成                          |
+| [任务：cargo_ready 合规闭环](./planning/tasks/p6-cargo-ready-compliance-flow.md)         | 装载与 SKU 合规档案形成评审决定，并接入备货节点门禁       | 实施中                          |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断            | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                             | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）  | P1 已接受；011 候选、012 已接受 |
 
@@ -63,20 +64,21 @@
 
 ### 5.1 对象/边界/模型
 
-| 文档                                                                           | 一句话                                                                                                       | 状态                 |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | -------------------- |
-| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                                   | 当前/未来上下文边界、产品明细与装载分配                                                                      | 已定 v1.2            |
-| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)             | 已出运数据起点、版本化箱货关系与上游演进                                                                     | 候选 v0.6            |
-| [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)                   | 14 节点全生命周期(P2 对象表)                                                                                 | 候选 v0.4            |
-| [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md)       | 14 流程节点代码、顺序、可选性、所有者和完成口径唯一权威                                                      | 正式 V1              |
-| [LIFECYCLE_NODE_IO_CATALOG](product/domain/LIFECYCLE_NODE_IO_CATALOG.md)       | 14 流程节点「一站一张填空表」查阅入口；§2.1 锁定到港/提柜/送仓/卸柜/还箱的计划与实际、ETA、最晚提柜日/还箱日 | 完整性规划           |
-| [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)               | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4            |
-| [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)             | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5            |
-| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)                   | 已出运列表导入/预检/审核/对账及装载关系边界                                                                  | 已定 v0.9            |
-| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                         | 逻辑库图纸 + SKU/装载/合规档案 + 时间溯源与可靠提交                                                          | 候选 v0.9            |
-| [COMPLIANCE_MANAGEMENT](product/domain/COMPLIANCE_MANAGEMENT.md)               | 合规横向轨道、规则/评审/证据、14 节点门禁与合规中心规划                                                      | 负责人方向+候选 v0.1 |
-| [PRODUCT_ATTRIBUTE_GOVERNANCE](product/domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md) | 强类型核心+结构化合规档案+JSONB 扩展属性+元数据表单边界                                                      | 负责人方向+候选 v0.1 |
-| [MASTER_DATA_DICTIONARY](product/domain/MASTER_DATA_DICTIONARY.md)             | 国家角色、港口/设施、船司及服务商主数据与外部候选治理                                                        | 负责人方向+候选 v0.1 |
+| 文档                                                                                         | 一句话                                                                                                       | 状态                 |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------- |
+| [CONTEXT_MAP](product/domain/CONTEXT_MAP.md)                                                 | 当前/未来上下文边界、产品明细与装载分配                                                                      | 已定 v1.2            |
+| [SHIPMENT_FLOW_OVERVIEW](product/domain/SHIPMENT_FLOW_OVERVIEW.md)                           | 已出运数据起点、版本化箱货关系与上游演进                                                                     | 候选 v0.6            |
+| [CONTAINER_LIFECYCLE](product/domain/CONTAINER_LIFECYCLE.md)                                 | 14 节点全生命周期(P2 对象表)                                                                                 | 候选 v0.4            |
+| [LIFECYCLE_NODE_CATALOG_V1](product/domain/LIFECYCLE_NODE_CATALOG_V1.md)                     | 14 流程节点代码、顺序、可选性、所有者和完成口径唯一权威                                                      | 正式 V1              |
+| [LIFECYCLE_NODE_IO_CATALOG](product/domain/LIFECYCLE_NODE_IO_CATALOG.md)                     | 14 流程节点「一站一张填空表」查阅入口；§2.1 锁定到港/提柜/送仓/卸柜/还箱的计划与实际、ETA、最晚提柜日/还箱日 | 完整性规划           |
+| [LIFECYCLE_CONSISTENCY](product/domain/LIFECYCLE_CONSISTENCY.md)                             | 时间/状态链规则 R0–R9/A6(加乱序回补/分支合法转换/对账纠偏)                                                   | 候选 v0.4            |
+| [CONTAINER_STATUS_MODEL](product/domain/CONTAINER_STATUS_MODEL.md)                           | 状态码 8 + 合法转换参考；权威见 GC-002                                                                       | 候选 v0.5            |
+| [IMPORT_DOMAIN_MODEL](product/domain/IMPORT_DOMAIN_MODEL.md)                                 | 已出运列表导入/预检/审核/对账及装载关系边界                                                                  | 已定 v0.9            |
+| [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                                       | 逻辑库图纸 + SKU/装载/合规档案 + 时间溯源与可靠提交                                                          | 候选 v0.9            |
+| [COMPLIANCE_MANAGEMENT](product/domain/COMPLIANCE_MANAGEMENT.md)                             | 合规横向轨道、规则/评审/证据、14 节点门禁与合规中心规划                                                      | 负责人方向+候选 v0.1 |
+| [PRODUCT_ATTRIBUTE_GOVERNANCE](product/domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md)               | 强类型核心+结构化合规档案+JSONB 扩展属性+元数据表单边界                                                      | 负责人方向+候选 v0.1 |
+| [MASTER_DATA_DICTIONARY](product/domain/MASTER_DATA_DICTIONARY.md)                           | 国家角色、港口/设施、船司及服务商主数据与外部候选治理                                                        | 负责人方向+候选 v0.1 |
+| [TIME_CURRENCY_REFERENCE_CONTRACT_V1](product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md) | IANA/UTC/RFC 3339 时间与 ISO 4217/定点金额的跨境参考数据规则                                                 | 正式 V1              |
 
 ### 5.2 清单/字典族（可落 Seed/契约）
 

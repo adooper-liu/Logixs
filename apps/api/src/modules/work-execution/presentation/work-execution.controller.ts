@@ -9,11 +9,13 @@ import {
   Req,
 } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ClaimWorkOrderService } from "../application/claim-work-order.service";
 import { CompleteWorkOrderService } from "../application/complete-work-order.service";
 import { CreateNodeTaskService } from "../application/create-node-task.service";
 import { GetNodeTaskService } from "../application/get-node-task.service";
 import { ListNodeTasksService } from "../application/list-node-tasks.service";
+import { ListExternalWorkItemsService } from "../application/list-external-work-items.service";
 import type { NodeTaskWithWorkOrders } from "../domain/work-execution.repository";
 import { projectNextActions } from "../domain/object-task-activity";
 import {
@@ -22,6 +24,7 @@ import {
   CompleteWorkOrderRequestDto,
   CompleteWorkOrderResponseDto,
   CreateNodeTaskRequestDto,
+  ExternalWorkItemPageDto,
   NodeTaskDetailDto,
   NodeTaskPageDto,
 } from "./work-execution.dto";
@@ -33,9 +36,49 @@ export class WorkExecutionController {
     private readonly createNodeTask: CreateNodeTaskService,
     private readonly getNodeTask: GetNodeTaskService,
     private readonly listNodeTasks: ListNodeTasksService,
+    private readonly listExternalWorkItems: ListExternalWorkItemsService,
     private readonly completeWorkOrder: CompleteWorkOrderService,
     private readonly claimWorkOrder: ClaimWorkOrderService,
   ) {}
+
+  @Get("work-items")
+  @RequireCapabilities("task.read")
+  @ApiOkResponse({ type: ExternalWorkItemPageDto })
+  async listWorkItems(
+    @Req() request: { identity: { tenantId: string } },
+    @Query("containerId") containerId?: string,
+    @Query("pageSize") pageSize?: string,
+    @Query("cursor") cursor?: string,
+  ): Promise<ExternalWorkItemPageDto> {
+    const page = await this.listExternalWorkItems.execute({
+      tenantId: request.identity.tenantId,
+      containerId,
+      pageSize,
+      cursor,
+    });
+    return {
+      items: page.items.map((item) => ({
+        id: item.id,
+        sourceModule: item.sourceModule,
+        sourceType: item.sourceType,
+        sourceRecordId: item.sourceRecordId,
+        sourceVersion: item.sourceVersion,
+        containerId: item.containerId,
+        taskDefinitionKey: item.taskDefinitionKey,
+        title: item.title,
+        detail: item.detail,
+        priority: item.priority,
+        state: item.state,
+        assignedRoleCode: item.assignedRoleCode,
+        evidenceRefs: item.evidenceRefs,
+        dueAt: item.dueAt?.toISOString() ?? null,
+        createdAt: item.createdAt.toISOString(),
+      })),
+      pageInfo: page.pageInfo,
+      asOf: page.asOf.toISOString(),
+      projectionVersion: page.projectionVersion,
+    };
+  }
 
   @Get("node-tasks")
   @ApiOkResponse({ type: NodeTaskPageDto })
