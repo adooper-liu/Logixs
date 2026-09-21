@@ -14,6 +14,45 @@ const FINAL_ROUTE_SEGMENT = {
 };
 
 describe("decideNodeSpecializedGuard", () => {
+  it("keeps customs completion pending until filing, release and evidence are ready", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "customs_clearance",
+        eventCode: "container_customs_completed",
+        containerNumber: "MSCU1234567",
+        location: null,
+        routeSegment: null,
+        customsReadiness: {
+          confirmed: false,
+          reasonCode: "LIFECYCLE_EVENT_PENDING_CUSTOMS_HOLD_RELEASE",
+        },
+      }),
+    ).toEqual({
+      kind: "pending_application",
+      guardResults: [],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_CUSTOMS_HOLD_RELEASE",
+    });
+
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "customs_clearance",
+        eventCode: "container_customs_completed",
+        containerNumber: "MSCU1234567",
+        location: null,
+        routeSegment: null,
+        customsReadiness: { confirmed: true, reasonCode: null },
+      }),
+    ).toMatchObject({
+      kind: "apply",
+      guardResults: expect.arrayContaining([
+        "CUSTOMS_FILING_ACCEPTED",
+        "CUSTOMS_AUTHORITY_RELEASED",
+        "CUSTOMS_ACTIVE_HOLDS_CLEARED",
+        "CUSTOMS_EVIDENCE_LINKED",
+      ]),
+    });
+  });
+
   it("cargo_ready 只有当前合规决定已放行才允许过站", () => {
     expect(
       decideNodeSpecializedGuard({

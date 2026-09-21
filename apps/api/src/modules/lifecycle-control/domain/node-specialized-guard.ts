@@ -18,6 +18,10 @@ export function decideNodeSpecializedGuard(input: {
     confirmed: boolean;
     reasonCode: string | null;
   } | null;
+  customsReadiness?: {
+    confirmed: boolean;
+    reasonCode: string | null;
+  } | null;
 }): NodeEventApplicationDecision {
   if (
     input.targetNodeCode === "cargo_ready" &&
@@ -30,6 +34,30 @@ export function decideNodeSpecializedGuard(input: {
           guardResults: [],
           reasonCode: "LIFECYCLE_EVENT_PENDING_COMPLIANCE",
         };
+  }
+
+  if (
+    input.targetNodeCode === "customs_clearance" &&
+    input.eventCode === "container_customs_completed"
+  ) {
+    if (!input.customsReadiness?.confirmed) {
+      return {
+        kind: "pending_application",
+        guardResults: [],
+        reasonCode:
+          input.customsReadiness?.reasonCode ??
+          "LIFECYCLE_EVENT_PENDING_CUSTOMS_CASE",
+      };
+    }
+    return {
+      kind: "apply",
+      guardResults: [
+        "CUSTOMS_FILING_ACCEPTED",
+        "CUSTOMS_AUTHORITY_RELEASED",
+        "CUSTOMS_ACTIVE_HOLDS_CLEARED",
+        "CUSTOMS_EVIDENCE_LINKED",
+      ],
+    };
   }
 
   if (

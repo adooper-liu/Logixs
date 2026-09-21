@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { DocumentRecordsModule } from "../document-records";
 import { ComplianceManagementModule } from "../compliance-management";
+import { CustomsComplianceModule } from "../customs-compliance";
 import {
   IdentityModule,
   DevIdentityMiddleware,
@@ -106,6 +107,7 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
     NotificationModule,
     DocumentRecordsModule,
     ComplianceManagementModule,
+    CustomsComplianceModule,
     ShipmentRegistryModule,
     forwardRef(() => WorkExecutionModule),
   ],

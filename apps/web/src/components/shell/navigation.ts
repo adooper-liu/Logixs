@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   Container,
   FileUp,
+  Landmark,
   ListChecks,
   PackageCheck,
   PackageOpen,
@@ -24,6 +25,7 @@ export type NavigationIcon =
   | "container"
   | "file-up"
   | "list-checks"
+  | "landmark"
   | "package-check"
   | "package-open"
   | "shield-check"
@@ -46,6 +48,7 @@ const icons: Record<NavigationIcon, Component> = {
   container: Container,
   "file-up": FileUp,
   "list-checks": ListChecks,
+  landmark: Landmark,
   "package-check": PackageCheck,
   "package-open": PackageOpen,
   "shield-check": ShieldCheck,

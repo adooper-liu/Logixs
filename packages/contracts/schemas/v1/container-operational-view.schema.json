@@ -457,6 +457,120 @@
         "projectionVersion": { "type": "integer", "minimum": 0 }
       }
     },
+    "CustomsFilingState": {
+      "enum": ["not_filed", "filed", "accepted"]
+    },
+    "CustomsDecisionState": {
+      "enum": ["pending", "held", "released"]
+    },
+    "CustomsClearanceCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "containerRecordId",
+        "version",
+        "jurisdictionCountryCode",
+        "customsBrokerPartyId",
+        "declarationNumber",
+        "filingState",
+        "decisionState",
+        "activeHoldCodes",
+        "evidenceRefs",
+        "actorId",
+        "reasonCode",
+        "createdAt",
+        "duplicate"
+      ],
+      "properties": {
+        "caseId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerRecordId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "jurisdictionCountryCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "customsBrokerPartyId": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "declarationNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "filingState": { "$ref": "#/$defs/CustomsFilingState" },
+        "decisionState": { "$ref": "#/$defs/CustomsDecisionState" },
+        "activeHoldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "actorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "duplicate": { "type": "boolean" }
+      }
+    },
+    "ReplaceCustomsClearanceCaseCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "jurisdictionCountryCode",
+        "customsBrokerPartyId",
+        "declarationNumber",
+        "filingState",
+        "decisionState",
+        "activeHoldCodes",
+        "evidenceRefs",
+        "reasonCode",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "jurisdictionCountryCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "customsBrokerPartyId": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "declarationNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "filingState": { "$ref": "#/$defs/CustomsFilingState" },
+        "decisionState": { "$ref": "#/$defs/CustomsDecisionState" },
+        "activeHoldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/StableCode" }
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
     "Freshness": {
       "type": "object",
       "additionalProperties": false,

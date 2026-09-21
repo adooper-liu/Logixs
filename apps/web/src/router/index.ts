@@ -63,6 +63,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/workspaces/customs",
+      component: () => import("../views/CustomsWorkbench.vue"),
+      meta: {
+        title: "清关工作台",
+        section: "作业",
+        navLabel: "清关工作台",
+        navIcon: "landmark",
+        navOrder: 18,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/containers",
       component: () => import("../views/ContainerList.vue"),
       meta: {

@@ -1,5 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
+import { GET_CUSTOMS_CLEARANCE_READINESS } from "../../customs-compliance";
 import {
   ApplyContainerRecordService,
   GET_CONTAINER_DISPATCH_READINESS,
@@ -152,6 +153,13 @@ async function buildService(
       snapshotId: "88888888-8888-4888-8888-888888888888",
     }),
   },
+  getCustomsClearanceReadiness = {
+    execute: vi.fn().mockResolvedValue({
+      confirmed: true,
+      reasonCode: null,
+      caseId: "99999999-9999-4999-8999-999999999999",
+    }),
+  },
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -175,6 +183,10 @@ async function buildService(
       {
         provide: GET_CONTAINER_DISPATCH_READINESS,
         useValue: getContainerDispatchReadiness,
+      },
+      {
+        provide: GET_CUSTOMS_CLEARANCE_READINESS,
+        useValue: getCustomsClearanceReadiness,
       },
     ],
   }).compile();
