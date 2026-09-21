@@ -12,6 +12,10 @@ import type {
   LifecycleNodeCode,
 } from "@logix/contracts";
 import {
+  GET_CUSTOMS_CLEARANCE_READINESS,
+  type GetCustomsClearanceReadinessPort,
+} from "../../customs-compliance";
+import {
   ApplyContainerRecordService,
   GET_CONTAINER_DISPATCH_READINESS,
   GET_CONTAINER_STUFFING_READINESS,
@@ -108,6 +112,8 @@ export class ApplyLifecycleEventService {
     private readonly getContainerStuffingReadiness: GetContainerStuffingReadinessPort,
     @Inject(GET_CONTAINER_DISPATCH_READINESS)
     private readonly getContainerDispatchReadiness: GetContainerDispatchReadinessPort,
+    @Inject(GET_CUSTOMS_CLEARANCE_READINESS)
+    private readonly getCustomsClearanceReadiness: GetCustomsClearanceReadinessPort,
   ) {}
 
   async execute(
@@ -294,6 +300,15 @@ export class ApplyLifecycleEventService {
         dispatchReadiness:
           targetNodeCode === "shipment_dispatch" && input.eventCode === "loaded"
             ? await this.getContainerDispatchReadiness.execute({
+                tenantId: input.tenantId,
+                containerRecordId: input.containerId,
+                evidenceRefs,
+              })
+            : null,
+        customsReadiness:
+          targetNodeCode === "customs_clearance" &&
+          input.eventCode === "container_customs_completed"
+            ? await this.getCustomsClearanceReadiness.execute({
                 tenantId: input.tenantId,
                 containerRecordId: input.containerId,
                 evidenceRefs,

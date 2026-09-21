@@ -423,26 +423,27 @@ enum ContainerStatus {
 // 货柜业务事实主记录（shipment-registry 拥有）。
 // 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
 model ContainerRecord {
-  id                   String                        @id @default(uuid()) @map("id")
-  tenantId             String                        @map("tenant_id")
+  id                    String                        @id @default(uuid()) @map("id")
+  tenantId              String                        @map("tenant_id")
   // 旧导入兼容锚；柜内货物与备货单的权威关系由 ContainerCargoAllocation 表达。
-  orderNumber          String                        @map("order_number")
-  replenishmentOrderId String?                       @map("replenishment_order_id")
-  replenishmentOrder   ReplenishmentOrder?           @relation(fields: [replenishmentOrderId], references: [id])
+  orderNumber           String                        @map("order_number")
+  replenishmentOrderId  String?                       @map("replenishment_order_id")
+  replenishmentOrder    ReplenishmentOrder?           @relation(fields: [replenishmentOrderId], references: [id])
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
-  mainOrderNumber      String?                       @map("main_order_number")
+  mainOrderNumber       String?                       @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
-  containerNumber      String?                       @map("container_number")
+  containerNumber       String?                       @map("container_number")
   // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
-  currentStatus        ContainerStatus               @map("current_status")
-  createdAt            DateTime                      @default(now()) @map("created_at")
-  updatedAt            DateTime                      @updatedAt @map("updated_at")
-  timeFacts            ShipmentTimeFact[]
-  lifecycleDateFacts   LifecycleDateFact[]
-  oceanRoutePlans      OceanRoutePlan[]
-  cargoAllocationSets  ContainerCargoAllocationSet[]
-  stuffingSnapshots    ContainerStuffingSnapshot[]
-  dispatchSnapshots    ContainerDispatchSnapshot[]
+  currentStatus         ContainerStatus               @map("current_status")
+  createdAt             DateTime                      @default(now()) @map("created_at")
+  updatedAt             DateTime                      @updatedAt @map("updated_at")
+  timeFacts             ShipmentTimeFact[]
+  lifecycleDateFacts    LifecycleDateFact[]
+  oceanRoutePlans       OceanRoutePlan[]
+  cargoAllocationSets   ContainerCargoAllocationSet[]
+  stuffingSnapshots     ContainerStuffingSnapshot[]
+  dispatchSnapshots     ContainerDispatchSnapshot[]
+  customsClearanceCases CustomsClearanceCase[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -795,6 +796,43 @@ model ContainerDispatchSnapshot {
   @@index([tenantId, containerRecordId, state], map: "container_dispatch_snapshot_active_lookup_idx")
   @@index([tenantId, stuffingSnapshotId], map: "container_dispatch_snapshot_stuffing_idx")
   @@map("container_dispatch_snapshot")
+}
+
+// 清关案件版本（customs-compliance 拥有）：关键申报与放行事实强类型保存，日期仍进入统一时间线。
+model CustomsClearanceCase {
+  id                      String                @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                String                @map("tenant_id")
+  containerRecordId       String                @map("container_record_id")
+  containerRecord         ContainerRecord       @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version                 Int                   @map("version")
+  state                   String                @map("state")
+  supersedesCaseId        String?               @map("supersedes_case_id") @db.Uuid
+  supersedesCase          CustomsClearanceCase? @relation("CustomsClearanceCaseSupersession", fields: [supersedesCaseId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  supersededBy            CustomsClearanceCase? @relation("CustomsClearanceCaseSupersession")
+  jurisdictionCountryCode String                @map("jurisdiction_country_code") @db.Char(2)
+  customsBrokerPartyId    String?               @map("customs_broker_party_id") @db.Uuid
+  declarationNumber       String?               @map("declaration_number")
+  filingState             String                @map("filing_state")
+  decisionState           String                @map("decision_state")
+  activeHoldCodes         String[]              @map("active_hold_codes")
+  ingestionChannel        String                @map("ingestion_channel")
+  sourceSystem            String                @map("source_system")
+  evidenceRefs            Json                  @map("evidence_refs")
+  actorId                 String                @map("actor_id")
+  reasonCode              String                @map("reason_code")
+  idempotencyKey          String                @map("idempotency_key")
+  payloadHash             String                @map("payload_hash")
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  supersededAt            DateTime?             @map("superseded_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "customs_clearance_case_id_tenant_key")
+  @@unique([id, tenantId, containerRecordId], map: "customs_clearance_case_id_scope_key")
+  @@unique([tenantId, idempotencyKey], map: "customs_clearance_case_tenant_idempotency_key")
+  @@unique([containerRecordId, version], map: "customs_clearance_case_container_version_key")
+  @@unique([supersedesCaseId, tenantId, containerRecordId], map: "customs_clearance_case_supersedes_scope_key")
+  @@index([tenantId, containerRecordId, state], map: "customs_clearance_case_active_lookup_idx")
+  @@index([tenantId, customsBrokerPartyId], map: "customs_clearance_case_broker_idx")
+  @@map("customs_clearance_case")
 }
 
 // 装载明细引用本模块产品行；Product/SKU 通过产品行的逻辑 UUID 引用解析，不建跨模块外键。

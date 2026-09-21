@@ -52,13 +52,16 @@
 | `/compliance`             | 合规评审     | 计划/经理                  | 这柜适用哪些规则、缺什么、能否放行 | 选择货柜 → 评审 → 提交决定                                          | `GET/POST /containers/:id/compliance/cargo-ready`；决定后显示 pending 日期事实重放结果                                                                                                     |
 | `/reviews/date-facts`     | 日期事实复核 | 计划/经理                  | 哪条人工实际日期具备采信条件       | 选择声明 → 核对事实和证据 → 批准并申请推进                          | `GET /lifecycle-date-fact-reviews`；`POST /lifecycle-date-fact-reviews/:factId/approve`；服务端四眼校验、追加确认版本、来源权威裁决与自动重放                                              |
 | `/workspaces/cargo-ready` | 备货工作台   | 现场/计划/经理             | 这柜备了什么、当前该做什么         | 节点任务 → `/tasks?containerId=`；合规 → `/compliance?containerId=` | `GET /containers/:id/cargo`；生命周期节点与任务；开放整改项；当前备货合规评审                                                                                                              |
+| `/workspaces/stuffing`    | 装箱工作台   | 现场/计划/经理             | 柜内实装和 VGM 是否完整            | 选择装箱任务 → 保存装箱版本 → 登记实际装箱                          | 当前装箱快照、装载版本、生命周期日期事实与节点任务                                                                                                                                         |
+| `/workspaces/dispatch`    | 出运工作台   | 现场/计划/经理             | 承运交接、进港和装船是否完成       | 选择出运任务 → 保存交接版本 → 登记进港/实际装船                     | 当前装箱/出运快照、生命周期日期事实与节点任务                                                                                                                                              |
+| `/workspaces/customs`     | 清关工作台   | 清关/计划/经理             | 申报、扣留、放行和实际清关是否齐备 | 选择清关任务 → 保存案件版本 → 提交实际清关时间复核                  | `GET/POST /containers/:id/customs-clearance-case`；到港/清关日期事实、清关节点与任务；放行案件保存后自动重放 pending 日期事实                                                              |
 | `/import`                 | 导入货柜     | 现场/计划/经理             | 表格能不能建成柜                   | 上传后进批次                                                        | 导入批次 API                                                                                                                                                                               |
 | `/import/:batchId`        | （无侧栏）   | 从导入货柜进入             | 这批能否预检、落库和对账           | 确认映射 → 预检 → 执行 → 对账                                       | 导入批次 API                                                                                                                                                                               |
 | `/dev`                    | 无           | URL 进入                   | API/库活没活                       | —                                                                   | `GET /health`                                                                                                                                                                              |
 
 `/real-tasks`、`/real-containers` 只重定向，不进侧栏。`RealTaskWorkbench.vue` / `RealContainerList.vue` 是调试残留，不是产品入口。
 
-岗位工作台公共骨架只承载岗位/节点范围、货柜选择、已落库节点轨道、局部失败提示和事实/待办插槽。当前只有备货岗位完成真实接入；出运、船务、单证、清关、内陆运输、入库和还箱必须等各自纵向业务切片具备真实查询与动作后再接入，不先建立空页面。生命周期 `NodeTask` 与专业整改 `ExternalWorkItem` 始终分栏，整改完成不等于合规批准或生命周期过站。
+岗位工作台公共骨架只承载岗位/节点范围、货柜选择、已落库节点轨道、局部失败提示和事实/待办插槽。备货、装箱、出运和清关已随各自纵向切片真实接入；船务、单证、内陆运输、入库和还箱必须等真实查询与动作具备后再接入，不先建立空页面。生命周期 `NodeTask` 与专业整改 `ExternalWorkItem` 始终分栏，整改或工单完成不等于合规批准、外部放行或生命周期过站。
 
 ## 3. 「干活」和「看档」的边界
 

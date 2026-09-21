@@ -8,6 +8,7 @@ import { ChargesSettlementModule } from "./modules/charges-settlement";
 import { ComplianceManagementModule } from "./modules/compliance-management";
 import { ComplianceLifecycleOrchestrationModule } from "./modules/compliance-lifecycle-orchestration";
 import { CustomsComplianceModule } from "./modules/customs-compliance";
+import { CustomsLifecycleOrchestrationModule } from "./modules/customs-lifecycle-orchestration";
 import { DocumentRecordsModule } from "./modules/document-records";
 import { ExceptionManagementModule } from "./modules/exception-management";
 import { IdentityModule } from "./modules/identity";
@@ -34,6 +35,7 @@ import { WorkflowModule } from "./modules/workflow";
     ComplianceManagementModule,
     ComplianceLifecycleOrchestrationModule,
     CustomsComplianceModule,
+    CustomsLifecycleOrchestrationModule,
     DocumentRecordsModule,
     ExceptionManagementModule,
     IdentityModule,

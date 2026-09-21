@@ -49,6 +49,7 @@
     "db:verify:shipment-cargo-allocation": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-shipment-cargo-allocation.mts",
     "db:verify:container-stuffing": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-container-stuffing-snapshots.mts",
     "db:verify:container-dispatch": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-container-dispatch-snapshots.mts",
+    "db:verify:customs-clearance": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-customs-clearance-cases.mts",
     "db:seed": "tsx database/seed.ts",
     "db:studio": "prisma studio --port 5555 --browser none",
     "repo:check": "node scripts/check-repository.mjs",
