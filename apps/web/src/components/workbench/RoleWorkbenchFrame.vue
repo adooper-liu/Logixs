@@ -2,7 +2,6 @@
 import { BriefcaseBusiness, Container } from "@lucide/vue";
 import type { ContainerSummary } from "../../api/containers";
 import type { LiveNodeView } from "../../data/liveNodeProjection";
-import type { WorkbenchProjectionWarning } from "../../composables/useCargoReadyWorkbench";
 import LiveNodeRail from "../container/LiveNodeRail.vue";
 import PageHeader from "../ui/PageHeader.vue";
 
@@ -19,7 +18,7 @@ defineProps<{
   selectionLoading: boolean;
   containerListError: string;
   selectionError: string;
-  warnings: readonly WorkbenchProjectionWarning[];
+  warnings: readonly { code: string; message: string }[];
 }>();
 
 const emit = defineEmits<{
@@ -91,9 +90,11 @@ function selectContainer(event: Event): void {
       {{ containerListError }}
     </p>
     <p v-if="!selectedContainerId" class="notice">
-      从任务池选择工作，或直接选择货柜查看备货事实。
+      从任务池选择工作，或直接选择货柜查看{{ workspaceLabel }}事实。
     </p>
-    <p v-else-if="selectionLoading" class="notice">正在加载这柜的备货事实…</p>
+    <p v-else-if="selectionLoading" class="notice">
+      正在加载这柜的{{ workspaceLabel }}事实…
+    </p>
     <p v-else-if="selectionError" class="notice notice--error" role="alert">
       {{ selectionError }}
     </p>

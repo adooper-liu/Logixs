@@ -68,10 +68,36 @@ describe("decideNodeSpecializedGuard", () => {
         containerNumber: " MSKU1234567 ",
         location: null,
         routeSegment: null,
+        stuffingReadiness: { confirmed: true, reasonCode: null },
       }),
     ).toEqual({
       kind: "apply",
+      guardResults: [
+        "CONTAINER_IDENTITY_BOUND",
+        "CONTAINER_STUFFING_SNAPSHOT_CURRENT",
+        "CONTAINER_STUFFING_EVIDENCE_LINKED",
+      ],
+    });
+  });
+
+  it.each([
+    "LIFECYCLE_EVENT_PENDING_STUFFING_SNAPSHOT",
+    "LIFECYCLE_EVENT_PENDING_STUFFING_SNAPSHOT_STALE",
+    "LIFECYCLE_EVENT_PENDING_STUFFING_EVIDENCE",
+  ])("装箱就绪条件不满足时保留 stuffed 待应用：%s", (reasonCode) => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "container_stuffing",
+        eventCode: "stuffed",
+        containerNumber: "MSKU1234567",
+        location: null,
+        routeSegment: null,
+        stuffingReadiness: { confirmed: false, reasonCode },
+      }),
+    ).toEqual({
+      kind: "pending_application",
       guardResults: ["CONTAINER_IDENTITY_BOUND"],
+      reasonCode,
     });
   });
 

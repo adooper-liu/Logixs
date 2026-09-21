@@ -20,6 +20,7 @@ import { OceanPortVisibilityModule } from "./modules/ocean-port-visibility";
 import { OpsAssistantModule } from "./modules/ops-assistant";
 import { PerformanceImprovementModule } from "./modules/performance-improvement";
 import { ShipmentRegistryModule } from "./modules/shipment-registry";
+import { ShipmentLifecycleOrchestrationModule } from "./modules/shipment-lifecycle-orchestration";
 import { WorkExecutionModule } from "./modules/work-execution";
 import { WorkflowModule } from "./modules/workflow";
 
@@ -45,6 +46,7 @@ import { WorkflowModule } from "./modules/workflow";
     OpsAssistantModule,
     PerformanceImprovementModule,
     ShipmentRegistryModule,
+    ShipmentLifecycleOrchestrationModule,
     WorkExecutionModule,
     WorkflowModule,
   ],

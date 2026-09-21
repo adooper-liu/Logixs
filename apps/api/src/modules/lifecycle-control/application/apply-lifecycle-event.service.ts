@@ -11,7 +11,11 @@ import type {
   ContainerLifecycleState,
   LifecycleNodeCode,
 } from "@logix/contracts";
-import { ApplyContainerRecordService } from "../../shipment-registry";
+import {
+  ApplyContainerRecordService,
+  GET_CONTAINER_STUFFING_READINESS,
+  type GetContainerStuffingReadinessPort,
+} from "../../shipment-registry";
 import {
   EVALUATE_CARGO_READY_COMPLIANCE,
   type EvaluateCargoReadyCompliancePort,
@@ -98,6 +102,8 @@ export class ApplyLifecycleEventService {
     private readonly assertEvidenceRefs: AssertEvidenceRefsPort,
     @Inject(EVALUATE_CARGO_READY_COMPLIANCE)
     private readonly evaluateCargoReadyCompliance: EvaluateCargoReadyCompliancePort,
+    @Inject(GET_CONTAINER_STUFFING_READINESS)
+    private readonly getContainerStuffingReadiness: GetContainerStuffingReadinessPort,
   ) {}
 
   async execute(
@@ -272,6 +278,15 @@ export class ApplyLifecycleEventService {
               containerRecordId: input.containerId,
             })
           ).approved,
+        stuffingReadiness:
+          targetNodeCode === "container_stuffing" &&
+          input.eventCode === "stuffed"
+            ? await this.getContainerStuffingReadiness.execute({
+                tenantId: input.tenantId,
+                containerRecordId: input.containerId,
+                evidenceRefs,
+              })
+            : null,
       });
       const guardResults = [
         ...decision.guardResults,

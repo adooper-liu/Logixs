@@ -7,6 +7,7 @@ import {
   FileUp,
   ListChecks,
   PackageCheck,
+  PackageOpen,
   ShieldCheck,
   TriangleAlert,
 } from "@lucide/vue";
@@ -21,6 +22,7 @@ export type NavigationIcon =
   | "file-up"
   | "list-checks"
   | "package-check"
+  | "package-open"
   | "shield-check"
   | "triangle-alert";
 
@@ -40,6 +42,7 @@ const icons: Record<NavigationIcon, Component> = {
   "file-up": FileUp,
   "list-checks": ListChecks,
   "package-check": PackageCheck,
+  "package-open": PackageOpen,
   "shield-check": ShieldCheck,
   "triangle-alert": TriangleAlert,
 };

@@ -441,6 +441,7 @@ model ContainerRecord {
   lifecycleDateFacts   LifecycleDateFact[]
   oceanRoutePlans      OceanRoutePlan[]
   cargoAllocationSets  ContainerCargoAllocationSet[]
+  stuffingSnapshots    ContainerStuffingSnapshot[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -696,13 +697,61 @@ model ContainerCargoAllocationSet {
   createdAt         DateTime                     @default(now()) @map("created_at") @db.Timestamptz
   supersededAt      DateTime?                    @map("superseded_at") @db.Timestamptz
   allocations       ContainerCargoAllocation[]
+  stuffingSnapshots ContainerStuffingSnapshot[]
 
   @@unique([id, tenantId], map: "container_cargo_set_id_tenant_key")
+  @@unique([id, tenantId, containerRecordId], map: "container_cargo_set_id_scope_key")
   @@unique([tenantId, idempotencyKey], map: "container_cargo_set_tenant_idempotency_key")
   @@unique([containerRecordId, version], map: "container_cargo_set_container_version_key")
   @@unique([supersedesSetId, tenantId], map: "container_cargo_set_supersedes_tenant_key")
   @@index([tenantId, containerRecordId, state], map: "container_cargo_set_active_lookup_idx")
   @@map("container_cargo_allocation_set")
+}
+
+// 实际装箱结果快照（shipment-registry 拥有）：更正追加新版本，不覆盖已参与过站判断的历史。
+model ContainerStuffingSnapshot {
+  id                   String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                     @map("tenant_id")
+  containerRecordId    String                     @map("container_record_id")
+  containerRecord      ContainerRecord            @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version              Int                        @map("version")
+  state                String                     @map("state")
+  supersedesSnapshotId String?                    @map("supersedes_snapshot_id") @db.Uuid
+  supersedesSnapshot   ContainerStuffingSnapshot? @relation("ContainerStuffingSnapshotSupersession", fields: [supersedesSnapshotId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  supersededBy         ContainerStuffingSnapshot? @relation("ContainerStuffingSnapshotSupersession")
+  allocationSetId      String                     @map("allocation_set_id") @db.Uuid
+  allocationSetVersion Int                        @map("allocation_set_version")
+  allocationSet        ContainerCargoAllocationSet @relation(fields: [allocationSetId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  containerNumber      String                     @map("container_number")
+  sealNumber           String                     @map("seal_number")
+  packageCount         Int                        @map("package_count")
+  grossWeight          Decimal                    @map("gross_weight") @db.Decimal(18, 3)
+  grossWeightUnit      String                     @map("gross_weight_unit")
+  netWeight            Decimal?                   @map("net_weight") @db.Decimal(18, 3)
+  volume               Decimal                    @map("volume") @db.Decimal(18, 3)
+  volumeUnit           String                     @map("volume_unit")
+  vgmWeight            Decimal?                   @map("vgm_weight") @db.Decimal(18, 3)
+  vgmWeightUnit        String?                    @map("vgm_weight_unit")
+  vgmMethod            String?                    @map("vgm_method")
+  vgmVerifiedAt        DateTime?                  @map("vgm_verified_at") @db.Timestamptz
+  ingestionChannel     String                     @map("ingestion_channel")
+  sourceSystem         String                     @map("source_system")
+  evidenceRefs         Json                       @map("evidence_refs")
+  actorId              String                     @map("actor_id")
+  reasonCode           String                     @map("reason_code")
+  idempotencyKey       String                     @map("idempotency_key")
+  payloadHash          String                     @map("payload_hash")
+  createdAt            DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  supersededAt         DateTime?                  @map("superseded_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "container_stuffing_snapshot_id_tenant_key")
+  @@unique([id, tenantId, containerRecordId], map: "container_stuffing_snapshot_id_scope_key")
+  @@unique([tenantId, idempotencyKey], map: "container_stuffing_snapshot_tenant_idempotency_key")
+  @@unique([containerRecordId, version], map: "container_stuffing_snapshot_container_version_key")
+  @@unique([supersedesSnapshotId, tenantId, containerRecordId], map: "container_stuffing_snapshot_supersedes_scope_key")
+  @@index([tenantId, containerRecordId, state], map: "container_stuffing_snapshot_active_lookup_idx")
+  @@index([tenantId, allocationSetId], map: "container_stuffing_snapshot_allocation_idx")
+  @@map("container_stuffing_snapshot")
 }
 
 // 装载明细引用本模块产品行；Product/SKU 通过产品行的逻辑 UUID 引用解析，不建跨模块外键。

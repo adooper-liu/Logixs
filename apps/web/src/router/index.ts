@@ -39,6 +39,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/workspaces/stuffing",
+      component: () => import("../views/StuffingWorkbench.vue"),
+      meta: {
+        title: "装箱工作台",
+        section: "作业",
+        navLabel: "装箱工作台",
+        navIcon: "package-open",
+        navOrder: 16,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/containers",
       component: () => import("../views/ContainerList.vue"),
       meta: {

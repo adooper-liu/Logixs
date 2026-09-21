@@ -9,6 +9,7 @@ export type RoleCode = string;
 const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
   field_operator: [
     "container.read",
+    "container.operate",
     "task.read",
     "task.execute",
     "evidence.read",
@@ -17,6 +18,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
   ],
   operations_dispatcher: [
     "container.read",
+    "container.operate",
     "task.read",
     "task.execute",
     "evidence.read",

@@ -113,4 +113,18 @@ describe("navigationForRole", () => {
       ).toBeLessThan(items.findIndex((item) => item.path === "/containers"));
     }
   });
+
+  it("shows the stuffing workbench immediately after cargo-ready", () => {
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      const cargoReady = items.findIndex(
+        (item) => item.path === "/workspaces/cargo-ready",
+      );
+      const stuffing = items.findIndex(
+        (item) => item.path === "/workspaces/stuffing",
+      );
+      expect(stuffing).toBe(cargoReady + 1);
+      expect(items[stuffing]?.label).toBe("装箱工作台");
+    }
+  });
 });

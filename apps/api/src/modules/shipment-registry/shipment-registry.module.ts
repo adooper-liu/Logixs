@@ -16,8 +16,12 @@ import { ResolveContainerByNumberService } from "./application/resolve-container
 import { BindReplenishmentLineProductSkuService } from "./application/bind-replenishment-line-product-sku.service";
 import { ReplaceContainerCargoAllocationsService } from "./application/replace-container-cargo-allocations.service";
 import { GetContainerCargoComplianceScopeService } from "./application/get-container-cargo-compliance-scope.service";
+import { GetContainerStuffingSnapshotService } from "./application/get-container-stuffing-snapshot.service";
+import { GetContainerStuffingReadinessService } from "./application/get-container-stuffing-readiness.service";
+import { ReplaceContainerStuffingSnapshotService } from "./application/replace-container-stuffing-snapshot.service";
 import { BIND_REPLENISHMENT_LINE_PRODUCT_SKU } from "./bind-replenishment-line-product-sku.port";
 import { CONTAINER_CARGO_ALLOCATION_REPOSITORY } from "./domain/container-cargo-allocation.repository";
+import { CONTAINER_STUFFING_SNAPSHOT_REPOSITORY } from "./domain/container-stuffing-snapshot.repository";
 import { REPLENISHMENT_LINE_SKU_BINDER } from "./domain/replenishment-line-sku-binding.repository";
 import { LIST_CONTAINER_TASK_FACTS } from "./list-container-task-facts.port";
 import { GET_CONTAINER_SUMMARY } from "./get-container-summary.port";
@@ -28,15 +32,19 @@ import { CONTAINER_REPOSITORY } from "./domain/container.repository";
 import { PrismaContainerRecordWriter } from "./infrastructure/prisma-container-record-writer";
 import { PrismaReplenishmentOrderImportWriter } from "./infrastructure/prisma-replenishment-order-import-writer";
 import { PrismaContainerCargoAllocationRepository } from "./infrastructure/prisma-container-cargo-allocation.repository";
+import { PrismaContainerStuffingSnapshotRepository } from "./infrastructure/prisma-container-stuffing-snapshot.repository";
 import { PrismaReplenishmentLineSkuBinder } from "./infrastructure/prisma-replenishment-line-sku-binder";
 import { PrismaContainerRepository } from "./infrastructure/prisma-container.repository";
 import { ContainersController } from "./presentation/containers.controller";
+import { ContainerStuffingController } from "./presentation/container-stuffing.controller";
 import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-allocations.port";
 import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-compliance-scope.port";
+import { GET_CONTAINER_STUFFING_READINESS } from "./get-container-stuffing-readiness.port";
+import { REPLACE_CONTAINER_STUFFING_SNAPSHOT } from "./replace-container-stuffing-snapshot.port";
 
 @Module({
   imports: [IdentityModule, MasterDataModule],
-  controllers: [ContainersController],
+  controllers: [ContainersController, ContainerStuffingController],
   providers: [
     ListContainersService,
     ListContainerTaskFactsService,
@@ -48,6 +56,9 @@ import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-comp
     BindReplenishmentLineProductSkuService,
     ReplaceContainerCargoAllocationsService,
     GetContainerCargoComplianceScopeService,
+    GetContainerStuffingSnapshotService,
+    GetContainerStuffingReadinessService,
+    ReplaceContainerStuffingSnapshotService,
     {
       provide: ASSERT_CONTAINER_TENANT,
       useExisting: AssertContainerTenantService,
@@ -67,6 +78,10 @@ import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-comp
       useClass: PrismaContainerCargoAllocationRepository,
     },
     {
+      provide: CONTAINER_STUFFING_SNAPSHOT_REPOSITORY,
+      useClass: PrismaContainerStuffingSnapshotRepository,
+    },
+    {
       provide: BIND_REPLENISHMENT_LINE_PRODUCT_SKU,
       useExisting: BindReplenishmentLineProductSkuService,
     },
@@ -77,6 +92,14 @@ import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-comp
     {
       provide: GET_CONTAINER_CARGO_COMPLIANCE_SCOPE,
       useExisting: GetContainerCargoComplianceScopeService,
+    },
+    {
+      provide: GET_CONTAINER_STUFFING_READINESS,
+      useExisting: GetContainerStuffingReadinessService,
+    },
+    {
+      provide: REPLACE_CONTAINER_STUFFING_SNAPSHOT,
+      useExisting: ReplaceContainerStuffingSnapshotService,
     },
     {
       provide: LIST_CONTAINER_TASK_FACTS,
@@ -101,6 +124,8 @@ import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-comp
     BIND_REPLENISHMENT_LINE_PRODUCT_SKU,
     REPLACE_CONTAINER_CARGO_ALLOCATIONS,
     GET_CONTAINER_CARGO_COMPLIANCE_SCOPE,
+    GET_CONTAINER_STUFFING_READINESS,
+    REPLACE_CONTAINER_STUFFING_SNAPSHOT,
     GetContainerService,
     BindReplenishmentLineProductSkuService,
     ReplaceContainerCargoAllocationsService,
@@ -110,5 +135,8 @@ import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-comp
 export class ShipmentRegistryModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(DevIdentityMiddleware).forRoutes(ContainersController);
+    consumer
+      .apply(DevIdentityMiddleware)
+      .forRoutes(ContainerStuffingController);
   }
 }
