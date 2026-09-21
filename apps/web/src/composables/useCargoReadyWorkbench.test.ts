@@ -70,7 +70,9 @@ describe("useCargoReadyWorkbench", () => {
   it("loads real cargo-ready projections and keeps node tasks separate", async () => {
     const containerId = ref("c1");
     const scope = effectScope();
-    const state = scope.run(() => useCargoReadyWorkbench(containerId))!;
+    const state = scope.run(() =>
+      useCargoReadyWorkbench(containerId, ref("")),
+    )!;
     await flushPromises();
 
     expect(state.selectedContainer.value?.id).toBe("c1");
@@ -79,12 +81,6 @@ describe("useCargoReadyWorkbench", () => {
       "cargo_ready",
     ]);
     expect(state.remediationItems.value).toEqual([{ id: "work-1" }]);
-    expect(state.allowedActions.value).toEqual([
-      expect.objectContaining({
-        taskId: "task-cargo_ready",
-        actionCode: "claim",
-      }),
-    ]);
     expect(state.warnings.value).toEqual([]);
     scope.stop();
   });
@@ -92,7 +88,7 @@ describe("useCargoReadyWorkbench", () => {
   it("keeps successful projections when an auxiliary source fails", async () => {
     listExternalWorkItems.mockRejectedValue(new Error("network"));
     const scope = effectScope();
-    const state = scope.run(() => useCargoReadyWorkbench(ref("c1")))!;
+    const state = scope.run(() => useCargoReadyWorkbench(ref("c1"), ref("")))!;
     await flushPromises();
 
     expect(state.selectedContainer.value?.id).toBe("c1");
@@ -113,7 +109,9 @@ describe("useCargoReadyWorkbench", () => {
       .mockResolvedValueOnce(container("c2"));
     const containerId = ref("c1");
     const scope = effectScope();
-    const state = scope.run(() => useCargoReadyWorkbench(containerId))!;
+    const state = scope.run(() =>
+      useCargoReadyWorkbench(containerId, ref("")),
+    )!;
 
     containerId.value = "c2";
     await flushPromises();

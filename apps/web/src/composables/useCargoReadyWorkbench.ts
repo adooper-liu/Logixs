@@ -11,8 +11,16 @@ import {
   type CargoReadyComplianceAssessment,
 } from "../api/cargoReadyCompliance";
 import { listLifecycleNodes } from "../api/lifecycleNodes";
-import { listNodeTasks, type NodeTaskDetail } from "../api/nodeTasks";
+import {
+  DEV_OPERATOR_ID,
+  listNodeTasks,
+  type NodeTaskDetail,
+} from "../api/nodeTasks";
 import { listExternalWorkItems, type ExternalWorkItem } from "../api/workItems";
+import {
+  buildCargoReadyQueue,
+  buildCargoReadySkuReadiness,
+} from "../data/cargoReadyWorkbench";
 import { toLiveNode, type LiveNodeView } from "../data/liveNodeProjection";
 
 export interface WorkbenchProjectionWarning {
@@ -28,8 +36,13 @@ const WARNING_MESSAGES: Record<WorkbenchProjectionWarning["code"], string> = {
   compliance: "合规评审暂时没能加载",
 };
 
-export function useCargoReadyWorkbench(containerId: Ref<string>) {
+export function useCargoReadyWorkbench(
+  containerId: Ref<string>,
+  taskId: Ref<string>,
+) {
   const containers = ref<ContainerSummary[]>([]);
+  const taskPool = ref<NodeTaskDetail[]>([]);
+  const remediationPool = ref<ExternalWorkItem[]>([]);
   const selectedContainer = ref<ContainerSummary | null>(null);
   const cargo = ref<ContainerCargoScope | null>(null);
   const nodes = ref<LiveNodeView[]>([]);
@@ -38,8 +51,10 @@ export function useCargoReadyWorkbench(containerId: Ref<string>) {
   const assessment = ref<CargoReadyComplianceAssessment | null>(null);
   const warnings = ref<WorkbenchProjectionWarning[]>([]);
   const containerListLoading = shallowRef(false);
+  const queueLoading = shallowRef(false);
   const selectionLoading = shallowRef(false);
   const containerListError = shallowRef("");
+  const queueError = shallowRef("");
   const selectionError = shallowRef("");
   let selectionRevision = 0;
 
@@ -49,10 +64,25 @@ export function useCargoReadyWorkbench(containerId: Ref<string>) {
   const cargoReadyTasks = computed(() =>
     nodeTasks.value.filter((task) => task.nodeCode === "cargo_ready"),
   );
-  const allowedActions = computed(() =>
-    cargoReadyTasks.value.flatMap((task) =>
-      task.nextAction ? [{ taskId: task.id, ...task.nextAction }] : [],
-    ),
+  const queueItems = computed(() =>
+    buildCargoReadyQueue({
+      tasks: taskPool.value,
+      containers: containers.value,
+      actorId: DEV_OPERATOR_ID,
+    }),
+  );
+  const selectedTask = computed(
+    () =>
+      cargoReadyTasks.value.find((task) => task.id === taskId.value) ??
+      cargoReadyTasks.value[0] ??
+      null,
+  );
+  const skuReadiness = computed(() =>
+    buildCargoReadySkuReadiness({
+      cargo: cargo.value,
+      assessment: assessment.value,
+      remediationItems: remediationItems.value,
+    }),
   );
 
   watch(
@@ -69,15 +99,35 @@ export function useCargoReadyWorkbench(containerId: Ref<string>) {
 
   async function loadContainerList(): Promise<void> {
     containerListLoading.value = true;
+    queueLoading.value = true;
     containerListError.value = "";
-    try {
-      containers.value = (await listContainers({ pageSize: 100 })).items;
-    } catch {
+    queueError.value = "";
+    const [containerResult, taskResult, remediationResult] =
+      await Promise.allSettled([
+        listContainers({ pageSize: 100 }),
+        listNodeTasks({ pageSize: 100 }),
+        listExternalWorkItems({ pageSize: 100 }),
+      ] as const);
+    if (containerResult.status === "fulfilled") {
+      containers.value = containerResult.value.items;
+    } else {
       containers.value = [];
       containerListError.value = "货柜列表暂时没能加载";
-    } finally {
-      containerListLoading.value = false;
     }
+    taskPool.value =
+      taskResult.status === "fulfilled" ? taskResult.value.items : [];
+    remediationPool.value =
+      remediationResult.status === "fulfilled"
+        ? remediationResult.value.items
+        : [];
+    if (
+      taskResult.status === "rejected" ||
+      remediationResult.status === "rejected"
+    ) {
+      queueError.value = "备货任务池暂时没有完整加载，请稍后重试";
+    }
+    containerListLoading.value = false;
+    queueLoading.value = false;
   }
 
   async function reloadSelection(): Promise<void> {
@@ -125,7 +175,19 @@ export function useCargoReadyWorkbench(containerId: Ref<string>) {
     remediationItems.value =
       readProjection(workItemResult, "remediation")?.items ?? [];
     assessment.value = readProjection(complianceResult, "compliance");
+    syncCurrentContainerProjections(id);
     selectionLoading.value = false;
+  }
+
+  function syncCurrentContainerProjections(id: string): void {
+    taskPool.value = [
+      ...taskPool.value.filter((task) => task.containerId !== id),
+      ...nodeTasks.value,
+    ];
+    remediationPool.value = [
+      ...remediationPool.value.filter((item) => item.containerId !== id),
+      ...remediationItems.value,
+    ];
   }
 
   function readProjection<T>(
@@ -156,13 +218,18 @@ export function useCargoReadyWorkbench(containerId: Ref<string>) {
     nodes: readonly(nodes),
     cargoReadyNode,
     cargoReadyTasks,
+    queueItems,
+    selectedTask,
+    skuReadiness,
     remediationItems: readonly(remediationItems),
+    remediationPool: readonly(remediationPool),
     assessment: readonly(assessment),
-    allowedActions,
     warnings: readonly(warnings),
     containerListLoading: readonly(containerListLoading),
+    queueLoading: readonly(queueLoading),
     selectionLoading: readonly(selectionLoading),
     containerListError: readonly(containerListError),
+    queueError: readonly(queueError),
     selectionError: readonly(selectionError),
     loadContainerList,
     reloadSelection,
