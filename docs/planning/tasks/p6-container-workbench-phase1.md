@@ -92,6 +92,7 @@ branch: feat/container-workbench-phase1
 - 2026-09-21：Task 5 实现自检确认 `ShipmentTimeFact.eventCode` 只经 canonical-events 的 `defaultNodeCode` 解析；显式 `nodeCode` 优先，只有 `eventCode === null` 的历史事实才允许四个精确旧 `factCode` 兼容兜底，未知事件、无默认节点事件或未知事实码不作字符串猜测。仓库内 Port 为加法型变更，无数据库或外部 wire 迁移，契约生成物无漂移。
 - 2026-09-21：Task 6 主审补齐 lifecycle-nodes 的正式包导出、生成声明与契约校验；`CompletionMode` 为加法型共享枚举，14 站均显式配置 `fact_driven`，目录缺项或目录外节点明确失败，不以静默默认掩盖配置错误。
 - 2026-09-21：Task 7 将三轨定义为节点完成摘要轨，只消费公共事件目录对目标节点声明 `completionEligible` 的 current effective 事实；按 `completionEligibleNodeCodes` 投影全部目标，不把事实默认 `nodeCode` 误当唯一目标。actual 还要求 `verified + confirmed`、命中来源权威策略，且已进入 `pending_application | applied | rejected`，来源未采信的 `review_required` 不进入摘要。单柜与批量 API 共用一次批量查询并常驻返回三槽。一个槽出现多个完成候选时一期保守返回 `null`，不按数据库顺序或时间猜测；Task 8-11 只能把它显示为空值，后续明细投影需增加明确的歧义状态和候选入口。
+- 2026-09-21：Task 8 前端 DTO 与纯视图映射已承接必填三轨、未关闭阻断数量和不适用标识；映射不为缺失字段静默补零或空对象，API 契约漂移会在类型检查或运行期显式暴露。后续 Task 9-11 直接消费该视图模型，不在组件内重新推导业务状态。
 
 ## 进度 log（谁改谁 append，一行一条）
 
@@ -106,3 +107,4 @@ branch: feat/container-workbench-phase1
 | 2026-09-21 | coding | Codex | —      | Task 5 完成：日期事实按 canonical-events 解析节点，仅无事件关联的历史事实允许精确旧映射兜底；三模块 119 个测试文件共 626 项、API lint/typecheck/build、格式、仓库政策及契约漂移检查通过。                                          |
 | 2026-09-21 | coding | Codex | —      | Task 6 完成：14 站目录新增完成模式，补齐包导出、生成类型、契约完整性校验与严格运行时读取；共享契约保持加法兼容。                                                                                                                   |
 | 2026-09-21 | coding | Codex | —      | Task 7 完成：单柜/批量生命周期节点 API 接入节点完成摘要三轨；领域、仓储、服务与控制器回归覆盖权威 actual、跨目标投影、子里程碑排除、歧义保守留空和 ISO 输出，生命周期模块 80 个测试文件共 432 项及 API lint/typecheck/build 通过。 |
+| 2026-09-21 | coding | Codex | —      | Task 8 完成：Web API 类型与节点视图模型承接三轨、阻断数量和不适用语义；契约字段缺失不静默兜底，Web 91 个测试文件共 259 项及 lint/typecheck/build 通过。                                                                            |

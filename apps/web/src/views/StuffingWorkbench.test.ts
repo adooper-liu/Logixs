@@ -84,7 +84,9 @@ describe("StuffingWorkbench", () => {
           state: "active",
           applicability: "required",
           completedAt: null,
+          blockedReasonRefs: [],
           isCurrent: true,
+          times: { plannedAt: null, estimatedAt: null, actualAt: null },
         },
       ],
     });

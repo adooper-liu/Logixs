@@ -1,3 +1,9 @@
+export interface LifecycleNodeTimes {
+  plannedAt: string | null;
+  estimatedAt: string | null;
+  actualAt: string | null;
+}
+
 export interface LifecycleNodeItem {
   nodeInstanceId: string;
   nodeCode: string;
@@ -5,7 +11,9 @@ export interface LifecycleNodeItem {
   state: string;
   applicability: string;
   completedAt: string | null;
+  blockedReasonRefs: string[];
   isCurrent: boolean;
+  times: LifecycleNodeTimes;
 }
 
 export interface LifecycleNodesPage {

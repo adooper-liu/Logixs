@@ -895,7 +895,7 @@ git commit -m "feat(lifecycle): 节点投影补三轨时间，无数据显式留
 - Consumes: Task 7 的 DTO 形状
 - Produces: `LiveNodeView.times` / `LiveNodeView.blockedCount` / `LiveNodeView.isNotApplicable`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 新建或追加 `apps/web/src/data/liveNodeProjection.test.ts`：
 
@@ -942,12 +942,12 @@ describe("toLiveNode", () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `pnpm --filter @logix/web test src/data/liveNodeProjection.test.ts`
 Expected: FAIL —— `blockedReasonRefs` / `times` 不在 `LifecycleNodeItem` 上
 
-- [ ] **Step 3: 扩前端 DTO**
+- [x] **Step 3: 扩前端 DTO**
 
 `apps/web/src/api/lifecycleNodes.ts` 的 `LifecycleNodeItem` 改为：
 
@@ -971,7 +971,7 @@ export interface LifecycleNodeItem {
 }
 ```
 
-- [ ] **Step 4: 扩视图模型**
+- [x] **Step 4: 扩视图模型**
 
 `apps/web/src/data/liveNodeProjection.ts` 改为：
 
@@ -995,12 +995,6 @@ export interface LiveNodeView {
   times: LifecycleNodeTimes;
 }
 
-const EMPTY_TIMES: LifecycleNodeTimes = {
-  plannedAt: null,
-  estimatedAt: null,
-  actualAt: null,
-};
-
 const NODE_STATE_LABELS: Record<string, string> = {
   pending: "未开始",
   active: "进行中",
@@ -1020,18 +1014,20 @@ export function toLiveNode(item: LifecycleNodeItem): LiveNodeView {
     completedAt: item.completedAt,
     isCurrent: item.isCurrent,
     isNotApplicable: notApplicable,
-    blockedCount: item.blockedReasonRefs?.length ?? 0,
-    times: item.times ?? EMPTY_TIMES,
+    blockedCount: item.blockedReasonRefs.length,
+    times: item.times,
   };
 }
 ```
 
-- [ ] **Step 5: 跑测试确认通过**
+> 实施裁决：Task 7 已将 `blockedReasonRefs` 与 `times` 定义为响应必填字段。前端不为缺失字段静默补零或空三轨，避免把契约漂移伪装成真实业务空值。
+
+- [x] **Step 5: 跑测试确认通过**
 
 Run: `pnpm --filter @logix/web test src/data/liveNodeProjection.test.ts`
 Expected: PASS
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add apps/web/src/api/lifecycleNodes.ts apps/web/src/data/liveNodeProjection.ts apps/web/src/data/liveNodeProjection.test.ts
