@@ -20,3 +20,9 @@ export {
   type ObjectTaskActivityPageSource,
   type ObjectTaskTarget,
 } from "./list-object-task-activity.port";
+export {
+  RECONCILE_APPLIED_LIFECYCLE_FACT,
+  type ReconcileAppliedLifecycleFactCommand,
+  type ReconcileAppliedLifecycleFactPort,
+  type ReconcileAppliedLifecycleFactResult,
+} from "./reconcile-applied-lifecycle-fact.port";

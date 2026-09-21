@@ -87,6 +87,7 @@ branch: feat/container-workbench-phase1
 - 2026-09-21：主审确认 brief 与 GC-005、模块依赖图和修订后计划一致；修正 Task 6 表格显示后进入 coding。
 - 2026-09-21：Task 1 主审修正事实型 Outcome 为 `reference_existing_event`，并改用共享 `CaptureSource`；领域测试、API lint/typecheck/format 与 repo:check 通过。
 - 2026-09-21：Task 2 主审补齐 Outcome 时间列 UTC/TIMESTAMPTZ 对齐与完整租户作用域索引；当前库、旧库夹具、空库迁移链及专项约束验证通过，7 个定向测试文件共 43 项通过。
+- 2026-09-21：Task 3 主审移除 work-execution 对 lifecycle-control 私有表的反向读取，并将一期匹配收紧为唯一且定义明确的 required 工单；真实 PostgreSQL 并发、回滚与迟到事实重放验证通过。
 
 ## 进度 log（谁改谁 append，一行一条）
 
@@ -96,3 +97,4 @@ branch: feat/container-workbench-phase1
 | 2026-09-21 | coding | Codex | —      | 主审通过，开始按全新子代理逐 Task 串行实现                                       |
 | 2026-09-21 | coding | Codex | —      | Task 1 完成：冻结事实对账身份、领域决定、既有事件引用 Outcome 与公共 Port        |
 | 2026-09-21 | coding | Codex | —      | Task 2 完成：落地事实应用账、版本/适用性、因果审计与历史对账 Outbox 回填         |
+| 2026-09-21 | coding | Codex | —      | Task 3 完成：实现原子事实对账、乐观并发、幂等重放与公开 Port                     |

@@ -14,11 +14,14 @@ import { clientOperationCreateData } from "./client-operation-persist";
 import type {
   ApplyWorkOrderClaimInput,
   ApplyWorkOrderCompletionInput,
+  ApplyLifecycleFactReconciliationInput,
+  ApplyLifecycleFactReconciliationResult,
   CreateTaskInput,
   NodeTaskOutcomeRecord,
   NodeTaskRecord,
   NodeTaskWithWorkOrders,
   WorkExecutionRepository,
+  WorkOrderFactApplicationRecord,
   WorkOrderRecord,
 } from "../domain/work-execution.repository";
 import type { NodeTaskOutcomeDraft } from "../domain/task-outcome";
@@ -47,6 +50,18 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
       where: { id },
     });
     return workOrder ? mapWorkOrder(workOrder) : null;
+  }
+
+  async findWorkOrderFactApplication(
+    workOrderId: string,
+    businessFactKey: string,
+  ): Promise<WorkOrderFactApplicationRecord | null> {
+    const application = await this.prisma.workOrderFactApplication.findUnique({
+      where: {
+        workOrderId_businessFactKey: { workOrderId, businessFactKey },
+      },
+    });
+    return application ? mapFactApplication(application) : null;
   }
 
   async listTasksByContainer(input: {
@@ -316,6 +331,134 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
     });
   }
 
+  async applyLifecycleFactReconciliation(
+    input: ApplyLifecycleFactReconciliationInput,
+  ): Promise<ApplyLifecycleFactReconciliationResult> {
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.workOrderFactApplication.findUnique({
+            where: {
+              workOrderId_businessFactKey: {
+                workOrderId: input.factApplication.workOrderId,
+                businessFactKey: input.factApplication.businessFactKey,
+              },
+            },
+          });
+          if (existing) {
+            return {
+              kind: "duplicate" as const,
+              existing: mapFactApplication(existing),
+            };
+          }
+
+          if (input.workOrderUpdate) {
+            const updated = await tx.workOrder.updateMany({
+              where: {
+                id: input.workOrderUpdate.id,
+                version: input.workOrderUpdate.expectedVersion,
+                state: input.workOrderUpdate.previousState,
+              },
+              data: {
+                state: input.workOrderUpdate.resultingState,
+                completedAt: input.workOrderUpdate.completedAt,
+                version: { increment: 1 },
+              },
+            });
+            if (updated.count !== 1) throw new ReconciliationVersionConflict();
+          }
+
+          const decision = input.factApplication.decision;
+          const factApplication = await tx.workOrderFactApplication.create({
+            data: {
+              id: input.factApplication.id,
+              tenantId: input.factApplication.tenantId,
+              workOrderId: input.factApplication.workOrderId,
+              canonicalEventId: input.factApplication.canonicalEventId,
+              nodeInstanceId: input.factApplication.nodeInstanceId,
+              businessFactType: input.factApplication.businessFactType,
+              businessFactKey: input.factApplication.businessFactKey,
+              domainFactId: input.factApplication.domainFactId,
+              captureSource: input.factApplication.captureSource,
+              evidenceRefs: input.factApplication.evidenceRefs,
+              occurredAt: input.factApplication.occurredAt,
+              receivedAt: input.factApplication.receivedAt,
+              recordedAt: input.factApplication.recordedAt,
+              requestHash: input.factApplication.requestHash,
+              decision: decision.decision,
+              decisionReason: decision.reasonCode,
+              previousState: decision.previousState,
+              resultingState: decision.resultingState,
+              appliedAt: input.factApplication.appliedAt,
+              actorOrServiceId: input.factApplication.actorOrServiceId,
+              traceId: input.factApplication.traceId,
+            },
+          });
+
+          if (input.taskUpdate) {
+            const updated = await tx.nodeTask.updateMany({
+              where: {
+                id: input.taskUpdate.id,
+                version: input.taskUpdate.expectedVersion,
+                state: input.taskUpdate.previousState,
+              },
+              data: {
+                state: input.taskUpdate.resultingState,
+                version: { increment: 1 },
+              },
+            });
+            if (updated.count !== 1) throw new ReconciliationVersionConflict();
+          }
+
+          if (input.outcome) {
+            await tx.nodeTaskOutcome.create({
+              data: {
+                id: input.outcome.id,
+                nodeTaskId: input.taskId,
+                previousState: input.outcome.previousState,
+                nextState: input.outcome.nextState,
+                resultPolicyMode: input.outcome.resultPolicyMode,
+                eventCode: input.outcome.eventCode,
+                policySnapshotHash: input.outcome.policySnapshotHash,
+                requiredWorkOrderIds: input.outcome.requiredWorkOrderIds,
+                completedWorkOrderIds: input.outcome.completedWorkOrderIds,
+                evaluatedFactRefs: input.outcome.evaluatedFactRefs ?? [],
+                canonicalEventId: input.outcome.canonicalEventId,
+                domainFactId: input.outcome.domainFactId,
+                actorOrServiceId: input.outcome.actorOrServiceId,
+                traceId: input.outcome.traceId,
+                evaluatedAt: input.outcome.evaluatedAt,
+              },
+            });
+          }
+
+          return {
+            kind: "committed" as const,
+            factApplication: mapFactApplication(factApplication),
+            taskState: input.resultingTaskState,
+            outcomeId: input.outcome?.id ?? null,
+          };
+        },
+        { isolationLevel: "Serializable" },
+      );
+    } catch (error) {
+      if (error instanceof ReconciliationVersionConflict) {
+        return { kind: "version_conflict" };
+      }
+      const code = prismaErrorCode(error);
+      if (code === "P2002") {
+        const existing = await this.findWorkOrderFactApplication(
+          input.factApplication.workOrderId,
+          input.factApplication.businessFactKey,
+        );
+        if (existing) return { kind: "duplicate", existing };
+        throw error;
+      }
+      if (code === "P2034") return { kind: "version_conflict" };
+      throw error;
+    }
+  }
+
   private async loadTask(
     where: { id: string } | { nodeInstanceId: string },
   ): Promise<NodeTaskWithWorkOrders | null> {
@@ -439,4 +582,34 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item) => typeof item === "string")
     : [];
+}
+
+class ReconciliationVersionConflict extends Error {}
+
+function prismaErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== "object" || !("code" in error)) return null;
+  return typeof error.code === "string" ? error.code : null;
+}
+
+function mapFactApplication(application: {
+  id: string;
+  workOrderId: string;
+  businessFactKey: string;
+  requestHash: string;
+  decision: string;
+  decisionReason: string | null;
+  previousState: string;
+  resultingState: string;
+}): WorkOrderFactApplicationRecord {
+  return {
+    id: application.id,
+    workOrderId: application.workOrderId,
+    businessFactKey: application.businessFactKey,
+    requestHash: application.requestHash,
+    decision:
+      application.decision as WorkOrderFactApplicationRecord["decision"],
+    decisionReason: application.decisionReason,
+    previousState: application.previousState as WorkOrderState,
+    resultingState: application.resultingState as WorkOrderState,
+  };
 }

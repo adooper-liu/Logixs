@@ -287,7 +287,7 @@ Expected: 空库升级和含既有任务数据的升级均通过；若仓库没�
 -> 提交
 ```
 
-- [ ] **Step 1: 写 Application 失败测试**
+- [x] **Step 1: 写 Application 失败测试**
 
 至少覆盖：
 
@@ -302,7 +302,7 @@ Expected: 空库升级和含既有任务数据的升级均通过；若仓库没�
 9. 任何一步失败，FactApplication、WorkOrder、NodeTask、Outcome 全部回滚。
 10. 一期现有实例只有一张 `required` 工单；仅当它的定义键与节点任务定义一致时才接受事实。出现多工单、零工单或定义不明时返回 `WORK_ORDER_DEFINITION_UNRESOLVED`，不得猜测或批量完成。后续多工单必须由版本化 `acceptedFactTypes/completionPredicates` 决定匹配范围。
 
-- [ ] **Step 2: 实现服务与 Repository 事务**
+- [x] **Step 2: 实现服务与 Repository 事务**
 
 业务判断留在 Domain/Application；Repository 只执行显式决定和条件写。禁止在 Prisma adapter 内用 `state != completed` 批量完成。
 
@@ -312,13 +312,13 @@ Expected: 空库升级和含既有任务数据的升级均通过；若仓库没�
 - 条件更新 0 行时重读事实应用：已存在同哈希则返回原结果；异哈希冲突；否则返回 `CONCURRENCY_VERSION_CONFLICT`，由用例进行有上限的重新求值。
 - 唯一键冲突不得吞掉，必须转为上述幂等/冲突结果。
 
-- [ ] **Step 3: 注册公开 Port**
+- [x] **Step 3: 注册公开 Port**
 
 - `work-execution.module.ts` 同时注册 service 和 `{ provide: RECONCILE_APPLIED_LIFECYCLE_FACT, useExisting: ... }`，并 export token。
 - `index.ts` 只导出端口、命令和结果类型，不导出 repository/Prisma 内部实现。
 - `module.manifest.ts.publicPorts` 登记 `RECONCILE_APPLIED_LIFECYCLE_FACT`。
 
-- [ ] **Step 4: 真实 Prisma 集成和并发测试**
+- [x] **Step 4: 真实 Prisma 集成和并发测试**
 
 测试必须连接迁移后的 PostgreSQL，不能只 mock Prisma：
 

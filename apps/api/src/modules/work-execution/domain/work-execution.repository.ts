@@ -11,6 +11,7 @@ import type {
 import type { ClientOperationRecord } from "./client-operation";
 import type { NodeTaskOutcomeDraft } from "./task-outcome";
 import type { WorkActivityOperation } from "./object-task-activity";
+import type { WorkOrderFactDecision } from "./work-order-fact-application";
 
 export const WORK_EXECUTION_REPOSITORY = Symbol("WorkExecutionRepository");
 
@@ -55,6 +56,66 @@ export interface NodeTaskWithWorkOrders {
   workOrders: WorkOrderRecord[];
   outcome: NodeTaskOutcomeRecord | null;
 }
+
+export interface WorkOrderFactApplicationRecord {
+  id: string;
+  workOrderId: string;
+  businessFactKey: string;
+  requestHash: string;
+  decision: "applied" | "rejected" | "no_op";
+  decisionReason: string | null;
+  previousState: WorkOrderState;
+  resultingState: WorkOrderState;
+}
+
+export interface ApplyLifecycleFactReconciliationInput {
+  taskId: string;
+  resultingTaskState: NodeTaskState;
+  factApplication: {
+    id: string;
+    tenantId: string;
+    workOrderId: string;
+    canonicalEventId: string;
+    nodeInstanceId: string;
+    businessFactType: string;
+    businessFactKey: string;
+    domainFactId: string;
+    captureSource: string;
+    evidenceRefs: string[];
+    occurredAt: Date;
+    receivedAt: Date;
+    recordedAt: Date;
+    requestHash: string;
+    decision: WorkOrderFactDecision;
+    appliedAt: Date;
+    actorOrServiceId: string;
+    traceId: string;
+  };
+  workOrderUpdate: {
+    id: string;
+    expectedVersion: number;
+    previousState: WorkOrderState;
+    resultingState: WorkOrderState;
+    completedAt: Date;
+  } | null;
+  taskUpdate: {
+    id: string;
+    expectedVersion: number;
+    previousState: NodeTaskState;
+    resultingState: NodeTaskState;
+  } | null;
+  outcome: (NodeTaskOutcomeDraft & { id: string; evaluatedAt: Date }) | null;
+}
+
+export type ApplyLifecycleFactReconciliationResult =
+  | {
+      kind: "committed";
+      factApplication: WorkOrderFactApplicationRecord;
+      taskState: NodeTaskState;
+      outcomeId: string | null;
+    }
+  | { kind: "duplicate"; existing: WorkOrderFactApplicationRecord }
+  | { kind: "version_conflict" };
 
 export interface CreateTaskInput {
   tenantId: string;
@@ -108,6 +169,10 @@ export interface WorkExecutionRepository {
     nodeInstanceId: string,
   ): Promise<NodeTaskWithWorkOrders | null>;
   findWorkOrderById(id: string): Promise<WorkOrderRecord | null>;
+  findWorkOrderFactApplication(
+    workOrderId: string,
+    businessFactKey: string,
+  ): Promise<WorkOrderFactApplicationRecord | null>;
   listTasksByContainer(
     input: ListTasksByContainerInput,
   ): Promise<NodeTaskWithWorkOrders[]>;
@@ -125,4 +190,7 @@ export interface WorkExecutionRepository {
   ): Promise<NodeTaskWithWorkOrders>;
   applyWorkOrderClaim(input: ApplyWorkOrderClaimInput): Promise<boolean>;
   applyWorkOrderCompletion(input: ApplyWorkOrderCompletionInput): Promise<void>;
+  applyLifecycleFactReconciliation(
+    input: ApplyLifecycleFactReconciliationInput,
+  ): Promise<ApplyLifecycleFactReconciliationResult>;
 }
