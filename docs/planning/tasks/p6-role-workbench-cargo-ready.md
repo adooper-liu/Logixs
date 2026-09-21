@@ -1,7 +1,7 @@
 ---
-status: review # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/role-workbench-cargo-ready
-verification: `pnpm validate`；新增路由后的 `pnpm --filter @logix/web exec playwright test e2e/shell-layout.spec.ts`
+verification: `pnpm validate`；新增路由后的 `pnpm --filter @logix/web exec playwright test e2e/shell-layout.spec.ts`；PR #31 build/e2e/static/unit/quality
 ---
 
 # 任务：岗位工作台公共骨架与备货真实接入
@@ -22,14 +22,14 @@ verification: `pnpm validate`；新增路由后的 `pnpm --filter @logix/web exe
 
 ## 验收
 
-- [ ] `/workspaces/cargo-ready` 出现在 operator/planner/manager 导航，并使用公共岗位工作台骨架。
-- [ ] 可选择真实货柜并展示真实 14 节点实例；未初始化流程时明确为空，不补造节点。
-- [ ] 无论是否已有合规评审，都可通过只读 API 查看当前活动装载集合与 SKU 明细。
-- [ ] 分开显示 `cargo_ready` 生命周期任务与开放合规整改项；允许动作只读取 `nextAction`。
-- [ ] 展示当前评审、发现和决定，并可带货柜上下文进入 `/compliance`；任务链接进入 `/tasks`。
-- [ ] 任一辅助投影失败不伪造“0 项/已完成”，以局部提示降级；切换货柜不显示旧响应。
-- [ ] API、组件、视图的成功、空态、局部失败和窄屏行为有自动化测试。
-- [ ] 公共 API 契约检查、Web/API 模块门禁及 `pnpm validate` 通过。
+- [x] `/workspaces/cargo-ready` 出现在 operator/planner/manager 导航，并使用公共岗位工作台骨架。
+- [x] 可选择真实货柜并展示真实 14 节点实例；未初始化流程时明确为空，不补造节点。
+- [x] 无论是否已有合规评审，都可通过只读 API 查看当前活动装载集合与 SKU 明细。
+- [x] 分开显示 `cargo_ready` 生命周期任务与开放合规整改项；允许动作只读取 `nextAction`。
+- [x] 展示当前评审、发现和决定，并可带货柜上下文进入 `/compliance`；任务链接进入 `/tasks`。
+- [x] 任一辅助投影失败不伪造“0 项/已完成”，以局部提示降级；切换货柜不显示旧响应。
+- [x] API、组件、视图的成功、空态、局部失败和窄屏行为有自动化测试。
+- [x] 公共 API 契约检查、Web/API 模块门禁及 `pnpm validate` 通过。
 
 ## 方案
 
@@ -45,3 +45,4 @@ verification: `pnpm validate`；新增路由后的 `pnpm --filter @logix/web exe
 | ---------- | ------ | ----- | ------ | -------------------------------------------------------------------------- |
 | 2026-09-21 | coding | Codex | -      | PR #30 合入后，开始岗位公共骨架与备货真实接入。                            |
 | 2026-09-21 | review | Codex | -      | 真实货物投影、公共壳、备货工作台、导航与自动化验证完成；等待 PR 必需检查。 |
+| 2026-09-21 | done   | Codex | #31    | 本地完整门禁与 PR 必需检查通过。                                           |
