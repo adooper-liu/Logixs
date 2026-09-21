@@ -571,6 +571,128 @@
         }
       }
     },
+    "WarehouseDeliveryInstruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instructionId",
+        "containerRecordId",
+        "version",
+        "warehouseLocationId",
+        "warehouseCode",
+        "warehouseName",
+        "unlocode",
+        "timezone",
+        "appointmentStartAt",
+        "appointmentEndAt",
+        "appointmentReference",
+        "evidenceRefs",
+        "actorId",
+        "reasonCode",
+        "createdAt",
+        "duplicate"
+      ],
+      "properties": {
+        "instructionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerRecordId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "warehouseLocationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "warehouseCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "warehouseName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "unlocode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "timezone": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "appointmentStartAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "appointmentEndAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "appointmentReference": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "actorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "duplicate": { "type": "boolean" }
+      }
+    },
+    "ReplaceWarehouseDeliveryInstructionCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "warehouseLocationId",
+        "warehouseCode",
+        "warehouseName",
+        "unlocode",
+        "timezone",
+        "appointmentStartAt",
+        "appointmentEndAt",
+        "appointmentReference",
+        "evidenceRefs",
+        "reasonCode",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "warehouseLocationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "warehouseCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "warehouseName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "unlocode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "timezone": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "appointmentStartAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "appointmentEndAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "appointmentReference": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
     "Freshness": {
       "type": "object",
       "additionalProperties": false,

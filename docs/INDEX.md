@@ -46,6 +46,7 @@
 | [任务：日期事实复核与采信闭环](./planning/tasks/p6-lifecycle-date-fact-review-flow.md)                | 四眼复核人工实际日期、追加确认版本并自动申请推进与重放    | 已完成                          |
 | [任务：清关案件、放行门禁与岗位工作台](./planning/tasks/p6-customs-clearance-operational-flow.md)     | 海关申报/扣留/放行案件、清关节点门禁与岗位操作闭环        | 已完成                          |
 | [任务：码头可提、Gate Out 门禁与提柜工作台](./planning/tasks/p6-container-pickup-operational-flow.md) | 可提事实、重柜出场联合门禁与内陆运输岗位操作闭环          | 已完成                          |
+| [任务：实际送仓/POD 门禁与送仓工作台](./planning/tasks/p6-warehouse-delivery-operational-flow.md)     | 版本化目的仓、实际到仓证据、送仓门禁与内陆运输岗位闭环    | 已完成，待合入                  |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                         | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断            | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                                          | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）  | P1 已接受；011 候选、012 已接受 |
 

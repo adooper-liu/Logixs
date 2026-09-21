@@ -14,6 +14,7 @@ import {
   Ship,
   TriangleAlert,
   Truck,
+  Warehouse,
 } from "@lucide/vue";
 import type { RouteRecordNormalized } from "vue-router";
 import type { DemoRole } from "../../composables/useDemoRole";
@@ -32,7 +33,8 @@ export type NavigationIcon =
   | "shield-check"
   | "ship"
   | "triangle-alert"
-  | "truck";
+  | "truck"
+  | "warehouse";
 
 export interface AppNavigationItem {
   label: string;
@@ -57,6 +59,7 @@ const icons: Record<NavigationIcon, Component> = {
   ship: Ship,
   "triangle-alert": TriangleAlert,
   truck: Truck,
+  warehouse: Warehouse,
 };
 
 export function navigationForRole(

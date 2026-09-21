@@ -13,6 +13,7 @@ import { DocumentRecordsModule } from "./modules/document-records";
 import { ExceptionManagementModule } from "./modules/exception-management";
 import { IdentityModule } from "./modules/identity";
 import { InlandFulfillmentModule } from "./modules/inland-fulfillment";
+import { InlandLifecycleOrchestrationModule } from "./modules/inland-lifecycle-orchestration";
 import { IntegrationImportModule } from "./modules/integration-import";
 import { LifecycleControlModule } from "./modules/lifecycle-control";
 import { MasterDataModule } from "./modules/master-data";
@@ -40,6 +41,7 @@ import { WorkflowModule } from "./modules/workflow";
     ExceptionManagementModule,
     IdentityModule,
     InlandFulfillmentModule,
+    InlandLifecycleOrchestrationModule,
     IntegrationImportModule,
     LifecycleControlModule,
     MasterDataModule,

@@ -423,27 +423,28 @@ enum ContainerStatus {
 // 货柜业务事实主记录（shipment-registry 拥有）。
 // 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
 model ContainerRecord {
-  id                    String                        @id @default(uuid()) @map("id")
-  tenantId              String                        @map("tenant_id")
+  id                            String                         @id @default(uuid()) @map("id")
+  tenantId                      String                         @map("tenant_id")
   // 旧导入兼容锚；柜内货物与备货单的权威关系由 ContainerCargoAllocation 表达。
-  orderNumber           String                        @map("order_number")
-  replenishmentOrderId  String?                       @map("replenishment_order_id")
-  replenishmentOrder    ReplenishmentOrder?           @relation(fields: [replenishmentOrderId], references: [id])
+  orderNumber                   String                         @map("order_number")
+  replenishmentOrderId          String?                        @map("replenishment_order_id")
+  replenishmentOrder            ReplenishmentOrder?            @relation(fields: [replenishmentOrderId], references: [id])
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
-  mainOrderNumber       String?                       @map("main_order_number")
+  mainOrderNumber               String?                        @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
-  containerNumber       String?                       @map("container_number")
+  containerNumber               String?                        @map("container_number")
   // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
-  currentStatus         ContainerStatus               @map("current_status")
-  createdAt             DateTime                      @default(now()) @map("created_at")
-  updatedAt             DateTime                      @updatedAt @map("updated_at")
-  timeFacts             ShipmentTimeFact[]
-  lifecycleDateFacts    LifecycleDateFact[]
-  oceanRoutePlans       OceanRoutePlan[]
-  cargoAllocationSets   ContainerCargoAllocationSet[]
-  stuffingSnapshots     ContainerStuffingSnapshot[]
-  dispatchSnapshots     ContainerDispatchSnapshot[]
-  customsClearanceCases CustomsClearanceCase[]
+  currentStatus                 ContainerStatus                @map("current_status")
+  createdAt                     DateTime                       @default(now()) @map("created_at")
+  updatedAt                     DateTime                       @updatedAt @map("updated_at")
+  timeFacts                     ShipmentTimeFact[]
+  lifecycleDateFacts            LifecycleDateFact[]
+  oceanRoutePlans               OceanRoutePlan[]
+  cargoAllocationSets           ContainerCargoAllocationSet[]
+  stuffingSnapshots             ContainerStuffingSnapshot[]
+  dispatchSnapshots             ContainerDispatchSnapshot[]
+  customsClearanceCases         CustomsClearanceCase[]
+  warehouseDeliveryInstructions WarehouseDeliveryInstruction[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -1531,6 +1532,46 @@ model InlandPlan {
   @@unique([tenantId, containerId, version], map: "inland_plan_container_version")
   @@index([tenantId, containerId, createdAt, id], map: "inland_plan_container_idx")
   @@map("inland_plan")
+}
+
+// 当前目的仓与到仓要求的版本化操作指令（inland-fulfillment 拥有）。
+// warehouseLocationId 是 Facility 主数据落地前的稳定逻辑 UUID 引用，不引用 InlandPlan 草稿。
+model WarehouseDeliveryInstruction {
+  id                      String                        @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                String                        @map("tenant_id")
+  containerRecordId       String                        @map("container_record_id")
+  containerRecord         ContainerRecord               @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version                 Int                           @map("version")
+  state                   String                        @map("state")
+  supersedesInstructionId String?                       @map("supersedes_instruction_id") @db.Uuid
+  supersedesInstruction   WarehouseDeliveryInstruction? @relation("WarehouseDeliveryInstructionSupersession", fields: [supersedesInstructionId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  supersededBy            WarehouseDeliveryInstruction? @relation("WarehouseDeliveryInstructionSupersession")
+  warehouseLocationId     String                        @map("warehouse_location_id") @db.Uuid
+  warehouseCode           String?                       @map("warehouse_code")
+  warehouseName           String                        @map("warehouse_name")
+  unlocode                String?                       @map("unlocode") @db.Char(5)
+  timezone                String                        @map("timezone")
+  appointmentStartAt      DateTime?                     @map("appointment_start_at") @db.Timestamptz
+  appointmentEndAt        DateTime?                     @map("appointment_end_at") @db.Timestamptz
+  appointmentReference    String?                       @map("appointment_reference")
+  ingestionChannel        String                        @map("ingestion_channel")
+  sourceSystem            String                        @map("source_system")
+  evidenceRefs            Json                          @map("evidence_refs")
+  actorId                 String                        @map("actor_id")
+  reasonCode              String                        @map("reason_code")
+  idempotencyKey          String                        @map("idempotency_key")
+  payloadHash             String                        @map("payload_hash")
+  createdAt               DateTime                      @default(now()) @map("created_at") @db.Timestamptz
+  supersededAt            DateTime?                     @map("superseded_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "warehouse_delivery_instruction_id_tenant_key")
+  @@unique([id, tenantId, containerRecordId], map: "warehouse_delivery_instruction_id_scope_key")
+  @@unique([tenantId, idempotencyKey], map: "warehouse_delivery_instruction_tenant_idempotency_key")
+  @@unique([containerRecordId, version], map: "warehouse_delivery_instruction_container_version_key")
+  @@unique([supersedesInstructionId, tenantId, containerRecordId], map: "warehouse_delivery_instruction_supersedes_scope_key")
+  @@index([tenantId, containerRecordId, state], map: "warehouse_delivery_instruction_active_lookup_idx")
+  @@index([tenantId, warehouseLocationId, state], map: "warehouse_delivery_instruction_warehouse_idx")
+  @@map("warehouse_delivery_instruction")
 }
 
 // 资源占用日历。本刀 confirm_before_occupy 不写入。

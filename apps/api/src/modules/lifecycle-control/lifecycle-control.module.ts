@@ -7,6 +7,7 @@ import {
 import { DocumentRecordsModule } from "../document-records";
 import { ComplianceManagementModule } from "../compliance-management";
 import { CustomsComplianceModule } from "../customs-compliance";
+import { InlandFulfillmentModule } from "../inland-fulfillment";
 import {
   IdentityModule,
   DevIdentityMiddleware,
@@ -108,6 +109,7 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
     DocumentRecordsModule,
     ComplianceManagementModule,
     CustomsComplianceModule,
+    InlandFulfillmentModule,
     ShipmentRegistryModule,
     forwardRef(() => WorkExecutionModule),
   ],
