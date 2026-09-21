@@ -96,6 +96,20 @@ describe("navigationForRole", () => {
     ).not.toContain("/compliance");
   });
 
+  it("shows date fact review to review-facing roles only", () => {
+    expect(
+      navigationForRole(router.getRoutes(), "planner").map((item) => item.path),
+    ).toContain("/reviews/date-facts");
+    expect(
+      navigationForRole(router.getRoutes(), "manager").map((item) => item.path),
+    ).toContain("/reviews/date-facts");
+    expect(
+      navigationForRole(router.getRoutes(), "operator").map(
+        (item) => item.path,
+      ),
+    ).not.toContain("/reviews/date-facts");
+  });
+
   it("shows the cargo-ready role workbench to every operating role", () => {
     for (const role of ["operator", "planner", "manager"] as const) {
       const items = navigationForRole(router.getRoutes(), role);

@@ -277,6 +277,32 @@ describe("RecordLifecycleDateFactService", () => {
     );
   });
 
+  it("复核岗位可凭 evidence.review 追加已确认事实，无需操作员能力", async () => {
+    const { service } = await buildService();
+
+    await expect(
+      service.execute({
+        ...baseInput(),
+        timeKind: "actual",
+        verificationState: "verified",
+        confidenceState: "confirmed",
+        evidenceRefs: [EVIDENCE_ID],
+        actorCapabilities: ["evidence.review"],
+      }),
+    ).resolves.toMatchObject({ applicationState: "applied" });
+  });
+
+  it("追踪 ID 不参与幂等载荷哈希", async () => {
+    const { service, repository } = await buildService();
+
+    await service.execute(baseInput());
+    const firstHash = repository.append.mock.calls[0]?.[0].payloadHash;
+    await service.execute({ ...baseInput(), traceId: "trace-retry" });
+    const retryHash = repository.append.mock.calls[1]?.[0].payloadHash;
+
+    expect(retryHash).toBe(firstHash);
+  });
+
   it("目标节点暂不可完成时保存状态机返回的真实 pending 原因", async () => {
     const { service, applyLifecycleEvent } = await buildService();
     applyLifecycleEvent.execute.mockResolvedValue({

@@ -1,5 +1,6 @@
 import type { Component } from "vue";
 import {
+  CalendarCheck,
   CalendarRange,
   ChartNoAxesCombined,
   ClipboardCheck,
@@ -16,6 +17,7 @@ import type { RouteRecordNormalized } from "vue-router";
 import type { DemoRole } from "../../composables/useDemoRole";
 
 export type NavigationIcon =
+  | "calendar-check"
   | "calendar-range"
   | "chart-no-axes-combined"
   | "clipboard-check"
@@ -37,6 +39,7 @@ export interface AppNavigationItem {
 }
 
 const icons: Record<NavigationIcon, Component> = {
+  "calendar-check": CalendarCheck,
   "calendar-range": CalendarRange,
   "chart-no-axes-combined": ChartNoAxesCombined,
   "clipboard-check": ClipboardCheck,

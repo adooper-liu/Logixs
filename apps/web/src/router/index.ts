@@ -127,6 +127,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/reviews/date-facts",
+      component: () => import("../views/DateFactReviewWorkbench.vue"),
+      meta: {
+        title: "日期事实复核",
+        section: "计划与管理",
+        navLabel: "日期事实复核",
+        navIcon: "calendar-check",
+        navOrder: 34,
+        roles: ["planner", "manager"],
+      },
+    },
+    {
       path: "/dead-letters",
       component: () => import("../views/DeadLetterQueue.vue"),
       meta: {

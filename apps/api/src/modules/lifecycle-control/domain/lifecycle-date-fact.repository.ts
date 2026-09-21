@@ -4,6 +4,7 @@ import type {
   LifecycleDateApplicationState,
   LifecycleDateFactRecord,
 } from "./lifecycle-date-fact";
+import type { LifecycleDateReviewCandidate } from "./lifecycle-date-review-page";
 
 export const LIFECYCLE_DATE_FACT_REPOSITORY = Symbol(
   "LifecycleDateFactRepository",
@@ -24,6 +25,11 @@ export interface LifecycleDateFactRepository {
     tenantId: string;
     containerId: string;
   }): Promise<LifecycleDateFactRecord[]>;
+  listReviewRequired(input: {
+    tenantId: string;
+    after?: { recordedAt: Date; id: string };
+    take: number;
+  }): Promise<LifecycleDateReviewCandidate[]>;
   claimPendingApplications(input: {
     tenantId: string;
     containerId: string;

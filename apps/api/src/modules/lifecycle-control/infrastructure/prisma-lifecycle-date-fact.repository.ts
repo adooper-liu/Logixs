@@ -12,6 +12,7 @@ import type {
   LifecycleDateFactRecord,
 } from "../domain/lifecycle-date-fact";
 import type { LifecycleDateFactRepository } from "../domain/lifecycle-date-fact.repository";
+import type { LifecycleDateReviewCandidate } from "../domain/lifecycle-date-review-page";
 
 @Injectable()
 export class PrismaLifecycleDateFactRepository implements LifecycleDateFactRepository {
@@ -237,6 +238,66 @@ export class PrismaLifecycleDateFactRepository implements LifecycleDateFactRepos
       take: 100,
     });
     return rows.map(toRecord);
+  }
+
+  async listReviewRequired(input: {
+    tenantId: string;
+    after?: { recordedAt: Date; id: string };
+    take: number;
+  }): Promise<LifecycleDateReviewCandidate[]> {
+    const rows = await this.prisma.lifecycleDateFact.findMany({
+      where: {
+        tenantId: input.tenantId,
+        isCurrent: true,
+        timeKind: "actual",
+        ingestionChannel: "manual_ui",
+        applicationState: "review_required",
+        ...(input.after
+          ? {
+              OR: [
+                { recordedAt: { gt: input.after.recordedAt } },
+                {
+                  recordedAt: input.after.recordedAt,
+                  id: { gt: input.after.id },
+                },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        container: {
+          select: { orderNumber: true, containerNumber: true },
+        },
+      },
+      orderBy: [{ recordedAt: "asc" }, { id: "asc" }],
+      take: input.take,
+    });
+    const versions =
+      rows.length === 0
+        ? []
+        : await this.prisma.lifecycleDateFact.groupBy({
+            by: ["containerId"],
+            where: {
+              tenantId: input.tenantId,
+              containerId: {
+                in: [...new Set(rows.map((row) => row.containerId))],
+              },
+            },
+            _max: { projectionVersion: true },
+          });
+    const versionByContainer = new Map(
+      versions.map((item) => [
+        item.containerId,
+        item._max.projectionVersion ?? 0,
+      ]),
+    );
+    return rows.map((row) => ({
+      fact: toRecord(row),
+      orderNumber: row.container.orderNumber,
+      containerNumber: row.container.containerNumber,
+      currentProjectionVersion:
+        versionByContainer.get(row.containerId) ?? row.projectionVersion,
+    }));
   }
 
   async claimPendingApplications(input: {
