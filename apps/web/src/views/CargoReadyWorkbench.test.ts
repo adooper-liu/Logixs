@@ -20,7 +20,10 @@ vi.mock("../api/lifecycleNodes", () => ({
   listLifecycleNodes: (...args: unknown[]) => listLifecycleNodes(...args),
 }));
 vi.mock("../api/nodeTasks", () => ({
+  DEV_OPERATOR_ID: "dev-operator",
   listNodeTasks: (...args: unknown[]) => listNodeTasks(...args),
+  claimWorkOrder: vi.fn(),
+  completeWorkOrder: vi.fn(),
 }));
 vi.mock("../api/workItems", () => ({
   listExternalWorkItems: (...args: unknown[]) => listExternalWorkItems(...args),
@@ -94,8 +97,45 @@ describe("CargoReadyWorkbench", () => {
       version: 3,
       state: "decided",
       jurisdictionCountryCode: "ES",
-      findings: [{ code: "missing-certificate" }],
+      assessmentDate: "2026-09-21",
+      allocationSetId: "allocation-1",
+      allocationSetVersion: 2,
+      items: [
+        {
+          replenishmentOrderLineId: "line-1",
+          productSkuId: "sku-1",
+          productNumber: "833-066V00BK",
+          complianceProfileId: "profile-1",
+          complianceProfileVersion: 1,
+        },
+      ],
+      findings: [
+        {
+          code: "REQUIRED_CERTIFICATE_MISSING_OR_INVALID",
+          productSkuId: "sku-1",
+          ruleVersionId: "rule-1",
+          detail: "certificate missing",
+        },
+      ],
+      applicableRules: [
+        {
+          ruleVersionId: "rule-1",
+          ruleCode: "EU-CERT",
+          version: 1,
+          productSkuId: "sku-1",
+          requirementLayer: "destination_country",
+          requiredCertificateTypes: ["ce"],
+          blockingNodeCodes: ["cargo_ready"],
+          severity: "blocking",
+          officialSourceUrl: "https://example.invalid",
+          legalCitation: "EU rule",
+        },
+      ],
+      evidenceRefs: [],
+      actorId: "reviewer",
+      reasonCode: "initial",
       currentDecision: { decisionCode: "evidence_required" },
+      createdAt: "2026-09-21T00:00:00.000Z",
     });
   });
 
@@ -104,8 +144,10 @@ describe("CargoReadyWorkbench", () => {
 
     expect(wrapper.text()).toContain("833-066V00BK");
     expect(wrapper.text()).toContain("50 carton");
-    expect(wrapper.get('[aria-label="生命周期任务"]').text()).toContain(
-      "node-cargo_ready",
+    expect(wrapper.text()).toContain("SKU 齐备度");
+    expect(wrapper.text()).toContain("缺少有效产品证书");
+    expect(wrapper.get('[aria-label="备货任务列表"]').text()).toContain(
+      "完成备货确认",
     );
     expect(wrapper.get('[aria-label="合规整改项"]').text()).toContain(
       "补齐欧盟证书",
@@ -116,9 +158,7 @@ describe("CargoReadyWorkbench", () => {
     expect(wrapper.get('a[aria-label="进入合规评审"]').attributes("href")).toBe(
       "/compliance?containerId=container-1",
     );
-    expect(
-      wrapper.get('[aria-label="生命周期任务"] a').attributes("href"),
-    ).toBe("/tasks?containerId=container-1&task=task-1");
+    expect(wrapper.text()).not.toContain("node-cargo_ready");
   });
 
   it("retains successful facts, reports partial failure and does not invent nodes", async () => {
@@ -175,7 +215,7 @@ function nodeTask() {
     workOrders: [],
     outcome: null,
     nextAction: {
-      actionCode: "claim",
+      actionCode: "work_execution.claim_work_order",
       workOrderId: "work-order-1",
       workOrderDefinitionKey: "prepare-cargo",
       assignmentState: "unassigned",

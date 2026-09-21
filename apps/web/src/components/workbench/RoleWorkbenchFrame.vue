@@ -28,6 +28,7 @@ const emit = defineEmits<{
 
 defineSlots<{
   actions(): unknown;
+  queue(): unknown;
   primary(): unknown;
   secondary(): unknown;
 }>();
@@ -89,13 +90,15 @@ function selectContainer(event: Event): void {
     <p v-if="containerListError" class="notice notice--error" role="alert">
       {{ containerListError }}
     </p>
-    <p v-if="!selectedContainerId" class="notice">选择货柜后查看备货事实。</p>
+    <p v-if="!selectedContainerId" class="notice">
+      从任务池选择工作，或直接选择货柜查看备货事实。
+    </p>
     <p v-else-if="selectionLoading" class="notice">正在加载这柜的备货事实…</p>
     <p v-else-if="selectionError" class="notice notice--error" role="alert">
       {{ selectionError }}
     </p>
 
-    <template v-else-if="selectedContainer">
+    <template v-if="selectedContainer && !selectionLoading && !selectionError">
       <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
       <p v-else class="notice">这柜尚未初始化生命周期流程。</p>
 
@@ -108,16 +111,33 @@ function selectContainer(event: Event): void {
           {{ warning.message }}
         </li>
       </ul>
-
-      <div class="workbench-grid">
-        <section class="workbench-pane" aria-label="岗位事实">
-          <slot name="primary" />
-        </section>
-        <section class="workbench-pane" aria-label="岗位待办">
-          <slot name="secondary" />
-        </section>
-      </div>
     </template>
+
+    <div
+      class="workbench-grid"
+      :class="{ 'workbench-grid--queue-only': !selectedContainer }"
+    >
+      <section
+        class="workbench-pane workbench-pane--queue"
+        aria-label="岗位任务池"
+      >
+        <slot name="queue" />
+      </section>
+      <section
+        v-if="selectedContainer"
+        class="workbench-pane"
+        aria-label="岗位事实"
+      >
+        <slot name="primary" />
+      </section>
+      <section
+        v-if="selectedContainer"
+        class="workbench-pane"
+        aria-label="岗位待办"
+      >
+        <slot name="secondary" />
+      </section>
+    </div>
   </main>
 </template>
 
@@ -244,9 +264,21 @@ function selectContainer(event: Event): void {
 .workbench-grid {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  grid-template-columns: minmax(280px, 0.7fr) minmax(520px, 1.5fr) minmax(
+      300px,
+      0.8fr
+    );
   gap: 12px;
   align-items: start;
+}
+
+.workbench-pane--queue {
+  position: sticky;
+  top: 12px;
+}
+
+.workbench-grid--queue-only {
+  grid-template-columns: minmax(280px, 420px);
 }
 
 .workbench-pane {
@@ -257,7 +289,7 @@ function selectContainer(event: Event): void {
   overflow: hidden;
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1280px) {
   .context-band {
     grid-template-columns: 1fr 1fr;
   }
@@ -272,7 +304,15 @@ function selectContainer(event: Event): void {
   }
 
   .workbench-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+  }
+
+  .workbench-pane:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .workbench-pane--queue {
+    position: static;
   }
 }
 
@@ -294,6 +334,14 @@ function selectContainer(event: Event): void {
 
   .node-scope {
     margin-left: 0;
+  }
+
+  .workbench-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workbench-pane:last-child {
+    grid-column: auto;
   }
 }
 </style>

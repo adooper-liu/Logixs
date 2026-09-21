@@ -38,7 +38,9 @@
 | [任务：Product/SKU 稳定身份](./planning/tasks/p6-product-sku-master-identity.md)         | master-data 建立租户内 SKU 稳定身份与幂等公开 Port        | 已完成                          |
 | [任务：备货单行 SKU 与货柜装载](./planning/tasks/p6-shipment-cargo-allocation.md)        | 产品行稳定引用 SKU，并版本化保存跨订单实际装载事实        | 已完成                          |
 | [任务：Product/SKU 结构化合规档案](./planning/tasks/p6-product-compliance-profile.md)    | 电池、危险品、制冷剂、检验要求及证书版本事实              | 已完成                          |
-| [任务：cargo_ready 合规闭环](./planning/tasks/p6-cargo-ready-compliance-flow.md)         | 装载与 SKU 合规档案形成评审决定，并接入备货节点门禁       | 实施中                          |
+| [任务：cargo_ready 合规闭环](./planning/tasks/p6-cargo-ready-compliance-flow.md)         | 装载与 SKU 合规档案形成评审决定，并接入备货节点门禁       | 已合入 main                     |
+| [任务：岗位工作台公共骨架](./planning/tasks/p6-role-workbench-cargo-ready.md)            | 备货工作台公共壳与真实只读投影                            | 已合入 main                     |
+| [任务：备货岗位可操作闭环](./planning/tasks/p6-cargo-ready-operational-workbench.md)     | 全局备货任务池、SKU 齐备度、允许动作与结果反馈            | 已完成，待合入 main             |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                            | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断            | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                             | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）  | P1 已接受；011 候选、012 已接受 |
 
