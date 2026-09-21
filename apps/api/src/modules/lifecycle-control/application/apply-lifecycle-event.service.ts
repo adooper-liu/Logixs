@@ -16,6 +16,14 @@ import {
   type GetCustomsClearanceReadinessPort,
 } from "../../customs-compliance";
 import {
+  READ_EVIDENCE_AUTHORITY_CONTEXT,
+  type ReadEvidenceAuthorityContextPort,
+} from "../../document-records";
+import {
+  GET_WAREHOUSE_DELIVERY_READINESS,
+  type GetWarehouseDeliveryReadinessPort,
+} from "../../inland-fulfillment";
+import {
   ApplyContainerRecordService,
   GET_CONTAINER_DISPATCH_READINESS,
   GET_CONTAINER_STUFFING_READINESS,
@@ -118,6 +126,10 @@ export class ApplyLifecycleEventService {
     private readonly getContainerDispatchReadiness: GetContainerDispatchReadinessPort,
     @Inject(GET_CUSTOMS_CLEARANCE_READINESS)
     private readonly getCustomsClearanceReadiness: GetCustomsClearanceReadinessPort,
+    @Inject(GET_WAREHOUSE_DELIVERY_READINESS)
+    private readonly getWarehouseDeliveryReadiness: GetWarehouseDeliveryReadinessPort,
+    @Inject(READ_EVIDENCE_AUTHORITY_CONTEXT)
+    private readonly readEvidenceAuthorityContext: ReadEvidenceAuthorityContextPort,
     @Inject(LIFECYCLE_DATE_FACT_REPOSITORY)
     private readonly lifecycleDateFacts: LifecycleDateFactRepository,
   ) {}
@@ -242,6 +254,24 @@ export class ApplyLifecycleEventService {
               fact.isCurrent,
           ) ?? null)
         : null;
+    const isWarehouseDeliveryEvent = [
+      "delivered",
+      "warehouse_arrival",
+    ].includes(input.eventCode);
+    const deliveryReadiness = isWarehouseDeliveryEvent
+      ? await this.getWarehouseDeliveryReadiness.execute({
+          tenantId: input.tenantId,
+          containerRecordId: input.containerId,
+        })
+      : null;
+    const deliveryEvidenceContexts = isWarehouseDeliveryEvent
+      ? await this.readEvidenceAuthorityContext.execute({
+          tenantId: input.tenantId,
+          subjectType: "container",
+          subjectId: input.containerId,
+          evidenceIds: evidenceRefs,
+        })
+      : [];
 
     const completedNodes: LifecycleNodeCode[] = [];
     const pendingNodes: LifecycleNodeCode[] = [];
@@ -336,6 +366,16 @@ export class ApplyLifecycleEventService {
               })
             : null,
         pickupAvailability,
+        deliveryInstruction: deliveryReadiness?.instruction
+          ? {
+              instructionId: deliveryReadiness.instruction.instructionId,
+              warehouseLocationId:
+                deliveryReadiness.instruction.warehouseLocationId,
+              unlocode: deliveryReadiness.instruction.unlocode,
+              timezone: deliveryReadiness.instruction.timezone,
+            }
+          : null,
+        evidenceAuthorityContexts: deliveryEvidenceContexts,
         occurredAt: input.occurredAt,
       });
       const guardResults = [

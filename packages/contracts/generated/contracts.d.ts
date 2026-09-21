@@ -1613,6 +1613,46 @@ idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WarehouseDeliveryInstruction".
+ */
+export interface WarehouseDeliveryInstruction {
+instructionId: Uuid
+containerRecordId: Uuid
+version: number
+warehouseLocationId: Uuid
+warehouseCode: (string | null)
+warehouseName: string
+unlocode: (string | null)
+timezone: string
+appointmentStartAt: (DateTime | null)
+appointmentEndAt: (DateTime | null)
+appointmentReference: (string | null)
+evidenceRefs: Uuid[]
+actorId: string
+reasonCode: StableCode
+createdAt: DateTime
+duplicate: boolean
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ReplaceWarehouseDeliveryInstructionCommand".
+ */
+export interface ReplaceWarehouseDeliveryInstructionCommand {
+expectedVersion: number
+warehouseLocationId: Uuid
+warehouseCode: (string | null)
+warehouseName: string
+unlocode: (string | null)
+timezone: string
+appointmentStartAt: (DateTime | null)
+appointmentEndAt: (DateTime | null)
+appointmentReference: (string | null)
+evidenceRefs: Uuid[]
+reasonCode: StableCode
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "Freshness".
  */
 export interface Freshness {

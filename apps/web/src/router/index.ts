@@ -87,6 +87,18 @@ const router = createRouter({
       },
     },
     {
+      path: "/workspaces/delivery",
+      component: () => import("../views/WarehouseDeliveryWorkbench.vue"),
+      meta: {
+        title: "送仓工作台",
+        section: "作业",
+        navLabel: "送仓工作台",
+        navIcon: "warehouse",
+        navOrder: 20,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/containers",
       component: () => import("../views/ContainerList.vue"),
       meta: {
@@ -94,7 +106,7 @@ const router = createRouter({
         section: "货柜",
         navLabel: "干活",
         navIcon: "container",
-        navOrder: 20,
+        navOrder: 21,
         roles: ["operator", "planner", "manager"],
       },
     },

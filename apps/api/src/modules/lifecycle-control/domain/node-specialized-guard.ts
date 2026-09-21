@@ -3,6 +3,23 @@ import type { LifecycleLocationContext } from "./lifecycle-date-fact";
 import type { ActiveOceanRouteSegment } from "./lifecycle.repository";
 import type { NodeEventApplicationDecision } from "./node-event-application";
 
+export interface DeliveryInstructionContext {
+  instructionId: string;
+  warehouseLocationId: string;
+  unlocode: string | null;
+  timezone: string;
+}
+
+export interface DeliveryEvidenceAuthorityContext {
+  id: string;
+  evidenceType: string;
+  authorityLevel: string;
+  sourceType: string;
+  authoritySystem: string;
+  verificationState: string;
+  validity: string;
+}
+
 export interface PickupAvailabilityContext {
   occurredAt: Date;
   verificationState: string;
@@ -32,6 +49,8 @@ export function decideNodeSpecializedGuard(input: {
     reasonCode: string | null;
   } | null;
   pickupAvailability?: PickupAvailabilityContext | null;
+  deliveryInstruction?: DeliveryInstructionContext | null;
+  evidenceAuthorityContexts?: DeliveryEvidenceAuthorityContext[];
   occurredAt: Date;
 }): NodeEventApplicationDecision {
   if (
@@ -137,6 +156,18 @@ export function decideNodeSpecializedGuard(input: {
   }
 
   if (
+    input.targetNodeCode === "warehouse_delivery" &&
+    ["delivered", "warehouse_arrival"].includes(input.eventCode)
+  ) {
+    return decideWarehouseDelivery(
+      input.eventCode as "delivered" | "warehouse_arrival",
+      input.deliveryInstruction ?? null,
+      input.location,
+      input.evidenceAuthorityContexts ?? [],
+    );
+  }
+
+  if (
     input.targetNodeCode === "ocean_transit" &&
     input.eventCode === "transit_arrived"
   ) {
@@ -159,6 +190,108 @@ export function decideNodeSpecializedGuard(input: {
   }
 
   return { kind: "apply", guardResults: [] };
+}
+
+function decideWarehouseDelivery(
+  eventCode: "delivered" | "warehouse_arrival",
+  instruction: DeliveryInstructionContext | null,
+  location: LifecycleLocationContext | null,
+  evidence: DeliveryEvidenceAuthorityContext[],
+): NodeEventApplicationDecision {
+  if (!instruction) {
+    return {
+      kind: "pending_application",
+      guardResults: [],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_DELIVERY_INSTRUCTION",
+    };
+  }
+  if (
+    !location ||
+    location.locationType !== "warehouse" ||
+    !location.locationId
+  ) {
+    return {
+      kind: "pending_application",
+      guardResults: ["DELIVERY_INSTRUCTION_CURRENT"],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_DELIVERY_LOCATION_CONTEXT",
+    };
+  }
+  if (
+    location.locationId !== instruction.warehouseLocationId ||
+    (instruction.unlocode !== null &&
+      location.unlocode !== instruction.unlocode)
+  ) {
+    return {
+      kind: "pending_application",
+      guardResults: [
+        "DELIVERY_INSTRUCTION_CURRENT",
+        "DELIVERY_LOCATION_IDENTIFIED",
+      ],
+      reasonCode: "LIFECYCLE_EVENT_DELIVERY_LOCATION_MISMATCH",
+    };
+  }
+  const qualified = evidence.some((item) =>
+    eventCode === "delivered"
+      ? isQualifiedDeliveryReceipt(item)
+      : isQualifiedWarehouseAuthorityEvidence(item),
+  );
+  if (!qualified) {
+    return {
+      kind: "pending_application",
+      guardResults: [
+        "DELIVERY_INSTRUCTION_CURRENT",
+        "DELIVERY_LOCATION_IDENTIFIED",
+        "DELIVERY_DESTINATION_MATCHED",
+      ],
+      reasonCode:
+        eventCode === "delivered"
+          ? "LIFECYCLE_EVENT_PENDING_DELIVERY_RECEIPT_EVIDENCE"
+          : "LIFECYCLE_EVENT_PENDING_WAREHOUSE_AUTHORITY_EVIDENCE",
+    };
+  }
+  return {
+    kind: "apply",
+    guardResults: [
+      "DELIVERY_INSTRUCTION_CURRENT",
+      "DELIVERY_LOCATION_IDENTIFIED",
+      "DELIVERY_DESTINATION_MATCHED",
+      eventCode === "delivered"
+        ? "DELIVERY_RECEIPT_EVIDENCE_QUALIFIED"
+        : "WAREHOUSE_AUTHORITY_EVIDENCE_QUALIFIED",
+    ],
+  };
+}
+
+function isQualifiedDeliveryReceipt(
+  evidence: DeliveryEvidenceAuthorityContext,
+): boolean {
+  return (
+    isEffectiveOperationalEvidence(evidence) &&
+    evidence.evidenceType === "receipt" &&
+    ["organization", "authority", "system"].includes(evidence.sourceType)
+  );
+}
+
+function isQualifiedWarehouseAuthorityEvidence(
+  evidence: DeliveryEvidenceAuthorityContext,
+): boolean {
+  return (
+    isEffectiveOperationalEvidence(evidence) &&
+    ["receipt", "system_record", "api_response"].includes(
+      evidence.evidenceType,
+    ) &&
+    ["organization", "authority", "system"].includes(evidence.sourceType)
+  );
+}
+
+function isEffectiveOperationalEvidence(
+  evidence: DeliveryEvidenceAuthorityContext,
+): boolean {
+  return (
+    evidence.verificationState === "verified" &&
+    evidence.validity === "effective" &&
+    ["authoritative", "operational"].includes(evidence.authorityLevel)
+  );
 }
 
 function decidePickupAvailability(

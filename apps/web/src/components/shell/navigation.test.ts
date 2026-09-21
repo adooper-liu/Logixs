@@ -169,4 +169,18 @@ describe("navigationForRole", () => {
       expect(items[pickup]?.label).toBe("提柜工作台");
     }
   });
+
+  it("shows the delivery workbench immediately after pickup", () => {
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      const pickup = items.findIndex(
+        (item) => item.path === "/workspaces/pickup",
+      );
+      const delivery = items.findIndex(
+        (item) => item.path === "/workspaces/delivery",
+      );
+      expect(delivery).toBe(pickup + 1);
+      expect(items[delivery]?.label).toBe("送仓工作台");
+    }
+  });
 });

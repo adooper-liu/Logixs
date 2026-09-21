@@ -1,6 +1,8 @@
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import { GET_CUSTOMS_CLEARANCE_READINESS } from "../../customs-compliance";
+import { READ_EVIDENCE_AUTHORITY_CONTEXT } from "../../document-records";
+import { GET_WAREHOUSE_DELIVERY_READINESS } from "../../inland-fulfillment";
 import {
   ApplyContainerRecordService,
   GET_CONTAINER_DISPATCH_READINESS,
@@ -29,6 +31,12 @@ const PICKUP_LOCATION = {
   unlocode: "USLAX",
   locationId: "77777777-7777-4777-8777-777777777777",
   timezone: "America/Los_Angeles",
+};
+const WAREHOUSE_LOCATION = {
+  locationType: "warehouse" as const,
+  unlocode: "ESBCN",
+  locationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  timezone: "Europe/Madrid",
 };
 const FINAL_ROUTE_SEGMENT = {
   routePlanId: "55555555-5555-4555-8555-555555555555",
@@ -137,7 +145,9 @@ async function buildService(
           ? ARRIVAL_LOCATION
           : input.eventCode === "gate_out"
             ? PICKUP_LOCATION
-            : null,
+            : ["delivered", "warehouse_arrival"].includes(input.eventCode)
+              ? WAREHOUSE_LOCATION
+              : null,
       })),
   },
   evaluateCargoReadyCompliance = {
@@ -170,6 +180,31 @@ async function buildService(
     }),
   },
   lifecycleDateFacts = { listCurrent: vi.fn().mockResolvedValue([]) },
+  getWarehouseDeliveryReadiness = {
+    execute: vi.fn().mockResolvedValue({
+      confirmed: true,
+      reasonCode: null,
+      instruction: {
+        instructionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        warehouseLocationId: WAREHOUSE_LOCATION.locationId,
+        unlocode: WAREHOUSE_LOCATION.unlocode,
+        timezone: WAREHOUSE_LOCATION.timezone,
+      },
+    }),
+  },
+  readEvidenceAuthorityContext = {
+    execute: vi.fn().mockResolvedValue([
+      {
+        id: EVIDENCE,
+        evidenceType: "receipt",
+        authorityLevel: "operational",
+        sourceType: "organization",
+        authoritySystem: "warehouse.vls",
+        verificationState: "verified",
+        validity: "effective",
+      },
+    ]),
+  },
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -197,6 +232,14 @@ async function buildService(
       {
         provide: GET_CUSTOMS_CLEARANCE_READINESS,
         useValue: getCustomsClearanceReadiness,
+      },
+      {
+        provide: GET_WAREHOUSE_DELIVERY_READINESS,
+        useValue: getWarehouseDeliveryReadiness,
+      },
+      {
+        provide: READ_EVIDENCE_AUTHORITY_CONTEXT,
+        useValue: readEvidenceAuthorityContext,
       },
       {
         provide: LIFECYCLE_DATE_FACT_REPOSITORY,
@@ -229,6 +272,56 @@ function baseInput() {
 }
 
 describe("ApplyLifecycleEventService", () => {
+  it("delivered 在目的仓与 POD 证据匹配时完成送仓但保持 picked_up", async () => {
+    const repository = buildRepository("picked_up");
+    useFlow(repository, flowAt("warehouse_delivery"));
+    const applyContainerRecord = { execute: vi.fn() };
+    const { service } = await buildService(repository, applyContainerRecord);
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "delivered",
+    });
+
+    expect(result.completedNodes).toEqual(["warehouse_delivery"]);
+    expect(applyContainerRecord.execute).not.toHaveBeenCalled();
+  });
+
+  it("delivered 缺少当前目的仓指令时保存事件并保持待应用", async () => {
+    const repository = buildRepository("picked_up");
+    useFlow(repository, flowAt("warehouse_delivery"));
+    const readiness = {
+      execute: vi.fn().mockResolvedValue({
+        confirmed: false,
+        reasonCode: "LIFECYCLE_EVENT_PENDING_DELIVERY_INSTRUCTION",
+        instruction: null,
+      }),
+    };
+    const { service } = await buildService(
+      repository,
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      readiness,
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "delivered",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.warehouse_delivery).toBe(
+      "LIFECYCLE_EVENT_PENDING_DELIVERY_INSTRUCTION",
+    );
+  });
+
   it("gate_out 读取当前可提事实并完成提柜节点", async () => {
     const repository = buildRepository("at_port");
     useFlow(repository, flowAt("container_pickup"));

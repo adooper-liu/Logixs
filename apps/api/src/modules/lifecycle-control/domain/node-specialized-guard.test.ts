@@ -38,6 +38,154 @@ const AVAILABLE = {
   applicationState: "applied",
   location: PICKUP_LOCATION,
 };
+const WAREHOUSE_LOCATION = {
+  locationType: "warehouse" as const,
+  unlocode: "ESBCN",
+  locationId: "44444444-4444-4444-8444-444444444444",
+  timezone: "Europe/Madrid",
+};
+const DELIVERY_INSTRUCTION = {
+  instructionId: "55555555-5555-4555-8555-555555555555",
+  warehouseLocationId: WAREHOUSE_LOCATION.locationId,
+  unlocode: WAREHOUSE_LOCATION.unlocode,
+  timezone: WAREHOUSE_LOCATION.timezone,
+};
+const POD_EVIDENCE = {
+  id: "66666666-6666-4666-8666-666666666666",
+  evidenceType: "receipt",
+  authorityLevel: "operational",
+  sourceType: "organization",
+  authoritySystem: "warehouse.vls",
+  verificationState: "verified",
+  validity: "effective",
+};
+
+describe("warehouse delivery specialized guard", () => {
+  it("keeps delivery pending without a current destination instruction", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "warehouse_delivery",
+        eventCode: "delivered",
+        containerNumber: "KOCU4960726",
+        location: WAREHOUSE_LOCATION,
+        routeSegment: null,
+        deliveryInstruction: null,
+        evidenceAuthorityContexts: [POD_EVIDENCE],
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PENDING_DELIVERY_INSTRUCTION",
+    });
+  });
+
+  it("rejects missing warehouse context and destination mismatch", () => {
+    const base = {
+      targetNodeCode: "warehouse_delivery" as const,
+      eventCode: "delivered" as const,
+      containerNumber: "KOCU4960726",
+      routeSegment: null,
+      deliveryInstruction: DELIVERY_INSTRUCTION,
+      evidenceAuthorityContexts: [POD_EVIDENCE],
+    };
+    expect(
+      decideNodeSpecializedGuard({ ...base, location: null }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PENDING_DELIVERY_LOCATION_CONTEXT",
+    });
+    expect(
+      decideNodeSpecializedGuard({
+        ...base,
+        location: {
+          ...WAREHOUSE_LOCATION,
+          locationId: "77777777-7777-4777-8777-777777777777",
+        },
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_DELIVERY_LOCATION_MISMATCH",
+    });
+  });
+
+  it("requires POD, gate or warehouse receipt evidence for delivered", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "warehouse_delivery",
+        eventCode: "delivered",
+        containerNumber: "KOCU4960726",
+        location: WAREHOUSE_LOCATION,
+        routeSegment: null,
+        deliveryInstruction: DELIVERY_INSTRUCTION,
+        evidenceAuthorityContexts: [{ ...POD_EVIDENCE, evidenceType: "photo" }],
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PENDING_DELIVERY_RECEIPT_EVIDENCE",
+    });
+  });
+
+  it("does not accept driver or GPS-only evidence as warehouse arrival", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "warehouse_delivery",
+        eventCode: "warehouse_arrival",
+        containerNumber: "KOCU4960726",
+        location: WAREHOUSE_LOCATION,
+        routeSegment: null,
+        deliveryInstruction: DELIVERY_INSTRUCTION,
+        evidenceAuthorityContexts: [
+          {
+            ...POD_EVIDENCE,
+            evidenceType: "device_record",
+            sourceType: "device",
+            authoritySystem: "truck.gps",
+          },
+        ],
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PENDING_WAREHOUSE_AUTHORITY_EVIDENCE",
+    });
+  });
+
+  it.each([
+    ["delivered", POD_EVIDENCE],
+    [
+      "warehouse_arrival",
+      {
+        ...POD_EVIDENCE,
+        evidenceType: "system_record",
+        sourceType: "system",
+        authoritySystem: "wms.vls",
+      },
+    ],
+  ] as const)(
+    "allows qualified %s evidence at the instructed warehouse",
+    (eventCode, evidence) => {
+      expect(
+        decideNodeSpecializedGuard({
+          targetNodeCode: "warehouse_delivery",
+          eventCode,
+          containerNumber: "KOCU4960726",
+          location: WAREHOUSE_LOCATION,
+          routeSegment: null,
+          deliveryInstruction: DELIVERY_INSTRUCTION,
+          evidenceAuthorityContexts: [evidence],
+        }),
+      ).toEqual({
+        kind: "apply",
+        guardResults: [
+          "DELIVERY_INSTRUCTION_CURRENT",
+          "DELIVERY_LOCATION_IDENTIFIED",
+          "DELIVERY_DESTINATION_MATCHED",
+          eventCode === "delivered"
+            ? "DELIVERY_RECEIPT_EVIDENCE_QUALIFIED"
+            : "WAREHOUSE_AUTHORITY_EVIDENCE_QUALIFIED",
+        ],
+      });
+    },
+  );
+});
 
 describe("decideNodeSpecializedGuard", () => {
   it("gate_out 缺少已采信可提事实时保留待应用", () => {
