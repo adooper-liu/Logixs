@@ -1048,7 +1048,7 @@ git commit -m "feat(web): 节点视图模型补三轨时间与未关闭阻塞计
 - Consumes: `LiveNodeView`（Task 8）
 - Produces: `LiveNodeRail` 组件；`emits: select: [nodeInstanceId: string]`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 新建 `apps/web/src/components/container/LiveNodeRail.test.ts`：
 
@@ -1124,12 +1124,12 @@ describe("LiveNodeRail", () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `pnpm --filter @logix/web test src/components/container/LiveNodeRail.test.ts`
 Expected: FAIL —— 没有 `data-testid="rail-node"`，且无 `select` 事件
 
-- [ ] **Step 3: 重写组件**
+- [x] **Step 3: 重写组件**
 
 `apps/web/src/components/container/LiveNodeRail.vue`（script + template 部分）：
 
@@ -1323,12 +1323,12 @@ function tone(node: LiveNodeView): string {
 
 > 若 `--ok` 变量不存在，用仓库既有的语义色变量替代（`UI_SYSTEM §7.1` 的 `brand / ok / warn / risk / info` 五色）。**不要**在这里新造颜色。
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `pnpm --filter @logix/web test src/components/container/LiveNodeRail.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add apps/web/src/components/container/LiveNodeRail.vue apps/web/src/components/container/LiveNodeRail.test.ts
