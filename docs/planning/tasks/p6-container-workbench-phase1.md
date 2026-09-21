@@ -90,6 +90,7 @@ branch: feat/container-workbench-phase1
 - 2026-09-21：Task 3 主审移除 work-execution 对 lifecycle-control 私有表的反向读取，并将一期匹配收紧为唯一且定义明确的 required 工单；真实 PostgreSQL 并发、回滚与迟到事实重放验证通过。
 - 2026-09-21：Task 4 主审确认节点首次应用与逐目标 reconciliation Outbox 同事务；组合 delivery 只从 lifecycle 权威记录组装命令，经 shipment 公共端口核租户后调用 work-execution 公共端口。专用消息显式校验 `eventVersion`，未知版本稳定拒绝；临时任务缺失和并发冲突可重试，稳定业务拒绝进死信，普通规范事件仍走原投递路径。
 - 2026-09-21：Task 5 实现自检确认 `ShipmentTimeFact.eventCode` 只经 canonical-events 的 `defaultNodeCode` 解析；显式 `nodeCode` 优先，只有 `eventCode === null` 的历史事实才允许四个精确旧 `factCode` 兼容兜底，未知事件、无默认节点事件或未知事实码不作字符串猜测。仓库内 Port 为加法型变更，无数据库或外部 wire 迁移，契约生成物无漂移。
+- 2026-09-21：Task 6 主审补齐 lifecycle-nodes 的正式包导出、生成声明与契约校验；`CompletionMode` 为加法型共享枚举，14 站均显式配置 `fact_driven`，目录缺项或目录外节点明确失败，不以静默默认掩盖配置错误。
 
 ## 进度 log（谁改谁 append，一行一条）
 
@@ -102,3 +103,4 @@ branch: feat/container-workbench-phase1
 | 2026-09-21 | coding | Codex | —      | Task 3 完成：实现原子事实对账、乐观并发、幂等重放与公开 Port                                                                                                                               |
 | 2026-09-21 | coding | Codex | —      | Task 4 完成：节点应用原子写对账 Outbox，复用既有重试/死信/重放链；修正本阶段 PostgreSQL 集成测试 schema 隔离。当前本地 public 库残留旧测试夹具，历史回填专项脚本据实失败，未删除现有数据。 |
 | 2026-09-21 | coding | Codex | —      | Task 5 完成：日期事实按 canonical-events 解析节点，仅无事件关联的历史事实允许精确旧映射兜底；三模块 119 个测试文件共 626 项、API lint/typecheck/build、格式、仓库政策及契约漂移检查通过。  |
+| 2026-09-21 | coding | Codex | —      | Task 6 完成：14 站目录新增完成模式，补齐包导出、生成类型、契约完整性校验与严格运行时读取；共享契约保持加法兼容。                                                                           |

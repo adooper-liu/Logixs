@@ -601,8 +601,13 @@ git commit -m "feat(work-execution): 任务条件改用规范事件解析节点�
 
 **Files:**
 
+- Modify: `packages/contracts/schemas/v1/common.schema.json`
 - Modify: `packages/contracts/catalogs/v1/lifecycle-nodes.json`
+- Modify: `packages/contracts/package.json`
+- Modify: `scripts/generate-contracts.mjs`
+- Modify: `scripts/validate-contract-schemas.mjs`
 - Modify: `packages/contracts/generated/contracts.d.ts`（由脚本生成）
+- Create: `packages/contracts/lifecycle-nodes-json.d.ts`（由脚本生成）
 - Create: `apps/api/src/modules/lifecycle-control/domain/node-completion-mode.ts`
 - Create: `apps/api/src/modules/lifecycle-control/domain/node-completion-mode.test.ts`
 
@@ -610,7 +615,7 @@ git commit -m "feat(work-execution): 任务条件改用规范事件解析节点�
 
 - Produces: `CompletionMode = "fact_driven" | "needs_manual_fact"`；`completionModeOf(nodeCode): CompletionMode`
 
-- [ ] **Step 1: 改目录**
+- [x] **Step 1: 改目录**
 
 `packages/contracts/catalogs/v1/lifecycle-nodes.json` —— 给 **14 个**节点对象各加一个字段，值一律为 `"fact_driven"`。前两项示例（其余 12 项同样处理，保持既有键序 `sequence` / `nodeCode` / `applicability` / `completionMode`）：
 
@@ -623,74 +628,80 @@ git commit -m "feat(work-execution): 任务条件改用规范事件解析节点�
   },
 ```
 
-- [ ] **Step 2: 重新生成契约**
+- [x] **Step 2: 重新生成契约**
 
 Run: `pnpm contract:generate`
-Expected: 脚本成功；`packages/contracts/generated/contracts.d.ts` 出现改动
+Expected: 脚本成功；`contracts.d.ts` 出现 `CompletionMode`，并生成可公开导入的 `lifecycle-nodes-json.d.ts`
 
 Run: `pnpm contract:drift`
 Expected: 通过（无 drift）
 
-- [ ] **Step 3: 写失败测试**
+- [x] **Step 3: 写失败测试**
 
 新建 `apps/api/src/modules/lifecycle-control/domain/node-completion-mode.test.ts`：
 
 ```ts
+import type { LifecycleNodeCode } from "@logix/contracts";
+import lifecycleNodes from "@logix/contracts/lifecycle-nodes.json";
 import { describe, expect, it } from "vitest";
-import { LIFECYCLE_NODE_CODES } from "../../work-execution/domain/lifecycle-node-codes";
 import { completionModeOf } from "./node-completion-mode";
 
 describe("completionModeOf", () => {
-  it("目录未标注时默认为事实驱动", () => {
-    expect(completionModeOf("container_stuffing")).toBe("fact_driven");
+  it("14 站全部读取目录中的明确完成模式", () => {
+    expect(lifecycleNodes).toHaveLength(14);
+    for (const node of lifecycleNodes) {
+      expect(completionModeOf(node.nodeCode)).toBe(node.completionMode);
+    }
   });
 
-  it("14 站全部有明确取值", () => {
-    for (const nodeCode of LIFECYCLE_NODE_CODES) {
-      expect(["fact_driven", "needs_manual_fact"]).toContain(
-        completionModeOf(nodeCode),
-      );
-    }
+  it("目录外节点明确失败，不使用静默默认值", () => {
+    expect(() => completionModeOf("unknown" as LifecycleNodeCode)).toThrow(
+      "LIFECYCLE_NODE_COMPLETION_MODE_UNDEFINED:unknown",
+    );
   });
 });
 ```
 
-> 若 `lifecycle-node-codes.ts` 未导出 `LIFECYCLE_NODE_CODES`，改为就地写死这 14 个 code 的数组。
-
-- [ ] **Step 4: 跑测试确认失败**
+- [x] **Step 4: 跑测试确认失败**
 
 Run: `pnpm --filter @logix/api test -- src/modules/lifecycle-control/domain/node-completion-mode.test.ts`
 Expected: FAIL —— 找不到模块 `./node-completion-mode`
 
-- [ ] **Step 5: 实现读取**
+- [x] **Step 5: 实现读取**
 
 新建 `apps/api/src/modules/lifecycle-control/domain/node-completion-mode.ts`：
 
 ```ts
-import type { LifecycleNodeCode } from "@logix/contracts";
+import type { CompletionMode, LifecycleNodeCode } from "@logix/contracts";
 import lifecycleNodes from "@logix/contracts/lifecycle-nodes.json";
 
-export type CompletionMode = "fact_driven" | "needs_manual_fact";
-
 // 权威：packages/contracts/catalogs/v1/lifecycle-nodes.json 的 completionMode。
-// 默认 fact_driven —— 事实优先；只有明确知道该站事实源不可用才标 needs_manual_fact。
-const MODE_BY_NODE = new Map<string, CompletionMode>(
-  lifecycleNodes
-    .filter((node) => Boolean(node.completionMode))
-    .map((node) => [node.nodeCode, node.completionMode as CompletionMode]),
-);
+const MODE_BY_NODE = new Map<LifecycleNodeCode, CompletionMode>();
+
+for (const node of lifecycleNodes) {
+  if (MODE_BY_NODE.has(node.nodeCode)) {
+    throw new Error(
+      `LIFECYCLE_NODE_COMPLETION_MODE_DUPLICATE:${node.nodeCode}`,
+    );
+  }
+  MODE_BY_NODE.set(node.nodeCode, node.completionMode);
+}
 
 export function completionModeOf(nodeCode: LifecycleNodeCode): CompletionMode {
-  return MODE_BY_NODE.get(nodeCode) ?? "fact_driven";
+  const mode = MODE_BY_NODE.get(nodeCode);
+  if (!mode) {
+    throw new Error(`LIFECYCLE_NODE_COMPLETION_MODE_UNDEFINED:${nodeCode}`);
+  }
+  return mode;
 }
 ```
 
-- [ ] **Step 6: 跑测试确认通过**
+- [x] **Step 6: 跑测试确认通过**
 
 Run: `pnpm --filter @logix/api test -- src/modules/lifecycle-control/domain/node-completion-mode.test.ts`
 Expected: PASS
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add packages/contracts apps/api/src/modules/lifecycle-control

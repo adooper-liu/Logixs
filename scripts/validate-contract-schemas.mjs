@@ -179,6 +179,7 @@ const lifecycleTimeline = readJson(
 );
 const nodeCodes = common?.$defs?.LifecycleNodeCode?.enum ?? [];
 const eventCodes = common?.$defs?.CanonicalEventCode?.enum ?? [];
+const completionModes = new Set(common?.$defs?.CompletionMode?.enum ?? []);
 const expectedImportFieldCodes = [
   "orderNumber",
   "containerNumber",
@@ -312,6 +313,15 @@ if (
   JSON.stringify(nodeCodes)
 ) {
   errors.push("node catalog and LifecycleNodeCode enum differ");
+}
+for (const node of nodes ?? []) {
+  if (!Object.hasOwn(node, "completionMode")) {
+    errors.push(`${node.nodeCode}: missing catalog property completionMode`);
+  } else if (!completionModes.has(node.completionMode)) {
+    errors.push(
+      `${node.nodeCode}: invalid completion mode ${node.completionMode}`,
+    );
+  }
 }
 if (
   JSON.stringify(events?.map((item) => item.eventCode)) !==

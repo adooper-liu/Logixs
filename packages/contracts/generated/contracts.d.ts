@@ -49,6 +49,11 @@ export type EventRole = ("milestone" | "evidence" | "exception" | "prerequisite"
 export type NodeApplicability = ("required" | "optional_applicable" | "optional_not_applicable")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "CompletionMode".
+ */
+export type CompletionMode = ("fact_driven" | "needs_manual_fact")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "FlowInstanceState".
  */
 export type FlowInstanceState = ("draft" | "active" | "completed" | "cancelled")
