@@ -1,0 +1,617 @@
+{
+  "sourceDirectoryFileCount": 44,
+  "files": [
+    {
+      "fileName": "26DSC01811,26DSC01812 NBOZ9FF56400 Wayfair 福州.xls",
+      "sizeBytes": 4824,
+      "sha256": "16179be0eea03154cafb30491c1a05f631e1bb12ed4a44455321e33c0f020c97",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Wayfair福州模板",
+          "rowCount": 5,
+          "columnCount": 14
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811,26DSC01812NBOZ9FF56400COSCO南京预配舱单.xls",
+      "sizeBytes": 83869,
+      "sha256": "7bccb7c0bfeafabf5984f253fe6fbcee630af18d50ffb837c4a5d68cd7c794a2",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet1",
+          "rowCount": 25,
+          "columnCount": 40
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811,26DSC01812NBOZ9FF56400COSCO预配舱单.xls",
+      "sizeBytes": 122861,
+      "sha256": "b540776066a5a3dfe9759e4f0c9079e1a5bd678e4c6c8e1432739b7ee29d1f42",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet1",
+          "rowCount": 25,
+          "columnCount": 38
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811,26DSC01812NBOZ9FF56400Wayfair上海 (1).xls",
+      "sizeBytes": 59742,
+      "sha256": "3a8d9410e781d4f85a6572d96664ca67107f40620f4da543b4b839a322be3d5f",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet1",
+          "rowCount": 10,
+          "columnCount": 76
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811,26DSC01812NBOZ9FF56400Wayfair上海.xls",
+      "sizeBytes": 59742,
+      "sha256": "3a8d9410e781d4f85a6572d96664ca67107f40620f4da543b4b839a322be3d5f",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet1",
+          "rowCount": 10,
+          "columnCount": 76
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811,26DSC01812NBOZ9FF56400Wayfair天津.xls",
+      "sizeBytes": 32555,
+      "sha256": "f369d5efa1592d3f3e5162cdee784710abdc7aaf13ba9106fc02584db2cd3c59",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet1",
+          "rowCount": 6,
+          "columnCount": 45
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811,26DSC01812NBOZ9FF56400Wayfair青岛捷丰.xls",
+      "sizeBytes": 17006,
+      "sha256": "9df316dd76c3feb1814191e3098f2b093fc4d1c7835819166ed08b21d07d341d",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet1",
+          "rowCount": 5,
+          "columnCount": 34
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811,26DSC01812NBOZ9FF56400南京出运表.xls",
+      "sizeBytes": 4292,
+      "sha256": "537bd503d8c5de84e08162b4ed32dff3693f7c08dadbd76d86b84da665583693",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet0",
+          "rowCount": 6,
+          "columnCount": 13
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811-NBOZ9FF56400出运备注清单.pdf",
+      "sizeBytes": 49984,
+      "sha256": "7388b16c33a5934525a40ba4fbe80a91112782e568a1aa1d5a89ec1442a271eb",
+      "actualFormat": "pdf",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "pageCount": 1
+    },
+    {
+      "fileName": "26DSC01811-NBOZ9FF56400截单ENS.xls",
+      "sizeBytes": 6059,
+      "sha256": "3cafae2e8265f32cf854df46a1a6038297d636b29532a7252f87f019710f9420",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet0",
+          "rowCount": 32,
+          "columnCount": 11
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811-NBOZ9FF56400提单打印.xls",
+      "sizeBytes": 10632,
+      "sha256": "33ae8d9dff3502627713f143fa941762ffc2902f6c78679fae6fb00baaa932d3",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet0",
+          "rowCount": 36,
+          "columnCount": 31
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811-NBOZ9FF56400预配舱单.xls",
+      "sizeBytes": 127654,
+      "sha256": "7c376f3a5e4d97c21f21fe344747a46c92501ee7056767e85be5cfc93c63371b",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "26DSC01811预配舱单",
+          "rowCount": 73,
+          "columnCount": 13
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01811NBOZ9FF56400HMM多品名HSCODE明细.xls",
+      "sizeBytes": 30717,
+      "sha256": "8b39c7ff398d45e6e7371295d1f42cb64944058e753489795ab2bf6bf461a263",
+      "actualFormat": "spreadsheetml-2003",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet1",
+          "rowCount": 31,
+          "columnCount": 18
+        }
+      ]
+    },
+    {
+      "fileName": "26DSC01812NBOZ9FF56400COSCO付费方式更改申请单.doc",
+      "sizeBytes": 71391,
+      "sha256": "2768ffd5ad2da02f07bb77fb234396fa949366b73e0951f622eb96953a9d0803",
+      "actualFormat": "doc",
+      "parseStatus": "not_parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "26DSC01812关单下载.zip",
+      "sizeBytes": 36663,
+      "sha256": "51ea1d82563caedb30764f2066c12a37db29f9be68d81ba891f51925dcfc5def",
+      "actualFormat": "zip",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "archiveEntries": [
+        {
+          "name": "attachments/26DSC01812NBOZ9FF56400C╫░╧Σ╡Ñ.xls",
+          "sizeBytes": 17424,
+          "sha256": "be6cca11925c76c6de0ad7d20c2ccc5580d621d02bef5c9487a94ac3b2fa6b9b",
+          "actualFormat": "xlsx"
+        },
+        {
+          "name": "attachments/26DSC01812NBOZ9FF56400D╫░╧Σ╡Ñ.xls",
+          "sizeBytes": 21188,
+          "sha256": "540c1d2bf4983d4d51f7b134407c5323eb92aa270f2740f5f0f2888c2e96ddd8",
+          "actualFormat": "xlsx"
+        }
+      ]
+    },
+    {
+      "fileName": "丹马士订舱-截单.xlsx",
+      "sizeBytes": 4284,
+      "sha256": "e969a8554049428d2ac42b4ef5b98aaadf6b11bb8e72a5850672d45d7c45ee9f",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet0",
+          "rowCount": 2,
+          "columnCount": 22
+        }
+      ]
+    },
+    {
+      "fileName": "主备货单号26DSC01811-NBOZ9FF56400-单箱品名打印.xls",
+      "sizeBytes": 4447,
+      "sha256": "b53c136d9a011831f216f6fa1a3578843675d7393b5612955858498ae7934cb6",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "Sheet0",
+          "rowCount": 5,
+          "columnCount": 10
+        }
+      ]
+    },
+    {
+      "fileName": "图片1.png",
+      "sizeBytes": 16894,
+      "sha256": "5339ffc17fe1c64fcb838f2de0866bd40e66b403fb00a9ed5a35ec5ccd25ee47",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片2.png",
+      "sizeBytes": 8749,
+      "sha256": "425daa2be8e45a0d0021d55b6e49adddee9e51f1238cc61081051d4bfda57c2b",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片210.png",
+      "sizeBytes": 28779,
+      "sha256": "c5c53f3ed95edd2214b58ac07d568bcc76215f7a8edcfea7d940ae2f96a1617e",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片22.png",
+      "sizeBytes": 43525,
+      "sha256": "adc52e6c2c967cb25692abd77e4f1ebe3fb0bb10bcc2be0dd76454b9e602abb9",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片23.png",
+      "sizeBytes": 63469,
+      "sha256": "4f26759ce442333d0b9a3608713dc5eefa271eed1c2411a865e1493ddc799c89",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片24.png",
+      "sizeBytes": 22475,
+      "sha256": "03ba2a0749ea87413e740f21427edf43e2b04a43727f737a454ec7f84c65aa9c",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片25.png",
+      "sizeBytes": 73910,
+      "sha256": "6c16e5cf9a055845da01935de108144d518c5570792d9cc1456ab042efce819c",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片26.png",
+      "sizeBytes": 78371,
+      "sha256": "9046299204b46a11800f85f942dcdadb60495ceb3ce55d6fe4d3db6a3322ac47",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片27.png",
+      "sizeBytes": 71506,
+      "sha256": "92fb0f5f7359c6f4a56d7e8134d919dcbcbdfc943fbab0b7efc51e9d0335ea89",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片28.png",
+      "sizeBytes": 30326,
+      "sha256": "d8f0225f831bff885bdbde76b45d71ac701dddc77422a147564d02bf3a433143",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片29.png",
+      "sizeBytes": 35456,
+      "sha256": "5e29723045fba736b5190bd0e498caac8013cab42d5a6d479f4a20492c0b154a",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片3.png",
+      "sizeBytes": 11000,
+      "sha256": "2600829b1a7e4d76f4259dced072059cbadfdaf83dfc32aa117e150e1b6a6b91",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "图片4.png",
+      "sizeBytes": 6234,
+      "sha256": "9022e85c4889a8447746b6d45c46a4a3081ec985c1e372bf2ccfa9aff0af8b11",
+      "actualFormat": "image",
+      "parseStatus": "parsed",
+      "parseError": null
+    },
+    {
+      "fileName": "备货单号 26DSC01812-NBOZ9FF56400品名明细.pdf",
+      "sizeBytes": 55881,
+      "sha256": "d99815f0242b8c7b220700a781ff2ccedb69f65c474d6e4f026e105840d5d497",
+      "actualFormat": "pdf",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "pageCount": 1
+    },
+    {
+      "fileName": "引出列表_备货平台_0921160039.xlsx",
+      "sizeBytes": 9647,
+      "sha256": "2fd125a5b8956555cc40cb19fd694eb2ae6cad1a3acd2c2312eaf4154da40da4",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "列表数据",
+          "rowCount": 20,
+          "columnCount": 63
+        }
+      ]
+    },
+    {
+      "fileName": "引出列表_报关平台_0921165715.xlsx",
+      "sizeBytes": 6151,
+      "sha256": "079e08b29290c85668c33f00f80e791946a1cdf593c004f91624fda1e3f7d817",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "列表数据",
+          "rowCount": 3,
+          "columnCount": 73
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_BOM信息导出_0921165551.xlsx",
+      "sizeBytes": 6604,
+      "sha256": "e4d891bf7d31a285f968d9c0faeb2449e0a07e912a1d1bf89ab1ba2d693cf74d",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 16,
+          "columnCount": 5
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 2,
+          "columnCount": 2
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_出运数量目的港仓库组出运计划编号_0921160132.xlsx",
+      "sizeBytes": 7513,
+      "sha256": "4dbeb6f0d39d67e2e198783309265fc617ff6bcb7dfc77809c993f17d58a0385",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 20,
+          "columnCount": 9
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 6,
+          "columnCount": 2
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_备货单信息备份_0921160115.xlsx",
+      "sizeBytes": 8076,
+      "sha256": "40d0b6bf54a2bcc72692d5872ca264bf92068b974fb8678c2941b37c2720539f",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 20,
+          "columnCount": 13
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 6,
+          "columnCount": 3
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_备货单全量数据_0921160159.xlsx",
+      "sizeBytes": 16847,
+      "sha256": "22a782e82c3140109b60c1a714e42ceaf052a928bb5a2b2ae27c47efc717b85e",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 20,
+          "columnCount": 83
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 2,
+          "columnCount": 39
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_备货平台拖进港数据_0921160106.xlsx",
+      "sizeBytes": 30531,
+      "sha256": "9b7dbad433efcffee17af2167da6479042fb2f55b8f7e8caeeddce60d45e897a",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 20,
+          "columnCount": 226
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 6,
+          "columnCount": 226
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_报关发票信息导出_0921165542.xlsx",
+      "sizeBytes": 6130,
+      "sha256": "594a124c7bbf87efab75a2a669d438cc06698153d5c843da5235317e3d461e02",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 3,
+          "columnCount": 4
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 2,
+          "columnCount": 3
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_植检标记_0921160148.xlsx",
+      "sizeBytes": 8711,
+      "sha256": "27eeec9966834548c3474066c0c6fcb4b804903546d6045cc4527b09e3dedb63",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 20,
+          "columnCount": 18
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 2,
+          "columnCount": 12
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_进仓修复_0921160140.xlsx",
+      "sizeBytes": 6366,
+      "sha256": "1d15e864af5556cfa3d3dc427ceb047f6f0f3e1b51316fe779d4fc940f0ea83e",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 20,
+          "columnCount": 4
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 1,
+          "columnCount": 1
+        }
+      ]
+    },
+    {
+      "fileName": "引出数据_进港箱单CNY商检数据导出_0921160123.xlsx",
+      "sizeBytes": 6439,
+      "sha256": "f81da03bf376bf4c4672db4f6e5bb749f57d2c627a9907d44762a23f40f1cb4f",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "sheet1",
+          "rowCount": 7,
+          "columnCount": 4
+        },
+        {
+          "name": "dropdown_items_sheet",
+          "rowCount": 2,
+          "columnCount": 4
+        }
+      ]
+    },
+    {
+      "fileName": "托单与订舱回执列表_0921.xlsx",
+      "sizeBytes": 4973,
+      "sha256": "9e6bc7179934ce7316479e8dbb2971e2c1295f12ac9b9a10e723ca20f16e5595",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "托单与订舱回执列表",
+          "rowCount": 2,
+          "columnCount": 48
+        }
+      ]
+    },
+    {
+      "fileName": "报关平台.xlsx",
+      "sizeBytes": 17723,
+      "sha256": "fcbeedd8ed65a9de854e05381bd9fa3dc4dcfb5dcaee133092d268a6b8981425",
+      "actualFormat": "xlsx",
+      "parseStatus": "parsed",
+      "parseError": null,
+      "sheets": [
+        {
+          "name": "货物BOM",
+          "rowCount": 16,
+          "columnCount": 36
+        },
+        {
+          "name": "报关明细",
+          "rowCount": 11,
+          "columnCount": 22
+        },
+        {
+          "name": "报关票数",
+          "rowCount": 3,
+          "columnCount": 37
+        }
+      ]
+    }
+  ]
+}
