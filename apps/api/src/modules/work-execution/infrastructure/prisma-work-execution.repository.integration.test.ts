@@ -28,7 +28,10 @@ beforeAll(async () => {
     stdio: "pipe",
   });
   prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: testDatabaseUrl }),
+    adapter: new PrismaPg(
+      { connectionString: testDatabaseUrl },
+      { schema: schemaName },
+    ),
   });
   await prisma.$connect();
   repository = new PrismaWorkExecutionRepository(prisma as never);
@@ -38,9 +41,12 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma?.$disconnect();
   const admin = new PrismaClient({
-    adapter: new PrismaPg({
-      connectionString: withSchema(BASE_DATABASE_URL, "public"),
-    }),
+    adapter: new PrismaPg(
+      {
+        connectionString: withSchema(BASE_DATABASE_URL, "public"),
+      },
+      { schema: "public" },
+    ),
   });
   try {
     await admin.$executeRawUnsafe(
@@ -97,22 +103,22 @@ describe("PrismaWorkExecutionRepository lifecycle fact reconciliation", () => {
   it("事实应用写入中途失败时工单、任务和 Outcome 全部回滚", async () => {
     const fixture = await createFixture();
     await prisma.$executeRawUnsafe(`
-      CREATE FUNCTION "fail_work_fact_outcome_insert"()
+      CREATE FUNCTION "${schemaName}"."fail_work_fact_outcome_insert"()
       RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
         RAISE EXCEPTION 'forced outcome failure';
       END;
       $$;
       CREATE TRIGGER "fail_work_fact_outcome_insert"
-      BEFORE INSERT ON "node_task_outcome"
-      FOR EACH ROW EXECUTE FUNCTION "fail_work_fact_outcome_insert"();
+      BEFORE INSERT ON "${schemaName}"."node_task_outcome"
+      FOR EACH ROW EXECUTE FUNCTION "${schemaName}"."fail_work_fact_outcome_insert"();
     `);
     try {
       await expect(service.execute(fixture.command)).rejects.toBeTruthy();
     } finally {
       await prisma.$executeRawUnsafe(`
-        DROP TRIGGER "fail_work_fact_outcome_insert" ON "node_task_outcome";
-        DROP FUNCTION "fail_work_fact_outcome_insert"();
+        DROP TRIGGER "fail_work_fact_outcome_insert" ON "${schemaName}"."node_task_outcome";
+        DROP FUNCTION "${schemaName}"."fail_work_fact_outcome_insert"();
       `);
     }
 

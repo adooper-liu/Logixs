@@ -326,10 +326,11 @@ describe("PrismaLifecycleRepository node event applications", () => {
   });
 
   it("完成目标节点、激活下一节点并原子记录 applied", async () => {
+    const occurredAt = new Date("2026-09-18T10:00:00Z");
     const tx = {
       nodeEventApplication: {
         findUnique: vi.fn().mockResolvedValue(null),
-        upsert: vi.fn().mockResolvedValue({}),
+        upsert: vi.fn().mockResolvedValue({ id: "application-1" }),
       },
       nodeInstance: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({
@@ -343,8 +344,21 @@ describe("PrismaLifecycleRepository node event applications", () => {
       },
       flowInstance: {
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: vi.fn(),
+        findUniqueOrThrow: vi
+          .fn()
+          .mockResolvedValue({ containerId: "container-1" }),
       },
+      canonicalEvent: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          containerId: "container-1",
+          occurredAt,
+          domainFact: { traceId: "trace-1" },
+        }),
+      },
+      containerRecord: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ tenantId: "tenant-1" }),
+      },
+      outboxMessage: { create: vi.fn().mockResolvedValue({}) },
     };
     const prisma = {
       $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) =>
@@ -352,9 +366,9 @@ describe("PrismaLifecycleRepository node event applications", () => {
       ),
     };
     const repository = new PrismaLifecycleRepository(prisma as never);
-    const occurredAt = new Date("2026-09-18T10:00:00Z");
 
     const result = await repository.applyEventToNode({
+      tenantId: "tenant-1",
       flowInstanceId: "flow-1",
       expectedFlowVersion: 3,
       eventId: "event-1",
@@ -365,6 +379,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
       evaluatedAt: occurredAt,
       guardResults: ["PREDECESSOR_NODES_COMPLETED"],
       routeSegmentGuard: null,
+      traceId: "trace-1",
     });
 
     expect(result).toEqual({ applied: true, version: 4 });
@@ -386,6 +401,79 @@ describe("PrismaLifecycleRepository node event applications", () => {
         update: expect.objectContaining({ state: "applied" }),
       }),
     );
+    expect(tx.outboxMessage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: "tenant-1",
+        eventType: "work_execution.reconcile_applied_lifecycle_fact.requested",
+        aggregateType: "node_event_application",
+        aggregateId: "application-1",
+        payloadRef: "node-event-application/application-1",
+        causationId: "event-1",
+        state: "pending",
+      }),
+    });
+  });
+
+  it("专用 Outbox 写入失败时整个节点应用事务拒绝", async () => {
+    const occurredAt = new Date("2026-09-18T10:00:00Z");
+    const tx = {
+      nodeEventApplication: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        upsert: vi.fn().mockResolvedValue({ id: "application-1" }),
+      },
+      nodeInstance: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "node-ocean",
+          flowInstanceId: "flow-1",
+          nodeCode: "ocean_transit",
+          state: "active",
+        }),
+        update: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      flowInstance: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: vi
+          .fn()
+          .mockResolvedValue({ containerId: "container-1" }),
+      },
+      canonicalEvent: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          containerId: "container-1",
+          occurredAt,
+          domainFact: { traceId: "trace-1" },
+        }),
+      },
+      containerRecord: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ tenantId: "tenant-1" }),
+      },
+      outboxMessage: {
+        create: vi.fn().mockRejectedValue(new Error("outbox write failed")),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) =>
+        fn(tx),
+      ),
+    };
+    const repository = new PrismaLifecycleRepository(prisma as never);
+
+    await expect(
+      repository.applyEventToNode({
+        tenantId: "tenant-1",
+        flowInstanceId: "flow-1",
+        expectedFlowVersion: 3,
+        eventId: "event-1",
+        targetNodeInstanceId: "node-ocean",
+        targetNodeCode: "ocean_transit",
+        nextNodeCode: "customs_clearance",
+        occurredAt,
+        evaluatedAt: occurredAt,
+        guardResults: [],
+        routeSegmentGuard: null,
+        traceId: "trace-1",
+      }),
+    ).rejects.toThrow("outbox write failed");
   });
 
   it("流程版本冲突时不接受本次节点转换", async () => {
@@ -412,6 +500,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
 
     await expect(
       repository.applyEventToNode({
+        tenantId: "tenant-1",
         flowInstanceId: "flow-1",
         expectedFlowVersion: 3,
         eventId: "event-1",
@@ -422,6 +511,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
         evaluatedAt: new Date("2026-09-18T10:00:01Z"),
         guardResults: [],
         routeSegmentGuard: null,
+        traceId: "trace-1",
       }),
     ).rejects.toThrow("LIFECYCLE_VERSION_CONFLICT");
   });
@@ -448,6 +538,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
 
     await expect(
       repository.applyEventToNode({
+        tenantId: "tenant-1",
         flowInstanceId: "flow-1",
         expectedFlowVersion: 3,
         eventId: "event-1",
@@ -458,6 +549,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
         evaluatedAt: new Date("2026-09-18T10:00:01Z"),
         guardResults: [],
         routeSegmentGuard: null,
+        traceId: "trace-1",
       }),
     ).rejects.toThrow("LIFECYCLE_NODE_BLOCKED");
     expect(tx.flowInstance.updateMany).not.toHaveBeenCalled();
@@ -486,6 +578,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
 
     await expect(
       repository.applyEventToNode({
+        tenantId: "tenant-1",
         flowInstanceId: "flow-1",
         expectedFlowVersion: 3,
         eventId: "event-1",
@@ -506,6 +599,7 @@ describe("PrismaLifecycleRepository node event applications", () => {
           destinationLocationId: null,
           destinationPortCallId: null,
         },
+        traceId: "trace-1",
       }),
     ).rejects.toThrow("LIFECYCLE_EVENT_ROUTE_MISMATCH");
     expect(tx.flowInstance.updateMany).not.toHaveBeenCalled();

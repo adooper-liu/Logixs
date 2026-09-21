@@ -148,6 +148,52 @@ describe("PublishOutboxBatchService", () => {
     });
   });
 
+  it("任务尚未初始化先进入 retry_wait，下一次排空成功后 published", async () => {
+    const deliver = vi
+      .fn()
+      .mockRejectedValueOnce(new OutboxDeliveryError("task_not_initialized"))
+      .mockResolvedValueOnce({ brokerReference: "work-execution:evt-1" });
+    const { service, outbox } = await buildService({ deliver });
+
+    await expect(
+      service.execute({ tenantId: "t1", operatorId: "op-1" }),
+    ).resolves.toMatchObject({ retryWait: 1, published: 0 });
+    await expect(
+      service.execute({ tenantId: "t1", operatorId: "op-1" }),
+    ).resolves.toMatchObject({ retryWait: 0, published: 1 });
+
+    expect(outbox.markDeliveryFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        decision: expect.objectContaining({
+          state: "retry_wait",
+          lastErrorCode: "task_not_initialized",
+        }),
+      }),
+    );
+    expect(outbox.markPublished).toHaveBeenCalledOnce();
+  });
+
+  it("稳定业务拒绝直接进入 dead_letter", async () => {
+    const { service, outbox } = await buildService({
+      deliver: vi
+        .fn()
+        .mockRejectedValue(new OutboxDeliveryError("node_task_cancelled")),
+    });
+
+    await expect(
+      service.execute({ tenantId: "t1", operatorId: "op-1" }),
+    ).resolves.toMatchObject({ retryWait: 0, deadLetter: 1 });
+    expect(outbox.markDeliveryFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        decision: expect.objectContaining({
+          state: "dead_letter",
+          lastErrorCode: "node_task_cancelled",
+          failureCategory: "business",
+        }),
+      }),
+    );
+  });
+
   it("未知失败进入 dead_letter", async () => {
     const { service, outbox, postNotification } = await buildService({
       deliver: vi.fn().mockRejectedValue(new Error("broker down")),

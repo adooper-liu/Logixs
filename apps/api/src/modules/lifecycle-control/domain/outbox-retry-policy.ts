@@ -7,6 +7,8 @@ export const FIRST_SLICE_OUTBOX_RETRY_POLICY: OutboxRetryPolicy = {
     "network_error",
     "rate_limited",
     "dependency_unavailable",
+    "task_not_initialized",
+    "concurrency_conflict",
   ],
   initialDelaySeconds: 5,
   backoffMultiplier: 2,

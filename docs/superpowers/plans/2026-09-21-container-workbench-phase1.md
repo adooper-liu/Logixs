@@ -362,7 +362,7 @@ pnpm --filter @logix/api test:integration -- src/modules/work-execution/infrastr
 5. 业务 rejected（如 task cancelled、required failed 或定义不明）使用稳定非重试错误码进入 dead-letter；人工重放沿用原 business fact key。
 6. 迁移为历史 `NodeEventApplication(applied)` 补建专用 reconciliation Outbox。重复送达由 FactApplication 幂等兜底，绝不再次调用 `applyEventToNode`、激活下一节点或重写日期事实。
 
-- [ ] **Step 1: 写事务 Outbox 与投递失败测试**
+- [x] **Step 1: 写事务 Outbox 与投递失败测试**
 
 覆盖：
 
@@ -375,11 +375,11 @@ pnpm --filter @logix/api test:integration -- src/modules/work-execution/infrastr
 - 既有 canonical event 投递不被专用 adapter 吞掉或改义。
 - 历史 applied 节点应用的迁移回填无重复、可再次运行验证查询。
 
-- [ ] **Step 2: 接线并补 Nest 装配测试**
+- [x] **Step 2: 接线并补 Nest 装配测试**
 
 `LifecycleControlModule` 注册组合 delivery adapter 并注入 `RECONCILE_APPLIED_LIFECYCLE_FACT`；`WorkExecutionModule` 必须实际 export 该 token。补模块编译测试，防止漏 provider/export 或形成新的内部路径依赖。
 
-- [ ] **Step 3: 专项验证**
+- [x] **Step 3: 专项验证**
 
 Run:
 

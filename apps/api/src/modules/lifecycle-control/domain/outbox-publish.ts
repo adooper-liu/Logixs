@@ -23,6 +23,7 @@ export interface ClaimedOutbox {
   ownerModule: string;
   eventId: string;
   eventType: string;
+  eventVersion: number;
   aggregateType: string;
   aggregateId: string;
   payloadRef: string;

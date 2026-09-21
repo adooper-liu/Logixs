@@ -449,6 +449,7 @@ export class ApplyLifecycleEventService {
       });
       try {
         const transition = await this.repository.applyEventToNode({
+          tenantId: input.tenantId,
           flowInstanceId: flow.flow.id,
           expectedFlowVersion: flow.flow.version,
           eventId: canonicalEventId,
@@ -459,6 +460,9 @@ export class ApplyLifecycleEventService {
           evaluatedAt: new Date(),
           guardResults,
           routeSegmentGuard: routeSegment,
+          traceId:
+            input.traceId ??
+            `lifecycle-reconciliation:${canonicalEventId}:${target.id}`,
         });
         if (transition.applied) completedNodes.push(targetNodeCode);
       } catch (error) {

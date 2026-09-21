@@ -23,6 +23,7 @@ type ClaimRow = {
   owner_module: string;
   event_id: string;
   event_type: string;
+  event_version: number;
   aggregate_type: string;
   aggregate_id: string;
   payload_ref: string;
@@ -94,6 +95,7 @@ export class PrismaOutboxRepository implements OutboxRepository {
         o."owner_module",
         o."event_id",
         o."event_type",
+        o."event_version",
         o."aggregate_type",
         o."aggregate_id",
         o."payload_ref",
@@ -382,6 +384,7 @@ function toClaimed(row: ClaimRow): ClaimedOutbox | null {
     ownerModule: row.owner_module,
     eventId: row.event_id,
     eventType: row.event_type,
+    eventVersion: row.event_version,
     aggregateType: row.aggregate_type,
     aggregateId: row.aggregate_id,
     payloadRef: row.payload_ref,
