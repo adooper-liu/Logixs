@@ -101,7 +101,7 @@ describe("decideNodeSpecializedGuard", () => {
     });
   });
 
-  it("不替其他节点臆造专项条件", () => {
+  it("出运快照未确认时保留 loaded 待应用", () => {
     expect(
       decideNodeSpecializedGuard({
         targetNodeCode: "shipment_dispatch",
@@ -109,8 +109,37 @@ describe("decideNodeSpecializedGuard", () => {
         containerNumber: null,
         location: null,
         routeSegment: null,
+        dispatchReadiness: {
+          confirmed: false,
+          reasonCode: "LIFECYCLE_EVENT_PENDING_DISPATCH_SNAPSHOT",
+        },
       }),
-    ).toEqual({ kind: "apply", guardResults: [] });
+    ).toEqual({
+      kind: "pending_application",
+      guardResults: [],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_DISPATCH_SNAPSHOT",
+    });
+  });
+
+  it("当前出运交接和证据均确认后允许 loaded 继续通用过站", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "shipment_dispatch",
+        eventCode: "loaded",
+        containerNumber: "KOCU4960726",
+        location: null,
+        routeSegment: null,
+        dispatchReadiness: { confirmed: true, reasonCode: null },
+      }),
+    ).toEqual({
+      kind: "apply",
+      guardResults: [
+        "CONTAINER_DISPATCH_SNAPSHOT_CURRENT",
+        "CONTAINER_DISPATCH_STUFFING_CURRENT",
+        "CONTAINER_DISPATCH_VGM_ACCEPTED",
+        "CONTAINER_DISPATCH_EVIDENCE_LINKED",
+      ],
+    });
   });
 
   it.each([

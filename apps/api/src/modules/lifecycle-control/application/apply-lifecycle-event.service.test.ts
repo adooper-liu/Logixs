@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import {
   ApplyContainerRecordService,
+  GET_CONTAINER_DISPATCH_READINESS,
   GET_CONTAINER_STUFFING_READINESS,
 } from "../../shipment-registry";
 import { EVALUATE_CARGO_READY_COMPLIANCE } from "../../compliance-management";
@@ -144,6 +145,13 @@ async function buildService(
       snapshotId: "77777777-7777-4777-8777-777777777777",
     }),
   },
+  getContainerDispatchReadiness = {
+    execute: vi.fn().mockResolvedValue({
+      confirmed: true,
+      reasonCode: null,
+      snapshotId: "88888888-8888-4888-8888-888888888888",
+    }),
+  },
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -164,6 +172,10 @@ async function buildService(
         provide: GET_CONTAINER_STUFFING_READINESS,
         useValue: getContainerStuffingReadiness,
       },
+      {
+        provide: GET_CONTAINER_DISPATCH_READINESS,
+        useValue: getContainerDispatchReadiness,
+      },
     ],
   }).compile();
   return {
@@ -173,6 +185,7 @@ async function buildService(
     assertStateEvidence,
     evaluateCargoReadyCompliance,
     getContainerStuffingReadiness,
+    getContainerDispatchReadiness,
   };
 }
 
@@ -426,6 +439,39 @@ describe("ApplyLifecycleEventService", () => {
     expect(result.resultingStatus).toBe("shipped");
     expect(result.activatedNodeCode).toBe("origin_departure");
     expect(result.activatedNodeTaskId).toBe("task-depart");
+  });
+
+  it("loaded 在出运交接缺失时保留待应用并等待自动重放", async () => {
+    const repository = buildRepository("not_shipped");
+    useFlow(repository, flowAt("shipment_dispatch"));
+    const dispatchReadiness = {
+      execute: vi.fn().mockResolvedValue({
+        confirmed: false,
+        reasonCode: "LIFECYCLE_EVENT_PENDING_DISPATCH_SNAPSHOT",
+        snapshotId: null,
+      }),
+    };
+    const { service } = await buildService(
+      repository,
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      dispatchReadiness,
+    );
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "loaded",
+    });
+
+    expect(result.completedNodes).toEqual([]);
+    expect(result.pendingReasonCodes.shipment_dispatch).toBe(
+      "LIFECYCLE_EVENT_PENDING_DISPATCH_SNAPSHOT",
+    );
+    expect(repository.applyEventToNode).not.toHaveBeenCalled();
   });
 
   it("departed 完成后为海运在途节点建任务", async () => {

@@ -127,4 +127,18 @@ describe("navigationForRole", () => {
       expect(items[stuffing]?.label).toBe("装箱工作台");
     }
   });
+
+  it("shows the dispatch workbench immediately after stuffing", () => {
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      const stuffing = items.findIndex(
+        (item) => item.path === "/workspaces/stuffing",
+      );
+      const dispatch = items.findIndex(
+        (item) => item.path === "/workspaces/dispatch",
+      );
+      expect(dispatch).toBe(stuffing + 1);
+      expect(items[dispatch]?.label).toBe("出运工作台");
+    }
+  });
 });

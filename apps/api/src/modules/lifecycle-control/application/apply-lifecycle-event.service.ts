@@ -13,7 +13,9 @@ import type {
 } from "@logix/contracts";
 import {
   ApplyContainerRecordService,
+  GET_CONTAINER_DISPATCH_READINESS,
   GET_CONTAINER_STUFFING_READINESS,
+  type GetContainerDispatchReadinessPort,
   type GetContainerStuffingReadinessPort,
 } from "../../shipment-registry";
 import {
@@ -104,6 +106,8 @@ export class ApplyLifecycleEventService {
     private readonly evaluateCargoReadyCompliance: EvaluateCargoReadyCompliancePort,
     @Inject(GET_CONTAINER_STUFFING_READINESS)
     private readonly getContainerStuffingReadiness: GetContainerStuffingReadinessPort,
+    @Inject(GET_CONTAINER_DISPATCH_READINESS)
+    private readonly getContainerDispatchReadiness: GetContainerDispatchReadinessPort,
   ) {}
 
   async execute(
@@ -282,6 +286,14 @@ export class ApplyLifecycleEventService {
           targetNodeCode === "container_stuffing" &&
           input.eventCode === "stuffed"
             ? await this.getContainerStuffingReadiness.execute({
+                tenantId: input.tenantId,
+                containerRecordId: input.containerId,
+                evidenceRefs,
+              })
+            : null,
+        dispatchReadiness:
+          targetNodeCode === "shipment_dispatch" && input.eventCode === "loaded"
+            ? await this.getContainerDispatchReadiness.execute({
                 tenantId: input.tenantId,
                 containerRecordId: input.containerId,
                 evidenceRefs,

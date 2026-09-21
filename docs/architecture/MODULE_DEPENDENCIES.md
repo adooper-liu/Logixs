@@ -62,7 +62,7 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 
 `compliance-lifecycle-orchestration` 编排两条跨模块用例：“创建合规评审 -> 向 work-execution 投影整改工作项”和“提交合规决定 -> 请求 lifecycle-control 重放既有 pending 日期事实”。`compliance-management` 不反向依赖 `work-execution` 或 `lifecycle-control`；评审/决定、工作项、日期事实和生命周期事务仍由各自模块拥有。
 
-`shipment-lifecycle-orchestration` 编排“核验装箱证据 -> 保存版本化装箱快照 -> 请求 lifecycle-control 重放本柜 pending 日期事实”。`shipment-registry` 继续拥有装箱事实，`document-records` 继续拥有证据核验，`lifecycle-control` 继续拥有日期事实和过站；三者只暴露公开 Port，不形成反向依赖。
+`shipment-lifecycle-orchestration` 编排“核验证据 -> 保存版本化装箱/出运交接快照 -> 请求 lifecycle-control 重放本柜 pending 日期事实”。`shipment-registry` 继续拥有装箱和出运交接事实，`document-records` 继续拥有证据核验，`lifecycle-control` 继续拥有日期事实和过站；三者只暴露公开 Port，不形成反向依赖。
 
 ## 3. 禁止依赖
 

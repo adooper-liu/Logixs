@@ -14,6 +14,10 @@ export function decideNodeSpecializedGuard(input: {
     confirmed: boolean;
     reasonCode: string | null;
   } | null;
+  dispatchReadiness?: {
+    confirmed: boolean;
+    reasonCode: string | null;
+  } | null;
 }): NodeEventApplicationDecision {
   if (
     input.targetNodeCode === "cargo_ready" &&
@@ -26,6 +30,30 @@ export function decideNodeSpecializedGuard(input: {
           guardResults: [],
           reasonCode: "LIFECYCLE_EVENT_PENDING_COMPLIANCE",
         };
+  }
+
+  if (
+    input.targetNodeCode === "shipment_dispatch" &&
+    input.eventCode === "loaded"
+  ) {
+    if (!input.dispatchReadiness?.confirmed) {
+      return {
+        kind: "pending_application",
+        guardResults: [],
+        reasonCode:
+          input.dispatchReadiness?.reasonCode ??
+          "LIFECYCLE_EVENT_PENDING_DISPATCH_SNAPSHOT",
+      };
+    }
+    return {
+      kind: "apply",
+      guardResults: [
+        "CONTAINER_DISPATCH_SNAPSHOT_CURRENT",
+        "CONTAINER_DISPATCH_STUFFING_CURRENT",
+        "CONTAINER_DISPATCH_VGM_ACCEPTED",
+        "CONTAINER_DISPATCH_EVIDENCE_LINKED",
+      ],
+    };
   }
 
   if (

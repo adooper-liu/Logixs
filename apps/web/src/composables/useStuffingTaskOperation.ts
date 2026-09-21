@@ -1,5 +1,4 @@
 import { computed, ref, shallowRef, type Ref } from "vue";
-import type { ContainerStuffingSnapshot } from "../api/containerStuffing";
 import {
   claimWorkOrder,
   completeWorkOrder,
@@ -19,7 +18,7 @@ import type { SubmissionView } from "../data/sample";
 
 export function useStuffingTaskOperation(
   task: Ref<NodeTaskDetail | null>,
-  snapshot: Readonly<Ref<ContainerStuffingSnapshot | null>>,
+  snapshot: Readonly<Ref<{ evidenceRefs: readonly string[] } | null>>,
   reload: () => Promise<void>,
 ) {
   const submitting = shallowRef(false);
@@ -64,7 +63,7 @@ export function useStuffingTaskOperation(
           }),
         );
       } else {
-        throw new Error("ACTION_NOT_ALLOWED: 当前动作不受装箱工作台支持");
+        throw new Error("ACTION_NOT_ALLOWED: 当前动作不受岗位工作台支持");
       }
       if (submissions.value[currentTask.id]?.stage === "committed") {
         idempotencyKeys.delete(action.workOrderId);
