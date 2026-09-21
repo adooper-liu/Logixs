@@ -82,6 +82,7 @@ import { PrismaLifecycleRepository } from "./infrastructure/prisma-lifecycle.rep
 import { PrismaOutboxRepository } from "./infrastructure/prisma-outbox.repository";
 import { PrismaNodeBlockRepository } from "./infrastructure/prisma-node-block.repository";
 import { StubOutboxDelivery } from "./infrastructure/stub-outbox-delivery";
+import { WorkExecutionOutboxDelivery } from "./infrastructure/work-execution-outbox-delivery";
 import { LifecycleController } from "./presentation/lifecycle.controller";
 import { LifecycleNodesController } from "./presentation/lifecycle-nodes.controller";
 import { LifecycleCurrentNodesController } from "./presentation/lifecycle-current-nodes.controller";
@@ -189,7 +190,9 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
       provide: COMPENSATION_REPOSITORY,
       useClass: PrismaCompensationRepository,
     },
-    { provide: OUTBOX_DELIVERY, useClass: StubOutboxDelivery },
+    StubOutboxDelivery,
+    WorkExecutionOutboxDelivery,
+    { provide: OUTBOX_DELIVERY, useExisting: WorkExecutionOutboxDelivery },
     { provide: INBOX_CONSUMPTION, useClass: LifecycleInboxConsumption },
     {
       provide: APPLY_LIFECYCLE_EVENT_ONCE,

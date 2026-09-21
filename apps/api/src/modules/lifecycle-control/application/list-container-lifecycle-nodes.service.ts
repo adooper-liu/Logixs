@@ -5,6 +5,10 @@ import {
   type LifecycleNodesView,
 } from "../domain/lifecycle-nodes";
 import {
+  LIFECYCLE_DATE_FACT_REPOSITORY,
+  type LifecycleDateFactRepository,
+} from "../domain/lifecycle-date-fact.repository";
+import {
   LIFECYCLE_REPOSITORY,
   type LifecycleRepository,
 } from "../domain/lifecycle.repository";
@@ -29,6 +33,8 @@ export class ListContainerLifecycleNodesService {
   constructor(
     @Inject(LIFECYCLE_REPOSITORY)
     private readonly repository: LifecycleRepository,
+    @Inject(LIFECYCLE_DATE_FACT_REPOSITORY)
+    private readonly dateFacts: LifecycleDateFactRepository,
   ) {}
 
   async execute(
@@ -52,14 +58,22 @@ export class ListContainerLifecycleNodesService {
       );
     }
 
-    const flows = await this.repository.listFlowsWithNodes({
-      tenantId,
-      containerIds,
-    });
+    const [flows, facts] = await Promise.all([
+      this.repository.listFlowsWithNodes({ tenantId, containerIds }),
+      this.dateFacts.listCurrentForNodeProjection({ tenantId, containerIds }),
+    ]);
+    const factsByContainer = new Map<string, typeof facts>();
+    for (const fact of facts) {
+      const containerFacts = factsByContainer.get(fact.containerId) ?? [];
+      containerFacts.push(fact);
+      factsByContainer.set(fact.containerId, containerFacts);
+    }
     return {
       items: flows.map((flow) => ({
         containerId: flow.flow.containerId,
-        ...projectLifecycleNodes(flow),
+        ...projectLifecycleNodes(flow, {
+          facts: factsByContainer.get(flow.flow.containerId) ?? [],
+        }),
       })),
       asOf: new Date(),
       projectionVersion: 0,

@@ -26,6 +26,23 @@ describe("decideWorkOrderCompletion", () => {
       message: "工单状态 cancelled 不能完成",
     });
   });
+
+  it.each(["in_progress", "blocked", "reopened"] as const)(
+    "%s 可以由权威事实完成",
+    (state) => {
+      expect(decideWorkOrderCompletion(state)).toEqual({
+        kind: "apply",
+        next: "completed",
+      });
+    },
+  );
+
+  it.each(["draft", "failed"] as const)("%s 不能越级完成", (state) => {
+    expect(decideWorkOrderCompletion(state)).toMatchObject({
+      kind: "reject",
+      code: "BUSINESS_STATE_VIOLATION",
+    });
+  });
 });
 
 describe("aggregateNodeTaskState", () => {

@@ -10,6 +10,7 @@ import { listNodeTasks } from "../api/nodeTasks";
 import EventEvidenceTimeline from "../components/container/EventEvidenceTimeline.vue";
 import OpsAssistantPanel from "../components/assistant/OpsAssistantPanel.vue";
 import LiveNodeRail from "../components/container/LiveNodeRail.vue";
+import NodeTimeTrackCard from "../components/container/NodeTimeTrackCard.vue";
 import ObjectActivityPanel from "../components/container/ObjectActivityPanel.vue";
 import ObjectContextBar from "../components/container/ObjectContextBar.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
@@ -30,6 +31,7 @@ const error = ref("");
 const record = ref<ContainerProjection | null>(null);
 const nodes = ref<LiveNodeView[]>([]);
 const events = ref<EventRow[]>([]);
+const selectedNodeId = ref("");
 const {
   session: assistantSession,
   opening: assistantOpening,
@@ -42,6 +44,16 @@ const {
 
 const containerRecordId = computed(() =>
   String(route.params.containerRecordId ?? "").trim(),
+);
+const blockedTotal = computed(() =>
+  nodes.value.reduce((sum, node) => sum + node.blockedCount, 0),
+);
+const selectedNode = computed(
+  () =>
+    nodes.value.find((node) => node.nodeInstanceId === selectedNodeId.value) ??
+    nodes.value.find((node) => node.isCurrent) ??
+    nodes.value[0] ??
+    null,
 );
 
 async function load(): Promise<void> {
@@ -73,6 +85,7 @@ async function load(): Promise<void> {
       nodePage.status === "fulfilled"
         ? nodePage.value.nodes.map(toLiveNode)
         : [];
+    selectedNodeId.value = "";
     events.value =
       eventPage.status === "fulfilled"
         ? eventPage.value.items.map(toLiveEvent)
@@ -128,43 +141,68 @@ watch(
     <p v-else-if="error" class="hint hint--error">{{ error }}</p>
     <template v-else-if="record">
       <PageHeader title="一柜一档" />
-      <ObjectContextBar :record="record" />
-      <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
-      <ObjectActivityPanel :container-id="record.containerRecordId" />
-      <section class="assistant-entry" aria-label="运营助手">
-        <button
-          type="button"
-          :disabled="assistantOpening"
-          @click="openAssistant"
-        >
-          <Bot :size="16" aria-hidden="true" />
-          询问助手
-        </button>
-        <p v-if="assistantError && !assistantSession" role="alert">
-          {{ assistantError }}
-        </p>
-      </section>
-      <OpsAssistantPanel
-        v-if="assistantSession"
-        :session="assistantSession"
-        :sending="assistantSending"
-        :error="assistantError"
-        @send="sendAssistantMessage"
-        @close="closeAssistant"
-      />
-      <EventEvidenceTimeline v-if="events.length" :events="events" />
-      <section class="next-step" aria-label="下一步">
-        <p v-if="!nodes.length">{{ uiCopy.chrome.emptyFlow }}</p>
-        <p v-else-if="!events.length">{{ uiCopy.chrome.emptyEvents }}</p>
-        <router-link
-          :to="{
-            path: '/tasks',
-            query: { containerId: record.containerRecordId },
-          }"
-        >
-          去做这柜的任务
-        </router-link>
-      </section>
+      <div class="record-stack">
+        <ObjectContextBar :record="record" />
+
+        <section class="slot-band" aria-label="标记与异常">
+          <span class="slot-item">
+            <small>标记</small>
+            <b>—</b>
+          </span>
+          <span class="slot-item">
+            <small>异常</small>
+            <b :class="{ risk: blockedTotal > 0 }">
+              {{ blockedTotal > 0 ? blockedTotal : "—" }}
+            </b>
+          </span>
+        </section>
+
+        <LiveNodeRail
+          v-if="nodes.length"
+          :nodes="nodes"
+          @select="selectedNodeId = $event"
+        />
+        <p v-else class="hint">{{ uiCopy.chrome.emptyFlow }}</p>
+
+        <NodeTimeTrackCard :node="selectedNode" />
+        <ObjectActivityPanel :container-id="record.containerRecordId" />
+
+        <section class="assistant-entry" aria-label="运营助手">
+          <button
+            type="button"
+            :disabled="assistantOpening"
+            @click="openAssistant"
+          >
+            <Bot :size="16" aria-hidden="true" />
+            询问助手
+          </button>
+          <p v-if="assistantError && !assistantSession" role="alert">
+            {{ assistantError }}
+          </p>
+        </section>
+        <OpsAssistantPanel
+          v-if="assistantSession"
+          :session="assistantSession"
+          :sending="assistantSending"
+          :error="assistantError"
+          @send="sendAssistantMessage"
+          @close="closeAssistant"
+        />
+
+        <EventEvidenceTimeline v-if="events.length" :events="events" />
+
+        <section class="next-step" aria-label="下一步">
+          <p v-if="!events.length">{{ uiCopy.chrome.emptyEvents }}</p>
+          <router-link
+            :to="{
+              path: '/tasks',
+              query: { containerId: record.containerRecordId },
+            }"
+          >
+            去做这柜的任务
+          </router-link>
+        </section>
+      </div>
     </template>
     <section v-else class="not-found">
       <b>找不到这只货柜</b>
@@ -177,6 +215,50 @@ watch(
 <style scoped>
 .workbench {
   min-height: 100%;
+}
+
+.record-stack {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.record-stack > * {
+  margin: 0;
+}
+
+.slot-band {
+  min-height: 48px;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.slot-item {
+  min-width: 120px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+}
+
+.slot-item + .slot-item {
+  border-left: 1px solid var(--line);
+}
+
+.slot-item small {
+  color: var(--muted);
+}
+
+.slot-item b {
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-item .risk {
+  color: var(--risk);
 }
 
 .hint,
@@ -197,11 +279,10 @@ watch(
 }
 
 .next-step {
-  margin-top: 12px;
+  min-width: 0;
 }
 
 .assistant-entry {
-  margin-top: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -233,5 +314,17 @@ watch(
 .not-found {
   padding: 36px 16px;
   text-align: center;
+}
+
+@media (max-width: 520px) {
+  .slot-band {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .slot-item {
+    min-width: 0;
+    padding: 8px 10px;
+  }
 }
 </style>

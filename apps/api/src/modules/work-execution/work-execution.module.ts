@@ -14,6 +14,7 @@ import { ListNodeTasksService } from "./application/list-node-tasks.service";
 import { ListExternalWorkItemsService } from "./application/list-external-work-items.service";
 import { ProjectExternalWorkItemsService } from "./application/project-external-work-items.service";
 import { ListObjectTaskActivityService } from "./application/list-object-task-activity.service";
+import { ReconcileAppliedLifecycleFactService } from "./application/reconcile-applied-lifecycle-fact.service";
 import { CREATE_NODE_TASK } from "./create-node-task.port";
 import { WORK_CLIENT_OPERATION_REPOSITORY } from "./domain/client-operation.repository";
 import { WORK_EXECUTION_REPOSITORY } from "./domain/work-execution.repository";
@@ -23,6 +24,7 @@ import { PrismaWorkClientOperationRepository } from "./infrastructure/prisma-cli
 import { PrismaWorkExecutionRepository } from "./infrastructure/prisma-work-execution.repository";
 import { PrismaExternalWorkItemRepository } from "./infrastructure/prisma-external-work-item.repository";
 import { PROJECT_EXTERNAL_WORK_ITEMS } from "./project-external-work-items.port";
+import { RECONCILE_APPLIED_LIFECYCLE_FACT } from "./reconcile-applied-lifecycle-fact.port";
 import { WorkExecutionController } from "./presentation/work-execution.controller";
 
 @Module({
@@ -37,6 +39,7 @@ import { WorkExecutionController } from "./presentation/work-execution.controlle
     ListObjectTaskActivityService,
     CompleteWorkOrderService,
     ClaimWorkOrderService,
+    ReconcileAppliedLifecycleFactService,
     {
       provide: WORK_EXECUTION_REPOSITORY,
       useClass: PrismaWorkExecutionRepository,
@@ -58,6 +61,10 @@ import { WorkExecutionController } from "./presentation/work-execution.controlle
       provide: LIST_OBJECT_TASK_ACTIVITY,
       useExisting: ListObjectTaskActivityService,
     },
+    {
+      provide: RECONCILE_APPLIED_LIFECYCLE_FACT,
+      useExisting: ReconcileAppliedLifecycleFactService,
+    },
   ],
   exports: [
     CreateNodeTaskService,
@@ -65,6 +72,7 @@ import { WorkExecutionController } from "./presentation/work-execution.controlle
     PROJECT_EXTERNAL_WORK_ITEMS,
     LIST_OBJECT_TASK_ACTIVITY,
     ListObjectTaskActivityService,
+    RECONCILE_APPLIED_LIFECYCLE_FACT,
   ],
 })
 export class WorkExecutionModule implements NestModule {

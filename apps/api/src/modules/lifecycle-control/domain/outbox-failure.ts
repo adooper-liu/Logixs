@@ -16,6 +16,11 @@ const FAILURE_CATEGORY_BY_CODE: Record<string, string> = {
   unknown_code: "unknown_code",
   idempotency_conflict: "idempotency",
   illegal_state: "illegal_state",
+  task_not_initialized: "dependency",
+  concurrency_conflict: "dependency",
+  node_task_cancelled: "business",
+  work_order_definition_unresolved: "business",
+  work_order_state_not_completable: "business",
 };
 
 export class OutboxDeliveryError extends Error {

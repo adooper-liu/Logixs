@@ -187,6 +187,124 @@ describe("warehouse delivery specialized guard", () => {
   );
 });
 
+describe("container unloading specialized guard", () => {
+  const report = {
+    reportId: "77777777-7777-4777-8777-777777777777",
+    warehouseLocationId: WAREHOUSE_LOCATION.locationId,
+    operationState: "completed" as const,
+    completedAt: "2026-09-12T10:00:00.000Z",
+    remainingQuantity: "0",
+    exceptionResolved: true,
+    evidenceRefs: [POD_EVIDENCE.id],
+  };
+  const ready = {
+    confirmed: true,
+    reasonCode: null,
+    instruction: DELIVERY_INSTRUCTION,
+    report,
+  };
+
+  it.each([
+    [null, "LIFECYCLE_EVENT_PENDING_UNLOADING_REPORT"],
+    [
+      {
+        confirmed: false,
+        reasonCode: "LIFECYCLE_EVENT_PENDING_UNLOADING_COMPLETION",
+        instruction: DELIVERY_INSTRUCTION,
+        report: {
+          ...report,
+          operationState: "partial" as const,
+          completedAt: null,
+        },
+      },
+      "LIFECYCLE_EVENT_PENDING_UNLOADING_COMPLETION",
+    ],
+  ] as const)(
+    "does not complete for missing or partial unloading",
+    (unloadingReadiness, reasonCode) => {
+      expect(
+        decideNodeSpecializedGuard({
+          targetNodeCode: "container_unloading",
+          eventCode: "unloaded",
+          containerNumber: "KOCU4960726",
+          location: WAREHOUSE_LOCATION,
+          routeSegment: null,
+          unloadingReadiness,
+          evidenceAuthorityContexts: [POD_EVIDENCE],
+        }),
+      ).toMatchObject({ kind: "pending_application", reasonCode });
+    },
+  );
+
+  it("requires the current warehouse, exact completion time and report evidence", () => {
+    const base = {
+      targetNodeCode: "container_unloading" as const,
+      eventCode: "unloaded" as const,
+      containerNumber: "KOCU4960726",
+      routeSegment: null,
+      unloadingReadiness: ready,
+      evidenceAuthorityContexts: [POD_EVIDENCE],
+    };
+    expect(
+      decideNodeSpecializedGuard({
+        ...base,
+        location: {
+          ...WAREHOUSE_LOCATION,
+          locationId: PICKUP_LOCATION.locationId,
+        },
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_UNLOADING_WAREHOUSE_MISMATCH",
+    });
+    expect(
+      decideNodeSpecializedGuard({
+        ...base,
+        location: WAREHOUSE_LOCATION,
+        occurredAt: new Date("2026-09-12T10:01:00Z"),
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_UNLOADING_COMPLETION_TIME_MISMATCH",
+    });
+    expect(
+      decideNodeSpecializedGuard({
+        ...base,
+        location: WAREHOUSE_LOCATION,
+        evidenceAuthorityContexts: [
+          { ...POD_EVIDENCE, id: "88888888-8888-4888-8888-888888888888" },
+        ],
+      }),
+    ).toMatchObject({
+      kind: "pending_application",
+      reasonCode: "LIFECYCLE_EVENT_PENDING_UNLOADING_EVIDENCE",
+    });
+  });
+
+  it("allows only a completed and evidenced report at the instructed warehouse", () => {
+    expect(
+      decideNodeSpecializedGuard({
+        targetNodeCode: "container_unloading",
+        eventCode: "unloaded",
+        containerNumber: "KOCU4960726",
+        location: WAREHOUSE_LOCATION,
+        routeSegment: null,
+        unloadingReadiness: ready,
+        evidenceAuthorityContexts: [POD_EVIDENCE],
+      }),
+    ).toEqual({
+      kind: "apply",
+      guardResults: [
+        "UNLOADING_REPORT_COMPLETED",
+        "UNLOADING_WAREHOUSE_MATCHED",
+        "UNLOADING_QUANTITY_RECONCILED",
+        "UNLOADING_COMPLETION_TIME_MATCHED",
+        "UNLOADING_EVIDENCE_QUALIFIED",
+      ],
+    });
+  });
+});
+
 describe("decideNodeSpecializedGuard", () => {
   it("gate_out 缺少已采信可提事实时保留待应用", () => {
     expect(

@@ -131,7 +131,13 @@ describe("liveWorkspaceProjection", () => {
               state: "completed",
               applicability: "required",
               completedAt: "2026-09-01T00:00:00.000Z",
+              blockedReasonRefs: [],
               isCurrent: false,
+              times: {
+                plannedAt: null,
+                estimatedAt: null,
+                actualAt: "2026-09-01T00:00:00.000Z",
+              },
             },
             {
               nodeInstanceId: "n2",
@@ -140,7 +146,13 @@ describe("liveWorkspaceProjection", () => {
               state: "active",
               applicability: "required",
               completedAt: null,
+              blockedReasonRefs: [],
               isCurrent: true,
+              times: {
+                plannedAt: null,
+                estimatedAt: null,
+                actualAt: null,
+              },
             },
           ],
         },

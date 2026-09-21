@@ -30,3 +30,6 @@ Thumbs.db
 .vscode/
 .windsurf/
 .review-worktree-src.diff
+
+# 可视化原型（brainstorming 临时产物）
+.superpowers/

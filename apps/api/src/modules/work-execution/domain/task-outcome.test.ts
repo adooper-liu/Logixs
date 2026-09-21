@@ -118,4 +118,32 @@ describe("decideTaskOutcome", () => {
       }),
     ).toBeNull();
   });
+
+  it("事实首次完成时记录稳定因果，重复引用去重排序", () => {
+    expect(
+      decideTaskOutcome({
+        previousState: "in_progress",
+        nextState: "completed",
+        nodeCode: "container_unloading",
+        workOrders: [{ id: "w1", state: "completed" }],
+        factCausation: {
+          factApplicationIds: ["fact-app-b", "fact-app-a", "fact-app-b"],
+          canonicalEventId: "event-1",
+          eventCode: "unloaded",
+          domainFactId: "fact-1",
+          actorOrServiceId: "service-1",
+          traceId: "trace-1",
+        },
+      }),
+    ).toMatchObject({
+      evaluatedFactRefs: ["fact-app-a", "fact-app-b"],
+      resultPolicyMode: "reference_existing_event",
+      eventCode: "unloaded",
+      policySnapshotHash: policySnapshotHash("reference_existing_event"),
+      canonicalEventId: "event-1",
+      domainFactId: "fact-1",
+      actorOrServiceId: "service-1",
+      traceId: "trace-1",
+    });
+  });
 });

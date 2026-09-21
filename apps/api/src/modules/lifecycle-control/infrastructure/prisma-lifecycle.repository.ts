@@ -18,6 +18,7 @@ import type {
   SaveCanonicalEventInput,
 } from "../domain/lifecycle.repository";
 import { buildLifecycleOutboxPending } from "../domain/outbox-message";
+import { buildWorkFactReconciliationOutboxPending } from "../domain/work-fact-reconciliation-outbox";
 
 @Injectable()
 export class PrismaLifecycleRepository implements LifecycleRepository {
@@ -476,6 +477,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
   }
 
   async applyEventToNode(input: {
+    tenantId: string;
     flowInstanceId: string;
     expectedFlowVersion: number;
     eventId: string;
@@ -486,6 +488,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     evaluatedAt: Date;
     guardResults: string[];
     routeSegmentGuard: ActiveOceanRouteSegment | null;
+    traceId: string;
   }): Promise<{ applied: boolean; version: number }> {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.nodeEventApplication.findUnique({
@@ -573,7 +576,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           data: { state: "active" },
         });
       }
-      await tx.nodeEventApplication.upsert({
+      const application = await tx.nodeEventApplication.upsert({
         where: {
           eventId_targetNodeInstanceId: {
             eventId: input.eventId,
@@ -594,6 +597,50 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
           guardResults: input.guardResults,
           reasonCode: null,
           appliedAt: input.evaluatedAt,
+        },
+      });
+      const event = await tx.canonicalEvent.findUniqueOrThrow({
+        where: { id: input.eventId },
+        select: {
+          containerId: true,
+          occurredAt: true,
+        },
+      });
+      const flow = await tx.flowInstance.findUniqueOrThrow({
+        where: { id: input.flowInstanceId },
+        select: { containerId: true },
+      });
+      if (event.containerId !== flow.containerId) {
+        throw new Error("LIFECYCLE_GUARD_NOT_SATISFIED");
+      }
+      const outbox = buildWorkFactReconciliationOutboxPending({
+        nodeEventApplicationId: application.id,
+        tenantId: input.tenantId,
+        containerId: flow.containerId,
+        flowInstanceId: input.flowInstanceId,
+        nodeInstanceId: input.targetNodeInstanceId,
+        canonicalEventId: input.eventId,
+        occurredAt: event.occurredAt,
+        traceId: input.traceId,
+      });
+      await tx.outboxMessage.create({
+        data: {
+          id: outbox.id,
+          tenantId: outbox.tenantId,
+          ownerModule: outbox.ownerModule,
+          eventId: outbox.eventId,
+          eventType: outbox.eventType,
+          eventVersion: outbox.eventVersion,
+          aggregateType: outbox.aggregateType,
+          aggregateId: outbox.aggregateId,
+          payloadRef: outbox.payloadRef,
+          payloadHash: outbox.payloadHash,
+          causationId: outbox.causationId,
+          state: outbox.state,
+          attemptCount: outbox.attemptCount,
+          occurredAt: outbox.occurredAt,
+          idempotencyKey: outbox.idempotencyKey,
+          traceId: outbox.traceId,
         },
       });
       return { applied: true, version: input.expectedFlowVersion + 1 };

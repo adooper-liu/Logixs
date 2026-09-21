@@ -21,6 +21,8 @@ import {
 } from "../../document-records";
 import {
   GET_WAREHOUSE_DELIVERY_READINESS,
+  GET_CONTAINER_UNLOADING_READINESS,
+  type GetContainerUnloadingReadinessPort,
   type GetWarehouseDeliveryReadinessPort,
 } from "../../inland-fulfillment";
 import {
@@ -128,6 +130,8 @@ export class ApplyLifecycleEventService {
     private readonly getCustomsClearanceReadiness: GetCustomsClearanceReadinessPort,
     @Inject(GET_WAREHOUSE_DELIVERY_READINESS)
     private readonly getWarehouseDeliveryReadiness: GetWarehouseDeliveryReadinessPort,
+    @Inject(GET_CONTAINER_UNLOADING_READINESS)
+    private readonly getContainerUnloadingReadiness: GetContainerUnloadingReadinessPort,
     @Inject(READ_EVIDENCE_AUTHORITY_CONTEXT)
     private readonly readEvidenceAuthorityContext: ReadEvidenceAuthorityContextPort,
     @Inject(LIFECYCLE_DATE_FACT_REPOSITORY)
@@ -264,14 +268,22 @@ export class ApplyLifecycleEventService {
           containerRecordId: input.containerId,
         })
       : null;
-    const deliveryEvidenceContexts = isWarehouseDeliveryEvent
-      ? await this.readEvidenceAuthorityContext.execute({
+    const isContainerUnloadingEvent = input.eventCode === "unloaded";
+    const unloadingReadiness = isContainerUnloadingEvent
+      ? await this.getContainerUnloadingReadiness.execute({
           tenantId: input.tenantId,
-          subjectType: "container",
-          subjectId: input.containerId,
-          evidenceIds: evidenceRefs,
+          containerRecordId: input.containerId,
         })
-      : [];
+      : null;
+    const deliveryEvidenceContexts =
+      isWarehouseDeliveryEvent || isContainerUnloadingEvent
+        ? await this.readEvidenceAuthorityContext.execute({
+            tenantId: input.tenantId,
+            subjectType: "container",
+            subjectId: input.containerId,
+            evidenceIds: evidenceRefs,
+          })
+        : [];
 
     const completedNodes: LifecycleNodeCode[] = [];
     const pendingNodes: LifecycleNodeCode[] = [];
@@ -375,6 +387,35 @@ export class ApplyLifecycleEventService {
               timezone: deliveryReadiness.instruction.timezone,
             }
           : null,
+        unloadingReadiness: unloadingReadiness
+          ? {
+              confirmed: unloadingReadiness.confirmed,
+              reasonCode: unloadingReadiness.reasonCode,
+              instruction: unloadingReadiness.instruction
+                ? {
+                    instructionId: unloadingReadiness.instruction.instructionId,
+                    warehouseLocationId:
+                      unloadingReadiness.instruction.warehouseLocationId,
+                    unlocode: unloadingReadiness.instruction.unlocode,
+                    timezone: unloadingReadiness.instruction.timezone,
+                  }
+                : null,
+              report: unloadingReadiness.report
+                ? {
+                    reportId: unloadingReadiness.report.reportId,
+                    warehouseLocationId:
+                      unloadingReadiness.report.warehouseLocationId,
+                    operationState: unloadingReadiness.report.operationState,
+                    completedAt: unloadingReadiness.report.completedAt,
+                    remainingQuantity:
+                      unloadingReadiness.report.remainingQuantity,
+                    exceptionResolved:
+                      unloadingReadiness.report.exceptionResolved,
+                    evidenceRefs: unloadingReadiness.report.evidenceRefs,
+                  }
+                : null,
+            }
+          : null,
         evidenceAuthorityContexts: deliveryEvidenceContexts,
         occurredAt: input.occurredAt,
       });
@@ -408,6 +449,7 @@ export class ApplyLifecycleEventService {
       });
       try {
         const transition = await this.repository.applyEventToNode({
+          tenantId: input.tenantId,
           flowInstanceId: flow.flow.id,
           expectedFlowVersion: flow.flow.version,
           eventId: canonicalEventId,
@@ -418,6 +460,9 @@ export class ApplyLifecycleEventService {
           evaluatedAt: new Date(),
           guardResults,
           routeSegmentGuard: routeSegment,
+          traceId:
+            input.traceId ??
+            `lifecycle-reconciliation:${canonicalEventId}:${target.id}`,
         });
         if (transition.applied) completedNodes.push(targetNodeCode);
       } catch (error) {

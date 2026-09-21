@@ -49,6 +49,11 @@ export type EventRole = ("milestone" | "evidence" | "exception" | "prerequisite"
 export type NodeApplicability = ("required" | "optional_applicable" | "optional_not_applicable")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "CompletionMode".
+ */
+export type CompletionMode = ("fact_driven" | "needs_manual_fact")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "FlowInstanceState".
  */
 export type FlowInstanceState = ("draft" | "active" | "completed" | "cancelled")
@@ -292,6 +297,16 @@ export type CustomsFilingState = ("not_filed" | "filed" | "accepted")
  * via the `definition` "CustomsDecisionState".
  */
 export type CustomsDecisionState = ("pending" | "held" | "released")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ContainerUnloadingOperationState".
+ */
+export type ContainerUnloadingOperationState = ("started" | "partial" | "completed")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ContainerUnloadingSealCheck".
+ */
+export type ContainerUnloadingSealCheck = ("matched" | "mismatch")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "PublicErrorCode".
@@ -1648,6 +1663,62 @@ appointmentStartAt: (DateTime | null)
 appointmentEndAt: (DateTime | null)
 appointmentReference: (string | null)
 evidenceRefs: Uuid[]
+reasonCode: StableCode
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ContainerUnloadingReport".
+ */
+export interface ContainerUnloadingReport {
+reportId: Uuid
+containerRecordId: Uuid
+version: number
+warehouseLocationId: Uuid
+operationState: ContainerUnloadingOperationState
+startedAt: DateTime
+completedAt: (DateTime | null)
+expectedQuantity: string
+unloadedQuantity: string
+remainingQuantity: string
+damagedQuantity: string
+shortageQuantity: string
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+sealCheck: ContainerUnloadingSealCheck
+exceptionResolved: boolean
+exceptionNotes: (string | null)
+/**
+ * @minItems 1
+ */
+evidenceRefs: [Uuid, ...(Uuid)[]]
+actorId: string
+reasonCode: StableCode
+createdAt: DateTime
+duplicate: boolean
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AppendContainerUnloadingReportCommand".
+ */
+export interface AppendContainerUnloadingReportCommand {
+expectedVersion: number
+warehouseLocationId: Uuid
+operationState: ContainerUnloadingOperationState
+startedAt: DateTime
+completedAt: (DateTime | null)
+expectedQuantity: string
+unloadedQuantity: string
+remainingQuantity: string
+damagedQuantity: string
+shortageQuantity: string
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+sealCheck: ContainerUnloadingSealCheck
+exceptionResolved: boolean
+exceptionNotes: (string | null)
+/**
+ * @minItems 1
+ */
+evidenceRefs: [Uuid, ...(Uuid)[]]
 reasonCode: StableCode
 idempotencyKey: string
 }

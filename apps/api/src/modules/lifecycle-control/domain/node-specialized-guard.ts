@@ -29,6 +29,21 @@ export interface PickupAvailabilityContext {
   location: LifecycleLocationContext | null;
 }
 
+export interface ContainerUnloadingReadinessContext {
+  confirmed: boolean;
+  reasonCode: string | null;
+  instruction: DeliveryInstructionContext | null;
+  report: {
+    reportId: string;
+    warehouseLocationId: string;
+    operationState: "started" | "partial" | "completed";
+    completedAt: string | null;
+    remainingQuantity: string;
+    exceptionResolved: boolean;
+    evidenceRefs: string[];
+  } | null;
+}
+
 export function decideNodeSpecializedGuard(input: {
   targetNodeCode: LifecycleNodeCode;
   eventCode: CanonicalEventCode;
@@ -50,6 +65,7 @@ export function decideNodeSpecializedGuard(input: {
   } | null;
   pickupAvailability?: PickupAvailabilityContext | null;
   deliveryInstruction?: DeliveryInstructionContext | null;
+  unloadingReadiness?: ContainerUnloadingReadinessContext | null;
   evidenceAuthorityContexts?: DeliveryEvidenceAuthorityContext[];
   occurredAt: Date;
 }): NodeEventApplicationDecision {
@@ -168,6 +184,18 @@ export function decideNodeSpecializedGuard(input: {
   }
 
   if (
+    input.targetNodeCode === "container_unloading" &&
+    input.eventCode === "unloaded"
+  ) {
+    return decideContainerUnloading(
+      input.unloadingReadiness ?? null,
+      input.location,
+      input.evidenceAuthorityContexts ?? [],
+      input.occurredAt,
+    );
+  }
+
+  if (
     input.targetNodeCode === "ocean_transit" &&
     input.eventCode === "transit_arrived"
   ) {
@@ -190,6 +218,98 @@ export function decideNodeSpecializedGuard(input: {
   }
 
   return { kind: "apply", guardResults: [] };
+}
+
+function decideContainerUnloading(
+  readiness: ContainerUnloadingReadinessContext | null,
+  location: LifecycleLocationContext | null,
+  evidence: DeliveryEvidenceAuthorityContext[],
+  occurredAt: Date,
+): NodeEventApplicationDecision {
+  if (!readiness?.confirmed || !readiness.report || !readiness.instruction) {
+    return {
+      kind: "pending_application",
+      guardResults: [],
+      reasonCode:
+        readiness?.reasonCode ?? "LIFECYCLE_EVENT_PENDING_UNLOADING_REPORT",
+    };
+  }
+  const { report, instruction } = readiness;
+  if (
+    !location ||
+    location.locationType !== "warehouse" ||
+    !location.locationId
+  ) {
+    return {
+      kind: "pending_application",
+      guardResults: ["UNLOADING_REPORT_COMPLETED"],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_UNLOADING_LOCATION_CONTEXT",
+    };
+  }
+  if (
+    report.warehouseLocationId !== instruction.warehouseLocationId ||
+    location.locationId !== report.warehouseLocationId ||
+    (instruction.unlocode !== null &&
+      location.unlocode !== instruction.unlocode)
+  ) {
+    return {
+      kind: "pending_application",
+      guardResults: [
+        "UNLOADING_REPORT_COMPLETED",
+        "UNLOADING_LOCATION_IDENTIFIED",
+      ],
+      reasonCode: "LIFECYCLE_EVENT_UNLOADING_WAREHOUSE_MISMATCH",
+    };
+  }
+  if (
+    report.operationState !== "completed" ||
+    !report.completedAt ||
+    report.remainingQuantity !== "0"
+  ) {
+    return {
+      kind: "pending_application",
+      guardResults: ["UNLOADING_WAREHOUSE_MATCHED"],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_UNLOADING_COMPLETION",
+    };
+  }
+  if (new Date(report.completedAt).getTime() !== occurredAt.getTime()) {
+    return {
+      kind: "pending_application",
+      guardResults: [
+        "UNLOADING_REPORT_COMPLETED",
+        "UNLOADING_WAREHOUSE_MATCHED",
+      ],
+      reasonCode: "LIFECYCLE_EVENT_UNLOADING_COMPLETION_TIME_MISMATCH",
+    };
+  }
+  const qualified = evidence.some(
+    (item) =>
+      report.evidenceRefs.includes(item.id) &&
+      isEffectiveOperationalEvidence(item) &&
+      item.evidenceType === "receipt" &&
+      ["organization", "authority", "system"].includes(item.sourceType),
+  );
+  if (!qualified) {
+    return {
+      kind: "pending_application",
+      guardResults: [
+        "UNLOADING_REPORT_COMPLETED",
+        "UNLOADING_WAREHOUSE_MATCHED",
+        "UNLOADING_COMPLETION_TIME_MATCHED",
+      ],
+      reasonCode: "LIFECYCLE_EVENT_PENDING_UNLOADING_EVIDENCE",
+    };
+  }
+  return {
+    kind: "apply",
+    guardResults: [
+      "UNLOADING_REPORT_COMPLETED",
+      "UNLOADING_WAREHOUSE_MATCHED",
+      "UNLOADING_QUANTITY_RECONCILED",
+      "UNLOADING_COMPLETION_TIME_MATCHED",
+      "UNLOADING_EVIDENCE_QUALIFIED",
+    ],
+  };
 }
 
 function decideWarehouseDelivery(

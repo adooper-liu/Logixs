@@ -85,6 +85,9 @@
     "NodeApplicability": {
       "enum": ["required", "optional_applicable", "optional_not_applicable"]
     },
+    "CompletionMode": {
+      "enum": ["fact_driven", "needs_manual_fact"]
+    },
     "FlowInstanceState": {
       "enum": ["draft", "active", "completed", "cancelled"]
     },

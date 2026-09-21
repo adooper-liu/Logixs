@@ -10,6 +10,7 @@ import type {
   AppendLifecycleDateFactResult,
   LifecycleDateApplicationState,
   LifecycleDateFactRecord,
+  LifecycleDateFactProjectionRecord,
 } from "../domain/lifecycle-date-fact";
 import type { LifecycleDateFactRepository } from "../domain/lifecycle-date-fact.repository";
 import type { LifecycleDateReviewCandidate } from "../domain/lifecycle-date-review-page";
@@ -238,6 +239,37 @@ export class PrismaLifecycleDateFactRepository implements LifecycleDateFactRepos
       take: 100,
     });
     return rows.map(toRecord);
+  }
+
+  async listCurrentForNodeProjection(input: {
+    tenantId: string;
+    containerIds: string[];
+  }): Promise<LifecycleDateFactProjectionRecord[]> {
+    const rows = await this.prisma.lifecycleDateFact.findMany({
+      where: {
+        tenantId: input.tenantId,
+        containerId: { in: input.containerIds },
+        isCurrent: true,
+      },
+      select: {
+        containerId: true,
+        nodeCode: true,
+        eventCode: true,
+        timeKind: true,
+        occurredAt: true,
+        verificationState: true,
+        confidenceState: true,
+        validity: true,
+        authorityPolicyRef: true,
+        applicationState: true,
+      },
+      orderBy: [
+        { containerId: "asc" },
+        { projectionVersion: "asc" },
+        { id: "asc" },
+      ],
+    });
+    return rows as LifecycleDateFactProjectionRecord[];
   }
 
   async listReviewRequired(input: {

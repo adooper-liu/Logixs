@@ -5,6 +5,7 @@ describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => 
   it("先行事实把既有计划任务提升为可执行且具备完成资格", async () => {
     const existing = {
       id: "task-1",
+      tenantId: "tenant-1",
       flowInstanceId: "flow-1",
       nodeInstanceId: "node-1",
       nodeCode: "customs_clearance",
@@ -14,6 +15,7 @@ describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => 
       applicability: "required",
       readinessState: "waiting_conditions",
       completionEligibility: "awaiting_evidence",
+      version: 0,
       conditionFactRefs: [],
       createdAt: new Date("2026-09-17T00:00:00Z"),
       workOrders: [],
@@ -30,9 +32,11 @@ describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => 
       nodeTaskId: "task-1",
       workOrderDefinitionKey: "wo-customs_clearance",
       state: "ready",
+      applicability: "required",
       assignmentState: "unassigned",
       assigneeId: null,
       completedAt: null,
+      version: 0,
     };
     const tx = {
       nodeTask: {
@@ -52,6 +56,7 @@ describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => 
     const repository = new PrismaWorkExecutionRepository(prisma as never);
 
     const result = await repository.upsertTaskWithRequiredWorkOrder({
+      tenantId: "tenant-1",
       flowInstanceId: "flow-1",
       nodeInstanceId: "node-1",
       nodeCode: "customs_clearance",
@@ -74,8 +79,26 @@ describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => 
     });
     expect(tx.workOrder.updateMany).toHaveBeenCalledWith({
       where: { nodeTaskId: "task-1", state: "draft" },
-      data: { state: "ready" },
+      data: { state: "ready", version: { increment: 1 } },
     });
     expect(result.task.completionEligibility).toBe("eligible");
+  });
+
+  it("按任务自身 tenantId 查询，不再经可空 containerId 间接判断租户", async () => {
+    const prisma = {
+      nodeTask: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const repository = new PrismaWorkExecutionRepository(prisma as never);
+
+    await expect(
+      repository.listTasksByTenant({ tenantId: "tenant-1", take: 51 }),
+    ).resolves.toEqual([]);
+    expect(prisma.nodeTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "tenant-1" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: 51,
+      }),
+    );
   });
 });

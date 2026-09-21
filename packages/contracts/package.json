@@ -11,6 +11,9 @@
       ],
       "canonical-events.json": [
         "canonical-events-json.d.ts"
+      ],
+      "lifecycle-nodes.json": [
+        "lifecycle-nodes-json.d.ts"
       ]
     }
   },
@@ -25,6 +28,10 @@
     "./canonical-events.json": {
       "types": "./canonical-events-json.d.ts",
       "default": "./catalogs/v1/canonical-events.json"
+    },
+    "./lifecycle-nodes.json": {
+      "types": "./lifecycle-nodes-json.d.ts",
+      "default": "./catalogs/v1/lifecycle-nodes.json"
     },
     "./lifecycle-date-fact-inbox": {
       "types": "./lifecycle-date-fact-inbox.d.ts",

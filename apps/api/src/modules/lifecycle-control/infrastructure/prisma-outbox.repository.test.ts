@@ -13,6 +13,7 @@ describe("PrismaOutboxRepository", () => {
           owner_module: "lifecycle-control",
           event_id: "evt-1",
           event_type: "stuffed",
+          event_version: 1,
           aggregate_type: "container",
           aggregate_id: "c1",
           payload_ref: "canonical-event/evt-1",
@@ -43,6 +44,7 @@ describe("PrismaOutboxRepository", () => {
       expect.objectContaining({
         id: "evt-1",
         eventId: "evt-1",
+        eventVersion: 1,
         state: "publishing",
         attemptCount: 1,
         lease: {

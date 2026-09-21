@@ -29,6 +29,11 @@ export class LifecycleNodesController {
         completedAt: node.completedAt?.toISOString() ?? null,
         blockedReasonRefs: node.blockedReasonRefs,
         isCurrent: node.isCurrent,
+        times: {
+          plannedAt: node.times.plannedAt?.toISOString() ?? null,
+          estimatedAt: node.times.estimatedAt?.toISOString() ?? null,
+          actualAt: node.times.actualAt?.toISOString() ?? null,
+        },
       })),
       asOf: page.asOf.toISOString(),
       projectionVersion: page.projectionVersion,
