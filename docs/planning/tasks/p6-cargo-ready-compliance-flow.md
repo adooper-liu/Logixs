@@ -1,7 +1,9 @@
 ---
-status: review # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/cargo-ready-compliance-flow
-verification: local high-risk gates passed; PR CI pending
+verification:
+  - "2026-09-21 PR #30 quality 通过并合入 main：https://github.com/adooper-liu/Logixs/pull/30"
+  - "2026-09-20 pnpm db:verify:cargo-ready-compliance 与 pnpm validate 通过。"
 ---
 
 # 任务：`cargo_ready` 合规评审与生命周期门禁
@@ -34,9 +36,9 @@ verification: local high-risk gates passed; PR CI pending
 - [x] 当前后端切片的成功、失败、边界、重放和并发路径有测试；迁移验证覆盖空库、旧库和关键约束。
 - [x] 当前评审发现通过公开 Port 投影为独立非生命周期工作项；新版本取消旧开放项，重复/旧版本投影受保护。
 - [x] 备货合规最小 UI 可选真实货柜、运行评审、查看规则/发现、提交决定并展示重放结果。
-- [ ] 高风险门禁及 PR 必需 CI 通过。
+- [x] 高风险门禁及 PR 必需 CI 通过。
 
-当前功能范围已经收口：活动装载范围公开 Port、基础事实完整性评审、追加式规则版本、国家/日期/SKU/结构化属性适用性、证书有效性、版本化评审/发现/决定、`compliance.read/review/rule.manage` API、`cargo_ready` 查询门禁、决定后自动重放、独立整改工作池及最小 UI 均已落地。全量领取/完成型整改工单不在本刀；本地高风险门禁已通过，等待评审和 PR 必需 CI，因此进入 `review`。
+当前功能范围已经收口并经 PR #30 合入 `main`：活动装载范围公开 Port、基础事实完整性评审、追加式规则版本、国家/日期/SKU/结构化属性适用性、证书有效性、版本化评审/发现/决定、`compliance.read/review/rule.manage` API、`cargo_ready` 查询门禁、决定后自动重放、独立整改工作池及最小 UI 均已落地。全量领取/完成型整改工单不在本刀。
 
 ## 验证证据
 
@@ -46,9 +48,10 @@ verification: local high-risk gates passed; PR CI pending
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责  | commit | 说明                                                  |
-| ---------- | ------ | ----- | ------ | ----------------------------------------------------- |
-| 2026-09-20 | coding | Codex | -      | 冻结时区/币种标准并开始 `cargo_ready` 合规纵向切片。  |
-| 2026-09-20 | coding | Codex | -      | 完成规则版本、适用性、证书校验和评审规则快照。        |
-| 2026-09-20 | coding | Codex | -      | 通过上层编排 Port 在放行决定后自动重放 pending 事实。 |
-| 2026-09-20 | coding | Codex | -      | 整改发现投影到独立工作池，并接通备货合规最小工作台。  |
+| 日期       | 阶段   | 负责  | commit  | 说明                                                  |
+| ---------- | ------ | ----- | ------- | ----------------------------------------------------- |
+| 2026-09-20 | coding | Codex | -       | 冻结时区/币种标准并开始 `cargo_ready` 合规纵向切片。  |
+| 2026-09-20 | coding | Codex | -       | 完成规则版本、适用性、证书校验和评审规则快照。        |
+| 2026-09-20 | coding | Codex | -       | 通过上层编排 Port 在放行决定后自动重放 pending 事实。 |
+| 2026-09-20 | coding | Codex | -       | 整改发现投影到独立工作池，并接通备货合规最小工作台。  |
+| 2026-09-21 | done   | Codex | e400a5c | PR #30 必需 CI 通过并合入 `main`。                    |

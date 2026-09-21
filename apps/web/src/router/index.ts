@@ -27,6 +27,18 @@ const router = createRouter({
       redirect: (to) => ({ path: "/tasks", query: to.query }),
     },
     {
+      path: "/workspaces/cargo-ready",
+      component: () => import("../views/CargoReadyWorkbench.vue"),
+      meta: {
+        title: "备货工作台",
+        section: "作业",
+        navLabel: "备货工作台",
+        navIcon: "package-check",
+        navOrder: 15,
+        roles: ["operator", "planner", "manager"],
+      },
+    },
+    {
       path: "/containers",
       component: () => import("../views/ContainerList.vue"),
       meta: {

@@ -20,6 +20,21 @@ export interface ContainerPage {
   projectionVersion: number;
 }
 
+export interface ContainerCargoScopeItem {
+  replenishmentOrderLineId: string;
+  productSkuId: string;
+  productNumber: string;
+  allocatedQuantity: string;
+  quantityUnit: string;
+}
+
+export interface ContainerCargoScope {
+  containerRecordId: string;
+  allocationSetId: string | null;
+  allocationSetVersion: number | null;
+  items: readonly ContainerCargoScopeItem[];
+}
+
 // 开发期身份与导入写路径对齐（正式 OIDC 属 P5-02）。
 const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
@@ -59,4 +74,24 @@ export async function getContainer(id: string): Promise<ContainerSummary> {
     throw new Error(`GET /api/containers/${id} failed: ${response.status}`);
   }
   return (await response.json()) as ContainerSummary;
+}
+
+export async function getContainerCargo(
+  id: string,
+): Promise<ContainerCargoScope> {
+  const response = await fetch(
+    `/api/containers/${encodeURIComponent(id)}/cargo`,
+    {
+      headers: {
+        "X-Tenant-Id": DEV_TENANT_ID,
+        "X-Operator-Id": DEV_OPERATOR_ID,
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(
+      `GET /api/containers/${id}/cargo failed: ${response.status}`,
+    );
+  }
+  return (await response.json()) as ContainerCargoScope;
 }

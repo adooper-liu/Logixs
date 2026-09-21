@@ -95,4 +95,22 @@ describe("navigationForRole", () => {
       ),
     ).not.toContain("/compliance");
   });
+
+  it("shows the cargo-ready role workbench to every operating role", () => {
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      expect(items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: "备货工作台",
+            path: "/workspaces/cargo-ready",
+            section: "作业",
+          }),
+        ]),
+      );
+      expect(
+        items.findIndex((item) => item.path === "/workspaces/cargo-ready"),
+      ).toBeLessThan(items.findIndex((item) => item.path === "/containers"));
+    }
+  });
 });

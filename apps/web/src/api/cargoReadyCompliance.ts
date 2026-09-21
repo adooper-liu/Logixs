@@ -14,8 +14,8 @@ export interface CargoReadyComplianceRule {
   version: number;
   productSkuId: string;
   requirementLayer: string;
-  requiredCertificateTypes: string[];
-  blockingNodeCodes: string[];
+  requiredCertificateTypes: readonly string[];
+  blockingNodeCodes: readonly string[];
   severity: string;
   officialSourceUrl: string;
   legalCitation: string;
@@ -32,8 +32,8 @@ export interface CargoReadyComplianceDecision {
   decisionId: string;
   version: number;
   decisionCode: string;
-  conditionRefs: string[];
-  evidenceRefs: string[];
+  conditionRefs: readonly string[];
+  evidenceRefs: readonly string[];
   actorId: string;
   reasonCode: string;
   decidedAt: string;
@@ -48,10 +48,10 @@ export interface CargoReadyComplianceAssessment {
   assessmentDate: string;
   allocationSetId: string | null;
   allocationSetVersion: number | null;
-  items: CargoReadyComplianceItem[];
-  findings: CargoReadyComplianceFinding[];
-  applicableRules: CargoReadyComplianceRule[];
-  evidenceRefs: string[];
+  items: readonly CargoReadyComplianceItem[];
+  findings: readonly CargoReadyComplianceFinding[];
+  applicableRules: readonly CargoReadyComplianceRule[];
+  evidenceRefs: readonly string[];
   actorId: string;
   reasonCode: string;
   currentDecision: CargoReadyComplianceDecision | null;
