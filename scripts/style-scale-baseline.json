@@ -45,7 +45,6 @@
     "apps/web/src/components/pickup/PickupActionPanel.vue": 16,
     "apps/web/src/components/pickup/PickupFactsPanel.vue": 14,
     "apps/web/src/components/pickup/PickupWorkQueue.vue": 11,
-    "apps/web/src/components/shell/AppSidebar.vue": 30,
     "apps/web/src/components/shell/AppTopbar.vue": 16,
     "apps/web/src/components/shell/CommandPalette.vue": 17,
     "apps/web/src/components/stuffing/StuffingActionPanel.vue": 18,
