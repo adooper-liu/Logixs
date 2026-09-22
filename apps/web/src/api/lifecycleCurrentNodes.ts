@@ -1,3 +1,5 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
+
 export interface ContainerCurrentNodeItem {
   containerId: string;
   currentNodeCode: string;
@@ -10,7 +12,6 @@ export interface ContainerCurrentNodesPage {
   projectionVersion: number;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 export async function listCurrentNodes(

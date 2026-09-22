@@ -5,9 +5,9 @@ import type {
 } from "@logix/contracts";
 import { completionRequiresEvidence } from "../data/completionEvidencePolicy";
 import { parseEvidenceInput } from "../data/completeReceiptContract";
+import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 const UUID_PATTERN =

@@ -27,7 +27,7 @@ describe("listDeadLetters", () => {
       "/api/outbox/dead-letters?pageSize=50&cursor=c1",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },
@@ -85,7 +85,7 @@ describe("listInboxDeadLetters", () => {
       "/api/inbox/dead-letters?pageSize=50&cursor=c1",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },

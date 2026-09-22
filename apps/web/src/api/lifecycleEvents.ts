@@ -1,3 +1,5 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
+
 export interface LifecycleEventItem {
   id: string;
   containerId: string;
@@ -18,7 +20,6 @@ export interface LifecycleEventPage {
   projectionVersion: number;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 export async function listLifecycleEvents(

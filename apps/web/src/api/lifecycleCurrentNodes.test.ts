@@ -22,7 +22,7 @@ describe("listCurrentNodes", () => {
       "/api/lifecycle-current-nodes?containerIds=c1%2Cc2",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },

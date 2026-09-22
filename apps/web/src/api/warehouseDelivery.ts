@@ -2,10 +2,11 @@ import type {
   ReplaceWarehouseDeliveryInstructionCommand,
   WarehouseDeliveryInstruction,
 } from "@logix/contracts";
+import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
 
 const IDENTITY_HEADERS = {
-  "X-Tenant-Id": "dev-tenant",
+  "X-Tenant-Id": DEV_TENANT_ID,
   "X-Operator-Id": "dev-operator",
   "X-Roles": "operations_dispatcher",
 };

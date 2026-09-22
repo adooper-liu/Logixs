@@ -37,7 +37,7 @@ describe("listClientOperations", () => {
       "/api/client-operations?pageSize=50&cursor=c1",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },
@@ -67,7 +67,7 @@ describe("listCompensations", () => {
       "/api/client-operations/op-1/compensations?pageSize=50",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },

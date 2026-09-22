@@ -22,7 +22,7 @@ describe("listNodeTasks", () => {
       "/api/node-tasks?containerId=c1&pageSize=50&cursor=cur-1",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },
@@ -43,7 +43,7 @@ describe("listNodeTasks", () => {
     await listNodeTasks({ pageSize: 50 });
     expect(fetchMock).toHaveBeenCalledWith("/api/node-tasks?pageSize=50", {
       headers: {
-        "X-Tenant-Id": "dev-tenant",
+        "X-Tenant-Id": "demo-real-sample-20260921",
         "X-Operator-Id": "dev-operator",
       },
     });
