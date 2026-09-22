@@ -1,0 +1,178 @@
+{
+  "status": "passed",
+  "sourceFileCount": 44,
+  "checkCount": 21,
+  "checks": [
+    {
+      "code": "source.file_count",
+      "passed": true,
+      "observed": 44,
+      "expected": 44,
+      "source": "source directory"
+    },
+    {
+      "code": "source.parse_errors",
+      "passed": true,
+      "observed": [],
+      "expected": [],
+      "source": "extract manifest"
+    },
+    {
+      "code": "source.exact_duplicate_sets",
+      "passed": true,
+      "observed": [
+        [
+          "26DSC01811,26DSC01812NBOZ9FF56400Wayfair上海 (1).xls",
+          "26DSC01811,26DSC01812NBOZ9FF56400Wayfair上海.xls"
+        ]
+      ],
+      "expected": [
+        [
+          "26DSC01811,26DSC01812NBOZ9FF56400Wayfair上海 (1).xls",
+          "26DSC01811,26DSC01812NBOZ9FF56400Wayfair上海.xls"
+        ]
+      ],
+      "source": "SHA-256"
+    },
+    {
+      "code": "bom.row_count",
+      "passed": true,
+      "observed": 15,
+      "expected": 15,
+      "source": "报关平台.xlsx/货物BOM"
+    },
+    {
+      "code": "bom.quantity_sum",
+      "passed": true,
+      "observed": "504",
+      "expected": "504",
+      "source": "报关平台.xlsx/货物BOM"
+    },
+    {
+      "code": "bom.gross_weight_sum",
+      "passed": true,
+      "observed": "7723.0",
+      "expected": "7723.0",
+      "source": "报关平台.xlsx/货物BOM"
+    },
+    {
+      "code": "bom.volume_sum",
+      "passed": true,
+      "observed": "67.25",
+      "expected": "67.25",
+      "source": "报关平台.xlsx/货物BOM"
+    },
+    {
+      "code": "fixture.product_snapshots_exact",
+      "passed": true,
+      "observed": true,
+      "expected": true,
+      "source": "fixture versus 报关平台.xlsx/货物BOM"
+    },
+    {
+      "code": "platform.earlier_gross_weight",
+      "passed": true,
+      "observed": ["7706.6"],
+      "expected": ["7706.6"],
+      "source": "备货平台拖进港数据/毛重"
+    },
+    {
+      "code": "platform.earlier_volume",
+      "passed": true,
+      "observed": ["67.57"],
+      "expected": ["67.57"],
+      "source": "备货平台拖进港数据/体积"
+    },
+    {
+      "code": "customs.invoice_count",
+      "passed": true,
+      "observed": 2,
+      "expected": 2,
+      "source": "报关平台.xlsx/报关票数"
+    },
+    {
+      "code": "customs.package_sum",
+      "passed": true,
+      "observed": "504",
+      "expected": "504",
+      "source": "报关平台.xlsx/报关票数"
+    },
+    {
+      "code": "customs.gross_weight_sum",
+      "passed": true,
+      "observed": "7723",
+      "expected": "7723",
+      "source": "报关平台.xlsx/报关票数"
+    },
+    {
+      "code": "customs.volume_sum",
+      "passed": true,
+      "observed": "67.25",
+      "expected": "67.25",
+      "source": "报关平台.xlsx/报关票数"
+    },
+    {
+      "code": "manifest.container_1",
+      "passed": true,
+      "observed": ["HMMU4207629", "26H0407883", "949", "9630.90", "65.79"],
+      "expected": ["HMMU4207629", "26H0407883", "949", "9630.90", "65.79"],
+      "source": "预配舱单/按箱统计"
+    },
+    {
+      "code": "manifest.container_2",
+      "passed": true,
+      "observed": ["HMMU4956442", "26H0407525", "504", "7723.00", "67.25"],
+      "expected": ["HMMU4956442", "26H0407525", "504", "7723.00", "67.25"],
+      "source": "预配舱单/按箱统计"
+    },
+    {
+      "code": "manifest.total",
+      "passed": true,
+      "observed": ["1453", "17353.90", "133.04"],
+      "expected": ["1453", "17353.90", "133.04"],
+      "source": "预配舱单/总票统计"
+    },
+    {
+      "code": "fixture.container_1",
+      "passed": true,
+      "observed": [949, 9630.9, 65.79],
+      "expected": [949, 9630.9, 65.79],
+      "source": "fixture versus premanifest"
+    },
+    {
+      "code": "fixture.container_2",
+      "passed": true,
+      "observed": [504, 7723.0, 67.25],
+      "expected": [504, 7723.0, 67.25],
+      "source": "fixture versus premanifest"
+    },
+    {
+      "code": "pdf.HMMU4207629",
+      "passed": true,
+      "observed": true,
+      "expected": true,
+      "source": "出运备注清单.pdf"
+    },
+    {
+      "code": "pdf.HMMU4956442",
+      "passed": true,
+      "observed": true,
+      "expected": true,
+      "source": "出运备注清单.pdf"
+    }
+  ],
+  "preservedDifferences": [
+    {
+      "scope": "26DSC01812 / HMMU4956442",
+      "field": "grossWeightKg",
+      "earlierValue": 7706.6,
+      "finalDocumentValue": 7723.0
+    },
+    {
+      "scope": "26DSC01812 / HMMU4956442",
+      "field": "volumeCbm",
+      "earlierValue": 67.57,
+      "finalDocumentValue": 67.25
+    }
+  ]
+}
