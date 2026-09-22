@@ -196,7 +196,7 @@ function references(raw: string): string[] {
 }
 .form-heading,
 .form-section {
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--line, #d7dde5);
 }
 .form-section:last-child {
@@ -209,38 +209,38 @@ function references(raw: string): string[] {
 }
 .eyebrow {
   color: var(--app-text-secondary, #667085);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .form-heading h2 {
-  margin-top: 4px;
-  font-size: 18px;
+  margin-top: var(--space-1);
+  font-size: var(--text-page);
   letter-spacing: 0;
 }
 .form-section {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .form-section h3 {
-  font-size: 14px;
+  font-size: var(--text-body);
   letter-spacing: 0;
 }
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 .form-section label {
   display: grid;
-  gap: 5px;
+  gap: var(--space-1);
   color: var(--app-text-secondary, #667085);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .form-section input,
 .form-section select,
 .form-section textarea {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line, #d7dde5);
   border-radius: 4px;
   background: var(--surface, #ffffff);
@@ -253,7 +253,7 @@ function references(raw: string): string[] {
 .form-section button {
   justify-self: start;
   min-height: 36px;
-  padding: 7px 13px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--app-brand, #155eef);
   border-radius: 4px;
   background: var(--app-brand, #155eef);

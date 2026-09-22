@@ -169,7 +169,7 @@ const emit = defineEmits<{
   border-radius: 4px;
   background: var(--surface);
   color: var(--muted);
-  font: 10px var(--font-mono);
+  font: var(--text-micro) var(--font-mono);
 }
 
 .system-health,

@@ -94,14 +94,14 @@ const items = computed(() =>
 .timeline-head {
   min-height: 42px;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
 
 .timeline-head > div {
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .timeline-head svg {
@@ -110,7 +110,7 @@ const items = computed(() =>
 
 .timeline-head span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .event-list {
@@ -127,8 +127,8 @@ const items = computed(() =>
       0.6fr
     );
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px 10px 8px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--line);
 }
 
@@ -142,7 +142,7 @@ const items = computed(() =>
   display: flex;
   align-items: center;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .event-marker::after {
@@ -180,7 +180,7 @@ const items = computed(() =>
 
 .event-marker small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
 }
 
 .event-identity,
@@ -196,8 +196,8 @@ const items = computed(() =>
 }
 
 .event-identity > span {
-  margin-top: 2px;
-  font-size: 10px;
+  margin-top: var(--space-1);
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
@@ -221,7 +221,7 @@ const items = computed(() =>
 
 .event-times > div {
   min-width: 0;
-  padding: 6px 8px;
+  padding: var(--space-2) var(--space-2);
   border-right: 1px solid var(--line);
 }
 
@@ -232,14 +232,14 @@ const items = computed(() =>
 .event-times dt,
 .event-evidence small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
 }
 
 .event-times dd {
-  margin: 2px 0 0;
+  margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .occurred .event-times .actual dd {
@@ -249,20 +249,20 @@ const items = computed(() =>
 
 .event-evidence {
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   color: var(--brand);
 }
 
 .event-evidence b {
   overflow-wrap: anywhere;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 1180px) {
   .event-item {
     grid-template-columns: 36px minmax(105px, 0.45fr) minmax(0, 1.55fr);
-    gap: 6px 10px;
+    gap: var(--space-2) var(--space-3);
   }
 
   .event-marker {
@@ -277,8 +277,8 @@ const items = computed(() =>
 @media (max-width: 720px) {
   .event-item {
     grid-template-columns: 36px minmax(0, 1fr);
-    gap: 6px 8px;
-    padding: 10px 10px 10px 6px;
+    gap: var(--space-2) var(--space-2);
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-2);
   }
 
   .event-marker {
@@ -291,7 +291,7 @@ const items = computed(() =>
   }
 
   .event-times > div {
-    padding: 6px;
+    padding: var(--space-2);
   }
 }
 </style>

@@ -65,9 +65,9 @@ defineProps<{ items: readonly DecisionItem[] }>();
   min-height: 46px;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -75,17 +75,17 @@ defineProps<{ items: readonly DecisionItem[] }>();
 .panel-head > div {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .panel-head h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 
 .panel-head > b {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .decision {
@@ -93,8 +93,8 @@ defineProps<{ items: readonly DecisionItem[] }>();
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   box-shadow: inset 3px 0 currentColor;
 }
@@ -113,7 +113,7 @@ defineProps<{ items: readonly DecisionItem[] }>();
 .decision-metric b {
   overflow-wrap: anywhere;
   color: currentColor;
-  font-size: 15px;
+  font-size: var(--text-title);
   line-height: 1.05;
 }
 
@@ -121,7 +121,7 @@ defineProps<{ items: readonly DecisionItem[] }>();
 .decision-copy span {
   overflow: hidden;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -129,7 +129,7 @@ defineProps<{ items: readonly DecisionItem[] }>();
 .decision-copy b {
   overflow: hidden;
   color: var(--ink);
-  font-size: 11px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -138,9 +138,9 @@ defineProps<{ items: readonly DecisionItem[] }>();
   min-height: 32px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   color: currentColor;
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 650;
   text-decoration: none;
 }

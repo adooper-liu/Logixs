@@ -155,7 +155,7 @@ function selectContainer(event: Event): void {
       0.65fr
     );
   align-items: stretch;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   border: 1px solid var(--line);
   border-left: 3px solid var(--brand);
   border-radius: var(--radius-card);
@@ -168,8 +168,8 @@ function selectContainer(event: Event): void {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3);
 }
 
 .role-context {
@@ -181,7 +181,7 @@ function selectContainer(event: Event): void {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .context-icon {
@@ -197,7 +197,7 @@ function selectContainer(event: Event): void {
 
 .node-scope {
   margin-left: auto;
-  padding-left: 12px;
+  padding-left: var(--space-3);
   border-left: 1px solid var(--line);
 }
 
@@ -205,27 +205,27 @@ function selectContainer(event: Event): void {
 .container-identity small,
 .container-selector > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .role-context b,
 .container-identity b {
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 .container-selector {
   min-width: 0;
   display: grid;
-  gap: 4px;
-  padding: 9px 12px;
+  gap: var(--space-1);
+  padding: var(--space-3);
   border-right: 1px solid var(--line);
 }
 
 .container-selector select {
   min-width: 0;
   min-height: 36px;
-  padding: 0 9px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -239,12 +239,12 @@ function selectContainer(event: Event): void {
 
 .notice,
 .projection-warnings {
-  margin: 0 0 12px;
-  padding: 10px 12px;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
   border-left: 3px solid var(--info);
   background: var(--info-bg);
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .notice--error {
@@ -256,8 +256,8 @@ function selectContainer(event: Event): void {
 .projection-warnings {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 18px;
-  padding-left: 28px;
+  gap: var(--space-2) var(--space-5);
+  padding-left: var(--space-8);
   border-left-color: var(--warn);
   background: var(--warn-bg);
 }
@@ -269,7 +269,7 @@ function selectContainer(event: Event): void {
       300px,
       0.8fr
     );
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
 }
 

@@ -100,8 +100,8 @@ const stateLabel: Record<TaskRequiredInput["state"], string> = {
 .section-head {
   min-height: 42px;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
   list-style: none;
 }
@@ -113,7 +113,7 @@ const stateLabel: Record<TaskRequiredInput["state"], string> = {
 .section-head > span {
   display: inline-flex;
   align-items: baseline;
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .section-head small,
@@ -123,7 +123,7 @@ const stateLabel: Record<TaskRequiredInput["state"], string> = {
 
 .section-head small,
 .section-head strong {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .section-head strong.ready {
@@ -136,14 +136,14 @@ const stateLabel: Record<TaskRequiredInput["state"], string> = {
 
 .input-list {
   margin: 0;
-  padding: 0 14px 8px;
+  padding: 0 var(--space-4) var(--space-2);
   list-style: none;
 }
 
 .input-list li {
   min-height: 42px;
-  gap: 9px;
-  padding: 6px 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
   border-bottom: 1px dashed var(--line);
 }
 
@@ -174,7 +174,7 @@ const stateLabel: Record<TaskRequiredInput["state"], string> = {
 }
 
 .input-copy b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .input-copy small {
@@ -184,13 +184,13 @@ const stateLabel: Record<TaskRequiredInput["state"], string> = {
 .state-label {
   flex: none;
   color: var(--warn);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
 .secondary {
   min-height: 30px;
-  padding: 5px 9px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--surface);
@@ -200,8 +200,8 @@ const stateLabel: Record<TaskRequiredInput["state"], string> = {
 }
 
 .collapsed-count {
-  margin: -3px 14px 8px;
+  margin: -3px var(--space-4) var(--space-2); /* style-scale-exempt: -3px 是光学上移，与上方标题基线对齐 */
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 </style>

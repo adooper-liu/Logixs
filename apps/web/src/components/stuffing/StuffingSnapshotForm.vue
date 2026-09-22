@@ -192,34 +192,34 @@ function toLocalDateTime(value: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .snapshot-form > header b {
   color: var(--brand-strong);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 fieldset {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
   margin: 0;
-  padding: 12px;
+  padding: var(--space-3);
   border: 0;
 }
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
+  gap: var(--space-2);
 }
 .field-grid label,
 .wide-field {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 input,
 select,
@@ -228,7 +228,7 @@ textarea {
   min-width: 0;
   min-height: 36px;
   box-sizing: border-box;
-  padding: 7px 8px;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -242,16 +242,16 @@ textarea {
   min-height: 36px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .toggle input {
   width: 16px;
   min-height: 16px;
 }
 .vgm-fields {
-  padding: 9px;
+  padding: var(--space-2);
   border-left: 3px solid var(--info);
   background: var(--info-bg);
 }
@@ -260,7 +260,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   border: 1px solid var(--brand);
   border-radius: var(--radius-control);
   background: var(--brand);
@@ -276,8 +276,8 @@ fieldset:disabled {
 .form-notice,
 .result {
   margin: 0;
-  padding: 9px 12px;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-micro);
 }
 .form-notice {
   background: var(--warn-bg);

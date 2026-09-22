@@ -135,8 +135,8 @@ function submit(): void {
 <style scoped>
 .assistant-panel {
   display: grid;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   border: 1px solid var(--line);
   background: var(--surface);
 }
@@ -152,11 +152,11 @@ function submit(): void {
 
 .assistant-header {
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .assistant-header > div {
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .assistant-header h2,
@@ -166,13 +166,13 @@ function submit(): void {
 }
 
 .assistant-header h2 {
-  font-size: 1rem;
+  font-size: var(--text-title);
 }
 
 .read-only-label {
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-label);
 }
 
 .icon-button {
@@ -194,23 +194,23 @@ function submit(): void {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
+  gap: var(--space-1);
   background: var(--line);
   border: 1px solid var(--line);
 }
 
 .summary-grid > div {
   min-width: 0;
-  padding: 10px;
+  padding: var(--space-3);
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   background: var(--surface);
 }
 
 .summary-grid span,
 .next-actions small {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--text-label);
 }
 
 .summary-grid strong {
@@ -218,21 +218,21 @@ function submit(): void {
 }
 
 .next-actions {
-  margin-top: 12px;
+  margin-top: var(--space-3);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .next-actions ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--space-5);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .next-actions li {
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .next-actions a {
@@ -241,19 +241,19 @@ function submit(): void {
 
 .policy {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-meta);
 }
 
 .thread {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
   max-height: 320px;
   overflow: auto;
 }
 
 .message {
   max-width: 82%;
-  padding: 10px 12px;
+  padding: var(--space-3);
   border-left: 3px solid var(--line);
   background: color-mix(in srgb, var(--surface) 92%, var(--line));
 }
@@ -265,14 +265,14 @@ function submit(): void {
 }
 
 .message pre {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: inherit;
 }
 
 .composer {
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .composer input {

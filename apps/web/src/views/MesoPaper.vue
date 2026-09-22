@@ -31,10 +31,10 @@ onMounted(() => {
 }
 
 .hint {
-  margin: 0 0 12px;
-  padding: 8px 10px;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .hint--error {

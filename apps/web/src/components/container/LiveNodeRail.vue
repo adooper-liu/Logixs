@@ -134,8 +134,8 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
 <style scoped>
 .rail {
   min-width: 0;
-  margin: 0 0 12px;
-  padding: 12px 14px;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
@@ -194,7 +194,7 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
   width: 100%;
   display: grid;
   grid-template-rows: 14px 16px auto auto;
-  gap: 4px;
+  gap: var(--space-1);
   justify-items: center;
   padding: 0;
   border: 0;
@@ -214,7 +214,7 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
 
 .sequence {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   line-height: 14px;
   font-variant-numeric: tabular-nums;
 }
@@ -257,7 +257,7 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
   max-width: 100%;
   overflow: hidden;
   color: var(--ink);
-  font-size: 12px;
+  font-size: var(--text-label);
   line-height: 15px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -265,7 +265,7 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
 
 .date {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   line-height: 13px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

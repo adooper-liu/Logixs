@@ -62,9 +62,9 @@ defineProps<{ record: ContainerProjection }>();
   min-width: 0;
   display: grid;
   grid-template-columns: 34px 38px minmax(0, 1fr);
-  gap: 10px;
+  gap: var(--space-3);
   align-items: center;
-  padding: 7px 10px;
+  padding: var(--space-2) var(--space-3);
   border-right: 1px solid var(--line);
 }
 
@@ -72,18 +72,18 @@ defineProps<{ record: ContainerProjection }>();
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .object-identity small,
 .location {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .object-identity h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--text-page);
 }
 
 .object-icon {
@@ -99,26 +99,26 @@ defineProps<{ record: ContainerProjection }>();
 .identity-title {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .identity-title > span {
-  padding: 1px 5px;
+  padding: var(--space-1) var(--space-1);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   color: var(--ink-soft);
-  font-size: 9px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
 .location {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .location > span {
-  margin-left: 4px;
+  margin-left: var(--space-1);
   color: var(--muted);
 }
 

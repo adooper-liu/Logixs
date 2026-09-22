@@ -158,14 +158,14 @@ defineProps<{
   align-items: center;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 40px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 .panel-head h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 .analysis-grid {
   display: grid;
@@ -173,7 +173,7 @@ defineProps<{
 }
 .analysis-section {
   min-width: 0;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -186,15 +186,15 @@ defineProps<{
 .subhead {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 5px;
+  margin-bottom: var(--space-1);
 }
 .cycle-row {
   display: grid;
   grid-template-columns: 0.7fr repeat(3, 0.7fr) 1.8fr;
-  gap: 7px;
-  padding: 5px 0;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .cycle-row a,
 .fee-row a {
@@ -209,8 +209,8 @@ defineProps<{
 .exception-row,
 .decision-row {
   display: grid;
-  gap: 8px;
-  padding: 6px 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--line);
 }
 .fee-row {
@@ -234,13 +234,13 @@ defineProps<{
 .exception-row span,
 .decision-row span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   overflow-wrap: anywhere;
 }
 .fee-row strong,
 .exception-row strong,
 .decision-row strong {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .fee-row .ok {
   color: var(--ok);
@@ -258,12 +258,12 @@ defineProps<{
   grid-column: 1 / -1;
   margin: 0;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .trace-link {
   grid-column: 1 / -1;
   color: var(--brand);
-  font-size: 10px;
+  font-size: var(--text-micro);
   text-decoration: none;
   overflow-wrap: anywhere;
 }

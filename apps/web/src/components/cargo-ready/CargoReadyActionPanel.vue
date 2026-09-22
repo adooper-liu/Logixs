@@ -146,26 +146,26 @@ const taskStateLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
 .panel-header > span {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 .panel-header small,
 .task-context small,
 .remediation small,
 .remediation article > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .panel-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-title);
 }
 .panel-header > svg {
   color: var(--brand-strong);
@@ -175,9 +175,9 @@ const taskStateLabel = computed(() => {
 .unsupported,
 .remediation > p {
   margin: 0;
-  padding: 16px 12px;
+  padding: var(--space-4) var(--space-3);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .task-context {
   display: grid;
@@ -187,35 +187,35 @@ const taskStateLabel = computed(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 10px 12px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 .task-context b {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   overflow-wrap: anywhere;
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .command-area {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-bottom: 1px solid var(--line-strong);
   background: var(--brand-soft);
 }
 .command-area > p {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .primary-action {
   min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   border: 1px solid var(--brand);
   border-radius: var(--radius-control);
   background: var(--brand);
@@ -228,7 +228,7 @@ const taskStateLabel = computed(() => {
   opacity: 0.6;
 }
 .action-panel :deep(.submission) {
-  margin: 12px;
+  margin: var(--space-3);
 }
 .remediation {
   border-top: 1px solid var(--line-strong);
@@ -238,33 +238,33 @@ const taskStateLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .remediation > header span,
 .remediation a {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
 }
 .remediation article {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 10px 12px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3);
   border-top: 1px solid var(--line);
 }
 .remediation article > b {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .remediation a {
   min-height: 36px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--line);
   color: var(--brand-strong);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 700;
   text-decoration: none;
 }

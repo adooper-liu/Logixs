@@ -125,15 +125,15 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 header span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .facts-grid,
 .instruction-line {
@@ -144,8 +144,8 @@ header span {
 .instruction-line > span {
   min-width: 0;
   display: grid;
-  gap: 3px;
-  padding: 11px 12px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -154,23 +154,23 @@ header span {
 }
 b {
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 em {
   color: var(--brand-strong);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-style: normal;
 }
 .pending {
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   background: var(--warn-bg);
   color: var(--warn);
-  font-size: 11px;
+  font-size: var(--text-micro);
   overflow-wrap: anywhere;
 }
 @media (max-width: 720px) {

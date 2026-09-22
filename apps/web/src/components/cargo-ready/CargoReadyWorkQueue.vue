@@ -170,29 +170,29 @@ function dueLabel(value: string | null): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
 .queue-header > span {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 .queue-header small,
 .queue-copy small,
 .queue-meta {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .queue-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-title);
 }
 .queue-header > b {
   color: var(--brand-strong);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .queue-filters {
   display: grid;
@@ -205,13 +205,13 @@ function dueLabel(value: string | null): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 7px 5px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1);
   border: 0;
   border-right: 1px solid var(--line);
   background: var(--surface);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   cursor: pointer;
 }
 .queue-filters button:last-child {
@@ -224,10 +224,10 @@ function dueLabel(value: string | null): string {
 }
 .queue-filters span {
   min-width: 18px;
-  padding: 1px 4px;
+  padding: var(--space-1) var(--space-1);
   border-radius: 999px;
   background: var(--surface-2);
-  font-size: 9px;
+  font-size: var(--text-micro);
 }
 .queue-list {
   max-height: 620px;
@@ -239,8 +239,8 @@ function dueLabel(value: string | null): string {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 9px;
-  padding: 11px 12px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3);
   border: 0;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -257,11 +257,11 @@ function dueLabel(value: string | null): string {
 }
 .urgency {
   min-width: 42px;
-  padding: 3px 5px;
+  padding: var(--space-1) var(--space-1);
   border-radius: var(--radius-s);
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 700;
   text-align: center;
 }
@@ -279,7 +279,7 @@ function dueLabel(value: string | null): string {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .queue-copy > b,
 .queue-copy strong,
@@ -288,38 +288,38 @@ function dueLabel(value: string | null): string {
   overflow-wrap: anywhere;
 }
 .queue-copy > b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .queue-copy strong {
-  gap: 1px;
-  font-size: 11px;
+  gap: var(--space-1);
+  font-size: var(--text-micro);
 }
 .queue-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px 10px;
+  gap: var(--space-1) var(--space-3);
 }
 .queue-meta > span,
 .queue-copy em,
 .next-action {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .queue-copy em {
   color: var(--risk);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-style: normal;
 }
 .next-action {
   color: var(--brand-strong);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .queue-notice {
   margin: 0;
-  padding: 18px 12px;
+  padding: var(--space-5) var(--space-3);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .queue-notice--error {
   background: var(--risk-bg);
@@ -336,26 +336,26 @@ function dueLabel(value: string | null): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 9px 12px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
 }
 
 .remediation-queue > header {
   background: var(--surface-2);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .remediation-queue > header span {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
 }
 
 .remediation-queue > p {
   margin: 0;
-  padding: 12px;
+  padding: var(--space-3);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .remediation-queue > button {
@@ -375,7 +375,7 @@ function dueLabel(value: string | null): string {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .remediation-queue > button b,
@@ -384,18 +384,18 @@ function dueLabel(value: string | null): string {
 }
 
 .remediation-queue > button b {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .remediation-queue > button small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .remediation-queue > button em {
   flex: none;
   color: var(--risk);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-style: normal;
   font-weight: 700;
 }

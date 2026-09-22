@@ -92,14 +92,14 @@ function openTarget(path: string): void {
 .panel-head {
   min-height: 42px;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 8px 6px 12px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
 
 .panel-head > div {
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .panel-head svg {
@@ -108,7 +108,7 @@ function openTarget(path: string): void {
 
 .panel-head span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .icon-button {
@@ -129,11 +129,11 @@ function openTarget(path: string): void {
 }
 
 .state {
-  gap: 7px;
+  gap: var(--space-2);
   margin: 0;
-  padding: 16px 12px;
+  padding: var(--space-4) var(--space-3);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .state--error {
@@ -148,7 +148,7 @@ function openTarget(path: string): void {
   background: var(--surface-2);
   color: var(--brand);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .spin {

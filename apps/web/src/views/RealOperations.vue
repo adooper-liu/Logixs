@@ -179,7 +179,7 @@ onMounted(() => {
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);
-  padding: 12px 0;
+  padding: var(--space-3) 0;
 }
 .hint--error {
   color: var(--app-danger, #dc2626);
@@ -190,12 +190,12 @@ onMounted(() => {
 .ops-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 .ops-table th,
 .ops-table td {
   text-align: left;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--app-border, #e5e7eb);
   vertical-align: top;
 }
@@ -210,17 +210,17 @@ onMounted(() => {
 .ref {
   word-break: break-all;
   color: var(--app-text-secondary, #6b7280);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .reject {
   display: block;
   color: var(--app-danger, #dc2626);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .expand,
 .next-page {
   min-height: 36px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--app-border, #d1d5db);
   background: var(--app-surface, #fff);
   color: inherit;
@@ -229,9 +229,9 @@ onMounted(() => {
   background: var(--app-surface-muted, #f9fafb);
 }
 .nested {
-  margin: 4px 0 8px;
+  margin: var(--space-1) 0 var(--space-2);
 }
 .next-page {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 </style>

@@ -110,7 +110,7 @@ function submit(draft: UnloadingReportDraft) {
 <style scoped>
 .unloading-primary {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .unloading-primary > * {
   border-bottom: 1px solid var(--line);

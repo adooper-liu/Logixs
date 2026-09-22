@@ -57,11 +57,11 @@ async function onFileChange(event: Event): Promise<void> {
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 .hint code {
   background: var(--app-bg-muted, #f3f4f6);
-  padding: 2px 6px;
+  padding: var(--space-1) var(--space-2);
   border-radius: 4px;
 }
 .hint--error {
@@ -69,7 +69,7 @@ async function onFileChange(event: Event): Promise<void> {
 }
 .picker {
   display: inline-block;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 .picker input {
   position: absolute;
@@ -79,7 +79,7 @@ async function onFileChange(event: Event): Promise<void> {
 }
 .picker span {
   display: inline-block;
-  padding: 10px 18px;
+  padding: var(--space-3) var(--space-5);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 8px;
   cursor: pointer;

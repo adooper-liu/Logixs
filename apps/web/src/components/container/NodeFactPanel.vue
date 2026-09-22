@@ -91,8 +91,8 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -102,14 +102,14 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
   display: grid;
   grid-template-rows: 13px 1fr;
   align-items: end;
-  column-gap: 3px;
-  padding-right: 12px;
+  column-gap: var(--space-1);
+  padding-right: var(--space-3);
   border-right: 1px solid var(--line-strong);
 }
 
 .node-label {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
@@ -120,7 +120,7 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
 
 .node-position b {
   color: var(--brand-strong);
-  font-size: 21px;
+  font-size: var(--text-page);
   line-height: 1;
 }
 
@@ -128,7 +128,7 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
 .node-position small,
 .node-title > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .node-title {
@@ -137,15 +137,15 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
 
 .node-title h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--text-page);
   line-height: 1.2;
 }
 
 .phase {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  gap: var(--space-1);
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
@@ -166,7 +166,7 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
 }
 
 .node-facts {
-  padding: 12px;
+  padding: var(--space-3);
 }
 
 .next-action {
@@ -174,8 +174,8 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-top: 1px solid var(--line);
   background: var(--brand-soft);
 }
@@ -196,34 +196,34 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
 
 .action-copy span {
   color: var(--brand-strong);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
 .action-copy p {
-  margin: 1px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--ink);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 .next-action a {
   min-height: 34px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 10px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--brand);
   border-radius: var(--radius-s);
   background: var(--surface);
   color: var(--brand-strong);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 700;
   text-decoration: none;
 }
 
 .read-only {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 720px) {
@@ -236,7 +236,7 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
   }
 
   .node-facts {
-    padding: 10px;
+    padding: var(--space-3);
   }
 
   .next-action {

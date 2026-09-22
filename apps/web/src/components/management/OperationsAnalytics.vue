@@ -134,33 +134,33 @@ const pendingDecisions = computed(
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .panel-head {
   min-height: 32px;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 0 2px;
+  padding: 0 var(--space-1);
 }
 
 .panel-head > div {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .panel-head h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 
 .panel-head a,
 .analysis-block header :deep(.info-tooltip__trigger) {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .panel-head a {
@@ -172,12 +172,12 @@ const pendingDecisions = computed(
 .analytics-grid {
   display: grid;
   grid-template-columns: 1fr 1fr minmax(220px, 0.72fr);
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .analysis-block {
   min-width: 0;
-  padding: 10px 12px 12px;
+  padding: var(--space-3) var(--space-3) var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -186,32 +186,32 @@ const pendingDecisions = computed(
 .analysis-block > header {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 9px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .analysis-block > header b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .bar-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .bar-row {
   min-width: 0;
   display: grid;
   grid-template-columns: 42px minmax(80px, 1fr) 38px;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .bar-row > span:first-child,
 .bar-row > b {
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -270,17 +270,17 @@ const pendingDecisions = computed(
   min-height: 34px;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
   border-top: 1px solid var(--line);
   color: var(--ink-soft);
-  font-size: 10px;
+  font-size: var(--text-micro);
   text-decoration: none;
 }
 
 .closure-row b {
   color: currentColor;
-  font-size: 15px;
+  font-size: var(--text-title);
 }
 
 @media (max-width: 1000px) {

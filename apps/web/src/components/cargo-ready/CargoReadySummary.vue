@@ -165,8 +165,8 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -175,11 +175,11 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 .panel-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-title);
 }
 .panel-header small,
 .compliance-copy small,
@@ -189,11 +189,11 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
 .readiness-row small,
 .gap-band small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .panel-header > b {
   color: var(--brand-strong);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .panel-icon {
   width: 34px;
@@ -210,9 +210,9 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
 }
 .empty-state {
   margin: 0;
-  padding: 18px 12px;
+  padding: var(--space-5) var(--space-3);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .readiness-list {
   display: grid;
@@ -226,8 +226,8 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 9px 12px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 .readiness-row > header > span,
@@ -236,20 +236,20 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 .readiness-row > header b {
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .factor-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(74px, 1fr));
-  gap: 8px;
-  padding: 9px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
 }
 .factor-grid > div {
-  padding-right: 8px;
+  padding-right: var(--space-2);
   border-right: 1px solid var(--line);
 }
 .factor-grid > div:last-child {
@@ -259,11 +259,11 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
 .state {
   display: inline-flex;
   width: fit-content;
-  padding: 3px 6px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-s);
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-style: normal;
   font-weight: 700;
 }
@@ -283,45 +283,45 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
 .gap-band {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(160px, 0.85fr);
-  gap: 14px;
-  padding: 9px 12px;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border-top: 1px dashed var(--line);
   background: var(--surface-2);
 }
 .gap-band ul {
   margin: 0;
-  padding-left: 16px;
+  padding-left: var(--space-4);
   color: var(--risk);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .gap-band span,
 .gap-band b {
   overflow-wrap: anywhere;
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .ready-copy {
   color: var(--ok);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .compliance-strip {
   min-width: 0;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-top: 1px solid var(--line-strong);
 }
 .compliance-strip a {
   min-height: 34px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 10px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--brand);
   border-radius: var(--radius-control);
   color: var(--brand-strong);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 700;
   text-decoration: none;
 }
@@ -329,8 +329,8 @@ const stateLabels: Record<CargoReadyReadinessState, string> = {
   min-height: 38px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--line);
   background: var(--surface-2);
 }
