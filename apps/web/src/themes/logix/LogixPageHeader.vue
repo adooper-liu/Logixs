@@ -27,7 +27,7 @@ defineProps<PageHeaderProps>();
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .page-heading {
@@ -38,38 +38,38 @@ defineProps<PageHeaderProps>();
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-2);
 }
 
 .eyebrow {
   display: block;
   color: var(--brand);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
 h2 {
-  margin: 1px 0 0;
-  font-size: 20px;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-page);
   line-height: 1.3;
 }
 
 p {
-  margin: 3px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .page-actions {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .page-actions small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 767px) {
@@ -77,7 +77,7 @@ p {
     min-height: 0;
     align-items: flex-start;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .page-actions {
