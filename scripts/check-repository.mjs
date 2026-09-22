@@ -338,6 +338,16 @@ export function findStyleScaleViolations(records, baseline = { files: {} }) {
           const property = declaration[1];
           const value = declaration[2].trim();
 
+          if (property === "font") {
+            // font 简写里可能藏着字号：font: 10px var(--font-mono)。
+            // 只允许 inherit，或引用了 --text-* 令牌的写法。
+            if (value === "inherit" || value.includes("var(--text-")) continue;
+            fileErrors.push(
+              `${path}: font 简写里的字号不得写裸值，请改用 var(--text-*) 令牌（当前为 '${value}'）`,
+            );
+            continue;
+          }
+
           if (property === "font-size") {
             if (value === "inherit" || TEXT_TOKEN_VALUE.test(value)) continue;
             fileErrors.push(
