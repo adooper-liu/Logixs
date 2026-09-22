@@ -6,6 +6,14 @@ import type { Prisma, PrismaClient } from "../../generated/prisma";
 const FIXTURE_PATH = fileURLToPath(
   new URL("./fixtures/replenishment-26dsc01811-01812.json", import.meta.url),
 );
+const EVIDENCE_PATH = fileURLToPath(
+  new URL(
+    "../../docs/product/domain/evidence/REAL_REPLENISHMENT_SAMPLE_VALIDATION_20260921.json",
+    import.meta.url,
+  ),
+);
+const EVIDENCE_CONTENT_REF =
+  "docs/product/domain/evidence/REAL_REPLENISHMENT_SAMPLE_VALIDATION_20260921.json";
 const IMPORT_BATCH_ID = "demo-import-26dsc01812-bom";
 const ALLOCATION_IDEMPOTENCY_KEY =
   "real-sample-20260921:hmmu4956442:allocation:v1";
@@ -64,6 +72,9 @@ export async function seedRealReplenishmentSample(
 ): Promise<RealReplenishmentSeedResult> {
   const fixture = await readFixture();
   validateFixture(fixture);
+  const evidenceContentHash = createHash("sha256")
+    .update(await readFile(EVIDENCE_PATH))
+    .digest("hex");
 
   return prisma.$transaction(async (transaction) => {
     const batch = await transaction.importBatch.upsert({
@@ -118,10 +129,24 @@ export async function seedRealReplenishmentSample(
     const containers = new Map<string, string>();
     for (const source of fixture.containers) {
       const orderId = requiredMapValue(orders, source.orderNumber, "order");
+      const containerId = source.id;
+      const existingContainer = await transaction.containerRecord.findUnique({
+        where: { id: containerId },
+        select: { id: true },
+      });
+      if (!existingContainer) {
+        await transaction.containerRecord.updateMany({
+          where: {
+            id: `demo-container-${source.containerNumber.toLowerCase()}`,
+            tenantId: fixture.tenantId,
+          },
+          data: { id: containerId },
+        });
+      }
       const container = await transaction.containerRecord.upsert({
-        where: { id: source.id },
+        where: { id: containerId },
         create: {
-          id: source.id,
+          id: containerId,
           tenantId: fixture.tenantId,
           orderNumber: source.orderNumber,
           replenishmentOrderId: orderId,
@@ -145,7 +170,9 @@ export async function seedRealReplenishmentSample(
     for (const [index, source] of fixture.productLines.entries()) {
       const sequence = String(index + 1).padStart(2, "0");
       const sourceRowId = `demo-row-26dsc01812-${sequence}`;
-      const lineId = `demo-line-26dsc01812-${sequence}`;
+      const lineId = deterministicUuid(
+        `${fixture.tenantId}:line:26DSC01812:${sequence}`,
+      );
       const productSkuId = deterministicUuid(
         `${fixture.tenantId}:product-sku:${source.productNumber}`,
       );
@@ -158,6 +185,7 @@ export async function seedRealReplenishmentSample(
           snapshot: source.sourceSnapshot as Prisma.InputJsonValue,
         },
         update: {
+          id: sourceRowId,
           snapshot: source.sourceSnapshot as Prisma.InputJsonValue,
         },
       });
@@ -201,6 +229,7 @@ export async function seedRealReplenishmentSample(
           isCurrent: true,
         },
         update: {
+          id: lineId,
           productSkuId: productSku.id,
           productNumber: source.productNumber,
           shippedQuantity: source.shippedQuantity,
@@ -227,6 +256,48 @@ export async function seedRealReplenishmentSample(
       "HMMU4956442",
       "container",
     );
+    const evidenceId = deterministicUuid(
+      `${fixture.tenantId}:evidence:validation-report`,
+    );
+    const evidence = await transaction.evidenceRecord.upsert({
+      where: {
+        tenantId_idempotencyKey: {
+          tenantId: fixture.tenantId,
+          idempotencyKey: "real-sample-20260921:validation-report",
+        },
+      },
+      create: {
+        id: evidenceId,
+        tenantId: fixture.tenantId,
+        idempotencyKey: "real-sample-20260921:validation-report",
+        evidenceType: "validation_report",
+        subjectType: "container_cargo_allocation",
+        subjectId: targetContainerId,
+        authorityLevel: "operational",
+        contentRef: EVIDENCE_CONTENT_REF,
+        contentHash: evidenceContentHash,
+        source: {
+          kind: "repository_file",
+          fixtureVersion: fixture.fixtureVersion,
+          sourceFileCount: fixture.sources.sourceDirectoryFileCount,
+        },
+        verificationState: "pending",
+        confidenceState: "unknown",
+        validity: "effective",
+        receivedAt: new Date(fixture.sourceDate),
+        recordedAt: new Date(fixture.sourceDate),
+      },
+      update: {
+        subjectId: targetContainerId,
+        contentRef: EVIDENCE_CONTENT_REF,
+        contentHash: evidenceContentHash,
+        source: {
+          kind: "repository_file",
+          fixtureVersion: fixture.fixtureVersion,
+          sourceFileCount: fixture.sources.sourceDirectoryFileCount,
+        },
+      },
+    });
     const existingSet =
       await transaction.containerCargoAllocationSet.findUnique({
         where: {
@@ -244,6 +315,16 @@ export async function seedRealReplenishmentSample(
         payloadHash,
         allocationPayload,
       );
+      if (
+        !Array.isArray(existingSet.evidenceRefs) ||
+        existingSet.evidenceRefs.length !== 1 ||
+        existingSet.evidenceRefs[0] !== evidence.id
+      ) {
+        await transaction.containerCargoAllocationSet.update({
+          where: { id: existingSet.id },
+          data: { evidenceRefs: [evidence.id] },
+        });
+      }
     } else {
       await transaction.containerCargoAllocationSet.create({
         data: {
@@ -256,9 +337,7 @@ export async function seedRealReplenishmentSample(
           state: "active",
           ingestionChannel: "file_import",
           sourceSystem: "real-replenishment-sample-fixture",
-          evidenceRefs: [
-            "docs/product/domain/evidence/REAL_REPLENISHMENT_SAMPLE_VALIDATION_20260921.json",
-          ],
+          evidenceRefs: [evidence.id],
           idempotencyKey: ALLOCATION_IDEMPOTENCY_KEY,
           payloadHash,
           allocations: {
@@ -296,11 +375,15 @@ function validateFixture(fixture: RealSampleFixture): void {
     !orderNumbers.has("26DSC01812") ||
     fixture.productLines.length !== 15 ||
     fixture.productLines.some((line) => line.orderNumber !== "26DSC01812") ||
+    fixture.containers.some((container) => !UUID_PATTERN.test(container.id)) ||
     productTotal !== 504
   ) {
     throw new Error("REAL_REPLENISHMENT_SAMPLE_FIXTURE_INVARIANT_FAILED");
   }
 }
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function deterministicUuid(value: string): string {
   const bytes = createHash("sha256")
@@ -361,7 +444,16 @@ function assertExistingAllocationSet(
     existing.payloadHash !== expectedPayloadHash ||
     JSON.stringify(actual) !== JSON.stringify(expected)
   ) {
-    throw new Error("REAL_REPLENISHMENT_SAMPLE_ALLOCATION_REPLAY_CONFLICT");
+    throw new Error(
+      `REAL_REPLENISHMENT_SAMPLE_ALLOCATION_REPLAY_CONFLICT:${JSON.stringify({
+        actualContainerId: existing.containerRecordId,
+        expectedContainerId,
+        actualPayloadHash: existing.payloadHash,
+        expectedPayloadHash,
+        actual,
+        expected,
+      })}`,
+    );
   }
 }
 

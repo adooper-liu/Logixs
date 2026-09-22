@@ -75,6 +75,7 @@
 - `container_cargo_allocation_set/container_cargo_allocation`：`HMMU4956442` 的一个 active 装载版本与 15 条分配是本样本的权威箱货关系，合计 504；通用的一柜多单/明细拆多柜能力由独立合成数据库测试验证，不冒充真实样本事实。
 - `import_batch/import_row`：保存权威 BOM 文件哈希与 15 行完整来源快照。
 - 未写生命周期流、节点实例、规范事件和时间事实，避免把来源状态、日期精度不足或缺证据时间晋升为正式事实。
+- demo 的货柜、产品行和装载证据引用均使用确定性 UUID，可直接通过正式装载 Port 做后续开发；证据路径保存在 `EvidenceRecord.contentRef`，装载集合只保存证据 UUID。
 - `26DSC01811` 的源文件只提供品名/HS/件重体明细，没有 SKU 货号，故不伪造 `replenishment_order_line.product_number`。
 
 ## 6. 来源可靠性顺序（仅本样本对账）

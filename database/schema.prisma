@@ -441,6 +441,7 @@ model ContainerRecord {
   lifecycleDateFacts            LifecycleDateFact[]
   oceanRoutePlans               OceanRoutePlan[]
   cargoAllocationSets           ContainerCargoAllocationSet[]
+  importBindings                ContainerImportBinding[]
   stuffingSnapshots             ContainerStuffingSnapshot[]
   dispatchSnapshots             ContainerDispatchSnapshot[]
   customsClearanceCases         CustomsClearanceCase[]
@@ -456,6 +457,21 @@ model ContainerRecord {
   @@index([tenantId, containerNumber], map: "container_record_tenant_number_idx")
   @@index([replenishmentOrderId])
   @@map("container_record")
+}
+
+// 导入解析作用域：只证明同一批次中的箱号指向同一稳定货柜，不把箱号升级为跨柜次身份。
+model ContainerImportBinding {
+  id                String          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String          @map("tenant_id")
+  sourceBatchId     String          @map("source_batch_id")
+  containerNumber   String          @map("container_number")
+  containerRecordId String          @map("container_record_id")
+  containerRecord   ContainerRecord @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, sourceBatchId, containerNumber], map: "container_import_binding_scope_key")
+  @@index([containerRecordId, tenantId], map: "container_import_binding_container_idx")
+  @@map("container_import_binding")
 }
 
 // 货柜海运路线版本（lifecycle-control 读取，后续由受控路线写端口维护）。

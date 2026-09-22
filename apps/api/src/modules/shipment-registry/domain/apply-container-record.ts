@@ -5,7 +5,7 @@ export const CONTAINER_RECORD_WRITER = Symbol("ContainerRecordWriter");
 
 export interface ApplyContainerRecordCommand {
   tenantId: string;
-  orderNumber: string; // 匹配主锚
+  containerRecordId: string; // 稳定货柜 ID；状态推进禁止按箱号反查
   containerNumber: string | null; // 迟绑定，可空
   currentStatus: ContainerLifecycleState; // 8 态（导入建档 shipped；状态推进传任意合法态）
 }

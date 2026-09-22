@@ -5,6 +5,9 @@ verification:
   - "2026-09-22 pnpm db:verify:real-replenishment 通过：旧库升级、空库迁移、相关列类型/精度/可空性、金额币种 CHECK、租户复合外键、箱号查询索引、完整 seed 两次幂等、15 SKU/15 产品行/15 分配与 504 件真实汇总、一柜多单和明细拆柜合成关系。"
   - "2026-09-22 pnpm db:verify:shipment-cargo-allocation 通过：SKU 绑定、装载版本、同柜多单、明细拆柜、跨柜超分配拒绝及跨租户约束。"
   - "2026-09-22 pnpm validate 通过：仓库政策、契约校验/漂移、Prisma 生成、lint、格式、类型、全量测试（API 196 文件/932 项、Web 93 文件/273 项、Worker 5 项）、Playwright E2E（77 通过/7 条件跳过）与生产构建。"
+  - "2026-09-22 评审修复后 pnpm db:verify:real-replenishment 通过：批次货柜绑定、旧 seed 身份原位升级、确定性 UUID/证据引用、指定 SQLSTATE/约束拒绝、空库与旧库升级、重复 seed 及 504 件对账。"
+  - "2026-09-22 评审修复后 pnpm db:verify:shipment-cargo-allocation 通过；定向 API 测试 4 文件/51 项通过。"
+  - "2026-09-22 评审修复后 pnpm validate 再次通过：仓库、契约、Prisma、lint、format、typecheck、API/Web/Worker 全量测试、Playwright 77 通过/7 条件跳过及全部生产构建。"
 ---
 
 # 任务：真实备货样本数据库基础
@@ -33,7 +36,7 @@ verification:
 
 - [x] `replenishment_order_line` 承载 V1.1 已定的带电、冷媒、植检、商检及三组金额/币种可选快照；金额和币种必须成对，币种为 ISO 4217 形式，金额使用定点十进制。
 - [x] `container_record` 只能引用同租户 `replenishment_order`；旧数据升级前显式验证，跨租户引用由数据库拒绝。
-- [x] 一柜多备货单与一明细拆多柜只由版本化装载分配表达；同箱号随另一备货单导入时复用货柜且不覆盖旧兼容锚，任何单值兼容字段均不得限制 N:M。
+- [x] 一柜多备货单与一明细拆多柜只由版本化装载分配表达；同批次同箱号经批次解析绑定复用货柜且不覆盖旧兼容锚，跨批次同箱号要求明确解析稳定货柜实例，任何单值兼容字段均不得限制 N:M。
 - [x] `pnpm db:seed` 幂等写入真实 demo tenant：2 张备货单、2 个货柜、15 个 SKU、15 条产品行、1 个装载版本和 15 条装载分配。
 - [x] 真实样本保持 `26DSC01812 -> HMMU4956442` 的 504 件装载汇总；15 条产品行均绑定稳定 SKU，商检值按来源落账，未证明字段保持 `null`。
 - [x] 原始 15 行快照和早期/后期重量体积差异继续保留在版本化 fixture/验证报告，不被 seed 静默改写。
@@ -52,14 +55,17 @@ verification:
 ## 方案
 
 1. 为 `ReplenishmentOrderLine` 追加正式 V1.1 可选属性与金额快照列；数据库 CHECK 强制金额/币种成对和 ISO 4217 形状，不对尚未获权威规则确认的金额正负擅加约束。
-2. 将 `ContainerRecord.replenishmentOrder` 改为 `(replenishment_order_id, tenant_id)` 复合外键；迁移先检查历史跨租户脏引用再替换旧外键，并为 `(tenant_id, container_number)` 复用查询建立非唯一索引。
+2. 将 `ContainerRecord.replenishmentOrder` 改为 `(replenishment_order_id, tenant_id)` 复合外键；迁移先检查历史跨租户脏引用再替换旧外键，并为 `(tenant_id, container_number)` 冲突查询建立非唯一索引。追加 `container_import_binding`，以 `(tenant_id, source_batch_id, container_number)` 唯一绑定同批次解析结果；箱号本身仍不唯一。
 3. 新增结构化 TypeScript seed 模块读取现有 JSON fixture，使用确定性 UUID 和 Prisma upsert 创建 SKU、产品行绑定及装载分配；保留现有三柜基础 seed。
 4. 新增专项验证脚本，覆盖旧库升级、空库链、列/约束/FK、真实 seed 幂等和样本数量对账；登记稳定 npm 命令。
 5. 更新样本文档的“当前承载”与 demo 使用说明，明确候选对象和未落字段。
 
 ## Review notes（review 阶段填写，只读不改代码）
 
-（缺陷优先）
+- [P1] 箱号跨运输实例可复用，旧写入器却只按 `(tenantId, containerNumber)` 解析，存在历史串柜和并发重复建柜风险。
+- [P1] 真实 seed 的货柜/产品行 ID 与 `evidenceRefs` 不符合正式装载 Port 的 UUID 契约，无法用于后续真实命令开发。
+- [P1] 一柜多单后，第二单携带的冲突时间事实会静默替换当前事实，未进入对账。
+- [P2] 专项数据库验证把任意异常视为目标约束拒绝，存在假阳性。
 
 ## 进度 log（谁改谁 append，一行一条）
 
@@ -69,3 +75,5 @@ verification:
 | 2026-09-22 | coding | Codex | —      | 开始追加迁移、结构化 seed 和数据库专项验证                                                         |
 | 2026-09-22 | coding | Codex | —      | 按业务澄清锁定一柜多备货单；增加旧导入复用同箱号且不覆盖兼容锚的回归验收                           |
 | 2026-09-22 | done   | Codex | —      | 迁移、真实 seed、N:M 导入修正、专项数据库验证及完整质量门禁通过                                    |
+| 2026-09-22 | fix    | Codex | —      | 根据数据库评审修复货柜解析并发、真实 seed UUID/证据契约、共享柜时间事实冲突及约束验证假阳性        |
+| 2026-09-22 | done   | Codex | —      | 评审修复完成；专项数据库验证、定向 API 回归与完整质量门禁再次通过                                  |

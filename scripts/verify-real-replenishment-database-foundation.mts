@@ -23,6 +23,8 @@ const connectionString =
   "postgresql://logix:logix@localhost:5433/logix?schema=public";
 const targetMigration = "20260922090000_real_replenishment_database_foundation";
 const realTenantId = "demo-real-sample-20260921";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const require = createRequire(import.meta.url);
 const prismaCli = require.resolve("prisma/build/index.js");
 
@@ -105,6 +107,7 @@ async function verifyEmptyDatabaseAndSeed(url: string): Promise<void> {
   await withTemporaryDatabase(url, "empty", async (targetUrl) => {
     deployCurrentMigrations(targetUrl);
     runPnpmCommand("db:seed", targetUrl);
+    await downgradeRealSeedIdentityForReplay(targetUrl);
     runPnpmCommand("db:seed", targetUrl);
 
     const prisma = createPrisma(targetUrl);
@@ -112,6 +115,7 @@ async function verifyEmptyDatabaseAndSeed(url: string): Promise<void> {
       await verifyRealSample(prisma);
       await verifyLineConstraints(prisma);
       await verifyLegacyTenantReference(prisma);
+      await verifyImportBindingConstraints(prisma);
       await verifySyntheticManyToMany(prisma);
     } finally {
       await prisma.$disconnect();
@@ -120,6 +124,43 @@ async function verifyEmptyDatabaseAndSeed(url: string): Promise<void> {
   console.log(
     "Real replenishment verified: empty migration, idempotent seed, constraints, real totals and N:M relationships passed.",
   );
+}
+
+async function downgradeRealSeedIdentityForReplay(url: string): Promise<void> {
+  const prisma = createPrisma(url);
+  try {
+    const [container, line, allocationSet] = await Promise.all([
+      prisma.containerRecord.findFirstOrThrow({
+        where: { tenantId: realTenantId, containerNumber: "HMMU4956442" },
+        select: { id: true },
+      }),
+      prisma.replenishmentOrderLine.findFirstOrThrow({
+        where: { tenantId: realTenantId },
+        orderBy: { sourceRowId: "asc" },
+        select: { id: true },
+      }),
+      prisma.containerCargoAllocationSet.findFirstOrThrow({
+        where: { tenantId: realTenantId },
+        select: { id: true },
+      }),
+    ]);
+    await prisma.$transaction([
+      prisma.containerRecord.update({
+        where: { id: container.id },
+        data: { id: "demo-container-hmmu4956442" },
+      }),
+      prisma.replenishmentOrderLine.update({
+        where: { id: line.id },
+        data: { id: "demo-line-26dsc01812-legacy" },
+      }),
+      prisma.containerCargoAllocationSet.update({
+        where: { id: allocationSet.id },
+        data: { evidenceRefs: ["legacy/document/path.json"] },
+      }),
+    ]);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 async function verifyRealSample(prisma: PrismaClient): Promise<void> {
@@ -133,6 +174,7 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
     containerNumberIndex,
     lineColumns,
     relevantConstraints,
+    importBindingIndexes,
   ] = await Promise.all([
     prisma.replenishmentOrder.count({ where: { tenantId: realTenantId } }),
     prisma.containerRecord.count({ where: { tenantId: realTenantId } }),
@@ -140,6 +182,7 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
     prisma.replenishmentOrderLine.findMany({
       where: { tenantId: realTenantId },
       select: {
+        id: true,
         productSkuId: true,
         shippedQuantity: true,
         commodityInspectionRequired: true,
@@ -157,7 +200,7 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
     prisma.containerCargoAllocationSet.findMany({
       where: { tenantId: realTenantId },
       include: {
-        containerRecord: { select: { containerNumber: true } },
+        containerRecord: { select: { id: true, containerNumber: true } },
         allocations: { select: { allocatedQuantity: true } },
       },
     }),
@@ -201,6 +244,16 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
           OR "conname" LIKE '%replenishment_order%fkey'
         )
     `,
+    prisma.$queryRaw<Array<{ indexname: string }>>`
+      SELECT "indexname"
+      FROM "pg_indexes"
+      WHERE "schemaname" = 'public'
+        AND "tablename" = 'container_import_binding'
+        AND "indexname" IN (
+          'container_import_binding_scope_key',
+          'container_import_binding_container_idx'
+        )
+    `,
   ]);
   const total = lines.reduce(
     (sum, line) => sum + Number(line.shippedQuantity.toString()),
@@ -219,6 +272,15 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
       line.negotiationFobUnitPrice !== null,
   );
   const set = allocationSets[0];
+  const evidenceRefs = Array.isArray(set?.evidenceRefs)
+    ? set.evidenceRefs.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+  const evidenceRecords = await prisma.evidenceRecord.findMany({
+    where: { tenantId: realTenantId, id: { in: evidenceRefs } },
+    select: { id: true },
+  });
   const allocatedTotal = set?.allocations.reduce(
     (sum, allocation) => sum + Number(allocation.allocatedQuantity.toString()),
     0,
@@ -230,14 +292,20 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
     lines.length !== 15 ||
     importRowCount !== 15 ||
     lines.some((line) => line.productSkuId === null) ||
+    lines.some((line) => !UUID_PATTERN.test(line.id)) ||
     total !== 504 ||
     inspectionRequiredCount !== 5 ||
     unsupportedFieldPopulated ||
     allocationSets.length !== 1 ||
     containerNumberIndex.length !== 1 ||
+    importBindingIndexes.length !== 2 ||
     !hasExpectedLineColumns(lineColumns) ||
     !hasExpectedRelevantConstraints(relevantConstraints) ||
     set?.containerRecord.containerNumber !== "HMMU4956442" ||
+    !UUID_PATTERN.test(set.containerRecord.id) ||
+    evidenceRefs.length !== 1 ||
+    !evidenceRefs.every((value) => UUID_PATTERN.test(value)) ||
+    evidenceRecords.length !== 1 ||
     set.allocations.length !== 15 ||
     allocatedTotal !== 504
   ) {
@@ -365,6 +433,10 @@ async function verifyLineConstraints(prisma: PrismaClient): Promise<void> {
         WHERE "id" = ${line.id}
       `,
     "Amount without currency was accepted",
+    {
+      sqlState: "23514",
+      constraint: "replenishment_order_line_domestic_markup_pair_check",
+    },
   );
   await expectDatabaseRejection(
     () =>
@@ -375,6 +447,10 @@ async function verifyLineConstraints(prisma: PrismaClient): Promise<void> {
         WHERE "id" = ${line.id}
       `,
     "Non-ISO-shaped currency was accepted",
+    {
+      sqlState: "23514",
+      constraint: "replenishment_order_line_replenishment_fob_currency_check",
+    },
   );
 }
 
@@ -389,15 +465,85 @@ async function verifyLegacyTenantReference(
   });
   await expectDatabaseRejection(
     () =>
-      prisma.containerRecord.create({
-        data: {
-          tenantId: "constraint-tenant-a",
-          orderNumber: "LOCAL-ANCHOR",
-          replenishmentOrderId: foreignOrder.id,
-          currentStatus: "not_shipped",
-        },
-      }),
+      prisma.$executeRaw`
+        INSERT INTO "container_record" (
+          "id", "tenant_id", "order_number", "replenishment_order_id",
+          "current_status", "created_at", "updated_at"
+        ) VALUES (
+          ${randomUUID()}, 'constraint-tenant-a', 'LOCAL-ANCHOR',
+          ${foreignOrder.id}, 'not_shipped', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+      `,
     "Cross-tenant legacy order anchor was accepted",
+    {
+      sqlState: "23503",
+      constraint: "container_record_replenishment_order_tenant_fkey",
+    },
+  );
+}
+
+async function verifyImportBindingConstraints(
+  prisma: PrismaClient,
+): Promise<void> {
+  const [containerA, containerB] = await Promise.all([
+    prisma.containerRecord.create({
+      data: {
+        tenantId: "binding-tenant-a",
+        orderNumber: "BINDING-A",
+        containerNumber: "BINDING-CONTAINER",
+        currentStatus: "not_shipped",
+      },
+    }),
+    prisma.containerRecord.create({
+      data: {
+        tenantId: "binding-tenant-b",
+        orderNumber: "BINDING-B",
+        containerNumber: "BINDING-CONTAINER",
+        currentStatus: "not_shipped",
+      },
+    }),
+  ]);
+  await prisma.containerImportBinding.create({
+    data: {
+      tenantId: "binding-tenant-a",
+      sourceBatchId: "binding-batch",
+      containerNumber: "BINDING-CONTAINER",
+      containerRecordId: containerA.id,
+    },
+  });
+  await expectDatabaseRejection(
+    () =>
+      prisma.$executeRaw`
+        INSERT INTO "container_import_binding" (
+          "id", "tenant_id", "source_batch_id", "container_number",
+          "container_record_id"
+        ) VALUES (
+          ${randomUUID()}::uuid, 'binding-tenant-a', 'binding-batch',
+          'BINDING-CONTAINER', ${containerA.id}
+        )
+      `,
+    "Duplicate import-scope container binding was accepted",
+    {
+      sqlState: "23505",
+      constraint: "container_import_binding_scope_key",
+    },
+  );
+  await expectDatabaseRejection(
+    () =>
+      prisma.$executeRaw`
+        INSERT INTO "container_import_binding" (
+          "id", "tenant_id", "source_batch_id", "container_number",
+          "container_record_id"
+        ) VALUES (
+          ${randomUUID()}::uuid, 'binding-tenant-a', 'other-batch',
+          'BINDING-CONTAINER', ${containerB.id}
+        )
+      `,
+    "Cross-tenant import-scope container binding was accepted",
+    {
+      sqlState: "23503",
+      constraint: "container_import_binding_container_fkey",
+    },
   );
 }
 
@@ -521,13 +667,47 @@ function allocationSetData(
 async function expectDatabaseRejection(
   action: () => Promise<unknown>,
   message: string,
+  expected: { sqlState: string; constraint: string },
 ): Promise<void> {
   try {
     await action();
-  } catch {
-    return;
+  } catch (error) {
+    const diagnostics = databaseErrorDiagnostics(error);
+    if (
+      diagnostics.includes(expected.sqlState) &&
+      diagnostics.includes(expected.constraint)
+    ) {
+      return;
+    }
+    throw new Error(
+      `${message}: expected SQLSTATE ${expected.sqlState} from ${expected.constraint}; received ${diagnostics}`,
+      { cause: error },
+    );
   }
   throw new Error(message);
+}
+
+function databaseErrorDiagnostics(
+  value: unknown,
+  seen = new Set<object>(),
+  depth = 0,
+): string {
+  if (value === null || value === undefined || depth > 8) return "";
+  if (typeof value !== "object") return String(value);
+  if (seen.has(value)) return "";
+  seen.add(value);
+  const record = value as Record<string, unknown>;
+  const parts = [
+    value instanceof Error ? value.name : "",
+    value instanceof Error ? value.message : "",
+  ];
+  for (const [key, nested] of Object.entries(record)) {
+    parts.push(key, databaseErrorDiagnostics(nested, seen, depth + 1));
+  }
+  if (value instanceof Error && value.cause) {
+    parts.push(databaseErrorDiagnostics(value.cause, seen, depth + 1));
+  }
+  return parts.filter(Boolean).join(" ");
 }
 
 async function withTemporaryDatabase(

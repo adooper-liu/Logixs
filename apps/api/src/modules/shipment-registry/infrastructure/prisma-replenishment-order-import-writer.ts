@@ -16,6 +16,7 @@ import type {
   ApplyReplenishmentOrderImportCommand,
   ApplyReplenishmentOrderImportResult,
   ReplenishmentOrderImportWriter,
+  ShipmentTimeFactImport,
 } from "../domain/apply-replenishment-order-import";
 
 @Injectable()
@@ -46,20 +47,52 @@ export class PrismaReplenishmentOrderImportWriter implements ReplenishmentOrderI
         FOR UPDATE
       `;
 
-      const containerLookup = command.containerNumber
-        ? {
+      if (command.containerNumber) {
+        const importScope = `${command.tenantId}\u001f${command.containerNumber}`;
+        await transaction.$queryRaw`
+          SELECT pg_advisory_xact_lock(hashtextextended(${importScope}, 0))
+        `;
+      }
+
+      const importBinding = command.containerNumber
+        ? await transaction.containerImportBinding.findUnique({
+            where: {
+              tenantId_sourceBatchId_containerNumber: {
+                tenantId: command.tenantId,
+                sourceBatchId: command.sourceBatchId,
+                containerNumber: command.containerNumber,
+              },
+            },
+            include: { containerRecord: true },
+          })
+        : null;
+      const containers = importBinding
+        ? [importBinding.containerRecord]
+        : await transaction.containerRecord.findMany({
+            where: {
+              tenantId: command.tenantId,
+              orderNumber: command.orderNumber,
+            },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take: 2,
+          });
+      if (
+        !importBinding &&
+        containers.length === 0 &&
+        command.containerNumber
+      ) {
+        const sameNumber = await transaction.containerRecord.findMany({
+          where: {
             tenantId: command.tenantId,
             containerNumber: command.containerNumber,
-          }
-        : {
-            tenantId: command.tenantId,
-            orderNumber: command.orderNumber,
-          };
-      const containers = await transaction.containerRecord.findMany({
-        where: containerLookup,
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        take: 2,
-      });
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          take: 1,
+        });
+        if (sameNumber.length > 0) {
+          throw new ConflictException("CONTAINER_INSTANCE_RESOLUTION_REQUIRED");
+        }
+      }
       if (containers.length > 1) {
         throw new ConflictException("LEGACY_ORDER_CONTAINER_CONFLICT");
       }
@@ -93,6 +126,41 @@ export class PrismaReplenishmentOrderImportWriter implements ReplenishmentOrderI
               currentStatus: "not_shipped",
             },
           });
+      if (command.containerNumber && !importBinding) {
+        await transaction.containerImportBinding.create({
+          data: {
+            tenantId: command.tenantId,
+            sourceBatchId: command.sourceBatchId,
+            containerNumber: command.containerNumber,
+            containerRecordId: container.id,
+          },
+        });
+      }
+
+      const sharedAcrossOrders =
+        existing?.replenishmentOrderId != null &&
+        existing.replenishmentOrderId !== order.id;
+      const factCodes = command.timeFacts.map(({ factCode }) => factCode);
+      if (sharedAcrossOrders && factCodes.length > 0) {
+        const currentFacts = await transaction.shipmentTimeFact.findMany({
+          where: {
+            containerRecordId: container.id,
+            factCode: { in: factCodes },
+            isCurrent: true,
+          },
+        });
+        const incomingByCode = new Map<string, ShipmentTimeFactImport>(
+          command.timeFacts.map((fact) => [fact.factCode, fact]),
+        );
+        if (
+          currentFacts.some((fact) => {
+            const incoming = incomingByCode.get(fact.factCode);
+            return incoming && !sameShipmentTimeFact(fact, incoming);
+          })
+        ) {
+          throw new ConflictException("SHARED_CONTAINER_TIME_FACT_CONFLICT");
+        }
+      }
       const dateFactInboxMessages = buildDateFactInboxMessages(
         command,
         container.id,
@@ -165,7 +233,6 @@ export class PrismaReplenishmentOrderImportWriter implements ReplenishmentOrderI
         })),
       });
 
-      const factCodes = command.timeFacts.map(({ factCode }) => factCode);
       if (factCodes.length > 0) {
         await transaction.shipmentTimeFact.updateMany({
           where: {
@@ -208,6 +275,37 @@ export class PrismaReplenishmentOrderImportWriter implements ReplenishmentOrderI
       };
     });
   }
+}
+
+function sameShipmentTimeFact(
+  existing: {
+    timeKind: string;
+    captureSource: string;
+    eventCode: string | null;
+    rawValue: string;
+    occurredAtUtc: Date;
+    sourceUtcOffset: string;
+    sourceSystem: string;
+    authoritySystem: string | null;
+    sourceStatus: string | null;
+    evidenceRef: string | null;
+    derivationRuleVersion: string | null;
+  },
+  incoming: ShipmentTimeFactImport,
+): boolean {
+  return (
+    existing.timeKind === incoming.timeKind &&
+    existing.captureSource === incoming.captureSource &&
+    existing.eventCode === incoming.eventCode &&
+    existing.rawValue === incoming.rawValue &&
+    existing.occurredAtUtc.getTime() === incoming.occurredAtUtc.getTime() &&
+    existing.sourceUtcOffset === incoming.sourceUtcOffset &&
+    existing.sourceSystem === incoming.sourceSystem &&
+    existing.authoritySystem === incoming.authoritySystem &&
+    existing.sourceStatus === incoming.sourceStatus &&
+    existing.evidenceRef === incoming.evidenceRef &&
+    existing.derivationRuleVersion === incoming.derivationRuleVersion
+  );
 }
 
 interface DateFactInboxMessage {
