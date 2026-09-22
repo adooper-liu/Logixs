@@ -50,7 +50,7 @@ describe("PrismaContainerRecordWriter", () => {
     expect(prisma.containerRecord.create).not.toHaveBeenCalled();
     expect(prisma.containerRecord.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { tenantId: "t1", orderNumber: "SO-1" },
+        where: { tenantId: "t1", containerNumber: "MSKU-NEW" },
         take: 2,
       }),
     );
@@ -65,5 +65,22 @@ describe("PrismaContainerRecordWriter", () => {
     expect(result.created).toBe(true);
     expect(result.containerRecordId).toBe("c2");
     expect(prisma.containerRecord.create).toHaveBeenCalled();
+  });
+
+  it("以箱号复用货柜，不把 orderNumber 当作一柜一单约束", async () => {
+    const prisma = buildPrisma({ id: "c-shared", containerNumber: "MSKU-NEW" });
+    const { writer } = await buildService(prisma);
+
+    const result = await writer.apply({
+      ...command,
+      orderNumber: "SO-2",
+    });
+
+    expect(result).toEqual({ containerRecordId: "c-shared", created: false });
+    expect(prisma.containerRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "t1", containerNumber: "MSKU-NEW" },
+      }),
+    );
   });
 });

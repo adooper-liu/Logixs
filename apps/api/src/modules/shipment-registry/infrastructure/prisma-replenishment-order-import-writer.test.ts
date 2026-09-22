@@ -5,7 +5,11 @@ import { PrismaService } from "../../../prisma/prisma.service";
 import { PrismaReplenishmentOrderImportWriter } from "./prisma-replenishment-order-import-writer";
 
 function buildPrisma(options?: {
-  containers?: Array<{ id: string; containerNumber: string | null }>;
+  containers?: Array<{
+    id: string;
+    containerNumber: string | null;
+    replenishmentOrderId?: string | null;
+  }>;
   failLines?: boolean;
 }) {
   const transaction = {
@@ -90,7 +94,7 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(transaction.containerRecord.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { tenantId: "tenant-a", orderNumber: "SO-1" },
+        where: { tenantId: "tenant-a", containerNumber: "MSKU1" },
       }),
     );
     expect(transaction.replenishmentOrderLine.createMany).toHaveBeenCalledWith(
@@ -180,7 +184,7 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
     });
   });
 
-  it("同租户同备货单已有多个历史货柜时拒绝猜测", async () => {
+  it("同租户同箱号匹配多个历史货柜时拒绝猜测", async () => {
     const { prisma } = buildPrisma({
       containers: [
         { id: "c1", containerNumber: "MSKU1" },
@@ -190,5 +194,50 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
     const writer = await buildWriter(prisma);
 
     await expect(writer.apply(command)).rejects.toThrow(ConflictException);
+  });
+
+  it("箱号尚未产生时才按旧备货单号查找兼容记录", async () => {
+    const { prisma, transaction } = buildPrisma();
+    const writer = await buildWriter(prisma);
+
+    await writer.apply({ ...command, containerNumber: null });
+
+    expect(transaction.containerRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "tenant-a", orderNumber: "SO-1" },
+      }),
+    );
+  });
+
+  it("另一备货单命中同一箱号时复用货柜且不覆盖旧兼容锚", async () => {
+    const { prisma, transaction } = buildPrisma({
+      containers: [
+        {
+          id: "c-existing",
+          containerNumber: "MSKU1",
+          replenishmentOrderId: "o-legacy-anchor",
+        },
+      ],
+    });
+    const writer = await buildWriter(prisma);
+
+    await expect(writer.apply(command)).resolves.toMatchObject({
+      containerRecordId: "c-existing",
+      created: false,
+    });
+    expect(transaction.containerRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId: "tenant-a",
+          containerNumber: "MSKU1",
+        },
+      }),
+    );
+    expect(transaction.containerRecord.update).toHaveBeenCalledWith({
+      where: { id: "c-existing" },
+      data: {
+        containerNumber: "MSKU1",
+      },
+    });
   });
 });

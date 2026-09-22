@@ -14,23 +14,23 @@
 
 这些字段是对象身份或关系，不归某个节点状态所有，但会被后续节点引用。
 
-| 标准概念                   | 来源字段/别名                      | 粒度       | 定义                                                      | 当前承载                                                            |
-| -------------------------- | ---------------------------------- | ---------- | --------------------------------------------------------- | ------------------------------------------------------------------- |
-| `orderNumber`              | 备货单号、外运编号                 | 备货单     | 备货阶段租户内建档主锚；样本为 `26DSC01811`、`26DSC01812` | `replenishment_order.order_number`、`container_record.order_number` |
-| `mainOrderNumber`          | 主备货单号                         | 票级展示   | 合并出运代表号；样本为 `26DSC01811`，不得作外键或去重键   | `container_record.main_order_number`                                |
-| `combinedOrderNumbers`     | 合并单号信息                       | 总提单     | 本票包含的备货单集合；样本为 `26DSC01811,26DSC01812`      | 原始快照；候选关系                                                  |
-| `productNumber`            | 货号、产品货号                     | SKU 行     | 产品身份；样本 `26DSC01812` 有 15 个 SKU                  | `replenishment_order_line.product_number`                           |
-| `contractNumber`           | 合同号                             | SKU 行     | SKU 所属采购合同号                                        | `replenishment_order_line.contract_number`                          |
-| `contractLineNumber`       | 行号、合同行号                     | SKU 行     | 合同内行号；不是数量                                      | 原始快照；候选字段                                                  |
-| `shipmentPlanNumber`       | 出运计划编号                       | SKU/备货单 | 把产品行归入出运计划；样本为 `SP20260830`                 | 原始快照；候选字段                                                  |
-| `masterBillNumber`         | 提单号、总提单号、MBL NO.、B/L NO. | 总提单     | 承运主提单；样本为 `NBOZ9FF56400`                         | 原始快照；候选字段                                                  |
-| `houseBillNumber`          | 分提单号、报关提单号、总单号-拼箱  | 分提单     | 主提单下拆分单号；样本后缀 A/B/C/D                        | 原始快照；候选字段                                                  |
-| `bookingNumber`            | 订舱编号                           | 订舱       | 货代/承运订舱业务号；样本为 `SQSJ26090200041842`          | 原始快照；候选字段                                                  |
-| `containerNumber`          | 箱号                               | 货柜       | 装箱后迟绑定的货柜号                                      | `container_record.container_number`                                 |
-| `sealNumber`               | 封号、铅封号                       | 货柜       | 货柜封识号                                                | 原始快照；候选字段                                                  |
-| `declarationInvoiceNumber` | 报关发票号                         | 报关票     | 报关票身份；样本 `26DSC01812001/002`                      | 原始快照；候选字段                                                  |
-| `customsDeclarationNumber` | 报关单号、EntryId                  | 报关票     | 海关申报回执身份                                          | 原始快照；候选字段                                                  |
-| `sourceRowId`              | 序号、备货明细id、bomid            | 来源行     | 仅作来源追踪；科学计数法导出值不得当作可靠业务 ID 重建    | `import_row` / 来源快照                                             |
+| 标准概念                   | 来源字段/别名                      | 粒度       | 定义                                                      | 当前承载                                                           |
+| -------------------------- | ---------------------------------- | ---------- | --------------------------------------------------------- | ------------------------------------------------------------------ |
+| `orderNumber`              | 备货单号、外运编号                 | 备货单     | 备货阶段租户内建档主锚；样本为 `26DSC01811`、`26DSC01812` | `replenishment_order.order_number`；货柜同名列仅作旧导入兼容锚     |
+| `mainOrderNumber`          | 主备货单号                         | 票级展示   | 合并出运代表号；样本为 `26DSC01811`，不得作外键或去重键   | `container_record.main_order_number`                               |
+| `combinedOrderNumbers`     | 合并单号信息                       | 总提单     | 本票包含的备货单集合；样本为 `26DSC01811,26DSC01812`      | 原始快照；候选关系                                                 |
+| `productNumber`            | 货号、产品货号                     | SKU 行     | 产品身份；样本 `26DSC01812` 有 15 个 SKU                  | `product_sku.product_number` + `replenishment_order_line` 交易快照 |
+| `contractNumber`           | 合同号                             | SKU 行     | SKU 所属采购合同号                                        | `replenishment_order_line.contract_number`                         |
+| `contractLineNumber`       | 行号、合同行号                     | SKU 行     | 合同内行号；不是数量                                      | 原始快照；候选字段                                                 |
+| `shipmentPlanNumber`       | 出运计划编号                       | SKU/备货单 | 把产品行归入出运计划；样本为 `SP20260830`                 | 原始快照；候选字段                                                 |
+| `masterBillNumber`         | 提单号、总提单号、MBL NO.、B/L NO. | 总提单     | 承运主提单；样本为 `NBOZ9FF56400`                         | 原始快照；候选字段                                                 |
+| `houseBillNumber`          | 分提单号、报关提单号、总单号-拼箱  | 分提单     | 主提单下拆分单号；样本后缀 A/B/C/D                        | 原始快照；候选字段                                                 |
+| `bookingNumber`            | 订舱编号                           | 订舱       | 货代/承运订舱业务号；样本为 `SQSJ26090200041842`          | 原始快照；候选字段                                                 |
+| `containerNumber`          | 箱号                               | 货柜       | 装箱后迟绑定；不据此建立备货单单值关系                    | `container_record.container_number`；箱货关系走版本化装载分配      |
+| `sealNumber`               | 封号、铅封号                       | 货柜       | 货柜封识号                                                | 原始快照；候选字段                                                 |
+| `declarationInvoiceNumber` | 报关发票号                         | 报关票     | 报关票身份；样本 `26DSC01812001/002`                      | 原始快照；候选字段                                                 |
+| `customsDeclarationNumber` | 报关单号、EntryId                  | 报关票     | 海关申报回执身份                                          | 原始快照；候选字段                                                 |
+| `sourceRowId`              | 序号、备货明细id、bomid            | 来源行     | 仅作来源追踪；科学计数法导出值不得当作可靠业务 ID 重建    | `import_row` / 来源快照                                            |
 
 ## 3. 备货节点 `cargo_ready`
 

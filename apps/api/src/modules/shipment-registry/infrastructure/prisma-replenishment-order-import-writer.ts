@@ -46,11 +46,17 @@ export class PrismaReplenishmentOrderImportWriter implements ReplenishmentOrderI
         FOR UPDATE
       `;
 
+      const containerLookup = command.containerNumber
+        ? {
+            tenantId: command.tenantId,
+            containerNumber: command.containerNumber,
+          }
+        : {
+            tenantId: command.tenantId,
+            orderNumber: command.orderNumber,
+          };
       const containers = await transaction.containerRecord.findMany({
-        where: {
-          tenantId: command.tenantId,
-          orderNumber: command.orderNumber,
-        },
+        where: containerLookup,
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take: 2,
       });
@@ -71,7 +77,9 @@ export class PrismaReplenishmentOrderImportWriter implements ReplenishmentOrderI
         ? await transaction.containerRecord.update({
             where: { id: existing.id },
             data: {
-              replenishmentOrderId: order.id,
+              ...(existing.replenishmentOrderId
+                ? {}
+                : { replenishmentOrderId: order.id }),
               containerNumber:
                 command.containerNumber ?? existing.containerNumber,
             },

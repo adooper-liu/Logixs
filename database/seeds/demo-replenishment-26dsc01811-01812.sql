@@ -1,14 +1,15 @@
--- Real-data demo seed. Idempotent within the dedicated demo tenant.
+-- Compatibility-only raw SQL seed for source snapshots and order lines.
+-- Use `pnpm db:seed` for the complete demo including stable SKU identities and
+-- authoritative cargo allocations. Idempotent within the dedicated demo tenant.
 -- Source values are preserved in import_row.snapshot; this file does not advance lifecycle nodes.
 BEGIN;
 
 INSERT INTO import_batch (id, tenant_id, operator_id, idempotency_key, file_name, file_hash,
-  source_file_status, source_content_type, source_size_bytes, parser_version, status,
+  source_file_status, parser_version, status,
   row_count, column_count, mapping_suggestions, confirmed_quantity_unit, created_at, updated_at)
 VALUES ('demo-import-26dsc01812-bom', 'demo-real-sample-20260921', 'demo-seed',
   'real-sample-20260921-26dsc01812-bom', 'fcbeedd8ed65a9de854e05381bd9fa3dc4dcfb5dcaee133092d268a6b8981425',
-  'not_retained', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  17723, 'real-sample-v1', 'completed', 15,
+  'not_retained', 'real-sample-v1', 'completed', 15,
   36, '[]'::jsonb, NULL, TIMESTAMPTZ '2026-09-21T00:00:00+08:00', TIMESTAMPTZ '2026-09-21T00:00:00+08:00')
 ON CONFLICT (tenant_id, idempotency_key) DO UPDATE SET
   file_hash = EXCLUDED.file_hash, row_count = EXCLUDED.row_count,

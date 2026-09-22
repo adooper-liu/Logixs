@@ -14,12 +14,13 @@ export class PrismaContainerRecordWriter implements ContainerRecordWriter {
   async apply(
     command: ApplyContainerRecordCommand,
   ): Promise<ApplyContainerRecordResult> {
-    // orderNumber 尚未建 UNIQUE（DATA_MODEL 不变量 1：清洗通过后才建），用 findFirst 匹配。
+    // 箱号存在时优先复用物理货柜，使另一备货单可以通过装载分配加入同一柜。
+    // 箱号迟绑定时才回退旧单号；两种键都可能存在历史歧义，因此最多取两条并明确失败。
+    const lookup = command.containerNumber
+      ? { tenantId: command.tenantId, containerNumber: command.containerNumber }
+      : { tenantId: command.tenantId, orderNumber: command.orderNumber };
     const matches = await this.prisma.containerRecord.findMany({
-      where: {
-        tenantId: command.tenantId,
-        orderNumber: command.orderNumber,
-      },
+      where: lookup,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       take: 2,
     });
