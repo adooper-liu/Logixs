@@ -20,6 +20,7 @@ import {
   findMisleadingContractPackageScripts,
   findMissingRequiredPolicyFiles,
   findMissingStyleScaleTokens,
+  findStyleScaleViolations,
   findUiThemeBoundaryViolations,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
@@ -72,6 +73,141 @@ test("accepts a complete style scale token set", () => {
     "--space-8: 32px",
   ].join(";\n");
   assert.deepEqual(findMissingStyleScaleTokens(complete), []);
+});
+
+test("rejects literal font sizes and off-scale spacing", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Demo.vue",
+        source: `<template><div /></template>
+<style scoped>
+.a { font-size: 14px; padding: 10px; }
+.b { font-size: var(--text-body); padding: var(--space-3); }
+</style>`,
+      },
+    ]),
+    [
+      "apps/web/src/views/Demo.vue: font-size 不得写裸值 '14px'，请改用 var(--text-*) 令牌",
+      "apps/web/src/views/Demo.vue: padding 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("accepts tokens, zero, auto and calc over space tokens", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Ok.vue",
+        source: `<style scoped>
+.a { margin: 0 auto; gap: var(--space-2); padding: var(--space-1) var(--space-3); }
+.b { margin-top: calc(var(--space-2) * -1); }
+</style>`,
+      },
+    ]),
+    [],
+  );
+});
+
+test("checks every part of a shorthand（裸 px 一律不认，含在档上的 12px）", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Short.vue",
+        source: "<style scoped>\n.a { margin: 12px 10px 6px; }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '12px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '6px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("catches declarations packed onto one line", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Packed.vue",
+        source:
+          "<style scoped>\n.a { position: relative; font-size: 10px; gap: 10px; }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Packed.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
+      "apps/web/src/views/Packed.vue: gap 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("accepts an exemption that states a reason", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Ok.vue",
+        source:
+          "<style scoped>\n.a { margin-top: -1px; /* style-scale-exempt: 与 1px 边框对齐 */ }\n</style>",
+      },
+    ]),
+    [],
+  );
+});
+
+test("rejects an exemption without a real reason", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Bad.vue",
+        source:
+          "<style scoped>\n.a { margin-top: -1px; /* style-scale-exempt: 先这样 */ }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Bad.vue: 豁免必须写明理由（≥4 字），当前为 '先这样'",
+    ],
+  );
+});
+
+test("ignores token definitions, tests and non-web files", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/themes/logix/tokens.css",
+        source: ":root { --space-9: 36px; font-size: 10px; }",
+      },
+      {
+        path: "apps/web/src/views/Demo.test.ts",
+        source: "const a = 'font-size: 10px';",
+      },
+      {
+        path: "docs/notes.md",
+        source: "font-size: 10px",
+      },
+    ]),
+    [],
+  );
+});
+
+test("allows within-baseline counts and rejects going over", () => {
+  const record = {
+    path: "apps/web/src/views/Legacy.vue",
+    source: "<style scoped>\n.a { font-size: 10px; }\n</style>",
+  };
+  assert.deepEqual(
+    findStyleScaleViolations([record], {
+      files: { "apps/web/src/views/Legacy.vue": 1 },
+    }),
+    [],
+  );
+  assert.deepEqual(
+    findStyleScaleViolations([record], {
+      files: { "apps/web/src/views/Legacy.vue": 0 },
+    }),
+    [
+      "apps/web/src/views/Legacy.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
+    ],
+  );
 });
 
 test("db:migrate applies pending history without a shadow database", () => {

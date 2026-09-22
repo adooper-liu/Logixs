@@ -200,6 +200,136 @@ export function findMissingStyleScaleTokens(tokensSource) {
   ).map((token) => `tokens.css 缺少 ${token}`);
 }
 
+const TEXT_TOKEN_VALUE = /^var\(--text-(?:page|title|body|meta|label|micro)\)$/;
+const SPACE_TOKEN_VALUE = /^var\(--space-(?:1|2|3|4|5|6|8)\)$/;
+const SPACING_PROPERTIES = new Set([
+  "gap",
+  "row-gap",
+  "column-gap",
+  "padding",
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+  "margin",
+  "margin-top",
+  "margin-right",
+  "margin-bottom",
+  "margin-left",
+]);
+const EXEMPTION_COMMENT = /\/\*\s*style-scale-exempt:\s*(.*?)\s*\*\//;
+const MIN_EXEMPTION_REASON_LENGTH = 4;
+
+function styleBlocksOf(record) {
+  const path = normalizePath(record.path);
+  if (path.endsWith(".css")) return [record.source];
+  if (!path.endsWith(".vue")) return [];
+  return [...record.source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(
+    (match) => match[1],
+  );
+}
+
+function isAllowedSpacingPart(part) {
+  if (part === "0" || part === "auto") return true;
+  if (part.endsWith("%")) return true;
+  return SPACE_TOKEN_VALUE.test(part);
+}
+
+// 把整个 calc(...) 折叠成一个可判定片段，避免其中的空格被当成多个值拆开。
+// 括号要配对计数：calc(var(--space-2) * -1) 里有嵌套括号。
+// 内部含 var(--space-*) 的 calc 视为合法，否则原样保留（让它照常报错）。
+function foldCalcExpressions(value) {
+  let out = "";
+  let index = 0;
+  while (index < value.length) {
+    if (!value.startsWith("calc(", index)) {
+      out += value[index];
+      index += 1;
+      continue;
+    }
+    let depth = 0;
+    let end = index + 4;
+    for (; end < value.length; end += 1) {
+      if (value[end] === "(") depth += 1;
+      else if (value[end] === ")") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    const expression = value.slice(index, end + 1);
+    out += expression.includes("var(--space-") ? "0" : expression;
+    index = end + 1;
+  }
+  return out;
+}
+
+// 扫描 web 源码里的裸 px 字号与越界间距。
+// baseline.files 按文件记存量违规数：不超基线放行，超了报错 —— 存量可收敛，新漂移写不进来。
+export function findStyleScaleViolations(records, baseline = { files: {} }) {
+  const allowedCounts = baseline?.files ?? {};
+  const errors = [];
+
+  for (const record of records) {
+    const path = normalizePath(record.path);
+    if (!path.startsWith("apps/web/src/")) continue;
+    if (path.endsWith("themes/logix/tokens.css")) continue;
+    if (path.includes(".test.")) continue;
+
+    const fileErrors = [];
+    for (const block of styleBlocksOf(record)) {
+      for (const line of block.split("\n")) {
+        // 豁免按「行」判定：注释在行尾，拆声明后会与声明分开。
+        const exemption = EXEMPTION_COMMENT.exec(line);
+        if (exemption) {
+          if (exemption[1].trim().length >= MIN_EXEMPTION_REASON_LENGTH) {
+            continue;
+          }
+          fileErrors.push(
+            `${path}: 豁免必须写明理由（≥${MIN_EXEMPTION_REASON_LENGTH} 字），当前为 '${exemption[1].trim()}'`,
+          );
+          continue;
+        }
+
+        // 去掉选择器：取最后一个 '{' 之后的部分，这样单行多声明
+        // （.a { font-size: 14px; padding: 10px; }）也能逐条查到，
+        // 不依赖「代码已被 Prettier 展开成一行一条」这个假设。
+        const brace = line.lastIndexOf("{");
+        const body = brace === -1 ? line : line.slice(brace + 1);
+
+        for (const chunk of body.split(";")) {
+          const declaration = /^\s*([a-z-]+)\s*:\s*(.+?)\s*\}?\s*$/.exec(chunk);
+          if (!declaration) continue;
+          const property = declaration[1];
+          const value = declaration[2].trim();
+
+          if (property === "font-size") {
+            if (value === "inherit" || TEXT_TOKEN_VALUE.test(value)) continue;
+            fileErrors.push(
+              `${path}: font-size 不得写裸值 '${value}'，请改用 var(--text-*) 令牌`,
+            );
+            continue;
+          }
+
+          if (!SPACING_PROPERTIES.has(property)) continue;
+          for (const part of foldCalcExpressions(value).split(/\s+/)) {
+            if (!part || isAllowedSpacingPart(part)) continue;
+            fileErrors.push(
+              `${path}: ${property} 不得写裸值 '${part}'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）`,
+            );
+          }
+        }
+      }
+    }
+
+    if (!fileErrors.length) continue;
+    const allowed = allowedCounts[path] ?? 0;
+    if (fileErrors.length <= allowed) continue;
+    errors.push(...fileErrors.slice(allowed));
+  }
+
+  return errors;
+}
+
 export function findUiThemeBoundaryViolations(records) {
   const errors = [];
   const importPattern =

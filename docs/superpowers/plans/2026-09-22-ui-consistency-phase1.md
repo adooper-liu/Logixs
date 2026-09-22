@@ -218,8 +218,8 @@ test("rejects literal font sizes and off-scale spacing", () => {
       },
     ]),
     [
-      "apps/web/src/views/Demo.vue: font-size 必须用 var(--text-*) 令牌，当前为 '14px'",
-      "apps/web/src/views/Demo.vue: padding 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '10px'",
+      "apps/web/src/views/Demo.vue: font-size 不得写裸值 '14px'，请改用 var(--text-*) 令牌",
+      "apps/web/src/views/Demo.vue: padding 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
     ],
   );
 });
@@ -248,9 +248,9 @@ test("checks every part of a shorthand（裸 px 一律不认，含在档上的 1
       },
     ]),
     [
-      "apps/web/src/views/Short.vue: margin 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '12px'",
-      "apps/web/src/views/Short.vue: margin 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '10px'",
-      "apps/web/src/views/Short.vue: margin 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '6px'",
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '12px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '6px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
     ],
   );
 });
@@ -265,8 +265,8 @@ test("catches declarations packed onto one line", () => {
       },
     ]),
     [
-      "apps/web/src/views/Packed.vue: font-size 必须用 var(--text-*) 令牌，当前为 '10px'",
-      "apps/web/src/views/Packed.vue: gap 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '10px'",
+      "apps/web/src/views/Packed.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
+      "apps/web/src/views/Packed.vue: gap 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
     ],
   );
 });
@@ -331,7 +331,7 @@ test("allows within-baseline counts and rejects going over", () => {
   assert.deepEqual(
     findStyleScaleViolations([record], { files: { "apps/web/src/views/Legacy.vue": 0 } }),
     [
-      "apps/web/src/views/Legacy.vue: font-size 必须用 var(--text-*) 令牌，当前为 '10px'",
+      "apps/web/src/views/Legacy.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
     ],
   );
 });
@@ -453,7 +453,7 @@ export function findStyleScaleViolations(records, baseline = { files: {} }) {
           if (property === "font-size") {
             if (value === "inherit" || TEXT_TOKEN_VALUE.test(value)) continue;
             fileErrors.push(
-              `${path}: font-size 必须用 var(--text-*) 令牌，当前为 '${value}'`,
+              `${path}: font-size 不得写裸值 '${value}'，请改用 var(--text-*) 令牌`,
             );
             continue;
           }
@@ -462,7 +462,7 @@ export function findStyleScaleViolations(records, baseline = { files: {} }) {
           for (const part of foldCalcExpressions(value).split(/\s+/)) {
             if (!part || isAllowedSpacingPart(part)) continue;
             fileErrors.push(
-              `${path}: ${property} 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '${part}'`,
+              `${path}: ${property} 不得写裸值 '${part}'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）`,
             );
           }
         }
