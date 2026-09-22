@@ -41,6 +41,7 @@
 | [任务：cargo_ready 合规闭环](./planning/tasks/p6-cargo-ready-compliance-flow.md)                      | 装载与 SKU 合规档案形成评审决定，并接入备货节点门禁       | 已合入 main                     |
 | [任务：岗位工作台公共骨架](./planning/tasks/p6-role-workbench-cargo-ready.md)                         | 备货工作台公共壳与真实只读投影                            | 已合入 main                     |
 | [任务：备货岗位可操作闭环](./planning/tasks/p6-cargo-ready-operational-workbench.md)                  | 全局备货任务池、SKU 齐备度、允许动作与结果反馈            | 已完成，待合入 main             |
+| [任务：备货工作台以人为中心改造](./planning/tasks/p6-cargo-ready-human-centered-redesign.md)          | 从备货单开始，按真实 SKU 缺口和业务原因完成备货           | 设计中                          |
 | [任务：装箱事实与岗位操作闭环](./planning/tasks/p6-container-stuffing-operational-flow.md)            | 版本化装箱快照、实际装箱日期事实与岗位工作台              | 已完成                          |
 | [任务：出运装船事实与岗位操作闭环](./planning/tasks/p6-shipment-dispatch-loaded-operational-flow.md)  | 订舱/船名航次/VGM 交接、进港与装船日期事实和出运工作台    | 已完成                          |
 | [任务：日期事实复核与采信闭环](./planning/tasks/p6-lifecycle-date-fact-review-flow.md)                | 四眼复核人工实际日期、追加确认版本并自动申请推进与重放    | 已完成                          |
@@ -57,21 +58,22 @@
 
 ## 四、产品/理念/流程
 
-| 文档                                                                          | 一句话                                                                                                             | 状态                         |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
-| [VISION](./product/VISION.md)                                                 | 品牌/愿景/节点操作/仓储图谱 → 落地对照                                                                             | 候选                         |
-| [PRINCIPLES](./product/PRINCIPLES.md)                                         | 元治理M0 + 十原则P1–P10(时序/权威/确认三档/费用类型/复核/表单即证据) + 主流程/工序任务/工单/动作模型 + 节点七组SOP | 负责人确认(M0 + P1–P10)      |
-| [PRODUCT_BRIEF](./product/PRODUCT_BRIEF.md)                                   | 产品定位/当前起点/接入与前端演进                                                                                   | 初版基线                     |
-| [GLOSSARY](./product/GLOSSARY.md)                                             | 术语单一真相(含 P2 §5、过站)                                                                                       | 基线+P2 增补 v0.1.10         |
-| [NFR](./product/NON_FUNCTIONAL_REQUIREMENTS.md)                               | 数字承诺(待校准)                                                                                                   | 初版基线                     |
-| [IMPORT_WORKFLOW](./product/workflows/IMPORT_WORKFLOW.md)                     | 首个闭环流程叙事                                                                                                   | 基线                         |
-| [First Mile/清关证据链 7 组](./product/workflows/CUSTOMS_OPERATION_CHAINS.md) | 原表单证据→统一对象→角色视图与非线性闭环                                                                           | 负责人业务规则+候选映射 v0.3 |
-| [UX 工作台](./product/UX_CONTAINER_WORKBENCH.md)                              | 已出运入口 + 三状态/三段确认 + 动态任务配方与角色化节点工作区                                                      | 候选 v0.8                    |
-| [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)               | 电商货柜全生命周期运营手册:节点/KPI·SLA/RACI/风险/应急SOP(22 节点管理视图)                                         | 候选 v0.1                    |
-| [UI 体系标准](./product/UI_SYSTEM.md)                                         | Operations Shell、页面模板、表面命名 UI-D09、三状态视觉、token、组件分层                                           | 设计决策 v1.0                |
-| [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                         | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                                                | 快照 2026-09-13              |
-| [作业界面人话对照](./product/UI_COPY_PLAIN_LANGUAGE.md)                       | 屏幕字对照；显示字典 `apps/web/src/data/uiCopyCatalog.ts`                                                          | 定稿工作纸                   |
-| 人话速查                                                                      | 见本 INDEX（每行"一句话+状态"即人话速查）                                                                          | —                            |
+| 文档                                                                          | 一句话                                                                                        | 状态                           |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------ |
+| [VISION](./product/VISION.md)                                                 | 品牌/愿景/节点操作/仓储图谱 → 落地对照                                                        | 候选                           |
+| [PRINCIPLES](./product/PRINCIPLES.md)                                         | 元治理 M0 + 十一原则 P1–P11（含“系统为人服务”）+ 主流程/工序任务/工单/动作模型 + 节点七组 SOP | 负责人确认（M0 + P1–P11）      |
+| [角色工作台以人为中心设计](./product/ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN.md) | 全工作台共同规则、因果信息动线及备货/SKU 规范示例                                             | 负责人确认原则 + 实施基线 v1.0 |
+| [PRODUCT_BRIEF](./product/PRODUCT_BRIEF.md)                                   | 产品定位/当前起点/接入与前端演进                                                              | 初版基线                       |
+| [GLOSSARY](./product/GLOSSARY.md)                                             | 术语单一真相(含 P2 §5、过站)                                                                  | 基线+P2 增补 v0.1.10           |
+| [NFR](./product/NON_FUNCTIONAL_REQUIREMENTS.md)                               | 数字承诺(待校准)                                                                              | 初版基线                       |
+| [IMPORT_WORKFLOW](./product/workflows/IMPORT_WORKFLOW.md)                     | 首个闭环流程叙事                                                                              | 基线                           |
+| [First Mile/清关证据链 7 组](./product/workflows/CUSTOMS_OPERATION_CHAINS.md) | 原表单证据→统一对象→角色视图与非线性闭环                                                      | 负责人业务规则+候选映射 v0.3   |
+| [UX 工作台](./product/UX_CONTAINER_WORKBENCH.md)                              | 已出运入口 + 三状态/三段确认 + 动态任务配方与角色化节点工作区                                 | 候选 v0.8                      |
+| [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)               | 电商货柜全生命周期运营手册:节点/KPI·SLA/RACI/风险/应急SOP(22 节点管理视图)                    | 候选 v0.1                      |
+| [UI 体系标准](./product/UI_SYSTEM.md)                                         | Operations Shell、页面模板、人本动线 UI-D10、三状态视觉、token、组件分层                      | 设计决策 v1.1                  |
+| [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                         | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                           | 快照 2026-09-13                |
+| [作业界面人话对照](./product/UI_COPY_PLAIN_LANGUAGE.md)                       | 屏幕字对照；显示字典 `apps/web/src/data/uiCopyCatalog.ts`                                     | 定稿工作纸                     |
+| 人话速查                                                                      | 见本 INDEX（每行"一句话+状态"即人话速查）                                                     | —                              |
 
 ## 五、领域（docs/product/domain，按逻辑簇）
 
@@ -168,6 +170,7 @@
 | [作业壳人话第一刀](./planning/tasks/p6-ui-copy-plain-language.md)                              | 任务五问 + 现场用词落到作业壳                                        | 已完成                      |
 | [14流程节点填空表](./planning/tasks/p6-lifecycle-node-io-catalog.md)                           | 一站一张作业表：正式口径 + 行业完整性规划                            | 已完成                      |
 | [任务 brief](./planning/tasks/p2-shipment-import-domain.md)                                    | P2 切片一交接单                                                      | 已完成                      |
+| [备货工作台以人为中心改造](./planning/tasks/p6-cargo-ready-human-centered-redesign.md)         | 用统一人本工作台契约重构备货入口、队列、SKU 缺口与动作闭环           | 设计中                      |
 | [P3-01 主分支保护](./planning/tasks/p3-01-branch-protection.md)                                | CODEOWNERS + main 禁止强推，合入须 PR 与 quality                     | 已完成                      |
 | [P5 威胁与访问模型](./planning/tasks/p5-threat-access-model.md)                                | 威胁、上线阻断与最小角色/能力/范围基线                               | 已完成                      |
 | [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                     | 上传→预检→写端口→对账的首个可写库闭环                                | 已完成                      |
