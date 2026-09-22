@@ -228,11 +228,23 @@ const SPACING_PROPERTIES = new Set([
   "padding-right",
   "padding-bottom",
   "padding-left",
+  "padding-block",
+  "padding-block-start",
+  "padding-block-end",
+  "padding-inline",
+  "padding-inline-start",
+  "padding-inline-end",
   "margin",
   "margin-top",
   "margin-right",
   "margin-bottom",
   "margin-left",
+  "margin-block",
+  "margin-block-start",
+  "margin-block-end",
+  "margin-inline",
+  "margin-inline-start",
+  "margin-inline-end",
 ]);
 const EXEMPTION_COMMENT = /\/\*\s*style-scale-exempt:\s*(.*?)\s*\*\//;
 const MIN_EXEMPTION_REASON_LENGTH = 4;

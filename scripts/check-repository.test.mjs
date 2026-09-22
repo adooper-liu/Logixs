@@ -160,9 +160,9 @@ const FROZEN_BASELINE_COUNTS = {
   "apps/web/src/components/dispatch/DispatchWorkQueue.vue": 11,
   "apps/web/src/components/imports/ImportMappingEditor.vue": 13,
   "apps/web/src/components/imports/ImportReplacementUploader.vue": 3,
-  "apps/web/src/components/management/AchievementCalendar.vue": 14,
+  "apps/web/src/components/management/AchievementCalendar.vue": 15,
   "apps/web/src/components/management/AnalysisClosurePanel.vue": 16,
-  "apps/web/src/components/management/ContainerFlowTable.vue": 6,
+  "apps/web/src/components/management/ContainerFlowTable.vue": 7,
   "apps/web/src/components/management/DecisionQueue.vue": 14,
   "apps/web/src/components/management/KpiSignalStrip.vue": 11,
   "apps/web/src/components/management/ManagementSignalStrip.vue": 10,
@@ -173,15 +173,15 @@ const FROZEN_BASELINE_COUNTS = {
   "apps/web/src/components/pickup/PickupActionPanel.vue": 16,
   "apps/web/src/components/pickup/PickupFactsPanel.vue": 14,
   "apps/web/src/components/pickup/PickupWorkQueue.vue": 11,
-  "apps/web/src/components/shell/AppSidebar.vue": 25,
-  "apps/web/src/components/shell/AppTopbar.vue": 14,
+  "apps/web/src/components/shell/AppSidebar.vue": 30,
+  "apps/web/src/components/shell/AppTopbar.vue": 16,
   "apps/web/src/components/shell/CommandPalette.vue": 17,
   "apps/web/src/components/stuffing/StuffingActionPanel.vue": 18,
   "apps/web/src/components/stuffing/StuffingActualTimeForm.vue": 16,
   "apps/web/src/components/stuffing/StuffingSnapshotForm.vue": 19,
   "apps/web/src/components/stuffing/StuffingSnapshotPanel.vue": 26,
   "apps/web/src/components/stuffing/StuffingWorkQueue.vue": 30,
-  "apps/web/src/components/task/SubmissionProgress.vue": 29,
+  "apps/web/src/components/task/SubmissionProgress.vue": 30,
   "apps/web/src/components/task/TaskContextHeader.vue": 25,
   "apps/web/src/components/task/TaskEvidencePanel.vue": 33,
   "apps/web/src/components/task/TaskExecutionPanel.vue": 15,
@@ -344,6 +344,21 @@ test("catches declarations packed onto one line", () => {
     [
       "apps/web/src/views/Packed.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
       "apps/web/src/views/Packed.vue: gap 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("checks logical spacing properties too", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Logical.vue",
+        source:
+          "<style scoped>\n.a { padding-inline: 14px; margin-block-start: var(--space-2); }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Logical.vue: padding-inline 不得写裸值 '14px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
     ],
   );
 });
