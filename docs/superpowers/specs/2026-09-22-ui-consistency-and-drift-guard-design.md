@@ -1,0 +1,257 @@
+# UI 一致性收编与防漂门禁 设计
+
+> 状态：**待评审** · 2026-09-22 · 分支 `feat/real-replenishment-database-foundation` 之后新开
+> 一句话：**设计系统文档写得很细，但页面层没有遵守它，且没有任何机制在阻止漂移 —— 本次补齐排版/间距令牌、收编页面、装上自研门禁。**
+>
+> 关联：[UI_SYSTEM](../product/UI_SYSTEM.md) §7 视觉令牌、§11 禁止模式；[check-repository.mjs](../../scripts/check-repository.mjs)
+
+## 1. 问题：实测的漂移
+
+**方法**：2026-09-22 通过 CDP 连接本机 Edge，读取 5 个页面**真实渲染的计算样式**（非读代码推断）。
+
+### 1.1 字号系统性偏小
+
+`UI_SYSTEM §7.2` 定的下限是 **12px**（表格与元数据 12-13px、正文 14px）。
+
+| 页面 | 文字元素 | 低于 12px | 占比 |
+| ---- | -------- | --------- | ---- |
+| `/workspaces/cargo-ready` | 50 | 27 | **54%** |
+| `/dashboard` | 30 | 11 | 37% |
+| `/tasks` | 28 | 9 | 32% |
+| `/containers` | 48 | 14 | 29% |
+| `/reviews/date-facts` | 37 | 10 | 27% |
+
+**没有一页达标。** 出现的字号：`8 9 10 11 12 13 14 15 16 17 18 21 22 27 px` —— 14 个档位，而文档只定义了 4-5 档。
+
+另有 3 个页面出现 **`13.3333px`** —— 浏览器给表单控件的默认值，说明有控件漏了 `font: inherit`。
+
+### 1.2 间距大面积越界
+
+`UI_SYSTEM §7.3` 只允许 **4/8/12/16/20/24/32**。
+
+| 页面 | gap 越界 | 占比 |
+| ---- | -------- | ---- |
+| `/tasks` | 44/54 | **81%** |
+| `/containers` | 64/80 | 80% |
+| `/dashboard` | 48/60 | 80% |
+| `/reviews/date-facts` | 42/54 | 78% |
+| `/workspaces/cargo-ready` | 54/80 | 68% |
+
+实测出现的越界值：`10 9 7 6 5 3 2 1 px`。
+
+**集中源头已定位**：容器页 11 个 `gap:10px` 的元素**全部是侧栏**（`.sidebar-brand` + 每个 `.nav-item`，见 `components/shell/AppSidebar.vue` 与 `themes/logix/LogixAppShell.vue`）。侧栏出现在**每一页**，所以这一个值的全站影响面最大。
+
+### 1.3 颜色基本干净（纠正一个早先的误判）
+
+早先据"代码里 23 处硬编码颜色"推断日期复核台"看起来像另一个产品" —— **实测推翻了该判断**：
+
+```text
+/reviews/date-facts 实测文字色
+  --ink ×8   --ink-soft ×13   --muted ×7   --brand ×2      ✅ 均在令牌上
+  #667085 ×6                                                ⚠️ 越界
+实测背景色
+  --surface ×7  --ground ×2  --surface-2 ×2  --warn  --risk  ✅
+  #eef2f6 ×1                                                ⚠️ 越界
+```
+
+30 个文字元素中 6 个越界、9 个背景中 1 个越界，且 `#667085` 与 `--muted #6f7d94` 是相近的灰，肉眼难辨。**它是代码坏味道，不是观感问题 —— 优先级最低。**
+
+### 1.4 根因
+
+> **令牌只有颜色，没有排版与间距。** `themes/logix/tokens.css` 里字号和间距全靠页面手写魔法数字；文档定义了比例，但代码里没有对应的 token 名，写完也无从对照。
+
+而 `scripts/check-repository.mjs` 已有 `findUiThemeBoundaryViolations`，但它只查**导入边界**（禁止绕过 UI facade 引主题实现、禁止外链），**不查样式值**。钩子在，覆盖没到。
+
+## 2. 目标与非目标
+
+**目标**
+
+1. 补齐**排版**与**间距**令牌，让文档里的比例在代码里有名字。
+2. 页面层收编到令牌上，消除实测的漂移。
+3. 装上**自研防漂门禁**，让新代码无法重新引入漂移。
+
+**非目标**
+
+- **不改设计语言**：颜色、形态、圆角、阴影、动效一律不动。
+- **不在本期做"提升质感"**：排版层级对比、留白策略、信息密度节奏、微交互 —— 已确认在范围内，但**排在一致性收编之后**（见 §6 第 4 阶段）。
+- 不动业务逻辑、不改任何表单、不改组件结构。
+- 不引入 stylelint（见 D2）。
+
+## 3. 设计决策
+
+### D1 · 范围 = 一致性收编 + 防漂门禁
+
+"提升质感"是同一条路上的下一段，不在本期。
+
+### D2 · 防漂机制用自研检查，不引入 stylelint
+
+**理由**：仓库已把"架构边界检查"做成一套自研脚本体系（`scripts/` 下 19 个脚本 + 专门的 `check-repository.test.mjs`），并已有一个 UI 相关的 `findUiThemeBoundaryViolations`。再塞一个 stylelint 会变成两套规则体系并存。顺着既有模式走，维护成本最低，且**零新依赖**。
+
+### D3 · 字号 6 档，含 `--text-micro: 11px`
+
+```text
+--text-page  20px    --text-title 15px    --text-body  14px
+--text-meta  13px    --text-label 12px    --text-micro 11px
+```
+
+`--text-micro` **只允许用于非必读元数据**（表头日期、轨道摘要、编号）；正文、标签、按钮禁用。理由：实测 10px(108 处) 与 11px(72 处) 大量用于密集区域，硬提到 12px 会显著降低密度并牵连布局调整；保留一个受控的微字档能杀掉 8/9/10px 的散乱，同时不牺牲可用密度。
+
+**这条会改 `UI_SYSTEM §7.2`**（原文未定义 11px），文档需同步更新。
+
+### D4 · 间距 7 档，取文档既有比例
+
+```text
+--space-1 4px   --space-2 8px    --space-3 12px  --space-4 16px
+--space-5 20px  --space-6 24px   --space-8 32px
+```
+
+### D5 · 迁移走棘轮：基线豁免 + 逐页迁移
+
+迁移面约 195 处字号 + 250 处间距，跨 6–10 个页面。一次改完会让 PR 巨大难审，且本仓库 CI 门禁严（`pnpm validate` 一条链），检查一挂上就红。
+
+**做法**：检查脚本上线时，把现有违规全量写入一份**基线豁免清单**，CI 保持绿；随后逐页迁移，每迁一页就从清单里删掉对应条目；清单清空后删除基线机制，检查成为硬门禁。
+
+## 4. 详细设计
+
+### 4.1 令牌新增
+
+文件：`apps/web/src/themes/logix/tokens.css`，加在现有颜色令牌之后、兼容别名之前，`logix` 与 `logix[data-theme="dark"]` 两个作用域都加（字号间距与主题无关，单处定义即可 —— 放 `:root[data-ui-theme="logix"]` 内，暗色块内不重复）。
+
+```css
+  /* 排版：收编 UI_SYSTEM §7.2 的档位 */
+  --text-page: 20px;
+  --text-title: 15px;
+  --text-body: 14px;
+  --text-meta: 13px;
+  --text-label: 12px;
+  --text-micro: 11px;
+
+  /* 间距：收编 UI_SYSTEM §7.3 的比例 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+```
+
+**不新增任何兼容别名。** 迁移是把裸 px **直接替换**成令牌（`font-size: 10px` → `font-size: var(--text-micro)`），不是让旧值以别名形式继续存在。
+
+> 特别地，**不得**新增"旧值 → 新值"的 px 别名（如 `--space-10: 10px`）。那会让越界值合法化，恰好破坏本设计的目的 —— 检查器只认 `var(--space-*)`，别名一旦放宽，整个门禁就形同虚设。
+
+### 4.2 迁移映射规则
+
+**字号**（逐处判断，不机械替换）：
+
+| 现值 | 去向 | 判断依据 |
+| ---- | ---- | -------- |
+| `8px` `9px` `10px` | `--text-micro` 或 `--text-label` | 是非必读元数据 → micro；是可读标签 → label |
+| `11px` | `--text-micro` | — |
+| `12px` | `--text-label` | — |
+| `13px` | `--text-meta` | — |
+| `14px` | `--text-body` | — |
+| `15px` `16px` | `--text-title` | — |
+| `17px` `18px` `21px` `22px` `27px` | `--text-page` | 仅页名允许 20px；非页名降为 `--text-title` |
+
+**间距**：
+
+| 现值 | 去向 | 判断依据 |
+| ---- | ---- | -------- |
+| `10px` | `--space-2`(8) 或 `--space-3`(12) | 紧凑控件内 → 8；独立块之间 → 12 |
+| `9px` `7px` | `--space-2`(8) | — |
+| `6px` `5px` | `--space-1`(4) 或 `--space-2`(8) | 图标与文字 → 4；并列元素 → 8 |
+| `3px` `2px` `1px` | `--space-1`(4) | 若为光学微调（对齐补偿）则走豁免注释 |
+
+**`13.3333px`**：定位漏 `font: inherit` 的控件，补上继承，不新增档位。
+
+### 4.3 防漂检查
+
+文件：`scripts/check-repository.mjs`，新增导出函数，与现有 `findUiThemeBoundaryViolations` 同构（签名 `(records) => string[]`），在主流程 line ~379 处一并联入。
+
+**扫描范围**：`apps/web/src/**/*.vue` 的 `<style>` 块，以及 `apps/web/src/**/*.css`。**排除** `themes/logix/tokens.css`（令牌定义处本身）与 `*.test.*`。
+
+| 属性 | 允许 | 禁止 |
+| ---- | ---- | ---- |
+| `font-size` | `var(--text-*)`、`inherit`、`0` | 任何字面量长度 |
+| `gap` `row-gap` `column-gap` | `var(--space-*)`、`0` | 越界字面量 |
+| `padding` `padding-*` `margin` `margin-*` | `var(--space-*)`、`0`、`auto`、`%`、`calc(var(--space-*) …)` | 越界字面量 |
+
+**豁免注释**（必须写理由，让豁免可审计）：
+
+```css
+.foo {
+  margin-top: -1px; /* style-scale-exempt: 与 1px 边框对齐的光学微调 */
+}
+```
+
+检查器识别 `style-scale-exempt:` 后跳过该声明。**理由文本为空或过短（< 4 字）视为无效豁免**，照样报错。
+
+### 4.4 基线豁免机制
+
+新增 `scripts/style-scale-baseline.json`：
+
+```json
+{
+  "note": "迁移期基线：每迁完一页就删掉对应条目；清空后删除本文件与基线逻辑。",
+  "entries": [
+    { "path": "apps/web/src/views/CargoReadyWorkbench.vue", "count": 27 },
+    { "path": "apps/web/src/components/shell/AppSidebar.vue", "count": 11 }
+  ]
+}
+```
+
+检查器对每个文件：违规数 ≤ 基线 `count` 则通过，**超出则报错**。这样**新代码无法新增漂移**（这是"防漂"的核心），同时允许存量逐页收敛。
+
+基线文件里的条目**只减不增**；CI 加一条断言：基线条目的 `count` 不得大于上一次提交（防有人改大基线蒙混）。
+
+### 4.5 验收方法
+
+用已有的 CDP 审计脚本（`.superpowers/ui-review/audit.js`）在迁移前后**逐页量**：
+
+- 低于 `--text-label`(12px) 的占比 → 0（`--text-micro` 的合规使用除外）
+- gap 越界占比 → 0
+
+**用数字证明，不靠感觉。** 该脚本是临时工具（`.superpowers/` 已 gitignore）；永久门禁是 §4.3 的检查器。
+
+## 5. 改动清单
+
+| 文件 | 改动 |
+| ---- | ---- |
+| `apps/web/src/themes/logix/tokens.css` | 新增 6 个排版令牌 + 7 个间距令牌 |
+| `scripts/check-repository.mjs` | 新增 `findStyleScaleViolations(records)`，主流程联入 |
+| `scripts/check-repository.test.mjs` | 新增用例：合法值通过 / 越界值报错 / 豁免注释生效 / 空理由豁免无效 / 基线内通过 / 超基线报错 |
+| `scripts/style-scale-baseline.json` | 新建，收录存量违规 |
+| `docs/product/UI_SYSTEM.md` §7.2 | 补 `--text-*` 令牌名与 `--text-micro` 的使用边界 |
+| `docs/product/UI_SYSTEM.md` §7.3 | 补 `--space-*` 令牌名 |
+| 各页面 / 组件 `*.vue` | 逐页迁移（棘轮，见 §6） |
+
+## 6. 分期（棘轮）
+
+| 阶段 | 内容 | 完成判据 |
+| ---- | ---- | -------- |
+| **1** | 令牌 + 检查器 + 基线豁免（CI 绿）+ 侧栏迁移 | 侧栏 `gap:10px` 消失（全站生效）；CI 绿 |
+| **2** | 迁移 `/workspaces/cargo-ready`（最差，54%）与 `/dashboard`、`/tasks` | 这三页审计数字归零，基线删掉对应条目 |
+| **3** | 迁移 `/containers`、`/reviews/date-facts`、其余组件 | 全部页面归零，基线清空 |
+| **4** | 删除基线机制，检查转为硬门禁；更新 `UI_SYSTEM` 文档 | 无基线文件，CI 直接卡住任何越界 |
+| **5** | **"提升质感"**（排版层级对比、留白策略、密度节奏、微交互） | 另开 spec |
+
+**阶段 1 单独就有价值**：侧栏是每页都出现的部件，那一个 `gap:10px` 的影响面是全站。
+
+## 7. 风险与未决
+
+1. **迁移会改变密度**，尤其备货工作台（54% 低于下限）。字号提到 12px 后部分区块会变大，可能需要跟着调布局 —— 这是**逐页迁移而非机械替换**的原因。
+2. **`--text-micro` 会被滥用。** 11px 一旦存在，可能被用到本该 12px 的地方。缓解：文档写明边界 + §4.3 的检查器只管"是否用令牌"不管"用得对不对"，所以**滥用只能靠 review 拦**。这是本设计已知的弱点。
+3. **豁免注释可能泛滥。** 缓解：强制写理由（≥4 字），且豁免在 diff 里显眼。若后续发现滥用，可加"每文件豁免上限"。
+4. **基线 `count` 口径是按文件计数**，同一文件内改一处增一处会被平均掉。缓解：§4.4 的"只减不增"CI 断言；更细的按行号基线不做（维护成本高于收益）。
+5. **正则解析 CSS 的边界情况**：简写（`padding: 8px 12px`）、多行值、`calc()` 嵌套。实施时以 §4.3 的表格为准写测试覆盖，遇到解析不了的形态**报错而非跳过**（宁可误报也不漏报）。
+6. **`13.3333px` 的根因未定位到具体控件**，阶段 1 需先找出是哪些控件漏了 `font: inherit`。
+7. **未验证：暗色主题下是否有独立的漂移。** 本次实测只在浅色主题下做。阶段 1 应补一次暗色实测。
+
+## 8. 测试策略
+
+- **检查器**：`scripts/check-repository.test.mjs` 用 `node:test` + 内存 records，覆盖 §5 列出的 6 类用例。仓库既有该模式，照抄。
+- **令牌**：无需单测；由检查器保证页面只能用令牌。
+- **迁移**：每页迁移后用 CDP 审计脚本量数字（§4.5），数字归零才算完成。
+- **CI**：`pnpm repo:check` 已挂在 ci.yml 第 107 行，检查器联入后自动生效。
+- **回归**：每阶段跑 `pnpm --filter @logix/web validate`（lint/format/typecheck/test/e2e/build 全链）。
