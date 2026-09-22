@@ -3,7 +3,7 @@
 > 状态：**待评审** · 2026-09-22 · 分支 `feat/real-replenishment-database-foundation` 之后新开
 > 一句话：**设计系统文档写得很细，但页面层没有遵守它，且没有任何机制在阻止漂移 —— 本次补齐排版/间距令牌、收编页面、装上自研门禁。**
 >
-> 关联：[UI_SYSTEM](../product/UI_SYSTEM.md) §7 视觉令牌、§11 禁止模式；[check-repository.mjs](../../scripts/check-repository.mjs)
+> 关联：[UI_SYSTEM](../../product/UI_SYSTEM.md) §7 视觉令牌、§11 禁止模式；[check-repository.mjs](../../../scripts/check-repository.mjs)
 
 ## 1. 问题：实测的漂移
 
