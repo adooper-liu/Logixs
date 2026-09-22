@@ -117,20 +117,20 @@
 
 ### 5.3 集成/迁移/现网
 
-| 文档                                                                           | 一句话                                               | 状态                 |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------- | -------------------- |
-| [AS_IS_LEGACY_BASELINE](product/domain/AS_IS_LEGACY_BASELINE.md)               | 现网系统快照(状态/字段/反例)                         | 快照                 |
-| [LEGACY_DB_CATALOG](product/domain/LEGACY_DB_CATALOG.md)                       | 老库表/字典家底                                      | 快照                 |
-| [FIELD_MIGRATION_MAP](product/domain/FIELD_MIGRATION_MAP.md)                   | 老字段→新库映射                                      | 候选                 |
-| [DATA_CLEANUP_ORDER_CONTAINER](product/domain/DATA_CLEANUP_ORDER_CONTAINER.md) | 旧一单一柜假设下的历史清洗调查；当前不得作为目标模型 | 已过时               |
-| [INTEGRATION_BOUNDARIES](product/domain/INTEGRATION_BOUNDARIES.md)             | 导入→直连边界/字段与事件级来源权威                   | 候选 v0.4            |
-| [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)             | 集成冗余/故障转移                                    | 候选                 |
-| [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                               | 现网 vs 新设计差距                                   | 评审输入             |
-| [真实备货样本字段目录](product/domain/REAL_REPLENISHMENT_SAMPLE_FIELD_CATALOG_20260921.md) | 44 份真实文件的备货单、SKU、单证与货柜字段按生命周期归属 | 样本证据 2026-09-21 |
-| [真实备货样本逻辑关系](product/domain/REAL_REPLENISHMENT_SAMPLE_RELATIONSHIPS_20260921.md) | 26DSC01811/01812 的订单、SKU、分提单、报关票与货柜对账 | 样本证据 2026-09-21 |
-| [飞驼知识库](integrations/freightower/README.md)                               | 飞驼接口、事件码、字段、同步与安全                   | 外部供应商核验知识库 |
-| [飞驼海关证据映射 V1](integrations/freightower/CUSTOMS_EVIDENCE_MAPPING_V1.md) | 官网海关接口证据索引、复合码映射与工单驱动规则       | 外部供应商映射 V1    |
-| [云当网知识库](integrations/trackingeyes/README.md)                            | 云当网 67 接口、42 码表、推送载荷与两供应商码表对照  | 外部供应商核验知识库 |
+| 文档                                                                                       | 一句话                                                   | 状态                 |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------- | -------------------- |
+| [AS_IS_LEGACY_BASELINE](product/domain/AS_IS_LEGACY_BASELINE.md)                           | 现网系统快照(状态/字段/反例)                             | 快照                 |
+| [LEGACY_DB_CATALOG](product/domain/LEGACY_DB_CATALOG.md)                                   | 老库表/字典家底                                          | 快照                 |
+| [FIELD_MIGRATION_MAP](product/domain/FIELD_MIGRATION_MAP.md)                               | 老字段→新库映射                                          | 候选                 |
+| [DATA_CLEANUP_ORDER_CONTAINER](product/domain/DATA_CLEANUP_ORDER_CONTAINER.md)             | 旧一单一柜假设下的历史清洗调查；当前不得作为目标模型     | 已过时               |
+| [INTEGRATION_BOUNDARIES](product/domain/INTEGRATION_BOUNDARIES.md)                         | 导入→直连边界/字段与事件级来源权威                       | 候选 v0.4            |
+| [INTEGRATION_REDUNDANCY](product/domain/INTEGRATION_REDUNDANCY.md)                         | 集成冗余/故障转移                                        | 候选                 |
+| [ASIS_TOBE_GAP](product/domain/ASIS_TOBE_GAP.md)                                           | 现网 vs 新设计差距                                       | 评审输入             |
+| [真实备货样本字段目录](product/domain/REAL_REPLENISHMENT_SAMPLE_FIELD_CATALOG_20260921.md) | 44 份真实文件的备货单、SKU、单证与货柜字段按生命周期归属 | 样本证据 2026-09-21  |
+| [真实备货样本逻辑关系](product/domain/REAL_REPLENISHMENT_SAMPLE_RELATIONSHIPS_20260921.md) | 26DSC01811/01812 的订单、SKU、分提单、报关票与货柜对账   | 样本证据 2026-09-21  |
+| [飞驼知识库](integrations/freightower/README.md)                                           | 飞驼接口、事件码、字段、同步与安全                       | 外部供应商核验知识库 |
+| [飞驼海关证据映射 V1](integrations/freightower/CUSTOMS_EVIDENCE_MAPPING_V1.md)             | 官网海关接口证据索引、复合码映射与工单驱动规则           | 外部供应商映射 V1    |
+| [云当网知识库](integrations/trackingeyes/README.md)                                        | 云当网 67 接口、42 码表、推送载荷与两供应商码表对照      | 外部供应商核验知识库 |
 
 ### 5.4 治理/评审/对照
 
