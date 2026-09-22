@@ -1,11 +1,5 @@
 import { execFileSync } from "node:child_process";
-import {
-  existsSync,
-  readFileSync,
-  readdirSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -15,16 +9,6 @@ import {
 import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
-
-const styleBaselinePath = resolve(
-  repositoryRoot,
-  "scripts/style-scale-baseline.json",
-);
-
-function readStyleBaseline() {
-  if (!existsSync(styleBaselinePath)) return { files: {} };
-  return JSON.parse(readFileSync(styleBaselinePath, "utf8"));
-}
 
 const ignoredDirectories = new Set([
   ".agents",
@@ -300,9 +284,8 @@ function foldFunctionExpressions(value) {
 }
 
 // 扫描 web 源码里的裸 px 字号与越界间距。
-// baseline.files 按文件记存量违规数：不超基线放行，超了报错 —— 存量可收敛，新漂移写不进来。
-export function findStyleScaleViolations(records, baseline = { files: {} }) {
-  const allowedCounts = baseline?.files ?? {};
+// 迁移已完成、基线已删除，这里是硬门禁：任何越界直接失败。
+export function findStyleScaleViolations(records) {
   const errors = [];
 
   for (const record of records) {
@@ -367,10 +350,7 @@ export function findStyleScaleViolations(records, baseline = { files: {} }) {
       }
     }
 
-    if (!fileErrors.length) continue;
-    const allowed = allowedCounts[path] ?? 0;
-    if (fileErrors.length <= allowed) continue;
-    errors.push(...fileErrors.slice(allowed));
+    errors.push(...fileErrors);
   }
 
   return errors;
@@ -593,7 +573,6 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
           path: toRepositoryRelativePath(path),
           source: readFileSync(path, "utf8"),
         })),
-        readStyleBaseline(),
       ),
       ...findArchitectureBoundaryViolations(architectureSourceFiles()),
       ...findModuleManifestViolations(),
@@ -610,55 +589,17 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
   return errors;
 }
 
-// 生成模式：把当前全部存量违规按文件计数写进基线。
-// 只在迁移期用；基线清空后连同冻结快照一起删除。
-function writeStyleBaseline() {
-  const files = {};
-  const records = walkFiles(
-    resolve(repositoryRoot, "apps/web/src"),
-    (path) => [".css", ".vue"].includes(extname(path).toLowerCase()),
-  ).map((path) => ({
-    path: toRepositoryRelativePath(path),
-    source: readFileSync(path, "utf8"),
-  }));
-  for (const record of records) {
-    const path = normalizePath(record.path);
-    const count = findStyleScaleViolations([{ path, source: record.source }], {
-      files: {},
-    }).length;
-    if (count > 0) files[path] = count;
-  }
-  writeFileSync(
-    styleBaselinePath,
-    `${JSON.stringify(
-      {
-        note: "样式比例迁移基线：每迁完一个目录就删掉对应条目；清空后删除本文件、生成模式与测试里的冻结快照。只减不增。",
-        files,
-      },
-      null,
-      2,
-    )}\n`,
-  );
-  console.log(
-    `style-scale-baseline.json 已写入 ${Object.keys(files).length} 个文件`,
-  );
-}
-
 const isDirectRun =
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 if (isDirectRun) {
-  if (process.argv.includes("--write-style-baseline")) {
-    writeStyleBaseline();
+  const errors = runRepositoryChecks({
+    docsOnly: process.argv.includes("--docs-only"),
+  });
+  if (errors.length) {
+    console.error(errors.map((error) => `- ${error}`).join("\n"));
+    process.exitCode = 1;
   } else {
-    const errors = runRepositoryChecks({
-      docsOnly: process.argv.includes("--docs-only"),
-    });
-    if (errors.length) {
-      console.error(errors.map((error) => `- ${error}`).join("\n"));
-      process.exitCode = 1;
-    } else {
-      console.log("Repository policy checks passed.");
-    }
+    console.log("Repository policy checks passed.");
   }
 }

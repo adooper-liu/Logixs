@@ -32,27 +32,6 @@ after(() => {
   );
 });
 
-// 冻结快照：由 `node scripts/check-repository.mjs --write-style-baseline` 产出后回填。
-// 新增条目或调大某个计数都必须先改这里，让「把基线改大蒙混过关」在 review 里显形。
-const FROZEN_BASELINE_PATHS = [];
-const FROZEN_BASELINE_COUNTS = {};
-
-test("style scale baseline only shrinks", () => {
-  const baseline = JSON.parse(
-    readFileSync(join("scripts", "style-scale-baseline.json"), "utf8"),
-  );
-  assert.deepEqual(
-    Object.keys(baseline.files).sort(),
-    [...FROZEN_BASELINE_PATHS].sort(),
-  );
-  for (const [path, count] of Object.entries(baseline.files)) {
-    assert.ok(
-      count <= (FROZEN_BASELINE_COUNTS[path] ?? 0),
-      `基线不得增大：${path} 从 ${FROZEN_BASELINE_COUNTS[path]} 涨到 ${count}`,
-    );
-  }
-});
-
 test("requires every style scale token to be defined", () => {
   assert.deepEqual(
     findMissingStyleScaleTokens(`
@@ -253,21 +232,14 @@ test("ignores token definitions, tests and non-web files", () => {
   );
 });
 
-test("allows within-baseline counts and rejects going over", () => {
-  const record = {
-    path: "apps/web/src/views/Legacy.vue",
-    source: "<style scoped>\n.a { font-size: 10px; }\n</style>",
-  };
+test("reports every violation now that the migration baseline is gone", () => {
   assert.deepEqual(
-    findStyleScaleViolations([record], {
-      files: { "apps/web/src/views/Legacy.vue": 1 },
-    }),
-    [],
-  );
-  assert.deepEqual(
-    findStyleScaleViolations([record], {
-      files: { "apps/web/src/views/Legacy.vue": 0 },
-    }),
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Legacy.vue",
+        source: "<style scoped>\n.a { font-size: 10px; }\n</style>",
+      },
+    ]),
     [
       "apps/web/src/views/Legacy.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
     ],
