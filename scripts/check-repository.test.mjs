@@ -19,6 +19,7 @@ import {
   findForbiddenTrackedPaths,
   findMisleadingContractPackageScripts,
   findMissingRequiredPolicyFiles,
+  findMissingStyleScaleTokens,
   findUiThemeBoundaryViolations,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
@@ -28,6 +29,49 @@ after(() => {
   temporaryDirectories.forEach((directory) =>
     rmSync(directory, { force: true, recursive: true }),
   );
+});
+
+test("requires every style scale token to be defined", () => {
+  assert.deepEqual(
+    findMissingStyleScaleTokens(`
+      :root[data-ui-theme="logix"] {
+        --text-page: 20px;
+        --text-title: 15px;
+        --text-body: 14px;
+        --space-1: 4px;
+      }
+    `),
+    [
+      "tokens.css 缺少 --text-meta",
+      "tokens.css 缺少 --text-label",
+      "tokens.css 缺少 --text-micro",
+      "tokens.css 缺少 --space-2",
+      "tokens.css 缺少 --space-3",
+      "tokens.css 缺少 --space-4",
+      "tokens.css 缺少 --space-5",
+      "tokens.css 缺少 --space-6",
+      "tokens.css 缺少 --space-8",
+    ],
+  );
+});
+
+test("accepts a complete style scale token set", () => {
+  const complete = [
+    "--text-page: 20px",
+    "--text-title: 15px",
+    "--text-body: 14px",
+    "--text-meta: 13px",
+    "--text-label: 12px",
+    "--text-micro: 11px",
+    "--space-1: 4px",
+    "--space-2: 8px",
+    "--space-3: 12px",
+    "--space-4: 16px",
+    "--space-5: 20px",
+    "--space-6: 24px",
+    "--space-8: 32px",
+  ].join(";\n");
+  assert.deepEqual(findMissingStyleScaleTokens(complete), []);
 });
 
 test("db:migrate applies pending history without a shadow database", () => {

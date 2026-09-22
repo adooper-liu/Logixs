@@ -176,6 +176,30 @@ export function findSecretContent(files) {
   return errors;
 }
 
+// 排版与间距的唯一合法档位。页面只能用这些令牌，不得写裸 px。
+// 权威：docs/product/UI_SYSTEM.md §7.2 / §7.3（本清单是它们的可执行副本）。
+export const STYLE_SCALE_TOKENS = [
+  "--text-page",
+  "--text-title",
+  "--text-body",
+  "--text-meta",
+  "--text-label",
+  "--text-micro",
+  "--space-1",
+  "--space-2",
+  "--space-3",
+  "--space-4",
+  "--space-5",
+  "--space-6",
+  "--space-8",
+];
+
+export function findMissingStyleScaleTokens(tokensSource) {
+  return STYLE_SCALE_TOKENS.filter(
+    (token) => !new RegExp(`${token}\\s*:`).test(tokensSource),
+  ).map((token) => `tokens.css 缺少 ${token}`);
+}
+
 export function findUiThemeBoundaryViolations(records) {
   const errors = [];
   const importPattern =
@@ -381,6 +405,12 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
           path: toRepositoryRelativePath(path),
           source: readFileSync(path, "utf8"),
         })),
+      ),
+      ...findMissingStyleScaleTokens(
+        readFileSync(
+          resolve(repositoryRoot, "apps/web/src/themes/logix/tokens.css"),
+          "utf8",
+        ),
       ),
       ...findArchitectureBoundaryViolations(architectureSourceFiles()),
       ...findModuleManifestViolations(),
