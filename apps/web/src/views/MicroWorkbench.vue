@@ -160,6 +160,7 @@ watch(
         <LiveNodeRail
           v-if="nodes.length"
           :nodes="nodes"
+          :selected-node-id="selectedNode?.nodeInstanceId ?? ''"
           @select="selectedNodeId = $event"
         />
         <p v-else class="hint">{{ uiCopy.chrome.emptyFlow }}</p>

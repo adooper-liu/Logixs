@@ -2,6 +2,7 @@
 // 运行：pnpm db:seed（需 DATABASE_URL 指向运行中的 PostgreSQL）。
 import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { seedRealReplenishmentSample } from "./seeds/seed-real-replenishment-sample";
 
 // 本地开发回退到 docker-compose 默认值（与 prisma.config.ts / apps/api config/env.ts 一致）。
 const LOCAL_DEV_DATABASE_URL =
@@ -49,8 +50,17 @@ async function main(): Promise<void> {
       update: { ...sample, tenantId: TENANT_ID },
     });
   }
+  const realSample = await seedRealReplenishmentSample(prisma);
   const count = await prisma.containerRecord.count();
   console.log(`Seeded container_record; total rows now: ${count}`);
+  console.log(
+    `Seeded real replenishment sample ${realSample.tenantId}: ` +
+      `${realSample.replenishmentOrderCount} orders, ` +
+      `${realSample.containerCount} containers, ` +
+      `${realSample.productSkuCount} SKUs, ` +
+      `${realSample.replenishmentOrderLineCount} lines, ` +
+      `${realSample.allocationCount} allocations.`,
+  );
 }
 
 main()

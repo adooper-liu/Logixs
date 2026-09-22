@@ -497,7 +497,7 @@ export class ApplyLifecycleEventService {
       if (targetOrder >= currentOrder) {
         await this.applyContainerRecord.execute({
           tenantId: container.tenantId,
-          orderNumber: container.orderNumber,
+          containerRecordId: input.containerId,
           containerNumber: container.containerNumber,
           currentStatus: targetStatus,
         });

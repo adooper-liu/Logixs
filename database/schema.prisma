@@ -428,7 +428,7 @@ model ContainerRecord {
   // 旧导入兼容锚；柜内货物与备货单的权威关系由 ContainerCargoAllocation 表达。
   orderNumber                   String                         @map("order_number")
   replenishmentOrderId          String?                        @map("replenishment_order_id")
-  replenishmentOrder            ReplenishmentOrder?            @relation(fields: [replenishmentOrderId], references: [id])
+  replenishmentOrder            ReplenishmentOrder?            @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "container_record_replenishment_order_tenant_fkey")
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
   mainOrderNumber               String?                        @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
@@ -441,6 +441,7 @@ model ContainerRecord {
   lifecycleDateFacts            LifecycleDateFact[]
   oceanRoutePlans               OceanRoutePlan[]
   cargoAllocationSets           ContainerCargoAllocationSet[]
+  importBindings                ContainerImportBinding[]
   stuffingSnapshots             ContainerStuffingSnapshot[]
   dispatchSnapshots             ContainerDispatchSnapshot[]
   customsClearanceCases         CustomsClearanceCase[]
@@ -453,8 +454,24 @@ model ContainerRecord {
 
   @@unique([id, tenantId], map: "container_record_id_tenant_key")
   @@index([tenantId, updatedAt, id])
+  @@index([tenantId, containerNumber], map: "container_record_tenant_number_idx")
   @@index([replenishmentOrderId])
   @@map("container_record")
+}
+
+// 导入解析作用域：只证明同一批次中的箱号指向同一稳定货柜，不把箱号升级为跨柜次身份。
+model ContainerImportBinding {
+  id                String          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String          @map("tenant_id")
+  sourceBatchId     String          @map("source_batch_id")
+  containerNumber   String          @map("container_number")
+  containerRecordId String          @map("container_record_id")
+  containerRecord   ContainerRecord @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, sourceBatchId, containerNumber], map: "container_import_binding_scope_key")
+  @@index([containerRecordId, tenantId], map: "container_import_binding_container_idx")
+  @@map("container_import_binding")
 }
 
 // 货柜海运路线版本（lifecycle-control 读取，后续由受控路线写端口维护）。
@@ -657,23 +674,33 @@ model ReplenishmentOrder {
 
 // 产品明细（shipment-registry 拥有）：重导时保留历史版本，只切换 is_current。
 model ReplenishmentOrderLine {
-  id                   String                     @id @default(uuid()) @map("id")
-  tenantId             String                     @map("tenant_id")
-  replenishmentOrderId String                     @map("replenishment_order_id")
-  replenishmentOrder   ReplenishmentOrder         @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  productSkuId         String?                    @map("product_sku_id") @db.Uuid
-  productNumber        String                     @map("product_number")
-  shippedQuantity      Decimal                    @map("shipped_quantity") @db.Decimal(18, 3)
-  quantityUnit         String                     @map("quantity_unit")
-  contractNumber       String?                    @map("contract_number")
-  sourceBatchId        String                     @map("source_batch_id")
-  sourceRowId          String                     @map("source_row_id")
-  isCurrent            Boolean                    @default(true) @map("is_current")
-  supersededByBatchId  String?                    @map("superseded_by_batch_id")
-  version              Int                        @default(1) @map("version")
-  createdAt            DateTime                   @default(now()) @map("created_at")
-  updatedAt            DateTime                   @updatedAt @map("updated_at")
-  cargoAllocations     ContainerCargoAllocation[]
+  id                          String                     @id @default(uuid()) @map("id")
+  tenantId                    String                     @map("tenant_id")
+  replenishmentOrderId        String                     @map("replenishment_order_id")
+  replenishmentOrder          ReplenishmentOrder         @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "replenishment_order_line_order_tenant_fkey")
+  productSkuId                String?                    @map("product_sku_id") @db.Uuid
+  productNumber               String                     @map("product_number")
+  shippedQuantity             Decimal                    @map("shipped_quantity") @db.Decimal(18, 3)
+  quantityUnit                String                     @map("quantity_unit")
+  contractNumber              String?                    @map("contract_number")
+  containsBattery             Boolean?                   @map("contains_battery")
+  containsRefrigerant         Boolean?                   @map("contains_refrigerant")
+  phytosanitaryRequired       Boolean?                   @map("phytosanitary_required")
+  commodityInspectionRequired Boolean?                   @map("commodity_inspection_required")
+  domesticMarkupAmount        Decimal?                   @map("domestic_markup_amount") @db.Decimal(18, 4)
+  domesticMarkupCurrency      String?                    @map("domestic_markup_currency")
+  replenishmentFobUnitPrice   Decimal?                   @map("replenishment_fob_unit_price") @db.Decimal(18, 4)
+  replenishmentFobCurrency    String?                    @map("replenishment_fob_currency")
+  negotiationFobUnitPrice     Decimal?                   @map("negotiation_fob_unit_price") @db.Decimal(18, 4)
+  negotiationFobCurrency      String?                    @map("negotiation_fob_currency")
+  sourceBatchId               String                     @map("source_batch_id")
+  sourceRowId                 String                     @map("source_row_id")
+  isCurrent                   Boolean                    @default(true) @map("is_current")
+  supersededByBatchId         String?                    @map("superseded_by_batch_id")
+  version                     Int                        @default(1) @map("version")
+  createdAt                   DateTime                   @default(now()) @map("created_at")
+  updatedAt                   DateTime                   @updatedAt @map("updated_at")
+  cargoAllocations            ContainerCargoAllocation[]
 
   @@unique([sourceBatchId, sourceRowId], map: "replenishment_order_line_source_key")
   @@unique([id, tenantId], map: "replenishment_order_line_id_tenant_key")

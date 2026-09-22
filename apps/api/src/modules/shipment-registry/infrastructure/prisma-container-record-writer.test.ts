@@ -1,4 +1,5 @@
 import { Test } from "@nestjs/testing";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { PrismaContainerRecordWriter } from "./prisma-container-record-writer";
@@ -8,14 +9,11 @@ function buildPrisma(
 ) {
   return {
     containerRecord: {
-      findMany: vi.fn().mockResolvedValue(existing ? [existing] : []),
+      findFirst: vi.fn().mockResolvedValue(existing),
       update: vi.fn().mockResolvedValue({
         id: existing?.id ?? "c1",
         containerNumber: "MSKU-NEW",
       }),
-      create: vi
-        .fn()
-        .mockResolvedValue({ id: "c2", containerNumber: "MSKU-NEW" }),
     },
   };
 }
@@ -32,14 +30,14 @@ async function buildService(prisma: ReturnType<typeof buildPrisma>) {
 
 const command = {
   tenantId: "t1",
-  orderNumber: "SO-1",
+  containerRecordId: "c1",
   containerNumber: "MSKU-NEW",
   currentStatus: "shipped" as const,
 };
 
 describe("PrismaContainerRecordWriter", () => {
-  it("命中 → 更新，created=false", async () => {
-    const prisma = buildPrisma({ id: "c1", containerNumber: "MSKU-OLD" });
+  it("按稳定货柜 ID 命中并更新", async () => {
+    const prisma = buildPrisma({ id: "c1", containerNumber: "MSKU-NEW" });
     const { writer } = await buildService(prisma);
 
     const result = await writer.apply(command);
@@ -47,23 +45,28 @@ describe("PrismaContainerRecordWriter", () => {
     expect(result.created).toBe(false);
     expect(result.containerRecordId).toBe("c1");
     expect(prisma.containerRecord.update).toHaveBeenCalled();
-    expect(prisma.containerRecord.create).not.toHaveBeenCalled();
-    expect(prisma.containerRecord.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { tenantId: "t1", orderNumber: "SO-1" },
-        take: 2,
-      }),
-    );
+    expect(prisma.containerRecord.findFirst).toHaveBeenCalledWith({
+      where: { id: "c1", tenantId: "t1" },
+    });
   });
 
-  it("未命中 → 新建，created=true", async () => {
+  it("稳定货柜 ID 未命中时拒绝创建新实例", async () => {
     const prisma = buildPrisma(null);
     const { writer } = await buildService(prisma);
 
-    const result = await writer.apply(command);
+    await expect(writer.apply(command)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(prisma.containerRecord.update).not.toHaveBeenCalled();
+  });
 
-    expect(result.created).toBe(true);
-    expect(result.containerRecordId).toBe("c2");
-    expect(prisma.containerRecord.create).toHaveBeenCalled();
+  it("稳定货柜已有不同箱号时拒绝静默覆盖", async () => {
+    const prisma = buildPrisma({ id: "c1", containerNumber: "MSKU-OLD" });
+    const { writer } = await buildService(prisma);
+
+    await expect(writer.apply(command)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.containerRecord.update).not.toHaveBeenCalled();
   });
 });
