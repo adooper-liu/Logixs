@@ -64,6 +64,24 @@ describe("decideOutboxFailure", () => {
     }
   });
 
+  it.each(["task_not_initialized", "concurrency_conflict"])(
+    "%s 保持可重试，不提前进入死信",
+    (errorCode) => {
+      expect(
+        decideOutboxFailure({
+          attemptCount: 1,
+          createdAt: CREATED,
+          now: NOW,
+          error: new OutboxDeliveryError(errorCode),
+        }),
+      ).toMatchObject({
+        state: "retry_wait",
+        lastErrorCode: errorCode,
+        failureCategory: "dependency",
+      });
+    },
+  );
+
   it("不可重试或次数用尽进入 dead_letter", () => {
     expect(
       decideOutboxFailure({

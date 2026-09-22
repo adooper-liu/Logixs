@@ -1,11 +1,13 @@
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
+import { LIFECYCLE_DATE_FACT_REPOSITORY } from "../domain/lifecycle-date-fact.repository";
 import { LIFECYCLE_REPOSITORY } from "../domain/lifecycle.repository";
 import { ListLifecycleNodesService } from "./list-lifecycle-nodes.service";
 
 async function buildService(overrides?: {
   findContainerBase?: ReturnType<typeof vi.fn>;
   findFlowByContainer?: ReturnType<typeof vi.fn>;
+  listCurrentForNodeProjection?: ReturnType<typeof vi.fn>;
 }) {
   const repository = {
     findFlowByContainer:
@@ -29,36 +31,44 @@ async function buildService(overrides?: {
     findApplicabilityDecision: vi.fn(),
     applyNodeApplicability: vi.fn(),
   };
+  const dateFacts = {
+    listCurrentForNodeProjection:
+      overrides?.listCurrentForNodeProjection ?? vi.fn().mockResolvedValue([]),
+  };
   const module = await Test.createTestingModule({
     providers: [
       ListLifecycleNodesService,
       { provide: LIFECYCLE_REPOSITORY, useValue: repository },
+      { provide: LIFECYCLE_DATE_FACT_REPOSITORY, useValue: dateFacts },
     ],
   }).compile();
   return {
     service: module.get(ListLifecycleNodesService),
     repository,
+    dateFacts,
   };
 }
 
 describe("ListLifecycleNodesService", () => {
   it("缺少租户 → AUTHORIZATION_SCOPE_DENIED", async () => {
-    const { service, repository } = await buildService();
+    const { service, repository, dateFacts } = await buildService();
     await expect(service.execute({ containerId: "c1" })).rejects.toThrow(
       "AUTHORIZATION_SCOPE_DENIED",
     );
     expect(repository.findFlowByContainer).not.toHaveBeenCalled();
+    expect(dateFacts.listCurrentForNodeProjection).not.toHaveBeenCalled();
     expect(repository.ensureFlow).not.toHaveBeenCalled();
   });
 
   it("货柜不存在或跨租户 → RESOURCE_NOT_FOUND", async () => {
-    const { service, repository } = await buildService({
+    const { service, repository, dateFacts } = await buildService({
       findContainerBase: vi.fn().mockResolvedValue(null),
     });
     await expect(
       service.execute({ tenantId: "t1", containerId: "missing" }),
     ).rejects.toThrow("RESOURCE_NOT_FOUND");
     expect(repository.findFlowByContainer).not.toHaveBeenCalled();
+    expect(dateFacts.listCurrentForNodeProjection).not.toHaveBeenCalled();
     expect(repository.ensureFlow).not.toHaveBeenCalled();
   });
 
@@ -104,8 +114,59 @@ describe("ListLifecycleNodesService", () => {
         completedAt: null,
         blockedReasonRefs: [],
         isCurrent: true,
+        times: {
+          plannedAt: null,
+          estimatedAt: null,
+          actualAt: null,
+        },
       },
     ]);
     expect(repository.ensureFlow).not.toHaveBeenCalled();
+  });
+
+  it("把当前权威日期事实交给节点三轨投影", async () => {
+    const occurredAt = new Date("2026-09-01T00:00:00.000Z");
+    const { service, dateFacts } = await buildService({
+      findFlowByContainer: vi.fn().mockResolvedValue({
+        flow: {
+          id: "f1",
+          containerId: "c1",
+          state: "active",
+          currentNodeCode: "cargo_ready",
+          version: 0,
+        },
+        nodes: [
+          {
+            id: "n1",
+            nodeCode: "cargo_ready",
+            state: "active",
+            completedAt: null,
+            applicability: "required",
+          },
+        ],
+      }),
+      listCurrentForNodeProjection: vi.fn().mockResolvedValue([
+        {
+          containerId: "c1",
+          nodeCode: "cargo_ready",
+          eventCode: "cargo_ready",
+          timeKind: "planned",
+          occurredAt,
+          verificationState: "pending",
+          confidenceState: "provisional",
+          validity: "effective",
+          authorityPolicyRef: null,
+          applicationState: "not_applicable",
+        },
+      ]),
+    });
+
+    const page = await service.execute({ tenantId: "t1", containerId: "c1" });
+
+    expect(page.nodes[0]?.times.plannedAt).toEqual(occurredAt);
+    expect(dateFacts.listCurrentForNodeProjection).toHaveBeenCalledWith({
+      tenantId: "t1",
+      containerIds: ["c1"],
+    });
   });
 });

@@ -148,6 +148,7 @@ export interface LifecycleRepository {
   ): Promise<NodeEventApplicationRecord | null>;
   recordNodeEventApplication(input: NodeEventApplicationRecord): Promise<void>;
   applyEventToNode(input: {
+    tenantId: string;
     flowInstanceId: string;
     expectedFlowVersion: number;
     eventId: string;
@@ -158,6 +159,7 @@ export interface LifecycleRepository {
     evaluatedAt: Date;
     guardResults: string[];
     routeSegmentGuard: ActiveOceanRouteSegment | null;
+    traceId: string;
   }): Promise<{ applied: boolean; version: number }>;
   findApplicabilityDecision(idempotencyKey: string): Promise<{
     flowInstanceId: string;

@@ -14,6 +14,7 @@ function readyBundle(
   return {
     task: {
       id: "t1",
+      tenantId: "t1",
       flowInstanceId: "f1",
       nodeInstanceId: "n1",
       nodeCode: "customs_clearance",
@@ -24,6 +25,7 @@ function readyBundle(
       readinessState: "ready",
       completionEligibility: "awaiting_evidence",
       conditionFactRefs: [],
+      version: 0,
       createdAt: new Date("2026-09-13T10:00:00Z"),
     },
     workOrders: [
@@ -32,10 +34,12 @@ function readyBundle(
         nodeTaskId: "t1",
         workOrderDefinitionKey: "wo-customs_clearance",
         state: "ready",
+        applicability: "required",
         assignmentState: "unassigned",
         assigneeId: null,
         dueAt: null,
         completedAt: null,
+        version: 0,
         createdAt: new Date("2026-09-13T10:00:00Z"),
         ...overrides,
       },

@@ -37,6 +37,12 @@ export class CreateNodeTaskService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    if (!input.tenantId?.trim()) {
+      throw new HttpException(
+        "AUTHORIZATION_SCOPE_DENIED: 缺少租户",
+        HttpStatus.FORBIDDEN,
+      );
+    }
 
     const nodeCode: LifecycleNodeCode = input.nodeCode;
     const conditions = evaluateTaskConditions({
@@ -45,6 +51,7 @@ export class CreateNodeTaskService {
       facts: input.conditionFacts ?? [],
     });
     return this.repository.upsertTaskWithRequiredWorkOrder({
+      tenantId: input.tenantId,
       flowInstanceId: input.flowInstanceId,
       nodeInstanceId: input.nodeInstanceId,
       nodeCode,

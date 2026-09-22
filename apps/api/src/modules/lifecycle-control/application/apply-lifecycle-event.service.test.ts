@@ -2,7 +2,10 @@ import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import { GET_CUSTOMS_CLEARANCE_READINESS } from "../../customs-compliance";
 import { READ_EVIDENCE_AUTHORITY_CONTEXT } from "../../document-records";
-import { GET_WAREHOUSE_DELIVERY_READINESS } from "../../inland-fulfillment";
+import {
+  GET_CONTAINER_UNLOADING_READINESS,
+  GET_WAREHOUSE_DELIVERY_READINESS,
+} from "../../inland-fulfillment";
 import {
   ApplyContainerRecordService,
   GET_CONTAINER_DISPATCH_READINESS,
@@ -145,7 +148,9 @@ async function buildService(
           ? ARRIVAL_LOCATION
           : input.eventCode === "gate_out"
             ? PICKUP_LOCATION
-            : ["delivered", "warehouse_arrival"].includes(input.eventCode)
+            : ["delivered", "warehouse_arrival", "unloaded"].includes(
+                  input.eventCode,
+                )
               ? WAREHOUSE_LOCATION
               : null,
       })),
@@ -205,6 +210,27 @@ async function buildService(
       },
     ]),
   },
+  getContainerUnloadingReadiness = {
+    execute: vi.fn().mockResolvedValue({
+      confirmed: true,
+      reasonCode: null,
+      instruction: {
+        instructionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        warehouseLocationId: WAREHOUSE_LOCATION.locationId,
+        unlocode: WAREHOUSE_LOCATION.unlocode,
+        timezone: WAREHOUSE_LOCATION.timezone,
+      },
+      report: {
+        reportId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        warehouseLocationId: WAREHOUSE_LOCATION.locationId,
+        operationState: "completed",
+        completedAt: "2026-09-12T10:00:00.000Z",
+        remainingQuantity: "0",
+        exceptionResolved: false,
+        evidenceRefs: [EVIDENCE],
+      },
+    }),
+  },
 ) {
   const module = await Test.createTestingModule({
     providers: [
@@ -236,6 +262,10 @@ async function buildService(
       {
         provide: GET_WAREHOUSE_DELIVERY_READINESS,
         useValue: getWarehouseDeliveryReadiness,
+      },
+      {
+        provide: GET_CONTAINER_UNLOADING_READINESS,
+        useValue: getContainerUnloadingReadiness,
       },
       {
         provide: READ_EVIDENCE_AUTHORITY_CONTEXT,
@@ -272,6 +302,23 @@ function baseInput() {
 }
 
 describe("ApplyLifecycleEventService", () => {
+  it("unloaded completes unloading only with the completed warehouse report", async () => {
+    const repository = buildRepository("picked_up");
+    useFlow(repository, flowAt("container_unloading"));
+    const applyContainerRecord = { execute: vi.fn() };
+    const { service } = await buildService(repository, applyContainerRecord);
+
+    const result = await service.execute({
+      ...baseInput(),
+      eventCode: "unloaded",
+    });
+
+    expect(result.completedNodes).toEqual(["container_unloading"]);
+    expect(applyContainerRecord.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ currentStatus: "unloaded" }),
+    );
+  });
+
   it("delivered 在目的仓与 POD 证据匹配时完成送仓但保持 picked_up", async () => {
     const repository = buildRepository("picked_up");
     useFlow(repository, flowAt("warehouse_delivery"));

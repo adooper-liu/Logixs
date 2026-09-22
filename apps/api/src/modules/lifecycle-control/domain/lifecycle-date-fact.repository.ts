@@ -3,6 +3,7 @@ import type {
   AppendLifecycleDateFactResult,
   LifecycleDateApplicationState,
   LifecycleDateFactRecord,
+  LifecycleDateFactProjectionRecord,
 } from "./lifecycle-date-fact";
 import type { LifecycleDateReviewCandidate } from "./lifecycle-date-review-page";
 
@@ -25,6 +26,10 @@ export interface LifecycleDateFactRepository {
     tenantId: string;
     containerId: string;
   }): Promise<LifecycleDateFactRecord[]>;
+  listCurrentForNodeProjection(input: {
+    tenantId: string;
+    containerIds: string[];
+  }): Promise<LifecycleDateFactProjectionRecord[]>;
   listReviewRequired(input: {
     tenantId: string;
     after?: { recordedAt: Date; id: string };

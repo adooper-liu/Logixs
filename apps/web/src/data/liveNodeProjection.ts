@@ -1,4 +1,7 @@
-import type { LifecycleNodeItem } from "../api/lifecycleNodes";
+import type {
+  LifecycleNodeItem,
+  LifecycleNodeTimes,
+} from "../api/lifecycleNodes";
 import { nodeScreenName } from "./uiCopyCatalog";
 
 export interface LiveNodeView {
@@ -9,6 +12,9 @@ export interface LiveNodeView {
   stateLabel: string;
   completedAt: string | null;
   isCurrent: boolean;
+  isNotApplicable: boolean;
+  blockedCount: number;
+  times: LifecycleNodeTimes;
 }
 
 const NODE_STATE_LABELS: Record<string, string> = {
@@ -29,5 +35,8 @@ export function toLiveNode(item: LifecycleNodeItem): LiveNodeView {
       : (NODE_STATE_LABELS[item.state] ?? item.state),
     completedAt: item.completedAt,
     isCurrent: item.isCurrent,
+    isNotApplicable: notApplicable,
+    blockedCount: item.blockedReasonRefs.length,
+    times: item.times,
   };
 }

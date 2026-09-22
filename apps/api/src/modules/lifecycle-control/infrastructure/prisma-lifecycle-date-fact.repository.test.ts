@@ -360,6 +360,65 @@ describe("PrismaLifecycleDateFactRepository.findById", () => {
   });
 });
 
+describe("PrismaLifecycleDateFactRepository.listCurrentForNodeProjection", () => {
+  it("一次读取指定货柜的全部当前事实及权威判定字段", async () => {
+    const source = input({
+      timeKind: "actual",
+      verificationState: "verified",
+      confidenceState: "confirmed",
+      validity: "effective",
+      authorityPolicyRef: "arrival:v1",
+      applicationState: "pending_application",
+    });
+    const projectionRow = {
+      containerId: source.containerId,
+      nodeCode: source.nodeCode,
+      eventCode: source.eventCode,
+      timeKind: source.timeKind,
+      occurredAt: source.occurredAt,
+      verificationState: source.verificationState,
+      confidenceState: source.confidenceState,
+      validity: source.validity,
+      authorityPolicyRef: source.authorityPolicyRef,
+      applicationState: source.applicationState,
+    };
+    const tx = transaction();
+    const { repository, prisma } = repositoryWith(tx);
+    prisma.lifecycleDateFact.findMany.mockResolvedValue([projectionRow]);
+
+    await expect(
+      repository.listCurrentForNodeProjection({
+        tenantId: source.tenantId,
+        containerIds: [source.containerId, "container-2"],
+      }),
+    ).resolves.toEqual([projectionRow]);
+    expect(prisma.lifecycleDateFact.findMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: source.tenantId,
+        containerId: { in: [source.containerId, "container-2"] },
+        isCurrent: true,
+      },
+      select: {
+        containerId: true,
+        nodeCode: true,
+        eventCode: true,
+        timeKind: true,
+        occurredAt: true,
+        verificationState: true,
+        confidenceState: true,
+        validity: true,
+        authorityPolicyRef: true,
+        applicationState: true,
+      },
+      orderBy: [
+        { containerId: "asc" },
+        { projectionVersion: "asc" },
+        { id: "asc" },
+      ],
+    });
+  });
+});
+
 describe("PrismaLifecycleDateFactRepository.claimPendingApplications", () => {
   it("领取同柜 current actual pending 事实并写入短租约", async () => {
     const first = row(

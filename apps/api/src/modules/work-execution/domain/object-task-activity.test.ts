@@ -15,6 +15,7 @@ function task(
   return {
     task: {
       id: "task-1",
+      tenantId: taskOverrides.tenantId ?? "tenant-1",
       flowInstanceId: "flow-1",
       nodeInstanceId: "node-1",
       nodeCode: "customs_clearance",
@@ -25,6 +26,7 @@ function task(
       readinessState: "ready",
       completionEligibility: "awaiting_evidence",
       conditionFactRefs: [],
+      version: taskOverrides.version ?? 0,
       createdAt: new Date("2026-09-18T01:00:00.000Z"),
       ...taskOverrides,
     },
@@ -34,10 +36,12 @@ function task(
         nodeTaskId: "task-1",
         workOrderDefinitionKey: "wo-customs-clearance",
         state: "ready",
+        applicability: workOrderOverrides.applicability ?? "required",
         assignmentState: "unassigned",
         assigneeId: null,
         dueAt: new Date("2026-09-19T08:00:00.000Z"),
         completedAt: null,
+        version: workOrderOverrides.version ?? 0,
         createdAt: new Date("2026-09-18T01:00:00.000Z"),
         ...workOrderOverrides,
       },
