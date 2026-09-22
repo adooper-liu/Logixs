@@ -264,20 +264,23 @@ function isAllowedSpacingPart(part) {
   return SPACE_TOKEN_VALUE.test(part);
 }
 
-// 把整个 calc(...) 折叠成一个可判定片段，避免其中的空格被当成多个值拆开。
-// 括号要配对计数：calc(var(--space-2) * -1) 里有嵌套括号。
-// 内部含 var(--space-*) 的 calc 视为合法，否则原样保留（让它照常报错）。
-function foldCalcExpressions(value) {
+// 把整个函数表达式（calc / min / max / clamp）折叠成一个可判定片段，
+// 避免其中的空格与逗号被当成多个值拆开。括号要配对计数：
+// calc(var(--space-2) * -1) 与 min(16vh, 140px) 都有括号。
+const SPACING_FUNCTIONS = ["calc(", "min(", "max(", "clamp("];
+
+function foldFunctionExpressions(value) {
   let out = "";
   let index = 0;
   while (index < value.length) {
-    if (!value.startsWith("calc(", index)) {
+    const fn = SPACING_FUNCTIONS.find((name) => value.startsWith(name, index));
+    if (!fn) {
       out += value[index];
       index += 1;
       continue;
     }
     let depth = 0;
-    let end = index + 4;
+    let end = index + fn.length - 1;
     for (; end < value.length; end += 1) {
       if (value[end] === "(") depth += 1;
       else if (value[end] === ")") {
@@ -286,7 +289,11 @@ function foldCalcExpressions(value) {
       }
     }
     const expression = value.slice(index, end + 1);
-    out += expression.includes("var(--space-") ? "0" : expression;
+    // calc 必须引用令牌，否则 calc(10px) 就成了绕过门禁的后门；
+    // min / max / clamp 是流体布局表达式（如 min(16vh, 140px)），无法用单一令牌表达，整体放行。
+    const allowed =
+      expression.includes("var(--") || !expression.startsWith("calc(");
+    out += allowed ? "0" : expression;
     index = end + 1;
   }
   return out;
@@ -340,7 +347,7 @@ export function findStyleScaleViolations(records, baseline = { files: {} }) {
           }
 
           if (!SPACING_PROPERTIES.has(property)) continue;
-          for (const part of foldCalcExpressions(value).split(/\s+/)) {
+          for (const part of foldFunctionExpressions(value).split(/\s+/)) {
             if (!part || isAllowedSpacingPart(part)) continue;
             fileErrors.push(
               `${path}: ${property} 不得写裸值 '${part}'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）`,

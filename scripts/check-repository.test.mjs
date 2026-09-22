@@ -79,8 +79,6 @@ const FROZEN_BASELINE_PATHS = [
   "apps/web/src/components/pickup/PickupActionPanel.vue",
   "apps/web/src/components/pickup/PickupFactsPanel.vue",
   "apps/web/src/components/pickup/PickupWorkQueue.vue",
-  "apps/web/src/components/shell/AppTopbar.vue",
-  "apps/web/src/components/shell/CommandPalette.vue",
   "apps/web/src/components/stuffing/StuffingActionPanel.vue",
   "apps/web/src/components/stuffing/StuffingActualTimeForm.vue",
   "apps/web/src/components/stuffing/StuffingSnapshotForm.vue",
@@ -95,12 +93,6 @@ const FROZEN_BASELINE_PATHS = [
   "apps/web/src/components/task/TaskPreconditionPanel.vue",
   "apps/web/src/components/task/TaskQueue.vue",
   "apps/web/src/components/task/TaskResultPanel.vue",
-  "apps/web/src/components/ui/DynamicDataTable.vue",
-  "apps/web/src/components/ui/DynamicDataTablePagination.vue",
-  "apps/web/src/components/ui/DynamicDataTableToolbar.vue",
-  "apps/web/src/components/ui/DynamicFieldPanel.vue",
-  "apps/web/src/components/ui/DynamicTableCell.vue",
-  "apps/web/src/components/ui/InfoTooltip.vue",
   "apps/web/src/components/unloading/UnloadingActionPanel.vue",
   "apps/web/src/components/unloading/UnloadingFactsPanel.vue",
   "apps/web/src/components/unloading/UnloadingProgressPanel.vue",
@@ -108,7 +100,6 @@ const FROZEN_BASELINE_PATHS = [
   "apps/web/src/components/workbench/RoleWorkbenchFrame.vue",
   "apps/web/src/styles/base.css",
   "apps/web/src/styles/utilities.css",
-  "apps/web/src/themes/logix/LogixPageHeader.vue",
   "apps/web/src/views/ComplianceWorkbench.vue",
   "apps/web/src/views/ContainerList.vue",
   "apps/web/src/views/ContainerUnloadingWorkbench.vue",
@@ -172,8 +163,6 @@ const FROZEN_BASELINE_COUNTS = {
   "apps/web/src/components/pickup/PickupActionPanel.vue": 16,
   "apps/web/src/components/pickup/PickupFactsPanel.vue": 14,
   "apps/web/src/components/pickup/PickupWorkQueue.vue": 11,
-  "apps/web/src/components/shell/AppTopbar.vue": 16,
-  "apps/web/src/components/shell/CommandPalette.vue": 17,
   "apps/web/src/components/stuffing/StuffingActionPanel.vue": 18,
   "apps/web/src/components/stuffing/StuffingActualTimeForm.vue": 16,
   "apps/web/src/components/stuffing/StuffingSnapshotForm.vue": 19,
@@ -188,12 +177,6 @@ const FROZEN_BASELINE_COUNTS = {
   "apps/web/src/components/task/TaskPreconditionPanel.vue": 17,
   "apps/web/src/components/task/TaskQueue.vue": 29,
   "apps/web/src/components/task/TaskResultPanel.vue": 20,
-  "apps/web/src/components/ui/DynamicDataTable.vue": 7,
-  "apps/web/src/components/ui/DynamicDataTablePagination.vue": 4,
-  "apps/web/src/components/ui/DynamicDataTableToolbar.vue": 20,
-  "apps/web/src/components/ui/DynamicFieldPanel.vue": 22,
-  "apps/web/src/components/ui/DynamicTableCell.vue": 6,
-  "apps/web/src/components/ui/InfoTooltip.vue": 3,
   "apps/web/src/components/unloading/UnloadingActionPanel.vue": 18,
   "apps/web/src/components/unloading/UnloadingFactsPanel.vue": 13,
   "apps/web/src/components/unloading/UnloadingProgressPanel.vue": 15,
@@ -201,7 +184,6 @@ const FROZEN_BASELINE_COUNTS = {
   "apps/web/src/components/workbench/RoleWorkbenchFrame.vue": 20,
   "apps/web/src/styles/base.css": 1,
   "apps/web/src/styles/utilities.css": 7,
-  "apps/web/src/themes/logix/LogixPageHeader.vue": 10,
   "apps/web/src/views/ComplianceWorkbench.vue": 9,
   "apps/web/src/views/ContainerList.vue": 1,
   "apps/web/src/views/ContainerUnloadingWorkbench.vue": 1,
@@ -357,6 +339,21 @@ test("checks logical spacing properties too", () => {
     ]),
     [
       "apps/web/src/views/Logical.vue: padding-inline 不得写裸值 '14px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("accepts fluid functions but still rejects calc over bare px", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Fluid.vue",
+        source:
+          "<style scoped>\n.a { padding: min(16vh, 140px) var(--space-4); }\n.b { padding: calc(10px); }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Fluid.vue: padding 不得写裸值 'calc(10px)'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
     ],
   );
 });
