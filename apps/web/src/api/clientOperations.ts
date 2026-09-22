@@ -1,3 +1,5 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
+
 export interface ClientOperationItem {
   clientOperationId: string;
   actionCode: string;
@@ -47,7 +49,6 @@ export interface CompensationPage {
   projectionVersion: number;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 function identityHeaders(): HeadersInit {

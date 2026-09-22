@@ -23,6 +23,7 @@ const connectionString =
   "postgresql://logix:logix@localhost:5433/logix?schema=public";
 const targetMigration = "20260922090000_real_replenishment_database_foundation";
 const realTenantId = "demo-real-sample-20260921";
+const legacySyntheticTenantId = "dev-tenant";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const require = createRequire(import.meta.url);
@@ -167,6 +168,7 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
   const [
     orderCount,
     containerCount,
+    legacySyntheticContainerCount,
     skuCount,
     lines,
     importRowCount,
@@ -178,6 +180,9 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
   ] = await Promise.all([
     prisma.replenishmentOrder.count({ where: { tenantId: realTenantId } }),
     prisma.containerRecord.count({ where: { tenantId: realTenantId } }),
+    prisma.containerRecord.count({
+      where: { tenantId: legacySyntheticTenantId },
+    }),
     prisma.productSku.count({ where: { tenantId: realTenantId } }),
     prisma.replenishmentOrderLine.findMany({
       where: { tenantId: realTenantId },
@@ -288,6 +293,7 @@ async function verifyRealSample(prisma: PrismaClient): Promise<void> {
   if (
     orderCount !== 2 ||
     containerCount !== 2 ||
+    legacySyntheticContainerCount !== 0 ||
     skuCount !== 15 ||
     lines.length !== 15 ||
     importRowCount !== 15 ||

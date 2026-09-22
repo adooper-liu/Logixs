@@ -20,7 +20,7 @@ describe("listContainers", () => {
     await listContainers();
     expect(fetchMock).toHaveBeenCalledWith("/api/containers", {
       headers: {
-        "X-Tenant-Id": "dev-tenant",
+        "X-Tenant-Id": "demo-real-sample-20260921",
         "X-Operator-Id": "dev-operator",
       },
     });
@@ -42,7 +42,7 @@ describe("listContainers", () => {
       "/api/containers?pageSize=200&cursor=cur-1",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },
@@ -67,7 +67,7 @@ describe("getContainer", () => {
     const row = await getContainer("c1");
     expect(fetchMock).toHaveBeenCalledWith("/api/containers/c1", {
       headers: {
-        "X-Tenant-Id": "dev-tenant",
+        "X-Tenant-Id": "demo-real-sample-20260921",
         "X-Operator-Id": "dev-operator",
       },
     });
@@ -101,7 +101,7 @@ describe("getContainerCargo", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/containers/c1/cargo", {
       headers: {
-        "X-Tenant-Id": "dev-tenant",
+        "X-Tenant-Id": "demo-real-sample-20260921",
         "X-Operator-Id": "dev-operator",
       },
     });

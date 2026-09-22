@@ -1,4 +1,5 @@
 import type { ContainerLifecycleState } from "@logix/contracts";
+import { DEV_TENANT_ID } from "./developmentIdentity";
 
 // 薄真实链路的前端只读 DTO：与 apps/api 的 ContainerSummary 形状一致。
 export interface ContainerSummary {
@@ -36,7 +37,6 @@ export interface ContainerCargoScope {
 }
 
 // 开发期身份与导入写路径对齐（正式 OIDC 属 P5-02）。
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 export async function listContainers(query?: {

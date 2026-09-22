@@ -1,3 +1,4 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
 
 export interface CargoReadyComplianceItem {
@@ -99,7 +100,7 @@ export interface CargoReadyDecisionResponse {
 }
 
 const IDENTITY_HEADERS = {
-  "X-Tenant-Id": "dev-tenant",
+  "X-Tenant-Id": DEV_TENANT_ID,
   "X-Operator-Id": "dev-compliance-reviewer",
   "X-Roles": "review_supervisor",
 };

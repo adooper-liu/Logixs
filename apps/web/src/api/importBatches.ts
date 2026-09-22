@@ -3,6 +3,7 @@ import type {
   ImportFieldScope,
   QuantityUnitCode,
 } from "@logix/contracts/import-fields.json";
+import { DEV_TENANT_ID } from "./developmentIdentity";
 
 // 导入批次前端只读/上传客户端（P6 阶段 A 读链路）。
 // 开发期身份用固定值（正式 OIDC 属 P5-02）。
@@ -54,7 +55,6 @@ export interface ImportBatchDetailDto {
   fieldCatalog: ImportFieldCatalog;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 export async function uploadImportBatch(

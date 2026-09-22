@@ -1,3 +1,5 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
+
 export interface DeadLetterItem {
   id: string;
   eventId: string;
@@ -42,7 +44,6 @@ export interface ReplayDeadLetterResult {
   targetConsumerVersion: string;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 function identityHeaders(): HeadersInit {

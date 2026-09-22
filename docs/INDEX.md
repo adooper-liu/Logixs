@@ -50,6 +50,7 @@
 | [任务：实际卸柜、部分卸货与卸柜完成](./planning/tasks/p6-container-unloading-operational-flow.md)     | 版本化卸货进度、实收差异、卸柜门禁与仓库收货岗位闭环      | 已完成，待合入                  |
 | [任务：货柜工作台一期与生命周期事实对账](./planning/tasks/p6-container-workbench-phase1.md)           | 已应用事实可靠对账工单，并铺满一柜一档 14 站与三轨        | 已完成                          |
 | [任务：真实备货样本数据库基础](./planning/tasks/p6-real-replenishment-database-foundation.md)         | 正式产品行字段、租户引用约束与可重复真实装载开发数据      | 已完成                          |
+| [任务：标准 Seed 只写真实备货样本](./planning/tasks/p6-real-sample-only-seed.md)                      | 移除旧三柜合成数据并让前端开发身份读取真实样本            | 已完成                          |
 | [数据库结构契约 V1](./architecture/DATABASE_SCHEMA_CONTRACT_V1.md)                                    | 全库表、字段、约束、索引、所有权和迁移演进的单一评审入口  | 现行实施契约 V1                 |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                         | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断            | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                                          | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）  | P1 已接受；011 候选、012 已接受 |
