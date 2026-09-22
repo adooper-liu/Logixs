@@ -255,6 +255,22 @@ test("checks every part of a shorthand（裸 px 一律不认，含在档上的 1
   );
 });
 
+test("catches declarations packed onto one line", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Packed.vue",
+        source:
+          "<style scoped>\n.a { position: relative; font-size: 10px; gap: 10px; }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Packed.vue: font-size 必须用 var(--text-*) 令牌，当前为 '10px'",
+      "apps/web/src/views/Packed.vue: gap 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '10px'",
+    ],
+  );
+});
+
 test("accepts an exemption that states a reason", () => {
   assert.deepEqual(
     findStyleScaleViolations([
@@ -410,6 +426,7 @@ export function findStyleScaleViolations(records, baseline = { files: {} }) {
     const fileErrors = [];
     for (const block of styleBlocksOf(record)) {
       for (const line of block.split("\n")) {
+        // 豁免按「行」判定：注释在行尾，拆声明后会与声明分开。
         const exemption = EXEMPTION_COMMENT.exec(line);
         if (exemption) {
           if (exemption[1].trim().length >= MIN_EXEMPTION_REASON_LENGTH) {
@@ -421,25 +438,33 @@ export function findStyleScaleViolations(records, baseline = { files: {} }) {
           continue;
         }
 
-        const declaration = /^\s*([a-z-]+)\s*:\s*([^;]+);?\s*$/.exec(line);
-        if (!declaration) continue;
-        const property = declaration[1];
-        const value = declaration[2].trim();
+        // 去掉选择器：取最后一个 '{' 之后的部分，这样单行多声明
+        // （.a { font-size: 14px; padding: 10px; }）也能逐条查到，
+        // 不依赖「代码已被 Prettier 展开成一行一条」这个假设。
+        const brace = line.lastIndexOf("{");
+        const body = brace === -1 ? line : line.slice(brace + 1);
 
-        if (property === "font-size") {
-          if (value === "inherit" || TEXT_TOKEN_VALUE.test(value)) continue;
-          fileErrors.push(
-            `${path}: font-size 必须用 var(--text-*) 令牌，当前为 '${value}'`,
-          );
-          continue;
-        }
+        for (const chunk of body.split(";")) {
+          const declaration = /^\s*([a-z-]+)\s*:\s*(.+?)\s*\}?\s*$/.exec(chunk);
+          if (!declaration) continue;
+          const property = declaration[1];
+          const value = declaration[2].trim();
 
-        if (!SPACING_PROPERTIES.has(property)) continue;
-        for (const part of foldCalcExpressions(value).split(/\s+/)) {
-          if (!part || isAllowedSpacingPart(part)) continue;
-          fileErrors.push(
-            `${path}: ${property} 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '${part}'`,
-          );
+          if (property === "font-size") {
+            if (value === "inherit" || TEXT_TOKEN_VALUE.test(value)) continue;
+            fileErrors.push(
+              `${path}: font-size 必须用 var(--text-*) 令牌，当前为 '${value}'`,
+            );
+            continue;
+          }
+
+          if (!SPACING_PROPERTIES.has(property)) continue;
+          for (const part of foldCalcExpressions(value).split(/\s+/)) {
+            if (!part || isAllowedSpacingPart(part)) continue;
+            fileErrors.push(
+              `${path}: ${property} 必须用 4/8/12/16/20/24/32 的 var(--space-*) 令牌，当前为 '${part}'`,
+            );
+          }
         }
       }
     }
