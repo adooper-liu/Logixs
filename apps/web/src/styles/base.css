@@ -25,7 +25,8 @@ button,
 input,
 select,
 textarea {
-  font-family: inherit;
+  /* 必须是 font 简写而非 font-family：只继承字体族会让控件保持 UA 默认字号 13.3333px。 */
+  font: inherit;
 }
 
 button,
