@@ -13,13 +13,13 @@
 
 `UI_SYSTEM §7.2` 定的下限是 **12px**（表格与元数据 12-13px、正文 14px）。
 
-| 页面 | 文字元素 | 低于 12px | 占比 |
-| ---- | -------- | --------- | ---- |
-| `/workspaces/cargo-ready` | 50 | 27 | **54%** |
-| `/dashboard` | 30 | 11 | 37% |
-| `/tasks` | 28 | 9 | 32% |
-| `/containers` | 48 | 14 | 29% |
-| `/reviews/date-facts` | 37 | 10 | 27% |
+| 页面                      | 文字元素 | 低于 12px | 占比    |
+| ------------------------- | -------- | --------- | ------- |
+| `/workspaces/cargo-ready` | 50       | 27        | **54%** |
+| `/dashboard`              | 30       | 11        | 37%     |
+| `/tasks`                  | 28       | 9         | 32%     |
+| `/containers`             | 48       | 14        | 29%     |
+| `/reviews/date-facts`     | 37       | 10        | 27%     |
 
 **没有一页达标。** 出现的字号：`8 9 10 11 12 13 14 15 16 17 18 21 22 27 px` —— 14 个档位，而文档只定义了 4-5 档。
 
@@ -29,13 +29,13 @@
 
 `UI_SYSTEM §7.3` 只允许 **4/8/12/16/20/24/32**。
 
-| 页面 | gap 越界 | 占比 |
-| ---- | -------- | ---- |
-| `/tasks` | 44/54 | **81%** |
-| `/containers` | 64/80 | 80% |
-| `/dashboard` | 48/60 | 80% |
-| `/reviews/date-facts` | 42/54 | 78% |
-| `/workspaces/cargo-ready` | 54/80 | 68% |
+| 页面                      | gap 越界 | 占比    |
+| ------------------------- | -------- | ------- |
+| `/tasks`                  | 44/54    | **81%** |
+| `/containers`             | 64/80    | 80%     |
+| `/dashboard`              | 48/60    | 80%     |
+| `/reviews/date-facts`     | 42/54    | 78%     |
+| `/workspaces/cargo-ready` | 54/80    | 68%     |
 
 实测出现的越界值：`10 9 7 6 5 3 2 1 px`。
 
@@ -120,22 +120,22 @@
 文件：`apps/web/src/themes/logix/tokens.css`，加在现有颜色令牌之后、兼容别名之前，`logix` 与 `logix[data-theme="dark"]` 两个作用域都加（字号间距与主题无关，单处定义即可 —— 放 `:root[data-ui-theme="logix"]` 内，暗色块内不重复）。
 
 ```css
-  /* 排版：收编 UI_SYSTEM §7.2 的档位 */
-  --text-page: 20px;
-  --text-title: 15px;
-  --text-body: 14px;
-  --text-meta: 13px;
-  --text-label: 12px;
-  --text-micro: 11px;
+/* 排版：收编 UI_SYSTEM §7.2 的档位 */
+--text-page: 20px;
+--text-title: 15px;
+--text-body: 14px;
+--text-meta: 13px;
+--text-label: 12px;
+--text-micro: 11px;
 
-  /* 间距：收编 UI_SYSTEM §7.3 的比例 */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
+/* 间距：收编 UI_SYSTEM §7.3 的比例 */
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-8: 32px;
 ```
 
 **不新增任何兼容别名。** 迁移是把裸 px **直接替换**成令牌（`font-size: 10px` → `font-size: var(--text-micro)`），不是让旧值以别名形式继续存在。
@@ -146,24 +146,24 @@
 
 **字号**（逐处判断，不机械替换）：
 
-| 现值 | 去向 | 判断依据 |
-| ---- | ---- | -------- |
-| `8px` `9px` `10px` | `--text-micro` 或 `--text-label` | 是非必读元数据 → micro；是可读标签 → label |
-| `11px` | `--text-micro` | — |
-| `12px` | `--text-label` | — |
-| `13px` | `--text-meta` | — |
-| `14px` | `--text-body` | — |
-| `15px` `16px` | `--text-title` | — |
-| `17px` `18px` `21px` `22px` `27px` | `--text-page` | 仅页名允许 20px；非页名降为 `--text-title` |
+| 现值                               | 去向                             | 判断依据                                   |
+| ---------------------------------- | -------------------------------- | ------------------------------------------ |
+| `8px` `9px` `10px`                 | `--text-micro` 或 `--text-label` | 是非必读元数据 → micro；是可读标签 → label |
+| `11px`                             | `--text-micro`                   | —                                          |
+| `12px`                             | `--text-label`                   | —                                          |
+| `13px`                             | `--text-meta`                    | —                                          |
+| `14px`                             | `--text-body`                    | —                                          |
+| `15px` `16px`                      | `--text-title`                   | —                                          |
+| `17px` `18px` `21px` `22px` `27px` | `--text-page`                    | 仅页名允许 20px；非页名降为 `--text-title` |
 
 **间距**：
 
-| 现值 | 去向 | 判断依据 |
-| ---- | ---- | -------- |
-| `10px` | `--space-2`(8) 或 `--space-3`(12) | 紧凑控件内 → 8；独立块之间 → 12 |
-| `9px` `7px` | `--space-2`(8) | — |
-| `6px` `5px` | `--space-1`(4) 或 `--space-2`(8) | 图标与文字 → 4；并列元素 → 8 |
-| `3px` `2px` `1px` | `--space-1`(4) | 若为光学微调（对齐补偿）则走豁免注释 |
+| 现值              | 去向                              | 判断依据                             |
+| ----------------- | --------------------------------- | ------------------------------------ |
+| `10px`            | `--space-2`(8) 或 `--space-3`(12) | 紧凑控件内 → 8；独立块之间 → 12      |
+| `9px` `7px`       | `--space-2`(8)                    | —                                    |
+| `6px` `5px`       | `--space-1`(4) 或 `--space-2`(8)  | 图标与文字 → 4；并列元素 → 8         |
+| `3px` `2px` `1px` | `--space-1`(4)                    | 若为光学微调（对齐补偿）则走豁免注释 |
 
 **`13.3333px`**：定位漏 `font: inherit` 的控件，补上继承，不新增档位。
 
@@ -173,11 +173,11 @@
 
 **扫描范围**：`apps/web/src/**/*.vue` 的 `<style>` 块，以及 `apps/web/src/**/*.css`。**排除** `themes/logix/tokens.css`（令牌定义处本身）与 `*.test.*`。
 
-| 属性 | 允许 | 禁止 |
-| ---- | ---- | ---- |
-| `font-size` | `var(--text-*)`、`inherit`、`0` | 任何字面量长度 |
-| `gap` `row-gap` `column-gap` | `var(--space-*)`、`0` | 越界字面量 |
-| `padding` `padding-*` `margin` `margin-*` | `var(--space-*)`、`0`、`auto`、`%`、`calc(var(--space-*) …)` | 越界字面量 |
+| 属性                                      | 允许                                                         | 禁止           |
+| ----------------------------------------- | ------------------------------------------------------------ | -------------- |
+| `font-size`                               | `var(--text-*)`、`inherit`、`0`                              | 任何字面量长度 |
+| `gap` `row-gap` `column-gap`              | `var(--space-*)`、`0`                                        | 越界字面量     |
+| `padding` `padding-*` `margin` `margin-*` | `var(--space-*)`、`0`、`auto`、`%`、`calc(var(--space-*) …)` | 越界字面量     |
 
 **豁免注释**（必须写理由，让豁免可审计）：
 
@@ -218,15 +218,15 @@
 
 ## 5. 改动清单
 
-| 文件 | 改动 |
-| ---- | ---- |
-| `apps/web/src/themes/logix/tokens.css` | 新增 6 个排版令牌 + 7 个间距令牌 |
-| `scripts/check-repository.mjs` | 新增 `findStyleScaleViolations(records)`，主流程联入 |
-| `scripts/check-repository.test.mjs` | 新增用例：合法值通过 / 越界值报错 / 豁免注释生效 / 空理由豁免无效 / 基线内通过 / 超基线报错 |
-| `scripts/style-scale-baseline.json` | 新建，收录存量违规 |
-| `docs/product/UI_SYSTEM.md` §7.2 | 补 `--text-*` 令牌名与 `--text-micro` 的使用边界 |
-| `docs/product/UI_SYSTEM.md` §7.3 | 补 `--space-*` 令牌名 |
-| 各页面 / 组件 `*.vue` | 逐页迁移（棘轮，见 §6） |
+| 文件                                   | 改动                                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `apps/web/src/themes/logix/tokens.css` | 新增 6 个排版令牌 + 7 个间距令牌                                                            |
+| `scripts/check-repository.mjs`         | 新增 `findStyleScaleViolations(records)`，主流程联入                                        |
+| `scripts/check-repository.test.mjs`    | 新增用例：合法值通过 / 越界值报错 / 豁免注释生效 / 空理由豁免无效 / 基线内通过 / 超基线报错 |
+| `scripts/style-scale-baseline.json`    | 新建，收录存量违规                                                                          |
+| `docs/product/UI_SYSTEM.md` §7.2       | 补 `--text-*` 令牌名与 `--text-micro` 的使用边界                                            |
+| `docs/product/UI_SYSTEM.md` §7.3       | 补 `--space-*` 令牌名                                                                       |
+| 各页面 / 组件 `*.vue`                  | 逐页迁移（棘轮，见 §6）                                                                     |
 
 ## 6. 分期（棘轮）
 
@@ -249,14 +249,14 @@ components/  1216（88%）    views/ 146（11%）    themes + styles 18（1%）
 
 §1 的页面视角适合描述"观感问题"，但不适合排期：违规不是按页面均布的，而是按组件聚集的。
 
-| 阶段 | 内容 | 违规量 | 完成判据 |
-| ---- | ---- | ------ | -------- |
-| **1** | 令牌 + 检查器 + 基线豁免（CI 绿）+ 侧栏迁移 | shell 56 | 侧栏 `gap:10px` 消失（全站生效）；CI 绿 |
-| **2** | `components/task` + `components/container` | 351 | 两目录归零，基线删对应条目 |
-| **3** | `components/cargo-ready` + `stuffing` + `management` | 364 | 同上 |
-| **4** | 其余 `components/*` + `views/` + `themes/` + `styles/` | 609 | 基线清空 |
-| **5** | 删除基线机制与冻结快照，检查转为硬门禁；更新 `UI_SYSTEM` 文档 | — | 无基线文件，CI 直接卡住任何越界 |
-| **6** | **"提升质感"**（排版层级对比、留白策略、密度节奏、微交互） | — | 另开 spec |
+| 阶段  | 内容                                                          | 违规量   | 完成判据                                |
+| ----- | ------------------------------------------------------------- | -------- | --------------------------------------- |
+| **1** | 令牌 + 检查器 + 基线豁免（CI 绿）+ 侧栏迁移                   | shell 56 | 侧栏 `gap:10px` 消失（全站生效）；CI 绿 |
+| **2** | `components/task` + `components/container`                    | 351      | 两目录归零，基线删对应条目              |
+| **3** | `components/cargo-ready` + `stuffing` + `management`          | 364      | 同上                                    |
+| **4** | 其余 `components/*` + `views/` + `themes/` + `styles/`        | 609      | 基线清空                                |
+| **5** | 删除基线机制与冻结快照，检查转为硬门禁；更新 `UI_SYSTEM` 文档 | —        | 无基线文件，CI 直接卡住任何越界         |
+| **6** | **"提升质感"**（排版层级对比、留白策略、密度节奏、微交互）    | —        | 另开 spec                               |
 
 **阶段 1 单独就有价值**：侧栏是每页都出现的部件，那一个 `gap:10px` 的影响面是全站；且检查器一上线，**新代码就再也写不进漂移**，与存量收敛进度无关。
 
@@ -286,12 +286,12 @@ components/  1216（88%）    views/ 146（11%）    themes + styles 18（1%）
 
 **§6.2 的阶段 1–5 已全部完成，基线已删除，门禁转为硬限制。**
 
-| 阶段 | 结果 |
-| ---- | ---- |
-| 1 令牌 + 检查器 + 基线 + 侧栏 | 侧栏 30 处归零；`13.3333px` 从 34 个元素降到 0 |
-| 2 叶子组件（`components/ui/` + shell 原子件 + 页头） | 9 个文件、105 处归零 |
-| 3–4 其余组件与页面 | 80 个文件迁移；**全站违规数 1390 → 0** |
-| 5 拆除基线机制 | `style-scale-baseline.json` 已删；`--write-style-baseline` 与冻结快照已删；`findStyleScaleViolations(records)` 不再接受基线参数 |
+| 阶段                                                 | 结果                                                                                                                            |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1 令牌 + 检查器 + 基线 + 侧栏                        | 侧栏 30 处归零；`13.3333px` 从 34 个元素降到 0                                                                                  |
+| 2 叶子组件（`components/ui/` + shell 原子件 + 页头） | 9 个文件、105 处归零                                                                                                            |
+| 3–4 其余组件与页面                                   | 80 个文件迁移；**全站违规数 1390 → 0**                                                                                          |
+| 5 拆除基线机制                                       | `style-scale-baseline.json` 已删；`--write-style-baseline` 与冻结快照已删；`findStyleScaleViolations(records)` 不再接受基线参数 |
 
 **实测规模**：起点 `1380`（修正逻辑属性遗漏后 `1390`）；终态 `0`。共改约 90 个文件。
 
@@ -315,6 +315,7 @@ components/  1216（88%）    views/ 146（11%）    themes + styles 18（1%）
 7. ~~未验证：暗色主题下是否有独立的漂移~~ → **已实测（阶段 1）：没有。** 对 `/tasks`、`/containers`、`/workspaces/cargo-ready` 三页分别在浅色与暗色下量越界字号与越界间距，**逐页数值完全相同**。
 
    符合预期：字号与间距令牌定义在 `:root[data-ui-theme="logix"]` 的浅色作用域、暗色块内不重复定义（见 §4.1），两套主题共用同一组排版/间距值，主题只换颜色。
+
 8. **标题的 UA 派生字号是个新发现的盲区（阶段 1 实测发现）。** `base.css` 的 `h1, h2, h3` 重置只设了字体族、没设字号 —— 标题因此落到 UA 派生值（实测 16px），**既不在令牌档位上，源码检查器又扫不到**（没有声明可查）。
 
    已加 `font-size: var(--text-title)` 作为默认值；页名由 `LogixPageHeader` 的 scoped 样式覆盖为 20px（scoped 选择器优先级更高，不受影响）。

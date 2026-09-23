@@ -27,26 +27,28 @@
 
 ## 文件结构
 
-| 文件 | 职责 |
-| --- | --- |
-| `apps/web/src/themes/logix/tokens.css` | **改**：新增 6 个排版令牌 + 7 个间距令牌 |
-| `scripts/check-repository.mjs` | **改**：新增 `STYLE_SCALE_TOKENS`、`findMissingStyleScaleTokens`、`findStyleScaleViolations`；主流程联入；新增 `--write-style-baseline` 生成模式 |
-| `scripts/check-repository.test.mjs` | **改**：新增 8 类用例 |
-| `scripts/style-scale-baseline.json` | **建**：存量违规基线（由生成模式产出，不手写） |
-| `apps/web/src/styles/base.css` | **改**：`font-family: inherit` → `font: inherit`，修掉全站按钮 `13.3333px` |
-| `apps/web/src/components/shell/AppSidebar.vue` | **改**：全部越界字号/间距换令牌 |
-| `docs/product/UI_SYSTEM.md` | **改**：§7.2 / §7.3 补令牌名与 `--text-micro` 边界 |
+| 文件                                           | 职责                                                                                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/web/src/themes/logix/tokens.css`         | **改**：新增 6 个排版令牌 + 7 个间距令牌                                                                                                         |
+| `scripts/check-repository.mjs`                 | **改**：新增 `STYLE_SCALE_TOKENS`、`findMissingStyleScaleTokens`、`findStyleScaleViolations`；主流程联入；新增 `--write-style-baseline` 生成模式 |
+| `scripts/check-repository.test.mjs`            | **改**：新增 8 类用例                                                                                                                            |
+| `scripts/style-scale-baseline.json`            | **建**：存量违规基线（由生成模式产出，不手写）                                                                                                   |
+| `apps/web/src/styles/base.css`                 | **改**：`font-family: inherit` → `font: inherit`，修掉全站按钮 `13.3333px`                                                                       |
+| `apps/web/src/components/shell/AppSidebar.vue` | **改**：全部越界字号/间距换令牌                                                                                                                  |
+| `docs/product/UI_SYSTEM.md`                    | **改**：§7.2 / §7.3 补令牌名与 `--text-micro` 边界                                                                                               |
 
 ---
 
 ### Task 1: 新增排版与间距令牌
 
 **Files:**
+
 - Modify: `apps/web/src/themes/logix/tokens.css`
 - Modify: `scripts/check-repository.mjs`（新增 `STYLE_SCALE_TOKENS` 与 `findMissingStyleScaleTokens`）
 - Test: `scripts/check-repository.test.mjs`
 
 **Interfaces:**
+
 - Produces: `STYLE_SCALE_TOKENS: string[]`（导出的令牌名清单）、`findMissingStyleScaleTokens(source: string): string[]`
 
 - [ ] **Step 1: 写失败测试**
@@ -143,22 +145,22 @@ Expected: PASS（新增 2 条 + 全部既有）
 在 `apps/web/src/themes/logix/tokens.css` 的 `--disabled: #b9c3d2;` 之后、`--font-sans` 之前插入：
 
 ```css
-  /* 排版：收编 UI_SYSTEM §7.2 的档位。页面只能用这些，不得写裸 px。 */
-  --text-page: 20px;
-  --text-title: 15px;
-  --text-body: 14px;
-  --text-meta: 13px;
-  --text-label: 12px;
-  --text-micro: 11px;
+/* 排版：收编 UI_SYSTEM §7.2 的档位。页面只能用这些，不得写裸 px。 */
+--text-page: 20px;
+--text-title: 15px;
+--text-body: 14px;
+--text-meta: 13px;
+--text-label: 12px;
+--text-micro: 11px;
 
-  /* 间距：收编 UI_SYSTEM §7.3 的比例。 */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
+/* 间距：收编 UI_SYSTEM §7.3 的比例。 */
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-8: 32px;
 ```
 
 > **只加在 `:root[data-ui-theme="logix"]` 块内。** 字号与间距与主题无关，**不要**在 `[data-theme="dark"]` 块里重复定义。
@@ -193,10 +195,12 @@ git commit -m "feat(web): 新增排版与间距令牌，并加令牌齐备自检
 ### Task 2: 样式比例检查器核心
 
 **Files:**
+
 - Modify: `scripts/check-repository.mjs`
 - Test: `scripts/check-repository.test.mjs`
 
 **Interfaces:**
+
 - Consumes: Task 1 的 `STYLE_SCALE_TOKENS`
 - Produces: `findStyleScaleViolations(records: {path: string; source: string}[], baseline?: {files?: Record<string, number>}): string[]`
 
@@ -293,9 +297,7 @@ test("rejects an exemption without a real reason", () => {
           "<style scoped>\n.a { margin-top: -1px; /* style-scale-exempt: 先这样 */ }\n</style>",
       },
     ]),
-    [
-      "apps/web/src/views/Bad.vue: 豁免必须写明理由（≥4 字），当前为 '先这样'",
-    ],
+    ["apps/web/src/views/Bad.vue: 豁免必须写明理由（≥4 字），当前为 '先这样'"],
   );
 });
 
@@ -325,11 +327,15 @@ test("allows within-baseline counts and rejects going over", () => {
     source: "<style scoped>\n.a { font-size: 10px; }\n</style>",
   };
   assert.deepEqual(
-    findStyleScaleViolations([record], { files: { "apps/web/src/views/Legacy.vue": 1 } }),
+    findStyleScaleViolations([record], {
+      files: { "apps/web/src/views/Legacy.vue": 1 },
+    }),
     [],
   );
   assert.deepEqual(
-    findStyleScaleViolations([record], { files: { "apps/web/src/views/Legacy.vue": 0 } }),
+    findStyleScaleViolations([record], {
+      files: { "apps/web/src/views/Legacy.vue": 0 },
+    }),
     [
       "apps/web/src/views/Legacy.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
     ],
@@ -497,11 +503,13 @@ git commit -m "feat(scripts): 新增样式比例检查器（字号令牌 + 间�
 ### Task 3: 基线豁免机制与接线
 
 **Files:**
+
 - Create: `scripts/style-scale-baseline.json`
 - Modify: `scripts/check-repository.mjs`
 - Test: `scripts/check-repository.test.mjs`
 
 **Interfaces:**
+
 - Consumes: Task 2 的 `findStyleScaleViolations`
 - Produces: `--write-style-baseline` CLI 模式；`scripts/style-scale-baseline.json` 的 `{ note, files }` 结构
 
@@ -575,19 +583,17 @@ c) 在文件末尾的 `isDirectRun` 分支**之前**加写入模式：
 ```js
 function writeStyleBaseline() {
   const files = {};
-  const records = walkFiles(
-    resolve(repositoryRoot, "apps/web/src"),
-    (path) => [".css", ".vue"].includes(extname(path).toLowerCase()),
+  const records = walkFiles(resolve(repositoryRoot, "apps/web/src"), (path) =>
+    [".css", ".vue"].includes(extname(path).toLowerCase()),
   ).map((path) => ({
     path: toRepositoryRelativePath(path),
     source: readFileSync(path, "utf8"),
   }));
   for (const record of records) {
     const path = normalizePath(record.path);
-    const count = findStyleScaleViolations(
-      [{ path, source: record.source }],
-      { files: {} },
-    ).length;
+    const count = findStyleScaleViolations([{ path, source: record.source }], {
+      files: {},
+    }).length;
     if (count > 0) files[path] = count;
   }
   writeFileSync(
@@ -601,7 +607,9 @@ function writeStyleBaseline() {
       2,
     )}\n`,
   );
-  console.log(`style-scale-baseline.json 已写入 ${Object.keys(files).length} 个文件`);
+  console.log(
+    `style-scale-baseline.json 已写入 ${Object.keys(files).length} 个文件`,
+  );
 }
 ```
 
@@ -651,9 +659,11 @@ git commit -m "feat(scripts): 样式比例门禁接入 CI，存量收进基线"
 ### Task 4: 修掉全站按钮的 13.3333px
 
 **Files:**
+
 - Modify: `apps/web/src/styles/base.css:24-29`
 
 **Interfaces:**
+
 - Consumes: 无
 - Produces: 无（纯修复）
 
@@ -686,17 +696,21 @@ textarea {
 - [ ] **Step 2: 目视与数值双重验证**
 
 Run:
+
 ```bash
 curl -s --max-time 25 -X POST --data-raw "http://127.0.0.1:5173/tasks" "http://localhost:3456/navigate?target=$T"
 ```
+
 （`$T` 为 CDP 里那个后台 tab 的 targetId；若已失效，用 `curl -s http://localhost:3456/targets` 重新取，或重新 `--browser edge` 连一次）
 
 然后跑定位脚本：
 
 Run:
+
 ```bash
 cd /d/Logixs/.superpowers/ui-review && curl -s -X POST "http://localhost:3456/eval?target=$T" --data-binary @find1333.js
 ```
+
 Expected: `count` 从 34 降到 **0**
 
 - [ ] **Step 3: 前端回归**
@@ -716,44 +730,46 @@ git commit -m "fix(web): 表单控件继承字号，消除 UA 默认 13.3333px"
 ### Task 5: 迁移侧栏
 
 **Files:**
+
 - Modify: `apps/web/src/components/shell/AppSidebar.vue`
 - Modify: `scripts/style-scale-baseline.json`（删掉本文件的条目）
 - Modify: `scripts/check-repository.test.mjs`（`FROZEN_BASELINE_PATHS` / `FROZEN_BASELINE_COUNTS` 同步删除）
 
 **Interfaces:**
+
 - Consumes: Task 1 的令牌、Task 3 的基线机制
 - Produces: 侧栏零越界；`grep gap:10px AppSidebar.vue` 无结果
 
 **逐处映射**（不是机械替换，每处都要判断）：
 
-| 位置 | 现值 | 改为 | 判断依据 |
-| --- | --- | --- | --- |
-| `.sidebar-brand` | `gap: 10px` | `var(--space-2)` | 品牌图标与文字，8px 够 |
-| `.sidebar-brand` | `padding: 0 14px` | `0 var(--space-3)` | 12px 对齐侧栏内边距 |
-| `.brand-symbol` | `gap: 6px` | `var(--space-1)` | 图标与文字的紧凑组 |
-| `.brand-copy b` | `font-size: 15px` | `var(--text-title)` | — |
-| 四处 muted 小字 | `font-size: 10px` | `var(--text-micro)` | 辅助元数据，非必读 |
-| `.workspace-switcher` | `gap: 1px` | `var(--space-1)` | 标签与名称的紧凑堆叠 |
-| `.workspace-switcher` | `margin: 12px 10px 6px` | `var(--space-3) var(--space-2) var(--space-1)` | — |
-| `.workspace-switcher` | `padding: 10px` | `var(--space-3)` | — |
-| `.navigation` | `padding: 6px 10px` | `var(--space-1) var(--space-2)` | — |
-| `.nav-item` | `gap: 10px` | `var(--space-2)` | 图标与文字的紧凑组 |
-| `.nav-item` | `padding: 0 10px` | `0 var(--space-2)` | — |
-| `.nav-item` | `margin-bottom: 2px` | `var(--space-1)` | 相邻项间距 |
-| `.role-switcher` | `gap: 5px` | `var(--space-1)` | — |
-| `.role-switcher` | `margin: 8px 10px 12px` | `var(--space-2) var(--space-2) var(--space-3)` | — |
-| `.role-label > span` | `font-size: 10px` | `var(--text-micro)` | — |
-| `.role-switcher select` | `padding: 0 8px` | `0 var(--space-2)` | 已在档上，改成令牌保持一致 |
-| `.sidebar-footer` | `gap: 9px` | `var(--space-2)` | — |
-| `.sidebar-footer` | `padding: 10px 14px` | `var(--space-3) var(--space-3)` | — |
-| `.sidebar-footer span` | `font-size: 10px` | `var(--text-micro)` | 已含在上面那条共用选择器里 |
+| 位置                    | 现值                    | 改为                                           | 判断依据                   |
+| ----------------------- | ----------------------- | ---------------------------------------------- | -------------------------- |
+| `.sidebar-brand`        | `gap: 10px`             | `var(--space-2)`                               | 品牌图标与文字，8px 够     |
+| `.sidebar-brand`        | `padding: 0 14px`       | `0 var(--space-3)`                             | 12px 对齐侧栏内边距        |
+| `.brand-symbol`         | `gap: 6px`              | `var(--space-1)`                               | 图标与文字的紧凑组         |
+| `.brand-copy b`         | `font-size: 15px`       | `var(--text-title)`                            | —                          |
+| 四处 muted 小字         | `font-size: 10px`       | `var(--text-micro)`                            | 辅助元数据，非必读         |
+| `.workspace-switcher`   | `gap: 1px`              | `var(--space-1)`                               | 标签与名称的紧凑堆叠       |
+| `.workspace-switcher`   | `margin: 12px 10px 6px` | `var(--space-3) var(--space-2) var(--space-1)` | —                          |
+| `.workspace-switcher`   | `padding: 10px`         | `var(--space-3)`                               | —                          |
+| `.navigation`           | `padding: 6px 10px`     | `var(--space-1) var(--space-2)`                | —                          |
+| `.nav-item`             | `gap: 10px`             | `var(--space-2)`                               | 图标与文字的紧凑组         |
+| `.nav-item`             | `padding: 0 10px`       | `0 var(--space-2)`                             | —                          |
+| `.nav-item`             | `margin-bottom: 2px`    | `var(--space-1)`                               | 相邻项间距                 |
+| `.role-switcher`        | `gap: 5px`              | `var(--space-1)`                               | —                          |
+| `.role-switcher`        | `margin: 8px 10px 12px` | `var(--space-2) var(--space-2) var(--space-3)` | —                          |
+| `.role-label > span`    | `font-size: 10px`       | `var(--text-micro)`                            | —                          |
+| `.role-switcher select` | `padding: 0 8px`        | `0 var(--space-2)`                             | 已在档上，改成令牌保持一致 |
+| `.sidebar-footer`       | `gap: 9px`              | `var(--space-2)`                               | —                          |
+| `.sidebar-footer`       | `padding: 10px 14px`    | `var(--space-3) var(--space-3)`                | —                          |
+| `.sidebar-footer span`  | `font-size: 10px`       | `var(--text-micro)`                            | 已含在上面那条共用选择器里 |
 
 - [ ] **Step 1: 逐处替换**
 
 按上表改 `AppSidebar.vue` 的 `<style scoped>`。**若某处改为令牌后视觉明显异常**（例如 `gap: 1px` 提到 4px 后两块粘不住），不要硬改，改为带理由的豁免：
 
 ```css
-  gap: 1px; /* style-scale-exempt: 标签与名称的贴合堆叠，非间距语义 */
+gap: 1px; /* style-scale-exempt: 标签与名称的贴合堆叠，非间距语义 */
 ```
 
 - [ ] **Step 2: 从基线里删掉侧栏**
@@ -789,6 +805,7 @@ git commit -m "refactor(web): 侧栏迁到排版与间距令牌"
 ### Task 6: 文档更新、暗色实测与阶段验收
 
 **Files:**
+
 - Modify: `docs/product/UI_SYSTEM.md` §7.2 / §7.3
 - Modify: `docs/superpowers/specs/2026-09-22-ui-consistency-and-drift-guard-design.md` §7.6 / §7.7
 
@@ -797,13 +814,13 @@ git commit -m "refactor(web): 侧栏迁到排版与间距令牌"
 在排版小节里补令牌名，并把 `--text-micro` 的边界写进去：
 
 ```markdown
-| 令牌 | 值 | 用途 |
-| ---- | -- | ---- |
-| `--text-page` | 20px | 页名 |
-| `--text-title` | 15px | 区块标题 |
-| `--text-body` | 14px | 正文 |
-| `--text-meta` | 13px | 表格、元数据 |
-| `--text-label` | 12px | 标签、辅助 |
+| 令牌           | 值   | 用途                                                                   |
+| -------------- | ---- | ---------------------------------------------------------------------- |
+| `--text-page`  | 20px | 页名                                                                   |
+| `--text-title` | 15px | 区块标题                                                               |
+| `--text-body`  | 14px | 正文                                                                   |
+| `--text-meta`  | 13px | 表格、元数据                                                           |
+| `--text-label` | 12px | 标签、辅助                                                             |
 | `--text-micro` | 11px | **仅限非必读元数据**（表头日期、轨道摘要、编号）；正文、标签、按钮禁用 |
 
 页面样式必须使用以上令牌，不得写裸 px；由 `pnpm repo:check` 的样式比例门禁强制。
@@ -823,9 +840,11 @@ git commit -m "refactor(web): 侧栏迁到排版与间距令牌"
 切换主题到暗色（`UiThemeProvider` 的切换入口，或给 `document.documentElement` 加 `data-theme="dark"`），对 `/tasks`、`/containers`、`/workspaces/cargo-ready` 三页重跑审计：
 
 Run:
+
 ```bash
 cd /d/Logixs/.superpowers/ui-review && curl -s -X POST "http://localhost:3456/eval?target=$T" -d '(()=>{document.documentElement.setAttribute("data-theme","dark");return document.documentElement.getAttribute("data-theme")})()'
 ```
+
 然后逐页 `navigate` + `--data-binary @audit.js`。
 
 Expected: 越界占比与浅色**同一量级**。若某页暗色显著更差，记进 spec §7.7 作为独立问题。
@@ -859,12 +878,12 @@ git commit -m "docs: 补排版与间距令牌说明，记录暗色实测结果"
 
 排期**按依赖层次（自底向上），不按违规量** —— 迁移一个组件 ≠ 清干净它渲染出来的东西，按目录大小排序会反复回头（详见 spec §6.3）：
 
-| 阶段 | 层次 | 目录 | 违规量 |
-| ---- | ---- | ---- | ------ |
-| 2 | 叶子组件 | `components/ui/` + shell 内原子件 | 62+ |
-| 3 | 领域面板 | `components/cargo-ready` / `stuffing` / `management` / `customs` … | 约 500 |
-| 4 | 页面与壳 | `views/` + `themes/` + `styles/` | 164 |
-| 5 | 收口 | 删基线机制与冻结快照，门禁转硬限制 | — |
+| 阶段 | 层次     | 目录                                                               | 违规量 |
+| ---- | -------- | ------------------------------------------------------------------ | ------ |
+| 2    | 叶子组件 | `components/ui/` + shell 内原子件                                  | 62+    |
+| 3    | 领域面板 | `components/cargo-ready` / `stuffing` / `management` / `customs` … | 约 500 |
+| 4    | 页面与壳 | `views/` + `themes/` + `styles/`                                   | 164    |
+| 5    | 收口     | 删基线机制与冻结快照，门禁转硬限制                                 | —      |
 
 每迁完一层就从基线删掉对应条目。详见 spec `§6 分期（棘轮）`。
 
