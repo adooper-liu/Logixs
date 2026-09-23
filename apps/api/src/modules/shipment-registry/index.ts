@@ -2,6 +2,7 @@
 export * from "./shipment-registry.module";
 export type { ContainerSummary } from "./domain/container-summary";
 export { ApplyContainerRecordService } from "./application/apply-container-record.service";
+export { GetContainerOperationalViewService } from "./application/get-container-operational-view.service";
 export { ApplyReplenishmentOrderImportService } from "./application/apply-replenishment-order-import.service";
 export { BindReplenishmentLineProductSkuService } from "./application/bind-replenishment-line-product-sku.service";
 export { ReplaceContainerCargoAllocationsService } from "./application/replace-container-cargo-allocations.service";
@@ -85,3 +86,15 @@ export {
   REPLACE_CONTAINER_DISPATCH_SNAPSHOT,
   type ReplaceContainerDispatchSnapshotPort,
 } from "./replace-container-dispatch-snapshot.port";
+export {
+  COMMIT_SHIPMENT_HANDOFF,
+  type CommitShipmentHandoffCommand,
+  type CommitShipmentHandoffPort,
+} from "./commit-shipment-handoff.port";
+export {
+  INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
+  type InspectShipmentHandoffConflictsPort,
+  type ShipmentHandoffConflictInspection,
+} from "./inspect-shipment-handoff-conflicts.port";
+export { GetShipmentService } from "./application/get-shipment.service";
+export { ListShipmentsService } from "./application/list-shipments.service";

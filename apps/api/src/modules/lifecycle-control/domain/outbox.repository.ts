@@ -12,7 +12,7 @@ export const OUTBOX_REPOSITORY = Symbol("OutboxRepository");
 export interface OutboxRepository {
   claimBatch(input: {
     tenantId: string;
-    ownerModule: string;
+    ownerModules: readonly string[];
     owner: string;
     now: Date;
     limit: number;
@@ -54,13 +54,13 @@ export interface OutboxRepository {
 
   listDeadLetters(query: {
     tenantId: string;
-    ownerModule: string;
+    ownerModules: readonly string[];
     after?: { deadLetteredAt: Date; id: string };
     take: number;
   }): Promise<DeadLetterSummary[]>;
 
   listDueTenantIds(input: {
-    ownerModule: string;
+    ownerModules: readonly string[];
     now: Date;
     take: number;
   }): Promise<string[]>;

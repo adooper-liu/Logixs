@@ -9,6 +9,7 @@ import {
   LIFECYCLE_DATE_FACT_INBOX_KIND,
   hashLifecycleDateFactInboxPayload,
 } from "@logix/contracts/lifecycle-date-fact-inbox";
+import { hashPostDepartureLifecycleCommand } from "@logix/contracts/post-departure-lifecycle";
 
 const PAYLOAD = {
   containerId: "c1",
@@ -65,5 +66,39 @@ describe("parseInboxApplyPayload / hash", () => {
     expect(parsed).toEqual(payload);
     const hash = hashLifecycleDateFactInboxPayload(payload);
     expect(assertInboxPayloadHash(parsed, hash)).toBe(hash);
+  });
+
+  it("严格解析并校验 post-departure V2 命令", () => {
+    const command = {
+      shipmentId: "11111111-1111-4111-8111-111111111111",
+      containerIds: ["container-1", "container-2"] as [string, ...string[]],
+      flowDefinitionCode: "post_departure_ocean" as const,
+      definitionVersion: 1,
+      departureEventId: "22222222-2222-4222-8222-222222222222",
+      relationshipVersion: 2,
+      idempotencyKey: "handoff-2:post-departure",
+      traceId: "trace-2",
+    };
+
+    const parsed = parseInboxMessagePayload(command);
+    expect(parsed).toEqual({
+      kind: "start_post_departure_lifecycle_v2",
+      command,
+    });
+    expect(
+      assertInboxPayloadHash(
+        parsed,
+        hashPostDepartureLifecycleCommand(command),
+      ),
+    ).toHaveLength(64);
+    expect(() =>
+      parseInboxMessagePayload({ ...command, unexpected: true }),
+    ).toThrow("未知字段");
+    expect(() =>
+      parseInboxMessagePayload({
+        ...command,
+        containerIds: ["container-1", "container-1"],
+      }),
+    ).toThrow("不得重复");
   });
 });

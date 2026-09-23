@@ -129,7 +129,7 @@ export interface LifecycleRepository {
   // 查 container 基本信息（经 shipment-registry 写端口更新 currentStatus 需要 tenantId/orderNumber）
   findContainerBase(containerId: string): Promise<{
     tenantId: string;
-    orderNumber: string;
+    orderNumber: string | null;
     containerNumber: string | null;
     currentStatus: string;
   } | null>;

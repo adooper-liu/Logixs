@@ -50,6 +50,8 @@ export function classifyHttpConsumeError(
     message.startsWith("LIFECYCLE_GUARD_NOT_SATISFIED") ||
     message.startsWith("LIFECYCLE_EVENT_NOT_STATE_EVIDENCE") ||
     message.startsWith("LIFECYCLE_SOURCE_NOT_AUTHORIZED") ||
+    message.startsWith("POST_DEPARTURE_") ||
+    message.startsWith("IDEMPOTENCY_CONFLICT") ||
     message.startsWith("RESOURCE_NOT_FOUND")
   ) {
     return new InboxConsumptionError("business_rejected", message);

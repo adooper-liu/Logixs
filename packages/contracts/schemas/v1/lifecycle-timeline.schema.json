@@ -474,7 +474,7 @@
       "properties": {
         "factId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
-        "orderNumber": { "type": "string", "minLength": 1 },
+        "orderNumber": { "type": ["string", "null"], "minLength": 1 },
         "containerNumber": { "type": ["string", "null"] },
         "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
         "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },

@@ -17,7 +17,16 @@
         { "$ref": "common.schema.json#/$defs/EntityRef" },
         {
           "if": {
-            "properties": { "entityType": { "const": "container" } },
+            "properties": {
+              "entityType": {
+                "enum": [
+                  "container",
+                  "shipment",
+                  "shipment_cargo_line",
+                  "shipment_transport_document"
+                ]
+              }
+            },
             "required": ["entityType"]
           },
           "then": {

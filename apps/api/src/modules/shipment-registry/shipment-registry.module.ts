@@ -23,6 +23,10 @@ import { ReplaceContainerStuffingSnapshotService } from "./application/replace-c
 import { GetContainerDispatchSnapshotService } from "./application/get-container-dispatch-snapshot.service";
 import { GetContainerDispatchReadinessService } from "./application/get-container-dispatch-readiness.service";
 import { ReplaceContainerDispatchSnapshotService } from "./application/replace-container-dispatch-snapshot.service";
+import { CommitShipmentHandoffService } from "./application/commit-shipment-handoff.service";
+import { GetShipmentService } from "./application/get-shipment.service";
+import { GetContainerOperationalViewService } from "./application/get-container-operational-view.service";
+import { ListShipmentsService } from "./application/list-shipments.service";
 import { BIND_REPLENISHMENT_LINE_PRODUCT_SKU } from "./bind-replenishment-line-product-sku.port";
 import { CONTAINER_CARGO_ALLOCATION_REPOSITORY } from "./domain/container-cargo-allocation.repository";
 import { CONTAINER_STUFFING_SNAPSHOT_REPOSITORY } from "./domain/container-stuffing-snapshot.repository";
@@ -40,6 +44,12 @@ import { PrismaReplenishmentOrderImportWriter } from "./infrastructure/prisma-re
 import { PrismaContainerCargoAllocationRepository } from "./infrastructure/prisma-container-cargo-allocation.repository";
 import { PrismaContainerStuffingSnapshotRepository } from "./infrastructure/prisma-container-stuffing-snapshot.repository";
 import { PrismaContainerDispatchSnapshotRepository } from "./infrastructure/prisma-container-dispatch-snapshot.repository";
+import { PrismaShipmentHandoffAcceptanceRepository } from "./infrastructure/prisma-shipment-handoff-acceptance.repository";
+import { SHIPMENT_HANDOFF_ACCEPTANCE_REPOSITORY } from "./domain/shipment-handoff-acceptance";
+import { SHIPMENT_READ_REPOSITORY } from "./domain/shipment-read.repository";
+import { PrismaShipmentReadRepository } from "./infrastructure/prisma-shipment-read.repository";
+import { PrismaContainerOperationalViewRepository } from "./infrastructure/prisma-container-operational-view.repository";
+import { CONTAINER_OPERATIONAL_VIEW_REPOSITORY } from "./domain/container-operational-view.repository";
 import { PrismaReplenishmentLineSkuBinder } from "./infrastructure/prisma-replenishment-line-sku-binder";
 import { PrismaReplenishmentOrderWorkbenchRepository } from "./infrastructure/prisma-replenishment-order-workbench.repository";
 import { PrismaContainerRepository } from "./infrastructure/prisma-container.repository";
@@ -47,12 +57,16 @@ import { ContainersController } from "./presentation/containers.controller";
 import { ContainerStuffingController } from "./presentation/container-stuffing.controller";
 import { ContainerDispatchController } from "./presentation/container-dispatch.controller";
 import { ReplenishmentOrdersController } from "./presentation/replenishment-orders.controller";
+import { ShipmentsController } from "./presentation/shipments.controller";
 import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-allocations.port";
 import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-compliance-scope.port";
 import { GET_CONTAINER_STUFFING_READINESS } from "./get-container-stuffing-readiness.port";
 import { REPLACE_CONTAINER_STUFFING_SNAPSHOT } from "./replace-container-stuffing-snapshot.port";
 import { GET_CONTAINER_DISPATCH_READINESS } from "./get-container-dispatch-readiness.port";
 import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatch-snapshot.port";
+import { COMMIT_SHIPMENT_HANDOFF } from "./commit-shipment-handoff.port";
+import { INSPECT_SHIPMENT_HANDOFF_CONFLICTS } from "./inspect-shipment-handoff-conflicts.port";
+import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-shipment-handoff-conflict-inspector";
 
 @Module({
   imports: [IdentityModule, MasterDataModule],
@@ -61,6 +75,7 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
     ContainerStuffingController,
     ContainerDispatchController,
     ReplenishmentOrdersController,
+    ShipmentsController,
   ],
   providers: [
     ListContainersService,
@@ -80,6 +95,10 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
     GetContainerDispatchSnapshotService,
     GetContainerDispatchReadinessService,
     ReplaceContainerDispatchSnapshotService,
+    CommitShipmentHandoffService,
+    GetShipmentService,
+    ListShipmentsService,
+    GetContainerOperationalViewService,
     {
       provide: ASSERT_CONTAINER_TENANT,
       useExisting: AssertContainerTenantService,
@@ -111,6 +130,22 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
       useClass: PrismaContainerDispatchSnapshotRepository,
     },
     {
+      provide: SHIPMENT_HANDOFF_ACCEPTANCE_REPOSITORY,
+      useClass: PrismaShipmentHandoffAcceptanceRepository,
+    },
+    {
+      provide: INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
+      useClass: PrismaShipmentHandoffConflictInspector,
+    },
+    {
+      provide: SHIPMENT_READ_REPOSITORY,
+      useClass: PrismaShipmentReadRepository,
+    },
+    {
+      provide: CONTAINER_OPERATIONAL_VIEW_REPOSITORY,
+      useClass: PrismaContainerOperationalViewRepository,
+    },
+    {
       provide: BIND_REPLENISHMENT_LINE_PRODUCT_SKU,
       useExisting: BindReplenishmentLineProductSkuService,
     },
@@ -139,6 +174,10 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
       useExisting: ReplaceContainerDispatchSnapshotService,
     },
     {
+      provide: COMMIT_SHIPMENT_HANDOFF,
+      useExisting: CommitShipmentHandoffService,
+    },
+    {
       provide: LIST_CONTAINER_TASK_FACTS,
       useExisting: ListContainerTaskFactsService,
     },
@@ -165,11 +204,17 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
     REPLACE_CONTAINER_STUFFING_SNAPSHOT,
     GET_CONTAINER_DISPATCH_READINESS,
     REPLACE_CONTAINER_DISPATCH_SNAPSHOT,
+    COMMIT_SHIPMENT_HANDOFF,
+    INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
     GetContainerService,
     BindReplenishmentLineProductSkuService,
     ReplaceContainerCargoAllocationsService,
     GetContainerCargoComplianceScopeService,
     GetContainerDispatchSnapshotService,
+    CommitShipmentHandoffService,
+    GetShipmentService,
+    ListShipmentsService,
+    GetContainerOperationalViewService,
   ],
 })
 export class ShipmentRegistryModule implements NestModule {
@@ -184,5 +229,6 @@ export class ShipmentRegistryModule implements NestModule {
     consumer
       .apply(DevIdentityMiddleware)
       .forRoutes(ReplenishmentOrdersController);
+    consumer.apply(DevIdentityMiddleware).forRoutes(ShipmentsController);
   }
 }

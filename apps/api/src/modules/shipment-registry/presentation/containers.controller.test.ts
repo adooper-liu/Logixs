@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { GetContainerCargoComplianceScopeService } from "../application/get-container-cargo-compliance-scope.service";
+import type { GetContainerOperationalViewService } from "../application/get-container-operational-view.service";
 import type { GetContainerService } from "../application/get-container.service";
 import type { ListContainersService } from "../application/list-containers.service";
+import { REQUIRED_CAPABILITIES_KEY } from "../../../security/require-capabilities.decorator";
 import { ContainersController } from "./containers.controller";
 
 describe("ContainersController.getCargo", () => {
@@ -68,13 +70,53 @@ describe("ContainersController.getCargo", () => {
   });
 });
 
+describe("ContainersController.getOperationalView", () => {
+  it("requires container and lifecycle read capabilities", () => {
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ContainersController.prototype.getOperationalView,
+      ),
+    ).toEqual(["container.read", "lifecycle.read"]);
+  });
+
+  it("passes only authenticated scope and capabilities to the use case", async () => {
+    const getOperationalView = { execute: vi.fn().mockResolvedValue({}) };
+    const controller = createController(
+      { execute: vi.fn() },
+      { execute: vi.fn() },
+      getOperationalView,
+    );
+
+    await controller.getOperationalView(
+      {
+        identity: {
+          tenantId: "tenant-1",
+          capabilities: ["container.read", "lifecycle.read", "evidence.read"],
+        },
+      },
+      "container-1",
+    );
+
+    expect(getOperationalView.execute).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      containerId: "container-1",
+      capabilities: ["container.read", "lifecycle.read", "evidence.read"],
+    });
+  });
+});
+
 function createController(
   getContainer: { execute: ReturnType<typeof vi.fn> },
   getCargo: { execute: ReturnType<typeof vi.fn> },
+  getOperationalView: { execute: ReturnType<typeof vi.fn> } = {
+    execute: vi.fn(),
+  },
 ): ContainersController {
   return new ContainersController(
     {} as ListContainersService,
     getContainer as unknown as GetContainerService,
     getCargo as unknown as GetContainerCargoComplianceScopeService,
+    getOperationalView as unknown as GetContainerOperationalViewService,
   );
 }

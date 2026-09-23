@@ -86,7 +86,7 @@ export class LifecycleDateFactReviewEvidenceDto {
 export class LifecycleDateFactReviewItemDto {
   @ApiProperty() factId!: string;
   @ApiProperty() containerId!: string;
-  @ApiProperty() orderNumber!: string;
+  @ApiProperty({ nullable: true, type: String }) orderNumber!: string | null;
   @ApiProperty({ nullable: true }) containerNumber!: string | null;
   @ApiProperty() nodeCode!: string;
   @ApiProperty() eventCode!: string;

@@ -2,6 +2,8 @@
 // 运行：pnpm db:seed（需 DATABASE_URL 指向运行中的 PostgreSQL）。
 import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { seedAuthoritativeLocationReferenceData } from "./seeds/seed-authoritative-location-reference-data";
+import { seedCargoOwnerReferenceData } from "./seeds/seed-cargo-owner-reference-data";
 import { seedRealReplenishmentSample } from "./seeds/seed-real-replenishment-sample";
 
 // 本地开发回退到 docker-compose 默认值（与 prisma.config.ts / apps/api config/env.ts 一致）。
@@ -15,6 +17,16 @@ const prisma = new PrismaClient({
 });
 
 async function main(): Promise<void> {
+  const referenceData = await seedAuthoritativeLocationReferenceData(prisma);
+  console.log(
+    `Seeded authoritative reference data: ${referenceData.countryCount} countries, ` +
+      `${referenceData.portCount} ports, ${referenceData.portEntryCount} official port entries, ` +
+      `${referenceData.aliasCandidateCount} sample alias candidates.`,
+  );
+  const cargoOwners = await seedCargoOwnerReferenceData(prisma);
+  console.log(
+    `Seeded internal cargo owner mappings: ${cargoOwners.cargoOwnerCount} confirmed owners.`,
+  );
   const realSample = await seedRealReplenishmentSample(prisma);
   console.log(
     `Seeded real replenishment sample ${realSample.tenantId}: ` +

@@ -123,7 +123,7 @@ export class PrismaContainerRepository implements ContainerRepository {
 
 function toSummary(row: {
   id: string;
-  orderNumber: string;
+  orderNumber: string | null;
   containerNumber: string | null;
   currentStatus: string;
   updatedAt: Date;

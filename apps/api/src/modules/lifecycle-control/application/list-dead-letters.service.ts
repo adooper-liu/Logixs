@@ -5,7 +5,7 @@ import {
   parsePageSize,
   type DeadLetterSummary,
 } from "../domain/outbox-page";
-import { lifecycleOutboxOwnerModule } from "../domain/outbox-publish";
+import { publishableOutboxOwnerModules } from "../domain/outbox-publish";
 import {
   OUTBOX_REPOSITORY,
   type OutboxRepository,
@@ -72,7 +72,7 @@ export class ListDeadLettersService {
 
     const rows = await this.outbox.listDeadLetters({
       tenantId,
-      ownerModule: lifecycleOutboxOwnerModule(),
+      ownerModules: publishableOutboxOwnerModules(),
       after,
       take: pageSize + 1,
     });

@@ -43,8 +43,14 @@ describe("PrismaLifecycleRepository.saveEvent", () => {
     expect(tx.canonicalEvent.create).toHaveBeenCalledWith({
       data: {
         containerId: EVENT.containerId,
+        tenantId: EVENT.tenantId,
+        subjectType: "container",
+        subjectId: EVENT.containerId,
+        subjectVersion: 1,
         eventCode: EVENT.eventCode,
+        eventVersion: 1,
         domainFactId: EVENT.domainFactId,
+        domainFactType: "lifecycle_date_fact",
         nodeCode: EVENT.nodeCode,
         timeKind: EVENT.timeKind,
         authorityPolicyRef: EVENT.authorityPolicyRef,

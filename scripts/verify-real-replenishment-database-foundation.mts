@@ -16,6 +16,10 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/index.js";
+import type { ShipmentHandoffCommandV1 } from "@logix/contracts";
+import { preflightShipmentHandoff } from "../apps/api/src/modules/shipment-lifecycle-orchestration/domain/shipment-handoff-preflight.js";
+import { PrismaShipmentHandoffAcceptanceRepository } from "../apps/api/src/modules/shipment-registry/infrastructure/prisma-shipment-handoff-acceptance.repository.js";
+import { ShipmentHandoffAcceptanceConflictError } from "../apps/api/src/modules/shipment-registry/domain/shipment-handoff-acceptance.js";
 import { isKnownEmptyDatabaseFailure } from "./migrate-deploy.mjs";
 
 const connectionString =
@@ -118,6 +122,8 @@ async function verifyEmptyDatabaseAndSeed(url: string): Promise<void> {
       await verifyLegacyTenantReference(prisma);
       await verifyImportBindingConstraints(prisma);
       await verifySyntheticManyToMany(prisma);
+      await verifyPostDepartureShipmentConstraints(prisma);
+      await verifyShipmentHandoffAcceptance(prisma);
     } finally {
       await prisma.$disconnect();
     }
@@ -125,6 +131,434 @@ async function verifyEmptyDatabaseAndSeed(url: string): Promise<void> {
   console.log(
     "Real replenishment verified: empty migration, idempotent seed, constraints, real totals and N:M relationships passed.",
   );
+}
+
+async function verifyShipmentHandoffAcceptance(
+  prisma: PrismaClient,
+): Promise<void> {
+  const tenantId = "74000000-0000-4000-8000-000000000001";
+  const actorId = "74000000-0000-4000-8000-000000000002";
+  const command: ShipmentHandoffCommandV1 = {
+    contractVersion: "shipment-handoff.v1",
+    tenantId,
+    sourceProfile: "api_v1",
+    source: {
+      channel: "api",
+      system: "shipment-verification",
+      externalHandoffId: "handoff-acceptance-1",
+      handoffVersion: 1,
+      occurredAt: "2026-09-23T03:00:00Z",
+      idempotencyKey: "shipment-verification:handoff-acceptance-1:1",
+      correlationId: "74000000-0000-4000-8000-000000000003",
+      traceId: "trace-shipment-acceptance-1",
+    },
+    shipment: {
+      externalShipmentId: "shipment-acceptance-1",
+      shipmentNumber: "SHP-ACCEPTANCE-1",
+      transportMode: "ocean",
+      carrierCode: "HMM",
+      vesselName: "ONE TRUTH",
+      voyageNumber: "V001",
+      originPortCode: "CNNGB",
+      destinationPortCode: "USLAX",
+      destinationCountryCode: "US",
+      estimatedArrivalAt: "2026-10-10T03:00:00Z",
+      departureProof: {
+        kind: "actual_departure_time",
+        occurredAt: "2026-09-23T02:00:00Z",
+        sourceTimezone: "Asia/Shanghai",
+        evidenceRef: "74000000-0000-4000-8000-000000000004",
+      },
+    },
+    billsOfLading: [
+      {
+        referenceId: "mbl-1",
+        documentType: "mbl",
+        documentNumber: "MBL-ACCEPTANCE-1",
+        version: 1,
+      },
+      {
+        referenceId: "hbl-1",
+        documentType: "hbl",
+        documentNumber: "HBL-ACCEPTANCE-1",
+        parentReferenceId: "mbl-1",
+        version: 1,
+      },
+    ],
+    containers: [
+      acceptanceContainer(
+        "container-1",
+        "external-container-1",
+        "TSTU1234567",
+        "4",
+      ),
+      acceptanceContainer(
+        "container-2",
+        "external-container-2",
+        "TSTU7654321",
+        "6",
+      ),
+    ],
+    evidenceReferences: ["74000000-0000-4000-8000-000000000004"],
+  };
+  const prepared = preflightShipmentHandoff(command);
+  if (prepared.result.decision !== "ready") {
+    throw new Error("Shipment Handoff verification fixture was not ready");
+  }
+  const repository = new PrismaShipmentHandoffAcceptanceRepository(
+    prisma as never,
+  );
+  const accepted = await repository.commit({
+    actorId,
+    command: prepared.command,
+    preflight: prepared.result,
+  });
+  if (
+    accepted.businessDecisionState !== "accepted" ||
+    accepted.commitState !== "committed" ||
+    accepted.containerResults.length !== 2 ||
+    accepted.cargoResults.length !== 1 ||
+    accepted.documentResults.length !== 2 ||
+    !accepted.shipmentId
+  ) {
+    throw new Error("Shipment Handoff result did not reconcile every object");
+  }
+
+  const [shipment, cargo, allocations, documentLinks, handoff, outbox] =
+    await Promise.all([
+      prisma.shipment.findUniqueOrThrow({
+        where: { id: accepted.shipmentId },
+        include: { containerLinks: true },
+      }),
+      prisma.shipmentCargoLine.findFirstOrThrow({
+        where: { shipmentId: accepted.shipmentId },
+      }),
+      prisma.containerCargoAllocation.count({
+        where: { shipmentCargoLine: { shipmentId: accepted.shipmentId } },
+      }),
+      prisma.shipmentContainerDocumentLink.count({
+        where: { shipmentId: accepted.shipmentId },
+      }),
+      prisma.shipmentHandoffRecord.findUniqueOrThrow({
+        where: { id: accepted.handoffId },
+      }),
+      prisma.outboxMessage.findFirstOrThrow({
+        where: {
+          tenantId,
+          aggregateType: "shipment",
+          aggregateId: accepted.shipmentId,
+        },
+      }),
+    ]);
+  if (
+    shipment.containerLinks.length !== 2 ||
+    cargo.quantity.toString() !== "10" ||
+    allocations !== 2 ||
+    documentLinks !== 4 ||
+    handoff.lifecycleRequestJson === null ||
+    outbox.payloadRef !== `shipment-handoff-lifecycle/${accepted.handoffId}`
+  ) {
+    throw new Error("Shipment Handoff atomic facts are incomplete");
+  }
+
+  const duplicate = await repository.commit({
+    actorId,
+    command: prepared.command,
+    preflight: prepared.result,
+  });
+  if (!duplicate.duplicate || duplicate.receptionState !== "duplicate") {
+    throw new Error("Shipment Handoff identical replay was not idempotent");
+  }
+  const handoffCount = await prisma.shipmentHandoffRecord.count({
+    where: { tenantId },
+  });
+  if (handoffCount !== 1) {
+    throw new Error("Shipment Handoff replay wrote duplicate facts");
+  }
+
+  const changed = preflightShipmentHandoff({
+    ...command,
+    shipment: { ...command.shipment, voyageNumber: "V002" },
+  });
+  let changedPayloadRejected = false;
+  try {
+    await repository.commit({
+      actorId,
+      command: changed.command,
+      preflight: changed.result,
+    });
+  } catch (error) {
+    if (
+      error instanceof ShipmentHandoffAcceptanceConflictError &&
+      error.message === "IDEMPOTENCY_PAYLOAD_CONFLICT"
+    ) {
+      changedPayloadRejected = true;
+    } else {
+      throw error;
+    }
+  }
+  if (!changedPayloadRejected) {
+    throw new Error("Shipment Handoff accepted a changed idempotent payload");
+  }
+
+  const correctionCommand: ShipmentHandoffCommandV1 = {
+    ...command,
+    source: {
+      ...command.source,
+      handoffVersion: 2,
+      supersedesExternalHandoffId: command.source.externalHandoffId,
+      occurredAt: "2026-09-23T04:00:00Z",
+      idempotencyKey: "shipment-verification:handoff-acceptance-1:2",
+      traceId: "trace-shipment-acceptance-2",
+    },
+    shipment: { ...command.shipment, expectedRelationshipVersion: 1 },
+    billsOfLading: command.billsOfLading.map((document) => ({
+      ...document,
+      version: 2,
+    })) as ShipmentHandoffCommandV1["billsOfLading"],
+    containers: [
+      acceptanceContainer(
+        "container-1",
+        "external-container-1",
+        "TSTU1234567",
+        "5",
+        "2",
+      ),
+      acceptanceContainer(
+        "container-2",
+        "external-container-2",
+        "TSTU7654321",
+        "8",
+        "2",
+      ),
+    ],
+  };
+  const preparedCorrection = preflightShipmentHandoff(correctionCommand);
+  if (preparedCorrection.result.decision !== "ready") {
+    throw new Error("Shipment Handoff correction fixture was not ready");
+  }
+  const corrected = await repository.commit({
+    actorId,
+    command: preparedCorrection.command,
+    preflight: preparedCorrection.result,
+  });
+  if (
+    corrected.shipmentId !== accepted.shipmentId ||
+    corrected.handoffVersion !== 2 ||
+    corrected.businessDecisionState !== "accepted"
+  ) {
+    throw new Error("Shipment Handoff correction changed stable identity");
+  }
+  const [correctedShipment, handoffs, cargoVersions, linkVersions, references] =
+    await Promise.all([
+      prisma.shipment.findUniqueOrThrow({
+        where: { id: accepted.shipmentId },
+      }),
+      prisma.shipmentHandoffRecord.findMany({
+        where: { tenantId },
+        orderBy: { handoffVersion: "asc" },
+      }),
+      prisma.shipmentCargoLine.findMany({
+        where: { tenantId, shipmentId: accepted.shipmentId },
+        orderBy: { version: "asc" },
+      }),
+      prisma.shipmentContainerLink.findMany({
+        where: { tenantId, shipmentId: accepted.shipmentId },
+      }),
+      prisma.shipmentUpstreamReference.findMany({
+        where: { tenantId, shipmentId: accepted.shipmentId },
+      }),
+    ]);
+  const activeCargo = cargoVersions.find(({ state }) => state === "active");
+  if (
+    correctedShipment.relationshipVersion !== 2 ||
+    handoffs.length !== 2 ||
+    handoffs[0]?.status !== "superseded" ||
+    handoffs[0].supersededAt === null ||
+    handoffs[1]?.supersedesHandoffId !== handoffs[0].id ||
+    cargoVersions.length !== 2 ||
+    cargoVersions[0]?.state !== "superseded" ||
+    activeCargo?.version !== 2 ||
+    activeCargo.quantity.toString() !== "13" ||
+    linkVersions.filter(({ state }) => state === "active").length !== 2 ||
+    linkVersions.filter(({ state }) => state === "superseded").length !== 2 ||
+    references.filter(({ state }) => state === "active").length !== 2 ||
+    references.filter(({ state }) => state === "superseded").length !== 2
+  ) {
+    throw new Error("Shipment Handoff correction did not preserve versions");
+  }
+  const [documentVersions, allocationSets, lifecycleRequests] =
+    await Promise.all([
+      prisma.shipmentTransportDocument.findMany({
+        where: { tenantId, shipmentId: accepted.shipmentId },
+      }),
+      prisma.containerCargoAllocationSet.findMany({
+        where: {
+          tenantId,
+          containerRecord: {
+            shipmentLinks: { some: { shipmentId: accepted.shipmentId } },
+          },
+        },
+      }),
+      prisma.outboxMessage.findMany({
+        where: {
+          tenantId,
+          aggregateType: "shipment",
+          aggregateId: accepted.shipmentId,
+          eventType: "shipment.lifecycle_initialization_requested",
+        },
+      }),
+    ]);
+  if (
+    documentVersions.filter(({ state }) => state === "active").length !== 2 ||
+    documentVersions.filter(({ state }) => state === "superseded").length !==
+      2 ||
+    allocationSets.filter(({ state }) => state === "active").length !== 2 ||
+    allocationSets.filter(({ state }) => state === "superseded").length !== 2 ||
+    lifecycleRequests.length !== 2
+  ) {
+    throw new Error("Shipment Handoff correction facts are incomplete");
+  }
+
+  const duplicateCorrection = await repository.commit({
+    actorId,
+    command: preparedCorrection.command,
+    preflight: preparedCorrection.result,
+  });
+  if (!duplicateCorrection.duplicate) {
+    throw new Error("Shipment Handoff correction replay was not idempotent");
+  }
+
+  const removalCorrection = preflightShipmentHandoff({
+    ...correctionCommand,
+    source: {
+      ...correctionCommand.source,
+      handoffVersion: 3,
+      occurredAt: "2026-09-23T05:00:00Z",
+      idempotencyKey: "shipment-verification:handoff-acceptance-1:3",
+      traceId: "trace-shipment-acceptance-3",
+    },
+    shipment: {
+      ...correctionCommand.shipment,
+      expectedRelationshipVersion: 2,
+    },
+    containers: [
+      acceptanceContainer(
+        "container-1",
+        "external-container-1",
+        "TSTU1234567",
+        "7",
+        "3",
+      ),
+    ],
+  });
+  const removed = await repository.commit({
+    actorId,
+    command: removalCorrection.command,
+    preflight: removalCorrection.result,
+  });
+  const [afterRemovalShipment, activeLinks, activeAllocationSets, activeLines] =
+    await Promise.all([
+      prisma.shipment.findUniqueOrThrow({ where: { id: accepted.shipmentId } }),
+      prisma.shipmentContainerLink.count({
+        where: { tenantId, shipmentId: accepted.shipmentId, state: "active" },
+      }),
+      prisma.containerCargoAllocationSet.count({
+        where: {
+          tenantId,
+          state: "active",
+          containerRecord: {
+            shipmentLinks: { some: { shipmentId: accepted.shipmentId } },
+          },
+        },
+      }),
+      prisma.shipmentCargoLine.findMany({
+        where: { tenantId, shipmentId: accepted.shipmentId, state: "active" },
+      }),
+    ]);
+  if (
+    removed.businessDecisionState !== "accepted" ||
+    afterRemovalShipment.relationshipVersion !== 3 ||
+    activeLinks !== 1 ||
+    activeAllocationSets !== 1 ||
+    activeLines.length !== 1 ||
+    activeLines[0]?.version !== 3 ||
+    activeLines[0].quantity.toString() !== "7" ||
+    (await prisma.shipmentTransportDocument.count({
+      where: { tenantId, shipmentId: accepted.shipmentId },
+    })) !== 4
+  ) {
+    throw new Error(
+      "Shipment Handoff removal correction left active stale facts",
+    );
+  }
+
+  await prisma.shipment.update({
+    where: { id: accepted.shipmentId },
+    data: { currentLifecycleStatus: "in_transit", lifecycleVersion: 2 },
+  });
+  const lateCorrection = preflightShipmentHandoff({
+    ...removalCorrection.command,
+    source: {
+      ...removalCorrection.command.source,
+      handoffVersion: 4,
+      occurredAt: "2026-09-23T06:00:00Z",
+      idempotencyKey: "shipment-verification:handoff-acceptance-1:4",
+      traceId: "trace-shipment-acceptance-4",
+    },
+    shipment: {
+      ...removalCorrection.command.shipment,
+      expectedRelationshipVersion: 3,
+    },
+  });
+  try {
+    await repository.commit({
+      actorId,
+      command: lateCorrection.command,
+      preflight: lateCorrection.result,
+    });
+  } catch (error) {
+    if (
+      error instanceof ShipmentHandoffAcceptanceConflictError &&
+      error.message === "SHIPMENT_HANDOFF_CORRECTION_AFTER_LIFECYCLE_PROGRESS"
+    ) {
+      return;
+    }
+    throw error;
+  }
+  throw new Error("Shipment Handoff corrected facts after lifecycle progress");
+}
+
+function acceptanceContainer(
+  referenceId: string,
+  externalContainerId: string,
+  containerNumber: string,
+  quantity: string,
+  sourceVersion?: string,
+): ShipmentHandoffCommandV1["containers"][number] {
+  return {
+    referenceId,
+    externalContainerId,
+    containerNumber,
+    containerTypeCode: "40HQ",
+    billReferences: ["mbl-1", "hbl-1"],
+    upstreamReferences: [
+      {
+        referenceType: "shipping_plan",
+        sourceSystem: "shipment-verification",
+        sourceRecordId: "shipping-plan-1",
+        sourceVersion,
+      },
+    ],
+    cargoAllocations: [
+      {
+        sourceLineId: "cargo-line-1",
+        productNumber: "SKU-ACCEPTANCE-1",
+        quantity,
+        quantityUnit: "piece",
+      },
+    ],
+  };
 }
 
 async function downgradeRealSeedIdentityForReplay(url: string): Promise<void> {
@@ -642,6 +1076,201 @@ async function verifySyntheticManyToMany(prisma: PrismaClient): Promise<void> {
   if (loadedOrderIds.size !== 2 || splitContainerCount !== 2) {
     throw new Error("Synthetic N:M container/order relationship failed");
   }
+}
+
+async function verifyPostDepartureShipmentConstraints(
+  prisma: PrismaClient,
+): Promise<void> {
+  const tenantId = "shipment-core-tenant-a";
+  const actorId = randomUUID();
+  const [containerA, containerB] = await Promise.all([
+    prisma.containerRecord.create({
+      data: {
+        tenantId,
+        orderNumber: "SHIPMENT-COMPAT-A",
+        containerNumber: "TCLU1234567",
+        currentStatus: "shipped",
+      },
+    }),
+    prisma.containerRecord.create({
+      data: {
+        tenantId,
+        orderNumber: "SHIPMENT-COMPAT-B",
+        containerNumber: "TCLU7654321",
+        currentStatus: "shipped",
+      },
+    }),
+  ]);
+  const [shipmentA, shipmentB] = await Promise.all([
+    prisma.shipment.create({
+      data: shipmentData(tenantId, actorId, "A"),
+    }),
+    prisma.shipment.create({
+      data: shipmentData(tenantId, actorId, "B"),
+    }),
+  ]);
+  const handoffA = await prisma.shipmentHandoffRecord.create({
+    data: {
+      tenantId,
+      sourceProfile: "api_v1",
+      ingestionChannel: "api",
+      sourceSystem: "database-verification",
+      externalHandoffId: "handoff-a",
+      handoffVersion: 1,
+      occurredAt: new Date("2026-09-23T00:00:00Z"),
+      idempotencyKey: "shipment-core:handoff-a:1",
+      payloadHash: "a".repeat(64),
+      payloadJson: { contractVersion: "database-verification" },
+      status: "accepted",
+      shipmentId: shipmentA.id,
+      actorId,
+      traceId: "trace-shipment-core-a",
+    },
+  });
+  await prisma.shipmentContainerLink.createMany({
+    data: [containerA, containerB].map((container, index) => ({
+      tenantId,
+      shipmentId: shipmentA.id,
+      containerRecordId: container.id,
+      version: 1,
+      state: "active",
+      sourceHandoffId: handoffA.id,
+      evidenceRefs: [randomUUID()],
+      idempotencyKey: `shipment-core:link:${index + 1}`,
+      joinedAt: new Date("2026-09-23T00:00:00Z"),
+    })),
+  });
+  if (
+    (await prisma.shipmentContainerLink.count({
+      where: { tenantId, shipmentId: shipmentA.id, state: "active" },
+    })) !== 2
+  ) {
+    throw new Error("Shipment 1:N container relationship was not persisted");
+  }
+
+  await expectDatabaseRejection(
+    () =>
+      prisma.$executeRaw`
+        INSERT INTO "shipment_container_link" (
+          "id", "tenant_id", "shipment_id", "container_record_id", "version",
+          "state", "source_handoff_id", "evidence_refs", "idempotency_key",
+          "joined_at", "created_at"
+        ) VALUES (
+          ${randomUUID()}::uuid, ${tenantId}, ${shipmentB.id}::uuid,
+          ${containerA.id}, 1, 'active', ${handoffA.id}::uuid, '[]'::jsonb,
+          'shipment-core:conflicting-active-link', CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP
+        )
+      `,
+    "A container was accepted in two active Shipments",
+    {
+      sqlState: "23505",
+      constraint: "shipment_container_link_active_container_key",
+    },
+  );
+
+  await expectDatabaseRejection(
+    () =>
+      prisma.$executeRaw`
+        INSERT INTO "shipment_handoff_record" (
+          "id", "tenant_id", "source_profile", "ingestion_channel",
+          "source_system", "external_handoff_id", "handoff_version",
+          "occurred_at", "idempotency_key", "payload_hash", "payload_json", "status",
+          "shipment_id", "actor_id", "trace_id", "created_at", "updated_at"
+        ) VALUES (
+          ${randomUUID()}::uuid, ${tenantId}, 'api_v1', 'api',
+          'database-verification', 'handoff-other', 1, CURRENT_TIMESTAMP,
+          'shipment-core:handoff-a:1', ${"b".repeat(64)}, '{}'::jsonb, 'accepted',
+          ${shipmentA.id}::uuid, ${actorId}::uuid, 'trace-conflict',
+          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+      `,
+    "A conflicting Shipment Handoff idempotency key was accepted",
+    {
+      sqlState: "23505",
+      constraint: "shipment_handoff_tenant_idempotency_key",
+    },
+  );
+
+  await prisma.shipment.update({
+    where: { id: shipmentB.id },
+    data: { currentLifecycleStatus: "closed" },
+  });
+  await expectDatabaseRejection(
+    () =>
+      prisma.$executeRaw`
+        UPDATE "shipment"
+        SET "current_lifecycle_status" = 'completed'
+        WHERE "id" = ${shipmentB.id}::uuid
+      `,
+    "An unregistered Shipment lifecycle status was accepted",
+    { sqlState: "23514", constraint: "shipment_status_check" },
+  );
+
+  const cargoLine = await prisma.shipmentCargoLine.create({
+    data: {
+      tenantId,
+      shipmentId: shipmentA.id,
+      lineNo: 1,
+      productNumberSnapshot: "SHIPMENT-SKU-001",
+      quantity: 5,
+      quantityUnit: "piece",
+      sourceHandoffId: handoffA.id,
+      sourceLineId: "shipment-line-1",
+    },
+  });
+  const allocationSet = await prisma.containerCargoAllocationSet.create({
+    data: {
+      tenantId,
+      containerRecordId: containerA.id,
+      version: 1,
+      state: "active",
+      ingestionChannel: "api",
+      sourceSystem: "database-verification",
+      evidenceRefs: [randomUUID()],
+      idempotencyKey: "shipment-core:allocation-set:1",
+      payloadHash: "c".repeat(64),
+    },
+  });
+  await prisma.containerCargoAllocation.create({
+    data: {
+      tenantId,
+      allocationSetId: allocationSet.id,
+      shipmentCargoLineId: cargoLine.id,
+      allocatedQuantity: 5,
+      quantityUnit: "piece",
+    },
+  });
+  const storedAllocation =
+    await prisma.containerCargoAllocation.findFirstOrThrow({
+      where: { tenantId, shipmentCargoLineId: cargoLine.id },
+    });
+  if (storedAllocation.replenishmentOrderLineId !== null) {
+    throw new Error("Shipment cargo allocation invented a replenishment line");
+  }
+}
+
+function shipmentData(tenantId: string, actorId: string, suffix: string) {
+  return {
+    tenantId,
+    shipmentNumber: `SHIPMENT-${suffix}`,
+    sourceSystem: "database-verification",
+    sourceRecordId: `shipment-source-${suffix}`,
+    sourceVersion: "1",
+    transportMode: "ocean",
+    carrierCode: "HMM",
+    vesselName: "ONE TRUTH",
+    voyageNumber: `V-${suffix}`,
+    originCountryCode: "CN",
+    originUnlocode: "CNNGB",
+    destinationCountryCode: "US",
+    destinationUnlocode: "USLAX",
+    atdAt: new Date("2026-09-22T10:00:00Z"),
+    etaAt: new Date("2026-10-10T10:00:00Z"),
+    currentLifecycleStatus: "departed",
+    createdBy: actorId,
+    updatedBy: actorId,
+  };
 }
 
 function allocationSetData(

@@ -3,6 +3,10 @@ import { relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compile } from "json-schema-to-typescript";
 import { format } from "prettier";
+import {
+  POST_DEPARTURE_DETAIL_HEADER_ALIASES,
+  POST_DEPARTURE_FIELD_REGISTRY_SOURCE,
+} from "./post-departure-field-registry-source.mjs";
 
 // 单一权威源：14 个 JSON Schema 2020-12 文件。本脚本把它们打包成一个自洽根 Schema，
 // 再由 json-schema-to-typescript 生成一份去重后的 TypeScript 类型（共享类型只定义一次）。
@@ -32,6 +36,18 @@ const lifecycleNodeCatalogPath = resolve(
   root,
   "packages/contracts/catalogs/v1/lifecycle-nodes.json",
 );
+const postDepartureFieldInventoryPath = resolve(
+  root,
+  "docs/product/domain/evidence/POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923.json",
+);
+const postDepartureFieldRegistryPath = resolve(
+  root,
+  "packages/contracts/catalogs/v1/post-departure-fields.json",
+);
+const typescriptPostDepartureFieldRegistryPath = resolve(
+  root,
+  "packages/contracts/post-departure-fields-json.d.ts",
+);
 const typescriptLifecycleNodeCatalogPath = resolve(
   root,
   "packages/contracts/lifecycle-nodes-json.d.ts",
@@ -47,6 +63,9 @@ const CONTRACT_FILES = [
   "common.schema.json",
   "lifecycle-state-machine.schema.json",
   "canonical-event-envelope.schema.json",
+  "canonical-event-envelope-v2.schema.json",
+  "shipment-handoff.schema.json",
+  "post-departure-lifecycle.schema.json",
   "lifecycle-timeline.schema.json",
   "work-execution.schema.json",
   "evidence-record.schema.json",
@@ -354,6 +373,201 @@ const generateTypescriptLifecycleNodeCatalog = async () => {
   return format(source, { parser: "typescript" });
 };
 
+const generatePostDepartureFieldRegistry = () => {
+  const inventory = readJson(postDepartureFieldInventoryPath);
+  const sourceSchemas = Object.fromEntries(
+    Object.entries(inventory.maintenanceFieldInventory).map(
+      ([sourceSchema, value]) => [
+        sourceSchema,
+        {
+          file: value.file,
+          sheetName: value.sheetName,
+          ownerDomain: value.ownerDomain,
+        },
+      ],
+    ),
+  );
+  const occurrences = new Map();
+  for (const [sourceSchema, value] of Object.entries(
+    inventory.maintenanceFieldInventory,
+  )) {
+    for (const field of value.fields) {
+      const current = occurrences.get(field.rawHeader) ?? [];
+      current.push({
+        sourceSchema,
+        position: field.position,
+        nonEmptyCount: field.nonEmptyCount,
+        distinctNonEmptyCount: field.distinctNonEmptyCount,
+      });
+      occurrences.set(field.rawHeader, current);
+    }
+  }
+  const mappingByRawHeader = new Map(
+    POST_DEPARTURE_FIELD_REGISTRY_SOURCE.map((mapping) => [
+      mapping.rawHeader,
+      mapping,
+    ]),
+  );
+  const detailProjectionMappings = inventory.detailProjection.headers.map(
+    (rawHeader) => {
+      const direct = mappingByRawHeader.get(rawHeader);
+      const alias = POST_DEPARTURE_DETAIL_HEADER_ALIASES[rawHeader];
+      const mapping = alias ?? direct;
+      if (!mapping) {
+        throw new Error(`unmapped detail projection header: ${rawHeader}`);
+      }
+      return {
+        rawHeader,
+        canonicalFieldCode: mapping.canonicalFieldCode,
+        ownerDomain: mapping.ownerDomain,
+        targetObject: mapping.targetObject,
+        mappingKind: alias?.mappingKind ?? "maintenance_field",
+        authority: "read_only_projection",
+      };
+    },
+  );
+  return {
+    version: "1.0.0",
+    sourceSystem: "legacy_post_departure_workbooks",
+    sourceSchemaVersion: "2026-09-23",
+    evidenceRef:
+      "docs/product/domain/evidence/POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923.json",
+    coverage: {
+      distinctRawHeaders: POST_DEPARTURE_FIELD_REGISTRY_SOURCE.length,
+      sourceOccurrences: [...occurrences.values()].reduce(
+        (sum, values) => sum + values.length,
+        0,
+      ),
+    },
+    sourceSchemas,
+    detailProjectionMappings,
+    mappings: POST_DEPARTURE_FIELD_REGISTRY_SOURCE.map((sourceMapping) => {
+      const { sourceOccurrenceOverrides = {}, ...mapping } = sourceMapping;
+      return {
+        ...mapping,
+        sourceOccurrences: (occurrences.get(mapping.rawHeader) ?? []).map(
+          (occurrence) => ({
+            ...occurrence,
+            canonicalFieldCode:
+              sourceOccurrenceOverrides[occurrence.sourceSchema]
+                ?.canonicalFieldCode ?? mapping.canonicalFieldCode,
+            correctedMeaning:
+              sourceOccurrenceOverrides[occurrence.sourceSchema]
+                ?.correctedMeaning ?? mapping.correctedMeaning,
+            ownerDomain:
+              sourceOccurrenceOverrides[occurrence.sourceSchema]?.ownerDomain ??
+              mapping.ownerDomain,
+            targetObject:
+              sourceOccurrenceOverrides[occurrence.sourceSchema]
+                ?.targetObject ?? mapping.targetObject,
+          }),
+        ),
+      };
+    }),
+  };
+};
+
+const generateTypescriptPostDepartureFieldRegistry = async (registry) => {
+  const union = (name, values) =>
+    [
+      `export type ${name} =`,
+      ...[...new Set(values)]
+        .sort()
+        .map((value) => `  | ${JSON.stringify(value)}`),
+    ].join("\n") + ";";
+  const source = [
+    "// Generated by scripts/generate-contracts.mjs. Do not edit.",
+    "// Authority: scripts/post-departure-field-registry-source.mjs + verified workbook inventory.",
+    union(
+      "PostDepartureCanonicalFieldCode",
+      registry.mappings.flatMap(({ canonicalFieldCode, sourceOccurrences }) => [
+        canonicalFieldCode,
+        ...sourceOccurrences.map((occurrence) => occurrence.canonicalFieldCode),
+        ...registry.detailProjectionMappings.map(
+          (detailMapping) => detailMapping.canonicalFieldCode,
+        ),
+      ]),
+    ),
+    union(
+      "PostDepartureFieldOwnerDomain",
+      registry.mappings.flatMap(({ ownerDomain, sourceOccurrences }) => [
+        ownerDomain,
+        ...sourceOccurrences.map((occurrence) => occurrence.ownerDomain),
+        ...registry.detailProjectionMappings.map(
+          (detailMapping) => detailMapping.ownerDomain,
+        ),
+      ]),
+    ),
+    union(
+      "PostDepartureFieldTargetObject",
+      registry.mappings.flatMap(({ targetObject, sourceOccurrences }) => [
+        targetObject,
+        ...sourceOccurrences.map((occurrence) => occurrence.targetObject),
+        ...registry.detailProjectionMappings.map(
+          (detailMapping) => detailMapping.targetObject,
+        ),
+      ]),
+    ),
+    union(
+      "PostDepartureFieldDataType",
+      registry.mappings.map(({ dataType }) => dataType),
+    ),
+    union(
+      "PostDepartureFieldDisposition",
+      registry.mappings.map(({ targetDisposition }) => targetDisposition),
+    ),
+    "export interface PostDepartureFieldSourceOccurrence {",
+    "  sourceSchema: string;",
+    "  position: number;",
+    "  nonEmptyCount: number;",
+    "  distinctNonEmptyCount: number;",
+    "  canonicalFieldCode: PostDepartureCanonicalFieldCode;",
+    "  correctedMeaning: string;",
+    "  ownerDomain: PostDepartureFieldOwnerDomain;",
+    "  targetObject: PostDepartureFieldTargetObject;",
+    "}",
+    "export interface PostDepartureFieldMapping {",
+    "  rawHeader: string;",
+    "  canonicalFieldCode: PostDepartureCanonicalFieldCode;",
+    "  correctedMeaning: string;",
+    "  ownerDomain: PostDepartureFieldOwnerDomain;",
+    "  targetObject: PostDepartureFieldTargetObject;",
+    "  dataType: PostDepartureFieldDataType;",
+    "  storageNullable: boolean;",
+    "  profileRequired: string[];",
+    "  validationRule: string;",
+    "  targetDisposition: PostDepartureFieldDisposition;",
+    '  sensitivity: "internal" | "restricted";',
+    '  currentPhysicalSupport: "full" | "partial" | "missing" | "not_applicable";',
+    '  currentContractSupport: "full" | "partial" | "missing" | "not_applicable";',
+    "  dataQualityRule: string;",
+    "  deprecationPolicy: string;",
+    "  sourceOccurrences: PostDepartureFieldSourceOccurrence[];",
+    "}",
+    "export interface PostDepartureFieldRegistry {",
+    "  version: string;",
+    "  sourceSystem: string;",
+    "  sourceSchemaVersion: string;",
+    "  evidenceRef: string;",
+    "  coverage: { distinctRawHeaders: 146; sourceOccurrences: 176 };",
+    "  sourceSchemas: Record<string, { file: string; sheetName: string; ownerDomain: string }>;",
+    "  detailProjectionMappings: Array<{",
+    "    rawHeader: string;",
+    "    canonicalFieldCode: PostDepartureCanonicalFieldCode;",
+    "    ownerDomain: PostDepartureFieldOwnerDomain;",
+    "    targetObject: PostDepartureFieldTargetObject;",
+    '    mappingKind: "maintenance_field" | "projection_alias" | "projection_only_derived";',
+    '    authority: "read_only_projection";',
+    "  }>;",
+    "  mappings: PostDepartureFieldMapping[];",
+    "}",
+    "declare const registry: PostDepartureFieldRegistry;",
+    "export default registry;",
+    "",
+  ].join("\n");
+  return format(source, { parser: "typescript" });
+};
+
 const main = async () => {
   const checkOnly = process.argv.includes("--check");
   const generated = await generateTs();
@@ -363,6 +577,15 @@ const main = async () => {
     await generateTypescriptCanonicalEventCatalog();
   const generatedLifecycleNodeCatalog =
     await generateTypescriptLifecycleNodeCatalog();
+  const postDepartureFieldRegistry = generatePostDepartureFieldRegistry();
+  const generatedPostDepartureFieldRegistry = await format(
+    JSON.stringify(postDepartureFieldRegistry),
+    { parser: "json" },
+  );
+  const generatedTypescriptPostDepartureFieldRegistry =
+    await generateTypescriptPostDepartureFieldRegistry(
+      postDepartureFieldRegistry,
+    );
 
   if (checkOnly) {
     if (!existsSync(outFile)) {
@@ -437,6 +660,34 @@ const main = async () => {
       );
       process.exitCode = 1;
     }
+    if (!existsSync(postDepartureFieldRegistryPath)) {
+      console.error(
+        "post-departure-fields.json missing; run `pnpm contract:generate` first",
+      );
+      process.exitCode = 1;
+    } else if (
+      readFileSync(postDepartureFieldRegistryPath, "utf8") !==
+      generatedPostDepartureFieldRegistry
+    ) {
+      console.error(
+        "Post-departure field registry drift detected; run `pnpm contract:generate` and commit the result",
+      );
+      process.exitCode = 1;
+    }
+    if (!existsSync(typescriptPostDepartureFieldRegistryPath)) {
+      console.error(
+        "post-departure-fields-json.d.ts missing; run `pnpm contract:generate` first",
+      );
+      process.exitCode = 1;
+    } else if (
+      readFileSync(typescriptPostDepartureFieldRegistryPath, "utf8") !==
+      generatedTypescriptPostDepartureFieldRegistry
+    ) {
+      console.error(
+        "Post-departure field registry types drift detected; run `pnpm contract:generate` and commit the result",
+      );
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -451,6 +702,14 @@ const main = async () => {
   writeFileSync(
     typescriptLifecycleNodeCatalogPath,
     generatedLifecycleNodeCatalog,
+  );
+  writeFileSync(
+    postDepartureFieldRegistryPath,
+    generatedPostDepartureFieldRegistry,
+  );
+  writeFileSync(
+    typescriptPostDepartureFieldRegistryPath,
+    generatedTypescriptPostDepartureFieldRegistry,
   );
   console.log(
     `Generated ${relative(root, outFile)} (${generated.split("\n").length} lines).`,
