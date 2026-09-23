@@ -134,6 +134,7 @@ export class WorkExecutionController {
   }
 
   @Post("work-orders/:id/claim")
+  @RequireCapabilities("task.execute")
   @ApiOkResponse({ type: ClaimWorkOrderResponseDto })
   claim(
     @Param("id") id: string,
@@ -149,6 +150,7 @@ export class WorkExecutionController {
   }
 
   @Post("work-orders/:id/complete")
+  @RequireCapabilities("task.execute")
   @ApiOkResponse({ type: CompleteWorkOrderResponseDto })
   complete(
     @Param("id") id: string,

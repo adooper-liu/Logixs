@@ -7,8 +7,8 @@ import { decideOutboxFailure } from "../domain/outbox-failure";
 import type { ClaimedOutbox } from "../domain/outbox-publish";
 import {
   FIRST_SLICE_PUBLISH_LEASE_SECONDS,
-  lifecycleOutboxOwnerModule,
   parsePublishBatchLimit,
+  publishableOutboxOwnerModules,
 } from "../domain/outbox-publish";
 import {
   OUTBOX_REPOSITORY,
@@ -83,7 +83,7 @@ export class PublishOutboxBatchService {
     const now = new Date();
     const claimed = await this.outbox.claimBatch({
       tenantId: input.tenantId,
-      ownerModule: lifecycleOutboxOwnerModule(),
+      ownerModules: publishableOutboxOwnerModules(),
       owner: input.operatorId,
       now,
       limit,

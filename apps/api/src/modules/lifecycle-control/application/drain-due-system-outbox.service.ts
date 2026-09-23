@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { SERVICE_ACTOR_TYPE } from "../../identity";
-import { lifecycleOutboxOwnerModule } from "../domain/outbox-publish";
+import { publishableOutboxOwnerModules } from "../domain/outbox-publish";
 import {
   parseMaxTenants,
   sliceDueTenants,
@@ -68,7 +68,7 @@ export class DrainDueSystemOutboxService {
     }
 
     const dueTenantIds = await this.outbox.listDueTenantIds({
-      ownerModule: lifecycleOutboxOwnerModule(),
+      ownerModules: publishableOutboxOwnerModules(),
       now: new Date(),
       take: maxTenants + 1,
     });

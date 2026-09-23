@@ -5,10 +5,12 @@ import {
 } from "@nestjs/common";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { AssertEvidenceRefsService } from "./application/assert-evidence-refs.service";
+import { AssertEvidenceAvailableService } from "./application/assert-evidence-available.service";
 import { DecideEvidenceService } from "./application/decide-evidence.service";
 import { RegisterEvidenceService } from "./application/register-evidence.service";
 import { ReadEvidenceAuthorityContextService } from "./application/read-evidence-authority-context.service";
 import { ASSERT_EVIDENCE_REFS } from "./assert-evidence-refs.port";
+import { ASSERT_EVIDENCE_AVAILABLE } from "./assert-evidence-available.port";
 import { READ_EVIDENCE_AUTHORITY_CONTEXT } from "./read-evidence-authority-context.port";
 import { REGISTER_EVIDENCE } from "./register-evidence.port";
 import { EVIDENCE_REPOSITORY } from "./domain/evidence.repository";
@@ -22,9 +24,14 @@ import { EvidenceController } from "./presentation/evidence.controller";
     RegisterEvidenceService,
     DecideEvidenceService,
     AssertEvidenceRefsService,
+    AssertEvidenceAvailableService,
     ReadEvidenceAuthorityContextService,
     { provide: EVIDENCE_REPOSITORY, useClass: PrismaEvidenceRepository },
     { provide: ASSERT_EVIDENCE_REFS, useExisting: AssertEvidenceRefsService },
+    {
+      provide: ASSERT_EVIDENCE_AVAILABLE,
+      useExisting: AssertEvidenceAvailableService,
+    },
     {
       provide: READ_EVIDENCE_AUTHORITY_CONTEXT,
       useExisting: ReadEvidenceAuthorityContextService,
@@ -34,6 +41,7 @@ import { EvidenceController } from "./presentation/evidence.controller";
   exports: [
     AssertEvidenceRefsService,
     ASSERT_EVIDENCE_REFS,
+    ASSERT_EVIDENCE_AVAILABLE,
     READ_EVIDENCE_AUTHORITY_CONTEXT,
     REGISTER_EVIDENCE,
   ],

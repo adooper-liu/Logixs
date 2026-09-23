@@ -45,7 +45,11 @@
       ],
       "properties": {
         "containerId": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "orderNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "orderNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
         "containerNumber": {
           "type": ["string", "null"],
           "minLength": 1,

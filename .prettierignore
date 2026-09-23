@@ -19,3 +19,5 @@ packages/contracts/generated
 docs/planning/progress-board.html
 # Prisma Client 单一输出（见 database/schema.prisma generator output）
 generated
+# 由 scripts/generate-reference-data-snapshots.mjs 生成的权威主数据快照
+database/seeds/reference-data

@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import type { ReconcileAppliedLifecycleFactPort } from "../../work-execution";
+import { hashPostDepartureLifecycleCommand } from "@logix/contracts/post-departure-lifecycle";
 import { OutboxDeliveryError } from "../domain/outbox-failure";
 import type { ClaimedOutbox } from "../domain/outbox-publish";
 import { buildWorkFactReconciliationOutboxPending } from "../domain/work-fact-reconciliation-outbox";
@@ -61,11 +62,17 @@ function buildDelivery(options?: {
     nodeEventApplication: {
       findUnique: vi.fn().mockResolvedValue(context?.application ?? null),
     },
+    lifecycleDateFact: {
+      findUnique: vi.fn().mockResolvedValue(context?.dateFact ?? null),
+    },
   };
   const prisma = {
     $transaction: vi.fn(
       async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx),
     ),
+    shipmentHandoffRecord: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
   };
   const reconcile = {
     execute:
@@ -84,21 +91,70 @@ function buildDelivery(options?: {
   const assertContainerTenant = {
     execute: vi.fn().mockResolvedValue(undefined),
   };
+  const receiveInboxMessage = {
+    execute: vi
+      .fn()
+      .mockResolvedValue({ inboxRecordId: "inbox-1", applied: true }),
+  };
   return {
     delivery: new WorkExecutionOutboxDelivery(
       prisma as never,
       reconcile as ReconcileAppliedLifecycleFactPort,
       assertContainerTenant,
+      receiveInboxMessage as never,
       fallback,
     ),
     prisma,
     reconcile,
     assertContainerTenant,
+    receiveInboxMessage,
     tx,
   };
 }
 
 describe("WorkExecutionOutboxDelivery", () => {
+  it("delivers Shipment initialization Outbox to the lifecycle Inbox", async () => {
+    const { delivery, prisma, receiveInboxMessage, reconcile } =
+      buildDelivery();
+    const command = {
+      shipmentId: "11111111-1111-4111-8111-111111111111",
+      containerIds: ["container-1", "container-2"] as [string, ...string[]],
+      flowDefinitionCode: "post_departure_ocean" as const,
+      definitionVersion: 1,
+      departureEventId: "22222222-2222-4222-8222-222222222222",
+      relationshipVersion: 1,
+      idempotencyKey: "handoff-1:post-departure",
+      traceId: "trace-1",
+    };
+    prisma.shipmentHandoffRecord.findFirst.mockResolvedValue({
+      lifecycleRequestJson: command,
+    });
+
+    await expect(
+      delivery.deliver(
+        claimed({
+          ownerModule: "shipment-registry",
+          eventType: "shipment.lifecycle_initialization_requested",
+          eventVersion: 2,
+          aggregateType: "shipment",
+          aggregateId: command.shipmentId,
+          payloadRef:
+            "shipment-handoff-lifecycle/33333333-3333-4333-8333-333333333333",
+          payloadHash: hashPostDepartureLifecycleCommand(command),
+        }),
+      ),
+    ).resolves.toEqual({ brokerReference: "inbox:inbox-1" });
+    expect(receiveInboxMessage.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorType: "service",
+        tenantId: "tenant-1",
+        consumerName: "lifecycle-control-inbox",
+        payload: command,
+      }),
+    );
+    expect(reconcile.execute).not.toHaveBeenCalled();
+  });
+
   it("loads lifecycle-owned records and sends the complete causal command", async () => {
     const { delivery, reconcile, assertContainerTenant } = buildDelivery();
 
@@ -262,18 +318,20 @@ function authorityContext() {
         occurredAt: OCCURRED_AT,
         appliedAt: RECEIVED_AT,
         evidenceRefs: ["evidence-2", "evidence-1"],
-        domainFact: {
-          id: "date-fact-1",
-          captureSource: "external_evidence",
-          receivedAt: RECEIVED_AT,
-          actorId: "reviewer-1",
-        },
+        domainFactId: "date-fact-1",
+        domainFactType: "lifecycle_date_fact",
       },
       targetNodeInstance: {
         id: "node-1",
         nodeCode: "container_unloading",
         flow: { id: "flow-1", containerId: "container-1" },
       },
+    },
+    dateFact: {
+      id: "date-fact-1",
+      captureSource: "external_evidence",
+      receivedAt: RECEIVED_AT,
+      actorId: "reviewer-1",
     },
   };
 }

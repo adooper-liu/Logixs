@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/post-departure-lifecycle.schema.json",
+  "title": "Post Departure Lifecycle Contracts V2",
+  "oneOf": [{ "$ref": "#/$defs/StartPostDepartureLifecycleCommandV2" }],
+  "$defs": {
+    "StartPostDepartureLifecycleCommandV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shipmentId",
+        "containerIds",
+        "flowDefinitionCode",
+        "definitionVersion",
+        "departureEventId",
+        "relationshipVersion",
+        "idempotencyKey",
+        "traceId"
+      ],
+      "properties": {
+        "shipmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "flowDefinitionCode": { "const": "post_departure_ocean" },
+        "definitionVersion": { "type": "integer", "minimum": 1 },
+        "departureEventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "relationshipVersion": { "type": "integer", "minimum": 1 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    }
+  }
+}

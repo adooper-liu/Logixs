@@ -126,7 +126,7 @@ function buildSeedBody(
       ]
     : context
       ? [
-          `对象：货柜 ${context.summary.containerNumber ?? context.summary.orderNumber}`,
+          `对象：货柜 ${context.summary.containerNumber ?? context.summary.orderNumber ?? context.summary.containerId}`,
           context.actionSummary,
         ]
       : [];

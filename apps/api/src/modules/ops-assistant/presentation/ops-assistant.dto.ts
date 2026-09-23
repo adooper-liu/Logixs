@@ -19,7 +19,7 @@ export class AssistantMessageDto {
 
 export class AssistantObjectSummaryDto {
   @ApiProperty() containerId!: string;
-  @ApiProperty() orderNumber!: string;
+  @ApiProperty({ nullable: true, type: String }) orderNumber!: string | null;
   @ApiPropertyOptional({ nullable: true }) containerNumber!: string | null;
   @ApiProperty() currentStatus!: string;
   @ApiPropertyOptional({ nullable: true }) currentNodeCode!: string | null;

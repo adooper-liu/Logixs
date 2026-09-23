@@ -14,6 +14,173 @@ datasource db {
   provider = "postgresql"
 }
 
+// 全局参考数据发布（master-data 拥有）：权威数据按发布版本不可变，active 版本由数据库部分唯一索引约束。
+model ReferenceDataRelease {
+  id            String                  @id @default(uuid()) @map("id") @db.Uuid
+  authority     String                  @map("authority")
+  datasetCode   String                  @map("dataset_code")
+  version       String                  @map("version")
+  publishedAt   DateTime?               @map("published_at") @db.Date
+  sourceUrl     String                  @map("source_url")
+  retrievedAt   DateTime                @map("retrieved_at") @db.Timestamptz
+  sourceSha256  String                  @map("source_sha256") @db.Char(64)
+  recordsSha256 String                  @map("records_sha256") @db.Char(64)
+  license       String                  @map("license")
+  filterRule    String?                 @map("filter_rule")
+  status        String                  @map("status")
+  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  countryCodes  CountryCodeReference[]
+  unlocodeAreas UnlocodeAreaReference[]
+  portCodes     PortCodeReference[]
+  cargoOwners   CargoOwnerReference[]
+
+  @@unique([authority, datasetCode, version], map: "reference_data_release_identity_key")
+  @@index([datasetCode, status], map: "reference_data_release_dataset_status_idx")
+  @@map("reference_data_release")
+}
+
+// ISO 3166-1 正式分配代码；名称与 alpha-3/numeric 一并保留，禁止由业务文本猜测国家。
+model CountryCodeReference {
+  id            String                  @id @default(uuid()) @map("id") @db.Uuid
+  releaseId     String                  @map("release_id") @db.Uuid
+  release       ReferenceDataRelease    @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  alpha2        String                  @map("alpha2") @db.Char(2)
+  alpha3        String                  @map("alpha3") @db.Char(3)
+  numericCode   String                  @map("numeric_code") @db.Char(3)
+  nameEnglish   String                  @map("name_english")
+  nameFrench    String                  @map("name_french")
+  sourceRowHash String                  @map("source_row_hash") @db.Char(64)
+  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  unlocodeAreas UnlocodeAreaReference[]
+  cargoOwners   CargoOwnerReference[]
+
+  @@unique([releaseId, alpha2], map: "country_code_release_alpha2_key")
+  @@unique([releaseId, alpha3], map: "country_code_release_alpha3_key")
+  @@unique([releaseId, numericCode], map: "country_code_release_numeric_key")
+  @@index([alpha2, releaseId], map: "country_code_alpha2_release_idx")
+  @@map("country_code_reference")
+}
+
+// 内部货主/分公司与销售国家的受控映射；内部简称不得直接冒充 ISO 国家码。
+model CargoOwnerReference {
+  id                       String               @id @map("id") @db.Uuid
+  releaseId                String               @map("release_id") @db.Uuid
+  release                  ReferenceDataRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  stableCode               String               @map("stable_code")
+  legalName                String               @map("legal_name")
+  normalizedName           String               @map("normalized_name")
+  internalCountryShortCode String               @map("internal_country_short_code")
+  salesCountryId           String               @map("sales_country_id") @db.Uuid
+  salesCountry             CountryCodeReference @relation(fields: [salesCountryId], references: [id], onDelete: Restrict)
+  sourceSystem             String               @map("source_system")
+  sourceVersion            String               @map("source_version")
+  sourceRecordId           String               @map("source_record_id")
+  sourceRowHash            String               @map("source_row_hash") @db.Char(64)
+  createdAt                DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  shipments                Shipment[]
+
+  @@unique([releaseId, stableCode], map: "cargo_owner_release_code_key")
+  @@unique([releaseId, normalizedName], map: "cargo_owner_release_name_key")
+  @@unique([sourceSystem, sourceVersion, sourceRecordId], map: "cargo_owner_source_identity_key")
+  @@index([salesCountryId], map: "cargo_owner_sales_country_idx")
+  @@map("cargo_owner_reference")
+}
+
+// UN/LOCODE 国家/地区段；XZ 等 UNECE 专用范围与 ISO 国家保持显式可空映射。
+model UnlocodeAreaReference {
+  id            String                @id @default(uuid()) @map("id") @db.Uuid
+  releaseId     String                @map("release_id") @db.Uuid
+  release       ReferenceDataRelease  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  areaCode      String                @map("area_code") @db.Char(2)
+  name          String                @map("name")
+  isoCountryId  String?               @map("iso_country_id") @db.Uuid
+  isoCountry    CountryCodeReference? @relation(fields: [isoCountryId], references: [id], onDelete: Restrict)
+  sourceRowHash String                @map("source_row_hash") @db.Char(64)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  ports         PortCodeReference[]
+
+  @@unique([id, releaseId], map: "unlocode_area_id_release_key")
+  @@unique([releaseId, areaCode], map: "unlocode_area_release_code_key")
+  @@index([isoCountryId], map: "unlocode_area_iso_country_idx")
+  @@map("unlocode_area_reference")
+}
+
+// UN/LOCODE 港口稳定身份；同一码的多语言/变更记录保存在 PortCodeEntry，不在此静默折叠。
+model PortCodeReference {
+  id           String                @id @default(uuid()) @map("id") @db.Uuid
+  releaseId    String                @map("release_id") @db.Uuid
+  release      ReferenceDataRelease  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  areaId       String                @map("area_id") @db.Uuid
+  area         UnlocodeAreaReference @relation(fields: [areaId, releaseId], references: [id, releaseId], onDelete: Restrict)
+  unlocode     String                @map("unlocode") @db.Char(5)
+  areaCode     String                @map("area_code") @db.Char(2)
+  locationCode String                @map("location_code") @db.Char(3)
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  entries      PortCodeEntry[]
+  aliases      PortNameAlias[]
+
+  @@unique([id, releaseId], map: "port_code_id_release_key")
+  @@unique([releaseId, unlocode], map: "port_code_release_unlocode_key")
+  @@index([unlocode, releaseId], map: "port_code_unlocode_release_idx")
+  @@index([areaId, releaseId], map: "port_code_area_release_idx")
+  @@map("port_code_reference")
+}
+
+// UNECE 官方源行；同一 UN/LOCODE 可合法出现多条名称或变更条目。
+model PortCodeEntry {
+  id                              String            @id @default(uuid()) @map("id") @db.Uuid
+  portId                          String            @map("port_id") @db.Uuid
+  releaseId                       String            @map("release_id") @db.Uuid
+  port                            PortCodeReference @relation(fields: [portId, releaseId], references: [id, releaseId], onDelete: Restrict)
+  sourceFile                      String            @map("source_file")
+  sourceRowNumber                 Int               @map("source_row_number")
+  changeIndicator                 String?           @map("change_indicator")
+  name                            String            @map("name")
+  nameNormalized                  String            @map("name_normalized")
+  nameWithoutDiacritics           String?           @map("name_without_diacritics")
+  nameWithoutDiacriticsNormalized String?           @map("name_without_diacritics_normalized")
+  subdivisionCode                 String?           @map("subdivision_code")
+  functionCode                    String            @map("function_code") @db.Char(8)
+  statusCode                      String?           @map("status_code") @db.Char(2)
+  referenceDate                   String?           @map("reference_date") @db.Char(4)
+  iataCode                        String?           @map("iata_code") @db.Char(3)
+  coordinates                     String?           @map("coordinates")
+  remarks                         String?           @map("remarks")
+  sourceRowHash                   String            @map("source_row_hash") @db.Char(64)
+  createdAt                       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([releaseId, sourceFile, sourceRowNumber], map: "port_code_entry_source_row_key")
+  @@index([portId], map: "port_code_entry_port_idx")
+  @@index([nameNormalized], map: "port_code_entry_name_idx")
+  @@index([nameWithoutDiacriticsNormalized], map: "port_code_entry_ascii_name_idx")
+  @@map("port_code_entry")
+}
+
+// 外部/中文名称到权威港口身份的候选关系；名称可能歧义，只有 confirmed 才允许自动规范化。
+model PortNameAlias {
+  id              String            @id @default(uuid()) @map("id") @db.Uuid
+  portId          String            @map("port_id") @db.Uuid
+  port            PortCodeReference @relation(fields: [portId], references: [id], onDelete: Restrict)
+  aliasName       String            @map("alias_name")
+  normalizedAlias String            @map("normalized_alias")
+  languageTag     String            @map("language_tag")
+  sourceSystem    String            @map("source_system")
+  sourceVersion   String            @map("source_version")
+  sourceRecordId  String            @map("source_record_id")
+  mappingState    String            @map("mapping_state")
+  evidenceRef     String            @map("evidence_ref")
+  evidenceHash    String            @map("evidence_hash") @db.Char(64)
+  createdBy       String            @map("created_by")
+  reviewedBy      String?           @map("reviewed_by")
+  reviewedAt      DateTime?         @map("reviewed_at") @db.Timestamptz
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([sourceSystem, sourceVersion, sourceRecordId, normalizedAlias, portId], map: "port_name_alias_source_candidate_key")
+  @@index([normalizedAlias, mappingState], map: "port_name_alias_lookup_idx")
+  @@index([portId, mappingState], map: "port_name_alias_port_state_idx")
+  @@map("port_name_alias")
+}
+
 // Product/SKU 稳定身份（master-data 拥有）：交易行和合规档案只保存逻辑引用。
 model ProductSku {
   id                  String                     @id @default(uuid()) @map("id") @db.Uuid
@@ -25,6 +192,7 @@ model ProductSku {
   registrations       ProductSkuRegistration[]
   complianceProfiles  ProductComplianceProfile[]
   productCertificates ProductCertificate[]
+  shipmentCargoLines  ShipmentCargoLine[]
 
   @@unique([tenantId, productNumber], map: "product_sku_tenant_number_key")
   @@unique([id, tenantId], map: "product_sku_id_tenant_key")
@@ -423,30 +591,38 @@ enum ContainerStatus {
 // 货柜业务事实主记录（shipment-registry 拥有）。
 // 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
 model ContainerRecord {
-  id                            String                         @id @default(uuid()) @map("id")
-  tenantId                      String                         @map("tenant_id")
+  id                            String                          @id @default(uuid()) @map("id")
+  tenantId                      String                          @map("tenant_id")
   // 旧导入兼容锚；柜内货物与备货单的权威关系由 ContainerCargoAllocation 表达。
-  orderNumber                   String                         @map("order_number")
-  replenishmentOrderId          String?                        @map("replenishment_order_id")
-  replenishmentOrder            ReplenishmentOrder?            @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "container_record_replenishment_order_tenant_fkey")
+  orderNumber                   String?                         @map("order_number")
+  replenishmentOrderId          String?                         @map("replenishment_order_id")
+  replenishmentOrder            ReplenishmentOrder?             @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "container_record_replenishment_order_tenant_fkey")
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
-  mainOrderNumber               String?                        @map("main_order_number")
+  mainOrderNumber               String?                         @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
-  containerNumber               String?                        @map("container_number")
+  containerNumber               String?                         @map("container_number")
+  containerTypeCode             String?                         @map("container_type_code")
+  sealNumber                    String?                         @map("seal_number")
   // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
-  currentStatus                 ContainerStatus                @map("current_status")
-  createdAt                     DateTime                       @default(now()) @map("created_at")
-  updatedAt                     DateTime                       @updatedAt @map("updated_at")
+  currentStatus                 ContainerStatus                 @map("current_status")
+  createdAt                     DateTime                        @default(now()) @map("created_at")
+  updatedAt                     DateTime                        @updatedAt @map("updated_at")
   timeFacts                     ShipmentTimeFact[]
   lifecycleDateFacts            LifecycleDateFact[]
   oceanRoutePlans               OceanRoutePlan[]
   cargoAllocationSets           ContainerCargoAllocationSet[]
   importBindings                ContainerImportBinding[]
+  sourceIdentities              ContainerSourceIdentity[]
   stuffingSnapshots             ContainerStuffingSnapshot[]
   dispatchSnapshots             ContainerDispatchSnapshot[]
   customsClearanceCases         CustomsClearanceCase[]
+  shipmentLinks                 ShipmentContainerLink[]
+  shipmentDocumentLinks         ShipmentContainerDocumentLink[]
+  shipmentUpstreamReferences    ShipmentUpstreamReference[]
+  canonicalEventScopeMembers    CanonicalEventScopeMember[]
   warehouseDeliveryInstructions WarehouseDeliveryInstruction[]
   unloadingReports              ContainerUnloadingReport[]
+  operationalExceptions         OperationalExceptionCase[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -472,6 +648,21 @@ model ContainerImportBinding {
   @@unique([tenantId, sourceBatchId, containerNumber], map: "container_import_binding_scope_key")
   @@index([containerRecordId, tenantId], map: "container_import_binding_container_idx")
   @@map("container_import_binding")
+}
+
+// 外部柜次身份：箱号可复用，不能作为跨交接的永久身份。
+model ContainerSourceIdentity {
+  id                String          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String          @map("tenant_id")
+  sourceSystem      String          @map("source_system")
+  sourceRecordId    String          @map("source_record_id")
+  containerRecordId String          @map("container_record_id")
+  containerRecord   ContainerRecord @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, sourceSystem, sourceRecordId], map: "container_source_identity_source_key")
+  @@index([containerRecordId, tenantId], map: "container_source_identity_container_idx")
+  @@map("container_source_identity")
 }
 
 // 货柜海运路线版本（lifecycle-control 读取，后续由受控路线写端口维护）。
@@ -601,7 +792,6 @@ model LifecycleDateFact {
   applicationReasonCode String?             @map("application_reason_code")
   canonicalEventId      String?             @unique(map: "lifecycle_date_fact_canonical_event_key") @map("canonical_event_id")
   canonicalEvent        CanonicalEvent?     @relation("LifecycleDateFactAppliedEvent", fields: [canonicalEventId], references: [id])
-  sourceCanonicalEvent  CanonicalEvent?     @relation("CanonicalEventDomainFact")
   nodeBlocks            NodeBlock[]
   projectionVersion     Int                 @map("projection_version")
   traceId               String              @map("trace_id")
@@ -701,12 +891,316 @@ model ReplenishmentOrderLine {
   createdAt                   DateTime                   @default(now()) @map("created_at")
   updatedAt                   DateTime                   @updatedAt @map("updated_at")
   cargoAllocations            ContainerCargoAllocation[]
+  shipmentCargoLines          ShipmentCargoLine[]
 
   @@unique([sourceBatchId, sourceRowId], map: "replenishment_order_line_source_key")
   @@unique([id, tenantId], map: "replenishment_order_line_id_tenant_key")
   @@index([replenishmentOrderId, isCurrent], map: "replenishment_order_line_current_idx")
   @@index([tenantId, productSkuId, isCurrent], map: "replenishment_order_line_sku_current_idx")
   @@map("replenishment_order_line")
+}
+
+// 已实际出运的主运输执行；计划、HBL、货柜和备货单都不是 Shipment 身份。
+model Shipment {
+  id                     String                      @id @default(uuid()) @map("id") @db.Uuid
+  tenantId               String                      @map("tenant_id")
+  shipmentNumber         String?                     @map("shipment_number")
+  sourceSystem           String                      @map("source_system")
+  sourceRecordId         String                      @map("source_record_id")
+  sourceVersion          String                      @map("source_version")
+  importBatchId          String?                     @map("import_batch_id")
+  transportMode          String                      @map("transport_mode")
+  carrierCode            String                      @map("carrier_code")
+  vesselName             String                      @map("vessel_name")
+  voyageNumber           String                      @map("voyage_number")
+  originCountryCode      String                      @map("origin_country_code") @db.Char(2)
+  originUnlocode         String                      @map("origin_unlocode")
+  destinationCountryCode String                      @map("destination_country_code") @db.Char(2)
+  destinationUnlocode    String                      @map("destination_unlocode")
+  cargoOwnerId           String?                     @map("cargo_owner_id") @db.Uuid
+  cargoOwner             CargoOwnerReference?        @relation(fields: [cargoOwnerId], references: [id], onDelete: Restrict)
+  finalDestinationType   String?                     @map("final_destination_type")
+  finalDestinationId     String?                     @map("final_destination_id") @db.Uuid
+  etdAt                  DateTime?                   @map("etd_at") @db.Timestamptz
+  atdAt                  DateTime?                   @map("atd_at") @db.Timestamptz
+  etaAt                  DateTime?                   @map("eta_at") @db.Timestamptz
+  ataAt                  DateTime?                   @map("ata_at") @db.Timestamptz
+  currentLifecycleStatus String                      @map("current_lifecycle_status")
+  lifecycleVersion       Int                         @default(1) @map("lifecycle_version")
+  relationshipVersion    Int                         @default(1) @map("relationship_version")
+  createdBy              String                      @map("created_by") @db.Uuid
+  updatedBy              String                      @map("updated_by") @db.Uuid
+  createdAt              DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
+  handoffs               ShipmentHandoffRecord[]
+  containerLinks         ShipmentContainerLink[]
+  cargoLines             ShipmentCargoLine[]
+  transportDocuments     ShipmentTransportDocument[]
+  upstreamReferences     ShipmentUpstreamReference[]
+  lifecycleFlows         FlowInstance[]
+  eventApplications      ShipmentEventApplication[]
+  operationalExceptions  OperationalExceptionCase[]
+
+  @@unique([id, tenantId], map: "shipment_id_tenant_key")
+  @@unique([tenantId, shipmentNumber], map: "shipment_tenant_number_key")
+  @@unique([tenantId, sourceSystem, sourceRecordId], map: "shipment_source_identity_key")
+  @@index([tenantId, currentLifecycleStatus, updatedAt, id], map: "shipment_status_page_idx")
+  @@index([tenantId, carrierCode, voyageNumber], map: "shipment_carrier_voyage_idx")
+  @@index([tenantId, destinationUnlocode, etaAt], map: "shipment_destination_eta_idx")
+  @@index([cargoOwnerId], map: "shipment_cargo_owner_idx")
+  @@map("shipment")
+}
+
+// 每次外部交接不可变；更正追加版本并引用旧版本，规范载荷哈希由服务端计算。
+model ShipmentHandoffRecord {
+  id                     String                          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId               String                          @map("tenant_id")
+  sourceProfile          String                          @map("source_profile")
+  ingestionChannel       String                          @map("ingestion_channel")
+  sourceSystem           String                          @map("source_system")
+  externalHandoffId      String                          @map("external_handoff_id")
+  handoffVersion         Int                             @map("handoff_version")
+  supersedesHandoffId    String?                         @map("supersedes_handoff_id") @db.Uuid
+  supersedesHandoff      ShipmentHandoffRecord?          @relation("ShipmentHandoffSupersession", fields: [supersedesHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  supersededBy           ShipmentHandoffRecord?          @relation("ShipmentHandoffSupersession")
+  occurredAt             DateTime                        @map("occurred_at") @db.Timestamptz
+  idempotencyKey         String                          @map("idempotency_key")
+  payloadHash            String                          @map("payload_hash")
+  payloadJson            Json                            @map("payload_json")
+  lifecycleRequestJson   Json?                           @map("lifecycle_request_json")
+  status                 String                          @map("status")
+  supersededAt           DateTime?                       @map("superseded_at") @db.Timestamptz
+  shipmentId             String?                         @map("shipment_id") @db.Uuid
+  shipment               Shipment?                       @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorId                String                          @map("actor_id") @db.Uuid
+  traceId                String                          @map("trace_id")
+  createdAt              DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime                        @updatedAt @map("updated_at") @db.Timestamptz
+  containerLinks         ShipmentContainerLink[]
+  cargoLines             ShipmentCargoLine[]
+  transportDocuments     ShipmentTransportDocument[]
+  upstreamReferences     ShipmentUpstreamReference[]
+  objectResults          ShipmentHandoffObjectResult[]
+  containerDocumentLinks ShipmentContainerDocumentLink[]
+
+  @@unique([id, tenantId], map: "shipment_handoff_id_tenant_key")
+  @@unique([tenantId, sourceSystem, externalHandoffId, handoffVersion], map: "shipment_handoff_source_version_key")
+  @@unique([tenantId, idempotencyKey], map: "shipment_handoff_tenant_idempotency_key")
+  @@unique([supersedesHandoffId, tenantId], map: "shipment_handoff_supersedes_tenant_key")
+  @@index([tenantId, status, createdAt], map: "shipment_handoff_status_idx")
+  @@index([shipmentId, tenantId], map: "shipment_handoff_shipment_idx")
+  @@map("shipment_handoff_record")
+}
+
+model ShipmentHandoffObjectResult {
+  id          String                @id @default(uuid()) @map("id") @db.Uuid
+  tenantId    String                @map("tenant_id")
+  handoffId   String                @map("handoff_id") @db.Uuid
+  handoff     ShipmentHandoffRecord @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  objectType  String                @map("object_type")
+  sourceRef   String                @map("source_ref")
+  resultState String                @map("result_state")
+  entityId    String?               @map("entity_id") @db.Uuid
+  issueCodes  Json                  @map("issue_codes")
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([handoffId, objectType, sourceRef], map: "shipment_handoff_object_result_key")
+  @@index([tenantId, handoffId, objectType], map: "shipment_handoff_object_result_lookup_idx")
+  @@map("shipment_handoff_object_result")
+}
+
+model ShipmentContainerLink {
+  id                String                          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String                          @map("tenant_id")
+  shipmentId        String                          @map("shipment_id") @db.Uuid
+  shipment          Shipment                        @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  containerRecordId String                          @map("container_record_id")
+  containerRecord   ContainerRecord                 @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version           Int                             @map("version")
+  state             String                          @map("state")
+  supersedesLinkId  String?                         @map("supersedes_link_id") @db.Uuid
+  supersedesLink    ShipmentContainerLink?          @relation("ShipmentContainerLinkSupersession", fields: [supersedesLinkId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  supersededBy      ShipmentContainerLink?          @relation("ShipmentContainerLinkSupersession")
+  sourceHandoffId   String                          @map("source_handoff_id") @db.Uuid
+  sourceHandoff     ShipmentHandoffRecord           @relation(fields: [sourceHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  evidenceRefs      Json                            @map("evidence_refs")
+  idempotencyKey    String                          @map("idempotency_key")
+  joinedAt          DateTime                        @map("joined_at") @db.Timestamptz
+  removedAt         DateTime?                       @map("removed_at") @db.Timestamptz
+  supersededAt      DateTime?                       @map("superseded_at") @db.Timestamptz
+  createdAt         DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+  documentLinks     ShipmentContainerDocumentLink[]
+  eventScopeMembers CanonicalEventScopeMember[]
+
+  @@unique([id, tenantId], map: "shipment_container_link_id_tenant_key")
+  @@unique([id, tenantId, containerRecordId], map: "shipment_container_link_id_scope_key")
+  @@unique([tenantId, idempotencyKey], map: "shipment_container_link_tenant_idempotency_key")
+  @@unique([shipmentId, containerRecordId, version], map: "shipment_container_link_version_key")
+  @@unique([supersedesLinkId, tenantId, containerRecordId], map: "shipment_container_link_supersedes_scope_key")
+  @@index([tenantId, shipmentId, state], map: "shipment_container_link_shipment_idx")
+  @@index([tenantId, containerRecordId, state], map: "shipment_container_link_container_idx")
+  @@index([sourceHandoffId, tenantId], map: "shipment_container_link_handoff_idx")
+  @@map("shipment_container_link")
+}
+
+// 独立异常案件事实；与流程 Block 正交，不通过异常状态改写主生命周期。
+model OperationalExceptionCase {
+  id                String          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String          @map("tenant_id")
+  containerRecordId String          @map("container_record_id")
+  containerRecord   ContainerRecord @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentId        String?         @map("shipment_id") @db.Uuid
+  shipment          Shipment?       @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  exceptionCode     String          @map("exception_code")
+  severity          String          @map("severity")
+  status            String          @map("status")
+  sourceDomain      String          @map("source_domain")
+  sourceRecordId    String          @map("source_record_id")
+  sourceVersion     String          @map("source_version")
+  summary           String?         @map("summary")
+  occurredAt        DateTime        @map("occurred_at") @db.Timestamptz
+  resolvedAt        DateTime?       @map("resolved_at") @db.Timestamptz
+  evidenceRefs      Json            @map("evidence_refs")
+  version           Int             @default(1) @map("version")
+  idempotencyKey    String          @map("idempotency_key")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "operational_exception_case_id_tenant_key")
+  @@unique([tenantId, sourceDomain, sourceRecordId, sourceVersion], map: "operational_exception_case_source_key")
+  @@unique([tenantId, idempotencyKey], map: "operational_exception_case_idempotency_key")
+  @@index([tenantId, containerRecordId, status, occurredAt, id], map: "operational_exception_case_container_status_idx")
+  @@index([tenantId, shipmentId, status, occurredAt, id], map: "operational_exception_case_shipment_status_idx")
+  @@map("operational_exception_case")
+}
+
+model ShipmentCargoLine {
+  id                       String                      @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                 String                      @map("tenant_id")
+  shipmentId               String                      @map("shipment_id") @db.Uuid
+  shipment                 Shipment                    @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  lineNo                   Int                         @map("line_no")
+  productSkuId             String?                     @map("product_sku_id") @db.Uuid
+  productSku               ProductSku?                 @relation(fields: [productSkuId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productNumberSnapshot    String                      @map("product_number_snapshot")
+  quantity                 Decimal                     @map("quantity") @db.Decimal(18, 4)
+  quantityUnit             String                      @map("quantity_unit")
+  packageCount             Decimal?                    @map("package_count") @db.Decimal(18, 4)
+  packageUnit              String?                     @map("package_unit")
+  grossWeight              Decimal?                    @map("gross_weight") @db.Decimal(18, 4)
+  weightUnit               String?                     @map("weight_unit")
+  volume                   Decimal?                    @map("volume") @db.Decimal(18, 4)
+  volumeUnit               String?                     @map("volume_unit")
+  destinationId            String?                     @map("destination_id") @db.Uuid
+  replenishmentOrderLineId String?                     @map("replenishment_order_line_id")
+  replenishmentOrderLine   ReplenishmentOrderLine?     @relation(fields: [replenishmentOrderLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  sourceHandoffId          String                      @map("source_handoff_id") @db.Uuid
+  sourceHandoff            ShipmentHandoffRecord       @relation(fields: [sourceHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  sourceLineId             String                      @map("source_line_id")
+  version                  Int                         @default(1) @map("version")
+  state                    String                      @default("active") @map("state")
+  supersedesCargoLineId    String?                     @map("supersedes_cargo_line_id") @db.Uuid
+  supersedesCargoLine      ShipmentCargoLine?          @relation("ShipmentCargoLineSupersession", fields: [supersedesCargoLineId, tenantId, shipmentId], references: [id, tenantId, shipmentId], onDelete: Restrict)
+  supersededBy             ShipmentCargoLine?          @relation("ShipmentCargoLineSupersession")
+  supersededAt             DateTime?                   @map("superseded_at") @db.Timestamptz
+  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
+  containerAllocations     ContainerCargoAllocation[]
+  upstreamReferences       ShipmentUpstreamReference[]
+
+  @@unique([id, tenantId], map: "shipment_cargo_line_id_tenant_key")
+  @@unique([id, tenantId, shipmentId], map: "shipment_cargo_line_id_scope_key")
+  @@unique([shipmentId, version, lineNo], map: "shipment_cargo_line_number_version_key")
+  @@unique([tenantId, shipmentId, sourceLineId, version], map: "shipment_cargo_line_source_version_key")
+  @@unique([supersedesCargoLineId, tenantId, shipmentId], map: "shipment_cargo_line_supersedes_scope_key")
+  @@unique([tenantId, sourceHandoffId, sourceLineId], map: "shipment_cargo_line_source_key")
+  @@index([tenantId, shipmentId, state], map: "shipment_cargo_line_active_idx")
+  @@index([tenantId, productSkuId], map: "shipment_cargo_line_sku_idx")
+  @@index([replenishmentOrderLineId, tenantId], map: "shipment_cargo_line_replenishment_idx")
+  @@map("shipment_cargo_line")
+}
+
+model ShipmentTransportDocument {
+  id               String                          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId         String                          @map("tenant_id")
+  shipmentId       String                          @map("shipment_id") @db.Uuid
+  shipment         Shipment                        @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  documentType     String                          @map("document_type")
+  documentNumber   String                          @map("document_number")
+  scac             String?                         @map("scac")
+  parentDocumentId String?                         @map("parent_document_id") @db.Uuid
+  parentDocument   ShipmentTransportDocument?      @relation("ShipmentDocumentParent", fields: [parentDocumentId, tenantId, shipmentId], references: [id, tenantId, shipmentId], onDelete: Restrict)
+  childDocuments   ShipmentTransportDocument[]     @relation("ShipmentDocumentParent")
+  version          Int                             @map("version")
+  state            String                          @map("state")
+  sourceHandoffId  String                          @map("source_handoff_id") @db.Uuid
+  sourceHandoff    ShipmentHandoffRecord           @relation(fields: [sourceHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  effectiveFrom    DateTime                        @map("effective_from") @db.Timestamptz
+  supersededAt     DateTime?                       @map("superseded_at") @db.Timestamptz
+  createdAt        DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+  containerLinks   ShipmentContainerDocumentLink[]
+
+  @@unique([id, tenantId], map: "shipment_document_id_tenant_key")
+  @@unique([id, tenantId, shipmentId], map: "shipment_document_id_scope_key")
+  @@unique([shipmentId, documentType, documentNumber, version], map: "shipment_document_version_key")
+  @@index([tenantId, documentType, documentNumber], map: "shipment_document_number_idx")
+  @@index([sourceHandoffId, tenantId], map: "shipment_document_handoff_idx")
+  @@map("shipment_transport_document")
+}
+
+model ShipmentContainerDocumentLink {
+  id                      String                    @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                String                    @map("tenant_id")
+  shipmentId              String                    @map("shipment_id") @db.Uuid
+  containerRecordId       String                    @map("container_record_id")
+  containerRecord         ContainerRecord           @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentContainerLinkId String                    @map("shipment_container_link_id") @db.Uuid
+  shipmentContainerLink   ShipmentContainerLink     @relation(fields: [shipmentContainerLinkId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  transportDocumentId     String                    @map("transport_document_id") @db.Uuid
+  transportDocument       ShipmentTransportDocument @relation(fields: [transportDocumentId, tenantId, shipmentId], references: [id, tenantId, shipmentId], onDelete: Restrict)
+  sourceHandoffId         String                    @map("source_handoff_id") @db.Uuid
+  sourceHandoff           ShipmentHandoffRecord     @relation(fields: [sourceHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt               DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, shipmentContainerLinkId, transportDocumentId], map: "shipment_container_document_link_key")
+  @@index([tenantId, transportDocumentId], map: "shipment_container_document_document_idx")
+  @@index([sourceHandoffId, tenantId], map: "shipment_container_document_handoff_idx")
+  @@map("shipment_container_document_link")
+}
+
+model ShipmentUpstreamReference {
+  id                    String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId              String                     @map("tenant_id")
+  shipmentId            String                     @map("shipment_id") @db.Uuid
+  shipment              Shipment                   @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  containerRecordId     String                     @map("container_record_id")
+  containerRecord       ContainerRecord            @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentCargoLineId   String?                    @map("shipment_cargo_line_id") @db.Uuid
+  shipmentCargoLine     ShipmentCargoLine?         @relation(fields: [shipmentCargoLineId, tenantId, shipmentId], references: [id, tenantId, shipmentId], onDelete: Restrict)
+  referenceType         String                     @map("reference_type")
+  sourceSystem          String                     @map("source_system")
+  sourceRecordId        String                     @map("source_record_id")
+  sourceVersion         String?                    @map("source_version")
+  sourceLineId          String?                    @map("source_line_id")
+  metadata              Json?                      @map("metadata")
+  sourceHandoffId       String                     @map("source_handoff_id") @db.Uuid
+  sourceHandoff         ShipmentHandoffRecord      @relation(fields: [sourceHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version               Int                        @default(1) @map("version")
+  state                 String                     @default("active") @map("state")
+  supersedesReferenceId String?                    @map("supersedes_reference_id") @db.Uuid
+  supersedesReference   ShipmentUpstreamReference? @relation("ShipmentUpstreamReferenceSupersession", fields: [supersedesReferenceId, tenantId, shipmentId], references: [id, tenantId, shipmentId], onDelete: Restrict)
+  supersededBy          ShipmentUpstreamReference? @relation("ShipmentUpstreamReferenceSupersession")
+  supersededAt          DateTime?                  @map("superseded_at") @db.Timestamptz
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId, shipmentId], map: "shipment_upstream_reference_id_scope_key")
+  @@unique([tenantId, shipmentId, containerRecordId, referenceType, sourceSystem, sourceRecordId, sourceLineId, version], map: "shipment_upstream_reference_source_version_key")
+  @@unique([supersedesReferenceId, tenantId, shipmentId], map: "shipment_upstream_reference_supersedes_scope_key")
+  @@index([tenantId, shipmentId, state], map: "shipment_upstream_reference_active_idx")
+  @@index([tenantId, referenceType, sourceRecordId], map: "shipment_upstream_reference_lookup_idx")
+  @@index([shipmentCargoLineId, tenantId], map: "shipment_upstream_reference_cargo_idx")
+  @@index([sourceHandoffId, tenantId], map: "shipment_upstream_reference_handoff_idx")
+  @@map("shipment_upstream_reference")
 }
 
 // 货柜实际装载快照（shipment-registry 拥有）：每柜只有一个 active 版本，更正追加新集合。
@@ -870,14 +1364,23 @@ model ContainerCargoAllocation {
   tenantId                 String                      @map("tenant_id")
   allocationSetId          String                      @map("allocation_set_id") @db.Uuid
   allocationSet            ContainerCargoAllocationSet @relation(fields: [allocationSetId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  replenishmentOrderLineId String                      @map("replenishment_order_line_id")
-  replenishmentOrderLine   ReplenishmentOrderLine      @relation(fields: [replenishmentOrderLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  allocatedQuantity        Decimal                     @map("allocated_quantity") @db.Decimal(18, 3)
+  replenishmentOrderLineId String?                     @map("replenishment_order_line_id")
+  replenishmentOrderLine   ReplenishmentOrderLine?     @relation(fields: [replenishmentOrderLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentCargoLineId      String?                     @map("shipment_cargo_line_id") @db.Uuid
+  shipmentCargoLine        ShipmentCargoLine?          @relation(fields: [shipmentCargoLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  allocatedQuantity        Decimal                     @map("allocated_quantity") @db.Decimal(18, 4)
   quantityUnit             String                      @map("quantity_unit")
+  packageCount             Decimal?                    @map("package_count") @db.Decimal(18, 4)
+  packageUnit              String?                     @map("package_unit")
+  grossWeight              Decimal?                    @map("gross_weight") @db.Decimal(18, 4)
+  weightUnit               String?                     @map("weight_unit")
+  volume                   Decimal?                    @map("volume") @db.Decimal(18, 4)
+  volumeUnit               String?                     @map("volume_unit")
   createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([allocationSetId, replenishmentOrderLineId], map: "container_cargo_allocation_set_line_key")
   @@index([tenantId, replenishmentOrderLineId], map: "container_cargo_allocation_line_idx")
+  @@index([tenantId, shipmentCargoLineId], map: "container_cargo_allocation_shipment_line_idx")
   @@map("container_cargo_allocation")
 }
 
@@ -1006,16 +1509,22 @@ model ImportRowResult {
 
 // 流程实例（lifecycle-control 拥有）：一个货柜的生命周期流程（1:1 货柜）。
 model FlowInstance {
-  id              String         @id @default(uuid()) @map("id")
-  containerId     String         @unique @map("container_id")
-  state           String         @map("state") // draft | active | completed | cancelled
-  currentNodeCode String         @map("current_node_code") // LifecycleNodeCode
-  version         Int            @default(0) @map("version")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-  nodes           NodeInstance[]
-  nodeBlocks      NodeBlock[]
+  id                          String         @id @default(uuid()) @map("id")
+  containerId                 String         @unique @map("container_id")
+  state                       String         @map("state") // draft | active | completed | cancelled
+  currentNodeCode             String         @map("current_node_code") // LifecycleNodeCode
+  version                     Int            @default(0) @map("version")
+  definitionCode              String         @default("legacy_full_container") @map("definition_code")
+  definitionVersion           Int            @default(1) @map("definition_version")
+  shipmentId                  String?        @map("shipment_id") @db.Uuid
+  shipment                    Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  shipmentRelationshipVersion Int?           @map("shipment_relationship_version")
+  createdAt                   DateTime       @default(now()) @map("created_at")
+  updatedAt                   DateTime       @updatedAt @map("updated_at")
+  nodes                       NodeInstance[]
+  nodeBlocks                  NodeBlock[]
 
+  @@index([shipmentId, shipmentRelationshipVersion], map: "flow_instance_shipment_scope_idx")
   @@map("flow_instance")
 }
 
@@ -1096,30 +1605,90 @@ model NodeApplicabilityDecision {
 
 // 规范事件流水账（lifecycle-control 拥有）：不可变事件留痕，可追溯/重放/幂等。
 model CanonicalEvent {
-  id                        String                     @id @default(uuid()) @map("id")
-  containerId               String                     @map("container_id")
-  eventCode                 String                     @map("event_code")
-  domainFactId              String?                    @unique(map: "canonical_event_domain_fact_key") @map("domain_fact_id")
-  nodeCode                  String?                    @map("node_code")
-  timeKind                  String?                    @map("time_kind")
-  authorityPolicyRef        String?                    @map("authority_policy_ref")
-  locationType              String?                    @map("location_type")
-  unlocode                  String?                    @map("unlocode")
-  locationId                String?                    @map("location_id")
-  segmentId                 String?                    @map("segment_id")
-  portCallId                String?                    @map("port_call_id")
-  locationTimezone          String?                    @map("location_timezone")
-  domainFact                LifecycleDateFact?         @relation("CanonicalEventDomainFact", fields: [domainFactId], references: [id], onDelete: Restrict)
-  occurredAt                DateTime                   @map("occurred_at")
-  evidenceRefs              Json                       @map("evidence_refs")
-  idempotencyKey            String                     @unique @map("idempotency_key")
-  appliedAt                 DateTime                   @default(now()) @map("applied_at")
-  dateFact                  LifecycleDateFact?         @relation("LifecycleDateFactAppliedEvent")
+  id                        String                      @id @default(uuid()) @map("id")
+  tenantId                  String?                     @map("tenant_id")
+  containerId               String?                     @map("container_id")
+  subjectType               String?                     @map("subject_type")
+  subjectId                 String?                     @map("subject_id")
+  subjectVersion            Int?                        @map("subject_version")
+  scopeVersion              Int?                        @map("scope_version")
+  eventCode                 String                      @map("event_code")
+  eventVersion              Int                         @default(1) @map("event_version")
+  domainFactId              String?                     @unique(map: "canonical_event_domain_fact_key") @map("domain_fact_id")
+  domainFactType            String?                     @map("domain_fact_type")
+  domain                    String?                     @map("domain")
+  role                      String?                     @map("role")
+  eventSequence             Int?                        @map("event_sequence")
+  nodeCode                  String?                     @map("node_code")
+  timeKind                  String?                     @map("time_kind")
+  authorityPolicyRef        String?                     @map("authority_policy_ref")
+  locationType              String?                     @map("location_type")
+  unlocode                  String?                     @map("unlocode")
+  locationId                String?                     @map("location_id")
+  segmentId                 String?                     @map("segment_id")
+  portCallId                String?                     @map("port_call_id")
+  locationTimezone          String?                     @map("location_timezone")
+  source                    Json?                       @map("source")
+  confidenceState           String?                     @map("confidence_state")
+  validity                  String?                     @map("validity")
+  data                      Json?                       @map("data")
+  correlationId             String?                     @map("correlation_id") @db.Uuid
+  causationId               String?                     @map("causation_id") @db.Uuid
+  traceId                   String?                     @map("trace_id")
+  occurredAt                DateTime                    @map("occurred_at")
+  recordedAt                DateTime                    @default(now()) @map("recorded_at") @db.Timestamptz
+  evidenceRefs              Json                        @map("evidence_refs")
+  idempotencyKey            String                      @unique @map("idempotency_key")
+  appliedAt                 DateTime                    @default(now()) @map("applied_at")
+  dateFact                  LifecycleDateFact?          @relation("LifecycleDateFactAppliedEvent")
   nodeApplications          NodeEventApplication[]
   workOrderFactApplications WorkOrderFactApplication[]
+  scopeMembers              CanonicalEventScopeMember[]
+  shipmentApplication       ShipmentEventApplication?
 
   @@index([containerId, occurredAt, id], map: "canonical_event_container_occurred_idx")
+  @@index([tenantId, subjectType, subjectId, occurredAt, id], map: "canonical_event_subject_occurred_idx")
   @@map("canonical_event")
+}
+
+// Shipment 主体事件接受时冻结关系范围，保证后续重放不随当前柜关系漂移。
+model CanonicalEventScopeMember {
+  id                      String                @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                String                @map("tenant_id")
+  eventId                 String                @map("event_id")
+  event                   CanonicalEvent        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  containerRecordId       String                @map("container_record_id")
+  containerRecord         ContainerRecord       @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentContainerLinkId String                @map("shipment_container_link_id") @db.Uuid
+  shipmentContainerLink   ShipmentContainerLink @relation(fields: [shipmentContainerLinkId, tenantId, containerRecordId], references: [id, tenantId, containerRecordId], onDelete: Restrict)
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([eventId, containerRecordId], map: "canonical_event_scope_member_key")
+  @@index([tenantId, containerRecordId, eventId], map: "canonical_event_scope_container_idx")
+  @@map("canonical_event_scope_member")
+}
+
+// Shipment 主状态是事件投影；应用记录保存规则版本、守卫与并发版本。
+model ShipmentEventApplication {
+  id                String         @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String         @map("tenant_id")
+  shipmentId        String         @map("shipment_id") @db.Uuid
+  shipment          Shipment       @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  eventId           String         @unique(map: "shipment_event_application_event_key") @map("event_id")
+  event             CanonicalEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  state             String         @map("state")
+  previousStatus    String         @map("previous_status")
+  resultingStatus   String         @map("resulting_status")
+  aggregationRule   String         @map("aggregation_rule")
+  ruleVersion       Int            @map("rule_version")
+  guardResults      Json           @map("guard_results")
+  projectionVersion Int            @map("projection_version")
+  appliedAt         DateTime       @map("applied_at") @db.Timestamptz
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([shipmentId, projectionVersion], map: "shipment_event_application_projection_key")
+  @@index([tenantId, shipmentId, appliedAt], map: "shipment_event_application_shipment_idx")
+  @@map("shipment_event_application")
 }
 
 // 规范事件对单个目标节点的应用结果；同一事件可随前序满足而逐节点重放。

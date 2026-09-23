@@ -1,5 +1,11 @@
 import { LIFECYCLE_OUTBOX_OWNER } from "./outbox-message";
 
+export const SHIPMENT_REGISTRY_OUTBOX_OWNER = "shipment-registry";
+export const PUBLISHABLE_OUTBOX_OWNER_MODULES = [
+  LIFECYCLE_OUTBOX_OWNER,
+  SHIPMENT_REGISTRY_OUTBOX_OWNER,
+] as const;
+
 export const FIRST_SLICE_PUBLISH_LEASE_SECONDS = 30;
 export const DEFAULT_PUBLISH_BATCH_LIMIT = 50;
 export const MIN_PUBLISH_BATCH_LIMIT = 1;
@@ -126,4 +132,8 @@ export function completeOutboxPublished(input: {
 
 export function lifecycleOutboxOwnerModule(): string {
   return LIFECYCLE_OUTBOX_OWNER;
+}
+
+export function publishableOutboxOwnerModules(): readonly string[] {
+  return PUBLISHABLE_OUTBOX_OWNER_MODULES;
 }

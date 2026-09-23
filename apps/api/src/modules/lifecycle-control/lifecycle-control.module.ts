@@ -35,6 +35,7 @@ import { RecordLifecycleDateFactService } from "./application/record-lifecycle-d
 import { ApproveLifecycleDateFactReviewService } from "./application/approve-lifecycle-date-fact-review.service";
 import { ListLifecycleDateFactReviewsService } from "./application/list-lifecycle-date-fact-reviews.service";
 import { InitializeContainerFlowService } from "./application/initialize-container-flow.service";
+import { InitializePostDepartureLifecycleService } from "./application/initialize-post-departure-lifecycle.service";
 import { DrainDueOutboxService } from "./application/drain-due-outbox.service";
 import { DrainDueSystemOutboxService } from "./application/drain-due-system-outbox.service";
 import { ListDeadLettersService } from "./application/list-dead-letters.service";
@@ -70,6 +71,7 @@ import { CLIENT_OPERATION_REPOSITORY } from "./domain/client-operation.repositor
 import { COMPENSATION_REPOSITORY } from "./domain/compensation.repository";
 import { INBOX_REPOSITORY } from "./domain/inbox.repository";
 import { OUTBOX_REPOSITORY } from "./domain/outbox.repository";
+import { POST_DEPARTURE_LIFECYCLE_REPOSITORY } from "./domain/post-departure-lifecycle.repository";
 import { LIFECYCLE_DATE_FACT_REPOSITORY } from "./domain/lifecycle-date-fact.repository";
 import { SOURCE_AUTHORITY_POLICY_REPOSITORY } from "./domain/source-authority-policy.repository";
 import { PrismaClientOperationRepository } from "./infrastructure/prisma-client-operation.repository";
@@ -80,6 +82,7 @@ import { PrismaSourceAuthorityPolicyRepository } from "./infrastructure/prisma-s
 import { LifecycleInboxConsumption } from "./infrastructure/lifecycle-inbox-consumption";
 import { PrismaLifecycleRepository } from "./infrastructure/prisma-lifecycle.repository";
 import { PrismaOutboxRepository } from "./infrastructure/prisma-outbox.repository";
+import { PrismaPostDepartureLifecycleRepository } from "./infrastructure/prisma-post-departure-lifecycle.repository";
 import { PrismaNodeBlockRepository } from "./infrastructure/prisma-node-block.repository";
 import { StubOutboxDelivery } from "./infrastructure/stub-outbox-delivery";
 import { WorkExecutionOutboxDelivery } from "./infrastructure/work-execution-outbox-delivery";
@@ -141,6 +144,7 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
     ListLifecycleDateFactReviewsService,
     ListLifecycleDateFactsService,
     InitializeContainerFlowService,
+    InitializePostDepartureLifecycleService,
     SetNodeApplicabilityService,
     BlockNodeService,
     ResolveNodeBlockService,
@@ -181,6 +185,10 @@ import { OceanRoutesController } from "./presentation/ocean-routes.controller";
       useClass: PrismaSourceAuthorityPolicyRepository,
     },
     { provide: OUTBOX_REPOSITORY, useClass: PrismaOutboxRepository },
+    {
+      provide: POST_DEPARTURE_LIFECYCLE_REPOSITORY,
+      useClass: PrismaPostDepartureLifecycleRepository,
+    },
     { provide: INBOX_REPOSITORY, useClass: PrismaInboxRepository },
     {
       provide: CLIENT_OPERATION_REPOSITORY,

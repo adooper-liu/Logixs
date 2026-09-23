@@ -235,6 +235,28 @@
         "tenantId": "10000000-0000-4000-8000-000000000002",
         "containerId": "10000000-0000-4000-8000-000000000003",
         "containerNumber": "MSCU1234567",
+        "shipment": {
+          "shipmentId": "71000000-0000-4000-8000-000000000001",
+          "shipmentNumber": "SHIP-2026-001",
+          "linkId": "71000000-0000-4000-8000-000000000002",
+          "linkVersion": 1,
+          "currentLifecycleStatus": "in_transit",
+          "relationshipVersion": 1,
+          "carrierCode": "HMM",
+          "vesselName": "ONE TRUTH",
+          "voyageNumber": "V001",
+          "originCountryCode": "CN",
+          "originUnlocode": "CNNGB",
+          "destinationCountryCode": "US",
+          "salesCountryCode": "US",
+          "cargoOwnerReferenceId": "cb0d6214-2f8b-5de6-a8e4-afcc0411f4d3",
+          "cargoOwnerName": "AOSOM LLC",
+          "destinationUnlocode": "USLAX",
+          "atdAt": "2026-09-22T08:00:00Z",
+          "etaAt": "2026-10-10T08:00:00Z",
+          "transportDocuments": [],
+          "upstreamReferences": []
+        },
         "flow": null,
         "currentNode": null,
         "nodes": [],
@@ -466,6 +488,357 @@
         "nextCursor": null,
         "hasNextPage": false,
         "pageSize": 201
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "complete packing platform Shipment handoff",
+      "schemaRef": "shipment-handoff.schema.json#/$defs/ShipmentHandoffCommandV1",
+      "data": {
+        "contractVersion": "shipment-handoff.v1",
+        "tenantId": "70000000-0000-4000-8000-000000000001",
+        "sourceProfile": "packing_platform_v1",
+        "source": {
+          "channel": "api",
+          "system": "packing-platform",
+          "externalHandoffId": "handoff-001",
+          "handoffVersion": 1,
+          "occurredAt": "2026-09-23T01:00:00+08:00",
+          "idempotencyKey": "packing-platform:handoff-001:1",
+          "correlationId": "70000000-0000-4000-8000-000000000002",
+          "traceId": "trace-shipment-handoff-001"
+        },
+        "shipment": {
+          "externalShipmentId": "shipment-001",
+          "shipmentNumber": "SHP-20260923-001",
+          "transportMode": "ocean",
+          "carrierCode": "HMM",
+          "vesselName": "ONE TRUTH",
+          "voyageNumber": "V001",
+          "originPortCode": "CNNGB",
+          "destinationPortCode": "USLAX",
+          "destinationCountryCode": "US",
+          "salesCountryCode": "US",
+          "cargoOwnerReferenceId": "cb0d6214-2f8b-5de6-a8e4-afcc0411f4d3",
+          "cargoOwnerName": "AOSOM LLC",
+          "departureProof": {
+            "kind": "actual_departure_time",
+            "occurredAt": "2026-09-22T18:00:00+08:00",
+            "sourceTimezone": "Asia/Shanghai",
+            "evidenceRef": "70000000-0000-4000-8000-000000000003"
+          }
+        },
+        "billsOfLading": [
+          {
+            "referenceId": "mbl-1",
+            "documentType": "mbl",
+            "documentNumber": "MBL001",
+            "version": 1
+          }
+        ],
+        "containers": [
+          {
+            "referenceId": "container-1",
+            "containerNumber": "HMMU4956442",
+            "containerTypeCode": "40HQ",
+            "stuffingSnapshotRef": "70000000-0000-4000-8000-000000000004",
+            "billReferences": ["mbl-1"],
+            "upstreamReferences": [],
+            "cargoAllocations": [
+              {
+                "sourceLineId": "line-1",
+                "productNumber": "SKU-001",
+                "quantity": "10",
+                "quantityUnit": "piece"
+              }
+            ]
+          }
+        ],
+        "evidenceReferences": ["70000000-0000-4000-8000-000000000003"]
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "accepted Shipment handoff result with per-object reconciliation",
+      "schemaRef": "shipment-handoff.schema.json#/$defs/ShipmentHandoffResultV1",
+      "data": {
+        "receptionState": "received",
+        "businessDecisionState": "accepted",
+        "commitState": "committed",
+        "handoffId": "73000000-0000-4000-8000-000000000001",
+        "handoffVersion": 1,
+        "duplicate": false,
+        "shipmentId": "73000000-0000-4000-8000-000000000002",
+        "containerResults": [
+          {
+            "objectType": "container",
+            "sourceReferenceId": "container-1",
+            "state": "accepted",
+            "entityId": "73000000-0000-4000-8000-000000000003",
+            "issueCodes": []
+          }
+        ],
+        "cargoResults": [
+          {
+            "objectType": "cargo_line",
+            "sourceReferenceId": "line-1",
+            "state": "accepted",
+            "entityId": "73000000-0000-4000-8000-000000000004",
+            "issueCodes": []
+          }
+        ],
+        "documentResults": [
+          {
+            "objectType": "transport_document",
+            "sourceReferenceId": "mbl-1",
+            "state": "accepted",
+            "entityId": "73000000-0000-4000-8000-000000000005",
+            "issueCodes": []
+          }
+        ],
+        "lifecycleInitializationState": "pending",
+        "customsAssimilationState": "not_applicable",
+        "inlandAssimilationState": "not_applicable",
+        "warehouseAssimilationState": "not_applicable",
+        "issues": [],
+        "traceId": "trace-shipment-handoff-result-001"
+      }
+    },
+    {
+      "contractId": "GC-004",
+      "name": "Shipment-scoped canonical departure event V2",
+      "schemaRef": "canonical-event-envelope-v2.schema.json",
+      "data": {
+        "eventId": "71000000-0000-4000-8000-000000000001",
+        "eventCode": "departed",
+        "eventVersion": 2,
+        "tenantId": "70000000-0000-4000-8000-000000000001",
+        "subject": {
+          "tenantId": "70000000-0000-4000-8000-000000000001",
+          "entityType": "shipment",
+          "entityId": "71000000-0000-4000-8000-000000000002",
+          "ownerModule": "shipment-registry"
+        },
+        "subjectVersion": 1,
+        "scopeVersion": 1,
+        "role": "milestone",
+        "timeKind": "actual",
+        "occurredAt": "2026-09-22T10:00:00Z",
+        "recordedAt": "2026-09-22T10:00:03Z",
+        "eventSequence": 1,
+        "domain": "shipment-registry",
+        "domainFactId": "71000000-0000-4000-8000-000000000003",
+        "domainFactType": "shipment_departure",
+        "authorityPolicyRef": "shipment-departure-v1",
+        "correlationId": "71000000-0000-4000-8000-000000000004",
+        "idempotencyKey": "shipment-001:departed:1",
+        "source": {
+          "sourceSystem": "packing-platform",
+          "authoritySystem": "carrier-confirmation",
+          "provider": "packing-platform",
+          "interfaceCode": "shipment-handoff-v1",
+          "mappingVersion": "1.0.0",
+          "captureSource": "external_evidence",
+          "authorityLevel": "authoritative",
+          "verificationState": "verified",
+          "confidenceState": "confirmed"
+        },
+        "evidenceRefs": ["70000000-0000-4000-8000-000000000003"],
+        "confidenceState": "confirmed",
+        "validity": "effective",
+        "data": {},
+        "traceId": "trace-shipment-event-001"
+      }
+    },
+    {
+      "contractId": "GC-004",
+      "name": "Shipment-scoped V2 event without frozen scope is invalid",
+      "schemaRef": "canonical-event-envelope-v2.schema.json",
+      "valid": false,
+      "data": {
+        "eventId": "72000000-0000-4000-8000-000000000001",
+        "eventCode": "departed",
+        "eventVersion": 2,
+        "tenantId": "70000000-0000-4000-8000-000000000001",
+        "subject": {
+          "tenantId": "70000000-0000-4000-8000-000000000001",
+          "entityType": "shipment",
+          "entityId": "72000000-0000-4000-8000-000000000002",
+          "ownerModule": "shipment-registry"
+        },
+        "subjectVersion": 1,
+        "role": "milestone",
+        "timeKind": "actual",
+        "occurredAt": "2026-09-22T10:00:00Z",
+        "recordedAt": "2026-09-22T10:00:03Z",
+        "eventSequence": 1,
+        "domain": "shipment-registry",
+        "domainFactId": "72000000-0000-4000-8000-000000000003",
+        "domainFactType": "shipment_departure",
+        "authorityPolicyRef": "shipment-departure-v1",
+        "correlationId": "72000000-0000-4000-8000-000000000004",
+        "idempotencyKey": "shipment-002:departed:1",
+        "source": {
+          "sourceSystem": "packing-platform",
+          "authoritySystem": "carrier-confirmation",
+          "provider": "packing-platform",
+          "interfaceCode": "shipment-handoff-v1",
+          "mappingVersion": "1.0.0",
+          "captureSource": "external_evidence",
+          "authorityLevel": "authoritative",
+          "verificationState": "verified",
+          "confidenceState": "confirmed"
+        },
+        "evidenceRefs": ["70000000-0000-4000-8000-000000000003"],
+        "confidenceState": "confirmed",
+        "validity": "effective",
+        "data": {},
+        "traceId": "trace-shipment-event-002"
+      }
+    },
+    {
+      "contractId": "GC-010",
+      "name": "post-departure Shipment detail with current cargo and ready lifecycle",
+      "schemaRef": "container-operational-view.schema.json#/$defs/ShipmentDetailV1",
+      "data": {
+        "shipment": {
+          "id": "74000000-0000-4000-8000-000000000001",
+          "shipmentNumber": "SHIP-REAL-001",
+          "transportMode": "ocean",
+          "carrierCode": "HMM",
+          "vesselName": "ONE TRUTH",
+          "voyageNumber": "V001",
+          "originCountryCode": "CN",
+          "originUnlocode": "CNNGB",
+          "destinationCountryCode": "US",
+          "salesCountryCode": "US",
+          "cargoOwnerReferenceId": "cb0d6214-2f8b-5de6-a8e4-afcc0411f4d3",
+          "cargoOwnerName": "AOSOM LLC",
+          "destinationUnlocode": "USLAX",
+          "atdAt": "2026-09-22T10:00:00Z",
+          "etaAt": "2026-10-10T10:00:00Z",
+          "currentLifecycleStatus": "departed",
+          "lifecycleVersion": 2,
+          "relationshipVersion": 1,
+          "activeContainerCount": 1,
+          "activeCargoLineCount": 1,
+          "lifecycleInitializationState": "ready",
+          "updatedAt": "2026-09-23T10:00:00Z"
+        },
+        "handoff": {
+          "handoffId": "74000000-0000-4000-8000-000000000002",
+          "handoffVersion": 1,
+          "sourceSystem": "packing-platform",
+          "status": "accepted",
+          "occurredAt": "2026-09-22T10:00:00Z",
+          "traceId": "trace-shipment-read-001"
+        },
+        "containers": [
+          {
+            "linkId": "74000000-0000-4000-8000-000000000003",
+            "containerRecordId": "74000000-0000-4000-8000-000000000004",
+            "containerNumber": "HMMU4207629",
+            "containerTypeCode": "40HC",
+            "sealNumber": "SEAL-001",
+            "currentStatus": "shipped",
+            "linkVersion": 1,
+            "currentNodeCode": "ocean_transit",
+            "flowState": "active",
+            "allocations": [
+              {
+                "shipmentCargoLineId": "74000000-0000-4000-8000-000000000005",
+                "allocatedQuantity": "15",
+                "quantityUnit": "carton",
+                "packageCount": "15",
+                "packageUnit": "carton",
+                "grossWeight": "120.5",
+                "weightUnit": "kg",
+                "volume": "3.25",
+                "volumeUnit": "m3"
+              }
+            ]
+          }
+        ],
+        "cargoLines": [
+          {
+            "id": "74000000-0000-4000-8000-000000000005",
+            "lineNo": 1,
+            "productSkuId": null,
+            "productNumber": "SKU-REAL-001",
+            "quantity": "15",
+            "quantityUnit": "carton",
+            "packageCount": "15",
+            "packageUnit": "carton",
+            "grossWeight": "120.5",
+            "weightUnit": "kg",
+            "volume": "3.25",
+            "volumeUnit": "m3",
+            "replenishmentOrderLineId": null,
+            "sourceLineId": "source-line-1",
+            "version": 1
+          }
+        ],
+        "transportDocuments": [
+          {
+            "id": "74000000-0000-4000-8000-000000000006",
+            "documentType": "mbl",
+            "documentNumber": "NBOZ9FF56400",
+            "scac": "HDMU",
+            "parentDocumentId": null,
+            "containerRecordIds": ["74000000-0000-4000-8000-000000000004"],
+            "version": 1,
+            "effectiveFrom": "2026-09-22T10:00:00Z"
+          }
+        ],
+        "upstreamReferences": [
+          {
+            "id": "74000000-0000-4000-8000-000000000007",
+            "containerRecordId": "74000000-0000-4000-8000-000000000004",
+            "shipmentCargoLineId": "74000000-0000-4000-8000-000000000005",
+            "referenceType": "stocking_order",
+            "sourceSystem": "packing-platform",
+            "sourceRecordId": "26DSC01811",
+            "sourceVersion": "1",
+            "sourceLineId": "source-line-1",
+            "version": 1
+          }
+        ],
+        "lifecycleInitialization": {
+          "state": "ready",
+          "activeContainerCount": 1,
+          "initializedContainerCount": 1,
+          "relationshipVersion": 1,
+          "lastErrorCode": null
+        },
+        "projectionVersion": 2,
+        "asOf": "2026-09-23T10:00:01Z"
+      }
+    },
+    {
+      "contractId": "GC-010",
+      "name": "Shipment summary rejects unregistered lifecycle status",
+      "schemaRef": "container-operational-view.schema.json#/$defs/ShipmentSummaryV1",
+      "valid": false,
+      "data": {
+        "id": "75000000-0000-4000-8000-000000000001",
+        "shipmentNumber": null,
+        "transportMode": "ocean",
+        "carrierCode": "HMM",
+        "vesselName": "ONE TRUTH",
+        "voyageNumber": "V001",
+        "originCountryCode": "CN",
+        "originUnlocode": "CNNGB",
+        "destinationCountryCode": "US",
+        "destinationUnlocode": "USLAX",
+        "atdAt": "2026-09-22T10:00:00Z",
+        "etaAt": null,
+        "currentLifecycleStatus": "empty_returned",
+        "lifecycleVersion": 2,
+        "relationshipVersion": 1,
+        "activeContainerCount": 1,
+        "activeCargoLineCount": 1,
+        "lifecycleInitializationState": "ready",
+        "updatedAt": "2026-09-23T10:00:00Z"
       }
     }
   ]

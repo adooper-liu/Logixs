@@ -1,0 +1,5343 @@
+{
+  "version": "1.0.0",
+  "sourceSystem": "legacy_post_departure_workbooks",
+  "sourceSchemaVersion": "2026-09-23",
+  "evidenceRef": "docs/product/domain/evidence/POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923.json",
+  "coverage": { "distinctRawHeaders": 146, "sourceOccurrences": 176 },
+  "sourceSchemas": {
+    "container": {
+      "file": "引出列表_货柜信息表_0923092212.xlsx",
+      "sheetName": "列表数据",
+      "ownerDomain": "shipment-registry"
+    },
+    "customs": {
+      "file": "引出列表_清关信息表_0923092240.xlsx",
+      "sheetName": "列表数据",
+      "ownerDomain": "customs-compliance"
+    },
+    "logistics": {
+      "file": "引出列表_物流信息表_0923092155.xlsx",
+      "sheetName": "列表数据",
+      "ownerDomain": "lifecycle-control + inland-fulfillment"
+    },
+    "warehouse": {
+      "file": "引出列表_仓库信息表_0923092259.xlsx",
+      "sheetName": "列表数据",
+      "ownerDomain": "inland-fulfillment"
+    }
+  },
+  "detailProjectionMappings": [
+    {
+      "rawHeader": "是否查验",
+      "canonicalFieldCode": "customs.case.inspection_flag",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "销往国家",
+      "canonicalFieldCode": "shipment.cargo_owner_name",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "cargo_owner_reference",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "备货单号",
+      "canonicalFieldCode": "upstream.replenishment_order.number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_upstream_reference",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "主备货单号",
+      "canonicalFieldCode": "upstream.replenishment_order.parent_number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_upstream_reference",
+      "mappingKind": "projection_only_derived",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "备货单状态",
+      "canonicalFieldCode": "upstream.replenishment_order.source_status",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_upstream_reference",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "清关状态",
+      "canonicalFieldCode": "customs.case.status",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "物流状态",
+      "canonicalFieldCode": "container.source_logistics_status",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "source_status_snapshot",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "集装箱号",
+      "canonicalFieldCode": "container.number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_record",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "提单号",
+      "canonicalFieldCode": "transport_document.source_bill_number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "船公司",
+      "canonicalFieldCode": "shipment.ocean.carrier_code",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "柜型",
+      "canonicalFieldCode": "container.equipment_type_code",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_record",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "Wayfair SPO",
+      "canonicalFieldCode": "upstream.wayfair_spo.number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_upstream_reference",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "是否装配件",
+      "canonicalFieldCode": "cargo.attribute.contains_assembly_parts",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_cargo_attribute",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "特殊货物体积",
+      "canonicalFieldCode": "container.cargo.special_volume_m3",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "起运港",
+      "canonicalFieldCode": "shipment.route.port_of_loading_unlocode",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "目的港",
+      "canonicalFieldCode": "shipment.route.port_of_discharge_unlocode",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "起运港货代公司",
+      "canonicalFieldCode": "shipment.party.origin_forwarder",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_party_reference",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "入库仓库组",
+      "canonicalFieldCode": "shipment.destination.warehouse_group_code",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "预计到港日期",
+      "canonicalFieldCode": "shipment.arrival.estimated_at",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "ETA修正",
+      "canonicalFieldCode": "source.shipment.arrival_estimate_revision_raw",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_row_review",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "出运日期",
+      "canonicalFieldCode": "shipment.departure.actual_at",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "计划清关日期",
+      "canonicalFieldCode": "customs.clearance.planned_at",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "实际清关日期",
+      "canonicalFieldCode": "customs.clearance.actual_at",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "目的港清关公司",
+      "canonicalFieldCode": "customs.case.broker_party",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "是否开箱",
+      "canonicalFieldCode": "customs.case.container_opened_flag",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "清关单据状态",
+      "canonicalFieldCode": "document.package.customs.status",
+      "ownerDomain": "document-records",
+      "targetObject": "document_package",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "全部生成日期",
+      "canonicalFieldCode": "document.package.generated_at",
+      "ownerDomain": "document-records",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "异常原因(清关信息表）",
+      "canonicalFieldCode": "customs.exception.reason",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "exception_case",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "途经港",
+      "canonicalFieldCode": "shipment.route.transshipment_port_unlocode",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "途经港到达日期",
+      "canonicalFieldCode": "shipment.route.transshipment_arrival_actual_at",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "目的港到达日期",
+      "canonicalFieldCode": "shipment.arrival.actual_at",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "目的港卸船/火车日期",
+      "canonicalFieldCode": "container.discharge.actual_at",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "目的港码头",
+      "canonicalFieldCode": "shipment.route.destination_terminal_code",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "最后免费日期",
+      "canonicalFieldCode": "container.free_time.last_free_at",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "是否预提",
+      "canonicalFieldCode": "inland_move.pre_pull_required",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "运输方式",
+      "canonicalFieldCode": "inland_move.transport_mode_code",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "目的港卡车",
+      "canonicalFieldCode": "inland_move.truck_carrier_party",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "仓库(计划)",
+      "canonicalFieldCode": "warehouse_delivery.planned_warehouse_code",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_delivery_instruction",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "仓库(实际)",
+      "canonicalFieldCode": "warehouse_delivery.actual_warehouse_code",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_receipt",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "入库日期",
+      "canonicalFieldCode": "warehouse_receipt.actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "最晚提柜日期",
+      "canonicalFieldCode": "container.pickup.deadline_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "计划提柜日期",
+      "canonicalFieldCode": "container.pickup.planned_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "提柜日期",
+      "canonicalFieldCode": "container.pickup.actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "最晚送仓日期",
+      "canonicalFieldCode": "warehouse_delivery.deadline_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "计划送仓日期",
+      "canonicalFieldCode": "warehouse_delivery.planned_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "卸柜方式(计划)",
+      "canonicalFieldCode": "container.unloading.planned_method_code",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "container_unloading_operation",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "卸柜方式（实际）",
+      "canonicalFieldCode": "container.unloading.actual_method_code",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "container_unloading_operation",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "最晚卸柜日期",
+      "canonicalFieldCode": "container.unloading.deadline_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "计划卸柜日期",
+      "canonicalFieldCode": "container.unloading.planned_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "卸空日期",
+      "canonicalFieldCode": "container.unloading.completed_actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "最晚还箱日期",
+      "canonicalFieldCode": "container.empty_return.deadline_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "计划还箱日期",
+      "canonicalFieldCode": "container.empty_return.planned_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "还箱日期",
+      "canonicalFieldCode": "container.empty_return.actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "备注(物流信息表）",
+      "canonicalFieldCode": "inland_move.source_note",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move_note",
+      "mappingKind": "projection_only_derived",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "提柜通知",
+      "canonicalFieldCode": "document.container_pickup_notice.file_ref",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "mappingKind": "projection_only_derived",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "货柜承运商",
+      "canonicalFieldCode": "inland_move.container_carrier_party",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "卸柜门",
+      "canonicalFieldCode": "container.unloading.dock_door",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "container_unloading_operation",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "卸柜公司",
+      "canonicalFieldCode": "container.unloading.operator_party",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "container_unloading_operation",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "通知取空日期",
+      "canonicalFieldCode": "container.empty_pickup.notified_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "取空时间",
+      "canonicalFieldCode": "container.empty_pickup.actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "备注(仓库信息表)",
+      "canonicalFieldCode": "warehouse_delivery.source_note",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_delivery_note",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "价格条款",
+      "canonicalFieldCode": "shipment.trade.incoterm_code",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "箱数合计",
+      "canonicalFieldCode": "container.cargo.carton_count",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "体积合计(m3)",
+      "canonicalFieldCode": "container.cargo.volume_m3",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "毛重合计(KG)",
+      "canonicalFieldCode": "container.cargo.gross_weight_kg",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "出运总价",
+      "canonicalFieldCode": "shipment.amount.total",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "议付金额FOB",
+      "canonicalFieldCode": "shipment.amount.negotiated_fob",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "议付金额CIF",
+      "canonicalFieldCode": "shipment.amount.negotiated_cif",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "议付金额",
+      "canonicalFieldCode": "shipment.amount.negotiated",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "海运费币种",
+      "canonicalFieldCode": "shipment.amount.ocean_freight_currency",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "标准海运费金额",
+      "canonicalFieldCode": "shipment.amount.standard_ocean_freight",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "目的地",
+      "canonicalFieldCode": "shipment.destination.delivery_place",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "船名",
+      "canonicalFieldCode": "shipment.ocean.vessel_name",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "航次",
+      "canonicalFieldCode": "shipment.ocean.voyage_number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "ISF申报状态",
+      "canonicalFieldCode": "customs.isf.status",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "ISF申报日期",
+      "canonicalFieldCode": "customs.isf.filed_at",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "免堆期(天)",
+      "canonicalFieldCode": "container.free_time.demurrage_days",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "container_free_time_term",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "场内免箱期(天)",
+      "canonicalFieldCode": "container.free_time.detention_terminal_days",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "container_free_time_term",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "场外免箱期(天)",
+      "canonicalFieldCode": "container.free_time.detention_off_terminal_days",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "container_free_time_term",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "放单日期",
+      "canonicalFieldCode": "transport_document.released_at",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "传递日期",
+      "canonicalFieldCode": "document.package.sent_at",
+      "ownerDomain": "document-records",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "进港日期",
+      "canonicalFieldCode": "container.terminal_gate_in.actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "MBL SCAC",
+      "canonicalFieldCode": "transport_document.mbl.scac",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "MBL Number",
+      "canonicalFieldCode": "transport_document.mbl.number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "HBL SCAC",
+      "canonicalFieldCode": "transport_document.hbl.scac",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "HBL Number",
+      "canonicalFieldCode": "transport_document.hbl.number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "AMS Number",
+      "canonicalFieldCode": "transport_document.ams.number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "进火车堆场日期",
+      "canonicalFieldCode": "container.rail_yard_gate_in.actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "进卡车堆场日期",
+      "canonicalFieldCode": "container.truck_yard_gate_in.actual_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "WMS入库状态",
+      "canonicalFieldCode": "warehouse_receipt.wms_source_status",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_receipt",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "EBS入库状态",
+      "canonicalFieldCode": "warehouse_receipt.ebs_source_status",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_receipt",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "WMS Confirm Date",
+      "canonicalFieldCode": "warehouse_receipt.wms_confirmed_at",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "projection_alias",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "母船出运日期",
+      "canonicalFieldCode": "shipment.route.mother_vessel_departure_actual_at",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "母船船名",
+      "canonicalFieldCode": "shipment.route.mother_vessel_name",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "母船船次",
+      "canonicalFieldCode": "shipment.route.mother_voyage_number",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "含要求打托产品",
+      "canonicalFieldCode": "cargo.attribute.requires_palletization",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_cargo_attribute",
+      "mappingKind": "projection_only_derived",
+      "authority": "read_only_projection"
+    },
+    {
+      "rawHeader": "采购贸易模式",
+      "canonicalFieldCode": "shipment.trade.mode_code",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "mappingKind": "maintenance_field",
+      "authority": "read_only_projection"
+    }
+  ],
+  "mappings": [
+    {
+      "rawHeader": "序号",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "source_only",
+      "canonicalFieldCode": "source.row.sequence",
+      "correctedMeaning": "来源工作表内的展示序号，不作为业务身份",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_row",
+      "dataType": "integer",
+      "validationRule": "positive_integer",
+      "targetDisposition": "source_trace_only",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 1,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.row.sequence",
+          "correctedMeaning": "来源工作表内的展示序号，不作为业务身份",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_row"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 1,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.row.sequence",
+          "correctedMeaning": "来源工作表内的展示序号，不作为业务身份",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_row"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 1,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.row.sequence",
+          "correctedMeaning": "来源工作表内的展示序号，不作为业务身份",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_row"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 1,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.row.sequence",
+          "correctedMeaning": "来源工作表内的展示序号，不作为业务身份",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_row"
+        }
+      ]
+    },
+    {
+      "rawHeader": "单据编号",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.record.id",
+      "correctedMeaning": "来源维护记录的稳定身份，不等同于 Shipment 号",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_record",
+      "dataType": "identifier",
+      "validationRule": "non_blank_stable_source_identifier",
+      "targetDisposition": "external_identity",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 2,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.record.id",
+          "correctedMeaning": "来源维护记录的稳定身份，不等同于 Shipment 号",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_record"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 2,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.record.id",
+          "correctedMeaning": "来源维护记录的稳定身份，不等同于 Shipment 号",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "销往国家",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "UNKNOWN_REFERENCE_CODE",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.cargo_owner_name",
+      "correctedMeaning": "内部货主/分公司名称；经已确认货主主数据映射派生独立销售国家",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "cargo_owner_reference",
+      "dataType": "string",
+      "validationRule": "resolve_confirmed_cargo_owner_and_derive_iso_sales_country",
+      "targetDisposition": "typed_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 2,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "shipment.cargo_owner_name",
+          "correctedMeaning": "内部货主/分公司名称；经已确认货主主数据映射派生独立销售国家",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "cargo_owner_reference"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 2,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "shipment.cargo_owner_name",
+          "correctedMeaning": "内部货主/分公司名称；经已确认货主主数据映射派生独立销售国家",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "cargo_owner_reference"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 3,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "shipment.cargo_owner_name",
+          "correctedMeaning": "内部货主/分公司名称；经已确认货主主数据映射派生独立销售国家",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "cargo_owner_reference"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 4,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "shipment.cargo_owner_name",
+          "correctedMeaning": "内部货主/分公司名称；经已确认货主主数据映射派生独立销售国家",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "cargo_owner_reference"
+        }
+      ]
+    },
+    {
+      "rawHeader": "备货单号",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "upstream.replenishment_order.number",
+      "correctedMeaning": "可核验的上游备货单业务编号",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_upstream_reference",
+      "dataType": "identifier",
+      "validationRule": "resolve_replenishment_order_or_report_conflict",
+      "targetDisposition": "versioned_upstream_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 3,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "upstream.replenishment_order.number",
+          "correctedMeaning": "可核验的上游备货单业务编号",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_upstream_reference"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 3,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "upstream.replenishment_order.number",
+          "correctedMeaning": "可核验的上游备货单业务编号",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_upstream_reference"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 4,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "upstream.replenishment_order.number",
+          "correctedMeaning": "可核验的上游备货单业务编号",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_upstream_reference"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 5,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "upstream.replenishment_order.number",
+          "correctedMeaning": "可核验的上游备货单业务编号",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_upstream_reference"
+        }
+      ]
+    },
+    {
+      "rawHeader": "备货单状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "upstream.replenishment_order.source_status",
+      "correctedMeaning": "来源备货单状态快照，不驱动 Shipment 生命周期",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_upstream_reference",
+      "dataType": "enum",
+      "validationRule": "map_external_status_or_manual_review",
+      "targetDisposition": "versioned_upstream_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 4,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "upstream.replenishment_order.source_status",
+          "correctedMeaning": "来源备货单状态快照，不驱动 Shipment 生命周期",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_upstream_reference"
+        }
+      ]
+    },
+    {
+      "rawHeader": "箱号(集装箱号)",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.number",
+      "correctedMeaning": "ISO 6346 集装箱号规范值",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_record",
+      "dataType": "identifier",
+      "validationRule": "iso_6346_canonical_container_number",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 5,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "container.number",
+          "correctedMeaning": "ISO 6346 集装箱号规范值",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "集装箱号",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.number",
+      "correctedMeaning": "ISO 6346 集装箱号规范值",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_record",
+      "dataType": "identifier",
+      "validationRule": "iso_6346_canonical_container_number",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 4,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "container.number",
+          "correctedMeaning": "ISO 6346 集装箱号规范值",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_record"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 6,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "container.number",
+          "correctedMeaning": "ISO 6346 集装箱号规范值",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_record"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 6,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "container.number",
+          "correctedMeaning": "ISO 6346 集装箱号规范值",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "提单号",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.source_bill_number",
+      "correctedMeaning": "来源未区分类型的提单号，预检必须解析为 MBL/HBL/AMS 之一",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "dataType": "identifier",
+      "validationRule": "resolve_bill_type_and_identity_or_manual_review",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 6,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "transport_document.source_bill_number",
+          "correctedMeaning": "来源未区分类型的提单号，预检必须解析为 MBL/HBL/AMS 之一",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 5,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "transport_document.source_bill_number",
+          "correctedMeaning": "来源未区分类型的提单号，预检必须解析为 MBL/HBL/AMS 之一",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 7,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "transport_document.source_bill_number",
+          "correctedMeaning": "来源未区分类型的提单号，预检必须解析为 MBL/HBL/AMS 之一",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 7,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "transport_document.source_bill_number",
+          "correctedMeaning": "来源未区分类型的提单号，预检必须解析为 MBL/HBL/AMS 之一",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        }
+      ]
+    },
+    {
+      "rawHeader": "船公司",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.ocean.carrier_code",
+      "correctedMeaning": "实际承运船公司规范代码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "enum",
+      "validationRule": "map_carrier_dictionary_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 7,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4,
+          "canonicalFieldCode": "shipment.ocean.carrier_code",
+          "correctedMeaning": "实际承运船公司规范代码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "船名",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.ocean.vessel_name",
+      "correctedMeaning": "实际出运船名",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "string",
+      "validationRule": "non_blank_text",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 8,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8,
+          "canonicalFieldCode": "shipment.ocean.vessel_name",
+          "correctedMeaning": "实际出运船名",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "航次",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.ocean.voyage_number",
+      "correctedMeaning": "实际出运航次",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "string",
+      "validationRule": "non_blank_text",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 9,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8,
+          "canonicalFieldCode": "shipment.ocean.voyage_number",
+          "correctedMeaning": "实际出运航次",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "柜型",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.equipment_type_code",
+      "correctedMeaning": "集装箱箱型规范代码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_record",
+      "dataType": "enum",
+      "validationRule": "map_equipment_type_dictionary_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 10,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.equipment_type_code",
+          "correctedMeaning": "集装箱箱型规范代码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "Wayfairspo",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "upstream.wayfair_spo.number",
+      "correctedMeaning": "Wayfair 上游 SPO 引用",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_upstream_reference",
+      "dataType": "identifier",
+      "validationRule": "non_blank_identifier_when_present",
+      "targetDisposition": "versioned_upstream_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 11,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "upstream.wayfair_spo.number",
+          "correctedMeaning": "Wayfair 上游 SPO 引用",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_upstream_reference"
+        }
+      ]
+    },
+    {
+      "rawHeader": "是否装配件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "cargo.attribute.contains_assembly_parts",
+      "correctedMeaning": "本次装载是否包含装配件产品",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_cargo_attribute",
+      "dataType": "boolean",
+      "validationRule": "map_explicit_boolean_or_manual_review",
+      "targetDisposition": "governed_cargo_attribute",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 12,
+          "nonEmptyCount": 1,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "cargo.attribute.contains_assembly_parts",
+          "correctedMeaning": "本次装载是否包含装配件产品",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_cargo_attribute"
+        }
+      ]
+    },
+    {
+      "rawHeader": "特殊货物体积",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.cargo.special_volume_m3",
+      "correctedMeaning": "本柜特殊货物体积，单位立方米",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_m3",
+      "targetDisposition": "derived_allocation_summary",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 13,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.cargo.special_volume_m3",
+          "correctedMeaning": "本柜特殊货物体积，单位立方米",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_cargo_summary"
+        }
+      ]
+    },
+    {
+      "rawHeader": "起运港",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.port_of_loading_unlocode",
+      "correctedMeaning": "Shipment 主航线起运港 UN/LOCODE",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "enum",
+      "validationRule": "map_port_to_unlocode_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 14,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 5,
+          "canonicalFieldCode": "shipment.route.port_of_loading_unlocode",
+          "correctedMeaning": "Shipment 主航线起运港 UN/LOCODE",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的港",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.port_of_discharge_unlocode",
+      "correctedMeaning": "Shipment 主航线目的港 UN/LOCODE",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "enum",
+      "validationRule": "map_port_to_unlocode_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 15,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4,
+          "canonicalFieldCode": "shipment.route.port_of_discharge_unlocode",
+          "correctedMeaning": "Shipment 主航线目的港 UN/LOCODE",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 8,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4,
+          "canonicalFieldCode": "shipment.route.port_of_discharge_unlocode",
+          "correctedMeaning": "Shipment 主航线目的港 UN/LOCODE",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "起运港货代公司",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.party.origin_forwarder",
+      "correctedMeaning": "起运港货运代理主体引用",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_party_reference",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "versioned_party_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 16,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3,
+          "canonicalFieldCode": "shipment.party.origin_forwarder",
+          "correctedMeaning": "起运港货运代理主体引用",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_party_reference"
+        }
+      ]
+    },
+    {
+      "rawHeader": "入库仓库组",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.destination.warehouse_group_code",
+      "correctedMeaning": "Shipment 最终目的仓库组规范代码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "enum",
+      "validationRule": "map_warehouse_group_dictionary_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 17,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3,
+          "canonicalFieldCode": "shipment.destination.warehouse_group_code",
+          "correctedMeaning": "Shipment 最终目的仓库组规范代码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "出运日期",
+      "storageNullable": true,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.departure.actual_at",
+      "correctedMeaning": "有证据支持的实际离港时间 ATD",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 18,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4,
+          "canonicalFieldCode": "shipment.departure.actual_at",
+          "correctedMeaning": "有证据支持的实际离港时间 ATD",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 6,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4,
+          "canonicalFieldCode": "shipment.departure.actual_at",
+          "correctedMeaning": "有证据支持的实际离港时间 ATD",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "途径港",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.transshipment_port_unlocode",
+      "correctedMeaning": "有序海运航段中的途经港 UN/LOCODE",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "dataType": "enum",
+      "validationRule": "map_port_to_unlocode_or_manual_review",
+      "targetDisposition": "versioned_route_segment",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 19,
+          "nonEmptyCount": 9,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "shipment.route.transshipment_port_unlocode",
+          "correctedMeaning": "有序海运航段中的途经港 UN/LOCODE",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_route_segment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "制单人",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.prepared_by",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "string",
+      "validationRule": "non_blank_text",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 20,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "source.audit.prepared_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "制单日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.prepared_at",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 21,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9,
+          "canonicalFieldCode": "source.audit.prepared_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "价格条款",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.trade.incoterm_code",
+      "correctedMeaning": "贸易价格条款 Incoterms 代码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "enum",
+      "validationRule": "map_incoterm_dictionary_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 22,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "shipment.trade.incoterm_code",
+          "correctedMeaning": "贸易价格条款 Incoterms 代码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "采购贸易模式",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.trade.mode_code",
+      "correctedMeaning": "采购贸易模式规范代码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "enum",
+      "validationRule": "map_trade_mode_dictionary_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 23,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "shipment.trade.mode_code",
+          "correctedMeaning": "采购贸易模式规范代码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 13,
+          "nonEmptyCount": 12,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "shipment.trade.mode_code",
+          "correctedMeaning": "采购贸易模式规范代码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "箱数合计",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.cargo.carton_count",
+      "correctedMeaning": "本柜装载箱数汇总，不用于反推 SKU 数量",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "dataType": "integer",
+      "validationRule": "non_negative_integer_reconcile_allocations",
+      "targetDisposition": "derived_allocation_summary",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 24,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 19,
+          "canonicalFieldCode": "container.cargo.carton_count",
+          "correctedMeaning": "本柜装载箱数汇总，不用于反推 SKU 数量",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_cargo_summary"
+        }
+      ]
+    },
+    {
+      "rawHeader": "体积合计(m3)",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.cargo.volume_m3",
+      "correctedMeaning": "本柜装载总体积，单位立方米",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_m3_reconcile_allocations",
+      "targetDisposition": "derived_allocation_summary",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 25,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "container.cargo.volume_m3",
+          "correctedMeaning": "本柜装载总体积，单位立方米",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_cargo_summary"
+        }
+      ]
+    },
+    {
+      "rawHeader": "毛重合计(KG)",
+      "storageNullable": false,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.cargo.gross_weight_kg",
+      "correctedMeaning": "本柜装载总毛重，单位千克",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "container_cargo_summary",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_kg_reconcile_allocations",
+      "targetDisposition": "derived_allocation_summary",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 26,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "container.cargo.gross_weight_kg",
+          "correctedMeaning": "本柜装载总毛重，单位千克",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "container_cargo_summary"
+        }
+      ]
+    },
+    {
+      "rawHeader": "出运总价",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.amount.total",
+      "correctedMeaning": "Shipment 出运总价",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_requires_currency",
+      "targetDisposition": "versioned_money_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 27,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "shipment.amount.total",
+          "correctedMeaning": "Shipment 出运总价",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "shipment_charge_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "议付金额",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.amount.negotiated",
+      "correctedMeaning": "Shipment 议付金额",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_requires_currency",
+      "targetDisposition": "versioned_money_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 28,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 14,
+          "canonicalFieldCode": "shipment.amount.negotiated",
+          "correctedMeaning": "Shipment 议付金额",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "shipment_charge_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "议付金额FOB",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.amount.negotiated_fob",
+      "correctedMeaning": "FOB 口径议付金额",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_requires_currency",
+      "targetDisposition": "versioned_money_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 29,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "shipment.amount.negotiated_fob",
+          "correctedMeaning": "FOB 口径议付金额",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "shipment_charge_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "议付金额CIF",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.amount.negotiated_cif",
+      "correctedMeaning": "CIF 口径议付金额",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_requires_currency",
+      "targetDisposition": "versioned_money_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 30,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "shipment.amount.negotiated_cif",
+          "correctedMeaning": "CIF 口径议付金额",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "shipment_charge_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "标准海运费金额",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.amount.standard_ocean_freight",
+      "correctedMeaning": "标准海运费金额",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "dataType": "decimal",
+      "validationRule": "non_negative_decimal_requires_currency",
+      "targetDisposition": "versioned_money_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 32,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8,
+          "canonicalFieldCode": "shipment.amount.standard_ocean_freight",
+          "correctedMeaning": "标准海运费金额",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "shipment_charge_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "海运费币种",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.amount.ocean_freight_currency",
+      "correctedMeaning": "海运费金额使用的 ISO 4217 币种",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "shipment_charge_fact",
+      "dataType": "enum",
+      "validationRule": "iso_4217_currency_code",
+      "targetDisposition": "versioned_money_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 31,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "shipment.amount.ocean_freight_currency",
+          "correctedMeaning": "海运费金额使用的 ISO 4217 币种",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "shipment_charge_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的地",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.destination.delivery_place",
+      "correctedMeaning": "最终交付地点文本，不替代目的国家、目的港或仓库组",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment",
+      "dataType": "string",
+      "validationRule": "non_blank_text_when_present",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 33,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "shipment.destination.delivery_place",
+          "correctedMeaning": "最终交付地点文本，不替代目的国家、目的港或仓库组",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "免堆期(天)",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.free_time.demurrage_days",
+      "correctedMeaning": "码头免堆天数",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "container_free_time_term",
+      "dataType": "integer",
+      "validationRule": "non_negative_integer",
+      "targetDisposition": "versioned_charge_term",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 34,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.free_time.demurrage_days",
+          "correctedMeaning": "码头免堆天数",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "container_free_time_term"
+        }
+      ]
+    },
+    {
+      "rawHeader": "场内免箱期(天)",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.free_time.detention_terminal_days",
+      "correctedMeaning": "场内免箱天数",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "container_free_time_term",
+      "dataType": "integer",
+      "validationRule": "non_negative_integer",
+      "targetDisposition": "versioned_charge_term",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 35,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.free_time.detention_terminal_days",
+          "correctedMeaning": "场内免箱天数",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "container_free_time_term"
+        }
+      ]
+    },
+    {
+      "rawHeader": "场外免箱期(天)",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.free_time.detention_off_terminal_days",
+      "correctedMeaning": "场外免箱天数",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "container_free_time_term",
+      "dataType": "integer",
+      "validationRule": "non_negative_integer",
+      "targetDisposition": "versioned_charge_term",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 36,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.free_time.detention_off_terminal_days",
+          "correctedMeaning": "场外免箱天数",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "container_free_time_term"
+        }
+      ]
+    },
+    {
+      "rawHeader": "预计到港日期(ETA)",
+      "storageNullable": true,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.arrival.estimated_at",
+      "correctedMeaning": "来源原始 ETA 预计到港时间",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 37,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11,
+          "canonicalFieldCode": "shipment.arrival.estimated_at",
+          "correctedMeaning": "来源原始 ETA 预计到港时间",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 7,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11,
+          "canonicalFieldCode": "shipment.arrival.estimated_at",
+          "correctedMeaning": "来源原始 ETA 预计到港时间",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "预计到港日期",
+      "storageNullable": true,
+      "profileRequired": ["post_departure_v1"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.arrival.estimated_at",
+      "correctedMeaning": "来源原始 ETA 预计到港时间",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 9,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11,
+          "canonicalFieldCode": "shipment.arrival.estimated_at",
+          "correctedMeaning": "来源原始 ETA 预计到港时间",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "修改人",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.updated_by",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "string",
+      "validationRule": "non_blank_text",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 38,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "source.audit.updated_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 46,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "source.audit.updated_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 43,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "source.audit.updated_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 21,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "source.audit.updated_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "修改时间",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.updated_at",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 39,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9,
+          "canonicalFieldCode": "source.audit.updated_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "customs",
+          "position": 47,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.audit.updated_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 44,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "source.audit.updated_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 22,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9,
+          "canonicalFieldCode": "source.audit.updated_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "母船船名",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.mother_vessel_name",
+      "correctedMeaning": "中转后母船船名",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "dataType": "string",
+      "validationRule": "non_blank_text_when_present",
+      "targetDisposition": "versioned_route_segment",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 40,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "shipment.route.mother_vessel_name",
+          "correctedMeaning": "中转后母船船名",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_route_segment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "母船船次",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.mother_voyage_number",
+      "correctedMeaning": "中转后母船航次",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "dataType": "string",
+      "validationRule": "non_blank_text_when_present",
+      "targetDisposition": "versioned_route_segment",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "container",
+          "position": 41,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "shipment.route.mother_voyage_number",
+          "correctedMeaning": "中转后母船航次",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_route_segment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "ETA修正（组织）",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.arrival.estimated_revision_at",
+      "correctedMeaning": "经组织确认的 ETA 修订版本，不覆盖原始 ETA",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 8,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11,
+          "canonicalFieldCode": "shipment.arrival.estimated_revision_at",
+          "correctedMeaning": "经组织确认的 ETA 修订版本，不覆盖原始 ETA",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "ETA修正",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "missing",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "INVALID_SOURCE_VALUE",
+      "deprecationPolicy": "rejected_source_value",
+      "canonicalFieldCode": "source.shipment.arrival_estimate_revision_raw",
+      "correctedMeaning": "物流表 ETA 修正原始值；当前样本全部为损坏的 Java 对象字符串",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_row_review",
+      "dataType": "string",
+      "validationRule": "reject_java_object_string_and_require_corrected_evidence",
+      "targetDisposition": "quarantine",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 10,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "source.shipment.arrival_estimate_revision_raw",
+          "correctedMeaning": "物流表 ETA 修正原始值；当前样本全部为损坏的 Java 对象字符串",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_row_review"
+        }
+      ]
+    },
+    {
+      "rawHeader": "计划清关日期",
+      "storageNullable": true,
+      "profileRequired": ["customs_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.clearance.planned_at",
+      "correctedMeaning": "计划完成清关时间",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 9,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "customs.clearance.planned_at",
+          "correctedMeaning": "计划完成清关时间",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "实际清关日期",
+      "storageNullable": true,
+      "profileRequired": ["customs_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.clearance.actual_at",
+      "correctedMeaning": "有证据支持的实际清关完成时间",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 10,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "customs.clearance.actual_at",
+          "correctedMeaning": "有证据支持的实际清关完成时间",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "清关状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.case.status",
+      "correctedMeaning": "清关案件独立状态",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "dataType": "enum",
+      "validationRule": "map_customs_status_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 11,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "customs.case.status",
+          "correctedMeaning": "清关案件独立状态",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "customs_clearance_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的港清关公司",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.case.broker_party",
+      "correctedMeaning": "目的港清关服务商主体引用",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "typed_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 12,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3,
+          "canonicalFieldCode": "customs.case.broker_party",
+          "correctedMeaning": "目的港清关服务商主体引用",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "customs_clearance_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "是否已发送换单文件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.exchange.sent",
+      "correctedMeaning": "换单文件是否已发送的来源快照",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "boolean",
+      "validationRule": "map_explicit_boolean_or_manual_review",
+      "targetDisposition": "versioned_document_transmission",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 14,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "document.exchange.sent",
+          "correctedMeaning": "换单文件是否已发送的来源快照",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "换单状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.document_exchange.status",
+      "correctedMeaning": "换单业务的独立处理状态",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "dataType": "enum",
+      "validationRule": "map_document_exchange_status_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 15,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "customs.document_exchange.status",
+          "correctedMeaning": "换单业务的独立处理状态",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "customs_clearance_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "换单收货人",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.release_recipient_party",
+      "correctedMeaning": "换单接收主体",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document_party",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 16,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3,
+          "canonicalFieldCode": "transport_document.release_recipient_party",
+          "correctedMeaning": "换单接收主体",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document_party"
+        }
+      ]
+    },
+    {
+      "rawHeader": "发货人",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.shipper_party",
+      "correctedMeaning": "提单发货主体",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document_party",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 17,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3,
+          "canonicalFieldCode": "transport_document.shipper_party",
+          "correctedMeaning": "提单发货主体",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document_party"
+        }
+      ]
+    },
+    {
+      "rawHeader": "全部生成日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.package.generated_at",
+      "correctedMeaning": "清关单证包全部生成时间",
+      "ownerDomain": "document-records",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 18,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.package.generated_at",
+          "correctedMeaning": "清关单证包全部生成时间",
+          "ownerDomain": "document-records",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "是否查验",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.case.inspection_flag",
+      "correctedMeaning": "是否发生海关查验",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "dataType": "boolean",
+      "validationRule": "map_explicit_boolean_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 19,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "customs.case.inspection_flag",
+          "correctedMeaning": "是否发生海关查验",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "customs_clearance_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "是否开箱",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.case.container_opened_flag",
+      "correctedMeaning": "查验过程中是否实际开箱",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "dataType": "boolean",
+      "validationRule": "map_explicit_boolean_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 20,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "customs.case.container_opened_flag",
+          "correctedMeaning": "查验过程中是否实际开箱",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "customs_clearance_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "异常原因",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "missing",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.exception.reason",
+      "correctedMeaning": "清关异常原因，不并入清关主状态",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "exception_case",
+      "dataType": "string",
+      "validationRule": "non_blank_text_when_present",
+      "targetDisposition": "exception_case",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 21,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "customs.exception.reason",
+          "correctedMeaning": "清关异常原因，不并入清关主状态",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "exception_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "ISF申报状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.isf.status",
+      "correctedMeaning": "ISF 申报独立状态",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "dataType": "enum",
+      "validationRule": "map_isf_status_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 22,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "customs.isf.status",
+          "correctedMeaning": "ISF 申报独立状态",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "customs_clearance_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "ISF申报日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.isf.filed_at",
+      "correctedMeaning": "ISF 实际申报时间",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 23,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9,
+          "canonicalFieldCode": "customs.isf.filed_at",
+          "correctedMeaning": "ISF 实际申报时间",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "放单日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.released_at",
+      "correctedMeaning": "运输单证实际放单时间",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 24,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "transport_document.released_at",
+          "correctedMeaning": "运输单证实际放单时间",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "MBL SCAC",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.mbl.scac",
+      "correctedMeaning": "主提单 SCAC",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "dataType": "enum",
+      "validationRule": "validate_scac_or_manual_review",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 25,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "transport_document.mbl.scac",
+          "correctedMeaning": "主提单 SCAC",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        }
+      ]
+    },
+    {
+      "rawHeader": "MBL Number",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.mbl.number",
+      "correctedMeaning": "主提单号码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "dataType": "identifier",
+      "validationRule": "non_blank_identifier_when_present",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 26,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "transport_document.mbl.number",
+          "correctedMeaning": "主提单号码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        }
+      ]
+    },
+    {
+      "rawHeader": "HBL SCAC",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.hbl.scac",
+      "correctedMeaning": "分提单 SCAC",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "dataType": "enum",
+      "validationRule": "validate_scac_or_manual_review",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 27,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4,
+          "canonicalFieldCode": "transport_document.hbl.scac",
+          "correctedMeaning": "分提单 SCAC",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        }
+      ]
+    },
+    {
+      "rawHeader": "HBL Number",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.hbl.number",
+      "correctedMeaning": "分提单号码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "dataType": "identifier",
+      "validationRule": "non_blank_identifier_when_present",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 28,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "transport_document.hbl.number",
+          "correctedMeaning": "分提单号码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        }
+      ]
+    },
+    {
+      "rawHeader": "AMS Number",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "transport_document.ams.number",
+      "correctedMeaning": "AMS 申报号码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_transport_document",
+      "dataType": "identifier",
+      "validationRule": "non_blank_identifier_when_present",
+      "targetDisposition": "versioned_transport_document",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 29,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20,
+          "canonicalFieldCode": "transport_document.ams.number",
+          "correctedMeaning": "AMS 申报号码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_transport_document"
+        }
+      ]
+    },
+    {
+      "rawHeader": "传递日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.package.sent_at",
+      "correctedMeaning": "清关单证包首次传递时间",
+      "ownerDomain": "document-records",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 30,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.package.sent_at",
+          "correctedMeaning": "清关单证包首次传递时间",
+          "ownerDomain": "document-records",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "重新传递时间",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.package.resent_at",
+      "correctedMeaning": "清关单证包重传时间",
+      "ownerDomain": "document-records",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 31,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.package.resent_at",
+          "correctedMeaning": "清关单证包重传时间",
+          "ownerDomain": "document-records",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "清关单据状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.package.customs.status",
+      "correctedMeaning": "清关单证包独立状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_package",
+      "dataType": "enum",
+      "validationRule": "map_document_package_status_or_manual_review",
+      "targetDisposition": "versioned_document_package",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 32,
+          "nonEmptyCount": 12,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "document.package.customs.status",
+          "correctedMeaning": "清关单证包独立状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_package"
+        }
+      ]
+    },
+    {
+      "rawHeader": "ISF传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.isf.transmission_state",
+      "correctedMeaning": "ISF 文件传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 33,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "document.isf.transmission_state",
+          "correctedMeaning": "ISF 文件传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "提单传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.bill_of_lading.transmission_state",
+      "correctedMeaning": "提单文件传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 34,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.bill_of_lading.transmission_state",
+          "correctedMeaning": "提单文件传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "箱单传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.packing_list.transmission_state",
+      "correctedMeaning": "装箱单传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 35,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.packing_list.transmission_state",
+          "correctedMeaning": "装箱单传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "发票传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.commercial_invoice.transmission_state",
+      "correctedMeaning": "商业发票传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 36,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.commercial_invoice.transmission_state",
+          "correctedMeaning": "商业发票传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "ENS传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.ens.transmission_state",
+      "correctedMeaning": "ENS 文件传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 37,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.ens.transmission_state",
+          "correctedMeaning": "ENS 文件传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "产品资料传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.product_material.transmission_state",
+      "correctedMeaning": "产品资料传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 38,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.product_material.transmission_state",
+          "correctedMeaning": "产品资料传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "植检证书传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.phytosanitary_certificate.transmission_state",
+      "correctedMeaning": "植检证书传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 39,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.phytosanitary_certificate.transmission_state",
+          "correctedMeaning": "植检证书传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "Energy-related Products传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.energy_related_products.transmission_state",
+      "correctedMeaning": "能源相关产品资料传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 40,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.energy_related_products.transmission_state",
+          "correctedMeaning": "能源相关产品资料传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "Nameplate传递",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.nameplate.transmission_state",
+      "correctedMeaning": "铭牌资料传递状态",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "enum",
+      "validationRule": "map_document_transmission_state_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 41,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.nameplate.transmission_state",
+          "correctedMeaning": "铭牌资料传递状态",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "清关单据更新.附件名称",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.customs_update.file_name",
+      "correctedMeaning": "清关单据更新文件名",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "string",
+      "validationRule": "safe_file_name_when_present",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 42,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.customs_update.file_name",
+          "correctedMeaning": "清关单据更新文件名",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "清关单据更新是否重传",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.customs_update.is_resend",
+      "correctedMeaning": "清关单据更新是否为重传",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "boolean",
+      "validationRule": "map_explicit_boolean_or_manual_review",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 43,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.customs_update.is_resend",
+          "correctedMeaning": "清关单据更新是否为重传",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "创建人",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.created_by",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "string",
+      "validationRule": "non_blank_text",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 44,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "source.audit.created_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 41,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "source.audit.created_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 19,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "source.audit.created_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "创建时间",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.created_at",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 45,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11,
+          "canonicalFieldCode": "source.audit.created_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "logistics",
+          "position": 42,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11,
+          "canonicalFieldCode": "source.audit.created_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 20,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11,
+          "canonicalFieldCode": "source.audit.created_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "提单附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.bill_of_lading.file_ref",
+      "correctedMeaning": "提单文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 48,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.bill_of_lading.file_ref",
+          "correctedMeaning": "提单文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "箱单附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.packing_list.file_ref",
+      "correctedMeaning": "装箱单文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 49,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.packing_list.file_ref",
+          "correctedMeaning": "装箱单文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "发票附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.commercial_invoice.file_ref",
+      "correctedMeaning": "商业发票文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 50,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.commercial_invoice.file_ref",
+          "correctedMeaning": "商业发票文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "ENS附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.ens.file_ref",
+      "correctedMeaning": "ENS 文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 51,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.ens.file_ref",
+          "correctedMeaning": "ENS 文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "产品资料附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.product_material.file_ref",
+      "correctedMeaning": "产品资料文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 52,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.product_material.file_ref",
+          "correctedMeaning": "产品资料文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "植检证书附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.phytosanitary_certificate.file_ref",
+      "correctedMeaning": "植检证书文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 53,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.phytosanitary_certificate.file_ref",
+          "correctedMeaning": "植检证书文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "农业产品声明附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.agricultural_declaration.file_ref",
+      "correctedMeaning": "农业产品声明文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 54,
+          "nonEmptyCount": 1,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "document.agricultural_declaration.file_ref",
+          "correctedMeaning": "农业产品声明文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "Lacey Act Form附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.lacey_act_form.file_ref",
+      "correctedMeaning": "Lacey Act 表单文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 55,
+          "nonEmptyCount": 3,
+          "distinctNonEmptyCount": 3,
+          "canonicalFieldCode": "document.lacey_act_form.file_ref",
+          "correctedMeaning": "Lacey Act 表单文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "药品监管附件",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.drug_regulatory.file_ref",
+      "correctedMeaning": "药品监管资料文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 56,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.drug_regulatory.file_ref",
+          "correctedMeaning": "药品监管资料文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "婴童玩具证书",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.toy_certificate.file_ref",
+      "correctedMeaning": "婴童玩具证书文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 57,
+          "nonEmptyCount": 10,
+          "distinctNonEmptyCount": 10,
+          "canonicalFieldCode": "document.toy_certificate.file_ref",
+          "correctedMeaning": "婴童玩具证书文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "纺织品工厂信息",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.textile_factory_information.file_ref",
+      "correctedMeaning": "纺织品工厂资料文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 58,
+          "nonEmptyCount": 2,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "document.textile_factory_information.file_ref",
+          "correctedMeaning": "纺织品工厂资料文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "Energy-related Products",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.energy_related_products.file_ref",
+      "correctedMeaning": "能源相关产品资料文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 59,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.energy_related_products.file_ref",
+          "correctedMeaning": "能源相关产品资料文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "Nameplate",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.nameplate.file_ref",
+      "correctedMeaning": "铭牌资料文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 60,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.nameplate.file_ref",
+          "correctedMeaning": "铭牌资料文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "进口报关单",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "document.import_declaration.file_ref",
+      "correctedMeaning": "进口报关单文件引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_file_reference_and_preserve_version",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 62,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "document.import_declaration.file_ref",
+          "correctedMeaning": "进口报关单文件引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "母船出运日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.mother_vessel_departure_actual_at",
+      "correctedMeaning": "母船实际出运时间",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 61,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8,
+          "canonicalFieldCode": "shipment.route.mother_vessel_departure_actual_at",
+          "correctedMeaning": "母船实际出运时间",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "进口报关单号",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "customs.declaration.number",
+      "correctedMeaning": "进口报关单业务编号",
+      "ownerDomain": "customs-compliance",
+      "targetObject": "customs_clearance_case",
+      "dataType": "identifier",
+      "validationRule": "non_blank_identifier_when_present",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "customs",
+          "position": 63,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "customs.declaration.number",
+          "correctedMeaning": "进口报关单业务编号",
+          "ownerDomain": "customs-compliance",
+          "targetObject": "customs_clearance_case"
+        }
+      ]
+    },
+    {
+      "rawHeader": "物流状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.source_logistics_status",
+      "correctedMeaning": "来源物流状态快照，不替代 Shipment 或 Container 内部状态",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "source_status_snapshot",
+      "dataType": "enum",
+      "validationRule": "map_external_status_or_manual_review",
+      "targetDisposition": "versioned_source_status",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 5,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.source_logistics_status",
+          "correctedMeaning": "来源物流状态快照，不替代 Shipment 或 Container 内部状态",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "source_status_snapshot"
+        }
+      ]
+    },
+    {
+      "rawHeader": "途径港到达日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.transshipment_arrival_actual_at",
+      "correctedMeaning": "途经港实际到达时间",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 11,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "shipment.route.transshipment_arrival_actual_at",
+          "correctedMeaning": "途经港实际到达时间",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的港到达日期",
+      "storageNullable": true,
+      "profileRequired": ["arrival_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.arrival.actual_at",
+      "correctedMeaning": "目的港实际到达时间 ATA",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 12,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "shipment.arrival.actual_at",
+          "correctedMeaning": "目的港实际到达时间 ATA",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的港卸船/火车日期",
+      "storageNullable": true,
+      "profileRequired": ["arrival_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.discharge.actual_at",
+      "correctedMeaning": "目的港卸船或卸火车实际时间",
+      "ownerDomain": "lifecycle-control",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 13,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.discharge.actual_at",
+          "correctedMeaning": "目的港卸船或卸火车实际时间",
+          "ownerDomain": "lifecycle-control",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的港码头",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "shipment.route.destination_terminal_code",
+      "correctedMeaning": "目的港码头规范代码",
+      "ownerDomain": "shipment-registry",
+      "targetObject": "shipment_route_segment",
+      "dataType": "enum",
+      "validationRule": "map_terminal_dictionary_or_manual_review",
+      "targetDisposition": "versioned_route_segment",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 14,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "shipment.route.destination_terminal_code",
+          "correctedMeaning": "目的港码头规范代码",
+          "ownerDomain": "shipment-registry",
+          "targetObject": "shipment_route_segment"
+        }
+      ]
+    },
+    {
+      "rawHeader": "最后免费日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.free_time.last_free_at",
+      "correctedMeaning": "当前有效免费期截止时间",
+      "ownerDomain": "charges-settlement",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 15,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.free_time.last_free_at",
+          "correctedMeaning": "当前有效免费期截止时间",
+          "ownerDomain": "charges-settlement",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "是否预提",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "inland_move.pre_pull_required",
+      "correctedMeaning": "是否安排预提柜",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "dataType": "boolean",
+      "validationRule": "map_explicit_boolean_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 16,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "inland_move.pre_pull_required",
+          "correctedMeaning": "是否安排预提柜",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "inland_move"
+        }
+      ]
+    },
+    {
+      "rawHeader": "运输方式",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "inland_move.transport_mode_code",
+      "correctedMeaning": "目的港后段运输方式规范代码",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "dataType": "enum",
+      "validationRule": "map_inland_transport_mode_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 17,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "inland_move.transport_mode_code",
+          "correctedMeaning": "目的港后段运输方式规范代码",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "inland_move"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的港卡车",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "inland_move.truck_carrier_party",
+      "correctedMeaning": "目的港卡车承运主体",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "typed_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 18,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 2,
+          "canonicalFieldCode": "inland_move.truck_carrier_party",
+          "correctedMeaning": "目的港卡车承运主体",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "inland_move"
+        }
+      ]
+    },
+    {
+      "rawHeader": "目的港火车",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "inland_move.rail_carrier_party",
+      "correctedMeaning": "目的港铁路承运主体",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "typed_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 19,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "inland_move.rail_carrier_party",
+          "correctedMeaning": "目的港铁路承运主体",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "inland_move"
+        }
+      ]
+    },
+    {
+      "rawHeader": "货柜承运商",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "inland_move.container_carrier_party",
+      "correctedMeaning": "货柜后段承运主体",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "inland_move",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "typed_reference",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 12,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "inland_move.container_carrier_party",
+          "correctedMeaning": "货柜后段承运主体",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "inland_move"
+        }
+      ]
+    },
+    {
+      "rawHeader": "仓库(计划)",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.planned_warehouse_code",
+      "correctedMeaning": "计划交付仓库规范代码",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_delivery_instruction",
+      "dataType": "enum",
+      "validationRule": "map_warehouse_dictionary_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 20,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "warehouse_delivery.planned_warehouse_code",
+          "correctedMeaning": "计划交付仓库规范代码",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "warehouse_delivery_instruction"
+        }
+      ]
+    },
+    {
+      "rawHeader": "入库日期",
+      "storageNullable": true,
+      "profileRequired": ["delivery_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_receipt.actual_at",
+      "correctedMeaning": "实际入仓时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 21,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_receipt.actual_at",
+          "correctedMeaning": "实际入仓时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "最晚提柜日期",
+      "storageNullable": true,
+      "profileRequired": ["pickup_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.pickup.deadline_at",
+      "correctedMeaning": "最晚提柜截止时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 22,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8,
+          "canonicalFieldCode": "container.pickup.deadline_at",
+          "correctedMeaning": "最晚提柜截止时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "计划提柜日期",
+      "storageNullable": true,
+      "profileRequired": ["pickup_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.pickup.planned_at",
+      "correctedMeaning": "计划提柜时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 23,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.pickup.planned_at",
+          "correctedMeaning": "计划提柜时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "提柜日期",
+      "storageNullable": true,
+      "profileRequired": ["pickup_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.pickup.actual_at",
+      "correctedMeaning": "实际提柜时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 24,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.pickup.actual_at",
+          "correctedMeaning": "实际提柜时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "最晚送仓日期",
+      "storageNullable": true,
+      "profileRequired": ["delivery_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.deadline_at",
+      "correctedMeaning": "最晚送仓截止时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 25,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "warehouse_delivery.deadline_at",
+          "correctedMeaning": "最晚送仓截止时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "计划送仓日期",
+      "storageNullable": true,
+      "profileRequired": ["delivery_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.planned_at",
+      "correctedMeaning": "计划送仓时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 26,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "warehouse_delivery.planned_at",
+          "correctedMeaning": "计划送仓时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "最晚卸柜日期",
+      "storageNullable": true,
+      "profileRequired": ["unloading_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.unloading.deadline_at",
+      "correctedMeaning": "最晚卸柜截止时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 28,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.unloading.deadline_at",
+          "correctedMeaning": "最晚卸柜截止时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "计划卸柜日期",
+      "storageNullable": true,
+      "profileRequired": ["unloading_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.unloading.planned_at",
+      "correctedMeaning": "计划卸柜时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 29,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.unloading.planned_at",
+          "correctedMeaning": "计划卸柜时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "最晚还箱日期",
+      "storageNullable": true,
+      "profileRequired": ["empty_return_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_return.deadline_at",
+      "correctedMeaning": "最晚还空箱截止时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 30,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9,
+          "canonicalFieldCode": "container.empty_return.deadline_at",
+          "correctedMeaning": "最晚还空箱截止时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "计划还箱日期",
+      "storageNullable": true,
+      "profileRequired": ["empty_return_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_return.planned_at",
+      "correctedMeaning": "计划还空箱时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 31,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.empty_return.planned_at",
+          "correctedMeaning": "计划还空箱时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "还箱日期",
+      "storageNullable": true,
+      "profileRequired": ["empty_return_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_return.actual_at",
+      "correctedMeaning": "实际还空箱时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 32,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.empty_return.actual_at",
+          "correctedMeaning": "实际还空箱时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "卸柜方式",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.unloading.method_code",
+      "correctedMeaning": "来源卸柜方式；必须按来源表解释为计划值或实际值",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "container_unloading_operation",
+      "dataType": "enum",
+      "validationRule": "map_unloading_method_or_manual_review",
+      "targetDisposition": "versioned_unloading_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 27,
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "container.unloading.planned_method_code",
+          "correctedMeaning": "计划卸柜方式",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "container_unloading_operation"
+        },
+        {
+          "sourceSchema": "warehouse",
+          "position": 10,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.unloading.actual_method_code",
+          "correctedMeaning": "实际采用的卸柜方式",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "container_unloading_operation"
+        }
+      ]
+    },
+    {
+      "rawHeader": "还箱日期(组织时区)",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_return.source_timezone",
+      "correctedMeaning": "还箱时间来源组织时区，不是第二个还箱事实",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "string",
+      "validationRule": "iana_timezone_or_utc_offset",
+      "targetDisposition": "time_fact_source_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 33,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.empty_return.source_timezone",
+          "correctedMeaning": "还箱时间来源组织时区，不是第二个还箱事实",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "进港日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.terminal_gate_in.actual_at",
+      "correctedMeaning": "集装箱实际进港时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 34,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.terminal_gate_in.actual_at",
+          "correctedMeaning": "集装箱实际进港时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "进火车堆场日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.rail_yard_gate_in.actual_at",
+      "correctedMeaning": "集装箱实际进入铁路堆场时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 35,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.rail_yard_gate_in.actual_at",
+          "correctedMeaning": "集装箱实际进入铁路堆场时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "进卡车堆场日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.truck_yard_gate_in.actual_at",
+      "correctedMeaning": "集装箱实际进入卡车堆场时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 36,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.truck_yard_gate_in.actual_at",
+          "correctedMeaning": "集装箱实际进入卡车堆场时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "火车发出时间",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "inland_move.rail_departure.actual_at",
+      "correctedMeaning": "铁路段实际发出时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 39,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "inland_move.rail_departure.actual_at",
+          "correctedMeaning": "铁路段实际发出时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "取空日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_pickup.actual_at",
+      "correctedMeaning": "实际取空箱时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 45,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.empty_pickup.actual_at",
+          "correctedMeaning": "实际取空箱时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "送仓日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.actual_at",
+      "correctedMeaning": "实际送仓时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 46,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_delivery.actual_at",
+          "correctedMeaning": "实际送仓时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "WMS入库状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_receipt.wms_source_status",
+      "correctedMeaning": "WMS 入库状态来源值",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_receipt",
+      "dataType": "enum",
+      "validationRule": "map_external_status_or_manual_review",
+      "targetDisposition": "versioned_source_status",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 37,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_receipt.wms_source_status",
+          "correctedMeaning": "WMS 入库状态来源值",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "warehouse_receipt"
+        }
+      ]
+    },
+    {
+      "rawHeader": "EBS入库状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_receipt.ebs_source_status",
+      "correctedMeaning": "EBS 入库状态来源值",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_receipt",
+      "dataType": "enum",
+      "validationRule": "map_external_status_or_manual_review",
+      "targetDisposition": "versioned_source_status",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 38,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_receipt.ebs_source_status",
+          "correctedMeaning": "EBS 入库状态来源值",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "warehouse_receipt"
+        }
+      ]
+    },
+    {
+      "rawHeader": "维护字段",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "missing",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "UNKNOWN_SOURCE_FIELD_SEMANTICS",
+      "deprecationPolicy": "source_only",
+      "canonicalFieldCode": "source.legacy.maintenance_value",
+      "correctedMeaning": "来源系统未定义维护字段，不进入领域事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_row_review",
+      "dataType": "string",
+      "validationRule": "reject_until_source_semantics_defined",
+      "targetDisposition": "source_trace_only",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "logistics",
+          "position": 40,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "source.legacy.maintenance_value",
+          "correctedMeaning": "来源系统未定义维护字段，不进入领域事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_row_review"
+        }
+      ]
+    },
+    {
+      "rawHeader": "单据状态",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.source_document_status",
+      "correctedMeaning": "仓库维护单据的来源状态，不替代仓库收货状态",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "source_status_snapshot",
+      "dataType": "enum",
+      "validationRule": "map_external_status_or_manual_review",
+      "targetDisposition": "versioned_source_status",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 3,
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1,
+          "canonicalFieldCode": "warehouse_delivery.source_document_status",
+          "correctedMeaning": "仓库维护单据的来源状态，不替代仓库收货状态",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "source_status_snapshot"
+        }
+      ]
+    },
+    {
+      "rawHeader": "仓库",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.actual_warehouse_code",
+      "correctedMeaning": "实际接收仓库规范代码",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_receipt",
+      "dataType": "enum",
+      "validationRule": "map_warehouse_dictionary_or_manual_review",
+      "targetDisposition": "typed_column",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 8,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_delivery.actual_warehouse_code",
+          "correctedMeaning": "实际接收仓库规范代码",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "warehouse_receipt"
+        }
+      ]
+    },
+    {
+      "rawHeader": "送仓时间",
+      "storageNullable": true,
+      "profileRequired": ["delivery_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.arrival_actual_at",
+      "correctedMeaning": "货柜实际到达仓库时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 9,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_delivery.arrival_actual_at",
+          "correctedMeaning": "货柜实际到达仓库时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "卸空时间",
+      "storageNullable": true,
+      "profileRequired": ["unloading_stage"],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.unloading.completed_actual_at",
+      "correctedMeaning": "货柜实际卸空完成时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 11,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.unloading.completed_actual_at",
+          "correctedMeaning": "货柜实际卸空完成时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "卸柜门",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.unloading.dock_door",
+      "correctedMeaning": "实际卸柜月台或门位",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "container_unloading_operation",
+      "dataType": "string",
+      "validationRule": "non_blank_text_when_present",
+      "targetDisposition": "versioned_unloading_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 13,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.unloading.dock_door",
+          "correctedMeaning": "实际卸柜月台或门位",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "container_unloading_operation"
+        }
+      ]
+    },
+    {
+      "rawHeader": "卸柜公司",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.unloading.operator_party",
+      "correctedMeaning": "实际卸柜作业主体",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "container_unloading_operation",
+      "dataType": "reference",
+      "validationRule": "resolve_party_or_preserve_external_reference",
+      "targetDisposition": "versioned_unloading_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 14,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.unloading.operator_party",
+          "correctedMeaning": "实际卸柜作业主体",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "container_unloading_operation"
+        }
+      ]
+    },
+    {
+      "rawHeader": "通知取空日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_pickup.notified_at",
+      "correctedMeaning": "通知承运人取空箱时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 15,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.empty_pickup.notified_at",
+          "correctedMeaning": "通知承运人取空箱时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "取空时间",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_pickup.actual_at",
+      "correctedMeaning": "承运人实际取空箱时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 16,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.empty_pickup.actual_at",
+          "correctedMeaning": "承运人实际取空箱时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "备注",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "restricted",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_delivery.source_note",
+      "correctedMeaning": "仓库来源备注，仅作审计上下文，不驱动状态",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "warehouse_delivery_note",
+      "dataType": "string",
+      "validationRule": "bounded_text",
+      "targetDisposition": "versioned_note",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 17,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_delivery.source_note",
+          "correctedMeaning": "仓库来源备注，仅作审计上下文，不驱动状态",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "warehouse_delivery_note"
+        }
+      ]
+    },
+    {
+      "rawHeader": "WMS CONFIRM DATE",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "partial",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "warehouse_receipt.wms_confirmed_at",
+      "correctedMeaning": "WMS 实际确认时间",
+      "ownerDomain": "inland-fulfillment",
+      "targetObject": "lifecycle_time_fact",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "versioned_time_fact",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 18,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "warehouse_receipt.wms_confirmed_at",
+          "correctedMeaning": "WMS 实际确认时间",
+          "ownerDomain": "inland-fulfillment",
+          "targetObject": "lifecycle_time_fact"
+        }
+      ]
+    },
+    {
+      "rawHeader": "审核人",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.reviewed_by",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "string",
+      "validationRule": "non_blank_text",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 23,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "source.audit.reviewed_by",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "审核日期",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "full",
+      "currentContractSupport": "full",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "source.audit.reviewed_at",
+      "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_audit_record",
+      "dataType": "date_time",
+      "validationRule": "parse_source_datetime_with_timezone",
+      "targetDisposition": "source_audit_metadata",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 24,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "source.audit.reviewed_at",
+          "correctedMeaning": "来源系统审计元数据，不作为当前系统操作人事实",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_audit_record"
+        }
+      ]
+    },
+    {
+      "rawHeader": "WMS CONFIRM DATE非",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "missing",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "UNKNOWN_SOURCE_FIELD_SEMANTICS",
+      "deprecationPolicy": "source_only",
+      "canonicalFieldCode": "source.warehouse.wms_confirm_date_unknown",
+      "correctedMeaning": "语义不明的来源列，不能作为 WMS 确认时间",
+      "ownerDomain": "source-governance",
+      "targetObject": "source_row_review",
+      "dataType": "string",
+      "validationRule": "reject_until_source_semantics_defined",
+      "targetDisposition": "source_trace_only",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 25,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "source.warehouse.wms_confirm_date_unknown",
+          "correctedMeaning": "语义不明的来源列，不能作为 WMS 确认时间",
+          "ownerDomain": "source-governance",
+          "targetObject": "source_row_review"
+        }
+      ]
+    },
+    {
+      "rawHeader": "取空通知",
+      "storageNullable": true,
+      "profileRequired": [],
+      "sensitivity": "internal",
+      "currentPhysicalSupport": "partial",
+      "currentContractSupport": "missing",
+      "dataQualityRule": "preserve_raw_and_report_invalid",
+      "deprecationPolicy": "active",
+      "canonicalFieldCode": "container.empty_pickup.notification_ref",
+      "correctedMeaning": "取空通知文件或消息引用",
+      "ownerDomain": "document-records",
+      "targetObject": "document_record",
+      "dataType": "reference",
+      "validationRule": "resolve_document_or_message_reference",
+      "targetDisposition": "versioned_document_record",
+      "sourceOccurrences": [
+        {
+          "sourceSchema": "warehouse",
+          "position": 26,
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0,
+          "canonicalFieldCode": "container.empty_pickup.notification_ref",
+          "correctedMeaning": "取空通知文件或消息引用",
+          "ownerDomain": "document-records",
+          "targetObject": "document_record"
+        }
+      ]
+    }
+  ]
+}

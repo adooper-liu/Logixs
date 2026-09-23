@@ -4,7 +4,7 @@ import { DEV_TENANT_ID } from "./developmentIdentity";
 // 薄真实链路的前端只读 DTO：与 apps/api 的 ContainerSummary 形状一致。
 export interface ContainerSummary {
   id: string;
-  orderNumber: string;
+  orderNumber: string | null;
   containerNumber: string | null;
   currentStatus: ContainerLifecycleState;
   updatedAt: string;

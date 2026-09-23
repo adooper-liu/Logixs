@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/canonical-event-envelope-v2.schema.json",
+  "title": "CanonicalEventEnvelopeV2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventCode",
+    "eventVersion",
+    "tenantId",
+    "subject",
+    "subjectVersion",
+    "role",
+    "timeKind",
+    "occurredAt",
+    "recordedAt",
+    "eventSequence",
+    "domain",
+    "domainFactId",
+    "domainFactType",
+    "authorityPolicyRef",
+    "correlationId",
+    "idempotencyKey",
+    "source",
+    "evidenceRefs",
+    "confidenceState",
+    "validity",
+    "data",
+    "traceId"
+  ],
+  "properties": {
+    "eventId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "eventCode": { "$ref": "common.schema.json#/$defs/CanonicalEventCode" },
+    "eventVersion": { "const": 2 },
+    "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "subject": { "$ref": "#/$defs/PostDepartureSubject" },
+    "subjectVersion": { "type": "integer", "minimum": 1 },
+    "scopeVersion": { "type": "integer", "minimum": 1 },
+    "flowInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "nodeCode": { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+    "nodeInstanceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "domainFactId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "domainFactType": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "authorityPolicyRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "domain": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "role": { "$ref": "common.schema.json#/$defs/EventRole" },
+    "timeKind": { "$ref": "common.schema.json#/$defs/TimeKind" },
+    "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+    "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+    "eventSequence": { "type": "integer", "minimum": 1 },
+    "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "source": {
+      "$ref": "canonical-event-envelope.schema.json#/properties/source"
+    },
+    "location": {
+      "$ref": "canonical-event-envelope.schema.json#/properties/location"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+    },
+    "confidenceState": { "$ref": "common.schema.json#/$defs/ConfidenceState" },
+    "validity": { "$ref": "common.schema.json#/$defs/EvidenceValidity" },
+    "relation": {
+      "$ref": "canonical-event-envelope.schema.json#/properties/relation"
+    },
+    "data": { "type": "object" },
+    "correlationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "causationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+    "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "timeKind": { "const": "actual" } },
+        "required": ["timeKind"]
+      },
+      "then": { "properties": { "evidenceRefs": { "minItems": 1 } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "subject": {
+            "properties": { "entityType": { "const": "shipment" } },
+            "required": ["entityType"]
+          }
+        },
+        "required": ["subject"]
+      },
+      "then": { "required": ["scopeVersion"] }
+    }
+  ],
+  "$defs": {
+    "PostDepartureSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "entityType", "entityId", "ownerModule"],
+      "properties": {
+        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "entityType": { "enum": ["shipment", "container"] },
+        "entityId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "ownerModule": { "const": "shipment-registry" }
+      }
+    }
+  }
+}

@@ -1,9 +1,9 @@
 ---
-status: owner-approval-required
-version: 1.4
+status: accepted-implementation-baseline
+version: 1.5
 review_date: 2026-09-23
 technical_review: complete
-source_field_review: verified
+source_field_review: registered
 owners: product + shipment-registry + lifecycle-control + integration-import + customs-compliance + inland-fulfillment + document-records + charges-settlement
 ---
 
@@ -21,7 +21,7 @@ owners: product + shipment-registry + lifecycle-control + integration-import + c
 
 现有数据库尚未实现该边界：它没有独立 `shipment` 聚合，导入按备货单号分组并创建 `not_shipped` 货柜，随后立即初始化一柜一流程。这个实现不能可靠表达“一次已出运事实包含多柜、多货物行、多上游单据和多份运输单证”。
 
-本次评审作出以下决定，但**不创建迁移**：
+以下决定已经负责人批准。本文保留评审时的现状判断；当前实施进展以任务 brief、数据库统一契约和可执行契约目录为准：
 
 | 决策码 | 决定                                                                 | 理由                                                                                          |
 | ------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -357,16 +357,42 @@ T2 lifecycle-control（每 Shipment 一次 Inbox 本地事务）
 
 `JSONB` 只允许保存不可变来源快照、证据/规则快照或已有 Schema 约束的低频结构。柜号、提单号、SKU、状态、时间、金额、关系、当前投影和需要索引的字段禁止藏入 JSONB。
 
-### 5.7 已知数据质量处置
+### 5.7 货主与销售国家映射
 
-| 缺陷                                | 预检结果                                                   | 允许的修复路径                                                                    |
-| ----------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 工作簿有效范围声明为 `A1`           | `SOURCE_RANGE_METADATA_INVALID`；不得只读取首格后声称成功  | 导入器按实际 worksheet XML 单元格范围解析并记录检测方式，或要求来源重新规范导出   |
-| `销往国家 = AOSOM LLC`              | `FIELD_SEMANTIC_MISMATCH`；不得写国家代码                  | 映射到 consignee/party 候选并人工确认；目的国家必须来自独立 ISO 国家字段/映射证据 |
-| `ETA修正 = [Ljava.lang.Object;@...` | `INVALID_SOURCE_VALUE`；隔离该值，不得解析或回退到默认 ETA | 来源重导或有证据的人工更正；原始坏值保留在行结果和证据中                          |
-| 原始 ETA 与修正 ETA                 | 不得覆盖                                                   | 保存为两个有来源和版本关系的 `estimated` 事实，当前投影按权威规则选择             |
-| 样本一备货单一柜                    | 仅样本观察                                                 | 不生成唯一约束；关系按 N:M 装载分配建模                                           |
-| 后段字段大面积为空                  | 合法阶段性空值                                             | 保持 `NULL/not_applicable/unknown` 语义区别，不创建未发生事件                     |
+`销往国家` 和来源字段 `国别` 在本批业务数据中都不是国家字段，而是内部货主/分公司名称。目标模型必须同时保留并严格区分以下三种事实：
+
+| 字段                     | 定义                                     | 权威与落库                                                              |
+| ------------------------ | ---------------------------------------- | ----------------------------------------------------------------------- |
+| `destinationCountryCode` | 航线目的国家                             | 由目的港/航线权威事实提供，不从公司名推断                               |
+| `salesCountryCode`       | 该票货物所属销售国家，ISO 3166-1 alpha-2 | 由已确认的货主主数据关系解析；查询时从不可变货主版本投影                |
+| `cargoOwnerName`         | 内部货主/分公司名称                      | Shipment 保存 `cargo_owner_id` 稳定引用，公共投影返回对应版本的法定名称 |
+
+货主目录 V1 的负责人确认映射如下；源内多空格只参与规范匹配，原始值仍保留在来源证据中：
+
+| 货主名称              | 内部简称 | ISO 销售国家码 |
+| --------------------- | -------- | -------------- |
+| AOSOM LLC             | `US`     | `US`           |
+| AOSOM CANADA INC.     | `CA`     | `CA`           |
+| MH STAR UK LTD        | `UK`     | `GB`           |
+| MH HANDEL GMBH        | `DE`     | `DE`           |
+| MH FRANCE             | `FR`     | `FR`           |
+| AOSOM ITALY SRL       | `IT`     | `IT`           |
+| SPANISH AOSOM, S.L.   | `ES`     | `ES`           |
+| AOSOM IRELAND LIMITED | `IE`     | `IE`           |
+| AOSOM ROMANIA S.R.L.  | `RO`     | `RO`           |
+
+`UK` 是内部简称，不是本项目的 ISO alpha-2 国家码；正式销售国家必须保存为 `GB`。只有 active 且负责人确认的 `cargo_owner_reference` 可自动映射，未知公司进入 `UNKNOWN_REFERENCE_CODE` 待复核，不得按名称、简称或目的港猜测。单一权威目录为 [`cargo-owners.json`](../../../packages/contracts/catalogs/v1/cargo-owners.json)，标准 Seed 将同一目录版本化写入数据库。
+
+### 5.7.1 已知数据质量处置
+
+| 缺陷                                | 预检结果                                                   | 允许的修复路径                                                                          |
+| ----------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 工作簿有效范围声明为 `A1`           | `SOURCE_RANGE_METADATA_INVALID`；不得只读取首格后声称成功  | 导入器按实际 worksheet XML 单元格范围解析并记录检测方式，或要求来源重新规范导出         |
+| `销往国家 = AOSOM LLC`              | 解析为货主名称，不得写入航线目的国家                       | 绑定已确认 `cargo_owner_reference` 并独立投影 `salesCountryCode=US`；未知货主进入待复核 |
+| `ETA修正 = [Ljava.lang.Object;@...` | `INVALID_SOURCE_VALUE`；隔离该值，不得解析或回退到默认 ETA | 来源重导或有证据的人工更正；原始坏值保留在行结果和证据中                                |
+| 原始 ETA 与修正 ETA                 | 不得覆盖                                                   | 保存为两个有来源和版本关系的 `estimated` 事实，当前投影按权威规则选择                   |
+| 样本一备货单一柜                    | 仅样本观察                                                 | 不生成唯一约束；关系按 N:M 装载分配建模                                                 |
+| 后段字段大面积为空                  | 合法阶段性空值                                             | 保持 `NULL/not_applicable/unknown` 语义区别，不创建未发生事件                           |
 
 ### 5.8 原始工作簿证据门禁
 
@@ -386,11 +412,11 @@ sourceWorkbook / sourceSheet / rawHeader
 -> storageNullable / profileRequired / validationRule / dataQualityRule
 ```
 
-来源清单已经重现“四张主表各 20 柜、十张详情表各 1 行”。剩余门禁是为 146 个原始表头分配稳定 `canonicalFieldCode`、校验/字典和公共契约状态，并证明十张详情投影没有引入四域之外的新权威事实；在完成前状态为 `source-columns-verified / canonical-contract-pending`。
+来源清单已经重现“四张主表各 20 柜、十张详情表各 1 行”。146 个原始表头及 176 个出现位置现已由公共[出运后字段注册表](../../../packages/contracts/catalogs/v1/post-departure-fields.json)逐项登记 `canonicalFieldCode`、纠正语义、所有者、主体、类型、可空性、阶段必填、校验、数据质量规则和目标处置；生成漂移及证据覆盖由 `contract:check` / `contract:drift` 阻断。十张详情投影对拍仍是独立门禁，字段登记完成不等于详情闭环完成。
 
 ### 5.9 当前覆盖判断
 
-以 §5.3 的 16 个字段族计，当前是 **0 个完整、13 个部分覆盖、3 个目标写模型缺失**：缺失的是 Shipment 身份、Shipment-柜关系和运输单证；其余字段族虽有可复用结构，但都尚未同时满足目标对象、公共契约、物理约束和目标导入行为。独立异常案件和跨域详情投影也是主要结构缺口，但前者已有 NodeBlock/通知可复用，后者属于查询契约而非第 17 个写字段族。146 个原始表头已完成证据登记；在逐列规范字段码和契约支持状态完成前，不发布虚假的物理覆盖百分比。
+§5.3 的 `0/13/3` 是迁移设计前的评审快照，不再代表当前目标 schema。Shipment 身份、Shipment-柜关系和运输单证已进入未发布加法迁移与公共契约，逐字段当前物理/契约支持状态以公共字段注册表为准；已部署物理事实仍以数据库统一契约和迁移状态为准。独立异常案件与十张详情投影对拍仍未完成，因此不发布“全字段闭环”或虚假的物理覆盖百分比。
 
 ### 5.10 统一 Shipment 交接与接收边界
 
@@ -584,9 +610,9 @@ Shipment 聚合规则必须版本化。例如 `PICKED_UP` 是“全部适用柜�
 
 ## 9. 兼容与迁移门禁
 
-### 9.1 当前决定
+### 9.1 评审时决定（历史门禁）
 
-- 本轮只更新设计与评审依据，不修改 `schema.prisma`，不新增迁移，不重建数据库。
+- 评审轮只更新设计与评审依据；批准后的实现已追加 `20260923120000_add_post_departure_shipment_core`，但未在本任务中应用到本地持久数据库。
 - 现有真实样本、备货单、产品行、货柜和装载分配继续保留；不得为迎合新模型伪造 ATD、事件或时间偏移。
 - 新导入功能在目标契约批准前不得继续扩大 `ApplyReplenishmentOrderImportService` 的职责。
 

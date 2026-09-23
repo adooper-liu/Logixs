@@ -9,8 +9,13 @@ export class ContainerSummaryDto {
   })
   id!: string;
 
-  @ApiProperty({ description: "备货单号（匹配主锚）", example: "SO-2026-0001" })
-  orderNumber!: string;
+  @ApiProperty({
+    description: "兼容上游备货单号；已出运直接接收时可空",
+    example: "SO-2026-0001",
+    nullable: true,
+    type: String,
+  })
+  orderNumber!: string | null;
 
   @ApiProperty({
     description: "箱号（迟绑定，装箱后才有，可空）",

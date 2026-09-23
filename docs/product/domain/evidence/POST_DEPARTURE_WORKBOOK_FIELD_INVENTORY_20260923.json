@@ -170,6 +170,7 @@
   "maintenanceFieldInventory": {
     "container": {
       "file": "引出列表_货柜信息表_0923092212.xlsx",
+      "sheetName": "列表数据",
       "ownerDomain": "shipment-registry",
       "fields": [
         {
@@ -422,6 +423,7 @@
     },
     "customs": {
       "file": "引出列表_清关信息表_0923092240.xlsx",
+      "sheetName": "列表数据",
       "ownerDomain": "customs-compliance",
       "fields": [
         {
@@ -806,6 +808,7 @@
     },
     "logistics": {
       "file": "引出列表_物流信息表_0923092155.xlsx",
+      "sheetName": "列表数据",
       "ownerDomain": "lifecycle-control + inland-fulfillment",
       "fields": [
         {
@@ -1088,6 +1091,7 @@
     },
     "warehouse": {
       "file": "引出列表_仓库信息表_0923092259.xlsx",
+      "sheetName": "列表数据",
       "ownerDomain": "inland-fulfillment",
       "fields": [
         {

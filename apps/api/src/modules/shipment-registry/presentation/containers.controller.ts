@@ -1,9 +1,13 @@
 import { Controller, Get, Param, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import type { ContainerOperationalView } from "@logix/contracts";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { GetContainerService } from "../application/get-container.service";
 import { GetContainerCargoComplianceScopeService } from "../application/get-container-cargo-compliance-scope.service";
+import { GetContainerOperationalViewService } from "../application/get-container-operational-view.service";
 import { ListContainersService } from "../application/list-containers.service";
 import { ContainerCargoScopeDto } from "./container-cargo-scope.dto";
+import { ContainerOperationalViewDto } from "./container-operational-view.dto";
 import { ContainerPageDto, ContainerSummaryDto } from "./container-summary.dto";
 
 @ApiTags("containers")
@@ -13,6 +17,7 @@ export class ContainersController {
     private readonly listContainers: ListContainersService,
     private readonly getContainer: GetContainerService,
     private readonly getContainerCargo: GetContainerCargoComplianceScopeService,
+    private readonly getContainerOperationalView: GetContainerOperationalViewService,
   ) {}
 
   @Get()
@@ -62,6 +67,23 @@ export class ContainersController {
           allocationSetVersion: null,
           items: [],
         };
+  }
+
+  @Get(":id/operational-view")
+  @RequireCapabilities("container.read", "lifecycle.read")
+  @ApiOkResponse({ type: ContainerOperationalViewDto })
+  getOperationalView(
+    @Req()
+    request: {
+      identity: { tenantId: string; capabilities: string[] };
+    },
+    @Param("id") id: string,
+  ): Promise<ContainerOperationalView> {
+    return this.getContainerOperationalView.execute({
+      tenantId: request.identity.tenantId,
+      containerId: id,
+      capabilities: request.identity.capabilities,
+    });
   }
 
   @Get(":id")

@@ -4,6 +4,12 @@ import type {
   CanonicalEventCode,
   LifecycleNodeCode,
 } from "@logix/contracts";
+import type { StartPostDepartureLifecycleCommandV2 } from "@logix/contracts";
+import {
+  hashPostDepartureLifecycleCommand,
+  POST_DEPARTURE_LIFECYCLE_EVENT_TYPE,
+  POST_DEPARTURE_LIFECYCLE_EVENT_VERSION,
+} from "@logix/contracts/post-departure-lifecycle";
 import {
   RECONCILE_APPLIED_LIFECYCLE_FACT,
   type ReconcileAppliedLifecycleFactCommand,
@@ -16,6 +22,7 @@ import {
 } from "../../shipment-registry";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type { OutboxDeliveryPort } from "../application/publish-outbox-batch.service";
+import { ReceiveInboxMessageService } from "../application/receive-inbox-message.service";
 import { OutboxDeliveryError } from "../domain/outbox-failure";
 import type { ClaimedOutbox } from "../domain/outbox-publish";
 import {
@@ -45,10 +52,14 @@ export class WorkExecutionOutboxDelivery implements OutboxDeliveryPort {
     private readonly reconcile: ReconcileAppliedLifecycleFactPort,
     @Inject(ASSERT_CONTAINER_TENANT)
     private readonly assertContainerTenant: AssertContainerTenantPort,
+    private readonly receiveInboxMessage: ReceiveInboxMessageService,
     private readonly fallback: StubOutboxDelivery,
   ) {}
 
   async deliver(message: ClaimedOutbox): Promise<{ brokerReference: string }> {
+    if (message.eventType === POST_DEPARTURE_LIFECYCLE_EVENT_TYPE) {
+      return this.deliverPostDepartureLifecycle(message);
+    }
     if (message.eventType !== WORK_FACT_RECONCILIATION_EVENT_TYPE) {
       return this.fallback.deliver(message);
     }
@@ -79,6 +90,53 @@ export class WorkExecutionOutboxDelivery implements OutboxDeliveryPort {
     };
   }
 
+  private async deliverPostDepartureLifecycle(
+    message: ClaimedOutbox,
+  ): Promise<{ brokerReference: string }> {
+    if (message.eventVersion !== POST_DEPARTURE_LIFECYCLE_EVENT_VERSION) {
+      throw schemaFailure("POST_DEPARTURE_EVENT_VERSION_UNSUPPORTED");
+    }
+    const handoffId = parseShipmentHandoffId(message.payloadRef);
+    const handoff = await this.prisma.shipmentHandoffRecord.findFirst({
+      where: {
+        id: handoffId,
+        tenantId: message.tenantId,
+        shipmentId: message.aggregateId,
+      },
+      select: { lifecycleRequestJson: true },
+    });
+    if (!handoff?.lifecycleRequestJson) {
+      throw schemaFailure("POST_DEPARTURE_CONTEXT_MISSING");
+    }
+    const command =
+      handoff.lifecycleRequestJson as unknown as StartPostDepartureLifecycleCommandV2;
+    if (
+      typeof command.shipmentId !== "string" ||
+      typeof command.departureEventId !== "string" ||
+      command.shipmentId !== message.aggregateId ||
+      command.departureEventId.length === 0 ||
+      hashPostDepartureLifecycleCommand(command) !== message.payloadHash
+    ) {
+      throw schemaFailure("POST_DEPARTURE_MESSAGE_MISMATCH");
+    }
+    let received;
+    try {
+      received = await this.receiveInboxMessage.execute({
+        actorType: "service",
+        actorId: "service:logix-outbox-publisher",
+        tenantId: message.tenantId,
+        consumerName: "lifecycle-control-inbox",
+        messageId: message.eventId,
+        payloadHash: message.payloadHash,
+        payload: command,
+        traceId: message.traceId,
+      });
+    } catch (error) {
+      throw classifyPostDepartureDeliveryFailure(error);
+    }
+    return { brokerReference: `inbox:${received.inboxRecordId}` };
+  }
+
   private async loadCommand(
     message: ClaimedOutbox,
   ): Promise<ReconcileAppliedLifecycleFactCommand> {
@@ -87,18 +145,29 @@ export class WorkExecutionOutboxDelivery implements OutboxDeliveryPort {
       const application = await tx.nodeEventApplication.findUnique({
         where: { id: applicationId },
         include: {
-          event: { include: { domainFact: true } },
+          event: true,
           targetNodeInstance: { include: { flow: true } },
         },
       });
-      return application;
+      if (!application) return null;
+      const dateFact =
+        application.event.domainFactType === "lifecycle_date_fact" &&
+        application.event.domainFactId
+          ? await tx.lifecycleDateFact.findUnique({
+              where: { id: application.event.domainFactId },
+            })
+          : null;
+      return { application, dateFact };
     });
     if (!context) throw schemaFailure("RECONCILIATION_CONTEXT_MISSING");
 
-    const application = context;
+    const { application, dateFact } = context;
     const event = application.event;
     const node = application.targetNodeInstance;
     const flow = node.flow;
+    if (!event.containerId) {
+      throw schemaFailure("RECONCILIATION_CONTAINER_SUBJECT_REQUIRED");
+    }
     try {
       await this.assertContainerTenant.execute({
         containerId: event.containerId,
@@ -126,7 +195,6 @@ export class WorkExecutionOutboxDelivery implements OutboxDeliveryPort {
       throw schemaFailure("RECONCILIATION_MESSAGE_MISMATCH");
     }
 
-    const dateFact = event.domainFact;
     const captureSource = dateFact
       ? parseCaptureSource(dateFact.captureSource)
       : "internal_operation";
@@ -156,6 +224,40 @@ export class WorkExecutionOutboxDelivery implements OutboxDeliveryPort {
       idempotencyKey: message.idempotencyKey,
     };
   }
+}
+
+function parseShipmentHandoffId(payloadRef: string): string {
+  const prefix = "shipment-handoff-lifecycle/";
+  if (!payloadRef.startsWith(prefix)) {
+    throw schemaFailure("POST_DEPARTURE_PAYLOAD_REF_INVALID");
+  }
+  const handoffId = payloadRef.slice(prefix.length).trim();
+  if (!handoffId || handoffId.includes("/")) {
+    throw schemaFailure("POST_DEPARTURE_PAYLOAD_REF_INVALID");
+  }
+  return handoffId;
+}
+
+function classifyPostDepartureDeliveryFailure(
+  error: unknown,
+): OutboxDeliveryError {
+  if (!(error instanceof HttpException)) {
+    return new OutboxDeliveryError(
+      "dependency_unavailable",
+      "lifecycle inbox unavailable",
+    );
+  }
+  const reason = extractReasonCode(error.message);
+  if (error.getStatus() >= 500) {
+    return new OutboxDeliveryError("dependency_unavailable", reason);
+  }
+  if (reason === "IDEMPOTENCY_CONFLICT") {
+    return new OutboxDeliveryError("idempotency_conflict", reason);
+  }
+  if (error.getStatus() === 401 || error.getStatus() === 403) {
+    return new OutboxDeliveryError("authorization_denied", reason);
+  }
+  return new OutboxDeliveryError("schema_invalid", reason);
 }
 
 function parseApplicationId(payloadRef: string): string {

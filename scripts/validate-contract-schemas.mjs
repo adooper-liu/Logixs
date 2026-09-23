@@ -4,6 +4,11 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import {
+  ACTION_CATALOG_VERSION,
+  ACTION_CODES,
+  ACTION_DEFINITIONS,
+} from "../packages/contracts/action-catalog.js";
 import { LIFECYCLE_DATE_FACT_INBOX_KIND } from "../packages/contracts/lifecycle-date-fact-inbox.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -174,6 +179,16 @@ const common = readJson(resolve(schemaRoot, "common.schema.json"));
 const nodes = readJson(resolve(catalogRoot, "lifecycle-nodes.json"));
 const events = readJson(resolve(catalogRoot, "canonical-events.json"));
 const importFields = readJson(resolve(catalogRoot, "import-fields.json"));
+const postDepartureFields = readJson(
+  resolve(catalogRoot, "post-departure-fields.json"),
+);
+const cargoOwners = readJson(resolve(catalogRoot, "cargo-owners.json"));
+const postDepartureFieldInventory = readJson(
+  resolve(
+    root,
+    "docs/product/domain/evidence/POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923.json",
+  ),
+);
 const lifecycleTimeline = readJson(
   resolve(schemaRoot, "lifecycle-timeline.schema.json"),
 );
@@ -201,6 +216,364 @@ const expectedImportFieldCodes = [
   "timeDerivationRuleVersion",
 ];
 const expectedQuantityUnitCodes = ["piece", "carton", "set", "pallet"];
+
+const expectedPostDepartureOccurrences = [];
+for (const [sourceSchema, source] of Object.entries(
+  postDepartureFieldInventory?.maintenanceFieldInventory ?? {},
+)) {
+  for (const field of source.fields ?? []) {
+    expectedPostDepartureOccurrences.push({
+      rawHeader: field.rawHeader,
+      sourceSchema,
+      position: field.position,
+      nonEmptyCount: field.nonEmptyCount,
+      distinctNonEmptyCount: field.distinctNonEmptyCount,
+    });
+  }
+}
+const expectedPostDepartureHeaders = [
+  ...new Set(
+    expectedPostDepartureOccurrences.map(({ rawHeader }) => rawHeader),
+  ),
+].sort();
+const postDepartureMappings = postDepartureFields?.mappings ?? [];
+const actualPostDepartureHeaders = postDepartureMappings
+  .map(({ rawHeader }) => rawHeader)
+  .sort();
+if (
+  expectedPostDepartureHeaders.length !== 146 ||
+  expectedPostDepartureOccurrences.length !== 176
+) {
+  errors.push(
+    "verified post-departure inventory must contain exactly 146 headers and 176 occurrences",
+  );
+}
+if (
+  JSON.stringify(actualPostDepartureHeaders) !==
+  JSON.stringify(expectedPostDepartureHeaders)
+) {
+  const actual = new Set(actualPostDepartureHeaders);
+  const expected = new Set(expectedPostDepartureHeaders);
+  const missing = expectedPostDepartureHeaders.filter(
+    (header) => !actual.has(header),
+  );
+  const unknown = actualPostDepartureHeaders.filter(
+    (header) => !expected.has(header),
+  );
+  errors.push(
+    `post-departure field registry must cover each verified header exactly once; missing=${JSON.stringify(missing)} unknown=${JSON.stringify(unknown)}`,
+  );
+}
+if (
+  new Set(actualPostDepartureHeaders).size !== actualPostDepartureHeaders.length
+) {
+  errors.push("post-departure field registry contains duplicate raw headers");
+}
+if (
+  postDepartureFields?.coverage?.distinctRawHeaders !== 146 ||
+  postDepartureFields?.coverage?.sourceOccurrences !== 176
+) {
+  errors.push(
+    "post-departure field registry coverage summary must remain 146 headers / 176 occurrences",
+  );
+}
+for (const [sourceSchema, source] of Object.entries(
+  postDepartureFields?.sourceSchemas ?? {},
+)) {
+  if (
+    typeof source.file !== "string" ||
+    typeof source.sheetName !== "string" ||
+    source.sheetName.trim() === ""
+  ) {
+    errors.push(
+      `${sourceSchema}: source workbook and sheet identity are required`,
+    );
+  }
+}
+const requiredMappingText = [
+  "rawHeader",
+  "canonicalFieldCode",
+  "correctedMeaning",
+  "ownerDomain",
+  "targetObject",
+  "dataType",
+  "validationRule",
+  "targetDisposition",
+  "sensitivity",
+  "currentPhysicalSupport",
+  "currentContractSupport",
+  "dataQualityRule",
+  "deprecationPolicy",
+];
+const allowedPostDepartureTypes = new Set([
+  "boolean",
+  "date_time",
+  "decimal",
+  "enum",
+  "identifier",
+  "integer",
+  "reference",
+  "string",
+]);
+for (const mapping of postDepartureMappings) {
+  for (const key of requiredMappingText) {
+    if (typeof mapping[key] !== "string" || mapping[key].trim() === "") {
+      errors.push(`${mapping.rawHeader ?? "<unknown>"}: missing ${key}`);
+    }
+  }
+  if (!allowedPostDepartureTypes.has(mapping.dataType)) {
+    errors.push(
+      `${mapping.rawHeader}: unsupported dataType ${mapping.dataType}`,
+    );
+  }
+  if (typeof mapping.storageNullable !== "boolean") {
+    errors.push(`${mapping.rawHeader}: storageNullable must be boolean`);
+  }
+  if (!Array.isArray(mapping.profileRequired)) {
+    errors.push(`${mapping.rawHeader}: profileRequired must be an array`);
+  }
+  const expected = expectedPostDepartureOccurrences
+    .filter(({ rawHeader }) => rawHeader === mapping.rawHeader)
+    .map(
+      ({ sourceSchema, position, nonEmptyCount, distinctNonEmptyCount }) => ({
+        sourceSchema,
+        position,
+        nonEmptyCount,
+        distinctNonEmptyCount,
+      }),
+    );
+  const observedEvidence = (mapping.sourceOccurrences ?? []).map(
+    ({ sourceSchema, position, nonEmptyCount, distinctNonEmptyCount }) => ({
+      sourceSchema,
+      position,
+      nonEmptyCount,
+      distinctNonEmptyCount,
+    }),
+  );
+  if (JSON.stringify(observedEvidence) !== JSON.stringify(expected)) {
+    errors.push(`${mapping.rawHeader}: source occurrences drift from evidence`);
+  }
+  for (const occurrence of mapping.sourceOccurrences ?? []) {
+    for (const key of [
+      "canonicalFieldCode",
+      "correctedMeaning",
+      "ownerDomain",
+      "targetObject",
+    ]) {
+      if (
+        typeof occurrence[key] !== "string" ||
+        occurrence[key].trim() === ""
+      ) {
+        errors.push(
+          `${mapping.rawHeader}/${occurrence.sourceSchema}: missing ${key}`,
+        );
+      }
+    }
+  }
+}
+const unloadingMethodMapping = postDepartureMappings.find(
+  ({ rawHeader }) => rawHeader === "卸柜方式",
+);
+const unloadingMethodBySource = Object.fromEntries(
+  (unloadingMethodMapping?.sourceOccurrences ?? []).map((occurrence) => [
+    occurrence.sourceSchema,
+    occurrence.canonicalFieldCode,
+  ]),
+);
+if (
+  unloadingMethodBySource.logistics !==
+    "container.unloading.planned_method_code" ||
+  unloadingMethodBySource.warehouse !== "container.unloading.actual_method_code"
+) {
+  errors.push("卸柜方式 must retain distinct planned and actual semantics");
+}
+const mandatoryPostDepartureCodes = new Set([
+  "upstream.replenishment_order.number",
+  "container.number",
+  "transport_document.source_bill_number",
+  "shipment.ocean.carrier_code",
+  "shipment.ocean.vessel_name",
+  "shipment.ocean.voyage_number",
+  "container.equipment_type_code",
+  "shipment.route.port_of_loading_unlocode",
+  "shipment.route.port_of_discharge_unlocode",
+  "shipment.destination.warehouse_group_code",
+  "shipment.departure.actual_at",
+  "shipment.arrival.estimated_at",
+  "container.cargo.carton_count",
+  "container.cargo.volume_m3",
+  "container.cargo.gross_weight_kg",
+]);
+for (const code of mandatoryPostDepartureCodes) {
+  const mappings = postDepartureMappings.filter(
+    ({ canonicalFieldCode }) => canonicalFieldCode === code,
+  );
+  if (
+    mappings.length === 0 ||
+    mappings.some(
+      ({ profileRequired }) => !profileRequired.includes("post_departure_v1"),
+    )
+  ) {
+    errors.push(`${code}: must be required by post_departure_v1`);
+  }
+}
+const countryMapping = postDepartureMappings.find(
+  ({ rawHeader }) => rawHeader === "销往国家",
+);
+if (
+  countryMapping?.canonicalFieldCode !== "shipment.cargo_owner_name" ||
+  countryMapping?.targetDisposition !== "typed_reference" ||
+  countryMapping?.dataQualityRule !== "UNKNOWN_REFERENCE_CODE"
+) {
+  errors.push(
+    "销往国家 must resolve as cargo owner identity, not a country field",
+  );
+}
+if (
+  cargoOwners?.status !== "owner_confirmed" ||
+  cargoOwners?.records?.length !== 9 ||
+  cargoOwners.records.find(
+    ({ internalCountryShortCode }) => internalCountryShortCode === "UK",
+  )?.salesCountryCode !== "GB"
+) {
+  errors.push(
+    "cargo owner catalog must contain nine confirmed mappings and preserve UK -> GB",
+  );
+}
+const brokenEtaMapping = postDepartureMappings.find(
+  ({ rawHeader }) => rawHeader === "ETA修正",
+);
+if (
+  brokenEtaMapping?.targetDisposition !== "quarantine" ||
+  brokenEtaMapping?.dataQualityRule !== "INVALID_SOURCE_VALUE"
+) {
+  errors.push("ETA修正 must remain quarantined as an invalid source value");
+}
+
+const postDepartureDetailFixture = readJson(
+  resolve(fixtureRoot, "post-departure-container-operational-source.json"),
+);
+const expectedDetailSources = (
+  postDepartureFieldInventory?.sourceFiles ?? []
+).filter(({ role }) => role === "read_only_detail_fixture");
+const detailHeaders =
+  postDepartureFieldInventory?.detailProjection?.headers ?? [];
+const detailProjectionMappings =
+  postDepartureFields?.detailProjectionMappings ?? [];
+if (
+  JSON.stringify(detailProjectionMappings.map(({ rawHeader }) => rawHeader)) !==
+    JSON.stringify(detailHeaders) ||
+  new Set(detailProjectionMappings.map(({ rawHeader }) => rawHeader)).size !==
+    97
+) {
+  errors.push(
+    "post-departure field registry must map each detail projection header exactly once",
+  );
+}
+const permittedDetailOwnerDomains = new Set([
+  "charges-settlement",
+  "customs-compliance",
+  "document-records",
+  "inland-fulfillment",
+  "lifecycle-control",
+  "shipment-registry",
+  "source-governance",
+]);
+for (const mapping of detailProjectionMappings) {
+  if (
+    mapping.authority !== "read_only_projection" ||
+    !permittedDetailOwnerDomains.has(mapping.ownerDomain)
+  ) {
+    errors.push(
+      `${mapping.rawHeader}: detail projection cannot introduce a new fact owner`,
+    );
+  }
+}
+if (
+  postDepartureDetailFixture?.purpose !==
+    "read_only_container_operational_view_reconciliation" ||
+  postDepartureDetailFixture?.projectionContract !==
+    "container_operational_view.v1"
+) {
+  errors.push(
+    "post-departure detail fixture must remain a read-only container operational projection input",
+  );
+}
+if (
+  JSON.stringify(postDepartureDetailFixture?.headers) !==
+    JSON.stringify(detailHeaders) ||
+  detailHeaders.length !== 97
+) {
+  errors.push(
+    "post-departure detail fixture must preserve all 97 source headers",
+  );
+}
+if (
+  postDepartureDetailFixture?.headerSignature !==
+  postDepartureFieldInventory?.detailProjection?.headerSignature
+) {
+  errors.push("post-departure detail fixture header signature drifted");
+}
+const detailRecords = postDepartureDetailFixture?.records ?? [];
+if (detailRecords.length !== 10) {
+  errors.push("post-departure detail fixture must contain exactly 10 records");
+}
+for (const source of expectedDetailSources) {
+  const record = detailRecords.find(
+    ({ sourceFile }) => sourceFile === source.file,
+  );
+  if (!record) {
+    errors.push(`${source.file}: missing detail reconciliation record`);
+    continue;
+  }
+  if (
+    record.sourceSha256 !== source.sha256 ||
+    record.declaredRange !== source.declaredRange ||
+    record.actualRange !== source.actualRange ||
+    record.sourceSheet !== "货柜清关&物流状态详情"
+  ) {
+    errors.push(`${source.file}: detail fixture provenance drifted`);
+  }
+  if (
+    JSON.stringify(Object.keys(record.values ?? {})) !==
+    JSON.stringify(detailHeaders)
+  ) {
+    errors.push(`${source.file}: detail fixture does not preserve all columns`);
+  }
+  if (
+    record.containerNumber !== record.values?.["集装箱号"] ||
+    record.replenishmentOrderNumber !== record.values?.["备货单号"] ||
+    record.billNumber !== record.values?.["提单号"]
+  ) {
+    errors.push(`${source.file}: detail fixture identity projection drifted`);
+  }
+  if (record.values?.["销往国家"] !== "AOSOM LLC") {
+    errors.push(`${source.file}: known country semantic defect was altered`);
+  }
+}
+for (const [label, observed, expected] of [
+  [
+    "containers",
+    detailRecords.map(({ containerNumber }) => containerNumber).sort(),
+    [
+      ...(postDepartureFieldInventory?.detailProjection?.containerIds ?? []),
+    ].sort(),
+  ],
+  [
+    "replenishment orders",
+    detailRecords
+      .map(({ replenishmentOrderNumber }) => replenishmentOrderNumber)
+      .sort(),
+    [
+      ...(postDepartureFieldInventory?.detailProjection
+        ?.replenishmentOrderNumbers ?? []),
+    ].sort(),
+  ],
+]) {
+  if (JSON.stringify(observed) !== JSON.stringify(expected)) {
+    errors.push(`post-departure detail fixture ${label} drifted from evidence`);
+  }
+}
 
 const lifecycleDateFactInboxKind =
   lifecycleTimeline?.$defs?.LifecycleDateFactInboxPayload?.properties?.kind
@@ -421,6 +794,36 @@ for (const property of ["tenantId", "correlationId", "traceId"]) {
     errors.push(`action command must require ${property}`);
   }
 }
+const actionDefinitionValidator = ajv.getSchema(
+  `${schemaBaseUrl}action-command.schema.json#/$defs/ActionDefinition`,
+);
+if (ACTION_CATALOG_VERSION !== "1.0.0") {
+  errors.push(
+    `action catalog version must match GC-008 V1: ${ACTION_CATALOG_VERSION}`,
+  );
+}
+const registeredActionCodes = new Set();
+for (const definition of ACTION_DEFINITIONS) {
+  if (!actionDefinitionValidator?.(definition)) {
+    errors.push(
+      `${definition.actionCode ?? "<unknown>"}: action definition schema validation failed: ${ajv.errorsText(actionDefinitionValidator?.errors)}`,
+    );
+  }
+  if (registeredActionCodes.has(definition.actionCode)) {
+    errors.push(`${definition.actionCode}: duplicate action catalog entry`);
+  }
+  registeredActionCodes.add(definition.actionCode);
+}
+const exportedActionCodes = Object.values(ACTION_CODES);
+if (
+  new Set(exportedActionCodes).size !== exportedActionCodes.length ||
+  JSON.stringify([...registeredActionCodes].sort()) !==
+    JSON.stringify([...exportedActionCodes].sort())
+) {
+  errors.push(
+    "action catalog definitions must match the exported ACTION_CODES exactly",
+  );
+}
 
 const operationalView = readJson(
   resolve(schemaRoot, "container-operational-view.schema.json"),
@@ -548,6 +951,8 @@ const compatibilitySurface = (value, pointer = "#", output = new Map()) => {
   if (Array.isArray(value.required))
     output.set(`${pointer}/required`, new Set(value.required));
   if (typeof value.type === "string") output.set(`${pointer}/type`, value.type);
+  if (Array.isArray(value.type))
+    output.set(`${pointer}/type`, new Set(value.type));
   for (const [key, child] of Object.entries(value)) {
     compatibilitySurface(
       child,
@@ -618,6 +1023,8 @@ for (const path of schemaFiles) {
             );
         }
       }
+    } else if (newValue instanceof Set && newValue.has(oldValue)) {
+      continue;
     } else if (
       newValue !== oldValue &&
       resolveReplacementSurface(path, current, pointer) !== oldValue

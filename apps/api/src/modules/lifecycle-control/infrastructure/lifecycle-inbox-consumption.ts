@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { InitializePostDepartureLifecycleService } from "../application/initialize-post-departure-lifecycle.service";
 import { RecordLifecycleDateFactService } from "../application/record-lifecycle-date-fact.service";
 import type { InboxConsumptionPort } from "../application/process-inbox-batch.service";
 import {
@@ -15,6 +16,7 @@ import type { ClaimedInbox } from "../domain/inbox-processing";
 export class LifecycleInboxConsumption implements InboxConsumptionPort {
   constructor(
     private readonly recordLifecycleDateFact: RecordLifecycleDateFactService,
+    private readonly initializePostDeparture: InitializePostDepartureLifecycleService,
   ) {}
 
   async consume(message: ClaimedInbox): Promise<void> {
@@ -31,6 +33,18 @@ export class LifecycleInboxConsumption implements InboxConsumptionPort {
 
     try {
       if ("kind" in payload) {
+        if (payload.kind === "start_post_departure_lifecycle_v2") {
+          await this.initializePostDeparture.execute({
+            tenantId: message.tenantId,
+            command: payload.command,
+            completeInbox: {
+              id: message.id,
+              owner: message.lease.owner,
+              processedAt: new Date(),
+            },
+          });
+          return;
+        }
         if (payload.command.tenantId !== message.tenantId) {
           throw new Error("AUTHORIZATION_SCOPE_DENIED: 租户不匹配");
         }
