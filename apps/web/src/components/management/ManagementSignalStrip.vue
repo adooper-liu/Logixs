@@ -60,7 +60,7 @@ const displayItems = computed(() =>
 .signal-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .signal {
@@ -107,13 +107,13 @@ const displayItems = computed(() =>
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
 }
 
 .signal-label {
   min-width: 0;
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -121,7 +121,7 @@ const displayItems = computed(() =>
 .signal-note {
   min-width: 0;
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -133,7 +133,7 @@ const displayItems = computed(() =>
 
 .signal-summary > b {
   color: currentColor;
-  font-size: 27px;
+  font-size: var(--text-page);
   line-height: 1.08;
   overflow-wrap: anywhere;
 }
@@ -175,7 +175,7 @@ const displayItems = computed(() =>
 @media (max-width: 720px) {
   .signal-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .signal {
@@ -184,11 +184,11 @@ const displayItems = computed(() =>
 
   .signal-summary {
     min-height: 76px;
-    padding: 9px 10px;
+    padding: var(--space-2) var(--space-3);
   }
 
   .signal-summary > b {
-    font-size: 22px;
+    font-size: var(--text-page);
   }
 
   .signal-note {

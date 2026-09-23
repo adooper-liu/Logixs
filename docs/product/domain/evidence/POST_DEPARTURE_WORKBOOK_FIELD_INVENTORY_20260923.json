@@ -1,0 +1,1457 @@
+{
+  "schemaVersion": "1.0.0",
+  "reviewedAt": "2026-09-23",
+  "sourceRoot": "D:\\Filez\\刘志高\\已出运货柜",
+  "parser": "raw OpenXML worksheet cell enumeration",
+  "sourceFiles": [
+    {
+      "file": "货柜清关物流状态详情_0923 (1).xlsx",
+      "sha256": "d2cefca2cd3b60daea6e7301f3bbbc786db5a9006373827b9fa17a130b8627f7",
+      "bytes": 5943,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (2).xlsx",
+      "sha256": "4b79854a49a6a4755d2340a3a3f27e2b802808f70ebd1ad048fb3cca951fef84",
+      "bytes": 5932,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (3).xlsx",
+      "sha256": "2ce95c77043cea339a2003e5cf33ecef28e37b6fa093974ec5f4409588556687",
+      "bytes": 5935,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (4).xlsx",
+      "sha256": "041fac94b3891fee8dda5cc7e64eae553dd49d9b7cd394c73865b32f03ede23a",
+      "bytes": 5953,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (5).xlsx",
+      "sha256": "c3c4fcb58f8e50f0ab259f37b0e7d6968245711a8e30c3e4a0d9384c0bcd817d",
+      "bytes": 5947,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (6).xlsx",
+      "sha256": "f8910831ecab7832671a000842eaa035f36af3b9fc35006800f438dc12da6a88",
+      "bytes": 5922,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (7).xlsx",
+      "sha256": "4b8f7827b6f437a9c233a29b214af4263eaa2a3a49618cdf154912207fa0b0e2",
+      "bytes": 5921,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (8).xlsx",
+      "sha256": "3cf6fd8bcc365e0ffb3a068001f6faed92ec91efb983ac002b9e5724ee8560a1",
+      "bytes": 5982,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923 (9).xlsx",
+      "sha256": "2a5100a39c88116974008e7bac243e98726ef475f2b1952b60ae712c694e315c",
+      "bytes": 5980,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "货柜清关物流状态详情_0923.xlsx",
+      "sha256": "be456e9ec361a133d4644e5299c838a8caecc6852beaf9c6ca5b38b564c9e23a",
+      "bytes": 5929,
+      "role": "read_only_detail_fixture",
+      "declaredRange": "A1",
+      "actualRange": "A1:CS2",
+      "dataRows": 1,
+      "columnCount": 97,
+      "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f"
+    },
+    {
+      "file": "引出列表_仓库信息表_0923092259.xlsx",
+      "sha256": "aa72111b135ff4fb75c66bee40c54c628a0f4bdc6e6c2d29c93306243edb4df3",
+      "bytes": 5773,
+      "role": "maintenance_source",
+      "declaredRange": "A1",
+      "actualRange": "A1:Z21",
+      "dataRows": 20,
+      "columnCount": 26,
+      "headerSignature": "3158277191558ebc880a1b34631f1006ecae66304d77fdabbf113804c0cbb12b"
+    },
+    {
+      "file": "引出列表_货柜信息表_0923092212.xlsx",
+      "sha256": "f22fde9f9052f27fe761ecf579ddef30da6edaf43acf69090a207d3dd1b040c4",
+      "bytes": 9147,
+      "role": "maintenance_source",
+      "declaredRange": "A1",
+      "actualRange": "A1:AO21",
+      "dataRows": 20,
+      "columnCount": 41,
+      "headerSignature": "d114c862c2915a6780dc8a79f247787d03ab2b220edf1cfd13bec285e1c9cf25"
+    },
+    {
+      "file": "引出列表_清关信息表_0923092240.xlsx",
+      "sha256": "d9a2196b511f669946834394b208853b13fa581564ec283b244be8be49e07aaf",
+      "bytes": 9732,
+      "role": "maintenance_source",
+      "declaredRange": "A1",
+      "actualRange": "A1:BK21",
+      "dataRows": 20,
+      "columnCount": 63,
+      "headerSignature": "dec7500e395623e31307911aa1613e88d6803f1096e898f95f3fb4e4268a6bdd"
+    },
+    {
+      "file": "引出列表_物流信息表_0923092155.xlsx",
+      "sha256": "3011895da4372c204d0c8561d8d4b7b8df20ef1ebf1823c3a5207e0c73c9ebc3",
+      "bytes": 7139,
+      "role": "maintenance_source",
+      "declaredRange": "A1",
+      "actualRange": "A1:AT21",
+      "dataRows": 20,
+      "columnCount": 46,
+      "headerSignature": "3419e7a2d2f1e7ff30950b662f55f84b68fca832c8703563860c5a052594bb03"
+    }
+  ],
+  "totals": {
+    "files": 14,
+    "maintenanceFiles": 4,
+    "detailFiles": 10,
+    "maintenanceColumnOccurrences": 176,
+    "maintenanceUniqueRawHeaders": 146,
+    "detailColumns": 97
+  },
+  "maintenanceFieldInventory": {
+    "container": {
+      "file": "引出列表_货柜信息表_0923092212.xlsx",
+      "ownerDomain": "shipment-registry",
+      "fields": [
+        {
+          "position": 1,
+          "rawHeader": "序号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 2,
+          "rawHeader": "销往国家",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 3,
+          "rawHeader": "备货单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 4,
+          "rawHeader": "备货单状态",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 5,
+          "rawHeader": "箱号(集装箱号)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 6,
+          "rawHeader": "提单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 7,
+          "rawHeader": "船公司",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4
+        },
+        {
+          "position": 8,
+          "rawHeader": "船名",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8
+        },
+        {
+          "position": 9,
+          "rawHeader": "航次",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8
+        },
+        {
+          "position": 10,
+          "rawHeader": "柜型",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 11,
+          "rawHeader": "Wayfairspo",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 12,
+          "rawHeader": "是否装配件",
+          "nonEmptyCount": 1,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 13,
+          "rawHeader": "特殊货物体积",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 14,
+          "rawHeader": "起运港",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 5
+        },
+        {
+          "position": 15,
+          "rawHeader": "目的港",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4
+        },
+        {
+          "position": 16,
+          "rawHeader": "起运港货代公司",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3
+        },
+        {
+          "position": 17,
+          "rawHeader": "入库仓库组",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3
+        },
+        {
+          "position": 18,
+          "rawHeader": "出运日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4
+        },
+        {
+          "position": 19,
+          "rawHeader": "途径港",
+          "nonEmptyCount": 9,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 20,
+          "rawHeader": "制单人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 21,
+          "rawHeader": "制单日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9
+        },
+        {
+          "position": 22,
+          "rawHeader": "价格条款",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 23,
+          "rawHeader": "采购贸易模式",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 24,
+          "rawHeader": "箱数合计",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 19
+        },
+        {
+          "position": 25,
+          "rawHeader": "体积合计(m3)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 26,
+          "rawHeader": "毛重合计(KG)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 27,
+          "rawHeader": "出运总价",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 28,
+          "rawHeader": "议付金额",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 14
+        },
+        {
+          "position": 29,
+          "rawHeader": "议付金额FOB",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 30,
+          "rawHeader": "议付金额CIF",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 31,
+          "rawHeader": "海运费币种",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 32,
+          "rawHeader": "标准海运费金额",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8
+        },
+        {
+          "position": 33,
+          "rawHeader": "目的地",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 34,
+          "rawHeader": "免堆期(天)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 35,
+          "rawHeader": "场内免箱期(天)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 36,
+          "rawHeader": "场外免箱期(天)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 37,
+          "rawHeader": "预计到港日期(ETA)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11
+        },
+        {
+          "position": 38,
+          "rawHeader": "修改人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 39,
+          "rawHeader": "修改时间",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9
+        },
+        {
+          "position": 40,
+          "rawHeader": "母船船名",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 41,
+          "rawHeader": "母船船次",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        }
+      ]
+    },
+    "customs": {
+      "file": "引出列表_清关信息表_0923092240.xlsx",
+      "ownerDomain": "customs-compliance",
+      "fields": [
+        {
+          "position": 1,
+          "rawHeader": "序号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 2,
+          "rawHeader": "销往国家",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 3,
+          "rawHeader": "备货单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 4,
+          "rawHeader": "集装箱号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 5,
+          "rawHeader": "提单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 6,
+          "rawHeader": "出运日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4
+        },
+        {
+          "position": 7,
+          "rawHeader": "预计到港日期(ETA)",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11
+        },
+        {
+          "position": 8,
+          "rawHeader": "ETA修正（组织）",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11
+        },
+        {
+          "position": 9,
+          "rawHeader": "计划清关日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 10,
+          "rawHeader": "实际清关日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 11,
+          "rawHeader": "清关状态",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 12,
+          "rawHeader": "目的港清关公司",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3
+        },
+        {
+          "position": 13,
+          "rawHeader": "采购贸易模式",
+          "nonEmptyCount": 12,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 14,
+          "rawHeader": "是否已发送换单文件",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 15,
+          "rawHeader": "换单状态",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 16,
+          "rawHeader": "换单收货人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3
+        },
+        {
+          "position": 17,
+          "rawHeader": "发货人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 3
+        },
+        {
+          "position": 18,
+          "rawHeader": "全部生成日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 19,
+          "rawHeader": "是否查验",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 20,
+          "rawHeader": "是否开箱",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 21,
+          "rawHeader": "异常原因",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 22,
+          "rawHeader": "ISF申报状态",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 23,
+          "rawHeader": "ISF申报日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9
+        },
+        {
+          "position": 24,
+          "rawHeader": "放单日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 25,
+          "rawHeader": "MBL SCAC",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 26,
+          "rawHeader": "MBL Number",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 27,
+          "rawHeader": "HBL SCAC",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4
+        },
+        {
+          "position": 28,
+          "rawHeader": "HBL Number",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 29,
+          "rawHeader": "AMS Number",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 30,
+          "rawHeader": "传递日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 31,
+          "rawHeader": "重新传递时间",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 32,
+          "rawHeader": "清关单据状态",
+          "nonEmptyCount": 12,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 33,
+          "rawHeader": "ISF传递",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 34,
+          "rawHeader": "提单传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 35,
+          "rawHeader": "箱单传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 36,
+          "rawHeader": "发票传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 37,
+          "rawHeader": "ENS传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 38,
+          "rawHeader": "产品资料传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 39,
+          "rawHeader": "植检证书传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 40,
+          "rawHeader": "Energy-related Products传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 41,
+          "rawHeader": "Nameplate传递",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 42,
+          "rawHeader": "清关单据更新.附件名称",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 43,
+          "rawHeader": "清关单据更新是否重传",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 44,
+          "rawHeader": "创建人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 45,
+          "rawHeader": "创建时间",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11
+        },
+        {
+          "position": 46,
+          "rawHeader": "修改人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 47,
+          "rawHeader": "修改时间",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 48,
+          "rawHeader": "提单附件",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 49,
+          "rawHeader": "箱单附件",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 50,
+          "rawHeader": "发票附件",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 51,
+          "rawHeader": "ENS附件",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 52,
+          "rawHeader": "产品资料附件",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 53,
+          "rawHeader": "植检证书附件",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 54,
+          "rawHeader": "农业产品声明附件",
+          "nonEmptyCount": 1,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 55,
+          "rawHeader": "Lacey Act Form附件",
+          "nonEmptyCount": 3,
+          "distinctNonEmptyCount": 3
+        },
+        {
+          "position": 56,
+          "rawHeader": "药品监管附件",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 57,
+          "rawHeader": "婴童玩具证书",
+          "nonEmptyCount": 10,
+          "distinctNonEmptyCount": 10
+        },
+        {
+          "position": 58,
+          "rawHeader": "纺织品工厂信息",
+          "nonEmptyCount": 2,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 59,
+          "rawHeader": "Energy-related Products",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 60,
+          "rawHeader": "Nameplate",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 61,
+          "rawHeader": "母船出运日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8
+        },
+        {
+          "position": 62,
+          "rawHeader": "进口报关单",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 63,
+          "rawHeader": "进口报关单号",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        }
+      ]
+    },
+    "logistics": {
+      "file": "引出列表_物流信息表_0923092155.xlsx",
+      "ownerDomain": "lifecycle-control + inland-fulfillment",
+      "fields": [
+        {
+          "position": 1,
+          "rawHeader": "序号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 2,
+          "rawHeader": "单据编号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 3,
+          "rawHeader": "销往国家",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 4,
+          "rawHeader": "备货单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 5,
+          "rawHeader": "物流状态",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 6,
+          "rawHeader": "集装箱号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 7,
+          "rawHeader": "提单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 8,
+          "rawHeader": "目的港",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 4
+        },
+        {
+          "position": 9,
+          "rawHeader": "预计到港日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11
+        },
+        {
+          "position": 10,
+          "rawHeader": "ETA修正",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 11,
+          "rawHeader": "途径港到达日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 12,
+          "rawHeader": "目的港到达日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 13,
+          "rawHeader": "目的港卸船/火车日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 14,
+          "rawHeader": "目的港码头",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 15,
+          "rawHeader": "最后免费日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 16,
+          "rawHeader": "是否预提",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 17,
+          "rawHeader": "运输方式",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 18,
+          "rawHeader": "目的港卡车",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 19,
+          "rawHeader": "目的港火车",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 20,
+          "rawHeader": "仓库(计划)",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 21,
+          "rawHeader": "入库日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 22,
+          "rawHeader": "最晚提柜日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 8
+        },
+        {
+          "position": 23,
+          "rawHeader": "计划提柜日期",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 24,
+          "rawHeader": "提柜日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 25,
+          "rawHeader": "最晚送仓日期",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 26,
+          "rawHeader": "计划送仓日期",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 27,
+          "rawHeader": "卸柜方式",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 28,
+          "rawHeader": "最晚卸柜日期",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 29,
+          "rawHeader": "计划卸柜日期",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 30,
+          "rawHeader": "最晚还箱日期",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9
+        },
+        {
+          "position": 31,
+          "rawHeader": "计划还箱日期",
+          "nonEmptyCount": 4,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 32,
+          "rawHeader": "还箱日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 33,
+          "rawHeader": "还箱日期(组织时区)",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 34,
+          "rawHeader": "进港日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 35,
+          "rawHeader": "进火车堆场日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 36,
+          "rawHeader": "进卡车堆场日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 37,
+          "rawHeader": "WMS入库状态",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 38,
+          "rawHeader": "EBS入库状态",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 39,
+          "rawHeader": "火车发出时间",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 40,
+          "rawHeader": "维护字段",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 41,
+          "rawHeader": "创建人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 42,
+          "rawHeader": "创建时间",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11
+        },
+        {
+          "position": 43,
+          "rawHeader": "修改人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 44,
+          "rawHeader": "修改时间",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 45,
+          "rawHeader": "取空日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 46,
+          "rawHeader": "送仓日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        }
+      ]
+    },
+    "warehouse": {
+      "file": "引出列表_仓库信息表_0923092259.xlsx",
+      "ownerDomain": "inland-fulfillment",
+      "fields": [
+        {
+          "position": 1,
+          "rawHeader": "序号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 2,
+          "rawHeader": "单据编号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 3,
+          "rawHeader": "单据状态",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 4,
+          "rawHeader": "销往国家",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 5,
+          "rawHeader": "备货单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 6,
+          "rawHeader": "集装箱号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 7,
+          "rawHeader": "提单号",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 20
+        },
+        {
+          "position": 8,
+          "rawHeader": "仓库",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 9,
+          "rawHeader": "送仓时间",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 10,
+          "rawHeader": "卸柜方式",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 11,
+          "rawHeader": "卸空时间",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 12,
+          "rawHeader": "货柜承运商",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 13,
+          "rawHeader": "卸柜门",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 14,
+          "rawHeader": "卸柜公司",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 15,
+          "rawHeader": "通知取空日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 16,
+          "rawHeader": "取空时间",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 17,
+          "rawHeader": "备注",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 18,
+          "rawHeader": "WMS CONFIRM DATE",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 19,
+          "rawHeader": "创建人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 2
+        },
+        {
+          "position": 20,
+          "rawHeader": "创建时间",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 11
+        },
+        {
+          "position": 21,
+          "rawHeader": "修改人",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 1
+        },
+        {
+          "position": 22,
+          "rawHeader": "修改时间",
+          "nonEmptyCount": 20,
+          "distinctNonEmptyCount": 9
+        },
+        {
+          "position": 23,
+          "rawHeader": "审核人",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 24,
+          "rawHeader": "审核日期",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 25,
+          "rawHeader": "WMS CONFIRM DATE非",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        },
+        {
+          "position": 26,
+          "rawHeader": "取空通知",
+          "nonEmptyCount": 0,
+          "distinctNonEmptyCount": 0
+        }
+      ]
+    }
+  },
+  "detailProjection": {
+    "contractName": "container_operational_view",
+    "writable": false,
+    "fileCount": 10,
+    "headerSignature": "bc4a5ebbdb1f1bc13f694bffbe94a913138a36ddf01977a907aa119eb8c6012f",
+    "headers": [
+      "是否查验",
+      "销往国家",
+      "备货单号",
+      "主备货单号",
+      "备货单状态",
+      "清关状态",
+      "物流状态",
+      "集装箱号",
+      "提单号",
+      "船公司",
+      "柜型",
+      "Wayfair SPO",
+      "是否装配件",
+      "特殊货物体积",
+      "起运港",
+      "目的港",
+      "起运港货代公司",
+      "入库仓库组",
+      "预计到港日期",
+      "ETA修正",
+      "出运日期",
+      "计划清关日期",
+      "实际清关日期",
+      "目的港清关公司",
+      "是否开箱",
+      "清关单据状态",
+      "全部生成日期",
+      "异常原因(清关信息表）",
+      "途经港",
+      "途经港到达日期",
+      "目的港到达日期",
+      "目的港卸船/火车日期",
+      "目的港码头",
+      "最后免费日期",
+      "是否预提",
+      "运输方式",
+      "目的港卡车",
+      "仓库(计划)",
+      "仓库(实际)",
+      "入库日期",
+      "最晚提柜日期",
+      "计划提柜日期",
+      "提柜日期",
+      "最晚送仓日期",
+      "计划送仓日期",
+      "卸柜方式(计划)",
+      "卸柜方式（实际）",
+      "最晚卸柜日期",
+      "计划卸柜日期",
+      "卸空日期",
+      "最晚还箱日期",
+      "计划还箱日期",
+      "还箱日期",
+      "备注(物流信息表）",
+      "提柜通知",
+      "货柜承运商",
+      "卸柜门",
+      "卸柜公司",
+      "通知取空日期",
+      "取空时间",
+      "备注(仓库信息表)",
+      "价格条款",
+      "箱数合计",
+      "体积合计(m3)",
+      "毛重合计(KG)",
+      "出运总价",
+      "议付金额FOB",
+      "议付金额CIF",
+      "议付金额",
+      "海运费币种",
+      "标准海运费金额",
+      "目的地",
+      "船名",
+      "航次",
+      "ISF申报状态",
+      "ISF申报日期",
+      "免堆期(天)",
+      "场内免箱期(天)",
+      "场外免箱期(天)",
+      "放单日期",
+      "传递日期",
+      "进港日期",
+      "MBL SCAC",
+      "MBL Number",
+      "HBL SCAC",
+      "HBL Number",
+      "AMS Number",
+      "进火车堆场日期",
+      "进卡车堆场日期",
+      "WMS入库状态",
+      "EBS入库状态",
+      "WMS Confirm Date",
+      "母船出运日期",
+      "母船船名",
+      "母船船次",
+      "含要求打托产品",
+      "采购贸易模式"
+    ],
+    "containerIds": [
+      "BMOU4788119",
+      "CAAU7357895",
+      "FFAU2939686",
+      "GAOU6228112",
+      "MEDU4448830",
+      "MEDU7620177",
+      "MSDU6759674",
+      "MSNU7995838",
+      "MSNU8481875",
+      "MSNU9762671"
+    ],
+    "replenishmentOrderNumbers": [
+      "26DSA01780",
+      "26DSA01822",
+      "26DSA01838",
+      "26DSA01852",
+      "26DSA01858",
+      "26DSA01859",
+      "26DSA01882",
+      "26DSA01883",
+      "26DSA01884",
+      "26DSA01885"
+    ]
+  },
+  "verifiedRelationships": {
+    "sameOrderSetAcrossMaintenanceTables": true,
+    "sameContainerSetAcrossMaintenanceTables": true,
+    "sameBillSetAcrossMaintenanceTables": true,
+    "distinctOrders": 20,
+    "distinctContainers": 20,
+    "distinctBills": 20,
+    "distinctOrderContainerPairs": 20,
+    "sampleCardinality": "observed_1_to_1_only_not_a_domain_constraint"
+  },
+  "distributions": {
+    "country": {
+      "value": "AOSOM LLC",
+      "count": 20
+    },
+    "replenishmentStatus": {
+      "value": "已出运",
+      "count": 20
+    },
+    "logisticsStatus": {
+      "value": "已出运",
+      "count": 20
+    },
+    "customsStatus": {
+      "value": "未清关",
+      "count": 20
+    },
+    "isfStatus": {
+      "value": "已申报",
+      "count": 20
+    }
+  },
+  "dataQualityFindings": [
+    {
+      "code": "SOURCE_RANGE_METADATA_INVALID",
+      "affectedFiles": 14,
+      "observed": "declared A1 while actual ranges contain 21x26..63 or 2x97 cells",
+      "disposition": "parse actual worksheet cells or reject until corrected export"
+    },
+    {
+      "code": "FIELD_SEMANTIC_MISMATCH",
+      "field": "销往国家",
+      "affectedRows": 80,
+      "observed": "AOSOM LLC",
+      "disposition": "treat as consignee/party candidate; require independent ISO country fact"
+    },
+    {
+      "code": "INVALID_SOURCE_VALUE",
+      "field": "ETA修正",
+      "affectedFile": "引出列表_物流信息表_0923092155.xlsx",
+      "affectedRows": 20,
+      "cells": [
+        "J2",
+        "J3",
+        "J4",
+        "J5",
+        "J6",
+        "J7",
+        "J8",
+        "J9",
+        "J10",
+        "J11",
+        "J12",
+        "J13",
+        "J14",
+        "J15",
+        "J16",
+        "J17",
+        "J18",
+        "J19",
+        "J20",
+        "J21"
+      ],
+      "disposition": "quarantine; preserve raw value; do not default or overwrite ETA"
+    }
+  ]
+}

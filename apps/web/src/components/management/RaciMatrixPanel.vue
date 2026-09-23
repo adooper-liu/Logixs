@@ -129,9 +129,9 @@ const describeCell = (cell: RaciCell, nodeName: string) => {
   min-height: 44px;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -139,22 +139,22 @@ const describeCell = (cell: RaciCell, nodeName: string) => {
 .panel-head > div {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .panel-head h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 
 .panel-head > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .panel-head > span b,
 .panel-head > span strong {
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .panel-head > span b {
@@ -180,7 +180,7 @@ table {
 th,
 td {
   height: 40px;
-  padding: 5px 6px;
+  padding: var(--space-1) var(--space-2);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   text-align: center;
@@ -200,7 +200,7 @@ thead th {
   height: 34px;
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 650;
 }
 
@@ -224,7 +224,7 @@ tbody th a,
   min-height: 30px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--ink);
   text-decoration: none;
 }
@@ -235,12 +235,12 @@ tbody th a:hover span {
 
 tbody th small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
 }
 
 tbody th span {
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -251,7 +251,7 @@ tbody th span {
   display: inline-grid;
   place-items: center;
   border-radius: var(--radius-s);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 750;
 }
 
@@ -268,7 +268,7 @@ tbody th span {
 
 .empty {
   color: var(--line-strong);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 720px) {

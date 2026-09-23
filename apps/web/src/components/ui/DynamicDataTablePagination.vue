@@ -46,13 +46,13 @@ defineEmits<{ previous: []; next: [] }>();
 .table-footer {
   min-height: 42px;
   justify-content: space-between;
-  padding: 5px 10px;
+  padding: var(--space-1) var(--space-2);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .page-actions {
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .page-actions button {

@@ -82,8 +82,8 @@ const reasonCode = computed(
 <style scoped>
 .actual-form {
   display: grid;
-  gap: 10px;
-  padding-bottom: 12px;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--line-strong);
 }
 .actual-form > header {
@@ -91,21 +91,21 @@ const reasonCode = computed(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 .actual-form > label {
   display: grid;
-  gap: 4px;
-  padding: 0 12px;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 input {
   min-height: 36px;
-  padding: 6px 8px;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -113,7 +113,7 @@ input {
 }
 .primary-action {
   min-height: 38px;
-  margin: 0 12px;
+  margin: 0 var(--space-3);
   border: 1px solid var(--brand);
   border-radius: var(--radius-control);
   background: var(--brand);
@@ -129,8 +129,8 @@ input {
 .result,
 .application-result {
   margin: 0;
-  padding: 9px 12px;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-micro);
 }
 .form-notice,
 .application-result--warn {
@@ -152,10 +152,10 @@ input {
 }
 .application-result {
   display: grid;
-  gap: 3px;
+  gap: var(--space-1);
 }
 .application-result span,
 .application-result time {
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 </style>

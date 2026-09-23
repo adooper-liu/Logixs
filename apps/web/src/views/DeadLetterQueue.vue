@@ -208,12 +208,12 @@ function formatTime(value: string): string {
 }
 .queue-switch {
   display: flex;
-  gap: 8px;
-  margin: 12px 0;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
 }
 .queue-switch button {
   min-height: 36px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--app-border, #d1d5db);
   background: var(--app-surface, #fff);
   color: inherit;
@@ -224,7 +224,7 @@ function formatTime(value: string): string {
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);
-  padding: 12px 0;
+  padding: var(--space-3) 0;
 }
 .hint--error {
   color: var(--app-danger, #dc2626);
@@ -235,12 +235,12 @@ function formatTime(value: string): string {
 .dead-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 .dead-table th,
 .dead-table td {
   text-align: left;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--app-border, #e5e7eb);
 }
 .dead-table th {
@@ -254,30 +254,30 @@ function formatTime(value: string): string {
 .next-page,
 .replay-actions button {
   min-height: 36px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--app-border, #d1d5db);
   background: var(--app-surface, #fff);
   color: inherit;
 }
 .replay-form {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   max-width: 28rem;
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 .replay-form label {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .replay-form input {
   min-height: 36px;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
 }
 .replay-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .next-page {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 </style>

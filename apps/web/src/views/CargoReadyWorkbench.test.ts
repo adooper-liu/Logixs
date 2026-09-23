@@ -3,18 +3,15 @@ import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CargoReadyWorkbench from "./CargoReadyWorkbench.vue";
 
-const listContainers = vi.fn();
-const getContainer = vi.fn();
-const getContainerCargo = vi.fn();
+const listReplenishmentOrders = vi.fn();
 const listLifecycleNodes = vi.fn();
 const listNodeTasks = vi.fn();
 const listExternalWorkItems = vi.fn();
 const getCargoReadyCompliance = vi.fn();
 
-vi.mock("../api/containers", () => ({
-  listContainers: (...args: unknown[]) => listContainers(...args),
-  getContainer: (...args: unknown[]) => getContainer(...args),
-  getContainerCargo: (...args: unknown[]) => getContainerCargo(...args),
+vi.mock("../api/replenishmentOrders", () => ({
+  listReplenishmentOrders: (...args: unknown[]) =>
+    listReplenishmentOrders(...args),
 }));
 vi.mock("../api/lifecycleNodes", () => ({
   listLifecycleNodes: (...args: unknown[]) => listLifecycleNodes(...args),
@@ -33,20 +30,10 @@ vi.mock("../api/cargoReadyCompliance", () => ({
     getCargoReadyCompliance(...args),
 }));
 
-const container = {
-  id: "container-1",
-  orderNumber: "SO-1",
-  containerNumber: "MSCU1234567",
-  currentStatus: "not_shipped",
-  updatedAt: "2026-09-21T00:00:00.000Z",
-};
-
 describe("CargoReadyWorkbench", () => {
   beforeEach(() => {
     for (const mock of [
-      listContainers,
-      getContainer,
-      getContainerCargo,
+      listReplenishmentOrders,
       listLifecycleNodes,
       listNodeTasks,
       listExternalWorkItems,
@@ -54,137 +41,64 @@ describe("CargoReadyWorkbench", () => {
     ]) {
       mock.mockReset();
     }
-    listContainers.mockResolvedValue({ items: [container] });
-    getContainer.mockResolvedValue(container);
-    getContainerCargo.mockResolvedValue({
-      containerRecordId: container.id,
-      allocationSetId: "allocation-1",
-      allocationSetVersion: 2,
-      items: [
-        {
-          replenishmentOrderLineId: "line-1",
-          productSkuId: "sku-1",
-          productNumber: "833-066V00BK",
-          allocatedQuantity: "50",
-          quantityUnit: "carton",
-        },
-      ],
-    });
-    listLifecycleNodes.mockResolvedValue({
-      flow: {
-        id: "flow-1",
-        state: "active",
-        currentNodeCode: "cargo_ready",
-        version: 1,
-      },
-      nodes: [
-        {
-          nodeInstanceId: "node-1",
-          nodeCode: "cargo_ready",
-          sequence: 1,
-          state: "active",
-          applicability: "required",
-          completedAt: null,
-          blockedReasonRefs: [],
-          isCurrent: true,
-          times: { plannedAt: null, estimatedAt: null, actualAt: null },
-        },
-      ],
-    });
-    listNodeTasks.mockResolvedValue({ items: [nodeTask()] });
-    listExternalWorkItems.mockResolvedValue({ items: [remediationItem()] });
-    getCargoReadyCompliance.mockResolvedValue({
-      assessmentId: "assessment-1",
-      containerRecordId: container.id,
-      version: 3,
-      state: "decided",
-      jurisdictionCountryCode: "ES",
-      assessmentDate: "2026-09-21",
-      allocationSetId: "allocation-1",
-      allocationSetVersion: 2,
-      items: [
-        {
-          replenishmentOrderLineId: "line-1",
-          productSkuId: "sku-1",
-          productNumber: "833-066V00BK",
-          complianceProfileId: "profile-1",
-          complianceProfileVersion: 1,
-        },
-      ],
-      findings: [
-        {
-          code: "REQUIRED_CERTIFICATE_MISSING_OR_INVALID",
-          productSkuId: "sku-1",
-          ruleVersionId: "rule-1",
-          detail: "certificate missing",
-        },
-      ],
-      applicableRules: [
-        {
-          ruleVersionId: "rule-1",
-          ruleCode: "EU-CERT",
-          version: 1,
-          productSkuId: "sku-1",
-          requirementLayer: "destination_country",
-          requiredCertificateTypes: ["ce"],
-          blockingNodeCodes: ["cargo_ready"],
-          severity: "blocking",
-          officialSourceUrl: "https://example.invalid",
-          legalCitation: "EU rule",
-        },
-      ],
-      evidenceRefs: [],
-      actorId: "reviewer",
-      reasonCode: "initial",
-      currentDecision: { decisionCode: "evidence_required" },
-      createdAt: "2026-09-21T00:00:00.000Z",
-    });
-  });
-
-  it("renders real SKU facts and keeps lifecycle tasks separate from remediation", async () => {
-    const wrapper = await mountPage();
-
-    expect(wrapper.text()).toContain("833-066V00BK");
-    expect(wrapper.text()).toContain("50 carton");
-    expect(wrapper.text()).toContain("SKU 齐备度");
-    expect(wrapper.text()).toContain("缺少有效产品证书");
-    expect(wrapper.get('[aria-label="备货任务列表"]').text()).toContain(
-      "完成备货确认",
-    );
-    expect(wrapper.get('[aria-label="合规整改项"]').text()).toContain(
-      "补齐欧盟证书",
-    );
-    expect(wrapper.get('[aria-label="备货合规状态"]').text()).toContain(
-      "待补证",
-    );
-    expect(wrapper.get('a[aria-label="进入合规评审"]').attributes("href")).toBe(
-      "/compliance?containerId=container-1",
-    );
-    expect(wrapper.text()).not.toContain("node-cargo_ready");
-  });
-
-  it("retains successful facts, reports partial failure and does not invent nodes", async () => {
+    listReplenishmentOrders.mockResolvedValue({ items: [order(true)] });
     listLifecycleNodes.mockResolvedValue({ flow: null, nodes: [] });
-    listExternalWorkItems.mockRejectedValue(new Error("network"));
-    const wrapper = await mountPage();
+    listNodeTasks.mockResolvedValue({ items: [] });
+    listExternalWorkItems.mockResolvedValue({ items: [] });
+    getCargoReadyCompliance.mockResolvedValue(assessment());
+  });
 
-    expect(wrapper.text()).toContain("833-066V00BK");
+  it("starts from the replenishment order and shows only real SKU facts and gaps", async () => {
+    const wrapper = await mountPage("?orderId=order-1");
+
+    expect(wrapper.text()).toContain("26DSC01812");
+    expect(wrapper.text()).toContain("SKU 311-023V01CW");
+    expect(wrapper.text()).toContain("含电池 · 随设备包装");
+    expect(wrapper.text()).toContain("非危险品");
+    expect(wrapper.text()).toContain("不含制冷剂");
+    expect(wrapper.text()).toContain("运输条件鉴定缺失或无效");
+    expect(wrapper.get('[aria-label="备货单工作列表"]').text()).toContain(
+      "补合规资料",
+    );
+    expect(wrapper.text()).not.toContain("电池未评审");
+    expect(wrapper.text()).not.toContain("SKU 齐备度");
+    expect(
+      wrapper.find('[data-testid="workbench-container-select"]').exists(),
+    ).toBe(false);
+  });
+
+  it("keeps an order usable before any container exists", async () => {
+    listReplenishmentOrders.mockResolvedValue({ items: [order(false)] });
+    const wrapper = await mountPage("?orderId=order-1");
+
+    await wrapper.get(".ready-toggle").trigger("click");
+    expect(wrapper.text()).toContain("SKU 311-023V01CW");
+    expect(wrapper.text()).toContain("尚未分配");
+    expect(wrapper.text()).toContain("安排装柜");
+    expect(listLifecycleNodes).not.toHaveBeenCalled();
+    expect(listNodeTasks).not.toHaveBeenCalled();
+    expect(getCargoReadyCompliance).not.toHaveBeenCalled();
+  });
+
+  it("retains order facts and reports an auxiliary projection failure", async () => {
+    listExternalWorkItems.mockRejectedValue(new Error("network"));
+    const wrapper = await mountPage("?orderId=order-1");
+
+    expect(wrapper.text()).toContain("SKU 311-023V01CW");
     expect(wrapper.text()).toContain("合规整改项暂时没能加载");
-    expect(wrapper.text()).toContain("这柜尚未初始化生命周期流程");
-    expect(wrapper.find('[aria-label="货柜节点"]').exists()).toBe(false);
   });
 });
 
-async function mountPage() {
+async function mountPage(query: string) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: "/workspaces/cargo-ready", component: CargoReadyWorkbench },
-      { path: "/tasks", component: { template: "<div />" } },
+      { path: "/import", component: { template: "<div />" } },
       { path: "/compliance", component: { template: "<div />" } },
     ],
   });
-  await router.push("/workspaces/cargo-ready?containerId=container-1");
+  await router.push(`/workspaces/cargo-ready${query}`);
   await router.isReady();
   const wrapper = mount(CargoReadyWorkbench, {
     global: {
@@ -192,7 +106,8 @@ async function mountPage() {
       stubs: {
         PageHeader: {
           props: ["title"],
-          template: "<header><h1>{{ title }}</h1></header>",
+          template:
+            "<header><h1>{{ title }}</h1><slot name='actions' /></header>",
         },
       },
     },
@@ -201,48 +116,109 @@ async function mountPage() {
   return wrapper;
 }
 
-function nodeTask() {
+function order(withContainer: boolean) {
   return {
-    id: "task-1",
-    flowInstanceId: "flow-1",
-    nodeInstanceId: "node-1",
-    nodeCode: "cargo_ready",
-    containerId: container.id,
-    taskDefinitionKey: "node-cargo_ready",
-    state: "pending",
-    applicability: "required",
-    readinessState: "ready",
-    completionEligibility: "eligible",
-    conditionFactRefs: [],
-    workOrders: [],
-    outcome: null,
-    nextAction: {
-      actionCode: "work_execution.claim_work_order",
-      workOrderId: "work-order-1",
-      workOrderDefinitionKey: "prepare-cargo",
-      assignmentState: "unassigned",
-      assigneeId: null,
-      dueAt: null,
+    id: "order-1",
+    orderNumber: "26DSC01812",
+    updatedAt: "2026-09-21T00:00:00.000Z",
+    workReason: {
+      code: withContainer ? "waiting_other" : "allocate_cargo",
+      label: withContainer ? "补合规资料" : "分配装柜",
+      detail: withContainer
+        ? "1 个 SKU 缺少适用资料"
+        : "1 个明细仍有未分配数量",
+      responsibility: "mine",
     },
+    nextAction: withContainer
+      ? null
+      : { code: "shipment.allocate_cargo", label: "安排装柜" },
+    relatedContainers: withContainer
+      ? [{ id: "container-1", containerNumber: "HMMU4956442" }]
+      : [],
+    lines: [
+      {
+        id: "line-1",
+        productSkuId: "sku-1",
+        productNumber: "311-023V01CW",
+        shippedQuantity: "30",
+        quantityUnit: "piece",
+        allocatedQuantity: withContainer ? "30" : "0",
+        unallocatedQuantity: withContainer ? "0" : "30",
+        allocations: withContainer
+          ? [
+              {
+                containerId: "container-1",
+                containerNumber: "HMMU4956442",
+                allocatedQuantity: "30",
+                quantityUnit: "piece",
+              },
+            ]
+          : [],
+        profile: {
+          profileId: "profile-1",
+          version: 1,
+          verificationState: "verified",
+          sourceSystem: "verified-master-data",
+          createdAt: "2026-09-20T00:00:00.000Z",
+          battery: {
+            presenceState: "present",
+            packingMode: "packed_with_equipment",
+          },
+          refrigerant: { presenceState: "absent" },
+          dangerousGoods: { classificationState: "not_regulated" },
+          inspectionRequirements: [],
+        },
+        gaps: [],
+      },
+    ],
   };
 }
 
-function remediationItem() {
+function assessment() {
   return {
-    id: "work-item-1",
-    sourceModule: "compliance",
-    sourceType: "cargo_ready_assessment",
-    sourceRecordId: "assessment-1",
-    sourceVersion: 3,
-    containerId: container.id,
-    taskDefinitionKey: "compliance-remediation",
-    title: "补齐欧盟证书",
-    detail: "提交有效证书证据",
-    priority: "high",
-    state: "open",
-    assignedRoleCode: "cargo_ready_operator",
+    assessmentId: "assessment-1",
+    containerRecordId: "container-1",
+    version: 3,
+    state: "action_required",
+    jurisdictionCountryCode: "ES",
+    assessmentDate: "2026-09-21",
+    allocationSetId: "allocation-1",
+    allocationSetVersion: 2,
+    items: [
+      {
+        replenishmentOrderLineId: "line-1",
+        productSkuId: "sku-1",
+        productNumber: "311-023V01CW",
+        complianceProfileId: "profile-1",
+        complianceProfileVersion: 1,
+      },
+    ],
+    findings: [
+      {
+        code: "REQUIRED_CERTIFICATE_MISSING_OR_INVALID",
+        productSkuId: "sku-1",
+        ruleVersionId: "rule-1",
+        detail: "certificate missing",
+      },
+    ],
+    applicableRules: [
+      {
+        ruleVersionId: "rule-1",
+        ruleCode: "EU-BATTERY",
+        version: 1,
+        productSkuId: "sku-1",
+        requirementLayer: "destination_country",
+        requiredCertificateTypes: ["transport_safety_assessment"],
+        blockingNodeCodes: ["cargo_ready"],
+        severity: "blocking",
+        officialSourceUrl: "https://example.invalid",
+        legalCitation: "EU rule",
+      },
+    ],
     evidenceRefs: [],
-    dueAt: null,
+    actorId: "reviewer",
+    reasonCode: "initial",
+    currentDecision: null,
     createdAt: "2026-09-21T00:00:00.000Z",
   };
 }

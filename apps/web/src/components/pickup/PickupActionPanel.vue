@@ -273,11 +273,11 @@ function resultLabel(kind: PickupFactKind): string {
 .fact-action,
 .task-action {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .location-form,
 .fact-action {
-  padding-bottom: 12px;
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--line-strong);
 }
 header {
@@ -285,16 +285,16 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 .fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 0 12px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
 }
 .wide {
   grid-column: 1 / -1;
@@ -302,10 +302,10 @@ header {
 label {
   min-width: 0;
   display: grid;
-  gap: 4px;
-  margin: 0 12px;
+  gap: var(--space-1);
+  margin: 0 var(--space-3);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .fields label {
   margin: 0;
@@ -316,7 +316,7 @@ textarea,
 button {
   min-width: 0;
   min-height: 36px;
-  padding: 7px 9px;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -327,7 +327,7 @@ textarea {
 }
 .fact-action > button,
 .task-action > button {
-  margin: 0 12px;
+  margin: 0 var(--space-3);
 }
 button {
   cursor: pointer;
@@ -348,8 +348,8 @@ button:disabled {
 .notice,
 .result {
   margin: 0;
-  padding: 9px 12px;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-micro);
   overflow-wrap: anywhere;
 }
 .notice,

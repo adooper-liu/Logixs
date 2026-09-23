@@ -80,16 +80,16 @@ const reasonLabels: Record<string, string> = {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: var(--space-4);
 }
 .eyebrow {
-  margin: 0 0 3px;
+  margin: 0 0 var(--space-1);
   color: var(--app-text-secondary, #667085);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-title);
   letter-spacing: 0;
 }
 .icon-button {
@@ -105,21 +105,21 @@ h2 {
 }
 .muted {
   color: var(--app-text-secondary, #667085);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .blockers {
-  margin: 0 0 14px;
-  padding-left: 18px;
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-5);
   color: #b54708;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .blockers li + li {
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 .ready {
-  margin: 0 0 14px;
+  margin: 0 0 var(--space-4);
   color: #067647;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .approve-button {
   display: flex;
@@ -127,7 +127,7 @@ h2 {
   min-height: 40px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: var(--space-2);
   border: 0;
   border-radius: 5px;
   background: var(--app-brand, #155eef);
@@ -141,11 +141,11 @@ h2 {
 }
 .result {
   display: grid;
-  gap: 4px;
-  margin-top: 14px;
-  padding: 10px 12px;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-3);
   border-left: 3px solid #067647;
   background: #ecfdf3;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 </style>

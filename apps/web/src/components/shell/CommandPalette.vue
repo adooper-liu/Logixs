@@ -83,7 +83,7 @@ watch(
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: min(16vh, 140px) 16px 16px;
+  padding: min(16vh, 140px) var(--space-4) var(--space-4);
   background: var(--overlay);
 }
 
@@ -100,8 +100,8 @@ header {
   min-height: 52px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
   border-bottom: 1px solid var(--line);
   color: var(--muted);
 }
@@ -118,7 +118,7 @@ input {
 
 nav {
   max-height: 320px;
-  padding: 6px;
+  padding: var(--space-2);
   overflow-y: auto;
 }
 
@@ -127,8 +127,8 @@ nav a {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr) 18px;
   align-items: center;
-  gap: 9px;
-  padding: 7px 9px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-control);
   color: var(--ink-soft);
   text-decoration: none;
@@ -148,23 +148,23 @@ nav a small,
 nav p,
 footer {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 nav p {
   margin: 0;
-  padding: 28px 12px;
+  padding: var(--space-8) var(--space-3);
   text-align: center;
 }
 
 footer {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--line);
   text-align: right;
 }
 
 .key {
-  padding: 1px 5px;
+  padding: var(--space-1);
   border: 1px solid var(--line-strong);
   border-radius: 4px;
   font-family: var(--font-mono);

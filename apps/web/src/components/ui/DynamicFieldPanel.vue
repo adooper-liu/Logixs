@@ -122,15 +122,15 @@ const valueClass = (field: ResolvedDisplayField) => ({
 }
 
 .field-group + .field-group {
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .group-title {
   margin: 0;
-  padding: 6px 8px;
+  padding: var(--space-2);
   border-bottom: 1px solid var(--line);
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .field-grid {
@@ -145,7 +145,7 @@ const valueClass = (field: ResolvedDisplayField) => ({
 .field {
   min-width: 0;
   grid-column: span var(--field-span);
-  padding: 7px 10px;
+  padding: var(--space-2) var(--space-3);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -154,9 +154,9 @@ const valueClass = (field: ResolvedDisplayField) => ({
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .field dt > span {
@@ -172,7 +172,7 @@ const valueClass = (field: ResolvedDisplayField) => ({
 }
 
 .field dd {
-  margin: 1px 0 0;
+  margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
   color: var(--ink);
   font-weight: 650;
@@ -189,7 +189,7 @@ const valueClass = (field: ResolvedDisplayField) => ({
 }
 
 .dynamic-fields--signal .field-grid {
-  gap: 8px;
+  gap: var(--space-2);
   border: 0;
 }
 
@@ -198,15 +198,15 @@ const valueClass = (field: ResolvedDisplayField) => ({
   display: flex;
   justify-content: center;
   flex-direction: column;
-  padding: 9px 11px;
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
   background: var(--surface-2);
 }
 
 .dynamic-fields--signal .field dd {
-  margin-top: 3px;
-  font-size: 14px;
+  margin-top: var(--space-1);
+  font-size: var(--text-body);
 }
 
 .dynamic-fields--signal .field--empty {
@@ -216,23 +216,23 @@ const valueClass = (field: ResolvedDisplayField) => ({
 
 .empty-fields {
   margin: 0;
-  padding: 10px;
+  padding: var(--space-3);
   color: var(--muted);
   text-align: center;
 }
 
 .secondary-fields {
-  margin-top: -1px;
+  margin-top: -1px; /* style-scale-exempt: 与相邻 1px 边框对齐的光学微调 */
 }
 
 .secondary-fields summary {
   min-height: 32px;
   display: flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--line);
   color: var(--brand);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 700;
   cursor: pointer;
 }
@@ -243,10 +243,10 @@ const valueClass = (field: ResolvedDisplayField) => ({
 
 .schema-error {
   margin: 0;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--risk);
   background: var(--risk-bg);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 @media (max-width: 720px) {

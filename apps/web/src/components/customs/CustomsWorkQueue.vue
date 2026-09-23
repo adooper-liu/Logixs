@@ -59,18 +59,18 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .queue-item {
   min-width: 0;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
-  padding: 11px 12px;
+  padding: var(--space-3) var(--space-3);
   border: 0;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -88,7 +88,7 @@ header {
 .queue-item span {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 .queue-item b,
 .queue-item small {
@@ -97,7 +97,7 @@ header {
 .queue-item small,
 .empty {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .queue-meta {
   justify-items: end;
@@ -105,7 +105,7 @@ header {
 .urgency {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-1);
 }
 .urgency--overdue,
 .urgency--blocked {
@@ -116,6 +116,6 @@ header {
 }
 .empty {
   margin: 0;
-  padding: 18px 12px;
+  padding: var(--space-5) var(--space-3);
 }
 </style>

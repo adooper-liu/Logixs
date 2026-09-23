@@ -1,168 +1,163 @@
 import { describe, expect, it } from "vitest";
-import type { CargoReadyComplianceAssessment } from "../api/cargoReadyCompliance";
-import type { ContainerCargoScope } from "../api/containers";
-import type { NodeTaskDetail } from "../api/nodeTasks";
+import type { ReplenishmentOrderWorkbenchItem } from "../api/replenishmentOrders";
 import {
-  buildCargoReadyQueue,
-  buildCargoReadySkuReadiness,
+  buildCargoReadyOrderQueue,
+  buildCargoReadySkuViews,
   filterCargoReadyQueue,
 } from "./cargoReadyWorkbench";
 
 describe("cargo-ready workbench presentation", () => {
-  it("orders overdue work first and exposes business filters", () => {
-    const items = buildCargoReadyQueue({
-      tasks: [
-        task("later", "2026-09-26T00:00:00.000Z"),
-        task("late", "2026-09-20T00:00:00.000Z"),
-      ],
-      containers: [container("c1")],
-      actorId: "dev-operator",
-      now: new Date("2026-09-21T00:00:00.000Z"),
-    });
-
-    expect(items.map((item) => item.task.id)).toEqual(["late", "later"]);
-    expect(items[0]?.urgencyLabel).toBe("已逾期");
-    expect(filterCargoReadyQueue(items, "mine")).toHaveLength(2);
-    expect(filterCargoReadyQueue(items, "executable")).toHaveLength(2);
-  });
-
-  it("does not infer readiness without a current assessment snapshot", () => {
-    const readiness = buildCargoReadySkuReadiness({
-      cargo,
-      assessment: null,
-      remediationItems: [],
-    });
-
-    expect(readiness[0]).toMatchObject({
-      overall: "unreviewed",
-      battery: { state: "unreviewed", label: "未评审" },
-      responsibleRole: "合规评审岗",
-    });
-  });
-
-  it("maps verified findings to per-SKU blockers and next responsibility", () => {
-    const readiness = buildCargoReadySkuReadiness({
-      cargo,
-      assessment: assessment({
-        findings: [
-          {
-            code: "BATTERY_CLASSIFICATION_UNDETERMINED",
-            productSkuId: "sku-1",
-            ruleVersionId: null,
-            detail: "unknown",
-          },
-        ],
+  it("uses business reasons and only human-facing filters", () => {
+    const queue = buildCargoReadyOrderQueue([
+      workbenchOrder({
+        workReason: {
+          code: "complete_product_profile",
+          label: "补物料资料",
+          detail: "1 个 SKU 的物料属性需要确认",
+          responsibility: "mine",
+        },
       }),
-      remediationItems: [
+      workbenchOrder({
+        id: "order-2",
+        orderNumber: "26DSC01811",
+        workReason: {
+          code: "waiting_other",
+          label: "等待合规",
+          detail: "等待合规责任岗完成评审",
+          responsibility: "waiting_other",
+        },
+      }),
+    ]);
+
+    expect(queue.map((item) => item.title)).toEqual(["补物料资料", "等待合规"]);
+    expect(filterCargoReadyQueue(queue, "mine")).toHaveLength(1);
+    expect(filterCargoReadyQueue(queue, "waiting_other")).toHaveLength(1);
+    expect(filterCargoReadyQueue(queue, "all")).toHaveLength(2);
+  });
+
+  it("folds a normal SKU and describes explicit absent facts", () => {
+    const order = workbenchOrder();
+    const views = buildCargoReadySkuViews(order, [
+      {
+        productSkuId: order.lines[0]!.productSkuId!,
+        evaluated: true,
+        requirements: [],
+      },
+    ]);
+
+    expect(views[0]).toMatchObject({
+      overall: "ready",
+      attributeSummary: ["不含电池", "非危险品", "不含制冷剂"],
+      gaps: [],
+      requirementSummary: "本次无需补充合规资料",
+    });
+  });
+
+  it("only expands the unknown attribute and applicable evidence gap", () => {
+    const base = workbenchOrder();
+    const order = workbenchOrder({
+      lines: [
         {
-          id: "wi-1",
-          sourceModule: "compliance-management",
-          sourceType: "cargo_ready_assessment",
-          sourceRecordId: "assessment-1",
-          sourceVersion: 1,
-          containerId: "c1",
-          taskDefinitionKey: "cargo-ready-remediation",
-          title: "确认电池属性",
-          detail: "电池属性未知",
-          priority: "high",
-          state: "open",
-          assignedRoleCode: "compliance_operator",
-          evidenceRefs: [],
-          dueAt: null,
-          createdAt: "2026-09-21T00:00:00.000Z",
+          ...base.lines[0]!,
+          productNumber: "311-023V01CW",
+          profile: {
+            ...base.lines[0]!.profile!,
+            battery: {
+              presenceState: "present",
+              packingMode: "packed_with_equipment",
+            },
+            dangerousGoods: { classificationState: "undetermined" },
+          },
+          gaps: [
+            {
+              code: "dangerous_goods_unknown",
+              label: "尚未确认是否属于危险品",
+            },
+          ],
         },
       ],
     });
+    const views = buildCargoReadySkuViews(order, [
+      {
+        productSkuId: order.lines[0]!.productSkuId!,
+        evaluated: true,
+        requirements: [
+          {
+            productSkuId: order.lines[0]!.productSkuId!,
+            certificateType: "transport_safety_assessment",
+            label: "运输条件鉴定",
+            status: "missing_or_invalid",
+            reason: "EU-BATTERY v1 要求",
+          },
+        ],
+      },
+    ]);
 
-    expect(readiness[0]).toMatchObject({
-      overall: "missing",
-      battery: { state: "attention", label: "待确认" },
-      dangerousGoods: { state: "ready", label: "已确认" },
-      responsibleRole: "合规整改责任岗",
-      nextAction: "确认电池属性",
+    expect(views[0]).toMatchObject({
+      overall: "attention",
+      attributeSummary: [
+        "含电池 · 随设备包装",
+        "危险品属性待确认",
+        "不含制冷剂",
+      ],
+      gaps: [
+        { label: "尚未确认是否属于危险品" },
+        { label: "运输条件鉴定缺失或无效" },
+      ],
     });
+    expect(views[0]?.attributeSummary).not.toContain("制冷剂未评审");
   });
 });
 
-const cargo: ContainerCargoScope = {
-  containerRecordId: "c1",
-  allocationSetId: "allocation-1",
-  allocationSetVersion: 2,
-  items: [
-    {
-      replenishmentOrderLineId: "line-1",
-      productSkuId: "sku-1",
-      productNumber: "833-066V00BK",
-      allocatedQuantity: "50",
-      quantityUnit: "carton",
-    },
-  ],
-};
-
-function task(id: string, dueAt: string): NodeTaskDetail {
+function workbenchOrder(
+  override: Partial<ReplenishmentOrderWorkbenchItem> = {},
+): ReplenishmentOrderWorkbenchItem {
   return {
-    id,
-    flowInstanceId: "flow-1",
-    nodeInstanceId: `node-${id}`,
-    nodeCode: "cargo_ready",
-    containerId: "c1",
-    taskDefinitionKey: "node-cargo_ready",
-    state: "pending",
-    applicability: "required",
-    readinessState: "ready",
-    completionEligibility: "eligible",
-    conditionFactRefs: [],
-    workOrders: [],
-    outcome: null,
+    id: "order-1",
+    orderNumber: "26DSC01812",
+    updatedAt: "2026-09-21T12:00:00.000Z",
+    workReason: {
+      code: "ready_for_container_review",
+      label: "完成备货确认",
+      detail: "物料事实齐全，已完成装柜分配",
+      responsibility: "mine",
+    },
     nextAction: {
-      actionCode: "work_execution.complete_work_order",
-      workOrderId: `wo-${id}`,
-      workOrderDefinitionKey: "wo-cargo_ready",
-      assignmentState: "assigned",
-      assigneeId: "dev-operator",
-      dueAt,
+      code: "work_execution.continue_cargo_ready",
+      label: "继续备货确认",
     },
-  };
-}
-
-function container(id: string) {
-  return {
-    id,
-    orderNumber: "26DSS00033",
-    containerNumber: "KOCU4960726",
-    currentStatus: "not_shipped" as const,
-    updatedAt: "2026-09-21T00:00:00.000Z",
-  };
-}
-
-function assessment(
-  override: Partial<CargoReadyComplianceAssessment> = {},
-): CargoReadyComplianceAssessment {
-  return {
-    assessmentId: "assessment-1",
-    containerRecordId: "c1",
-    version: 1,
-    state: "action_required",
-    jurisdictionCountryCode: "ES",
-    assessmentDate: "2026-09-21",
-    allocationSetId: "allocation-1",
-    allocationSetVersion: 2,
-    items: [
+    relatedContainers: [{ id: "container-1", containerNumber: "HMMU4956442" }],
+    lines: [
       {
-        replenishmentOrderLineId: "line-1",
-        productSkuId: "sku-1",
-        productNumber: "833-066V00BK",
-        complianceProfileId: "profile-1",
-        complianceProfileVersion: 1,
+        id: "line-1",
+        productSkuId: "11111111-1111-4111-8111-111111111111",
+        productNumber: "311-013GY",
+        shippedQuantity: "20",
+        quantityUnit: "piece",
+        allocatedQuantity: "20",
+        unallocatedQuantity: "0",
+        allocations: [
+          {
+            containerId: "container-1",
+            containerNumber: "HMMU4956442",
+            allocatedQuantity: "20",
+            quantityUnit: "piece",
+          },
+        ],
+        profile: {
+          profileId: "profile-1",
+          version: 1,
+          verificationState: "verified",
+          sourceSystem: "verified-master-data",
+          createdAt: "2026-09-20T00:00:00.000Z",
+          battery: { presenceState: "absent", packingMode: null },
+          refrigerant: { presenceState: "absent" },
+          dangerousGoods: { classificationState: "not_regulated" },
+          inspectionRequirements: [],
+        },
+        gaps: [],
       },
     ],
-    findings: [],
-    applicableRules: [],
-    evidenceRefs: [],
-    actorId: "reviewer",
-    reasonCode: "initial",
-    currentDecision: null,
-    createdAt: "2026-09-21T00:00:00.000Z",
     ...override,
   };
 }

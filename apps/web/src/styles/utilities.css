@@ -22,29 +22,29 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px;
+  gap: var(--space-3);
+  padding: var(--space-5);
 }
 
 .page-link {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
   color: var(--brand-strong);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 650;
   text-decoration: none;
 }
 
 @media (min-width: 1280px) {
   .page-frame {
-    padding: 24px;
+    padding: var(--space-6);
   }
 }
 
 @media (max-width: 959px) {
   .page-frame {
-    padding: 16px;
+    padding: var(--space-4);
   }
 }
 
@@ -55,6 +55,6 @@
   }
 
   .page-frame {
-    padding: 12px;
+    padding: var(--space-3);
   }
 }

@@ -11,6 +11,7 @@ import { AssertContainerTenantService } from "./application/assert-container-ten
 import { ASSERT_CONTAINER_TENANT } from "./assert-container-tenant.port";
 import { GetContainerService } from "./application/get-container.service";
 import { ListContainersService } from "./application/list-containers.service";
+import { ListReplenishmentOrdersService } from "./application/list-replenishment-orders.service";
 import { ListContainerTaskFactsService } from "./application/list-container-task-facts.service";
 import { ResolveContainerByNumberService } from "./application/resolve-container-by-number.service";
 import { BindReplenishmentLineProductSkuService } from "./application/bind-replenishment-line-product-sku.service";
@@ -27,6 +28,7 @@ import { CONTAINER_CARGO_ALLOCATION_REPOSITORY } from "./domain/container-cargo-
 import { CONTAINER_STUFFING_SNAPSHOT_REPOSITORY } from "./domain/container-stuffing-snapshot.repository";
 import { CONTAINER_DISPATCH_SNAPSHOT_REPOSITORY } from "./domain/container-dispatch-snapshot.repository";
 import { REPLENISHMENT_LINE_SKU_BINDER } from "./domain/replenishment-line-sku-binding.repository";
+import { REPLENISHMENT_ORDER_WORKBENCH_REPOSITORY } from "./domain/replenishment-order-workbench.repository";
 import { LIST_CONTAINER_TASK_FACTS } from "./list-container-task-facts.port";
 import { GET_CONTAINER_SUMMARY } from "./get-container-summary.port";
 import { RESOLVE_CONTAINER_BY_NUMBER } from "./resolve-container-by-number.port";
@@ -39,10 +41,12 @@ import { PrismaContainerCargoAllocationRepository } from "./infrastructure/prism
 import { PrismaContainerStuffingSnapshotRepository } from "./infrastructure/prisma-container-stuffing-snapshot.repository";
 import { PrismaContainerDispatchSnapshotRepository } from "./infrastructure/prisma-container-dispatch-snapshot.repository";
 import { PrismaReplenishmentLineSkuBinder } from "./infrastructure/prisma-replenishment-line-sku-binder";
+import { PrismaReplenishmentOrderWorkbenchRepository } from "./infrastructure/prisma-replenishment-order-workbench.repository";
 import { PrismaContainerRepository } from "./infrastructure/prisma-container.repository";
 import { ContainersController } from "./presentation/containers.controller";
 import { ContainerStuffingController } from "./presentation/container-stuffing.controller";
 import { ContainerDispatchController } from "./presentation/container-dispatch.controller";
+import { ReplenishmentOrdersController } from "./presentation/replenishment-orders.controller";
 import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-allocations.port";
 import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-compliance-scope.port";
 import { GET_CONTAINER_STUFFING_READINESS } from "./get-container-stuffing-readiness.port";
@@ -56,9 +60,11 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
     ContainersController,
     ContainerStuffingController,
     ContainerDispatchController,
+    ReplenishmentOrdersController,
   ],
   providers: [
     ListContainersService,
+    ListReplenishmentOrdersService,
     ListContainerTaskFactsService,
     GetContainerService,
     ApplyContainerRecordService,
@@ -87,6 +93,10 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
     {
       provide: REPLENISHMENT_LINE_SKU_BINDER,
       useClass: PrismaReplenishmentLineSkuBinder,
+    },
+    {
+      provide: REPLENISHMENT_ORDER_WORKBENCH_REPOSITORY,
+      useClass: PrismaReplenishmentOrderWorkbenchRepository,
     },
     {
       provide: CONTAINER_CARGO_ALLOCATION_REPOSITORY,
@@ -171,5 +181,8 @@ export class ShipmentRegistryModule implements NestModule {
     consumer
       .apply(DevIdentityMiddleware)
       .forRoutes(ContainerDispatchController);
+    consumer
+      .apply(DevIdentityMiddleware)
+      .forRoutes(ReplenishmentOrdersController);
   }
 }

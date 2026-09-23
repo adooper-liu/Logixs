@@ -86,28 +86,28 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 header span,
 .seal {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .status {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 .status span,
 small,
 .empty {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .metrics {
   display: grid;
@@ -116,25 +116,25 @@ small,
 .metrics span {
   min-width: 0;
   display: grid;
-  gap: 3px;
-  padding: 10px 12px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
 b {
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .seal,
 .notes,
 .empty {
   margin: 0;
-  padding: 9px 12px;
+  padding: var(--space-2) var(--space-3);
 }
 .notes {
   background: var(--warn-bg);
   color: var(--warn);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 @media (max-width: 520px) {
   .metrics {

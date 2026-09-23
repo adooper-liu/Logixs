@@ -108,8 +108,8 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 0 18px;
+  gap: var(--space-4);
+  padding: 0 var(--space-5);
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   border-bottom: 1px solid var(--line);
 }
@@ -127,13 +127,13 @@ const emit = defineEmits<{
 
 .topbar-leading,
 .topbar-actions {
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .breadcrumb {
-  gap: 5px;
+  gap: var(--space-2);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
   white-space: nowrap;
 }
 
@@ -154,8 +154,8 @@ const emit = defineEmits<{
 
 .command-trigger {
   height: 32px;
-  gap: 7px;
-  padding: 0 7px 0 9px;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) 0 var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface-2);
@@ -164,19 +164,19 @@ const emit = defineEmits<{
 }
 
 .command-trigger kbd {
-  padding: 1px 5px;
+  padding: var(--space-1);
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--surface);
   color: var(--muted);
-  font: 10px var(--font-mono);
+  font: var(--text-micro) var(--font-mono);
 }
 
 .system-health,
 .user-context {
-  gap: 5px;
+  gap: var(--space-2);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .system-health svg {
@@ -185,7 +185,7 @@ const emit = defineEmits<{
 
 .user-context {
   min-height: 32px;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   border-left: 1px solid var(--line);
 }
 
@@ -206,7 +206,7 @@ const emit = defineEmits<{
 
 @media (max-width: 959px) {
   .app-topbar {
-    padding-inline: 12px;
+    padding-inline: var(--space-3);
   }
 
   .mobile-menu {
@@ -232,7 +232,7 @@ const emit = defineEmits<{
 
 @media (max-width: 767px) {
   .app-topbar {
-    padding-inline: 8px;
+    padding-inline: var(--space-2);
   }
 
   .breadcrumb strong,
@@ -241,7 +241,7 @@ const emit = defineEmits<{
   }
 
   .topbar-actions {
-    gap: 3px;
+    gap: var(--space-1);
   }
 
   .user-context {

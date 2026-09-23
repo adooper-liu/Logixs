@@ -9,6 +9,7 @@ import {
 import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+
 const ignoredDirectories = new Set([
   ".agents",
   ".claude",
@@ -173,6 +174,185 @@ export function findSecretContent(files) {
       errors.push(`${file}: contains a private-key or credential signature`);
     }
   }
+  return errors;
+}
+
+// 排版与间距的唯一合法档位。页面只能用这些令牌，不得写裸 px。
+// 权威：docs/product/UI_SYSTEM.md §7.2 / §7.3（本清单是它们的可执行副本）。
+export const STYLE_SCALE_TOKENS = [
+  "--text-page",
+  "--text-title",
+  "--text-body",
+  "--text-meta",
+  "--text-label",
+  "--text-micro",
+  "--space-1",
+  "--space-2",
+  "--space-3",
+  "--space-4",
+  "--space-5",
+  "--space-6",
+  "--space-8",
+];
+
+export function findMissingStyleScaleTokens(tokensSource) {
+  return STYLE_SCALE_TOKENS.filter(
+    (token) => !new RegExp(`${token}\\s*:`).test(tokensSource),
+  ).map((token) => `tokens.css 缺少 ${token}`);
+}
+
+const TEXT_TOKEN_VALUE = /^var\(--text-(?:page|title|body|meta|label|micro)\)$/;
+const SPACE_TOKEN_VALUE = /^var\(--space-(?:1|2|3|4|5|6|8)\)$/;
+const SPACING_PROPERTIES = new Set([
+  "gap",
+  "row-gap",
+  "column-gap",
+  "padding",
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+  "padding-block",
+  "padding-block-start",
+  "padding-block-end",
+  "padding-inline",
+  "padding-inline-start",
+  "padding-inline-end",
+  "margin",
+  "margin-top",
+  "margin-right",
+  "margin-bottom",
+  "margin-left",
+  "margin-block",
+  "margin-block-start",
+  "margin-block-end",
+  "margin-inline",
+  "margin-inline-start",
+  "margin-inline-end",
+]);
+const EXEMPTION_COMMENT = /\/\*\s*style-scale-exempt:\s*(.*?)\s*\*\//;
+const MIN_EXEMPTION_REASON_LENGTH = 4;
+
+function styleBlocksOf(record) {
+  const path = normalizePath(record.path);
+  if (path.endsWith(".css")) return [record.source];
+  if (!path.endsWith(".vue")) return [];
+  return [...record.source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(
+    (match) => match[1],
+  );
+}
+
+function isAllowedSpacingPart(part) {
+  if (part === "0" || part === "auto") return true;
+  if (part.endsWith("%")) return true;
+  return SPACE_TOKEN_VALUE.test(part);
+}
+
+// 把整个函数表达式（calc / min / max / clamp）折叠成一个可判定片段，
+// 避免其中的空格与逗号被当成多个值拆开。括号要配对计数：
+// calc(var(--space-2) * -1) 与 min(16vh, 140px) 都有括号。
+const SPACING_FUNCTIONS = ["calc(", "min(", "max(", "clamp("];
+
+function foldFunctionExpressions(value) {
+  let out = "";
+  let index = 0;
+  while (index < value.length) {
+    const fn = SPACING_FUNCTIONS.find((name) => value.startsWith(name, index));
+    if (!fn) {
+      out += value[index];
+      index += 1;
+      continue;
+    }
+    let depth = 0;
+    let end = index + fn.length - 1;
+    for (; end < value.length; end += 1) {
+      if (value[end] === "(") depth += 1;
+      else if (value[end] === ")") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    const expression = value.slice(index, end + 1);
+    // calc 必须引用令牌，否则 calc(10px) 就成了绕过门禁的后门；
+    // min / max / clamp 是流体布局表达式（如 min(16vh, 140px)），无法用单一令牌表达，整体放行。
+    const allowed =
+      expression.includes("var(--") || !expression.startsWith("calc(");
+    out += allowed ? "0" : expression;
+    index = end + 1;
+  }
+  return out;
+}
+
+// 扫描 web 源码里的裸 px 字号与越界间距。
+// 迁移已完成、基线已删除，这里是硬门禁：任何越界直接失败。
+export function findStyleScaleViolations(records) {
+  const errors = [];
+
+  for (const record of records) {
+    const path = normalizePath(record.path);
+    if (!path.startsWith("apps/web/src/")) continue;
+    if (path.endsWith("themes/logix/tokens.css")) continue;
+    if (path.includes(".test.")) continue;
+
+    const fileErrors = [];
+    for (const block of styleBlocksOf(record)) {
+      for (const line of block.split("\n")) {
+        // 豁免按「行」判定：注释在行尾，拆声明后会与声明分开。
+        const exemption = EXEMPTION_COMMENT.exec(line);
+        if (exemption) {
+          if (exemption[1].trim().length >= MIN_EXEMPTION_REASON_LENGTH) {
+            continue;
+          }
+          fileErrors.push(
+            `${path}: 豁免必须写明理由（≥${MIN_EXEMPTION_REASON_LENGTH} 字），当前为 '${exemption[1].trim()}'`,
+          );
+          continue;
+        }
+
+        // 去掉选择器：取最后一个 '{' 之后的部分，这样单行多声明
+        // （.a { font-size: 14px; padding: 10px; }）也能逐条查到，
+        // 不依赖「代码已被 Prettier 展开成一行一条」这个假设。
+        const brace = line.lastIndexOf("{");
+        const body = brace === -1 ? line : line.slice(brace + 1);
+
+        for (const chunk of body.split(";")) {
+          const declaration = /^\s*([a-z-]+)\s*:\s*(.+?)\s*\}?\s*$/.exec(chunk);
+          if (!declaration) continue;
+          const property = declaration[1];
+          const value = declaration[2].trim();
+
+          if (property === "font") {
+            // font 简写里可能藏着字号：font: 10px var(--font-mono)。
+            // 只允许 inherit，或引用了 --text-* 令牌的写法。
+            if (value === "inherit" || value.includes("var(--text-")) continue;
+            fileErrors.push(
+              `${path}: font 简写里的字号不得写裸值，请改用 var(--text-*) 令牌（当前为 '${value}'）`,
+            );
+            continue;
+          }
+
+          if (property === "font-size") {
+            if (value === "inherit" || TEXT_TOKEN_VALUE.test(value)) continue;
+            fileErrors.push(
+              `${path}: font-size 不得写裸值 '${value}'，请改用 var(--text-*) 令牌`,
+            );
+            continue;
+          }
+
+          if (!SPACING_PROPERTIES.has(property)) continue;
+          for (const part of foldFunctionExpressions(value).split(/\s+/)) {
+            if (!part || isAllowedSpacingPart(part)) continue;
+            fileErrors.push(
+              `${path}: ${property} 不得写裸值 '${part}'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）`,
+            );
+          }
+        }
+      }
+    }
+
+    errors.push(...fileErrors);
+  }
+
   return errors;
 }
 
@@ -377,6 +557,18 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
       ),
       ...findSecretContent(trackedFiles),
       ...findUiThemeBoundaryViolations(
+        webSourceFiles.map((path) => ({
+          path: toRepositoryRelativePath(path),
+          source: readFileSync(path, "utf8"),
+        })),
+      ),
+      ...findMissingStyleScaleTokens(
+        readFileSync(
+          resolve(repositoryRoot, "apps/web/src/themes/logix/tokens.css"),
+          "utf8",
+        ),
+      ),
+      ...findStyleScaleViolations(
         webSourceFiles.map((path) => ({
           path: toRepositoryRelativePath(path),
           source: readFileSync(path, "utf8"),

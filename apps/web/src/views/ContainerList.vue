@@ -105,7 +105,7 @@ const clearExternalFilter = (columnCode: string) => {
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);
-  padding: 12px 0;
+  padding: var(--space-3) 0;
 }
 .hint--error {
   color: var(--app-danger, #dc2626);

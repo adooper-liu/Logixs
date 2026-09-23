@@ -90,11 +90,11 @@ const statusItems = computed(() =>
 
 .status-cell {
   min-width: 0;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .status-cell:last-child {
@@ -104,7 +104,7 @@ const statusItems = computed(() =>
 .status-cell .status-label,
 .status-cell small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .status-cell b {
@@ -112,16 +112,16 @@ const statusItems = computed(() =>
 }
 
 .status-triplet--compact .status-cell {
-  padding: 7px 10px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .status-triplet--compact .status-cell .status-label,
 .status-triplet--compact .status-cell small {
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .status-triplet--compact .status-cell b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .ok {
@@ -148,9 +148,9 @@ const statusItems = computed(() =>
 .status-triplet--context .status-cell {
   grid-template-columns: 26px minmax(0, 1fr);
   grid-template-rows: auto auto;
-  column-gap: 8px;
+  column-gap: var(--space-2);
   align-content: center;
-  padding: 9px 14px;
+  padding: var(--space-2) var(--space-4);
 }
 
 .status-triplet--context .status-icon {
@@ -172,12 +172,12 @@ const statusItems = computed(() =>
 }
 
 .status-triplet--context .status-cell b {
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 1.25;
 }
 
 .status-triplet--context .status-cell small {
-  margin-top: 1px;
+  margin-top: var(--space-1);
 }
 
 .status-triplet--context .status-cell--container .status-icon {
@@ -210,7 +210,7 @@ const statusItems = computed(() =>
   }
 
   .status-triplet--compact .status-cell {
-    padding: 7px 8px;
+    padding: var(--space-2) var(--space-2);
   }
 
   .status-triplet--compact .status-cell small {
@@ -218,7 +218,7 @@ const statusItems = computed(() =>
   }
 
   .status-triplet--context .status-cell {
-    padding: 9px 10px;
+    padding: var(--space-2) var(--space-3);
   }
 }
 </style>

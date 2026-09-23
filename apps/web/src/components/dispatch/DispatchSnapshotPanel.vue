@@ -95,16 +95,16 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 header span,
 .ok {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .baseline,
 .dispatch-grid,
@@ -121,8 +121,8 @@ header span,
 .milestones > span {
   min-width: 0;
   display: grid;
-  gap: 3px;
-  padding: 11px 12px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -130,14 +130,14 @@ header span,
 .dispatch-grid b,
 .milestones b {
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 small {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .ok {
   color: var(--ok);
@@ -145,10 +145,10 @@ small {
 .blocker,
 .empty {
   margin: 0;
-  padding: 14px 12px;
+  padding: var(--space-4) var(--space-3);
   background: var(--warn-bg);
   color: var(--warn);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 @media (max-width: 720px) {
   .baseline,

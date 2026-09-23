@@ -45,7 +45,7 @@ const workbench = useDateFactReviewWorkbench();
 <style scoped>
 .date-review-page {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
   min-width: 0;
 }
 .review-layout {
@@ -54,12 +54,12 @@ const workbench = useDateFactReviewWorkbench();
       250px,
       0.75fr
     );
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
 }
 .pane {
   min-width: 0;
-  padding: 16px;
+  padding: var(--space-4);
   border: 1px solid var(--line, #d7dde5);
   border-radius: 6px;
   background: var(--surface, #fff);
@@ -70,11 +70,11 @@ const workbench = useDateFactReviewWorkbench();
 }
 .error {
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-left: 3px solid var(--app-danger, #c2413b);
   background: #fef3f2;
   color: var(--app-danger, #c2413b);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 @media (max-width: 1120px) {
   .review-layout {

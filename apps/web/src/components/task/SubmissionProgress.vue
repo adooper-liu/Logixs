@@ -122,15 +122,15 @@ const stateOf = (index: number) => {
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
 }
 
 .submission--idle {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  padding-block: 8px;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
 }
 
 .submission--idle .submission-header {
@@ -141,25 +141,25 @@ const stateOf = (index: number) => {
   align-items: center;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 9px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .heading {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .operation {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .operation .action-label {
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .operation {
@@ -169,13 +169,13 @@ const stateOf = (index: number) => {
 
 .heading h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 .idle-label {
   margin-left: auto;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .operation {
@@ -196,9 +196,9 @@ const stateOf = (index: number) => {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   grid-template-rows: 22px auto;
-  row-gap: 4px;
+  row-gap: var(--space-1);
   min-width: 0;
-  padding-right: 12px;
+  padding-right: var(--space-3);
 }
 
 .stages li:not(:last-child)::after {
@@ -225,7 +225,7 @@ const stateOf = (index: number) => {
   border: 1px solid var(--line-strong);
   background: var(--surface);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-style: normal;
 }
 
@@ -238,12 +238,12 @@ const stateOf = (index: number) => {
 }
 
 .stages b {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .stages span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .stages .done i,
@@ -266,17 +266,17 @@ const stateOf = (index: number) => {
 .message-row {
   display: flex;
   align-items: stretch;
-  gap: 8px;
-  margin-top: 9px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .message {
   flex: 1;
-  margin: 14px 0 0;
-  padding: 6px 8px;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-2) var(--space-2);
   background: var(--surface-2);
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .message-row .message {
@@ -290,7 +290,7 @@ const stateOf = (index: number) => {
 
 .retry {
   flex: none;
-  padding: 6px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--brand);
   border-radius: var(--radius-s);
   background: var(--surface);
@@ -302,10 +302,10 @@ const stateOf = (index: number) => {
 .refs {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 8px;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 720px) {
@@ -314,11 +314,11 @@ const stateOf = (index: number) => {
   }
 
   .submission--idle .submission-header {
-    margin-bottom: 7px;
+    margin-bottom: var(--space-2);
   }
 
   .stages li {
-    padding-right: 4px;
+    padding-right: var(--space-1);
   }
 
   .stages li:not(:last-child)::after {
@@ -331,7 +331,7 @@ const stateOf = (index: number) => {
   }
 
   .stages b {
-    font-size: 10px;
+    font-size: var(--text-micro);
   }
 
   .stages span {

@@ -63,7 +63,7 @@ const displayItems = computed(() =>
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(var(--kpi-count, 1), minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .kpi-signal {
@@ -93,7 +93,7 @@ const displayItems = computed(() =>
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
   color: inherit;
   text-decoration: none;
 }
@@ -101,16 +101,16 @@ const displayItems = computed(() =>
 .kpi-label {
   min-width: 0;
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
   align-items: center;
-  padding-right: 20px;
+  padding-right: var(--space-5);
 }
 
 .kpi-label small,
 .kpi-supporting {
   min-width: 0;
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -122,7 +122,7 @@ const displayItems = computed(() =>
 
 .kpi-link > b {
   color: currentColor;
-  font-size: 27px;
+  font-size: var(--text-page);
   line-height: 1.08;
   overflow-wrap: anywhere;
 }
@@ -170,7 +170,7 @@ const displayItems = computed(() =>
 @media (max-width: 720px) {
   .kpi-strip {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .kpi-signal:last-child {
@@ -183,11 +183,11 @@ const displayItems = computed(() =>
   }
 
   .kpi-link {
-    padding: 9px 10px;
+    padding: var(--space-2) var(--space-3);
   }
 
   .kpi-link > b {
-    font-size: 22px;
+    font-size: var(--text-page);
   }
 }
 

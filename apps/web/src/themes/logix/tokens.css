@@ -32,6 +32,23 @@
   --info-bg: #e8f1fc;
   --disabled: #b9c3d2;
 
+  /* 排版：收编 UI_SYSTEM §7.2 的档位。页面只能用这些，不得写裸 px。 */
+  --text-page: 20px;
+  --text-title: 15px;
+  --text-body: 14px;
+  --text-meta: 13px;
+  --text-label: 12px;
+  --text-micro: 11px;
+
+  /* 间距：收编 UI_SYSTEM §7.3 的比例。 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
   --font-sans:
     system-ui, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;

@@ -262,27 +262,27 @@ function resultLabel() {
 .actions,
 .task-action {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 header {
   min-height: 40px;
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 header span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .segmented {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 0 12px;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
 }
 .segmented--two {
   grid-template-columns: repeat(2, 1fr);
@@ -290,15 +290,15 @@ header span {
 .quantity-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 0 12px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
 }
 label {
   display: grid;
-  gap: 4px;
-  margin: 0 12px;
+  gap: var(--space-1);
+  margin: 0 var(--space-3);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .quantity-grid label {
   margin: 0;
@@ -314,7 +314,7 @@ select,
 button {
   min-width: 0;
   min-height: 36px;
-  padding: 7px 9px;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -337,7 +337,7 @@ button {
 }
 .primary,
 .task-action > button {
-  margin: 0 12px;
+  margin: 0 var(--space-3);
 }
 .primary {
   background: var(--brand);
@@ -351,8 +351,8 @@ button:disabled {
 .notice,
 .result {
   margin: 0;
-  padding: 9px 12px;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-micro);
   overflow-wrap: anywhere;
 }
 .notice,

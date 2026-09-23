@@ -127,19 +127,19 @@ onMounted(() => {
 <style scoped>
 .page {
   display: grid;
-  gap: 1.25rem;
+  gap: var(--space-5);
 }
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .card {
   display: grid;
-  gap: 0.75rem;
-  padding: 1rem;
+  gap: var(--space-3);
+  padding: var(--space-4);
   border: 1px solid color-mix(in oklab, CanvasText 12%, transparent);
 }
 .card {
@@ -152,10 +152,10 @@ onMounted(() => {
   align-items: center;
 }
 .actions {
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .actions button {
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 .error {
   color: crimson;

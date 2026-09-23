@@ -51,9 +51,9 @@ defineProps<{ rows: ContainerProjection[] }>();
 .flow-row {
   display: grid;
   grid-template-columns: minmax(210px, 0.7fr) minmax(0, 1.5fr);
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
-  padding: 7px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 .flow-row:last-child {
@@ -76,15 +76,15 @@ defineProps<{ rows: ContainerProjection[] }>();
 .identity span,
 .risk-cell span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   overflow-wrap: anywhere;
 }
 .identity b {
   color: var(--brand);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .risk-cell b {
-  font-size: 12px;
+  font-size: var(--text-label);
   overflow-wrap: anywhere;
 }
 .row-status {
@@ -92,7 +92,7 @@ defineProps<{ rows: ContainerProjection[] }>();
   border-radius: 0;
 }
 .row-status :deep(.status-cell) {
-  padding-block: 4px;
+  padding-block: var(--space-1);
 }
 .risk-cell .ok {
   color: var(--ok);

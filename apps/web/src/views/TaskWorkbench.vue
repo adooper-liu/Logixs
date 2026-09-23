@@ -167,9 +167,9 @@ const handleSelect = (taskId: string) => {
 }
 
 .workspace-hint {
-  margin: 12px 0;
+  margin: var(--space-3) 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 .workspace-hint--error {
@@ -177,7 +177,7 @@ const handleSelect = (taskId: string) => {
 }
 
 .load-more {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   min-height: var(--touch-target, 40px);
   width: 100%;
   border: 1px solid var(--line-strong);
@@ -193,18 +193,18 @@ const handleSelect = (taskId: string) => {
 .workload {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .workload b {
   color: var(--ink);
-  font-size: 16px;
+  font-size: var(--text-title);
 }
 
 .layout {
   display: grid;
   grid-template-columns: minmax(312px, 336px) minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
 }
 

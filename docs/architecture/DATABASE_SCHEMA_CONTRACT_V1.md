@@ -38,7 +38,7 @@ Logix 当前使用 PostgreSQL + Prisma，共 73 张业务表、1 个 PostgreSQL 
 | 5    | [`ADR-010`](./decisions/ADR-010-bounded-context-modules.md)                                     | accepted           | 模块所有权、写边界和协作方向                               | 跨模块直写表属于架构违规                               |
 | 6    | [`CONTEXT_MAP`](../product/domain/CONTEXT_MAP.md)                                               | 已定 v1.2          | 聚合关系、Shipment/SKU/装载边界                            | 业务关系变更先更新正式领域权威，再落物理结构           |
 | 7    | [`CROSS_MODULE_REFERENCE_CONTRACT_V1`](../product/domain/CROSS_MODULE_REFERENCE_CONTRACT_V1.md) | 正式 V1            | UUID、租户范围、父链和引用完整性                           | 公共引用必须携带或确定 `tenantId`，跨租户引用必须拒绝  |
-| 8    | [`TARGET_FIELD_CATALOG`](../product/domain/TARGET_FIELD_CATALOG.md)                             | 正式 V1.2          | 导入目标字段、产品明细和时间事实语义                       | 候选字段不得直接升格为生产列                           |
+| 8    | [`TARGET_FIELD_CATALOG`](../product/domain/TARGET_FIELD_CATALOG.md)                             | 正式兼容 V1.2      | 当前备货单兼容导入字段、产品明细和时间事实语义             | 不得把兼容入口扩成 Shipment 目标模型                   |
 | 9    | [`GLOBAL_CONTRACT_REGISTRY`](../product/domain/GLOBAL_CONTRACT_REGISTRY.md)                     | 治理基线           | 公共契约所有者、成熟度和消费者                             | 未达到所需门禁的契约不得宣称已实现                     |
 | 10   | [`database/migrations/README.md`](../../database/migrations/README.md)                          | 运行规则           | 本地 deploy、已知历史恢复和新增迁移命令                    | 迁移作者必须遵守该入口                                 |
 
@@ -46,6 +46,7 @@ Logix 当前使用 PostgreSQL + Prisma，共 73 张业务表、1 个 PostgreSQL 
 
 - [`DATA_MODEL_P2-06`](../product/domain/DATA_MODEL_P2-06.md) 是候选 v0.9，只能解释设计方向。
 - [`CUSTOMS_DATABASE_MIGRATION_DESIGN_V1`](../product/domain/CUSTOMS_DATABASE_MIGRATION_DESIGN_V1.md) 是待迁移实现，未出现在本目录的表不能视为已存在。
+- [`POST_DEPARTURE_CORE_MODEL_GAP_V1`](../product/domain/POST_DEPARTURE_CORE_MODEL_GAP_V1.md) 已固定“实际出运后”为产品核心边界，并登记 Shipment 目标模型、统一 Handoff 接收边界、四张维护表字段覆盖下限、只读 `container_operational_view` 与迁移门禁；其中候选表、Handoff/字段注册和投影尚未进入 schema、公共契约或迁移，不能视为当前存在。
 - 真实样本、fixture 和任务 brief 是证据或验收记录，不能单独建立通用基数、唯一性或状态规则。
 
 当文档与实现冲突时：先以迁移确认已部署事实，以 schema 确认当前目标，以正式公共/领域契约确认应有语义；冲突本身必须作为缺陷修复，不得静默任选一个版本。

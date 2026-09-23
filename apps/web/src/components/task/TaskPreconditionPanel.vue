@@ -91,8 +91,8 @@ const stateMeta: Record<
 .section-head {
   min-height: 42px;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
   list-style: none;
 }
@@ -104,32 +104,32 @@ const stateMeta: Record<
 .section-head > span {
   display: inline-flex;
   align-items: baseline;
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .section-head small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 500;
 }
 
 .section-head strong {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .condition-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 16px;
+  column-gap: var(--space-4);
   margin: 0;
-  padding: 0 14px 8px;
+  padding: 0 var(--space-4) var(--space-2);
   list-style: none;
 }
 
 .condition-list li {
   min-width: 0;
-  gap: 8px;
-  padding: 7px 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
   border-top: 1px dashed var(--line);
 }
 
@@ -161,7 +161,7 @@ const stateMeta: Record<
 }
 
 .condition-copy b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .condition-copy small {
@@ -171,14 +171,14 @@ const stateMeta: Record<
 
 .state-label {
   flex: none;
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
 .collapsed-count {
-  margin: -3px 14px 8px;
+  margin: -3px var(--space-4) var(--space-2); /* style-scale-exempt: -3px 是光学上移，与上方标题基线对齐 */
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 720px) {
