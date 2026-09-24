@@ -544,7 +544,7 @@ form {
 }
 
 .source-badge {
-  padding: 2px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-control);
   background: var(--brand-soft);
   color: var(--brand-strong) !important;
@@ -596,7 +596,7 @@ select {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: -1px; /* style-scale-exempt: 无障碍隐藏输入的标准裁切偏移 */
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
