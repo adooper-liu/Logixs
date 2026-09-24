@@ -9,6 +9,9 @@ export const moduleManifest = defineModuleManifest({
     "ai-governance",
     "shipment-registry",
     "lifecycle-control",
+    "shipment-lifecycle-orchestration",
+    "master-data",
+    "document-records",
   ],
   permissions: ["import.read", "import.operate", "import.execute"],
 });

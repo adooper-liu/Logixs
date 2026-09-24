@@ -9,6 +9,11 @@
 export type Uuid = string
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TenantId".
+ */
+export type TenantId = string
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "DateTime".
  */
 export type DateTime = string
@@ -264,6 +269,25 @@ weightUnit?: "kg"
 volume?: DecimalString
 volumeUnit?: "m3"
 replenishmentOrderLineId?: Uuid
+})
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceKindV1".
+ */
+export type PostDepartureSourceKindV1 = ("container" | "customs" | "logistics" | "warehouse")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureShipmentGroupingV1".
+ */
+export type PostDepartureShipmentGroupingV1 = ({
+kind: "authorized_new_shipment"
+shipmentNumber: string
+} | {
+kind: "existing_shipment"
+shipmentId: Uuid
+expectedRelationshipVersion: number
+} | {
+kind: "new_independent_shipment"
 })
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -782,8 +806,8 @@ cargoAllocations?: [CargoAllocationV1, ...(CargoAllocationV1)[]]
  */
 export interface ShipmentHandoffCommandV1 {
 contractVersion: "shipment-handoff.v1"
-tenantId: Uuid
-sourceProfile: ("legacy_departed_file_v1" | "packing_platform_v1" | "api_v1")
+tenantId: TenantId
+sourceProfile: ("legacy_departed_file_v1" | "packing_platform_v1" | "internal_fulfillment_v1" | "api_v1")
 source: SourceReferenceV1
 shipment: ShipmentDescriptorV1
 /**
@@ -802,14 +826,78 @@ evidenceReferences: [Uuid, ...(Uuid)[]]
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentDescriptorV2".
+ */
+export interface ShipmentDescriptorV2 {
+targetShipmentId?: Uuid
+externalShipmentId?: string
+shipmentNumber?: string
+expectedRelationshipVersion?: number
+transportMode: "ocean"
+carrierCode?: string
+vesselName?: string
+voyageNumber?: string
+bookingNumber?: string
+originPortCode?: string
+destinationPortCode?: string
+destinationCountryCode?: string
+salesCountryCode?: string
+cargoOwnerReferenceId?: Uuid
+cargoOwnerName?: string
+destinationWarehouseId?: Uuid
+tradeTerm?: string
+estimatedArrivalAt?: DateTime
+actualLoadedAt?: DateTime
+departureProof?: DepartureProofV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ContainerHandoffV2".
+ */
+export interface ContainerHandoffV2 {
+referenceId: string
+externalContainerId?: string
+containerNumber?: string
+containerTypeCode?: string
+sealNumber?: string
+stuffingSnapshotRef?: Uuid
+billReferences: string[]
+upstreamReferences: UpstreamReferenceV1[]
+/**
+ * @minItems 1
+ */
+cargoAllocations?: [CargoAllocationV1, ...(CargoAllocationV1)[]]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentHandoffCommandV2".
+ */
+export interface ShipmentHandoffCommandV2 {
+contractVersion: "shipment-handoff.v2"
+tenantId: TenantId
+sourceProfile: ("legacy_departed_file_v1" | "packing_platform_v1" | "internal_fulfillment_v1" | "api_v1")
+source: SourceReferenceV1
+shipment: ShipmentDescriptorV2
+billsOfLading: BillOfLadingV1[]
+/**
+ * @minItems 1
+ */
+containers: [ContainerHandoffV2, ...(ContainerHandoffV2)[]]
+documentReferences?: Uuid[]
+evidenceReferences: Uuid[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ShipmentHandoffIssueV1".
  */
 export interface ShipmentHandoffIssueV1 {
-code: ("SOURCE_RANGE_METADATA_INVALID" | "FIELD_SEMANTIC_MISMATCH" | "INVALID_SOURCE_VALUE" | "DEPARTURE_PROOF_REQUIRED" | "EXTERNAL_SHIPMENT_MATCH_REQUIRED" | "UNKNOWN_REFERENCE_CODE" | "CARGO_DETAIL_INCOMPLETE" | "CONTAINER_ACTIVE_SHIPMENT_CONFLICT" | "CONTAINER_SOURCE_IDENTITY_CONFLICT" | "IDEMPOTENCY_PAYLOAD_CONFLICT" | "SHIPMENT_SOURCE_IDENTITY_CONFLICT" | "SHIPMENT_NUMBER_CONFLICT" | "SHIPMENT_RELATIONSHIP_VERSION_CONFLICT" | "SUPERSEDED_HANDOFF_NOT_FOUND" | "SOURCE_BATCH_REQUIRED" | "MAPPING_VERSION_REQUIRED" | "STUFFING_SNAPSHOT_REQUIRED" | "STUFFING_SNAPSHOT_VERSION_STALE" | "CARGO_ALLOCATION_REQUIRED" | "BILL_REFERENCE_NOT_FOUND" | "DUPLICATE_REFERENCE")
+code: ("SOURCE_RANGE_METADATA_INVALID" | "SOURCE_DATA_INCOMPLETE" | "FIELD_SEMANTIC_MISMATCH" | "INVALID_SOURCE_VALUE" | "DEPARTURE_PROOF_REQUIRED" | "EXTERNAL_SHIPMENT_MATCH_REQUIRED" | "UNKNOWN_REFERENCE_CODE" | "CARGO_DETAIL_INCOMPLETE" | "CONTAINER_ACTIVE_SHIPMENT_CONFLICT" | "CONTAINER_SOURCE_IDENTITY_CONFLICT" | "IDEMPOTENCY_PAYLOAD_CONFLICT" | "SHIPMENT_SOURCE_IDENTITY_CONFLICT" | "SHIPMENT_NUMBER_CONFLICT" | "SHIPMENT_RELATIONSHIP_VERSION_CONFLICT" | "SUPERSEDED_HANDOFF_NOT_FOUND" | "SOURCE_BATCH_REQUIRED" | "MAPPING_VERSION_REQUIRED" | "STUFFING_SNAPSHOT_REQUIRED" | "STUFFING_SNAPSHOT_VERSION_STALE" | "CARGO_ALLOCATION_REQUIRED" | "BILL_REFERENCE_NOT_FOUND" | "DUPLICATE_REFERENCE")
 subjectRef?: string
 sourceRows?: string[]
 fieldCodes?: StableCode[]
 messageKey: StableCode
+blocking?: boolean
+resolutionState?: ("system_handled" | "operator_action_required" | "upstream_action_required")
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -842,7 +930,7 @@ objectType: ("container" | "cargo_line" | "transport_document")
 sourceReferenceId: string
 state: ("accepted" | "duplicate" | "review_required" | "rejected")
 entityId?: Uuid
-issueCodes: ("SOURCE_RANGE_METADATA_INVALID" | "FIELD_SEMANTIC_MISMATCH" | "INVALID_SOURCE_VALUE" | "DEPARTURE_PROOF_REQUIRED" | "EXTERNAL_SHIPMENT_MATCH_REQUIRED" | "UNKNOWN_REFERENCE_CODE" | "CARGO_DETAIL_INCOMPLETE" | "CONTAINER_ACTIVE_SHIPMENT_CONFLICT" | "CONTAINER_SOURCE_IDENTITY_CONFLICT" | "IDEMPOTENCY_PAYLOAD_CONFLICT" | "SHIPMENT_SOURCE_IDENTITY_CONFLICT" | "SHIPMENT_NUMBER_CONFLICT" | "SHIPMENT_RELATIONSHIP_VERSION_CONFLICT" | "SUPERSEDED_HANDOFF_NOT_FOUND" | "SOURCE_BATCH_REQUIRED" | "MAPPING_VERSION_REQUIRED" | "STUFFING_SNAPSHOT_REQUIRED" | "STUFFING_SNAPSHOT_VERSION_STALE" | "CARGO_ALLOCATION_REQUIRED" | "BILL_REFERENCE_NOT_FOUND" | "DUPLICATE_REFERENCE")[]
+issueCodes: ("SOURCE_RANGE_METADATA_INVALID" | "SOURCE_DATA_INCOMPLETE" | "FIELD_SEMANTIC_MISMATCH" | "INVALID_SOURCE_VALUE" | "DEPARTURE_PROOF_REQUIRED" | "EXTERNAL_SHIPMENT_MATCH_REQUIRED" | "UNKNOWN_REFERENCE_CODE" | "CARGO_DETAIL_INCOMPLETE" | "CONTAINER_ACTIVE_SHIPMENT_CONFLICT" | "CONTAINER_SOURCE_IDENTITY_CONFLICT" | "IDEMPOTENCY_PAYLOAD_CONFLICT" | "SHIPMENT_SOURCE_IDENTITY_CONFLICT" | "SHIPMENT_NUMBER_CONFLICT" | "SHIPMENT_RELATIONSHIP_VERSION_CONFLICT" | "SUPERSEDED_HANDOFF_NOT_FOUND" | "SOURCE_BATCH_REQUIRED" | "MAPPING_VERSION_REQUIRED" | "STUFFING_SNAPSHOT_REQUIRED" | "STUFFING_SNAPSHOT_VERSION_STALE" | "CARGO_ALLOCATION_REQUIRED" | "BILL_REFERENCE_NOT_FOUND" | "DUPLICATE_REFERENCE")[]
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -854,6 +942,372 @@ duplicate?: boolean
 payloadHash: string
 issues: ShipmentHandoffIssueV1[]
 traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceBatchV1".
+ */
+export interface PostDepartureSourceBatchV1 {
+kind: PostDepartureSourceKindV1
+batchId: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackagePreflightCommandV1".
+ */
+export interface PostDepartureSourcePackagePreflightCommandV1 {
+contractVersion: "post-departure-source-package-preflight.v1"
+/**
+ * @minItems 1
+ * @maxItems 4
+ */
+sources: [PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceFileSummaryV1".
+ */
+export interface PostDepartureSourceFileSummaryV1 {
+kind: PostDepartureSourceKindV1
+batchId: Uuid
+fileName: string
+rowCount: number
+columnCount: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureReferencePortV1".
+ */
+export interface PostDepartureReferencePortV1 {
+portId: Uuid
+unlocode: string
+officialName: string
+areaCode: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureReferencePortSearchResultV1".
+ */
+export interface PostDepartureReferencePortSearchResultV1 {
+items: PostDepartureReferencePortV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureActualDepartureProofV1".
+ */
+export interface PostDepartureActualDepartureProofV1 {
+kind: "actual_departure_time"
+occurredAt: DateTime
+sourceTimezone: string
+evidenceRef: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceCandidateCorrectionV1".
+ */
+export interface PostDepartureSourceCandidateCorrectionV1 {
+correctionId: Uuid
+version: number
+shipmentGrouping?: PostDepartureShipmentGroupingV1
+originPort?: PostDepartureReferencePortV1
+destinationPort?: PostDepartureReferencePortV1
+departureProof?: PostDepartureActualDepartureProofV1
+departureLocal?: string
+departureSourceTimezone?: string
+departureEvidenceRef?: Uuid
+/**
+ * @minItems 1
+ */
+cargoAllocations?: [PostDepartureCandidateCargoAllocationV1, ...(PostDepartureCandidateCargoAllocationV1)[]]
+reasonCode: StableCode
+correctedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureCandidateCargoAllocationV1".
+ */
+export interface PostDepartureCandidateCargoAllocationV1 {
+sourceLineId: string
+replenishmentOrderNumber: string
+productSkuId: Uuid
+productNumber: string
+quantity: DecimalString
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+replenishmentOrderLineId?: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceCandidateV1".
+ */
+export interface PostDepartureSourceCandidateV1 {
+candidateRef: string
+decision: ("ready" | "review_required" | "rejected")
+containerNumber: string
+replenishmentOrderNumbers: string[]
+billNumbers: string[]
+carrierCode?: string
+vesselName?: string
+voyageNumber?: string
+originPortRaw?: string
+destinationPortRaw?: string
+cargoOwnerName?: string
+departureRaw?: string
+estimatedArrivalRaw?: string
+containerTypeCode?: string
+packageCount?: DecimalString
+grossWeightKg?: DecimalString
+volumeM3?: DecimalString
+correction?: PostDepartureSourceCandidateCorrectionV1
+issues: ShipmentHandoffIssueV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackageTotalsV1".
+ */
+export interface PostDepartureSourcePackageTotalsV1 {
+containers: number
+bills: number
+replenishmentOrders: number
+ready: number
+reviewRequired: number
+rejected: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackagePreflightResultV1".
+ */
+export interface PostDepartureSourcePackagePreflightResultV1 {
+packageId: string
+/**
+ * @minItems 1
+ * @maxItems 4
+ */
+sources: [PostDepartureSourceFileSummaryV1]|[PostDepartureSourceFileSummaryV1, PostDepartureSourceFileSummaryV1]|[PostDepartureSourceFileSummaryV1, PostDepartureSourceFileSummaryV1, PostDepartureSourceFileSummaryV1]|[PostDepartureSourceFileSummaryV1, PostDepartureSourceFileSummaryV1, PostDepartureSourceFileSummaryV1, PostDepartureSourceFileSummaryV1]
+candidates: PostDepartureSourceCandidateV1[]
+totals: PostDepartureSourcePackageTotalsV1
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackageReviewCommandV1".
+ */
+export interface PostDepartureSourcePackageReviewCommandV1 {
+contractVersion: "post-departure-source-package-review.v1"
+packageId: string
+/**
+ * @minItems 1
+ * @maxItems 4
+ */
+sources: [PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackageReviewResultV1".
+ */
+export interface PostDepartureSourcePackageReviewResultV1 {
+contractVersion: "post-departure-source-package-review-result.v1"
+reviewId: Uuid
+packageId: string
+decision: "review_required"
+status: ("saved" | "duplicate")
+candidateCount: number
+savedAt: DateTime
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceCandidateCorrectionCommandV1".
+ */
+export interface PostDepartureSourceCandidateCorrectionCommandV1 {
+contractVersion: "post-departure-source-candidate-correction.v1"
+packageId: string
+reviewId: Uuid
+candidateRef: string
+expectedVersion: number
+shipmentGrouping?: (PostDepartureShipmentGroupingV1 | null)
+originPortCode?: (string | null)
+destinationPortCode?: (string | null)
+departureProof?: PostDepartureActualDepartureProofV1
+departureLocal?: (string | null)
+departureSourceTimezone?: (string | null)
+departureEvidenceRef?: (Uuid | null)
+reasonCode: StableCode
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceCandidateCorrectionResultV1".
+ */
+export interface PostDepartureSourceCandidateCorrectionResultV1 {
+contractVersion: "post-departure-source-candidate-correction-result.v1"
+status: ("saved" | "duplicate")
+correctionId: Uuid
+version: number
+candidate: PostDepartureSourceCandidateV1
+remainingIssues: ShipmentHandoffIssueV1[]
+decision: ("ready" | "review_required" | "rejected")
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceCandidateCargoCommandV1".
+ */
+export interface PostDepartureSourceCandidateCargoCommandV1 {
+contractVersion: "post-departure-source-candidate-cargo.v1"
+packageId: string
+reviewId: Uuid
+candidateRef: string
+expectedVersion: number
+/**
+ * @minItems 1
+ * @maxItems 1000
+ */
+cargoLines: [{
+sourceLineRef?: string
+replenishmentOrderNumber: string
+productNumber: string
+quantity: DecimalString
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+}, ...({
+sourceLineRef?: string
+replenishmentOrderNumber: string
+productNumber: string
+quantity: DecimalString
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+})[]]
+reasonCode: StableCode
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceCandidateAcceptCommandV1".
+ */
+export interface PostDepartureSourceCandidateAcceptCommandV1 {
+contractVersion: "post-departure-source-candidate-accept.v1"
+packageId: string
+/**
+ * @minItems 1
+ * @maxItems 4
+ */
+sources: [PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]
+candidateRef: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourceCandidateAcceptResultV1".
+ */
+export interface PostDepartureSourceCandidateAcceptResultV1 {
+contractVersion: "post-departure-source-candidate-accept-result.v1"
+/**
+ * @minItems 1
+ */
+acceptedCandidateRefs: [string, ...(string)[]]
+handoff: ShipmentHandoffResultV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffPendingItemV1".
+ */
+export interface InternalShipmentHandoffPendingItemV1 {
+code: StableCode
+label: string
+subjectType: ("shipment" | "container" | "cargo" | "document")
+subjectRef: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffCargoLineV1".
+ */
+export interface InternalShipmentHandoffCargoLineV1 {
+replenishmentOrderId: Uuid
+replenishmentOrderNumber: string
+replenishmentOrderLineId: Uuid
+productSkuId?: (string | null)
+productNumber: string
+quantity: DecimalString
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+packageCount?: (DecimalString | null)
+packageUnit?: (string | null)
+grossWeight?: (DecimalString | null)
+weightUnit?: (string | null)
+volume?: (DecimalString | null)
+volumeUnit?: (string | null)
+containerRecordId: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffContainerV1".
+ */
+export interface InternalShipmentHandoffContainerV1 {
+containerRecordId: Uuid
+containerNumber: string
+containerTypeCode: string
+stuffingSnapshotRef: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffCandidateV1".
+ */
+export interface InternalShipmentHandoffCandidateV1 {
+candidateRef: string
+bookingNumber: string
+carrierCode: string
+vesselName: string
+voyageNumber: string
+originPortCode: (string | null)
+destinationPortCode: (string | null)
+departedAt: DateTime
+departureSourceTimezone: string
+departureEvidenceRef: (string | null)
+/**
+ * @minItems 1
+ */
+containers: [InternalShipmentHandoffContainerV1, ...(InternalShipmentHandoffContainerV1)[]]
+replenishmentOrders: {
+id: Uuid
+orderNumber: string
+}[]
+cargoLines: InternalShipmentHandoffCargoLineV1[]
+transportDocuments: {
+referenceId: string
+documentType: ("booking" | "mbl" | "hbl")
+documentNumber: string
+/**
+ * @minItems 1
+ */
+containerRecordIds: [Uuid, ...(Uuid)[]]
+}[]
+pendingItems: InternalShipmentHandoffPendingItemV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffCandidatePageV1".
+ */
+export interface InternalShipmentHandoffCandidatePageV1 {
+items: InternalShipmentHandoffCandidateV1[]
+asOf: DateTime
+projectionVersion: 1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffAcceptCommandV1".
+ */
+export interface InternalShipmentHandoffAcceptCommandV1 {
+contractVersion: "internal-shipment-handoff-accept.v1"
+candidateRef: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffAcceptResultV1".
+ */
+export interface InternalShipmentHandoffAcceptResultV1 {
+contractVersion: "internal-shipment-handoff-accept-result.v1"
+candidateRef: string
+handoff: ShipmentHandoffResultV1
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -1863,16 +2317,16 @@ linkId: Uuid
 linkVersion: number
 currentLifecycleStatus: ShipmentLifecycleStatusV1
 relationshipVersion: number
-carrierCode: string
-vesselName: string
-voyageNumber: string
-originCountryCode: string
-originUnlocode: string
-destinationCountryCode: string
+carrierCode: (string | null)
+vesselName: (string | null)
+voyageNumber: (string | null)
+originCountryCode: (string | null)
+originUnlocode: (string | null)
+destinationCountryCode: (string | null)
 salesCountryCode: (string | null)
 cargoOwnerReferenceId: (Uuid | null)
 cargoOwnerName: (string | null)
-destinationUnlocode: string
+destinationUnlocode: (string | null)
 atdAt: (DateTime | null)
 etaAt: (DateTime | null)
 transportDocuments: ShipmentTransportDocumentViewV1[]
@@ -2057,16 +2511,16 @@ export interface ShipmentSummaryV1 {
 id: Uuid
 shipmentNumber: (string | null)
 transportMode: StableCode
-carrierCode: string
-vesselName: string
-voyageNumber: string
-originCountryCode: string
-originUnlocode: string
-destinationCountryCode: string
+carrierCode: (string | null)
+vesselName: (string | null)
+voyageNumber: (string | null)
+originCountryCode: (string | null)
+originUnlocode: (string | null)
+destinationCountryCode: (string | null)
 salesCountryCode: (string | null)
 cargoOwnerReferenceId: (Uuid | null)
 cargoOwnerName: (string | null)
-destinationUnlocode: string
+destinationUnlocode: (string | null)
 atdAt: (DateTime | null)
 etaAt: (DateTime | null)
 currentLifecycleStatus: ShipmentLifecycleStatusV1
@@ -2163,6 +2617,12 @@ containers: ShipmentContainerViewV1[]
 cargoLines: ShipmentCargoLineViewV1[]
 transportDocuments: ShipmentTransportDocumentViewV1[]
 upstreamReferences: ShipmentUpstreamReferenceViewV1[]
+pendingItems: {
+code: StableCode
+label: string
+subjectType: ("shipment" | "container" | "cargo" | "document")
+subjectRef: string
+}[]
 lifecycleInitialization: ShipmentLifecycleInitializationV1
 projectionVersion: number
 asOf: DateTime

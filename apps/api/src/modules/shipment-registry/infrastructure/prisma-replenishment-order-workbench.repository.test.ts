@@ -42,6 +42,15 @@ describe("PrismaReplenishmentOrderWorkbenchRepository", () => {
                 },
               },
             ],
+            shipmentCargoLines: [
+              {
+                shipment: {
+                  id: "shipment-1",
+                  shipmentNumber: "SHP-20260924-001",
+                  currentLifecycleStatus: "departed",
+                },
+              },
+            ],
           },
         ],
       },
@@ -64,6 +73,13 @@ describe("PrismaReplenishmentOrderWorkbenchRepository", () => {
         orderNumber: "26DSC01812",
         linkedContainers: [
           { id: "container-1", containerNumber: "HMMU4956442" },
+        ],
+        handoffShipments: [
+          {
+            id: "shipment-1",
+            shipmentNumber: "SHP-20260924-001",
+            currentLifecycleStatus: "departed",
+          },
         ],
         lines: [
           {
@@ -90,6 +106,55 @@ describe("PrismaReplenishmentOrderWorkbenchRepository", () => {
             }),
           }),
         }),
+      }),
+    );
+  });
+
+  it("按租户、备货单号和货号解析当前备货单行", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        id: "line-1",
+        productSkuId: "11111111-1111-4111-8111-111111111111",
+        productNumber: "311-013GY",
+        sourceRowId: "row-1",
+        replenishmentOrder: { orderNumber: "26DSC01812" },
+      },
+    ]);
+    const repository = new PrismaReplenishmentOrderWorkbenchRepository({
+      replenishmentOrderLine: { findMany },
+    } as never);
+
+    await expect(
+      repository.resolveCurrentLines({
+        tenantId: "tenant-a",
+        identities: [
+          {
+            replenishmentOrderNumber: "26DSC01812",
+            productNumber: "311-013GY",
+          },
+        ],
+      }),
+    ).resolves.toEqual([
+      {
+        replenishmentOrderLineId: "line-1",
+        replenishmentOrderNumber: "26DSC01812",
+        productSkuId: "11111111-1111-4111-8111-111111111111",
+        productNumber: "311-013GY",
+        sourceRowId: "row-1",
+      },
+    ]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId: "tenant-a",
+          isCurrent: true,
+          OR: [
+            {
+              productNumber: "311-013GY",
+              replenishmentOrder: { orderNumber: "26DSC01812" },
+            },
+          ],
+        },
       }),
     );
   });

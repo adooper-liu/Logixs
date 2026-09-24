@@ -12,6 +12,7 @@ import { ASSERT_CONTAINER_TENANT } from "./assert-container-tenant.port";
 import { GetContainerService } from "./application/get-container.service";
 import { ListContainersService } from "./application/list-containers.service";
 import { ListReplenishmentOrdersService } from "./application/list-replenishment-orders.service";
+import { ResolveReplenishmentOrderLinesService } from "./application/resolve-replenishment-order-lines.service";
 import { ListContainerTaskFactsService } from "./application/list-container-task-facts.service";
 import { ResolveContainerByNumberService } from "./application/resolve-container-by-number.service";
 import { BindReplenishmentLineProductSkuService } from "./application/bind-replenishment-line-product-sku.service";
@@ -33,6 +34,7 @@ import { CONTAINER_STUFFING_SNAPSHOT_REPOSITORY } from "./domain/container-stuff
 import { CONTAINER_DISPATCH_SNAPSHOT_REPOSITORY } from "./domain/container-dispatch-snapshot.repository";
 import { REPLENISHMENT_LINE_SKU_BINDER } from "./domain/replenishment-line-sku-binding.repository";
 import { REPLENISHMENT_ORDER_WORKBENCH_REPOSITORY } from "./domain/replenishment-order-workbench.repository";
+import { RESOLVE_REPLENISHMENT_ORDER_LINES } from "./resolve-replenishment-order-lines.port";
 import { LIST_CONTAINER_TASK_FACTS } from "./list-container-task-facts.port";
 import { GET_CONTAINER_SUMMARY } from "./get-container-summary.port";
 import { RESOLVE_CONTAINER_BY_NUMBER } from "./resolve-container-by-number.port";
@@ -67,6 +69,8 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
 import { COMMIT_SHIPMENT_HANDOFF } from "./commit-shipment-handoff.port";
 import { INSPECT_SHIPMENT_HANDOFF_CONFLICTS } from "./inspect-shipment-handoff-conflicts.port";
 import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-shipment-handoff-conflict-inspector";
+import { INTERNAL_SHIPMENT_HANDOFF_SOURCE } from "./internal-shipment-handoff-source.port";
+import { PrismaInternalShipmentHandoffSource } from "./infrastructure/prisma-internal-shipment-handoff-source";
 
 @Module({
   imports: [IdentityModule, MasterDataModule],
@@ -80,6 +84,7 @@ import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-
   providers: [
     ListContainersService,
     ListReplenishmentOrdersService,
+    ResolveReplenishmentOrderLinesService,
     ListContainerTaskFactsService,
     GetContainerService,
     ApplyContainerRecordService,
@@ -118,6 +123,10 @@ import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-
       useClass: PrismaReplenishmentOrderWorkbenchRepository,
     },
     {
+      provide: RESOLVE_REPLENISHMENT_ORDER_LINES,
+      useExisting: ResolveReplenishmentOrderLinesService,
+    },
+    {
       provide: CONTAINER_CARGO_ALLOCATION_REPOSITORY,
       useClass: PrismaContainerCargoAllocationRepository,
     },
@@ -136,6 +145,10 @@ import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-
     {
       provide: INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
       useClass: PrismaShipmentHandoffConflictInspector,
+    },
+    {
+      provide: INTERNAL_SHIPMENT_HANDOFF_SOURCE,
+      useClass: PrismaInternalShipmentHandoffSource,
     },
     {
       provide: SHIPMENT_READ_REPOSITORY,
@@ -197,6 +210,7 @@ import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-
     LIST_CONTAINER_TASK_FACTS,
     GET_CONTAINER_SUMMARY,
     RESOLVE_CONTAINER_BY_NUMBER,
+    RESOLVE_REPLENISHMENT_ORDER_LINES,
     BIND_REPLENISHMENT_LINE_PRODUCT_SKU,
     REPLACE_CONTAINER_CARGO_ALLOCATIONS,
     GET_CONTAINER_CARGO_COMPLIANCE_SCOPE,
@@ -206,6 +220,7 @@ import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-
     REPLACE_CONTAINER_DISPATCH_SNAPSHOT,
     COMMIT_SHIPMENT_HANDOFF,
     INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
+    INTERNAL_SHIPMENT_HANDOFF_SOURCE,
     GetContainerService,
     BindReplenishmentLineProductSkuService,
     ReplaceContainerCargoAllocationsService,

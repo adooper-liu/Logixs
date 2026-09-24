@@ -10,6 +10,7 @@ import {
   type InspectShipmentHandoffConflictsPort,
 } from "../../shipment-registry";
 import {
+  decorateShipmentHandoffIssue,
   isRejectingShipmentHandoffIssue,
   preflightShipmentHandoff,
 } from "../domain/shipment-handoff-preflight";
@@ -46,7 +47,9 @@ export class PreflightShipmentHandoffService implements PreflightShipmentHandoff
       prepared.command,
       prepared.result.payloadHash,
     );
-    const issues = [...prepared.result.issues, ...database.issues];
+    const issues = [...prepared.result.issues, ...database.issues].map(
+      decorateShipmentHandoffIssue,
+    );
     const decision = issues.some(({ code }) =>
       isRejectingShipmentHandoffIssue(code),
     )
@@ -85,7 +88,7 @@ export class PreflightShipmentHandoffService implements PreflightShipmentHandoff
       throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
     }
     if (
-      command.shipment.departureProof.kind ===
+      command.shipment.departureProof?.kind ===
         "authorized_manual_confirmation" &&
       command.shipment.departureProof.confirmedBy !== context.actorId
     ) {

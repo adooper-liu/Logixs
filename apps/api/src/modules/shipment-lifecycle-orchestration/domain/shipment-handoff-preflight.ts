@@ -1,18 +1,22 @@
 import { createHash } from "node:crypto";
 import type {
-  ContainerHandoffV1,
   ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV2,
   ShipmentHandoffIssueV1,
   ShipmentHandoffPreflightResultV1,
 } from "@logix/contracts";
 
+type ShipmentHandoffCommand =
+  ShipmentHandoffCommandV1 | ShipmentHandoffCommandV2;
+type ContainerHandoff = ShipmentHandoffCommand["containers"][number];
+
 export interface NormalizedShipmentHandoffPreflight {
-  command: ShipmentHandoffCommandV1;
+  command: ShipmentHandoffCommand;
   result: ShipmentHandoffPreflightResultV1;
 }
 
 export function preflightShipmentHandoff(
-  input: ShipmentHandoffCommandV1,
+  input: ShipmentHandoffCommand,
 ): NormalizedShipmentHandoffPreflight {
   const command = normalizeShipmentHandoff(input);
   const issues: ShipmentHandoffIssueV1[] = [];
@@ -20,17 +24,19 @@ export function preflightShipmentHandoff(
   validateUniqueReferences(command, issues);
   validateVersionChain(command, issues);
   validateSourceProfile(command, issues);
+  validateShipmentCompleteness(command, issues);
   validateBillReferences(command, issues);
   validateCargoAndUpstreamReferences(command, issues);
 
+  const decoratedIssues = issues.map(decorateShipmentHandoffIssue);
   const payloadHash = createHash("sha256")
     .update(JSON.stringify(command), "utf8")
     .digest("hex");
-  const decision = issues.some((issue) =>
+  const decision = decoratedIssues.some((issue) =>
     isRejectingShipmentHandoffIssue(issue.code),
   )
     ? "rejected"
-    : issues.length > 0
+    : decoratedIssues.length > 0
       ? "review_required"
       : "ready";
 
@@ -39,14 +45,14 @@ export function preflightShipmentHandoff(
     result: {
       decision,
       payloadHash,
-      issues,
+      issues: decoratedIssues,
       traceId: command.source.traceId,
     },
   };
 }
 
 function validateVersionChain(
-  command: ShipmentHandoffCommandV1,
+  command: ShipmentHandoffCommand,
   issues: ShipmentHandoffIssueV1[],
 ): void {
   const correction = command.source.handoffVersion > 1;
@@ -73,9 +79,9 @@ function validateVersionChain(
   }
 }
 
-function normalizeShipmentHandoff(
-  input: ShipmentHandoffCommandV1,
-): ShipmentHandoffCommandV1 {
+function normalizeShipmentHandoff<T extends ShipmentHandoffCommand>(
+  input: T,
+): T {
   return {
     ...input,
     source: { ...input.source },
@@ -84,25 +90,25 @@ function normalizeShipmentHandoff(
       .map((bill) => ({ ...bill }))
       .sort((left, right) =>
         left.referenceId.localeCompare(right.referenceId),
-      ) as ShipmentHandoffCommandV1["billsOfLading"],
+      ) as ShipmentHandoffCommand["billsOfLading"],
     containers: [...input.containers]
       .map(normalizeContainer)
       .sort((left, right) =>
         left.referenceId.localeCompare(right.referenceId),
-      ) as ShipmentHandoffCommandV1["containers"],
+      ) as ShipmentHandoffCommand["containers"],
     documentReferences: [...(input.documentReferences ?? [])].sort(),
     evidenceReferences: [
       ...input.evidenceReferences,
-    ].sort() as ShipmentHandoffCommandV1["evidenceReferences"],
-  };
+    ].sort() as ShipmentHandoffCommand["evidenceReferences"],
+  } as T;
 }
 
-function normalizeContainer(input: ContainerHandoffV1): ContainerHandoffV1 {
+function normalizeContainer(input: ContainerHandoff): ContainerHandoff {
   return {
     ...input,
     billReferences: [
       ...input.billReferences,
-    ].sort() as ContainerHandoffV1["billReferences"],
+    ].sort() as ContainerHandoff["billReferences"],
     upstreamReferences: [...input.upstreamReferences].sort((left, right) =>
       [
         left.referenceType,
@@ -124,14 +130,14 @@ function normalizeContainer(input: ContainerHandoffV1): ContainerHandoffV1 {
       ? {
           cargoAllocations: [...input.cargoAllocations].sort((left, right) =>
             left.sourceLineId.localeCompare(right.sourceLineId),
-          ) as NonNullable<ContainerHandoffV1["cargoAllocations"]>,
+          ) as NonNullable<ContainerHandoff["cargoAllocations"]>,
         }
       : {}),
   };
 }
 
 function validateUniqueReferences(
-  command: ShipmentHandoffCommandV1,
+  command: ShipmentHandoffCommand,
   issues: ShipmentHandoffIssueV1[],
 ): void {
   addDuplicateIssues(
@@ -145,7 +151,9 @@ function validateUniqueReferences(
     issues,
   );
   addDuplicateIssues(
-    command.containers.map(({ containerNumber }) => containerNumber),
+    command.containers
+      .map(({ containerNumber }) => containerNumber)
+      .filter((value): value is string => Boolean(value)),
     "container_numbers",
     issues,
   );
@@ -172,6 +180,66 @@ function validateUniqueReferences(
   }
 }
 
+function validateShipmentCompleteness(
+  command: ShipmentHandoffCommand,
+  issues: ShipmentHandoffIssueV1[],
+): void {
+  const fields: Array<[keyof ShipmentHandoffCommand["shipment"], string]> = [
+    ["carrierCode", "carrier_code"],
+    ["vesselName", "vessel_name"],
+    ["voyageNumber", "voyage_number"],
+    ["originPortCode", "origin_unlocode"],
+    ["destinationPortCode", "destination_unlocode"],
+    ["destinationCountryCode", "destination_country_code"],
+  ];
+  for (const [property, fieldCode] of fields) {
+    if (!command.shipment[property]) {
+      issues.push(pendingIssue("SOURCE_DATA_INCOMPLETE", fieldCode));
+    }
+  }
+  if (!command.shipment.departureProof) {
+    issues.push(pendingIssue("DEPARTURE_PROOF_REQUIRED", "departure_proof"));
+  }
+  if (command.billsOfLading.length === 0) {
+    issues.push(pendingIssue("SOURCE_DATA_INCOMPLETE", "transport_documents"));
+  }
+  for (const container of command.containers) {
+    if (!container.containerNumber) {
+      issues.push(
+        pendingIssue(
+          "SOURCE_DATA_INCOMPLETE",
+          "container_number",
+          container.referenceId,
+        ),
+      );
+    }
+    if (!container.containerTypeCode) {
+      issues.push(
+        pendingIssue(
+          "SOURCE_DATA_INCOMPLETE",
+          "container_type_code",
+          container.referenceId,
+        ),
+      );
+    }
+  }
+}
+
+function pendingIssue(
+  code: ShipmentHandoffIssueV1["code"],
+  fieldCode: string,
+  subjectRef?: string,
+): ShipmentHandoffIssueV1 {
+  return {
+    code,
+    ...(subjectRef ? { subjectRef } : {}),
+    fieldCodes: [fieldCode],
+    messageKey: `shipment_handoff_${fieldCode}_pending`,
+    blocking: false,
+    resolutionState: "upstream_action_required",
+  };
+}
+
 function addDuplicateIssues(
   values: string[],
   subjectRef: string,
@@ -192,7 +260,7 @@ function addDuplicateIssues(
 }
 
 function validateSourceProfile(
-  command: ShipmentHandoffCommandV1,
+  command: ShipmentHandoffCommand,
   issues: ShipmentHandoffIssueV1[],
 ): void {
   if (command.sourceProfile === "legacy_departed_file_v1") {
@@ -238,7 +306,10 @@ function validateSourceProfile(
     });
   }
   for (const container of command.containers) {
-    if (command.sourceProfile === "packing_platform_v1") {
+    if (
+      command.sourceProfile === "packing_platform_v1" ||
+      command.sourceProfile === "internal_fulfillment_v1"
+    ) {
       if (!container.stuffingSnapshotRef) {
         issues.push({
           code: "STUFFING_SNAPSHOT_REQUIRED",
@@ -260,7 +331,7 @@ function validateSourceProfile(
 }
 
 function validateCargoAndUpstreamReferences(
-  command: ShipmentHandoffCommandV1,
+  command: ShipmentHandoffCommand,
   issues: ShipmentHandoffIssueV1[],
 ): void {
   const cargoBySourceLine = new Map<string, string>();
@@ -306,7 +377,7 @@ function validateCargoAndUpstreamReferences(
 }
 
 function validateBillReferences(
-  command: ShipmentHandoffCommandV1,
+  command: ShipmentHandoffCommand,
   issues: ShipmentHandoffIssueV1[],
 ): void {
   const bills = new Map(
@@ -344,10 +415,6 @@ export function isRejectingShipmentHandoffIssue(
   code: ShipmentHandoffIssueV1["code"],
 ): boolean {
   return new Set<ShipmentHandoffIssueV1["code"]>([
-    "SOURCE_BATCH_REQUIRED",
-    "MAPPING_VERSION_REQUIRED",
-    "STUFFING_SNAPSHOT_REQUIRED",
-    "CARGO_ALLOCATION_REQUIRED",
     "CONTAINER_ACTIVE_SHIPMENT_CONFLICT",
     "CONTAINER_SOURCE_IDENTITY_CONFLICT",
     "IDEMPOTENCY_PAYLOAD_CONFLICT",
@@ -360,4 +427,17 @@ export function isRejectingShipmentHandoffIssue(
     "INVALID_SOURCE_VALUE",
     "SUPERSEDED_HANDOFF_NOT_FOUND",
   ]).has(code);
+}
+
+export function decorateShipmentHandoffIssue(
+  issue: ShipmentHandoffIssueV1,
+): ShipmentHandoffIssueV1 {
+  const blocking = isRejectingShipmentHandoffIssue(issue.code);
+  return {
+    ...issue,
+    blocking,
+    resolutionState:
+      issue.resolutionState ??
+      (blocking ? "operator_action_required" : "upstream_action_required"),
+  };
 }

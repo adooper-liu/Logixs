@@ -902,36 +902,36 @@ model ReplenishmentOrderLine {
 
 // 已实际出运的主运输执行；计划、HBL、货柜和备货单都不是 Shipment 身份。
 model Shipment {
-  id                     String                      @id @default(uuid()) @map("id") @db.Uuid
-  tenantId               String                      @map("tenant_id")
-  shipmentNumber         String?                     @map("shipment_number")
-  sourceSystem           String                      @map("source_system")
-  sourceRecordId         String                      @map("source_record_id")
-  sourceVersion          String                      @map("source_version")
-  importBatchId          String?                     @map("import_batch_id")
-  transportMode          String                      @map("transport_mode")
-  carrierCode            String                      @map("carrier_code")
-  vesselName             String                      @map("vessel_name")
-  voyageNumber           String                      @map("voyage_number")
-  originCountryCode      String                      @map("origin_country_code") @db.Char(2)
-  originUnlocode         String                      @map("origin_unlocode")
-  destinationCountryCode String                      @map("destination_country_code") @db.Char(2)
-  destinationUnlocode    String                      @map("destination_unlocode")
-  cargoOwnerId           String?                     @map("cargo_owner_id") @db.Uuid
-  cargoOwner             CargoOwnerReference?        @relation(fields: [cargoOwnerId], references: [id], onDelete: Restrict)
-  finalDestinationType   String?                     @map("final_destination_type")
-  finalDestinationId     String?                     @map("final_destination_id") @db.Uuid
-  etdAt                  DateTime?                   @map("etd_at") @db.Timestamptz
-  atdAt                  DateTime?                   @map("atd_at") @db.Timestamptz
-  etaAt                  DateTime?                   @map("eta_at") @db.Timestamptz
-  ataAt                  DateTime?                   @map("ata_at") @db.Timestamptz
-  currentLifecycleStatus String                      @map("current_lifecycle_status")
-  lifecycleVersion       Int                         @default(1) @map("lifecycle_version")
-  relationshipVersion    Int                         @default(1) @map("relationship_version")
-  createdBy              String                      @map("created_by") @db.Uuid
-  updatedBy              String                      @map("updated_by") @db.Uuid
-  createdAt              DateTime                    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt              DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
+  id                     String                                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId               String                                   @map("tenant_id")
+  shipmentNumber         String?                                  @map("shipment_number")
+  sourceSystem           String                                   @map("source_system")
+  sourceRecordId         String?                                  @map("source_record_id")
+  sourceVersion          String                                   @map("source_version")
+  importBatchId          String?                                  @map("import_batch_id")
+  transportMode          String                                   @map("transport_mode")
+  carrierCode            String?                                  @map("carrier_code")
+  vesselName             String?                                  @map("vessel_name")
+  voyageNumber           String?                                  @map("voyage_number")
+  originCountryCode      String?                                  @map("origin_country_code") @db.Char(2)
+  originUnlocode         String?                                  @map("origin_unlocode")
+  destinationCountryCode String?                                  @map("destination_country_code") @db.Char(2)
+  destinationUnlocode    String?                                  @map("destination_unlocode")
+  cargoOwnerId           String?                                  @map("cargo_owner_id") @db.Uuid
+  cargoOwner             CargoOwnerReference?                     @relation(fields: [cargoOwnerId], references: [id], onDelete: Restrict)
+  finalDestinationType   String?                                  @map("final_destination_type")
+  finalDestinationId     String?                                  @map("final_destination_id") @db.Uuid
+  etdAt                  DateTime?                                @map("etd_at") @db.Timestamptz
+  atdAt                  DateTime?                                @map("atd_at") @db.Timestamptz
+  etaAt                  DateTime?                                @map("eta_at") @db.Timestamptz
+  ataAt                  DateTime?                                @map("ata_at") @db.Timestamptz
+  currentLifecycleStatus String                                   @map("current_lifecycle_status")
+  lifecycleVersion       Int                                      @default(1) @map("lifecycle_version")
+  relationshipVersion    Int                                      @default(1) @map("relationship_version")
+  createdBy              String                                   @map("created_by")
+  updatedBy              String                                   @map("updated_by")
+  createdAt              DateTime                                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime                                 @updatedAt @map("updated_at") @db.Timestamptz
   handoffs               ShipmentHandoffRecord[]
   containerLinks         ShipmentContainerLink[]
   cargoLines             ShipmentCargoLine[]
@@ -940,6 +940,7 @@ model Shipment {
   lifecycleFlows         FlowInstance[]
   eventApplications      ShipmentEventApplication[]
   operationalExceptions  OperationalExceptionCase[]
+  candidateCorrections   PostDepartureSourceCandidateCorrection[] @relation("PostDepartureCandidateTargetShipment")
 
   @@unique([id, tenantId], map: "shipment_id_tenant_key")
   @@unique([tenantId, shipmentNumber], map: "shipment_tenant_number_key")
@@ -972,7 +973,7 @@ model ShipmentHandoffRecord {
   supersededAt           DateTime?                       @map("superseded_at") @db.Timestamptz
   shipmentId             String?                         @map("shipment_id") @db.Uuid
   shipment               Shipment?                       @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  actorId                String                          @map("actor_id") @db.Uuid
+  actorId                String                          @map("actor_id")
   traceId                String                          @map("trace_id")
   createdAt              DateTime                        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime                        @updatedAt @map("updated_at") @db.Timestamptz
@@ -1435,36 +1436,145 @@ model EvidenceVerificationDecision {
 // 导入批次（integration-import 拥有）：一次上传的全生命周期（P6 阶段 A 读链路最小集）。
 // 完整批次状态机在阶段 C 对齐 IMPORT_WORKFLOW §4；阶段 A 仅 pending → parsed。
 model ImportBatch {
-  id                    String            @id @default(uuid()) @map("id")
-  tenantId              String            @map("tenant_id")
-  operatorId            String            @map("operator_id") // 开发期身份，审计
-  idempotencyKey        String            @map("idempotency_key")
-  fileName              String            @map("file_name")
-  fileHash              String            @map("file_hash") // 文件内容指纹，幂等判定
-  sourceFileStatus      String            @default("not_retained") @map("source_file_status")
-  sourceObjectKey       String?           @unique(map: "import_batch_source_object_key_key") @map("source_object_key")
-  sourceContentType     String?           @map("source_content_type")
-  sourceSizeBytes       Int?              @map("source_size_bytes")
-  sourceRetainedAt      DateTime?         @map("source_retained_at") @db.Timestamptz
-  parserVersion         String            @default("legacy-v1") @map("parser_version")
-  replacesBatchId       String?           @map("replaces_batch_id")
-  replacesBatch         ImportBatch?      @relation("ImportBatchReplacement", fields: [replacesBatchId], references: [id], onDelete: Restrict)
-  replacementBatches    ImportBatch[]     @relation("ImportBatchReplacement")
-  status                String            @map("status") // parsed | confirmed | approved | executing | completed
-  rowCount              Int               @map("row_count")
-  columnCount           Int               @map("column_count")
+  id                         String                             @id @default(uuid()) @map("id")
+  tenantId                   String                             @map("tenant_id")
+  operatorId                 String                             @map("operator_id") // 开发期身份，审计
+  idempotencyKey             String                             @map("idempotency_key")
+  fileName                   String                             @map("file_name")
+  fileHash                   String                             @map("file_hash") // 文件内容指纹，幂等判定
+  sourceFileStatus           String                             @default("not_retained") @map("source_file_status")
+  sourceObjectKey            String?                            @unique(map: "import_batch_source_object_key_key") @map("source_object_key")
+  sourceContentType          String?                            @map("source_content_type")
+  sourceSizeBytes            Int?                               @map("source_size_bytes")
+  sourceRetainedAt           DateTime?                          @map("source_retained_at") @db.Timestamptz
+  parserVersion              String                             @default("legacy-v1") @map("parser_version")
+  replacesBatchId            String?                            @map("replaces_batch_id")
+  replacesBatch              ImportBatch?                       @relation("ImportBatchReplacement", fields: [replacesBatchId], references: [id], onDelete: Restrict)
+  replacementBatches         ImportBatch[]                      @relation("ImportBatchReplacement")
+  status                     String                             @map("status") // parsed | confirmed | approved | executing | completed
+  rowCount                   Int                                @map("row_count")
+  columnCount                Int                                @map("column_count")
   // AI 字段映射建议（阶段 B 留痕）：[{ column, fieldCode, confidence }]，阶段 C 审核指向它
-  mappingSuggestions    Json              @default("[]") @map("mapping_suggestions")
-  confirmedQuantityUnit String?           @map("confirmed_quantity_unit")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  updatedAt             DateTime          @updatedAt @map("updated_at")
-  rows                  ImportRow[]
-  reviews               ImportReview[]
-  rowResults            ImportRowResult[]
+  mappingSuggestions         Json                               @default("[]") @map("mapping_suggestions")
+  confirmedQuantityUnit      String?                            @map("confirmed_quantity_unit")
+  createdAt                  DateTime                           @default(now()) @map("created_at")
+  updatedAt                  DateTime                           @updatedAt @map("updated_at")
+  rows                       ImportRow[]
+  reviews                    ImportReview[]
+  rowResults                 ImportRowResult[]
+  postDepartureReviewSources PostDepartureSourcePackageSource[]
 
   @@unique([tenantId, idempotencyKey], map: "import_batch_tenant_idempotency_key")
+  @@unique([id, tenantId], map: "import_batch_id_tenant_key")
   @@index([replacesBatchId], map: "import_batch_replaces_batch_id_idx")
   @@map("import_batch")
+}
+
+// 已出运四表待复核包（integration-import 拥有）：只保存契约化预检快照，不创建 Shipment。
+model PostDepartureSourcePackageReview {
+  id                   String                                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                                   @map("tenant_id")
+  packageHash          String                                   @map("package_hash") @db.Char(64)
+  contractVersion      String                                   @map("contract_version")
+  decision             String                                   @map("decision")
+  candidateCount       Int                                      @map("candidate_count")
+  reviewRequiredCount  Int                                      @map("review_required_count")
+  snapshot             Json                                     @map("snapshot")
+  snapshotHash         String                                   @map("snapshot_hash") @db.Char(64)
+  operatorId           String                                   @map("operator_id")
+  traceId              String                                   @map("trace_id")
+  createdAt            DateTime                                 @default(now()) @map("created_at") @db.Timestamptz
+  sources              PostDepartureSourcePackageSource[]
+  candidateCorrections PostDepartureSourceCandidateCorrection[]
+
+  @@unique([id, tenantId], map: "post_departure_source_package_review_id_tenant_key")
+  @@unique([tenantId, packageHash], map: "post_departure_source_package_review_tenant_package_key")
+  @@index([tenantId, createdAt, id], map: "post_departure_source_package_review_tenant_created_idx")
+  @@map("post_departure_source_package_review")
+}
+
+// 已出运候选的人工修正版本（integration-import 拥有）：追加版本，不覆盖原始四表快照。
+model PostDepartureSourceCandidateCorrection {
+  id                        String                                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                  String                                   @map("tenant_id")
+  reviewId                  String                                   @map("review_id") @db.Uuid
+  candidateRef              String                                   @map("candidate_ref")
+  version                   Int                                      @map("version")
+  supersedesCorrectionId    String?                                  @map("supersedes_correction_id") @db.Uuid
+  shipmentGroupingKind      String?                                  @map("shipment_grouping_kind")
+  shipmentNumber            String?                                  @map("shipment_number")
+  targetShipmentId          String?                                  @map("target_shipment_id") @db.Uuid
+  targetRelationshipVersion Int?                                     @map("target_relationship_version")
+  targetShipment            Shipment?                                @relation("PostDepartureCandidateTargetShipment", fields: [targetShipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  originPortId              String?                                  @map("origin_port_id") @db.Uuid
+  originUnlocode            String?                                  @map("origin_unlocode") @db.Char(5)
+  destinationPortId         String?                                  @map("destination_port_id") @db.Uuid
+  destinationUnlocode       String?                                  @map("destination_unlocode") @db.Char(5)
+  departureLocal            String?                                  @map("departure_local")
+  departureOccurredAt       DateTime?                                @map("departure_occurred_at") @db.Timestamptz
+  departureSourceTimezone   String?                                  @map("departure_source_timezone")
+  departureEvidenceId       String?                                  @map("departure_evidence_id") @db.Uuid
+  operatorId                String                                   @map("operator_id")
+  reasonCode                String                                   @map("reason_code")
+  idempotencyKey            String                                   @map("idempotency_key")
+  payloadHash               String                                   @map("payload_hash") @db.Char(64)
+  createdAt                 DateTime                                 @default(now()) @map("created_at") @db.Timestamptz
+  review                    PostDepartureSourcePackageReview         @relation(fields: [reviewId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  supersedesCorrection      PostDepartureSourceCandidateCorrection?  @relation("PostDepartureCandidateCorrectionVersion", fields: [supersedesCorrectionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  supersedingCorrections    PostDepartureSourceCandidateCorrection[] @relation("PostDepartureCandidateCorrectionVersion")
+  cargoLines                PostDepartureSourceCandidateCargoLine[]
+
+  @@unique([id, tenantId], map: "post_departure_candidate_correction_id_tenant_key")
+  @@unique([reviewId, candidateRef, version], map: "post_departure_candidate_review_ref_version_key")
+  @@unique([tenantId, idempotencyKey], map: "post_departure_candidate_correction_tenant_idempotency_key")
+  @@index([reviewId, tenantId, candidateRef, version], map: "post_departure_candidate_correction_current_idx")
+  @@index([supersedesCorrectionId, tenantId], map: "post_departure_candidate_correction_supersedes_idx")
+  @@index([originPortId], map: "post_departure_candidate_correction_origin_port_idx")
+  @@index([destinationPortId], map: "post_departure_candidate_correction_destination_port_idx")
+  @@index([departureEvidenceId], map: "post_departure_candidate_correction_evidence_idx")
+  @@index([targetShipmentId, tenantId], map: "post_departure_candidate_correction_target_shipment_idx")
+  @@map("post_departure_source_candidate_correction")
+}
+
+// 已出运候选修正版本的 SKU 实际装载明细；随父版本不可变，整组替代，不提前写正式 Shipment 货物表。
+model PostDepartureSourceCandidateCargoLine {
+  id                       String                                 @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                 String                                 @map("tenant_id")
+  correctionId             String                                 @map("correction_id") @db.Uuid
+  correction               PostDepartureSourceCandidateCorrection @relation(fields: [correctionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  lineNumber               Int                                    @map("line_number")
+  sourceLineId             String                                 @map("source_line_id")
+  replenishmentOrderNumber String                                 @map("replenishment_order_number")
+  productSkuId             String                                 @map("product_sku_id") @db.Uuid
+  productNumber            String                                 @map("product_number")
+  quantity                 Decimal                                @map("quantity") @db.Decimal(18, 3)
+  quantityUnit             String                                 @map("quantity_unit")
+  replenishmentOrderLineId String?                                @map("replenishment_order_line_id")
+  createdAt                DateTime                               @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([correctionId, lineNumber], map: "post_departure_candidate_cargo_line_number_key")
+  @@unique([correctionId, sourceLineId], map: "post_departure_candidate_cargo_source_line_key")
+  @@index([tenantId, productSkuId], map: "post_departure_candidate_cargo_sku_idx")
+  @@index([tenantId, replenishmentOrderNumber], map: "post_departure_candidate_cargo_order_idx")
+  @@map("post_departure_source_candidate_cargo_line")
+}
+
+// 待复核包与四个原始导入批次的租户内关系。
+model PostDepartureSourcePackageSource {
+  id            String                           @id @default(uuid()) @map("id") @db.Uuid
+  tenantId      String                           @map("tenant_id")
+  reviewId      String                           @map("review_id") @db.Uuid
+  sourceKind    String                           @map("source_kind")
+  importBatchId String                           @map("import_batch_id")
+  createdAt     DateTime                         @default(now()) @map("created_at") @db.Timestamptz
+  review        PostDepartureSourcePackageReview @relation(fields: [reviewId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  importBatch   ImportBatch                      @relation(fields: [importBatchId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([reviewId, sourceKind], map: "post_departure_source_package_source_review_kind_key")
+  @@index([reviewId, tenantId], map: "post_departure_source_package_source_review_idx")
+  @@index([importBatchId, tenantId], map: "post_departure_source_package_source_batch_idx")
+  @@index([tenantId, createdAt, id], map: "post_departure_source_package_source_tenant_created_idx")
+  @@map("post_departure_source_package_source")
 }
 
 // 导入行（integration-import 拥有）：一行 = 一个来源产品明细；同备货单可有多行。

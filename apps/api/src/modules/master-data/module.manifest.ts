@@ -11,5 +11,7 @@ export const moduleManifest = defineModuleManifest({
     "GET_PRODUCT_SKU",
     "REGISTER_PRODUCT_SKU",
     "REPLACE_PRODUCT_COMPLIANCE_PROFILE",
+    "REFERENCE_PORT_DIRECTORY",
+    "RESOLVE_PRODUCT_SKUS",
   ],
 });

@@ -16,6 +16,11 @@ export interface ReplenishmentOrderLineRecord {
   shippedQuantity: string;
   quantityUnit: string;
   allocations: ReplenishmentOrderAllocationRecord[];
+  handoffShipments: Array<{
+    id: string;
+    shipmentNumber: string | null;
+    currentLifecycleStatus: string;
+  }>;
 }
 
 export interface ReplenishmentOrderWorkbenchRecord {
@@ -24,6 +29,11 @@ export interface ReplenishmentOrderWorkbenchRecord {
   updatedAt: string;
   linkedContainers: Array<{ id: string; containerNumber: string | null }>;
   lines: ReplenishmentOrderLineRecord[];
+  handoffShipments: Array<{
+    id: string;
+    shipmentNumber: string | null;
+    currentLifecycleStatus: string;
+  }>;
 }
 
 export interface ReplenishmentOrderWorkbenchRepository {
@@ -32,4 +42,19 @@ export interface ReplenishmentOrderWorkbenchRepository {
     after?: { updatedAt: Date; id: string };
     take: number;
   }): Promise<ReplenishmentOrderWorkbenchRecord[]>;
+  resolveCurrentLines(input: {
+    tenantId: string;
+    identities: Array<{
+      replenishmentOrderNumber: string;
+      productNumber: string;
+    }>;
+  }): Promise<
+    Array<{
+      replenishmentOrderLineId: string;
+      replenishmentOrderNumber: string;
+      productSkuId: string | null;
+      productNumber: string;
+      sourceRowId: string;
+    }>
+  >;
 }

@@ -1,4 +1,7 @@
-import type { ShipmentHandoffCommandV1 } from "@logix/contracts";
+import type {
+  ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV2,
+} from "@logix/contracts";
 import commonSchema from "@logix/contracts/schemas/v1/common.schema.json";
 import shipmentHandoffSchema from "@logix/contracts/schemas/v1/shipment-handoff.schema.json";
 import Ajv2020, {
@@ -20,6 +23,12 @@ ajv.addSchema(shipmentHandoffSchema);
 const commandValidator = requiredValidator<ShipmentHandoffCommandV1>(
   `${shipmentHandoffSchema.$id}#/$defs/ShipmentHandoffCommandV1`,
 );
+const commandV2Validator = requiredValidator<ShipmentHandoffCommandV2>(
+  `${shipmentHandoffSchema.$id}#/$defs/ShipmentHandoffCommandV2`,
+);
+
+type ShipmentHandoffCommand =
+  ShipmentHandoffCommandV1 | ShipmentHandoffCommandV2;
 
 export class ShipmentHandoffContractValidationError extends Error {
   constructor(readonly validationErrors: string[]) {
@@ -29,13 +38,18 @@ export class ShipmentHandoffContractValidationError extends Error {
 
 export function validateShipmentHandoffCommand(
   input: unknown,
-): ShipmentHandoffCommandV1 {
-  if (!commandValidator(input)) {
+): ShipmentHandoffCommand {
+  const validator =
+    (input as { contractVersion?: unknown } | null)?.contractVersion ===
+    "shipment-handoff.v2"
+      ? commandV2Validator
+      : commandValidator;
+  if (!validator(input)) {
     throw new ShipmentHandoffContractValidationError(
-      normalizeErrors(commandValidator.errors),
+      normalizeErrors(validator.errors),
     );
   }
-  return input;
+  return input as ShipmentHandoffCommand;
 }
 
 function requiredValidator<T>(schemaRef: string): ValidateFunction<T> {

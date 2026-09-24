@@ -11,5 +11,8 @@ export const moduleManifest = defineModuleManifest({
     "shipment-registry",
   ],
   permissions: ["container.operate"],
-  publicPorts: [],
+  publicPorts: [
+    "Shipment handoff preflight and acceptance ports",
+    "Legacy departed source candidate preparation",
+  ],
 });

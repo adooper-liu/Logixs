@@ -46,6 +46,14 @@ function buildPrisma(
           productNumber: "SKU-1",
           version: 1,
         }),
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            tenantId: "tenant-a",
+            productNumber: "SKU-1",
+            version: 1,
+          },
+        ]),
       },
       $transaction: vi.fn(
         async (callback: (tx: typeof transaction) => Promise<unknown>) =>
@@ -88,6 +96,33 @@ describe("PrismaProductSkuRepository", () => {
             id: "11111111-1111-4111-8111-111111111111",
             tenantId: "tenant-a",
           },
+        },
+      }),
+    );
+  });
+
+  it("按租户和货号批量解析 SKU", async () => {
+    const { prisma } = buildPrisma();
+    const repository = await buildRepository(prisma);
+
+    await expect(
+      repository.findByProductNumbers({
+        tenantId: "tenant-a",
+        productNumbers: ["SKU-1"],
+      }),
+    ).resolves.toEqual([
+      {
+        productSkuId: "11111111-1111-4111-8111-111111111111",
+        tenantId: "tenant-a",
+        productNumber: "SKU-1",
+        version: 1,
+      },
+    ]);
+    expect(prisma.productSku.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId: "tenant-a",
+          productNumber: { in: ["SKU-1"] },
         },
       }),
     );

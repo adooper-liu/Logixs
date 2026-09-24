@@ -23,3 +23,15 @@ export {
   type ReplaceProductComplianceProfilePort,
   type ReplaceProductComplianceProfileResult,
 } from "./replace-product-compliance-profile.port";
+export {
+  REFERENCE_PORT_DIRECTORY,
+  type ReferencePortDirectoryPort,
+  type ReferencePortRecord,
+  type ReferencePortSearchResult,
+} from "./reference-port-directory.port";
+export {
+  RESOLVE_PRODUCT_SKUS,
+  type ResolveProductSkusPort,
+  type ResolveProductSkusQuery,
+  type ResolvedProductSku,
+} from "./resolve-product-skus.port";

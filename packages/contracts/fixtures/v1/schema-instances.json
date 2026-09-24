@@ -492,11 +492,25 @@
     },
     {
       "contractId": "GC-007",
+      "name": "post-departure preflight accepts one available source",
+      "schemaRef": "shipment-handoff.schema.json#/$defs/PostDepartureSourcePackagePreflightCommandV1",
+      "data": {
+        "contractVersion": "post-departure-source-package-preflight.v1",
+        "sources": [
+          {
+            "kind": "container",
+            "batchId": "69000000-0000-4000-8000-000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "contractId": "GC-007",
       "name": "complete packing platform Shipment handoff",
       "schemaRef": "shipment-handoff.schema.json#/$defs/ShipmentHandoffCommandV1",
       "data": {
         "contractVersion": "shipment-handoff.v1",
-        "tenantId": "70000000-0000-4000-8000-000000000001",
+        "tenantId": "demo-real-sample-20260921",
         "sourceProfile": "packing_platform_v1",
         "source": {
           "channel": "api",
@@ -803,6 +817,7 @@
             "version": 1
           }
         ],
+        "pendingItems": [],
         "lifecycleInitialization": {
           "state": "ready",
           "activeContainerCount": 1,
@@ -839,6 +854,70 @@
         "activeCargoLineCount": 1,
         "lifecycleInitializationState": "ready",
         "updatedAt": "2026-09-23T10:00:00Z"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "internal fulfillment facts ready for Shipment handoff",
+      "schemaRef": "shipment-handoff.schema.json#/$defs/InternalShipmentHandoffCandidatePageV1",
+      "data": {
+        "items": [
+          {
+            "candidateRef": "internal:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bookingNumber": "BK-20260924-001",
+            "carrierCode": "HMM",
+            "vesselName": "ONE INNOVATION",
+            "voyageNumber": "001E",
+            "originPortCode": "CNSHA",
+            "destinationPortCode": "USLAX",
+            "departedAt": "2026-09-24T00:00:00Z",
+            "departureSourceTimezone": "Asia/Shanghai",
+            "departureEvidenceRef": "76000000-0000-4000-8000-000000000001",
+            "containers": [
+              {
+                "containerRecordId": "76000000-0000-4000-8000-000000000002",
+                "containerNumber": "HMMU4956442",
+                "containerTypeCode": "40HQ",
+                "stuffingSnapshotRef": "76000000-0000-4000-8000-000000000003"
+              }
+            ],
+            "replenishmentOrders": [
+              {
+                "id": "76000000-0000-4000-8000-000000000004",
+                "orderNumber": "26DSC01812"
+              }
+            ],
+            "cargoLines": [
+              {
+                "replenishmentOrderId": "76000000-0000-4000-8000-000000000004",
+                "replenishmentOrderNumber": "26DSC01812",
+                "replenishmentOrderLineId": "76000000-0000-4000-8000-000000000005",
+                "productSkuId": "76000000-0000-4000-8000-000000000006",
+                "productNumber": "311-013GY",
+                "quantity": "20",
+                "quantityUnit": "piece",
+                "packageCount": null,
+                "packageUnit": null,
+                "grossWeight": null,
+                "weightUnit": null,
+                "volume": null,
+                "volumeUnit": null,
+                "containerRecordId": "76000000-0000-4000-8000-000000000002"
+              }
+            ],
+            "transportDocuments": [
+              {
+                "referenceId": "internal-booking-001",
+                "documentType": "booking",
+                "documentNumber": "BK-20260924-001",
+                "containerRecordIds": ["76000000-0000-4000-8000-000000000002"]
+              }
+            ],
+            "pendingItems": []
+          }
+        ],
+        "asOf": "2026-09-24T00:05:00Z",
+        "projectionVersion": 1
       }
     }
   ]

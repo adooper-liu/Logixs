@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileUp, PackageCheck } from "@lucide/vue";
+import { ArrowUpRight, FileUp, PackageCheck } from "@lucide/vue";
 import { computed, onMounted, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import CargoReadyActionPanel from "../components/cargo-ready/CargoReadyActionPanel.vue";
@@ -134,6 +134,20 @@ async function selectOrderById(value: string): Promise<void> {
             }}
           </b>
         </span>
+        <span class="handoff-destination">
+          <small>Shipment 交接</small>
+          <template v-if="selectedOrder.handoffShipments?.length">
+            <router-link
+              v-for="shipment in selectedOrder.handoffShipments ?? []"
+              :key="shipment.id"
+              :to="`/workspaces/dispatch?shipmentId=${shipment.id}`"
+            >
+              {{ shipment.shipmentNumber ?? shipment.id.slice(0, 8) }}
+              <ArrowUpRight :size="13" aria-hidden="true" />
+            </router-link>
+          </template>
+          <b v-else>尚未交接</b>
+        </span>
       </div>
     </template>
 
@@ -184,7 +198,7 @@ async function selectOrderById(value: string): Promise<void> {
   background: var(--brand);
   color: var(--on-brand);
   font-size: var(--text-label);
-  font-weight: 700;
+  font-weight: var(--weight-page);
   text-decoration: none;
 }
 
@@ -193,7 +207,7 @@ async function selectOrderById(value: string): Promise<void> {
   display: grid;
   grid-column: 2 / -1;
   grid-template-columns: 36px minmax(130px, 1.2fr) repeat(
-      3,
+      4,
       minmax(88px, 0.7fr)
     );
   align-items: center;
@@ -216,6 +230,16 @@ async function selectOrderById(value: string): Promise<void> {
 .order-context b {
   overflow-wrap: anywhere;
   font-size: var(--text-meta);
+}
+
+.handoff-destination a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--brand-strong);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-page);
+  text-decoration: none;
 }
 
 .order-context__icon {

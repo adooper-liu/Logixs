@@ -69,6 +69,12 @@ export class ReplenishmentOrderContainerDto {
     string | null;
 }
 
+export class ReplenishmentOrderHandoffShipmentDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ nullable: true, type: String }) shipmentNumber!: string | null;
+  @ApiProperty() currentLifecycleStatus!: string;
+}
+
 export class ReplenishmentOrderWorkbenchItemDto {
   @ApiProperty() id!: string;
   @ApiProperty() orderNumber!: string;
@@ -79,6 +85,8 @@ export class ReplenishmentOrderWorkbenchItemDto {
   nextAction!: ReplenishmentOrderNextActionDto | null;
   @ApiProperty({ type: [ReplenishmentOrderContainerDto] })
   relatedContainers!: ReplenishmentOrderContainerDto[];
+  @ApiProperty({ type: [ReplenishmentOrderHandoffShipmentDto] })
+  handoffShipments!: ReplenishmentOrderHandoffShipmentDto[];
   @ApiProperty({ type: [ReplenishmentOrderLineDto] })
   lines!: ReplenishmentOrderLineDto[];
 }

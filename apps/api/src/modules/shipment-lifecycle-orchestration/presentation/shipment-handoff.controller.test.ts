@@ -8,9 +8,13 @@ describe("ShipmentHandoffController", () => {
       preflight: vi.fn().mockResolvedValue({ decision: "ready" }),
     };
     const accept = { accept: vi.fn().mockResolvedValue({ handoffId: "h1" }) };
+    const listInternal = { execute: vi.fn() };
+    const acceptInternal = { execute: vi.fn() };
     const controller = new ShipmentHandoffController(
       preflight as never,
       accept as never,
+      listInternal as never,
+      acceptInternal as never,
     );
     const identity = { tenantId: "tenant-a", actorId: "actor-a" };
     const body = { contractVersion: "shipment-handoff.v1" } as never;

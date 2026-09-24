@@ -489,6 +489,7 @@ function toDetail(
       sourceLineId: reference.sourceLineId,
       version: reference.version,
     })),
+    pendingItems: shipmentPendingItems(row),
     lifecycleInitialization: {
       state: initialization.state,
       activeContainerCount: row.containerLinks.length,
@@ -498,4 +499,42 @@ function toDetail(
     },
     projectionVersion: row.lifecycleVersion,
   } satisfies Omit<ShipmentDetailV1, "asOf">;
+}
+
+function shipmentPendingItems(
+  row: DetailRow,
+): ShipmentDetailV1["pendingItems"] {
+  const items: ShipmentDetailV1["pendingItems"] = [];
+  const add = (
+    code: string,
+    label: string,
+    subjectType: ShipmentDetailV1["pendingItems"][number]["subjectType"] = "shipment",
+    subjectRef = row.id,
+  ) => items.push({ code, label, subjectType, subjectRef });
+  if (!row.carrierCode) add("carrier_missing", "补充船公司");
+  if (!row.vesselName || !row.voyageNumber) {
+    add("vessel_voyage_missing", "补充船名航次");
+  }
+  if (!row.originUnlocode) add("origin_port_missing", "补充起运港");
+  if (!row.destinationUnlocode) {
+    add("destination_port_missing", "补充目的港");
+  }
+  if (!row.atdAt) add("departure_proof_missing", "补充实际离港证据");
+  if (row.cargoLines.length === 0) {
+    add("cargo_detail_missing", "补充 SKU 装载明细", "cargo");
+  }
+  for (const line of row.cargoLines) {
+    if (!line.productSkuId) {
+      add(
+        "product_sku_missing",
+        `匹配 SKU ${line.productNumberSnapshot}`,
+        "cargo",
+        line.id,
+      );
+    }
+  }
+  if (row.transportDocuments.length === 0) {
+    add("bill_of_lading_missing", "补充提单资料", "document");
+  }
+  return items;
 }

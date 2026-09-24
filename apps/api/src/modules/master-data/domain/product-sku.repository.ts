@@ -21,6 +21,10 @@ export interface ProductSkuRepository {
     tenantId: string;
     productSkuId: string;
   }): Promise<ProductSkuRecord | null>;
+  findByProductNumbers(input: {
+    tenantId: string;
+    productNumbers: string[];
+  }): Promise<ProductSkuRecord[]>;
   register(input: NormalizedRegisterProductSkuCommand): Promise<{
     record: ProductSkuRecord;
     duplicate: boolean;

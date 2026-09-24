@@ -129,7 +129,7 @@ describe("preflightShipmentHandoff", () => {
     );
   });
 
-  it("rejects API handoff without actual SKU allocations", () => {
+  it("keeps API handoff without SKU allocations in the completion queue", () => {
     const result = preflightShipmentHandoff({
       ...command,
       sourceProfile: "api_v1",
@@ -139,7 +139,7 @@ describe("preflightShipmentHandoff", () => {
       })) as ShipmentHandoffCommandV1["containers"],
     });
 
-    expect(result.result.decision).toBe("rejected");
+    expect(result.result.decision).toBe("review_required");
     expect(result.result.issues).toContainEqual(
       expect.objectContaining({ code: "CARGO_ALLOCATION_REQUIRED" }),
     );

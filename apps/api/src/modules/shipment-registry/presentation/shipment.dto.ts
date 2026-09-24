@@ -191,6 +191,8 @@ export class ShipmentDetailDto implements ShipmentDetailV1 {
   transportDocuments!: ShipmentTransportDocumentDto[];
   @ApiProperty({ type: [ShipmentUpstreamReferenceDto] })
   upstreamReferences!: ShipmentUpstreamReferenceDto[];
+  @ApiProperty({ type: [Object] })
+  pendingItems!: ShipmentDetailV1["pendingItems"];
   @ApiProperty({ type: ShipmentLifecycleInitializationDto })
   lifecycleInitialization!: ShipmentLifecycleInitializationDto;
   @ApiProperty() projectionVersion!: number;

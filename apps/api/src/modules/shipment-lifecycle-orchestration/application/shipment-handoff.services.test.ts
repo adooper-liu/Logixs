@@ -1,5 +1,8 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
-import type { ShipmentHandoffCommandV1 } from "@logix/contracts";
+import type {
+  ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV2,
+} from "@logix/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { AcceptShipmentHandoffService } from "./accept-shipment-handoff.service";
 import { PreflightShipmentHandoffService } from "./preflight-shipment-handoff.service";
@@ -133,7 +136,7 @@ describe("Shipment Handoff application services", () => {
     });
   });
 
-  it("records a review-required handoff without requiring unavailable evidence", async () => {
+  it("allows a review-required handoff to continue while validating known evidence", async () => {
     const commit = {
       execute: vi.fn().mockResolvedValue({
         businessDecisionState: "review_required",
@@ -162,10 +165,73 @@ describe("Shipment Handoff application services", () => {
 
     await service.accept(reviewCommand, context);
 
-    expect(evidence.execute).not.toHaveBeenCalled();
+    expect(evidence.execute).toHaveBeenCalledWith({
+      tenantId: context.tenantId,
+      evidenceIds: ["70000000-0000-4000-8000-000000000003"],
+    });
     expect(commit.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         preflight: expect.objectContaining({ decision: "review_required" }),
+      }),
+    );
+  });
+
+  it("accepts a v2 departed Shipment with business facts still pending", async () => {
+    const commit = {
+      execute: vi.fn().mockResolvedValue({ shipmentId: "shipment-id" }),
+    };
+    const evidence = { execute: vi.fn().mockResolvedValue(undefined) };
+    const incomplete: ShipmentHandoffCommandV2 = {
+      contractVersion: "shipment-handoff.v2",
+      tenantId: "demo-real-sample-20260921",
+      sourceProfile: "legacy_departed_file_v1",
+      source: {
+        ...command.source,
+        channel: "file_import",
+        mappingVersion: "post_departure_source_package.v1",
+      },
+      shipment: { transportMode: "ocean" },
+      billsOfLading: [],
+      containers: [
+        {
+          referenceId: "candidate-1",
+          externalContainerId: "candidate-1",
+          billReferences: [],
+          upstreamReferences: [],
+        },
+      ],
+      evidenceReferences: [],
+    };
+    const service = new AcceptShipmentHandoffService(
+      new PreflightShipmentHandoffService(noDatabaseConflicts as never),
+      commit as never,
+      evidence as never,
+    );
+
+    await service.accept(incomplete, {
+      ...context,
+      tenantId: incomplete.tenantId,
+    });
+
+    expect(evidence.execute).not.toHaveBeenCalled();
+    expect(commit.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: expect.objectContaining({
+          contractVersion: "shipment-handoff.v2",
+        }),
+        preflight: expect.objectContaining({
+          decision: "review_required",
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              code: "DEPARTURE_PROOF_REQUIRED",
+              blocking: false,
+            }),
+            expect.objectContaining({
+              code: "SOURCE_DATA_INCOMPLETE",
+              blocking: false,
+            }),
+          ]),
+        }),
       }),
     );
   });

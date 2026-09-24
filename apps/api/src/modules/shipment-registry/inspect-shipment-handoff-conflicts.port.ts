@@ -1,7 +1,11 @@
 import type {
   ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV2,
   ShipmentHandoffIssueV1,
 } from "@logix/contracts";
+
+type ShipmentHandoffCommand =
+  ShipmentHandoffCommandV1 | ShipmentHandoffCommandV2;
 
 export const INSPECT_SHIPMENT_HANDOFF_CONFLICTS = Symbol(
   "InspectShipmentHandoffConflicts",
@@ -14,7 +18,7 @@ export interface ShipmentHandoffConflictInspection {
 
 export interface InspectShipmentHandoffConflictsPort {
   inspect(
-    command: ShipmentHandoffCommandV1,
+    command: ShipmentHandoffCommand,
     payloadHash: string,
   ): Promise<ShipmentHandoffConflictInspection>;
 }
