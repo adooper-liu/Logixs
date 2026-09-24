@@ -96,7 +96,7 @@ export function toLiveContainer(
   return {
     containerRecordId: summary.id,
     containerNumber: summary.containerNumber?.trim() || "无箱号",
-    orderNumber: summary.orderNumber,
+    orderNumber: summary.orderNumber ?? "",
     billOfLading: "",
     typeCode: "",
     nodeDisplaySchema: emptyNodeDisplaySchema,
@@ -283,7 +283,7 @@ function toActions(detail: NodeTaskDetail): TaskAction[] {
 export interface TaskContainerRef {
   id: string;
   containerNumber: string | null;
-  orderNumber: string;
+  orderNumber: string | null;
 }
 
 export function toLiveTask(
@@ -300,7 +300,7 @@ export function toLiveTask(
     taskDefinitionVersion: LIVE_TASK_DEFINITION_VERSION,
     containerRecordId: container.id,
     containerNumber: container.containerNumber?.trim() || "无箱号",
-    orderNumber: container.orderNumber,
+    orderNumber: container.orderNumber ?? "",
     nodeKey: detail.nodeCode,
     nodeName,
     triggerReason: "",

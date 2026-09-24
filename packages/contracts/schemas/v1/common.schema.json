@@ -15,6 +15,11 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]{0,99}$"
     },
+    "CapabilityCode": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$",
+      "maxLength": 100
+    },
     "BoundedContextCode": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
@@ -251,6 +256,9 @@
     "EntityType": {
       "enum": [
         "container",
+        "shipment",
+        "shipment_cargo_line",
+        "shipment_transport_document",
         "flow_instance",
         "node_instance",
         "node_task",

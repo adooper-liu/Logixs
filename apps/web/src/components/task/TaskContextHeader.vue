@@ -115,8 +115,8 @@ const containerHref = computed(
 .task-context {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
-  gap: 8px 20px;
-  padding: 12px;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -130,7 +130,7 @@ const containerHref = computed(
 .labels {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .title-line {
@@ -143,9 +143,9 @@ const containerHref = computed(
 
 .node,
 .mode {
-  padding: 2px 7px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-s);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
@@ -164,23 +164,23 @@ const containerHref = computed(
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .task-title-row h2 {
-  margin: 5px 0 2px;
-  font-size: 17px;
+  margin: var(--space-1) 0 var(--space-1);
+  font-size: var(--text-page);
 }
 
 .task-state {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid currentColor;
   border-radius: var(--radius-s);
   background: var(--surface);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .task-state > span {
@@ -215,18 +215,18 @@ const containerHref = computed(
 .task-language {
   max-width: 760px;
   display: grid;
-  gap: 2px;
-  margin-top: 2px;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
 }
 
 .task-language p {
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 7px;
+  gap: var(--space-2);
   margin: 0;
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: var(--text-label);
   line-height: 1.5;
 }
 
@@ -234,7 +234,7 @@ const containerHref = computed(
   min-width: 48px;
   flex: none;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
@@ -265,14 +265,14 @@ const containerHref = computed(
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .container-link,
 .container-state {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
 }
 
 .container-link {
@@ -289,15 +289,15 @@ const containerHref = computed(
 .identity > time,
 .container-state {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .container-state {
-  margin-top: 3px;
+  margin-top: var(--space-1);
 }
 
 .container-state b {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .container-state time {

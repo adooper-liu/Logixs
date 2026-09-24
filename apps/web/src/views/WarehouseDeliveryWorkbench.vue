@@ -126,6 +126,6 @@ function submitFact(draft: DeliveryFactDraft) {
 <style scoped>
 .delivery-actions {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 </style>

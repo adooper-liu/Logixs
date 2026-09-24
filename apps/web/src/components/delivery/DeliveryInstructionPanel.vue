@@ -137,8 +137,8 @@ function local(value?: string | null) {
 <style scoped>
 .instruction {
   display: grid;
-  gap: 10px;
-  padding-bottom: 12px;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--line-strong);
 }
 header {
@@ -146,21 +146,21 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 header span,
 button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 0 12px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
 }
 .wide {
   grid-column: 1 / -1;
@@ -168,16 +168,16 @@ button {
 label {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 input,
 textarea,
 button {
   min-width: 0;
   min-height: 36px;
-  padding: 7px 9px;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -187,7 +187,7 @@ textarea {
   resize: vertical;
 }
 button {
-  margin: 0 12px;
+  margin: 0 var(--space-3);
   justify-content: center;
   cursor: pointer;
   font-weight: 700;

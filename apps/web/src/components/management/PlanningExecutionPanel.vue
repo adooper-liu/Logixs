@@ -123,32 +123,32 @@ defineProps<{
   align-items: center;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 40px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 .panel-head h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 .panel-grid {
   display: grid;
   grid-template-columns: minmax(300px, 0.9fr) minmax(420px, 1.1fr);
-  gap: 14px;
-  padding: 10px 12px;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-3);
 }
 .subhead {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 5px;
+  margin-bottom: var(--space-1);
 }
 .capacity-row {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(150px, 1fr) 90px;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: center;
-  padding: 6px 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--line);
 }
 .capacity-row > div:first-child {
@@ -159,12 +159,12 @@ defineProps<{
 .capacity-row span,
 .capacity-row small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .load {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .load > span {
   flex: 1;
@@ -177,7 +177,7 @@ defineProps<{
   background: var(--brand);
 }
 .load b {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .capacity-row small {
   text-align: right;
@@ -194,10 +194,10 @@ defineProps<{
 .achievement-row {
   display: grid;
   grid-template-columns: 0.8fr repeat(4, 1fr);
-  gap: 8px;
-  padding: 6px 4px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .achievement-row a {
   min-width: 0;
@@ -208,7 +208,7 @@ defineProps<{
 }
 .achievement-row a small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
   overflow-wrap: anywhere;
 }
 .achievement-row span {
@@ -216,7 +216,7 @@ defineProps<{
 }
 .table-head span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .achievement-row .ok {
   color: var(--ok);

@@ -33,7 +33,7 @@ describe("PrismaOutboxRepository", () => {
     const repository = new PrismaOutboxRepository(prisma as never);
     const claimed = await repository.claimBatch({
       tenantId: "t1",
-      ownerModule: "lifecycle-control",
+      ownerModules: ["lifecycle-control", "shipment-registry"],
       owner: "op-1",
       now: NOW,
       limit: 10,
@@ -230,13 +230,15 @@ describe("PrismaOutboxRepository", () => {
     const repository = new PrismaOutboxRepository(prisma as never);
     const rows = await repository.listDeadLetters({
       tenantId: "t1",
-      ownerModule: "lifecycle-control",
+      ownerModules: ["lifecycle-control", "shipment-registry"],
       take: 51,
     });
     expect(prisma.outboxMessage.findMany).toHaveBeenCalledWith({
       where: {
         tenantId: "t1",
-        ownerModule: "lifecycle-control",
+        ownerModule: {
+          in: ["lifecycle-control", "shipment-registry"],
+        },
         state: "dead_letter",
         deadLetteredAt: { not: null },
       },
@@ -254,7 +256,7 @@ describe("PrismaOutboxRepository", () => {
     };
     const repository = new PrismaOutboxRepository(prisma as never);
     const tenants = await repository.listDueTenantIds({
-      ownerModule: "lifecycle-control",
+      ownerModules: ["lifecycle-control", "shipment-registry"],
       now: NOW,
       take: 21,
     });

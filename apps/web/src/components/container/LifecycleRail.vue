@@ -70,8 +70,8 @@ watch(
   min-height: 40px;
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
-  gap: 7px;
-  padding: 5px 7px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border: 0;
   background: transparent;
   color: var(--ink-soft);
@@ -103,7 +103,7 @@ watch(
   z-index: var(--z-content-raised);
   width: 10px;
   height: 10px;
-  margin-top: 5px;
+  margin-top: var(--space-1);
   border: 2px solid var(--line-strong);
   border-radius: 50%;
   background: var(--surface);
@@ -157,23 +157,23 @@ watch(
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 5px;
+  gap: var(--space-1);
 }
 
 .node-title small {
   flex: none;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
   font-variant-numeric: tabular-nums;
 }
 
 .rail-node b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .node-time {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   overflow-wrap: anywhere;
 }
 
@@ -186,7 +186,7 @@ watch(
   .rail {
     flex-direction: row;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding-bottom: var(--space-1);
   }
 
   .rail-node {

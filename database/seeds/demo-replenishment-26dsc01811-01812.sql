@@ -1,14 +1,15 @@
--- Real-data demo seed. Idempotent within the dedicated demo tenant.
+-- Compatibility-only raw SQL seed for source snapshots and order lines.
+-- Use `pnpm db:seed` for the complete demo including stable SKU identities and
+-- authoritative cargo allocations. Idempotent within the dedicated demo tenant.
 -- Source values are preserved in import_row.snapshot; this file does not advance lifecycle nodes.
 BEGIN;
 
 INSERT INTO import_batch (id, tenant_id, operator_id, idempotency_key, file_name, file_hash,
-  source_file_status, source_content_type, source_size_bytes, parser_version, status,
+  source_file_status, parser_version, status,
   row_count, column_count, mapping_suggestions, confirmed_quantity_unit, created_at, updated_at)
 VALUES ('demo-import-26dsc01812-bom', 'demo-real-sample-20260921', 'demo-seed',
   'real-sample-20260921-26dsc01812-bom', 'fcbeedd8ed65a9de854e05381bd9fa3dc4dcfb5dcaee133092d268a6b8981425',
-  'not_retained', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  17723, 'real-sample-v1', 'completed', 15,
+  'not_retained', 'real-sample-v1', 'completed', 15,
   36, '[]'::jsonb, NULL, TIMESTAMPTZ '2026-09-21T00:00:00+08:00', TIMESTAMPTZ '2026-09-21T00:00:00+08:00')
 ON CONFLICT (tenant_id, idempotency_key) DO UPDATE SET
   file_hash = EXCLUDED.file_hash, row_count = EXCLUDED.row_count,
@@ -26,7 +27,7 @@ ON CONFLICT (tenant_id, order_number) DO UPDATE SET updated_at = EXCLUDED.update
 
 INSERT INTO container_record (id, tenant_id, order_number, replenishment_order_id,
   main_order_number, container_number, current_status, created_at, updated_at)
-VALUES ('demo-container-hmmu4207629', 'demo-real-sample-20260921', '26DSC01811',
+VALUES ('733df9ba-95f4-5f7e-8921-4f0783738e72', 'demo-real-sample-20260921', '26DSC01811',
   'demo-order-26dsc01811', '26DSC01811', 'HMMU4207629',
   'shipped', TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
 ON CONFLICT (id) DO UPDATE SET
@@ -36,7 +37,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO container_record (id, tenant_id, order_number, replenishment_order_id,
   main_order_number, container_number, current_status, created_at, updated_at)
-VALUES ('demo-container-hmmu4956442', 'demo-real-sample-20260921', '26DSC01812',
+VALUES ('01de7e3f-e3d2-57a6-a323-67109091ad08', 'demo-real-sample-20260921', '26DSC01812',
   'demo-order-26dsc01812', '26DSC01811', 'HMMU4956442',
   'shipped', TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
 ON CONFLICT (id) DO UPDATE SET
@@ -52,7 +53,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-01', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('de59c776-3ed8-53e4-bb02-42c8027e400c', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '331-015', 118, 'piece',
   '26R3638', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-01', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -69,7 +70,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-02', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('ea9735b1-691d-56e4-aa48-167e18cb56e8', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '331-011', 20, 'piece',
   '26R4005', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-02', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -86,7 +87,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-03', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('a51af5b1-29e5-5312-ac43-2728ae6599e5', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '311-053V00PK', 30, 'piece',
   '26R3666', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-03', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -103,7 +104,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-04', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('bc877e71-3dc8-5654-8ff4-96059b2fdb7c', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '331-054V00YL', 25, 'piece',
   '26R3633', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-04', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -120,7 +121,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-05', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('b4c1309b-bab8-5714-8662-ffb6330ee70d', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '311-023V01CW', 30, 'piece',
   '26R3666', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-05', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -137,7 +138,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-06', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('5f5b5f0d-346c-53ee-9076-a9eed6cf1672', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '331-085V00PK', 35, 'piece',
   '26R3633', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-06', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -154,7 +155,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-07', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('2ccf78b4-7dc1-5435-ab52-641ce48b9c22', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '331-088V00YL', 25, 'piece',
   '26R3960', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-07', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -171,7 +172,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-08', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('a7792350-c59e-5082-a650-6a2773e397a3', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '331-054V00OG', 20, 'piece',
   '26R3975', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-08', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -188,7 +189,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-09', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('4c130195-9c6d-571e-824e-487ccbf4cf0e', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '331-113V00YL', 25, 'piece',
   '26R3891', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-09', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -205,7 +206,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-10', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('bf511794-eebd-5820-8280-4fbea3e1e4f2', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '311-013GY', 11, 'piece',
   '26R3637', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-10', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -222,7 +223,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-11', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('a33839d8-f434-5d17-81cb-29617525f1b1', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '312-103V80WT', 20, 'set',
   '26R3637', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-11', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -239,7 +240,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-12', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('c65bb774-35eb-58c1-b495-5206dd08fd29', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '350-172V80PK', 25, 'piece',
   '26R3636', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-12', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -256,7 +257,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-13', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('106aa4ef-36d9-53c6-a3f3-48e6c1aa75ed', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '311-094V80WT', 20, 'piece',
   '26R3637', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-13', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -273,7 +274,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-14', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('0fa35ebc-533b-56c8-8de0-91f0b1a0d749', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '316-031V80PK', 50, 'set',
   '26R3637', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-14', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')
@@ -290,7 +291,7 @@ ON CONFLICT (batch_id, row_no) DO UPDATE SET snapshot = EXCLUDED.snapshot;
 INSERT INTO replenishment_order_line (id, tenant_id, replenishment_order_id, product_number,
   shipped_quantity, quantity_unit, contract_number, source_batch_id, source_row_id,
   is_current, created_at, updated_at)
-VALUES ('demo-line-26dsc01812-15', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
+VALUES ('1bcc0d0b-cf5e-5fef-a960-4473660510c3', 'demo-real-sample-20260921', 'demo-order-26dsc01812',
   '316-031V80WT', 50, 'set',
   '26R3637', 'demo-import-26dsc01812-bom', 'demo-row-26dsc01812-15', true,
   TIMESTAMP '2026-09-21 00:00:00', TIMESTAMP '2026-09-21 00:00:00')

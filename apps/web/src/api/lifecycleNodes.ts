@@ -1,3 +1,5 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
+
 export interface LifecycleNodeTimes {
   plannedAt: string | null;
   estimatedAt: string | null;
@@ -28,7 +30,6 @@ export interface LifecycleNodesPage {
   projectionVersion: number;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 
 export interface ContainerLifecycleNodesItem {

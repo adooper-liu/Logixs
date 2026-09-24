@@ -141,8 +141,8 @@ const confirmAction = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 10px 12px;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-3);
   border: 1px solid var(--brand);
   border-left-width: 4px;
   border-radius: var(--radius-m);
@@ -158,34 +158,34 @@ const confirmAction = () => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .focus-kicker {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
   color: var(--brand);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
 .result-copy h3 {
   flex: none;
-  margin: 2px 0 0;
-  font-size: 14px;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-body);
   white-space: nowrap;
 }
 
 .result-title span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .result-title .result-rule {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   white-space: nowrap;
 }
 
@@ -194,9 +194,9 @@ const confirmAction = () => {
 }
 
 .confirm-copy p {
-  margin: 3px 0 5px;
+  margin: var(--space-1) 0 var(--space-1);
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .actions {
@@ -204,7 +204,7 @@ const confirmAction = () => {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .actions button,
@@ -213,8 +213,8 @@ const confirmAction = () => {
   min-height: 34px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 12px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-s);
   font-weight: 600;
   cursor: pointer;
@@ -244,15 +244,15 @@ const confirmAction = () => {
 }
 
 .confirm-copy dl {
-  margin: 12px 0;
+  margin: var(--space-3) 0;
   border-top: 1px solid var(--line);
 }
 
 .confirm-copy dl > div {
   display: grid;
   grid-template-columns: 90px minmax(0, 1fr);
-  gap: 10px;
-  padding: 8px 0;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--line);
 }
 

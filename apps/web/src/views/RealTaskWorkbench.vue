@@ -353,7 +353,7 @@ async function submitComplete(
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 .hint--error {
   color: var(--app-danger, #dc2626);
@@ -362,22 +362,22 @@ async function submitComplete(
 .evidence {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
   max-width: 420px;
-  margin: 8px 0 16px;
+  margin: var(--space-2) 0 var(--space-4);
   color: var(--app-text-secondary, #6b7280);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .picker select,
 .evidence input {
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 8px;
   background: var(--app-surface, #fff);
 }
 .task-card {
-  margin: 16px 0;
-  padding: 14px 16px;
+  margin: var(--space-4) 0;
+  padding: var(--space-4) var(--space-4);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 12px;
   background: var(--app-surface, #fff);
@@ -386,37 +386,37 @@ async function submitComplete(
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .task-head h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-title);
 }
 .meta {
-  margin: 4px 0 12px;
+  margin: var(--space-1) 0 var(--space-3);
   color: var(--app-text-secondary, #6b7280);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .work-orders {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .work-order-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .work-order-row span {
-  margin-left: 8px;
+  margin-left: var(--space-2);
   color: var(--app-text-secondary, #6b7280);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .complete-button {
-  padding: 6px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--app-brand, #2563eb);
   border-radius: 8px;
   background: var(--app-surface, #fff);
@@ -429,7 +429,7 @@ async function submitComplete(
   cursor: wait;
 }
 .evidence {
-  margin: 8px 0;
+  margin: var(--space-2) 0;
 }
 .mono {
   font-family: var(--font-mono, ui-monospace, monospace);

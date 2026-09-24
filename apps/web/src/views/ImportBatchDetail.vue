@@ -253,7 +253,7 @@ function formatFileSize(bytes: number | null): string {
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 .hint--error {
   color: var(--app-danger, #dc2626);
@@ -261,32 +261,32 @@ function formatFileSize(bytes: number | null): string {
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 32px;
-  margin: 12px 0 20px;
+  gap: var(--space-8);
+  margin: var(--space-3) 0 var(--space-5);
 }
 .meta-item dt {
-  font-size: 12px;
+  font-size: var(--text-label);
   color: var(--app-text-secondary, #6b7280);
 }
 .meta-item dd {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 .block-title {
-  font-size: 15px;
+  font-size: var(--text-title);
   font-weight: 600;
   color: var(--app-text-secondary, #6b7280);
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-3);
 }
 .actions {
   display: flex;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: center;
-  margin: 8px 0 16px;
+  margin: var(--space-2) 0 var(--space-4);
 }
 .btn {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 8px;
   background: transparent;
@@ -303,29 +303,29 @@ function formatFileSize(bytes: number | null): string {
 }
 .blockers ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--space-5);
 }
 .blockers code {
   background: var(--app-bg-muted, #f3f4f6);
-  padding: 2px 6px;
+  padding: var(--space-1) var(--space-2);
   border-radius: 4px;
-  margin-right: 6px;
+  margin-right: var(--space-2);
 }
 .reconciliation {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 .table-wrap {
   overflow-x: auto;
 }
 .table {
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-meta);
   white-space: nowrap;
 }
 .table th,
 .table td {
   text-align: left;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--app-border, #e5e7eb);
 }
 .table th {

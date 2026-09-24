@@ -161,8 +161,8 @@ function actionOwner(action: ObjectNextAction): string {
 
 .next-actions header {
   min-height: 38px;
-  gap: 7px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   color: var(--ink-soft);
 }
 
@@ -172,7 +172,7 @@ function actionOwner(action: ObjectNextAction): string {
 
 .next-actions header span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .next-actions ul,
@@ -188,9 +188,9 @@ function actionOwner(action: ObjectNextAction): string {
   grid-template-columns:
     minmax(150px, 1fr) minmax(90px, auto) minmax(110px, auto)
     30px;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 48px;
-  padding: 7px 10px 7px 12px;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-3);
   border-top: 1px solid var(--line);
 }
 
@@ -205,7 +205,7 @@ function actionOwner(action: ObjectNextAction): string {
 .activity-copy small,
 .activity-list time {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .action-copy span,
@@ -215,15 +215,15 @@ function actionOwner(action: ObjectNextAction): string {
 }
 
 .action-meta {
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .activity-list li {
   min-width: 0;
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) 112px 30px;
-  gap: 10px;
-  padding: 10px;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 
@@ -250,23 +250,23 @@ function actionOwner(action: ObjectNextAction): string {
 }
 
 .activity-title {
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .activity-copy p {
-  margin: 2px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .activity-copy small {
   display: block;
-  margin-top: 3px;
+  margin-top: var(--space-1);
 }
 
 .severity {
   color: var(--risk);
-  font-size: 9px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 
@@ -287,15 +287,15 @@ function actionOwner(action: ObjectNextAction): string {
 
 .empty {
   margin: 0;
-  padding: 16px 12px;
+  padding: var(--space-4) var(--space-3);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 720px) {
   .next-actions li {
     grid-template-columns: minmax(0, 1fr) 30px;
-    gap: 4px 8px;
+    gap: var(--space-1) var(--space-2);
   }
 
   .action-meta {

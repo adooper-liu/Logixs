@@ -198,8 +198,8 @@ const recordPhoto = (evidenceId: string, event: Event) => {
   align-items: center;
   justify-content: space-between;
   min-height: 42px;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
   list-style: none;
 }
@@ -211,18 +211,18 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 .section-head > span {
   display: inline-flex;
   align-items: baseline;
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .section-head small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-weight: 500;
 }
 
 .section-head strong {
   color: var(--warn);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .section-head strong.verified {
@@ -232,9 +232,9 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 .evidence-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 16px;
+  column-gap: var(--space-4);
   margin: 0;
-  padding: 0 14px 8px;
+  padding: 0 var(--space-4) var(--space-2);
   list-style: none;
 }
 
@@ -248,7 +248,7 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 
 .evidence-list li {
   min-width: 0;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
   border-top: 1px dashed var(--line);
 }
 
@@ -257,7 +257,7 @@ const recordPhoto = (evidenceId: string, event: Event) => {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    column-gap: 20px;
+    column-gap: var(--space-5);
   }
 
   .evidence-list.single .evidence-title,
@@ -285,12 +285,12 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 .evidence-title {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr) auto;
-  gap: 7px;
+  gap: var(--space-2);
   align-items: start;
 }
 
 .evidence-title > svg {
-  margin-top: 2px;
+  margin-top: var(--space-1);
   color: var(--brand);
 }
 
@@ -301,18 +301,18 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 }
 
 .evidence-title b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .evidence-title small,
 .evidence-list li > p {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .evidence-title strong {
   color: var(--warn);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .evidence-title strong.verified {
@@ -324,7 +324,7 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 }
 
 .evidence-list li > p {
-  margin: 6px 0 8px 25px;
+  margin: var(--space-2) 0 var(--space-2) var(--space-6);
   overflow-wrap: anywhere;
 }
 
@@ -336,7 +336,7 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 .scan-row input {
   width: 100%;
   min-width: 0;
-  padding: 8px 9px;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s) 0 0 var(--radius-s);
   background: var(--surface);
@@ -356,8 +356,8 @@ const recordPhoto = (evidenceId: string, event: Event) => {
   min-height: 30px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--surface);
@@ -370,8 +370,8 @@ const recordPhoto = (evidenceId: string, event: Event) => {
   min-height: 30px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--surface);
@@ -394,15 +394,15 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 }
 
 .evidence-list li > .error {
-  margin: 6px 0 0;
+  margin: var(--space-2) 0 0;
   color: var(--risk);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .collapsed-count {
-  margin: -3px 14px 8px;
+  margin: -3px var(--space-4) var(--space-2); /* style-scale-exempt: -3px 是光学上移，与上方标题基线对齐 */
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 @media (max-width: 720px) {

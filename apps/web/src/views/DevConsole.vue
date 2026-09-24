@@ -196,24 +196,24 @@ function stateClass(state: ServiceState): string {
   min-height: 100%;
 }
 .block {
-  margin-top: 20px;
+  margin-top: var(--space-5);
 }
 .block-title {
-  font-size: 15px;
+  font-size: var(--text-title);
   font-weight: 600;
   color: var(--app-text-secondary, #6b7280);
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-3);
 }
 .services {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 .service-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 8px;
 }
@@ -238,19 +238,19 @@ function stateClass(state: ServiceState): string {
 }
 .service-detail {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--text-label);
   color: var(--app-text-secondary, #6b7280);
 }
 .tools {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 .tool-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 8px;
   text-decoration: none;
@@ -263,18 +263,18 @@ function stateClass(state: ServiceState): string {
   font-weight: 600;
 }
 .tool-desc {
-  font-size: 12px;
+  font-size: var(--text-label);
   color: var(--app-text-secondary, #6b7280);
 }
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 .table th,
 .table td {
   text-align: left;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--app-border, #e5e7eb);
 }
 .table th {
@@ -283,8 +283,8 @@ function stateClass(state: ServiceState): string {
 }
 .table code {
   background: var(--app-bg-muted, #f3f4f6);
-  padding: 2px 6px;
+  padding: var(--space-1) var(--space-2);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 </style>

@@ -1,7 +1,10 @@
-// 幂等种子：按固定 id upsert，重复执行不产生重复行（P4-04）。
+// 幂等种子：真实样本使用固定身份，重复执行不产生重复行（P4-04）。
 // 运行：pnpm db:seed（需 DATABASE_URL 指向运行中的 PostgreSQL）。
 import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { seedAuthoritativeLocationReferenceData } from "./seeds/seed-authoritative-location-reference-data";
+import { seedCargoOwnerReferenceData } from "./seeds/seed-cargo-owner-reference-data";
+import { seedRealReplenishmentSample } from "./seeds/seed-real-replenishment-sample";
 
 // 本地开发回退到 docker-compose 默认值（与 prisma.config.ts / apps/api config/env.ts 一致）。
 const LOCAL_DEV_DATABASE_URL =
@@ -13,44 +16,27 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
 });
 
-// 与开发期身份头 X-Tenant-Id=dev-tenant 对齐，薄真实列表才能读到种子行。
-const TENANT_ID = "dev-tenant";
-
-// 薄真实切片验证用的最小样本：3 个货柜覆盖不同状态，字段口径见 DATA_MODEL_P2-06。
-const samples = [
-  {
-    id: "10000000-0000-4000-8000-000000000001",
-    orderNumber: "SO-2026-0001",
-    mainOrderNumber: "PO-2026-A001",
-    containerNumber: "MSKU1234567",
-    currentStatus: "in_transit",
-  },
-  {
-    id: "10000000-0000-4000-8000-000000000002",
-    orderNumber: "SO-2026-0002",
-    mainOrderNumber: "PO-2026-A002",
-    containerNumber: "TGHU7654321",
-    currentStatus: "at_port",
-  },
-  {
-    id: "10000000-0000-4000-8000-000000000003",
-    orderNumber: "SO-2026-0003",
-    mainOrderNumber: "PO-2026-A003",
-    containerNumber: null, // 迟绑定：箱号尚未产生
-    currentStatus: "not_shipped",
-  },
-] as const;
-
 async function main(): Promise<void> {
-  for (const sample of samples) {
-    await prisma.containerRecord.upsert({
-      where: { id: sample.id },
-      create: { ...sample, tenantId: TENANT_ID },
-      update: { ...sample, tenantId: TENANT_ID },
-    });
-  }
-  const count = await prisma.containerRecord.count();
-  console.log(`Seeded container_record; total rows now: ${count}`);
+  const referenceData = await seedAuthoritativeLocationReferenceData(prisma);
+  console.log(
+    `Seeded authoritative reference data: ${referenceData.countryCount} countries, ` +
+      `${referenceData.portCount} ports, ${referenceData.portEntryCount} official port entries, ` +
+      `${referenceData.aliasCandidateCount} sample alias candidates.`,
+  );
+  const cargoOwners = await seedCargoOwnerReferenceData(prisma);
+  console.log(
+    `Seeded internal cargo owner mappings: ${cargoOwners.cargoOwnerCount} confirmed owners.`,
+  );
+  const realSample = await seedRealReplenishmentSample(prisma);
+  console.log(
+    `Seeded real replenishment sample ${realSample.tenantId}: ` +
+      `${realSample.replenishmentOrderCount} orders, ` +
+      `${realSample.containerCount} containers, ` +
+      `${realSample.productSkuCount} SKUs, ` +
+      `${realSample.replenishmentOrderLineCount} lines, ` +
+      `${realSample.allocationSetCount} allocation sets, ` +
+      `${realSample.allocationCount} allocations.`,
+  );
 }
 
 main()

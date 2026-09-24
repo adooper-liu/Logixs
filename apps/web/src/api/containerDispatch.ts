@@ -1,3 +1,4 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
 
 export interface ContainerDispatchSnapshot {
@@ -37,7 +38,7 @@ export interface ReplaceContainerDispatchSnapshotInput {
 }
 
 const HEADERS = {
-  "X-Tenant-Id": "dev-tenant",
+  "X-Tenant-Id": DEV_TENANT_ID,
   "X-Operator-Id": "dev-operator",
   "X-Roles": "operations_dispatcher",
 };

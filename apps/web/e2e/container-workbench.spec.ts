@@ -33,11 +33,17 @@ test("operator can scan all lifecycle nodes and inspect the selected time tracks
   await expect(timeCard).toContainText("2026-10-02");
   await expect(timeCard.getByTestId("time-track").last()).toContainText("—");
 
+  // spec §4.1.1：14 站一屏看尽是桌面与平板的要求（UI_SYSTEM §4.3 禁止主要作业依赖横向滚动）。
+  // 移动端不适用——390px 下 14 站各分不到 44px 触控目标，强行塞进一屏反而违反 §4.3 的触控要求，
+  // 所以窄屏允许轨道自身横滚，只要求页面整体不横滚（见下一条断言）。
+  const viewportWidth = page.viewportSize()?.width ?? 0;
   const railWidths = await rail.evaluate((element) => ({
     client: element.clientWidth,
     scroll: element.scrollWidth,
   }));
-  expect(railWidths.scroll).toBeGreaterThan(railWidths.client);
+  if (viewportWidth >= 768) {
+    expect(railWidths.scroll).toBeLessThanOrEqual(railWidths.client + 1);
+  }
 
   const pageWidths = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,

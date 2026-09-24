@@ -134,14 +134,14 @@ onBeforeUnmount(() => {
 .table-toolbar {
   min-height: 48px;
   justify-content: space-between;
-  gap: 12px;
-  padding: 7px 10px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 
 .toolbar-primary {
   min-width: 0;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .search-control {
@@ -149,8 +149,8 @@ onBeforeUnmount(() => {
   height: var(--control-height);
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 9px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
 }
 
 .quick-filters button {
-  padding: 0 10px;
+  padding: 0 var(--space-3);
   border-right: 1px solid var(--line);
 }
 
@@ -205,8 +205,8 @@ onBeforeUnmount(() => {
   height: var(--control-height);
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 9px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   list-style: none;
@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
   top: calc(100% + 5px);
   right: 0;
   width: 180px;
-  padding: 6px;
+  padding: var(--space-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -233,16 +233,16 @@ onBeforeUnmount(() => {
   min-height: 34px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 7px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   color: var(--ink-soft);
   cursor: pointer;
 }
 
 .active-filters {
   min-height: 34px;
-  gap: 6px;
-  padding: 5px 10px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -250,13 +250,13 @@ onBeforeUnmount(() => {
 .active-filters > span {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding-left: 7px;
+  gap: var(--space-1);
+  padding-left: var(--space-2);
   border: 1px solid var(--brand-line);
   border-radius: var(--radius-control);
   background: var(--brand-soft);
   color: var(--brand-strong);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .active-filters button {
@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: -1px; /* style-scale-exempt: 与相邻 1px 边框对齐的光学微调 */
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;

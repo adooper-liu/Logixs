@@ -212,7 +212,7 @@ const nextPage = () => {
 
 .table-scroll th,
 .table-scroll td {
-  padding: 9px 10px;
+  padding: var(--space-2);
   border-right: 0;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -231,7 +231,7 @@ const nextPage = () => {
   top: 0;
   background: var(--surface-2);
   color: var(--ink);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 650;
 }
 
@@ -269,7 +269,7 @@ const nextPage = () => {
 .column-heading button {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .column-heading button {
@@ -284,7 +284,7 @@ const nextPage = () => {
 
 .empty-state,
 .schema-error {
-  padding: 34px 14px;
+  padding: var(--space-8) var(--space-3);
   color: var(--muted);
   text-align: center;
 }
@@ -302,7 +302,7 @@ const nextPage = () => {
 
   .table-scroll th,
   .table-scroll td {
-    padding: 8px;
+    padding: var(--space-2);
   }
 
   .table-scroll th,

@@ -97,29 +97,29 @@ const replayLabel = computed(() => {
 <style scoped>
 .compliance-page {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
   min-width: 0;
 }
 .container-picker {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   max-width: 480px;
   color: var(--app-text-secondary, #667085);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .container-picker select {
   min-height: 38px;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line, #d7dde5);
   border-radius: 4px;
   background: var(--surface, #ffffff);
 }
 .message {
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-left: 3px solid var(--app-brand, #155eef);
   background: color-mix(in srgb, var(--app-brand, #155eef) 7%, transparent);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .message--error {
   border-left-color: var(--app-danger, #c2413b);
@@ -128,7 +128,7 @@ const replayLabel = computed(() => {
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1.3fr);
-  gap: 16px;
+  gap: var(--space-4);
   align-items: start;
 }
 @media (max-width: 980px) {

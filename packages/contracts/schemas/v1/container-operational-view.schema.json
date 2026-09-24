@@ -29,6 +29,12 @@
     "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
     "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
     "containerNumber": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "shipment": {
+      "oneOf": [
+        { "$ref": "#/$defs/ContainerShipmentContextV1" },
+        { "type": "null" }
+      ]
+    },
     "flow": {
       "type": ["object", "null"],
       "additionalProperties": false,
@@ -324,6 +330,7 @@
       "required": [
         "actionCode",
         "actionVersion",
+        "target",
         "executable",
         "confirmationPolicy",
         "reviewPolicy",
@@ -333,6 +340,7 @@
       "properties": {
         "actionCode": { "$ref": "common.schema.json#/$defs/StableCode" },
         "actionVersion": { "type": "integer", "minimum": 1 },
+        "target": { "$ref": "common.schema.json#/$defs/EntityRef" },
         "executable": { "type": "boolean" },
         "denialCategory": {
           "$ref": "common.schema.json#/$defs/DenialCategory"
@@ -439,6 +447,94 @@
         "pageInfo": { "$ref": "#/$defs/PageInfo" },
         "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
         "projectionVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ContainerShipmentContextV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shipmentId",
+        "shipmentNumber",
+        "linkId",
+        "linkVersion",
+        "currentLifecycleStatus",
+        "relationshipVersion",
+        "carrierCode",
+        "vesselName",
+        "voyageNumber",
+        "originCountryCode",
+        "originUnlocode",
+        "destinationCountryCode",
+        "salesCountryCode",
+        "cargoOwnerReferenceId",
+        "cargoOwnerName",
+        "destinationUnlocode",
+        "atdAt",
+        "etaAt",
+        "transportDocuments",
+        "upstreamReferences"
+      ],
+      "properties": {
+        "shipmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "shipmentNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "linkId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "linkVersion": { "type": "integer", "minimum": 1 },
+        "currentLifecycleStatus": {
+          "$ref": "#/$defs/ShipmentLifecycleStatusV1"
+        },
+        "relationshipVersion": { "type": "integer", "minimum": 1 },
+        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "vesselName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "originCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "originUnlocode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "salesCountryCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
+        "cargoOwnerReferenceId": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "cargoOwnerName": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "destinationUnlocode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "atdAt": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "etaAt": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "transportDocuments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentTransportDocumentViewV1" }
+        },
+        "upstreamReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentUpstreamReferenceViewV1" }
+        }
       }
     },
     "TimelinePage": {
@@ -851,6 +947,465 @@
         },
         "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
         "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "ShipmentLifecycleStatusV1": {
+      "enum": [
+        "departed",
+        "in_transit",
+        "arrived",
+        "customs_clearance",
+        "released",
+        "picked_up",
+        "delivered_to_warehouse",
+        "closed"
+      ]
+    },
+    "ShipmentLifecycleInitializationStateV1": {
+      "enum": ["pending", "ready", "manual_review"]
+    },
+    "ShipmentSummaryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "shipmentNumber",
+        "transportMode",
+        "carrierCode",
+        "vesselName",
+        "voyageNumber",
+        "originCountryCode",
+        "originUnlocode",
+        "destinationCountryCode",
+        "salesCountryCode",
+        "cargoOwnerReferenceId",
+        "cargoOwnerName",
+        "destinationUnlocode",
+        "atdAt",
+        "etaAt",
+        "currentLifecycleStatus",
+        "lifecycleVersion",
+        "relationshipVersion",
+        "activeContainerCount",
+        "activeCargoLineCount",
+        "lifecycleInitializationState",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "shipmentNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "transportMode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "vesselName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "originCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "originUnlocode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "salesCountryCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
+        "cargoOwnerReferenceId": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "cargoOwnerName": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "destinationUnlocode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "atdAt": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "etaAt": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "currentLifecycleStatus": {
+          "$ref": "#/$defs/ShipmentLifecycleStatusV1"
+        },
+        "lifecycleVersion": { "type": "integer", "minimum": 1 },
+        "relationshipVersion": { "type": "integer", "minimum": 1 },
+        "activeContainerCount": { "type": "integer", "minimum": 0 },
+        "activeCargoLineCount": { "type": "integer", "minimum": 0 },
+        "lifecycleInitializationState": {
+          "$ref": "#/$defs/ShipmentLifecycleInitializationStateV1"
+        },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ShipmentContainerAllocationV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shipmentCargoLineId",
+        "allocatedQuantity",
+        "quantityUnit",
+        "packageCount",
+        "packageUnit",
+        "grossWeight",
+        "weightUnit",
+        "volume",
+        "volumeUnit"
+      ],
+      "properties": {
+        "shipmentCargoLineId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "allocatedQuantity": {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "quantityUnit": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "packageCount": {
+          "type": ["string", "null"],
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "packageUnit": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "grossWeight": {
+          "type": ["string", "null"],
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "weightUnit": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "volume": {
+          "type": ["string", "null"],
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "volumeUnit": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    },
+    "ShipmentContainerViewV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linkId",
+        "containerRecordId",
+        "containerNumber",
+        "containerTypeCode",
+        "sealNumber",
+        "currentStatus",
+        "linkVersion",
+        "currentNodeCode",
+        "flowState",
+        "allocations"
+      ],
+      "properties": {
+        "linkId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerRecordId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "containerTypeCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "sealNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "currentStatus": {
+          "$ref": "common.schema.json#/$defs/ContainerLifecycleState"
+        },
+        "linkVersion": { "type": "integer", "minimum": 1 },
+        "currentNodeCode": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/LifecycleNodeCode" },
+            { "type": "null" }
+          ]
+        },
+        "flowState": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "allocations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentContainerAllocationV1" }
+        }
+      }
+    },
+    "ShipmentCargoLineViewV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "lineNo",
+        "productSkuId",
+        "productNumber",
+        "quantity",
+        "quantityUnit",
+        "packageCount",
+        "packageUnit",
+        "grossWeight",
+        "weightUnit",
+        "volume",
+        "volumeUnit",
+        "replenishmentOrderLineId",
+        "sourceLineId",
+        "version"
+      ],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "lineNo": { "type": "integer", "minimum": 1 },
+        "productSkuId": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "productNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "quantity": {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "quantityUnit": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "packageCount": {
+          "type": ["string", "null"],
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "packageUnit": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "grossWeight": {
+          "type": ["string", "null"],
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "weightUnit": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "volume": {
+          "type": ["string", "null"],
+          "pattern": "^(?:0|[1-9]\\d{0,14})(?:\\.\\d{1,4})?$"
+        },
+        "volumeUnit": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "replenishmentOrderLineId": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "sourceLineId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "ShipmentTransportDocumentViewV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "documentType",
+        "documentNumber",
+        "scac",
+        "parentDocumentId",
+        "containerRecordIds",
+        "version",
+        "effectiveFrom"
+      ],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "documentType": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "documentNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "scac": { "type": ["string", "null"], "minLength": 1, "maxLength": 16 },
+        "parentDocumentId": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "containerRecordIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "version": { "type": "integer", "minimum": 1 },
+        "effectiveFrom": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ShipmentUpstreamReferenceViewV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "containerRecordId",
+        "shipmentCargoLineId",
+        "referenceType",
+        "sourceSystem",
+        "sourceRecordId",
+        "sourceVersion",
+        "sourceLineId",
+        "version"
+      ],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerRecordId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "shipmentCargoLineId": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "referenceType": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "sourceSystem": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "sourceRecordId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "sourceVersion": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "sourceLineId": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "ShipmentHandoffSummaryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handoffId",
+        "handoffVersion",
+        "sourceSystem",
+        "status",
+        "occurredAt",
+        "traceId"
+      ],
+      "properties": {
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "handoffVersion": { "type": "integer", "minimum": 1 },
+        "sourceSystem": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "status": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "ShipmentLifecycleInitializationV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "activeContainerCount",
+        "initializedContainerCount",
+        "relationshipVersion",
+        "lastErrorCode"
+      ],
+      "properties": {
+        "state": { "$ref": "#/$defs/ShipmentLifecycleInitializationStateV1" },
+        "activeContainerCount": { "type": "integer", "minimum": 0 },
+        "initializedContainerCount": { "type": "integer", "minimum": 0 },
+        "relationshipVersion": { "type": "integer", "minimum": 1 },
+        "lastErrorCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "ShipmentDetailV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shipment",
+        "handoff",
+        "containers",
+        "cargoLines",
+        "transportDocuments",
+        "upstreamReferences",
+        "lifecycleInitialization",
+        "projectionVersion",
+        "asOf"
+      ],
+      "properties": {
+        "shipment": { "$ref": "#/$defs/ShipmentSummaryV1" },
+        "handoff": {
+          "oneOf": [
+            { "$ref": "#/$defs/ShipmentHandoffSummaryV1" },
+            { "type": "null" }
+          ]
+        },
+        "containers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentContainerViewV1" }
+        },
+        "cargoLines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentCargoLineViewV1" }
+        },
+        "transportDocuments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentTransportDocumentViewV1" }
+        },
+        "upstreamReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentUpstreamReferenceViewV1" }
+        },
+        "lifecycleInitialization": {
+          "$ref": "#/$defs/ShipmentLifecycleInitializationV1"
+        },
+        "projectionVersion": { "type": "integer", "minimum": 1 },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ShipmentPageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "pageInfo", "asOf", "projectionVersion"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentSummaryV1" }
+        },
+        "pageInfo": { "$ref": "#/$defs/PageInfo" },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 0 }
       }
     },
     "Freshness": {

@@ -124,7 +124,7 @@ function formatDate(value: string | null, timeZone: string): string {
 <style scoped>
 .track-card {
   min-width: 0;
-  padding: 16px;
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -135,15 +135,15 @@ function formatDate(value: string | null, timeZone: string): string {
   min-height: 28px;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .track-heading {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .node-sequence,
@@ -158,18 +158,18 @@ function formatDate(value: string | null, timeZone: string): string {
 }
 
 .node-sequence {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .node-name {
   overflow-wrap: anywhere;
-  font-size: 16px;
+  font-size: var(--text-title);
   line-height: 24px;
 }
 
 .node-state {
   flex: 0 0 auto;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 .tracks {
@@ -190,12 +190,12 @@ function formatDate(value: string | null, timeZone: string): string {
 }
 
 .track-label {
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 .track-value {
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -218,16 +218,16 @@ function formatDate(value: string | null, timeZone: string): string {
   display: flex;
   min-height: 24px;
   align-items: center;
-  gap: 6px;
-  margin: 12px 0 0;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
   color: var(--risk);
-  font-size: 13px;
+  font-size: var(--text-meta);
   font-weight: 600;
 }
 
 @media (max-width: 680px) {
   .track-card {
-    padding: 12px;
+    padding: var(--space-3);
   }
 
   .track-header {

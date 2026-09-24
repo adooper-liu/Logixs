@@ -45,7 +45,7 @@ export class PrismaOutboxRepository implements OutboxRepository {
 
   async claimBatch(input: {
     tenantId: string;
-    ownerModule: string;
+    ownerModules: readonly string[];
     owner: string;
     now: Date;
     limit: number;
@@ -70,7 +70,7 @@ export class PrismaOutboxRepository implements OutboxRepository {
         SELECT c."id"
         FROM "outbox_message" AS c
         WHERE c."tenant_id" = ${input.tenantId}
-          AND c."owner_module" = ${input.ownerModule}
+          AND c."owner_module" = ANY(${input.ownerModules}::text[])
           AND (
             c."state" IN ('pending', 'retry_wait')
             OR (
@@ -288,14 +288,14 @@ export class PrismaOutboxRepository implements OutboxRepository {
 
   async listDeadLetters(query: {
     tenantId: string;
-    ownerModule: string;
+    ownerModules: readonly string[];
     after?: { deadLetteredAt: Date; id: string };
     take: number;
   }): Promise<DeadLetterSummary[]> {
     const rows = await this.prisma.outboxMessage.findMany({
       where: {
         tenantId: query.tenantId,
-        ownerModule: query.ownerModule,
+        ownerModule: { in: [...query.ownerModules] },
         state: "dead_letter",
         deadLetteredAt: { not: null },
         ...(query.after
@@ -340,14 +340,14 @@ export class PrismaOutboxRepository implements OutboxRepository {
   }
 
   async listDueTenantIds(input: {
-    ownerModule: string;
+    ownerModules: readonly string[];
     now: Date;
     take: number;
   }): Promise<string[]> {
     const rows = await this.prisma.$queryRaw<{ tenant_id: string }[]>`
       SELECT DISTINCT c."tenant_id"
       FROM "outbox_message" AS c
-      WHERE c."owner_module" = ${input.ownerModule}
+      WHERE c."owner_module" = ANY(${input.ownerModules}::text[])
         AND (
           c."state" IN ('pending', 'retry_wait')
           OR (

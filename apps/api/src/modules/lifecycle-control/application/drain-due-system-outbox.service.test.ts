@@ -48,7 +48,7 @@ describe("DrainDueSystemOutboxService", () => {
     });
     expect(listDueTenantIds).toHaveBeenCalledWith(
       expect.objectContaining({
-        ownerModule: "lifecycle-control",
+        ownerModules: ["lifecycle-control", "shipment-registry"],
         take: 21,
       }),
     );

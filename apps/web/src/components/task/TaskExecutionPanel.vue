@@ -242,14 +242,14 @@ const submitException = () => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .focus-command {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
-  gap: 12px;
+  gap: var(--space-3);
   align-items: stretch;
 }
 
@@ -271,7 +271,7 @@ const submitException = () => {
 .requirements {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .requirements-toggle {
@@ -279,8 +279,8 @@ const submitException = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 7px 11px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
   background: var(--surface);
@@ -292,17 +292,17 @@ const submitException = () => {
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .requirements-toggle b {
   color: var(--ink);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .requirements-toggle small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .requirements-toggle svg {
@@ -312,12 +312,12 @@ const submitException = () => {
 .exception-field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--space-2);
 }
 
 .exception-field textarea {
   width: 100%;
-  padding: 9px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--surface);
@@ -328,7 +328,7 @@ const submitException = () => {
 .secondary,
 .danger {
   min-height: 34px;
-  padding: 7px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-s);
   font-weight: 600;
   cursor: pointer;
@@ -364,7 +364,7 @@ const submitException = () => {
 
 @media (max-width: 720px) {
   .execution {
-    gap: 10px;
+    gap: var(--space-3);
   }
 
   .requirements-toggle {

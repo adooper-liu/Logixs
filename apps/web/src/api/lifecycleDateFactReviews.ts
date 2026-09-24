@@ -3,10 +3,11 @@ import type {
   LifecycleDateFactReviewPage,
   LifecycleDateFactResult,
 } from "@logix/contracts";
+import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
 
 const REVIEW_HEADERS = {
-  "X-Tenant-Id": "dev-tenant",
+  "X-Tenant-Id": DEV_TENANT_ID,
   "X-Operator-Id": "dev-reviewer",
   "X-Roles": "review_supervisor",
 };

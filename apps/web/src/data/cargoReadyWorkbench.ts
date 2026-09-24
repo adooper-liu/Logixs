@@ -1,151 +1,86 @@
 import type { CargoReadyComplianceAssessment } from "../api/cargoReadyCompliance";
 import type {
-  ContainerCargoScope,
-  ContainerCargoScopeItem,
-  ContainerSummary,
-} from "../api/containers";
-import type { NodeTaskDetail } from "../api/nodeTasks";
-import type { ExternalWorkItem } from "../api/workItems";
+  ReplenishmentOrderLine,
+  ReplenishmentOrderWorkbenchItem,
+} from "../api/replenishmentOrders";
 
-export type CargoReadyQueueFilter =
-  "mine" | "executable" | "blocked" | "due_soon" | "all";
-
-export type CargoReadyReadinessState =
-  "ready" | "attention" | "missing" | "unreviewed" | "not_required";
+export type CargoReadyQueueFilter = "mine" | "waiting_other" | "all";
 
 export interface CargoReadyQueueItem {
-  task: NodeTaskDetail;
-  container: ContainerSummary | null;
+  order: ReplenishmentOrderWorkbenchItem;
   title: string;
-  responsibility: string;
-  dueAt: string | null;
-  urgencyLabel: string;
-  urgencyRank: number;
-  isMine: boolean;
-  isExecutable: boolean;
-  isBlocked: boolean;
-  isDueSoon: boolean;
-  blockerReason: string | null;
-  actionLabel: string | null;
+  detail: string;
+  responsibility: "mine" | "waiting_other";
+  relatedContainerLabel: string;
+  lineCount: number;
+  gapCount: number;
 }
 
-export interface CargoReadyFactorView {
-  state: CargoReadyReadinessState;
+export interface CargoReadyEvidenceRequirement {
+  productSkuId: string;
+  certificateType: string;
   label: string;
+  status: "verified" | "missing_or_invalid";
+  reason: string;
 }
 
-export interface CargoReadySkuReadiness {
-  item: ContainerCargoScopeItem;
-  overall: CargoReadyReadinessState;
-  battery: CargoReadyFactorView;
-  dangerousGoods: CargoReadyFactorView;
-  refrigerant: CargoReadyFactorView;
-  inspection: CargoReadyFactorView;
-  certificates: CargoReadyFactorView;
-  missingReasons: string[];
-  responsibleRole: string;
-  nextAction: string;
+export interface CargoReadySkuComplianceEvaluation {
+  productSkuId: string;
+  evaluated: boolean;
+  requirements: CargoReadyEvidenceRequirement[];
 }
 
-const FINDING_COPY: Record<string, string> = {
-  PRODUCT_COMPLIANCE_PROFILE_MISSING: "缺少 SKU 合规档案",
-  PRODUCT_COMPLIANCE_PROFILE_UNVERIFIED: "SKU 合规档案尚未核验",
-  BATTERY_CLASSIFICATION_UNDETERMINED: "电池属性尚未确认",
-  REFRIGERANT_CLASSIFICATION_UNDETERMINED: "制冷剂属性尚未确认",
-  DANGEROUS_GOODS_CLASSIFICATION_UNDETERMINED: "危险品分类尚未确认",
-  INSPECTION_REQUIREMENT_UNDETERMINED: "商检、植检等检验要求尚未确认",
-  COMPLIANCE_RULE_COVERAGE_MISSING: "目标市场合规规则未覆盖",
-  COMPLIANCE_RULE_APPLICABILITY_UNCOVERED: "当前商品不在已发布规则适用范围内",
-  RULE_APPLICABILITY_UNDETERMINED: "规则适用性尚未确认",
-  REQUIRED_CERTIFICATE_MISSING_OR_INVALID: "缺少有效产品证书",
+export interface CargoReadySkuView {
+  line: ReplenishmentOrderLine;
+  overall: "ready" | "attention";
+  attributeSummary: string[];
+  requirementSummary: string;
+  requirements: CargoReadyEvidenceRequirement[];
+  gaps: Array<{ code: string; label: string; detail?: string }>;
+}
+
+const CERTIFICATE_LABELS: Record<string, string> = {
+  un38_3: "UN38.3",
+  sds: "SDS",
+  transport_safety_assessment: "运输条件鉴定",
+  ce: "CE 证书",
+  ukca: "UKCA 证书",
+  fcc: "FCC 证书",
+  cpsc: "CPSC 证书",
+  rohs: "RoHS 证书",
+  reach: "REACH 证书",
+  weee: "WEEE 资料",
+  epr: "EPR 资料",
+  battery_regulation: "电池法规资料",
+  certificate_of_origin: "原产地证",
+  wood_origin: "木材来源证明",
+  phytosanitary_certificate: "植检证书",
+  fumigation_certificate: "熏蒸证书",
+  commodity_inspection_certificate: "商检证书",
+  veterinary_certificate: "兽医证书",
+  sanitary_certificate: "卫生证书",
+  food_safety_certificate: "食品安全证书",
 };
 
-const FACTOR_FINDINGS = {
-  battery: new Set([
-    "PRODUCT_COMPLIANCE_PROFILE_MISSING",
-    "PRODUCT_COMPLIANCE_PROFILE_UNVERIFIED",
-    "BATTERY_CLASSIFICATION_UNDETERMINED",
-  ]),
-  dangerousGoods: new Set([
-    "PRODUCT_COMPLIANCE_PROFILE_MISSING",
-    "PRODUCT_COMPLIANCE_PROFILE_UNVERIFIED",
-    "DANGEROUS_GOODS_CLASSIFICATION_UNDETERMINED",
-  ]),
-  refrigerant: new Set([
-    "PRODUCT_COMPLIANCE_PROFILE_MISSING",
-    "PRODUCT_COMPLIANCE_PROFILE_UNVERIFIED",
-    "REFRIGERANT_CLASSIFICATION_UNDETERMINED",
-  ]),
-  inspection: new Set([
-    "PRODUCT_COMPLIANCE_PROFILE_MISSING",
-    "PRODUCT_COMPLIANCE_PROFILE_UNVERIFIED",
-    "INSPECTION_REQUIREMENT_UNDETERMINED",
-  ]),
-  certificates: new Set([
-    "PRODUCT_COMPLIANCE_PROFILE_MISSING",
-    "PRODUCT_COMPLIANCE_PROFILE_UNVERIFIED",
-    "COMPLIANCE_RULE_COVERAGE_MISSING",
-    "COMPLIANCE_RULE_APPLICABILITY_UNCOVERED",
-    "RULE_APPLICABILITY_UNDETERMINED",
-    "REQUIRED_CERTIFICATE_MISSING_OR_INVALID",
-  ]),
-} as const;
-
-export function buildCargoReadyQueue(input: {
-  tasks: readonly NodeTaskDetail[];
-  containers: readonly ContainerSummary[];
-  actorId: string;
-  now?: Date;
-}): CargoReadyQueueItem[] {
-  const now = input.now ?? new Date();
-  const dueSoonBoundary = new Date(now.getTime() + 72 * 60 * 60 * 1000);
-  const containersById = new Map(
-    input.containers.map((container) => [container.id, container]),
-  );
-
-  return input.tasks
-    .filter((task) => task.nodeCode === "cargo_ready")
-    .map((task) => {
-      const dueAt = task.nextAction?.dueAt ?? earliestDueAt(task);
-      const dueDate = dueAt ? new Date(dueAt) : null;
-      const overdue = dueDate ? dueDate.getTime() < now.getTime() : false;
-      const isDueSoon = dueDate
-        ? dueDate.getTime() <= dueSoonBoundary.getTime()
-        : false;
-      const isBlocked =
-        task.state === "blocked" ||
-        task.readinessState === "waiting_conditions";
-      const isExecutable = Boolean(task.nextAction);
-      const assigneeId = task.nextAction?.assigneeId ?? assignedWorkOrder(task);
-      return {
-        task,
-        container: task.containerId
-          ? (containersById.get(task.containerId) ?? null)
-          : null,
-        title: "完成备货确认",
-        responsibility: responsibilityLabel(task, assigneeId, input.actorId),
-        dueAt,
-        urgencyLabel: overdue
-          ? "已逾期"
-          : isDueSoon
-            ? "临期"
-            : isBlocked
-              ? "受阻"
-              : "常规",
-        urgencyRank: overdue ? 0 : isDueSoon ? 1 : isBlocked ? 2 : 3,
-        isMine: assigneeId === input.actorId,
-        isExecutable,
-        isBlocked,
-        isDueSoon,
-        blockerReason: blockerReason(task),
-        actionLabel: actionLabel(task.nextAction?.actionCode),
-      };
-    })
+export function buildCargoReadyOrderQueue(
+  orders: readonly ReplenishmentOrderWorkbenchItem[],
+): CargoReadyQueueItem[] {
+  return orders
+    .map((order) => ({
+      order,
+      title: order.workReason.label,
+      detail: order.workReason.detail,
+      responsibility: order.workReason.responsibility,
+      relatedContainerLabel: relatedContainerLabel(order),
+      lineCount: order.lines.length,
+      gapCount: order.lines.filter((line) => line.gaps.length > 0).length,
+    }))
     .sort(
       (left, right) =>
-        left.urgencyRank - right.urgencyRank ||
-        compareNullableDates(left.dueAt, right.dueAt) ||
-        left.task.id.localeCompare(right.task.id),
+        responsibilityRank(left.responsibility) -
+          responsibilityRank(right.responsibility) ||
+        right.order.updatedAt.localeCompare(left.order.updatedAt) ||
+        left.order.id.localeCompare(right.order.id),
     );
 }
 
@@ -154,12 +89,84 @@ export function filterCargoReadyQueue(
   filter: CargoReadyQueueFilter,
 ): CargoReadyQueueItem[] {
   if (filter === "all") return [...items];
-  return items.filter((item) => {
-    if (filter === "mine") return item.isMine;
-    if (filter === "executable") return item.isExecutable;
-    if (filter === "blocked") return item.isBlocked;
-    return item.isDueSoon;
+  return items.filter((item) => item.responsibility === filter);
+}
+
+export function buildCargoReadySkuViews(
+  order: ReplenishmentOrderWorkbenchItem,
+  evaluations: readonly CargoReadySkuComplianceEvaluation[],
+): CargoReadySkuView[] {
+  const evaluationBySku = new Map(
+    evaluations.map((evaluation) => [evaluation.productSkuId, evaluation]),
+  );
+  return order.lines.map((line) => {
+    const evaluation = line.productSkuId
+      ? evaluationBySku.get(line.productSkuId)
+      : undefined;
+    const requirements = evaluation?.requirements ?? [];
+    const evidenceGaps = requirements
+      .filter((requirement) => requirement.status === "missing_or_invalid")
+      .map((requirement) => ({
+        code: `certificate:${requirement.certificateType}`,
+        label: `${requirement.label}缺失或无效`,
+        detail: requirement.reason,
+      }));
+    const gaps = [...line.gaps, ...evidenceGaps];
+    return {
+      line,
+      overall: gaps.length > 0 ? "attention" : "ready",
+      attributeSummary: attributeSummary(line),
+      requirements,
+      gaps,
+      requirementSummary: requirementSummary(evaluation, gaps.length),
+    };
   });
+}
+
+export function buildCargoReadyComplianceEvaluations(
+  assessments: readonly CargoReadyComplianceAssessment[],
+): CargoReadySkuComplianceEvaluation[] {
+  const evaluations = new Map<string, CargoReadySkuComplianceEvaluation>();
+  for (const assessment of assessments) {
+    for (const item of assessment.items) {
+      const current = evaluations.get(item.productSkuId) ?? {
+        productSkuId: item.productSkuId,
+        evaluated: true,
+        requirements: [],
+      };
+      const existingKeys = new Set(
+        current.requirements.map(
+          (requirement) =>
+            `${requirement.certificateType}:${requirement.reason}`,
+        ),
+      );
+      for (const rule of assessment.applicableRules.filter(
+        (candidate) => candidate.productSkuId === item.productSkuId,
+      )) {
+        for (const certificateType of rule.requiredCertificateTypes) {
+          const reason = `${rule.ruleCode} v${rule.version} 要求`;
+          const key = `${certificateType}:${reason}`;
+          if (existingKeys.has(key)) continue;
+          const missing = assessment.findings.some(
+            (finding) =>
+              finding.code === "REQUIRED_CERTIFICATE_MISSING_OR_INVALID" &&
+              finding.productSkuId === item.productSkuId &&
+              finding.ruleVersionId === rule.ruleVersionId,
+          );
+          current.requirements.push({
+            productSkuId: item.productSkuId,
+            certificateType,
+            label: certificateLabel(certificateType),
+            status: missing ? "missing_or_invalid" : "verified",
+            reason,
+          });
+          existingKeys.add(key);
+        }
+      }
+      evaluations.set(item.productSkuId, current);
+    }
+  }
+  return [...evaluations.values()];
 }
 
 export function cargoReadyRoleLabel(roleCode: string): string {
@@ -171,193 +178,69 @@ export function cargoReadyRoleLabel(roleCode: string): string {
   return labels[roleCode] ?? "合规责任岗";
 }
 
-export function buildCargoReadySkuReadiness(input: {
-  cargo: ContainerCargoScope | null;
-  assessment: CargoReadyComplianceAssessment | null;
-  remediationItems: readonly ExternalWorkItem[];
-}): CargoReadySkuReadiness[] {
-  if (!input.cargo) return [];
-  const assessmentIsCurrent = matchesCargoSnapshot(
-    input.cargo,
-    input.assessment,
-  );
-  return input.cargo.items.map((item) =>
-    assessmentIsCurrent && input.assessment
-      ? assessedReadiness(item, input.assessment, input.remediationItems)
-      : unreviewedReadiness(
-          item,
-          input.assessment
-            ? "装载明细已变化，需要重新评审"
-            : "本柜尚未完成合规评审",
-        ),
-  );
+function attributeSummary(line: ReplenishmentOrderLine): string[] {
+  if (!line.productSkuId) return ["SKU 身份待确认"];
+  if (!line.profile) return ["物料属性档案待补充"];
+  return [
+    batteryLabel(
+      line.profile.battery.presenceState,
+      line.profile.battery.packingMode,
+    ),
+    dangerousGoodsLabel(line.profile.dangerousGoods.classificationState),
+    refrigerantLabel(line.profile.refrigerant.presenceState),
+  ];
 }
 
-function assessedReadiness(
-  item: ContainerCargoScopeItem,
-  assessment: CargoReadyComplianceAssessment,
-  remediationItems: readonly ExternalWorkItem[],
-): CargoReadySkuReadiness {
-  const findings = assessment.findings.filter(
-    (finding) =>
-      finding.productSkuId === item.productSkuId ||
-      finding.productSkuId === null,
-  );
-  const findingCodes = new Set(findings.map((finding) => finding.code));
-  const requiredCertificateTypes = assessment.applicableRules
-    .filter((rule) => rule.productSkuId === item.productSkuId)
-    .flatMap((rule) => rule.requiredCertificateTypes);
-  const missingReasons = findings.map(
-    (finding) => FINDING_COPY[finding.code] ?? "存在待处理的合规缺口",
-  );
-  const hasRemediation = remediationItems.some(
-    (workItem) =>
-      workItem.state === "open" &&
-      workItem.sourceRecordId === assessment.assessmentId,
-  );
-
-  return {
-    item,
-    overall: findings.length ? "missing" : "ready",
-    battery: factorState(findingCodes, FACTOR_FINDINGS.battery),
-    dangerousGoods: factorState(findingCodes, FACTOR_FINDINGS.dangerousGoods),
-    refrigerant: factorState(findingCodes, FACTOR_FINDINGS.refrigerant),
-    inspection: factorState(findingCodes, FACTOR_FINDINGS.inspection),
-    certificates:
-      requiredCertificateTypes.length === 0 &&
-      !hasAny(findingCodes, FACTOR_FINDINGS.certificates)
-        ? { state: "not_required", label: "当前规则未要求" }
-        : factorState(findingCodes, FACTOR_FINDINGS.certificates),
-    missingReasons,
-    responsibleRole: findings.length
-      ? hasRemediation
-        ? "合规整改责任岗"
-        : "商品合规专员"
-      : "备货专员",
-    nextAction: nextSkuAction(findingCodes, findings.length),
-  };
-}
-
-function unreviewedReadiness(
-  item: ContainerCargoScopeItem,
-  reason: string,
-): CargoReadySkuReadiness {
-  const unreviewed = { state: "unreviewed" as const, label: "未评审" };
-  return {
-    item,
-    overall: "unreviewed",
-    battery: unreviewed,
-    dangerousGoods: unreviewed,
-    refrigerant: unreviewed,
-    inspection: unreviewed,
-    certificates: unreviewed,
-    missingReasons: [reason],
-    responsibleRole: "合规评审岗",
-    nextAction: "发起本柜合规评审",
-  };
-}
-
-function matchesCargoSnapshot(
-  cargo: ContainerCargoScope,
-  assessment: CargoReadyComplianceAssessment | null,
-): assessment is CargoReadyComplianceAssessment {
-  if (!assessment || !cargo.allocationSetId) return false;
-  return (
-    assessment.allocationSetId === cargo.allocationSetId &&
-    assessment.allocationSetVersion === cargo.allocationSetVersion &&
-    assessment.items.length === cargo.items.length &&
-    assessment.items.every((assessmentItem) =>
-      cargo.items.some(
-        (cargoItem) =>
-          cargoItem.replenishmentOrderLineId ===
-            assessmentItem.replenishmentOrderLineId &&
-          cargoItem.productSkuId === assessmentItem.productSkuId,
-      ),
-    )
-  );
-}
-
-function factorState(
-  codes: ReadonlySet<string>,
-  relevant: ReadonlySet<string>,
-): CargoReadyFactorView {
-  if (hasAny(codes, relevant)) return { state: "attention", label: "待确认" };
-  return { state: "ready", label: "已确认" };
-}
-
-function hasAny(
-  values: ReadonlySet<string>,
-  expected: ReadonlySet<string>,
-): boolean {
-  return [...expected].some((value) => values.has(value));
-}
-
-function nextSkuAction(
-  codes: ReadonlySet<string>,
-  findingCount: number,
+function batteryLabel(
+  presenceState: string,
+  packingMode: string | null,
 ): string {
-  if (codes.has("PRODUCT_COMPLIANCE_PROFILE_MISSING"))
-    return "建立 SKU 合规档案";
-  if (codes.has("PRODUCT_COMPLIANCE_PROFILE_UNVERIFIED"))
-    return "核验 SKU 合规档案";
-  if (codes.has("REQUIRED_CERTIFICATE_MISSING_OR_INVALID"))
-    return "补齐并核验产品证书";
-  if (codes.has("BATTERY_CLASSIFICATION_UNDETERMINED")) return "确认电池属性";
-  if (codes.has("DANGEROUS_GOODS_CLASSIFICATION_UNDETERMINED"))
-    return "确认危险品分类";
-  if (codes.has("REFRIGERANT_CLASSIFICATION_UNDETERMINED"))
-    return "确认制冷剂属性";
-  if (codes.has("INSPECTION_REQUIREMENT_UNDETERMINED")) return "确认检验要求";
-  return findingCount ? "进入合规评审处理缺口" : "等待或完成备货任务";
+  if (presenceState === "absent") return "不含电池";
+  if (presenceState === "unknown") return "电池属性待确认";
+  const mode =
+    packingMode === "packed_with_equipment"
+      ? "随设备包装"
+      : packingMode === "contained_in_equipment"
+        ? "内置于设备"
+        : packingMode === "battery_only"
+          ? "单独电池"
+          : "包装方式待确认";
+  return `含电池 · ${mode}`;
 }
 
-function blockerReason(task: NodeTaskDetail): string | null {
-  if (task.readinessState === "waiting_conditions") return "前序条件尚未具备";
-  if (task.state === "blocked") return "任务已阻塞，需要处理缺口";
-  if (!task.nextAction && task.state !== "completed")
-    return "等待系统给出下一动作";
-  return null;
+function dangerousGoodsLabel(classificationState: string): string {
+  if (classificationState === "not_regulated") return "非危险品";
+  if (classificationState === "regulated") return "危险品";
+  return "危险品属性待确认";
 }
 
-function responsibilityLabel(
-  task: NodeTaskDetail,
-  assigneeId: string | null,
-  actorId: string,
+function refrigerantLabel(presenceState: string): string {
+  if (presenceState === "absent") return "不含制冷剂";
+  if (presenceState === "present") return "含制冷剂";
+  return "制冷剂属性待确认";
+}
+
+function requirementSummary(
+  evaluation: CargoReadySkuComplianceEvaluation | undefined,
+  gapCount: number,
 ): string {
-  if (assigneeId === actorId) return "我负责";
-  if (assigneeId) return `已分配：${assigneeId}`;
-  if (task.nextAction?.assignmentState === "automatic") return "系统自动处理";
-  return "备货共享池";
+  if (!evaluation?.evaluated) return "合规要求待出运上下文确认";
+  if (evaluation.requirements.length === 0) return "本次无需补充合规资料";
+  if (gapCount > 0) return "存在需要处理的资料缺口";
+  return "本次适用资料已核验";
 }
 
-function assignedWorkOrder(task: NodeTaskDetail): string | null {
-  return (
-    task.workOrders.find((workOrder) => workOrder.assigneeId)?.assigneeId ??
-    null
-  );
+function certificateLabel(certificateType: string): string {
+  return CERTIFICATE_LABELS[certificateType] ?? certificateType;
 }
 
-function earliestDueAt(task: NodeTaskDetail): string | null {
-  return (
-    task.workOrders
-      .map((workOrder) => workOrder.dueAt)
-      .filter((dueAt): dueAt is string => Boolean(dueAt))
-      .sort()[0] ?? null
-  );
+function relatedContainerLabel(order: ReplenishmentOrderWorkbenchItem): string {
+  if (order.relatedContainers.length === 0) return "尚未分配货柜";
+  if (order.relatedContainers.length === 1)
+    return order.relatedContainers[0]!.containerNumber ?? "货柜号待补充";
+  return `已分配 ${order.relatedContainers.length} 个货柜`;
 }
 
-function actionLabel(actionCode: string | undefined): string | null {
-  if (actionCode === "work_execution.claim_work_order") return "领取任务";
-  if (actionCode === "work_execution.complete_work_order") return "完成备货";
-  return actionCode ? "处理当前任务" : null;
-}
-
-function compareNullableDates(
-  left: string | null,
-  right: string | null,
-): number {
-  if (left === right) return 0;
-  if (!left) return 1;
-  if (!right) return -1;
-  return left.localeCompare(right);
+function responsibilityRank(value: "mine" | "waiting_other"): number {
+  return value === "mine" ? 0 : 1;
 }

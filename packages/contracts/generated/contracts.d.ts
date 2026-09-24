@@ -19,6 +19,11 @@ export type DateTime = string
 export type StableCode = string
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "CapabilityCode".
+ */
+export type CapabilityCode = string
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "BoundedContextCode".
  */
 export type BoundedContextCode = string
@@ -211,12 +216,55 @@ export type DenialCategory = ("authentication" | "scope" | "capability" | "state
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "EntityType".
  */
-export type EntityType = ("container" | "flow_instance" | "node_instance" | "node_task" | "work_order" | "domain_fact" | "evidence" | "canonical_event" | "client_operation" | "receipt" | "exception" | "audit_entry")
+export type EntityType = ("container" | "shipment" | "shipment_cargo_line" | "shipment_transport_document" | "flow_instance" | "node_instance" | "node_task" | "work_order" | "domain_fact" | "evidence" | "canonical_event" | "client_operation" | "receipt" | "exception" | "audit_entry")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ErrorCategory".
  */
 export type ErrorCategory = ("validation" | "authentication" | "authorization" | "not_found" | "conflict" | "precondition" | "rate_limit" | "dependency" | "internal")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "DecimalString".
+ */
+export type DecimalString = string
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "DepartureProofV1".
+ */
+export type DepartureProofV1 = ({
+kind: "actual_departure_time"
+occurredAt: DateTime
+sourceTimezone: string
+evidenceRef: Uuid
+} | {
+kind: "authoritative_departed_status"
+sourceStatus: string
+authorityPolicyRef: string
+evidenceRef: Uuid
+} | {
+kind: "authorized_manual_confirmation"
+confirmedBy: Uuid
+reasonCode: StableCode
+evidenceRef: Uuid
+})
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "CargoAllocationV1".
+ */
+export type CargoAllocationV1 = (PackagePairRule & WeightPairRule & VolumePairRule & {
+sourceLineId: string
+productSkuId?: Uuid
+productNumber: string
+quantity: DecimalString
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+packageCount?: DecimalString
+packageUnit?: string
+grossWeight?: DecimalString
+weightUnit?: "kg"
+volume?: DecimalString
+volumeUnit?: "m3"
+replenishmentOrderLineId?: Uuid
+})
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
@@ -289,6 +337,11 @@ export type SourceAuthorityPolicy = {
 export type OwnedEntityRef = EntityRef
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentLifecycleStatusV1".
+ */
+export type ShipmentLifecycleStatusV1 = ("departed" | "in_transit" | "arrived" | "customs_clearance" | "released" | "picked_up" | "delivered_to_warehouse" | "closed")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "CustomsFilingState".
  */
 export type CustomsFilingState = ("not_filed" | "filed" | "accepted")
@@ -307,6 +360,11 @@ export type ContainerUnloadingOperationState = ("started" | "partial" | "complet
  * via the `definition` "ContainerUnloadingSealCheck".
  */
 export type ContainerUnloadingSealCheck = ("matched" | "mismatch")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentLifecycleInitializationStateV1".
+ */
+export type ShipmentLifecycleInitializationStateV1 = ("pending" | "ready" | "manual_review")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "PublicErrorCode".
@@ -585,6 +643,7 @@ asOf: DateTime
 export interface AllowedAction {
 actionCode: StableCode
 actionVersion: number
+target: EntityRef
 executable: boolean
 denialCategory?: DenialCategory
 confirmationPolicy: ConfirmationPolicy
@@ -599,6 +658,219 @@ expiresAt?: DateTime
  */
 export interface EmptyEventData {
 
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSubject".
+ */
+export interface PostDepartureSubject {
+tenantId: Uuid
+entityType: ("shipment" | "container")
+entityId: string
+ownerModule: "shipment-registry"
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SourceReferenceV1".
+ */
+export interface SourceReferenceV1 {
+channel: ("file_import" | "api" | "webhook" | "manual")
+system: string
+externalHandoffId: string
+handoffVersion: number
+supersedesExternalHandoffId?: string
+occurredAt: DateTime
+idempotencyKey: string
+sourceBatchId?: Uuid
+mappingVersion?: string
+correlationId: Uuid
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentDescriptorV1".
+ */
+export interface ShipmentDescriptorV1 {
+externalShipmentId?: string
+shipmentNumber?: string
+expectedRelationshipVersion?: number
+transportMode: "ocean"
+carrierCode: string
+vesselName: string
+voyageNumber: string
+bookingNumber?: string
+originPortCode: string
+destinationPortCode: string
+destinationCountryCode: string
+salesCountryCode?: string
+cargoOwnerReferenceId?: Uuid
+cargoOwnerName?: string
+destinationWarehouseId?: Uuid
+tradeTerm?: string
+estimatedArrivalAt?: DateTime
+actualLoadedAt?: DateTime
+departureProof: DepartureProofV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "BillOfLadingV1".
+ */
+export interface BillOfLadingV1 {
+referenceId: string
+documentType: ("booking" | "mbl" | "hbl" | "ams")
+documentNumber: string
+scac?: string
+parentReferenceId?: string
+version: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PackagePairRule".
+ */
+export interface PackagePairRule {
+[k: string]: unknown
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WeightPairRule".
+ */
+export interface WeightPairRule {
+[k: string]: unknown
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "VolumePairRule".
+ */
+export interface VolumePairRule {
+[k: string]: unknown
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "UpstreamReferenceV1".
+ */
+export interface UpstreamReferenceV1 {
+referenceType: ("shipping_plan" | "stocking_order" | "packing_order" | "purchase_order")
+sourceSystem: string
+sourceRecordId: string
+sourceVersion?: string
+sourceLineId?: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ContainerHandoffV1".
+ */
+export interface ContainerHandoffV1 {
+referenceId: string
+externalContainerId?: string
+containerNumber: string
+containerTypeCode: string
+sealNumber?: string
+stuffingSnapshotRef?: Uuid
+/**
+ * @minItems 1
+ */
+billReferences: [string, ...(string)[]]
+upstreamReferences: UpstreamReferenceV1[]
+/**
+ * @minItems 1
+ */
+cargoAllocations?: [CargoAllocationV1, ...(CargoAllocationV1)[]]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentHandoffCommandV1".
+ */
+export interface ShipmentHandoffCommandV1 {
+contractVersion: "shipment-handoff.v1"
+tenantId: Uuid
+sourceProfile: ("legacy_departed_file_v1" | "packing_platform_v1" | "api_v1")
+source: SourceReferenceV1
+shipment: ShipmentDescriptorV1
+/**
+ * @minItems 1
+ */
+billsOfLading: [BillOfLadingV1, ...(BillOfLadingV1)[]]
+/**
+ * @minItems 1
+ */
+containers: [ContainerHandoffV1, ...(ContainerHandoffV1)[]]
+documentReferences?: Uuid[]
+/**
+ * @minItems 1
+ */
+evidenceReferences: [Uuid, ...(Uuid)[]]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentHandoffIssueV1".
+ */
+export interface ShipmentHandoffIssueV1 {
+code: ("SOURCE_RANGE_METADATA_INVALID" | "FIELD_SEMANTIC_MISMATCH" | "INVALID_SOURCE_VALUE" | "DEPARTURE_PROOF_REQUIRED" | "EXTERNAL_SHIPMENT_MATCH_REQUIRED" | "UNKNOWN_REFERENCE_CODE" | "CARGO_DETAIL_INCOMPLETE" | "CONTAINER_ACTIVE_SHIPMENT_CONFLICT" | "CONTAINER_SOURCE_IDENTITY_CONFLICT" | "IDEMPOTENCY_PAYLOAD_CONFLICT" | "SHIPMENT_SOURCE_IDENTITY_CONFLICT" | "SHIPMENT_NUMBER_CONFLICT" | "SHIPMENT_RELATIONSHIP_VERSION_CONFLICT" | "SUPERSEDED_HANDOFF_NOT_FOUND" | "SOURCE_BATCH_REQUIRED" | "MAPPING_VERSION_REQUIRED" | "STUFFING_SNAPSHOT_REQUIRED" | "STUFFING_SNAPSHOT_VERSION_STALE" | "CARGO_ALLOCATION_REQUIRED" | "BILL_REFERENCE_NOT_FOUND" | "DUPLICATE_REFERENCE")
+subjectRef?: string
+sourceRows?: string[]
+fieldCodes?: StableCode[]
+messageKey: StableCode
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentHandoffResultV1".
+ */
+export interface ShipmentHandoffResultV1 {
+receptionState: ReceptionState
+businessDecisionState: BusinessDecisionState
+commitState: CommitState
+handoffId: Uuid
+handoffVersion: number
+duplicate: boolean
+shipmentId?: Uuid
+containerResults: ShipmentHandoffObjectResultV1[]
+cargoResults: ShipmentHandoffObjectResultV1[]
+documentResults: ShipmentHandoffObjectResultV1[]
+lifecycleInitializationState: ("pending" | "ready" | "review_required" | "rejected")
+customsAssimilationState: ("not_applicable" | "pending" | "ready" | "review_required" | "rejected")
+inlandAssimilationState: ("not_applicable" | "pending" | "ready" | "review_required" | "rejected")
+warehouseAssimilationState: ("not_applicable" | "pending" | "ready" | "review_required" | "rejected")
+issues: ShipmentHandoffIssueV1[]
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentHandoffObjectResultV1".
+ */
+export interface ShipmentHandoffObjectResultV1 {
+objectType: ("container" | "cargo_line" | "transport_document")
+sourceReferenceId: string
+state: ("accepted" | "duplicate" | "review_required" | "rejected")
+entityId?: Uuid
+issueCodes: ("SOURCE_RANGE_METADATA_INVALID" | "FIELD_SEMANTIC_MISMATCH" | "INVALID_SOURCE_VALUE" | "DEPARTURE_PROOF_REQUIRED" | "EXTERNAL_SHIPMENT_MATCH_REQUIRED" | "UNKNOWN_REFERENCE_CODE" | "CARGO_DETAIL_INCOMPLETE" | "CONTAINER_ACTIVE_SHIPMENT_CONFLICT" | "CONTAINER_SOURCE_IDENTITY_CONFLICT" | "IDEMPOTENCY_PAYLOAD_CONFLICT" | "SHIPMENT_SOURCE_IDENTITY_CONFLICT" | "SHIPMENT_NUMBER_CONFLICT" | "SHIPMENT_RELATIONSHIP_VERSION_CONFLICT" | "SUPERSEDED_HANDOFF_NOT_FOUND" | "SOURCE_BATCH_REQUIRED" | "MAPPING_VERSION_REQUIRED" | "STUFFING_SNAPSHOT_REQUIRED" | "STUFFING_SNAPSHOT_VERSION_STALE" | "CARGO_ALLOCATION_REQUIRED" | "BILL_REFERENCE_NOT_FOUND" | "DUPLICATE_REFERENCE")[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentHandoffPreflightResultV1".
+ */
+export interface ShipmentHandoffPreflightResultV1 {
+decision: ("ready" | "review_required" | "rejected")
+duplicate?: boolean
+payloadHash: string
+issues: ShipmentHandoffIssueV1[]
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "StartPostDepartureLifecycleCommandV2".
+ */
+export interface StartPostDepartureLifecycleCommandV2 {
+shipmentId: Uuid
+/**
+ * @minItems 1
+ */
+containerIds: [string, ...(string)[]]
+flowDefinitionCode: "post_departure_ocean"
+definitionVersion: number
+departureEventId: Uuid
+relationshipVersion: number
+idempotencyKey: string
+traceId: string
 }
 export interface OceanRouteWriteCommand {
 tenantId: Uuid
@@ -751,7 +1023,7 @@ qualified: boolean
 export interface LifecycleDateFactReviewItem {
 factId: Uuid
 containerId: Uuid
-orderNumber: string
+orderNumber: (string | null)
 containerNumber: (string | null)
 nodeCode: LifecycleNodeCode
 eventCode: CanonicalEventCode
@@ -1261,7 +1533,7 @@ targetEntityTypes: [EntityType, ...(EntityType)[]]
 /**
  * @minItems 1
  */
-requiredCapabilities: [StableCode, ...(StableCode)[]]
+requiredCapabilities: [CapabilityCode, ...(CapabilityCode)[]]
 riskLevel: RiskLevel
 confirmationPolicy: ConfirmationPolicy
 reviewPolicy: ReviewPolicy
@@ -1282,7 +1554,7 @@ actorId: Uuid
 authenticatedAt: DateTime
 authenticationMethod: StableCode
 roles: StableCode[]
-capabilities: StableCode[]
+capabilities: CapabilityCode[]
 organizationScope: Uuid[]
 locationScope: Uuid[]
 delegatedBy?: Uuid
@@ -1582,6 +1854,61 @@ projectionVersion: number
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ContainerShipmentContextV1".
+ */
+export interface ContainerShipmentContextV1 {
+shipmentId: Uuid
+shipmentNumber: (string | null)
+linkId: Uuid
+linkVersion: number
+currentLifecycleStatus: ShipmentLifecycleStatusV1
+relationshipVersion: number
+carrierCode: string
+vesselName: string
+voyageNumber: string
+originCountryCode: string
+originUnlocode: string
+destinationCountryCode: string
+salesCountryCode: (string | null)
+cargoOwnerReferenceId: (Uuid | null)
+cargoOwnerName: (string | null)
+destinationUnlocode: string
+atdAt: (DateTime | null)
+etaAt: (DateTime | null)
+transportDocuments: ShipmentTransportDocumentViewV1[]
+upstreamReferences: ShipmentUpstreamReferenceViewV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentTransportDocumentViewV1".
+ */
+export interface ShipmentTransportDocumentViewV1 {
+id: Uuid
+documentType: StableCode
+documentNumber: string
+scac: (string | null)
+parentDocumentId: (Uuid | null)
+containerRecordIds: Uuid[]
+version: number
+effectiveFrom: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentUpstreamReferenceViewV1".
+ */
+export interface ShipmentUpstreamReferenceViewV1 {
+id: Uuid
+containerRecordId: Uuid
+shipmentCargoLineId: (Uuid | null)
+referenceType: StableCode
+sourceSystem: string
+sourceRecordId: string
+sourceVersion: (string | null)
+sourceLineId: (string | null)
+version: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "TimelinePage".
  */
 export interface TimelinePage {
@@ -1724,6 +2051,134 @@ idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentSummaryV1".
+ */
+export interface ShipmentSummaryV1 {
+id: Uuid
+shipmentNumber: (string | null)
+transportMode: StableCode
+carrierCode: string
+vesselName: string
+voyageNumber: string
+originCountryCode: string
+originUnlocode: string
+destinationCountryCode: string
+salesCountryCode: (string | null)
+cargoOwnerReferenceId: (Uuid | null)
+cargoOwnerName: (string | null)
+destinationUnlocode: string
+atdAt: (DateTime | null)
+etaAt: (DateTime | null)
+currentLifecycleStatus: ShipmentLifecycleStatusV1
+lifecycleVersion: number
+relationshipVersion: number
+activeContainerCount: number
+activeCargoLineCount: number
+lifecycleInitializationState: ShipmentLifecycleInitializationStateV1
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentContainerAllocationV1".
+ */
+export interface ShipmentContainerAllocationV1 {
+shipmentCargoLineId: Uuid
+allocatedQuantity: string
+quantityUnit: StableCode
+packageCount: (string | null)
+packageUnit: (string | null)
+grossWeight: (string | null)
+weightUnit: (string | null)
+volume: (string | null)
+volumeUnit: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentContainerViewV1".
+ */
+export interface ShipmentContainerViewV1 {
+linkId: Uuid
+containerRecordId: Uuid
+containerNumber: (string | null)
+containerTypeCode: (string | null)
+sealNumber: (string | null)
+currentStatus: ContainerLifecycleState
+linkVersion: number
+currentNodeCode: (LifecycleNodeCode | null)
+flowState: (string | null)
+allocations: ShipmentContainerAllocationV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentCargoLineViewV1".
+ */
+export interface ShipmentCargoLineViewV1 {
+id: Uuid
+lineNo: number
+productSkuId: (Uuid | null)
+productNumber: string
+quantity: string
+quantityUnit: StableCode
+packageCount: (string | null)
+packageUnit: (string | null)
+grossWeight: (string | null)
+weightUnit: (string | null)
+volume: (string | null)
+volumeUnit: (string | null)
+replenishmentOrderLineId: (string | null)
+sourceLineId: string
+version: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentHandoffSummaryV1".
+ */
+export interface ShipmentHandoffSummaryV1 {
+handoffId: Uuid
+handoffVersion: number
+sourceSystem: string
+status: StableCode
+occurredAt: DateTime
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentLifecycleInitializationV1".
+ */
+export interface ShipmentLifecycleInitializationV1 {
+state: ShipmentLifecycleInitializationStateV1
+activeContainerCount: number
+initializedContainerCount: number
+relationshipVersion: number
+lastErrorCode: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentDetailV1".
+ */
+export interface ShipmentDetailV1 {
+shipment: ShipmentSummaryV1
+handoff: (ShipmentHandoffSummaryV1 | null)
+containers: ShipmentContainerViewV1[]
+cargoLines: ShipmentCargoLineViewV1[]
+transportDocuments: ShipmentTransportDocumentViewV1[]
+upstreamReferences: ShipmentUpstreamReferenceViewV1[]
+lifecycleInitialization: ShipmentLifecycleInitializationV1
+projectionVersion: number
+asOf: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPageV1".
+ */
+export interface ShipmentPageV1 {
+items: ShipmentSummaryV1[]
+pageInfo: PageInfo
+asOf: DateTime
+projectionVersion: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "Freshness".
  */
 export interface Freshness {
@@ -1757,7 +2212,7 @@ createdAt: DateTime
  */
 export interface AssistantObjectSummary {
 containerId: string
-orderNumber: string
+orderNumber: (string | null)
 containerNumber: (string | null)
 currentStatus: ContainerLifecycleState
 currentNodeCode: (LifecycleNodeCode | null)
@@ -1888,6 +2343,40 @@ correlationId: Uuid
 causationId?: Uuid
 traceId: string
 }
+export interface CanonicalEventEnvelopeV2 {
+eventId: Uuid
+eventCode: CanonicalEventCode
+eventVersion: 2
+tenantId: Uuid
+subject: PostDepartureSubject
+subjectVersion: number
+scopeVersion?: number
+flowInstanceId?: Uuid
+nodeCode?: LifecycleNodeCode
+nodeInstanceId?: Uuid
+domainFactId: Uuid
+domainFactType: string
+authorityPolicyRef: string
+domain: string
+role: EventRole
+timeKind: TimeKind
+occurredAt: DateTime
+recordedAt: DateTime
+eventSequence: number
+idempotencyKey: string
+source: CanonicalEventEnvelopeSource
+location?: CanonicalEventEnvelopeLocation
+evidenceRefs: Uuid[]
+confidenceState: ConfidenceState
+validity: EvidenceValidity
+relation?: CanonicalEventEnvelopeRelation
+data: {
+[k: string]: unknown
+}
+correlationId: Uuid
+causationId?: Uuid
+traceId: string
+}
 export interface EvidenceRecord {
 evidenceId: Uuid
 tenantId: Uuid
@@ -1978,6 +2467,7 @@ export interface ContainerOperationalView {
 tenantId: Uuid
 containerId: Uuid
 containerNumber: string
+shipment?: (ContainerShipmentContextV1 | null)
 flow: ({
 flowInstanceId: Uuid
 state: FlowInstanceState

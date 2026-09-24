@@ -26,7 +26,7 @@ describe("listLifecycleNodes", () => {
       "/api/containers/c1/lifecycle-nodes",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },
@@ -61,7 +61,7 @@ describe("listLifecycleNodesByContainers", () => {
       "/api/lifecycle-nodes?containerIds=c1%2Cc2",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },

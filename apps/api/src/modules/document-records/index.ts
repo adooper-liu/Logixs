@@ -5,6 +5,10 @@ export {
   type AssertEvidenceRefsPort,
 } from "./assert-evidence-refs.port";
 export {
+  ASSERT_EVIDENCE_AVAILABLE,
+  type AssertEvidenceAvailablePort,
+} from "./assert-evidence-available.port";
+export {
   READ_EVIDENCE_AUTHORITY_CONTEXT,
   type EvidenceAuthorityContext,
   type ReadEvidenceAuthorityContextPort,

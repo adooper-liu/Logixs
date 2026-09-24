@@ -90,7 +90,7 @@ describe("PublishOutboxBatchService", () => {
     expect(outbox.claimBatch).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: "t1",
-        ownerModule: "lifecycle-control",
+        ownerModules: ["lifecycle-control", "shipment-registry"],
         owner: "op-1",
         limit: 50,
       }),

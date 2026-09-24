@@ -72,14 +72,14 @@ defineProps<{
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-right: 1px solid var(--line);
   background: var(--brand-soft);
   color: var(--brand-strong);
 }
 
 .focus-label strong {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .focus-steps {
@@ -88,7 +88,7 @@ defineProps<{
   align-items: center;
   min-width: 0;
   margin: 0;
-  padding: 7px 10px;
+  padding: var(--space-2) var(--space-3);
   list-style: none;
 }
 
@@ -98,7 +98,7 @@ defineProps<{
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   color: var(--muted);
 }
 
@@ -122,12 +122,12 @@ defineProps<{
 }
 
 .step-copy b {
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .step-copy small {
-  margin-top: 2px;
-  font-size: 9px;
+  margin-top: var(--space-1);
+  font-size: var(--text-micro);
 }
 
 .step-arrow {
@@ -185,19 +185,19 @@ defineProps<{
   .focus-label {
     min-height: 38px;
     align-items: center;
-    padding: 7px 10px;
+    padding: var(--space-2) var(--space-3);
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
   .focus-steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 9px 0;
-    padding: 9px 6px;
+    gap: var(--space-2) 0;
+    padding: var(--space-2) var(--space-2);
   }
 
   .focus-steps li {
-    gap: 4px;
+    gap: var(--space-1);
   }
 
   .step-mark {

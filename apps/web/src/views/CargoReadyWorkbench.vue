@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { FileUp, PackageCheck } from "@lucide/vue";
+import { computed, onMounted, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import CargoReadyActionPanel from "../components/cargo-ready/CargoReadyActionPanel.vue";
 import CargoReadySummary from "../components/cargo-ready/CargoReadySummary.vue";
@@ -7,7 +8,6 @@ import CargoReadyWorkQueue from "../components/cargo-ready/CargoReadyWorkQueue.v
 import RoleWorkbenchFrame from "../components/workbench/RoleWorkbenchFrame.vue";
 import { useCargoReadyWorkbench } from "../composables/useCargoReadyWorkbench";
 import { useCargoReadyTaskOperation } from "../composables/useCargoReadyTaskOperation";
-import type { ExternalWorkItem } from "../api/workItems";
 import type {
   CargoReadyQueueFilter,
   CargoReadyQueueItem,
@@ -15,115 +15,152 @@ import type {
 
 const route = useRoute();
 const router = useRouter();
-const containerId = computed(() =>
+const orderId = computed(() => String(route.query.orderId ?? "").trim());
+const legacyContainerId = computed(() =>
   String(route.query.containerId ?? "").trim(),
 );
 const taskId = computed(() => String(route.query.taskId ?? "").trim());
-const queueFilter = ref<CargoReadyQueueFilter>("executable");
+const queueFilter = shallowRef<CargoReadyQueueFilter>("mine");
 const {
-  containers,
-  selectedContainer,
-  cargo,
-  nodes,
-  cargoReadyNode,
+  orders,
+  selectedOrder,
   queueItems,
   selectedTask,
-  skuReadiness,
+  skuViews,
   remediationItems,
-  remediationPool,
-  assessment,
   warnings,
-  containerListLoading,
   queueLoading,
   selectionLoading,
-  containerListError,
   queueError,
   selectionError,
-  loadContainerList,
-  reloadSelection,
-} = useCargoReadyWorkbench(containerId, taskId);
+  loadOrders,
+  reloadWorkbench,
+} = useCargoReadyWorkbench(orderId, taskId);
 
 const { submission, submitting, execute, retry } = useCargoReadyTaskOperation(
   selectedTask,
   reloadWorkbench,
 );
 
+watch(
+  orders,
+  (items) => {
+    if (items.length === 0 || selectedOrder.value) return;
+    const legacyMatch = legacyContainerId.value
+      ? items.find((order) =>
+          order.relatedContainers.some(
+            (container) => container.id === legacyContainerId.value,
+          ),
+        )
+      : null;
+    void selectOrderById((legacyMatch ?? items[0]!).id);
+  },
+  { deep: false },
+);
+
 onMounted(() => {
-  void loadContainerList();
+  void loadOrders();
 });
 
-function selectContainer(value: string): void {
-  void router.replace({
-    path: "/workspaces/cargo-ready",
-    query: value ? { containerId: value } : {},
-  });
+function selectOrder(item: CargoReadyQueueItem): void {
+  void selectOrderById(item.order.id);
 }
 
-function selectTask(item: CargoReadyQueueItem): void {
-  if (!item.task.containerId) return;
-  void router.replace({
+async function selectOrderById(value: string): Promise<void> {
+  await router.replace({
     path: "/workspaces/cargo-ready",
-    query: { containerId: item.task.containerId, taskId: item.task.id },
+    query: value ? { orderId: value } : {},
   });
-}
-
-function selectRemediation(item: ExternalWorkItem): void {
-  void router.replace({
-    path: "/workspaces/cargo-ready",
-    query: { containerId: item.containerId },
-  });
-}
-
-async function reloadWorkbench(): Promise<void> {
-  await Promise.all([reloadSelection(), loadContainerList()]);
 }
 </script>
 
 <template>
   <RoleWorkbenchFrame
     title="备货工作台"
-    summary="从岗位任务池定位工作，核对每个 SKU 的齐备情况，并完成当前允许的备货动作。"
+    summary="从备货单开始，只处理 SKU 身份、物料属性、适用资料和装柜分配的真实缺口。"
     workspace-label="备货"
-    node-scope-label="备货"
-    :containers="containers"
-    :selected-container-id="containerId"
-    :selected-container="selectedContainer"
-    :nodes="nodes"
-    :container-list-loading="containerListLoading"
+    node-scope-label="备货确认"
+    :containers="[]"
+    selected-container-id=""
+    :selected-container="null"
+    :nodes="[]"
+    :container-list-loading="false"
     :selection-loading="selectionLoading"
-    :container-list-error="containerListError"
+    container-list-error=""
     :selection-error="selectionError"
     :warnings="warnings"
-    @select-container="selectContainer"
+    :context-ready="Boolean(selectedOrder)"
+    :show-container-selector="false"
+    empty-message="选择一张备货单查看物料事实、真实缺口和当前动作。"
+    loading-message="正在加载关联货柜的备货、合规和任务事实…"
   >
+    <template #actions>
+      <router-link class="import-action" to="/import">
+        <FileUp :size="16" aria-hidden="true" />导入备货单
+      </router-link>
+    </template>
+
+    <template #context>
+      <div v-if="selectedOrder" class="order-context">
+        <span class="order-context__icon" aria-hidden="true">
+          <PackageCheck :size="19" />
+        </span>
+        <span>
+          <small>当前备货单</small>
+          <b>{{ selectedOrder.orderNumber }}</b>
+        </span>
+        <span>
+          <small>SKU</small>
+          <b>{{ selectedOrder.lines.length }} 个</b>
+        </span>
+        <span>
+          <small>需处理</small>
+          <b
+            >{{
+              skuViews.filter((row) => row.overall === "attention").length
+            }}
+            个</b
+          >
+        </span>
+        <span>
+          <small>关联货柜</small>
+          <b>
+            {{
+              selectedOrder.relatedContainers.length
+                ? selectedOrder.relatedContainers
+                    .map((item) => item.containerNumber ?? "待补箱号")
+                    .join("、")
+                : "尚未分配"
+            }}
+          </b>
+        </span>
+      </div>
+    </template>
+
     <template #queue>
       <CargoReadyWorkQueue
         :items="queueItems"
-        :selected-task-id="selectedTask?.id ?? taskId"
+        :selected-order-id="selectedOrder?.id ?? orderId"
         :filter="queueFilter"
         :loading="queueLoading"
         :error="queueError"
-        :remediation-items="remediationPool"
-        :containers="containers"
-        @select="selectTask"
-        @select-remediation="selectRemediation"
+        @select="selectOrder"
         @change-filter="queueFilter = $event"
       />
     </template>
+
     <template #primary>
       <CargoReadySummary
-        v-if="selectedContainer"
-        :container-id="selectedContainer.id"
-        :cargo="cargo"
-        :node="cargoReadyNode"
-        :assessment="assessment"
-        :readiness="skuReadiness"
+        v-if="selectedOrder"
+        :order="selectedOrder"
+        :sku-views="skuViews"
       />
     </template>
+
     <template #secondary>
       <CargoReadyActionPanel
-        v-if="selectedContainer"
-        :container-id="selectedContainer.id"
+        v-if="selectedOrder"
+        :order="selectedOrder"
         :task="selectedTask"
         :remediation-items="remediationItems"
         :submission="submission"
@@ -134,3 +171,82 @@ async function reloadWorkbench(): Promise<void> {
     </template>
   </RoleWorkbenchFrame>
 </template>
+
+<style scoped>
+.import-action {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-control);
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--text-label);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.order-context {
+  min-width: 0;
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: 36px minmax(130px, 1.2fr) repeat(
+      3,
+      minmax(88px, 0.7fr)
+    );
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.order-context > span:not(.order-context__icon) {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.order-context small {
+  color: var(--muted);
+  font-size: var(--text-micro);
+}
+
+.order-context b {
+  overflow-wrap: anywhere;
+  font-size: var(--text-meta);
+}
+
+.order-context__icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-s);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+@media (max-width: 900px) {
+  .order-context {
+    grid-column: 1 / -1;
+    grid-template-columns: 36px repeat(2, minmax(0, 1fr));
+    border-top: 1px solid var(--line);
+  }
+
+  .order-context > span:last-child {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .order-context {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .order-context > span:not(.order-context__icon) {
+    grid-column: 2;
+  }
+}
+</style>

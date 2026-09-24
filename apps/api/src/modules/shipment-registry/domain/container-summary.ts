@@ -4,7 +4,7 @@ import type { ContainerLifecycleState } from "@logix/contracts";
 // currentStatus 取值与 @logix/contracts 的 ContainerLifecycleState 严格一致（G7 显式映射 parity）。
 export interface ContainerSummary {
   id: string;
-  orderNumber: string;
+  orderNumber: string | null;
   containerNumber: string | null;
   currentStatus: ContainerLifecycleState;
   updatedAt: string;

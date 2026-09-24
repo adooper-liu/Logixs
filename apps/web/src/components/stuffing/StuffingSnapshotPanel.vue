@@ -123,8 +123,8 @@ const readinessLabel = computed(() => {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -132,11 +132,11 @@ const readinessLabel = computed(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 .panel-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-title);
 }
 .panel-header small,
 .allocation-strip small,
@@ -144,7 +144,7 @@ const readinessLabel = computed(() => {
 .node-foot span,
 .node-foot time {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 .panel-icon {
   width: 34px;
@@ -156,11 +156,11 @@ const readinessLabel = computed(() => {
   color: var(--brand-strong);
 }
 .panel-header em {
-  padding: 4px 7px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-s);
   background: var(--warn-bg);
   color: var(--warn);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-style: normal;
   font-weight: 700;
 }
@@ -178,8 +178,8 @@ const readinessLabel = computed(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 9px 12px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border-right: 1px solid var(--line);
 }
 .allocation-strip > div:last-child {
@@ -188,7 +188,7 @@ const readinessLabel = computed(() => {
 .allocation-strip b,
 .fact-grid b {
   overflow-wrap: anywhere;
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .cargo-table {
   border-bottom: 1px solid var(--line-strong);
@@ -196,10 +196,10 @@ const readinessLabel = computed(() => {
 .table-row {
   display: grid;
   grid-template-columns: minmax(140px, 1.3fr) minmax(100px, 0.7fr);
-  gap: 10px;
-  padding: 8px 12px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--line);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .table-row:first-child {
   border-top: 0;
@@ -207,7 +207,7 @@ const readinessLabel = computed(() => {
 .table-head {
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 .fact-grid {
@@ -220,19 +220,19 @@ const readinessLabel = computed(() => {
 .fact-grid b {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .empty-state,
 .snapshot-missing {
   margin: 0;
-  padding: 16px 12px;
+  padding: var(--space-4) var(--space-3);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .snapshot-missing {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   background: var(--warn-bg);
   color: var(--warn);
 }
@@ -240,8 +240,8 @@ const readinessLabel = computed(() => {
   min-height: 38px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
 }
 .node-foot time {

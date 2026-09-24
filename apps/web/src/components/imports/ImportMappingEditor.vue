@@ -165,28 +165,28 @@ function submit(): void {
 
 <style scoped>
 .mapping-editor {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-5);
 }
 .block-title {
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-3);
   color: var(--app-text-secondary, #6b7280);
-  font-size: 15px;
+  font-size: var(--text-title);
   font-weight: 600;
 }
 .mapping-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px 16px;
-  margin-bottom: 14px;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
 }
 .mapping-row,
 .unit-row {
   display: grid;
   grid-template-columns: minmax(110px, 1fr) minmax(140px, 1.2fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .source-column {
   overflow: hidden;
@@ -201,11 +201,11 @@ select {
   border-radius: 6px;
   background: var(--app-surface, #fff);
   color: inherit;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
 }
 .unit-row {
   grid-template-columns: minmax(150px, max-content) minmax(140px, 220px) auto;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 .source-unit {
   color: var(--app-text-secondary, #6b7280);
@@ -213,9 +213,9 @@ select {
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   min-height: 36px;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 6px;
   background: transparent;

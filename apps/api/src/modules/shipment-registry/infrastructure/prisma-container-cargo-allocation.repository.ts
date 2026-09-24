@@ -31,6 +31,7 @@ export class PrismaContainerCargoAllocationRepository implements ContainerCargoA
         containerRecordId: true,
         version: true,
         allocations: {
+          where: { replenishmentOrderLineId: { not: null } },
           orderBy: [
             { replenishmentOrderLine: { productNumber: "asc" } },
             { replenishmentOrderLineId: "asc" },
@@ -49,6 +50,12 @@ export class PrismaContainerCargoAllocationRepository implements ContainerCargoA
     if (!active) return null;
 
     const items = active.allocations.map((allocation) => {
+      if (
+        !allocation.replenishmentOrderLineId ||
+        !allocation.replenishmentOrderLine
+      ) {
+        throw new Error("REPLENISHMENT_ORDER_LINE_REFERENCE_MISSING");
+      }
       if (!allocation.replenishmentOrderLine.productSkuId) {
         throw new Error("REPLENISHMENT_ORDER_LINE_SKU_UNBOUND");
       }
@@ -210,6 +217,11 @@ export class PrismaContainerCargoAllocationRepository implements ContainerCargoA
         });
       const usedByLine = new Map<string, bigint>();
       for (const allocation of activeAllocations) {
+        if (!allocation.replenishmentOrderLineId) {
+          throw new ContainerCargoAllocationConflictError(
+            "REPLENISHMENT_ORDER_LINE_REFERENCE_MISSING",
+          );
+        }
         usedByLine.set(
           allocation.replenishmentOrderLineId,
           (usedByLine.get(allocation.replenishmentOrderLineId) ?? 0n) +

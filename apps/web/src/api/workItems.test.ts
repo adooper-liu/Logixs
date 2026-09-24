@@ -24,7 +24,7 @@ describe("listExternalWorkItems", () => {
       "/api/work-items?containerId=c1&pageSize=100",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
           "X-Roles": "field_operator",
         },

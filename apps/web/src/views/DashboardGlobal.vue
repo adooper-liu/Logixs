@@ -44,9 +44,9 @@ const signals = computed(() =>
 
 .hint {
   margin: 0;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .hint--error {
@@ -56,9 +56,9 @@ const signals = computed(() =>
 .page-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--brand);
   text-decoration: none;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 </style>

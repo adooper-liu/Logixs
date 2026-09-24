@@ -75,35 +75,35 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 .eyebrow {
-  margin: 0 0 3px;
+  margin: 0 0 var(--space-1);
   color: var(--app-text-secondary, #667085);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-title);
   letter-spacing: 0;
 }
 .count {
   min-width: 28px;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: 4px;
   background: #eef2f6;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .items {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .queue-item {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 11px 12px;
+  padding: var(--space-3) var(--space-3);
   border: 1px solid var(--line, #d7dde5);
   border-radius: 6px;
   background: var(--surface, #fff);
@@ -120,7 +120,7 @@ h2 {
 }
 .identity {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: baseline;
   justify-content: space-between;
 }
@@ -128,12 +128,12 @@ h2 {
 .event,
 .time {
   color: var(--app-text-secondary, #667085);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .status {
   width: fit-content;
   color: #067647;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .status--blocked {
   color: #b54708;
@@ -141,14 +141,14 @@ h2 {
 .empty {
   margin: 0;
   color: var(--app-text-secondary, #667085);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .more-button {
   display: flex;
   min-height: 36px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   border: 1px solid var(--line, #d7dde5);
   border-radius: 4px;
   background: #fff;

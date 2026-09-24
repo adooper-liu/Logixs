@@ -19,6 +19,8 @@ import {
   findForbiddenTrackedPaths,
   findMisleadingContractPackageScripts,
   findMissingRequiredPolicyFiles,
+  findMissingStyleScaleTokens,
+  findStyleScaleViolations,
   findUiThemeBoundaryViolations,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
@@ -27,6 +29,220 @@ const temporaryDirectories = [];
 after(() => {
   temporaryDirectories.forEach((directory) =>
     rmSync(directory, { force: true, recursive: true }),
+  );
+});
+
+test("requires every style scale token to be defined", () => {
+  assert.deepEqual(
+    findMissingStyleScaleTokens(`
+      :root[data-ui-theme="logix"] {
+        --text-page: 20px;
+        --text-title: 15px;
+        --text-body: 14px;
+        --space-1: 4px;
+      }
+    `),
+    [
+      "tokens.css 缺少 --text-meta",
+      "tokens.css 缺少 --text-label",
+      "tokens.css 缺少 --text-micro",
+      "tokens.css 缺少 --space-2",
+      "tokens.css 缺少 --space-3",
+      "tokens.css 缺少 --space-4",
+      "tokens.css 缺少 --space-5",
+      "tokens.css 缺少 --space-6",
+      "tokens.css 缺少 --space-8",
+    ],
+  );
+});
+
+test("accepts a complete style scale token set", () => {
+  const complete = [
+    "--text-page: 20px",
+    "--text-title: 15px",
+    "--text-body: 14px",
+    "--text-meta: 13px",
+    "--text-label: 12px",
+    "--text-micro: 11px",
+    "--space-1: 4px",
+    "--space-2: 8px",
+    "--space-3: 12px",
+    "--space-4: 16px",
+    "--space-5: 20px",
+    "--space-6: 24px",
+    "--space-8: 32px",
+  ].join(";\n");
+  assert.deepEqual(findMissingStyleScaleTokens(complete), []);
+});
+
+test("rejects literal font sizes and off-scale spacing", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Demo.vue",
+        source: `<template><div /></template>
+<style scoped>
+.a { font-size: 14px; padding: 10px; }
+.b { font-size: var(--text-body); padding: var(--space-3); }
+</style>`,
+      },
+    ]),
+    [
+      "apps/web/src/views/Demo.vue: font-size 不得写裸值 '14px'，请改用 var(--text-*) 令牌",
+      "apps/web/src/views/Demo.vue: padding 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("accepts tokens, zero, auto and calc over space tokens", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Ok.vue",
+        source: `<style scoped>
+.a { margin: 0 auto; gap: var(--space-2); padding: var(--space-1) var(--space-3); }
+.b { margin-top: calc(var(--space-2) * -1); }
+</style>`,
+      },
+    ]),
+    [],
+  );
+});
+
+test("checks every part of a shorthand（裸 px 一律不认，含在档上的 12px）", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Short.vue",
+        source: "<style scoped>\n.a { margin: 12px 10px 6px; }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '12px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+      "apps/web/src/views/Short.vue: margin 不得写裸值 '6px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("catches declarations packed onto one line", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Packed.vue",
+        source:
+          "<style scoped>\n.a { position: relative; font-size: 10px; gap: 10px; }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Packed.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
+      "apps/web/src/views/Packed.vue: gap 不得写裸值 '10px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("checks logical spacing properties too", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Logical.vue",
+        source:
+          "<style scoped>\n.a { padding-inline: 14px; margin-block-start: var(--space-2); }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Logical.vue: padding-inline 不得写裸值 '14px'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("rejects a font shorthand that hides a literal size", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Shorthand.vue",
+        source:
+          "<style scoped>\n.a { font: 10px var(--font-mono); }\n.b { font: inherit; }\n.c { font: var(--text-body) var(--font-sans); }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Shorthand.vue: font 简写里的字号不得写裸值，请改用 var(--text-*) 令牌（当前为 '10px var(--font-mono)'）",
+    ],
+  );
+});
+
+test("accepts fluid functions but still rejects calc over bare px", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Fluid.vue",
+        source:
+          "<style scoped>\n.a { padding: min(16vh, 140px) var(--space-4); }\n.b { padding: calc(10px); }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Fluid.vue: padding 不得写裸值 'calc(10px)'，请改用 var(--space-*) 令牌（4/8/12/16/20/24/32）",
+    ],
+  );
+});
+
+test("accepts an exemption that states a reason", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Ok.vue",
+        source:
+          "<style scoped>\n.a { margin-top: -1px; /* style-scale-exempt: 与 1px 边框对齐 */ }\n</style>",
+      },
+    ]),
+    [],
+  );
+});
+
+test("rejects an exemption without a real reason", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Bad.vue",
+        source:
+          "<style scoped>\n.a { margin-top: -1px; /* style-scale-exempt: 先这样 */ }\n</style>",
+      },
+    ]),
+    ["apps/web/src/views/Bad.vue: 豁免必须写明理由（≥4 字），当前为 '先这样'"],
+  );
+});
+
+test("ignores token definitions, tests and non-web files", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/themes/logix/tokens.css",
+        source: ":root { --space-9: 36px; font-size: 10px; }",
+      },
+      {
+        path: "apps/web/src/views/Demo.test.ts",
+        source: "const a = 'font-size: 10px';",
+      },
+      {
+        path: "docs/notes.md",
+        source: "font-size: 10px",
+      },
+    ]),
+    [],
+  );
+});
+
+test("reports every violation now that the migration baseline is gone", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Legacy.vue",
+        source: "<style scoped>\n.a { font-size: 10px; }\n</style>",
+      },
+    ]),
+    [
+      "apps/web/src/views/Legacy.vue: font-size 不得写裸值 '10px'，请改用 var(--text-*) 令牌",
+    ],
   );
 });
 

@@ -1,12 +1,12 @@
 # 查询投影契约 V1
 
 > 状态：**正式 V1（负责人批准）**  
-> 契约 ID：`GC-010` · 版本：`1.0.0` · 定稿日期：2026-09-10  
+> 契约 ID：`GC-010` · 版本：`1.1.0` · 定稿日期：2026-09-10 · Shipment 加法扩展：2026-09-23
 > 所有者：查询体验负责人；字段事实由各源模块负责
 
 ## 1. 目的与权威边界
 
-本文件是货柜全生命周期公共读模型、分页、排序、权限裁剪、时间展示和新鲜度语义的唯一业务权威。它供 API、Web 操作台、移动端和报表消费，不拥有生命周期、任务工单、专业事实、证据、权限或同步状态机。
+本文件是 Shipment 与货柜全生命周期公共读模型、分页、排序、权限裁剪、时间展示和新鲜度语义的唯一业务权威。它供 API、Web 操作台、移动端和报表消费，不拥有 Shipment、生命周期、任务工单、专业事实、证据、权限或同步状态机。
 
 投影只能组合源模块已经裁决的事实。不得根据文案、颜色、日期是否非空、HTTP 成功或同步状态重新推导业务状态；投影延迟也不得反向修改源事实。
 
@@ -18,6 +18,7 @@
 tenantId: UUID
 containerId: UUID
 containerNumber: string
+shipment?: ContainerShipmentContextV1 | null
 flow: FlowSummaryV1 | null
 currentNode: NodeSummaryV1 | null
 nodes: NodeSummaryV1[]
@@ -37,9 +38,38 @@ freshness: ProjectionFreshnessV1
 ```
 
 - 箱号尚未产生、仍处备货阶段的对象不返回本模型，使用备货模块自己的查询模型。
+- `shipment` 返回当前 active Shipment-柜关系、主航次/路线、当前柜范围运输单证与上游引用；没有 active 关系时明确为 `null`。旧客户端可忽略该 V1.1 加法字段。
 - `flow = null` 只允许用于已登记箱号但生命周期尚未启动的明确场景；不得用空对象代替。
 - `currentNode`、节点顺序和状态直接来自 `lifecycle-control` 投影。
 - 列表摘要不得成为写命令载荷；写入只提交动作契约定义的 ID、版本和 payload。
+
+### 2.1 已出运 Shipment 查询扩展
+
+`ShipmentSummaryV1` 用于岗位列表，至少返回 Shipment 身份、承运航次、起讫港、ATD/ETA、Shipment 生命周期状态与版本、关系版本、当前柜/货物行数量、生命周期初始化状态和更新时间。Shipment 状态固定为：
+
+```text
+departed -> in_transit -> arrived -> customs_clearance
+  -> released -> picked_up -> delivered_to_warehouse -> closed
+```
+
+`ShipmentDetailV1` 以一票为粒度返回：
+
+```text
+shipment
+handoff                       # 当前有效交接摘要，不返回原始载荷
+containers[]                  # 当前 active Shipment-Container 关系
+  -> allocations[]            # 本柜对 ShipmentCargoLine 的实际装载
+cargoLines[]                  # 当前 active 出运货物行
+transportDocuments[]          # 当前 active MBL/HBL/AMS/Booking 及柜范围
+upstreamReferences[]          # 稳定上游引用，不复制上游业务规则
+lifecycleInitialization       # pending | ready | manual_review
+projectionVersion, asOf
+```
+
+- `ready` 只在当前 `relationshipVersion` 下，每个 active 柜都存在同版本 `post_departure_ocean` Flow 时成立。
+- 当前生命周期 Outbox/Inbox 进入死信且上述完成条件未成立时返回 `manual_review`；其余未完成场景返回 `pending`。接收成功、Outbox 已发布或 HTTP 成功均不得单独显示为 `ready`。
+- 详情只聚合当前有效关系；旧 Handoff、旧货物/单证/引用和被替代柜关系继续保存在审计历史中，不混入当前工作视图。
+- Shipment 详情必须同时通过 `container.read` 与 `lifecycle.read` 权限裁剪；越租户查询统一表现为资源不存在。
 
 ## 3. 状态分轨
 
@@ -53,6 +83,8 @@ freshness: ProjectionFreshnessV1
 | 数据同步 | `syncSummary.operations[].receptionState/businessDecisionState/commitState` | 操作所有者/集成平台 | 请求是否接收、接受、落账 |
 
 同步完成不代表工单、任务或流程完成。异常与 Block 是正交事实，分别通过 `activeExceptions` 和 `activeBlocks` 展示，不得伪装成主状态。
+
+`activeExceptions` 只投影独立异常案件中 `open | investigating` 的当前事实；已解决或已驳回案件保留历史但不进入活动清单。异常案件按柜建立稳定身份，可选关联 Shipment，并保留来源域、来源记录/版本、严重度、证据和解决时间。查询层不得从备注、状态文案或 Block 临时合成异常案件。
 
 ## 4. 节点、任务与工单摘要
 
@@ -109,6 +141,7 @@ eventSequence, projectionVersion
 
 ```text
 actionCode, actionVersion
+target: EntityRefV1
 executable: boolean
 denialCategory?: authentication | scope | capability | state
   | precondition | evidence | lock | review | concurrency
@@ -118,7 +151,7 @@ expectedVersion
 expiresAt?
 ```
 
-允许动作由服务端按 `GC-008` 计算。权限裁剪可完全移除用户不应知晓的动作；对可见但当前不可执行的动作返回稳定拒绝类别。客户端不得把该数组当作永久授权，命令到达服务端时必须重新校验。
+允许动作由服务端按 `GC-008` 计算。`target` 明确动作实际作用对象，禁止只返回无法区分多张工单或多个案件的动作码。权限裁剪可完全移除用户不应知晓的动作；对可见但当前不可执行的动作返回稳定拒绝类别。客户端不得把该数组当作永久授权，命令到达服务端时必须重新校验。
 
 ## 8. 同步摘要与新鲜度
 
@@ -152,7 +185,8 @@ projectionVersion: integer
 
 - 默认 `pageSize=50`，最小 1，最大 200；超过上限返回公共校验错误。
 - cursor 是不透明、短期有效并绑定租户、过滤器、排序和权限上下文的值。
-- 必须声明唯一稳定尾键；货柜列表默认 `updatedAt desc, containerId desc`。
+- 必须声明唯一稳定尾键；货柜列表默认 `updatedAt desc, containerId desc`，Shipment 列表默认 `updatedAt desc, shipmentId desc`。
+- Shipment cursor 绑定租户和生命周期状态过滤器；更换过滤器或租户后不得复用。
 - 相同 cursor 重放在快照有效期内返回一致页；过期或参数不匹配明确失败，不退回第一页。
 - 过滤字段采用登记代码，不接受数据库列名或任意表达式。
 - 导出不是无限 pageSize；使用独立受审计异步动作。
@@ -194,5 +228,6 @@ projectionVersion: integer
 
 - 新增可选字段通常是加法兼容；新增必填字段、改变可空性、状态含义、默认排序、权限可见性或 cursor 语义是行为变更或破坏性变更。
 - V1 不承诺数据库结构；实体、DTO 和 API 必须显式映射。
-- G6 已补齐主视图、`currentTimes`、完整任务/工单摘要、时间线和游标分页 Schema，并通过覆盖索引及正负向 fixture 自校验，门禁为 `D4`；尚无 OpenAPI、生成类型、数据库投影或运行时实现。
-- 任务阶段 G7 将实现投影器、API、前端消费者及契约/E2E 测试。
+- G6 已补齐主视图、`currentTimes`、完整任务/工单摘要、时间线和游标分页 Schema，并通过覆盖索引及正负向 fixture 自校验，门禁为 `D4`。
+- Shipment V1.1 加法查询 Schema、生成类型、分页 API 与一票详情已在 `feat/post-departure-shipment-lifecycle` 实现；发布迁移前仍是目标契约，不得冒充共享环境已可用。
+- `GET /api/containers/:id/operational-view` 已实现首个只读实时聚合：在 `REPEATABLE READ` 快照内组合柜、Flow/节点、三类时间、任务工单、日期专业事实、证据摘要、活动 Block、独立活动异常、同步状态与来源版本；按 `task.read`、`evidence.read` 裁剪敏感内容，越租户统一返回不存在。当前只登记并投影已有完整写链路的 GC-008 动作 `record_lifecycle_date_fact`，同时返回正式目标引用、动作版本、Flow 并发版本及状态拒绝原因；工单领取/完成等尚未满足公共命令信封的动作不得提前暴露。四表 146 字段注册已完成，十张真实详情已固化为 97 列只读对账 fixture 并证明没有引入新事实所有者；运行时 97 列逐值对拍仍待后续切片，因此不得称为完整详情闭环。

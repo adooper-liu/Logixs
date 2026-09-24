@@ -160,6 +160,7 @@ watch(
         <LiveNodeRail
           v-if="nodes.length"
           :nodes="nodes"
+          :selected-node-id="selectedNode?.nodeInstanceId ?? ''"
           @select="selectedNodeId = $event"
         />
         <p v-else class="hint">{{ uiCopy.chrome.emptyFlow }}</p>
@@ -220,7 +221,7 @@ watch(
 .record-stack {
   min-width: 0;
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .record-stack > * {
@@ -241,8 +242,8 @@ watch(
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
 }
 
 .slot-item + .slot-item {
@@ -264,7 +265,7 @@ watch(
 .hint,
 .next-step,
 .not-found {
-  padding: 16px;
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -285,13 +286,13 @@ watch(
 .assistant-entry {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .assistant-entry button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .assistant-entry p {
@@ -301,7 +302,7 @@ watch(
 
 .next-step p,
 .not-found p {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   color: var(--muted);
 }
 
@@ -312,7 +313,7 @@ watch(
 }
 
 .not-found {
-  padding: 36px 16px;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
 }
 
@@ -324,7 +325,7 @@ watch(
 
   .slot-item {
     min-width: 0;
-    padding: 8px 10px;
+    padding: var(--space-2) var(--space-3);
   }
 }
 </style>

@@ -138,8 +138,8 @@ const decisionLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 18px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--line, #d7dde5);
 }
 .panel-eyebrow,
@@ -151,11 +151,11 @@ const decisionLabel = computed(() => {
 }
 .panel-eyebrow {
   color: var(--app-text-secondary, #667085);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .panel-title {
-  margin-top: 4px;
-  font-size: 18px;
+  margin-top: var(--space-1);
+  font-size: var(--text-page);
   letter-spacing: 0;
 }
 .state-mark {
@@ -175,7 +175,7 @@ const decisionLabel = computed(() => {
 }
 .fact-strip div {
   min-width: 0;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   border-right: 1px solid var(--line, #d7dde5);
 }
 .fact-strip div:last-child {
@@ -183,23 +183,23 @@ const decisionLabel = computed(() => {
 }
 .fact-strip dt {
   color: var(--app-text-secondary, #667085);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .fact-strip dd {
-  margin: 5px 0 0;
+  margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
   font-weight: 650;
 }
 .data-section {
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--line, #d7dde5);
 }
 .data-section:last-child {
   border-bottom: 0;
 }
 .section-title {
-  margin-bottom: 10px;
-  font-size: 14px;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-body);
   letter-spacing: 0;
 }
 .table-wrap {
@@ -208,11 +208,11 @@ const decisionLabel = computed(() => {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .data-table th,
 .data-table td {
-  padding: 9px 10px;
+  padding: var(--space-2) var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--line, #d7dde5);
   vertical-align: top;
@@ -226,7 +226,7 @@ const decisionLabel = computed(() => {
 }
 .finding-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -237,12 +237,12 @@ const decisionLabel = computed(() => {
       120px,
       1fr
     );
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-left: 3px solid var(--app-danger, #c2413b);
   background: color-mix(in srgb, var(--app-danger, #c2413b) 7%, transparent);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .finding-code {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -257,13 +257,13 @@ const decisionLabel = computed(() => {
 }
 .empty-state,
 .clear-state {
-  padding: 18px;
+  padding: var(--space-5);
   color: var(--app-text-secondary, #667085);
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 .data-section .empty-state,
 .data-section .clear-state {
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 .clear-state {
   color: var(--app-success, #087f5b);

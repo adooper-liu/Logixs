@@ -1,3 +1,5 @@
+import { DEV_TENANT_ID } from "./developmentIdentity";
+
 export interface OpsNotificationItem {
   id: string;
   problemCode: string;
@@ -23,7 +25,6 @@ export interface NotificationTarget {
   targetPath: string;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 const DEV_OPERATOR_ID = "dev-operator";
 const DEV_ROLES = "operations_dispatcher";
 

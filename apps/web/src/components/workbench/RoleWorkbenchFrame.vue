@@ -1,25 +1,38 @@
 <script setup lang="ts">
 import { BriefcaseBusiness, Container } from "@lucide/vue";
+import { computed } from "vue";
 import type { ContainerSummary } from "../../api/containers";
 import type { LiveNodeView } from "../../data/liveNodeProjection";
 import LiveNodeRail from "../container/LiveNodeRail.vue";
 import PageHeader from "../ui/PageHeader.vue";
 
-defineProps<{
-  title: string;
-  summary: string;
-  workspaceLabel: string;
-  nodeScopeLabel: string;
-  containers: readonly ContainerSummary[];
-  selectedContainerId: string;
-  selectedContainer: ContainerSummary | null;
-  nodes: readonly LiveNodeView[];
-  containerListLoading: boolean;
-  selectionLoading: boolean;
-  containerListError: string;
-  selectionError: string;
-  warnings: readonly { code: string; message: string }[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    title: string;
+    summary: string;
+    workspaceLabel: string;
+    nodeScopeLabel: string;
+    containers: readonly ContainerSummary[];
+    selectedContainerId: string;
+    selectedContainer: ContainerSummary | null;
+    nodes: readonly LiveNodeView[];
+    containerListLoading: boolean;
+    selectionLoading: boolean;
+    containerListError: string;
+    selectionError: string;
+    warnings: readonly { code: string; message: string }[];
+    contextReady?: boolean;
+    showContainerSelector?: boolean;
+    emptyMessage?: string;
+    loadingMessage?: string;
+  }>(),
+  {
+    contextReady: undefined,
+    showContainerSelector: true,
+    emptyMessage: "从任务池选择工作，或直接选择货柜查看岗位事实。",
+    loadingMessage: "正在加载当前岗位事实…",
+  },
+);
 
 const emit = defineEmits<{
   selectContainer: [containerId: string];
@@ -27,10 +40,15 @@ const emit = defineEmits<{
 
 defineSlots<{
   actions(): unknown;
+  context(): unknown;
   queue(): unknown;
   primary(): unknown;
   secondary(): unknown;
 }>();
+
+const hasContext = computed(
+  () => props.contextReady ?? Boolean(props.selectedContainer),
+);
 
 function selectContainer(event: Event): void {
   emit("selectContainer", (event.target as HTMLSelectElement).value);
@@ -60,7 +78,9 @@ function selectContainer(event: Event): void {
         </span>
       </div>
 
-      <label class="container-selector">
+      <slot v-if="$slots.context" name="context" />
+
+      <label v-else-if="showContainerSelector" class="container-selector">
         <span>当前货柜</span>
         <select
           data-testid="workbench-container-select"
@@ -77,7 +97,10 @@ function selectContainer(event: Event): void {
         </select>
       </label>
 
-      <div v-if="selectedContainer" class="container-identity">
+      <div
+        v-if="showContainerSelector && selectedContainer"
+        class="container-identity"
+      >
         <Container :size="18" aria-hidden="true" />
         <span>
           <b>{{ selectedContainer.containerNumber ?? "未绑箱号" }}</b>
@@ -89,11 +112,11 @@ function selectContainer(event: Event): void {
     <p v-if="containerListError" class="notice notice--error" role="alert">
       {{ containerListError }}
     </p>
-    <p v-if="!selectedContainerId" class="notice">
-      从任务池选择工作，或直接选择货柜查看{{ workspaceLabel }}事实。
+    <p v-if="!hasContext" class="notice">
+      {{ emptyMessage }}
     </p>
     <p v-else-if="selectionLoading" class="notice">
-      正在加载这柜的{{ workspaceLabel }}事实…
+      {{ loadingMessage }}
     </p>
     <p v-else-if="selectionError" class="notice notice--error" role="alert">
       {{ selectionError }}
@@ -102,21 +125,21 @@ function selectContainer(event: Event): void {
     <template v-if="selectedContainer && !selectionLoading && !selectionError">
       <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
       <p v-else class="notice">这柜尚未初始化生命周期流程。</p>
-
-      <ul
-        v-if="warnings.length"
-        class="projection-warnings"
-        aria-label="局部数据提示"
-      >
-        <li v-for="warning in warnings" :key="warning.code">
-          {{ warning.message }}
-        </li>
-      </ul>
     </template>
+
+    <ul
+      v-if="warnings.length"
+      class="projection-warnings"
+      aria-label="局部数据提示"
+    >
+      <li v-for="warning in warnings" :key="warning.code">
+        {{ warning.message }}
+      </li>
+    </ul>
 
     <div
       class="workbench-grid"
-      :class="{ 'workbench-grid--queue-only': !selectedContainer }"
+      :class="{ 'workbench-grid--queue-only': !hasContext }"
     >
       <section
         class="workbench-pane workbench-pane--queue"
@@ -124,18 +147,10 @@ function selectContainer(event: Event): void {
       >
         <slot name="queue" />
       </section>
-      <section
-        v-if="selectedContainer"
-        class="workbench-pane"
-        aria-label="岗位事实"
-      >
+      <section v-if="hasContext" class="workbench-pane" aria-label="岗位事实">
         <slot name="primary" />
       </section>
-      <section
-        v-if="selectedContainer"
-        class="workbench-pane"
-        aria-label="岗位待办"
-      >
+      <section v-if="hasContext" class="workbench-pane" aria-label="岗位待办">
         <slot name="secondary" />
       </section>
     </div>
@@ -155,7 +170,7 @@ function selectContainer(event: Event): void {
       0.65fr
     );
   align-items: stretch;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   border: 1px solid var(--line);
   border-left: 3px solid var(--brand);
   border-radius: var(--radius-card);
@@ -168,8 +183,8 @@ function selectContainer(event: Event): void {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3);
 }
 
 .role-context {
@@ -181,7 +196,7 @@ function selectContainer(event: Event): void {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .context-icon {
@@ -197,7 +212,7 @@ function selectContainer(event: Event): void {
 
 .node-scope {
   margin-left: auto;
-  padding-left: 12px;
+  padding-left: var(--space-3);
   border-left: 1px solid var(--line);
 }
 
@@ -205,27 +220,27 @@ function selectContainer(event: Event): void {
 .container-identity small,
 .container-selector > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .role-context b,
 .container-identity b {
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 .container-selector {
   min-width: 0;
   display: grid;
-  gap: 4px;
-  padding: 9px 12px;
+  gap: var(--space-1);
+  padding: var(--space-3);
   border-right: 1px solid var(--line);
 }
 
 .container-selector select {
   min-width: 0;
   min-height: 36px;
-  padding: 0 9px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -239,12 +254,12 @@ function selectContainer(event: Event): void {
 
 .notice,
 .projection-warnings {
-  margin: 0 0 12px;
-  padding: 10px 12px;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
   border-left: 3px solid var(--info);
   background: var(--info-bg);
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .notice--error {
@@ -256,8 +271,8 @@ function selectContainer(event: Event): void {
 .projection-warnings {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 18px;
-  padding-left: 28px;
+  gap: var(--space-2) var(--space-5);
+  padding-left: var(--space-8);
   border-left-color: var(--warn);
   background: var(--warn-bg);
 }
@@ -269,7 +284,7 @@ function selectContainer(event: Event): void {
       300px,
       0.8fr
     );
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
 }
 

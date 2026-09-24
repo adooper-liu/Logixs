@@ -1,0 +1,72 @@
+{
+  "version": "1.0.0",
+  "sourceSystem": "aosom_internal_business_mapping",
+  "sourceVersion": "2026-09-23",
+  "status": "owner_confirmed",
+  "evidenceRef": "docs/product/domain/POST_DEPARTURE_CORE_MODEL_GAP_V1.md#57-货主与销售国家映射",
+  "records": [
+    {
+      "id": "cb0d6214-2f8b-5de6-a8e4-afcc0411f4d3",
+      "stableCode": "AOSOM_US",
+      "legalName": "AOSOM LLC",
+      "internalCountryShortCode": "US",
+      "salesCountryCode": "US"
+    },
+    {
+      "id": "e47a5b2c-e4c0-5f25-a5eb-f756f1fc3086",
+      "stableCode": "AOSOM_CA",
+      "legalName": "AOSOM CANADA INC.",
+      "internalCountryShortCode": "CA",
+      "salesCountryCode": "CA"
+    },
+    {
+      "id": "661238b9-39e3-55e5-9023-25f4c790f864",
+      "stableCode": "MH_STAR_UK",
+      "legalName": "MH STAR UK LTD",
+      "internalCountryShortCode": "UK",
+      "salesCountryCode": "GB"
+    },
+    {
+      "id": "8f2a6419-67ed-54d9-8d07-f15daf1051c9",
+      "stableCode": "MH_HANDEL_DE",
+      "legalName": "MH HANDEL GMBH",
+      "internalCountryShortCode": "DE",
+      "salesCountryCode": "DE"
+    },
+    {
+      "id": "a6d7d3a7-18e8-54cb-88df-002be68a65e7",
+      "stableCode": "MH_FRANCE_FR",
+      "legalName": "MH FRANCE",
+      "internalCountryShortCode": "FR",
+      "salesCountryCode": "FR"
+    },
+    {
+      "id": "a462575c-04df-57f6-8d43-855428191466",
+      "stableCode": "AOSOM_ITALY_IT",
+      "legalName": "AOSOM ITALY SRL",
+      "internalCountryShortCode": "IT",
+      "salesCountryCode": "IT"
+    },
+    {
+      "id": "d9fd61d1-3a3b-5328-80af-7c56484742bf",
+      "stableCode": "AOSOM_SPAIN_ES",
+      "legalName": "SPANISH AOSOM, S.L.",
+      "internalCountryShortCode": "ES",
+      "salesCountryCode": "ES"
+    },
+    {
+      "id": "84063430-b34a-5ad4-9e9f-f6536251862b",
+      "stableCode": "AOSOM_IRELAND_IE",
+      "legalName": "AOSOM IRELAND LIMITED",
+      "internalCountryShortCode": "IE",
+      "salesCountryCode": "IE"
+    },
+    {
+      "id": "bd07ee31-6f41-5e0e-a246-fbf7bf646702",
+      "stableCode": "AOSOM_ROMANIA_RO",
+      "legalName": "AOSOM ROMANIA S.R.L.",
+      "internalCountryShortCode": "RO",
+      "salesCountryCode": "RO"
+    }
+  ]
+}

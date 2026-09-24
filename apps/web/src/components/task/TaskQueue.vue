@@ -178,7 +178,7 @@ const dueLabel = (dueAt: string) =>
   max-height: calc(100dvh - var(--topbar-height) - 112px);
   display: flex;
   flex-direction: column;
-  padding: 10px;
+  padding: var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-card);
   background: var(--surface-2);
@@ -188,27 +188,27 @@ const dueLabel = (dueAt: string) =>
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 36px;
-  padding: 0 4px 8px;
+  padding: 0 var(--space-1) var(--space-2);
 }
 .queue-scroll {
   min-height: 0;
-  padding-right: 4px;
+  padding-right: var(--space-1);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 .task-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .queue-head div,
 .monitor-head,
 .monitor-head > span {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
 }
 .queue-head b,
 .monitor-head b {
@@ -219,9 +219,9 @@ const dueLabel = (dueAt: string) =>
   min-height: 68px;
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: start;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -248,7 +248,7 @@ const dueLabel = (dueAt: string) =>
   width: 7px;
   height: 7px;
   flex: none;
-  margin-top: 6px;
+  margin-top: var(--space-2);
   border-radius: 50%;
   background: var(--muted);
 }
@@ -272,7 +272,7 @@ const dueLabel = (dueAt: string) =>
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .task-title,
@@ -286,12 +286,12 @@ const dueLabel = (dueAt: string) =>
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .task-title strong {
   flex: none;
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .meta,
@@ -299,15 +299,15 @@ const dueLabel = (dueAt: string) =>
 .task-state time,
 .monitor-row small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .risk-copy {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--risk);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .risk-copy svg {
@@ -336,8 +336,8 @@ const dueLabel = (dueAt: string) =>
 }
 .waiting-zone,
 .monitor-zone {
-  margin-top: 12px;
-  padding: 9px 12px;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -348,8 +348,8 @@ const dueLabel = (dueAt: string) =>
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 0;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
   border: 0;
   border-top: 1px dashed var(--line);
   background: transparent;
@@ -365,16 +365,16 @@ const dueLabel = (dueAt: string) =>
 }
 .waiting-row small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .waiting-row strong {
   flex: none;
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .monitor-head {
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--text-label);
   cursor: pointer;
   list-style: none;
 }
@@ -388,13 +388,13 @@ const dueLabel = (dueAt: string) =>
 
 .monitor-row {
   display: flex;
-  gap: 8px;
-  padding: 7px 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
   border-top: 1px dashed var(--line);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 .monitor-zone[open] .monitor-head {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 
 @media (max-width: 767px) {

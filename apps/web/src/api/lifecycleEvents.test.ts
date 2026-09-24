@@ -23,7 +23,7 @@ describe("listLifecycleEvents", () => {
       "/api/containers/c1/lifecycle-events?pageSize=50",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
         },
       },

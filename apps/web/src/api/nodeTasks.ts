@@ -1,4 +1,5 @@
 import { uiCopy } from "../data/uiCopyCatalog";
+import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
 
 // 薄真实任务台 DTO：与 work-execution 控制器响应形状一致。
@@ -104,7 +105,6 @@ export interface CompleteWorkOrderResult {
   rejectionReasonCode: string | null;
 }
 
-const DEV_TENANT_ID = "dev-tenant";
 export const DEV_OPERATOR_ID = "dev-operator";
 
 function identityHeaders(): HeadersInit {

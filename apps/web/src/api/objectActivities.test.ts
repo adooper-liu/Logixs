@@ -29,7 +29,7 @@ describe("listObjectActivities", () => {
       "/api/containers/container%2F%E4%B8%80/activities?pageSize=25&cursor=snapshot%2B1",
       {
         headers: {
-          "X-Tenant-Id": "dev-tenant",
+          "X-Tenant-Id": "demo-real-sample-20260921",
           "X-Operator-Id": "dev-operator",
           "X-Roles": "operations_dispatcher",
         },

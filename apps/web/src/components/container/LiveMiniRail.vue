@@ -22,12 +22,12 @@ defineProps<{
 .mini-rail {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 8px;
-  margin: 4px 0 0;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-1) 0 0;
   padding: 0;
   list-style: none;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .mini-rail li.done {

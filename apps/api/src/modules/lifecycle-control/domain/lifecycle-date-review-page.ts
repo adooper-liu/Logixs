@@ -11,7 +11,7 @@ export interface LifecycleDateReviewCursor {
 
 export interface LifecycleDateReviewCandidate {
   fact: LifecycleDateFactRecord;
-  orderNumber: string;
+  orderNumber: string | null;
   containerNumber: string | null;
   currentProjectionVersion: number;
 }

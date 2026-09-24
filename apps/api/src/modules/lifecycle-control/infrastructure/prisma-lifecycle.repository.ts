@@ -201,7 +201,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
 
   async findContainerBase(containerId: string): Promise<{
     tenantId: string;
-    orderNumber: string;
+    orderNumber: string | null;
     containerNumber: string | null;
     currentStatus: string;
   } | null> {
@@ -278,7 +278,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     });
     return rows.map((row) => ({
       id: row.id,
-      containerId: row.containerId,
+      containerId: row.containerId!,
       eventCode: row.eventCode as CanonicalEventListItem["eventCode"],
       occurredAt: row.occurredAt,
       recordedAt: row.appliedAt,
@@ -294,7 +294,7 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
     const event = await this.prisma.canonicalEvent.findUnique({
       where: { idempotencyKey: key },
     });
-    return event
+    return event?.containerId
       ? {
           id: event.id,
           containerId: event.containerId,
@@ -330,8 +330,14 @@ export class PrismaLifecycleRepository implements LifecycleRepository {
       const created = await tx.canonicalEvent.create({
         data: {
           containerId: event.containerId,
+          tenantId: event.tenantId,
+          subjectType: "container",
+          subjectId: event.containerId,
+          subjectVersion: 1,
           eventCode: event.eventCode,
+          eventVersion: 1,
           domainFactId: event.domainFactId,
+          domainFactType: "lifecycle_date_fact",
           nodeCode: event.nodeCode,
           timeKind: event.timeKind,
           authorityPolicyRef: event.authorityPolicyRef,

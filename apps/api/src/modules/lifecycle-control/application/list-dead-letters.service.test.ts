@@ -89,7 +89,7 @@ describe("ListDeadLettersService", () => {
     expect(page.projectionVersion).toBe(0);
     expect(listDeadLetters).toHaveBeenCalledWith({
       tenantId: "t1",
-      ownerModule: "lifecycle-control",
+      ownerModules: ["lifecycle-control", "shipment-registry"],
       after: undefined,
       take: 3,
     });

@@ -47,8 +47,8 @@ function onFileChange(event: Event): void {
   display: inline-flex;
   min-height: 36px;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--app-border, #e5e7eb);
   border-radius: 8px;
 }

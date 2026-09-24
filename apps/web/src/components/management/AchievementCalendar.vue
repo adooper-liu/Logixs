@@ -78,7 +78,7 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
 <style scoped>
 .achievement-block {
   min-width: 0;
-  padding: 10px 12px 12px;
+  padding: var(--space-3) var(--space-3) var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -92,22 +92,22 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
 
 .achievement-head {
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 9px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .achievement-head > div:first-child {
   min-width: 0;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .achievement-head b {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .achievement-head span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .period-switch {
@@ -127,7 +127,7 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
   background: var(--surface);
   color: var(--ink-soft);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--text-micro);
   cursor: pointer;
 }
 
@@ -149,14 +149,14 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
   border-radius: var(--radius-s);
   overflow: hidden;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: var(--text-micro);
   text-align: center;
 }
 
 .achievement-calendar th,
 .achievement-calendar td {
   height: 27px;
-  padding: 3px 5px;
+  padding: var(--space-1) var(--space-1);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
@@ -175,7 +175,7 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
 .achievement-calendar thead th {
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 650;
 }
 
@@ -218,12 +218,12 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
   }
 
   .achievement-calendar {
-    font-size: 9px;
+    font-size: var(--text-micro);
   }
 
   .achievement-calendar th,
   .achievement-calendar td {
-    padding-inline: 2px;
+    padding-inline: var(--space-1);
   }
 }
 </style>

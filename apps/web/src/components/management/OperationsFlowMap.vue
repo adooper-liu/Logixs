@@ -148,9 +148,9 @@ const hiddenTraceCount = computed(() =>
   min-height: 46px;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -159,18 +159,18 @@ const hiddenTraceCount = computed(() =>
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .panel-head h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 
 .panel-head strong,
 .axis-label {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .node-axis,
@@ -192,7 +192,7 @@ const hiddenTraceCount = computed(() =>
 .axis-label {
   display: flex;
   align-items: center;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .node-scale,
@@ -224,8 +224,8 @@ const hiddenTraceCount = computed(() =>
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 5px;
-  padding: 8px 2px 6px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1) var(--space-2);
   color: var(--muted);
   text-align: center;
 }
@@ -241,14 +241,14 @@ const hiddenTraceCount = computed(() =>
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--ink-soft);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 700;
   line-height: 1;
 }
 
 .node-cell b {
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 600;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -267,7 +267,7 @@ const hiddenTraceCount = computed(() =>
   border-radius: 50%;
   background: var(--info);
   color: var(--surface);
-  font-size: 8px;
+  font-size: var(--text-micro);
   font-style: normal;
   transform: translateX(-50%);
 }
@@ -314,7 +314,7 @@ const hiddenTraceCount = computed(() =>
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .trace-identity {
@@ -329,7 +329,7 @@ const hiddenTraceCount = computed(() =>
 .trace-identity b,
 .trace-state b {
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -338,7 +338,7 @@ const hiddenTraceCount = computed(() =>
 .trace-state span {
   overflow: hidden;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

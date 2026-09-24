@@ -117,7 +117,7 @@ const hasSemanticTone = computed(
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: var(--space-1);
   text-align: left;
 }
 
@@ -130,7 +130,7 @@ const hasSemanticTone = computed(
 .entity-action b,
 .entity-value b {
   color: var(--ink);
-  font-size: 13px;
+  font-size: var(--text-meta);
   line-height: 1.25;
 }
 
@@ -138,14 +138,14 @@ const hasSemanticTone = computed(
   max-width: 100%;
   overflow: hidden;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .entity-context {
   color: var(--brand-strong);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .identity-action:hover {
@@ -162,7 +162,7 @@ const hasSemanticTone = computed(
 .semantic-value b,
 .plain-value {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--text-label);
   line-height: 1.3;
   overflow-wrap: anywhere;
   text-overflow: ellipsis;
@@ -171,7 +171,7 @@ const hasSemanticTone = computed(
 .semantic-value small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

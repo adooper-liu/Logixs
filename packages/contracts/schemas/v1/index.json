@@ -23,11 +23,16 @@
     "GC-003": ["common.schema.json#/$defs/CanonicalEventCode"],
     "GC-004": [
       "canonical-event-envelope.schema.json",
+      "canonical-event-envelope-v2.schema.json",
+      "post-departure-lifecycle.schema.json",
       "lifecycle-timeline.schema.json"
     ],
     "GC-005": ["work-execution.schema.json"],
     "GC-006": ["evidence-record.schema.json"],
-    "GC-007": ["cross-module-reference.schema.json"],
+    "GC-007": [
+      "cross-module-reference.schema.json",
+      "shipment-handoff.schema.json"
+    ],
     "GC-008": ["action-command.schema.json"],
     "GC-009": ["client-operation.schema.json"],
     "GC-010": ["container-operational-view.schema.json"],
@@ -39,6 +44,15 @@
     },
     "canonicalEventEnvelope": {
       "$ref": "canonical-event-envelope.schema.json"
+    },
+    "canonicalEventEnvelopeV2": {
+      "$ref": "canonical-event-envelope-v2.schema.json"
+    },
+    "shipmentHandoff": {
+      "$ref": "shipment-handoff.schema.json"
+    },
+    "postDepartureLifecycle": {
+      "$ref": "post-departure-lifecycle.schema.json"
     },
     "lifecycleStateMachine": {
       "$ref": "lifecycle-state-machine.schema.json"

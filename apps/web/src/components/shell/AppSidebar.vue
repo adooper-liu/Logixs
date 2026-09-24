@@ -117,8 +117,8 @@ const changeRole = (event: Event) => {
   height: var(--topbar-height);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
   border-bottom: 1px solid var(--line);
 }
 
@@ -131,7 +131,7 @@ const changeRole = (event: Event) => {
   border-radius: var(--radius-control);
   background: var(--brand);
   color: var(--on-brand);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 800;
 }
 
@@ -149,11 +149,11 @@ const changeRole = (event: Event) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .brand-copy b {
-  font-size: 15px;
+  font-size: var(--text-title);
   line-height: 1.2;
 }
 
@@ -162,7 +162,7 @@ const changeRole = (event: Event) => {
 .sidebar-footer span,
 .role-switcher small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .close-drawer {
@@ -171,9 +171,9 @@ const changeRole = (event: Event) => {
 }
 
 .workspace-switcher {
-  gap: 1px;
-  margin: 12px 10px 6px;
-  padding: 10px;
+  gap: var(--space-1);
+  margin: var(--space-3) var(--space-2) var(--space-1);
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--surface-2);
@@ -187,7 +187,7 @@ const changeRole = (event: Event) => {
 .navigation {
   flex: 1;
   min-height: 0;
-  padding: 6px 10px;
+  padding: var(--space-1) var(--space-2);
   overflow-y: auto;
 }
 
@@ -195,9 +195,9 @@ const changeRole = (event: Event) => {
   min-height: 40px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 10px;
-  margin-bottom: 2px;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-1);
   border-radius: var(--radius-control);
   color: var(--ink-soft);
   text-decoration: none;
@@ -222,19 +222,19 @@ const changeRole = (event: Event) => {
 .role-switcher {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin: 8px 10px 12px;
+  gap: var(--space-1);
+  margin: var(--space-2) var(--space-2) var(--space-3);
 }
 
 .role-label > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .role-switcher select {
   width: 100%;
   height: 34px;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -246,8 +246,8 @@ const changeRole = (event: Event) => {
   min-height: 58px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 10px 14px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   border-top: 1px solid var(--line);
 }
 
@@ -279,7 +279,7 @@ const changeRole = (event: Event) => {
 }
 
 .sidebar--collapsed .navigation {
-  padding-inline: 8px;
+  padding-inline: var(--space-2);
 }
 
 .sidebar--collapsed .nav-item {
@@ -314,7 +314,7 @@ const changeRole = (event: Event) => {
   }
 
   .navigation {
-    padding-inline: 8px;
+    padding-inline: var(--space-2);
   }
 }
 
@@ -349,15 +349,15 @@ const changeRole = (event: Event) => {
 
   .sidebar--collapsed .sidebar-brand,
   .sidebar--collapsed .sidebar-footer {
-    padding-inline: 14px;
+    padding-inline: var(--space-3);
   }
 
   .sidebar--collapsed .navigation {
-    padding-inline: 10px;
+    padding-inline: var(--space-2);
   }
 
   .sidebar--collapsed .nav-item {
-    padding-inline: 10px;
+    padding-inline: var(--space-2);
   }
 
   .close-drawer {

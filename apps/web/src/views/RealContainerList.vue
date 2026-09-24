@@ -75,7 +75,7 @@ onMounted(async () => {
 }
 .hint {
   color: var(--app-text-secondary, #6b7280);
-  padding: 12px 0;
+  padding: var(--space-3) 0;
 }
 .hint--error {
   color: var(--app-danger, #dc2626);
@@ -83,12 +83,12 @@ onMounted(async () => {
 .real-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 .real-table th,
 .real-table td {
   text-align: left;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--app-border, #e5e7eb);
 }
 .real-table th {

@@ -5,7 +5,24 @@ import { PrismaService } from "../../../prisma/prisma.service";
 import { PrismaReplenishmentOrderImportWriter } from "./prisma-replenishment-order-import-writer";
 
 function buildPrisma(options?: {
-  containers?: Array<{ id: string; containerNumber: string | null }>;
+  containers?: Array<{
+    id: string;
+    containerNumber: string | null;
+    replenishmentOrderId?: string | null;
+  }>;
+  sameNumberContainers?: Array<{
+    id: string;
+    containerNumber: string | null;
+    replenishmentOrderId?: string | null;
+  }>;
+  binding?: {
+    containerRecord: {
+      id: string;
+      containerNumber: string | null;
+      replenishmentOrderId: string | null;
+    };
+  } | null;
+  currentFacts?: Array<Record<string, unknown>>;
   failLines?: boolean;
 }) {
   const transaction = {
@@ -14,9 +31,32 @@ function buildPrisma(options?: {
       upsert: vi.fn().mockResolvedValue({ id: "o1" }),
     },
     containerRecord: {
-      findMany: vi.fn().mockResolvedValue(options?.containers ?? []),
-      update: vi.fn().mockResolvedValue({ id: "c-existing" }),
-      create: vi.fn().mockResolvedValue({ id: "c-new" }),
+      findMany: vi
+        .fn()
+        .mockImplementation(({ where }) =>
+          Promise.resolve(
+            where.orderNumber
+              ? (options?.containers ?? [])
+              : (options?.sameNumberContainers ?? []),
+          ),
+        ),
+      update: vi.fn().mockImplementation(({ data }) =>
+        Promise.resolve({
+          id: options?.binding?.containerRecord.id ?? "c-existing",
+          replenishmentOrderId:
+            options?.binding?.containerRecord.replenishmentOrderId ??
+            data.replenishmentOrderId ??
+            null,
+        }),
+      ),
+      create: vi.fn().mockResolvedValue({
+        id: "c-new",
+        replenishmentOrderId: "o1",
+      }),
+    },
+    containerImportBinding: {
+      findUnique: vi.fn().mockResolvedValue(options?.binding ?? null),
+      create: vi.fn().mockResolvedValue({ id: "binding-1" }),
     },
     replenishmentOrderLine: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -26,7 +66,11 @@ function buildPrisma(options?: {
         : vi.fn().mockResolvedValue({ count: 2 }),
     },
     shipmentTimeFact: {
-      findMany: vi.fn().mockResolvedValue([]),
+      findMany: vi
+        .fn()
+        .mockImplementation(({ where }) =>
+          Promise.resolve(where.isCurrent ? (options?.currentFacts ?? []) : []),
+        ),
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
@@ -81,7 +125,7 @@ const command = {
 };
 
 describe("PrismaReplenishmentOrderImportWriter", () => {
-  it("在一个事务中写备货单、货柜和全部产品行，并按租户查货柜", async () => {
+  it("在一个事务中写备货单、货柜、批次解析绑定和全部产品行", async () => {
     const { prisma, transaction } = buildPrisma();
     const writer = await buildWriter(prisma);
 
@@ -93,6 +137,14 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
         where: { tenantId: "tenant-a", orderNumber: "SO-1" },
       }),
     );
+    expect(transaction.containerImportBinding.create).toHaveBeenCalledWith({
+      data: {
+        tenantId: "tenant-a",
+        sourceBatchId: "batch1",
+        containerNumber: "MSKU1",
+        containerRecordId: "c-new",
+      },
+    });
     expect(transaction.replenishmentOrderLine.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.arrayContaining([
@@ -180,7 +232,7 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
     });
   });
 
-  it("同租户同备货单已有多个历史货柜时拒绝猜测", async () => {
+  it("同租户同备货单匹配多个历史货柜时拒绝猜测", async () => {
     const { prisma } = buildPrisma({
       containers: [
         { id: "c1", containerNumber: "MSKU1" },
@@ -190,5 +242,113 @@ describe("PrismaReplenishmentOrderImportWriter", () => {
     const writer = await buildWriter(prisma);
 
     await expect(writer.apply(command)).rejects.toThrow(ConflictException);
+  });
+
+  it("箱号尚未产生时才按旧备货单号查找兼容记录", async () => {
+    const { prisma, transaction } = buildPrisma();
+    const writer = await buildWriter(prisma);
+
+    await writer.apply({ ...command, containerNumber: null });
+
+    expect(transaction.containerRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "tenant-a", orderNumber: "SO-1" },
+      }),
+    );
+  });
+
+  it("同一批次的另一备货单复用绑定货柜且不覆盖旧兼容锚", async () => {
+    const { prisma, transaction } = buildPrisma({
+      binding: {
+        containerRecord: {
+          id: "c-existing",
+          containerNumber: "MSKU1",
+          replenishmentOrderId: "o-legacy-anchor",
+        },
+      },
+    });
+    const writer = await buildWriter(prisma);
+
+    await expect(writer.apply(command)).resolves.toMatchObject({
+      containerRecordId: "c-existing",
+      created: false,
+    });
+    expect(transaction.containerRecord.findMany).not.toHaveBeenCalled();
+    expect(transaction.containerRecord.update).toHaveBeenCalledWith({
+      where: { id: "c-existing" },
+      data: {
+        containerNumber: "MSKU1",
+      },
+    });
+  });
+
+  it("不同批次的新备货单遇到历史同箱号时要求明确解析实例", async () => {
+    const { prisma, transaction } = buildPrisma({
+      sameNumberContainers: [
+        {
+          id: "historical-container",
+          containerNumber: "MSKU1",
+          replenishmentOrderId: "historical-order",
+        },
+      ],
+    });
+    const writer = await buildWriter(prisma);
+
+    await expect(
+      writer.apply({ ...command, sourceBatchId: "batch2" }),
+    ).rejects.toThrow("CONTAINER_INSTANCE_RESOLUTION_REQUIRED");
+
+    expect(transaction.containerRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "tenant-a", orderNumber: "SO-1" },
+      }),
+    );
+    expect(transaction.containerRecord.create).not.toHaveBeenCalled();
+  });
+
+  it("共享货柜收到冲突时间事实时明确拒绝而不覆盖当前事实", async () => {
+    const currentFact = {
+      factCode: "customs_clearance_completed" as const,
+      timeKind: "actual" as const,
+      captureSource: "controlled_import" as const,
+      eventCode: "container_customs_completed",
+      rawValue: "2026-04-09 21:58:00",
+      occurredAtUtc: new Date("2026-04-09T19:58:00Z"),
+      sourceUtcOffset: "+02:00",
+      sourceSystem: "legacy-lms",
+      authoritySystem: "customs-authority",
+      sourceStatus: "已完成",
+      evidenceRef: "11111111-1111-4111-8111-111111111111",
+      derivationRuleVersion: null,
+    };
+    const { prisma, transaction } = buildPrisma({
+      binding: {
+        containerRecord: {
+          id: "c-existing",
+          containerNumber: "MSKU1",
+          replenishmentOrderId: "o-legacy-anchor",
+        },
+      },
+      currentFacts: [currentFact],
+    });
+    const writer = await buildWriter(prisma);
+
+    await expect(
+      writer.apply({
+        ...command,
+        timeFacts: [
+          {
+            ...currentFact,
+            sourceRowId: "r1",
+            rawValue: "2026-04-09 22:58:00",
+            occurredAtUtc: new Date("2026-04-09T20:58:00Z"),
+            nodeCode: "customs_clearance",
+            mappingVersion: "1.3.0",
+          },
+        ],
+      }),
+    ).rejects.toThrow("SHARED_CONTAINER_TIME_FACT_CONFLICT");
+    expect(transaction.shipmentTimeFact.updateMany).not.toHaveBeenCalled();
+    expect(transaction.shipmentTimeFact.createMany).not.toHaveBeenCalled();
   });
 });

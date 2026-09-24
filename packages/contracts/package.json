@@ -14,6 +14,21 @@
       ],
       "lifecycle-nodes.json": [
         "lifecycle-nodes-json.d.ts"
+      ],
+      "post-departure-fields.json": [
+        "post-departure-fields-json.d.ts"
+      ],
+      "cargo-owners.json": [
+        "catalogs/v1/cargo-owners.json"
+      ],
+      "post-departure-container-operational-source.json": [
+        "fixtures/v1/post-departure-container-operational-source.json"
+      ],
+      "schemas/v1/common.schema.json": [
+        "schemas/v1/common.schema.json"
+      ],
+      "schemas/v1/shipment-handoff.schema.json": [
+        "schemas/v1/shipment-handoff.schema.json"
       ]
     }
   },
@@ -33,9 +48,33 @@
       "types": "./lifecycle-nodes-json.d.ts",
       "default": "./catalogs/v1/lifecycle-nodes.json"
     },
+    "./post-departure-fields.json": {
+      "types": "./post-departure-fields-json.d.ts",
+      "default": "./catalogs/v1/post-departure-fields.json"
+    },
+    "./cargo-owners.json": {
+      "default": "./catalogs/v1/cargo-owners.json"
+    },
+    "./post-departure-container-operational-source.json": {
+      "default": "./fixtures/v1/post-departure-container-operational-source.json"
+    },
+    "./schemas/v1/common.schema.json": {
+      "default": "./schemas/v1/common.schema.json"
+    },
+    "./schemas/v1/shipment-handoff.schema.json": {
+      "default": "./schemas/v1/shipment-handoff.schema.json"
+    },
     "./lifecycle-date-fact-inbox": {
       "types": "./lifecycle-date-fact-inbox.d.ts",
       "default": "./lifecycle-date-fact-inbox.js"
+    },
+    "./post-departure-lifecycle": {
+      "types": "./post-departure-lifecycle.d.ts",
+      "default": "./post-departure-lifecycle.js"
+    },
+    "./action-catalog": {
+      "types": "./action-catalog.d.ts",
+      "default": "./action-catalog.js"
     }
   },
   "scripts": {

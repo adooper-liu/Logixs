@@ -240,11 +240,11 @@ fieldset,
 .date-action,
 .task-action {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 form,
 .date-action {
-  padding-bottom: 12px;
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--line-strong);
 }
 header {
@@ -252,27 +252,27 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 fieldset {
   margin: 0;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 0;
 }
 .fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 label {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 input,
 select,
@@ -280,7 +280,7 @@ textarea,
 button {
   min-width: 0;
   min-height: 36px;
-  padding: 7px 9px;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
@@ -292,7 +292,7 @@ textarea {
 .date-action > label,
 .date-action > button,
 .task-action > button {
-  margin: 0 12px;
+  margin: 0 var(--space-3);
 }
 button {
   cursor: pointer;
@@ -302,7 +302,7 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: var(--space-1);
   background: var(--brand);
   border-color: var(--brand);
   color: var(--on-brand);
@@ -314,8 +314,8 @@ button:disabled {
 .notice,
 .result {
   margin: 0;
-  padding: 9px 12px;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-micro);
 }
 .notice,
 .result--warn {

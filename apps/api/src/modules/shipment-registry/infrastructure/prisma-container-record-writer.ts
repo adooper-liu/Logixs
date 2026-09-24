@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type {
   ApplyContainerRecordCommand,
@@ -14,39 +19,30 @@ export class PrismaContainerRecordWriter implements ContainerRecordWriter {
   async apply(
     command: ApplyContainerRecordCommand,
   ): Promise<ApplyContainerRecordResult> {
-    // orderNumber 尚未建 UNIQUE（DATA_MODEL 不变量 1：清洗通过后才建），用 findFirst 匹配。
-    const matches = await this.prisma.containerRecord.findMany({
+    const existing = await this.prisma.containerRecord.findFirst({
       where: {
+        id: command.containerRecordId,
         tenantId: command.tenantId,
-        orderNumber: command.orderNumber,
       },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      take: 2,
     });
-    if (matches.length > 1) {
-      throw new ConflictException("LEGACY_ORDER_CONTAINER_CONFLICT");
+    if (!existing) {
+      throw new NotFoundException("CONTAINER_NOT_FOUND");
     }
-    const existing = matches[0];
-
-    if (existing) {
-      const updated = await this.prisma.containerRecord.update({
-        where: { id: existing.id },
-        data: {
-          containerNumber: command.containerNumber ?? existing.containerNumber,
-          currentStatus: command.currentStatus,
-        },
-      });
-      return { containerRecordId: updated.id, created: false };
+    if (
+      existing.containerNumber &&
+      command.containerNumber &&
+      existing.containerNumber !== command.containerNumber
+    ) {
+      throw new ConflictException("CONTAINER_NUMBER_CONFLICT");
     }
 
-    const created = await this.prisma.containerRecord.create({
+    const updated = await this.prisma.containerRecord.update({
+      where: { id: existing.id },
       data: {
-        tenantId: command.tenantId,
-        orderNumber: command.orderNumber,
-        containerNumber: command.containerNumber,
+        containerNumber: command.containerNumber ?? existing.containerNumber,
         currentStatus: command.currentStatus,
       },
     });
-    return { containerRecordId: created.id, created: true };
+    return { containerRecordId: updated.id, created: false };
   }
 }
