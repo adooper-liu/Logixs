@@ -115,6 +115,8 @@ EventRelationType = corrects | revokes | supersedes_estimate
 | `data`               | discriminated object       | 是   | 按事件码注册的载荷 Schema                       |
 | `traceId`            | string 1..128              | 是   | 贯穿接收、裁决、应用和投影的追踪 ID             |
 
+`occurredAt` 在 V1 中仍表示确定时刻。只有日期的来源虽然可按业务规则生成当地日末 `23:59:59` 的技术归一化候选，但在公共契约尚未具备日期精度与补值标记前，不得把该候选直接包装为已确认规范事件。其原始日期、业务地点时区和候选值进入日期事实复核；只有后续公共契约完成加法扩展，且相应事件政策明确允许日期精度时，才能申请节点应用。完整边界见[时区与币种参考数据契约 V1 §1.1](./TIME_CURRENCY_REFERENCE_CONTRACT_V1.md)。
+
 `eventSequence` 只提供稳定游标和审计顺序。时间线业务排序必须使用 `occurredAt,eventSequence,eventId`，不能按接收先后推断发生先后。
 
 `nodeCode/nodeInstanceId` 表示事件事实的默认归属，不等于状态机的节点应用目标。对 `arrived`、`transit_arrived` 等可跨节点申请完成的事件，状态机必须另存目标 `targetNodeInstanceId`，并按 `(eventId,targetNodeInstanceId)` 幂等应用；目标仍须通过完成资格、当前节点、航段、地点和时间守卫。
