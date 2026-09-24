@@ -1,8 +1,12 @@
 import type {
   ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV2,
   ShipmentHandoffPreflightResultV1,
   ShipmentHandoffResultV1,
 } from "@logix/contracts";
+
+export type ShipmentHandoffCommand =
+  ShipmentHandoffCommandV1 | ShipmentHandoffCommandV2;
 
 export const PREFLIGHT_SHIPMENT_HANDOFF = Symbol("PreflightShipmentHandoff");
 export const ACCEPT_SHIPMENT_HANDOFF = Symbol("AcceptShipmentHandoff");
@@ -26,4 +30,4 @@ export interface AcceptShipmentHandoffPort {
   ): Promise<ShipmentHandoffResultV1>;
 }
 
-export type { ShipmentHandoffCommandV1 };
+export type { ShipmentHandoffCommandV1, ShipmentHandoffCommandV2 };

@@ -31,6 +31,12 @@ export {
   type ResolveContainerByNumberPort,
   type ResolveContainerByNumberResult,
 } from "./resolve-container-by-number.port";
+export {
+  RESOLVE_REPLENISHMENT_ORDER_LINES,
+  type ReplenishmentOrderLineIdentity,
+  type ResolveReplenishmentOrderLinesPort,
+  type ResolvedReplenishmentOrderLine,
+} from "./resolve-replenishment-order-lines.port";
 export type {
   ApplyReplenishmentOrderImportCommand,
   ApplyReplenishmentOrderImportResult,
@@ -98,3 +104,7 @@ export {
 } from "./inspect-shipment-handoff-conflicts.port";
 export { GetShipmentService } from "./application/get-shipment.service";
 export { ListShipmentsService } from "./application/list-shipments.service";
+export {
+  INTERNAL_SHIPMENT_HANDOFF_SOURCE,
+  type InternalShipmentHandoffSourcePort,
+} from "./internal-shipment-handoff-source.port";

@@ -127,6 +127,7 @@ function workbenchOrder(
       label: "继续备货确认",
     },
     relatedContainers: [{ id: "container-1", containerNumber: "HMMU4956442" }],
+    handoffShipments: [],
     lines: [
       {
         id: "line-1",

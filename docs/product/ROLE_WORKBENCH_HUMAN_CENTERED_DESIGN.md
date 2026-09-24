@@ -6,6 +6,8 @@
 > 维护者：产品与前端共同维护；业务规则、权限和数据所有权仍由各领域权威文档维护。
 > 首个完整样例：备货工作台。实现任务见
 > [p6-cargo-ready-human-centered-redesign](../planning/tasks/p6-cargo-ready-human-centered-redesign.md)。
+> 出运后各工作台的岗位分工、参与顺序、信息时机和串行切片见
+> [POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE](./POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE.md)。
 
 本文固定工作台如何帮助具体岗位完成业务结果，不复制状态机、权限、字段或数据库定义。通用 UI 约束以
 [UI_SYSTEM](./UI_SYSTEM.md) 为权威；SKU 属性和合规事实分别以

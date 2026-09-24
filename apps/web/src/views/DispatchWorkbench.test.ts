@@ -10,6 +10,7 @@ const listTasks = vi.fn();
 const getStuffing = vi.fn();
 const getDispatch = vi.fn();
 const listDates = vi.fn();
+const listInternalCandidates = vi.fn();
 
 vi.mock("../api/containers", () => ({
   listContainers: (...args: unknown[]) => listContainers(...args),
@@ -38,6 +39,13 @@ vi.mock("../api/evidence", () => ({
   isEvidenceUuid: () => true,
   registerAndVerifyFloorEvidence: vi.fn(),
 }));
+vi.mock("../api/shipments", () => ({
+  listDepartedShipments: vi.fn().mockResolvedValue([]),
+  listInternalShipmentHandoffCandidates: (...args: unknown[]) =>
+    listInternalCandidates(...args),
+  acceptInternalShipmentHandoffCandidate: vi.fn(),
+  getShipmentDetail: vi.fn(),
+}));
 
 const container = {
   id: "container-1",
@@ -57,6 +65,7 @@ describe("DispatchWorkbench", () => {
       getStuffing,
       getDispatch,
       listDates,
+      listInternalCandidates,
     ])
       mock.mockReset();
     listContainers.mockResolvedValue({ items: [container] });
@@ -70,10 +79,28 @@ describe("DispatchWorkbench", () => {
       projectionVersion: 0,
       asOf: "2026-09-21T00:00:00Z",
     });
+    listInternalCandidates.mockResolvedValue({
+      items: [],
+      asOf: "2026-09-24T00:00:00Z",
+      projectionVersion: 1,
+    });
+  });
+
+  it("opens the post-departure intake as the default shipping workspace", async () => {
+    const wrapper = await mountPage("/workspaces/dispatch");
+
+    expect(wrapper.get("h1").text()).toBe("接管已出运数据");
+    expect(wrapper.text()).toContain("上传当前已有的来源文件");
+    expect(
+      wrapper.get('[data-testid="post-departure-preflight"]').text(),
+    ).toContain("开始联合预检");
+    expect(listContainers).not.toHaveBeenCalled();
   });
 
   it("shows the shipping role sequence and blocks handoff until stuffing exists", async () => {
-    const wrapper = await mountPage();
+    const wrapper = await mountPage(
+      "/workspaces/dispatch?view=loading&containerId=container-1",
+    );
     expect(wrapper.get('[aria-label="出运任务列表"]').text()).toContain(
       "领取出运任务",
     );
@@ -89,12 +116,12 @@ describe("DispatchWorkbench", () => {
   });
 });
 
-async function mountPage() {
+async function mountPage(path: string) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: "/workspaces/dispatch", component: DispatchWorkbench }],
   });
-  await router.push("/workspaces/dispatch?containerId=container-1");
+  await router.push(path);
   await router.isReady();
   const wrapper = mount(DispatchWorkbench, {
     global: {
@@ -102,7 +129,8 @@ async function mountPage() {
       stubs: {
         PageHeader: {
           props: ["title"],
-          template: "<header><h1>{{ title }}</h1></header>",
+          template:
+            "<header><h1>{{ title }}</h1><slot name='actions' /></header>",
         },
       },
     },

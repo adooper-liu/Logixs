@@ -11,6 +11,7 @@ const order: ReplenishmentOrderWorkbenchRecord = {
   orderNumber: "26DSC01812",
   updatedAt: "2026-09-21T12:00:00.000Z",
   linkedContainers: [],
+  handoffShipments: [],
   lines: [
     {
       id: "line-1",
@@ -19,6 +20,7 @@ const order: ReplenishmentOrderWorkbenchRecord = {
       shippedQuantity: "20",
       quantityUnit: "piece",
       allocations: [],
+      handoffShipments: [],
     },
   ],
 };

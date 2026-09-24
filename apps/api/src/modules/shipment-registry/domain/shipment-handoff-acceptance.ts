@@ -1,13 +1,17 @@
 import type {
   ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV2,
   ShipmentHandoffIssueV1,
   ShipmentHandoffPreflightResultV1,
   ShipmentHandoffResultV1,
 } from "@logix/contracts";
 
+type ShipmentHandoffCommand =
+  ShipmentHandoffCommandV1 | ShipmentHandoffCommandV2;
+
 export interface CommitShipmentHandoffCommand {
   actorId: string;
-  command: ShipmentHandoffCommandV1;
+  command: ShipmentHandoffCommand;
   preflight: ShipmentHandoffPreflightResultV1;
 }
 

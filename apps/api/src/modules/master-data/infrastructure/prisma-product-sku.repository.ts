@@ -30,6 +30,26 @@ export class PrismaProductSkuRepository implements ProductSkuRepository {
     return productSku ? toRecord(productSku) : null;
   }
 
+  async findByProductNumbers(input: {
+    tenantId: string;
+    productNumbers: string[];
+  }): Promise<ProductSkuRecord[]> {
+    const rows = await this.prisma.productSku.findMany({
+      where: {
+        tenantId: input.tenantId,
+        productNumber: { in: input.productNumbers },
+      },
+      orderBy: { productNumber: "asc" },
+      select: {
+        id: true,
+        tenantId: true,
+        productNumber: true,
+        version: true,
+      },
+    });
+    return rows.map(toRecord);
+  }
+
   register(input: NormalizedRegisterProductSkuCommand): Promise<{
     record: ProductSkuRecord;
     duplicate: boolean;

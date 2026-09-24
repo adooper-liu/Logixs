@@ -32,16 +32,21 @@ export class AcceptShipmentHandoffService implements AcceptShipmentHandoffPort {
       input,
       context,
     );
-    if (prepared.result.decision === "ready" && !prepared.result.duplicate) {
-      await this.assertEvidenceAvailable.execute({
-        tenantId: context.tenantId,
-        evidenceIds: [
-          ...new Set([
-            ...prepared.command.evidenceReferences,
-            prepared.command.shipment.departureProof.evidenceRef,
-          ]),
-        ].sort(),
-      });
+    if (prepared.result.decision !== "rejected" && !prepared.result.duplicate) {
+      const departureEvidence =
+        prepared.command.shipment.departureProof?.evidenceRef;
+      const evidenceIds = [
+        ...new Set([
+          ...prepared.command.evidenceReferences,
+          ...(departureEvidence ? [departureEvidence] : []),
+        ]),
+      ].sort();
+      if (evidenceIds.length > 0) {
+        await this.assertEvidenceAvailable.execute({
+          tenantId: context.tenantId,
+          evidenceIds,
+        });
+      }
     }
     return this.commitHandoff.execute({
       actorId: context.actorId,

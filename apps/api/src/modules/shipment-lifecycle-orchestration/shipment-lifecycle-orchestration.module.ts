@@ -14,6 +14,8 @@ import { ContainerDispatchCommandController } from "./presentation/container-dis
 import { AcceptShipmentHandoffService } from "./application/accept-shipment-handoff.service";
 import { PreflightShipmentHandoffService } from "./application/preflight-shipment-handoff.service";
 import { ShipmentHandoffController } from "./presentation/shipment-handoff.controller";
+import { AcceptInternalShipmentHandoffService } from "./application/accept-internal-shipment-handoff.service";
+import { ListInternalShipmentHandoffCandidatesService } from "./application/list-internal-shipment-handoff-candidates.service";
 import {
   ACCEPT_SHIPMENT_HANDOFF,
   PREFLIGHT_SHIPMENT_HANDOFF,
@@ -36,6 +38,8 @@ import {
     ReplaceContainerDispatchAndReplayService,
     PreflightShipmentHandoffService,
     AcceptShipmentHandoffService,
+    ListInternalShipmentHandoffCandidatesService,
+    AcceptInternalShipmentHandoffService,
     {
       provide: PREFLIGHT_SHIPMENT_HANDOFF,
       useExisting: PreflightShipmentHandoffService,

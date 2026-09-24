@@ -4,8 +4,22 @@
   "title": "Shipment Handoff Contracts V1",
   "oneOf": [
     { "$ref": "#/$defs/ShipmentHandoffCommandV1" },
+    { "$ref": "#/$defs/ShipmentHandoffCommandV2" },
     { "$ref": "#/$defs/ShipmentHandoffPreflightResultV1" },
-    { "$ref": "#/$defs/ShipmentHandoffResultV1" }
+    { "$ref": "#/$defs/ShipmentHandoffResultV1" },
+    { "$ref": "#/$defs/PostDepartureSourcePackagePreflightCommandV1" },
+    { "$ref": "#/$defs/PostDepartureSourcePackagePreflightResultV1" },
+    { "$ref": "#/$defs/PostDepartureSourcePackageReviewCommandV1" },
+    { "$ref": "#/$defs/PostDepartureSourcePackageReviewResultV1" },
+    { "$ref": "#/$defs/PostDepartureReferencePortSearchResultV1" },
+    { "$ref": "#/$defs/PostDepartureSourceCandidateCorrectionCommandV1" },
+    { "$ref": "#/$defs/PostDepartureSourceCandidateCorrectionResultV1" },
+    { "$ref": "#/$defs/PostDepartureSourceCandidateCargoCommandV1" },
+    { "$ref": "#/$defs/PostDepartureSourceCandidateAcceptCommandV1" },
+    { "$ref": "#/$defs/PostDepartureSourceCandidateAcceptResultV1" },
+    { "$ref": "#/$defs/InternalShipmentHandoffCandidatePageV1" },
+    { "$ref": "#/$defs/InternalShipmentHandoffAcceptCommandV1" },
+    { "$ref": "#/$defs/InternalShipmentHandoffAcceptResultV1" }
   ],
   "$defs": {
     "DecimalString": {
@@ -312,9 +326,14 @@
       ],
       "properties": {
         "contractVersion": { "const": "shipment-handoff.v1" },
-        "tenantId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/TenantId" },
         "sourceProfile": {
-          "enum": ["legacy_departed_file_v1", "packing_platform_v1", "api_v1"]
+          "enum": [
+            "legacy_departed_file_v1",
+            "packing_platform_v1",
+            "internal_fulfillment_v1",
+            "api_v1"
+          ]
         },
         "source": { "$ref": "#/$defs/SourceReferenceV1" },
         "shipment": { "$ref": "#/$defs/ShipmentDescriptorV1" },
@@ -341,6 +360,142 @@
         }
       }
     },
+    "ShipmentDescriptorV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transportMode"],
+      "properties": {
+        "targetShipmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "externalShipmentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "shipmentNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "expectedRelationshipVersion": { "type": "integer", "minimum": 1 },
+        "transportMode": { "const": "ocean" },
+        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "vesselName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "bookingNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "originPortCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationPortCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "salesCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "cargoOwnerReferenceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "cargoOwnerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "destinationWarehouseId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "tradeTerm": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "estimatedArrivalAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "actualLoadedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "departureProof": { "$ref": "#/$defs/DepartureProofV1" }
+      },
+      "dependentRequired": {
+        "targetShipmentId": ["expectedRelationshipVersion"],
+        "salesCountryCode": ["cargoOwnerReferenceId", "cargoOwnerName"],
+        "cargoOwnerReferenceId": ["salesCountryCode", "cargoOwnerName"],
+        "cargoOwnerName": ["salesCountryCode", "cargoOwnerReferenceId"]
+      }
+    },
+    "ContainerHandoffV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["referenceId", "billReferences", "upstreamReferences"],
+      "properties": {
+        "referenceId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "externalContainerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "containerNumber": {
+          "type": "string",
+          "pattern": "^[A-Z]{4}[0-9]{7}$"
+        },
+        "containerTypeCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "sealNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "stuffingSnapshotRef": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "billReferences": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "upstreamReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/UpstreamReferenceV1" }
+        },
+        "cargoAllocations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/CargoAllocationV1" }
+        }
+      }
+    },
+    "ShipmentHandoffCommandV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "tenantId",
+        "sourceProfile",
+        "source",
+        "shipment",
+        "billsOfLading",
+        "containers",
+        "evidenceReferences"
+      ],
+      "properties": {
+        "contractVersion": { "const": "shipment-handoff.v2" },
+        "tenantId": { "$ref": "common.schema.json#/$defs/TenantId" },
+        "sourceProfile": {
+          "enum": [
+            "legacy_departed_file_v1",
+            "packing_platform_v1",
+            "internal_fulfillment_v1",
+            "api_v1"
+          ]
+        },
+        "source": { "$ref": "#/$defs/SourceReferenceV1" },
+        "shipment": { "$ref": "#/$defs/ShipmentDescriptorV2" },
+        "billsOfLading": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/BillOfLadingV1" }
+        },
+        "containers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/ContainerHandoffV2" }
+        },
+        "documentReferences": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "evidenceReferences": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        }
+      }
+    },
     "ShipmentHandoffIssueV1": {
       "type": "object",
       "additionalProperties": false,
@@ -349,6 +504,7 @@
         "code": {
           "enum": [
             "SOURCE_RANGE_METADATA_INVALID",
+            "SOURCE_DATA_INCOMPLETE",
             "FIELD_SEMANTIC_MISMATCH",
             "INVALID_SOURCE_VALUE",
             "DEPARTURE_PROOF_REQUIRED",
@@ -382,7 +538,15 @@
           "uniqueItems": true,
           "items": { "$ref": "common.schema.json#/$defs/StableCode" }
         },
-        "messageKey": { "$ref": "common.schema.json#/$defs/StableCode" }
+        "messageKey": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "blocking": { "type": "boolean" },
+        "resolutionState": {
+          "enum": [
+            "system_handled",
+            "operator_action_required",
+            "upstream_action_required"
+          ]
+        }
       }
     },
     "ShipmentHandoffResultV1": {
@@ -505,6 +669,754 @@
           "items": { "$ref": "#/$defs/ShipmentHandoffIssueV1" }
         },
         "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "PostDepartureSourceKindV1": {
+      "enum": ["container", "customs", "logistics", "warehouse"]
+    },
+    "PostDepartureSourceBatchV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "batchId"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/PostDepartureSourceKindV1" },
+        "batchId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "PostDepartureSourcePackagePreflightCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "sources"],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-package-preflight.v1"
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/PostDepartureSourceBatchV1" }
+        }
+      }
+    },
+    "PostDepartureSourceFileSummaryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "batchId", "fileName", "rowCount", "columnCount"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/PostDepartureSourceKindV1" },
+        "batchId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "rowCount": { "type": "integer", "minimum": 0 },
+        "columnCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "PostDepartureReferencePortV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["portId", "unlocode", "officialName", "areaCode"],
+      "properties": {
+        "portId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "unlocode": { "type": "string", "pattern": "^[A-Z]{2}[A-Z0-9]{3}$" },
+        "officialName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "areaCode": { "type": "string", "pattern": "^[A-Z]{2}$" }
+      }
+    },
+    "PostDepartureReferencePortSearchResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "pageSize", "nextCursor"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PostDepartureReferencePortV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "nextCursor": {
+          "oneOf": [
+            { "type": "string", "pattern": "^[A-Z]{2}[A-Z0-9]{3}$" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "PostDepartureActualDepartureProofV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "occurredAt", "sourceTimezone", "evidenceRef"],
+      "properties": {
+        "kind": { "const": "actual_departure_time" },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "sourceTimezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "evidenceRef": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "PostDepartureShipmentGroupingV1": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "shipmentNumber"],
+          "properties": {
+            "kind": { "const": "authorized_new_shipment" },
+            "shipmentNumber": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "shipmentId", "expectedRelationshipVersion"],
+          "properties": {
+            "kind": { "const": "existing_shipment" },
+            "shipmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+            "expectedRelationshipVersion": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "new_independent_shipment" }
+          }
+        }
+      ]
+    },
+    "PostDepartureSourceCandidateCorrectionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correctionId", "version", "reasonCode", "correctedAt"],
+      "properties": {
+        "correctionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "shipmentGrouping": {
+          "$ref": "#/$defs/PostDepartureShipmentGroupingV1"
+        },
+        "originPort": { "$ref": "#/$defs/PostDepartureReferencePortV1" },
+        "destinationPort": { "$ref": "#/$defs/PostDepartureReferencePortV1" },
+        "departureProof": {
+          "$ref": "#/$defs/PostDepartureActualDepartureProofV1"
+        },
+        "departureLocal": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "departureSourceTimezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "departureEvidenceRef": {
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "cargoAllocations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/PostDepartureCandidateCargoAllocationV1" }
+        },
+        "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "correctedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "PostDepartureCandidateCargoAllocationV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceLineId",
+        "replenishmentOrderNumber",
+        "productSkuId",
+        "productNumber",
+        "quantity",
+        "quantityUnit"
+      ],
+      "properties": {
+        "sourceLineId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "replenishmentOrderNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "productSkuId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "productNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "quantity": { "$ref": "#/$defs/DecimalString" },
+        "quantityUnit": { "enum": ["piece", "carton", "set", "pallet"] },
+        "replenishmentOrderLineId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "PostDepartureSourceCandidateV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateRef",
+        "decision",
+        "containerNumber",
+        "replenishmentOrderNumbers",
+        "billNumbers",
+        "issues"
+      ],
+      "properties": {
+        "candidateRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "decision": { "enum": ["ready", "review_required", "rejected"] },
+        "containerNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "replenishmentOrderNumbers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "billNumbers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "vesselName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "originPortRaw": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "destinationPortRaw": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "cargoOwnerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "departureRaw": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "estimatedArrivalRaw": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "containerTypeCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "packageCount": { "$ref": "#/$defs/DecimalString" },
+        "grossWeightKg": { "$ref": "#/$defs/DecimalString" },
+        "volumeM3": { "$ref": "#/$defs/DecimalString" },
+        "correction": {
+          "$ref": "#/$defs/PostDepartureSourceCandidateCorrectionV1"
+        },
+        "issues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentHandoffIssueV1" }
+        }
+      }
+    },
+    "PostDepartureSourcePackageTotalsV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containers",
+        "bills",
+        "replenishmentOrders",
+        "ready",
+        "reviewRequired",
+        "rejected"
+      ],
+      "properties": {
+        "containers": { "type": "integer", "minimum": 0 },
+        "bills": { "type": "integer", "minimum": 0 },
+        "replenishmentOrders": { "type": "integer", "minimum": 0 },
+        "ready": { "type": "integer", "minimum": 0 },
+        "reviewRequired": { "type": "integer", "minimum": 0 },
+        "rejected": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "PostDepartureSourcePackagePreflightResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packageId", "sources", "candidates", "totals", "traceId"],
+      "properties": {
+        "packageId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/PostDepartureSourceFileSummaryV1" }
+        },
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PostDepartureSourceCandidateV1" }
+        },
+        "totals": { "$ref": "#/$defs/PostDepartureSourcePackageTotalsV1" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "PostDepartureSourcePackageReviewCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "packageId", "sources"],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-package-review.v1"
+        },
+        "packageId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/PostDepartureSourceBatchV1" }
+        }
+      }
+    },
+    "PostDepartureSourcePackageReviewResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "reviewId",
+        "packageId",
+        "decision",
+        "status",
+        "candidateCount",
+        "savedAt",
+        "traceId"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-package-review-result.v1"
+        },
+        "reviewId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "packageId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "decision": { "const": "review_required" },
+        "status": { "enum": ["saved", "duplicate"] },
+        "candidateCount": { "type": "integer", "minimum": 1 },
+        "savedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "PostDepartureSourceCandidateCorrectionCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "packageId",
+        "reviewId",
+        "candidateRef",
+        "expectedVersion",
+        "reasonCode",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-candidate-correction.v1"
+        },
+        "packageId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "reviewId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "candidateRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "shipmentGrouping": {
+          "oneOf": [
+            { "$ref": "#/$defs/PostDepartureShipmentGroupingV1" },
+            { "type": "null" }
+          ]
+        },
+        "originPortCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationPortCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "departureProof": {
+          "$ref": "#/$defs/PostDepartureActualDepartureProofV1"
+        },
+        "departureLocal": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(?::[0-9]{2}(?:\\.[0-9]{1,3})?)?$"
+        },
+        "departureSourceTimezone": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "departureEvidenceRef": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "PostDepartureSourceCandidateCorrectionResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "status",
+        "correctionId",
+        "version",
+        "candidate",
+        "remainingIssues",
+        "decision",
+        "traceId"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-candidate-correction-result.v1"
+        },
+        "status": { "enum": ["saved", "duplicate"] },
+        "correctionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "candidate": { "$ref": "#/$defs/PostDepartureSourceCandidateV1" },
+        "remainingIssues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentHandoffIssueV1" }
+        },
+        "decision": { "enum": ["ready", "review_required", "rejected"] },
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "PostDepartureSourceCandidateCargoCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "packageId",
+        "reviewId",
+        "candidateRef",
+        "expectedVersion",
+        "cargoLines",
+        "reasonCode",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-candidate-cargo.v1"
+        },
+        "packageId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "reviewId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "candidateRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "expectedVersion": { "type": "integer", "minimum": 1 },
+        "cargoLines": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "replenishmentOrderNumber",
+              "productNumber",
+              "quantity",
+              "quantityUnit"
+            ],
+            "properties": {
+              "sourceLineRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "replenishmentOrderNumber": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "productNumber": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "quantity": { "$ref": "#/$defs/DecimalString" },
+              "quantityUnit": { "enum": ["piece", "carton", "set", "pallet"] }
+            }
+          }
+        },
+        "reasonCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "PostDepartureSourceCandidateAcceptCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "packageId",
+        "sources",
+        "candidateRef",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-candidate-accept.v1"
+        },
+        "packageId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/PostDepartureSourceBatchV1" }
+        },
+        "candidateRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "PostDepartureSourceCandidateAcceptResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "acceptedCandidateRefs", "handoff"],
+      "properties": {
+        "contractVersion": {
+          "const": "post-departure-source-candidate-accept-result.v1"
+        },
+        "acceptedCandidateRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "handoff": { "$ref": "#/$defs/ShipmentHandoffResultV1" }
+      }
+    },
+    "InternalShipmentHandoffPendingItemV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "label", "subjectType", "subjectRef"],
+      "properties": {
+        "code": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "subjectType": {
+          "enum": ["shipment", "container", "cargo", "document"]
+        },
+        "subjectRef": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "InternalShipmentHandoffCargoLineV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replenishmentOrderId",
+        "replenishmentOrderNumber",
+        "replenishmentOrderLineId",
+        "productNumber",
+        "quantity",
+        "quantityUnit",
+        "containerRecordId"
+      ],
+      "properties": {
+        "replenishmentOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "replenishmentOrderNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "replenishmentOrderLineId": {
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "productSkuId": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "productNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "quantity": { "$ref": "#/$defs/DecimalString" },
+        "quantityUnit": { "enum": ["piece", "carton", "set", "pallet"] },
+        "packageCount": {
+          "oneOf": [{ "$ref": "#/$defs/DecimalString" }, { "type": "null" }]
+        },
+        "packageUnit": { "type": ["string", "null"], "maxLength": 50 },
+        "grossWeight": {
+          "oneOf": [{ "$ref": "#/$defs/DecimalString" }, { "type": "null" }]
+        },
+        "weightUnit": { "type": ["string", "null"], "maxLength": 20 },
+        "volume": {
+          "oneOf": [{ "$ref": "#/$defs/DecimalString" }, { "type": "null" }]
+        },
+        "volumeUnit": { "type": ["string", "null"], "maxLength": 20 },
+        "containerRecordId": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "InternalShipmentHandoffContainerV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containerRecordId",
+        "containerNumber",
+        "containerTypeCode",
+        "stuffingSnapshotRef"
+      ],
+      "properties": {
+        "containerRecordId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerNumber": {
+          "type": "string",
+          "pattern": "^[A-Z]{4}[0-9]{7}$"
+        },
+        "containerTypeCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "stuffingSnapshotRef": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "InternalShipmentHandoffCandidateV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateRef",
+        "bookingNumber",
+        "carrierCode",
+        "vesselName",
+        "voyageNumber",
+        "originPortCode",
+        "destinationPortCode",
+        "departedAt",
+        "departureSourceTimezone",
+        "departureEvidenceRef",
+        "containers",
+        "replenishmentOrders",
+        "cargoLines",
+        "transportDocuments",
+        "pendingItems"
+      ],
+      "properties": {
+        "candidateRef": {
+          "type": "string",
+          "pattern": "^internal:[a-f0-9]{64}$"
+        },
+        "bookingNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "vesselName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "originPortCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationPortCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "departedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "departureSourceTimezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "departureEvidenceRef": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "containers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/InternalShipmentHandoffContainerV1" }
+        },
+        "replenishmentOrders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "orderNumber"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+              "orderNumber": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "cargoLines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/InternalShipmentHandoffCargoLineV1" }
+        },
+        "transportDocuments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "referenceId",
+              "documentType",
+              "documentNumber",
+              "containerRecordIds"
+            ],
+            "properties": {
+              "referenceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "documentType": { "enum": ["booking", "mbl", "hbl"] },
+              "documentNumber": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "containerRecordIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+              }
+            }
+          }
+        },
+        "pendingItems": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/InternalShipmentHandoffPendingItemV1" }
+        }
+      }
+    },
+    "InternalShipmentHandoffCandidatePageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "asOf", "projectionVersion"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/InternalShipmentHandoffCandidateV1" }
+        },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "const": 1 }
+      }
+    },
+    "InternalShipmentHandoffAcceptCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "candidateRef", "idempotencyKey"],
+      "properties": {
+        "contractVersion": { "const": "internal-shipment-handoff-accept.v1" },
+        "candidateRef": {
+          "type": "string",
+          "pattern": "^internal:[a-f0-9]{64}$"
+        },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "InternalShipmentHandoffAcceptResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "candidateRef", "handoff"],
+      "properties": {
+        "contractVersion": {
+          "const": "internal-shipment-handoff-accept-result.v1"
+        },
+        "candidateRef": {
+          "type": "string",
+          "pattern": "^internal:[a-f0-9]{64}$"
+        },
+        "handoff": { "$ref": "#/$defs/ShipmentHandoffResultV1" }
       }
     }
   }

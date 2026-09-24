@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import type {
-  ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV1 as ShipmentHandoffCommandStrictV1,
+  ShipmentHandoffCommandV2,
   ShipmentHandoffIssueV1,
   ShipmentHandoffObjectResultV1,
   ShipmentHandoffResultV1,
@@ -24,6 +25,8 @@ import {
 } from "../domain/shipment-handoff-acceptance";
 
 type Transaction = Prisma.TransactionClient;
+type ShipmentHandoffCommandV1 =
+  ShipmentHandoffCommandStrictV1 | ShipmentHandoffCommandV2;
 
 type CargoGroup = {
   id: string;
@@ -57,6 +60,11 @@ type CorrectionContext = {
   relationshipVersion: number;
 };
 
+type ExistingShipmentAttachmentContext = {
+  shipmentId: string;
+  relationshipVersion: number;
+};
+
 const HANDOFF_ISSUE_CODES = new Set<ShipmentHandoffIssueV1["code"]>(
   shipmentHandoffSchema.$defs.ShipmentHandoffIssueV1.properties.code
     .enum as ShipmentHandoffIssueV1["code"][],
@@ -79,6 +87,11 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
               `shipment-handoff:shipment:${command.tenantId}:${command.source.system}:${command.shipment.externalShipmentId}`,
             ]
           : []),
+        ...(targetShipment(command)
+          ? [
+              `shipment-handoff:target:${command.tenantId}:${targetShipment(command)!.shipmentId}`,
+            ]
+          : []),
         ...command.containers.map(
           (container) =>
             `shipment-handoff:container:${command.tenantId}:${command.source.system}:${container.externalContainerId ?? `${command.source.externalHandoffId}:${container.referenceId}`}`,
@@ -88,30 +101,27 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
       const replay = await this.findReplay(tx, input);
       if (replay) return replay;
 
-      if (preflight.decision !== "ready") {
+      if (preflight.decision === "rejected") {
         return this.recordUnaccepted(tx, input);
-      }
-      if (!command.shipment.externalShipmentId) {
-        throw conflict("SHIPMENT_IDENTITY_REVIEW_REQUIRED", [
-          issue(
-            "EXTERNAL_SHIPMENT_MATCH_REQUIRED",
-            "shipment_handoff_external_match_required",
-          ),
-        ]);
       }
 
       const correction = await this.resolveCorrection(tx, input);
-      if (!correction) {
-        const existingShipment = await tx.shipment.findUnique({
-          where: {
-            tenantId_sourceSystem_sourceRecordId: {
-              tenantId: command.tenantId,
-              sourceSystem: command.source.system,
-              sourceRecordId: command.shipment.externalShipmentId,
-            },
-          },
-          select: { id: true },
-        });
+      const attachment = correction
+        ? null
+        : await this.resolveExistingShipmentAttachment(tx, command);
+      if (!correction && !attachment) {
+        const existingShipment = command.shipment.externalShipmentId
+          ? await tx.shipment.findUnique({
+              where: {
+                tenantId_sourceSystem_sourceRecordId: {
+                  tenantId: command.tenantId,
+                  sourceSystem: command.source.system,
+                  sourceRecordId: command.shipment.externalShipmentId,
+                },
+              },
+              select: { id: true },
+            })
+          : null;
         if (existingShipment) {
           throw conflict("SHIPMENT_SOURCE_IDENTITY_CONFLICT");
         }
@@ -129,13 +139,14 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
         }
       }
 
-      const shipmentId = correction?.shipmentId ?? randomUUID();
+      const shipmentId =
+        correction?.shipmentId ?? attachment?.shipmentId ?? randomUUID();
       const handoffId = randomUUID();
       const cargoGroups = buildCargoGroups(command);
       await assertReferencedMasterData(tx, command.tenantId, cargoGroups);
       const cargoOwnerId = await resolveCargoOwnerReference(tx, command);
 
-      if (!correction) {
+      if (!correction && !attachment) {
         await tx.shipment.create({
           data: {
             id: shipmentId,
@@ -149,7 +160,7 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
             carrierCode: command.shipment.carrierCode,
             vesselName: command.shipment.vesselName,
             voyageNumber: command.shipment.voyageNumber,
-            originCountryCode: command.shipment.originPortCode.slice(0, 2),
+            originCountryCode: command.shipment.originPortCode?.slice(0, 2),
             originUnlocode: command.shipment.originPortCode,
             destinationCountryCode: command.shipment.destinationCountryCode,
             destinationUnlocode: command.shipment.destinationPortCode,
@@ -159,7 +170,7 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
               : undefined,
             finalDestinationId: command.shipment.destinationWarehouseId,
             atdAt:
-              command.shipment.departureProof.kind === "actual_departure_time"
+              command.shipment.departureProof?.kind === "actual_departure_time"
                 ? new Date(command.shipment.departureProof.occurredAt)
                 : undefined,
             etaAt: command.shipment.estimatedArrivalAt
@@ -171,11 +182,13 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
           },
         });
       } else {
+        const currentRelationshipVersion =
+          correction?.relationshipVersion ?? attachment!.relationshipVersion;
         const updated = await tx.shipment.updateMany({
           where: {
             id: shipmentId,
             tenantId: command.tenantId,
-            relationshipVersion: correction.relationshipVersion,
+            relationshipVersion: currentRelationshipVersion,
           },
           data: {
             sourceVersion: String(command.source.handoffVersion),
@@ -235,15 +248,19 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
           ),
         );
       }
-      const relationshipVersion = correction
-        ? correction.relationshipVersion + 1
-        : 1;
+      const relationshipVersion =
+        (correction?.relationshipVersion ??
+          attachment?.relationshipVersion ??
+          0) + 1;
+      const lifecycleContainerIds = attachment
+        ? await listActiveShipmentContainerIds(tx, command.tenantId, shipmentId)
+        : [...containers.values()].map(
+            ({ containerRecordId }) => containerRecordId,
+          );
       const lifecycleRequest = buildLifecycleRequest(
         command,
         shipmentId,
-        [...containers.values()].map(
-          ({ containerRecordId }) => containerRecordId,
-        ),
+        lifecycleContainerIds,
         relationshipVersion,
       );
       await tx.shipmentHandoffRecord.update({
@@ -262,6 +279,7 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
         containers,
         preflight.payloadHash,
         Boolean(correction),
+        Boolean(attachment),
       );
       await createContainerDocumentLinks(
         tx,
@@ -286,6 +304,7 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
         containers,
         cargoGroups,
         documents,
+        preflight.issues,
       );
       await persistObjectResults(
         tx,
@@ -388,6 +407,40 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
       predecessorHandoffId: predecessor.id,
       shipmentId: predecessor.shipment.id,
       relationshipVersion: predecessor.shipment.relationshipVersion,
+    };
+  }
+
+  private async resolveExistingShipmentAttachment(
+    tx: Transaction,
+    command: ShipmentHandoffCommandV1,
+  ): Promise<ExistingShipmentAttachmentContext | null> {
+    const target = targetShipment(command);
+    if (!target) return null;
+    const shipment = await tx.shipment.findFirst({
+      where: { id: target.shipmentId, tenantId: command.tenantId },
+      select: {
+        id: true,
+        relationshipVersion: true,
+        currentLifecycleStatus: true,
+        carrierCode: true,
+        vesselName: true,
+        voyageNumber: true,
+        originUnlocode: true,
+        destinationUnlocode: true,
+        atdAt: true,
+      },
+    });
+    if (!shipment) throw conflict("TARGET_SHIPMENT_NOT_FOUND");
+    if (shipment.relationshipVersion !== target.expectedRelationshipVersion) {
+      throw conflict("TARGET_SHIPMENT_VERSION_CONFLICT");
+    }
+    if (shipment.currentLifecycleStatus !== "departed") {
+      throw conflict("TARGET_SHIPMENT_NOT_DEPARTED");
+    }
+    assertCompatibleShipment(shipment, command);
+    return {
+      shipmentId: shipment.id,
+      relationshipVersion: shipment.relationshipVersion,
     };
   }
 
@@ -627,6 +680,75 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
   }
 }
 
+function targetShipment(command: ShipmentHandoffCommandV1): {
+  shipmentId: string;
+  expectedRelationshipVersion: number;
+} | null {
+  if (
+    command.contractVersion !== "shipment-handoff.v2" ||
+    !command.shipment.targetShipmentId ||
+    !command.shipment.expectedRelationshipVersion
+  ) {
+    return null;
+  }
+  return {
+    shipmentId: command.shipment.targetShipmentId,
+    expectedRelationshipVersion: command.shipment.expectedRelationshipVersion,
+  };
+}
+
+function assertCompatibleShipment(
+  shipment: {
+    carrierCode: string | null;
+    vesselName: string | null;
+    voyageNumber: string | null;
+    originUnlocode: string | null;
+    destinationUnlocode: string | null;
+    atdAt: Date | null;
+  },
+  command: ShipmentHandoffCommandV1,
+): void {
+  const incoming = command.shipment;
+  const facts: Array<[unknown, unknown]> = [
+    [shipment.carrierCode, incoming.carrierCode],
+    [shipment.vesselName, incoming.vesselName],
+    [shipment.voyageNumber, incoming.voyageNumber],
+    [shipment.originUnlocode, incoming.originPortCode],
+    [shipment.destinationUnlocode, incoming.destinationPortCode],
+    [
+      shipment.atdAt?.toISOString(),
+      incoming.departureProof?.kind === "actual_departure_time"
+        ? new Date(incoming.departureProof.occurredAt).toISOString()
+        : undefined,
+    ],
+  ];
+  if (
+    facts.some(
+      ([stored, proposed]) =>
+        stored !== null &&
+        stored !== undefined &&
+        proposed !== null &&
+        proposed !== undefined &&
+        stored !== proposed,
+    )
+  ) {
+    throw conflict("TARGET_SHIPMENT_FACT_CONFLICT");
+  }
+}
+
+async function listActiveShipmentContainerIds(
+  tx: Transaction,
+  tenantId: string,
+  shipmentId: string,
+): Promise<string[]> {
+  const links = await tx.shipmentContainerLink.findMany({
+    where: { tenantId, shipmentId, state: "active", supersededAt: null },
+    orderBy: { containerRecordId: "asc" },
+    select: { containerRecordId: true },
+  });
+  return links.map(({ containerRecordId }) => containerRecordId);
+}
+
 async function resolveCargoOwnerReference(
   tx: Transaction,
   command: ShipmentHandoffCommandV1,
@@ -765,6 +887,7 @@ async function createCargoAndAllocations(
   containers: Map<string, ResolvedContainer>,
   payloadHash: string,
   correction: boolean,
+  append: boolean,
 ): Promise<void> {
   const groups = [...cargoGroups.values()].sort((left, right) =>
     left.sourceLineId.localeCompare(right.sourceLineId),
@@ -784,13 +907,25 @@ async function createCargoAndAllocations(
       data: { state: "superseded", supersededAt: new Date() },
     });
   }
+  const lineNumberOffset = append
+    ? ((
+        await tx.shipmentCargoLine.aggregate({
+          where: {
+            tenantId: command.tenantId,
+            shipmentId,
+            version: command.source.handoffVersion,
+          },
+          _max: { lineNo: true },
+        })
+      )._max.lineNo ?? 0)
+    : 0;
   if (groups.length > 0) {
     await tx.shipmentCargoLine.createMany({
       data: groups.map((group, index) => ({
         id: group.id,
         tenantId: command.tenantId,
         shipmentId,
-        lineNo: index + 1,
+        lineNo: lineNumberOffset + index + 1,
         productSkuId: group.productSkuId,
         productNumberSnapshot: group.productNumber,
         quantity: group.quantity,
@@ -823,12 +958,59 @@ async function createCargoAndAllocations(
       orderBy: { version: "desc" },
       select: { id: true, version: true },
     });
+    const allocations = container.cargoAllocations ?? [];
+    if (command.sourceProfile === "internal_fulfillment_v1") {
+      if (!current || !container.stuffingSnapshotRef) {
+        throw new ShipmentHandoffAcceptanceConflictError(
+          "STUFFING_SNAPSHOT_VERSION_STALE",
+        );
+      }
+      const existingAllocations = await tx.containerCargoAllocation.findMany({
+        where: { tenantId: command.tenantId, allocationSetId: current.id },
+        select: { id: true, replenishmentOrderLineId: true },
+      });
+      const cargoByReplenishmentLine = new Map(
+        allocations.flatMap((allocation) =>
+          allocation.replenishmentOrderLineId
+            ? [
+                [
+                  allocation.replenishmentOrderLineId,
+                  cargoGroups.get(allocation.sourceLineId)!.id,
+                ] as const,
+              ]
+            : [],
+        ),
+      );
+      if (
+        existingAllocations.some(
+          ({ replenishmentOrderLineId }) =>
+            !replenishmentOrderLineId ||
+            !cargoByReplenishmentLine.has(replenishmentOrderLineId),
+        )
+      ) {
+        throw new ShipmentHandoffAcceptanceConflictError(
+          "CARGO_ALLOCATION_REQUIRED",
+        );
+      }
+      for (const allocation of existingAllocations) {
+        await tx.containerCargoAllocation.update({
+          where: { id: allocation.id },
+          data: {
+            shipmentCargoLineId: cargoByReplenishmentLine.get(
+              allocation.replenishmentOrderLineId!,
+            ),
+          },
+        });
+      }
+      continue;
+    }
     if (current) {
       await tx.containerCargoAllocationSet.update({
         where: { id: current.id },
         data: { state: "superseded", supersededAt: new Date() },
       });
     }
+    if (allocations.length === 0) continue;
     const allocationSetId = randomUUID();
     await tx.containerCargoAllocationSet.create({
       data: {
@@ -845,25 +1027,22 @@ async function createCargoAndAllocations(
         payloadHash,
       },
     });
-    const allocations = container.cargoAllocations ?? [];
-    if (allocations.length > 0) {
-      await tx.containerCargoAllocation.createMany({
-        data: allocations.map((allocation) => ({
-          id: randomUUID(),
-          tenantId: command.tenantId,
-          allocationSetId,
-          shipmentCargoLineId: cargoGroups.get(allocation.sourceLineId)!.id,
-          allocatedQuantity: allocation.quantity,
-          quantityUnit: allocation.quantityUnit,
-          packageCount: allocation.packageCount,
-          packageUnit: allocation.packageUnit,
-          grossWeight: allocation.grossWeight,
-          weightUnit: allocation.weightUnit,
-          volume: allocation.volume,
-          volumeUnit: allocation.volumeUnit,
-        })),
-      });
-    }
+    await tx.containerCargoAllocation.createMany({
+      data: allocations.map((allocation) => ({
+        id: randomUUID(),
+        tenantId: command.tenantId,
+        allocationSetId,
+        shipmentCargoLineId: cargoGroups.get(allocation.sourceLineId)!.id,
+        allocatedQuantity: allocation.quantity,
+        quantityUnit: allocation.quantityUnit,
+        packageCount: allocation.packageCount,
+        packageUnit: allocation.packageUnit,
+        grossWeight: allocation.grossWeight,
+        weightUnit: allocation.weightUnit,
+        volume: allocation.volume,
+        volumeUnit: allocation.volumeUnit,
+      })),
+    });
   }
 }
 
@@ -1252,28 +1431,39 @@ function buildAcceptedObjectResults(
   containers: Map<string, ResolvedContainer>,
   cargoGroups: Map<string, CargoGroup>,
   documents: Map<string, string>,
+  issues: ShipmentHandoffIssueV1[],
 ): ShipmentHandoffObjectResultV1[] {
+  const issueCodesFor = (subjectRef: string) =>
+    [
+      ...new Set(
+        issues
+          .filter((current) =>
+            current.subjectRef ? current.subjectRef === subjectRef : true,
+          )
+          .map(({ code }) => code),
+      ),
+    ].sort();
   return [
     ...command.containers.map((container) => ({
       objectType: "container" as const,
       sourceReferenceId: container.referenceId,
       state: "accepted" as const,
       entityId: containers.get(container.referenceId)!.containerRecordId,
-      issueCodes: [],
+      issueCodes: issueCodesFor(container.referenceId),
     })),
     ...[...cargoGroups.values()].map((group) => ({
       objectType: "cargo_line" as const,
       sourceReferenceId: group.sourceLineId,
       state: "accepted" as const,
       entityId: group.id,
-      issueCodes: [],
+      issueCodes: issueCodesFor(group.sourceLineId),
     })),
     ...command.billsOfLading.map((document) => ({
       objectType: "transport_document" as const,
       sourceReferenceId: document.referenceId,
       state: "accepted" as const,
       entityId: documents.get(document.referenceId)!,
-      issueCodes: [],
+      issueCodes: issueCodesFor(document.referenceId),
     })),
   ];
 }
@@ -1387,8 +1577,10 @@ function assertCompatibleContainer(
 ): void {
   if (
     (current.containerNumber &&
+      incoming.containerNumber &&
       current.containerNumber !== incoming.containerNumber) ||
     (current.containerTypeCode &&
+      incoming.containerTypeCode &&
       current.containerTypeCode !== incoming.containerTypeCode) ||
     (current.sealNumber &&
       incoming.sealNumber &&

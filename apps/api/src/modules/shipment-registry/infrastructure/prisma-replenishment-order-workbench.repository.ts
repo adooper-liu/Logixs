@@ -68,17 +68,26 @@ export class PrismaReplenishmentOrderWorkbenchRepository implements Replenishmen
                 },
               },
             },
+            shipmentCargoLines: {
+              where: { state: "active", supersededAt: null },
+              orderBy: { shipmentId: "asc" },
+              select: {
+                shipment: {
+                  select: {
+                    id: true,
+                    shipmentNumber: true,
+                    currentLifecycleStatus: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      orderNumber: row.orderNumber,
-      updatedAt: row.updatedAt.toISOString(),
-      linkedContainers: row.containerRecords,
-      lines: row.lines.map((line) => ({
+    return rows.map((row) => {
+      const lines = row.lines.map((line) => ({
         id: line.id,
         productSkuId: line.productSkuId,
         productNumber: line.productNumber,
@@ -91,7 +100,60 @@ export class PrismaReplenishmentOrderWorkbenchRepository implements Replenishmen
           allocatedQuantity: allocation.allocatedQuantity.toString(),
           quantityUnit: allocation.quantityUnit,
         })),
-      })),
+        handoffShipments: line.shipmentCargoLines.map(
+          ({ shipment }) => shipment,
+        ),
+      }));
+      return {
+        id: row.id,
+        orderNumber: row.orderNumber,
+        updatedAt: row.updatedAt.toISOString(),
+        linkedContainers: row.containerRecords,
+        lines,
+        handoffShipments: [
+          ...new Map(
+            lines.flatMap((line) =>
+              line.handoffShipments.map((shipment) => [shipment.id, shipment]),
+            ),
+          ).values(),
+        ],
+      };
+    });
+  }
+
+  async resolveCurrentLines(input: {
+    tenantId: string;
+    identities: Array<{
+      replenishmentOrderNumber: string;
+      productNumber: string;
+    }>;
+  }) {
+    const rows = await this.prisma.replenishmentOrderLine.findMany({
+      where: {
+        tenantId: input.tenantId,
+        isCurrent: true,
+        OR: input.identities.map((identity) => ({
+          productNumber: identity.productNumber,
+          replenishmentOrder: {
+            orderNumber: identity.replenishmentOrderNumber,
+          },
+        })),
+      },
+      orderBy: [{ replenishmentOrderId: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        productSkuId: true,
+        productNumber: true,
+        sourceRowId: true,
+        replenishmentOrder: { select: { orderNumber: true } },
+      },
+    });
+    return rows.map((row) => ({
+      replenishmentOrderLineId: row.id,
+      replenishmentOrderNumber: row.replenishmentOrder.orderNumber,
+      productSkuId: row.productSkuId,
+      productNumber: row.productNumber,
+      sourceRowId: row.sourceRowId,
     }));
   }
 }

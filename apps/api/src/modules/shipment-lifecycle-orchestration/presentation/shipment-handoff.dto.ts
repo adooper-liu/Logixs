@@ -3,14 +3,27 @@ import type {
   ShipmentHandoffCommandV1,
   ShipmentHandoffIssueV1,
   ShipmentHandoffObjectResultV1,
+  InternalShipmentHandoffAcceptCommandV1,
 } from "@logix/contracts";
+
+export class InternalShipmentHandoffAcceptRequestDto {
+  @ApiProperty({ enum: ["internal-shipment-handoff-accept.v1"] })
+  contractVersion!: InternalShipmentHandoffAcceptCommandV1["contractVersion"];
+  @ApiProperty() candidateRef!: string;
+  @ApiProperty() idempotencyKey!: string;
+}
 
 export class ShipmentHandoffCommandRequestDto {
   @ApiProperty({ enum: ["shipment-handoff.v1"] })
   contractVersion!: ShipmentHandoffCommandV1["contractVersion"];
   @ApiProperty() tenantId!: string;
   @ApiProperty({
-    enum: ["legacy_departed_file_v1", "packing_platform_v1", "api_v1"],
+    enum: [
+      "legacy_departed_file_v1",
+      "packing_platform_v1",
+      "internal_fulfillment_v1",
+      "api_v1",
+    ],
   })
   sourceProfile!: ShipmentHandoffCommandV1["sourceProfile"];
   @ApiProperty({ type: Object }) source!: ShipmentHandoffCommandV1["source"];

@@ -1,8 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type {
   ShipmentHandoffCommandV1,
+  ShipmentHandoffCommandV2,
   ShipmentHandoffIssueV1,
 } from "@logix/contracts";
+type ShipmentHandoffCommand =
+  ShipmentHandoffCommandV1 | ShipmentHandoffCommandV2;
 import { PrismaService } from "../../../prisma/prisma.service";
 import type {
   InspectShipmentHandoffConflictsPort,
@@ -14,7 +17,7 @@ export class PrismaShipmentHandoffConflictInspector implements InspectShipmentHa
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async inspect(
-    command: ShipmentHandoffCommandV1,
+    command: ShipmentHandoffCommand,
     payloadHash: string,
   ): Promise<ShipmentHandoffConflictInspection> {
     const existingHandoffs = await this.prisma.shipmentHandoffRecord.findMany({

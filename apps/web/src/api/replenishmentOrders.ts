@@ -61,6 +61,11 @@ export interface ReplenishmentOrderWorkbenchItem {
   };
   nextAction: { code: string; label: string } | null;
   relatedContainers: Array<{ id: string; containerNumber: string | null }>;
+  handoffShipments: Array<{
+    id: string;
+    shipmentNumber: string | null;
+    currentLifecycleStatus: string;
+  }>;
   lines: ReplenishmentOrderLine[];
 }
 

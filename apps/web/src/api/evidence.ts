@@ -31,6 +31,7 @@ interface EvidenceSourceContext {
   sourceType?: ContractEvidenceRecord["source"]["sourceType"];
   authoritySystem?: string;
   captureSource?: CaptureSource;
+  subjectType?: string;
 }
 
 function identityHeaders(): HeadersInit {
@@ -68,6 +69,7 @@ export async function registerEvidence(
   } & EvidenceSourceContext,
 ): Promise<EvidenceRecord> {
   const contentRef = input.contentRef.trim().slice(0, 500);
+  const subjectType = input.subjectType ?? "container";
   const response = await fetch("/api/evidence", {
     method: "POST",
     headers: {
@@ -76,11 +78,13 @@ export async function registerEvidence(
     },
     body: JSON.stringify({
       evidenceType: input.evidenceType ?? "document",
-      subjectType: "container",
+      subjectType,
       subjectId: input.subjectId,
       authorityLevel: input.authorityLevel ?? "operational",
       contentRef,
-      contentHash: await sha256Hex(`floor:${input.subjectId}:${contentRef}`),
+      contentHash: await sha256Hex(
+        `${subjectType}:${input.subjectId}:${contentRef}`,
+      ),
       sourceType: input.sourceType ?? "person",
       originatorSystem: "logix-web",
       authoritySystem: input.authoritySystem ?? "ops-team",
@@ -124,6 +128,28 @@ export async function registerAndVerifyFloorEvidence(
     contentRef,
     ...context,
   });
+  const verified = await verifyEvidence(record.evidenceId);
+  return verified.evidenceId;
+}
+
+export async function registerAndVerifyEvidence(
+  subjectType: string,
+  subjectId: string,
+  contentRef: string,
+  context: EvidenceSourceContext = {},
+): Promise<string> {
+  const record = await registerEvidence({
+    subjectType,
+    subjectId,
+    contentRef,
+    ...context,
+  });
+  if (
+    record.verificationState === "verified" &&
+    record.validity === "effective"
+  ) {
+    return record.evidenceId;
+  }
   const verified = await verifyEvidence(record.evidenceId);
   return verified.evidenceId;
 }

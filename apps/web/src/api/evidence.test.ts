@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isEvidenceUuid,
+  registerEvidence,
   registerAndVerifyFloorEvidence,
   resolveCompleteEvidenceRefs,
 } from "./evidence";
@@ -121,6 +122,30 @@ describe("registerAndVerifyFloorEvidence", () => {
       evidenceType: "receipt",
       authoritySystem: "terminal-operator",
       captureSource: "manual_backfill",
+    });
+  });
+});
+
+describe("registerEvidence", () => {
+  it("allows a review-scoped domain fact without exposing an evidence UUID input", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ evidenceId: EVIDENCE }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await registerEvidence({
+      subjectType: "domain_fact",
+      subjectId: "22222222-2222-4222-8222-222222222222",
+      contentRef: "船司离港记录 ATD-1",
+    });
+
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+    ).toMatchObject({
+      subjectType: "domain_fact",
+      subjectId: "22222222-2222-4222-8222-222222222222",
+      contentRef: "船司离港记录 ATD-1",
     });
   });
 });

@@ -487,15 +487,33 @@
           "$ref": "#/$defs/ShipmentLifecycleStatusV1"
         },
         "relationshipVersion": { "type": "integer", "minimum": 1 },
-        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 64 },
-        "vesselName": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "originCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "carrierCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "vesselName": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "voyageNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "originCountryCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
         "originUnlocode": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
         },
-        "destinationCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "destinationCountryCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
         "salesCountryCode": {
           "type": ["string", "null"],
           "pattern": "^[A-Z]{2}$"
@@ -512,7 +530,7 @@
           "maxLength": 200
         },
         "destinationUnlocode": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
         },
         "atdAt": {
@@ -999,15 +1017,33 @@
           "maxLength": 100
         },
         "transportMode": { "$ref": "common.schema.json#/$defs/StableCode" },
-        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 64 },
-        "vesselName": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "originCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "carrierCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "vesselName": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "voyageNumber": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "originCountryCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
         "originUnlocode": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
         },
-        "destinationCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "destinationCountryCode": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
         "salesCountryCode": {
           "type": ["string", "null"],
           "pattern": "^[A-Z]{2}$"
@@ -1024,7 +1060,7 @@
           "maxLength": 200
         },
         "destinationUnlocode": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
         },
         "atdAt": {
@@ -1359,6 +1395,7 @@
         "cargoLines",
         "transportDocuments",
         "upstreamReferences",
+        "pendingItems",
         "lifecycleInitialization",
         "projectionVersion",
         "asOf"
@@ -1386,6 +1423,26 @@
         "upstreamReferences": {
           "type": "array",
           "items": { "$ref": "#/$defs/ShipmentUpstreamReferenceViewV1" }
+        },
+        "pendingItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "label", "subjectType", "subjectRef"],
+            "properties": {
+              "code": { "$ref": "common.schema.json#/$defs/StableCode" },
+              "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "subjectType": {
+                "enum": ["shipment", "container", "cargo", "document"]
+              },
+              "subjectRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
         },
         "lifecycleInitialization": {
           "$ref": "#/$defs/ShipmentLifecycleInitializationV1"
