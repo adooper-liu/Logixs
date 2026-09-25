@@ -301,7 +301,7 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
   background: var(--surface-2);
   color: var(--muted);
   font-size: var(--text-label);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .candidate-state--ready {
@@ -415,7 +415,7 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
 
 .route-meta span:first-child {
   color: var(--brand-strong);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .fact-section {
@@ -491,7 +491,7 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
   color: var(--warn);
   font-size: var(--text-micro);
   font-style: normal;
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .action-list {
@@ -563,7 +563,7 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
 .action-row__content .action-row__source {
   min-width: 0;
   color: var(--ink-soft);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -582,7 +582,7 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
   border-radius: var(--radius-control);
   background: var(--surface-2);
   color: var(--muted);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -598,7 +598,7 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
   background: var(--surface);
   color: var(--brand-strong);
   font-size: var(--text-label);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }

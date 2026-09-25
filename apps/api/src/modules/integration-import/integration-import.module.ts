@@ -12,6 +12,7 @@ import { MasterDataModule } from "../master-data";
 import { DocumentRecordsModule } from "../document-records";
 import { ShipmentLifecycleOrchestrationModule } from "../shipment-lifecycle-orchestration";
 import { AcceptPostDepartureSourceCandidateService } from "./application/accept-post-departure-source-candidate.service";
+import { AcceptPostDepartureSourcePackageService } from "./application/accept-post-departure-source-package.service";
 import { CorrectPostDepartureSourceCandidateService } from "./application/correct-post-departure-source-candidate.service";
 import { CompletePostDepartureCandidateCargoService } from "./application/complete-post-departure-candidate-cargo.service";
 import { ConfirmMappingsService } from "./application/confirm-mappings.service";
@@ -52,6 +53,7 @@ import { PostDepartureSourcePackageController } from "./presentation/post-depart
     CompletePostDepartureCandidateCargoService,
     SearchPostDepartureReferencePortsService,
     AcceptPostDepartureSourceCandidateService,
+    AcceptPostDepartureSourcePackageService,
     { provide: IMPORT_REPOSITORY, useClass: PrismaImportRepository },
     {
       provide: IMPORT_SOURCE_STORAGE,

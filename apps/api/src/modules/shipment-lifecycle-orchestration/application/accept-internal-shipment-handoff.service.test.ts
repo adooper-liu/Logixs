@@ -108,5 +108,20 @@ describe("AcceptInternalShipmentHandoffService", () => {
       }),
       { tenantId: "tenant-a", actorId: "actor-a" },
     );
+
+    const firstCommand = accept.accept.mock.calls[0]?.[0];
+    await service.execute(
+      {
+        contractVersion: "internal-shipment-handoff-accept.v1",
+        candidateRef: candidate.candidateRef,
+        idempotencyKey: "internal-handoff:test-1",
+      },
+      { tenantId: "tenant-a", actorId: "actor-a" },
+    );
+    const replayCommand = accept.accept.mock.calls[1]?.[0];
+    expect(replayCommand.source.correlationId).toBe(
+      firstCommand.source.correlationId,
+    );
+    expect(replayCommand.source.traceId).toBe(firstCommand.source.traceId);
   });
 });

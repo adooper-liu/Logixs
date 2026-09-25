@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileCheck2, History, Import, Upload } from "@lucide/vue";
+import { FileCheck2, History, Import, ListTodo, Upload } from "@lucide/vue";
 import {
   computed,
   nextTick,
@@ -8,6 +8,7 @@ import {
   useTemplateRef,
   watch,
 } from "vue";
+import { useRoute } from "vue-router";
 import { usePostDepartureHandoffWorkbench } from "../../composables/usePostDepartureHandoffWorkbench";
 import {
   handoffIssueAction,
@@ -23,19 +24,28 @@ import HandoffPreflightSummary from "./HandoffPreflightSummary.vue";
 import PostDeparturePackageUploader from "./PostDeparturePackageUploader.vue";
 import InternalShipmentHandoffPanel from "./InternalShipmentHandoffPanel.vue";
 import ShipmentRelationshipPanel from "./ShipmentRelationshipPanel.vue";
+import PostDeparturePendingCompletionPanel from "./PostDeparturePendingCompletionPanel.vue";
 
 const emit = defineEmits<{
   showLoadingHistory: [];
 }>();
 
 const workbench = usePostDepartureHandoffWorkbench();
+const route = useRoute();
 const activeResolution = shallowRef<HandoffResolutionTarget | null>(null);
+const activeStage = shallowRef<"intake" | "pending">(
+  typeof route.query.shipmentId === "string" ? "pending" : "intake",
+);
 const sourcesExpanded = shallowRef(true);
 const sourceUploader = useTemplateRef<HTMLElement>("sourceUploader");
 const resolutionPanel = useTemplateRef<HTMLElement>("resolutionPanel");
 
-onMounted(() => {
-  void workbench.loadInternalCandidates();
+onMounted(async () => {
+  await Promise.all([
+    workbench.loadInternalCandidates(),
+    workbench.loadPendingCompletion(),
+  ]);
+  selectPendingFromRoute();
 });
 
 const correctionFocusTarget = computed<HandoffResolutionTarget>(() => {
@@ -61,6 +71,18 @@ watch(
     activeResolution.value = null;
   },
 );
+
+watch(
+  () => route.query.shipmentId,
+  () => selectPendingFromRoute(),
+);
+
+function selectPendingFromRoute(): void {
+  const shipmentId = route.query.shipmentId;
+  if (typeof shipmentId !== "string") return;
+  activeStage.value = "pending";
+  workbench.selectPendingCompletion(shipmentId);
+}
 
 async function openResolution(target: HandoffResolutionTarget): Promise<void> {
   if (target === "sources" || target === "cargo_owner") {
@@ -94,6 +116,19 @@ function closeResolution(): void {
   activeResolution.value = null;
 }
 
+async function reviewBatchCandidate(candidateRef: string): Promise<void> {
+  activeStage.value = "intake";
+  workbench.selectCandidate(candidateRef);
+  const candidate = workbench.candidates.value.find(
+    (item) => item.candidateRef === candidateRef,
+  );
+  const target = candidate?.issues
+    .filter((issue) => issue.resolutionState !== "system_handled")
+    .map((issue) => handoffIssueAction(issue).target)
+    .find((value) => value !== "sources" && value !== "cargo_owner");
+  await openResolution(target ?? "shipment_grouping");
+}
+
 async function runPreflight(): Promise<void> {
   await workbench.runPreflight();
   if (workbench.preflightResult.value) sourcesExpanded.value = false;
@@ -121,121 +156,191 @@ async function runPreflight(): Promise<void> {
       </template>
     </PageHeader>
 
-    <InternalShipmentHandoffPanel
-      :candidates="workbench.internalCandidates.value"
-      :loading="workbench.loadingInternalCandidates.value"
-      :accepting-ref="workbench.acceptingInternalCandidateRef.value"
-      :error="workbench.internalCandidateError.value"
-      @refresh="workbench.loadInternalCandidates"
-      @accept="workbench.acceptInternalCandidate"
-    />
+    <nav class="stage-switch" aria-label="接管作业阶段">
+      <button
+        type="button"
+        :class="{ 'stage-switch__active': activeStage === 'intake' }"
+        :aria-current="activeStage === 'intake' ? 'page' : undefined"
+        @click="activeStage = 'intake'"
+      >
+        <Import :size="16" aria-hidden="true" />
+        待接管
+      </button>
+      <button
+        type="button"
+        :class="{ 'stage-switch__active': activeStage === 'pending' }"
+        :aria-current="activeStage === 'pending' ? 'page' : undefined"
+        @click="activeStage = 'pending'"
+      >
+        <ListTodo :size="16" aria-hidden="true" />
+        已接管待补
+        <span>{{ workbench.pendingCompletionItems.value.length }}</span>
+      </button>
+    </nav>
 
-    <ShipmentRelationshipPanel
-      v-if="workbench.acceptedShipmentDetail.value"
-      :detail="workbench.acceptedShipmentDetail.value"
-    />
-
-    <div ref="sourceUploader" class="file-handoff-source">
-      <PostDeparturePackageUploader
-        v-if="!workbench.preflightResult.value || sourcesExpanded"
-        :sources="workbench.sources.value"
-        :source-count="workbench.sourceCount.value"
-        :can-preflight="workbench.canPreflight.value"
-        :preflighting="workbench.preflighting.value"
-        @select-file="workbench.uploadSource"
-        @preflight="runPreflight"
+    <template v-if="activeStage === 'intake'">
+      <InternalShipmentHandoffPanel
+        :candidates="workbench.internalCandidates.value"
+        :loading="workbench.loadingInternalCandidates.value"
+        :accepting-ref="workbench.acceptingInternalCandidateRef.value"
+        :accepting-all="workbench.acceptingAllInternalCandidates.value"
+        :batch-result="workbench.internalBatchAcceptanceResult.value"
+        :error="workbench.internalCandidateError.value"
+        @refresh="workbench.loadInternalCandidates"
+        @accept="workbench.acceptInternalCandidate"
+        @accept-all="workbench.acceptAllInternalCandidates"
       />
-      <section v-else class="source-summary" aria-label="当前来源文件">
-        <FileCheck2 :size="18" aria-hidden="true" />
-        <span>
-          <b>{{ workbench.sourceCount.value }} 份来源已完成预检</b>
-          <small>原文件与读取结果已留存</small>
-        </span>
-        <button type="button" @click="sourcesExpanded = true">
-          <Upload :size="15" aria-hidden="true" />
-          更换来源文件
-        </button>
-      </section>
-    </div>
 
-    <p v-if="workbench.preflightError.value" class="error-notice" role="alert">
-      {{ workbench.preflightError.value }}
-    </p>
+      <ShipmentRelationshipPanel
+        v-if="workbench.acceptedShipmentDetail.value"
+        :detail="workbench.acceptedShipmentDetail.value"
+      />
 
-    <div v-if="workbench.preflightResult.value" class="preflight-grid">
-      <div class="workbench-pane">
-        <HandoffCandidateQueue
-          :candidates="workbench.candidates.value"
-          :selected-candidate-ref="workbench.selectedCandidateRef.value"
-          @select="workbench.selectCandidate"
+      <div ref="sourceUploader" class="file-handoff-source">
+        <PostDeparturePackageUploader
+          v-if="!workbench.preflightResult.value || sourcesExpanded"
+          :sources="workbench.sources.value"
+          :source-count="workbench.sourceCount.value"
+          :can-preflight="workbench.canPreflight.value"
+          :preflighting="workbench.preflighting.value"
+          @select-file="workbench.uploadSource"
+          @preflight="runPreflight"
         />
+        <section v-else class="source-summary" aria-label="当前来源文件">
+          <FileCheck2 :size="18" aria-hidden="true" />
+          <span>
+            <b>{{ workbench.sourceCount.value }} 份来源已完成预检</b>
+            <small>原文件与读取结果已留存</small>
+          </span>
+          <button type="button" @click="sourcesExpanded = true">
+            <Upload :size="15" aria-hidden="true" />
+            更换来源文件
+          </button>
+        </section>
       </div>
-      <div class="candidate-column">
+
+      <p
+        v-if="workbench.preflightError.value"
+        class="error-notice"
+        role="alert"
+      >
+        {{ workbench.preflightError.value }}
+      </p>
+
+      <div v-if="workbench.preflightResult.value" class="preflight-grid">
         <div class="workbench-pane">
-          <HandoffCandidateDetail
-            v-if="workbench.selectedCandidate.value"
-            :candidate="workbench.selectedCandidate.value"
-            :active-resolution="activeResolution"
-            @resolve="openResolution"
+          <HandoffCandidateQueue
+            :candidates="workbench.candidates.value"
+            :selected-candidate-ref="workbench.selectedCandidateRef.value"
+            @select="workbench.selectCandidate"
           />
         </div>
-        <div
-          v-if="activeResolution && workbench.selectedCandidate.value"
-          ref="resolutionPanel"
-          class="workbench-pane resolution-pane"
-          :class="{
-            'resolution-pane--compact': activeResolution !== 'cargo',
-          }"
-        >
-          <HandoffCandidateCorrectionForm
-            v-if="activeResolution !== 'cargo'"
-            :candidate="workbench.selectedCandidate.value"
-            :shipment-options="workbench.shipmentOptions.value"
-            :loading-shipment-options="workbench.loadingShipmentOptions.value"
-            :shipment-options-error="workbench.shipmentOptionsError.value"
-            :focus-target="correctionFocusTarget"
-            :origin-options="workbench.originPortOptions.value"
-            :destination-options="workbench.destinationPortOptions.value"
-            :searching-origin="workbench.searchingOriginPort.value"
-            :searching-destination="workbench.searchingDestinationPort.value"
-            :saving="workbench.savingCorrection.value"
-            :error="workbench.correctionError.value"
-            :result="workbench.correctionResult.value"
-            @search-port="workbench.searchPort"
-            @submit="workbench.saveCandidateCorrection"
-            @cancel="closeResolution"
-          />
-          <HandoffCargoLinesEditor
-            v-else
-            :candidate="workbench.selectedCandidate.value"
-            :saving="workbench.savingCargo.value"
-            :error="workbench.cargoError.value"
-            :result="workbench.cargoResult.value"
-            @submit="workbench.saveCandidateCargoLines"
-          />
+        <div class="candidate-column">
+          <div class="workbench-pane">
+            <HandoffCandidateDetail
+              v-if="workbench.selectedCandidate.value"
+              :candidate="workbench.selectedCandidate.value"
+              :active-resolution="activeResolution"
+              @resolve="openResolution"
+            />
+          </div>
+          <div
+            v-if="activeResolution && workbench.selectedCandidate.value"
+            ref="resolutionPanel"
+            class="workbench-pane resolution-pane"
+            :class="{
+              'resolution-pane--compact': activeResolution !== 'cargo',
+            }"
+          >
+            <HandoffCandidateCorrectionForm
+              v-if="activeResolution !== 'cargo'"
+              :candidate="workbench.selectedCandidate.value"
+              :shipment-options="workbench.shipmentOptions.value"
+              :loading-shipment-options="workbench.loadingShipmentOptions.value"
+              :shipment-options-error="workbench.shipmentOptionsError.value"
+              :focus-target="correctionFocusTarget"
+              :origin-options="workbench.originPortOptions.value"
+              :destination-options="workbench.destinationPortOptions.value"
+              :searching-origin="workbench.searchingOriginPort.value"
+              :searching-destination="workbench.searchingDestinationPort.value"
+              :saving="workbench.savingCorrection.value"
+              :error="workbench.correctionError.value"
+              :result="workbench.correctionResult.value"
+              @search-port="workbench.searchPort"
+              @submit="workbench.saveCandidateCorrection"
+              @cancel="closeResolution"
+            />
+            <HandoffCargoLinesEditor
+              v-else
+              :candidate="workbench.selectedCandidate.value"
+              :saving="workbench.savingCargo.value"
+              :error="workbench.cargoError.value"
+              :result="workbench.cargoResult.value"
+              @submit="workbench.saveCandidateCargoLines"
+            />
+          </div>
+        </div>
+        <div class="action-column">
+          <div v-if="workbench.selectedCandidate.value" class="workbench-pane">
+            <HandoffAcceptancePanel
+              :candidate="workbench.selectedCandidate.value"
+              :accepting="workbench.acceptingCandidate.value"
+              :error="workbench.acceptanceError.value"
+              :result="workbench.acceptanceResult.value"
+              :available-group-count="workbench.availableGroupCount.value"
+              :accepting-all="workbench.acceptingAllCandidates.value"
+              :batch-error="workbench.batchAcceptanceError.value"
+              :batch-result="workbench.batchAcceptanceResult.value"
+              @accept="workbench.acceptSelectedCandidate"
+              @accept-all="workbench.acceptAllAvailableCandidates"
+              @review-candidate="reviewBatchCandidate"
+            />
+          </div>
+          <div class="workbench-pane">
+            <HandoffPreflightSummary
+              :result="workbench.preflightResult.value"
+              :preflighting="workbench.preflighting.value"
+              :review-receipt="workbench.reviewReceipt.value"
+              :review-save-error="workbench.reviewSaveError.value"
+              @retry="runPreflight"
+            />
+          </div>
         </div>
       </div>
-      <div class="action-column">
-        <div v-if="workbench.selectedCandidate.value" class="workbench-pane">
-          <HandoffAcceptancePanel
-            :candidate="workbench.selectedCandidate.value"
-            :accepting="workbench.acceptingCandidate.value"
-            :error="workbench.acceptanceError.value"
-            :result="workbench.acceptanceResult.value"
-            @accept="workbench.acceptSelectedCandidate"
-          />
-        </div>
-        <div class="workbench-pane">
-          <HandoffPreflightSummary
-            :result="workbench.preflightResult.value"
-            :preflighting="workbench.preflighting.value"
-            :review-receipt="workbench.reviewReceipt.value"
-            :review-save-error="workbench.reviewSaveError.value"
-            @retry="runPreflight"
-          />
-        </div>
-      </div>
-    </div>
+    </template>
+
+    <PostDeparturePendingCompletionPanel
+      v-else
+      :items="workbench.pendingCompletionItems.value"
+      :selected="workbench.selectedPendingCompletion.value"
+      :loading="workbench.loadingPendingCompletion.value"
+      :error="workbench.pendingCompletionError.value"
+      :saving-facts="workbench.savingPendingFacts.value"
+      :save-error="workbench.pendingFactSaveError.value"
+      :save-notice="workbench.pendingFactSaveNotice.value"
+      :save-result="workbench.pendingFactSaveResult.value"
+      :detail="workbench.selectedPendingShipmentDetail.value"
+      :loading-detail="workbench.loadingPendingShipmentDetail.value"
+      :detail-error="workbench.pendingShipmentDetailError.value"
+      :saving-cargo="workbench.savingPendingCargo.value"
+      :cargo-error="workbench.pendingCargoSaveError.value"
+      :cargo-notice="workbench.pendingCargoSaveNotice.value"
+      :cargo-result="workbench.pendingCargoSaveResult.value"
+      :binding-sku-line-id="workbench.bindingPendingSkuLineId.value"
+      :sku-binding-error="workbench.pendingSkuBindingError.value"
+      :sku-binding-notice="workbench.pendingSkuBindingNotice.value"
+      :sku-binding-result="workbench.pendingSkuBindingResult.value"
+      :saving-documents="workbench.savingPendingDocuments.value"
+      :document-error="workbench.pendingDocumentSaveError.value"
+      :document-notice="workbench.pendingDocumentSaveNotice.value"
+      :document-result="workbench.pendingDocumentSaveResult.value"
+      @select="workbench.selectPendingCompletion"
+      @refresh="workbench.loadPendingCompletion"
+      @save-facts="workbench.savePendingShipmentFacts"
+      @save-cargo="workbench.savePendingShipmentCargo"
+      @bind-sku="workbench.bindPendingShipmentSku"
+      @save-documents="workbench.savePendingShipmentDocuments"
+    />
   </main>
 </template>
 
@@ -246,6 +351,46 @@ async function runPreflight(): Promise<void> {
 
 .file-handoff-source {
   margin-top: var(--space-3);
+}
+
+.stage-switch {
+  width: fit-content;
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.stage-switch button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.stage-switch button span {
+  min-width: 20px;
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: var(--text-micro);
+  text-align: center;
+}
+
+.stage-switch__active {
+  background: var(--surface) !important;
+  color: var(--brand-strong) !important;
+  box-shadow: var(--shadow-card);
+  font-weight: 600;
 }
 
 .view-switch {
@@ -274,7 +419,7 @@ async function runPreflight(): Promise<void> {
   background: var(--surface) !important;
   color: var(--brand-strong) !important;
   box-shadow: var(--shadow-card);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .error-notice {
@@ -319,7 +464,7 @@ async function runPreflight(): Promise<void> {
   border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink-soft);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -379,6 +524,20 @@ async function runPreflight(): Promise<void> {
 }
 
 @media (max-width: 720px) {
+  .stage-switch,
+  .stage-switch button {
+    width: 100%;
+  }
+
+  .stage-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stage-switch button {
+    justify-content: center;
+  }
+
   .view-switch,
   .view-switch button {
     width: 100%;

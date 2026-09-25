@@ -6,6 +6,8 @@ import type {
   ShipmentDetailV1,
   ShipmentLifecycleInitializationStateV1,
   ShipmentLifecycleStatusV1,
+  ShipmentPendingCompletionItemV1,
+  ShipmentPendingItemV1,
   ShipmentSummaryV1,
 } from "@logix/contracts";
 import { Prisma } from "../../../../../../generated/prisma";
@@ -14,6 +16,7 @@ import type {
   ShipmentByIdQuery,
   ShipmentDetailProjection,
   ShipmentListQuery,
+  ShipmentPendingCompletionQuery,
   ShipmentReadRepository,
 } from "../domain/shipment-read.repository";
 
@@ -23,6 +26,7 @@ const POST_DEPARTURE_DEFINITION_VERSION = 1;
 
 const summarySelect = Prisma.validator<Prisma.ShipmentSelect>()({
   id: true,
+  sourceSystem: true,
   shipmentNumber: true,
   transportMode: true,
   carrierCode: true,
@@ -168,6 +172,23 @@ const detailSelect = Prisma.validator<Prisma.ShipmentSelect>()({
   },
 });
 
+const pendingCompletionSelect = Prisma.validator<Prisma.ShipmentSelect>()({
+  ...summarySelect,
+  cargoLines: {
+    where: { state: "active", supersededAt: null },
+    orderBy: [{ lineNo: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      productSkuId: true,
+      productNumberSnapshot: true,
+    },
+  },
+  transportDocuments: {
+    where: { state: "active", supersededAt: null },
+    select: { id: true, documentType: true, documentNumber: true },
+  },
+});
+
 const allocationSelect =
   Prisma.validator<Prisma.ContainerCargoAllocationSelect>()({
     shipmentCargoLineId: true,
@@ -184,6 +205,9 @@ const allocationSelect =
 
 type SummaryRow = Prisma.ShipmentGetPayload<{ select: typeof summarySelect }>;
 type DetailRow = Prisma.ShipmentGetPayload<{ select: typeof detailSelect }>;
+type PendingCompletionRow = Prisma.ShipmentGetPayload<{
+  select: typeof pendingCompletionSelect;
+}>;
 type AllocationRow = Prisma.ContainerCargoAllocationGetPayload<{
   select: typeof allocationSelect;
 }>;
@@ -225,6 +249,74 @@ export class PrismaShipmentReadRepository implements ShipmentReadRepository {
       rows.map(({ id }) => id),
     );
     return rows.map((row) => toSummary(row, signals.get(row.id)));
+  }
+
+  async listPendingCompletion(
+    query: ShipmentPendingCompletionQuery,
+  ): Promise<ShipmentPendingCompletionItemV1[]> {
+    const rows = await this.prisma.shipment.findMany({
+      where: {
+        tenantId: query.tenantId,
+        handoffs: { some: { status: { in: ["accepted", "superseded"] } } },
+        OR: [
+          { carrierCode: null },
+          { vesselName: null },
+          { voyageNumber: null },
+          { originUnlocode: null },
+          { destinationUnlocode: null },
+          { atdAt: null },
+          { cargoLines: { none: { state: "active", supersededAt: null } } },
+          {
+            cargoLines: {
+              some: {
+                state: "active",
+                supersededAt: null,
+                productSkuId: null,
+              },
+            },
+          },
+          {
+            transportDocuments: {
+              none: {
+                state: "active",
+                supersededAt: null,
+                documentType: { in: ["mbl", "hbl"] },
+              },
+            },
+          },
+        ],
+        ...(query.after
+          ? {
+              AND: [
+                {
+                  OR: [
+                    { updatedAt: { lt: query.after.updatedAt } },
+                    {
+                      AND: [
+                        { updatedAt: query.after.updatedAt },
+                        { id: { lt: query.after.id } },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: query.take,
+      select: pendingCompletionSelect,
+    });
+    const signals = await this.loadLifecycleSignals(
+      query.tenantId,
+      rows.map(({ id }) => id),
+    );
+    return rows.flatMap((row) => {
+      const pendingItems = shipmentPendingItems(row);
+      return pendingItems.length > 0
+        ? [{ shipment: toSummary(row, signals.get(row.id)), pendingItems }]
+        : [];
+    });
   }
 
   async findById(
@@ -502,39 +594,126 @@ function toDetail(
 }
 
 function shipmentPendingItems(
-  row: DetailRow,
+  row: Pick<
+    PendingCompletionRow,
+    | "id"
+    | "sourceSystem"
+    | "carrierCode"
+    | "vesselName"
+    | "voyageNumber"
+    | "originUnlocode"
+    | "destinationUnlocode"
+    | "atdAt"
+    | "cargoLines"
+    | "transportDocuments"
+  >,
 ): ShipmentDetailV1["pendingItems"] {
   const items: ShipmentDetailV1["pendingItems"] = [];
   const add = (
     code: string,
     label: string,
+    directAction: ShipmentPendingItemV1["directAction"],
+    currentValue: string | null = null,
+    sourceValue: string | null = currentValue,
     subjectType: ShipmentDetailV1["pendingItems"][number]["subjectType"] = "shipment",
     subjectRef = row.id,
-  ) => items.push({ code, label, subjectType, subjectRef });
-  if (!row.carrierCode) add("carrier_missing", "补充船公司");
+  ) =>
+    items.push({
+      code,
+      label,
+      subjectType,
+      subjectRef,
+      currentValue,
+      sourceSystem: row.sourceSystem,
+      sourceValue,
+      candidateValues: [],
+      responsibility: {
+        roleCode: "operations_dispatcher",
+        roleLabel: "出运运营",
+      },
+      deadline: {
+        dueAt: null,
+        source: "not_configured",
+        label: "未设定",
+      },
+      restrictedActions: [],
+      directAction,
+    });
+  if (!row.carrierCode) {
+    add("carrier_missing", "补充船公司", {
+      code: "edit_shipment_facts",
+      label: "补录船公司",
+    });
+  }
   if (!row.vesselName || !row.voyageNumber) {
-    add("vessel_voyage_missing", "补充船名航次");
+    const currentValue = [row.vesselName, row.voyageNumber]
+      .filter(Boolean)
+      .join(" / ");
+    add(
+      "vessel_voyage_missing",
+      "补充船名航次",
+      { code: "edit_shipment_facts", label: "补录船名航次" },
+      currentValue || null,
+    );
   }
-  if (!row.originUnlocode) add("origin_port_missing", "补充起运港");
+  if (!row.originUnlocode) {
+    add("origin_port_missing", "补充起运港", {
+      code: "edit_shipment_facts",
+      label: "选择起运港",
+    });
+  }
   if (!row.destinationUnlocode) {
-    add("destination_port_missing", "补充目的港");
+    add("destination_port_missing", "补充目的港", {
+      code: "edit_shipment_facts",
+      label: "选择目的港",
+    });
   }
-  if (!row.atdAt) add("departure_proof_missing", "补充实际离港证据");
+  if (!row.atdAt) {
+    add("departure_proof_missing", "补充实际离港证据", {
+      code: "edit_shipment_facts",
+      label: "登记离港事实",
+    });
+  }
   if (row.cargoLines.length === 0) {
-    add("cargo_detail_missing", "补充 SKU 装载明细", "cargo");
+    add(
+      "cargo_detail_missing",
+      "补充 SKU 装载明细",
+      { code: "add_cargo_lines", label: "补录明细" },
+      null,
+      null,
+      "cargo",
+    );
   }
   for (const line of row.cargoLines) {
     if (!line.productSkuId) {
       add(
         "product_sku_missing",
         `匹配 SKU ${line.productNumberSnapshot}`,
+        { code: "bind_product_sku", label: "匹配 SKU" },
+        null,
+        line.productNumberSnapshot,
         "cargo",
         line.id,
       );
     }
   }
-  if (row.transportDocuments.length === 0) {
-    add("bill_of_lading_missing", "补充提单资料", "document");
+  if (
+    !row.transportDocuments.some(({ documentType }) =>
+      ["mbl", "hbl"].includes(documentType),
+    )
+  ) {
+    const bookingNumbers = row.transportDocuments
+      .filter(({ documentType }) => documentType === "booking")
+      .map(({ documentNumber }) => documentNumber)
+      .join("、");
+    add(
+      "bill_of_lading_missing",
+      "补充提单资料",
+      { code: "add_transport_document", label: "补录提单" },
+      bookingNumbers ? `Booking ${bookingNumbers}` : null,
+      bookingNumbers || null,
+      "document",
+    );
   }
   return items;
 }

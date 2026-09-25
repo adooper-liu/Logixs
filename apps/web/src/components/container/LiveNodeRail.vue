@@ -215,7 +215,7 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
 .sequence {
   color: var(--muted);
   font-size: var(--text-micro);
-  line-height: 14px;
+  line-height: 14px; /* style-scale-exempt: 轨道行高，与状态点垂直对齐 */
   font-variant-numeric: tabular-nums;
 }
 
@@ -258,7 +258,7 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
   overflow: hidden;
   color: var(--ink);
   font-size: var(--text-label);
-  line-height: 15px;
+  line-height: 15px; /* style-scale-exempt: 轨道行高，与状态点垂直对齐 */
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -266,7 +266,7 @@ const railNodes = computed<readonly RailNodeView[]>(() =>
 .date {
   color: var(--muted);
   font-size: var(--text-micro);
-  line-height: 13px;
+  line-height: 13px; /* style-scale-exempt: 轨道行高，与状态点垂直对齐 */
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

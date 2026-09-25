@@ -51,7 +51,7 @@ defineProps<PageHeaderProps>();
 h2 {
   margin: var(--space-1) 0 0;
   font-size: var(--text-page);
-  line-height: 1.3;
+  line-height: var(--leading-title);
 }
 
 p {

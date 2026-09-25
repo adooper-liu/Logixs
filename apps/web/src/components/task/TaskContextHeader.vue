@@ -227,7 +227,7 @@ const containerHref = computed(
   margin: 0;
   color: var(--ink-soft);
   font-size: var(--text-label);
-  line-height: 1.5;
+  line-height: var(--leading-body);
 }
 
 .task-language p > span {

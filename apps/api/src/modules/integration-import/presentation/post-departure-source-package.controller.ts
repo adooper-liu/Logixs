@@ -6,6 +6,7 @@ import type {
   PostDepartureReferencePortSearchResultV1,
   PostDepartureSourceCandidateCorrectionResultV1,
   PostDepartureSourceCandidateAcceptResultV1,
+  PostDepartureSourcePackageAcceptResultV1,
 } from "@logix/contracts";
 import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { CorrectPostDepartureSourceCandidateService } from "../application/correct-post-departure-source-candidate.service";
@@ -14,6 +15,7 @@ import { PreflightPostDepartureSourcePackageService } from "../application/prefl
 import { SavePostDepartureSourcePackageReviewService } from "../application/save-post-departure-source-package-review.service";
 import { SearchPostDepartureReferencePortsService } from "../application/search-post-departure-reference-ports.service";
 import { AcceptPostDepartureSourceCandidateService } from "../application/accept-post-departure-source-candidate.service";
+import { AcceptPostDepartureSourcePackageService } from "../application/accept-post-departure-source-package.service";
 import {
   PostDepartureSourcePackagePreflightRequestDto,
   PostDepartureSourcePackageReviewRequestDto,
@@ -21,6 +23,7 @@ import {
   PostDepartureSourceCandidateCorrectionRequestDto,
   PostDepartureSourceCandidateCargoRequestDto,
   PostDepartureSourceCandidateAcceptRequestDto,
+  PostDepartureSourcePackageAcceptRequestDto,
 } from "./post-departure-source-package.dto";
 
 @ApiTags("post-departure-source-packages")
@@ -33,6 +36,7 @@ export class PostDepartureSourcePackageController {
     private readonly completeCandidateCargo: CompletePostDepartureCandidateCargoService,
     private readonly searchPorts: SearchPostDepartureReferencePortsService,
     private readonly acceptCandidate: AcceptPostDepartureSourceCandidateService,
+    private readonly acceptPackage: AcceptPostDepartureSourcePackageService,
   ) {}
 
   @Get("reference-ports")
@@ -134,5 +138,17 @@ export class PostDepartureSourcePackageController {
       body,
       request.identity,
     );
+  }
+
+  @Post(":packageId/accept")
+  @RequireCapabilities("import.execute")
+  @ApiOkResponse({ description: "Accepted all available Shipment groups" })
+  acceptAll(
+    @Param("packageId") packageId: string,
+    @Body() body: PostDepartureSourcePackageAcceptRequestDto,
+    @Req()
+    request: { identity: { tenantId: string; actorId: string } },
+  ): Promise<PostDepartureSourcePackageAcceptResultV1> {
+    return this.acceptPackage.execute(packageId, body, request.identity);
   }
 }

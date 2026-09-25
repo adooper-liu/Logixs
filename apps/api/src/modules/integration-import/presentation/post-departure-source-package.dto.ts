@@ -6,6 +6,7 @@ import type {
   PostDepartureSourceCandidateCorrectionCommandV1,
   PostDepartureSourceCandidateCargoCommandV1,
   PostDepartureSourceCandidateAcceptCommandV1,
+  PostDepartureSourcePackageAcceptCommandV1,
 } from "@logix/contracts";
 
 export class PostDepartureSourceBatchDto implements PostDepartureSourceBatchV1 {
@@ -109,5 +110,14 @@ export class PostDepartureSourceCandidateAcceptRequestDto implements PostDepartu
   @ApiProperty({ type: [PostDepartureSourceBatchDto] })
   sources!: PostDepartureSourceCandidateAcceptCommandV1["sources"];
   @ApiProperty({ minLength: 1, maxLength: 200 }) candidateRef!: string;
+  @ApiProperty({ minLength: 1, maxLength: 200 }) idempotencyKey!: string;
+}
+
+export class PostDepartureSourcePackageAcceptRequestDto implements PostDepartureSourcePackageAcceptCommandV1 {
+  @ApiProperty({ enum: ["post-departure-source-package-accept.v1"] })
+  contractVersion!: PostDepartureSourcePackageAcceptCommandV1["contractVersion"];
+  @ApiProperty({ pattern: "^[a-f0-9]{64}$" }) packageId!: string;
+  @ApiProperty({ type: [PostDepartureSourceBatchDto] })
+  sources!: PostDepartureSourcePackageAcceptCommandV1["sources"];
   @ApiProperty({ minLength: 1, maxLength: 200 }) idempotencyKey!: string;
 }

@@ -9,6 +9,8 @@ import type {
   PostDepartureSourceCandidateCargoCommandV1,
   PostDepartureSourceCandidateAcceptCommandV1,
   PostDepartureSourceCandidateAcceptResultV1,
+  PostDepartureSourcePackageAcceptCommandV1,
+  PostDepartureSourcePackageAcceptResultV1,
 } from "@logix/contracts";
 import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
@@ -158,6 +160,29 @@ export async function acceptPostDepartureSourceCandidate(
   return (await response.json()) as PostDepartureSourceCandidateAcceptResultV1;
 }
 
+export async function acceptPostDepartureSourcePackage(
+  command: PostDepartureSourcePackageAcceptCommandV1,
+): Promise<PostDepartureSourcePackageAcceptResultV1> {
+  const response = await fetch(
+    `/api/post-departure-source-packages/${command.packageId}/accept`,
+    {
+      method: "POST",
+      headers: HEADERS,
+      body: JSON.stringify(command),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(
+      await formatHttpError(
+        response.status,
+        await response.text(),
+        "暂时无法批量接管；已成功项不会重复创建，请直接重试",
+      ),
+    );
+  }
+  return (await response.json()) as PostDepartureSourcePackageAcceptResultV1;
+}
+
 function formatReviewError(status: number, body: string): string | null {
   if (status === 409 && body.includes("SOURCE_PACKAGE_REPLAY_CONFLICT")) {
     return "这批来源已有补全记录，请重新预检后继续；当前输入不会丢失。";
@@ -250,4 +275,6 @@ export type {
   PostDepartureSourceCandidateCargoCommandV1,
   PostDepartureSourceCandidateAcceptCommandV1,
   PostDepartureSourceCandidateAcceptResultV1,
+  PostDepartureSourcePackageAcceptCommandV1,
+  PostDepartureSourcePackageAcceptResultV1,
 } from "@logix/contracts";

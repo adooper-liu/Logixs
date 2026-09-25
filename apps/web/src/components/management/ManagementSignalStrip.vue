@@ -128,13 +128,13 @@ const displayItems = computed(() =>
 
 .signal-label small {
   color: currentColor;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .signal-summary > b {
   color: currentColor;
   font-size: var(--text-page);
-  line-height: 1.08;
+  line-height: var(--leading-tight);
   overflow-wrap: anywhere;
 }
 

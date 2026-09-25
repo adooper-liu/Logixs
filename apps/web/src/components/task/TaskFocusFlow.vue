@@ -118,7 +118,7 @@ defineProps<{
   min-width: 0;
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  line-height: var(--leading-tight);
 }
 
 .step-copy b {

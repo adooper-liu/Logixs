@@ -177,7 +177,7 @@ function submitActual(eventCode: "gate_in" | "loaded", localDateTime: string) {
   background: var(--surface) !important;
   color: var(--brand-strong) !important;
   box-shadow: var(--shadow-card);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 @media (max-width: 680px) {

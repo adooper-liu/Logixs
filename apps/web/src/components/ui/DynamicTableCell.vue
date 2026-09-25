@@ -106,7 +106,7 @@ const hasSemanticTone = computed(
   max-width: 100%;
   padding: 0;
   overflow: hidden;
-  font-weight: 750;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -131,7 +131,7 @@ const hasSemanticTone = computed(
 .entity-value b {
   color: var(--ink);
   font-size: var(--text-meta);
-  line-height: 1.25;
+  line-height: var(--leading-tight);
 }
 
 .entity-references {
@@ -163,7 +163,7 @@ const hasSemanticTone = computed(
 .plain-value {
   overflow: hidden;
   font-size: var(--text-label);
-  line-height: 1.3;
+  line-height: var(--leading-title);
   overflow-wrap: anywhere;
   text-overflow: ellipsis;
 }

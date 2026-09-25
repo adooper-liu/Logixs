@@ -12,6 +12,7 @@ const REFERENCE_ID = "77777777-7777-4777-8777-777777777777";
 
 const baseShipment = {
   id: SHIPMENT_ID,
+  sourceSystem: "integration-test",
   shipmentNumber: "SHIP-001",
   transportMode: "ocean",
   carrierCode: "HMM",
@@ -83,6 +84,121 @@ describe("PrismaShipmentReadRepository", () => {
         take: 51,
       }),
     );
+  });
+
+  it("lists only accepted Shipments that still have completion gaps", async () => {
+    const prisma = prismaMock();
+    prisma.shipment.findMany.mockResolvedValue([
+      {
+        ...baseShipment,
+        carrierCode: null,
+        vesselName: null,
+        voyageNumber: null,
+        originCountryCode: null,
+        originUnlocode: null,
+        destinationCountryCode: null,
+        destinationUnlocode: null,
+        atdAt: null,
+        containerLinks: [{ containerRecordId: CONTAINER_ID }],
+        cargoLines: [],
+        transportDocuments: [],
+        lifecycleFlows: [],
+      },
+    ]);
+    prisma.outboxMessage.findMany.mockResolvedValue([]);
+    prisma.inboxMessage.findMany.mockResolvedValue([]);
+    const repository = new PrismaShipmentReadRepository(prisma as never);
+
+    const result = await repository.listPendingCompletion({
+      tenantId: "tenant-1",
+      take: 21,
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        shipment: expect.objectContaining({ id: SHIPMENT_ID }),
+        pendingItems: expect.arrayContaining([
+          expect.objectContaining({
+            code: "carrier_missing",
+            sourceSystem: "integration-test",
+            responsibility: {
+              roleCode: "operations_dispatcher",
+              roleLabel: "出运运营",
+            },
+            deadline: {
+              dueAt: null,
+              source: "not_configured",
+              label: "未设定",
+            },
+            restrictedActions: [],
+            directAction: {
+              code: "edit_shipment_facts",
+              label: "补录船公司",
+            },
+          }),
+          expect.objectContaining({ code: "cargo_detail_missing" }),
+          expect.objectContaining({ code: "bill_of_lading_missing" }),
+        ]),
+      }),
+    ]);
+    expect(prisma.shipment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "tenant-1",
+          handoffs: {
+            some: { status: { in: ["accepted", "superseded"] } },
+          },
+        }),
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        take: 21,
+      }),
+    );
+  });
+
+  it("keeps the bill-of-lading gap open when only a booking is present", async () => {
+    const prisma = prismaMock();
+    prisma.shipment.findMany.mockResolvedValue([
+      {
+        ...baseShipment,
+        containerLinks: [{ containerRecordId: CONTAINER_ID }],
+        cargoLines: [
+          {
+            id: CARGO_ID,
+            productSkuId: REFERENCE_ID,
+            productNumberSnapshot: "SKU-001",
+          },
+        ],
+        transportDocuments: [
+          {
+            id: DOCUMENT_ID,
+            documentType: "booking",
+            documentNumber: "BOOKING-001",
+          },
+        ],
+        lifecycleFlows: [],
+      },
+    ]);
+    prisma.outboxMessage.findMany.mockResolvedValue([]);
+    prisma.inboxMessage.findMany.mockResolvedValue([]);
+    const repository = new PrismaShipmentReadRepository(prisma as never);
+
+    await expect(
+      repository.listPendingCompletion({ tenantId: "tenant-1", take: 20 }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        pendingItems: [
+          expect.objectContaining({
+            code: "bill_of_lading_missing",
+            currentValue: "Booking BOOKING-001",
+            sourceValue: "BOOKING-001",
+            directAction: {
+              code: "add_transport_document",
+              label: "补录提单",
+            },
+          }),
+        ],
+      }),
+    ]);
   });
 
   it("maps current detail facts and exposes a dead-lettered lifecycle initialization", async () => {

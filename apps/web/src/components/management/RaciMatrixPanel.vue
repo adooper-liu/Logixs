@@ -201,7 +201,7 @@ thead th {
   background: var(--surface-2);
   color: var(--muted);
   font-size: var(--text-micro);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 thead th:first-child,
@@ -252,7 +252,7 @@ tbody th span {
   place-items: center;
   border-radius: var(--radius-s);
   font-size: var(--text-micro);
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .accountable {

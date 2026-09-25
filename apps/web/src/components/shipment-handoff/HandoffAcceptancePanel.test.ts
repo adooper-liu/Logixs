@@ -24,11 +24,16 @@ describe("HandoffAcceptancePanel", () => {
         accepting: false,
         error: "",
         result: null,
+        availableGroupCount: 1,
+        acceptingAll: false,
+        batchError: "",
+        batchResult: null,
       },
     });
 
     expect(wrapper.text()).toContain("0 项缺失资料");
-    expect(wrapper.get("button").text()).toContain("接管当前 Shipment");
+    expect(wrapper.get("button").text()).toContain("接管全部可接管项（1 票）");
+    expect(wrapper.findAll("button")[1]?.text()).toContain("接管当前 Shipment");
     expect(wrapper.text()).not.toContain("先接管，稍后补齐");
   });
 });

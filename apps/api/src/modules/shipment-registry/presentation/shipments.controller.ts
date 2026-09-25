@@ -1,10 +1,19 @@
 import { Controller, Get, Param, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiQuery, ApiTags } from "@nestjs/swagger";
-import type { ShipmentDetailV1, ShipmentPageV1 } from "@logix/contracts";
+import type {
+  ShipmentDetailV1,
+  ShipmentPageV1,
+  ShipmentPendingCompletionPageV1,
+} from "@logix/contracts";
 import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { GetShipmentService } from "../application/get-shipment.service";
+import { ListShipmentPendingCompletionService } from "../application/list-shipment-pending-completion.service";
 import { ListShipmentsService } from "../application/list-shipments.service";
-import { ShipmentDetailDto, ShipmentPageDto } from "./shipment.dto";
+import {
+  ShipmentDetailDto,
+  ShipmentPageDto,
+  ShipmentPendingCompletionPageDto,
+} from "./shipment.dto";
 
 type IdentityRequest = { identity: { tenantId: string } };
 
@@ -14,6 +23,7 @@ export class ShipmentsController {
   constructor(
     private readonly listShipments: ListShipmentsService,
     private readonly getShipment: GetShipmentService,
+    private readonly listPendingCompletion: ListShipmentPendingCompletionService,
   ) {}
 
   @Get()
@@ -46,6 +56,23 @@ export class ShipmentsController {
       pageSize,
       cursor,
       status,
+    });
+  }
+
+  @Get("pending-completion")
+  @RequireCapabilities("container.read", "lifecycle.read")
+  @ApiQuery({ name: "pageSize", required: false, type: Number })
+  @ApiQuery({ name: "cursor", required: false, type: String })
+  @ApiOkResponse({ type: ShipmentPendingCompletionPageDto })
+  listPending(
+    @Req() request: IdentityRequest,
+    @Query("pageSize") pageSize?: string,
+    @Query("cursor") cursor?: string,
+  ): Promise<ShipmentPendingCompletionPageV1> {
+    return this.listPendingCompletion.execute({
+      tenantId: request.identity.tenantId,
+      pageSize,
+      cursor,
     });
   }
 

@@ -183,7 +183,7 @@ function submit(): void {
     data-testid="handoff-cargo-editor"
   >
     <header class="pane-heading">
-      <span><small>接管前最后一步</small><b>补齐 SKU 装载明细</b></span>
+      <span><small>货物明细</small><b>补齐 SKU 装载明细</b></span>
       <small>{{ lines.length }} 行 · {{ skuCount }} 个 SKU</small>
     </header>
 
@@ -428,7 +428,7 @@ textarea {
   border-color: var(--brand);
   background: var(--brand);
   color: var(--on-brand);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 button:disabled {

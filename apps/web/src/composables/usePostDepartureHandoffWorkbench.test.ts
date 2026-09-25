@@ -9,8 +9,27 @@ const searchPorts = vi.fn();
 const correctCandidate = vi.fn();
 const completeCandidateCargo = vi.fn();
 const acceptCandidate = vi.fn();
+const acceptPackage = vi.fn();
 const registerEvidence = vi.fn();
 const listShipments = vi.fn().mockResolvedValue([]);
+const listPendingCompletion = vi.fn().mockResolvedValue({
+  items: [],
+  pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+  asOf: "2026-09-24T00:00:00.000Z",
+  projectionVersion: 0,
+});
+const completePendingFacts = vi.fn();
+const completePendingCargo = vi.fn();
+const bindPendingSku = vi.fn();
+const completePendingDocuments = vi.fn();
+const getShipmentDetail = vi.fn().mockResolvedValue(pendingDetail());
+const listInternalCandidates = vi.fn().mockResolvedValue({
+  items: [],
+  asOf: "2026-09-24T00:00:00.000Z",
+  projectionVersion: 1,
+});
+const acceptInternalCandidate = vi.fn();
+const acceptInternalCandidates = vi.fn();
 
 vi.mock("../api/importBatches", () => ({
   uploadImportBatch: (...args: unknown[]) => uploadImportBatch(...args),
@@ -28,15 +47,175 @@ vi.mock("../api/postDepartureSourcePackages", () => ({
     completeCandidateCargo(...args),
   acceptPostDepartureSourceCandidate: (...args: unknown[]) =>
     acceptCandidate(...args),
+  acceptPostDepartureSourcePackage: (...args: unknown[]) =>
+    acceptPackage(...args),
 }));
 vi.mock("../api/evidence", () => ({
   registerAndVerifyEvidence: (...args: unknown[]) => registerEvidence(...args),
 }));
 vi.mock("../api/shipments", () => ({
   listDepartedShipments: (...args: unknown[]) => listShipments(...args),
+  listShipmentPendingCompletion: (...args: unknown[]) =>
+    listPendingCompletion(...args),
+  completeShipmentPendingFacts: (...args: unknown[]) =>
+    completePendingFacts(...args),
+  completeShipmentPendingCargo: (...args: unknown[]) =>
+    completePendingCargo(...args),
+  bindShipmentPendingSku: (...args: unknown[]) => bindPendingSku(...args),
+  completeShipmentPendingDocuments: (...args: unknown[]) =>
+    completePendingDocuments(...args),
+  getShipmentDetail: (...args: unknown[]) => getShipmentDetail(...args),
+  listInternalShipmentHandoffCandidates: (...args: unknown[]) =>
+    listInternalCandidates(...args),
+  acceptInternalShipmentHandoffCandidate: (...args: unknown[]) =>
+    acceptInternalCandidate(...args),
+  acceptInternalShipmentHandoffCandidates: (...args: unknown[]) =>
+    acceptInternalCandidates(...args),
 }));
 
 describe("usePostDepartureHandoffWorkbench", () => {
+  it("batch accepts internal facts and reloads both persistent queues", async () => {
+    const candidate = internalCandidate();
+    listInternalCandidates
+      .mockReset()
+      .mockResolvedValueOnce({
+        items: [candidate],
+        asOf: "2026-09-24T00:00:00.000Z",
+        projectionVersion: 1,
+      })
+      .mockResolvedValue({
+        items: [],
+        asOf: "2026-09-24T00:01:00.000Z",
+        projectionVersion: 1,
+      });
+    listPendingCompletion.mockReset().mockResolvedValue(pendingPage());
+    acceptInternalCandidates.mockReset().mockResolvedValue({
+      contractVersion: "internal-shipment-handoff-batch-accept-result.v1",
+      items: [
+        {
+          candidateRefs: [candidate.candidateRef],
+          status: "accepted",
+          shipmentId: "55555555-5555-4555-8555-555555555555",
+          errorCode: null,
+          traceId: "trace-internal-batch",
+          recoveryAction: "open_shipment",
+        },
+      ],
+      totals: {
+        groups: 1,
+        accepted: 1,
+        duplicate: 0,
+        conflict: 0,
+        rejected: 0,
+        failed: 0,
+      },
+    });
+    const workbench = usePostDepartureHandoffWorkbench();
+    await workbench.loadInternalCandidates();
+
+    await workbench.acceptAllInternalCandidates();
+
+    expect(acceptInternalCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractVersion: "internal-shipment-handoff-batch-accept.v1",
+        candidateRefs: [candidate.candidateRef],
+      }),
+    );
+    expect(listInternalCandidates).toHaveBeenCalledTimes(2);
+    expect(listPendingCompletion).toHaveBeenCalledTimes(1);
+    expect(workbench.internalCandidates.value).toEqual([]);
+    expect(workbench.internalBatchAcceptanceResult.value?.totals.accepted).toBe(
+      1,
+    );
+  });
+
+  it("saves accepted Shipment facts through a manual Handoff and reloads the persistent queue", async () => {
+    listPendingCompletion.mockReset().mockResolvedValue(pendingPage());
+    completePendingFacts.mockReset().mockResolvedValue({
+      contractVersion: "shipment-pending-fact-completion-result.v1",
+      status: "saved",
+      shipmentId: "55555555-5555-4555-8555-555555555555",
+      relationshipVersion: 2,
+      traceId: "trace-completion-1",
+    });
+    registerEvidence
+      .mockReset()
+      .mockResolvedValue("77777777-7777-4777-8777-777777777777");
+    const workbench = usePostDepartureHandoffWorkbench();
+    await workbench.loadPendingCompletion();
+
+    await workbench.savePendingShipmentFacts({
+      carrierCode: "HMM",
+      vesselName: "ONE TRUTH",
+      voyageNumber: "V001",
+      originPortCode: "CNNGB",
+      destinationPortCode: "USLAX",
+      departureLocal: "2026-09-22T00:00",
+      sourceTimezone: "Asia/Shanghai",
+      evidenceRef: "departure-confirmation.pdf",
+    });
+
+    expect(registerEvidence).toHaveBeenCalledWith(
+      "shipment",
+      "55555555-5555-4555-8555-555555555555",
+      "departure-confirmation.pdf",
+      expect.any(Object),
+    );
+    expect(completePendingFacts).toHaveBeenCalledWith(
+      "55555555-5555-4555-8555-555555555555",
+      expect.objectContaining({
+        contractVersion: "shipment-pending-fact-completion.v1",
+        expectedRelationshipVersion: 1,
+        facts: expect.objectContaining({
+          originPortCode: "CNNGB",
+          destinationPortCode: "USLAX",
+          departureProof: expect.objectContaining({
+            occurredAt: "2026-09-21T16:00:00.000Z",
+          }),
+        }),
+      }),
+    );
+    expect(listPendingCompletion).toHaveBeenCalledTimes(2);
+  });
+
+  it("saves SKU loading rows and keeps unmatched SKU identities pending", async () => {
+    listPendingCompletion.mockReset().mockResolvedValue(pendingPage());
+    getShipmentDetail.mockReset().mockResolvedValue(pendingDetail());
+    completePendingCargo.mockReset().mockResolvedValue({
+      contractVersion: "shipment-pending-cargo-completion-result.v1",
+      status: "saved",
+      shipmentId: "55555555-5555-4555-8555-555555555555",
+      relationshipVersion: 1,
+      cargoLineCount: 1,
+      unmatchedSkuCount: 1,
+      traceId: "cargo-trace",
+    });
+    const workbench = usePostDepartureHandoffWorkbench();
+    await workbench.loadPendingCompletion();
+
+    await workbench.savePendingShipmentCargo([
+      {
+        containerRecordId: "77777777-7777-4777-8777-777777777777",
+        productNumber: "SKU-NEW",
+        quantity: "10",
+        quantityUnit: "piece",
+      },
+    ]);
+
+    expect(completePendingCargo).toHaveBeenCalledWith(
+      "55555555-5555-4555-8555-555555555555",
+      expect.objectContaining({
+        contractVersion: "shipment-pending-cargo-completion.v1",
+        expectedRelationshipVersion: 1,
+        lines: [expect.objectContaining({ productNumber: "SKU-NEW" })],
+      }),
+    );
+    expect(workbench.pendingCargoSaveNotice.value).toContain(
+      "1 个 SKU 尚未匹配物料主数据",
+    );
+    expect(listPendingCompletion).toHaveBeenCalledTimes(2);
+  });
+
   it("starts joint preflight with the first available retained source", async () => {
     uploadImportBatch.mockReset();
     preflightPackage.mockReset();
@@ -314,6 +493,74 @@ describe("usePostDepartureHandoffWorkbench", () => {
     expect(workbench.acceptanceResult.value?.handoff.issues).toHaveLength(1);
     expect(workbench.acceptanceError.value).toBe("");
   });
+
+  it("accepts all available Shipment groups and refreshes the server pending queue", async () => {
+    uploadImportBatch.mockReset();
+    preflightPackage.mockReset();
+    acceptPackage.mockReset();
+    listPendingCompletion.mockReset();
+    uploadImportBatch.mockImplementation(async (file: File) =>
+      batch(file.name),
+    );
+    preflightPackage.mockResolvedValue(result());
+    acceptPackage.mockResolvedValue({
+      contractVersion: "post-departure-source-package-accept-result.v1",
+      packageId: "a".repeat(64),
+      items: [
+        {
+          candidateRefs: ["MSNU9762671"],
+          status: "accepted",
+          shipmentId: "55555555-5555-4555-8555-555555555555",
+          errorCode: null,
+          traceId: "trace-batch-1",
+          recoveryAction: "open_shipment",
+        },
+      ],
+      totals: {
+        groups: 1,
+        accepted: 1,
+        duplicate: 0,
+        conflict: 0,
+        rejected: 0,
+        failed: 0,
+      },
+    });
+    listPendingCompletion.mockResolvedValue(pendingPage());
+    const workbench = usePostDepartureHandoffWorkbench();
+    await workbench.uploadSource(
+      "container",
+      new File(["container"], "container.xlsx"),
+    );
+    await workbench.runPreflight();
+
+    await workbench.acceptAllAvailableCandidates();
+
+    expect(acceptPackage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractVersion: "post-departure-source-package-accept.v1",
+        packageId: "a".repeat(64),
+        sources: [{ kind: "container", batchId: "container.xlsx" }],
+      }),
+    );
+    expect(listPendingCompletion).toHaveBeenCalledWith(100);
+    expect(workbench.pendingCompletionItems.value).toHaveLength(1);
+    expect(workbench.batchAcceptanceResult.value?.totals.accepted).toBe(1);
+  });
+
+  it("loads accepted pending work from the server in a fresh session", async () => {
+    listPendingCompletion.mockReset();
+    listPendingCompletion.mockResolvedValue(pendingPage());
+    const workbench = usePostDepartureHandoffWorkbench();
+
+    await workbench.loadPendingCompletion();
+
+    expect(
+      workbench.pendingCompletionItems.value[0]?.shipment.shipmentNumber,
+    ).toBe("SHIP-001");
+    expect(
+      workbench.selectedPendingCompletion.value?.pendingItems[0]?.code,
+    ).toBe("cargo_detail_missing");
+  });
 });
 
 async function uploadAll(
@@ -475,5 +722,126 @@ function reviewReceipt() {
     candidateCount: 1,
     savedAt: "2026-09-23T08:00:00Z",
     traceId: "trace-2",
+  };
+}
+
+function pendingPage() {
+  return {
+    items: [
+      {
+        shipment: {
+          id: "55555555-5555-4555-8555-555555555555",
+          shipmentNumber: "SHIP-001",
+          transportMode: "ocean",
+          carrierCode: "HMM",
+          vesselName: "ONE TRUTH",
+          voyageNumber: "V001",
+          originCountryCode: "CN",
+          originUnlocode: "CNNGB",
+          destinationCountryCode: "US",
+          destinationUnlocode: "USLAX",
+          salesCountryCode: "US",
+          cargoOwnerReferenceId: null,
+          cargoOwnerName: "AOSOM LLC",
+          atdAt: "2026-09-22T00:00:00.000Z",
+          etaAt: null,
+          currentLifecycleStatus: "departed",
+          lifecycleVersion: 2,
+          relationshipVersion: 1,
+          activeContainerCount: 1,
+          activeCargoLineCount: 0,
+          lifecycleInitializationState: "ready",
+          updatedAt: "2026-09-24T00:00:00.000Z",
+        },
+        pendingItems: [
+          {
+            code: "cargo_detail_missing",
+            label: "补充 SKU 装载明细",
+            subjectType: "cargo",
+            subjectRef: "55555555-5555-4555-8555-555555555555",
+            currentValue: null,
+            sourceSystem: "legacy-departed-file",
+            sourceValue: null,
+            candidateValues: [],
+            responsibility: {
+              roleCode: "operations_dispatcher",
+              roleLabel: "出运运营",
+            },
+            deadline: {
+              dueAt: null,
+              source: "not_configured",
+              label: "未设定",
+            },
+            restrictedActions: [],
+            directAction: { code: "add_cargo_lines", label: "补录明细" },
+          },
+        ],
+      },
+    ],
+    pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+    asOf: "2026-09-24T00:00:00.000Z",
+    projectionVersion: 2,
+  };
+}
+
+function pendingDetail() {
+  const page = pendingPage();
+  return {
+    shipment: page.items[0]!.shipment,
+    handoff: null,
+    containers: [
+      {
+        linkId: "66666666-6666-4666-8666-666666666666",
+        containerRecordId: "77777777-7777-4777-8777-777777777777",
+        containerNumber: "MSNU9762671",
+        containerTypeCode: "40HQ",
+        sealNumber: null,
+        currentStatus: "shipped",
+        linkVersion: 1,
+        currentNodeCode: null,
+        flowState: null,
+        allocations: [],
+      },
+    ],
+    cargoLines: [],
+    transportDocuments: [],
+    upstreamReferences: [],
+    pendingItems: page.items[0]!.pendingItems,
+    lifecycleInitialization: {
+      state: "ready",
+      activeContainerCount: 1,
+      initializedContainerCount: 1,
+      relationshipVersion: 1,
+      lastErrorCode: null,
+    },
+    projectionVersion: 2,
+    asOf: "2026-09-24T00:00:00.000Z",
+  };
+}
+
+function internalCandidate() {
+  return {
+    candidateRef: `internal:${"a".repeat(64)}`,
+    bookingNumber: "BK-001",
+    carrierCode: "HMM",
+    vesselName: "ONE INNOVATION",
+    voyageNumber: "001E",
+    originPortCode: "CNSHA",
+    destinationPortCode: "USLAX",
+    departedAt: "2026-09-24T00:00:00.000Z",
+    departureSourceTimezone: "Asia/Shanghai",
+    departureEvidenceRef: null,
+    containers: [
+      {
+        containerRecordId: "11111111-1111-4111-8111-111111111111",
+        containerNumber: "HMMU4956442",
+        containerTypeCode: "40HQ",
+        stuffingSnapshotRef: "22222222-2222-4222-8222-222222222222",
+      },
+    ],
+    replenishmentOrders: [],
+    cargoLines: [],
+    transportDocuments: [],
+    pendingItems: [],
   };
 }

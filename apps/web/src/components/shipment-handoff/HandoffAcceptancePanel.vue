@@ -1,25 +1,39 @@
 <script setup lang="ts">
-import { CheckCircle2, Ship } from "@lucide/vue";
+import { CheckCircle2, Layers3, Ship } from "@lucide/vue";
 import { computed, type DeepReadonly } from "vue";
 import type {
   PostDepartureSourceCandidateAcceptResultV1,
   PostDepartureSourceCandidateV1,
+  PostDepartureSourcePackageAcceptResultV1,
 } from "@logix/contracts";
+import HandoffBatchAcceptanceReceipt from "./HandoffBatchAcceptanceReceipt.vue";
 
 const props = defineProps<{
   candidate: PostDepartureSourceCandidateV1;
   accepting: boolean;
   error: string;
   result: DeepReadonly<PostDepartureSourceCandidateAcceptResultV1> | null;
+  availableGroupCount: number;
+  acceptingAll: boolean;
+  batchError: string;
+  batchResult: DeepReadonly<PostDepartureSourcePackageAcceptResultV1> | null;
 }>();
 
-const emit = defineEmits<{ accept: [] }>();
+const emit = defineEmits<{
+  accept: [];
+  acceptAll: [];
+  reviewCandidate: [candidateRef: string];
+}>();
 const pendingIssueCount = computed(
   () =>
     props.candidate.issues.filter(
       (issue) => issue.resolutionState !== "system_handled",
     ).length,
 );
+const batchCompleted = computed(() => {
+  const totals = props.batchResult?.totals;
+  return Boolean(totals && totals.failed === 0);
+});
 </script>
 
 <template>
@@ -28,6 +42,36 @@ const pendingIssueCount = computed(
       <Ship :size="18" aria-hidden="true" />
       <span><small>当前动作</small><b>接管当前 Shipment</b></span>
     </header>
+
+    <button
+      type="button"
+      :disabled="acceptingAll || availableGroupCount === 0 || batchCompleted"
+      @click="emit('acceptAll')"
+    >
+      <Layers3 :size="16" aria-hidden="true" />
+      {{
+        acceptingAll
+          ? "正在接管全部..."
+          : batchCompleted
+            ? "全部可接管项已接管"
+            : `接管全部可接管项（${availableGroupCount} 票）`
+      }}
+    </button>
+
+    <p v-if="batchError" class="acceptance-panel__error" role="alert">
+      {{ batchError }}
+    </p>
+    <HandoffBatchAcceptanceReceipt
+      v-if="batchResult"
+      :result="batchResult"
+      @review-candidate="emit('reviewCandidate', $event)"
+      @retry-package="emit('acceptAll')"
+    />
+
+    <div class="acceptance-panel__single">
+      <small>特殊情况</small>
+      <span>仅处理当前选中的一票</span>
+    </div>
 
     <p
       v-if="candidate.decision === 'rejected'"
@@ -108,6 +152,17 @@ const pendingIssueCount = computed(
   font-size: var(--text-label);
 }
 
+.acceptance-panel__single {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+
 .acceptance-panel p {
   margin: 0;
 }
@@ -122,7 +177,7 @@ const pendingIssueCount = computed(
   border-radius: var(--radius-control);
   background: var(--brand-strong);
   color: white;
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   cursor: pointer;
 }
 

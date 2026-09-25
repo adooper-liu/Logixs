@@ -122,7 +122,7 @@ const emit = defineEmits<{
 .totals dd {
   margin: 0;
   font-size: var(--text-page);
-  font-weight: var(--weight-page);
+  font-weight: 700;
 }
 
 .total--ready {
@@ -168,7 +168,7 @@ const emit = defineEmits<{
   border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   cursor: pointer;
 }
 

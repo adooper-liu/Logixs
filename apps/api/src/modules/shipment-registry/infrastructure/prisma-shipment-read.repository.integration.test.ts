@@ -107,6 +107,51 @@ describe("PrismaShipmentReadRepository integration", () => {
     });
 
     await expect(
+      repository.listPendingCompletion({
+        tenantId: fixture.tenantId,
+        take: 20,
+      }),
+    ).resolves.toMatchObject([
+      {
+        shipment: { id: fixture.shipmentId },
+        pendingItems: [
+          {
+            code: "product_sku_missing",
+            subjectRef: fixture.cargoLineId,
+            currentValue: null,
+            sourceSystem: "integration-test",
+            sourceValue: "SKU-REAL-001",
+            responsibility: {
+              roleCode: "operations_dispatcher",
+              roleLabel: "出运运营",
+            },
+            deadline: {
+              dueAt: null,
+              source: "not_configured",
+              label: "未设定",
+            },
+            restrictedActions: [],
+            directAction: {
+              code: "bind_product_sku",
+              label: "匹配 SKU",
+            },
+          },
+        ],
+      },
+    ]);
+
+    await prisma.shipmentCargoLine.update({
+      where: { id: fixture.cargoLineId },
+      data: { productSkuId: fixture.productSkuId },
+    });
+    await expect(
+      repository.listPendingCompletion({
+        tenantId: fixture.tenantId,
+        take: 20,
+      }),
+    ).resolves.toEqual([]);
+
+    await expect(
       repository.findById({
         tenantId: randomUUID(),
         id: fixture.shipmentId,
@@ -122,6 +167,7 @@ async function createFixture() {
   const containerId = randomUUID();
   const linkId = randomUUID();
   const cargoLineId = randomUUID();
+  const productSkuId = randomUUID();
   const allocationSetId = randomUUID();
   const documentId = randomUUID();
   const actorId = randomUUID();
@@ -150,6 +196,13 @@ async function createFixture() {
       relationshipVersion: 1,
       createdBy: actorId,
       updatedBy: actorId,
+    },
+  });
+  await prisma.productSku.create({
+    data: {
+      id: productSkuId,
+      tenantId,
+      productNumber: "SKU-REAL-001",
     },
   });
   await prisma.shipmentHandoffRecord.create({
@@ -299,7 +352,14 @@ async function createFixture() {
     },
   });
 
-  return { tenantId, shipmentId, containerId, cargoLineId, documentId };
+  return {
+    tenantId,
+    shipmentId,
+    containerId,
+    cargoLineId,
+    documentId,
+    productSkuId,
+  };
 }
 
 function withSchema(connectionString: string, schema: string): string {

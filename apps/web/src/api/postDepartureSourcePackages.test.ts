@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   acceptPostDepartureSourceCandidate,
+  acceptPostDepartureSourcePackage,
   correctPostDepartureSourceCandidate,
   completePostDepartureSourceCandidateCargo,
   preflightPostDepartureSourcePackage,
@@ -46,6 +47,49 @@ describe("postDepartureSourcePackages api", () => {
         body: expect.stringContaining(
           "post-departure-source-package-preflight.v1",
         ),
+      }),
+    );
+  });
+
+  it("posts one package command for all available Shipment groups", async () => {
+    const result = {
+      contractVersion: "post-departure-source-package-accept-result.v1",
+      packageId: "a".repeat(64),
+      items: [],
+      totals: {
+        groups: 0,
+        accepted: 0,
+        duplicate: 0,
+        conflict: 0,
+        rejected: 0,
+        failed: 0,
+      },
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const command: Parameters<typeof acceptPostDepartureSourcePackage>[0] = {
+      contractVersion: "post-departure-source-package-accept.v1",
+      packageId: "a".repeat(64),
+      sources: [
+        {
+          kind: "container",
+          batchId: "11111111-1111-4111-8111-111111111111",
+        },
+      ],
+      idempotencyKey: "package-accept-1",
+    };
+
+    await acceptPostDepartureSourcePackage(command);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/post-departure-source-packages/${command.packageId}/accept`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(command),
       }),
     );
   });
