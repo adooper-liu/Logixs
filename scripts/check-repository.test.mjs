@@ -46,6 +46,11 @@ test("requires every style scale token to be defined", () => {
       "tokens.css 缺少 --text-meta",
       "tokens.css 缺少 --text-label",
       "tokens.css 缺少 --text-micro",
+      "tokens.css 缺少 --leading-tight",
+      "tokens.css 缺少 --leading-title",
+      "tokens.css 缺少 --leading-dense",
+      "tokens.css 缺少 --leading-body",
+      "tokens.css 缺少 --leading-prose",
       "tokens.css 缺少 --space-2",
       "tokens.css 缺少 --space-3",
       "tokens.css 缺少 --space-4",
@@ -64,6 +69,11 @@ test("accepts a complete style scale token set", () => {
     "--text-meta: 13px",
     "--text-label: 12px",
     "--text-micro: 11px",
+    "--leading-tight: 1.1",
+    "--leading-title: 1.3",
+    "--leading-dense: 1.4",
+    "--leading-body: 1.55",
+    "--leading-prose: 1.6",
     "--space-1: 4px",
     "--space-2: 8px",
     "--space-3: 12px",
@@ -168,6 +178,67 @@ test("rejects a font shorthand that hides a literal size", () => {
     [
       "apps/web/src/views/Shorthand.vue: font 简写里的字号不得写裸值，请改用 var(--text-*) 令牌（当前为 '10px var(--font-mono)'）",
     ],
+  );
+});
+
+test("accepts approved font weights and rejects removed tokens or unsupported values", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Weight.vue",
+        source: `<style scoped>
+.a { font-weight: 400; }
+.b { font-weight: 600; }
+.c { font-weight: 700; }
+.d { font-weight: inherit; }
+.e { font-weight: normal; }
+.f { font-weight: bold; }
+.g { font-weight: var(--weight-strong); }
+.h { font-weight: 650; }
+.i { font-weight: 500; }
+</style>`,
+      },
+    ]),
+    [
+      "apps/web/src/views/Weight.vue: font-weight 只允许 400 / 600 / 700（或 inherit / normal / bold），当前为 'var(--weight-strong)'",
+      "apps/web/src/views/Weight.vue: font-weight 只允许 400 / 600 / 700（或 inherit / normal / bold），当前为 '650'",
+      "apps/web/src/views/Weight.vue: font-weight 只允许 400 / 600 / 700（或 inherit / normal / bold），当前为 '500'",
+    ],
+  );
+});
+
+test("rejects every literal line-height, including unitless ratios", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Leading.vue",
+        source: `<style scoped>
+.a { line-height: var(--leading-body); }
+.b { line-height: inherit; }
+.c { line-height: 1.5; }
+.d { line-height: 24px; }
+</style>`,
+      },
+    ]),
+    [
+      "apps/web/src/views/Leading.vue: line-height 不得写裸值 '1.5'，请改用 var(--leading-*) 令牌（title 1.3 / dense 1.4 / body 1.55 / prose 1.6）",
+      "apps/web/src/views/Leading.vue: line-height 不得写裸值 '24px'，请改用 var(--leading-*) 令牌（title 1.3 / dense 1.4 / body 1.55 / prose 1.6）",
+    ],
+  );
+});
+
+test("accepts an exemption on a font-weight or line-height line", () => {
+  assert.deepEqual(
+    findStyleScaleViolations([
+      {
+        path: "apps/web/src/views/Exempt.vue",
+        source: `<style scoped>
+.a { line-height: 14px; /* style-scale-exempt: 与状态点垂直对齐 */ }
+.b { font-weight: 800; /* style-scale-exempt: 装饰性品牌符号 */ }
+</style>`,
+      },
+    ]),
+    [],
   );
 });
 

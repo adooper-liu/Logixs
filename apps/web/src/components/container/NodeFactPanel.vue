@@ -121,7 +121,7 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
 .node-position b {
   color: var(--brand-strong);
   font-size: var(--text-page);
-  line-height: 1;
+  line-height: var(--leading-tight);
 }
 
 .node-count > span,
@@ -138,7 +138,7 @@ const nodeNumber = computed(() => String(props.nodeIndex).padStart(2, "0"));
 .node-title h2 {
   margin: 0;
   font-size: var(--text-page);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
 }
 
 .phase {

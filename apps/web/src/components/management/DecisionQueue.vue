@@ -114,7 +114,7 @@ defineProps<{ items: readonly DecisionItem[] }>();
   overflow-wrap: anywhere;
   color: currentColor;
   font-size: var(--text-title);
-  line-height: 1.05;
+  line-height: var(--leading-tight);
 }
 
 .decision-metric span,
@@ -141,7 +141,7 @@ defineProps<{ items: readonly DecisionItem[] }>();
   gap: var(--space-1);
   color: currentColor;
   font-size: var(--text-micro);
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
 }
 

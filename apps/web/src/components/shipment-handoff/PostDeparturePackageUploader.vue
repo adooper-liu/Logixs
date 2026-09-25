@@ -129,7 +129,7 @@ function selectFile(kind: PostDepartureSourceKindV1, event: Event): void {
   margin: 0 0 var(--space-1);
   color: var(--muted);
   font-size: var(--text-micro);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .section-heading h2 {
@@ -142,7 +142,7 @@ function selectFile(kind: PostDepartureSourceKindV1, event: Event): void {
   gap: var(--space-1);
   color: var(--warn);
   font-size: var(--text-label);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .completion--ready {
@@ -196,7 +196,7 @@ function selectFile(kind: PostDepartureSourceKindV1, event: Event): void {
 
 .file-fact--empty b {
   color: var(--muted);
-  font-weight: var(--weight-body);
+  font-weight: 400;
 }
 
 .file-command,
@@ -208,7 +208,7 @@ function selectFile(kind: PostDepartureSourceKindV1, event: Event): void {
   gap: var(--space-2);
   border-radius: var(--radius-control);
   font-size: var(--text-meta);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   cursor: pointer;
 }
 

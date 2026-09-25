@@ -2,10 +2,12 @@ import type {
   PostDepartureSourceKindV1,
   PostDepartureSourcePackagePreflightCommandV1,
 } from "@logix/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   ImportBatchWithRows,
   ImportRepository,
+  PostDepartureSourceCandidateCorrectionRecord,
+  PostDepartureSourcePackageReviewRecord,
 } from "../domain/import.repository";
 import { PreflightPostDepartureSourcePackageService } from "./preflight-post-departure-source-package.service";
 
@@ -78,6 +80,34 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     );
     expect(sourceGaps).toHaveLength(3);
     expect(sourceGaps.every(({ blocking }) => blocking === false)).toBe(true);
+  });
+
+  it("re-preflights a partially saved candidate without requiring a port lookup", async () => {
+    const repository = repositoryFor(SOURCE_ROWS);
+    repository.findPostDepartureSourcePackageReviewByPackage = async () =>
+      partialReview();
+    repository.listLatestPostDepartureSourceCandidateCorrections = async () => [
+      partialCorrection(),
+    ];
+    const findByIds = vi
+      .fn()
+      .mockRejectedValue(new Error("REFERENCE_PORT_ID_INVALID"));
+    const service = new PreflightPostDepartureSourcePackageService(
+      repository as ImportRepository,
+      { ...portDirectory(), findByIds },
+    );
+
+    const result = await service.execute(
+      {
+        contractVersion: "post-departure-source-package-preflight.v1",
+        sources: [{ kind: "container", batchId: IDS.container }],
+      },
+      "tenant-1",
+    );
+
+    expect(result.sources).toHaveLength(1);
+    expect(result.candidates[0]?.containerNumber).toBe("MSNU9762671");
+    expect(findByIds).not.toHaveBeenCalled();
   });
 
   it("rejects duplicate source kinds", async () => {
@@ -209,6 +239,52 @@ function portDirectory() {
     search: async () => ({ items: [], nextCursor: null }),
     findByUnlocodes: async () => [],
     findByIds: async () => [],
+  };
+}
+
+function partialReview(): PostDepartureSourcePackageReviewRecord {
+  return {
+    id: "55555555-5555-4555-8555-555555555555",
+    tenantId: "tenant-1",
+    packageHash: "a".repeat(64),
+    contractVersion: "post-departure-source-package-review.v1",
+    decision: "review_required",
+    candidateCount: 1,
+    reviewRequiredCount: 1,
+    snapshot: {} as PostDepartureSourcePackageReviewRecord["snapshot"],
+    snapshotHash: "b".repeat(64),
+    operatorId: "operator-1",
+    traceId: "trace-review",
+    createdAt: new Date("2026-09-23T00:00:00Z"),
+  };
+}
+
+function partialCorrection(): PostDepartureSourceCandidateCorrectionRecord {
+  return {
+    id: "66666666-6666-4666-8666-666666666666",
+    tenantId: "tenant-1",
+    reviewId: "55555555-5555-4555-8555-555555555555",
+    candidateRef: "MSNU9762671",
+    version: 1,
+    supersedesCorrectionId: null,
+    shipmentGroupingKind: null,
+    shipmentNumber: null,
+    targetShipmentId: null,
+    targetRelationshipVersion: null,
+    originPortId: null,
+    originUnlocode: null,
+    destinationPortId: null,
+    destinationUnlocode: null,
+    departureLocal: null,
+    departureOccurredAt: null,
+    departureSourceTimezone: null,
+    departureEvidenceId: null,
+    operatorId: "operator-1",
+    reasonCode: "partial_save",
+    idempotencyKey: "partial-save-1",
+    payloadHash: "c".repeat(64),
+    createdAt: new Date("2026-09-23T00:00:00Z"),
+    cargoLines: [],
   };
 }
 

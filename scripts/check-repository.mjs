@@ -186,6 +186,11 @@ export const STYLE_SCALE_TOKENS = [
   "--text-meta",
   "--text-label",
   "--text-micro",
+  "--leading-tight",
+  "--leading-title",
+  "--leading-dense",
+  "--leading-body",
+  "--leading-prose",
   "--space-1",
   "--space-2",
   "--space-3",
@@ -202,6 +207,11 @@ export function findMissingStyleScaleTokens(tokensSource) {
 }
 
 const TEXT_TOKEN_VALUE = /^var\(--text-(?:page|title|body|meta|label|micro)\)$/;
+// 字重的合法档位：只有这三个通用值。不入令牌 —— 包装不增加信息，
+// 且角色命名（如 --weight-page）会在 51 处非页名的位置说谎。
+const WEIGHT_VALUES = new Set(["400", "600", "700"]);
+const LEADING_TOKEN_VALUE =
+  /^var\(--leading-(?:tight|title|dense|body|prose)\)$/;
 const SPACE_TOKEN_VALUE = /^var\(--space-(?:1|2|3|4|5|6|8)\)$/;
 const SPACING_PROPERTIES = new Set([
   "gap",
@@ -335,6 +345,29 @@ export function findStyleScaleViolations(records) {
             if (value === "inherit" || TEXT_TOKEN_VALUE.test(value)) continue;
             fileErrors.push(
               `${path}: font-size 不得写裸值 '${value}'，请改用 var(--text-*) 令牌`,
+            );
+            continue;
+          }
+
+          if (property === "font-weight") {
+            // normal / bold 语义等价于 400 / 700，放行。
+            // 其余只认 400 / 600 / 700 —— 字体渲染不出中间字重时会被就近取整，
+            // 源码写着 650、界面显示 700，这种"看不见的失真"正是要拦的。
+            const keyword = ["inherit", "normal", "bold"];
+            if (keyword.includes(value) || WEIGHT_VALUES.has(value)) continue;
+            fileErrors.push(
+              `${path}: font-weight 只允许 400 / 600 / 700（或 inherit / normal / bold），当前为 '${value}'`,
+            );
+            continue;
+          }
+
+          if (property === "line-height") {
+            // 比例与绝对长度都必须走令牌：允许写 1.2 就等于允许任意值，档位就收不紧。
+            // 布局对齐需要的绝对行高（如与状态点对齐）走 style-scale-exempt 豁免。
+            if (value === "inherit" || LEADING_TOKEN_VALUE.test(value))
+              continue;
+            fileErrors.push(
+              `${path}: line-height 不得写裸值 '${value}'，请改用 var(--leading-*) 令牌（title 1.3 / dense 1.4 / body 1.55 / prose 1.6）`,
             );
             continue;
           }

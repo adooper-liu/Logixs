@@ -110,14 +110,15 @@ export class PreflightPostDepartureSourcePackageService {
           tenantId,
         );
       if (corrections.length > 0) {
-        const portRecords = await this.ports.findByIds(
-          corrections
-            .flatMap((correction) => [
-              correction.originPortId,
-              correction.destinationPortId,
-            ])
-            .filter((value): value is string => Boolean(value)),
-        );
+        const portIds = corrections
+          .flatMap((correction) => [
+            correction.originPortId,
+            correction.destinationPortId,
+          ])
+          .filter((value): value is string => Boolean(value));
+        const portRecords = portIds.length
+          ? await this.ports.findByIds(portIds)
+          : [];
         const portsById = new Map(
           portRecords.map((port) => [port.portId, port]),
         );

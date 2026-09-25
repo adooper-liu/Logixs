@@ -258,7 +258,7 @@ function references(raw: string): string[] {
   border-radius: 4px;
   background: var(--app-brand, #155eef);
   color: #ffffff;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 .form-section button:disabled {

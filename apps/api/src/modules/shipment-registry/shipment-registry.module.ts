@@ -28,6 +28,7 @@ import { CommitShipmentHandoffService } from "./application/commit-shipment-hand
 import { GetShipmentService } from "./application/get-shipment.service";
 import { GetContainerOperationalViewService } from "./application/get-container-operational-view.service";
 import { ListShipmentsService } from "./application/list-shipments.service";
+import { ListShipmentPendingCompletionService } from "./application/list-shipment-pending-completion.service";
 import { BIND_REPLENISHMENT_LINE_PRODUCT_SKU } from "./bind-replenishment-line-product-sku.port";
 import { CONTAINER_CARGO_ALLOCATION_REPOSITORY } from "./domain/container-cargo-allocation.repository";
 import { CONTAINER_STUFFING_SNAPSHOT_REPOSITORY } from "./domain/container-stuffing-snapshot.repository";
@@ -71,6 +72,14 @@ import { INSPECT_SHIPMENT_HANDOFF_CONFLICTS } from "./inspect-shipment-handoff-c
 import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-shipment-handoff-conflict-inspector";
 import { INTERNAL_SHIPMENT_HANDOFF_SOURCE } from "./internal-shipment-handoff-source.port";
 import { PrismaInternalShipmentHandoffSource } from "./infrastructure/prisma-internal-shipment-handoff-source";
+import { PrismaShipmentPendingFactCompletion } from "./infrastructure/prisma-shipment-pending-fact-completion";
+import { SHIPMENT_PENDING_FACT_COMPLETION } from "./shipment-pending-fact-completion.port";
+import { PrismaShipmentPendingCargoCompletion } from "./infrastructure/prisma-shipment-pending-cargo-completion";
+import { SHIPMENT_PENDING_CARGO_COMPLETION } from "./shipment-pending-cargo-completion.port";
+import { PrismaShipmentPendingSkuBinding } from "./infrastructure/prisma-shipment-pending-sku-binding";
+import { SHIPMENT_PENDING_SKU_BINDING } from "./shipment-pending-sku-binding.port";
+import { PrismaShipmentPendingDocumentCompletion } from "./infrastructure/prisma-shipment-pending-document-completion";
+import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-document-completion.port";
 
 @Module({
   imports: [IdentityModule, MasterDataModule],
@@ -103,6 +112,7 @@ import { PrismaInternalShipmentHandoffSource } from "./infrastructure/prisma-int
     CommitShipmentHandoffService,
     GetShipmentService,
     ListShipmentsService,
+    ListShipmentPendingCompletionService,
     GetContainerOperationalViewService,
     {
       provide: ASSERT_CONTAINER_TENANT,
@@ -149,6 +159,22 @@ import { PrismaInternalShipmentHandoffSource } from "./infrastructure/prisma-int
     {
       provide: INTERNAL_SHIPMENT_HANDOFF_SOURCE,
       useClass: PrismaInternalShipmentHandoffSource,
+    },
+    {
+      provide: SHIPMENT_PENDING_FACT_COMPLETION,
+      useClass: PrismaShipmentPendingFactCompletion,
+    },
+    {
+      provide: SHIPMENT_PENDING_CARGO_COMPLETION,
+      useClass: PrismaShipmentPendingCargoCompletion,
+    },
+    {
+      provide: SHIPMENT_PENDING_SKU_BINDING,
+      useClass: PrismaShipmentPendingSkuBinding,
+    },
+    {
+      provide: SHIPMENT_PENDING_DOCUMENT_COMPLETION,
+      useClass: PrismaShipmentPendingDocumentCompletion,
     },
     {
       provide: SHIPMENT_READ_REPOSITORY,
@@ -221,6 +247,10 @@ import { PrismaInternalShipmentHandoffSource } from "./infrastructure/prisma-int
     COMMIT_SHIPMENT_HANDOFF,
     INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
     INTERNAL_SHIPMENT_HANDOFF_SOURCE,
+    SHIPMENT_PENDING_FACT_COMPLETION,
+    SHIPMENT_PENDING_CARGO_COMPLETION,
+    SHIPMENT_PENDING_SKU_BINDING,
+    SHIPMENT_PENDING_DOCUMENT_COMPLETION,
     GetContainerService,
     BindReplenishmentLineProductSkuService,
     ReplaceContainerCargoAllocationsService,
@@ -229,6 +259,7 @@ import { PrismaInternalShipmentHandoffSource } from "./infrastructure/prisma-int
     CommitShipmentHandoffService,
     GetShipmentService,
     ListShipmentsService,
+    ListShipmentPendingCompletionService,
     GetContainerOperationalViewService,
   ],
 })

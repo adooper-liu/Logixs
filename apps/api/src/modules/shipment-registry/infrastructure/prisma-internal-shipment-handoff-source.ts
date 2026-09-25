@@ -54,7 +54,7 @@ const dispatchSelect =
                 eventCode: "departed",
                 timeKind: "actual",
                 isCurrent: true,
-                validity: "valid",
+                validity: "effective",
               },
               orderBy: [{ occurredAt: "desc" }, { recordedAt: "desc" }],
               take: 1,
@@ -109,6 +109,29 @@ export class PrismaInternalShipmentHandoffSource implements InternalShipmentHand
   async listCandidates(input: {
     tenantId: string;
   }): Promise<InternalShipmentHandoffCandidateV1[]> {
+    return groupCandidates(
+      await this.loadRows({ tenantId: input.tenantId, unacceptedOnly: true }),
+    );
+  }
+
+  async findCandidate(input: {
+    tenantId: string;
+    candidateRef: string;
+  }): Promise<InternalShipmentHandoffCandidateV1 | null> {
+    const candidates = groupCandidates(
+      await this.loadRows({ tenantId: input.tenantId, unacceptedOnly: false }),
+    );
+    return (
+      candidates.find(
+        ({ candidateRef }) => candidateRef === input.candidateRef,
+      ) ?? null
+    );
+  }
+
+  private async loadRows(input: {
+    tenantId: string;
+    unacceptedOnly: boolean;
+  }): Promise<DispatchRow[]> {
     const rows = await this.prisma.containerDispatchSnapshot.findMany({
       where: {
         tenantId: input.tenantId,
@@ -119,13 +142,19 @@ export class PrismaInternalShipmentHandoffSource implements InternalShipmentHand
           supersededAt: null,
           allocationSet: { state: "active", supersededAt: null },
           containerRecord: {
-            shipmentLinks: { none: { state: "active", supersededAt: null } },
+            ...(input.unacceptedOnly
+              ? {
+                  shipmentLinks: {
+                    none: { state: "active", supersededAt: null },
+                  },
+                }
+              : {}),
             lifecycleDateFacts: {
               some: {
                 eventCode: "departed",
                 timeKind: "actual",
                 isCurrent: true,
-                validity: "valid",
+                validity: "effective",
               },
             },
           },
@@ -141,19 +170,7 @@ export class PrismaInternalShipmentHandoffSource implements InternalShipmentHand
       take: 500,
       select: dispatchSelect,
     });
-    return groupCandidates(rows);
-  }
-
-  async findCandidate(input: {
-    tenantId: string;
-    candidateRef: string;
-  }): Promise<InternalShipmentHandoffCandidateV1 | null> {
-    const candidates = await this.listCandidates({ tenantId: input.tenantId });
-    return (
-      candidates.find(
-        ({ candidateRef }) => candidateRef === input.candidateRef,
-      ) ?? null
-    );
+    return rows;
   }
 }
 

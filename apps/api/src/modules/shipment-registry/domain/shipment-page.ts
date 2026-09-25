@@ -3,6 +3,8 @@ import type { ShipmentLifecycleStatusV1 } from "@logix/contracts";
 export const DEFAULT_SHIPMENT_PAGE_SIZE = 50;
 export const MAX_SHIPMENT_PAGE_SIZE = 200;
 const SHIPMENT_READ_PERMISSION_SCOPE = "container.read+lifecycle.read";
+export const SHIPMENT_PENDING_COMPLETION_CURSOR_SCOPE =
+  "container.read+lifecycle.read+pending-completion";
 
 export interface ShipmentListCursor {
   tenantId: string;
@@ -44,11 +46,14 @@ export function parseShipmentStatus(
   return raw as ShipmentLifecycleStatusV1;
 }
 
-export function encodeShipmentCursor(cursor: ShipmentListCursor): string {
+export function encodeShipmentCursor(
+  cursor: ShipmentListCursor,
+  cursorScope = SHIPMENT_READ_PERMISSION_SCOPE,
+): string {
   return Buffer.from(
     JSON.stringify({
       tenantId: cursor.tenantId,
-      permissionScope: SHIPMENT_READ_PERMISSION_SCOPE,
+      permissionScope: cursorScope,
       status: cursor.status,
       updatedAt: cursor.updatedAt.toISOString(),
       id: cursor.id,
@@ -57,7 +62,10 @@ export function encodeShipmentCursor(cursor: ShipmentListCursor): string {
   ).toString("base64url");
 }
 
-export function decodeShipmentCursor(raw: string): ShipmentListCursor {
+export function decodeShipmentCursor(
+  raw: string,
+  cursorScope = SHIPMENT_READ_PERMISSION_SCOPE,
+): ShipmentListCursor {
   try {
     const parsed = JSON.parse(
       Buffer.from(raw, "base64url").toString("utf8"),
@@ -71,7 +79,7 @@ export function decodeShipmentCursor(raw: string): ShipmentListCursor {
     if (
       typeof parsed.tenantId !== "string" ||
       parsed.tenantId.length === 0 ||
-      parsed.permissionScope !== SHIPMENT_READ_PERMISSION_SCOPE ||
+      parsed.permissionScope !== cursorScope ||
       !(
         parsed.status === null ||
         (typeof parsed.status === "string" &&

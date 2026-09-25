@@ -176,7 +176,7 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
   background: var(--surface-2);
   color: var(--muted);
   font-size: var(--text-micro);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .achievement-calendar thead th:first-child,
@@ -187,7 +187,7 @@ const activeCalendar = computed(() => props.calendars[activeDimension.value]);
 
 .achievement-calendar tbody th {
   background: var(--surface);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .achievement-calendar .current {

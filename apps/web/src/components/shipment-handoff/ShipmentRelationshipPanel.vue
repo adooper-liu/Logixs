@@ -107,7 +107,7 @@ defineProps<{ detail: DeepReadonly<ShipmentDetailV1> }>();
 .relationship-panel a {
   color: var(--brand-strong);
   font-size: var(--text-meta);
-  font-weight: var(--weight-page);
+  font-weight: 700;
   text-decoration: none;
 }
 

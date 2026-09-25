@@ -164,7 +164,7 @@ function formatDate(value: string | null, timeZone: string): string {
 .node-name {
   overflow-wrap: anywhere;
   font-size: var(--text-title);
-  line-height: 24px;
+  line-height: 24px; /* style-scale-exempt: 轨道行高，与状态点垂直对齐 */
 }
 
 .node-state {

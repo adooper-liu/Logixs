@@ -43,6 +43,7 @@ describe("ListShipmentsService", () => {
           ),
         ]),
       findById: vi.fn(),
+      listPendingCompletion: vi.fn(),
     };
     const service = new ListShipmentsService(repository);
 
@@ -81,7 +82,11 @@ describe("ListShipmentsService", () => {
   });
 
   it("rejects invalid status and cross-filter cursor reuse", async () => {
-    const repository = { list: vi.fn(), findById: vi.fn() };
+    const repository = {
+      list: vi.fn(),
+      findById: vi.fn(),
+      listPendingCompletion: vi.fn(),
+    };
     const service = new ListShipmentsService(repository);
     await expect(
       service.execute({ tenantId: "tenant-1", status: "unknown" }),

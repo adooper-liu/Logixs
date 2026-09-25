@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -77,7 +77,9 @@ function toHandoffCommand(
   tenantId: string,
   idempotencyKey: string,
 ): ShipmentHandoffCommandV2 {
-  const correlationId = randomUUID();
+  const correlationId = deterministicUuid(
+    `${tenantId}:${candidate.candidateRef}:${idempotencyKey}`,
+  );
   const evidenceReferences = candidate.departureEvidenceRef
     ? [candidate.departureEvidenceRef]
     : [];
@@ -182,4 +184,9 @@ function toHandoffCommand(
     }) as ShipmentHandoffCommandV2["containers"],
     evidenceReferences,
   };
+}
+
+function deterministicUuid(value: string): string {
+  const digest = createHash("sha256").update(value).digest("hex");
+  return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-4${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }

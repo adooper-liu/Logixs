@@ -175,12 +175,12 @@ const valueClass = (field: ResolvedDisplayField) => ({
   margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
   color: var(--ink);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .field dd.empty {
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .field dd.invalid,

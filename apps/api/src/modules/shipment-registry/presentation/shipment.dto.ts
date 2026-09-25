@@ -8,6 +8,10 @@ import type {
   ShipmentLifecycleInitializationV1,
   ShipmentLifecycleInitializationStateV1,
   ShipmentLifecycleStatusV1,
+  ShipmentPendingActionV1,
+  ShipmentPendingCompletionItemV1,
+  ShipmentPendingCompletionPageV1,
+  ShipmentPendingItemV1,
   ShipmentSummaryV1,
   ShipmentTransportDocumentViewV1,
   ShipmentUpstreamReferenceViewV1,
@@ -62,6 +66,57 @@ export class ShipmentPageInfoDto {
 
 export class ShipmentPageDto {
   @ApiProperty({ type: [ShipmentSummaryDto] }) items!: ShipmentSummaryDto[];
+  @ApiProperty({ type: ShipmentPageInfoDto }) pageInfo!: ShipmentPageInfoDto;
+  @ApiProperty() asOf!: string;
+  @ApiProperty() projectionVersion!: number;
+}
+
+export class ShipmentPendingActionDto implements ShipmentPendingActionV1 {
+  @ApiProperty() code!: string;
+  @ApiProperty() label!: string;
+}
+
+export class ShipmentPendingResponsibilityDto {
+  @ApiProperty() roleCode!: string;
+  @ApiProperty() roleLabel!: string;
+}
+
+export class ShipmentPendingDeadlineDto {
+  @ApiProperty({ nullable: true, type: String }) dueAt!: string | null;
+  @ApiProperty({ enum: ["not_configured", "policy", "source"] })
+  source!: ShipmentPendingItemV1["deadline"]["source"];
+  @ApiProperty() label!: string;
+}
+
+export class ShipmentPendingItemDto implements ShipmentPendingItemV1 {
+  @ApiProperty() code!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty({ enum: ["shipment", "container", "cargo", "document"] })
+  subjectType!: ShipmentPendingItemV1["subjectType"];
+  @ApiProperty() subjectRef!: string;
+  @ApiProperty({ nullable: true, type: String }) currentValue!: string | null;
+  @ApiProperty({ nullable: true, type: String }) sourceSystem!: string | null;
+  @ApiProperty({ nullable: true, type: String }) sourceValue!: string | null;
+  @ApiProperty({ type: [String] }) candidateValues!: string[];
+  @ApiProperty({ type: ShipmentPendingResponsibilityDto })
+  responsibility!: ShipmentPendingItemV1["responsibility"];
+  @ApiProperty({ type: ShipmentPendingDeadlineDto })
+  deadline!: ShipmentPendingItemV1["deadline"];
+  @ApiProperty({ type: [ShipmentPendingActionDto] })
+  restrictedActions!: ShipmentPendingActionV1[];
+  @ApiProperty({ type: ShipmentPendingActionDto })
+  directAction!: ShipmentPendingActionV1;
+}
+
+export class ShipmentPendingCompletionItemDto implements ShipmentPendingCompletionItemV1 {
+  @ApiProperty({ type: ShipmentSummaryDto }) shipment!: ShipmentSummaryDto;
+  @ApiProperty({ type: [ShipmentPendingItemDto] })
+  pendingItems!: ShipmentPendingItemDto[];
+}
+
+export class ShipmentPendingCompletionPageDto implements ShipmentPendingCompletionPageV1 {
+  @ApiProperty({ type: [ShipmentPendingCompletionItemDto] })
+  items!: ShipmentPendingCompletionItemDto[];
   @ApiProperty({ type: ShipmentPageInfoDto }) pageInfo!: ShipmentPageInfoDto;
   @ApiProperty() asOf!: string;
   @ApiProperty() projectionVersion!: number;

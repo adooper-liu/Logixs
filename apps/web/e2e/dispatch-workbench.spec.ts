@@ -135,6 +135,8 @@ test("shipping operator uploads four sources and reviews joined post-departure g
 }) => {
   let uploadIndex = 0;
   let reviewRequestCount = 0;
+  let documentCompletionRequestCount = 0;
+  let pendingQueueFilled = false;
   const sourceNames = [
     "引出列表_货柜信息表.xlsx",
     "引出列表_清关信息表.xlsx",
@@ -318,6 +320,221 @@ test("shipping operator uploads four sources and reviews joined post-departure g
           pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
           asOf: "2026-09-24T00:00:00.000Z",
           projectionVersion: 1,
+        },
+      });
+      return;
+    }
+    if (
+      path === "/api/shipments/pending-completion" &&
+      request.method() === "GET"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: {
+          items: pendingQueueFilled
+            ? [
+                {
+                  shipment: {
+                    id: "99999999-9999-4999-8999-999999999999",
+                    shipmentNumber: "SHIP-2026-0001",
+                    transportMode: "ocean",
+                    carrierCode: "MSC",
+                    vesselName: "MSC MAKALU III",
+                    voyageNumber: "HD638A",
+                    originCountryCode: "CN",
+                    originUnlocode: "CNFZG",
+                    destinationCountryCode: "US",
+                    destinationUnlocode: "USSAV",
+                    salesCountryCode: "US",
+                    cargoOwnerReferenceId: null,
+                    cargoOwnerName: "AOSOM LLC",
+                    atdAt: "2026-09-22T16:00:00.000Z",
+                    etaAt: "2026-11-01T00:00:00.000Z",
+                    currentLifecycleStatus: "departed",
+                    lifecycleVersion: 2,
+                    relationshipVersion: 1,
+                    activeContainerCount: 1,
+                    activeCargoLineCount: 1,
+                    lifecycleInitializationState: "ready",
+                    updatedAt: "2026-09-24T02:00:00.000Z",
+                  },
+                  pendingItems: [
+                    {
+                      code: "bill_of_lading_missing",
+                      label: "补充提单资料",
+                      subjectType: "document",
+                      subjectRef: "99999999-9999-4999-8999-999999999999",
+                      currentValue: null,
+                      sourceSystem: "legacy-departed-file",
+                      sourceValue: null,
+                      candidateValues: [],
+                      responsibility: {
+                        roleCode: "operations_dispatcher",
+                        roleLabel: "出运运营",
+                      },
+                      deadline: {
+                        dueAt: null,
+                        source: "not_configured",
+                        label: "未设定",
+                      },
+                      restrictedActions: [],
+                      directAction: {
+                        code: "add_transport_document",
+                        label: "补录提单",
+                      },
+                    },
+                  ],
+                },
+              ]
+            : [],
+          pageInfo: {
+            nextCursor: null,
+            hasNextPage: false,
+            pageSize: 100,
+          },
+          asOf: "2026-09-24T02:00:00.000Z",
+          projectionVersion: pendingQueueFilled ? 2 : 0,
+        },
+      });
+      return;
+    }
+    if (
+      path === "/api/shipments/99999999-9999-4999-8999-999999999999" &&
+      request.method() === "GET"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: {
+          shipment: {
+            id: "99999999-9999-4999-8999-999999999999",
+            shipmentNumber: "SHIP-2026-0001",
+            transportMode: "ocean",
+            carrierCode: "MSC",
+            vesselName: "MSC MAKALU III",
+            voyageNumber: "HD638A",
+            originCountryCode: "CN",
+            originUnlocode: "CNFZG",
+            destinationCountryCode: "US",
+            destinationUnlocode: "USSAV",
+            salesCountryCode: "US",
+            cargoOwnerReferenceId: null,
+            cargoOwnerName: "AOSOM LLC",
+            atdAt: "2026-09-22T16:00:00.000Z",
+            etaAt: "2026-11-01T00:00:00.000Z",
+            currentLifecycleStatus: "departed",
+            lifecycleVersion: 2,
+            relationshipVersion: 1,
+            activeContainerCount: 1,
+            activeCargoLineCount: 1,
+            lifecycleInitializationState: "ready",
+            updatedAt: "2026-09-24T02:00:00.000Z",
+          },
+          handoff: null,
+          containers: [
+            {
+              linkId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              containerRecordId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              containerNumber: "MSNU9762671",
+              containerTypeCode: "40HQ",
+              sealNumber: null,
+              currentStatus: "shipped",
+              linkVersion: 1,
+              currentNodeCode: null,
+              flowState: null,
+              allocations: [],
+            },
+          ],
+          cargoLines: [
+            {
+              id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+              lineNo: 1,
+              productSkuId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+              productNumber: "SKU-001",
+              quantity: "10",
+              quantityUnit: "piece",
+              packageCount: null,
+              packageUnit: null,
+              grossWeight: null,
+              weightUnit: null,
+              volume: null,
+              volumeUnit: null,
+              replenishmentOrderLineId: null,
+              sourceLineId: "source-1",
+              version: 1,
+            },
+          ],
+          transportDocuments: [],
+          upstreamReferences: [],
+          pendingItems: [
+            {
+              code: "bill_of_lading_missing",
+              label: "补充提单资料",
+              subjectType: "document",
+              subjectRef: "99999999-9999-4999-8999-999999999999",
+              currentValue: null,
+              sourceSystem: "legacy-departed-file",
+              sourceValue: null,
+              candidateValues: [],
+              responsibility: {
+                roleCode: "operations_dispatcher",
+                roleLabel: "出运运营",
+              },
+              deadline: {
+                dueAt: null,
+                source: "not_configured",
+                label: "未设定",
+              },
+              restrictedActions: [],
+              directAction: {
+                code: "add_transport_document",
+                label: "补录提单",
+              },
+            },
+          ],
+          lifecycleInitialization: {
+            state: "ready",
+            activeContainerCount: 1,
+            initializedContainerCount: 1,
+            relationshipVersion: 1,
+            lastErrorCode: null,
+          },
+          projectionVersion: 2,
+          asOf: "2026-09-24T02:00:00.000Z",
+        },
+      });
+      return;
+    }
+    if (
+      path ===
+        "/api/shipment-handoffs/shipments/99999999-9999-4999-8999-999999999999/pending-documents" &&
+      request.method() === "POST"
+    ) {
+      documentCompletionRequestCount += 1;
+      expect(request.postDataJSON()).toMatchObject({
+        contractVersion: "shipment-pending-document-completion.v1",
+        expectedRelationshipVersion: 1,
+        documents: [
+          {
+            documentType: "mbl",
+            documentNumber: "NBOZ9FF56400",
+            scac: "HMMU",
+            containerRecordIds: ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"],
+          },
+        ],
+      });
+      pendingQueueFilled = false;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: {
+          contractVersion: "shipment-pending-document-completion-result.v1",
+          status: "saved",
+          shipmentId: "99999999-9999-4999-8999-999999999999",
+          relationshipVersion: 1,
+          documentCount: 1,
+          traceId: "trace-document-completion-1",
         },
       });
       return;
@@ -581,6 +798,39 @@ test("shipping operator uploads four sources and reviews joined post-departure g
       return;
     }
     if (
+      path === `/api/post-departure-source-packages/${"a".repeat(64)}/accept` &&
+      request.method() === "POST"
+    ) {
+      pendingQueueFilled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: {
+          contractVersion: "post-departure-source-package-accept-result.v1",
+          packageId: "a".repeat(64),
+          items: [
+            {
+              candidateRefs: ["MSNU9762671"],
+              status: "accepted",
+              shipmentId: "99999999-9999-4999-8999-999999999999",
+              errorCode: null,
+              traceId: "trace-batch-accept-1",
+              recoveryAction: "open_shipment",
+            },
+          ],
+          totals: {
+            groups: 1,
+            accepted: 1,
+            duplicate: 0,
+            conflict: 0,
+            rejected: 0,
+            failed: 0,
+          },
+        },
+      });
+      return;
+    }
+    if (
       path ===
         `/api/post-departure-source-packages/${"a".repeat(64)}/reviews` &&
       request.method() === "POST"
@@ -691,8 +941,27 @@ test("shipping operator uploads four sources and reviews joined post-departure g
   await expect(page.getByText("SKU 装载明细已保存")).toBeVisible();
   await expect(page.getByText("当前候选接管条件已齐备")).toBeVisible();
   await expect(page.getByText("可接管", { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "接管当前 Shipment" }).click();
-  await expect(page.getByText("Shipment 已建立")).toBeVisible();
+  await page.getByRole("button", { name: "接管全部可接管项（1 票）" }).click();
+  await expect(page.getByText("批量接管已完成")).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("button", { name: /已接管待补/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "接管已出运数据" }),
+  ).toBeVisible();
+  await expect(page.getByText("1 票待补")).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "当前 Shipment 待补事实" })
+      .getByText("补充提单资料"),
+  ).toBeVisible();
+  const documentEditor = page.getByRole("region", { name: "补充运输单证" });
+  await expect(documentEditor).toBeVisible();
+  await documentEditor.getByLabel("单证号码").fill("NBOZ9FF56400");
+  await documentEditor.getByLabel("SCAC（可选）").fill("HMMU");
+  await documentEditor.getByRole("button", { name: "保存提单" }).click();
+  await expect(page.getByText("当前没有待补任务。")).toBeVisible();
+  expect(documentCompletionRequestCount).toBe(1);
 
   const widths = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,

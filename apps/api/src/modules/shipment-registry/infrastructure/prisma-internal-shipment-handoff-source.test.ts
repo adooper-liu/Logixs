@@ -102,12 +102,27 @@ describe("PrismaInternalShipmentHandoffSource", () => {
                 none: { state: "active", supersededAt: null },
               },
               lifecycleDateFacts: {
-                some: expect.objectContaining({ eventCode: "departed" }),
+                some: expect.objectContaining({
+                  eventCode: "departed",
+                  validity: "effective",
+                }),
               },
             }),
           }),
         }),
       }),
     );
+
+    findMany.mockClear();
+    await expect(
+      source.findCandidate({
+        tenantId: "tenant-a",
+        candidateRef: candidates[0]!.candidateRef,
+      }),
+    ).resolves.toMatchObject({ candidateRef: candidates[0]!.candidateRef });
+    const acceptanceLookup = findMany.mock.calls[0]?.[0];
+    expect(
+      acceptanceLookup.where.stuffingSnapshot.containerRecord,
+    ).not.toHaveProperty("shipmentLinks");
   });
 });

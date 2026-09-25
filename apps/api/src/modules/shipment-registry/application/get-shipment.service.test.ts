@@ -5,6 +5,7 @@ describe("GetShipmentService", () => {
   it("returns the tenant-scoped projection with a read timestamp", async () => {
     const repository = {
       list: vi.fn(),
+      listPendingCompletion: vi.fn(),
       findById: vi.fn().mockResolvedValue({
         shipment: { id: "shipment-1" },
         handoff: null,
@@ -33,6 +34,7 @@ describe("GetShipmentService", () => {
   it("does not reveal whether another tenant owns the Shipment", async () => {
     const repository = {
       list: vi.fn(),
+      listPendingCompletion: vi.fn(),
       findById: vi.fn().mockResolvedValue(null),
     };
     const service = new GetShipmentService(repository);

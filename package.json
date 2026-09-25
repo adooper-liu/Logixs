@@ -37,6 +37,7 @@
     "contract:generate": "node scripts/generate-contracts.mjs",
     "contract:drift": "node scripts/generate-contracts.mjs --check",
     "fixture:extract:post-departure": "node scripts/extract-post-departure-detail-fixtures.mjs",
+    "fixture:export:post-departure-source-package": "tsx scripts/export-retained-post-departure-source-fixture.mts",
     "db:generate": "prisma generate --schema database/schema.prisma",
     "db:migrate": "node scripts/migrate-deploy.mjs",
     "db:migrate:status": "prisma migrate status --schema database/schema.prisma",

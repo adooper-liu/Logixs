@@ -22,7 +22,10 @@ import {
   type HandoffResolutionTarget,
 } from "../../data/postDepartureHandoffCopy";
 import type { CandidateCorrectionDraft } from "../../composables/usePostDepartureHandoffWorkbench";
-import { sourceDepartureRawToLocalInput } from "../../data/postDepartureTime";
+import {
+  POST_DEPARTURE_TIMEZONES,
+  sourceDepartureRawToLocalInput,
+} from "../../data/postDepartureTime";
 import HandoffShipmentGroupingSelector from "./HandoffShipmentGroupingSelector.vue";
 
 const props = defineProps<{
@@ -210,20 +213,6 @@ function toLocalInput(occurredAt: string, timeZone: string): string {
   );
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
-
-const TIMEZONES = [
-  ["Asia/Shanghai", "中国标准时间 · Asia/Shanghai"],
-  ["America/Los_Angeles", "美国西部 · America/Los_Angeles"],
-  ["America/New_York", "美国东部 · America/New_York"],
-  ["America/Toronto", "加拿大东部 · America/Toronto"],
-  ["Europe/London", "英国 · Europe/London"],
-  ["Europe/Berlin", "德国 · Europe/Berlin"],
-  ["Europe/Paris", "法国 · Europe/Paris"],
-  ["Europe/Rome", "意大利 · Europe/Rome"],
-  ["Europe/Madrid", "西班牙 · Europe/Madrid"],
-  ["Europe/Dublin", "爱尔兰 · Europe/Dublin"],
-  ["Europe/Bucharest", "罗马尼亚 · Europe/Bucharest"],
-] as const;
 </script>
 
 <template>
@@ -379,7 +368,7 @@ const TIMEZONES = [
             <select v-model="draft.sourceTimezone" aria-label="来源所在地时区">
               <option value="" disabled>请选择来源时区</option>
               <option
-                v-for="[value, label] in TIMEZONES"
+                v-for="[value, label] in POST_DEPARTURE_TIMEZONES"
                 :key="value"
                 :value="value"
               >
@@ -482,7 +471,7 @@ const TIMEZONES = [
 
 .pane-heading__title small {
   padding-left: var(--space-1);
-  font-weight: var(--weight-body);
+  font-weight: 400;
 }
 
 .pane-heading__status {
@@ -532,7 +521,7 @@ form {
 .port-fieldset legend {
   color: var(--ink-soft);
   font-size: var(--text-label);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .form-field > span,
@@ -548,7 +537,7 @@ form {
   border-radius: var(--radius-control);
   background: var(--brand-soft);
   color: var(--brand-strong) !important;
-  font-weight: var(--weight-body);
+  font-weight: 400;
 }
 
 input,
@@ -629,7 +618,7 @@ select {
   border-color: var(--brand);
   background: var(--brand-soft);
   color: var(--brand-strong);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .port-options {
@@ -688,7 +677,7 @@ select {
 .cancel-action,
 .save-action {
   padding: var(--space-2) var(--space-4);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .cancel-action {
@@ -700,7 +689,7 @@ select {
   border-color: var(--brand);
   background: var(--brand);
   color: var(--on-brand);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 button:disabled {

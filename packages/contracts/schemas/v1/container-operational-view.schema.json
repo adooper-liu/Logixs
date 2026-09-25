@@ -1427,9 +1427,22 @@
         "pendingItems": {
           "type": "array",
           "items": {
+            "$ref": "#/$defs/ShipmentPendingItemV1",
             "type": "object",
-            "additionalProperties": false,
-            "required": ["code", "label", "subjectType", "subjectRef"],
+            "required": [
+              "code",
+              "label",
+              "subjectType",
+              "subjectRef",
+              "currentValue",
+              "sourceSystem",
+              "sourceValue",
+              "candidateValues",
+              "responsibility",
+              "deadline",
+              "restrictedActions",
+              "directAction"
+            ],
             "properties": {
               "code": { "$ref": "common.schema.json#/$defs/StableCode" },
               "label": { "type": "string", "minLength": 1, "maxLength": 200 },
@@ -1440,6 +1453,71 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 200
+              },
+              "currentValue": {
+                "type": ["string", "null"],
+                "maxLength": 500
+              },
+              "sourceSystem": {
+                "type": ["string", "null"],
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sourceValue": {
+                "type": ["string", "null"],
+                "maxLength": 500
+              },
+              "candidateValues": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "responsibility": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["roleCode", "roleLabel"],
+                "properties": {
+                  "roleCode": {
+                    "$ref": "common.schema.json#/$defs/StableCode"
+                  },
+                  "roleLabel": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                }
+              },
+              "deadline": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["dueAt", "source", "label"],
+                "properties": {
+                  "dueAt": {
+                    "oneOf": [
+                      { "$ref": "common.schema.json#/$defs/DateTime" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "source": {
+                    "enum": ["not_configured", "policy", "source"]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                }
+              },
+              "restrictedActions": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/ShipmentPendingActionV1" }
+              },
+              "directAction": {
+                "$ref": "#/$defs/ShipmentPendingActionV1"
               }
             }
           }
@@ -1449,6 +1527,120 @@
         },
         "projectionVersion": { "type": "integer", "minimum": 1 },
         "asOf": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ShipmentPendingItemV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label",
+        "subjectType",
+        "subjectRef",
+        "currentValue",
+        "sourceSystem",
+        "sourceValue",
+        "candidateValues",
+        "responsibility",
+        "deadline",
+        "restrictedActions",
+        "directAction"
+      ],
+      "properties": {
+        "code": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "subjectType": {
+          "enum": ["shipment", "container", "cargo", "document"]
+        },
+        "subjectRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "currentValue": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        },
+        "sourceSystem": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "sourceValue": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        },
+        "candidateValues": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        },
+        "responsibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["roleCode", "roleLabel"],
+          "properties": {
+            "roleCode": { "$ref": "common.schema.json#/$defs/StableCode" },
+            "roleLabel": { "type": "string", "minLength": 1, "maxLength": 100 }
+          }
+        },
+        "deadline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dueAt", "source", "label"],
+          "properties": {
+            "dueAt": {
+              "oneOf": [
+                { "$ref": "common.schema.json#/$defs/DateTime" },
+                { "type": "null" }
+              ]
+            },
+            "source": { "enum": ["not_configured", "policy", "source"] },
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 }
+          }
+        },
+        "restrictedActions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ShipmentPendingActionV1" }
+        },
+        "directAction": {
+          "$ref": "#/$defs/ShipmentPendingActionV1"
+        }
+      }
+    },
+    "ShipmentPendingActionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "label"],
+      "properties": {
+        "code": { "$ref": "common.schema.json#/$defs/StableCode" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
+    "ShipmentPendingCompletionItemV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shipment", "pendingItems"],
+      "properties": {
+        "shipment": { "$ref": "#/$defs/ShipmentSummaryV1" },
+        "pendingItems": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentPendingItemV1" }
+        }
+      }
+    },
+    "ShipmentPendingCompletionPageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "pageInfo", "asOf", "projectionVersion"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentPendingCompletionItemV1" }
+        },
+        "pageInfo": { "$ref": "#/$defs/PageInfo" },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 0 }
       }
     },
     "ShipmentPageV1": {

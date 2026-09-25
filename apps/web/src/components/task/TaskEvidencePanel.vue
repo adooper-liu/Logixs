@@ -217,7 +217,7 @@ const recordPhoto = (evidenceId: string, event: Event) => {
 .section-head small {
   color: var(--muted);
   font-size: var(--text-micro);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .section-head strong {

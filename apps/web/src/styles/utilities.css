@@ -32,7 +32,7 @@
   gap: var(--space-1);
   color: var(--brand-strong);
   font-size: var(--text-label);
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
 }
 

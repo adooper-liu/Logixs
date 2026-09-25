@@ -5,6 +5,20 @@ const SOURCE_US_DATETIME_PATTERN =
 const SOURCE_ISO_DATETIME_PATTERN =
   /^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/;
 
+export const POST_DEPARTURE_TIMEZONES = [
+  ["Asia/Shanghai", "中国标准时间 · Asia/Shanghai"],
+  ["America/Los_Angeles", "美国西部 · America/Los_Angeles"],
+  ["America/New_York", "美国东部 · America/New_York"],
+  ["America/Toronto", "加拿大东部 · America/Toronto"],
+  ["Europe/London", "英国 · Europe/London"],
+  ["Europe/Berlin", "德国 · Europe/Berlin"],
+  ["Europe/Paris", "法国 · Europe/Paris"],
+  ["Europe/Rome", "意大利 · Europe/Rome"],
+  ["Europe/Madrid", "西班牙 · Europe/Madrid"],
+  ["Europe/Dublin", "爱尔兰 · Europe/Dublin"],
+  ["Europe/Bucharest", "罗马尼亚 · Europe/Bucharest"],
+] as const;
+
 export function zonedLocalDateTimeToIso(
   localDateTime: string,
   timeZone: string,

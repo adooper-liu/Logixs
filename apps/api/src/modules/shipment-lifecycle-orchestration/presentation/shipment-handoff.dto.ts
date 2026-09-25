@@ -4,6 +4,11 @@ import type {
   ShipmentHandoffIssueV1,
   ShipmentHandoffObjectResultV1,
   InternalShipmentHandoffAcceptCommandV1,
+  InternalShipmentHandoffBatchAcceptCommandV1,
+  ShipmentPendingFactCompletionCommandV1,
+  ShipmentPendingCargoCompletionCommandV1,
+  ShipmentPendingSkuBindingCommandV1,
+  ShipmentPendingDocumentCompletionCommandV1,
 } from "@logix/contracts";
 
 export class InternalShipmentHandoffAcceptRequestDto {
@@ -11,6 +16,54 @@ export class InternalShipmentHandoffAcceptRequestDto {
   contractVersion!: InternalShipmentHandoffAcceptCommandV1["contractVersion"];
   @ApiProperty() candidateRef!: string;
   @ApiProperty() idempotencyKey!: string;
+}
+
+export class InternalShipmentHandoffBatchAcceptRequestDto {
+  @ApiProperty({ enum: ["internal-shipment-handoff-batch-accept.v1"] })
+  contractVersion!: InternalShipmentHandoffBatchAcceptCommandV1["contractVersion"];
+  @ApiProperty({ type: [String], minItems: 1, maxItems: 500 })
+  candidateRefs!: InternalShipmentHandoffBatchAcceptCommandV1["candidateRefs"];
+  @ApiProperty() idempotencyKey!: string;
+}
+
+export class ShipmentPendingFactCompletionRequestDto implements ShipmentPendingFactCompletionCommandV1 {
+  @ApiProperty({ enum: ["shipment-pending-fact-completion.v1"] })
+  contractVersion!: ShipmentPendingFactCompletionCommandV1["contractVersion"];
+  @ApiProperty({ minimum: 1 }) expectedRelationshipVersion!: number;
+  @ApiProperty({ format: "date-time" }) occurredAt!: string;
+  @ApiProperty() idempotencyKey!: string;
+  @ApiProperty({ type: Object })
+  facts!: ShipmentPendingFactCompletionCommandV1["facts"];
+}
+
+export class ShipmentPendingCargoCompletionRequestDto implements ShipmentPendingCargoCompletionCommandV1 {
+  @ApiProperty({ enum: ["shipment-pending-cargo-completion.v1"] })
+  contractVersion!: ShipmentPendingCargoCompletionCommandV1["contractVersion"];
+  @ApiProperty({ minimum: 1 }) expectedRelationshipVersion!: number;
+  @ApiProperty({ format: "date-time" }) occurredAt!: string;
+  @ApiProperty() idempotencyKey!: string;
+  @ApiProperty({ type: [Object] })
+  lines!: ShipmentPendingCargoCompletionCommandV1["lines"];
+}
+
+export class ShipmentPendingSkuBindingRequestDto implements ShipmentPendingSkuBindingCommandV1 {
+  @ApiProperty({ enum: ["shipment-pending-sku-binding.v1"] })
+  contractVersion!: ShipmentPendingSkuBindingCommandV1["contractVersion"];
+  @ApiProperty({ minimum: 1 }) expectedRelationshipVersion!: number;
+  @ApiProperty({ minimum: 1 }) expectedCargoLineVersion!: number;
+  @ApiProperty({ format: "date-time" }) occurredAt!: string;
+  @ApiProperty() idempotencyKey!: string;
+  @ApiProperty({ format: "uuid" }) cargoLineId!: string;
+}
+
+export class ShipmentPendingDocumentCompletionRequestDto implements ShipmentPendingDocumentCompletionCommandV1 {
+  @ApiProperty({ enum: ["shipment-pending-document-completion.v1"] })
+  contractVersion!: ShipmentPendingDocumentCompletionCommandV1["contractVersion"];
+  @ApiProperty({ minimum: 1 }) expectedRelationshipVersion!: number;
+  @ApiProperty({ format: "date-time" }) occurredAt!: string;
+  @ApiProperty() idempotencyKey!: string;
+  @ApiProperty({ type: [Object] })
+  documents!: ShipmentPendingDocumentCompletionCommandV1["documents"];
 }
 
 export class ShipmentHandoffCommandRequestDto {

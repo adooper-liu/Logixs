@@ -6,6 +6,7 @@ import {
 import { DocumentRecordsModule } from "../document-records";
 import { DevIdentityMiddleware, IdentityModule } from "../identity";
 import { LifecycleControlModule } from "../lifecycle-control";
+import { MasterDataModule } from "../master-data";
 import { ShipmentRegistryModule } from "../shipment-registry";
 import { ReplaceContainerStuffingAndReplayService } from "./application/replace-container-stuffing-and-replay.service";
 import { ContainerStuffingCommandController } from "./presentation/container-stuffing-command.controller";
@@ -15,7 +16,12 @@ import { AcceptShipmentHandoffService } from "./application/accept-shipment-hand
 import { PreflightShipmentHandoffService } from "./application/preflight-shipment-handoff.service";
 import { ShipmentHandoffController } from "./presentation/shipment-handoff.controller";
 import { AcceptInternalShipmentHandoffService } from "./application/accept-internal-shipment-handoff.service";
+import { AcceptInternalShipmentHandoffBatchService } from "./application/accept-internal-shipment-handoff-batch.service";
 import { ListInternalShipmentHandoffCandidatesService } from "./application/list-internal-shipment-handoff-candidates.service";
+import { CompleteShipmentPendingFactsService } from "./application/complete-shipment-pending-facts.service";
+import { CompleteShipmentPendingCargoService } from "./application/complete-shipment-pending-cargo.service";
+import { BindShipmentPendingSkuService } from "./application/bind-shipment-pending-sku.service";
+import { CompleteShipmentPendingDocumentsService } from "./application/complete-shipment-pending-documents.service";
 import {
   ACCEPT_SHIPMENT_HANDOFF,
   PREFLIGHT_SHIPMENT_HANDOFF,
@@ -26,6 +32,7 @@ import {
     DocumentRecordsModule,
     IdentityModule,
     LifecycleControlModule,
+    MasterDataModule,
     ShipmentRegistryModule,
   ],
   controllers: [
@@ -40,6 +47,11 @@ import {
     AcceptShipmentHandoffService,
     ListInternalShipmentHandoffCandidatesService,
     AcceptInternalShipmentHandoffService,
+    AcceptInternalShipmentHandoffBatchService,
+    CompleteShipmentPendingFactsService,
+    CompleteShipmentPendingCargoService,
+    BindShipmentPendingSkuService,
+    CompleteShipmentPendingDocumentsService,
     {
       provide: PREFLIGHT_SHIPMENT_HANDOFF,
       useExisting: PreflightShipmentHandoffService,

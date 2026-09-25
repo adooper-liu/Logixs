@@ -216,7 +216,7 @@ function pendingCount(candidate: PostDepartureSourceCandidateV1): number {
   border-radius: var(--radius-control);
   background: var(--surface-2);
   font-size: var(--text-label);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .decision--ready {

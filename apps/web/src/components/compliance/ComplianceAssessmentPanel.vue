@@ -188,7 +188,7 @@ const decisionLabel = computed(() => {
 .fact-strip dd {
   margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
-  font-weight: 650;
+  font-weight: 600;
 }
 .data-section {
   padding: var(--space-4) var(--space-5);

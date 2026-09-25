@@ -165,7 +165,7 @@ const pendingDecisions = computed(
 
 .panel-head a {
   color: var(--brand);
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
 }
 

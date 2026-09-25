@@ -232,7 +232,7 @@ const nextPage = () => {
   background: var(--surface-2);
   color: var(--ink);
   font-size: var(--text-label);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .table-scroll tbody tr {

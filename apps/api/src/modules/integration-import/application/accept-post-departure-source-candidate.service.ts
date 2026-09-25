@@ -10,6 +10,7 @@ import type {
   PostDepartureSourceCandidateAcceptCommandV1,
   PostDepartureSourceCandidateAcceptResultV1,
   PostDepartureSourceCandidateV1,
+  PostDepartureSourcePackagePreflightResultV1,
   ShipmentHandoffCommandV2,
 } from "@logix/contracts";
 import {
@@ -65,15 +66,32 @@ export class AcceptPostDepartureSourceCandidateService {
     if (preflight.packageId !== packageId) {
       throw new ConflictException("SOURCE_PACKAGE_CHANGED");
     }
+    return this.acceptPrepared(
+      packageId,
+      candidateRef,
+      input,
+      context,
+      preflight,
+    );
+  }
+
+  async acceptPrepared(
+    packageId: string,
+    candidateRef: string,
+    input: PostDepartureSourceCandidateAcceptCommandV1,
+    context: ShipmentHandoffRequestContext,
+    preflight: PostDepartureSourcePackagePreflightResultV1,
+  ): Promise<PostDepartureSourceCandidateAcceptResultV1> {
     const selected = preflight.candidates.find(
       (candidate) => candidate.candidateRef === candidateRef,
     );
     if (!selected) throw new NotFoundException("SOURCE_CANDIDATE_NOT_FOUND");
 
-    const groupingKey = candidateGroupingKey(selected);
+    const groupingKey = postDepartureCandidateGroupingKey(selected);
     const shipmentCandidates = groupingKey
       ? preflight.candidates.filter(
-          (candidate) => candidateGroupingKey(candidate) === groupingKey,
+          (candidate) =>
+            postDepartureCandidateGroupingKey(candidate) === groupingKey,
         )
       : [selected];
     const rejected = shipmentCandidates.filter(
@@ -111,6 +129,15 @@ export class AcceptPostDepartureSourceCandidateService {
       context,
     });
     const handoff = await this.acceptHandoff.accept(command, context);
+    if (handoff.businessDecisionState === "rejected") {
+      const rejectingIssue =
+        handoff.issues.find(({ blocking }) => blocking) ?? handoff.issues[0];
+      throw new ConflictException({
+        code: rejectingIssue?.code ?? "SHIPMENT_HANDOFF_REJECTED",
+        issues: handoff.issues,
+        traceId: handoff.traceId,
+      });
+    }
     return {
       contractVersion: "post-departure-source-candidate-accept-result.v1",
       acceptedCandidateRefs: shipmentCandidates.map(
@@ -277,7 +304,7 @@ function buildHandoffCommand(input: {
   };
 }
 
-function candidateGroupingKey(
+export function postDepartureCandidateGroupingKey(
   candidate: PostDepartureSourceCandidateV1,
 ): string | undefined {
   const grouping = candidate.correction?.shipmentGrouping;

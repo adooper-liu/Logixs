@@ -1,18 +1,25 @@
 <script setup lang="ts">
 import { ArrowRight, Boxes, RefreshCw, Ship } from "@lucide/vue";
 import type { DeepReadonly } from "vue";
-import type { InternalShipmentHandoffCandidateV1 } from "../../api/shipments";
+import type {
+  InternalShipmentHandoffBatchAcceptResultV1,
+  InternalShipmentHandoffCandidateV1,
+} from "../../api/shipments";
+import HandoffBatchAcceptanceReceipt from "./HandoffBatchAcceptanceReceipt.vue";
 
 defineProps<{
   candidates: readonly DeepReadonly<InternalShipmentHandoffCandidateV1>[];
   loading: boolean;
   acceptingRef: string;
+  acceptingAll: boolean;
+  batchResult: DeepReadonly<InternalShipmentHandoffBatchAcceptResultV1> | null;
   error: string;
 }>();
 
 const emit = defineEmits<{
   refresh: [];
   accept: [candidateRef: string];
+  acceptAll: [];
 }>();
 </script>
 
@@ -24,11 +31,31 @@ const emit = defineEmits<{
         <small>无需重复导入</small>
         <h2 id="internal-handoff-title">系统内已出运记录</h2>
       </span>
-      <button type="button" :disabled="loading" @click="emit('refresh')">
-        <RefreshCw :size="15" aria-hidden="true" />刷新
-      </button>
+      <span class="header-actions">
+        <button type="button" :disabled="loading" @click="emit('refresh')">
+          <RefreshCw :size="15" aria-hidden="true" />刷新
+        </button>
+        <button
+          v-if="candidates.length > 0"
+          type="button"
+          class="accept-all-button"
+          :disabled="acceptingAll || Boolean(acceptingRef)"
+          @click="emit('acceptAll')"
+        >
+          <Boxes :size="15" aria-hidden="true" />
+          {{
+            acceptingAll ? "正在批量接管" : `接管全部 ${candidates.length} 票`
+          }}
+        </button>
+      </span>
     </header>
 
+    <HandoffBatchAcceptanceReceipt
+      v-if="batchResult"
+      :result="batchResult"
+      @review-candidate="emit('accept', $event)"
+      @retry-package="emit('acceptAll')"
+    />
     <p v-if="error" class="state state--error" role="alert">{{ error }}</p>
     <p v-else-if="loading" class="state">正在读取备货、装箱和离港事实…</p>
     <p v-else-if="candidates.length === 0" class="state">
@@ -134,8 +161,20 @@ const emit = defineEmits<{
   border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink);
-  font-weight: var(--weight-page);
+  font-weight: 700;
   cursor: pointer;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.accept-all-button {
+  border-color: var(--brand) !important;
+  background: var(--brand) !important;
+  color: var(--on-brand) !important;
 }
 
 .candidate-list article {
@@ -168,7 +207,7 @@ const emit = defineEmits<{
 .gaps {
   color: var(--warn);
   font-size: var(--text-meta);
-  font-weight: var(--weight-page);
+  font-weight: 700;
 }
 
 .accept-button {
@@ -201,6 +240,18 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 560px) {
+  .internal-handoff > header {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .header-actions {
+    grid-column: 1 / -1;
+  }
+
+  .header-actions button {
+    flex: 1;
+  }
+
   .candidate-list article {
     grid-template-columns: 24px minmax(0, 1fr);
   }

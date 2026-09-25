@@ -221,8 +221,8 @@ onBeforeUnmount(close);
   box-shadow: var(--shadow-overlay);
   color: var(--tooltip-ink-soft);
   font-size: var(--text-micro);
-  font-weight: 500;
-  line-height: 1.55;
+  font-weight: 400;
+  line-height: var(--leading-body);
   overflow-wrap: anywhere;
   pointer-events: none;
 }

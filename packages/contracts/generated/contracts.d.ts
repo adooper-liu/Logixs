@@ -1209,6 +1209,187 @@ handoff: ShipmentHandoffResultV1
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackageAcceptCommandV1".
+ */
+export interface PostDepartureSourcePackageAcceptCommandV1 {
+contractVersion: "post-departure-source-package-accept.v1"
+packageId: string
+/**
+ * @minItems 1
+ * @maxItems 4
+ */
+sources: [PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]|[PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1, PostDepartureSourceBatchV1]
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackageAcceptItemV1".
+ */
+export interface PostDepartureSourcePackageAcceptItemV1 {
+/**
+ * @minItems 1
+ */
+candidateRefs: [string, ...(string)[]]
+status: ("accepted" | "duplicate" | "conflict" | "rejected" | "failed")
+shipmentId: (Uuid | null)
+errorCode: (string | null)
+traceId: string
+recoveryAction: ("open_shipment" | "review_candidate" | "retry_package")
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureSourcePackageAcceptResultV1".
+ */
+export interface PostDepartureSourcePackageAcceptResultV1 {
+contractVersion: "post-departure-source-package-accept-result.v1"
+packageId: string
+items: PostDepartureSourcePackageAcceptItemV1[]
+totals: {
+groups: number
+accepted: number
+duplicate: number
+conflict: number
+rejected: number
+failed: number
+}
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingFactCompletionCommandV1".
+ */
+export interface ShipmentPendingFactCompletionCommandV1 {
+contractVersion: "shipment-pending-fact-completion.v1"
+expectedRelationshipVersion: number
+occurredAt: DateTime
+idempotencyKey: string
+facts: {
+carrierCode?: (string | null)
+vesselName?: (string | null)
+voyageNumber?: (string | null)
+originPortCode?: (string | null)
+destinationPortCode?: (string | null)
+departureProof?: (DepartureProofV1 | null)
+}
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingFactCompletionResultV1".
+ */
+export interface ShipmentPendingFactCompletionResultV1 {
+contractVersion: "shipment-pending-fact-completion-result.v1"
+status: ("saved" | "no_change")
+shipmentId: Uuid
+relationshipVersion: number
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingCargoCompletionLineV1".
+ */
+export interface ShipmentPendingCargoCompletionLineV1 {
+containerRecordId: Uuid
+productNumber: string
+quantity: DecimalString
+quantityUnit: ("piece" | "carton" | "set" | "pallet")
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingCargoCompletionCommandV1".
+ */
+export interface ShipmentPendingCargoCompletionCommandV1 {
+contractVersion: "shipment-pending-cargo-completion.v1"
+expectedRelationshipVersion: number
+occurredAt: DateTime
+idempotencyKey: string
+/**
+ * @minItems 1
+ * @maxItems 500
+ */
+lines: [ShipmentPendingCargoCompletionLineV1, ...(ShipmentPendingCargoCompletionLineV1)[]]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingCargoCompletionResultV1".
+ */
+export interface ShipmentPendingCargoCompletionResultV1 {
+contractVersion: "shipment-pending-cargo-completion-result.v1"
+status: ("saved" | "duplicate")
+shipmentId: Uuid
+relationshipVersion: number
+cargoLineCount: number
+unmatchedSkuCount: number
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingSkuBindingCommandV1".
+ */
+export interface ShipmentPendingSkuBindingCommandV1 {
+contractVersion: "shipment-pending-sku-binding.v1"
+expectedRelationshipVersion: number
+expectedCargoLineVersion: number
+occurredAt: DateTime
+idempotencyKey: string
+cargoLineId: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingSkuBindingResultV1".
+ */
+export interface ShipmentPendingSkuBindingResultV1 {
+contractVersion: "shipment-pending-sku-binding-result.v1"
+status: ("saved" | "duplicate")
+shipmentId: Uuid
+relationshipVersion: number
+cargoLineId: Uuid
+cargoLineVersion: number
+productSkuId: Uuid
+productNumber: string
+skuResolution: ("matched_existing" | "registered")
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingDocumentCompletionItemV1".
+ */
+export interface ShipmentPendingDocumentCompletionItemV1 {
+documentType: ("booking" | "mbl" | "hbl")
+documentNumber: string
+scac: (string | null)
+/**
+ * @minItems 1
+ */
+containerRecordIds: [Uuid, ...(Uuid)[]]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingDocumentCompletionCommandV1".
+ */
+export interface ShipmentPendingDocumentCompletionCommandV1 {
+contractVersion: "shipment-pending-document-completion.v1"
+expectedRelationshipVersion: number
+occurredAt: DateTime
+idempotencyKey: string
+/**
+ * @minItems 1
+ * @maxItems 50
+ */
+documents: [ShipmentPendingDocumentCompletionItemV1, ...(ShipmentPendingDocumentCompletionItemV1)[]]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingDocumentCompletionResultV1".
+ */
+export interface ShipmentPendingDocumentCompletionResultV1 {
+contractVersion: "shipment-pending-document-completion-result.v1"
+status: ("saved" | "duplicate")
+shipmentId: Uuid
+relationshipVersion: number
+documentCount: number
+traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "InternalShipmentHandoffPendingItemV1".
  */
 export interface InternalShipmentHandoffPendingItemV1 {
@@ -1308,6 +1489,35 @@ export interface InternalShipmentHandoffAcceptResultV1 {
 contractVersion: "internal-shipment-handoff-accept-result.v1"
 candidateRef: string
 handoff: ShipmentHandoffResultV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffBatchAcceptCommandV1".
+ */
+export interface InternalShipmentHandoffBatchAcceptCommandV1 {
+contractVersion: "internal-shipment-handoff-batch-accept.v1"
+/**
+ * @minItems 1
+ * @maxItems 500
+ */
+candidateRefs: [string, ...(string)[]]
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "InternalShipmentHandoffBatchAcceptResultV1".
+ */
+export interface InternalShipmentHandoffBatchAcceptResultV1 {
+contractVersion: "internal-shipment-handoff-batch-accept-result.v1"
+items: PostDepartureSourcePackageAcceptItemV1[]
+totals: {
+groups: number
+accepted: number
+duplicate: number
+conflict: number
+rejected: number
+failed: number
+}
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -2617,15 +2827,82 @@ containers: ShipmentContainerViewV1[]
 cargoLines: ShipmentCargoLineViewV1[]
 transportDocuments: ShipmentTransportDocumentViewV1[]
 upstreamReferences: ShipmentUpstreamReferenceViewV1[]
-pendingItems: {
+pendingItems: ShipmentPendingItemV1[]
+lifecycleInitialization: ShipmentLifecycleInitializationV1
+projectionVersion: number
+asOf: DateTime
+}
+export interface ShipmentPendingItemV1 {
 code: StableCode
 label: string
 subjectType: ("shipment" | "container" | "cargo" | "document")
 subjectRef: string
-}[]
-lifecycleInitialization: ShipmentLifecycleInitializationV1
-projectionVersion: number
+currentValue: (string | null)
+sourceSystem: (string | null)
+sourceValue: (string | null)
+candidateValues: string[]
+responsibility: {
+roleCode: StableCode
+roleLabel: string
+}
+deadline: {
+dueAt: (DateTime | null)
+source: ("not_configured" | "policy" | "source")
+label: string
+}
+restrictedActions: ShipmentPendingActionV1[]
+directAction: ShipmentPendingActionV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingActionV1".
+ */
+export interface ShipmentPendingActionV1 {
+code: StableCode
+label: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingItemV1".
+ */
+export interface ShipmentPendingItemV11 {
+code: StableCode
+label: string
+subjectType: ("shipment" | "container" | "cargo" | "document")
+subjectRef: string
+currentValue: (string | null)
+sourceSystem: (string | null)
+sourceValue: (string | null)
+candidateValues: string[]
+responsibility: {
+roleCode: StableCode
+roleLabel: string
+}
+deadline: {
+dueAt: (DateTime | null)
+source: ("not_configured" | "policy" | "source")
+label: string
+}
+restrictedActions: ShipmentPendingActionV1[]
+directAction: ShipmentPendingActionV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingCompletionItemV1".
+ */
+export interface ShipmentPendingCompletionItemV1 {
+shipment: ShipmentSummaryV1
+pendingItems: ShipmentPendingItemV11[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentPendingCompletionPageV1".
+ */
+export interface ShipmentPendingCompletionPageV1 {
+items: ShipmentPendingCompletionItemV1[]
+pageInfo: PageInfo
 asOf: DateTime
+projectionVersion: number
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema

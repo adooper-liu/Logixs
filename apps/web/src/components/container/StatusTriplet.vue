@@ -173,7 +173,7 @@ const statusItems = computed(() =>
 
 .status-triplet--context .status-cell b {
   font-size: var(--text-body);
-  line-height: 1.25;
+  line-height: var(--leading-tight);
 }
 
 .status-triplet--context .status-cell small {

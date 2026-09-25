@@ -40,13 +40,9 @@
   --text-label: 12px;
   --text-micro: 11px;
 
-  /* 字重：收编 UI_SYSTEM §7.2。400 正文 / 600 强调（对象名、当前值、表头、次级按钮）/ 700 仅页名与主按钮。
-     装饰性图形（如侧栏品牌符号）不属语义层级，走 style-scale-exempt 豁免。 */
-  --weight-body: 400;
-  --weight-strong: 600;
-  --weight-page: 700;
-
-  /* 行高：比例档位。布局对齐需要的绝对行高（如与状态点对齐）走 style-scale-exempt 豁免。
+  /* 字重不入令牌：只有 400/600/700 三个通用值，包一层不增加信息，
+     且角色命名（如 --weight-page）会在非页名处说谎。由门禁限定这三个值。
+     行高：比例档位。布局对齐需要的绝对行高（如与状态点对齐）走 style-scale-exempt 豁免。
      tight 专管展示型紧排：大号数字（KPI 值、节点序位）与紧凑堆叠小字 —— 它们刻意压得比标题还紧。 */
   --leading-tight: 1.1;
   --leading-title: 1.3;

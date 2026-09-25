@@ -303,7 +303,8 @@ T2 lifecycle-control（每 Shipment 一次 Inbox 本地事务）
 四张维护表是 **V1 业务词汇覆盖下限**，不是四张数据库表的设计模板。一个来源列进入系统时必须同时回答：规范语义是什么、谁拥有、保存在哪种粒度、是否允许空、在什么阶段/导入配置下必填、怎样校验以及如何追溯来源。
 
 已对 `D:\Filez\刘志高\已出运货柜` 中 4 张维护表和 10 张详情表完成只读 OpenXML 核验。四张维护表共有 176 个字段出现位、146 个不同原始表头；十张详情表均为相同的 97 列投影。完整文件哈希、实际范围、逐列表头和非空统计见
-[`POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923`](./evidence/POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923.json)。下表把全部原始列归入目标字段族；规范 `fieldCode` 和公共 DTO 仍须在负责人批准后通过新契约版本实例化。
+[`POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923`](./evidence/POST_DEPARTURE_WORKBOOK_FIELD_INVENTORY_20260923.json)。四张维护表经正式上传链路留存的 80 条行快照已固化为
+[`post-departure-source-package-20260923`](../../../database/seeds/fixtures/post-departure-source-package-20260923.json)，按原文件 SHA-256 与字节数回验，不携带本地批次 ID；它用于预检、批量接管、冲突隔离和跨会话待补集成测试。下表把全部原始列归入目标字段族；规范 `fieldCode` 和公共 DTO 仍须在负责人批准后通过新契约版本实例化。
 
 字段有三个彼此独立的维度：
 

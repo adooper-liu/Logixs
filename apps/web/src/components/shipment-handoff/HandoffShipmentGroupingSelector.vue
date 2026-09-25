@@ -221,7 +221,7 @@ legend {
   padding: 0 0 var(--space-1);
   color: var(--ink-soft);
   font-size: var(--text-label);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .recommendation {
@@ -259,7 +259,7 @@ legend {
 .recommendation__copy small {
   color: var(--brand-strong);
   font-size: var(--text-micro);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
 }
 
 .recommendation__copy > span,
@@ -286,7 +286,7 @@ legend {
   background: var(--surface);
   color: var(--brand-strong);
   font-size: var(--text-label);
-  font-weight: var(--weight-strong);
+  font-weight: 600;
   white-space: nowrap;
 }
 

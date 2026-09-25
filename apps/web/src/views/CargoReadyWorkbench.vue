@@ -198,7 +198,7 @@ async function selectOrderById(value: string): Promise<void> {
   background: var(--brand);
   color: var(--on-brand);
   font-size: var(--text-label);
-  font-weight: var(--weight-page);
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -238,7 +238,7 @@ async function selectOrderById(value: string): Promise<void> {
   gap: var(--space-1);
   color: var(--brand-strong);
   font-size: var(--text-meta);
-  font-weight: var(--weight-page);
+  font-weight: 700;
   text-decoration: none;
 }
 

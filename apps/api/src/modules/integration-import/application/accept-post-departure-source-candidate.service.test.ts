@@ -163,4 +163,70 @@ describe("AcceptPostDepartureSourceCandidateService", () => {
       expect.objectContaining({ tenantId }),
     );
   });
+
+  it("does not report a persisted Handoff rejection as an accepted candidate", async () => {
+    const preflightPackage = {
+      execute: vi.fn().mockResolvedValue({
+        packageId,
+        sources: [],
+        candidates: [
+          {
+            candidateRef: "HMMU4956442",
+            decision: "ready",
+            containerNumber: "HMMU4956442",
+            replenishmentOrderNumbers: [],
+            billNumbers: [],
+            issues: [],
+          },
+        ],
+        totals: {},
+        traceId: "trace-preflight",
+      }),
+    };
+    const repository = {
+      findById: vi.fn().mockResolvedValue({
+        batch: { id: batchId, createdAt: new Date("2026-09-24T02:00:00Z") },
+      }),
+    };
+    const acceptHandoff = {
+      accept: vi.fn().mockResolvedValue({
+        receptionState: "received",
+        businessDecisionState: "rejected",
+        commitState: "committed",
+        duplicate: false,
+        issues: [
+          {
+            code: "CONTAINER_ACTIVE_SHIPMENT_CONFLICT",
+            messageKey: "shipment_handoff_container_active_shipment_conflict",
+          },
+        ],
+        traceId: "trace-rejected",
+      }),
+    };
+    const service = new AcceptPostDepartureSourceCandidateService(
+      preflightPackage as never,
+      repository as never,
+      acceptHandoff as never,
+    );
+
+    await expect(
+      service.execute(
+        packageId,
+        "HMMU4956442",
+        {
+          contractVersion: "post-departure-source-candidate-accept.v1",
+          packageId,
+          sources: [{ kind: "container", batchId }],
+          candidateRef: "HMMU4956442",
+          idempotencyKey: "accept:HMMU4956442:rejected",
+        },
+        { tenantId, actorId: "70000000-0000-4000-8000-000000000009" },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({
+        code: "CONTAINER_ACTIVE_SHIPMENT_CONFLICT",
+      }),
+    });
+  });
 });

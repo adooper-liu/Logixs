@@ -243,14 +243,14 @@ const hiddenTraceCount = computed(() =>
   color: var(--ink-soft);
   font-size: var(--text-micro);
   font-weight: 700;
-  line-height: 1;
+  line-height: var(--leading-tight);
 }
 
 .node-cell b {
   overflow: hidden;
   font-size: var(--text-micro);
   font-weight: 600;
-  line-height: 1.15;
+  line-height: var(--leading-tight);
   overflow-wrap: anywhere;
 }
 

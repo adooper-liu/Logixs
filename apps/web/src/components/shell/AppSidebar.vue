@@ -132,7 +132,7 @@ const changeRole = (event: Event) => {
   background: var(--brand);
   color: var(--on-brand);
   font-size: var(--text-label);
-  font-weight: 800;
+  font-weight: 800; /* style-scale-exempt: 装饰性品牌符号，不属语义层级 */
 }
 
 .brand-copy,
@@ -154,7 +154,7 @@ const changeRole = (event: Event) => {
 
 .brand-copy b {
   font-size: var(--text-title);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
 }
 
 .brand-copy span,
