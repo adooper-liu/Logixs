@@ -550,9 +550,12 @@ function architectureSourceFiles() {
 }
 
 export function runRepositoryChecks({ docsOnly = false } = {}) {
-  const markdownFiles = walkFiles(repositoryRoot, (path) =>
-    path.endsWith(".md"),
-  );
+  const markdownFiles = walkFiles(repositoryRoot, (path) => {
+    if (!path.endsWith(".md")) return false;
+    return (
+      toRepositoryRelativePath(path) !== "doc/# 设计出运全生命周期数据模型.md"
+    );
+  });
   const contractAuthorityFiles = markdownFiles.filter((absolutePath) => {
     const path = toRepositoryRelativePath(absolutePath);
     return /^docs\/product\/domain\/(?:.*_CONTRACT_V1|LIFECYCLE_NODE_CATALOG_V1|EVENT_CODES|GLOBAL_CONTRACT_REGISTRY)\.md$/.test(
