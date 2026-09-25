@@ -102,6 +102,11 @@ export {
   type InspectShipmentHandoffConflictsPort,
   type ShipmentHandoffConflictInspection,
 } from "./inspect-shipment-handoff-conflicts.port";
+export {
+  MATCH_ACTIVE_SHIPMENT_BY_CONTAINER,
+  type ActiveShipmentContainerMatch,
+  type MatchActiveShipmentByContainerPort,
+} from "./match-active-shipment-by-container.port";
 export { GetShipmentService } from "./application/get-shipment.service";
 export { ListShipmentsService } from "./application/list-shipments.service";
 export {

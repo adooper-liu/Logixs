@@ -70,6 +70,8 @@ import { REPLACE_CONTAINER_DISPATCH_SNAPSHOT } from "./replace-container-dispatc
 import { COMMIT_SHIPMENT_HANDOFF } from "./commit-shipment-handoff.port";
 import { INSPECT_SHIPMENT_HANDOFF_CONFLICTS } from "./inspect-shipment-handoff-conflicts.port";
 import { PrismaShipmentHandoffConflictInspector } from "./infrastructure/prisma-shipment-handoff-conflict-inspector";
+import { MATCH_ACTIVE_SHIPMENT_BY_CONTAINER } from "./match-active-shipment-by-container.port";
+import { PrismaActiveShipmentByContainerMatcher } from "./infrastructure/prisma-active-shipment-by-container.matcher";
 import { INTERNAL_SHIPMENT_HANDOFF_SOURCE } from "./internal-shipment-handoff-source.port";
 import { PrismaInternalShipmentHandoffSource } from "./infrastructure/prisma-internal-shipment-handoff-source";
 import { PrismaShipmentPendingFactCompletion } from "./infrastructure/prisma-shipment-pending-fact-completion";
@@ -155,6 +157,10 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     {
       provide: INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
       useClass: PrismaShipmentHandoffConflictInspector,
+    },
+    {
+      provide: MATCH_ACTIVE_SHIPMENT_BY_CONTAINER,
+      useClass: PrismaActiveShipmentByContainerMatcher,
     },
     {
       provide: INTERNAL_SHIPMENT_HANDOFF_SOURCE,
@@ -246,6 +252,7 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     REPLACE_CONTAINER_DISPATCH_SNAPSHOT,
     COMMIT_SHIPMENT_HANDOFF,
     INSPECT_SHIPMENT_HANDOFF_CONFLICTS,
+    MATCH_ACTIVE_SHIPMENT_BY_CONTAINER,
     INTERNAL_SHIPMENT_HANDOFF_SOURCE,
     SHIPMENT_PENDING_FACT_COMPLETION,
     SHIPMENT_PENDING_CARGO_COMPLETION,

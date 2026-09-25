@@ -21,6 +21,11 @@ import {
   type LegacyDepartedSourceRecord,
 } from "../../shipment-lifecycle-orchestration";
 import {
+  MATCH_ACTIVE_SHIPMENT_BY_CONTAINER,
+  type ActiveShipmentContainerMatch,
+  type MatchActiveShipmentByContainerPort,
+} from "../../shipment-registry";
+import {
   IMPORT_REPOSITORY,
   type ImportBatchWithRows,
   type ImportRepository,
@@ -57,6 +62,8 @@ export class PreflightPostDepartureSourcePackageService {
     private readonly repository: ImportRepository,
     @Inject(REFERENCE_PORT_DIRECTORY)
     private readonly ports: ReferencePortDirectoryPort,
+    @Inject(MATCH_ACTIVE_SHIPMENT_BY_CONTAINER)
+    private readonly shipmentMatcher: MatchActiveShipmentByContainerPort,
   ) {}
 
   async execute(
@@ -152,6 +159,30 @@ export class PreflightPostDepartureSourcePackageService {
         });
       }
     }
+    const shipmentMatches = await this.shipmentMatcher.matchByContainerNumbers(
+      tenantId,
+      candidates.map(({ containerNumber }) => containerNumber),
+      {
+        excludeSourceSystem: "post_departure_source_package",
+        excludeExternalHandoffPrefix: `${packageId}:`,
+      },
+    );
+    const matchesByContainer = new Map(
+      shipmentMatches.map((match) => [
+        normalize(match.containerNumber).toUpperCase(),
+        match,
+      ]),
+    );
+    candidates = candidates.map((candidate) =>
+      candidate.correction?.shipmentGrouping
+        ? candidate
+        : applyActiveShipmentMatch(
+            candidate,
+            matchesByContainer.get(
+              normalize(candidate.containerNumber).toUpperCase(),
+            ),
+          ),
+    );
 
     return {
       packageId,
@@ -179,6 +210,61 @@ export class PreflightPostDepartureSourcePackageService {
       traceId: randomUUID(),
     };
   }
+}
+
+function applyActiveShipmentMatch(
+  candidate: PostDepartureSourceCandidateV1,
+  match: ActiveShipmentContainerMatch | undefined,
+): PostDepartureSourceCandidateV1 {
+  if (!match || match.state === "not_found") return candidate;
+  const unresolvedIssues = candidate.issues.filter(
+    ({ code }) => code !== "EXTERNAL_SHIPMENT_MATCH_REQUIRED",
+  );
+  if (match.state === "conflict") {
+    const issues = deduplicateIssues([
+      ...unresolvedIssues,
+      decoratePostDepartureIssue(
+        issue(
+          "CONTAINER_ACTIVE_SHIPMENT_CONFLICT",
+          "shipment_handoff_container_active_shipment_conflict",
+          candidate.containerNumber,
+          ["shipment_grouping"],
+        ),
+      ),
+    ]);
+    return { ...candidate, decision: "rejected", issues };
+  }
+  const issues = deduplicateIssues(unresolvedIssues);
+  return {
+    ...candidate,
+    decision: candidateDecision(issues),
+    existingShipmentMatch: {
+      shipmentId: match.shipmentId,
+      ...(match.shipmentNumber ? { shipmentNumber: match.shipmentNumber } : {}),
+      expectedRelationshipVersion: match.relationshipVersion,
+      matchedBy: "container_active_link",
+    },
+    issues,
+  };
+}
+
+function candidateDecision(
+  issues: ShipmentHandoffIssueV1[],
+): PostDepartureSourceCandidateV1["decision"] {
+  if (
+    issues.some(({ code }) =>
+      [
+        "INVALID_SOURCE_VALUE",
+        "DUPLICATE_REFERENCE",
+        "CONTAINER_ACTIVE_SHIPMENT_CONFLICT",
+      ].includes(code),
+    )
+  ) {
+    return "rejected";
+  }
+  return issues.some(isBlockingPostDepartureIssue)
+    ? "review_required"
+    : "ready";
 }
 
 function assertCommand(
@@ -295,18 +381,9 @@ function buildCandidate(
       ["shipment_grouping"],
     ),
   ]).map(decoratePostDepartureIssue);
-  const rejected = issues.some(
-    ({ code }) =>
-      code === "INVALID_SOURCE_VALUE" || code === "DUPLICATE_REFERENCE",
-  );
-
   return omitUndefined({
     candidateRef: containerNumber,
-    decision: rejected
-      ? "rejected"
-      : issues.some(isBlockingPostDepartureIssue)
-        ? "review_required"
-        : "ready",
+    decision: candidateDecision(issues),
     containerNumber,
     replenishmentOrderNumbers: collectIdentity(rows, "备货单号"),
     billNumbers: collectIdentity(rows, "提单号"),

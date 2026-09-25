@@ -8,6 +8,7 @@ import type {
 } from "@logix/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../../generated/prisma";
+import { PrismaActiveShipmentByContainerMatcher } from "./prisma-active-shipment-by-container.matcher";
 import { PrismaShipmentHandoffAcceptanceRepository } from "./prisma-shipment-handoff-acceptance.repository";
 
 const BASE_DATABASE_URL =
@@ -202,6 +203,92 @@ describe("PrismaShipmentHandoffAcceptanceRepository incomplete Shipment", () => 
         ),
       }),
     ).rejects.toThrow("TARGET_SHIPMENT_VERSION_CONFLICT");
+  });
+
+  it("absorbs a late source for the same container without replacing its active link", async () => {
+    const tenantId = randomUUID();
+    const actorId = randomUUID();
+    const firstCommand = commandFor(
+      tenantId,
+      "same-container",
+      "source-container",
+    );
+    firstCommand.containers[0]!.containerNumber = "MSNU9762671";
+    const first = await repository.commit({
+      actorId,
+      command: firstCommand,
+      preflight: preflightFor(firstCommand, "e"),
+    });
+    const originalLink = await prisma.shipmentContainerLink.findFirstOrThrow({
+      where: { tenantId, shipmentId: first.shipmentId!, state: "active" },
+    });
+    const matcher = new PrismaActiveShipmentByContainerMatcher(prisma as never);
+    await expect(
+      matcher.matchByContainerNumbers(tenantId, ["msnu9762671"]),
+    ).resolves.toEqual([
+      {
+        containerNumber: "msnu9762671",
+        state: "matched",
+        shipmentId: first.shipmentId,
+        shipmentNumber: null,
+        relationshipVersion: 1,
+      },
+    ]);
+    const lateSourceCommand: ShipmentHandoffCommandV2 = {
+      ...commandFor(tenantId, "same-container", "source-warehouse"),
+      shipment: {
+        transportMode: "ocean",
+        targetShipmentId: first.shipmentId!,
+        expectedRelationshipVersion: 1,
+      },
+    };
+
+    const absorbed = await repository.commit({
+      actorId,
+      command: lateSourceCommand,
+      preflight: preflightFor(lateSourceCommand, "f"),
+    });
+
+    expect(absorbed.shipmentId).toBe(first.shipmentId);
+    const shipment = await prisma.shipment.findUniqueOrThrow({
+      where: { id: first.shipmentId! },
+      include: {
+        containerLinks: true,
+        handoffs: { orderBy: { createdAt: "asc" } },
+      },
+    });
+    expect(shipment.relationshipVersion).toBe(2);
+    expect(shipment.handoffs).toHaveLength(2);
+    expect(shipment.containerLinks).toHaveLength(1);
+    expect(shipment.containerLinks[0]).toMatchObject({
+      id: originalLink.id,
+      state: "active",
+      supersededAt: null,
+    });
+  });
+
+  it("reports a conflict when one container number has multiple active Shipment links", async () => {
+    const tenantId = randomUUID();
+    const actorId = randomUUID();
+    const firstCommand = commandFor(tenantId, "duplicate-a", "duplicate-a");
+    firstCommand.containers[0]!.containerNumber = "MSNU9762671";
+    const secondCommand = commandFor(tenantId, "duplicate-b", "duplicate-b");
+    secondCommand.containers[0]!.containerNumber = "MSNU9762671";
+    await repository.commit({
+      actorId,
+      command: firstCommand,
+      preflight: preflightFor(firstCommand, "1"),
+    });
+    await repository.commit({
+      actorId,
+      command: secondCommand,
+      preflight: preflightFor(secondCommand, "2"),
+    });
+
+    const matcher = new PrismaActiveShipmentByContainerMatcher(prisma as never);
+    await expect(
+      matcher.matchByContainerNumbers(tenantId, ["MSNU9762671"]),
+    ).resolves.toEqual([{ containerNumber: "MSNU9762671", state: "conflict" }]);
   });
 });
 

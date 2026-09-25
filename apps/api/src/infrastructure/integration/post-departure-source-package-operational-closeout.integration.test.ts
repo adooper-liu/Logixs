@@ -21,6 +21,7 @@ import { CompleteShipmentPendingFactsService } from "../../modules/shipment-life
 import { PreflightShipmentHandoffService } from "../../modules/shipment-lifecycle-orchestration/application/preflight-shipment-handoff.service";
 import { CommitShipmentHandoffService } from "../../modules/shipment-registry/application/commit-shipment-handoff.service";
 import { GetShipmentService } from "../../modules/shipment-registry/application/get-shipment.service";
+import { PrismaActiveShipmentByContainerMatcher } from "../../modules/shipment-registry/infrastructure/prisma-active-shipment-by-container.matcher";
 import { PrismaShipmentHandoffAcceptanceRepository } from "../../modules/shipment-registry/infrastructure/prisma-shipment-handoff-acceptance.repository";
 import { PrismaShipmentHandoffConflictInspector } from "../../modules/shipment-registry/infrastructure/prisma-shipment-handoff-conflict-inspector";
 import { PrismaShipmentPendingCargoCompletion } from "../../modules/shipment-registry/infrastructure/prisma-shipment-pending-cargo-completion";
@@ -96,6 +97,7 @@ describe("real post-departure source package operational closeout", () => {
     const preflightPackage = new PreflightPostDepartureSourcePackageService(
       importRepository,
       { findByIds: async () => [] } as never,
+      new PrismaActiveShipmentByContainerMatcher(prisma as never),
     );
     const preflight = await preflightPackage.execute(
       {

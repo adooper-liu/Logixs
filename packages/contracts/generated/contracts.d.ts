@@ -1039,6 +1039,16 @@ replenishmentOrderLineId?: Uuid
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDepartureExistingShipmentMatchV1".
+ */
+export interface PostDepartureExistingShipmentMatchV1 {
+shipmentId: Uuid
+shipmentNumber?: string
+expectedRelationshipVersion: number
+matchedBy: "container_active_link"
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "PostDepartureSourceCandidateV1".
  */
 export interface PostDepartureSourceCandidateV1 {
@@ -1060,6 +1070,7 @@ packageCount?: DecimalString
 grossWeightKg?: DecimalString
 volumeM3?: DecimalString
 correction?: PostDepartureSourceCandidateCorrectionV1
+existingShipmentMatch?: PostDepartureExistingShipmentMatchV1
 issues: ShipmentHandoffIssueV1[]
 }
 /**

@@ -159,7 +159,7 @@ function buildHandoffCommand(input: {
   const { candidates } = input;
   const grouping = sharedObject(
     candidates,
-    (candidate) => candidate.correction?.shipmentGrouping,
+    candidateShipmentGrouping,
     "shipment_grouping",
   );
   const originPort = sharedValue(
@@ -307,7 +307,7 @@ function buildHandoffCommand(input: {
 export function postDepartureCandidateGroupingKey(
   candidate: PostDepartureSourceCandidateV1,
 ): string | undefined {
-  const grouping = candidate.correction?.shipmentGrouping;
+  const grouping = candidateShipmentGrouping(candidate);
   if (!grouping) return undefined;
   if (grouping.kind === "authorized_new_shipment") {
     return `legacy-number:${grouping.shipmentNumber}`;
@@ -316,6 +316,19 @@ export function postDepartureCandidateGroupingKey(
     return `existing:${grouping.shipmentId}`;
   }
   return `new:${candidate.candidateRef}`;
+}
+
+function candidateShipmentGrouping(candidate: PostDepartureSourceCandidateV1) {
+  if (candidate.correction?.shipmentGrouping) {
+    return candidate.correction.shipmentGrouping;
+  }
+  if (!candidate.existingShipmentMatch) return undefined;
+  return {
+    kind: "existing_shipment" as const,
+    shipmentId: candidate.existingShipmentMatch.shipmentId,
+    expectedRelationshipVersion:
+      candidate.existingShipmentMatch.expectedRelationshipVersion,
+  };
 }
 
 function sharedValue(

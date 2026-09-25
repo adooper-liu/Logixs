@@ -131,6 +131,20 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
       </section>
     </div>
 
+    <section
+      v-if="candidate.existingShipmentMatch"
+      class="existing-shipment-match"
+      aria-label="既有 Shipment 匹配"
+    >
+      <CheckCircle2 :size="17" aria-hidden="true" />
+      <span>
+        <small>将补入已有 Shipment</small>
+        <b>{{
+          candidate.existingShipmentMatch.shipmentNumber || "业务编号待补"
+        }}</b>
+      </span>
+    </section>
+
     <section class="fact-section" aria-label="候选核心信息">
       <header class="section-heading">
         <b>核心信息</b>
@@ -267,6 +281,26 @@ function sourceValueFor(target: HandoffResolutionTarget): string {
 .fact-section,
 .action-runway {
   background: var(--surface);
+}
+
+.existing-shipment-match {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.existing-shipment-match > span {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.existing-shipment-match small {
+  color: var(--muted);
+  font-size: var(--text-micro);
 }
 
 .candidate-heading {

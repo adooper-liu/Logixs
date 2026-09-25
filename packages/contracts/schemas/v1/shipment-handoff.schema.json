@@ -863,6 +863,24 @@
         "replenishmentOrderLineId": { "$ref": "common.schema.json#/$defs/Uuid" }
       }
     },
+    "PostDepartureExistingShipmentMatchV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shipmentId", "expectedRelationshipVersion", "matchedBy"],
+      "properties": {
+        "shipmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "shipmentNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "expectedRelationshipVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "matchedBy": { "const": "container_active_link" }
+      }
+    },
     "PostDepartureSourceCandidateV1": {
       "type": "object",
       "additionalProperties": false,
@@ -922,6 +940,9 @@
         "volumeM3": { "$ref": "#/$defs/DecimalString" },
         "correction": {
           "$ref": "#/$defs/PostDepartureSourceCandidateCorrectionV1"
+        },
+        "existingShipmentMatch": {
+          "$ref": "#/$defs/PostDepartureExistingShipmentMatchV1"
         },
         "issues": {
           "type": "array",

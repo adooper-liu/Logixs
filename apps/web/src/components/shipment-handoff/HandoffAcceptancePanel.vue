@@ -34,13 +34,23 @@ const batchCompleted = computed(() => {
   const totals = props.batchResult?.totals;
   return Boolean(totals && totals.failed === 0);
 });
+const existingShipmentLabel = computed(
+  () => props.candidate.existingShipmentMatch?.shipmentNumber || "业务编号待补",
+);
 </script>
 
 <template>
   <section class="acceptance-panel" aria-label="正式接管 Shipment">
     <header>
       <Ship :size="18" aria-hidden="true" />
-      <span><small>当前动作</small><b>接管当前 Shipment</b></span>
+      <span>
+        <small>当前动作</small>
+        <b>{{
+          candidate.existingShipmentMatch
+            ? `补入已有 Shipment · ${existingShipmentLabel}`
+            : "接管当前 Shipment"
+        }}</b>
+      </span>
     </header>
 
     <button
@@ -97,9 +107,11 @@ const batchCompleted = computed(() => {
           ? "正在接管..."
           : result
             ? "已接管"
-            : pendingIssueCount
-              ? "先接管，稍后补齐"
-              : "接管当前 Shipment"
+            : candidate.existingShipmentMatch
+              ? "补入已有 Shipment"
+              : pendingIssueCount
+                ? "先接管，稍后补齐"
+                : "接管当前 Shipment"
       }}
     </button>
 
@@ -111,7 +123,11 @@ const batchCompleted = computed(() => {
         <small>
           {{ result.acceptedCandidateRefs.length }} 只柜已接管 ·
           {{ result.handoff.issues.length }} 项待补 · Shipment
-          {{ result.handoff.shipmentId }}
+          {{
+            candidate.existingShipmentMatch
+              ? existingShipmentLabel
+              : result.handoff.shipmentId
+          }}
         </small>
       </span>
     </div>
