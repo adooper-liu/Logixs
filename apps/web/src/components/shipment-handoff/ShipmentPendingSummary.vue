@@ -277,7 +277,7 @@ function formatDateTime(value: string | null | undefined): string {
 
 .route-port b {
   overflow-wrap: anywhere;
-  font-size: var(--text-subtitle);
+  font-size: var(--text-title);
 }
 
 .route-port--destination {
@@ -349,7 +349,7 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 .core-facts__heading b {
-  font-size: var(--text-subtitle);
+  font-size: var(--text-title);
 }
 
 .core-facts__grid {
@@ -369,7 +369,7 @@ function formatDateTime(value: string | null | undefined): string {
 .core-facts dd {
   margin: 0;
   overflow-wrap: anywhere;
-  line-height: 1.45;
+  line-height: var(--leading-body);
 }
 
 .shipment-summary__empty {
