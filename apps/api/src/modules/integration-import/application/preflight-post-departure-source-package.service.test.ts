@@ -23,6 +23,7 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     const service = new PreflightPostDepartureSourcePackageService(
       repositoryFor(SOURCE_ROWS) as ImportRepository,
       portDirectory(),
+      shipmentMatcher(),
     );
 
     const result = await service.execute(command(), "tenant-1");
@@ -60,6 +61,7 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     const service = new PreflightPostDepartureSourcePackageService(
       repositoryFor(SOURCE_ROWS) as ImportRepository,
       portDirectory(),
+      shipmentMatcher(),
     );
 
     const result = await service.execute(
@@ -82,6 +84,74 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     expect(sourceGaps.every(({ blocking }) => blocking === false)).toBe(true);
   });
 
+  it("matches a late source to the unique active Shipment without operator grouping", async () => {
+    const service = new PreflightPostDepartureSourcePackageService(
+      repositoryFor(SOURCE_ROWS) as ImportRepository,
+      portDirectory(),
+      shipmentMatcher({
+        shipmentId: "77777777-7777-4777-8777-777777777777",
+        shipmentNumber: "SHP-2026-01884",
+        relationshipVersion: 4,
+      }),
+    );
+
+    const result = await service.execute(
+      {
+        contractVersion: "post-departure-source-package-preflight.v1",
+        sources: [{ kind: "warehouse", batchId: IDS.warehouse }],
+      },
+      "tenant-1",
+    );
+
+    expect(result.candidates[0]).toMatchObject({
+      candidateRef: "MSNU9762671",
+      existingShipmentMatch: {
+        shipmentId: "77777777-7777-4777-8777-777777777777",
+        shipmentNumber: "SHP-2026-01884",
+        expectedRelationshipVersion: 4,
+        matchedBy: "container_active_link",
+      },
+    });
+    expect(
+      result.candidates[0]!.issues.some(
+        ({ code }) => code === "EXTERNAL_SHIPMENT_MATCH_REQUIRED",
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects only the affected container when active Shipment matching is ambiguous", async () => {
+    const service = new PreflightPostDepartureSourcePackageService(
+      repositoryFor(SOURCE_ROWS) as ImportRepository,
+      portDirectory(),
+      {
+        matchByContainerNumbers: async (_tenantId, containerNumbers) =>
+          containerNumbers.map((containerNumber) => ({
+            containerNumber,
+            state: "conflict" as const,
+          })),
+      },
+    );
+
+    const result = await service.execute(
+      {
+        contractVersion: "post-departure-source-package-preflight.v1",
+        sources: [{ kind: "warehouse", batchId: IDS.warehouse }],
+      },
+      "tenant-1",
+    );
+
+    expect(result.candidates[0]).toMatchObject({
+      candidateRef: "MSNU9762671",
+      decision: "rejected",
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "CONTAINER_ACTIVE_SHIPMENT_CONFLICT",
+          blocking: true,
+        }),
+      ]),
+    });
+  });
+
   it("re-preflights a partially saved candidate without requiring a port lookup", async () => {
     const repository = repositoryFor(SOURCE_ROWS);
     repository.findPostDepartureSourcePackageReviewByPackage = async () =>
@@ -95,6 +165,7 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     const service = new PreflightPostDepartureSourcePackageService(
       repository as ImportRepository,
       { ...portDirectory(), findByIds },
+      shipmentMatcher(),
     );
 
     const result = await service.execute(
@@ -114,6 +185,7 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     const service = new PreflightPostDepartureSourcePackageService(
       repositoryFor(SOURCE_ROWS) as ImportRepository,
       portDirectory(),
+      shipmentMatcher(),
     );
     const invalid = command();
     invalid.sources[3] = { kind: "container", batchId: IDS.container };
@@ -144,6 +216,7 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     const service = new PreflightPostDepartureSourcePackageService(
       repositoryFor(SOURCE_ROWS) as ImportRepository,
       portDirectory(),
+      shipmentMatcher(),
     );
 
     await expect(service.execute(input, "tenant-1")).rejects.toThrow(
@@ -156,6 +229,7 @@ describe("PreflightPostDepartureSourcePackageService", () => {
     const service = new PreflightPostDepartureSourcePackageService(
       repositoryFor(rows) as ImportRepository,
       portDirectory(),
+      shipmentMatcher(),
     );
 
     await expect(service.execute(command(), "tenant-1")).rejects.toThrow(
@@ -239,6 +313,24 @@ function portDirectory() {
     search: async () => ({ items: [], nextCursor: null }),
     findByUnlocodes: async () => [],
     findByIds: async () => [],
+  };
+}
+
+function shipmentMatcher(match?: {
+  shipmentId: string;
+  shipmentNumber: string | null;
+  relationshipVersion: number;
+}) {
+  return {
+    matchByContainerNumbers: async (
+      _tenantId: string,
+      containerNumbers: readonly string[],
+    ) =>
+      containerNumbers.map((containerNumber) =>
+        match
+          ? { containerNumber, state: "matched" as const, ...match }
+          : { containerNumber, state: "not_found" as const },
+      ),
   };
 }
 

@@ -120,6 +120,12 @@ describe("AcceptPostDepartureSourceCandidateService", () => {
                 evidenceRef: "70000000-0000-4000-8000-000000000011",
               },
             },
+            existingShipmentMatch: {
+              shipmentId: "70000000-0000-4000-8000-000000000099",
+              shipmentNumber: "SHP-SYSTEM-SUGGESTION",
+              expectedRelationshipVersion: 8,
+              matchedBy: "container_active_link",
+            },
           },
         ],
         totals: {},
@@ -158,6 +164,70 @@ describe("AcceptPostDepartureSourceCandidateService", () => {
         shipment: expect.objectContaining({
           targetShipmentId,
           expectedRelationshipVersion: 3,
+        }),
+      }),
+      expect.objectContaining({ tenantId }),
+    );
+  });
+
+  it("uses the system Shipment match for a late source without manual correction", async () => {
+    const targetShipmentId = "70000000-0000-4000-8000-000000000012";
+    const preflightPackage = {
+      execute: vi.fn().mockResolvedValue({
+        packageId,
+        sources: [],
+        candidates: [
+          {
+            candidateRef: "HMMU4956442",
+            decision: "ready",
+            containerNumber: "HMMU4956442",
+            replenishmentOrderNumbers: [],
+            billNumbers: [],
+            issues: [],
+            existingShipmentMatch: {
+              shipmentId: targetShipmentId,
+              shipmentNumber: "SHP-26DSC01812",
+              expectedRelationshipVersion: 5,
+              matchedBy: "container_active_link",
+            },
+          },
+        ],
+        totals: {},
+        traceId: "trace-preflight",
+      }),
+    };
+    const repository = {
+      findById: vi.fn().mockResolvedValue({
+        batch: { id: batchId, createdAt: new Date("2026-09-24T02:00:00Z") },
+      }),
+    };
+    const acceptHandoff = {
+      accept: vi.fn().mockResolvedValue({ shipmentId: targetShipmentId }),
+    };
+    const service = new AcceptPostDepartureSourceCandidateService(
+      preflightPackage as never,
+      repository as never,
+      acceptHandoff as never,
+    );
+
+    await service.execute(
+      packageId,
+      "HMMU4956442",
+      {
+        contractVersion: "post-departure-source-candidate-accept.v1",
+        packageId,
+        sources: [{ kind: "warehouse", batchId }],
+        candidateRef: "HMMU4956442",
+        idempotencyKey: "accept:HMMU4956442:late-warehouse",
+      },
+      { tenantId, actorId: "70000000-0000-4000-8000-000000000009" },
+    );
+
+    expect(acceptHandoff.accept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shipment: expect.objectContaining({
+          targetShipmentId,
+          expectedRelationshipVersion: 5,
         }),
       }),
       expect.objectContaining({ tenantId }),

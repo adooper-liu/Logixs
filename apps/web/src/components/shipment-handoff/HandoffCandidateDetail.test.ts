@@ -3,6 +3,34 @@ import { describe, expect, it } from "vitest";
 import HandoffCandidateDetail from "./HandoffCandidateDetail.vue";
 
 describe("HandoffCandidateDetail", () => {
+  it("shows which existing Shipment will receive a late source", () => {
+    const wrapper = mount(HandoffCandidateDetail, {
+      props: {
+        candidate: {
+          candidateRef: "MSNU9762671",
+          decision: "ready",
+          containerNumber: "MSNU9762671",
+          replenishmentOrderNumbers: [],
+          billNumbers: [],
+          existingShipmentMatch: {
+            shipmentId: "77777777-7777-4777-8777-777777777777",
+            shipmentNumber: "SHP-2026-01884",
+            expectedRelationshipVersion: 4,
+            matchedBy: "container_active_link",
+          },
+          issues: [],
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("将补入已有 Shipment");
+    expect(wrapper.text()).toContain("SHP-2026-01884");
+    expect(wrapper.text()).not.toContain(
+      "77777777-7777-4777-8777-777777777777",
+    );
+    expect(button(wrapper, "确认所属出运")).toBeUndefined();
+  });
+
   it("turns gaps into direct actions without exposing implementation guidance", async () => {
     const wrapper = mount(HandoffCandidateDetail, {
       props: {

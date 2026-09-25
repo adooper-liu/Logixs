@@ -235,6 +235,7 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
         shipmentId,
         handoffId,
         Boolean(correction),
+        Boolean(attachment),
       );
       if (correction) {
         await supersedeRemovedContainerLinks(
@@ -538,6 +539,7 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
     shipmentId: string,
     handoffId: string,
     correction: boolean,
+    attachment: boolean,
   ): Promise<Map<string, ResolvedContainer>> {
     const resolved = new Map<string, ResolvedContainer>();
     for (const container of command.containers) {
@@ -575,8 +577,47 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
         throw conflict("STUFFING_SNAPSHOT_CONTAINER_CONFLICT");
       }
 
+      const attachmentLinks =
+        attachment && container.containerNumber
+          ? await tx.shipmentContainerLink.findMany({
+              where: {
+                tenantId: command.tenantId,
+                shipmentId,
+                state: "active",
+                containerRecord: {
+                  containerNumber: {
+                    equals: container.containerNumber,
+                    mode: "insensitive",
+                  },
+                },
+              },
+              orderBy: { id: "asc" },
+              take: 2,
+              include: { containerRecord: true },
+            })
+          : [];
+      if (attachmentLinks.length > 1) {
+        throw conflict("CONTAINER_ACTIVE_SHIPMENT_CONFLICT");
+      }
+      const attachmentLink = attachmentLinks[0];
+      if (
+        attachmentLink &&
+        identity &&
+        attachmentLink.containerRecordId !== identity.containerRecordId
+      ) {
+        throw conflict("CONTAINER_SOURCE_IDENTITY_CONFLICT");
+      }
+      if (
+        attachmentLink &&
+        stuffing &&
+        attachmentLink.containerRecordId !== stuffing.containerRecordId
+      ) {
+        throw conflict("STUFFING_SNAPSHOT_CONTAINER_CONFLICT");
+      }
       let containerRecordId =
-        identity?.containerRecordId ?? stuffing?.containerRecordId;
+        identity?.containerRecordId ??
+        stuffing?.containerRecordId ??
+        attachmentLink?.containerRecordId;
       if (!containerRecordId) {
         const created = await tx.containerRecord.create({
           data: {
@@ -594,6 +635,7 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
       } else {
         const current =
           identity?.containerRecord ??
+          attachmentLink?.containerRecord ??
           (await tx.containerRecord.findUniqueOrThrow({
             where: {
               id_tenantId: {
@@ -651,6 +693,13 @@ export class PrismaShipmentHandoffAcceptanceRepository implements ShipmentHandof
           where: { id: activeLink.id },
           data: { state: "superseded", supersededAt: new Date() },
         });
+      } else if (activeLink && attachment) {
+        resolved.set(container.referenceId, {
+          referenceId: container.referenceId,
+          containerRecordId,
+          shipmentContainerLinkId: activeLink.id,
+        });
+        continue;
       } else if (activeLink) {
         throw conflict("CONTAINER_ACTIVE_SHIPMENT_CONFLICT");
       }
