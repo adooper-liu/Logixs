@@ -955,6 +955,22 @@ test("shipping operator uploads four sources and reviews joined post-departure g
       .getByRole("region", { name: "当前 Shipment 待补事实" })
       .getByText("补充提单资料"),
   ).toBeVisible();
+  const shipmentRoute = page.getByRole("region", {
+    name: "当前 Shipment 航线",
+  });
+  await expect(shipmentRoute.getByText("CNFZG", { exact: true })).toBeVisible();
+  await expect(shipmentRoute.getByText("USSAV", { exact: true })).toBeVisible();
+  await expect(
+    shipmentRoute.getByText("已出运", { exact: true }),
+  ).toBeVisible();
+  const shipmentCore = page.getByRole("region", {
+    name: "当前 Shipment 核心信息",
+  });
+  await expect(
+    shipmentCore.getByText("AOSOM LLC", { exact: true }),
+  ).toBeVisible();
+  await expect(shipmentCore.getByText("40HQ", { exact: true })).toBeVisible();
+  await expect(shipmentCore.getByText("1 行", { exact: true })).toBeVisible();
   const documentEditor = page.getByRole("region", { name: "补充运输单证" });
   await expect(documentEditor).toBeVisible();
   await documentEditor.getByLabel("单证号码").fill("NBOZ9FF56400");

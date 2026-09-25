@@ -14,6 +14,32 @@ import {
 describe("PostDeparturePendingCompletionPanel", () => {
   it("shows a persisted task with its facts, gaps and direct action", async () => {
     const item = pendingCompletionItemFixture();
+    const detail = shipmentPendingDetailFixture();
+    detail.transportDocuments = [
+      {
+        id: "99999999-9999-4999-8999-999999999999",
+        documentType: "mbl",
+        documentNumber: "NBOZFS613500",
+        scac: null,
+        parentDocumentId: null,
+        containerRecordIds: [detail.containers[0]!.containerRecordId],
+        version: 1,
+        effectiveFrom: "2026-09-24T00:00:00.000Z",
+      },
+    ];
+    detail.upstreamReferences = [
+      {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        containerRecordId: detail.containers[0]!.containerRecordId,
+        shipmentCargoLineId: null,
+        referenceType: "stocking_order",
+        sourceSystem: "legacy-departed-file",
+        sourceRecordId: "26DSA01883",
+        sourceVersion: null,
+        sourceLineId: null,
+        version: 1,
+      },
+    ];
     const wrapper = mount(PostDeparturePendingCompletionPanel, {
       props: {
         items: [item],
@@ -24,7 +50,7 @@ describe("PostDeparturePendingCompletionPanel", () => {
         saveError: "",
         saveNotice: "",
         saveResult: null,
-        detail: shipmentPendingDetailFixture(),
+        detail,
         loadingDetail: false,
         detailError: "",
         savingCargo: false,
@@ -44,6 +70,24 @@ describe("PostDeparturePendingCompletionPanel", () => {
     });
 
     expect(wrapper.text()).toContain("SHIP-001");
+    expect(wrapper.get('[aria-label="当前 Shipment 概览"]').text()).toContain(
+      "已出运",
+    );
+    expect(wrapper.get('[aria-label="当前 Shipment 航线"]').text()).toContain(
+      "CNNGB",
+    );
+    expect(wrapper.get('[aria-label="当前 Shipment 航线"]').text()).toContain(
+      "USLAX",
+    );
+    expect(
+      wrapper.get('[aria-label="当前 Shipment 核心信息"]').text(),
+    ).toContain("26DSA01883");
+    expect(
+      wrapper.get('[aria-label="当前 Shipment 核心信息"]').text(),
+    ).toContain("NBOZFS613500");
+    expect(
+      wrapper.get('[aria-label="当前 Shipment 核心信息"]').text(),
+    ).toContain("AOSOM LLC");
     expect(wrapper.text()).toContain("补充 SKU 装载明细");
     expect(wrapper.text()).toContain("出运运营");
     expect(wrapper.text()).toContain("未设定");

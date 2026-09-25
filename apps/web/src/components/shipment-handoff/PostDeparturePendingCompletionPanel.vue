@@ -27,6 +27,7 @@ import ShipmentPendingDocumentEditor from "./ShipmentPendingDocumentEditor.vue";
 import ShipmentPendingFactsEditor from "./ShipmentPendingFactsEditor.vue";
 import ShipmentPendingItemRow from "./ShipmentPendingItemRow.vue";
 import ShipmentPendingSkuBindingEditor from "./ShipmentPendingSkuBindingEditor.vue";
+import ShipmentPendingSummary from "./ShipmentPendingSummary.vue";
 
 const props = defineProps<{
   items: readonly DeepReadonly<ShipmentPendingCompletionItemV1>[];
@@ -192,31 +193,8 @@ async function focusEditor(code: string): Promise<void> {
         class="pending-block pending-facts"
         aria-label="当前 Shipment 待补事实"
       >
-        <header>
-          <small>当前 Shipment</small
-          ><b>{{ selected?.shipment.shipmentNumber || "请选择任务" }}</b>
-        </header>
+        <ShipmentPendingSummary :selected="selected" :detail="detail" />
         <template v-if="selected">
-          <dl>
-            <div>
-              <dt>航线</dt>
-              <dd>
-                {{ selected.shipment.originUnlocode || "待补" }} →
-                {{ selected.shipment.destinationUnlocode || "待补" }}
-              </dd>
-            </div>
-            <div>
-              <dt>船名航次</dt>
-              <dd>
-                {{ selected.shipment.vesselName || "待补" }} /
-                {{ selected.shipment.voyageNumber || "待补" }}
-              </dd>
-            </div>
-            <div>
-              <dt>货柜</dt>
-              <dd>{{ selected.shipment.activeContainerCount }} 只</dd>
-            </div>
-          </dl>
           <ul>
             <ShipmentPendingItemRow
               v-for="pending in selected.pendingItems"
@@ -370,6 +348,10 @@ async function focusEditor(code: string): Promise<void> {
   background: var(--surface);
 }
 
+.pending-facts {
+  padding: 0;
+}
+
 .pending-queue {
   display: grid;
   gap: var(--space-2);
@@ -403,30 +385,16 @@ async function focusEditor(code: string): Promise<void> {
   font-style: normal;
 }
 
-.pending-facts dl,
 .pending-facts ul,
 .pending-actions {
   display: grid;
   gap: var(--space-3);
 }
 
-.pending-facts dl {
-  margin: var(--space-4) 0;
-}
-
-.pending-facts dl div {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  gap: var(--space-2);
-}
-
-.pending-facts dd {
-  margin: 0;
-}
-
 .pending-facts ul {
   margin: 0;
-  padding: 0;
+  padding: var(--space-4);
+  border-top: 1px solid var(--line);
   list-style: none;
 }
 
