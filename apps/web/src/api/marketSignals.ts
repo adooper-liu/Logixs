@@ -7,6 +7,9 @@ import type {
   MarketSignalUpdateCommandV1,
   MarketSignalV1,
   ProductDefinitionReleaseCommandV1,
+  ProductIdentityDraftCommandV1,
+  ProductIdentityV1,
+  SellableSkuReleaseCommandV1,
   ProductDefinitionV1,
   ProductDefinitionWriteCommandV1,
   ProductInitiativeClaimCommandV1,
@@ -233,6 +236,54 @@ export async function releaseProductDefinition(
           ? "暂时无法发布"
           : "暂时无法保存这个决定",
     },
+  );
+}
+
+/** 建档队列：3 号节点发布的产品设计，以及它有没有建过档。 */
+export async function listProductIdentityQueue(): Promise<{
+  items: {
+    releaseId: string;
+    definitionId: string;
+    specification: string;
+    npiStage: string;
+    releasedBy: string;
+    releasedAt: string;
+    productId: string | null;
+    productNumber: string | null;
+  }[];
+}> {
+  return requestJson("/api/product-identities/queue?pageSize=200", {
+    fallback: "暂时无法加载待建档的产品设计",
+  });
+}
+
+/** 一票的产品身份；**还没建档时服务端返回 null**。 */
+export async function getProductIdentity(
+  releaseId: string,
+): Promise<ProductIdentityV1 | null> {
+  return requestJson<ProductIdentityV1 | null>(
+    `/api/product-identities/${encodeURIComponent(releaseId)}`,
+    { fallback: "暂时无法加载产品身份" },
+  );
+}
+
+export async function draftProductIdentity(
+  releaseId: string,
+  command: ProductIdentityDraftCommandV1,
+): Promise<ProductIdentityV1> {
+  return requestJson<ProductIdentityV1>(
+    `/api/product-identities/${encodeURIComponent(releaseId)}/drafts`,
+    { method: "POST", body: command, fallback: "暂时无法保存产品身份" },
+  );
+}
+
+export async function releaseSellableSku(
+  releaseId: string,
+  command: SellableSkuReleaseCommandV1,
+): Promise<ProductIdentityV1> {
+  return requestJson<ProductIdentityV1>(
+    `/api/product-identities/${encodeURIComponent(releaseId)}/releases`,
+    { method: "POST", body: command, fallback: "暂时无法发布可售 SKU" },
   );
 }
 

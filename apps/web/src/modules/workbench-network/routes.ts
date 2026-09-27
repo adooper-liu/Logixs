@@ -33,6 +33,15 @@ export const workbenchNetworkRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/workspaces/master-data",
+    component: () => import("../../views/MasterDataWorkbench.vue"),
+    meta: {
+      title: "商品与物料主数据",
+      section: "业务工作台",
+      roles: ["planner", "manager"],
+    },
+  },
+  {
     path: "/workspaces/product-npi",
     component: () => import("../../views/ProductNpiWorkbench.vue"),
     meta: {
