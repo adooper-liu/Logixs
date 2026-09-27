@@ -45,6 +45,23 @@ interface ReviewPointDraft {
   conclusion: string;
 }
 
+/** 交给面板渲染的只读视图；`missing` 由本模块唯一计算，面板不重复判定。 */
+export interface ProductInitiativeReviewPointView {
+  code: ProductInitiativeReviewPointCodeV1;
+  label: string;
+  evidenceRefs: readonly string[];
+  conclusion: string;
+  missing: boolean;
+}
+
+/**
+ * 一条评审要点算不算成立。服务端 `productInitiativePendingFieldCodes` 用同一口径
+ * （有结论没证据、或有证据没结论都不算成立），改动时两边必须一起动。
+ */
+export function reviewPointMissing(draft: ReviewPointDraft): boolean {
+  return draft.evidenceRefs.length === 0 || !draft.conclusion.trim();
+}
+
 export function useProductInitiativeDecision(options: {
   handoffId: MaybeRefOrGetter<string>;
   signalId: MaybeRefOrGetter<string>;
@@ -76,15 +93,23 @@ export function useProductInitiativeDecision(options: {
     () => initiative.value?.currentDestination === "handed_off",
   );
 
+  /** 四项要点的只读视图：缺口判定只在这里做一次，面板与按钮都读同一份。 */
+  const reviewPointViews = computed<ProductInitiativeReviewPointView[]>(() =>
+    REVIEW_POINTS.map((point) => ({
+      code: point.code,
+      label: point.label,
+      evidenceRefs: points[point.code].evidenceRefs,
+      conclusion: points[point.code].conclusion,
+      missing: reviewPointMissing(points[point.code]),
+    })),
+  );
+
   /** 还差哪些才算能立项；按钮文案与缺口清单都读它。 */
   const blockingGaps = computed<string[]>(() => {
     const missing: string[] = [];
     if (!objective.value.trim()) missing.push("目标结果");
-    for (const point of REVIEW_POINTS) {
-      const draft = points[point.code];
-      if (draft.evidenceRefs.length === 0 || !draft.conclusion.trim()) {
-        missing.push(point.label);
-      }
+    for (const point of reviewPointViews.value) {
+      if (point.missing) missing.push(point.label);
     }
     return missing;
   });
@@ -219,6 +244,7 @@ export function useProductInitiativeDecision(options: {
     rejectReason,
     returnReason,
     points,
+    reviewPointViews,
     blockingGaps,
     canApprove,
     load,
