@@ -41,6 +41,7 @@ describe("workbenchNetwork", () => {
     expect(liveWorkbenchCodes).toEqual([
       "market_signals",
       "product_selection",
+      "product_npi",
       "cargo_ready",
       "stuffing",
       "dispatch",
@@ -56,6 +57,7 @@ describe("workbenchNetwork", () => {
     ).toEqual([
       "/workspaces/market-signals",
       "/workspaces/product-selection",
+      "/workspaces/product-npi",
       "/workspaces/cargo-ready",
       "/workspaces/stuffing",
       "/workspaces/dispatch",

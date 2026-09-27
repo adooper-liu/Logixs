@@ -32,6 +32,15 @@ export const workbenchNetworkRoutes: RouteRecordRaw[] = [
       roles: ["planner", "manager"],
     },
   },
+  {
+    path: "/workspaces/product-npi",
+    component: () => import("../../views/ProductNpiWorkbench.vue"),
+    meta: {
+      title: "产品开发与 NPI",
+      section: "业务工作台",
+      roles: ["planner", "manager"],
+    },
+  },
   ...frameworkWorkbenchStages.map((stage): RouteRecordRaw => ({
     path: stage.path,
     component: () => import("../../views/PlannedWorkbenchView.vue"),

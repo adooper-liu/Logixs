@@ -6,6 +6,9 @@ import type {
   MarketSignalPageV1,
   MarketSignalUpdateCommandV1,
   MarketSignalV1,
+  ProductInitiativeClaimCommandV1,
+  ProductInitiativeNpiQueueEntryV1,
+  ProductInitiativeNpiQueuePageV1,
   ProductOpportunityIntakeCommandV1,
   ProductOpportunityPageV1,
   ProductOpportunityV1,
@@ -14,12 +17,12 @@ import type {
   ProductInitiativeQueuePageV1,
   ProductInitiativeV1,
 } from "@logix/contracts";
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { DEV_OPERATOR_ID, DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
 
 const HEADERS = {
   "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
+  "X-Operator-Id": DEV_OPERATOR_ID,
   "X-Roles": "operations_dispatcher",
 };
 
@@ -166,6 +169,27 @@ export async function intakeProductOpportunity(
       fallback:
         command.action === "claim" ? "暂时无法领取" : "暂时无法接受交接",
     },
+  );
+}
+
+/**
+ * NPI 待办队列：选品交到产品侧的立项。每条同时带不可变快照与当前领取状态，
+ * 界面据此分出"等我接"和"我负责的"，不必再查一次。
+ */
+export async function listProductInitiativeNpiQueue(): Promise<ProductInitiativeNpiQueuePageV1> {
+  return requestJson<ProductInitiativeNpiQueuePageV1>(
+    "/api/product-initiative-npi/queue?pageSize=200",
+    { fallback: "暂时无法加载产品侧待办" },
+  );
+}
+
+export async function claimProductInitiative(
+  handoffId: string,
+  command: ProductInitiativeClaimCommandV1,
+): Promise<ProductInitiativeNpiQueueEntryV1> {
+  return requestJson<ProductInitiativeNpiQueueEntryV1>(
+    `/api/product-initiative-npi/${encodeURIComponent(handoffId)}/claim`,
+    { method: "POST", body: command, fallback: "暂时无法领取该立项" },
   );
 }
 

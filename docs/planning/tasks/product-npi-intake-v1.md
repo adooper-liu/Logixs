@@ -1,7 +1,15 @@
 ---
-status: coding
+status: review
 branch: feat/product-npi-intake
-verification: 未开工。本文件是实现、评审与交接的唯一载体；状态只看 frontmatter。
+verification: |
+  本地验证（2026-09-27，服务端 + 前端）：
+  - 单元 @logix/api 251 文件 / 1242 项；@logix/web 124 文件 / 446 项
+  - 集成（真实 PostgreSQL）19 文件 / 82 项，本片新增 9 项：并发领取只成一人、幂等键重复不写第二条、
+    幂等键复用但载荷不同要报错、跨租户看不到也领不走、翻页不重不漏；种子走真实链路（信号→交接→立项）
+  - E2E 三视口通过：看见待办 → 看懂快照 → 领取 → 分组与回执跟着变
+  - lint、typecheck、repo:check、contract:check、contract:drift、触及文件格式化通过
+  未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
+  未做：产品规格、里程碑、发布决定（本节点第二片）；队列筛选与排序；转交与放手
 ---
 
 # 任务：NPI 待办队列与领取 V1
@@ -87,8 +95,32 @@ verification: 未开工。本文件是实现、评审与交接的唯一载体；
 4. **仓储 / 服务 / 控制器**：`GET /product-initiative-npi/queue`、`POST /product-initiative-npi/:handoffId/claim`。
 5. **前端**：`/workspaces/product-npi` 接真实 API，按基线 §5 三区（原因队列 → 立项快照 → 领取动作）。
 
+## 落地记录（2026-09-27）
+
+**服务端**：契约加法 4 个 def；加法迁移 `product_initiative_claim`；领域规则
+`prepareProductInitiativeClaim`；`GET /product-initiative-npi/queue` 与
+`POST /product-initiative-npi/:handoffId/claim`。**不投 outbox** —— 本片没有消费方。
+
+两处实现取舍：
+
+1. **先判归属再判版本。** 两种情况的现场相同（读到时没人接、点下去时已被接走），
+   提示「已被领走」对人才有用；报「版本冲突」会让人以为自己点错了地方。
+2. **版本列与 `(handoff_id, claim_version)` 唯一索引保留**，即使 v1 每个快照只会被领一次 ——
+   两个人同时点，后到的那笔在数据库层失败，而不是靠应用层先读后写去赌。
+
+**前端**：`/workspaces/product-npi` 接真实 API，三区（待办队列 → 立项快照 → 领取动作）。
+队列按「等我接手／我负责的／已在他人手上」分组 —— 这是操作第一眼要分的事。
+打开工作台**默认落在最该处理的那一条**，不必先点一下才看得见内容。
+岗位作业规格已补进 `workbenchNetwork.ts`，节点状态 `stage` → `liveStage`。
+
+**连带修复**：新迁移的外键依赖让既有的「旧版本升级」验证（DROP 表模拟停在上一版本）
+删不掉表 —— 那条测试正是为此存在的。已按「更晚的迁移必须一起回退」修正，否则会留下
+「记账说已应用、表却不在」的半状态。
+
 ## 进度 log
 
-| 日期       | 阶段   | 负责   | commit | 说明                                                             |
-| ---------- | ------ | ------ | ------ | ---------------------------------------------------------------- |
-| 2026-09-27 | design | Claude | —      | 按全链工作台路线立案：3 号节点第一片，补上游交接没有消费者的断点 |
+| 日期       | 阶段   | 负责   | commit  | 说明                                                             |
+| ---------- | ------ | ------ | ------- | ---------------------------------------------------------------- |
+| 2026-09-27 | design | Claude | —       | 按全链工作台路线立案：3 号节点第一片，补上游交接没有消费者的断点 |
+| 2026-09-27 | coding | Claude | caf35b5 | 服务端落地：契约、迁移、领域规则、服务与接口；单元与集成验证     |
+| 2026-09-27 | coding | Claude | —       | 前端工作台接真实 API，节点转 live；三视口 E2E 通过               |
