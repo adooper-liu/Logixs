@@ -8,6 +8,7 @@ import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { DecideProductInitiativeService } from "./application/decide-product-initiative.service";
 import { GetProductInitiativeService } from "./application/get-product-initiative.service";
 import { IntakeProductOpportunityService } from "./application/intake-product-opportunity.service";
+import { ListProductInitiativesService } from "./application/list-product-initiatives.service";
 import { ListProductOpportunitiesService } from "./application/list-product-opportunities.service";
 import { PRODUCT_INITIATIVE_REPOSITORY } from "./domain/product-initiative.repository";
 import { PRODUCT_OPPORTUNITY_REPOSITORY } from "./domain/product-opportunity.repository";
@@ -22,6 +23,7 @@ import { ProductOpportunitiesController } from "./presentation/product-opportuni
   providers: [
     ListProductOpportunitiesService,
     IntakeProductOpportunityService,
+    ListProductInitiativesService,
     GetProductInitiativeService,
     DecideProductInitiativeService,
     {

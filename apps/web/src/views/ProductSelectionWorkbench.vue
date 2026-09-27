@@ -15,7 +15,10 @@ import ProductOpportunityActions from "../components/product-selection/ProductOp
 import ProductOpportunityDetail from "../components/product-selection/ProductOpportunityDetail.vue";
 import ProductOpportunityQueue from "../components/product-selection/ProductOpportunityQueue.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
-import { useProductInitiativeDecision } from "../composables/useProductInitiativeDecision";
+import {
+  useProductInitiativeDecision,
+  type ProductInitiativeOutcome,
+} from "../composables/useProductInitiativeDecision";
 import { useProductOpportunityWorkbench } from "../composables/useProductOpportunityWorkbench";
 import type { ProductEvaluationEvidenceDraft } from "../data/productEvaluationRequirements";
 
@@ -32,6 +35,7 @@ async function selectOpportunity(id: string): Promise<void> {
 
 const {
   items,
+  initiatives,
   selected,
   requirements,
   loading,
@@ -71,7 +75,7 @@ const {
   setDestination,
   toggleEvidence,
   addEvidence: addInitiativeEvidence,
-  decide,
+  decide: decideInitiative,
 } = useProductInitiativeDecision({
   handoffId: initiativeHandoffId,
   signalId: computed(() => selected.value?.handoff.signalId ?? ""),
@@ -157,6 +161,17 @@ async function addRequirementEvidence(
   if (saved) await reloadInitiative();
   return saved;
 }
+
+/**
+ * 判断落库后连队列一起重读：队列上的立项标记来自服务端投影，不重读的话
+ * 刚暂缓的机会在队列里还显示成没处理过。
+ */
+async function submitDecision(
+  outcome: ProductInitiativeOutcome,
+): Promise<void> {
+  const decided = await decideInitiative(outcome);
+  if (decided) await load();
+}
 </script>
 <template>
   <main class="selection-workbench page-frame">
@@ -198,6 +213,7 @@ async function addRequirementEvidence(
       <section class="pane">
         <ProductOpportunityQueue
           :items="items"
+          :initiatives="initiatives"
           :selected-id="selected?.handoff.handoffId ?? ''"
           @select="selectOpportunity"
         />
@@ -253,7 +269,7 @@ async function addRequirementEvidence(
           @change-outcome="setDestination"
           @update-objective="setObjective"
           @update-reason="setCurrentReason"
-          @submit="decide"
+          @submit="submitDecision"
         />
         <p v-else class="empty">选择一条机会后显示接收动作。</p>
       </section>

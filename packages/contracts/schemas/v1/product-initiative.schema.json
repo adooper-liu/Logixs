@@ -164,6 +164,44 @@
         }
       }
     },
+    "ProductInitiativeQueueEntryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handoffId",
+        "outcome",
+        "currentDestination",
+        "pendingFieldCodes",
+        "updatedAt"
+      ],
+      "properties": {
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "outcome": { "$ref": "#/$defs/ProductInitiativeOutcomeV1" },
+        "currentDestination": {
+          "$ref": "#/$defs/ProductInitiativeDestinationV1"
+        },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductInitiativePendingFieldCodeV1" }
+        },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductInitiativeQueuePageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "items", "pageSize", "nextCursor"],
+      "properties": {
+        "contractVersion": { "const": "product-initiative-queue.v1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeQueueEntryV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1 },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    },
     "ProductInitiativeHandoffV1": {
       "type": "object",
       "additionalProperties": false,

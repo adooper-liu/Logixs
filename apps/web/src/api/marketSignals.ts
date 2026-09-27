@@ -11,6 +11,7 @@ import type {
   ProductOpportunityV1,
   ProductInitiativeDecisionCommandV1,
   ProductInitiativeDetailV1,
+  ProductInitiativeQueuePageV1,
   ProductInitiativeV1,
 } from "@logix/contracts";
 import { DEV_TENANT_ID } from "./developmentIdentity";
@@ -116,6 +117,17 @@ export async function listProductOpportunities(): Promise<ProductOpportunityPage
   return requestJson<ProductOpportunityPageV1>(
     "/api/product-opportunities?pageSize=100",
     { fallback: "暂时无法加载待领取机会" },
+  );
+}
+
+/**
+ * 选品队列上的立项投影：只用来标出哪些机会已经看过（以及看到哪一步），
+ * 队列本身仍以机会列表为主选择源。
+ */
+export async function listProductInitiatives(): Promise<ProductInitiativeQueuePageV1> {
+  return requestJson<ProductInitiativeQueuePageV1>(
+    "/api/product-initiatives?pageSize=200",
+    { fallback: "暂时无法加载队列上的立项判断" },
   );
 }
 

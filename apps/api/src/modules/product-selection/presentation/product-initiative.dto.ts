@@ -13,6 +13,14 @@ const REVIEW_POINT_CODES = [
 
 const OUTCOMES = ["approve", "defer", "reject", "return_to_market"] as const;
 
+const DESTINATIONS = [
+  "needs_decision",
+  "deferred",
+  "rejected",
+  "returned_to_market",
+  "handed_off",
+] as const;
+
 export class ProductInitiativeReviewPointDto implements ProductInitiativeReviewPointV1 {
   @ApiProperty({ enum: REVIEW_POINT_CODES })
   code!: ProductInitiativeReviewPointV1["code"];
@@ -43,15 +51,7 @@ export class ProductInitiativeResponseDto {
   @ApiProperty({ enum: OUTCOMES }) outcome!: string;
   @ApiProperty({ enum: ["pending_completion", "completed"] })
   completion!: string;
-  @ApiProperty({
-    enum: [
-      "needs_decision",
-      "deferred",
-      "rejected",
-      "returned_to_market",
-      "handed_off",
-    ],
-  })
+  @ApiProperty({ enum: DESTINATIONS })
   currentDestination!: string;
   @ApiProperty() responsibleActorId!: string;
   @ApiPropertyOptional({ nullable: true }) objective!: string | null;
@@ -69,4 +69,21 @@ export class ProductInitiativeDetailResponseDto {
   @ApiPropertyOptional({ type: ProductInitiativeResponseDto, nullable: true })
   initiative!: ProductInitiativeResponseDto | null;
   @ApiProperty({ type: [Object] }) evidenceCandidates!: object[];
+}
+
+export class ProductInitiativeQueueEntryResponseDto {
+  @ApiProperty() handoffId!: string;
+  @ApiProperty({ enum: OUTCOMES }) outcome!: string;
+  @ApiProperty({ enum: DESTINATIONS }) currentDestination!: string;
+  @ApiProperty({ type: [String] }) pendingFieldCodes!: string[];
+  @ApiProperty() updatedAt!: string;
+}
+
+export class ProductInitiativeQueuePageResponseDto {
+  @ApiProperty({ enum: ["product-initiative-queue.v1"] })
+  contractVersion!: string;
+  @ApiProperty({ type: [ProductInitiativeQueueEntryResponseDto] })
+  items!: ProductInitiativeQueueEntryResponseDto[];
+  @ApiProperty() pageSize!: number;
+  @ApiPropertyOptional({ nullable: true }) nextCursor!: string | null;
 }

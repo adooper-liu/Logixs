@@ -1,12 +1,32 @@
 <script setup lang="ts">
 import { ArrowRight, CircleAlert } from "@lucide/vue";
-import type { ProductOpportunityV1 } from "@logix/contracts";
+import type {
+  ProductInitiativeQueueEntryV1,
+  ProductOpportunityV1,
+} from "@logix/contracts";
+import { computed } from "vue";
+import {
+  initiativeQueueBadge,
+  type ProductInitiativeQueueBadge,
+} from "../../data/productInitiativeQueue";
 
-defineProps<{
+const props = defineProps<{
   items: ProductOpportunityV1[];
   selectedId: string;
+  /** 队列上的立项投影；没有条目就是"还没看过"。 */
+  initiatives: Map<string, ProductInitiativeQueueEntryV1>;
 }>();
 defineEmits<{ select: [id: string] }>();
+
+/** 每条机会连同它的立项标记一次算好，模板里不再重复查。 */
+const decorated = computed<
+  { item: ProductOpportunityV1; badge: ProductInitiativeQueueBadge | null }[]
+>(() =>
+  props.items.map((item) => ({
+    item,
+    badge: initiativeQueueBadge(props.initiatives.get(item.handoff.handoffId)),
+  })),
+);
 
 function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
   if (state === "claimed") return "已领取";
@@ -23,7 +43,7 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
       <h2>经营机会</h2>
     </header>
     <button
-      v-for="item in items"
+      v-for="{ item, badge } in decorated"
       :key="item.handoff.handoffId"
       type="button"
       class="queue-item"
@@ -36,7 +56,21 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
         >{{ item.handoff.marketCode || "市场待补" }} ·
         {{ item.handoff.channelCode || "渠道待补" }}</span
       >
-      <span class="reason"
+      <!--
+        这一行是队列上唯一能分出"看过但先放着"和"还没看过"的地方：
+        没有立项记录的机会不显示任何标记，而不是和已处理的长得一样。
+      -->
+      <span
+        v-if="badge"
+        class="initiative"
+        :class="`initiative--${badge.state}`"
+      >
+        {{ badge.label
+        }}<template v-if="badge.pendingCount">
+          · 待补 {{ badge.pendingCount }} 项</template
+        >
+      </span>
+      <span v-else class="reason"
         ><CircleAlert :size="14" />经营团队判断值得进一步评估</span
       >
       <span v-if="item.handoff.pendingFieldCodes.length" class="gaps">
@@ -97,6 +131,18 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
 }
 .gaps {
   color: var(--warn);
+}
+.initiative {
+  font-weight: 700;
+}
+.initiative--pending {
+  color: var(--warn);
+}
+.initiative--closed {
+  color: var(--muted);
+}
+.initiative--handed_off {
+  color: var(--ok);
 }
 .arrow {
   position: absolute;

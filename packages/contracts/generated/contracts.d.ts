@@ -1911,6 +1911,27 @@ evidenceCandidates: ProductInitiativeEvidenceCandidateV1[]
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeQueueEntryV1".
+ */
+export interface ProductInitiativeQueueEntryV1 {
+handoffId: Uuid
+outcome: ProductInitiativeOutcomeV1
+currentDestination: ProductInitiativeDestinationV1
+pendingFieldCodes: ProductInitiativePendingFieldCodeV1[]
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeQueuePageV1".
+ */
+export interface ProductInitiativeQueuePageV1 {
+contractVersion: "product-initiative-queue.v1"
+items: ProductInitiativeQueueEntryV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeHandoffV1".
  */
 export interface ProductInitiativeHandoffV1 {

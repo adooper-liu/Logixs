@@ -1,4 +1,7 @@
-import type { ProductOpportunityV1 } from "@logix/contracts";
+import type {
+  ProductInitiativeQueueEntryV1,
+  ProductOpportunityV1,
+} from "@logix/contracts";
 import {
   computed,
   onMounted,
@@ -8,6 +11,7 @@ import {
 } from "vue";
 import {
   intakeProductOpportunity,
+  listProductInitiatives,
   listProductOpportunities,
   registerMarketSignalEvidence,
 } from "../api/marketSignals";
@@ -23,6 +27,10 @@ export function useProductOpportunityWorkbench(options: {
   selectOpportunity: (id: string) => Promise<void>;
 }) {
   const items = shallowRef<ProductOpportunityV1[]>([]);
+  /** 队列上的立项投影，按 handoffId 索引；没有条目就是"还没看过"。 */
+  const initiatives = shallowRef<Map<string, ProductInitiativeQueueEntryV1>>(
+    new Map(),
+  );
   const loading = shallowRef(true);
   const saving = shallowRef(false);
   const error = shallowRef<string | null>(null);
@@ -51,7 +59,16 @@ export function useProductOpportunityWorkbench(options: {
     loading.value = true;
     error.value = null;
     try {
-      items.value = (await listProductOpportunities()).items;
+      // 队列与它的立项标记一起读：分两次读会出现"机会已经处理过、标记还没到"
+      // 的中间态，岗位会重复处理同一条。
+      const [opportunities, initiativeQueue] = await Promise.all([
+        listProductOpportunities(),
+        listProductInitiatives(),
+      ]);
+      items.value = opportunities.items;
+      initiatives.value = new Map(
+        initiativeQueue.items.map((entry) => [entry.handoffId, entry]),
+      );
       const requested = toValue(options.selectedId);
       const initial =
         items.value.find(({ handoff }) => handoff.handoffId === requested) ??
@@ -62,6 +79,7 @@ export function useProductOpportunityWorkbench(options: {
     } catch (caught) {
       error.value = message(caught);
       items.value = [];
+      initiatives.value = new Map();
     } finally {
       loading.value = false;
     }
@@ -127,6 +145,7 @@ export function useProductOpportunityWorkbench(options: {
 
   return {
     items,
+    initiatives,
     selected,
     requirements,
     loading,

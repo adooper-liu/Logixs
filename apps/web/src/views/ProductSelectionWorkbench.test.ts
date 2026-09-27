@@ -9,6 +9,7 @@ const intakeProductOpportunity = vi.fn();
 const registerMarketSignalEvidence = vi.fn();
 const getProductInitiative = vi.fn();
 const decideProductInitiative = vi.fn();
+const listProductInitiatives = vi.fn();
 
 vi.mock("../api/marketSignals", () => ({
   listProductOpportunities: (...args: unknown[]) =>
@@ -20,6 +21,8 @@ vi.mock("../api/marketSignals", () => ({
   getProductInitiative: (...args: unknown[]) => getProductInitiative(...args),
   decideProductInitiative: (...args: unknown[]) =>
     decideProductInitiative(...args),
+  listProductInitiatives: (...args: unknown[]) =>
+    listProductInitiatives(...args),
 }));
 
 describe("ProductSelectionWorkbench", () => {
@@ -28,6 +31,12 @@ describe("ProductSelectionWorkbench", () => {
     registerMarketSignalEvidence.mockResolvedValue(undefined);
     getProductInitiative.mockResolvedValue(initiativeDetail());
     decideProductInitiative.mockResolvedValue({});
+    listProductInitiatives.mockResolvedValue({
+      contractVersion: "product-initiative-queue.v1",
+      items: [],
+      pageSize: 200,
+      nextCursor: null,
+    });
     listProductOpportunities.mockResolvedValue({
       contractVersion: "product-opportunity-page.v1",
       items: [opportunity()],
@@ -361,6 +370,63 @@ describe("ProductSelectionWorkbench", () => {
 
     // 表单属于上一条机会：留着它会导致这条内容被登记到另一条机会的信号上
     expect(wrapper.find(".evidence-form").exists()).toBe(false);
+  });
+
+  it("队列上能分出「看过但先放着」与「还没看过」", async () => {
+    const untouched = acceptedOpportunity({
+      handoff: {
+        ...opportunity().handoff,
+        handoffId: SECOND_HANDOFF_ID,
+        title: "德国站收纳需求上升",
+      },
+      intakeVersion: 3,
+    });
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([acceptedOpportunity(), untouched]),
+    );
+    listProductInitiatives.mockResolvedValue({
+      contractVersion: "product-initiative-queue.v1",
+      items: [
+        {
+          handoffId: HANDOFF_ID,
+          outcome: "defer",
+          currentDestination: "needs_decision",
+          pendingFieldCodes: ["defer_reason"],
+          updatedAt: "2026-09-27T00:00:00.000Z",
+        },
+      ],
+      pageSize: 200,
+      nextCursor: null,
+    });
+    const wrapper = await mountPage();
+
+    const items = wrapper.findAll(".queue-item");
+    expect(items[0]!.text()).toContain("看过，先放着");
+    expect(items[0]!.text()).toContain("待补 1 项");
+    // 第二条没有立项记录：不能被标成"看过"，否则岗位会以为已经处理过
+    expect(items[1]!.text()).not.toContain("看过，先放着");
+    expect(items[1]!.text()).not.toContain("已暂缓");
+  });
+
+  it("暂缓过的机会在队列上标成已暂缓，不再显示成待处理", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    listProductInitiatives.mockResolvedValue({
+      contractVersion: "product-initiative-queue.v1",
+      items: [
+        {
+          handoffId: HANDOFF_ID,
+          outcome: "defer",
+          currentDestination: "deferred",
+          pendingFieldCodes: [],
+          updatedAt: "2026-09-27T00:00:00.000Z",
+        },
+      ],
+      pageSize: 200,
+      nextCursor: null,
+    });
+    const wrapper = await mountPage();
+
+    expect(wrapper.get(".queue-item").text()).toContain("已暂缓");
   });
 
   it("版本冲突给人话而不是机器代号，并已重新读取最新版本", async () => {

@@ -114,6 +114,8 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   expect(decisions[0]?.expectedInitiativeVersion).toBe(0);
   expect(decisions[0]?.contractVersion).toBe("product-initiative-decision.v1");
   expect(decisions[0]?.outcome).toBe("approve");
+  // 队列上的立项标记来自服务端投影：立项后这一条不再看起来像没处理过。
+  await expect(page.locator(".queue-item").first()).toContainText("已立项");
 
   const widths = await page.evaluate(() => ({
     pageClient: document.documentElement.clientWidth,
@@ -339,6 +341,31 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
 
   await page.route("**/api/product-initiatives**", async (route) => {
     const request = route.request();
+    const segments = new URL(request.url()).pathname.split("/").filter(Boolean);
+    const detailHandoffId =
+      segments[segments.indexOf("product-initiatives") + 1];
+
+    if (request.method() === "GET" && !detailHandoffId) {
+      // 队列投影：没有条目的机会就是"还没看过"。
+      await json(route, {
+        contractVersion: "product-initiative-queue.v1",
+        items: initiative
+          ? [
+              {
+                handoffId,
+                outcome: initiative.outcome,
+                currentDestination: initiative.currentDestination,
+                pendingFieldCodes: initiative.pendingFieldCodes,
+                updatedAt: initiative.updatedAt,
+              },
+            ]
+          : [],
+        pageSize: 200,
+        nextCursor: null,
+      });
+      return;
+    }
+
     if (request.method() === "GET") {
       await json(route, {
         handoffId,
