@@ -4,6 +4,7 @@ import type {
   ProductInitiativeOutcomeV1,
   ProductInitiativePendingFieldCodeV1,
 } from "@logix/contracts";
+import type { PreparedProductInitiativeClaim } from "./product-initiative-claim";
 import type {
   PreparedProductInitiativeDecision,
   ProductInitiativeReviewPoint,
@@ -30,6 +31,37 @@ export interface ProductInitiativeRecord {
   updatedAt: Date;
 }
 
+/** 交给产品侧的不可变快照。NPI 侧只读它，不改写立项阶段的任何结论。 */
+export interface ProductInitiativeHandoffRecord {
+  handoffId: string;
+  initiativeId: string;
+  signalId: string;
+  version: number;
+  marketCode: string | null;
+  userProblem: string | null;
+  objective: string;
+  responsibleActorId: string;
+  reviewPoints: ProductInitiativeReviewPoint[];
+  evidenceRefs: string[];
+  createdBy: string;
+  createdAt: Date;
+  idempotencyKey: string;
+}
+
+export interface ProductInitiativeClaimRecord {
+  claimId: string;
+  handoffId: string;
+  claimVersion: number;
+  productOwnerActorId: string;
+  claimedAt: Date;
+}
+
+/** NPI 侧的一条待办：不可变快照 + 当前领取状态（`null` = 还没人接）。 */
+export interface ProductInitiativeNpiEntryRecord {
+  handoff: ProductInitiativeHandoffRecord;
+  claim: ProductInitiativeClaimRecord | null;
+}
+
 export interface ProductInitiativeRepository {
   /** 该机会上已有的立项版本；没有立项判断时返回 0。 */
   currentVersion(tenantId: string, handoffId: string): Promise<number>;
@@ -53,4 +85,29 @@ export interface ProductInitiativeRepository {
     actorId: string;
     command: PreparedProductInitiativeDecision;
   }): Promise<{ record: ProductInitiativeRecord; duplicate: boolean }>;
+  /**
+   * NPI 待办队列：交到产品侧的不可变快照，左连当前领取状态。
+   *
+   * 队列取自**快照**而不是立项当前态：立项是终态（已交接不再接受新判断），
+   * 快照即承诺，不必再去回看立项行。
+   */
+  listNpiQueue(input: {
+    tenantId: string;
+    after?: { createdAt: Date; id: string };
+    take: number;
+  }): Promise<ProductInitiativeNpiEntryRecord[]>;
+  /** 单条待办；不属于本租户或未交到产品侧时返回 `null`。 */
+  findNpiEntry(
+    tenantId: string,
+    handoffId: string,
+  ): Promise<ProductInitiativeNpiEntryRecord | null>;
+  /**
+   * 落库一次领取：把立项接到某个产品负责人名下。
+   * 同一幂等键重复提交返回原回执，不写第二条。
+   */
+  appendClaim(input: {
+    tenantId: string;
+    handoffId: string;
+    command: PreparedProductInitiativeClaim;
+  }): Promise<{ record: ProductInitiativeClaimRecord; duplicate: boolean }>;
 }

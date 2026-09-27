@@ -8,7 +8,10 @@ import {
   type PreparedProductInitiativeDecision,
   type ProductInitiativeReviewPoint,
 } from "../domain/product-initiative";
+import type { PreparedProductInitiativeClaim } from "../domain/product-initiative-claim";
 import type {
+  ProductInitiativeClaimRecord,
+  ProductInitiativeNpiEntryRecord,
   ProductInitiativeRecord,
   ProductInitiativeRepository,
 } from "../domain/product-initiative.repository";
@@ -17,6 +20,10 @@ type Transaction = Prisma.TransactionClient;
 type InitiativeRow = Prisma.ProductInitiativeGetPayload<{
   include: { handoff: { select: { signalId: true } } };
 }>;
+type NpiEntryRow = Prisma.ProductInitiativeHandoffGetPayload<{
+  include: { claims: true };
+}>;
+type ClaimRow = Prisma.ProductInitiativeClaimGetPayload<Record<string, never>>;
 
 const OWNER_MODULE = "product_selection";
 
@@ -201,6 +208,113 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       return { record: toRecord(row), duplicate: false };
     });
   }
+
+  async listNpiQueue(
+    input: Parameters<ProductInitiativeRepository["listNpiQueue"]>[0],
+  ): Promise<ProductInitiativeNpiEntryRecord[]> {
+    const rows = await this.prisma.productInitiativeHandoff.findMany({
+      where: {
+        tenantId: input.tenantId,
+        ...(input.after
+          ? {
+              OR: [
+                { createdAt: { lt: input.after.createdAt } },
+                {
+                  AND: [
+                    { createdAt: input.after.createdAt },
+                    { id: { lt: input.after.id } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: input.take,
+      include: { claims: { orderBy: { claimVersion: "desc" }, take: 1 } },
+    });
+    return rows.map(toNpiEntry);
+  }
+
+  async findNpiEntry(
+    tenantId: string,
+    handoffId: string,
+  ): Promise<ProductInitiativeNpiEntryRecord | null> {
+    const row = await this.prisma.productInitiativeHandoff.findFirst({
+      where: { id: handoffId, tenantId },
+      include: { claims: { orderBy: { claimVersion: "desc" }, take: 1 } },
+    });
+    return row ? toNpiEntry(row) : null;
+  }
+
+  appendClaim(input: {
+    tenantId: string;
+    handoffId: string;
+    command: PreparedProductInitiativeClaim;
+  }): Promise<{ record: ProductInitiativeClaimRecord; duplicate: boolean }> {
+    const { command } = input;
+    return this.prisma.$transaction(async (tx) => {
+      // 同一票的领取串行化：两个人同时点，靠这把锁 + (handoff_id, claim_version)
+      // 唯一索引两重防线，而不是先读后写去赌。
+      await advisoryLock(
+        tx,
+        `product-initiative:claim:${input.tenantId}:${input.handoffId}`,
+      );
+
+      const replay = await tx.productInitiativeClaim.findUnique({
+        where: {
+          tenantId_idempotencyKey: {
+            tenantId: input.tenantId,
+            idempotencyKey: command.idempotencyKey,
+          },
+        },
+      });
+      if (replay) {
+        if (
+          replay.handoffId !== input.handoffId ||
+          replay.payloadHash !== command.payloadHash
+        ) {
+          conflict("PRODUCT_INITIATIVE_IDEMPOTENCY_CONFLICT");
+        }
+        return { record: toClaimRecord(replay), duplicate: true };
+      }
+
+      const entry = await tx.productInitiativeHandoff.findFirst({
+        where: { id: input.handoffId, tenantId: input.tenantId },
+        select: { id: true },
+      });
+      if (!entry) {
+        throw new ProductInitiativeNotFoundError(
+          "PRODUCT_INITIATIVE_HANDOFF_NOT_FOUND",
+        );
+      }
+
+      const latest = await tx.productInitiativeClaim.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          handoffId: input.handoffId,
+        },
+        orderBy: { claimVersion: "desc" },
+      });
+      if ((latest?.claimVersion ?? 0) !== command.expectedClaimVersion) {
+        conflict("PRODUCT_INITIATIVE_CLAIM_VERSION_CONFLICT");
+      }
+
+      const created = await tx.productInitiativeClaim.create({
+        data: {
+          id: randomUUID(),
+          tenantId: input.tenantId,
+          handoffId: input.handoffId,
+          claimVersion: command.claimVersion,
+          productOwnerActorId: command.productOwnerActorId,
+          actedAt: new Date(),
+          idempotencyKey: command.idempotencyKey,
+          payloadHash: command.payloadHash,
+        },
+      });
+      return { record: toClaimRecord(created), duplicate: false };
+    });
+  }
 }
 
 /** 要点引用的证据去重后汇总到交接快照，便于产品侧一次取到全部依据。 */
@@ -210,6 +324,39 @@ function evidenceRefsOf(
   return [
     ...new Set(reviewPoints.flatMap((point) => point.evidenceRefs)),
   ].sort();
+}
+
+function toNpiEntry(row: NpiEntryRow): ProductInitiativeNpiEntryRecord {
+  return {
+    handoff: {
+      handoffId: row.id,
+      initiativeId: row.initiativeId,
+      signalId: row.signalId,
+      version: row.version,
+      marketCode: row.marketCode,
+      userProblem: row.userProblem,
+      objective: row.objective,
+      responsibleActorId: row.responsibleActorId,
+      reviewPoints:
+        row.reviewPoints as unknown as ProductInitiativeReviewPoint[],
+      evidenceRefs: row.evidenceRefs,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
+      idempotencyKey: row.idempotencyKey,
+    },
+    claim: row.claims[0] ? toClaimRecord(row.claims[0]) : null,
+  };
+}
+
+function toClaimRecord(row: ClaimRow): ProductInitiativeClaimRecord {
+  return {
+    claimId: row.id,
+    handoffId: row.handoffId,
+    claimVersion: row.claimVersion,
+    productOwnerActorId: row.productOwnerActorId,
+    // 落地时间就是业务上的领取时刻，不再另存一列。
+    claimedAt: row.actedAt,
+  };
 }
 
 function toRecord(row: InitiativeRow): ProductInitiativeRecord {

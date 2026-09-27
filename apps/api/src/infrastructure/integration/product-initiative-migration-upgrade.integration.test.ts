@@ -22,6 +22,7 @@ import {
 import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/infrastructure/prisma-market-signal.repository";
 
 const INITIATIVE_MIGRATION = "20260927120000_add_product_initiative";
+const CLAIM_MIGRATION = "20260927180000_add_product_initiative_claim";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -56,6 +57,12 @@ beforeAll(async () => {
   // 原生 SQL 必须显式带上 schema 名：适配器的 schema 选项只作用于 Prisma 自己的
   // 查询，裸 SQL 里不带 schema 的表名会落到 search_path 的 public 上 —— 那样会
   // 删错库里的表、且让迁移器以为这条迁移早已应用。
+  //
+  // **更晚的迁移必须一起回退**：`product_initiative_claim` 外键依赖这两张表，
+  // 只删表会因依赖删不掉；只删表不抹记账则会留下"记账说已应用、表却不在"的半状态。
+  await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."product_initiative_claim"`,
+  );
   await prisma.$executeRawUnsafe(
     `DROP TABLE IF EXISTS "${schemaName}"."product_initiative_handoff"`,
   );
@@ -63,8 +70,8 @@ beforeAll(async () => {
     `DROP TABLE IF EXISTS "${schemaName}"."product_initiative"`,
   );
   await prisma.$executeRawUnsafe(
-    `DELETE FROM "${schemaName}"."_prisma_migrations" WHERE "migration_name" = $1`,
-    INITIATIVE_MIGRATION,
+    `DELETE FROM "${schemaName}"."_prisma_migrations" WHERE "migration_name" = ANY($1)`,
+    [INITIATIVE_MIGRATION, CLAIM_MIGRATION],
   );
 
   deploy();
