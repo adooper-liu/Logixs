@@ -1,6 +1,7 @@
 import type {
   MarketOpportunityHandoffV1,
   MarketSignalV1,
+  ProductInitiativeV1,
   ProductOpportunityV1,
 } from "@logix/contracts";
 import { expect, test, type Page, type Route } from "@playwright/test";
@@ -36,7 +37,7 @@ test("the business-workbench directory opens live and framework stages honestly"
   await expect(flowContext.getByText("采购承诺交接")).toBeVisible();
 });
 
-test("a market owner can hand off a signal for a selector to claim and accept", async ({
+test("a market owner can hand off a signal for a selector to claim, accept and take a decision", async ({
   page,
 }) => {
   await mockMarketOpportunityApis(page);
@@ -73,6 +74,35 @@ test("a market owner can hand off a signal for a selector to claim and accept", 
   await expect(page.getByRole("status")).toContainText("已领取");
   await page.getByRole("button", { name: "接受并进入立项判断" }).click();
   await expect(page.getByRole("status")).toContainText("已接受经营机会");
+
+  // 接受之后主动作换成立项结论：先被缺口挡住，并说清还差几项。
+  const submit = page.locator(".outcome-submit");
+  await expect(submit).toBeDisabled();
+  await expect(submit).toContainText("还差 5 项才能立项");
+
+  await page.getByLabel("目标结果").fill("把折叠宠物出行包做成可发布版本");
+  for (const label of [
+    "目标用户与市场",
+    "竞争供给",
+    "价格带与利润",
+    "合规风险",
+  ]) {
+    const point = page.locator(".review-point").filter({ hasText: label });
+    await point.getByRole("button", { name: /从已登记证据中引用/ }).click();
+    await point.getByRole("checkbox").check();
+    await point.getByLabel(`${label}结论`).fill(`${label} 的判断`);
+  }
+
+  await expect(submit).toBeEnabled();
+  await expect(submit).toContainText("立项并交给产品开发");
+  await submit.click();
+
+  await expect(page.getByRole("status")).toContainText("已立项");
+  // 成功后从服务端重读：终态由服务端返回的 currentDestination 决定，不是前端猜的。
+  await expect(page.locator(".product-initiative-outcome")).toContainText(
+    "已立项",
+  );
+  await expect(page.locator(".destination")).toHaveCount(0);
 
   const widths = await page.evaluate(() => ({
     pageClient: document.documentElement.clientWidth,
@@ -177,6 +207,7 @@ async function mockMarketOpportunityApis(page: Page): Promise<void> {
     ],
   ]);
   let opportunity: ProductOpportunityV1 | null = null;
+  let initiative: ProductInitiativeV1 | null = null;
 
   await page.route("**/api/market-signals**", async (route) => {
     const request = route.request();
@@ -290,6 +321,67 @@ async function mockMarketOpportunityApis(page: Page): Promise<void> {
     };
     await json(route, opportunity);
   });
+
+  await page.route("**/api/product-initiatives**", async (route) => {
+    const request = route.request();
+    if (request.method() === "GET") {
+      await json(route, {
+        handoffId,
+        initiative,
+        // 证据挂在来源信号上，立项只引用，所以候选来自信号已登记的证据。
+        evidenceCandidates: [
+          {
+            evidenceId,
+            sourceName: "美国站周度搜索报告",
+            summary: "搜索量连续三周增长。",
+            contentRef: "https://example.com/source-report",
+            recordedAt: "2026-09-25T01:00:00.000Z",
+          },
+        ],
+      });
+      return;
+    }
+    const body = request.postDataJSON() as {
+      outcome: ProductInitiativeV1["outcome"];
+      objective?: string;
+      reviewPoints?: ProductInitiativeV1["reviewPoints"];
+      deferReason?: string;
+      rejectReason?: string;
+      returnReason?: string;
+    };
+    const reason =
+      body.deferReason ?? body.rejectReason ?? body.returnReason ?? null;
+    initiative = {
+      initiativeId: "66666666-6666-4666-8666-666666666666",
+      outcome: body.outcome,
+      completion:
+        body.outcome === "approve" || reason
+          ? "completed"
+          : "pending_completion",
+      currentDestination: destinationFor(body.outcome, reason),
+      responsibleActorId: "dev-operator",
+      objective: body.objective ?? null,
+      reviewPoints: body.reviewPoints ?? [],
+      reason,
+      pendingFieldCodes: [],
+      version: (initiative?.version ?? 0) + 1,
+      createdAt: "2026-09-27T00:00:00.000Z",
+      updatedAt: "2026-09-27T00:00:00.000Z",
+    };
+    await json(route, initiative);
+  });
+}
+
+/** 与后端 `destinationFor` 同口径：没写原因就还没关闭，停在 needs_decision。 */
+function destinationFor(
+  outcome: ProductInitiativeV1["outcome"],
+  reason: string | null,
+): ProductInitiativeV1["currentDestination"] {
+  if (!reason && outcome !== "approve") return "needs_decision";
+  if (outcome === "approve") return "handed_off";
+  if (outcome === "defer") return "deferred";
+  if (outcome === "reject") return "rejected";
+  return "returned_to_market";
 }
 
 async function json(route: Route, body: unknown): Promise<void> {
