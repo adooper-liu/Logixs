@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/product-identity.schema.json",
+  "title": "Product Identity Contracts V1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "ProductIdentityPendingFieldCodeV1": {
+      "description": "身份之外的缺口。**不阻断发布**，但必须随交接带下去，不得让人以为已经齐了。",
+      "enum": ["bom", "listing"]
+    },
+    "ProductSkuIdentityV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skuId", "skuCode"],
+      "properties": {
+        "skuId": {
+          "description": "内部代理键：无业务含义，永不因业务变化而变。",
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "skuCode": {
+          "description": "对外编号：给人看、可改。改它不动内部键。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "ProductIdentityV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "productId",
+        "productNumber",
+        "sourceHandoffId",
+        "version",
+        "specification",
+        "skus",
+        "pendingFieldCodes",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-identity.v1" },
+        "productId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "productNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "sourceHandoffId": {
+          "description": "来自哪一份已发布产品设计；一票一份产品。",
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "version": { "type": "integer", "minimum": 1 },
+        "specification": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "skus": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductSkuIdentityV1" }
+        },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductIdentityPendingFieldCodeV1" }
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductIdentityDraftCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedVersion",
+        "skus",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-identity-draft.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "productNumber": {
+          "description": "对外产品号；留空时由系统按规则生成，之后可改。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "skus": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["skuCode"],
+            "properties": {
+              "skuId": { "$ref": "common.schema.json#/$defs/Uuid" },
+              "skuCode": { "type": "string", "minLength": 1, "maxLength": 100 }
+            }
+          }
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "SellableSkuReleaseCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "expectedVersion", "idempotencyKey"],
+      "properties": {
+        "contractVersion": { "const": "sellable-sku-release.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "SellableSkuReleaseHandoffV1": {
+      "description": "交给寻源侧的可售 SKU 发布。身份齐备即可发布；BOM 与 Listing 作为待补随行。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "handoffId",
+        "version",
+        "productId",
+        "productNumber",
+        "skus",
+        "pendingFieldCodes",
+        "releasedBy",
+        "releasedAt",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "sellable_sku_release.v1" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "productId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "productNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "skus": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductSkuIdentityV1" }
+        },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductIdentityPendingFieldCodeV1" }
+        },
+        "releasedBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "releasedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    }
+  }
+}

@@ -14,6 +14,54 @@ datasource db {
   provider = "postgresql"
 }
 
+// 产品（SPU）身份（master-data 拥有）：从已发布产品设计建档，交给寻源侧。
+// 内部代理键（id）无业务含义、永不因业务变化而变；productNumber 给人看、可改。
+model Product {
+  id              String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId        String                   @map("tenant_id")
+  sourceHandoffId String                   @map("source_handoff_id") @db.Uuid
+  sourceHandoff   ProductDefinitionRelease @relation(fields: [sourceHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productNumber   String                   @map("product_number")
+  version         Int                      @map("version")
+  specification   String                   @map("specification")
+  actedBy         String                   @map("acted_by")
+  idempotencyKey  String                   @map("idempotency_key")
+  payloadHash     String                   @map("payload_hash")
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  skus            ProductSku[]
+  releases        ProductIdentityRelease[]
+
+  @@unique([id, tenantId], map: "product_id_tenant_key")
+  @@unique([tenantId, sourceHandoffId], map: "product_source_handoff_key")
+  @@unique([tenantId, productNumber], map: "product_number_key")
+  @@unique([tenantId, idempotencyKey], map: "product_idempotency_key")
+  @@index([tenantId, updatedAt, id], map: "product_queue_idx")
+  @@map("product")
+}
+
+// 可售 SKU 发布的不可变交接快照。身份齐备即可发布；BOM 与 Listing 作为待补随行。
+model ProductIdentityRelease {
+  id                String   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String   @map("tenant_id")
+  productId         String   @map("product_id") @db.Uuid
+  product           Product  @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version           Int      @map("version")
+  productNumber     String   @map("product_number")
+  skus              Json     @map("skus")
+  pendingFieldCodes String[] @map("pending_field_codes")
+  releasedBy        String   @map("released_by")
+  releasedAt        DateTime @map("released_at") @db.Timestamptz
+  idempotencyKey    String   @map("idempotency_key")
+  payloadHash       String   @map("payload_hash")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "product_identity_release_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "product_identity_release_idempotency_key")
+  @@unique([productId, version], map: "product_identity_release_version_key")
+  @@map("product_identity_release")
+}
+
 // 全局参考数据发布（master-data 拥有）：权威数据按发布版本不可变，active 版本由数据库部分唯一索引约束。
 model ReferenceDataRelease {
   id            String                  @id @default(uuid()) @map("id") @db.Uuid
@@ -185,6 +233,9 @@ model PortNameAlias {
 model ProductSku {
   id                  String                     @id @default(uuid()) @map("id") @db.Uuid
   tenantId            String                     @map("tenant_id")
+  // 归属的产品（SPU）。**可空**：存量 SKU 与 register-product-sku 原路径不受影响。
+  productId           String?                    @map("product_id") @db.Uuid
+  product             Product?                   @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Restrict)
   productNumber       String                     @map("product_number")
   version             Int                        @default(1) @map("version")
   createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz
@@ -2052,6 +2103,7 @@ model ProductDefinitionRelease {
   idempotencyKey        String            @map("idempotency_key")
   payloadHash           String            @map("payload_hash")
   createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  products              Product[]
 
   @@unique([id, tenantId], map: "product_definition_release_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "product_definition_release_idempotency_key")

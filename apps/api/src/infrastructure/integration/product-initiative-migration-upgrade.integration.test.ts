@@ -24,6 +24,7 @@ import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 const INITIATIVE_MIGRATION = "20260927120000_add_product_initiative";
 const CLAIM_MIGRATION = "20260927180000_add_product_initiative_claim";
 const DEFINITION_MIGRATION = "20260927190000_add_product_definition";
+const IDENTITY_MIGRATION = "20260927200000_add_product_identity";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -58,6 +59,20 @@ beforeAll(async () => {
   //
   // **更晚的迁移必须一起回退**：`product_initiative_claim` 外键依赖这两张表，
   // 只删表会因依赖删不掉；只删表不抹记账则会留下"记账说已应用、表却不在"的半状态。
+  // `product` 外键依赖 product_definition_release，而 product_sku 又挂了 product 的外键 ——
+  // 回退要按依赖反序，连 product_sku 上新增的那一列一起收。
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "${schemaName}"."product_sku" DROP CONSTRAINT IF EXISTS "product_sku_product_fkey"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "${schemaName}"."product_sku" DROP COLUMN IF EXISTS "product_id"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."product_identity_release"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."product"`,
+  );
   await prisma.$executeRawUnsafe(
     `DROP TABLE IF EXISTS "${schemaName}"."product_definition_release"`,
   );
@@ -75,7 +90,12 @@ beforeAll(async () => {
   );
   await prisma.$executeRawUnsafe(
     `DELETE FROM "${schemaName}"."_prisma_migrations" WHERE "migration_name" = ANY($1)`,
-    [INITIATIVE_MIGRATION, CLAIM_MIGRATION, DEFINITION_MIGRATION],
+    [
+      INITIATIVE_MIGRATION,
+      CLAIM_MIGRATION,
+      DEFINITION_MIGRATION,
+      IDENTITY_MIGRATION,
+    ],
   );
 
   deploy();

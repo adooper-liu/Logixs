@@ -359,6 +359,13 @@ export type ProductDefinitionReleaseStateV1 = ("in_progress" | "released" | "def
  */
 export type ProductDefinitionPendingFieldCodeV1 = ("specification" | "compliance_assumptions" | "evt_conclusion" | "dvt_conclusion" | "pvt_conclusion")
 /**
+ * 身份之外的缺口。**不阻断发布**，但必须随交接带下去，不得让人以为已经齐了。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductIdentityPendingFieldCodeV1".
+ */
+export type ProductIdentityPendingFieldCodeV1 = ("bom" | "listing")
+/**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
  */
@@ -2100,6 +2107,90 @@ idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductSkuIdentityV1".
+ */
+export interface ProductSkuIdentityV1 {
+/**
+ * 内部代理键：无业务含义，永不因业务变化而变。
+ */
+skuId: string
+/**
+ * 对外编号：给人看、可改。改它不动内部键。
+ */
+skuCode: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductIdentityV1".
+ */
+export interface ProductIdentityV1 {
+contractVersion: "product-identity.v1"
+productId: Uuid
+productNumber: string
+/**
+ * 来自哪一份已发布产品设计；一票一份产品。
+ */
+sourceHandoffId: string
+version: number
+specification: string
+skus: ProductSkuIdentityV1[]
+pendingFieldCodes: ProductIdentityPendingFieldCodeV1[]
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductIdentityDraftCommandV1".
+ */
+export interface ProductIdentityDraftCommandV1 {
+contractVersion: "product-identity-draft.v1"
+expectedVersion: number
+/**
+ * 对外产品号；留空时由系统按规则生成，之后可改。
+ */
+productNumber?: string
+/**
+ * @minItems 1
+ * @maxItems 200
+ */
+skus: [{
+skuId?: Uuid
+skuCode: string
+}, ...({
+skuId?: Uuid
+skuCode: string
+})[]]
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SellableSkuReleaseCommandV1".
+ */
+export interface SellableSkuReleaseCommandV1 {
+contractVersion: "sellable-sku-release.v1"
+expectedVersion: number
+idempotencyKey: string
+}
+/**
+ * 交给寻源侧的可售 SKU 发布。身份齐备即可发布；BOM 与 Listing 作为待补随行。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SellableSkuReleaseHandoffV1".
+ */
+export interface SellableSkuReleaseHandoffV1 {
+contractVersion: "sellable_sku_release.v1"
+handoffId: Uuid
+version: number
+productId: Uuid
+productNumber: string
+skus: ProductSkuIdentityV1[]
+pendingFieldCodes: ProductIdentityPendingFieldCodeV1[]
+releasedBy: string
+releasedAt: DateTime
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "StartPostDepartureLifecycleCommandV2".
  */
 export interface StartPostDepartureLifecycleCommandV2 {
@@ -3751,6 +3842,13 @@ export interface ProductInitiative {
  * via the `definition` "ProductDefinition".
  */
 export interface ProductDefinition {
+
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductIdentity".
+ */
+export interface ProductIdentity {
 
 }
 export interface EvidenceRecord {
