@@ -54,6 +54,16 @@ interface ReviewPointDraft {
   conclusion: string;
 }
 
+/**
+ * 一处立项缺口。**必须带上"在哪补"** —— 缺的两类东西在两个不同的面板里：
+ * 「目标结果」是动作面板里的输入框，评审要点在另一个面板。
+ * 只说"还差 N 项"、或者一句话把全部缺口指去同一个面板，人就会在错的地方找。
+ */
+export interface ProductInitiativeGap {
+  label: string;
+  panel: "objective" | "review_points";
+}
+
 /** 交给面板渲染的只读视图；`missing` 由本模块唯一计算，面板不重复判定。 */
 export interface ProductInitiativeReviewPointView {
   code: ProductInitiativeReviewPointCodeV1;
@@ -137,12 +147,16 @@ export function useProductInitiativeDecision(options: {
     })),
   );
 
-  /** 还差哪些才算能立项；按钮文案与缺口清单都读它。 */
-  const blockingGaps = computed<string[]>(() => {
-    const missing: string[] = [];
-    if (!objective.value.trim()) missing.push("目标结果");
+  /** 还差哪些才算能立项、各在哪补；按钮文案与缺口清单都读它。 */
+  const blockingGaps = computed<ProductInitiativeGap[]>(() => {
+    const missing: ProductInitiativeGap[] = [];
+    if (!objective.value.trim()) {
+      missing.push({ label: "目标结果", panel: "objective" });
+    }
     for (const point of reviewPointViews.value) {
-      if (point.missing) missing.push(point.label);
+      if (point.missing) {
+        missing.push({ label: point.label, panel: "review_points" });
+      }
     }
     return missing;
   });
@@ -353,7 +367,8 @@ const RECEIPTS: Record<ProductInitiativeOutcome, string> = {
  */
 export function outcomeHintFor(input: {
   outcome: ProductInitiativeOutcome;
-  gaps: readonly string[];
+  /** 只用到条数；缺口长什么样（带不带"在哪补"）不关这句话的事。 */
+  gaps: { readonly length: number };
   reason: string;
 }): string {
   if (input.outcome === "approve") {

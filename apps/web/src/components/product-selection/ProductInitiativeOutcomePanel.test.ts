@@ -1,13 +1,16 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import type { ProductInitiativeOutcome } from "../../composables/useProductInitiativeDecision";
+import type {
+  ProductInitiativeGap,
+  ProductInitiativeOutcome,
+} from "../../composables/useProductInitiativeDecision";
 import ProductInitiativeOutcomePanel from "./ProductInitiativeOutcomePanel.vue";
 
 interface PanelProps {
   outcome: ProductInitiativeOutcome;
   objective: string;
   reason: string;
-  gaps: string[];
+  gaps: ProductInitiativeGap[];
   busy: boolean;
   decided: boolean;
 }
@@ -30,7 +33,10 @@ describe("ProductInitiativeOutcomePanel", () => {
   });
 
   it("立项时显示目标结果与缺口清单，暂缓时改成写原因", () => {
-    const approving = mountPanel({ outcome: "approve", gaps: ["合规风险"] });
+    const approving = mountPanel({
+      outcome: "approve",
+      gaps: [gap("合规风险")],
+    });
     expect(approving.find('textarea[aria-label="目标结果"]').exists()).toBe(
       true,
     );
@@ -52,19 +58,31 @@ describe("ProductInitiativeOutcomePanel", () => {
   it("要点没齐时不能立项，主按钮说明还差几项而不是静默失败", async () => {
     const wrapper = mountPanel({
       outcome: "approve",
-      gaps: ["目标结果", "合规风险", "价格带与利润"],
+      gaps: [gap("目标结果"), gap("合规风险"), gap("价格带与利润")],
     });
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeDefined();
     expect(button.text()).toContain("还差 3 项才能立项");
     expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
-      "目标结果",
-      "合规风险",
-      "价格带与利润",
+      "目标结果在上面的「目标结果」里补",
+      "合规风险在评审要点面板里补",
+      "价格带与利润在评审要点面板里补",
     ]);
     await button.trigger("click");
     expect(wrapper.emitted("submit")).toBeUndefined();
+  });
+
+  it("缺口逐项说清在哪补 —— 目标结果与评审要点不在同一个面板", () => {
+    const wrapper = mountPanel({
+      outcome: "approve",
+      gaps: [gap("目标结果"), gap("合规风险")],
+    });
+
+    expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
+      "目标结果在上面的「目标结果」里补",
+      "合规风险在评审要点面板里补",
+    ]);
   });
 
   it("要点齐备时主按钮可用且说明可以立项", () => {
@@ -77,7 +95,7 @@ describe("ProductInitiativeOutcomePanel", () => {
   });
 
   it("暂缓没填原因时仍可提交，但说明会留在待补而不关闭", async () => {
-    const wrapper = mountPanel({ outcome: "defer", gaps: ["合规风险"] });
+    const wrapper = mountPanel({ outcome: "defer", gaps: [gap("合规风险")] });
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeUndefined();
@@ -136,6 +154,17 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(wrapper.text()).toContain("已立项");
   });
 });
+
+/**
+ * 缺口带"在哪补"。缺的两类东西在两个不同的面板里 —— 只说"还差 N 项"、
+ * 或一句话把全部缺口指去同一个面板，人就会在错的地方找。
+ */
+function gap(label: string): ProductInitiativeGap {
+  return {
+    label,
+    panel: label === "目标结果" ? "objective" : "review_points",
+  };
+}
 
 function mountPanel(overrides: Partial<PanelProps> = {}) {
   return mount(ProductInitiativeOutcomePanel, {

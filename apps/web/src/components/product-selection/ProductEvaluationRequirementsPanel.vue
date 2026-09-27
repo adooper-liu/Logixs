@@ -55,7 +55,11 @@ async function submit(): Promise<void> {
     <header>
       <small>评估阶段才会出现</small>
       <h3 id="evaluation-requirements-title">本机会适用的专业要求</h3>
-      <p>这些要求由适用规则生成，并向你说明为什么适用；逐条补充证据即可。</p>
+      <p>
+        这些要求由适用规则生成，并向你说明为什么适用。补进去的证据会进入本信号的证据链，
+        在「四项评审要点」里可以直接引用 ——
+        这里管"拿到依据"，评审要点管"写下结论"。
+      </p>
     </header>
 
     <ul>

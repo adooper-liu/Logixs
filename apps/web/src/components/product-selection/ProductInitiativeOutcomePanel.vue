@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { CheckCircle2, CircleSlash, PackageCheck, Undo2 } from "@lucide/vue";
 import { computed } from "vue";
-import type { ProductInitiativeOutcome } from "../../composables/useProductInitiativeDecision";
+import type {
+  ProductInitiativeGap,
+  ProductInitiativeOutcome,
+} from "../../composables/useProductInitiativeDecision";
 import {
   OBJECTIVE_MAX_LENGTH,
   outcomeHintFor,
@@ -12,8 +15,8 @@ const props = defineProps<{
   outcome: ProductInitiativeOutcome;
   objective: string;
   reason: string;
-  /** 立项还差哪些；按钮文案与缺口清单都读它，不在本组件里另判一遍。 */
-  gaps: readonly string[];
+  /** 立项还差哪些、各在哪补；按钮文案与缺口清单都读它，不在本组件里另判一遍。 */
+  gaps: readonly ProductInitiativeGap[];
   busy: boolean;
   /** 已立项是终态，不再提供任何判断动作。 */
   decided: boolean;
@@ -159,9 +162,17 @@ function submit(): void {
         <div v-if="gaps.length" class="gap-list">
           <b>还不能立项</b>
           <ul>
-            <li v-for="gap in gaps" :key="gap">{{ gap }}</li>
+            <li v-for="gap in gaps" :key="gap.label">
+              <span>{{ gap.label }}</span>
+              <small>
+                {{
+                  gap.panel === "objective"
+                    ? "在上面的「目标结果」里补"
+                    : "在评审要点面板里补"
+                }}
+              </small>
+            </li>
           </ul>
-          <small>上面的问题都在评审要点面板里就地补，补齐即可立项。</small>
         </div>
       </div>
 
