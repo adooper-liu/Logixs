@@ -12,6 +12,13 @@ import type {
   ShipmentPendingCompletionItemV1,
   ShipmentPendingCompletionPageV1,
   ShipmentPendingItemV1,
+  ShipmentRiskDeadlineKindV1,
+  ShipmentRiskDeadlineV1,
+  ShipmentRiskQueueEntryV1,
+  ShipmentRiskQueuePageV1,
+  ShipmentRiskReasonV1,
+  ShipmentRiskSortV1,
+  ShipmentRiskV1,
   ShipmentSummaryV1,
   ShipmentTransportDocumentViewV1,
   ShipmentUpstreamReferenceViewV1,
@@ -120,6 +127,51 @@ export class ShipmentPendingCompletionPageDto implements ShipmentPendingCompleti
   @ApiProperty({ type: ShipmentPageInfoDto }) pageInfo!: ShipmentPageInfoDto;
   @ApiProperty() asOf!: string;
   @ApiProperty() projectionVersion!: number;
+}
+
+export class ShipmentRiskDeadlineDto implements ShipmentRiskDeadlineV1 {
+  // 枚举写具体类型而不是 string：契约里 kind 是封闭枚举，写成 string 会让
+  // 生成的 OpenAPI 丢掉可选值，前端只能靠猜。
+  @ApiProperty({ enum: ["eta", "task_due", "free_time"] })
+  kind!: ShipmentRiskDeadlineKindV1;
+  @ApiProperty() at!: string;
+}
+
+export class ShipmentRiskDto implements ShipmentRiskV1 {
+  @ApiProperty({ type: ShipmentRiskDeadlineDto, nullable: true })
+  nearestDeadline!: ShipmentRiskV1["nearestDeadline"];
+  @ApiProperty() overdue!: boolean;
+  @ApiProperty({
+    enum: [
+      "overdue_deadline",
+      "open_exceptions",
+      "unassigned_exceptions",
+      "pending_gaps",
+    ],
+  })
+  reasons!: ShipmentRiskReasonV1[];
+  @ApiProperty() openExceptionCount!: number;
+  @ApiProperty() unassignedExceptionCount!: number;
+}
+
+export class ShipmentRiskQueueEntryDto implements ShipmentRiskQueueEntryV1 {
+  @ApiProperty({ type: ShipmentSummaryDto }) shipment!: ShipmentSummaryDto;
+  @ApiProperty({ type: ShipmentRiskDto }) risk!: ShipmentRiskDto;
+  @ApiProperty({ type: [ShipmentPendingItemDto] })
+  pendingItems!: ShipmentPendingItemDto[];
+}
+
+export class ShipmentRiskQueuePageDto implements ShipmentRiskQueuePageV1 {
+  @ApiProperty({ type: [ShipmentRiskQueueEntryDto] })
+  items!: ShipmentRiskQueueEntryDto[];
+  @ApiProperty({ type: ShipmentPageInfoDto }) pageInfo!: ShipmentPageInfoDto;
+  @ApiProperty() asOf!: string;
+  @ApiProperty() projectionVersion!: number;
+  @ApiProperty({
+    enum: ["nearest_deadline", "eta", "task_due", "updated_at"],
+    description: "本页实际采用的排序键；换排序后旧游标会被拒绝。",
+  })
+  sort!: ShipmentRiskSortV1;
 }
 
 export class ShipmentContainerAllocationDto implements ShipmentContainerAllocationV1 {

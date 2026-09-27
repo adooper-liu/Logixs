@@ -29,6 +29,7 @@ import { GetShipmentService } from "./application/get-shipment.service";
 import { GetContainerOperationalViewService } from "./application/get-container-operational-view.service";
 import { ListShipmentsService } from "./application/list-shipments.service";
 import { ListShipmentPendingCompletionService } from "./application/list-shipment-pending-completion.service";
+import { ListShipmentRiskQueueService } from "./application/list-shipment-risk-queue.service";
 import { BIND_REPLENISHMENT_LINE_PRODUCT_SKU } from "./bind-replenishment-line-product-sku.port";
 import { CONTAINER_CARGO_ALLOCATION_REPOSITORY } from "./domain/container-cargo-allocation.repository";
 import { CONTAINER_STUFFING_SNAPSHOT_REPOSITORY } from "./domain/container-stuffing-snapshot.repository";
@@ -115,6 +116,7 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     GetShipmentService,
     ListShipmentsService,
     ListShipmentPendingCompletionService,
+    ListShipmentRiskQueueService,
     GetContainerOperationalViewService,
     {
       provide: ASSERT_CONTAINER_TENANT,
@@ -267,6 +269,7 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     GetShipmentService,
     ListShipmentsService,
     ListShipmentPendingCompletionService,
+    ListShipmentRiskQueueService,
     GetContainerOperationalViewService,
   ],
 })

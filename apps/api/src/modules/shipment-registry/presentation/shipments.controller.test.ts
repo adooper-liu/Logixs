@@ -3,6 +3,7 @@ import { REQUIRED_CAPABILITIES_KEY } from "../../../security/require-capabilitie
 import type { GetShipmentService } from "../application/get-shipment.service";
 import type { ListShipmentsService } from "../application/list-shipments.service";
 import type { ListShipmentPendingCompletionService } from "../application/list-shipment-pending-completion.service";
+import type { ListShipmentRiskQueueService } from "../application/list-shipment-risk-queue.service";
 import { ShipmentsController } from "./shipments.controller";
 
 describe("ShipmentsController", () => {
@@ -25,6 +26,12 @@ describe("ShipmentsController", () => {
         ShipmentsController.prototype.listPending,
       ),
     ).toEqual(["container.read", "lifecycle.read"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ShipmentsController.prototype.listRiskQueue,
+      ),
+    ).toEqual(["container.read", "lifecycle.read"]);
   });
 
   it("passes tenant and paging filters to the Shipment list use case", async () => {
@@ -33,6 +40,7 @@ describe("ShipmentsController", () => {
       listShipments as unknown as ListShipmentsService,
       {} as GetShipmentService,
       {} as ListShipmentPendingCompletionService,
+      {} as ListShipmentRiskQueueService,
     );
 
     await controller.list(
@@ -56,6 +64,7 @@ describe("ShipmentsController", () => {
       {} as ListShipmentsService,
       getShipment as unknown as GetShipmentService,
       {} as ListShipmentPendingCompletionService,
+      {} as ListShipmentRiskQueueService,
     );
 
     await controller.get({ identity: { tenantId: "tenant-1" } }, "shipment-1");
@@ -72,6 +81,7 @@ describe("ShipmentsController", () => {
       {} as ListShipmentsService,
       {} as GetShipmentService,
       listPending as unknown as ListShipmentPendingCompletionService,
+      {} as ListShipmentRiskQueueService,
     );
 
     await controller.listPending(
@@ -84,6 +94,30 @@ describe("ShipmentsController", () => {
       tenantId: "tenant-1",
       pageSize: "20",
       cursor: "cursor-1",
+    });
+  });
+
+  it("passes tenant, paging and the chosen sort to the risk queue use case", async () => {
+    const riskQueue = { execute: vi.fn().mockResolvedValue({ items: [] }) };
+    const controller = new ShipmentsController(
+      {} as ListShipmentsService,
+      {} as GetShipmentService,
+      {} as ListShipmentPendingCompletionService,
+      riskQueue as unknown as ListShipmentRiskQueueService,
+    );
+
+    await controller.listRiskQueue(
+      { identity: { tenantId: "tenant-1" } },
+      "20",
+      "cursor-1",
+      "task_due",
+    );
+
+    expect(riskQueue.execute).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      pageSize: "20",
+      cursor: "cursor-1",
+      sort: "task_due",
     });
   });
 });
