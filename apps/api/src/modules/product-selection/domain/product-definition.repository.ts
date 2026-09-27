@@ -42,6 +42,15 @@ export interface ProductDefinitionRepository {
     tenantId: string,
     definitionId: string,
   ): Promise<ProductDefinitionRecord | null>;
+  /**
+   * 按幂等键找已落库的那一条。**重放必须先查它**：
+   * 客户端重试（响应丢了再发一次同样的请求）时，期望版本已经过期，
+   * 先判版本会把一次成功的保存报成"版本冲突"。
+   */
+  findByIdempotencyKey(
+    tenantId: string,
+    idempotencyKey: string,
+  ): Promise<ProductDefinitionRecord | null>;
   list(input: {
     tenantId: string;
     after?: { updatedAt: Date; id: string };

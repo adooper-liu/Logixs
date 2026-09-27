@@ -21,6 +21,11 @@ export type NpiStage = (typeof NPI_STAGES)[number];
 /** 需要登记出段结论的阶段。`mp` 不在其中：量产段以"发布"离开本工作台。 */
 const CONCLUSION_STAGES: readonly NpiStage[] = ["evt", "dvt", "pvt"];
 
+/** 类型守卫：下面靠它把 `npiStage` 收窄成带结论阶段，缺口码才能拼得出来。 */
+function requiresConclusion(stage: NpiStage): stage is "evt" | "dvt" | "pvt" {
+  return CONCLUSION_STAGES.includes(stage);
+}
+
 export interface CurrentProductDefinition {
   version: number;
   npiStage: NpiStage;
@@ -78,10 +83,7 @@ export function productDefinitionPendingFieldCodes(
   }
   // 只要求**当前阶段**的结论：走到 DVT 之后就不该再提"还缺 EVT 结论"。
   const stage = current.npiStage;
-  if (
-    (stage === "evt" || stage === "dvt" || stage === "pvt") &&
-    !current.concludedStages.includes(stage)
-  ) {
+  if (requiresConclusion(stage) && !current.concludedStages.includes(stage)) {
     pending.push(`${stage}_conclusion`);
   }
   return pending;

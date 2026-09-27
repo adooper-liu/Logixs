@@ -40,6 +40,12 @@ export class ReleaseProductDefinitionService {
       throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
     }
     try {
+      const replay = await this.definitions.findByIdempotencyKey(
+        input.tenantId,
+        input.command.idempotencyKey,
+      );
+      if (replay) return toProductDefinitionV1(replay);
+
       const current = await this.definitions.findByInitiativeHandoffId(
         input.tenantId,
         input.initiativeHandoffId,

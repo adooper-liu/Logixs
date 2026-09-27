@@ -48,6 +48,14 @@ export class AdvanceProductDefinitionService {
       throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
     }
     try {
+      // 先判重放**再**判版本：重试时期望版本必然过期，先判版本会把一次
+      // 成功的保存报成"版本冲突"，而幂等键正是为这一刻存在的。
+      const replay = await this.definitions.findByIdempotencyKey(
+        input.tenantId,
+        input.command.idempotencyKey,
+      );
+      if (replay) return toProductDefinitionV1(replay);
+
       const owner = await this.requireOwner(
         input.tenantId,
         input.initiativeHandoffId,

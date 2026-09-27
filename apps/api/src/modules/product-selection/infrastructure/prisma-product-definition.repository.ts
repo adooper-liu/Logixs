@@ -5,8 +5,6 @@ import { PrismaService } from "../../../prisma/prisma.service";
 import {
   ProductDefinitionConflictError,
   ProductDefinitionValidationError,
-  type PreparedProductDefinitionRelease,
-  type PreparedProductDefinitionWrite,
 } from "../domain/product-definition";
 import type {
   ProductDefinitionRecord,
@@ -39,6 +37,16 @@ export class PrismaProductDefinitionRepository implements ProductDefinitionRepos
   ): Promise<ProductDefinitionRecord | null> {
     const row = await this.prisma.productDefinition.findFirst({
       where: { id: definitionId, tenantId },
+    });
+    return row ? toRecord(row) : null;
+  }
+
+  async findByIdempotencyKey(
+    tenantId: string,
+    idempotencyKey: string,
+  ): Promise<ProductDefinitionRecord | null> {
+    const row = await this.prisma.productDefinition.findUnique({
+      where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
     });
     return row ? toRecord(row) : null;
   }

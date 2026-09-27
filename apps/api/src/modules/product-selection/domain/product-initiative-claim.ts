@@ -85,3 +85,19 @@ function invalid(field: string): never {
 function conflict(code: string): never {
   throw new ProductInitiativeClaimConflictError(code);
 }
+
+/** 集成测试用的简写：以某人为负责人领取一份交接。 */
+export function prepareProductDefinitionClaim(
+  actorId: string,
+  idempotencyKey: string,
+): PreparedProductInitiativeClaim {
+  return prepareProductInitiativeClaim(
+    { claimVersion: 0, productOwnerActorId: null },
+    actorId,
+    {
+      contractVersion: "product-initiative-claim.v1",
+      expectedClaimVersion: 0,
+      idempotencyKey,
+    },
+  );
+}
