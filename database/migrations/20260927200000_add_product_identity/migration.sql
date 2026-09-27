@@ -53,10 +53,9 @@ FOREIGN KEY ("product_id", "tenant_id")
 REFERENCES "product"("id", "tenant_id")
 ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- 同一产品下 SKU 编号唯一；未归属产品的存量行（product_id 为空）不参与该约束。
-CREATE UNIQUE INDEX "product_sku_product_number_key"
-ON "product_sku"("product_id", "product_number")
-WHERE "product_id" IS NOT NULL;
+-- 不另建「同一产品下 SKU 编号唯一」的索引：既有的
+-- `product_sku_tenant_number_key` 已经要求**全租户唯一**，比它更严。
+-- 也就是说 SKU 编号是租户级唯一的，跨产品也不能重号 —— 建档时按这条给号。
 
 -- 可售 SKU 发布的不可变交接快照。发布时冻结，旧版不覆盖。
 CREATE TABLE "product_identity_release" (

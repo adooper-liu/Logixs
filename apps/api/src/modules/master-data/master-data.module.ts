@@ -1,4 +1,11 @@
 import { Module } from "@nestjs/common";
+import { DraftProductIdentityService } from "./application/draft-product-identity.service";
+import { GetProductIdentityService } from "./application/get-product-identity.service";
+import { ListProductIdentityQueueService } from "./application/list-product-identity-queue.service";
+import { ReleaseSellableSkuService } from "./application/release-sellable-sku.service";
+import { PRODUCT_IDENTITY_REPOSITORY } from "./domain/product-identity.repository";
+import { PrismaProductIdentityRepository } from "./infrastructure/prisma-product-identity.repository";
+import { ProductIdentitiesController } from "./presentation/product-identities.controller";
 import { RegisterProductSkuService } from "./application/register-product-sku.service";
 import { GetProductSkuService } from "./application/get-product-sku.service";
 import { GetProductComplianceProfileService } from "./application/get-product-compliance-profile.service";
@@ -26,6 +33,14 @@ import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
 
 @Module({
   providers: [
+    ListProductIdentityQueueService,
+    GetProductIdentityService,
+    DraftProductIdentityService,
+    ReleaseSellableSkuService,
+    {
+      provide: PRODUCT_IDENTITY_REPOSITORY,
+      useClass: PrismaProductIdentityRepository,
+    },
     RegisterProductSkuService,
     GetProductSkuService,
     GetProductComplianceProfileService,
@@ -99,5 +114,6 @@ import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
     ResolveProductSkusService,
     CargoOwnerDirectoryService,
   ],
+  controllers: [ProductIdentitiesController],
 })
 export class MasterDataModule {}
