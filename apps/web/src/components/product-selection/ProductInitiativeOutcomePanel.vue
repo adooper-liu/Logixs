@@ -260,7 +260,7 @@ function submit(): void {
 .destination span {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 .destination b {
   color: var(--ink);
@@ -354,7 +354,6 @@ function submit(): void {
 }
 .outcome-hint svg {
   flex: none;
-  margin-top: 2px;
   color: var(--brand-strong);
 }
 .outcome-submit {

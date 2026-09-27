@@ -141,9 +141,7 @@ async function submit(): Promise<void> {
           </p>
           <p v-if="staleRefs(point).length" class="empty">
             有
-            {{
-              staleRefs(point).length
-            }}
+            {{ staleRefs(point).length }}
             条引用已不在该信号的证据里，需要重新引用。
           </p>
 
@@ -359,7 +357,7 @@ async function submit(): Promise<void> {
 
 .referenced li {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   padding: var(--space-2);
   border-left: 3px solid var(--info);
   background: var(--info-bg);
@@ -424,7 +422,7 @@ async function submit(): Promise<void> {
 .candidates label span {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   color: var(--ink-soft);
   font-size: var(--text-micro);
 }
