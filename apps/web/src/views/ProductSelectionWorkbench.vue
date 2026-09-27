@@ -213,6 +213,7 @@ async function addRequirementEvidence(
           />
           <ProductInitiativeReviewPanel
             v-if="initiativeReady"
+            :key="initiativeHandoffId"
             :points="reviewPointViews"
             :candidates="evidenceCandidates"
             :busy="deciding"

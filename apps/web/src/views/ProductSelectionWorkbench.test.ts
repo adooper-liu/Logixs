@@ -331,6 +331,38 @@ describe("ProductSelectionWorkbench", () => {
     expect(getProductInitiative).toHaveBeenLastCalledWith(SECOND_HANDOFF_ID);
   });
 
+  it("换一条机会时半开的证据登记表单不会跟着过去", async () => {
+    const second = acceptedOpportunity({
+      handoff: {
+        ...opportunity().handoff,
+        handoffId: SECOND_HANDOFF_ID,
+        title: "德国站收纳需求上升",
+      },
+      intakeVersion: 3,
+    });
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([acceptedOpportunity(), second]),
+    );
+    getProductInitiative.mockImplementation(async (handoffId: string) =>
+      initiativeDetail({ handoffId }),
+    );
+    const wrapper = await mountPage();
+
+    await wrapper
+      .findAll(".product-initiative-review button.add-evidence")[0]!
+      .trigger("click");
+    await wrapper
+      .get('textarea[aria-label="目标用户与市场证据内容"]')
+      .setValue("这条是写给第一条机会的");
+    expect(wrapper.find(".evidence-form").exists()).toBe(true);
+
+    await wrapper.findAll(".queue-item")[1]!.trigger("click");
+    await flushPromises();
+
+    // 表单属于上一条机会：留着它会导致这条内容被登记到另一条机会的信号上
+    expect(wrapper.find(".evidence-form").exists()).toBe(false);
+  });
+
   it("版本冲突给人话而不是机器代号，并已重新读取最新版本", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     decideProductInitiative.mockRejectedValue(
