@@ -65,6 +65,7 @@ const CONTRACT_FILES = [
   "canonical-event-envelope.schema.json",
   "canonical-event-envelope-v2.schema.json",
   "shipment-handoff.schema.json",
+  "market-opportunity.schema.json",
   "post-departure-lifecycle.schema.json",
   "lifecycle-timeline.schema.json",
   "work-execution.schema.json",

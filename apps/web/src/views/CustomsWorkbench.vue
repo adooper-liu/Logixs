@@ -20,7 +20,6 @@ const containerId = computed(() =>
 );
 const taskId = computed(() => String(route.query.taskId ?? "").trim());
 const {
-  containers,
   selectedContainer,
   nodes,
   queueItems,
@@ -45,13 +44,6 @@ const taskOperation = useStuffingTaskOperation(
 );
 
 onMounted(() => void loadQueue());
-
-function selectContainer(value: string) {
-  void router.replace({
-    path: "/workspaces/customs",
-    query: value ? { containerId: value } : {},
-  });
-}
 
 function selectTask(item: CustomsQueueItem) {
   if (!item.task.containerId) return;
@@ -82,16 +74,12 @@ function submitActual(localDateTime: string) {
     summary="处理申报、海关扣留与放行，提交实际清关时间，并清楚区分岗位完工和流程过站。"
     workspace-label="清关"
     node-scope-label="清关"
-    :containers="containers"
-    :selected-container-id="containerId"
     :selected-container="selectedContainer"
     :nodes="nodes"
-    :container-list-loading="queueLoading"
     :selection-loading="loading"
     :container-list-error="error"
     :selection-error="error"
     :warnings="warnings"
-    @select-container="selectContainer"
   >
     <template #queue>
       <CustomsWorkQueue

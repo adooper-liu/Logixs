@@ -20,7 +20,6 @@ const containerId = computed(() =>
 );
 const taskId = computed(() => String(route.query.taskId ?? "").trim());
 const {
-  containers,
   selectedContainer,
   nodes,
   queueItems,
@@ -48,13 +47,6 @@ const taskOperation = useStuffingTaskOperation(
 
 onMounted(() => void loadQueue());
 
-function selectContainer(value: string) {
-  void router.replace({
-    path: "/workspaces/pickup",
-    query: value ? { containerId: value } : {},
-  });
-}
-
 function selectTask(item: PickupQueueItem) {
   if (!item.task.containerId) return;
   void router.replace({
@@ -79,16 +71,12 @@ function submit(draft: PickupFactDraft) {
     summary="核对到港、清关与码头可提，登记重柜实际出场，并处理提柜岗位工单。"
     workspace-label="内陆运输"
     node-scope-label="拖卡提柜"
-    :containers="containers"
-    :selected-container-id="containerId"
     :selected-container="selectedContainer"
     :nodes="nodes"
-    :container-list-loading="queueLoading"
     :selection-loading="loading"
     :container-list-error="error"
     :selection-error="error"
     :warnings="warnings"
-    @select-container="selectContainer"
   >
     <template #queue>
       <PickupWorkQueue

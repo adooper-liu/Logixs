@@ -17,6 +17,12 @@ import { PrismaReferencePortRepository } from "./infrastructure/prisma-reference
 import { REFERENCE_PORT_DIRECTORY } from "./reference-port-directory.port";
 import { ResolveProductSkusService } from "./application/resolve-product-skus.service";
 import { RESOLVE_PRODUCT_SKUS } from "./resolve-product-skus.port";
+import { REFERENCE_LOCATION_CATALOG } from "./reference-location-catalog.port";
+import { PrismaReferenceLocationCatalog } from "./infrastructure/prisma-reference-location-catalog";
+import { CargoOwnerDirectoryService } from "./application/cargo-owner-directory.service";
+import { CARGO_OWNER_REPOSITORY } from "./domain/cargo-owner.repository";
+import { PrismaCargoOwnerRepository } from "./infrastructure/prisma-cargo-owner.repository";
+import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
 
 @Module({
   providers: [
@@ -26,6 +32,7 @@ import { RESOLVE_PRODUCT_SKUS } from "./resolve-product-skus.port";
     ReplaceProductComplianceProfileService,
     ReferencePortDirectoryService,
     ResolveProductSkusService,
+    CargoOwnerDirectoryService,
     {
       provide: PRODUCT_SKU_REPOSITORY,
       useClass: PrismaProductSkuRepository,
@@ -37,6 +44,18 @@ import { RESOLVE_PRODUCT_SKUS } from "./resolve-product-skus.port";
     {
       provide: REFERENCE_PORT_REPOSITORY,
       useClass: PrismaReferencePortRepository,
+    },
+    {
+      provide: REFERENCE_LOCATION_CATALOG,
+      useClass: PrismaReferenceLocationCatalog,
+    },
+    {
+      provide: CARGO_OWNER_REPOSITORY,
+      useClass: PrismaCargoOwnerRepository,
+    },
+    {
+      provide: CARGO_OWNER_DIRECTORY,
+      useExisting: CargoOwnerDirectoryService,
     },
     {
       provide: REGISTER_PRODUCT_SKU,
@@ -69,6 +88,8 @@ import { RESOLVE_PRODUCT_SKUS } from "./resolve-product-skus.port";
     REGISTER_PRODUCT_SKU,
     REPLACE_PRODUCT_COMPLIANCE_PROFILE,
     REFERENCE_PORT_DIRECTORY,
+    REFERENCE_LOCATION_CATALOG,
+    CARGO_OWNER_DIRECTORY,
     RESOLVE_PRODUCT_SKUS,
     GetProductComplianceProfileService,
     GetProductSkuService,
@@ -76,6 +97,7 @@ import { RESOLVE_PRODUCT_SKUS } from "./resolve-product-skus.port";
     ReplaceProductComplianceProfileService,
     ReferencePortDirectoryService,
     ResolveProductSkusService,
+    CargoOwnerDirectoryService,
   ],
 })
 export class MasterDataModule {}

@@ -31,7 +31,10 @@
     { "$ref": "#/$defs/InternalShipmentHandoffAcceptCommandV1" },
     { "$ref": "#/$defs/InternalShipmentHandoffAcceptResultV1" },
     { "$ref": "#/$defs/InternalShipmentHandoffBatchAcceptCommandV1" },
-    { "$ref": "#/$defs/InternalShipmentHandoffBatchAcceptResultV1" }
+    { "$ref": "#/$defs/InternalShipmentHandoffBatchAcceptResultV1" },
+    { "$ref": "#/$defs/ManualDepartedShipmentCreateCommandV1" },
+    { "$ref": "#/$defs/ShipmentIntakeReferenceDataV1" },
+    { "$ref": "#/$defs/ShipmentIntakePortSearchResultV1" }
   ],
   "$defs": {
     "DecimalString": {
@@ -444,6 +447,9 @@
           "maxLength": 20
         },
         "sealNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "declaredPackageCount": { "$ref": "#/$defs/DecimalString" },
+        "declaredGrossWeightKg": { "$ref": "#/$defs/DecimalString" },
+        "declaredVolumeM3": { "$ref": "#/$defs/DecimalString" },
         "stuffingSnapshotRef": { "$ref": "common.schema.json#/$defs/Uuid" },
         "billReferences": {
           "type": "array",
@@ -480,6 +486,7 @@
         "sourceProfile": {
           "enum": [
             "legacy_departed_file_v1",
+            "standard_departed_import_v1",
             "packing_platform_v1",
             "internal_fulfillment_v1",
             "api_v1"
@@ -881,6 +888,70 @@
         "matchedBy": { "const": "container_active_link" }
       }
     },
+    "PostDeparturePreparedHandoffV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shipmentGrouping",
+        "cargoAllocations",
+        "upstreamReferences",
+        "billsOfLading"
+      ],
+      "properties": {
+        "shipmentGrouping": {
+          "$ref": "#/$defs/PostDepartureShipmentGroupingV1"
+        },
+        "sourceRecordId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "bookingNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "sealNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "originPortCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationPortCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "salesCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "cargoOwnerReferenceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "cargoOwnerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "estimatedArrivalAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "departureProof": { "$ref": "#/$defs/DepartureProofV1" },
+        "cargoAllocations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CargoAllocationV1" }
+        },
+        "upstreamReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/UpstreamReferenceV1" }
+        },
+        "billsOfLading": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/BillOfLadingV1" }
+        }
+      },
+      "dependentRequired": {
+        "salesCountryCode": ["cargoOwnerReferenceId", "cargoOwnerName"],
+        "cargoOwnerReferenceId": ["salesCountryCode", "cargoOwnerName"],
+        "cargoOwnerName": ["salesCountryCode", "cargoOwnerReferenceId"]
+      }
+    },
     "PostDepartureSourceCandidateV1": {
       "type": "object",
       "additionalProperties": false,
@@ -943,6 +1014,9 @@
         },
         "existingShipmentMatch": {
           "$ref": "#/$defs/PostDepartureExistingShipmentMatchV1"
+        },
+        "preparedHandoff": {
+          "$ref": "#/$defs/PostDeparturePreparedHandoffV1"
         },
         "issues": {
           "type": "array",
@@ -1584,6 +1658,152 @@
         "relationshipVersion": { "type": "integer", "minimum": 1 },
         "documentCount": { "type": "integer", "minimum": 1 },
         "traceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "ManualDepartedShipmentContainerV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["containerNumber"],
+      "properties": {
+        "containerNumber": {
+          "type": "string",
+          "pattern": "^[A-Z]{4}[0-9]{7}$"
+        },
+        "containerTypeCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        }
+      }
+    },
+    "ManualDepartedShipmentCreateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestId",
+        "shipmentNumber",
+        "containers"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "manual-departed-shipment-create.v1"
+        },
+        "requestId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "shipmentNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "carrierCode": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "vesselName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "voyageNumber": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "bookingNumber": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "originPortCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "destinationPortCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"
+        },
+        "cargoOwnerReferenceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "estimatedArrivalAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "containers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/ManualDepartedShipmentContainerV1" }
+        }
+      }
+    },
+    "ShipmentIntakeCargoOwnerV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "stableCode",
+        "legalName",
+        "salesCountryCode",
+        "salesCountryNameChinese"
+      ],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "stableCode": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,99}$"
+        },
+        "legalName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "salesCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "salesCountryNameChinese": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "ShipmentIntakeReferenceDataV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "cargoOwners"],
+      "properties": {
+        "contractVersion": { "const": "shipment-intake-reference-data.v1" },
+        "cargoOwners": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentIntakeCargoOwnerV1" }
+        }
+      }
+    },
+    "ShipmentIntakePortV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "portId",
+        "unlocode",
+        "officialName",
+        "areaCode",
+        "countryNameChinese",
+        "nameChinese",
+        "nameChineseState"
+      ],
+      "properties": {
+        "portId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "unlocode": { "type": "string", "pattern": "^[A-Z]{2}[A-Z0-9]{3}$" },
+        "officialName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "areaCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "countryNameChinese": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "nameChinese": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 200 },
+            { "type": "null" }
+          ]
+        },
+        "nameChineseState": {
+          "enum": ["confirmed", "candidate", "missing"]
+        }
+      }
+    },
+    "ShipmentIntakePortSearchResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "items", "pageSize", "nextCursor"],
+      "properties": {
+        "contractVersion": { "const": "shipment-intake-port-search.v1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentIntakePortV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "nextCursor": {
+          "oneOf": [
+            { "type": "string", "pattern": "^[A-Z]{2}[A-Z0-9]{3}$" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "InternalShipmentHandoffPendingItemV1": {

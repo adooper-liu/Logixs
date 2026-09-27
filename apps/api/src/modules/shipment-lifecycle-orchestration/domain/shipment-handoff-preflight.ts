@@ -263,6 +263,35 @@ function validateSourceProfile(
   command: ShipmentHandoffCommand,
   issues: ShipmentHandoffIssueV1[],
 ): void {
+  if (command.sourceProfile === "standard_departed_import_v1") {
+    if (!command.source.sourceBatchId) {
+      issues.push({
+        code: "SOURCE_BATCH_REQUIRED",
+        fieldCodes: ["source_batch_id"],
+        messageKey: "shipment_handoff_source_batch_required",
+      });
+    }
+    if (!command.source.mappingVersion) {
+      issues.push({
+        code: "MAPPING_VERSION_REQUIRED",
+        fieldCodes: ["mapping_version"],
+        messageKey: "shipment_handoff_mapping_version_required",
+      });
+    }
+    for (const container of command.containers) {
+      if (!container.cargoAllocations?.length) {
+        issues.push({
+          code: "CARGO_DETAIL_INCOMPLETE",
+          subjectRef: container.referenceId,
+          fieldCodes: ["cargo_allocations"],
+          messageKey: "shipment_handoff_cargo_detail_incomplete",
+          blocking: false,
+          resolutionState: "upstream_action_required",
+        });
+      }
+    }
+    return;
+  }
   if (command.sourceProfile === "legacy_departed_file_v1") {
     if (!command.source.sourceBatchId) {
       issues.push({

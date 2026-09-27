@@ -23,6 +23,7 @@ import {
   type ImportRepository,
 } from "../domain/import.repository";
 import { PreflightPostDepartureSourcePackageService } from "./preflight-post-departure-source-package.service";
+import { STANDARD_POST_DEPARTURE_PARSER_VERSION } from "./create-import-batch.service";
 
 const CARRIER_CODE_PATTERN = /^[A-Z0-9]{2,10}$/;
 const PACKAGE_ID_PATTERN = /^[a-f0-9]{64}$/;
@@ -126,6 +127,10 @@ export class AcceptPostDepartureSourceCandidateService {
       occurredAt,
       sourceBatchId:
         input.sources.length === 1 ? input.sources[0]!.batchId : undefined,
+      standardSource: sourceBatches.some(
+        ({ parserVersion }) =>
+          parserVersion === STANDARD_POST_DEPARTURE_PARSER_VERSION,
+      ),
       context,
     });
     const handoff = await this.acceptHandoff.accept(command, context);
@@ -154,6 +159,7 @@ function buildHandoffCommand(input: {
   candidates: PostDepartureSourceCandidateV1[];
   occurredAt: Date;
   sourceBatchId?: string;
+  standardSource: boolean;
   context: ShipmentHandoffRequestContext;
 }): ShipmentHandoffCommandV2 {
   const { candidates } = input;
@@ -164,22 +170,30 @@ function buildHandoffCommand(input: {
   );
   const originPort = sharedValue(
     candidates,
-    (candidate) => candidate.correction?.originPort?.unlocode,
+    (candidate) =>
+      candidate.preparedHandoff?.originPortCode ??
+      candidate.correction?.originPort?.unlocode,
     "origin_port",
   );
   const destinationPort = sharedValue(
     candidates,
-    (candidate) => candidate.correction?.destinationPort?.unlocode,
+    (candidate) =>
+      candidate.preparedHandoff?.destinationPortCode ??
+      candidate.correction?.destinationPort?.unlocode,
     "destination_port",
   );
   const destinationCountry = sharedValue(
     candidates,
-    (candidate) => candidate.correction?.destinationPort?.areaCode,
+    (candidate) =>
+      candidate.preparedHandoff?.destinationPortCode?.slice(0, 2) ??
+      candidate.correction?.destinationPort?.areaCode,
     "destination_country",
   );
   const departureProof = sharedObject(
     candidates,
-    (candidate) => candidate.correction?.departureProof,
+    (candidate) =>
+      candidate.preparedHandoff?.departureProof ??
+      candidate.correction?.departureProof,
     "departure_proof",
   );
   const carrierCode = sharedValue(
@@ -189,6 +203,11 @@ function buildHandoffCommand(input: {
         ? candidate.carrierCode
         : undefined,
     "carrier_code",
+  );
+  const bookingNumber = sharedValue(
+    candidates,
+    (candidate) => candidate.preparedHandoff?.bookingNumber,
+    "booking_number",
   );
   const vesselName = sharedValue(
     candidates,
@@ -200,6 +219,26 @@ function buildHandoffCommand(input: {
     (candidate) => candidate.voyageNumber,
     "voyage_number",
   );
+  const salesCountryCode = sharedValue(
+    candidates,
+    (candidate) => candidate.preparedHandoff?.salesCountryCode,
+    "sales_country_code",
+  );
+  const cargoOwnerReferenceId = sharedValue(
+    candidates,
+    (candidate) => candidate.preparedHandoff?.cargoOwnerReferenceId,
+    "cargo_owner_reference_id",
+  );
+  const cargoOwnerName = sharedValue(
+    candidates,
+    (candidate) => candidate.preparedHandoff?.cargoOwnerName,
+    "cargo_owner_name",
+  );
+  const estimatedArrivalAt = sharedValue(
+    candidates,
+    (candidate) => candidate.preparedHandoff?.estimatedArrivalAt,
+    "estimated_arrival_at",
+  );
   const groupIdentity = createHash("sha256")
     .update(
       candidates
@@ -209,37 +248,80 @@ function buildHandoffCommand(input: {
     )
     .digest("hex");
   const mappedContainers = candidates.map((candidate) => {
-    const allocations = (candidate.correction?.cargoAllocations ?? []).map(
-      (allocation) => ({
-        sourceLineId: allocation.sourceLineId,
-        productSkuId: allocation.productSkuId,
-        productNumber: allocation.productNumber,
-        quantity: allocation.quantity,
-        quantityUnit: allocation.quantityUnit,
-        ...(allocation.replenishmentOrderLineId
-          ? {
-              replenishmentOrderLineId: allocation.replenishmentOrderLineId,
-            }
-          : {}),
-      }),
-    );
+    const allocations = candidate.preparedHandoff
+      ? candidate.preparedHandoff.cargoAllocations.map((allocation) => ({
+          sourceLineId: allocation.sourceLineId,
+          ...(allocation.productSkuId
+            ? { productSkuId: allocation.productSkuId }
+            : {}),
+          productNumber: allocation.productNumber,
+          quantity: allocation.quantity,
+          quantityUnit: allocation.quantityUnit,
+          ...(allocation.packageCount
+            ? {
+                packageCount: allocation.packageCount,
+                packageUnit: allocation.packageUnit,
+              }
+            : {}),
+          ...(allocation.grossWeight
+            ? {
+                grossWeight: allocation.grossWeight,
+                weightUnit: allocation.weightUnit,
+              }
+            : {}),
+          ...(allocation.volume
+            ? { volume: allocation.volume, volumeUnit: allocation.volumeUnit }
+            : {}),
+          ...(allocation.replenishmentOrderLineId
+            ? {
+                replenishmentOrderLineId: allocation.replenishmentOrderLineId,
+              }
+            : {}),
+        }))
+      : (candidate.correction?.cargoAllocations ?? []).map((allocation) => ({
+          sourceLineId: allocation.sourceLineId,
+          productSkuId: allocation.productSkuId,
+          productNumber: allocation.productNumber,
+          quantity: allocation.quantity,
+          quantityUnit: allocation.quantityUnit,
+          ...(allocation.replenishmentOrderLineId
+            ? {
+                replenishmentOrderLineId: allocation.replenishmentOrderLineId,
+              }
+            : {}),
+        }));
     return {
       referenceId: candidate.candidateRef,
-      externalContainerId: candidate.candidateRef,
+      externalContainerId:
+        candidate.preparedHandoff?.sourceRecordId ?? candidate.candidateRef,
       ...(candidate.containerNumber
         ? { containerNumber: candidate.containerNumber }
         : {}),
       ...(candidate.containerTypeCode
         ? { containerTypeCode: candidate.containerTypeCode }
         : {}),
-      billReferences: [],
-      upstreamReferences: candidate.replenishmentOrderNumbers.map(
-        (orderNumber) => ({
-          referenceType: "stocking_order" as const,
-          sourceSystem: "post_departure_source_package",
-          sourceRecordId: orderNumber,
-        }),
-      ),
+      ...(candidate.preparedHandoff?.sealNumber
+        ? { sealNumber: candidate.preparedHandoff.sealNumber }
+        : {}),
+      ...(candidate.packageCount
+        ? { declaredPackageCount: candidate.packageCount }
+        : {}),
+      ...(candidate.grossWeightKg
+        ? { declaredGrossWeightKg: candidate.grossWeightKg }
+        : {}),
+      ...(candidate.volumeM3 ? { declaredVolumeM3: candidate.volumeM3 } : {}),
+      billReferences:
+        candidate.preparedHandoff?.billsOfLading.map(
+          ({ referenceId }) => referenceId,
+        ) ?? [],
+      upstreamReferences:
+        input.standardSource && candidate.preparedHandoff
+          ? candidate.preparedHandoff.upstreamReferences
+          : candidate.replenishmentOrderNumbers.map((orderNumber) => ({
+              referenceType: "stocking_order" as const,
+              sourceSystem: "post_departure_source_package",
+              sourceRecordId: orderNumber,
+            })),
       ...(allocations[0]
         ? {
             cargoAllocations: [
@@ -254,11 +336,18 @@ function buildHandoffCommand(input: {
   });
   const firstContainer = mappedContainers[0];
   if (!firstContainer) throw new Error("SOURCE_CANDIDATE_GROUP_EMPTY");
+  const billsOfLading = deduplicateBills(
+    candidates.flatMap(
+      (candidate) => candidate.preparedHandoff?.billsOfLading ?? [],
+    ),
+  );
 
   return {
     contractVersion: "shipment-handoff.v2",
     tenantId: input.context.tenantId,
-    sourceProfile: "legacy_departed_file_v1",
+    sourceProfile: input.standardSource
+      ? "standard_departed_import_v1"
+      : "legacy_departed_file_v1",
     source: {
       channel: "file_import",
       system: "post_departure_source_package",
@@ -267,14 +356,21 @@ function buildHandoffCommand(input: {
       occurredAt: input.occurredAt.toISOString(),
       idempotencyKey: input.idempotencyKey,
       ...(input.sourceBatchId ? { sourceBatchId: input.sourceBatchId } : {}),
-      mappingVersion: "post_departure_source_package.v1",
+      mappingVersion: input.standardSource
+        ? "post_departure_standard_import.v1"
+        : "post_departure_source_package.v1",
       correlationId: deterministicUuid(`${input.packageId}:${groupIdentity}`),
       traceId: `post-departure:${input.packageId.slice(0, 32)}`,
     },
     shipment: {
       transportMode: "ocean",
       ...(grouping?.kind === "authorized_new_shipment"
-        ? { shipmentNumber: grouping.shipmentNumber }
+        ? {
+            shipmentNumber: grouping.shipmentNumber,
+            ...(input.standardSource
+              ? { externalShipmentId: grouping.shipmentNumber }
+              : {}),
+          }
         : {}),
       ...(grouping?.kind === "existing_shipment"
         ? {
@@ -283,6 +379,7 @@ function buildHandoffCommand(input: {
           }
         : {}),
       ...(carrierCode ? { carrierCode } : {}),
+      ...(bookingNumber ? { bookingNumber } : {}),
       ...(vesselName ? { vesselName } : {}),
       ...(voyageNumber ? { voyageNumber } : {}),
       ...(originPort ? { originPortCode: originPort } : {}),
@@ -290,14 +387,22 @@ function buildHandoffCommand(input: {
       ...(destinationCountry
         ? { destinationCountryCode: destinationCountry }
         : {}),
+      ...(salesCountryCode ? { salesCountryCode } : {}),
+      ...(cargoOwnerReferenceId ? { cargoOwnerReferenceId } : {}),
+      ...(cargoOwnerName ? { cargoOwnerName } : {}),
+      ...(estimatedArrivalAt ? { estimatedArrivalAt } : {}),
       ...(departureProof ? { departureProof } : {}),
     },
-    billsOfLading: [],
+    billsOfLading,
     containers: [firstContainer, ...mappedContainers.slice(1)],
     evidenceReferences: [
       ...new Set(
         candidates
-          .map((candidate) => candidate.correction?.departureProof?.evidenceRef)
+          .map(
+            (candidate) =>
+              candidate.preparedHandoff?.departureProof?.evidenceRef ??
+              candidate.correction?.departureProof?.evidenceRef,
+          )
           .filter((value): value is string => Boolean(value)),
       ),
     ].sort(),
@@ -319,6 +424,9 @@ export function postDepartureCandidateGroupingKey(
 }
 
 function candidateShipmentGrouping(candidate: PostDepartureSourceCandidateV1) {
+  if (candidate.preparedHandoff?.shipmentGrouping) {
+    return candidate.preparedHandoff.shipmentGrouping;
+  }
   if (candidate.correction?.shipmentGrouping) {
     return candidate.correction.shipmentGrouping;
   }
@@ -329,6 +437,25 @@ function candidateShipmentGrouping(candidate: PostDepartureSourceCandidateV1) {
     expectedRelationshipVersion:
       candidate.existingShipmentMatch.expectedRelationshipVersion,
   };
+}
+
+function deduplicateBills(
+  bills: NonNullable<
+    PostDepartureSourceCandidateV1["preparedHandoff"]
+  >["billsOfLading"],
+): ShipmentHandoffCommandV2["billsOfLading"] {
+  const byReference = new Map<string, (typeof bills)[number]>();
+  for (const bill of bills) {
+    const existing = byReference.get(bill.referenceId);
+    if (existing && JSON.stringify(existing) !== JSON.stringify(bill)) {
+      throw new ConflictException({
+        code: "SOURCE_CANDIDATE_GROUP_FACT_CONFLICT",
+        field: "bill_of_lading",
+      });
+    }
+    byReference.set(bill.referenceId, bill);
+  }
+  return [...byReference.values()];
 }
 
 function sharedValue(

@@ -24,7 +24,6 @@ const containerId = computed(() =>
 const taskId = computed(() => String(route.query.taskId ?? "").trim());
 const queueFilter = ref<StuffingQueueFilter>("executable");
 const {
-  containers,
   selectedContainer,
   cargo,
   nodes,
@@ -35,7 +34,6 @@ const {
   dateFacts,
   stuffingActualFact,
   warnings,
-  containerListLoading,
   queueLoading,
   selectionLoading,
   containerListError,
@@ -54,13 +52,6 @@ const taskOperation = useStuffingTaskOperation(
 onMounted(() => {
   void loadContainerList();
 });
-
-function selectContainer(value: string): void {
-  void router.replace({
-    path: "/workspaces/stuffing",
-    query: value ? { containerId: value } : {},
-  });
-}
 
 function selectTask(item: StuffingQueueItem): void {
   if (!item.task.containerId) return;
@@ -96,16 +87,12 @@ async function reloadWorkbench(): Promise<void> {
     summary="从岗位任务池核对本柜装载范围，保存可追溯的装箱记录，并提交实际装箱时间。"
     workspace-label="出运装箱"
     node-scope-label="装箱"
-    :containers="containers"
-    :selected-container-id="containerId"
     :selected-container="selectedContainer"
     :nodes="nodes"
-    :container-list-loading="containerListLoading"
     :selection-loading="selectionLoading"
     :container-list-error="containerListError"
     :selection-error="selectionError"
     :warnings="warnings"
-    @select-container="selectContainer"
   >
     <template #queue>
       <StuffingWorkQueue

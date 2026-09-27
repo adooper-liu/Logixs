@@ -18,6 +18,7 @@ import { ConfirmMappingsService } from "../application/confirm-mappings.service"
 import {
   CreateImportBatchService,
   MAX_IMPORT_SOURCE_BYTES,
+  type ImportParserProfile,
 } from "../application/create-import-batch.service";
 import { ExecuteImportService } from "../application/execute-import.service";
 import { GetImportBatchService } from "../application/get-import-batch.service";
@@ -58,6 +59,15 @@ export function normalizeReplacementBatchId(value: unknown): string | null {
   return value;
 }
 
+export function normalizeParserProfile(value: unknown): ImportParserProfile {
+  if (value === undefined || value === null || value === "") return "tabular";
+  if (value === "post_departure_standard_v1") return value;
+  throw new HttpException(
+    "VALIDATION_FORMAT: parserProfile 不受支持",
+    HttpStatus.BAD_REQUEST,
+  );
+}
+
 @ApiTags("import-batches")
 @Controller("import-batches")
 export class ImportBatchesController {
@@ -83,6 +93,11 @@ export class ImportBatchesController {
       properties: {
         file: { type: "string", format: "binary" },
         replacesBatchId: { type: "string", format: "uuid", nullable: true },
+        parserProfile: {
+          type: "string",
+          enum: ["post_departure_standard_v1"],
+          nullable: true,
+        },
       },
     },
   })
@@ -90,6 +105,7 @@ export class ImportBatchesController {
   async upload(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body("replacesBatchId") replacesBatchId: unknown,
+    @Body("parserProfile") parserProfile: unknown,
     @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Req() request: { identity: { tenantId: string; actorId: string } },
   ): Promise<ImportBatchDto> {
@@ -112,6 +128,7 @@ export class ImportBatchesController {
       tenantId: request.identity.tenantId,
       operatorId: request.identity.actorId,
       replacesBatchId: normalizeReplacementBatchId(replacesBatchId),
+      parserProfile: normalizeParserProfile(parserProfile),
     });
     return toBatchDto(batch);
   }

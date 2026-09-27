@@ -1,4 +1,5 @@
 import type {
+  ManualDepartedShipmentCreateCommandV1,
   ShipmentHandoffCommandV1,
   ShipmentHandoffCommandV2,
 } from "@logix/contracts";
@@ -26,6 +27,10 @@ const commandValidator = requiredValidator<ShipmentHandoffCommandV1>(
 const commandV2Validator = requiredValidator<ShipmentHandoffCommandV2>(
   `${shipmentHandoffSchema.$id}#/$defs/ShipmentHandoffCommandV2`,
 );
+const manualCreateValidator =
+  requiredValidator<ManualDepartedShipmentCreateCommandV1>(
+    `${shipmentHandoffSchema.$id}#/$defs/ManualDepartedShipmentCreateCommandV1`,
+  );
 
 type ShipmentHandoffCommand =
   ShipmentHandoffCommandV1 | ShipmentHandoffCommandV2;
@@ -50,6 +55,17 @@ export function validateShipmentHandoffCommand(
     );
   }
   return input as ShipmentHandoffCommand;
+}
+
+export function validateManualDepartedShipmentCreateCommand(
+  input: unknown,
+): ManualDepartedShipmentCreateCommandV1 {
+  if (!manualCreateValidator(input)) {
+    throw new ShipmentHandoffContractValidationError(
+      normalizeErrors(manualCreateValidator.errors),
+    );
+  }
+  return input;
 }
 
 function requiredValidator<T>(schemaRef: string): ValidateFunction<T> {

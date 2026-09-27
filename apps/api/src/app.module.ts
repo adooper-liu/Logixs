@@ -17,10 +17,12 @@ import { InlandLifecycleOrchestrationModule } from "./modules/inland-lifecycle-o
 import { IntegrationImportModule } from "./modules/integration-import";
 import { LifecycleControlModule } from "./modules/lifecycle-control";
 import { MasterDataModule } from "./modules/master-data";
+import { MarketIntelligenceModule } from "./modules/market-intelligence";
 import { NotificationModule } from "./modules/notification";
 import { OceanPortVisibilityModule } from "./modules/ocean-port-visibility";
 import { OpsAssistantModule } from "./modules/ops-assistant";
 import { PerformanceImprovementModule } from "./modules/performance-improvement";
+import { ProductSelectionModule } from "./modules/product-selection";
 import { ShipmentRegistryModule } from "./modules/shipment-registry";
 import { ShipmentLifecycleOrchestrationModule } from "./modules/shipment-lifecycle-orchestration";
 import { WorkExecutionModule } from "./modules/work-execution";
@@ -45,10 +47,12 @@ import { WorkflowModule } from "./modules/workflow";
     IntegrationImportModule,
     LifecycleControlModule,
     MasterDataModule,
+    MarketIntelligenceModule,
     NotificationModule,
     OceanPortVisibilityModule,
     OpsAssistantModule,
     PerformanceImprovementModule,
+    ProductSelectionModule,
     ShipmentRegistryModule,
     ShipmentLifecycleOrchestrationModule,
     WorkExecutionModule,

@@ -31,6 +31,24 @@ export class PrismaEvidenceRepository implements EvidenceRepository {
     return rows.map(mapRecord);
   }
 
+  async listBySubjects(input: {
+    tenantId: string;
+    subjectType: string;
+    subjectIds: string[];
+  }): Promise<EvidenceRecord[]> {
+    if (input.subjectIds.length === 0) return [];
+    const rows = await this.prisma.evidenceRecord.findMany({
+      where: {
+        tenantId: input.tenantId,
+        subjectType: input.subjectType,
+        subjectId: { in: input.subjectIds },
+        validity: "effective",
+      },
+      orderBy: [{ recordedAt: "asc" }, { id: "asc" }],
+    });
+    return rows.map(mapRecord);
+  }
+
   async findByIdempotencyKey(
     tenantId: string,
     idempotencyKey: string,

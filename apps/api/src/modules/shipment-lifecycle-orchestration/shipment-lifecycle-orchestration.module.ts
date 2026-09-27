@@ -22,6 +22,9 @@ import { CompleteShipmentPendingFactsService } from "./application/complete-ship
 import { CompleteShipmentPendingCargoService } from "./application/complete-shipment-pending-cargo.service";
 import { BindShipmentPendingSkuService } from "./application/bind-shipment-pending-sku.service";
 import { CompleteShipmentPendingDocumentsService } from "./application/complete-shipment-pending-documents.service";
+import { CreateManualDepartedShipmentService } from "./application/create-manual-departed-shipment.service";
+import { ListShipmentIntakeReferenceDataService } from "./application/list-shipment-intake-reference-data.service";
+import { SearchShipmentIntakePortsService } from "./application/search-shipment-intake-ports.service";
 import {
   ACCEPT_SHIPMENT_HANDOFF,
   PREFLIGHT_SHIPMENT_HANDOFF,
@@ -52,6 +55,9 @@ import {
     CompleteShipmentPendingCargoService,
     BindShipmentPendingSkuService,
     CompleteShipmentPendingDocumentsService,
+    CreateManualDepartedShipmentService,
+    ListShipmentIntakeReferenceDataService,
+    SearchShipmentIntakePortsService,
     {
       provide: PREFLIGHT_SHIPMENT_HANDOFF,
       useExisting: PreflightShipmentHandoffService,

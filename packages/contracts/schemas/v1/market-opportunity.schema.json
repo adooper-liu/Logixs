@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/market-opportunity.schema.json",
+  "title": "Market Opportunity Contracts V1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "MarketSignalDestinationV1": {
+      "enum": ["needs_decision", "watching", "handed_off", "dismissed"]
+    },
+    "MarketSignalDecisionTypeV1": {
+      "enum": ["watch", "handoff", "dismiss"]
+    },
+    "MarketSignalDecisionCompletionV1": {
+      "enum": ["pending_completion", "completed"]
+    },
+    "MarketOpportunityIntakeStateV1": {
+      "enum": ["queued", "claimed", "accepted", "superseded"]
+    },
+    "MarketSignalPendingFieldCodeV1": {
+      "enum": [
+        "market_code",
+        "channel_code",
+        "category_ref",
+        "observed_fact_summary",
+        "hypothesis",
+        "evidence_refs",
+        "opportunity_statement",
+        "next_review_date",
+        "dismiss_reason"
+      ]
+    },
+    "MarketSignalV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signalId",
+        "title",
+        "currentDestination",
+        "ownerTeamCode",
+        "version",
+        "evidenceRefs",
+        "pendingFieldCodes",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "signalId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "marketCode": { "type": ["string", "null"], "maxLength": 100 },
+        "channelCode": { "type": ["string", "null"], "maxLength": 100 },
+        "categoryRef": { "type": ["string", "null"], "maxLength": 200 },
+        "observedFactSummary": {
+          "type": ["string", "null"],
+          "maxLength": 4000
+        },
+        "hypothesis": { "type": ["string", "null"], "maxLength": 4000 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "currentDestination": { "$ref": "#/$defs/MarketSignalDestinationV1" },
+        "ownerTeamCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "version": { "type": "integer", "minimum": 1 },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/MarketSignalPendingFieldCodeV1" }
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "MarketSignalCreateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "title", "idempotencyKey"],
+      "properties": {
+        "contractVersion": { "const": "market-signal-create.v1" },
+        "requestId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "marketCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "channelCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "categoryRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "observedFactSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "hypothesis": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "evidenceRefs": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "ownerTeamCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "MarketSignalDecisionCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedSignalVersion",
+        "decisionType",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "market-signal-decision.v1" },
+        "expectedSignalVersion": { "type": "integer", "minimum": 1 },
+        "decisionType": { "$ref": "#/$defs/MarketSignalDecisionTypeV1" },
+        "judgmentNote": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "opportunityStatement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "nextReviewDate": { "type": "string", "format": "date" },
+        "watchFocus": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "dismissReason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "MarketSignalUpdateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedSignalVersion",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "market-signal-update.v1" },
+        "expectedSignalVersion": { "type": "integer", "minimum": 1 },
+        "marketCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "channelCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "categoryRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "observedFactSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "hypothesis": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "MarketOpportunityHandoffV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "handoffId",
+        "version",
+        "signalId",
+        "signalVersion",
+        "title",
+        "recipientQueueCode",
+        "evidenceRefs",
+        "pendingFieldCodes",
+        "createdBy",
+        "createdAt",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "market_opportunity_handoff.v1" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "signalId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "signalVersion": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "recipientQueueCode": { "const": "product_selection" },
+        "marketCode": { "type": ["string", "null"], "maxLength": 100 },
+        "channelCode": { "type": ["string", "null"], "maxLength": 100 },
+        "categoryRef": { "type": ["string", "null"], "maxLength": 200 },
+        "observedFactSummary": {
+          "type": ["string", "null"],
+          "maxLength": 4000
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "hypothesis": { "type": ["string", "null"], "maxLength": 4000 },
+        "opportunityStatement": {
+          "type": ["string", "null"],
+          "maxLength": 4000
+        },
+        "judgmentNote": { "type": ["string", "null"], "maxLength": 4000 },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/MarketSignalPendingFieldCodeV1" }
+        },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "MarketSignalDecisionResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "status",
+        "signal",
+        "decisionId",
+        "decisionVersion",
+        "completion",
+        "handoff"
+      ],
+      "properties": {
+        "contractVersion": { "const": "market-signal-decision-result.v1" },
+        "status": { "enum": ["saved", "duplicate"] },
+        "signal": { "$ref": "#/$defs/MarketSignalV1" },
+        "decisionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "decisionVersion": { "type": "integer", "minimum": 1 },
+        "completion": { "$ref": "#/$defs/MarketSignalDecisionCompletionV1" },
+        "handoff": {
+          "oneOf": [
+            { "$ref": "#/$defs/MarketOpportunityHandoffV1" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "MarketSignalPageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "items", "pageSize", "nextCursor"],
+      "properties": {
+        "contractVersion": { "const": "market-signal-page.v1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MarketSignalV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    },
+    "MarketSignalEvidenceV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "sourceName",
+        "summary",
+        "contentRef",
+        "recordedAt",
+        "verificationState"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "sourceName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "contentRef": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "verificationState": {
+          "enum": ["pending", "verified", "rejected", "revoked"]
+        }
+      }
+    },
+    "MarketSignalDetailV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal", "evidence"],
+      "properties": {
+        "signal": { "$ref": "#/$defs/MarketSignalV1" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MarketSignalEvidenceV1" }
+        }
+      }
+    },
+    "ProductOpportunityV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handoff",
+        "intakeState",
+        "intakeVersion",
+        "assignedActorId"
+      ],
+      "properties": {
+        "handoff": { "$ref": "#/$defs/MarketOpportunityHandoffV1" },
+        "intakeState": { "$ref": "#/$defs/MarketOpportunityIntakeStateV1" },
+        "intakeVersion": { "type": "integer", "minimum": 0 },
+        "assignedActorId": { "type": ["string", "null"], "maxLength": 200 }
+      }
+    },
+    "ProductOpportunityPageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "items", "pageSize", "nextCursor"],
+      "properties": {
+        "contractVersion": { "const": "product-opportunity-page.v1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductOpportunityV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    },
+    "ProductOpportunityIntakeCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "action",
+        "expectedIntakeVersion",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-opportunity-intake.v1" },
+        "action": { "enum": ["claim", "accept"] },
+        "expectedIntakeVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    }
+  }
+}

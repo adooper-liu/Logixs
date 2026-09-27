@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import type {
+  ManualDepartedShipmentCreateCommandV1,
   ShipmentHandoffCommandV1,
   ShipmentHandoffIssueV1,
   ShipmentHandoffObjectResultV1,
@@ -10,6 +11,32 @@ import type {
   ShipmentPendingSkuBindingCommandV1,
   ShipmentPendingDocumentCompletionCommandV1,
 } from "@logix/contracts";
+
+export class ManualDepartedShipmentCreateRequestDto implements ManualDepartedShipmentCreateCommandV1 {
+  @ApiProperty({ enum: ["manual-departed-shipment-create.v1"] })
+  contractVersion!: ManualDepartedShipmentCreateCommandV1["contractVersion"];
+  @ApiProperty({ format: "uuid" }) requestId!: string;
+  @ApiProperty({ minLength: 1, maxLength: 100 }) shipmentNumber!: string;
+  @ApiPropertyOptional({ maxLength: 50 }) carrierCode?: string;
+  @ApiPropertyOptional({ maxLength: 200 }) vesselName?: string;
+  @ApiPropertyOptional({ maxLength: 100 }) voyageNumber?: string;
+  @ApiPropertyOptional({ maxLength: 200 }) bookingNumber?: string;
+  @ApiPropertyOptional({ pattern: "^[A-Z]{2}[A-Z0-9]{3}$" })
+  originPortCode?: string;
+  @ApiPropertyOptional({ pattern: "^[A-Z]{2}[A-Z0-9]{3}$" })
+  destinationPortCode?: string;
+  @ApiPropertyOptional({ format: "uuid" }) cargoOwnerReferenceId?: string;
+  @ApiPropertyOptional({ format: "date-time" }) estimatedArrivalAt?: string;
+  @ApiProperty({ type: [Object], minItems: 1, maxItems: 50 })
+  containers!: ManualDepartedShipmentCreateCommandV1["containers"];
+}
+
+export class ShipmentIntakePortQueryDto {
+  @ApiProperty({ minLength: 1, maxLength: 100 }) query!: string;
+  @ApiPropertyOptional({ minimum: 1, maximum: 50 }) pageSize?: string;
+  @ApiPropertyOptional({ pattern: "^[A-Z]{2}[A-Z0-9]{3}$" })
+  cursor?: string;
+}
 
 export class InternalShipmentHandoffAcceptRequestDto {
   @ApiProperty({ enum: ["internal-shipment-handoff-accept.v1"] })

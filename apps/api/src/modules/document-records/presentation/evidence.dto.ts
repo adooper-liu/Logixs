@@ -18,6 +18,7 @@ export class RegisterEvidenceRequestDto {
   @ApiProperty({ required: false }) mappingVersion?: string;
   @ApiProperty() ingestionChannel!: string;
   @ApiProperty() captureSource!: string;
+  @ApiProperty({ required: false }) sourceSummary?: string;
 }
 
 export class VerifyEvidenceRequestDto {

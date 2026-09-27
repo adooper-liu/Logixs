@@ -3,6 +3,30 @@ import router from "../../router";
 import { navigationForRole } from "./navigation";
 
 describe("navigationForRole", () => {
+  it("shows one business-workbench directory without flooding navigation with framework pages", () => {
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      expect(items.filter((item) => item.path === "/workspaces")).toHaveLength(
+        1,
+      );
+      expect(
+        items.filter(
+          (item) =>
+            item.path.startsWith("/workspaces/") &&
+            ![
+              "/workspaces/cargo-ready",
+              "/workspaces/stuffing",
+              "/workspaces/dispatch",
+              "/workspaces/customs",
+              "/workspaces/pickup",
+              "/workspaces/delivery",
+              "/workspaces/unloading",
+            ].includes(item.path),
+        ),
+      ).toHaveLength(0);
+    }
+  });
+
   it("does not put the developer console in the operations shell", () => {
     for (const role of ["operator", "planner", "manager"] as const) {
       const items = navigationForRole(router.getRoutes(), role);

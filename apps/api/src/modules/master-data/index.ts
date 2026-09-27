@@ -30,8 +30,20 @@ export {
   type ReferencePortSearchResult,
 } from "./reference-port-directory.port";
 export {
+  REFERENCE_LOCATION_CATALOG,
+  type ReferenceCountryOption,
+  type ReferenceLocationCatalogPort,
+  type ReferenceLocationCatalogSnapshot,
+  type ReferencePortOption,
+} from "./reference-location-catalog.port";
+export {
   RESOLVE_PRODUCT_SKUS,
   type ResolveProductSkusPort,
   type ResolveProductSkusQuery,
   type ResolvedProductSku,
 } from "./resolve-product-skus.port";
+export {
+  CARGO_OWNER_DIRECTORY,
+  type CargoOwnerDirectoryPort,
+  type CargoOwnerDirectoryRecord,
+} from "./cargo-owner-directory.port";

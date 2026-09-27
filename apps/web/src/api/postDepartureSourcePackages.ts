@@ -22,6 +22,28 @@ const HEADERS = {
   "X-Roles": "import_operator",
 };
 
+export async function downloadPostDepartureStandardTemplate(): Promise<void> {
+  const response = await fetch(
+    "/api/post-departure-source-packages/standard-template",
+    { headers: HEADERS },
+  );
+  if (!response.ok) {
+    throw new Error(
+      await formatHttpError(
+        response.status,
+        await response.text(),
+        "标准模板下载失败",
+      ),
+    );
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "logixs-post-departure-standard-import-v1.xlsx";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function preflightPostDepartureSourcePackage(
   sources: PostDepartureSourcePackagePreflightCommandV1["sources"],
 ): Promise<PostDepartureSourcePackagePreflightResultV1> {

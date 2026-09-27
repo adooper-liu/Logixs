@@ -1,0 +1,260 @@
+{
+  "version": "1.0.0",
+  "profile": "post_departure_standard_v1",
+  "templateFile": "logixs-post-departure-standard-import-v1.xlsx",
+  "sheets": [
+    {
+      "code": "shipment_containers",
+      "name": "已出运接管",
+      "recordType": "shipment_container",
+      "required": true,
+      "fields": [
+        {
+          "code": "source_record_id",
+          "label": "来源记录号",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "ERP-20260918-001"
+        },
+        {
+          "code": "shipment_number",
+          "label": "出运业务号",
+          "required": true,
+          "pendingWhenMissing": false,
+          "example": "SHP-20260918-001"
+        },
+        {
+          "code": "container_number",
+          "label": "柜号",
+          "required": true,
+          "pendingWhenMissing": false,
+          "example": "HMMU4956442"
+        },
+        {
+          "code": "container_type_code",
+          "label": "柜型",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "40HQ"
+        },
+        {
+          "code": "seal_number",
+          "label": "封号",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "SEAL-001"
+        },
+        {
+          "code": "replenishment_order_number",
+          "label": "备货单号",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "26DSC01812"
+        },
+        {
+          "code": "booking_number",
+          "label": "订舱号",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "BKG-20260918-01"
+        },
+        {
+          "code": "mbl_number",
+          "label": "主提单号",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "NBOZ9FF56400"
+        },
+        {
+          "code": "hbl_number",
+          "label": "分提单号",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "NBOZ9FF56400C"
+        },
+        {
+          "code": "carrier_code",
+          "label": "船公司代码",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "HLCU"
+        },
+        {
+          "code": "vessel_name",
+          "label": "船名",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "EVER ALP"
+        },
+        {
+          "code": "voyage_number",
+          "label": "航次",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "091W"
+        },
+        {
+          "code": "origin_port_code",
+          "label": "起运港UNLOCODE",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "CNNGB"
+        },
+        {
+          "code": "destination_port_code",
+          "label": "目的港UNLOCODE",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "USLGB"
+        },
+        {
+          "code": "sales_country_code",
+          "label": "销往国家ISO2",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "US"
+        },
+        {
+          "code": "cargo_owner_name",
+          "label": "货主名称",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "AOSOM LLC"
+        },
+        {
+          "code": "departure_at",
+          "label": "实际离港时间",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "2026-09-18T00:00:00+08:00"
+        },
+        {
+          "code": "departure_time_precision",
+          "label": "离港时间精度",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "date_only"
+        },
+        {
+          "code": "departure_source_timezone",
+          "label": "离港来源时区",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "Asia/Shanghai"
+        },
+        {
+          "code": "estimated_arrival_at",
+          "label": "预计到港时间",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "2026-10-21T08:00:00-07:00"
+        },
+        {
+          "code": "package_count",
+          "label": "总件数",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "504"
+        },
+        {
+          "code": "gross_weight_kg",
+          "label": "总毛重KG",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "7723.00"
+        },
+        {
+          "code": "volume_m3",
+          "label": "总体积M3",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "67.25"
+        }
+      ]
+    },
+    {
+      "code": "cargo_lines",
+      "name": "SKU装载明细",
+      "recordType": "cargo_line",
+      "required": false,
+      "fields": [
+        {
+          "code": "source_line_id",
+          "label": "来源行号",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "BOM-001"
+        },
+        {
+          "code": "shipment_number",
+          "label": "出运业务号",
+          "required": true,
+          "pendingWhenMissing": false,
+          "example": "SHP-20260918-001"
+        },
+        {
+          "code": "container_number",
+          "label": "柜号",
+          "required": true,
+          "pendingWhenMissing": false,
+          "example": "HMMU4956442"
+        },
+        {
+          "code": "replenishment_order_number",
+          "label": "备货单号",
+          "required": false,
+          "pendingWhenMissing": true,
+          "example": "26DSC01812"
+        },
+        {
+          "code": "product_number",
+          "label": "SKU货号",
+          "required": true,
+          "pendingWhenMissing": false,
+          "example": "820-357V70BK"
+        },
+        {
+          "code": "quantity",
+          "label": "实际装载数量",
+          "required": true,
+          "pendingWhenMissing": false,
+          "example": "40"
+        },
+        {
+          "code": "quantity_unit",
+          "label": "数量单位",
+          "required": true,
+          "pendingWhenMissing": false,
+          "example": "piece"
+        },
+        {
+          "code": "package_count",
+          "label": "箱数",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "40"
+        },
+        {
+          "code": "gross_weight_kg",
+          "label": "毛重KG",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "612.40"
+        },
+        {
+          "code": "volume_m3",
+          "label": "体积M3",
+          "required": false,
+          "pendingWhenMissing": false,
+          "example": "5.38"
+        }
+      ]
+    }
+  ],
+  "controlledValues": {
+    "departure_time_precision": ["date_only", "date_time"],
+    "quantity_unit": ["piece", "carton", "set", "pallet"],
+    "country_code": "ISO 3166-1 alpha-2",
+    "port_code": "UN/LOCODE"
+  }
+}

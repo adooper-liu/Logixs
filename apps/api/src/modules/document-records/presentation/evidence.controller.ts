@@ -47,6 +47,7 @@ export class EvidenceController {
         mappingVersion: body.mappingVersion,
         ingestionChannel: body.ingestionChannel,
         captureSource: body.captureSource,
+        sourceSummary: body.sourceSummary,
       }),
       decisionId: null,
     });

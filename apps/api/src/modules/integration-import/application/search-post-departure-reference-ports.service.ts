@@ -18,6 +18,17 @@ export class SearchPostDepartureReferencePortsService {
     cursor?: string;
   }): Promise<PostDepartureReferencePortSearchResultV1> {
     const result = await this.ports.search(input);
-    return { ...result, pageSize: input.pageSize };
+    return {
+      items: result.items.map(
+        ({ portId, unlocode, officialName, areaCode }) => ({
+          portId,
+          unlocode,
+          officialName,
+          areaCode,
+        }),
+      ),
+      nextCursor: result.nextCursor,
+      pageSize: input.pageSize,
+    };
   }
 }

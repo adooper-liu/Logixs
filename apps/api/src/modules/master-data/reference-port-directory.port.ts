@@ -7,6 +7,9 @@ export interface ReferencePortRecord {
   unlocode: string;
   officialName: string;
   areaCode: string;
+  countryNameChinese: string;
+  nameChinese: string | null;
+  nameChineseState: "confirmed" | "candidate" | "missing";
 }
 
 export interface ReferencePortSearchResult {

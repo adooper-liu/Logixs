@@ -291,6 +291,31 @@ kind: "new_independent_shipment"
 })
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalDestinationV1".
+ */
+export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalDecisionTypeV1".
+ */
+export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalDecisionCompletionV1".
+ */
+export type MarketSignalDecisionCompletionV1 = ("pending_completion" | "completed")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketOpportunityIntakeStateV1".
+ */
+export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" | "superseded")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalPendingFieldCodeV1".
+ */
+export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "dismiss_reason")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
  */
 export type OceanRouteSegmentInput = {
@@ -860,6 +885,9 @@ externalContainerId?: string
 containerNumber?: string
 containerTypeCode?: string
 sealNumber?: string
+declaredPackageCount?: DecimalString
+declaredGrossWeightKg?: DecimalString
+declaredVolumeM3?: DecimalString
 stuffingSnapshotRef?: Uuid
 billReferences: string[]
 upstreamReferences: UpstreamReferenceV1[]
@@ -875,7 +903,7 @@ cargoAllocations?: [CargoAllocationV1, ...(CargoAllocationV1)[]]
 export interface ShipmentHandoffCommandV2 {
 contractVersion: "shipment-handoff.v2"
 tenantId: TenantId
-sourceProfile: ("legacy_departed_file_v1" | "packing_platform_v1" | "internal_fulfillment_v1" | "api_v1")
+sourceProfile: ("legacy_departed_file_v1" | "standard_departed_import_v1" | "packing_platform_v1" | "internal_fulfillment_v1" | "api_v1")
 source: SourceReferenceV1
 shipment: ShipmentDescriptorV2
 billsOfLading: BillOfLadingV1[]
@@ -1049,6 +1077,26 @@ matchedBy: "container_active_link"
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "PostDeparturePreparedHandoffV1".
+ */
+export interface PostDeparturePreparedHandoffV1 {
+shipmentGrouping: PostDepartureShipmentGroupingV1
+sourceRecordId?: string
+bookingNumber?: string
+sealNumber?: string
+originPortCode?: string
+destinationPortCode?: string
+salesCountryCode?: string
+cargoOwnerReferenceId?: Uuid
+cargoOwnerName?: string
+estimatedArrivalAt?: DateTime
+departureProof?: DepartureProofV1
+cargoAllocations: CargoAllocationV1[]
+upstreamReferences: UpstreamReferenceV1[]
+billsOfLading: BillOfLadingV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "PostDepartureSourceCandidateV1".
  */
 export interface PostDepartureSourceCandidateV1 {
@@ -1071,6 +1119,7 @@ grossWeightKg?: DecimalString
 volumeM3?: DecimalString
 correction?: PostDepartureSourceCandidateCorrectionV1
 existingShipmentMatch?: PostDepartureExistingShipmentMatchV1
+preparedHandoff?: PostDeparturePreparedHandoffV1
 issues: ShipmentHandoffIssueV1[]
 }
 /**
@@ -1401,6 +1450,78 @@ traceId: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ManualDepartedShipmentContainerV1".
+ */
+export interface ManualDepartedShipmentContainerV1 {
+containerNumber: string
+containerTypeCode?: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ManualDepartedShipmentCreateCommandV1".
+ */
+export interface ManualDepartedShipmentCreateCommandV1 {
+contractVersion: "manual-departed-shipment-create.v1"
+requestId: Uuid
+shipmentNumber: string
+carrierCode?: string
+vesselName?: string
+voyageNumber?: string
+bookingNumber?: string
+originPortCode?: string
+destinationPortCode?: string
+cargoOwnerReferenceId?: Uuid
+estimatedArrivalAt?: DateTime
+/**
+ * @minItems 1
+ * @maxItems 50
+ */
+containers: [ManualDepartedShipmentContainerV1, ...(ManualDepartedShipmentContainerV1)[]]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentIntakeCargoOwnerV1".
+ */
+export interface ShipmentIntakeCargoOwnerV1 {
+id: Uuid
+stableCode: string
+legalName: string
+salesCountryCode: string
+salesCountryNameChinese: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentIntakeReferenceDataV1".
+ */
+export interface ShipmentIntakeReferenceDataV1 {
+contractVersion: "shipment-intake-reference-data.v1"
+cargoOwners: ShipmentIntakeCargoOwnerV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentIntakePortV1".
+ */
+export interface ShipmentIntakePortV1 {
+portId: Uuid
+unlocode: string
+officialName: string
+areaCode: string
+countryNameChinese: string
+nameChinese: (string | null)
+nameChineseState: ("confirmed" | "candidate" | "missing")
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentIntakePortSearchResultV1".
+ */
+export interface ShipmentIntakePortSearchResultV1 {
+contractVersion: "shipment-intake-port-search.v1"
+items: ShipmentIntakePortV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "InternalShipmentHandoffPendingItemV1".
  */
 export interface InternalShipmentHandoffPendingItemV1 {
@@ -1529,6 +1650,176 @@ conflict: number
 rejected: number
 failed: number
 }
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalV1".
+ */
+export interface MarketSignalV1 {
+signalId: Uuid
+title: string
+marketCode?: (string | null)
+channelCode?: (string | null)
+categoryRef?: (string | null)
+observedFactSummary?: (string | null)
+hypothesis?: (string | null)
+evidenceRefs: Uuid[]
+currentDestination: MarketSignalDestinationV1
+ownerTeamCode: string
+version: number
+pendingFieldCodes: MarketSignalPendingFieldCodeV1[]
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalCreateCommandV1".
+ */
+export interface MarketSignalCreateCommandV1 {
+contractVersion: "market-signal-create.v1"
+requestId: Uuid
+title: string
+marketCode?: string
+channelCode?: string
+categoryRef?: string
+observedFactSummary?: string
+hypothesis?: string
+/**
+ * @maxItems 100
+ */
+evidenceRefs?: Uuid[]
+ownerTeamCode?: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalDecisionCommandV1".
+ */
+export interface MarketSignalDecisionCommandV1 {
+contractVersion: "market-signal-decision.v1"
+expectedSignalVersion: number
+decisionType: MarketSignalDecisionTypeV1
+judgmentNote?: string
+opportunityStatement?: string
+nextReviewDate?: string
+watchFocus?: string
+dismissReason?: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalUpdateCommandV1".
+ */
+export interface MarketSignalUpdateCommandV1 {
+contractVersion: "market-signal-update.v1"
+expectedSignalVersion: number
+marketCode?: string
+channelCode?: string
+categoryRef?: string
+observedFactSummary?: string
+hypothesis?: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketOpportunityHandoffV1".
+ */
+export interface MarketOpportunityHandoffV1 {
+contractVersion: "market_opportunity_handoff.v1"
+handoffId: Uuid
+version: number
+signalId: Uuid
+signalVersion: number
+title: string
+recipientQueueCode: "product_selection"
+marketCode?: (string | null)
+channelCode?: (string | null)
+categoryRef?: (string | null)
+observedFactSummary?: (string | null)
+/**
+ * @maxItems 100
+ */
+evidenceRefs: Uuid[]
+hypothesis?: (string | null)
+opportunityStatement?: (string | null)
+judgmentNote?: (string | null)
+pendingFieldCodes: MarketSignalPendingFieldCodeV1[]
+createdBy: string
+createdAt: DateTime
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalDecisionResultV1".
+ */
+export interface MarketSignalDecisionResultV1 {
+contractVersion: "market-signal-decision-result.v1"
+status: ("saved" | "duplicate")
+signal: MarketSignalV1
+decisionId: Uuid
+decisionVersion: number
+completion: MarketSignalDecisionCompletionV1
+handoff: (MarketOpportunityHandoffV1 | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalPageV1".
+ */
+export interface MarketSignalPageV1 {
+contractVersion: "market-signal-page.v1"
+items: MarketSignalV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalEvidenceV1".
+ */
+export interface MarketSignalEvidenceV1 {
+evidenceId: Uuid
+sourceName: string
+summary: string
+contentRef: string
+recordedAt: DateTime
+verificationState: ("pending" | "verified" | "rejected" | "revoked")
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalDetailV1".
+ */
+export interface MarketSignalDetailV1 {
+signal: MarketSignalV1
+evidence: MarketSignalEvidenceV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductOpportunityV1".
+ */
+export interface ProductOpportunityV1 {
+handoff: MarketOpportunityHandoffV1
+intakeState: MarketOpportunityIntakeStateV1
+intakeVersion: number
+assignedActorId: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductOpportunityPageV1".
+ */
+export interface ProductOpportunityPageV1 {
+contractVersion: "product-opportunity-page.v1"
+items: ProductOpportunityV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductOpportunityIntakeCommandV1".
+ */
+export interface ProductOpportunityIntakeCommandV1 {
+contractVersion: "product-opportunity-intake.v1"
+action: ("claim" | "accept")
+expectedIntakeVersion: number
+idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -3124,6 +3415,13 @@ data: {
 correlationId: Uuid
 causationId?: Uuid
 traceId: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketOpportunity".
+ */
+export interface MarketOpportunity {
+
 }
 export interface EvidenceRecord {
 evidenceId: Uuid

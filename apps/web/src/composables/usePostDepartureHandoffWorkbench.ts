@@ -126,6 +126,7 @@ export function usePostDepartureHandoffWorkbench() {
     logistics: emptyUpload(),
     warehouse: emptyUpload(),
   });
+  const standardUpload = reactive<UploadState>(emptyUpload());
   const preflightResult =
     shallowRef<PostDepartureSourcePackagePreflightResultV1 | null>(null);
   const preflighting = shallowRef(false);
@@ -232,8 +233,10 @@ export function usePostDepartureHandoffWorkbench() {
       ...uploads[definition.kind],
     })),
   );
-  const sourceCount = computed(
-    () => SOURCE_DEFINITIONS.filter(({ kind }) => uploads[kind].batch).length,
+  const sourceCount = computed(() =>
+    standardUpload.batch
+      ? 1
+      : SOURCE_DEFINITIONS.filter(({ kind }) => uploads[kind].batch).length,
   );
   const canPreflight = computed(() => sourceCount.value > 0);
   const candidates = computed(() => preflightResult.value?.candidates ?? []);
@@ -267,6 +270,7 @@ export function usePostDepartureHandoffWorkbench() {
     kind: PostDepartureSourceKindV1,
     file: File,
   ): Promise<void> {
+    Object.assign(standardUpload, emptyUpload());
     const state = uploads[kind];
     state.fileName = file.name;
     state.uploading = true;
@@ -284,6 +288,34 @@ export function usePostDepartureHandoffWorkbench() {
       state.error = cause instanceof Error ? cause.message : "文件上传失败";
     } finally {
       state.uploading = false;
+    }
+  }
+
+  async function uploadStandard(file: File): Promise<void> {
+    standardUpload.fileName = file.name;
+    standardUpload.uploading = true;
+    standardUpload.error = "";
+    for (const kind of Object.keys(uploads) as PostDepartureSourceKindV1[]) {
+      Object.assign(uploads[kind], emptyUpload());
+    }
+    preflightResult.value = null;
+    preflightError.value = "";
+    selectedCandidateRef.value = "";
+    reviewSaveError.value = "";
+    reviewReceipt.value = null;
+    resetCorrectionState();
+    try {
+      standardUpload.batch = await uploadImportBatch(
+        file,
+        standardUpload.batch?.id,
+        "post_departure_standard_v1",
+      );
+    } catch (cause) {
+      standardUpload.batch = null;
+      standardUpload.error =
+        cause instanceof Error ? cause.message : "标准模板上传失败";
+    } finally {
+      standardUpload.uploading = false;
     }
   }
 
@@ -991,6 +1023,7 @@ export function usePostDepartureHandoffWorkbench() {
   }
 
   return {
+    standardUpload: readonly(standardUpload),
     sources,
     sourceCount,
     canPreflight,
@@ -1055,6 +1088,7 @@ export function usePostDepartureHandoffWorkbench() {
     pendingDocumentSaveNotice: readonly(pendingDocumentSaveNotice),
     pendingDocumentSaveResult: readonly(pendingDocumentSaveResult),
     uploadSource,
+    uploadStandard,
     runPreflight,
     selectCandidate,
     saveForReview,
@@ -1077,6 +1111,9 @@ export function usePostDepartureHandoffWorkbench() {
   function selectedSources(): Parameters<
     typeof preflightPostDepartureSourcePackage
   >[0] {
+    if (standardUpload.batch) {
+      return [{ kind: "container", batchId: standardUpload.batch.id }];
+    }
     return SOURCE_DEFINITIONS.flatMap(({ kind }) => {
       const batch = uploads[kind].batch;
       return batch ? [{ kind, batchId: batch.id }] : [];
@@ -1089,7 +1126,9 @@ function emptyUpload(): UploadState {
 }
 
 function candidateGroupKey(candidate: PostDepartureSourceCandidateV1): string {
-  const grouping = candidate.correction?.shipmentGrouping;
+  const grouping =
+    candidate.preparedHandoff?.shipmentGrouping ??
+    candidate.correction?.shipmentGrouping;
   if (grouping?.kind === "authorized_new_shipment") {
     return `authorized:${grouping.shipmentNumber}`;
   }

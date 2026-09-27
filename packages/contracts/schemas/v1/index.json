@@ -31,7 +31,8 @@
     "GC-006": ["evidence-record.schema.json"],
     "GC-007": [
       "cross-module-reference.schema.json",
-      "shipment-handoff.schema.json"
+      "shipment-handoff.schema.json",
+      "market-opportunity.schema.json"
     ],
     "GC-008": ["action-command.schema.json"],
     "GC-009": ["client-operation.schema.json"],
@@ -50,6 +51,9 @@
     },
     "shipmentHandoff": {
       "$ref": "shipment-handoff.schema.json"
+    },
+    "marketOpportunity": {
+      "$ref": "market-opportunity.schema.json"
     },
     "postDepartureLifecycle": {
       "$ref": "post-departure-lifecycle.schema.json"

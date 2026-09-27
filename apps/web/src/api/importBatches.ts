@@ -60,6 +60,7 @@ const DEV_OPERATOR_ID = "dev-operator";
 export async function uploadImportBatch(
   file: File,
   replacesBatchId?: string,
+  parserProfile?: "post_departure_standard_v1",
 ): Promise<ImportBatchDto> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
@@ -72,6 +73,7 @@ export async function uploadImportBatch(
   const formData = new FormData();
   formData.append("file", file);
   if (replacesBatchId) formData.append("replacesBatchId", replacesBatchId);
+  if (parserProfile) formData.append("parserProfile", parserProfile);
   const response = await fetch("/api/import-batches", {
     method: "POST",
     headers: {

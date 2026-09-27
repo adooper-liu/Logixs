@@ -6,6 +6,184 @@ const tenantId = "demo-real-sample-20260921";
 const batchId = "70000000-0000-4000-8000-000000000002";
 
 describe("AcceptPostDepartureSourceCandidateService", () => {
+  it("maps prepared standard facts into the V2 standard source Handoff", async () => {
+    const prepared = {
+      shipmentGrouping: {
+        kind: "authorized_new_shipment" as const,
+        shipmentNumber: "SHP-20260918-001",
+      },
+      sourceRecordId: "ERP-20260918-001",
+      bookingNumber: "SQSJ26090200041842",
+      sealNumber: "26H0407525",
+      originPortCode: "CNNGB",
+      destinationPortCode: "CAVAN",
+      salesCountryCode: "CA",
+      cargoOwnerReferenceId: "e47a5b2c-e4c0-5f25-a5eb-f756f1fc3086",
+      cargoOwnerName: "AOSOM CANADA INC.",
+      estimatedArrivalAt: "2026-10-08T07:00:00.000Z",
+      departureProof: {
+        kind: "actual_departure_time" as const,
+        occurredAt: "2026-09-17T16:00:00.000Z",
+        sourceTimezone: "Asia/Shanghai",
+        evidenceRef: batchId,
+      },
+      cargoAllocations: [
+        {
+          sourceLineId: "BOM-001",
+          productNumber: "331-015",
+          quantity: "118",
+          quantityUnit: "piece" as const,
+          packageCount: "118",
+          packageUnit: "carton",
+          grossWeight: "1404.2",
+          weightUnit: "kg" as const,
+          volume: "19.63",
+          volumeUnit: "m3" as const,
+        },
+        {
+          sourceLineId: "BOM-002",
+          productNumber: "842-327V80",
+          quantity: "40",
+          quantityUnit: "piece" as const,
+        },
+      ],
+      upstreamReferences: [
+        {
+          referenceType: "stocking_order" as const,
+          sourceSystem: "post_departure_source_package",
+          sourceRecordId: "26DSC01812",
+        },
+        {
+          referenceType: "stocking_order" as const,
+          sourceSystem: "post_departure_source_package",
+          sourceRecordId: "26DSC01812",
+          sourceLineId: "BOM-001",
+        },
+        {
+          referenceType: "stocking_order" as const,
+          sourceSystem: "post_departure_source_package",
+          sourceRecordId: "26DSC01813",
+          sourceLineId: "BOM-002",
+        },
+      ],
+      billsOfLading: [
+        {
+          referenceId: "mbl:NBOZ9FF56400",
+          documentType: "mbl" as const,
+          documentNumber: "NBOZ9FF56400",
+          version: 1,
+        },
+      ],
+    };
+    const preflightPackage = {
+      execute: vi.fn().mockResolvedValue({
+        packageId,
+        sources: [],
+        candidates: [
+          {
+            candidateRef: "SHP-20260918-001:HMMU4956442",
+            decision: "ready",
+            containerNumber: "HMMU4956442",
+            containerTypeCode: "40HQ",
+            packageCount: "504",
+            grossWeightKg: "7723",
+            volumeM3: "67.25",
+            replenishmentOrderNumbers: ["26DSC01812"],
+            billNumbers: ["NBOZ9FF56400"],
+            carrierCode: "HMM",
+            vesselName: "YM MASCULINITY",
+            voyageNumber: "108E",
+            preparedHandoff: prepared,
+            issues: [],
+          },
+        ],
+        totals: {},
+        traceId: "trace-preflight",
+      }),
+    };
+    const repository = {
+      findById: vi.fn().mockResolvedValue({
+        batch: {
+          id: batchId,
+          parserVersion: "post-departure-standard-v1",
+          createdAt: new Date("2026-09-25T00:00:00Z"),
+        },
+      }),
+    };
+    const acceptHandoff = {
+      accept: vi.fn().mockResolvedValue({
+        shipmentId: "70000000-0000-4000-8000-000000000003",
+        issues: [],
+      }),
+    };
+    const service = new AcceptPostDepartureSourceCandidateService(
+      preflightPackage as never,
+      repository as never,
+      acceptHandoff as never,
+    );
+
+    await service.execute(
+      packageId,
+      "SHP-20260918-001:HMMU4956442",
+      {
+        contractVersion: "post-departure-source-candidate-accept.v1",
+        packageId,
+        sources: [{ kind: "container", batchId }],
+        candidateRef: "SHP-20260918-001:HMMU4956442",
+        idempotencyKey: "accept:standard:1",
+      },
+      { tenantId, actorId: "70000000-0000-4000-8000-000000000009" },
+    );
+
+    expect(acceptHandoff.accept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceProfile: "standard_departed_import_v1",
+        source: expect.objectContaining({
+          sourceBatchId: batchId,
+          mappingVersion: "post_departure_standard_import.v1",
+        }),
+        shipment: expect.objectContaining({
+          shipmentNumber: "SHP-20260918-001",
+          externalShipmentId: "SHP-20260918-001",
+          bookingNumber: "SQSJ26090200041842",
+          originPortCode: "CNNGB",
+          destinationPortCode: "CAVAN",
+          salesCountryCode: "CA",
+          cargoOwnerName: "AOSOM CANADA INC.",
+          departureProof: prepared.departureProof,
+        }),
+        billsOfLading: prepared.billsOfLading,
+        containers: [
+          expect.objectContaining({
+            externalContainerId: "ERP-20260918-001",
+            containerNumber: "HMMU4956442",
+            sealNumber: "26H0407525",
+            declaredPackageCount: "504",
+            declaredGrossWeightKg: "7723",
+            declaredVolumeM3: "67.25",
+            billReferences: ["mbl:NBOZ9FF56400"],
+            upstreamReferences: prepared.upstreamReferences,
+            cargoAllocations: [
+              expect.objectContaining({
+                productNumber: "331-015",
+                quantity: "118",
+                packageCount: "118",
+                grossWeight: "1404.2",
+                volume: "19.63",
+              }),
+              expect.objectContaining({
+                sourceLineId: "BOM-002",
+                productNumber: "842-327V80",
+                quantity: "40",
+              }),
+            ],
+          }),
+        ],
+      }),
+      expect.objectContaining({ tenantId }),
+    );
+  });
+
   it("creates a v2 handoff without inventing missing Shipment facts", async () => {
     const preflightPackage = {
       execute: vi.fn().mockResolvedValue({

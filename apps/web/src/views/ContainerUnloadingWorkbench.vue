@@ -29,12 +29,6 @@ const taskOperation = useStuffingTaskOperation(
 );
 
 onMounted(() => void workbench.loadQueue());
-function selectContainer(value: string) {
-  void router.replace({
-    path: "/workspaces/unloading",
-    query: value ? { containerId: value } : {},
-  });
-}
 function selectTask(item: UnloadingQueueItem) {
   if (!item.task.containerId) return;
   void router.replace({
@@ -60,16 +54,12 @@ function submit(draft: UnloadingReportDraft) {
     summary="按柜记录开始、部分卸货和实际卸完，核对实收差异并提交仓方完成事实复核。"
     workspace-label="仓库收货"
     node-scope-label="卸柜"
-    :containers="workbench.containers.value"
-    :selected-container-id="containerId"
     :selected-container="workbench.selectedContainer.value"
     :nodes="workbench.nodes.value"
-    :container-list-loading="workbench.queueLoading.value"
     :selection-loading="workbench.loading.value"
     :container-list-error="workbench.error.value"
     :selection-error="workbench.error.value"
     :warnings="workbench.warnings.value"
-    @select-container="selectContainer"
   >
     <template #queue
       ><UnloadingWorkQueue

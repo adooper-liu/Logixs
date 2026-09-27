@@ -919,6 +919,32 @@
         "asOf": "2026-09-24T00:05:00Z",
         "projectionVersion": 1
       }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "market opportunity handoff preserves ordinary gaps",
+      "schemaRef": "market-opportunity.schema.json#/$defs/MarketOpportunityHandoffV1",
+      "data": {
+        "contractVersion": "market_opportunity_handoff.v1",
+        "handoffId": "77000000-0000-4000-8000-000000000001",
+        "version": 1,
+        "signalId": "77000000-0000-4000-8000-000000000002",
+        "signalVersion": 2,
+        "title": "英国站户外儿童用品季节需求提前",
+        "recipientQueueCode": "product_selection",
+        "marketCode": "GB",
+        "channelCode": "AMAZON_UK",
+        "categoryRef": "OUTDOOR_PLAY",
+        "observedFactSummary": "核心搜索词较去年同期提前两周进入增长区间。",
+        "evidenceRefs": [],
+        "hypothesis": "若季节窗口继续提前，选品和供应准备需要同步前移。",
+        "opportunityStatement": null,
+        "judgmentNote": null,
+        "pendingFieldCodes": ["evidence_refs", "opportunity_statement"],
+        "createdBy": "market-owner-001",
+        "createdAt": "2026-09-25T10:00:00Z",
+        "idempotencyKey": "market-handoff-001"
+      }
     }
   ]
 }

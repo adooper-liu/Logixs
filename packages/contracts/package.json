@@ -18,6 +18,9 @@
       "post-departure-fields.json": [
         "post-departure-fields-json.d.ts"
       ],
+      "post-departure-standard-import.json": [
+        "post-departure-standard-import-json.d.ts"
+      ],
       "cargo-owners.json": [
         "catalogs/v1/cargo-owners.json"
       ],
@@ -29,6 +32,9 @@
       ],
       "schemas/v1/shipment-handoff.schema.json": [
         "schemas/v1/shipment-handoff.schema.json"
+      ],
+      "schemas/v1/market-opportunity.schema.json": [
+        "schemas/v1/market-opportunity.schema.json"
       ]
     }
   },
@@ -52,6 +58,10 @@
       "types": "./post-departure-fields-json.d.ts",
       "default": "./catalogs/v1/post-departure-fields.json"
     },
+    "./post-departure-standard-import.json": {
+      "types": "./post-departure-standard-import-json.d.ts",
+      "default": "./catalogs/v1/post-departure-standard-import.json"
+    },
     "./cargo-owners.json": {
       "default": "./catalogs/v1/cargo-owners.json"
     },
@@ -63,6 +73,9 @@
     },
     "./schemas/v1/shipment-handoff.schema.json": {
       "default": "./schemas/v1/shipment-handoff.schema.json"
+    },
+    "./schemas/v1/market-opportunity.schema.json": {
+      "default": "./schemas/v1/market-opportunity.schema.json"
     },
     "./lifecycle-date-fact-inbox": {
       "types": "./lifecycle-date-fact-inbox.d.ts",
