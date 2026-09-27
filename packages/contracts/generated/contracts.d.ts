@@ -340,6 +340,25 @@ export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "r
  */
 export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "defer_reason" | "reject_reason" | "return_reason")
 /**
+ * NPI 执行阶段。用行业通用的四段名，代工厂说的就是这四个词，运营与供应商之间不用翻译。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "NpiStageV1".
+ */
+export type NpiStageV1 = ("evt" | "dvt" | "pvt" | "mp")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductDefinitionReleaseStateV1".
+ */
+export type ProductDefinitionReleaseStateV1 = ("in_progress" | "released" | "deferred" | "terminated")
+/**
+ * 按当前阶段**现算**的缺口码，不存成库里的人工状态。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductDefinitionPendingFieldCodeV1".
+ */
+export type ProductDefinitionPendingFieldCodeV1 = ("specification" | "compliance_assumptions" | "evt_conclusion" | "dvt_conclusion" | "pvt_conclusion")
+/**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
  */
@@ -2004,6 +2023,83 @@ nextCursor: (string | null)
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "NpiStageOutcomeV1".
+ */
+export interface NpiStageOutcomeV1 {
+stage: NpiStageV1
+conclusion: string
+evidenceRefs: Uuid[]
+recordedBy: string
+recordedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductDefinitionV1".
+ */
+export interface ProductDefinitionV1 {
+contractVersion: "product-definition.v1"
+definitionId: Uuid
+initiativeHandoffId: Uuid
+productOwnerActorId: string
+npiStage: NpiStageV1
+version: number
+releaseState: ProductDefinitionReleaseStateV1
+specification: string
+complianceAssumptions: string[]
+stageOutcomes: NpiStageOutcomeV1[]
+pendingFieldCodes: ProductDefinitionPendingFieldCodeV1[]
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductDefinitionWriteCommandV1".
+ */
+export interface ProductDefinitionWriteCommandV1 {
+contractVersion: "product-definition-write.v1"
+expectedDefinitionVersion: number
+specification: string
+complianceAssumptions: string[]
+conclusion?: {
+text: string
+evidenceRefs: Uuid[]
+}
+advanceStage: boolean
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductDefinitionReleaseCommandV1".
+ */
+export interface ProductDefinitionReleaseCommandV1 {
+contractVersion: "product-definition-release.v1"
+expectedDefinitionVersion: number
+decision: ("release" | "defer" | "terminate")
+reason?: string
+idempotencyKey: string
+}
+/**
+ * 交给主数据侧的可发布产品设计。不可变；同一产品定义再次发布追加版本。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductDesignReleaseHandoffV1".
+ */
+export interface ProductDesignReleaseHandoffV1 {
+contractVersion: "released_product_design.v1"
+handoffId: Uuid
+version: number
+definitionId: Uuid
+initiativeHandoffId: Uuid
+npiStage: NpiStageV1
+specification: string
+complianceAssumptions: string[]
+stageOutcomes: NpiStageOutcomeV1[]
+releasedBy: string
+releasedAt: DateTime
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "StartPostDepartureLifecycleCommandV2".
  */
 export interface StartPostDepartureLifecycleCommandV2 {
@@ -3648,6 +3744,13 @@ export interface MarketOpportunity {
  * via the `definition` "ProductInitiative".
  */
 export interface ProductInitiative {
+
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductDefinition".
+ */
+export interface ProductDefinition {
 
 }
 export interface EvidenceRecord {

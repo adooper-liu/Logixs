@@ -1978,6 +1978,7 @@ model ProductInitiativeHandoff {
   payloadHash        String            @map("payload_hash")
   createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
   claims             ProductInitiativeClaim[]
+  productDefinitions ProductDefinition[]
 
   @@unique([id, tenantId], map: "product_initiative_handoff_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "product_initiative_handoff_idempotency_key")
@@ -2004,6 +2005,58 @@ model ProductInitiativeClaim {
   @@unique([tenantId, idempotencyKey], map: "product_initiative_claim_idempotency_key")
   @@unique([handoffId, claimVersion], map: "product_initiative_claim_version_key")
   @@map("product_initiative_claim")
+}
+
+// 产品定义（product-selection 拥有）：把已领的立项推进到可发布，交给主数据侧建档。
+// 与立项同构 —— 一票一行、version 递增的当前态；发布时另写不可变交接快照。
+// 不存缺口码：缺口按当前阶段现算，存成状态会阶段动了、缺口还停在原地。
+model ProductDefinition {
+  id                    String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId              String                   @map("tenant_id")
+  initiativeHandoffId   String                   @map("initiative_handoff_id") @db.Uuid
+  initiativeHandoff     ProductInitiativeHandoff @relation(fields: [initiativeHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productOwnerActorId   String                   @map("product_owner_actor_id")
+  npiStage              String                   @map("npi_stage")
+  version               Int                      @map("version")
+  releaseState          String                   @map("release_state")
+  specification         String                   @map("specification")
+  complianceAssumptions String[]                 @map("compliance_assumptions")
+  stageOutcomes         Json                     @map("stage_outcomes")
+  actedBy               String                   @map("acted_by")
+  idempotencyKey        String                   @map("idempotency_key")
+  payloadHash           String                   @map("payload_hash")
+  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  releases              ProductDefinitionRelease[]
+
+  @@unique([id, tenantId], map: "product_definition_id_tenant_key")
+  @@unique([tenantId, initiativeHandoffId], map: "product_definition_initiative_key")
+  @@unique([tenantId, idempotencyKey], map: "product_definition_idempotency_key")
+  @@index([tenantId, releaseState, updatedAt, id], map: "product_definition_queue_idx")
+  @@map("product_definition")
+}
+
+// 发布时冻结的不可变交接快照。同一产品定义再次发布追加版本，旧版不覆盖。
+model ProductDefinitionRelease {
+  id                    String            @id @default(uuid()) @map("id") @db.Uuid
+  tenantId              String            @map("tenant_id")
+  definitionId          String            @map("definition_id") @db.Uuid
+  definition            ProductDefinition @relation(fields: [definitionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version               Int               @map("version")
+  npiStage              String            @map("npi_stage")
+  specification         String            @map("specification")
+  complianceAssumptions String[]          @map("compliance_assumptions")
+  stageOutcomes         Json              @map("stage_outcomes")
+  releasedBy            String            @map("released_by")
+  releasedAt            DateTime          @map("released_at") @db.Timestamptz
+  idempotencyKey        String            @map("idempotency_key")
+  payloadHash           String            @map("payload_hash")
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "product_definition_release_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "product_definition_release_idempotency_key")
+  @@unique([definitionId, version], map: "product_definition_release_version_key")
+  @@map("product_definition_release")
 }
 
 model OutboxMessage {
