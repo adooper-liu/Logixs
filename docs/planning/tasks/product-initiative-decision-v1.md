@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/product-initiative-decision-v1
-verification: 本地验证（2026-09-27，**编码中，不得标 done**）：契约 20 schemas 校验通过、生成漂移同步；领域层 15 项单测（真 TDD，先看它失败）；真实 PostgreSQL 集成 7 项（每次独立 schema、从零迁移建库）；应用服务 7 项（经变异自检）；Web 120 文件 / 387 项；API 240 文件 / 1132 项；worker 与 scripts 通过；typecheck 3/3；lint 干净；repo:check 通过。本机 `format:check` 仍受 `apps/ai-service/.pytest_cache` 环境阻塞，改动文件逐个 `prettier --check` 干净。**尚未做**：前端组件与工作台接线、三视口 E2E、迁移的空库/旧版本升级专项验证。
+verification: 本地验证（2026-09-27，**编码中，不得标 done**）：契约 20 schemas 校验通过、生成漂移同步；领域层 15 项单测（真 TDD，先看它失败）；真实 PostgreSQL 集成 7 项（每次独立 schema、从零迁移建库）；应用服务 7 项（经变异自检）；API 240 文件 / 1132 项；worker 与 scripts 通过。**本轮（前端接线）**：Web 122 文件 / 413 项；Web E2E 98 passed / 7 skipped，三视口覆盖「交接→领取→接受→立项」整条路径；新增门槛与结论接线两处变异自检（均先失败再还原）；repo:check、web typecheck、lint、build 通过。本机 `format:check` 仍受 `apps/ai-service/.pytest_cache` 环境阻塞（EPERM scandir，非格式债），改动文件逐个 `prettier --check` 干净。**尚未做**：迁移的空库/旧版本升级专项验证。
 ---
 
 # 任务：选品立项判断 V1
@@ -92,20 +92,24 @@ verification: 本地验证（2026-09-27，**编码中，不得标 done**）：�
 
 ## Review notes
 
-**交接时状态（2026-09-27）**：后端整条链路完整可调，前端逻辑层完成并测试过，**界面上还看不到 —— 岗位今天仍完不成立项**。
+**交接时状态（2026-09-27 第二次）**：前端已接线，**选品负责人今天能在界面上把一票已接受机会做成立项结论**（或暂缓／不立项／退回），也能就地补评审要点与证据。仍未做：迁移的空库/旧版本升级专项验证。
 
-**已完成**：契约（含 `ProductInitiativeDetailV1` / `ProductInitiativeEvidenceCandidateV1`）→ 领域层 → 加法迁移 → 仓储 → 应用服务 → 接口（`GET /api/product-initiatives/:handoffId`、`POST /api/product-initiatives/:handoffId/decisions`）→ Web API 客户端与 `useProductInitiativeDecision`。
+**已完成**：契约（含 `ProductInitiativeDetailV1` / `ProductInitiativeEvidenceCandidateV1`）→ 领域层 → 加法迁移 → 仓储 → 应用服务 → 接口（`GET /api/product-initiatives/:handoffId`、`POST /api/product-initiatives/:handoffId/decisions`）→ Web API 客户端与 `useProductInitiativeDecision` → `ProductInitiativeReviewPanel` / `ProductInitiativeOutcomePanel` → 接进 `ProductSelectionWorkbench.vue` → 三视口 E2E。
 
-**剩余工作（边界清楚，可直接接续）**：
+**剩余工作**：
 
-1. 两个 Vue 组件：评审要点面板（四项，含"添加证据"通用入口与勾选引用已登记证据）、四去向面板（按去向切换输入与主动作）。
-2. 接进 `ProductSelectionWorkbench.vue`，让选品负责人能真的完成立项。
-3. 三视口 E2E。
-4. 迁移的空库升级与旧版本升级专项验证。
+1. 迁移的空库升级与旧版本升级专项验证（brief 验收最后一条）。
 
-**测试强度如实记账**：领域层是真 TDD（先看 15 项失败）；迁移约束用真实 PostgreSQL 逐条验证。**仓储、应用服务、接口、composable 四层是事后补测**，不是 TDD。其中应用服务补测后经变异检验发现首次**没有牙**（夹具里服务端版本与客户端自称版本相同，改坏实现也照样通过），修正夹具后才捕获。其余三层未逐个做变异自检，接续者若要提高把握可补做。
+**测试强度如实记账（第二轮）**：
+
+- 领域层是真 TDD（先看 15 项失败）；迁移约束用真实 PostgreSQL 逐条验证。
+- 仓储、应用服务、接口三层是**事后补测**，不是 TDD；应用服务补测后经变异检验发现首次**没有牙**并已修正，其余两层未逐个做变异自检。
+- 两个新面板与工作台接线：新测试 24 项（面板 8+8、composable 1、工作台 7）**都是先写、先看失败、再实现**；composable 的换机会重载那条是先说"先看失败"，为确认它有牙，把实现回退成 `onMounted` 重跑并看到失败，再改回。
+- **不是 TDD 的两处**：`outcomeHintFor` 改成接收去向与原因后补的"非立项去向"用例、以及工作台"接受后状态"那条改写后的断言 —— 都是随行为变更而改写，**未先看它失败**。前者断言的是同输入同输出加上新分支，后者是旧文案随主动作更换而失效，不是回归修复。
+- E2E 经**两处变异自检**：把立项门槛改成恒不拦截 → 在 `toBeDisabled()` 处失败；把评审要点结论的接线摘掉 → 在 `toBeEnabled()` 处失败。E2E 是三视口跑同一份用例，所以三档宽度都覆盖同一条路径。
 
 **未决/偏离（详见下方"决策与待确认"）**：立项时只记操作人为责任人、产品负责人要到 NPI 领取才产生；旧决策重放以版本冲突拒绝而非幂等回放；「立项编号」在 v1 就是系统 UUID。
+**本轮新增偏离**：已接受后，右栏主动作由「领取／接受」面板换成立项结论面板（原「下一步围绕目标用户、收益与风险」提示随之消失）；「NPI 待办队列能查到该立项」这条验收**不由本片 E2E 覆盖**（brief 边界明写不做 NPI 工作台，web 侧没有可查的 NPI 队列），其可测面在服务端。
 
 ## 进度 log
 
@@ -120,3 +124,9 @@ verification: 本地验证（2026-09-27，**编码中，不得标 done**）：�
 | 2026-09-27 | coding | Claude | ebb9281 | 应用服务 + 接口 + 模块装配；补测经变异检验发现首次无牙并修正                                                  |
 | 2026-09-27 | coding | Claude | c4a628b | Web API 客户端与 `useProductInitiativeDecision`；测试抓到 outcomeHint 快照缺陷                                |
 | 2026-09-27 | pause  | Claude | —       | 干净交接：后端完整、前端逻辑层完成；剩余组件、接线、E2E 与迁移升级验证                                        |
+| 2026-09-27 | coding | Claude | 60e1349 | `ProductInitiativeReviewPanel`：四项要点事实只读、结论可写、就地登记并引用证据；缺口规则收敛为唯一实现        |
+| 2026-09-27 | coding | Claude | b00b3d6 | `ProductInitiativeOutcomePanel`：四去向与各自输入；`outcomeHintFor` 改为随去向与原因变化，不再对暂缓误报缺口  |
+| 2026-09-27 | coding | Claude | 06d28b9 | 接进 `ProductSelectionWorkbench`；载入改为按 handoffId 触发，修掉换机会沿用上一条草稿与版本的缺陷             |
+| 2026-09-27 | coding | Claude | cb38ce1 | 三视口 E2E 打通「交接→领取→接受→立项」；两处变异自检确认用例有牙                                              |
+| 2026-09-27 | coding | Claude | 492d316 | 面板改用间距令牌（`repo:check` 拒绝裸值）                                                                     |
+| 2026-09-27 | pause  | Claude | —       | 再次干净交接：**岗位今天能在界面上完成立项**；仅剩迁移的空库/旧版本升级专项验证                               |
