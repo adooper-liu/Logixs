@@ -6,6 +6,9 @@ import type {
   MarketSignalPageV1,
   MarketSignalUpdateCommandV1,
   MarketSignalV1,
+  ProductDefinitionReleaseCommandV1,
+  ProductDefinitionV1,
+  ProductDefinitionWriteCommandV1,
   ProductInitiativeClaimCommandV1,
   ProductInitiativeNpiQueueEntryV1,
   ProductInitiativeNpiQueuePageV1,
@@ -190,6 +193,46 @@ export async function claimProductInitiative(
   return requestJson<ProductInitiativeNpiQueueEntryV1>(
     `/api/product-initiative-npi/${encodeURIComponent(handoffId)}/claim`,
     { method: "POST", body: command, fallback: "暂时无法领取该立项" },
+  );
+}
+
+/**
+ * 一票的产品定义。**还没推进时服务端返回 `null`** —— 界面据此显示"还没登记规格"，
+ * 而不是显示一条空定义（那会让人以为已经存过什么）。
+ */
+export async function getProductDefinition(
+  initiativeHandoffId: string,
+): Promise<ProductDefinitionV1 | null> {
+  return requestJson<ProductDefinitionV1 | null>(
+    `/api/product-definitions/${encodeURIComponent(initiativeHandoffId)}`,
+    { fallback: "暂时无法加载产品定义" },
+  );
+}
+
+export async function writeProductDefinition(
+  initiativeHandoffId: string,
+  command: ProductDefinitionWriteCommandV1,
+): Promise<ProductDefinitionV1> {
+  return requestJson<ProductDefinitionV1>(
+    `/api/product-definitions/${encodeURIComponent(initiativeHandoffId)}/writes`,
+    { method: "POST", body: command, fallback: "暂时无法保存产品定义" },
+  );
+}
+
+export async function releaseProductDefinition(
+  initiativeHandoffId: string,
+  command: ProductDefinitionReleaseCommandV1,
+): Promise<ProductDefinitionV1> {
+  return requestJson<ProductDefinitionV1>(
+    `/api/product-definitions/${encodeURIComponent(initiativeHandoffId)}/releases`,
+    {
+      method: "POST",
+      body: command,
+      fallback:
+        command.decision === "release"
+          ? "暂时无法发布"
+          : "暂时无法保存这个决定",
+    },
   );
 }
 

@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/product-definition.schema.json",
+  "title": "Product Definition Contracts V1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "NpiStageV1": {
+      "description": "NPI 执行阶段。用行业通用的四段名，代工厂说的就是这四个词，运营与供应商之间不用翻译。",
+      "enum": ["evt", "dvt", "pvt", "mp"]
+    },
+    "ProductDefinitionReleaseStateV1": {
+      "enum": ["in_progress", "released", "deferred", "terminated"]
+    },
+    "NpiStageOutcomeV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "conclusion",
+        "evidenceRefs",
+        "recordedBy",
+        "recordedAt"
+      ],
+      "properties": {
+        "stage": { "$ref": "#/$defs/NpiStageV1" },
+        "conclusion": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "recordedBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductDefinitionPendingFieldCodeV1": {
+      "description": "按当前阶段**现算**的缺口码，不存成库里的人工状态。",
+      "enum": [
+        "specification",
+        "compliance_assumptions",
+        "evt_conclusion",
+        "dvt_conclusion",
+        "pvt_conclusion"
+      ]
+    },
+    "ProductDefinitionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "definitionId",
+        "initiativeHandoffId",
+        "productOwnerActorId",
+        "npiStage",
+        "version",
+        "releaseState",
+        "specification",
+        "complianceAssumptions",
+        "stageOutcomes",
+        "pendingFieldCodes",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-definition.v1" },
+        "definitionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "initiativeHandoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "productOwnerActorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "npiStage": { "$ref": "#/$defs/NpiStageV1" },
+        "version": { "type": "integer", "minimum": 1 },
+        "releaseState": { "$ref": "#/$defs/ProductDefinitionReleaseStateV1" },
+        "specification": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "complianceAssumptions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "stageOutcomes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NpiStageOutcomeV1" }
+        },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductDefinitionPendingFieldCodeV1" }
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductDefinitionWriteCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedDefinitionVersion",
+        "specification",
+        "complianceAssumptions",
+        "advanceStage",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-definition-write.v1" },
+        "expectedDefinitionVersion": { "type": "integer", "minimum": 0 },
+        "specification": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "complianceAssumptions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "conclusion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "evidenceRefs"],
+          "properties": {
+            "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+            "evidenceRefs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+            }
+          }
+        },
+        "advanceStage": { "type": "boolean" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ProductDefinitionReleaseCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedDefinitionVersion",
+        "decision",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-definition-release.v1" },
+        "expectedDefinitionVersion": { "type": "integer", "minimum": 0 },
+        "decision": { "enum": ["release", "defer", "terminate"] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ProductDesignReleaseHandoffV1": {
+      "description": "交给主数据侧的可发布产品设计。不可变；同一产品定义再次发布追加版本。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "handoffId",
+        "version",
+        "definitionId",
+        "initiativeHandoffId",
+        "npiStage",
+        "specification",
+        "complianceAssumptions",
+        "stageOutcomes",
+        "releasedBy",
+        "releasedAt",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "released_product_design.v1" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "definitionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "initiativeHandoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "npiStage": { "$ref": "#/$defs/NpiStageV1" },
+        "specification": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "complianceAssumptions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "stageOutcomes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NpiStageOutcomeV1" }
+        },
+        "releasedBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "releasedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    }
+  }
+}

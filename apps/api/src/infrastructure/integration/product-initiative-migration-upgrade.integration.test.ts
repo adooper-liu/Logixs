@@ -23,6 +23,7 @@ import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 
 const INITIATIVE_MIGRATION = "20260927120000_add_product_initiative";
 const CLAIM_MIGRATION = "20260927180000_add_product_initiative_claim";
+const DEFINITION_MIGRATION = "20260927190000_add_product_definition";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -58,6 +59,12 @@ beforeAll(async () => {
   // **更晚的迁移必须一起回退**：`product_initiative_claim` 外键依赖这两张表，
   // 只删表会因依赖删不掉；只删表不抹记账则会留下"记账说已应用、表却不在"的半状态。
   await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."product_definition_release"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."product_definition"`,
+  );
+  await prisma.$executeRawUnsafe(
     `DROP TABLE IF EXISTS "${schemaName}"."product_initiative_claim"`,
   );
   await prisma.$executeRawUnsafe(
@@ -68,7 +75,7 @@ beforeAll(async () => {
   );
   await prisma.$executeRawUnsafe(
     `DELETE FROM "${schemaName}"."_prisma_migrations" WHERE "migration_name" = ANY($1)`,
-    [INITIATIVE_MIGRATION, CLAIM_MIGRATION],
+    [INITIATIVE_MIGRATION, CLAIM_MIGRATION, DEFINITION_MIGRATION],
   );
 
   deploy();
