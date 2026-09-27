@@ -152,3 +152,23 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 | 2026-09-27 | design | Claude | —      | 四条技术未知项全部查完：异常可到 Shipment 级但缺索引且部分案件无归属；缺口本已按 Shipment 现算，但 `deadline`/`responsibility`/`candidateValues` 是硬编码占位；三类截止成本差别很大（免用箱期最贵） |
 | 2026-09-27 | coding | Claude | —      | 负责人定「先用前两类截止」；第一片落地纯业务规则 `shipment-risk.ts`（最近截止、逾期、理由排序、无截止不得抢先），8 项测试 + 变异自检                                                                |
 | 2026-09-27 | coding | Claude | —      | 契约加法（`ShipmentRiskQueuePageV1` 等 6 个 def，排序键不含免用箱期）；分页游标 `shipment-risk-page.ts`（游标记住排序键，14 项测试 + 变异自检）                                                     |
+
+## 下一片的范围（本次试行摸清的，务必按此立案）
+
+第三片（服务 + 仓储）**必须一起落**。试行时先加端口方法、后补实现，编译器立刻点出 12 处连带欠账，说明这两者拆不开：
+
+1. **`PrismaShipmentReadRepository` 必须同时实现 `listRiskQueue`**，否则整个类不满足端口。
+2. **端口加一个方法，连带 6 处要改**：Prisma 实现、3 个单元测试的仓储替身（`get-shipment`、`list-shipment-pending-completion`、`list-shipments`）、2 个集成测试的构造点。
+3. **DTO 枚举要写具体类型**：`ShipmentRiskDto.kind` 必须是 `ShipmentRiskDeadlineKindV1` 而不是 `string`，`reasons` 同理，否则不满足契约接口。
+4. **控制器测试的调用点要补参数**。
+
+**排序 SQL 的形状**：任务截止要走
+`Shipment → ContainerRecord → NodeTask → WorkOrder(dueAt, state != completed)` **三跳**；
+最近截止 = `min(eta_at, 该 Shipment 未完成工单的最早 due_at)`；
+`ORDER BY <该值> ASC NULLS LAST, id ASC`，游标按 `(sortValue, id)` 做 keyset。
+**这段 SQL 是整片最容易写出"翻页悄悄丢行"的地方**，必须先写测试再实现，并在真实 PostgreSQL 上验分页不重不漏。
+
+**类型边界**：契约里 `at` 是 ISO 字符串，领域层是 `Date`，仓储负责序列化——两处都要测。
+
+**本次结果如实记账**：第三片试行到一半（端口已改、服务与测试已写并通过 11 项），发现必须与 Prisma 实现同批落地，**已全部回退，未提交**。main 保持干净。回退原因是判断在该会话末尾硬写那段三跳 SQL + keyset 的风险高于收益——那正是本片最需要谨慎的地方。
+| 2026-09-27 | coding | Claude | — | 第三片试行后回退：端口一改连带 12 处欠账，服务与 Prisma 实现必须同批落地；连带清单与 SQL 形状已记入本文件 |
