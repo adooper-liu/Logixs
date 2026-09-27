@@ -19,11 +19,7 @@ const REVIEW_POINT_CODES = [
   "compliance_risk",
 ] as const;
 
-const NEW_INITIATIVE: CurrentProductInitiative = {
-  version: 0,
-  objective: null,
-  reviewPoints: [],
-};
+const NEW_INITIATIVE: CurrentProductInitiative = { version: 0 };
 
 describe("productInitiativePendingFieldCodes", () => {
   it("列出目标结果与四项要点作为缺口", () => {
@@ -186,7 +182,7 @@ describe("prepareProductInitiativeDecision 校验与并发", () => {
   it("期望版本与当前版本不一致时冲突而不是覆盖", () => {
     expect(() =>
       prepareProductInitiativeDecision(
-        { version: 3, objective: null, reviewPoints: [] },
+        { version: 3 },
         ACTOR,
         completeCommand({ expectedInitiativeVersion: 9 }),
       ),

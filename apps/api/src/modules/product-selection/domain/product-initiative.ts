@@ -23,10 +23,9 @@ export interface ProductInitiativeDraft {
   returnReason: string | null;
 }
 
+/** 该机会上已存在的立项判断版本；0 表示还没有立项判断。 */
 export interface CurrentProductInitiative {
   version: number;
-  objective: string | null;
-  reviewPoints: ProductInitiativeReviewPoint[];
 }
 
 export interface PreparedProductInitiativeDecision {

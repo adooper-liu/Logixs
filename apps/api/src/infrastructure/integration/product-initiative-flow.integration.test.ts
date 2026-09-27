@@ -1,0 +1,343 @@
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { resolve } from "node:path";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { PrismaClient } from "../../../../../generated/prisma";
+import {
+  normalizeMarketSignalCreate,
+  prepareMarketSignalDecision,
+} from "../../modules/market-intelligence/domain/market-signal";
+import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/infrastructure/prisma-market-signal.repository";
+import type { ProductInitiativeDecisionCommandV1 } from "@logix/contracts";
+import {
+  ProductInitiativeConflictError,
+  prepareProductInitiativeDecision,
+} from "../../modules/product-selection/domain/product-initiative";
+import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
+
+const BASE_DATABASE_URL =
+  process.env.INTEGRATION_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  "postgresql://logix:logix@localhost:5433/logix?schema=public";
+const schemaName = `it_product_initiative_${process.pid}_${randomUUID().replaceAll("-", "")}`;
+const testDatabaseUrl = withSchema(BASE_DATABASE_URL, schemaName);
+const repositoryRoot = resolve(__dirname, "../../../../..");
+let prisma: PrismaClient;
+let marketSignals: PrismaMarketSignalRepository;
+let initiatives: PrismaProductInitiativeRepository;
+
+const REVIEW_POINT_CODES = [
+  "target_user_and_market",
+  "competitive_supply",
+  "price_band_and_margin",
+  "compliance_risk",
+] as const;
+
+beforeAll(async () => {
+  const pnpmEntrypoint = process.env.npm_execpath;
+  if (!pnpmEntrypoint) throw new Error("INTEGRATION_PNPM_ENTRYPOINT_MISSING");
+  execFileSync(process.execPath, [pnpmEntrypoint, "db:migrate"], {
+    cwd: repositoryRoot,
+    env: { ...process.env, DATABASE_URL: testDatabaseUrl },
+    stdio: "pipe",
+  });
+  prisma = new PrismaClient({
+    adapter: new PrismaPg(
+      { connectionString: testDatabaseUrl },
+      { schema: schemaName },
+    ),
+  });
+  await prisma.$connect();
+  marketSignals = new PrismaMarketSignalRepository(prisma as never);
+  initiatives = new PrismaProductInitiativeRepository(prisma as never);
+});
+
+afterAll(async () => {
+  await prisma?.$disconnect();
+  const admin = new PrismaClient({
+    adapter: new PrismaPg(
+      { connectionString: withSchema(BASE_DATABASE_URL, "public") },
+      { schema: "public" },
+    ),
+  });
+  try {
+    await admin.$executeRawUnsafe(
+      `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`,
+    );
+  } finally {
+    await admin.$disconnect();
+  }
+});
+
+describe("product initiative persistence flow", () => {
+  it("暂缓缺原因时保存但不关闭，且不改写缺口之外的任何东西", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+
+    const { record, duplicate } = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide({ handoffId }, { outcome: "defer" }),
+    });
+
+    expect(duplicate).toBe(false);
+    expect(record).toMatchObject({
+      handoffId,
+      version: 1,
+      outcome: "defer",
+      completion: "pending_completion",
+      currentDestination: "needs_decision",
+      responsibleActorId: "selector-1",
+      reason: null,
+    });
+    expect(record.pendingFieldCodes).toContain("defer_reason");
+    // 没有立项就不该有交接快照，也不该有对外事件。
+    // 注意按事件类型收窄：建场时经营交接本身已写过一条 Outbox，属正常。
+    await expect(
+      prisma.productInitiativeHandoff.count({ where: { tenantId } }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.outboxMessage.count({
+        where: { tenantId, eventType: "product_initiative.handed_off" },
+      }),
+    ).resolves.toBe(0);
+  });
+
+  it("同一幂等键重放返回同一结果且不新增行", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+    const command = decide(
+      { handoffId },
+      { outcome: "defer", deferReason: "等大促后重看竞争供给" },
+    );
+
+    const first = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command,
+    });
+    const replay = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command,
+    });
+
+    expect(first.duplicate).toBe(false);
+    expect(replay.duplicate).toBe(true);
+    expect(replay.record.initiativeId).toBe(first.record.initiativeId);
+    await expect(
+      prisma.productInitiative.count({ where: { tenantId } }),
+    ).resolves.toBe(1);
+  });
+
+  it("同一幂等键换内容明确冲突", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+    const command = decide({ handoffId }, { outcome: "defer" });
+    await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command,
+    });
+
+    await expect(
+      initiatives.persistDecision({
+        tenantId,
+        handoffId,
+        actorId: "selector-1",
+        command: { ...command, payloadHash: "f".repeat(64) },
+      }),
+    ).rejects.toThrowError(ProductInitiativeConflictError);
+  });
+
+  it("暂缓后补齐要点再立项：版本递增并原子写快照与 Outbox", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+    const deferred = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide({ handoffId }, { outcome: "defer" }),
+    });
+    expect(deferred.record.version).toBe(1);
+
+    const approved = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId, expectedInitiativeVersion: 1 },
+        {
+          outcome: "approve",
+          objective: "把折叠宠物出行包做成可发布版本",
+          reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
+            code,
+            evidenceRefs: [evidenceId(index)],
+            conclusion: `${code} 的结论`,
+          })),
+        },
+      ),
+    });
+
+    expect(approved.record).toMatchObject({
+      version: 2,
+      outcome: "approve",
+      completion: "completed",
+      currentDestination: "handed_off",
+      pendingFieldCodes: [],
+    });
+    const snapshot = await prisma.productInitiativeHandoff.findFirst({
+      where: { tenantId, initiativeId: approved.record.initiativeId },
+    });
+    expect(snapshot).toMatchObject({
+      version: 2,
+      objective: "把折叠宠物出行包做成可发布版本",
+      responsibleActorId: "selector-1",
+      marketCode: "CA",
+      userProblem: "验证宠物出行机会是否值得立项。",
+    });
+    // 快照汇总要点引用到的证据，产品侧一次取全依据。
+    expect(snapshot!.evidenceRefs).toEqual([
+      evidenceId(0),
+      evidenceId(1),
+      evidenceId(2),
+      evidenceId(3),
+    ]);
+    await expect(
+      prisma.outboxMessage.count({
+        where: { tenantId, eventType: "product_initiative.handed_off" },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it("期望版本过期时冲突而不是覆盖", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+    await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide({ handoffId }, { outcome: "defer" }),
+    });
+
+    await expect(
+      initiatives.persistDecision({
+        tenantId,
+        handoffId,
+        actorId: "selector-1",
+        command: decide({ handoffId }, { outcome: "defer" }),
+      }),
+    ).rejects.toThrowError(/PRODUCT_INITIATIVE_VERSION_CONFLICT/);
+  });
+
+  it("已立项的机会不再接受新的判断", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+    await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: completeApprove({ handoffId }),
+    });
+
+    await expect(
+      initiatives.persistDecision({
+        tenantId,
+        handoffId,
+        actorId: "selector-1",
+        command: decide(
+          { handoffId, expectedInitiativeVersion: 1 },
+          { outcome: "reject", rejectReason: "改主意了" },
+        ),
+      }),
+    ).rejects.toThrowError(/PRODUCT_INITIATIVE_ALREADY_APPROVED/);
+  });
+
+  it("机会不存在时明确失败", async () => {
+    await expect(
+      initiatives.persistDecision({
+        tenantId: randomUUID(),
+        handoffId: randomUUID(),
+        actorId: "selector-1",
+        command: decide({ handoffId: randomUUID() }, { outcome: "defer" }),
+      }),
+    ).rejects.toThrowError(/PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND/);
+  });
+});
+
+async function seedOpportunity(): Promise<{
+  tenantId: string;
+  handoffId: string;
+}> {
+  const tenantId = randomUUID();
+  const signalId = randomUUID();
+  const created = await marketSignals.create({
+    tenantId,
+    actorId: "market-owner",
+    command: normalizeMarketSignalCreate({
+      contractVersion: "market-signal-create.v1",
+      requestId: signalId,
+      title: "加拿大站宠物出行需求上升",
+      marketCode: "CA",
+      idempotencyKey: `create:${signalId}`,
+    }),
+  });
+  const decided = await marketSignals.decide({
+    tenantId,
+    actorId: "market-owner",
+    signalId,
+    evidenceRefs: [],
+    prepared: prepareMarketSignalDecision(
+      { ...created.record, evidenceRefs: [] },
+      {
+        contractVersion: "market-signal-decision.v1",
+        expectedSignalVersion: 1,
+        decisionType: "handoff",
+        opportunityStatement: "验证宠物出行机会是否值得立项。",
+        idempotencyKey: `handoff:${signalId}`,
+      },
+    ),
+  });
+  return { tenantId, handoffId: decided.handoff!.handoffId };
+}
+
+function decide(
+  current: { handoffId: string; expectedInitiativeVersion?: number },
+  overrides: Partial<ProductInitiativeDecisionCommandV1> = {},
+) {
+  const requestId = randomUUID();
+  return prepareProductInitiativeDecision(
+    { version: current.expectedInitiativeVersion ?? 0 },
+    "selector-1",
+    {
+      contractVersion: "product-initiative-decision.v1",
+      requestId,
+      outcome: "defer",
+      expectedInitiativeVersion: current.expectedInitiativeVersion ?? 0,
+      idempotencyKey: `decision:${requestId}`,
+      reviewPoints: [],
+      ...overrides,
+    } as ProductInitiativeDecisionCommandV1,
+  );
+}
+
+function completeApprove(current: { handoffId: string }) {
+  return decide(current, {
+    outcome: "approve",
+    objective: "把折叠宠物出行包做成可发布版本",
+    reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
+      code,
+      evidenceRefs: [evidenceId(index)],
+      conclusion: `${code} 的结论`,
+    })),
+  });
+}
+
+function evidenceId(index: number): string {
+  return `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`;
+}
+
+function withSchema(databaseUrl: string, schema: string): string {
+  const url = new URL(databaseUrl);
+  url.searchParams.set("schema", schema);
+  return url.toString();
+}
