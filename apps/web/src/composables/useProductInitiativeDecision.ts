@@ -251,8 +251,6 @@ export function useProductInitiativeDecision(options: {
     toggleEvidence,
     addEvidence,
     decide,
-    /** 未闭环时的去向按钮文案，避免冒充已处理。必须随缺口变化，不能是快照字符串。 */
-    outcomeHint: computed(() => outcomeHintFor(blockingGaps.value)),
   };
 }
 
@@ -263,8 +261,23 @@ const RECEIPTS: Record<ProductInitiativeOutcome, string> = {
   return_to_market: "已退回经营团队重新判断。",
 };
 
-function outcomeHintFor(gaps: string[]): string {
-  return gaps.length > 0 ? `还差 ${gaps.length} 项才能立项` : "可以立项";
+/**
+ * 主动作旁边那句说明。必须随去向、缺口与原因变化 —— 写成快照字符串就会在
+ * 负责人补完要点后仍声称"还差 N 项"，或在没填原因时冒充"已关闭"。
+ */
+export function outcomeHintFor(input: {
+  outcome: ProductInitiativeOutcome;
+  gaps: readonly string[];
+  reason: string;
+}): string {
+  if (input.outcome === "approve") {
+    return input.gaps.length > 0
+      ? `还差 ${input.gaps.length} 项才能立项`
+      : "可以立项";
+  }
+  return input.reason.trim()
+    ? "已写明原因，提交后本次判断会关闭。"
+    : "不填原因也可以先保存：本次判断会留在待补里，不会关闭。";
 }
 
 function message(error: unknown): string {

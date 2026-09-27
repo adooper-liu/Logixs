@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import {
+  outcomeHintFor,
   REVIEW_POINTS,
   useProductInitiativeDecision,
 } from "./useProductInitiativeDecision";
@@ -38,7 +39,26 @@ describe("useProductInitiativeDecision", () => {
       ...REVIEW_POINTS.map((point) => point.label),
     ]);
     expect(state.canApprove.value).toBe(false);
-    expect(state.outcomeHint.value).toBe("还差 5 项才能立项");
+    expect(
+      outcomeHintFor({
+        outcome: "approve",
+        gaps: state.blockingGaps.value,
+        reason: "",
+      }),
+    ).toBe("还差 5 项才能立项");
+  });
+
+  it("非立项去向的说明只看向因，不冒充已关闭也不冒充已立项", () => {
+    expect(
+      outcomeHintFor({ outcome: "defer", gaps: ["合规风险"], reason: "" }),
+    ).toContain("不会关闭");
+    expect(
+      outcomeHintFor({
+        outcome: "defer",
+        gaps: ["合规风险"],
+        reason: "证据还不够",
+      }),
+    ).toContain("会关闭");
   });
 
   it("引用证据且写明结论后该项不再算缺口", async () => {
