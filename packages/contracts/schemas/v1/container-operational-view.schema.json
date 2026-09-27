@@ -1676,6 +1676,84 @@
         "lagSeconds": { "type": "integer", "minimum": 0 },
         "reasonCode": { "type": "string", "minLength": 1, "maxLength": 100 }
       }
+    },
+    "ShipmentRiskReasonV1": {
+      "enum": [
+        "overdue_deadline",
+        "open_exceptions",
+        "unassigned_exceptions",
+        "pending_gaps"
+      ]
+    },
+    "ShipmentRiskDeadlineKindV1": {
+      "enum": ["eta", "task_due", "free_time"]
+    },
+    "ShipmentRiskDeadlineV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "at"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/ShipmentRiskDeadlineKindV1" },
+        "at": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ShipmentRiskSortV1": {
+      "enum": ["nearest_deadline", "eta", "task_due", "updated_at"]
+    },
+    "ShipmentRiskV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nearestDeadline",
+        "overdue",
+        "reasons",
+        "openExceptionCount",
+        "unassignedExceptionCount"
+      ],
+      "properties": {
+        "nearestDeadline": {
+          "anyOf": [
+            { "$ref": "#/$defs/ShipmentRiskDeadlineV1" },
+            { "type": "null" }
+          ]
+        },
+        "overdue": { "type": "boolean" },
+        "reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ShipmentRiskReasonV1" }
+        },
+        "openExceptionCount": { "type": "integer", "minimum": 0 },
+        "unassignedExceptionCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ShipmentRiskQueueEntryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shipment", "risk", "pendingItems"],
+      "properties": {
+        "shipment": { "$ref": "#/$defs/ShipmentSummaryV1" },
+        "risk": { "$ref": "#/$defs/ShipmentRiskV1" },
+        "pendingItems": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentPendingItemV1" }
+        }
+      }
+    },
+    "ShipmentRiskQueuePageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "pageInfo", "asOf", "projectionVersion", "sort"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentRiskQueueEntryV1" }
+        },
+        "pageInfo": { "$ref": "#/$defs/PageInfo" },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "projectionVersion": { "type": "integer", "minimum": 0 },
+        "sort": { "$ref": "#/$defs/ShipmentRiskSortV1" }
+      }
     }
   }
 }

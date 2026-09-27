@@ -151,3 +151,4 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 | 2026-09-27 | design | Claude | —      | 负责人定「自由配置现在就做」；三条原顾虑改为设计要求（服务端排序+游标绑定、视图可见可分享、偏好存本机并如实说明）；范围增补已记入路线图                                                             |
 | 2026-09-27 | design | Claude | —      | 四条技术未知项全部查完：异常可到 Shipment 级但缺索引且部分案件无归属；缺口本已按 Shipment 现算，但 `deadline`/`responsibility`/`candidateValues` 是硬编码占位；三类截止成本差别很大（免用箱期最贵） |
 | 2026-09-27 | coding | Claude | —      | 负责人定「先用前两类截止」；第一片落地纯业务规则 `shipment-risk.ts`（最近截止、逾期、理由排序、无截止不得抢先），8 项测试 + 变异自检                                                                |
+| 2026-09-27 | coding | Claude | —      | 契约加法（`ShipmentRiskQueuePageV1` 等 6 个 def，排序键不含免用箱期）；分页游标 `shipment-risk-page.ts`（游标记住排序键，14 项测试 + 变异自检）                                                     |
