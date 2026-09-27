@@ -1,15 +1,22 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
-branch: feat/shipment-risk-queue-service-and-repository
+status: blocked # design | coding | review | fix | blocked | done（机器可校验）
+branch: —
 verification: |
-  本地验证（2026-09-27，第三片：服务 + 仓储 + schema 进 SQL 的做法）：
-  - 单元 @logix/api：248 文件 / 1213 项通过
-  - 集成（真实 PostgreSQL）：18 文件 / 73 项通过（本片新增 15 项，含四排序翻页不重不漏、缺口双口径对拍、跨租户隔离）
-  - 变异自检 4 次（keyset 尾段 / id 兜底 / 缺口分支 / 缺口语义放宽）全部被测试抓住
-  - 门禁：lint、typecheck、repo:check、contract:check、contract:drift、触及文件 format 通过
-  未执行：pnpm validate 全量（含 E2E，本片无前端改动）、build
-  未做：前端队列与风险依据面板、"查看全部"入口、排序方向可选、WB-D17 候选值
-  遗留：15 个旧集成测试夹具仍手工造 adapter，其裸 SQL 仍落 public（同源欠账，建议单独收口）
+  服务端已交付并合入（PR #64 已 squash 合入 main）：风险队列的领域规则、契约、分页游标、
+  服务与仓储、schema 进 SQL 的做法（`createPostgresAdapter` 唯一入口 + 守卫测试）。
+  单元 248 文件 / 1213 项、集成 18 文件 / 73 项通过，变异自检 4 次全部被抓住。
+
+  **未达成（本片不能标 done）**：
+  - 前端队列与风险依据面板未做；
+  - 队列**没有按"该谁动"组织** —— 基线 §5 要求「临期 / 冲突 / 待我 / 等待他人」，
+    已交付的是扁平排序列表；
+  - 这一步的核心动作「分派/交接给专业岗位」**没有落点**，缺口投影里的
+    `responsibility` 仍是硬编码「出运运营」；
+  - 「临期」的界未定（不发明业务政策）。
+
+  **2026-09-27 负责人决定先按全链工作台路线推进**（从选品立项往后逐个工作台打通），
+  本片转 `blocked`：恢复推进前需要负责人定「队列分几组」「临期界」「分派怎么落地」三条，
+  详见下方「待负责人定」。
 ---
 
 # 任务：Shipment 风险队列（UI-02A）
