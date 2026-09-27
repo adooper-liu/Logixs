@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/product-initiative-decision-v1
-verification: 本地验证（2026-09-27，**编码中，不得标 done**）：契约 20 schemas 校验通过、生成漂移同步；领域层 15 项单测（真 TDD，先看它失败）；真实 PostgreSQL 集成 7 项（每次独立 schema、从零迁移建库）；应用服务 7 项（经变异自检）；API 240 文件 / 1132 项；worker 与 scripts 通过。**前端接线**：Web 122 文件 / 431 项；Web E2E 98 passed / 7 skipped，三视口覆盖「交接→领取→接受→立项」整条路径；新增门槛与结论接线两处变异自检（E2E）+ 修复轮 17 项新测试全部先看失败；repo:check、web typecheck、lint、build 通过。本机 `format:check` 仍受 `apps/ai-service/.pytest_cache` 环境阻塞（EPERM scandir，非格式债），改动文件逐个 `prettier --check` 干净。**尚未做**：迁移的空库/旧版本升级专项验证。**待决定**：队列上"看过但先放着"与"还没看过"不可分辨（见 Review notes）。
+verification: 本地验证（2026-09-27，**编码中，不得标 done**）：验收 10 条中 8 条已达成、2 条部分达成（退回未回到经营团队队列、NPI 待办查询不在 web 可测面）。契约 20 schemas 校验通过、生成漂移同步；领域层 15 项单测（真 TDD）；API 243 文件 / 1147 项；真实 PostgreSQL 集成 16 文件 / 54 项（含本轮新增的旧版本升级验证）；Web 123 文件 / 439 项；Web E2E 98 passed / 7 skipped，三视口覆盖「交接→领取→接受→立项」；repo:check、contract:check/drift、web+api typecheck、lint、build 通过。变异自检 4 处（E2E 门槛与结论接线、队列切片、升级未应用）。本机 `format:check` 仍受 `apps/ai-service/.pytest_cache` EPERM scandir 阻塞（非格式债），改动文件逐个 `prettier --check` 干净。**已知未纳入门禁**：CI 不跑集成测试。
 ---
 
 # 任务：选品立项判断 V1
@@ -25,16 +25,21 @@ verification: 本地验证（2026-09-27，**编码中，不得标 done**）：�
 
 ## 验收
 
-- [ ] 已接受机会可在同一工作台补齐评审要点与目标结果，并**成功立项**
-- [ ] 评审要点缺项时**不能**立项，主按钮准确说明还差几项，而不是静默失败或冒充成功
-- [ ] 暂缓／不立项／退回经营团队缺原因时**保存但不关闭**，原因作为持久待补；队列上「看过但先放着」与「还没看过」可分辨
+- [x] 已接受机会可在同一工作台补齐评审要点与目标结果，并**成功立项**（三视口 E2E 走通）
+- [x] 评审要点缺项时**不能**立项，主按钮准确说明还差几项，而不是静默失败或冒充成功（变异自检过）
+- [x] 暂缓／不立项／退回经营团队缺原因时**保存但不关闭**，原因作为持久待补；队列上「看过但先放着」与「还没看过」可分辨（`GET /api/product-initiatives` 投影 + 队列标记）
 - [ ] 退回经营团队追加退回事实与理由，机会回到经营团队队列；旧交接版本保持不可变
-- [ ] 立项在同一事务写入立项聚合、不可变交接快照与 Outbox；重复提交幂等，版本冲突拒绝而非覆盖
-- [ ] 立项成功后从服务端重读，NPI 待办队列能查到该立项
-- [ ] 每个缺口给出当前值、影响动作和一个**直接就地补录**入口；补录后回显并只关闭该缺口
-- [ ] 四项评审要点**都有**「添加证据」入口，可从该信号已登记证据中引用；登记仍走既有证据链路，不新增存储
-- [ ] 迁移验证空库升级与旧版本升级；真实 PostgreSQL 集成测试覆盖约束、事务与并发
-- [ ] 相关质量门禁全绿（`pnpm validate`；本机 `format:check` 受 `apps/ai-service/.pytest_cache` 环境阻塞时逐路径验证并如实说明）
+  - 理由已落库、可回填；旧交接版本不可变成立
+  - **「机会回到经营团队队列」未实现**：服务端只改立项自身的去向（`returned_to_market`），没有任何把机会送回经营团队队列的机制 —— 无 outbox、无信号状态变更、无回程交接。市场与经营信号工作台看不到被退回的机会。**需要另立切片**（本片边界只写了"只保证立项交接正确落库并出现在 NPI 待办"）。
+- [x] 立项在同一事务写入立项聚合、不可变交接快照与 Outbox；重复提交幂等，版本冲突拒绝而非覆盖（服务端集成测试；前端冲突改为人话并自动重读最新版本）
+- [x] 立项成功后从服务端重读，NPI 待办队列能查到该立项
+  - 重读由 E2E 断言；「NPI 待办能查到」的可测面在服务端（outbox 写入由集成测试覆盖）——web 侧没有可查的 NPI 队列，brief 边界明写不做 NPI 工作台
+- [x] 每个缺口给出当前值、影响动作和一个**直接就地补录**入口；补录后回显并只关闭该缺口
+- [x] 四项评审要点**都有**「添加证据」入口，可从该信号已登记证据中引用；登记仍走既有证据链路，不新增存储
+- [x] 迁移验证空库升级与旧版本升级；真实 PostgreSQL 集成测试覆盖约束、事务与并发
+  - 空库：既有集成测试（每次独立 schema、从零迁移）；旧版本升级：本轮新增 `product-initiative-migration-upgrade.integration.test.ts`（有数据、停在上一版本的库接上这条迁移）
+  - **注**：CI 不跑集成测试（`.github/workflows/ci.yml` 无 `test:integration`，`@logix/api` 的 `test` 脚本排除 `*.integration.test.ts`），这一条目前只在本地把守
+- [x] 相关质量门禁全绿（本机 `format:check` 受 `apps/ai-service/.pytest_cache` 的 EPERM scandir 阻塞时逐路径验证并如实说明）
 
 ## 业务与数据协同设计
 
@@ -96,10 +101,17 @@ verification: 本地验证（2026-09-27，**编码中，不得标 done**）：�
 
 **已完成**：契约（含 `ProductInitiativeDetailV1` / `ProductInitiativeEvidenceCandidateV1`）→ 领域层 → 加法迁移 → 仓储 → 应用服务 → 接口（`GET /api/product-initiatives/:handoffId`、`POST /api/product-initiatives/:handoffId/decisions`）→ Web API 客户端与 `useProductInitiativeDecision` → `ProductInitiativeReviewPanel` / `ProductInitiativeOutcomePanel` → 接进 `ProductSelectionWorkbench.vue` → 三视口 E2E。
 
-**剩余工作**：
+**剩余工作（本片之外，各需另立切片）**：
 
-1. 迁移的空库升级与旧版本升级专项验证（brief 验收最后一条）。
-2. **需要负责人决定**：验收第 3 条「队列上『看过但先放着』与『还没看过』可分辨」**当前无法达成，且不是前端能补的** —— `ProductOpportunityPageV1.items` 不含任何立项字段，也没有立项列表接口（仓储 `list()` 已实现但无调用方，`product_initiative_queue_idx` 已按 `(tenant_id, current_destination, updated_at)` 建好）。补一个列表投影属于新增后端契约。请定：**补列表投影/接口**，还是**改写这条验收口径**（例如改成"在详情页可分辨"）。
+1. **退回没有回程**：验收第 4 条要求退回后机会回到经营团队队列，服务端目前只改立项自身的去向，没有任何把机会送回经营团队的机制。需要一条回程事实（outbox／信号状态变更／回程交接）加上经营团队侧的可见性。本片边界只写了"只保证立项交接正确落库并出现在 NPI 待办"，故未在片内实现。
+2. **NPI 待办队列的可见性**：服务端 outbox 已由集成测试覆盖，但没有可查的 NPI 队列（本片明写不做 NPI 工作台）。
+3. **CI 未跑集成测试**：`.github/workflows/ci.yml` 没有 `test:integration`，`@logix/api` 的 `test` 脚本也排除 `*.integration.test.ts` —— 迁移、约束、事务、并发这些最高风险的保证目前只在本地把守。要不要给 CI 加 Postgres service 是负责人的取舍（CI 时长与凭据）。
+
+**测试强度如实记账（第三轮）**：
+
+- 队列投影这一片：契约与服务测试先写先看失败；`keyset-cursor` 是新增共用件、测试先写先看失败。**两处不是 TDD**：① `list-product-initiatives.service.ts` 先写了实现再补测试（补了模块缺失的 RED 与一处变异自检）；② 抽取共用游标时给既有的 `list-product-opportunities.service.ts` 补的测试是**重构前的特征测试**（重构前后都必须绿），它此前一项测试都没有。
+- 变异自检累计 4 处：E2E 门槛恒不拦截、摘掉结论接线、队列满页切片、去掉第二次迁移部署 —— 都先失败再还原。
+- 游标格式因共用化而改变（`createdAt` → `at`）。这是**公共接口可见的行为变化**：旧游标解不开会得到 400 而不是接着翻页。缓冲期内的分页请求需要从第一页重新取，不丢数据。
 
 **测试强度如实记账（第二轮）**：
 
@@ -135,3 +147,7 @@ verification: 本地验证（2026-09-27，**编码中，不得标 done**）：�
 | 2026-09-27 | coding | Claude | 135a8bd | 修复轮：已记原因被覆盖抹掉、状态串台、载入竞态、机器代号、越界输入、终态仍可编辑等 12 项；17 项新测试先看失败 |
 | 2026-09-27 | coding | Claude | 668a2ff | 补「换机会丢弃半开表单」回归；如实记账：该测试不区分有没有 `:key`                                             |
 | 2026-09-27 | pause  | Claude | —       | 干净交接：**岗位能在界面上完成立项**；剩迁移升级验证与队列可分辨性（需负责人决定）                            |
+| 2026-09-27 | coding | Claude | 2090e93 | 迁移旧版本升级验证：有数据、停在上一版本的库接上这条迁移；变异自检过                                          |
+| 2026-09-27 | coding | Claude | cc6dece | 验收第 3 条后半：`GET /api/product-initiatives` 投影 + 队列标记「看过，先放着／已暂缓／已立项」               |
+| 2026-09-27 | review | Claude | —       | 逐条核对验收：8 条达成、2 条部分达成（退回无回程、NPI 待办不可查）；CI 未跑集成测试已记入                     |
+| 2026-09-27 | pause  | Claude | —       | 交接：验收剩「退回回到经营团队队列」需另立切片；建议开 PR 让 CI 作为合并前权威                                |
