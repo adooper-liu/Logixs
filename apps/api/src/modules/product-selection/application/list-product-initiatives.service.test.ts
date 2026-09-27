@@ -131,6 +131,15 @@ function repository(
     persistDecision: async () => {
       throw new Error("not used");
     },
+    listNpiQueue: async () => {
+      throw new Error("not used");
+    },
+    findNpiEntry: async () => {
+      throw new Error("not used");
+    },
+    appendClaim: async () => {
+      throw new Error("not used");
+    },
   };
 }
 

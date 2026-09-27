@@ -248,6 +248,70 @@
           "maxLength": 200
         }
       }
+    },
+    "ProductInitiativeNpiClaimV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimId",
+        "handoffId",
+        "claimVersion",
+        "productOwnerActorId",
+        "claimedAt"
+      ],
+      "properties": {
+        "claimId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "claimVersion": { "type": "integer", "minimum": 1 },
+        "productOwnerActorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "claimedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductInitiativeClaimCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "expectedClaimVersion", "idempotencyKey"],
+      "properties": {
+        "contractVersion": { "const": "product-initiative-claim.v1" },
+        "expectedClaimVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ProductInitiativeNpiQueueEntryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoff", "claim"],
+      "properties": {
+        "handoff": { "$ref": "#/$defs/ProductInitiativeHandoffV1" },
+        "claim": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeNpiClaimV1" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "ProductInitiativeNpiQueuePageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "items", "pageSize", "nextCursor"],
+      "properties": {
+        "contractVersion": { "const": "product-initiative-npi-queue.v1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeNpiQueueEntryV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1 },
+        "nextCursor": { "type": ["string", "null"] }
+      }
     }
   }
 }

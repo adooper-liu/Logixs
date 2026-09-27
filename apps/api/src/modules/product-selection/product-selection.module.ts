@@ -5,7 +5,9 @@ import {
 } from "@nestjs/common";
 import { DocumentRecordsModule } from "../document-records";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
+import { ClaimProductInitiativeService } from "./application/claim-product-initiative.service";
 import { DecideProductInitiativeService } from "./application/decide-product-initiative.service";
+import { ListNpiQueueService } from "./application/list-npi-queue.service";
 import { GetProductInitiativeService } from "./application/get-product-initiative.service";
 import { IntakeProductOpportunityService } from "./application/intake-product-opportunity.service";
 import { ListProductInitiativesService } from "./application/list-product-initiatives.service";
@@ -15,17 +17,24 @@ import { PRODUCT_OPPORTUNITY_REPOSITORY } from "./domain/product-opportunity.rep
 import { PrismaProductInitiativeRepository } from "./infrastructure/prisma-product-initiative.repository";
 import { PrismaProductOpportunityRepository } from "./infrastructure/prisma-product-opportunity.repository";
 import { ProductInitiativesController } from "./presentation/product-initiatives.controller";
+import { ProductNpiController } from "./presentation/product-npi.controller";
 import { ProductOpportunitiesController } from "./presentation/product-opportunities.controller";
 
 @Module({
   imports: [IdentityModule, DocumentRecordsModule],
-  controllers: [ProductOpportunitiesController, ProductInitiativesController],
+  controllers: [
+    ProductOpportunitiesController,
+    ProductInitiativesController,
+    ProductNpiController,
+  ],
   providers: [
     ListProductOpportunitiesService,
     IntakeProductOpportunityService,
     ListProductInitiativesService,
     GetProductInitiativeService,
     DecideProductInitiativeService,
+    ListNpiQueueService,
+    ClaimProductInitiativeService,
     {
       provide: PRODUCT_OPPORTUNITY_REPOSITORY,
       useClass: PrismaProductOpportunityRepository,

@@ -1966,6 +1966,44 @@ idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeNpiClaimV1".
+ */
+export interface ProductInitiativeNpiClaimV1 {
+claimId: Uuid
+handoffId: Uuid
+claimVersion: number
+productOwnerActorId: string
+claimedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeClaimCommandV1".
+ */
+export interface ProductInitiativeClaimCommandV1 {
+contractVersion: "product-initiative-claim.v1"
+expectedClaimVersion: number
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeNpiQueueEntryV1".
+ */
+export interface ProductInitiativeNpiQueueEntryV1 {
+handoff: ProductInitiativeHandoffV1
+claim: (ProductInitiativeNpiClaimV1 | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeNpiQueuePageV1".
+ */
+export interface ProductInitiativeNpiQueuePageV1 {
+contractVersion: "product-initiative-npi-queue.v1"
+items: ProductInitiativeNpiQueueEntryV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "StartPostDepartureLifecycleCommandV2".
  */
 export interface StartPostDepartureLifecycleCommandV2 {

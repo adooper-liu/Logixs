@@ -1977,12 +1977,33 @@ model ProductInitiativeHandoff {
   idempotencyKey     String            @map("idempotency_key")
   payloadHash        String            @map("payload_hash")
   createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  claims             ProductInitiativeClaim[]
 
   @@unique([id, tenantId], map: "product_initiative_handoff_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "product_initiative_handoff_idempotency_key")
   @@unique([initiativeId, version], map: "product_initiative_handoff_version_key")
   @@index([tenantId, createdAt, id], map: "product_initiative_handoff_queue_idx")
   @@map("product_initiative_handoff")
+}
+
+// NPI 领取回执（product-selection 拥有）：把交到产品侧的立项接到某个产品负责人名下。
+// 追加写、不可变。领取不等于立项成立，也不产生任何产品结论。
+model ProductInitiativeClaim {
+  id                  String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                   @map("tenant_id")
+  handoffId           String                   @map("handoff_id") @db.Uuid
+  handoff             ProductInitiativeHandoff @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  claimVersion        Int                      @map("claim_version")
+  productOwnerActorId String                   @map("product_owner_actor_id")
+  actedAt             DateTime                 @map("acted_at") @db.Timestamptz
+  idempotencyKey      String                   @map("idempotency_key")
+  payloadHash         String                   @map("payload_hash")
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "product_initiative_claim_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "product_initiative_claim_idempotency_key")
+  @@unique([handoffId, claimVersion], map: "product_initiative_claim_version_key")
+  @@map("product_initiative_claim")
 }
 
 model OutboxMessage {
