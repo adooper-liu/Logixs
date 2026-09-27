@@ -69,6 +69,7 @@ const CONTRACT_FILES = [
   "market-opportunity.schema.json",
   "product-initiative.schema.json",
   "product-definition.schema.json",
+  "product-identity.schema.json",
   "post-departure-lifecycle.schema.json",
   "lifecycle-timeline.schema.json",
   "work-execution.schema.json",

@@ -1,0 +1,397 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/product-identity.schema.json",
+  "title": "Product Identity Contracts V1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "ProductIdentityPendingFieldCodeV1": {
+      "description": "身份与属性之外的缺口。**不阻断发布**，但必须随交接带下去，不得让人以为已经齐了。",
+      "enum": ["bom", "listing"]
+    },
+    "MeasureUnitV1": {
+      "description": "计量单位。分量纲列全：重量 g/kg、长度 mm/cm、体积 ml/L、计数 each/pair/set/ctn。逐属性该用哪种单位由领域与界面把关 —— JSON Schema 表达不了「重量不能用 ml」这类跨字段规则，硬塞进来只会变成一张看不懂的表。",
+      "enum": ["g", "kg", "mm", "cm", "ml", "l", "each", "pair", "set", "ctn"]
+    },
+    "MeasureV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "$ref": "#/$defs/MeasureUnitV1" }
+      }
+    },
+    "ProductTemperatureV1": {
+      "description": "配送与存储温度要求（摄氏度）。温度单列一组，是因为冷链与常温的运输、仓储与成本完全不同。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transportMinC",
+        "transportMaxC",
+        "storageMinC",
+        "storageMaxC"
+      ],
+      "properties": {
+        "transportMinC": { "type": ["number", "null"] },
+        "transportMaxC": { "type": ["number", "null"] },
+        "storageMinC": { "type": ["number", "null"] },
+        "storageMaxC": { "type": ["number", "null"] }
+      }
+    },
+    "DangerousGoodsV1": {
+      "description": "危险品结构化信息。不是「有没有危险品」一个标记 —— 空运审查要的是 UN 编号、类别、包装类别、运输名称这一组，缺一项就走不了。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unNumber",
+        "classCode",
+        "packingGroup",
+        "shippingName",
+        "technicalName",
+        "flashPointC"
+      ],
+      "properties": {
+        "unNumber": { "type": ["string", "null"], "maxLength": 20 },
+        "classCode": { "type": ["string", "null"], "maxLength": 20 },
+        "packingGroup": { "type": ["string", "null"], "maxLength": 10 },
+        "shippingName": { "type": ["string", "null"], "maxLength": 200 },
+        "technicalName": { "type": ["string", "null"], "maxLength": 200 },
+        "flashPointC": { "type": ["number", "null"] }
+      }
+    },
+    "OrderConditionsV1": {
+      "description": "订货与采购条件。它是主数据而不是交易数据 —— 因为询价的输入就是它：没有提前期与最小起订量，供应商报不出有意义的价。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "leadTimeDays",
+        "minOrderQuantity",
+        "maxOrderQuantity",
+        "orderSizingFactor",
+        "orderMultiple"
+      ],
+      "properties": {
+        "leadTimeDays": { "type": ["integer", "null"], "minimum": 0 },
+        "minOrderQuantity": {
+          "anyOf": [{ "$ref": "#/$defs/MeasureV1" }, { "type": "null" }]
+        },
+        "maxOrderQuantity": {
+          "anyOf": [{ "$ref": "#/$defs/MeasureV1" }, { "type": "null" }]
+        },
+        "orderSizingFactor": { "type": ["integer", "null"], "minimum": 1 },
+        "orderMultiple": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "ProductAttributesV1": {
+      "description": "**产品（SPU）层**属性：同一款各变体共享的那些。挂错层的话，每加一个颜色就要把认证与关务重录一遍。\n\n**逐项可空**：主数据是逐步查清的，缺一项不该让人什么都存不下（普通缺失不阻断）。键必须显式给（可为 null）—— 「还没查」与「填了但是空」是两回事，不许用省略来冒充。哪些必须在**发布**前补齐由领域规则判定。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "categoryCode",
+        "brandName",
+        "subBrandName",
+        "modelNumber",
+        "functionalName",
+        "countryOfOrigin",
+        "hsCode",
+        "targetCountries",
+        "certifications",
+        "temperature",
+        "dangerousGoods",
+        "orderConditions"
+      ],
+      "properties": {
+        "categoryCode": { "type": ["string", "null"], "maxLength": 100 },
+        "brandName": { "type": ["string", "null"], "maxLength": 100 },
+        "subBrandName": { "type": ["string", "null"], "maxLength": 100 },
+        "modelNumber": { "type": ["string", "null"], "maxLength": 100 },
+        "functionalName": { "type": ["string", "null"], "maxLength": 200 },
+        "countryOfOrigin": {
+          "description": "原产国：制造地，不是寄出地。ISO 3166-1 alpha-2。",
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
+        "hsCode": {
+          "description": "海关协调制度编码。跨境必填，报关与税费都靠它。",
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{6,10}$"
+        },
+        "targetCountries": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z]{2}$" }
+        },
+        "certifications": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "temperature": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductTemperatureV1" },
+            { "type": "null" }
+          ]
+        },
+        "dangerousGoods": {
+          "anyOf": [{ "$ref": "#/$defs/DangerousGoodsV1" }, { "type": "null" }]
+        },
+        "orderConditions": { "$ref": "#/$defs/OrderConditionsV1" }
+      }
+    },
+    "BatteryV1": {
+      "description": "电池专项。形态决定能走什么渠道：内置、配套、纯电池的管制逐级变严；瓦时分档决定能不能上飞机。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "wattHours", "un38_3ReportRef", "msdsRef"],
+      "properties": {
+        "form": {
+          "enum": ["installed", "packed_with_equipment", "standalone"]
+        },
+        "wattHours": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "un38_3ReportRef": { "type": ["string", "null"], "maxLength": 200 },
+        "msdsRef": { "type": ["string", "null"], "maxLength": 200 }
+      }
+    },
+    "SkuPackagingV1": {
+      "description": "包装层级。行业规矩：每层项数与完成层数只能在这一层（非基本单元）编辑，基本单元层看不到它们。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemsPerLayer",
+        "completedLayers",
+        "itemsPerConsumerUnit",
+        "consumerUnitsPerInnerPack"
+      ],
+      "properties": {
+        "itemsPerLayer": { "type": ["integer", "null"], "minimum": 1 },
+        "completedLayers": { "type": ["integer", "null"], "minimum": 1 },
+        "itemsPerConsumerUnit": { "type": ["integer", "null"], "minimum": 1 },
+        "consumerUnitsPerInnerPack": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
+    },
+    "ProductSkuAttributesV1": {
+      "description": "**SKU 层**属性：逐个变体不同的那些（颜色、尺寸重量、包装、条码、电池）。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "colorCode",
+        "sizeDescription",
+        "netContent",
+        "grossWeight",
+        "dimensions",
+        "packaging",
+        "stackingFactor",
+        "maxStackingWeight",
+        "barcode",
+        "battery"
+      ],
+      "properties": {
+        "colorCode": { "type": ["string", "null"], "maxLength": 100 },
+        "sizeDescription": { "type": ["string", "null"], "maxLength": 100 },
+        "netContent": {
+          "description": "净含量。报关单要的是净重（不含包装），与毛重是两回事。",
+          "anyOf": [{ "$ref": "#/$defs/MeasureV1" }, { "type": "null" }]
+        },
+        "grossWeight": {
+          "anyOf": [{ "$ref": "#/$defs/MeasureV1" }, { "type": "null" }]
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["length", "width", "height"],
+              "properties": {
+                "length": { "$ref": "#/$defs/MeasureV1" },
+                "width": { "$ref": "#/$defs/MeasureV1" },
+                "height": { "$ref": "#/$defs/MeasureV1" }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "packaging": { "$ref": "#/$defs/SkuPackagingV1" },
+        "stackingFactor": { "type": ["integer", "null"], "minimum": 1 },
+        "maxStackingWeight": {
+          "anyOf": [{ "$ref": "#/$defs/MeasureV1" }, { "type": "null" }]
+        },
+        "barcode": { "type": ["string", "null"], "maxLength": 50 },
+        "battery": {
+          "anyOf": [{ "$ref": "#/$defs/BatteryV1" }, { "type": "null" }]
+        }
+      }
+    },
+    "ProductSkuIdentityV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skuId", "skuCode", "attributes"],
+      "properties": {
+        "skuId": {
+          "description": "内部代理键：无业务含义，永不因业务变化而变。",
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "skuCode": {
+          "description": "对外编号：给人看、可改。改它不动内部键。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "attributes": { "$ref": "#/$defs/ProductSkuAttributesV1" }
+      }
+    },
+    "ProductIdentityV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "productId",
+        "productNumber",
+        "sourceHandoffId",
+        "version",
+        "specification",
+        "attributes",
+        "skus",
+        "pendingFieldCodes",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-identity.v1" },
+        "productId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "productNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "sourceHandoffId": {
+          "description": "来自哪一份已发布产品设计；一票一份产品。",
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "version": { "type": "integer", "minimum": 1 },
+        "specification": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "attributes": { "$ref": "#/$defs/ProductAttributesV1" },
+        "skus": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductSkuIdentityV1" }
+        },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductIdentityPendingFieldCodeV1" }
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductIdentityDraftCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedVersion",
+        "attributes",
+        "skus",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-identity-draft.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "productNumber": {
+          "description": "对外产品号；留空时由系统按规则生成，之后可改。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "attributes": { "$ref": "#/$defs/ProductAttributesV1" },
+        "skus": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["skuCode", "attributes"],
+            "properties": {
+              "skuId": { "$ref": "common.schema.json#/$defs/Uuid" },
+              "skuCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "attributes": { "$ref": "#/$defs/ProductSkuAttributesV1" }
+            }
+          }
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "SellableSkuReleaseCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "expectedVersion", "idempotencyKey"],
+      "properties": {
+        "contractVersion": { "const": "sellable-sku-release.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "SellableSkuReleaseHandoffV1": {
+      "description": "交给寻源侧的可售 SKU 发布。身份与属性齐备即可发布；BOM 与 Listing 作为待补随行。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "handoffId",
+        "version",
+        "productId",
+        "productNumber",
+        "attributes",
+        "skus",
+        "pendingFieldCodes",
+        "releasedBy",
+        "releasedAt",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "sellable_sku_release.v1" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "productId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "productNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "attributes": { "$ref": "#/$defs/ProductAttributesV1" },
+        "skus": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductSkuIdentityV1" }
+        },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductIdentityPendingFieldCodeV1" }
+        },
+        "releasedBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "releasedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    }
+  }
+}

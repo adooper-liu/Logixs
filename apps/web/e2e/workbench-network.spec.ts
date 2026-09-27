@@ -16,7 +16,7 @@ test("the business-workbench directory opens live and framework stages honestly"
     page.getByRole("heading", { name: "业务工作台", exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId("main-workbench-stage")).toHaveCount(18);
-  await expect(page.locator('[data-implementation="live"]')).toHaveCount(10);
+  await expect(page.locator('[data-implementation="live"]')).toHaveCount(11);
   await expect(page.locator('[data-implementation="prototype"]')).toHaveCount(
     0,
   );

@@ -24,7 +24,7 @@ describe("WorkbenchNetworkView", () => {
     expect(
       wrapper.findAll('[data-testid="main-workbench-stage"]'),
     ).toHaveLength(18);
-    expect(wrapper.findAll('[data-implementation="live"]')).toHaveLength(10);
+    expect(wrapper.findAll('[data-implementation="live"]')).toHaveLength(11);
     expect(wrapper.findAll('[data-implementation="prototype"]')).toHaveLength(
       0,
     );
