@@ -8,8 +8,9 @@ import {
   POST_DEPARTURE_FIELD_REGISTRY_SOURCE,
 } from "./post-departure-field-registry-source.mjs";
 
-// 单一权威源：14 个 JSON Schema 2020-12 文件。本脚本把它们打包成一个自洽根 Schema，
-// 再由 json-schema-to-typescript 生成一份去重后的 TypeScript 类型（共享类型只定义一次）。
+// 单一权威源：packages/contracts/schemas/v1 下的公共契约 Schema（清单见下方
+// CONTRACT_FILES，不在此列的 Schema 不生成业务类型）。本脚本把它们打包成一个自洽根
+// Schema，再由 json-schema-to-typescript 生成一份去重后的 TypeScript 类型（共享类型只定义一次）。
 // 生成文件是派生产物，禁止手工修改；漂移由 `--check` 模式在 CI 阻断。
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -65,6 +66,8 @@ const CONTRACT_FILES = [
   "canonical-event-envelope.schema.json",
   "canonical-event-envelope-v2.schema.json",
   "shipment-handoff.schema.json",
+  "market-opportunity.schema.json",
+  "product-initiative.schema.json",
   "post-departure-lifecycle.schema.json",
   "lifecycle-timeline.schema.json",
   "work-execution.schema.json",

@@ -11,18 +11,15 @@ const container = {
 };
 
 describe("RoleWorkbenchFrame", () => {
-  it("keeps role context, selection and the three work streams in one shell", async () => {
+  it("keeps the queue as the only selector and shows the selected context", () => {
     const wrapper = mount(RoleWorkbenchFrame, {
       props: {
         title: "备货工作台",
         summary: "备货事实",
         workspaceLabel: "备货",
         nodeScopeLabel: "备货",
-        containers: [container],
-        selectedContainerId: container.id,
         selectedContainer: container,
         nodes: [],
-        containerListLoading: false,
         selectionLoading: false,
         containerListError: "",
         selectionError: "",
@@ -44,11 +41,10 @@ describe("RoleWorkbenchFrame", () => {
     );
     expect(wrapper.get('[aria-label="岗位事实"]').text()).toContain("装载事实");
     expect(wrapper.get('[aria-label="岗位待办"]').text()).toContain("岗位待办");
-
-    await wrapper
-      .get('[data-testid="workbench-container-select"]')
-      .setValue("");
-    expect(wrapper.emitted("selectContainer")).toEqual([[""]]);
+    expect(
+      wrapper.find('[data-testid="workbench-container-select"]').exists(),
+    ).toBe(false);
+    expect(wrapper.emitted("selectContainer")).toBeUndefined();
   });
 
   it("keeps the role queue usable before a container is selected", () => {
@@ -58,11 +54,8 @@ describe("RoleWorkbenchFrame", () => {
         summary: "备货事实",
         workspaceLabel: "备货",
         nodeScopeLabel: "备货",
-        containers: [container],
-        selectedContainerId: "",
         selectedContainer: null,
         nodes: [],
-        containerListLoading: false,
         selectionLoading: false,
         containerListError: "",
         selectionError: "",
@@ -85,11 +78,8 @@ describe("RoleWorkbenchFrame", () => {
         summary: "备货事实",
         workspaceLabel: "备货",
         nodeScopeLabel: "备货",
-        containers: [container],
-        selectedContainerId: container.id,
         selectedContainer: container,
         nodes: [],
-        containerListLoading: false,
         selectionLoading: false,
         containerListError: "",
         selectionError: "",

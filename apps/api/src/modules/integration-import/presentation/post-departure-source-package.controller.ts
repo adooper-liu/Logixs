@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  Param,
+  Post,
+  Query,
+  Req,
+  StreamableFile,
+} from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import type {
   PostDepartureSourcePackagePreflightResultV1,
@@ -16,6 +26,7 @@ import { SavePostDepartureSourcePackageReviewService } from "../application/save
 import { SearchPostDepartureReferencePortsService } from "../application/search-post-departure-reference-ports.service";
 import { AcceptPostDepartureSourceCandidateService } from "../application/accept-post-departure-source-candidate.service";
 import { AcceptPostDepartureSourcePackageService } from "../application/accept-post-departure-source-package.service";
+import { BuildPostDepartureStandardTemplateService } from "../application/build-post-departure-standard-template.service";
 import {
   PostDepartureSourcePackagePreflightRequestDto,
   PostDepartureSourcePackageReviewRequestDto,
@@ -37,7 +48,22 @@ export class PostDepartureSourcePackageController {
     private readonly searchPorts: SearchPostDepartureReferencePortsService,
     private readonly acceptCandidate: AcceptPostDepartureSourceCandidateService,
     private readonly acceptPackage: AcceptPostDepartureSourcePackageService,
+    private readonly buildStandardTemplate: BuildPostDepartureStandardTemplateService,
   ) {}
+
+  @Get("standard-template")
+  @RequireCapabilities("import.operate")
+  @Header(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  )
+  @Header(
+    "Content-Disposition",
+    'attachment; filename="logixs-post-departure-standard-import-v1.xlsx"',
+  )
+  async standardTemplate(): Promise<StreamableFile> {
+    return new StreamableFile(await this.buildStandardTemplate.execute());
+  }
 
   @Get("reference-ports")
   @RequireCapabilities("import.operate")

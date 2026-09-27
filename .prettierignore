@@ -13,6 +13,7 @@ pnpm-lock.yaml
 # Python 虚拟环境与产物（prettier 不处理 Python）
 .venv
 __pycache__
+**/.pytest_cache
 # 由 scripts/generate-contracts.mjs 生成的派生产物，不手工格式化
 packages/contracts/generated
 # 由 scripts/build-progress-board.mjs 生成的派生产物，不手工格式化

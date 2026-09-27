@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { TriangleAlert, Warehouse } from "@lucide/vue";
 import type { DeliveryQueueItem } from "../../data/deliveryWorkbench";
+import NodeTaskQueueGuidance from "../workbench/NodeTaskQueueGuidance.vue";
 
 defineProps<{
   items: readonly DeliveryQueueItem[];
@@ -27,12 +28,15 @@ const emit = defineEmits<{ select: [item: DeliveryQueueItem] }>();
       @click="emit('select', item)"
     >
       <Warehouse :size="16" />
-      <span
-        ><b>{{ item.container?.containerNumber ?? "待绑定货柜" }}</b
-        ><small>{{
-          item.container?.orderNumber ?? "备货单待关联"
-        }}</small></span
-      >
+      <span>
+        <b>{{ item.container?.containerNumber ?? "待绑定货柜" }}</b>
+        <small>{{ item.container?.orderNumber ?? "备货单待关联" }}</small>
+        <NodeTaskQueueGuidance
+          :attention-reason="item.attentionReason"
+          :condition-kind="item.conditionKind"
+          :condition-label="item.conditionLabel"
+        />
+      </span>
       <span class="queue-meta">
         <small :class="`urgency urgency--${item.urgency}`"
           ><TriangleAlert v-if="item.urgency !== 'normal'" :size="12" />{{

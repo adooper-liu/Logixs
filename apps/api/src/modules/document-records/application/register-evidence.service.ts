@@ -36,6 +36,7 @@ export interface RegisterEvidenceInput {
   mappingVersion?: string;
   ingestionChannel: string;
   captureSource: string;
+  sourceSummary?: string;
 }
 
 @Injectable()
@@ -112,6 +113,7 @@ function normalizeRegister(
       mappingVersion: normalizeOptional(input.mappingVersion),
       ingestionChannel: input.ingestionChannel,
       captureSource: input.captureSource,
+      sourceSummary: normalizeOptional(input.sourceSummary),
     },
   };
   const supplied = input.idempotencyKey?.trim();
@@ -147,7 +149,9 @@ function reuseOrConflict(
     existing.source.mappingVersion === expected.source.mappingVersion &&
     existing.source.ingestionChannel === expected.source.ingestionChannel &&
     existing.source.captureSource === expected.source.captureSource;
-  if (!same) {
+  const sameSummary =
+    existing.source.sourceSummary === expected.source.sourceSummary;
+  if (!same || !sameSummary) {
     throw new HttpException(
       "IDEMPOTENCY_CONFLICT: 同一证据幂等键对应不同内容",
       HttpStatus.CONFLICT,
@@ -247,6 +251,7 @@ function validateRegister(input: RegisterEvidenceInput): void {
     [input.sourceReference, 200, "sourceReference"],
     [input.sourceEventId, 200, "sourceEventId"],
     [input.mappingVersion, 100, "mappingVersion"],
+    [input.sourceSummary, 4000, "sourceSummary"],
   ] as const;
   for (const [value, maxLength, field] of sourceMetadata) {
     if (value !== undefined && (!value.trim() || value.length > maxLength)) {

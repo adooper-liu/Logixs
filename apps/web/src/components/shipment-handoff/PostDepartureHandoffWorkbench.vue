@@ -22,6 +22,7 @@ import HandoffCargoLinesEditor from "./HandoffCargoLinesEditor.vue";
 import HandoffCandidateQueue from "./HandoffCandidateQueue.vue";
 import HandoffPreflightSummary from "./HandoffPreflightSummary.vue";
 import PostDeparturePackageUploader from "./PostDeparturePackageUploader.vue";
+import PostDepartureStandardUploader from "./PostDepartureStandardUploader.vue";
 import InternalShipmentHandoffPanel from "./InternalShipmentHandoffPanel.vue";
 import ShipmentRelationshipPanel from "./ShipmentRelationshipPanel.vue";
 import PostDeparturePendingCompletionPanel from "./PostDeparturePendingCompletionPanel.vue";
@@ -197,15 +198,25 @@ async function runPreflight(): Promise<void> {
       />
 
       <div ref="sourceUploader" class="file-handoff-source">
-        <PostDeparturePackageUploader
-          v-if="!workbench.preflightResult.value || sourcesExpanded"
-          :sources="workbench.sources.value"
-          :source-count="workbench.sourceCount.value"
-          :can-preflight="workbench.canPreflight.value"
-          :preflighting="workbench.preflighting.value"
-          @select-file="workbench.uploadSource"
-          @preflight="runPreflight"
-        />
+        <div v-if="!workbench.preflightResult.value || sourcesExpanded">
+          <PostDepartureStandardUploader
+            :upload="workbench.standardUpload"
+            :preflighting="workbench.preflighting.value"
+            @select-file="workbench.uploadStandard"
+            @preflight="runPreflight"
+          />
+          <details class="legacy-import">
+            <summary>兼容旧系统四表</summary>
+            <PostDeparturePackageUploader
+              :sources="workbench.sources.value"
+              :source-count="workbench.sourceCount.value"
+              :can-preflight="workbench.canPreflight.value"
+              :preflighting="workbench.preflighting.value"
+              @select-file="workbench.uploadSource"
+              @preflight="runPreflight"
+            />
+          </details>
+        </div>
         <section v-else class="source-summary" aria-label="当前来源文件">
           <FileCheck2 :size="18" aria-hidden="true" />
           <span>
@@ -351,6 +362,20 @@ async function runPreflight(): Promise<void> {
 
 .file-handoff-source {
   margin-top: var(--space-3);
+}
+
+.legacy-import {
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.legacy-import summary {
+  width: fit-content;
+  padding: var(--space-3) 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .stage-switch {

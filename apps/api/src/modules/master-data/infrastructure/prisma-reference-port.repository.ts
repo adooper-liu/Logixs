@@ -68,6 +68,14 @@ export class PrismaReferencePortRepository implements ReferencePortRepository {
           take: 1,
           select: { name: true },
         },
+        aliases: {
+          where: {
+            languageTag: "zh-Hans",
+            mappingState: { in: ["candidate", "confirmed"] },
+          },
+          orderBy: [{ mappingState: "asc" }, { aliasName: "asc" }],
+          select: { aliasName: true, mappingState: true },
+        },
       },
     });
     const hasNextPage = rows.length > input.pageSize;
@@ -96,6 +104,14 @@ export class PrismaReferencePortRepository implements ReferencePortRepository {
           take: 1,
           select: { name: true },
         },
+        aliases: {
+          where: {
+            languageTag: "zh-Hans",
+            mappingState: { in: ["candidate", "confirmed"] },
+          },
+          orderBy: [{ mappingState: "asc" }, { aliasName: "asc" }],
+          select: { aliasName: true, mappingState: true },
+        },
       },
     });
     return rows.map(toRecord);
@@ -114,6 +130,14 @@ export class PrismaReferencePortRepository implements ReferencePortRepository {
           take: 1,
           select: { name: true },
         },
+        aliases: {
+          where: {
+            languageTag: "zh-Hans",
+            mappingState: { in: ["candidate", "confirmed"] },
+          },
+          orderBy: [{ mappingState: "asc" }, { aliasName: "asc" }],
+          select: { aliasName: true, mappingState: true },
+        },
       },
     });
     return rows.map(toRecord);
@@ -125,11 +149,36 @@ function toRecord(row: {
   unlocode: string;
   areaCode: string;
   entries: Array<{ name: string }>;
+  aliases: Array<{ aliasName: string; mappingState: string }>;
 }): ReferencePortRecord {
+  const confirmed = row.aliases.find(
+    ({ mappingState }) => mappingState === "confirmed",
+  );
+  const candidate = row.aliases.find(
+    ({ mappingState }) => mappingState === "candidate",
+  );
+  const chinese = confirmed ?? candidate;
   return {
     portId: row.id,
     unlocode: row.unlocode,
     officialName: row.entries[0]?.name ?? row.unlocode,
     areaCode: row.areaCode,
+    countryNameChinese: chineseRegionName(row.areaCode),
+    nameChinese: chinese?.aliasName ?? null,
+    nameChineseState: confirmed
+      ? "confirmed"
+      : candidate
+        ? "candidate"
+        : "missing",
   };
+}
+
+const regionNamesChinese = new Intl.DisplayNames(["zh-CN"], {
+  type: "region",
+  fallback: "code",
+});
+
+function chineseRegionName(code: string): string {
+  const name = regionNamesChinese.of(code);
+  return !name || name === code ? code : name;
 }

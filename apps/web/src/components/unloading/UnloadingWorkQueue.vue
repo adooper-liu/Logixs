@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { PackageOpen, TriangleAlert } from "@lucide/vue";
 import type { UnloadingQueueItem } from "../../data/unloadingWorkbench";
+import NodeTaskQueueGuidance from "../workbench/NodeTaskQueueGuidance.vue";
 
 defineProps<{
   items: readonly UnloadingQueueItem[];
@@ -27,12 +28,15 @@ const emit = defineEmits<{ select: [item: UnloadingQueueItem] }>();
       @click="emit('select', item)"
     >
       <PackageOpen :size="16" />
-      <span
-        ><b>{{ item.container?.containerNumber ?? "待绑定货柜" }}</b
-        ><small>{{
-          item.container?.orderNumber ?? "备货单待关联"
-        }}</small></span
-      >
+      <span>
+        <b>{{ item.container?.containerNumber ?? "待绑定货柜" }}</b>
+        <small>{{ item.container?.orderNumber ?? "备货单待关联" }}</small>
+        <NodeTaskQueueGuidance
+          :attention-reason="item.attentionReason"
+          :condition-kind="item.conditionKind"
+          :condition-label="item.conditionLabel"
+        />
+      </span>
       <span class="queue-meta">
         <small :class="`urgency urgency--${item.urgency}`"
           ><TriangleAlert v-if="item.urgency !== 'normal'" :size="12" />{{

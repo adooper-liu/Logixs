@@ -858,8 +858,15 @@ test("shipping operator uploads four sources and reviews joined post-departure g
 
   await page.goto("/workspaces/dispatch");
   await expect(
-    page.getByRole("heading", { name: "接管已出运数据" }),
+    page.getByRole("heading", { name: "接管已出运数据", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "使用标准模板接管已出运数据",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByText("兼容旧系统四表", { exact: true }).click();
 
   for (const label of ["货柜信息", "清关信息", "物流信息", "仓库信息"]) {
     await page.getByLabel(`选择${label}文件`).setInputFiles({

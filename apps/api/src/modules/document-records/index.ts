@@ -18,3 +18,7 @@ export {
   type RegisterEvidencePort,
 } from "./register-evidence.port";
 export type { RegisterEvidenceInput } from "./application/register-evidence.service";
+export {
+  READ_EVIDENCE_REFS,
+  type ReadEvidenceRefsPort,
+} from "./read-evidence-refs.port";

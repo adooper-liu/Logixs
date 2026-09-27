@@ -12,31 +12,22 @@ const props = withDefaults(
     summary: string;
     workspaceLabel: string;
     nodeScopeLabel: string;
-    containers: readonly ContainerSummary[];
-    selectedContainerId: string;
     selectedContainer: ContainerSummary | null;
     nodes: readonly LiveNodeView[];
-    containerListLoading: boolean;
     selectionLoading: boolean;
     containerListError: string;
     selectionError: string;
     warnings: readonly { code: string; message: string }[];
     contextReady?: boolean;
-    showContainerSelector?: boolean;
     emptyMessage?: string;
     loadingMessage?: string;
   }>(),
   {
     contextReady: undefined,
-    showContainerSelector: true,
-    emptyMessage: "从任务池选择工作，或直接选择货柜查看岗位事实。",
+    emptyMessage: "从左侧任务队列选择一项工作，查看事实与当前可执行动作。",
     loadingMessage: "正在加载当前岗位事实…",
   },
 );
-
-const emit = defineEmits<{
-  selectContainer: [containerId: string];
-}>();
 
 defineSlots<{
   actions(): unknown;
@@ -49,10 +40,6 @@ defineSlots<{
 const hasContext = computed(
   () => props.contextReady ?? Boolean(props.selectedContainer),
 );
-
-function selectContainer(event: Event): void {
-  emit("selectContainer", (event.target as HTMLSelectElement).value);
-}
 </script>
 
 <template>
@@ -80,25 +67,8 @@ function selectContainer(event: Event): void {
 
       <slot v-if="$slots.context" name="context" />
 
-      <label v-else-if="showContainerSelector" class="container-selector">
-        <span>当前货柜</span>
-        <select
-          data-testid="workbench-container-select"
-          :value="selectedContainerId"
-          :disabled="containerListLoading"
-          @change="selectContainer"
-        >
-          <option value="">
-            {{ containerListLoading ? "货柜加载中" : "选择货柜" }}
-          </option>
-          <option v-for="item in containers" :key="item.id" :value="item.id">
-            {{ item.containerNumber ?? "未绑箱号" }} · {{ item.orderNumber }}
-          </option>
-        </select>
-      </label>
-
       <div
-        v-if="showContainerSelector && selectedContainer"
+        v-if="!$slots.context && selectedContainer"
         class="container-identity"
       >
         <Container :size="18" aria-hidden="true" />
@@ -165,10 +135,7 @@ function selectContainer(event: Event): void {
 .context-band {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(250px, 0.8fr) minmax(280px, 1fr) minmax(
-      180px,
-      0.65fr
-    );
+  grid-template-columns: minmax(250px, 0.8fr) minmax(180px, 0.65fr);
   align-items: stretch;
   margin-bottom: var(--space-3);
   border: 1px solid var(--line);
@@ -217,8 +184,7 @@ function selectContainer(event: Event): void {
 }
 
 .role-context small,
-.container-identity small,
-.container-selector > span {
+.container-identity small {
   color: var(--muted);
   font-size: var(--text-micro);
 }
@@ -227,24 +193,6 @@ function selectContainer(event: Event): void {
 .container-identity b {
   overflow-wrap: anywhere;
   font-size: var(--text-meta);
-}
-
-.container-selector {
-  min-width: 0;
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  border-right: 1px solid var(--line);
-}
-
-.container-selector select {
-  min-width: 0;
-  min-height: 36px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--ink);
 }
 
 .container-identity > svg {
@@ -310,15 +258,6 @@ function selectContainer(event: Event): void {
     grid-template-columns: 1fr 1fr;
   }
 
-  .container-identity {
-    grid-column: 1 / -1;
-    border-top: 1px solid var(--line);
-  }
-
-  .container-selector {
-    border-right: 0;
-  }
-
   .workbench-grid {
     grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
   }
@@ -337,15 +276,9 @@ function selectContainer(event: Event): void {
     grid-template-columns: 1fr;
   }
 
-  .role-context,
-  .container-selector {
+  .role-context {
     border-right: 0;
     border-bottom: 1px solid var(--line);
-  }
-
-  .container-identity {
-    grid-column: auto;
-    border-top: 0;
   }
 
   .node-scope {

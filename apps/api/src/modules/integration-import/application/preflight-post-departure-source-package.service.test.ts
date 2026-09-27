@@ -19,6 +19,71 @@ const IDS: Record<PostDepartureSourceKindV1, string> = {
 };
 
 describe("PreflightPostDepartureSourcePackageService", () => {
+  it("uses the deterministic standard parser result as an exclusive source", async () => {
+    const standard = batch("container", IDS.container, {
+      __record_type: "shipment_container",
+      __sheet_name: "已出运接管",
+      __worksheet_row: "2",
+      shipment_number: "SHP-20260918-001",
+      container_number: "HMMU4956442",
+      container_type_code: "40HQ",
+      replenishment_order_number: "26DSC01812",
+      mbl_number: "NBOZ9FF56400",
+      carrier_code: "HMM",
+      vessel_name: "YM MASCULINITY",
+      voyage_number: "108E",
+      origin_port_code: "CNNGB",
+      destination_port_code: "CAVAN",
+      sales_country_code: "CA",
+      cargo_owner_name: "AOSOM CANADA INC.",
+      departure_at: "2026-09-18T00:00:00+08:00",
+      departure_time_precision: "date_only",
+      departure_source_timezone: "Asia/Shanghai",
+    });
+    standard.batch.parserVersion = "post-departure-standard-v1";
+    const repository = repositoryFor(SOURCE_ROWS);
+    repository.findById = async (id) =>
+      id === IDS.container ? standard : null;
+    const service = new PreflightPostDepartureSourcePackageService(
+      repository as ImportRepository,
+      {
+        ...portDirectory(),
+        findByUnlocodes: async () => [
+          { unlocode: "CNNGB" },
+          { unlocode: "CAVAN" },
+        ],
+      } as never,
+      shipmentMatcher(),
+    );
+
+    const result = await service.execute(
+      {
+        contractVersion: "post-departure-source-package-preflight.v1",
+        sources: [{ kind: "container", batchId: IDS.container }],
+      },
+      "tenant-1",
+    );
+
+    expect(result.candidates[0]).toMatchObject({
+      candidateRef: "SHP-20260918-001:HMMU4956442",
+      decision: "ready",
+      preparedHandoff: {
+        shipmentGrouping: {
+          kind: "authorized_new_shipment",
+          shipmentNumber: "SHP-20260918-001",
+        },
+        originPortCode: "CNNGB",
+        destinationPortCode: "CAVAN",
+      },
+    });
+    expect(result.candidates[0]!.issues).toContainEqual(
+      expect.objectContaining({
+        code: "CARGO_DETAIL_INCOMPLETE",
+        blocking: false,
+      }),
+    );
+  });
+
   it("joins all four retained sources and keeps non-key gaps visible without blocking", async () => {
     const service = new PreflightPostDepartureSourcePackageService(
       repositoryFor(SOURCE_ROWS) as ImportRepository,

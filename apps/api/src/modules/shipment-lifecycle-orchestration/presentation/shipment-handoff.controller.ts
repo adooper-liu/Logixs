@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import type {
   ShipmentHandoffPreflightResultV1,
@@ -10,6 +10,8 @@ import type {
   ShipmentPendingCargoCompletionResultV1,
   ShipmentPendingSkuBindingResultV1,
   ShipmentPendingDocumentCompletionResultV1,
+  ShipmentIntakePortSearchResultV1,
+  ShipmentIntakeReferenceDataV1,
 } from "@logix/contracts";
 import { AcceptInternalShipmentHandoffService } from "../application/accept-internal-shipment-handoff.service";
 import { AcceptInternalShipmentHandoffBatchService } from "../application/accept-internal-shipment-handoff-batch.service";
@@ -21,6 +23,9 @@ import { CompleteShipmentPendingFactsService } from "../application/complete-shi
 import { CompleteShipmentPendingCargoService } from "../application/complete-shipment-pending-cargo.service";
 import { BindShipmentPendingSkuService } from "../application/bind-shipment-pending-sku.service";
 import { CompleteShipmentPendingDocumentsService } from "../application/complete-shipment-pending-documents.service";
+import { CreateManualDepartedShipmentService } from "../application/create-manual-departed-shipment.service";
+import { ListShipmentIntakeReferenceDataService } from "../application/list-shipment-intake-reference-data.service";
+import { SearchShipmentIntakePortsService } from "../application/search-shipment-intake-ports.service";
 import {
   ShipmentHandoffCommandRequestDto,
   ShipmentHandoffPreflightResponseDto,
@@ -31,6 +36,8 @@ import {
   ShipmentPendingCargoCompletionRequestDto,
   ShipmentPendingSkuBindingRequestDto,
   ShipmentPendingDocumentCompletionRequestDto,
+  ManualDepartedShipmentCreateRequestDto,
+  ShipmentIntakePortQueryDto,
 } from "./shipment-handoff.dto";
 
 type IdentityRequest = {
@@ -50,7 +57,37 @@ export class ShipmentHandoffController {
     private readonly completePendingCargo: CompleteShipmentPendingCargoService,
     private readonly bindPendingSku: BindShipmentPendingSkuService,
     private readonly completePendingDocuments: CompleteShipmentPendingDocumentsService,
+    private readonly createManualShipment: CreateManualDepartedShipmentService,
+    private readonly listIntakeReferenceData: ListShipmentIntakeReferenceDataService,
+    private readonly searchIntakePorts: SearchShipmentIntakePortsService,
   ) {}
+
+  @Get("intake/reference-data")
+  @RequireCapabilities("lifecycle.read")
+  intakeReferenceData(): Promise<ShipmentIntakeReferenceDataV1> {
+    return this.listIntakeReferenceData.execute();
+  }
+
+  @Get("intake/ports")
+  @RequireCapabilities("lifecycle.read")
+  searchPorts(
+    @Query() query: ShipmentIntakePortQueryDto,
+  ): Promise<ShipmentIntakePortSearchResultV1> {
+    return this.searchIntakePorts.execute({
+      query: query.query,
+      pageSize: query.pageSize === undefined ? 20 : Number(query.pageSize),
+      ...(query.cursor ? { cursor: query.cursor } : {}),
+    });
+  }
+
+  @Post("manual")
+  @RequireCapabilities("lifecycle.operate")
+  createManual(
+    @Body() body: ManualDepartedShipmentCreateRequestDto,
+    @Req() request: IdentityRequest,
+  ): Promise<ShipmentHandoffResultV1> {
+    return this.createManualShipment.execute(body, request.identity);
+  }
 
   @Get("internal-candidates")
   @RequireCapabilities("container.read", "lifecycle.read")

@@ -1,7 +1,11 @@
 import type { ContainerSummary } from "../api/containers";
 import type { NodeTaskDetail } from "../api/nodeTasks";
+import {
+  buildNodeTaskQueueGuidance,
+  type NodeTaskQueueGuidance,
+} from "./nodeTaskQueueGuidance";
 
-export interface PickupQueueItem {
+export interface PickupQueueItem extends NodeTaskQueueGuidance {
   task: NodeTaskDetail;
   container: ContainerSummary | null;
   urgency: "overdue" | "due_soon" | "blocked" | "normal";
@@ -26,6 +30,7 @@ export function buildPickupQueue(input: {
         task.state === "blocked" ||
         task.readinessState === "waiting_conditions";
       return {
+        ...buildNodeTaskQueueGuidance(task, "提柜"),
         task,
         container: task.containerId
           ? (containers.get(task.containerId) ?? null)

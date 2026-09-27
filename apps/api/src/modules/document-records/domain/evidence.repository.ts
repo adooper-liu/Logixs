@@ -13,6 +13,7 @@ export interface EvidenceSourceSnapshot {
   mappingVersion?: string;
   ingestionChannel: string;
   captureSource: string;
+  sourceSummary?: string;
 }
 
 export interface EvidenceRecord {
@@ -67,6 +68,11 @@ export interface AppendDecisionResult {
 export interface EvidenceRepository {
   findById(id: string): Promise<EvidenceRecord | null>;
   findByIds(ids: string[]): Promise<EvidenceRecord[]>;
+  listBySubjects(input: {
+    tenantId: string;
+    subjectType: string;
+    subjectIds: string[];
+  }): Promise<EvidenceRecord[]>;
   findByIdempotencyKey(
     tenantId: string,
     idempotencyKey: string,

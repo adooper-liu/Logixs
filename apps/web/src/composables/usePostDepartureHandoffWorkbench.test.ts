@@ -74,6 +74,54 @@ vi.mock("../api/shipments", () => ({
 }));
 
 describe("usePostDepartureHandoffWorkbench", () => {
+  it("uses one standard workbook as the exclusive preflight source", async () => {
+    uploadImportBatch.mockReset().mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      fileName: "standard.xlsx",
+      rowCount: 3,
+      columnCount: 36,
+      parserVersion: "post-departure-standard-v1",
+    });
+    preflightPackage.mockReset().mockResolvedValue({
+      packageId: "a".repeat(64),
+      sources: [],
+      candidates: [],
+      totals: {
+        containers: 0,
+        bills: 0,
+        replenishmentOrders: 0,
+        ready: 0,
+        reviewRequired: 0,
+        rejected: 0,
+      },
+      traceId: "trace-standard",
+    });
+    savePackageReview.mockReset().mockResolvedValue({
+      reviewId: "22222222-2222-4222-8222-222222222222",
+    });
+    const workbench = usePostDepartureHandoffWorkbench();
+    const file = new File(["workbook"], "standard.xlsx");
+
+    await workbench.uploadStandard(file);
+    await workbench.runPreflight();
+
+    expect(uploadImportBatch).toHaveBeenCalledWith(
+      file,
+      undefined,
+      "post_departure_standard_v1",
+    );
+    expect(workbench.standardUpload.batch?.id).toBe(
+      "11111111-1111-4111-8111-111111111111",
+    );
+    expect(workbench.sourceCount.value).toBe(1);
+    expect(preflightPackage).toHaveBeenCalledWith([
+      {
+        kind: "container",
+        batchId: "11111111-1111-4111-8111-111111111111",
+      },
+    ]);
+  });
+
   it("batch accepts internal facts and reloads both persistent queues", async () => {
     const candidate = internalCandidate();
     listInternalCandidates

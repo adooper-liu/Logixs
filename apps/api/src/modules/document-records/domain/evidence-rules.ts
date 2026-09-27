@@ -23,6 +23,7 @@ export const SUBJECT_TYPES = [
   "receipt",
   "exception",
   "audit_entry",
+  "market_signal",
 ] as const;
 
 export const AUTHORITY_LEVELS = [

@@ -57,6 +57,195 @@ afterAll(async () => {
 });
 
 describe("PrismaShipmentHandoffAcceptanceRepository incomplete Shipment", () => {
+  it("commits one standard Shipment with multiple containers and unbound SKU lines", async () => {
+    const tenantId = randomUUID();
+    const actorId = randomUUID();
+    const evidenceRef = randomUUID();
+    const command: ShipmentHandoffCommandV2 = {
+      contractVersion: "shipment-handoff.v2",
+      tenantId,
+      sourceProfile: "standard_departed_import_v1",
+      source: {
+        channel: "file_import",
+        system: "post_departure_source_package",
+        externalHandoffId: "standard-package:shipment-001",
+        handoffVersion: 1,
+        occurredAt: "2026-09-25T00:00:00.000Z",
+        idempotencyKey: "standard-package:shipment-001:accept",
+        mappingVersion: "post_departure_standard_import.v1",
+        correlationId: randomUUID(),
+        traceId: "trace-standard-handoff",
+      },
+      shipment: {
+        externalShipmentId: "SHP-20260918-001",
+        shipmentNumber: "SHP-20260918-001",
+        transportMode: "ocean",
+        carrierCode: "HMM",
+        bookingNumber: "SQSJ26090200041842",
+        vesselName: "YM MASCULINITY",
+        voyageNumber: "108E",
+        originPortCode: "CNNGB",
+        destinationPortCode: "CAVAN",
+        destinationCountryCode: "CA",
+        departureProof: {
+          kind: "actual_departure_time",
+          occurredAt: "2026-09-17T16:00:00.000Z",
+          sourceTimezone: "Asia/Shanghai",
+          evidenceRef,
+        },
+      },
+      billsOfLading: [
+        {
+          referenceId: "booking:SQSJ26090200041842",
+          documentType: "booking",
+          documentNumber: "SQSJ26090200041842",
+          version: 1,
+        },
+        {
+          referenceId: "mbl:NBOZ9FF56400",
+          documentType: "mbl",
+          documentNumber: "NBOZ9FF56400",
+          version: 1,
+        },
+      ],
+      containers: [
+        standardContainer(
+          "SHP-20260918-001:HMMU4956442",
+          "HMMU4956442",
+          "26DSC01812",
+          "BOM-001",
+          "331-015",
+          "118",
+        ),
+        standardContainer(
+          "SHP-20260918-001:HMMU4207629",
+          "HMMU4207629",
+          "26DSC01811",
+          "BOM-002",
+          "842-327V80",
+          "40",
+        ),
+      ],
+      evidenceReferences: [evidenceRef],
+    };
+
+    const result = await repository.commit({
+      actorId,
+      command,
+      preflight: preflightFor(command, "9"),
+    });
+
+    expect(result).toMatchObject({
+      businessDecisionState: "accepted",
+      commitState: "committed",
+      duplicate: false,
+    });
+    const shipment = await prisma.shipment.findUniqueOrThrow({
+      where: { id: result.shipmentId! },
+      include: {
+        containerLinks: { where: { state: "active" } },
+        handoffs: true,
+        cargoLines: true,
+        transportDocuments: true,
+        upstreamReferences: true,
+      },
+    });
+    expect(shipment).toMatchObject({
+      shipmentNumber: "SHP-20260918-001",
+      sourceRecordId: "SHP-20260918-001",
+      currentLifecycleStatus: "departed",
+      atdAt: new Date("2026-09-17T16:00:00.000Z"),
+    });
+    expect(shipment.containerLinks).toHaveLength(2);
+    expect(shipment.handoffs[0]).toMatchObject({
+      sourceProfile: "standard_departed_import_v1",
+    });
+    const handoffPayload = shipment.handoffs[0]!
+      .payloadJson as unknown as ShipmentHandoffCommandV2;
+    expect(handoffPayload).toMatchObject({
+      shipment: { bookingNumber: "SQSJ26090200041842" },
+      containers: [
+        expect.objectContaining({
+          externalContainerId: "ERP:SHP-20260918-001:HMMU4956442",
+          sealNumber: "SEAL-6442",
+          declaredPackageCount: "504",
+          declaredGrossWeightKg: "7723",
+          declaredVolumeM3: "67.25",
+        }),
+        expect.objectContaining({
+          externalContainerId: "ERP:SHP-20260918-001:HMMU4207629",
+          sealNumber: "SEAL-7629",
+        }),
+      ],
+    });
+    expect(
+      shipment.cargoLines.map((line) => ({
+        productNumberSnapshot: line.productNumberSnapshot,
+        productSkuId: line.productSkuId,
+        quantity: line.quantity.toString(),
+        packageCount: line.packageCount?.toString(),
+        grossWeight: line.grossWeight?.toString(),
+        volume: line.volume?.toString(),
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productNumberSnapshot: "331-015",
+          productSkuId: null,
+          quantity: "118",
+          packageCount: "118",
+          grossWeight: "1404.2",
+          volume: "19.63",
+        }),
+        expect.objectContaining({
+          productNumberSnapshot: "842-327V80",
+          productSkuId: null,
+          quantity: "40",
+        }),
+      ]),
+    );
+    expect(
+      shipment.transportDocuments.map(({ documentType }) => documentType),
+    ).toEqual(expect.arrayContaining(["booking", "mbl"]));
+    expect(
+      shipment.upstreamReferences.map((reference) => ({
+        sourceRecordId: reference.sourceRecordId,
+        sourceLineId: reference.sourceLineId,
+        shipmentCargoLineId: reference.shipmentCargoLineId,
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceRecordId: "26DSC01812",
+          sourceLineId: "BOM-001",
+          shipmentCargoLineId: expect.any(String),
+        }),
+        expect.objectContaining({
+          sourceRecordId: "26DSC01811",
+          sourceLineId: "BOM-002",
+          shipmentCargoLineId: expect.any(String),
+        }),
+      ]),
+    );
+    const containerRecords = await prisma.containerRecord.findMany({
+      where: { tenantId },
+      include: { sourceIdentities: true },
+    });
+    expect(containerRecords).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          containerNumber: "HMMU4956442",
+          sealNumber: "SEAL-6442",
+          sourceIdentities: [
+            expect.objectContaining({
+              sourceRecordId: "ERP:SHP-20260918-001:HMMU4956442",
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+
   it("commits a departed Shipment with pending business facts and replays idempotently", async () => {
     const tenantId = randomUUID();
     const actorId = "dev-operator";
@@ -323,6 +512,54 @@ function commandFor(
       },
     ],
     evidenceReferences: [],
+  };
+}
+
+function standardContainer(
+  referenceId: string,
+  containerNumber: string,
+  replenishmentOrderNumber: string,
+  sourceLineId: string,
+  productNumber: string,
+  quantity: string,
+): ShipmentHandoffCommandV2["containers"][number] {
+  return {
+    referenceId,
+    externalContainerId: `ERP:${referenceId}`,
+    containerNumber,
+    containerTypeCode: "40HQ",
+    sealNumber: `SEAL-${containerNumber.slice(-4)}`,
+    declaredPackageCount: "504",
+    declaredGrossWeightKg: "7723",
+    declaredVolumeM3: "67.25",
+    billReferences: ["booking:SQSJ26090200041842", "mbl:NBOZ9FF56400"],
+    upstreamReferences: [
+      {
+        referenceType: "stocking_order",
+        sourceSystem: "post_departure_source_package",
+        sourceRecordId: replenishmentOrderNumber,
+      },
+      {
+        referenceType: "stocking_order",
+        sourceSystem: "post_departure_source_package",
+        sourceRecordId: replenishmentOrderNumber,
+        sourceLineId,
+      },
+    ],
+    cargoAllocations: [
+      {
+        sourceLineId,
+        productNumber,
+        quantity,
+        quantityUnit: "piece",
+        packageCount: quantity,
+        packageUnit: "carton",
+        grossWeight: productNumber === "331-015" ? "1404.2" : "800",
+        weightUnit: "kg",
+        volume: productNumber === "331-015" ? "19.63" : "8.5",
+        volumeUnit: "m3",
+      },
+    ],
   };
 }
 

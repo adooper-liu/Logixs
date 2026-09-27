@@ -22,7 +22,6 @@ const containerId = computed(() =>
 );
 const taskId = computed(() => String(route.query.taskId ?? "").trim());
 const {
-  containers,
   selectedContainer,
   nodes,
   queueItems,
@@ -44,15 +43,6 @@ const commands = useDispatchCommands(reload);
 const taskOperation = useStuffingTaskOperation(selectedTask, dispatch, reload);
 
 onMounted(() => void loadQueue());
-
-function selectContainer(value: string) {
-  void router.replace({
-    path: "/workspaces/dispatch",
-    query: value
-      ? { view: "loading", containerId: value }
-      : { view: "loading" },
-  });
-}
 
 function selectTask(item: DispatchQueueItem) {
   if (!item.task.containerId) return;
@@ -88,16 +78,12 @@ function submitActual(eventCode: "gate_in" | "loaded", localDateTime: string) {
     summary="查看已有订舱、进港与装船事实；新的已出运数据从接管视图进入。"
     workspace-label="船务出运"
     node-scope-label="出运前交接"
-    :containers="containers"
-    :selected-container-id="containerId"
     :selected-container="selectedContainer"
     :nodes="nodes"
-    :container-list-loading="queueLoading"
     :selection-loading="loading"
     :container-list-error="error"
     :selection-error="error"
     :warnings="warnings"
-    @select-container="selectContainer"
   >
     <template #actions>
       <div class="view-switch" aria-label="出运工作台视图">

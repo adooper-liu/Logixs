@@ -1,14 +1,40 @@
 import { HttpException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { createHash } from "node:crypto";
+import ExcelJS from "exceljs";
 import { describe, expect, it, vi } from "vitest";
+import standardImportCatalog from "@logix/contracts/post-departure-standard-import.json";
 import { AiGatewayService } from "../../ai-governance";
 import { IMPORT_REPOSITORY } from "../domain/import.repository";
 import { IMPORT_SOURCE_STORAGE } from "../domain/import-source-storage";
 import { CreateImportBatchService } from "./create-import-batch.service";
+import { buildPostDepartureStandardTemplate } from "./build-post-departure-standard-template";
 
 const BUFFER = Buffer.from("备货单号,箱号\nSO-1,MSKU1\n", "utf8");
 const FILE_HASH = createHash("sha256").update(BUFFER).digest("hex");
+const REFERENCE_LOCATIONS = {
+  countryReleaseVersion: "ISO-test",
+  portReleaseVersion: "UNLOCODE-test",
+  countries: [{ code: "CA", name: "Canada", nameChinese: "加拿大" }],
+  ports: [
+    {
+      code: "CAVAN",
+      name: "Vancouver",
+      nameChinese: "温哥华",
+      nameChineseState: "confirmed" as const,
+      countryCode: "CA",
+      countryNameChinese: "加拿大",
+    },
+    {
+      code: "CNNGB",
+      name: "Ningbo",
+      nameChinese: "宁波",
+      nameChineseState: "confirmed" as const,
+      countryCode: "CN",
+      countryNameChinese: "中国",
+    },
+  ],
+};
 
 async function buildService(
   repository: {
@@ -20,8 +46,8 @@ async function buildService(
     put: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
   },
+  aiGateway = { suggestImportMapping: vi.fn().mockResolvedValue([]) },
 ) {
-  const aiGateway = { suggestImportMapping: vi.fn().mockResolvedValue([]) };
   const module = await Test.createTestingModule({
     providers: [
       CreateImportBatchService,
@@ -360,4 +386,171 @@ describe("CreateImportBatchService", () => {
 
     expect(result.created).toBe(true);
   });
+
+  it("标准模板按固定字段解析且不调用 AI 映射", async () => {
+    const repository = {
+      findByIdempotencyKey: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(async (batch) => ({
+        ...batch,
+        confirmedQuantityUnit: null,
+        createdAt: new Date("2026-09-25T00:00:00.000Z"),
+      })),
+    };
+    const aiGateway = { suggestImportMapping: vi.fn() };
+    const service = await buildService(repository, undefined, aiGateway);
+    const buffer = await standardWorkbook({ includeCargo: true });
+
+    const result = await service.execute({
+      ...baseInput(),
+      fileName: "standard.xlsx",
+      buffer,
+      parserProfile: "post_departure_standard_v1",
+    });
+
+    expect(result.batch).toMatchObject({
+      parserVersion: "post-departure-standard-v1",
+      rowCount: 2,
+      mappingSuggestions: [],
+    });
+    expect(repository.findByIdempotencyKey).toHaveBeenCalledWith(
+      "t1",
+      "key-1:parser:post-departure-standard-v1",
+    );
+    expect(repository.create.mock.calls[0]?.[1]).toEqual([
+      expect.objectContaining({
+        values: expect.objectContaining({
+          __record_type: "shipment_container",
+          shipment_number: "SHP-20260918-001",
+          container_number: "HMMU4956442",
+        }),
+      }),
+      expect.objectContaining({
+        values: expect.objectContaining({
+          __record_type: "cargo_line",
+          product_number: "331-015",
+        }),
+      }),
+    ]);
+    expect(aiGateway.suggestImportMapping).not.toHaveBeenCalled();
+  });
+
+  it("标准模板允许 SKU 页为空", async () => {
+    const repository = {
+      findByIdempotencyKey: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(async (batch) => ({
+        ...batch,
+        confirmedQuantityUnit: null,
+        createdAt: new Date("2026-09-25T00:00:00.000Z"),
+      })),
+    };
+    const service = await buildService(repository);
+
+    const result = await service.execute({
+      ...baseInput(),
+      fileName: "standard.xlsx",
+      buffer: await standardWorkbook({ includeCargo: false }),
+      parserProfile: "post_departure_standard_v1",
+    });
+
+    expect(result.batch.rowCount).toBe(1);
+  });
+
+  it("标准模板把含中文名称的下拉值还原为标准国家码和港口码", async () => {
+    const repository = {
+      findByIdempotencyKey: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(async (batch) => ({
+        ...batch,
+        confirmedQuantityUnit: null,
+        createdAt: new Date("2026-09-25T00:00:00.000Z"),
+      })),
+    };
+    const service = await buildService(repository);
+
+    await service.execute({
+      ...baseInput(),
+      fileName: "standard.xlsx",
+      buffer: await standardWorkbook({ decoratedReferences: true }),
+      parserProfile: "post_departure_standard_v1",
+    });
+
+    expect(repository.create.mock.calls[0]?.[1][0]?.values).toMatchObject({
+      sales_country_code: "CA",
+      origin_port_code: "CNNGB",
+      destination_port_code: "CAVAN",
+    });
+  });
+
+  it("标准模板缺业务身份或增加未知列时整文件拒绝且不持久化", async () => {
+    const repository = {
+      findByIdempotencyKey: vi.fn().mockResolvedValue(null),
+      create: vi.fn(),
+    };
+    const service = await buildService(repository);
+
+    await expect(
+      service.execute({
+        ...baseInput(),
+        fileName: "standard.xlsx",
+        buffer: await standardWorkbook({ missingShipmentNumber: true }),
+        parserProfile: "post_departure_standard_v1",
+      }),
+    ).rejects.toThrow("STANDARD_IMPORT_REQUIRED_VALUE_MISSING:已出运接管:2");
+
+    await expect(
+      service.execute({
+        ...baseInput(),
+        idempotencyKey: "key-extra-header",
+        fileName: "standard.xlsx",
+        buffer: await standardWorkbook({ extraHeader: true }),
+        parserProfile: "post_departure_standard_v1",
+      }),
+    ).rejects.toThrow("STANDARD_IMPORT_HEADERS_INVALID:已出运接管");
+    expect(repository.create).not.toHaveBeenCalled();
+  });
 });
+
+async function standardWorkbook(options: {
+  includeCargo?: boolean;
+  missingShipmentNumber?: boolean;
+  extraHeader?: boolean;
+  decoratedReferences?: boolean;
+}): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(
+    (await buildPostDepartureStandardTemplate(REFERENCE_LOCATIONS)) as never,
+  );
+  const handoffDefinition = standardImportCatalog.sheets[0]!;
+  const handoff = workbook.getWorksheet(handoffDefinition.name)!;
+  const values: Record<string, string> = {
+    shipment_number: options.missingShipmentNumber ? "" : "SHP-20260918-001",
+    container_number: "HMMU4956442",
+    ...(options.decoratedReferences
+      ? {
+          sales_country_code: "CA | 加拿大 | Canada",
+          origin_port_code: "CNNGB | 宁波 | Ningbo",
+          destination_port_code: "CAVAN | 温哥华 | Vancouver",
+        }
+      : {}),
+  };
+  handoff.getRow(2).values = handoffDefinition.fields.map(
+    ({ code }) => values[code] ?? "",
+  );
+  if (options.extraHeader) {
+    handoff.getCell(1, handoffDefinition.fields.length + 1).value = "未知列";
+  }
+  if (options.includeCargo) {
+    const cargoDefinition = standardImportCatalog.sheets[1]!;
+    const cargo = workbook.getWorksheet(cargoDefinition.name)!;
+    const cargoValues: Record<string, string> = {
+      shipment_number: "SHP-20260918-001",
+      container_number: "HMMU4956442",
+      product_number: "331-015",
+      quantity: "118",
+      quantity_unit: "piece",
+    };
+    cargo.getRow(2).values = cargoDefinition.fields.map(
+      ({ code }) => cargoValues[code] ?? "",
+    );
+  }
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}

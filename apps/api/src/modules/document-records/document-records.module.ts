@@ -9,10 +9,12 @@ import { AssertEvidenceAvailableService } from "./application/assert-evidence-av
 import { DecideEvidenceService } from "./application/decide-evidence.service";
 import { RegisterEvidenceService } from "./application/register-evidence.service";
 import { ReadEvidenceAuthorityContextService } from "./application/read-evidence-authority-context.service";
+import { ReadEvidenceRefsService } from "./application/read-evidence-refs.service";
 import { ASSERT_EVIDENCE_REFS } from "./assert-evidence-refs.port";
 import { ASSERT_EVIDENCE_AVAILABLE } from "./assert-evidence-available.port";
 import { READ_EVIDENCE_AUTHORITY_CONTEXT } from "./read-evidence-authority-context.port";
 import { REGISTER_EVIDENCE } from "./register-evidence.port";
+import { READ_EVIDENCE_REFS } from "./read-evidence-refs.port";
 import { EVIDENCE_REPOSITORY } from "./domain/evidence.repository";
 import { PrismaEvidenceRepository } from "./infrastructure/prisma-evidence.repository";
 import { EvidenceController } from "./presentation/evidence.controller";
@@ -26,6 +28,7 @@ import { EvidenceController } from "./presentation/evidence.controller";
     AssertEvidenceRefsService,
     AssertEvidenceAvailableService,
     ReadEvidenceAuthorityContextService,
+    ReadEvidenceRefsService,
     { provide: EVIDENCE_REPOSITORY, useClass: PrismaEvidenceRepository },
     { provide: ASSERT_EVIDENCE_REFS, useExisting: AssertEvidenceRefsService },
     {
@@ -37,6 +40,7 @@ import { EvidenceController } from "./presentation/evidence.controller";
       useExisting: ReadEvidenceAuthorityContextService,
     },
     { provide: REGISTER_EVIDENCE, useExisting: RegisterEvidenceService },
+    { provide: READ_EVIDENCE_REFS, useExisting: ReadEvidenceRefsService },
   ],
   exports: [
     AssertEvidenceRefsService,
@@ -44,6 +48,7 @@ import { EvidenceController } from "./presentation/evidence.controller";
     ASSERT_EVIDENCE_AVAILABLE,
     READ_EVIDENCE_AUTHORITY_CONTEXT,
     REGISTER_EVIDENCE,
+    READ_EVIDENCE_REFS,
   ],
 })
 export class DocumentRecordsModule implements NestModule {

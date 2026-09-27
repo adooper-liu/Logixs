@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/product-initiative.schema.json",
+  "title": "Product Initiative Contracts V1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "ProductInitiativeReviewPointCodeV1": {
+      "enum": [
+        "target_user_and_market",
+        "competitive_supply",
+        "price_band_and_margin",
+        "compliance_risk"
+      ]
+    },
+    "ProductInitiativeOutcomeV1": {
+      "enum": ["approve", "defer", "reject", "return_to_market"]
+    },
+    "ProductInitiativeCompletionV1": {
+      "enum": ["pending_completion", "completed"]
+    },
+    "ProductInitiativeDestinationV1": {
+      "enum": [
+        "needs_decision",
+        "deferred",
+        "rejected",
+        "returned_to_market",
+        "handed_off"
+      ]
+    },
+    "ProductInitiativePendingFieldCodeV1": {
+      "enum": [
+        "objective",
+        "target_user_and_market",
+        "competitive_supply",
+        "price_band_and_margin",
+        "compliance_risk",
+        "defer_reason",
+        "reject_reason",
+        "return_reason"
+      ]
+    },
+    "ProductInitiativeReviewPointV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "evidenceRefs"],
+      "properties": {
+        "code": { "$ref": "#/$defs/ProductInitiativeReviewPointCodeV1" },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "conclusion": { "type": ["string", "null"], "maxLength": 4000 }
+      }
+    },
+    "ProductInitiativeDecisionCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestId",
+        "outcome",
+        "expectedInitiativeVersion",
+        "reviewPoints",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-initiative-decision.v1" },
+        "requestId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "outcome": { "$ref": "#/$defs/ProductInitiativeOutcomeV1" },
+        "expectedInitiativeVersion": { "type": "integer", "minimum": 0 },
+        "objective": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "reviewPoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
+        },
+        "deferReason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "rejectReason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "returnReason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ProductInitiativeV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "initiativeId",
+        "outcome",
+        "completion",
+        "currentDestination",
+        "responsibleActorId",
+        "reviewPoints",
+        "pendingFieldCodes",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "initiativeId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "outcome": { "$ref": "#/$defs/ProductInitiativeOutcomeV1" },
+        "completion": { "$ref": "#/$defs/ProductInitiativeCompletionV1" },
+        "currentDestination": {
+          "$ref": "#/$defs/ProductInitiativeDestinationV1"
+        },
+        "responsibleActorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "objective": { "type": ["string", "null"], "maxLength": 4000 },
+        "reviewPoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
+        },
+        "reason": { "type": ["string", "null"], "maxLength": 500 },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductInitiativePendingFieldCodeV1" }
+        },
+        "version": { "type": "integer", "minimum": 1 },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductInitiativeEvidenceCandidateV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "sourceName",
+        "summary",
+        "contentRef",
+        "recordedAt"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "sourceName": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "contentRef": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductInitiativeDetailV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoffId", "evidenceCandidates"],
+      "properties": {
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "initiative": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeV1" },
+            { "type": "null" }
+          ]
+        },
+        "evidenceCandidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeEvidenceCandidateV1" }
+        }
+      }
+    },
+    "ProductInitiativeQueueEntryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handoffId",
+        "outcome",
+        "currentDestination",
+        "pendingFieldCodes",
+        "updatedAt"
+      ],
+      "properties": {
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "outcome": { "$ref": "#/$defs/ProductInitiativeOutcomeV1" },
+        "currentDestination": {
+          "$ref": "#/$defs/ProductInitiativeDestinationV1"
+        },
+        "pendingFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/ProductInitiativePendingFieldCodeV1" }
+        },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductInitiativeQueuePageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "items", "pageSize", "nextCursor"],
+      "properties": {
+        "contractVersion": { "const": "product-initiative-queue.v1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeQueueEntryV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1 },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    },
+    "ProductInitiativeHandoffV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "handoffId",
+        "version",
+        "initiativeId",
+        "signalId",
+        "objective",
+        "responsibleActorId",
+        "reviewPoints",
+        "evidenceRefs",
+        "createdAt",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product_initiative_handoff.v1" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "initiativeId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "signalId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "marketCode": { "type": ["string", "null"], "maxLength": 100 },
+        "userProblem": { "type": ["string", "null"], "maxLength": 4000 },
+        "objective": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "responsibleActorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reviewPoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    }
+  }
+}

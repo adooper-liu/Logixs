@@ -11,6 +11,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { Readable } from "node:stream";
 import ExcelJS from "exceljs";
+import standardImportCatalog from "@logix/contracts/post-departure-standard-import.json";
 import type {
   ImportBatch,
   ImportMappingSuggestion,
@@ -37,7 +38,10 @@ const CONTENT_TYPES = {
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 } as const;
 // 改变表头、行快照或版式判定语义时必须升版，避免幂等命中旧解析结果。
-const IMPORT_PARSER_VERSION = "tabular-v2";
+const TABULAR_PARSER_VERSION = "tabular-v2";
+export const STANDARD_POST_DEPARTURE_PARSER_VERSION =
+  "post-departure-standard-v1";
+export type ImportParserProfile = "tabular" | "post_departure_standard_v1";
 
 export interface CreateImportBatchInput {
   fileName: string;
@@ -46,6 +50,7 @@ export interface CreateImportBatchInput {
   tenantId: string;
   operatorId: string;
   replacesBatchId?: string | null;
+  parserProfile?: ImportParserProfile;
 }
 
 export interface CreateImportBatchResult {
@@ -91,7 +96,14 @@ export class CreateImportBatchService {
       );
       if (!replaced) throw new NotFoundException("RESOURCE_NOT_FOUND");
     }
-    const effectiveIdempotencyKey = buildParserScopedIdempotencyKey(input);
+    const parserVersion =
+      input.parserProfile === "post_departure_standard_v1"
+        ? STANDARD_POST_DEPARTURE_PARSER_VERSION
+        : TABULAR_PARSER_VERSION;
+    const effectiveIdempotencyKey = buildParserScopedIdempotencyKey(
+      input,
+      parserVersion,
+    );
 
     // 幂等：同 key 同 hash → 返回原批次；同 key 异 hash → 冲突
     const existing = await this.repository.findByIdempotencyKey(
@@ -105,7 +117,10 @@ export class CreateImportBatchService {
       throw new ConflictException("IDEMPOTENCY_KEY_CONFLICT");
     }
 
-    const { headers, rows } = await parseWorkbook(input.buffer, ext);
+    const { headers, rows } =
+      input.parserProfile === "post_departure_standard_v1"
+        ? await parseStandardPostDepartureWorkbook(input.buffer, ext)
+        : await parseWorkbook(input.buffer, ext);
     if (rows.length > MAX_ROWS) {
       throw new HttpException(
         `VALIDATION_RANGE: 文件有 ${rows.length} 个数据行，最多支持 ${MAX_ROWS} 行`,
@@ -119,7 +134,10 @@ export class CreateImportBatchService {
       );
     }
 
-    const mappingSuggestions = await this.suggestMapping(headers);
+    const mappingSuggestions =
+      input.parserProfile === "post_departure_standard_v1"
+        ? []
+        : await this.suggestMapping(headers);
     const batchId = randomUUID();
     const objectKey = `imports/${batchId}/source`;
     const contentType = CONTENT_TYPES[ext as keyof typeof CONTENT_TYPES];
@@ -146,7 +164,7 @@ export class CreateImportBatchService {
           sourceContentType: contentType,
           sourceSizeBytes: input.buffer.length,
           sourceRetainedAt: new Date(),
-          parserVersion: IMPORT_PARSER_VERSION,
+          parserVersion,
           replacesBatchId: input.replacesBatchId ?? null,
           status: "parsed",
           rowCount: rows.length,
@@ -197,11 +215,130 @@ export class CreateImportBatchService {
 
 function buildParserScopedIdempotencyKey(
   input: Pick<CreateImportBatchInput, "idempotencyKey" | "replacesBatchId">,
+  parserVersion: string,
 ): string {
   const replacementScope = input.replacesBatchId
     ? `:replaces:${input.replacesBatchId}`
     : "";
-  return `${input.idempotencyKey}:parser:${IMPORT_PARSER_VERSION}${replacementScope}`;
+  return `${input.idempotencyKey}:parser:${parserVersion}${replacementScope}`;
+}
+
+async function parseStandardPostDepartureWorkbook(
+  buffer: Buffer,
+  ext: string,
+): Promise<{ headers: string[]; rows: NewImportRow[] }> {
+  if (ext !== ".xlsx") {
+    throw new HttpException(
+      "STANDARD_IMPORT_FORMAT_INVALID: 标准模板仅支持 .xlsx",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer as never);
+  const rows: NewImportRow[] = [];
+  const allHeaders = new Set<string>([
+    "__record_type",
+    "__sheet_name",
+    "__worksheet_row",
+  ]);
+
+  for (const sheetDefinition of standardImportCatalog.sheets) {
+    const worksheet = workbook.getWorksheet(sheetDefinition.name);
+    if (!worksheet) {
+      if (!sheetDefinition.required) continue;
+      throw new HttpException(
+        `STANDARD_IMPORT_SHEET_MISSING:${sheetDefinition.name}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const actualLabels = sheetDefinition.fields.map((_, index) =>
+      worksheet
+        .getRow(1)
+        .getCell(index + 1)
+        .text.trim(),
+    );
+    const expectedLabels = sheetDefinition.fields.map(({ label }) => label);
+    const hasUnexpectedHeader = Array.from(
+      {
+        length: Math.max(
+          0,
+          worksheet.getRow(1).cellCount - expectedLabels.length,
+        ),
+      },
+      (_, index) =>
+        worksheet
+          .getRow(1)
+          .getCell(expectedLabels.length + index + 1)
+          .text.trim(),
+    ).some(Boolean);
+    if (
+      hasUnexpectedHeader ||
+      actualLabels.length !== expectedLabels.length ||
+      actualLabels.some((label, index) => label !== expectedLabels[index])
+    ) {
+      throw new HttpException(
+        `STANDARD_IMPORT_HEADERS_INVALID:${sheetDefinition.name}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    for (const field of sheetDefinition.fields) allHeaders.add(field.code);
+    worksheet.eachRow((row, worksheetRowNo) => {
+      if (worksheetRowNo === 1) return;
+      const values = Object.fromEntries(
+        sheetDefinition.fields.map((field, index) => [
+          field.code,
+          canonicalStandardReferenceSelection(
+            field.code,
+            row.getCell(index + 1).text.trim(),
+          ),
+        ]),
+      );
+      if (Object.values(values).every((value) => value === "")) return;
+      const missing = sheetDefinition.fields.filter(
+        (field) => field.required && !values[field.code],
+      );
+      if (missing.length > 0) {
+        throw new HttpException(
+          `STANDARD_IMPORT_REQUIRED_VALUE_MISSING:${sheetDefinition.name}:${worksheetRowNo}:${missing.map(({ label }) => label).join(",")}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      rows.push({
+        rowNo: rows.length + 1,
+        values: {
+          __record_type: sheetDefinition.recordType,
+          __sheet_name: sheetDefinition.name,
+          __worksheet_row: String(worksheetRowNo),
+          ...values,
+        },
+      });
+    });
+  }
+
+  if (
+    !rows.some(({ values }) => values.__record_type === "shipment_container")
+  ) {
+    throw new HttpException(
+      "STANDARD_IMPORT_EMPTY: 已出运接管页至少需要一行",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+  return { headers: [...allHeaders], rows };
+}
+
+function canonicalStandardReferenceSelection(
+  fieldCode: string,
+  value: string,
+): string {
+  const pattern =
+    fieldCode === "sales_country_code"
+      ? /^([A-Z]{2})\s*\|/
+      : fieldCode === "origin_port_code" ||
+          fieldCode === "destination_port_code"
+        ? /^([A-Z]{2}[A-Z0-9]{3})\s*\|/
+        : undefined;
+  if (!pattern) return value;
+  return pattern.exec(value.toUpperCase())?.[1] ?? value;
 }
 
 async function parseWorkbook(

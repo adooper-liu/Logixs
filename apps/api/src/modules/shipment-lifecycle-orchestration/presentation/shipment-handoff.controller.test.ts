@@ -15,6 +15,9 @@ describe("ShipmentHandoffController", () => {
     const completePendingCargo = { execute: vi.fn() };
     const bindPendingSku = { execute: vi.fn() };
     const completePendingDocuments = { execute: vi.fn() };
+    const createManual = { execute: vi.fn() };
+    const listIntakeReferenceData = { execute: vi.fn() };
+    const searchIntakePorts = { execute: vi.fn() };
     const controller = new ShipmentHandoffController(
       preflight as never,
       accept as never,
@@ -25,6 +28,9 @@ describe("ShipmentHandoffController", () => {
       completePendingCargo as never,
       bindPendingSku as never,
       completePendingDocuments as never,
+      createManual as never,
+      listIntakeReferenceData as never,
+      searchIntakePorts as never,
     );
     const identity = { tenantId: "tenant-a", actorId: "actor-a" };
     const body = { contractVersion: "shipment-handoff.v1" } as never;
@@ -34,6 +40,18 @@ describe("ShipmentHandoffController", () => {
 
     expect(preflight.preflight).toHaveBeenCalledWith(body, identity);
     expect(accept.accept).toHaveBeenCalledWith(body, identity);
+
+    await controller.createManual(body, { identity });
+    expect(createManual.execute).toHaveBeenCalledWith(body, identity);
+
+    await controller.intakeReferenceData();
+    expect(listIntakeReferenceData.execute).toHaveBeenCalledOnce();
+
+    await controller.searchPorts({ query: "宁波", pageSize: "10" });
+    expect(searchIntakePorts.execute).toHaveBeenCalledWith({
+      query: "宁波",
+      pageSize: 10,
+    });
 
     await controller.acceptInternalCandidates(body, { identity });
     expect(acceptInternalBatch.execute).toHaveBeenCalledWith(body, identity);
@@ -98,6 +116,18 @@ describe("ShipmentHandoffController", () => {
         ShipmentHandoffController.prototype.completeShipmentPendingFacts,
       ),
     ).toEqual(["lifecycle.operate"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ShipmentHandoffController.prototype.createManual,
+      ),
+    ).toEqual(["lifecycle.operate"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ShipmentHandoffController.prototype.intakeReferenceData,
+      ),
+    ).toEqual(["lifecycle.read"]);
     expect(
       Reflect.getMetadata(
         REQUIRED_CAPABILITIES_KEY,

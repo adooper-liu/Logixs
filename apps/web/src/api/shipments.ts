@@ -16,6 +16,10 @@ import type {
   ShipmentPendingSkuBindingResultV1,
   ShipmentPendingDocumentCompletionCommandV1,
   ShipmentPendingDocumentCompletionResultV1,
+  ManualDepartedShipmentCreateCommandV1,
+  ShipmentHandoffResultV1,
+  ShipmentIntakePortSearchResultV1,
+  ShipmentIntakeReferenceDataV1,
 } from "@logix/contracts";
 import { formatHttpError } from "./httpError";
 import { DEV_TENANT_ID } from "./developmentIdentity";
@@ -36,6 +40,68 @@ export async function listDepartedShipments(): Promise<ShipmentSummaryV1[]> {
   }
   const page = (await response.json()) as ShipmentPageV1;
   return page.items;
+}
+
+export async function getShipmentIntakeReferenceData(): Promise<ShipmentIntakeReferenceDataV1> {
+  const response = await fetch("/api/shipment-handoffs/intake/reference-data", {
+    headers: HEADERS,
+  });
+  if (!response.ok) {
+    throw new Error(
+      await formatHttpError(
+        response.status,
+        await response.text(),
+        "暂时无法加载货主与销售国家",
+      ),
+    );
+  }
+  return (await response.json()) as ShipmentIntakeReferenceDataV1;
+}
+
+export async function searchShipmentIntakePorts(
+  query: string,
+  pageSize = 20,
+): Promise<ShipmentIntakePortSearchResultV1> {
+  const params = new URLSearchParams({ query, pageSize: String(pageSize) });
+  const response = await fetch(
+    `/api/shipment-handoffs/intake/ports?${params}`,
+    {
+      headers: HEADERS,
+    },
+  );
+  if (!response.ok) {
+    throw new Error(
+      await formatHttpError(
+        response.status,
+        await response.text(),
+        "暂时无法查询港口",
+      ),
+    );
+  }
+  return (await response.json()) as ShipmentIntakePortSearchResultV1;
+}
+
+export async function createManualDepartedShipment(
+  command: ManualDepartedShipmentCreateCommandV1,
+): Promise<ShipmentHandoffResultV1> {
+  const response = await fetch("/api/shipment-handoffs/manual", {
+    method: "POST",
+    headers: {
+      ...HEADERS,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+  });
+  if (!response.ok) {
+    throw new Error(
+      await formatHttpError(
+        response.status,
+        await response.text(),
+        "暂时无法建立该票 Shipment",
+      ),
+    );
+  }
+  return (await response.json()) as ShipmentHandoffResultV1;
 }
 
 export async function listShipmentPendingCompletion(
@@ -260,4 +326,8 @@ export type {
   ShipmentPendingDocumentCompletionCommandV1,
   ShipmentPendingDocumentCompletionResultV1,
   ShipmentSummaryV1,
+  ManualDepartedShipmentCreateCommandV1,
+  ShipmentHandoffResultV1,
+  ShipmentIntakePortV1,
+  ShipmentIntakeReferenceDataV1,
 } from "@logix/contracts";

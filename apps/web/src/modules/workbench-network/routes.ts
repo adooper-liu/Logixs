@@ -1,0 +1,45 @@
+import type { RouteRecordRaw } from "vue-router";
+import { frameworkWorkbenchStages } from "../../data/workbenchNetwork";
+
+export const workbenchNetworkRoutes: RouteRecordRaw[] = [
+  {
+    path: "/workspaces",
+    component: () => import("../../views/WorkbenchNetworkView.vue"),
+    meta: {
+      title: "业务工作台",
+      section: "作业",
+      navLabel: "业务工作台",
+      navIcon: "workflow",
+      navOrder: 12,
+      roles: ["operator", "planner", "manager"],
+    },
+  },
+  {
+    path: "/workspaces/market-signals",
+    component: () => import("../../views/MarketSignalsWorkbench.vue"),
+    meta: {
+      title: "市场与经营信号",
+      section: "业务工作台",
+      roles: ["planner", "manager"],
+    },
+  },
+  {
+    path: "/workspaces/product-selection",
+    component: () => import("../../views/ProductSelectionWorkbench.vue"),
+    meta: {
+      title: "选品立项",
+      section: "业务工作台",
+      roles: ["planner", "manager"],
+    },
+  },
+  ...frameworkWorkbenchStages.map((stage): RouteRecordRaw => ({
+    path: stage.path,
+    component: () => import("../../views/PlannedWorkbenchView.vue"),
+    props: { stageCode: stage.code },
+    meta: {
+      title: stage.title,
+      section: "业务工作台",
+      roles: ["operator", "planner", "manager"],
+    },
+  })),
+];

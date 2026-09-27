@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Landmark, TriangleAlert } from "@lucide/vue";
 import type { CustomsQueueItem } from "../../data/customsWorkbench";
+import NodeTaskQueueGuidance from "../workbench/NodeTaskQueueGuidance.vue";
 
 defineProps<{
   items: readonly CustomsQueueItem[];
@@ -30,6 +31,11 @@ const emit = defineEmits<{ select: [item: CustomsQueueItem] }>();
       <span>
         <b>{{ item.container?.containerNumber ?? "待绑定货柜" }}</b>
         <small>{{ item.container?.orderNumber ?? "备货单待关联" }}</small>
+        <NodeTaskQueueGuidance
+          :attention-reason="item.attentionReason"
+          :condition-kind="item.conditionKind"
+          :condition-label="item.conditionLabel"
+        />
       </span>
       <span class="queue-meta">
         <small :class="`urgency urgency--${item.urgency}`">

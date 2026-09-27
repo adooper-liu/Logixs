@@ -33,12 +33,6 @@ const taskOperation = useStuffingTaskOperation(
 );
 
 onMounted(() => void workbench.loadQueue());
-function selectContainer(value: string) {
-  void router.replace({
-    path: "/workspaces/delivery",
-    query: value ? { containerId: value } : {},
-  });
-}
 function selectTask(item: DeliveryQueueItem) {
   if (!item.task.containerId) return;
   void router.replace({
@@ -71,16 +65,12 @@ function submitFact(draft: DeliveryFactDraft) {
     summary="锁定目的仓与预约，登记 POD 或仓库权威到场，并跟进复核与送仓岗位工单。"
     workspace-label="内陆运输"
     node-scope-label="送仓"
-    :containers="workbench.containers.value"
-    :selected-container-id="containerId"
     :selected-container="workbench.selectedContainer.value"
     :nodes="workbench.nodes.value"
-    :container-list-loading="workbench.queueLoading.value"
     :selection-loading="workbench.loading.value"
     :container-list-error="workbench.error.value"
     :selection-error="workbench.error.value"
     :warnings="workbench.warnings.value"
-    @select-container="selectContainer"
   >
     <template #queue
       ><DeliveryWorkQueue

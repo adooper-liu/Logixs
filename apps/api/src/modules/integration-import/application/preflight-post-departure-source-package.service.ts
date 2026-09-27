@@ -35,6 +35,8 @@ import {
   decoratePostDepartureIssue,
   isBlockingPostDepartureIssue,
 } from "../domain/post-departure-candidate-correction";
+import { STANDARD_POST_DEPARTURE_PARSER_VERSION } from "./create-import-batch.service";
+import { prepareStandardPostDepartureCandidates } from "./prepare-standard-post-departure-candidates";
 
 const SOURCE_KINDS = [
   "container",
@@ -85,6 +87,16 @@ export class PreflightPostDepartureSourcePackageService {
       }),
     );
 
+    const standardSource = sources.find(
+      ({ batch }) =>
+        batch.batch.parserVersion === STANDARD_POST_DEPARTURE_PARSER_VERSION,
+    );
+    if (
+      standardSource &&
+      (sources.length !== 1 || standardSource.kind !== "container")
+    ) {
+      throw new BadRequestException("STANDARD_IMPORT_SOURCE_MUST_BE_EXCLUSIVE");
+    }
     const rowsByKind = Object.fromEntries(
       SOURCE_KINDS.map((kind) => {
         const source = sources.find((item) => item.kind === kind);
@@ -97,9 +109,37 @@ export class PreflightPostDepartureSourcePackageService {
     const containerNumbers = [
       ...new Set(sources.flatMap(({ kind }) => [...rowsByKind[kind].keys()])),
     ].sort();
-    let candidates = containerNumbers.map((containerNumber) =>
-      buildCandidate(containerNumber, sources, rowsByKind),
-    );
+    let candidates: PostDepartureSourceCandidateV1[];
+    if (standardSource) {
+      const portCodes = [
+        ...new Set(
+          standardSource.batch.rows
+            .filter(
+              ({ values }) => values.__record_type === "shipment_container",
+            )
+            .flatMap(({ values }) => [
+              normalize(values.origin_port_code).toUpperCase(),
+              normalize(values.destination_port_code).toUpperCase(),
+            ])
+            .filter(Boolean),
+        ),
+      ];
+      const validPorts = await this.ports.findByUnlocodes(portCodes);
+      try {
+        candidates = prepareStandardPostDepartureCandidates({
+          batch: standardSource.batch,
+          validPortCodes: new Set(validPorts.map(({ unlocode }) => unlocode)),
+        });
+      } catch (cause) {
+        throw new BadRequestException(
+          cause instanceof Error ? cause.message : "STANDARD_IMPORT_INVALID",
+        );
+      }
+    } else {
+      candidates = containerNumbers.map((containerNumber) =>
+        buildCandidate(containerNumber, sources, rowsByKind),
+      );
+    }
     const packageId = createHash("sha256")
       .update(
         sources.map(({ kind, batch }) => `${kind}:${batch.batch.id}`).join("|"),
@@ -174,6 +214,7 @@ export class PreflightPostDepartureSourcePackageService {
       ]),
     );
     candidates = candidates.map((candidate) =>
+      candidate.preparedHandoff?.shipmentGrouping ||
       candidate.correction?.shipmentGrouping
         ? candidate
         : applyActiveShipmentMatch(
@@ -310,6 +351,12 @@ function assertSourceShape(
   kind: PostDepartureSourceKindV1,
   batch: ImportBatchWithRows,
 ): void {
+  if (batch.batch.parserVersion === STANDARD_POST_DEPARTURE_PARSER_VERSION) {
+    if (kind !== "container") {
+      throw new BadRequestException("STANDARD_IMPORT_SOURCE_KIND_INVALID");
+    }
+    return;
+  }
   const headers = new Set(batch.rows.flatMap((row) => Object.keys(row.values)));
   const missing = REQUIRED_HEADERS[kind].filter(
     (header) => !headers.has(header),
