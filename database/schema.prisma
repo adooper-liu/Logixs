@@ -1902,6 +1902,7 @@ model MarketOpportunityHandoff {
   isCurrent            Boolean                    @default(true) @map("is_current")
   createdAt            DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   intakes              ProductOpportunityIntake[]
+  initiatives          ProductInitiative[]
 
   @@unique([id, tenantId], map: "market_opportunity_handoff_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "market_opportunity_handoff_idempotency_key")
@@ -1929,6 +1930,59 @@ model ProductOpportunityIntake {
   @@index([tenantId, handoffId, version], map: "product_opportunity_intake_handoff_idx")
   @@index([tenantId, assignedActorId, state, actedAt], map: "product_opportunity_intake_actor_idx")
   @@map("product_opportunity_intake")
+}
+
+model ProductInitiative {
+  id                  String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                   @map("tenant_id")
+  handoffId           String                   @map("handoff_id") @db.Uuid
+  handoff             MarketOpportunityHandoff @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version             Int                      @map("version")
+  outcome             String                   @map("outcome")
+  completionState     String                   @map("completion_state")
+  currentDestination  String                   @map("current_destination")
+  responsibleActorId  String                   @map("responsible_actor_id")
+  objective           String?                  @map("objective")
+  reviewPoints        Json                     @map("review_points")
+  reason              String?                  @map("reason")
+  pendingFieldCodes   String[]                 @map("pending_field_codes")
+  actedBy             String                   @map("acted_by")
+  idempotencyKey      String                   @map("idempotency_key")
+  payloadHash         String                   @map("payload_hash")
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  handoffs            ProductInitiativeHandoff[]
+
+  @@unique([id, tenantId], map: "product_initiative_id_tenant_key")
+  @@unique([tenantId, handoffId], map: "product_initiative_handoff_key")
+  @@unique([tenantId, idempotencyKey], map: "product_initiative_idempotency_key")
+  @@index([tenantId, currentDestination, updatedAt, id], map: "product_initiative_queue_idx")
+  @@map("product_initiative")
+}
+
+model ProductInitiativeHandoff {
+  id                 String            @id @default(uuid()) @map("id") @db.Uuid
+  tenantId           String            @map("tenant_id")
+  initiativeId       String            @map("initiative_id") @db.Uuid
+  initiative         ProductInitiative @relation(fields: [initiativeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  signalId           String            @map("signal_id") @db.Uuid
+  version            Int               @map("version")
+  marketCode         String?           @map("market_code")
+  userProblem        String?           @map("user_problem")
+  objective          String            @map("objective")
+  responsibleActorId String            @map("responsible_actor_id")
+  reviewPoints       Json              @map("review_points")
+  evidenceRefs       String[]          @map("evidence_refs") @db.Uuid
+  createdBy          String            @map("created_by")
+  idempotencyKey     String            @map("idempotency_key")
+  payloadHash        String            @map("payload_hash")
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "product_initiative_handoff_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "product_initiative_handoff_idempotency_key")
+  @@unique([initiativeId, version], map: "product_initiative_handoff_version_key")
+  @@index([tenantId, createdAt, id], map: "product_initiative_handoff_queue_idx")
+  @@map("product_initiative_handoff")
 }
 
 model OutboxMessage {
