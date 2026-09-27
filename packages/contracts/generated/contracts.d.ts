@@ -2162,27 +2162,26 @@ orderMultiple: (number | null)
 /**
  * **产品（SPU）层**属性：同一款各变体共享的那些。挂错层的话，每加一个颜色就要把认证与关务重录一遍。
  * 
+ * **逐项可空**：主数据是逐步查清的，缺一项不该让人什么都存不下（普通缺失不阻断）。键必须显式给（可为 null）—— 「还没查」与「填了但是空」是两回事，不许用省略来冒充。哪些必须在**发布**前补齐由领域规则判定。
+ * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductAttributesV1".
  */
 export interface ProductAttributesV1 {
-categoryCode: string
-brandName: string
+categoryCode: (string | null)
+brandName: (string | null)
 subBrandName: (string | null)
 modelNumber: (string | null)
-functionalName: string
+functionalName: (string | null)
 /**
  * 原产国：制造地，不是寄出地。ISO 3166-1 alpha-2。
  */
-countryOfOrigin: string
+countryOfOrigin: (string | null)
 /**
  * 海关协调制度编码。跨境必填，报关与税费都靠它。
  */
-hsCode: string
-/**
- * @minItems 1
- */
-targetCountries: [string, ...(string)[]]
+hsCode: (string | null)
+targetCountries: string[]
 certifications: string[]
 temperature: (ProductTemperatureV1 | null)
 dangerousGoods: (DangerousGoodsV1 | null)
