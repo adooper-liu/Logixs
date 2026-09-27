@@ -230,11 +230,11 @@ describe("ProductSelectionWorkbench", () => {
     expect(button.attributes("disabled")).toBeDefined();
     expect(button.text()).toContain("还差 5 项才能立项");
     expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
-      "目标结果",
-      "目标用户与市场",
-      "竞争供给",
-      "价格带与利润",
-      "合规风险",
+      "目标结果在上面的「目标结果」里补",
+      "目标用户与市场在评审要点面板里补",
+      "竞争供给在评审要点面板里补",
+      "价格带与利润在评审要点面板里补",
+      "合规风险在评审要点面板里补",
     ]);
   });
 

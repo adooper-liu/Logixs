@@ -29,6 +29,13 @@ const OTHER_HANDOFF_ID = "33333333-3333-4333-8333-333333333333";
 const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
 
+/** 只关心缺了什么时，标签就够了；"在哪补"由面板负责呈现。 */
+function gapLabels(state: {
+  blockingGaps: { value: { label: string }[] };
+}): string[] {
+  return state.blockingGaps.value.map((gap) => gap.label);
+}
+
 describe("useProductInitiativeDecision", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,7 +47,7 @@ describe("useProductInitiativeDecision", () => {
   it("四项要点与目标结果都缺时列出全部缺口，且不能立项", async () => {
     const state = await mountComposable();
 
-    expect(state.blockingGaps.value).toEqual([
+    expect(state.blockingGaps.value.map((gap) => gap.label)).toEqual([
       "目标结果",
       ...REVIEW_POINTS.map((point) => point.label),
     ]);
@@ -73,10 +80,10 @@ describe("useProductInitiativeDecision", () => {
     state.toggleEvidence("compliance_risk", EVIDENCE_ID);
     state.points.compliance_risk.conclusion = "无强制认证，需注意材料标识";
 
-    expect(state.blockingGaps.value).not.toContain("合规风险");
+    expect(gapLabels(state)).not.toContain("合规风险");
     // 再点一次取消引用，缺口回来
     state.toggleEvidence("compliance_risk", EVIDENCE_ID);
-    expect(state.blockingGaps.value).toContain("合规风险");
+    expect(gapLabels(state)).toContain("合规风险");
   });
 
   it("只引用证据但没有结论仍算缺口", async () => {
@@ -84,7 +91,7 @@ describe("useProductInitiativeDecision", () => {
 
     state.toggleEvidence("competitive_supply", EVIDENCE_ID);
 
-    expect(state.blockingGaps.value).toContain("竞争供给");
+    expect(gapLabels(state)).toContain("竞争供给");
   });
 
   it("提交立项时带上服务端版本、幂等键与四项要点", async () => {
@@ -160,7 +167,7 @@ describe("useProductInitiativeDecision", () => {
       evidenceRefs: [EVIDENCE_ID],
       conclusion: "头部集中",
     });
-    expect(state.blockingGaps.value).not.toContain("竞争供给");
+    expect(gapLabels(state)).not.toContain("竞争供给");
   });
 
   it("已立项是终态，界面不再提供判断动作", async () => {
