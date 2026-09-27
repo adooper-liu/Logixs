@@ -359,12 +359,19 @@ export type ProductDefinitionReleaseStateV1 = ("in_progress" | "released" | "def
  */
 export type ProductDefinitionPendingFieldCodeV1 = ("specification" | "compliance_assumptions" | "evt_conclusion" | "dvt_conclusion" | "pvt_conclusion")
 /**
- * 身份之外的缺口。**不阻断发布**，但必须随交接带下去，不得让人以为已经齐了。
+ * 身份与属性之外的缺口。**不阻断发布**，但必须随交接带下去，不得让人以为已经齐了。
  * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductIdentityPendingFieldCodeV1".
  */
 export type ProductIdentityPendingFieldCodeV1 = ("bom" | "listing")
+/**
+ * 计量单位。分量纲列全：重量 g/kg、长度 mm/cm、体积 ml/L、计数 each/pair/set/ctn。逐属性该用哪种单位由领域与界面把关 —— JSON Schema 表达不了「重量不能用 ml」这类跨字段规则，硬塞进来只会变成一张看不懂的表。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MeasureUnitV1".
+ */
+export type MeasureUnitV1 = ("g" | "kg" | "mm" | "cm" | "ml" | "l" | "each" | "pair" | "set" | "ctn")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
@@ -2107,6 +2114,131 @@ idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MeasureV1".
+ */
+export interface MeasureV1 {
+value: number
+unit: MeasureUnitV1
+}
+/**
+ * 配送与存储温度要求（摄氏度）。温度单列一组，是因为冷链与常温的运输、仓储与成本完全不同。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductTemperatureV1".
+ */
+export interface ProductTemperatureV1 {
+transportMinC: (number | null)
+transportMaxC: (number | null)
+storageMinC: (number | null)
+storageMaxC: (number | null)
+}
+/**
+ * 危险品结构化信息。不是「有没有危险品」一个标记 —— 空运审查要的是 UN 编号、类别、包装类别、运输名称这一组，缺一项就走不了。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "DangerousGoodsV1".
+ */
+export interface DangerousGoodsV1 {
+unNumber: (string | null)
+classCode: (string | null)
+packingGroup: (string | null)
+shippingName: (string | null)
+technicalName: (string | null)
+flashPointC: (number | null)
+}
+/**
+ * 订货与采购条件。它是主数据而不是交易数据 —— 因为询价的输入就是它：没有提前期与最小起订量，供应商报不出有意义的价。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "OrderConditionsV1".
+ */
+export interface OrderConditionsV1 {
+leadTimeDays: (number | null)
+minOrderQuantity: (MeasureV1 | null)
+maxOrderQuantity: (MeasureV1 | null)
+orderSizingFactor: (number | null)
+orderMultiple: (number | null)
+}
+/**
+ * **产品（SPU）层**属性：同一款各变体共享的那些。挂错层的话，每加一个颜色就要把认证与关务重录一遍。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductAttributesV1".
+ */
+export interface ProductAttributesV1 {
+categoryCode: string
+brandName: string
+subBrandName: (string | null)
+modelNumber: (string | null)
+functionalName: string
+/**
+ * 原产国：制造地，不是寄出地。ISO 3166-1 alpha-2。
+ */
+countryOfOrigin: string
+/**
+ * 海关协调制度编码。跨境必填，报关与税费都靠它。
+ */
+hsCode: string
+/**
+ * @minItems 1
+ */
+targetCountries: [string, ...(string)[]]
+certifications: string[]
+temperature: (ProductTemperatureV1 | null)
+dangerousGoods: (DangerousGoodsV1 | null)
+orderConditions: OrderConditionsV1
+}
+/**
+ * 电池专项。形态决定能走什么渠道：内置、配套、纯电池的管制逐级变严；瓦时分档决定能不能上飞机。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "BatteryV1".
+ */
+export interface BatteryV1 {
+form: ("installed" | "packed_with_equipment" | "standalone")
+wattHours: (number | null)
+un38_3ReportRef: (string | null)
+msdsRef: (string | null)
+}
+/**
+ * 包装层级。行业规矩：每层项数与完成层数只能在这一层（非基本单元）编辑，基本单元层看不到它们。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SkuPackagingV1".
+ */
+export interface SkuPackagingV1 {
+itemsPerLayer: (number | null)
+completedLayers: (number | null)
+itemsPerConsumerUnit: (number | null)
+consumerUnitsPerInnerPack: (number | null)
+}
+/**
+ * **SKU 层**属性：逐个变体不同的那些（颜色、尺寸重量、包装、条码、电池）。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductSkuAttributesV1".
+ */
+export interface ProductSkuAttributesV1 {
+colorCode: (string | null)
+sizeDescription: (string | null)
+/**
+ * 净含量。报关单要的是净重（不含包装），与毛重是两回事。
+ */
+netContent: (MeasureV1 | null)
+grossWeight: (MeasureV1 | null)
+dimensions: ({
+length: MeasureV1
+width: MeasureV1
+height: MeasureV1
+} | null)
+packaging: SkuPackagingV1
+stackingFactor: (number | null)
+maxStackingWeight: (MeasureV1 | null)
+barcode: (string | null)
+battery: (BatteryV1 | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductSkuIdentityV1".
  */
 export interface ProductSkuIdentityV1 {
@@ -2118,6 +2250,7 @@ skuId: string
  * 对外编号：给人看、可改。改它不动内部键。
  */
 skuCode: string
+attributes: ProductSkuAttributesV1
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -2133,6 +2266,7 @@ productNumber: string
 sourceHandoffId: string
 version: number
 specification: string
+attributes: ProductAttributesV1
 skus: ProductSkuIdentityV1[]
 pendingFieldCodes: ProductIdentityPendingFieldCodeV1[]
 createdAt: DateTime
@@ -2149,6 +2283,7 @@ expectedVersion: number
  * 对外产品号；留空时由系统按规则生成，之后可改。
  */
 productNumber?: string
+attributes: ProductAttributesV1
 /**
  * @minItems 1
  * @maxItems 200
@@ -2156,9 +2291,11 @@ productNumber?: string
 skus: [{
 skuId?: Uuid
 skuCode: string
+attributes: ProductSkuAttributesV1
 }, ...({
 skuId?: Uuid
 skuCode: string
+attributes: ProductSkuAttributesV1
 })[]]
 idempotencyKey: string
 }
@@ -2172,7 +2309,7 @@ expectedVersion: number
 idempotencyKey: string
 }
 /**
- * 交给寻源侧的可售 SKU 发布。身份齐备即可发布；BOM 与 Listing 作为待补随行。
+ * 交给寻源侧的可售 SKU 发布。身份与属性齐备即可发布；BOM 与 Listing 作为待补随行。
  * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "SellableSkuReleaseHandoffV1".
@@ -2183,6 +2320,7 @@ handoffId: Uuid
 version: number
 productId: Uuid
 productNumber: string
+attributes: ProductAttributesV1
 skus: ProductSkuIdentityV1[]
 pendingFieldCodes: ProductIdentityPendingFieldCodeV1[]
 releasedBy: string

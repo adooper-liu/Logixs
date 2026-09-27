@@ -25,6 +25,7 @@ const INITIATIVE_MIGRATION = "20260927120000_add_product_initiative";
 const CLAIM_MIGRATION = "20260927180000_add_product_initiative_claim";
 const DEFINITION_MIGRATION = "20260927190000_add_product_definition";
 const IDENTITY_MIGRATION = "20260927200000_add_product_identity";
+const ATTRIBUTES_MIGRATION = "20260927210000_add_product_attributes";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -65,6 +66,12 @@ beforeAll(async () => {
     `ALTER TABLE "${schemaName}"."product_sku" DROP CONSTRAINT IF EXISTS "product_sku_product_fkey"`,
   );
   await prisma.$executeRawUnsafe(
+    `ALTER TABLE "${schemaName}"."product_sku" DROP CONSTRAINT IF EXISTS "product_sku_attributes_check"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "${schemaName}"."product_sku" DROP COLUMN IF EXISTS "attributes"`,
+  );
+  await prisma.$executeRawUnsafe(
     `ALTER TABLE "${schemaName}"."product_sku" DROP COLUMN IF EXISTS "product_id"`,
   );
   await prisma.$executeRawUnsafe(
@@ -95,6 +102,7 @@ beforeAll(async () => {
       CLAIM_MIGRATION,
       DEFINITION_MIGRATION,
       IDENTITY_MIGRATION,
+      ATTRIBUTES_MIGRATION,
     ],
   );
 

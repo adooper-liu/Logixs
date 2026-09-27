@@ -22,6 +22,9 @@ model Product {
   sourceHandoffId String                   @map("source_handoff_id") @db.Uuid
   sourceHandoff   ProductDefinitionRelease @relation(fields: [sourceHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
   productNumber   String                   @map("product_number")
+  // 产品（SPU）层关键属性：品类、品牌、型号、原产国、HS 编码、认证、温度、
+  // 危险品分类、订货条件。形状由 product-identity.schema.json 权威定义。
+  attributes      Json                     @map("attributes")
   version         Int                      @map("version")
   specification   String                   @map("specification")
   actedBy         String                   @map("acted_by")
@@ -237,6 +240,8 @@ model ProductSku {
   productId           String?                    @map("product_id") @db.Uuid
   product             Product?                   @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Restrict)
   productNumber       String                     @map("product_number")
+  // SKU 层关键属性（颜色、尺寸重量、包装层级、条码、电池）。可空 = 还没录。
+  attributes          Json?                      @map("attributes")
   version             Int                        @default(1) @map("version")
   createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
