@@ -35,6 +35,7 @@ describe("GetShipmentService", () => {
     const repository = {
       list: vi.fn(),
       listPendingCompletion: vi.fn(),
+      listRiskQueue: vi.fn(),
       findById: vi.fn().mockResolvedValue(null),
     };
     const service = new GetShipmentService(repository);

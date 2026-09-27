@@ -1,7 +1,15 @@
 ---
-status: design
-branch: —
-verification: 未开工（design 阶段）。任务书待评审；评审通过后按本文件实施并回填验证记录。
+status: coding # design | coding | review | fix | blocked | done（机器可校验）
+branch: feat/shipment-risk-queue-service-and-repository
+verification: |
+  本地验证（2026-09-27，第三片：服务 + 仓储 + schema 进 SQL 的做法）：
+  - 单元 @logix/api：248 文件 / 1213 项通过
+  - 集成（真实 PostgreSQL）：18 文件 / 73 项通过（本片新增 15 项，含四排序翻页不重不漏、缺口双口径对拍、跨租户隔离）
+  - 变异自检 4 次（keyset 尾段 / id 兜底 / 缺口分支 / 缺口语义放宽）全部被测试抓住
+  - 门禁：lint、typecheck、repo:check、contract:check、contract:drift、触及文件 format 通过
+  未执行：pnpm validate 全量（含 E2E，本片无前端改动）、build
+  未做：前端队列与风险依据面板、"查看全部"入口、排序方向可选、WB-D17 候选值
+  遗留：15 个旧集成测试夹具仍手工造 adapter，其裸 SQL 仍落 public（同源欠账，建议单独收口）
 ---
 
 # 任务：Shipment 风险队列（UI-02A）
@@ -101,7 +109,8 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 
 1. **现有列表能否扩展**——已核实：`list-shipments.service.ts` 按 `updatedAt DESC, id DESC` 分页、只按 `status` 过滤，是"最近更新优先"而非风险队列；游标已绑定过滤条件（有现成模式可扩展排序键）。**结论：扩展它，不另建平行队列。**
 2. **截止的事实来源**——**三类成本差别很大**（详见下节）。
-3. **异常已到 Shipment 级**——✅ `OperationalExceptionCase.shipmentId` 是可空外键，可汇总到 Shipment。**但两个坑**：① **没有 `(tenantId, shipmentId, …)` 索引**，现只有 `(tenantId, containerRecordId, status, occurredAt, id)`，Shipment 级聚合要加索引（加法迁移）；② `shipmentId` 可空，**部分案件只挂货柜、没有 Shipment**，这些在 Shipment 队列里会看不见 —— 必须如实说明，不能当成"没有异常"。
+3. **异常已到 Shipment 级**——✅ `OperationalExceptionCase.shipmentId` 是可空外键，可汇总到 Shipment。**但一个坑**：`shipmentId` 可空，**部分案件只挂货柜、没有 Shipment**。这些案件**不是看不见**：它们经 `shipment_container_link` 归属于本票在链的货柜，按「未归属到票」单独计数（`unassignedExceptionCount`），与按 `shipmentId` 直接归属的（`openExceptionCount`）切开，不重复计数。真正看不见的只有"货柜压根没挂任何票"的案件。
+   ~~① 没有 `(tenantId, shipmentId, …)` 索引，要加一条加法迁移~~ —— **已作废（2026-09-27 核实）**：索引 `operational_exception_case_shipment_status_idx (tenant_id, shipment_id, status, occurred_at, id)` 早在迁移 `20260923160000_add_operational_exception_case` 里就建好了。**本片不需要迁移。**
 4. **缺口可按 Shipment 直接聚合**——✅ `listPendingCompletion` 就是一条 `shipment.findMany` + OR 缺口条件，返回 `{ shipment, pendingItems[] }`，**缺口本来就是 Shipment 级、现算的**，不另建聚合。
 
 ### ⚠️ 发现：缺口里的 `deadline` / `responsibility` / `candidateValues` 是占位，不是真的
@@ -126,21 +135,42 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 
 **随之而来的要求**：界面上**不得**出现"免用箱期"字样或暗示有该数据（不得让人以为系统在盯着免箱期）。排序键枚举里可以预留位置，但对外不可选、不可显示。
 
-### 以下是实现方（我）的推定，实施前请确认
+### 以下三条原为实现方推定，负责人 2026-09-27 已确认
 
-1. **队列默认只显示"在途/未关闭"的 Shipment**，已关闭的不进队列（否则首屏被历史淹没）。关闭的定义需在实现时对齐生命周期状态。
-2. **没有风险也不缺口的票默认不进首屏**，通过"查看全部"进入——避免为了填满首屏而制造紧急度。
-3. **同紧迫度下的次级排序**取最近更新，保证分页稳定。
+1. **队列只收"有事可做"的票**（负责人 2026-09-27 定）。判据：有未完成工单、有缺口、有未解决异常（含经货柜归属的未归属案件）之一。**只有一条到港时间、别的都没有的票不进队列**——到港时间是事实，不是待办，排进首屏就是替业务编造紧迫度。
+   已关闭的票同理不进（没有未完成工单即自然满足）。
+   **遗留**：任务书原先设想的"查看全部"入口本片未做；未关闭但无待办的票目前没有任何页面能看到，需要一个入口（见「下一片」）。
+2. **没有风险也不缺口的票不进首屏** —— 同第 1 条，已合并为同一条判据。
+3. **次级排序**改为按 `id` 升序兜底（不是"最近更新"）：keyset 游标需要一个**唯一且不变**的兜底键，`updated_at` 会随任何写入变化，用它兜底会让翻页在并发写入下重复或丢行。
 
 ## 方案
 
 1. 复用既有 Shipment 列表读取链路（`list-shipments` + `listPendingCompletion`），加法补上风险排序与风险依据字段（契约加法）。**不另建平行队列。**
 2. **截止来源只用真实的**：`Shipment.etaAt`（预计到港）与工单 `dueAt`（任务截止）。**不得使用 `pendingItems[].deadline`** —— 那是硬编码占位（见上）。
-3. **异常聚合要加索引**：`OperationalExceptionCase` 现无 `(tenantId, shipmentId, …)` 索引，需一条加法迁移；`shipmentId` 为空的案件**如实说明"未归属 Shipment"**，不得当成没有异常。
+3. **异常聚合**：按 `shipmentId` 直接归属的算 `openExceptionCount`；`shipmentId` 为空、但货柜在票上的算 `unassignedExceptionCount`。**不需要迁移**（索引已在，见上）。
 4. 风险依据面板呈现：缺口的 `code`/`label`/`currentValue`/`directAction`（真实），临期依据（哪条截止、还有多久），异常，以及来源缺失。
 5. **`WB-D17` 的"系统候选值"本片不做** —— `candidateValues` 恒为空，填它属于补录编辑器的能力，不在队列范围；界面上不得显示空候选让人以为"系统没意见"。
 6. 不接外部来源；在途观测缺失时如实显示缺失。
 7. 覆盖服务端投影单测、接口契约与授权、组件行为与三视口 E2E。
+8. **排序方向本片固定**（负责人 2026-09-27 定）：截止类升序、最近更新降序。契约 `ShipmentRiskSortV1` 里没有方向字段，"方向可选"留到下一片（需要契约加法 + 游标语义扩展）。
+
+## 前置：schema 怎么进 SQL（2026-09-27 已定，第三片的前提）
+
+**问题**：Prisma 7 + driver adapter 下，schema 要同时告诉**两条互不相通的路径**，少设一半不会报错，只会静默查错 schema：
+
+| 路径                      | schema 从哪来                                          | 之前的状态                                     |
+| ------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| 运行时 Prisma 模型查询    | 适配器 `PrismaPg(pool, { schema })`，不给写死 `public` | `PrismaService` 没给 → 生产写死 `public`       |
+| 运行时 `$queryRaw` 裸 SQL | 连接的 `search_path`，缺省 `"$user", public`           | 不认适配器选项，**也不认连接串 `?schema=`**    |
+| `prisma migrate` 等 CLI   | 连接串 `?schema=`                                      | 只有它认 —— 所以 `?schema=` 在运行时是装饰性的 |
+
+**做法**：schema 收成一个配置值（`readEnv().databaseSchema`，从 `DATABASE_URL` 的 `?schema=` 读，缺省 `public`，**只允许小写**——大写会被 PostgreSQL 折叠，两条路会指向不同 schema），经**唯一**入口 `createPostgresAdapter()` 同时落到两处：适配器选项 + 连接串的 `options=-c search_path=`。
+
+**为什么 search_path 写进连接串而不是 `PoolConfig.options`**：`pg` 的 `ConnectionParameters` 用 `Object.assign({}, config, parse(connectionString))` 组装，**连接串覆盖显式配置**，放 `PoolConfig` 里会被已有的 `options` 顶掉。
+
+**守卫**：`postgres-adapter.integration.test.ts` 在非 public schema 上同时跑模型查询与裸 SQL，断言两者看到同一批数据。实测旧写法下模型查询=1、裸 SQL=3（落回 public），会被抓住。
+**代价**：`options` 是连接启动参数，pgbouncer 事务模式 / 部分托管 PG 会丢它；仓库现在没有 pooler，届时退回"裸 SQL 显式限定 schema"。
+**顺带修掉的**：全仓 11 处裸 SQL（`FOR UPDATE` 锁、`UPDATE ... RETURNING` 等）从此自动跟着 schema 走。
 
 ## 进度 log
 
@@ -153,9 +183,9 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 | 2026-09-27 | coding | Claude | —      | 负责人定「先用前两类截止」；第一片落地纯业务规则 `shipment-risk.ts`（最近截止、逾期、理由排序、无截止不得抢先），8 项测试 + 变异自检                                                                |
 | 2026-09-27 | coding | Claude | —      | 契约加法（`ShipmentRiskQueuePageV1` 等 6 个 def，排序键不含免用箱期）；分页游标 `shipment-risk-page.ts`（游标记住排序键，14 项测试 + 变异自检）                                                     |
 
-## 下一片的范围（本次试行摸清的，务必按此立案）
+## 第三片的范围（试行摸清，已按此落地）
 
-第三片（服务 + 仓储）**必须一起落**。试行时先加端口方法、后补实现，编译器立刻点出 12 处连带欠账，说明这两者拆不开：
+第三片（服务 + 仓储）**必须一起落**。试行时先加端口方法、后补实现，编译器立刻点出连带欠账，说明这两者拆不开：
 
 1. **`PrismaShipmentReadRepository` 必须同时实现 `listRiskQueue`**，否则整个类不满足端口。
 2. **端口加一个方法，连带 6 处要改**：Prisma 实现、3 个单元测试的仓储替身（`get-shipment`、`list-shipment-pending-completion`、`list-shipments`）、2 个集成测试的构造点。
@@ -170,7 +200,7 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 
 **类型边界**：契约里 `at` 是 ISO 字符串，领域层是 `Date`，仓储负责序列化——两处都要测。
 
-**本次结果如实记账**：第三片试行到一半（端口已改、服务与测试已写并通过 11 项），发现必须与 Prisma 实现同批落地，**已全部回退，未提交**。main 保持干净。回退原因是判断在该会话末尾硬写那段三跳 SQL + keyset 的风险高于收益——那正是本片最需要谨慎的地方。
+**试行记录（已由 2026-09-27 的落地取代）**：第三片试行到一半（端口已改、服务与测试已写并通过 11 项），发现必须与 Prisma 实现同批落地，**已全部回退，未提交**。main 保持干净。回退原因是判断在该会话末尾硬写那段三跳 SQL + keyset 的风险高于收益——那正是本片最需要谨慎的地方。
 | 2026-09-27 | coding | Claude | — | 第三片试行后回退：端口一改连带 12 处欠账，服务与 Prisma 实现必须同批落地；连带清单与 SQL 形状已记入本文件 |
 
 ### 第三片第二次试行：又摸到两个必须记住的点
@@ -193,3 +223,33 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 未完成工单、已关闭不进队列）单测 12 项通过；仓储装配、服务、DTO、控制器、模块装配
 经 typecheck 全通过；连带要改的 7 处已定位并修好。**这些都随回退丢弃了，下次照本节重做。**
 | 2026-09-27 | coding | Claude | — | 第三片第二次试行：验证了 SQL 形状与全链路装配，卡在"裸 SQL 不认 schema"上；两个新发现已记入，再次回退 |
+
+### 第三片：已落地（2026-09-27）
+
+按上面的记账重做，两处改动与记录一致：
+
+- **① schema 进 SQL** 先定后做，做法见上文「前置：schema 怎么进 SQL」。`createPostgresAdapter()` 是唯一入口，`PrismaService` 与测试共用；守卫测试在非 public schema 上验两路同源。
+- **② `work_order` 无 `tenant_id`** 已在三跳聚合里按 `nt."tenant_id" = scl."tenant_id"` 限定，并有单测盯着（断言 SQL 里不出现 `w."tenant_id"`）。
+
+**落地内容**：`listRiskQueue` 端口 + Prisma 实现（裸 SQL 取页 + Prisma 补水）+ `ListShipmentRiskQueueService` + `GET /shipments/risk-queue` + DTO + 模块装配。
+
+**与「试行」记账不同的两处（如实说明）**：
+
+1. **不需要迁移**。异常索引早已存在（见上文更正）。
+2. **排序表达式用 LATERAL 而不是把子查询重复进 ORDER BY**：三跳聚合每条 Shipment 只算一次；SQL 同一条查询里同时取回排序用的事实与展示用的事实（截止、异常计数），避免"为什么排在这"和"排在第几"各算一遍。
+
+**验证（全部实际执行）**：
+
+- 单元：`@logix/api` 248 文件 / 1213 项通过（含本片新增 14 项 SQL 构造器、13 项服务、5 项适配器、10 项 env）。
+- 集成（真实 PostgreSQL）：18 文件 / 73 项通过。本片新增 `prisma-shipment-risk-queue.integration.test.ts` 15 项，覆盖：四个排序键用真实服务端游标逐页翻完**不重不漏**（含"无截止那一尾"跨段）、队列集合与「有待办 ∪ 有缺口 ∪ 有未解决异常」逐票对拍、缺口口径与 `listPendingCompletion` 双向对拍、异常双口径不重复计数、跨租户隔离。
+- **变异自检（4 次，全部被抓住）**：① 砍掉 keyset 的"无截止尾段"分支 → 2 个排序翻页变红；② 去掉 id 兜底 → 3 个排序翻页变红；③ 缺口分支失效 → 9 项变红（含双向对拍）；④ 缺口语义放宽到不要求"已接管交接" → 10 项变红。
+- 门禁：`lint`、`typecheck`、`repo:check`、`contract:check`、`contract:drift`、`format`（触及文件）全部通过。
+- **未执行**：`pnpm validate` 全量（含三视口 E2E —— 本片没有前端改动）、`build`。
+
+**本片未做（明确不谎报）**：
+
+- 前端队列与风险依据面板（下一片）。
+- "查看全部"入口：未关闭但无待办的票目前没有页面能看到。
+- 排序方向可选；`WB-D17` 的系统候选值。
+- **旧集成测试夹具未迁移**：15 个 `*.integration.test.ts` 仍手工 `new PrismaPg(...)` 且不设 `search_path`，它们里面的裸 SQL（`FOR UPDATE` 锁等）**仍然落在 `public`**。这不影响本片（本片的测试用 `createPostgresAdapter`），但是同一类欠账，建议单独一小片收口。
+  | 2026-09-27 | coding | Claude | — | 第三片落地：先定 schema 进 SQL 的做法（唯一适配器入口 + 守卫测试），再落服务与仓储；真实库上验分页不重不漏，4 次变异自检全部被抓住；不需要迁移 |

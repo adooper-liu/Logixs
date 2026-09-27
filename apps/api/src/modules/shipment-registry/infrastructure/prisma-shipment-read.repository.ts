@@ -12,13 +12,19 @@ import type {
 } from "@logix/contracts";
 import { Prisma } from "../../../../../../generated/prisma";
 import { PrismaService } from "../../../prisma/prisma.service";
+import { shipmentRisk } from "../domain/shipment-risk";
+import type { ShipmentDeadline } from "../domain/shipment-risk";
 import type {
   ShipmentByIdQuery,
   ShipmentDetailProjection,
   ShipmentListQuery,
   ShipmentPendingCompletionQuery,
   ShipmentReadRepository,
+  ShipmentRiskQueueQuery,
+  ShipmentRiskQueueRow,
 } from "../domain/shipment-read.repository";
+import { buildRiskQueueSql } from "./shipment-risk-queue-sql";
+import type { RiskQueueSqlRow } from "./shipment-risk-queue-sql";
 
 const POST_DEPARTURE_EVENT_TYPE = "shipment.lifecycle_initialization_requested";
 const POST_DEPARTURE_DEFINITION = "post_departure_ocean";
@@ -319,6 +325,74 @@ export class PrismaShipmentReadRepository implements ShipmentReadRepository {
     });
   }
 
+  /**
+   * 风险队列取页。分两步：**取页与排序交给裸 SQL**（排序值是跨三跳的聚合，
+   * Prisma 的 `orderBy` 表达不了），**逐行事实交给 Prisma**（复用 `list` 与
+   * `listPendingCompletion` 的同一套 select 与映射，不另写一份）。
+   *
+   * 两步之间用 `id` 对齐并**保持 SQL 给出的顺序** —— 队列的顺序是这一页的
+   * 全部意义，按 Prisma 返回顺序渲染就等于把排序丢了。
+   */
+  async listRiskQueue(
+    query: ShipmentRiskQueueQuery,
+  ): Promise<ShipmentRiskQueueRow[]> {
+    const { text, values } = buildRiskQueueSql(query);
+    const page = await this.prisma.$queryRawUnsafe<RiskQueueSqlRow[]>(
+      text,
+      ...values,
+    );
+    if (page.length === 0) return [];
+
+    const ids = page.map(({ id }) => id);
+    const [rows, signals] = await Promise.all([
+      this.prisma.shipment.findMany({
+        where: { tenantId: query.tenantId, id: { in: ids } },
+        select: pendingCompletionSelect,
+      }),
+      this.loadLifecycleSignals(query.tenantId, ids),
+    ]);
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    const now = new Date();
+    return page.map((fact) => {
+      const row = byId.get(fact.id);
+      if (!row) {
+        // 取页与取事实之间票被删掉/改了租户：宁可明确失败，也不要静默少一行
+        // —— 少一行在分页里表现为"翻页丢行"，是最难发现的一类缺陷。
+        throw new Error("SHIPMENT_RISK_QUEUE_ROW_MISSING");
+      }
+      const pendingItems = shipmentPendingItems(row);
+      // 截止**只用 SQL 取回的那两个事实**推，不再从 Prisma 行里另取一遍：
+      // 排序用它、展示也用它，"为什么排在这"才和"排在第几"是同一份数据。
+      const risk = shipmentRisk(
+        {
+          deadlines: deadlinesOf(fact),
+          pendingGapCount: pendingItems.length,
+          openExceptionCount: fact.openExceptionCount,
+          unassignedExceptionCount: fact.unassignedExceptionCount,
+        },
+        now,
+      );
+      return {
+        shipment: toSummary(row, signals.get(row.id)),
+        risk: {
+          nearestDeadline: risk.nearestDeadline
+            ? {
+                kind: risk.nearestDeadline.kind,
+                at: risk.nearestDeadline.at.toISOString(),
+              }
+            : null,
+          overdue: risk.overdue,
+          reasons: [...risk.reasons],
+          openExceptionCount: fact.openExceptionCount,
+          unassignedExceptionCount: fact.unassignedExceptionCount,
+        },
+        pendingItems,
+        sortValue: fact.sortValue,
+      };
+    });
+  }
+
   async findById(
     query: ShipmentByIdQuery,
   ): Promise<ShipmentDetailProjection | null> {
@@ -591,6 +665,18 @@ function toDetail(
     },
     projectionVersion: row.lifecycleVersion,
   } satisfies Omit<ShipmentDetailV1, "asOf">;
+}
+
+/**
+ * 取页 SQL 交回的截止事实 → 领域层的截止列表。
+ * **只有 SQL 说存在的截止才会进来**：缺失与"不适用"在这里不做区分，
+ * 由领域规则决定没有截止时的排序与理由。
+ */
+function deadlinesOf(row: RiskQueueSqlRow): ShipmentDeadline[] {
+  const deadlines: ShipmentDeadline[] = [];
+  if (row.etaAt) deadlines.push({ kind: "eta", at: row.etaAt });
+  if (row.taskDueAt) deadlines.push({ kind: "task_due", at: row.taskDueAt });
+  return deadlines;
 }
 
 function shipmentPendingItems(

@@ -109,6 +109,7 @@ export {
 } from "./match-active-shipment-by-container.port";
 export { GetShipmentService } from "./application/get-shipment.service";
 export { ListShipmentsService } from "./application/list-shipments.service";
+export { ListShipmentRiskQueueService } from "./application/list-shipment-risk-queue.service";
 export {
   INTERNAL_SHIPMENT_HANDOFF_SOURCE,
   type InternalShipmentHandoffSourcePort,

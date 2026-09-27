@@ -13,6 +13,7 @@ describe("ListShipmentPendingCompletionService", () => {
       list: vi.fn(),
       findById: vi.fn(),
       listPendingCompletion: vi.fn().mockResolvedValue(items),
+      listRiskQueue: vi.fn(),
     };
     const service = new ListShipmentPendingCompletionService(repository);
 

@@ -38,6 +38,7 @@ export type AuthenticationConfig =
 export interface EnvConfig {
   port: number;
   databaseUrl: string;
+  databaseSchema: string;
   aiServiceUrl: string;
   nodeEnv: string;
   serviceId: string;
@@ -56,6 +57,9 @@ export function readEnv(
   return {
     port: Number(environment.PORT ?? 3000),
     databaseUrl: environment.DATABASE_URL ?? LOCAL_DEV_DATABASE_URL,
+    databaseSchema: readDatabaseSchema(
+      environment.DATABASE_URL ?? LOCAL_DEV_DATABASE_URL,
+    ),
     aiServiceUrl: environment.AI_SERVICE_URL ?? LOCAL_DEV_AI_SERVICE_URL,
     nodeEnv,
     serviceId:
@@ -86,6 +90,31 @@ export function readEnv(
       timeoutMs: Number(environment.OBJECT_STORAGE_TIMEOUT_MS ?? 10_000),
     },
   };
+}
+
+/**
+ * 连接串声明的 schema。**必须只含小写**：适配器按原样引用它，而裸 SQL 走的
+ * `search_path` 会被 PostgreSQL 折叠成小写 —— 一旦允许大写，同一份配置会让
+ * "Prisma 查询"和"裸 SQL"看到两个不同的 schema，且不报错。
+ * 见 `apps/api/src/prisma/postgres-adapter.ts`。
+ */
+const DATABASE_SCHEMA_PATTERN = /^[a-z_][a-z0-9_]{0,62}$/;
+
+export function readDatabaseSchema(databaseUrl: string): string {
+  let declared: string | null;
+  try {
+    declared = new URL(databaseUrl).searchParams.get("schema");
+  } catch {
+    // 非 URL 形式的连接串（libpq 关键字串、Unix socket 路径）里没有 schema 可读，
+    // 沿用默认值；拒绝启动会误伤这些本来就合法的写法。
+    return "public";
+  }
+  const schema = declared?.trim();
+  if (schema === undefined || schema === "") return "public";
+  if (!DATABASE_SCHEMA_PATTERN.test(schema)) {
+    throw new Error("DATABASE_SCHEMA_INVALID");
+  }
+  return schema;
 }
 
 function readAuthenticationConfig(

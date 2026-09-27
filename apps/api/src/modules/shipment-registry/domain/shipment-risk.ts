@@ -24,6 +24,14 @@ export type ShipmentDeadlineKind = (typeof SHIPMENT_DEADLINE_KINDS)[number];
 /** 本片真正参与排序的截止来源（`free_time` 不在其中）。 */
 export const ACTIVE_DEADLINE_KINDS = ["eta", "task_due"] as const;
 
+/**
+ * 「未解决」的异常案件状态。异常案件落库后一直保留，只有这两种状态表示
+ * 还没处理完；统计在办异常必须按它过滤，否则已解决的也会被算成风险。
+ *
+ * 与 `prisma-container-operational-view.repository.ts` 里柜级视图的过滤口径相同。
+ */
+export const OPEN_EXCEPTION_STATUSES = ["open", "investigating"] as const;
+
 export interface ShipmentDeadline {
   kind: ShipmentDeadlineKind;
   at: Date;

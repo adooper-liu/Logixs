@@ -44,6 +44,7 @@ describe("ListShipmentsService", () => {
         ]),
       findById: vi.fn(),
       listPendingCompletion: vi.fn(),
+      listRiskQueue: vi.fn(),
     };
     const service = new ListShipmentsService(repository);
 
@@ -86,6 +87,7 @@ describe("ListShipmentsService", () => {
       list: vi.fn(),
       findById: vi.fn(),
       listPendingCompletion: vi.fn(),
+      listRiskQueue: vi.fn(),
     };
     const service = new ListShipmentsService(repository);
     await expect(
