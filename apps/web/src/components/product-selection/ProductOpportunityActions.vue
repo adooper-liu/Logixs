@@ -28,20 +28,14 @@ defineEmits<{ claim: []; accept: [] }>();
         {{ busy ? "正在确认" : "接受并进入立项判断" }}
       </button>
     </div>
+    <!--
+      已接受的机会不走这里：那时主动作是"形成立项结论"（ProductInitiativeOutcomePanel），
+      本组件只负责领取与接受这一步。
+    -->
     <div v-else class="action-body action-body--done">
       <CheckCircle2 :size="22" />
-      <b>{{
-        item.intakeState === "accepted"
-          ? "已接受经营机会"
-          : "该版本已被新版替代"
-      }}</b>
-      <p>
-        {{
-          item.intakeState === "accepted"
-            ? "下一步围绕目标用户、收益与风险形成正式立项结论。"
-            : "请返回队列处理同一信号的最新交接版本。"
-        }}
-      </p>
+      <b>该版本已被新版替代</b>
+      <p>请返回队列处理同一信号的最新交接版本。</p>
     </div>
   </section>
 </template>

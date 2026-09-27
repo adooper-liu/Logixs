@@ -1,6 +1,6 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defineComponent, h } from "vue";
+import { defineComponent, h, ref } from "vue";
 import {
   outcomeHintFor,
   REVIEW_POINTS,
@@ -20,6 +20,7 @@ vi.mock("../api/marketSignals", () => ({
 }));
 
 const HANDOFF_ID = "22222222-2222-4222-8222-222222222222";
+const OTHER_HANDOFF_ID = "33333333-3333-4333-8333-333333333333";
 const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
 
@@ -168,19 +169,29 @@ describe("useProductInitiativeDecision", () => {
 
     expect(state.decided.value).toBe(true);
   });
+
+  it("换一条机会就重读那一条的立项判断，不沿用上一条", async () => {
+    await mountComposable();
+    expect(getProductInitiative).toHaveBeenCalledTimes(1);
+
+    handoffId.value = OTHER_HANDOFF_ID;
+    await flushPromises();
+
+    expect(getProductInitiative).toHaveBeenLastCalledWith(OTHER_HANDOFF_ID);
+  });
+});
+
+const handoffId = ref(HANDOFF_ID);
+let state!: ReturnType<typeof useProductInitiativeDecision>;
+const Host = defineComponent({
+  setup() {
+    state = useProductInitiativeDecision({ handoffId, signalId: SIGNAL_ID });
+    return () => h("div");
+  },
 });
 
 async function mountComposable() {
-  let state!: ReturnType<typeof useProductInitiativeDecision>;
-  const Host = defineComponent({
-    setup() {
-      state = useProductInitiativeDecision({
-        handoffId: HANDOFF_ID,
-        signalId: SIGNAL_ID,
-      });
-      return () => h("div");
-    },
-  });
+  handoffId.value = HANDOFF_ID;
   mount(Host);
   await flushPromises();
   return state;

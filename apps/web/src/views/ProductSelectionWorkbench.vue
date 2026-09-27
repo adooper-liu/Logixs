@@ -5,13 +5,20 @@ import {
   RefreshCw,
   UserRound,
 } from "@lucide/vue";
-import { computed } from "vue";
+import type { ProductInitiativeReviewPointCodeV1 } from "@logix/contracts";
+import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
+import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
+import ProductInitiativeReviewPanel from "../components/product-selection/ProductInitiativeReviewPanel.vue";
 import ProductOpportunityActions from "../components/product-selection/ProductOpportunityActions.vue";
 import ProductOpportunityDetail from "../components/product-selection/ProductOpportunityDetail.vue";
 import ProductOpportunityQueue from "../components/product-selection/ProductOpportunityQueue.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
+import {
+  useProductInitiativeDecision,
+  type ProductInitiativeOutcome,
+} from "../composables/useProductInitiativeDecision";
 import { useProductOpportunityWorkbench } from "../composables/useProductOpportunityWorkbench";
 
 const route = useRoute();
@@ -41,6 +48,91 @@ const {
   selectedId: requestedId,
   selectOpportunity,
 });
+
+// 立项判断只对已接受的机会成立：没接受就去立项，等于把经营团队交来的
+// 线索当成已经要做的产品。所以未接受时连判断详情都不读。
+const accepted = computed(() => selected.value?.intakeState === "accepted");
+const initiativeHandoffId = computed(() =>
+  accepted.value ? (selected.value?.handoff.handoffId ?? "") : "",
+);
+const {
+  decided,
+  objective,
+  deferReason,
+  rejectReason,
+  returnReason,
+  points,
+  reviewPointViews,
+  blockingGaps,
+  evidenceCandidates,
+  loading: readingInitiative,
+  saving: deciding,
+  error: initiativeError,
+  receipt: initiativeReceipt,
+  load: loadInitiative,
+  toggleEvidence,
+  addEvidence: addInitiativeEvidence,
+  decide,
+} = useProductInitiativeDecision({
+  handoffId: initiativeHandoffId,
+  signalId: computed(() => selected.value?.handoff.signalId ?? ""),
+});
+
+const outcome = ref<ProductInitiativeOutcome>("approve");
+/**
+ * 三个带原因的去向各存各的：来回切换时已写了一半的依据不该被清掉，
+ * 也不该把暂缓的理由带到退回里。
+ */
+const REASON_FIELDS = {
+  defer: deferReason,
+  reject: rejectReason,
+  return_to_market: returnReason,
+} as const;
+const currentReason = computed({
+  get: () => {
+    const chosen = outcome.value;
+    return chosen === "approve" ? "" : REASON_FIELDS[chosen].value;
+  },
+  set: (value: string) => {
+    const chosen = outcome.value;
+    if (chosen !== "approve") REASON_FIELDS[chosen].value = value;
+  },
+});
+
+// 接收动作与立项判断共用一个反馈位：谁刚失败就显示谁，不静默吞掉。
+const feedbackError = computed(() => initiativeError.value ?? error.value);
+const feedbackReceipt = computed(
+  () => initiativeReceipt.value ?? receipt.value,
+);
+const workResult = computed(() => {
+  if (accepted.value) return "形成立项结论";
+  return selected.value?.intakeState === "superseded"
+    ? "等待新版交接"
+    : "领取并接受机会";
+});
+
+async function reload(): Promise<void> {
+  await Promise.all([load(), loadInitiative()]);
+}
+
+function chooseOutcome(next: ProductInitiativeOutcome): void {
+  outcome.value = next;
+}
+
+function setObjective(value: string): void {
+  objective.value = value;
+}
+
+function setReason(value: string): void {
+  currentReason.value = value;
+}
+
+function setConclusion(
+  code: ProductInitiativeReviewPointCodeV1,
+  value: string,
+): void {
+  points[code].conclusion = value;
+}
 </script>
 
 <template>
@@ -51,25 +143,27 @@ const {
       summary="领取经营团队交来的机会，核对依据与待补项，再决定是否进入正式立项评审。"
     />
 
-    <section v-if="error" class="feedback feedback--error" role="alert">
+    <section v-if="feedbackError" class="feedback feedback--error" role="alert">
       <AlertCircle :size="17" />
-      <span>{{ error }}</span>
-      <button type="button" @click="load">
+      <span>{{ feedbackError }}</span>
+      <button type="button" @click="reload">
         <RefreshCw :size="15" />重新加载
       </button>
     </section>
     <section
-      v-else-if="receipt"
+      v-else-if="feedbackReceipt"
       class="feedback feedback--success"
       role="status"
     >
-      {{ receipt }}
+      {{ feedbackReceipt }}
     </section>
 
     <section class="work-context" aria-label="当前岗位与交接责任">
       <BriefcaseBusiness :size="19" />
       <span><small>谁在工作</small><b>选品负责人</b></span>
-      <span><small>本次结果</small><b>领取并接受机会</b></span>
+      <span
+        ><small>本次结果</small><b>{{ workResult }}</b></span
+      >
       <span
         ><UserRound :size="16" /><span
           ><small>当前责任</small
@@ -91,25 +185,51 @@ const {
         />
       </section>
       <section class="pane">
-        <ProductOpportunityDetail v-if="selected" :item="selected" />
-        <ProductEvaluationRequirementsPanel
-          v-if="selected"
-          :requirements="requirements.requirements"
-          :withheld="requirements.withheld"
-          :busy="saving"
-          :save-evidence="addEvidence"
-        />
+        <template v-if="selected">
+          <ProductOpportunityDetail :item="selected" />
+          <ProductEvaluationRequirementsPanel
+            :requirements="requirements.requirements"
+            :withheld="requirements.withheld"
+            :busy="saving"
+            :save-evidence="addEvidence"
+          />
+          <ProductInitiativeReviewPanel
+            v-if="accepted"
+            :points="reviewPointViews"
+            :candidates="evidenceCandidates"
+            :busy="deciding"
+            :add-evidence="addInitiativeEvidence"
+            @toggle-evidence="toggleEvidence"
+            @update-conclusion="setConclusion"
+          />
+        </template>
         <p v-else class="empty">
           {{ loading ? "正在读取经营机会" : "暂无待处理机会" }}
         </p>
       </section>
       <section class="pane">
         <ProductOpportunityActions
-          v-if="selected"
+          v-if="selected && !accepted"
           :item="selected"
           :busy="saving"
           @claim="claim"
           @accept="accept"
+        />
+        <p v-else-if="accepted && readingInitiative" class="empty">
+          正在读取该机会已有的立项判断
+        </p>
+        <ProductInitiativeOutcomePanel
+          v-else-if="selected"
+          :outcome="outcome"
+          :objective="objective"
+          :reason="currentReason"
+          :gaps="blockingGaps"
+          :busy="deciding"
+          :decided="decided"
+          @change-outcome="chooseOutcome"
+          @update-objective="setObjective"
+          @update-reason="setReason"
+          @submit="decide"
         />
         <p v-else class="empty">选择一条机会后显示接收动作。</p>
       </section>

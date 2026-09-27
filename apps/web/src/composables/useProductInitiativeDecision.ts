@@ -5,10 +5,10 @@ import type {
 } from "@logix/contracts";
 import {
   computed,
-  onMounted,
   reactive,
   shallowRef,
   toValue,
+  watch,
   type MaybeRefOrGetter,
 } from "vue";
 import {
@@ -115,7 +115,9 @@ export function useProductInitiativeDecision(options: {
   });
   const canApprove = computed(() => blockingGaps.value.length === 0);
 
-  onMounted(load);
+  // 换一条机会就要重读那一条的立项判断；只看 handoffId，不沿用上一条的草稿。
+  // 换一条机会就要重读那一条的立项判断；只看 handoffId，不沿用上一条的草稿。
+  watch(() => toValue(options.handoffId), load, { immediate: true });
 
   async function load(): Promise<void> {
     const handoffId = toValue(options.handoffId);
