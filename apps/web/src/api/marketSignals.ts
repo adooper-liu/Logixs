@@ -9,6 +9,9 @@ import type {
   ProductOpportunityIntakeCommandV1,
   ProductOpportunityPageV1,
   ProductOpportunityV1,
+  ProductInitiativeDecisionCommandV1,
+  ProductInitiativeDetailV1,
+  ProductInitiativeV1,
 } from "@logix/contracts";
 import { DEV_TENANT_ID } from "./developmentIdentity";
 import { formatHttpError } from "./httpError";
@@ -113,6 +116,29 @@ export async function listProductOpportunities(): Promise<ProductOpportunityPage
   return requestJson<ProductOpportunityPageV1>(
     "/api/product-opportunities?pageSize=100",
     { fallback: "暂时无法加载待领取机会" },
+  );
+}
+
+export async function getProductInitiative(
+  handoffId: string,
+): Promise<ProductInitiativeDetailV1> {
+  return requestJson<ProductInitiativeDetailV1>(
+    `/api/product-initiatives/${encodeURIComponent(handoffId)}`,
+    { fallback: "暂时无法加载立项判断" },
+  );
+}
+
+export async function decideProductInitiative(
+  handoffId: string,
+  command: ProductInitiativeDecisionCommandV1,
+): Promise<ProductInitiativeV1> {
+  return requestJson<ProductInitiativeV1>(
+    `/api/product-initiatives/${encodeURIComponent(handoffId)}/decisions`,
+    {
+      method: "POST",
+      body: command,
+      fallback: "暂时无法保存本次立项判断",
+    },
   );
 }
 
