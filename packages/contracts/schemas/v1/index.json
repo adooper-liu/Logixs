@@ -32,7 +32,8 @@
     "GC-007": [
       "cross-module-reference.schema.json",
       "shipment-handoff.schema.json",
-      "market-opportunity.schema.json"
+      "market-opportunity.schema.json",
+      "product-initiative.schema.json"
     ],
     "GC-008": ["action-command.schema.json"],
     "GC-009": ["client-operation.schema.json"],

@@ -316,6 +316,31 @@ export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" 
 export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "dismiss_reason")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeReviewPointCodeV1".
+ */
+export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeOutcomeV1".
+ */
+export type ProductInitiativeOutcomeV1 = ("approve" | "defer" | "reject" | "return_to_market")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeCompletionV1".
+ */
+export type ProductInitiativeCompletionV1 = ("pending_completion" | "completed")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeDestinationV1".
+ */
+export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "returned_to_market" | "handed_off")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativePendingFieldCodeV1".
+ */
+export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "defer_reason" | "reject_reason" | "return_reason")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
  */
 export type OceanRouteSegmentInput = {
@@ -1819,6 +1844,71 @@ export interface ProductOpportunityIntakeCommandV1 {
 contractVersion: "product-opportunity-intake.v1"
 action: ("claim" | "accept")
 expectedIntakeVersion: number
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeReviewPointV1".
+ */
+export interface ProductInitiativeReviewPointV1 {
+code: ProductInitiativeReviewPointCodeV1
+evidenceRefs: Uuid[]
+conclusion?: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeDecisionCommandV1".
+ */
+export interface ProductInitiativeDecisionCommandV1 {
+contractVersion: "product-initiative-decision.v1"
+requestId: Uuid
+outcome: ProductInitiativeOutcomeV1
+expectedInitiativeVersion: number
+objective?: string
+/**
+ * @maxItems 4
+ */
+reviewPoints: []|[ProductInitiativeReviewPointV1]|[ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1]|[ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1]|[ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1]
+deferReason?: string
+rejectReason?: string
+returnReason?: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeV1".
+ */
+export interface ProductInitiativeV1 {
+initiativeId: Uuid
+outcome: ProductInitiativeOutcomeV1
+completion: ProductInitiativeCompletionV1
+currentDestination: ProductInitiativeDestinationV1
+responsibleActorId: string
+objective?: (string | null)
+reviewPoints: ProductInitiativeReviewPointV1[]
+reason?: (string | null)
+pendingFieldCodes: ProductInitiativePendingFieldCodeV1[]
+version: number
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeHandoffV1".
+ */
+export interface ProductInitiativeHandoffV1 {
+contractVersion: "product_initiative_handoff.v1"
+handoffId: Uuid
+version: number
+initiativeId: Uuid
+signalId: Uuid
+marketCode?: (string | null)
+userProblem?: (string | null)
+objective: string
+responsibleActorId: string
+reviewPoints: ProductInitiativeReviewPointV1[]
+evidenceRefs: Uuid[]
+createdAt: DateTime
 idempotencyKey: string
 }
 /**
@@ -3421,6 +3511,13 @@ traceId: string
  * via the `definition` "MarketOpportunity".
  */
 export interface MarketOpportunity {
+
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiative".
+ */
+export interface ProductInitiative {
 
 }
 export interface EvidenceRecord {
