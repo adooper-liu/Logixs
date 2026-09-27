@@ -12,7 +12,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../generated/prisma";
 import {
@@ -20,6 +19,7 @@ import {
   prepareMarketSignalDecision,
 } from "../../modules/market-intelligence/domain/market-signal";
 import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/infrastructure/prisma-market-signal.repository";
+import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 
 const INITIATIVE_MIGRATION = "20260927120000_add_product_initiative";
 const CLAIM_MIGRATION = "20260927180000_add_product_initiative_claim";
@@ -39,10 +39,7 @@ beforeAll(async () => {
   deploy();
 
   prisma = new PrismaClient({
-    adapter: new PrismaPg(
-      { connectionString: testDatabaseUrl },
-      { schema: schemaName },
-    ),
+    adapter: createPostgresAdapter(testDatabaseUrl, schemaName),
   });
   await prisma.$connect();
   marketSignals = new PrismaMarketSignalRepository(prisma as never);
@@ -80,9 +77,9 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma?.$disconnect();
   const admin = new PrismaClient({
-    adapter: new PrismaPg(
-      { connectionString: withSchema(BASE_DATABASE_URL, "public") },
-      { schema: "public" },
+    adapter: createPostgresAdapter(
+      withSchema(BASE_DATABASE_URL, "public"),
+      "public",
     ),
   });
   try {

@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { PrismaPg } from "@prisma/adapter-pg";
 import type {
   ShipmentPendingDocumentCompletionCommandV1,
   ShipmentPendingSkuBindingCommandV1,
@@ -10,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../../generated/prisma";
 import { PrismaShipmentPendingDocumentCompletion } from "./prisma-shipment-pending-document-completion";
 import { PrismaShipmentPendingSkuBinding } from "./prisma-shipment-pending-sku-binding";
+import { createPostgresAdapter } from "../../../prisma/postgres-adapter";
 
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
@@ -31,10 +31,7 @@ beforeAll(async () => {
     stdio: "pipe",
   });
   prisma = new PrismaClient({
-    adapter: new PrismaPg(
-      { connectionString: testDatabaseUrl },
-      { schema: schemaName },
-    ),
+    adapter: createPostgresAdapter(testDatabaseUrl, schemaName),
   });
   await prisma.$connect();
   skuWriter = new PrismaShipmentPendingSkuBinding(prisma as never);
@@ -44,9 +41,9 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma?.$disconnect();
   const admin = new PrismaClient({
-    adapter: new PrismaPg(
-      { connectionString: withSchema(BASE_DATABASE_URL, "public") },
-      { schema: "public" },
+    adapter: createPostgresAdapter(
+      withSchema(BASE_DATABASE_URL, "public"),
+      "public",
     ),
   });
   try {

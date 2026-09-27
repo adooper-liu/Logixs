@@ -1,5 +1,5 @@
 ---
-status: review
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/product-npi-intake
 verification: |
   本地验证（2026-09-27，服务端 + 前端）：
@@ -8,6 +8,7 @@ verification: |
     幂等键复用但载荷不同要报错、跨租户看不到也领不走、翻页不重不漏；种子走真实链路（信号→交接→立项）
   - E2E 三视口通过：看见待办 → 看懂快照 → 领取 → 分组与回执跟着变
   - lint、typecheck、repo:check、contract:check、contract:drift、触及文件格式化通过
+  - 远端 CI 全绿（PR #65 已 squash 合入 main）：build / e2e / quality / static / unit 全部通过
   未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
   未做：产品规格、里程碑、发布决定（本节点第二片）；队列筛选与排序；转交与放手
 ---
