@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../generated/prisma";
 import fixtureJson from "../../../../../database/seeds/fixtures/post-departure-source-package-20260923.json";
@@ -28,6 +27,7 @@ import { PrismaShipmentPendingCargoCompletion } from "../../modules/shipment-reg
 import { PrismaShipmentPendingDocumentCompletion } from "../../modules/shipment-registry/infrastructure/prisma-shipment-pending-document-completion";
 import { PrismaShipmentPendingFactCompletion } from "../../modules/shipment-registry/infrastructure/prisma-shipment-pending-fact-completion";
 import { PrismaShipmentReadRepository } from "../../modules/shipment-registry/infrastructure/prisma-shipment-read.repository";
+import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 
 type SourceKind = "container" | "customs" | "logistics" | "warehouse";
 type SourceFixture = {
@@ -63,10 +63,7 @@ beforeAll(async () => {
     stdio: "pipe",
   });
   prisma = new PrismaClient({
-    adapter: new PrismaPg(
-      { connectionString: testDatabaseUrl },
-      { schema: schemaName },
-    ),
+    adapter: createPostgresAdapter(testDatabaseUrl, schemaName),
   });
   await prisma.$connect();
 });
@@ -74,9 +71,9 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma?.$disconnect();
   const admin = new PrismaClient({
-    adapter: new PrismaPg(
-      { connectionString: withSchema(BASE_DATABASE_URL, "public") },
-      { schema: "public" },
+    adapter: createPostgresAdapter(
+      withSchema(BASE_DATABASE_URL, "public"),
+      "public",
     ),
   });
   try {

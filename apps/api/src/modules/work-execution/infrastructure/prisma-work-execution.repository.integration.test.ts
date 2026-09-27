@@ -1,12 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../../generated/prisma";
 import type { ReconcileAppliedLifecycleFactCommand } from "../reconcile-applied-lifecycle-fact.port";
 import { ReconcileAppliedLifecycleFactService } from "../application/reconcile-applied-lifecycle-fact.service";
 import { PrismaWorkExecutionRepository } from "./prisma-work-execution.repository";
+import { createPostgresAdapter } from "../../../prisma/postgres-adapter";
 
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
@@ -28,10 +28,7 @@ beforeAll(async () => {
     stdio: "pipe",
   });
   prisma = new PrismaClient({
-    adapter: new PrismaPg(
-      { connectionString: testDatabaseUrl },
-      { schema: schemaName },
-    ),
+    adapter: createPostgresAdapter(testDatabaseUrl, schemaName),
   });
   await prisma.$connect();
   repository = new PrismaWorkExecutionRepository(prisma as never);
@@ -41,11 +38,9 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma?.$disconnect();
   const admin = new PrismaClient({
-    adapter: new PrismaPg(
-      {
-        connectionString: withSchema(BASE_DATABASE_URL, "public"),
-      },
-      { schema: "public" },
+    adapter: createPostgresAdapter(
+      withSchema(BASE_DATABASE_URL, "public"),
+      "public",
     ),
   });
   try {
