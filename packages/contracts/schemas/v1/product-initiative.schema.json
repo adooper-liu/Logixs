@@ -73,7 +73,6 @@
         "objective": { "type": "string", "minLength": 1, "maxLength": 4000 },
         "reviewPoints": {
           "type": "array",
-          "maxItems": 4,
           "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
         },
         "deferReason": { "type": "string", "minLength": 1, "maxLength": 500 },

@@ -1865,10 +1865,7 @@ requestId: Uuid
 outcome: ProductInitiativeOutcomeV1
 expectedInitiativeVersion: number
 objective?: string
-/**
- * @maxItems 4
- */
-reviewPoints: []|[ProductInitiativeReviewPointV1]|[ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1]|[ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1]|[ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1, ProductInitiativeReviewPointV1]
+reviewPoints: ProductInitiativeReviewPointV1[]
 deferReason?: string
 rejectReason?: string
 returnReason?: string
