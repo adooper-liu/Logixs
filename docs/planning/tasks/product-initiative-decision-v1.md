@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/product-initiative-decision-v1
-verification:
+verification: 本地验证（2026-09-27，**编码中，不得标 done**）：契约 20 schemas 校验通过、生成漂移同步；领域层 15 项单测（真 TDD，先看它失败）；真实 PostgreSQL 集成 7 项（每次独立 schema、从零迁移建库）；应用服务 7 项（经变异自检）；Web 120 文件 / 387 项；API 240 文件 / 1132 项；worker 与 scripts 通过；typecheck 3/3；lint 干净；repo:check 通过。本机 `format:check` 仍受 `apps/ai-service/.pytest_cache` 环境阻塞，改动文件逐个 `prettier --check` 干净。**尚未做**：前端组件与工作台接线、三视口 E2E、迁移的空库/旧版本升级专项验证。
 ---
 
 # 任务：选品立项判断 V1
@@ -92,7 +92,20 @@ verification:
 
 ## Review notes
 
-待实现后填写。
+**交接时状态（2026-09-27）**：后端整条链路完整可调，前端逻辑层完成并测试过，**界面上还看不到 —— 岗位今天仍完不成立项**。
+
+**已完成**：契约（含 `ProductInitiativeDetailV1` / `ProductInitiativeEvidenceCandidateV1`）→ 领域层 → 加法迁移 → 仓储 → 应用服务 → 接口（`GET /api/product-initiatives/:handoffId`、`POST /api/product-initiatives/:handoffId/decisions`）→ Web API 客户端与 `useProductInitiativeDecision`。
+
+**剩余工作（边界清楚，可直接接续）**：
+
+1. 两个 Vue 组件：评审要点面板（四项，含"添加证据"通用入口与勾选引用已登记证据）、四去向面板（按去向切换输入与主动作）。
+2. 接进 `ProductSelectionWorkbench.vue`，让选品负责人能真的完成立项。
+3. 三视口 E2E。
+4. 迁移的空库升级与旧版本升级专项验证。
+
+**测试强度如实记账**：领域层是真 TDD（先看 15 项失败）；迁移约束用真实 PostgreSQL 逐条验证。**仓储、应用服务、接口、composable 四层是事后补测**，不是 TDD。其中应用服务补测后经变异检验发现首次**没有牙**（夹具里服务端版本与客户端自称版本相同，改坏实现也照样通过），修正夹具后才捕获。其余三层未逐个做变异自检，接续者若要提高把握可补做。
+
+**未决/偏离（详见下方"决策与待确认"）**：立项时只记操作人为责任人、产品负责人要到 NPI 领取才产生；旧决策重放以版本冲突拒绝而非幂等回放；「立项编号」在 v1 就是系统 UUID。
 
 ## 进度 log
 
@@ -104,3 +117,6 @@ verification:
 | 2026-09-27 | design | Claude | b723ae0 | 证据入口缺口关闭：登记与读取都复用既有链路，不新增存储                                                        |
 | 2026-09-27 | coding | Claude | cd5256a | 加法迁移建立立项与交接快照；约束经真实 PostgreSQL 逐条验证（含两种半状态被拦住）                              |
 | 2026-09-27 | coding | Claude | f32b5cb | 仓储端口与 Prisma 实现；集成测试 7 项通过（独立 schema、从零迁移）                                            |
+| 2026-09-27 | coding | Claude | ebb9281 | 应用服务 + 接口 + 模块装配；补测经变异检验发现首次无牙并修正                                          |
+| 2026-09-27 | coding | Claude | c4a628b | Web API 客户端与 `useProductInitiativeDecision`；测试抓到 outcomeHint 快照缺陷                          |
+| 2026-09-27 | pause  | Claude | —       | 干净交接：后端完整、前端逻辑层完成；剩余组件、接线、E2E 与迁移升级验证                                  |
