@@ -1891,6 +1891,26 @@ updatedAt: DateTime
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeEvidenceCandidateV1".
+ */
+export interface ProductInitiativeEvidenceCandidateV1 {
+evidenceId: Uuid
+sourceName: string
+summary: string
+contentRef: string
+recordedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeDetailV1".
+ */
+export interface ProductInitiativeDetailV1 {
+handoffId: Uuid
+initiative?: (ProductInitiativeV1 | null)
+evidenceCandidates: ProductInitiativeEvidenceCandidateV1[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeHandoffV1".
  */
 export interface ProductInitiativeHandoffV1 {

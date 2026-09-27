@@ -128,6 +128,42 @@
         "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
       }
     },
+    "ProductInitiativeEvidenceCandidateV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "sourceName",
+        "summary",
+        "contentRef",
+        "recordedAt"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "sourceName": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "contentRef": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ProductInitiativeDetailV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoffId", "evidenceCandidates"],
+      "properties": {
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "initiative": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeV1" },
+            { "type": "null" }
+          ]
+        },
+        "evidenceCandidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeEvidenceCandidateV1" }
+        }
+      }
+    },
     "ProductInitiativeHandoffV1": {
       "type": "object",
       "additionalProperties": false,
