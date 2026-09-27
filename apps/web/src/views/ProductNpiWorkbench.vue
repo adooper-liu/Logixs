@@ -7,10 +7,13 @@ import {
 } from "@lucide/vue";
 import { computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { DEV_OPERATOR_ID } from "../api/developmentIdentity";
+import ProductDefinitionAdvancePanel from "../components/product-npi/ProductDefinitionAdvancePanel.vue";
 import ProductNpiClaimAction from "../components/product-npi/ProductNpiClaimAction.vue";
 import ProductNpiHandoffDetail from "../components/product-npi/ProductNpiHandoffDetail.vue";
 import ProductNpiQueue from "../components/product-npi/ProductNpiQueue.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
+import { useProductDefinition } from "../composables/useProductDefinition";
 import { useProductNpiWorkbench } from "../composables/useProductNpiWorkbench";
 
 const route = useRoute();
@@ -50,6 +53,18 @@ onMounted(async () => {
 /**
  * 本次结果按服务端事实说，而不是按"点过按钮"说 —— 领没领到以返回的领取回执为准。
  */
+/**
+ * 推进区只在"我负责的那一票"上出现：没接的还没轮到推进，别人接的轮不到我。
+ * 这与上一片的两道门槛同源 —— 界面上不给按不动的按钮。
+ */
+const isMine = computed(
+  () => selected.value?.claim?.productOwnerActorId === DEV_OPERATOR_ID,
+);
+const definition = useProductDefinition({
+  initiativeHandoffId: computed(() => selected.value?.handoff.handoffId ?? ""),
+  mine: isMine,
+});
+
 const workResult = computed(() => {
   if (!selected.value) return "选一票开始";
   return selected.value.claim ? "这一票已有人负责" : "接住这一票";
@@ -125,8 +140,28 @@ async function claimSelected(): Promise<void> {
         </p>
       </section>
       <section class="pane">
+        <ProductDefinitionAdvancePanel
+          v-if="selected && isMine"
+          :definition="definition.definition.value"
+          :specification="definition.draft.specification"
+          :compliance-assumptions="definition.draft.complianceAssumptions"
+          :conclusion="definition.draft.conclusion"
+          :stage="definition.stage.value"
+          :next-stage="definition.nextStage.value"
+          :current-stage-concluded="definition.currentStageConcluded.value"
+          :pending-fields="definition.pendingFields.value"
+          :released="definition.released.value"
+          :busy="definition.saving.value || saving"
+          :save="definition.save"
+          :release="definition.release"
+          @update-specification="definition.draft.specification = $event"
+          @update-compliance-assumptions="
+            definition.draft.complianceAssumptions = $event
+          "
+          @update-conclusion="definition.draft.conclusion = $event"
+        />
         <ProductNpiClaimAction
-          v-if="selected"
+          v-else-if="selected"
           :entry="selected"
           :busy="saving"
           @claim="claimSelected"

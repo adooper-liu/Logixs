@@ -44,11 +44,118 @@ test("NPI owner sees the handed-off initiative and takes it", async ({
 
   await page.getByRole("button", { name: "领取此立项" }).click();
 
-  // 接到自己名下：回执 + 队列分组跟着变。
+  // 接到自己名下：回执 + 分组跟着变，并且右栏**从"领取"换成"推进"** ——
+  // 接住了就该看见下一步做什么，而不是停在一条"已由某人负责"的回执上。
   await expect(page.getByText(/已接到你名下/)).toBeVisible();
   await expect(page.getByText("我负责的")).toBeVisible();
-  await expect(page.getByText("已由 dev-operator 负责")).toBeVisible();
+  await expect(page.getByText("推进产品定义")).toBeVisible();
+  await expect(page.getByRole("button", { name: "领取此立项" })).toHaveCount(0);
 });
+
+/**
+ * 领取之后把这一票推进到发布：登记规格与阶段结论 → 前进 → 发布。
+ * 断言的是**业务结果**（产品设计有没有交出去），不是接口被调过没有。
+ */
+test("NPI owner advances a claimed initiative and releases the product design", async ({
+  page,
+}) => {
+  let definition: Record<string, unknown> | null = null;
+
+  await page.route(/^http:\/\/localhost:5173\/api\//, async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+
+    if (path === "/api/product-initiative-npi/queue") {
+      await route.fulfill({ json: queue(true) });
+      return;
+    }
+    if (path === "/api/product-definitions/handoff-1") {
+      await route.fulfill({ json: definition });
+      return;
+    }
+    if (
+      path === "/api/product-definitions/handoff-1/writes" &&
+      request.method() === "POST"
+    ) {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      definition = productDefinition({
+        version: Number(definition?.version ?? 0) + 1,
+        specification: String(body.specification),
+        complianceAssumptions: body.complianceAssumptions as string[],
+        npiStage: body.advanceStage ? "dvt" : "evt",
+        stageOutcomes: body.conclusion
+          ? [
+              {
+                stage: "evt",
+                conclusion: (body.conclusion as { text: string }).text,
+                evidenceRefs: [],
+                recordedBy: "dev-operator",
+                recordedAt: "2026-09-27T11:30:00.000Z",
+              },
+            ]
+          : [],
+        pendingFieldCodes: [],
+      });
+      await route.fulfill({ json: definition });
+      return;
+    }
+    if (
+      path === "/api/product-definitions/handoff-1/releases" &&
+      request.method() === "POST"
+    ) {
+      definition = productDefinition({
+        ...(definition as Record<string, unknown>),
+        releaseState: "released",
+        npiStage: "mp",
+      });
+      await route.fulfill({ json: definition });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { code: "NOT_FOUND" } });
+  });
+
+  await page.goto("/workspaces/product-npi");
+
+  // 领取之后才轮到推进。
+  await page.getByRole("button", { name: /宠物出行品类/ }).click();
+  await expect(page.getByText("推进产品定义")).toBeVisible();
+  await expect(
+    page.getByText("工程验证（EVT）", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByLabel("产品规格").fill("40HC 折叠宠物推车，承重 25kg");
+  await page.getByLabel("本阶段结论").fill("功能样机通过，关键料有替代来源");
+  await page.getByRole("button", { name: /保存并前进到/ }).click();
+
+  // 前进到 DVT，并且这一段的结论进了记录。
+  await expect(
+    page.getByText("设计验证（DVT）", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("功能样机通过，关键料有替代来源")).toBeVisible();
+
+  await page.getByRole("button", { name: "发布", exact: true }).click();
+
+  await expect(page.getByText("已发布，交给主数据侧建档")).toBeVisible();
+});
+
+function productDefinition(overrides: Record<string, unknown>) {
+  return {
+    contractVersion: "product-definition.v1",
+    definitionId: "dddddddd-0000-4000-8000-000000000001",
+    initiativeHandoffId: "handoff-1",
+    productOwnerActorId: "dev-operator",
+    npiStage: "evt",
+    version: 1,
+    releaseState: "in_progress",
+    specification: "",
+    complianceAssumptions: ["CE"],
+    stageOutcomes: [],
+    pendingFieldCodes: ["evt_conclusion"],
+    createdAt: "2026-09-27T10:00:00.000Z",
+    updatedAt: "2026-09-27T10:00:00.000Z",
+    ...overrides,
+  };
+}
 
 function queue(claimed: boolean) {
   return {

@@ -6,12 +6,20 @@ import ProductNpiWorkbench from "./ProductNpiWorkbench.vue";
 
 const listProductInitiativeNpiQueue = vi.fn();
 const claimProductInitiative = vi.fn();
+const getProductDefinition = vi.fn();
+const writeProductDefinition = vi.fn();
+const releaseProductDefinition = vi.fn();
 
 vi.mock("../api/marketSignals", () => ({
   listProductInitiativeNpiQueue: (...args: unknown[]) =>
     listProductInitiativeNpiQueue(...args),
   claimProductInitiative: (...args: unknown[]) =>
     claimProductInitiative(...args),
+  getProductDefinition: (...args: unknown[]) => getProductDefinition(...args),
+  writeProductDefinition: (...args: unknown[]) =>
+    writeProductDefinition(...args),
+  releaseProductDefinition: (...args: unknown[]) =>
+    releaseProductDefinition(...args),
 }));
 
 describe("ProductNpiWorkbench", () => {
@@ -19,6 +27,9 @@ describe("ProductNpiWorkbench", () => {
     vi.clearAllMocks();
     listProductInitiativeNpiQueue.mockResolvedValue(page([entry({})]));
     claimProductInitiative.mockResolvedValue(entry({ claimed: true }));
+    getProductDefinition.mockResolvedValue(null);
+    writeProductDefinition.mockResolvedValue({});
+    releaseProductDefinition.mockResolvedValue({});
   });
 
   it("首屏把待办按等谁动分组，并说明这一票还没有人接", async () => {
@@ -67,7 +78,16 @@ describe("ProductNpiWorkbench", () => {
     expect(wrapper.text()).toContain("已接到你名下");
   });
 
-  it("已被他人领走时不摆领取按钮，并说明不会重复领取", async () => {
+  it("推进区只出现在我负责的那一票上 —— 没接的还没轮到推进", async () => {
+    listProductInitiativeNpiQueue.mockResolvedValue(
+      page([entry({ handoffId: "h-mine", claimedBy: "dev-operator" })]),
+    );
+    const wrapper = await mountWorkbench("h-mine");
+
+    expect(wrapper.text()).toContain("推进产品定义");
+  });
+
+  it("已被他人领走时不摆推进区，也不摆领取按钮", async () => {
     listProductInitiativeNpiQueue.mockResolvedValue(
       page([entry({ handoffId: "h-others", claimedBy: "someone-else" })]),
     );
@@ -75,6 +95,7 @@ describe("ProductNpiWorkbench", () => {
 
     expect(wrapper.find(".npi-action button").exists()).toBe(false);
     expect(wrapper.text()).toContain("已在他人手上");
+    expect(wrapper.text()).not.toContain("推进产品定义");
   });
 
   it("打开工作台默认落在等我接手的那一条，不必先点一下", async () => {
