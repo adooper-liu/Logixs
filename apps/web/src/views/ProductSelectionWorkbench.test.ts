@@ -331,7 +331,7 @@ describe("ProductSelectionWorkbench", () => {
     expect(getProductInitiative).toHaveBeenLastCalledWith(SECOND_HANDOFF_ID);
   });
 
-  it("版本冲突时显示服务端说明，不静默失败", async () => {
+  it("版本冲突给人话而不是机器代号，并已重新读取最新版本", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     decideProductInitiative.mockRejectedValue(
       new Error(
@@ -344,9 +344,105 @@ describe("ProductSelectionWorkbench", () => {
     await wrapper.get(".outcome-submit").trigger("click");
     await flushPromises();
 
-    expect(wrapper.get('[role="alert"]').text()).toContain(
-      "PRODUCT_INITIATIVE_VERSION_CONFLICT",
+    const alert = wrapper.get('[role="alert"]').text();
+    expect(alert).toContain("已被其他人更新过");
+    expect(alert).not.toContain("PRODUCT_INITIATIVE_VERSION_CONFLICT");
+    // 冲突后重读，否则下一次提交还拿旧版本再撞一次
+    expect(getProductInitiative).toHaveBeenCalledTimes(2);
+  });
+
+  it("已退回的机会按服务端事实说明本次结果，不停在“形成立项结论”", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockResolvedValue(
+      initiativeDetail({
+        initiative: {
+          ...initiativeRecord(),
+          outcome: "return_to_market",
+          completion: "completed",
+          currentDestination: "returned_to_market",
+          reason: "该由经营团队重新判断",
+        },
+      }),
     );
+    const wrapper = await mountPage();
+
+    const context = wrapper.get(".work-context");
+    expect(context.text()).toContain("已退回经营团队");
+    expect(context.text()).not.toContain("形成立项结论");
+    // 已记下的原因回填，重放同一去向不会把它抹掉
+    expect(
+      (
+        wrapper.get('textarea[aria-label="退回原因"]')
+          .element as HTMLTextAreaElement
+      ).value,
+    ).toBe("该由经营团队重新判断");
+  });
+
+  it("已立项后评审要点只读，不再提供系统不会接受的编辑", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockResolvedValue(
+      initiativeDetail({
+        initiative: {
+          ...initiativeRecord(),
+          outcome: "approve",
+          completion: "completed",
+          currentDestination: "handed_off",
+        },
+      }),
+    );
+    const wrapper = await mountPage();
+
+    const review = wrapper.get(".product-initiative-review");
+    const conclusion = review.get('textarea[aria-label="竞争供给结论"]');
+    expect(conclusion.attributes("readonly")).toBeDefined();
+    // 专业要求面板另有自己的“添加证据”，这里只断言评审要点面板不再给写入口
+    expect(review.find("button.add-evidence").exists()).toBe(false);
+    expect(review.find(".picker-toggle").exists()).toBe(false);
+    // 但已写下的结论与引用的证据还看得见
+    expect((conclusion.element as HTMLTextAreaElement).value).toBe("头部集中");
+    expect(
+      review
+        .get(
+          '.review-point[data-code="competitive_supply"] .review-point__facts',
+        )
+        .text(),
+    ).toContain("在售同款 320 个");
+  });
+
+  it("立项判断读不出来时不提供判断动作，先让人重新加载", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockRejectedValue(
+      new Error("暂时无法加载立项判断（500）"),
+    );
+    const wrapper = await mountPage();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      "暂时无法加载立项判断",
+    );
+    expect(wrapper.find(".outcome-submit").exists()).toBe(false);
+    expect(wrapper.find(".product-initiative-review").exists()).toBe(false);
+  });
+
+  it("从专业要求登记的证据也会进评审要点的候选里", async () => {
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([
+        acceptedOpportunity({
+          handoff: { ...opportunity().handoff, categoryRef: "宠物出行" },
+        }),
+      ]),
+    );
+    const wrapper = await mountPage();
+    expect(getProductInitiative).toHaveBeenCalledTimes(1);
+
+    await wrapper.findAll("button.add-evidence")[0]!.trigger("click");
+    await wrapper
+      .get('textarea[aria-label="竞争供给证据"]')
+      .setValue("类目页显示在售同款 320 个。");
+    await wrapper.get(".evidence-form").trigger("submit");
+    await flushPromises();
+
+    // 新证据挂同一个来源信号，评审要点的可引用列表必须跟着更新
+    expect(getProductInitiative).toHaveBeenCalledTimes(2);
   });
 
   it("已立项的机会只显示终态，不再给判断动作", async () => {
@@ -354,18 +450,10 @@ describe("ProductSelectionWorkbench", () => {
     getProductInitiative.mockResolvedValue(
       initiativeDetail({
         initiative: {
-          initiativeId: "55555555-5555-4555-8555-555555555555",
+          ...initiativeRecord(),
           outcome: "approve",
           completion: "completed",
           currentDestination: "handed_off",
-          responsibleActorId: "dev-operator",
-          objective: "做成可发布版本",
-          reviewPoints: [],
-          reason: null,
-          pendingFieldCodes: [],
-          version: 1,
-          createdAt: "2026-09-27T00:00:00.000Z",
-          updatedAt: "2026-09-27T00:00:00.000Z",
         },
       }),
     );
@@ -378,6 +466,29 @@ describe("ProductSelectionWorkbench", () => {
     );
   });
 });
+
+function initiativeRecord() {
+  return {
+    initiativeId: "55555555-5555-4555-8555-555555555555",
+    outcome: "approve" as const,
+    completion: "completed" as const,
+    currentDestination: "handed_off" as const,
+    responsibleActorId: "dev-operator",
+    objective: "做成可发布版本",
+    reviewPoints: [
+      {
+        code: "competitive_supply" as const,
+        evidenceRefs: [EVIDENCE_ID],
+        conclusion: "头部集中",
+      },
+    ],
+    reason: null,
+    pendingFieldCodes: [],
+    version: 1,
+    createdAt: "2026-09-27T00:00:00.000Z",
+    updatedAt: "2026-09-27T00:00:00.000Z",
+  };
+}
 
 const HANDOFF_ID = "44444444-4444-4444-8444-444444444444";
 const SECOND_HANDOFF_ID = "55555555-5555-4555-8555-555555555555";

@@ -30,6 +30,15 @@ export const REVIEW_POINTS = [
 export type ProductInitiativeOutcome =
   ProductInitiativeDecisionCommandV1["outcome"];
 
+/**
+ * 与服务端契约一致的长度上限（`product-initiative.schema.json`）。
+ * 前端先拦住，别让人写完整段分析才被 400 拒绝；上限本身由测试对着 schema 校验，
+ * 契约改了这里会红，不会悄悄漂移。
+ */
+export const CONCLUSION_MAX_LENGTH = 4000;
+export const OBJECTIVE_MAX_LENGTH = 4000;
+export const REASON_MAX_LENGTH = 500;
+
 export interface ProductInitiativeEvidenceDraft {
   sourceName: string;
   sourceUrl: string;
@@ -72,6 +81,7 @@ export function useProductInitiativeDecision(options: {
   const error = shallowRef<string | null>(null);
   const receipt = shallowRef<string | null>(null);
   const objective = shallowRef("");
+  const destination = shallowRef<ProductInitiativeOutcome>("approve");
   const deferReason = shallowRef("");
   const rejectReason = shallowRef("");
   const returnReason = shallowRef("");
@@ -83,6 +93,29 @@ export function useProductInitiativeDecision(options: {
     price_band_and_margin: { evidenceRefs: [], conclusion: "" },
     compliance_risk: { evidenceRefs: [], conclusion: "" },
   });
+
+  // 三个带原因的去向各存各的：来回切换时已写了一半的依据不该被清掉，
+  // 也不该把暂缓的理由带到退回里。
+  const REASON_FIELDS = {
+    defer: deferReason,
+    reject: rejectReason,
+    return_to_market: returnReason,
+  } as const;
+  /** 当前去向要写的原因；立项不需要原因，读出来是空串。 */
+  const currentReason = computed({
+    get: () => {
+      const chosen = destination.value;
+      return chosen === "approve" ? "" : REASON_FIELDS[chosen].value;
+    },
+    set: (value: string) => {
+      const chosen = destination.value;
+      if (chosen !== "approve") REASON_FIELDS[chosen].value = value;
+    },
+  });
+  /** 去向也由服务端事实决定：已记过暂缓就不该一进来显示成立项。 */
+  function setDestination(next: ProductInitiativeOutcome): void {
+    destination.value = next;
+  }
 
   const evidenceCandidates = computed(
     () => detail.value?.evidenceCandidates ?? [],
@@ -116,36 +149,82 @@ export function useProductInitiativeDecision(options: {
   const canApprove = computed(() => blockingGaps.value.length === 0);
 
   // 换一条机会就要重读那一条的立项判断；只看 handoffId，不沿用上一条的草稿。
-  // 换一条机会就要重读那一条的立项判断；只看 handoffId，不沿用上一条的草稿。
-  watch(() => toValue(options.handoffId), load, { immediate: true });
+  // 立即执行的那一次发生在 setup 期间，所以 loadToken 必须先于本行初始化。
+  let loadToken = 0;
+  watch(
+    () => toValue(options.handoffId),
+    () => void load(),
+    { immediate: true },
+  );
 
-  async function load(): Promise<void> {
+  /**
+   * 只允许最后一次请求写结果：队列是一列按钮，连点两条机会很常见，
+   * 先发的请求后返回会把已经切走的那条机会的判断盖回来。
+   */
+
+  /**
+   * `keepDraft` 用于"登记证据后刷新候选"这类刷新：候选要更新，
+   * 但人还没保存的结论与目标结果不能被服务端的旧值悄悄盖掉。
+   */
+  async function load(options_?: { keepDraft?: boolean }): Promise<void> {
     const handoffId = toValue(options.handoffId);
-    if (!handoffId) return;
+    const token = ++loadToken;
+    if (!handoffId) {
+      reset();
+      return;
+    }
     loading.value = true;
     error.value = null;
     try {
       const loaded = await getProductInitiative(handoffId);
+      if (token !== loadToken) return;
       detail.value = loaded;
-      hydrate(loaded);
+      if (!options_?.keepDraft) hydrate(loaded);
     } catch (caught) {
-      error.value = message(caught);
+      if (token !== loadToken) return;
+      error.value = initiativeErrorMessage(message(caught));
       detail.value = null;
     } finally {
-      loading.value = false;
+      if (token === loadToken) loading.value = false;
     }
   }
 
-  /** 用服务端已有判断回填草稿，刷新或换班后接着补。 */
-  function hydrate(loaded: ProductInitiativeDetailV1): void {
-    objective.value = loaded.initiative?.objective ?? "";
+  /** 没有可读的机会时清空草稿，避免把上一条的引用、原因和去向留给下一条。 */
+  function reset(): void {
+    detail.value = null;
+    objective.value = "";
+    destination.value = "approve";
+    deferReason.value = "";
+    rejectReason.value = "";
+    returnReason.value = "";
     for (const point of REVIEW_POINTS) {
-      const saved = loaded.initiative?.reviewPoints.find(
+      points[point.code] = { evidenceRefs: [], conclusion: "" };
+    }
+  }
+
+  /**
+   * 用服务端已有判断回填草稿，刷新或换班后接着补。
+   *
+   * 去向与原因同样要回填：只回填要点不回填去向，会让人以为还没判断过，
+   * 再点一次"暂缓"且不写原因，就把上次记下的原因连同关闭状态一起抹掉了
+   * —— 服务端 `reason` 是整体覆盖写入，没有历史可恢复。
+   */
+  function hydrate(loaded: ProductInitiativeDetailV1): void {
+    const saved = loaded.initiative;
+    objective.value = saved?.objective ?? "";
+    destination.value = saved?.outcome ?? "approve";
+    deferReason.value = saved?.outcome === "defer" ? (saved.reason ?? "") : "";
+    rejectReason.value =
+      saved?.outcome === "reject" ? (saved.reason ?? "") : "";
+    returnReason.value =
+      saved?.outcome === "return_to_market" ? (saved.reason ?? "") : "";
+    for (const point of REVIEW_POINTS) {
+      const savedPoint = saved?.reviewPoints.find(
         (item) => item.code === point.code,
       );
       points[point.code] = {
-        evidenceRefs: [...(saved?.evidenceRefs ?? [])],
-        conclusion: saved?.conclusion ?? "",
+        evidenceRefs: [...(savedPoint?.evidenceRefs ?? [])],
+        conclusion: savedPoint?.conclusion ?? "",
       };
     }
   }
@@ -161,7 +240,7 @@ export function useProductInitiativeDecision(options: {
       : [...draft.evidenceRefs, evidenceId];
   }
 
-  /** 登记一条新证据到来源信号；登完重新加载，让它出现在候选里。 */
+  /** 登记一条新证据到来源信号；登完刷新候选，让它能被引用。 */
   async function addEvidence(
     draft: ProductInitiativeEvidenceDraft,
   ): Promise<boolean> {
@@ -177,19 +256,20 @@ export function useProductInitiativeDecision(options: {
         sourceUrl: draft.sourceUrl.trim(),
         content,
       });
-      await load();
+      await load({ keepDraft: true });
       receipt.value = "已把新增证据登记到来源信号，可在要点里引用它。";
       return true;
     } catch (caught) {
-      error.value = message(caught);
+      error.value = initiativeErrorMessage(message(caught));
       return false;
     } finally {
       saving.value = false;
     }
   }
 
-  async function decide(outcome: ProductInitiativeOutcome): Promise<boolean> {
+  async function decide(outcome?: ProductInitiativeOutcome): Promise<boolean> {
     if (saving.value) return false;
+    const chosen = outcome ?? destination.value;
     saving.value = true;
     error.value = null;
     receipt.value = null;
@@ -199,9 +279,9 @@ export function useProductInitiativeDecision(options: {
       await decideProductInitiative(handoffId, {
         contractVersion: "product-initiative-decision.v1",
         requestId: crypto.randomUUID(),
-        outcome,
+        outcome: chosen,
         expectedInitiativeVersion,
-        idempotencyKey: `product-initiative-${outcome}:${handoffId}:${expectedInitiativeVersion}:${crypto.randomUUID()}`,
+        idempotencyKey: `product-initiative-${chosen}:${handoffId}:${expectedInitiativeVersion}:${crypto.randomUUID()}`,
         ...(objective.value.trim()
           ? { objective: objective.value.trim() }
           : {}),
@@ -210,22 +290,26 @@ export function useProductInitiativeDecision(options: {
           evidenceRefs: points[point.code].evidenceRefs,
           conclusion: points[point.code].conclusion.trim() || null,
         })),
-        ...(outcome === "defer" && deferReason.value.trim()
+        ...(chosen === "defer" && deferReason.value.trim()
           ? { deferReason: deferReason.value.trim() }
           : {}),
-        ...(outcome === "reject" && rejectReason.value.trim()
+        ...(chosen === "reject" && rejectReason.value.trim()
           ? { rejectReason: rejectReason.value.trim() }
           : {}),
-        ...(outcome === "return_to_market" && returnReason.value.trim()
+        ...(chosen === "return_to_market" && returnReason.value.trim()
           ? { returnReason: returnReason.value.trim() }
           : {}),
       });
       // 成功后从服务端重读，不用前端临时状态冒充落库结果。
       await load();
-      receipt.value = RECEIPTS[outcome];
+      receipt.value = RECEIPTS[chosen];
       return true;
     } catch (caught) {
-      error.value = message(caught);
+      const raw = message(caught);
+      // 冲突意味着别人已经改过这条机会：重读版本，别让人拿着旧版本反复撞同一堵墙。
+      // 重读会清空 error，所以说明要放在重读之后写，否则冲突提示会被自己抹掉。
+      if (raw.includes(VERSION_CONFLICT)) await load();
+      error.value = initiativeErrorMessage(raw);
       return false;
     } finally {
       saving.value = false;
@@ -242,14 +326,14 @@ export function useProductInitiativeDecision(options: {
     error,
     receipt,
     objective,
-    deferReason,
-    rejectReason,
-    returnReason,
+    destination,
+    currentReason,
     points,
     reviewPointViews,
     blockingGaps,
     canApprove,
     load,
+    setDestination,
     toggleEvidence,
     addEvidence,
     decide,
@@ -280,6 +364,29 @@ export function outcomeHintFor(input: {
   return input.reason.trim()
     ? "已写明原因，提交后本次判断会关闭。"
     : "不填原因也可以先保存：本次判断会留在待补里，不会关闭。";
+}
+
+const VERSION_CONFLICT = "PRODUCT_INITIATIVE_VERSION_CONFLICT";
+
+/**
+ * 把服务端的稳定错误码翻成岗位能读懂的话。原样透传只会让人看到
+ * `PRODUCT_INITIATIVE_VERSION_CONFLICT` 这种代号，既不知道发生了什么，
+ * 也不知道该重试还是该换个做法。未知错误保持原文，不编造解释。
+ */
+export function initiativeErrorMessage(raw: string): string {
+  if (raw.includes(VERSION_CONFLICT)) {
+    return "这条机会的立项判断已被其他人更新过。已重新读取最新版本，请核对后再提交。";
+  }
+  if (raw.includes("PRODUCT_INITIATIVE_ALREADY_APPROVED")) {
+    return "这条机会已经立项，不能再改动判断；如需新版本，请走 NPI 侧。";
+  }
+  if (raw.includes("PRODUCT_INITIATIVE_INCOMPLETE")) {
+    return "评审要点或目标结果还没齐，不能立项；补齐后再提交。";
+  }
+  if (raw.includes("PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND")) {
+    return "找不到这条机会的交接，可能已被新版替代。请回队列重新选择。";
+  }
+  return raw;
 }
 
 function message(error: unknown): string {

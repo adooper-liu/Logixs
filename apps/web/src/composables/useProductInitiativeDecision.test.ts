@@ -1,8 +1,13 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, ref } from "vue";
 import {
+  CONCLUSION_MAX_LENGTH,
+  OBJECTIVE_MAX_LENGTH,
   outcomeHintFor,
+  REASON_MAX_LENGTH,
   REVIEW_POINTS,
   useProductInitiativeDecision,
 } from "./useProductInitiativeDecision";
@@ -178,6 +183,189 @@ describe("useProductInitiativeDecision", () => {
     await flushPromises();
 
     expect(getProductInitiative).toHaveBeenLastCalledWith(OTHER_HANDOFF_ID);
+  });
+
+  it("已记录的去向与原因回填，不让人以为还没判断过", async () => {
+    getProductInitiative.mockResolvedValue(
+      detail({
+        initiative: {
+          ...initiative(),
+          outcome: "defer",
+          completion: "completed",
+          currentDestination: "deferred",
+          reason: "证据不足，等双十一数据",
+        },
+      }),
+    );
+
+    const state = await mountComposable();
+
+    expect(state.destination.value).toBe("defer");
+    expect(state.currentReason.value).toBe("证据不足，等双十一数据");
+  });
+
+  it("回填后重放同一去向会带上已记录的原因，不会把它抹掉", async () => {
+    getProductInitiative.mockResolvedValue(
+      detail({
+        initiative: {
+          ...initiative(),
+          outcome: "defer",
+          completion: "completed",
+          currentDestination: "deferred",
+          reason: "证据不足，等双十一数据",
+        },
+      }),
+    );
+    const state = await mountComposable();
+
+    await state.decide();
+    await flushPromises();
+
+    const [, command] = decideProductInitiative.mock.calls[0]!;
+    expect(command).toEqual(
+      expect.objectContaining({
+        outcome: "defer",
+        deferReason: "证据不足，等双十一数据",
+      }),
+    );
+  });
+
+  it("换一条机会不把上一条还没保存的原因带过去", async () => {
+    await mountComposable();
+    state.currentReason.value = "上一条写了一半的理由";
+
+    handoffId.value = OTHER_HANDOFF_ID;
+    await flushPromises();
+
+    expect(state.destination.value).toBe("approve");
+    expect(state.currentReason.value).toBe("");
+  });
+
+  it("登记证据只刷新候选，不清掉还没保存的草稿", async () => {
+    const state = await mountComposable();
+    state.objective.value = "写了一半的目标";
+    state.points.compliance_risk.conclusion = "写了一半的结论";
+
+    await state.addEvidence({
+      sourceName: "站点周报",
+      sourceUrl: "",
+      content: "新登记的证据",
+    });
+    await flushPromises();
+
+    expect(registerMarketSignalEvidence).toHaveBeenCalledWith({
+      signalId: SIGNAL_ID,
+      sourceName: "站点周报",
+      sourceUrl: "",
+      content: "新登记的证据",
+    });
+    expect(state.objective.value).toBe("写了一半的目标");
+    expect(state.points.compliance_risk.conclusion).toBe("写了一半的结论");
+    expect(getProductInitiative).toHaveBeenCalledTimes(2);
+  });
+
+  it("先发出的请求后返回时不覆盖当前机会", async () => {
+    let releaseSlow!: (value: unknown) => void;
+    getProductInitiative
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          releaseSlow = resolve;
+        }),
+      )
+      .mockResolvedValue(
+        detail({
+          handoffId: OTHER_HANDOFF_ID,
+          initiative: { ...initiative(), objective: "只属于第二条机会" },
+        }),
+      );
+    const state = await mountComposable();
+
+    handoffId.value = OTHER_HANDOFF_ID;
+    await flushPromises();
+    expect(state.objective.value).toBe("只属于第二条机会");
+
+    // 慢的那条（前一条机会）现在才回来，不能把当前机会的判断盖回去
+    releaseSlow(detail({ handoffId: HANDOFF_ID }));
+    await flushPromises();
+
+    expect(state.detail.value?.handoffId).toBe(OTHER_HANDOFF_ID);
+    expect(state.objective.value).toBe("只属于第二条机会");
+  });
+
+  it("版本冲突给人话，并重新读取版本而不是让人反复撞同一堵墙", async () => {
+    decideProductInitiative.mockRejectedValue(
+      new Error(
+        "暂时无法保存本次立项判断（409）：PRODUCT_INITIATIVE_VERSION_CONFLICT",
+      ),
+    );
+    const state = await mountComposable();
+
+    await state.decide("defer");
+    await flushPromises();
+
+    expect(state.error.value).toContain("已被其他人更新过");
+    expect(state.error.value).not.toContain(
+      "PRODUCT_INITIATIVE_VERSION_CONFLICT",
+    );
+    expect(getProductInitiative).toHaveBeenCalledTimes(2);
+  });
+
+  it("已立项后服务端拒绝不再判断时，说明是终态而不是普通失败", async () => {
+    decideProductInitiative.mockRejectedValue(
+      new Error(
+        "暂时无法保存本次立项判断（409）：PRODUCT_INITIATIVE_ALREADY_APPROVED",
+      ),
+    );
+    const state = await mountComposable();
+
+    await state.decide("defer");
+    await flushPromises();
+
+    expect(state.error.value).toContain("已经立项");
+    expect(state.error.value).not.toContain(
+      "PRODUCT_INITIATIVE_ALREADY_APPROVED",
+    );
+    // 终态不是版本问题，不需要重读
+    expect(getProductInitiative).toHaveBeenCalledTimes(1);
+  });
+
+  it("选中的去向决定默认提交去向，不用调用方再传一遍", async () => {
+    const state = await mountComposable();
+    state.setDestination("return_to_market");
+    state.currentReason.value = "该由经营团队重新判断";
+
+    await state.decide();
+    await flushPromises();
+
+    expect(decideProductInitiative).toHaveBeenCalledWith(
+      HANDOFF_ID,
+      expect.objectContaining({
+        outcome: "return_to_market",
+        returnReason: "该由经营团队重新判断",
+      }),
+    );
+  });
+
+  it("前端长度上限直接读契约，契约改了这里会红而不是悄悄漂移", () => {
+    // vitest 以 apps/web 为工作目录，从那里回到仓库根。
+    const schemaPath = resolve(
+      process.cwd(),
+      "../../packages/contracts/schemas/v1/product-initiative.schema.json",
+    );
+    const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
+      $defs: Record<
+        string,
+        { properties: Record<string, { maxLength?: number }> }
+      >;
+    };
+    const command = schema.$defs.ProductInitiativeDecisionCommandV1!;
+    const point = schema.$defs.ProductInitiativeReviewPointV1!;
+
+    expect(command.properties.objective!.maxLength).toBe(OBJECTIVE_MAX_LENGTH);
+    expect(command.properties.deferReason!.maxLength).toBe(REASON_MAX_LENGTH);
+    expect(command.properties.rejectReason!.maxLength).toBe(REASON_MAX_LENGTH);
+    expect(command.properties.returnReason!.maxLength).toBe(REASON_MAX_LENGTH);
+    expect(point.properties.conclusion!.maxLength).toBe(CONCLUSION_MAX_LENGTH);
   });
 });
 

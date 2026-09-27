@@ -145,12 +145,67 @@ describe("ProductInitiativeReviewPanel", () => {
       ).value,
     ).toBe("目标市场搜索量连续三周上升。");
   });
+
+  it("引用的证据已不在候选里时不说“已成立”，而是说明引用要重做", () => {
+    const wrapper = mountPanel({
+      candidates: [otherCandidate()],
+      points: [
+        point({
+          code: "competitive_supply",
+          label: "竞争供给",
+          evidenceRefs: [EVIDENCE_ID],
+          conclusion: "头部集中",
+          missing: false,
+        }),
+      ],
+    });
+
+    const node = wrapper.get(".review-point");
+    expect(node.find(".review-point__ok").exists()).toBe(false);
+    expect(node.get(".review-point__stale").text()).toContain("引用已失效");
+  });
+
+  it("结论长度上限与服务端契约一致，不让人写完才被 400 拒绝", () => {
+    const wrapper = mountPanel();
+
+    expect(
+      wrapper
+        .get('textarea[aria-label="目标用户与市场结论"]')
+        .attributes("maxlength"),
+    ).toBe("4000");
+  });
+
+  it("已立项后只读：结论与引用还看得见，但不再提供写入口", () => {
+    const wrapper = mountPanel({
+      readonly: true,
+      points: [
+        point({
+          code: "competitive_supply",
+          label: "竞争供给",
+          evidenceRefs: [EVIDENCE_ID],
+          conclusion: "头部集中",
+          missing: false,
+        }),
+      ],
+    });
+
+    expect(wrapper.get("textarea").attributes("readonly")).toBeDefined();
+    expect(wrapper.find("button.add-evidence").exists()).toBe(false);
+    expect(wrapper.find(".picker-toggle").exists()).toBe(false);
+    expect(wrapper.get(".review-point__facts").text()).toContain(
+      "在售同款 320 个",
+    );
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "头部集中",
+    );
+  });
 });
 
 function mountPanel(
   overrides: {
     points?: ProductInitiativeReviewPointView[];
     candidates?: ProductInitiativeEvidenceCandidateV1[];
+    readonly?: boolean;
     addEvidence?: (draft: {
       sourceName: string;
       sourceUrl: string;
@@ -168,6 +223,7 @@ function mountPanel(
       ],
       candidates: overrides.candidates ?? [candidate(), otherCandidate()],
       busy: false,
+      readonly: overrides.readonly ?? false,
       addEvidence: overrides.addEvidence ?? vi.fn().mockResolvedValue(true),
     },
   });

@@ -112,6 +112,18 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(rejecting.emitted("updateReason")).toEqual([["利润太薄"]]);
   });
 
+  it("输入长度上限与服务端契约一致，不让人写完才被 400 拒绝", () => {
+    const approving = mountPanel({ outcome: "approve" });
+    expect(
+      approving.get('textarea[aria-label="目标结果"]').attributes("maxlength"),
+    ).toBe("4000");
+
+    const deferring = mountPanel({ outcome: "defer" });
+    expect(
+      deferring.get('textarea[aria-label="暂缓原因"]').attributes("maxlength"),
+    ).toBe("500");
+  });
+
   it("已立项是终态，不再提供任何判断动作", () => {
     const wrapper = mountPanel({
       outcome: "approve",

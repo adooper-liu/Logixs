@@ -6,7 +6,7 @@ import {
   UserRound,
 } from "@lucide/vue";
 import type { ProductInitiativeReviewPointCodeV1 } from "@logix/contracts";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
 import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
@@ -15,11 +15,9 @@ import ProductOpportunityActions from "../components/product-selection/ProductOp
 import ProductOpportunityDetail from "../components/product-selection/ProductOpportunityDetail.vue";
 import ProductOpportunityQueue from "../components/product-selection/ProductOpportunityQueue.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
-import {
-  useProductInitiativeDecision,
-  type ProductInitiativeOutcome,
-} from "../composables/useProductInitiativeDecision";
+import { useProductInitiativeDecision } from "../composables/useProductInitiativeDecision";
 import { useProductOpportunityWorkbench } from "../composables/useProductOpportunityWorkbench";
+import type { ProductEvaluationEvidenceDraft } from "../data/productEvaluationRequirements";
 
 const route = useRoute();
 const router = useRouter();
@@ -56,11 +54,11 @@ const initiativeHandoffId = computed(() =>
   accepted.value ? (selected.value?.handoff.handoffId ?? "") : "",
 );
 const {
+  initiative,
   decided,
   objective,
-  deferReason,
-  rejectReason,
-  returnReason,
+  destination,
+  currentReason,
   points,
   reviewPointViews,
   blockingGaps,
@@ -70,6 +68,7 @@ const {
   error: initiativeError,
   receipt: initiativeReceipt,
   load: loadInitiative,
+  setDestination,
   toggleEvidence,
   addEvidence: addInitiativeEvidence,
   decide,
@@ -78,53 +77,66 @@ const {
   signalId: computed(() => selected.value?.handoff.signalId ?? ""),
 });
 
-const outcome = ref<ProductInitiativeOutcome>("approve");
 /**
- * 三个带原因的去向各存各的：来回切换时已写了一半的依据不该被清掉，
- * 也不该把暂缓的理由带到退回里。
+ * 判断详情读出来之前不摆出判断界面：那时的"还差 5 项"是空草稿而不是这条
+ * 机会的真实状态，照着它填完提交会拿版本 0 去撞冲突。
  */
-const REASON_FIELDS = {
-  defer: deferReason,
-  reject: rejectReason,
-  return_to_market: returnReason,
-} as const;
-const currentReason = computed({
-  get: () => {
-    const chosen = outcome.value;
-    return chosen === "approve" ? "" : REASON_FIELDS[chosen].value;
-  },
-  set: (value: string) => {
-    const chosen = outcome.value;
-    if (chosen !== "approve") REASON_FIELDS[chosen].value = value;
-  },
-});
+const initiativeReady = computed(
+  () => accepted.value && !readingInitiative.value && !initiativeError.value,
+);
 
 // 接收动作与立项判断共用一个反馈位：谁刚失败就显示谁，不静默吞掉。
 const feedbackError = computed(() => initiativeError.value ?? error.value);
 const feedbackReceipt = computed(
   () => initiativeReceipt.value ?? receipt.value,
 );
+
+/**
+ * 本次结果按服务端事实说：已退回／已暂缓／已立项都不再是"形成立项结论"，
+ * 否则做完动作还得靠猜才知道机会去了哪。
+ */
 const workResult = computed(() => {
+  switch (initiative.value?.currentDestination) {
+    case "handed_off":
+      return "已立项并交给产品侧";
+    case "deferred":
+      return "已暂缓，仍留在选品队列";
+    case "rejected":
+      return "已记录不立项";
+    case "returned_to_market":
+      return "已退回经营团队";
+    default:
+      break;
+  }
   if (accepted.value) return "形成立项结论";
   return selected.value?.intakeState === "superseded"
     ? "等待新版交接"
     : "领取并接受机会";
 });
 
+const currentOwner = computed(() => {
+  if (initiative.value?.currentDestination === "returned_to_market") {
+    return "经营团队（重新判断）";
+  }
+  if (selected.value?.intakeState === "queued") return "选品团队（待领取）";
+  return selected.value?.assignedActorId || "选品负责人";
+});
+
 async function reload(): Promise<void> {
   await Promise.all([load(), loadInitiative()]);
 }
 
-function chooseOutcome(next: ProductInitiativeOutcome): void {
-  outcome.value = next;
+/** 重新读立项判断：错误横幅的重试与登记证据后刷新候选都走这里。 */
+async function reloadInitiative(): Promise<void> {
+  await loadInitiative({ keepDraft: true });
+}
+
+function setCurrentReason(value: string): void {
+  currentReason.value = value;
 }
 
 function setObjective(value: string): void {
   objective.value = value;
-}
-
-function setReason(value: string): void {
-  currentReason.value = value;
 }
 
 function setConclusion(
@@ -133,8 +145,19 @@ function setConclusion(
 ): void {
   points[code].conclusion = value;
 }
-</script>
 
+/**
+ * 专业要求面板登记的证据同样挂在该信号的证据链上，评审要点的可引用列表
+ * 必须跟着更新，否则同一个动作在两个面板里表现不一致。
+ */
+async function addRequirementEvidence(
+  draft: ProductEvaluationEvidenceDraft,
+): Promise<boolean> {
+  const saved = await addEvidence(draft);
+  if (saved) await reloadInitiative();
+  return saved;
+}
+</script>
 <template>
   <main class="selection-workbench page-frame">
     <PageHeader
@@ -166,12 +189,7 @@ function setConclusion(
       >
       <span
         ><UserRound :size="16" /><span
-          ><small>当前责任</small
-          ><b>{{
-            selected?.intakeState === "queued"
-              ? "选品团队（待领取）"
-              : selected?.assignedActorId || "选品负责人"
-          }}</b></span
+          ><small>当前责任</small><b>{{ currentOwner }}</b></span
         ></span
       >
     </section>
@@ -191,13 +209,14 @@ function setConclusion(
             :requirements="requirements.requirements"
             :withheld="requirements.withheld"
             :busy="saving"
-            :save-evidence="addEvidence"
+            :save-evidence="addRequirementEvidence"
           />
           <ProductInitiativeReviewPanel
-            v-if="accepted"
+            v-if="initiativeReady"
             :points="reviewPointViews"
             :candidates="evidenceCandidates"
             :busy="deciding"
+            :readonly="decided"
             :add-evidence="addInitiativeEvidence"
             @toggle-evidence="toggleEvidence"
             @update-conclusion="setConclusion"
@@ -215,20 +234,24 @@ function setConclusion(
           @claim="claim"
           @accept="accept"
         />
-        <p v-else-if="accepted && readingInitiative" class="empty">
-          正在读取该机会已有的立项判断
+        <p v-else-if="selected && !initiativeReady" class="empty">
+          {{
+            readingInitiative
+              ? "正在读取该机会已有的立项判断"
+              : "立项判断没能读出来，请先用上方的“重新加载”再继续。"
+          }}
         </p>
         <ProductInitiativeOutcomePanel
           v-else-if="selected"
-          :outcome="outcome"
+          :outcome="destination"
           :objective="objective"
           :reason="currentReason"
           :gaps="blockingGaps"
           :busy="deciding"
           :decided="decided"
-          @change-outcome="chooseOutcome"
+          @change-outcome="setDestination"
           @update-objective="setObjective"
-          @update-reason="setReason"
+          @update-reason="setCurrentReason"
           @submit="decide"
         />
         <p v-else class="empty">选择一条机会后显示接收动作。</p>

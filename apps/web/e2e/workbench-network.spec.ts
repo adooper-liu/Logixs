@@ -1,6 +1,7 @@
 import type {
   MarketOpportunityHandoffV1,
   MarketSignalV1,
+  ProductInitiativeDecisionCommandV1,
   ProductInitiativeV1,
   ProductOpportunityV1,
 } from "@logix/contracts";
@@ -40,7 +41,7 @@ test("the business-workbench directory opens live and framework stages honestly"
 test("a market owner can hand off a signal for a selector to claim, accept and take a decision", async ({
   page,
 }) => {
-  await mockMarketOpportunityApis(page);
+  const { decisions } = await mockMarketOpportunityApis(page);
   await page.goto("/workspaces/market-signals");
 
   await expect(
@@ -103,6 +104,16 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     "已立项",
   );
   await expect(page.locator(".destination")).toHaveCount(0);
+  // 评审要点只读：系统不会再接受改动，就不该继续摆出写入口。
+  await expect(page.locator(".review-point textarea").first()).toHaveAttribute(
+    "readonly",
+    "",
+  );
+  // 桩不校验版本，所以只能在这里断言"发出去的版本正确"：首次立项必须是 0。
+  expect(decisions).toHaveLength(1);
+  expect(decisions[0]?.expectedInitiativeVersion).toBe(0);
+  expect(decisions[0]?.contractVersion).toBe("product-initiative-decision.v1");
+  expect(decisions[0]?.outcome).toBe("approve");
 
   const widths = await page.evaluate(() => ({
     pageClient: document.documentElement.clientWidth,
@@ -174,7 +185,9 @@ const secondSignalId = "22222222-2222-4222-8222-222222222222";
 const evidenceId = "33333333-3333-4333-8333-333333333333";
 const handoffId = "44444444-4444-4444-8444-444444444444";
 
-async function mockMarketOpportunityApis(page: Page): Promise<void> {
+async function mockMarketOpportunityApis(page: Page): Promise<{
+  decisions: ProductInitiativeDecisionCommandV1[];
+}> {
   const signals = new Map<string, MarketSignalV1>([
     [
       firstSignalId,
@@ -208,6 +221,8 @@ async function mockMarketOpportunityApis(page: Page): Promise<void> {
   ]);
   let opportunity: ProductOpportunityV1 | null = null;
   let initiative: ProductInitiativeV1 | null = null;
+  /** 前端实际发出去的决策命令：版本这类字段桩不会校验，只能断言发出去的值。 */
+  const decisions: ProductInitiativeDecisionCommandV1[] = [];
 
   await page.route("**/api/market-signals**", async (route) => {
     const request = route.request();
@@ -341,28 +356,20 @@ async function mockMarketOpportunityApis(page: Page): Promise<void> {
       });
       return;
     }
-    const body = request.postDataJSON() as {
-      outcome: ProductInitiativeV1["outcome"];
-      objective?: string;
-      reviewPoints?: ProductInitiativeV1["reviewPoints"];
-      deferReason?: string;
-      rejectReason?: string;
-      returnReason?: string;
-    };
-    const reason =
-      body.deferReason ?? body.rejectReason ?? body.returnReason ?? null;
+    // 本用例只走"立项"这一条去向，所以只造这一种结果；其余三个去向的关闭规则
+    // 由服务端集成测试覆盖，不在这里复制一份状态机（复制出来的会悄悄漂移）。
+    decisions.push(
+      request.postDataJSON() as ProductInitiativeDecisionCommandV1,
+    );
     initiative = {
       initiativeId: "66666666-6666-4666-8666-666666666666",
-      outcome: body.outcome,
-      completion:
-        body.outcome === "approve" || reason
-          ? "completed"
-          : "pending_completion",
-      currentDestination: destinationFor(body.outcome, reason),
+      outcome: "approve",
+      completion: "completed",
+      currentDestination: "handed_off",
       responsibleActorId: "dev-operator",
-      objective: body.objective ?? null,
-      reviewPoints: body.reviewPoints ?? [],
-      reason,
+      objective: "把折叠宠物出行包做成可发布版本",
+      reviewPoints: [],
+      reason: null,
       pendingFieldCodes: [],
       version: (initiative?.version ?? 0) + 1,
       createdAt: "2026-09-27T00:00:00.000Z",
@@ -370,18 +377,8 @@ async function mockMarketOpportunityApis(page: Page): Promise<void> {
     };
     await json(route, initiative);
   });
-}
 
-/** 与后端 `destinationFor` 同口径：没写原因就还没关闭，停在 needs_decision。 */
-function destinationFor(
-  outcome: ProductInitiativeV1["outcome"],
-  reason: string | null,
-): ProductInitiativeV1["currentDestination"] {
-  if (!reason && outcome !== "approve") return "needs_decision";
-  if (outcome === "approve") return "handed_off";
-  if (outcome === "defer") return "deferred";
-  if (outcome === "reject") return "rejected";
-  return "returned_to_market";
+  return { decisions };
 }
 
 async function json(route: Route, body: unknown): Promise<void> {

@@ -2,7 +2,11 @@
 import { CheckCircle2, CircleSlash, PackageCheck, Undo2 } from "@lucide/vue";
 import { computed } from "vue";
 import type { ProductInitiativeOutcome } from "../../composables/useProductInitiativeDecision";
-import { outcomeHintFor } from "../../composables/useProductInitiativeDecision";
+import {
+  OBJECTIVE_MAX_LENGTH,
+  outcomeHintFor,
+  REASON_MAX_LENGTH,
+} from "../../composables/useProductInitiativeDecision";
 
 const props = defineProps<{
   outcome: ProductInitiativeOutcome;
@@ -141,6 +145,7 @@ function submit(): void {
           <textarea
             :value="objective"
             aria-label="目标结果"
+            :maxlength="OBJECTIVE_MAX_LENGTH"
             rows="2"
             placeholder="立项后要拿到什么结果，例如：把折叠出行包做成可发布版本"
             @input="
@@ -166,6 +171,7 @@ function submit(): void {
           <textarea
             :value="reason"
             :aria-label="current.reasonLabel ?? '原因'"
+            :maxlength="REASON_MAX_LENGTH"
             rows="3"
             placeholder="写清判断依据，便于经营团队与后续接手的人看懂"
             @input="

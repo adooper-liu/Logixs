@@ -6,11 +6,14 @@ import type {
   ProductInitiativeEvidenceDraft,
   ProductInitiativeReviewPointView,
 } from "../../composables/useProductInitiativeDecision";
+import { CONCLUSION_MAX_LENGTH } from "../../composables/useProductInitiativeDecision";
 
 const props = defineProps<{
   points: readonly ProductInitiativeReviewPointView[];
   candidates: readonly ProductInitiativeEvidenceCandidateV1[];
   busy: boolean;
+  /** 已立项是终态：结论与引用还看得见，但不再提供系统不会接受的写入口。 */
+  readonly: boolean;
   addEvidence: (draft: ProductInitiativeEvidenceDraft) => Promise<boolean>;
 }>();
 
@@ -115,8 +118,16 @@ async function submit(): Promise<void> {
           <span v-if="point.missing" class="review-point__gap">
             待补：{{ point.evidenceRefs.length ? "还缺结论" : "还缺证据" }}
           </span>
+          <!--
+            引用了已不在候选里的证据时不能说"已成立"：那样面板会一边说成立、
+            一边又说引用要重做。门槛口径仍与服务端一致（只数引用条数）。
+          -->
+          <span v-else-if="staleRefs(point).length" class="review-point__stale">
+            引用已失效，需重新引用
+          </span>
           <span v-else class="review-point__ok">已成立</span>
           <button
+            v-if="!readonly"
             type="button"
             class="add-evidence"
             :aria-label="`${point.label}添加证据`"
@@ -146,7 +157,7 @@ async function submit(): Promise<void> {
           </p>
 
           <button
-            v-if="candidates.length"
+            v-if="candidates.length && !readonly"
             type="button"
             class="picker-toggle"
             :aria-expanded="pickerCode === point.code"
@@ -160,7 +171,7 @@ async function submit(): Promise<void> {
             从已登记证据中引用（{{ candidates.length }} 条可选，已引用
             {{ point.evidenceRefs.length }} 条）
           </button>
-          <p v-else class="empty">
+          <p v-else-if="!readonly" class="empty">
             该信号还没有已登记证据，先用“添加证据”登记一条。
           </p>
 
@@ -187,6 +198,8 @@ async function submit(): Promise<void> {
           <textarea
             :value="point.conclusion"
             :aria-label="`${point.label}结论`"
+            :readonly="readonly"
+            :maxlength="CONCLUSION_MAX_LENGTH"
             rows="2"
             placeholder="写清在这一项上你判断了什么，以及依据"
             @input="
@@ -304,12 +317,14 @@ async function submit(): Promise<void> {
 }
 
 .review-point__gap,
-.review-point__ok {
+.review-point__ok,
+.review-point__stale {
   font-size: var(--text-micro);
   font-weight: 700;
 }
 
-.review-point__gap {
+.review-point__gap,
+.review-point__stale {
   color: var(--warn);
 }
 
@@ -470,6 +485,13 @@ async function submit(): Promise<void> {
   outline: 0;
   border-color: var(--brand);
   box-shadow: var(--focus-ring);
+}
+
+/* 已立项后只读：看起来就不像能改，不靠光标提示。 */
+.review-point__conclusion textarea[readonly] {
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--ink-soft);
 }
 
 .evidence-form {
