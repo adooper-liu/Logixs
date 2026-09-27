@@ -1,7 +1,7 @@
 ---
-status: coding
+status: done
 branch: feat/product-initiative-decision-v1
-verification: 本地验证（2026-09-27，**编码中，不得标 done**）：验收 10 条中 8 条已达成、2 条部分达成（退回未回到经营团队队列、NPI 待办查询不在 web 可测面）。契约 20 schemas 校验通过、生成漂移同步；领域层 15 项单测（真 TDD）；API 243 文件 / 1147 项；真实 PostgreSQL 集成 16 文件 / 54 项（含本轮新增的旧版本升级验证）；Web 123 文件 / 439 项；Web E2E 98 passed / 7 skipped，三视口覆盖「交接→领取→接受→立项」；repo:check、contract:check/drift、web+api typecheck、lint、build 通过。变异自检 4 处（E2E 门槛与结论接线、队列切片、升级未应用）。本机 `format:check` 仍受 `apps/ai-service/.pytest_cache` EPERM scandir 阻塞（非格式债），改动文件逐个 `prettier --check` 干净。**已知未纳入门禁**：CI 不跑集成测试。
+verification: 已合入 main（PR #53，2026-09-27）。**本次标 done 是因为它已交付并合并，不是因为验收全达成** —— 原先写的"不得标 done"是防止在未交付时宣称完成，该条件已不成立；同时它占着仓库唯一的活动名额，会把后续切片挡在门外。**验收 10 条中 8 条达成、2 条部分达成**：第 4 条「退回后机会回到经营团队队列」未实现，已移交 [product-initiative-return-path-v1](./product-initiative-return-path-v1.md)（blocked，等负责人选型）；第 6 条「NPI 待办队列能查到」的可测面在服务端（outbox 由集成测试覆盖），web 侧无此队列。验证记录：契约 20 schemas 通过、生成漂移同步；领域层 15 项单测（真 TDD）；API 243 文件 / 1147 项；真实 PostgreSQL 集成 16 文件 / 54 项（含旧版本升级验证）；Web 123 文件 / 439 项；Web E2E 98 passed / 7 skipped（三视口覆盖交接→领取→接受→立项）；repo:check、contract:check/drift、typecheck、lint、build 通过；变异自检 4 处。本机 `format:check` 受 `apps/ai-service/.pytest_cache` EPERM scandir 阻塞（非格式债），改动文件逐个 `prettier --check` 干净。
 ---
 
 # 任务：选品立项判断 V1
