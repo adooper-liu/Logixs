@@ -117,6 +117,6 @@ verification: 本地验证（2026-09-27，**编码中，不得标 done**）：�
 | 2026-09-27 | design | Claude | b723ae0 | 证据入口缺口关闭：登记与读取都复用既有链路，不新增存储                                                        |
 | 2026-09-27 | coding | Claude | cd5256a | 加法迁移建立立项与交接快照；约束经真实 PostgreSQL 逐条验证（含两种半状态被拦住）                              |
 | 2026-09-27 | coding | Claude | f32b5cb | 仓储端口与 Prisma 实现；集成测试 7 项通过（独立 schema、从零迁移）                                            |
-| 2026-09-27 | coding | Claude | ebb9281 | 应用服务 + 接口 + 模块装配；补测经变异检验发现首次无牙并修正                                          |
-| 2026-09-27 | coding | Claude | c4a628b | Web API 客户端与 `useProductInitiativeDecision`；测试抓到 outcomeHint 快照缺陷                          |
-| 2026-09-27 | pause  | Claude | —       | 干净交接：后端完整、前端逻辑层完成；剩余组件、接线、E2E 与迁移升级验证                                  |
+| 2026-09-27 | coding | Claude | ebb9281 | 应用服务 + 接口 + 模块装配；补测经变异检验发现首次无牙并修正                                                  |
+| 2026-09-27 | coding | Claude | c4a628b | Web API 客户端与 `useProductInitiativeDecision`；测试抓到 outcomeHint 快照缺陷                                |
+| 2026-09-27 | pause  | Claude | —       | 干净交接：后端完整、前端逻辑层完成；剩余组件、接线、E2E 与迁移升级验证                                        |
