@@ -97,16 +97,20 @@ UI / Transport -> Application -> Domain <- Infrastructure
 项目脚本必须逐步提供以下稳定入口：
 
 ```text
-lint          只检查，不修改文件
-lint:fix      显式自动修复
-format:check  只检查格式
-format        显式格式化
-typecheck     类型检查
-test          单元和集成测试
-test:e2e      端到端测试
-build         生产构建
-validate      完整质量门禁
+lint              只检查，不修改文件
+lint:fix          显式自动修复
+format:check      只检查格式
+format            显式格式化
+typecheck         类型检查
+test              单元测试
+test:integration  真实数据库集成测试（需先启动本地 PostgreSQL，见下）
+test:e2e          端到端测试
+build             生产构建
+validate          完整质量门禁
 ```
+
+`validate` 依次跑上述全部入口，因此**需要本地 PostgreSQL 与浏览器**：先 `pnpm infra:up`。
+集成测试是迁移、约束、事务与并发唯一被真实执行的地方（`test` 里的 `*.integration.test.ts` 被排除），不要因为"本地要起库"就跳过它。
 
 如果项目尚未配置某项命令，应明确报告“未配置”，不得伪造验证结果。
 
