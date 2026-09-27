@@ -172,3 +172,24 @@ verification: 未开工（design 阶段）。任务书待评审；评审通过�
 
 **本次结果如实记账**：第三片试行到一半（端口已改、服务与测试已写并通过 11 项），发现必须与 Prisma 实现同批落地，**已全部回退，未提交**。main 保持干净。回退原因是判断在该会话末尾硬写那段三跳 SQL + keyset 的风险高于收益——那正是本片最需要谨慎的地方。
 | 2026-09-27 | coding | Claude | — | 第三片试行后回退：端口一改连带 12 处欠账，服务与 Prisma 实现必须同批落地；连带清单与 SQL 形状已记入本文件 |
+
+### 第三片第二次试行：又摸到两个必须记住的点
+
+**① 裸 SQL 不认适配器配置的 schema，会落到 `public`。**
+`prisma.$queryRawUnsafe` 的表名不带 schema 时，走的是连接的 search_path（`public`），
+**不认** adapter 的 `schema` 选项、也不认连接串里的 `?schema=`。后果有两个：
+
+- 本片的集成测试用独立 schema，**裸 SQL 永远查不到数据**（第二次试行就卡在这里：SQL 跑通了但返回空）；
+- **生产上更值得警惕**：现在生产是 `public` 所以看不出来，但任何非 public 的部署（分环境、分租户库）都会静默查错地方。
+
+**这需要先定一个做法**，再动手写第三片：schema 名怎么进入裸 SQL（显式限定并参数化？连接级 `search_path`？还是不走裸 SQL 改写成 Prisma 查询）。
+早上修迁移升级验证时用的办法是"显式加 schema 名"，但那是在测试里已知 schema；仓储层拿不到这个信息，不能照搬。
+
+**② `work_order` 没有 `tenant_id` 列。** 它的租户只能经 `node_task` 限定
+（`node_task` 有 `tenant_id`）。第一次写 SQL 时按 `NodeTask` 的模式想当然加了
+`w.tenant_id = nt.tenant_id`，直接报 `column w.tenant_id does not exist`。
+
+**其余已验可行**：SQL 形状（排序表达式白名单、`NULLS LAST` + id 兜底、keyset 三分支、
+未完成工单、已关闭不进队列）单测 12 项通过；仓储装配、服务、DTO、控制器、模块装配
+经 typecheck 全通过；连带要改的 7 处已定位并修好。**这些都随回退丢弃了，下次照本节重做。**
+| 2026-09-27 | coding | Claude | — | 第三片第二次试行：验证了 SQL 形状与全链路装配，卡在"裸 SQL 不认 schema"上；两个新发现已记入，再次回退 |
