@@ -1,5 +1,5 @@
 ---
-status: review
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/product-definition-npi-release
 verification: |
   本地验证（2026-09-27，服务端 + 前端）：
@@ -8,6 +8,7 @@ verification: |
     发布后是终态、暂缓不产生交接、跨租户写不进去、IP 重放先于版本检查
   - E2E 三视口通过：领取 → 登记规格与阶段结论 → 前进到 DVT → 发布 → 交接冻结
   - lint、typecheck、repo:check、contract:check、contract:drift、触及文件格式化通过
+  - 远端 CI 全绿（PR #68 已 squash 合入 main）
   未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
 ---
 
