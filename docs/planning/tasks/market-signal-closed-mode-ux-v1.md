@@ -1,9 +1,9 @@
 ---
-status: review
+status: done
 branch: feat/market-signal-closed-mode-ux
 verification: |
   本地：pnpm --filter @logix/web exec vitest run src/views/MarketSignalsWorkbench.test.ts（8/8）
-  触及文件 prettier + eslint 通过。待 PR CI。
+  触及文件 prettier + eslint 通过。已合入 main：#81。
 ---
 
 # 任务：经营信号关闭态整页 Mode
