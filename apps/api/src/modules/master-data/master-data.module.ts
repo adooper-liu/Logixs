@@ -1,4 +1,9 @@
-import { Module } from "@nestjs/common";
+import {
+  Module,
+  type MiddlewareConsumer,
+  type NestModule,
+} from "@nestjs/common";
+import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { DraftProductIdentityService } from "./application/draft-product-identity.service";
 import { GetProductIdentityService } from "./application/get-product-identity.service";
 import { ListProductIdentityQueueService } from "./application/list-product-identity-queue.service";
@@ -32,6 +37,7 @@ import { PrismaCargoOwnerRepository } from "./infrastructure/prisma-cargo-owner.
 import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
 
 @Module({
+  imports: [IdentityModule],
   providers: [
     ListProductIdentityQueueService,
     GetProductIdentityService,
@@ -116,4 +122,10 @@ import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
   ],
   controllers: [ProductIdentitiesController],
 })
-export class MasterDataModule {}
+export class MasterDataModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(DevIdentityMiddleware)
+      .forRoutes(ProductIdentitiesController);
+  }
+}

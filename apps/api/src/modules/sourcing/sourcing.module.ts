@@ -1,4 +1,9 @@
-import { Module } from "@nestjs/common";
+import {
+  Module,
+  type MiddlewareConsumer,
+  type NestModule,
+} from "@nestjs/common";
+import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import {
   ListSourcingQueueService,
   NominateSupplierService,
@@ -10,6 +15,7 @@ import { PrismaSupplierNominationRepository } from "./infrastructure/prisma-supp
 import { SourcingController } from "./presentation/sourcing.controller";
 
 @Module({
+  imports: [IdentityModule],
   controllers: [SourcingController],
   providers: [
     ListSourcingQueueService,
@@ -23,4 +29,8 @@ import { SourcingController } from "./presentation/sourcing.controller";
   ],
   exports: [SUPPLIER_NOMINATION_REPOSITORY],
 })
-export class SourcingModule {}
+export class SourcingModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(DevIdentityMiddleware).forRoutes(SourcingController);
+  }
+}
