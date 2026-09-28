@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [id: string];
+  clear: [];
   create: [];
 }>();
 
@@ -43,6 +44,17 @@ watch(
 function countFor(state: QueueFilter): number {
   return props.items.filter((item) => item.workflowState === state).length;
 }
+
+function chooseFilter(code: QueueFilter): void {
+  if (filter.value === code) return;
+  filter.value = code;
+  // 分组切换后旧选中不在当前列表里，右侧若继续展示会造成事实/动作错位。
+  emit("clear");
+}
+
+function isClosedState(state: QueueFilter): boolean {
+  return state === "voided" || state === "archived";
+}
 </script>
 
 <template>
@@ -65,7 +77,7 @@ function countFor(state: QueueFilter): number {
         role="tab"
         :aria-selected="filter === item.code"
         :class="{ active: filter === item.code }"
-        @click="filter = item.code"
+        @click="chooseFilter(item.code)"
       >
         {{ item.label }} <b>{{ countFor(item.code) }}</b>
       </button>
@@ -77,27 +89,54 @@ function countFor(state: QueueFilter): number {
         :key="item.id"
         type="button"
         class="queue-item"
-        :class="{ selected: item.id === selectedId }"
+        :class="{
+          selected: item.id === selectedId,
+          'queue-item--closed': isClosedState(item.workflowState),
+        }"
         :aria-current="item.id === selectedId ? 'true' : undefined"
         @click="emit('select', item.id)"
       >
         <span class="queue-item__topline">
-          <span :class="`urgency urgency--${item.urgency}`">
+          <span
+            :class="
+              isClosedState(item.workflowState)
+                ? 'urgency urgency--closed'
+                : `urgency urgency--${item.urgency}`
+            "
+          >
             <Clock3 :size="13" aria-hidden="true" />{{ item.urgencyLabel }}
           </span>
           <ArrowRight :size="15" aria-hidden="true" />
         </span>
         <strong>{{ item.title }}</strong>
         <span class="queue-item__scope">
-          {{ item.market || "市场待补" }} · {{ item.channel || "渠道待补" }}
+          <template v-if="isClosedState(item.workflowState)">
+            {{ item.market || "市场未填" }} · {{ item.channel || "渠道未填" }}
+          </template>
+          <template v-else>
+            {{ item.market || "市场待补" }} · {{ item.channel || "渠道待补" }}
+          </template>
         </span>
-        <span class="queue-item__reason-label">为什么现在处理</span>
+        <span class="queue-item__reason-label">
+          {{
+            isClosedState(item.workflowState) ? "关闭说明" : "为什么现在处理"
+          }}
+        </span>
         <span class="queue-item__reason">
           <AlertCircle :size="14" aria-hidden="true" />
           {{ item.workReason }}
         </span>
-        <span v-if="item.gaps.length" class="queue-item__gaps">
+        <span
+          v-if="item.gaps.length && !isClosedState(item.workflowState)"
+          class="queue-item__gaps"
+        >
           仍待补 {{ item.gaps.length }} 项，不影响先处理
+        </span>
+        <span
+          v-else-if="item.gaps.length && isClosedState(item.workflowState)"
+          class="queue-item__gaps queue-item__gaps--closed"
+        >
+          关闭时未补 {{ item.gaps.length }} 项
         </span>
       </button>
 
@@ -220,6 +259,22 @@ function countFor(state: QueueFilter): number {
   background: var(--brand-soft);
 }
 
+.queue-item--closed {
+  opacity: 0.72;
+  filter: saturate(0.55);
+}
+
+.queue-item--closed.selected {
+  box-shadow: inset 3px 0 var(--ink-soft);
+  background: var(--surface-2);
+}
+
+.queue-item--closed strong {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
 .queue-item__topline,
 .urgency,
 .queue-item__reason {
@@ -246,6 +301,10 @@ function countFor(state: QueueFilter): number {
 
 .urgency--this_week {
   color: var(--warn);
+}
+
+.urgency--closed {
+  color: var(--ink-soft);
 }
 
 .queue-item strong {
@@ -282,6 +341,10 @@ function countFor(state: QueueFilter): number {
 
 .queue-item__gaps {
   color: var(--warn);
+}
+
+.queue-item__gaps--closed {
+  color: var(--muted);
 }
 
 .empty-state {

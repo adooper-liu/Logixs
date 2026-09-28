@@ -145,6 +145,8 @@ test("a market owner can register a title first and leave details for later", as
     page.getByRole("heading", { name: "法国站出现新的户外用餐场景" }),
   ).toBeVisible();
   await expect(page.getByText("观察事实待补，可以先判断去向。")).toBeVisible();
+  await expect(page.getByText("无来源证据")).toBeVisible();
+  await page.getByRole("button", { name: /无来源证据/ }).click();
   await expect(page.getByText("来源证据待补，可以先判断去向。")).toBeVisible();
 });
 
