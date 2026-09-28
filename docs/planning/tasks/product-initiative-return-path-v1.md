@@ -1,7 +1,10 @@
 ---
-status: review
+status: done
 branch: feat/product-initiative-return-path-v1
-verification: 领域单测、web 工作台单测、typecheck、contract:drift、product-initiative-flow 集成（含退回同事务）已过。待 PR CI 全绿后合入。
+verification: |
+  已合入 main：#76（0eadc7a）。
+  CI quality 全绿；本地领域单测、web 工作台单测、typecheck、contract:drift、
+  product-initiative-flow 集成（含退回同事务 / 缺理由不回推）已过。
 ---
 
 # 任务：立项退回的回程
