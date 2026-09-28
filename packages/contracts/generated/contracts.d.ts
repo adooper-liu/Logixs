@@ -293,17 +293,17 @@ kind: "new_independent_shipment"
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDestinationV1".
  */
-export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed" | "returned_from_selection")
+export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed" | "returned_from_selection" | "voided" | "archived")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDecisionTypeV1".
  */
-export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "selection_return")
+export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "selection_return" | "void" | "archive")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalOperatorDecisionTypeV1".
  */
-export type MarketSignalOperatorDecisionTypeV1 = ("watch" | "handoff" | "dismiss")
+export type MarketSignalOperatorDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "void" | "archive")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDecisionCompletionV1".
@@ -318,7 +318,7 @@ export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalPendingFieldCodeV1".
  */
-export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "dismiss_reason")
+export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "dismiss_reason" | "close_reason")
 /**
  * 立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。
  * 

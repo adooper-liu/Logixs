@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { CalendarClock, Eye, Send, XCircle } from "@lucide/vue";
+import { Archive, Ban, CalendarClock, Eye, Send, XCircle } from "@lucide/vue";
 import { computed } from "vue";
 import type { MarketSignalDecisionDraft } from "../../data/marketSignalScenarios";
 
 const emit = defineEmits<{
   submit: [];
 }>();
-defineProps<{ busy?: boolean }>();
+defineProps<{
+  busy?: boolean;
+  closed?: boolean;
+  closedLabel?: string;
+}>();
 
 const model = defineModel<MarketSignalDecisionDraft>({ required: true });
+
+const isClose = computed(
+  () => model.value.decision === "void" || model.value.decision === "archive",
+);
 
 const actionLabel = computed(() => {
   if (model.value.decision === "watch") {
@@ -16,6 +24,12 @@ const actionLabel = computed(() => {
   }
   if (model.value.decision === "dismiss") {
     return model.value.dismissReason ? "记录不采纳" : "保存，原因稍后补";
+  }
+  if (model.value.decision === "void") {
+    return model.value.judgmentNote.trim() ? "确认作废" : "保存，理由稍后补";
+  }
+  if (model.value.decision === "archive") {
+    return model.value.judgmentNote.trim() ? "确认归档" : "保存，理由稍后补";
   }
   return "交给选品评估";
 });
@@ -35,7 +49,19 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
 </script>
 
 <template>
-  <form class="decision-panel" @submit.prevent="emit('submit')">
+  <div v-if="closed" class="decision-panel closed-panel">
+    <header class="pane-heading">
+      <div>
+        <small>现在做什么</small>
+        <h2>这条信号已关闭</h2>
+      </div>
+    </header>
+    <p class="closed-copy">
+      {{ closedLabel || "已作废或归档，只读回看；本片不支持重开。" }}
+    </p>
+  </div>
+
+  <form v-else class="decision-panel" @submit.prevent="emit('submit')">
     <header class="pane-heading">
       <div>
         <small>现在做什么</small>
@@ -78,6 +104,28 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
         <XCircle :size="17" aria-hidden="true" />
         <span><b>不采纳</b><small>保留来源和本次判断</small></span>
       </label>
+      <label :class="{ selected: model.decision === 'void' }">
+        <input
+          type="radio"
+          name="market-signal-decision"
+          value="void"
+          :checked="model.decision === 'void'"
+          @change="chooseDecision('void')"
+        />
+        <Ban :size="17" aria-hidden="true" />
+        <span><b>作废</b><small>错登、重复或不再跟进</small></span>
+      </label>
+      <label :class="{ selected: model.decision === 'archive' }">
+        <input
+          type="radio"
+          name="market-signal-decision"
+          value="archive"
+          :checked="model.decision === 'archive'"
+          @change="chooseDecision('archive')"
+        />
+        <Archive :size="17" aria-hidden="true" />
+        <span><b>归档</b><small>结案保留，只读回看</small></span>
+      </label>
     </fieldset>
 
     <div v-if="model.decision === 'watch'" class="decision-fields">
@@ -117,7 +165,7 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       </label>
     </div>
 
-    <div v-else class="decision-fields">
+    <div v-else-if="model.decision === 'dismiss'" class="decision-fields">
       <label>
         <span>不采纳原因 <small>可后补</small></span>
         <select
@@ -133,7 +181,26 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       </label>
     </div>
 
-    <label class="judgment-note">
+    <div v-else-if="isClose" class="decision-fields">
+      <label>
+        <span
+          >{{ model.decision === "void" ? "作废" : "归档" }}理由
+          <small>可后补</small></span
+        >
+        <textarea
+          rows="3"
+          :value="model.judgmentNote"
+          :placeholder="
+            model.decision === 'void'
+              ? '例如：重复登记、来源有误、不再跟进'
+              : '例如：观察结束、结论已沉淀'
+          "
+          @input="updateField('judgmentNote', $event)"
+        />
+      </label>
+    </div>
+
+    <label v-if="!isClose" class="judgment-note">
       <span>本次判断依据 <small>可后补</small></span>
       <textarea
         rows="3"
@@ -151,6 +218,16 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       />
       <Send
         v-else-if="model.decision === 'handoff'"
+        :size="17"
+        aria-hidden="true"
+      />
+      <Ban
+        v-else-if="model.decision === 'void'"
+        :size="17"
+        aria-hidden="true"
+      />
+      <Archive
+        v-else-if="model.decision === 'archive'"
         :size="17"
         aria-hidden="true"
       />
@@ -350,5 +427,13 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
 .primary-action:focus-visible {
   outline: 0;
   box-shadow: var(--focus-ring);
+}
+
+.closed-copy {
+  margin: 0;
+  padding: var(--space-4);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
 }
 </style>

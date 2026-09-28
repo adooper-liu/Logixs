@@ -11,14 +11,23 @@
         "watching",
         "handed_off",
         "dismissed",
-        "returned_from_selection"
+        "returned_from_selection",
+        "voided",
+        "archived"
       ]
     },
     "MarketSignalDecisionTypeV1": {
-      "enum": ["watch", "handoff", "dismiss", "selection_return"]
+      "enum": [
+        "watch",
+        "handoff",
+        "dismiss",
+        "selection_return",
+        "void",
+        "archive"
+      ]
     },
     "MarketSignalOperatorDecisionTypeV1": {
-      "enum": ["watch", "handoff", "dismiss"]
+      "enum": ["watch", "handoff", "dismiss", "void", "archive"]
     },
     "MarketSignalDecisionCompletionV1": {
       "enum": ["pending_completion", "completed"]
@@ -36,7 +45,8 @@
         "evidence_refs",
         "opportunity_statement",
         "next_review_date",
-        "dismiss_reason"
+        "dismiss_reason",
+        "close_reason"
       ]
     },
     "MarketSignalV1": {

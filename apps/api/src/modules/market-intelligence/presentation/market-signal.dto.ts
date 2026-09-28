@@ -36,7 +36,9 @@ export class MarketSignalDecisionRequestDto implements MarketSignalDecisionComma
   @ApiProperty({ enum: ["market-signal-decision.v1"] })
   contractVersion!: "market-signal-decision.v1";
   @ApiProperty() expectedSignalVersion!: number;
-  @ApiProperty({ enum: ["watch", "handoff", "dismiss"] })
+  @ApiProperty({
+    enum: ["watch", "handoff", "dismiss", "void", "archive"],
+  })
   decisionType!: MarketSignalDecisionCommandV1["decisionType"];
   @ApiPropertyOptional() judgmentNote?: string;
   @ApiPropertyOptional() opportunityStatement?: string;
@@ -62,6 +64,8 @@ export class MarketSignalResponseDto {
       "handed_off",
       "dismissed",
       "returned_from_selection",
+      "voided",
+      "archived",
     ],
   })
   currentDestination!: string;

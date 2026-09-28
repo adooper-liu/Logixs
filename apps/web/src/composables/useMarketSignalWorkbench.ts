@@ -353,6 +353,30 @@ function gapCodeForPending(code: MarketSignalPendingFieldCodeV1) {
   return null;
 }
 
+function workReason(signal: MarketSignalV1): string {
+  if (signal.currentDestination === "watching") return "已安排继续观察";
+  if (signal.currentDestination === "handed_off") return "已交给选品团队";
+  if (signal.currentDestination === "dismissed") return "已记录不采纳";
+  if (signal.currentDestination === "returned_from_selection") {
+    return "选品已退回，需重新判断去向";
+  }
+  if (signal.currentDestination === "voided") return "已作废，只读回看";
+  if (signal.currentDestination === "archived") return "已归档，只读回看";
+  return "需要判断下一步去向";
+}
+
+function destinationLabel(
+  destination: MarketSignalV1["currentDestination"],
+): string {
+  if (destination === "watching") return "继续观察";
+  if (destination === "handed_off") return "已交接";
+  if (destination === "dismissed") return "不采纳";
+  if (destination === "returned_from_selection") return "选品退回";
+  if (destination === "voided") return "已作废";
+  if (destination === "archived") return "已归档";
+  return "待判断";
+}
+
 function pendingFieldLabel(code: MarketSignalPendingFieldCodeV1): string {
   const labels: Record<MarketSignalPendingFieldCodeV1, string> = {
     market_code: "市场待补",
@@ -364,28 +388,9 @@ function pendingFieldLabel(code: MarketSignalPendingFieldCodeV1): string {
     opportunity_statement: "机会说明待补",
     next_review_date: "下次查看日期待补",
     dismiss_reason: "不采纳原因待补",
+    close_reason: "关闭理由待补",
   };
   return labels[code];
-}
-
-function workReason(signal: MarketSignalV1): string {
-  if (signal.currentDestination === "watching") return "已安排继续观察";
-  if (signal.currentDestination === "handed_off") return "已交给选品团队";
-  if (signal.currentDestination === "dismissed") return "已记录不采纳";
-  if (signal.currentDestination === "returned_from_selection") {
-    return "选品已退回，需重新判断去向";
-  }
-  return "需要判断下一步去向";
-}
-
-function destinationLabel(
-  destination: MarketSignalV1["currentDestination"],
-): string {
-  if (destination === "watching") return "继续观察";
-  if (destination === "handed_off") return "已交接";
-  if (destination === "dismissed") return "不采纳";
-  if (destination === "returned_from_selection") return "选品退回";
-  return "待判断";
 }
 
 function message(error: unknown): string {

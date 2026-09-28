@@ -345,6 +345,82 @@ describe("product initiative persistence flow", () => {
       }),
     ).resolves.toBe(0);
   });
+
+  it("作废完成：信号进 voided，当前机会交接不再 is_current", async () => {
+    const { tenantId, handoffId, signalId } = await seedOpportunity();
+    const signal = await marketSignals.findById(tenantId, signalId);
+
+    const closed = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner",
+      signalId,
+      evidenceRefs: [],
+      prepared: prepareMarketSignalDecision(
+        { ...signal!, evidenceRefs: [] },
+        {
+          contractVersion: "market-signal-decision.v1",
+          expectedSignalVersion: signal!.version,
+          decisionType: "void",
+          judgmentNote: "重复登记，作废本条",
+          idempotencyKey: `void:${signalId}`,
+        },
+      ),
+    });
+
+    expect(closed.signal.currentDestination).toBe("voided");
+    const handoff = await prisma.marketOpportunityHandoff.findFirstOrThrow({
+      where: { id: handoffId, tenantId },
+    });
+    expect(handoff.isCurrent).toBe(false);
+    expect(handoff.opportunityStatement).toBe("验证宠物出行机会是否值得立项。");
+
+    await expect(
+      marketSignals.decide({
+        tenantId,
+        actorId: "market-owner",
+        signalId,
+        evidenceRefs: [],
+        prepared: prepareMarketSignalDecision(
+          { ...closed.signal, evidenceRefs: [] },
+          {
+            contractVersion: "market-signal-decision.v1",
+            expectedSignalVersion: closed.signal.version,
+            decisionType: "archive",
+            judgmentNote: "不应再推进",
+            idempotencyKey: `archive-after-void:${signalId}`,
+          },
+        ),
+      }),
+    ).rejects.toThrowError(/MARKET_SIGNAL_ALREADY_CLOSED/);
+  });
+
+  it("归档缺理由时保存但不关闭，也不 supersede 交接", async () => {
+    const { tenantId, handoffId, signalId } = await seedOpportunity();
+    const signal = await marketSignals.findById(tenantId, signalId);
+
+    const pending = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner",
+      signalId,
+      evidenceRefs: [],
+      prepared: prepareMarketSignalDecision(
+        { ...signal!, evidenceRefs: [] },
+        {
+          contractVersion: "market-signal-decision.v1",
+          expectedSignalVersion: signal!.version,
+          decisionType: "archive",
+          idempotencyKey: `archive-pending:${signalId}`,
+        },
+      ),
+    });
+
+    expect(pending.decision.completion).toBe("pending_completion");
+    expect(pending.signal.currentDestination).toBe("needs_decision");
+    const handoff = await prisma.marketOpportunityHandoff.findFirstOrThrow({
+      where: { id: handoffId, tenantId },
+    });
+    expect(handoff.isCurrent).toBe(true);
+  });
 });
 
 async function seedOpportunity(): Promise<{
