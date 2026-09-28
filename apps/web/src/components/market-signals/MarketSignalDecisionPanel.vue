@@ -6,7 +6,7 @@ import type { MarketSignalDecisionDraft } from "../../data/marketSignalScenarios
 const emit = defineEmits<{
   submit: [];
 }>();
-const props = defineProps<{
+defineProps<{
   busy?: boolean;
   closed?: boolean;
   closedLabel?: string;
