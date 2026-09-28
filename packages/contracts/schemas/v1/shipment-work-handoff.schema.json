@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/shipment-work-handoff.schema.json",
+  "title": "Shipment Work Handoff Contracts V1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "WorkHandoffRecipientV1": {
+      "description": "接收岗位。**只到岗位，不到人** —— 交出去的人只需判断交给哪个岗位，不必知道今天谁在班。队列按岗位码参数化，一套实现服务所有岗位。",
+      "enum": ["customs", "pickup", "delivery", "unloading"]
+    },
+    "ShipmentWorkHandoffStateV1": {
+      "description": "事项自己的状态。**这不是 Shipment 的生命周期状态** —— 基线要求交接带表达真实业务接力而不新增领域状态；这一枚只说明「这件事有没有人接、了没了的」。",
+      "enum": ["raised", "claimed", "closed"]
+    },
+    "ShipmentWorkHandoffV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "handoffId",
+        "shipmentId",
+        "containerRecordId",
+        "recipientQueueCode",
+        "title",
+        "detail",
+        "state",
+        "version",
+        "raisedBy",
+        "raisedAt",
+        "claimedByActorId",
+        "claimedAt",
+        "closedByActorId",
+        "closedAt",
+        "conclusion",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "shipment-work-handoff.v1" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "shipmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerRecordId": {
+          "description": "票级事项为 null；柜级事项才带。",
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "recipientQueueCode": { "$ref": "#/$defs/WorkHandoffRecipientV1" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "detail": { "type": ["string", "null"], "maxLength": 4000 },
+        "state": { "$ref": "#/$defs/ShipmentWorkHandoffStateV1" },
+        "version": { "type": "integer", "minimum": 1 },
+        "raisedBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "raisedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "claimedByActorId": { "type": ["string", "null"], "maxLength": 200 },
+        "claimedAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "closedByActorId": { "type": ["string", "null"], "maxLength": 200 },
+        "closedAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "conclusion": { "type": ["string", "null"], "maxLength": 1000 },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "ShipmentWorkHandoffActionV1": {
+      "description": "交接上的动作留痕（领取 / 了结）。追加不可变 —— 谁在什么时候接的、怎么了的，事后要能复盘。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "actorId", "actedAt", "conclusion"],
+      "properties": {
+        "action": { "enum": ["claim", "close"] },
+        "actorId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "actedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "conclusion": { "type": ["string", "null"], "maxLength": 1000 }
+      }
+    },
+    "ShipmentWorkHandoffRaiseCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "shipmentId",
+        "recipientQueueCode",
+        "title",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "shipment-work-handoff-raise.v1" },
+        "shipmentId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "containerRecordId": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "recipientQueueCode": { "$ref": "#/$defs/WorkHandoffRecipientV1" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "detail": { "type": ["string", "null"], "maxLength": 4000 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ShipmentWorkHandoffClaimCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "expectedVersion", "idempotencyKey"],
+      "properties": {
+        "contractVersion": { "const": "shipment-work-handoff-claim.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ShipmentWorkHandoffCloseCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedVersion",
+        "conclusion",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "shipment-work-handoff-close.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 0 },
+        "conclusion": {
+          "description": "怎么了结的。**必填** —— 交出去的人靠这句话判断这一票能不能往下走；不写等于把人晾在半路。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ShipmentWorkHandoffQueuePageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "recipientQueueCode",
+        "items",
+        "pageSize",
+        "nextCursor"
+      ],
+      "properties": {
+        "contractVersion": { "const": "shipment-work-handoff-queue.v1" },
+        "recipientQueueCode": { "$ref": "#/$defs/WorkHandoffRecipientV1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShipmentWorkHandoffV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1 },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

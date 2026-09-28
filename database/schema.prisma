@@ -65,6 +65,62 @@ model ProductIdentityRelease {
   @@map("product_identity_release")
 }
 
+// 事项交接（shipment-registry 拥有）：出运运营把票级事项交给专业岗位队列，该岗位领取、了结。
+// **只到岗位不到人**；`state` 只说明"有没有人接、了没了的"，不是 Shipment 的生命周期状态。
+model ShipmentWorkHandoff {
+  id                 String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId           String                     @map("tenant_id")
+  shipmentId         String                     @map("shipment_id") @db.Uuid
+  shipment           Shipment                   @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  // TEXT 不是 Uuid：`container_record.id` 建表时就没有 @db.Uuid。
+  containerRecordId  String?                    @map("container_record_id")
+  containerRecord    ContainerRecord?           @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  recipientQueueCode String                     @map("recipient_queue_code")
+  title              String                     @map("title")
+  detail             String?                    @map("detail")
+  state              String                     @map("state")
+  version            Int                        @map("version")
+  raisedBy           String                     @map("raised_by")
+  raisedAt           DateTime                   @map("raised_at") @db.Timestamptz
+  claimedByActorId   String?                    @map("claimed_by_actor_id")
+  claimedAt          DateTime?                  @map("claimed_at") @db.Timestamptz
+  closedByActorId    String?                    @map("closed_by_actor_id")
+  closedAt           DateTime?                  @map("closed_at") @db.Timestamptz
+  conclusion         String?                    @map("conclusion")
+  actedBy            String                     @map("acted_by")
+  idempotencyKey     String                     @map("idempotency_key")
+  payloadHash        String                     @map("payload_hash")
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  actions            ShipmentWorkHandoffAction[]
+
+  @@unique([id, tenantId], map: "shipment_work_handoff_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "shipment_work_handoff_idempotency_key")
+  @@index([tenantId, recipientQueueCode, state, raisedAt, id], map: "shipment_work_handoff_queue_idx")
+  @@index([tenantId, shipmentId, state, raisedAt, id], map: "shipment_work_handoff_shipment_idx")
+  @@map("shipment_work_handoff")
+}
+
+// 动作留痕（领取 / 了结），追加不可变。幂等键放在动作上 —— 三个动作各有各的重试。
+model ShipmentWorkHandoffAction {
+  id             String              @id @default(uuid()) @map("id") @db.Uuid
+  tenantId       String              @map("tenant_id")
+  handoffId      String              @map("handoff_id") @db.Uuid
+  handoff        ShipmentWorkHandoff @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  action         String              @map("action")
+  actorId        String              @map("actor_id")
+  actedAt        DateTime            @map("acted_at") @db.Timestamptz
+  conclusion     String?             @map("conclusion")
+  idempotencyKey String              @map("idempotency_key")
+  payloadHash    String              @map("payload_hash")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "shipment_work_handoff_action_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "shipment_work_handoff_action_idempotency_key")
+  @@unique([handoffId, action], map: "shipment_work_handoff_action_once_key")
+  @@map("shipment_work_handoff_action")
+}
+
 // 全局参考数据发布（master-data 拥有）：权威数据按发布版本不可变，active 版本由数据库部分唯一索引约束。
 model ReferenceDataRelease {
   id            String                  @id @default(uuid()) @map("id") @db.Uuid
@@ -679,6 +735,7 @@ model ContainerRecord {
   warehouseDeliveryInstructions WarehouseDeliveryInstruction[]
   unloadingReports              ContainerUnloadingReport[]
   operationalExceptions         OperationalExceptionCase[]
+  workHandoffs                  ShipmentWorkHandoff[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -997,6 +1054,7 @@ model Shipment {
   eventApplications      ShipmentEventApplication[]
   operationalExceptions  OperationalExceptionCase[]
   candidateCorrections   PostDepartureSourceCandidateCorrection[] @relation("PostDepartureCandidateTargetShipment")
+  workHandoffs           ShipmentWorkHandoff[]
 
   @@unique([id, tenantId], map: "shipment_id_tenant_key")
   @@unique([tenantId, shipmentNumber], map: "shipment_tenant_number_key")
