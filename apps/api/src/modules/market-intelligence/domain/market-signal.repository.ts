@@ -51,6 +51,14 @@ export interface PersistMarketSignalDecisionInput {
   prepared: PreparedMarketSignalDecision;
 }
 
+export interface ApplySelectionReturnInput {
+  tenantId: string;
+  signalId: string;
+  actorId: string;
+  returnReason: string;
+  idempotencyKey: string;
+}
+
 export interface MarketSignalDecisionPersistenceResult {
   signal: MarketSignalRecord;
   decision: MarketSignalDecisionRecord;
@@ -69,6 +77,10 @@ export interface MarketSignalRepository {
     signalId: string,
   ): Promise<MarketSignalRecord | null>;
   list(query: MarketSignalListQuery): Promise<MarketSignalRecord[]>;
+  findLatestSelectionReturnReason(
+    tenantId: string,
+    signalId: string,
+  ): Promise<string | null>;
   updateFacts(input: {
     tenantId: string;
     signalId: string;
@@ -78,4 +90,9 @@ export interface MarketSignalRepository {
   decide(
     input: PersistMarketSignalDecisionInput,
   ): Promise<MarketSignalDecisionPersistenceResult>;
+  /** 在调用方事务内写选品退回决策；与立项退回必须同事务。 */
+  applySelectionReturnWithin(
+    tx: unknown,
+    input: ApplySelectionReturnInput,
+  ): Promise<{ duplicate: boolean }>;
 }

@@ -1,7 +1,7 @@
 ---
-status: blocked
-branch: —
-verification: 未开工。等负责人定「退回后经营团队该看到什么」之后再立案（见「待决定」），在此之前不做实现。
+status: review
+branch: feat/product-initiative-return-path-v1
+verification: 领域单测、web 工作台单测、typecheck、contract:drift、product-initiative-flow 集成（含退回同事务）已过。待 PR CI 全绿后合入。
 ---
 
 # 任务：立项退回的回程
@@ -18,42 +18,45 @@ verification: 未开工。等负责人定「退回后经营团队该看到什么
 - 已达成的一半：退回理由已落库、刷新后可回填；旧交接版本保持不可变。
 - **未达成的一半：机会没有回到经营团队队列。**
 
-## 现状事实（2026-09-27 核实）
+## 负责人选型（2026-09-28）
 
-- `return_to_market` 在服务端只写立项自身的去向与原因，全仓检索下来它只出现在领域规则与展示枚举里。
-- 没有 outbox、没有信号状态变更、没有回程交接。
-- 结果：市场与经营信号工作台看不到被退回的机会，退回在经营团队一侧不留任何痕迹。
-- 选品侧界面照常显示「已退回经营团队」，**会让人以为对方已经收到**。
+采用 **信号状态回退**（不做「回程交接」新聚合，也不做「只发通知」）：
 
-## 待决定（开工前必须先定）
+| 项 | 定案 |
+| --- | --- |
+| 经营团队看到什么 | 市场信号队列新增「选品退回」分组；原信号从 `handed_off` 变为 `returned_from_selection`，带退回理由 |
+| 旧机会交接 | 保持不可变；选品侧立项去向仍为 `returned_to_market` |
+| 再交接 | 经营岗可再次 `handoff` / `watch` / `dismiss`，新决策版本递增；再次 handoff 产生新版机会交接 |
+| 不做 | 新回程交接聚合；物理删除信号；本片不作废/归档（另立 B 片） |
 
-退回之后，经营团队到底该看到什么？三种做法让人看到的东西不一样：
-
-| 做法         | 经营团队看到什么                           | 代价                                                       |
-| ------------ | ------------------------------------------ | ---------------------------------------------------------- |
-| 回程交接     | 队列里一条新交接（带退回理由与原机会引用） | 需要新公共契约与加法迁移；要与「旧交接版本不可变」讲清关系 |
-| 信号状态回退 | 原信号回到市场信号队列，标注「被选品退回」 | 改动市场信号既有状态机；跨模块写需要新 Port                |
-| 只发通知     | 收到一条通知，机会不进队列                 | 最轻，但不满足验收原文的「回到队列」                       |
-
-选型决定本片的契约、迁移与验收口径，因此**先定后开工**。
+切片顺序（负责人确认）：**A 退回闭环（本片）→ B 作废/归档 → 删除（收紧条件）**。
 
 ## 边界 / 不做
 
 - 不做 NPI 工作台。
 - 不改 `product-initiative-decision.v1` 的既有 wire value；只做加法。
-- 不改已共享的迁移。
+- 不改已共享的迁移；只追加。
+- 不作废 / 归档 / 删除（B / 删除切片）。
 
 ## 验收
 
-**待选型后补写**，至少覆盖：
+- [x] 选品「退回经营团队」且退回原因已填：同事务把对应市场信号去向改为 `returned_from_selection`，并留下可追溯的退回决策事实（含理由）
+- [x] 市场与经营信号工作台「选品退回」分组能看到该信号；退回理由可见
+- [x] 旧 `market_opportunity_handoff` 版本仍不可变；选品立项 `returned_to_market` 事实保留
+- [x] 缺退回原因时行为不变：保存但不关闭，**不**回推信号
+- [ ] 经营岗可对已退回信号再次判断（观察 / 再交接 / 不采纳）；再次交接产生新版机会（路径已通：decide 不拦 `returned_from_selection`，待补专项断言）
+- [ ] 重复提交幂等；版本冲突拒绝而非覆盖；跨租户不可见（立项侧既有覆盖；selection_return 幂等键 `selection-return:{initiativeKey}`）
+- [x] 相关质量门禁按风险等级通过（本片：单测 + 相关集成 + typecheck + drift；未跑完整 validate）
 
-- 退回事实与理由对经营团队可见（按选定的做法验证具体呈现）
-- 旧交接版本仍不可变
-- 重复提交幂等；版本冲突拒绝而非覆盖
-- 跨租户不可见
+## 业务与数据协同设计
+
+| 业务步骤与岗位结果 | 信息产生时机/前置事实 | 操作时需要看到什么 | 系统允许做什么 | 数据如何可靠保存与反馈 |
+| --- | --- | --- | --- | --- |
+| 选品退回 | 机会已接受，退回原因已写 | 退回原因、将回到经营队列 | 退回（原因齐才关闭） | 同事务：立项去向 + 信号回退决策 |
+| 经营重判 | 信号处于选品退回 | 退回理由、原机会摘要、仍待补 | 观察 / 再交接 / 不采纳 | 新决策版本；handoff 仍版本化追加 |
 
 ## 相关
 
-- 前置片：[product-initiative-decision-v1.md](./product-initiative-decision-v1.md)（验收第 4 条）
-- 相关代码：`apps/api/src/modules/product-selection/domain/product-initiative.ts`、`apps/api/src/modules/product-selection/infrastructure/prisma-product-initiative.repository.ts`
-- 跨模块接法见 [AGENTS.md](../../../AGENTS.md) §3（外部系统与跨模块必须经 Port/Adapter）
+- 前置片：[product-initiative-decision-v1.md](./product-initiative-decision-v1.md)
+- 后续：市场信号作废/归档（B）、删除（收紧）
+- 跨模块经 Port：`ApplySelectionReturnPort`（market-intelligence 提供，product-selection 消费）

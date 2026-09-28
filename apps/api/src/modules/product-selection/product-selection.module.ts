@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { DocumentRecordsModule } from "../document-records";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
+import { MarketIntelligenceModule } from "../market-intelligence";
 import { AdvanceProductDefinitionService } from "./application/advance-product-definition.service";
 import { ClaimProductInitiativeService } from "./application/claim-product-initiative.service";
 import { GetProductDefinitionService } from "./application/get-product-definition.service";
@@ -27,7 +28,7 @@ import { ProductNpiController } from "./presentation/product-npi.controller";
 import { ProductOpportunitiesController } from "./presentation/product-opportunities.controller";
 
 @Module({
-  imports: [IdentityModule, DocumentRecordsModule],
+  imports: [IdentityModule, DocumentRecordsModule, MarketIntelligenceModule],
   controllers: [
     ProductOpportunitiesController,
     ProductInitiativesController,

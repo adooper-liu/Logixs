@@ -56,7 +56,13 @@ export class MarketSignalResponseDto {
   @ApiPropertyOptional({ nullable: true }) hypothesis?: string | null;
   @ApiProperty({ type: [String] }) evidenceRefs!: string[];
   @ApiProperty({
-    enum: ["needs_decision", "watching", "handed_off", "dismissed"],
+    enum: [
+      "needs_decision",
+      "watching",
+      "handed_off",
+      "dismissed",
+      "returned_from_selection",
+    ],
   })
   currentDestination!: string;
   @ApiProperty() ownerTeamCode!: string;
@@ -90,6 +96,8 @@ export class MarketSignalDetailResponseDto {
   signal!: MarketSignalResponseDto;
   @ApiProperty({ type: [MarketSignalEvidenceResponseDto] })
   evidence!: MarketSignalEvidenceResponseDto[];
+  @ApiPropertyOptional({ nullable: true })
+  selectionReturnReason!: string | null;
 }
 
 export class MarketSignalDecisionResponseDto {

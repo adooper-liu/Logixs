@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { Prisma } from "../../../../../../generated/prisma";
 import { PrismaService } from "../../../prisma/prisma.service";
+import {
+  APPLY_SELECTION_RETURN,
+  MarketSignalConflictError,
+  MarketSignalNotFoundError,
+  MarketSignalValidationError,
+  type ApplySelectionReturnPort,
+} from "../../market-intelligence";
 import {
   ProductInitiativeConflictError,
   ProductInitiativeNotFoundError,
@@ -29,7 +36,12 @@ const OWNER_MODULE = "product_selection";
 
 @Injectable()
 export class PrismaProductInitiativeRepository implements ProductInitiativeRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(APPLY_SELECTION_RETURN)
+    private readonly applySelectionReturn: ApplySelectionReturnPort | null = null,
+  ) {}
 
   async currentVersion(tenantId: string, handoffId: string): Promise<number> {
     const row = await this.prisma.productInitiative.findUnique({
@@ -205,8 +217,49 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         });
       }
 
+      if (
+        command.outcome === "return_to_market" &&
+        command.completion === "completed" &&
+        command.reason
+      ) {
+        await this.pushSelectionReturn(tx, {
+          tenantId: input.tenantId,
+          signalId: opportunity.signalId,
+          actorId: input.actorId,
+          returnReason: command.reason,
+          idempotencyKey: `selection-return:${command.idempotencyKey}`,
+        });
+      }
+
       return { record: toRecord(row), duplicate: false };
     });
+  }
+
+  private async pushSelectionReturn(
+    tx: Transaction,
+    input: {
+      tenantId: string;
+      signalId: string;
+      actorId: string;
+      returnReason: string;
+      idempotencyKey: string;
+    },
+  ): Promise<void> {
+    if (!this.applySelectionReturn) {
+      conflict("PRODUCT_INITIATIVE_SELECTION_RETURN_UNAVAILABLE");
+    }
+    try {
+      await this.applySelectionReturn.executeInTransaction(tx, input);
+    } catch (error) {
+      if (
+        error instanceof MarketSignalConflictError ||
+        error instanceof MarketSignalNotFoundError ||
+        error instanceof MarketSignalValidationError
+      ) {
+        conflict(error.message);
+      }
+      throw error;
+    }
   }
 
   async listNpiQueue(

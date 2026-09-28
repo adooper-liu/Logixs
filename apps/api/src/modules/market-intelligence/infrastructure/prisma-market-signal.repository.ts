@@ -6,8 +6,10 @@ import { PrismaService } from "../../../prisma/prisma.service";
 import {
   MarketSignalConflictError,
   MarketSignalNotFoundError,
+  prepareSelectionReturnDecision,
 } from "../domain/market-signal";
 import type {
+  ApplySelectionReturnInput,
   MarketSignalDecisionPersistenceResult,
   MarketSignalRecord,
   MarketSignalRepository,
@@ -80,6 +82,23 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       where: { id: signalId, tenantId },
     });
     return row ? mapSignal(row) : null;
+  }
+
+  async findLatestSelectionReturnReason(
+    tenantId: string,
+    signalId: string,
+  ): Promise<string | null> {
+    const row = await this.prisma.marketSignalDecision.findFirst({
+      where: {
+        tenantId,
+        signalId,
+        decisionType: "selection_return",
+        completionState: "completed",
+      },
+      orderBy: { decisionVersion: "desc" },
+      select: { judgmentNote: true },
+    });
+    return row?.judgmentNote ?? null;
   }
 
   async list(
@@ -376,6 +395,96 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
         duplicate: false,
       };
     });
+  }
+
+  async applySelectionReturnWithin(
+    txInput: unknown,
+    input: ApplySelectionReturnInput,
+  ): Promise<{ duplicate: boolean }> {
+    const tx = txInput as Transaction;
+    await advisoryLock(
+      tx,
+      `market-signal:decision:${input.tenantId}:${input.signalId}`,
+    );
+
+    const signal = await ownedSignal(tx, input.tenantId, input.signalId);
+    const prepared = prepareSelectionReturnDecision({
+      expectedSignalVersion: signal.version,
+      returnReason: input.returnReason,
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    const replay = await tx.marketSignalDecision.findUnique({
+      where: {
+        tenantId_idempotencyKey: {
+          tenantId: input.tenantId,
+          idempotencyKey: prepared.idempotencyKey,
+        },
+      },
+    });
+    if (replay) {
+      if (
+        replay.signalId !== input.signalId ||
+        replay.payloadHash !== prepared.payloadHash
+      ) {
+        conflict("MARKET_SIGNAL_DECISION_IDEMPOTENCY_CONFLICT");
+      }
+      return { duplicate: true };
+    }
+
+    if (
+      signal.currentDestination !== "handed_off" &&
+      signal.currentDestination !== "returned_from_selection"
+    ) {
+      conflict("MARKET_SIGNAL_SELECTION_RETURN_INVALID_STATE");
+    }
+
+    const latestDecision = await tx.marketSignalDecision.findFirst({
+      where: { tenantId: input.tenantId, signalId: input.signalId },
+      orderBy: { decisionVersion: "desc" },
+      select: { decisionVersion: true },
+    });
+    const nextSignalVersion = signal.version + 1;
+    const decisionVersion = (latestDecision?.decisionVersion ?? 0) + 1;
+    const createdAt = new Date();
+
+    await tx.marketSignalDecision.create({
+      data: {
+        id: randomUUID(),
+        tenantId: input.tenantId,
+        signalId: input.signalId,
+        decisionVersion,
+        signalVersion: nextSignalVersion,
+        decisionType: prepared.decisionType,
+        completionState: prepared.completion,
+        judgmentNote: prepared.judgmentNote,
+        opportunityStatement: null,
+        nextReviewDate: null,
+        watchFocus: null,
+        dismissReason: null,
+        pendingFieldCodes: prepared.pendingFieldCodes,
+        createdBy: input.actorId,
+        idempotencyKey: prepared.idempotencyKey,
+        payloadHash: prepared.payloadHash,
+        createdAt,
+      },
+    });
+
+    const updated = await tx.marketSignal.updateMany({
+      where: {
+        id: input.signalId,
+        tenantId: input.tenantId,
+        version: signal.version,
+      },
+      data: {
+        currentDestination: prepared.nextDestination,
+        version: nextSignalVersion,
+        updatedBy: input.actorId,
+        updatedAt: createdAt,
+      },
+    });
+    if (updated.count !== 1) conflict("MARKET_SIGNAL_VERSION_CONFLICT");
+    return { duplicate: false };
   }
 }
 
