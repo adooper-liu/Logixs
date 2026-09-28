@@ -59,6 +59,9 @@ model ProductIdentityRelease {
   payloadHash       String   @map("payload_hash")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  quotations            SupplierQuotation[]
+  nominations           SupplierNominationRelease[]
+
   @@unique([id, tenantId], map: "product_identity_release_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "product_identity_release_idempotency_key")
   @@unique([productId, version], map: "product_identity_release_version_key")
@@ -119,6 +122,105 @@ model ShipmentWorkHandoffAction {
   @@unique([tenantId, idempotencyKey], map: "shipment_work_handoff_action_idempotency_key")
   @@unique([handoffId, action], map: "shipment_work_handoff_action_once_key")
   @@map("shipment_work_handoff_action")
+}
+
+// 供应商身份（sourcing 拥有）。名称在租户内唯一 —— 重名会让"定点给谁"说不清。
+model Supplier {
+  id             String              @id @default(uuid()) @map("id") @db.Uuid
+  tenantId       String              @map("tenant_id")
+  name           String              @map("name")
+  countryCode    String              @map("country_code") @db.Char(2)
+  contactName    String?             @map("contact_name")
+  contactEmail   String?             @map("contact_email")
+  admissionState String              @map("admission_state")
+  version        Int                 @map("version")
+  actedBy        String              @map("acted_by")
+  idempotencyKey String              @map("idempotency_key")
+  payloadHash    String              @map("payload_hash")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  quotations     SupplierQuotation[]
+  nominations    SupplierNominationRelease[]
+
+  @@unique([id, tenantId], map: "supplier_id_tenant_key")
+  @@unique([tenantId, name], map: "supplier_name_key")
+  @@unique([tenantId, idempotencyKey], map: "supplier_idempotency_key")
+  @@index([tenantId, admissionState, name], map: "supplier_list_idx")
+  @@map("supplier")
+}
+
+// 报价：一家供应商对一份可售 SKU 发布报的价与条件（十项），关键物料由报价带入。
+// 一家供应商对一份发布只留一条当前版，被选中的那一版由定点快照冻结。
+model SupplierQuotation {
+  id                   String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                   @map("tenant_id")
+  supplierId           String                   @map("supplier_id") @db.Uuid
+  supplier             Supplier                 @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  skuReleaseId         String                   @map("sku_release_id") @db.Uuid
+  skuRelease           ProductIdentityRelease   @relation(fields: [skuReleaseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  skuId                String                   @map("sku_id") @db.Uuid
+  version              Int                      @map("version")
+  priceTiers           Json                     @map("price_tiers")
+  incoterms            String                   @map("incoterms")
+  minimumOrderQuantity Json?                    @map("minimum_order_quantity")
+  toolingCost          Json?                    @map("tooling_cost")
+  sampleCost           Json?                    @map("sample_cost")
+  sampleRefundable     Boolean?                 @map("sample_refundable")
+  leadTimeDays         Int?                     @map("lead_time_days")
+  packagingSpec        String?                  @map("packaging_spec")
+  paymentTerms         String?                  @map("payment_terms")
+  qualityTerms         String?                  @map("quality_terms")
+  validUntil           DateTime?                @map("valid_until") @db.Timestamptz
+  keyMaterials         Json                     @map("key_materials")
+  exclusions           String?                  @map("exclusions")
+  quotedBy             String                   @map("quoted_by")
+  quotedAt             DateTime                 @map("quoted_at") @db.Timestamptz
+  actedBy              String                   @map("acted_by")
+  idempotencyKey       String                   @map("idempotency_key")
+  payloadHash          String                   @map("payload_hash")
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  nominations          SupplierNominationRelease[]
+
+  @@unique([id, tenantId], map: "supplier_quotation_id_tenant_key")
+  @@unique([tenantId, supplierId, skuReleaseId], map: "supplier_quotation_current_key")
+  @@unique([tenantId, idempotencyKey], map: "supplier_quotation_idempotency_key")
+  @@index([tenantId, skuReleaseId, updatedAt, id], map: "supplier_quotation_release_idx")
+  @@map("supplier_quotation")
+}
+
+// 定点交接快照（sourcing 拥有）：交给需求与补货侧。不可变；再次定点追加版本。
+// 供应商名称与国别随快照冻结 —— 主数据后来改名，不影响当时定的是什么。
+model SupplierNominationRelease {
+  id                   String            @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String            @map("tenant_id")
+  skuReleaseId         String            @map("sku_release_id") @db.Uuid
+  skuRelease           ProductIdentityRelease @relation(fields: [skuReleaseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  skuId                String            @map("sku_id") @db.Uuid
+  supplierId           String            @map("supplier_id") @db.Uuid
+  supplier             Supplier          @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  supplierName         String            @map("supplier_name")
+  supplierCountryCode  String            @map("supplier_country_code") @db.Char(2)
+  quotationId          String            @map("quotation_id") @db.Uuid
+  quotation            SupplierQuotation @relation(fields: [quotationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  quotationVersion     Int               @map("quotation_version")
+  incoterms            String            @map("incoterms")
+  priceTiers           Json              @map("price_tiers")
+  leadTimeDays         Int?              @map("lead_time_days")
+  minimumOrderQuantity Json?             @map("minimum_order_quantity")
+  sampleConclusion     String            @map("sample_conclusion")
+  capacityConstraint   String            @map("capacity_constraint")
+  version              Int               @map("version")
+  nominatedBy          String            @map("nominated_by")
+  nominatedAt          DateTime          @map("nominated_at") @db.Timestamptz
+  idempotencyKey       String            @map("idempotency_key")
+  payloadHash          String            @map("payload_hash")
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "supplier_nomination_release_id_tenant_key")
+  @@unique([tenantId, idempotencyKey], map: "supplier_nomination_release_idempotency_key")
+  @@unique([skuReleaseId, version], map: "supplier_nomination_release_version_key")
+  @@map("supplier_nomination_release")
 }
 
 // 全局参考数据发布（master-data 拥有）：权威数据按发布版本不可变，active 版本由数据库部分唯一索引约束。
