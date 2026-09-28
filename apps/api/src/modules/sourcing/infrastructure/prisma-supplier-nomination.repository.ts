@@ -68,7 +68,7 @@ export class PrismaSupplierNominationRepository implements SupplierNominationRep
     ]);
 
     return releases.flatMap((release) =>
-      skusOf(release.skus).map((skuId) => {
+      skusOf(release.skus).map(({ skuId, skuCode }) => {
         const mine = quotations.filter(
           (row) => row.skuReleaseId === release.id && row.skuId === skuId,
         );
@@ -82,6 +82,8 @@ export class PrismaSupplierNominationRepository implements SupplierNominationRep
         return {
           skuReleaseId: release.id,
           skuId,
+          skuCode,
+          productNumber: release.productNumber,
           suppliers: dedupeSuppliers(latest).map(toSupplierRecord),
           quotations: latest.map(toQuotationRecord),
           nominated: nominated ? toNominationRecord(nominated) : null,
@@ -378,11 +380,14 @@ export class PrismaSupplierNominationRepository implements SupplierNominationRep
   }
 }
 
-function skusOf(value: Prisma.JsonValue): string[] {
+function skusOf(value: Prisma.JsonValue): { skuId: string; skuCode: string }[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((sku) => (sku as { skuId?: unknown }).skuId)
-    .filter((skuId): skuId is string => typeof skuId === "string");
+  return value.flatMap((sku) => {
+    const row = sku as { skuId?: unknown; skuCode?: unknown };
+    return typeof row.skuId === "string" && typeof row.skuCode === "string"
+      ? [{ skuId: row.skuId, skuCode: row.skuCode }]
+      : [];
+  });
 }
 
 function dedupeSuppliers(rows: { supplier: SupplierRow }[]): SupplierRow[] {

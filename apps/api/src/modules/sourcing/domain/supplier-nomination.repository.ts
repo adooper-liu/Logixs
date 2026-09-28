@@ -44,6 +44,9 @@ export type NominationRecord = Omit<
 export interface SourcingQueueEntryRecord {
   skuReleaseId: string;
   skuId: string;
+  /** 对外编号：队列要能让人认出"这是哪一件"，只给 id 等于让人拿 UUID 干活。 */
+  skuCode: string;
+  productNumber: string;
   /** 供应商只要报过价就是候选 —— 候选不是事先指定的，是报出来的。 */
   suppliers: SupplierRecord[];
   quotations: QuotationRecord[];
