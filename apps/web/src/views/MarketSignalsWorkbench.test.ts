@@ -77,9 +77,13 @@ describe("MarketSignalsWorkbench", () => {
               verificationState: "verified",
             },
           ],
+          selectionReturnReason: null,
         },
       ],
-      [signalTwoId, { signal: signals[1]!, evidence: [] }],
+      [
+        signalTwoId,
+        { signal: signals[1]!, evidence: [], selectionReturnReason: null },
+      ],
     ]);
 
     listMarketSignals.mockImplementation(async () => ({
@@ -110,7 +114,11 @@ describe("MarketSignalsWorkbench", () => {
       title: "法国站出现新的户外用餐场景",
     });
     createMarketSignal.mockResolvedValue(created);
-    details.set(created.signalId, { signal: created, evidence: [] });
+    details.set(created.signalId, {
+      signal: created,
+      evidence: [],
+      selectionReturnReason: null,
+    });
     const wrapper = await mountPage();
 
     await wrapper.get(".create-button").trigger("click");
@@ -160,7 +168,11 @@ describe("MarketSignalsWorkbench", () => {
       ],
     });
     updateMarketSignal.mockImplementation(async () => {
-      details.set(signalTwoId, { signal: updated, evidence: [] });
+      details.set(signalTwoId, {
+        signal: updated,
+        evidence: [],
+        selectionReturnReason: null,
+      });
       return updated;
     });
     const wrapper = await mountPage(`?signalId=${signalTwoId}`);

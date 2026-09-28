@@ -1,5 +1,9 @@
 export type MarketSignalWorkflowState =
-  "needs_decision" | "watching" | "handed_off" | "dismissed";
+  | "needs_decision"
+  | "watching"
+  | "handed_off"
+  | "dismissed"
+  | "returned_from_selection";
 
 export type MarketSignalDecision = "watch" | "handoff" | "dismiss";
 

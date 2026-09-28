@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../generated/prisma";
+import { ApplySelectionReturnService } from "../../modules/market-intelligence/application/apply-selection-return.service";
 import {
   normalizeMarketSignalCreate,
   prepareMarketSignalDecision,
@@ -47,7 +48,11 @@ beforeAll(async () => {
   });
   await prisma.$connect();
   marketSignals = new PrismaMarketSignalRepository(prisma as never);
-  initiatives = new PrismaProductInitiativeRepository(prisma as never);
+  const applySelectionReturn = new ApplySelectionReturnService(marketSignals);
+  initiatives = new PrismaProductInitiativeRepository(
+    prisma as never,
+    applySelectionReturn,
+  );
 });
 
 afterAll(async () => {
@@ -182,7 +187,8 @@ describe("product initiative persistence flow", () => {
       outcome: "approve",
       completion: "completed",
       currentDestination: "handed_off",
-      pendingFieldCodes: [],
+      // customer_feedback 是非门槛缺口：立项可完成但仍会报告待补。
+      pendingFieldCodes: ["customer_feedback"],
     });
     const snapshot = await prisma.productInitiativeHandoff.findFirst({
       where: { tenantId, initiativeId: approved.record.initiativeId },
@@ -259,11 +265,92 @@ describe("product initiative persistence flow", () => {
       }),
     ).rejects.toThrowError(/PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND/);
   });
+
+  it("退回经营团队且理由齐：同事务把信号改成选品退回", async () => {
+    const { tenantId, handoffId, signalId } = await seedOpportunity();
+
+    const { record, duplicate } = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId },
+        {
+          outcome: "return_to_market",
+          returnReason: "机会定义成了渠道问题",
+        },
+      ),
+    });
+
+    expect(duplicate).toBe(false);
+    expect(record).toMatchObject({
+      outcome: "return_to_market",
+      completion: "completed",
+      currentDestination: "returned_to_market",
+      reason: "机会定义成了渠道问题",
+    });
+
+    const signal = await prisma.marketSignal.findFirstOrThrow({
+      where: { id: signalId, tenantId },
+    });
+    expect(signal.currentDestination).toBe("returned_from_selection");
+
+    const decision = await prisma.marketSignalDecision.findFirstOrThrow({
+      where: {
+        tenantId,
+        signalId,
+        decisionType: "selection_return",
+      },
+      orderBy: { decisionVersion: "desc" },
+    });
+    expect(decision).toMatchObject({
+      completionState: "completed",
+      judgmentNote: "机会定义成了渠道问题",
+    });
+
+    const handoff = await prisma.marketOpportunityHandoff.findFirstOrThrow({
+      where: { id: handoffId, tenantId },
+    });
+    expect(handoff.isCurrent).toBe(true);
+    expect(handoff.opportunityStatement).toBe("验证宠物出行机会是否值得立项。");
+
+    expect(
+      await marketSignals.findLatestSelectionReturnReason(tenantId, signalId),
+    ).toBe("机会定义成了渠道问题");
+  });
+
+  it("退回缺理由时保存但不关闭，也不回推信号", async () => {
+    const { tenantId, handoffId, signalId } = await seedOpportunity();
+
+    const { record } = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide({ handoffId }, { outcome: "return_to_market" }),
+    });
+
+    expect(record).toMatchObject({
+      outcome: "return_to_market",
+      completion: "pending_completion",
+      currentDestination: "needs_decision",
+    });
+
+    const signal = await prisma.marketSignal.findFirstOrThrow({
+      where: { id: signalId, tenantId },
+    });
+    expect(signal.currentDestination).toBe("handed_off");
+    await expect(
+      prisma.marketSignalDecision.count({
+        where: { tenantId, signalId, decisionType: "selection_return" },
+      }),
+    ).resolves.toBe(0);
+  });
 });
 
 async function seedOpportunity(): Promise<{
   tenantId: string;
   handoffId: string;
+  signalId: string;
 }> {
   const tenantId = randomUUID();
   const signalId = randomUUID();
@@ -294,7 +381,7 @@ async function seedOpportunity(): Promise<{
       },
     ),
   });
-  return { tenantId, handoffId: decided.handoff!.handoffId };
+  return { tenantId, handoffId: decided.handoff!.handoffId, signalId };
 }
 
 function decide(

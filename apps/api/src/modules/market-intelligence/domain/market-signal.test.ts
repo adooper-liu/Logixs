@@ -4,6 +4,7 @@ import {
   normalizeMarketSignalCreate,
   normalizeMarketSignalUpdate,
   prepareMarketSignalDecision,
+  prepareSelectionReturnDecision,
   type MarketSignalFacts,
 } from "./market-signal";
 
@@ -94,6 +95,24 @@ describe("market signal rules", () => {
     expect(update.changes).toEqual({ categoryRef: "庭院收纳" });
   });
 
+  it("prepares a completed selection return with reason in judgment note", () => {
+    const decision = prepareSelectionReturnDecision({
+      expectedSignalVersion: 2,
+      returnReason: "  机会陈述与当前类目不对齐  ",
+      idempotencyKey: "selection-return:initiative-1",
+    });
+
+    expect(decision).toMatchObject({
+      decisionType: "selection_return",
+      completion: "completed",
+      nextDestination: "returned_from_selection",
+      judgmentNote: "机会陈述与当前类目不对齐",
+      dismissReason: null,
+      pendingFieldCodes: [],
+    });
+    expect(decision.payloadHash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
   it.each([
     [
       "empty title",
@@ -123,6 +142,15 @@ describe("market signal rules", () => {
           decisionType: "watch",
           nextReviewDate: "2026-02-31",
           idempotencyKey: "watch-1",
+        }),
+    ],
+    [
+      "blank selection return reason",
+      () =>
+        prepareSelectionReturnDecision({
+          expectedSignalVersion: 2,
+          returnReason: "  ",
+          idempotencyKey: "selection-return:blank",
         }),
     ],
   ])("rejects %s", (_name, action) => {

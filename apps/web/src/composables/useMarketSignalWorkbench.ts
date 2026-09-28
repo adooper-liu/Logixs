@@ -284,7 +284,9 @@ function toScenario(
   return {
     id: signal.signalId,
     title: signal.title,
-    workReason: workReason(signal),
+    workReason: detail?.selectionReturnReason
+      ? `选品退回：${detail.selectionReturnReason}`
+      : workReason(signal),
     urgency: "normal",
     urgencyLabel: destinationLabel(signal.currentDestination),
     market: signal.marketCode ?? null,
@@ -370,6 +372,9 @@ function workReason(signal: MarketSignalV1): string {
   if (signal.currentDestination === "watching") return "已安排继续观察";
   if (signal.currentDestination === "handed_off") return "已交给选品团队";
   if (signal.currentDestination === "dismissed") return "已记录不采纳";
+  if (signal.currentDestination === "returned_from_selection") {
+    return "选品已退回，需重新判断去向";
+  }
   return "需要判断下一步去向";
 }
 
@@ -379,6 +384,7 @@ function destinationLabel(
   if (destination === "watching") return "继续观察";
   if (destination === "handed_off") return "已交接";
   if (destination === "dismissed") return "不采纳";
+  if (destination === "returned_from_selection") return "选品退回";
   return "待判断";
 }
 

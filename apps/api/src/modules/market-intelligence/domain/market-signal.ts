@@ -3,6 +3,7 @@ import type {
   MarketSignalCreateCommandV1,
   MarketSignalDecisionCommandV1,
   MarketSignalDecisionCompletionV1,
+  MarketSignalDecisionTypeV1,
   MarketSignalDestinationV1,
   MarketSignalPendingFieldCodeV1,
   MarketSignalUpdateCommandV1,
@@ -43,7 +44,7 @@ export interface NormalizedMarketSignalUpdate {
 
 export interface PreparedMarketSignalDecision {
   expectedSignalVersion: number;
-  decisionType: MarketSignalDecisionCommandV1["decisionType"];
+  decisionType: MarketSignalDecisionTypeV1;
   completion: MarketSignalDecisionCompletionV1;
   nextDestination: MarketSignalDestinationV1;
   judgmentNote: string | null;
@@ -178,6 +179,32 @@ export function prepareMarketSignalDecision(
   return { ...normalized, payloadHash: hash(normalized) };
 }
 
+/** 选品退回：由 Port 写入，不经经营岗判断命令。理由落在 judgment_note。 */
+export function prepareSelectionReturnDecision(input: {
+  expectedSignalVersion: number;
+  returnReason: string;
+  idempotencyKey: string;
+}): PreparedMarketSignalDecision {
+  const judgmentNote = text(input.returnReason, "returnReason", 500);
+  const normalized = {
+    expectedSignalVersion: version(
+      input.expectedSignalVersion,
+      "expectedSignalVersion",
+    ),
+    decisionType: "selection_return" as const,
+    completion: "completed" as const,
+    nextDestination: "returned_from_selection" as const,
+    judgmentNote,
+    opportunityStatement: null,
+    nextReviewDate: null,
+    watchFocus: null,
+    dismissReason: null,
+    pendingFieldCodes: [] as MarketSignalPendingFieldCodeV1[],
+    idempotencyKey: text(input.idempotencyKey, "idempotencyKey", 200),
+  };
+  return { ...normalized, payloadHash: hash(normalized) };
+}
+
 export function pendingFieldCodes(
   facts: MarketSignalFacts,
   decision?: {
@@ -227,6 +254,7 @@ function destination(
   if (completion === "pending_completion") return "needs_decision";
   if (decision === "watch") return "watching";
   if (decision === "dismiss") return "dismissed";
+  if (decision === "handoff") return "handed_off";
   return "handed_off";
 }
 

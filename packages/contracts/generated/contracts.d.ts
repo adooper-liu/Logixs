@@ -293,12 +293,17 @@ kind: "new_independent_shipment"
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDestinationV1".
  */
-export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed")
+export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed" | "returned_from_selection")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDecisionTypeV1".
  */
-export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss")
+export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "selection_return")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalOperatorDecisionTypeV1".
+ */
+export type MarketSignalOperatorDecisionTypeV1 = ("watch" | "handoff" | "dismiss")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDecisionCompletionV1".
@@ -1794,7 +1799,7 @@ idempotencyKey: string
 export interface MarketSignalDecisionCommandV1 {
 contractVersion: "market-signal-decision.v1"
 expectedSignalVersion: number
-decisionType: MarketSignalDecisionTypeV1
+decisionType: MarketSignalOperatorDecisionTypeV1
 judgmentNote?: string
 opportunityStatement?: string
 nextReviewDate?: string
@@ -1886,6 +1891,7 @@ verificationState: ("pending" | "verified" | "rejected" | "revoked")
 export interface MarketSignalDetailV1 {
 signal: MarketSignalV1
 evidence: MarketSignalEvidenceV1[]
+selectionReturnReason: (string | null)
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema

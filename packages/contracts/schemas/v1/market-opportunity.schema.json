@@ -6,9 +6,18 @@
   "additionalProperties": false,
   "$defs": {
     "MarketSignalDestinationV1": {
-      "enum": ["needs_decision", "watching", "handed_off", "dismissed"]
+      "enum": [
+        "needs_decision",
+        "watching",
+        "handed_off",
+        "dismissed",
+        "returned_from_selection"
+      ]
     },
     "MarketSignalDecisionTypeV1": {
+      "enum": ["watch", "handoff", "dismiss", "selection_return"]
+    },
+    "MarketSignalOperatorDecisionTypeV1": {
       "enum": ["watch", "handoff", "dismiss"]
     },
     "MarketSignalDecisionCompletionV1": {
@@ -111,7 +120,9 @@
       "properties": {
         "contractVersion": { "const": "market-signal-decision.v1" },
         "expectedSignalVersion": { "type": "integer", "minimum": 1 },
-        "decisionType": { "$ref": "#/$defs/MarketSignalDecisionTypeV1" },
+        "decisionType": {
+          "$ref": "#/$defs/MarketSignalOperatorDecisionTypeV1"
+        },
         "judgmentNote": { "type": "string", "minLength": 1, "maxLength": 4000 },
         "opportunityStatement": {
           "type": "string",
@@ -267,12 +278,17 @@
     "MarketSignalDetailV1": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["signal", "evidence"],
+      "required": ["signal", "evidence", "selectionReturnReason"],
       "properties": {
         "signal": { "$ref": "#/$defs/MarketSignalV1" },
         "evidence": {
           "type": "array",
           "items": { "$ref": "#/$defs/MarketSignalEvidenceV1" }
+        },
+        "selectionReturnReason": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 500
         }
       }
     },
