@@ -1,13 +1,13 @@
 ---
-status: review
+status: done
 branch: fix/initiative-review-point-coverage
 verification: |
+  已合入 main：#73（f33b54e）。
   本地验证（2026-09-28）：
   - 单元 @logix/api 257 文件 / 1321 项；@logix/web 128 文件 / 473 项
   - 三视口 E2E 113 项通过（含市场→选品的整条动线）
   - contract:check（24 schemas）、contract:drift、repo:check、lint、两端 typecheck、
     web build、触及文件格式化通过
-  未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
 ---
 
 # 任务：评审要点与专业要求的覆盖对齐
