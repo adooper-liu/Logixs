@@ -387,6 +387,13 @@ export type WorkHandoffRecipientV1 = ("customs" | "pickup" | "delivery" | "unloa
  */
 export type ShipmentWorkHandoffStateV1 = ("raised" | "claimed" | "closed")
 /**
+ * 供应商准入状态。**只有 admitted 能被定点** —— 没准入就定点，等于把质量责任交给一个没审过的对象。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SupplierAdmissionStateV1".
+ */
+export type SupplierAdmissionStateV1 = ("pending" | "admitted" | "suspended")
+/**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
  */
@@ -2427,6 +2434,218 @@ nextCursor: (string | null)
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SupplierV1".
+ */
+export interface SupplierV1 {
+contractVersion: "supplier.v1"
+supplierId: Uuid
+name: string
+/**
+ * ISO 3166-1 alpha-2。
+ */
+countryCode: string
+contactName: (string | null)
+contactEmail: (string | null)
+admissionState: SupplierAdmissionStateV1
+version: number
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * 关键物料：**由供应商在报价时带入**，不是主数据侧预先编的。自己编的是「声称」，供应商报的才是「承诺」。只列影响成本的那几项，不到多级 BOM。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "QuotationKeyMaterialV1".
+ */
+export interface QuotationKeyMaterialV1 {
+name: string
+specification: (string | null)
+quantityPerUnit: number
+quantityUnit: MeasureUnitV1
+/**
+ * 损耗率（百分比）。缺省的原料损耗会直接吃掉利润，所以必须报。
+ */
+lossRatePercent: (number | null)
+/**
+ * 是否客供（你出料）。决定成本口径是「含料」还是「加工费」。
+ */
+suppliedByCustomer: boolean
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SupplierQuotationV1".
+ */
+export interface SupplierQuotationV1 {
+contractVersion: "supplier-quotation.v1"
+quotationId: Uuid
+supplierId: Uuid
+/**
+ * 对的是哪一份可售 SKU 发布。
+ */
+skuReleaseId: string
+skuId: Uuid
+version: number
+/**
+ * 按数量阶梯的单价。**只报一个价是比不了价的** —— 阶梯价才能看出量产后的成本曲线。
+ * 
+ * @minItems 1
+ */
+priceTiers: [{
+minQuantity: number
+unitPrice: string
+currency: string
+}, ...({
+minQuantity: number
+unitPrice: string
+currency: string
+})[]]
+/**
+ * 贸易术语与地点，如 FOB Ningbo / Incoterms 2020。
+ */
+incoterms: string
+minimumOrderQuantity: (MeasureV1 | null)
+/**
+ * 模具/工装费：一次性、谁承担、工期。**它常常比单价更影响首单成本。**
+ */
+toolingCost: (MeasureV1 | null)
+sampleCost: (MeasureV1 | null)
+sampleRefundable: (boolean | null)
+leadTimeDays: (number | null)
+packagingSpec: (string | null)
+/**
+ * 付款条件：定金比例、尾款触发、方式。
+ */
+paymentTerms: (string | null)
+/**
+ * 检验阶段、标准与不合格补救。
+ */
+qualityTerms: (string | null)
+validUntil: (DateTime | null)
+keyMaterials: QuotationKeyMaterialV1[]
+/**
+ * 排除项与假设。**沉默不等于确认** —— 供应商不说清哪些不含在内，后面就会扯皮。
+ */
+exclusions: (string | null)
+quotedBy: string
+quotedAt: DateTime
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * 交给需求与补货侧的定点交接。不可变；再次定点追加版本。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SupplierNominationHandoffV1".
+ */
+export interface SupplierNominationHandoffV1 {
+contractVersion: "supplier_nomination.v1"
+handoffId: Uuid
+version: number
+skuReleaseId: Uuid
+skuId: Uuid
+supplierId: Uuid
+supplierName: string
+supplierCountryCode: string
+quotationId: Uuid
+quotationVersion: number
+incoterms: string
+/**
+ * @minItems 1
+ */
+priceTiers: [{
+minQuantity: number
+unitPrice: string
+currency: string
+}, ...({
+minQuantity: number
+unitPrice: string
+currency: string
+})[]]
+leadTimeDays: (number | null)
+minimumOrderQuantity: (MeasureV1 | null)
+/**
+ * 样品结论。**必填** —— 网络声明这条交接要带它，而且没验过样就定点是拿量产赌。
+ */
+sampleConclusion: string
+/**
+ * 产能约束。**必填** —— 交下去的量能不能供得上，是补货那一侧最需要知道的事。
+ */
+capacityConstraint: string
+nominatedBy: string
+nominatedAt: DateTime
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "RegisterSupplierCommandV1".
+ */
+export interface RegisterSupplierCommandV1 {
+contractVersion: "supplier-register.v1"
+name: string
+countryCode: string
+contactName?: (string | null)
+contactEmail?: (string | null)
+admissionState: SupplierAdmissionStateV1
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "RecordQuotationCommandV1".
+ */
+export interface RecordQuotationCommandV1 {
+contractVersion: "supplier-quotation-record.v1"
+expectedQuotationVersion: number
+/**
+ * @minItems 1
+ */
+priceTiers: [{
+minQuantity: number
+unitPrice: string
+currency: string
+}, ...({
+minQuantity: number
+unitPrice: string
+currency: string
+})[]]
+incoterms: string
+minimumOrderQuantity?: (MeasureV1 | null)
+toolingCost?: (MeasureV1 | null)
+sampleCost?: (MeasureV1 | null)
+sampleRefundable?: (boolean | null)
+leadTimeDays?: (number | null)
+packagingSpec?: (string | null)
+paymentTerms?: (string | null)
+qualityTerms?: (string | null)
+validUntil?: (DateTime | null)
+keyMaterials?: QuotationKeyMaterialV1[]
+exclusions: (string | null)
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "NominateSupplierCommandV1".
+ */
+export interface NominateSupplierCommandV1 {
+contractVersion: "supplier-nominate.v1"
+quotationId: Uuid
+expectedQuotationVersion: number
+sampleConclusion: string
+capacityConstraint: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SourcingQueueEntryV1".
+ */
+export interface SourcingQueueEntryV1 {
+skuReleaseId: Uuid
+skuId: Uuid
+suppliers: SupplierV1[]
+quotations: SupplierQuotationV1[]
+nominated: (SupplierNominationHandoffV1 | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "StartPostDepartureLifecycleCommandV2".
  */
 export interface StartPostDepartureLifecycleCommandV2 {
@@ -4092,6 +4311,13 @@ export interface ProductIdentity {
  * via the `definition` "ShipmentWorkHandoff".
  */
 export interface ShipmentWorkHandoff {
+
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SupplierNomination".
+ */
+export interface SupplierNomination {
 
 }
 export interface EvidenceRecord {
