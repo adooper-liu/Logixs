@@ -373,6 +373,20 @@ export type ProductIdentityPendingFieldCodeV1 = ("bom" | "listing")
  */
 export type MeasureUnitV1 = ("g" | "kg" | "mm" | "cm" | "ml" | "l" | "each" | "pair" | "set" | "ctn")
 /**
+ * 接收岗位。**只到岗位，不到人** —— 交出去的人只需判断交给哪个岗位，不必知道今天谁在班。队列按岗位码参数化，一套实现服务所有岗位。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkHandoffRecipientV1".
+ */
+export type WorkHandoffRecipientV1 = ("customs" | "pickup" | "delivery" | "unloading")
+/**
+ * 事项自己的状态。**这不是 Shipment 的生命周期状态** —— 基线要求交接带表达真实业务接力而不新增领域状态；这一枚只说明「这件事有没有人接、了没了的」。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoffStateV1".
+ */
+export type ShipmentWorkHandoffStateV1 = ("raised" | "claimed" | "closed")
+/**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "OceanRouteSegmentInput".
  */
@@ -2328,6 +2342,91 @@ idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoffV1".
+ */
+export interface ShipmentWorkHandoffV1 {
+contractVersion: "shipment-work-handoff.v1"
+handoffId: Uuid
+shipmentId: Uuid
+/**
+ * 票级事项为 null；柜级事项才带。
+ */
+containerRecordId: (Uuid | null)
+recipientQueueCode: WorkHandoffRecipientV1
+title: string
+detail: (string | null)
+state: ShipmentWorkHandoffStateV1
+version: number
+raisedBy: string
+raisedAt: DateTime
+claimedByActorId: (string | null)
+claimedAt: (DateTime | null)
+closedByActorId: (string | null)
+closedAt: (DateTime | null)
+conclusion: (string | null)
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * 交接上的动作留痕（领取 / 了结）。追加不可变 —— 谁在什么时候接的、怎么了的，事后要能复盘。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoffActionV1".
+ */
+export interface ShipmentWorkHandoffActionV1 {
+action: ("claim" | "close")
+actorId: string
+actedAt: DateTime
+conclusion: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoffRaiseCommandV1".
+ */
+export interface ShipmentWorkHandoffRaiseCommandV1 {
+contractVersion: "shipment-work-handoff-raise.v1"
+shipmentId: Uuid
+containerRecordId?: (Uuid | null)
+recipientQueueCode: WorkHandoffRecipientV1
+title: string
+detail?: (string | null)
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoffClaimCommandV1".
+ */
+export interface ShipmentWorkHandoffClaimCommandV1 {
+contractVersion: "shipment-work-handoff-claim.v1"
+expectedVersion: number
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoffCloseCommandV1".
+ */
+export interface ShipmentWorkHandoffCloseCommandV1 {
+contractVersion: "shipment-work-handoff-close.v1"
+expectedVersion: number
+/**
+ * 怎么了结的。**必填** —— 交出去的人靠这句话判断这一票能不能往下走；不写等于把人晾在半路。
+ */
+conclusion: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoffQueuePageV1".
+ */
+export interface ShipmentWorkHandoffQueuePageV1 {
+contractVersion: "shipment-work-handoff-queue.v1"
+recipientQueueCode: WorkHandoffRecipientV1
+items: ShipmentWorkHandoffV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "StartPostDepartureLifecycleCommandV2".
  */
 export interface StartPostDepartureLifecycleCommandV2 {
@@ -3986,6 +4085,13 @@ export interface ProductDefinition {
  * via the `definition` "ProductIdentity".
  */
 export interface ProductIdentity {
+
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ShipmentWorkHandoff".
+ */
+export interface ShipmentWorkHandoff {
 
 }
 export interface EvidenceRecord {
