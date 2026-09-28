@@ -128,6 +128,17 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
           v-if="selectedSignal"
           v-model="selectedDraft"
           :busy="saving"
+          :closed="
+            selectedSignal.initialState === 'voided' ||
+            selectedSignal.initialState === 'archived'
+          "
+          :closed-label="
+            selectedSignal.initialState === 'voided'
+              ? '已作废，只读回看；本片不支持重开。'
+              : selectedSignal.initialState === 'archived'
+                ? '已归档，只读回看；本片不支持重开。'
+                : undefined
+          "
           @submit="submitDecision"
         />
         <p v-else class="empty-workbench">选择一条信号后显示可执行动作。</p>

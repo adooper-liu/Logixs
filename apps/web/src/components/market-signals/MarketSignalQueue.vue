@@ -24,6 +24,8 @@ const filters: readonly { code: QueueFilter; label: string }[] = [
   { code: "watching", label: "继续观察" },
   { code: "handed_off", label: "已交接" },
   { code: "dismissed", label: "不采纳" },
+  { code: "voided", label: "已作废" },
+  { code: "archived", label: "已归档" },
 ];
 
 const filter = ref<QueueFilter>("needs_decision");

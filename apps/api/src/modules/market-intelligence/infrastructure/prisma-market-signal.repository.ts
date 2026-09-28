@@ -245,6 +245,12 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       }
 
       const signal = await ownedSignal(tx, input.tenantId, input.signalId);
+      if (
+        signal.currentDestination === "voided" ||
+        signal.currentDestination === "archived"
+      ) {
+        conflict("MARKET_SIGNAL_ALREADY_CLOSED");
+      }
       if (signal.version !== input.prepared.expectedSignalVersion) {
         conflict("MARKET_SIGNAL_VERSION_CONFLICT");
       }
@@ -360,6 +366,22 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
             idempotencyKey: `market-opportunity-handoff:${handoff.handoffId}`,
             traceId: input.prepared.idempotencyKey,
           },
+        });
+      }
+
+      if (
+        (input.prepared.decisionType === "void" ||
+          input.prepared.decisionType === "archive") &&
+        input.prepared.completion === "completed"
+      ) {
+        // 快照内容不动；只取消「当前」标记，选品队列不再把该机会当在办。
+        await tx.marketOpportunityHandoff.updateMany({
+          where: {
+            tenantId: input.tenantId,
+            signalId: input.signalId,
+            isCurrent: true,
+          },
+          data: { isCurrent: false },
         });
       }
 

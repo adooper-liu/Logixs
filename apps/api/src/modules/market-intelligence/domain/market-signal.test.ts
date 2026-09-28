@@ -113,6 +113,33 @@ describe("market signal rules", () => {
     expect(decision.payloadHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("keeps void and archive open until close reason exists", () => {
+    const pending = prepareMarketSignalDecision(facts(), {
+      contractVersion: "market-signal-decision.v1",
+      expectedSignalVersion: 1,
+      decisionType: "void",
+      idempotencyKey: "void-pending-1",
+    });
+    const completed = prepareMarketSignalDecision(facts(), {
+      contractVersion: "market-signal-decision.v1",
+      expectedSignalVersion: 1,
+      decisionType: "archive",
+      judgmentNote: "  观察结束，结案保留  ",
+      idempotencyKey: "archive-1",
+    });
+
+    expect(pending).toMatchObject({
+      completion: "pending_completion",
+      nextDestination: "needs_decision",
+    });
+    expect(pending.pendingFieldCodes).toContain("close_reason");
+    expect(completed).toMatchObject({
+      completion: "completed",
+      nextDestination: "archived",
+      judgmentNote: "观察结束，结案保留",
+    });
+  });
+
   it.each([
     [
       "empty title",

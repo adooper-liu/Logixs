@@ -3,9 +3,12 @@ export type MarketSignalWorkflowState =
   | "watching"
   | "handed_off"
   | "dismissed"
-  | "returned_from_selection";
+  | "returned_from_selection"
+  | "voided"
+  | "archived";
 
-export type MarketSignalDecision = "watch" | "handoff" | "dismiss";
+export type MarketSignalDecision =
+  "watch" | "handoff" | "dismiss" | "void" | "archive";
 
 export type MarketSignalGapCode =
   | "market"
@@ -167,6 +170,25 @@ export function buildMarketSignalResult(
     };
   }
 
+  if (draft.decision === "void" || draft.decision === "archive") {
+    const hasReason = Boolean(draft.judgmentNote.trim());
+    const closing = draft.decision === "void" ? "作废" : "归档";
+    return {
+      decision: draft.decision,
+      completion: hasReason ? "completed" : "pending_completion",
+      statusLabel: hasReason ? `已${closing}` : `已保存，待补${closing}理由`,
+      message: hasReason
+        ? draft.judgmentNote.trim()
+        : `补充${closing}理由后，信号才会离开在办队列。`,
+      nextOwner: signal.owner,
+      pendingItems: [
+        ...pendingItems,
+        ...(!hasReason ? [`${closing}理由待补`] : []),
+      ],
+      handoffFacts: [],
+    };
+  }
+
   return {
     decision: draft.decision,
     completion: "completed",
@@ -189,6 +211,8 @@ export function workflowStateForResult(
   if (result.completion === "pending_completion") return "needs_decision";
   if (result.decision === "watch") return "watching";
   if (result.decision === "dismiss") return "dismissed";
+  if (result.decision === "void") return "voided";
+  if (result.decision === "archive") return "archived";
   return "handed_off";
 }
 

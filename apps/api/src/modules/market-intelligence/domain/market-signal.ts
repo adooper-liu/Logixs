@@ -136,7 +136,11 @@ export function prepareMarketSignalDecision(
     fail("contractVersion");
   }
   if (!DECISIONS.has(command.decisionType)) fail("decisionType");
-  const judgmentNote = optionalText(command.judgmentNote, "judgmentNote", 4000);
+  const isClose =
+    command.decisionType === "void" || command.decisionType === "archive";
+  const judgmentNote = isClose
+    ? optionalText(command.judgmentNote, "judgmentNote", 500)
+    : optionalText(command.judgmentNote, "judgmentNote", 4000);
   const opportunityStatement = optionalText(
     command.opportunityStatement,
     "opportunityStatement",
@@ -153,6 +157,7 @@ export function prepareMarketSignalDecision(
     command.decisionType,
     nextReviewDate,
     dismissReason,
+    judgmentNote,
   );
   const normalized = {
     expectedSignalVersion: version(
@@ -173,6 +178,7 @@ export function prepareMarketSignalDecision(
       opportunityStatement,
       nextReviewDate,
       dismissReason,
+      judgmentNote,
     }),
     idempotencyKey: text(command.idempotencyKey, "idempotencyKey", 200),
   };
@@ -212,6 +218,7 @@ export function pendingFieldCodes(
     opportunityStatement: string | null;
     nextReviewDate: string | null;
     dismissReason: string | null;
+    judgmentNote?: string | null;
   },
 ): MarketSignalPendingFieldCodeV1[] {
   const missing = new Set<MarketSignalPendingFieldCodeV1>();
@@ -230,6 +237,13 @@ export function pendingFieldCodes(
   if (decision?.decisionType === "dismiss" && !decision.dismissReason) {
     missing.add("dismiss_reason");
   }
+  if (
+    (decision?.decisionType === "void" ||
+      decision?.decisionType === "archive") &&
+    !decision.judgmentNote
+  ) {
+    missing.add("close_reason");
+  }
   return PENDING_FIELD_ORDER.filter((code) => missing.has(code));
 }
 
@@ -237,12 +251,16 @@ function decisionCompletion(
   decision: MarketSignalDecisionCommandV1["decisionType"],
   nextReviewDate: string | null,
   dismissReason: string | null,
+  closeReason: string | null,
 ): MarketSignalDecisionCompletionV1 {
   if (decision === "watch") {
     return nextReviewDate ? "completed" : "pending_completion";
   }
   if (decision === "dismiss") {
     return dismissReason ? "completed" : "pending_completion";
+  }
+  if (decision === "void" || decision === "archive") {
+    return closeReason ? "completed" : "pending_completion";
   }
   return "completed";
 }
@@ -255,6 +273,8 @@ function destination(
   if (decision === "watch") return "watching";
   if (decision === "dismiss") return "dismissed";
   if (decision === "handoff") return "handed_off";
+  if (decision === "void") return "voided";
+  if (decision === "archive") return "archived";
   return "handed_off";
 }
 
@@ -326,7 +346,7 @@ function fail(field: string): never {
   throw new MarketSignalValidationError(`VALIDATION_FORMAT: ${field}`);
 }
 
-const DECISIONS = new Set(["watch", "handoff", "dismiss"]);
+const DECISIONS = new Set(["watch", "handoff", "dismiss", "void", "archive"]);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -340,4 +360,5 @@ const PENDING_FIELD_ORDER: MarketSignalPendingFieldCodeV1[] = [
   "opportunity_statement",
   "next_review_date",
   "dismiss_reason",
+  "close_reason",
 ];
