@@ -1,5 +1,5 @@
 ---
-status: review
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: fix/initiative-review-point-coverage
 verification: |
   本地验证（2026-09-28）：
@@ -7,6 +7,7 @@ verification: |
   - 三视口 E2E 113 项通过（含市场→选品的整条动线）
   - contract:check（24 schemas）、contract:drift、repo:check、lint、两端 typecheck、
     web build、触及文件格式化通过
+  - 远端 CI 全绿（PR #73 已 squash 合入 main）
   未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
 ---
 
