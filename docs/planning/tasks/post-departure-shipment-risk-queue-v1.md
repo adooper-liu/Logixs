@@ -1,7 +1,15 @@
 ---
-status: coding # design | coding | review | fix | blocked | done（机器可校验）
+status: review # design | coding | review | fix | blocked | done（机器可校验）
 branch: —
 verification: |
+  本地验证（2026-09-28，切片 4 F + 切片 5 D/E 的前端）：
+  - 单元 @logix/api 256 文件 / 1307 项；@logix/web 127 文件 / 471 项
+  - 集成（真实 PostgreSQL）22 文件 / 112 项，本片新增 10 项（见切片 4）
+  - E2E 三视口通过：队列按「该谁动」分组 → 交给专业岗位 → 岗位领取 → 写结论了结
+  - lint、typecheck、repo:check、contract:check、contract:drift、触及文件格式化通过
+  未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
+
+  历史（切片 1–3 服务端）：
   服务端已交付并合入（PR #64 已 squash 合入 main）：风险队列的领域规则、契约、分页游标、
   服务与仓储、schema 进 SQL 的做法（`createPostgresAdapter` 唯一入口 + 守卫测试）。
   单元 248 文件 / 1213 项、集成 18 文件 / 73 项通过，变异自检 4 次全部被抓住。
@@ -292,3 +300,7 @@ verification: |
 - 排序方向可选；`WB-D17` 的系统候选值。
 - **旧集成测试夹具未迁移**：15 个 `*.integration.test.ts` 仍手工 `new PrismaPg(...)` 且不设 `search_path`，它们里面的裸 SQL（`FOR UPDATE` 锁等）**仍然落在 `public`**。这不影响本片（本片的测试用 `createPostgresAdapter`），但是同一类欠账，建议单独一小片收口。
   | 2026-09-27 | coding | Claude | — | 第三片落地：先定 schema 进 SQL 的做法（唯一适配器入口 + 守卫测试），再落服务与仓储；真实库上验分页不重不漏，4 次变异自检全部被抓住；不需要迁移 |
+  | 2026-09-28 | design | Claude | 7a4c3a6 | 三条待定已定（F 分派机制 / D 队列分组 / E 临期界），本片自 blocked 恢复 |
+  | 2026-09-28 | coding | Claude | ff7722f | 切片 4 F 的契约、迁移与领域规则（12 项单测） |
+  | 2026-09-28 | coding | Claude | f5312f7 | 切片 4 F 的仓储、服务与接口；真实库集成 10 项 |
+  | 2026-09-28 | coding | Claude | — | 切片 4+5 前端：出运在途视图（分组/标签/交给岗位）+ 岗位待办页；三视口 E2E 走完整环 |

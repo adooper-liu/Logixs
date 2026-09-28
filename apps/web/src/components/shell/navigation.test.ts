@@ -21,6 +21,9 @@ describe("navigationForRole", () => {
               "/workspaces/pickup",
               "/workspaces/delivery",
               "/workspaces/unloading",
+              // 岗位待办是四个专业岗位每天要看的收件箱，不是框架页 —— 它该在侧栏。
+              // 其余新增页（市场/选品/NPI/主数据）走 /workspaces 目录进，不给侧栏项。
+              "/workspaces/work-inbox",
             ].includes(item.path),
         ),
       ).toHaveLength(0);

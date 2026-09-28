@@ -20,6 +20,14 @@ import type {
   ShipmentHandoffResultV1,
   ShipmentIntakePortSearchResultV1,
   ShipmentIntakeReferenceDataV1,
+  ShipmentRiskQueuePageV1,
+  ShipmentRiskSortV1,
+  ShipmentWorkHandoffClaimCommandV1,
+  ShipmentWorkHandoffCloseCommandV1,
+  ShipmentWorkHandoffQueuePageV1,
+  ShipmentWorkHandoffRaiseCommandV1,
+  ShipmentWorkHandoffV1,
+  WorkHandoffRecipientV1,
 } from "@logix/contracts";
 import { formatHttpError } from "./httpError";
 import { DEV_TENANT_ID } from "./developmentIdentity";
@@ -330,4 +338,114 @@ export type {
   ShipmentHandoffResultV1,
   ShipmentIntakePortV1,
   ShipmentIntakeReferenceDataV1,
+} from "@logix/contracts";
+
+/**
+ * 出运风险队列。排序与筛选都在服务端，游标记住排序键 —— 前端不自排：
+ * 队列是游标分页的，本地只能排当前页，第二页的票可能比第一页更急。
+ */
+export async function listShipmentRiskQueue(params: {
+  sort?: ShipmentRiskSortV1;
+  pageSize?: string;
+  cursor?: string;
+}): Promise<ShipmentRiskQueuePageV1> {
+  const query = new URLSearchParams({ pageSize: params.pageSize ?? "50" });
+  if (params.sort) query.set("sort", params.sort);
+  if (params.cursor) query.set("cursor", params.cursor);
+  const response = await fetch(`/api/shipments/risk-queue?${query}`, {
+    headers: HEADERS,
+  });
+  if (!response.ok) throw new Error("暂时无法加载风险队列");
+  return (await response.json()) as ShipmentRiskQueuePageV1;
+}
+
+/** 把票级事项交给某个专业岗位队列。**只到岗位不到人** —— 谁在班谁领。 */
+export async function raiseShipmentWorkHandoff(
+  command: ShipmentWorkHandoffRaiseCommandV1,
+): Promise<ShipmentWorkHandoffV1> {
+  const response = await fetch("/api/work-handoffs", {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify(command),
+  });
+  if (!response.ok) throw new Error("暂时无法交给该岗位");
+  return (await response.json()) as ShipmentWorkHandoffV1;
+}
+
+/** 出运运营那一侧：这一票交给谁了、了没了。 */
+export async function listShipmentWorkHandoffs(
+  shipmentId: string,
+): Promise<ShipmentWorkHandoffV1[]> {
+  const response = await fetch(
+    `/api/work-handoffs/by-shipment/${encodeURIComponent(shipmentId)}`,
+    { headers: HEADERS },
+  );
+  if (!response.ok) throw new Error("暂时无法加载这票交出去的事项");
+  return (await response.json()) as ShipmentWorkHandoffV1[];
+}
+
+/** 专业岗位队列：一个岗位一个队列，一套实现服务四个岗位。 */
+export async function listWorkHandoffQueue(params: {
+  recipient: WorkHandoffRecipientV1;
+  pageSize?: string;
+  cursor?: string;
+}): Promise<ShipmentWorkHandoffQueuePageV1> {
+  const query = new URLSearchParams({
+    recipient: params.recipient,
+    pageSize: params.pageSize ?? "50",
+  });
+  if (params.cursor) query.set("cursor", params.cursor);
+  const response = await fetch(`/api/work-handoffs/queue?${query}`, {
+    headers: HEADERS,
+  });
+  if (!response.ok) throw new Error("暂时无法加载岗位待办");
+  return (await response.json()) as ShipmentWorkHandoffQueuePageV1;
+}
+
+export async function claimShipmentWorkHandoff(
+  handoffId: string,
+  command: ShipmentWorkHandoffClaimCommandV1,
+): Promise<ShipmentWorkHandoffV1> {
+  return postWorkHandoffAction(handoffId, "claims", command, "暂时无法领取");
+}
+
+export async function closeShipmentWorkHandoff(
+  handoffId: string,
+  command: ShipmentWorkHandoffCloseCommandV1,
+): Promise<ShipmentWorkHandoffV1> {
+  return postWorkHandoffAction(handoffId, "closures", command, "暂时无法了结");
+}
+
+async function postWorkHandoffAction(
+  handoffId: string,
+  action: "claims" | "closures",
+  command: unknown,
+  fallback: string,
+): Promise<ShipmentWorkHandoffV1> {
+  const response = await fetch(
+    `/api/work-handoffs/${encodeURIComponent(handoffId)}/${action}`,
+    {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify(command),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(
+      await formatHttpError(response.status, await response.text(), fallback),
+    );
+  }
+  return (await response.json()) as ShipmentWorkHandoffV1;
+}
+
+export type {
+  ShipmentRiskQueueEntryV1,
+  ShipmentRiskQueuePageV1,
+  ShipmentRiskSortV1,
+  ShipmentWorkHandoffClaimCommandV1,
+  ShipmentWorkHandoffCloseCommandV1,
+  ShipmentWorkHandoffQueuePageV1,
+  ShipmentWorkHandoffRaiseCommandV1,
+  ShipmentWorkHandoffV1,
+  WorkHandoffRecipientV1,
 } from "@logix/contracts";

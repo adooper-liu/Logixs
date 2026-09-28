@@ -33,6 +33,20 @@ export const workbenchNetworkRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // 岗位待办**不进工作台目录**：它不是一条业务链上的工作台，而是四个专业岗位
+    // 共用的「交办收件箱」。放在这里只是因为它同属"作业"这一段导航。
+    path: "/workspaces/work-inbox",
+    component: () => import("../../views/WorkInboxView.vue"),
+    meta: {
+      title: "岗位待办",
+      section: "作业",
+      navLabel: "岗位待办",
+      navIcon: "list-checks",
+      navOrder: 13,
+      roles: ["operator", "planner", "manager"],
+    },
+  },
+  {
     path: "/workspaces/master-data",
     component: () => import("../../views/MasterDataWorkbench.vue"),
     meta: {
