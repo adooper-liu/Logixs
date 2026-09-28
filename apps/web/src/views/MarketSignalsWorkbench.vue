@@ -293,7 +293,7 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
 .conclusion-strip h2 {
   margin: var(--space-1) 0 0;
   color: var(--ink);
-  font-size: calc(var(--text-title) * 1.35);
+  font-size: var(--text-title);
   line-height: var(--leading-title);
 }
 
@@ -308,15 +308,15 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
   font-size: var(--text-meta);
 }
 
-.conclusion-strip__action {
+.conclusion-strip p.conclusion-strip__action {
   flex: none;
   max-width: 220px;
-  margin: 0 !important;
+  margin: 0;
   padding: var(--space-2) var(--space-3);
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-control);
-  color: var(--ink-soft) !important;
-  font-size: var(--text-label) !important;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
   line-height: var(--leading-body);
   text-align: right;
 }

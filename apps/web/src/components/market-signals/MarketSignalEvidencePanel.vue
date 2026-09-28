@@ -377,7 +377,7 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 .judgment-layer__head h3 {
   margin: var(--space-1) 0 var(--space-2);
   color: var(--ink);
-  font-size: calc(var(--text-title) * 1.05);
+  font-size: var(--text-title);
   line-height: var(--leading-title);
 }
 
@@ -591,7 +591,7 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .source-trigger svg {
-  margin-top: 2px;
+  margin-top: var(--space-1);
   color: var(--brand-strong);
 }
 
