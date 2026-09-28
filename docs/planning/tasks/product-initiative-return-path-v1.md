@@ -61,5 +61,6 @@ verification: |
 ## 相关
 
 - 前置片：[product-initiative-decision-v1.md](./product-initiative-decision-v1.md)
-- 后续：市场信号作废/归档（B）、删除（收紧）
+- 后续：[market-signal-void-archive-v1.md](./market-signal-void-archive-v1.md)（B）、删除（收紧，待 B 后另立）
+- 原则：[workbench-entry-exit-principles-v1.md](./workbench-entry-exit-principles-v1.md)（`HW-D17` / `HW-D18`）
 - 跨模块经 Port：`ApplySelectionReturnPort`（market-intelligence 提供，product-selection 消费）
