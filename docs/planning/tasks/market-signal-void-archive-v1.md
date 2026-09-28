@@ -1,7 +1,7 @@
 ---
-status: blocked
+status: design
 branch: feat/market-signal-void-archive-v1
-verification: pending。阻塞：等待 workbench-entry-exit-principles-v1 合入后再解锁。
+verification: pending。原则片 #78 已合入；本片为下一实现切片（B）。
 ---
 
 # 任务：市场信号作废 / 归档（B）
