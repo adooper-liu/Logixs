@@ -63,6 +63,11 @@ export class ProductSelectionModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(DevIdentityMiddleware)
-      .forRoutes(ProductOpportunitiesController, ProductInitiativesController);
+      .forRoutes(
+        ProductOpportunitiesController,
+        ProductInitiativesController,
+        ProductNpiController,
+        ProductDefinitionController,
+      );
   }
 }
