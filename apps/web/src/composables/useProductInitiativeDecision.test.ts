@@ -44,13 +44,18 @@ describe("useProductInitiativeDecision", () => {
     registerMarketSignalEvidence.mockResolvedValue(undefined);
   });
 
-  it("四项要点与目标结果都缺时列出全部缺口，且不能立项", async () => {
+  it("门槛要点与目标结果都缺时列出缺口；非门槛的另列，不混进「还差 N 项」", async () => {
     const state = await mountComposable();
 
+    // 挡住立项的只有目标结果 + **门槛**要点。
     expect(state.blockingGaps.value.map((gap) => gap.label)).toEqual([
       "目标结果",
-      ...REVIEW_POINTS.map((point) => point.label),
+      ...REVIEW_POINTS.filter((point) => point.gating).map(
+        (point) => point.label,
+      ),
     ]);
+    // 非门槛的缺了只提示 —— 混进去会让人以为非补不可。
+    expect(state.optionalGaps.value).toEqual(["客户反馈与痛点"]);
     expect(state.canApprove.value).toBe(false);
     expect(
       outcomeHintFor({

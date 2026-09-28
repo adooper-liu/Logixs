@@ -7,6 +7,15 @@ import type {
   ProductInitiativeReviewPointView,
 } from "../../composables/useProductInitiativeDecision";
 import { CONCLUSION_MAX_LENGTH } from "../../composables/useProductInitiativeDecision";
+import { REVIEW_POINTS_WITH_REQUIREMENTS } from "../../data/productEvaluationRequirements";
+
+/**
+ * 这一项有没有对应的**生成要求**。没有的要如实说明依据来自哪 ——
+ * 不说的话，人分不清"系统认为不需要"和"系统漏了"。
+ */
+function hasGeneratedRequirement(code: string): boolean {
+  return REVIEW_POINTS_WITH_REQUIREMENTS.has(code);
+}
 
 const props = defineProps<{
   points: readonly ProductInitiativeReviewPointView[];
@@ -115,6 +124,12 @@ async function submit(): Promise<void> {
       >
         <div class="review-point__head">
           <b>{{ point.label }}</b>
+          <span
+            v-if="!hasGeneratedRequirement(point.code)"
+            class="no-requirement"
+          >
+            本项没有系统生成的要求：依据来自上游信号与你自己的判断，不是系统漏了
+          </span>
           <span v-if="point.missing" class="review-point__gap">
             待补：{{ point.evidenceRefs.length ? "还缺结论" : "还缺证据" }}
           </span>
@@ -260,6 +275,13 @@ async function submit(): Promise<void> {
 </template>
 
 <style scoped>
+.no-requirement {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+  line-height: var(--leading-body);
+}
+
 .product-initiative-review {
   padding: var(--space-4);
   border-bottom: 1px solid var(--line);

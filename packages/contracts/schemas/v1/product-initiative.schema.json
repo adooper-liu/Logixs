@@ -6,11 +6,13 @@
   "additionalProperties": false,
   "$defs": {
     "ProductInitiativeReviewPointCodeV1": {
+      "description": "立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。",
       "enum": [
         "target_user_and_market",
         "competitive_supply",
         "price_band_and_margin",
-        "compliance_risk"
+        "compliance_risk",
+        "customer_feedback"
       ]
     },
     "ProductInitiativeOutcomeV1": {
@@ -35,6 +37,7 @@
         "competitive_supply",
         "price_band_and_margin",
         "compliance_risk",
+        "customer_feedback",
         "defer_reason",
         "reject_reason",
         "return_reason"

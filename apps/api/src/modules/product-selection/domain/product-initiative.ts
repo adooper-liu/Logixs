@@ -61,6 +61,9 @@ export const PRODUCT_INITIATIVE_GATE: readonly ProductInitiativeReviewPointCodeV
     "price_band_and_margin",
     "compliance_risk",
   ];
+// 注意 `customer_feedback` **不在这张门槛表里**：它由「售后原声」这类专业要求喂证据，
+// 收了没地方下结论才是问题；但把它加成第 5 项门槛，会让**存量记录追溯性变成不合格**。
+// 门槛是政策，改它要连存量一起算，不能顺手加。
 
 export function productInitiativePendingFieldCodes(
   draft: ProductInitiativeDraft,
@@ -268,6 +271,8 @@ const REVIEW_POINT_ORDER: ProductInitiativeReviewPointCodeV1[] = [
   "competitive_supply",
   "price_band_and_margin",
   "compliance_risk",
+  // 专业要求「售后原声」的证据落到这一条 —— 没有它，证据收了却没有地方形成结论。
+  "customer_feedback",
 ];
 const REVIEW_POINT_CODES = new Set<string>(REVIEW_POINT_ORDER);
 const PENDING_FIELD_ORDER: ProductInitiativePendingFieldCodeV1[] = [

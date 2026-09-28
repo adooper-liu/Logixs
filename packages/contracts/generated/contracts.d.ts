@@ -315,10 +315,12 @@ export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" 
  */
 export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "dismiss_reason")
 /**
+ * 立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。
+ * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeReviewPointCodeV1".
  */
-export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk")
+export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeOutcomeV1".
@@ -338,7 +340,7 @@ export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "r
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativePendingFieldCodeV1".
  */
-export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "defer_reason" | "reject_reason" | "return_reason")
+export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback" | "defer_reason" | "reject_reason" | "return_reason")
 /**
  * NPI 执行阶段。用行业通用的四段名，代工厂说的就是这四个词，运营与供应商之间不用翻译。
  * 

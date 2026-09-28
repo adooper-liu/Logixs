@@ -17,6 +17,8 @@ const props = defineProps<{
   reason: string;
   /** 立项还差哪些、各在哪补；按钮文案与缺口清单都读它，不在本组件里另判一遍。 */
   gaps: readonly ProductInitiativeGap[];
+  /** 不挡立项、但补了更扎实的要点。**不混进「还差 N 项」**。 */
+  optionalGaps?: readonly string[];
   busy: boolean;
   /** 已立项是终态，不再提供任何判断动作。 */
   decided: boolean;
@@ -159,6 +161,9 @@ function submit(): void {
             "
           />
         </label>
+        <p v-if="optionalGaps?.length" class="optional-gaps">
+          还可以补（不挡立项）：{{ optionalGaps.join("、") }}
+        </p>
         <div v-if="gaps.length" class="gap-list">
           <b>还不能立项</b>
           <ul>
@@ -323,6 +328,12 @@ function submit(): void {
 }
 
 /* 阻断与待补分轨：这是"不能立项"，用警示色而不是错误色。 */
+.optional-gaps {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+  line-height: var(--leading-body);
+}
 .gap-list {
   padding: var(--space-3);
   border-left: 3px solid var(--warn);

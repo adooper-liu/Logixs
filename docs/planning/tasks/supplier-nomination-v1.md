@@ -1,5 +1,5 @@
 ---
-status: review
+status: done # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/supplier-nomination
 verification: |
   本地验证（2026-09-28，服务端 + 前端）：
@@ -9,6 +9,7 @@ verification: |
     **定点快照冻结供应商名称（主数据改名不影响当时定的）**、跨租户隔离
   - E2E 三视口通过：看见待寻源 → 登记供应商 → 录入报价（含关键物料）→ 定点
   - lint、typecheck、repo:check、contract:check（24 schemas）、contract:drift、格式化通过
+  - 远端 CI 全绿（PR #72 已 squash 合入 main）
   未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
 ---
 

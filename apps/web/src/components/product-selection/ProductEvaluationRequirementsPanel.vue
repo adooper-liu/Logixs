@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FilePlus2, Save, X } from "@lucide/vue";
 import { reactive, shallowRef } from "vue";
+import { REVIEW_POINTS } from "../../composables/useProductInitiativeDecision";
 import type {
   ProductEvaluationEvidenceDraft,
   ProductEvaluationRequirement,
@@ -16,6 +17,11 @@ const props = defineProps<{
 }>();
 
 const openCode = shallowRef<ProductEvaluationRequirementCode | null>(null);
+
+/** 要求与要点是**上下游**关系：这里管拿到依据，评审要点管写下结论。 */
+function reviewPointLabel(code: string): string {
+  return REVIEW_POINTS.find((point) => point.code === code)?.label ?? code;
+}
 const draft = reactive<ProductEvaluationEvidenceDraft>(
   createDraft("competitive_supply_evidence"),
 );
@@ -69,6 +75,11 @@ async function submit(): Promise<void> {
             <b>{{ requirement.label }}</b>
             <span class="rationale"
               >为什么适用：{{ requirement.rationale }}</span
+            >
+            <span class="feeds-review-point"
+              >补进去会成为「{{
+                reviewPointLabel(requirement.reviewPointCode)
+              }}」要点的依据</span
             >
           </div>
           <button
@@ -244,7 +255,13 @@ async function submit(): Promise<void> {
   font-size: var(--text-label);
 }
 
+.feeds-review-point {
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+}
+
 .rationale {
+  display: block;
   color: var(--ink-soft);
   font-size: var(--text-micro);
   line-height: var(--leading-body);
