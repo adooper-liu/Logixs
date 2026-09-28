@@ -1,7 +1,8 @@
 ---
-status: coding
+status: done
 branch: docs/workbench-entry-exit-principles-v1
-verification: 未完成。负责人 2026-09-28 确认落地：写入 HW-D17/HW-D18 并立后续切片 brief。
+verification: |
+  已合入 main：#78（2134f0b）。CI quality 全绿；`pnpm repo:check` 通过。
 ---
 
 # 任务：工作台入口三源与退出三层原则
