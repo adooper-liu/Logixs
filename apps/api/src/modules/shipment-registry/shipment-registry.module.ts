@@ -30,6 +30,13 @@ import { GetContainerOperationalViewService } from "./application/get-container-
 import { ListShipmentsService } from "./application/list-shipments.service";
 import { ListShipmentPendingCompletionService } from "./application/list-shipment-pending-completion.service";
 import { ListShipmentRiskQueueService } from "./application/list-shipment-risk-queue.service";
+import {
+  ClaimWorkHandoffService,
+  CloseWorkHandoffService,
+  ListShipmentWorkHandoffsService,
+  ListWorkHandoffQueueService,
+  RaiseWorkHandoffService,
+} from "./application/shipment-work-handoff.services";
 import { BIND_REPLENISHMENT_LINE_PRODUCT_SKU } from "./bind-replenishment-line-product-sku.port";
 import { CONTAINER_CARGO_ALLOCATION_REPOSITORY } from "./domain/container-cargo-allocation.repository";
 import { CONTAINER_STUFFING_SNAPSHOT_REPOSITORY } from "./domain/container-stuffing-snapshot.repository";
@@ -51,6 +58,8 @@ import { PrismaContainerDispatchSnapshotRepository } from "./infrastructure/pris
 import { PrismaShipmentHandoffAcceptanceRepository } from "./infrastructure/prisma-shipment-handoff-acceptance.repository";
 import { SHIPMENT_HANDOFF_ACCEPTANCE_REPOSITORY } from "./domain/shipment-handoff-acceptance";
 import { SHIPMENT_READ_REPOSITORY } from "./domain/shipment-read.repository";
+import { SHIPMENT_WORK_HANDOFF_REPOSITORY } from "./domain/shipment-work-handoff.repository";
+import { PrismaShipmentWorkHandoffRepository } from "./infrastructure/prisma-shipment-work-handoff.repository";
 import { PrismaShipmentReadRepository } from "./infrastructure/prisma-shipment-read.repository";
 import { PrismaContainerOperationalViewRepository } from "./infrastructure/prisma-container-operational-view.repository";
 import { CONTAINER_OPERATIONAL_VIEW_REPOSITORY } from "./domain/container-operational-view.repository";
@@ -61,6 +70,7 @@ import { ContainersController } from "./presentation/containers.controller";
 import { ContainerStuffingController } from "./presentation/container-stuffing.controller";
 import { ContainerDispatchController } from "./presentation/container-dispatch.controller";
 import { ReplenishmentOrdersController } from "./presentation/replenishment-orders.controller";
+import { ShipmentWorkHandoffsController } from "./presentation/shipment-work-handoffs.controller";
 import { ShipmentsController } from "./presentation/shipments.controller";
 import { REPLACE_CONTAINER_CARGO_ALLOCATIONS } from "./replace-container-cargo-allocations.port";
 import { GET_CONTAINER_CARGO_COMPLIANCE_SCOPE } from "./get-container-cargo-compliance-scope.port";
@@ -91,6 +101,7 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     ContainerStuffingController,
     ContainerDispatchController,
     ReplenishmentOrdersController,
+    ShipmentWorkHandoffsController,
     ShipmentsController,
   ],
   providers: [
@@ -117,6 +128,11 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     ListShipmentsService,
     ListShipmentPendingCompletionService,
     ListShipmentRiskQueueService,
+    ListWorkHandoffQueueService,
+    ListShipmentWorkHandoffsService,
+    RaiseWorkHandoffService,
+    ClaimWorkHandoffService,
+    CloseWorkHandoffService,
     GetContainerOperationalViewService,
     {
       provide: ASSERT_CONTAINER_TENANT,
@@ -187,6 +203,10 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     {
       provide: SHIPMENT_READ_REPOSITORY,
       useClass: PrismaShipmentReadRepository,
+    },
+    {
+      provide: SHIPMENT_WORK_HANDOFF_REPOSITORY,
+      useClass: PrismaShipmentWorkHandoffRepository,
     },
     {
       provide: CONTAINER_OPERATIONAL_VIEW_REPOSITORY,
@@ -270,6 +290,11 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     ListShipmentsService,
     ListShipmentPendingCompletionService,
     ListShipmentRiskQueueService,
+    ListWorkHandoffQueueService,
+    ListShipmentWorkHandoffsService,
+    RaiseWorkHandoffService,
+    ClaimWorkHandoffService,
+    CloseWorkHandoffService,
     GetContainerOperationalViewService,
   ],
 })
