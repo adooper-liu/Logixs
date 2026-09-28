@@ -238,6 +238,7 @@ function point(
     evidenceRefs: [],
     conclusion: "",
     missing: true,
+    gating: true,
     ...overrides,
   };
 }

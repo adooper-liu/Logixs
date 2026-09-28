@@ -17,14 +17,23 @@ import {
   registerMarketSignalEvidence,
 } from "../api/marketSignals";
 
+/**
+ * 评审要点。`gating` 表示**缺了它就不能立项**。
+ *
+ * 与**服务端 `PRODUCT_INITIATIVE_GATE` 是同一份口径，两处改动必须一起动**。
+ * `customer_feedback` **不是门槛**：它由「售后原声」这类专业要求喂证据，
+ * 缺了进待补但不挡立项 —— 把它加成第 5 项门槛，会让存量记录追溯性变成不合格。
+ */
 export const REVIEW_POINTS = [
-  { code: "target_user_and_market", label: "目标用户与市场" },
-  { code: "competitive_supply", label: "竞争供给" },
-  { code: "price_band_and_margin", label: "价格带与利润" },
-  { code: "compliance_risk", label: "合规风险" },
+  { code: "target_user_and_market", label: "目标用户与市场", gating: true },
+  { code: "competitive_supply", label: "竞争供给", gating: true },
+  { code: "price_band_and_margin", label: "价格带与利润", gating: true },
+  { code: "compliance_risk", label: "合规风险", gating: true },
+  { code: "customer_feedback", label: "客户反馈与痛点", gating: false },
 ] as const satisfies readonly {
   code: ProductInitiativeReviewPointCodeV1;
   label: string;
+  gating: boolean;
 }[];
 
 export type ProductInitiativeOutcome =
@@ -71,6 +80,8 @@ export interface ProductInitiativeReviewPointView {
   evidenceRefs: readonly string[];
   conclusion: string;
   missing: boolean;
+  /** 缺了它能不能立项。非门槛的缺了只提示，不挡。 */
+  gating: boolean;
 }
 
 /**
@@ -102,6 +113,7 @@ export function useProductInitiativeDecision(options: {
     competitive_supply: { evidenceRefs: [], conclusion: "" },
     price_band_and_margin: { evidenceRefs: [], conclusion: "" },
     compliance_risk: { evidenceRefs: [], conclusion: "" },
+    customer_feedback: { evidenceRefs: [], conclusion: "" },
   });
 
   // 三个带原因的去向各存各的：来回切换时已写了一半的依据不该被清掉，
@@ -144,22 +156,32 @@ export function useProductInitiativeDecision(options: {
       evidenceRefs: points[point.code].evidenceRefs,
       conclusion: points[point.code].conclusion,
       missing: reviewPointMissing(points[point.code]),
+      gating: point.gating,
     })),
   );
 
-  /** 还差哪些才算能立项、各在哪补；按钮文案与缺口清单都读它。 */
+  /** 挡住立项的缺口：目标结果 + **门槛**要点。 */
   const blockingGaps = computed<ProductInitiativeGap[]>(() => {
     const missing: ProductInitiativeGap[] = [];
     if (!objective.value.trim()) {
       missing.push({ label: "目标结果", panel: "objective" });
     }
     for (const point of reviewPointViews.value) {
-      if (point.missing) {
+      if (point.missing && point.gating) {
         missing.push({ label: point.label, panel: "review_points" });
       }
     }
     return missing;
   });
+  /**
+   * 不挡立项、但补了更扎实的要点。**单独列出来**，不混进"还差 N 项" ——
+   * 混进去会让人以为非补不可，而那正是"证据收了没地方下结论"要修的另一半。
+   */
+  const optionalGaps = computed<string[]>(() =>
+    reviewPointViews.value
+      .filter((point) => point.missing && !point.gating)
+      .map((point) => point.label),
+  );
   const canApprove = computed(() => blockingGaps.value.length === 0);
 
   // 换一条机会就要重读那一条的立项判断；只看 handoffId，不沿用上一条的草稿。
@@ -345,6 +367,7 @@ export function useProductInitiativeDecision(options: {
     points,
     reviewPointViews,
     blockingGaps,
+    optionalGaps,
     canApprove,
     load,
     setDestination,

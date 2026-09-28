@@ -12,11 +12,14 @@ import {
 
 const ACTOR = "selector-1";
 const INITIATIVE_ID = "55555555-5555-4555-8555-555555555555";
+// 完整的要点集合（5 项）。**门槛只有前 4 项** —— `customer_feedback` 由「售后原声」
+// 这类专业要求喂证据，缺了进待补但不阻断立项。所以"齐备"与"过门槛"是两回事。
 const REVIEW_POINT_CODES = [
   "target_user_and_market",
   "competitive_supply",
   "price_band_and_margin",
   "compliance_risk",
+  "customer_feedback",
 ] as const;
 
 const NEW_INITIATIVE: CurrentProductInitiative = { version: 0 };
@@ -63,7 +66,7 @@ describe("prepareProductInitiativeDecision 立项", () => {
     expect(prepared.initiativeId).toBe(INITIATIVE_ID);
     expect(prepared.responsibleActorId).toBe(ACTOR);
     expect(prepared.objective).toBe("把折叠宠物出行包做成可发布版本");
-    expect(prepared.reviewPoints).toHaveLength(4);
+    expect(prepared.reviewPoints).toHaveLength(5);
   });
 
   it("缺项时拒绝立项，并说明还差哪几项", () => {
@@ -227,8 +230,15 @@ describe("prepareProductInitiativeDecision 校验与并发", () => {
 });
 
 describe("PRODUCT_INITIATIVE_GATE", () => {
-  it("默认把四项要点都算作立项门槛", () => {
-    expect(PRODUCT_INITIATIVE_GATE).toEqual([...REVIEW_POINT_CODES]);
+  it("默认门槛是前四项要点；客户反馈不算门槛", () => {
+    // 把它加成第 5 项门槛，会让**存量记录追溯性变成不合格** —— 门槛是政策，不能顺手加。
+    expect(PRODUCT_INITIATIVE_GATE).toEqual([
+      "target_user_and_market",
+      "competitive_supply",
+      "price_band_and_margin",
+      "compliance_risk",
+    ]);
+    expect(PRODUCT_INITIATIVE_GATE).not.toContain("customer_feedback");
   });
 });
 

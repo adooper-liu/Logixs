@@ -66,6 +66,7 @@ const {
   points,
   reviewPointViews,
   blockingGaps,
+  optionalGaps,
   evidenceCandidates,
   loading: readingInitiative,
   saving: deciding,
@@ -264,6 +265,7 @@ async function submitDecision(
           :objective="objective"
           :reason="currentReason"
           :gaps="blockingGaps"
+          :optional-gaps="optionalGaps"
           :busy="deciding"
           :decided="decided"
           @change-outcome="setDestination"

@@ -1,3 +1,5 @@
+import type { ProductInitiativeReviewPointCodeV1 } from "@logix/contracts";
+
 // 选品评估阶段的专业证据要求。
 //
 // 这些要求只在“已选定商品范围”或“已进入具体评估动作”后由适用规则生成，
@@ -16,6 +18,14 @@ export interface ProductEvaluationRequirement {
   placeholder: string;
   /** 这条要求为什么适用于当前机会；用于说明适用依据，不代替业务判断。 */
   rationale: string;
+  /**
+   * 这条要求喂的是哪一条**评审要点**。
+   *
+   * 必须写出来：专业要求与评审要点在代码里本来就是连着的（证据进信号证据链、
+   * 成为要点的可引依据），但界面上不说，人就会以为是两套内容。
+   * 更要紧的是 —— **证据收了却没有对应的要点，就没有地方形成结论**。
+   */
+  reviewPointCode: ProductInitiativeReviewPointCodeV1;
 }
 
 export interface ProductEvaluationContext {
@@ -46,6 +56,8 @@ export interface ProductEvaluationWithheld {
   label: string;
   /** 缺什么才能生成它，用业务人员能补的动作表述。 */
   missing: string;
+  /** 生成之后会喂哪一条评审要点。 */
+  reviewPointCode: ProductInitiativeReviewPointCodeV1;
 }
 
 export interface ProductEvaluationRequirementSet {
@@ -83,6 +95,7 @@ export function productEvaluationRequirements(
   if (scope) {
     requirements.push({
       code: "competitive_supply_evidence",
+      reviewPointCode: "competitive_supply",
       label: "竞争供给证据",
       fieldLabel: "竞争供给证据",
       placeholder: "摘录竞争商品数量、销量分布或供给饱和程度的关键事实",
@@ -90,6 +103,7 @@ export function productEvaluationRequirements(
     });
     requirements.push({
       code: "price_band",
+      reviewPointCode: "price_band_and_margin",
       label: "目标价格带",
       fieldLabel: "目标价格带",
       placeholder: "填写主流成交价格区间、币种和观察结论",
@@ -99,11 +113,13 @@ export function productEvaluationRequirements(
     withheld.push(
       {
         code: "competitive_supply_evidence",
+        reviewPointCode: "competitive_supply",
         label: "竞争供给证据",
         missing: "尚未选定商品范围",
       },
       {
         code: "price_band",
+        reviewPointCode: "price_band_and_margin",
         label: "目标价格带",
         missing: "尚未选定商品范围",
       },
@@ -113,6 +129,7 @@ export function productEvaluationRequirements(
   if (context.evaluationStarted) {
     requirements.push({
       code: "after_sales_voice",
+      reviewPointCode: "customer_feedback",
       label: "售后原声",
       fieldLabel: "售后原声样本",
       placeholder: "摘录能说明真实退货、评价或使用问题的原声样本",
@@ -122,6 +139,7 @@ export function productEvaluationRequirements(
   } else {
     withheld.push({
       code: "after_sales_voice",
+      reviewPointCode: "customer_feedback",
       label: "售后原声",
       missing: "尚未进入选品评估",
     });
@@ -129,3 +147,23 @@ export function productEvaluationRequirements(
 
   return { requirements, withheld };
 }
+
+/**
+ * 要求码 → 它喂的评审要点。
+ *
+ * **单一来源**：`satisfies` 保证每一种要求都映射到一条要点 ——
+ * 漏了会让"证据收了没地方下结论"重现，而编译器会当场拦住。
+ */
+export const REQUIREMENT_REVIEW_POINTS = {
+  competitive_supply_evidence: "competitive_supply",
+  price_band: "price_band_and_margin",
+  after_sales_voice: "customer_feedback",
+} as const satisfies Record<ProductEvaluationRequirementCode, string>;
+
+/**
+ * 有**生成要求**的评审要点。反过来没有的那些（目标用户与市场、合规风险），
+ * 界面上要如实说"依据来自上游信号与你的判断"，而不是装作没有这一项。
+ */
+export const REVIEW_POINTS_WITH_REQUIREMENTS: ReadonlySet<string> = new Set(
+  Object.values(REQUIREMENT_REVIEW_POINTS),
+);
