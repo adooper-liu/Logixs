@@ -26,6 +26,7 @@ const CLAIM_MIGRATION = "20260927180000_add_product_initiative_claim";
 const DEFINITION_MIGRATION = "20260927190000_add_product_definition";
 const IDENTITY_MIGRATION = "20260927200000_add_product_identity";
 const ATTRIBUTES_MIGRATION = "20260927210000_add_product_attributes";
+const NOMINATION_MIGRATION = "20260928120000_add_supplier_nomination";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -74,6 +75,16 @@ beforeAll(async () => {
   await prisma.$executeRawUnsafe(
     `ALTER TABLE "${schemaName}"."product_sku" DROP COLUMN IF EXISTS "product_id"`,
   );
+  // `supplier_quotation` / `supplier_nomination_release` 外键依赖它，依赖反序收。
+  await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."supplier_nomination_release"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."supplier_quotation"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."supplier"`,
+  );
   await prisma.$executeRawUnsafe(
     `DROP TABLE IF EXISTS "${schemaName}"."product_identity_release"`,
   );
@@ -103,6 +114,7 @@ beforeAll(async () => {
       DEFINITION_MIGRATION,
       IDENTITY_MIGRATION,
       ATTRIBUTES_MIGRATION,
+      NOMINATION_MIGRATION,
     ],
   );
 

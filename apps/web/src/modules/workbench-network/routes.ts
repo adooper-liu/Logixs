@@ -47,6 +47,15 @@ export const workbenchNetworkRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/workspaces/sourcing",
+    component: () => import("../../views/SourcingWorkbench.vue"),
+    meta: {
+      title: "寻源与供应商定点",
+      section: "业务工作台",
+      roles: ["planner", "manager"],
+    },
+  },
+  {
     path: "/workspaces/master-data",
     component: () => import("../../views/MasterDataWorkbench.vue"),
     meta: {

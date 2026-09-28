@@ -1,0 +1,434 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/supplier-nomination.schema.json",
+  "title": "Supplier Nomination Contracts V1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "SupplierAdmissionStateV1": {
+      "description": "供应商准入状态。**只有 admitted 能被定点** —— 没准入就定点，等于把质量责任交给一个没审过的对象。",
+      "enum": ["pending", "admitted", "suspended"]
+    },
+    "SupplierV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "supplierId",
+        "name",
+        "countryCode",
+        "contactName",
+        "contactEmail",
+        "admissionState",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "supplier.v1" },
+        "supplierId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "countryCode": {
+          "description": "ISO 3166-1 alpha-2。",
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "contactName": { "type": ["string", "null"], "maxLength": 100 },
+        "contactEmail": { "type": ["string", "null"], "maxLength": 200 },
+        "admissionState": { "$ref": "#/$defs/SupplierAdmissionStateV1" },
+        "version": { "type": "integer", "minimum": 1 },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "QuotationKeyMaterialV1": {
+      "description": "关键物料：**由供应商在报价时带入**，不是主数据侧预先编的。自己编的是「声称」，供应商报的才是「承诺」。只列影响成本的那几项，不到多级 BOM。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "specification",
+        "quantityPerUnit",
+        "quantityUnit",
+        "lossRatePercent",
+        "suppliedByCustomer"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "specification": { "type": ["string", "null"], "maxLength": 500 },
+        "quantityPerUnit": { "type": "number", "exclusiveMinimum": 0 },
+        "quantityUnit": {
+          "$ref": "product-identity.schema.json#/$defs/MeasureUnitV1"
+        },
+        "lossRatePercent": {
+          "description": "损耗率（百分比）。缺省的原料损耗会直接吃掉利润，所以必须报。",
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "suppliedByCustomer": {
+          "description": "是否客供（你出料）。决定成本口径是「含料」还是「加工费」。",
+          "type": "boolean"
+        }
+      }
+    },
+    "SupplierQuotationV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "quotationId",
+        "supplierId",
+        "skuReleaseId",
+        "skuId",
+        "version",
+        "priceTiers",
+        "incoterms",
+        "minimumOrderQuantity",
+        "toolingCost",
+        "sampleCost",
+        "sampleRefundable",
+        "leadTimeDays",
+        "packagingSpec",
+        "paymentTerms",
+        "qualityTerms",
+        "validUntil",
+        "keyMaterials",
+        "exclusions",
+        "quotedBy",
+        "quotedAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "supplier-quotation.v1" },
+        "quotationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "supplierId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "skuReleaseId": {
+          "description": "对的是哪一份可售 SKU 发布。",
+          "$ref": "common.schema.json#/$defs/Uuid"
+        },
+        "skuId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "priceTiers": {
+          "description": "按数量阶梯的单价。**只报一个价是比不了价的** —— 阶梯价才能看出量产后的成本曲线。",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["minQuantity", "unitPrice", "currency"],
+            "properties": {
+              "minQuantity": { "type": "integer", "minimum": 1 },
+              "unitPrice": {
+                "type": "string",
+                "pattern": "^[0-9]+(\\.[0-9]{1,4})?$"
+              },
+              "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+            }
+          }
+        },
+        "incoterms": {
+          "description": "贸易术语与地点，如 FOB Ningbo / Incoterms 2020。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "minimumOrderQuantity": {
+          "anyOf": [
+            { "$ref": "product-identity.schema.json#/$defs/MeasureV1" },
+            { "type": "null" }
+          ]
+        },
+        "toolingCost": {
+          "description": "模具/工装费：一次性、谁承担、工期。**它常常比单价更影响首单成本。**",
+          "anyOf": [
+            { "$ref": "product-identity.schema.json#/$defs/MeasureV1" },
+            { "type": "null" }
+          ]
+        },
+        "sampleCost": {
+          "anyOf": [
+            { "$ref": "product-identity.schema.json#/$defs/MeasureV1" },
+            { "type": "null" }
+          ]
+        },
+        "sampleRefundable": { "type": ["boolean", "null"] },
+        "leadTimeDays": { "type": ["integer", "null"], "minimum": 0 },
+        "packagingSpec": { "type": ["string", "null"], "maxLength": 1000 },
+        "paymentTerms": {
+          "description": "付款条件：定金比例、尾款触发、方式。",
+          "type": ["string", "null"],
+          "maxLength": 500
+        },
+        "qualityTerms": {
+          "description": "检验阶段、标准与不合格补救。",
+          "type": ["string", "null"],
+          "maxLength": 1000
+        },
+        "validUntil": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "keyMaterials": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/QuotationKeyMaterialV1" }
+        },
+        "exclusions": {
+          "description": "排除项与假设。**沉默不等于确认** —— 供应商不说清哪些不含在内，后面就会扯皮。",
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "quotedBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "quotedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "SupplierNominationHandoffV1": {
+      "description": "交给需求与补货侧的定点交接。不可变；再次定点追加版本。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "handoffId",
+        "version",
+        "skuReleaseId",
+        "skuId",
+        "supplierId",
+        "supplierName",
+        "supplierCountryCode",
+        "quotationId",
+        "quotationVersion",
+        "incoterms",
+        "priceTiers",
+        "leadTimeDays",
+        "minimumOrderQuantity",
+        "sampleConclusion",
+        "capacityConstraint",
+        "nominatedBy",
+        "nominatedAt",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "supplier_nomination.v1" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "skuReleaseId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "skuId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "supplierId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "supplierName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "supplierCountryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "quotationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "quotationVersion": { "type": "integer", "minimum": 1 },
+        "incoterms": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "priceTiers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["minQuantity", "unitPrice", "currency"],
+            "properties": {
+              "minQuantity": { "type": "integer", "minimum": 1 },
+              "unitPrice": {
+                "type": "string",
+                "pattern": "^[0-9]+(\\.[0-9]{1,4})?$"
+              },
+              "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+            }
+          }
+        },
+        "leadTimeDays": { "type": ["integer", "null"], "minimum": 0 },
+        "minimumOrderQuantity": {
+          "anyOf": [
+            { "$ref": "product-identity.schema.json#/$defs/MeasureV1" },
+            { "type": "null" }
+          ]
+        },
+        "sampleConclusion": {
+          "description": "样品结论。**必填** —— 网络声明这条交接要带它，而且没验过样就定点是拿量产赌。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "capacityConstraint": {
+          "description": "产能约束。**必填** —— 交下去的量能不能供得上，是补货那一侧最需要知道的事。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "nominatedBy": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "nominatedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "RegisterSupplierCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "name",
+        "countryCode",
+        "admissionState",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "supplier-register.v1" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "contactName": { "type": ["string", "null"], "maxLength": 100 },
+        "contactEmail": { "type": ["string", "null"], "maxLength": 200 },
+        "admissionState": { "$ref": "#/$defs/SupplierAdmissionStateV1" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "RecordQuotationCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedQuotationVersion",
+        "priceTiers",
+        "incoterms",
+        "exclusions",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "supplier-quotation-record.v1" },
+        "expectedQuotationVersion": { "type": "integer", "minimum": 0 },
+        "priceTiers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["minQuantity", "unitPrice", "currency"],
+            "properties": {
+              "minQuantity": { "type": "integer", "minimum": 1 },
+              "unitPrice": {
+                "type": "string",
+                "pattern": "^[0-9]+(\\.[0-9]{1,4})?$"
+              },
+              "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+            }
+          }
+        },
+        "incoterms": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "minimumOrderQuantity": {
+          "anyOf": [
+            { "$ref": "product-identity.schema.json#/$defs/MeasureV1" },
+            { "type": "null" }
+          ]
+        },
+        "toolingCost": {
+          "anyOf": [
+            { "$ref": "product-identity.schema.json#/$defs/MeasureV1" },
+            { "type": "null" }
+          ]
+        },
+        "sampleCost": {
+          "anyOf": [
+            { "$ref": "product-identity.schema.json#/$defs/MeasureV1" },
+            { "type": "null" }
+          ]
+        },
+        "sampleRefundable": { "type": ["boolean", "null"] },
+        "leadTimeDays": { "type": ["integer", "null"], "minimum": 0 },
+        "packagingSpec": { "type": ["string", "null"], "maxLength": 1000 },
+        "paymentTerms": { "type": ["string", "null"], "maxLength": 500 },
+        "qualityTerms": { "type": ["string", "null"], "maxLength": 1000 },
+        "validUntil": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "keyMaterials": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/QuotationKeyMaterialV1" }
+        },
+        "exclusions": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "NominateSupplierCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "quotationId",
+        "expectedQuotationVersion",
+        "sampleConclusion",
+        "capacityConstraint",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "supplier-nominate.v1" },
+        "quotationId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "expectedQuotationVersion": { "type": "integer", "minimum": 0 },
+        "sampleConclusion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "capacityConstraint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "SourcingQueueEntryV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skuReleaseId",
+        "skuId",
+        "suppliers",
+        "quotations",
+        "nominated"
+      ],
+      "properties": {
+        "skuReleaseId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "skuId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "suppliers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SupplierV1" }
+        },
+        "quotations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SupplierQuotationV1" }
+        },
+        "nominated": {
+          "anyOf": [
+            { "$ref": "#/$defs/SupplierNominationHandoffV1" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

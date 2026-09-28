@@ -17,6 +17,7 @@ import { InlandLifecycleOrchestrationModule } from "./modules/inland-lifecycle-o
 import { IntegrationImportModule } from "./modules/integration-import";
 import { LifecycleControlModule } from "./modules/lifecycle-control";
 import { MasterDataModule } from "./modules/master-data";
+import { SourcingModule } from "./modules/sourcing";
 import { MarketIntelligenceModule } from "./modules/market-intelligence";
 import { NotificationModule } from "./modules/notification";
 import { OceanPortVisibilityModule } from "./modules/ocean-port-visibility";
@@ -47,6 +48,7 @@ import { WorkflowModule } from "./modules/workflow";
     IntegrationImportModule,
     LifecycleControlModule,
     MasterDataModule,
+    SourcingModule,
     MarketIntelligenceModule,
     NotificationModule,
     OceanPortVisibilityModule,

@@ -243,7 +243,7 @@ export const workbenchNetwork = [
     "released_product_design",
     "sellable_sku_release",
   ),
-  stage(
+  liveStage(
     5,
     "sourcing",
     "寻源与供应商定点工作台",

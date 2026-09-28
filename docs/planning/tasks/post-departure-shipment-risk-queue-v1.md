@@ -1,5 +1,5 @@
 ---
-status: review # design | coding | review | fix | blocked | done（机器可校验）
+status: done # design | coding | review | fix | blocked | done（机器可校验） # design | coding | review | fix | blocked | done（机器可校验）
 branch: —
 verification: |
   本地验证（2026-09-28，切片 4 F + 切片 5 D/E 的前端）：
@@ -7,6 +7,7 @@ verification: |
   - 集成（真实 PostgreSQL）22 文件 / 112 项，本片新增 10 项（见切片 4）
   - E2E 三视口通过：队列按「该谁动」分组 → 交给专业岗位 → 岗位领取 → 写结论了结
   - lint、typecheck、repo:check、contract:check、contract:drift、触及文件格式化通过
+  - 远端 CI 全绿（PR #71 已 squash 合入 main）
   未执行：pnpm validate 全量（本机 format:check 受 .pytest_cache 阻塞，已逐路径验证干净）
 
   历史（切片 1–3 服务端）：
