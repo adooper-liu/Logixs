@@ -1,5 +1,5 @@
 ---
-status: review
+status: done
 branch: feat/market-signal-void-archive-v1
 verification: 领域单测、工作台单测、typecheck、drift、product-initiative-flow 集成（含作废/归档）已过。待 PR CI。
 ---

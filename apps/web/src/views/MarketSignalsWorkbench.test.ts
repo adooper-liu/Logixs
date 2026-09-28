@@ -104,6 +104,8 @@ describe("MarketSignalsWorkbench", () => {
     expect(wrapper.text()).toContain("为什么现在处理");
     expect(wrapper.text()).toContain("已观察到");
     expect(wrapper.text()).toContain("尚待验证");
+    expect(wrapper.text()).toContain("1 条来源");
+    await wrapper.get(".evidence-fold").trigger("click");
     expect(wrapper.text()).toContain("美国站周度搜索报告");
     expect(wrapper.text()).toContain("经营与市场负责人");
   });
@@ -139,12 +141,13 @@ describe("MarketSignalsWorkbench", () => {
       "待补，不影响先处理",
     );
     expect(wrapper.get(".evidence-panel").text()).toContain("观察事实待补");
-    expect(wrapper.get(".evidence-panel").text()).toContain("来源证据待补");
+    expect(wrapper.get(".evidence-panel").text()).toContain("无来源证据");
   });
 
   it("opens the persisted evidence and links to its original source", async () => {
     const wrapper = await mountPage();
 
+    await wrapper.get(".evidence-fold").trigger("click");
     await wrapper.get(".source-trigger").trigger("click");
 
     expect(wrapper.get(".source-preview").text()).toContain(
@@ -255,6 +258,103 @@ describe("MarketSignalsWorkbench", () => {
 
     expect(listMarketSignals).toHaveBeenCalledTimes(2);
     expect(wrapper.text()).toContain(signals[0]!.title);
+  });
+
+  it("clears detail panes when switching queue filters", async () => {
+    const handedOffTitle = "已交接的折叠推车需求";
+    const voidedTitle = "已作废的重复登记信号";
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: handedOffTitle,
+        currentDestination: "handed_off",
+        observedFactSummary: "已交接事实",
+        pendingFieldCodes: [],
+      }),
+      marketSignal({
+        signalId: signalTwoId,
+        title: voidedTitle,
+        currentDestination: "voided",
+        observedFactSummary: "已作废事实",
+        pendingFieldCodes: [],
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+      [
+        signalTwoId,
+        { signal: signals[1]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).toContain(
+      handedOffTitle,
+    );
+
+    const voidTab = wrapper
+      .findAll('[role="tab"]')
+      .find((tab) => tab.text().includes("已作废"));
+    expect(voidTab).toBeTruthy();
+    await voidTab!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).not.toContain(
+      handedOffTitle,
+    );
+    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).toContain(
+      "请从左侧当前分组选择一条信号。",
+    );
+    expect(wrapper.get('[aria-label="信号处理动作"]').text()).toContain(
+      "请从左侧当前分组选择一条信号后再判断去向。",
+    );
+    expect(wrapper.get('[aria-label="信号处理动作"]').text()).not.toContain(
+      "给这条信号一个去向",
+    );
+  });
+
+  it("treats voided signals as a closed page mode without supplement CTAs", async () => {
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: "udu",
+        currentDestination: "voided",
+        pendingFieldCodes: [
+          "market_code",
+          "channel_code",
+          "category_ref",
+          "observed_fact_summary",
+          "hypothesis",
+        ],
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.get('[aria-label="信号关闭结论"]').text()).toContain(
+      "已作废关闭",
+    );
+    expect(wrapper.get('[aria-label="信号关闭结论"]').text()).toContain("udu");
+    expect(wrapper.get(".closed-gap-summary").text()).toContain(
+      "关闭时 5 项未补齐",
+    );
+    expect(wrapper.find('button[aria-label^="补充"]').exists()).toBe(false);
+    expect(wrapper.find(".gap-strip").exists()).toBe(false);
+    expect(wrapper.find('[aria-label="信号处理动作"]').exists()).toBe(false);
+    expect(wrapper.get(".queue-item--closed").text()).toContain(
+      "关闭时未补 5 项",
+    );
+    expect(wrapper.get(".queue-item--closed").text()).not.toContain(
+      "不影响先处理",
+    );
   });
 });
 

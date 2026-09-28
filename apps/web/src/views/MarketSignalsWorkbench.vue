@@ -30,6 +30,13 @@ async function selectSignal(id: string): Promise<void> {
   });
 }
 
+async function clearSignalSelection(): Promise<void> {
+  await router.replace({
+    path: "/workspaces/market-signals",
+    query: {},
+  });
+}
+
 const {
   selectedSignal,
   selectedDraft,
@@ -48,6 +55,18 @@ const {
   selectSignal,
 });
 
+const isClosed = computed(
+  () =>
+    selectedSignal.value?.initialState === "voided" ||
+    selectedSignal.value?.initialState === "archived",
+);
+
+const closedLabel = computed(() => {
+  if (selectedSignal.value?.initialState === "voided") return "已作废关闭";
+  if (selectedSignal.value?.initialState === "archived") return "已归档关闭";
+  return "";
+});
+
 async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
   const created = await registerSignal(draft);
   if (created) showCreatePanel.value = false;
@@ -55,7 +74,10 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
 </script>
 
 <template>
-  <main class="market-workbench page-frame">
+  <main
+    class="market-workbench page-frame"
+    :class="{ 'market-workbench--closed': isClosed }"
+  >
     <PageHeader
       eyebrow="经营岗位工作台"
       title="市场与经营信号"
@@ -74,7 +96,30 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
       <LoaderCircle :size="17" aria-hidden="true" />正在读取经营信号
     </section>
 
-    <section class="work-context" aria-label="当前岗位与处理目标">
+    <section
+      v-if="selectedSignal && isClosed"
+      class="conclusion-strip"
+      aria-label="信号关闭结论"
+    >
+      <div>
+        <small>结论</small>
+        <h2>
+          信号 {{ selectedSignal.title }}
+          <span>· {{ closedLabel }}</span>
+        </h2>
+        <p>{{ selectedSignal.owner }} · 只读回看 · 本片不支持重开</p>
+      </div>
+      <p class="conclusion-strip__action" role="status">
+        关闭态无待办；不可补录、不可重开。
+      </p>
+    </section>
+
+    <section
+      v-else
+      class="work-context"
+      :class="{ 'work-context--quiet': selectedSignal }"
+      aria-label="当前岗位与处理目标"
+    >
       <span class="context-icon"
         ><BriefcaseBusiness :size="18" aria-hidden="true"
       /></span>
@@ -101,7 +146,7 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
       @dismiss="clearReceipt"
     />
 
-    <div class="workbench-grid">
+    <div class="workbench-grid" :class="{ 'workbench-grid--closed': isClosed }">
       <section
         class="workbench-pane workbench-pane--queue"
         aria-label="待处理信号"
@@ -110,38 +155,46 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
           :items="queueItems"
           :selected-id="selectedSignal?.id ?? ''"
           @select="selectSignal"
+          @clear="clearSignalSelection"
           @create="showCreatePanel = true"
         />
       </section>
-      <section class="workbench-pane" aria-label="信号事实与依据">
+      <section
+        class="workbench-pane workbench-pane--main"
+        aria-label="信号事实与依据"
+      >
         <MarketSignalEvidencePanel
           v-if="selectedSignal"
           :signal="selectedSignal"
+          :closed="isClosed"
           @supplement="supplementSignal"
         />
         <p v-else class="empty-workbench">
-          暂无经营信号。登记一条刚发生的市场变化后即可开始判断。
+          {{
+            queueItems.length
+              ? "请从左侧当前分组选择一条信号。"
+              : "暂无经营信号。登记一条刚发生的市场变化后即可开始判断。"
+          }}
         </p>
       </section>
-      <section class="workbench-pane" aria-label="信号处理动作">
+      <section
+        v-if="!isClosed"
+        class="workbench-pane"
+        aria-label="信号处理动作"
+      >
         <MarketSignalDecisionPanel
           v-if="selectedSignal"
           v-model="selectedDraft"
           :busy="saving"
-          :closed="
-            selectedSignal.initialState === 'voided' ||
-            selectedSignal.initialState === 'archived'
-          "
-          :closed-label="
-            selectedSignal.initialState === 'voided'
-              ? '已作废，只读回看；本片不支持重开。'
-              : selectedSignal.initialState === 'archived'
-                ? '已归档，只读回看；本片不支持重开。'
-                : undefined
-          "
           @submit="submitDecision"
         />
-        <p v-else class="empty-workbench">选择一条信号后显示可执行动作。</p>
+        <p v-else class="empty-workbench">
+          {{
+            queueItems.length
+              ? "请从左侧当前分组选择一条信号后再判断去向。"
+              : "选择一条信号后显示可执行动作。"
+          }}
+        </p>
       </section>
     </div>
   </main>
@@ -150,6 +203,10 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
 <style scoped>
 .market-workbench {
   min-width: 0;
+}
+
+.market-workbench--closed {
+  filter: saturate(0.85);
 }
 
 .operation-error,
@@ -214,6 +271,56 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
   }
 }
 
+.conclusion-strip {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--ink-soft);
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+}
+
+.conclusion-strip small {
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+
+.conclusion-strip h2 {
+  margin: var(--space-1) 0 0;
+  color: var(--ink);
+  font-size: calc(var(--text-title) * 1.35);
+  line-height: var(--leading-title);
+}
+
+.conclusion-strip h2 span {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.conclusion-strip p {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
+}
+
+.conclusion-strip__action {
+  flex: none;
+  max-width: 220px;
+  margin: 0 !important;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--ink-soft) !important;
+  font-size: var(--text-label) !important;
+  line-height: var(--leading-body);
+  text-align: right;
+}
+
 .work-context {
   min-width: 0;
   display: grid;
@@ -229,6 +336,12 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
   border-left: 3px solid var(--brand);
   border-radius: var(--radius-card);
   background: var(--surface);
+}
+
+.work-context--quiet {
+  padding: var(--space-2) var(--space-3);
+  border-left-width: 2px;
+  opacity: 0.88;
 }
 
 .context-icon {
@@ -276,12 +389,16 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
 .workbench-grid {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(260px, 0.7fr) minmax(430px, 1.4fr) minmax(
-      300px,
-      0.8fr
+  grid-template-columns: minmax(220px, 0.55fr) minmax(430px, 1.45fr) minmax(
+      280px,
+      0.75fr
     );
   align-items: start;
   gap: var(--space-3);
+}
+
+.workbench-grid--closed {
+  grid-template-columns: minmax(200px, 0.42fr) minmax(0, 1.58fr);
 }
 
 .workbench-pane {
@@ -297,13 +414,21 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
   top: var(--space-3);
 }
 
+.workbench-grid--closed .workbench-pane--queue {
+  opacity: 0.9;
+}
+
 @media (max-width: 1280px) {
   .workbench-grid {
-    grid-template-columns: minmax(260px, 0.65fr) minmax(0, 1.35fr);
+    grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
   }
 
   .workbench-pane:last-child {
     grid-column: 1 / -1;
+  }
+
+  .workbench-grid--closed .workbench-pane:last-child {
+    grid-column: auto;
   }
 
   .workbench-pane--queue {
@@ -313,8 +438,16 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
 
 @media (max-width: 680px) {
   .work-context,
-  .workbench-grid {
+  .workbench-grid,
+  .workbench-grid--closed,
+  .conclusion-strip {
     grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .conclusion-strip__action {
+    max-width: none;
+    text-align: left;
   }
 
   .work-context {

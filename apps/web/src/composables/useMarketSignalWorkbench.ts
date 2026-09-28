@@ -48,12 +48,11 @@ export function useMarketSignalWorkbench(
   const saving = shallowRef(false);
   const error = shallowRef<string | null>(null);
 
-  const selectedSignal = computed(
-    () =>
-      signals.value.find((item) => item.id === toValue(options.selectedId)) ??
-      signals.value[0] ??
-      null,
-  );
+  const selectedSignal = computed(() => {
+    const selectedId = toValue(options.selectedId);
+    if (!selectedId) return null;
+    return signals.value.find((item) => item.id === selectedId) ?? null;
+  });
   const selectedDraft = computed({
     get: (): MarketSignalDecisionDraft =>
       drafts[selectedSignal.value?.id ?? "__empty"] ??
@@ -87,8 +86,10 @@ export function useMarketSignalWorkbench(
       const page = await listMarketSignals();
       signals.value = page.items.map((signal) => toScenario(signal));
       const requested = toValue(options.selectedId);
+      const matched = signals.value.find(({ id }) => id === requested);
+      // 首屏无选中时默认第一条；筛选切换清空选中后不再回退到首条，避免右侧错位。
       const initial =
-        signals.value.find(({ id }) => id === requested) ?? signals.value[0];
+        matched ?? (requested ? null : (signals.value[0] ?? null));
       if (initial && initial.id !== requested) {
         await options.selectSignal(initial.id);
       } else if (initial) {
@@ -139,17 +140,17 @@ export function useMarketSignalWorkbench(
       });
       if (draft.sourceName.trim() || draft.sourceUrl.trim()) {
         await registerMarketSignalEvidence({
-          signalId,
+          signalId: created.signalId,
           sourceName: draft.sourceName.trim() || "业务人员补充",
           sourceUrl: draft.sourceUrl.trim(),
           content: draft.observedFact.trim() || title,
         });
-        created = (await getMarketSignal(signalId)).signal;
+        created = (await getMarketSignal(created.signalId)).signal;
       }
       signals.value = [toScenario(created), ...signals.value];
       receipt.value = null;
-      await options.selectSignal(signalId);
-      await loadDetail(signalId);
+      await options.selectSignal(created.signalId);
+      await loadDetail(created.signalId);
       return true;
     } catch (caught) {
       error.value = message(caught);

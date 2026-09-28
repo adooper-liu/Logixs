@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  ChevronDown,
   ExternalLink,
   FileText,
   Lightbulb,
@@ -15,22 +16,60 @@ import type {
 } from "../../data/marketSignalScenarios";
 import MarketSignalGapEditor from "./MarketSignalGapEditor.vue";
 
-const props = defineProps<{ signal: MarketSignalScenario }>();
+const props = defineProps<{
+  signal: MarketSignalScenario;
+  /** 作废/归档：整页关闭态，禁止待补催办与补录。 */
+  closed?: boolean;
+}>();
 const emit = defineEmits<{
   supplement: [draft: MarketSignalSupplementDraft];
 }>();
+
 const expandedEvidenceId = shallowRef<string | null>(null);
 const selectedGapCode = shallowRef<MarketSignalGapCode | null>(null);
+const evidenceOpen = shallowRef(false);
 const selectedGap = computed(
   () =>
     props.signal.gaps.find((gap) => gap.code === selectedGapCode.value) ?? null,
 );
+
+const evidenceByDate = computed(() => {
+  const groups = new Map<string, MarketSignalScenario["evidence"][number][]>();
+  for (const item of props.signal.evidence) {
+    const day = item.observedAt;
+    const bucket = groups.get(day) ?? [];
+    bucket.push(item);
+    groups.set(day, bucket);
+  }
+  return [...groups.entries()].map(([date, items]) => ({ date, items }));
+});
+
+const evidenceSummary = computed(() => {
+  const count = props.signal.evidence.length;
+  if (count === 0) return "无来源证据";
+  const dates = [
+    ...new Set(props.signal.evidence.map((item) => item.observedAt)),
+  ];
+  if (dates.length === 1) return `${count} 条来源 · ${dates[0]}`;
+  return `${count} 条来源 · ${dates[dates.length - 1]} 至 ${dates[0]}`;
+});
 
 watch(
   () => props.signal.id,
   () => {
     expandedEvidenceId.value = null;
     selectedGapCode.value = null;
+    evidenceOpen.value = false;
+  },
+);
+
+watch(
+  () => props.closed,
+  (closed) => {
+    if (closed) {
+      selectedGapCode.value = null;
+      evidenceOpen.value = false;
+    }
   },
 );
 
@@ -39,6 +78,7 @@ function toggleEvidence(id: string): void {
 }
 
 function openGap(code: MarketSignalGapCode): void {
+  if (props.closed) return;
   selectedGapCode.value = selectedGapCode.value === code ? null : code;
 }
 
@@ -61,8 +101,8 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 </script>
 
 <template>
-  <article class="evidence-panel">
-    <header class="pane-heading">
+  <article class="evidence-panel" :class="{ 'evidence-panel--closed': closed }">
+    <header v-if="!closed" class="pane-heading">
       <div>
         <small>依据是什么</small>
         <h2>{{ signal.title }}</h2>
@@ -70,93 +110,159 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
       <span>{{ signal.owner }}</span>
     </header>
 
-    <dl class="signal-scope">
-      <div>
-        <dt><MapPin :size="14" aria-hidden="true" />市场</dt>
-        <dd :class="{ missing: !signal.market }">
-          {{ signal.market || "待补，不影响先处理" }}
-        </dd>
+    <section
+      class="judgment-layer"
+      :aria-label="closed ? '关闭时的事实与判断' : '事实与经营判断'"
+    >
+      <div class="judgment-layer__head">
+        <small>判断</small>
+        <h3>事实与经营判断</h3>
       </div>
-      <div>
-        <dt><RadioTower :size="14" aria-hidden="true" />渠道</dt>
-        <dd :class="{ missing: !signal.channel }">
-          {{ signal.channel || "待补，不影响先处理" }}
-        </dd>
+      <div class="fact-hypothesis">
+        <section aria-labelledby="observed-title">
+          <span class="section-marker">已观察到</span>
+          <h4 id="observed-title">事实</h4>
+          <ul v-if="signal.observedFacts.length">
+            <li v-for="fact in signal.observedFacts" :key="fact">{{ fact }}</li>
+          </ul>
+          <p v-else class="missing-copy">
+            {{
+              closed
+                ? "关闭时未登记观察事实。"
+                : "观察事实待补，可以先判断去向。"
+            }}
+          </p>
+        </section>
+        <section aria-labelledby="hypothesis-title">
+          <span class="section-marker section-marker--hypothesis"
+            >尚待验证</span
+          >
+          <h4 id="hypothesis-title">经营判断</h4>
+          <p v-if="signal.hypothesis">
+            <Lightbulb :size="17" aria-hidden="true" />{{ signal.hypothesis }}
+          </p>
+          <p v-else class="missing-copy">
+            <Lightbulb :size="17" aria-hidden="true" />
+            {{
+              closed ? "关闭时未登记经营判断。" : "经营判断待补，可以后续完善。"
+            }}
+          </p>
+        </section>
       </div>
-      <div>
-        <dt>商品范围</dt>
-        <dd :class="{ missing: !signal.category }">
-          {{ signal.category || "待选择，不影响先处理" }}
-        </dd>
-      </div>
-    </dl>
+    </section>
 
-    <div class="fact-hypothesis">
-      <section aria-labelledby="observed-title">
-        <span class="section-marker">已观察到</span>
-        <h3 id="observed-title">事实</h3>
-        <ul v-if="signal.observedFacts.length">
-          <li v-for="fact in signal.observedFacts" :key="fact">{{ fact }}</li>
-        </ul>
-        <p v-else class="missing-copy">观察事实待补，可以先判断去向。</p>
-      </section>
-      <section aria-labelledby="hypothesis-title">
-        <span class="section-marker section-marker--hypothesis">尚待验证</span>
-        <h3 id="hypothesis-title">经营判断</h3>
-        <p v-if="signal.hypothesis">
-          <Lightbulb :size="17" aria-hidden="true" />{{ signal.hypothesis }}
-        </p>
-        <p v-else class="missing-copy">
-          <Lightbulb
-            :size="17"
-            aria-hidden="true"
-          />经营判断待补，可以后续完善。
-        </p>
-      </section>
-    </div>
+    <section class="basis-layer" aria-label="依据与范围">
+      <dl class="signal-scope">
+        <div>
+          <dt><MapPin :size="14" aria-hidden="true" />市场</dt>
+          <dd :class="{ missing: !closed && !signal.market }">
+            {{
+              signal.market || (closed ? "关闭时未填" : "待补，不影响先处理")
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt><RadioTower :size="14" aria-hidden="true" />渠道</dt>
+          <dd :class="{ missing: !closed && !signal.channel }">
+            {{
+              signal.channel || (closed ? "关闭时未填" : "待补，不影响先处理")
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt>商品范围</dt>
+          <dd :class="{ missing: !closed && !signal.category }">
+            {{
+              signal.category ||
+              (closed ? "关闭时未填" : "待选择，不影响先处理")
+            }}
+          </dd>
+        </div>
+      </dl>
+
+      <p
+        v-if="closed && signal.gaps.length"
+        class="closed-gap-summary"
+        role="status"
+      >
+        关闭时 {{ signal.gaps.length }} 项未补齐（{{
+          signal.gaps.map((gap) => gap.fieldLabel).join("、")
+        }}）
+      </p>
+      <p
+        v-else-if="closed"
+        class="closed-gap-summary closed-gap-summary--ok"
+        role="status"
+      >
+        关闭时无未补项。
+      </p>
+    </section>
 
     <section class="source-section" aria-labelledby="source-title">
-      <div class="section-heading">
-        <div>
+      <button
+        type="button"
+        class="evidence-fold"
+        :aria-expanded="evidenceOpen"
+        @click="evidenceOpen = !evidenceOpen"
+      >
+        <span>
           <small>来源证据</small>
-          <h3 id="source-title">这条信号从哪里来</h3>
-        </div>
-        <span>{{ signal.evidence.length }} 项</span>
-      </div>
-      <ul v-if="signal.evidence.length" class="source-list">
-        <li v-for="evidence in signal.evidence" :key="evidence.id">
-          <button
-            type="button"
-            class="source-trigger"
-            :aria-expanded="expandedEvidenceId === evidence.id"
-            @click="toggleEvidence(evidence.id)"
+          <b id="source-title">{{ evidenceSummary }}</b>
+        </span>
+        <ChevronDown
+          :size="16"
+          aria-hidden="true"
+          :class="{ open: evidenceOpen }"
+        />
+      </button>
+
+      <div v-if="evidenceOpen" class="evidence-body">
+        <ul v-if="evidenceByDate.length" class="source-timeline">
+          <li
+            v-for="group in evidenceByDate"
+            :key="group.date"
+            class="source-day"
           >
-            <FileText :size="17" aria-hidden="true" />
-            <span>
-              <b>{{ evidence.sourceName }}</b>
-              <small>{{ evidence.detail }}</small>
-            </span>
-            <time :datetime="evidence.observedAt">{{
-              evidence.observedAt
-            }}</time>
-          </button>
-          <div v-if="expandedEvidenceId === evidence.id" class="source-preview">
-            <p>{{ evidence.previewText }}</p>
-            <span v-if="evidence.attachmentName">
-              附件：{{ evidence.attachmentName }}
-            </span>
-            <a
-              v-if="safeSourceUrl(evidence.sourceUrl)"
-              :href="safeSourceUrl(evidence.sourceUrl)!"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              打开原始来源 <ExternalLink :size="14" aria-hidden="true" />
-            </a>
-          </div>
-        </li>
-      </ul>
-      <p v-else class="source-empty">来源证据待补，可以先判断去向。</p>
+            <time :datetime="group.date">{{ group.date }}</time>
+            <ul class="source-list">
+              <li v-for="evidence in group.items" :key="evidence.id">
+                <button
+                  type="button"
+                  class="source-trigger"
+                  :aria-expanded="expandedEvidenceId === evidence.id"
+                  @click="toggleEvidence(evidence.id)"
+                >
+                  <FileText :size="17" aria-hidden="true" />
+                  <span>
+                    <b>{{ evidence.sourceName }}</b>
+                    <small>{{ evidence.detail }}</small>
+                  </span>
+                </button>
+                <div
+                  v-if="expandedEvidenceId === evidence.id"
+                  class="source-preview"
+                >
+                  <p>{{ evidence.previewText }}</p>
+                  <span v-if="evidence.attachmentName">
+                    附件：{{ evidence.attachmentName }}
+                  </span>
+                  <a
+                    v-if="safeSourceUrl(evidence.sourceUrl)"
+                    :href="safeSourceUrl(evidence.sourceUrl)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    打开原始来源 <ExternalLink :size="14" aria-hidden="true" />
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        <p v-else class="source-empty">
+          {{ closed ? "关闭时无来源证据。" : "来源证据待补，可以先判断去向。" }}
+        </p>
+      </div>
     </section>
 
     <section
@@ -179,7 +285,11 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
       </dl>
     </section>
 
-    <section v-if="signal.gaps.length" class="gap-strip" aria-label="仍待补充">
+    <section
+      v-if="!closed && signal.gaps.length"
+      class="gap-strip"
+      aria-label="仍待补充"
+    >
       <b>仍待补</b>
       <button
         v-for="gap in signal.gaps"
@@ -197,7 +307,7 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
     </section>
 
     <MarketSignalGapEditor
-      v-if="selectedGap"
+      v-if="!closed && selectedGap"
       :gap="selectedGap"
       @save="saveSupplement"
       @cancel="selectedGapCode = null"
@@ -208,6 +318,10 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 <style scoped>
 .evidence-panel {
   min-width: 0;
+}
+
+.evidence-panel--closed {
+  filter: saturate(0.78);
 }
 
 .pane-heading,
@@ -229,22 +343,19 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .pane-heading small,
-.section-heading small {
+.section-heading small,
+.judgment-layer__head small {
   color: var(--brand-strong);
   font-size: var(--text-micro);
   font-weight: 700;
 }
 
-.pane-heading h2,
-.section-heading h3 {
-  margin: var(--space-1) 0 0;
-  color: var(--ink);
-  line-height: var(--leading-title);
-}
-
 .pane-heading h2 {
+  margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
+  color: var(--ink);
   font-size: var(--text-title);
+  line-height: var(--leading-title);
 }
 
 .pane-heading > span,
@@ -254,11 +365,90 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
   font-size: var(--text-label);
 }
 
+.judgment-layer {
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid var(--brand);
+}
+
+.judgment-layer__head {
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.judgment-layer__head h3 {
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--ink);
+  font-size: calc(var(--text-title) * 1.05);
+  line-height: var(--leading-title);
+}
+
+.fact-hypothesis {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+.fact-hypothesis section {
+  min-width: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.fact-hypothesis section + section {
+  border-left: 1px solid var(--line);
+  background: var(--info-bg);
+}
+
+.section-marker {
+  display: inline-flex;
+  margin-bottom: var(--space-2);
+  color: var(--ok);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+
+.section-marker--hypothesis {
+  color: var(--info);
+}
+
+.fact-hypothesis h4 {
+  margin: 0 0 var(--space-3);
+  color: var(--ink);
+  font-size: var(--text-title);
+}
+
+.fact-hypothesis ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.fact-hypothesis li,
+.fact-hypothesis p {
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+}
+
+.fact-hypothesis p {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.fact-hypothesis p svg {
+  flex: none;
+  margin-top: var(--space-1);
+  color: var(--info);
+}
+
+.basis-layer {
+  border-bottom: 1px solid var(--line);
+}
+
 .signal-scope {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
-  border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
 
@@ -292,69 +482,169 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
   color: var(--warn);
 }
 
-.fact-hypothesis {
+.closed-gap-summary {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  color: var(--ink-soft);
+  font-size: var(--text-meta);
+  line-height: var(--leading-body);
+}
+
+.closed-gap-summary--ok {
+  color: var(--muted);
+}
+
+.source-section {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.evidence-fold {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.evidence-fold span {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  border-bottom: 1px solid var(--line);
+  gap: var(--space-1);
 }
 
-.fact-hypothesis section {
-  min-width: 0;
-  padding: var(--space-4);
-}
-
-.fact-hypothesis section + section {
-  border-left: 1px solid var(--line);
-  background: var(--info-bg);
-}
-
-.section-marker {
-  display: inline-flex;
-  margin-bottom: var(--space-2);
-  color: var(--ok);
+.evidence-fold small {
+  color: var(--brand-strong);
   font-size: var(--text-micro);
   font-weight: 700;
 }
 
-.section-marker--hypothesis {
-  color: var(--info);
-}
-
-.fact-hypothesis h3 {
-  margin: 0 0 var(--space-3);
+.evidence-fold b {
   color: var(--ink);
-  font-size: var(--text-title);
+  font-size: var(--text-meta);
+  font-weight: 600;
 }
 
-.fact-hypothesis ul {
+.evidence-fold svg {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.evidence-fold svg.open {
+  transform: rotate(180deg);
+}
+
+.evidence-body {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
+.source-timeline {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin: 0;
-  padding-left: var(--space-5);
+  padding: 0;
+  list-style: none;
 }
 
-.fact-hypothesis li,
-.fact-hypothesis p {
+.source-day > time {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+
+.source-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.source-list li {
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.source-trigger {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.source-trigger svg {
+  margin-top: 2px;
+  color: var(--brand-strong);
+}
+
+.source-trigger span {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.source-trigger b {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: var(--text-meta);
+}
+
+.source-trigger small {
   color: var(--ink-soft);
   font-size: var(--text-label);
   line-height: var(--leading-body);
 }
 
-.fact-hypothesis p {
-  display: flex;
-  align-items: flex-start;
+.source-preview {
+  display: grid;
   gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+}
+
+.source-preview p {
   margin: 0;
 }
 
-.fact-hypothesis p svg {
-  flex: none;
-  margin-top: var(--space-1);
-  color: var(--info);
+.source-preview a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--brand-strong);
+  text-decoration: none;
+  font-weight: 600;
 }
 
-.source-section {
-  padding: var(--space-4);
+.source-empty,
+.missing-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
 }
 
 .supplement-section {
@@ -391,135 +681,30 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .section-heading h3 {
+  margin: var(--space-1) 0 0;
   font-size: var(--text-meta);
-}
-
-.source-list {
-  display: grid;
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  border-top: 1px solid var(--line);
-  list-style: none;
-}
-
-.source-list li {
-  min-width: 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.source-trigger {
-  width: 100%;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-
-.source-trigger:hover {
-  background: var(--surface-2);
-}
-
-.source-trigger:focus-visible,
-.source-preview a:focus-visible {
-  outline: 0;
-  box-shadow: var(--focus-ring);
-}
-
-.source-trigger > svg {
-  color: var(--brand-strong);
-}
-
-.source-trigger > span {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.source-list b {
-  color: var(--ink);
-  font-size: var(--text-label);
-}
-
-.source-list small,
-.source-list time {
-  color: var(--muted);
-  font-size: var(--text-micro);
-}
-
-.source-preview {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-3) var(--space-6);
-  padding: var(--space-3);
-  border-left: 3px solid var(--info);
-  background: var(--info-bg);
-}
-
-.source-preview p {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: var(--text-label);
-  line-height: var(--leading-body);
-}
-
-.source-preview span {
-  color: var(--muted);
-  font-size: var(--text-micro);
-}
-
-.source-preview a {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--brand-strong);
-  font-size: var(--text-label);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.source-empty,
-.missing-copy {
-  color: var(--warn);
-  font-size: var(--text-label);
-}
-
-.source-empty {
-  margin: var(--space-3) 0 0;
-  padding: var(--space-3);
-  background: var(--warn-bg);
 }
 
 .gap-strip {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--line);
   background: var(--warn-bg);
-  color: var(--ink-soft);
-  font-size: var(--text-label);
 }
 
 .gap-strip b {
   color: var(--warn);
+  font-size: var(--text-meta);
 }
 
 .gap-strip button {
-  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  min-height: 34px;
   padding: 0 var(--space-2);
   border: 1px solid var(--warn);
   border-radius: var(--radius-control);
@@ -527,56 +712,31 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
   color: var(--warn);
   cursor: pointer;
   font: inherit;
-  font-size: var(--text-micro);
-  font-weight: 700;
+  font-size: var(--text-label);
 }
 
-.gap-strip button.active,
-.gap-strip button:hover {
+.gap-strip button.active {
   background: var(--warn);
   color: var(--surface);
 }
 
-.gap-strip button:focus-visible {
-  outline: 0;
-  box-shadow: var(--focus-ring);
-}
-
 .gap-strip small {
-  flex: 1 1 220px;
-  color: var(--muted);
+  flex: 1 1 100%;
+  color: var(--ink-soft);
   font-size: var(--text-micro);
-  text-align: right;
 }
 
-@media (max-width: 680px) {
-  .signal-scope,
-  .fact-hypothesis {
+@media (max-width: 860px) {
+  .fact-hypothesis,
+  .signal-scope {
     grid-template-columns: 1fr;
   }
 
-  .signal-scope > div,
-  .fact-hypothesis section + section {
-    border-right: 0;
+  .fact-hypothesis section + section,
+  .signal-scope > div {
     border-left: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .source-trigger {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .source-trigger time {
-    grid-column: 2;
-  }
-
-  .gap-strip small {
-    text-align: left;
-  }
-
-  .supplement-list > div {
-    grid-template-columns: 1fr;
-    gap: var(--space-1);
+    border-right: 0;
+    border-top: 1px solid var(--line);
   }
 }
 </style>
