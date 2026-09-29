@@ -11,6 +11,11 @@
 
 业务规则先在 doc/ 说明目的、责任和业务结果；实施时由 docs/ 中的正式契约承接。状态码、事件码、DTO和数据库结构不在两处重复维护。
 
+岗位工作台的业务目标、操作流程、共同人性化要求和完成标准只在
+[`cross-border-supply-chain/03-sourcing-and-replenishment-workbenches.md`](./cross-border-supply-chain/03-sourcing-and-replenishment-workbenches.md)
+与 [`cross-border-supply-chain/08-role-workbenches.md`](./cross-border-supply-chain/08-role-workbenches.md)
+维护。`docs/` 中的 UI 规则、task brief、契约和测试只能引用并实现这些业务决定，不得另写一套业务规格；实施发现业务规则不成立时，先回到 `doc/` 或业务 ADR 修订，再改技术映射。
+
 ## 当前权威资料集
 
 - [跨境电商端到端供应链业务蓝图](./cross-border-supply-chain/README.md)

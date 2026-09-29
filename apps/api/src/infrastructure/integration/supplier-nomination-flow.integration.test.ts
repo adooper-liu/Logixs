@@ -36,6 +36,7 @@ import {
 } from "../../modules/master-data/domain/product-identity";
 import { PrismaProductIdentityRepository } from "../../modules/master-data/infrastructure/prisma-product-identity.repository";
 import {
+  AdmitSupplierService,
   ListSourcingQueueService,
   NominateSupplierService,
   RecordQuotationService,
@@ -63,6 +64,7 @@ let prisma: PrismaClient;
 let repository: PrismaSupplierNominationRepository;
 let queue: ListSourcingQueueService;
 let register: RegisterSupplierService;
+let admit: AdmitSupplierService;
 let quote: RecordQuotationService;
 let nominate: NominateSupplierService;
 let identity: PrismaProductIdentityRepository;
@@ -93,6 +95,7 @@ beforeAll(async () => {
   repository = new PrismaSupplierNominationRepository(prisma as never);
   queue = new ListSourcingQueueService(repository);
   register = new RegisterSupplierService(repository);
+  admit = new AdmitSupplierService(repository);
   quote = new RecordQuotationService(repository);
   nominate = new NominateSupplierService(repository);
   identity = new PrismaProductIdentityRepository(prisma as never);
@@ -252,7 +255,7 @@ describe("定点", () => {
     const seeded = await seedRelease();
     const supplierId = await registerSupplier(
       `供应商-${randomUUID().slice(0, 6)}`,
-      "pending",
+      { admit: false },
     );
     const quotation = await quoteIt(seeded, supplierId, {});
 
@@ -317,7 +320,7 @@ async function entryOf(seeded: { releaseId: string; skuId: string }) {
 
 async function registerSupplier(
   name: string,
-  admissionState: "pending" | "admitted" = "admitted",
+  options: { admit?: boolean } = {},
 ): Promise<string> {
   const supplier = await register.execute({
     tenantId,
@@ -326,13 +329,26 @@ async function registerSupplier(
       contractVersion: "supplier-register.v1",
       name,
       countryCode: "CN",
-      admissionState,
+      admissionState: "pending",
       // 每次登记都是**另一个请求**，所以幂等键要唯一 ——
       // 用同一个键会被当成重放，撞不到名称唯一那条约束。
       idempotencyKey: `register-${randomUUID()}`,
     },
   });
-  return supplier.supplierId;
+  if (options.admit === false) {
+    return supplier.supplierId;
+  }
+  const admitted = await admit.execute({
+    tenantId,
+    actorId: BUYER,
+    supplierId: supplier.supplierId,
+    command: {
+      contractVersion: "supplier-admit.v1",
+      expectedSupplierVersion: supplier.version,
+      idempotencyKey: `admit-${randomUUID()}`,
+    },
+  });
+  return admitted.supplierId;
 }
 
 function quotationCommand(

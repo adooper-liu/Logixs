@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type {
+  AdmitSupplierCommandV1,
   NominateSupplierCommandV1,
   RecordQuotationCommandV1,
   RegisterSupplierCommandV1,
@@ -38,8 +39,16 @@ export interface PreparedSupplier {
   countryCode: string;
   contactName: string | null;
   contactEmail: string | null;
-  admissionState: SupplierAdmissionStateV1;
+  admissionState: "pending";
   version: number;
+  idempotencyKey: string;
+  payloadHash: string;
+}
+
+export interface PreparedAdmission {
+  expectedSupplierVersion: number;
+  version: number;
+  admissionState: "admitted";
   idempotencyKey: string;
   payloadHash: string;
 }
@@ -85,7 +94,8 @@ export function prepareSupplierRegistration(
     invalid("contractVersion");
   }
   text(actorId, "actorId", 200);
-  if (!SUPPLIER_ADMISSION_STATES.includes(command.admissionState)) {
+  // 登记只建身份；准入必须另走授权动作，不能在登记时顺手勾上。
+  if (command.admissionState !== "pending") {
     invalid("admissionState");
   }
   const normalized = {
@@ -93,8 +103,36 @@ export function prepareSupplierRegistration(
     countryCode: countryCode(command.countryCode, "countryCode"),
     contactName: optionalText(command.contactName, "contactName", 100),
     contactEmail: optionalText(command.contactEmail, "contactEmail", 200),
-    admissionState: command.admissionState,
+    admissionState: "pending" as const,
     version: 1,
+    idempotencyKey: text(command.idempotencyKey, "idempotencyKey", 200),
+  };
+  return { ...normalized, payloadHash: hash(normalized) };
+}
+
+export function prepareSupplierAdmission(
+  current: CurrentSupplier,
+  actorId: string,
+  command: AdmitSupplierCommandV1,
+): PreparedAdmission {
+  if (command.contractVersion !== "supplier-admit.v1") {
+    invalid("contractVersion");
+  }
+  text(actorId, "actorId", 200);
+  const expectedSupplierVersion = requireVersion(
+    current.version,
+    command.expectedSupplierVersion,
+  );
+  if (current.admissionState === "admitted") {
+    conflict("SUPPLIER_ALREADY_ADMITTED");
+  }
+  if (current.admissionState === "suspended") {
+    conflict("SUPPLIER_SUSPENDED");
+  }
+  const normalized = {
+    expectedSupplierVersion,
+    version: current.version + 1,
+    admissionState: "admitted" as const,
     idempotencyKey: text(command.idempotencyKey, "idempotencyKey", 200),
   };
   return { ...normalized, payloadHash: hash(normalized) };

@@ -285,7 +285,28 @@
         "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
         "contactName": { "type": ["string", "null"], "maxLength": 100 },
         "contactEmail": { "type": ["string", "null"], "maxLength": 200 },
-        "admissionState": { "$ref": "#/$defs/SupplierAdmissionStateV1" },
+        "admissionState": {
+          "const": "pending",
+          "description": "登记只建立身份，默认待准入；准入走独立授权动作。"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "AdmitSupplierCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedSupplierVersion",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "supplier-admit.v1" },
+        "expectedSupplierVersion": { "type": "integer", "minimum": 1 },
         "idempotencyKey": {
           "type": "string",
           "minLength": 1,

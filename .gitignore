@@ -19,6 +19,9 @@ __pycache__/
 # Workspace-only disposable design references; never project source.
 adminator/
 
+# Linked git worktrees (local isolation only)
+.worktrees/
+
 # Local environment and editor state
 .env
 .env.*

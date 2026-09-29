@@ -6,6 +6,7 @@ import {
   Injectable,
 } from "@nestjs/common";
 import type {
+  AdmitSupplierCommandV1,
   NominateSupplierCommandV1,
   RecordQuotationCommandV1,
   RegisterSupplierCommandV1,
@@ -16,6 +17,7 @@ import type {
 import {
   prepareNomination,
   prepareQuotation,
+  prepareSupplierAdmission,
   prepareSupplierRegistration,
   SourcingConflictError,
   type CurrentSupplier,
@@ -107,6 +109,53 @@ export class RegisterSupplierService {
       }
       const result = await this.repository.registerSupplier({
         tenantId: input.tenantId,
+        actorId: input.actorId,
+        command: prepared,
+      });
+      return toSupplierV1(result.record);
+    } catch (error) {
+      throwSourcingHttpError(error);
+    }
+  }
+}
+
+/** 准入：独立授权动作。登记不等于准入，未准入不能定点。 */
+@Injectable()
+export class AdmitSupplierService {
+  constructor(
+    @Inject(SUPPLIER_NOMINATION_REPOSITORY)
+    private readonly repository: SupplierNominationRepository,
+  ) {}
+
+  async execute(input: {
+    tenantId: string;
+    actorId: string;
+    supplierId: string;
+    command: AdmitSupplierCommandV1;
+  }): Promise<SupplierV1> {
+    if (!input.tenantId || !input.actorId) {
+      throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
+    }
+    try {
+      const supplier = await this.repository.findSupplier(
+        input.tenantId,
+        input.supplierId,
+      );
+      if (!supplier) {
+        throw new SourcingNotFoundError("SUPPLIER_NOT_FOUND");
+      }
+      // 已准入视为成功重放：避免重复点击把「已准入」误报成冲突。
+      if (supplier.admissionState === "admitted") {
+        return toSupplierV1(supplier);
+      }
+      const prepared = prepareSupplierAdmission(
+        supplier,
+        input.actorId,
+        input.command,
+      );
+      const result = await this.repository.persistAdmission({
+        tenantId: input.tenantId,
+        supplierId: input.supplierId,
         actorId: input.actorId,
         command: prepared,
       });

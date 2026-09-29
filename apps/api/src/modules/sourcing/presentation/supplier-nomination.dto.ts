@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import type {
+  AdmitSupplierCommandV1,
   NominateSupplierCommandV1,
   RecordQuotationCommandV1,
   RegisterSupplierCommandV1,
@@ -67,8 +68,15 @@ export class RegisterSupplierRequestDto implements RegisterSupplierCommandV1 {
   @ApiProperty() countryCode!: string;
   @ApiPropertyOptional({ nullable: true }) contactName?: string | null;
   @ApiPropertyOptional({ nullable: true }) contactEmail?: string | null;
-  @ApiProperty({ enum: ADMISSION_STATES })
-  admissionState!: RegisterSupplierCommandV1["admissionState"];
+  @ApiProperty({ enum: ["pending"] })
+  admissionState!: "pending";
+  @ApiProperty() idempotencyKey!: string;
+}
+
+export class AdmitSupplierRequestDto implements AdmitSupplierCommandV1 {
+  @ApiProperty({ enum: ["supplier-admit.v1"] })
+  contractVersion!: "supplier-admit.v1";
+  @ApiProperty() expectedSupplierVersion!: number;
   @ApiProperty() idempotencyKey!: string;
 }
 

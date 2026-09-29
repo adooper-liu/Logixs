@@ -31,10 +31,22 @@ test("sourcing owner collects a quotation and nominates the supplier", async ({
       suppliers.push(
         supplier({
           name: String(body.name),
-          admissionState: String(body.admissionState),
+          admissionState: "pending",
+          version: 1,
         }),
       );
       await route.fulfill({ json: suppliers[0] });
+      return;
+    }
+    if (path.endsWith("/admit") && request.method() === "POST") {
+      const current = suppliers[0];
+      if (!current) {
+        await route.fulfill({ status: 404, json: { code: "NOT_FOUND" } });
+        return;
+      }
+      current.admissionState = "admitted";
+      current.version = Number(current.version) + 1;
+      await route.fulfill({ json: current });
       return;
     }
     if (path.endsWith("/quotations") && request.method() === "POST") {
@@ -79,14 +91,21 @@ test("sourcing owner collects a quotation and nominates the supplier", async ({
     page.getByText("还没有人报价。先在右栏登记供应商"),
   ).toBeVisible();
 
-  // 登记一家已准入的供应商。
+  // 登记供应商：默认待准入，国别必须手填。
   await page.getByLabel("供应商名称").fill("宁波某某塑胶");
+  await page.getByLabel("供应商国别").fill("CN");
   await page.getByRole("button", { name: "登记", exact: true }).click();
-  await expect(page.getByText(/已登记供应商/)).toBeVisible();
+  await expect(page.getByText(/已登记供应商（待准入）/)).toBeVisible();
 
-  // 录入报价：十项 + **由供应商带入的关键物料**。
+  // 准入是独立动作；未准入不能定点。
+  await page.getByRole("button", { name: "准入 宁波某某塑胶" }).click();
+  await expect(page.getByText(/已准入供应商/)).toBeVisible();
+
+  // 录入报价：十项 + **由供应商带入的关键物料**；币种/起订量/术语不预填。
   await page.getByLabel("报价的供应商").selectOption({ index: 1 });
   await page.getByLabel("单价").fill("18.5000");
+  await page.getByLabel("币种").fill("USD");
+  await page.getByLabel("起订量").fill("500");
   await page.getByLabel("贸易术语").fill("FOB Ningbo / Incoterms 2020");
   await page.getByLabel("模具费").fill("1200");
   await page.getByLabel("交期").fill("35");
@@ -131,7 +150,11 @@ function entry(input: {
   };
 }
 
-function supplier(overrides: { name: string; admissionState: string }) {
+function supplier(overrides: {
+  name: string;
+  admissionState: string;
+  version?: number;
+}) {
   return {
     contractVersion: "supplier.v1",
     supplierId: "supplier-1",
@@ -140,7 +163,7 @@ function supplier(overrides: { name: string; admissionState: string }) {
     contactName: null,
     contactEmail: null,
     admissionState: overrides.admissionState,
-    version: 1,
+    version: overrides.version ?? 1,
     createdAt: "2026-09-28T10:00:00.000Z",
     updatedAt: "2026-09-28T10:00:00.000Z",
   };

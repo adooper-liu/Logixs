@@ -7,12 +7,14 @@ import type {
   SupplierV1,
 } from "@logix/contracts";
 import {
+  admitSupplier,
   listSourcingQueue,
   nominateSupplier,
   recordQuotation,
   registerSupplier,
   type SourcingQueueEntry,
 } from "../api/sourcing";
+import { quotationsAreComparable } from "../data/sourcingQuotationCompare";
 
 /** 队列条目的稳定键：**一份发布里的一个 SKU** —— 寻源的对象是它，不是"这一票"。 */
 export function entryKey(entry: {
@@ -74,7 +76,7 @@ export function useSourcingWorkbench(options: { selectedKey: Ref<string> }) {
     }
   }
 
-  /** 各家报价的最低单价 —— 比价看的是**同一档位**，所以取最小起订量那一档对齐不了，这里只做排序提示。 */
+  /** 各家报价的最低单价 —— 仅同口径时用于提示，不可比时不算排名。 */
   function lowestPrice(quotation: SupplierQuotationV1): string {
     const cheapest = [...quotation.priceTiers].sort(
       (left, right) => Number(left.unitPrice) - Number(right.unitPrice),
@@ -82,20 +84,34 @@ export function useSourcingWorkbench(options: { selectedKey: Ref<string> }) {
     return cheapest ? `${cheapest.unitPrice} ${cheapest.currency}` : "—";
   }
 
+  function canRankByPrice(rows: readonly SupplierQuotationV1[]): boolean {
+    return quotationsAreComparable(rows);
+  }
+
   async function addSupplier(command: {
     name: string;
     countryCode: string;
-    admissionState: "pending" | "admitted";
   }): Promise<boolean> {
     return act(async () => {
       await registerSupplier({
         contractVersion: "supplier-register.v1",
         name: command.name,
         countryCode: command.countryCode,
-        admissionState: command.admissionState,
+        admissionState: "pending",
         idempotencyKey: `register:${command.name}`,
       });
-      return "已登记供应商";
+      return "已登记供应商（待准入）";
+    });
+  }
+
+  async function admit(supplier: SupplierV1): Promise<boolean> {
+    return act(async () => {
+      await admitSupplier(supplier.supplierId, {
+        contractVersion: "supplier-admit.v1",
+        expectedSupplierVersion: supplier.version,
+        idempotencyKey: `admit:${supplier.supplierId}:${supplier.version}`,
+      });
+      return "已准入供应商";
     });
   }
 
@@ -182,7 +198,9 @@ export function useSourcingWorkbench(options: { selectedKey: Ref<string> }) {
     receipt,
     load,
     lowestPrice,
+    canRankByPrice,
     addSupplier,
+    admit,
     addQuotation,
     nominate,
   };
