@@ -216,6 +216,28 @@ describe("useProductInitiativeDecision", () => {
     expect(state.currentReason.value).toBe("证据不足，等双十一数据");
   });
 
+  it("NPI 退回不是选品决定去向，回填时不把它当成退回经营", async () => {
+    getProductInitiative.mockResolvedValue(
+      detail({
+        initiative: {
+          ...initiative(),
+          outcome: "returned_from_npi",
+          completion: "completed",
+          currentDestination: "returned_from_npi",
+          reason: "样品结构与立项目标不符",
+          objective: "可折叠宠物出行包",
+        },
+      }),
+    );
+
+    const state = await mountComposable();
+
+    expect(state.destination.value).toBe("approve");
+    expect(state.currentReason.value).toBe("");
+    expect(state.objective.value).toBe("可折叠宠物出行包");
+    expect(state.decided.value).toBe(false);
+  });
+
   it("回填后重放同一去向会带上已记录的原因，不会把它抹掉", async () => {
     getProductInitiative.mockResolvedValue(
       detail({

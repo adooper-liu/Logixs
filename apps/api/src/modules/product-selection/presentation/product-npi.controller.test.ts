@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { REQUIRED_CAPABILITIES_KEY } from "../../../security/require-capabilities.decorator";
 import type { ClaimProductInitiativeService } from "../application/claim-product-initiative.service";
 import type { ListNpiQueueService } from "../application/list-npi-queue.service";
+import type { ReturnProductInitiativeFromNpiService } from "../application/return-product-initiative-from-npi.service";
 import { ProductNpiController } from "./product-npi.controller";
 
 const COMMAND = {
@@ -11,7 +12,7 @@ const COMMAND = {
 } as const;
 
 describe("ProductNpiController", () => {
-  it("待办队列要读权限，领取要写权限", () => {
+  it("待办队列要读权限，领取与退回要写权限", () => {
     expect(
       Reflect.getMetadata(
         REQUIRED_CAPABILITIES_KEY,
@@ -24,6 +25,12 @@ describe("ProductNpiController", () => {
         ProductNpiController.prototype.claim,
       ),
     ).toEqual(["planning.draft"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ProductNpiController.prototype.returnToSelection,
+      ),
+    ).toEqual(["planning.draft"]);
   });
 
   it("队列只传已认证的租户，不传前端给的租户", async () => {
@@ -31,6 +38,7 @@ describe("ProductNpiController", () => {
     const controller = new ProductNpiController(
       listQueue as unknown as ListNpiQueueService,
       {} as ClaimProductInitiativeService,
+      {} as ReturnProductInitiativeFromNpiService,
     );
 
     await controller.queue(
@@ -51,6 +59,7 @@ describe("ProductNpiController", () => {
     const controller = new ProductNpiController(
       {} as ListNpiQueueService,
       claimInitiative as unknown as ClaimProductInitiativeService,
+      {} as ReturnProductInitiativeFromNpiService,
     );
 
     await controller.claim(

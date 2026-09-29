@@ -1,6 +1,7 @@
 # 货柜工作台 × 岗位工作台 · 驱动模型设计
 
-> 状态：**待评审** · 2026-09-21 · 分支 `feat/warehouse-delivery-operational-flow`
+> 状态：**历史设计输入（已被现行业务工作台范围取代）** · 2026-09-21 · 分支 `feat/warehouse-delivery-operational-flow`
+> 边界：本文保留当时的 6/8 个货柜子链组织视图分析，不定义当前项目工作台数量、岗位职责或验收标准。现行 20 台范围与职责以[业务岗位工作台](../../../doc/cross-border-supply-chain/08-role-workbenches.md)为准。
 > 一句话：**货柜工作台看全局并指路，岗位工作台按节点干活；两者是同一任务池的两个投影；任务的完成由事实驱动，人只负责填事实。**
 >
 > 关联：[UX_CONTAINER_WORKBENCH](../../product/UX_CONTAINER_WORKBENCH.md)、[WORKSPACE_UI_INVENTORY](../../product/WORKSPACE_UI_INVENTORY.md)、[人话-货柜怎么往前走](../../人话-货柜怎么往前走.md)、[DOMAIN_VERTICAL_DELIVERY_PLAN](../../planning/DOMAIN_VERTICAL_DELIVERY_PLAN.md)
@@ -394,7 +395,7 @@
 
 4. **前端 6 个台是同一骨架的六次换皮。** 本设计不动结构（表单是资产），但长期应评估是否收成一个页面参数化。不在本期。
 5. **已存在的并行数据**：`ExternalWorkItem`（跨模块整改/义务，按 `assignedRoleCode` 派，与 `NodeTask` 无 FK）走 `GET /work-items`，界面强制分栏。本期不合并两者。
-6. **未建的站属于未建的组织工作台，是排期问题，不是设计空洞。** 权威映射见 [COMPLIANCE_MANAGEMENT §7.1](../../product/domain/COMPLIANCE_MANAGEMENT.md)（`UI_SYSTEM §8.5` 指定它为权威）：8 个组织工作台**分段覆盖**全部 14 个节点，不是一站一台。仍缺的 3 个组织台——
+6. **当时把未建的站归入待建组织视图。** 当时的候选映射见 [COMPLIANCE_MANAGEMENT §7.1](../../product/domain/COMPLIANCE_MANAGEMENT.md)：8 个责任分组覆盖全部 14 个节点。该映射只保留为货柜子链技术分析，不再作为现行工作台范围或排期依据。当时记录的 3 个缺口是：
 
    | 缺的组织台 | 覆盖节点                                                                    |
    | ---------- | --------------------------------------------------------------------------- |
@@ -406,7 +407,7 @@
 
    因此货柜工作台"下一步"清单里，未建组织中的节点，点击目标 = 待建台；一期标注"该组织工作台待建"即可，不阻塞轨道铺满 14 站。
 
-7. **现有 6 台与权威映射不一致：把"组织工作台"做成了"一站一台"。** 权威映射中**出运**拥有 `container_stuffing` + `shipment_dispatch` 两站，**内陆运输**拥有 `rail_transfer` + `container_pickup` + `warehouse_delivery` 三站；而现有实现拆成了 4 个独立的单节点台（装箱 / 出运 / 提柜 / 送仓）。
+7. **当时的 6 台与候选责任分组不一致：把“组织工作台”做成了“一站一台”。** 当时的责任分组中**出运**覆盖 `container_stuffing` + `shipment_dispatch` 两站，**内陆运输**覆盖 `rail_transfer` + `container_pickup` + `warehouse_delivery` 三站；而当时实现拆成了 4 个独立的单节点台（装箱 / 出运 / 提柜 / 送仓）。该分析不再决定现行正式工作台是否合并。
 
    **这正是"六个台长得一模一样"的根源**：一台只管一个节点时，台与台之间的差异就只剩中间那张事实表，骨架必然同形（见 §1.2）。组织台的意义在于"管一段"，那才会长出不同的形状。
 

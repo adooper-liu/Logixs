@@ -140,6 +140,12 @@ function repository(
     appendClaim: async () => {
       throw new Error("not used");
     },
+    findById: async () => {
+      throw new Error("not used");
+    },
+    persistNpiReturn: async () => {
+      throw new Error("not used");
+    },
   };
 }
 

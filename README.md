@@ -2,18 +2,22 @@
 
 Logix 是一个以物流业务工作流为核心、将 AI 能力嵌入具体业务步骤的工程项目。
 
-> **第一次来？先看 [人话导读](./docs/人话导读.md)**——不讲术语，10 分钟看懂这个项目是什么、怎么转的、文档去哪找。
+> **第一次来？请按角色进入对应资料集：**
+> 业务、产品和运营先看 [业务资料](./doc/README.md)；研发、测试和运维先看
+> [技术文档](./docs/README.md)。两套资料相互引用，但不重复维护同一业务规则。
 
 当前仓库采用 pnpm Workspace + Turborepo 管理应用和统一质量门禁。实施前请先阅读：
 
 - [编码代理与开发约束](./AGENTS.md)
 - [工程规则与纪律](./ENGINEERING_RULES.md)
+- [业务资料目录](./doc/README.md)
 - [技术文档目录](./docs/README.md)
 - [AI 工作流技术架构](./docs/architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)
 
 项目代码、脚本和基础设施必须遵守上述规则。架构变更应通过 ADR 记录，不能仅在代码或会议中形成隐含决定。
 
-- **文档唯一入口索引**：[docs/INDEX.md](./docs/INDEX.md)。
+- **业务资料索引**：[doc/cross-border-supply-chain/INDEX.md](./doc/cross-border-supply-chain/INDEX.md)。
+- **技术文档索引**：[docs/INDEX.md](./docs/INDEX.md)。
 
 ## 开发入口
 

@@ -4,6 +4,7 @@ import { DEV_OPERATOR_ID } from "../api/developmentIdentity";
 import {
   claimProductInitiative,
   listProductInitiativeNpiQueue,
+  returnProductInitiativeFromNpi,
 } from "../api/marketSignals";
 
 /**
@@ -86,6 +87,36 @@ export function useProductNpiWorkbench(options: {
     }
   }
 
+  async function returnToSelection(returnReason: string): Promise<boolean> {
+    const current = selected.value;
+    if (!current?.claim) return false;
+    const reason = returnReason.trim();
+    if (!reason) {
+      error.value = "退回选品必须填写理由";
+      return false;
+    }
+    saving.value = true;
+    error.value = "";
+    receipt.value = "";
+    try {
+      await returnProductInitiativeFromNpi(current.handoff.handoffId, {
+        contractVersion: "product-initiative-npi-return.v1",
+        expectedInitiativeVersion: current.initiativeVersion,
+        returnReason: reason,
+        idempotencyKey: `npi-return:${current.handoff.handoffId}:v${current.initiativeVersion}`,
+      });
+      receipt.value = `已退回选品：${reason}`;
+      await load();
+      return true;
+    } catch (failure) {
+      error.value =
+        failure instanceof Error ? failure.message : "暂时无法退回选品";
+      return false;
+    } finally {
+      saving.value = false;
+    }
+  }
+
   return {
     items,
     selected,
@@ -98,5 +129,6 @@ export function useProductNpiWorkbench(options: {
     receipt,
     load,
     claim,
+    returnToSelection,
   };
 }

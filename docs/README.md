@@ -1,13 +1,14 @@
 # 技术文档
 
-> 唯一入口索引：[INDEX](./INDEX.md)——全部文档按 规则/架构/产品/领域/规划 结构与逻辑排好，并给"一句话+状态"。
+> 技术入口索引：[INDEX](./INDEX.md)——技术文档按规则/架构/产品映射/领域契约/规划组织，并给出"一句话+状态"。
 > 领域层按 事实→清单→可视化→UI 组织；详细见 [INDEX](./INDEX.md) 与写作纪律（ENGINEERING §12）。
 > 本目录只回答如何实现、约束和验证。岗位目标、业务流程、允许动作和完成标准以
 > [`../doc/`](../doc/README.md) 为业务权威；task brief 和技术契约只能引用、映射和验证，不得另建第三套业务规格。
 
 ## 结构速览
 
-- 人话：[人话导读](./人话导读.md)（含货柜主链）· [货柜怎么往前走](./人话-货柜怎么往前走.md) · [代码怎么往前推](./planning/PROJECT_BOOTSTRAP_PLAIN_LANGUAGE.md)
+- 业务入口：[业务资料](../doc/README.md) · [20 个岗位工作台](../doc/cross-border-supply-chain/08-role-workbenches.md)
+- 技术白话：[货柜生命周期技术导读](./人话导读.md) · [货柜技术主链](./人话-货柜怎么往前走.md) · [代码怎么往前推](./planning/PROJECT_BOOTSTRAP_PLAIN_LANGUAGE.md)
 - 架构：AI 工作流技术架构 · 模块依赖 · 安全威胁模型 · ADR-001~010（索引见 INDEX §三）
 - 产品/理念：VISION · PRINCIPLES · PRODUCT_BRIEF · GLOSSARY · NFR · UX 工作台（INDEX §四）
 - 领域 domain：对象模型 / 清单字典族 / 集成迁移现网 / 治理评审（数量以 INDEX §五为准）

@@ -42,6 +42,8 @@ function entry(
       idempotencyKey: "handoff-1",
     },
     claim: overrides.claim ?? null,
+    initiativeVersion: 1,
+    initiativeDestination: "handed_off",
   };
 }
 
@@ -51,11 +53,13 @@ function repository(
   return {
     currentVersion: vi.fn(),
     findByHandoffId: vi.fn(),
+    findById: vi.fn(),
     list: vi.fn(),
     persistDecision: vi.fn(),
     listNpiQueue: vi.fn().mockResolvedValue([]),
     findNpiEntry: vi.fn().mockResolvedValue(null),
     appendClaim: vi.fn(),
+    persistNpiReturn: vi.fn(),
     ...overrides,
   } as unknown as ProductInitiativeRepository;
 }

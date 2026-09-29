@@ -91,6 +91,8 @@ export function toQueueEntry(
           claimedAt: record.claim.claimedAt.toISOString(),
         }
       : null,
+    initiativeVersion: record.initiativeVersion,
+    initiativeDestination: record.initiativeDestination,
   };
 }
 

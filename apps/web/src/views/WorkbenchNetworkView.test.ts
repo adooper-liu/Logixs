@@ -32,6 +32,9 @@ describe("WorkbenchNetworkView", () => {
     expect(wrapper.text()).toContain("还箱工作台");
     expect(wrapper.text()).toContain("费用结算工作台");
     expect(wrapper.text()).toContain("异常中心");
+    expect(wrapper.text()).toContain("已接真实能力");
+    expect(wrapper.text()).toContain("不代表业务闭环已经验收");
+    expect(wrapper.text()).not.toContain("可工作");
     expect(wrapper.get('a[href="/workspaces/dispatch"]')).toBeTruthy();
   });
 });

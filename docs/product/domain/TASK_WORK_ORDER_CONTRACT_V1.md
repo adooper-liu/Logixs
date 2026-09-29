@@ -8,7 +8,7 @@
 
 ## 1. 目的与权威边界
 
-本文件是货柜生命周期中 `NodeTask`、`WorkOrder`、状态枚举、合法转换、工单聚合、事实应用和结果事件的唯一业务权威。专业模块拥有专业事实与工单定义，`work-execution` 拥有任务、工单及其状态机，`lifecycle-control` 独占主流程转换。
+本文件是货柜生命周期中 `NodeTask`、`WorkOrder`、状态枚举、合法转换、工单聚合、事实应用和结果事件的唯一运行时技术契约。岗位目标和完成标准来自 `doc/`；专业模块拥有专业事实与工单定义，`work-execution` 拥有任务、工单及其状态机，`lifecycle-control` 独占主流程转换。
 
 “货柜是主任务”采用以下业务层级表达，不新增与 `FlowInstance` 重叠的 `ContainerTask` 聚合：
 

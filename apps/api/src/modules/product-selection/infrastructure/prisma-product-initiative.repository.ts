@@ -16,6 +16,7 @@ import {
   type ProductInitiativeReviewPoint,
 } from "../domain/product-initiative";
 import type { PreparedProductInitiativeClaim } from "../domain/product-initiative-claim";
+import type { PreparedProductInitiativeNpiReturn } from "../domain/product-initiative-npi-return";
 import type {
   ProductInitiativeClaimRecord,
   ProductInitiativeNpiEntryRecord,
@@ -28,7 +29,10 @@ type InitiativeRow = Prisma.ProductInitiativeGetPayload<{
   include: { handoff: { select: { signalId: true } } };
 }>;
 type NpiEntryRow = Prisma.ProductInitiativeHandoffGetPayload<{
-  include: { claims: true };
+  include: {
+    claims: true;
+    initiative: { select: { version: true; currentDestination: true } };
+  };
 }>;
 type ClaimRow = Prisma.ProductInitiativeClaimGetPayload<Record<string, never>>;
 
@@ -57,6 +61,17 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
   ): Promise<ProductInitiativeRecord | null> {
     const row = await this.prisma.productInitiative.findUnique({
       where: { tenantId_handoffId: { tenantId, handoffId } },
+      include: { handoff: { select: { signalId: true } } },
+    });
+    return row ? toRecord(row) : null;
+  }
+
+  async findById(
+    tenantId: string,
+    initiativeId: string,
+  ): Promise<ProductInitiativeRecord | null> {
+    const row = await this.prisma.productInitiative.findFirst({
+      where: { id: initiativeId, tenantId },
       include: { handoff: { select: { signalId: true } } },
     });
     return row ? toRecord(row) : null;
@@ -140,8 +155,9 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       if (currentVersion !== command.expectedVersion) {
         conflict("PRODUCT_INITIATIVE_VERSION_CONFLICT");
       }
-      // 立项是终态：已交到产品侧的机会不再接受新的判断。
-      if (existing?.outcome === "approve") {
+      // 仍在产品侧（handed_off）的机会不再接受选品侧新判断；
+      // NPI 退回后 destination=returned_from_npi，选品可再判。
+      if (existing?.currentDestination === "handed_off") {
         conflict("PRODUCT_INITIATIVE_ALREADY_APPROVED");
       }
 
@@ -268,6 +284,7 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
     const rows = await this.prisma.productInitiativeHandoff.findMany({
       where: {
         tenantId: input.tenantId,
+        initiative: { currentDestination: "handed_off" },
         ...(input.after
           ? {
               OR: [
@@ -284,7 +301,12 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: input.take,
-      include: { claims: { orderBy: { claimVersion: "desc" }, take: 1 } },
+      include: {
+        claims: { orderBy: { claimVersion: "desc" }, take: 1 },
+        initiative: {
+          select: { version: true, currentDestination: true },
+        },
+      },
     });
     return rows.map(toNpiEntry);
   }
@@ -295,7 +317,12 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
   ): Promise<ProductInitiativeNpiEntryRecord | null> {
     const row = await this.prisma.productInitiativeHandoff.findFirst({
       where: { id: handoffId, tenantId },
-      include: { claims: { orderBy: { claimVersion: "desc" }, take: 1 } },
+      include: {
+        claims: { orderBy: { claimVersion: "desc" }, take: 1 },
+        initiative: {
+          select: { version: true, currentDestination: true },
+        },
+      },
     });
     return row ? toNpiEntry(row) : null;
   }
@@ -368,6 +395,112 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       return { record: toClaimRecord(created), duplicate: false };
     });
   }
+
+  persistNpiReturn(input: {
+    tenantId: string;
+    initiativeHandoffId: string;
+    actorId: string;
+    command: PreparedProductInitiativeNpiReturn;
+  }): Promise<{ record: ProductInitiativeRecord; duplicate: boolean }> {
+    const { command } = input;
+    return this.prisma.$transaction(async (tx) => {
+      await advisoryLock(
+        tx,
+        `product-initiative:npi-return:${input.tenantId}:${input.initiativeHandoffId}`,
+      );
+
+      const replay = await tx.productInitiative.findUnique({
+        where: {
+          tenantId_idempotencyKey: {
+            tenantId: input.tenantId,
+            idempotencyKey: command.idempotencyKey,
+          },
+        },
+        include: { handoff: { select: { signalId: true } } },
+      });
+      if (replay) {
+        if (
+          replay.payloadHash !== command.payloadHash ||
+          replay.outcome !== "returned_from_npi"
+        ) {
+          conflict("PRODUCT_INITIATIVE_IDEMPOTENCY_CONFLICT");
+        }
+        return { record: toRecord(replay), duplicate: true };
+      }
+
+      const npiHandoff = await tx.productInitiativeHandoff.findFirst({
+        where: { id: input.initiativeHandoffId, tenantId: input.tenantId },
+        include: {
+          claims: { orderBy: { claimVersion: "desc" }, take: 1 },
+        },
+      });
+      if (!npiHandoff) {
+        throw new ProductInitiativeNotFoundError(
+          "PRODUCT_INITIATIVE_HANDOFF_NOT_FOUND",
+        );
+      }
+
+      const existing = await tx.productInitiative.findFirst({
+        where: { id: npiHandoff.initiativeId, tenantId: input.tenantId },
+        include: { handoff: { select: { signalId: true } } },
+      });
+      if (!existing) {
+        throw new ProductInitiativeNotFoundError(
+          "PRODUCT_INITIATIVE_NOT_FOUND",
+        );
+      }
+      if (existing.version !== command.expectedVersion) {
+        conflict("PRODUCT_INITIATIVE_VERSION_CONFLICT");
+      }
+      if (existing.currentDestination !== "handed_off") {
+        conflict("PRODUCT_INITIATIVE_NPI_RETURN_NOT_HANDED_OFF");
+      }
+      const owner = npiHandoff.claims[0]?.productOwnerActorId ?? null;
+      if (!owner) conflict("PRODUCT_INITIATIVE_NPI_RETURN_NOT_CLAIMED");
+      if (owner !== input.actorId) {
+        conflict("PRODUCT_INITIATIVE_NPI_RETURN_NOT_OWNER");
+      }
+
+      const row = await tx.productInitiative.update({
+        where: { id: existing.id },
+        data: {
+          version: command.version,
+          outcome: command.outcome,
+          completionState: command.completion,
+          currentDestination: command.nextDestination,
+          responsibleActorId: command.responsibleActorId,
+          reason: command.reason,
+          pendingFieldCodes: [],
+          actedBy: input.actorId,
+          idempotencyKey: command.idempotencyKey,
+          payloadHash: command.payloadHash,
+          updatedAt: new Date(),
+        },
+        include: { handoff: { select: { signalId: true } } },
+      });
+
+      await tx.outboxMessage.create({
+        data: {
+          id: randomUUID(),
+          tenantId: input.tenantId,
+          ownerModule: OWNER_MODULE,
+          eventId: randomUUID(),
+          eventType: "product_initiative.returned_from_npi",
+          eventVersion: 1,
+          aggregateType: "product_initiative",
+          aggregateId: row.id,
+          payloadRef: `product-initiative/${row.id}/v${row.version}`,
+          payloadHash: command.payloadHash,
+          state: "pending",
+          occurredAt: row.updatedAt,
+          idempotencyKey: command.idempotencyKey,
+          traceId: command.idempotencyKey,
+        },
+      });
+
+      return { record: toRecord(row), duplicate: false };
+    });
+  }
 }
 
 /** 要点引用的证据去重后汇总到交接快照，便于产品侧一次取到全部依据。 */
@@ -398,6 +531,9 @@ function toNpiEntry(row: NpiEntryRow): ProductInitiativeNpiEntryRecord {
       idempotencyKey: row.idempotencyKey,
     },
     claim: row.claims[0] ? toClaimRecord(row.claims[0]) : null,
+    initiativeVersion: row.initiative.version,
+    initiativeDestination: row.initiative
+      .currentDestination as ProductInitiativeNpiEntryRecord["initiativeDestination"],
   };
 }
 

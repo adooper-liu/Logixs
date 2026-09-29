@@ -16,7 +16,18 @@
       ]
     },
     "ProductInitiativeOutcomeV1": {
+      "description": "选品立项 decision 命令可用去向。不含 `returned_from_npi`（仅 NPI 退回写口）。",
       "enum": ["approve", "defer", "reject", "return_to_market"]
+    },
+    "ProductInitiativeStoredOutcomeV1": {
+      "description": "立项行已落库的 outcome，含 NPI→选品退回。",
+      "enum": [
+        "approve",
+        "defer",
+        "reject",
+        "return_to_market",
+        "returned_from_npi"
+      ]
     },
     "ProductInitiativeCompletionV1": {
       "enum": ["pending_completion", "completed"]
@@ -27,7 +38,8 @@
         "deferred",
         "rejected",
         "returned_to_market",
-        "handed_off"
+        "handed_off",
+        "returned_from_npi"
       ]
     },
     "ProductInitiativePendingFieldCodeV1": {
@@ -105,7 +117,7 @@
       ],
       "properties": {
         "initiativeId": { "$ref": "common.schema.json#/$defs/Uuid" },
-        "outcome": { "$ref": "#/$defs/ProductInitiativeOutcomeV1" },
+        "outcome": { "$ref": "#/$defs/ProductInitiativeStoredOutcomeV1" },
         "completion": { "$ref": "#/$defs/ProductInitiativeCompletionV1" },
         "currentDestination": {
           "$ref": "#/$defs/ProductInitiativeDestinationV1"
@@ -179,7 +191,7 @@
       ],
       "properties": {
         "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
-        "outcome": { "$ref": "#/$defs/ProductInitiativeOutcomeV1" },
+        "outcome": { "$ref": "#/$defs/ProductInitiativeStoredOutcomeV1" },
         "currentDestination": {
           "$ref": "#/$defs/ProductInitiativeDestinationV1"
         },
@@ -288,10 +300,40 @@
         }
       }
     },
+    "ProductInitiativeNpiReturnCommandV1": {
+      "description": "NPI 将已领取立项退回选品。理由必填才关闭；缺理由不得回推选品。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedInitiativeVersion",
+        "returnReason",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-initiative-npi-return.v1" },
+        "expectedInitiativeVersion": { "type": "integer", "minimum": 1 },
+        "returnReason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
     "ProductInitiativeNpiQueueEntryV1": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["handoff", "claim"],
+      "required": [
+        "handoff",
+        "claim",
+        "initiativeVersion",
+        "initiativeDestination"
+      ],
       "properties": {
         "handoff": { "$ref": "#/$defs/ProductInitiativeHandoffV1" },
         "claim": {
@@ -299,6 +341,14 @@
             { "$ref": "#/$defs/ProductInitiativeNpiClaimV1" },
             { "type": "null" }
           ]
+        },
+        "initiativeVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "立项当前版本；退回时作 expectedInitiativeVersion。"
+        },
+        "initiativeDestination": {
+          "$ref": "#/$defs/ProductInitiativeDestinationV1"
         }
       }
     },

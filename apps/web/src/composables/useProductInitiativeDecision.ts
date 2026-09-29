@@ -248,7 +248,15 @@ export function useProductInitiativeDecision(options: {
   function hydrate(loaded: ProductInitiativeDetailV1): void {
     const saved = loaded.initiative;
     objective.value = saved?.objective ?? "";
-    destination.value = saved?.outcome ?? "approve";
+    // `returned_from_npi` 不是选品决定去向，不能回填进决定草稿。
+    const outcome = saved?.outcome;
+    destination.value =
+      outcome === "approve" ||
+      outcome === "defer" ||
+      outcome === "reject" ||
+      outcome === "return_to_market"
+        ? outcome
+        : "approve";
     deferReason.value = saved?.outcome === "defer" ? (saved.reason ?? "") : "";
     rejectReason.value =
       saved?.outcome === "reject" ? (saved.reason ?? "") : "";

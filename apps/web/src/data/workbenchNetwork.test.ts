@@ -7,6 +7,7 @@ import {
   supportingWorkbenches,
   workbenchHandoffs,
   workbenchNetwork,
+  workbenchOperationalReviewOrder,
 } from "./workbenchNetwork";
 
 describe("workbenchNetwork", () => {
@@ -16,6 +17,15 @@ describe("workbenchNetwork", () => {
     );
     expect(new Set(workbenchNetwork.map((item) => item.path)).size).toBe(
       workbenchNetwork.length,
+    );
+  });
+
+  it("keeps every workbench in the operational-spec review order exactly once", () => {
+    expect(new Set(workbenchOperationalReviewOrder).size).toBe(
+      workbenchOperationalReviewOrder.length,
+    );
+    expect([...workbenchOperationalReviewOrder].sort()).toEqual(
+      workbenchNetwork.map((item) => item.code).sort(),
     );
   });
 

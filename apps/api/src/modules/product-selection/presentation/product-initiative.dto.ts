@@ -11,14 +11,20 @@ const REVIEW_POINT_CODES = [
   "compliance_risk",
 ] as const;
 
-const OUTCOMES = ["approve", "defer", "reject", "return_to_market"] as const;
-
+const DECISION_OUTCOMES = [
+  "approve",
+  "defer",
+  "reject",
+  "return_to_market",
+] as const;
+const RESPONSE_OUTCOMES = [...DECISION_OUTCOMES, "returned_from_npi"] as const;
 const DESTINATIONS = [
   "needs_decision",
   "deferred",
   "rejected",
   "returned_to_market",
   "handed_off",
+  "returned_from_npi",
 ] as const;
 
 export class ProductInitiativeReviewPointDto implements ProductInitiativeReviewPointV1 {
@@ -34,7 +40,7 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
   @ApiProperty({ enum: ["product-initiative-decision.v1"] })
   contractVersion!: "product-initiative-decision.v1";
   @ApiProperty() requestId!: string;
-  @ApiProperty({ enum: OUTCOMES })
+  @ApiProperty({ enum: DECISION_OUTCOMES })
   outcome!: ProductInitiativeDecisionCommandV1["outcome"];
   @ApiProperty() expectedInitiativeVersion!: number;
   @ApiPropertyOptional() objective?: string;
@@ -48,7 +54,7 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
 
 export class ProductInitiativeResponseDto {
   @ApiProperty() initiativeId!: string;
-  @ApiProperty({ enum: OUTCOMES }) outcome!: string;
+  @ApiProperty({ enum: RESPONSE_OUTCOMES }) outcome!: string;
   @ApiProperty({ enum: ["pending_completion", "completed"] })
   completion!: string;
   @ApiProperty({ enum: DESTINATIONS })
@@ -73,7 +79,7 @@ export class ProductInitiativeDetailResponseDto {
 
 export class ProductInitiativeQueueEntryResponseDto {
   @ApiProperty() handoffId!: string;
-  @ApiProperty({ enum: OUTCOMES }) outcome!: string;
+  @ApiProperty({ enum: RESPONSE_OUTCOMES }) outcome!: string;
   @ApiProperty({ enum: DESTINATIONS }) currentDestination!: string;
   @ApiProperty({ type: [String] }) pendingFieldCodes!: string[];
   @ApiProperty() updatedAt!: string;

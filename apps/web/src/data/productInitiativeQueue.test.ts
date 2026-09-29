@@ -38,6 +38,18 @@ describe("initiativeQueueBadge", () => {
       ),
     ).toEqual({ label: "已立项", state: "handed_off", pendingCount: 0 });
   });
+
+  it("NPI 退回后选品侧可见并仍可再判", () => {
+    expect(
+      initiativeQueueBadge(
+        entry({
+          outcome: "returned_from_npi",
+          currentDestination: "returned_from_npi",
+          pendingFieldCodes: [],
+        }),
+      ),
+    ).toEqual({ label: "NPI 退回", state: "pending", pendingCount: 0 });
+  });
 });
 
 function entry(

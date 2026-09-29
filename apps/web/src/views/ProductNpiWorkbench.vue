@@ -12,6 +12,7 @@ import ProductDefinitionAdvancePanel from "../components/product-npi/ProductDefi
 import ProductNpiClaimAction from "../components/product-npi/ProductNpiClaimAction.vue";
 import ProductNpiHandoffDetail from "../components/product-npi/ProductNpiHandoffDetail.vue";
 import ProductNpiQueue from "../components/product-npi/ProductNpiQueue.vue";
+import ProductNpiReturnAction from "../components/product-npi/ProductNpiReturnAction.vue";
 import ProductNpiStageProgress from "../components/product-npi/ProductNpiStageProgress.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useProductDefinition } from "../composables/useProductDefinition";
@@ -40,6 +41,7 @@ const {
   receipt,
   load,
   claim,
+  returnToSelection,
 } = useProductNpiWorkbench({ selectedId: requestedId, selectInitiative });
 
 onMounted(async () => {
@@ -170,13 +172,18 @@ async function claimSelected(): Promise<void> {
           "
           @update-conclusion="definition.draft.conclusion = $event"
         />
+        <ProductNpiReturnAction
+          v-if="selected && isMine && !definition.released.value"
+          :busy="saving || definition.saving.value"
+          :return-to-selection="returnToSelection"
+        />
         <ProductNpiClaimAction
-          v-else-if="selected"
+          v-else-if="selected && !isMine"
           :entry="selected"
           :busy="saving"
           @claim="claimSelected"
         />
-        <p v-else class="empty">先从左边的队列选一票。</p>
+        <p v-else-if="!selected" class="empty">先从左边的队列选一票。</p>
       </section>
     </div>
   </main>

@@ -4,10 +4,10 @@
 >
 > 消费者：产品设计、Web 开发、测试与代码评审。
 >
-> 边界：本文是视觉壳、设计令牌、组件和交互标准；业务信息架构以
-> [PRINCIPLES](./PRINCIPLES.md) 与
-> [角色工作台以人为中心的设计契约](./ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN.md)、
-> [UX_CONTAINER_WORKBENCH](./UX_CONTAINER_WORKBENCH.md) 为准，状态值以正式契约为准。
+> 边界：本文只拥有视觉壳、设计令牌、组件和无业务判断的交互标准。岗位目标、流程、
+> 允许动作和完成标准以 [业务岗位工作台](../../doc/cross-border-supply-chain/08-role-workbenches.md)
+> 为权威；[技术实现契约](./ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN.md)负责映射，
+> [UX_CONTAINER_WORKBENCH](./UX_CONTAINER_WORKBENCH.md)只描述货柜对象视图，状态值以正式运行时契约为准。
 
 ## 1. 结论
 
@@ -383,8 +383,9 @@ StateBadge 只负责视觉语义；业务状态到语义的映射必须来自一
   业务结论，必须保留明确契约和专用交互。
 - 产品扩展属性的编辑可以采用元数据驱动表单，但只消费服务端解析后的受控模板版本；强类型核心字段、
   合规专业档案、属性升格和提交契约统一引用[产品属性治理](./domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md)。
-- 合规中心和八个组织工作台的候选页面、14 节点映射及合规状态边界统一引用
-  [跨境合规管理](./domain/COMPLIANCE_MANAGEMENT.md)；前端不得解释法规、发布规则或自行决定节点放行。
+- 正式工作台清单和岗位边界引用[业务岗位工作台](../../doc/cross-border-supply-chain/08-role-workbenches.md)；
+  货柜生命周期 14 节点的技术责任分组及合规状态边界引用
+  [跨境合规管理](./domain/COMPLIANCE_MANAGEMENT.md)。责任分组不是另一套工作台清单；前端不得解释法规、发布规则或自行决定节点放行。
 
 ### 8.6 动态表格纪律
 

@@ -12,6 +12,7 @@ import { GetProductDefinitionService } from "./application/get-product-definitio
 import { ReleaseProductDefinitionService } from "./application/release-product-definition.service";
 import { DecideProductInitiativeService } from "./application/decide-product-initiative.service";
 import { ListNpiQueueService } from "./application/list-npi-queue.service";
+import { ReturnProductInitiativeFromNpiService } from "./application/return-product-initiative-from-npi.service";
 import { GetProductInitiativeService } from "./application/get-product-initiative.service";
 import { IntakeProductOpportunityService } from "./application/intake-product-opportunity.service";
 import { ListProductInitiativesService } from "./application/list-product-initiatives.service";
@@ -43,6 +44,7 @@ import { ProductOpportunitiesController } from "./presentation/product-opportuni
     DecideProductInitiativeService,
     ListNpiQueueService,
     ClaimProductInitiativeService,
+    ReturnProductInitiativeFromNpiService,
     GetProductDefinitionService,
     AdvanceProductDefinitionService,
     ReleaseProductDefinitionService,

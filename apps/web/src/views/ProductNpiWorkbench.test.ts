@@ -6,6 +6,7 @@ import ProductNpiWorkbench from "./ProductNpiWorkbench.vue";
 
 const listProductInitiativeNpiQueue = vi.fn();
 const claimProductInitiative = vi.fn();
+const returnProductInitiativeFromNpi = vi.fn();
 const getProductDefinition = vi.fn();
 const writeProductDefinition = vi.fn();
 const releaseProductDefinition = vi.fn();
@@ -15,6 +16,8 @@ vi.mock("../api/marketSignals", () => ({
     listProductInitiativeNpiQueue(...args),
   claimProductInitiative: (...args: unknown[]) =>
     claimProductInitiative(...args),
+  returnProductInitiativeFromNpi: (...args: unknown[]) =>
+    returnProductInitiativeFromNpi(...args),
   getProductDefinition: (...args: unknown[]) => getProductDefinition(...args),
   writeProductDefinition: (...args: unknown[]) =>
     writeProductDefinition(...args),
@@ -240,5 +243,7 @@ function entry(options: {
             claimedAt: "2026-09-27T11:00:00.000Z",
           }
         : null,
+    initiativeVersion: 1,
+    initiativeDestination: "handed_off",
   };
 }
