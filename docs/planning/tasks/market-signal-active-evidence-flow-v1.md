@@ -1,10 +1,11 @@
 ---
-status: blocked
-branch: feat/market-signal-active-evidence-flow
+status: done
+branch: feat/product-opportunity-handoff-live-projection
 verification: |
-  阻塞：串行让位给 product-opportunity-handoff-live-projection-v1。
-  实现已在分支 feat/market-signal-active-evidence-flow（含本地未提交改动），
-  后补投影合入后再恢复本片 coding/收尾。
+  已合入 main：#84（与后补投影同 PR）。
+  CI：static / unit / build / e2e / quality 通过。
+  本地：MarketSignalsWorkbench + marketSignalEvidenceFlow 单测；
+  触及 workbench-network e2e。
 ---
 
 # 任务：市场信号活跃态依据区动线
@@ -68,3 +69,4 @@ verification: |
 | 2026-09-28 | design  | —      | —      | 按改版规范开 brief        |
 | 2026-09-28 | coding  | Cursor | —      | 开工：活跃态动线          |
 | 2026-09-28 | blocked | Cursor | —      | 串行让位：后补投影 A 优先 |
+| 2026-09-29 | done    | Cursor | #84    | 与后补投影同 PR 合入 main |

@@ -77,9 +77,9 @@
 | [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)                              | 电商货柜全生命周期运营手册:节点/KPI·SLA/RACI/风险/应急SOP(22 节点管理视图)                    | 候选 v0.1                      |
 | [UI 体系标准](./product/UI_SYSTEM.md)                                                        | Operations Shell、页面模板、人本动线 UI-D10、三状态视觉、token、组件分层                      | 设计决策 v1.1                  |
 | [经营链视觉动线改版](./product/WORKBENCH_VISUAL_FLOW_REDESIGN.md)                            | 详情四屏 + 枢纽页两类骨架；Mode/进度/预填；色与主题以 UI_SYSTEM + logix tokens 为准           | 设计决策草案                   |
-| [任务：信号活跃态依据区动线](./planning/tasks/market-signal-active-evidence-flow-v1.md)      | 进度头、动词化、预填、事实→判断锁定；承接关闭 Mode 后的活跃态 P0                              | blocked（串行让位）            |
-| [任务：交接后补合并投影](./planning/tasks/product-opportunity-handoff-live-projection-v1.md) | 快照保留交接当日原文；选品中栏看交接包+信号后补，后补字段标明（方案 A）                       | coding（当前唯一活动）         |
-| [任务：选品中间区 Mode](./planning/tasks/product-selection-form-mode-v1.md)                  | 已立项整页 Mode、进度头、评审要点方案 A 选项化、快照带入                                      | blocked（串行）                |
+| [任务：信号活跃态依据区动线](./planning/tasks/market-signal-active-evidence-flow-v1.md)      | 进度头、动词化、预填、事实→判断锁定；承接关闭 Mode 后的活跃态 P0                              | done（#84）                    |
+| [任务：交接后补合并投影](./planning/tasks/product-opportunity-handoff-live-projection-v1.md) | 快照保留交接当日原文；选品中栏看交接包+信号后补，后补字段标明（方案 A）                       | done（#84）                    |
+| [任务：选品中间区 Mode](./planning/tasks/product-selection-form-mode-v1.md)                  | 已立项整页 Mode、进度头、评审要点方案 A 选项化、快照带入                                      | coding（当前唯一活动）         |
 | [任务：NPI 动线与退回选品](./planning/tasks/product-npi-visual-flow-return-v1.md)            | 阶段轨、齐/半/缺、退回选品正式写路径（≠ 选品退回经营）                                        | blocked（串行）                |
 | [任务：枢纽/管道总览动线](./planning/tasks/workbench-network-hub-flow-v1.md)                 | 五节三态、业务量、连接线交接、全局带与支撑分层（横向扫描 · 不套详情骨架）                     | blocked（串行）                |
 | [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                                        | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                           | 快照 2026-09-13                |
