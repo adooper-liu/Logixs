@@ -1,7 +1,11 @@
 ---
-status: coding
+status: done
 branch: feat/product-opportunity-handoff-live-projection
-verification:
+verification: |
+  已合入 main：#84。
+  CI：static / unit / build / e2e / quality 通过。
+  本地：merge-handoff-with-signal + list-product-opportunities 单测；
+  ProductSelectionWorkbench / workbench-network e2e 触及后补文案。
 ---
 
 # 任务：选品中栏「交接包 + 信号后补」合并投影
@@ -70,3 +74,4 @@ verification:
 | 2026-09-28 | design  | —      | —      | 负责人定案方案 A                         |
 | 2026-09-28 | blocked | —      | —      | 串行：等活跃态片                         |
 | 2026-09-28 | coding  | Cursor | —      | 开工：合并投影 + 契约加法 + 选品中栏标识 |
+| 2026-09-29 | done    | Cursor | #84    | 合入 main：方案 A 后补投影               |

@@ -1,9 +1,8 @@
 ---
-status: blocked
-branch: # 解锁后填 feat/product-selection-form-mode
+status: coding
+branch: feat/product-selection-form-mode
 verification: |
-  阻塞：串行槽位；建议在 market-signal-active-evidence-flow-v1 进入 done
-  （或负责人改序）后再解锁为本片 design/coding。
+  前序 #84（活跃态依据区 + 后补投影）已 done；本片为当前唯一 coding。
 ---
 
 # 任务：选品立项中间区 Mode 与评审要点选项化
@@ -63,7 +62,8 @@ verification: |
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责 | commit | 说明                             |
-| ---------- | ------- | ---- | ------ | -------------------------------- |
-| 2026-09-28 | design  | —    | —      | 按改版规范开 brief               |
-| 2026-09-28 | blocked | —    | —      | 串行：等活跃态依据区 done 后解锁 |
+| 日期       | 阶段    | 负责   | commit | 说明                             |
+| ---------- | ------- | ------ | ------ | -------------------------------- |
+| 2026-09-28 | design  | —      | —      | 按改版规范开 brief               |
+| 2026-09-28 | blocked | —      | —      | 串行：等活跃态依据区 done 后解锁 |
+| 2026-09-29 | coding  | Cursor | —      | 解锁：前序 #84 done 后开工       |
