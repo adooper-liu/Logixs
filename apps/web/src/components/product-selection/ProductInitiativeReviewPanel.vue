@@ -8,6 +8,12 @@ import type {
 } from "../../composables/useProductInitiativeDecision";
 import { CONCLUSION_MAX_LENGTH } from "../../composables/useProductInitiativeDecision";
 import { REVIEW_POINTS_WITH_REQUIREMENTS } from "../../data/productEvaluationRequirements";
+import {
+  composeReviewConclusion,
+  extractReviewSupplement,
+  matchReviewOptionId,
+  reviewPointOptions,
+} from "../../data/productInitiativeReviewOptions";
 
 /**
  * 这一项有没有对应的**生成要求**。没有的要如实说明依据来自哪 ——
@@ -96,6 +102,46 @@ async function submit(): Promise<void> {
   draft.content = "";
   formCode.value = null;
 }
+
+function selectOption(
+  point: ProductInitiativeReviewPointView,
+  optionId: string,
+): void {
+  const option = reviewPointOptions(point.code).find(
+    (item) => item.id === optionId,
+  );
+  if (!option) return;
+  const supplement = extractReviewSupplement(point.code, point.conclusion);
+  emit(
+    "updateConclusion",
+    point.code,
+    composeReviewConclusion(option.sentence, supplement),
+  );
+}
+
+function updateSupplement(
+  point: ProductInitiativeReviewPointView,
+  supplement: string,
+): void {
+  const optionId = matchReviewOptionId(point.code, point.conclusion);
+  const option = optionId
+    ? reviewPointOptions(point.code).find((item) => item.id === optionId)
+    : null;
+  if (option) {
+    emit(
+      "updateConclusion",
+      point.code,
+      composeReviewConclusion(option.sentence, supplement),
+    );
+    return;
+  }
+  // 旧自由文本：补充区即全文，不硬塞档位短句。
+  emit(
+    "updateConclusion",
+    point.code,
+    supplement.slice(0, CONCLUSION_MAX_LENGTH),
+  );
+}
 </script>
 
 <template>
@@ -104,13 +150,13 @@ async function submit(): Promise<void> {
     aria-labelledby="product-initiative-review-title"
   >
     <header>
-      <small>立项依据</small>
-      <h3 id="product-initiative-review-title">四项评审要点</h3>
+      <small>立项依据 · 评审要点 ○选填强度可先选</small>
+      <h3 id="product-initiative-review-title">评审要点</h3>
       <p>
-        事实栏只读，来自该信号已登记的证据；你要写的是自己在这一项上的结论。
+        事实栏只读，来自该信号已登记的证据；判断强度用档位单选，落库为短句。
         <template v-if="missingCount">
-          四项里还有
-          <b>{{ missingCount }}</b> 项没成立，缺证据或缺结论都不算成立。
+          还有
+          <b>{{ missingCount }}</b> 项未齐（缺证据或缺结论）；完备度见进度头。
         </template>
       </p>
     </header>
@@ -131,7 +177,7 @@ async function submit(): Promise<void> {
             本项没有系统生成的要求：依据来自上游信号与你自己的判断，不是系统漏了
           </span>
           <span v-if="point.missing" class="review-point__gap">
-            待补：{{ point.evidenceRefs.length ? "还缺结论" : "还缺证据" }}
+            {{ point.evidenceRefs.length ? "还缺结论" : "还缺证据" }}
           </span>
           <!--
             引用了已不在候选里的证据时不能说"已成立"：那样面板会一边说成立、
@@ -208,24 +254,56 @@ async function submit(): Promise<void> {
           </ul>
         </div>
 
-        <label class="review-point__conclusion">
-          <span>我的结论</span>
-          <textarea
-            :value="point.conclusion"
-            :aria-label="`${point.label}结论`"
-            :readonly="readonly"
-            :maxlength="CONCLUSION_MAX_LENGTH"
-            rows="2"
-            placeholder="写清在这一项上你判断了什么，以及依据"
-            @input="
-              emit(
-                'updateConclusion',
-                point.code,
-                ($event.target as HTMLTextAreaElement).value,
-              )
-            "
-          />
-        </label>
+        <fieldset class="review-point__conclusion" :disabled="readonly">
+          <legend>{{ point.label }}判断强度</legend>
+          <p class="helper">选一档即可落库；需要细节时再写补充说明。</p>
+          <div
+            class="option-row"
+            role="radiogroup"
+            :aria-label="`${point.label}判断强度`"
+          >
+            <label
+              v-for="option in reviewPointOptions(point.code)"
+              :key="option.id"
+              class="option"
+              :class="{
+                selected:
+                  matchReviewOptionId(point.code, point.conclusion) ===
+                  option.id,
+              }"
+            >
+              <input
+                type="radio"
+                :name="`review-option-${point.code}`"
+                :value="option.id"
+                :checked="
+                  matchReviewOptionId(point.code, point.conclusion) ===
+                  option.id
+                "
+                :disabled="readonly"
+                @change="selectOption(point, option.id)"
+              />
+              <span>{{ option.label }}</span>
+            </label>
+          </div>
+          <label class="supplement">
+            <span>补充说明 <small>可选</small></span>
+            <textarea
+              :value="extractReviewSupplement(point.code, point.conclusion)"
+              :aria-label="`${point.label}结论`"
+              :readonly="readonly"
+              :maxlength="CONCLUSION_MAX_LENGTH"
+              rows="2"
+              placeholder="例如：头部约占六成、需关注认证周期"
+              @input="
+                updateSupplement(
+                  point,
+                  ($event.target as HTMLTextAreaElement).value,
+                )
+              "
+            />
+          </label>
+        </fieldset>
 
         <form
           v-if="formCode === point.code"
@@ -470,14 +548,69 @@ async function submit(): Promise<void> {
 
 .review-point__conclusion {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  margin: 0;
   padding: 0 var(--space-3) var(--space-3);
+  border: 0;
+  min-width: 0;
 }
 
-.review-point__conclusion > span {
+.review-point__conclusion > legend {
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 600;
+}
+
+.review-point__conclusion .helper {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+  line-height: var(--leading-body);
+}
+
+.option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-label);
+  cursor: pointer;
+}
+
+.option.selected {
+  border-color: var(--brand-strong);
+  background: var(--surface-2);
+}
+
+.option input {
+  margin: 0;
+}
+
+.supplement {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.supplement > span {
   color: var(--ink-soft);
   font-size: var(--text-micro);
   font-weight: 700;
+}
+
+.supplement small {
+  font-weight: 400;
 }
 
 .review-point__conclusion textarea,

@@ -4,9 +4,10 @@ import {
   BriefcaseBusiness,
   RefreshCw,
   UserRound,
+  Zap,
 } from "@lucide/vue";
 import type { ProductInitiativeReviewPointCodeV1 } from "@logix/contracts";
-import { computed } from "vue";
+import { computed, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
 import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
@@ -20,6 +21,7 @@ import {
   type ProductInitiativeOutcome,
 } from "../composables/useProductInitiativeDecision";
 import { useProductOpportunityWorkbench } from "../composables/useProductOpportunityWorkbench";
+import { applyHandoffToObjective } from "../data/productInitiativeApplyHandoff";
 import type { ProductEvaluationEvidenceDraft } from "../data/productEvaluationRequirements";
 
 const route = useRoute();
@@ -170,12 +172,47 @@ async function addRequirementEvidence(
 async function submitDecision(
   outcome: ProductInitiativeOutcome,
 ): Promise<void> {
-  const decided = await decideInitiative(outcome);
-  if (decided) await load();
+  const ok = await decideInitiative(outcome);
+  if (ok) await load();
+}
+
+/** 已立项 = 整页 Mode（与信号关闭态同构）。 */
+const isInitiated = computed(() => decided.value);
+
+const requiredRemaining = computed(() => blockingGaps.value.length);
+const gatingPointCount = computed(
+  () => reviewPointViews.value.filter((point) => point.gating).length + 1,
+);
+const progressFilled = computed(() =>
+  Math.max(0, gatingPointCount.value - requiredRemaining.value),
+);
+const progressPercent = computed(() =>
+  gatingPointCount.value === 0
+    ? 100
+    : Math.round((progressFilled.value / gatingPointCount.value) * 100),
+);
+
+const applyNotice = shallowRef<string | null>(null);
+
+function applyFromHandoff(): void {
+  if (!selected.value || isInitiated.value) return;
+  const result = applyHandoffToObjective({
+    current: objective.value,
+    item: selected.value,
+  });
+  if (!result.applied) {
+    applyNotice.value = "目标结果已有内容，未覆盖；可先清空再带入。";
+    return;
+  }
+  setObjective(result.next);
+  applyNotice.value = "已自动带入交接合并视图到目标结果。";
 }
 </script>
 <template>
-  <main class="selection-workbench page-frame">
+  <main
+    class="selection-workbench page-frame"
+    :class="{ 'selection-workbench--initiated': isInitiated }"
+  >
     <PageHeader
       eyebrow="选品岗位工作台"
       title="选品立项"
@@ -196,8 +233,33 @@ async function submitDecision(
     >
       {{ feedbackReceipt }}
     </section>
+    <section
+      v-else-if="applyNotice"
+      class="feedback feedback--success"
+      role="status"
+    >
+      {{ applyNotice }}
+    </section>
 
-    <section class="work-context" aria-label="当前岗位与交接责任">
+    <section
+      v-if="selected && isInitiated"
+      class="conclusion-strip"
+      aria-label="立项结论"
+    >
+      <div>
+        <small>结论</small>
+        <h2>
+          {{ selected.handoff.title }}
+          <span>· 已立项</span>
+        </h2>
+        <p>{{ currentOwner }} · 只读回看 · 写入口已关闭</p>
+      </div>
+      <p class="conclusion-strip__action">
+        已立项无待办；缺口仅作摘要，不可再改结论。
+      </p>
+    </section>
+
+    <section v-else class="work-context" aria-label="当前岗位与交接责任">
       <BriefcaseBusiness :size="19" />
       <span><small>谁在工作</small><b>选品负责人</b></span>
       <span
@@ -210,7 +272,10 @@ async function submitDecision(
       >
     </section>
 
-    <div class="workbench-grid">
+    <div
+      class="workbench-grid"
+      :class="{ 'workbench-grid--initiated': isInitiated }"
+    >
       <section class="pane">
         <ProductOpportunityQueue
           :items="items"
@@ -221,8 +286,48 @@ async function submitDecision(
       </section>
       <section class="pane">
         <template v-if="selected">
+          <header
+            v-if="initiativeReady && !isInitiated"
+            class="progress-head"
+            aria-label="立项完备度"
+          >
+            <div class="progress-head__copy">
+              <small>立项完备度</small>
+              <b
+                >必填剩 {{ requiredRemaining }} · 已齐 {{ progressFilled }}/{{
+                  gatingPointCount
+                }}</b
+              >
+            </div>
+            <div
+              class="progress-head__bar"
+              role="progressbar"
+              :aria-valuenow="progressPercent"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <span :style="{ width: `${progressPercent}%` }" />
+            </div>
+            <button
+              type="button"
+              class="progress-head__apply"
+              :disabled="deciding"
+              @click="applyFromHandoff"
+            >
+              <Zap :size="15" aria-hidden="true" />带入
+            </button>
+          </header>
+          <p
+            v-else-if="isInitiated && blockingGaps.length"
+            class="initiated-gap-summary"
+          >
+            立项时仍缺：{{
+              blockingGaps.map((gap) => gap.label).join("、")
+            }}（仅摘要）
+          </p>
           <ProductOpportunityDetail :item="selected" />
           <ProductEvaluationRequirementsPanel
+            v-if="!isInitiated"
             :requirements="requirements.requirements"
             :withheld="requirements.withheld"
             :busy="saving"
@@ -244,7 +349,7 @@ async function submitDecision(
           {{ loading ? "正在读取经营机会" : "暂无待处理机会" }}
         </p>
       </section>
-      <section class="pane">
+      <section v-if="!isInitiated" class="pane">
         <ProductOpportunityActions
           v-if="selected && !accepted"
           :item="selected"
@@ -282,6 +387,113 @@ async function submitDecision(
 <style scoped>
 .selection-workbench {
   min-width: 0;
+}
+.selection-workbench--initiated {
+  filter: saturate(0.85);
+}
+.conclusion-strip {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--ink-soft);
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+}
+.conclusion-strip small {
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+.conclusion-strip h2 {
+  margin: var(--space-1) 0 0;
+  color: var(--ink);
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
+}
+.conclusion-strip h2 span {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.conclusion-strip p {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
+}
+.conclusion-strip__action {
+  flex: none;
+  max-width: 220px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+  text-align: right;
+}
+.progress-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.progress-head__copy {
+  display: grid;
+  gap: var(--space-1);
+}
+.progress-head__copy small {
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+.progress-head__copy b {
+  color: var(--ink);
+  font-size: var(--text-meta);
+}
+.progress-head__bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.progress-head__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--brand-strong);
+}
+.progress-head__apply {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-label);
+}
+.progress-head__apply:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.initiated-gap-summary {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  background: var(--surface-2);
 }
 .feedback {
   display: flex;
@@ -362,6 +574,9 @@ async function submitDecision(
   align-items: start;
   gap: var(--space-3);
 }
+.workbench-grid--initiated {
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
+}
 .pane {
   min-width: 0;
   border: 1px solid var(--line);
@@ -385,8 +600,16 @@ async function submitDecision(
   }
 }
 @media (max-width: 680px) {
+  .conclusion-strip {
+    display: grid;
+  }
+  .conclusion-strip__action {
+    max-width: none;
+    text-align: left;
+  }
   .work-context,
-  .workbench-grid {
+  .workbench-grid,
+  .workbench-grid--initiated {
     grid-template-columns: 1fr;
   }
   .work-context > svg {

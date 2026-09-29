@@ -69,19 +69,27 @@ describe("ProductInitiativeReviewPanel", () => {
     ]);
   });
 
-  it("结论输入交给上层，组件保持只读透传", async () => {
-    const wrapper = mountPanel();
+  it("判断强度单选落库为规范化短句", async () => {
+    const wrapper = mountPanel({
+      points: [
+        point({
+          code: "compliance_risk",
+          label: "合规风险",
+          evidenceRefs: [EVIDENCE_ID],
+          conclusion: "",
+          missing: true,
+        }),
+      ],
+    });
 
-    await wrapper
-      .get('textarea[aria-label="合规风险结论"]')
-      .setValue("无强制认证");
+    await wrapper.get('input[type="radio"][value="low"]').setValue(true);
 
     expect(wrapper.emitted("updateConclusion")).toEqual([
-      ["compliance_risk", "无强制认证"],
+      ["compliance_risk", "合规风险可控"],
     ]);
   });
 
-  it("缺证据或缺结论的要点标出待补，齐备的不标", () => {
+  it("缺证据或缺结论的要点标出缺口，齐备的不标；不写待补催办", () => {
     const wrapper = mountPanel({
       points: [
         point({
@@ -101,7 +109,8 @@ describe("ProductInitiativeReviewPanel", () => {
 
     const points = wrapper.findAll(".review-point");
     expect(points[0]!.find(".review-point__gap").exists()).toBe(false);
-    expect(points[1]!.get(".review-point__gap").text()).toContain("待补");
+    expect(points[1]!.get(".review-point__gap").text()).toContain("还缺结论");
+    expect(points[1]!.get(".review-point__gap").text()).not.toContain("待补");
   });
 
   it("登记新证据走既有证据链路，成功后收起表单", async () => {
@@ -195,9 +204,13 @@ describe("ProductInitiativeReviewPanel", () => {
     expect(wrapper.get(".review-point__facts").text()).toContain(
       "在售同款 320 个",
     );
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
-      "头部集中",
-    );
+    expect(
+      (
+        wrapper.get('input[type="radio"][value="concentrated"]')
+          .element as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+    expect(wrapper.get(".option.selected").text()).toContain("头部集中");
   });
 });
 
