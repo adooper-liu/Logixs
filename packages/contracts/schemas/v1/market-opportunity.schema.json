@@ -309,10 +309,17 @@
         "handoff",
         "intakeState",
         "intakeVersion",
-        "assignedActorId"
+        "assignedActorId",
+        "supplementedFieldCodes"
       ],
       "properties": {
         "handoff": { "$ref": "#/$defs/MarketOpportunityHandoffV1" },
+        "handoffSnapshot": { "$ref": "#/$defs/MarketOpportunityHandoffV1" },
+        "supplementedFieldCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/MarketSignalPendingFieldCodeV1" }
+        },
         "intakeState": { "$ref": "#/$defs/MarketOpportunityIntakeStateV1" },
         "intakeVersion": { "type": "integer", "minimum": 0 },
         "assignedActorId": { "type": ["string", "null"], "maxLength": 200 }

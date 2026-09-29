@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { FileCheck2, Lightbulb, MapPin } from "@lucide/vue";
-import type { ProductOpportunityV1 } from "@logix/contracts";
+import { computed, shallowRef } from "vue";
+import { ChevronDown, FileCheck2, Lightbulb, MapPin } from "@lucide/vue";
+import type {
+  MarketSignalPendingFieldCodeV1,
+  ProductOpportunityV1,
+} from "@logix/contracts";
 
-defineProps<{ item: ProductOpportunityV1 }>();
+const props = defineProps<{ item: ProductOpportunityV1 }>();
 
 const labels: Record<string, string> = {
   market_code: "市场",
@@ -13,6 +17,16 @@ const labels: Record<string, string> = {
   evidence_refs: "来源证据",
   opportunity_statement: "机会说明",
 };
+
+const snapshotOpen = shallowRef(false);
+
+const supplemented = computed(
+  () => new Set(props.item.supplementedFieldCodes ?? []),
+);
+
+function isSupplemented(code: MarketSignalPendingFieldCodeV1): boolean {
+  return supplemented.value.has(code);
+}
 </script>
 
 <template>
@@ -24,15 +38,30 @@ const labels: Record<string, string> = {
     <dl class="scope">
       <div>
         <dt><MapPin :size="14" />市场</dt>
-        <dd>{{ item.handoff.marketCode || "待补" }}</dd>
+        <dd>
+          {{ item.handoff.marketCode || "待补" }}
+          <small v-if="isSupplemented('market_code')" class="supplemented"
+            >后补</small
+          >
+        </dd>
       </div>
       <div>
         <dt>渠道</dt>
-        <dd>{{ item.handoff.channelCode || "待补" }}</dd>
+        <dd>
+          {{ item.handoff.channelCode || "待补" }}
+          <small v-if="isSupplemented('channel_code')" class="supplemented"
+            >后补</small
+          >
+        </dd>
       </div>
       <div>
         <dt>商品范围</dt>
-        <dd>{{ item.handoff.categoryRef || "待补" }}</dd>
+        <dd>
+          {{ item.handoff.categoryRef || "待补" }}
+          <small v-if="isSupplemented('category_ref')" class="supplemented"
+            >后补</small
+          >
+        </dd>
       </div>
     </dl>
     <section>
@@ -46,14 +75,26 @@ const labels: Record<string, string> = {
     </section>
     <div class="facts-grid">
       <section>
-        <small>已观察事实</small>
+        <small
+          >已观察事实
+          <span
+            v-if="isSupplemented('observed_fact_summary')"
+            class="supplemented"
+            >后补</span
+          ></small
+        >
         <p>{{ item.handoff.observedFactSummary || "待补" }}</p>
       </section>
       <section>
-        <small>尚待验证</small>
+        <small
+          >经营判断
+          <span v-if="isSupplemented('hypothesis')" class="supplemented"
+            >后补</span
+          ></small
+        >
         <p>
           <Lightbulb :size="16" />{{
-            item.handoff.hypothesis || "经营假设待补"
+            item.handoff.hypothesis || "经营判断待补"
           }}
         </p>
       </section>
@@ -61,7 +102,11 @@ const labels: Record<string, string> = {
     <section class="evidence-summary">
       <FileCheck2 :size="18" />
       <span
-        ><b>{{ item.handoff.evidenceRefs.length }} 项来源证据</b
+        ><b
+          >{{ item.handoff.evidenceRefs.length }} 项来源证据
+          <small v-if="isSupplemented('evidence_refs')" class="supplemented"
+            >后补</small
+          ></b
         ><small
           >交接版本 {{ item.handoff.version }} ·
           {{ item.handoff.createdAt.slice(0, 10) }}</small
@@ -73,7 +118,57 @@ const labels: Record<string, string> = {
       <span v-for="code in item.handoff.pendingFieldCodes" :key="code">{{
         labels[code] || code
       }}</span>
-      <small>这些内容随后会继续补充，不阻止领取和评估。</small>
+      <small
+        >合并信号后补后仍缺这些；不阻止领取和评估。已后补项不会出现在此。</small
+      >
+    </section>
+    <section
+      v-else-if="(item.supplementedFieldCodes?.length ?? 0) > 0"
+      class="pending pending--ok"
+    >
+      <b>交接待补已由信号侧后补齐</b>
+      <small>下方可对照交接当日原文。</small>
+    </section>
+    <section
+      v-if="item.handoffSnapshot"
+      class="snapshot"
+      aria-label="交接当日原文"
+    >
+      <button
+        type="button"
+        class="snapshot-fold"
+        :aria-expanded="snapshotOpen"
+        @click="snapshotOpen = !snapshotOpen"
+      >
+        <span>交接当日原文（审计）</span>
+        <ChevronDown :size="16" :class="{ open: snapshotOpen }" />
+      </button>
+      <dl v-if="snapshotOpen" class="snapshot-body">
+        <div>
+          <dt>市场</dt>
+          <dd>{{ item.handoffSnapshot.marketCode || "（空）" }}</dd>
+        </div>
+        <div>
+          <dt>渠道</dt>
+          <dd>{{ item.handoffSnapshot.channelCode || "（空）" }}</dd>
+        </div>
+        <div>
+          <dt>商品范围</dt>
+          <dd>{{ item.handoffSnapshot.categoryRef || "（空）" }}</dd>
+        </div>
+        <div>
+          <dt>观察事实</dt>
+          <dd>{{ item.handoffSnapshot.observedFactSummary || "（空）" }}</dd>
+        </div>
+        <div>
+          <dt>经营判断</dt>
+          <dd>{{ item.handoffSnapshot.hypothesis || "（空）" }}</dd>
+        </div>
+        <div>
+          <dt>来源证据</dt>
+          <dd>{{ item.handoffSnapshot.evidenceRefs.length }} 项</dd>
+        </div>
+      </dl>
     </section>
   </article>
 </template>
@@ -129,8 +224,17 @@ p {
   font-size: var(--text-micro);
 }
 .scope dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
   margin: var(--space-1) 0 0;
   color: var(--ink);
+  font-weight: 700;
+}
+.supplemented {
+  color: var(--info);
+  font-size: var(--text-micro);
   font-weight: 700;
 }
 .facts-grid {
@@ -143,7 +247,7 @@ p {
 }
 .facts-grid section + section {
   border-left: 1px solid var(--line);
-  background: var(--info-bg);
+  background: var(--surface-2);
 }
 .facts-grid p {
   display: flex;
@@ -173,6 +277,12 @@ p {
   gap: var(--space-2);
   background: var(--warn-bg);
 }
+.pending--ok {
+  background: var(--ok-bg);
+}
+.pending--ok b {
+  color: var(--ok);
+}
 .pending b {
   color: var(--warn);
 }
@@ -186,6 +296,50 @@ p {
 .pending small {
   flex: 1 1 100%;
   color: var(--muted);
+}
+.snapshot {
+  background: var(--surface-2);
+}
+.snapshot-fold {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-label);
+  font-weight: 600;
+}
+.snapshot-fold svg {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.snapshot-fold svg.open {
+  transform: rotate(180deg);
+}
+.snapshot-body {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+.snapshot-body div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: var(--space-2);
+}
+.snapshot-body dt {
+  color: var(--muted);
+  font-size: var(--text-micro);
+}
+.snapshot-body dd {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
 }
 @media (max-width: 680px) {
   .scope,
