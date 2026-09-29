@@ -1,4 +1,5 @@
 import type {
+  AdmitSupplierCommandV1,
   NominateSupplierCommandV1,
   RecordQuotationCommandV1,
   RegisterSupplierCommandV1,
@@ -44,6 +45,20 @@ export async function registerSupplier(
     body: command,
     fallback: "暂时无法登记供应商",
   });
+}
+
+export async function admitSupplier(
+  supplierId: string,
+  command: AdmitSupplierCommandV1,
+): Promise<SupplierV1> {
+  return requestJson<SupplierV1>(
+    `/api/sourcing/suppliers/${encodeURIComponent(supplierId)}/admit`,
+    {
+      method: "POST",
+      body: command,
+      fallback: "暂时无法准入供应商",
+    },
+  );
 }
 
 export async function recordQuotation(

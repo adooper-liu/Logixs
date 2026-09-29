@@ -80,7 +80,7 @@
 | [任务：信号活跃态依据区动线](./planning/tasks/market-signal-active-evidence-flow-v1.md)      | 进度头、动词化、预填、事实→判断锁定；承接关闭 Mode 后的活跃态 P0                    | done（#84）            |
 | [任务：交接后补合并投影](./planning/tasks/product-opportunity-handoff-live-projection-v1.md) | 快照保留交接当日原文；选品中栏看交接包+信号后补，后补字段标明（方案 A）             | done（#84）            |
 | [任务：选品中间区 Mode](./planning/tasks/product-selection-form-mode-v1.md)                  | 已立项整页 Mode、进度头、评审要点方案 A 选项化、快照带入                            | done（#86）            |
-| [任务：产品开发与 NPI 五阶段闭环](./planning/tasks/product-npi-visual-flow-return-v1.md)     | 概念承接、EVT/DVT/PVT/MP 阶段门、变更、返工、发布与退回选品                         | design（保留本地 WIP） |
+| [任务：产品开发与 NPI 五阶段闭环](./planning/tasks/product-npi-visual-flow-return-v1.md)     | 概念承接、EVT/DVT/PVT/MP 阶段门、变更、返工、发布与退回选品                         | design（退回写路径随本分支提交） |
 | [任务：枢纽/管道总览动线](./planning/tasks/workbench-network-hub-flow-v1.md)                 | 五节三态、业务量、连接线交接、全局带与支撑分层（横向扫描 · 不套详情骨架）           | blocked（串行）        |
 | [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                                        | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                 | 快照 2026-09-21        |
 | [作业界面人话对照](./product/UI_COPY_PLAIN_LANGUAGE.md)                                      | 屏幕字对照；显示字典 `apps/web/src/data/uiCopyCatalog.ts`                           | 定稿工作纸             |
@@ -193,7 +193,7 @@
 | [已出运标准导入模板 V1](./planning/tasks/post-departure-standard-import-v1.md)                              | 次级规范批量适配器；不再作为工作台默认主路径                         | 已完成                       |
 | [已出运 Shipment 业务建档与接管 V1](./planning/tasks/post-departure-workbench-positive-intake-v1.md)        | 内部事实优先、必要时手工建档、批量工具次级的正向工作台首片           | 被全链工作台基础任务暂时阻塞 |
 | [端到端工作台网络基础 V1](./planning/tasks/end-to-end-workbench-network-foundation-v1.md)                   | 全链工作台统一入口；市场经营信号到选品领取已接入真实契约与 API       | 评审中                       |
-| [寻源工作台技术差距与实现计划 V1](./planning/tasks/sourcing-workbench-operational-spec-v1.md)               | 引用 `doc/` 寻源业务规格，记录当前实现事实、技术差距、切片与验证     | blocked（负责人转向 NPI）    |
+| [寻源工作台技术差距与实现计划 V1](./planning/tasks/sourcing-workbench-operational-spec-v1.md)               | 引用 `doc/` 寻源业务规格，记录当前实现事实、技术差距、切片与验证     | coding（切片 1 已合入 #89）  |
 | [P3-01 主分支保护](./planning/tasks/p3-01-branch-protection.md)                                             | CODEOWNERS + main 禁止强推，合入须 PR 与 quality                     | 已完成                       |
 | [P5 威胁与访问模型](./planning/tasks/p5-threat-access-model.md)                                             | 威胁、上线阻断与最小角色/能力/范围基线                               | 已完成                       |
 | [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                                  | 上传→预检→写端口→对账的首个可写库闭环                                | 已完成                       |

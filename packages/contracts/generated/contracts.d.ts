@@ -2621,7 +2621,19 @@ name: string
 countryCode: string
 contactName?: (string | null)
 contactEmail?: (string | null)
-admissionState: SupplierAdmissionStateV1
+/**
+ * 登记只建立身份，默认待准入；准入走独立授权动作。
+ */
+admissionState: "pending"
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "AdmitSupplierCommandV1".
+ */
+export interface AdmitSupplierCommandV1 {
+contractVersion: "supplier-admit.v1"
+expectedSupplierVersion: number
 idempotencyKey: string
 }
 /**

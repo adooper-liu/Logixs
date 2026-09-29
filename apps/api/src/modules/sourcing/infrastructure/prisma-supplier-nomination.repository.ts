@@ -236,6 +236,39 @@ export class PrismaSupplierNominationRepository implements SupplierNominationRep
     });
   }
 
+  persistAdmission(
+    input: Parameters<SupplierNominationRepository["persistAdmission"]>[0],
+  ) {
+    const { command } = input;
+    return this.prisma.$transaction(async (tx) => {
+      await advisoryLock(
+        tx,
+        `supplier-admit:${input.tenantId}:${input.supplierId}`,
+      );
+      const existing = await tx.supplier.findFirst({
+        where: { id: input.supplierId, tenantId: input.tenantId },
+      });
+      if (!existing) {
+        throw new SourcingNotFoundError("SUPPLIER_NOT_FOUND");
+      }
+      if (existing.admissionState === "admitted") {
+        return { record: toSupplierRecord(existing), duplicate: true };
+      }
+      if (existing.version !== command.expectedSupplierVersion) {
+        conflict("SOURCING_VERSION_CONFLICT");
+      }
+      const row = await tx.supplier.update({
+        where: { id: existing.id },
+        data: {
+          admissionState: command.admissionState,
+          version: command.version,
+          actedBy: input.actorId,
+        },
+      });
+      return { record: toSupplierRecord(row), duplicate: false };
+    });
+  }
+
   persistQuotation(
     input: Parameters<SupplierNominationRepository["persistQuotation"]>[0],
   ) {

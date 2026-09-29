@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type {
+  AdmitSupplierCommandV1,
   NominateSupplierCommandV1,
   RecordQuotationCommandV1,
   RegisterSupplierCommandV1,
@@ -7,6 +8,7 @@ import type {
 import {
   prepareNomination,
   prepareQuotation,
+  prepareSupplierAdmission,
   prepareSupplierRegistration,
   SourcingConflictError,
   SourcingValidationError,
@@ -16,8 +18,14 @@ const REGISTER: RegisterSupplierCommandV1 = {
   contractVersion: "supplier-register.v1",
   name: "宁波某某塑胶",
   countryCode: "CN",
-  admissionState: "admitted",
+  admissionState: "pending",
   idempotencyKey: "register-1",
+};
+
+const ADMIT: AdmitSupplierCommandV1 = {
+  contractVersion: "supplier-admit.v1",
+  expectedSupplierVersion: 1,
+  idempotencyKey: "admit-1",
 };
 
 const QUOTATION: RecordQuotationCommandV1 = {
@@ -48,11 +56,11 @@ describe("供应商登记", () => {
     ).toThrow(SourcingValidationError);
   });
 
-  it("准入状态只能是三档之一", () => {
+  it("登记只允许 pending，不能顺手写成已准入", () => {
     expect(() =>
       prepareSupplierRegistration("buyer", {
         ...REGISTER,
-        admissionState: "approved" as never,
+        admissionState: "admitted" as never,
       }),
     ).toThrow(SourcingValidationError);
   });
@@ -64,9 +72,42 @@ describe("供应商登记", () => {
     });
 
     expect(prepared.name).toBe("宁波某某塑胶");
+    expect(prepared.admissionState).toBe("pending");
     expect(prepared.payloadHash).toBe(
       prepareSupplierRegistration("buyer", REGISTER).payloadHash,
     );
+  });
+});
+
+describe("供应商准入", () => {
+  it("待准入可以准入并升版本", () => {
+    const prepared = prepareSupplierAdmission(
+      { version: 1, admissionState: "pending" },
+      "buyer",
+      ADMIT,
+    );
+    expect(prepared.admissionState).toBe("admitted");
+    expect(prepared.version).toBe(2);
+  });
+
+  it("已准入再准入是冲突", () => {
+    expect(() =>
+      prepareSupplierAdmission(
+        { version: 2, admissionState: "admitted" },
+        "buyer",
+        { ...ADMIT, expectedSupplierVersion: 2 },
+      ),
+    ).toThrow(SourcingConflictError);
+  });
+
+  it("暂停状态不能直接准入", () => {
+    expect(() =>
+      prepareSupplierAdmission(
+        { version: 1, admissionState: "suspended" },
+        "buyer",
+        ADMIT,
+      ),
+    ).toThrow(/SUPPLIER_SUSPENDED/);
   });
 });
 
