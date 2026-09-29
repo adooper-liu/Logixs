@@ -100,7 +100,7 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   await expect(submit).toContainText("立项并交给产品开发");
   await submit.click();
 
-  await expect(page.getByRole("status")).toContainText("已立项");
+  await expect(page.locator(".feedback")).toContainText("已立项");
   // 成功后从服务端重读：终态由服务端返回的 currentDestination 决定，不是前端猜的。
   await expect(page.locator(".conclusion-strip")).toContainText("已立项");
   await expect(page.locator(".product-initiative-outcome")).toHaveCount(0);

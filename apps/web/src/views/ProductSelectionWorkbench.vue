@@ -254,7 +254,7 @@ function applyFromHandoff(): void {
         </h2>
         <p>{{ currentOwner }} · 只读回看 · 写入口已关闭</p>
       </div>
-      <p class="conclusion-strip__action" role="status">
+      <p class="conclusion-strip__action">
         已立项无待办；缺口仅作摘要，不可再改结论。
       </p>
     </section>

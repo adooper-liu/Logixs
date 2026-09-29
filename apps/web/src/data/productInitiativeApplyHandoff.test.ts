@@ -10,9 +10,13 @@ function opportunity(
 ): ProductOpportunityV1 {
   return {
     handoff: {
+      contractVersion: "market_opportunity_handoff.v1",
       handoffId: "11111111-1111-4111-8111-111111111111",
+      version: 1,
       signalId: "22222222-2222-4222-8222-222222222222",
+      signalVersion: 1,
       title: "美国站庭院收纳",
+      recipientQueueCode: "product_selection",
       marketCode: "美国",
       channelCode: "Amazon",
       categoryRef: "庭院收纳",
@@ -21,7 +25,9 @@ function opportunity(
       hypothesis: "可做折叠款",
       evidenceRefs: [],
       pendingFieldCodes: [],
-      handedOffAt: "2026-09-27T00:00:00.000Z",
+      createdBy: "market-owner",
+      createdAt: "2026-09-27T00:00:00.000Z",
+      idempotencyKey: "handoff-apply-test-1",
       ...overrides,
     },
     intakeState: "accepted",
