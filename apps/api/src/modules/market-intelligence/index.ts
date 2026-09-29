@@ -5,6 +5,12 @@ export {
   type ApplySelectionReturnInput,
 } from "./apply-selection-return.port";
 export {
+  READ_MARKET_SIGNAL_LIVE,
+  ReadMarketSignalLiveService,
+  type ReadMarketSignalLivePort,
+  type MarketSignalLiveFields,
+} from "./read-market-signal-live.port";
+export {
   MarketSignalConflictError,
   MarketSignalNotFoundError,
   MarketSignalValidationError,

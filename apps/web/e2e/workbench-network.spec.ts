@@ -69,7 +69,9 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     page.getByRole("heading", { name: "选品立项", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("这些内容随后会继续补充，不阻止领取和评估。"),
+    page.getByText(
+      "合并信号后补后仍缺这些；不阻止领取和评估。已后补项不会出现在此。",
+    ),
   ).toBeVisible();
   await page.getByRole("button", { name: "领取此机会" }).click();
   await expect(page.getByRole("status")).toContainText("已领取");
@@ -142,12 +144,15 @@ test("a market owner can register a title first and leave details for later", as
   await page.getByRole("button", { name: "加入待判断" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "法国站出现新的户外用餐场景" }),
+    page.getByRole("heading", {
+      name: "法国站出现新的户外用餐场景 · 依据与判断",
+    }),
   ).toBeVisible();
-  await expect(page.getByText("观察事实待补，可以先判断去向。")).toBeVisible();
-  await expect(page.getByText("无来源证据")).toBeVisible();
-  await page.getByRole("button", { name: /无来源证据/ }).click();
-  await expect(page.getByText("来源证据待补，可以先判断去向。")).toBeVisible();
+  await expect(page.getByText("尚未登记观察事实。")).toBeVisible();
+  await expect(page.getByText("尚无来源证据")).toBeVisible();
+  await expect(page.getByLabel("依据完备度")).toBeVisible();
+  await page.getByRole("button", { name: /尚无来源证据/ }).click();
+  await expect(page.getByLabel("证据推荐")).toContainText("还没有来源证据");
 });
 
 test("a market owner can open a gap form and save the missing fact in place", async ({
@@ -157,12 +162,12 @@ test("a market owner can open a gap form and save the missing fact in place", as
   await page.goto("/workspaces/market-signals");
 
   await page.getByRole("button", { name: /加拿大站宠物出行需求上升/ }).click();
-  await page.getByRole("button", { name: "补充渠道" }).click();
+  await page.getByRole("button", { name: "选择渠道" }).click();
   await page.getByRole("textbox", { name: "渠道" }).fill("Aosom.ca");
   await page.getByRole("button", { name: "保存补充" }).click();
 
   await expect(page.getByText("Aosom.ca", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "补充渠道" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "选择渠道" })).toHaveCount(0);
 });
 
 test("the workbench network stays within the viewport", async ({ page }) => {
@@ -272,6 +277,7 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
         intakeState: "queued",
         intakeVersion: 1,
         assignedActorId: null,
+        supplementedFieldCodes: [],
       };
       await json(route, {
         contractVersion: "market-signal-decision-result.v1",

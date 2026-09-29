@@ -53,7 +53,7 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.text()).toContain("商品类别");
     expect(wrapper.text()).toContain("来源证据");
     expect(wrapper.text()).toContain(
-      "这些内容随后会继续补充，不阻止领取和评估",
+      "合并信号后补后仍缺这些；不阻止领取和评估",
     );
     expect(wrapper.get(".action-body button").text()).toBe("领取此机会");
   });
@@ -684,6 +684,7 @@ function opportunity(
     intakeState: "queued",
     intakeVersion: 1,
     assignedActorId: null,
+    supplementedFieldCodes: [],
     ...overrides,
   };
 }

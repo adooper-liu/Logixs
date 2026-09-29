@@ -4,19 +4,44 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Optional,
 } from "@nestjs/common";
-import type { ProductOpportunityPageV1 } from "@logix/contracts";
+import type {
+  ProductOpportunityPageV1,
+  ProductOpportunityV1,
+} from "@logix/contracts";
+import {
+  READ_EVIDENCE_REFS,
+  type ReadEvidenceRefsPort,
+} from "../../document-records";
+import {
+  READ_MARKET_SIGNAL_LIVE,
+  type ReadMarketSignalLivePort,
+} from "../../market-intelligence";
 import {
   PRODUCT_OPPORTUNITY_REPOSITORY,
+  type ProductOpportunityRecord,
   type ProductOpportunityRepository,
 } from "../domain/product-opportunity.repository";
+import {
+  mergeHandoffWithSignalLive,
+  type SignalLiveFields,
+} from "../domain/merge-handoff-with-signal";
 import { decodeKeysetCursor, encodeKeysetCursor } from "./keyset-cursor";
+
+const MARKET_SIGNAL_SUBJECT = "market_signal";
 
 @Injectable()
 export class ListProductOpportunitiesService {
   constructor(
     @Inject(PRODUCT_OPPORTUNITY_REPOSITORY)
     private readonly repository: ProductOpportunityRepository,
+    @Optional()
+    @Inject(READ_MARKET_SIGNAL_LIVE)
+    private readonly signalLive: ReadMarketSignalLivePort | null = null,
+    @Optional()
+    @Inject(READ_EVIDENCE_REFS)
+    private readonly evidenceReader: ReadEvidenceRefsPort | null = null,
   ) {}
 
   async execute(input: {
@@ -38,9 +63,15 @@ export class ListProductOpportunitiesService {
     const hasNext = rows.length > pageSize;
     const items = hasNext ? rows.slice(0, pageSize) : rows;
     const last = items.at(-1);
+    const liveBySignal = await this.loadLiveFields(
+      input.tenantId,
+      items.map((row) => row.handoff.signalId),
+    );
     return {
       contractVersion: "product-opportunity-page.v1",
-      items,
+      items: items.map((row) =>
+        toOpportunityV1(row, liveBySignal.get(row.handoff.signalId) ?? null),
+      ),
       pageSize,
       nextCursor:
         hasNext && last
@@ -52,6 +83,54 @@ export class ListProductOpportunitiesService {
           : null,
     };
   }
+
+  private async loadLiveFields(
+    tenantId: string,
+    signalIds: readonly string[],
+  ): Promise<Map<string, SignalLiveFields>> {
+    const map = new Map<string, SignalLiveFields>();
+    if (!this.signalLive || signalIds.length === 0) return map;
+
+    const liveRows = await this.signalLive.execute({ tenantId, signalIds });
+    const evidenceBySignal =
+      this.evidenceReader != null
+        ? await this.evidenceReader.execute({
+            tenantId,
+            subjectType: MARKET_SIGNAL_SUBJECT,
+            subjectIds: [...new Set(signalIds)],
+          })
+        : {};
+
+    for (const row of liveRows) {
+      map.set(row.signalId, {
+        marketCode: row.marketCode,
+        channelCode: row.channelCode,
+        categoryRef: row.categoryRef,
+        observedFactSummary: row.observedFactSummary,
+        hypothesis: row.hypothesis,
+        evidenceRefs: evidenceBySignal[row.signalId] ?? [],
+      });
+    }
+    return map;
+  }
+}
+
+export function toOpportunityV1(
+  row: ProductOpportunityRecord,
+  live: SignalLiveFields | null,
+): ProductOpportunityV1 {
+  const merged = mergeHandoffWithSignalLive(row.handoff, live);
+  const base: ProductOpportunityV1 = {
+    handoff: merged.display,
+    supplementedFieldCodes: merged.supplementedFieldCodes,
+    intakeState: row.intakeState,
+    intakeVersion: row.intakeVersion,
+    assignedActorId: row.assignedActorId,
+  };
+  if (merged.supplementedFieldCodes.length > 0) {
+    return { ...base, handoffSnapshot: row.handoff };
+  }
+  return base;
 }
 
 function parsePageSize(value: string | undefined): number {

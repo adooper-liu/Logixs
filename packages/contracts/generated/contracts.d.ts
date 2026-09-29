@@ -1899,6 +1899,8 @@ selectionReturnReason: (string | null)
  */
 export interface ProductOpportunityV1 {
 handoff: MarketOpportunityHandoffV1
+handoffSnapshot?: MarketOpportunityHandoffV1
+supplementedFieldCodes: MarketSignalPendingFieldCodeV1[]
 intakeState: MarketOpportunityIntakeStateV1
 intakeVersion: number
 assignedActorId: (string | null)

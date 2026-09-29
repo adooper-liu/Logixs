@@ -103,11 +103,69 @@ describe("MarketSignalsWorkbench", () => {
     expect(getMarketSignal).toHaveBeenCalledWith(signalOneId);
     expect(wrapper.text()).toContain("为什么现在处理");
     expect(wrapper.text()).toContain("已观察到");
-    expect(wrapper.text()).toContain("尚待验证");
+    expect(wrapper.text()).toContain("经营判断");
     expect(wrapper.text()).toContain("1 条来源");
+    expect(wrapper.text()).toContain("依据与判断");
     await wrapper.get(".evidence-fold").trigger("click");
     expect(wrapper.text()).toContain("美国站周度搜索报告");
     expect(wrapper.text()).toContain("经营与市场负责人");
+  });
+
+  it("locks hypothesis until an observed fact exists and verbs field actions", async () => {
+    const wrapper = await mountPage(`?signalId=${signalTwoId}`);
+
+    expect(wrapper.find('button[aria-label="填写经营判断"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.get(".lock-hint").text()).toContain("先补齐观察事实");
+    expect(wrapper.find('button[aria-label="添加事实"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="选择渠道"]').exists()).toBe(true);
+    expect(wrapper.find(".gap-strip").exists()).toBe(false);
+  });
+
+  it("confirms title-derived market prefill into the update API", async () => {
+    const created = marketSignal({
+      signalId: "55555555-5555-4555-8555-555555555555",
+      title: "法国站出现新的户外用餐场景",
+    });
+    const updated = marketSignal({
+      ...created,
+      marketCode: "法国",
+      version: 2,
+      pendingFieldCodes: created.pendingFieldCodes.filter(
+        (code) => code !== "market_code",
+      ),
+    });
+    details.set(created.signalId, {
+      signal: created,
+      evidence: [],
+      selectionReturnReason: null,
+    });
+    listMarketSignals.mockImplementation(async () => ({
+      contractVersion: "market-signal-page.v1",
+      items: [created],
+      pageSize: 100,
+      nextCursor: null,
+    }));
+    updateMarketSignal.mockImplementation(async () => {
+      details.set(created.signalId, {
+        signal: updated,
+        evidence: [],
+        selectionReturnReason: null,
+      });
+      return updated;
+    });
+    const wrapper = await mountPage(`?signalId=${created.signalId}`);
+
+    await wrapper.get(".prefill-banner .primary-action").trigger("click");
+    await flushPromises();
+
+    expect(updateMarketSignal).toHaveBeenCalledWith(
+      created.signalId,
+      expect.objectContaining({
+        marketCode: "法国",
+      }),
+    );
   });
 
   it("registers a title-only signal and keeps ordinary information as gaps", async () => {
@@ -137,11 +195,16 @@ describe("MarketSignalsWorkbench", () => {
       }),
     );
     expect(wrapper.get(".evidence-panel").text()).toContain(created.title);
+    expect(wrapper.get(".evidence-panel").text()).toContain("依据完备度");
+    expect(wrapper.get(".evidence-panel").text()).toContain("必填剩");
+    expect(wrapper.get(".evidence-panel").text()).toContain("尚未登记观察事实");
+    expect(wrapper.get(".evidence-panel").text()).toContain("尚无来源证据");
+    expect(wrapper.find(".gap-strip").exists()).toBe(false);
+    expect(wrapper.get(".evidence-panel").text()).toContain("从标题预填");
+    expect(wrapper.get(".evidence-panel").text()).toContain("已自动推导");
     expect(wrapper.get(".evidence-panel").text()).toContain(
-      "待补，不影响先处理",
+      "先补齐观察事实后，再填写经营判断",
     );
-    expect(wrapper.get(".evidence-panel").text()).toContain("观察事实待补");
-    expect(wrapper.get(".evidence-panel").text()).toContain("无来源证据");
   });
 
   it("opens the persisted evidence and links to its original source", async () => {
@@ -180,7 +243,7 @@ describe("MarketSignalsWorkbench", () => {
     });
     const wrapper = await mountPage(`?signalId=${signalTwoId}`);
 
-    await wrapper.get('button[aria-label="补充渠道"]').trigger("click");
+    await wrapper.get('button[aria-label="选择渠道"]').trigger("click");
     await wrapper.get('input[aria-label="渠道"]').setValue("Aosom.ca");
     await wrapper.get(".gap-editor form").trigger("submit");
     await flushPromises();
@@ -194,7 +257,7 @@ describe("MarketSignalsWorkbench", () => {
       }),
     );
     expect(wrapper.get(".signal-scope").text()).toContain("Aosom.ca");
-    expect(wrapper.find('button[aria-label="补充渠道"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="选择渠道"]').exists()).toBe(false);
   });
 
   it("hands ordinary gaps to the product-selection queue without blocking", async () => {

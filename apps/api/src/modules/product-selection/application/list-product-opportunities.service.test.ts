@@ -6,10 +6,16 @@ import type {
 } from "../domain/product-opportunity.repository";
 import { encodeKeysetCursor } from "./keyset-cursor";
 import { decodeKeysetCursor } from "./keyset-cursor";
-import { ListProductOpportunitiesService } from "./list-product-opportunities.service";
+import {
+  ListProductOpportunitiesService,
+  toOpportunityV1,
+} from "./list-product-opportunities.service";
+import type { ReadMarketSignalLivePort } from "../../market-intelligence";
+import type { ReadEvidenceRefsPort } from "../../document-records";
 
 const TENANT = "11111111-1111-4111-8111-111111111111";
 const OTHER_TENANT = "22222222-2222-4222-8222-222222222222";
+const SIGNAL_ID = "bbbbbbbb-0000-4000-8000-000000000001";
 
 describe("ListProductOpportunitiesService", () => {
   it("满一页时游标指向本页最后一条，沿用本模块共用的 keyset 游标格式", async () => {
@@ -26,6 +32,7 @@ describe("ListProductOpportunitiesService", () => {
       rows[0]!.handoff.handoffId,
       rows[1]!.handoff.handoffId,
     ]);
+    expect(page.items[0]!.supplementedFieldCodes).toEqual([]);
     expect(decodeKeysetCursor(page.nextCursor!, TENANT)).toEqual({
       at: new Date("2026-09-27T02:00:00Z"),
       id: rows[1]!.handoff.handoffId,
@@ -67,6 +74,60 @@ describe("ListProductOpportunitiesService", () => {
       service.execute({ tenantId: TENANT, pageSize: "abc" }),
     ).rejects.toThrow(/VALIDATION_FORMAT: pageSize/);
   });
+
+  it("合并信号后补到工作视图，并保留交接当日快照", async () => {
+    const row = record(
+      "aaaaaaaa-0000-4000-8000-000000000001",
+      "2026-09-27T03:00:00Z",
+      {
+        marketCode: null,
+        pendingFieldCodes: ["market_code", "channel_code"],
+      },
+    );
+    const signalLive: ReadMarketSignalLivePort = {
+      execute: async () => [
+        {
+          signalId: SIGNAL_ID,
+          marketCode: "美国",
+          channelCode: "Aosom.US",
+          categoryRef: null,
+          observedFactSummary: null,
+          hypothesis: null,
+        },
+      ],
+    };
+    const evidence: ReadEvidenceRefsPort = {
+      execute: async () => ({ [SIGNAL_ID]: [] }),
+      executeDetails: async () => [],
+    };
+    const service = new ListProductOpportunitiesService(
+      repository([row]),
+      signalLive,
+      evidence,
+    );
+
+    const page = await service.execute({ tenantId: TENANT });
+
+    expect(page.items[0]!.handoff.marketCode).toBe("美国");
+    expect(page.items[0]!.handoff.channelCode).toBe("Aosom.US");
+    expect(page.items[0]!.handoff.pendingFieldCodes).toEqual([]);
+    expect(page.items[0]!.supplementedFieldCodes).toEqual([
+      "market_code",
+      "channel_code",
+    ]);
+    expect(page.items[0]!.handoffSnapshot?.marketCode).toBeNull();
+  });
+});
+
+describe("toOpportunityV1", () => {
+  it("无后补时不附带 handoffSnapshot", () => {
+    const view = toOpportunityV1(
+      record("aaaaaaaa-0000-4000-8000-000000000001", "2026-09-27T03:00:00Z"),
+      null,
+    );
+    expect(view.handoffSnapshot).toBeUndefined();
+    expect(view.supplementedFieldCodes).toEqual([]);
+  });
 });
 
 function repository(
@@ -84,9 +145,10 @@ function repository(
 function record(
   handoffId: string,
   createdAt: string,
+  handoffOverrides: Partial<MarketOpportunityHandoffV1> = {},
 ): ProductOpportunityRecord {
   return {
-    handoff: handoff(handoffId, createdAt),
+    handoff: handoff(handoffId, createdAt, handoffOverrides),
     intakeState: "queued",
     intakeVersion: 1,
     assignedActorId: null,
@@ -96,12 +158,13 @@ function record(
 function handoff(
   handoffId: string,
   createdAt: string,
+  overrides: Partial<MarketOpportunityHandoffV1> = {},
 ): MarketOpportunityHandoffV1 {
   return {
     contractVersion: "market_opportunity_handoff.v1",
     handoffId,
     version: 1,
-    signalId: "bbbbbbbb-0000-4000-8000-000000000001",
+    signalId: SIGNAL_ID,
     signalVersion: 2,
     title: "加拿大站宠物出行需求上升",
     recipientQueueCode: "product_selection",
@@ -117,5 +180,6 @@ function handoff(
     createdBy: "market-owner",
     createdAt,
     idempotencyKey: `handoff:${handoffId}`,
+    ...overrides,
   };
 }

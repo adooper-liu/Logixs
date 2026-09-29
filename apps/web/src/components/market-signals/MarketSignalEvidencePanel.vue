@@ -5,10 +5,17 @@ import {
   FileText,
   Lightbulb,
   MapPin,
-  PencilLine,
   RadioTower,
+  Sparkles,
 } from "@lucide/vue";
 import { computed, shallowRef, watch } from "vue";
+import {
+  deriveMarketSignalPrefill,
+  marketSignalEvidenceCompleteness,
+  marketSignalEvidenceHeading,
+  marketSignalFactsReady,
+  marketSignalGapActionVerb,
+} from "../../data/marketSignalEvidenceFlow";
 import type {
   MarketSignalGapCode,
   MarketSignalScenario,
@@ -28,9 +35,39 @@ const emit = defineEmits<{
 const expandedEvidenceId = shallowRef<string | null>(null);
 const selectedGapCode = shallowRef<MarketSignalGapCode | null>(null);
 const evidenceOpen = shallowRef(false);
+const prefillDismissed = shallowRef(false);
+
 const selectedGap = computed(
   () =>
     props.signal.gaps.find((gap) => gap.code === selectedGapCode.value) ?? null,
+);
+
+const completeness = computed(() =>
+  marketSignalEvidenceCompleteness(props.signal),
+);
+const factsReady = computed(() => marketSignalFactsReady(props.signal));
+const heading = computed(() => marketSignalEvidenceHeading(props.signal.title));
+
+const derivedPrefill = computed(() =>
+  deriveMarketSignalPrefill(props.signal.title),
+);
+
+const pendingPrefill = computed(() => {
+  if (props.closed || prefillDismissed.value) return null;
+  const derived = derivedPrefill.value;
+  const pending: { market?: string; channel?: string; category?: string } = {};
+  if (derived.market && !props.signal.market) pending.market = derived.market;
+  if (derived.channel && !props.signal.channel) {
+    pending.channel = derived.channel;
+  }
+  if (derived.category && !props.signal.category) {
+    pending.category = derived.category;
+  }
+  return Object.keys(pending).length ? pending : null;
+});
+
+const primaryWarnGap = computed(() =>
+  props.closed ? null : (props.signal.gaps[0] ?? null),
 );
 
 const evidenceByDate = computed(() => {
@@ -46,7 +83,7 @@ const evidenceByDate = computed(() => {
 
 const evidenceSummary = computed(() => {
   const count = props.signal.evidence.length;
-  if (count === 0) return "无来源证据";
+  if (count === 0) return "尚无来源证据";
   const dates = [
     ...new Set(props.signal.evidence.map((item) => item.observedAt)),
   ];
@@ -60,6 +97,7 @@ watch(
     expandedEvidenceId.value = null;
     selectedGapCode.value = null;
     evidenceOpen.value = false;
+    prefillDismissed.value = false;
   },
 );
 
@@ -79,12 +117,37 @@ function toggleEvidence(id: string): void {
 
 function openGap(code: MarketSignalGapCode): void {
   if (props.closed) return;
+  if (code === "hypothesis" && !factsReady.value) return;
   selectedGapCode.value = selectedGapCode.value === code ? null : code;
+}
+
+function gapFor(code: MarketSignalGapCode) {
+  return props.signal.gaps.find((gap) => gap.code === code) ?? null;
 }
 
 function saveSupplement(draft: MarketSignalSupplementDraft): void {
   emit("supplement", draft);
   selectedGapCode.value = null;
+}
+
+function applyPrefill(): void {
+  const pending = pendingPrefill.value;
+  if (!pending?.market) {
+    prefillDismissed.value = true;
+    return;
+  }
+  // 多字段一次确认会并发打写接口；本片只可靠推导市场，确认后写一条。
+  emit("supplement", {
+    gapCode: "market",
+    content: pending.market,
+    sourceName: "",
+    sourceUrl: "",
+  });
+  prefillDismissed.value = true;
+}
+
+function dismissPrefill(): void {
+  prefillDismissed.value = true;
 }
 
 function safeSourceUrl(sourceUrl: string | null): string | null {
@@ -104,18 +167,86 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
   <article class="evidence-panel" :class="{ 'evidence-panel--closed': closed }">
     <header v-if="!closed" class="pane-heading">
       <div>
-        <small>依据是什么</small>
-        <h2>{{ signal.title }}</h2>
+        <small>依据与判断</small>
+        <h2>{{ heading }}</h2>
       </div>
       <span>{{ signal.owner }}</span>
     </header>
+
+    <section
+      v-if="!closed"
+      class="progress-head"
+      :class="{ 'progress-head--warn': completeness.remaining > 0 }"
+      aria-label="依据完备度"
+    >
+      <div class="progress-head__copy">
+        <b>依据完备度</b>
+        <span>
+          {{ completeness.filled }}/{{ completeness.total }}
+          <template v-if="completeness.remaining > 0">
+            · 必填剩 {{ completeness.remaining }}
+          </template>
+          <template v-else> · 本屏资料已齐</template>
+        </span>
+      </div>
+      <div
+        class="progress-bar"
+        role="meter"
+        :aria-valuemin="0"
+        :aria-valuemax="completeness.total"
+        :aria-valuenow="completeness.filled"
+      >
+        <span
+          class="progress-bar__fill"
+          :style="{
+            width: `${(completeness.filled / completeness.total) * 100}%`,
+          }"
+        />
+      </div>
+      <button
+        v-if="pendingPrefill"
+        type="button"
+        class="prefill-action"
+        @click="applyPrefill"
+      >
+        <Sparkles :size="14" aria-hidden="true" />
+        从标题预填
+      </button>
+    </section>
+
+    <section
+      v-if="!closed && pendingPrefill"
+      class="prefill-banner"
+      aria-label="已自动推导"
+    >
+      <p>
+        已自动推导：
+        <template v-if="pendingPrefill.market"
+          >市场「{{ pendingPrefill.market }}」</template
+        >
+        <template v-if="pendingPrefill.channel"
+          >、渠道「{{ pendingPrefill.channel }}」</template
+        >
+        <template v-if="pendingPrefill.category"
+          >、商品范围「{{ pendingPrefill.category }}」</template
+        >
+        。确认即可写入，也可改选。
+      </p>
+      <div class="prefill-banner__actions">
+        <button type="button" class="secondary-action" @click="dismissPrefill">
+          暂不使用
+        </button>
+        <button type="button" class="primary-action" @click="applyPrefill">
+          确认预填
+        </button>
+      </div>
+    </section>
 
     <section
       class="judgment-layer"
       :aria-label="closed ? '关闭时的事实与判断' : '事实与经营判断'"
     >
       <div class="judgment-layer__head">
-        <small>判断</small>
         <h3>事实与经营判断</h3>
       </div>
       <div class="fact-hypothesis">
@@ -125,28 +256,56 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
           <ul v-if="signal.observedFacts.length">
             <li v-for="fact in signal.observedFacts" :key="fact">{{ fact }}</li>
           </ul>
-          <p v-else class="missing-copy">
-            {{
-              closed
-                ? "关闭时未登记观察事实。"
-                : "观察事实待补，可以先判断去向。"
-            }}
-          </p>
+          <template v-else>
+            <p class="missing-copy">
+              {{ closed ? "关闭时未登记观察事实。" : "尚未登记观察事实。" }}
+            </p>
+            <button
+              v-if="!closed && gapFor('observed_fact')"
+              type="button"
+              class="field-action"
+              :class="{
+                'field-action--warn': primaryWarnGap?.code === 'observed_fact',
+              }"
+              :aria-label="marketSignalGapActionVerb('observed_fact')"
+              :aria-expanded="selectedGapCode === 'observed_fact'"
+              @click="openGap('observed_fact')"
+            >
+              {{ marketSignalGapActionVerb("observed_fact") }}
+            </button>
+          </template>
         </section>
-        <section aria-labelledby="hypothesis-title">
-          <span class="section-marker section-marker--hypothesis"
-            >尚待验证</span
-          >
+        <section
+          aria-labelledby="hypothesis-title"
+          :class="{ 'judgment-locked': !closed && !factsReady }"
+        >
+          <span class="section-marker section-marker--hypothesis">需验证</span>
           <h4 id="hypothesis-title">经营判断</h4>
-          <p v-if="signal.hypothesis">
+          <p v-if="!closed && !factsReady" class="lock-hint" role="status">
+            先补齐观察事实后，再填写经营判断。
+          </p>
+          <p v-else-if="signal.hypothesis">
             <Lightbulb :size="17" aria-hidden="true" />{{ signal.hypothesis }}
           </p>
-          <p v-else class="missing-copy">
-            <Lightbulb :size="17" aria-hidden="true" />
-            {{
-              closed ? "关闭时未登记经营判断。" : "经营判断待补，可以后续完善。"
-            }}
-          </p>
+          <template v-else>
+            <p class="missing-copy">
+              <Lightbulb :size="17" aria-hidden="true" />
+              {{ closed ? "关闭时未登记经营判断。" : "尚未填写经营判断。" }}
+            </p>
+            <button
+              v-if="!closed && gapFor('hypothesis') && factsReady"
+              type="button"
+              class="field-action"
+              :class="{
+                'field-action--warn': primaryWarnGap?.code === 'hypothesis',
+              }"
+              :aria-label="marketSignalGapActionVerb('hypothesis')"
+              :aria-expanded="selectedGapCode === 'hypothesis'"
+              @click="openGap('hypothesis')"
+            >
+              {{ marketSignalGapActionVerb("hypothesis") }}
+            </button>
+          </template>
         </section>
       </div>
     </section>
@@ -155,28 +314,52 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
       <dl class="signal-scope">
         <div>
           <dt><MapPin :size="14" aria-hidden="true" />市场</dt>
-          <dd :class="{ missing: !closed && !signal.market }">
-            {{
-              signal.market || (closed ? "关闭时未填" : "待补，不影响先处理")
-            }}
-          </dd>
+          <dd>{{ signal.market || (closed ? "关闭时未填" : "—") }}</dd>
+          <button
+            v-if="!closed && gapFor('market')"
+            type="button"
+            class="field-action"
+            :class="{ 'field-action--warn': primaryWarnGap?.code === 'market' }"
+            :aria-label="marketSignalGapActionVerb('market')"
+            :aria-expanded="selectedGapCode === 'market'"
+            @click="openGap('market')"
+          >
+            {{ marketSignalGapActionVerb("market") }}
+          </button>
         </div>
         <div>
           <dt><RadioTower :size="14" aria-hidden="true" />渠道</dt>
-          <dd :class="{ missing: !closed && !signal.channel }">
-            {{
-              signal.channel || (closed ? "关闭时未填" : "待补，不影响先处理")
-            }}
-          </dd>
+          <dd>{{ signal.channel || (closed ? "关闭时未填" : "—") }}</dd>
+          <button
+            v-if="!closed && gapFor('channel')"
+            type="button"
+            class="field-action"
+            :class="{
+              'field-action--warn': primaryWarnGap?.code === 'channel',
+            }"
+            :aria-label="marketSignalGapActionVerb('channel')"
+            :aria-expanded="selectedGapCode === 'channel'"
+            @click="openGap('channel')"
+          >
+            {{ marketSignalGapActionVerb("channel") }}
+          </button>
         </div>
         <div>
           <dt>商品范围</dt>
-          <dd :class="{ missing: !closed && !signal.category }">
-            {{
-              signal.category ||
-              (closed ? "关闭时未填" : "待选择，不影响先处理")
-            }}
-          </dd>
+          <dd>{{ signal.category || (closed ? "关闭时未填" : "—") }}</dd>
+          <button
+            v-if="!closed && gapFor('category')"
+            type="button"
+            class="field-action"
+            :class="{
+              'field-action--warn': primaryWarnGap?.code === 'category',
+            }"
+            :aria-label="marketSignalGapActionVerb('category')"
+            :aria-expanded="selectedGapCode === 'category'"
+            @click="openGap('category')"
+          >
+            {{ marketSignalGapActionVerb("category") }}
+          </button>
         </div>
       </dl>
 
@@ -259,9 +442,23 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
             </ul>
           </li>
         </ul>
-        <p v-else class="source-empty">
-          {{ closed ? "关闭时无来源证据。" : "来源证据待补，可以先判断去向。" }}
-        </p>
+        <div v-else-if="closed" class="source-empty">关闭时无来源证据。</div>
+        <div v-else class="evidence-recommend" aria-label="证据推荐">
+          <p>还没有来源证据。可从走查样本、站点周报或客服记录带入。</p>
+          <button
+            v-if="gapFor('source_evidence')"
+            type="button"
+            class="field-action"
+            :class="{
+              'field-action--warn': primaryWarnGap?.code === 'source_evidence',
+            }"
+            :aria-label="marketSignalGapActionVerb('source_evidence')"
+            :aria-expanded="selectedGapCode === 'source_evidence'"
+            @click="openGap('source_evidence')"
+          >
+            {{ marketSignalGapActionVerb("source_evidence") }}
+          </button>
+        </div>
       </div>
     </section>
 
@@ -283,27 +480,6 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
           <dd>{{ item.content }}</dd>
         </div>
       </dl>
-    </section>
-
-    <section
-      v-if="!closed && signal.gaps.length"
-      class="gap-strip"
-      aria-label="仍待补充"
-    >
-      <b>仍待补</b>
-      <button
-        v-for="gap in signal.gaps"
-        :key="gap.code"
-        type="button"
-        :class="{ active: selectedGapCode === gap.code }"
-        :aria-label="`补充${gap.fieldLabel}`"
-        :aria-expanded="selectedGapCode === gap.code"
-        @click="openGap(gap.code)"
-      >
-        {{ gap.label }}
-        <PencilLine :size="14" aria-hidden="true" />
-      </button>
-      <small>点击待补项直接补录；也可以先作判断，未补内容会继续保留。</small>
     </section>
 
     <MarketSignalGapEditor
@@ -365,6 +541,108 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
   font-size: var(--text-label);
 }
 
+.progress-head {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.progress-head--warn {
+  border-left: 3px solid var(--warn);
+}
+
+.progress-head__copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.progress-head__copy b {
+  color: var(--ink);
+  font-size: var(--text-meta);
+}
+
+.progress-head__copy span {
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+
+.progress-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--line);
+}
+
+.progress-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+}
+
+.prefill-action,
+.field-action,
+.primary-action,
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-label);
+}
+
+.prefill-action {
+  justify-self: start;
+  color: var(--brand-strong);
+  border-color: var(--brand);
+}
+
+.field-action--warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.primary-action {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--surface);
+}
+
+.secondary-action {
+  color: var(--ink-soft);
+}
+
+.prefill-banner {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--info-bg);
+}
+
+.prefill-banner p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+}
+
+.prefill-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .judgment-layer {
   border-bottom: 1px solid var(--line);
   border-left: 4px solid var(--brand);
@@ -387,18 +665,25 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .fact-hypothesis section {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
   min-width: 0;
   padding: var(--space-3) var(--space-4) var(--space-4);
 }
 
 .fact-hypothesis section + section {
   border-left: 1px solid var(--line);
-  background: var(--info-bg);
+  background: var(--surface-2);
+}
+
+.judgment-locked {
+  opacity: 0.72;
 }
 
 .section-marker {
   display: inline-flex;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
   color: var(--ok);
   font-size: var(--text-micro);
   font-weight: 700;
@@ -409,7 +694,7 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .fact-hypothesis h4 {
-  margin: 0 0 var(--space-3);
+  margin: 0;
   color: var(--ink);
   font-size: var(--text-title);
 }
@@ -422,7 +707,8 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .fact-hypothesis li,
-.fact-hypothesis p {
+.fact-hypothesis p,
+.lock-hint {
   color: var(--ink-soft);
   font-size: var(--text-label);
   line-height: var(--leading-body);
@@ -441,6 +727,11 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
   color: var(--info);
 }
 
+.lock-hint {
+  margin: 0;
+  color: var(--muted);
+}
+
 .basis-layer {
   border-bottom: 1px solid var(--line);
 }
@@ -453,6 +744,9 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .signal-scope > div {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
   min-width: 0;
   padding: var(--space-3) var(--space-4);
   border-right: 1px solid var(--line);
@@ -471,15 +765,11 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 }
 
 .signal-scope dd {
-  margin: var(--space-1) 0 0;
+  margin: 0;
   overflow-wrap: anywhere;
   color: var(--ink);
   font-size: var(--text-meta);
   font-weight: 700;
-}
-
-.signal-scope dd.missing {
-  color: var(--warn);
 }
 
 .closed-gap-summary {
@@ -647,6 +937,22 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
   line-height: var(--leading-body);
 }
 
+.evidence-recommend {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.evidence-recommend p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+}
+
 .supplement-section {
   padding: var(--space-4);
   border-top: 1px solid var(--line);
@@ -683,47 +989,6 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
 .section-heading h3 {
   margin: var(--space-1) 0 0;
   font-size: var(--text-meta);
-}
-
-.gap-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--line);
-  background: var(--warn-bg);
-}
-
-.gap-strip b {
-  color: var(--warn);
-  font-size: var(--text-meta);
-}
-
-.gap-strip button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: 34px;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--warn);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--warn);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--text-label);
-}
-
-.gap-strip button.active {
-  background: var(--warn);
-  color: var(--surface);
-}
-
-.gap-strip small {
-  flex: 1 1 100%;
-  color: var(--ink-soft);
-  font-size: var(--text-micro);
 }
 
 @media (max-width: 860px) {

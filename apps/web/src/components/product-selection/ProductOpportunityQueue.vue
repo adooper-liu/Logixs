@@ -76,6 +76,12 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
       <span v-if="item.handoff.pendingFieldCodes.length" class="gaps">
         随交接待补 {{ item.handoff.pendingFieldCodes.length }} 项
       </span>
+      <span
+        v-else-if="(item.supplementedFieldCodes?.length ?? 0) > 0"
+        class="gaps gaps--ok"
+      >
+        含信号后补 {{ item.supplementedFieldCodes.length }} 项
+      </span>
       <ArrowRight class="arrow" :size="16" aria-hidden="true" />
     </button>
     <p v-if="items.length === 0" class="empty">暂无经营团队交来的机会。</p>
@@ -131,6 +137,9 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
 }
 .gaps {
   color: var(--warn);
+}
+.gaps--ok {
+  color: var(--ok);
 }
 .initiative {
   font-weight: 700;
