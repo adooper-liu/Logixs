@@ -532,9 +532,8 @@ function toNpiEntry(row: NpiEntryRow): ProductInitiativeNpiEntryRecord {
     },
     claim: row.claims[0] ? toClaimRecord(row.claims[0]) : null,
     initiativeVersion: row.initiative.version,
-    initiativeDestination:
-      row.initiative
-        .currentDestination as ProductInitiativeNpiEntryRecord["initiativeDestination"],
+    initiativeDestination: row.initiative
+      .currentDestination as ProductInitiativeNpiEntryRecord["initiativeDestination"],
   };
 }
 

@@ -328,7 +328,12 @@
     "ProductInitiativeNpiQueueEntryV1": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["handoff", "claim", "initiativeVersion", "initiativeDestination"],
+      "required": [
+        "handoff",
+        "claim",
+        "initiativeVersion",
+        "initiativeDestination"
+      ],
       "properties": {
         "handoff": { "$ref": "#/$defs/ProductInitiativeHandoffV1" },
         "claim": {

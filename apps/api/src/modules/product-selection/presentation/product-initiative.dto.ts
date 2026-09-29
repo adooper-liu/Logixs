@@ -17,10 +17,7 @@ const DECISION_OUTCOMES = [
   "reject",
   "return_to_market",
 ] as const;
-const RESPONSE_OUTCOMES = [
-  ...DECISION_OUTCOMES,
-  "returned_from_npi",
-] as const;
+const RESPONSE_OUTCOMES = [...DECISION_OUTCOMES, "returned_from_npi"] as const;
 const DESTINATIONS = [
   "needs_decision",
   "deferred",

@@ -47,7 +47,11 @@ async function submit(): Promise<void> {
         <button type="button" class="secondary" @click="open = false">
           取消
         </button>
-        <button type="submit" class="primary" :disabled="busy || !reason.trim()">
+        <button
+          type="submit"
+          class="primary"
+          :disabled="busy || !reason.trim()"
+        >
           {{ busy ? "正在退回" : "确认退回选品" }}
         </button>
       </div>
