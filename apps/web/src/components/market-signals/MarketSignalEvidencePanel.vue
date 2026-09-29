@@ -279,9 +279,7 @@ function safeSourceUrl(sourceUrl: string | null): string | null {
           aria-labelledby="hypothesis-title"
           :class="{ 'judgment-locked': !closed && !factsReady }"
         >
-          <span class="section-marker section-marker--hypothesis"
-            >需验证</span
-          >
+          <span class="section-marker section-marker--hypothesis">需验证</span>
           <h4 id="hypothesis-title">经营判断</h4>
           <p v-if="!closed && !factsReady" class="lock-hint" role="status">
             先补齐观察事实后，再填写经营判断。

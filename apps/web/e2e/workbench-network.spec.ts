@@ -69,7 +69,9 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     page.getByRole("heading", { name: "选品立项", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("这些内容随后会继续补充，不阻止领取和评估。"),
+    page.getByText(
+      "合并信号后补后仍缺这些；不阻止领取和评估。已后补项不会出现在此。",
+    ),
   ).toBeVisible();
   await page.getByRole("button", { name: "领取此机会" }).click();
   await expect(page.getByRole("status")).toContainText("已领取");
