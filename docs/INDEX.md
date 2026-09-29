@@ -1,12 +1,12 @@
-# 文档唯一入口索引（INDEX）
+# 技术文档入口索引（INDEX）
 
-> 状态：**索引（唯一入口）** · 2026-09-06 · 维护：新增文档必须在本索引登记（文档纪律 ENGINEERING §12）。
-> 🗣️ 白话：这里是"所有文档的地图"——按 规则→架构→产品/理念→领域→清单→评审→规划 排好，想看哪块照表点。
+> 状态：**技术索引** · 2026-09-29 · 维护：新增技术文档必须在本索引登记（文档纪律 ENGINEERING §12）。
+> 业务、产品和运营的权威入口是 [`../doc/`](../doc/README.md)；本索引只组织实现、契约、验证和技术规划，不定义第三套业务规格。
 
 ## 一、怎么看（按角色/目标给路径）
 
-- **新成员/实现者（先读）**：人话导读（含货柜主链）→ 规则(AGENTS/ENGINEERING) → 产品(PRINCIPLES/VISION/PRODUCT_BRIEF/GLOSSARY) → 架构(架构文档/模块依赖) → 领域(CONTEXT→LIFECYCLE→STATUS→…) → 规划。
-- **业务/评审（验收）**：P2_REVIEW_CHECKLIST → PROPOSAL_SELF_AUDIT → 各领域文档核对。
+- **业务/产品/运营**：先进入 [业务资料](../doc/README.md)，按岗位目标、流程和完成标准评审；需要核对实现证据时再进入本索引。
+- **新成员/实现者（先读）**：业务资料 → 规则(AGENTS/ENGINEERING) → 技术导读 → 架构 → 领域契约 → 当前唯一活动 task brief。
 - **逻辑链（事实→清单→可视化→UI）**：事实(AS_IS/LEGACY_DB/回验) → 清单(domain 各 catalog) → 可视化(UX) → UI 交互(UX §组件/现网附录A)。
 - **按阶段**：P0 产品定义 → P1 决策(ADR) → P2 领域与数据(本批) → P3+ 底座/实现（见 PROJECT_BOOTSTRAP_CHECKLIST；人话见 PROJECT_BOOTSTRAP_PLAIN_LANGUAGE）。
 
@@ -22,8 +22,8 @@
 
 | 文档                                                                                                              | 一句话                                                     | 状态                            |
 | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------- |
-| [人话导读](./人话导读.md)                                                                                         | 大白话讲全系统+文档地图（新人先读）                        | 导航                            |
-| [货柜怎么往前走（人话）](./人话-货柜怎么往前走.md)                                                                | 建柜展任务、事实算条件、核验实际才过站                     | 人话对照                        |
+| [货柜生命周期技术导读](./人话导读.md)                                                                             | 白话解释货柜生命周期技术底座；不定义项目范围或工作台清单   | 技术导航                        |
+| [货柜怎么往前走（技术白话）](./人话-货柜怎么往前走.md)                                                            | 建柜展任务、事实算条件、核验实际才过站                     | 技术对照                        |
 | [docs/README](./README.md)                                                                                        | docs 导航+写作纪律+消费链                                  | 导航                            |
 | [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)                                                  | 目标架构总览(分层/模块/AI/工作流)                          | 已接受                          |
 | [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                                                               | 模块/包依赖与禁止依赖                                      | 已接受(P1-09)                   |
@@ -60,33 +60,33 @@
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                                     | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断             | 安全基线 V1                     |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                                                      | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）   | P1 已接受；011 候选、012 已接受 |
 
-## 四、产品/理念/流程
+## 四、产品设计与实现映射
 
-| 文档                                                                                         | 一句话                                                                                        | 状态                           |
-| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------ |
-| [VISION](./product/VISION.md)                                                                | 品牌/愿景/节点操作/仓储图谱 → 落地对照                                                        | 候选                           |
-| [PRINCIPLES](./product/PRINCIPLES.md)                                                        | 元治理 M0 + 十一原则 P1–P11（含“系统为人服务”）+ 主流程/工序任务/工单/动作模型 + 节点七组 SOP | 负责人确认（M0 + P1–P11）      |
-| [角色工作台以人为中心设计](./product/ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN.md)                | 全工作台共同规则、因果信息动线、避坑对照及备货/SKU 规范示例                                   | 负责人确认原则 + 实施基线 v1.1 |
-| [出运后工作台交付基线](./product/POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE.md)              | DCSA 角色映射、岗位顺序、各工作台内容、信息时机与串行 UI 切片                                 | 负责人确认的交付方向 v1.1      |
-| [PRODUCT_BRIEF](./product/PRODUCT_BRIEF.md)                                                  | 产品定位/当前起点/接入与前端演进                                                              | 初版基线                       |
-| [GLOSSARY](./product/GLOSSARY.md)                                                            | 术语单一真相(含 P2 §5、过站)                                                                  | 基线+P2 增补 v0.1.10           |
-| [NFR](./product/NON_FUNCTIONAL_REQUIREMENTS.md)                                              | 数字承诺(待校准)                                                                              | 初版基线                       |
-| [IMPORT_WORKFLOW](./product/workflows/IMPORT_WORKFLOW.md)                                    | 首个闭环流程叙事                                                                              | 基线                           |
-| [First Mile/清关证据链 7 组](./product/workflows/CUSTOMS_OPERATION_CHAINS.md)                | 原表单证据→统一对象→角色视图与非线性闭环                                                      | 负责人业务规则+候选映射 v0.3   |
-| [UX 工作台](./product/UX_CONTAINER_WORKBENCH.md)                                             | 已出运入口 + 三状态/三段确认 + 动态任务配方与角色化节点工作区                                 | 候选 v0.8                      |
-| [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)                              | 电商货柜全生命周期运营手册:节点/KPI·SLA/RACI/风险/应急SOP(22 节点管理视图)                    | 候选 v0.1                      |
-| [UI 体系标准](./product/UI_SYSTEM.md)                                                        | Operations Shell、页面模板、人本动线 UI-D10、三状态视觉、token、组件分层                      | 设计决策 v1.1                  |
-| [经营链视觉动线改版](./product/WORKBENCH_VISUAL_FLOW_REDESIGN.md)                            | 详情四屏 + 枢纽页两类骨架；Mode/进度/预填；色与主题以 UI_SYSTEM + logix tokens 为准           | 设计决策草案                   |
-| [任务：信号活跃态依据区动线](./planning/tasks/market-signal-active-evidence-flow-v1.md)      | 进度头、动词化、预填、事实→判断锁定；承接关闭 Mode 后的活跃态 P0                              | done（#84）                    |
-| [任务：交接后补合并投影](./planning/tasks/product-opportunity-handoff-live-projection-v1.md) | 快照保留交接当日原文；选品中栏看交接包+信号后补，后补字段标明（方案 A）                       | done（#84）                    |
-| [任务：选品中间区 Mode](./planning/tasks/product-selection-form-mode-v1.md)                  | 已立项整页 Mode、进度头、评审要点方案 A 选项化、快照带入                                      | done（#86）                    |
-| [任务：NPI 动线与退回选品](./planning/tasks/product-npi-visual-flow-return-v1.md)            | 阶段轨、齐/半/缺、退回选品正式写路径（≠ 选品退回经营）                                        | coding（当前唯一活动）         |
-| [任务：枢纽/管道总览动线](./planning/tasks/workbench-network-hub-flow-v1.md)                 | 五节三态、业务量、连接线交接、全局带与支撑分层（横向扫描 · 不套详情骨架）                     | blocked（串行）                |
-| [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                                        | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                           | 快照 2026-09-13                |
-| [作业界面人话对照](./product/UI_COPY_PLAIN_LANGUAGE.md)                                      | 屏幕字对照；显示字典 `apps/web/src/data/uiCopyCatalog.ts`                                     | 定稿工作纸                     |
-| [业务需求迭代汇编](./Logixs%20需求迭代/Logixs%20需求迭代.md)                                 | 工作台、排程、清关、合规、外部协作和平台能力的原始需求汇编                                    | 需求输入，非实施权威           |
-| [外部接口调研汇编](./Logixs%20需求迭代/API.md)                                               | 船司、DCSA、连接器、观测和标准接口的调研与候选设计                                            | 调研输入，非公共契约           |
-| 人话速查                                                                                     | 见本 INDEX（每行"一句话+状态"即人话速查）                                                     | —                              |
+| 文档                                                                                         | 一句话                                                                              | 状态                   |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------- |
+| [VISION](./product/VISION.md)                                                                | 历史品牌与愿景输入到技术落点的候选对照                                              | 评审输入，非业务权威   |
+| [PRINCIPLES](./product/PRINCIPLES.md)                                                        | 将负责人原则映射为产品和技术设计约束                                                | 技术设计原则           |
+| [角色工作台技术实现契约](./product/ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN.md)                  | 把 `doc/` 岗位业务规则映射为 HW-D 技术约束、UI 信息责任和测试要求                   | 技术实现映射 v1.4      |
+| [工作台网络技术交付映射](./product/POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE.md)            | 将业务岗位顺序映射到技术切片、当前实现边界和 DCSA 角色关系                          | 技术交付映射 v1.4      |
+| [PRODUCT_BRIEF](./product/PRODUCT_BRIEF.md)                                                  | 2026-09-08 初版范围与技术起点记录；当前业务范围已由 `doc/` 接替                     | 历史初版基线           |
+| [GLOSSARY](./product/GLOSSARY.md)                                                            | 业务词到稳定技术术语、代码和契约位置的映射                                          | 技术词汇映射 v0.1.10   |
+| [NFR](./product/NON_FUNCTIONAL_REQUIREMENTS.md)                                              | 数字承诺(待校准)                                                                    | 初版基线               |
+| [IMPORT_WORKFLOW](./product/workflows/IMPORT_WORKFLOW.md)                                    | 首个闭环流程叙事                                                                    | 基线                   |
+| [First Mile/清关证据链 7 组](./product/workflows/CUSTOMS_OPERATION_CHAINS.md)                | 历史业务输入到统一对象和角色视图的候选技术映射                                      | 评审输入+候选映射 v0.3 |
+| [UX 工作台](./product/UX_CONTAINER_WORKBENCH.md)                                             | 已出运入口 + 三状态/三段确认 + 动态任务配方与角色化节点工作区                       | 候选 v0.8              |
+| [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)                              | 历史运营手册候选，用于提取证据与评审，不直接定义当前岗位规格                        | 评审输入 v0.1          |
+| [UI 体系标准](./product/UI_SYSTEM.md)                                                        | Operations Shell、页面模板、人本动线 UI-D10、三状态视觉、token、组件分层            | 设计决策 v1.1          |
+| [经营链视觉动线改版](./product/WORKBENCH_VISUAL_FLOW_REDESIGN.md)                            | 详情四屏 + 枢纽页两类骨架；Mode/进度/预填；色与主题以 UI_SYSTEM + logix tokens 为准 | 设计决策草案           |
+| [任务：信号活跃态依据区动线](./planning/tasks/market-signal-active-evidence-flow-v1.md)      | 进度头、动词化、预填、事实→判断锁定；承接关闭 Mode 后的活跃态 P0                    | done（#84）            |
+| [任务：交接后补合并投影](./planning/tasks/product-opportunity-handoff-live-projection-v1.md) | 快照保留交接当日原文；选品中栏看交接包+信号后补，后补字段标明（方案 A）             | done（#84）            |
+| [任务：选品中间区 Mode](./planning/tasks/product-selection-form-mode-v1.md)                  | 已立项整页 Mode、进度头、评审要点方案 A 选项化、快照带入                            | done（#86）            |
+| [任务：产品开发与 NPI 五阶段闭环](./planning/tasks/product-npi-visual-flow-return-v1.md)     | 概念承接、EVT/DVT/PVT/MP 阶段门、变更、返工、发布与退回选品                         | design（保留本地 WIP） |
+| [任务：枢纽/管道总览动线](./planning/tasks/workbench-network-hub-flow-v1.md)                 | 五节三态、业务量、连接线交接、全局带与支撑分层（横向扫描 · 不套详情骨架）           | blocked（串行）        |
+| [作业壳页面清单](./product/WORKSPACE_UI_INVENTORY.md)                                        | 当前各页定位/点击边界，以及拿掉后可按投影补回的模块                                 | 快照 2026-09-21        |
+| [作业界面人话对照](./product/UI_COPY_PLAIN_LANGUAGE.md)                                      | 屏幕字对照；显示字典 `apps/web/src/data/uiCopyCatalog.ts`                           | 定稿工作纸             |
+| [业务需求迭代汇编](./Logixs%20需求迭代/Logixs%20需求迭代.md)                                 | 工作台、排程、清关、合规、外部协作和平台能力的原始需求汇编                          | 需求输入，非实施权威   |
+| [外部接口调研汇编](./Logixs%20需求迭代/API.md)                                               | 船司、DCSA、连接器、观测和标准接口的调研与候选设计                                  | 调研输入，非公共契约   |
+| 人话速查                                                                                     | 见本 INDEX（每行"一句话+状态"即人话速查）                                           | —                      |
 
 ## 五、领域（docs/product/domain，按逻辑簇）
 
@@ -193,6 +193,7 @@
 | [已出运标准导入模板 V1](./planning/tasks/post-departure-standard-import-v1.md)                              | 次级规范批量适配器；不再作为工作台默认主路径                         | 已完成                       |
 | [已出运 Shipment 业务建档与接管 V1](./planning/tasks/post-departure-workbench-positive-intake-v1.md)        | 内部事实优先、必要时手工建档、批量工具次级的正向工作台首片           | 被全链工作台基础任务暂时阻塞 |
 | [端到端工作台网络基础 V1](./planning/tasks/end-to-end-workbench-network-foundation-v1.md)                   | 全链工作台统一入口；市场经营信号到选品领取已接入真实契约与 API       | 评审中                       |
+| [寻源工作台技术差距与实现计划 V1](./planning/tasks/sourcing-workbench-operational-spec-v1.md)               | 引用 `doc/` 寻源业务规格，记录当前实现事实、技术差距、切片与验证     | blocked（负责人转向 NPI）    |
 | [P3-01 主分支保护](./planning/tasks/p3-01-branch-protection.md)                                             | CODEOWNERS + main 禁止强推，合入须 PR 与 quality                     | 已完成                       |
 | [P5 威胁与访问模型](./planning/tasks/p5-threat-access-model.md)                                             | 威胁、上线阻断与最小角色/能力/范围基线                               | 已完成                       |
 | [P6 导入第一刀](./planning/tasks/p6-import-first-slice.md)                                                  | 上传→预检→写端口→对账的首个可写库闭环                                | 已完成                       |
@@ -284,5 +285,5 @@
 
 ## 七、维护
 
-- 本索引=唯一入口：新增文档先在此登记并给"一句话+状态"。
+- 本索引是技术文档入口：新增技术文档先在此登记并给"一句话+状态"；业务规格只进入 `doc/`。
 - 状态口径：`规则/基线/负责人确认`(定) · `候选 vX`(待评审) · `快照`(现网) · `评审/回验/对标/盘点`(过程)。

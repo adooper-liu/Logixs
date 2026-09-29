@@ -4,7 +4,7 @@
 > 📐 本文是**新文档规则的示范样板**：清单(可落库)为主 → 定义与澄清 → 规则与约束/边界 → 流程 → 注意事项 → 白话注解 → 落库映射（见 [ENGINEERING_RULES §12](../../../ENGINEERING_RULES.md)）。
 > 定位：事件语义码 = **映射字典的目标侧（单一权威）**；三方码先经 [EXTERNAL_EVENT_MAPPING](./EXTERNAL_EVENT_MAPPING.md) 归一到本表。
 > 证实度：`S`=规范证实 · `R`=现网证实 · `O`=负责人原话 · `C`=候选(待对拍)。
-> 权威边界：本文件是规范事件代码、语义角色和 `completionEligibleNodeCodes` 的唯一业务权威；节点目标必须存在于[生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)。外部供应商代码不属于本目录。
+> 权威边界：本文件是规范事件代码、语义角色和 `completionEligibleNodeCodes` 的唯一运行时技术契约；业务事件含义来自 `doc/`，节点目标必须存在于[生命周期节点目录 V1](./LIFECYCLE_NODE_CATALOG_V1.md)。外部供应商代码不属于本目录。
 > 版本：v0.1（初列）→ v0.2（按新规则重组）→ v0.3（负责人确认备货、海铁和完成资格）→ V1（正式线值、版本和兼容规则）。
 
 ### V1 公共属性

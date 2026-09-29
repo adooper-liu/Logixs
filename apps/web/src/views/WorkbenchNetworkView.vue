@@ -58,19 +58,20 @@ const totalStageCount = computed(
     <PageHeader
       eyebrow="端到端业务接力"
       title="业务工作台"
-      summary="从市场机会到还箱收口，按事实产生顺序进入正确岗位；绿色节点已接通真实业务，灰色节点已固定责任与交接边界。"
+      summary="从市场机会到还箱收口，按事实产生顺序进入正确岗位；实施状态只说明技术链路是否接入，不代表岗位业务已经通过复审。"
     />
 
     <section class="network-legend" aria-label="工作台实施状态说明">
-      <span><CircleCheck :size="16" aria-hidden="true" /> 已接通真实业务</span>
+      <span><CircleCheck :size="16" aria-hidden="true" /> 已接真实能力</span>
       <span><MousePointer2 :size="16" aria-hidden="true" /> 交互样板</span>
       <span><Construction :size="16" aria-hidden="true" /> 框架已建立</span>
       <p>
-        交互样板用于校准岗位作业，不冒充已落库能力；框架节点只说明责任边界。
+        已接真实能力只表示页面连接了真实 API
+        或写入链路，不代表业务闭环已经验收；交互样板和框架节点也不得冒充已落库能力。
         <b
-          >岗位作业规格已定义 {{ definedSpecCount }} /
+          >已有技术操作映射 {{ definedSpecCount }} /
           {{ totalStageCount }} 个工作台</b
-        >，展开卡片可见他的动作、系统代劳、缺失处理与操作纪律。
+        >，这些映射仍须逐台对照业务规格复审。
       </p>
     </section>
 
@@ -113,7 +114,7 @@ const totalStageCount = computed(
                 <Construction v-else :size="14" aria-hidden="true" />
                 {{
                   stage.implementation === "live"
-                    ? "可工作"
+                    ? "已接能力"
                     : stage.implementation === "prototype"
                       ? "可体验"
                       : "待接通"
@@ -129,7 +130,7 @@ const totalStageCount = computed(
           </RouterLink>
 
           <details v-if="specByCode[stage.code]" class="stage-spec">
-            <summary>岗位作业已定义 · 展开看他的动作与纪律</summary>
+            <summary>已有技术操作映射 · 展开查看</summary>
             <WorkbenchOperationalSpecPanel :spec="specByCode[stage.code]!" />
           </details>
         </li>

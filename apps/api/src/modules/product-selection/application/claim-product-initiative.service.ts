@@ -59,7 +59,12 @@ export class ClaimProductInitiativeService {
           input.command,
         ),
       });
-      return toQueueEntry({ handoff: current.handoff, claim: result.record });
+      return toQueueEntry({
+        handoff: current.handoff,
+        claim: result.record,
+        initiativeVersion: current.initiativeVersion,
+        initiativeDestination: current.initiativeDestination,
+      });
     } catch (error) {
       throwProductInitiativeHttpError(error);
     }

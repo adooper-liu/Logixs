@@ -15,6 +15,7 @@ import type {
   ProductInitiativeClaimCommandV1,
   ProductInitiativeNpiQueueEntryV1,
   ProductInitiativeNpiQueuePageV1,
+  ProductInitiativeNpiReturnCommandV1,
   ProductOpportunityIntakeCommandV1,
   ProductOpportunityPageV1,
   ProductOpportunityV1,
@@ -196,6 +197,16 @@ export async function claimProductInitiative(
   return requestJson<ProductInitiativeNpiQueueEntryV1>(
     `/api/product-initiative-npi/${encodeURIComponent(handoffId)}/claim`,
     { method: "POST", body: command, fallback: "暂时无法领取该立项" },
+  );
+}
+
+export async function returnProductInitiativeFromNpi(
+  handoffId: string,
+  command: ProductInitiativeNpiReturnCommandV1,
+): Promise<ProductInitiativeV1> {
+  return requestJson<ProductInitiativeV1>(
+    `/api/product-initiative-npi/${encodeURIComponent(handoffId)}/return-to-selection`,
+    { method: "POST", body: command, fallback: "暂时无法退回选品" },
   );
 }
 

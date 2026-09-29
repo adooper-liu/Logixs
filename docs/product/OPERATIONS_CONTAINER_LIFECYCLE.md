@@ -1,7 +1,7 @@
 # 跨境电商货柜全生命周期 · 运营管理框架（节点 / KPI·SLA / RACI / 风险 / 应急SOP）
 
-> 状态：**候选 v0.1** · 2026-09-07 · 负责人：刘志高。
-> 用途：运营团队统一口径与作战参考，可直接复制进飞书分享。本文是**运营管理框架**，与系统领域建模分开；领域权威模型见 [CONTAINER_LIFECYCLE](./domain/CONTAINER_LIFECYCLE.md)（14 节点主链）、[NODE_PDCA](./domain/NODE_PDCA.md)（节点作战清单）、[FEE_DEMURRAGE](./domain/FEE_DEMURRAGE.md)（超期费用三类型分离口径）。
+> 状态：**历史运营输入候选 v0.1，非当前业务权威** · 2026-09-07 · 负责人：刘志高。
+> 用途：为当前业务资料提供运营证据和评审输入。适用内容必须先归并到 [`../../doc/`](../../doc/README.md) 或业务 ADR 才能成为岗位规则；本文不能直接作为实施或验收依据。运行时技术模型见 [CONTAINER_LIFECYCLE](./domain/CONTAINER_LIFECYCLE.md)、[NODE_PDCA](./domain/NODE_PDCA.md) 和 [FEE_DEMURRAGE](./domain/FEE_DEMURRAGE.md)。
 > 基准场景：一票 40HQ 从中国出运 → 目的港派送完毕 → 还箱（中美航线整柜直送）；SLA 数值以该场景为基准，其他航线按比例缩放。
 > 🗣️ 白话：这就是运营团队的"作业手册"——柜子从订舱到还箱要过哪些站（6 阶段 22 节点）、每站做到什么算合格（KPI/SLA）、谁拍板谁干活（RACI）、出事怎么办（风险分级 + 高频 L3 应急 SOP）。
 

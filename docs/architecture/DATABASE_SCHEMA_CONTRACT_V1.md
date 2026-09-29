@@ -46,7 +46,7 @@ Logix 当前使用 PostgreSQL + Prisma。已发布基线为 73 张业务表、1 
 
 - [`DATA_MODEL_P2-06`](../product/domain/DATA_MODEL_P2-06.md) 是候选 v0.9，只能解释设计方向。
 - [`CUSTOMS_DATABASE_MIGRATION_DESIGN_V1`](../product/domain/CUSTOMS_DATABASE_MIGRATION_DESIGN_V1.md) 是待迁移实现，未出现在本目录的表不能视为已存在。
-- [`POST_DEPARTURE_CORE_MODEL_GAP_V1`](../product/domain/POST_DEPARTURE_CORE_MODEL_GAP_V1.md) 已固定“实际出运后”为产品核心边界。Shipment/Handoff 核心表与公共契约已进入当前目标 schema 和未发布加法迁移 `20260923120000_add_post_departure_shipment_core`；独立异常案件通过 `20260923160000_add_operational_exception_case` 追加，Block 与异常保持正交。在迁移部署前不能当作共享库既有事实。四张维护表的 146 个原始表头/176 个出现位置已进入版本化公共字段注册表并受契约门禁约束。只读 `container_operational_view` 已开始对拍十张详情 fixture，并已接入首个 GC-008 真实动作及活动异常案件投影；完整接收仍受真实样本缺口门禁约束。
+- [`POST_DEPARTURE_CORE_MODEL_GAP_V1`](../product/domain/POST_DEPARTURE_CORE_MODEL_GAP_V1.md) 已固定 Shipment 接管与出运后子域的技术边界，不定义整个项目的产品边界。Shipment/Handoff 核心表与公共契约已进入当前目标 schema 和未发布加法迁移 `20260923120000_add_post_departure_shipment_core`；独立异常案件通过 `20260923160000_add_operational_exception_case` 追加，Block 与异常保持正交。在迁移部署前不能当作共享库既有事实。四张维护表的 146 个原始表头/176 个出现位置已进入版本化公共字段注册表并受契约门禁约束。只读 `container_operational_view` 已开始对拍十张详情 fixture，并已接入首个 GC-008 真实动作及活动异常案件投影；完整接收仍受真实样本缺口门禁约束。
 - [`COUNTRY_PORT_REFERENCE_DATA_V1`](../product/domain/COUNTRY_PORT_REFERENCE_DATA_V1.md) 固定 ISO 3166-1 与 UN/LOCODE 的来源、发布版本、筛选、中文别名候选和人工确认边界。迁移 `20260923170000_add_authoritative_location_reference_data` 只建立版本化主数据结构；标准 Seed 才写入当前权威快照。飞驼、云当等商业平台不能成为代码权威来源。
 - 真实样本、fixture 和任务 brief 是证据或验收记录，不能单独建立通用基数、唯一性或状态规则。
 

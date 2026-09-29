@@ -26,6 +26,9 @@ export function initiativeQueueBadge(
   if (entry.currentDestination === "handed_off") {
     return { label: "已立项", state: "handed_off", pendingCount };
   }
+  if (entry.currentDestination === "returned_from_npi") {
+    return { label: "NPI 退回", state: "pending", pendingCount };
+  }
   return {
     label: DESTINATION_LABELS[entry.currentDestination],
     state: "closed",

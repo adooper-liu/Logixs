@@ -37,6 +37,18 @@ export class ProductInitiativeNpiQueueEntryResponseDto {
     description: "为 null 表示这一票还没有人接。",
   })
   claim!: ProductInitiativeNpiClaimResponseDto | null;
+  @ApiProperty() initiativeVersion!: number;
+  @ApiProperty({
+    enum: [
+      "needs_decision",
+      "deferred",
+      "rejected",
+      "returned_to_market",
+      "handed_off",
+      "returned_from_npi",
+    ],
+  })
+  initiativeDestination!: string;
 }
 
 export class ProductInitiativeNpiQueuePageResponseDto {
@@ -55,5 +67,17 @@ export class ProductInitiativeClaimRequestDto implements ProductInitiativeClaimC
     description: "页面读到的领取版本；并发领取时后到的一笔会被拒绝。",
   })
   expectedClaimVersion!: number;
+  @ApiProperty() idempotencyKey!: string;
+}
+
+export class ProductInitiativeNpiReturnRequestDto {
+  @ApiProperty({ enum: ["product-initiative-npi-return.v1"] })
+  contractVersion!: "product-initiative-npi-return.v1";
+  @ApiProperty({
+    description: "页面读到的立项版本；版本冲突时须重载后再退回。",
+  })
+  expectedInitiativeVersion!: number;
+  @ApiProperty({ description: "退回选品理由；缺理由不得关闭。" })
+  returnReason!: string;
   @ApiProperty() idempotencyKey!: string;
 }

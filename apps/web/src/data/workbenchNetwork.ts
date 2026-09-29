@@ -334,7 +334,7 @@ export const workbenchNetwork = [
     "/workspaces/dispatch",
     "shipment",
     "出运运营人员",
-    "以已出运事实接管 Shipment 并持续处理在途缺口",
+    "完成进港、装船和离港交接",
     ["装箱快照", "航线与提单", "实际离港事实", "来源证据"],
     "stuffing_snapshot",
     "shipment_handoff",
@@ -453,6 +453,34 @@ export const liveWorkbenchCodes = workbenchNetwork
 export const prototypeWorkbenchCodes = workbenchNetwork
   .filter((item) => item.implementation === "prototype")
   .map((item) => item.code);
+
+/**
+ * 负责人确认的岗位操作规格串行重审顺序。
+ *
+ * 必须与 workbenchNetwork 全集严格相等；顺序表达评审优先级，不改变业务主链顺序。
+ */
+export const workbenchOperationalReviewOrder = [
+  "sourcing",
+  "product_selection",
+  "product_npi",
+  "demand_replenishment",
+  "procurement",
+  "supply_readiness",
+  "shipment_planning",
+  "ocean_operations",
+  "empty_return",
+  "charges",
+  "exceptions",
+  "market_signals",
+  "master_data",
+  "cargo_ready",
+  "stuffing",
+  "dispatch",
+  "customs",
+  "pickup",
+  "delivery",
+  "unloading",
+] as const satisfies readonly WorkbenchCode[];
 
 export const workbenchPhaseLabels: Record<WorkbenchPhase, string> = {
   strategy: "机会与立项",

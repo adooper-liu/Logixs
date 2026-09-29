@@ -1,10 +1,11 @@
 import type {
   ProductInitiativeCompletionV1,
   ProductInitiativeDestinationV1,
-  ProductInitiativeOutcomeV1,
+  ProductInitiativeStoredOutcomeV1,
   ProductInitiativePendingFieldCodeV1,
 } from "@logix/contracts";
 import type { PreparedProductInitiativeClaim } from "./product-initiative-claim";
+import type { PreparedProductInitiativeNpiReturn } from "./product-initiative-npi-return";
 import type {
   PreparedProductInitiativeDecision,
   ProductInitiativeReviewPoint,
@@ -19,7 +20,7 @@ export interface ProductInitiativeRecord {
   handoffId: string;
   signalId: string;
   version: number;
-  outcome: ProductInitiativeOutcomeV1;
+  outcome: ProductInitiativeStoredOutcomeV1;
   completion: ProductInitiativeCompletionV1;
   currentDestination: ProductInitiativeDestinationV1;
   responsibleActorId: string;
@@ -60,6 +61,8 @@ export interface ProductInitiativeClaimRecord {
 export interface ProductInitiativeNpiEntryRecord {
   handoff: ProductInitiativeHandoffRecord;
   claim: ProductInitiativeClaimRecord | null;
+  initiativeVersion: number;
+  initiativeDestination: ProductInitiativeDestinationV1;
 }
 
 export interface ProductInitiativeRepository {
@@ -68,6 +71,10 @@ export interface ProductInitiativeRepository {
   findByHandoffId(
     tenantId: string,
     handoffId: string,
+  ): Promise<ProductInitiativeRecord | null>;
+  findById(
+    tenantId: string,
+    initiativeId: string,
   ): Promise<ProductInitiativeRecord | null>;
   list(input: {
     tenantId: string;
@@ -110,4 +117,14 @@ export interface ProductInitiativeRepository {
     handoffId: string;
     command: PreparedProductInitiativeClaim;
   }): Promise<{ record: ProductInitiativeClaimRecord; duplicate: boolean }>;
+  /**
+   * NPI 退回选品：把已交接立项改回 `returned_from_npi`，理由必填。
+   * 旧 handoff 快照与 claim 行保留可审计；选品侧靠 destination 投影可见。
+   */
+  persistNpiReturn(input: {
+    tenantId: string;
+    initiativeHandoffId: string;
+    actorId: string;
+    command: PreparedProductInitiativeNpiReturn;
+  }): Promise<{ record: ProductInitiativeRecord; duplicate: boolean }>;
 }

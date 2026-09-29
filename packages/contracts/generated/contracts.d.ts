@@ -327,10 +327,19 @@ export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "
  */
 export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback")
 /**
+ * 选品立项 decision 命令可用去向。不含 `returned_from_npi`（仅 NPI 退回写口）。
+ * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeOutcomeV1".
  */
 export type ProductInitiativeOutcomeV1 = ("approve" | "defer" | "reject" | "return_to_market")
+/**
+ * 立项行已落库的 outcome，含 NPI→选品退回。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeStoredOutcomeV1".
+ */
+export type ProductInitiativeStoredOutcomeV1 = ("approve" | "defer" | "reject" | "return_to_market" | "returned_from_npi")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeCompletionV1".
@@ -340,7 +349,7 @@ export type ProductInitiativeCompletionV1 = ("pending_completion" | "completed")
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeDestinationV1".
  */
-export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "returned_to_market" | "handed_off")
+export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "returned_to_market" | "handed_off" | "returned_from_npi")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativePendingFieldCodeV1".
@@ -1956,7 +1965,7 @@ idempotencyKey: string
  */
 export interface ProductInitiativeV1 {
 initiativeId: Uuid
-outcome: ProductInitiativeOutcomeV1
+outcome: ProductInitiativeStoredOutcomeV1
 completion: ProductInitiativeCompletionV1
 currentDestination: ProductInitiativeDestinationV1
 responsibleActorId: string
@@ -1994,7 +2003,7 @@ evidenceCandidates: ProductInitiativeEvidenceCandidateV1[]
  */
 export interface ProductInitiativeQueueEntryV1 {
 handoffId: Uuid
-outcome: ProductInitiativeOutcomeV1
+outcome: ProductInitiativeStoredOutcomeV1
 currentDestination: ProductInitiativeDestinationV1
 pendingFieldCodes: ProductInitiativePendingFieldCodeV1[]
 updatedAt: DateTime
@@ -2049,12 +2058,29 @@ expectedClaimVersion: number
 idempotencyKey: string
 }
 /**
+ * NPI 将已领取立项退回选品。理由必填才关闭；缺理由不得回推选品。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeNpiReturnCommandV1".
+ */
+export interface ProductInitiativeNpiReturnCommandV1 {
+contractVersion: "product-initiative-npi-return.v1"
+expectedInitiativeVersion: number
+returnReason: string
+idempotencyKey: string
+}
+/**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeNpiQueueEntryV1".
  */
 export interface ProductInitiativeNpiQueueEntryV1 {
 handoff: ProductInitiativeHandoffV1
 claim: (ProductInitiativeNpiClaimV1 | null)
+/**
+ * 立项当前版本；退回时作 expectedInitiativeVersion。
+ */
+initiativeVersion: number
+initiativeDestination: ProductInitiativeDestinationV1
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema

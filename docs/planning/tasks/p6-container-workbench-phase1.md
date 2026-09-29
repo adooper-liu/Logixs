@@ -10,6 +10,8 @@ verification:
 
 # 任务：货柜工作台一期与生命周期事实对账
 
+> 历史任务边界：本文记录一期实现与当时验证证据，不定义当前业务工作台数量或岗位规格。现行业务范围以 [`doc/cross-border-supply-chain/08-role-workbenches.md`](../../../doc/cross-border-supply-chain/08-role-workbenches.md) 为准。
+
 ## 目标
 
 让已经合法应用到生命周期节点的规范事件或日期事实，可靠对账到对应工单，并严格经过 `WorkOrderFactApplication -> WorkOrder 状态机 -> NodeTask 聚合 -> NodeTaskOutcome/审计` 闭环；同时让全局运营在“一柜一档”看到完整 14 站、计划/预计/实际三轨和未关闭阻塞，能够判断当前进度并跳转到对应岗位工作台。
@@ -18,7 +20,7 @@ verification:
 
 ## 权威与影响范围
 
-- `TASK_WORK_ORDER_CONTRACT_V1.md`（GC-005）是任务、工单、事实应用、合法转换、聚合、结果和事务的唯一业务权威。
+- `TASK_WORK_ORDER_CONTRACT_V1.md`（GC-005）是任务、工单、事实应用、合法转换、聚合、结果和事务的唯一运行时技术契约。
 - `MODULE_DEPENDENCIES.md §2.1` 规定 `lifecycle-control` 独占过站，`work-execution` 独占任务、工单和聚合；跨模块只经公开 Port 与 Outbox 协作。
 - 一期设计输入来自 `2026-09-21-container-workbench-task-driving-design.md`，执行顺序和文件级要求来自上述一期实施计划；二者与 GC-005 或模块依赖图冲突时，以上位权威为准。
 - 影响 `work-execution`、`lifecycle-control`、`shipment-registry`、公共节点目录、Prisma schema/追加迁移、生命周期节点 API，以及 Web 一柜一档视图。

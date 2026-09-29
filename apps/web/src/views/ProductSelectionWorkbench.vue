@@ -112,6 +112,8 @@ const workResult = computed(() => {
       return "已记录不立项";
     case "returned_to_market":
       return "已退回经营团队";
+    case "returned_from_npi":
+      return "NPI 退回，需再判断";
     default:
       break;
   }

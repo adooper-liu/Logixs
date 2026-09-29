@@ -70,6 +70,10 @@ authority: ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN + UI_SYSTEM
 
 ## 3. 屏一 · 产品开发与 NPI
 
+> 2026-09-29 更新：本节只定义视觉层次，阶段业务闭环和门槛以
+> `doc/cross-border-supply-chain/08-role-workbenches.md` 第五节为权威。早期按“结论 +
+> 依据条数”计算齐/半/缺的方案已废止，不能作为推进或发布依据。
+
 ### 3.1 病灶（摘要）
 
 三栏平权；阶段是纯文字；结论在弱位置；无退回；布尔「已核实」扫读差。
@@ -78,23 +82,23 @@ authority: ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN + UI_SYSTEM
 
 ```text
 ① 标题带 + 阶段轨（概念─EVT─DVT─PVT─●MP）
-② 窄队列 | ③ 结论条（最高权）→ 四宫格齐/半/缺 → 证据折叠
-⑥ [退回] [补市场…] [主 CTA：领取 / 推进 / 交主数据]
+② 窄队列 | ③ 当前阶段工作区：交付物 → 证据 → 问题 → 门槛决定
+⑥ [退回/回开] [次要动作…] [主 CTA：领取 / 补首要缺口 / 提交评审 / 发布]
 ```
 
 ### 3.3 手法
 
-| #   | 手法         | 口径                                                                  |
-| --- | ------------ | --------------------------------------------------------------------- |
-| 1   | 阶段轨可视化 | 当前实心、已完成连线填充                                              |
-| 2   | 完成度离散档 | **齐 / 半 / 缺**：齐=有结论且有依据；半=仅其一；缺=皆无。不伪造百分比 |
-| 3   | 异常色独占   | 全页最多 1 处 `--warn`（如未填市场）                                  |
-| 4   | 退回必做     | 产品负责人可退回选品；理由必填才关闭；选品侧可见「NPI 退回」          |
-| 5   | 行动条沉底   | 主 CTA 右置；退回左置                                                 |
+| #   | 手法         | 口径                                                                                 |
+| --- | ------------ | ------------------------------------------------------------------------------------ |
+| 1   | 阶段轨可视化 | 当前实心、已完成连线填充；已完成节点打开不可变快照，不用连线代表业务已通过           |
+| 2   | 缺口具体化   | 逐项显示缺什么、为何阻断、责任人、期限和恢复动作；不以百分比或附件数量代替           |
+| 3   | 状态分轨     | 阶段、交付物、问题、外部观测和同步状态分开；警示色只突出当前最高优先级阻断           |
+| 4   | 退回与回开   | 退回选品和 DVT 后回开均走正式写路径，先展示影响，理由和审计信息按业务规则强制        |
+| 5   | 行动条沉底   | 主 CTA 随当前状态变化且全页只有一个；MP 未通过时不得出现可执行的“发布并交主数据”按钮 |
 
 ### 3.4 本屏不做
 
-- 不发明无后端的「重开」；退回走正式写接口与迁移加法。
+- 不用前端状态发明“通过、回开或发布”；动作必须来自服务端允许动作，退回和回开走正式写接口与加法迁移。
 
 ---
 
@@ -431,7 +435,7 @@ authority: ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN + UI_SYSTEM
 | P0 第一项先做状态 Mode | **同意**；详情四屏矛盾同源                                                                          |
 | 清单 A 组优先于视觉层  | **同意**；状态自相矛盾时配色无效                                                                    |
 | 色值与主题             | **以当前项目为准**：只使用 `UI_SYSTEM` + `themes/logix/tokens.css` 既有令牌；不另定色板、不写死 hex |
-| NPI 完成度             | **齐/半/缺**（结论+依据条数）                                                                       |
+| NPI 完成度             | 2026-09-28 曾定“齐/半/缺（结论+依据条数）”；2026-09-29 已由结构化阶段门和具体缺口取代               |
 | NPI 退回               | **要做**（独立实现片）                                                                              |
 | 选品评审要点           | **方案 A**：UI 选项化 → 规范化短句落库                                                              |
 | 枢纽页 vs 详情页       | **并列两类骨架**：枢纽=横向扫描找落点；详情=纵向沉淀；§2 不套枢纽                                   |
@@ -446,7 +450,7 @@ authority: ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN + UI_SYSTEM
 - 活跃态依据区（blocked 让位）：[market-signal-active-evidence-flow-v1](../planning/tasks/market-signal-active-evidence-flow-v1.md)
 - 选品中栏后补投影（coding）：[product-opportunity-handoff-live-projection-v1](../planning/tasks/product-opportunity-handoff-live-projection-v1.md)
 - 选品中间区 Mode（blocked）：[product-selection-form-mode-v1](../planning/tasks/product-selection-form-mode-v1.md)
-- NPI 动线+退回（blocked）：[product-npi-visual-flow-return-v1](../planning/tasks/product-npi-visual-flow-return-v1.md)
+- NPI 五阶段闭环（design，保留退回 WIP）：[product-npi-visual-flow-return-v1](../planning/tasks/product-npi-visual-flow-return-v1.md)
 - 枢纽/管道总览（blocked）：[workbench-network-hub-flow-v1](../planning/tasks/workbench-network-hub-flow-v1.md)
 
-**建议 coding 顺序（同时仅一个 design/coding）**：屏四活跃态（当前 coding）→ **交接后补投影 A** → 屏三选品 Mode → 屏一 NPI → 屏五枢纽。其余暂 `blocked`。
+**当前执行顺序（同时仅一个 design/coding）**：NPI 五阶段闭环为当前唯一 `design`；寻源和枢纽等任务保持 `blocked`，不得并行改写同一业务链。
