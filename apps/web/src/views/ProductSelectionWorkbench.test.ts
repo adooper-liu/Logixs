@@ -496,8 +496,15 @@ describe("ProductSelectionWorkbench", () => {
     // 专业要求面板另有自己的“添加证据”，这里只断言评审要点面板不再给写入口
     expect(review.find("button.add-evidence").exists()).toBe(false);
     expect(review.find(".picker-toggle").exists()).toBe(false);
-    // 但已写下的结论与引用的证据还看得见
-    expect((conclusion.element as HTMLTextAreaElement).value).toBe("头部集中");
+    // 短句落在档位单选；补充框为空不算丢结论
+    expect(
+      (
+        review.get(
+          '.review-point[data-code="competitive_supply"] input[value="concentrated"]',
+        ).element as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+    expect((conclusion.element as HTMLTextAreaElement).value).toBe("");
     expect(
       review
         .get(
@@ -543,7 +550,7 @@ describe("ProductSelectionWorkbench", () => {
     expect(getProductInitiative).toHaveBeenCalledTimes(2);
   });
 
-  it("已立项的机会只显示终态，不再给判断动作", async () => {
+  it("已立项的机会整页 Mode：结论条优先，无右侧判断动作", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     getProductInitiative.mockResolvedValue(
       initiativeDetail({
@@ -557,11 +564,22 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
+    expect(wrapper.classes()).toContain("selection-workbench--initiated");
+    expect(wrapper.get(".conclusion-strip").text()).toContain("已立项");
     expect(wrapper.find(".destination").exists()).toBe(false);
     expect(wrapper.find(".outcome-submit").exists()).toBe(false);
-    expect(wrapper.get(".product-initiative-outcome").text()).toContain(
-      "已立项",
-    );
+    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(false);
+    expect(wrapper.find(".progress-head").exists()).toBe(false);
+  });
+
+  it("接受后显示完备度进度头与带入，待补不进进度头以外的催办墙", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    const wrapper = await mountPage();
+
+    expect(wrapper.get(".progress-head").text()).toMatch(/必填剩/);
+    expect(wrapper.get(".progress-head__apply").text()).toContain("带入");
+    await wrapper.get(".progress-head__apply").trigger("click");
+    expect(wrapper.get('[role="status"]').text()).toContain("已自动带入");
   });
 });
 

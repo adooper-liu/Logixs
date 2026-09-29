@@ -1,0 +1,56 @@
+import type { ProductOpportunityV1 } from "@logix/contracts";
+import { describe, expect, it } from "vitest";
+import {
+  applyHandoffToObjective,
+  buildObjectiveFromHandoff,
+} from "./productInitiativeApplyHandoff";
+
+function opportunity(
+  overrides: Partial<ProductOpportunityV1["handoff"]> = {},
+): ProductOpportunityV1 {
+  return {
+    handoff: {
+      handoffId: "11111111-1111-4111-8111-111111111111",
+      signalId: "22222222-2222-4222-8222-222222222222",
+      title: "美国站庭院收纳",
+      marketCode: "美国",
+      channelCode: "Amazon",
+      categoryRef: "庭院收纳",
+      opportunityStatement: "需求连续三周上升",
+      observedFactSummary: "搜索量上升",
+      hypothesis: "可做折叠款",
+      evidenceRefs: [],
+      pendingFieldCodes: [],
+      handedOffAt: "2026-09-27T00:00:00.000Z",
+      ...overrides,
+    },
+    intakeState: "accepted",
+    intakeVersion: 1,
+    assignedActorId: "selector",
+    supplementedFieldCodes: [],
+  };
+}
+
+describe("productInitiativeApplyHandoff", () => {
+  it("从合并视图拼目标结果草稿", () => {
+    expect(buildObjectiveFromHandoff(opportunity())).toContain("市场：美国");
+    expect(buildObjectiveFromHandoff(opportunity())).toContain("可做折叠款");
+  });
+
+  it("已有目标结果时不覆盖", () => {
+    const result = applyHandoffToObjective({
+      current: "已有人手写",
+      item: opportunity(),
+    });
+    expect(result).toEqual({ next: "已有人手写", applied: false });
+  });
+
+  it("空目标结果时带入", () => {
+    const result = applyHandoffToObjective({
+      current: "  ",
+      item: opportunity(),
+    });
+    expect(result.applied).toBe(true);
+    expect(result.next).toContain("需求连续三周上升");
+  });
+});

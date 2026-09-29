@@ -102,9 +102,8 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
 
   await expect(page.getByRole("status")).toContainText("已立项");
   // 成功后从服务端重读：终态由服务端返回的 currentDestination 决定，不是前端猜的。
-  await expect(page.locator(".product-initiative-outcome")).toContainText(
-    "已立项",
-  );
+  await expect(page.locator(".conclusion-strip")).toContainText("已立项");
+  await expect(page.locator(".product-initiative-outcome")).toHaveCount(0);
   await expect(page.locator(".destination")).toHaveCount(0);
   // 评审要点只读：系统不会再接受改动，就不该继续摆出写入口。
   await expect(page.locator(".review-point textarea").first()).toHaveAttribute(
