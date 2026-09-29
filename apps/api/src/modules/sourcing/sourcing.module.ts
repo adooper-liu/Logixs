@@ -6,6 +6,7 @@ import {
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import {
   ListSourcingQueueService,
+  AdmitSupplierService,
   NominateSupplierService,
   RecordQuotationService,
   RegisterSupplierService,
@@ -20,6 +21,7 @@ import { SourcingController } from "./presentation/sourcing.controller";
   providers: [
     ListSourcingQueueService,
     RegisterSupplierService,
+    AdmitSupplierService,
     RecordQuotationService,
     NominateSupplierService,
     {

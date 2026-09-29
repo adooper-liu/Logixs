@@ -33,21 +33,23 @@ const {
   receipt,
   load,
   lowestPrice,
+  canRankByPrice,
   addSupplier,
+  admit,
   addQuotation,
   nominate,
 } = useSourcingWorkbench({ selectedKey: requestedKey });
 
-// —— 登记供应商 ——
-const newSupplier = ref({ name: "", countryCode: "CN", admitted: true });
+// —— 登记供应商（默认待准入；国别等业务事实不预填）——
+const newSupplier = ref({ name: "", countryCode: "" });
 
 // —— 录入报价（针对当前件 + 选中的供应商）——
 const quotingSupplierId = ref("");
 const draft = ref({
   unitPrice: "",
-  currency: "USD",
-  minQuantity: "500",
-  incoterms: "FOB Ningbo / Incoterms 2020",
+  currency: "",
+  minQuantity: "",
+  incoterms: "",
   toolingCost: "",
   leadTimeDays: "",
   exclusions: "",
@@ -93,6 +95,9 @@ const currentOwner = computed(() => {
   if (!selected.value) return "寻源负责人";
   const rows = selected.value.quotations;
   if (rows.length === 0) return "寻源负责人（待询价）";
+  if (!canRankByPrice(rows)) {
+    return "寻源负责人（口径不一，待比较）";
+  }
   const cheapest = [...rows].sort(
     (left, right) =>
       Number(lowestPrice(left).split(" ")[0]) -
@@ -101,21 +106,38 @@ const currentOwner = computed(() => {
   const supplier = selected.value.suppliers.find(
     (row) => row.supplierId === cheapest.supplierId,
   );
-  return `${supplier?.name ?? cheapest.supplierId}（当前最低）`;
+  return `${supplier?.name ?? cheapest.supplierId}（同口径价低）`;
 });
 
 async function submitSupplier(): Promise<void> {
+  const countryCode = newSupplier.value.countryCode.trim().toUpperCase();
+  if (!newSupplier.value.name.trim() || !countryCode) return;
   const saved = await addSupplier({
     name: newSupplier.value.name.trim(),
-    countryCode: newSupplier.value.countryCode.trim().toUpperCase(),
-    admissionState: newSupplier.value.admitted ? "admitted" : "pending",
+    countryCode,
   });
-  if (saved) newSupplier.value.name = "";
+  if (saved) {
+    newSupplier.value = { name: "", countryCode: "" };
+  }
+}
+
+async function admitSupplierRow(supplierId: string): Promise<void> {
+  const supplier = suppliers.value.find((row) => row.supplierId === supplierId);
+  if (!supplier) return;
+  await admit(supplier);
 }
 
 async function submitQuotation(): Promise<void> {
   const supplierId = quotingSupplierId.value;
-  if (!supplierId || !draft.value.unitPrice.trim()) return;
+  if (
+    !supplierId ||
+    !draft.value.unitPrice.trim() ||
+    !draft.value.currency.trim() ||
+    !draft.value.minQuantity.trim() ||
+    !draft.value.incoterms.trim()
+  ) {
+    return;
+  }
   const saved = await addQuotation(supplierId, {
     priceTiers: [
       {
@@ -199,7 +221,7 @@ async function reload(): Promise<void> {
       >
       <span
         ><UserRound :size="16" /><span
-          ><small>当前最低</small><b>{{ currentOwner }}</b></span
+          ><small>同口径提示</small><b>{{ currentOwner }}</b></span
         ></span
       >
     </section>
@@ -342,23 +364,49 @@ async function reload(): Promise<void> {
             <span>国别（两位大写）</span>
             <input v-model="newSupplier.countryCode" aria-label="供应商国别" />
           </label>
-          <label class="check">
-            <input
-              v-model="newSupplier.admitted"
-              type="checkbox"
-              aria-label="已准入"
-            />
-            <span>已通过准入（没准入不能定点）</span>
-          </label>
+          <p class="note">登记后为待准入；准入是独立动作，未准入不能定点。</p>
           <div class="actions">
             <button
               type="button"
-              :disabled="saving || !newSupplier.name.trim()"
+              :disabled="
+                saving ||
+                !newSupplier.name.trim() ||
+                !newSupplier.countryCode.trim()
+              "
               @click="submitSupplier"
             >
               登记
             </button>
           </div>
+        </div>
+
+        <div v-if="suppliers.length > 0" class="block">
+          <span class="label">供应商准入</span>
+          <ul class="quotes">
+            <li v-for="supplier in suppliers" :key="supplier.supplierId">
+              <div class="quote-head">
+                <b>{{ supplier.name }}</b>
+                <span class="price">
+                  {{
+                    supplier.admissionState === "admitted"
+                      ? "已准入"
+                      : supplier.admissionState === "suspended"
+                        ? "已暂停"
+                        : "待准入"
+                  }}
+                </span>
+              </div>
+              <button
+                v-if="supplier.admissionState === 'pending'"
+                type="button"
+                :disabled="saving"
+                :aria-label="`准入 ${supplier.name}`"
+                @click="admitSupplierRow(supplier.supplierId)"
+              >
+                准入
+              </button>
+            </li>
+          </ul>
         </div>
 
         <div v-if="selected" class="block">
@@ -442,7 +490,12 @@ async function reload(): Promise<void> {
             <button
               type="button"
               :disabled="
-                saving || !quotingSupplierId || !draft.unitPrice.trim()
+                saving ||
+                !quotingSupplierId ||
+                !draft.unitPrice.trim() ||
+                !draft.currency.trim() ||
+                !draft.minQuantity.trim() ||
+                !draft.incoterms.trim()
               "
               @click="submitQuotation"
             >

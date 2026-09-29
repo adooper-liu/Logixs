@@ -4,6 +4,7 @@ import type {
   SupplierQuotationV1,
 } from "@logix/contracts";
 import type {
+  PreparedAdmission,
   PreparedNomination,
   PreparedQuotation,
   PreparedSupplier,
@@ -104,6 +105,12 @@ export interface SupplierNominationRepository {
     tenantId: string;
     actorId: string;
     command: PreparedSupplier;
+  }): Promise<{ record: SupplierRecord; duplicate: boolean }>;
+  persistAdmission(input: {
+    tenantId: string;
+    supplierId: string;
+    actorId: string;
+    command: PreparedAdmission;
   }): Promise<{ record: SupplierRecord; duplicate: boolean }>;
   persistQuotation(input: {
     tenantId: string;

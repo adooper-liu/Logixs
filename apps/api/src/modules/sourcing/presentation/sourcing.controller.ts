@@ -7,12 +7,14 @@ import type {
 } from "@logix/contracts";
 import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import {
+  AdmitSupplierService,
   ListSourcingQueueService,
   NominateSupplierService,
   RecordQuotationService,
   RegisterSupplierService,
 } from "../application/supplier-nomination.services";
 import {
+  AdmitSupplierRequestDto,
   NominateSupplierRequestDto,
   RecordQuotationRequestDto,
   RegisterSupplierRequestDto,
@@ -35,6 +37,7 @@ export class SourcingController {
   constructor(
     private readonly listQueue: ListSourcingQueueService,
     private readonly registerSupplier: RegisterSupplierService,
+    private readonly admitSupplier: AdmitSupplierService,
     private readonly recordQuotation: RecordQuotationService,
     private readonly nominateSupplier: NominateSupplierService,
   ) {}
@@ -60,6 +63,22 @@ export class SourcingController {
     return this.registerSupplier.execute({
       tenantId: request.identity.tenantId,
       actorId: request.identity.actorId,
+      command: body,
+    });
+  }
+
+  @Post("suppliers/:supplierId/admit")
+  @RequireCapabilities("planning.draft")
+  @ApiOkResponse({ type: SupplierResponseDto })
+  admit(
+    @Req() request: IdentityRequest,
+    @Param("supplierId") supplierId: string,
+    @Body() body: AdmitSupplierRequestDto,
+  ): Promise<SupplierV1> {
+    return this.admitSupplier.execute({
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
+      supplierId,
       command: body,
     });
   }

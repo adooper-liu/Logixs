@@ -1,8 +1,9 @@
 ---
-status: coding
-branch: feat/product-npi-visual-flow-return
+status: blocked
+branch: feat/product-npi-return-to-selection
 verification: |
-  前序选品 Mode #86 已 done；本片为当前唯一 coding（含退回写路径）。
+  视觉部分已由 PR #88 合入 main；退回写路径的本地未提交实现原样保留。
+  负责人于 2026-09-29 将“寻源规格缺口”调整为第一优先，本片暂停，不得把在途代码冒充完成。
 ---
 
 # 任务：NPI 视觉动线、齐/半/缺与退回选品
