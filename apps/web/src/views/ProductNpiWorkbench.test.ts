@@ -64,6 +64,19 @@ describe("ProductNpiWorkbench", () => {
     expect(wrapper.text()).toContain("本岗位只读");
   });
 
+  it("中栏展示阶段轨与齐半缺，未领取落在概念", async () => {
+    const wrapper = await mountWorkbench("h-1");
+
+    expect(wrapper.get(".stage-rail").text()).toMatch(
+      /概念.*EVT.*DVT.*PVT.*MP/,
+    );
+    expect(wrapper.get(".completeness").text()).toContain("齐");
+    expect(wrapper.get(".completeness").text()).toContain("缺");
+    expect(wrapper.get(".stage-rail__item.is-current").text()).toContain(
+      "概念",
+    );
+  });
+
   it("领取按服务端身份落负责人，并给出回执", async () => {
     const wrapper = await mountWorkbench("h-1");
 

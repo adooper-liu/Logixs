@@ -12,6 +12,7 @@ import ProductDefinitionAdvancePanel from "../components/product-npi/ProductDefi
 import ProductNpiClaimAction from "../components/product-npi/ProductNpiClaimAction.vue";
 import ProductNpiHandoffDetail from "../components/product-npi/ProductNpiHandoffDetail.vue";
 import ProductNpiQueue from "../components/product-npi/ProductNpiQueue.vue";
+import ProductNpiStageProgress from "../components/product-npi/ProductNpiStageProgress.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useProductDefinition } from "../composables/useProductDefinition";
 import { useProductNpiWorkbench } from "../composables/useProductNpiWorkbench";
@@ -123,7 +124,7 @@ async function claimSelected(): Promise<void> {
     </section>
 
     <div class="workbench-grid">
-      <section class="pane">
+      <section class="pane pane--queue">
         <ProductNpiQueue
           :waiting="waiting"
           :mine="mine"
@@ -133,8 +134,17 @@ async function claimSelected(): Promise<void> {
           @select="selectInitiative"
         />
       </section>
-      <section class="pane">
-        <ProductNpiHandoffDetail v-if="selected" :entry="selected" />
+      <section class="pane pane--main">
+        <template v-if="selected">
+          <ProductNpiStageProgress
+            :claimed="Boolean(selected.claim)"
+            :npi-stage="definition.definition.value?.npiStage ?? null"
+            :stage-outcomes="definition.definition.value?.stageOutcomes ?? []"
+            :objective="selected.handoff.objective"
+            :title="selected.handoff.objective"
+          />
+          <ProductNpiHandoffDetail :entry="selected" />
+        </template>
         <p v-else class="empty">
           {{ loading ? "正在读取产品侧待办" : "暂无待处理的立项交接" }}
         </p>
@@ -171,3 +181,127 @@ async function claimSelected(): Promise<void> {
     </div>
   </main>
 </template>
+
+<style scoped>
+.npi-workbench {
+  min-width: 0;
+}
+.feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border-left: 3px solid var(--ok);
+  background: var(--ok-bg);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+.feedback--error {
+  border-left-color: var(--risk);
+  background: var(--risk-bg);
+}
+.feedback span {
+  flex: 1;
+}
+.feedback button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+.work-context {
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.work-context > svg {
+  color: var(--brand-strong);
+}
+.work-context > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.work-context > span:last-child {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--line);
+}
+.work-context > span:last-child > svg {
+  color: var(--brand-strong);
+}
+.work-context small {
+  color: var(--muted);
+  font-size: var(--text-micro);
+}
+.work-context b {
+  color: var(--ink);
+  font-size: var(--text-meta);
+  overflow-wrap: anywhere;
+}
+.workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.55fr) minmax(420px, 1.45fr) minmax(
+      290px,
+      0.85fr
+    );
+  align-items: start;
+  gap: var(--space-3);
+}
+.pane {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+}
+.empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  color: var(--muted);
+  font-size: var(--text-label);
+  text-align: center;
+}
+@media (max-width: 1100px) {
+  .workbench-grid {
+    grid-template-columns: minmax(220px, 0.6fr) minmax(0, 1.4fr);
+  }
+  .pane:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 680px) {
+  .work-context,
+  .workbench-grid {
+    grid-template-columns: 1fr;
+  }
+  .work-context > svg {
+    display: none;
+  }
+  .work-context > span:last-child {
+    padding: var(--space-2) 0 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+  .pane:last-child {
+    grid-column: auto;
+  }
+}
+</style>
