@@ -1,8 +1,11 @@
 ---
-status: coding
+status: done
 branch: feat/product-selection-form-mode
 verification: |
-  前序 #84（活跃态依据区 + 后补投影）已 done；本片为当前唯一 coding。
+  已合入 main：#86。
+  CI：static / unit / build / e2e / quality 通过。
+  本地：ProductSelectionWorkbench / ReviewPanel / reviewOptions / applyHandoff 单测；
+  repo:check 通过；workbench-network e2e 触及立项 Mode。
 ---
 
 # 任务：选品立项中间区 Mode 与评审要点选项化
@@ -68,3 +71,4 @@ verification: |
 | 2026-09-28 | blocked | —      | —      | 串行：等活跃态依据区 done 后解锁   |
 | 2026-09-29 | coding  | Cursor | —      | 解锁：前序 #84 done 后开工         |
 | 2026-09-29 | coding  | Cursor | —      | 整页 Mode + 进度头 + 选项化 + 带入 |
+| 2026-09-29 | done    | Cursor | #86    | 合入 main                          |
