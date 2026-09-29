@@ -1,6 +1,6 @@
 # 身份与访问模型 V1
 
-> 状态：**正式 V1（P2-05 最小实施基线）** · 2026-09-17 · 所有者：权限治理负责人
+> 状态：**正式 V1（P2-05 最小实施基线；AUTH-D01 修订）** · 2026-09-29 · 所有者：权限治理负责人
 > 消费者：P5-02 OIDC/授权实现、各 Application 用例、API、Web 允许动作投影和审计。
 > 边界：本文定义身份、角色、能力和数据范围；动作风险、复核及固定授权协议仍以 [GC-008](./ACTION_PERMISSION_CONTRACT_V1.md) 为唯一权威。
 
@@ -54,6 +54,7 @@
 | capabilityCode           | 允许的能力边界                                | 不自动包含                     |
 | ------------------------ | --------------------------------------------- | ------------------------------ |
 | `container.read`         | 按范围读取货柜及其投影                        | 修改状态、读取原文件           |
+| `container.operate`      | 按范围提交装箱、出运、清关、卸柜和送仓指令    | 任意货柜、直接推进生命周期     |
 | `task.read`              | 按范围读取节点任务和工单                      | 领取或完成                     |
 | `task.execute`           | 领取/完成授权范围内的工单                     | 越过证据、状态机或并发守卫     |
 | `evidence.read`          | 读取授权对象的证据元数据                      | 下载原件、核验                 |
@@ -79,22 +80,26 @@
 
 能力码是访问控制稳定键，不是 `actionCode`。一个动作可要求多个能力；动作、目标类型、风险和业务前置由 `GC-008 ActionDefinitionV1` 绑定。
 
+`container.operate` 是 V1 的货柜级受控作业入口能力，不是通用写权限。每次调用仍须命中租户与对象范围，并通过对应 `ActionDefinitionV1`、状态、证据、职责分离和并发守卫；仅持有该能力不得操作任意货柜、改写历史事实或直接设置生命周期状态。若授权审计证明装箱、出运、清关或内陆作业需要互斥岗位，或该能力持续授予无关业务域动作，权限治理负责人必须新增更窄能力码并按版本迁移现有消费者，不得原地改变本能力语义。
+
 ## 5. 角色能力矩阵
 
 `R`=读取，`W`=执行/写入，`A`=管理或复核；空白=默认拒绝。
 
-| 角色                    | 货柜/任务             | 证据        | 导入                               | 生命周期                   | 计划       | 费用        | 可靠性/审计                  | 身份管理 |
-| ----------------------- | --------------------- | ----------- | ---------------------------------- | -------------------------- | ---------- | ----------- | ---------------------------- | -------- |
-| `field_operator`        | container R, task R/W | read/submit |                                    | read                       |            |             |                              |          |
-| `operations_dispatcher` | container R, task R/W | read/submit | read                               | read/operate               | read/draft | read        | read；通知 R                 |          |
-| `import_operator`       | container R           |             | read/operate/execute               |                            |            |             |                              |          |
-| `review_supervisor`     | container R, task R   | read/review | read；高风险例外复核由动作策略要求 | read；高风险动作按策略复核 | read       | read        | read/recover；审计 R；通知 R |          |
-| `finance_controller`    | container R           | read        |                                    | read                       | read       | read/manage | 审计 R                       |          |
-| `manager`               | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R         |          |
-| `business_admin`        | container R           |             | read                               | read                       | read       | read        | read；审计 R；通知 R         | manage   |
-| `audit_analyst`         | container R, task R   | read        | read                               | read                       | read       | read        | read；审计 R；通知 R         |          |
+| 角色                    | 货柜/任务               | 证据        | 导入                               | 生命周期                   | 计划       | 费用        | 可靠性/审计                  | 身份管理 |
+| ----------------------- | ----------------------- | ----------- | ---------------------------------- | -------------------------- | ---------- | ----------- | ---------------------------- | -------- |
+| `field_operator`        | container R/W, task R/W | read/submit |                                    | read                       |            |             |                              |          |
+| `operations_dispatcher` | container R/W, task R/W | read/submit | read                               | read/operate               | read/draft | read        | read；通知 R                 |          |
+| `import_operator`       | container R             |             | read/operate/execute               |                            |            |             |                              |          |
+| `review_supervisor`     | container R, task R     | read/review | read；高风险例外复核由动作策略要求 | read；高风险动作按策略复核 | read       | read        | read/recover；审计 R；通知 R |          |
+| `finance_controller`    | container R             | read        |                                    | read                       | read       | read/manage | 审计 R                       |          |
+| `manager`               | container R, task R     | read        | read                               | read                       | read       | read        | read；审计 R；通知 R         |          |
+| `business_admin`        | container R             |             | read                               | read                       | read       | read        | read；审计 R；通知 R         | manage   |
+| `audit_analyst`         | container R, task R     | read        | read                               | read                       | read       | read        | read；审计 R；通知 R         |          |
 
 具体动作若要求 four-eyes，拥有业务能力的发起人也不能自批；职责分离优先于角色能力并集。
+
+矩阵中的 `container R/W` 只表示该角色可获得 `container.read` 与 `container.operate` 入口能力，不表示可以执行全部货柜动作。具体动作可以要求额外能力、范围、前置和复核；相关命令链未实现完整 `GC-008` 校验前，不得把本矩阵当作生产授权完成证据。
 
 当前 `cargo_ready` V1 仅授予 `review_supervisor` 规则发布能力；`compliance.review` 与 `compliance.rule.manage` 分离，后续组织若要求起草人与批准人分离，应在动作策略中进一步收紧，不能靠前端隐藏按钮代替。
 
