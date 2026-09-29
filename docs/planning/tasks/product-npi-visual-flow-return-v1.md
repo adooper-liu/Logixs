@@ -1,9 +1,8 @@
 ---
-status: blocked
-branch: # 解锁后填 feat/product-npi-visual-flow-return
+status: coding
+branch: feat/product-npi-visual-flow-return
 verification: |
-  阻塞：串行槽位；建议在活跃态依据区与选品 Mode 的 P0 落地后解锁，
-  或由负责人指定本片抢占唯一 coding。含写路径，不宜与他片并行 coding。
+  前序选品 Mode #86 已 done；本片为当前唯一 coding（含退回写路径）。
 ---
 
 # 任务：NPI 视觉动线、齐/半/缺与退回选品
@@ -63,7 +62,8 @@ verification: |
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责 | commit | 说明                     |
-| ---------- | ------- | ---- | ------ | ------------------------ |
-| 2026-09-28 | design  | —    | —      | 按改版规范开 brief       |
-| 2026-09-28 | blocked | —    | —      | 串行：建议 P0 屏后再解锁 |
+| 日期       | 阶段    | 负责   | commit | 说明                            |
+| ---------- | ------- | ------ | ------ | ------------------------------- |
+| 2026-09-28 | design  | —      | —      | 按改版规范开 brief              |
+| 2026-09-28 | blocked | —      | —      | 串行：建议 P0 屏后再解锁        |
+| 2026-09-29 | coding  | Cursor | —      | 解锁：选品 Mode #86 done 后开工 |
