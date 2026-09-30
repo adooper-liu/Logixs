@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { REQUIRED_CAPABILITIES_KEY } from "../../../security/require-capabilities.decorator";
 import {
+  ImportBatchesController,
   normalizeMultipartFileName,
   normalizeReplacementBatchId,
   toBatchDto,
@@ -67,5 +69,46 @@ describe("toBatchDto", () => {
     expect(dto).not.toHaveProperty("fileHash");
     expect(dto).not.toHaveProperty("sourceObjectKey");
     expect(dto).not.toHaveProperty("sourceContentType");
+  });
+});
+
+describe("ImportBatchesController", () => {
+  it("读取、操作和执行使用不同能力", () => {
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ImportBatchesController.prototype.get,
+      ),
+    ).toEqual(["import.read"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ImportBatchesController.prototype.reconciliation,
+      ),
+    ).toEqual(["import.read"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ImportBatchesController.prototype.upload,
+      ),
+    ).toEqual(["import.operate"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ImportBatchesController.prototype.postMappingReviews,
+      ),
+    ).toEqual(["import.operate"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ImportBatchesController.prototype.precheck,
+      ),
+    ).toEqual(["import.operate"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ImportBatchesController.prototype.execute,
+      ),
+    ).toEqual(["import.execute"]);
   });
 });

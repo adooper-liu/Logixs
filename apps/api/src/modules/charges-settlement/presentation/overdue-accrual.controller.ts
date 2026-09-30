@@ -7,6 +7,7 @@ import {
   Req,
 } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ComputeOverdueAccrualService } from "../application/compute-overdue-accrual.service";
 import {
   ComputeOverdueAccrualRequestDto,
@@ -24,6 +25,7 @@ export class OverdueAccrualController {
   constructor(private readonly computeAccrual: ComputeOverdueAccrualService) {}
 
   @Post("overdue-accrual/compute")
+  @RequireCapabilities("charges.manage")
   @ApiOkResponse({ type: OverdueAccrualResponseDto })
   async compute(
     @Body() body: ComputeOverdueAccrualRequestDto,

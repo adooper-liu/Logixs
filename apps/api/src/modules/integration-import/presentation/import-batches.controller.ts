@@ -14,6 +14,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { isUtf8 } from "node:buffer";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ConfirmMappingsService } from "../application/confirm-mappings.service";
 import {
   CreateImportBatchService,
@@ -80,6 +81,7 @@ export class ImportBatchesController {
   ) {}
 
   @Post()
+  @RequireCapabilities("import.operate")
   @UseInterceptors(
     FileInterceptor("file", {
       limits: { files: 1, fileSize: MAX_IMPORT_SOURCE_BYTES },
@@ -134,6 +136,7 @@ export class ImportBatchesController {
   }
 
   @Get(":id")
+  @RequireCapabilities("import.read")
   @ApiOkResponse({ type: ImportBatchDetailDto })
   async get(
     @Param("id") id: string,
@@ -156,6 +159,7 @@ export class ImportBatchesController {
   }
 
   @Post(":id/mapping-reviews")
+  @RequireCapabilities("import.operate")
   @ApiOkResponse({ type: ImportBatchDto })
   async postMappingReviews(
     @Param("id") id: string,
@@ -180,6 +184,7 @@ export class ImportBatchesController {
   }
 
   @Post(":id/precheck")
+  @RequireCapabilities("import.operate")
   @ApiOkResponse({ type: PrecheckResultDto })
   async precheck(
     @Param("id") id: string,
@@ -189,6 +194,7 @@ export class ImportBatchesController {
   }
 
   @Post(":id/execute")
+  @RequireCapabilities("import.execute")
   @ApiOkResponse({ type: ReconciliationResultDto })
   async execute(
     @Param("id") id: string,
@@ -202,6 +208,7 @@ export class ImportBatchesController {
   }
 
   @Get(":id/reconciliation")
+  @RequireCapabilities("import.read")
   @ApiOkResponse({ type: ReconciliationResultDto })
   async reconciliation(
     @Param("id") id: string,
