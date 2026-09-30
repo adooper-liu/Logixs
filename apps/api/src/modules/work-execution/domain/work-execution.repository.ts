@@ -163,12 +163,30 @@ export interface ListTasksByTenantInput {
   take: number;
 }
 
+export interface TenantScopedTaskQuery {
+  tenantId: string;
+  taskId: string;
+}
+
+export interface TenantScopedWorkOrderQuery {
+  tenantId: string;
+  workOrderId: string;
+}
+
 export interface WorkExecutionRepository {
   findTaskById(id: string): Promise<NodeTaskWithWorkOrders | null>;
+  /** 面向用户的读取：租户不符与不存在同样返回 null，不加载他租户聚合。 */
+  findTaskInTenant(
+    query: TenantScopedTaskQuery,
+  ): Promise<NodeTaskWithWorkOrders | null>;
   findTaskByNodeInstanceId(
     nodeInstanceId: string,
   ): Promise<NodeTaskWithWorkOrders | null>;
   findWorkOrderById(id: string): Promise<WorkOrderRecord | null>;
+  /** 工单无自有租户列，经所属 NodeTask 限定租户。 */
+  findWorkOrderInTenant(
+    query: TenantScopedWorkOrderQuery,
+  ): Promise<WorkOrderRecord | null>;
   findWorkOrderFactApplication(
     workOrderId: string,
     businessFactKey: string,

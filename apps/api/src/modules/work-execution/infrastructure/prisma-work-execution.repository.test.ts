@@ -101,4 +101,36 @@ describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => 
       }),
     );
   });
+
+  it("任务详情按 taskId + tenantId 查询，不先加载他租户聚合", async () => {
+    const prisma = {
+      nodeTask: { findUnique: vi.fn().mockResolvedValue(null) },
+    };
+    const repository = new PrismaWorkExecutionRepository(prisma as never);
+
+    await expect(
+      repository.findTaskInTenant({ taskId: "task-1", tenantId: "tenant-1" }),
+    ).resolves.toBeNull();
+    expect(prisma.nodeTask.findUnique).toHaveBeenCalledWith({
+      where: { id: "task-1", tenantId: "tenant-1" },
+      include: { workOrders: true, outcome: true },
+    });
+  });
+
+  it("工单经所属任务限定租户查询", async () => {
+    const prisma = {
+      workOrder: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const repository = new PrismaWorkExecutionRepository(prisma as never);
+
+    await expect(
+      repository.findWorkOrderInTenant({
+        workOrderId: "wo-1",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toBeNull();
+    expect(prisma.workOrder.findFirst).toHaveBeenCalledWith({
+      where: { id: "wo-1", nodeTask: { tenantId: "tenant-1" } },
+    });
+  });
 });

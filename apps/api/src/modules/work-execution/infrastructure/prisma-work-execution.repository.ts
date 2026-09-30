@@ -20,6 +20,8 @@ import type {
   NodeTaskOutcomeRecord,
   NodeTaskRecord,
   NodeTaskWithWorkOrders,
+  TenantScopedTaskQuery,
+  TenantScopedWorkOrderQuery,
   WorkExecutionRepository,
   WorkOrderFactApplicationRecord,
   WorkOrderRecord,
@@ -39,6 +41,12 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
     return this.loadTask({ id });
   }
 
+  findTaskInTenant(
+    query: TenantScopedTaskQuery,
+  ): Promise<NodeTaskWithWorkOrders | null> {
+    return this.loadTask({ id: query.taskId, tenantId: query.tenantId });
+  }
+
   findTaskByNodeInstanceId(
     nodeInstanceId: string,
   ): Promise<NodeTaskWithWorkOrders | null> {
@@ -48,6 +56,18 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
   async findWorkOrderById(id: string): Promise<WorkOrderRecord | null> {
     const workOrder = await this.prisma.workOrder.findUnique({
       where: { id },
+    });
+    return workOrder ? mapWorkOrder(workOrder) : null;
+  }
+
+  async findWorkOrderInTenant(
+    query: TenantScopedWorkOrderQuery,
+  ): Promise<WorkOrderRecord | null> {
+    const workOrder = await this.prisma.workOrder.findFirst({
+      where: {
+        id: query.workOrderId,
+        nodeTask: { tenantId: query.tenantId },
+      },
     });
     return workOrder ? mapWorkOrder(workOrder) : null;
   }
@@ -460,7 +480,10 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
   }
 
   private async loadTask(
-    where: { id: string } | { nodeInstanceId: string },
+    where:
+      | { id: string }
+      | { id: string; tenantId: string }
+      | { nodeInstanceId: string },
   ): Promise<NodeTaskWithWorkOrders | null> {
     const task = await this.prisma.nodeTask.findUnique({
       where,

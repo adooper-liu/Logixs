@@ -130,7 +130,7 @@ export class CompleteWorkOrderService {
           HttpStatus.CONFLICT,
         );
       }
-      return this.reuse(existing);
+      return this.reuse(existing, tenantId);
     }
 
     const now = new Date();
@@ -168,12 +168,17 @@ export class CompleteWorkOrderService {
 
   private async reuse(
     existing: ClientOperationRecord,
+    tenantId: string,
   ): Promise<CompleteWorkOrderResult> {
-    const workOrder = await this.repository.findWorkOrderById(
-      existing.targetId,
-    );
+    const workOrder = await this.repository.findWorkOrderInTenant({
+      workOrderId: existing.targetId,
+      tenantId,
+    });
     if (!workOrder) throw new NotFoundException("RESOURCE_NOT_FOUND");
-    const bundle = await this.repository.findTaskById(workOrder.nodeTaskId);
+    const bundle = await this.repository.findTaskInTenant({
+      taskId: workOrder.nodeTaskId,
+      tenantId,
+    });
     if (!bundle) throw new NotFoundException("RESOURCE_NOT_FOUND");
     return {
       workOrderId: workOrder.id,
@@ -200,10 +205,17 @@ export class CompleteWorkOrderService {
       "resultRefs"
     >,
   ): Promise<CompleteWorkOrderResult> {
-    const workOrder = await this.repository.findWorkOrderById(workOrderId);
+    // 跨租户与不存在同形抛 NotFound：execute 对 NotFound 不落 ClientOperation。
+    const workOrder = await this.repository.findWorkOrderInTenant({
+      workOrderId,
+      tenantId,
+    });
     if (!workOrder) throw new NotFoundException("RESOURCE_NOT_FOUND");
 
-    const bundle = await this.repository.findTaskById(workOrder.nodeTaskId);
+    const bundle = await this.repository.findTaskInTenant({
+      taskId: workOrder.nodeTaskId,
+      tenantId,
+    });
     if (!bundle) throw new NotFoundException("RESOURCE_NOT_FOUND");
     if (bundle.task.containerId) {
       await this.assertContainerTenant.execute({

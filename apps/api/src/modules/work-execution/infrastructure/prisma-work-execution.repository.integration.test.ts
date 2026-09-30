@@ -193,6 +193,63 @@ describe("PrismaWorkExecutionRepository lifecycle fact reconciliation", () => {
   });
 });
 
+describe("PrismaWorkExecutionRepository tenant-scoped reads", () => {
+  it.each([
+    { label: "带柜", containerless: false },
+    { label: "无柜", containerless: true },
+  ])("$label 任务与工单只在所属租户可见", async ({ containerless }) => {
+    const fixture = await createFixture();
+    if (containerless) {
+      await prisma.nodeTask.update({
+        where: { id: fixture.taskId },
+        data: { containerId: null },
+      });
+    }
+    const otherTenant = `tenant-${randomUUID()}`;
+
+    const ownTask = await repository.findTaskInTenant({
+      taskId: fixture.taskId,
+      tenantId: fixture.tenantId,
+    });
+    expect(ownTask?.task).toMatchObject({
+      id: fixture.taskId,
+      tenantId: fixture.tenantId,
+      containerId: containerless ? null : fixture.containerId,
+    });
+    expect(ownTask?.workOrders.map((workOrder) => workOrder.id)).toEqual([
+      fixture.workOrderId,
+    ]);
+    await expect(
+      repository.findWorkOrderInTenant({
+        workOrderId: fixture.workOrderId,
+        tenantId: fixture.tenantId,
+      }),
+    ).resolves.toMatchObject({
+      id: fixture.workOrderId,
+      nodeTaskId: fixture.taskId,
+    });
+
+    await expect(
+      repository.findTaskInTenant({
+        taskId: fixture.taskId,
+        tenantId: otherTenant,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findWorkOrderInTenant({
+        workOrderId: fixture.workOrderId,
+        tenantId: otherTenant,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findTaskInTenant({
+        taskId: randomUUID(),
+        tenantId: fixture.tenantId,
+      }),
+    ).resolves.toBeNull();
+  });
+});
+
 interface Fixture {
   tenantId: string;
   containerId: string;
