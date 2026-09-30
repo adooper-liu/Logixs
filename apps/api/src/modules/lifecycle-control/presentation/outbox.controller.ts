@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { DrainDueOutboxService } from "../application/drain-due-outbox.service";
 import { ListDeadLettersService } from "../application/list-dead-letters.service";
 import { PublishOutboxBatchService } from "../application/publish-outbox-batch.service";
@@ -25,6 +26,7 @@ export class OutboxController {
   ) {}
 
   @Get("dead-letters")
+  @RequireCapabilities("reliability.read")
   @ApiOkResponse({ type: DeadLetterPageDto })
   async listDeadLettersPage(
     @Req() request: { identity: { tenantId: string } },
@@ -61,6 +63,7 @@ export class OutboxController {
   }
 
   @Post("publish-batch")
+  @RequireCapabilities("reliability.recover")
   @ApiOkResponse({ type: PublishOutboxBatchResponseDto })
   async publishBatch(
     @Body() body: PublishOutboxBatchRequestDto,
@@ -74,6 +77,7 @@ export class OutboxController {
   }
 
   @Post("publish-due")
+  @RequireCapabilities("reliability.recover")
   @ApiOkResponse({ type: PublishDueOutboxResponseDto })
   async publishDue(
     @Body() body: PublishDueOutboxRequestDto,
@@ -88,6 +92,7 @@ export class OutboxController {
   }
 
   @Post("dead-letters/:deadLetterId/replay")
+  @RequireCapabilities("reliability.recover")
   @ApiOkResponse({ type: ReplayDeadLetterResponseDto })
   async replay(
     @Param("deadLetterId") deadLetterId: string,
