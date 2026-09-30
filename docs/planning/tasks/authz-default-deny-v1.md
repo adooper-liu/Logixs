@@ -1,6 +1,6 @@
 ---
 status: coding
-branch: feat/authz-default-deny-v1-c2b1
+branch: feat/authz-default-deny-v1-c2b2
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
@@ -253,13 +253,60 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
       只来自 C2B2 已批准移除的 4 条入口，不作为成功门禁
 - [ ] C2B2、Application 对象范围/二次守卫、GC-011 错误面和 Guard 默认拒绝仍未完成
 
-### C2B2. 4 条生产 HTTP 入口移除（未开放）
+### 当前开放 C2B2. 4 条生产 HTTP 入口移除
 
 - `POST /node-tasks` 按 `AUTH-D03` 移除，任务继续只能由生命周期模块经内部 Port 创建；
 - `POST /workflows/outbox-publish-due/schedule` 按 `AUTH-D04` 移除，机器统一走现有 service-only 系统链；
 - `POST /workflows/echo`、`GET /workflows/:id` 按 `AUTH-D02` 移除，保留 Worker 与自动化验通；
 - 入口删除是行为变化，必须逐项核对模块绑定、调用方、测试和 OpenAPI，不得在 C2B1 顺带实施。
 - 路由违规清零前不得切换 Guard 默认拒绝，也不得把审计脚本接入硬门禁。
+
+实现基线为 `cdd4df4`。Cursor 只可处理本节 4 条已批准入口及直接失去消费者的 transport DTO：
+
+- `work-execution.controller.ts` 删除 `create` 路由、构造器依赖和对应 import；
+  `work-execution.dto.ts` 删除只服务该入口的 `CreateNodeTaskRequestDto`；测试必须证明外部创建入口消失，
+  同时保留 `CreateNodeTaskService` 内部 provider 与 `CREATE_NODE_TASK` provider/export，移除具体 Service 的
+  Nest export 和 `index.ts` 公共导出；跨模块调用只允许依赖 Port；
+- `workflow.module.ts` 取消 `WorkflowController`、`OutboxPublishScheduleController` 的注册和开发身份中间件绑定，
+  删除这两个 Controller 及只由它们消费的 `echo-request.dto.ts`、`outbox-publish-schedule.dto.ts`；
+- 删除已无 API 或模块消费者的 `WorkflowService`、`EnsureOutboxPublishScheduleService`、对应测试、provider/export
+  及 API 侧仅服务租户 Schedule 的常量/类型；保留 Echo Worker 自动化测试、Temporal Schedule adapter、
+  `OutboxPublishSystemScheduleController`、系统 Schedule 服务和 service-only 身份边界；
+- business-worker 的旧 `outboxPublishDueWorkflow` 暂作为外部 Schedule 迁移期兼容代码保留，不得据此宣称
+  机器身份已统一；所有环境完成下述迁移门禁后，必须在同一任务后续切片移除旧 Workflow、Activity 和用户身份请求构造；
+- 增补模块/Controller 元数据测试，反证 4 条路由不能再由生产模块注册，并证明内部 Port 与 service-only
+  系统 Schedule 仍在。仓库当前未发现 Web、Worker、package 或 script 对这 4 条 HTTP 路由的生产调用；
+  历史 task 文档保留原验收记录，不追溯改写。
+
+这是负责人已批准的破坏性 transport 收缩，不引入替代 URL 或兼容期。OpenAPI 由已注册 Nest Controller
+动态生成，无受版本控制的生成客户端需要同步；删除后须以模块元数据测试、运行时 404/405、Swagger path
+缺失、全仓搜索和路由 AST 审计共同验证。
+完成后 `pnpm authz:routes` 必须退出 0，并精确得到
+`total=130 public=1 service=5 capability=124 missing=0 conflict=0`。同时运行相关 Controller/模块测试、API
+lint/typecheck/test/build、`pnpm repo:check`、`pnpm format:check`、`git diff --check` 和完整 `pnpm validate`。
+不得在本切片切换 Guard、实现 GC-011、接入 CI 硬门禁或处理对象范围。Cursor 以 `ready-for-review` 交回
+未提交差异，由 Codex 与独立安全上下文复审。
+
+#### C2B2 独立复审处置与部署门禁
+
+| finding              | 处置       | 理由与写回                                                                                                                           |
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `C2B2-AUTOMATION-01` | `accepted` | 删除创建入口不会停止 Temporal 已持久化 Schedule；本节增加逐环境迁移、验证和回滚门禁，未取得外部证据前不宣称 D04 完成                 |
+| `C2B2-BOUNDARY-02`   | `accepted` | 具体 `CreateNodeTaskService` 不应成为跨模块入口；改为只公开 `CREATE_NODE_TASK` token/type，模块内部实现继续为 Port 提供服务          |
+| `C2B2-LEGACY-03`     | `accepted` | 删除失去消费者的 API Echo/租户 Schedule 服务；旧 Worker 只因外部 Schedule 状态未知而临时保留，待全部环境迁移完成后按明确退出条件删除 |
+
+仓库无法证明各部署环境是否存在 `outbox-publish-due:<tenantId>`。因此 C2B2 代码合并不等于 D04
+生产迁移完成；部署 C2B2 或启用 Guard 默认拒绝前，每个环境必须由授权运维人员执行并留存变更单证据：
+
+1. 盘点全部 Temporal Schedule，记录匹配 `outbox-publish-due:` 前缀的精确 ID、状态、最近/下次运行时间；不得假定为零。
+2. 确认唯一 `outbox-publish-due-system` 已启用，并完成一次 service-only 调用，验证只携带服务身份且成功命中
+   `/api/outbox/system/publish-due`。
+3. 先暂停而非删除全部旧租户 Schedule；复查活动 Schedule 中该前缀计数为 0，再部署入口删除。
+4. 失败回滚时先暂停系统 Schedule、回滚 API/Worker 到上一版本，再只恢复盘点快照中的旧 Schedule；不得凭前缀
+   批量创建或恢复未知项。
+
+上述外部证据由部署变更单或正式运维记录承载，不伪造进 Git。所有目标环境均完成第 1～3 步并由负责人确认
+回滚窗口关闭后，才可删除旧 Worker Workflow/Activity/用户身份请求构造并把 `AUTH-D04` 标为生产完成。
 
 ### D. Guard 默认拒绝和错误契约
 
@@ -317,3 +364,4 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2A 为生命周期控制可靠性 13 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=13`。总任务仍未完成                                                 |
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2B1：仅为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；4 条已决定移除的入口保持封闭并留给 C2B2                                                                 |
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2B1 为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=4`。总任务仍未完成                             |
+| 2026-09-30 | coding | Codex                         | —      | 开放 C2B2：只移除 4 条已批准的生产 HTTP 入口及专属 transport DTO；保留任务内部 Port、Workflow/Worker 自动化能力与 service-only 系统 Schedule，预期路由审计清零                         |
