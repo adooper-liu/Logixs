@@ -3,7 +3,7 @@ status: coding
 branch: feat/authz-default-deny-v1-c2b2
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
-  GC-008/GC-011 与现有授权测试。全路由静态审计当前已清零但尚未接入 CI 硬门禁。本任务尚未完成，
+  GC-008/GC-011 与现有授权测试。全路由静态审计已清零并接入 repo:check 硬门禁。本任务尚未完成，
   不得宣称操作级授权闭环完成。
   切片 A 已由 Codex 审查通过：AST 审计器与回归测试已接入 pnpm test；当前可复现统计为
   total=134、public=1、service=5、capability=89、missing=39、conflict=0。切片 B1 已完成 39 条定权：
@@ -16,12 +16,13 @@ verification: |
   Codex、独立安全上下文和完整 pnpm validate；当前审计为 total=134、public=1、service=5、
   capability=124、missing=4、conflict=0。切片 C2B2 已由 Codex 审核通过：4 条无业务消费者的生产 HTTP
   入口已移除，内部 Port、service-only 系统 Schedule 与迁移期 Worker 兼容路径仍保留；当前审计为
-  total=130、public=1、service=5、capability=124、missing=0、conflict=0。运行时 404/405 与 Swagger
-  路径缺失尚未直接验证，由阶段 E 承接。阶段 D 已由 Codex 审查通过：普通用户路由缺访问元数据或
+  total=130、public=1、service=5、capability=124、missing=0、conflict=0。阶段 D 已由 Codex 审查通过：普通用户路由缺访问元数据或
   缺 capability 时失败关闭，专用异常过滤器返回 GC-011 AUTHORIZATION_FORBIDDEN 信封且不接管其他
   ForbiddenException；public、service-only 和合法 capability 路径保持可用。Codex 复跑身份模块单元测试
   37 项、认证集成测试 8 项、API lint/typecheck、authz:routes、repo:check、format:check 和 diff check 均通过。
-  阶段 E、B2 的 Application 对象范围/二次守卫、完整 validate 和生产 Temporal Schedule 迁移仍未完成。
+  E1 已由 Codex 审查通过：静态审计接入 repo:check，4 条旧入口运行时返回 404/405，保留入口仍可命中，
+  且未发现旧入口调用方。编译产物 Swagger 反证、B2 的 Application 对象范围/二次守卫、完整 validate、
+  独立安全复审和生产 Temporal Schedule 迁移仍未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -396,9 +397,10 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
 3. 使用真实 Nest HTTP 路由注册验证以下旧入口不可达，返回 404 或框架等价的 405，且不会命中保留入口：
    `POST /api/node-tasks`、`POST /api/workflows/outbox-publish-due/schedule`、`POST /api/workflows/echo`、
    `GET /api/workflows/:id`。
-4. 从同一测试应用生成 Swagger document，断言三个 workflow 旧路径不存在，且 `/node-tasks` 即使保留 GET，
-   也不存在 POST operation。测试应从生产模块的 Controller 注册元数据组装路由面，避免手写一份与生产脱节的
-   假路由清单；依赖使用测试替身，不为这组反证启动数据库或 Temporal。
+4. Swagger 反证不放进 Vitest：当前 esbuild 测试编译不生成 Nest Swagger 依赖的 `design:type` 元数据，强行
+   自动化需要新增 SWC 依赖/测试配置或另一条构建门禁，而真实 HTTP 路由、生产模块注册元数据和 AST 门禁已覆盖
+   入口是否存在这一安全事实。Codex 在最终候选完成 `tsc` build 后启动编译产物并读取 `/api/docs-json`，断言三个
+   workflow 旧路径不存在，且 `/api/node-tasks` 只有 GET、没有 POST；该检查未通过前不得建立最终 PR。
 5. 扫描 `apps/web/src`、worker、脚本和生产配置中的调用方。当前已知 Web 只调用保留的
    `GET /api/node-tasks`；若发现 4 条旧入口的真实消费者，不得静默删除或改写，返回 `blocked` 交 Codex 裁决。
 6. 不修改阶段 D 的错误信封，不处理 B2 对象范围，不运行完整 `validate`。Cursor 只运行脚本单测、E1 API
@@ -407,6 +409,15 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
 
 E1 通过只证明静态门禁和已删除入口反证成立。API 全量单元、真实 PostgreSQL 集成、Web E2E、build、完整
 `pnpm validate`、最终调用方兼容复核和独立安全复审仍由 Codex 在最终 PR 候选统一执行。
+
+#### E1 工具链裁决与审查结果
+
+- [x] 采用方案 C：不为重复的 Swagger 路径反证新增 SWC 依赖或专用 Vitest 编译链
+- [x] `repo:check` 直接复用 AST 审计结果；零违规通过，任一既有 violation 失败
+- [x] 4 条旧入口在生产模块 Controller 注册面返回 404/405，且保留的 GET/系统 Schedule 路由仍可命中
+- [x] 调用方扫描未发现旧入口消费者；Web 的 `/api/node-tasks` 调用为保留的 GET
+- [x] Codex 复跑脚本测试 48 项、删除入口测试 7 项、`repo:check` 与 `docs:check` 均通过
+- [ ] 编译产物 `/api/docs-json` 反证、完整 `pnpm validate` 与独立安全复审由最终候选承接
 
 ## 业务与数据协同映射
 
@@ -455,3 +466,4 @@ E1 通过只证明静态门禁和已删除入口反证成立。API 全量单元�
 | 2026-09-30 | coding | 负责人 / Codex                | —      | 调整执行节奏：C2B2、D、E 共用任务集成分支和最终安全 PR；Cursor 只跑切片定向检查，Codex 在最终候选统一跑完整门禁；独立复审按新决策/风险触发，Temporal 外部迁移只阻止部署与 `done`       |
 | 2026-09-30 | coding | Cursor / Codex                | —      | C2B2 删除 4 条已批准入口并通过 Codex 代码审核与定向门禁；审计清零。运行时 404/405、Swagger 路径缺失和完整门禁转由阶段 E，任务仍为 `coding`                                             |
 | 2026-09-30 | coding | Cursor / Codex                | —      | 阶段 D 默认拒绝与专用 GC-011 403 信封通过 Codex 审查及定向门禁；阶段 E、B2 对象范围、完整门禁与生产 Schedule 迁移仍未完成，任务保持 `coding`                                           |
+| 2026-09-30 | coding | Cursor / Codex                | —      | E1 静态硬门禁、删除入口运行时反证和调用方扫描通过审查；Swagger 改由 Codex 在 tsc 编译产物上复核，不引入 SWC 测试链。完整门禁、独立复审、B2 与生产迁移仍未完成                          |
