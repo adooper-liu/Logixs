@@ -21,8 +21,9 @@ verification: |
   ForbiddenException；public、service-only 和合法 capability 路径保持可用。Codex 复跑身份模块单元测试
   37 项、认证集成测试 8 项、API lint/typecheck、authz:routes、repo:check、format:check 和 diff check 均通过。
   E1 已由 Codex 审查通过：静态审计接入 repo:check，4 条旧入口运行时返回 404/405，保留入口仍可命中，
-  且未发现旧入口调用方。编译产物 Swagger 反证、B2 的 Application 对象范围/二次守卫、完整 validate、
-  独立安全复审和生产 Temporal Schedule 迁移仍未完成。
+  且未发现旧入口调用方。Codex 已从 tsc 编译产物读取 `/api/docs-json`，确认三个 workflow 旧路径不存在且
+  `/api/node-tasks` 只有 GET；最终候选的完整 `pnpm validate` 亦通过。B2 的 Application 对象范围/二次守卫、
+  最终独立安全复审和生产 Temporal Schedule 迁移仍未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -407,8 +408,9 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
    定向测试、受影响 lint/typecheck、`pnpm authz:routes`、`pnpm repo:check`、`pnpm docs:check`、
    `pnpm format:check` 和 `git diff --check`，以 `ready-for-review` 交回未提交差异。
 
-E1 通过只证明静态门禁和已删除入口反证成立。API 全量单元、真实 PostgreSQL 集成、Web E2E、build、完整
-`pnpm validate`、最终调用方兼容复核和独立安全复审仍由 Codex 在最终 PR 候选统一执行。
+E1 通过只证明静态门禁和已删除入口反证成立。Codex 已在最终候选统一执行 API 全量单元、真实 PostgreSQL
+集成、Web E2E、build、完整 `pnpm validate`、编译产物 Swagger 与最终调用方兼容复核；独立安全复审仍须在
+建立最终 PR 前完成。
 
 #### E1 工具链裁决与审查结果
 
@@ -417,7 +419,11 @@ E1 通过只证明静态门禁和已删除入口反证成立。API 全量单元�
 - [x] 4 条旧入口在生产模块 Controller 注册面返回 404/405，且保留的 GET/系统 Schedule 路由仍可命中
 - [x] 调用方扫描未发现旧入口消费者；Web 的 `/api/node-tasks` 调用为保留的 GET
 - [x] Codex 复跑脚本测试 48 项、删除入口测试 7 项、`repo:check` 与 `docs:check` 均通过
-- [ ] 编译产物 `/api/docs-json` 反证、完整 `pnpm validate` 与独立安全复审由最终候选承接
+- [x] Codex 启动 tsc 编译产物并读取 `/api/docs-json`：三个 workflow 旧路径缺失，`/api/node-tasks` 只有 GET；
+      共读取 119 个 Swagger path，检查后精确关闭本次 API 进程
+- [x] 最终候选完整 `pnpm validate` 通过，覆盖全仓 lint/typecheck/unit、真实 PostgreSQL integration、Web E2E
+      和 API/Web/worker build；后续仅改 brief，不重复运行无关全量门禁
+- [ ] 最终独立安全复审仍未完成
 
 ## 业务与数据协同映射
 
@@ -432,14 +438,14 @@ E1 通过只证明静态门禁和已删除入口反证成立。API 全量单元�
 
 ## 总体验收
 
-- [ ] 所有 HTTP 路由恰有一种显式访问分类，静态门禁无豁免基线
-- [ ] 非 public/service 路由缺 capability 时默认拒绝
+- [x] 所有 HTTP 路由恰有一种显式访问分类，静态门禁无豁免基线
+- [x] 非 public/service 路由缺 capability 时默认拒绝
 - [ ] 所有 capability 均来自批准后的单一目录，不存在代码/文档漂移
 - [ ] 读写能力最小化；同控制器不同风险方法没有被宽泛 class-level 声明覆盖
 - [ ] 缺能力、越范围、跨租户和对象不存在的错误符合 GC-011 且不泄露资源存在性
 - [ ] Application 层对象范围和业务守卫未被 Controller 装饰器替代
 - [ ] 前端伪造身份、能力或 allowedAction 不能改变服务端结果
-- [ ] API 单元、集成、E2E、安全专项和完整 `pnpm validate` 通过
+- [x] API 单元、集成、E2E、安全专项和完整 `pnpm validate` 通过
 
 ## 回滚
 
@@ -467,3 +473,4 @@ E1 通过只证明静态门禁和已删除入口反证成立。API 全量单元�
 | 2026-09-30 | coding | Cursor / Codex                | —      | C2B2 删除 4 条已批准入口并通过 Codex 代码审核与定向门禁；审计清零。运行时 404/405、Swagger 路径缺失和完整门禁转由阶段 E，任务仍为 `coding`                                             |
 | 2026-09-30 | coding | Cursor / Codex                | —      | 阶段 D 默认拒绝与专用 GC-011 403 信封通过 Codex 审查及定向门禁；阶段 E、B2 对象范围、完整门禁与生产 Schedule 迁移仍未完成，任务保持 `coding`                                           |
 | 2026-09-30 | coding | Cursor / Codex                | —      | E1 静态硬门禁、删除入口运行时反证和调用方扫描通过审查；Swagger 改由 Codex 在 tsc 编译产物上复核，不引入 SWC 测试链。完整门禁、独立复审、B2 与生产迁移仍未完成                          |
+| 2026-09-30 | coding | Codex                         | —      | tsc 编译产物 Swagger 反证及最终候选完整 `pnpm validate` 通过；后续仅改 brief，不重跑全量。最终独立安全复审、B2 对象范围与生产 Schedule 迁移仍未完成                                    |
