@@ -233,8 +233,9 @@ verification: |
 1. `GetNodeTaskService` 必须先要求非空租户，再把 `bundle.task.tenantId` 与当前租户比较；不匹配时与不存在一样
    返回 `null`，无论 `containerId` 是否为空。带柜任务仍保留现有父货柜租户断言。
 2. `SetNodeApplicabilityService` 在处理幂等重放前必须取得当前货柜 flow；已存在决定只有在
-   `existing.flowInstanceId === current.flow.id` 且载荷一致时才可作为合法重放返回。异 flow 同键返回稳定
-   `IDEMPOTENCY_CONFLICT`，不得返回原 flow ID、版本或继续 pending 重放。
+   `existing.flowInstanceId === current.flow.id`，且现有 `nodeCode/applicability` 比较通过时，才可作为合法重放
+   返回。异 flow 同键返回稳定 `IDEMPOTENCY_CONFLICT`，不得返回原 flow ID、版本或继续 pending 重放。本切片
+   不把现有字段比较冒充完整请求哈希幂等；证据、原因等全载荷冲突检测另行设计。
 3. 不改 Schema/迁移、Controller、能力码、Guard、公共错误 Schema、组织/地点范围或 ActionDefinition；不顺带
    处理 `AUTH-B2-03`～`AUTH-B2-10`。
 4. 新测试至少覆盖：同租户无柜任务可读、跨租户无柜任务表现为不存在、空租户拒绝；同 flow 同键合法重放、
