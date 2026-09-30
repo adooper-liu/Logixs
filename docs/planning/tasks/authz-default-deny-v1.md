@@ -4,7 +4,8 @@ branch: feat/authz-default-deny-v1-c2b2
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
-  仍由 AuthorizationGuard 放行，且尚无全路由静态门禁。本任务尚未完成，不得宣称授权已默认拒绝。
+  仍由 AuthorizationGuard 放行。全路由静态审计当前已清零但尚未接入 CI 硬门禁。本任务尚未完成，
+  不得宣称授权已默认拒绝。
   切片 A 已由 Codex 审查通过：AST 审计器与回归测试已接入 pnpm test；当前可复现统计为
   total=134、public=1、service=5、capability=89、missing=39、conflict=0。切片 B1 已完成 39 条定权：
   35 条映射现有能力，4 条按 AUTH-D02～D04 移出生产 HTTP 面。切片 C1 已为费用、证据与导入的
@@ -14,8 +15,11 @@ verification: |
   人工恢复 13 条路由补齐方法级 capability，并通过 Codex、独立安全上下文和完整 pnpm validate；
   切片 C2B1 已为生命周期读取/适用性、货柜读取与任务读取 9 条路由补齐方法级 capability，并通过
   Codex、独立安全上下文和完整 pnpm validate；当前审计为 total=134、public=1、service=5、
-  capability=124、missing=4、conflict=0。B2 的 Application 对象范围/二次守卫审查、C2B2 的
-  4 条生产入口移除、Guard、错误契约和最终清零门禁均未完成。
+  capability=124、missing=4、conflict=0。切片 C2B2 已由 Codex 审核通过：4 条无业务消费者的生产 HTTP
+  入口已移除，内部 Port、service-only 系统 Schedule 与迁移期 Worker 兼容路径仍保留；当前审计为
+  total=130、public=1、service=5、capability=124、missing=0、conflict=0。运行时 404/405 与 Swagger
+  路径缺失尚未直接验证，由阶段 E 承接。B2 的 Application 对象范围/二次守卫、Guard 默认拒绝、GC-011
+  运行时错误信封和最终门禁仍未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -253,9 +257,10 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
 - [x] 完整 `pnpm validate` 通过，覆盖契约、全仓 lint/typecheck/test、真实 PostgreSQL 集成、E2E 和构建
 - [x] `pnpm authz:routes` 复现 `total=134 public=1 service=5 capability=124 missing=4 conflict=0`；退出码 1
       只来自 C2B2 已批准移除的 4 条入口，不作为成功门禁
-- [ ] C2B2、Application 对象范围/二次守卫、GC-011 错误面和 Guard 默认拒绝仍未完成
+- [x] C2B2 已审核通过并使路由访问分类审计清零
+- [ ] Application 对象范围/二次守卫、GC-011 错误面和 Guard 默认拒绝仍未完成
 
-### 当前开放 C2B2. 4 条生产 HTTP 入口移除
+### 已审核 C2B2. 4 条生产 HTTP 入口移除
 
 - `POST /node-tasks` 按 `AUTH-D03` 移除，任务继续只能由生命周期模块经内部 Port 创建；
 - `POST /workflows/outbox-publish-due/schedule` 按 `AUTH-D04` 移除，机器统一走现有 service-only 系统链；
@@ -263,7 +268,9 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
 - 入口删除是行为变化，必须逐项核对模块绑定、调用方、测试和 OpenAPI，不得在 C2B1 顺带实施。
 - 路由违规清零前不得切换 Guard 默认拒绝，也不得把审计脚本接入硬门禁。
 
-实现基线为 `cdd4df4`。Cursor 只可处理本节 4 条已批准入口及直接失去消费者的 transport DTO：
+Cursor 初始实现基线为 `cdd4df4`；工作树随后由 Codex 快进，最终审核基线为
+`04332afecf4efbfc90a8785c9ad4500994e4e7db`。本切片只处理以下 4 条已批准入口及直接失去消费者的
+transport DTO：
 
 - `work-execution.controller.ts` 删除 `create` 路由、构造器依赖和对应 import；
   `work-execution.dto.ts` 删除只服务该入口的 `CreateNodeTaskRequestDto`；测试必须证明外部创建入口消失，
@@ -291,6 +298,20 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
 未提交差异，由 Codex 审查后在同一任务集成分支继续 D、E。C2B2 的入口政策与迁移边界已经独立复审；只有
 实现偏离已定政策、出现新的权限政策/公开入口/对象范围/状态语义，或最终集成产生新风险时才再次触发独立复审。
 
+#### C2B2 Codex 审核结论
+
+- [x] 删除 4 条目标 HTTP 入口；保留 `CREATE_NODE_TASK` Port/provider、service-only 系统 Schedule 和迁移期
+      Worker 兼容实现，未发现超出 `AUTH-D02`～`AUTH-D04` 的生产行为改动
+- [x] 5 个定向测试文件共 11 项通过；API lint、typecheck、`pnpm authz:routes`、`pnpm repo:check`、
+      `pnpm format:check` 和 `git diff --check` 通过
+- [x] `pnpm authz:routes` 退出 0，精确得到
+      `total=130 public=1 service=5 capability=124 missing=0 conflict=0`
+- [ ] 当前新增测试只证明 Nest Controller/Module 元数据与内部 Port 边界；尚未直接启动应用验证 4 条入口返回
+      404/405，也未生成 Swagger 反证路径消失。该证据缺口不阻止 C2B2 提交或继续 D，但必须由阶段 E 在最终
+      PR 候选上补齐
+- [ ] API 全量 test/build、集成测试、E2E 和 `pnpm validate` 按执行节奏未在 C2B2 重复运行，由 D、E 集成后
+      的最终 PR 候选统一承接
+
 #### C2B2 独立复审处置与部署门禁
 
 | finding              | 处置       | 理由与写回                                                                                                                           |
@@ -315,9 +336,27 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
 
 ### D. Guard 默认拒绝和错误契约
 
-- 缺失访问元数据时失败关闭并记录内部配置错误；对外返回 `AUTHORIZATION_FORBIDDEN`，不泄露内部类名。
-- 缺能力同样返回 GC-011 稳定错误结构；保留 traceId，由统一异常面承接。
-- 补全 Guard、认证集成和代表性 Controller 的正反向测试。
+阶段 D 在 C2B2 提交后由 Cursor 执行；准确基线以 Codex 下发的 `TASK` SHA 为准。写入范围仅限
+`AuthorizationGuard`、其单元/认证集成测试，以及实现 GC-011 所必需的 Guard 专用异常、HTTP 异常过滤器、
+`IdentityModule` 注册点和对应测试。
+
+- 普通用户端点没有任何访问元数据时，Guard 必须失败关闭；`@PublicEndpoint()` 与 `@ServiceEndpoint()`
+  继续跳过用户 capability 校验，不改变 AuthenticationGuard 的身份边界。
+- 缺访问元数据和缺 capability 对外都返回 `AUTHORIZATION_FORBIDDEN`，HTTP 403、category=`authorization`、
+  retryable=`false`、details=`[]`，并包含非空 `traceId` 与 ISO 8601 `timestamp`；响应不得泄露 Controller、
+  方法名、必需 capability、角色或内部异常栈。
+- `traceId` 由服务端生成或从受信请求上下文透传；阶段 D 不接受客户端任意头作为可信 traceId，不建设分布式
+  追踪平台。配置缺失可在受控服务端日志中记录，但日志不得改变对外信封。
+- Guard 必须抛出可被精确识别的专用异常；GC-011 过滤器只捕获该异常并稳定映射
+  `AUTHORIZATION_FORBIDDEN`。不得用捕获所有 `ForbiddenException` 或 `HttpException` 的方式误改现有
+  `AUTHORIZATION_SCOPE_DENIED` 等语义，也不得借本切片猜测或批量重写全仓历史错误。其他错误继续按现状，
+  完整公共错误码运行时治理另立任务。
+- 补全 Guard 正反测试及认证集成测试：无元数据拒绝、缺能力拒绝、合法 capability 放行、public 放行、
+  service-only 身份放行，并用 JSON Schema 或等价严格断言验证 403 信封。
+- 禁止修改 Controller capability 分类、对象范围、Application/Domain、数据库、Web、GC-011 Schema、
+  AuthenticationGuard 或 C2B2 删除范围；若必须越界，返回 `blocked` 由 Codex 重切。
+- Cursor 只运行身份模块定向测试、API lint/typecheck、`pnpm authz:routes`、`pnpm repo:check`、
+  `pnpm format:check` 和 `git diff --check`，以 `ready-for-review` 交回未提交差异；不重复完整 `validate`。
 
 ### E. CI 硬门禁与调用方验证
 
@@ -372,3 +411,4 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2B1 为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=4`。总任务仍未完成                             |
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2B2：只移除 4 条已批准的生产 HTTP 入口及专属 transport DTO；保留任务内部 Port、Workflow/Worker 自动化能力与 service-only 系统 Schedule，预期路由审计清零                         |
 | 2026-09-30 | coding | 负责人 / Codex                | —      | 调整执行节奏：C2B2、D、E 共用任务集成分支和最终安全 PR；Cursor 只跑切片定向检查，Codex 在最终候选统一跑完整门禁；独立复审按新决策/风险触发，Temporal 外部迁移只阻止部署与 `done`       |
+| 2026-09-30 | coding | Cursor / Codex                | —      | C2B2 删除 4 条已批准入口并通过 Codex 代码审核与定向门禁；审计清零。运行时 404/405、Swagger 路径缺失和完整门禁转由阶段 E，任务仍为 `coding`                                             |

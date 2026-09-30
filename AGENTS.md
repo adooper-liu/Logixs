@@ -62,9 +62,17 @@
    提供可读取的 worktree 或 PR。接收方必须先读取 `AGENTS.md`、指定 brief 与准确基线；引用不存在、SHA 不符或
    工作区不可读时立即返回 `blocked`，不得靠聊天上下文猜测。
 
-4. Cursor 完成切片后返回 `logix-handoff/v1`，至少包含：`slice`、`state`、`base`、`worktree`、
-   `changed`、`checks`、`exceptions`、`commit`。`state` 只允许 `ready-for-review` 或 `blocked`；不得使用
-   `done` 代替 Codex 验收。默认保留未提交差异，除非 brief 明确授权 Cursor 提交。
+4. Cursor 完成切片并进入 `ready-for-review` 时，交回消息第一行必须是可直接交给 Codex 的单行审核指令：
+
+   ```text
+   REVIEW <brief-path>#<slice-id> base=<current-review-base-sha> role=codex workspace=<worktree-path|pr-url> commit=<sha|none>
+   ```
+
+   随后返回 `logix-handoff/v1`，至少包含：`slice`、`state`、`base`、`worktree`、`changed`、`checks`、
+   `exceptions`、`commit`。`base` 必须是接收方可据以复现当前差异的真实基线，不得沿用已经快进、变基或合并前的
+   初始任务 SHA。`state` 只允许 `ready-for-review` 或 `blocked`；不得使用 `done` 代替 Codex 验收。默认保留
+   未提交差异，除非 brief 明确授权 Cursor 提交。
+
 5. Claude 完成独立评审后返回 `logix-review/v1`，至少包含：`slice`、`baseline`、`reviewed`、`verdict`、
    `findings`、`unknowns`、`verificationGaps`、`writes`。每条 finding 必须有稳定 ID、严重度、类型、证据、
    失败场景、验收反证和建议处置；建议不自动成为项目决定。`writes` 必须为 `none`，除非负责人另行明确授权。

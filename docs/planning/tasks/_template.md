@@ -48,6 +48,13 @@ TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<cursor|cla
 
 Cursor 交回实现：
 
+```text
+REVIEW docs/planning/tasks/<task>.md#<slice-id> base=<current-review-base-sha> role=codex workspace=<worktree-path|pr-url> commit=<sha|none>
+```
+
+> `REVIEW` 必须是 `ready-for-review` 交回消息第一行；`base` 使用可复现当前差异的真实审核基线，不能沿用已经
+> 快进、变基或合并前的初始 `TASK` SHA。单行指令后附以下状态信封，不复制 brief 或长篇 diff。
+
 ```yaml
 protocol: logix-handoff/v1
 slice: <slice-id>

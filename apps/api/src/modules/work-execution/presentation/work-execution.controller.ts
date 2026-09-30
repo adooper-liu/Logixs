@@ -12,7 +12,6 @@ import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ClaimWorkOrderService } from "../application/claim-work-order.service";
 import { CompleteWorkOrderService } from "../application/complete-work-order.service";
-import { CreateNodeTaskService } from "../application/create-node-task.service";
 import { GetNodeTaskService } from "../application/get-node-task.service";
 import { ListNodeTasksService } from "../application/list-node-tasks.service";
 import { ListExternalWorkItemsService } from "../application/list-external-work-items.service";
@@ -23,7 +22,6 @@ import {
   ClaimWorkOrderResponseDto,
   CompleteWorkOrderRequestDto,
   CompleteWorkOrderResponseDto,
-  CreateNodeTaskRequestDto,
   ExternalWorkItemPageDto,
   NodeTaskDetailDto,
   NodeTaskPageDto,
@@ -33,7 +31,6 @@ import {
 @Controller()
 export class WorkExecutionController {
   constructor(
-    private readonly createNodeTask: CreateNodeTaskService,
     private readonly getNodeTask: GetNodeTaskService,
     private readonly listNodeTasks: ListNodeTasksService,
     private readonly listExternalWorkItems: ListExternalWorkItemsService,
@@ -101,23 +98,6 @@ export class WorkExecutionController {
       asOf: page.asOf.toISOString(),
       projectionVersion: page.projectionVersion,
     };
-  }
-
-  @Post("node-tasks")
-  @ApiOkResponse({ type: NodeTaskDetailDto })
-  async create(
-    @Body() body: CreateNodeTaskRequestDto,
-    @Req() request: { identity: { tenantId: string } },
-  ): Promise<NodeTaskDetailDto> {
-    return toDetail(
-      await this.createNodeTask.execute({
-        flowInstanceId: body.flowInstanceId,
-        nodeInstanceId: body.nodeInstanceId,
-        nodeCode: body.nodeCode,
-        containerId: body.containerId,
-        tenantId: request.identity.tenantId,
-      }),
-    );
   }
 
   @Get("node-tasks/:id")
