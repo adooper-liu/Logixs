@@ -377,6 +377,37 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
   service-only、跨租户、缺能力和合法能力路径。
 - 合并前复查 OpenAPI/错误响应、客户端受影响路径和回退方案；不得降低断言换取通过。
 
+#### Cursor 切片 E1：静态硬门禁与已删除入口反证
+
+准确基线以 Codex 下发的 `TASK` SHA 为准。本切片只允许修改：
+
+- `scripts/check-repository.mjs` 及其测试；
+- 为 4 条已删除入口补运行时与 Swagger 反证所必需的 API 测试文件；
+- 若测试需要，可最小调整测试专用 fixture，不得修改生产 Controller、Guard、Application、Domain、数据库、
+  Web 或公共契约。
+
+实现与验收要求：
+
+1. `pnpm repo:check` 必须直接执行现有 AST 路由访问审计；任一路由出现 missing、conflict、空/动态 capability、
+   重复访问装饰器或其它既有 violation 时以非零状态失败。复用 `check-route-access-metadata.mjs` 的解析结果，
+   不复制第二套扫描规则，不增加数量基线或豁免清单；`pnpm docs:check` 不运行该代码门禁。
+2. 增加正反测试证明 `repo:check` 能接收零违规结果并拒绝至少一条审计 violation；测试不得依赖当前仓库
+   “恰好 130 条路由”才能通过。
+3. 使用真实 Nest HTTP 路由注册验证以下旧入口不可达，返回 404 或框架等价的 405，且不会命中保留入口：
+   `POST /api/node-tasks`、`POST /api/workflows/outbox-publish-due/schedule`、`POST /api/workflows/echo`、
+   `GET /api/workflows/:id`。
+4. 从同一测试应用生成 Swagger document，断言三个 workflow 旧路径不存在，且 `/node-tasks` 即使保留 GET，
+   也不存在 POST operation。测试应从生产模块的 Controller 注册元数据组装路由面，避免手写一份与生产脱节的
+   假路由清单；依赖使用测试替身，不为这组反证启动数据库或 Temporal。
+5. 扫描 `apps/web/src`、worker、脚本和生产配置中的调用方。当前已知 Web 只调用保留的
+   `GET /api/node-tasks`；若发现 4 条旧入口的真实消费者，不得静默删除或改写，返回 `blocked` 交 Codex 裁决。
+6. 不修改阶段 D 的错误信封，不处理 B2 对象范围，不运行完整 `validate`。Cursor 只运行脚本单测、E1 API
+   定向测试、受影响 lint/typecheck、`pnpm authz:routes`、`pnpm repo:check`、`pnpm docs:check`、
+   `pnpm format:check` 和 `git diff --check`，以 `ready-for-review` 交回未提交差异。
+
+E1 通过只证明静态门禁和已删除入口反证成立。API 全量单元、真实 PostgreSQL 集成、Web E2E、build、完整
+`pnpm validate`、最终调用方兼容复核和独立安全复审仍由 Codex 在最终 PR 候选统一执行。
+
 ## 业务与数据协同映射
 
 这是安全底层任务，不交付新岗位页面；直接消费者是所有 API、工作台控制面和 Web API Client。
