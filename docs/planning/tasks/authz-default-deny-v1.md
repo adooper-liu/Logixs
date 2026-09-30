@@ -1,13 +1,15 @@
 ---
 status: coding
-branch: feat/authz-default-deny-v1
+branch: feat/authz-default-deny-v1-slice-b
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
   仍由 AuthorizationGuard 放行，且尚无全路由静态门禁。本任务尚未完成，不得宣称授权已默认拒绝。
   切片 A 已由 Codex 审查通过：AST 审计器与回归测试已接入 pnpm test；当前可复现统计为
   total=134、public=1、service=5、capability=89、missing=39、conflict=0。非零退出码是切片 A
-  对现存缺口的预期结果，不代表缺口已修复；切片 B 尚未开始。
+  对现存缺口的预期结果，不代表缺口已修复。切片 B1 已完成 39 条定权：35 条映射现有能力，4 条按
+  AUTH-D02～D04 移出生产 HTTP 面；B2 的 Application 对象范围/二次守卫审查仍在进行，尚未修改
+  Controller，切片 C1 待执行。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -46,9 +48,12 @@ verification: |
 
 ## 负责人决策记录
 
-| 决策 ID    | 已知事实与未知                                                                                                                                | 选项、成本/收益/风险/可逆性                                                                                                                                                                                                                                                                                                                 | 推荐与理由                                                                                                                                                               | 负责人结论                                                                                                            | 权威落点 / 状态                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `AUTH-D01` | `container.operate` 已被角色矩阵、多个模块 manifest 和装箱/出运/清关/内陆控制器使用，但业务能力目录漏记；尚无证据证明现有粒度满足长期最小权限 | **A. V1 正式登记现有码**：改动小、快速消除漂移；代价是能力较宽，须继续依赖 action/object guard，可版本化再拆。**B. 立即按限界上下文拆分**：最小权限更强；需新增能力、角色/IdP 映射和全部消费者迁移，成本高且延迟默认拒绝。**C. 并入 `lifecycle.operate`**：代码改动较小；会把装箱、清关、内陆操作错误等同生命周期推进，语义失真且后续更难拆 | 推荐 A。它承认代码已有稳定意图并最快关闭默认放行；以对象范围和动作前置继续收紧，同时登记后续按审计证据拆分的退出条件。A 可通过新版本撤销或拆分，B/C 的大规模替换更难回退 | **选择 A**（2026-09-29）。正式登记现有码；当前不拆分、不并入 `lifecycle.operate`；不豁免现有 action/object guard 缺口 | `IDENTITY_ACCESS_MODEL_V1` §4～5 / `decided` |
+| 决策 ID    | 已知事实与未知                                                                                                                                                             | 选项、成本/收益/风险/可逆性                                                                                                                                                                                                                                                                                                                 | 推荐与理由                                                                                                                                                               | 负责人结论                                                                                                                           | 权威落点 / 状态                                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `AUTH-D01` | `container.operate` 已被角色矩阵、多个模块 manifest 和装箱/出运/清关/内陆控制器使用，但业务能力目录漏记；尚无证据证明现有粒度满足长期最小权限                              | **A. V1 正式登记现有码**：改动小、快速消除漂移；代价是能力较宽，须继续依赖 action/object guard，可版本化再拆。**B. 立即按限界上下文拆分**：最小权限更强；需新增能力、角色/IdP 映射和全部消费者迁移，成本高且延迟默认拒绝。**C. 并入 `lifecycle.operate`**：代码改动较小；会把装箱、清关、内陆操作错误等同生命周期推进，语义失真且后续更难拆 | 推荐 A。它承认代码已有稳定意图并最快关闭默认放行；以对象范围和动作前置继续收紧，同时登记后续按审计证据拆分的退出条件。A 可通过新版本撤销或拆分，B/C 的大规模替换更难回退 | **选择 A**（2026-09-29）。正式登记现有码；当前不拆分、不并入 `lifecycle.operate`；不豁免现有 action/object guard 缺口                | `IDENTITY_ACCESS_MODEL_V1` §4～5 / `decided`            |
+| `AUTH-D02` | `/workflows/echo` 与 `GET /workflows/:id` 来自 Temporal echo 基础设施验通切片；未找到当前业务岗位或生产 UI 消费者，且任意消息触发工作流不属于现有业务能力目录              | **A. 移出生产 HTTP 面**：保留模块/Worker 自动化测试；减少无业务结果的攻击面，代价是旧手工 HTTP 冒烟需改写。**B. 标为 `ServiceEndpoint`**：保留内部诊断；需正式工作负载身份、audience 和调用审计。**C. 赋予 `reliability.*`**：改动最小；会把测试工具错误包装成业务恢复能力                                                                  | 推荐 A。测试链应由自动化验证，不应为了历史冒烟长期保留生产命令入口；删除可通过后续有真实消费者时重新设计而恢复                                                           | **选择 A**（2026-09-30）。移除两个生产 HTTP 路由；保留 Worker 与自动化验通，不保留人工或 service 逃生入口                            | workflow transport surface + tests / `decided`          |
+| `AUTH-D03` | `POST /node-tasks` 直接创建节点任务，但生命周期模块已经通过进程内 `CreateNodeTaskPort` 创建/调和任务；岗位 UI 只读取任务并领取/完成工单，没有人工造任务的已定业务结果      | **A. 移除外部 HTTP 入口**：保留内部 Port；阻止伪造流程任务，代价是旧 HTTP 冒烟和可能的未登记外部调用需迁移。**B. 标为 `ServiceEndpoint`**：允许未来外部编排器；需要工作负载身份和对象范围。**C. 赋 `task.execute` 或 `lifecycle.operate`**：上线最快；会让岗位能力越界为“创建系统任务”                                                      | 推荐 A。任务由生命周期事实派生最符合现有权威；若后续出现独立编排器，再以 B 的正式消费者证据开放                                                                          | **选择 A**（2026-09-30）。移除外部创建路由；任务继续只能由生命周期模块经内部 `CreateNodeTaskPort` 创建                               | `TASK_WORK_ORDER_CONTRACT_V1` + code/tests / `decided`  |
+| `AUTH-D04` | 租户级 `publish-batch`、`publish-due` 和 per-tenant Schedule 既有人工恢复语义，也被历史 Worker 用开发身份头调用；仓库同时已有 service-only 的全租户系统排空与系统 Schedule | **A. 人机分离**：人工重试/排空使用 `reliability.recover`，定时机器链统一迁到现有 service-only 系统链；需迁移旧 per-tenant Schedule，但身份、审计和职责清楚。**B. 全部按 `reliability.recover`**：改动小；机器继续模拟业务人员，审计失真。**C. 全部 service-only**：机器边界最窄；会取消真实运营人员的受控恢复入口                           | 推荐 A。它保留人工恢复能力，同时停止机器冒充用户；迁移可按租户分批回退，B 会固化身份债，C 会损失业务恢复能力                                                             | **选择 A**（2026-09-30）。人工排空使用 `reliability.recover`；删除 per-tenant Schedule HTTP 入口，机器统一走现有 service-only 系统链 | `IDENTITY_ACCESS_MODEL_V1` + service routes / `decided` |
 
 `AUTH-D01` 已解除切片 B 的能力目录阻塞，但没有解除对象范围和动作守卫的实施阻塞。后续映射仍须逐路由核对动作、范围和 Application 二次校验，不能因能力码已登记就批量视为适用或安全。
 
@@ -71,9 +76,9 @@ verification: |
   能力映射和调用方影响审查，再切换 Guard；不得以兼容旧客户端为由保留隐式放行。
 - `@PublicEndpoint` 和 `@ServiceEndpoint` 是显式例外，不允许新增“仅认证即可”的第四类逃生装饰器。
 
-## 当前执行切片 A：路由访问审计器
+## 已完成切片 A：路由访问审计器
 
-这是现在交给 Cursor 的唯一切片。**不得同时修改 Guard、Controller、能力目录或业务代码。**
+本切片已合入 `main`。产物只枚举并校验路由访问元数据，未修改 Guard、Controller、能力目录或业务代码。
 
 ### 产物
 
@@ -116,16 +121,60 @@ verification: |
 - [x] `node --test scripts/check-route-access-metadata.test.mjs` 已接入 `pnpm test`；`pnpm repo:check`、
       `pnpm format:check` 通过
 
-## 后续切片（未获 Codex 指令前不得开始）
+## 当前与后续切片
 
-### B. Codex 定权与能力目录纠偏
+### 部分完成 B. Codex 定权与能力目录纠偏
 
-- Codex 根据 AST 清单逐路由映射现有批准 capability，区分 read/write、用户/service/public。
-- `container.operate` 按 `AUTH-D01` 和正式能力目录映射；其他漂移仍须逐项裁决，不得由路由现状反向升格为权威能力。
-- 形成最小审查表：路由、数据/业务影响、所需能力、对象范围、现有 Application 二次校验和缺口；
-  `container.operate` 的 5 条现有命令链必须逐条标出尚缺的组织/地点范围和 `ActionDefinitionV1` 校验。
+- [x] B1：Codex 根据 AST 清单逐路由映射现有批准 capability，区分 read/write、用户/service/public。
+- [x] B1：`container.operate` 按 `AUTH-D01` 和正式能力目录映射；其他漂移仍须逐项裁决，不得由路由现状反向升格为权威能力。
+- [ ] B2：形成最小审查表：路由、数据/业务影响、所需能力、对象范围、现有 Application 二次校验和缺口；
+      `container.operate` 的 5 条现有命令链必须逐条标出尚缺的组织/地点范围和 `ActionDefinitionV1` 校验。
 
-### C. 路由显式分类
+#### 切片 B 路由定权清单
+
+以下按共同业务影响合并展示，但实现和测试必须逐路由落元数据。`approved` 只表示能力码已有权威依据，
+不表示对象范围、ActionDefinition 或 Application 二次校验已经完成。
+
+| 路由组                                                                                                  | 数量 | 建议分类 / capability                      | 依据与仍需核对                                                                     | 状态       |
+| ------------------------------------------------------------------------------------------------------- | ---: | ------------------------------------------ | ---------------------------------------------------------------------------------- | ---------- |
+| `POST /overdue-accrual/compute`、`POST /overdue-deadlines/compute`、`PUT /overdue-charge-standards`     |    3 | `charges.manage`                           | 能力目录明确包含维护标准与触发确定性重算；仍需核对费用范围和生效期                 | `approved` |
+| `POST /evidence`                                                                                        |    1 | `evidence.submit`                          | 登记证据，不自动核验；仍需对象引用和上传范围                                       | `approved` |
+| `POST /evidence/:id/{verify,reject,revoke}`                                                             |    3 | `evidence.review`                          | 能力目录逐项列明；仍需职责分离和对象范围                                           | `approved` |
+| `GET /import-batches/:id`、`GET /import-batches/:id/reconciliation`                                     |    2 | `import.read`                              | 只读批次与对账；不得返回对象存储内部键                                             | `approved` |
+| `POST /import-batches`、`POST /import-batches/:id/mapping-reviews`、`POST /import-batches/:id/precheck` |    3 | `import.operate`                           | 上传、映射确认和预检；不得绕过 blocker                                             | `approved` |
+| `POST /import-batches/:id/execute`                                                                      |    1 | `import.execute`                           | 只执行已确认且预检通过批次                                                         | `approved` |
+| `GET /client-operations*` 及补偿查询                                                                    |    4 | `reliability.read`                         | 读取操作、补偿和同步状态；租户范围已存在，仍需稳定错误面                           | `approved` |
+| `POST /client-operations/:id/compensations`、`POST .../resolve`                                         |    2 | `reliability.recover`                      | 申请/推进补偿；仍需原因、复核和对象范围                                            | `approved` |
+| `POST /client-operations`                                                                               |    1 | `lifecycle.operate`                        | 当前载荷是货柜 lifecycle action/event；装饰器不替代 actionCode、对象范围和状态守卫 | `approved` |
+| `GET /inbox/dead-letters`、`POST /inbox/dead-letters/:id/replay`                                        |    2 | `reliability.read` / `reliability.recover` | 读与重放分权；重放仍需原因、目标消费者版本和幂等                                   | `approved` |
+| `GET /lifecycle-current-nodes`、`GET /lifecycle-nodes`、`GET /containers/:id/lifecycle-nodes`           |    3 | `lifecycle.read`                           | 读取当前节点和投影                                                                 | `approved` |
+| `POST /containers/:id/node-applicability`                                                               |    1 | `lifecycle.operate`                        | 设置适用性是目录明确的受控生命周期动作                                             | `approved` |
+| `GET /outbox/dead-letters`、`POST /outbox/dead-letters/:id/replay`                                      |    2 | `reliability.read` / `reliability.recover` | 读与人工重放分权                                                                   | `approved` |
+| `POST /outbox/{publish-batch,publish-due}`                                                              |    2 | `reliability.recover`                      | 仅保留人工受控恢复；机器不得模拟用户                                               | `approved` |
+| `POST /workflows/outbox-publish-due/schedule`                                                           |    1 | 移除生产 HTTP 路由                         | 定时机器链统一使用现有 service-only 系统 Schedule                                  | `approved` |
+| `GET /containers`、`GET /containers/:id`、`GET /containers/:id/cargo`                                   |    3 | `container.read`                           | 货柜及其业务投影读取；敏感证据另行裁剪                                             | `approved` |
+| `GET /node-tasks`、`GET /node-tasks/:id`                                                                |    2 | `task.read`                                | 读取节点任务与工单                                                                 | `approved` |
+| `POST /node-tasks`                                                                                      |    1 | 移除生产 HTTP 路由                         | 任务只由生命周期模块通过内部 Port 创建                                             | `approved` |
+| `POST /workflows/echo`、`GET /workflows/:id`                                                            |    2 | 移除生产 HTTP 路由                         | 保留 Worker/自动化测试，不保留无业务结果的生产入口                                 | `approved` |
+
+合计 39 条：35 条使用现有正式 capability，4 条移出生产 HTTP 面。`AUTH-D02`～`AUTH-D04`
+均已由负责人选择 A；切片 B1 至此完成。B2 仍由 Codex 并行审查，尚未修改任何 Controller，
+不能把定权完成说成默认拒绝或对象级授权已经完成。
+
+### 当前开放 C1. 费用、证据与导入路由显式分类
+
+Cursor 只可修改以下 4 个现有 Controller 及同目录对应的元数据测试，共处理 13 条路由：
+
+- `overdue-accrual.controller.ts`、`overdue-deadlines.controller.ts`：3 条 `charges.manage`；
+- `evidence.controller.ts`：1 条 `evidence.submit`、3 条 `evidence.review`；
+- `import-batches.controller.ts`：2 条 `import.read`、3 条 `import.operate`、1 条 `import.execute`。
+
+本切片只增加方法级 `@RequireCapabilities(...)` 和验证反射元数据的测试，不改 DTO、Application、Domain、
+数据库、Web、Guard 或错误契约。不得使用 class-level 宽能力掩盖同一 Controller 内的读写差异。完成后运行
+相关 Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、`pnpm repo:check` 和格式检查；审计预期
+只证明 `missing` 从 39 降到 26，不得据此宣称授权任务完成。
+
+### C2. 其余路由分类与 4 条入口移除（未开放）
 
 - Cursor 只按 Codex 已批准映射给 Controller 增加元数据和针对性测试，不更改业务行为。
 - 高敏写路由优先：证据、导入、费用标准、任务/节点、适用性、补偿与重放。
@@ -180,3 +229,5 @@ verification: |
 | 2026-09-29 | coding | Codex  | —      | 核清认证与授权差异、默认允许根因、错误码和能力目录漂移；开放 Cursor 切片 A                                                                                                             |
 | 2026-09-30 | coding | Cursor | —      | 切片 A 收缩：只认两个 security 文件的具名导入；重复装饰器失败关闭。`pnpm authz:routes` total=134 public=1 service=5 capability=89 missing=39 conflict=0。未接入 repo:check，未改 Guard |
 | 2026-09-30 | coding | Codex  | —      | 审查并验收切片 A；脚本测试 46/46、`pnpm lint`、`pnpm repo:check`、`pnpm format:check`、`pnpm test` 通过。保留 39 个缺口供后续定权，未进入切片 B                                        |
+| 2026-09-30 | design | 负责人 | —      | `AUTH-D02`～`AUTH-D04` 均选择 A：移除 Echo 与人工创建任务 HTTP 入口；人工可靠性恢复与 service-only 机器链分离                                                                          |
+| 2026-09-30 | coding | Codex  | —      | 完成 B1 的 39 条路由定权：35 条映射现有能力，4 条决定移除；B2 二次守卫审查未完成。只开放 Cursor C1 的费用、证据和导入 13 条路由，尚未修改运行时代码                                    |
