@@ -12,8 +12,10 @@ verification: |
   public=1、service=5、capability=102、missing=26、conflict=0。非零退出码仍是剩余缺口的预期结果，
   不代表默认拒绝已完成。切片 C2A 已为 lifecycle-control 的 ClientOperation、Inbox/Outbox 死信与
   人工恢复 13 条路由补齐方法级 capability，并通过 Codex、独立安全上下文和完整 pnpm validate；
-  当前审计为 total=134、public=1、service=5、capability=115、missing=13、conflict=0。B2 的
-  Application 对象范围/二次守卫审查、C2B、Guard、错误契约和最终清零门禁均未完成。
+  切片 C2B1 已为生命周期读取/适用性、货柜读取与任务读取 9 条路由补齐方法级 capability，并通过
+  Codex、独立安全上下文和完整 pnpm validate；当前审计为 total=134、public=1、service=5、
+  capability=124、missing=4、conflict=0。B2 的 Application 对象范围/二次守卫审查、C2B2 的
+  4 条生产入口移除、Guard、错误契约和最终清零门禁均未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -221,7 +223,7 @@ Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、`pnpm repo:c
       来自剩余缺口，不作为成功门禁
 - [ ] 对象范围、补偿/重放前置条件、职责分离、GC-011 错误面和 Guard 默认拒绝不属于 C2A，仍未完成
 
-### 当前开放 C2B1. 生命周期、货柜与任务读取路由显式分类
+### C2B1. 生命周期、货柜与任务读取路由显式分类（已完成）
 
 Cursor 只可修改以下 6 个现有 Controller 及同目录对应的元数据测试，共处理 9 条路由：
 
@@ -238,6 +240,18 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
 `pnpm repo:check` 和格式检查；审计预期为
 `total=134 public=1 service=5 capability=124 missing=4 conflict=0`，退出码仍为 1。Cursor 完成后停止，
 保留未提交差异交由 Codex 和独立安全上下文审查。
+
+#### C2B1 验收
+
+- [x] 9 条目标路由均使用已批准的方法级 capability；未用类级声明抹平读写差异
+- [x] 9 个目标方法均有反射元数据断言，AST 审计提供第二条验证路径
+- [x] Codex 与独立安全上下文均未发现 finding；对象范围、业务守卫和 GC-011 未被误报为已完成
+- [x] 定向测试 6 文件 12/12、API 单元测试 268 文件 1349/1349、`repo:check`、`format:check` 和
+      `git diff --check` 通过
+- [x] 完整 `pnpm validate` 通过，覆盖契约、全仓 lint/typecheck/test、真实 PostgreSQL 集成、E2E 和构建
+- [x] `pnpm authz:routes` 复现 `total=134 public=1 service=5 capability=124 missing=4 conflict=0`；退出码 1
+      只来自 C2B2 已批准移除的 4 条入口，不作为成功门禁
+- [ ] C2B2、Application 对象范围/二次守卫、GC-011 错误面和 Guard 默认拒绝仍未完成
 
 ### C2B2. 4 条生产 HTTP 入口移除（未开放）
 
@@ -302,3 +316,4 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2A：仅处理 lifecycle-control 的 client-operation、inbox dead-letter、outbox 共 13 条路由元数据；其余 13 条及 4 条入口删除保持封闭                                                |
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2A 为生命周期控制可靠性 13 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=13`。总任务仍未完成                                                 |
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2B1：仅为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；4 条已决定移除的入口保持封闭并留给 C2B2                                                                 |
+| 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2B1 为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=4`。总任务仍未完成                             |

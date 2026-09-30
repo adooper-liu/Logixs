@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ListLifecycleNodesService } from "../application/list-lifecycle-nodes.service";
 import { LifecycleNodesPageDto } from "./lifecycle.dto";
 
@@ -9,6 +10,7 @@ export class LifecycleNodesController {
   constructor(private readonly listLifecycleNodes: ListLifecycleNodesService) {}
 
   @Get()
+  @RequireCapabilities("lifecycle.read")
   @ApiOkResponse({ type: LifecycleNodesPageDto })
   async list(
     @Param("containerId") containerId: string,

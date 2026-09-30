@@ -70,6 +70,29 @@ describe("ContainersController.getCargo", () => {
   });
 });
 
+describe("ContainersController capabilities", () => {
+  it("列表、详情和货物范围均要求货柜读取能力", () => {
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ContainersController.prototype.list,
+      ),
+    ).toEqual(["container.read"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ContainersController.prototype.get,
+      ),
+    ).toEqual(["container.read"]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        ContainersController.prototype.getCargo,
+      ),
+    ).toEqual(["container.read"]);
+  });
+});
+
 describe("ContainersController.getOperationalView", () => {
   it("requires container and lifecycle read capabilities", () => {
     expect(
