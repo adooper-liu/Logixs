@@ -1,6 +1,6 @@
 ---
 status: coding
-branch: feat/authz-default-deny-v1-c2b1
+branch: feat/authz-default-deny-v1-c2b2
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
@@ -253,13 +253,34 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
       只来自 C2B2 已批准移除的 4 条入口，不作为成功门禁
 - [ ] C2B2、Application 对象范围/二次守卫、GC-011 错误面和 Guard 默认拒绝仍未完成
 
-### C2B2. 4 条生产 HTTP 入口移除（未开放）
+### 当前开放 C2B2. 4 条生产 HTTP 入口移除
 
 - `POST /node-tasks` 按 `AUTH-D03` 移除，任务继续只能由生命周期模块经内部 Port 创建；
 - `POST /workflows/outbox-publish-due/schedule` 按 `AUTH-D04` 移除，机器统一走现有 service-only 系统链；
 - `POST /workflows/echo`、`GET /workflows/:id` 按 `AUTH-D02` 移除，保留 Worker 与自动化验通；
 - 入口删除是行为变化，必须逐项核对模块绑定、调用方、测试和 OpenAPI，不得在 C2B1 顺带实施。
 - 路由违规清零前不得切换 Guard 默认拒绝，也不得把审计脚本接入硬门禁。
+
+实现基线为 `cdd4df4`。Cursor 只可处理本节 4 条已批准入口及直接失去消费者的 transport DTO：
+
+- `work-execution.controller.ts` 删除 `create` 路由、构造器依赖和对应 import；
+  `work-execution.dto.ts` 删除只服务该入口的 `CreateNodeTaskRequestDto`；测试必须证明外部创建入口消失，
+  同时 `CREATE_NODE_TASK`、`CreateNodeTaskService` 的 provider/export 与 lifecycle-control 内部调用保持不变；
+- `workflow.module.ts` 取消 `WorkflowController`、`OutboxPublishScheduleController` 的注册和开发身份中间件绑定，
+  删除这两个 Controller 及只由它们消费的 `echo-request.dto.ts`、`outbox-publish-schedule.dto.ts`；
+- 保留 `WorkflowService`、`EnsureOutboxPublishScheduleService` 及其领域/基础设施实现，保留 Worker 自动化链、
+  `OutboxPublishSystemScheduleController` 和 service-only 身份边界；不得借机重构 Temporal 或排空策略；
+- 增补模块/Controller 元数据测试，反证 4 条路由不能再由生产模块注册，并证明内部 Port 与 service-only
+  系统 Schedule 仍在。仓库当前未发现 Web、Worker、package 或 script 对这 4 条 HTTP 路由的生产调用；
+  历史 task 文档保留原验收记录，不追溯改写。
+
+这是负责人已批准的破坏性 transport 收缩，不引入替代 URL 或兼容期。OpenAPI 由已注册 Nest Controller
+动态生成，无受版本控制的生成客户端需要同步；删除后须以模块元数据测试、全仓搜索和路由 AST 审计共同验证。
+完成后 `pnpm authz:routes` 必须退出 0，并精确得到
+`total=130 public=1 service=5 capability=124 missing=0 conflict=0`。同时运行相关 Controller/模块测试、API
+lint/typecheck/test/build、`pnpm repo:check`、`pnpm format:check`、`git diff --check` 和完整 `pnpm validate`。
+不得在本切片切换 Guard、实现 GC-011、接入 CI 硬门禁或处理对象范围。Cursor 以 `ready-for-review` 交回
+未提交差异，由 Codex 与独立安全上下文复审。
 
 ### D. Guard 默认拒绝和错误契约
 
@@ -317,3 +338,4 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2A 为生命周期控制可靠性 13 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=13`。总任务仍未完成                                                 |
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2B1：仅为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；4 条已决定移除的入口保持封闭并留给 C2B2                                                                 |
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2B1 为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=4`。总任务仍未完成                             |
+| 2026-09-30 | coding | Codex                         | —      | 开放 C2B2：只移除 4 条已批准的生产 HTTP 入口及专属 transport DTO；保留任务内部 Port、Workflow/Worker 自动化能力与 service-only 系统 Schedule，预期路由审计清零                         |
