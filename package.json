@@ -27,7 +27,7 @@
     "format:check": "prettier --check . --ignore-unknown",
     "format": "prettier --write . --ignore-unknown",
     "typecheck": "turbo run typecheck",
-    "test": "node --test scripts/check-repository.test.mjs && turbo run test",
+    "test": "node --test scripts/check-repository.test.mjs scripts/check-route-access-metadata.test.mjs && turbo run test",
     "test:integration": "turbo run test:integration",
     "test:e2e": "turbo run test:e2e --filter=@logix/web",
     "playwright:install": "pnpm --filter @logix/web exec playwright install chromium",
@@ -61,6 +61,7 @@
     "db:verify:work-order-fact-application": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-work-order-fact-application.mts",
     "db:seed": "tsx database/seed.ts",
     "db:studio": "prisma studio --port 5555 --browser none",
+    "authz:routes": "node scripts/check-route-access-metadata.mjs",
     "repo:check": "node scripts/check-repository.mjs",
     "security:audit": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level high",
     "validate": "pnpm repo:check && pnpm contract:check && pnpm contract:drift && pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e && pnpm build"
