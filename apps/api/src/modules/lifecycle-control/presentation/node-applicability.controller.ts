@@ -1,5 +1,6 @@
 import { Body, Controller, Param, Post, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { SetNodeApplicabilityService } from "../application/set-node-applicability.service";
 import {
   SetNodeApplicabilityRequestDto,
@@ -14,6 +15,7 @@ export class NodeApplicabilityController {
   ) {}
 
   @Post()
+  @RequireCapabilities("lifecycle.operate")
   @ApiOkResponse({ type: SetNodeApplicabilityResponseDto })
   apply(
     @Param("containerId") containerId: string,

@@ -1,7 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+import { REQUIRED_CAPABILITIES_KEY } from "../../../security/require-capabilities.decorator";
 import { LifecycleNodesBatchController } from "./lifecycle-nodes-batch.controller";
 
 describe("LifecycleNodesBatchController", () => {
+  it("批量读取节点要求生命周期读取能力", () => {
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        LifecycleNodesBatchController.prototype.list,
+      ),
+    ).toEqual(["lifecycle.read"]);
+  });
+
   it("批量响应同样序列化每柜节点三轨", async () => {
     const estimatedAt = new Date("2026-09-22T01:02:03.000Z");
     const execute = vi.fn().mockResolvedValue({

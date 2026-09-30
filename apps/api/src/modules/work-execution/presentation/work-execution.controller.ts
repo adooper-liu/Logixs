@@ -81,6 +81,7 @@ export class WorkExecutionController {
   }
 
   @Get("node-tasks")
+  @RequireCapabilities("task.read")
   @ApiOkResponse({ type: NodeTaskPageDto })
   async list(
     @Req() request: { identity: { tenantId: string } },
@@ -120,6 +121,7 @@ export class WorkExecutionController {
   }
 
   @Get("node-tasks/:id")
+  @RequireCapabilities("task.read")
   @ApiOkResponse({ type: NodeTaskDetailDto })
   async get(
     @Param("id") id: string,

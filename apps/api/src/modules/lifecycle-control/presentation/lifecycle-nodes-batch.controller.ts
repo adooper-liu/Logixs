@@ -1,5 +1,6 @@
 import { Controller, Get, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ListContainerLifecycleNodesService } from "../application/list-container-lifecycle-nodes.service";
 import { ContainerLifecycleNodesPageDto } from "./lifecycle.dto";
 
@@ -11,6 +12,7 @@ export class LifecycleNodesBatchController {
   ) {}
 
   @Get()
+  @RequireCapabilities("lifecycle.read")
   @ApiOkResponse({ type: ContainerLifecycleNodesPageDto })
   async list(
     @Req() request: { identity: { tenantId: string } },

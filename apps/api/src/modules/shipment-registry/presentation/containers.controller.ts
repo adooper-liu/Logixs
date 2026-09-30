@@ -21,6 +21,7 @@ export class ContainersController {
   ) {}
 
   @Get()
+  @RequireCapabilities("container.read")
   @ApiOkResponse({ type: ContainerPageDto })
   async list(
     @Req() request: { identity: { tenantId: string } },
@@ -41,6 +42,7 @@ export class ContainersController {
   }
 
   @Get(":id/cargo")
+  @RequireCapabilities("container.read")
   @ApiOkResponse({ type: ContainerCargoScopeDto })
   async getCargo(
     @Req() request: { identity: { tenantId: string } },
@@ -87,6 +89,7 @@ export class ContainersController {
   }
 
   @Get(":id")
+  @RequireCapabilities("container.read")
   @ApiOkResponse({ type: ContainerSummaryDto })
   async get(
     @Req() request: { identity: { tenantId: string } },

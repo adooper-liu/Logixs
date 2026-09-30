@@ -1,7 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+import { REQUIRED_CAPABILITIES_KEY } from "../../../security/require-capabilities.decorator";
 import { LifecycleNodesController } from "./lifecycle-nodes.controller";
 
 describe("LifecycleNodesController", () => {
+  it("读取单柜节点要求生命周期读取能力", () => {
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_CAPABILITIES_KEY,
+        LifecycleNodesController.prototype.list,
+      ),
+    ).toEqual(["lifecycle.read"]);
+  });
+
   it("把节点三轨日期序列化为 ISO 8601 并保留空槽", async () => {
     const actualAt = new Date("2026-09-21T01:02:03.000Z");
     const execute = vi.fn().mockResolvedValue({
