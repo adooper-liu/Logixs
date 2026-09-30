@@ -3,9 +3,8 @@ status: coding
 branch: feat/authz-default-deny-v1-c2b2
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
-  GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
-  仍由 AuthorizationGuard 放行。全路由静态审计当前已清零但尚未接入 CI 硬门禁。本任务尚未完成，
-  不得宣称授权已默认拒绝。
+  GC-008/GC-011 与现有授权测试。全路由静态审计当前已清零但尚未接入 CI 硬门禁。本任务尚未完成，
+  不得宣称操作级授权闭环完成。
   切片 A 已由 Codex 审查通过：AST 审计器与回归测试已接入 pnpm test；当前可复现统计为
   total=134、public=1、service=5、capability=89、missing=39、conflict=0。切片 B1 已完成 39 条定权：
   35 条映射现有能力，4 条按 AUTH-D02～D04 移出生产 HTTP 面。切片 C1 已为费用、证据与导入的
@@ -18,8 +17,11 @@ verification: |
   capability=124、missing=4、conflict=0。切片 C2B2 已由 Codex 审核通过：4 条无业务消费者的生产 HTTP
   入口已移除，内部 Port、service-only 系统 Schedule 与迁移期 Worker 兼容路径仍保留；当前审计为
   total=130、public=1、service=5、capability=124、missing=0、conflict=0。运行时 404/405 与 Swagger
-  路径缺失尚未直接验证，由阶段 E 承接。B2 的 Application 对象范围/二次守卫、Guard 默认拒绝、GC-011
-  运行时错误信封和最终门禁仍未完成。
+  路径缺失尚未直接验证，由阶段 E 承接。阶段 D 已由 Codex 审查通过：普通用户路由缺访问元数据或
+  缺 capability 时失败关闭，专用异常过滤器返回 GC-011 AUTHORIZATION_FORBIDDEN 信封且不接管其他
+  ForbiddenException；public、service-only 和合法 capability 路径保持可用。Codex 复跑身份模块单元测试
+  37 项、认证集成测试 8 项、API lint/typecheck、authz:routes、repo:check、format:check 和 diff check 均通过。
+  阶段 E、B2 的 Application 对象范围/二次守卫、完整 validate 和生产 Temporal Schedule 迁移仍未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -358,6 +360,15 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
 - Cursor 只运行身份模块定向测试、API lint/typecheck、`pnpm authz:routes`、`pnpm repo:check`、
   `pnpm format:check` 和 `git diff --check`，以 `ready-for-review` 交回未提交差异；不重复完整 `validate`。
 
+#### 阶段 D 审查结果
+
+- [x] 无访问元数据和空 capability 声明均失败关闭；缺 capability 使用同一专用异常
+- [x] GC-011 403 信封通过运行时集成测试和 `error-response.schema.json` 严格校验
+- [x] public、service-only、合法 capability 和类级 capability 路径均有正向测试
+- [x] 专用过滤器未捕获普通 `ForbiddenException`，未改写现有对象范围错误
+- [x] 客户端提供的 `x-trace-id` 与 `traceparent` 不会成为响应中的可信 `traceId`
+- [x] Codex 复跑阶段 D 定向门禁通过；完整 `validate` 按约定留到阶段 E 最终候选
+
 ### E. CI 硬门禁与调用方验证
 
 - 路由违规清零后把 `authz:routes` 接入 `repo:check` 或稳定 `validate` 链路，禁止基线豁免表长期存在。
@@ -412,3 +423,4 @@ test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重�
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2B2：只移除 4 条已批准的生产 HTTP 入口及专属 transport DTO；保留任务内部 Port、Workflow/Worker 自动化能力与 service-only 系统 Schedule，预期路由审计清零                         |
 | 2026-09-30 | coding | 负责人 / Codex                | —      | 调整执行节奏：C2B2、D、E 共用任务集成分支和最终安全 PR；Cursor 只跑切片定向检查，Codex 在最终候选统一跑完整门禁；独立复审按新决策/风险触发，Temporal 外部迁移只阻止部署与 `done`       |
 | 2026-09-30 | coding | Cursor / Codex                | —      | C2B2 删除 4 条已批准入口并通过 Codex 代码审核与定向门禁；审计清零。运行时 404/405、Swagger 路径缺失和完整门禁转由阶段 E，任务仍为 `coding`                                             |
+| 2026-09-30 | coding | Cursor / Codex                | —      | 阶段 D 默认拒绝与专用 GC-011 403 信封通过 Codex 审查及定向门禁；阶段 E、B2 对象范围、完整门禁与生产 Schedule 迁移仍未完成，任务保持 `coding`                                           |

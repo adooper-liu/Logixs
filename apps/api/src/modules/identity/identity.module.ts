@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { config, type AuthenticationConfig } from "../../config/env";
 import { USER_TOKEN_VERIFIER } from "./domain/user-token-verifier";
 import { JoseOidcTokenVerifier } from "./infrastructure/jose-oidc-token-verifier";
@@ -7,6 +7,7 @@ import {
   AUTHENTICATION_CONFIG,
   AuthenticationGuard,
 } from "./presentation/authentication.guard";
+import { AuthorizationForbiddenFilter } from "./presentation/authorization-forbidden.filter";
 import { AuthorizationGuard } from "./presentation/authorization.guard";
 import { DevIdentityMiddleware } from "./presentation/dev-identity.middleware";
 import { DevServiceIdentityMiddleware } from "./presentation/dev-service-identity.middleware";
@@ -30,6 +31,7 @@ import { DevServiceIdentityMiddleware } from "./presentation/dev-service-identit
     },
     { provide: APP_GUARD, useClass: AuthenticationGuard },
     { provide: APP_GUARD, useClass: AuthorizationGuard },
+    { provide: APP_FILTER, useClass: AuthorizationForbiddenFilter },
   ],
   exports: [DevIdentityMiddleware, DevServiceIdentityMiddleware],
 })
