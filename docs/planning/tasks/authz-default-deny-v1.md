@@ -23,6 +23,8 @@ verification: |
 > 这是当前唯一活动任务。Cursor 只执行本文明确开放的当前切片；寻源、NPI、共享控制面和单台 UI
 > 继续暂停。原 `p5-02-oidc-authentication-baseline` 的 `done` 只证明后端认证基线，不证明每条路由
 > 已完成操作级授权。
+> `feat/authz-default-deny-v1-c2b2` 是 C2B2、D、E 的任务集成分支：各切片可形成可回滚提交，但不各自
+> 建 PR 或重复等待 CI；C2B2、Guard 默认拒绝、GC-011 错误面和最终门禁完成后，由 Codex 建立一个安全收口 PR。
 
 ## 目标
 
@@ -283,9 +285,11 @@ Controller 的不同风险方法。完成后运行相关 Controller 测试、API
 缺失、全仓搜索和路由 AST 审计共同验证。
 完成后 `pnpm authz:routes` 必须退出 0，并精确得到
 `total=130 public=1 service=5 capability=124 missing=0 conflict=0`。同时运行相关 Controller/模块测试、API
-lint/typecheck/test/build、`pnpm repo:check`、`pnpm format:check`、`git diff --check` 和完整 `pnpm validate`。
+lint/typecheck、`pnpm authz:routes`、`pnpm repo:check`、`pnpm format:check` 和 `git diff --check`。完整 API
+test/build、集成测试、E2E 和 `pnpm validate` 不在 C2B2 机械切片重复运行，由 D、E 集成后的最终 PR 候选统一承接。
 不得在本切片切换 Guard、实现 GC-011、接入 CI 硬门禁或处理对象范围。Cursor 以 `ready-for-review` 交回
-未提交差异，由 Codex 与独立安全上下文复审。
+未提交差异，由 Codex 审查后在同一任务集成分支继续 D、E。C2B2 的入口政策与迁移边界已经独立复审；只有
+实现偏离已定政策、出现新的权限政策/公开入口/对象范围/状态语义，或最终集成产生新风险时才再次触发独立复审。
 
 #### C2B2 独立复审处置与部署门禁
 
@@ -296,7 +300,8 @@ lint/typecheck/test/build、`pnpm repo:check`、`pnpm format:check`、`git diff 
 | `C2B2-LEGACY-03`     | `accepted` | 删除失去消费者的 API Echo/租户 Schedule 服务；旧 Worker 只因外部 Schedule 状态未知而临时保留，待全部环境迁移完成后按明确退出条件删除 |
 
 仓库无法证明各部署环境是否存在 `outbox-publish-due:<tenantId>`。因此 C2B2 代码合并不等于 D04
-生产迁移完成；部署 C2B2 或启用 Guard 默认拒绝前，每个环境必须由授权运维人员执行并留存变更单证据：
+生产迁移完成；该外部状态不阻止代码实现、提交、PR 审查或合并，但阻止受影响环境生产部署和本任务标记
+`done`。部署 C2B2 或启用 Guard 默认拒绝前，每个环境必须由授权运维人员执行并留存变更单证据：
 
 1. 盘点全部 Temporal Schedule，记录匹配 `outbox-publish-due:` 前缀的精确 ID、状态、最近/下次运行时间；不得假定为零。
 2. 确认唯一 `outbox-publish-due-system` 已启用，并完成一次 service-only 调用，验证只携带服务身份且成功命中
@@ -317,7 +322,8 @@ lint/typecheck/test/build、`pnpm repo:check`、`pnpm format:check`、`git diff 
 ### E. CI 硬门禁与调用方验证
 
 - 路由违规清零后把 `authz:routes` 接入 `repo:check` 或稳定 `validate` 链路，禁止基线豁免表长期存在。
-- 运行 API 单元、真实 PostgreSQL 集成、E2E 和完整 `pnpm validate`；检查开发身份、OIDC 用户、
+- C2B2、D、E 在同一任务集成分支串行完成；中间切片只运行定向检查，不单独建 PR。形成最终 PR 候选后，
+  由 Codex 统一运行一次 API 单元、真实 PostgreSQL 集成、E2E 和完整 `pnpm validate`；检查开发身份、OIDC 用户、
   service-only、跨租户、缺能力和合法能力路径。
 - 合并前复查 OpenAPI/错误响应、客户端受影响路径和回退方案；不得降低断言换取通过。
 
@@ -365,3 +371,4 @@ lint/typecheck/test/build、`pnpm repo:check`、`pnpm format:check`、`git diff 
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2B1：仅为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；4 条已决定移除的入口保持封闭并留给 C2B2                                                                 |
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2B1 为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=4`。总任务仍未完成                             |
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2B2：只移除 4 条已批准的生产 HTTP 入口及专属 transport DTO；保留任务内部 Port、Workflow/Worker 自动化能力与 service-only 系统 Schedule，预期路由审计清零                         |
+| 2026-09-30 | coding | 负责人 / Codex                | —      | 调整执行节奏：C2B2、D、E 共用任务集成分支和最终安全 PR；Cursor 只跑切片定向检查，Codex 在最终候选统一跑完整门禁；独立复审按新决策/风险触发，Temporal 外部迁移只阻止部署与 `done`       |
