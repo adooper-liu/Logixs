@@ -8,6 +8,7 @@ import {
   Req,
 } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ComputeOverdueDeadlinesService } from "../application/compute-overdue-deadlines.service";
 import { ReplaceOverdueStandardsService } from "../application/replace-overdue-standards.service";
 import type { OverdueStandardWrite } from "../domain/overdue-standard.repository";
@@ -32,6 +33,7 @@ export class OverdueDeadlinesController {
   ) {}
 
   @Put("overdue-charge-standards")
+  @RequireCapabilities("charges.manage")
   @ApiOkResponse({ type: ReplaceOverdueStandardsResponseDto })
   async replace(
     @Body() body: ReplaceOverdueStandardsRequestDto,
@@ -51,6 +53,7 @@ export class OverdueDeadlinesController {
   }
 
   @Post("overdue-deadlines/compute")
+  @RequireCapabilities("charges.manage")
   @ApiOkResponse({ type: OverdueDeadlinesResponseDto })
   async compute(
     @Body() body: ComputeOverdueDeadlinesRequestDto,

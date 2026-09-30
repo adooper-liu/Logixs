@@ -1,5 +1,6 @@
 import { Body, Controller, Param, Post, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import {
   DecideEvidenceService,
   type DecideEvidenceResult,
@@ -22,6 +23,7 @@ export class EvidenceController {
   ) {}
 
   @Post()
+  @RequireCapabilities("evidence.submit")
   @ApiOkResponse({ type: EvidenceRecordDto })
   async register(
     @Body() body: RegisterEvidenceRequestDto,
@@ -54,6 +56,7 @@ export class EvidenceController {
   }
 
   @Post(":id/verify")
+  @RequireCapabilities("evidence.review")
   @ApiOkResponse({ type: EvidenceRecordDto })
   verify(
     @Param("id") id: string,
@@ -64,6 +67,7 @@ export class EvidenceController {
   }
 
   @Post(":id/reject")
+  @RequireCapabilities("evidence.review")
   @ApiOkResponse({ type: EvidenceRecordDto })
   reject(
     @Param("id") id: string,
@@ -74,6 +78,7 @@ export class EvidenceController {
   }
 
   @Post(":id/revoke")
+  @RequireCapabilities("evidence.review")
   @ApiOkResponse({ type: EvidenceRecordDto })
   revoke(
     @Param("id") id: string,

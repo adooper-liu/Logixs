@@ -1,15 +1,16 @@
 ---
 status: coding
-branch: feat/authz-default-deny-v1-slice-b
+branch: feat/authz-default-deny-v1-c1
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
   仍由 AuthorizationGuard 放行，且尚无全路由静态门禁。本任务尚未完成，不得宣称授权已默认拒绝。
   切片 A 已由 Codex 审查通过：AST 审计器与回归测试已接入 pnpm test；当前可复现统计为
-  total=134、public=1、service=5、capability=89、missing=39、conflict=0。非零退出码是切片 A
-  对现存缺口的预期结果，不代表缺口已修复。切片 B1 已完成 39 条定权：35 条映射现有能力，4 条按
-  AUTH-D02～D04 移出生产 HTTP 面；B2 的 Application 对象范围/二次守卫审查仍在进行，尚未修改
-  Controller，切片 C1 待执行。
+  total=134、public=1、service=5、capability=89、missing=39、conflict=0。切片 B1 已完成 39 条定权：
+  35 条映射现有能力，4 条按 AUTH-D02～D04 移出生产 HTTP 面。切片 C1 已为费用、证据与导入的
+  13 条路由补齐方法级 capability，并经 Codex 与独立安全上下文复审；当前审计为 total=134、
+  public=1、service=5、capability=102、missing=26、conflict=0。非零退出码仍是剩余缺口的预期结果，
+  不代表默认拒绝已完成。B2 的 Application 对象范围/二次守卫审查、C2、Guard、错误契约和最终门禁均未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -161,7 +162,7 @@ verification: |
 均已由负责人选择 A；切片 B1 至此完成。B2 仍由 Codex 并行审查，尚未修改任何 Controller，
 不能把定权完成说成默认拒绝或对象级授权已经完成。
 
-### 当前开放 C1. 费用、证据与导入路由显式分类
+### 已完成 C1. 费用、证据与导入路由显式分类
 
 Cursor 只可修改以下 4 个现有 Controller 及同目录对应的元数据测试，共处理 13 条路由：
 
@@ -173,6 +174,17 @@ Cursor 只可修改以下 4 个现有 Controller 及同目录对应的元数据�
 数据库、Web、Guard 或错误契约。不得使用 class-level 宽能力掩盖同一 Controller 内的读写差异。完成后运行
 相关 Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、`pnpm repo:check` 和格式检查；审计预期
 只证明 `missing` 从 39 降到 26，不得据此宣称授权任务完成。
+
+#### C1 验收
+
+- [x] 13 条路由逐方法映射已批准 capability，没有使用类级能力抹平读写差异
+- [x] 13 个方法均有反射元数据断言，AST 审计提供第二条验证路径
+- [x] Codex 与独立安全上下文均未发现 finding
+- [x] 定向测试 4 文件 8/8、API 单元测试 262 文件 1340/1340、API lint/typecheck、`repo:check`、
+      `format:check` 和 `git diff --check` 通过
+- [x] `pnpm authz:routes` 复现 `total=134 public=1 service=5 capability=102 missing=26 conflict=0`；退出码 1
+      来自剩余缺口，不作为成功门禁
+- [ ] 集成测试、E2E、build 和完整 `validate` 未在 C1 执行，由切片 E 与合并前必需 CI 承接
 
 ### C2. 其余路由分类与 4 条入口移除（未开放）
 
@@ -223,11 +235,12 @@ Cursor 只可修改以下 4 个现有 Controller 及同目录对应的元数据�
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责   | commit | 说明                                                                                                                                                                                   |
-| ---------- | ------ | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-29 | design | 负责人 | —      | `AUTH-D01` 选择 A：正式登记 `container.operate`，保留守卫并按审计证据再拆                                                                                                              |
-| 2026-09-29 | coding | Codex  | —      | 核清认证与授权差异、默认允许根因、错误码和能力目录漂移；开放 Cursor 切片 A                                                                                                             |
-| 2026-09-30 | coding | Cursor | —      | 切片 A 收缩：只认两个 security 文件的具名导入；重复装饰器失败关闭。`pnpm authz:routes` total=134 public=1 service=5 capability=89 missing=39 conflict=0。未接入 repo:check，未改 Guard |
-| 2026-09-30 | coding | Codex  | —      | 审查并验收切片 A；脚本测试 46/46、`pnpm lint`、`pnpm repo:check`、`pnpm format:check`、`pnpm test` 通过。保留 39 个缺口供后续定权，未进入切片 B                                        |
-| 2026-09-30 | design | 负责人 | —      | `AUTH-D02`～`AUTH-D04` 均选择 A：移除 Echo 与人工创建任务 HTTP 入口；人工可靠性恢复与 service-only 机器链分离                                                                          |
-| 2026-09-30 | coding | Codex  | —      | 完成 B1 的 39 条路由定权：35 条映射现有能力，4 条决定移除；B2 二次守卫审查未完成。只开放 Cursor C1 的费用、证据和导入 13 条路由，尚未修改运行时代码                                    |
+| 日期       | 阶段   | 负责                          | commit | 说明                                                                                                                                                                                   |
+| ---------- | ------ | ----------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-29 | design | 负责人                        | —      | `AUTH-D01` 选择 A：正式登记 `container.operate`，保留守卫并按审计证据再拆                                                                                                              |
+| 2026-09-29 | coding | Codex                         | —      | 核清认证与授权差异、默认允许根因、错误码和能力目录漂移；开放 Cursor 切片 A                                                                                                             |
+| 2026-09-30 | coding | Cursor                        | —      | 切片 A 收缩：只认两个 security 文件的具名导入；重复装饰器失败关闭。`pnpm authz:routes` total=134 public=1 service=5 capability=89 missing=39 conflict=0。未接入 repo:check，未改 Guard |
+| 2026-09-30 | coding | Codex                         | —      | 审查并验收切片 A；脚本测试 46/46、`pnpm lint`、`pnpm repo:check`、`pnpm format:check`、`pnpm test` 通过。保留 39 个缺口供后续定权，未进入切片 B                                        |
+| 2026-09-30 | design | 负责人                        | —      | `AUTH-D02`～`AUTH-D04` 均选择 A：移除 Echo 与人工创建任务 HTTP 入口；人工可靠性恢复与 service-only 机器链分离                                                                          |
+| 2026-09-30 | coding | Codex                         | —      | 完成 B1 的 39 条路由定权：35 条映射现有能力，4 条决定移除；B2 二次守卫审查未完成。只开放 Cursor C1 的费用、证据和导入 13 条路由，尚未修改运行时代码                                    |
+| 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C1 为费用、证据与导入 13 条路由补齐方法级能力并通过双重审查；审计降至 `missing=26`。总任务仍未完成，未开放 Guard 默认拒绝或对象级授权结论                                              |
