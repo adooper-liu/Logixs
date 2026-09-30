@@ -1,0 +1,8 @@
+---
+description: Logix repository collaboration authority
+alwaysApply: true
+---
+
+Before analyzing or editing this repository, read and follow [AGENTS.md](../../AGENTS.md) and every applicable
+nested `AGENTS.md`. This file is only a Cursor bootstrap entry point; do not duplicate repository, business, or
+engineering rules here.
