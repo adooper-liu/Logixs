@@ -5,6 +5,9 @@ verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
   仍由 AuthorizationGuard 放行，且尚无全路由静态门禁。本任务尚未完成，不得宣称授权已默认拒绝。
+  切片 A 已由 Codex 审查通过：AST 审计器与回归测试已接入 pnpm test；当前可复现统计为
+  total=134、public=1、service=5、capability=89、missing=39、conflict=0。非零退出码是切片 A
+  对现存缺口的预期结果，不代表缺口已修复；切片 B 尚未开始。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -82,7 +85,9 @@ verification: |
    - 方法级元数据覆盖类级元数据，与 Nest `getAllAndOverride` 语义一致；
    - public、service、capability 三类合法路由；
    - 缺失分类、空 capability、冲突分类和动态不可解析参数；
-   - 多个 HTTP 方法装饰器、路径数组和无关装饰器。
+   - 路径数组和无关装饰器；
+   - 同名但不是两个正式 security 文件的伪装饰器；
+   - 同一作用域重复访问装饰器，以及同一方法重复 HTTP 装饰器。
 3. 新增只读脚本入口 `pnpm authz:routes`。当前切片运行时输出确定性清单并以非零状态报告违规，
    但暂不接入 `repo:check`，避免在 Codex 完成逐路由定权前把主质量门禁永久打红。
 4. 输出格式每行至少包含：HTTP method、控制器路径、`Class.method`、访问分类、capability 列表和
@@ -95,17 +100,20 @@ verification: |
 - 只枚举含 Nest `@Controller()` 的类及含 `@Get/@Post/@Put/@Patch/@Delete/@Options/@Head/@All`
   的方法。
 - 访问分类按运行时有效元数据判断；类级与方法级声明冲突必须报告，不能因覆盖顺序静默放行。
+- `PublicEndpoint`、`ServiceEndpoint` 只认指向 `apps/api/src/security/route-access.decorator.ts` 的具名相对导入；`RequireCapabilities` 只认指向 `apps/api/src/security/require-capabilities.decorator.ts` 的具名相对导入。别名、barrel、跨包重导出和其它来源一律不认。
+- 同一作用域出现多个访问装饰器时报告 `ACCESS_METADATA_DUPLICATE`，不选择其中一个。
+- 同一方法出现多个 HTTP 装饰器时报告 `HTTP_DECORATOR_DUPLICATE`，只记录源码中最上方、运行时最后写入的那一条，不展开成多条。
 - `@RequireCapabilities()` 零参数、非字符串字面量或重复空白值均为违规。
 - 本切片只验证 capability 形状和访问分类，不判断某能力是否适合某业务路由；业务映射由 Codex 完成。
 - 测试不得靠扫描当前仓库“恰好有多少缺口”通过；分析器逻辑测试与当前仓库审计结果分开。
 
 ### 切片 A 验收
 
-- [ ] AST 审计器可重复枚举全部 Nest HTTP 路由，不漏类级元数据
-- [ ] 合法、缺失、冲突、空声明和动态声明均有正反向测试
-- [ ] `pnpm authz:routes` 对当前仓库给出稳定统计和非零退出码
-- [ ] 未修改 Guard、Controller、业务服务、能力目录、数据库或 Web
-- [ ] `node --test scripts/check-route-access-metadata.test.mjs`、`pnpm repo:check`、
+- [x] AST 审计器可重复枚举全部 Nest HTTP 路由，不漏类级元数据
+- [x] 合法、缺失、冲突、空声明和动态声明均有正反向测试
+- [x] `pnpm authz:routes` 对当前仓库给出稳定统计和非零退出码
+- [x] 未修改 Guard、Controller、业务服务、能力目录、数据库或 Web
+- [x] `node --test scripts/check-route-access-metadata.test.mjs` 已接入 `pnpm test`；`pnpm repo:check`、
       `pnpm format:check` 通过
 
 ## 后续切片（未获 Codex 指令前不得开始）
@@ -166,7 +174,9 @@ verification: |
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责   | commit | 说明                                                                       |
-| ---------- | ------ | ------ | ------ | -------------------------------------------------------------------------- |
-| 2026-09-29 | design | 负责人 | —      | `AUTH-D01` 选择 A：正式登记 `container.operate`，保留守卫并按审计证据再拆  |
-| 2026-09-29 | coding | Codex  | —      | 核清认证与授权差异、默认允许根因、错误码和能力目录漂移；开放 Cursor 切片 A |
+| 日期       | 阶段   | 负责   | commit | 说明                                                                                                                                                                                   |
+| ---------- | ------ | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-29 | design | 负责人 | —      | `AUTH-D01` 选择 A：正式登记 `container.operate`，保留守卫并按审计证据再拆                                                                                                              |
+| 2026-09-29 | coding | Codex  | —      | 核清认证与授权差异、默认允许根因、错误码和能力目录漂移；开放 Cursor 切片 A                                                                                                             |
+| 2026-09-30 | coding | Cursor | —      | 切片 A 收缩：只认两个 security 文件的具名导入；重复装饰器失败关闭。`pnpm authz:routes` total=134 public=1 service=5 capability=89 missing=39 conflict=0。未接入 repo:check，未改 Guard |
+| 2026-09-30 | coding | Codex  | —      | 审查并验收切片 A；脚本测试 46/46、`pnpm lint`、`pnpm repo:check`、`pnpm format:check`、`pnpm test` 通过。保留 39 个缺口供后续定权，未进入切片 B                                        |

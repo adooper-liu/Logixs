@@ -21,10 +21,24 @@ const HTTP_EXPORTS = new Set([
 export const ROUTE_REPORT_HEADER =
   "method\tpath\thandler\tclassification\tcapabilities\tviolations\tfile";
 
+const OFFICIAL_ACCESS_FILES = new Map([
+  [
+    "apps/api/src/security/route-access.decorator.ts",
+    new Set(["PublicEndpoint", "ServiceEndpoint"]),
+  ],
+  [
+    "apps/api/src/security/require-capabilities.decorator.ts",
+    new Set(["RequireCapabilities"]),
+  ],
+]);
+
 /**
  * 用 TypeScript AST 枚举 Nest HTTP 路由的访问分类。
- * 同一元数据键上方法级覆盖类级，与 Reflector.getAllAndOverride 一致；
- * 类级和方法级属于不同访问分类时必须报冲突，不能按覆盖顺序静默放行。
+ * 三个访问装饰器只认控制器源码里指向上述两个 security 文件的具名相对导入；
+ * 其它来源直接忽略。同一作用域出现多个访问装饰器时报 ACCESS_METADATA_DUPLICATE，
+ * 不再选择其中一个。不同作用域仍按方法级覆盖类级；分类不一致则报冲突。
+ * 同一方法多个 HTTP 装饰器只保留源码中最上方那条：experimentalDecorators
+ * 自下而上执行，最上方的最后写入 METHOD/PATH，是运行时有效的一条。
  */
 export function analyzeControllerSources(files) {
   const routes = files.flatMap((file) =>
@@ -85,14 +99,14 @@ function analyzeControllerSource(file, text) {
     const controller = readController(classDecorators, imports);
     if (!controller) continue;
     const className = statement.name?.text ?? "default";
-    const classAccess = readAccess(classDecorators, imports);
+    const classAccess = readAccess(classDecorators, imports, file);
     for (const member of statement.members) {
       if (!ts.isMethodDeclaration(member) || !member.name) continue;
       const methodDecorators = ts.getDecorators(member) ?? [];
       const httpRoutes = readHttpRoutes(methodDecorators, imports);
       if (httpRoutes.length === 0) continue;
       const methodName = methodNameOf(member.name);
-      const methodAccess = readAccess(methodDecorators, imports);
+      const methodAccess = readAccess(methodDecorators, imports, file);
       const access = combineAccess(classAccess, methodAccess);
       for (const httpRoute of httpRoutes) {
         for (const path of combinePaths(controller, httpRoute)) {
@@ -159,6 +173,7 @@ function readImports(source) {
         kind: "named",
         moduleName,
         exportName: (specifier.propertyName ?? specifier.name).text,
+        renamed: specifier.propertyName !== undefined,
       });
     }
   }
@@ -176,7 +191,7 @@ function resolveDecorator(decorator, imports) {
   if (ts.isIdentifier(expression)) {
     const binding = imports.get(expression.text);
     if (!binding || binding.kind !== "named") return null;
-    return { ...binding, args };
+    return { ...binding, args, directNamed: true };
   }
   if (
     ts.isPropertyAccessExpression(expression) &&
@@ -210,7 +225,7 @@ function readController(decorators, imports) {
 }
 
 function readHttpRoutes(decorators, imports) {
-  const routes = [];
+  const matches = [];
   for (const decorator of decorators) {
     const resolved = resolveDecorator(decorator, imports);
     if (
@@ -220,53 +235,90 @@ function readHttpRoutes(decorators, imports) {
     ) {
       continue;
     }
-    const parsed = parseRoutePaths(resolved.args[0]);
-    const httpMethod = resolved.exportName.toUpperCase();
-    if (!parsed.ok) {
-      routes.push({
-        httpMethod,
-        paths: ["<unresolved>"],
-        violations: ["ROUTE_ARGUMENT_UNRESOLVED"],
-      });
-      continue;
-    }
-    routes.push({
-      httpMethod,
-      paths: parsed.paths,
-      violations: [],
-    });
+    matches.push(resolved);
   }
-  return routes.flatMap((route) =>
-    route.paths.map((path) => ({
-      httpMethod: route.httpMethod,
-      path,
-      violations: route.violations,
-    })),
-  );
+  if (matches.length === 0) return [];
+  const effective = matches[0];
+  const violations = matches.length > 1 ? ["HTTP_DECORATOR_DUPLICATE"] : [];
+  const parsed = parseRoutePaths(effective.args[0]);
+  const httpMethod = effective.exportName.toUpperCase();
+  if (!parsed.ok) {
+    return [
+      {
+        httpMethod,
+        path: "<unresolved>",
+        violations: uniqueSorted([...violations, "ROUTE_ARGUMENT_UNRESOLVED"]),
+      },
+    ];
+  }
+  return parsed.paths.map((path) => ({
+    httpMethod,
+    path,
+    violations,
+  }));
 }
 
-function readAccess(decorators, imports) {
+function readAccess(decorators, imports, controllerFile) {
+  const hits = [];
+  for (const decorator of decorators) {
+    const resolved = resolveDecorator(decorator, imports);
+    const exportName = officialAccessExport(controllerFile, resolved);
+    if (!exportName) continue;
+    hits.push({ exportName, args: resolved.args });
+  }
+  if (hits.length > 1) {
+    return {
+      duplicate: true,
+      categories: [],
+      capabilities: undefined,
+      violations: ["ACCESS_METADATA_DUPLICATE"],
+    };
+  }
   const access = {
+    duplicate: false,
     categories: [],
     capabilities: undefined,
     violations: [],
   };
-  for (const decorator of decorators) {
-    const resolved = resolveDecorator(decorator, imports);
-    if (!resolved) continue;
-    if (resolved.exportName === "PublicEndpoint") {
-      addCategory(access, "public");
-    } else if (resolved.exportName === "ServiceEndpoint") {
-      addCategory(access, "service");
-    } else if (resolved.exportName === "RequireCapabilities") {
-      addCategory(access, "capability");
-      const parsed = parseCapabilities(resolved.args);
-      access.capabilities = parsed.capabilities;
-      access.violations.push(...parsed.violations);
-    }
+  const hit = hits[0];
+  if (!hit) return access;
+  if (hit.exportName === "PublicEndpoint") {
+    addCategory(access, "public");
+  } else if (hit.exportName === "ServiceEndpoint") {
+    addCategory(access, "service");
+  } else if (hit.exportName === "RequireCapabilities") {
+    addCategory(access, "capability");
+    const parsed = parseCapabilities(hit.args);
+    access.capabilities = parsed.capabilities;
+    access.violations.push(...parsed.violations);
   }
   access.violations = uniqueSorted(access.violations);
   return access;
+}
+
+function officialAccessExport(controllerFile, resolved) {
+  if (!resolved?.directNamed || resolved.renamed) return null;
+  const target = resolveRelativeSpecifier(controllerFile, resolved.moduleName);
+  const allowed = OFFICIAL_ACCESS_FILES.get(target);
+  if (!allowed || !allowed.has(resolved.exportName)) return null;
+  return resolved.exportName;
+}
+
+function resolveRelativeSpecifier(fromFile, specifier) {
+  if (!specifier.startsWith(".")) return null;
+  const fromDir = fromFile.split("/").slice(0, -1);
+  const parts = [...fromDir, ...specifier.split("/")];
+  const stack = [];
+  for (const part of parts) {
+    if (!part || part === ".") continue;
+    if (part === "..") {
+      stack.pop();
+      continue;
+    }
+    stack.push(part);
+  }
+  const resolved = stack.join("/");
+  return resolved.endsWith(".ts") ? resolved : `${resolved}.ts`;
 }
 
 function addCategory(access, category) {
@@ -276,6 +328,13 @@ function addCategory(access, category) {
 }
 
 function combineAccess(classAccess, methodAccess) {
+  if (classAccess.duplicate || methodAccess.duplicate) {
+    return {
+      classification: "conflict",
+      capabilities: [],
+      violations: ["ACCESS_METADATA_DUPLICATE"],
+    };
+  }
   const classCategories = classAccess.categories;
   const methodCategories = methodAccess.categories;
   const conflict =

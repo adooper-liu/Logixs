@@ -27,7 +27,7 @@
     "format:check": "prettier --check . --ignore-unknown",
     "format": "prettier --write . --ignore-unknown",
     "typecheck": "turbo run typecheck",
-    "test": "node --test scripts/check-repository.test.mjs && turbo run test",
+    "test": "node --test scripts/check-repository.test.mjs scripts/check-route-access-metadata.test.mjs && turbo run test",
     "test:integration": "turbo run test:integration",
     "test:e2e": "turbo run test:e2e --filter=@logix/web",
     "playwright:install": "pnpm --filter @logix/web exec playwright install chromium",

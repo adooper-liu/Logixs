@@ -6,13 +6,16 @@ import {
   summarizeRoutes,
 } from "./check-route-access-metadata.mjs";
 
+const CONTROLLER_FILE =
+  "apps/api/src/modules/example/presentation/fixture.controller.ts";
+
 const NEST = `import { Controller, Get, Post, Put, Patch, Delete, Options, Head, All } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
-import { PublicEndpoint, ServiceEndpoint } from "./route-access";
-import { RequireCapabilities } from "./require-capabilities";
+import { PublicEndpoint, ServiceEndpoint } from "../../../security/route-access.decorator";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 `;
 
-function audit(body, file = "fixture.controller.ts") {
+function audit(body, file = CONTROLLER_FILE) {
   return analyzeControllerSources([{ file, text: `${NEST}\n${body}` }]);
 }
 
@@ -39,7 +42,7 @@ test("方法级 capability 单独成路由", () => {
   assert.deepEqual(route.violations, []);
   assert.equal(
     formatRouteLine(route),
-    "GET\t/items/:id\tItemsController.read\tcapability\tplanning.read\t-\tfixture.controller.ts",
+    `GET\t/items/:id\tItemsController.read\tcapability\tplanning.read\t-\t${CONTROLLER_FILE}`,
   );
 });
 
@@ -87,7 +90,20 @@ test("方法级 capability 覆盖类级 capability，与 getAllAndOverride 一�
 test("public、service、capability 都是合法分类", () => {
   const routes = analyzeControllerSources([
     {
-      file: "public.controller.ts",
+      file: "apps/api/src/health/health.controller.ts",
+      text: `
+        import { Controller, Get } from "@nestjs/common";
+        import { PublicEndpoint } from "../security/route-access.decorator";
+        @PublicEndpoint()
+        @Controller("health")
+        export class HealthController {
+          @Get()
+          check() {}
+        }
+      `,
+    },
+    {
+      file: "apps/api/src/modules/example/presentation/public.controller.ts",
       text: `${NEST}
         @PublicEndpoint()
         @Controller("health")
@@ -97,7 +113,7 @@ test("public、service、capability 都是合法分类", () => {
         }`,
     },
     {
-      file: "service.controller.ts",
+      file: "apps/api/src/modules/example/presentation/service.controller.ts",
       text: `${NEST}
         @ServiceEndpoint()
         @Controller("inbox")
@@ -107,7 +123,7 @@ test("public、service、capability 都是合法分类", () => {
         }`,
     },
     {
-      file: "user.controller.ts",
+      file: "apps/api/src/modules/example/presentation/user.controller.ts",
       text: `${NEST}
         @Controller("items")
         export class ItemsController {
@@ -119,9 +135,9 @@ test("public、service、capability 都是合法分类", () => {
   ]);
   assert.deepEqual(
     routes.map((route) => route.classification),
-    ["public", "service", "capability"],
+    ["public", "public", "service", "capability"],
   );
-  assert.deepEqual(routes[2].capabilities, [
+  assert.deepEqual(routes[3].capabilities, [
     "planning.draft",
     "container.read",
   ]);
@@ -216,7 +232,8 @@ test("同一方法上的 public 与 service 冲突，不能静默覆盖", () => 
     `),
   );
   assert.equal(route.classification, "conflict");
-  assert.deepEqual(route.violations, ["ACCESS_CLASSIFICATION_CONFLICT"]);
+  assert.deepEqual(route.capabilities, []);
+  assert.deepEqual(route.violations, ["ACCESS_METADATA_DUPLICATE"]);
 });
 
 test("非字面量、空白和重复 capability 违规", () => {
@@ -239,18 +256,11 @@ test("非字面量、空白和重复 capability 违规", () => {
   ]);
 });
 
-test("多个 HTTP 方法、路径数组和无关装饰器各自成路由", () => {
+test("路径数组仍展开，无关装饰器不产生路由", () => {
   const routes = audit(`
     @Controller(["goods", "products"])
     export class ItemsController {
       @Get(["a", "b"])
-      @Post("c")
-      @Put()
-      @Patch()
-      @Delete()
-      @Options()
-      @Head()
-      @All("any")
       @ApiOkResponse()
       @RequireCapabilities("planning.read")
       collect() {}
@@ -258,63 +268,68 @@ test("多个 HTTP 方法、路径数组和无关装饰器各自成路由", () =>
   `);
   assert.deepEqual(
     routes.map((route) => `${route.httpMethod} ${route.path}`),
-    [
-      "ALL /goods/any",
-      "ALL /products/any",
-      "DELETE /goods",
-      "DELETE /products",
-      "GET /goods/a",
-      "GET /goods/b",
-      "GET /products/a",
-      "GET /products/b",
-      "HEAD /goods",
-      "HEAD /products",
-      "OPTIONS /goods",
-      "OPTIONS /products",
-      "PATCH /goods",
-      "PATCH /products",
-      "POST /goods/c",
-      "POST /products/c",
-      "PUT /goods",
-      "PUT /products",
-    ],
+    ["GET /goods/a", "GET /goods/b", "GET /products/a", "GET /products/b"],
   );
   assert.ok(routes.every((route) => route.violations.length === 0));
 });
 
-test("别名导入和命名空间导入都按导出名识别", () => {
-  const routes = analyzeControllerSources([
-    {
-      file: "alias.controller.ts",
-      text: `
-        import { Controller, Get as Read } from "@nestjs/common";
-        import { RequireCapabilities as Need } from "./require-capabilities";
-        @Controller("items")
-        export class ItemsController {
-          @Read()
-          @Need("planning.read")
-          list() {}
-        }
-      `,
-    },
-    {
-      file: "namespace.controller.ts",
-      text: `
-        import * as nest from "@nestjs/common";
-        import { PublicEndpoint } from "./route-access";
-        @PublicEndpoint()
-        @nest.Controller("health")
-        export class HealthController {
-          @nest.Get()
-          check() {}
-        }
-      `,
-    },
-  ]);
-  assert.equal(routes[0].classification, "capability");
-  assert.equal(routes[0].httpMethod, "GET");
-  assert.equal(routes[1].classification, "public");
-  assert.equal(routes[1].path, "/health");
+test("同名伪装饰器不认", () => {
+  const route = only(
+    analyzeControllerSources([
+      {
+        file: CONTROLLER_FILE,
+        text: `
+          import { Controller, Get } from "@nestjs/common";
+          import { PublicEndpoint } from "./public-endpoint";
+          import { RequireCapabilities } from "../../../modules/identity";
+          @PublicEndpoint()
+          @Controller("health")
+          export class HealthController {
+            @Get()
+            @RequireCapabilities("planning.read")
+            check() {}
+          }
+        `,
+      },
+    ]),
+  );
+  assert.equal(route.classification, "missing");
+  assert.deepEqual(route.capabilities, []);
+  assert.deepEqual(route.violations, ["ACCESS_CLASSIFICATION_MISSING"]);
+});
+
+test("重复装饰器失败关闭且不展开", () => {
+  const access = only(
+    audit(`
+      @Controller("items")
+      export class ItemsController {
+        @Get()
+        @RequireCapabilities("planning.read")
+        @RequireCapabilities("planning.draft")
+        write() {}
+      }
+    `),
+  );
+  assert.equal(access.httpMethod, "GET");
+  assert.equal(access.classification, "conflict");
+  assert.deepEqual(access.capabilities, []);
+  assert.deepEqual(access.violations, ["ACCESS_METADATA_DUPLICATE"]);
+
+  const http = only(
+    audit(`
+      @Controller("items")
+      export class ItemsController {
+        @Post("top")
+        @Get("bottom")
+        @RequireCapabilities("planning.read")
+        collect() {}
+      }
+    `),
+  );
+  assert.equal(http.httpMethod, "POST");
+  assert.equal(http.path, "/items/top");
+  assert.equal(http.classification, "capability");
+  assert.deepEqual(http.violations, ["HTTP_DECORATOR_DUPLICATE"]);
 });
 
 test("没有 Controller 的类、以及没有 HTTP 装饰器的方法都不计入", () => {
@@ -336,17 +351,16 @@ test("没有 Controller 的类、以及没有 HTTP 装饰器的方法都不计�
 test("排序稳定为 file、class、method、HTTP method，统计不依赖仓库现状", () => {
   const routes = analyzeControllerSources([
     {
-      file: "b.controller.ts",
+      file: "apps/api/src/modules/example/presentation/b.controller.ts",
       text: `${NEST}
         @Controller("b")
         export class BController {
           @Post()
-          @Get()
           zeta() {}
         }`,
     },
     {
-      file: "a.controller.ts",
+      file: "apps/api/src/modules/example/presentation/a.controller.ts",
       text: `${NEST}
         @PublicEndpoint()
         @Controller("a")
@@ -361,17 +375,16 @@ test("排序稳定为 file、class、method、HTTP method，统计不依赖仓�
       (route) => `${route.file}:${route.methodName}:${route.httpMethod}`,
     ),
     [
-      "a.controller.ts:alpha:GET",
-      "b.controller.ts:zeta:GET",
-      "b.controller.ts:zeta:POST",
+      "apps/api/src/modules/example/presentation/a.controller.ts:alpha:GET",
+      "apps/api/src/modules/example/presentation/b.controller.ts:zeta:POST",
     ],
   );
   assert.deepEqual(summarizeRoutes(routes), {
-    total: 3,
+    total: 2,
     public: 1,
     service: 0,
     capability: 0,
-    missing: 2,
+    missing: 1,
     conflict: 0,
   });
 });
