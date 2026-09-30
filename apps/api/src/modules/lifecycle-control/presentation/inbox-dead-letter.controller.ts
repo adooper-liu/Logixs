@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ListInboxDeadLettersService } from "../application/list-inbox-dead-letters.service";
 import { ReplayInboxDeadLetterService } from "../application/replay-inbox-dead-letter.service";
 import {
@@ -17,6 +18,7 @@ export class InboxDeadLetterController {
   ) {}
 
   @Get("dead-letters")
+  @RequireCapabilities("reliability.read")
   @ApiOkResponse({ type: InboxDeadLetterPageDto })
   async listDeadLettersPage(
     @Req() request: { identity: { tenantId: string } },
@@ -51,6 +53,7 @@ export class InboxDeadLetterController {
   }
 
   @Post("dead-letters/:deadLetterId/replay")
+  @RequireCapabilities("reliability.recover")
   @ApiOkResponse({ type: ReplayInboxDeadLetterResponseDto })
   async replay(
     @Param("deadLetterId") deadLetterId: string,

@@ -10,7 +10,10 @@ verification: |
   35 条映射现有能力，4 条按 AUTH-D02～D04 移出生产 HTTP 面。切片 C1 已为费用、证据与导入的
   13 条路由补齐方法级 capability，并经 Codex 与独立安全上下文复审；当前审计为 total=134、
   public=1、service=5、capability=102、missing=26、conflict=0。非零退出码仍是剩余缺口的预期结果，
-  不代表默认拒绝已完成。B2 的 Application 对象范围/二次守卫审查、C2、Guard、错误契约和最终门禁均未完成。
+  不代表默认拒绝已完成。切片 C2A 已为 lifecycle-control 的 ClientOperation、Inbox/Outbox 死信与
+  人工恢复 13 条路由补齐方法级 capability，并通过 Codex、独立安全上下文和完整 pnpm validate；
+  当前审计为 total=134、public=1、service=5、capability=115、missing=13、conflict=0。B2 的
+  Application 对象范围/二次守卫审查、C2B、Guard、错误契约和最终清零门禁均未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -186,7 +189,7 @@ Cursor 只可修改以下 4 个现有 Controller 及同目录对应的元数据�
       来自剩余缺口，不作为成功门禁
 - [ ] 集成测试、E2E、build 和完整 `validate` 未在 C1 执行，由切片 E 与合并前必需 CI 承接
 
-### 当前开放 C2A. 生命周期控制可靠性路由显式分类
+### 已完成 C2A. 生命周期控制可靠性路由显式分类
 
 Cursor 只可修改以下 3 个现有 Controller 及同目录对应的元数据测试，共处理 13 条路由：
 
@@ -205,6 +208,18 @@ Application、Domain、数据库、Web、Guard、错误契约、补偿/重放前
 Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、`pnpm repo:check` 和格式检查；审计预期为
 `total=134 public=1 service=5 capability=115 missing=13 conflict=0`，退出码仍为 1。Cursor 完成后停止，
 保留未提交差异交由 Codex 和独立安全上下文审查。
+
+#### C2A 验收
+
+- [x] 13 条路由逐方法映射已批准 capability；读、人工恢复和生命周期提交保持分权
+- [x] 13 个方法均有反射元数据断言，AST 审计提供第二条验证路径
+- [x] Codex 与独立安全上下文均未发现 finding
+- [x] 定向测试 3 文件 3/3、API 单元测试 265 文件 1343/1343、API lint/typecheck、`repo:check`、
+      `format:check` 和 `git diff --check` 通过
+- [x] 完整 `pnpm validate` 通过，覆盖契约、全仓 lint/typecheck/test、真实 PostgreSQL 集成、E2E 和构建
+- [x] `pnpm authz:routes` 复现 `total=134 public=1 service=5 capability=115 missing=13 conflict=0`；退出码 1
+      来自剩余缺口，不作为成功门禁
+- [ ] 对象范围、补偿/重放前置条件、职责分离、GC-011 错误面和 Guard 默认拒绝不属于 C2A，仍未完成
 
 ### C2B. 剩余 13 条分类与 4 条入口移除（未开放）
 
@@ -266,3 +281,4 @@ Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、`pnpm repo:c
 | 2026-09-30 | coding | Codex                         | —      | 完成 B1 的 39 条路由定权：35 条映射现有能力，4 条决定移除；B2 二次守卫审查未完成。只开放 Cursor C1 的费用、证据和导入 13 条路由，尚未修改运行时代码                                    |
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C1 为费用、证据与导入 13 条路由补齐方法级能力并通过双重审查；审计降至 `missing=26`。总任务仍未完成，未开放 Guard 默认拒绝或对象级授权结论                                              |
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2A：仅处理 lifecycle-control 的 client-operation、inbox dead-letter、outbox 共 13 条路由元数据；其余 13 条及 4 条入口删除保持封闭                                                |
+| 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2A 为生命周期控制可靠性 13 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=13`。总任务仍未完成                                                 |

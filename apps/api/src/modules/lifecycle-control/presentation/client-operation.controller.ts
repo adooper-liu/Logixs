@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { GetClientOperationService } from "../application/get-client-operation.service";
 import { GetCompensationService } from "../application/get-compensation.service";
 import { ListClientOperationsService } from "../application/list-client-operations.service";
@@ -37,6 +38,7 @@ export class ClientOperationController {
   ) {}
 
   @Get()
+  @RequireCapabilities("reliability.read")
   @ApiOkResponse({ type: ClientOperationPageDto })
   async list(
     @Req() request: { identity: { tenantId: string } },
@@ -57,6 +59,7 @@ export class ClientOperationController {
   }
 
   @Post()
+  @RequireCapabilities("lifecycle.operate")
   @ApiOkResponse({ type: ClientOperationResponseDto })
   async submit(
     @Body() body: SubmitClientOperationRequestDto,
@@ -78,6 +81,7 @@ export class ClientOperationController {
   }
 
   @Post(":id/compensations")
+  @RequireCapabilities("reliability.recover")
   @ApiOkResponse({ type: RequestCompensationResponseDto })
   async compensate(
     @Param("id") id: string,
@@ -95,6 +99,7 @@ export class ClientOperationController {
   }
 
   @Post(":id/compensations/:compensationId/resolve")
+  @RequireCapabilities("reliability.recover")
   @ApiOkResponse({ type: ResolveCompensationResponseDto })
   async resolve(
     @Param("id") id: string,
@@ -112,6 +117,7 @@ export class ClientOperationController {
   }
 
   @Get(":id/compensations")
+  @RequireCapabilities("reliability.read")
   @ApiOkResponse({ type: CompensationPageDto })
   async listCompensationsPage(
     @Param("id") id: string,
@@ -134,6 +140,7 @@ export class ClientOperationController {
   }
 
   @Get(":id/compensations/:compensationId")
+  @RequireCapabilities("reliability.read")
   @ApiOkResponse({ type: CompensationItemDto })
   async getCompensationById(
     @Param("id") id: string,
@@ -150,6 +157,7 @@ export class ClientOperationController {
   }
 
   @Get(":id")
+  @RequireCapabilities("reliability.read")
   @ApiOkResponse({ type: ClientOperationResponseDto })
   async getById(
     @Param("id") id: string,
