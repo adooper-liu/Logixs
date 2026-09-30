@@ -1,6 +1,6 @@
 ---
 status: coding
-branch: feat/authz-default-deny-v1-c2a
+branch: feat/authz-default-deny-v1-c2b1
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
@@ -221,11 +221,30 @@ Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、`pnpm repo:c
       来自剩余缺口，不作为成功门禁
 - [ ] 对象范围、补偿/重放前置条件、职责分离、GC-011 错误面和 Guard 默认拒绝不属于 C2A，仍未完成
 
-### C2B. 剩余 13 条分类与 4 条入口移除（未开放）
+### 当前开放 C2B1. 生命周期、货柜与任务读取路由显式分类
 
-- 生命周期节点、货柜读取和节点任务读取继续按 B1 已批准映射处理。
-- `POST /node-tasks`、per-tenant Schedule 和 Workflow Echo 两条路由按 `AUTH-D02`～`AUTH-D04` 移出
-  生产 HTTP 面；入口删除是行为变化，必须与元数据补齐分开审查。
+Cursor 只可修改以下 6 个现有 Controller 及同目录对应的元数据测试，共处理 9 条路由：
+
+- `lifecycle-current-nodes.controller.ts` 的 `list`、`lifecycle-nodes-batch.controller.ts` 的 `list`、
+  `lifecycle-nodes.controller.ts` 的 `list` 均使用 `lifecycle.read`；
+- `node-applicability.controller.ts` 的 `apply` 使用 `lifecycle.operate`；
+- `containers.controller.ts` 的 `list`、`get`、`getCargo` 均使用 `container.read`；
+- `work-execution.controller.ts` 的 `list`、`get` 使用 `task.read`。
+
+本切片只增加方法级 `@RequireCapabilities(...)` 和验证上述 9 个方法反射元数据的测试，不改 DTO、
+Application、Domain、数据库、Web、Guard、错误契约、对象范围或 HTTP 入口。特别禁止修改或授权
+`WorkExecutionController.create`；该生产入口已按 `AUTH-D03` 决定移除，留给 C2B2。不得用类级能力覆盖同一
+Controller 的不同风险方法。完成后运行相关 Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、
+`pnpm repo:check` 和格式检查；审计预期为
+`total=134 public=1 service=5 capability=124 missing=4 conflict=0`，退出码仍为 1。Cursor 完成后停止，
+保留未提交差异交由 Codex 和独立安全上下文审查。
+
+### C2B2. 4 条生产 HTTP 入口移除（未开放）
+
+- `POST /node-tasks` 按 `AUTH-D03` 移除，任务继续只能由生命周期模块经内部 Port 创建；
+- `POST /workflows/outbox-publish-due/schedule` 按 `AUTH-D04` 移除，机器统一走现有 service-only 系统链；
+- `POST /workflows/echo`、`GET /workflows/:id` 按 `AUTH-D02` 移除，保留 Worker 与自动化验通；
+- 入口删除是行为变化，必须逐项核对模块绑定、调用方、测试和 OpenAPI，不得在 C2B1 顺带实施。
 - 路由违规清零前不得切换 Guard 默认拒绝，也不得把审计脚本接入硬门禁。
 
 ### D. Guard 默认拒绝和错误契约
@@ -282,3 +301,4 @@ Controller 测试、API lint/typecheck/test、`pnpm authz:routes`、`pnpm repo:c
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C1 为费用、证据与导入 13 条路由补齐方法级能力并通过双重审查；审计降至 `missing=26`。总任务仍未完成，未开放 Guard 默认拒绝或对象级授权结论                                              |
 | 2026-09-30 | coding | Codex                         | —      | 开放 C2A：仅处理 lifecycle-control 的 client-operation、inbox dead-letter、outbox 共 13 条路由元数据；其余 13 条及 4 条入口删除保持封闭                                                |
 | 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2A 为生命周期控制可靠性 13 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=13`。总任务仍未完成                                                 |
+| 2026-09-30 | coding | Codex                         | —      | 开放 C2B1：仅为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；4 条已决定移除的入口保持封闭并留给 C2B2                                                                 |
