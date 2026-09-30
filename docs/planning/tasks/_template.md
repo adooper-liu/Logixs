@@ -19,6 +19,80 @@ verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控
 
 （引用权威来源：`ENGINEERING_RULES` / `AGENTS` / 架构文档 / 数据模型；明确不越界的范围）
 
+## 执行切片与代理交接（多代理或跨会话任务必填）
+
+> 详细规则见 `AGENTS.md` §1.3。以下信封用于代理消息或 PR 描述，不在仓库另建 handoff 文件。
+> 需求、规则和验收只写在本 brief；消息只传本文件、切片 ID、准确 SHA 和工作区/PR 指针。
+
+### 切片 `<slice-id>`
+
+| 项目     | 内容                                                            |
+| -------- | --------------------------------------------------------------- |
+| 基线     | `<commit-sha>`                                                  |
+| 执行角色 | `Cursor` / `Codex`                                              |
+| 写入范围 | 精确文件或目录                                                  |
+| 禁止范围 | 不得顺带修改的模块、契约、状态或入口                            |
+| 验证命令 | 最近测试、lint/typecheck、专项门禁及预期非零结果                |
+| 停止条件 | `ready-for-review` 后停手；是否允许提交；哪些情况返回 `blocked` |
+
+Codex 下发任务：
+
+```text
+TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<cursor|claude> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
+```
+
+Cursor 交回实现：
+
+```yaml
+protocol: logix-handoff/v1
+slice: <slice-id>
+state: ready-for-review # ready-for-review | blocked
+base: <commit-sha>
+worktree: <absolute-path>
+changed:
+  - <file-or-summary>
+checks:
+  - command: <exact-command>
+    result: pass | fail | expected-fail | not-run
+    detail: <count-or-reason>
+exceptions: []
+commit: none # 默认未提交；已获授权时填 SHA
+```
+
+Claude 交回独立评审：
+
+```yaml
+protocol: logix-review/v1
+slice: <slice-id>
+baseline: <commit-sha>
+reviewed: <worktree-diff|base...head|pr-url>
+verdict: findings # no-findings | findings | blocked
+findings:
+  - id: <slice-id>-<domain>-01
+    severity: blocking | high | medium | low
+    type: confirmed | risk | verification-gap | policy-decision
+    evidence: <file:line-or-contract-clause>
+    impact: <concrete-failure-scenario>
+    acceptanceProbe: <test-or-counterexample>
+    suggestedDisposition: accepted | rejected | pending-owner
+unknowns: []
+verificationGaps: []
+writes: none
+```
+
+Codex 裁决评审：
+
+```yaml
+protocol: logix-disposition/v1
+slice: <slice-id>
+decisions:
+  - finding: <finding-id>
+    status: accepted | rejected | pending-owner
+    reason: <evidence-based-reason>
+    writeback: <existing-brief-contract-adr-path|none>
+next: fix | pr | owner-decision
+```
+
 ## 负责人决策记录（业务、工作台、架构或公共契约任务必填）
 
 > 只记录会改变业务政策、公共契约、安全边界、不可逆成本或用户结果的决定。Codex 先核对事实，

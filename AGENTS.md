@@ -41,6 +41,38 @@
 10. task brief、权威契约、代码和验证结果是协作事实来源，聊天记录和临时评审报告不是，不得为 Claude 另建第三套业务权威。
 11. 历史进度日志中的 Claude、Cursor 和 Codex 署名保持原样；本规则只约束生效后的任务，不追溯改写历史。
 
+### 1.3 仓库总线与统一交接协议
+
+1. 指令链固定为 `负责人 -> Codex -> Cursor -> Codex` 和 `负责人 -> Codex -> Claude -> Codex`。
+   Cursor 与 Claude 不得互相下令；Claude 的 finding 必须先由 Codex 裁决，才能进入 Cursor 的实现范围。
+2. 代理之间只传“定位指针 + 状态信封”，不复制 task brief、业务权威、代码 diff 或长篇评审正文。大内容继续以
+   task brief、权威契约、Git diff/commit、PR 和 CI 为事实载体。
+3. 统一输入指令为单行：
+
+   ```text
+   TASK <brief-path>#<slice-id> base=<commit-sha> role=<cursor|claude> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
+   ```
+
+   `brief-path`、`slice-id`、`base` 和 `role` 必填；实现任务的 `workspace` 可由 Cursor 创建后回报，评审任务必须
+   提供可读取的 worktree 或 PR。接收方必须先读取 `AGENTS.md`、指定 brief 与准确基线；引用不存在、SHA 不符或
+   工作区不可读时立即返回 `blocked`，不得靠聊天上下文猜测。
+
+4. Cursor 完成切片后返回 `logix-handoff/v1`，至少包含：`slice`、`state`、`base`、`worktree`、
+   `changed`、`checks`、`exceptions`、`commit`。`state` 只允许 `ready-for-review` 或 `blocked`；不得使用
+   `done` 代替 Codex 验收。默认保留未提交差异，除非 brief 明确授权 Cursor 提交。
+5. Claude 完成独立评审后返回 `logix-review/v1`，至少包含：`slice`、`baseline`、`reviewed`、`verdict`、
+   `findings`、`unknowns`、`verificationGaps`、`writes`。每条 finding 必须有稳定 ID、严重度、类型、证据、
+   失败场景、验收反证和建议处置；建议不自动成为项目决定。`writes` 必须为 `none`，除非负责人另行明确授权。
+6. Codex 对 Claude finding 返回 `logix-disposition/v1`，逐项记录 `accepted`、`rejected` 或
+   `pending-owner`、理由与权威写回位置。只有 `accepted` 且已写回现有业务权威、ADR、契约或 task brief 的
+   finding 才能进入新实现切片。
+7. 同机协作优先传 worktree 绝对路径；跨环境协作传功能分支或 Draft PR。接收方无法读取未提交工作树时，必须由
+   Codex 决定是否形成 WIP commit/Draft PR，禁止要求人工粘贴整段 diff。PR/CI 链接只承载证据，不替代 brief。
+8. `logix-handoff/v1`、`logix-review/v1` 和 `logix-disposition/v1` 是消息/PR 描述格式，不新增长期文件或
+   handoff 目录。需要长期保留的决定、进度和验收证据只回写现有 task brief、权威文档或 ADR。
+9. 完整字段模板见 `docs/planning/tasks/_template.md`。字段无内容时使用 `[]`、`none` 或明确的 `not-run`，
+   不得省略失败、未知项或未运行门禁。
+
 ## 2. 开始任务前
 
 - 查找并遵守当前目录及父目录中的 `AGENTS.md`。
