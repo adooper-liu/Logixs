@@ -22,8 +22,9 @@ verification: |
   37 项、认证集成测试 8 项、API lint/typecheck、authz:routes、repo:check、format:check 和 diff check 均通过。
   E1 已由 Codex 审查通过：静态审计接入 repo:check，4 条旧入口运行时返回 404/405，保留入口仍可命中，
   且未发现旧入口调用方。Codex 已从 tsc 编译产物读取 `/api/docs-json`，确认三个 workflow 旧路径不存在且
-  `/api/node-tasks` 只有 GET；最终候选的完整 `pnpm validate` 亦通过。B2 的 Application 对象范围/二次守卫、
-  最终独立安全复审和生产 Temporal Schedule 迁移仍未完成。
+  `/api/node-tasks` 只有 GET；最终候选的完整 `pnpm validate` 亦通过。B2 审查表已完成，并确认任务详情与节点
+  适用性幂等重放存在两个可直接修复的范围缺口；组织/地点范围、ActionDefinition、职责分离和统一错误面仍须
+  分片治理。最终独立安全复审和生产 Temporal Schedule 迁移仍未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -49,11 +50,12 @@ verification: |
 
 - `IdentityModule` 已把 `AuthenticationGuard` 和 `AuthorizationGuard` 注册为全局 Guard。
 - OIDC 模式、开发身份隔离、唯一公开健康检查和现有三类服务端点已有历史实现与测试。
-- `AuthorizationGuard` 当前在 `required.length === 0` 时 `return true`，所以已认证用户路由若未声明
-  capability 会被默认放行。
-- 当前仓库没有枚举所有 Nest HTTP 路由访问元数据的静态门禁；现有控制器测试只覆盖部分端点。
-- `GC-011` 的稳定缺能力错误码是 `AUTHORIZATION_FORBIDDEN`，Guard 当前抛出
-  `CAPABILITY_DENIED`；错误面尚未统一。
+- 任务启动时 `AuthorizationGuard` 对缺访问元数据路由默认放行；阶段 D 已改为失败关闭，并以专用异常返回
+  `GC-011` 的 `AUTHORIZATION_FORBIDDEN` 信封。
+- 任务启动时没有枚举全部 Nest HTTP 路由访问元数据的静态门禁；阶段 A/E1 已建立 AST 审计并接入
+  `repo:check`，当前 130 条路由审计无缺失或冲突。
+- Guard 缺能力错误面已经统一；Application 层历史 `AUTHORIZATION_SCOPE_DENIED`、跨租户不存在性保护和
+  其它业务错误仍使用多种 Nest 默认形状，不能据此宣称全 API 错误面已经统一。
 - 代码、角色矩阵和模块 manifest 使用 `container.operate`；负责人已在 `AUTH-D01` 选择将其正式登记为
   V1 货柜级受控作业能力；对象范围、动作定义和业务守卫必须继续执行并补齐。后续是否拆分须由授权审计证据触发。
 - 已抽查装箱、出运、清关、卸柜和送仓 5 条现有命令链：具备租户、`expectedVersion` 和领域校验，但
@@ -143,8 +145,9 @@ verification: |
 
 - [x] B1：Codex 根据 AST 清单逐路由映射现有批准 capability，区分 read/write、用户/service/public。
 - [x] B1：`container.operate` 按 `AUTH-D01` 和正式能力目录映射；其他漂移仍须逐项裁决，不得由路由现状反向升格为权威能力。
-- [ ] B2：形成最小审查表：路由、数据/业务影响、所需能力、对象范围、现有 Application 二次校验和缺口；
-      `container.operate` 的 5 条现有命令链必须逐条标出尚缺的组织/地点范围和 `ActionDefinitionV1` 校验。
+- [x] B2：形成最小审查表：路由、数据/业务影响、所需能力、对象范围、现有 Application 二次校验和缺口；
+      `container.operate` 的 5 条现有命令链已逐条核对组织/地点范围和 `ActionDefinitionV1` 校验。
+- [ ] B2 的审查完成不等于缺口修复完成；`AUTH-B2-01`～`AUTH-B2-10` 按下文分片治理。
 
 #### 切片 B 路由定权清单
 
@@ -174,8 +177,70 @@ verification: |
 | `POST /workflows/echo`、`GET /workflows/:id`                                                            |    2 | 移除生产 HTTP 路由                         | 保留 Worker/自动化测试，不保留无业务结果的生产入口                                 | `approved` |
 
 合计 39 条：35 条使用现有正式 capability，4 条移出生产 HTTP 面。`AUTH-D02`～`AUTH-D04`
-均已由负责人选择 A；切片 B1 至此完成。B2 仍由 Codex 并行审查，尚未修改任何 Controller，
-不能把定权完成说成默认拒绝或对象级授权已经完成。
+均已由负责人选择 A；切片 B1 至此完成。B2 已按下表完成审查，但审查结论和已修复实现必须分开记录，
+不能把定权或审查完成说成对象级授权已经完成。
+
+#### B2. Application 对象范围与二次守卫审查
+
+本表覆盖 B1 保留的 35 条路由，并额外覆盖 `AUTH-D01` 要求复核的 5 条 `container.operate` 命令链。
+“已有”只表示代码中可证明的现状，不表示满足完整 `GC-008`。组织/地点、owned、assigned、designated 等范围
+尚未进入 `AuthenticatedUserIdentity`，不得把租户过滤写成完整对象授权。
+
+| 路由组                              | 数据/业务影响                             | 能力                       | 已有 Application / Repository 二次守卫                                                         | 可证缺口                                                                                                               |
+| ----------------------------------- | ----------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 超期费用计算与标准替换（3）         | 读取/整体替换租户费用标准，计算期限与应计 | `charges.manage`           | 标准与费率按租户查询；替换校验操作者、费用码、日历基准和阶梯                                   | `AUTH-B2-08`：无组织/地点范围；未拒绝标准生效区间倒置或同一适用键区间重叠                                              |
+| 证据登记（1）                       | 新增证据及来源快照                        | `evidence.submit`          | 校验租户、受控枚举、哈希和租户级幂等                                                           | `AUTH-B2-05`：不验证 subject 存在且属于该租户；未记录提交人，无法执行提交人与复核人分离                                |
+| 证据 verify/reject/revoke（3）      | 追加核验决定并改变当前核验投影            | `evidence.review`          | 读取证据后比对租户，执行合法状态转换并追加决定                                                 | `AUTH-B2-05/09`：没有提交人可供职责分离；跨租户与不存在返回可区分的 403/404 且未使用统一信封                           |
+| 导入批次读取与对账（2）             | 读取租户批次、样本行与逐行结果            | `import.read`              | `findById(id, tenantId)`；响应显式排除对象存储内部键                                           | `AUTH-B2-10`：只有 tenant 范围，没有正式 `owned/import scope`                                                          |
+| 上传、映射确认、预检（3）           | 保存来源文件、确认映射并计算 blocker      | `import.operate`           | replacement/批次按租户读取；映射状态机与预检 blocker 在 Application 执行                       | `AUTH-B2-10`：没有 owned/转交范围；上传者与映射确认者的责任边界未建模                                                  |
+| 执行导入（1）                       | 仅把 approved 批次落入业务表并生成对账    | `import.execute`           | 按租户加载批次，只允许 `approved`；按行记录成功/失败                                           | `AUTH-B2-10`：命令未携带执行人，无法形成执行授权审计或执行人与确认人策略                                               |
+| ClientOperation 与补偿读取（4）     | 读取操作、补偿和三阶段状态                | `reliability.read`         | 列表/游标绑定租户；单项读取对跨租户统一返回不存在                                              | 暂未发现租户越界；designated/组织范围仍未建模                                                                          |
+| 申请/推进补偿（2）                  | 新建补偿、推进 pending 到终态             | `reliability.recover`      | 原操作/补偿租户与父 ID 校验；申请含操作者、原因、状态与幂等守卫                                | `AUTH-B2-06/09`：resolve 不携带操作者、原因或复核；跨租户错误与不存在可区分且响应形状未统一                            |
+| 提交 ClientOperation（1）           | 记录用户生命周期命令的三阶段拒绝回执      | `lifecycle.operate`        | action/payload/hash/幂等校验；当前禁止客户端直接推进生命周期                                   | `AUTH-B2-07`：落拒绝记录前不验证目标货柜属于该租户；未接 `ActionDefinitionV1`                                          |
+| Inbox 死信读取/重放（2）            | 查看并以新消息重放死信                    | `reliability.read/recover` | 列表按租户；重放校验原消息租户、状态、原因、消费者版本、载荷引用和幂等                         | `AUTH-B2-09`：跨租户与不存在仍可区分，Application 403 未映射统一信封                                                   |
+| 生命周期节点批量/单柜读取（3）      | 读取当前节点、全部节点和日期事实投影      | `lifecycle.read`           | 批量查询从 Repository 带租户；单柜先核对货柜租户并以不存在隐藏跨租户                           | 只有 tenant 范围，尚无组织/地点范围                                                                                    |
+| 设置节点适用性（1）                 | 改可选节点适用性并重放 pending 事实       | `lifecycle.operate`        | 先核对货柜租户；校验证据、状态、原因、版本和幂等                                               | `AUTH-B2-02`：全局幂等键命中未核对所属 flow；另缺组织/地点范围和 `ActionDefinitionV1`                                  |
+| Outbox 死信读取/重放（2）           | 查看并以新事件重放死信                    | `reliability.read/recover` | 列表按租户；重放校验原事件租户、状态、原因、消费者版本和幂等                                   | `AUTH-B2-09`：跨租户与不存在可区分，Application 403 未映射统一信封                                                     |
+| 人工 publish-batch/publish-due（2） | 批量领取并投递租户待发事件                | `reliability.recover`      | claim 从 Repository 带租户与 owner 租约；机器链已分离为 service-only                           | `AUTH-B2-06`：人工排空没有原因、操作回执审计或风险复核；能力覆盖租户整队列                                             |
+| 货柜列表/详情/货物（3）             | 读取货柜及其货物合规范围                  | `container.read`           | 列表、详情和货物查询均带租户；子资源先确认父货柜                                               | `AUTH-B2-03`：只有 tenant 范围，没有组织/地点范围                                                                      |
+| 节点任务列表/详情（2）              | 读取任务、工单、结果和下一动作            | `task.read`                | 列表按租户；按柜列表先断言货柜租户                                                             | `AUTH-B2-01`：详情仅在 `containerId` 非空时校验货柜，空柜任务未比对 `task.tenantId`；另缺 assigned/组织范围            |
+| 装箱、出运、清关、送仓、卸柜（5）   | 写入版本化岗位事实并触发 pending 重放     | `container.operate`        | 五链均校验租户对象、证据引用、领域状态、`expectedVersion`、幂等和操作者/原因；跨租户对象不落账 | `AUTH-B2-03/04`：身份无 organization/location scope；五链均未加载对应 `ActionDefinitionV1`，仓库地点也未与授权地点比较 |
+
+审查处置：
+
+| finding                                                               | 级别   | 处置                         | 后续                                                                                 |
+| --------------------------------------------------------------------- | ------ | ---------------------------- | ------------------------------------------------------------------------------------ |
+| `AUTH-B2-01` 任务详情空柜路径缺租户比对                               | high   | `accepted`，不涉及新业务政策 | 切片 B2F1 直接修复并补无柜/跨租户测试                                                |
+| `AUTH-B2-02` 节点适用性幂等重放未绑定 flow                            | high   | `accepted`，不涉及新业务政策 | 切片 B2F1 在返回重放结果前核对当前 flow，异对象同键稳定冲突                          |
+| `AUTH-B2-03` 组织/地点/assigned/owned/designated 范围未进入身份上下文 | high   | `pending-owner`              | 与 Web OIDC/身份映射一起设计范围来源、空集合语义和迁移；禁止 tenant 兜底冒充完整范围 |
+| `AUTH-B2-04` 五条 `container.operate` 未接 `ActionDefinitionV1`       | high   | `accepted`，但需独立实现切片 | 先选一条真实命令作参考接入，再复用到其余四条；不得在 B2F1 临时复制动作表             |
+| `AUTH-B2-05` 证据 subject 归属与职责分离缺口                          | high   | `pending-owner`              | 先定 subject 解析责任和提交人审计事实，再决定是否需要迁移                            |
+| `AUTH-B2-06` 补偿推进/人工排空缺操作者、原因或复核                    | medium | `pending-owner`              | 负责人按风险决定哪些恢复动作要求 four-eyes；未定前不伪造默认原因                     |
+| `AUTH-B2-07` ClientOperation 拒绝回执未核对目标货柜                   | medium | `accepted`                   | 后续小切片在写拒绝事实前执行租户对象断言                                             |
+| `AUTH-B2-08` 费用范围与生效区间缺口                                   | high   | `pending-owner`              | 与费用台规格一起定适用键、区间重叠和组织/地点范围，不由 API 猜测                     |
+| `AUTH-B2-09` Application 授权/不存在错误面不一致                      | medium | `accepted`，独立横向切片     | 设计统一异常映射和存在性保护；阶段 D 的专用 Guard filter 不扩大捕获范围              |
+| `AUTH-B2-10` 导入 owned/转交范围与执行审计缺口                        | medium | `pending-owner`              | 与导入岗位责任/转交规则一起定案，不把上传者永久等同所有者                            |
+
+#### Cursor 切片 B2F1：两个确定性范围漏洞
+
+准确基线以 Codex 下发的 `TASK` SHA 为准。本切片只允许修改：
+
+- `apps/api/src/modules/work-execution/application/get-node-task.service.ts` 及其新增/对应单元测试；
+- `apps/api/src/modules/lifecycle-control/application/set-node-applicability.service.ts` 及其对应单元测试。
+
+要求：
+
+1. `GetNodeTaskService` 必须先要求非空租户，再把 `bundle.task.tenantId` 与当前租户比较；不匹配时与不存在一样
+   返回 `null`，无论 `containerId` 是否为空。带柜任务仍保留现有父货柜租户断言。
+2. `SetNodeApplicabilityService` 在处理幂等重放前必须取得当前货柜 flow；已存在决定只有在
+   `existing.flowInstanceId === current.flow.id` 且载荷一致时才可作为合法重放返回。异 flow 同键返回稳定
+   `IDEMPOTENCY_CONFLICT`，不得返回原 flow ID、版本或继续 pending 重放。
+3. 不改 Schema/迁移、Controller、能力码、Guard、公共错误 Schema、组织/地点范围或 ActionDefinition；不顺带
+   处理 `AUTH-B2-03`～`AUTH-B2-10`。
+4. 新测试至少覆盖：同租户无柜任务可读、跨租户无柜任务表现为不存在、空租户拒绝；同 flow 同键合法重放、
+   异 flow 同键冲突且不调用 apply/replay。
+5. Cursor 只运行两个 Application 测试、API lint/typecheck、`pnpm repo:check`、`pnpm format:check` 和
+   `git diff --check`，以 `ready-for-review` 交回未提交差异；不重复完整 `validate`。
 
 ### 已完成 C1. 费用、证据与导入路由显式分类
 
