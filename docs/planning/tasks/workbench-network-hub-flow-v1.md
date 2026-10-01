@@ -4,6 +4,7 @@ branch: # 解锁后填 feat/workbench-network-hub-flow
 verification: |
   阻塞：串行槽位；且须先有权威「在办/阻塞」投影口径（不得用静态假数）。
   建议在详情四屏 P0/P1 关键片之后解锁，或由负责人指定抢占唯一 coding。
+owner: claude
 ---
 
 # 任务：业务工作台枢纽 / 管道总览动线

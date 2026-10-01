@@ -2,6 +2,7 @@
 status: blocked
 branch: feat/post-departure-standard-import-v1
 verification: pending
+owner: claude
 ---
 
 # 任务：已出运 Shipment 业务建档与接管 V1

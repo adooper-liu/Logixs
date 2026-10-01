@@ -1,7 +1,7 @@
 ---
 status: review
 branch: feat/authz-default-deny-v1-c2b2
-owner: codex
+owner: claude
 writer: cursor
 risk: high
 dependsOn: []

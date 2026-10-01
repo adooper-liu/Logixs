@@ -2,6 +2,7 @@
 status: blocked # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/standard-material-identity-v1
 verification: pending。阻塞：串行化 —— 等当前进行中的任务结项（ENGINEERING_RULES §10 同一时刻只允许一个任务进行中）。
+owner: claude
 ---
 
 # 任务：标准物料身份 V1

@@ -2,6 +2,7 @@
 status: blocked # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/cargo-ready-human-centered-workbench
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
+owner: claude
 ---
 
 # 任务：备货工作台以人为中心改造
