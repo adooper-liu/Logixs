@@ -411,24 +411,197 @@ test("rejects generated output, evidence scratch files, competing lockfiles, log
   );
 });
 
-test("allows only one active task brief", () => {
+const taskRecord = ({
+  path,
+  status,
+  writer,
+  dependsOn = [],
+  writeScopes = [],
+  exclusiveLocks = [],
+  sharedIntegrationScopes = [],
+}) => ({
+  path: `${path}.md`,
+  source: `---
+status: ${status}
+branch: feat/${path}
+owner: codex
+${writer ? `writer: ${writer}\n` : ""}risk: medium
+dependsOn: [${dependsOn.join(", ")}]
+writeScopes:${writeScopes.length === 0 ? " []" : `\n${writeScopes.map((scope) => `  - ${scope}`).join("\n")}`}
+exclusiveLocks:${exclusiveLocks.length === 0 ? " []" : `\n${exclusiveLocks.map((lock) => `  - ${lock}`).join("\n")}`}
+sharedIntegrationScopes:${sharedIntegrationScopes.length === 0 ? " []" : `\n${sharedIntegrationScopes.map((scope) => `  - ${scope}`).join("\n")}`}
+authorityRefs:
+  - AGENTS.md
+---`,
+});
+
+test("allows two non-conflicting write tasks plus design and read-only review", () => {
   assert.deepEqual(
     validateTaskStatusRecords([
-      { path: "one.md", source: "---\nstatus: coding\n---" },
-      { path: "two.md", source: "---\nstatus: review\n---" },
-    ]),
-    ["multiple active task briefs: one.md, two.md"],
-  );
-  assert.deepEqual(
-    validateTaskStatusRecords([
-      { path: "one.md", source: "---\nstatus: coding\n---" },
-      {
-        path: "two.md",
-        source:
-          "---\nstatus: done\nverification: https://ci.example/run/42\n---",
-      },
+      taskRecord({
+        path: "authz",
+        status: "fix",
+        writer: "cursor",
+        writeScopes: ["apps/api/src/modules/identity/**"],
+        exclusiveLocks: ["authz-control-plane"],
+        sharedIntegrationScopes: ["package.json"],
+      }),
+      taskRecord({
+        path: "dictionary",
+        status: "coding",
+        writer: "codex",
+        writeScopes: ["database/dictionary/**"],
+        exclusiveLocks: ["database-dictionary"],
+        sharedIntegrationScopes: ["package.json"],
+      }),
+      taskRecord({ path: "design", status: "design" }),
+      taskRecord({ path: "review-one", status: "review" }),
+      taskRecord({ path: "review-two", status: "review" }),
     ]),
     [],
+  );
+});
+
+test("rejects a third write task and a third review task", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "one",
+        status: "coding",
+        writer: "cursor",
+        writeScopes: ["apps/api/**"],
+        exclusiveLocks: ["module:api"],
+      }),
+      taskRecord({
+        path: "two",
+        status: "fix",
+        writer: "codex",
+        writeScopes: ["apps/web/**"],
+        exclusiveLocks: ["module:web"],
+      }),
+      taskRecord({
+        path: "three",
+        status: "coding",
+        writer: "other",
+        writeScopes: ["workers/**"],
+        exclusiveLocks: ["module:worker"],
+      }),
+      taskRecord({ path: "review-one", status: "review" }),
+      taskRecord({ path: "review-two", status: "review" }),
+      taskRecord({ path: "review-three", status: "review" }),
+    ]),
+    [
+      "write task WIP limit exceeded (max 2): one.md, two.md, three.md",
+      "review task WIP limit exceeded (max 2): review-one.md, review-two.md, review-three.md",
+    ],
+  );
+});
+
+test("rejects missing scheduling metadata for coding and fix tasks", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      { path: "one.md", source: "---\nstatus: coding\n---" },
+    ]),
+    [
+      "one.md: active write task is missing owner",
+      "one.md: active write task is missing writer",
+      "one.md: active write task is missing risk",
+      "one.md: active write task is missing dependsOn",
+      "one.md: active write task is missing writeScopes",
+      "one.md: active write task is missing exclusiveLocks",
+      "one.md: active write task is missing sharedIntegrationScopes",
+      "one.md: active write task is missing authorityRefs",
+    ],
+  );
+});
+
+test("rejects overlapping write scopes, locks, writers, and unfinished dependencies", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "one",
+        status: "coding",
+        writer: "cursor",
+        writeScopes: ["apps/api/**"],
+        exclusiveLocks: ["public-contracts"],
+        dependsOn: ["foundation"],
+      }),
+      taskRecord({
+        path: "two",
+        status: "fix",
+        writer: "cursor",
+        writeScopes: ["apps/api/src/modules/identity/**"],
+        exclusiveLocks: ["public-contracts"],
+      }),
+      taskRecord({ path: "foundation", status: "blocked" }),
+    ]),
+    [
+      "one.md: dependency 'foundation' is not done (status: blocked)",
+      "active write tasks share writer 'cursor': one.md, two.md",
+      "active write task scopes overlap 'apps/api/**' and 'apps/api/src/modules/identity/**': one.md, two.md",
+      "active write tasks share exclusive lock 'public-contracts': one.md, two.md",
+    ],
+  );
+});
+
+test("rejects unsupported write scope patterns", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "one",
+        status: "coding",
+        writer: "cursor",
+        writeScopes: ["apps/*/src/**", "../outside/**"],
+        exclusiveLocks: ["module:api"],
+      }),
+    ]),
+    [
+      "one.md: writeScopes entry 'apps/*/src/**' must be an exact repository path or a directory ending in /**",
+      "one.md: writeScopes entry '../outside/**' must stay within the repository",
+    ],
+  );
+});
+
+test("normalizes Windows path casing when checking scope overlap", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "one",
+        status: "coding",
+        writer: "cursor",
+        writeScopes: ["Apps/API/**"],
+        exclusiveLocks: ["module:one"],
+      }),
+      taskRecord({
+        path: "two",
+        status: "fix",
+        writer: "codex",
+        writeScopes: ["apps/api/src/main.ts"],
+        exclusiveLocks: ["module:two"],
+      }),
+    ]),
+    [
+      "active write task scopes overlap 'Apps/API/**' and 'apps/api/src/main.ts': one.md, two.md",
+    ],
+  );
+});
+
+test("rejects unstable writer, lock, and repeated path separator values", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "one",
+        status: "coding",
+        writer: "Cursor",
+        writeScopes: ["apps//api/**"],
+        exclusiveLocks: ["Module API"],
+      }),
+    ]),
+    [
+      "one.md: writer 'Cursor' must be a stable lowercase code",
+      "one.md: writeScopes entry 'apps//api/**' must stay within the repository",
+      "one.md: exclusiveLocks entry 'Module API' must be a stable lowercase code",
+    ],
   );
 });
 

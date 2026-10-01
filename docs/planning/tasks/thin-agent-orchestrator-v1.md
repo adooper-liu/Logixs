@@ -1,7 +1,7 @@
 ---
 status: blocked
 branch: feat/thin-agent-orchestrator-v1
-verification: not-run（仅完成方向定案与实施切片；当前授权任务仍是唯一 coding）
+verification: not-run（仅完成方向定案与实施切片；当前两个写任务名额已由 authz 与数据字典占用）
 ---
 
 # 任务：多代理薄编排器 V1
@@ -15,9 +15,10 @@ verification: not-run（仅完成方向定案与实施切片；当前授权任�
 
 ## 当前状态与解阻条件
 
-当前 `authz-default-deny-v1` 是唯一 `coding` 任务，本任务保持 `blocked`。同时满足以下条件后才可转为 `coding`：
+当前两个写任务名额由 `authz-default-deny-v1` 与 `database-data-dictionary-v1` 占用，本任务保持 `blocked`。
+同时满足以下条件后才可转为 `coding`：
 
-1. 当前授权任务形成最终 PR 候选，或负责人明确调整唯一编码槽位。
+1. 至少一个写任务退出 `coding/fix`，且本任务与剩余任务的 writer、写入范围、独占锁和依赖无冲突。
 2. Codex 以准确 base SHA 补齐切片 A 的 `TASK` 指令。
 3. Cursor 与 Claude 的可编程入口分别完成本机能力探测；未证实的命令参数不得进入实现。
 4. 首版仍以 `manual` 适配器为默认，任何外部进程适配器必须独立启用并失败关闭。
@@ -36,8 +37,8 @@ verification: not-run（仅完成方向定案与实施切片；当前授权任�
 
 采用“薄编排器”，拒绝把附件中的示例 Bash 直接入库：
 
-1. 一个活动 task brief，可以包含多个切片；不得以并行名义启动多个活动 task。
-2. 默认并发为 1。只有只读任务，或文件集合完全不相交且没有契约依赖的写切片，才可提升到 2。
+1. 全仓最多两个 `coding/fix` 写任务和两个 `review` 任务；design 与纯只读调查不占写任务名额。
+2. 写任务只有在 writer 不同、`writeScopes` 与 `exclusiveLocks` 不重叠且 `dependsOn` 已完成时才可并行。
 3. 公共契约、Schema、迁移、安全政策、对象范围、状态机和共享文件必须串行冻结后再供下游消费。
 4. 同一切片只有一个写入者；Claude 默认只读，Cursor 不接收 Claude 指令。
 5. 同一 task 的切片默认进入一个任务集成分支和一个最终 PR，不为每片创建 PR。
@@ -122,7 +123,7 @@ task brief + slice anchor + exact base SHA
 - [ ] 已跟踪、已暂存和未跟踪文件均进入范围检查；目录重叠并发被拒绝。
 - [ ] stale run、进程失败、超时、取消和非法信封不会产生“已完成”。
 - [ ] `logix-handoff/v1`、`logix-review/v1` 和 `logix-disposition/v1` 沿用现有字段，无第四种协议。
-- [ ] 默认并发 1；两个只读试点可并行，写切片并发必须有不相交范围和零依赖证据。
+- [ ] 写任务 WIP 上限为 2；两个只读试点可并行，写切片并发必须有不同 writer、不相交范围/锁和已完成依赖证据。
 - [ ] 每片只运行 brief 指定的最近门禁；最终完整门禁仍由 Codex 在任务 PR 候选统一运行一次。
 - [ ] runner 不执行提交、推送、rebase、合并或 worktree 删除。
 - [ ] Windows 路径、空格、中文路径和中断恢复测试通过。
@@ -136,6 +137,7 @@ task brief + slice anchor + exact base SHA
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责  | commit | 说明                                                                    |
-| ---------- | ------ | ----- | ------ | ----------------------------------------------------------------------- |
-| 2026-10-01 | design | Codex | —      | 负责人确认薄编排器方向；当前保持 blocked，不占用 authz 唯一 coding 槽位 |
+| 日期       | 阶段   | 负责  | commit | 说明                                                                         |
+| ---------- | ------ | ----- | ------ | ---------------------------------------------------------------------------- |
+| 2026-10-01 | design | Codex | —      | 负责人确认薄编排器方向；当前保持 blocked，不占用 authz 唯一 coding 槽位      |
+| 2026-10-01 | design | Codex | —      | 调整为有界并行：最多两个写任务、冲突域互斥、最终集成串行；当前两个名额已占用 |

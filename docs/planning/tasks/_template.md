@@ -2,6 +2,16 @@
 status: design # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/<任务名>
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
+owner: codex # 端到端负责人；coding/fix 必填
+writer: cursor # 当前唯一写入者；coding/fix 必填，Claude 默认只读
+risk: medium # low | medium | high；coding/fix 必填
+dependsOn: [] # task brief 文件名（不含 .md）；依赖未 done 时不得写
+writeScopes: # coding/fix 必填；精确文件，或目录/**；不得使用其它 glob
+  - docs/planning/tasks/<任务名>.md
+exclusiveLocks: [] # 例如 database-schema / authz-control-plane / business-policy:<id>
+sharedIntegrationScopes: [] # 可并行开发、最终必须串行同步的文件
+authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
+  - AGENTS.md
 ---
 
 # 任务：<简短标题>
@@ -9,7 +19,10 @@ verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控
 > 复制本文件为 `docs/planning/tasks/<任务名>.md`，作为执行、评审与交接的**唯一载体**。
 > 状态以文件顶部 frontmatter 的 `status` / `branch` 为准，改状态就改 frontmatter，不要在正文另写自由文本状态。
 >
-> 约定（ENGINEERING_RULES §10）：同一时刻只允许一个任务处于进行中（串行化）；`done` 必须在 frontmatter 的 `verification` 填写验证证据地址（测试/构建/运行记录），未验证不得标 `done`。聊天只传任务文件名、分支名与起点命令，不互贴长状态。
+> 约定（ENGINEERING_RULES §10）：全仓默认最多两个 `coding/fix` 写任务和两个 `review` 任务；写范围、独占锁、
+> 未完成依赖或 writer 冲突时必须串行，最终集成与合并仍由 Codex 排队。`done` 必须在 frontmatter 的
+> `verification` 填写验证证据地址，未验证不得标 `done`。聊天只传任务文件名、分支名与起点命令，不互贴长状态。
+> `repo:check` 只验证当前 checkout；Codex 下发任务前还要核对其他 worktree。
 
 ## 目标
 

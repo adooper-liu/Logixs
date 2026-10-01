@@ -1,12 +1,34 @@
 ---
-status: blocked
+status: coding
 branch: feat/database-data-dictionary-v1
+owner: codex
+writer: codex
+risk: medium
+dependsOn: []
+writeScopes:
+  - docs/planning/tasks/database-data-dictionary-v1.md
+  - scripts/generate-data-dictionary.mjs
+  - scripts/generate-data-dictionary.test.mjs
+  - database/dictionary/**
+  - package.json
+  - pnpm-lock.yaml
+exclusiveLocks:
+  - database-dictionary
+  - generated:database-catalog
+sharedIntegrationScopes:
+  - package.json
+  - pnpm-lock.yaml
+authorityRefs:
+  - database/schema.prisma
+  - database/migrations/**
+  - doc/**
+  - docs/architecture/DATABASE_SCHEMA_CONTRACT_V1.md
 verification: |
   设计基线已由 Codex 按当前 origin/main 静态复算：112 个 Prisma model、1,589 个物理标量字段、
   278 个 Prisma 虚拟 relation、1 个 PostgreSQL enum、478 个当前有效命名 CHECK、
   23 个 Prisma 未声明的当前有效索引、2 个函数和 2 个触发器。
   “1 个 Prisma 未表达的原生外键”尚未通过隔离 PostgreSQL 迁移重放与 pg_catalog 对账，不能作为既成事实。
-  当前唯一 coding 任务仍为 authz-default-deny-v1；本任务在其收口前不得进入 coding。
+  本任务已按有界并行规则开放切片 A；它不占用 authz 的写入范围或独占锁，共享根工具只在最终集成时串行处理。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -21,10 +43,12 @@ verification: |
 和人工审定注解，生成可检索的仓库字典、原生对象清单与业务可评审 Excel。任何不能由证据确定的中文名、用途、
 工作台归属或敏感等级必须明确待确认，不根据英文名、UI 文案或历史候选文档臆造。
 
-## 阻塞与启动条件
+## 并行启动与停止条件
 
-- 当前 `authz-default-deny-v1` 是唯一 `coding`；本任务保持 `blocked`，不向 Cursor 下发实现指令。
-- 授权任务最终 PR 合并后，Codex 复核本 brief 基线，将状态改为 `coding`，再开放切片 A。
+- 本任务与 `authz-default-deny-v1` 作为首批两个写任务并行；当前 writer 为 Codex，authz writer 为 Cursor。
+- 切片 A 不修改 Schema、迁移、授权控制面或 authz 的 work-execution 模块；两个任务的独占锁不重叠。
+- `package.json`、`pnpm-lock.yaml` 属共享集成范围；本任务可在独立分支开发，但最终合并前必须同步最新 `main`、
+  重放生成并重新运行组合门禁。若 authz 再次主动修改同一文件，由 Codex 排定写入顺序，不得并发编辑。
 - 全部切片共用本分支，允许形成可回滚提交，但只建立一个最终 PR。
 
 ## 权威与冲突处理
@@ -168,8 +192,8 @@ scripts/
 
 | 项目     | 内容                                                                                                         |
 | -------- | ------------------------------------------------------------------------------------------------------------ |
-| 基线     | 授权任务收口后由 Codex 写入准确 `origin/main` SHA                                                            |
-| 执行角色 | Cursor                                                                                                       |
+| 基线     | 有界并行治理 PR 合并后由 Codex 写入准确 `origin/main` SHA                                                    |
+| 执行角色 | Codex（authz 仍由 Cursor 写入，保证两个活动任务 writer 不重复）                                              |
 | 写入范围 | `scripts/generate-data-dictionary.mjs`、对应测试、`package.json` 与必要锁文件                                |
 | 行为     | 生成隔离 schema、完整重放迁移、查询 `pg_catalog`、读取生成后的 Prisma DMMF，输出规范化内存模型并检测两者漂移 |
 | 禁止范围 | 不生成中文释义，不写 Excel，不改 Schema/迁移/业务文档，不连接 public/共享 schema                             |
@@ -227,6 +251,7 @@ scripts/
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责  | commit | 说明                                                                                             |
-| ---------- | ------- | ----- | ------ | ------------------------------------------------------------------------------------------------ |
-| 2026-09-30 | blocked | Codex | —      | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待授权默认拒绝任务收口，不启动 Cursor |
+| 日期       | 阶段    | 负责  | commit | 说明                                                                               |
+| ---------- | ------- | ----- | ------ | ---------------------------------------------------------------------------------- |
+| 2026-09-30 | blocked | Codex | —      | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案      |
+| 2026-10-01 | coding  | Codex | —      | 作为第二个受控写任务开放切片 A；与 authz 写范围、writer 和独占锁分离，最终集成串行 |

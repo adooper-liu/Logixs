@@ -230,7 +230,7 @@ Transport/UI -> Application -> Domain <- Infrastructure
 - MUST 在一批提交/推送操作结束后统一核对提交标识、上游状态和剩余工作树；“工作树干净”是正确隔离后的结果，不是覆盖用户工作的目标。
 - MUST 在 PR 中描述问题、方案、风险、数据影响、验证和回滚方式。
 - MUST 由责任人评审数据库、安全、公共契约和共享领域规则变更。独立复审按风险决策点触发：新的业务或权限政策、公开入口、对象范围、状态语义、公共契约或最终集成风险需要复审；同一已定政策下的机械字段、装饰器或迁移切片不得重复复审。
-- MUST 在业务功能、架构、数据、安全、公共契约或多执行器/多会话任务中，以 task brief 作为交接与进度载体：状态存于文件顶部 YAML frontmatter（`design | coding | review | fix | blocked | done`），同一时刻只允许一个任务处于进行中；无风险对应验证证据不得标 `done`。纯文档、测试稳定性、CI 配置和 Git 维护 MAY 不建 brief。模板见 `docs/planning/tasks/_template.md`。
+- MUST 在业务功能、架构、数据、安全、公共契约或多执行器/多会话任务中，以 task brief 作为交接与进度载体：状态存于文件顶部 YAML frontmatter（`design | coding | review | fix | blocked | done`）；全仓默认最多两个 `coding/fix` 写任务和两个 `review` 任务，`design` 与纯只读调查不占写任务名额。活动写任务必须声明 owner、唯一 writer、risk、依赖、精确写入范围、独占锁、共享集成范围和权威引用；写范围、独占锁、未完成依赖或 writer 冲突时 MUST 串行，最终 PR 集成与合并仍由 Codex 排队执行。`repo:check` 只验证当前 checkout，Codex 下发任务前仍须核对全部在途 worktree。无风险对应验证证据不得标 `done`。纯文档、测试稳定性、CI 配置和 Git 维护 MAY 不建 brief。模板见 `docs/planning/tasks/_template.md`。
 - MUST 标记生成文件及其生成命令。
 - MUST 禁止提交依赖目录、构建产物、日志、覆盖率、真实环境配置和本地数据。
 
