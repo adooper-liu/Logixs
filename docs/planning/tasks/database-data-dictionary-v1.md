@@ -38,7 +38,7 @@ verification: |
   当前 reconciliation findings 为 9 个可空性差异、8 个默认值差异和 5 个 FK 动作差异，均保留在生成字典中。
   首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
   3 个币种字段和 3 个时区字段由正式契约确认，其余语义槽保持 needs_business_confirmation。
-  三轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 38/38、
+  四轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 41/41、
   generate/check、repo:check、format:check、专项 ESLint、根 pnpm test、typecheck 和 build 已通过。
   根 workspace 已显式声明 Excel 生成依赖；冻结安装后 security:audit（high 门槛）通过，剩 8 个 moderate。
   ExcelJS 重载确认 10 个 sheet、模块汇总对账 112 表/1,589 字段、字段页 31 列且精确 1,590 行、
@@ -280,6 +280,9 @@ scripts/
 - `accepted/fixed`：`SPEC-04` 工作台与敏感等级改为独立证据槽；confirmed 槽必须同时有非空值和合格来源，工作台只接受 `doc/` 业务证据。
 - `accepted/fixed`：`SPEC-05/SMELL-02` pending 判定覆盖名称、用途、工作台、敏感等级和六语义槽；待确认页显示具体维度并覆盖全部未闭合对象。
 - `accepted/fixed`：`SMELL-03` 人工注解改为稀疏存储；表不保存字段专用槽，字段只持久化非默认证据槽，运行模型补 pending 默认。
+- `accepted/fixed`：`STD-03/SPEC-06` 统一证据槽状态—值—来源矩阵；pending 只能规范空值且无来源，confirmed 必须状态与 authority 一致，工作台只允许 business confirmation。
+- `accepted/fixed`：`STD-04/SPEC-07` 单一 `EVIDENCE_SLOT_POLICIES` 驱动默认、适用对象、校验、pending 和序列化；表级字段专用槽明确拒绝并防御性剥离。
+- `accepted/fixed`：`SPEC-08` 来源消费计数纳入 logical references，每个消费对象只计一次。
 - `accepted/fixed`：补齐字段类型族、精度、可空性、数组和默认值对账；真实目录保留 22 个可定位结构差异。
 - `accepted/fixed`：来源 authority 按 tracked 路径类别校验，logical reference 要求正式契约证据并验证源/目标字段。
 - `accepted/fixed`：索引 catalog 查询仅关联本表拥有的 PK/UQ/EXCLUSION constraint；实测 505 行均为唯一稳定键。

@@ -2,7 +2,7 @@
 
 # 数据库中文数据字典
 
-- baselineCommit: `a48d63cdfb086223300f63bf7c434dc7308d3571`
+- baselineCommit: `fd0dd2ea018338f4818701661c7bfe55dc063e4e`
 - verifiedThroughMigration: `20260929120000_allow_product_initiative_npi_return`
 - tables: 112
 - physical fields: 1589

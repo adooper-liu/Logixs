@@ -248,10 +248,10 @@ export async function renderWorkbook(
     ],
     [
       ...model.tables
-        .filter(isPendingAnnotation)
+        .filter((item) => isPendingAnnotation(item, "table"))
         .map((item) => pendingRow("table", item)),
       ...model.fields
-        .filter(isPendingAnnotation)
+        .filter((item) => isPendingAnnotation(item, "field"))
         .map((item) => pendingRow("field", item)),
     ],
   );
@@ -368,7 +368,7 @@ function moduleRows(model) {
       pendingFields: 0,
     };
     item.tables += 1;
-    if (isPendingAnnotation(table)) item.pendingTables += 1;
+    if (isPendingAnnotation(table, "table")) item.pendingTables += 1;
     groups.set(key, item);
   }
   for (const field of model.fields) {
@@ -376,7 +376,7 @@ function moduleRows(model) {
     const item = groups.get(key);
     if (!item) continue;
     item.fields += 1;
-    if (isPendingAnnotation(field)) item.pendingFields += 1;
+    if (isPendingAnnotation(field, "field")) item.pendingFields += 1;
   }
   return [...groups.values()]
     .sort(
@@ -432,12 +432,12 @@ function pendingRow(type, item) {
     item.purposeZh,
     item.nameStatus,
     item.purposeStatus,
-    pendingDimensions(item),
+    pendingDimensions(item, type),
   ];
 }
 
 function sourceConsumerCount(model, sourceId) {
-  return [...model.tables, ...model.fields].filter((item) =>
+  return [...model.tables, ...model.fields, ...model.relations].filter((item) =>
     [
       ...(item.sourceRefs ?? []),
       ...(item.workbenchEvidence?.sourceRefs ?? []),

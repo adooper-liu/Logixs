@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "baselineCommit": "a48d63cdfb086223300f63bf7c434dc7308d3571",
+  "baselineCommit": "fd0dd2ea018338f4818701661c7bfe55dc063e4e",
   "sources": {
     "engineering-data-governance": {
       "path": "ENGINEERING_RULES.md",

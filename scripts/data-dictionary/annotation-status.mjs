@@ -1,38 +1,74 @@
 export const PENDING_STATUS = "needs_business_confirmation";
 
-export const FIELD_EVIDENCE_DIMENSIONS = [
-  ["unit", "unitSemantic"],
-  ["currency", "currencySemantic"],
-  ["timezone", "timezoneSemantic"],
-  ["snapshot", "snapshotAttribute"],
-  ["version", "versionAttribute"],
-  ["audit", "auditAttribute"],
+const ALL_CONFIRMATION_STATUSES = [
+  PENDING_STATUS,
+  "confirmed_business",
+  "confirmed_contract",
+  "confirmed_implementation",
 ];
 
-export function pendingDimensions(annotation) {
+export const STATUS_AUTHORITY = {
+  confirmed_business: "business",
+  confirmed_contract: "formal_contract",
+  confirmed_implementation: "implementation",
+};
+
+export const EVIDENCE_SLOT_POLICIES = [
+  {
+    dimension: "workbench",
+    key: "workbenchEvidence",
+    appliesTo: ["table", "field"],
+    emptyValue: [],
+    allowedStatuses: [PENDING_STATUS, "confirmed_business"],
+  },
+  {
+    dimension: "sensitivity",
+    key: "sensitivityEvidence",
+    appliesTo: ["table", "field"],
+    emptyValue: null,
+    allowedStatuses: ALL_CONFIRMATION_STATUSES,
+  },
+  ...[
+    ["unit", "unitSemantic"],
+    ["currency", "currencySemantic"],
+    ["timezone", "timezoneSemantic"],
+    ["snapshot", "snapshotAttribute"],
+    ["version", "versionAttribute"],
+    ["audit", "auditAttribute"],
+  ].map(([dimension, key]) => ({
+    dimension,
+    key,
+    appliesTo: ["field"],
+    emptyValue: null,
+    allowedStatuses: ALL_CONFIRMATION_STATUSES,
+  })),
+];
+
+export function evidencePoliciesFor(objectType) {
+  return EVIDENCE_SLOT_POLICIES.filter((policy) =>
+    policy.appliesTo.includes(objectType),
+  );
+}
+
+export function pendingDimensions(annotation, objectType) {
   const dimensions = [];
   if (annotation.nameStatus === PENDING_STATUS) dimensions.push("name");
   if (annotation.purposeStatus === PENDING_STATUS) dimensions.push("purpose");
-  if (annotation.workbenchEvidence?.status === PENDING_STATUS) {
-    dimensions.push("workbench");
-  }
-  if (annotation.sensitivityEvidence?.status === PENDING_STATUS) {
-    dimensions.push("sensitivity");
-  }
-  for (const [dimension, field] of FIELD_EVIDENCE_DIMENSIONS) {
-    if (annotation[field]?.status === PENDING_STATUS)
-      dimensions.push(dimension);
+  for (const policy of evidencePoliciesFor(objectType)) {
+    if (annotation[policy.key]?.status === PENDING_STATUS) {
+      dimensions.push(policy.dimension);
+    }
   }
   return dimensions;
 }
 
-export function isPendingAnnotation(annotation) {
-  return pendingDimensions(annotation).length > 0;
+export function isPendingAnnotation(annotation, objectType) {
+  return pendingDimensions(annotation, objectType).length > 0;
 }
 
 export function pendingEvidenceSlot(value = null) {
   return {
-    value,
+    value: structuredClone(value),
     status: PENDING_STATUS,
     sourceRefs: [],
   };

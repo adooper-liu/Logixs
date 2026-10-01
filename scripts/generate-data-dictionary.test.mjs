@@ -4,7 +4,10 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { pendingDimensions } from "./data-dictionary/annotation-status.mjs";
+import {
+  EVIDENCE_SLOT_POLICIES,
+  pendingDimensions,
+} from "./data-dictionary/annotation-status.mjs";
 import {
   assertSafeExtractionTarget,
   buildDictionaryArtifacts,
@@ -22,11 +25,124 @@ import {
   renderNativeObjectsMarkdown,
   renderWorkbook,
   resolveAnnotationBaseline,
+  serializeAnnotations,
   summarizeStructure,
   validateAnnotations,
 } from "./generate-data-dictionary.mjs";
 
 const LOCAL_URL = "postgresql://logix:logix@localhost:5433/logix";
+
+test("evidence slot policies are the single complete dimension authority", () => {
+  assert.deepEqual(
+    EVIDENCE_SLOT_POLICIES.map(({ key, appliesTo }) => [key, appliesTo]),
+    [
+      ["workbenchEvidence", ["table", "field"]],
+      ["sensitivityEvidence", ["table", "field"]],
+      ["unitSemantic", ["field"]],
+      ["currencySemantic", ["field"]],
+      ["timezoneSemantic", ["field"]],
+      ["snapshotAttribute", ["field"]],
+      ["versionAttribute", ["field"]],
+      ["auditAttribute", ["field"]],
+    ],
+  );
+});
+
+test("evidence slot matrix rejects contradictory pending and workbench facts", () => {
+  const cases = [
+    {
+      name: "pending workbench with value",
+      target: "table",
+      key: "workbenchEvidence",
+      slot: {
+        value: ["invented-wb"],
+        status: "needs_business_confirmation",
+        sourceRefs: [],
+      },
+      code: "ANNOTATION_PENDING_WITH_VALUE",
+    },
+    {
+      name: "pending sensitivity with source",
+      target: "table",
+      key: "sensitivityEvidence",
+      slot: {
+        value: null,
+        status: "needs_business_confirmation",
+        sourceRefs: ["business"],
+      },
+      code: "ANNOTATION_PENDING_WITH_SOURCE",
+    },
+    {
+      name: "workbench contract status with business evidence",
+      target: "table",
+      key: "workbenchEvidence",
+      slot: {
+        value: ["market_signals"],
+        status: "confirmed_contract",
+        sourceRefs: ["business"],
+      },
+      code: "ANNOTATION_STATUS_INVALID",
+    },
+    {
+      name: "field-only slot on table",
+      target: "table",
+      key: "unitSemantic",
+      slot: {
+        value: "kg",
+        status: "confirmed_contract",
+        sourceRefs: ["contract"],
+      },
+      code: "ANNOTATION_SLOT_NOT_APPLICABLE",
+    },
+  ];
+  for (const item of cases) {
+    const structure = dictionaryFixture();
+    const annotations = createPendingAnnotations(structure, {
+      baselineCommit: "abc123",
+    });
+    annotations.sources.business = {
+      path: "doc/cross-border-supply-chain/08-role-workbenches.md",
+      authority: "business",
+    };
+    annotations.sources.contract = {
+      path: "docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md",
+      authority: "formal_contract",
+    };
+    const collection =
+      item.target === "table" ? annotations.tables : annotations.fields;
+    const key = item.target === "table" ? "public.order" : "public.order.id";
+    collection[key][item.key] = item.slot;
+    const findings = validateAnnotations({
+      annotations,
+      structure,
+      trackedFiles: new Set([
+        "doc/cross-border-supply-chain/08-role-workbenches.md",
+        "docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md",
+      ]),
+    });
+    assert.ok(
+      findings.some(
+        (finding) =>
+          finding.code === item.code && finding.object === `${key}:${item.key}`,
+      ),
+      item.name,
+    );
+  }
+
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.tables["public.order"].unitSemantic = {
+    value: "kg",
+    status: "confirmed_contract",
+    sourceRefs: ["contract"],
+  };
+  assert.equal(
+    "unitSemantic" in serializeAnnotations(annotations).tables["public.order"],
+    false,
+  );
+});
 
 test("root manifest owns workbook dependencies", () => {
   const requireFromRoot = createRequire(
@@ -52,7 +168,7 @@ test("pending dimensions include independent table and field evidence", () => {
   delete table.auditAttribute;
   table.workbenchEvidence = pendingSlot([]);
   table.sensitivityEvidence = pendingSlot(null);
-  assert.deepEqual(pendingDimensions(table), [
+  assert.deepEqual(pendingDimensions(table, "table"), [
     "name",
     "purpose",
     "workbench",
@@ -62,7 +178,7 @@ test("pending dimensions include independent table and field evidence", () => {
   const field = pendingAnnotation();
   field.workbenchEvidence = pendingSlot([]);
   field.sensitivityEvidence = pendingSlot(null);
-  assert.deepEqual(pendingDimensions(field), [
+  assert.deepEqual(pendingDimensions(field, "field"), [
     "name",
     "purpose",
     "workbench",
@@ -141,7 +257,7 @@ test("workbench confirmation accepts only business authority", () => {
       trackedFiles: new Set(["docs/product/domain/TARGET_FIELD_CATALOG.md"]),
     }).some(
       (finding) =>
-        finding.code === "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE" &&
+        finding.code === "ANNOTATION_STATUS_INVALID" &&
         finding.object === "public.order:workbenchEvidence",
     ),
   );
@@ -1300,6 +1416,43 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
       row.eachCell((cell) => assert.equal(cell.type === 6, false)),
     );
   }
+});
+
+test("source trace counts logical references as consumer objects", async () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.sources.contract = {
+    path: "docs/product/domain/CROSS_MODULE_REFERENCE_CONTRACT_V1.md",
+    authority: "formal_contract",
+    note: "logical reference",
+  };
+  annotations.logicalReferences.push({
+    sourceTable: "order",
+    sourceFields: ["id"],
+    targetTable: "order",
+    targetFields: ["id"],
+    name: "order-self-reference",
+    sourceRefs: ["contract"],
+  });
+  const model = buildDictionaryModel({
+    structure,
+    annotations,
+    trackedFiles: new Set([
+      "docs/product/domain/CROSS_MODULE_REFERENCE_CONTRACT_V1.md",
+    ]),
+  });
+  const workbook = await loadWorkbook(
+    await renderWorkbook(model, {
+      fixedDate: new Date("2026-10-01T00:00:00.000Z"),
+    }),
+  );
+  const sourceSheet = workbook.getWorksheet("09_来源追溯");
+  const rows = sourceSheet.getSheetValues();
+  const contractRow = rows.find((row) => row?.[1] === "contract");
+
+  assert.equal(contractRow[5], 1);
 });
 
 test("artifact builder creates four projections from one model", async () => {

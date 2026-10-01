@@ -16,6 +16,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { format } from "prettier";
 
 import {
+  EVIDENCE_SLOT_POLICIES,
+  STATUS_AUTHORITY,
+  evidencePoliciesFor,
   isPendingAnnotation,
   pendingEvidenceSlot,
 } from "./data-dictionary/annotation-status.mjs";
@@ -479,14 +482,7 @@ function mergeReviewedAnnotations(generated, existing = {}) {
     for (const field of [
       "moduleCode",
       "ownerModule",
-      "workbenchEvidence",
-      "sensitivityEvidence",
-      "unitSemantic",
-      "currencySemantic",
-      "timezoneSemantic",
-      "snapshotAttribute",
-      "versionAttribute",
-      "auditAttribute",
+      ...EVIDENCE_SLOT_POLICIES.map((policy) => policy.key),
     ]) {
       if (hasReviewedValue(annotation[field]))
         result[field] = annotation[field];
@@ -641,49 +637,28 @@ export function validateAnnotations({ annotations, structure, trackedFiles }) {
         });
       }
     }
-    const slotDefinitions = [
-      ["workbenchEvidence", "business"],
-      ["sensitivityEvidence", null],
-      ...(key in annotationFields
-        ? [
-            ["unitSemantic", null],
-            ["currencySemantic", null],
-            ["timezoneSemantic", null],
-            ["snapshotAttribute", null],
-            ["versionAttribute", null],
-            ["auditAttribute", null],
-          ]
-        : []),
-    ];
-    for (const [semantic, requiredAuthority] of slotDefinitions) {
-      const slot = annotation[semantic];
-      if (!slot || !CONFIRMATION_STATUSES.has(slot.status)) {
-        findings.push({
-          code: "ANNOTATION_STATUS_INVALID",
-          object: `${key}:${semantic}`,
-        });
-      } else if (slot.status !== "needs_business_confirmation") {
-        if (!hasMeaningfulValue(slot.value)) {
+    const objectType = key in annotationFields ? "field" : "table";
+    for (const policy of EVIDENCE_SLOT_POLICIES) {
+      const applicable = policy.appliesTo.includes(objectType);
+      const slotPresent = Object.hasOwn(annotation, policy.key);
+      if (!applicable) {
+        if (slotPresent) {
           findings.push({
-            code: "ANNOTATION_CONFIRMED_EMPTY_VALUE",
-            object: `${key}:${semantic}`,
+            code: "ANNOTATION_SLOT_NOT_APPLICABLE",
+            object: `${key}:${policy.key}`,
           });
         }
-        if (
-          !hasEligibleSource(
-            slot,
-            sources,
-            trackedFiles,
-            slot.status,
-            requiredAuthority,
-          )
-        ) {
-          findings.push({
-            code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
-            object: `${key}:${semantic}`,
-          });
-        }
+        continue;
       }
+      const slot = annotation[policy.key];
+      validateEvidenceSlot({
+        findings,
+        key,
+        policy,
+        slot,
+        sources,
+        trackedFiles,
+      });
     }
   }
 
@@ -695,6 +670,61 @@ export function validateAnnotations({ annotations, structure, trackedFiles }) {
     trackedFiles,
   });
   return findings;
+}
+
+function validateEvidenceSlot({
+  findings,
+  key,
+  policy,
+  slot,
+  sources,
+  trackedFiles,
+}) {
+  const object = `${key}:${policy.key}`;
+  if (!slot || !policy.allowedStatuses.includes(slot.status)) {
+    findings.push({ code: "ANNOTATION_STATUS_INVALID", object });
+    return;
+  }
+  if (!Array.isArray(slot.sourceRefs)) {
+    findings.push({ code: "ANNOTATION_SOURCE_REFS_INVALID", object });
+    return;
+  }
+  if (slot.status === "needs_business_confirmation") {
+    if (!isCanonicalEmptyValue(slot.value, policy.emptyValue)) {
+      findings.push({ code: "ANNOTATION_PENDING_WITH_VALUE", object });
+    }
+    if (slot.sourceRefs.length > 0) {
+      findings.push({ code: "ANNOTATION_PENDING_WITH_SOURCE", object });
+    }
+    return;
+  }
+  if (!hasMeaningfulSlotValue(slot.value, policy)) {
+    findings.push({ code: "ANNOTATION_CONFIRMED_EMPTY_VALUE", object });
+  }
+  if (!hasEligibleSource(slot, sources, trackedFiles, slot.status)) {
+    findings.push({
+      code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
+      object,
+    });
+  }
+}
+
+function isCanonicalEmptyValue(value, emptyValue) {
+  if (Array.isArray(emptyValue)) {
+    return Array.isArray(value) && value.length === 0;
+  }
+  return value === emptyValue;
+}
+
+function hasMeaningfulSlotValue(value, policy) {
+  if (policy.key === "workbenchEvidence") {
+    return (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      value.every((item) => typeof item === "string" && item.trim().length > 0)
+    );
+  }
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function validateLogicalReferences({
@@ -837,8 +867,10 @@ export function buildDictionaryModel({
       ...summarizeStructure(structure),
       annotatedTables: tables.length,
       annotatedFields: fields.length,
-      pendingTables: tables.filter(isPendingAnnotation).length,
-      pendingFields: fields.filter(isPendingAnnotation).length,
+      pendingTables: tables.filter((item) => isPendingAnnotation(item, "table"))
+        .length,
+      pendingFields: fields.filter((item) => isPendingAnnotation(item, "field"))
+        .length,
     },
     tables,
     fields,
@@ -893,8 +925,8 @@ function buildDictionaryRelations(structure, annotations) {
   );
 }
 
-function pendingTableAnnotation() {
-  return {
+function pendingAnnotation(objectType) {
+  const annotation = {
     nameZh: PENDING_NAME,
     nameStatus: "needs_business_confirmation",
     purposeZh: PENDING_PURPOSE,
@@ -902,22 +934,20 @@ function pendingTableAnnotation() {
     sourceRefs: [],
     moduleCode: null,
     ownerModule: null,
-    workbenchEvidence: pendingEvidenceSlot([]),
-    sensitivityEvidence: pendingEvidenceSlot(),
     notes: [],
   };
+  for (const policy of evidencePoliciesFor(objectType)) {
+    annotation[policy.key] = pendingEvidenceSlot(policy.emptyValue);
+  }
+  return annotation;
+}
+
+function pendingTableAnnotation() {
+  return pendingAnnotation("table");
 }
 
 function pendingFieldAnnotation() {
-  return {
-    ...pendingTableAnnotation(),
-    unitSemantic: pendingEvidenceSlot(),
-    currencySemantic: pendingEvidenceSlot(),
-    timezoneSemantic: pendingEvidenceSlot(),
-    snapshotAttribute: pendingEvidenceSlot(),
-    versionAttribute: pendingEvidenceSlot(),
-    auditAttribute: pendingEvidenceSlot(),
-  };
+  return pendingAnnotation("field");
 }
 
 function appendCoverageFindings(
@@ -949,36 +979,17 @@ function validateAnnotationShape(findings, key, annotation) {
   }
 }
 
-function hasEligibleSource(
-  annotation,
-  sources,
-  trackedFiles,
-  status,
-  requiredAuthority = null,
-) {
-  const eligibleAuthorities = requiredAuthority
-    ? new Set([requiredAuthority])
-    : {
-        confirmed_business: new Set(["business"]),
-        confirmed_contract: new Set(["formal_contract"]),
-        confirmed_implementation: new Set(["implementation"]),
-      }[status];
+function hasEligibleSource(annotation, sources, trackedFiles, status) {
+  const eligibleAuthority = STATUS_AUTHORITY[status];
   return (annotation.sourceRefs ?? []).some((sourceId) => {
     const source = sources[sourceId];
     return (
       source &&
       trackedFiles.has(source.path) &&
-      eligibleAuthorities?.has(source.authority) &&
+      source.authority === eligibleAuthority &&
       sourceAuthorityMatchesPath(source)
     );
   });
-}
-
-function hasMeaningfulValue(value) {
-  if (value === null || value === undefined) return false;
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === "string") return value.trim().length > 0;
-  return true;
 }
 
 export async function extractNormalizedStructure({
@@ -1579,43 +1590,29 @@ const CATALOG_QUERIES = {
 
 export function serializeAnnotations(annotations) {
   const stored = structuredClone(annotations);
-  const fieldEvidenceFields = [
-    "unitSemantic",
-    "currencySemantic",
-    "timezoneSemantic",
-    "snapshotAttribute",
-    "versionAttribute",
-    "auditAttribute",
-  ];
-  const allEvidenceFields = [
-    "workbenchEvidence",
-    "sensitivityEvidence",
-    ...fieldEvidenceFields,
-  ];
   for (const annotation of Object.values(stored.tables ?? {})) {
-    stripPendingEvidence(annotation, [
-      "workbenchEvidence",
-      "sensitivityEvidence",
-    ]);
+    stripEvidenceForObject(annotation, "table");
   }
   for (const annotation of Object.values(stored.fields ?? {})) {
-    stripPendingEvidence(annotation, allEvidenceFields);
+    stripEvidenceForObject(annotation, "field");
   }
   return stored;
 }
 
-function stripPendingEvidence(annotation, fields) {
-  for (const field of fields) {
-    const slot = annotation[field];
-    const emptyValue =
-      slot?.value === null ||
-      (Array.isArray(slot?.value) && slot.value.length === 0);
+function stripEvidenceForObject(annotation, objectType) {
+  for (const policy of EVIDENCE_SLOT_POLICIES) {
+    if (!policy.appliesTo.includes(objectType)) {
+      delete annotation[policy.key];
+      continue;
+    }
+    const slot = annotation[policy.key];
     if (
-      emptyValue &&
-      slot.status === "needs_business_confirmation" &&
-      (slot.sourceRefs?.length ?? 0) === 0
+      slot?.status === "needs_business_confirmation" &&
+      isCanonicalEmptyValue(slot.value, policy.emptyValue) &&
+      Array.isArray(slot.sourceRefs) &&
+      slot.sourceRefs.length === 0
     ) {
-      delete annotation[field];
+      delete annotation[policy.key];
     }
   }
 }
