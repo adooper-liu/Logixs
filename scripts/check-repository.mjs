@@ -214,10 +214,10 @@ function parseWriteScope(scope) {
   if (!isRepositoryRelativeScope(scope)) return { error: "outside" };
   if (scope.endsWith("/**")) {
     const prefix = scope.slice(0, -3).replace(/\/$/, "");
-    if (!prefix || /[*?\[\]]/.test(prefix)) return { error: "pattern" };
+    if (!prefix || /[*?[\]]/.test(prefix)) return { error: "pattern" };
     return { kind: "directory", path: prefix.toLowerCase() };
   }
-  if (/[*?\[\]]/.test(scope)) return { error: "pattern" };
+  if (/[*?[\]]/.test(scope)) return { error: "pattern" };
   return { kind: "exact", path: scope.toLowerCase() };
 }
 
