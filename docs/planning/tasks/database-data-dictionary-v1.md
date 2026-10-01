@@ -45,7 +45,7 @@ verification: |
 
 ## 并行启动与停止条件
 
-- 本任务与 `authz-default-deny-v1` 作为首批两个写任务并行；当前 writer 为 Codex，authz writer 为 Cursor。
+- 本任务与 `authz-default-deny-v1` 作为首批两个写任务并行；本任务 writer 为 Claude，authz writer 为 Cursor。
 - 切片 A 不修改 Schema、迁移、授权控制面或 authz 的 work-execution 模块；两个任务的独占锁不重叠。
 - 切片 A 只实现独立提取器，不修改 `package.json` 或 `pnpm-lock.yaml`。根命令接入另设串行切片，届时先同步
   最新 `main`，再把根文件加入 `writeScopes` 并占用 `root-tooling` 锁。
@@ -70,17 +70,17 @@ model；该文档可作历史语义来源，不能再作为当前数量来源，
 以下数字是本任务启动时的静态复算基线，不是永恒常量。生成器必须在每次运行时重新计算，并在变化时通过
 `data-dictionary:check` 报告漂移：
 
-| 项目                      | 当前复算值 | 证据与限制                                                |
-| ------------------------- | ---------: | --------------------------------------------------------- |
-| Prisma model / 预期物理表 |        112 | `schema.prisma`；须与迁移重放后的实际表逐项对账           |
-| 物理标量字段              |      1,589 | Prisma model 中非 relation 字段                           |
-| Prisma 虚拟 relation      |        278 | 单列关系，不计入物理字段                                  |
-| PostgreSQL enum           |          1 | 迁移与 Schema 均可复算                                    |
-| 当前有效命名 CHECK        |        478 | 按有序迁移追踪创建、删除和重建；最终以 `pg_catalog` 为准  |
-| Prisma 未声明的有效索引   |         23 | 已排除 Prisma 显式 map 和默认命名索引；最终以目录对账为准 |
-| 数据库函数                |          2 | 迁移静态复算；最终以目录对账为准                          |
-| 普通/约束触发器           |          2 | 1 个普通 trigger、1 个 constraint trigger                 |
-| Prisma 未表达的原生外键   |     待复算 | 原建议值为 1，尚无可重复对账证据，禁止预填                |
+| 项目                      | 当前复算值 | 证据与限制                                           |
+| ------------------------- | ---------: | ---------------------------------------------------- |
+| Prisma model / 预期物理表 |        112 | `schema.prisma`；须与迁移重放后的实际表逐项对账      |
+| 物理标量字段              |      1,589 | Prisma model 中非 relation 字段                      |
+| Prisma 虚拟 relation      |        278 | 单列关系，不计入物理字段                             |
+| PostgreSQL enum           |          1 | 迁移与 Schema 均可复算                               |
+| 当前有效命名 CHECK        |        477 | 隔离 PostgreSQL 完整迁移重放后的 `pg_catalog` 实测值 |
+| Prisma 未声明的有效索引   |       动态 | 生成器逐项标记，结果见原生对象清单                   |
+| 数据库函数                |          2 | 隔离 PostgreSQL `pg_catalog` 实测                    |
+| 普通/约束触发器           |          2 | 1 个普通 trigger、1 个 constraint trigger            |
+| Prisma 未表达的原生外键   |       动态 | 由 FK 形状与 Prisma DDL 对账，不预填静态数量         |
 
 ## 维护结构
 
@@ -205,11 +205,11 @@ scripts/
 | 项目     | 内容                                                                                                         |
 | -------- | ------------------------------------------------------------------------------------------------------------ |
 | 基线     | `f0fc0e159feae1fa61f1449755946d51e1eed7dd`                                                                   |
-| 执行角色 | Codex（authz 仍由 Cursor 写入，保证两个活动任务 writer 不重复）                                              |
+| 执行角色 | Claude（本任务唯一 writer；Codex 保留语义裁决与最终收口）                                                    |
 | 写入范围 | `scripts/generate-data-dictionary.mjs`、对应测试                                                             |
 | 行为     | 生成隔离 schema、完整重放迁移、查询 `pg_catalog`、读取生成后的 Prisma DMMF，输出规范化内存模型并检测两者漂移 |
 | 禁止范围 | 不生成中文释义，不写 Excel，不改 Schema/迁移/业务文档，不连接 public/共享 schema                             |
-| 定向验证 | 脚本测试、生成器 dry-run、112/1,589/278/1/478/23/2/2 动态复算、原生 FK 实测、lint/typecheck、`repo:check`    |
+| 定向验证 | 脚本测试、生成器 dry-run、112/1,589/278/1/477/2/2 动态复算、FK 对账、lint/typecheck、`repo:check`            |
 | 停止条件 | 结构差异可重复、危险数据库 URL 失败关闭、无硬编码数量后 `ready-for-review`                                   |
 
 ### 切片 A2：根工具入口串行接入
@@ -217,7 +217,7 @@ scripts/
 | 项目     | 内容                                                                                                  |
 | -------- | ----------------------------------------------------------------------------------------------------- |
 | 前置     | authz 或其他持有 `root-tooling` / 根门禁共享范围的任务完成对应修改；本分支同步最新 `main`             |
-| 执行角色 | Codex                                                                                                 |
+| 执行角色 | Claude                                                                                                |
 | 调度更新 | 进入本切片前把 `package.json`、必要锁文件加入 frontmatter `writeScopes`，并新增 `root-tooling` 独占锁 |
 | 行为     | 接入 `data-dictionary:generate` 与 `data-dictionary:check`；不改变生成模型、Schema、迁移或业务语义    |
 | 定向验证 | 两个根命令、脚本测试、`pnpm repo:check`、`pnpm format:check`、`git diff --check`                      |
@@ -227,10 +227,10 @@ scripts/
 
 | 项目     | 内容                                                                            |
 | -------- | ------------------------------------------------------------------------------- |
-| 执行角色 | Cursor（机械装载）+ Codex（语义裁决）                                           |
+| 执行角色 | Claude（机械装载；Codex 保留语义裁决）                                          |
 | 写入范围 | `database/dictionary/dictionary.annotations.json`、生成器验证测试               |
 | 行为     | 从 `doc/`、现行正式契约、Schema/迁移和实现证据建立表/字段语义；未知项显式待确认 |
-| 禁止范围 | Cursor 不得自行翻译业务含义、决定敏感级别或工作台归属；不得引用 UI 文案作为权威 |
+| 禁止范围 | Claude 不得自行决定业务含义、敏感级别或工作台归属；不得引用 UI 文案作为权威     |
 | 定向验证 | 稳定键唯一、全部物理对象均有覆盖或明确待确认、来源路径存在、候选文档未升格      |
 | 停止条件 | Codex 抽样高风险字段并处置所有无来源“确认”状态后 `ready-for-review`             |
 
@@ -238,7 +238,7 @@ scripts/
 
 | 项目     | 内容                                                                                                |
 | -------- | --------------------------------------------------------------------------------------------------- |
-| 执行角色 | Cursor                                                                                              |
+| 执行角色 | Claude                                                                                              |
 | 写入范围 | `database/dictionary/*.generated.md`、`database-data-dictionary.xlsx`、生成器与测试                 |
 | 行为     | 从同一规范化模型生成两份 Markdown 和 10-sheet 工作簿；不得分别维护                                  |
 | 禁止范围 | 不从 Excel 回读权威语义，不复制一套手工统计逻辑                                                     |
@@ -254,17 +254,17 @@ scripts/
 
 ## 验收
 
-- [ ] 隔离 PostgreSQL 完整重放迁移成功，且生成器拒绝 public、共享或无法证明隔离的目标 schema
-- [ ] 物理表、字段、enum、CHECK、索引、函数、普通/约束触发器和 FK 数量由工具动态复算，无硬编码通过
-- [ ] 112 个当前 model 与 1,589 个当前物理标量字段无遗漏、无重复；结构变化会使 check 模式失败
-- [ ] 278 个 Prisma relation 单列且未计入物理字段；逻辑引用不伪装成 FK
-- [ ] 每个表/字段都有中文名与用途，或明确、诚实的待业务确认值
-- [ ] 名称、用途、工作台和敏感等级分别有证据状态，不使用一个笼统状态掩盖未知
-- [ ] 每个确认语义可追溯到 `doc/`、正式契约或实现证据；候选文档和 UI 文案未升格
-- [ ] Excel 10 个工作表可按模块、表、技术所有者、工作台、敏感等级和确认状态筛选
+- [x] 隔离 PostgreSQL 完整重放迁移成功，且生成器拒绝 public、共享或无法证明隔离的目标 schema
+- [x] 物理表、字段、enum、CHECK、索引、函数、普通/约束触发器和 FK 数量由工具动态复算，无硬编码通过
+- [x] 112 个当前 model 与 1,589 个当前物理标量字段无遗漏、无重复；结构变化会使 check 模式失败
+- [x] 278 个 Prisma relation 单列且未计入物理字段；逻辑引用不伪装成 FK
+- [x] 每个表/字段都有中文名与用途，或明确、诚实的待业务确认值
+- [x] 名称、用途、工作台和敏感等级分别有证据状态，不使用一个笼统状态掩盖未知
+- [x] 每个确认语义可追溯到 `doc/`、正式契约或实现证据；候选文档和 UI 文案未升格
+- [x] Excel 10 个工作表可按模块、表、技术所有者、工作台、敏感等级和确认状态筛选
 - [ ] 工作簿关键范围无公式错误、无截断遮挡；全部工作表完成视觉检查
-- [ ] Markdown、Excel 与结构检查由同一规范化模型生成，手工编辑生成物会被 check 模式发现
-- [ ] Schema 或迁移增删对象时，`data-dictionary:check` 能报告精确漂移
+- [x] Markdown、Excel 与结构检查由同一规范化模型生成，手工编辑生成物会被 check 模式发现
+- [x] Schema 或迁移增删对象时，`data-dictionary:check` 能报告精确漂移
 - [ ] Claude 独立复审 findings 已由 Codex 处置；待负责人确认项保持待定，不伪造完成
 
 ## 回滚
