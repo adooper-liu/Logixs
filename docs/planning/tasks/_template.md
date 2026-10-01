@@ -2,8 +2,8 @@
 status: design # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/<任务名>
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
-owner: codex # 端到端负责人；design/coding/fix 必填
-writer: cursor # 当前唯一写入者；design/coding/fix 必填，Claude 默认只读
+owner: claude # 端到端主代理；design/coding/fix 必填
+writer: cursor # 当前唯一写入者；design/coding/fix 必填，Codex 审查阶段默认只读
 risk: medium # low | medium | high；design/coding/fix 必填
 dependsOn: [] # task brief 文件名（不含 .md）；依赖未 done 时不得写
 writeScopes: # design/coding/fix 必填；精确文件，或目录/**；不得使用其它 glob
@@ -20,10 +20,10 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 > 状态以文件顶部 frontmatter 的 `status` / `branch` 为准，改状态就改 frontmatter，不要在正文另写自由文本状态。
 >
 > 调度规则统一见 `AGENTS.md` §1.2 第 17～23 条：`design` 不占两个 `coding/fix` 名额，但与 `coding/fix`
-> 一样声明调度元数据并参与 writer、依赖、写范围和独占锁冲突检查；最终集成与合并仍由 Codex 排队。`done` 必须在 frontmatter 的
+> 一样声明调度元数据并参与 writer、依赖、写范围和独占锁冲突检查；Claude 排定任务与业务优先级，最终技术集成与合并由 Codex 执行。`done` 必须在 frontmatter 的
 > `verification` 填写验证证据地址，未验证不得标 `done`。聊天只传任务文件名、分支名与起点命令，不互贴长状态。
 > `authorityRefs` 只表示读取；修改权威时还须把路径放入 `writeScopes` 并加对应锁。`repo:check` 只验证当前
-> checkout 的 brief，不核对其他 worktree 或实际 diff；Codex 在下发与收口时人工核对，后续由薄编排器自动化。
+> checkout 的 brief，不核对其他 worktree 或实际 diff；Claude 下发前核对在途任务与声明范围，Codex 审查和集成前核对实际差异，后续由薄编排器自动化。
 
 ## 目标
 
@@ -52,16 +52,16 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 | 项目     | 内容                                                            |
 | -------- | --------------------------------------------------------------- |
 | 基线     | `<commit-sha>`                                                  |
-| 执行角色 | `Cursor` / `Codex`                                              |
+| 执行角色 | `Cursor` / `Claude`                                             |
 | 写入范围 | 精确文件或目录                                                  |
 | 禁止范围 | 不得顺带修改的模块、契约、状态或入口                            |
 | 验证命令 | 切片最近测试、模块 lint/typecheck、专项门禁及预期非零结果       |
 | 停止条件 | `ready-for-review` 后停手；是否允许提交；哪些情况返回 `blocked` |
 
-Codex 下发任务：
+Claude 下发任务：
 
 ```text
-TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<cursor|claude> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
+TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<cursor|codex> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
 ```
 
 Cursor 交回实现：
@@ -89,7 +89,7 @@ exceptions: []
 commit: none # 默认未提交；已获授权时填 SHA
 ```
 
-Claude 交回独立评审：
+Codex 交回独立技术评审：
 
 ```yaml
 protocol: logix-review/v1
@@ -107,10 +107,10 @@ findings:
     suggestedDisposition: accepted | rejected | pending-owner
 unknowns: []
 verificationGaps: []
-writes: none
+writes: none # 审查阶段固定为 none；获 `next: pr` 授权后填实际 commit / PR / CI
 ```
 
-Codex 裁决评审：
+Claude 裁决评审：
 
 ```yaml
 protocol: logix-disposition/v1
@@ -125,7 +125,7 @@ next: fix | pr | owner-decision
 
 ## 负责人决策记录（业务、工作台、架构或公共契约任务必填）
 
-> 只记录会改变业务政策、公共契约、安全边界、不可逆成本或用户结果的决定。Codex 先核对事实，
+> 只记录会改变业务政策、公共契约、安全边界、不可逆成本或用户结果的决定。Claude 先核对事实，
 > 每轮向负责人提供 2～3 个互斥选项和明确推荐；每项写清理由、成本、收益、风险、可逆性和证据状态。
 > 未定事项标为 `pending`，只阻塞受影响范围。负责人结论必须写回 `doc/` 或 ADR；brief 不成为第三套业务权威。
 
