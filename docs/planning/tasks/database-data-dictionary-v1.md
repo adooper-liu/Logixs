@@ -24,11 +24,13 @@ authorityRefs:
   - docs/architecture/DATABASE_SCHEMA_CONTRACT_V1.md
 verification: |
   已在隔离 PostgreSQL 完整重放当前迁移并生成 112 张表、1,589 个物理字段、278 个 Prisma relation、
-  1 个 PostgreSQL enum、477 个当前有效命名 CHECK、2 个函数和 2 个触发器。实测发现 5 个
-  Prisma DDL 与迁移最终态的 FK 动作漂移，已作为 finding 保留，未静默覆盖。首版语义注解覆盖全部对象：
-  83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，其余 29 张表和 1,240 个
-  语境相关字段明确 needs_business_confirmation。专项测试 24/24、generate/check、repo:check、
-  format:check 和专项 ESLint 已通过；完整门禁、Excel 桌面视觉检查和独立复审待完成。
+  1 个 PostgreSQL enum、477 个当前有效命名 CHECK、505 个唯一索引、2 个函数和 2 个触发器。
+  当前 reconciliation findings 为 9 个可空性差异、8 个默认值差异和 5 个 FK 动作差异，均保留在生成字典中。
+  首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
+  其余 29 张表和 1,240 个语境相关字段明确 needs_business_confirmation。独立复审的 3 个 Important
+  已通过 RED→GREEN 修复；专项测试 30/30、generate/check、repo:check、format:check、专项 ESLint、
+  根 pnpm test、typecheck 和 build 已通过。ExcelJS 重载确认 10 个 sheet、1,589 字段精确 1,590 行、
+  0 个公式单元格；本机无 Excel，桌面视觉检查未执行。Codex disposition 和最终 PR/CI 尚未完成。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -252,6 +254,15 @@ scripts/
 - 负责人只确认真正的业务待定项，不被要求审核自动提取的技术事实；
 - 风险面稳定后由 Codex 统一运行最终门禁并建立本任务唯一 PR。
 
+## Review notes
+
+- `accepted/fixed`：补齐字段类型族、精度、可空性、数组和默认值对账；真实目录保留 22 个可定位结构差异。
+- `accepted/fixed`：来源 authority 按 tracked 路径类别校验，logical reference 要求正式契约证据并验证源/目标字段。
+- `accepted/fixed`：索引 catalog 查询仅关联本表拥有的 PK/UQ/EXCLUSION constraint；实测 505 行均为唯一稳定键。
+- `rejected`：Excel 重复行 finding 与 ExcelJS 重载实测不符；字段 sheet 为 1,589 条明细 + 1 个表头，已加入精确断言。
+- `minor/deferred-to-codex`：原生对象 Markdown 未重复主字典已有的 reconciliation findings，可选择增加链接或 Findings 节。
+- `verification-gap`：本机未安装 Microsoft Excel，未执行桌面修复警告、列宽和交互筛选视觉验收。
+
 ## 验收
 
 - [x] 隔离 PostgreSQL 完整重放迁移成功，且生成器拒绝 public、共享或无法证明隔离的目标 schema
@@ -274,9 +285,9 @@ scripts/
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                            |
-| ---------- | ------- | ------ | ---------- | --------------------------------------------------------------------------------------------------------------- |
-| 2026-09-30 | blocked | Codex  | —          | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案                                   |
-| 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                                |
-| 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                                    |
-| 2026-10-01 | review  | Claude | `05a31b5d` | 与 OIDC 有界并行完成生成链、全覆盖注解、Markdown/Excel 与根入口；未知语义保留 pending，不阻塞工作台，待独立复审 |
+| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                          |
+| ---------- | ------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| 2026-09-30 | blocked | Codex  | —          | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案                                 |
+| 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                              |
+| 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                                  |
+| 2026-10-01 | review  | Claude | `009ed962` | 独立复审 3 个 Important 已修；Excel 重复行 finding 以精确行数测试驳回；1 个 Minor 与桌面视觉验收交 Codex 处置 |
