@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { DEVELOPMENT_SERVER } from "./support/testServers";
 
 test("shipping operator saves handoff and sends actual loading for review", async ({
   page,
@@ -836,7 +837,9 @@ test("shipping operator uploads four sources and reviews joined post-departure g
       request.method() === "POST"
     ) {
       reviewRequestCount += 1;
-      expect(request.headers()["x-roles"]).toBe("import_operator");
+      expect(request.headers()["x-roles"]).toBe(
+        DEVELOPMENT_SERVER.env.VITE_DEV_ROLES,
+      );
       await route.fulfill({
         status: 200,
         contentType: "application/json",

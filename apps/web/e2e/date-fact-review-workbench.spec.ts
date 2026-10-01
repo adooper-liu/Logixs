@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { DEVELOPMENT_SERVER } from "./support/testServers";
 
 test("review supervisor approves a verified manual actual date", async ({
   page,
@@ -23,7 +24,9 @@ test("review supervisor approves a verified manual actual date", async ({
       url.pathname === "/api/lifecycle-date-fact-reviews/fact-1/approve" &&
       request.method() === "POST"
     ) {
-      expect(request.headers()["x-roles"]).toBe("review_supervisor");
+      expect(request.headers()["x-roles"]).toBe(
+        DEVELOPMENT_SERVER.env.VITE_DEV_ROLES,
+      );
       expect(request.postDataJSON()).toMatchObject({
         reasonCode: "date_fact_review_approved",
         expectedVersion: 3,

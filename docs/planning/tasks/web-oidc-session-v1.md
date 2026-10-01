@@ -1,13 +1,15 @@
 ---
-status: fix
+status: review
 branch: feat/web-oidc-session-v1
 verification: |
-  A/A-R1/B/C/C3-FIX 已完成并通过增量复审；C3-FIX fresh 只读 Claude 复审为 no-findings。
-  当前工作树 Web 单元测试 143 文件、616 项通过，focused OIDC Playwright 5/5 通过，Web lint、typecheck、
-  OIDC build、format:check、repo:check 与 git diff --check 通过。原 C3-SEC-001 组合在生成资产前返回
-  BUILD_DEVELOPMENT_AUTH_REJECTED，未创建输出目录且未回显 tenant/operator/role；development serve 与正常
-  OIDC build 保持可用。生产源码固定开发身份残留为 0；身份头和直接 fetch 仅存在于测试或权威 httpClient。
-  等待 Claude 最终集成最新 main、重跑 security:audit 和 pnpm validate；真实 IdP 冒烟仍是 deployment/done gate。
+  A/A-R1/B/C/C3-FIX 已完成；C3-FIX fresh 只读 Claude 复审为 no-findings。当前集成 HEAD 已同步最新 main，
+  `pnpm security:audit` 通过（0 high，8 moderate）。Web 单元测试 143 文件、616 项，focused OIDC Playwright
+  5/5，Web lint、typecheck、OIDC build、format、repo 与 diff check 均通过。原 C3-SEC-001 组合在生成资产前
+  返回 BUILD_DEVELOPMENT_AUTH_REJECTED，未创建输出目录且未回显 tenant/operator/role；development serve 与
+  正常 OIDC build 保持可用。生产源码固定开发身份残留为 0；身份头和直接 fetch 仅存在于测试或权威 httpClient。
+  完整 `pnpm validate` 的 repo/contract/dictionary/db/lint/format/typecheck/unit 与真实 PostgreSQL integration
+  23 文件、138 项通过；统一 development 身份暴露的两条旧 E2E 角色断言已按 C3-E2E-FIX 收口，定向 9/9、
+  完整 Web E2E 118 项通过（7 项既有跳过），build 通过。真实 IdP 冒烟仍是 deployment/done gate。
 owner: claude
 writer: cursor
 risk: high
@@ -313,8 +315,8 @@ API 身份材料、重定向、注销、测试替身隔离和构建产物做一�
 | 执行角色 | Cursor；只修改两条 E2E header 断言与本 brief                                                                                               |
 | 写入范围 | `apps/web/e2e/date-fact-review-workbench.spec.ts`、`apps/web/e2e/dispatch-workbench.spec.ts`、`docs/planning/tasks/web-oidc-session-v1.md` |
 | 禁止范围 | 生产 Web/API、development server 身份、角色/capability 政策、测试数据或页面行为                                                            |
-| 定向验证 | 两条失败 spec 的 desktop/narrow/mobile 六项测试；完整 `pnpm test:e2e`；Web format；`git diff --check`                                      |
-| 停止条件 | 任一用例确实需要独立业务身份而非旧断言时返回 `blocked`，不得增加端点级身份切换                                                             |
+| 定向验证 | 两条相关 spec 的 desktop/narrow/mobile 9 项通过；完整 `pnpm test:e2e` 118 项通过（7 项既有跳过）；Web format 与 diff check 通过            |
+| 停止条件 | 已关闭；未增加端点级身份切换或生产行为                                                                                                     |
 
 ## 直接消费者与技术承接
 
