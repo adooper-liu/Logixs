@@ -19,9 +19,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "规范事件流水账（lifecycle-control 拥有）：不可变事件留痕，可追溯/重放/幂等。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "lifecycle-control",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -32,9 +30,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "Shipment 主体事件接受时冻结关系范围，保证后续重放不随当前柜关系漂移。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -45,9 +41,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "内部货主/分公司与销售国家的受控映射；内部简称不得直接冒充 ISO 国家码。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -58,9 +52,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "cargo_ready 合规评审（compliance-management 拥有）：锁定装载与 SKU 档案快照。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "compliance-management",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -115,9 +107,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "契约：GC-009 ClientOperationV1。 lifecycle-control 写入 lifecycle.apply_event；work-execution 写入 work_execution.complete_work_order。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -128,9 +118,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "契约：GC-009 CompensationRecord。补偿是新事实，不回写 ClientOperation。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -141,9 +129,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "合规规则稳定身份与追加版本（compliance-management 拥有）。规则只有经过证据核验和授权发布后才参与评审。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "compliance-management",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -176,9 +162,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "装载明细引用本模块产品行；Product/SKU 通过产品行的逻辑 UUID 引用解析，不建跨模块外键。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -189,9 +173,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "货柜实际装载快照（shipment-registry 拥有）：每柜只有一个 active 版本，更正追加新集合。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -202,9 +184,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "出运交接快照（shipment-registry 拥有）：锁定当前装箱版本和承运交接事实，日期仍进入统一时间线。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -215,9 +195,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "导入解析作用域：只证明同一批次中的箱号指向同一稳定货柜，不把箱号升级为跨柜次身份。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -228,9 +206,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "货柜业务事实主记录（shipment-registry 拥有）。 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -241,9 +217,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "外部柜次身份：箱号可复用，不能作为跨交接的永久身份。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -254,9 +228,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "实际装箱结果快照（shipment-registry 拥有）：更正追加新版本，不覆盖已参与过站判断的历史。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -267,9 +239,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "货柜卸货作业的版本化现场事实（inland-fulfillment 拥有）。 started/partial 只记录进度；仅完整 completed 记录可支持 unloaded 过站。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "inland-fulfillment",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -280,9 +250,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "ISO 3166-1 正式分配代码；名称与 alpha-3/numeric 一并保留，禁止由业务文本猜测国家。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -293,9 +261,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "清关案件版本（customs-compliance 拥有）：关键申报与放行事实强类型保存，日期仍进入统一时间线。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "customs-compliance",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -306,9 +272,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "证据主记录（document-records 拥有）：第一刀只落核验所需字段，不做对象存储。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "document-records",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -319,9 +283,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "核验裁决（document-records 拥有）：append-only，不更新、不删除。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "document-records",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -343,9 +305,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "非生命周期工作项（work-execution 拥有）：专业模块把整改/义务投影到全局任务池。 来源事实仍由专业模块拥有；新版本投影取消旧开放项，不覆盖历史。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "work-execution",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -356,9 +316,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "车队运力与是否声明场外缓冲。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -369,9 +327,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "流程实例（lifecycle-control 拥有）：一个货柜的生命周期流程（1:1 货柜）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "lifecycle-control",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -382,9 +338,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "导入批次（integration-import 拥有）：一次上传的全生命周期（P6 阶段 A 读链路最小集）。 完整批次状态机在阶段 C 对齐 IMPORT_WORKFLOW §4；阶段 A 仅 pending → parsed。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "integration-import",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -395,9 +349,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "映射审核（integration-import 拥有）：人确认/修正列→字段映射（阶段 C）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "integration-import",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -408,9 +360,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "导入行（integration-import 拥有）：一行 = 一个来源产品明细；同备货单可有多行。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "integration-import",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -421,9 +371,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "行落账结果（integration-import 拥有）：逐行写端口结局（阶段 C）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "integration-import",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -434,9 +382,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "契约：GC-009 InboxRecord。单体用 consumer_name 区分消费者，不按模块拆物理表。 消费申请生命周期事件；processed 与规范事件/Outbox 同事务。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -447,9 +393,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "Inbox 死信人工重放请求：原消息不可改，重放生成新 Inbox received。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -460,9 +404,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "内陆计划版本。草稿不完成节点。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -473,9 +415,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "计划参数（inland-fulfillment 拥有）：租户键值，禁止源码默认。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "inland-fulfillment",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -486,9 +426,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "计划策略（inland-fulfillment 拥有）：租户策略码，须在注册表内。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "inland-fulfillment",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -499,9 +437,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "资源占用日历。本刀 confirm_before_occupy 不写入。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -512,9 +448,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "全生命周期日期事实（lifecycle-control 拥有）：三种入口共用，追加版本而不覆盖历史。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "lifecycle-control",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -536,9 +470,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "跨模块通知 Outbox（本刀由 lifecycle-control 写入）。 契约：GC-009 OutboxRecord；物理形态参考 CUSTOMS_DATABASE §5.2。 领域事件插入与 pending 同行。发布器领取后写入 publishing 租约，成功则 published。 单体用 owner_module 区分写入方。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -560,9 +492,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "可选节点适用性决策留痕（lifecycle-control 拥有）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "lifecycle-control",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -573,9 +503,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "节点阻断事实（lifecycle-control 拥有）：追加保存，节点 blocked 只是未解除阻断的投影。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "lifecycle-control",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -586,9 +514,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "节点阻断解除事实：一个 blockId 最多追加一次解除，禁止覆盖原阻断。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -599,9 +525,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "规范事件对单个目标节点的应用结果；同一事件可随前序满足而逐节点重放。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -612,9 +536,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "节点实例（lifecycle-control 拥有）：流程在某个节点的状态（第一刀只 pending/active/completed）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "lifecycle-control",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -625,9 +547,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "节点任务（work-execution 拥有）：货柜到节点的工序任务（第一刀最小集）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "work-execution",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -638,9 +558,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "任务结果快照（work-execution 拥有）：工序聚合结果，不推进生命周期。 第一刀 resultPolicy=none；同任务最多一条，重放不重复写。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "work-execution",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -651,9 +569,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "海运供应商事件接入留痕（ocean-port-visibility 拥有）。 原始载荷与来源裁决追加保存；本表不产生规范事件，也不推进生命周期。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "ocean-port-visibility",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -664,9 +580,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "货柜海运路线版本（lifecycle-control 读取，后续由受控路线写端口维护）。 只有 active 版本参与过站；旧版本保留用于解释历史事实。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -677,9 +591,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "路线内有序航段。日期事实的 segmentId 必须指向当前 active 路线中的一段。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -690,9 +602,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "独立异常案件事实；与流程 Block 正交，不通过异常状态改写主生命周期。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -714,9 +624,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "运营助手会话（notification 拥有）：可由通知打开；本刀只读问答。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "notification",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -727,9 +635,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "运营问题通知（notification 拥有）：业务模块经 Port 投递，不直写表。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "notification",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -751,9 +657,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "死信人工重放请求（lifecycle-control 拥有）：原消息不可改，重放生成新 Outbox。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "lifecycle-control",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -764,9 +668,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "超期费用阶梯（charges-settlement 拥有）。金额定点两位小数 + ISO 币种；不算进账单。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "charges-settlement",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -777,9 +679,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "超期费用标准（charges-settlement 拥有）：免费期与匹配键。费率在阶梯子表。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "charges-settlement",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -790,9 +690,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "UNECE 官方源行；同一 UN/LOCODE 可合法出现多条名称或变更条目。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -803,9 +701,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "UN/LOCODE 港口稳定身份；同一码的多语言/变更记录保存在 PortCodeEntry，不在此静默折叠。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -816,9 +712,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "港口-车队-仓库分配。没分配的车队不上场。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -829,9 +723,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "外部/中文名称到权威港口身份的候选关系；名称可能歧义，只有 confirmed 才允许自动规范化。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -842,9 +734,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "已出运候选修正版本的 SKU 实际装载明细；随父版本不可变，整组替代，不提前写正式 Shipment 货物表。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -855,9 +745,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "已出运候选的人工修正版本（integration-import 拥有）：追加版本，不覆盖原始四表快照。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "integration-import",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -868,9 +756,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "已出运四表待复核包（integration-import 拥有）：只保存契约化预检快照，不创建 Shipment。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "integration-import",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -881,9 +767,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "待复核包与四个原始导入批次的租户内关系。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -916,9 +800,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "证书稳定身份与版本归 master-data；文件本体由 document-records 拥有。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -951,9 +833,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "SKU 结构化合规档案版本头（master-data 拥有）：每个 SKU 仅一个 active 版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "master-data",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -986,9 +866,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "产品定义（product-selection 拥有）：把已领的立项推进到可发布，交给主数据侧建档。 与立项同构 —— 一票一行、version 递增的当前态；发布时另写不可变交接快照。 不存缺口码：缺口按当前阶段现算，存成状态会阶段动了、缺口还停在原地。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "product-selection",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -999,9 +877,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "发布时冻结的不可变交接快照。同一产品定义再次发布追加版本，旧版不覆盖。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1012,9 +888,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "可售 SKU 发布的不可变交接快照。身份齐备即可发布；BOM 与 Listing 作为待补随行。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1036,9 +910,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "NPI 领取回执（product-selection 拥有）：把交到产品侧的立项接到某个产品负责人名下。 追加写、不可变。领取不等于立项成立，也不产生任何产品结论。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "product-selection",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1093,9 +965,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "Product/SKU 稳定身份（master-data 拥有）：交易行和合规档案只保存逻辑引用。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "master-data",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1106,9 +976,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "SKU 注册幂等结果：同键重放返回原身份，同键异载荷明确冲突。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1119,9 +987,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "全局参考数据发布（master-data 拥有）：权威数据按发布版本不可变，active 版本由数据库部分唯一索引约束。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "master-data",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1132,9 +998,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "备货单身份表（shipment-registry 拥有）：租户内备货单号唯一。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1145,9 +1009,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "产品明细（shipment-registry 拥有）：重导时保留历史版本，只切换 is_current。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1158,9 +1020,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "已实际出运的主运输执行；计划、HBL、货柜和备货单都不是 Shipment 身份。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1204,9 +1064,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "Shipment 主状态是事件投影；应用记录保存规则版本、守卫与并发版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1228,9 +1086,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "每次外部交接不可变；更正追加版本并引用旧版本，规范载荷哈希由服务端计算。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1241,9 +1097,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "导入时间事实（shipment-registry 拥有）：actual/estimated 分槽，保留来源原值和 UTC 标准值。 这里只保存可追溯领域事实；生命周期事件晋升仍由 lifecycle-control 的证据与状态机守卫负责。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1276,9 +1130,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "事项交接（shipment-registry 拥有）：出运运营把票级事项交给专业岗位队列，该岗位领取、了结。 **只到岗位不到人**；`state` 只说明\"有没有人接、了没了的\"，不是 Shipment 的生命周期状态。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "shipment-registry",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1300,9 +1152,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "证据来源权威策略：版本化运行时配置；策略只决定事实资格，不直接推进生命周期。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1313,9 +1163,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "供应商身份（sourcing 拥有）。名称在租户内唯一 —— 重名会让\"定点给谁\"说不清。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "sourcing",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1326,9 +1174,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "定点交接快照（sourcing 拥有）：交给需求与补货侧。不可变；再次定点追加版本。 供应商名称与国别随快照冻结 —— 主数据后来改名，不影响当时定的是什么。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "sourcing",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1339,9 +1185,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "报价：一家供应商对一份可售 SKU 发布报的价与条件（十项），关键物料由报价带入。 一家供应商对一份发布只留一条当前版，被选中的那一版由定点快照冻结。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1352,9 +1196,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "UN/LOCODE 国家/地区段；XZ 等 UNECE 专用范围与 ISO 国家保持显式可空映射。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1365,9 +1207,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "当前目的仓与到仓要求的版本化操作指令（inland-fulfillment 拥有）。 warehouseLocationId 是 Facility 主数据落地前的稳定逻辑 UUID 引用，不引用 InlandPlan 草稿。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "inland-fulfillment",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1378,9 +1218,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "仓库卸柜日限额（本刀 inland-fulfillment 读写；后续经 master-data 端口）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1391,9 +1229,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "作业工单（work-execution 拥有）：任务拆出的工单（第一刀最小集）。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": "work-execution",
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1404,9 +1240,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "已采信生命周期事实对工单的不可变应用记录；同业务键重放只读取原决定。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "prisma-schema"
-      ],
+      "sourceRefs": ["prisma-schema"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1518,9 +1352,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1751,9 +1583,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1819,9 +1649,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1865,9 +1693,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -1911,9 +1737,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2067,9 +1891,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2080,9 +1902,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2093,9 +1913,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2117,9 +1935,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2141,9 +1957,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2220,9 +2034,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2310,9 +2122,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2378,9 +2188,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2391,9 +2199,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2426,9 +2232,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2450,9 +2254,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2529,9 +2331,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2608,9 +2408,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2665,9 +2463,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2678,9 +2474,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验重复请求的规范化内容是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2746,9 +2540,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2825,9 +2617,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2838,9 +2628,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2939,9 +2727,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验重复请求的规范化内容是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2963,9 +2749,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2976,9 +2760,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -2989,9 +2771,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3068,9 +2848,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3092,9 +2870,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3116,9 +2892,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3250,9 +3024,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3318,9 +3090,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3331,9 +3101,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3344,9 +3112,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3379,9 +3145,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3458,9 +3222,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3559,9 +3321,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3616,9 +3376,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3662,9 +3420,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3675,9 +3431,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3688,9 +3442,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3712,9 +3464,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3736,9 +3486,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3925,9 +3673,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3949,9 +3695,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3962,9 +3706,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -3975,9 +3717,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4010,9 +3750,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4089,9 +3827,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4135,9 +3871,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4181,9 +3915,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4238,9 +3970,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4251,9 +3981,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4286,9 +4014,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4332,9 +4058,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4466,9 +4190,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4545,9 +4267,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4558,9 +4278,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4571,9 +4289,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4606,9 +4322,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4795,9 +4509,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4863,9 +4575,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4876,9 +4586,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4889,9 +4597,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -4924,9 +4630,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5080,9 +4784,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5192,9 +4894,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5205,9 +4905,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5218,9 +4916,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5231,9 +4927,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5266,9 +4960,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5400,9 +5092,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5413,9 +5103,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5426,9 +5114,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5439,9 +5125,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5507,9 +5191,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "用于内容完整性、去重或审计比对。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5575,9 +5257,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5775,9 +5455,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5799,9 +5477,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5812,9 +5488,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5825,9 +5499,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5926,9 +5598,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -5939,9 +5609,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6007,9 +5675,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6020,9 +5686,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6044,9 +5708,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6090,9 +5752,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6103,9 +5763,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6182,9 +5840,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6195,9 +5851,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6208,9 +5862,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6254,9 +5906,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6267,9 +5917,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6368,9 +6016,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6403,9 +6049,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6526,9 +6170,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6583,9 +6225,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6662,9 +6302,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6686,9 +6324,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6798,9 +6434,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6855,9 +6489,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6934,9 +6566,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6947,9 +6577,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验重复请求的规范化内容是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6960,9 +6588,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -6973,9 +6599,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7151,9 +6775,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7164,9 +6786,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7188,9 +6808,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7234,9 +6852,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7313,9 +6929,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7359,9 +6973,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7372,9 +6984,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7396,9 +7006,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7431,9 +7039,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7444,9 +7050,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7468,9 +7072,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7547,9 +7149,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7681,9 +7281,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7749,9 +7347,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7762,9 +7358,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -7885,9 +7479,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8173,9 +7765,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8186,9 +7776,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8199,9 +7787,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8223,9 +7809,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8247,9 +7831,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8337,9 +7919,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8394,9 +7974,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8407,9 +7985,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8420,9 +7996,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8576,9 +8150,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8589,9 +8161,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8602,9 +8172,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8615,9 +8183,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8782,9 +8348,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8795,9 +8359,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8841,9 +8403,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8854,9 +8414,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8933,9 +8491,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8957,9 +8513,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -8970,9 +8524,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9027,9 +8579,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9073,9 +8623,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9163,9 +8711,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9308,9 +8854,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9321,9 +8865,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9389,9 +8931,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9402,9 +8942,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9437,9 +8975,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9846,9 +9382,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9859,9 +9393,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9938,9 +9470,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -9962,9 +9492,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10030,9 +9558,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10043,9 +9569,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10078,9 +9602,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10135,9 +9657,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10203,9 +9723,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10370,9 +9888,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10383,9 +9899,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10396,9 +9910,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10409,9 +9921,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10422,9 +9932,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10556,9 +10064,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10580,9 +10086,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10615,9 +10119,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10661,9 +10163,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10718,9 +10218,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10819,9 +10317,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10876,9 +10372,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10933,9 +10427,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10946,9 +10438,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -10959,9 +10449,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11137,9 +10625,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11150,9 +10636,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11163,9 +10647,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验重复请求的规范化内容是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11176,9 +10658,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11277,9 +10757,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11345,9 +10823,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11424,9 +10900,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11437,9 +10911,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11450,9 +10922,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11650,9 +11120,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11817,9 +11285,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11841,9 +11307,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11898,9 +11362,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11911,9 +11373,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -11990,9 +11450,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12124,9 +11582,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12137,9 +11593,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12315,9 +11769,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12328,9 +11780,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12341,9 +11791,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12354,9 +11802,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12433,9 +11879,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12523,9 +11967,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12536,9 +11978,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12637,9 +12077,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12683,9 +12121,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12707,9 +12143,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12720,9 +12154,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12744,9 +12176,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12779,9 +12209,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12814,9 +12242,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12827,9 +12253,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12884,9 +12308,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -12985,9 +12407,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13031,9 +12451,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13055,9 +12473,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13145,9 +12561,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13158,9 +12572,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13171,9 +12583,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13206,9 +12616,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13307,9 +12715,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13320,9 +12726,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13333,9 +12737,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13357,9 +12759,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13381,9 +12781,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13460,9 +12858,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13539,9 +12935,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13662,9 +13056,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13675,9 +13067,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13688,9 +13078,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13701,9 +13089,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13714,9 +13100,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13760,9 +13144,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13828,9 +13210,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13841,9 +13221,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13854,9 +13232,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13867,9 +13243,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13891,9 +13265,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13970,9 +13342,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13983,9 +13353,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -13996,9 +13364,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14009,9 +13375,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14033,9 +13397,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14156,9 +13518,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14169,9 +13529,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14182,9 +13540,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14195,9 +13551,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14208,9 +13562,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14232,9 +13584,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14311,9 +13661,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14368,9 +13716,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14381,9 +13727,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14394,9 +13738,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14451,9 +13793,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14464,9 +13804,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14477,9 +13815,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14490,9 +13826,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14525,9 +13859,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14593,9 +13925,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14672,9 +14002,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14685,9 +14013,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14698,9 +14024,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14722,9 +14046,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14779,9 +14101,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14803,9 +14123,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14904,9 +14222,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14928,9 +14244,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14941,9 +14255,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -14954,9 +14266,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15000,9 +14310,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15013,9 +14321,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15026,9 +14332,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15050,9 +14354,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15107,9 +14409,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15142,9 +14442,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15221,9 +14519,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15245,9 +14541,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15258,9 +14552,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15293,9 +14585,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15306,9 +14596,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15319,9 +14607,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15343,9 +14629,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15675,9 +14959,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15765,9 +15047,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15778,9 +15058,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -15989,9 +15267,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16002,9 +15278,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16048,9 +15322,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16061,9 +15333,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16162,9 +15432,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16230,9 +15498,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16254,9 +15520,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16300,9 +15564,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16313,9 +15575,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16348,9 +15608,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16449,9 +15707,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16462,9 +15718,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16563,9 +15817,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16642,9 +15894,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16666,9 +15916,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16679,9 +15927,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16769,9 +16015,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16782,9 +16026,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16795,9 +16037,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -16995,9 +16235,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17008,9 +16246,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17021,9 +16257,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17166,9 +16400,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17179,9 +16411,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17247,9 +16477,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17315,9 +16543,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17361,9 +16587,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17374,9 +16598,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17563,9 +16785,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17576,9 +16796,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17589,9 +16807,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17602,9 +16818,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17615,9 +16829,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17694,9 +16906,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17718,9 +16928,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17731,9 +16939,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17799,9 +17005,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -17812,9 +17016,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18012,9 +17214,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18025,9 +17225,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18126,9 +17324,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18139,9 +17335,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18152,9 +17346,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18165,9 +17357,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18178,9 +17368,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18246,9 +17434,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18347,9 +17533,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18382,9 +17566,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18395,9 +17577,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18408,9 +17588,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18421,9 +17599,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18632,9 +17808,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18678,9 +17852,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18691,9 +17863,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18704,9 +17874,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18717,9 +17885,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18763,9 +17929,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -18875,9 +18039,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19009,9 +18171,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19022,9 +18182,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "识别同一写入请求的重复提交。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19035,9 +18193,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19048,9 +18204,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19083,9 +18237,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19162,9 +18314,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19197,9 +18347,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19210,9 +18358,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19256,9 +18402,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "标识该记录在其对象版本链中的版本。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19324,9 +18468,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19337,9 +18479,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行最近一次更新数据库的时间。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19416,9 +18556,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "校验重复请求的规范化内容是否一致。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",
@@ -19484,9 +18622,7 @@
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": [
-        "engineering-data-governance"
-      ],
+      "sourceRefs": ["engineering-data-governance"],
       "ownerModule": null,
       "workbenchCodes": [],
       "sensitivityClass": "pending_policy",

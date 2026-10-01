@@ -21,6 +21,7 @@ jobs:
       production: ${{ steps.classify.outputs.production }}
       e2e: ${{ steps.classify.outputs.e2e }}
       dependencies: ${{ steps.classify.outputs.dependencies }}
+      dictionary: ${{ steps.classify.outputs.dictionary }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -39,11 +40,13 @@ jobs:
             $production = $false
             $e2e = $false
             $dependencies = $true
+            $dictionary = $true
           } elseif ($env:EVENT_NAME -eq "workflow_dispatch") {
             $code = $true
             $production = $true
             $e2e = $true
             $dependencies = $true
+            $dictionary = $true
           } else {
             $files = @(git diff --name-only --diff-filter=ACMR $env:BASE_SHA $env:HEAD_SHA)
             if ($LASTEXITCODE -ne 0) {
@@ -84,12 +87,23 @@ jobs:
                 $_ -match '^\.nvmrc$'
               }
             ).Count -gt 0
+            $dictionary = @(
+              $files | Where-Object {
+                $_ -match '^database/schema\.prisma$' -or
+                $_ -match '^database/migrations/' -or
+                $_ -match '^database/dictionary/' -or
+                $_ -match '^scripts/generate-data-dictionary(\.test)?\.mjs$' -or
+                $_ -match '^scripts/data-dictionary/' -or
+                $_ -match '^ENGINEERING_RULES\.md$'
+              }
+            ).Count -gt 0
           }
 
           "code=$($code.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "production=$($production.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "e2e=$($e2e.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "dependencies=$($dependencies.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "dictionary=$($dictionary.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
   static:
     if: github.event_name != 'schedule'
@@ -167,6 +181,21 @@ jobs:
             apps/web/playwright-report
           if-no-files-found: ignore
 
+  dictionary:
+    if: needs.changes.outputs.dictionary == 'true'
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm data-dictionary:check
+
   security:
     if: needs.changes.outputs.dependencies == 'true'
     needs: changes
@@ -184,7 +213,7 @@ jobs:
 
   quality:
     if: always()
-    needs: [changes, static, unit, build, e2e, security]
+    needs: [changes, static, unit, build, e2e, dictionary, security]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -196,13 +225,14 @@ jobs:
           UNIT_RESULT: ${{ needs.unit.result }}
           BUILD_RESULT: ${{ needs.build.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
+          DICTIONARY_RESULT: ${{ needs.dictionary.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
         run: |
           if [[ "$CHANGES_RESULT" != "success" ]]; then
             exit 1
           fi
 
-          for result in "$STATIC_RESULT" "$UNIT_RESULT" "$BUILD_RESULT" "$E2E_RESULT" "$SECURITY_RESULT"; do
+          for result in "$STATIC_RESULT" "$UNIT_RESULT" "$BUILD_RESULT" "$E2E_RESULT" "$DICTIONARY_RESULT" "$SECURITY_RESULT"; do
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
               exit 1
             fi

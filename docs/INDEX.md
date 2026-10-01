@@ -20,48 +20,50 @@
 
 ## 三、docs 导航与架构
 
-| 文档                                                                                                              | 一句话                                                     | 状态                            |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------- |
-| [货柜生命周期技术导读](./人话导读.md)                                                                             | 白话解释货柜生命周期技术底座；不定义项目范围或工作台清单   | 技术导航                        |
-| [货柜怎么往前走（技术白话）](./人话-货柜怎么往前走.md)                                                            | 建柜展任务、事实算条件、核验实际才过站                     | 技术对照                        |
-| [docs/README](./README.md)                                                                                        | docs 导航+写作纪律+消费链                                  | 导航                            |
-| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)                                                  | 目标架构总览(分层/模块/AI/工作流)                          | 已接受                          |
-| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                                                               | 模块/包依赖与禁止依赖                                      | 已接受(P1-09)                   |
-| [模块插件约定](./architecture/MODULE_PLUGIN_CONVENTION.md)                                                        | Odoo 式基础核+增量插件：manifest/目录/权限映射             | 已接受约定                      |
-| [增量模块开发手册](./architecture/INCREMENTAL_MODULE_PLAYBOOK.md)                                                 | 切片提纲+清单；Odoo 可借鉴能力全量采纳与优先序             | 已接受工作纸                    |
-| [ADR-011 受控 UI 投影](./architecture/decisions/ADR-011-controlled-ui-projection.md)                              | 控件化+schema 投影；拒绝 Studio 选表/任意 JOIN             | 候选(proposed)                  |
-| [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md)                                          | 问题通知总线与从通知打开的只读运营助手第一刀               | 已合入 main                     |
-| [任务：对象活动流+Activity 投影](./planning/tasks/p6-object-activity-task-projection.md)                          | 通知挂货柜/任务，并从现有工单投影下一动作                  | 已合入 main                     |
-| [任务：只读助手对象上下文](./planning/tasks/p6-assistant-object-context.md)                                       | 助手会话挂对象上下文，只读投影与追问回退                   | 已合入 main                     |
-| [任务：全生命周期统一日期事实](./planning/tasks/p6-unified-lifecycle-date-facts.md)                               | API、导入、人工共用日期事实链，核验实际日期才申请过站      | 已完成                          |
-| [业务纵向交付路线图](./planning/DOMAIN_VERTICAL_DELIVERY_PLAN.md)                                                 | 已出运闭环主线、需求分层、外部接入与高级能力的启动前置     | 当前实施路线 v3                 |
-| [任务：Product/SKU 稳定身份](./planning/tasks/p6-product-sku-master-identity.md)                                  | master-data 建立租户内 SKU 稳定身份与幂等公开 Port         | 已完成                          |
-| [任务：备货单行 SKU 与货柜装载](./planning/tasks/p6-shipment-cargo-allocation.md)                                 | 产品行稳定引用 SKU，并版本化保存跨订单实际装载事实         | 已完成                          |
-| [任务：Product/SKU 结构化合规档案](./planning/tasks/p6-product-compliance-profile.md)                             | 电池、危险品、制冷剂、检验要求及证书版本事实               | 已完成                          |
-| [任务：cargo_ready 合规闭环](./planning/tasks/p6-cargo-ready-compliance-flow.md)                                  | 装载与 SKU 合规档案形成评审决定，并接入备货节点门禁        | 已合入 main                     |
-| [任务：岗位工作台公共骨架](./planning/tasks/p6-role-workbench-cargo-ready.md)                                     | 备货工作台公共壳与真实只读投影                             | 已合入 main                     |
-| [任务：备货岗位可操作闭环](./planning/tasks/p6-cargo-ready-operational-workbench.md)                              | 全局备货任务池、SKU 齐备度、允许动作与结果反馈             | 已完成，待合入 main             |
-| [任务：备货工作台以人为中心改造](./planning/tasks/p6-cargo-ready-human-centered-redesign.md)                      | 已实现现场保留；等待 Shipment 核心边界批准后评审辅助面处置 | 已冻结                          |
-| [任务：装箱事实与岗位操作闭环](./planning/tasks/p6-container-stuffing-operational-flow.md)                        | 版本化装箱快照、实际装箱日期事实与岗位工作台               | 已完成                          |
-| [任务：出运装船事实与岗位操作闭环](./planning/tasks/p6-shipment-dispatch-loaded-operational-flow.md)              | 订舱/船名航次/VGM 交接、进港与装船日期事实和出运工作台     | 已完成                          |
-| [任务：日期事实复核与采信闭环](./planning/tasks/p6-lifecycle-date-fact-review-flow.md)                            | 四眼复核人工实际日期、追加确认版本并自动申请推进与重放     | 已完成                          |
-| [任务：清关案件、放行门禁与岗位工作台](./planning/tasks/p6-customs-clearance-operational-flow.md)                 | 海关申报/扣留/放行案件、清关节点门禁与岗位操作闭环         | 已完成                          |
-| [任务：码头可提、Gate Out 门禁与提柜工作台](./planning/tasks/p6-container-pickup-operational-flow.md)             | 可提事实、重柜出场联合门禁与内陆运输岗位操作闭环           | 已完成                          |
-| [任务：实际送仓/POD 门禁与送仓工作台](./planning/tasks/p6-warehouse-delivery-operational-flow.md)                 | 版本化目的仓、实际到仓证据、送仓门禁与内陆运输岗位闭环     | 已完成，待合入                  |
-| [任务：实际卸柜、部分卸货与卸柜完成](./planning/tasks/p6-container-unloading-operational-flow.md)                 | 版本化卸货进度、实收差异、卸柜门禁与仓库收货岗位闭环       | 已完成，待合入                  |
-| [任务：货柜工作台一期与生命周期事实对账](./planning/tasks/p6-container-workbench-phase1.md)                       | 已应用事实可靠对账工单，并铺满一柜一档 14 站与三轨         | 已完成                          |
-| [任务：真实备货样本数据库基础](./planning/tasks/p6-real-replenishment-database-foundation.md)                     | 正式产品行字段、租户引用约束与可重复真实装载开发数据       | 已完成                          |
-| [任务：标准 Seed 只写真实备货样本](./planning/tasks/p6-real-sample-only-seed.md)                                  | 移除旧三柜合成数据并让前端开发身份读取真实样本             | 已完成                          |
-| [任务：已出运 Shipment 生命周期技术基础](./planning/tasks/p6-post-departure-shipment-lifecycle-implementation.md) | 统一 Handoff、公共契约、加法迁移、查询聚合与主数据基础     | 已完成并经 PR #45 合入          |
-| [任务：已出运数据接管工作台首片](./planning/tasks/p6-post-departure-handoff-workbench-first-slice.md)             | 任一来源预检、受控修正、单票接管和内部事实交接             | 已完成并经 PR #47 合入          |
-| [任务：已出运接管作业闭环](./planning/tasks/p6-post-departure-handoff-operational-closeout.md)                    | 批量接管非阻断候选，跨会话持续处理已接管待补               | 已完成                          |
-| [任务：出运后 Shipment 模型与四表字段基线评审](./planning/tasks/p6-post-departure-shipment-model-review.md)       | 核定 Shipment 粒度、四域字段覆盖、只读详情投影和迁移门禁   | 已批准并转入实施                |
-| [数据库结构契约 V1](./architecture/DATABASE_SCHEMA_CONTRACT_V1.md)                                                | 全库表、字段、约束、索引、所有权和迁移演进的单一评审入口   | 现行实施契约 V1                 |
-| [任务：数据库数据字典与业务语义工作簿 V1](./planning/tasks/database-data-dictionary-v1.md)                        | 从迁移、Prisma 与人工审定语义生成仓库字典和业务评审 Excel  | coding（切片 A）                |
-| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                                     | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断             | 安全基线 V1                     |
-| [任务：多代理薄编排器 V1](./planning/tasks/thin-agent-orchestrator-v1.md)                                         | 复用现有 brief/交接协议，校验 worktree、范围和定向门禁     | blocked（待治理合入）           |
-| [任务：集团租户、账套主体与用户范围 V1](./planning/tasks/tenant-account-owner-scope-v1.md)                        | 一个集团一租户、多账套主体、用户/用户组角色范围和主体选择  | blocked（等待当前 authz 收口）  |
-| [ADR 索引](./architecture/decisions/README.md) + ADR-001~013                                                      | 架构决策记录（含受控 UI、外部时间与数据字典）              | P1 已接受；011 候选、12/13 接受 |
+| 文档                                                                                                              | 一句话                                                     | 状态                              |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------- |
+| [货柜生命周期技术导读](./人话导读.md)                                                                             | 白话解释货柜生命周期技术底座；不定义项目范围或工作台清单   | 技术导航                          |
+| [货柜怎么往前走（技术白话）](./人话-货柜怎么往前走.md)                                                            | 建柜展任务、事实算条件、核验实际才过站                     | 技术对照                          |
+| [docs/README](./README.md)                                                                                        | docs 导航+写作纪律+消费链                                  | 导航                              |
+| [架构文档](./architecture/AI_WORKFLOW_TECHNICAL_ARCHITECTURE.md)                                                  | 目标架构总览(分层/模块/AI/工作流)                          | 已接受                            |
+| [模块依赖图](./architecture/MODULE_DEPENDENCIES.md)                                                               | 模块/包依赖与禁止依赖                                      | 已接受(P1-09)                     |
+| [模块插件约定](./architecture/MODULE_PLUGIN_CONVENTION.md)                                                        | Odoo 式基础核+增量插件：manifest/目录/权限映射             | 已接受约定                        |
+| [增量模块开发手册](./architecture/INCREMENTAL_MODULE_PLAYBOOK.md)                                                 | 切片提纲+清单；Odoo 可借鉴能力全量采纳与优先序             | 已接受工作纸                      |
+| [ADR-011 受控 UI 投影](./architecture/decisions/ADR-011-controlled-ui-projection.md)                              | 控件化+schema 投影；拒绝 Studio 选表/任意 JOIN             | 候选(proposed)                    |
+| [任务：通知+只读助手](./planning/tasks/p6-notification-ops-assistant.md)                                          | 问题通知总线与从通知打开的只读运营助手第一刀               | 已合入 main                       |
+| [任务：对象活动流+Activity 投影](./planning/tasks/p6-object-activity-task-projection.md)                          | 通知挂货柜/任务，并从现有工单投影下一动作                  | 已合入 main                       |
+| [任务：只读助手对象上下文](./planning/tasks/p6-assistant-object-context.md)                                       | 助手会话挂对象上下文，只读投影与追问回退                   | 已合入 main                       |
+| [任务：全生命周期统一日期事实](./planning/tasks/p6-unified-lifecycle-date-facts.md)                               | API、导入、人工共用日期事实链，核验实际日期才申请过站      | 已完成                            |
+| [业务纵向交付路线图](./planning/DOMAIN_VERTICAL_DELIVERY_PLAN.md)                                                 | 已出运闭环主线、需求分层、外部接入与高级能力的启动前置     | 当前实施路线 v3                   |
+| [任务：Product/SKU 稳定身份](./planning/tasks/p6-product-sku-master-identity.md)                                  | master-data 建立租户内 SKU 稳定身份与幂等公开 Port         | 已完成                            |
+| [任务：备货单行 SKU 与货柜装载](./planning/tasks/p6-shipment-cargo-allocation.md)                                 | 产品行稳定引用 SKU，并版本化保存跨订单实际装载事实         | 已完成                            |
+| [任务：Product/SKU 结构化合规档案](./planning/tasks/p6-product-compliance-profile.md)                             | 电池、危险品、制冷剂、检验要求及证书版本事实               | 已完成                            |
+| [任务：cargo_ready 合规闭环](./planning/tasks/p6-cargo-ready-compliance-flow.md)                                  | 装载与 SKU 合规档案形成评审决定，并接入备货节点门禁        | 已合入 main                       |
+| [任务：岗位工作台公共骨架](./planning/tasks/p6-role-workbench-cargo-ready.md)                                     | 备货工作台公共壳与真实只读投影                             | 已合入 main                       |
+| [任务：备货岗位可操作闭环](./planning/tasks/p6-cargo-ready-operational-workbench.md)                              | 全局备货任务池、SKU 齐备度、允许动作与结果反馈             | 已完成，待合入 main               |
+| [任务：备货工作台以人为中心改造](./planning/tasks/p6-cargo-ready-human-centered-redesign.md)                      | 已实现现场保留；等待 Shipment 核心边界批准后评审辅助面处置 | 已冻结                            |
+| [任务：装箱事实与岗位操作闭环](./planning/tasks/p6-container-stuffing-operational-flow.md)                        | 版本化装箱快照、实际装箱日期事实与岗位工作台               | 已完成                            |
+| [任务：出运装船事实与岗位操作闭环](./planning/tasks/p6-shipment-dispatch-loaded-operational-flow.md)              | 订舱/船名航次/VGM 交接、进港与装船日期事实和出运工作台     | 已完成                            |
+| [任务：日期事实复核与采信闭环](./planning/tasks/p6-lifecycle-date-fact-review-flow.md)                            | 四眼复核人工实际日期、追加确认版本并自动申请推进与重放     | 已完成                            |
+| [任务：清关案件、放行门禁与岗位工作台](./planning/tasks/p6-customs-clearance-operational-flow.md)                 | 海关申报/扣留/放行案件、清关节点门禁与岗位操作闭环         | 已完成                            |
+| [任务：码头可提、Gate Out 门禁与提柜工作台](./planning/tasks/p6-container-pickup-operational-flow.md)             | 可提事实、重柜出场联合门禁与内陆运输岗位操作闭环           | 已完成                            |
+| [任务：实际送仓/POD 门禁与送仓工作台](./planning/tasks/p6-warehouse-delivery-operational-flow.md)                 | 版本化目的仓、实际到仓证据、送仓门禁与内陆运输岗位闭环     | 已完成，待合入                    |
+| [任务：实际卸柜、部分卸货与卸柜完成](./planning/tasks/p6-container-unloading-operational-flow.md)                 | 版本化卸货进度、实收差异、卸柜门禁与仓库收货岗位闭环       | 已完成，待合入                    |
+| [任务：货柜工作台一期与生命周期事实对账](./planning/tasks/p6-container-workbench-phase1.md)                       | 已应用事实可靠对账工单，并铺满一柜一档 14 站与三轨         | 已完成                            |
+| [任务：真实备货样本数据库基础](./planning/tasks/p6-real-replenishment-database-foundation.md)                     | 正式产品行字段、租户引用约束与可重复真实装载开发数据       | 已完成                            |
+| [任务：标准 Seed 只写真实备货样本](./planning/tasks/p6-real-sample-only-seed.md)                                  | 移除旧三柜合成数据并让前端开发身份读取真实样本             | 已完成                            |
+| [任务：已出运 Shipment 生命周期技术基础](./planning/tasks/p6-post-departure-shipment-lifecycle-implementation.md) | 统一 Handoff、公共契约、加法迁移、查询聚合与主数据基础     | 已完成并经 PR #45 合入            |
+| [任务：已出运数据接管工作台首片](./planning/tasks/p6-post-departure-handoff-workbench-first-slice.md)             | 任一来源预检、受控修正、单票接管和内部事实交接             | 已完成并经 PR #47 合入            |
+| [任务：已出运接管作业闭环](./planning/tasks/p6-post-departure-handoff-operational-closeout.md)                    | 批量接管非阻断候选，跨会话持续处理已接管待补               | 已完成                            |
+| [任务：出运后 Shipment 模型与四表字段基线评审](./planning/tasks/p6-post-departure-shipment-model-review.md)       | 核定 Shipment 粒度、四域字段覆盖、只读详情投影和迁移门禁   | 已批准并转入实施                  |
+| [数据库结构契约 V1](./architecture/DATABASE_SCHEMA_CONTRACT_V1.md)                                                | 数据库权威顺序、通用不变量、迁移与评审治理入口             | 现行治理入口                      |
+| [生成数据库中文数据字典](../database/dictionary/DATA_DICTIONARY.generated.md)                                     | 当前表、物理字段、关系、证据状态和待确认清单               | 生成评审投影                      |
+| [数据库原生对象清单](../database/dictionary/NATIVE_OBJECTS.generated.md)                                          | Prisma 未完整表达的索引、约束、函数和触发器                | 生成评审投影                      |
+| [任务：数据库数据字典与业务语义工作簿 V1](./planning/tasks/database-data-dictionary-v1.md)                        | 从迁移、Prisma 与人工审定语义生成仓库字典和业务评审 Excel  | review（待独立复审与 Codex 收口） |
+| [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                                     | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断             | 安全基线 V1                       |
+| [任务：多代理薄编排器 V1](./planning/tasks/thin-agent-orchestrator-v1.md)                                         | 复用现有 brief/交接协议，校验 worktree、范围和定向门禁     | blocked（待治理合入）             |
+| [任务：集团租户、账套主体与用户范围 V1](./planning/tasks/tenant-account-owner-scope-v1.md)                        | 一个集团一租户、多账套主体、用户/用户组角色范围和主体选择  | blocked（等待当前 authz 收口）    |
+| [ADR 索引](./architecture/decisions/README.md) + ADR-001~013                                                      | 架构决策记录（含受控 UI、外部时间与数据字典）              | P1 已接受；011 候选、12/13 接受   |
 
 ## 四、产品设计与实现映射
 

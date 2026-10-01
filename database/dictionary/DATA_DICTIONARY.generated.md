@@ -1723,286 +1723,426 @@
 
 ## 关系清单
 
-| 类型 | 来源表 | Prisma 属性 | 目标模型 | 关系名 |
-| --- | --- | --- | --- | --- |
-| prisma_relation | canonical_event | dateFact | LifecycleDateFact | LifecycleDateFactAppliedEvent |
-| prisma_relation | canonical_event | nodeApplications | NodeEventApplication | CanonicalEventToNodeEventApplication |
-| prisma_relation | canonical_event | scopeMembers | CanonicalEventScopeMember | CanonicalEventToCanonicalEventScopeMember |
-| prisma_relation | canonical_event | shipmentApplication | ShipmentEventApplication | CanonicalEventToShipmentEventApplication |
-| prisma_relation | canonical_event | workOrderFactApplications | WorkOrderFactApplication | CanonicalEventToWorkOrderFactApplication |
-| prisma_relation | canonical_event_scope_member | containerRecord | ContainerRecord | CanonicalEventScopeMemberToContainerRecord |
-| prisma_relation | canonical_event_scope_member | event | CanonicalEvent | CanonicalEventToCanonicalEventScopeMember |
-| prisma_relation | canonical_event_scope_member | shipmentContainerLink | ShipmentContainerLink | CanonicalEventScopeMemberToShipmentContainerLink |
-| prisma_relation | cargo_owner_reference | release | ReferenceDataRelease | CargoOwnerReferenceToReferenceDataRelease |
-| prisma_relation | cargo_owner_reference | salesCountry | CountryCodeReference | CargoOwnerReferenceToCountryCodeReference |
-| prisma_relation | cargo_owner_reference | shipments | Shipment | CargoOwnerReferenceToShipment |
-| prisma_relation | cargo_ready_compliance_assessment | decisions | CargoReadyComplianceDecision | CargoReadyComplianceAssessmentToCargoReadyComplianceDecision |
-| prisma_relation | cargo_ready_compliance_assessment | findings | CargoReadyComplianceFinding | CargoReadyComplianceAssessmentToCargoReadyComplianceFinding |
-| prisma_relation | cargo_ready_compliance_assessment | items | CargoReadyComplianceAssessmentItem | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentItem |
-| prisma_relation | cargo_ready_compliance_assessment | ruleSnapshots | CargoReadyComplianceAssessmentRule | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentRule |
-| prisma_relation | cargo_ready_compliance_assessment | supersededBy | CargoReadyComplianceAssessment | CargoReadyAssessmentSupersession |
-| prisma_relation | cargo_ready_compliance_assessment | supersedesAssessment | CargoReadyComplianceAssessment | CargoReadyAssessmentSupersession |
-| prisma_relation | cargo_ready_compliance_assessment_item | assessment | CargoReadyComplianceAssessment | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentItem |
-| prisma_relation | cargo_ready_compliance_assessment_rule | assessment | CargoReadyComplianceAssessment | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentRule |
-| prisma_relation | cargo_ready_compliance_assessment_rule | ruleVersion | ComplianceRuleVersion | CargoReadyComplianceAssessmentRuleToComplianceRuleVersion |
-| prisma_relation | cargo_ready_compliance_decision | assessment | CargoReadyComplianceAssessment | CargoReadyComplianceAssessmentToCargoReadyComplianceDecision |
-| prisma_relation | cargo_ready_compliance_decision | supersededBy | CargoReadyComplianceDecision | CargoReadyDecisionSupersession |
-| prisma_relation | cargo_ready_compliance_decision | supersedesDecision | CargoReadyComplianceDecision | CargoReadyDecisionSupersession |
-| prisma_relation | cargo_ready_compliance_finding | assessment | CargoReadyComplianceAssessment | CargoReadyComplianceAssessmentToCargoReadyComplianceFinding |
-| prisma_relation | compliance_rule | versions | ComplianceRuleVersion | ComplianceRuleToComplianceRuleVersion |
-| prisma_relation | compliance_rule_version | assessmentRules | CargoReadyComplianceAssessmentRule | CargoReadyComplianceAssessmentRuleToComplianceRuleVersion |
-| prisma_relation | compliance_rule_version | rule | ComplianceRule | ComplianceRuleToComplianceRuleVersion |
-| prisma_relation | compliance_rule_version | skuScopes | ComplianceRuleVersionSkuScope | ComplianceRuleVersionToComplianceRuleVersionSkuScope |
-| prisma_relation | compliance_rule_version | supersededBy | ComplianceRuleVersion | ComplianceRuleVersionSupersession |
-| prisma_relation | compliance_rule_version | supersedesRuleVersion | ComplianceRuleVersion | ComplianceRuleVersionSupersession |
-| prisma_relation | compliance_rule_version_sku_scope | ruleVersion | ComplianceRuleVersion | ComplianceRuleVersionToComplianceRuleVersionSkuScope |
-| prisma_relation | container_cargo_allocation | allocationSet | ContainerCargoAllocationSet | ContainerCargoAllocationToContainerCargoAllocationSet |
-| prisma_relation | container_cargo_allocation | replenishmentOrderLine | ReplenishmentOrderLine | ContainerCargoAllocationToReplenishmentOrderLine |
-| prisma_relation | container_cargo_allocation | shipmentCargoLine | ShipmentCargoLine | ContainerCargoAllocationToShipmentCargoLine |
-| prisma_relation | container_cargo_allocation_set | allocations | ContainerCargoAllocation | ContainerCargoAllocationToContainerCargoAllocationSet |
-| prisma_relation | container_cargo_allocation_set | containerRecord | ContainerRecord | ContainerCargoAllocationSetToContainerRecord |
-| prisma_relation | container_cargo_allocation_set | stuffingSnapshots | ContainerStuffingSnapshot | ContainerCargoAllocationSetToContainerStuffingSnapshot |
-| prisma_relation | container_cargo_allocation_set | supersededBy | ContainerCargoAllocationSet | ContainerCargoAllocationSetSupersession |
-| prisma_relation | container_cargo_allocation_set | supersedesSet | ContainerCargoAllocationSet | ContainerCargoAllocationSetSupersession |
-| prisma_relation | container_dispatch_snapshot | containerRecord | ContainerRecord | ContainerDispatchSnapshotToContainerRecord |
-| prisma_relation | container_dispatch_snapshot | stuffingSnapshot | ContainerStuffingSnapshot | ContainerDispatchSnapshotToContainerStuffingSnapshot |
-| prisma_relation | container_dispatch_snapshot | supersededBy | ContainerDispatchSnapshot | ContainerDispatchSnapshotSupersession |
-| prisma_relation | container_dispatch_snapshot | supersedesSnapshot | ContainerDispatchSnapshot | ContainerDispatchSnapshotSupersession |
-| prisma_relation | container_import_binding | containerRecord | ContainerRecord | ContainerImportBindingToContainerRecord |
-| prisma_relation | container_record | canonicalEventScopeMembers | CanonicalEventScopeMember | CanonicalEventScopeMemberToContainerRecord |
-| prisma_relation | container_record | cargoAllocationSets | ContainerCargoAllocationSet | ContainerCargoAllocationSetToContainerRecord |
-| prisma_relation | container_record | customsClearanceCases | CustomsClearanceCase | ContainerRecordToCustomsClearanceCase |
-| prisma_relation | container_record | dispatchSnapshots | ContainerDispatchSnapshot | ContainerDispatchSnapshotToContainerRecord |
-| prisma_relation | container_record | importBindings | ContainerImportBinding | ContainerImportBindingToContainerRecord |
-| prisma_relation | container_record | lifecycleDateFacts | LifecycleDateFact | ContainerRecordToLifecycleDateFact |
-| prisma_relation | container_record | oceanRoutePlans | OceanRoutePlan | ContainerRecordToOceanRoutePlan |
-| prisma_relation | container_record | operationalExceptions | OperationalExceptionCase | ContainerRecordToOperationalExceptionCase |
-| prisma_relation | container_record | replenishmentOrder | ReplenishmentOrder | ContainerRecordToReplenishmentOrder |
-| prisma_relation | container_record | shipmentDocumentLinks | ShipmentContainerDocumentLink | ContainerRecordToShipmentContainerDocumentLink |
-| prisma_relation | container_record | shipmentLinks | ShipmentContainerLink | ContainerRecordToShipmentContainerLink |
-| prisma_relation | container_record | shipmentUpstreamReferences | ShipmentUpstreamReference | ContainerRecordToShipmentUpstreamReference |
-| prisma_relation | container_record | sourceIdentities | ContainerSourceIdentity | ContainerRecordToContainerSourceIdentity |
-| prisma_relation | container_record | stuffingSnapshots | ContainerStuffingSnapshot | ContainerRecordToContainerStuffingSnapshot |
-| prisma_relation | container_record | timeFacts | ShipmentTimeFact | ContainerRecordToShipmentTimeFact |
-| prisma_relation | container_record | unloadingReports | ContainerUnloadingReport | ContainerRecordToContainerUnloadingReport |
-| prisma_relation | container_record | warehouseDeliveryInstructions | WarehouseDeliveryInstruction | ContainerRecordToWarehouseDeliveryInstruction |
-| prisma_relation | container_record | workHandoffs | ShipmentWorkHandoff | ContainerRecordToShipmentWorkHandoff |
-| prisma_relation | container_source_identity | containerRecord | ContainerRecord | ContainerRecordToContainerSourceIdentity |
-| prisma_relation | container_stuffing_snapshot | allocationSet | ContainerCargoAllocationSet | ContainerCargoAllocationSetToContainerStuffingSnapshot |
-| prisma_relation | container_stuffing_snapshot | containerRecord | ContainerRecord | ContainerRecordToContainerStuffingSnapshot |
-| prisma_relation | container_stuffing_snapshot | dispatchSnapshots | ContainerDispatchSnapshot | ContainerDispatchSnapshotToContainerStuffingSnapshot |
-| prisma_relation | container_stuffing_snapshot | supersededBy | ContainerStuffingSnapshot | ContainerStuffingSnapshotSupersession |
-| prisma_relation | container_stuffing_snapshot | supersedesSnapshot | ContainerStuffingSnapshot | ContainerStuffingSnapshotSupersession |
-| prisma_relation | container_unloading_report | containerRecord | ContainerRecord | ContainerRecordToContainerUnloadingReport |
-| prisma_relation | container_unloading_report | supersededBy | ContainerUnloadingReport | ContainerUnloadingReportSupersession |
-| prisma_relation | container_unloading_report | supersedesReport | ContainerUnloadingReport | ContainerUnloadingReportSupersession |
-| prisma_relation | country_code_reference | cargoOwners | CargoOwnerReference | CargoOwnerReferenceToCountryCodeReference |
-| prisma_relation | country_code_reference | release | ReferenceDataRelease | CountryCodeReferenceToReferenceDataRelease |
-| prisma_relation | country_code_reference | unlocodeAreas | UnlocodeAreaReference | CountryCodeReferenceToUnlocodeAreaReference |
-| prisma_relation | customs_clearance_case | containerRecord | ContainerRecord | ContainerRecordToCustomsClearanceCase |
-| prisma_relation | customs_clearance_case | supersededBy | CustomsClearanceCase | CustomsClearanceCaseSupersession |
-| prisma_relation | customs_clearance_case | supersedesCase | CustomsClearanceCase | CustomsClearanceCaseSupersession |
-| prisma_relation | evidence_record | decisions | EvidenceVerificationDecision | EvidenceRecordToEvidenceVerificationDecision |
-| prisma_relation | evidence_verification_decision | evidence | EvidenceRecord | EvidenceRecordToEvidenceVerificationDecision |
-| prisma_relation | flow_instance | nodeBlocks | NodeBlock | FlowInstanceToNodeBlock |
-| prisma_relation | flow_instance | nodes | NodeInstance | FlowInstanceToNodeInstance |
-| prisma_relation | flow_instance | shipment | Shipment | FlowInstanceToShipment |
-| prisma_relation | import_batch | postDepartureReviewSources | PostDepartureSourcePackageSource | ImportBatchToPostDepartureSourcePackageSource |
-| prisma_relation | import_batch | replacementBatches | ImportBatch | ImportBatchReplacement |
-| prisma_relation | import_batch | replacesBatch | ImportBatch | ImportBatchReplacement |
-| prisma_relation | import_batch | reviews | ImportReview | ImportBatchToImportReview |
-| prisma_relation | import_batch | rowResults | ImportRowResult | ImportBatchToImportRowResult |
-| prisma_relation | import_batch | rows | ImportRow | ImportBatchToImportRow |
-| prisma_relation | import_review | batch | ImportBatch | ImportBatchToImportReview |
-| prisma_relation | import_row | batch | ImportBatch | ImportBatchToImportRow |
-| prisma_relation | import_row_result | batch | ImportBatch | ImportBatchToImportRowResult |
-| prisma_relation | inbox_message | oceanProviderEventIngestion | OceanProviderEventIngestion | InboxMessageToOceanProviderEventIngestion |
-| prisma_relation | lifecycle_date_fact | canonicalEvent | CanonicalEvent | LifecycleDateFactAppliedEvent |
-| prisma_relation | lifecycle_date_fact | container | ContainerRecord | ContainerRecordToLifecycleDateFact |
-| prisma_relation | lifecycle_date_fact | corrections | LifecycleDateFact | LifecycleDateFactCorrections |
-| prisma_relation | lifecycle_date_fact | nodeBlocks | NodeBlock | LifecycleDateFactToNodeBlock |
-| prisma_relation | lifecycle_date_fact | supersedesFact | LifecycleDateFact | LifecycleDateFactCorrections |
-| prisma_relation | market_opportunity_handoff | initiatives | ProductInitiative | MarketOpportunityHandoffToProductInitiative |
-| prisma_relation | market_opportunity_handoff | intakes | ProductOpportunityIntake | MarketOpportunityHandoffToProductOpportunityIntake |
-| prisma_relation | market_opportunity_handoff | signal | MarketSignal | MarketOpportunityHandoffToMarketSignal |
-| prisma_relation | market_signal | decisions | MarketSignalDecision | MarketSignalToMarketSignalDecision |
-| prisma_relation | market_signal | handoffs | MarketOpportunityHandoff | MarketOpportunityHandoffToMarketSignal |
-| prisma_relation | market_signal_decision | signal | MarketSignal | MarketSignalToMarketSignalDecision |
-| prisma_relation | node_block | flow | FlowInstance | FlowInstanceToNodeBlock |
-| prisma_relation | node_block | node | NodeInstance | NodeBlockToNodeInstance |
-| prisma_relation | node_block | resolution | NodeBlockResolution | NodeBlockToNodeBlockResolution |
-| prisma_relation | node_block | sourceFact | LifecycleDateFact | LifecycleDateFactToNodeBlock |
-| prisma_relation | node_block_resolution | block | NodeBlock | NodeBlockToNodeBlockResolution |
-| prisma_relation | node_event_application | event | CanonicalEvent | CanonicalEventToNodeEventApplication |
-| prisma_relation | node_event_application | targetNodeInstance | NodeInstance | NodeEventApplicationToNodeInstance |
-| prisma_relation | node_instance | blocks | NodeBlock | NodeBlockToNodeInstance |
-| prisma_relation | node_instance | eventApplications | NodeEventApplication | NodeEventApplicationToNodeInstance |
-| prisma_relation | node_instance | flow | FlowInstance | FlowInstanceToNodeInstance |
-| prisma_relation | node_instance | workOrderFactApplications | WorkOrderFactApplication | NodeInstanceToWorkOrderFactApplication |
-| prisma_relation | node_task | outcome | NodeTaskOutcome | NodeTaskToNodeTaskOutcome |
-| prisma_relation | node_task | workOrders | WorkOrder | NodeTaskToWorkOrder |
-| prisma_relation | node_task_outcome | nodeTask | NodeTask | NodeTaskToNodeTaskOutcome |
-| prisma_relation | ocean_provider_event_ingestion | inboxMessage | InboxMessage | InboxMessageToOceanProviderEventIngestion |
-| prisma_relation | ocean_route_plan | container | ContainerRecord | ContainerRecordToOceanRoutePlan |
-| prisma_relation | ocean_route_plan | segments | OceanRouteSegment | OceanRoutePlanToOceanRouteSegment |
-| prisma_relation | ocean_route_plan | supersededBy | OceanRoutePlan | OceanRoutePlanSupersession |
-| prisma_relation | ocean_route_plan | supersedesRoute | OceanRoutePlan | OceanRoutePlanSupersession |
-| prisma_relation | ocean_route_segment | routePlan | OceanRoutePlan | OceanRoutePlanToOceanRouteSegment |
-| prisma_relation | operational_exception_case | containerRecord | ContainerRecord | ContainerRecordToOperationalExceptionCase |
-| prisma_relation | operational_exception_case | shipment | Shipment | OperationalExceptionCaseToShipment |
-| prisma_relation | ops_assistant_message | session | OpsAssistantSession | OpsAssistantMessageToOpsAssistantSession |
-| prisma_relation | ops_assistant_session | messages | OpsAssistantMessage | OpsAssistantMessageToOpsAssistantSession |
-| prisma_relation | ops_assistant_session | notification | OpsNotification | OpsAssistantSessionToOpsNotification |
-| prisma_relation | ops_notification | sessions | OpsAssistantSession | OpsAssistantSessionToOpsNotification |
-| prisma_relation | overdue_charge_rate_tier | standard | OverdueChargeStandard | OverdueChargeRateTierToOverdueChargeStandard |
-| prisma_relation | overdue_charge_standard | rateTiers | OverdueChargeRateTier | OverdueChargeRateTierToOverdueChargeStandard |
-| prisma_relation | port_code_entry | port | PortCodeReference | PortCodeEntryToPortCodeReference |
-| prisma_relation | port_code_reference | aliases | PortNameAlias | PortCodeReferenceToPortNameAlias |
-| prisma_relation | port_code_reference | area | UnlocodeAreaReference | PortCodeReferenceToUnlocodeAreaReference |
-| prisma_relation | port_code_reference | entries | PortCodeEntry | PortCodeEntryToPortCodeReference |
-| prisma_relation | port_code_reference | release | ReferenceDataRelease | PortCodeReferenceToReferenceDataRelease |
-| prisma_relation | port_name_alias | port | PortCodeReference | PortCodeReferenceToPortNameAlias |
-| prisma_relation | post_departure_source_candidate_cargo_line | correction | PostDepartureSourceCandidateCorrection | PostDepartureSourceCandidateCargoLineToPostDepartureSourceCandidateCorrection |
-| prisma_relation | post_departure_source_candidate_correction | cargoLines | PostDepartureSourceCandidateCargoLine | PostDepartureSourceCandidateCargoLineToPostDepartureSourceCandidateCorrection |
-| prisma_relation | post_departure_source_candidate_correction | review | PostDepartureSourcePackageReview | PostDepartureSourceCandidateCorrectionToPostDepartureSourcePackageReview |
-| prisma_relation | post_departure_source_candidate_correction | supersedesCorrection | PostDepartureSourceCandidateCorrection | PostDepartureCandidateCorrectionVersion |
-| prisma_relation | post_departure_source_candidate_correction | supersedingCorrections | PostDepartureSourceCandidateCorrection | PostDepartureCandidateCorrectionVersion |
-| prisma_relation | post_departure_source_candidate_correction | targetShipment | Shipment | PostDepartureCandidateTargetShipment |
-| prisma_relation | post_departure_source_package_review | candidateCorrections | PostDepartureSourceCandidateCorrection | PostDepartureSourceCandidateCorrectionToPostDepartureSourcePackageReview |
-| prisma_relation | post_departure_source_package_review | sources | PostDepartureSourcePackageSource | PostDepartureSourcePackageReviewToPostDepartureSourcePackageSource |
-| prisma_relation | post_departure_source_package_source | importBatch | ImportBatch | ImportBatchToPostDepartureSourcePackageSource |
-| prisma_relation | post_departure_source_package_source | review | PostDepartureSourcePackageReview | PostDepartureSourcePackageReviewToPostDepartureSourcePackageSource |
-| prisma_relation | product | releases | ProductIdentityRelease | ProductToProductIdentityRelease |
-| prisma_relation | product | skus | ProductSku | ProductToProductSku |
-| prisma_relation | product | sourceHandoff | ProductDefinitionRelease | ProductToProductDefinitionRelease |
-| prisma_relation | product_battery_profile | profile | ProductComplianceProfile | ProductBatteryProfileToProductComplianceProfile |
-| prisma_relation | product_certificate | productSku | ProductSku | ProductCertificateToProductSku |
-| prisma_relation | product_certificate | versions | ProductCertificateVersion | ProductCertificateToProductCertificateVersion |
-| prisma_relation | product_certificate_country_coverage | certificateVersion | ProductCertificateVersion | ProductCertificateCountryCoverageToProductCertificateVersion |
-| prisma_relation | product_certificate_version | complianceProfileLinks | ProductComplianceProfileCertificate | ProductCertificateVersionToProductComplianceProfileCertificate |
-| prisma_relation | product_certificate_version | countryCoverage | ProductCertificateCountryCoverage | ProductCertificateCountryCoverageToProductCertificateVersion |
-| prisma_relation | product_certificate_version | productCertificate | ProductCertificate | ProductCertificateToProductCertificateVersion |
-| prisma_relation | product_certificate_version | supersededBy | ProductCertificateVersion | ProductCertificateVersionSupersession |
-| prisma_relation | product_certificate_version | supersedesVersion | ProductCertificateVersion | ProductCertificateVersionSupersession |
-| prisma_relation | product_compliance_profile | battery | ProductBatteryProfile | ProductBatteryProfileToProductComplianceProfile |
-| prisma_relation | product_compliance_profile | certificateLinks | ProductComplianceProfileCertificate | ProductComplianceProfileToProductComplianceProfileCertificate |
-| prisma_relation | product_compliance_profile | dangerousGoods | ProductDangerousGoodsProfile | ProductComplianceProfileToProductDangerousGoodsProfile |
-| prisma_relation | product_compliance_profile | inspectionRequirements | ProductInspectionRequirement | ProductComplianceProfileToProductInspectionRequirement |
-| prisma_relation | product_compliance_profile | productSku | ProductSku | ProductComplianceProfileToProductSku |
-| prisma_relation | product_compliance_profile | refrigerant | ProductRefrigerantProfile | ProductComplianceProfileToProductRefrigerantProfile |
-| prisma_relation | product_compliance_profile | supersededBy | ProductComplianceProfile | ProductComplianceProfileSupersession |
-| prisma_relation | product_compliance_profile | supersedesProfile | ProductComplianceProfile | ProductComplianceProfileSupersession |
-| prisma_relation | product_compliance_profile_certificate | certificateVersion | ProductCertificateVersion | ProductCertificateVersionToProductComplianceProfileCertificate |
-| prisma_relation | product_compliance_profile_certificate | profile | ProductComplianceProfile | ProductComplianceProfileToProductComplianceProfileCertificate |
-| prisma_relation | product_dangerous_goods_profile | profile | ProductComplianceProfile | ProductComplianceProfileToProductDangerousGoodsProfile |
-| prisma_relation | product_definition | initiativeHandoff | ProductInitiativeHandoff | ProductDefinitionToProductInitiativeHandoff |
-| prisma_relation | product_definition | releases | ProductDefinitionRelease | ProductDefinitionToProductDefinitionRelease |
-| prisma_relation | product_definition_release | definition | ProductDefinition | ProductDefinitionToProductDefinitionRelease |
-| prisma_relation | product_definition_release | products | Product | ProductToProductDefinitionRelease |
-| prisma_relation | product_identity_release | nominations | SupplierNominationRelease | ProductIdentityReleaseToSupplierNominationRelease |
-| prisma_relation | product_identity_release | product | Product | ProductToProductIdentityRelease |
-| prisma_relation | product_identity_release | quotations | SupplierQuotation | ProductIdentityReleaseToSupplierQuotation |
-| prisma_relation | product_initiative | handoff | MarketOpportunityHandoff | MarketOpportunityHandoffToProductInitiative |
-| prisma_relation | product_initiative | handoffs | ProductInitiativeHandoff | ProductInitiativeToProductInitiativeHandoff |
-| prisma_relation | product_initiative_claim | handoff | ProductInitiativeHandoff | ProductInitiativeClaimToProductInitiativeHandoff |
-| prisma_relation | product_initiative_handoff | claims | ProductInitiativeClaim | ProductInitiativeClaimToProductInitiativeHandoff |
-| prisma_relation | product_initiative_handoff | initiative | ProductInitiative | ProductInitiativeToProductInitiativeHandoff |
-| prisma_relation | product_initiative_handoff | productDefinitions | ProductDefinition | ProductDefinitionToProductInitiativeHandoff |
-| prisma_relation | product_inspection_requirement | profile | ProductComplianceProfile | ProductComplianceProfileToProductInspectionRequirement |
-| prisma_relation | product_opportunity_intake | handoff | MarketOpportunityHandoff | MarketOpportunityHandoffToProductOpportunityIntake |
-| prisma_relation | product_refrigerant_profile | profile | ProductComplianceProfile | ProductComplianceProfileToProductRefrigerantProfile |
-| prisma_relation | product_sku | complianceProfiles | ProductComplianceProfile | ProductComplianceProfileToProductSku |
-| prisma_relation | product_sku | product | Product | ProductToProductSku |
-| prisma_relation | product_sku | productCertificates | ProductCertificate | ProductCertificateToProductSku |
-| prisma_relation | product_sku | registrations | ProductSkuRegistration | ProductSkuToProductSkuRegistration |
-| prisma_relation | product_sku | shipmentCargoLines | ShipmentCargoLine | ProductSkuToShipmentCargoLine |
-| prisma_relation | product_sku_registration | productSku | ProductSku | ProductSkuToProductSkuRegistration |
-| prisma_relation | reference_data_release | cargoOwners | CargoOwnerReference | CargoOwnerReferenceToReferenceDataRelease |
-| prisma_relation | reference_data_release | countryCodes | CountryCodeReference | CountryCodeReferenceToReferenceDataRelease |
-| prisma_relation | reference_data_release | portCodes | PortCodeReference | PortCodeReferenceToReferenceDataRelease |
-| prisma_relation | reference_data_release | unlocodeAreas | UnlocodeAreaReference | ReferenceDataReleaseToUnlocodeAreaReference |
-| prisma_relation | replenishment_order | containerRecords | ContainerRecord | ContainerRecordToReplenishmentOrder |
-| prisma_relation | replenishment_order | lines | ReplenishmentOrderLine | ReplenishmentOrderToReplenishmentOrderLine |
-| prisma_relation | replenishment_order_line | cargoAllocations | ContainerCargoAllocation | ContainerCargoAllocationToReplenishmentOrderLine |
-| prisma_relation | replenishment_order_line | replenishmentOrder | ReplenishmentOrder | ReplenishmentOrderToReplenishmentOrderLine |
-| prisma_relation | replenishment_order_line | shipmentCargoLines | ShipmentCargoLine | ReplenishmentOrderLineToShipmentCargoLine |
-| prisma_relation | shipment | candidateCorrections | PostDepartureSourceCandidateCorrection | PostDepartureCandidateTargetShipment |
-| prisma_relation | shipment | cargoLines | ShipmentCargoLine | ShipmentToShipmentCargoLine |
-| prisma_relation | shipment | cargoOwner | CargoOwnerReference | CargoOwnerReferenceToShipment |
-| prisma_relation | shipment | containerLinks | ShipmentContainerLink | ShipmentToShipmentContainerLink |
-| prisma_relation | shipment | eventApplications | ShipmentEventApplication | ShipmentToShipmentEventApplication |
-| prisma_relation | shipment | handoffs | ShipmentHandoffRecord | ShipmentToShipmentHandoffRecord |
-| prisma_relation | shipment | lifecycleFlows | FlowInstance | FlowInstanceToShipment |
-| prisma_relation | shipment | operationalExceptions | OperationalExceptionCase | OperationalExceptionCaseToShipment |
-| prisma_relation | shipment | transportDocuments | ShipmentTransportDocument | ShipmentToShipmentTransportDocument |
-| prisma_relation | shipment | upstreamReferences | ShipmentUpstreamReference | ShipmentToShipmentUpstreamReference |
-| prisma_relation | shipment | workHandoffs | ShipmentWorkHandoff | ShipmentToShipmentWorkHandoff |
-| prisma_relation | shipment_cargo_line | containerAllocations | ContainerCargoAllocation | ContainerCargoAllocationToShipmentCargoLine |
-| prisma_relation | shipment_cargo_line | productSku | ProductSku | ProductSkuToShipmentCargoLine |
-| prisma_relation | shipment_cargo_line | replenishmentOrderLine | ReplenishmentOrderLine | ReplenishmentOrderLineToShipmentCargoLine |
-| prisma_relation | shipment_cargo_line | shipment | Shipment | ShipmentToShipmentCargoLine |
-| prisma_relation | shipment_cargo_line | sourceHandoff | ShipmentHandoffRecord | ShipmentCargoLineToShipmentHandoffRecord |
-| prisma_relation | shipment_cargo_line | supersededBy | ShipmentCargoLine | ShipmentCargoLineSupersession |
-| prisma_relation | shipment_cargo_line | supersedesCargoLine | ShipmentCargoLine | ShipmentCargoLineSupersession |
-| prisma_relation | shipment_cargo_line | upstreamReferences | ShipmentUpstreamReference | ShipmentCargoLineToShipmentUpstreamReference |
-| prisma_relation | shipment_container_document_link | containerRecord | ContainerRecord | ContainerRecordToShipmentContainerDocumentLink |
-| prisma_relation | shipment_container_document_link | shipmentContainerLink | ShipmentContainerLink | ShipmentContainerDocumentLinkToShipmentContainerLink |
-| prisma_relation | shipment_container_document_link | sourceHandoff | ShipmentHandoffRecord | ShipmentContainerDocumentLinkToShipmentHandoffRecord |
-| prisma_relation | shipment_container_document_link | transportDocument | ShipmentTransportDocument | ShipmentContainerDocumentLinkToShipmentTransportDocument |
-| prisma_relation | shipment_container_link | containerRecord | ContainerRecord | ContainerRecordToShipmentContainerLink |
-| prisma_relation | shipment_container_link | documentLinks | ShipmentContainerDocumentLink | ShipmentContainerDocumentLinkToShipmentContainerLink |
-| prisma_relation | shipment_container_link | eventScopeMembers | CanonicalEventScopeMember | CanonicalEventScopeMemberToShipmentContainerLink |
-| prisma_relation | shipment_container_link | shipment | Shipment | ShipmentToShipmentContainerLink |
-| prisma_relation | shipment_container_link | sourceHandoff | ShipmentHandoffRecord | ShipmentContainerLinkToShipmentHandoffRecord |
-| prisma_relation | shipment_container_link | supersededBy | ShipmentContainerLink | ShipmentContainerLinkSupersession |
-| prisma_relation | shipment_container_link | supersedesLink | ShipmentContainerLink | ShipmentContainerLinkSupersession |
-| prisma_relation | shipment_event_application | event | CanonicalEvent | CanonicalEventToShipmentEventApplication |
-| prisma_relation | shipment_event_application | shipment | Shipment | ShipmentToShipmentEventApplication |
-| prisma_relation | shipment_handoff_object_result | handoff | ShipmentHandoffRecord | ShipmentHandoffObjectResultToShipmentHandoffRecord |
-| prisma_relation | shipment_handoff_record | cargoLines | ShipmentCargoLine | ShipmentCargoLineToShipmentHandoffRecord |
-| prisma_relation | shipment_handoff_record | containerDocumentLinks | ShipmentContainerDocumentLink | ShipmentContainerDocumentLinkToShipmentHandoffRecord |
-| prisma_relation | shipment_handoff_record | containerLinks | ShipmentContainerLink | ShipmentContainerLinkToShipmentHandoffRecord |
-| prisma_relation | shipment_handoff_record | objectResults | ShipmentHandoffObjectResult | ShipmentHandoffObjectResultToShipmentHandoffRecord |
-| prisma_relation | shipment_handoff_record | shipment | Shipment | ShipmentToShipmentHandoffRecord |
-| prisma_relation | shipment_handoff_record | supersededBy | ShipmentHandoffRecord | ShipmentHandoffSupersession |
-| prisma_relation | shipment_handoff_record | supersedesHandoff | ShipmentHandoffRecord | ShipmentHandoffSupersession |
-| prisma_relation | shipment_handoff_record | transportDocuments | ShipmentTransportDocument | ShipmentHandoffRecordToShipmentTransportDocument |
-| prisma_relation | shipment_handoff_record | upstreamReferences | ShipmentUpstreamReference | ShipmentHandoffRecordToShipmentUpstreamReference |
-| prisma_relation | shipment_time_fact | containerRecord | ContainerRecord | ContainerRecordToShipmentTimeFact |
-| prisma_relation | shipment_transport_document | childDocuments | ShipmentTransportDocument | ShipmentDocumentParent |
-| prisma_relation | shipment_transport_document | containerLinks | ShipmentContainerDocumentLink | ShipmentContainerDocumentLinkToShipmentTransportDocument |
-| prisma_relation | shipment_transport_document | parentDocument | ShipmentTransportDocument | ShipmentDocumentParent |
-| prisma_relation | shipment_transport_document | shipment | Shipment | ShipmentToShipmentTransportDocument |
-| prisma_relation | shipment_transport_document | sourceHandoff | ShipmentHandoffRecord | ShipmentHandoffRecordToShipmentTransportDocument |
-| prisma_relation | shipment_upstream_reference | containerRecord | ContainerRecord | ContainerRecordToShipmentUpstreamReference |
-| prisma_relation | shipment_upstream_reference | shipment | Shipment | ShipmentToShipmentUpstreamReference |
-| prisma_relation | shipment_upstream_reference | shipmentCargoLine | ShipmentCargoLine | ShipmentCargoLineToShipmentUpstreamReference |
-| prisma_relation | shipment_upstream_reference | sourceHandoff | ShipmentHandoffRecord | ShipmentHandoffRecordToShipmentUpstreamReference |
-| prisma_relation | shipment_upstream_reference | supersededBy | ShipmentUpstreamReference | ShipmentUpstreamReferenceSupersession |
-| prisma_relation | shipment_upstream_reference | supersedesReference | ShipmentUpstreamReference | ShipmentUpstreamReferenceSupersession |
-| prisma_relation | shipment_work_handoff | actions | ShipmentWorkHandoffAction | ShipmentWorkHandoffToShipmentWorkHandoffAction |
-| prisma_relation | shipment_work_handoff | containerRecord | ContainerRecord | ContainerRecordToShipmentWorkHandoff |
-| prisma_relation | shipment_work_handoff | shipment | Shipment | ShipmentToShipmentWorkHandoff |
-| prisma_relation | shipment_work_handoff_action | handoff | ShipmentWorkHandoff | ShipmentWorkHandoffToShipmentWorkHandoffAction |
-| prisma_relation | supplier | nominations | SupplierNominationRelease | SupplierToSupplierNominationRelease |
-| prisma_relation | supplier | quotations | SupplierQuotation | SupplierToSupplierQuotation |
-| prisma_relation | supplier_nomination_release | quotation | SupplierQuotation | SupplierNominationReleaseToSupplierQuotation |
-| prisma_relation | supplier_nomination_release | skuRelease | ProductIdentityRelease | ProductIdentityReleaseToSupplierNominationRelease |
-| prisma_relation | supplier_nomination_release | supplier | Supplier | SupplierToSupplierNominationRelease |
-| prisma_relation | supplier_quotation | nominations | SupplierNominationRelease | SupplierNominationReleaseToSupplierQuotation |
-| prisma_relation | supplier_quotation | skuRelease | ProductIdentityRelease | ProductIdentityReleaseToSupplierQuotation |
-| prisma_relation | supplier_quotation | supplier | Supplier | SupplierToSupplierQuotation |
-| prisma_relation | unlocode_area_reference | isoCountry | CountryCodeReference | CountryCodeReferenceToUnlocodeAreaReference |
-| prisma_relation | unlocode_area_reference | ports | PortCodeReference | PortCodeReferenceToUnlocodeAreaReference |
-| prisma_relation | unlocode_area_reference | release | ReferenceDataRelease | ReferenceDataReleaseToUnlocodeAreaReference |
-| prisma_relation | warehouse_delivery_instruction | containerRecord | ContainerRecord | ContainerRecordToWarehouseDeliveryInstruction |
-| prisma_relation | warehouse_delivery_instruction | supersededBy | WarehouseDeliveryInstruction | WarehouseDeliveryInstructionSupersession |
-| prisma_relation | warehouse_delivery_instruction | supersedesInstruction | WarehouseDeliveryInstruction | WarehouseDeliveryInstructionSupersession |
-| prisma_relation | work_order | factApplications | WorkOrderFactApplication | WorkOrderToWorkOrderFactApplication |
-| prisma_relation | work_order | nodeTask | NodeTask | NodeTaskToWorkOrder |
-| prisma_relation | work_order_fact_application | canonicalEvent | CanonicalEvent | CanonicalEventToWorkOrderFactApplication |
-| prisma_relation | work_order_fact_application | nodeInstance | NodeInstance | NodeInstanceToWorkOrderFactApplication |
-| prisma_relation | work_order_fact_application | workOrder | WorkOrder | WorkOrderToWorkOrderFactApplication |
+| 类型 | 来源表 | 来源字段 | Prisma 属性 | 目标表/模型 | 目标字段 | 关系名 |
+| --- | --- | --- | --- | --- | --- | --- |
+| physical_fk | canonical_event_scope_member | container_record_id, tenant_id | — | container_record | id, tenant_id | canonical_event_scope_member_container_record_id_tenant_id_fkey |
+| physical_fk | canonical_event_scope_member | event_id | — | canonical_event | id | canonical_event_scope_member_event_id_fkey |
+| physical_fk | canonical_event_scope_member | shipment_container_link_id, tenant_id, container_record_id | — | shipment_container_link | id, tenant_id, container_record_id | canonical_event_scope_member_link_scope_fkey |
+| physical_fk | cargo_owner_reference | release_id | — | reference_data_release | id | cargo_owner_reference_release_fkey |
+| physical_fk | cargo_owner_reference | sales_country_id | — | country_code_reference | id | cargo_owner_reference_sales_country_fkey |
+| physical_fk | cargo_ready_compliance_assessment | supersedes_assessment_id, tenant_id, container_record_id | — | cargo_ready_compliance_assessment | id, tenant_id, container_record_id | cargo_ready_assessment_supersedes_fkey |
+| physical_fk | cargo_ready_compliance_assessment_item | assessment_id, tenant_id | — | cargo_ready_compliance_assessment | id, tenant_id | cargo_ready_assessment_item_assessment_fkey |
+| physical_fk | cargo_ready_compliance_assessment_rule | assessment_id, tenant_id | — | cargo_ready_compliance_assessment | id, tenant_id | cargo_ready_assessment_rule_assessment_fkey |
+| physical_fk | cargo_ready_compliance_assessment_rule | rule_version_id, tenant_id | — | compliance_rule_version | id, tenant_id | cargo_ready_assessment_rule_version_fkey |
+| physical_fk | cargo_ready_compliance_decision | assessment_id, tenant_id | — | cargo_ready_compliance_assessment | id, tenant_id | cargo_ready_decision_assessment_fkey |
+| physical_fk | cargo_ready_compliance_decision | supersedes_decision_id, tenant_id, assessment_id | — | cargo_ready_compliance_decision | id, tenant_id, assessment_id | cargo_ready_decision_supersedes_fkey |
+| physical_fk | cargo_ready_compliance_finding | assessment_id, tenant_id | — | cargo_ready_compliance_assessment | id, tenant_id | cargo_ready_finding_assessment_fkey |
+| physical_fk | compliance_rule_version | rule_id, tenant_id | — | compliance_rule | id, tenant_id | compliance_rule_version_rule_fkey |
+| physical_fk | compliance_rule_version | supersedes_rule_version_id, tenant_id, rule_id | — | compliance_rule_version | id, tenant_id, rule_id | compliance_rule_version_supersedes_fkey |
+| physical_fk | compliance_rule_version_sku_scope | rule_version_id, tenant_id | — | compliance_rule_version | id, tenant_id | compliance_rule_version_sku_rule_fkey |
+| physical_fk | container_cargo_allocation | replenishment_order_line_id, tenant_id | — | replenishment_order_line | id, tenant_id | container_cargo_allocation_line_fkey |
+| physical_fk | container_cargo_allocation | allocation_set_id, tenant_id | — | container_cargo_allocation_set | id, tenant_id | container_cargo_allocation_set_fkey |
+| physical_fk | container_cargo_allocation | shipment_cargo_line_id, tenant_id | — | shipment_cargo_line | id, tenant_id | container_cargo_allocation_shipment_cargo_line_id_tenant_id_fke |
+| physical_fk | container_cargo_allocation_set | container_record_id, tenant_id | — | container_record | id, tenant_id | container_cargo_set_container_fkey |
+| physical_fk | container_cargo_allocation_set | supersedes_set_id, tenant_id | — | container_cargo_allocation_set | id, tenant_id | container_cargo_set_supersedes_fkey |
+| physical_fk | container_dispatch_snapshot | container_record_id, tenant_id | — | container_record | id, tenant_id | container_dispatch_snapshot_container_fkey |
+| physical_fk | container_dispatch_snapshot | stuffing_snapshot_id, tenant_id, container_record_id | — | container_stuffing_snapshot | id, tenant_id, container_record_id | container_dispatch_snapshot_stuffing_fkey |
+| physical_fk | container_dispatch_snapshot | supersedes_snapshot_id, tenant_id, container_record_id | — | container_dispatch_snapshot | id, tenant_id, container_record_id | container_dispatch_snapshot_supersedes_fkey |
+| physical_fk | container_import_binding | container_record_id, tenant_id | — | container_record | id, tenant_id | container_import_binding_container_fkey |
+| physical_fk | container_record | replenishment_order_id, tenant_id | — | replenishment_order | id, tenant_id | container_record_replenishment_order_tenant_fkey |
+| physical_fk | container_source_identity | container_record_id, tenant_id | — | container_record | id, tenant_id | container_source_identity_container_record_id_tenant_id_fkey |
+| physical_fk | container_stuffing_snapshot | allocation_set_id, tenant_id, container_record_id | — | container_cargo_allocation_set | id, tenant_id, container_record_id | container_stuffing_snapshot_allocation_fkey |
+| physical_fk | container_stuffing_snapshot | container_record_id, tenant_id | — | container_record | id, tenant_id | container_stuffing_snapshot_container_fkey |
+| physical_fk | container_stuffing_snapshot | supersedes_snapshot_id, tenant_id, container_record_id | — | container_stuffing_snapshot | id, tenant_id, container_record_id | container_stuffing_snapshot_supersedes_fkey |
+| physical_fk | container_unloading_report | container_record_id, tenant_id | — | container_record | id, tenant_id | container_unloading_report_container_fkey |
+| physical_fk | container_unloading_report | supersedes_report_id, tenant_id, container_record_id | — | container_unloading_report | id, tenant_id, container_record_id | container_unloading_report_supersedes_fkey |
+| physical_fk | country_code_reference | release_id | — | reference_data_release | id | country_code_reference_release_fkey |
+| physical_fk | customs_clearance_case | container_record_id, tenant_id | — | container_record | id, tenant_id | customs_clearance_case_container_fkey |
+| physical_fk | customs_clearance_case | supersedes_case_id, tenant_id, container_record_id | — | customs_clearance_case | id, tenant_id, container_record_id | customs_clearance_case_supersedes_fkey |
+| physical_fk | evidence_verification_decision | evidence_id | — | evidence_record | id | evidence_verification_decision_evidence_id_fkey |
+| physical_fk | flow_instance | shipment_id | — | shipment | id | flow_instance_shipment_id_fkey |
+| physical_fk | import_batch | replaces_batch_id | — | import_batch | id | import_batch_replaces_batch_id_fkey |
+| physical_fk | import_review | batch_id | — | import_batch | id | import_review_batch_id_fkey |
+| physical_fk | import_row | batch_id | — | import_batch | id | import_row_batch_id_fkey |
+| physical_fk | import_row_result | batch_id | — | import_batch | id | import_row_result_batch_id_fkey |
+| physical_fk | lifecycle_date_fact | canonical_event_id | — | canonical_event | id | lifecycle_date_fact_canonical_event_id_fkey |
+| physical_fk | lifecycle_date_fact | container_id | — | container_record | id | lifecycle_date_fact_container_id_fkey |
+| physical_fk | lifecycle_date_fact | supersedes_fact_id | — | lifecycle_date_fact | id | lifecycle_date_fact_supersedes_fact_id_fkey |
+| physical_fk | market_opportunity_handoff | signal_id, tenant_id | — | market_signal | id, tenant_id | market_opportunity_handoff_signal_fkey |
+| physical_fk | market_signal_decision | signal_id, tenant_id | — | market_signal | id, tenant_id | market_signal_decision_signal_fkey |
+| physical_fk | node_block | flow_instance_id | — | flow_instance | id | node_block_flow_instance_id_fkey |
+| physical_fk | node_block | node_instance_id | — | node_instance | id | node_block_node_instance_id_fkey |
+| physical_fk | node_block | source_fact_id | — | lifecycle_date_fact | id | node_block_source_fact_id_fkey |
+| physical_fk | node_block_resolution | block_id | — | node_block | id | node_block_resolution_block_id_fkey |
+| physical_fk | node_event_application | event_id | — | canonical_event | id | node_event_application_event_id_fkey |
+| physical_fk | node_event_application | target_node_instance_id | — | node_instance | id | node_event_application_target_node_instance_id_fkey |
+| physical_fk | node_instance | flow_instance_id | — | flow_instance | id | node_instance_flow_instance_id_fkey |
+| physical_fk | node_task_outcome | node_task_id | — | node_task | id | node_task_outcome_node_task_id_fkey |
+| physical_fk | ocean_provider_event_ingestion | inbox_message_id | — | inbox_message | id | ocean_provider_event_ingestion_inbox_message_id_fkey |
+| physical_fk | ocean_route_plan | container_id | — | container_record | id | ocean_route_plan_container_id_fkey |
+| physical_fk | ocean_route_plan | supersedes_route_id | — | ocean_route_plan | id | ocean_route_plan_supersedes_route_id_fkey |
+| physical_fk | ocean_route_segment | route_plan_id | — | ocean_route_plan | id | ocean_route_segment_route_plan_id_fkey |
+| physical_fk | operational_exception_case | container_record_id, tenant_id | — | container_record | id, tenant_id | operational_exception_case_container_tenant_fkey |
+| physical_fk | operational_exception_case | shipment_id, tenant_id | — | shipment | id, tenant_id | operational_exception_case_shipment_tenant_fkey |
+| physical_fk | ops_assistant_message | session_id | — | ops_assistant_session | id | ops_assistant_message_session_id_fkey |
+| physical_fk | ops_assistant_session | notification_id | — | ops_notification | id | ops_assistant_session_notification_id_fkey |
+| physical_fk | overdue_charge_rate_tier | standard_id | — | overdue_charge_standard | id | overdue_charge_rate_tier_standard_id_fkey |
+| physical_fk | port_code_entry | port_id, release_id | — | port_code_reference | id, release_id | port_code_entry_port_fkey |
+| physical_fk | port_code_reference | area_id, release_id | — | unlocode_area_reference | id, release_id | port_code_reference_area_fkey |
+| physical_fk | port_code_reference | release_id | — | reference_data_release | id | port_code_reference_release_fkey |
+| physical_fk | port_name_alias | port_id | — | port_code_reference | id | port_name_alias_port_fkey |
+| physical_fk | post_departure_source_candidate_cargo_line | correction_id, tenant_id | — | post_departure_source_candidate_correction | id, tenant_id | post_departure_candidate_cargo_correction_fkey |
+| physical_fk | post_departure_source_candidate_correction | review_id, tenant_id | — | post_departure_source_package_review | id, tenant_id | post_departure_candidate_correction_review_fkey |
+| physical_fk | post_departure_source_candidate_correction | supersedes_correction_id, tenant_id | — | post_departure_source_candidate_correction | id, tenant_id | post_departure_candidate_correction_supersedes_fkey |
+| physical_fk | post_departure_source_candidate_correction | target_shipment_id, tenant_id | — | shipment | id, tenant_id | post_departure_candidate_correction_target_shipment_fkey |
+| physical_fk | post_departure_source_package_source | import_batch_id, tenant_id | — | import_batch | id, tenant_id | post_departure_source_package_source_batch_fkey |
+| physical_fk | post_departure_source_package_source | review_id, tenant_id | — | post_departure_source_package_review | id, tenant_id | post_departure_source_package_source_review_fkey |
+| physical_fk | product | source_handoff_id, tenant_id | — | product_definition_release | id, tenant_id | product_source_handoff_fkey |
+| physical_fk | product_battery_profile | profile_id, tenant_id | — | product_compliance_profile | id, tenant_id | product_battery_profile_profile_fkey |
+| physical_fk | product_certificate | product_sku_id, tenant_id | — | product_sku | id, tenant_id | product_certificate_sku_fkey |
+| physical_fk | product_certificate_country_coverage | certificate_version_id, tenant_id | — | product_certificate_version | id, tenant_id | product_certificate_country_version_fkey |
+| physical_fk | product_certificate_version | product_certificate_id, tenant_id, product_sku_id | — | product_certificate | id, tenant_id, product_sku_id | product_certificate_version_certificate_fkey |
+| physical_fk | product_certificate_version | supersedes_version_id, tenant_id, product_certificate_id | — | product_certificate_version | id, tenant_id, product_certificate_id | product_certificate_version_supersedes_fkey |
+| physical_fk | product_compliance_profile | product_sku_id, tenant_id | — | product_sku | id, tenant_id | product_compliance_profile_sku_fkey |
+| physical_fk | product_compliance_profile | supersedes_profile_id, tenant_id, product_sku_id | — | product_compliance_profile | id, tenant_id, product_sku_id | product_compliance_profile_supersedes_fkey |
+| physical_fk | product_compliance_profile_certificate | profile_id, tenant_id, product_sku_id | — | product_compliance_profile | id, tenant_id, product_sku_id | product_compliance_profile_certificate_profile_fkey |
+| physical_fk | product_compliance_profile_certificate | certificate_version_id, tenant_id, product_sku_id | — | product_certificate_version | id, tenant_id, product_sku_id | product_compliance_profile_certificate_version_fkey |
+| physical_fk | product_dangerous_goods_profile | profile_id, tenant_id | — | product_compliance_profile | id, tenant_id | product_dg_profile_profile_fkey |
+| physical_fk | product_definition | initiative_handoff_id, tenant_id | — | product_initiative_handoff | id, tenant_id | product_definition_initiative_handoff_fkey |
+| physical_fk | product_definition_release | definition_id, tenant_id | — | product_definition | id, tenant_id | product_definition_release_definition_fkey |
+| physical_fk | product_identity_release | product_id, tenant_id | — | product | id, tenant_id | product_identity_release_product_fkey |
+| physical_fk | product_initiative | handoff_id, tenant_id | — | market_opportunity_handoff | id, tenant_id | product_initiative_handoff_fkey |
+| physical_fk | product_initiative_claim | handoff_id, tenant_id | — | product_initiative_handoff | id, tenant_id | product_initiative_claim_handoff_fkey |
+| physical_fk | product_initiative_handoff | initiative_id, tenant_id | — | product_initiative | id, tenant_id | product_initiative_handoff_initiative_fkey |
+| physical_fk | product_inspection_requirement | profile_id, tenant_id | — | product_compliance_profile | id, tenant_id | product_inspection_requirement_profile_fkey |
+| physical_fk | product_opportunity_intake | handoff_id, tenant_id | — | market_opportunity_handoff | id, tenant_id | product_opportunity_intake_handoff_fkey |
+| physical_fk | product_refrigerant_profile | profile_id, tenant_id | — | product_compliance_profile | id, tenant_id | product_refrigerant_profile_profile_fkey |
+| physical_fk | product_sku | product_id, tenant_id | — | product | id, tenant_id | product_sku_product_fkey |
+| physical_fk | product_sku_registration | product_sku_id, tenant_id | — | product_sku | id, tenant_id | product_sku_registration_product_fkey |
+| physical_fk | replenishment_order_line | replenishment_order_id, tenant_id | — | replenishment_order | id, tenant_id | replenishment_order_line_order_tenant_fkey |
+| physical_fk | shipment | cargo_owner_id | — | cargo_owner_reference | id | shipment_cargo_owner_fkey |
+| physical_fk | shipment_cargo_line | product_sku_id, tenant_id | — | product_sku | id, tenant_id | shipment_cargo_line_product_sku_id_tenant_id_fkey |
+| physical_fk | shipment_cargo_line | replenishment_order_line_id, tenant_id | — | replenishment_order_line | id, tenant_id | shipment_cargo_line_replenishment_order_line_id_tenant_id_fkey |
+| physical_fk | shipment_cargo_line | shipment_id, tenant_id | — | shipment | id, tenant_id | shipment_cargo_line_shipment_id_tenant_id_fkey |
+| physical_fk | shipment_cargo_line | source_handoff_id, tenant_id | — | shipment_handoff_record | id, tenant_id | shipment_cargo_line_source_handoff_id_tenant_id_fkey |
+| physical_fk | shipment_cargo_line | supersedes_cargo_line_id, tenant_id, shipment_id | — | shipment_cargo_line | id, tenant_id, shipment_id | shipment_cargo_line_supersedes_cargo_line_id_tenant_id_shipment |
+| physical_fk | shipment_container_document_link | container_record_id, tenant_id | — | container_record | id, tenant_id | shipment_container_document_container_record_id_tenant_id_fkey |
+| physical_fk | shipment_container_document_link | transport_document_id, tenant_id, shipment_id | — | shipment_transport_document | id, tenant_id, shipment_id | shipment_container_document_document_id_tenant_id_shipment_id_f |
+| physical_fk | shipment_container_document_link | shipment_container_link_id, tenant_id, container_record_id | — | shipment_container_link | id, tenant_id, container_record_id | shipment_container_document_link_id_tenant_id_container_record_ |
+| physical_fk | shipment_container_document_link | source_handoff_id, tenant_id | — | shipment_handoff_record | id, tenant_id | shipment_container_document_source_handoff_id_tenant_id_fkey |
+| physical_fk | shipment_container_link | container_record_id, tenant_id | — | container_record | id, tenant_id | shipment_container_link_container_record_id_tenant_id_fkey |
+| physical_fk | shipment_container_link | shipment_id, tenant_id | — | shipment | id, tenant_id | shipment_container_link_shipment_id_tenant_id_fkey |
+| physical_fk | shipment_container_link | source_handoff_id, tenant_id | — | shipment_handoff_record | id, tenant_id | shipment_container_link_source_handoff_id_tenant_id_fkey |
+| physical_fk | shipment_container_link | supersedes_link_id, tenant_id, container_record_id | — | shipment_container_link | id, tenant_id, container_record_id | shipment_container_link_supersedes_link_id_tenant_id_container_ |
+| physical_fk | shipment_event_application | event_id | — | canonical_event | id | shipment_event_application_event_id_fkey |
+| physical_fk | shipment_event_application | shipment_id, tenant_id | — | shipment | id, tenant_id | shipment_event_application_shipment_id_tenant_id_fkey |
+| physical_fk | shipment_handoff_object_result | handoff_id, tenant_id | — | shipment_handoff_record | id, tenant_id | shipment_handoff_object_result_handoff_id_tenant_id_fkey |
+| physical_fk | shipment_handoff_record | shipment_id, tenant_id | — | shipment | id, tenant_id | shipment_handoff_record_shipment_id_tenant_id_fkey |
+| physical_fk | shipment_handoff_record | supersedes_handoff_id, tenant_id | — | shipment_handoff_record | id, tenant_id | shipment_handoff_record_supersedes_handoff_id_tenant_id_fkey |
+| physical_fk | shipment_time_fact | container_record_id | — | container_record | id | shipment_time_fact_container_record_id_fkey |
+| physical_fk | shipment_transport_document | parent_document_id, tenant_id, shipment_id | — | shipment_transport_document | id, tenant_id, shipment_id | shipment_transport_document_parent_document_id_tenant_id_shipme |
+| physical_fk | shipment_transport_document | shipment_id, tenant_id | — | shipment | id, tenant_id | shipment_transport_document_shipment_id_tenant_id_fkey |
+| physical_fk | shipment_transport_document | source_handoff_id, tenant_id | — | shipment_handoff_record | id, tenant_id | shipment_transport_document_source_handoff_id_tenant_id_fkey |
+| physical_fk | shipment_upstream_reference | container_record_id, tenant_id | — | container_record | id, tenant_id | shipment_upstream_reference_container_record_id_tenant_id_fkey |
+| physical_fk | shipment_upstream_reference | shipment_cargo_line_id, tenant_id, shipment_id | — | shipment_cargo_line | id, tenant_id, shipment_id | shipment_upstream_reference_shipment_cargo_line_id_tenant_id_sh |
+| physical_fk | shipment_upstream_reference | shipment_id, tenant_id | — | shipment | id, tenant_id | shipment_upstream_reference_shipment_id_tenant_id_fkey |
+| physical_fk | shipment_upstream_reference | source_handoff_id, tenant_id | — | shipment_handoff_record | id, tenant_id | shipment_upstream_reference_source_handoff_id_tenant_id_fkey |
+| physical_fk | shipment_upstream_reference | supersedes_reference_id, tenant_id, shipment_id | — | shipment_upstream_reference | id, tenant_id, shipment_id | shipment_upstream_reference_supersedes_reference_id_tenant_id_s |
+| physical_fk | shipment_work_handoff | container_record_id, tenant_id | — | container_record | id, tenant_id | shipment_work_handoff_container_fkey |
+| physical_fk | shipment_work_handoff | shipment_id, tenant_id | — | shipment | id, tenant_id | shipment_work_handoff_shipment_fkey |
+| physical_fk | shipment_work_handoff_action | handoff_id, tenant_id | — | shipment_work_handoff | id, tenant_id | shipment_work_handoff_action_handoff_fkey |
+| physical_fk | supplier_nomination_release | quotation_id, tenant_id | — | supplier_quotation | id, tenant_id | supplier_nomination_release_quotation_fkey |
+| physical_fk | supplier_nomination_release | sku_release_id, tenant_id | — | product_identity_release | id, tenant_id | supplier_nomination_release_sku_release_fkey |
+| physical_fk | supplier_nomination_release | supplier_id, tenant_id | — | supplier | id, tenant_id | supplier_nomination_release_supplier_fkey |
+| physical_fk | supplier_quotation | sku_id, tenant_id | — | product_sku | id, tenant_id | supplier_quotation_sku_fkey |
+| physical_fk | supplier_quotation | sku_release_id, tenant_id | — | product_identity_release | id, tenant_id | supplier_quotation_sku_release_fkey |
+| physical_fk | supplier_quotation | supplier_id, tenant_id | — | supplier | id, tenant_id | supplier_quotation_supplier_fkey |
+| physical_fk | unlocode_area_reference | iso_country_id | — | country_code_reference | id | unlocode_area_iso_country_fkey |
+| physical_fk | unlocode_area_reference | release_id | — | reference_data_release | id | unlocode_area_release_fkey |
+| physical_fk | warehouse_delivery_instruction | container_record_id, tenant_id | — | container_record | id, tenant_id | warehouse_delivery_instruction_container_fkey |
+| physical_fk | warehouse_delivery_instruction | supersedes_instruction_id, tenant_id, container_record_id | — | warehouse_delivery_instruction | id, tenant_id, container_record_id | warehouse_delivery_instruction_supersedes_fkey |
+| physical_fk | work_order | node_task_id | — | node_task | id | work_order_node_task_id_fkey |
+| physical_fk | work_order_fact_application | canonical_event_id | — | canonical_event | id | work_order_fact_application_canonical_event_id_fkey |
+| physical_fk | work_order_fact_application | node_instance_id | — | node_instance | id | work_order_fact_application_node_instance_id_fkey |
+| physical_fk | work_order_fact_application | work_order_id | — | work_order | id | work_order_fact_application_work_order_id_fkey |
+| prisma_relation | canonical_event |  | scopeMembers | CanonicalEventScopeMember |  | CanonicalEventToCanonicalEventScopeMember |
+| prisma_relation | canonical_event |  | nodeApplications | NodeEventApplication |  | CanonicalEventToNodeEventApplication |
+| prisma_relation | canonical_event |  | shipmentApplication | ShipmentEventApplication |  | CanonicalEventToShipmentEventApplication |
+| prisma_relation | canonical_event |  | workOrderFactApplications | WorkOrderFactApplication |  | CanonicalEventToWorkOrderFactApplication |
+| prisma_relation | canonical_event |  | dateFact | LifecycleDateFact |  | LifecycleDateFactAppliedEvent |
+| prisma_relation | canonical_event_scope_member |  | containerRecord | ContainerRecord |  | CanonicalEventScopeMemberToContainerRecord |
+| prisma_relation | canonical_event_scope_member |  | shipmentContainerLink | ShipmentContainerLink |  | CanonicalEventScopeMemberToShipmentContainerLink |
+| prisma_relation | canonical_event_scope_member |  | event | CanonicalEvent |  | CanonicalEventToCanonicalEventScopeMember |
+| prisma_relation | cargo_owner_reference |  | salesCountry | CountryCodeReference |  | CargoOwnerReferenceToCountryCodeReference |
+| prisma_relation | cargo_owner_reference |  | release | ReferenceDataRelease |  | CargoOwnerReferenceToReferenceDataRelease |
+| prisma_relation | cargo_owner_reference |  | shipments | Shipment |  | CargoOwnerReferenceToShipment |
+| prisma_relation | cargo_ready_compliance_assessment |  | supersededBy | CargoReadyComplianceAssessment |  | CargoReadyAssessmentSupersession |
+| prisma_relation | cargo_ready_compliance_assessment |  | supersedesAssessment | CargoReadyComplianceAssessment |  | CargoReadyAssessmentSupersession |
+| prisma_relation | cargo_ready_compliance_assessment |  | items | CargoReadyComplianceAssessmentItem |  | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentItem |
+| prisma_relation | cargo_ready_compliance_assessment |  | ruleSnapshots | CargoReadyComplianceAssessmentRule |  | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentRule |
+| prisma_relation | cargo_ready_compliance_assessment |  | decisions | CargoReadyComplianceDecision |  | CargoReadyComplianceAssessmentToCargoReadyComplianceDecision |
+| prisma_relation | cargo_ready_compliance_assessment |  | findings | CargoReadyComplianceFinding |  | CargoReadyComplianceAssessmentToCargoReadyComplianceFinding |
+| prisma_relation | cargo_ready_compliance_assessment_item |  | assessment | CargoReadyComplianceAssessment |  | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentItem |
+| prisma_relation | cargo_ready_compliance_assessment_rule |  | ruleVersion | ComplianceRuleVersion |  | CargoReadyComplianceAssessmentRuleToComplianceRuleVersion |
+| prisma_relation | cargo_ready_compliance_assessment_rule |  | assessment | CargoReadyComplianceAssessment |  | CargoReadyComplianceAssessmentToCargoReadyComplianceAssessmentRule |
+| prisma_relation | cargo_ready_compliance_decision |  | assessment | CargoReadyComplianceAssessment |  | CargoReadyComplianceAssessmentToCargoReadyComplianceDecision |
+| prisma_relation | cargo_ready_compliance_decision |  | supersededBy | CargoReadyComplianceDecision |  | CargoReadyDecisionSupersession |
+| prisma_relation | cargo_ready_compliance_decision |  | supersedesDecision | CargoReadyComplianceDecision |  | CargoReadyDecisionSupersession |
+| prisma_relation | cargo_ready_compliance_finding |  | assessment | CargoReadyComplianceAssessment |  | CargoReadyComplianceAssessmentToCargoReadyComplianceFinding |
+| prisma_relation | compliance_rule |  | versions | ComplianceRuleVersion |  | ComplianceRuleToComplianceRuleVersion |
+| prisma_relation | compliance_rule_version |  | assessmentRules | CargoReadyComplianceAssessmentRule |  | CargoReadyComplianceAssessmentRuleToComplianceRuleVersion |
+| prisma_relation | compliance_rule_version |  | rule | ComplianceRule |  | ComplianceRuleToComplianceRuleVersion |
+| prisma_relation | compliance_rule_version |  | supersededBy | ComplianceRuleVersion |  | ComplianceRuleVersionSupersession |
+| prisma_relation | compliance_rule_version |  | supersedesRuleVersion | ComplianceRuleVersion |  | ComplianceRuleVersionSupersession |
+| prisma_relation | compliance_rule_version |  | skuScopes | ComplianceRuleVersionSkuScope |  | ComplianceRuleVersionToComplianceRuleVersionSkuScope |
+| prisma_relation | compliance_rule_version_sku_scope |  | ruleVersion | ComplianceRuleVersion |  | ComplianceRuleVersionToComplianceRuleVersionSkuScope |
+| prisma_relation | container_cargo_allocation |  | allocationSet | ContainerCargoAllocationSet |  | ContainerCargoAllocationToContainerCargoAllocationSet |
+| prisma_relation | container_cargo_allocation |  | replenishmentOrderLine | ReplenishmentOrderLine |  | ContainerCargoAllocationToReplenishmentOrderLine |
+| prisma_relation | container_cargo_allocation |  | shipmentCargoLine | ShipmentCargoLine |  | ContainerCargoAllocationToShipmentCargoLine |
+| prisma_relation | container_cargo_allocation_set |  | supersededBy | ContainerCargoAllocationSet |  | ContainerCargoAllocationSetSupersession |
+| prisma_relation | container_cargo_allocation_set |  | supersedesSet | ContainerCargoAllocationSet |  | ContainerCargoAllocationSetSupersession |
+| prisma_relation | container_cargo_allocation_set |  | containerRecord | ContainerRecord |  | ContainerCargoAllocationSetToContainerRecord |
+| prisma_relation | container_cargo_allocation_set |  | stuffingSnapshots | ContainerStuffingSnapshot |  | ContainerCargoAllocationSetToContainerStuffingSnapshot |
+| prisma_relation | container_cargo_allocation_set |  | allocations | ContainerCargoAllocation |  | ContainerCargoAllocationToContainerCargoAllocationSet |
+| prisma_relation | container_dispatch_snapshot |  | supersededBy | ContainerDispatchSnapshot |  | ContainerDispatchSnapshotSupersession |
+| prisma_relation | container_dispatch_snapshot |  | supersedesSnapshot | ContainerDispatchSnapshot |  | ContainerDispatchSnapshotSupersession |
+| prisma_relation | container_dispatch_snapshot |  | containerRecord | ContainerRecord |  | ContainerDispatchSnapshotToContainerRecord |
+| prisma_relation | container_dispatch_snapshot |  | stuffingSnapshot | ContainerStuffingSnapshot |  | ContainerDispatchSnapshotToContainerStuffingSnapshot |
+| prisma_relation | container_import_binding |  | containerRecord | ContainerRecord |  | ContainerImportBindingToContainerRecord |
+| prisma_relation | container_record |  | canonicalEventScopeMembers | CanonicalEventScopeMember |  | CanonicalEventScopeMemberToContainerRecord |
+| prisma_relation | container_record |  | cargoAllocationSets | ContainerCargoAllocationSet |  | ContainerCargoAllocationSetToContainerRecord |
+| prisma_relation | container_record |  | dispatchSnapshots | ContainerDispatchSnapshot |  | ContainerDispatchSnapshotToContainerRecord |
+| prisma_relation | container_record |  | importBindings | ContainerImportBinding |  | ContainerImportBindingToContainerRecord |
+| prisma_relation | container_record |  | sourceIdentities | ContainerSourceIdentity |  | ContainerRecordToContainerSourceIdentity |
+| prisma_relation | container_record |  | stuffingSnapshots | ContainerStuffingSnapshot |  | ContainerRecordToContainerStuffingSnapshot |
+| prisma_relation | container_record |  | unloadingReports | ContainerUnloadingReport |  | ContainerRecordToContainerUnloadingReport |
+| prisma_relation | container_record |  | customsClearanceCases | CustomsClearanceCase |  | ContainerRecordToCustomsClearanceCase |
+| prisma_relation | container_record |  | lifecycleDateFacts | LifecycleDateFact |  | ContainerRecordToLifecycleDateFact |
+| prisma_relation | container_record |  | oceanRoutePlans | OceanRoutePlan |  | ContainerRecordToOceanRoutePlan |
+| prisma_relation | container_record |  | operationalExceptions | OperationalExceptionCase |  | ContainerRecordToOperationalExceptionCase |
+| prisma_relation | container_record |  | replenishmentOrder | ReplenishmentOrder |  | ContainerRecordToReplenishmentOrder |
+| prisma_relation | container_record |  | shipmentDocumentLinks | ShipmentContainerDocumentLink |  | ContainerRecordToShipmentContainerDocumentLink |
+| prisma_relation | container_record |  | shipmentLinks | ShipmentContainerLink |  | ContainerRecordToShipmentContainerLink |
+| prisma_relation | container_record |  | timeFacts | ShipmentTimeFact |  | ContainerRecordToShipmentTimeFact |
+| prisma_relation | container_record |  | shipmentUpstreamReferences | ShipmentUpstreamReference |  | ContainerRecordToShipmentUpstreamReference |
+| prisma_relation | container_record |  | workHandoffs | ShipmentWorkHandoff |  | ContainerRecordToShipmentWorkHandoff |
+| prisma_relation | container_record |  | warehouseDeliveryInstructions | WarehouseDeliveryInstruction |  | ContainerRecordToWarehouseDeliveryInstruction |
+| prisma_relation | container_source_identity |  | containerRecord | ContainerRecord |  | ContainerRecordToContainerSourceIdentity |
+| prisma_relation | container_stuffing_snapshot |  | allocationSet | ContainerCargoAllocationSet |  | ContainerCargoAllocationSetToContainerStuffingSnapshot |
+| prisma_relation | container_stuffing_snapshot |  | dispatchSnapshots | ContainerDispatchSnapshot |  | ContainerDispatchSnapshotToContainerStuffingSnapshot |
+| prisma_relation | container_stuffing_snapshot |  | containerRecord | ContainerRecord |  | ContainerRecordToContainerStuffingSnapshot |
+| prisma_relation | container_stuffing_snapshot |  | supersededBy | ContainerStuffingSnapshot |  | ContainerStuffingSnapshotSupersession |
+| prisma_relation | container_stuffing_snapshot |  | supersedesSnapshot | ContainerStuffingSnapshot |  | ContainerStuffingSnapshotSupersession |
+| prisma_relation | container_unloading_report |  | containerRecord | ContainerRecord |  | ContainerRecordToContainerUnloadingReport |
+| prisma_relation | container_unloading_report |  | supersededBy | ContainerUnloadingReport |  | ContainerUnloadingReportSupersession |
+| prisma_relation | container_unloading_report |  | supersedesReport | ContainerUnloadingReport |  | ContainerUnloadingReportSupersession |
+| prisma_relation | country_code_reference |  | cargoOwners | CargoOwnerReference |  | CargoOwnerReferenceToCountryCodeReference |
+| prisma_relation | country_code_reference |  | release | ReferenceDataRelease |  | CountryCodeReferenceToReferenceDataRelease |
+| prisma_relation | country_code_reference |  | unlocodeAreas | UnlocodeAreaReference |  | CountryCodeReferenceToUnlocodeAreaReference |
+| prisma_relation | customs_clearance_case |  | containerRecord | ContainerRecord |  | ContainerRecordToCustomsClearanceCase |
+| prisma_relation | customs_clearance_case |  | supersededBy | CustomsClearanceCase |  | CustomsClearanceCaseSupersession |
+| prisma_relation | customs_clearance_case |  | supersedesCase | CustomsClearanceCase |  | CustomsClearanceCaseSupersession |
+| prisma_relation | evidence_record |  | decisions | EvidenceVerificationDecision |  | EvidenceRecordToEvidenceVerificationDecision |
+| prisma_relation | evidence_verification_decision |  | evidence | EvidenceRecord |  | EvidenceRecordToEvidenceVerificationDecision |
+| prisma_relation | flow_instance |  | nodeBlocks | NodeBlock |  | FlowInstanceToNodeBlock |
+| prisma_relation | flow_instance |  | nodes | NodeInstance |  | FlowInstanceToNodeInstance |
+| prisma_relation | flow_instance |  | shipment | Shipment |  | FlowInstanceToShipment |
+| prisma_relation | import_batch |  | replacementBatches | ImportBatch |  | ImportBatchReplacement |
+| prisma_relation | import_batch |  | replacesBatch | ImportBatch |  | ImportBatchReplacement |
+| prisma_relation | import_batch |  | reviews | ImportReview |  | ImportBatchToImportReview |
+| prisma_relation | import_batch |  | rows | ImportRow |  | ImportBatchToImportRow |
+| prisma_relation | import_batch |  | rowResults | ImportRowResult |  | ImportBatchToImportRowResult |
+| prisma_relation | import_batch |  | postDepartureReviewSources | PostDepartureSourcePackageSource |  | ImportBatchToPostDepartureSourcePackageSource |
+| prisma_relation | import_review |  | batch | ImportBatch |  | ImportBatchToImportReview |
+| prisma_relation | import_row |  | batch | ImportBatch |  | ImportBatchToImportRow |
+| prisma_relation | import_row_result |  | batch | ImportBatch |  | ImportBatchToImportRowResult |
+| prisma_relation | inbox_message |  | oceanProviderEventIngestion | OceanProviderEventIngestion |  | InboxMessageToOceanProviderEventIngestion |
+| prisma_relation | lifecycle_date_fact |  | container | ContainerRecord |  | ContainerRecordToLifecycleDateFact |
+| prisma_relation | lifecycle_date_fact |  | canonicalEvent | CanonicalEvent |  | LifecycleDateFactAppliedEvent |
+| prisma_relation | lifecycle_date_fact |  | corrections | LifecycleDateFact |  | LifecycleDateFactCorrections |
+| prisma_relation | lifecycle_date_fact |  | supersedesFact | LifecycleDateFact |  | LifecycleDateFactCorrections |
+| prisma_relation | lifecycle_date_fact |  | nodeBlocks | NodeBlock |  | LifecycleDateFactToNodeBlock |
+| prisma_relation | market_opportunity_handoff |  | signal | MarketSignal |  | MarketOpportunityHandoffToMarketSignal |
+| prisma_relation | market_opportunity_handoff |  | initiatives | ProductInitiative |  | MarketOpportunityHandoffToProductInitiative |
+| prisma_relation | market_opportunity_handoff |  | intakes | ProductOpportunityIntake |  | MarketOpportunityHandoffToProductOpportunityIntake |
+| prisma_relation | market_signal |  | handoffs | MarketOpportunityHandoff |  | MarketOpportunityHandoffToMarketSignal |
+| prisma_relation | market_signal |  | decisions | MarketSignalDecision |  | MarketSignalToMarketSignalDecision |
+| prisma_relation | market_signal_decision |  | signal | MarketSignal |  | MarketSignalToMarketSignalDecision |
+| prisma_relation | node_block |  | flow | FlowInstance |  | FlowInstanceToNodeBlock |
+| prisma_relation | node_block |  | sourceFact | LifecycleDateFact |  | LifecycleDateFactToNodeBlock |
+| prisma_relation | node_block |  | resolution | NodeBlockResolution |  | NodeBlockToNodeBlockResolution |
+| prisma_relation | node_block |  | node | NodeInstance |  | NodeBlockToNodeInstance |
+| prisma_relation | node_block_resolution |  | block | NodeBlock |  | NodeBlockToNodeBlockResolution |
+| prisma_relation | node_event_application |  | event | CanonicalEvent |  | CanonicalEventToNodeEventApplication |
+| prisma_relation | node_event_application |  | targetNodeInstance | NodeInstance |  | NodeEventApplicationToNodeInstance |
+| prisma_relation | node_instance |  | flow | FlowInstance |  | FlowInstanceToNodeInstance |
+| prisma_relation | node_instance |  | blocks | NodeBlock |  | NodeBlockToNodeInstance |
+| prisma_relation | node_instance |  | eventApplications | NodeEventApplication |  | NodeEventApplicationToNodeInstance |
+| prisma_relation | node_instance |  | workOrderFactApplications | WorkOrderFactApplication |  | NodeInstanceToWorkOrderFactApplication |
+| prisma_relation | node_task |  | outcome | NodeTaskOutcome |  | NodeTaskToNodeTaskOutcome |
+| prisma_relation | node_task |  | workOrders | WorkOrder |  | NodeTaskToWorkOrder |
+| prisma_relation | node_task_outcome |  | nodeTask | NodeTask |  | NodeTaskToNodeTaskOutcome |
+| prisma_relation | ocean_provider_event_ingestion |  | inboxMessage | InboxMessage |  | InboxMessageToOceanProviderEventIngestion |
+| prisma_relation | ocean_route_plan |  | container | ContainerRecord |  | ContainerRecordToOceanRoutePlan |
+| prisma_relation | ocean_route_plan |  | supersededBy | OceanRoutePlan |  | OceanRoutePlanSupersession |
+| prisma_relation | ocean_route_plan |  | supersedesRoute | OceanRoutePlan |  | OceanRoutePlanSupersession |
+| prisma_relation | ocean_route_plan |  | segments | OceanRouteSegment |  | OceanRoutePlanToOceanRouteSegment |
+| prisma_relation | ocean_route_segment |  | routePlan | OceanRoutePlan |  | OceanRoutePlanToOceanRouteSegment |
+| prisma_relation | operational_exception_case |  | containerRecord | ContainerRecord |  | ContainerRecordToOperationalExceptionCase |
+| prisma_relation | operational_exception_case |  | shipment | Shipment |  | OperationalExceptionCaseToShipment |
+| prisma_relation | ops_assistant_message |  | session | OpsAssistantSession |  | OpsAssistantMessageToOpsAssistantSession |
+| prisma_relation | ops_assistant_session |  | messages | OpsAssistantMessage |  | OpsAssistantMessageToOpsAssistantSession |
+| prisma_relation | ops_assistant_session |  | notification | OpsNotification |  | OpsAssistantSessionToOpsNotification |
+| prisma_relation | ops_notification |  | sessions | OpsAssistantSession |  | OpsAssistantSessionToOpsNotification |
+| prisma_relation | overdue_charge_rate_tier |  | standard | OverdueChargeStandard |  | OverdueChargeRateTierToOverdueChargeStandard |
+| prisma_relation | overdue_charge_standard |  | rateTiers | OverdueChargeRateTier |  | OverdueChargeRateTierToOverdueChargeStandard |
+| prisma_relation | port_code_entry |  | port | PortCodeReference |  | PortCodeEntryToPortCodeReference |
+| prisma_relation | port_code_reference |  | entries | PortCodeEntry |  | PortCodeEntryToPortCodeReference |
+| prisma_relation | port_code_reference |  | aliases | PortNameAlias |  | PortCodeReferenceToPortNameAlias |
+| prisma_relation | port_code_reference |  | release | ReferenceDataRelease |  | PortCodeReferenceToReferenceDataRelease |
+| prisma_relation | port_code_reference |  | area | UnlocodeAreaReference |  | PortCodeReferenceToUnlocodeAreaReference |
+| prisma_relation | port_name_alias |  | port | PortCodeReference |  | PortCodeReferenceToPortNameAlias |
+| prisma_relation | post_departure_source_candidate_cargo_line |  | correction | PostDepartureSourceCandidateCorrection |  | PostDepartureSourceCandidateCargoLineToPostDepartureSourceCandidateCorrection |
+| prisma_relation | post_departure_source_candidate_correction |  | supersedesCorrection | PostDepartureSourceCandidateCorrection |  | PostDepartureCandidateCorrectionVersion |
+| prisma_relation | post_departure_source_candidate_correction |  | supersedingCorrections | PostDepartureSourceCandidateCorrection |  | PostDepartureCandidateCorrectionVersion |
+| prisma_relation | post_departure_source_candidate_correction |  | targetShipment | Shipment |  | PostDepartureCandidateTargetShipment |
+| prisma_relation | post_departure_source_candidate_correction |  | cargoLines | PostDepartureSourceCandidateCargoLine |  | PostDepartureSourceCandidateCargoLineToPostDepartureSourceCandidateCorrection |
+| prisma_relation | post_departure_source_candidate_correction |  | review | PostDepartureSourcePackageReview |  | PostDepartureSourceCandidateCorrectionToPostDepartureSourcePackageReview |
+| prisma_relation | post_departure_source_package_review |  | candidateCorrections | PostDepartureSourceCandidateCorrection |  | PostDepartureSourceCandidateCorrectionToPostDepartureSourcePackageReview |
+| prisma_relation | post_departure_source_package_review |  | sources | PostDepartureSourcePackageSource |  | PostDepartureSourcePackageReviewToPostDepartureSourcePackageSource |
+| prisma_relation | post_departure_source_package_source |  | importBatch | ImportBatch |  | ImportBatchToPostDepartureSourcePackageSource |
+| prisma_relation | post_departure_source_package_source |  | review | PostDepartureSourcePackageReview |  | PostDepartureSourcePackageReviewToPostDepartureSourcePackageSource |
+| prisma_relation | product |  | sourceHandoff | ProductDefinitionRelease |  | ProductToProductDefinitionRelease |
+| prisma_relation | product |  | releases | ProductIdentityRelease |  | ProductToProductIdentityRelease |
+| prisma_relation | product |  | skus | ProductSku |  | ProductToProductSku |
+| prisma_relation | product_battery_profile |  | profile | ProductComplianceProfile |  | ProductBatteryProfileToProductComplianceProfile |
+| prisma_relation | product_certificate |  | versions | ProductCertificateVersion |  | ProductCertificateToProductCertificateVersion |
+| prisma_relation | product_certificate |  | productSku | ProductSku |  | ProductCertificateToProductSku |
+| prisma_relation | product_certificate_country_coverage |  | certificateVersion | ProductCertificateVersion |  | ProductCertificateCountryCoverageToProductCertificateVersion |
+| prisma_relation | product_certificate_version |  | countryCoverage | ProductCertificateCountryCoverage |  | ProductCertificateCountryCoverageToProductCertificateVersion |
+| prisma_relation | product_certificate_version |  | productCertificate | ProductCertificate |  | ProductCertificateToProductCertificateVersion |
+| prisma_relation | product_certificate_version |  | supersededBy | ProductCertificateVersion |  | ProductCertificateVersionSupersession |
+| prisma_relation | product_certificate_version |  | supersedesVersion | ProductCertificateVersion |  | ProductCertificateVersionSupersession |
+| prisma_relation | product_certificate_version |  | complianceProfileLinks | ProductComplianceProfileCertificate |  | ProductCertificateVersionToProductComplianceProfileCertificate |
+| prisma_relation | product_compliance_profile |  | battery | ProductBatteryProfile |  | ProductBatteryProfileToProductComplianceProfile |
+| prisma_relation | product_compliance_profile |  | supersededBy | ProductComplianceProfile |  | ProductComplianceProfileSupersession |
+| prisma_relation | product_compliance_profile |  | supersedesProfile | ProductComplianceProfile |  | ProductComplianceProfileSupersession |
+| prisma_relation | product_compliance_profile |  | certificateLinks | ProductComplianceProfileCertificate |  | ProductComplianceProfileToProductComplianceProfileCertificate |
+| prisma_relation | product_compliance_profile |  | dangerousGoods | ProductDangerousGoodsProfile |  | ProductComplianceProfileToProductDangerousGoodsProfile |
+| prisma_relation | product_compliance_profile |  | inspectionRequirements | ProductInspectionRequirement |  | ProductComplianceProfileToProductInspectionRequirement |
+| prisma_relation | product_compliance_profile |  | refrigerant | ProductRefrigerantProfile |  | ProductComplianceProfileToProductRefrigerantProfile |
+| prisma_relation | product_compliance_profile |  | productSku | ProductSku |  | ProductComplianceProfileToProductSku |
+| prisma_relation | product_compliance_profile_certificate |  | certificateVersion | ProductCertificateVersion |  | ProductCertificateVersionToProductComplianceProfileCertificate |
+| prisma_relation | product_compliance_profile_certificate |  | profile | ProductComplianceProfile |  | ProductComplianceProfileToProductComplianceProfileCertificate |
+| prisma_relation | product_dangerous_goods_profile |  | profile | ProductComplianceProfile |  | ProductComplianceProfileToProductDangerousGoodsProfile |
+| prisma_relation | product_definition |  | releases | ProductDefinitionRelease |  | ProductDefinitionToProductDefinitionRelease |
+| prisma_relation | product_definition |  | initiativeHandoff | ProductInitiativeHandoff |  | ProductDefinitionToProductInitiativeHandoff |
+| prisma_relation | product_definition_release |  | definition | ProductDefinition |  | ProductDefinitionToProductDefinitionRelease |
+| prisma_relation | product_definition_release |  | products | Product |  | ProductToProductDefinitionRelease |
+| prisma_relation | product_identity_release |  | nominations | SupplierNominationRelease |  | ProductIdentityReleaseToSupplierNominationRelease |
+| prisma_relation | product_identity_release |  | quotations | SupplierQuotation |  | ProductIdentityReleaseToSupplierQuotation |
+| prisma_relation | product_identity_release |  | product | Product |  | ProductToProductIdentityRelease |
+| prisma_relation | product_initiative |  | handoff | MarketOpportunityHandoff |  | MarketOpportunityHandoffToProductInitiative |
+| prisma_relation | product_initiative |  | handoffs | ProductInitiativeHandoff |  | ProductInitiativeToProductInitiativeHandoff |
+| prisma_relation | product_initiative_claim |  | handoff | ProductInitiativeHandoff |  | ProductInitiativeClaimToProductInitiativeHandoff |
+| prisma_relation | product_initiative_handoff |  | productDefinitions | ProductDefinition |  | ProductDefinitionToProductInitiativeHandoff |
+| prisma_relation | product_initiative_handoff |  | claims | ProductInitiativeClaim |  | ProductInitiativeClaimToProductInitiativeHandoff |
+| prisma_relation | product_initiative_handoff |  | initiative | ProductInitiative |  | ProductInitiativeToProductInitiativeHandoff |
+| prisma_relation | product_inspection_requirement |  | profile | ProductComplianceProfile |  | ProductComplianceProfileToProductInspectionRequirement |
+| prisma_relation | product_opportunity_intake |  | handoff | MarketOpportunityHandoff |  | MarketOpportunityHandoffToProductOpportunityIntake |
+| prisma_relation | product_refrigerant_profile |  | profile | ProductComplianceProfile |  | ProductComplianceProfileToProductRefrigerantProfile |
+| prisma_relation | product_sku |  | productCertificates | ProductCertificate |  | ProductCertificateToProductSku |
+| prisma_relation | product_sku |  | complianceProfiles | ProductComplianceProfile |  | ProductComplianceProfileToProductSku |
+| prisma_relation | product_sku |  | registrations | ProductSkuRegistration |  | ProductSkuToProductSkuRegistration |
+| prisma_relation | product_sku |  | shipmentCargoLines | ShipmentCargoLine |  | ProductSkuToShipmentCargoLine |
+| prisma_relation | product_sku |  | product | Product |  | ProductToProductSku |
+| prisma_relation | product_sku_registration |  | productSku | ProductSku |  | ProductSkuToProductSkuRegistration |
+| prisma_relation | reference_data_release |  | cargoOwners | CargoOwnerReference |  | CargoOwnerReferenceToReferenceDataRelease |
+| prisma_relation | reference_data_release |  | countryCodes | CountryCodeReference |  | CountryCodeReferenceToReferenceDataRelease |
+| prisma_relation | reference_data_release |  | portCodes | PortCodeReference |  | PortCodeReferenceToReferenceDataRelease |
+| prisma_relation | reference_data_release |  | unlocodeAreas | UnlocodeAreaReference |  | ReferenceDataReleaseToUnlocodeAreaReference |
+| prisma_relation | replenishment_order |  | containerRecords | ContainerRecord |  | ContainerRecordToReplenishmentOrder |
+| prisma_relation | replenishment_order |  | lines | ReplenishmentOrderLine |  | ReplenishmentOrderToReplenishmentOrderLine |
+| prisma_relation | replenishment_order_line |  | cargoAllocations | ContainerCargoAllocation |  | ContainerCargoAllocationToReplenishmentOrderLine |
+| prisma_relation | replenishment_order_line |  | shipmentCargoLines | ShipmentCargoLine |  | ReplenishmentOrderLineToShipmentCargoLine |
+| prisma_relation | replenishment_order_line |  | replenishmentOrder | ReplenishmentOrder |  | ReplenishmentOrderToReplenishmentOrderLine |
+| prisma_relation | shipment |  | cargoOwner | CargoOwnerReference |  | CargoOwnerReferenceToShipment |
+| prisma_relation | shipment |  | lifecycleFlows | FlowInstance |  | FlowInstanceToShipment |
+| prisma_relation | shipment |  | operationalExceptions | OperationalExceptionCase |  | OperationalExceptionCaseToShipment |
+| prisma_relation | shipment |  | candidateCorrections | PostDepartureSourceCandidateCorrection |  | PostDepartureCandidateTargetShipment |
+| prisma_relation | shipment |  | cargoLines | ShipmentCargoLine |  | ShipmentToShipmentCargoLine |
+| prisma_relation | shipment |  | containerLinks | ShipmentContainerLink |  | ShipmentToShipmentContainerLink |
+| prisma_relation | shipment |  | eventApplications | ShipmentEventApplication |  | ShipmentToShipmentEventApplication |
+| prisma_relation | shipment |  | handoffs | ShipmentHandoffRecord |  | ShipmentToShipmentHandoffRecord |
+| prisma_relation | shipment |  | transportDocuments | ShipmentTransportDocument |  | ShipmentToShipmentTransportDocument |
+| prisma_relation | shipment |  | upstreamReferences | ShipmentUpstreamReference |  | ShipmentToShipmentUpstreamReference |
+| prisma_relation | shipment |  | workHandoffs | ShipmentWorkHandoff |  | ShipmentToShipmentWorkHandoff |
+| prisma_relation | shipment_cargo_line |  | containerAllocations | ContainerCargoAllocation |  | ContainerCargoAllocationToShipmentCargoLine |
+| prisma_relation | shipment_cargo_line |  | productSku | ProductSku |  | ProductSkuToShipmentCargoLine |
+| prisma_relation | shipment_cargo_line |  | replenishmentOrderLine | ReplenishmentOrderLine |  | ReplenishmentOrderLineToShipmentCargoLine |
+| prisma_relation | shipment_cargo_line |  | supersededBy | ShipmentCargoLine |  | ShipmentCargoLineSupersession |
+| prisma_relation | shipment_cargo_line |  | supersedesCargoLine | ShipmentCargoLine |  | ShipmentCargoLineSupersession |
+| prisma_relation | shipment_cargo_line |  | sourceHandoff | ShipmentHandoffRecord |  | ShipmentCargoLineToShipmentHandoffRecord |
+| prisma_relation | shipment_cargo_line |  | upstreamReferences | ShipmentUpstreamReference |  | ShipmentCargoLineToShipmentUpstreamReference |
+| prisma_relation | shipment_cargo_line |  | shipment | Shipment |  | ShipmentToShipmentCargoLine |
+| prisma_relation | shipment_container_document_link |  | containerRecord | ContainerRecord |  | ContainerRecordToShipmentContainerDocumentLink |
+| prisma_relation | shipment_container_document_link |  | shipmentContainerLink | ShipmentContainerLink |  | ShipmentContainerDocumentLinkToShipmentContainerLink |
+| prisma_relation | shipment_container_document_link |  | sourceHandoff | ShipmentHandoffRecord |  | ShipmentContainerDocumentLinkToShipmentHandoffRecord |
+| prisma_relation | shipment_container_document_link |  | transportDocument | ShipmentTransportDocument |  | ShipmentContainerDocumentLinkToShipmentTransportDocument |
+| prisma_relation | shipment_container_link |  | eventScopeMembers | CanonicalEventScopeMember |  | CanonicalEventScopeMemberToShipmentContainerLink |
+| prisma_relation | shipment_container_link |  | containerRecord | ContainerRecord |  | ContainerRecordToShipmentContainerLink |
+| prisma_relation | shipment_container_link |  | documentLinks | ShipmentContainerDocumentLink |  | ShipmentContainerDocumentLinkToShipmentContainerLink |
+| prisma_relation | shipment_container_link |  | supersededBy | ShipmentContainerLink |  | ShipmentContainerLinkSupersession |
+| prisma_relation | shipment_container_link |  | supersedesLink | ShipmentContainerLink |  | ShipmentContainerLinkSupersession |
+| prisma_relation | shipment_container_link |  | sourceHandoff | ShipmentHandoffRecord |  | ShipmentContainerLinkToShipmentHandoffRecord |
+| prisma_relation | shipment_container_link |  | shipment | Shipment |  | ShipmentToShipmentContainerLink |
+| prisma_relation | shipment_event_application |  | event | CanonicalEvent |  | CanonicalEventToShipmentEventApplication |
+| prisma_relation | shipment_event_application |  | shipment | Shipment |  | ShipmentToShipmentEventApplication |
+| prisma_relation | shipment_handoff_object_result |  | handoff | ShipmentHandoffRecord |  | ShipmentHandoffObjectResultToShipmentHandoffRecord |
+| prisma_relation | shipment_handoff_record |  | cargoLines | ShipmentCargoLine |  | ShipmentCargoLineToShipmentHandoffRecord |
+| prisma_relation | shipment_handoff_record |  | containerDocumentLinks | ShipmentContainerDocumentLink |  | ShipmentContainerDocumentLinkToShipmentHandoffRecord |
+| prisma_relation | shipment_handoff_record |  | containerLinks | ShipmentContainerLink |  | ShipmentContainerLinkToShipmentHandoffRecord |
+| prisma_relation | shipment_handoff_record |  | objectResults | ShipmentHandoffObjectResult |  | ShipmentHandoffObjectResultToShipmentHandoffRecord |
+| prisma_relation | shipment_handoff_record |  | transportDocuments | ShipmentTransportDocument |  | ShipmentHandoffRecordToShipmentTransportDocument |
+| prisma_relation | shipment_handoff_record |  | upstreamReferences | ShipmentUpstreamReference |  | ShipmentHandoffRecordToShipmentUpstreamReference |
+| prisma_relation | shipment_handoff_record |  | supersededBy | ShipmentHandoffRecord |  | ShipmentHandoffSupersession |
+| prisma_relation | shipment_handoff_record |  | supersedesHandoff | ShipmentHandoffRecord |  | ShipmentHandoffSupersession |
+| prisma_relation | shipment_handoff_record |  | shipment | Shipment |  | ShipmentToShipmentHandoffRecord |
+| prisma_relation | shipment_time_fact |  | containerRecord | ContainerRecord |  | ContainerRecordToShipmentTimeFact |
+| prisma_relation | shipment_transport_document |  | containerLinks | ShipmentContainerDocumentLink |  | ShipmentContainerDocumentLinkToShipmentTransportDocument |
+| prisma_relation | shipment_transport_document |  | childDocuments | ShipmentTransportDocument |  | ShipmentDocumentParent |
+| prisma_relation | shipment_transport_document |  | parentDocument | ShipmentTransportDocument |  | ShipmentDocumentParent |
+| prisma_relation | shipment_transport_document |  | sourceHandoff | ShipmentHandoffRecord |  | ShipmentHandoffRecordToShipmentTransportDocument |
+| prisma_relation | shipment_transport_document |  | shipment | Shipment |  | ShipmentToShipmentTransportDocument |
+| prisma_relation | shipment_upstream_reference |  | containerRecord | ContainerRecord |  | ContainerRecordToShipmentUpstreamReference |
+| prisma_relation | shipment_upstream_reference |  | shipmentCargoLine | ShipmentCargoLine |  | ShipmentCargoLineToShipmentUpstreamReference |
+| prisma_relation | shipment_upstream_reference |  | sourceHandoff | ShipmentHandoffRecord |  | ShipmentHandoffRecordToShipmentUpstreamReference |
+| prisma_relation | shipment_upstream_reference |  | shipment | Shipment |  | ShipmentToShipmentUpstreamReference |
+| prisma_relation | shipment_upstream_reference |  | supersededBy | ShipmentUpstreamReference |  | ShipmentUpstreamReferenceSupersession |
+| prisma_relation | shipment_upstream_reference |  | supersedesReference | ShipmentUpstreamReference |  | ShipmentUpstreamReferenceSupersession |
+| prisma_relation | shipment_work_handoff |  | containerRecord | ContainerRecord |  | ContainerRecordToShipmentWorkHandoff |
+| prisma_relation | shipment_work_handoff |  | shipment | Shipment |  | ShipmentToShipmentWorkHandoff |
+| prisma_relation | shipment_work_handoff |  | actions | ShipmentWorkHandoffAction |  | ShipmentWorkHandoffToShipmentWorkHandoffAction |
+| prisma_relation | shipment_work_handoff_action |  | handoff | ShipmentWorkHandoff |  | ShipmentWorkHandoffToShipmentWorkHandoffAction |
+| prisma_relation | supplier |  | nominations | SupplierNominationRelease |  | SupplierToSupplierNominationRelease |
+| prisma_relation | supplier |  | quotations | SupplierQuotation |  | SupplierToSupplierQuotation |
+| prisma_relation | supplier_nomination_release |  | skuRelease | ProductIdentityRelease |  | ProductIdentityReleaseToSupplierNominationRelease |
+| prisma_relation | supplier_nomination_release |  | quotation | SupplierQuotation |  | SupplierNominationReleaseToSupplierQuotation |
+| prisma_relation | supplier_nomination_release |  | supplier | Supplier |  | SupplierToSupplierNominationRelease |
+| prisma_relation | supplier_quotation |  | skuRelease | ProductIdentityRelease |  | ProductIdentityReleaseToSupplierQuotation |
+| prisma_relation | supplier_quotation |  | nominations | SupplierNominationRelease |  | SupplierNominationReleaseToSupplierQuotation |
+| prisma_relation | supplier_quotation |  | supplier | Supplier |  | SupplierToSupplierQuotation |
+| prisma_relation | unlocode_area_reference |  | isoCountry | CountryCodeReference |  | CountryCodeReferenceToUnlocodeAreaReference |
+| prisma_relation | unlocode_area_reference |  | ports | PortCodeReference |  | PortCodeReferenceToUnlocodeAreaReference |
+| prisma_relation | unlocode_area_reference |  | release | ReferenceDataRelease |  | ReferenceDataReleaseToUnlocodeAreaReference |
+| prisma_relation | warehouse_delivery_instruction |  | containerRecord | ContainerRecord |  | ContainerRecordToWarehouseDeliveryInstruction |
+| prisma_relation | warehouse_delivery_instruction |  | supersededBy | WarehouseDeliveryInstruction |  | WarehouseDeliveryInstructionSupersession |
+| prisma_relation | warehouse_delivery_instruction |  | supersedesInstruction | WarehouseDeliveryInstruction |  | WarehouseDeliveryInstructionSupersession |
+| prisma_relation | work_order |  | nodeTask | NodeTask |  | NodeTaskToWorkOrder |
+| prisma_relation | work_order |  | factApplications | WorkOrderFactApplication |  | WorkOrderToWorkOrderFactApplication |
+| prisma_relation | work_order_fact_application |  | canonicalEvent | CanonicalEvent |  | CanonicalEventToWorkOrderFactApplication |
+| prisma_relation | work_order_fact_application |  | nodeInstance | NodeInstance |  | NodeInstanceToWorkOrderFactApplication |
+| prisma_relation | work_order_fact_application |  | workOrder | WorkOrder |  | WorkOrderToWorkOrderFactApplication |
 
 ## Findings
 

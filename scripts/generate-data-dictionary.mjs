@@ -13,6 +13,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { PrismaPg } from "@prisma/adapter-pg";
+import { format } from "prettier";
 
 import {
   renderDataDictionaryMarkdown,
@@ -558,7 +559,7 @@ export function buildDictionaryModel({
     },
     tables,
     fields,
-    relations: structure.relations,
+    relations: buildDictionaryRelations(structure, annotations),
     constraintsAndIndexes: [
       ...structure.database.constraints,
       ...structure.database.indexes,
@@ -572,6 +573,41 @@ export function buildDictionaryModel({
     findings: structure.findings,
     validationFindings,
   };
+}
+
+function buildDictionaryRelations(structure, annotations) {
+  return [
+    ...structure.database.constraints
+      .filter((constraint) => constraint.type === "foreign_key")
+      .map((constraint) => ({
+        relationType: "physical_fk",
+        sourceTable: constraint.tableName,
+        sourceFields: constraint.columnNames,
+        targetTable: constraint.referencedTableName,
+        targetFields: constraint.referencedColumnNames,
+        name: constraint.constraintName,
+        prismaDeclared: constraint.prismaDeclared,
+      })),
+    ...structure.relations.map((relation) => ({
+      ...relation,
+      sourceFields: [],
+      targetTable: relation.targetModel,
+      targetFields: [],
+      name: relation.relationName,
+      prismaDeclared: true,
+    })),
+    ...(annotations.logicalReferences ?? []).map((relation) => ({
+      ...relation,
+      relationType: "logical_reference",
+      prismaDeclared: false,
+    })),
+  ].sort(
+    compareBy(
+      (relation) => relation.relationType,
+      (relation) => relation.sourceTable,
+      (relation) => relation.name,
+    ),
+  );
 }
 
 function pendingAnnotation() {
@@ -1139,7 +1175,9 @@ export async function buildDictionaryArtifacts({
     );
   }
   return {
-    "dictionary.annotations.json": `${JSON.stringify(annotations, null, 2)}\n`,
+    "dictionary.annotations.json": await format(JSON.stringify(annotations), {
+      parser: "json",
+    }),
     "DATA_DICTIONARY.generated.md": renderDataDictionaryMarkdown(model),
     "NATIVE_OBJECTS.generated.md": renderNativeObjectsMarkdown(model),
     "database-data-dictionary.xlsx": await renderWorkbook(model, { fixedDate }),
@@ -1233,7 +1271,9 @@ async function main() {
   });
   if (command.action === "bootstrap") {
     atomicWriteArtifacts(OUTPUT_DIRECTORY, {
-      "dictionary.annotations.json": `${JSON.stringify(annotations, null, 2)}\n`,
+      "dictionary.annotations.json": await format(JSON.stringify(annotations), {
+        parser: "json",
+      }),
     });
     process.stdout.write(
       `Updated database/dictionary/dictionary.annotations.json (${Object.keys(annotations.tables).length} tables, ${Object.keys(annotations.fields).length} fields).\n`,

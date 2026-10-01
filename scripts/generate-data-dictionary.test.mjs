@@ -418,6 +418,40 @@ test("summary counts are derived from normalized objects", () => {
   });
 });
 
+test("dictionary model separates physical foreign keys from Prisma relations", () => {
+  const structure = dictionaryFixture();
+  structure.database.constraints.push({
+    tableName: "order",
+    constraintName: "order_parent_fkey",
+    type: "foreign_key",
+    columnNames: ["id"],
+    referencedTableName: "parent",
+    referencedColumnNames: ["id"],
+    prismaDeclared: false,
+  });
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+
+  const model = buildDictionaryModel({
+    structure,
+    annotations,
+    trackedFiles: new Set(),
+  });
+
+  assert.deepEqual(model.relations, [
+    {
+      relationType: "physical_fk",
+      sourceTable: "order",
+      sourceFields: ["id"],
+      targetTable: "parent",
+      targetFields: ["id"],
+      name: "order_parent_fkey",
+      prismaDeclared: false,
+    },
+  ]);
+});
+
 test("annotation bootstrap covers every table and physical column as pending", () => {
   const structure = dictionaryFixture();
   const annotations = createPendingAnnotations(structure, {
@@ -733,11 +767,16 @@ test("artifact builder creates four projections from one model", async () => {
   const annotations = createPendingAnnotations(structure, {
     baselineCommit: "abc123",
   });
+  annotations.sources.schema = {
+    path: "database/schema.prisma",
+    authority: "implementation",
+  };
+  annotations.tables["public.order"].sourceRefs = ["schema"];
 
   const artifacts = await buildDictionaryArtifacts({
     structure,
     annotations,
-    trackedFiles: new Set(),
+    trackedFiles: new Set(["database/schema.prisma"]),
     fixedDate: new Date("2026-10-01T00:00:00.000Z"),
   });
 
@@ -749,6 +788,13 @@ test("artifact builder creates four projections from one model", async () => {
   ]);
   assert.match(artifacts["DATA_DICTIONARY.generated.md"], /public\.order\.id/);
   assert.ok(Buffer.isBuffer(artifacts["database-data-dictionary.xlsx"]));
+  const prettier = await import("prettier");
+  assert.equal(
+    artifacts["dictionary.annotations.json"],
+    await prettier.format(artifacts["dictionary.annotations.json"], {
+      parser: "json",
+    }),
+  );
 });
 
 test("artifact comparison reports drift without writing", () => {

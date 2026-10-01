@@ -152,14 +152,31 @@ export async function renderWorkbook(
   addSheet(
     workbook,
     SHEETS[4],
-    ["关系类型", "来源表", "Prisma 属性", "目标模型", "关系名", "证据"],
+    [
+      "关系类型",
+      "来源表",
+      "来源字段",
+      "Prisma 属性",
+      "目标表/模型",
+      "目标字段",
+      "关系名",
+      "Prisma 已声明",
+      "证据",
+    ],
     model.relations.map((item) => [
       item.relationType,
       item.sourceTable,
+      item.sourceFields,
       item.prismaField,
-      item.targetModel,
-      item.relationName,
-      "Prisma DMMF",
+      item.targetTable,
+      item.targetFields,
+      item.name,
+      item.prismaDeclared,
+      item.relationType === "physical_fk"
+        ? "PostgreSQL pg_catalog"
+        : item.relationType === "prisma_relation"
+          ? "Prisma DMMF"
+          : "人工注解",
     ]),
   );
   addSheet(
