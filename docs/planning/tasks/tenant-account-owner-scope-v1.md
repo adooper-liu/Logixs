@@ -2,6 +2,7 @@
 status: blocked
 branch: feat/tenant-account-owner-scope-v1
 verification: not-run（业务定案与技术设计已写回；当前不实施 Schema、API 或 Web）
+owner: claude
 ---
 
 # 任务：集团租户、账套主体与用户范围 V1

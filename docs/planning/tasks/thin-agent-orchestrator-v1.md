@@ -2,6 +2,7 @@
 status: blocked
 branch: feat/thin-agent-orchestrator-v1
 verification: not-run（仅完成方向定案与实施切片；有界并行治理尚未合并，外部代理入口尚未完成能力探测）
+owner: claude
 ---
 
 # 任务：多代理薄编排器 V1

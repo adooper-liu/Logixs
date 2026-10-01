@@ -2,6 +2,7 @@
 status: blocked # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/work-execution-first-slice
 verification:
+owner: claude
 ---
 
 # 任务：同步操作薄页

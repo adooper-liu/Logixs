@@ -2,6 +2,7 @@
 status: blocked # design | coding | review | fix | blocked | done（机器可校验）
 branch: feat/pipeline-task-pool
 verification: 2026-09-17 本地数据库迁移及管道不变量验证通过（2 个流程均为 14 节点 / 14 任务，无箱号记录未初始化）；Prisma schema、契约校验与漂移检查、API/Web lint、Web/全库 typecheck、全库 build、相关 API/Web 测试通过。适用性回归补测后，相关 API 5 文件 / 22 项、API lint、格式及 build 通过。模块插件/Identity Phase A 门禁已收口（repo:check、api/web typecheck、identity 33 测、navigation）。串行槽位按产品方向让给 p6-notification-ops-assistant；本任务重回 review/done 前须重跑 validate。
+owner: claude
 ---
 
 # 任务：建柜即展开管道任务池
