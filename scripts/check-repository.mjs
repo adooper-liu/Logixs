@@ -7,6 +7,7 @@ import {
   toRepositoryRelativePath,
 } from "./check-architecture-boundaries.mjs";
 import { findModuleManifestViolations } from "./check-module-manifests.mjs";
+import { auditApiControllers } from "./check-route-access-metadata.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -755,6 +756,16 @@ export function findMisleadingContractPackageScripts(packageManifest) {
     );
 }
 
+// 路由访问分类的硬门禁：直接消费 AST 审计结果，不设数量基线或豁免清单。
+export function findRouteAccessViolations(routes) {
+  return routes
+    .filter((route) => route.violations.length > 0)
+    .map(
+      (route) =>
+        `${route.file}: ${route.httpMethod} ${route.path} (${route.className}.${route.methodName}) route access ${route.classification}: ${route.violations.join(",")}`,
+    );
+}
+
 function walkFiles(directory, predicate) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -878,6 +889,7 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
       ),
       ...findArchitectureBoundaryViolations(architectureSourceFiles()),
       ...findModuleManifestViolations(),
+      ...findRouteAccessViolations(auditApiControllers()),
       ...findMisleadingContractPackageScripts(
         JSON.parse(
           readFileSync(

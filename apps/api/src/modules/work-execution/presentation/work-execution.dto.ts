@@ -1,14 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
 
-export class CreateNodeTaskRequestDto {
-  @ApiProperty() flowInstanceId!: string;
-  @ApiProperty() nodeInstanceId!: string;
-  @ApiProperty({ description: "LifecycleNodeCode" })
-  nodeCode!: string;
-  @ApiProperty({ required: false })
-  containerId?: string;
-}
-
 export class WorkOrderDto {
   @ApiProperty() id!: string;
   @ApiProperty() workOrderDefinitionKey!: string;

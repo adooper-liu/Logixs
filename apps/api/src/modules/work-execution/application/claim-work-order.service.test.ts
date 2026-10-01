@@ -1,3 +1,4 @@
+import { NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import { hashClaimRequest } from "../domain/client-operation";
@@ -59,6 +60,7 @@ function command() {
 async function buildService(
   repository: Record<string, ReturnType<typeof vi.fn>>,
   operations?: Record<string, ReturnType<typeof vi.fn>>,
+  assertContainerTenant = vi.fn().mockResolvedValue(undefined),
 ) {
   const clientOperations = operations ?? {
     findByIdempotency: vi.fn().mockResolvedValue(null),
@@ -74,23 +76,29 @@ async function buildService(
       },
       {
         provide: ASSERT_CONTAINER_TENANT,
-        useValue: { execute: vi.fn().mockResolvedValue(undefined) },
+        useValue: { execute: assertContainerTenant },
       },
     ],
   }).compile();
   return {
     service: module.get(ClaimWorkOrderService),
     operations: clientOperations,
+    assertContainerTenant,
   };
+}
+
+function containerlessBundle(): NodeTaskWithWorkOrders {
+  const bundle = readyBundle();
+  return { ...bundle, task: { ...bundle.task, containerId: null } };
 }
 
 describe("ClaimWorkOrderService", () => {
   it("ready 未分派领取后 assigned + in_progress，并记下领取人", async () => {
     const bundle = readyBundle();
     const repository = {
-      findWorkOrderById: vi.fn().mockResolvedValue(bundle.workOrders[0]),
-      findTaskById: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderClaim: vi.fn().mockResolvedValue(true),
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderClaim: vi.fn().mockResolvedValue({ kind: "applied" }),
     };
     const { service } = await buildService(repository);
 
@@ -109,7 +117,9 @@ describe("ClaimWorkOrderService", () => {
     });
     expect(repository.applyWorkOrderClaim).toHaveBeenCalledWith(
       expect.objectContaining({
+        tenantId: "t1",
         workOrderId: "w1",
+        taskId: "t1",
         workOrderState: "in_progress",
         assignmentState: "assigned",
         assigneeId: "op-1",
@@ -129,8 +139,8 @@ describe("ClaimWorkOrderService", () => {
       assigneeId: "op-1",
     });
     const repository = {
-      findWorkOrderById: vi.fn().mockResolvedValue(bundle.workOrders[0]),
-      findTaskById: vi.fn().mockResolvedValue(bundle),
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
       applyWorkOrderClaim: vi.fn(),
     };
     const { service, operations } = await buildService(repository);
@@ -156,8 +166,8 @@ describe("ClaimWorkOrderService", () => {
       assigneeId: "op-2",
     });
     const repository = {
-      findWorkOrderById: vi.fn().mockResolvedValue(bundle.workOrders[0]),
-      findTaskById: vi.fn().mockResolvedValue(bundle),
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
       applyWorkOrderClaim: vi.fn(),
     };
     const { service, operations } = await buildService(repository);
@@ -183,18 +193,38 @@ describe("ClaimWorkOrderService", () => {
       assigneeId: "op-2",
     };
     const repository = {
-      findWorkOrderById: vi
+      findWorkOrderInTenant: vi
         .fn()
         .mockResolvedValueOnce(bundle.workOrders[0])
         .mockResolvedValueOnce(taken),
-      findTaskById: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderClaim: vi.fn().mockResolvedValue(false),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderClaim: vi
+        .fn()
+        .mockResolvedValue({ kind: "state_conflict" }),
     };
     const { service } = await buildService(repository);
 
     await expect(service.execute(command())).rejects.toThrow(
       "工单已被他人领取",
     );
+  });
+
+  it("事务内租户或父链不命中表现为不存在，不重读也不落操作回执", async () => {
+    const bundle = readyBundle();
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderClaim: vi
+        .fn()
+        .mockResolvedValue({ kind: "scope_mismatch" }),
+    };
+    const { service, operations } = await buildService(repository);
+
+    const error = await service.execute(command()).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(NotFoundException);
+    expect(repository.findWorkOrderInTenant).toHaveBeenCalledTimes(1);
+    expect(operations.insert).not.toHaveBeenCalled();
   });
 
   it("同键同哈希复用，不重复领取", async () => {
@@ -204,8 +234,8 @@ describe("ClaimWorkOrderService", () => {
       assigneeId: "op-1",
     });
     const repository = {
-      findWorkOrderById: vi.fn().mockResolvedValue(bundle.workOrders[0]),
-      findTaskById: vi.fn().mockResolvedValue(bundle),
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
       applyWorkOrderClaim: vi.fn(),
     };
     const { service, operations } = await buildService(repository, {
@@ -247,8 +277,8 @@ describe("ClaimWorkOrderService", () => {
 
   it("同键异哈希冲突", async () => {
     const repository = {
-      findWorkOrderById: vi.fn(),
-      findTaskById: vi.fn(),
+      findWorkOrderInTenant: vi.fn(),
+      findTaskInTenant: vi.fn(),
       applyWorkOrderClaim: vi.fn(),
     };
     const { service } = await buildService(repository, {
@@ -263,5 +293,102 @@ describe("ClaimWorkOrderService", () => {
       "IDEMPOTENCY_CONFLICT",
     );
     expect(repository.applyWorkOrderClaim).not.toHaveBeenCalled();
+  });
+
+  it("同租户无柜任务可领取，读取从 Repository 起限定租户", async () => {
+    const bundle = containerlessBundle();
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderClaim: vi.fn().mockResolvedValue({ kind: "applied" }),
+    };
+    const { service, assertContainerTenant } = await buildService(repository);
+
+    const result = await service.execute(command());
+
+    expect(result).toMatchObject({ applied: true, taskState: "in_progress" });
+    expect(repository.findWorkOrderInTenant).toHaveBeenCalledWith({
+      workOrderId: "w1",
+      tenantId: "t1",
+    });
+    expect(repository.findTaskInTenant).toHaveBeenCalledWith({
+      taskId: "t1",
+      tenantId: "t1",
+    });
+    expect(assertContainerTenant).not.toHaveBeenCalled();
+  });
+
+  it("跨租户无柜工单表现为不存在，零业务写入与零操作回执", async () => {
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(null),
+      findTaskInTenant: vi.fn(),
+      applyWorkOrderClaim: vi.fn(),
+    };
+    const { service, operations } = await buildService(repository);
+
+    const error = await service.execute(command()).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(NotFoundException);
+    expect((error as NotFoundException).message).toBe("RESOURCE_NOT_FOUND");
+    expect(repository.findTaskInTenant).not.toHaveBeenCalled();
+    expect(repository.applyWorkOrderClaim).not.toHaveBeenCalled();
+    expect(operations.insert).not.toHaveBeenCalled();
+  });
+
+  it("任务在当前租户不可见时同样表现为不存在且不写入", async () => {
+    const bundle = containerlessBundle();
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(null),
+      applyWorkOrderClaim: vi.fn(),
+    };
+    const { service, operations } = await buildService(repository);
+
+    await expect(service.execute(command())).rejects.toThrow(NotFoundException);
+    expect(repository.applyWorkOrderClaim).not.toHaveBeenCalled();
+    expect(operations.insert).not.toHaveBeenCalled();
+  });
+
+  it("带柜任务保留父货柜租户断言", async () => {
+    const bundle = readyBundle();
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderClaim: vi.fn().mockResolvedValue({ kind: "applied" }),
+    };
+    const { service, assertContainerTenant } = await buildService(repository);
+
+    await service.execute(command());
+
+    expect(assertContainerTenant).toHaveBeenCalledWith({
+      containerId: "c1",
+      tenantId: "t1",
+    });
+  });
+
+  it("幂等重放读取同样限定租户，不可见时不回显对象", async () => {
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(null),
+      findTaskInTenant: vi.fn(),
+      applyWorkOrderClaim: vi.fn(),
+    };
+    const { service, operations } = await buildService(repository, {
+      findByIdempotency: vi.fn().mockResolvedValue({
+        id: "op-existing",
+        requestHash: hashClaimRequest({ workOrderId: "w1" }),
+        targetId: "w1",
+      }),
+      insert: vi.fn(),
+    });
+
+    await expect(service.execute(command())).rejects.toThrow(
+      "RESOURCE_NOT_FOUND",
+    );
+    expect(repository.findWorkOrderInTenant).toHaveBeenCalledWith({
+      workOrderId: "w1",
+      tenantId: "t1",
+    });
+    expect(repository.applyWorkOrderClaim).not.toHaveBeenCalled();
+    expect(operations.insert).not.toHaveBeenCalled();
   });
 });

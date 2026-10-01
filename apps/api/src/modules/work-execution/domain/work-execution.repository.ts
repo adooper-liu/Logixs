@@ -131,7 +131,9 @@ export interface CreateTaskInput {
   conditionFactRefs: string[];
 }
 
+// 写端口在事务内重验 tenant 与「工单 -> 任务」父链；任一不命中整笔回滚并报 scope_mismatch。
 export interface ApplyWorkOrderClaimInput {
+  tenantId: string;
   workOrderId: string;
   workOrderState: WorkOrderState;
   assignmentState: AssignmentState;
@@ -141,15 +143,26 @@ export interface ApplyWorkOrderClaimInput {
   clientOperation?: ClientOperationRecord;
 }
 
+export type ApplyWorkOrderClaimResult =
+  { kind: "applied" } | { kind: "state_conflict" } | { kind: "scope_mismatch" };
+
 export interface ApplyWorkOrderCompletionInput {
+  tenantId: string;
   workOrderId: string;
+  expectedWorkOrderVersion: number;
   workOrderState: WorkOrderState;
   completedAt: Date;
   taskId: string;
+  expectedTaskVersion: number;
   taskState: NodeTaskState;
   outcome: NodeTaskOutcomeDraft | null;
   clientOperation?: ClientOperationRecord;
 }
+
+export type ApplyWorkOrderCompletionResult =
+  | { kind: "applied" }
+  | { kind: "version_conflict" }
+  | { kind: "scope_mismatch" };
 
 export interface ListTasksByContainerInput {
   containerId: string;
@@ -163,12 +176,30 @@ export interface ListTasksByTenantInput {
   take: number;
 }
 
+export interface TenantScopedTaskQuery {
+  tenantId: string;
+  taskId: string;
+}
+
+export interface TenantScopedWorkOrderQuery {
+  tenantId: string;
+  workOrderId: string;
+}
+
 export interface WorkExecutionRepository {
   findTaskById(id: string): Promise<NodeTaskWithWorkOrders | null>;
+  /** 面向用户的读取：租户不符与不存在同样返回 null，不加载他租户聚合。 */
+  findTaskInTenant(
+    query: TenantScopedTaskQuery,
+  ): Promise<NodeTaskWithWorkOrders | null>;
   findTaskByNodeInstanceId(
     nodeInstanceId: string,
   ): Promise<NodeTaskWithWorkOrders | null>;
   findWorkOrderById(id: string): Promise<WorkOrderRecord | null>;
+  /** 工单无自有租户列，经所属 NodeTask 限定租户。 */
+  findWorkOrderInTenant(
+    query: TenantScopedWorkOrderQuery,
+  ): Promise<WorkOrderRecord | null>;
   findWorkOrderFactApplication(
     workOrderId: string,
     businessFactKey: string,
@@ -188,8 +219,12 @@ export interface WorkExecutionRepository {
   upsertTaskWithRequiredWorkOrder(
     input: CreateTaskInput,
   ): Promise<NodeTaskWithWorkOrders>;
-  applyWorkOrderClaim(input: ApplyWorkOrderClaimInput): Promise<boolean>;
-  applyWorkOrderCompletion(input: ApplyWorkOrderCompletionInput): Promise<void>;
+  applyWorkOrderClaim(
+    input: ApplyWorkOrderClaimInput,
+  ): Promise<ApplyWorkOrderClaimResult>;
+  applyWorkOrderCompletion(
+    input: ApplyWorkOrderCompletionInput,
+  ): Promise<ApplyWorkOrderCompletionResult>;
   applyLifecycleFactReconciliation(
     input: ApplyLifecycleFactReconciliationInput,
   ): Promise<ApplyLifecycleFactReconciliationResult>;
