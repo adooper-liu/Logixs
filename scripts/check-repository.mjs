@@ -33,7 +33,8 @@ const allowedTaskStatuses = new Set([
   "blocked",
   "done",
 ]);
-const writeTaskStatuses = new Set(["coding", "fix"]);
+const scheduledWriteTaskStatuses = new Set(["design", "coding", "fix"]);
+const writeTaskWipStatuses = new Set(["coding", "fix"]);
 const allowedTaskRisks = new Set(["low", "medium", "high"]);
 const writeTaskLimit = 2;
 const reviewTaskLimit = 2;
@@ -300,7 +301,7 @@ export function validateTaskStatusRecords(records) {
       errors.push(`${record.path}: invalid task status '${status}'`);
       continue;
     }
-    if (writeTaskStatuses.has(status)) {
+    if (scheduledWriteTaskStatuses.has(status)) {
       requireWriteTaskMetadata(record, record.metadata, errors);
       writeTasks.push(record);
     } else if (status === "review") {
@@ -326,9 +327,12 @@ export function validateTaskStatusRecords(records) {
     }
   }
 
-  if (writeTasks.length > writeTaskLimit) {
+  const writeTaskWip = writeTasks.filter((record) =>
+    writeTaskWipStatuses.has(record.metadata.status),
+  );
+  if (writeTaskWip.length > writeTaskLimit) {
     errors.push(
-      `write task WIP limit exceeded (max ${writeTaskLimit}): ${writeTasks.map((record) => record.path).join(", ")}`,
+      `write task WIP limit exceeded (max ${writeTaskLimit}): ${writeTaskWip.map((record) => record.path).join(", ")}`,
     );
   }
   if (reviewTasks.length > reviewTaskLimit) {

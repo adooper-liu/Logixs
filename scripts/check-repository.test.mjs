@@ -454,11 +454,68 @@ test("allows two non-conflicting write tasks plus design and read-only review", 
         exclusiveLocks: ["database-dictionary"],
         sharedIntegrationScopes: ["package.json"],
       }),
-      taskRecord({ path: "design", status: "design" }),
+      taskRecord({
+        path: "design",
+        status: "design",
+        writer: "architect",
+        writeScopes: ["docs/architecture/decisions/new-decision.md"],
+        exclusiveLocks: ["business-policy:new-decision"],
+      }),
       taskRecord({ path: "review-one", status: "review" }),
       taskRecord({ path: "review-two", status: "review" }),
     ]),
     [],
+  );
+});
+
+test("requires scheduling metadata for design tasks that may write authority", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      { path: "design.md", source: "---\nstatus: design\n---" },
+    ]),
+    [
+      "design.md: active write task is missing owner",
+      "design.md: active write task is missing writer",
+      "design.md: active write task is missing risk",
+      "design.md: active write task is missing dependsOn",
+      "design.md: active write task is missing writeScopes",
+      "design.md: active write task is missing exclusiveLocks",
+      "design.md: active write task is missing sharedIntegrationScopes",
+      "design.md: active write task is missing authorityRefs",
+    ],
+  );
+});
+
+test("checks design tasks for writer, scope, and lock conflicts without counting them toward write WIP", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "one",
+        status: "coding",
+        writer: "cursor",
+        writeScopes: ["apps/api/**"],
+        exclusiveLocks: ["public-contracts"],
+      }),
+      taskRecord({
+        path: "two",
+        status: "fix",
+        writer: "codex",
+        writeScopes: ["apps/web/**"],
+        exclusiveLocks: ["module:web"],
+      }),
+      taskRecord({
+        path: "design",
+        status: "design",
+        writer: "cursor",
+        writeScopes: ["apps/api/src/contracts/**"],
+        exclusiveLocks: ["public-contracts"],
+      }),
+    ]),
+    [
+      "active write tasks share writer 'cursor': one.md, design.md",
+      "active write task scopes overlap 'apps/api/**' and 'apps/api/src/contracts/**': one.md, design.md",
+      "active write tasks share exclusive lock 'public-contracts': one.md, design.md",
+    ],
   );
 });
 
