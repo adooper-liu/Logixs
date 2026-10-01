@@ -1,12 +1,34 @@
 ---
 status: blocked
 branch: feat/database-data-dictionary-v1
+owner: codex
+writer: codex
+risk: medium
+dependsOn: []
+writeScopes:
+  - docs/planning/tasks/database-data-dictionary-v1.md
+  - scripts/generate-data-dictionary.mjs
+  - scripts/generate-data-dictionary.test.mjs
+  - database/dictionary/**
+exclusiveLocks:
+  - database-dictionary
+  - generated:database-catalog
+sharedIntegrationScopes:
+  - package.json
+  - pnpm-lock.yaml
+authorityRefs:
+  - docs/architecture/decisions/ADR-013-generated-data-dictionary.md
+  - database/schema.prisma
+  - database/migrations/**
+  - doc/**
+  - docs/architecture/DATABASE_SCHEMA_CONTRACT_V1.md
 verification: |
   设计基线已由 Codex 按当前 origin/main 静态复算：112 个 Prisma model、1,589 个物理标量字段、
   278 个 Prisma 虚拟 relation、1 个 PostgreSQL enum、478 个当前有效命名 CHECK、
   23 个 Prisma 未声明的当前有效索引、2 个函数和 2 个触发器。
   “1 个 Prisma 未表达的原生外键”尚未通过隔离 PostgreSQL 迁移重放与 pg_catalog 对账，不能作为既成事实。
-  当前唯一 coding 任务仍为 authz-default-deny-v1；本任务在其收口前不得进入 coding。
+  本任务尚未开始实现。须先合并有界并行治理，并由 Codex 以准确 origin/main SHA 开放切片 A；
+  package.json 与 pnpm-lock.yaml 仅在后续根工具接入切片串行修改。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -21,10 +43,12 @@ verification: |
 和人工审定注解，生成可检索的仓库字典、原生对象清单与业务可评审 Excel。任何不能由证据确定的中文名、用途、
 工作台归属或敏感等级必须明确待确认，不根据英文名、UI 文案或历史候选文档臆造。
 
-## 阻塞与启动条件
+## 并行启动与停止条件
 
-- 当前 `authz-default-deny-v1` 是唯一 `coding`；本任务保持 `blocked`，不向 Cursor 下发实现指令。
-- 授权任务最终 PR 合并后，Codex 复核本 brief 基线，将状态改为 `coding`，再开放切片 A。
+- 本任务计划与 `authz-default-deny-v1` 作为首批两个写任务并行；当前保持 `blocked`，不冒充已启动。
+- 切片 A 不修改 Schema、迁移、授权控制面或 authz 的 work-execution 模块；两个任务的独占锁不重叠。
+- 切片 A 只实现独立提取器，不修改 `package.json` 或 `pnpm-lock.yaml`。根命令接入另设串行切片，届时先同步
+  最新 `main`，再把根文件加入 `writeScopes` 并占用 `root-tooling` 锁。
 - 全部切片共用本分支，允许形成可回滚提交，但只建立一个最终 PR。
 
 ## 权威与冲突处理
@@ -80,7 +104,7 @@ scripts/
   编辑该文件，而在 Excel 中批注后由 Codex 裁决并回写。
 - 三个 `.generated.*` / `.xlsx` 文件均由同一规范化内存模型生成，禁止手工修改。
 - Excel 允许业务人员在外部评审副本填写建议列；评审副本不是权威输入，采纳项必须回写注解并重新生成。
-- `package.json` 增加稳定入口 `data-dictionary:generate` 与 `data-dictionary:check`；检查模式不得修改文件。
+- 后续根工具接入切片在 `package.json` 增加稳定入口 `data-dictionary:generate` 与 `data-dictionary:check`；检查模式不得修改文件。
 
 ## 语义注解契约
 
@@ -162,19 +186,38 @@ scripts/
 - 不把结构漂移顺带修掉，只产出带证据 finding 并另行立项；
 - 不连接、清空或迁移共享/生产数据库；目录提取只允许使用带固定前缀的隔离临时 schema。
 
+## 负责人决策记录
+
+| 决策 ID   | 已知事实与选项                                                                                                      | 推荐与理由                                                              | 负责人结论                                         | 权威落点 / 状态      |
+| --------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------- | -------------------- |
+| `DDD-D01` | A 手工维护 Excel；B 结构自动提取、仓库注解人工审定并投影 Excel；C 只生成仓库 Markdown。A 会持续漂移，C 不便业务筛选 | B；物理事实可复算、业务语义可追溯，Excel 仍适合筛选批注且不成为第二真相 | 采用 B；字段须分轨呈现物理事实、已定缺口和行业候选 | `ADR-013` / approved |
+
+`DDD-D01` 只确定交付与维护机制，不确认任何具体字段的业务含义、敏感等级或工作台归属；这些仍逐项按来源状态审定。
+
 ## 执行切片与代理交接
 
 ### 切片 A：规范化提取器与结构基线
 
 | 项目     | 内容                                                                                                         |
 | -------- | ------------------------------------------------------------------------------------------------------------ |
-| 基线     | 授权任务收口后由 Codex 写入准确 `origin/main` SHA                                                            |
-| 执行角色 | Cursor                                                                                                       |
-| 写入范围 | `scripts/generate-data-dictionary.mjs`、对应测试、`package.json` 与必要锁文件                                |
+| 基线     | 有界并行治理 PR 合并后由 Codex 写入准确 `origin/main` SHA                                                    |
+| 执行角色 | Codex（authz 仍由 Cursor 写入，保证两个活动任务 writer 不重复）                                              |
+| 写入范围 | `scripts/generate-data-dictionary.mjs`、对应测试                                                             |
 | 行为     | 生成隔离 schema、完整重放迁移、查询 `pg_catalog`、读取生成后的 Prisma DMMF，输出规范化内存模型并检测两者漂移 |
 | 禁止范围 | 不生成中文释义，不写 Excel，不改 Schema/迁移/业务文档，不连接 public/共享 schema                             |
 | 定向验证 | 脚本测试、生成器 dry-run、112/1,589/278/1/478/23/2/2 动态复算、原生 FK 实测、lint/typecheck、`repo:check`    |
 | 停止条件 | 结构差异可重复、危险数据库 URL 失败关闭、无硬编码数量后 `ready-for-review`                                   |
+
+### 切片 A2：根工具入口串行接入
+
+| 项目     | 内容                                                                                                  |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| 前置     | authz 或其他持有 `root-tooling` / 根门禁共享范围的任务完成对应修改；本分支同步最新 `main`             |
+| 执行角色 | Codex                                                                                                 |
+| 调度更新 | 进入本切片前把 `package.json`、必要锁文件加入 frontmatter `writeScopes`，并新增 `root-tooling` 独占锁 |
+| 行为     | 接入 `data-dictionary:generate` 与 `data-dictionary:check`；不改变生成模型、Schema、迁移或业务语义    |
+| 定向验证 | 两个根命令、脚本测试、`pnpm repo:check`、`pnpm format:check`、`git diff --check`                      |
+| 停止条件 | 根入口可重复执行且未覆盖同期根工具改动后 `ready-for-review`                                           |
 
 ### 切片 B：注解契约与首版证据映射
 
@@ -227,6 +270,7 @@ scripts/
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责  | commit | 说明                                                                                             |
-| ---------- | ------- | ----- | ------ | ------------------------------------------------------------------------------------------------ |
-| 2026-09-30 | blocked | Codex | —      | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待授权默认拒绝任务收口，不启动 Cursor |
+| 日期       | 阶段    | 负责  | commit | 说明                                                                             |
+| ---------- | ------- | ----- | ------ | -------------------------------------------------------------------------------- |
+| 2026-09-30 | blocked | Codex | —      | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案    |
+| 2026-10-01 | blocked | Codex | —      | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片 |
