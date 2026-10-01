@@ -340,7 +340,7 @@ function addSheet(workbook, name, headers, rows) {
 
 function displayWidth(value) {
   return [...String(value ?? "")].reduce(
-    (total, character) => total + (/[^\u0000-ÿ]/u.test(character) ? 2 : 1),
+    (total, character) => total + (character.codePointAt(0) > 0xff ? 2 : 1),
     0,
   );
 }

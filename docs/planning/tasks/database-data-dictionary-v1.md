@@ -39,7 +39,9 @@ verification: |
   首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
   3 个币种字段和 3 个时区字段由正式契约确认，其余语义槽保持 needs_business_confirmation。
   八轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 53/53、
-  generate/check、repo:check、format:check、专项 ESLint、根 pnpm test、typecheck 和 build 已通过。
+  generate/check、repo:check、contract check/drift、db:generate、lint、format、typecheck、根单测、真实 PostgreSQL
+  integration 和 build 已通过。完整 `pnpm validate` 仅在无本任务 Web diff 的主线移动端 shell overflow E2E 失败
+  （稳定复现 contentScroll 492 > 381）；本 PR 路径分类 `e2e=false`，由远端必需 `quality` 作最终权威。
   根 workspace 已显式声明 Excel 生成依赖；冻结安装后 security:audit（high 门槛）通过，剩 8 个 moderate。
   ExcelJS 重载确认 10 个 sheet、模块汇总对账 112 表/1,589 字段、字段页 31 列且精确 1,590 行、
   待确认页覆盖全部 112 表/1,589 字段并显示具体维度、0 个公式单元格。人工注解已改为稀疏存储：
