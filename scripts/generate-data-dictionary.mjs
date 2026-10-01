@@ -6,6 +6,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
+export {
+  renderDataDictionaryMarkdown,
+  renderNativeObjectsMarkdown,
+} from "./data-dictionary/render-markdown.mjs";
+export { renderWorkbook } from "./data-dictionary/render-workbook.mjs";
+
 const require = createRequire(import.meta.url);
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = resolve(SCRIPT_DIR, "..");
