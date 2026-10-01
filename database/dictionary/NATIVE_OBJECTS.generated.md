@@ -10,13 +10,7 @@
 | --- | --- | --- | --- | --- |
 | supplier_quotation | supplier_quotation_sku_fkey | foreign_key | 否 | FOREIGN KEY (sku_id, tenant_id) REFERENCES product_sku(id, tenant_id) ON UPDATE CASCADE ON DELETE RESTRICT |
 | canonical_event | canonical_event_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_pkey ON public.canonical_event USING btree (id) |
-| canonical_event | canonical_event_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_pkey ON public.canonical_event USING btree (id) |
-| canonical_event | canonical_event_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_pkey ON public.canonical_event USING btree (id) |
-| canonical_event | canonical_event_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_pkey ON public.canonical_event USING btree (id) |
-| canonical_event | canonical_event_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_pkey ON public.canonical_event USING btree (id) |
-| canonical_event | canonical_event_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_pkey ON public.canonical_event USING btree (id) |
 | canonical_event_scope_member | canonical_event_scope_member_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_scope_member_pkey ON public.canonical_event_scope_member USING btree (id) |
-| cargo_owner_reference | cargo_owner_reference_pkey | unique_index | 否 | CREATE UNIQUE INDEX cargo_owner_reference_pkey ON public.cargo_owner_reference USING btree (id) |
 | cargo_owner_reference | cargo_owner_reference_pkey | unique_index | 否 | CREATE UNIQUE INDEX cargo_owner_reference_pkey ON public.cargo_owner_reference USING btree (id) |
 | cargo_ready_compliance_assessment | cargo_ready_assessment_one_current_key | unique_index | 否 | CREATE UNIQUE INDEX cargo_ready_assessment_one_current_key ON public.cargo_ready_compliance_assessment USING btree (tenant_id, container_record_id) WHERE (state <> 'superseded'::text) |
 | cargo_ready_compliance_assessment | cargo_ready_compliance_assessment_pkey | unique_index | 否 | CREATE UNIQUE INDEX cargo_ready_compliance_assessment_pkey ON public.cargo_ready_compliance_assessment USING btree (id) |
@@ -39,37 +33,24 @@
 | container_dispatch_snapshot | container_dispatch_snapshot_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_dispatch_snapshot_pkey ON public.container_dispatch_snapshot USING btree (id) |
 | container_import_binding | container_import_binding_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_import_binding_pkey ON public.container_import_binding USING btree (id) |
 | container_record | container_record_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_record_pkey ON public.container_record USING btree (id) |
-| container_record | container_record_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_record_pkey ON public.container_record USING btree (id) |
-| container_record | container_record_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_record_pkey ON public.container_record USING btree (id) |
-| container_record | container_record_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_record_pkey ON public.container_record USING btree (id) |
 | container_source_identity | container_source_identity_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_source_identity_pkey ON public.container_source_identity USING btree (id) |
 | container_stuffing_snapshot | container_stuffing_snapshot_one_active_key | unique_index | 否 | CREATE UNIQUE INDEX container_stuffing_snapshot_one_active_key ON public.container_stuffing_snapshot USING btree (tenant_id, container_record_id) WHERE (state = 'active'::text) |
 | container_stuffing_snapshot | container_stuffing_snapshot_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_stuffing_snapshot_pkey ON public.container_stuffing_snapshot USING btree (id) |
 | container_unloading_report | container_unloading_report_one_active_key | unique_index | 否 | CREATE UNIQUE INDEX container_unloading_report_one_active_key ON public.container_unloading_report USING btree (tenant_id, container_record_id) WHERE (state = 'active'::text) |
 | container_unloading_report | container_unloading_report_pkey | unique_index | 否 | CREATE UNIQUE INDEX container_unloading_report_pkey ON public.container_unloading_report USING btree (id) |
 | country_code_reference | country_code_reference_pkey | unique_index | 否 | CREATE UNIQUE INDEX country_code_reference_pkey ON public.country_code_reference USING btree (id) |
-| country_code_reference | country_code_reference_pkey | unique_index | 否 | CREATE UNIQUE INDEX country_code_reference_pkey ON public.country_code_reference USING btree (id) |
-| country_code_reference | country_code_reference_pkey | unique_index | 否 | CREATE UNIQUE INDEX country_code_reference_pkey ON public.country_code_reference USING btree (id) |
 | customs_clearance_case | customs_clearance_case_one_active_key | unique_index | 否 | CREATE UNIQUE INDEX customs_clearance_case_one_active_key ON public.customs_clearance_case USING btree (tenant_id, container_record_id) WHERE (state = 'active'::text) |
 | customs_clearance_case | customs_clearance_case_pkey | unique_index | 否 | CREATE UNIQUE INDEX customs_clearance_case_pkey ON public.customs_clearance_case USING btree (id) |
-| evidence_record | evidence_record_pkey | unique_index | 否 | CREATE UNIQUE INDEX evidence_record_pkey ON public.evidence_record USING btree (id) |
 | evidence_record | evidence_record_pkey | unique_index | 否 | CREATE UNIQUE INDEX evidence_record_pkey ON public.evidence_record USING btree (id) |
 | evidence_verification_decision | evidence_verification_decision_pkey | unique_index | 否 | CREATE UNIQUE INDEX evidence_verification_decision_pkey ON public.evidence_verification_decision USING btree (id) |
 | external_work_item | external_work_item_pkey | unique_index | 否 | CREATE UNIQUE INDEX external_work_item_pkey ON public.external_work_item USING btree (id) |
 | external_work_item_projection | external_work_item_projection_pkey | unique_index | 否 | CREATE UNIQUE INDEX external_work_item_projection_pkey ON public.external_work_item_projection USING btree (id) |
 | fleet_haulage_capacity | fleet_haulage_capacity_pkey | unique_index | 否 | CREATE UNIQUE INDEX fleet_haulage_capacity_pkey ON public.fleet_haulage_capacity USING btree (id) |
 | flow_instance | flow_instance_pkey | unique_index | 否 | CREATE UNIQUE INDEX flow_instance_pkey ON public.flow_instance USING btree (id) |
-| flow_instance | flow_instance_pkey | unique_index | 否 | CREATE UNIQUE INDEX flow_instance_pkey ON public.flow_instance USING btree (id) |
-| flow_instance | flow_instance_pkey | unique_index | 否 | CREATE UNIQUE INDEX flow_instance_pkey ON public.flow_instance USING btree (id) |
-| import_batch | import_batch_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_batch_pkey ON public.import_batch USING btree (id) |
-| import_batch | import_batch_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_batch_pkey ON public.import_batch USING btree (id) |
-| import_batch | import_batch_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_batch_pkey ON public.import_batch USING btree (id) |
-| import_batch | import_batch_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_batch_pkey ON public.import_batch USING btree (id) |
 | import_batch | import_batch_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_batch_pkey ON public.import_batch USING btree (id) |
 | import_review | import_review_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_review_pkey ON public.import_review USING btree (id) |
 | import_row | import_row_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_row_pkey ON public.import_row USING btree (id) |
 | import_row_result | import_row_result_pkey | unique_index | 否 | CREATE UNIQUE INDEX import_row_result_pkey ON public.import_row_result USING btree (id) |
-| inbox_message | inbox_message_pkey | unique_index | 否 | CREATE UNIQUE INDEX inbox_message_pkey ON public.inbox_message USING btree (id) |
 | inbox_message | inbox_message_pkey | unique_index | 否 | CREATE UNIQUE INDEX inbox_message_pkey ON public.inbox_message USING btree (id) |
 | inbox_replay_request | inbox_replay_request_pkey | unique_index | 否 | CREATE UNIQUE INDEX inbox_replay_request_pkey ON public.inbox_replay_request USING btree (id) |
 | inland_plan | inland_plan_pkey | unique_index | 否 | CREATE UNIQUE INDEX inland_plan_pkey ON public.inland_plan USING btree (id) |
@@ -78,45 +59,31 @@
 | inland_resource_occupancy | inland_resource_occupancy_pkey | unique_index | 否 | CREATE UNIQUE INDEX inland_resource_occupancy_pkey ON public.inland_resource_occupancy USING btree (id) |
 | lifecycle_date_fact | lifecycle_date_fact_pending_claim_idx | index | 否 | CREATE INDEX lifecycle_date_fact_pending_claim_idx ON public.lifecycle_date_fact USING btree (tenant_id, container_id, application_state, occurred_at, projection_version, id) |
 | lifecycle_date_fact | lifecycle_date_fact_pkey | unique_index | 否 | CREATE UNIQUE INDEX lifecycle_date_fact_pkey ON public.lifecycle_date_fact USING btree (id) |
-| lifecycle_date_fact | lifecycle_date_fact_pkey | unique_index | 否 | CREATE UNIQUE INDEX lifecycle_date_fact_pkey ON public.lifecycle_date_fact USING btree (id) |
-| lifecycle_date_fact | lifecycle_date_fact_pkey | unique_index | 否 | CREATE UNIQUE INDEX lifecycle_date_fact_pkey ON public.lifecycle_date_fact USING btree (id) |
 | market_opportunity_handoff | market_opportunity_handoff_current_signal_key | unique_index | 否 | CREATE UNIQUE INDEX market_opportunity_handoff_current_signal_key ON public.market_opportunity_handoff USING btree (tenant_id, signal_id) WHERE is_current |
 | market_opportunity_handoff | market_opportunity_handoff_pkey | unique_index | 否 | CREATE UNIQUE INDEX market_opportunity_handoff_pkey ON public.market_opportunity_handoff USING btree (id) |
 | market_signal | market_signal_pkey | unique_index | 否 | CREATE UNIQUE INDEX market_signal_pkey ON public.market_signal USING btree (id) |
 | market_signal_decision | market_signal_decision_pkey | unique_index | 否 | CREATE UNIQUE INDEX market_signal_decision_pkey ON public.market_signal_decision USING btree (id) |
 | node_applicability_decision | node_applicability_decision_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_applicability_decision_pkey ON public.node_applicability_decision USING btree (id) |
 | node_block | node_block_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_block_pkey ON public.node_block USING btree (id) |
-| node_block | node_block_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_block_pkey ON public.node_block USING btree (id) |
 | node_block_resolution | node_block_resolution_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_block_resolution_pkey ON public.node_block_resolution USING btree (id) |
 | node_event_application | node_event_application_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_event_application_pkey ON public.node_event_application USING btree (id) |
 | node_instance | node_instance_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_instance_pkey ON public.node_instance USING btree (id) |
-| node_instance | node_instance_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_instance_pkey ON public.node_instance USING btree (id) |
-| node_instance | node_instance_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_instance_pkey ON public.node_instance USING btree (id) |
-| node_instance | node_instance_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_instance_pkey ON public.node_instance USING btree (id) |
-| node_task | node_task_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_task_pkey ON public.node_task USING btree (id) |
-| node_task | node_task_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_task_pkey ON public.node_task USING btree (id) |
 | node_task | node_task_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_task_pkey ON public.node_task USING btree (id) |
 | node_task_outcome | node_task_outcome_pkey | unique_index | 否 | CREATE UNIQUE INDEX node_task_outcome_pkey ON public.node_task_outcome USING btree (id) |
 | ocean_provider_event_ingestion | ocean_provider_event_ingestion_pkey | unique_index | 否 | CREATE UNIQUE INDEX ocean_provider_event_ingestion_pkey ON public.ocean_provider_event_ingestion USING btree (id) |
 | ocean_route_plan | ocean_route_plan_one_active_key | unique_index | 否 | CREATE UNIQUE INDEX ocean_route_plan_one_active_key ON public.ocean_route_plan USING btree (container_id) WHERE (status = 'active'::text) |
-| ocean_route_plan | ocean_route_plan_pkey | unique_index | 否 | CREATE UNIQUE INDEX ocean_route_plan_pkey ON public.ocean_route_plan USING btree (id) |
-| ocean_route_plan | ocean_route_plan_pkey | unique_index | 否 | CREATE UNIQUE INDEX ocean_route_plan_pkey ON public.ocean_route_plan USING btree (id) |
 | ocean_route_plan | ocean_route_plan_pkey | unique_index | 否 | CREATE UNIQUE INDEX ocean_route_plan_pkey ON public.ocean_route_plan USING btree (id) |
 | ocean_route_segment | ocean_route_segment_one_final_key | unique_index | 否 | CREATE UNIQUE INDEX ocean_route_segment_one_final_key ON public.ocean_route_segment USING btree (route_plan_id) WHERE is_final |
 | ocean_route_segment | ocean_route_segment_pkey | unique_index | 否 | CREATE UNIQUE INDEX ocean_route_segment_pkey ON public.ocean_route_segment USING btree (id) |
 | operational_exception_case | operational_exception_case_pkey | unique_index | 否 | CREATE UNIQUE INDEX operational_exception_case_pkey ON public.operational_exception_case USING btree (id) |
 | ops_assistant_message | ops_assistant_message_pkey | unique_index | 否 | CREATE UNIQUE INDEX ops_assistant_message_pkey ON public.ops_assistant_message USING btree (id) |
 | ops_assistant_session | ops_assistant_session_pkey | unique_index | 否 | CREATE UNIQUE INDEX ops_assistant_session_pkey ON public.ops_assistant_session USING btree (id) |
-| ops_assistant_session | ops_assistant_session_pkey | unique_index | 否 | CREATE UNIQUE INDEX ops_assistant_session_pkey ON public.ops_assistant_session USING btree (id) |
-| ops_notification | ops_notification_pkey | unique_index | 否 | CREATE UNIQUE INDEX ops_notification_pkey ON public.ops_notification USING btree (id) |
 | ops_notification | ops_notification_pkey | unique_index | 否 | CREATE UNIQUE INDEX ops_notification_pkey ON public.ops_notification USING btree (id) |
 | outbox_message | outbox_message_pkey | unique_index | 否 | CREATE UNIQUE INDEX outbox_message_pkey ON public.outbox_message USING btree (id) |
 | outbox_replay_request | outbox_replay_request_pkey | unique_index | 否 | CREATE UNIQUE INDEX outbox_replay_request_pkey ON public.outbox_replay_request USING btree (id) |
 | overdue_charge_rate_tier | overdue_charge_rate_tier_pkey | unique_index | 否 | CREATE UNIQUE INDEX overdue_charge_rate_tier_pkey ON public.overdue_charge_rate_tier USING btree (id) |
 | overdue_charge_standard | overdue_charge_standard_pkey | unique_index | 否 | CREATE UNIQUE INDEX overdue_charge_standard_pkey ON public.overdue_charge_standard USING btree (id) |
-| overdue_charge_standard | overdue_charge_standard_pkey | unique_index | 否 | CREATE UNIQUE INDEX overdue_charge_standard_pkey ON public.overdue_charge_standard USING btree (id) |
 | port_code_entry | port_code_entry_pkey | unique_index | 否 | CREATE UNIQUE INDEX port_code_entry_pkey ON public.port_code_entry USING btree (id) |
-| port_code_reference | port_code_reference_pkey | unique_index | 否 | CREATE UNIQUE INDEX port_code_reference_pkey ON public.port_code_reference USING btree (id) |
 | port_code_reference | port_code_reference_pkey | unique_index | 否 | CREATE UNIQUE INDEX port_code_reference_pkey ON public.port_code_reference USING btree (id) |
 | port_fleet_warehouse_allocation | port_fleet_warehouse_allocation_pkey | unique_index | 否 | CREATE UNIQUE INDEX port_fleet_warehouse_allocation_pkey ON public.port_fleet_warehouse_allocation USING btree (id) |
 | port_name_alias | port_name_alias_pkey | unique_index | 否 | CREATE UNIQUE INDEX port_name_alias_pkey ON public.port_name_alias USING btree (id) |
@@ -147,13 +114,8 @@
 | product_sku_registration | product_sku_registration_pkey | unique_index | 否 | CREATE UNIQUE INDEX product_sku_registration_pkey ON public.product_sku_registration USING btree (id) |
 | reference_data_release | reference_data_release_one_active_key | unique_index | 否 | CREATE UNIQUE INDEX reference_data_release_one_active_key ON public.reference_data_release USING btree (authority, dataset_code) WHERE (status = 'active'::text) |
 | reference_data_release | reference_data_release_pkey | unique_index | 否 | CREATE UNIQUE INDEX reference_data_release_pkey ON public.reference_data_release USING btree (id) |
-| reference_data_release | reference_data_release_pkey | unique_index | 否 | CREATE UNIQUE INDEX reference_data_release_pkey ON public.reference_data_release USING btree (id) |
-| reference_data_release | reference_data_release_pkey | unique_index | 否 | CREATE UNIQUE INDEX reference_data_release_pkey ON public.reference_data_release USING btree (id) |
-| reference_data_release | reference_data_release_pkey | unique_index | 否 | CREATE UNIQUE INDEX reference_data_release_pkey ON public.reference_data_release USING btree (id) |
-| reference_data_release | reference_data_release_pkey | unique_index | 否 | CREATE UNIQUE INDEX reference_data_release_pkey ON public.reference_data_release USING btree (id) |
 | replenishment_order | replenishment_order_pkey | unique_index | 否 | CREATE UNIQUE INDEX replenishment_order_pkey ON public.replenishment_order USING btree (id) |
 | replenishment_order_line | replenishment_order_line_pkey | unique_index | 否 | CREATE UNIQUE INDEX replenishment_order_line_pkey ON public.replenishment_order_line USING btree (id) |
-| shipment | shipment_pkey | unique_index | 否 | CREATE UNIQUE INDEX shipment_pkey ON public.shipment USING btree (id) |
 | shipment | shipment_pkey | unique_index | 否 | CREATE UNIQUE INDEX shipment_pkey ON public.shipment USING btree (id) |
 | shipment_cargo_line | shipment_cargo_line_active_number_key | unique_index | 否 | CREATE UNIQUE INDEX shipment_cargo_line_active_number_key ON public.shipment_cargo_line USING btree (tenant_id, shipment_id, line_no) WHERE (state = 'active'::text) |
 | shipment_cargo_line | shipment_cargo_line_active_source_key | unique_index | 否 | CREATE UNIQUE INDEX shipment_cargo_line_active_source_key ON public.shipment_cargo_line USING btree (tenant_id, shipment_id, source_line_id) WHERE (state = 'active'::text) |
@@ -180,7 +142,6 @@
 | warehouse_delivery_instruction | warehouse_delivery_instruction_one_active_key | unique_index | 否 | CREATE UNIQUE INDEX warehouse_delivery_instruction_one_active_key ON public.warehouse_delivery_instruction USING btree (tenant_id, container_record_id) WHERE (state = 'active'::text) |
 | warehouse_delivery_instruction | warehouse_delivery_instruction_pkey | unique_index | 否 | CREATE UNIQUE INDEX warehouse_delivery_instruction_pkey ON public.warehouse_delivery_instruction USING btree (id) |
 | warehouse_unload_capacity | warehouse_unload_capacity_pkey | unique_index | 否 | CREATE UNIQUE INDEX warehouse_unload_capacity_pkey ON public.warehouse_unload_capacity USING btree (id) |
-| work_order | work_order_pkey | unique_index | 否 | CREATE UNIQUE INDEX work_order_pkey ON public.work_order USING btree (id) |
 | work_order | work_order_pkey | unique_index | 否 | CREATE UNIQUE INDEX work_order_pkey ON public.work_order USING btree (id) |
 | work_order_fact_application | work_order_fact_application_pkey | unique_index | 否 | CREATE UNIQUE INDEX work_order_fact_application_pkey ON public.work_order_fact_application USING btree (id) |
 

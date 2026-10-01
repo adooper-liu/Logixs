@@ -152,6 +152,46 @@ test("Prisma DDL parser records declared indexes and foreign keys", () => {
   ]);
 });
 
+test("Prisma DDL parser records complete column shape", () => {
+  const parsed = parsePrismaDdl(`
+    CREATE TABLE "order" (
+      "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+      "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "amount" DECIMAL(18, 3) NOT NULL
+    );
+  `);
+
+  assert.deepEqual(parsed.columns, [
+    {
+      tableName: "order",
+      columnName: "amount",
+      formattedType: "DECIMAL(18, 3)",
+      isNullable: false,
+      hasDefault: false,
+      defaultExpression: null,
+      isList: false,
+    },
+    {
+      tableName: "order",
+      columnName: "created_at",
+      formattedType: "TIMESTAMPTZ",
+      isNullable: false,
+      hasDefault: true,
+      defaultExpression: "CURRENT_TIMESTAMP",
+      isList: false,
+    },
+    {
+      tableName: "order",
+      columnName: "tags",
+      formattedType: "TEXT[]",
+      isNullable: true,
+      hasDefault: true,
+      defaultExpression: "ARRAY[]::TEXT[]",
+      isList: true,
+    },
+  ]);
+});
+
 test("normalization separates physical fields from Prisma relations", () => {
   const structure = buildNormalizedStructure({
     schemaName: "logix_dictionary_tmp_42_12345678abcd4321",
@@ -217,6 +257,126 @@ test("normalization separates physical fields from Prisma relations", () => {
   assert.equal(
     structure.source.physicalVerificationMode,
     "isolated_temporary_schema",
+  );
+});
+
+test("normalization reports field type, nullability, arity, and default drift", () => {
+  const structure = buildNormalizedStructure({
+    schemaName: "logix_dictionary_tmp_42_12345678abcd4321",
+    verifiedThroughMigration: "latest",
+    dmmf: {
+      datamodel: {
+        models: [
+          {
+            name: "Order",
+            dbName: "order",
+            fields: [
+              {
+                name: "amount",
+                kind: "scalar",
+                type: "Int",
+                dbName: "amount",
+                isRequired: false,
+                isList: false,
+                hasDefaultValue: false,
+              },
+            ],
+          },
+        ],
+      },
+    },
+    catalog: {
+      tables: [{ tableName: "order" }],
+      columns: [
+        {
+          tableName: "order",
+          columnName: "amount",
+          ordinalPosition: 1,
+          formattedType: "text[]",
+          isNullable: false,
+          defaultExpression: "ARRAY[]::text[]",
+          identityKind: "",
+          generatedKind: "",
+        },
+      ],
+      constraints: [],
+      indexes: [],
+      enums: [],
+      functions: [],
+      triggers: [],
+    },
+    prismaDdl: { indexNames: new Set(), foreignKeys: [] },
+  });
+
+  assert.deepEqual(
+    structure.findings.map(({ code, object }) => `${code}:${object}`),
+    [
+      "FIELD_TYPE_DRIFT:order.amount",
+      "FIELD_NULLABILITY_DRIFT:order.amount",
+      "FIELD_ARITY_DRIFT:order.amount",
+      "FIELD_DEFAULT_DRIFT:order.amount",
+    ],
+  );
+});
+
+test("normalization treats PostgreSQL type aliases as equivalent", () => {
+  const aliases = [
+    ["TIMESTAMPTZ", "timestamp with time zone"],
+    ["TIMESTAMP(3)", "timestamp(3) without time zone"],
+    ["CHAR(2)", "character(2)"],
+  ];
+  for (const [prismaType, databaseType] of aliases) {
+    const input = dictionaryFixtureInput();
+    input.catalog.columns[0].formattedType = databaseType;
+    input.prismaDdl.columns = [
+      {
+        tableName: "order",
+        columnName: "id",
+        formattedType: prismaType,
+        isNullable: false,
+        hasDefault: false,
+        defaultExpression: null,
+        isList: false,
+      },
+    ];
+    assert.deepEqual(buildNormalizedStructure(input).findings, []);
+  }
+});
+
+test("normalization reports native type precision and simple default value drift", () => {
+  const input = dictionaryFixtureInput();
+  input.dmmf.datamodel.models[0].fields[0] = {
+    name: "amount",
+    kind: "scalar",
+    type: "Decimal",
+    dbName: "amount",
+  };
+  input.catalog.columns[0] = {
+    ...input.catalog.columns[0],
+    columnName: "amount",
+    formattedType: "numeric(18,4)",
+    defaultExpression: "1",
+  };
+  input.prismaDdl.columns = [
+    {
+      tableName: "order",
+      columnName: "amount",
+      formattedType: "DECIMAL(18, 3)",
+      isNullable: false,
+      hasDefault: true,
+      defaultExpression: "0",
+      isList: false,
+    },
+  ];
+
+  const structure = buildNormalizedStructure(input);
+
+  assert.deepEqual(
+    structure.findings.map(({ code, object }) => `${code}:${object}`),
+    [
+      "FIELD_NATIVE_TYPE_DRIFT:order.amount",
+      "FIELD_DEFAULT_VALUE_DRIFT:order.amount",
+    ],
   );
 });
 
@@ -452,6 +612,29 @@ test("dictionary model separates physical foreign keys from Prisma relations", (
   ]);
 });
 
+test("normalization rejects duplicate catalog object keys", () => {
+  const input = dictionaryFixtureInput();
+  input.catalog.indexes = [
+    {
+      tableName: "order",
+      indexName: "order_pkey",
+      isConstraintBacked: true,
+      definition: "CREATE UNIQUE INDEX order_pkey ON order USING btree (id)",
+    },
+    {
+      tableName: "order",
+      indexName: "order_pkey",
+      isConstraintBacked: false,
+      definition: "CREATE UNIQUE INDEX order_pkey ON order USING btree (id)",
+    },
+  ];
+
+  assert.throws(
+    () => buildNormalizedStructure(input),
+    /DUPLICATE_INDEX_KEY:order\.order_pkey/,
+  );
+});
+
 test("annotation bootstrap covers every table and physical column as pending", () => {
   const structure = dictionaryFixture();
   const annotations = createPendingAnnotations(structure, {
@@ -626,6 +809,46 @@ test("annotation bootstrap preserves reviewed values and adds new fields", () =>
   );
 });
 
+test("annotation validation derives authority from eligible paths and validates logical references", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.sources.fakeBusiness = {
+    path: "apps/web/src/Fake.vue",
+    authority: "business",
+  };
+  annotations.tables["public.order"] = {
+    ...annotations.tables["public.order"],
+    nameZh: "订单",
+    nameStatus: "confirmed_business",
+    sourceRefs: ["fakeBusiness"],
+  };
+  annotations.logicalReferences.push({
+    sourceTable: "order",
+    sourceFields: ["missing_id"],
+    targetTable: "missing_target",
+    targetFields: ["id"],
+    name: "guessed-reference",
+    sourceRefs: [],
+  });
+
+  assert.deepEqual(
+    validateAnnotations({
+      annotations,
+      structure,
+      trackedFiles: new Set(["apps/web/src/Fake.vue"]),
+    }).map(({ code, object }) => `${code}:${object}`),
+    [
+      "ANNOTATION_SOURCE_AUTHORITY_MISMATCH:fakeBusiness",
+      "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE:public.order:name",
+      "LOGICAL_REFERENCE_SOURCE_FIELD_MISSING:guessed-reference:order.missing_id",
+      "LOGICAL_REFERENCE_TARGET_TABLE_MISSING:guessed-reference:missing_target",
+      "LOGICAL_REFERENCE_EVIDENCE_MISSING:guessed-reference",
+    ],
+  );
+});
+
 test("annotation validation rejects missing, orphan, untracked, and unsupported confirmed evidence", () => {
   const structure = dictionaryFixture();
   const annotations = createPendingAnnotations(structure, {
@@ -745,6 +968,7 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
     ],
   );
   const fieldSheet = workbook.getWorksheet("03_字段清单");
+  assert.equal(fieldSheet.rowCount, model.fields.length + 1);
   assert.equal(fieldSheet.views[0].state, "frozen");
   assert.equal(fieldSheet.autoFilter, "A1:Y2");
   assert.ok(
@@ -836,7 +1060,11 @@ async function workbookEntryDates(buffer) {
 }
 
 function dictionaryFixture() {
-  return buildNormalizedStructure({
+  return buildNormalizedStructure(dictionaryFixtureInput());
+}
+
+function dictionaryFixtureInput() {
+  return {
     schemaName: "logix_dictionary_tmp_42_12345678abcd4321",
     verifiedThroughMigration: "20261001000000_latest",
     dmmf: {
@@ -873,7 +1101,7 @@ function dictionaryFixture() {
       triggers: [],
     },
     prismaDdl: { indexNames: new Set(), foreignKeys: [] },
-  });
+  };
 }
 
 function pendingAnnotation() {

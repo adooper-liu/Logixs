@@ -2146,6 +2146,23 @@
 
 ## Findings
 
+- `FIELD_NULLABILITY_DRIFT`: `customs_clearance_case.active_hold_codes`
+- `FIELD_DEFAULT_DRIFT`: `customs_clearance_case.active_hold_codes`
+- `FIELD_NULLABILITY_DRIFT`: `market_opportunity_handoff.evidence_refs`
+- `FIELD_NULLABILITY_DRIFT`: `market_opportunity_handoff.pending_field_codes`
+- `FIELD_DEFAULT_DRIFT`: `market_signal.updated_at`
+- `FIELD_NULLABILITY_DRIFT`: `market_signal_decision.pending_field_codes`
+- `FIELD_DEFAULT_DRIFT`: `product.updated_at`
+- `FIELD_NULLABILITY_DRIFT`: `product_definition.compliance_assumptions`
+- `FIELD_DEFAULT_DRIFT`: `product_definition.updated_at`
+- `FIELD_NULLABILITY_DRIFT`: `product_definition_release.compliance_assumptions`
+- `FIELD_NULLABILITY_DRIFT`: `product_identity_release.pending_field_codes`
+- `FIELD_NULLABILITY_DRIFT`: `product_initiative.pending_field_codes`
+- `FIELD_DEFAULT_DRIFT`: `product_initiative.updated_at`
+- `FIELD_NULLABILITY_DRIFT`: `product_initiative_handoff.evidence_refs`
+- `FIELD_DEFAULT_DRIFT`: `shipment_work_handoff.updated_at`
+- `FIELD_DEFAULT_DRIFT`: `supplier.updated_at`
+- `FIELD_DEFAULT_DRIFT`: `supplier_quotation.updated_at`
 - `FOREIGN_KEY_ACTION_DRIFT`: `lifecycle_date_fact.lifecycle_date_fact_canonical_event_id_fkey`
 - `FOREIGN_KEY_ACTION_DRIFT`: `lifecycle_date_fact.lifecycle_date_fact_supersedes_fact_id_fkey`
 - `FOREIGN_KEY_ACTION_DRIFT`: `ocean_route_plan.ocean_route_plan_container_id_fkey`

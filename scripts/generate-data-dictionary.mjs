@@ -89,6 +89,7 @@ export function assertSafeExtractionTarget(databaseUrl, schemaName) {
 export function parsePrismaDdl(sql) {
   const indexNames = new Set();
   const foreignKeys = [];
+  const columns = [];
   const indexPattern =
     /CREATE\s+(?:UNIQUE\s+)?INDEX\s+"((?:[^"]|"")+)"\s+ON\s+/giu;
   const foreignKeyPattern =
@@ -108,8 +109,46 @@ export function parsePrismaDdl(sql) {
       onUpdate: parseReferentialAction(match[6], "UPDATE"),
     });
   }
+  const tablePattern = /CREATE\s+TABLE\s+"([^"]+)"\s*\(([\s\S]*?)\n\s*\);/giu;
+  for (const tableMatch of sql.matchAll(tablePattern)) {
+    const tableName = unescapeIdentifier(tableMatch[1]);
+    for (const line of tableMatch[2].split(/\r?\n/u)) {
+      const columnMatch = line.match(/^\s*"([^"]+)"\s+(.+?)(?:,)?\s*$/u);
+      if (!columnMatch || /^\s*CONSTRAINT\b/iu.test(line)) continue;
+      const definition = columnMatch[2].replace(/,$/u, "");
+      const typeMatch = definition.match(
+        /^(.+?)(?=\s+(?:NOT\s+NULL|DEFAULT|PRIMARY\s+KEY|UNIQUE)\b|$)/iu,
+      );
+      const formattedType = typeMatch?.[1]?.trim();
+      if (!formattedType) continue;
+      const defaultExpression =
+        definition
+          .match(
+            /\bDEFAULT\s+(.+?)(?=\s+(?:NOT\s+NULL|PRIMARY\s+KEY|UNIQUE)\b|$)/iu,
+          )?.[1]
+          ?.trim() ?? null;
+      columns.push({
+        tableName,
+        columnName: unescapeIdentifier(columnMatch[1]),
+        formattedType,
+        isNullable: !/\bNOT\s+NULL\b/iu.test(definition),
+        hasDefault: defaultExpression !== null,
+        defaultExpression,
+        isList: /\[\]$/u.test(formattedType),
+      });
+    }
+  }
 
-  return { indexNames, foreignKeys };
+  return {
+    indexNames,
+    foreignKeys,
+    columns: columns.sort(
+      compareBy(
+        (column) => column.tableName,
+        (column) => column.columnName,
+      ),
+    ),
+  };
 }
 
 export function buildNormalizedStructure({
@@ -125,6 +164,10 @@ export function buildNormalizedStructure({
   );
   const databaseColumnsByTable = groupBy(
     catalog.columns,
+    (column) => column.tableName,
+  );
+  const prismaColumnsByTable = groupBy(
+    prismaDdl.columns ?? [],
     (column) => column.tableName,
   );
   const models = dmmf.datamodel.models
@@ -145,10 +188,29 @@ export function buildNormalizedStructure({
           .map((field) => {
             const databaseColumn = field.dbName ?? field.name;
             const column = columnsByName.get(databaseColumn) ?? null;
+            const prismaColumn = (
+              prismaColumnsByTable.get(databaseTable) ?? []
+            ).find((item) => item.columnName === databaseColumn);
             return {
               prismaField: field.name,
               prismaKind: field.kind,
               prismaType: field.type,
+              prismaRequired:
+                prismaColumn === undefined
+                  ? (field.isRequired ?? null)
+                  : !prismaColumn.isNullable,
+              prismaList:
+                prismaColumn === undefined
+                  ? (field.isList ?? null)
+                  : prismaColumn.isList,
+              prismaHasDefault:
+                prismaColumn === undefined
+                  ? (field.hasDefaultValue ?? null)
+                  : prismaColumn.hasDefault,
+              prismaDefault:
+                prismaColumn?.defaultExpression ?? field.default ?? null,
+              prismaNativeType: field.nativeType ?? null,
+              prismaDatabaseType: prismaColumn?.formattedType ?? null,
               databaseColumn,
               database: column,
             };
@@ -219,6 +281,11 @@ export function buildNormalizedStructure({
         (index) => index.indexName,
       ),
     );
+  assertUniqueObjectKeys(
+    indexes,
+    (index) => `${index.tableName}.${index.indexName}`,
+    "DUPLICATE_INDEX_KEY",
+  );
 
   const findings = findStructuralDifferences({
     models,
@@ -480,6 +547,11 @@ export function validateAnnotations({ annotations, structure, trackedFiles }) {
         code: "ANNOTATION_SOURCE_UNTRACKED",
         object: sourceId,
       });
+    } else if (!sourceAuthorityMatchesPath(source)) {
+      findings.push({
+        code: "ANNOTATION_SOURCE_AUTHORITY_MISMATCH",
+        object: sourceId,
+      });
     }
   }
 
@@ -502,7 +574,105 @@ export function validateAnnotations({ annotations, structure, trackedFiles }) {
     }
   }
 
+  validateLogicalReferences({
+    findings,
+    references: annotations.logicalReferences ?? [],
+    structure,
+    sources,
+    trackedFiles,
+  });
   return findings;
+}
+
+function validateLogicalReferences({
+  findings,
+  references,
+  structure,
+  sources,
+  trackedFiles,
+}) {
+  const columnsByTable = groupBy(
+    structure.database.columns,
+    (column) => column.tableName,
+  );
+  const tableNames = new Set(
+    structure.database.tables.map((table) => table.tableName),
+  );
+  for (const reference of references) {
+    const name = reference.name ?? "unnamed";
+    const sourceColumns = new Set(
+      (columnsByTable.get(reference.sourceTable) ?? []).map(
+        (column) => column.columnName,
+      ),
+    );
+    for (const field of reference.sourceFields ?? []) {
+      if (!sourceColumns.has(field)) {
+        findings.push({
+          code: "LOGICAL_REFERENCE_SOURCE_FIELD_MISSING",
+          object: `${name}:${reference.sourceTable}.${field}`,
+        });
+      }
+    }
+    if (!tableNames.has(reference.targetTable)) {
+      findings.push({
+        code: "LOGICAL_REFERENCE_TARGET_TABLE_MISSING",
+        object: `${name}:${reference.targetTable}`,
+      });
+    } else {
+      const targetColumns = new Set(
+        (columnsByTable.get(reference.targetTable) ?? []).map(
+          (column) => column.columnName,
+        ),
+      );
+      for (const field of reference.targetFields ?? []) {
+        if (!targetColumns.has(field)) {
+          findings.push({
+            code: "LOGICAL_REFERENCE_TARGET_FIELD_MISSING",
+            object: `${name}:${reference.targetTable}.${field}`,
+          });
+        }
+      }
+    }
+    const eligibleEvidence = (reference.sourceRefs ?? []).some((sourceId) => {
+      const source = sources[sourceId];
+      return (
+        source &&
+        source.authority === "formal_contract" &&
+        trackedFiles.has(source.path) &&
+        sourceAuthorityMatchesPath(source)
+      );
+    });
+    if (!eligibleEvidence) {
+      findings.push({
+        code: "LOGICAL_REFERENCE_EVIDENCE_MISSING",
+        object: name,
+      });
+    }
+  }
+}
+
+function sourceAuthorityMatchesPath(source) {
+  const path = source.path.replaceAll("\\", "/");
+  if (source.authority === "business") return path.startsWith("doc/");
+  if (source.authority === "formal_contract") {
+    return (
+      path.startsWith("packages/contracts/schemas/v1/") ||
+      /^docs\/product\/domain\/(?:[A-Z0-9_-]+_V1|TARGET_FIELD_CATALOG)\.md$/u.test(
+        path,
+      )
+    );
+  }
+  if (source.authority === "implementation") {
+    return (
+      path === "ENGINEERING_RULES.md" ||
+      path === "database/schema.prisma" ||
+      path.startsWith("database/migrations/") ||
+      path.startsWith("apps/") ||
+      path.startsWith("workers/") ||
+      path.startsWith("scripts/")
+    );
+  }
+  return false;
 }
 
 export function buildDictionaryModel({
@@ -664,7 +834,8 @@ function hasEligibleSource(annotation, sources, trackedFiles, status) {
     return (
       source &&
       trackedFiles.has(source.path) &&
-      eligibleAuthorities?.has(source.authority)
+      eligibleAuthorities?.has(source.authority) &&
+      sourceAuthorityMatchesPath(source)
     );
   });
 }
@@ -751,13 +922,24 @@ function findStructuralDifferences({
     const databaseColumnNames = new Set(
       databaseColumns.map((column) => column.columnName),
     );
+    const databaseColumnByName = new Map(
+      databaseColumns.map((column) => [column.columnName, column]),
+    );
     for (const field of model.fields) {
       if (!databaseColumnNames.has(field.databaseColumn)) {
         findings.push({
           code: "PRISMA_COLUMN_MISSING_IN_DATABASE",
           object: `${model.databaseTable}.${field.databaseColumn}`,
         });
+        continue;
       }
+      findings.push(
+        ...fieldDriftFindings(
+          model.databaseTable,
+          field,
+          databaseColumnByName.get(field.databaseColumn),
+        ),
+      );
     }
   }
 
@@ -780,6 +962,97 @@ function findStructuralDifferences({
   }
 
   return findings;
+}
+
+function fieldDriftFindings(tableName, field, column) {
+  const object = `${tableName}.${field.databaseColumn}`;
+  const findings = [];
+  const databaseList = /\[\]$/u.test(column.formattedType);
+  const prismaFamily = field.prismaDatabaseType
+    ? postgresTypeFamily(field.prismaDatabaseType)
+    : prismaTypeFamily(field.prismaType);
+  const databaseFamily = postgresTypeFamily(column.formattedType);
+  if (prismaFamily && databaseFamily && prismaFamily !== databaseFamily) {
+    findings.push({ code: "FIELD_TYPE_DRIFT", object });
+  }
+  if (
+    field.prismaDatabaseType &&
+    normalizeParameterizedType(field.prismaDatabaseType) !==
+      normalizeParameterizedType(column.formattedType)
+  ) {
+    findings.push({ code: "FIELD_NATIVE_TYPE_DRIFT", object });
+  }
+  if (
+    field.prismaRequired !== null &&
+    field.prismaRequired === column.isNullable
+  ) {
+    findings.push({ code: "FIELD_NULLABILITY_DRIFT", object });
+  }
+  if (field.prismaList !== null && Boolean(field.prismaList) !== databaseList) {
+    findings.push({ code: "FIELD_ARITY_DRIFT", object });
+  }
+  if (
+    field.prismaHasDefault !== null &&
+    Boolean(field.prismaHasDefault) !== Boolean(column.defaultExpression)
+  ) {
+    findings.push({ code: "FIELD_DEFAULT_DRIFT", object });
+  }
+  const prismaDefault = simpleDefaultValue(field.prismaDefault);
+  const databaseDefault = simpleDefaultValue(column.defaultExpression);
+  if (
+    prismaDefault !== null &&
+    databaseDefault !== null &&
+    prismaDefault !== databaseDefault
+  ) {
+    findings.push({ code: "FIELD_DEFAULT_VALUE_DRIFT", object });
+  }
+  return findings;
+}
+
+function normalizeParameterizedType(type) {
+  return type
+    .replace(/\s+/gu, "")
+    .replace(/^decimal/iu, "numeric")
+    .replace(/^timestamptz$/iu, "timestampwithtimezone")
+    .replace(/^timestamp(\([^)]*\))$/iu, "timestamp$1withouttimezone")
+    .replace(/^char(?=\()/iu, "character")
+    .toLowerCase();
+}
+
+function simpleDefaultValue(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value)
+    .trim()
+    .replace(/::[a-z0-9_\s[\]"]+$/iu, "");
+  return /^(?:-?\d+(?:\.\d+)?|true|false|'[^']*')$/iu.test(normalized)
+    ? normalized.toLowerCase()
+    : null;
+}
+
+function prismaTypeFamily(type) {
+  return {
+    String: "string",
+    Int: "integer",
+    BigInt: "integer",
+    Float: "number",
+    Decimal: "number",
+    Boolean: "boolean",
+    DateTime: "datetime",
+    Json: "json",
+    Bytes: "bytes",
+  }[type];
+}
+
+function postgresTypeFamily(type) {
+  const base = type.replace(/\[\]$/u, "").toLowerCase();
+  if (/^(text|character|character varying|uuid)/u.test(base)) return "string";
+  if (/^(smallint|integer|bigint)/u.test(base)) return "integer";
+  if (/^(numeric|decimal|real|double precision)/u.test(base)) return "number";
+  if (base === "boolean") return "boolean";
+  if (/^(timestamp|date|time)/u.test(base)) return "datetime";
+  if (base === "json" || base === "jsonb") return "json";
+  if (base === "bytea") return "bytes";
+  return null;
 }
 
 async function createTemporarySchema(databaseUrl, schemaName) {
@@ -1002,6 +1275,15 @@ function normalizeCatalogSchema(catalog, extractionSchema) {
   );
 }
 
+function assertUniqueObjectKeys(items, keyOf, errorCode) {
+  const seen = new Set();
+  for (const item of items) {
+    const key = keyOf(item);
+    if (seen.has(key)) throw new Error(`${errorCode}:${key}`);
+    seen.add(key);
+  }
+}
+
 function groupBy(items, keyOf) {
   const groups = new Map();
   for (const item of items) {
@@ -1117,7 +1399,10 @@ const CATALOG_QUERIES = {
     JOIN pg_catalog.pg_class idx ON idx.oid = i.indexrelid
     JOIN pg_catalog.pg_class tbl ON tbl.oid = i.indrelid
     JOIN pg_catalog.pg_namespace n ON n.oid = tbl.relnamespace
-    LEFT JOIN pg_catalog.pg_constraint con ON con.conindid = i.indexrelid
+    LEFT JOIN pg_catalog.pg_constraint con
+      ON con.conindid = i.indexrelid
+      AND con.conrelid = i.indrelid
+      AND con.contype IN ('p', 'u', 'x')
     WHERE n.nspname = $1
       AND tbl.relname <> '_prisma_migrations'
       AND i.indisvalid
