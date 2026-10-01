@@ -5,19 +5,99 @@ import test from "node:test";
 
 import {
   assertSafeExtractionTarget,
+  buildDictionaryArtifacts,
   buildDictionaryModel,
   buildNormalizedStructure,
+  compareGeneratedArtifacts,
   createPendingAnnotations,
+  enrichTechnicalAnnotations,
+  mergeAnnotationCoverage,
   createTemporarySchemaName,
+  parseCommand,
+  parsePrismaModelComments,
   parsePrismaDdl,
   renderDataDictionaryMarkdown,
   renderNativeObjectsMarkdown,
   renderWorkbook,
+  resolveAnnotationBaseline,
   summarizeStructure,
   validateAnnotations,
 } from "./generate-data-dictionary.mjs";
 
 const LOCAL_URL = "postgresql://logix:logix@localhost:5433/logix";
+
+test("CLI parser exposes one explicit dictionary action", () => {
+  assert.deepEqual(parseCommand([]), { action: "summary", json: false });
+  assert.deepEqual(parseCommand(["--json"]), { action: "summary", json: true });
+  assert.deepEqual(parseCommand(["--bootstrap-annotations"]), {
+    action: "bootstrap",
+    json: false,
+  });
+  assert.deepEqual(parseCommand(["--generate"]), {
+    action: "generate",
+    json: false,
+  });
+  assert.deepEqual(parseCommand(["--check"]), {
+    action: "check",
+    json: false,
+  });
+  assert.throws(
+    () => parseCommand(["--generate", "--check"]),
+    /DICTIONARY_ACTION_CONFLICT/,
+  );
+  assert.throws(() => parseCommand(["--unknown"]), /UNKNOWN_ARGUMENT/);
+});
+
+test("Prisma model comments provide implementation-confirmed table descriptions", () => {
+  const comments = parsePrismaModelComments(`
+// 可售 SKU 发布的不可变交接快照。身份齐备即可发布。
+model ProductIdentityRelease {
+  id String @id
+  @@map("product_identity_release")
+}
+
+// 事项交接（shipment-registry 拥有）：出运运营把票级事项交给专业岗位队列。
+// 只到岗位不到人。
+model ShipmentWorkHandoff {
+  id String @id
+  @@map("shipment_work_handoff")
+}
+  `);
+
+  assert.deepEqual(comments, {
+    product_identity_release: {
+      nameZh: "可售 SKU 发布",
+      purposeZh: "可售 SKU 发布的不可变交接快照。身份齐备即可发布。",
+      ownerModule: null,
+    },
+    shipment_work_handoff: {
+      nameZh: "事项交接",
+      purposeZh:
+        "事项交接（shipment-registry 拥有）：出运运营把票级事项交给专业岗位队列。 只到岗位不到人。",
+      ownerModule: "shipment-registry",
+    },
+  });
+});
+
+test("generation reuses annotation baseline while bootstrap advances it", () => {
+  const existing = { baselineCommit: "source-baseline" };
+  assert.equal(
+    resolveAnnotationBaseline({
+      action: "generate",
+      existing,
+      currentCommit: "working-head",
+    }),
+    "source-baseline",
+  );
+  assert.equal(
+    resolveAnnotationBaseline({
+      action: "bootstrap",
+      existing,
+      currentCommit: "working-head",
+    }),
+    "working-head",
+  );
+});
 
 test("temporary schema names use the reserved prefix", () => {
   const schema = createTemporarySchemaName({
@@ -357,6 +437,161 @@ test("annotation bootstrap covers every table and physical column as pending", (
   );
 });
 
+test("technical enrichment documents only stable cross-table meanings", () => {
+  const structure = dictionaryFixture();
+  structure.database.columns.push(
+    {
+      tableName: "order",
+      columnName: "tenant_id",
+      ordinalPosition: 2,
+      formattedType: "text",
+      isNullable: false,
+      defaultExpression: null,
+      identityKind: "",
+      generatedKind: "",
+    },
+    {
+      tableName: "order",
+      columnName: "status",
+      ordinalPosition: 3,
+      formattedType: "text",
+      isNullable: false,
+      defaultExpression: null,
+      identityKind: "",
+      generatedKind: "",
+    },
+  );
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+
+  const enriched = enrichTechnicalAnnotations(annotations, structure);
+
+  assert.equal(enriched.fields["public.order.tenant_id"].nameZh, "租户标识");
+  assert.equal(
+    enriched.fields["public.order.tenant_id"].nameStatus,
+    "confirmed_implementation",
+  );
+  assert.deepEqual(enriched.fields["public.order.tenant_id"].sourceRefs, [
+    "engineering-data-governance",
+  ]);
+  assert.equal(
+    enriched.fields["public.order.status"].nameStatus,
+    "needs_business_confirmation",
+  );
+});
+
+test("annotation bootstrap applies Prisma model comments without overriding reviewed values", () => {
+  const structure = dictionaryFixture();
+  const merged = mergeAnnotationCoverage({
+    existing: null,
+    structure,
+    baselineCommit: "new",
+    tableDescriptions: {
+      order: {
+        nameZh: "订单",
+        purposeZh: "订单技术事实。",
+        ownerModule: "orders",
+      },
+    },
+  });
+
+  assert.equal(merged.tables["public.order"].nameZh, "订单");
+  assert.equal(
+    merged.tables["public.order"].nameStatus,
+    "confirmed_implementation",
+  );
+  assert.equal(merged.tables["public.order"].ownerModule, "orders");
+  assert.deepEqual(merged.tables["public.order"].sourceRefs, ["prisma-schema"]);
+  assert.equal(merged.sources["prisma-schema"].path, "database/schema.prisma");
+});
+
+test("annotation bootstrap replaces old pending placeholders with new evidence", () => {
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  const merged = mergeAnnotationCoverage({
+    existing,
+    structure,
+    baselineCommit: "new",
+    tableDescriptions: {
+      order: {
+        nameZh: "订单",
+        purposeZh: "订单技术事实。",
+        ownerModule: "orders",
+      },
+    },
+  });
+
+  assert.equal(merged.tables["public.order"].nameZh, "订单");
+  assert.equal(
+    merged.tables["public.order"].nameStatus,
+    "confirmed_implementation",
+  );
+});
+
+test("artifact generation keeps the explicit annotation baseline", async () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "source-baseline",
+  });
+
+  const artifacts = await buildDictionaryArtifacts({
+    structure,
+    annotations,
+    trackedFiles: new Set(),
+    fixedDate: new Date("2026-10-01T00:00:00.000Z"),
+  });
+
+  assert.match(
+    artifacts["DATA_DICTIONARY.generated.md"],
+    /baselineCommit: `source-baseline`/,
+  );
+  assert.equal(
+    JSON.parse(artifacts["dictionary.annotations.json"]).baselineCommit,
+    "source-baseline",
+  );
+});
+
+test("annotation bootstrap preserves reviewed values and adds new fields", () => {
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  existing.tables["public.order"].nameZh = "订单事实";
+  existing.tables["public.order"].nameStatus = "confirmed_contract";
+  existing.sources.contract = {
+    path: "docs/product/domain/ORDER.md",
+    authority: "formal_contract",
+  };
+  existing.tables["public.order"].sourceRefs = ["contract"];
+  structure.database.columns.push({
+    tableName: "order",
+    columnName: "created_at",
+    ordinalPosition: 2,
+    formattedType: "timestamp with time zone",
+    isNullable: false,
+    defaultExpression: "now()",
+    identityKind: "",
+    generatedKind: "",
+  });
+
+  const merged = mergeAnnotationCoverage({
+    existing,
+    structure,
+    baselineCommit: "new",
+  });
+
+  assert.equal(merged.tables["public.order"].nameZh, "订单事实");
+  assert.equal(merged.baselineCommit, "new");
+  assert.ok(merged.fields["public.order.created_at"]);
+  assert.equal(
+    merged.fields["public.order.created_at"].nameStatus,
+    "confirmed_implementation",
+  );
+});
+
 test("annotation validation rejects missing, orphan, untracked, and unsupported confirmed evidence", () => {
   const structure = dictionaryFixture();
   const annotations = createPendingAnnotations(structure, {
@@ -432,6 +667,8 @@ test("Markdown projections come from the normalized dictionary model", () => {
   assert.match(dictionary, /needs_business_confirmation/);
   assert.match(nativeObjects, /原生对象清单/);
   assert.match(nativeObjects, /verifiedThroughMigration/);
+  assert.equal(dictionary.endsWith("\n\n"), false);
+  assert.equal(nativeObjects.endsWith("\n\n"), false);
 });
 
 test("workbook has ten reviewable sheets and stable bytes", async () => {
@@ -489,6 +726,46 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
       row.eachCell((cell) => assert.equal(cell.type === 6, false)),
     );
   }
+});
+
+test("artifact builder creates four projections from one model", async () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+
+  const artifacts = await buildDictionaryArtifacts({
+    structure,
+    annotations,
+    trackedFiles: new Set(),
+    fixedDate: new Date("2026-10-01T00:00:00.000Z"),
+  });
+
+  assert.deepEqual(Object.keys(artifacts), [
+    "dictionary.annotations.json",
+    "DATA_DICTIONARY.generated.md",
+    "NATIVE_OBJECTS.generated.md",
+    "database-data-dictionary.xlsx",
+  ]);
+  assert.match(artifacts["DATA_DICTIONARY.generated.md"], /public\.order\.id/);
+  assert.ok(Buffer.isBuffer(artifacts["database-data-dictionary.xlsx"]));
+});
+
+test("artifact comparison reports drift without writing", () => {
+  const expected = {
+    "a.md": "expected\n",
+    "b.xlsx": Buffer.from([1, 2, 3]),
+  };
+  const committed = {
+    "a.md": "changed\n",
+    "b.xlsx": Buffer.from([1, 2, 4]),
+  };
+
+  assert.deepEqual(compareGeneratedArtifacts({ expected, committed }), [
+    { path: "a.md", state: "changed" },
+    { path: "b.xlsx", state: "changed" },
+  ]);
+  assert.equal(committed["a.md"], "changed\n");
 });
 
 async function loadWorkbook(buffer) {

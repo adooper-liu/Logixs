@@ -1,16 +1,30 @@
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
-export {
+import {
   renderDataDictionaryMarkdown,
   renderNativeObjectsMarkdown,
 } from "./data-dictionary/render-markdown.mjs";
-export { renderWorkbook } from "./data-dictionary/render-workbook.mjs";
+import { renderWorkbook } from "./data-dictionary/render-workbook.mjs";
+
+export {
+  renderDataDictionaryMarkdown,
+  renderNativeObjectsMarkdown,
+  renderWorkbook,
+};
 
 const require = createRequire(import.meta.url);
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -21,6 +35,11 @@ const GENERATED_CLIENT_PATH = resolve(REPOSITORY_ROOT, "generated/prisma");
 const MIGRATION_RUNNER_PATH = resolve(
   REPOSITORY_ROOT,
   "scripts/migrate-deploy.mjs",
+);
+const OUTPUT_DIRECTORY = resolve(REPOSITORY_ROOT, "database/dictionary");
+const ANNOTATIONS_PATH = resolve(
+  OUTPUT_DIRECTORY,
+  "dictionary.annotations.json",
 );
 const TEMPORARY_SCHEMA_PREFIX = "logix_dictionary_tmp_";
 const DEFAULT_DATABASE_URL =
@@ -300,6 +319,129 @@ export function createPendingAnnotations(
     fields,
     logicalReferences: [],
   };
+}
+
+export function parsePrismaModelComments(source) {
+  const result = {};
+  const pendingComments = [];
+  for (const line of source.split(/\r?\n/u)) {
+    const comment = line.match(/^\s*\/\/\s*(.+)$/u);
+    if (comment) {
+      pendingComments.push(comment[1].trim());
+      continue;
+    }
+    const model = line.match(/^\s*model\s+([A-Za-z][A-Za-z0-9_]*)\s*\{/u);
+    if (!model) {
+      if (line.trim()) pendingComments.length = 0;
+      continue;
+    }
+    const bodyStart = source.indexOf(line);
+    const bodyEnd = source.indexOf("\n}", bodyStart);
+    const body = source.slice(bodyStart, bodyEnd === -1 ? undefined : bodyEnd);
+    const mapped = body.match(/@@map\("([^"]+)"\)/u)?.[1] ?? model[1];
+    const purposeZh = pendingComments.join(" ");
+    const headline =
+      purposeZh.match(/^([^（：。]+?)(?:（[^）]*）)?(?:：|。)/u)?.[1]?.trim() ??
+      "待业务确认";
+    const nameZh = headline.includes("的")
+      ? headline.slice(0, headline.indexOf("的")).trim()
+      : headline;
+    result[mapped] = {
+      nameZh,
+      purposeZh: purposeZh || PENDING_PURPOSE,
+      ownerModule: purposeZh.match(/（([a-z0-9-]+)\s+拥有）/iu)?.[1] ?? null,
+    };
+    pendingComments.length = 0;
+  }
+  return result;
+}
+
+export function mergeAnnotationCoverage({
+  existing,
+  structure,
+  baselineCommit,
+  tableDescriptions = {},
+}) {
+  const pending = enrichTechnicalAnnotations(
+    createPendingAnnotations(structure, { baselineCommit }),
+    structure,
+  );
+  pending.sources["prisma-schema"] = {
+    path: "database/schema.prisma",
+    authority: "implementation",
+    note: "Prisma model 上方的中文实施注释。",
+  };
+  for (const [tableName, description] of Object.entries(tableDescriptions)) {
+    const annotation = pending.tables[`public.${tableName}`];
+    if (!annotation || description.nameZh === PENDING_NAME) continue;
+    annotation.nameZh = description.nameZh;
+    annotation.nameStatus = "confirmed_implementation";
+    annotation.purposeZh = description.purposeZh;
+    annotation.purposeStatus = "confirmed_implementation";
+    annotation.ownerModule = description.ownerModule;
+    annotation.sourceRefs = ["prisma-schema"];
+  }
+  return {
+    ...pending,
+    ...existing,
+    baselineCommit,
+    sources: { ...pending.sources, ...(existing?.sources ?? {}) },
+    tables: mergeReviewedAnnotations(pending.tables, existing?.tables),
+    fields: mergeReviewedAnnotations(pending.fields, existing?.fields),
+    logicalReferences: existing?.logicalReferences ?? [],
+  };
+}
+
+function mergeReviewedAnnotations(generated, existing = {}) {
+  const merged = { ...generated };
+  for (const [key, annotation] of Object.entries(existing)) {
+    if (
+      annotation.nameStatus !== "needs_business_confirmation" ||
+      annotation.purposeStatus !== "needs_business_confirmation"
+    ) {
+      merged[key] = annotation;
+    }
+  }
+  return merged;
+}
+
+export function enrichTechnicalAnnotations(annotations, structure) {
+  const enriched = structuredClone(annotations);
+  enriched.sources ??= {};
+  enriched.sources["engineering-data-governance"] ??= {
+    path: "ENGINEERING_RULES.md",
+    authority: "implementation",
+    note: "数据治理中的租户、时间、版本、幂等、哈希与审计通用技术语义。",
+  };
+
+  const definitions = {
+    tenant_id: ["租户标识", "限定记录所属租户并参与租户隔离。"],
+    idempotency_key: ["幂等键", "识别同一写入请求的重复提交。"],
+    payload_hash: ["载荷哈希", "校验同一幂等键对应的规范化载荷是否一致。"],
+    request_hash: ["请求哈希", "校验重复请求的规范化内容是否一致。"],
+    content_hash: ["内容哈希", "用于内容完整性、去重或审计比对。"],
+    version: ["版本号", "标识该记录在其对象版本链中的版本。"],
+    created_at: ["创建时间", "记录该行首次写入数据库的时间。"],
+    updated_at: ["更新时间", "记录该行最近一次更新数据库的时间。"],
+  };
+  for (const column of structure.database.columns) {
+    const definition = definitions[column.columnName];
+    if (!definition) continue;
+    const key = `public.${column.tableName}.${column.columnName}`;
+    const annotation = enriched.fields?.[key];
+    if (
+      !annotation ||
+      annotation.nameStatus !== "needs_business_confirmation"
+    ) {
+      continue;
+    }
+    annotation.nameZh = definition[0];
+    annotation.nameStatus = "confirmed_implementation";
+    annotation.purposeZh = definition[1];
+    annotation.purposeStatus = "confirmed_implementation";
+    annotation.sourceRefs = ["engineering-data-governance"];
+  }
+  return enriched;
 }
 
 export function validateAnnotations({ annotations, structure, trackedFiles }) {
@@ -980,17 +1122,184 @@ const CATALOG_QUERIES = {
     ORDER BY tbl.relname, trg.tgname`,
 };
 
-async function main() {
-  const unknownArguments = process.argv
-    .slice(2)
-    .filter((argument) => argument !== "--json");
-  if (unknownArguments.length > 0) {
-    throw new Error(`UNKNOWN_ARGUMENT:${unknownArguments.join(",")}`);
+export async function buildDictionaryArtifacts({
+  structure,
+  annotations,
+  trackedFiles = new Set(),
+  fixedDate,
+}) {
+  const model = buildDictionaryModel({
+    structure,
+    annotations,
+    trackedFiles,
+  });
+  if (model.validationFindings.length > 0) {
+    throw new Error(
+      `DICTIONARY_ANNOTATIONS_INVALID\n${JSON.stringify(model.validationFindings, null, 2)}`,
+    );
   }
-  const result = await extractNormalizedStructure();
-  process.stdout.write(
-    `${JSON.stringify(process.argv.includes("--json") ? result.structure : result.summary, null, 2)}\n`,
+  return {
+    "dictionary.annotations.json": `${JSON.stringify(annotations, null, 2)}\n`,
+    "DATA_DICTIONARY.generated.md": renderDataDictionaryMarkdown(model),
+    "NATIVE_OBJECTS.generated.md": renderNativeObjectsMarkdown(model),
+    "database-data-dictionary.xlsx": await renderWorkbook(model, { fixedDate }),
+  };
+}
+
+export function compareGeneratedArtifacts({ expected, committed }) {
+  return Object.entries(expected)
+    .sort(([left], [right]) => left.localeCompare(right, "en"))
+    .flatMap(([path, expectedValue]) => {
+      if (!(path in committed)) return [{ path, state: "missing" }];
+      const committedValue = committed[path];
+      const same = Buffer.isBuffer(expectedValue)
+        ? Buffer.isBuffer(committedValue) &&
+          expectedValue.equals(committedValue)
+        : expectedValue === committedValue;
+      return same ? [] : [{ path, state: "changed" }];
+    });
+}
+
+function readCommittedArtifacts(outputDirectory, names) {
+  const artifacts = {};
+  for (const name of names) {
+    try {
+      artifacts[name] = readFileSync(resolve(outputDirectory, name));
+      if (!name.endsWith(".xlsx"))
+        artifacts[name] = artifacts[name].toString("utf8");
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+  return artifacts;
+}
+
+export function resolveAnnotationBaseline({ action, existing, currentCommit }) {
+  if (action !== "bootstrap" && existing?.baselineCommit) {
+    return existing.baselineCommit;
+  }
+  return currentCommit;
+}
+
+export function parseCommand(args) {
+  const actions = new Map([
+    ["--bootstrap-annotations", "bootstrap"],
+    ["--generate", "generate"],
+    ["--check", "check"],
+  ]);
+  const selected = args.filter((argument) => actions.has(argument));
+  const unknown = args.filter(
+    (argument) => !actions.has(argument) && argument !== "--json",
   );
+  if (unknown.length > 0) {
+    throw new Error(`UNKNOWN_ARGUMENT:${unknown.join(",")}`);
+  }
+  if (selected.length > 1) throw new Error("DICTIONARY_ACTION_CONFLICT");
+  if (selected.length === 1 && args.includes("--json")) {
+    throw new Error("DICTIONARY_ACTION_CONFLICT");
+  }
+  return {
+    action: selected.length === 0 ? "summary" : actions.get(selected[0]),
+    json: args.includes("--json"),
+  };
+}
+
+async function main() {
+  const command = parseCommand(process.argv.slice(2));
+  const result = await extractNormalizedStructure();
+  if (command.action === "summary") {
+    process.stdout.write(
+      `${JSON.stringify(command.json ? result.structure : result.summary, null, 2)}\n`,
+    );
+    return;
+  }
+
+  const currentCommit = gitOutput(["rev-parse", "HEAD"]);
+  const existing = existsSync(ANNOTATIONS_PATH)
+    ? JSON.parse(readFileSync(ANNOTATIONS_PATH, "utf8"))
+    : null;
+  const baselineCommit = resolveAnnotationBaseline({
+    action: command.action,
+    existing,
+    currentCommit,
+  });
+  const annotations = mergeAnnotationCoverage({
+    existing,
+    structure: result.structure,
+    baselineCommit,
+    tableDescriptions: parsePrismaModelComments(
+      readFileSync(PRISMA_SCHEMA_PATH, "utf8"),
+    ),
+  });
+  if (command.action === "bootstrap") {
+    atomicWriteArtifacts(OUTPUT_DIRECTORY, {
+      "dictionary.annotations.json": `${JSON.stringify(annotations, null, 2)}\n`,
+    });
+    process.stdout.write(
+      `Updated database/dictionary/dictionary.annotations.json (${Object.keys(annotations.tables).length} tables, ${Object.keys(annotations.fields).length} fields).\n`,
+    );
+    return;
+  }
+
+  const trackedFiles = new Set(
+    gitOutput(["ls-files"]).split(/\r?\n/u).filter(Boolean),
+  );
+  const fixedDate = new Date(
+    gitOutput(["show", "-s", "--format=%cI", baselineCommit]),
+  );
+  const artifacts = await buildDictionaryArtifacts({
+    structure: result.structure,
+    annotations,
+    trackedFiles,
+    fixedDate,
+  });
+  if (command.action === "generate") {
+    atomicWriteArtifacts(OUTPUT_DIRECTORY, artifacts);
+    process.stdout.write(
+      `Generated database dictionary (${result.summary.databaseTables} tables, ${result.summary.databaseColumns} fields).\n`,
+    );
+    return;
+  }
+
+  const drift = compareGeneratedArtifacts({
+    expected: artifacts,
+    committed: readCommittedArtifacts(OUTPUT_DIRECTORY, Object.keys(artifacts)),
+  });
+  if (drift.length > 0) {
+    for (const item of drift) {
+      process.stderr.write(
+        `DATA_DICTIONARY_DRIFT:${item.state}:${item.path}\n`,
+      );
+    }
+    process.stderr.write(
+      "Run `pnpm data-dictionary:generate` and commit the results.\n",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  process.stdout.write("Database dictionary artifacts are in sync.\n");
+}
+
+function gitOutput(args) {
+  return runCommand("git", args, "GIT_COMMAND_FAILED").stdout.trim();
+}
+
+function atomicWriteArtifacts(outputDirectory, artifacts) {
+  mkdirSync(outputDirectory, { recursive: true });
+  const staged = [];
+  try {
+    for (const [name, content] of Object.entries(artifacts)) {
+      const target = resolve(outputDirectory, name);
+      const temporary = `${target}.tmp-${process.pid}`;
+      writeFileSync(temporary, content);
+      staged.push({ temporary, target });
+    }
+    for (const { temporary, target } of staged) renameSync(temporary, target);
+  } finally {
+    for (const { temporary } of staged) {
+      rmSync(temporary, { force: true });
+    }
+  }
 }
 
 const isMain =

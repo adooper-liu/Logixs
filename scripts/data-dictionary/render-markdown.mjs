@@ -78,7 +78,6 @@ export function renderDataDictionaryMarkdown(model) {
       : [...model.findings, ...model.validationFindings].map(
           (finding) => `- \`${finding.code}\`: \`${finding.object}\``,
         )),
-    "",
   ];
   return `${lines.join("\n")}\n`;
 }
@@ -132,7 +131,6 @@ export function renderNativeObjectsMarkdown(model) {
         item.definition,
       ]),
     ),
-    "",
   ];
   return `${lines.join("\n")}\n`;
 }
