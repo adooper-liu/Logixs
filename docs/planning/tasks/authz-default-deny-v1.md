@@ -1,6 +1,23 @@
 ---
 status: coding
 branch: feat/authz-default-deny-v1-c2b2
+owner: codex
+writer: cursor
+risk: high
+dependsOn: []
+writeScopes:
+  - apps/api/src/modules/work-execution/**
+  - docs/planning/tasks/authz-default-deny-v1.md
+exclusiveLocks:
+  - authz-control-plane
+  - module:work-execution
+sharedIntegrationScopes:
+  - package.json
+  - scripts/check-repository.mjs
+  - scripts/check-repository.test.mjs
+authorityRefs:
+  - docs/product/domain/IDENTITY_ACCESS_MODEL_V1.md
+  - docs/product/domain/ACTION_PERMISSION_CONTRACT_V1.md
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
   GC-008/GC-011 与现有授权测试。当前仅后端认证默认拒绝已经实现；未声明 capability 的普通用户路由
@@ -20,9 +37,9 @@ verification: |
 
 # 任务：API 操作级授权默认拒绝 V1
 
-> 这是当前唯一活动任务。Cursor 只执行本文明确开放的当前切片；寻源、NPI、共享控制面和单台 UI
-> 继续暂停。原 `p5-02-oidc-authentication-baseline` 的 `done` 只证明后端认证基线，不证明每条路由
-> 已完成操作级授权。
+> 这是当前两个写任务之一。Cursor 只执行本文明确开放的当前切片；寻源、NPI、共享控制面和单台 UI
+> 因写入范围、前置契约或优先级继续暂停，不再以“全仓只能一个活动 brief”为理由暂停。原
+> `p5-02-oidc-authentication-baseline` 的 `done` 只证明后端认证基线，不证明每条路由已完成操作级授权。
 > `feat/authz-default-deny-v1-c2b2` 是 C2B2、D、E 的任务集成分支：各切片可形成可回滚提交，但不各自
 > 建 PR 或重复等待 CI；C2B2、Guard 默认拒绝、GC-011 错误面和最终门禁完成后，由 Codex 建立一个安全收口 PR。
 

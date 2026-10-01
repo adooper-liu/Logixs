@@ -33,7 +33,11 @@ const allowedTaskStatuses = new Set([
   "blocked",
   "done",
 ]);
-const activeTaskStatuses = new Set(["design", "coding", "review", "fix"]);
+const scheduledWriteTaskStatuses = new Set(["design", "coding", "fix"]);
+const writeTaskWipStatuses = new Set(["coding", "fix"]);
+const allowedTaskRisks = new Set(["low", "medium", "high"]);
+const writeTaskLimit = 2;
+const reviewTaskLimit = 2;
 const forbiddenDirectoryPattern =
   /(^|\/)(node_modules|dist|coverage|playwright-report|test-results|tmp|\.venv|__pycache__)(\/|$)/;
 const allowedEnvironmentFilePattern = /\.env(?:\..+)?\.example$/;
@@ -128,37 +132,301 @@ export function findBrokenMarkdownLinks(markdownFiles) {
   return errors;
 }
 
+function taskId(path) {
+  return normalizePath(path).split("/").at(-1)?.replace(/\.md$/, "") ?? path;
+}
+
+function cleanFrontmatterScalar(value) {
+  const withoutComment = value.replace(/\s+#.*$/, "").trim();
+  if (
+    (withoutComment.startsWith('"') && withoutComment.endsWith('"')) ||
+    (withoutComment.startsWith("'") && withoutComment.endsWith("'"))
+  ) {
+    return withoutComment.slice(1, -1);
+  }
+  return withoutComment;
+}
+
+function parseInlineList(value) {
+  const inner = value.slice(1, -1).trim();
+  if (!inner) return [];
+  return inner.split(",").map((item) => cleanFrontmatterScalar(item));
+}
+
+function parseTaskFrontmatter(source) {
+  const block = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
+  if (block === undefined) return null;
+
+  const result = {};
+  const lines = block.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^([A-Za-z][A-Za-z0-9]*):(?:\s*(.*))?$/);
+    if (!match) continue;
+    const [, key, rawValue = ""] = match;
+    const value = cleanFrontmatterScalar(rawValue);
+
+    if (value === "|" || value === ">") {
+      const content = [];
+      while (index + 1 < lines.length && /^\s+/.test(lines[index + 1])) {
+        content.push(lines[index + 1].trim());
+        index += 1;
+      }
+      result[key] = content.join("\n").trim();
+      continue;
+    }
+
+    if (value.startsWith("[") && value.endsWith("]")) {
+      result[key] = parseInlineList(value);
+      continue;
+    }
+
+    if (!value) {
+      const items = [];
+      while (index + 1 < lines.length) {
+        const item = lines[index + 1].match(/^\s+-\s+(.+)$/);
+        if (!item) break;
+        items.push(cleanFrontmatterScalar(item[1]));
+        index += 1;
+      }
+      result[key] = items.length > 0 ? items : "";
+      continue;
+    }
+
+    result[key] = value;
+  }
+  return result;
+}
+
+function isRepositoryRelativeScope(scope) {
+  const segments = scope.split("/");
+  return (
+    scope.length > 0 &&
+    !scope.includes("\\") &&
+    !scope.startsWith("/") &&
+    !/^[A-Za-z]:/.test(scope) &&
+    !segments.includes("") &&
+    !segments.includes(".") &&
+    !segments.includes("..")
+  );
+}
+
+function parseWriteScope(scope) {
+  if (!isRepositoryRelativeScope(scope)) return { error: "outside" };
+  if (scope.endsWith("/**")) {
+    const prefix = scope.slice(0, -3).replace(/\/$/, "");
+    if (!prefix || /[*?[\]]/.test(prefix)) return { error: "pattern" };
+    return { kind: "directory", path: prefix.toLowerCase() };
+  }
+  if (/[*?[\]]/.test(scope)) return { error: "pattern" };
+  return { kind: "exact", path: scope.toLowerCase() };
+}
+
+function writeScopesOverlap(left, right) {
+  if (left.kind === "exact" && right.kind === "exact") {
+    return left.path === right.path;
+  }
+  if (left.kind === "directory") {
+    return right.path === left.path || right.path.startsWith(`${left.path}/`);
+  }
+  return left.path === right.path || left.path.startsWith(`${right.path}/`);
+}
+
+function requireWriteTaskMetadata(record, metadata, errors) {
+  for (const field of ["owner", "writer", "risk"]) {
+    if (typeof metadata[field] !== "string" || !metadata[field]) {
+      errors.push(`${record.path}: active write task is missing ${field}`);
+    }
+  }
+  for (const field of [
+    "dependsOn",
+    "writeScopes",
+    "exclusiveLocks",
+    "sharedIntegrationScopes",
+    "authorityRefs",
+  ]) {
+    if (!Array.isArray(metadata[field])) {
+      errors.push(`${record.path}: active write task is missing ${field}`);
+    }
+  }
+  if (
+    typeof metadata.risk === "string" &&
+    metadata.risk &&
+    !allowedTaskRisks.has(metadata.risk)
+  ) {
+    errors.push(`${record.path}: invalid task risk '${metadata.risk}'`);
+  }
+  if (
+    typeof metadata.writer === "string" &&
+    metadata.writer &&
+    !/^[a-z0-9][a-z0-9:-]*$/.test(metadata.writer)
+  ) {
+    errors.push(
+      `${record.path}: writer '${metadata.writer}' must be a stable lowercase code`,
+    );
+  }
+  if (
+    Array.isArray(metadata.writeScopes) &&
+    metadata.writeScopes.length === 0
+  ) {
+    errors.push(`${record.path}: active write task must declare writeScopes`);
+  }
+  if (
+    Array.isArray(metadata.authorityRefs) &&
+    metadata.authorityRefs.length === 0
+  ) {
+    errors.push(`${record.path}: active write task must declare authorityRefs`);
+  }
+}
+
 export function validateTaskStatusRecords(records) {
   const errors = [];
-  const activeTasks = [];
-  for (const record of records) {
-    const match = record.source.match(/^status:\s*([a-z]+)/m);
-    if (!match) {
+  const parsedRecords = records.map((record) => ({
+    ...record,
+    id: taskId(record.path),
+    metadata: parseTaskFrontmatter(record.source),
+  }));
+  const recordsById = new Map(
+    parsedRecords.map((record) => [record.id, record]),
+  );
+  const writeTasks = [];
+  const reviewTasks = [];
+
+  for (const record of parsedRecords) {
+    if (!record.metadata || typeof record.metadata.status !== "string") {
       errors.push(`${record.path}: missing frontmatter status`);
       continue;
     }
-    const status = match[1];
+    const status = record.metadata.status;
     if (!allowedTaskStatuses.has(status)) {
       errors.push(`${record.path}: invalid task status '${status}'`);
-    } else if (activeTaskStatuses.has(status)) {
-      activeTasks.push(record.path);
-    } else if (status === "done") {
-      const frontmatter = record.source.match(
-        /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/,
-      )?.[1];
-      const verification = frontmatter?.match(
-        /^verification:\s*(?!#)(\S.*)$/m,
-      )?.[1];
-      if (!verification) {
+      continue;
+    }
+    if (scheduledWriteTaskStatuses.has(status)) {
+      requireWriteTaskMetadata(record, record.metadata, errors);
+      writeTasks.push(record);
+    } else if (status === "review") {
+      reviewTasks.push(record);
+    } else if (status === "done" && !record.metadata.verification) {
+      errors.push(`${record.path}: done task is missing verification evidence`);
+    }
+  }
+
+  for (const record of writeTasks) {
+    if (!Array.isArray(record.metadata.dependsOn)) continue;
+    for (const dependencyId of record.metadata.dependsOn) {
+      const dependency = recordsById.get(dependencyId);
+      if (!dependency) {
         errors.push(
-          `${record.path}: done task is missing verification evidence`,
+          `${record.path}: dependency '${dependencyId}' does not exist`,
+        );
+      } else if (dependency.metadata?.status !== "done") {
+        errors.push(
+          `${record.path}: dependency '${dependencyId}' is not done (status: ${dependency.metadata?.status ?? "missing"})`,
         );
       }
     }
   }
-  if (activeTasks.length > 1) {
-    errors.push(`multiple active task briefs: ${activeTasks.join(", ")}`);
+
+  const writeTaskWip = writeTasks.filter((record) =>
+    writeTaskWipStatuses.has(record.metadata.status),
+  );
+  if (writeTaskWip.length > writeTaskLimit) {
+    errors.push(
+      `write task WIP limit exceeded (max ${writeTaskLimit}): ${writeTaskWip.map((record) => record.path).join(", ")}`,
+    );
   }
+  if (reviewTasks.length > reviewTaskLimit) {
+    errors.push(
+      `review task WIP limit exceeded (max ${reviewTaskLimit}): ${reviewTasks.map((record) => record.path).join(", ")}`,
+    );
+  }
+
+  const writerGroups = new Map();
+  for (const record of writeTasks) {
+    if (typeof record.metadata.writer !== "string" || !record.metadata.writer)
+      continue;
+    const group = writerGroups.get(record.metadata.writer) ?? [];
+    group.push(record.path);
+    writerGroups.set(record.metadata.writer, group);
+  }
+  for (const [writer, paths] of writerGroups) {
+    if (paths.length > 1) {
+      errors.push(
+        `active write tasks share writer '${writer}': ${paths.join(", ")}`,
+      );
+    }
+  }
+
+  for (let leftIndex = 0; leftIndex < writeTasks.length; leftIndex += 1) {
+    const left = writeTasks[leftIndex];
+    const leftScopes = Array.isArray(left.metadata.writeScopes)
+      ? left.metadata.writeScopes
+      : [];
+    const parsedLeftScopes = leftScopes.map((scope) => ({
+      raw: scope,
+      parsed: parseWriteScope(scope),
+    }));
+    for (const scope of parsedLeftScopes) {
+      if (scope.parsed.error === "outside") {
+        errors.push(
+          `${left.path}: writeScopes entry '${scope.raw}' must stay within the repository`,
+        );
+      } else if (scope.parsed.error) {
+        errors.push(
+          `${left.path}: writeScopes entry '${scope.raw}' must be an exact repository path or a directory ending in /**`,
+        );
+      }
+    }
+    const leftLocks = Array.isArray(left.metadata.exclusiveLocks)
+      ? left.metadata.exclusiveLocks
+      : [];
+    for (const lock of leftLocks) {
+      if (!/^[a-z0-9][a-z0-9:-]*$/.test(lock)) {
+        errors.push(
+          `${left.path}: exclusiveLocks entry '${lock}' must be a stable lowercase code`,
+        );
+      }
+    }
+
+    for (
+      let rightIndex = leftIndex + 1;
+      rightIndex < writeTasks.length;
+      rightIndex += 1
+    ) {
+      const right = writeTasks[rightIndex];
+      const rightScopes = Array.isArray(right.metadata.writeScopes)
+        ? right.metadata.writeScopes
+        : [];
+      for (const leftScope of parsedLeftScopes) {
+        if (leftScope.parsed.error) continue;
+        for (const rawRightScope of rightScopes) {
+          const rightScope = parseWriteScope(rawRightScope);
+          if (
+            !rightScope.error &&
+            writeScopesOverlap(leftScope.parsed, rightScope)
+          ) {
+            errors.push(
+              `active write task scopes overlap '${leftScope.raw}' and '${rawRightScope}': ${left.path}, ${right.path}`,
+            );
+          }
+        }
+      }
+
+      const rightLocks = new Set(
+        Array.isArray(right.metadata.exclusiveLocks)
+          ? right.metadata.exclusiveLocks
+          : [],
+      );
+      for (const lock of leftLocks) {
+        if (rightLocks.has(lock)) {
+          errors.push(
+            `active write tasks share exclusive lock '${lock}': ${left.path}, ${right.path}`,
+          );
+        }
+      }
+    }
+  }
+
   return errors;
 }
 
