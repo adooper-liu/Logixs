@@ -1,17 +1,15 @@
 export const PENDING_STATUS = "needs_business_confirmation";
 
-const ALL_CONFIRMATION_STATUSES = [
-  PENDING_STATUS,
-  "confirmed_business",
-  "confirmed_contract",
-  "confirmed_implementation",
-];
-
-export const STATUS_AUTHORITY = {
+export const STATUS_AUTHORITY = Object.freeze({
   confirmed_business: "business",
   confirmed_contract: "formal_contract",
   confirmed_implementation: "implementation",
-};
+});
+
+export const CONFIRMATION_STATUSES = Object.freeze([
+  PENDING_STATUS,
+  ...Object.keys(STATUS_AUTHORITY),
+]);
 
 export const EVIDENCE_SLOT_POLICIES = [
   {
@@ -26,7 +24,7 @@ export const EVIDENCE_SLOT_POLICIES = [
     key: "sensitivityEvidence",
     appliesTo: ["table", "field"],
     emptyValue: null,
-    allowedStatuses: ALL_CONFIRMATION_STATUSES,
+    allowedStatuses: CONFIRMATION_STATUSES,
   },
   ...[
     ["unit", "unitSemantic"],
@@ -40,7 +38,7 @@ export const EVIDENCE_SLOT_POLICIES = [
     key,
     appliesTo: ["field"],
     emptyValue: null,
-    allowedStatuses: ALL_CONFIRMATION_STATUSES,
+    allowedStatuses: CONFIRMATION_STATUSES,
   })),
 ];
 

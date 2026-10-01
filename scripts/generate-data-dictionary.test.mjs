@@ -1,15 +1,29 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
+  CONFIRMATION_STATUSES,
   EVIDENCE_SLOT_POLICIES,
+  PENDING_STATUS,
+  STATUS_AUTHORITY,
   pendingDimensions,
 } from "./data-dictionary/annotation-status.mjs";
 import {
   assertSafeExtractionTarget,
+  bootstrapAnnotations,
   buildDictionaryArtifacts,
   buildDictionaryModel,
   buildNormalizedStructure,
@@ -142,6 +156,81 @@ test("evidence slot matrix rejects contradictory pending and workbench facts", (
     "unitSemantic" in serializeAnnotations(annotations).tables["public.order"],
     false,
   );
+});
+
+test("confirmation statuses have one derived authority", () => {
+  assert.deepEqual(CONFIRMATION_STATUSES, [
+    PENDING_STATUS,
+    ...Object.keys(STATUS_AUTHORITY),
+  ]);
+  assert.equal(
+    new Set(CONFIRMATION_STATUSES).size,
+    CONFIRMATION_STATUSES.length,
+  );
+  for (const policy of EVIDENCE_SLOT_POLICIES) {
+    if (policy.key !== "workbenchEvidence") {
+      assert.equal(policy.allowedStatuses, CONFIRMATION_STATUSES);
+    }
+  }
+});
+
+test("bootstrap validates merged annotations before invoking writer", async () => {
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  existing.tables["public.order"].nameStatus = "definitely_invalid";
+  let writes = 0;
+
+  await assert.rejects(
+    () =>
+      bootstrapAnnotations({
+        structure,
+        existing,
+        baselineCommit: "new",
+        tableDescriptions: {},
+        trackedFiles: new Set(),
+        writeAnnotations: async () => {
+          writes += 1;
+        },
+      }),
+    /DICTIONARY_ANNOTATIONS_INVALID[\s\S]*ANNOTATION_STATUS_INVALID/u,
+  );
+  assert.equal(writes, 0);
+});
+
+test("invalid bootstrap leaves annotation bytes and mtime unchanged", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "logix-dictionary-bootstrap-"));
+  const target = join(directory, "dictionary.annotations.json");
+  const original = Buffer.from('{"preserve":true}\n');
+  writeFileSync(target, original);
+  const fixedTime = new Date("2020-01-02T03:04:05.000Z");
+  utimesSync(target, fixedTime, fixedTime);
+  const beforeMtime = statSync(target).mtimeMs;
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  existing.fields["public.order.id"].purposeStatus = "invalid";
+
+  try {
+    await assert.rejects(
+      () =>
+        bootstrapAnnotations({
+          structure,
+          existing,
+          baselineCommit: "new",
+          tableDescriptions: {},
+          trackedFiles: new Set(),
+          writeAnnotations: async (content) => writeFileSync(target, content),
+        }),
+      /DICTIONARY_ANNOTATIONS_INVALID/u,
+    );
+    assert.deepEqual(readFileSync(target), original);
+    assert.equal(statSync(target).mtimeMs, beforeMtime);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("root manifest owns workbook dependencies", () => {

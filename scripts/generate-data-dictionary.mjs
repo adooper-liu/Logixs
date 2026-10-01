@@ -16,6 +16,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { format } from "prettier";
 
 import {
+  CONFIRMATION_STATUSES,
   EVIDENCE_SLOT_POLICIES,
   STATUS_AUTHORITY,
   evidencePoliciesFor,
@@ -364,12 +365,6 @@ export function summarizeStructure(structure) {
   };
 }
 
-const CONFIRMATION_STATUSES = new Set([
-  "confirmed_business",
-  "confirmed_contract",
-  "confirmed_implementation",
-  "needs_business_confirmation",
-]);
 const PENDING_NAME = "待业务确认";
 const PENDING_PURPOSE = "业务用途待确认；当前仅确认结构与技术消费者";
 
@@ -970,7 +965,7 @@ function appendCoverageFindings(
 function validateAnnotationShape(findings, key, annotation) {
   for (const semantic of ["name", "purpose"]) {
     const status = annotation[`${semantic}Status`];
-    if (!CONFIRMATION_STATUSES.has(status)) {
+    if (!CONFIRMATION_STATUSES.includes(status)) {
       findings.push({
         code: "ANNOTATION_STATUS_INVALID",
         object: `${key}:${semantic}`,
@@ -1617,6 +1612,40 @@ function stripEvidenceForObject(annotation, objectType) {
   }
 }
 
+export async function bootstrapAnnotations({
+  structure,
+  existing,
+  baselineCommit,
+  tableDescriptions,
+  trackedFiles,
+  writeAnnotations,
+}) {
+  const annotations = mergeAnnotationCoverage({
+    existing,
+    structure,
+    baselineCommit,
+    tableDescriptions,
+  });
+  const findings = validateAnnotations({
+    annotations,
+    structure,
+    trackedFiles,
+  });
+  if (findings.length > 0) {
+    throw new Error(
+      `DICTIONARY_ANNOTATIONS_INVALID\n${JSON.stringify(findings, null, 2)}`,
+    );
+  }
+  const content = await format(
+    JSON.stringify(serializeAnnotations(annotations)),
+    {
+      parser: "json",
+    },
+  );
+  await writeAnnotations(content);
+  return annotations;
+}
+
 export async function buildDictionaryArtifacts({
   structure,
   annotations,
@@ -1724,22 +1753,23 @@ async function main() {
     existing,
     currentCommit,
   });
-  const annotations = mergeAnnotationCoverage({
-    existing,
-    structure: result.structure,
-    baselineCommit,
-    tableDescriptions: parsePrismaModelComments(
-      readFileSync(PRISMA_SCHEMA_PATH, "utf8"),
-    ),
-  });
+  const tableDescriptions = parsePrismaModelComments(
+    readFileSync(PRISMA_SCHEMA_PATH, "utf8"),
+  );
+  const trackedFiles = new Set(
+    gitOutput(["ls-files"]).split(/\r?\n/u).filter(Boolean),
+  );
   if (command.action === "bootstrap") {
-    atomicWriteArtifacts(OUTPUT_DIRECTORY, {
-      "dictionary.annotations.json": await format(
-        JSON.stringify(serializeAnnotations(annotations)),
-        {
-          parser: "json",
-        },
-      ),
+    const annotations = await bootstrapAnnotations({
+      structure: result.structure,
+      existing,
+      baselineCommit,
+      tableDescriptions,
+      trackedFiles,
+      writeAnnotations: async (content) =>
+        atomicWriteArtifacts(OUTPUT_DIRECTORY, {
+          "dictionary.annotations.json": content,
+        }),
     });
     process.stdout.write(
       `Updated database/dictionary/dictionary.annotations.json (${Object.keys(annotations.tables).length} tables, ${Object.keys(annotations.fields).length} fields).\n`,
@@ -1747,9 +1777,12 @@ async function main() {
     return;
   }
 
-  const trackedFiles = new Set(
-    gitOutput(["ls-files"]).split(/\r?\n/u).filter(Boolean),
-  );
+  const annotations = mergeAnnotationCoverage({
+    existing,
+    structure: result.structure,
+    baselineCommit,
+    tableDescriptions,
+  });
   const fixedDate = new Date(
     gitOutput(["show", "-s", "--format=%cI", baselineCommit]),
   );
