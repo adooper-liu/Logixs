@@ -2,14 +2,7 @@ import type {
   CustomsClearanceCase,
   ReplaceCustomsClearanceCaseCommand,
 } from "@logix/contracts";
-import { DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
-
-const HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
-  "X-Roles": "operations_dispatcher",
-};
+import { requestJson } from "./httpClient";
 
 export type CustomsClearanceCaseView = Omit<
   CustomsClearanceCase,
@@ -24,38 +17,20 @@ export type ReplaceCustomsClearanceCaseInput =
 export async function getCustomsClearanceCase(
   containerId: string,
 ): Promise<CustomsClearanceCaseView | null> {
-  const response = await fetch(endpoint(containerId), { headers: HEADERS });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "加载清关案件失败",
-      ),
-    );
-  }
-  return (await response.json()) as CustomsClearanceCaseView | null;
+  return requestJson<CustomsClearanceCaseView | null>(endpoint(containerId), {
+    fallback: "加载清关案件失败",
+  });
 }
 
 export async function replaceCustomsClearanceCase(
   containerId: string,
   input: ReplaceCustomsClearanceCaseInput,
 ): Promise<CustomsClearanceCaseView> {
-  const response = await fetch(endpoint(containerId), {
+  return requestJson<CustomsClearanceCaseView>(endpoint(containerId), {
     method: "POST",
-    headers: { ...HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: input,
+    fallback: "保存清关案件失败",
   });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "保存清关案件失败",
-      ),
-    );
-  }
-  return (await response.json()) as CustomsClearanceCaseView;
 }
 
 function endpoint(containerId: string): string {

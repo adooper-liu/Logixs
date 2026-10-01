@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 export interface ClientOperationItem {
   clientOperationId: string;
@@ -49,15 +49,6 @@ export interface CompensationPage {
   projectionVersion: number;
 }
 
-const DEV_OPERATOR_ID = "dev-operator";
-
-function identityHeaders(): HeadersInit {
-  return {
-    "X-Tenant-Id": DEV_TENANT_ID,
-    "X-Operator-Id": DEV_OPERATOR_ID,
-  };
-}
-
 async function readError(
   response: Response,
   fallback: string,
@@ -98,8 +89,8 @@ export async function listClientOperations(input?: {
     query.set("pageSize", String(input.pageSize));
   if (input?.cursor) query.set("cursor", input.cursor);
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  const response = await fetch(`/api/client-operations${suffix}`, {
-    headers: identityHeaders(),
+  const response = await requestApi(`/api/client-operations${suffix}`, {
+    fallback: "列同步操作失败",
   });
   if (!response.ok) {
     throw new Error(await readError(response, "列同步操作失败"));
@@ -127,9 +118,9 @@ export async function listCompensations(
     query.set("pageSize", String(input.pageSize));
   if (input?.cursor) query.set("cursor", input.cursor);
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  const response = await fetch(
+  const response = await requestApi(
     `/api/client-operations/${originalClientOperationId}/compensations${suffix}`,
-    { headers: identityHeaders() },
+    { fallback: "列补偿失败" },
   );
   if (!response.ok) {
     throw new Error(await readError(response, "列补偿失败"));

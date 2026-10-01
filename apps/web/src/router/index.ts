@@ -1,4 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { AUTH_CALLBACK_PATH, AUTH_LOGOUT_CALLBACK_PATH } from "../auth/config";
+import { createAuthGuard } from "../auth/routeGuard";
+import { getAuthSession } from "../auth/session";
 import { uiCopy } from "../data/uiCopyCatalog";
 import { moduleRouteContributions } from "../modules/registry";
 
@@ -9,6 +12,18 @@ const router = createRouter({
     return undefined;
   },
   routes: [
+    {
+      path: AUTH_CALLBACK_PATH,
+      component: () => import("../auth/OidcCallbackView.vue"),
+      props: { kind: "signin" },
+      meta: { title: "登录", authPublic: true },
+    },
+    {
+      path: AUTH_LOGOUT_CALLBACK_PATH,
+      component: () => import("../auth/OidcCallbackView.vue"),
+      props: { kind: "signout" },
+      meta: { title: "退出登录", authPublic: true },
+    },
     { path: "/", redirect: "/tasks" },
     {
       path: "/tasks",
@@ -233,5 +248,7 @@ const router = createRouter({
     ...moduleRouteContributions,
   ],
 });
+
+router.beforeEach(createAuthGuard(getAuthSession));
 
 export default router;

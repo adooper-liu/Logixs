@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { listClientOperations, listCompensations } from "./clientOperations";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -35,12 +41,7 @@ describe("listClientOperations", () => {
     const page = await listClientOperations({ pageSize: 50, cursor: "c1" });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/client-operations?pageSize=50&cursor=c1",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
     expect(page.items[0]).toMatchObject({
       clientOperationId: "op-1",
@@ -65,12 +66,7 @@ describe("listCompensations", () => {
     await listCompensations("op-1", { pageSize: 50 });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/client-operations/op-1/compensations?pageSize=50",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 });

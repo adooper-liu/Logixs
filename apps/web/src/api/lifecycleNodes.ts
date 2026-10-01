@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 export interface LifecycleNodeTimes {
   plannedAt: string | null;
@@ -30,8 +30,6 @@ export interface LifecycleNodesPage {
   projectionVersion: number;
 }
 
-const DEV_OPERATOR_ID = "dev-operator";
-
 export interface ContainerLifecycleNodesItem {
   containerId: string;
   flow: LifecycleNodesPage["flow"];
@@ -50,12 +48,10 @@ export async function listLifecycleNodesByContainers(
   const ids = containerIds.map((id) => id.trim()).filter(Boolean);
   const query = new URLSearchParams();
   query.set("containerIds", ids.join(","));
-  const response = await fetch(`/api/lifecycle-nodes?${query.toString()}`, {
-    headers: {
-      "X-Tenant-Id": DEV_TENANT_ID,
-      "X-Operator-Id": DEV_OPERATOR_ID,
-    },
-  });
+  const response = await requestApi(
+    `/api/lifecycle-nodes?${query.toString()}`,
+    { fallback: "GET /api/lifecycle-nodes failed" },
+  );
   if (!response.ok) {
     throw new Error(`GET /api/lifecycle-nodes failed: ${response.status}`);
   }
@@ -65,14 +61,9 @@ export async function listLifecycleNodesByContainers(
 export async function listLifecycleNodes(
   containerId: string,
 ): Promise<LifecycleNodesPage> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/containers/${encodeURIComponent(containerId)}/lifecycle-nodes`,
-    {
-      headers: {
-        "X-Tenant-Id": DEV_TENANT_ID,
-        "X-Operator-Id": DEV_OPERATOR_ID,
-      },
-    },
+    { fallback: `GET /api/containers/${containerId}/lifecycle-nodes failed` },
   );
   if (response.status === 404) {
     throw new Error("RESOURCE_NOT_FOUND");

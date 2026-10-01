@@ -15,6 +15,12 @@ import {
   listShipmentPendingCompletion,
 } from "./shipments";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -41,13 +47,7 @@ describe("listDepartedShipments", () => {
     await expect(listDepartedShipments()).resolves.toEqual(items);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/shipments?pageSize=100&status=departed",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-          "X-Roles": "operations_dispatcher",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 

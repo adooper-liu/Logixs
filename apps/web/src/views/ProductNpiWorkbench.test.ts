@@ -2,7 +2,14 @@ import type { ProductInitiativeNpiQueueEntryV1 } from "@logix/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { computed, shallowRef } from "vue";
 import ProductNpiWorkbench from "./ProductNpiWorkbench.vue";
+
+const actor = shallowRef<string | null>("dev-operator");
+
+vi.mock("../auth/useAuthSession", () => ({
+  useAuthSession: () => ({ actorId: computed(() => actor.value) }),
+}));
 
 const listProductInitiativeNpiQueue = vi.fn();
 const claimProductInitiative = vi.fn();
@@ -28,6 +35,7 @@ vi.mock("../api/marketSignals", () => ({
 describe("ProductNpiWorkbench", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    actor.value = "dev-operator";
     listProductInitiativeNpiQueue.mockResolvedValue(page([entry({})]));
     claimProductInitiative.mockResolvedValue(entry({ claimed: true }));
     getProductDefinition.mockResolvedValue(null);
@@ -101,6 +109,18 @@ describe("ProductNpiWorkbench", () => {
     const wrapper = await mountWorkbench("h-mine");
 
     expect(wrapper.text()).toContain("推进产品定义");
+  });
+
+  it("会话没有 actor 时失败关闭：任何已领取的票都不算我的，不开放推进区", async () => {
+    actor.value = null;
+    listProductInitiativeNpiQueue.mockResolvedValue(
+      page([entry({ handoffId: "h-mine", claimedBy: "dev-operator" })]),
+    );
+    const wrapper = await mountWorkbench("h-mine");
+
+    expect(wrapper.text()).not.toContain("推进产品定义");
+    expect(wrapper.text()).toContain("已在他人手上");
+    expect(wrapper.find(".npi-action button").exists()).toBe(false);
   });
 
   it("已被他人领走时不摆推进区，也不摆领取按钮", async () => {

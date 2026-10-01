@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 export interface OpsNotificationItem {
   id: string;
@@ -25,23 +25,13 @@ export interface NotificationTarget {
   targetPath: string;
 }
 
-const DEV_OPERATOR_ID = "dev-operator";
-const DEV_ROLES = "operations_dispatcher";
-
-function devHeaders(): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    "X-Tenant-Id": DEV_TENANT_ID,
-    "X-Operator-Id": DEV_OPERATOR_ID,
-    "X-Roles": DEV_ROLES,
-  };
-}
+const JSON_HEADERS = { "Content-Type": "application/json" };
 
 export async function listNotifications(
   limit = 50,
 ): Promise<OpsNotificationItem[]> {
-  const response = await fetch(`/api/notifications?limit=${limit}`, {
-    headers: devHeaders(),
+  const response = await requestApi(`/api/notifications?limit=${limit}`, {
+    fallback: "GET /api/notifications failed",
   });
   if (!response.ok) {
     throw new Error(`GET /api/notifications failed: ${response.status}`);
@@ -53,9 +43,9 @@ export async function listNotifications(
 export async function resolveNotificationTarget(
   notificationId: string,
 ): Promise<NotificationTarget> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/notification-targets/${encodeURIComponent(notificationId)}`,
-    { headers: devHeaders() },
+    { fallback: `GET /api/notification-targets/${notificationId} failed` },
   );
   if (response.status === 404) throw new Error("RESOURCE_NOT_FOUND");
   if (!response.ok) {
@@ -69,10 +59,11 @@ export async function resolveNotificationTarget(
 export async function openAssistantSession(
   input: OpenAssistantSessionRequest = {},
 ): Promise<AssistantSessionResponse> {
-  const response = await fetch("/api/ops-assistant/sessions", {
+  const response = await requestApi("/api/ops-assistant/sessions", {
     method: "POST",
-    headers: devHeaders(),
+    headers: JSON_HEADERS,
     body: JSON.stringify(input),
+    fallback: "POST /api/ops-assistant/sessions failed",
   });
   if (!response.ok) {
     throw new Error(
@@ -86,12 +77,13 @@ export async function postAssistantMessage(
   sessionId: string,
   body: string,
 ): Promise<AssistantSessionResponse> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/ops-assistant/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "POST",
-      headers: devHeaders(),
+      headers: JSON_HEADERS,
       body: JSON.stringify({ body }),
+      fallback: `POST /api/ops-assistant/sessions/${sessionId}/messages failed`,
     },
   );
   if (!response.ok) {

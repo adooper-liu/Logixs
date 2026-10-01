@@ -6,11 +6,11 @@ import { resolveCompleteEvidenceRefs } from "../api/evidence";
 import {
   claimWorkOrder,
   completeWorkOrder,
-  DEV_OPERATOR_ID,
   listNodeTasks,
   type NodeTaskDetail,
   type WorkOrderSummary,
 } from "../api/nodeTasks";
+import { useAuthSession } from "../auth/useAuthSession";
 import { completionRequiresEvidence } from "../data/completionEvidencePolicy";
 import SubmissionProgress from "../components/task/SubmissionProgress.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
@@ -33,6 +33,7 @@ import { uiCopy } from "../data/uiCopyCatalog";
 
 const route = useRoute();
 const router = useRouter();
+const { actorId } = useAuthSession();
 
 const containers = ref<ContainerSummary[]>([]);
 const tasks = ref<NodeTaskDetail[]>([]);
@@ -133,7 +134,8 @@ function canShowComplete(workOrder: WorkOrderSummary): boolean {
   if (workOrder.assignmentState === "automatic") return true;
   return (
     workOrder.assignmentState === "assigned" &&
-    isAssignedTo(workOrder.assigneeId, DEV_OPERATOR_ID)
+    actorId.value !== null &&
+    isAssignedTo(workOrder.assigneeId, actorId.value)
   );
 }
 

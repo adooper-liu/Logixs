@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 import { formatHttpError } from "./httpError";
 
 export interface ObjectActivityItem {
@@ -45,12 +45,6 @@ export interface ObjectActivityPage {
   projectionVersion: number;
 }
 
-const DEV_HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
-  "X-Roles": "operations_dispatcher",
-};
-
 export async function listObjectActivities(
   containerId: string,
   query?: { pageSize?: number; cursor?: string },
@@ -61,9 +55,9 @@ export async function listObjectActivities(
   }
   if (query?.cursor) params.set("cursor", query.cursor);
   const suffix = params.size ? `?${params.toString()}` : "";
-  const response = await fetch(
+  const response = await requestApi(
     `/api/containers/${encodeURIComponent(containerId)}/activities${suffix}`,
-    { headers: DEV_HEADERS },
+    { fallback: "加载对象动态失败" },
   );
   if (response.status === 404) throw new Error("RESOURCE_NOT_FOUND");
   if (!response.ok) {

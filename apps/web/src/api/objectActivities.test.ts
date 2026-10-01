@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { listObjectActivities } from "./objectActivities";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -27,13 +33,7 @@ describe("listObjectActivities", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/containers/container%2F%E4%B8%80/activities?pageSize=25&cursor=snapshot%2B1",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-          "X-Roles": "operations_dispatcher",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 

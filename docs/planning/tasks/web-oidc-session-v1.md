@@ -1,8 +1,14 @@
 ---
-status: coding
+status: review
 branch: feat/web-oidc-session-v1
-verification: not-run
-owner: codex
+verification: |
+  A/A-R1/B/C/C3-FIX 已完成并通过增量复审；C3-FIX fresh 只读 Claude 复审为 no-findings。
+  当前工作树 Web 单元测试 143 文件、616 项通过，focused OIDC Playwright 5/5 通过，Web lint、typecheck、
+  OIDC build、format:check、repo:check 与 git diff --check 通过。原 C3-SEC-001 组合在生成资产前返回
+  BUILD_DEVELOPMENT_AUTH_REJECTED，未创建输出目录且未回显 tenant/operator/role；development serve 与正常
+  OIDC build 保持可用。生产源码固定开发身份残留为 0；身份头和直接 fetch 仅存在于测试或权威 httpClient。
+  等待 Claude 最终集成最新 main、重跑 security:audit 和 pnpm validate；真实 IdP 冒烟仍是 deployment/done gate。
+owner: claude
 writer: cursor
 risk: high
 dependsOn: []
@@ -12,12 +18,32 @@ writeScopes:
   - pnpm-lock.yaml
   - apps/web/src/auth/**
   - apps/web/src/api/**
+  - apps/web/src/test/setup.ts
+  - apps/web/src/composables/useProductNpiWorkbench.ts
+  - apps/web/src/composables/useStuffingWorkbench.ts
+  - apps/web/src/composables/useLiveWorkspace.test.ts
+  - apps/web/src/components/product-npi/ProductNpiClaimAction.vue
+  - apps/web/src/data/stuffingWorkbench.ts
+  - apps/web/src/data/stuffingWorkbench.test.ts
+  - apps/web/src/views/ProductNpiWorkbench.vue
+  - apps/web/src/views/ProductNpiWorkbench.test.ts
+  - apps/web/src/views/RealTaskWorkbench.vue
+  - apps/web/src/views/RealTaskWorkbench.test.ts
+  - apps/web/src/views/StuffingWorkbench.test.ts
+  - apps/web/src/views/CargoReadyWorkbench.test.ts
   - apps/web/src/router/index.ts
   - apps/web/src/main.ts
   - apps/web/src/env.d.ts
   - apps/web/src/components/shell/AppTopbar.vue
+  - apps/web/src/components/shell/AppTopbar.test.ts
+  - apps/web/src/components/shell/AppShell.test.ts
   - apps/web/src/composables/useAppShell.ts
   - apps/web/src/themes/logix/LogixAppShell.vue
+  - apps/web/src/themes/logix/LogixAppShell.test.ts
+  - apps/web/src/e2eDevServer.ts
+  - apps/web/src/e2eDevServerContract.test.ts
+  - apps/web/playwright.config.ts
+  - apps/web/vite.config.ts
   - apps/web/e2e/**
   - docs/planning/tasks/web-oidc-session-v1.md
 exclusiveLocks:
@@ -111,6 +137,7 @@ Bearer Token。开发身份头只允许在显式本机 development 模式出现�
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 基线     | `2f5a45fe3d4644db8a804d615d2e36f6c702137e`                                                                                                                            |
 | 执行角色 | Cursor                                                                                                                                                                |
+| 状态     | `accepted`；A-R1 于 `878191425c6c4c2cfa752af46d186d3bba9ce9c6` 工作树完成增量复审                                                                                     |
 | 写入范围 | `.env.example`、Web package/lock、`src/auth/**`、`src/api/httpClient.ts`、`src/api/marketSignals.ts` 及直接测试、`src/router/index.ts`、`src/main.ts`、`src/env.d.ts` |
 | 禁止范围 | 其余 API 消费者、后端、数据库、公共契约、演示角色导航、AppShell 视觉、权限/账套配置                                                                                   |
 | 验证命令 | auth/config/client/router/marketSignals 定向 Vitest；Web lint、typecheck、build；`pnpm security:audit`；`pnpm repo:check`、`pnpm format:check`、`git diff --check`    |
@@ -129,6 +156,11 @@ Bearer Token。开发身份头只允许在显式本机 development 模式出现�
 6. 测试至少反证：生产 development 失败；OIDC 缺配置失败；PKCE 配置正确；回调路径不递归；returnUrl 只接受站内；
    OIDC 只发 Bearer；development 只发开发头；401 单次恢复、403 不重登；市场信号 GET/POST/PATCH 仍按原契约工作。
 
+A-R1 已接受以下安全收口，不在 B 重复设计或重审：共享 Client 在读取身份前限制到同源 `/api/`，拒绝重定向；
+Vite 在构建/启动前拒绝名称含 `SECRET` 的 `VITE_` 配置；浏览器只逐项读取白名单环境变量；会话初始化失败可重试；
+开发身份不再有仓库内置默认值。93 项定向测试、Web lint/typecheck/build、假 secret 失败构建、仓库/格式/差异门禁
+已由 Codex 复核通过。现有 E2E 启动器尚未注入显式测试身份，由 C 负责，不回退固定生产身份。
+
 #### Vue / Client 责任图
 
 | 边界                        | 单一职责                                                     | 对外契约                                                                             |
@@ -146,16 +178,123 @@ Bearer Token。开发身份头只允许在显式本机 development 模式出现�
 
 ### B. API 消费者机械迁移
 
-- 在 A 的 Client 契约不变后，把剩余 API/业务 composable 对开发身份的直接依赖迁入共享 Client。
-- 允许每个调用点提供仅 development 使用的测试角色/操作者覆盖，但 OIDC 模式必须忽略且绝不发送这些头。
-- 更新紧邻测试，保持 URL、方法、body、错误文案和返回类型；禁止在迁移中改业务规则或页面布局。
-- 以 `rg` 清单证明生产源码不再直接导入 `developmentIdentity.ts` 或手写身份头，再删除旧文件。
+| 项目     | 内容                                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 执行基线 | `878191425c6c4c2cfa752af46d186d3bba9ce9c6` + 同工作树内已接受但未提交的 A/A-R1 差异                                                         |
+| 执行角色 | Cursor；B1/B2 连续实现后只交审一次，不拆 PR、不在中途重复全量门禁                                                                           |
+| 状态     | `accepted`；Codex 已复核共享 Client、代表调用语义、actor 投影、全量 Web 601 项测试及构建/静态门禁                                           |
+| 当前清单 | 生产源码 26 个文件直接引用 `developmentIdentity`；24 个 API 文件直接 `fetch` 且手写身份头；17 个文件仍出现固定 `DEV_OPERATOR_ID`            |
+| 写入范围 | `src/api/**`、`src/auth/**`、`src/test/setup.ts`，以及 frontmatter 已列出的 NPI/装箱/任务当前操作者消费者与紧邻测试                         |
+| 禁止范围 | 页面布局与文案、业务 DTO/状态规则、后端、公共契约、数据库、角色/能力政策、AppShell 用户出口与 E2E 启动器                                    |
+| 验证     | 全量 Web 单元测试一次；Web lint/typecheck/build；身份/`fetch` 零残留扫描；`repo:check`、`format:check`、`git diff --check`                  |
+| 停止条件 | 完成后返回一次 `ready-for-review`；若某调用依赖流式响应、跨源 API、服务端重定向或无法保持既有错误/返回语义则 `blocked`，不得临场绕过 Client |
+
+#### B1. 请求迁移
+
+1. 在 `httpClient.ts` 内增加一个共享的底层请求入口（可命名为 `requestApi`）：复用 A 已接受的 URL/header
+   失败关闭、会话取证、OIDC/development 身份注入、`redirect: "error"`、网络错误和 401 单次恢复；对非 401 响应返回
+   原始 `Response`，让调用方保留既有 404/null、blob、FormData、自定义错误与响应解析语义。
+2. `requestJson` 必须建立在该底层入口上，不能保留第二套身份注入或 fetch；普通 JSON 调用优先使用 `requestJson`，上传、
+   下载或需要自定义状态处理的调用使用底层入口。共享入口是控制面，不把各领域错误合并成巨型通用 DTO。
+3. 迁移 24 个 API 文件的直接 `fetch`。逐函数保持 URL、method、query、body、Content-Type、幂等头、返回类型、404/null
+   分支、下载行为和面向用户的既有错误文案；除统一 401 会话恢复外，不借迁移改变业务行为。
+4. 生产调用点不得再声明 `X-Tenant-Id`、`X-Operator-Id`、`X-Roles`、固定 operator 或固定 role。development 身份只来自
+   `VITE_DEV_*` 会话配置；OIDC 身份只来自 Token。不同角色由配置切换，测试角色由测试会话替身承载，禁止生产代码按端点
+   冒充 `dev-reviewer`、`import_operator` 等另一身份。
+5. `DevConsole.vue` 对 `/ai`、`/temporal` 的非认证健康探测不属于 `/api` Client，保持不动；除此之外，生产 `src/api/**`
+   只允许 `httpClient.ts` 直接调用 `fetch`。
+
+#### B2. 当前操作者投影与旧开发身份删除
+
+1. 依据 `IDENTITY_ACCESS_MODEL_V1`，UI 当前 actor 统一取会话 profile 的稳定 subject：development 为显式
+   `VITE_DEV_OPERATOR_ID`，OIDC 为已验证 Token 的 `sub`。可在 `useAuthSession` 增加只读 `actorId` 派生值；不得把 Token、
+   角色或 SDK 对象放入 Vue 响应式状态。
+2. NPI 的“我负责的”、装箱队列 `isMine`、任务工单受让人判断改用该 actor。actor 缺失时必须失败关闭：不把任何记录判为
+   “我的”，不开放本人专属动作，也不以空串、固定 ID 或演示角色代替。
+3. 删除 `api/developmentIdentity.ts` 及 `nodeTasks.ts` 导出的固定 `DEV_OPERATOR_ID`；更新紧邻测试和 test-only fixture。
+   测试 fixture 必须明确只在 Vitest 生效，不得成为生产默认身份。
+4. 交审前提供以下扫描的实际输出，计数均须为 0；测试文件中的断言/fixture 与 `httpClient.ts` 的权威身份头实现除外：
+
+   ```text
+   rg -n '\b(DEV_OPERATOR_ID|DEV_TENANT_ID)\b|developmentIdentity' apps/web/src -g '*.ts' -g '*.vue' -g '!*.test.ts'
+   rg -n 'X-Tenant-Id|X-Operator-Id|X-Roles' apps/web/src -g '*.ts' -g '*.vue' -g '!*.test.ts' -g '!httpClient.ts'
+   rg -n 'fetch\(' apps/web/src/api -g '*.ts' -g '!*.test.ts' -g '!httpClient.ts'
+   ```
+
+本切片不触发独立安全复审：它沿用 A 已定安全政策做机械推广。若实现需要改变允许的 API origin、身份来源、Token
+存储、角色语义或公开路由，立即停止并由 Codex 重切；最终独立安全复审只在 C 集成候选进行一次。
+
+B 复审接受两项受控偏差：无请求体 GET 不再发送无意义的 `Content-Type`；NPI claim 展示和装箱队列纯函数为移除固定
+actor 做了最小范围扩展，相关文件已补入 frontmatter。两项均未改变服务端权限、业务 DTO 或状态规则。
 
 ### C. 用户出口、关键 E2E 与收口
 
-- 在现有 AppShell 用户区提供明确的登录身份摘要和注销动作；开发角色切换继续明确标为演示能力，不能伪装 IdP 权限。
-- 使用可控 OIDC 测试替身覆盖：未登录进入受保护页、回调恢复原站内页、已登录读写参考 API、Token 失效、注销。
-- 形成最终 PR 候选后，由 Codex 运行一次 `pnpm validate`、依赖审计和最终安全复审；风险面未再变化则不重复全量门禁。
+| 项目     | 内容                                                                                                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 执行基线 | `878191425c6c4c2cfa752af46d186d3bba9ce9c6` + 同工作树内已接受的 A/A-R1/B 未提交差异                                                                           |
+| 执行角色 | Cursor；实现和定向验证完成后只交审一次                                                                                                                        |
+| 状态     | `accepted`；C 实现通过增量复审，`C3-SEC-001` 修复经 fresh 只读 Claude 复审为 `no-findings`，转入 Claude 最终集成；真实 IdP 仍是 deployment/done gate          |
+| 写入范围 | `src/auth/**`、`components/shell/AppTopbar.vue` 及直接测试、`themes/logix/LogixAppShell.vue` 及直接测试、`e2e/**`、必要的 Playwright/Vite 测试配置与本 brief  |
+| 禁止范围 | API/数据库/公共契约、角色与 capability 政策、演示导航规则、业务工作台逻辑、真实 IdP 或其他外部系统配置、生产内置测试身份                                      |
+| 定向验证 | auth/AppShell 单元测试；新增认证 E2E；Web lint、typecheck、build；`repo:check`、`format:check`、`git diff --check`                                            |
+| 最终门禁 | Cursor 不跑 `validate` 或全仓安全审计；Codex 收到 C 交审后统一运行一次 `pnpm validate`、`pnpm security:audit` 并发起一次 Claude 独立安全复审                  |
+| 停止条件 | 测试替身需要进入生产 bundle、需要真实 IdP 凭据、需要改变 Token 存储/API origin/角色语义，或现有会话端口无法证明关键路径时返回 `blocked`，不得临场扩大安全边界 |
+
+#### C1. AppShell 身份出口
+
+组件边界保持现有单向数据流：`LogixAppShell` 读取 `useAuthSession` 的只读 `mode/status/profile` 并调用 `signOut`；
+`AppTopbar` 只接收脱敏身份 props、发出 `signOut` 事件，不导入 session、SDK 或 Token。
+
+1. 在现有用户区同时区分“登录身份”和“当前演示角色”。身份优先显示 `displayName`，否则显示稳定 subject；不得把演示角色
+   文案伪装成 IdP 角色、能力或权限结论。
+2. OIDC 已认证时提供带 `LogOut` 图标和可访问名称的注销按钮；点击只调用会话 `signOut()`，禁用重复提交并呈现失败状态。
+   development 模式明确标示“本机开发身份”，不伪造 IdP 注销；可不显示注销按钮。
+3. 不把 Token、roles、OIDC SDK 对象或完整 profile 放进 AppShell 自有状态；只使用 `useAuthSession` 已有的脱敏只读投影。
+4. 单元测试按用户可见行为断言身份摘要、development 标识、注销调用和失败反馈，不访问组件私有状态。
+
+#### C2. 可控认证 E2E
+
+1. `global-setup.ts` 启动 development Web 时必须显式注入 `VITE_AUTH_MODE=development` 及测试 tenant/operator/roles；值只存在
+   于 Playwright 启动配置，不进入生产源码默认值。保留“已存在非本测试配置的开发服务器则不得静默复用”的失败关闭检查。
+2. 增加 OIDC 浏览器替身，仅在 Playwright 测试启动时启用，通过真实浏览器导航和现有 auth/session 边界模拟 IdP 协议结果；
+   不改生产协议实现，不提交 secret，不把 access token 输出到日志、URL、截图或断言文本。
+3. 关键路径至少覆盖：未登录访问受保护页会启动登录；callback 恢复原站内路径且拒绝外部 returnUrl；已登录调用市场信号
+   参考 GET 与一个写动作时只带 Bearer；401 只恢复一次且无重定向环；403 不重新登录；注销清除会话并进入已注销状态。
+4. E2E 优先按角色、可见文本和稳定 `data-testid` 定位；等待导航/请求/可见状态，不使用任意 sleep。现有业务 E2E 继续以
+   显式 development 身份运行，不因认证测试替身改变其角色或业务数据。
+
+#### C3. 最终收口
+
+Cursor 只返回 C 的定向检查。Codex 接受 C 后直接形成集成候选，运行一次完整门禁与依赖审计，再请求 Claude 对会话、
+API 身份材料、重定向、注销、测试替身隔离和构建产物做一次最终只读安全复审；没有新增风险面时不再重复上述门禁。
+
+#### C3-FIX. 独立安全复审阻断收口
+
+`logix-disposition/v1`：
+
+| Finding         | 处置       | 理由与权威写回                                                                                                                                                                                    |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `C3-SEC-001`    | `accepted` | `vite build` 的安全边界不能依赖 `NODE_ENV` 或 `import.meta.env.DEV`；本节将 Vite `command === "build"` 时拒绝 development auth 定为必须修复的生产构建不变量。                                     |
+| `C3-VERIFY-001` | `accepted` | 旧基线的依赖审计为红，不能宣称 C3 通过；但告警不来自 OIDC 依赖，且 PR #115 已在 `main` 合入精确 overrides。本切片不重复发明依赖政策，待安全修复验收后同步最新 `main` 并以新鲜审计结果关闭或重切。 |
+
+| 项目     | 内容                                                                                                                                                                                                |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 执行基线 | `878191425c6c4c2cfa752af46d186d3bba9ce9c6` + 同工作树内已接受的 A/A-R1/B/C 未提交差异                                                                                                               |
+| 执行角色 | Cursor；只实现 `C3-SEC-001` 并先把本节 disposition 保留在 brief，完成后交回 Codex 一次                                                                                                              |
+| 写入范围 | `apps/web/vite.config.ts`、证明构建边界的最小测试文件、`docs/planning/tasks/web-oidc-session-v1.md`                                                                                                 |
+| 禁止范围 | 会话/Client/业务消费者、API、数据库、公共契约、OIDC 协议政策、依赖升级或 overrides、真实 IdP 配置                                                                                                   |
+| 定向验证 | 构建边界回归测试；带显式 development 身份且 `NODE_ENV=development` 的标准 Web build 必须在产物生成前预期失败；正常 OIDC build、Web lint/typecheck、`repo:check`、`format:check`、`git diff --check` |
+| 后续集成 | Codex 接受修复后形成任务提交，同步最新 `origin/main`，保留 PR #115 的 overrides，再运行一次 `pnpm security:audit`；结果为绿即关闭 `C3-VERIFY-001`，仍为红才按剩余 advisory 重切                     |
+| 停止条件 | 修复需要改变 Token 存储、API origin、角色语义、development serve 行为或引入新依赖时返回 `blocked`                                                                                                   |
+
+实现要求：
+
+1. Vite 配置必须直接使用配置钩子的 `command` 判断构建边界；只要 `command === "build"` 且显式选择
+   `VITE_AUTH_MODE=development`，就在生成任何资产前失败。该判断不得依赖 `NODE_ENV`、mode 名称或浏览器运行时分支。
+2. 本机 `vite serve` 的显式 development 身份继续可用；OIDC build 行为、secret 拒绝和显式环境白名单保持不变。
+3. 回归证据必须覆盖独立评审的原失败组合：`NODE_ENV=development`、`VITE_AUTH_MODE=development` 及完整测试
+   tenant/operator/roles。失败信息不得输出身份值。
+4. Cursor 不同步 `main`、不改根依赖、不运行全仓 `validate` 或安全审计；这些只在 Codex 接受修复并形成集成候选后执行一次。
 
 ## 直接消费者与技术承接
 
@@ -192,6 +331,9 @@ Bearer Token。开发身份头只允许在显式本机 development 模式出现�
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责  | commit | 说明                                                                                                      |
-| ---------- | ------ | ----- | ------ | --------------------------------------------------------------------------------------------------------- |
-| 2026-10-01 | coding | Codex | —      | PR #112 合并后建立 Web OIDC/PKCE 任务；冻结首切片为会话边界、共享 API Client 和市场信号真实读写参考路径。 |
+| 日期       | 阶段   | 负责   | commit | 说明                                                                                                          |
+| ---------- | ------ | ------ | ------ | ------------------------------------------------------------------------------------------------------------- |
+| 2026-10-01 | coding | Codex  | —      | PR #112 合并后建立 Web OIDC/PKCE 任务；冻结首切片为会话边界、共享 API Client 和市场信号真实读写参考路径。     |
+| 2026-10-01 | review | Codex  | —      | A/A-R1 通过增量复审；接受同源 API 边界、构建前 secret 门禁、初始化恢复和显式开发配置，转入 B 全量消费者迁移。 |
+| 2026-10-01 | review | Codex  | —      | B 通过一次性复审：601 项 Web 测试及构建/静态门禁通过，固定身份和直接 fetch 残留为零；自动转入 C 最终收口。    |
+| 2026-10-02 | review | Claude | —      | `C3-SEC-001` 构建边界修复经 fresh 只读 Claude 复审为 no-findings；接管最终 main 集成、审计、完整门禁和 PR。   |

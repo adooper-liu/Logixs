@@ -6,6 +6,12 @@ import {
   replayInboxDeadLetter,
 } from "./deadLetters";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -25,12 +31,7 @@ describe("listDeadLetters", () => {
     await listDeadLetters({ pageSize: 50, cursor: "c1" });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/outbox/dead-letters?pageSize=50&cursor=c1",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 });
@@ -83,12 +84,7 @@ describe("listInboxDeadLetters", () => {
     await listInboxDeadLetters({ pageSize: 50, cursor: "c1" });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/inbox/dead-letters?pageSize=50&cursor=c1",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 });

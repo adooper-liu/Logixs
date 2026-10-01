@@ -20,7 +20,6 @@ vi.mock("../api/lifecycleNodes", () => ({
   listLifecycleNodes: (...args: unknown[]) => listLifecycleNodes(...args),
 }));
 vi.mock("../api/nodeTasks", () => ({
-  DEV_OPERATOR_ID: "dev-operator",
   listNodeTasks: (...args: unknown[]) => listNodeTasks(...args),
   claimWorkOrder: vi.fn(),
   completeWorkOrder: vi.fn(),

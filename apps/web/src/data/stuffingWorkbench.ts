@@ -23,7 +23,8 @@ export interface StuffingQueueItem {
 export function buildStuffingQueue(input: {
   tasks: readonly NodeTaskDetail[];
   containers: readonly ContainerSummary[];
-  actorId: string;
+  /** 会话 actor；缺失时不把任何任务判为“我的”。 */
+  actorId: string | null;
   now?: Date;
 }): StuffingQueueItem[] {
   const now = input.now ?? new Date();
@@ -41,18 +42,20 @@ export function buildStuffingQueue(input: {
         task.state === "blocked" ||
         task.readinessState === "waiting_conditions";
       const assigneeId = task.nextAction?.assigneeId ?? assignedWorkOrder(task);
+      const isMine = Boolean(
+        input.actorId && assigneeId && assigneeId === input.actorId,
+      );
       return {
         task,
         container: task.containerId
           ? (containers.get(task.containerId) ?? null)
           : null,
         title: "完成装箱确认",
-        responsibility:
-          assigneeId === input.actorId
-            ? "我负责"
-            : assigneeId
-              ? `已分配：${assigneeId}`
-              : "装箱共享池",
+        responsibility: isMine
+          ? "我负责"
+          : assigneeId
+            ? `已分配：${assigneeId}`
+            : "装箱共享池",
         dueAt,
         urgencyLabel: overdue
           ? "已逾期"
@@ -62,7 +65,7 @@ export function buildStuffingQueue(input: {
               ? "受阻"
               : "常规",
         urgencyRank: overdue ? 0 : isDueSoon ? 1 : isBlocked ? 2 : 3,
-        isMine: assigneeId === input.actorId,
+        isMine,
         isExecutable: Boolean(task.nextAction),
         isBlocked,
         isDueSoon,

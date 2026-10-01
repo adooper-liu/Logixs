@@ -1,6 +1,5 @@
 import { uiCopy } from "../data/uiCopyCatalog";
-import { DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
+import { requestJson } from "./httpClient";
 
 // 薄真实任务台 DTO：与 work-execution 控制器响应形状一致。
 
@@ -105,22 +104,6 @@ export interface CompleteWorkOrderResult {
   rejectionReasonCode: string | null;
 }
 
-export const DEV_OPERATOR_ID = "dev-operator";
-
-function identityHeaders(): HeadersInit {
-  return {
-    "X-Tenant-Id": DEV_TENANT_ID,
-    "X-Operator-Id": DEV_OPERATOR_ID,
-  };
-}
-
-async function readError(
-  response: Response,
-  fallback: string,
-): Promise<string> {
-  return formatHttpError(response.status, await response.text(), fallback);
-}
-
 export async function listNodeTasks(input?: {
   containerId?: string;
   pageSize?: number;
@@ -131,13 +114,9 @@ export async function listNodeTasks(input?: {
   if (input?.pageSize !== undefined)
     query.set("pageSize", String(input.pageSize));
   if (input?.cursor) query.set("cursor", input.cursor);
-  const response = await fetch(`/api/node-tasks?${query.toString()}`, {
-    headers: identityHeaders(),
+  return requestJson<NodeTaskPage>(`/api/node-tasks?${query.toString()}`, {
+    fallback: "列节点任务失败",
   });
-  if (!response.ok) {
-    throw new Error(await readError(response, "列节点任务失败"));
-  }
-  return (await response.json()) as NodeTaskPage;
 }
 
 export async function claimWorkOrder(
@@ -147,18 +126,10 @@ export async function claimWorkOrder(
   const body: ClaimWorkOrderInput = {};
   if (input.idempotencyKey) body.idempotencyKey = input.idempotencyKey;
 
-  const response = await fetch(`/api/work-orders/${workOrderId}/claim`, {
-    method: "POST",
-    headers: {
-      ...identityHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(await readError(response, uiCopy.chrome.claimFailed));
-  }
-  return (await response.json()) as ClaimWorkOrderResult;
+  return requestJson<ClaimWorkOrderResult>(
+    `/api/work-orders/${workOrderId}/claim`,
+    { method: "POST", body, fallback: uiCopy.chrome.claimFailed },
+  );
 }
 
 export async function completeWorkOrder(
@@ -171,16 +142,8 @@ export async function completeWorkOrder(
   }
   if (input.idempotencyKey) body.idempotencyKey = input.idempotencyKey;
 
-  const response = await fetch(`/api/work-orders/${workOrderId}/complete`, {
-    method: "POST",
-    headers: {
-      ...identityHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(await readError(response, uiCopy.chrome.completeFailed));
-  }
-  return (await response.json()) as CompleteWorkOrderResult;
+  return requestJson<CompleteWorkOrderResult>(
+    `/api/work-orders/${workOrderId}/complete`,
+    { method: "POST", body, fallback: uiCopy.chrome.completeFailed },
+  );
 }

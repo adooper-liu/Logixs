@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 export type ReplenishmentWorkReasonCode =
   | "complete_order_lines"
@@ -88,15 +88,9 @@ export async function listReplenishmentOrders(query?: {
   if (query?.pageSize != null) params.set("pageSize", String(query.pageSize));
   if (query?.cursor) params.set("cursor", query.cursor);
   const queryString = params.toString();
-  const response = await fetch(
+  const response = await requestApi(
     `/api/replenishment-orders${queryString ? `?${queryString}` : ""}`,
-    {
-      headers: {
-        "X-Tenant-Id": DEV_TENANT_ID,
-        "X-Operator-Id": "dev-operator",
-        "X-Roles": "operations_dispatcher",
-      },
-    },
+    { fallback: "GET /api/replenishment-orders failed" },
   );
   if (!response.ok) {
     throw new Error(`GET /api/replenishment-orders failed: ${response.status}`);

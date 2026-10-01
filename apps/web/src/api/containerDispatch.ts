@@ -1,5 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
+import { requestJson } from "./httpClient";
 
 export interface ContainerDispatchSnapshot {
   snapshotId: string;
@@ -37,47 +36,23 @@ export interface ReplaceContainerDispatchSnapshotInput {
   idempotencyKey: string;
 }
 
-const HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
-  "X-Roles": "operations_dispatcher",
-};
-
 export async function getContainerDispatchSnapshot(
   containerId: string,
 ): Promise<ContainerDispatchSnapshot | null> {
-  const response = await fetch(endpoint(containerId), { headers: HEADERS });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "加载出运交接失败",
-      ),
-    );
-  }
-  return (await response.json()) as ContainerDispatchSnapshot | null;
+  return requestJson<ContainerDispatchSnapshot | null>(endpoint(containerId), {
+    fallback: "加载出运交接失败",
+  });
 }
 
 export async function replaceContainerDispatchSnapshot(
   containerId: string,
   input: ReplaceContainerDispatchSnapshotInput,
 ): Promise<ContainerDispatchSnapshot> {
-  const response = await fetch(endpoint(containerId), {
+  return requestJson<ContainerDispatchSnapshot>(endpoint(containerId), {
     method: "POST",
-    headers: { ...HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: input,
+    fallback: "保存出运交接失败",
   });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "保存出运交接失败",
-      ),
-    );
-  }
-  return (await response.json()) as ContainerDispatchSnapshot;
 }
 
 function endpoint(containerId: string): string {

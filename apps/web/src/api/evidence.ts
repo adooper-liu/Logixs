@@ -5,10 +5,7 @@ import type {
 } from "@logix/contracts";
 import { completionRequiresEvidence } from "../data/completionEvidencePolicy";
 import { parseEvidenceInput } from "../data/completeReceiptContract";
-import { DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
-
-const DEV_OPERATOR_ID = "dev-operator";
+import { requestJson } from "./httpClient";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -34,13 +31,6 @@ interface EvidenceSourceContext {
   subjectType?: string;
 }
 
-function identityHeaders(): HeadersInit {
-  return {
-    "X-Tenant-Id": DEV_TENANT_ID,
-    "X-Operator-Id": DEV_OPERATOR_ID,
-  };
-}
-
 export function isEvidenceUuid(value: string): boolean {
   return UUID_PATTERN.test(value);
 }
@@ -55,13 +45,6 @@ async function sha256Hex(value: string): Promise<string> {
     .join("");
 }
 
-async function readError(
-  response: Response,
-  fallback: string,
-): Promise<string> {
-  return formatHttpError(response.status, await response.text(), fallback);
-}
-
 export async function registerEvidence(
   input: {
     subjectId: string;
@@ -70,13 +53,10 @@ export async function registerEvidence(
 ): Promise<EvidenceRecord> {
   const contentRef = input.contentRef.trim().slice(0, 500);
   const subjectType = input.subjectType ?? "container";
-  const response = await fetch("/api/evidence", {
+  return requestJson<EvidenceRecord>("/api/evidence", {
     method: "POST",
-    headers: {
-      ...identityHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    fallback: "登记证据失败",
+    body: {
       evidenceType: input.evidenceType ?? "document",
       subjectType,
       subjectId: input.subjectId,
@@ -90,32 +70,18 @@ export async function registerEvidence(
       authoritySystem: input.authoritySystem ?? "ops-team",
       ingestionChannel: "manual_ui",
       captureSource: input.captureSource ?? "internal_operation",
-    }),
+    },
   });
-  if (!response.ok) {
-    throw new Error(await readError(response, "登记证据失败"));
-  }
-  return (await response.json()) as EvidenceRecord;
 }
 
 export async function verifyEvidence(
   evidenceId: string,
 ): Promise<EvidenceRecord> {
-  const response = await fetch(`/api/evidence/${evidenceId}/verify`, {
+  return requestJson<EvidenceRecord>(`/api/evidence/${evidenceId}/verify`, {
     method: "POST",
-    headers: {
-      ...identityHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      reasonCode: "manual_review",
-      reason: "现场作业核对",
-    }),
+    body: { reasonCode: "manual_review", reason: "现场作业核对" },
+    fallback: "核验证据失败",
   });
-  if (!response.ok) {
-    throw new Error(await readError(response, "核验证据失败"));
-  }
-  return (await response.json()) as EvidenceRecord;
 }
 
 export async function registerAndVerifyFloorEvidence(

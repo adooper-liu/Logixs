@@ -19,7 +19,6 @@ vi.mock("../api/nodeTasks", () => ({
   listNodeTasks: (...args: unknown[]) => listNodeTasks(...args),
   claimWorkOrder: (...args: unknown[]) => claimWorkOrder(...args),
   completeWorkOrder: (...args: unknown[]) => completeWorkOrder(...args),
-  DEV_OPERATOR_ID: "dev-operator",
 }));
 
 async function setupWorkspace() {

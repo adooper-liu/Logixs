@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { listLifecycleEvents } from "./lifecycleEvents";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -21,12 +27,7 @@ describe("listLifecycleEvents", () => {
     await listLifecycleEvents("c1", { pageSize: 50 });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/containers/c1/lifecycle-events?pageSize=50",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 

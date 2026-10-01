@@ -12,7 +12,7 @@ import {
 describe("postDepartureSourcePackages api", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("sends the currently available batch identities with the operator capability role", async () => {
+  it("sends the currently available batch identities with the session identity", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -42,7 +42,7 @@ describe("postDepartureSourcePackages api", () => {
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
-          "X-Roles": "import_operator",
+          "X-Roles": "operations_dispatcher",
         }),
         body: expect.stringContaining(
           "post-departure-source-package-preflight.v1",
@@ -94,7 +94,7 @@ describe("postDepartureSourcePackages api", () => {
     );
   });
 
-  it("saves a review package with the same operator capability role", async () => {
+  it("saves a review package with the same session identity", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -123,7 +123,9 @@ describe("postDepartureSourcePackages api", () => {
       `/api/post-departure-source-packages/${"a".repeat(64)}/reviews`,
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ "X-Roles": "import_operator" }),
+        headers: expect.objectContaining({
+          "X-Roles": "operations_dispatcher",
+        }),
         body: expect.stringContaining(
           "post-departure-source-package-review.v1",
         ),
@@ -149,7 +151,9 @@ describe("postDepartureSourcePackages api", () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("pageSize=20");
     expect(fetchMock.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({
-        headers: expect.objectContaining({ "X-Roles": "import_operator" }),
+        headers: expect.objectContaining({
+          "X-Roles": "operations_dispatcher",
+        }),
       }),
     );
   });
@@ -193,7 +197,9 @@ describe("postDepartureSourcePackages api", () => {
       `/api/post-departure-source-packages/${command.packageId}/reviews/${command.reviewId}/candidates/${command.candidateRef}/corrections`,
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ "X-Roles": "import_operator" }),
+        headers: expect.objectContaining({
+          "X-Roles": "operations_dispatcher",
+        }),
         body: JSON.stringify(command),
       }),
     );

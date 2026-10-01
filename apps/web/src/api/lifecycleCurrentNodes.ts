@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 export interface ContainerCurrentNodeItem {
   containerId: string;
@@ -12,22 +12,15 @@ export interface ContainerCurrentNodesPage {
   projectionVersion: number;
 }
 
-const DEV_OPERATOR_ID = "dev-operator";
-
 export async function listCurrentNodes(
   containerIds: readonly string[],
 ): Promise<ContainerCurrentNodesPage> {
   const ids = containerIds.map((id) => id.trim()).filter(Boolean);
   const query = new URLSearchParams();
   query.set("containerIds", ids.join(","));
-  const response = await fetch(
+  const response = await requestApi(
     `/api/lifecycle-current-nodes?${query.toString()}`,
-    {
-      headers: {
-        "X-Tenant-Id": DEV_TENANT_ID,
-        "X-Operator-Id": DEV_OPERATOR_ID,
-      },
-    },
+    { fallback: "GET /api/lifecycle-current-nodes failed" },
   );
   if (!response.ok) {
     throw new Error(

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { claimWorkOrder, completeWorkOrder, listNodeTasks } from "./nodeTasks";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -20,12 +26,7 @@ describe("listNodeTasks", () => {
     await listNodeTasks({ containerId: "c1", pageSize: 50, cursor: "cur-1" });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/node-tasks?containerId=c1&pageSize=50&cursor=cur-1",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 
@@ -42,10 +43,9 @@ describe("listNodeTasks", () => {
     vi.stubGlobal("fetch", fetchMock);
     await listNodeTasks({ pageSize: 50 });
     expect(fetchMock).toHaveBeenCalledWith("/api/node-tasks?pageSize=50", {
-      headers: {
-        "X-Tenant-Id": "demo-real-sample-20260921",
-        "X-Operator-Id": "dev-operator",
-      },
+      method: "GET",
+      redirect: "error",
+      headers: SESSION_HEADERS,
     });
   });
 });

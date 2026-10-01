@@ -7,7 +7,7 @@ import {
 } from "@lucide/vue";
 import { computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { DEV_OPERATOR_ID } from "../api/developmentIdentity";
+import { useAuthSession } from "../auth/useAuthSession";
 import ProductDefinitionAdvancePanel from "../components/product-npi/ProductDefinitionAdvancePanel.vue";
 import ProductNpiClaimAction from "../components/product-npi/ProductNpiClaimAction.vue";
 import ProductNpiHandoffDetail from "../components/product-npi/ProductNpiHandoffDetail.vue";
@@ -60,8 +60,11 @@ onMounted(async () => {
  * 推进区只在"我负责的那一票"上出现：没接的还没轮到推进，别人接的轮不到我。
  * 这与上一片的两道门槛同源 —— 界面上不给按不动的按钮。
  */
+const { actorId } = useAuthSession();
 const isMine = computed(
-  () => selected.value?.claim?.productOwnerActorId === DEV_OPERATOR_ID,
+  () =>
+    actorId.value !== null &&
+    selected.value?.claim?.productOwnerActorId === actorId.value,
 );
 const definition = useProductDefinition({
   initiativeHandoffId: computed(() => selected.value?.handoff.handoffId ?? ""),
@@ -181,6 +184,7 @@ async function claimSelected(): Promise<void> {
           v-else-if="selected && !isMine"
           :entry="selected"
           :busy="saving"
+          :mine="isMine"
           @claim="claimSelected"
         />
         <p v-else-if="!selected" class="empty">先从左边的队列选一票。</p>

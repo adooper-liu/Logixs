@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getContainer, getContainerCargo, listContainers } from "./containers";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -19,10 +25,9 @@ describe("listContainers", () => {
     vi.stubGlobal("fetch", fetchMock);
     await listContainers();
     expect(fetchMock).toHaveBeenCalledWith("/api/containers", {
-      headers: {
-        "X-Tenant-Id": "demo-real-sample-20260921",
-        "X-Operator-Id": "dev-operator",
-      },
+      method: "GET",
+      redirect: "error",
+      headers: SESSION_HEADERS,
     });
   });
 
@@ -40,12 +45,7 @@ describe("listContainers", () => {
     await listContainers({ pageSize: 200, cursor: "cur-1" });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/containers?pageSize=200&cursor=cur-1",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 });
@@ -66,10 +66,9 @@ describe("getContainer", () => {
     vi.stubGlobal("fetch", fetchMock);
     const row = await getContainer("c1");
     expect(fetchMock).toHaveBeenCalledWith("/api/containers/c1", {
-      headers: {
-        "X-Tenant-Id": "demo-real-sample-20260921",
-        "X-Operator-Id": "dev-operator",
-      },
+      method: "GET",
+      redirect: "error",
+      headers: SESSION_HEADERS,
     });
     expect(row.orderNumber).toBe("SO-1");
   });
@@ -100,10 +99,9 @@ describe("getContainerCargo", () => {
     await getContainerCargo("c1");
 
     expect(fetchMock).toHaveBeenCalledWith("/api/containers/c1/cargo", {
-      headers: {
-        "X-Tenant-Id": "demo-real-sample-20260921",
-        "X-Operator-Id": "dev-operator",
-      },
+      method: "GET",
+      redirect: "error",
+      headers: SESSION_HEADERS,
     });
   });
 });

@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 export interface LifecycleEventItem {
   id: string;
@@ -20,8 +20,6 @@ export interface LifecycleEventPage {
   projectionVersion: number;
 }
 
-const DEV_OPERATOR_ID = "dev-operator";
-
 export async function listLifecycleEvents(
   containerId: string,
   query?: { pageSize?: number; cursor?: string },
@@ -30,14 +28,9 @@ export async function listLifecycleEvents(
   if (query?.pageSize != null) params.set("pageSize", String(query.pageSize));
   if (query?.cursor) params.set("cursor", query.cursor);
   const suffix = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetch(
+  const response = await requestApi(
     `/api/containers/${encodeURIComponent(containerId)}/lifecycle-events${suffix}`,
-    {
-      headers: {
-        "X-Tenant-Id": DEV_TENANT_ID,
-        "X-Operator-Id": DEV_OPERATOR_ID,
-      },
-    },
+    { fallback: `GET /api/containers/${containerId}/lifecycle-events failed` },
   );
   if (response.status === 404) {
     throw new Error("RESOURCE_NOT_FOUND");

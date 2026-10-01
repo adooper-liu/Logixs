@@ -7,14 +7,7 @@ import type {
   SupplierQuotationV1,
   SupplierV1,
 } from "@logix/contracts";
-import { DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
-
-const HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
-  "X-Roles": "operations_dispatcher",
-};
+import { requestJson } from "./httpClient";
 
 /** 队列上的一条：一份发布里的一个 SKU，以及它已有的候选、报价与定点。 */
 export interface SourcingQueueEntry {
@@ -79,28 +72,4 @@ export async function nominateSupplier(
     body: command,
     fallback: "暂时无法定点",
   });
-}
-
-async function requestJson<T = unknown>(
-  url: string,
-  options: { method?: "GET" | "POST"; body?: unknown; fallback: string },
-): Promise<T> {
-  const response = await fetch(url, {
-    method: options.method ?? "GET",
-    headers: {
-      ...HEADERS,
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
-  });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        options.fallback,
-      ),
-    );
-  }
-  return (await response.json()) as T;
 }

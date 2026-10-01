@@ -2,7 +2,12 @@
 import { CheckCircle2, Hand, UserRoundCheck } from "@lucide/vue";
 import type { ProductInitiativeNpiQueueEntryV1 } from "@logix/contracts";
 
-defineProps<{ entry: ProductInitiativeNpiQueueEntryV1; busy: boolean }>();
+/** `mine` 由父级按会话 actor 判定；组件不自行比较身份。 */
+defineProps<{
+  entry: ProductInitiativeNpiQueueEntryV1;
+  busy: boolean;
+  mine: boolean;
+}>();
 defineEmits<{ claim: [] }>();
 </script>
 
@@ -31,7 +36,7 @@ defineEmits<{ claim: [] }>();
       <p>
         领取于
         {{ new Date(entry.claim.claimedAt).toLocaleString("zh-CN") }}。
-        <template v-if="entry.claim.productOwnerActorId === 'dev-operator'">
+        <template v-if="mine">
           接下来是产品规格、里程碑与发布决定 —— 那是本节点的下一片。
         </template>
         <template v-else> 这一票已在他人手上，不会重复领取。 </template>

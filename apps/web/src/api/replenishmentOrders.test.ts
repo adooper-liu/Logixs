@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { listReplenishmentOrders } from "./replenishmentOrders";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -22,13 +28,7 @@ describe("listReplenishmentOrders", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/replenishment-orders?pageSize=100&cursor=cursor-1",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-          "X-Roles": "operations_dispatcher",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 

@@ -1,11 +1,11 @@
 import { computed, ref, shallowRef, type Ref } from "vue";
 import type { ProductInitiativeNpiQueueEntryV1 } from "@logix/contracts";
-import { DEV_OPERATOR_ID } from "../api/developmentIdentity";
 import {
   claimProductInitiative,
   listProductInitiativeNpiQueue,
   returnProductInitiativeFromNpi,
 } from "../api/marketSignals";
+import { useAuthSession } from "../auth/useAuthSession";
 
 /**
  * 产品开发与 NPI 工作台：看见选品交过来的立项，把其中一件接到自己名下。
@@ -13,7 +13,8 @@ import {
  * 队列按"等谁动"分两组 —— **待领取**（还没人接，该我判断）与**已领取**
  * （已在某人手上，显示是谁）。这是操作第一眼要分的事：哪些等我，哪些不用我管。
  *
- * 「我负责的」用请求头里那个身份判断，与服务端落库的负责人同源；前端不自己编一个"我"。
+ * 「我负责的」用会话 actor 判断，与服务端落库的负责人同源；前端不自己编一个"我"。
+ * actor 缺失时没有任何一条算"我的"。
  */
 export function useProductNpiWorkbench(options: {
   selectedId: Ref<string>;
@@ -24,6 +25,7 @@ export function useProductNpiWorkbench(options: {
   const saving = shallowRef(false);
   const error = shallowRef("");
   const receipt = shallowRef("");
+  const { actorId } = useAuthSession();
 
   const selected = computed(
     () =>
@@ -32,16 +34,11 @@ export function useProductNpiWorkbench(options: {
       ) ?? null,
   );
   const waiting = computed(() => items.value.filter((item) => !item.claim));
-  const mine = computed(() =>
-    items.value.filter(
-      (item) => item.claim?.productOwnerActorId === DEV_OPERATOR_ID,
-    ),
-  );
+  const isMine = (item: ProductInitiativeNpiQueueEntryV1) =>
+    actorId.value !== null && item.claim?.productOwnerActorId === actorId.value;
+  const mine = computed(() => items.value.filter(isMine));
   const takenByOthers = computed(() =>
-    items.value.filter(
-      (item) =>
-        item.claim && item.claim.productOwnerActorId !== DEV_OPERATOR_ID,
-    ),
+    items.value.filter((item) => item.claim && !isMine(item)),
   );
 
   async function load(): Promise<void> {
