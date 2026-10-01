@@ -38,11 +38,13 @@ verification: |
   当前 reconciliation findings 为 9 个可空性差异、8 个默认值差异和 5 个 FK 动作差异，均保留在生成字典中。
   首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
   3 个币种字段和 3 个时区字段由正式契约确认，其余语义槽保持 needs_business_confirmation。
-  两轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 34/34、
+  三轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 38/38、
   generate/check、repo:check、format:check、专项 ESLint、根 pnpm test、typecheck 和 build 已通过。
   根 workspace 已显式声明 Excel 生成依赖；冻结安装后 security:audit（high 门槛）通过，剩 8 个 moderate。
   ExcelJS 重载确认 10 个 sheet、模块汇总对账 112 表/1,589 字段、字段页 31 列且精确 1,590 行、
-  0 个公式单元格；本机无 Excel，桌面视觉检查未执行。Codex disposition 和最终 PR/CI 尚未完成。
+  待确认页覆盖全部 112 表/1,589 字段并显示具体维度、0 个公式单元格。人工注解已改为稀疏存储：
+  表不保存字段专用槽，字段只持久化 6 个 confirmed 槽；本机无 Excel，桌面视觉检查未执行。
+  Codex disposition 和最终 PR/CI 尚未完成。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -275,6 +277,9 @@ scripts/
 - `accepted/fixed`：`SPEC-01` 注解改为字段级合并；名称/用途仍 pending 时独立维护的 owner/workbench/sensitivity/notes/source 仍保留。
 - `accepted/fixed`：`SPEC-02` 增加单位、币种、时区、快照、版本、审计六个独立证据槽及 Markdown/Excel 投影；仅 3 个币种字段和 3 个时区字段由正式契约确认，其余保持 pending。
 - `accepted/fixed`：`SPEC-03` 模块汇总增加模块、技术所有者、工作台三维，并通过父表对账 112 张表与 1,589 个字段。
+- `accepted/fixed`：`SPEC-04` 工作台与敏感等级改为独立证据槽；confirmed 槽必须同时有非空值和合格来源，工作台只接受 `doc/` 业务证据。
+- `accepted/fixed`：`SPEC-05/SMELL-02` pending 判定覆盖名称、用途、工作台、敏感等级和六语义槽；待确认页显示具体维度并覆盖全部未闭合对象。
+- `accepted/fixed`：`SMELL-03` 人工注解改为稀疏存储；表不保存字段专用槽，字段只持久化非默认证据槽，运行模型补 pending 默认。
 - `accepted/fixed`：补齐字段类型族、精度、可空性、数组和默认值对账；真实目录保留 22 个可定位结构差异。
 - `accepted/fixed`：来源 authority 按 tracked 路径类别校验，logical reference 要求正式契约证据并验证源/目标字段。
 - `accepted/fixed`：索引 catalog 查询仅关联本表拥有的 PK/UQ/EXCLUSION constraint；实测 505 行均为唯一稳定键。

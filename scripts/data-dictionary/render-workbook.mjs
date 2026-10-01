@@ -1,6 +1,10 @@
 import { createRequire } from "node:module";
 
-import { evidenceSlotText, isPendingAnnotation } from "./annotation-status.mjs";
+import {
+  evidenceSlotText,
+  isPendingAnnotation,
+  pendingDimensions,
+} from "./annotation-status.mjs";
 
 const require = createRequire(import.meta.url);
 const ExcelJS = require("exceljs");
@@ -91,8 +95,8 @@ export async function renderWorkbook(
       item.nameStatus,
       item.purposeStatus,
       item.ownerModule,
-      item.workbenchCodes,
-      item.sensitivityClass,
+      evidenceSlotText(item.workbenchEvidence),
+      evidenceSlotText(item.sensitivityEvidence),
       item.sourceRefs,
       item.notes,
     ]),
@@ -150,8 +154,8 @@ export async function renderWorkbook(
       item.nameStatus,
       item.purposeStatus,
       item.ownerModule,
-      item.workbenchCodes,
-      item.sensitivityClass,
+      evidenceSlotText(item.workbenchEvidence),
+      evidenceSlotText(item.sensitivityEvidence),
       item.sourceRefs,
       evidenceSlotText(item.unitSemantic),
       evidenceSlotText(item.currencySemantic),
@@ -233,7 +237,15 @@ export async function renderWorkbook(
   addSheet(
     workbook,
     SHEETS[8],
-    ["对象类型", "稳定键", "中文名", "用途说明", "名称状态", "用途状态"],
+    [
+      "对象类型",
+      "稳定键",
+      "中文名",
+      "用途说明",
+      "名称状态",
+      "用途状态",
+      "待确认维度",
+    ],
     [
       ...model.tables
         .filter(isPendingAnnotation)
@@ -343,7 +355,7 @@ function moduleRows(model) {
     const moduleCode = table.moduleCode ?? "待确认";
     const owner = table.ownerModule ?? "待确认";
     const workbenches =
-      [...(table.workbenchCodes ?? [])].sort().join(", ") || "待确认";
+      [...(table.workbenchEvidence?.value ?? [])].sort().join(", ") || "待确认";
     const key = `${moduleCode}\u0000${owner}\u0000${workbenches}`;
     groupKeyByTable.set(table.tableName, key);
     const item = groups.get(key) ?? {
@@ -420,6 +432,7 @@ function pendingRow(type, item) {
     item.purposeZh,
     item.nameStatus,
     item.purposeStatus,
+    pendingDimensions(item),
   ];
 }
 
@@ -427,6 +440,8 @@ function sourceConsumerCount(model, sourceId) {
   return [...model.tables, ...model.fields].filter((item) =>
     [
       ...(item.sourceRefs ?? []),
+      ...(item.workbenchEvidence?.sourceRefs ?? []),
+      ...(item.sensitivityEvidence?.sourceRefs ?? []),
       ...(item.unitSemantic?.sourceRefs ?? []),
       ...(item.currencySemantic?.sourceRefs ?? []),
       ...(item.timezoneSemantic?.sourceRefs ?? []),

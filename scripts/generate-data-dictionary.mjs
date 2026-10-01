@@ -377,11 +377,11 @@ export function createPendingAnnotations(
   const tables = {};
   const fields = {};
   for (const table of structure.database.tables) {
-    tables[`public.${table.tableName}`] = pendingAnnotation();
+    tables[`public.${table.tableName}`] = pendingTableAnnotation();
   }
   for (const column of structure.database.columns) {
     fields[`public.${column.tableName}.${column.columnName}`] =
-      pendingAnnotation();
+      pendingFieldAnnotation();
   }
   return {
     schemaVersion: "1.0.0",
@@ -479,7 +479,8 @@ function mergeReviewedAnnotations(generated, existing = {}) {
     for (const field of [
       "moduleCode",
       "ownerModule",
-      "sensitivityClass",
+      "workbenchEvidence",
+      "sensitivityEvidence",
       "unitSemantic",
       "currencySemantic",
       "timezoneSemantic",
@@ -490,7 +491,7 @@ function mergeReviewedAnnotations(generated, existing = {}) {
       if (hasReviewedValue(annotation[field]))
         result[field] = annotation[field];
     }
-    for (const field of ["sourceRefs", "workbenchCodes", "notes"]) {
+    for (const field of ["sourceRefs", "notes"]) {
       result[field] = [
         ...new Set([...(base[field] ?? []), ...(annotation[field] ?? [])]),
       ];
@@ -640,28 +641,48 @@ export function validateAnnotations({ annotations, structure, trackedFiles }) {
         });
       }
     }
-    for (const semantic of [
-      "unitSemantic",
-      "currencySemantic",
-      "timezoneSemantic",
-      "snapshotAttribute",
-      "versionAttribute",
-      "auditAttribute",
-    ]) {
+    const slotDefinitions = [
+      ["workbenchEvidence", "business"],
+      ["sensitivityEvidence", null],
+      ...(key in annotationFields
+        ? [
+            ["unitSemantic", null],
+            ["currencySemantic", null],
+            ["timezoneSemantic", null],
+            ["snapshotAttribute", null],
+            ["versionAttribute", null],
+            ["auditAttribute", null],
+          ]
+        : []),
+    ];
+    for (const [semantic, requiredAuthority] of slotDefinitions) {
       const slot = annotation[semantic];
       if (!slot || !CONFIRMATION_STATUSES.has(slot.status)) {
         findings.push({
           code: "ANNOTATION_STATUS_INVALID",
           object: `${key}:${semantic}`,
         });
-      } else if (
-        slot.status !== "needs_business_confirmation" &&
-        !hasEligibleSource(slot, sources, trackedFiles, slot.status)
-      ) {
-        findings.push({
-          code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
-          object: `${key}:${semantic}`,
-        });
+      } else if (slot.status !== "needs_business_confirmation") {
+        if (!hasMeaningfulValue(slot.value)) {
+          findings.push({
+            code: "ANNOTATION_CONFIRMED_EMPTY_VALUE",
+            object: `${key}:${semantic}`,
+          });
+        }
+        if (
+          !hasEligibleSource(
+            slot,
+            sources,
+            trackedFiles,
+            slot.status,
+            requiredAuthority,
+          )
+        ) {
+          findings.push({
+            code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
+            object: `${key}:${semantic}`,
+          });
+        }
       }
     }
   }
@@ -793,7 +814,7 @@ export function buildDictionaryModel({
       prismaModel: model?.prismaModel ?? null,
       prismaField: prismaField?.prismaField ?? null,
       prismaType: prismaField?.prismaType ?? null,
-      ...(annotations.fields?.[key] ?? pendingAnnotation()),
+      ...(annotations.fields?.[key] ?? pendingFieldAnnotation()),
     };
   });
   const tables = structure.database.tables.map((table) => {
@@ -804,7 +825,7 @@ export function buildDictionaryModel({
       databaseSchema: "public",
       ...table,
       prismaModel: model?.prismaModel ?? null,
-      ...(annotations.tables?.[key] ?? pendingAnnotation()),
+      ...(annotations.tables?.[key] ?? pendingTableAnnotation()),
     };
   });
   return {
@@ -872,7 +893,7 @@ function buildDictionaryRelations(structure, annotations) {
   );
 }
 
-function pendingAnnotation() {
+function pendingTableAnnotation() {
   return {
     nameZh: PENDING_NAME,
     nameStatus: "needs_business_confirmation",
@@ -881,15 +902,21 @@ function pendingAnnotation() {
     sourceRefs: [],
     moduleCode: null,
     ownerModule: null,
-    workbenchCodes: [],
-    sensitivityClass: "pending_policy",
+    workbenchEvidence: pendingEvidenceSlot([]),
+    sensitivityEvidence: pendingEvidenceSlot(),
+    notes: [],
+  };
+}
+
+function pendingFieldAnnotation() {
+  return {
+    ...pendingTableAnnotation(),
     unitSemantic: pendingEvidenceSlot(),
     currencySemantic: pendingEvidenceSlot(),
     timezoneSemantic: pendingEvidenceSlot(),
     snapshotAttribute: pendingEvidenceSlot(),
     versionAttribute: pendingEvidenceSlot(),
     auditAttribute: pendingEvidenceSlot(),
-    notes: [],
   };
 }
 
@@ -922,12 +949,20 @@ function validateAnnotationShape(findings, key, annotation) {
   }
 }
 
-function hasEligibleSource(annotation, sources, trackedFiles, status) {
-  const eligibleAuthorities = {
-    confirmed_business: new Set(["business"]),
-    confirmed_contract: new Set(["formal_contract"]),
-    confirmed_implementation: new Set(["implementation"]),
-  }[status];
+function hasEligibleSource(
+  annotation,
+  sources,
+  trackedFiles,
+  status,
+  requiredAuthority = null,
+) {
+  const eligibleAuthorities = requiredAuthority
+    ? new Set([requiredAuthority])
+    : {
+        confirmed_business: new Set(["business"]),
+        confirmed_contract: new Set(["formal_contract"]),
+        confirmed_implementation: new Set(["implementation"]),
+      }[status];
   return (annotation.sourceRefs ?? []).some((sourceId) => {
     const source = sources[sourceId];
     return (
@@ -937,6 +972,13 @@ function hasEligibleSource(annotation, sources, trackedFiles, status) {
       sourceAuthorityMatchesPath(source)
     );
   });
+}
+
+function hasMeaningfulValue(value) {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "string") return value.trim().length > 0;
+  return true;
 }
 
 export async function extractNormalizedStructure({
@@ -1535,6 +1577,49 @@ const CATALOG_QUERIES = {
     ORDER BY tbl.relname, trg.tgname`,
 };
 
+export function serializeAnnotations(annotations) {
+  const stored = structuredClone(annotations);
+  const fieldEvidenceFields = [
+    "unitSemantic",
+    "currencySemantic",
+    "timezoneSemantic",
+    "snapshotAttribute",
+    "versionAttribute",
+    "auditAttribute",
+  ];
+  const allEvidenceFields = [
+    "workbenchEvidence",
+    "sensitivityEvidence",
+    ...fieldEvidenceFields,
+  ];
+  for (const annotation of Object.values(stored.tables ?? {})) {
+    stripPendingEvidence(annotation, [
+      "workbenchEvidence",
+      "sensitivityEvidence",
+    ]);
+  }
+  for (const annotation of Object.values(stored.fields ?? {})) {
+    stripPendingEvidence(annotation, allEvidenceFields);
+  }
+  return stored;
+}
+
+function stripPendingEvidence(annotation, fields) {
+  for (const field of fields) {
+    const slot = annotation[field];
+    const emptyValue =
+      slot?.value === null ||
+      (Array.isArray(slot?.value) && slot.value.length === 0);
+    if (
+      emptyValue &&
+      slot.status === "needs_business_confirmation" &&
+      (slot.sourceRefs?.length ?? 0) === 0
+    ) {
+      delete annotation[field];
+    }
+  }
+}
+
 export async function buildDictionaryArtifacts({
   structure,
   annotations,
@@ -1551,10 +1636,14 @@ export async function buildDictionaryArtifacts({
       `DICTIONARY_ANNOTATIONS_INVALID\n${JSON.stringify(model.validationFindings, null, 2)}`,
     );
   }
+  const storedAnnotations = serializeAnnotations(annotations);
   return {
-    "dictionary.annotations.json": await format(JSON.stringify(annotations), {
-      parser: "json",
-    }),
+    "dictionary.annotations.json": await format(
+      JSON.stringify(storedAnnotations),
+      {
+        parser: "json",
+      },
+    ),
     "DATA_DICTIONARY.generated.md": renderDataDictionaryMarkdown(model),
     "NATIVE_OBJECTS.generated.md": renderNativeObjectsMarkdown(model),
     "database-data-dictionary.xlsx": await renderWorkbook(model, { fixedDate }),
@@ -1648,9 +1737,12 @@ async function main() {
   });
   if (command.action === "bootstrap") {
     atomicWriteArtifacts(OUTPUT_DIRECTORY, {
-      "dictionary.annotations.json": await format(JSON.stringify(annotations), {
-        parser: "json",
-      }),
+      "dictionary.annotations.json": await format(
+        JSON.stringify(serializeAnnotations(annotations)),
+        {
+          parser: "json",
+        },
+      ),
     });
     process.stdout.write(
       `Updated database/dictionary/dictionary.annotations.json (${Object.keys(annotations.tables).length} tables, ${Object.keys(annotations.fields).length} fields).\n`,

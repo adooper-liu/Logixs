@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import { pendingDimensions } from "./data-dictionary/annotation-status.mjs";
 import {
   assertSafeExtractionTarget,
   buildDictionaryArtifacts,
@@ -38,6 +39,111 @@ test("root manifest owns workbook dependencies", () => {
   assert.match(
     requireFromRoot.resolve("jszip"),
     /node_modules[\\/]jszip[\\/]/u,
+  );
+});
+
+test("pending dimensions include independent table and field evidence", () => {
+  const table = pendingAnnotation();
+  delete table.unitSemantic;
+  delete table.currencySemantic;
+  delete table.timezoneSemantic;
+  delete table.snapshotAttribute;
+  delete table.versionAttribute;
+  delete table.auditAttribute;
+  table.workbenchEvidence = pendingSlot([]);
+  table.sensitivityEvidence = pendingSlot(null);
+  assert.deepEqual(pendingDimensions(table), [
+    "name",
+    "purpose",
+    "workbench",
+    "sensitivity",
+  ]);
+
+  const field = pendingAnnotation();
+  field.workbenchEvidence = pendingSlot([]);
+  field.sensitivityEvidence = pendingSlot(null);
+  assert.deepEqual(pendingDimensions(field), [
+    "name",
+    "purpose",
+    "workbench",
+    "sensitivity",
+    "unit",
+    "currency",
+    "timezone",
+    "snapshot",
+    "version",
+    "audit",
+  ]);
+});
+
+test("confirmed evidence slots require meaningful values and their own sources", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.sources.business = {
+    path: "doc/cross-border-supply-chain/08-role-workbenches.md",
+    authority: "business",
+  };
+  annotations.tables["public.order"].workbenchEvidence = {
+    value: [],
+    status: "confirmed_business",
+    sourceRefs: ["business"],
+  };
+  annotations.tables["public.order"].sensitivityEvidence = {
+    value: "",
+    status: "confirmed_business",
+    sourceRefs: ["business"],
+  };
+  annotations.fields["public.order.id"].currencySemantic = {
+    value: null,
+    status: "confirmed_contract",
+    sourceRefs: ["business"],
+  };
+
+  assert.deepEqual(
+    validateAnnotations({
+      annotations,
+      structure,
+      trackedFiles: new Set([
+        "doc/cross-border-supply-chain/08-role-workbenches.md",
+      ]),
+    })
+      .filter(({ code }) => code === "ANNOTATION_CONFIRMED_EMPTY_VALUE")
+      .map(({ object }) => object),
+    [
+      "public.order:workbenchEvidence",
+      "public.order:sensitivityEvidence",
+      "public.order.id:currencySemantic",
+    ],
+  );
+});
+
+test("workbench confirmation accepts only business authority", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.sources.contract = {
+    path: "docs/product/domain/TARGET_FIELD_CATALOG.md",
+    authority: "formal_contract",
+  };
+  annotations.tables["public.order"].workbenchEvidence = {
+    value: ["orders-wb"],
+    status: "confirmed_contract",
+    sourceRefs: ["contract"],
+  };
+
+  assert.ok(
+    validateAnnotations({
+      annotations,
+      structure,
+      trackedFiles: new Set(["docs/product/domain/TARGET_FIELD_CATALOG.md"]),
+    }).some(
+      (finding) =>
+        finding.code === "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE" &&
+        finding.object === "public.order:workbenchEvidence",
+    ),
   );
 });
 
@@ -845,8 +951,16 @@ test("annotation bootstrap preserves independently reviewed auxiliary metadata",
     sourceRefs: ["review"],
     moduleCode: "orders",
     ownerModule: "orders-owner",
-    workbenchCodes: ["orders-wb"],
-    sensitivityClass: "restricted",
+    workbenchEvidence: {
+      value: ["orders-wb"],
+      status: "confirmed_contract",
+      sourceRefs: ["review"],
+    },
+    sensitivityEvidence: {
+      value: "restricted",
+      status: "confirmed_contract",
+      sourceRefs: ["review"],
+    },
     notes: ["reviewed independently"],
   };
 
@@ -862,8 +976,16 @@ test("annotation bootstrap preserves independently reviewed auxiliary metadata",
   assert.deepEqual(annotation.sourceRefs, ["review"]);
   assert.equal(annotation.moduleCode, "orders");
   assert.equal(annotation.ownerModule, "orders-owner");
-  assert.deepEqual(annotation.workbenchCodes, ["orders-wb"]);
-  assert.equal(annotation.sensitivityClass, "restricted");
+  assert.deepEqual(annotation.workbenchEvidence, {
+    value: ["orders-wb"],
+    status: "confirmed_contract",
+    sourceRefs: ["review"],
+  });
+  assert.deepEqual(annotation.sensitivityEvidence, {
+    value: "restricted",
+    status: "confirmed_contract",
+    sourceRefs: ["review"],
+  });
   assert.deepEqual(annotation.notes, ["reviewed independently"]);
 });
 
@@ -1078,7 +1200,16 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
   annotations.fields["public.order.id"].notes = ["=unsafe"];
   annotations.tables["public.order"].moduleCode = "orders";
   annotations.tables["public.order"].ownerModule = "order-owner";
-  annotations.tables["public.order"].workbenchCodes = ["orders-wb"];
+  annotations.tables["public.order"].workbenchEvidence = {
+    value: ["orders-wb"],
+    status: "confirmed_business",
+    sourceRefs: ["workbench"],
+  };
+  annotations.sources.workbench = {
+    path: "doc/cross-border-supply-chain/08-role-workbenches.md",
+    authority: "business",
+    note: "workbench",
+  };
   annotations.sources.schema = {
     path: "database/schema.prisma",
     authority: "implementation",
@@ -1087,7 +1218,9 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
   const model = buildDictionaryModel({
     structure,
     annotations,
-    trackedFiles: new Set(),
+    trackedFiles: new Set([
+      "doc/cross-border-supply-chain/08-role-workbenches.md",
+    ]),
   });
   const fixedDate = new Date("2026-10-01T00:00:00.000Z");
 
@@ -1204,6 +1337,70 @@ test("artifact builder creates four projections from one model", async () => {
   );
 });
 
+test("annotation artifact stores field evidence slots sparsely while model restores defaults", async () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.fields["public.order.id"].currencySemantic = {
+    value: "USD",
+    status: "confirmed_contract",
+    sourceRefs: ["contract"],
+  };
+  annotations.sources.contract = {
+    path: "docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md",
+    authority: "formal_contract",
+  };
+  const artifacts = await buildDictionaryArtifacts({
+    structure,
+    annotations,
+    trackedFiles: new Set([
+      "docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md",
+    ]),
+    fixedDate: new Date("2026-10-01T00:00:00.000Z"),
+  });
+  const stored = JSON.parse(artifacts["dictionary.annotations.json"]);
+  const storedField = stored.fields["public.order.id"];
+
+  assert.deepEqual(storedField.currencySemantic, {
+    value: "USD",
+    status: "confirmed_contract",
+    sourceRefs: ["contract"],
+  });
+  for (const field of [
+    "unitSemantic",
+    "timezoneSemantic",
+    "snapshotAttribute",
+    "versionAttribute",
+    "auditAttribute",
+  ]) {
+    assert.equal(field in storedField, false, `${field} should stay derived`);
+  }
+  assert.equal("unitSemantic" in stored.tables["public.order"], false);
+  assert.equal("workbenchEvidence" in stored.tables["public.order"], false);
+  assert.equal("sensitivityEvidence" in stored.tables["public.order"], false);
+  assert.equal("workbenchEvidence" in storedField, false);
+  assert.equal("sensitivityEvidence" in storedField, false);
+
+  const restored = mergeAnnotationCoverage({
+    existing: stored,
+    structure,
+    baselineCommit: "abc123",
+  });
+  assert.deepEqual(
+    restored.fields["public.order.id"].unitSemantic,
+    pendingSlot(),
+  );
+  assert.deepEqual(
+    restored.tables["public.order"].workbenchEvidence,
+    pendingSlot([]),
+  );
+  assert.deepEqual(
+    restored.fields["public.order.id"].sensitivityEvidence,
+    pendingSlot(),
+  );
+});
+
 test("artifact comparison reports drift without writing", () => {
   const expected = {
     "a.md": "expected\n",
@@ -1290,8 +1487,8 @@ function pendingAnnotation() {
     sourceRefs: [],
     moduleCode: null,
     ownerModule: null,
-    workbenchCodes: [],
-    sensitivityClass: "pending_policy",
+    workbenchEvidence: pendingSlot([]),
+    sensitivityEvidence: pendingSlot(),
     unitSemantic: pendingSlot(),
     currencySemantic: pendingSlot(),
     timezoneSemantic: pendingSlot(),
@@ -1302,9 +1499,9 @@ function pendingAnnotation() {
   };
 }
 
-function pendingSlot() {
+function pendingSlot(value = null) {
   return {
-    value: null,
+    value,
     status: "needs_business_confirmation",
     sourceRefs: [],
   };
