@@ -199,6 +199,78 @@ test("bootstrap validates merged annotations before invoking writer", async () =
   assert.equal(writes, 0);
 });
 
+test("malformed annotation records produce deterministic shape findings", () => {
+  for (const malformed of [null, 42, "bad", []]) {
+    const structure = dictionaryFixture();
+    const annotations = createPendingAnnotations(structure, {
+      baselineCommit: "abc123",
+    });
+    annotations.tables["public.order"] = malformed;
+
+    assert.deepEqual(
+      validateAnnotations({
+        annotations,
+        structure,
+        trackedFiles: new Set(),
+      }),
+      [{ code: "ANNOTATION_SHAPE_INVALID", object: "public.order" }],
+    );
+  }
+});
+
+test("malformed annotation sourceRefs produce one precise finding", () => {
+  for (const malformed of ["not-an-array", null, 42, {}]) {
+    const structure = dictionaryFixture();
+    const annotations = createPendingAnnotations(structure, {
+      baselineCommit: "abc123",
+    });
+    annotations.tables["public.order"].sourceRefs = malformed;
+
+    assert.deepEqual(
+      validateAnnotations({
+        annotations,
+        structure,
+        trackedFiles: new Set(),
+      }),
+      [{ code: "ANNOTATION_SOURCE_REFS_INVALID", object: "public.order" }],
+    );
+  }
+});
+
+test("malformed orphans retain coverage and shape diagnostics", async () => {
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  existing.tables["public.deleted_table"] = null;
+  existing.fields["public.order.deleted_field"] = pendingAnnotation();
+  existing.fields["public.order.deleted_field"].sourceRefs = 42;
+  let writes = 0;
+
+  await assert.rejects(
+    () =>
+      bootstrapAnnotations({
+        structure,
+        existing,
+        baselineCommit: "new",
+        tableDescriptions: {},
+        trackedFiles: new Set(),
+        writeAnnotations: async () => {
+          writes += 1;
+        },
+      }),
+    (error) => {
+      assert.match(error.message, /ANNOTATION_TABLE_ORPHAN/u);
+      assert.match(error.message, /ANNOTATION_FIELD_ORPHAN/u);
+      assert.match(error.message, /ANNOTATION_SHAPE_INVALID/u);
+      assert.match(error.message, /ANNOTATION_SOURCE_REFS_INVALID/u);
+      assert.doesNotMatch(error.message, /TypeError/u);
+      return true;
+    },
+  );
+  assert.equal(writes, 0);
+});
+
 test("merge preserves orphan annotations for the validation authority", () => {
   const structure = dictionaryFixture();
   const existing = createPendingAnnotations(structure, {

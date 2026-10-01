@@ -38,7 +38,7 @@ verification: |
   当前 reconciliation findings 为 9 个可空性差异、8 个默认值差异和 5 个 FK 动作差异，均保留在生成字典中。
   首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
   3 个币种字段和 3 个时区字段由正式契约确认，其余语义槽保持 needs_business_confirmation。
-  六轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 46/46、
+  七轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 49/49、
   generate/check、repo:check、format:check、专项 ESLint、根 pnpm test、typecheck 和 build 已通过。
   根 workspace 已显式声明 Excel 生成依赖；冻结安装后 security:audit（high 门槛）通过，剩 8 个 moderate。
   ExcelJS 重载确认 10 个 sheet、模块汇总对账 112 表/1,589 字段、字段页 31 列且精确 1,590 行、
@@ -286,6 +286,7 @@ scripts/
 - `accepted/fixed`：`STD-05` confirmation status 从 `PENDING_STATUS + STATUS_AUTHORITY` 派生唯一冻结集合，名称/用途与证据槽共用。
 - `accepted/fixed`：`SPEC-09` bootstrap 在 merge 后、写入前执行完整 validation；无效注解非零失败，writer 不调用且目标 bytes/mtime 不变。
 - `accepted/fixed`：`SPEC-10` merge 保留 existing-only 稳定键，由统一 validation 报 table/field orphan；bootstrap、generate、check 均在写入前拒绝，禁止隐式删除人工语义。
+- `accepted/fixed`：`SPEC-11` malformed annotation 与非数组 sourceRefs 只产生结构化 shape findings；coverage/orphan 诊断保留，bootstrap 统一失败且不抛原始 TypeError。
 - `accepted/fixed`：补齐字段类型族、精度、可空性、数组和默认值对账；真实目录保留 22 个可定位结构差异。
 - `accepted/fixed`：来源 authority 按 tracked 路径类别校验，logical reference 要求正式契约证据并验证源/目标字段。
 - `accepted/fixed`：索引 catalog 查询仅关联本表拥有的 PK/UQ/EXCLUSION constraint；实测 505 行均为唯一稳定键。

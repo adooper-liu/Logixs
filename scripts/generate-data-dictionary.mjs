@@ -462,6 +462,10 @@ export function mergeAnnotationCoverage({
   };
 }
 
+function isAnnotationRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function mergeReviewedAnnotations(generated, existing = {}) {
   const merged = { ...generated };
   for (const [key, annotation] of Object.entries(existing)) {
@@ -470,6 +474,10 @@ function mergeReviewedAnnotations(generated, existing = {}) {
       continue;
     }
     const base = generated[key];
+    if (!isAnnotationRecord(annotation)) {
+      merged[key] = structuredClone(annotation);
+      continue;
+    }
     const result = { ...base };
     for (const semantic of ["name", "purpose"]) {
       if (annotation[`${semantic}Status`] !== "needs_business_confirmation") {
@@ -486,6 +494,13 @@ function mergeReviewedAnnotations(generated, existing = {}) {
         result[field] = annotation[field];
     }
     for (const field of ["sourceRefs", "notes"]) {
+      if (
+        Object.hasOwn(annotation, field) &&
+        !Array.isArray(annotation[field])
+      ) {
+        result[field] = structuredClone(annotation[field]);
+        continue;
+      }
       result[field] = [
         ...new Set([...(base[field] ?? []), ...(annotation[field] ?? [])]),
       ];
@@ -622,10 +637,12 @@ export function validateAnnotations({ annotations, structure, trackedFiles }) {
     ...Object.entries(annotationTables),
     ...Object.entries(annotationFields),
   ].sort(([left], [right]) => left.localeCompare(right, "en"))) {
-    validateAnnotationShape(findings, key, annotation);
+    const shape = validateAnnotationShape(findings, key, annotation);
+    if (!shape.safe) continue;
     for (const semantic of ["name", "purpose"]) {
       const status = annotation[`${semantic}Status`];
       if (
+        shape.sourceRefsValid &&
         status !== "needs_business_confirmation" &&
         !hasEligibleSource(annotation, sources, trackedFiles, status)
       ) {
@@ -966,6 +983,14 @@ function appendCoverageFindings(
 }
 
 function validateAnnotationShape(findings, key, annotation) {
+  if (!isAnnotationRecord(annotation)) {
+    findings.push({ code: "ANNOTATION_SHAPE_INVALID", object: key });
+    return { safe: false, sourceRefsValid: false };
+  }
+  const sourceRefsValid = Array.isArray(annotation.sourceRefs);
+  if (!sourceRefsValid) {
+    findings.push({ code: "ANNOTATION_SOURCE_REFS_INVALID", object: key });
+  }
   for (const semantic of ["name", "purpose"]) {
     const status = annotation[`${semantic}Status`];
     if (!CONFIRMATION_STATUSES.includes(status)) {
@@ -975,9 +1000,16 @@ function validateAnnotationShape(findings, key, annotation) {
       });
     }
   }
+  return { safe: true, sourceRefsValid };
 }
 
 function hasEligibleSource(annotation, sources, trackedFiles, status) {
+  if (
+    !isAnnotationRecord(annotation) ||
+    !Array.isArray(annotation.sourceRefs)
+  ) {
+    return false;
+  }
   const eligibleAuthority = STATUS_AUTHORITY[status];
   return (annotation.sourceRefs ?? []).some((sourceId) => {
     const source = sources[sourceId];
