@@ -3,7 +3,7 @@ status: design # design | coding | review | fix | blocked | done（机器可校�
 branch: # git 初始化后填：feat/<任务名>
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
 owner: claude # 端到端主代理；design/coding/fix 必填
-writer: cursor # 当前唯一写入者；design/coding/fix 必填，Codex 审查阶段默认只读
+writer: cursor # 当前唯一写入者；design/coding/fix 必填，独立 reviewer 默认只读
 risk: medium # low | medium | high；design/coding/fix 必填
 dependsOn: [] # task brief 文件名（不含 .md）；依赖未 done 时不得写
 writeScopes: # design/coding/fix 必填；精确文件，或目录/**；不得使用其它 glob
@@ -20,10 +20,10 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 > 状态以文件顶部 frontmatter 的 `status` / `branch` 为准，改状态就改 frontmatter，不要在正文另写自由文本状态。
 >
 > 调度规则统一见 `AGENTS.md` §1.2 第 17～23 条：`design` 不占两个 `coding/fix` 名额，但与 `coding/fix`
-> 一样声明调度元数据并参与 writer、依赖、写范围和独占锁冲突检查；Claude 排定任务与业务优先级，最终技术集成与合并由 Codex 执行。`done` 必须在 frontmatter 的
+> 一样声明调度元数据并参与 writer、依赖、写范围和独占锁冲突检查；Claude 排定任务与业务优先级，并负责最终技术集成与合并。`done` 必须在 frontmatter 的
 > `verification` 填写验证证据地址，未验证不得标 `done`。聊天只传任务文件名、分支名与起点命令，不互贴长状态。
 > `authorityRefs` 只表示读取；修改权威时还须把路径放入 `writeScopes` 并加对应锁。`repo:check` 只验证当前
-> checkout 的 brief，不核对其他 worktree 或实际 diff；Claude 下发前核对在途任务与声明范围，Codex 审查和集成前核对实际差异，后续由薄编排器自动化。
+> checkout 的 brief，不核对其他 worktree 或实际 diff；Claude 下发、复审和集成前核对在途任务、声明范围与实际差异，后续由薄编排器自动化。
 
 ## 目标
 
@@ -43,7 +43,7 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 > 需求、规则和验收只写在本 brief；消息只传本文件、切片 ID、准确 SHA 和工作区/PR 指针。
 >
 > 同一 brief 的连续切片默认共用一个任务集成分支和一个最终 PR；切片可以形成可回滚提交，但不是默认 PR
-> 边界。下表的验证命令是切片定向检查；完整门禁、适用的独立复审和 PR 在任务级收口执行。只有独立发布、
+> 边界。下表的验证命令是切片定向检查；完整门禁、适用的独立复审和 PR 由 Claude 在任务级收口执行。只有独立发布、
 > 独立回滚、长期并行或风险隔离有证据时才拆 PR，并在本 brief 记录理由。外部环境迁移或人工验收单列为
 > deployment/done gate，只阻止生产部署与 `done`，不无故阻止代码开发、提交、PR 审查与合并。
 
@@ -52,7 +52,7 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 | 项目     | 内容                                                            |
 | -------- | --------------------------------------------------------------- |
 | 基线     | `<commit-sha>`                                                  |
-| 执行角色 | `Cursor` / `Claude`                                             |
+| 执行角色 | `Cursor`                                                        |
 | 写入范围 | 精确文件或目录                                                  |
 | 禁止范围 | 不得顺带修改的模块、契约、状态或入口                            |
 | 验证命令 | 切片最近测试、模块 lint/typecheck、专项门禁及预期非零结果       |
@@ -61,16 +61,16 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 Claude 下发任务：
 
 ```text
-TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<cursor|codex> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
+TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<cursor|reviewer> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
 ```
 
 Cursor 交回实现：
 
 ```text
-REVIEW docs/planning/tasks/<task>.md#<slice-id> base=<current-review-base-sha> role=codex workspace=<worktree-path|pr-url> commit=<sha|none>
+HANDOFF docs/planning/tasks/<task>.md#<slice-id> base=<current-review-base-sha> role=claude workspace=<worktree-path|pr-url> commit=<sha|none>
 ```
 
-> `REVIEW` 必须是 `ready-for-review` 交回消息第一行；`base` 使用可复现当前差异的真实审核基线，不能沿用已经
+> `HANDOFF` 必须是 `ready-for-review` 交回消息第一行；`base` 使用可复现当前差异的真实审核基线，不能沿用已经
 > 快进、变基或合并前的初始 `TASK` SHA。单行指令后附以下状态信封，不复制 brief 或长篇 diff。
 
 ```yaml
@@ -89,7 +89,7 @@ exceptions: []
 commit: none # 默认未提交；已获授权时填 SHA
 ```
 
-Codex 交回独立技术评审：
+fresh 只读 Claude reviewer 交回独立技术评审：
 
 ```yaml
 protocol: logix-review/v1
@@ -107,10 +107,10 @@ findings:
     suggestedDisposition: accepted | rejected | pending-owner
 unknowns: []
 verificationGaps: []
-writes: none # 审查阶段固定为 none；获 `next: pr` 授权后填实际 commit / PR / CI
+writes: none # reviewer 固定只读；提交、PR 和 CI 证据由 Claude 主上下文在集成阶段记录
 ```
 
-Claude 裁决评审：
+Claude 主上下文裁决评审：
 
 ```yaml
 protocol: logix-disposition/v1
