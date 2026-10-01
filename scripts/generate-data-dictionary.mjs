@@ -465,7 +465,10 @@ export function mergeAnnotationCoverage({
 function mergeReviewedAnnotations(generated, existing = {}) {
   const merged = { ...generated };
   for (const [key, annotation] of Object.entries(existing)) {
-    if (!(key in generated)) continue;
+    if (!(key in generated)) {
+      merged[key] = structuredClone(annotation);
+      continue;
+    }
     const base = generated[key];
     const result = { ...base };
     for (const semantic of ["name", "purpose"]) {

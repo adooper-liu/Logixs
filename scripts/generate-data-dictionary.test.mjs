@@ -199,6 +199,79 @@ test("bootstrap validates merged annotations before invoking writer", async () =
   assert.equal(writes, 0);
 });
 
+test("merge preserves orphan annotations for the validation authority", () => {
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  existing.tables["public.deleted_table"] = pendingAnnotation();
+  existing.fields["public.order.deleted_field"] = pendingAnnotation();
+
+  const merged = mergeAnnotationCoverage({
+    existing,
+    structure,
+    baselineCommit: "new",
+  });
+
+  assert.ok(merged.tables["public.deleted_table"]);
+  assert.ok(merged.fields["public.order.deleted_field"]);
+  assert.deepEqual(
+    validateAnnotations({
+      annotations: merged,
+      structure,
+      trackedFiles: new Set(),
+    })
+      .filter(({ code }) => code.endsWith("_ORPHAN"))
+      .map(({ code, object }) => `${code}:${object}`),
+    [
+      "ANNOTATION_TABLE_ORPHAN:public.deleted_table",
+      "ANNOTATION_FIELD_ORPHAN:public.order.deleted_field",
+    ],
+  );
+});
+
+test("orphan annotations block bootstrap and generated artifacts", async () => {
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  existing.tables["public.deleted_table"] = pendingAnnotation();
+  existing.fields["public.order.deleted_field"] = pendingAnnotation();
+  let writes = 0;
+
+  await assert.rejects(
+    () =>
+      bootstrapAnnotations({
+        structure,
+        existing,
+        baselineCommit: "new",
+        tableDescriptions: {},
+        trackedFiles: new Set(),
+        writeAnnotations: async () => {
+          writes += 1;
+        },
+      }),
+    /ANNOTATION_TABLE_ORPHAN[\s\S]*ANNOTATION_FIELD_ORPHAN/u,
+  );
+  assert.equal(writes, 0);
+
+  const merged = mergeAnnotationCoverage({
+    existing,
+    structure,
+    baselineCommit: "new",
+  });
+  await assert.rejects(
+    () =>
+      buildDictionaryArtifacts({
+        structure,
+        annotations: merged,
+        trackedFiles: new Set(),
+        fixedDate: new Date("2026-10-01T00:00:00.000Z"),
+      }),
+    /ANNOTATION_TABLE_ORPHAN[\s\S]*ANNOTATION_FIELD_ORPHAN/u,
+  );
+});
+
 test("invalid bootstrap leaves annotation bytes and mtime unchanged", async () => {
   const directory = mkdtempSync(join(tmpdir(), "logix-dictionary-bootstrap-"));
   const target = join(directory, "dictionary.annotations.json");
