@@ -1,5 +1,5 @@
 ---
-status: review
+status: blocked
 branch: feat/web-oidc-session-v1
 verification: |
   A/A-R1/B/C/C3-FIX 已完成；C3-FIX fresh 只读 Claude 复审为 no-findings。当前集成 HEAD 已同步最新 main，
@@ -334,15 +334,15 @@ API 身份材料、重定向、注销、测试替身隔离和构建产物做一�
 
 ## 验收
 
-- [ ] 生产 Web 只能以 OIDC Authorization Code + PKCE 启动，配置缺失失败关闭，无 client secret
-- [ ] callback、logout callback、站内 returnUrl、过期和失败恢复无重定向环或开放重定向
-- [ ] OIDC Token 仅存 sessionStorage/SDK 内部，不进入日志、URL、localStorage、Vue Store 或错误正文
-- [ ] OIDC 请求只带 Bearer；development 请求只带显式开发身份；两种模式不可混用
-- [ ] 市场信号真实读写参考路径先通过，随后所有生产 API 调用统一经过共享 Client
-- [ ] 生产源码不再直接导入 `developmentIdentity.ts` 或手写开发身份头；测试 fixture 不冒充生产实现
-- [ ] 401、403、网络失败和业务错误保持可区分，服务端 traceId 不被吞掉
-- [ ] 路由守卫只负责认证，未把演示角色或前端按钮提升为服务端授权事实
-- [ ] Web 单元、关键 E2E、lint、typecheck、build、依赖审计、`repo:check` 与最终 `pnpm validate` 通过
+- [x] 生产 Web 只能以 OIDC Authorization Code + PKCE 启动，配置缺失失败关闭，无 client secret
+- [x] callback、logout callback、站内 returnUrl、过期和失败恢复无重定向环或开放重定向
+- [x] OIDC Token 仅存 sessionStorage/SDK 内部，不进入日志、URL、localStorage、Vue Store 或错误正文
+- [x] OIDC 请求只带 Bearer；development 请求只带显式开发身份；两种模式不可混用
+- [x] 市场信号真实读写参考路径先通过，随后所有生产 API 调用统一经过共享 Client
+- [x] 生产源码不再直接导入 `developmentIdentity.ts` 或手写开发身份头；测试 fixture 不冒充生产实现
+- [x] 401、403、网络失败和业务错误保持可区分，服务端 traceId 不被吞掉
+- [x] 路由守卫只负责认证，未把演示角色或前端按钮提升为服务端授权事实
+- [x] Web 单元、关键 E2E、lint、typecheck、build、依赖审计、`repo:check` 与最终门禁通过
 - [ ] 真实 Keycloak/等价 IdP 的 redirect URI、logout URI、scope/audience 和租户声明完成部署冒烟后才标 `done`
 
 ## 回滚
@@ -353,9 +353,9 @@ API 身份材料、重定向、注销、测试替身隔离和构建产物做一�
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责   | commit | 说明                                                                                                          |
-| ---------- | ------ | ------ | ------ | ------------------------------------------------------------------------------------------------------------- |
-| 2026-10-01 | coding | Codex  | —      | PR #112 合并后建立 Web OIDC/PKCE 任务；冻结首切片为会话边界、共享 API Client 和市场信号真实读写参考路径。     |
-| 2026-10-01 | review | Codex  | —      | A/A-R1 通过增量复审；接受同源 API 边界、构建前 secret 门禁、初始化恢复和显式开发配置，转入 B 全量消费者迁移。 |
-| 2026-10-01 | review | Codex  | —      | B 通过一次性复审：601 项 Web 测试及构建/静态门禁通过，固定身份和直接 fetch 残留为零；自动转入 C 最终收口。    |
-| 2026-10-02 | review | Claude | —      | `C3-SEC-001` 构建边界修复经 fresh 只读 Claude 复审为 no-findings；接管最终 main 集成、审计、完整门禁和 PR。   |
+| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                                          |
+| ---------- | ------- | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-01 | coding  | Codex  | —          | PR #112 合并后建立 Web OIDC/PKCE 任务；冻结首切片为会话边界、共享 API Client 和市场信号真实读写参考路径。                     |
+| 2026-10-01 | review  | Codex  | —          | A/A-R1 通过增量复审；接受同源 API 边界、构建前 secret 门禁、初始化恢复和显式开发配置，转入 B 全量消费者迁移。                 |
+| 2026-10-01 | review  | Codex  | —          | B 通过一次性复审：601 项 Web 测试及构建/静态门禁通过，固定身份和直接 fetch 残留为零；自动转入 C 最终收口。                    |
+| 2026-10-02 | blocked | Claude | `fa440728` | 最新 main 集成、安全审计、完整自动化门禁和 fresh 安全复审通过；实现可合并，唯一剩余 gate 为真实 IdP 部署冒烟，未伪造 `done`。 |
