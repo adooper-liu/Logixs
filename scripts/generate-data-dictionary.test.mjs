@@ -5,10 +5,13 @@ import test from "node:test";
 
 import {
   assertSafeExtractionTarget,
+  buildDictionaryModel,
   buildNormalizedStructure,
+  createPendingAnnotations,
   createTemporarySchemaName,
   parsePrismaDdl,
   summarizeStructure,
+  validateAnnotations,
 } from "./generate-data-dictionary.mjs";
 
 const LOCAL_URL = "postgresql://logix:logix@localhost:5433/logix";
@@ -331,6 +334,132 @@ test("summary counts are derived from normalized objects", () => {
     findings: 1,
   });
 });
+
+test("annotation bootstrap covers every table and physical column as pending", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+
+  assert.deepEqual(Object.keys(annotations.tables), ["public.order"]);
+  assert.deepEqual(Object.keys(annotations.fields), ["public.order.id"]);
+  assert.equal(annotations.tables["public.order"].nameZh, "待业务确认");
+  assert.equal(
+    annotations.fields["public.order.id"].purposeZh,
+    "业务用途待确认；当前仅确认结构与技术消费者",
+  );
+  assert.equal(
+    annotations.fields["public.order.id"].purposeStatus,
+    "needs_business_confirmation",
+  );
+});
+
+test("annotation validation rejects missing, orphan, untracked, and unsupported confirmed evidence", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  delete annotations.fields["public.order.id"];
+  annotations.fields["public.order.ghost"] = pendingAnnotation();
+  annotations.sources.untracked = {
+    path: "doc/local-only.md",
+    authority: "business",
+  };
+  annotations.tables["public.order"] = {
+    ...annotations.tables["public.order"],
+    nameZh: "订单",
+    nameStatus: "confirmed_business",
+    sourceRefs: ["untracked"],
+  };
+
+  assert.deepEqual(
+    validateAnnotations({
+      annotations,
+      structure,
+      trackedFiles: new Set(["database/schema.prisma"]),
+    }).map(({ code, object }) => `${code}:${object}`),
+    [
+      "ANNOTATION_FIELD_MISSING:public.order.id",
+      "ANNOTATION_FIELD_ORPHAN:public.order.ghost",
+      "ANNOTATION_SOURCE_UNTRACKED:untracked",
+      "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE:public.order:name",
+    ],
+  );
+});
+
+test("dictionary model joins annotations without promoting pending semantics", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+
+  const model = buildDictionaryModel({
+    structure,
+    annotations,
+    trackedFiles: new Set(["database/schema.prisma"]),
+  });
+
+  assert.equal(model.tables[0].key, "public.order");
+  assert.equal(model.fields[0].key, "public.order.id");
+  assert.equal(model.fields[0].nameStatus, "needs_business_confirmation");
+  assert.equal(model.statistics.pendingFields, 1);
+  assert.equal(model.validationFindings.length, 0);
+});
+
+function dictionaryFixture() {
+  return buildNormalizedStructure({
+    schemaName: "logix_dictionary_tmp_42_12345678abcd4321",
+    verifiedThroughMigration: "20261001000000_latest",
+    dmmf: {
+      datamodel: {
+        models: [
+          {
+            name: "Order",
+            dbName: "order",
+            fields: [
+              { name: "id", kind: "scalar", type: "String", dbName: "id" },
+            ],
+          },
+        ],
+      },
+    },
+    catalog: {
+      tables: [{ tableName: "order" }],
+      columns: [
+        {
+          tableName: "order",
+          columnName: "id",
+          ordinalPosition: 1,
+          formattedType: "uuid",
+          isNullable: false,
+          defaultExpression: null,
+          identityKind: "",
+          generatedKind: "",
+        },
+      ],
+      constraints: [],
+      indexes: [],
+      enums: [],
+      functions: [],
+      triggers: [],
+    },
+    prismaDdl: { indexNames: new Set(), foreignKeys: [] },
+  });
+}
+
+function pendingAnnotation() {
+  return {
+    nameZh: "待业务确认",
+    nameStatus: "needs_business_confirmation",
+    purposeZh: "业务用途待确认；当前仅确认结构与技术消费者",
+    purposeStatus: "needs_business_confirmation",
+    sourceRefs: [],
+    ownerModule: null,
+    workbenchCodes: [],
+    sensitivityClass: "pending_policy",
+    notes: [],
+  };
+}
 
 test("CLI rejects a non-loopback database before attempting extraction", () => {
   const scriptPath = fileURLToPath(

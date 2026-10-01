@@ -264,6 +264,234 @@ export function summarizeStructure(structure) {
   };
 }
 
+const CONFIRMATION_STATUSES = new Set([
+  "confirmed_business",
+  "confirmed_contract",
+  "confirmed_implementation",
+  "needs_business_confirmation",
+]);
+const PENDING_NAME = "待业务确认";
+const PENDING_PURPOSE = "业务用途待确认；当前仅确认结构与技术消费者";
+
+export function createPendingAnnotations(
+  structure,
+  { baselineCommit = null } = {},
+) {
+  const tables = {};
+  const fields = {};
+  for (const table of structure.database.tables) {
+    tables[`public.${table.tableName}`] = pendingAnnotation();
+  }
+  for (const column of structure.database.columns) {
+    fields[`public.${column.tableName}.${column.columnName}`] =
+      pendingAnnotation();
+  }
+  return {
+    schemaVersion: "1.0.0",
+    baselineCommit,
+    sources: {},
+    tables,
+    fields,
+    logicalReferences: [],
+  };
+}
+
+export function validateAnnotations({ annotations, structure, trackedFiles }) {
+  const findings = [];
+  const tableKeys = new Set(
+    structure.database.tables.map((table) => `public.${table.tableName}`),
+  );
+  const fieldKeys = new Set(
+    structure.database.columns.map(
+      (column) => `public.${column.tableName}.${column.columnName}`,
+    ),
+  );
+  const annotationTables = annotations.tables ?? {};
+  const annotationFields = annotations.fields ?? {};
+  const sources = annotations.sources ?? {};
+
+  appendCoverageFindings(
+    findings,
+    tableKeys,
+    Object.keys(annotationTables),
+    "ANNOTATION_TABLE_MISSING",
+    "ANNOTATION_TABLE_ORPHAN",
+  );
+  appendCoverageFindings(
+    findings,
+    fieldKeys,
+    Object.keys(annotationFields),
+    "ANNOTATION_FIELD_MISSING",
+    "ANNOTATION_FIELD_ORPHAN",
+  );
+
+  for (const [sourceId, source] of Object.entries(sources).sort()) {
+    if (!trackedFiles.has(source.path)) {
+      findings.push({
+        code: "ANNOTATION_SOURCE_UNTRACKED",
+        object: sourceId,
+      });
+    }
+  }
+
+  for (const [key, annotation] of [
+    ...Object.entries(annotationTables),
+    ...Object.entries(annotationFields),
+  ].sort(([left], [right]) => left.localeCompare(right, "en"))) {
+    validateAnnotationShape(findings, key, annotation);
+    for (const semantic of ["name", "purpose"]) {
+      const status = annotation[`${semantic}Status`];
+      if (
+        status !== "needs_business_confirmation" &&
+        !hasEligibleSource(annotation, sources, trackedFiles, status)
+      ) {
+        findings.push({
+          code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
+          object: `${key}:${semantic}`,
+        });
+      }
+    }
+  }
+
+  return findings;
+}
+
+export function buildDictionaryModel({
+  structure,
+  annotations,
+  trackedFiles = new Set(),
+}) {
+  const validationFindings = validateAnnotations({
+    annotations,
+    structure,
+    trackedFiles,
+  });
+  const modelByTable = new Map(
+    structure.models.map((model) => [model.databaseTable, model]),
+  );
+  const fields = structure.database.columns.map((column) => {
+    const model = modelByTable.get(column.tableName);
+    const prismaField = model?.fields.find(
+      (field) => field.databaseColumn === column.columnName,
+    );
+    const key = `public.${column.tableName}.${column.columnName}`;
+    return {
+      key,
+      databaseSchema: "public",
+      ...column,
+      prismaModel: model?.prismaModel ?? null,
+      prismaField: prismaField?.prismaField ?? null,
+      prismaType: prismaField?.prismaType ?? null,
+      ...(annotations.fields?.[key] ?? pendingAnnotation()),
+    };
+  });
+  const tables = structure.database.tables.map((table) => {
+    const key = `public.${table.tableName}`;
+    const model = modelByTable.get(table.tableName);
+    return {
+      key,
+      databaseSchema: "public",
+      ...table,
+      prismaModel: model?.prismaModel ?? null,
+      ...(annotations.tables?.[key] ?? pendingAnnotation()),
+    };
+  });
+  return {
+    provenance: {
+      baselineCommit: annotations.baselineCommit ?? null,
+      verifiedThroughMigration: structure.source.verifiedThroughMigration,
+    },
+    statistics: {
+      ...summarizeStructure(structure),
+      annotatedTables: tables.length,
+      annotatedFields: fields.length,
+      pendingTables: tables.filter(isPendingAnnotation).length,
+      pendingFields: fields.filter(isPendingAnnotation).length,
+    },
+    tables,
+    fields,
+    relations: structure.relations,
+    constraintsAndIndexes: [
+      ...structure.database.constraints,
+      ...structure.database.indexes,
+    ],
+    codeSets: structure.database.enums,
+    nativeObjects: {
+      functions: structure.database.functions,
+      triggers: structure.database.triggers,
+    },
+    sources: annotations.sources ?? {},
+    findings: structure.findings,
+    validationFindings,
+  };
+}
+
+function pendingAnnotation() {
+  return {
+    nameZh: PENDING_NAME,
+    nameStatus: "needs_business_confirmation",
+    purposeZh: PENDING_PURPOSE,
+    purposeStatus: "needs_business_confirmation",
+    sourceRefs: [],
+    ownerModule: null,
+    workbenchCodes: [],
+    sensitivityClass: "pending_policy",
+    notes: [],
+  };
+}
+
+function appendCoverageFindings(
+  findings,
+  expectedKeys,
+  annotationKeys,
+  missingCode,
+  orphanCode,
+) {
+  const actualKeys = new Set(annotationKeys);
+  for (const key of [...expectedKeys].sort()) {
+    if (!actualKeys.has(key)) findings.push({ code: missingCode, object: key });
+  }
+  for (const key of [...actualKeys].sort()) {
+    if (!expectedKeys.has(key))
+      findings.push({ code: orphanCode, object: key });
+  }
+}
+
+function validateAnnotationShape(findings, key, annotation) {
+  for (const semantic of ["name", "purpose"]) {
+    const status = annotation[`${semantic}Status`];
+    if (!CONFIRMATION_STATUSES.has(status)) {
+      findings.push({
+        code: "ANNOTATION_STATUS_INVALID",
+        object: `${key}:${semantic}`,
+      });
+    }
+  }
+}
+
+function hasEligibleSource(annotation, sources, trackedFiles, status) {
+  const eligibleAuthorities = {
+    confirmed_business: new Set(["business"]),
+    confirmed_contract: new Set(["formal_contract"]),
+    confirmed_implementation: new Set(["implementation"]),
+  }[status];
+  return (annotation.sourceRefs ?? []).some((sourceId) => {
+    const source = sources[sourceId];
+    return (
+      source &&
+      trackedFiles.has(source.path) &&
+      eligibleAuthorities?.has(source.authority)
+    );
+  });
+}
+
+function isPendingAnnotation(annotation) {
+  return (
+    annotation.nameStatus === "needs_business_confirmation" ||
+    annotation.purposeStatus === "needs_business_confirmation"
+  );
+}
+
 export async function extractNormalizedStructure({
   databaseUrl = process.env.DICTIONARY_DATABASE_URL ??
     process.env.INTEGRATION_DATABASE_URL ??
