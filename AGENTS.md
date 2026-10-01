@@ -14,7 +14,7 @@
 7. 五面协同：业务功能必须围绕同一业务步骤同时推进岗位任务、数据事实、技术保障、权限边界和界面承接，不得只从数据库、接口、权限表或字段目录倒推产品方案。
 8. 业务可用：数据规范保证事实可信，但不能代替操作流程、信息完整性和交互友好性；称为“工作台”或“闭环”的功能必须让目标岗位完成实际业务结果。
 9. 共同最低线：项目定义的 20 台工作台必须逐台达到 `doc/cross-border-supply-chain/08-role-workbenches.md` 的 `WB-B01`～`WB-B10`；`live`、有页面、有 API 或有操作规格均不得冒充通过。
-10. 决策互动：业务结果、状态语义、责任交接、退出能力、权限政策、风险接受和指标口径需要负责人定案时，Codex 必须先给出 2～3 个互斥选项、明确推荐，并逐项说明证据、理由、成本、收益、风险和可逆性；禁止把空白问题抛给负责人，也禁止 AI 静默替负责人决定。
+10. 决策互动：业务结果、状态语义、责任交接、退出能力、权限政策、风险接受和指标口径需要负责人定案时，主代理 Claude 必须先给出 2～3 个互斥选项、明确推荐，并逐项说明证据、理由、成本、收益、风险和可逆性；禁止把空白问题抛给负责人，也禁止 AI 静默替负责人决定。
 11. 决策留痕：负责人结论必须回写业务权威或 ADR，并同步到当前 task brief 的决策记录；聊天结论不能单独成为实现依据。未定事项标记为候选或待决，只阻塞受影响动作，不得伪造默认值，也不得无故拖停不相关范围。
 
 ### 1.1 工作台五面协同交付纪律
@@ -31,44 +31,44 @@
 ### 1.2 代理协同与执行分工
 
 1. 人类负责人保留业务定案、优先级调整和最终验收权。
-2. 主代理对任务端到端负责，包括理解需求、维护 task brief、控制范围、架构与契约决策、整合实现、验证、Git/PR 和交接。
+2. 主代理对任务端到端结果负责，包括理解需求、维护 task brief、控制范围、架构与契约决策、安排实现与验证、授权 Git/PR 集成和最终交接；技术集成可由指定审查代理执行，但责任不转移。
 3. 实现执行器只在主代理划定的切片内修改代码、运行定向检查并报告结果；不得自行扩大范围、改变业务口径或将任务标记为完成。
 4. 当前默认工具映射：
-   - 主代理：Codex，接替原 Claude 承担的主代理职责。
+   - 主代理：Claude，负责需求澄清、业务与架构定案、task brief、范围、状态、优先级、切片调度和最终验收收口。
    - 本地实现工作台与快速编码执行器：Cursor。
-   - 独立评审与业务反证：Claude，默认只读，负责挑战弱假设、寻找反例并核对规格、行业方法与验收证据；Claude 不是第二主代理。
+   - 技术审查与集成：Codex，默认在审查阶段只读，负责代码与契约审查、风险验证、Git/CI/PR 集成和合并证据；Codex 不是第二主代理，不替 Claude 改业务口径、任务范围或完成状态。
 5. 同一切片只能有一个写入者。Codex、Cursor 与 Claude 不得同时修改同一批文件；交接前必须说明文件范围、当前差异、已执行检查和剩余事项。
-6. Cursor 只接受 Codex 已写入 task brief 的切片指令，不接受 Claude 直接扩单、改口径或改变任务状态。Cursor 产出由 Codex 统一审查和收口。
-7. Claude 的评审结论只允许是带证据的 finding、未知项或建议，不得直接改写业务权威、task brief、完成状态或给 Cursor 下令。Codex 必须将每项意见处置为 `accepted`、`rejected` 或 `pending-owner`；只有 `accepted` 且已写回现有 `doc/`、ADR、契约或 brief 的内容才能进入实现。
-8. 工作台岗位结果/状态语义/责任交接、跨工作台控制面、公共契约、安全与权限、状态机、金额费用、数据迁移，以及宣称工作台达到最低可用线或六类路径验收前，必须安排 Claude 或等价独立上下文复审。纯文案、格式和确定性低风险修复可跳过，避免把评审流程机械铺满。
-9. Codex 产出仍须接受 CI、人工业务验收或独立审查上下文，不得自证完成；Claude 评审也不得替代负责人定案、自动化测试或真实岗位验收。
-10. task brief、权威契约、代码和验证结果是协作事实来源，聊天记录和临时评审报告不是，不得为 Claude 另建第三套业务权威。
+6. Cursor 只接受 Claude 已写入 task brief 的切片指令，不接受 Codex 直接扩单、改口径或改变任务状态。Cursor 产出由 Codex 做技术审查和集成核验；存在 finding 或范围决定时交回 Claude 裁决，无 finding 且 brief 已预授权连续执行时不得制造新的人工暂停点。
+7. Codex 的审查结论只允许是带证据的 finding、未知项、验证缺口或集成结果，不得直接改写业务权威、task brief、完成状态或给 Cursor 扩单。Claude 必须将每项 finding 处置为 `accepted`、`rejected` 或 `pending-owner`；只有 `accepted` 且已写回现有 `doc/`、ADR、契约或 brief 的内容才能进入实现。
+8. 工作台岗位结果/状态语义/责任交接、跨工作台控制面、公共契约、安全与权限、状态机、金额费用、数据迁移，以及宣称工作台达到最低可用线或六类路径验收前，必须安排 Codex 或等价独立技术上下文复审。纯文案、格式和确定性低风险修复可跳过，避免把评审流程机械铺满。
+9. Claude 的任务收口仍须接受 CI、人工业务验收或独立审查上下文，不得自证完成；Codex 技术审查也不得替代负责人定案、自动化测试或真实岗位验收。
+10. task brief、权威契约、代码和验证结果是协作事实来源，聊天记录和临时评审报告不是，不得为 Codex 另建第三套业务权威。
 11. 历史进度日志中的 Claude、Cursor 和 Codex 署名保持原样；本规则只约束生效后的任务，不追溯改写历史。
 12. 执行切片不是默认 PR 边界。同一 task brief 下的连续切片默认共用一个任务集成分支；每个切片可以形成可回滚提交，但只在任务收口时建立一个最终 PR。只有存在独立发布、独立回滚、长期并行或明确风险隔离依据时才拆分 PR，并在 brief 记录理由。
-13. Cursor 只运行 brief 指定的最近测试、受影响模块 lint/typecheck 和专项门禁；不得为每个机械切片重复完整 `validate`。Codex 在风险切片集成完成、形成最终 PR 候选后统一运行一次完整门禁。
+13. Cursor 只运行 brief 指定的最近测试、受影响模块 lint/typecheck 和专项门禁；不得为每个机械切片重复完整 `validate`。Codex 在风险切片集成完成、形成最终 PR 候选后统一运行一次完整门禁，并把结果交回 Claude 收口。
 14. 完整门禁通过后，只有相关生产风险面再次变化才重跑；纯 brief、测试说明、格式或不改变产品行为的 CI 修改不得触发无关全量验证。
 15. 独立复审按决策点和风险增量触发。出现新的业务或权限政策、公开入口、对象范围、状态语义、公共契约，或最终集成产生新风险时复审；同一已定政策下的装饰器、字段或机械迁移切片不重复复审。
 16. 外部环境盘点、数据迁移、发布操作和人工验收必须与代码质量门禁分轨记录。缺少外部证据可以阻止生产部署和 task `done`，但不得无故阻止不依赖该外部状态的代码开发、提交、PR 审查与合并。
 17. 全仓默认最多同时存在两个 `coding` / `fix` 写任务、两个等待独立处理的 `review` 任务；`design` 不占 `coding/fix` 名额，纯只读调查不建立写任务。达到上限时只阻塞新增任务，不回退或覆盖在途工作。
 18. 每个 `design` / `coding` / `fix` brief 都可能写 task brief 或共享权威，必须在 frontmatter 声明 `owner`、唯一 `writer`、`risk`、`dependsOn`、`writeScopes`、`exclusiveLocks`、`sharedIntegrationScopes` 和 `authorityRefs`，并参与冲突检查。`writeScopes` 只允许精确仓库路径或以 `/**` 结尾的目录，不接受无法可靠判交集的任意 glob。
 19. 任意两个 `design` / `coding` / `fix` 任务只有在写入范围、独占锁和未完成依赖均不冲突，且写入者不同的情况下才可并行。同一业务决定使用同一个 `business-policy:<decision-id>` 锁；Schema/迁移、授权控制面、公共契约、仓库治理、根工具和生成物使用对应独占锁，禁止用宽泛锁掩盖实际范围，也禁止漏锁绕过串行。
-20. `sharedIntegrationScopes` 允许开发阶段并行，但 Codex 必须排定最终集成顺序：后合并者同步最新 `main`、重新生成派生产物并运行风险对应门禁后才能合并。PR 与 `main` 集成仍串行。
+20. `sharedIntegrationScopes` 允许开发阶段并行；Claude 排定任务优先级和业务先后，Codex 据此执行最终技术集成顺序：后合并者同步最新 `main`、重新生成派生产物并运行风险对应门禁后才能合并。PR 与 `main` 集成仍串行。
 21. `authorityRefs` 只声明读取的权威，不因多个任务共同引用就自动冲突；任务若要修改权威、公共契约或共享决策，必须同时把对应路径列入 `writeScopes` 并声明匹配的独占锁。
-22. `repo:check` 只验证当前 checkout 中可见的 brief，不读取其他 worktree，也不把实际 Git diff 与 `writeScopes` 对账。Codex 下发 `TASK` 与收口前必须人工核对全部在途 worktree 和实际差异；薄编排器上线后自动执行跨 worktree 与 diff 范围检查，不建立第二套状态。
-23. 连续两次组合回归、实际 diff 反复越过 `writeScopes`、评审积压、业务结论冲突或公共契约/迁移漂移时，Codex 必须把新增写任务保持 `blocked`，等价将有效并行上限降为 1；修复门禁并清空冲突后再恢复。
-24. 负责人一旦批准某个 task brief 继续执行，该授权持续到 brief 完成、出现真实阻塞或需要负责人定案为止。Codex 接受一个切片后必须立即回写状态并下发 brief 中已定义的下一切片，不得要求负责人重复发送“继续”；无 finding 的评审也不得成为人工暂停点。
+22. `repo:check` 只验证当前 checkout 中可见的 brief，不读取其他 worktree，也不把实际 Git diff 与 `writeScopes` 对账。Claude 下发 `TASK` 前核对全部在途 worktree、依赖和声明范围；Codex 审查与集成前核对实际差异。薄编排器上线后自动执行跨 worktree 与 diff 范围检查，不建立第二套状态。
+23. 连续两次组合回归、实际 diff 反复越过 `writeScopes`、评审积压、业务结论冲突或公共契约/迁移漂移时，Claude 必须把新增写任务保持 `blocked`，等价将有效并行上限降为 1；修复门禁并清空冲突后再恢复。
+24. 负责人一旦批准某个 task brief 继续执行，该授权持续到 brief 完成、出现真实阻塞或需要负责人定案为止。Claude 接受一个切片后必须立即回写状态并下发 brief 中已定义的下一切片；Codex 完成无 finding 的技术审查后必须按 brief 预授权继续集成或回报 Claude，不得要求负责人重复发送“继续”，也不得把无 finding 的评审变成人工暂停点。
 25. 同一 task brief、同一 worktree 且基线与权威文件未变化时，后续切片和复审只做状态、哈希、差异与相关段落的增量确认，不重复读取已核验的完整规则、brief 和权威材料。只有基线或权威发生变化、上下文不可用、适用技能明确要求重读，或差异越界时才重新加载必要全文。
 
 ### 1.3 仓库总线与统一交接协议
 
-1. 指令链固定为 `负责人 -> Codex -> Cursor -> Codex` 和 `负责人 -> Codex -> Claude -> Codex`。
-   Cursor 与 Claude 不得互相下令；Claude 的 finding 必须先由 Codex 裁决，才能进入 Cursor 的实现范围。
+1. 指令链固定为 `负责人 -> Claude -> Cursor -> Codex -> Claude` 和 `负责人 -> Claude -> Codex -> Claude`；任务达到 brief 已定义的集成门槛后，由 Claude 授权 Codex 执行 Git/CI/PR 集成。
+   Cursor 与 Codex 不得互相扩单或改变任务口径；Codex 的 finding 必须先由 Claude 裁决，才能进入 Cursor 的实现范围。
 2. 代理之间只传“定位指针 + 状态信封”，不复制 task brief、业务权威、代码 diff 或长篇评审正文。大内容继续以
    task brief、权威契约、Git diff/commit、PR 和 CI 为事实载体。
 3. 统一输入指令为单行：
 
    ```text
-   TASK <brief-path>#<slice-id> base=<commit-sha> role=<cursor|claude> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
+   TASK <brief-path>#<slice-id> base=<commit-sha> role=<cursor|codex> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
    ```
 
    `brief-path`、`slice-id`、`base` 和 `role` 必填；实现任务的 `workspace` 可由 Cursor 创建后回报，评审任务必须
@@ -83,17 +83,17 @@
 
    随后返回 `logix-handoff/v1`，至少包含：`slice`、`state`、`base`、`worktree`、`changed`、`checks`、
    `exceptions`、`commit`。`base` 必须是接收方可据以复现当前差异的真实基线，不得沿用已经快进、变基或合并前的
-   初始任务 SHA。`state` 只允许 `ready-for-review` 或 `blocked`；不得使用 `done` 代替 Codex 验收。默认保留
+   初始任务 SHA。`state` 只允许 `ready-for-review` 或 `blocked`；不得使用 `done` 代替 Codex 技术验收和 Claude 任务收口。默认保留
    未提交差异，除非 brief 明确授权 Cursor 提交。
 
-5. Claude 完成独立评审后返回 `logix-review/v1`，至少包含：`slice`、`baseline`、`reviewed`、`verdict`、
+5. Codex 完成独立技术评审后返回 `logix-review/v1`，至少包含：`slice`、`baseline`、`reviewed`、`verdict`、
    `findings`、`unknowns`、`verificationGaps`、`writes`。每条 finding 必须有稳定 ID、严重度、类型、证据、
-   失败场景、验收反证和建议处置；建议不自动成为项目决定。`writes` 必须为 `none`，除非负责人另行明确授权。
-6. Codex 对 Claude finding 返回 `logix-disposition/v1`，逐项记录 `accepted`、`rejected` 或
+   失败场景、验收反证和建议处置；建议不自动成为项目决定。审查阶段 `writes` 必须为 `none`，进入 brief 已授权的集成阶段后才可记录实际 commit、PR 或 CI 写入。
+6. Claude 对 Codex finding 返回 `logix-disposition/v1`，逐项记录 `accepted`、`rejected` 或
    `pending-owner`、理由与权威写回位置。只有 `accepted` 且已写回现有业务权威、ADR、契约或 task brief 的
-   finding 才能进入新实现切片。
+   finding 才能进入新实现切片；`next: pr` 表示 Claude 授权 Codex 按 brief 和仓库保护规则执行提交、推送、PR、CI 与合并，完成后回报实际写入和验证结果，不得借此改变业务口径或任务状态。
 7. 同机协作优先传 worktree 绝对路径；跨环境协作传功能分支或 Draft PR。接收方无法读取未提交工作树时，必须由
-   Codex 决定是否形成 WIP commit/Draft PR，禁止要求人工粘贴整段 diff。PR/CI 链接只承载证据，不替代 brief。
+   Claude 决定是否授权 Codex 形成 WIP commit/Draft PR，禁止要求人工粘贴整段 diff。PR/CI 链接只承载证据，不替代 brief。
 8. `logix-handoff/v1`、`logix-review/v1` 和 `logix-disposition/v1` 是消息/PR 描述格式，不新增长期文件或
    handoff 目录。需要长期保留的决定、进度和验收证据只回写现有 task brief、权威文档或 ADR。
 9. 完整字段模板见 `docs/planning/tasks/_template.md`。字段无内容时使用 `[]`、`none` 或明确的 `not-run`，
@@ -109,7 +109,7 @@
 - 公共 API、数据库、安全边界或跨模块变更，必须先说明影响范围。
 - 仅业务功能、架构、数据、安全、公共契约或需要跨会话交接的任务强制建立 task brief；纯文档、测试稳定性、CI 配置和 Git 维护不单独建立 brief。
 - 业务与工作台任务开始实现前，必须列出需要负责人决定的事项；每轮互动聚焦 1～3 个关键决定，提供可比较选项和推荐，不一次抛出整台问题清单。
-- 能由现有权威、代码事实和工程规则确定的局部技术选择由 Codex 直接负责，不以“请负责人选择”转移工程判断责任；只有会改变业务政策、公共契约、安全边界、不可逆成本或用户结果的事项升级互动。
+- 能由现有权威、代码事实和工程规则确定的局部技术选择由主代理 Claude 直接负责；Codex 对技术风险提出可验证 finding，不以“请负责人选择”转移工程判断责任。只有会改变业务政策、公共契约、安全边界、不可逆成本或用户结果的事项升级互动。
 
 ## 3. 架构边界
 
