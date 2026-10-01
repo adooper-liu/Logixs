@@ -1,6 +1,6 @@
 # 身份与访问模型 V1
 
-> 状态：**正式 V1（P2-05 最小实施基线；AUTH-D01 修订）** · 2026-09-29 · 所有者：权限治理负责人
+> 状态：**正式 V1.1（P2-05 最小实施基线；AUTH-D01 / ORG-D01 修订）** · 2026-10-01 · 所有者：权限治理负责人
 > 消费者：P5-02 OIDC/授权实现、各 Application 用例、API、Web 允许动作投影和审计。
 > 边界：本文定义身份、角色、能力和数据范围；动作风险、复核及固定授权协议仍以 [GC-008](./ACTION_PERMISSION_CONTRACT_V1.md) 为唯一权威。
 
@@ -12,25 +12,49 @@
 4. 查询必须从 Repository 起就带租户范围；写入还须在 Application 层重新验证对象和动作。
 5. AI、Worker、Integration 与定时任务使用独立服务身份，不模拟用户、不继承浏览器会话。
 6. Web 的路由、按钮和 `allowedActions` 只优化体验，不是安全边界。
+7. 一个集团原则上对应一个 `tenantId` 安全边界；集团内账套主体通过受控组织身份和范围表达，不按国家机械拆租户。
+8. 账套主体是经营与核算主体，注册国家只是主体属性。用户、用户组或 Token 不得用一个自由文本国家字段代替主体范围。
+9. 用户组只是角色与范围的分配主体，不等于组织单元、法律实体或账套主体；身份、组织和授权关系必须显式关联。
 
 🗣️ 白话：角色像“岗位套餐”，能力是套餐里的具体钥匙，范围说明这把钥匙能开哪几扇门。三样缺一个都不能操作。
 
 ## 2. 身份与授权上下文
 
-| 字段                  | 规则                                                                |
-| --------------------- | ------------------------------------------------------------------- |
-| `actorType`           | `user / service / integration / scheduled_job`，不可互相冒充        |
-| `actorId`             | IdP subject 或稳定工作负载 ID；显示名变化不改变审计身份             |
-| `tenantId`            | 当前租户必须来自 Token 中已验证的成员关系；切换租户要重新取得上下文 |
-| `roles[]`             | IdP 组到应用角色的显式映射结果；未知角色不授予能力                  |
-| `capabilities[]`      | 角色、临时委托和策略计算后的稳定能力码集合                          |
-| `organizationScope[]` | 空集合不表示全部；必须配合显式 `scopeMode`                          |
-| `locationScope[]`     | 港口、仓库组、仓库等受控地点 ID，不使用自由文本名称                 |
-| `delegatedBy`         | 临时委托必须记录授权人、原因、能力、范围和到期时间                  |
-| `policyVersion`       | 授权决定所用策略版本，进入审计记录                                  |
-| `traceId`             | 串联认证、授权、业务写入、Outbox/Inbox 和审计                       |
+| 字段                   | 规则                                                                |
+| ---------------------- | ------------------------------------------------------------------- |
+| `actorType`            | `user / service / integration / scheduled_job`，不可互相冒充        |
+| `actorId`              | IdP subject 或稳定工作负载 ID；显示名变化不改变审计身份             |
+| `tenantId`             | 当前租户必须来自 Token 中已验证的成员关系；切换租户要重新取得上下文 |
+| `activeAccountOwnerId` | 当前账套主体；主体绑定动作必须存在且属于已验证授权范围              |
+| `roles[]`              | IdP 组到应用角色的显式映射结果；未知角色不授予能力                  |
+| `capabilities[]`       | 角色、临时委托和策略计算后的稳定能力码集合                          |
+| `organizationScope[]`  | 空集合不表示全部；必须配合显式 `scopeMode`                          |
+| `locationScope[]`      | 港口、仓库组、仓库等受控地点 ID，不使用自由文本名称                 |
+| `delegatedBy`          | 临时委托必须记录授权人、原因、能力、范围和到期时间                  |
+| `policyVersion`        | 授权决定所用策略版本，进入审计记录                                  |
+| `traceId`              | 串联认证、授权、业务写入、Outbox/Inbox 和审计                       |
 
-`AuthorizationContextV1` 的公共字段形状继续引用 `GC-008`，P5-02 只能增加内部校验信息，不能创建另一套同名上下文。
+`AuthorizationContextV1` 的公共字段形状继续引用 `GC-008`，不得创建另一套同名上下文。`activeAccountOwnerId` 是 V1.1 已批准扩展目标；公共 JSON Schema、OIDC/session 解析和消费者必须在同一实现切片内升级。当前运行时尚未携带该字段，在对应 brief 完成前不得宣称已实现账套主体隔离。
+
+### 2.1 集团租户、组织与账套主体
+
+```text
+Tenant（集团安全边界）
+└── OrganizationUnit（集团 / 区域 / 账套主体 / 部门 / 班组）
+    └── AccountOwnerProfile（账套主体档案）
+        ├── LegalEntity / approved branch reference
+        ├── registeredCountryId
+        ├── baseCurrencyId
+        └── defaultTimeZoneId
+```
+
+- `Tenant` 回答“属于哪个集团安全边界”；`AccountOwnerProfile` 回答“当前以哪个内部主体经营和核算”。二者不得合并成一个国家码。
+- 账套主体作为一种受控 `OrganizationUnit` 进入 `organizationScope[]`，不再维护与组织范围重复的第二套主体范围数组。
+- `activeAccountOwnerId` 是当前操作上下文，不是权限来源。服务端必须验证它属于当前租户、处于有效状态且命中当前 actor 的组织范围；浏览器选择值只能作为待校验输入。
+- 一名用户可以有多个租户成员关系，也可以在同一租户内被授权多个账套主体。每次请求只使用一个已验证租户上下文；主体绑定写动作只使用一个当前账套主体。
+- `UserGroup` 是租户内授权分配主体。用户加入组后可以获得角色和范围，但组本身不能冒充组织、公司、国家或业务对象所有者。
+- 集团级只读和跨主体动作必须由显式 `tenant` 范围或多主体组织授权给出；空范围、同租户或相同注册国家都不能推导全集团权限。
+- 账套主体与货主可以引用同一 `LegalEntity`，但权限判断使用账套主体关系，Shipment/货物归属仍使用各业务模块拥有的货主事实。
 
 ## 3. 最小角色目录
 
@@ -105,27 +129,30 @@
 
 ## 6. 数据范围模型
 
-| scopeMode      | 判断规则                                                        |
-| -------------- | --------------------------------------------------------------- |
-| `tenant`       | 仅租户全域；只允许明确授予，不从空组织/地点集合推断             |
-| `organization` | 对象的 organizationId 必须在授权集合；跨组织共享需显式关系      |
-| `location`     | 对象关联港口/仓库组/仓库等受控 ID 至少一个命中动作定义要求      |
-| `assigned`     | actor 是任务受让人，或属于受让班组；不能仅凭同租户操作          |
-| `owned`        | actor 创建的批次/草稿；转交后按新授权关系决定，不依赖可变显示名 |
-| `designated`   | actor 被指定为该对象/风险级别的复核人，且不是受限动作的发起人   |
+| scopeMode       | 判断规则                                                        |
+| --------------- | --------------------------------------------------------------- |
+| `tenant`        | 仅租户全域；只允许明确授予，不从空组织/地点集合推断             |
+| `account_owner` | 目标账套主体必须是当前有效主体，并命中 actor 的组织范围         |
+| `organization`  | 对象的 organizationId 必须在授权集合；跨组织共享需显式关系      |
+| `location`      | 对象关联港口/仓库组/仓库等受控 ID 至少一个命中动作定义要求      |
+| `assigned`      | actor 是任务受让人，或属于受让班组；不能仅凭同租户操作          |
+| `owned`         | actor 创建的批次/草稿；转交后按新授权关系决定，不依赖可变显示名 |
+| `designated`    | actor 被指定为该对象/风险级别的复核人，且不是受限动作的发起人   |
 
 - 对象没有所需范围字段时失败关闭，不能用 tenant 兜底扩大权限。
 - 列表、计数、导出和搜索必须使用同一范围谓词，防止总数或错误信息侧漏。
 - 跨租户平台操作必须使用独立平台身份和显式用例，不给普通角色 `tenant=*`。
+- 注册国家、经营国、销售国或目的国不能直接充当授权范围；需要按国家管理时，先解析到明确的账套主体或组织集合并保存策略版本。
 
 ## 7. 固定授权决策
 
 ```text
 验证 Token / 工作负载身份
 -> 建立 actor + tenant membership
+-> 解析并验证 active account owner + organization membership
 -> 解析 role -> capability（未知值拒绝）
 -> 加载 actionDefinition.requiredCapabilities
--> 用 tenant + organization/location/assigned/owned/designated 查询目标
+-> 用 tenant + account-owner/organization/location/assigned/owned/designated 查询目标
 -> 检查委托、职责分离、审批和策略版本
 -> 检查状态机、证据、人工锁、密封、幂等和 expectedVersion
 -> Application 事务写业务结果 + 授权审计 + Outbox
@@ -149,13 +176,16 @@ P5-03 为每个身份建立独立 client、audience、凭据轮换和调用白�
 
 1. 生产配置下开发身份头无效，JWT 缺失或无效统一拒绝。
 2. 所有非公开路由默认经过认证；所有写路由有能力与对象范围策略注册。
-3. 用户在租户、组织、地点、assigned/owned/designated 六类边界上有正反向测试。
+3. 用户在租户、账套主体、组织、地点、assigned/owned/designated 七类边界上有正反向测试。
 4. 角色变化、撤权、委托到期和策略版本变化不会被长期缓存放行。
 5. 前端伪造角色、能力、tenant、actor 或 `allowedActions` 不改变服务端决策。
 6. 授权审计包含 actor、tenant、capability、scope、action、target、policyVersion、结果和 traceId，不包含 Token。
+7. 同一用户可切换到两个已授权账套主体；未授权、停用、其他租户或伪造主体统一失败关闭，且不会改变业务对象事实。
+8. Web 始终显示当前账套主体及注册国家；集团级只读视图和主体绑定写动作不会混用上下文。
 
 ## 10. 待绑定事项
 
 - 具体员工与 IdP 组映射在 P5-02 配置，不进入本文。
-- 组织、地点和班组主数据由 P2-04/P5-02 选择稳定 ID 后绑定。
+- 组织、账套主体、地点和班组主数据由 `tenant-account-owner-scope-v1` 及对应领域切片选择稳定 ID 后绑定。
+- 首版不建设总账、科目、凭证或合并报表；若未来一个主体需要多套会计账簿，应新增独立账簿模型，不复用 `AccountOwnerProfile` 冒充账簿。
 - 计划确认、资源占用、付款和其他尚未实现的高风险动作，在其 ActionDefinition 定稿时补能力要求与职责分离，不提前赋权。

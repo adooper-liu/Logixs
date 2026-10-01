@@ -47,7 +47,7 @@
 | 查阅路线、实施输入和覆盖矩阵          | [路线图与业务决策](./14-roadmap-decisions.md)                      |
 | 核对四表最小字段集                    | [最小字段集与信息切片](./15-minimum-fields-and-slicing.md)         |
 | 查阅出运生命周期确认规则              | [生命周期确认规则](./16-confirmed-lifecycle-business-rules.md)     |
-| 查阅备货前34项确认基线                | [上游确认基线](./17-confirmed-upstream-business-baseline.md)       |
+| 查阅备货前确认基线                    | [上游确认基线](./17-confirmed-upstream-business-baseline.md)       |
 | 查阅全部顺序和状态                    | [统一索引](./INDEX.md)                                             |
 | 查阅业务决策                          | [业务ADR](../adr/README.md)                                        |
 
