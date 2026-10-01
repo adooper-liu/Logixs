@@ -16,6 +16,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { format } from "prettier";
 
 import {
+  isPendingAnnotation,
+  pendingEvidenceSlot,
+} from "./data-dictionary/annotation-status.mjs";
+import {
   renderDataDictionaryMarkdown,
   renderNativeObjectsMarkdown,
 } from "./data-dictionary/render-markdown.mjs";
@@ -463,14 +467,50 @@ export function mergeAnnotationCoverage({
 function mergeReviewedAnnotations(generated, existing = {}) {
   const merged = { ...generated };
   for (const [key, annotation] of Object.entries(existing)) {
-    if (
-      annotation.nameStatus !== "needs_business_confirmation" ||
-      annotation.purposeStatus !== "needs_business_confirmation"
-    ) {
-      merged[key] = annotation;
+    if (!(key in generated)) continue;
+    const base = generated[key];
+    const result = { ...base };
+    for (const semantic of ["name", "purpose"]) {
+      if (annotation[`${semantic}Status`] !== "needs_business_confirmation") {
+        result[`${semantic}Zh`] = annotation[`${semantic}Zh`];
+        result[`${semantic}Status`] = annotation[`${semantic}Status`];
+      }
     }
+    for (const field of [
+      "moduleCode",
+      "ownerModule",
+      "sensitivityClass",
+      "unitSemantic",
+      "currencySemantic",
+      "timezoneSemantic",
+      "snapshotAttribute",
+      "versionAttribute",
+      "auditAttribute",
+    ]) {
+      if (hasReviewedValue(annotation[field]))
+        result[field] = annotation[field];
+    }
+    for (const field of ["sourceRefs", "workbenchCodes", "notes"]) {
+      result[field] = [
+        ...new Set([...(base[field] ?? []), ...(annotation[field] ?? [])]),
+      ];
+    }
+    merged[key] = result;
   }
   return merged;
+}
+
+function hasReviewedValue(value) {
+  if (value === null || value === undefined || value === "") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") {
+    return (
+      value.value !== null ||
+      value.status !== "needs_business_confirmation" ||
+      (value.sourceRefs?.length ?? 0) > 0
+    );
+  }
+  return value !== "pending_policy";
 }
 
 export function enrichTechnicalAnnotations(annotations, structure) {
@@ -480,6 +520,11 @@ export function enrichTechnicalAnnotations(annotations, structure) {
     path: "ENGINEERING_RULES.md",
     authority: "implementation",
     note: "数据治理中的租户、时间、版本、幂等、哈希与审计通用技术语义。",
+  };
+  enriched.sources["time-currency-contract"] ??= {
+    path: "docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md",
+    authority: "formal_contract",
+    note: "IANA 时区与 ISO 4217 货币代码正式契约。",
   };
 
   const definitions = {
@@ -508,6 +553,29 @@ export function enrichTechnicalAnnotations(annotations, structure) {
     annotation.purposeZh = definition[1];
     annotation.purposeStatus = "confirmed_implementation";
     annotation.sourceRefs = ["engineering-data-governance"];
+  }
+  for (const column of structure.database.columns) {
+    const key = `public.${column.tableName}.${column.columnName}`;
+    const annotation = enriched.fields?.[key];
+    if (!annotation) continue;
+    if (/_currency$/u.test(column.columnName)) {
+      annotation.currencySemantic = {
+        value: "ISO 4217 货币代码",
+        status: "confirmed_contract",
+        sourceRefs: ["time-currency-contract"],
+      };
+    }
+    if (
+      /^(?:timezone|origin_timezone|destination_timezone)$/u.test(
+        column.columnName,
+      )
+    ) {
+      annotation.timezoneSemantic = {
+        value: "IANA 时区标识",
+        status: "confirmed_contract",
+        sourceRefs: ["time-currency-contract"],
+      };
+    }
   }
   return enriched;
 }
@@ -565,6 +633,30 @@ export function validateAnnotations({ annotations, structure, trackedFiles }) {
       if (
         status !== "needs_business_confirmation" &&
         !hasEligibleSource(annotation, sources, trackedFiles, status)
+      ) {
+        findings.push({
+          code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
+          object: `${key}:${semantic}`,
+        });
+      }
+    }
+    for (const semantic of [
+      "unitSemantic",
+      "currencySemantic",
+      "timezoneSemantic",
+      "snapshotAttribute",
+      "versionAttribute",
+      "auditAttribute",
+    ]) {
+      const slot = annotation[semantic];
+      if (!slot || !CONFIRMATION_STATUSES.has(slot.status)) {
+        findings.push({
+          code: "ANNOTATION_STATUS_INVALID",
+          object: `${key}:${semantic}`,
+        });
+      } else if (
+        slot.status !== "needs_business_confirmation" &&
+        !hasEligibleSource(slot, sources, trackedFiles, slot.status)
       ) {
         findings.push({
           code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
@@ -787,9 +879,16 @@ function pendingAnnotation() {
     purposeZh: PENDING_PURPOSE,
     purposeStatus: "needs_business_confirmation",
     sourceRefs: [],
+    moduleCode: null,
     ownerModule: null,
     workbenchCodes: [],
     sensitivityClass: "pending_policy",
+    unitSemantic: pendingEvidenceSlot(),
+    currencySemantic: pendingEvidenceSlot(),
+    timezoneSemantic: pendingEvidenceSlot(),
+    snapshotAttribute: pendingEvidenceSlot(),
+    versionAttribute: pendingEvidenceSlot(),
+    auditAttribute: pendingEvidenceSlot(),
     notes: [],
   };
 }
@@ -838,13 +937,6 @@ function hasEligibleSource(annotation, sources, trackedFiles, status) {
       sourceAuthorityMatchesPath(source)
     );
   });
-}
-
-function isPendingAnnotation(annotation) {
-  return (
-    annotation.nameStatus === "needs_business_confirmation" ||
-    annotation.purposeStatus === "needs_business_confirmation"
-  );
 }
 
 export async function extractNormalizedStructure({

@@ -1,12 +1,10 @@
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
 
-const requireFromApi = createRequire(resolve("apps/api/package.json"));
-const ExcelJS = requireFromApi("exceljs");
-const requireFromExcel = createRequire(
-  requireFromApi.resolve("exceljs/package.json"),
-);
-const JSZip = requireFromExcel("jszip");
+import { evidenceSlotText, isPendingAnnotation } from "./annotation-status.mjs";
+
+const require = createRequire(import.meta.url);
+const ExcelJS = require("exceljs");
+const JSZip = require("jszip");
 
 const SHEETS = [
   "00_使用说明",
@@ -56,7 +54,15 @@ export async function renderWorkbook(
   addSheet(
     workbook,
     SHEETS[1],
-    ["技术所有者", "表数", "字段数", "待确认表", "待确认字段"],
+    [
+      "模块",
+      "技术所有者",
+      "工作台",
+      "表数",
+      "字段数",
+      "待确认表",
+      "待确认字段",
+    ],
     modules,
   );
   addSheet(
@@ -114,6 +120,12 @@ export async function renderWorkbook(
       "工作台",
       "敏感等级",
       "来源",
+      "单位语义证据",
+      "币种语义证据",
+      "时区语义证据",
+      "快照属性证据",
+      "版本属性证据",
+      "审计属性证据",
       "建议中文名",
       "建议用途",
       "确认意见",
@@ -141,6 +153,12 @@ export async function renderWorkbook(
       item.workbenchCodes,
       item.sensitivityClass,
       item.sourceRefs,
+      evidenceSlotText(item.unitSemantic),
+      evidenceSlotText(item.currencySemantic),
+      evidenceSlotText(item.timezoneSemantic),
+      evidenceSlotText(item.snapshotAttribute),
+      evidenceSlotText(item.versionAttribute),
+      evidenceSlotText(item.auditAttribute),
       "",
       "",
       "",
@@ -218,23 +236,24 @@ export async function renderWorkbook(
     ["对象类型", "稳定键", "中文名", "用途说明", "名称状态", "用途状态"],
     [
       ...model.tables
-        .filter(isPending)
+        .filter(isPendingAnnotation)
         .map((item) => pendingRow("table", item)),
       ...model.fields
-        .filter(isPending)
+        .filter(isPendingAnnotation)
         .map((item) => pendingRow("field", item)),
     ],
   );
   addSheet(
     workbook,
     SHEETS[9],
-    ["来源 ID", "路径", "权威级别", "说明", "消费对象数"],
+    ["来源 ID", "路径", "权威级别", "说明", "消费对象数", "基线提交"],
     Object.entries(model.sources).map(([id, source]) => [
       id,
       source.path,
       source.authority,
       source.note,
       sourceConsumerCount(model, id),
+      model.provenance.baselineCommit,
     ]),
   );
 
@@ -318,35 +337,46 @@ function cellValue(value) {
 }
 
 function moduleRows(model) {
-  const modules = new Map();
+  const groups = new Map();
+  const groupKeyByTable = new Map();
   for (const table of model.tables) {
-    const key = table.ownerModule ?? "待确认";
-    const item = modules.get(key) ?? {
+    const moduleCode = table.moduleCode ?? "待确认";
+    const owner = table.ownerModule ?? "待确认";
+    const workbenches =
+      [...(table.workbenchCodes ?? [])].sort().join(", ") || "待确认";
+    const key = `${moduleCode}\u0000${owner}\u0000${workbenches}`;
+    groupKeyByTable.set(table.tableName, key);
+    const item = groups.get(key) ?? {
+      moduleCode,
+      owner,
+      workbenches,
       tables: 0,
       fields: 0,
       pendingTables: 0,
       pendingFields: 0,
     };
     item.tables += 1;
-    if (isPending(table)) item.pendingTables += 1;
-    modules.set(key, item);
+    if (isPendingAnnotation(table)) item.pendingTables += 1;
+    groups.set(key, item);
   }
   for (const field of model.fields) {
-    const key = field.ownerModule ?? "待确认";
-    const item = modules.get(key) ?? {
-      tables: 0,
-      fields: 0,
-      pendingTables: 0,
-      pendingFields: 0,
-    };
+    const key = groupKeyByTable.get(field.tableName);
+    const item = groups.get(key);
+    if (!item) continue;
     item.fields += 1;
-    if (isPending(field)) item.pendingFields += 1;
-    modules.set(key, item);
+    if (isPendingAnnotation(field)) item.pendingFields += 1;
   }
-  return [...modules.entries()]
-    .sort(([left], [right]) => left.localeCompare(right, "zh-CN"))
-    .map(([owner, item]) => [
-      owner,
+  return [...groups.values()]
+    .sort(
+      (left, right) =>
+        left.moduleCode.localeCompare(right.moduleCode, "zh-CN") ||
+        left.owner.localeCompare(right.owner, "zh-CN") ||
+        left.workbenches.localeCompare(right.workbenches, "zh-CN"),
+    )
+    .map((item) => [
+      item.moduleCode,
+      item.owner,
+      item.workbenches,
       item.tables,
       item.fields,
       item.pendingTables,
@@ -382,13 +412,6 @@ function nativeRows(model) {
   ];
 }
 
-function isPending(item) {
-  return (
-    item.nameStatus === "needs_business_confirmation" ||
-    item.purposeStatus === "needs_business_confirmation"
-  );
-}
-
 function pendingRow(type, item) {
   return [
     type,
@@ -402,6 +425,14 @@ function pendingRow(type, item) {
 
 function sourceConsumerCount(model, sourceId) {
   return [...model.tables, ...model.fields].filter((item) =>
-    item.sourceRefs.includes(sourceId),
+    [
+      ...(item.sourceRefs ?? []),
+      ...(item.unitSemantic?.sourceRefs ?? []),
+      ...(item.currencySemantic?.sourceRefs ?? []),
+      ...(item.timezoneSemantic?.sourceRefs ?? []),
+      ...(item.snapshotAttribute?.sourceRefs ?? []),
+      ...(item.versionAttribute?.sourceRefs ?? []),
+      ...(item.auditAttribute?.sourceRefs ?? []),
+    ].includes(sourceId),
   ).length;
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -25,6 +26,20 @@ import {
 } from "./generate-data-dictionary.mjs";
 
 const LOCAL_URL = "postgresql://logix:logix@localhost:5433/logix";
+
+test("root manifest owns workbook dependencies", () => {
+  const requireFromRoot = createRequire(
+    new URL("../package.json", import.meta.url),
+  );
+  assert.match(
+    requireFromRoot.resolve("exceljs"),
+    /node_modules[\\/]exceljs[\\/]/u,
+  );
+  assert.match(
+    requireFromRoot.resolve("jszip"),
+    /node_modules[\\/]jszip[\\/]/u,
+  );
+});
 
 test("CLI parser exposes one explicit dictionary action", () => {
   assert.deepEqual(parseCommand([]), { action: "summary", json: false });
@@ -698,6 +713,51 @@ test("technical enrichment documents only stable cross-table meanings", () => {
   );
 });
 
+test("technical enrichment confirms only contract-backed currency and timezone semantics", () => {
+  const structure = dictionaryFixture();
+  for (const [columnName, ordinalPosition] of [
+    ["price_currency", 2],
+    ["timezone", 3],
+    ["source_version", 4],
+  ]) {
+    structure.database.columns.push({
+      tableName: "order",
+      columnName,
+      ordinalPosition,
+      formattedType: "text",
+      isNullable: true,
+      defaultExpression: null,
+      identityKind: "",
+      generatedKind: "",
+    });
+  }
+  const annotations = enrichTechnicalAnnotations(
+    createPendingAnnotations(structure, { baselineCommit: "abc123" }),
+    structure,
+  );
+
+  assert.deepEqual(
+    annotations.fields["public.order.price_currency"].currencySemantic,
+    {
+      value: "ISO 4217 货币代码",
+      status: "confirmed_contract",
+      sourceRefs: ["time-currency-contract"],
+    },
+  );
+  assert.deepEqual(
+    annotations.fields["public.order.timezone"].timezoneSemantic,
+    {
+      value: "IANA 时区标识",
+      status: "confirmed_contract",
+      sourceRefs: ["time-currency-contract"],
+    },
+  );
+  assert.deepEqual(
+    annotations.fields["public.order.source_version"].versionAttribute,
+    pendingSlot(),
+  );
+});
+
 test("annotation bootstrap applies Prisma model comments without overriding reviewed values", () => {
   const structure = dictionaryFixture();
   const merged = mergeAnnotationCoverage({
@@ -769,6 +829,42 @@ test("artifact generation keeps the explicit annotation baseline", async () => {
     JSON.parse(artifacts["dictionary.annotations.json"]).baselineCommit,
     "source-baseline",
   );
+});
+
+test("annotation bootstrap preserves independently reviewed auxiliary metadata", () => {
+  const structure = dictionaryFixture();
+  const existing = createPendingAnnotations(structure, {
+    baselineCommit: "old",
+  });
+  existing.sources.review = {
+    path: "docs/product/domain/TARGET_FIELD_CATALOG.md",
+    authority: "formal_contract",
+  };
+  existing.tables["public.order"] = {
+    ...existing.tables["public.order"],
+    sourceRefs: ["review"],
+    moduleCode: "orders",
+    ownerModule: "orders-owner",
+    workbenchCodes: ["orders-wb"],
+    sensitivityClass: "restricted",
+    notes: ["reviewed independently"],
+  };
+
+  const merged = mergeAnnotationCoverage({
+    existing,
+    structure,
+    baselineCommit: "new",
+  });
+  const annotation = merged.tables["public.order"];
+
+  assert.equal(annotation.nameStatus, "needs_business_confirmation");
+  assert.equal(annotation.purposeStatus, "needs_business_confirmation");
+  assert.deepEqual(annotation.sourceRefs, ["review"]);
+  assert.equal(annotation.moduleCode, "orders");
+  assert.equal(annotation.ownerModule, "orders-owner");
+  assert.deepEqual(annotation.workbenchCodes, ["orders-wb"]);
+  assert.equal(annotation.sensitivityClass, "restricted");
+  assert.deepEqual(annotation.notes, ["reviewed independently"]);
 });
 
 test("annotation bootstrap preserves reviewed values and adds new fields", () => {
@@ -847,6 +943,52 @@ test("annotation validation derives authority from eligible paths and validates 
       "LOGICAL_REFERENCE_EVIDENCE_MISSING:guessed-reference",
     ],
   );
+});
+
+test("field semantic slots stay independent and require eligible evidence", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.fields["public.order.id"].unitSemantic = {
+    value: "kg",
+    status: "confirmed_contract",
+    sourceRefs: [],
+  };
+
+  const findings = validateAnnotations({
+    annotations,
+    structure,
+    trackedFiles: new Set(),
+  });
+  assert.deepEqual(findings, [
+    {
+      code: "ANNOTATION_CONFIRMED_WITHOUT_ELIGIBLE_SOURCE",
+      object: "public.order.id:unitSemantic",
+    },
+  ]);
+
+  const model = buildDictionaryModel({
+    structure,
+    annotations: createPendingAnnotations(structure, {
+      baselineCommit: "abc123",
+    }),
+    trackedFiles: new Set(),
+  });
+  for (const field of [
+    "unitSemantic",
+    "currencySemantic",
+    "timezoneSemantic",
+    "snapshotAttribute",
+    "versionAttribute",
+    "auditAttribute",
+  ]) {
+    assert.deepEqual(model.fields[0][field], {
+      value: null,
+      status: "needs_business_confirmation",
+      sourceRefs: [],
+    });
+  }
 });
 
 test("annotation validation rejects missing, orphan, untracked, and unsupported confirmed evidence", () => {
@@ -934,6 +1076,14 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
     baselineCommit: "abc123",
   });
   annotations.fields["public.order.id"].notes = ["=unsafe"];
+  annotations.tables["public.order"].moduleCode = "orders";
+  annotations.tables["public.order"].ownerModule = "order-owner";
+  annotations.tables["public.order"].workbenchCodes = ["orders-wb"];
+  annotations.sources.schema = {
+    path: "database/schema.prisma",
+    authority: "implementation",
+    note: "schema",
+  };
   const model = buildDictionaryModel({
     structure,
     annotations,
@@ -970,7 +1120,18 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
   const fieldSheet = workbook.getWorksheet("03_字段清单");
   assert.equal(fieldSheet.rowCount, model.fields.length + 1);
   assert.equal(fieldSheet.views[0].state, "frozen");
-  assert.equal(fieldSheet.autoFilter, "A1:Y2");
+  const fieldHeaders = fieldSheet.getRow(1).values;
+  for (const header of [
+    "单位语义证据",
+    "币种语义证据",
+    "时区语义证据",
+    "快照属性证据",
+    "版本属性证据",
+    "审计属性证据",
+  ]) {
+    assert.ok(fieldHeaders.includes(header), `${header} must be present`);
+  }
+  assert.equal(fieldSheet.autoFilter, "A1:AE2");
   assert.ok(
     fieldSheet.getRow(1).values.includes("建议中文名"),
     "review columns must be present",
@@ -979,6 +1140,28 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
     .getRow(1)
     .values.findIndex((value) => value === "备注");
   assert.equal(fieldSheet.getRow(2).getCell(noteColumn).value, "'=unsafe");
+  const moduleSheet = workbook.getWorksheet("01_模块汇总");
+  assert.deepEqual(moduleSheet.getRow(1).values.slice(1), [
+    "模块",
+    "技术所有者",
+    "工作台",
+    "表数",
+    "字段数",
+    "待确认表",
+    "待确认字段",
+  ]);
+  assert.deepEqual(moduleSheet.getRow(2).values.slice(1), [
+    "orders",
+    "order-owner",
+    "orders-wb",
+    1,
+    1,
+    1,
+    1,
+  ]);
+  const sourceSheet = workbook.getWorksheet("09_来源追溯");
+  assert.ok(sourceSheet.getRow(1).values.includes("基线提交"));
+  assert.equal(sourceSheet.getRow(2).values.at(-1), "abc123");
   for (const sheet of workbook.worksheets) {
     sheet.eachRow((row) =>
       row.eachCell((cell) => assert.equal(cell.type === 6, false)),
@@ -1039,22 +1222,16 @@ test("artifact comparison reports drift without writing", () => {
 });
 
 async function loadWorkbook(buffer) {
-  const { createRequire } = await import("node:module");
-  const { resolve } = await import("node:path");
-  const requireFromApi = createRequire(resolve("apps/api/package.json"));
-  const ExcelJS = requireFromApi("exceljs");
+  const require = createRequire(import.meta.url);
+  const ExcelJS = require("exceljs");
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   return workbook;
 }
 
 async function workbookEntryDates(buffer) {
-  const { createRequire } = await import("node:module");
-  const { resolve } = await import("node:path");
-  const requireFromApi = createRequire(resolve("apps/api/package.json"));
-  const exceljsPackage = requireFromApi.resolve("exceljs/package.json");
-  const requireFromExcel = createRequire(exceljsPackage);
-  const JSZip = requireFromExcel("jszip");
+  const require = createRequire(import.meta.url);
+  const JSZip = require("jszip");
   const archive = await JSZip.loadAsync(buffer);
   return Object.values(archive.files).map((entry) => entry.date);
 }
@@ -1111,10 +1288,25 @@ function pendingAnnotation() {
     purposeZh: "业务用途待确认；当前仅确认结构与技术消费者",
     purposeStatus: "needs_business_confirmation",
     sourceRefs: [],
+    moduleCode: null,
     ownerModule: null,
     workbenchCodes: [],
     sensitivityClass: "pending_policy",
+    unitSemantic: pendingSlot(),
+    currencySemantic: pendingSlot(),
+    timezoneSemantic: pendingSlot(),
+    snapshotAttribute: pendingSlot(),
+    versionAttribute: pendingSlot(),
+    auditAttribute: pendingSlot(),
     notes: [],
+  };
+}
+
+function pendingSlot() {
+  return {
+    value: null,
+    status: "needs_business_confirmation",
+    sourceRefs: [],
   };
 }
 

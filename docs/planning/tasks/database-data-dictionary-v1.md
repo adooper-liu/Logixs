@@ -9,10 +9,20 @@ writeScopes:
   - docs/planning/tasks/database-data-dictionary-v1.md
   - scripts/generate-data-dictionary.mjs
   - scripts/generate-data-dictionary.test.mjs
+  - scripts/data-dictionary/**
   - database/dictionary/**
+  - package.json
+  - pnpm-lock.yaml
+  - .github/workflows/ci.yml
+  - .prettierignore
+  - docs/INDEX.md
+  - docs/architecture/DATABASE_SCHEMA_CONTRACT_V1.md
 exclusiveLocks:
   - database-dictionary
   - generated:database-catalog
+  - root-tooling
+  - repository-governance
+  - database-contract
 sharedIntegrationScopes:
   - package.json
   - pnpm-lock.yaml
@@ -27,9 +37,11 @@ verification: |
   1 个 PostgreSQL enum、477 个当前有效命名 CHECK、505 个唯一索引、2 个函数和 2 个触发器。
   当前 reconciliation findings 为 9 个可空性差异、8 个默认值差异和 5 个 FK 动作差异，均保留在生成字典中。
   首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
-  其余 29 张表和 1,240 个语境相关字段明确 needs_business_confirmation。独立复审的 3 个 Important
-  已通过 RED→GREEN 修复；专项测试 30/30、generate/check、repo:check、format:check、专项 ESLint、
-  根 pnpm test、typecheck 和 build 已通过。ExcelJS 重载确认 10 个 sheet、1,589 字段精确 1,590 行、
+  3 个币种字段和 3 个时区字段由正式契约确认，其余语义槽保持 needs_business_confirmation。
+  两轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 34/34、
+  generate/check、repo:check、format:check、专项 ESLint、根 pnpm test、typecheck 和 build 已通过。
+  根 workspace 已显式声明 Excel 生成依赖；冻结安装后 security:audit（high 门槛）通过，剩 8 个 moderate。
+  ExcelJS 重载确认 10 个 sheet、模块汇总对账 112 表/1,589 字段、字段页 31 列且精确 1,590 行、
   0 个公式单元格；本机无 Excel，桌面视觉检查未执行。Codex disposition 和最终 PR/CI 尚未完成。
 ---
 
@@ -256,6 +268,13 @@ scripts/
 
 ## Review notes
 
+- `accepted/fixed`：`STD-01` 已补齐实际 writeScopes、`pnpm-lock.yaml` 与 root-tooling/repository-governance/database-contract 锁。
+- `accepted/fixed`：`STD-02` 根 workspace 显式声明 `exceljs@4.4.0`、`jszip@3.10.2`，生成器不再跨 API 私有依赖边界。
+- `accepted/fixed`：依赖审计确认 `origin/main` 同样存在 5 个 high；本分支用精确 override 升至 `brace-expansion@1.1.20/2.1.6` 与 `@grpc/grpc-js@1.14.5`，`security:audit --audit-level high` 已通过，剩 8 个 moderate。
+- `accepted/fixed`：`SMELL-01` pending 判定提取到中立共享 helper，统计与工作簿复用同一规则。
+- `accepted/fixed`：`SPEC-01` 注解改为字段级合并；名称/用途仍 pending 时独立维护的 owner/workbench/sensitivity/notes/source 仍保留。
+- `accepted/fixed`：`SPEC-02` 增加单位、币种、时区、快照、版本、审计六个独立证据槽及 Markdown/Excel 投影；仅 3 个币种字段和 3 个时区字段由正式契约确认，其余保持 pending。
+- `accepted/fixed`：`SPEC-03` 模块汇总增加模块、技术所有者、工作台三维，并通过父表对账 112 张表与 1,589 个字段。
 - `accepted/fixed`：补齐字段类型族、精度、可空性、数组和默认值对账；真实目录保留 22 个可定位结构差异。
 - `accepted/fixed`：来源 authority 按 tracked 路径类别校验，logical reference 要求正式契约证据并验证源/目标字段。
 - `accepted/fixed`：索引 catalog 查询仅关联本表拥有的 PK/UQ/EXCLUSION constraint；实测 505 行均为唯一稳定键。
@@ -285,9 +304,9 @@ scripts/
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                          |
-| ---------- | ------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------------- |
-| 2026-09-30 | blocked | Codex  | —          | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案                                 |
-| 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                              |
-| 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                                  |
-| 2026-10-01 | review  | Claude | `009ed962` | 独立复审 3 个 Important 已修；Excel 重复行 finding 以精确行数测试驳回；1 个 Minor 与桌面视觉验收交 Codex 处置 |
+| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                            |
+| ---------- | ------- | ------ | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| 2026-09-30 | blocked | Codex  | —          | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案                                   |
+| 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                                |
+| 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                                    |
+| 2026-10-01 | review  | Claude | `009ed962` | Codex 第二轮 3 Standards + 3 Spec findings 已全部修复；依赖边界、注解独立元数据、六语义槽和模块汇总进入复审候选 |
