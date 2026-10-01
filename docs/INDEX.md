@@ -59,6 +59,7 @@
 | [数据库结构契约 V1](./architecture/DATABASE_SCHEMA_CONTRACT_V1.md)                                                | 全库表、字段、约束、索引、所有权和迁移演进的单一评审入口   | 现行实施契约 V1                 |
 | [任务：数据库数据字典与业务语义工作簿 V1](./planning/tasks/database-data-dictionary-v1.md)                        | 从迁移、Prisma 与人工审定语义生成仓库字典和业务评审 Excel  | 已定设计；待治理合入            |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                                     | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断             | 安全基线 V1                     |
+| [任务：Web OIDC/PKCE 会话与统一 API Client V1](./planning/tasks/web-oidc-session-v1.md)                           | 浏览器正式登录会话、Bearer 注入及开发身份隔离              | coding（参考路径）              |
 | [任务：多代理薄编排器 V1](./planning/tasks/thin-agent-orchestrator-v1.md)                                         | 复用现有 brief/交接协议，校验 worktree、范围和定向门禁     | blocked（待治理合入）           |
 | [任务：集团租户、账套主体与用户范围 V1](./planning/tasks/tenant-account-owner-scope-v1.md)                        | 一个集团一租户、多账套主体、用户/用户组角色范围和主体选择  | blocked（等待当前 authz 收口）  |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~013                                                      | 架构决策记录（含受控 UI、外部时间与数据字典）              | P1 已接受；011 候选、12/13 接受 |

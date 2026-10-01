@@ -1,5 +1,5 @@
 ---
-status: review
+status: blocked
 branch: feat/authz-default-deny-v1-c2b2
 owner: codex
 writer: cursor
@@ -658,26 +658,27 @@ E1 通过只证明静态门禁和已删除入口反证成立。Codex 已在最�
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责                          | commit | 说明                                                                                                                                                                                   |
-| ---------- | ------ | ----------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-29 | design | 负责人                        | —      | `AUTH-D01` 选择 A：正式登记 `container.operate`，保留守卫并按审计证据再拆                                                                                                              |
-| 2026-09-29 | coding | Codex                         | —      | 核清认证与授权差异、默认允许根因、错误码和能力目录漂移；开放 Cursor 切片 A                                                                                                             |
-| 2026-09-30 | coding | Cursor                        | —      | 切片 A 收缩：只认两个 security 文件的具名导入；重复装饰器失败关闭。`pnpm authz:routes` total=134 public=1 service=5 capability=89 missing=39 conflict=0。未接入 repo:check，未改 Guard |
-| 2026-09-30 | coding | Codex                         | —      | 审查并验收切片 A；脚本测试 46/46、`pnpm lint`、`pnpm repo:check`、`pnpm format:check`、`pnpm test` 通过。保留 39 个缺口供后续定权，未进入切片 B                                        |
-| 2026-09-30 | design | 负责人                        | —      | `AUTH-D02`～`AUTH-D04` 均选择 A：移除 Echo 与人工创建任务 HTTP 入口；人工可靠性恢复与 service-only 机器链分离                                                                          |
-| 2026-09-30 | coding | Codex                         | —      | 完成 B1 的 39 条路由定权：35 条映射现有能力，4 条决定移除；B2 二次守卫审查未完成。只开放 Cursor C1 的费用、证据和导入 13 条路由，尚未修改运行时代码                                    |
-| 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C1 为费用、证据与导入 13 条路由补齐方法级能力并通过双重审查；审计降至 `missing=26`。总任务仍未完成，未开放 Guard 默认拒绝或对象级授权结论                                              |
-| 2026-09-30 | coding | Codex                         | —      | 开放 C2A：仅处理 lifecycle-control 的 client-operation、inbox dead-letter、outbox 共 13 条路由元数据；其余 13 条及 4 条入口删除保持封闭                                                |
-| 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2A 为生命周期控制可靠性 13 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=13`。总任务仍未完成                                                 |
-| 2026-09-30 | coding | Codex                         | —      | 开放 C2B1：仅为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；4 条已决定移除的入口保持封闭并留给 C2B2                                                                 |
-| 2026-09-30 | coding | Cursor / Codex / 独立安全复审 | —      | C2B1 为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=4`。总任务仍未完成                             |
-| 2026-09-30 | coding | Codex                         | —      | 开放 C2B2：只移除 4 条已批准的生产 HTTP 入口及专属 transport DTO；保留任务内部 Port、Workflow/Worker 自动化能力与 service-only 系统 Schedule，预期路由审计清零                         |
-| 2026-09-30 | coding | 负责人 / Codex                | —      | 调整执行节奏：C2B2、D、E 共用任务集成分支和最终安全 PR；Cursor 只跑切片定向检查，Codex 在最终候选统一跑完整门禁；独立复审按新决策/风险触发，Temporal 外部迁移只阻止部署与 `done`       |
-| 2026-09-30 | coding | Cursor / Codex                | —      | C2B2 删除 4 条已批准入口并通过 Codex 代码审核与定向门禁；审计清零。运行时 404/405、Swagger 路径缺失和完整门禁转由阶段 E，任务仍为 `coding`                                             |
-| 2026-09-30 | coding | Cursor / Codex                | —      | 阶段 D 默认拒绝与专用 GC-011 403 信封通过 Codex 审查及定向门禁；阶段 E、B2 对象范围、完整门禁与生产 Schedule 迁移仍未完成，任务保持 `coding`                                           |
-| 2026-09-30 | coding | Cursor / Codex                | —      | E1 静态硬门禁、删除入口运行时反证和调用方扫描通过审查；Swagger 改由 Codex 在 tsc 编译产物上复核，不引入 SWC 测试链。完整门禁、独立复审、B2 与生产迁移仍未完成                          |
-| 2026-09-30 | coding | Codex                         | —      | tsc 编译产物 Swagger 反证及最终候选完整 `pnpm validate` 通过；后续仅改 brief，不重跑全量。最终独立安全复审、B2 对象范围与生产 Schedule 迁移仍未完成                                    |
-| 2026-10-01 | fix    | Cursor / Codex / 独立安全复审 | —      | B2F1R 关闭任务详情与 task.execute 无柜路径的租户读取漏洞；定向 153 项、真实 PG 11 项及门禁通过。独立复审新增并采纳并发与事务写范围 findings，开放 B2F1C 收口，不扩角色平台。           |
-| 2026-10-01 | fix    | 负责人 / Codex                | —      | 按权限演进纪律重申三层边界：本任务完成默认拒绝、能力码、不可配置租户隔离和已证实漏洞；角色/范围可演进，业务状态规则留在业务模块。账套主体由独立 brief 承接，不阻塞 B2F1C。             |
-| 2026-10-01 | fix    | Cursor / Codex                | —      | B2F1C 关闭 task.execute 事务写范围与完成并发漏洞；Codex 复跑定向单元 45 项和真实 PG 18 项。两个既有 GC-009 缺口登记为非阻塞后续项，本切片不再重复复审。                                |
-| 2026-10-01 | review | Codex                         | —      | 最终门禁通过 API/PG 风险面；本机 E2E 复用其它 5173 服务暴露“看提交”错误长文本溢出，最小修复后以独立 5174 探针和 Web test/lint/typecheck/build 验证，交 PR CI 复核。                    |
+| 日期       | 阶段    | 负责                          | commit     | 说明                                                                                                                                                                                   |
+| ---------- | ------- | ----------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-29 | design  | 负责人                        | —          | `AUTH-D01` 选择 A：正式登记 `container.operate`，保留守卫并按审计证据再拆                                                                                                              |
+| 2026-09-29 | coding  | Codex                         | —          | 核清认证与授权差异、默认允许根因、错误码和能力目录漂移；开放 Cursor 切片 A                                                                                                             |
+| 2026-09-30 | coding  | Cursor                        | —          | 切片 A 收缩：只认两个 security 文件的具名导入；重复装饰器失败关闭。`pnpm authz:routes` total=134 public=1 service=5 capability=89 missing=39 conflict=0。未接入 repo:check，未改 Guard |
+| 2026-09-30 | coding  | Codex                         | —          | 审查并验收切片 A；脚本测试 46/46、`pnpm lint`、`pnpm repo:check`、`pnpm format:check`、`pnpm test` 通过。保留 39 个缺口供后续定权，未进入切片 B                                        |
+| 2026-09-30 | design  | 负责人                        | —          | `AUTH-D02`～`AUTH-D04` 均选择 A：移除 Echo 与人工创建任务 HTTP 入口；人工可靠性恢复与 service-only 机器链分离                                                                          |
+| 2026-09-30 | coding  | Codex                         | —          | 完成 B1 的 39 条路由定权：35 条映射现有能力，4 条决定移除；B2 二次守卫审查未完成。只开放 Cursor C1 的费用、证据和导入 13 条路由，尚未修改运行时代码                                    |
+| 2026-09-30 | coding  | Cursor / Codex / 独立安全复审 | —          | C1 为费用、证据与导入 13 条路由补齐方法级能力并通过双重审查；审计降至 `missing=26`。总任务仍未完成，未开放 Guard 默认拒绝或对象级授权结论                                              |
+| 2026-09-30 | coding  | Codex                         | —          | 开放 C2A：仅处理 lifecycle-control 的 client-operation、inbox dead-letter、outbox 共 13 条路由元数据；其余 13 条及 4 条入口删除保持封闭                                                |
+| 2026-09-30 | coding  | Cursor / Codex / 独立安全复审 | —          | C2A 为生命周期控制可靠性 13 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=13`。总任务仍未完成                                                 |
+| 2026-09-30 | coding  | Codex                         | —          | 开放 C2B1：仅为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；4 条已决定移除的入口保持封闭并留给 C2B2                                                                 |
+| 2026-09-30 | coding  | Cursor / Codex / 独立安全复审 | —          | C2B1 为生命周期读取/适用性、货柜读取和任务读取 9 条路由补齐方法级能力；双重审查无 finding，完整 `pnpm validate` 通过，审计降至 `missing=4`。总任务仍未完成                             |
+| 2026-09-30 | coding  | Codex                         | —          | 开放 C2B2：只移除 4 条已批准的生产 HTTP 入口及专属 transport DTO；保留任务内部 Port、Workflow/Worker 自动化能力与 service-only 系统 Schedule，预期路由审计清零                         |
+| 2026-09-30 | coding  | 负责人 / Codex                | —          | 调整执行节奏：C2B2、D、E 共用任务集成分支和最终安全 PR；Cursor 只跑切片定向检查，Codex 在最终候选统一跑完整门禁；独立复审按新决策/风险触发，Temporal 外部迁移只阻止部署与 `done`       |
+| 2026-09-30 | coding  | Cursor / Codex                | —          | C2B2 删除 4 条已批准入口并通过 Codex 代码审核与定向门禁；审计清零。运行时 404/405、Swagger 路径缺失和完整门禁转由阶段 E，任务仍为 `coding`                                             |
+| 2026-09-30 | coding  | Cursor / Codex                | —          | 阶段 D 默认拒绝与专用 GC-011 403 信封通过 Codex 审查及定向门禁；阶段 E、B2 对象范围、完整门禁与生产 Schedule 迁移仍未完成，任务保持 `coding`                                           |
+| 2026-09-30 | coding  | Cursor / Codex                | —          | E1 静态硬门禁、删除入口运行时反证和调用方扫描通过审查；Swagger 改由 Codex 在 tsc 编译产物上复核，不引入 SWC 测试链。完整门禁、独立复审、B2 与生产迁移仍未完成                          |
+| 2026-09-30 | coding  | Codex                         | —          | tsc 编译产物 Swagger 反证及最终候选完整 `pnpm validate` 通过；后续仅改 brief，不重跑全量。最终独立安全复审、B2 对象范围与生产 Schedule 迁移仍未完成                                    |
+| 2026-10-01 | fix     | Cursor / Codex / 独立安全复审 | —          | B2F1R 关闭任务详情与 task.execute 无柜路径的租户读取漏洞；定向 153 项、真实 PG 11 项及门禁通过。独立复审新增并采纳并发与事务写范围 findings，开放 B2F1C 收口，不扩角色平台。           |
+| 2026-10-01 | fix     | 负责人 / Codex                | —          | 按权限演进纪律重申三层边界：本任务完成默认拒绝、能力码、不可配置租户隔离和已证实漏洞；角色/范围可演进，业务状态规则留在业务模块。账套主体由独立 brief 承接，不阻塞 B2F1C。             |
+| 2026-10-01 | fix     | Cursor / Codex                | —          | B2F1C 关闭 task.execute 事务写范围与完成并发漏洞；Codex 复跑定向单元 45 项和真实 PG 18 项。两个既有 GC-009 缺口登记为非阻塞后续项，本切片不再重复复审。                                |
+| 2026-10-01 | review  | Codex                         | —          | 最终门禁通过 API/PG 风险面；本机 E2E 复用其它 5173 服务暴露“看提交”错误长文本溢出，最小修复后以独立 5174 探针和 Web test/lint/typecheck/build 验证，交 PR CI 复核。                    |
+| 2026-10-01 | blocked | Codex                         | `2f5a45fe` | PR #112 已合入 main，必需 CI 与最终独立安全复审通过；代码底座不再阻塞 Web OIDC。任务仍受 Temporal 旧租户 Schedule 运维证据、授权决定审计及已登记后续治理项阻塞，不冒充 `done`。        |
