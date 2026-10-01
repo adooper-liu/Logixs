@@ -5,6 +5,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../../generated/prisma";
 import type { ReconcileAppliedLifecycleFactCommand } from "../reconcile-applied-lifecycle-fact.port";
 import { ReconcileAppliedLifecycleFactService } from "../application/reconcile-applied-lifecycle-fact.service";
+import { CompleteWorkOrderService } from "../application/complete-work-order.service";
+import {
+  buildCommittedClientOperation,
+  WORK_CLAIM_ACTION,
+  WORK_COMPLETE_ACTION,
+} from "../domain/client-operation";
+import { PrismaWorkClientOperationRepository } from "./prisma-client-operation.repository";
 import { PrismaWorkExecutionRepository } from "./prisma-work-execution.repository";
 import { createPostgresAdapter } from "../../../prisma/postgres-adapter";
 
@@ -18,6 +25,7 @@ const repositoryRoot = resolve(__dirname, "../../../../../..");
 let prisma: PrismaClient;
 let repository: PrismaWorkExecutionRepository;
 let service: ReconcileAppliedLifecycleFactService;
+let completeService: CompleteWorkOrderService;
 
 beforeAll(async () => {
   const pnpmEntrypoint = process.env.npm_execpath;
@@ -33,6 +41,11 @@ beforeAll(async () => {
   await prisma.$connect();
   repository = new PrismaWorkExecutionRepository(prisma as never);
   service = new ReconcileAppliedLifecycleFactService(repository);
+  completeService = new CompleteWorkOrderService(
+    repository,
+    new PrismaWorkClientOperationRepository(prisma as never),
+    { execute: async () => undefined },
+  );
 });
 
 afterAll(async () => {
@@ -249,6 +262,231 @@ describe("PrismaWorkExecutionRepository tenant-scoped reads", () => {
     ).resolves.toBeNull();
   });
 });
+
+describe("PrismaWorkExecutionRepository claim/complete 写入范围与并发", () => {
+  it.each(["claim", "complete"] as const)(
+    "%s 错租户：工单、任务、outcome 与 ClientOperation 均零写入",
+    async (action) => {
+      const fixture = await createFixture();
+      const before = await writeSnapshot(fixture.taskId);
+      const otherTenant = `tenant-${randomUUID()}`;
+
+      const result = await applyWrite(action, {
+        tenantId: otherTenant,
+        workOrderId: fixture.workOrderId,
+        taskId: fixture.taskId,
+      });
+
+      expect(result).toEqual({ kind: "scope_mismatch" });
+      await expect(writeSnapshot(fixture.taskId)).resolves.toEqual(before);
+      await expect(
+        operationCount(fixture.workOrderId, otherTenant),
+      ).resolves.toBe(0);
+    },
+  );
+
+  it.each(["claim", "complete"] as const)(
+    "%s 错配 taskId：两张任务及其工单均零写入",
+    async (action) => {
+      const fixture = await createFixture();
+      const other = await createFixture();
+      await prisma.nodeTask.update({
+        where: { id: other.taskId },
+        data: { tenantId: fixture.tenantId },
+      });
+      const before = await Promise.all([
+        writeSnapshot(fixture.taskId),
+        writeSnapshot(other.taskId),
+      ]);
+
+      const result = await applyWrite(action, {
+        tenantId: fixture.tenantId,
+        workOrderId: fixture.workOrderId,
+        taskId: other.taskId,
+      });
+
+      expect(result).toEqual({ kind: "scope_mismatch" });
+      await expect(
+        Promise.all([
+          writeSnapshot(fixture.taskId),
+          writeSnapshot(other.taskId),
+        ]),
+      ).resolves.toEqual(before);
+      await expect(
+        operationCount(fixture.workOrderId, fixture.tenantId),
+      ).resolves.toBe(0);
+    },
+  );
+
+  it("完成时任务版本落后：已执行的工单更新随事务回滚", async () => {
+    const fixture = await createFixture();
+    await prisma.nodeTask.update({
+      where: { id: fixture.taskId },
+      data: { version: { increment: 1 } },
+    });
+    const before = await writeSnapshot(fixture.taskId);
+
+    const result = await applyWrite("complete", {
+      tenantId: fixture.tenantId,
+      workOrderId: fixture.workOrderId,
+      taskId: fixture.taskId,
+    });
+
+    expect(result).toEqual({ kind: "version_conflict" });
+    await expect(writeSnapshot(fixture.taskId)).resolves.toEqual(before);
+    await expect(
+      operationCount(fixture.workOrderId, fixture.tenantId),
+    ).resolves.toBe(0);
+  });
+
+  it("同一工单以不同幂等键并发完成：只发生一次版本转换，另一方 applied=false", async () => {
+    const fixture = await createFixture();
+
+    const results = await Promise.all(
+      ["key-a", "key-b"].map((idempotencyKey) =>
+        completeService.execute({
+          workOrderId: fixture.workOrderId,
+          tenantId: fixture.tenantId,
+          actorId: "operator-1",
+          idempotencyKey,
+        }),
+      ),
+    );
+
+    expect(results.map((result) => result.applied).sort()).toEqual([
+      false,
+      true,
+    ]);
+    const snapshot = await writeSnapshot(fixture.taskId);
+    expect(snapshot.workOrders).toEqual([
+      { id: fixture.workOrderId, state: "completed", version: 1 },
+    ]);
+    expect(snapshot.task).toEqual({ state: "completed", version: 1 });
+    expect(snapshot.outcomes).toBe(1);
+    await expect(operationStates(fixture.workOrderId)).resolves.toEqual([
+      "committed",
+      "committed",
+    ]);
+  });
+
+  it("同任务最后两张工单并发完成：两工单完成、任务 completed、outcome 仅一份", async () => {
+    const fixture = await createFixture();
+    const secondWorkOrderId = randomUUID();
+    await prisma.workOrder.create({
+      data: {
+        id: secondWorkOrderId,
+        nodeTaskId: fixture.taskId,
+        workOrderDefinitionKey: "wo-container_unloading-2",
+        state: "ready",
+        applicability: "required",
+        assignmentState: "unassigned",
+      },
+    });
+
+    const results = await Promise.all(
+      [fixture.workOrderId, secondWorkOrderId].map((workOrderId) =>
+        completeService.execute({
+          workOrderId,
+          tenantId: fixture.tenantId,
+          actorId: "operator-1",
+        }),
+      ),
+    );
+
+    expect(results.map((result) => result.applied)).toEqual([true, true]);
+    expect(
+      results.filter((result) => result.outcomeRecorded === true),
+    ).toHaveLength(1);
+    const snapshot = await writeSnapshot(fixture.taskId);
+    expect(snapshot.workOrders.map(({ state }) => state)).toEqual([
+      "completed",
+      "completed",
+    ]);
+    expect(snapshot.task.state).toBe("completed");
+    expect(snapshot.outcomes).toBe(1);
+    const outcome = await prisma.nodeTaskOutcome.findUniqueOrThrow({
+      where: { nodeTaskId: fixture.taskId },
+    });
+    expect([...(outcome.completedWorkOrderIds as string[])].sort()).toEqual(
+      [fixture.workOrderId, secondWorkOrderId].sort(),
+    );
+    const operations = await Promise.all([
+      operationStates(fixture.workOrderId),
+      operationStates(secondWorkOrderId),
+    ]);
+    expect(operations).toEqual([["committed"], ["committed"]]);
+  });
+});
+
+async function applyWrite(
+  action: "claim" | "complete",
+  scope: { tenantId: string; workOrderId: string; taskId: string },
+) {
+  const clientOperation = buildCommittedClientOperation({
+    id: randomUUID(),
+    tenantId: scope.tenantId,
+    actorType: "user",
+    actorId: "operator-1",
+    actionCode: action === "claim" ? WORK_CLAIM_ACTION : WORK_COMPLETE_ACTION,
+    targetId: scope.workOrderId,
+    correlationId: randomUUID(),
+    traceId: `trace-${randomUUID()}`,
+    idempotencyKey: `key-${randomUUID()}`,
+    requestHash: "a".repeat(64),
+    resultRefs: [],
+    now: new Date(),
+  });
+  if (action === "claim") {
+    return repository.applyWorkOrderClaim({
+      ...scope,
+      workOrderState: "in_progress",
+      assignmentState: "assigned",
+      assigneeId: "operator-1",
+      taskState: "in_progress",
+      clientOperation,
+    });
+  }
+  return repository.applyWorkOrderCompletion({
+    ...scope,
+    expectedWorkOrderVersion: 0,
+    workOrderState: "completed",
+    completedAt: new Date(),
+    expectedTaskVersion: 0,
+    taskState: "completed",
+    outcome: null,
+    clientOperation,
+  });
+}
+
+async function writeSnapshot(taskId: string) {
+  const [task, workOrders, outcomes] = await Promise.all([
+    prisma.nodeTask.findUniqueOrThrow({
+      where: { id: taskId },
+      select: { state: true, version: true },
+    }),
+    prisma.workOrder.findMany({
+      where: { nodeTaskId: taskId },
+      select: { id: true, state: true, version: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.nodeTaskOutcome.count({ where: { nodeTaskId: taskId } }),
+  ]);
+  return { task, workOrders, outcomes };
+}
+
+function operationCount(workOrderId: string, tenantId: string) {
+  return prisma.clientOperation.count({
+    where: { targetId: workOrderId, tenantId },
+  });
+}
+
+async function operationStates(workOrderId: string): Promise<string[]> {
+  const rows = await prisma.clientOperation.findMany({
+    where: { targetId: workOrderId },
+    select: { commitState: true },
+  });
+  return rows.map((row) => row.commitState);
+}
 
 interface Fixture {
   tenantId: string;

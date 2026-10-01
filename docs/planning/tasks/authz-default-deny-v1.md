@@ -1,5 +1,5 @@
 ---
-status: fix
+status: review
 branch: feat/authz-default-deny-v1-c2b2
 verification: |
   已核对全局 AuthenticationGuard / AuthorizationGuard、路由访问元数据、身份能力模型、
@@ -26,9 +26,10 @@ verification: |
   适用性幂等重放存在两个可直接修复的范围缺口。B2F1R 已把任务详情、领取、完成和幂等重放改为从 Repository
   起按租户读取，定向单元测试 153 项、真实 PostgreSQL 集成测试 11 项及相关门禁通过；`AUTH-B2-01/02/11`
   的窄修复成立。独立复审另确认完成工单缺少并发版本守卫，且领取/完成的事务写谓词未携带租户范围；已采纳为
-  `AUTH-B2-13/14` 并进入 B2F1C，不把它们扩大为角色或通用权限平台。组织/地点范围、ActionDefinition、
-  职责分离、完整幂等范围、授权决定审计和统一错误面仍须分片治理。最终安全收口复审和生产 Temporal Schedule
-  迁移仍未完成。
+  `AUTH-B2-13/14` 并由 B2F1C 关闭：领取/完成事务写入已携带租户与父链条件，完成路径已增加工单和任务双版本
+  守卫、有界重读重算及真实 PostgreSQL 并发反证。B2F1C 已定案通过，不再重复复审。组织/地点范围、
+  ActionDefinition、职责分离、完整幂等范围、授权决定审计和统一错误面仍须分片治理。最终安全收口复审和生产
+  Temporal Schedule 迁移仍未完成。
 ---
 
 # 任务：API 操作级授权默认拒绝 V1
@@ -233,22 +234,24 @@ verification: |
 
 审查处置：
 
-| finding                                                               | 级别   | 处置                         | 后续                                                                                    |
-| --------------------------------------------------------------------- | ------ | ---------------------------- | --------------------------------------------------------------------------------------- |
-| `AUTH-B2-01` 任务详情查询未从 Repository 起带租户范围                 | high   | `closed`，B2F1R 已验证       | tenant-scoped Repository 查询及真实 PostgreSQL 正反测试通过                             |
-| `AUTH-B2-02` 节点适用性幂等重放未绑定 flow                            | high   | `closed`，窄修复已验证       | 返回重放结果前核对当前 flow；完整幂等范围仍见 `AUTH-B2-12`                              |
-| `AUTH-B2-03` 组织/地点/assigned/owned/designated 范围未进入身份上下文 | high   | `pending-owner`              | 与 Web OIDC/身份映射一起设计范围来源、空集合语义和迁移；禁止 tenant 兜底冒充完整范围    |
-| `AUTH-B2-04` 五条 `container.operate` 未接 `ActionDefinitionV1`       | high   | `accepted`，但需独立实现切片 | 先选一条真实命令作参考接入，再复用到其余四条；不得在 B2F1 临时复制动作表                |
-| `AUTH-B2-05` 证据 subject 归属与职责分离缺口                          | high   | `pending-owner`              | 先定 subject 解析责任和提交人审计事实，再决定是否需要迁移                               |
-| `AUTH-B2-06` 补偿推进/人工排空缺操作者、原因或复核                    | medium | `pending-owner`              | 负责人按风险决定哪些恢复动作要求 four-eyes；未定前不伪造默认原因                        |
-| `AUTH-B2-07` ClientOperation 拒绝回执未核对目标货柜                   | medium | `accepted`                   | 后续小切片在写拒绝事实前执行租户对象断言                                                |
-| `AUTH-B2-08` 费用范围与生效区间缺口                                   | high   | `pending-owner`              | 与费用台规格一起定适用键、区间重叠和组织/地点范围，不由 API 猜测                        |
-| `AUTH-B2-09` Application 授权/不存在错误面不一致                      | medium | `accepted`，独立横向切片     | 设计统一异常映射和存在性保护；阶段 D 的专用 Guard filter 不扩大捕获范围                 |
-| `AUTH-B2-10` 导入 owned/转交范围与执行审计缺口                        | medium | `pending-owner`              | 与导入岗位责任/转交规则一起定案，不把上传者永久等同所有者                               |
-| `AUTH-B2-11` 领取/完成无柜工单可跳过租户校验                          | high   | `closed`，B2F1R 已验证       | claim/complete 首次执行和重放均按租户读取；跨租户与不存在同形且零写入                   |
-| `AUTH-B2-12` 节点适用性幂等键范围与完整请求哈希未定                   | medium | `pending-owner`              | 在 ActionDefinition 登记 idempotencyScope 后再定 tenant/flow 键空间及证据、原因冲突语义 |
-| `AUTH-B2-13` 完成工单缺少并发版本守卫                                 | high   | `accepted`，B2F1C 修复       | 事务以已读版本条件更新；冲突后重读重算，保证任务聚合与 outcome 唯一正确                 |
-| `AUTH-B2-14` 领取/完成事务写谓词未携带租户和父链                      | medium | `accepted`，B2F1C 修复       | 写端口携带 tenant；事务内重验工单所属任务、任务租户和 ID 关系，失败时整笔回滚           |
+| finding                                                               | 级别   | 处置                         | 后续                                                                                     |
+| --------------------------------------------------------------------- | ------ | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `AUTH-B2-01` 任务详情查询未从 Repository 起带租户范围                 | high   | `closed`，B2F1R 已验证       | tenant-scoped Repository 查询及真实 PostgreSQL 正反测试通过                              |
+| `AUTH-B2-02` 节点适用性幂等重放未绑定 flow                            | high   | `closed`，窄修复已验证       | 返回重放结果前核对当前 flow；完整幂等范围仍见 `AUTH-B2-12`                               |
+| `AUTH-B2-03` 组织/地点/assigned/owned/designated 范围未进入身份上下文 | high   | `pending-owner`              | 与 Web OIDC/身份映射一起设计范围来源、空集合语义和迁移；禁止 tenant 兜底冒充完整范围     |
+| `AUTH-B2-04` 五条 `container.operate` 未接 `ActionDefinitionV1`       | high   | `accepted`，但需独立实现切片 | 先选一条真实命令作参考接入，再复用到其余四条；不得在 B2F1 临时复制动作表                 |
+| `AUTH-B2-05` 证据 subject 归属与职责分离缺口                          | high   | `pending-owner`              | 先定 subject 解析责任和提交人审计事实，再决定是否需要迁移                                |
+| `AUTH-B2-06` 补偿推进/人工排空缺操作者、原因或复核                    | medium | `pending-owner`              | 负责人按风险决定哪些恢复动作要求 four-eyes；未定前不伪造默认原因                         |
+| `AUTH-B2-07` ClientOperation 拒绝回执未核对目标货柜                   | medium | `accepted`                   | 后续小切片在写拒绝事实前执行租户对象断言                                                 |
+| `AUTH-B2-08` 费用范围与生效区间缺口                                   | high   | `pending-owner`              | 与费用台规格一起定适用键、区间重叠和组织/地点范围，不由 API 猜测                         |
+| `AUTH-B2-09` Application 授权/不存在错误面不一致                      | medium | `accepted`，独立横向切片     | 设计统一异常映射和存在性保护；阶段 D 的专用 Guard filter 不扩大捕获范围                  |
+| `AUTH-B2-10` 导入 owned/转交范围与执行审计缺口                        | medium | `pending-owner`              | 与导入岗位责任/转交规则一起定案，不把上传者永久等同所有者                                |
+| `AUTH-B2-11` 领取/完成无柜工单可跳过租户校验                          | high   | `closed`，B2F1R 已验证       | claim/complete 首次执行和重放均按租户读取；跨租户与不存在同形且零写入                    |
+| `AUTH-B2-12` 节点适用性幂等键范围与完整请求哈希未定                   | medium | `pending-owner`              | 在 ActionDefinition 登记 idempotencyScope 后再定 tenant/flow 键空间及证据、原因冲突语义  |
+| `AUTH-B2-13` 完成工单缺少并发版本守卫                                 | high   | `closed`，B2F1C 已验证       | 双版本条件更新、最多三次重读重算及真实 PostgreSQL 并发结果验证通过                       |
+| `AUTH-B2-14` 领取/完成事务写谓词未携带租户和父链                      | medium | `closed`，B2F1C 已验证       | 写端口携带 tenant；事务内重验工单所属任务、任务租户和 ID 关系，失败时整笔回滚            |
+| `AUTH-B2-15` 领取/完成同一幂等键并发仍可能竞争唯一键                  | medium | `accepted`，可靠性后续切片   | 既有横向 ClientOperation 竞态；唯一冲突后重读原操作或原子占位，不阻塞 B2F1C              |
+| `AUTH-B2-16` 完成并发重试耗尽未保留可重试操作阶段                     | medium | `accepted`，可靠性后续切片   | 不写业务 rejected 正确；后续按 GC-009 补 received/pending 或 commit_failed，不阻塞 B2F1C |
 
 #### Cursor 切片 B2F1：两个确定性范围漏洞
 
@@ -341,6 +344,24 @@ verification: |
 7. Cursor 只运行相关 Application/Repository 单元测试、目标 PostgreSQL 集成测试、API lint/typecheck、
    `pnpm repo:check`、`pnpm format:check` 和 `git diff --check`；不重复完整 `validate`。完成后按 AGENTS.md 返回
    `REVIEW` 首行和 `logix-handoff/v1`，保留未提交差异。
+
+#### B2F1C 审查结果与后续边界
+
+- [x] claim/complete 写端口携带 `tenantId`，事务内以工单 ID、任务 ID 和任务租户共同限定；范围不命中时整笔回滚。
+- [x] complete 以已读工单版本和任务版本执行条件更新；冲突后有界重读重算，不以最后写入覆盖。
+- [x] 真实 PostgreSQL 覆盖错租户、错配 taskId、旧任务版本回滚、同工单不同 key 并发和同任务最后两工单并发；
+      Codex 复跑定向单元测试 45 项与目标集成测试 18 项，全部通过。
+- [x] B2F1C 定案通过，不再重复复审；最终安全候选形成后统一运行一次完整门禁和一次独立安全复审。
+- [x] 最终门禁已通过 repo/contract/db generate/lint/format/typecheck/unit 与真实 PostgreSQL integration；Web E2E
+      因复用本机另一工作区占用的 5173 服务，在 `/real-operations` 错误长文本处得到 112 通过、7 跳过、1 失败。
+      当前 worktree 已补错误文本断行，并以独立 Vite 5174 复现同一 403 场景，移动端内容宽度为 380/380；Web
+      定向测试 3 项、lint、typecheck、build 均通过。完整干净环境 E2E 由 PR CI 最终确认，不在本机重复跑全套。
+
+| finding                      | 处置                     | 理由与承接                                                                                        |
+| ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `B2F1C-IDEMPOTENCY-01`       | `accepted`，非本切片阻塞 | 同 key 并发竞态早于 B2F1C 存在，属于 GC-009 横向可靠性；登记为 `AUTH-B2-15`，不得反复退回本切片。 |
+| `B2F1C-RECEIPT-02`           | `accepted`，非本切片阻塞 | 并发耗尽不应伪造业务拒绝，但需后续保留可重试操作阶段；登记为 `AUTH-B2-16`，由可靠性切片统一设计。 |
+| `B2F1C-CONCURRENCY-PROBE-03` | `rejected` 为阻塞项      | 单元测试已强制覆盖冲突重读，真实 PG 已覆盖旧版本回滚与最终事实；不再为指定线程交错增加测试钩子。  |
 
 ### 已完成 C1. 费用、证据与导入路由显式分类
 
@@ -641,3 +662,5 @@ E1 通过只证明静态门禁和已删除入口反证成立。Codex 已在最�
 | 2026-09-30 | coding | Codex                         | —      | tsc 编译产物 Swagger 反证及最终候选完整 `pnpm validate` 通过；后续仅改 brief，不重跑全量。最终独立安全复审、B2 对象范围与生产 Schedule 迁移仍未完成                                    |
 | 2026-10-01 | fix    | Cursor / Codex / 独立安全复审 | —      | B2F1R 关闭任务详情与 task.execute 无柜路径的租户读取漏洞；定向 153 项、真实 PG 11 项及门禁通过。独立复审新增并采纳并发与事务写范围 findings，开放 B2F1C 收口，不扩角色平台。           |
 | 2026-10-01 | fix    | 负责人 / Codex                | —      | 按权限演进纪律重申三层边界：本任务完成默认拒绝、能力码、不可配置租户隔离和已证实漏洞；角色/范围可演进，业务状态规则留在业务模块。账套主体由独立 brief 承接，不阻塞 B2F1C。             |
+| 2026-10-01 | fix    | Cursor / Codex                | —      | B2F1C 关闭 task.execute 事务写范围与完成并发漏洞；Codex 复跑定向单元 45 项和真实 PG 18 项。两个既有 GC-009 缺口登记为非阻塞后续项，本切片不再重复复审。                                |
+| 2026-10-01 | review | Codex                         | —      | 最终门禁通过 API/PG 风险面；本机 E2E 复用其它 5173 服务暴露“看提交”错误长文本溢出，最小修复后以独立 5174 探针和 Web test/lint/typecheck/build 验证，交 PR CI 复核。                    |

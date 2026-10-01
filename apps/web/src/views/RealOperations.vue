@@ -183,6 +183,7 @@ onMounted(() => {
 }
 .hint--error {
   color: var(--app-danger, #dc2626);
+  overflow-wrap: anywhere;
 }
 .table-wrap {
   overflow-x: auto;

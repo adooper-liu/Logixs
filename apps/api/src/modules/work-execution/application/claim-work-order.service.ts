@@ -265,7 +265,8 @@ export class ClaimWorkOrderService {
         ? (taskDecision.next as NodeTaskState)
         : bundle.task.state;
 
-    const applied = await this.repository.applyWorkOrderClaim({
+    const persisted = await this.repository.applyWorkOrderClaim({
+      tenantId,
       workOrderId,
       workOrderState: decision.nextState,
       assignmentState: decision.assignmentState,
@@ -274,7 +275,10 @@ export class ClaimWorkOrderService {
       taskState: nextTaskState,
       clientOperation: operation,
     });
-    if (!applied) {
+    if (persisted.kind === "scope_mismatch") {
+      throw new NotFoundException("RESOURCE_NOT_FOUND");
+    }
+    if (persisted.kind === "state_conflict") {
       const latest = await this.repository.findWorkOrderInTenant({
         workOrderId,
         tenantId,

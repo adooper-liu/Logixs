@@ -98,7 +98,7 @@ describe("ClaimWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderClaim: vi.fn().mockResolvedValue(true),
+      applyWorkOrderClaim: vi.fn().mockResolvedValue({ kind: "applied" }),
     };
     const { service } = await buildService(repository);
 
@@ -117,7 +117,9 @@ describe("ClaimWorkOrderService", () => {
     });
     expect(repository.applyWorkOrderClaim).toHaveBeenCalledWith(
       expect.objectContaining({
+        tenantId: "t1",
         workOrderId: "w1",
+        taskId: "t1",
         workOrderState: "in_progress",
         assignmentState: "assigned",
         assigneeId: "op-1",
@@ -196,13 +198,33 @@ describe("ClaimWorkOrderService", () => {
         .mockResolvedValueOnce(bundle.workOrders[0])
         .mockResolvedValueOnce(taken),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderClaim: vi.fn().mockResolvedValue(false),
+      applyWorkOrderClaim: vi
+        .fn()
+        .mockResolvedValue({ kind: "state_conflict" }),
     };
     const { service } = await buildService(repository);
 
     await expect(service.execute(command())).rejects.toThrow(
       "工单已被他人领取",
     );
+  });
+
+  it("事务内租户或父链不命中表现为不存在，不重读也不落操作回执", async () => {
+    const bundle = readyBundle();
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderClaim: vi
+        .fn()
+        .mockResolvedValue({ kind: "scope_mismatch" }),
+    };
+    const { service, operations } = await buildService(repository);
+
+    const error = await service.execute(command()).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(NotFoundException);
+    expect(repository.findWorkOrderInTenant).toHaveBeenCalledTimes(1);
+    expect(operations.insert).not.toHaveBeenCalled();
   });
 
   it("同键同哈希复用，不重复领取", async () => {
@@ -278,7 +300,7 @@ describe("ClaimWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderClaim: vi.fn().mockResolvedValue(true),
+      applyWorkOrderClaim: vi.fn().mockResolvedValue({ kind: "applied" }),
     };
     const { service, assertContainerTenant } = await buildService(repository);
 
@@ -332,7 +354,7 @@ describe("ClaimWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderClaim: vi.fn().mockResolvedValue(true),
+      applyWorkOrderClaim: vi.fn().mockResolvedValue({ kind: "applied" }),
     };
     const { service, assertContainerTenant } = await buildService(repository);
 

@@ -9,11 +9,14 @@ import type {
   WorkOrderState,
   WorkOrderApplicability,
 } from "@logix/contracts";
+import type { Prisma } from "../../../../../../generated/prisma";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { clientOperationCreateData } from "./client-operation-persist";
 import type {
   ApplyWorkOrderClaimInput,
+  ApplyWorkOrderClaimResult,
   ApplyWorkOrderCompletionInput,
+  ApplyWorkOrderCompletionResult,
   ApplyLifecycleFactReconciliationInput,
   ApplyLifecycleFactReconciliationResult,
   CreateTaskInput,
@@ -278,77 +281,124 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
     });
   }
 
-  async applyWorkOrderClaim(input: ApplyWorkOrderClaimInput): Promise<boolean> {
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.workOrder.updateMany({
-        where: {
-          id: input.workOrderId,
-          assignmentState: { in: ["unassigned", "pool"] },
-          state: { in: ["ready", "reopened", "in_progress"] },
-        },
-        data: {
-          state: input.workOrderState,
-          assignmentState: input.assignmentState,
-          assigneeId: input.assigneeId,
-          version: { increment: 1 },
-        },
-      });
-      if (updated.count === 0) return false;
-      await tx.nodeTask.update({
-        where: { id: input.taskId },
-        data: { state: input.taskState, version: { increment: 1 } },
-      });
-      if (input.clientOperation) {
-        await tx.clientOperation.create({
-          data: clientOperationCreateData(input.clientOperation),
+  async applyWorkOrderClaim(
+    input: ApplyWorkOrderClaimInput,
+  ): Promise<ApplyWorkOrderClaimResult> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const scope = workOrderScope(input);
+        const updated = await tx.workOrder.updateMany({
+          where: {
+            ...scope,
+            assignmentState: { in: ["unassigned", "pool"] },
+            state: { in: ["ready", "reopened", "in_progress"] },
+          },
+          data: {
+            state: input.workOrderState,
+            assignmentState: input.assignmentState,
+            assigneeId: input.assigneeId,
+            version: { increment: 1 },
+          },
         });
+        if (updated.count === 0) {
+          const inScope = await tx.workOrder.count({ where: scope });
+          return inScope === 1
+            ? { kind: "state_conflict" as const }
+            : { kind: "scope_mismatch" as const };
+        }
+        const task = await tx.nodeTask.updateMany({
+          where: { id: input.taskId, tenantId: input.tenantId },
+          data: { state: input.taskState, version: { increment: 1 } },
+        });
+        if (task.count !== 1)
+          throw new WorkExecutionWriteRejected("scope_mismatch");
+        if (input.clientOperation) {
+          await tx.clientOperation.create({
+            data: clientOperationCreateData(input.clientOperation),
+          });
+        }
+        return { kind: "applied" as const };
+      });
+    } catch (error) {
+      if (error instanceof WorkExecutionWriteRejected) {
+        return { kind: "scope_mismatch" };
       }
-      return true;
-    });
+      throw error;
+    }
   }
 
   async applyWorkOrderCompletion(
     input: ApplyWorkOrderCompletionInput,
-  ): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.workOrder.update({
-        where: { id: input.workOrderId },
-        data: {
-          state: input.workOrderState,
-          completedAt: input.completedAt,
-          version: { increment: 1 },
-        },
-      });
-      await tx.nodeTask.update({
-        where: { id: input.taskId },
-        data: { state: input.taskState, version: { increment: 1 } },
-      });
-      if (input.outcome) {
-        await tx.nodeTaskOutcome.create({
+  ): Promise<ApplyWorkOrderCompletionResult> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const scope = workOrderScope(input);
+        const workOrder = await tx.workOrder.updateMany({
+          where: { ...scope, version: input.expectedWorkOrderVersion },
           data: {
-            nodeTaskId: input.taskId,
-            previousState: input.outcome.previousState,
-            nextState: input.outcome.nextState,
-            resultPolicyMode: input.outcome.resultPolicyMode,
-            eventCode: input.outcome.eventCode,
-            policySnapshotHash: input.outcome.policySnapshotHash,
-            requiredWorkOrderIds: input.outcome.requiredWorkOrderIds,
-            completedWorkOrderIds: input.outcome.completedWorkOrderIds,
-            evaluatedFactRefs: input.outcome.evaluatedFactRefs ?? [],
-            canonicalEventId: input.outcome.canonicalEventId,
-            domainFactId: input.outcome.domainFactId,
-            actorOrServiceId: input.outcome.actorOrServiceId,
-            traceId: input.outcome.traceId,
-            evaluatedAt: input.completedAt,
+            state: input.workOrderState,
+            completedAt: input.completedAt,
+            version: { increment: 1 },
           },
         });
-      }
-      if (input.clientOperation) {
-        await tx.clientOperation.create({
-          data: clientOperationCreateData(input.clientOperation),
+        if (workOrder.count !== 1) {
+          const inScope = await tx.workOrder.count({ where: scope });
+          throw new WorkExecutionWriteRejected(
+            inScope === 1 ? "version_conflict" : "scope_mismatch",
+          );
+        }
+        // 任务版本守卫串行化同任务的并发完成，保证聚合与 outcome 基于最新工单集合。
+        const taskScope = { id: input.taskId, tenantId: input.tenantId };
+        const task = await tx.nodeTask.updateMany({
+          where: { ...taskScope, version: input.expectedTaskVersion },
+          data: { state: input.taskState, version: { increment: 1 } },
         });
+        if (task.count !== 1) {
+          const inScope = await tx.nodeTask.count({ where: taskScope });
+          throw new WorkExecutionWriteRejected(
+            inScope === 1 ? "version_conflict" : "scope_mismatch",
+          );
+        }
+        await this.createCompletionArtifacts(tx, input);
+      });
+      return { kind: "applied" };
+    } catch (error) {
+      if (error instanceof WorkExecutionWriteRejected) {
+        return { kind: error.kind };
       }
-    });
+      throw error;
+    }
+  }
+
+  private async createCompletionArtifacts(
+    tx: Prisma.TransactionClient,
+    input: ApplyWorkOrderCompletionInput,
+  ): Promise<void> {
+    if (input.outcome) {
+      await tx.nodeTaskOutcome.create({
+        data: {
+          nodeTaskId: input.taskId,
+          previousState: input.outcome.previousState,
+          nextState: input.outcome.nextState,
+          resultPolicyMode: input.outcome.resultPolicyMode,
+          eventCode: input.outcome.eventCode,
+          policySnapshotHash: input.outcome.policySnapshotHash,
+          requiredWorkOrderIds: input.outcome.requiredWorkOrderIds,
+          completedWorkOrderIds: input.outcome.completedWorkOrderIds,
+          evaluatedFactRefs: input.outcome.evaluatedFactRefs ?? [],
+          canonicalEventId: input.outcome.canonicalEventId,
+          domainFactId: input.outcome.domainFactId,
+          actorOrServiceId: input.outcome.actorOrServiceId,
+          traceId: input.outcome.traceId,
+          evaluatedAt: input.completedAt,
+        },
+      });
+    }
+    if (input.clientOperation) {
+      await tx.clientOperation.create({
+        data: clientOperationCreateData(input.clientOperation),
+      });
+    }
   }
 
   async applyLifecycleFactReconciliation(
@@ -608,6 +658,24 @@ function asStringArray(value: unknown): string[] {
 }
 
 class ReconciliationVersionConflict extends Error {}
+
+class WorkExecutionWriteRejected extends Error {
+  constructor(readonly kind: "scope_mismatch" | "version_conflict") {
+    super(kind);
+  }
+}
+
+function workOrderScope(input: {
+  tenantId: string;
+  workOrderId: string;
+  taskId: string;
+}) {
+  return {
+    id: input.workOrderId,
+    nodeTaskId: input.taskId,
+    nodeTask: { tenantId: input.tenantId },
+  };
+}
 
 function prismaErrorCode(error: unknown): string | null {
   if (!error || typeof error !== "object" || !("code" in error)) return null;

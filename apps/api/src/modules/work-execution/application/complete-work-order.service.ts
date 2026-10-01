@@ -37,6 +37,18 @@ import {
 } from "../domain/work-execution.repository";
 
 const ASSERT_CONTAINER_TENANT = Symbol.for("logix.AssertContainerTenant");
+const MAX_VERSION_RETRIES = 3;
+
+type OperationBase = Omit<
+  Parameters<typeof buildCommittedClientOperation>[0],
+  "resultRefs"
+>;
+
+class ConcurrencyVersionConflict extends HttpException {
+  constructor() {
+    super("CONCURRENCY_VERSION_CONFLICT", HttpStatus.CONFLICT);
+  }
+}
 
 interface AssertContainerTenantPort {
   execute(input: { containerId: string; tenantId: string }): Promise<void>;
@@ -148,14 +160,15 @@ export class CompleteWorkOrderService {
     };
 
     try {
-      return await this.complete(
-        input.workOrderId,
-        tenantId,
-        evidenceRefs,
-        base,
-      );
+      return await this.complete(input.workOrderId, tenantId, base);
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      // 并发耗尽不是业务拒绝：不落 rejected 回执，同键重试仍可获得真实结果。
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConcurrencyVersionConflict
+      ) {
+        throw error;
+      }
       const message = error instanceof HttpException ? error.message : "";
       await this.operations.insert(classifyCompleteFailure(base, message));
       if (error instanceof HttpException) throw error;
@@ -199,12 +212,21 @@ export class CompleteWorkOrderService {
   private async complete(
     workOrderId: string,
     tenantId: string,
-    evidenceRefs: string[],
-    base: Omit<
-      Parameters<typeof buildCommittedClientOperation>[0],
-      "resultRefs"
-    >,
+    base: OperationBase,
   ): Promise<CompleteWorkOrderResult> {
+    for (let attempt = 0; attempt < MAX_VERSION_RETRIES; attempt += 1) {
+      const result = await this.attempt(workOrderId, tenantId, base);
+      if (result) return result;
+    }
+    throw new ConcurrencyVersionConflict();
+  }
+
+  // 返回 null 表示读后写版本冲突，由调用方有界重读并重算任务聚合。
+  private async attempt(
+    workOrderId: string,
+    tenantId: string,
+    base: OperationBase,
+  ): Promise<CompleteWorkOrderResult | null> {
     // 跨租户与不存在同形抛 NotFound：execute 对 NotFound 不落 ClientOperation。
     const workOrder = await this.repository.findWorkOrderInTenant({
       workOrderId,
@@ -292,15 +314,22 @@ export class CompleteWorkOrderService {
         bundle.task.containerId,
       ),
     });
-    await this.repository.applyWorkOrderCompletion({
+    const persisted = await this.repository.applyWorkOrderCompletion({
+      tenantId,
       workOrderId,
+      expectedWorkOrderVersion: workOrder.version,
       workOrderState: "completed",
       completedAt: new Date(),
       taskId: bundle.task.id,
+      expectedTaskVersion: bundle.task.version,
       taskState: nextTaskState,
       outcome,
       clientOperation: operation,
     });
+    if (persisted.kind === "scope_mismatch") {
+      throw new NotFoundException("RESOURCE_NOT_FOUND");
+    }
+    if (persisted.kind === "version_conflict") return null;
 
     return {
       workOrderId,

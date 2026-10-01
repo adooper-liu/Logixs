@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { HttpException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import type { NodeTaskWithWorkOrders } from "../domain/work-execution.repository";
@@ -9,6 +9,8 @@ import { CompleteWorkOrderService } from "./complete-work-order.service";
 const ASSERT_CONTAINER_TENANT = Symbol.for("logix.AssertContainerTenant");
 
 const EVIDENCE = "22222222-2222-4222-8222-222222222222";
+const APPLIED = { kind: "applied" } as const;
+const VERSION_CONFLICT = { kind: "version_conflict" } as const;
 
 function readyBundle(
   overrides: Partial<NodeTaskWithWorkOrders["task"]> = {},
@@ -96,7 +98,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service } = await buildService(repository);
 
@@ -139,7 +141,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service } = await buildService(repository);
 
@@ -160,7 +162,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service } = await buildService(repository);
 
@@ -181,7 +183,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service } = await buildService(repository);
 
@@ -199,7 +201,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service } = await buildService(repository);
 
@@ -217,7 +219,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service } = await buildService(repository);
 
@@ -257,7 +259,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn(),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service, operations } = await buildService(repository);
 
@@ -363,7 +365,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service, assertContainerTenant } = await buildService(repository);
 
@@ -417,7 +419,7 @@ describe("CompleteWorkOrderService", () => {
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
       findTaskInTenant: vi.fn().mockResolvedValue(bundle),
-      applyWorkOrderCompletion: vi.fn().mockResolvedValue(undefined),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
     };
     const { service, assertContainerTenant } = await buildService(repository);
 
@@ -455,6 +457,151 @@ describe("CompleteWorkOrderService", () => {
       tenantId: "t1",
     });
     expect(repository.applyWorkOrderCompletion).not.toHaveBeenCalled();
+    expect(operations.insert).not.toHaveBeenCalled();
+  });
+
+  it("写入契约携带租户与已读版本", async () => {
+    const bundle = readyBundle({ version: 4 });
+    bundle.workOrders[0].version = 7;
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(APPLIED),
+    };
+    const { service } = await buildService(repository);
+
+    await service.execute(command());
+
+    expect(repository.applyWorkOrderCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "t1",
+        workOrderId: "w1",
+        taskId: "t1",
+        expectedWorkOrderVersion: 7,
+        expectedTaskVersion: 4,
+      }),
+    );
+  });
+
+  it("事务内租户或父链不命中表现为不存在且不落操作回执", async () => {
+    const bundle = readyBundle({ containerId: null });
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderCompletion: vi
+        .fn()
+        .mockResolvedValue({ kind: "scope_mismatch" }),
+    };
+    const { service, operations } = await buildService(repository);
+
+    const error = await service.execute(command()).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(NotFoundException);
+    expect(repository.applyWorkOrderCompletion).toHaveBeenCalledTimes(1);
+    expect(operations.insert).not.toHaveBeenCalled();
+  });
+
+  it("版本冲突后重读发现已完成，按 already_done 形成 applied=false 回执", async () => {
+    const stale = readyBundle({ containerId: null });
+    const fresh = readyBundle({
+      containerId: null,
+      state: "completed",
+      version: 1,
+    });
+    fresh.workOrders[0] = {
+      ...fresh.workOrders[0],
+      state: "completed",
+      version: 1,
+    };
+    const repository = {
+      findWorkOrderInTenant: vi
+        .fn()
+        .mockResolvedValueOnce(stale.workOrders[0])
+        .mockResolvedValueOnce(fresh.workOrders[0]),
+      findTaskInTenant: vi
+        .fn()
+        .mockResolvedValueOnce(stale)
+        .mockResolvedValueOnce(fresh),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(VERSION_CONFLICT),
+    };
+    const { service, operations } = await buildService(repository);
+
+    const result = await service.execute(command());
+
+    expect(result).toMatchObject({
+      applied: false,
+      workOrderState: "completed",
+      taskState: "completed",
+      commitState: "committed",
+    });
+    expect(repository.applyWorkOrderCompletion).toHaveBeenCalledTimes(1);
+    expect(operations.insert).toHaveBeenCalledTimes(1);
+    expect(operations.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ commitState: "committed" }),
+    );
+  });
+
+  it("版本冲突后重读按最新工单集合重算任务聚合与版本", async () => {
+    const sibling = {
+      ...readyBundle().workOrders[0],
+      id: "w2",
+    };
+    const stale = readyBundle({ containerId: null });
+    stale.workOrders.push({ ...sibling, state: "ready" });
+    const fresh = readyBundle({ containerId: null, version: 1 });
+    fresh.workOrders.push({ ...sibling, state: "completed", version: 1 });
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(stale.workOrders[0]),
+      findTaskInTenant: vi
+        .fn()
+        .mockResolvedValueOnce(stale)
+        .mockResolvedValueOnce(fresh),
+      applyWorkOrderCompletion: vi
+        .fn()
+        .mockResolvedValueOnce(VERSION_CONFLICT)
+        .mockResolvedValueOnce(APPLIED),
+    };
+    const { service, operations } = await buildService(repository);
+
+    const result = await service.execute(command());
+
+    expect(result).toMatchObject({
+      applied: true,
+      taskState: "completed",
+      outcomeRecorded: true,
+    });
+    expect(repository.applyWorkOrderCompletion).toHaveBeenCalledTimes(2);
+    const [first] = repository.applyWorkOrderCompletion.mock.calls[0];
+    const [second] = repository.applyWorkOrderCompletion.mock.calls[1];
+    expect(first).toMatchObject({ expectedTaskVersion: 0, outcome: null });
+    expect(first.taskState).not.toBe("completed");
+    expect(second).toMatchObject({
+      expectedTaskVersion: 1,
+      taskState: "completed",
+      outcome: expect.objectContaining({
+        completedWorkOrderIds: expect.arrayContaining(["w1", "w2"]),
+      }),
+    });
+    expect(operations.insert).not.toHaveBeenCalled();
+  });
+
+  it("有界重读后仍冲突返回稳定并发错误，不落 rejected 回执", async () => {
+    const bundle = readyBundle({ containerId: null });
+    const repository = {
+      findWorkOrderInTenant: vi.fn().mockResolvedValue(bundle.workOrders[0]),
+      findTaskInTenant: vi.fn().mockResolvedValue(bundle),
+      applyWorkOrderCompletion: vi.fn().mockResolvedValue(VERSION_CONFLICT),
+    };
+    const { service, operations } = await buildService(repository);
+
+    const error = await service.execute(command()).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(HttpException);
+    expect((error as HttpException).getStatus()).toBe(409);
+    expect((error as HttpException).getResponse()).toBe(
+      "CONCURRENCY_VERSION_CONFLICT",
+    );
+    expect(repository.applyWorkOrderCompletion).toHaveBeenCalledTimes(3);
     expect(operations.insert).not.toHaveBeenCalled();
   });
 });
