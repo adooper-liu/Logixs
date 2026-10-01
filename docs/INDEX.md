@@ -61,7 +61,7 @@
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                                     | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断             | 安全基线 V1                     |
 | [任务：多代理薄编排器 V1](./planning/tasks/thin-agent-orchestrator-v1.md)                                         | 复用现有 brief/交接协议，校验 worktree、范围和定向门禁     | blocked（待治理合入）           |
 | [任务：集团租户、账套主体与用户范围 V1](./planning/tasks/tenant-account-owner-scope-v1.md)                        | 一个集团一租户、多账套主体、用户/用户组角色范围和主体选择  | blocked（等待当前 authz 收口）  |
-| [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                                                      | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）   | P1 已接受；011 候选、012 已接受 |
+| [ADR 索引](./architecture/decisions/README.md) + ADR-001~013                                                      | 架构决策记录（含受控 UI、外部时间与数据字典）              | P1 已接受；011 候选、12/13 接受 |
 
 ## 四、产品设计与实现映射
 
