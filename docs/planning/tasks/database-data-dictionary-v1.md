@@ -1,18 +1,28 @@
 ---
-status: blocked
+status: done
 branch: feat/database-data-dictionary-v1
 owner: codex
-writer: codex
+writer: claude
 risk: medium
 dependsOn: []
 writeScopes:
   - docs/planning/tasks/database-data-dictionary-v1.md
   - scripts/generate-data-dictionary.mjs
   - scripts/generate-data-dictionary.test.mjs
+  - scripts/data-dictionary/**
   - database/dictionary/**
+  - package.json
+  - pnpm-lock.yaml
+  - .github/workflows/ci.yml
+  - .prettierignore
+  - docs/INDEX.md
+  - docs/architecture/DATABASE_SCHEMA_CONTRACT_V1.md
 exclusiveLocks:
   - database-dictionary
   - generated:database-catalog
+  - root-tooling
+  - repository-governance
+  - database-contract
 sharedIntegrationScopes:
   - package.json
   - pnpm-lock.yaml
@@ -23,12 +33,23 @@ authorityRefs:
   - doc/**
   - docs/architecture/DATABASE_SCHEMA_CONTRACT_V1.md
 verification: |
-  设计基线已由 Codex 按当前 origin/main 静态复算：112 个 Prisma model、1,589 个物理标量字段、
-  278 个 Prisma 虚拟 relation、1 个 PostgreSQL enum、478 个当前有效命名 CHECK、
-  23 个 Prisma 未声明的当前有效索引、2 个函数和 2 个触发器。
-  “1 个 Prisma 未表达的原生外键”尚未通过隔离 PostgreSQL 迁移重放与 pg_catalog 对账，不能作为既成事实。
-  本任务尚未开始实现。须先合并有界并行治理，并由 Codex 以准确 origin/main SHA 开放切片 A；
-  package.json 与 pnpm-lock.yaml 仅在后续根工具接入切片串行修改。
+  已在隔离 PostgreSQL 完整重放当前迁移并生成 112 张表、1,589 个物理字段、278 个 Prisma relation、
+  1 个 PostgreSQL enum、477 个当前有效命名 CHECK、505 个唯一索引、2 个函数和 2 个触发器。
+  当前 reconciliation findings 为 9 个可空性差异、8 个默认值差异和 5 个 FK 动作差异，均保留在生成字典中。
+  首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
+  3 个币种字段和 3 个时区字段由正式契约确认，其余语义槽保持 needs_business_confirmation。
+  八轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 53/53、
+  generate/check、repo:check、contract check/drift、db:generate、lint、format、typecheck、根单测、真实 PostgreSQL
+  integration 和 build 已通过。完整 `pnpm validate` 仅在无本任务 Web diff 的主线移动端 shell overflow E2E 失败
+  （稳定复现 contentScroll 492 > 381）；本 PR 路径分类 `e2e=false`，由远端必需 `quality` 作最终权威。
+  根 workspace 已显式声明 Excel 生成依赖；冻结安装后 security:audit（high 门槛）通过，剩 8 个 moderate。
+  ExcelJS 重载确认 10 个 sheet、模块汇总对账 112 表/1,589 字段、字段页 31 列且精确 1,590 行、
+  待确认页覆盖全部 112 表/1,589 字段并显示具体维度、0 个公式单元格。人工注解已改为稀疏存储：
+  表不保存字段专用槽，字段只持久化 6 个 confirmed 槽。Microsoft Excel 365 原生只读打开通过，
+  10/10 sheet 冻结首行与 Table 筛选正常、0 公式/错误/隐藏/合并，源文件打开前后哈希不变；
+  原生截图抽查后按内容列宽与 18～72 行高可读。全部 review findings 已完成 disposition。
+  PR #115（https://github.com/adooper-liu/Logixs/pull/115）在 head af85a8db 的 CI run 36873864043 中
+  changes/static/unit/build/dictionary/security/quality 全部 SUCCESS，E2E 按路径分类 SKIPPED；满足合并门禁。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -45,7 +66,7 @@ verification: |
 
 ## 并行启动与停止条件
 
-- 本任务计划与 `authz-default-deny-v1` 作为首批两个写任务并行；当前保持 `blocked`，不冒充已启动。
+- 本任务与 `authz-default-deny-v1` 作为首批两个写任务并行；本任务 writer 为 Claude，authz writer 为 Cursor。
 - 切片 A 不修改 Schema、迁移、授权控制面或 authz 的 work-execution 模块；两个任务的独占锁不重叠。
 - 切片 A 只实现独立提取器，不修改 `package.json` 或 `pnpm-lock.yaml`。根命令接入另设串行切片，届时先同步
   最新 `main`，再把根文件加入 `writeScopes` 并占用 `root-tooling` 锁。
@@ -70,17 +91,17 @@ model；该文档可作历史语义来源，不能再作为当前数量来源，
 以下数字是本任务启动时的静态复算基线，不是永恒常量。生成器必须在每次运行时重新计算，并在变化时通过
 `data-dictionary:check` 报告漂移：
 
-| 项目                      | 当前复算值 | 证据与限制                                                |
-| ------------------------- | ---------: | --------------------------------------------------------- |
-| Prisma model / 预期物理表 |        112 | `schema.prisma`；须与迁移重放后的实际表逐项对账           |
-| 物理标量字段              |      1,589 | Prisma model 中非 relation 字段                           |
-| Prisma 虚拟 relation      |        278 | 单列关系，不计入物理字段                                  |
-| PostgreSQL enum           |          1 | 迁移与 Schema 均可复算                                    |
-| 当前有效命名 CHECK        |        478 | 按有序迁移追踪创建、删除和重建；最终以 `pg_catalog` 为准  |
-| Prisma 未声明的有效索引   |         23 | 已排除 Prisma 显式 map 和默认命名索引；最终以目录对账为准 |
-| 数据库函数                |          2 | 迁移静态复算；最终以目录对账为准                          |
-| 普通/约束触发器           |          2 | 1 个普通 trigger、1 个 constraint trigger                 |
-| Prisma 未表达的原生外键   |     待复算 | 原建议值为 1，尚无可重复对账证据，禁止预填                |
+| 项目                      | 当前复算值 | 证据与限制                                           |
+| ------------------------- | ---------: | ---------------------------------------------------- |
+| Prisma model / 预期物理表 |        112 | `schema.prisma`；须与迁移重放后的实际表逐项对账      |
+| 物理标量字段              |      1,589 | Prisma model 中非 relation 字段                      |
+| Prisma 虚拟 relation      |        278 | 单列关系，不计入物理字段                             |
+| PostgreSQL enum           |          1 | 迁移与 Schema 均可复算                               |
+| 当前有效命名 CHECK        |        477 | 隔离 PostgreSQL 完整迁移重放后的 `pg_catalog` 实测值 |
+| Prisma 未声明的有效索引   |       动态 | 生成器逐项标记，结果见原生对象清单                   |
+| 数据库函数                |          2 | 隔离 PostgreSQL `pg_catalog` 实测                    |
+| 普通/约束触发器           |          2 | 1 个普通 trigger、1 个 constraint trigger            |
+| Prisma 未表达的原生外键   |       动态 | 由 FK 形状与 Prisma DDL 对账，不预填静态数量         |
 
 ## 维护结构
 
@@ -184,13 +205,17 @@ scripts/
 - 不把技术模块强行映射为单一工作台；
 - 不在本任务补建标准物料、Listing 或其他尚未定案的表；
 - 不把结构漂移顺带修掉，只产出带证据 finding 并另行立项；
+- 全库 Excel 与待确认语义不作为任何工作台、API 或业务切片的前置门禁；
+- 生成器只提供提取、注解、Markdown/Excel 投影和漂移检查，不扩成新的全库治理平台或周期性评审循环；
 - 不连接、清空或迁移共享/生产数据库；目录提取只允许使用带固定前缀的隔离临时 schema。
 
 ## 负责人决策记录
 
-| 决策 ID   | 已知事实与选项                                                                                                      | 推荐与理由                                                              | 负责人结论                                         | 权威落点 / 状态      |
-| --------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------- | -------------------- |
-| `DDD-D01` | A 手工维护 Excel；B 结构自动提取、仓库注解人工审定并投影 Excel；C 只生成仓库 Markdown。A 会持续漂移，C 不便业务筛选 | B；物理事实可复算、业务语义可追溯，Excel 仍适合筛选批注且不成为第二真相 | 采用 B；字段须分轨呈现物理事实、已定缺口和行业候选 | `ADR-013` / approved |
+| 决策 ID   | 已知事实与选项                                                                                                      | 推荐与理由                                                              | 负责人结论                                                       | 权威落点 / 状态                                   |
+| --------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
+| `DDD-D01` | A 手工维护 Excel；B 结构自动提取、仓库注解人工审定并投影 Excel；C 只生成仓库 Markdown。A 会持续漂移，C 不便业务筛选 | B；物理事实可复算、业务语义可追溯，Excel 仍适合筛选批注且不成为第二真相 | 采用 B；字段须分轨呈现物理事实、已定缺口和行业候选               | `ADR-013` / approved                              |
+| `DDD-D02` | 全局串行会让数据字典无意义等待 OIDC；无限并行又会制造写入冲突                                                       | 有界并行；独立范围同时推进，共享根工具在授权任务合入后串行接入          | 与 OIDC/授权任务并行；Claude 为本任务唯一 writer，Codex 最终收口 | 本 brief + bounded-parallel governance / approved |
+| `DDD-D03` | 全库语义逐项定稿和厚生成平台会拖成新的治理循环                                                                      | 首版只确认现有证据可证明项，其余 pending；生成器保持薄                  | Excel 不阻塞工作台，不建立两周治理循环                           | 本 brief / approved                               |
 
 `DDD-D01` 只确定交付与维护机制，不确认任何具体字段的业务含义、敏感等级或工作台归属；这些仍逐项按来源状态审定。
 
@@ -200,12 +225,12 @@ scripts/
 
 | 项目     | 内容                                                                                                         |
 | -------- | ------------------------------------------------------------------------------------------------------------ |
-| 基线     | 有界并行治理 PR 合并后由 Codex 写入准确 `origin/main` SHA                                                    |
-| 执行角色 | Codex（authz 仍由 Cursor 写入，保证两个活动任务 writer 不重复）                                              |
+| 基线     | `f0fc0e159feae1fa61f1449755946d51e1eed7dd`                                                                   |
+| 执行角色 | Claude（本任务唯一 writer；Codex 保留语义裁决与最终收口）                                                    |
 | 写入范围 | `scripts/generate-data-dictionary.mjs`、对应测试                                                             |
 | 行为     | 生成隔离 schema、完整重放迁移、查询 `pg_catalog`、读取生成后的 Prisma DMMF，输出规范化内存模型并检测两者漂移 |
 | 禁止范围 | 不生成中文释义，不写 Excel，不改 Schema/迁移/业务文档，不连接 public/共享 schema                             |
-| 定向验证 | 脚本测试、生成器 dry-run、112/1,589/278/1/478/23/2/2 动态复算、原生 FK 实测、lint/typecheck、`repo:check`    |
+| 定向验证 | 脚本测试、生成器 dry-run、112/1,589/278/1/477/2/2 动态复算、FK 对账、lint/typecheck、`repo:check`            |
 | 停止条件 | 结构差异可重复、危险数据库 URL 失败关闭、无硬编码数量后 `ready-for-review`                                   |
 
 ### 切片 A2：根工具入口串行接入
@@ -213,7 +238,7 @@ scripts/
 | 项目     | 内容                                                                                                  |
 | -------- | ----------------------------------------------------------------------------------------------------- |
 | 前置     | authz 或其他持有 `root-tooling` / 根门禁共享范围的任务完成对应修改；本分支同步最新 `main`             |
-| 执行角色 | Codex                                                                                                 |
+| 执行角色 | Claude                                                                                                |
 | 调度更新 | 进入本切片前把 `package.json`、必要锁文件加入 frontmatter `writeScopes`，并新增 `root-tooling` 独占锁 |
 | 行为     | 接入 `data-dictionary:generate` 与 `data-dictionary:check`；不改变生成模型、Schema、迁移或业务语义    |
 | 定向验证 | 两个根命令、脚本测试、`pnpm repo:check`、`pnpm format:check`、`git diff --check`                      |
@@ -223,10 +248,10 @@ scripts/
 
 | 项目     | 内容                                                                            |
 | -------- | ------------------------------------------------------------------------------- |
-| 执行角色 | Cursor（机械装载）+ Codex（语义裁决）                                           |
+| 执行角色 | Claude（机械装载；Codex 保留语义裁决）                                          |
 | 写入范围 | `database/dictionary/dictionary.annotations.json`、生成器验证测试               |
 | 行为     | 从 `doc/`、现行正式契约、Schema/迁移和实现证据建立表/字段语义；未知项显式待确认 |
-| 禁止范围 | Cursor 不得自行翻译业务含义、决定敏感级别或工作台归属；不得引用 UI 文案作为权威 |
+| 禁止范围 | Claude 不得自行决定业务含义、敏感级别或工作台归属；不得引用 UI 文案作为权威     |
 | 定向验证 | 稳定键唯一、全部物理对象均有覆盖或明确待确认、来源路径存在、候选文档未升格      |
 | 停止条件 | Codex 抽样高风险字段并处置所有无来源“确认”状态后 `ready-for-review`             |
 
@@ -234,7 +259,7 @@ scripts/
 
 | 项目     | 内容                                                                                                |
 | -------- | --------------------------------------------------------------------------------------------------- |
-| 执行角色 | Cursor                                                                                              |
+| 执行角色 | Claude                                                                                              |
 | 写入范围 | `database/dictionary/*.generated.md`、`database-data-dictionary.xlsx`、生成器与测试                 |
 | 行为     | 从同一规范化模型生成两份 Markdown 和 10-sheet 工作簿；不得分别维护                                  |
 | 禁止范围 | 不从 Excel 回读权威语义，不复制一套手工统计逻辑                                                     |
@@ -248,20 +273,48 @@ scripts/
 - 负责人只确认真正的业务待定项，不被要求审核自动提取的技术事实；
 - 风险面稳定后由 Codex 统一运行最终门禁并建立本任务唯一 PR。
 
+## Review notes
+
+- `accepted/fixed`：`STD-01` 已补齐实际 writeScopes、`pnpm-lock.yaml` 与 root-tooling/repository-governance/database-contract 锁。
+- `accepted/fixed`：`STD-02` 根 workspace 显式声明 `exceljs@4.4.0`、`jszip@3.10.2`，生成器不再跨 API 私有依赖边界。
+- `accepted/fixed`：依赖审计确认 `origin/main` 同样存在 5 个 high；本分支用精确 override 升至 `brace-expansion@1.1.20/2.1.6` 与 `@grpc/grpc-js@1.14.5`，`security:audit --audit-level high` 已通过，剩 8 个 moderate。
+- `accepted/fixed`：`SMELL-01` pending 判定提取到中立共享 helper，统计与工作簿复用同一规则。
+- `accepted/fixed`：`SPEC-01` 注解改为字段级合并；名称/用途仍 pending 时独立维护的 owner/workbench/sensitivity/notes/source 仍保留。
+- `accepted/fixed`：`SPEC-02` 增加单位、币种、时区、快照、版本、审计六个独立证据槽及 Markdown/Excel 投影；仅 3 个币种字段和 3 个时区字段由正式契约确认，其余保持 pending。
+- `accepted/fixed`：`SPEC-03` 模块汇总增加模块、技术所有者、工作台三维，并通过父表对账 112 张表与 1,589 个字段。
+- `accepted/fixed`：`SPEC-04` 工作台与敏感等级改为独立证据槽；confirmed 槽必须同时有非空值和合格来源，工作台只接受 `doc/` 业务证据。
+- `accepted/fixed`：`SPEC-05/SMELL-02` pending 判定覆盖名称、用途、工作台、敏感等级和六语义槽；待确认页显示具体维度并覆盖全部未闭合对象。
+- `accepted/fixed`：`SMELL-03` 人工注解改为稀疏存储；表不保存字段专用槽，字段只持久化非默认证据槽，运行模型补 pending 默认。
+- `accepted/fixed`：`STD-03/SPEC-06` 统一证据槽状态—值—来源矩阵；pending 只能规范空值且无来源，confirmed 必须状态与 authority 一致，工作台只允许 business confirmation。
+- `accepted/fixed`：`STD-04/SPEC-07` 单一 `EVIDENCE_SLOT_POLICIES` 驱动默认、适用对象、校验、pending 和序列化；表级字段专用槽明确拒绝并防御性剥离。
+- `accepted/fixed`：`SPEC-08` 来源消费计数纳入 logical references，每个消费对象只计一次。
+- `accepted/fixed`：`STD-05` confirmation status 从 `PENDING_STATUS + STATUS_AUTHORITY` 派生唯一冻结集合，名称/用途与证据槽共用。
+- `accepted/fixed`：`SPEC-09` bootstrap 在 merge 后、写入前执行完整 validation；无效注解非零失败，writer 不调用且目标 bytes/mtime 不变。
+- `accepted/fixed`：`SPEC-10` merge 保留 existing-only 稳定键，由统一 validation 报 table/field orphan；bootstrap、generate、check 均在写入前拒绝，禁止隐式删除人工语义。
+- `accepted/fixed`：`SPEC-11` malformed annotation 与非数组 sourceRefs 只产生结构化 shape findings；coverage/orphan 诊断保留，bootstrap 统一失败且不抛原始 TypeError。
+- `accepted/fixed`：`STD-06/SPEC-12` 人工注解 JSON 在 merge 前通过本地 AJV 完整结构校验；root/source/table/field/notes/sourceRefs/evidence/logical-reference 任一非法形态只产生确定性 JSON Pointer findings，不进入 writer/renderer。
+- `accepted/fixed`：补齐字段类型族、精度、可空性、数组和默认值对账；真实目录保留 22 个可定位结构差异。
+- `accepted/fixed`：来源 authority 按 tracked 路径类别校验，logical reference 要求正式契约证据并验证源/目标字段。
+- `accepted/fixed`：索引 catalog 查询仅关联本表拥有的 PK/UQ/EXCLUSION constraint；实测 505 行均为唯一稳定键。
+- `rejected`：Excel 重复行 finding 与 ExcelJS 重载实测不符；字段 sheet 为 1,589 条明细 + 1 个表头，已加入精确断言。
+- `accepted/fixed`：原生对象 Markdown 增加主字典 reconciliation findings 导航，不复制 findings 清单。
+- `accepted/fixed`：Excel Table 筛选与 worksheet AutoFilter 重叠会被 Excel 365 拒绝打开；移除重复筛选后原生只读打开、10 表渲染和视觉检查通过。
+- `verification-passed`：Microsoft Excel 365（16.0.20326）只读打开无修复警告；10/10 sheet 冻结首行、Table 筛选、列宽/换行正常，0 公式/错误/隐藏/合并，源文件哈希不变。
+
 ## 验收
 
-- [ ] 隔离 PostgreSQL 完整重放迁移成功，且生成器拒绝 public、共享或无法证明隔离的目标 schema
-- [ ] 物理表、字段、enum、CHECK、索引、函数、普通/约束触发器和 FK 数量由工具动态复算，无硬编码通过
-- [ ] 112 个当前 model 与 1,589 个当前物理标量字段无遗漏、无重复；结构变化会使 check 模式失败
-- [ ] 278 个 Prisma relation 单列且未计入物理字段；逻辑引用不伪装成 FK
-- [ ] 每个表/字段都有中文名与用途，或明确、诚实的待业务确认值
-- [ ] 名称、用途、工作台和敏感等级分别有证据状态，不使用一个笼统状态掩盖未知
-- [ ] 每个确认语义可追溯到 `doc/`、正式契约或实现证据；候选文档和 UI 文案未升格
-- [ ] Excel 10 个工作表可按模块、表、技术所有者、工作台、敏感等级和确认状态筛选
-- [ ] 工作簿关键范围无公式错误、无截断遮挡；全部工作表完成视觉检查
-- [ ] Markdown、Excel 与结构检查由同一规范化模型生成，手工编辑生成物会被 check 模式发现
-- [ ] Schema 或迁移增删对象时，`data-dictionary:check` 能报告精确漂移
-- [ ] Claude 独立复审 findings 已由 Codex 处置；待负责人确认项保持待定，不伪造完成
+- [x] 隔离 PostgreSQL 完整重放迁移成功，且生成器拒绝 public、共享或无法证明隔离的目标 schema
+- [x] 物理表、字段、enum、CHECK、索引、函数、普通/约束触发器和 FK 数量由工具动态复算，无硬编码通过
+- [x] 112 个当前 model 与 1,589 个当前物理标量字段无遗漏、无重复；结构变化会使 check 模式失败
+- [x] 278 个 Prisma relation 单列且未计入物理字段；逻辑引用不伪装成 FK
+- [x] 每个表/字段都有中文名与用途，或明确、诚实的待业务确认值
+- [x] 名称、用途、工作台和敏感等级分别有证据状态，不使用一个笼统状态掩盖未知
+- [x] 每个确认语义可追溯到 `doc/`、正式契约或实现证据；候选文档和 UI 文案未升格
+- [x] Excel 10 个工作表可按模块、表、技术所有者、工作台、敏感等级和确认状态筛选
+- [x] 工作簿关键范围无公式错误、无截断遮挡；全部工作表完成视觉检查
+- [x] Markdown、Excel 与结构检查由同一规范化模型生成，手工编辑生成物会被 check 模式发现
+- [x] Schema 或迁移增删对象时，`data-dictionary:check` 能报告精确漂移
+- [x] Claude 独立复审 findings 已由 Codex 处置；待负责人确认项保持待定，不伪造完成
 
 ## 回滚
 
@@ -270,7 +323,10 @@ scripts/
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责  | commit | 说明                                                                             |
-| ---------- | ------- | ----- | ------ | -------------------------------------------------------------------------------- |
-| 2026-09-30 | blocked | Codex | —      | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案    |
-| 2026-10-01 | blocked | Codex | —      | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片 |
+| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                      |
+| ---------- | ------- | ------ | ---------- | --------------------------------------------------------------------------------------------------------- |
+| 2026-09-30 | blocked | Codex  | —          | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案                             |
+| 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                          |
+| 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                              |
+| 2026-10-01 | review  | Claude | `bbcb49e7` | 最终独立复审 Standards/Spec 双轴通过；后续补齐完整注解边界、原生 Excel 兼容性与视觉验收，待 PR CI/quality |
+| 2026-10-01 | done    | Claude | `af85a8db` | Excel 365 原生验收、全部 finding disposition 与 PR #115 必需 quality 完成；任务收口                       |
