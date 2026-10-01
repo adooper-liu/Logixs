@@ -1,5 +1,5 @@
 ---
-status: review
+status: fix
 branch: feat/web-oidc-session-v1
 verification: |
   A/A-R1/B/C/C3-FIX 已完成并通过增量复审；C3-FIX fresh 只读 Claude 复审为 no-findings。
@@ -294,7 +294,27 @@ API 身份材料、重定向、注销、测试替身隔离和构建产物做一�
 2. 本机 `vite serve` 的显式 development 身份继续可用；OIDC build 行为、secret 拒绝和显式环境白名单保持不变。
 3. 回归证据必须覆盖独立评审的原失败组合：`NODE_ENV=development`、`VITE_AUTH_MODE=development` 及完整测试
    tenant/operator/roles。失败信息不得输出身份值。
-4. Cursor 不同步 `main`、不改根依赖、不运行全仓 `validate` 或安全审计；这些只在 Codex 接受修复并形成集成候选后执行一次。
+4. Cursor 不同步 `main`、不改根依赖、不运行全仓 `validate` 或安全审计；这些只在 Claude 接受修复并形成集成候选后执行一次。
+
+#### C3-E2E-FIX. 统一开发身份后的旧断言收口
+
+完整 `pnpm validate` 在真实 PostgreSQL integration 23 文件、138 项通过后进入 Web E2E，稳定暴露两条历史身份断言：
+日期事实复核仍期待 `review_supervisor`，已出运接管复核仍期待 `import_operator`；统一 development 会话按 C2 已定规则
+只发送 `operations_dispatcher`。失败在 desktop/narrow/mobile 三套重复，共 6 项；其余 112 项通过。
+
+`logix-disposition/v1`：
+
+| Finding         | 处置       | 理由与权威写回                                                                                                                       |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `C3-E2E-ID-001` | `accepted` | B2 已禁止生产调用点按端点冒充另一身份，C2 规定业务 E2E 共用显式 development 身份；两条旧断言应对齐统一会话，不得恢复端点级固定角色。 |
+
+| 项目     | 内容                                                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 执行角色 | Cursor；只修改两条 E2E header 断言与本 brief                                                                                               |
+| 写入范围 | `apps/web/e2e/date-fact-review-workbench.spec.ts`、`apps/web/e2e/dispatch-workbench.spec.ts`、`docs/planning/tasks/web-oidc-session-v1.md` |
+| 禁止范围 | 生产 Web/API、development server 身份、角色/capability 政策、测试数据或页面行为                                                            |
+| 定向验证 | 两条失败 spec 的 desktop/narrow/mobile 六项测试；完整 `pnpm test:e2e`；Web format；`git diff --check`                                      |
+| 停止条件 | 任一用例确实需要独立业务身份而非旧断言时返回 `blocked`，不得增加端点级身份切换                                                             |
 
 ## 直接消费者与技术承接
 
