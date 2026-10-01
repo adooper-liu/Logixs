@@ -1,5 +1,5 @@
 ---
-status: blocked
+status: coding
 branch: feat/database-data-dictionary-v1
 owner: codex
 writer: codex
@@ -27,8 +27,8 @@ verification: |
   278 个 Prisma 虚拟 relation、1 个 PostgreSQL enum、478 个当前有效命名 CHECK、
   23 个 Prisma 未声明的当前有效索引、2 个函数和 2 个触发器。
   “1 个 Prisma 未表达的原生外键”尚未通过隔离 PostgreSQL 迁移重放与 pg_catalog 对账，不能作为既成事实。
-  本任务尚未开始实现。须先合并有界并行治理，并由 Codex 以准确 origin/main SHA 开放切片 A；
-  package.json 与 pnpm-lock.yaml 仅在后续根工具接入切片串行修改。
+  有界并行治理已由 PR #111 合入 origin/main@22ec0eff；本分支同步后的准确切片 A base 为
+  f0fc0e159feae1fa61f1449755946d51e1eed7dd。package.json 与 pnpm-lock.yaml 仅在后续根工具接入切片串行修改。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -45,7 +45,7 @@ verification: |
 
 ## 并行启动与停止条件
 
-- 本任务计划与 `authz-default-deny-v1` 作为首批两个写任务并行；当前保持 `blocked`，不冒充已启动。
+- 本任务与 `authz-default-deny-v1` 作为首批两个写任务并行；当前 writer 为 Codex，authz writer 为 Cursor。
 - 切片 A 不修改 Schema、迁移、授权控制面或 authz 的 work-execution 模块；两个任务的独占锁不重叠。
 - 切片 A 只实现独立提取器，不修改 `package.json` 或 `pnpm-lock.yaml`。根命令接入另设串行切片，届时先同步
   最新 `main`，再把根文件加入 `writeScopes` 并占用 `root-tooling` 锁。
@@ -200,7 +200,7 @@ scripts/
 
 | 项目     | 内容                                                                                                         |
 | -------- | ------------------------------------------------------------------------------------------------------------ |
-| 基线     | 有界并行治理 PR 合并后由 Codex 写入准确 `origin/main` SHA                                                    |
+| 基线     | `f0fc0e159feae1fa61f1449755946d51e1eed7dd`                                                                   |
 | 执行角色 | Codex（authz 仍由 Cursor 写入，保证两个活动任务 writer 不重复）                                              |
 | 写入范围 | `scripts/generate-data-dictionary.mjs`、对应测试                                                             |
 | 行为     | 生成隔离 schema、完整重放迁移、查询 `pg_catalog`、读取生成后的 Prisma DMMF，输出规范化内存模型并检测两者漂移 |
@@ -274,3 +274,4 @@ scripts/
 | ---------- | ------- | ----- | ------ | -------------------------------------------------------------------------------- |
 | 2026-09-30 | blocked | Codex | —      | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案    |
 | 2026-10-01 | blocked | Codex | —      | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片 |
+| 2026-10-01 | coding  | Codex | —      | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件     |

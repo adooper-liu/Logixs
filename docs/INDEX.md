@@ -57,7 +57,7 @@
 | [任务：已出运接管作业闭环](./planning/tasks/p6-post-departure-handoff-operational-closeout.md)                    | 批量接管非阻断候选，跨会话持续处理已接管待补               | 已完成                          |
 | [任务：出运后 Shipment 模型与四表字段基线评审](./planning/tasks/p6-post-departure-shipment-model-review.md)       | 核定 Shipment 粒度、四域字段覆盖、只读详情投影和迁移门禁   | 已批准并转入实施                |
 | [数据库结构契约 V1](./architecture/DATABASE_SCHEMA_CONTRACT_V1.md)                                                | 全库表、字段、约束、索引、所有权和迁移演进的单一评审入口   | 现行实施契约 V1                 |
-| [任务：数据库数据字典与业务语义工作簿 V1](./planning/tasks/database-data-dictionary-v1.md)                        | 从迁移、Prisma 与人工审定语义生成仓库字典和业务评审 Excel  | 已定设计；待治理合入            |
+| [任务：数据库数据字典与业务语义工作簿 V1](./planning/tasks/database-data-dictionary-v1.md)                        | 从迁移、Prisma 与人工审定语义生成仓库字典和业务评审 Excel  | coding（切片 A）                |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                                     | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断             | 安全基线 V1                     |
 | [任务：多代理薄编排器 V1](./planning/tasks/thin-agent-orchestrator-v1.md)                                         | 复用现有 brief/交接协议，校验 worktree、范围和定向门禁     | blocked（待治理合入）           |
 | [任务：集团租户、账套主体与用户范围 V1](./planning/tasks/tenant-account-owner-scope-v1.md)                        | 一个集团一租户、多账套主体、用户/用户组角色范围和主体选择  | blocked（等待当前 authz 收口）  |
