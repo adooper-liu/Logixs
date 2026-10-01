@@ -40,11 +40,111 @@ import {
   renderWorkbook,
   resolveAnnotationBaseline,
   serializeAnnotations,
+  structuralAnnotationFindings,
   summarizeStructure,
   validateAnnotations,
 } from "./generate-data-dictionary.mjs";
 
 const LOCAL_URL = "postgresql://logix:logix@localhost:5433/logix";
+
+test("annotation document schema reports malformed nested containers deterministically", () => {
+  const valid = createPendingAnnotations(dictionaryFixture(), {
+    baselineCommit: "abc123",
+  });
+  const cases = [
+    ["fields root", { ...valid, fields: "bad" }, "/fields"],
+    [
+      "source record",
+      { ...valid, sources: { broken: null } },
+      "/sources/broken",
+    ],
+    [
+      "notes value",
+      {
+        ...valid,
+        tables: {
+          ...valid.tables,
+          "public.order": { ...valid.tables["public.order"], notes: 42 },
+        },
+      },
+      "/tables/public.order/notes",
+    ],
+    [
+      "sourceRefs item",
+      {
+        ...valid,
+        fields: {
+          ...valid.fields,
+          "public.order.id": {
+            ...valid.fields["public.order.id"],
+            sourceRefs: [null],
+          },
+        },
+      },
+      "/fields/public.order.id/sourceRefs/0",
+    ],
+    [
+      "logical refs root",
+      { ...valid, logicalReferences: {} },
+      "/logicalReferences",
+    ],
+    [
+      "logical ref item",
+      { ...valid, logicalReferences: [null] },
+      "/logicalReferences/0",
+    ],
+  ];
+
+  for (const [name, annotations, pointer] of cases) {
+    const findings = structuralAnnotationFindings(annotations);
+    assert.ok(
+      findings.some(
+        (finding) =>
+          finding.code === "ANNOTATION_DOCUMENT_SHAPE_INVALID" &&
+          finding.object.startsWith(pointer),
+      ),
+      name,
+    );
+  }
+});
+
+test("structural annotation validation accepts the sparse committed shape", () => {
+  const annotations = createPendingAnnotations(dictionaryFixture(), {
+    baselineCommit: "abc123",
+  });
+  const stored = serializeAnnotations(annotations);
+  assert.deepEqual(structuralAnnotationFindings(stored), []);
+});
+
+test("logical references require equal arity and resolvable source IDs", () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.logicalReferences.push({
+    name: "bad-reference",
+    sourceTable: "order",
+    sourceFields: ["id", "id"],
+    targetTable: "order",
+    targetFields: ["id"],
+    sourceRefs: ["missing-source"],
+  });
+
+  assert.deepEqual(
+    validateAnnotations({
+      annotations,
+      structure,
+      trackedFiles: new Set(),
+    })
+      .filter(({ code }) => code.startsWith("LOGICAL_REFERENCE_"))
+      .map(({ code, object }) => `${code}:${object}`),
+    [
+      "LOGICAL_REFERENCE_ARITY_MISMATCH:bad-reference",
+      "LOGICAL_REFERENCE_SOURCE_UNKNOWN:bad-reference:missing-source",
+      "LOGICAL_REFERENCE_EVIDENCE_MISSING:bad-reference",
+    ],
+  );
+});
 
 test("evidence slot policies are the single complete dimension authority", () => {
   assert.deepEqual(
@@ -194,7 +294,7 @@ test("bootstrap validates merged annotations before invoking writer", async () =
           writes += 1;
         },
       }),
-    /DICTIONARY_ANNOTATIONS_INVALID[\s\S]*ANNOTATION_STATUS_INVALID/u,
+    /DICTIONARY_ANNOTATIONS_INVALID[\s\S]*ANNOTATION_DOCUMENT_SHAPE_INVALID/u,
   );
   assert.equal(writes, 0);
 });
@@ -262,8 +362,7 @@ test("malformed orphans retain coverage and shape diagnostics", async () => {
     (error) => {
       assert.match(error.message, /ANNOTATION_TABLE_ORPHAN/u);
       assert.match(error.message, /ANNOTATION_FIELD_ORPHAN/u);
-      assert.match(error.message, /ANNOTATION_SHAPE_INVALID/u);
-      assert.match(error.message, /ANNOTATION_SOURCE_REFS_INVALID/u);
+      assert.match(error.message, /ANNOTATION_DOCUMENT_SHAPE_INVALID/u);
       assert.doesNotMatch(error.message, /TypeError/u);
       return true;
     },

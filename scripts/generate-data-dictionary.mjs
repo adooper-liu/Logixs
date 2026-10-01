@@ -12,6 +12,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import Ajv2020 from "ajv/dist/2020.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { format } from "prettier";
 
@@ -367,6 +368,199 @@ export function summarizeStructure(structure) {
 
 const PENDING_NAME = "待业务确认";
 const PENDING_PURPOSE = "业务用途待确认；当前仅确认结构与技术消费者";
+
+const nonEmptyStringSchema = { type: "string", minLength: 1 };
+const sourceRefArraySchema = {
+  type: "array",
+  items: nonEmptyStringSchema,
+  uniqueItems: true,
+};
+const evidenceSlotSchemas = Object.fromEntries(
+  EVIDENCE_SLOT_POLICIES.map((policy) => [
+    policy.key,
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["value", "status", "sourceRefs"],
+      properties: {
+        value:
+          policy.key === "workbenchEvidence"
+            ? {
+                type: "array",
+                items: nonEmptyStringSchema,
+                uniqueItems: true,
+              }
+            : { type: ["string", "null"] },
+        status: { enum: policy.allowedStatuses },
+        sourceRefs: sourceRefArraySchema,
+      },
+    },
+  ]),
+);
+
+function annotationSchema(objectType) {
+  const policies = evidencePoliciesFor(objectType);
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "nameZh",
+      "nameStatus",
+      "purposeZh",
+      "purposeStatus",
+      "sourceRefs",
+      "moduleCode",
+      "ownerModule",
+      "notes",
+    ],
+    properties: {
+      nameZh: nonEmptyStringSchema,
+      nameStatus: { enum: CONFIRMATION_STATUSES },
+      purposeZh: nonEmptyStringSchema,
+      purposeStatus: { enum: CONFIRMATION_STATUSES },
+      sourceRefs: sourceRefArraySchema,
+      moduleCode: { type: ["string", "null"], minLength: 1 },
+      ownerModule: { type: ["string", "null"], minLength: 1 },
+      notes: { type: "array", items: { type: "string" } },
+      ...Object.fromEntries(
+        policies.map((policy) => [policy.key, evidenceSlotSchemas[policy.key]]),
+      ),
+    },
+  };
+}
+
+const annotationDocumentSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schemaVersion",
+    "baselineCommit",
+    "sources",
+    "tables",
+    "fields",
+    "logicalReferences",
+  ],
+  properties: {
+    schemaVersion: { const: "1.0.0" },
+    baselineCommit: { anyOf: [nonEmptyStringSchema, { type: "null" }] },
+    sources: {
+      type: "object",
+      additionalProperties: {
+        type: "object",
+        additionalProperties: false,
+        required: ["path", "authority"],
+        properties: {
+          path: nonEmptyStringSchema,
+          authority: {
+            enum: ["business", "formal_contract", "implementation"],
+          },
+          note: { type: "string" },
+        },
+      },
+    },
+    tables: {
+      type: "object",
+      additionalProperties: annotationSchema("table"),
+    },
+    fields: {
+      type: "object",
+      additionalProperties: annotationSchema("field"),
+    },
+    logicalReferences: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "name",
+          "sourceTable",
+          "sourceFields",
+          "targetTable",
+          "targetFields",
+          "sourceRefs",
+        ],
+        properties: {
+          name: nonEmptyStringSchema,
+          sourceTable: nonEmptyStringSchema,
+          sourceFields: {
+            type: "array",
+            minItems: 1,
+            uniqueItems: true,
+            items: nonEmptyStringSchema,
+          },
+          targetTable: nonEmptyStringSchema,
+          targetFields: {
+            type: "array",
+            minItems: 1,
+            uniqueItems: true,
+            items: nonEmptyStringSchema,
+          },
+          sourceRefs: {
+            ...sourceRefArraySchema,
+            minItems: 1,
+          },
+        },
+      },
+    },
+  },
+};
+
+const validateAnnotationDocument = new Ajv2020({
+  allErrors: true,
+  strict: false,
+}).compile(annotationDocumentSchema);
+
+export function structuralAnnotationFindings(annotations, structure = null) {
+  const findings = structure ? rawOrphanFindings(annotations, structure) : [];
+  if (validateAnnotationDocument(annotations)) return findings;
+  findings.push(
+    ...(validateAnnotationDocument.errors ?? []).map((error) => ({
+      code: "ANNOTATION_DOCUMENT_SHAPE_INVALID",
+      object: `${error.instancePath || "/"}:${error.keyword}`,
+    })),
+  );
+  return findings.sort(
+    (left, right) =>
+      findingOrder(left.code) - findingOrder(right.code) ||
+      left.object.localeCompare(right.object, "en") ||
+      left.code.localeCompare(right.code, "en"),
+  );
+}
+
+function rawOrphanFindings(annotations, structure) {
+  if (!isAnnotationRecord(annotations)) return [];
+  const expectedTables = new Set(
+    structure.database.tables.map((table) => `public.${table.tableName}`),
+  );
+  const expectedFields = new Set(
+    structure.database.columns.map(
+      (column) => `public.${column.tableName}.${column.columnName}`,
+    ),
+  );
+  return [
+    ...orphanKeys(annotations.tables, expectedTables).map((object) => ({
+      code: "ANNOTATION_TABLE_ORPHAN",
+      object,
+    })),
+    ...orphanKeys(annotations.fields, expectedFields).map((object) => ({
+      code: "ANNOTATION_FIELD_ORPHAN",
+      object,
+    })),
+  ];
+}
+
+function orphanKeys(value, expected) {
+  if (!isAnnotationRecord(value)) return [];
+  return Object.keys(value)
+    .filter((key) => !expected.has(key))
+    .sort();
+}
+
+function findingOrder(code) {
+  if (code === "ANNOTATION_TABLE_ORPHAN") return 0;
+  if (code === "ANNOTATION_FIELD_ORPHAN") return 1;
+  return 2;
+}
 
 export function createPendingAnnotations(
   structure,
@@ -758,6 +952,20 @@ function validateLogicalReferences({
   );
   for (const reference of references) {
     const name = reference.name ?? "unnamed";
+    if (reference.sourceFields.length !== reference.targetFields.length) {
+      findings.push({
+        code: "LOGICAL_REFERENCE_ARITY_MISMATCH",
+        object: name,
+      });
+    }
+    for (const sourceId of reference.sourceRefs) {
+      if (!(sourceId in sources)) {
+        findings.push({
+          code: "LOGICAL_REFERENCE_SOURCE_UNKNOWN",
+          object: `${name}:${sourceId}`,
+        });
+      }
+    }
     const sourceColumns = new Set(
       (columnsByTable.get(reference.sourceTable) ?? []).map(
         (column) => column.columnName,
@@ -1647,6 +1855,15 @@ function stripEvidenceForObject(annotation, objectType) {
   }
 }
 
+function assertAnnotationDocumentValid(annotations, structure = null) {
+  const findings = structuralAnnotationFindings(annotations, structure);
+  if (findings.length > 0) {
+    throw new Error(
+      `DICTIONARY_ANNOTATIONS_INVALID\n${JSON.stringify(findings, null, 2)}`,
+    );
+  }
+}
+
 export async function bootstrapAnnotations({
   structure,
   existing,
@@ -1655,6 +1872,7 @@ export async function bootstrapAnnotations({
   trackedFiles,
   writeAnnotations,
 }) {
+  if (existing !== null) assertAnnotationDocumentValid(existing, structure);
   const annotations = mergeAnnotationCoverage({
     existing,
     structure,
@@ -1687,6 +1905,7 @@ export async function buildDictionaryArtifacts({
   trackedFiles = new Set(),
   fixedDate,
 }) {
+  assertAnnotationDocumentValid(annotations, structure);
   const model = buildDictionaryModel({
     structure,
     annotations,
@@ -1783,6 +2002,8 @@ async function main() {
   const existing = existsSync(ANNOTATIONS_PATH)
     ? JSON.parse(readFileSync(ANNOTATIONS_PATH, "utf8"))
     : null;
+  if (existing !== null)
+    assertAnnotationDocumentValid(existing, result.structure);
   const baselineCommit = resolveAnnotationBaseline({
     action: command.action,
     existing,
