@@ -59,6 +59,7 @@
 | [数据库结构契约 V1](./architecture/DATABASE_SCHEMA_CONTRACT_V1.md)                                                | 全库表、字段、约束、索引、所有权和迁移演进的单一评审入口   | 现行实施契约 V1                 |
 | [安全威胁模型 V1](./architecture/SECURITY_THREAT_MODEL_V1.md)                                                     | 租户、文件、AI/Tool 与身份边界的威胁和上线阻断             | 安全基线 V1                     |
 | [任务：多代理薄编排器 V1](./planning/tasks/thin-agent-orchestrator-v1.md)                                         | 复用现有 brief/交接协议，校验 worktree、范围和定向门禁     | blocked（等待当前 authz 收口）  |
+| [任务：集团租户、账套主体与用户范围 V1](./planning/tasks/tenant-account-owner-scope-v1.md)                        | 一个集团一租户、多账套主体、用户/用户组角色范围和主体选择  | blocked（等待当前 authz 收口）  |
 | [ADR 索引](./architecture/decisions/README.md) + ADR-001~012                                                      | 架构决策记录（含受控 UI 投影、外部来源时间确定时刻判定）   | P1 已接受；011 候选、012 已接受 |
 
 ## 四、产品设计与实现映射
@@ -108,7 +109,7 @@
 | [DATA_MODEL_P2-06](product/domain/DATA_MODEL_P2-06.md)                                       | 逻辑库图纸 + SKU/装载/合规档案 + 时间溯源与可靠提交                                                          | 候选 v0.9            |
 | [COMPLIANCE_MANAGEMENT](product/domain/COMPLIANCE_MANAGEMENT.md)                             | 合规横向轨道、规则/评审/证据、14 节点门禁与合规中心规划                                                      | 负责人方向+候选 v0.1 |
 | [PRODUCT_ATTRIBUTE_GOVERNANCE](product/domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md)               | 强类型核心+结构化合规档案+JSONB 扩展属性+元数据表单边界                                                      | 负责人方向+候选 v0.1 |
-| [MASTER_DATA_DICTIONARY](product/domain/MASTER_DATA_DICTIONARY.md)                           | 国家角色、港口/设施、船司及服务商主数据与外部候选治理                                                        | 负责人方向+候选 v0.1 |
+| [MASTER_DATA_DICTIONARY](product/domain/MASTER_DATA_DICTIONARY.md)                           | 国家角色、账套主体、港口/设施、船司及服务商主数据与外部候选治理                                              | 负责人方向+候选 v0.2 |
 | [TIME_CURRENCY_REFERENCE_CONTRACT_V1](product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md) | IANA/UTC/RFC 3339 时间与 ISO 4217/定点金额的跨境参考数据规则                                                 | 正式 V1              |
 
 ### 5.2 清单/字典族（可落 Seed/契约）
@@ -120,7 +121,7 @@
 | [EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1](product/domain/EVIDENCE_SOURCE_AUTHORITY_CONTRACT_V1.md) | 证据、来源身份、权威资格、验证、冲突和历史密封唯一权威                     | 正式 V1       |
 | [CROSS_MODULE_REFERENCE_CONTRACT_V1](product/domain/CROSS_MODULE_REFERENCE_CONTRACT_V1.md)       | 跨模块对象 ID、所有权、父链与引用完整性唯一权威                            | 正式 V1       |
 | [ACTION_PERMISSION_CONTRACT_V1](product/domain/ACTION_PERMISSION_CONTRACT_V1.md)                 | 动作定义、服务端授权、复核、补录和审计唯一权威                             | 正式 V1       |
-| [IDENTITY_ACCESS_MODEL_V1](product/domain/IDENTITY_ACCESS_MODEL_V1.md)                           | 租户、角色、能力和数据范围最小实施基线                                     | 正式 V1       |
+| [IDENTITY_ACCESS_MODEL_V1](product/domain/IDENTITY_ACCESS_MODEL_V1.md)                           | 集团租户、账套主体、角色、能力和数据范围最小实施基线                       | 正式 V1.1     |
 | [SYNC_RELIABILITY_CONTRACT_V1](product/domain/SYNC_RELIABILITY_CONTRACT_V1.md)                   | 三阶段回执、幂等、Inbox/Outbox、重试、死信和补偿唯一权威                   | 正式 V1       |
 | [QUERY_PROJECTION_CONTRACT_V1](product/domain/QUERY_PROJECTION_CONTRACT_V1.md)                   | 生命周期状态、任务工单、时间线、证据、同步及允许动作公共读模型唯一权威     | 正式 V1       |
 | [PUBLIC_ERROR_CONTRACT_V1](product/domain/PUBLIC_ERROR_CONTRACT_V1.md)                           | 公共错误信封、稳定码、HTTP、冲突与重试语义唯一权威                         | 正式 V1       |
