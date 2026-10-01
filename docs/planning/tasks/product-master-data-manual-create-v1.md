@@ -2,6 +2,7 @@
 status: blocked
 branch: feat/product-master-data-manual-create-v1
 verification: pending。阻塞：等待 workbench-entry-exit-principles-v1 合入；主数据优先停用/归档而非删除（HW-D18）。
+owner: claude
 ---
 
 # 任务：商品与物料主数据手工建档

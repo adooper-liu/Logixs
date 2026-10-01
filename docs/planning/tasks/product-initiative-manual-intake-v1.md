@@ -2,6 +2,7 @@
 status: blocked
 branch: feat/product-initiative-manual-intake-v1
 verification: pending。阻塞：等待 workbench-entry-exit-principles-v1 合入；建议在市场信号 B 片之后或并行评估优先级后解锁。
+owner: claude
 ---
 
 # 任务：选品立项手工新增

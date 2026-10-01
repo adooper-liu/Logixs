@@ -2,6 +2,7 @@
 status: blocked # design | coding | review | fix | blocked | done（机器可校验）
 branch: # 已并入 feat 待开的 p6-import-first-slice，本文件不再开独立分支
 verification: # 仅 status: done 时必填
+owner: claude
 ---
 
 # 任务：P6 首个纵向切片——智能 Excel 导入与审核闭环

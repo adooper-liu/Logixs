@@ -10,6 +10,9 @@
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
     "overrides": {
+      "@grpc/grpc-js": "1.14.5",
+      "brace-expansion@1": "1.1.20",
+      "brace-expansion@2": "2.1.6",
       "deepmerge-ts": "8.0.0",
       "multer": "2.3.0",
       "mysql2": "3.22.0"
@@ -27,7 +30,7 @@
     "format:check": "prettier --check . --ignore-unknown",
     "format": "prettier --write . --ignore-unknown",
     "typecheck": "turbo run typecheck",
-    "test": "node --test scripts/check-repository.test.mjs scripts/check-route-access-metadata.test.mjs && turbo run test",
+    "test": "node --test scripts/check-repository.test.mjs scripts/check-route-access-metadata.test.mjs scripts/generate-data-dictionary.test.mjs && turbo run test",
     "test:integration": "turbo run test:integration",
     "test:e2e": "turbo run test:e2e --filter=@logix/web",
     "playwright:install": "pnpm --filter @logix/web exec playwright install chromium",
@@ -61,10 +64,13 @@
     "db:verify:work-order-fact-application": "tsx --tsconfig apps/api/tsconfig.json scripts/verify-work-order-fact-application.mts",
     "db:seed": "tsx database/seed.ts",
     "db:studio": "prisma studio --port 5555 --browser none",
+    "data-dictionary:bootstrap": "node scripts/generate-data-dictionary.mjs --bootstrap-annotations",
+    "data-dictionary:generate": "node scripts/generate-data-dictionary.mjs --generate",
+    "data-dictionary:check": "node scripts/generate-data-dictionary.mjs --check",
     "authz:routes": "node scripts/check-route-access-metadata.mjs",
     "repo:check": "node scripts/check-repository.mjs",
     "security:audit": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level high",
-    "validate": "pnpm repo:check && pnpm contract:check && pnpm contract:drift && pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e && pnpm build"
+    "validate": "pnpm repo:check && pnpm contract:check && pnpm contract:drift && pnpm data-dictionary:check && pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -77,8 +83,10 @@
     "eslint": "10.10.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-vue": "10.10.0",
+    "exceljs": "4.4.0",
     "globals": "16.5.0",
     "json-schema-to-typescript": "16.0.0",
+    "jszip": "3.10.2",
     "prettier": "3.9.6",
     "prisma": "7.10.0",
     "tsx": "^4.23.13",
