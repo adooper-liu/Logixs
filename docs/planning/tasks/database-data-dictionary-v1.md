@@ -38,13 +38,14 @@ verification: |
   当前 reconciliation findings 为 9 个可空性差异、8 个默认值差异和 5 个 FK 动作差异，均保留在生成字典中。
   首版语义注解覆盖全部对象：83 张表使用 Prisma 中文实施注释，349 个跨表通用字段使用工程规则释义，
   3 个币种字段和 3 个时区字段由正式契约确认，其余语义槽保持 needs_business_confirmation。
-  八轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 52/52、
+  八轮独立复审的 Important/Standards/Spec findings 均已通过 RED→GREEN 修复；专项测试 53/53、
   generate/check、repo:check、format:check、专项 ESLint、根 pnpm test、typecheck 和 build 已通过。
   根 workspace 已显式声明 Excel 生成依赖；冻结安装后 security:audit（high 门槛）通过，剩 8 个 moderate。
   ExcelJS 重载确认 10 个 sheet、模块汇总对账 112 表/1,589 字段、字段页 31 列且精确 1,590 行、
   待确认页覆盖全部 112 表/1,589 字段并显示具体维度、0 个公式单元格。人工注解已改为稀疏存储：
-  表不保存字段专用槽，字段只持久化 6 个 confirmed 槽；本机无 Excel，桌面视觉检查未执行。
-  Codex disposition 和最终 PR/CI 尚未完成。
+  表不保存字段专用槽，字段只持久化 6 个 confirmed 槽。Microsoft Excel 365 原生只读打开通过，
+  10/10 sheet 冻结首行与 Table 筛选正常、0 公式/错误/隐藏/合并，源文件打开前后哈希不变；
+  原生截图抽查后按内容列宽与 18～72 行高可读。全部 review findings 已完成 disposition，待 PR CI/quality。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -292,8 +293,9 @@ scripts/
 - `accepted/fixed`：来源 authority 按 tracked 路径类别校验，logical reference 要求正式契约证据并验证源/目标字段。
 - `accepted/fixed`：索引 catalog 查询仅关联本表拥有的 PK/UQ/EXCLUSION constraint；实测 505 行均为唯一稳定键。
 - `rejected`：Excel 重复行 finding 与 ExcelJS 重载实测不符；字段 sheet 为 1,589 条明细 + 1 个表头，已加入精确断言。
-- `minor/deferred-to-codex`：原生对象 Markdown 未重复主字典已有的 reconciliation findings，可选择增加链接或 Findings 节。
-- `verification-gap`：本机未安装 Microsoft Excel，未执行桌面修复警告、列宽和交互筛选视觉验收。
+- `accepted/fixed`：原生对象 Markdown 增加主字典 reconciliation findings 导航，不复制 findings 清单。
+- `accepted/fixed`：Excel Table 筛选与 worksheet AutoFilter 重叠会被 Excel 365 拒绝打开；移除重复筛选后原生只读打开、10 表渲染和视觉检查通过。
+- `verification-passed`：Microsoft Excel 365（16.0.20326）只读打开无修复警告；10/10 sheet 冻结首行、Table 筛选、列宽/换行正常，0 公式/错误/隐藏/合并，源文件哈希不变。
 
 ## 验收
 
@@ -305,10 +307,10 @@ scripts/
 - [x] 名称、用途、工作台和敏感等级分别有证据状态，不使用一个笼统状态掩盖未知
 - [x] 每个确认语义可追溯到 `doc/`、正式契约或实现证据；候选文档和 UI 文案未升格
 - [x] Excel 10 个工作表可按模块、表、技术所有者、工作台、敏感等级和确认状态筛选
-- [ ] 工作簿关键范围无公式错误、无截断遮挡；全部工作表完成视觉检查
+- [x] 工作簿关键范围无公式错误、无截断遮挡；全部工作表完成视觉检查
 - [x] Markdown、Excel 与结构检查由同一规范化模型生成，手工编辑生成物会被 check 模式发现
 - [x] Schema 或迁移增删对象时，`data-dictionary:check` 能报告精确漂移
-- [ ] Claude 独立复审 findings 已由 Codex 处置；待负责人确认项保持待定，不伪造完成
+- [x] Claude 独立复审 findings 已由 Codex 处置；待负责人确认项保持待定，不伪造完成
 
 ## 回滚
 
@@ -317,9 +319,9 @@ scripts/
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                            |
-| ---------- | ------- | ------ | ---------- | --------------------------------------------------------------------------------------------------------------- |
-| 2026-09-30 | blocked | Codex  | —          | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案                                   |
-| 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                                |
-| 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                                    |
-| 2026-10-01 | review  | Claude | `009ed962` | Codex 第二轮 3 Standards + 3 Spec findings 已全部修复；依赖边界、注解独立元数据、六语义槽和模块汇总进入复审候选 |
+| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                      |
+| ---------- | ------- | ------ | ---------- | --------------------------------------------------------------------------------------------------------- |
+| 2026-09-30 | blocked | Codex  | —          | 核验结构基线并定案双来源对账、证据分级、目录和 A-D 切片；等待并行治理规则定案                             |
+| 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                          |
+| 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                              |
+| 2026-10-01 | review  | Claude | `bbcb49e7` | 最终独立复审 Standards/Spec 双轴通过；后续补齐完整注解边界、原生 Excel 兼容性与视觉验收，待 PR CI/quality |

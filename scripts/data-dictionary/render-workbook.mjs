@@ -307,10 +307,6 @@ function addSheet(workbook, name, headers, rows) {
   });
   sheet.addRow(headers);
   for (const row of rows) sheet.addRow(row.map(cellValue));
-  sheet.autoFilter = {
-    from: { row: 1, column: 1 },
-    to: { row: Math.max(1, sheet.rowCount), column: headers.length },
-  };
   sheet.addTable({
     name: `DictionaryTable${String(workbook.worksheets.length).padStart(2, "0")}`,
     ref: "A1",
@@ -324,16 +320,29 @@ function addSheet(workbook, name, headers, rows) {
   header.font = { bold: true, color: { argb: "FFFFFFFF" } };
   header.alignment = { vertical: "middle", wrapText: true };
   sheet.columns.forEach((column, index) => {
-    column.width = Math.min(
-      60,
-      Math.max(12, String(headers[index]).length * 2 + 4),
-    );
+    let widest = displayWidth(headers[index]);
+    column.eachCell({ includeEmpty: false }, (cell) => {
+      widest = Math.max(widest, displayWidth(cell.text));
+    });
+    column.width = Math.min(60, Math.max(12, widest + 2));
     column.alignment = { vertical: "top", wrapText: true };
   });
   sheet.eachRow((row) => {
-    row.height = Math.min(72, row.height ?? 18);
+    let lines = 1;
+    row.eachCell({ includeEmpty: false }, (cell, columnNumber) => {
+      const width = sheet.getColumn(columnNumber).width ?? 12;
+      lines = Math.max(lines, Math.ceil(displayWidth(cell.text) / width));
+    });
+    row.height = Math.min(72, Math.max(18, lines * 18));
   });
   return sheet;
+}
+
+function displayWidth(value) {
+  return [...String(value ?? "")].reduce(
+    (total, character) => total + (/[^\u0000-ÿ]/u.test(character) ? 2 : 1),
+    0,
+  );
 }
 
 function cellValue(value) {

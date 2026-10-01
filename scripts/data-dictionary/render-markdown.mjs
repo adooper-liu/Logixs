@@ -99,6 +99,7 @@ export function renderNativeObjectsMarkdown(model) {
     "# 数据库原生对象清单",
     "",
     `- verifiedThroughMigration: \`${model.provenance.verifiedThroughMigration ?? "unknown"}\``,
+    "- 结构对账差异统一见 [主字典 reconciliation findings](./DATA_DICTIONARY.generated.md#findings)。",
     "",
     "## Prisma 未完整表达的约束与索引",
     "",

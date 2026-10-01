@@ -1637,6 +1637,10 @@ test("Markdown projections come from the normalized dictionary model", () => {
   assert.match(dictionary, /needs_business_confirmation/);
   assert.match(nativeObjects, /原生对象清单/);
   assert.match(nativeObjects, /verifiedThroughMigration/);
+  assert.match(
+    nativeObjects,
+    /\[主字典 reconciliation findings\]\(\.\/DATA_DICTIONARY\.generated\.md#findings\)/u,
+  );
   assert.equal(dictionary.endsWith("\n\n"), false);
   assert.equal(nativeObjects.endsWith("\n\n"), false);
 });
@@ -1713,7 +1717,10 @@ test("workbook has ten reviewable sheets and stable bytes", async () => {
   ]) {
     assert.ok(fieldHeaders.includes(header), `${header} must be present`);
   }
-  assert.equal(fieldSheet.autoFilter, "A1:AE2");
+  assert.equal(fieldSheet.autoFilter, undefined);
+  const fieldTable = fieldSheet.getTables()[0];
+  assert.equal(fieldTable.table.tableRef, "A1:AE2");
+  assert.equal(fieldTable.table.autoFilterRef, "A1:AE2");
   assert.ok(
     fieldSheet.getRow(1).values.includes("建议中文名"),
     "review columns must be present",
@@ -1786,6 +1793,34 @@ test("source trace counts logical references as consumer objects", async () => {
   const contractRow = rows.find((row) => row?.[1] === "contract");
 
   assert.equal(contractRow[5], 1);
+});
+
+test("workbook sizes columns and rows from rendered content", async () => {
+  const structure = dictionaryFixture();
+  const annotations = createPendingAnnotations(structure, {
+    baselineCommit: "abc123",
+  });
+  annotations.tables["public.order"].purposeZh =
+    "这是一段用于验证 Excel 自动换行和行高计算的长用途说明。".repeat(6);
+  const model = buildDictionaryModel({
+    structure,
+    annotations,
+    trackedFiles: new Set(),
+  });
+  const workbook = await loadWorkbook(
+    await renderWorkbook(model, {
+      fixedDate: new Date("2026-10-01T00:00:00.000Z"),
+    }),
+  );
+  const sheet = workbook.getWorksheet("02_表清单");
+  const purposeColumn = sheet
+    .getRow(1)
+    .values.findIndex((value) => value === "用途说明");
+
+  assert.ok(sheet.getColumn(1).width > 12);
+  assert.ok(sheet.getColumn(purposeColumn).width > 12);
+  assert.ok(sheet.getRow(2).height > 18);
+  assert.ok(sheet.getRow(2).height <= 72);
 });
 
 test("artifact builder creates four projections from one model", async () => {
