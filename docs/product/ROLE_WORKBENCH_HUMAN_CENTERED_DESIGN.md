@@ -16,6 +16,10 @@
 [PRODUCT_ATTRIBUTE_GOVERNANCE](./domain/PRODUCT_ATTRIBUTE_GOVERNANCE.md) 与
 [COMPLIANCE_MANAGEMENT](./domain/COMPLIANCE_MANAGEMENT.md) 为权威。
 
+每台工作台必须围绕同一业务步骤按五面协同交付：岗位任务、数据事实、技术保障、权限边界和界面承接。
+权限不是技术栏中的一句“已鉴权”，而要逐动作证明 capability、租户/账套主体/对象范围、拒绝原因和审计；
+权限资格与状态、证据等领域业务前置分开计算。任一面缺失时，只能声明该面完成，不得宣称工作台闭环。
+
 ## 1. 证据与状态
 
 | 类型                 | 本文内容                                                                         | 使用边界                                      |
