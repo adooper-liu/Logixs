@@ -49,6 +49,13 @@
 14. 完整门禁通过后，只有相关生产风险面再次变化才重跑；纯 brief、测试说明、格式或不改变产品行为的 CI 修改不得触发无关全量验证。
 15. 独立复审按决策点和风险增量触发。出现新的业务或权限政策、公开入口、对象范围、状态语义、公共契约，或最终集成产生新风险时复审；同一已定政策下的装饰器、字段或机械迁移切片不重复复审。
 16. 外部环境盘点、数据迁移、发布操作和人工验收必须与代码质量门禁分轨记录。缺少外部证据可以阻止生产部署和 task `done`，但不得无故阻止不依赖该外部状态的代码开发、提交、PR 审查与合并。
+17. 全仓默认最多同时存在两个 `coding` / `fix` 写任务、两个等待独立处理的 `review` 任务；`design` 不占 `coding/fix` 名额，纯只读调查不建立写任务。达到上限时只阻塞新增任务，不回退或覆盖在途工作。
+18. 每个 `design` / `coding` / `fix` brief 都可能写 task brief 或共享权威，必须在 frontmatter 声明 `owner`、唯一 `writer`、`risk`、`dependsOn`、`writeScopes`、`exclusiveLocks`、`sharedIntegrationScopes` 和 `authorityRefs`，并参与冲突检查。`writeScopes` 只允许精确仓库路径或以 `/**` 结尾的目录，不接受无法可靠判交集的任意 glob。
+19. 任意两个 `design` / `coding` / `fix` 任务只有在写入范围、独占锁和未完成依赖均不冲突，且写入者不同的情况下才可并行。同一业务决定使用同一个 `business-policy:<decision-id>` 锁；Schema/迁移、授权控制面、公共契约、仓库治理、根工具和生成物使用对应独占锁，禁止用宽泛锁掩盖实际范围，也禁止漏锁绕过串行。
+20. `sharedIntegrationScopes` 允许开发阶段并行，但 Codex 必须排定最终集成顺序：后合并者同步最新 `main`、重新生成派生产物并运行风险对应门禁后才能合并。PR 与 `main` 集成仍串行。
+21. `authorityRefs` 只声明读取的权威，不因多个任务共同引用就自动冲突；任务若要修改权威、公共契约或共享决策，必须同时把对应路径列入 `writeScopes` 并声明匹配的独占锁。
+22. `repo:check` 只验证当前 checkout 中可见的 brief，不读取其他 worktree，也不把实际 Git diff 与 `writeScopes` 对账。Codex 下发 `TASK` 与收口前必须人工核对全部在途 worktree 和实际差异；薄编排器上线后自动执行跨 worktree 与 diff 范围检查，不建立第二套状态。
+23. 连续两次组合回归、实际 diff 反复越过 `writeScopes`、评审积压、业务结论冲突或公共契约/迁移漂移时，Codex 必须把新增写任务保持 `blocked`，等价将有效并行上限降为 1；修复门禁并清空冲突后再恢复。
 
 ### 1.3 仓库总线与统一交接协议
 
