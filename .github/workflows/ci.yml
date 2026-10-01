@@ -186,6 +186,20 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: logix
+          POSTGRES_PASSWORD: logix
+          POSTGRES_DB: logix
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U logix -d logix"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
