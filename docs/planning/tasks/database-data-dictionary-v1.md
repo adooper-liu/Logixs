@@ -1,5 +1,5 @@
 ---
-status: review
+status: done
 branch: feat/database-data-dictionary-v1
 owner: codex
 writer: claude
@@ -47,7 +47,9 @@ verification: |
   待确认页覆盖全部 112 表/1,589 字段并显示具体维度、0 个公式单元格。人工注解已改为稀疏存储：
   表不保存字段专用槽，字段只持久化 6 个 confirmed 槽。Microsoft Excel 365 原生只读打开通过，
   10/10 sheet 冻结首行与 Table 筛选正常、0 公式/错误/隐藏/合并，源文件打开前后哈希不变；
-  原生截图抽查后按内容列宽与 18～72 行高可读。全部 review findings 已完成 disposition，待 PR CI/quality。
+  原生截图抽查后按内容列宽与 18～72 行高可读。全部 review findings 已完成 disposition。
+  PR #115（https://github.com/adooper-liu/Logixs/pull/115）在 head af85a8db 的 CI run 36873864043 中
+  changes/static/unit/build/dictionary/security/quality 全部 SUCCESS，E2E 按路径分类 SKIPPED；满足合并门禁。
 ---
 
 # 任务：数据库数据字典与业务语义工作簿 V1
@@ -327,3 +329,4 @@ scripts/
 | 2026-10-01 | blocked | Codex  | —          | 已完成实施设计；等待有界并行治理合入并写入准确基线，根工具接入已拆为后续串行切片                          |
 | 2026-10-01 | coding  | Codex  | —          | PR #111 已合入；以 `f0fc0e15` 开放切片 A，仅实现独立提取器，不修改根工具文件                              |
 | 2026-10-01 | review  | Claude | `bbcb49e7` | 最终独立复审 Standards/Spec 双轴通过；后续补齐完整注解边界、原生 Excel 兼容性与视觉验收，待 PR CI/quality |
+| 2026-10-01 | done    | Claude | `af85a8db` | Excel 365 原生验收、全部 finding disposition 与 PR #115 必需 quality 完成；任务收口                       |
