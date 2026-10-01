@@ -1,9 +1,9 @@
 import {
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
   Inject,
   Injectable,
+  Logger,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { hasAllCapabilities } from "../domain/role-capabilities";
@@ -13,6 +13,7 @@ import {
   PUBLIC_ENDPOINT_KEY,
   SERVICE_ENDPOINT_KEY,
 } from "../../../security/route-access.decorator";
+import { AuthorizationForbiddenException } from "./authorization-forbidden.exception";
 
 interface AuthorizedRequest {
   identity?: AuthenticatedUserIdentity;
@@ -20,6 +21,8 @@ interface AuthorizedRequest {
 
 @Injectable()
 export class AuthorizationGuard implements CanActivate {
+  private readonly logger = new Logger(AuthorizationGuard.name);
+
   constructor(
     @Inject(Reflector)
     private readonly reflector: Reflector,
@@ -35,12 +38,18 @@ export class AuthorizationGuard implements CanActivate {
         context.getHandler(),
         context.getClass(),
       ]) ?? [];
-    if (required.length === 0) return true;
+    if (required.length === 0) {
+      // 路由缺少访问分类属于配置缺陷；细节只进服务端日志，对外信封与缺能力一致。
+      this.logger.warn(
+        `ROUTE_ACCESS_METADATA_MISSING ${context.getClass().name}.${context.getHandler().name}`,
+      );
+      throw new AuthorizationForbiddenException();
+    }
 
     const request = context.switchToHttp().getRequest<AuthorizedRequest>();
     const capabilities = request.identity?.capabilities ?? [];
     if (!hasAllCapabilities(capabilities, required)) {
-      throw new ForbiddenException("CAPABILITY_DENIED");
+      throw new AuthorizationForbiddenException();
     }
     return true;
   }

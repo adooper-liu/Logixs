@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import { findArchitectureBoundaryViolations } from "./check-architecture-boundaries.mjs";
 import { isKnownEmptyDatabaseFailure } from "./migrate-deploy.mjs";
+import { analyzeControllerSources } from "./check-route-access-metadata.mjs";
 import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
@@ -20,6 +21,7 @@ import {
   findMisleadingContractPackageScripts,
   findMissingRequiredPolicyFiles,
   findMissingStyleScaleTokens,
+  findRouteAccessViolations,
   findStyleScaleViolations,
   findUiThemeBoundaryViolations,
   validateTaskStatusRecords,
@@ -1042,5 +1044,60 @@ test("module manifests must exist and reference known module ids", async () => {
     "apps/api/src/modules/broken/module.manifest.ts: depends references unknown module 'wrong'",
     "apps/api/src/modules/broken/module.manifest.ts: id 'wrong' must equal directory name 'broken'",
     "apps/api/src/modules/orphan/module.manifest.ts: missing module.manifest.ts for Nest module directory",
+  ]);
+});
+
+const ROUTE_FIXTURE_FILE =
+  "apps/api/src/modules/example/presentation/fixture.controller.ts";
+const ROUTE_FIXTURE_IMPORTS = `import { Controller, Get, Post } from "@nestjs/common";
+import { PublicEndpoint } from "../../../security/route-access.decorator";
+import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
+`;
+
+function auditRouteFixture(body) {
+  return analyzeControllerSources([
+    { file: ROUTE_FIXTURE_FILE, text: `${ROUTE_FIXTURE_IMPORTS}\n${body}` },
+  ]);
+}
+
+test("route access gate accepts an audit result without violations", () => {
+  const routes = auditRouteFixture(`
+    @Controller("items")
+    export class ItemsController {
+      @Get()
+      @RequireCapabilities("planning.read")
+      list() {}
+
+      @Get("health")
+      @PublicEndpoint()
+      health() {}
+    }
+  `);
+
+  assert.equal(routes.length, 2);
+  assert.deepEqual(findRouteAccessViolations(routes), []);
+  assert.deepEqual(findRouteAccessViolations([]), []);
+});
+
+test("route access gate rejects every audited violation", () => {
+  const routes = auditRouteFixture(`
+    @Controller("items")
+    export class ItemsController {
+      @Get()
+      @RequireCapabilities("planning.read")
+      list() {}
+
+      @Post()
+      create() {}
+
+      @Post("empty")
+      @RequireCapabilities()
+      empty() {}
+    }
+  `);
+
+  assert.deepEqual(findRouteAccessViolations(routes), [
+    `${ROUTE_FIXTURE_FILE}: POST /items (ItemsController.create) route access missing: ACCESS_CLASSIFICATION_MISSING`,
+    `${ROUTE_FIXTURE_FILE}: POST /items/empty (ItemsController.empty) route access capability: CAPABILITY_EMPTY`,
   ]);
 });

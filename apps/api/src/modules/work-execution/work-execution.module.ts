@@ -67,7 +67,6 @@ import { WorkExecutionController } from "./presentation/work-execution.controlle
     },
   ],
   exports: [
-    CreateNodeTaskService,
     CREATE_NODE_TASK,
     PROJECT_EXTERNAL_WORK_ITEMS,
     LIST_OBJECT_TASK_ACTIVITY,

@@ -111,7 +111,7 @@ export class ClaimWorkOrderService {
           HttpStatus.CONFLICT,
         );
       }
-      return this.reuse(existing);
+      return this.reuse(existing, tenantId);
     }
 
     const now = new Date();
@@ -145,12 +145,17 @@ export class ClaimWorkOrderService {
 
   private async reuse(
     existing: ClientOperationRecord,
+    tenantId: string,
   ): Promise<ClaimWorkOrderResult> {
-    const workOrder = await this.repository.findWorkOrderById(
-      existing.targetId,
-    );
+    const workOrder = await this.repository.findWorkOrderInTenant({
+      workOrderId: existing.targetId,
+      tenantId,
+    });
     if (!workOrder) throw new NotFoundException("RESOURCE_NOT_FOUND");
-    const bundle = await this.repository.findTaskById(workOrder.nodeTaskId);
+    const bundle = await this.repository.findTaskInTenant({
+      taskId: workOrder.nodeTaskId,
+      tenantId,
+    });
     if (!bundle) throw new NotFoundException("RESOURCE_NOT_FOUND");
     return {
       workOrderId: workOrder.id,
@@ -173,10 +178,17 @@ export class ClaimWorkOrderService {
       "resultRefs"
     >,
   ): Promise<ClaimWorkOrderResult> {
-    const workOrder = await this.repository.findWorkOrderById(workOrderId);
+    // 跨租户与不存在同形抛 NotFound：execute 对 NotFound 不落 ClientOperation。
+    const workOrder = await this.repository.findWorkOrderInTenant({
+      workOrderId,
+      tenantId,
+    });
     if (!workOrder) throw new NotFoundException("RESOURCE_NOT_FOUND");
 
-    const bundle = await this.repository.findTaskById(workOrder.nodeTaskId);
+    const bundle = await this.repository.findTaskInTenant({
+      taskId: workOrder.nodeTaskId,
+      tenantId,
+    });
     if (!bundle) throw new NotFoundException("RESOURCE_NOT_FOUND");
     if (bundle.task.containerId) {
       await this.assertContainerTenant.execute({
@@ -253,7 +265,8 @@ export class ClaimWorkOrderService {
         ? (taskDecision.next as NodeTaskState)
         : bundle.task.state;
 
-    const applied = await this.repository.applyWorkOrderClaim({
+    const persisted = await this.repository.applyWorkOrderClaim({
+      tenantId,
       workOrderId,
       workOrderState: decision.nextState,
       assignmentState: decision.assignmentState,
@@ -262,8 +275,14 @@ export class ClaimWorkOrderService {
       taskState: nextTaskState,
       clientOperation: operation,
     });
-    if (!applied) {
-      const latest = await this.repository.findWorkOrderById(workOrderId);
+    if (persisted.kind === "scope_mismatch") {
+      throw new NotFoundException("RESOURCE_NOT_FOUND");
+    }
+    if (persisted.kind === "state_conflict") {
+      const latest = await this.repository.findWorkOrderInTenant({
+        workOrderId,
+        tenantId,
+      });
       if (!latest) throw new NotFoundException("RESOURCE_NOT_FOUND");
       const retry = decideWorkOrderClaim({
         state: latest.state,

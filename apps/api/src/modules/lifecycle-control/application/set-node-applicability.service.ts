@@ -91,11 +91,17 @@ export class SetNodeApplicabilityService {
       );
     }
 
+    const flow = await this.repository.findFlowByContainer(input.containerId);
+    if (!flow) throw new NotFoundException("RESOURCE_NOT_FOUND");
+
+    // 幂等键全局唯一，命中的决定必须属于当前货柜 flow 才是本对象的重放；
+    // 冲突信息不得回显原 flow、版本等他方对象事实。
     const existing = await this.repository.findApplicabilityDecision(
       input.idempotencyKey,
     );
     if (existing) {
       if (
+        existing.flowInstanceId !== flow.flow.id ||
         existing.nodeCode !== nodeCode ||
         existing.applicability !== input.applicability
       ) {
@@ -116,9 +122,6 @@ export class SetNodeApplicabilityService {
         version: existing.version,
       };
     }
-
-    const flow = await this.repository.findFlowByContainer(input.containerId);
-    if (!flow) throw new NotFoundException("RESOURCE_NOT_FOUND");
 
     if (input.expectedVersion !== flow.flow.version) {
       throw new HttpException(
