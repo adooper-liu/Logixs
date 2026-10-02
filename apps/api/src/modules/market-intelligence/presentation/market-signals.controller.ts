@@ -46,16 +46,19 @@ export class MarketSignalsController {
 
   @Get()
   @RequireCapabilities("planning.read")
+  @ApiQuery({ name: "destination", required: true, type: String })
   @ApiQuery({ name: "pageSize", required: false, type: Number })
   @ApiQuery({ name: "cursor", required: false, type: String })
   @ApiOkResponse({ type: MarketSignalPageResponseDto })
   list(
     @Req() request: IdentityRequest,
+    @Query("destination") destination?: string,
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
   ): Promise<MarketSignalPageV1> {
     return this.listSignals.execute({
       tenantId: request.identity.tenantId,
+      destination,
       pageSize,
       cursor,
     });

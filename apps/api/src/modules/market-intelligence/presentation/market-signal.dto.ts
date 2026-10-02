@@ -44,8 +44,16 @@ export class MarketSignalDecisionRequestDto implements MarketSignalDecisionComma
   @ApiPropertyOptional() opportunityStatement?: string;
   @ApiPropertyOptional() nextReviewDate?: string;
   @ApiPropertyOptional() watchFocus?: string;
+  @ApiPropertyOptional() waitingReason?: string;
   @ApiPropertyOptional() dismissReason?: string;
   @ApiProperty() idempotencyKey!: string;
+}
+
+export class MarketSignalActiveValidationResponseDto {
+  @ApiProperty() responsibleActorId!: string;
+  @ApiProperty() nextReviewDate!: string;
+  @ApiPropertyOptional({ nullable: true }) watchFocus!: string | null;
+  @ApiPropertyOptional({ nullable: true }) waitingReason!: string | null;
 }
 
 export class MarketSignalResponseDto {
@@ -70,6 +78,11 @@ export class MarketSignalResponseDto {
   })
   currentDestination!: string;
   @ApiProperty() ownerTeamCode!: string;
+  @ApiPropertyOptional({
+    type: MarketSignalActiveValidationResponseDto,
+    nullable: true,
+  })
+  activeValidation?: MarketSignalActiveValidationResponseDto | null;
   @ApiProperty() version!: number;
   @ApiProperty({ type: [String] }) pendingFieldCodes!: string[];
   @ApiProperty() createdAt!: string;
@@ -82,6 +95,7 @@ export class MarketSignalPageResponseDto {
   @ApiProperty({ type: [MarketSignalResponseDto] })
   items!: MarketSignalResponseDto[];
   @ApiProperty() pageSize!: number;
+  @ApiPropertyOptional() totalCount?: number;
   @ApiPropertyOptional({ nullable: true }) nextCursor!: string | null;
 }
 

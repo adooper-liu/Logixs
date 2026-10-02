@@ -17,6 +17,7 @@ export function presentMarketSignal(
     evidenceRefs,
     currentDestination: record.currentDestination,
     ownerTeamCode: record.ownerTeamCode,
+    activeValidation: record.activeValidation,
     version: record.version,
     pendingFieldCodes: pendingFieldCodes({ ...record, evidenceRefs }),
     createdAt: record.createdAt.toISOString(),

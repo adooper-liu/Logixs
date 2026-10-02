@@ -1891,6 +1891,7 @@ export interface MarketSignalPageV1 {
 contractVersion: "market-signal-page.v1"
 items: MarketSignalV1[]
 pageSize: number
+totalCount?: number
 nextCursor: (string | null)
 }
 /**
