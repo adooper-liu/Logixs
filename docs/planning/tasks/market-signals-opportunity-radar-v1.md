@@ -1,12 +1,14 @@
 ---
-status: coding
+status: fix
 branch: feat/market-signal-active-validation-v1
 verification: |
   2026-10-02 负责人决定两份永久标注为 `synthetic_rehearsal` 的正反演练可作为首版产品机制与自动化测试基线，
   不再以真实样本阻塞开发。真实/脱敏样本、完整 cohort 和独立结果集仍阻止 KPI 发布、WB-B10、上线业务验收
   及“经营损失已下降”声明。本切片只实现“单一当前验证承诺”，不实现可信机会、双轴、权限拆分或共享控制面。
+  当前分支 5b214308..9191eaf8 的生产实现由 Claude 越过 writer 边界直接写成，只能作为待 Cursor 接管复核的候选；
+  已运行的测试和门禁是复核输入，不构成 Claude 自证或任务验收。Cursor 完成 C-TAKEOVER handoff 前不得推送、建 PR 或合并。
 owner: claude
-writer: claude
+writer: cursor
 risk: high
 dependsOn: []
 writeScopes:
@@ -390,6 +392,25 @@ authorityRefs:
 4. 当前 `coding` 状态只授权“单一当前验证承诺”；真实样本未到位不阻止该切片开发，但仍阻止 KPI、WB-B10、上线业务验收和经营成效声明。
 
 当前生产切片只实现上述“单一当前验证承诺”。后续优先队列、可靠交接与反馈、以及经两个消费者证明后才按需提炼的共享控制面继续逐片定案；不得预先把候选写成既定实施范围。
+
+## Cursor 接管复核切片 `C-TAKEOVER`
+
+| 项目     | 内容                                                                                                                                                                                                                      |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 基线     | `5b2143085cc4831e45c4ca241f4fb5b539d95e0e`；审核候选 HEAD `9191eaf8569859ea2a2b9700b1ffd58dfd913f2c`，并包含本次 brief 状态修正                                                                                           |
+| 执行角色 | Cursor，唯一写入者；Claude 在 handoff 前只读，不再修改生产代码                                                                                                                                                            |
+| 工作区   | `D:\Logixs\.claude\worktrees\market-signals-slice-a`，分支 `feat/market-signal-active-validation-v1`                                                                                                                      |
+| 复核范围 | 逐项读取本 brief、`doc/08`、实施计划和 `5b214308...HEAD` 全部提交；不得把现有 Claude 提交视为已验收实现                                                                                                                   |
+| 必须核对 | 业务目的和不做项；契约向后兼容；迁移空库/旧库；自领与跨 actor 冲突；pending 去向；投影设置/保留/清理；destination 分页；旧 watching；Web 三栏/窄屏/键盘；synthetic 与真实验收边界；实际 diff 与 writeScopes/locks         |
+| 允许写入 | 本 brief 声明的现有 `writeScopes`；只修复复核发现，禁止扩展可信机会、双轴、GC-012、权限拆分、KPI、转派或重开                                                                                                              |
+| 最近门禁 | 领域/Application/Controller 单测；3 个目标 PostgreSQL 集成文件；Web 目标单测；focused market E2E；OIDC 401 用例；contract/dictionary/db/authz/security/repo/format；仅在生产风险面变化时按 brief 重跑完整 `pnpm validate` |
+| 停止条件 | 返回 `HANDOFF ...#C-TAKEOVER ... role=claude`；state 只能 `ready-for-review` 或 `blocked`；列出 changed、checks、exceptions、commit。不得自行推送、建 PR、合并或把 task 标 done                                           |
+
+Cursor 接管任务：
+
+```text
+TASK docs/planning/tasks/market-signals-opportunity-radar-v1.md#C-TAKEOVER base=5b2143085cc4831e45c4ca241f4fb5b539d95e0e role=cursor workspace=D:\Logixs\.claude\worktrees\market-signals-slice-a
+```
 
 ## 当前 coding 切片五面映射
 
