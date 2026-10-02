@@ -12,6 +12,7 @@ dependsOn: []
 writeScopes:
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - docs/planning/tasks/market-signals-opportunity-radar-v1.md
+  - docs/superpowers/plans/2026-10-02-market-signal-active-validation.md
   - docs/INDEX.md
   - packages/contracts/schemas/v1/market-opportunity.schema.json
   - packages/contracts/fixtures/v1/schema-instances.json
