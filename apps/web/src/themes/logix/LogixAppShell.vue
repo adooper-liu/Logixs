@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useAuthSession } from "../../auth/useAuthSession";
 import AppSidebar from "../../components/shell/AppSidebar.vue";
 import AppTopbar from "../../components/shell/AppTopbar.vue";
 import CommandPalette from "../../components/shell/CommandPalette.vue";
@@ -40,6 +41,38 @@ const contextLabel = computed(() => {
   if (typeof route.query.task === "string") return route.query.task;
   return undefined;
 });
+
+const auth = useAuthSession();
+const signOutPending = shallowRef(false);
+const signOutFailed = shallowRef(false);
+const identityLabel = computed(() => {
+  const profile = auth.profile.value;
+  if (auth.status.value === "authenticated" && profile) {
+    return profile.displayName ?? profile.subject;
+  }
+  if (auth.status.value === "signed_out") return "已退出登录";
+  if (auth.status.value === "error") return "会话无效，请重新登录";
+  if (auth.status.value === "anonymous") return "未登录";
+  return "登录处理中";
+});
+const canSignOut = computed(
+  () =>
+    auth.mode === "oidc" &&
+    (auth.status.value === "authenticated" || signOutPending.value),
+);
+
+const signOut = async () => {
+  if (signOutPending.value) return;
+  signOutPending.value = true;
+  signOutFailed.value = false;
+  try {
+    // 成功时页面跳往 IdP，保持禁用直到离开，避免重复提交。
+    await auth.signOut();
+  } catch {
+    signOutPending.value = false;
+    signOutFailed.value = true;
+  }
+};
 
 const changeRole = (role: DemoRole) => {
   setRole(role);
@@ -87,10 +120,16 @@ watch(
         :context-label="contextLabel"
         :role-label="roleLabel"
         :theme="theme"
+        :identity-label="identityLabel"
+        :identity-mode="auth.mode"
+        :can-sign-out="canSignOut"
+        :sign-out-pending="signOutPending"
+        :sign-out-failed="signOutFailed"
         @open-navigation="openNavigation"
         @toggle-sidebar="toggleSidebar"
         @toggle-command="toggleCommand"
         @toggle-theme="toggleTheme"
+        @sign-out="signOut"
       />
       <main class="app-content"><router-view /></main>
     </div>

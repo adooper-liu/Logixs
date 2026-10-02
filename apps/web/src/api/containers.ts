@@ -1,5 +1,5 @@
 import type { ContainerLifecycleState } from "@logix/contracts";
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 // 薄真实链路的前端只读 DTO：与 apps/api 的 ContainerSummary 形状一致。
 export interface ContainerSummary {
@@ -36,9 +36,6 @@ export interface ContainerCargoScope {
   items: readonly ContainerCargoScopeItem[];
 }
 
-// 开发期身份与导入写路径对齐（正式 OIDC 属 P5-02）。
-const DEV_OPERATOR_ID = "dev-operator";
-
 export async function listContainers(query?: {
   pageSize?: number;
   cursor?: string;
@@ -48,11 +45,8 @@ export async function listContainers(query?: {
   if (query?.cursor) params.set("cursor", query.cursor);
   const queryString = params.toString();
   const suffix = queryString ? `?${queryString}` : "";
-  const response = await fetch(`/api/containers${suffix}`, {
-    headers: {
-      "X-Tenant-Id": DEV_TENANT_ID,
-      "X-Operator-Id": DEV_OPERATOR_ID,
-    },
+  const response = await requestApi(`/api/containers${suffix}`, {
+    fallback: "GET /api/containers failed",
   });
   if (!response.ok) {
     throw new Error(`GET /api/containers failed: ${response.status}`);
@@ -61,12 +55,10 @@ export async function listContainers(query?: {
 }
 
 export async function getContainer(id: string): Promise<ContainerSummary> {
-  const response = await fetch(`/api/containers/${encodeURIComponent(id)}`, {
-    headers: {
-      "X-Tenant-Id": DEV_TENANT_ID,
-      "X-Operator-Id": DEV_OPERATOR_ID,
-    },
-  });
+  const response = await requestApi(
+    `/api/containers/${encodeURIComponent(id)}`,
+    { fallback: `GET /api/containers/${id} failed` },
+  );
   if (response.status === 404) {
     throw new Error("RESOURCE_NOT_FOUND");
   }
@@ -79,14 +71,9 @@ export async function getContainer(id: string): Promise<ContainerSummary> {
 export async function getContainerCargo(
   id: string,
 ): Promise<ContainerCargoScope> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/containers/${encodeURIComponent(id)}/cargo`,
-    {
-      headers: {
-        "X-Tenant-Id": DEV_TENANT_ID,
-        "X-Operator-Id": DEV_OPERATOR_ID,
-      },
-    },
+    { fallback: `GET /api/containers/${id}/cargo failed` },
   );
   if (!response.ok) {
     throw new Error(

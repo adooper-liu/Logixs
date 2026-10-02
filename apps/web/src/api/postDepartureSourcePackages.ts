@@ -12,20 +12,15 @@ import type {
   PostDepartureSourcePackageAcceptCommandV1,
   PostDepartureSourcePackageAcceptResultV1,
 } from "@logix/contracts";
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 import { formatHttpError } from "./httpError";
 
-const HEADERS = {
-  "Content-Type": "application/json",
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
-  "X-Roles": "import_operator",
-};
+const JSON_HEADERS = { "Content-Type": "application/json" };
 
 export async function downloadPostDepartureStandardTemplate(): Promise<void> {
-  const response = await fetch(
+  const response = await requestApi(
     "/api/post-departure-source-packages/standard-template",
-    { headers: HEADERS },
+    { fallback: "标准模板下载失败" },
   );
   if (!response.ok) {
     throw new Error(
@@ -51,12 +46,13 @@ export async function preflightPostDepartureSourcePackage(
     contractVersion: "post-departure-source-package-preflight.v1",
     sources,
   };
-  const response = await fetch(
+  const response = await requestApi(
     "/api/post-departure-source-packages/preflight",
     {
       method: "POST",
-      headers: HEADERS,
+      headers: JSON_HEADERS,
       body: JSON.stringify(command),
+      fallback: "联合预检失败",
     },
   );
   if (!response.ok) {
@@ -80,12 +76,13 @@ export async function savePostDepartureSourcePackageReview(
     packageId,
     sources,
   };
-  const response = await fetch(
+  const response = await requestApi(
     `/api/post-departure-source-packages/${packageId}/reviews`,
     {
       method: "POST",
-      headers: HEADERS,
+      headers: JSON_HEADERS,
       body: JSON.stringify(command),
+      fallback: "保存补全内容失败",
     },
   );
   if (!response.ok) {
@@ -103,9 +100,9 @@ export async function searchPostDepartureReferencePorts(
   pageSize = 20,
 ): Promise<PostDepartureReferencePortSearchResultV1> {
   const params = new URLSearchParams({ query, pageSize: String(pageSize) });
-  const response = await fetch(
+  const response = await requestApi(
     `/api/post-departure-source-packages/reference-ports?${params}`,
-    { headers: HEADERS },
+    { fallback: "查找权威港口失败" },
   );
   if (!response.ok) {
     throw new Error(
@@ -122,12 +119,13 @@ export async function searchPostDepartureReferencePorts(
 export async function correctPostDepartureSourceCandidate(
   command: PostDepartureSourceCandidateCorrectionCommandV1,
 ): Promise<PostDepartureSourceCandidateCorrectionResultV1> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/post-departure-source-packages/${command.packageId}/reviews/${command.reviewId}/candidates/${encodeURIComponent(command.candidateRef)}/corrections`,
     {
       method: "POST",
-      headers: HEADERS,
+      headers: JSON_HEADERS,
       body: JSON.stringify(command),
+      fallback: "保存接管信息失败",
     },
   );
   if (!response.ok) {
@@ -143,12 +141,13 @@ export async function correctPostDepartureSourceCandidate(
 export async function completePostDepartureSourceCandidateCargo(
   command: PostDepartureSourceCandidateCargoCommandV1,
 ): Promise<PostDepartureSourceCandidateCorrectionResultV1> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/post-departure-source-packages/${command.packageId}/reviews/${command.reviewId}/candidates/${encodeURIComponent(command.candidateRef)}/cargo-lines`,
     {
       method: "POST",
-      headers: HEADERS,
+      headers: JSON_HEADERS,
       body: JSON.stringify(command),
+      fallback: "保存 SKU 装载明细失败",
     },
   );
   if (!response.ok) {
@@ -164,12 +163,13 @@ export async function completePostDepartureSourceCandidateCargo(
 export async function acceptPostDepartureSourceCandidate(
   command: PostDepartureSourceCandidateAcceptCommandV1,
 ): Promise<PostDepartureSourceCandidateAcceptResultV1> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/post-departure-source-packages/${command.packageId}/candidates/${encodeURIComponent(command.candidateRef)}/accept`,
     {
       method: "POST",
-      headers: HEADERS,
+      headers: JSON_HEADERS,
       body: JSON.stringify(command),
+      fallback: "暂时无法完成接管",
     },
   );
   if (!response.ok) {
@@ -185,12 +185,13 @@ export async function acceptPostDepartureSourceCandidate(
 export async function acceptPostDepartureSourcePackage(
   command: PostDepartureSourcePackageAcceptCommandV1,
 ): Promise<PostDepartureSourcePackageAcceptResultV1> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/post-departure-source-packages/${command.packageId}/accept`,
     {
       method: "POST",
-      headers: HEADERS,
+      headers: JSON_HEADERS,
       body: JSON.stringify(command),
+      fallback: "暂时无法批量接管；已成功项不会重复创建，请直接重试",
     },
   );
   if (!response.ok) {

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { listCurrentNodes } from "./lifecycleCurrentNodes";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -20,12 +26,7 @@ describe("listCurrentNodes", () => {
     await listCurrentNodes(["c1", "c2"]);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/lifecycle-current-nodes?containerIds=c1%2Cc2",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 });

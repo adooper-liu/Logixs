@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 export interface DeadLetterItem {
   id: string;
@@ -44,14 +44,7 @@ export interface ReplayDeadLetterResult {
   targetConsumerVersion: string;
 }
 
-const DEV_OPERATOR_ID = "dev-operator";
-
-function identityHeaders(): HeadersInit {
-  return {
-    "X-Tenant-Id": DEV_TENANT_ID,
-    "X-Operator-Id": DEV_OPERATOR_ID,
-  };
-}
+const JSON_HEADERS = { "Content-Type": "application/json" };
 
 async function readError(
   response: Response,
@@ -72,8 +65,8 @@ export async function listDeadLetters(input?: {
     query.set("pageSize", String(input.pageSize));
   if (input?.cursor) query.set("cursor", input.cursor);
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  const response = await fetch(`/api/outbox/dead-letters${suffix}`, {
-    headers: identityHeaders(),
+  const response = await requestApi(`/api/outbox/dead-letters${suffix}`, {
+    fallback: "列死信失败",
   });
   if (!response.ok) {
     throw new Error(await readError(response, "列死信失败"));
@@ -137,8 +130,8 @@ export async function listInboxDeadLetters(input?: {
     query.set("pageSize", String(input.pageSize));
   if (input?.cursor) query.set("cursor", input.cursor);
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  const response = await fetch(`/api/inbox/dead-letters${suffix}`, {
-    headers: identityHeaders(),
+  const response = await requestApi(`/api/inbox/dead-letters${suffix}`, {
+    fallback: "列 Inbox 死信失败",
   });
   if (!response.ok) {
     throw new Error(await readError(response, "列 Inbox 死信失败"));
@@ -161,19 +154,17 @@ export async function replayInboxDeadLetter(
   deadLetterId: string,
   input: ReplayDeadLetterInput,
 ): Promise<ReplayInboxDeadLetterResult> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/inbox/dead-letters/${deadLetterId}/replay`,
     {
       method: "POST",
-      headers: {
-        ...identityHeaders(),
-        "Content-Type": "application/json",
-      },
+      headers: JSON_HEADERS,
       body: JSON.stringify({
         reasonCode: input.reasonCode,
         targetConsumerVersion: input.targetConsumerVersion,
         idempotencyKey: input.idempotencyKey,
       }),
+      fallback: "Inbox 重放失败",
     },
   );
   if (!response.ok) {
@@ -186,19 +177,17 @@ export async function replayDeadLetter(
   deadLetterId: string,
   input: ReplayDeadLetterInput,
 ): Promise<ReplayDeadLetterResult> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/outbox/dead-letters/${deadLetterId}/replay`,
     {
       method: "POST",
-      headers: {
-        ...identityHeaders(),
-        "Content-Type": "application/json",
-      },
+      headers: JSON_HEADERS,
       body: JSON.stringify({
         reasonCode: input.reasonCode,
         targetConsumerVersion: input.targetConsumerVersion,
         idempotencyKey: input.idempotencyKey,
       }),
+      fallback: "重放失败",
     },
   );
   if (!response.ok) {

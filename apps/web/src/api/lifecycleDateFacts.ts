@@ -1,5 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
+import { requestJson } from "./httpClient";
 
 export interface LifecycleDateFact {
   factId: string;
@@ -67,49 +66,23 @@ export interface RecordLifecycleDateFactResult {
   projectionVersion: number;
 }
 
-const IDENTITY_HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
-  "X-Roles": "operations_dispatcher",
-};
-
 export async function listLifecycleDateFacts(
   containerId: string,
 ): Promise<LifecycleDateFactProjection> {
-  const response = await fetch(endpoint(containerId), {
-    headers: IDENTITY_HEADERS,
+  return requestJson<LifecycleDateFactProjection>(endpoint(containerId), {
+    fallback: "加载日期事实失败",
   });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "加载日期事实失败",
-      ),
-    );
-  }
-  return (await response.json()) as LifecycleDateFactProjection;
 }
 
 export async function recordLifecycleDateFact(
   containerId: string,
   input: RecordLifecycleDateFactInput,
 ): Promise<RecordLifecycleDateFactResult> {
-  const response = await fetch(endpoint(containerId), {
+  return requestJson<RecordLifecycleDateFactResult>(endpoint(containerId), {
     method: "POST",
-    headers: { ...IDENTITY_HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: input,
+    fallback: "提交日期事实失败",
   });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "提交日期事实失败",
-      ),
-    );
-  }
-  return (await response.json()) as RecordLifecycleDateFactResult;
 }
 
 function endpoint(containerId: string): string {

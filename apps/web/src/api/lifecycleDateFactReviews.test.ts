@@ -7,7 +7,7 @@ import {
 describe("lifecycle date fact review API", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("loads the review queue with the review supervisor identity", async () => {
+  it("loads the review queue with the session identity, not a fixed reviewer", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -25,7 +25,10 @@ describe("lifecycle date fact review API", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/lifecycle-date-fact-reviews?pageSize=30",
       expect.objectContaining({
-        headers: expect.objectContaining({ "X-Roles": "review_supervisor" }),
+        headers: expect.objectContaining({
+          "X-Operator-Id": "dev-operator",
+          "X-Roles": "operations_dispatcher",
+        }),
       }),
     );
   });

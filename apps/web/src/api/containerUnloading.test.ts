@@ -7,7 +7,7 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("container unloading API", () => {
-  it("loads the current report with the warehouse role", async () => {
+  it("loads the current report with the session identity", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue({ ok: true, json: async () => null });
@@ -16,7 +16,10 @@ describe("container unloading API", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/containers/container%2F1/unloading-report",
       expect.objectContaining({
-        headers: expect.objectContaining({ "X-Roles": "warehouse_operator" }),
+        headers: expect.objectContaining({
+          "X-Operator-Id": "dev-operator",
+          "X-Roles": "operations_dispatcher",
+        }),
       }),
     );
   });

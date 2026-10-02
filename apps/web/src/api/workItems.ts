@@ -1,5 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
+import { requestJson } from "./httpClient";
 
 export interface ExternalWorkItem {
   id: string;
@@ -30,12 +29,6 @@ export interface ExternalWorkItemPage {
   projectionVersion: number;
 }
 
-const IDENTITY_HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-operator",
-  "X-Roles": "field_operator",
-};
-
 export async function listExternalWorkItems(input?: {
   containerId?: string;
   pageSize?: number;
@@ -46,17 +39,7 @@ export async function listExternalWorkItems(input?: {
   if (input?.pageSize != null) query.set("pageSize", String(input.pageSize));
   if (input?.cursor) query.set("cursor", input.cursor);
   const suffix = query.toString() ? `?${query.toString()}` : "";
-  const response = await fetch(`/api/work-items${suffix}`, {
-    headers: IDENTITY_HEADERS,
+  return requestJson<ExternalWorkItemPage>(`/api/work-items${suffix}`, {
+    fallback: "加载整改工作项失败",
   });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "加载整改工作项失败",
-      ),
-    );
-  }
-  return (await response.json()) as ExternalWorkItemPage;
 }

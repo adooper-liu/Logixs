@@ -15,11 +15,8 @@ import {
   type LifecycleDateFactProjection,
 } from "../api/lifecycleDateFacts";
 import { listLifecycleNodes } from "../api/lifecycleNodes";
-import {
-  DEV_OPERATOR_ID,
-  listNodeTasks,
-  type NodeTaskDetail,
-} from "../api/nodeTasks";
+import { listNodeTasks, type NodeTaskDetail } from "../api/nodeTasks";
+import { useAuthSession } from "../auth/useAuthSession";
 import { buildStuffingQueue } from "../data/stuffingWorkbench";
 import { toLiveNode, type LiveNodeView } from "../data/liveNodeProjection";
 
@@ -56,6 +53,7 @@ export function useStuffingWorkbench(
   const queueError = shallowRef("");
   const selectionError = shallowRef("");
   let selectionRevision = 0;
+  const { actorId } = useAuthSession();
 
   const stuffingNode = computed(
     () =>
@@ -69,7 +67,7 @@ export function useStuffingWorkbench(
     buildStuffingQueue({
       tasks: taskPool.value,
       containers: containers.value,
-      actorId: DEV_OPERATOR_ID,
+      actorId: actorId.value,
     }),
   );
   const selectedTask = computed(

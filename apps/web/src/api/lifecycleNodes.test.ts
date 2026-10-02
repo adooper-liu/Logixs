@@ -4,6 +4,12 @@ import {
   listLifecycleNodesByContainers,
 } from "./lifecycleNodes";
 
+const SESSION_HEADERS = {
+  "X-Tenant-Id": "demo-real-sample-20260921",
+  "X-Operator-Id": "dev-operator",
+  "X-Roles": "operations_dispatcher",
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -24,12 +30,7 @@ describe("listLifecycleNodes", () => {
     await listLifecycleNodes("c1");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/containers/c1/lifecycle-nodes",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 
@@ -59,12 +60,7 @@ describe("listLifecycleNodesByContainers", () => {
     await listLifecycleNodesByContainers(["c1", "c2"]);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/lifecycle-nodes?containerIds=c1%2Cc2",
-      {
-        headers: {
-          "X-Tenant-Id": "demo-real-sample-20260921",
-          "X-Operator-Id": "dev-operator",
-        },
-      },
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
     );
   });
 });

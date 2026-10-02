@@ -3,10 +3,9 @@ import type {
   ImportFieldScope,
   QuantityUnitCode,
 } from "@logix/contracts/import-fields.json";
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi } from "./httpClient";
 
 // 导入批次前端只读/上传客户端（P6 阶段 A 读链路）。
-// 开发期身份用固定值（正式 OIDC 属 P5-02）。
 
 export interface ImportMappingSuggestion {
   column: string;
@@ -55,8 +54,6 @@ export interface ImportBatchDetailDto {
   fieldCatalog: ImportFieldCatalog;
 }
 
-const DEV_OPERATOR_ID = "dev-operator";
-
 export async function uploadImportBatch(
   file: File,
   replacesBatchId?: string,
@@ -74,14 +71,11 @@ export async function uploadImportBatch(
   formData.append("file", file);
   if (replacesBatchId) formData.append("replacesBatchId", replacesBatchId);
   if (parserProfile) formData.append("parserProfile", parserProfile);
-  const response = await fetch("/api/import-batches", {
+  const response = await requestApi("/api/import-batches", {
     method: "POST",
-    headers: {
-      "Idempotency-Key": idempotencyKey,
-      "X-Tenant-Id": DEV_TENANT_ID,
-      "X-Operator-Id": DEV_OPERATOR_ID,
-    },
+    headers: { "Idempotency-Key": idempotencyKey },
     body: formData,
+    fallback: "上传失败",
   });
   if (!response.ok) {
     const text = await response.text();
@@ -93,11 +87,8 @@ export async function uploadImportBatch(
 export async function getImportBatch(
   id: string,
 ): Promise<ImportBatchDetailDto> {
-  const response = await fetch(`/api/import-batches/${id}`, {
-    headers: {
-      "X-Tenant-Id": DEV_TENANT_ID,
-      "X-Operator-Id": DEV_OPERATOR_ID,
-    },
+  const response = await requestApi(`/api/import-batches/${id}`, {
+    fallback: "查询失败",
   });
   if (!response.ok) {
     throw new Error(`查询失败（${response.status}）`);
@@ -124,14 +115,11 @@ export interface ReconciliationResult {
 }
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
-  const response = await fetch(url, {
+  const response = await requestApi(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Tenant-Id": DEV_TENANT_ID,
-      "X-Operator-Id": DEV_OPERATOR_ID,
-    },
+    headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
+    fallback: "请求失败",
   });
   if (!response.ok) {
     const text = await response.text();
@@ -166,14 +154,9 @@ export function executeImport(batchId: string): Promise<ReconciliationResult> {
 export async function getReconciliation(
   batchId: string,
 ): Promise<ReconciliationResult> {
-  const response = await fetch(
+  const response = await requestApi(
     `/api/import-batches/${batchId}/reconciliation`,
-    {
-      headers: {
-        "X-Tenant-Id": DEV_TENANT_ID,
-        "X-Operator-Id": DEV_OPERATOR_ID,
-      },
-    },
+    { fallback: "对账查询失败" },
   );
   if (!response.ok) {
     throw new Error(`对账查询失败（${response.status}）`);

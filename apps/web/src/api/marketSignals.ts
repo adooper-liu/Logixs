@@ -24,14 +24,7 @@ import type {
   ProductInitiativeQueuePageV1,
   ProductInitiativeV1,
 } from "@logix/contracts";
-import { DEV_OPERATOR_ID, DEV_TENANT_ID } from "./developmentIdentity";
-import { formatHttpError } from "./httpError";
-
-const HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": DEV_OPERATOR_ID,
-  "X-Roles": "operations_dispatcher",
-};
+import { requestJson } from "./httpClient";
 
 export async function listMarketSignals(): Promise<MarketSignalPageV1> {
   return requestJson<MarketSignalPageV1>("/api/market-signals?pageSize=100", {
@@ -296,34 +289,6 @@ export async function releaseSellableSku(
     `/api/product-identities/${encodeURIComponent(releaseId)}/releases`,
     { method: "POST", body: command, fallback: "暂时无法发布可售 SKU" },
   );
-}
-
-async function requestJson<T = unknown>(
-  url: string,
-  options: {
-    method?: "GET" | "POST" | "PATCH";
-    body?: unknown;
-    fallback: string;
-  },
-): Promise<T> {
-  const response = await fetch(url, {
-    method: options.method ?? "GET",
-    headers: {
-      ...HEADERS,
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
-  });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        options.fallback,
-      ),
-    );
-  }
-  return (await response.json()) as T;
 }
 
 async function sha256Hex(value: string): Promise<string> {

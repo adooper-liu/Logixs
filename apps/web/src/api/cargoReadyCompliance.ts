@@ -1,4 +1,4 @@
-import { DEV_TENANT_ID } from "./developmentIdentity";
+import { requestApi, requestJson } from "./httpClient";
 import { formatHttpError } from "./httpError";
 
 export interface CargoReadyComplianceItem {
@@ -99,40 +99,25 @@ export interface CargoReadyDecisionResponse {
   };
 }
 
-const IDENTITY_HEADERS = {
-  "X-Tenant-Id": DEV_TENANT_ID,
-  "X-Operator-Id": "dev-compliance-reviewer",
-  "X-Roles": "review_supervisor",
-};
-
 export async function getCargoReadyCompliance(
   containerId: string,
   signal?: AbortSignal,
 ): Promise<CargoReadyComplianceAssessment | null> {
-  const response = await fetch(endpoint(containerId), {
-    headers: IDENTITY_HEADERS,
-    signal,
-  });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "加载备货合规评审失败",
-      ),
-    );
-  }
-  return (await response.json()) as CargoReadyComplianceAssessment | null;
+  return requestJson<CargoReadyComplianceAssessment | null>(
+    endpoint(containerId),
+    { fallback: "加载备货合规评审失败", signal },
+  );
 }
 
 export async function assessCargoReadyCompliance(
   containerId: string,
   input: AssessCargoReadyComplianceInput,
 ): Promise<void> {
-  const response = await fetch(`${endpoint(containerId)}/assessments`, {
+  const response = await requestApi(`${endpoint(containerId)}/assessments`, {
     method: "POST",
-    headers: { ...IDENTITY_HEADERS, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    fallback: "创建备货合规评审失败",
   });
   if (!response.ok) {
     throw new Error(
@@ -149,21 +134,10 @@ export async function decideCargoReadyCompliance(
   containerId: string,
   input: DecideCargoReadyComplianceInput,
 ): Promise<CargoReadyDecisionResponse> {
-  const response = await fetch(`${endpoint(containerId)}/decisions`, {
-    method: "POST",
-    headers: { ...IDENTITY_HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!response.ok) {
-    throw new Error(
-      await formatHttpError(
-        response.status,
-        await response.text(),
-        "提交合规决定失败",
-      ),
-    );
-  }
-  return (await response.json()) as CargoReadyDecisionResponse;
+  return requestJson<CargoReadyDecisionResponse>(
+    `${endpoint(containerId)}/decisions`,
+    { method: "POST", body: input, fallback: "提交合规决定失败" },
+  );
 }
 
 function endpoint(containerId: string): string {

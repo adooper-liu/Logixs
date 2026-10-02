@@ -3,6 +3,7 @@ import {
   Bell,
   ChevronRight,
   Command,
+  LogOut,
   Menu,
   Moon,
   PanelLeftClose,
@@ -20,6 +21,12 @@ defineProps<{
   contextLabel?: string;
   roleLabel: string;
   theme: AppTheme;
+  /** 脱敏后的登录身份文案：显示名、稳定 subject 或会话状态，不含 Token 与声明。 */
+  identityLabel: string;
+  identityMode: "development" | "oidc";
+  canSignOut: boolean;
+  signOutPending: boolean;
+  signOutFailed: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,6 +34,7 @@ const emit = defineEmits<{
   toggleSidebar: [];
   toggleCommand: [];
   toggleTheme: [];
+  signOut: [];
 }>();
 </script>
 
@@ -93,10 +101,42 @@ const emit = defineEmits<{
         <Moon v-if="theme === 'light'" :size="18" />
         <Sun v-else :size="18" />
       </button>
-      <div class="user-context" :title="`当前演示角色：${roleLabel}`">
+      <div
+        class="user-context"
+        role="group"
+        aria-label="登录身份"
+        data-testid="login-identity"
+      >
         <UserRound :size="17" aria-hidden="true" />
-        <span>{{ roleLabel }}</span>
+        <span class="identity-name" :title="`登录身份：${identityLabel}`">
+          {{ identityLabel }}
+        </span>
+        <span v-if="identityMode === 'development'" class="identity-badge">
+          本机开发身份
+        </span>
       </div>
+      <div
+        class="demo-role"
+        :title="`当前演示角色：${roleLabel}。只切换界面视图，不代表登录权限`"
+        data-testid="demo-role"
+      >
+        <span>当前演示角色</span>
+        <b>{{ roleLabel }}</b>
+      </div>
+      <button
+        v-if="canSignOut"
+        class="icon-button"
+        type="button"
+        aria-label="退出登录"
+        :disabled="signOutPending"
+        :aria-busy="signOutPending"
+        @click="emit('signOut')"
+      >
+        <LogOut :size="18" />
+      </button>
+      <span v-if="signOutFailed" class="sign-out-failed" role="alert">
+        退出登录失败，请重试
+      </span>
     </div>
   </header>
 </template>
@@ -189,6 +229,48 @@ const emit = defineEmits<{
   border-left: 1px solid var(--line);
 }
 
+.identity-name {
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity-badge {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.demo-role {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-micro);
+  white-space: nowrap;
+}
+
+.demo-role b {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.sign-out-failed {
+  color: var(--risk);
+  font-size: var(--text-micro);
+  white-space: nowrap;
+}
+
+@media (max-width: 1279px) {
+  .demo-role span {
+    display: none;
+  }
+}
+
 .topbar-actions .icon-button {
   position: relative;
 }
@@ -219,7 +301,8 @@ const emit = defineEmits<{
   .command-trigger span,
   .command-trigger kbd,
   .system-health span,
-  .user-context span {
+  .user-context span,
+  .demo-role {
     display: none;
   }
 
