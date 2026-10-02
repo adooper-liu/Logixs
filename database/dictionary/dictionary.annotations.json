@@ -16,6 +16,11 @@
       "path": "database/schema.prisma",
       "authority": "implementation",
       "note": "Prisma model 上方的中文实施注释。"
+    },
+    "doc-workbench-market-signals": {
+      "path": "doc/cross-border-supply-chain/08-role-workbenches.md",
+      "authority": "business",
+      "note": "市场与经营信号工作台的业务目的、单一当前验证承诺、责任与真实验收边界。"
     }
   },
   "tables": {
@@ -430,24 +435,24 @@
       "notes": []
     },
     "public.market_signal": {
-      "nameZh": "跨模块通知 Outbox",
-      "nameStatus": "confirmed_implementation",
-      "purposeZh": "跨模块通知 Outbox（本刀由 lifecycle-control 写入）。 契约：GC-009 OutboxRecord；物理形态参考 CUSTOMS_DATABASE §5.2。 领域事件插入与 pending 同行。发布器领取后写入 publishing 租约，成功则 published。 单体用 owner_module 区分写入方。",
-      "purposeStatus": "confirmed_implementation",
-      "sourceRefs": ["prisma-schema"],
-      "moduleCode": null,
-      "ownerModule": null,
-      "notes": []
+      "nameZh": "市场与经营信号",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存市场与经营信号当前事实、流程去向及可重建的当前验证承诺投影；不可变判断历史由 market_signal_decision 保存。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["prisma-schema", "doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["当前验证投影不等于可信机会或业务结果。"]
     },
     "public.market_signal_decision": {
-      "nameZh": "待业务确认",
-      "nameStatus": "needs_business_confirmation",
-      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
-      "purposeStatus": "needs_business_confirmation",
-      "sourceRefs": [],
-      "moduleCode": null,
-      "ownerModule": null,
-      "notes": []
+      "nameZh": "市场信号判断历史",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "按版本追加保存经营人员对市场信号的观察、交接、不采纳、作废、归档及选品退回判断。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals", "prisma-schema"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["判断历史不可变；当前验证承诺可由最新有效观察判断重建。"]
     },
     "public.node_applicability_decision": {
       "nameZh": "可选节点适用性决策留痕",
@@ -7271,6 +7276,26 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.market_signal.active_validation_owner_actor_id": {
+      "nameZh": "当前验证负责人",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存当前验证承诺的负责人 actor 标识；首片只允许认证用户自领，其他用户不得静默接管。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["当前投影，可由不可变判断历史重建。"]
+    },
+    "public.market_signal.active_validation_due_date": {
+      "nameZh": "当前验证检查日期",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存当前验证承诺的下一检查日期，用于 watching 分组内排序和跨班次续做，不自动形成逾期或 KPI。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["当前投影，可由不可变判断历史重建。"]
+    },
     "public.market_signal.tenant_id": {
       "nameZh": "租户标识",
       "nameStatus": "confirmed_implementation",
@@ -7280,6 +7305,26 @@
       "moduleCode": null,
       "ownerModule": null,
       "notes": []
+    },
+    "public.market_signal.active_validation_focus": {
+      "nameZh": "当前验证重点",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存当前验证承诺要验证的问题；新写完整观察必填，旧记录允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["当前投影，可由不可变判断历史重建。"]
+    },
+    "public.market_signal.active_validation_waiting_reason": {
+      "nameZh": "当前验证等待原因",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存当前验证承诺正在等待的输入或责任；可选，不暂停指标，也不形成受控等待分类。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["当前投影，可由不可变判断历史重建。"]
     },
     "public.market_signal.title": {
       "nameZh": "待业务确认",
@@ -7362,23 +7407,23 @@
       "notes": []
     },
     "public.market_signal_decision.next_review_date": {
-      "nameZh": "待业务确认",
-      "nameStatus": "needs_business_confirmation",
-      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
-      "purposeStatus": "needs_business_confirmation",
-      "sourceRefs": [],
-      "moduleCode": null,
-      "ownerModule": null,
+      "nameZh": "下一检查日期",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "经营人员安排当前验证承诺时约定再次检查该信号的日期；不自动构成逾期或 KPI 结论。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
       "notes": []
     },
     "public.market_signal_decision.watch_focus": {
-      "nameZh": "待业务确认",
-      "nameStatus": "needs_business_confirmation",
-      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
-      "purposeStatus": "needs_business_confirmation",
-      "sourceRefs": [],
-      "moduleCode": null,
-      "ownerModule": null,
+      "nameZh": "当前验证重点",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "说明本次继续观察具体要验证的问题；新 completed watch 必填，旧历史允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
       "notes": []
     },
     "public.market_signal_decision.dismiss_reason": {
@@ -7439,6 +7484,16 @@
       "sourceRefs": ["engineering-data-governance"],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.market_signal_decision.waiting_reason": {
+      "nameZh": "验证等待原因",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录本次观察判断正在等待的输入或责任；只属于 watch，不暂停指标或自动改变业务状态。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
       "notes": []
     },
     "public.market_signal_decision.tenant_id": {

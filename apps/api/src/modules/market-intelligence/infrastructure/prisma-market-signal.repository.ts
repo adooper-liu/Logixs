@@ -107,24 +107,31 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
     const rows = await this.prisma.marketSignal.findMany({
       where: {
         tenantId: query.tenantId,
-        ...(query.after
-          ? {
-              OR: [
-                { updatedAt: { lt: query.after.updatedAt } },
-                {
-                  AND: [
-                    { updatedAt: query.after.updatedAt },
-                    { id: { lt: query.after.id } },
-                  ],
-                },
-              ],
-            }
-          : {}),
+        currentDestination: query.destination,
+        ...listAfterWhere(query.destination, query.after),
       },
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      orderBy:
+        query.destination === "watching"
+          ? [
+              {
+                activeValidationDueDate: { sort: "asc", nulls: "last" },
+              },
+              { updatedAt: "desc" },
+              { id: "desc" },
+            ]
+          : [{ updatedAt: "desc" }, { id: "desc" }],
       take: query.take,
     });
     return rows.map(mapSignal);
+  }
+
+  count(input: Parameters<MarketSignalRepository["count"]>[0]) {
+    return this.prisma.marketSignal.count({
+      where: {
+        tenantId: input.tenantId,
+        currentDestination: input.destination,
+      },
+    });
   }
 
   updateFacts(input: Parameters<MarketSignalRepository["updateFacts"]>[0]) {
@@ -254,6 +261,14 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       if (signal.version !== input.prepared.expectedSignalVersion) {
         conflict("MARKET_SIGNAL_VERSION_CONFLICT");
       }
+      if (
+        input.prepared.decisionType === "watch" &&
+        input.prepared.completion === "completed" &&
+        signal.activeValidationOwnerActorId &&
+        signal.activeValidationOwnerActorId !== input.actorId
+      ) {
+        conflict("MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT");
+      }
       const latestDecision = await tx.marketSignalDecision.findFirst({
         where: { tenantId: input.tenantId, signalId: input.signalId },
         orderBy: { decisionVersion: "desc" },
@@ -277,6 +292,7 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
             ? new Date(`${input.prepared.nextReviewDate}T00:00:00.000Z`)
             : null,
           watchFocus: input.prepared.watchFocus,
+          waitingReason: input.prepared.waitingReason,
           dismissReason: input.prepared.dismissReason,
           pendingFieldCodes: input.prepared.pendingFieldCodes,
           createdBy: input.actorId,
@@ -385,6 +401,9 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
         });
       }
 
+      const completedWatch =
+        input.prepared.decisionType === "watch" &&
+        input.prepared.completion === "completed";
       const updated = await tx.marketSignal.updateMany({
         where: {
           id: input.signalId,
@@ -393,6 +412,16 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
         },
         data: {
           currentDestination: input.prepared.nextDestination,
+          activeValidationOwnerActorId: completedWatch ? input.actorId : null,
+          activeValidationDueDate: completedWatch
+            ? new Date(`${input.prepared.nextReviewDate!}T00:00:00.000Z`)
+            : null,
+          activeValidationFocus: completedWatch
+            ? input.prepared.watchFocus
+            : null,
+          activeValidationWaitingReason: completedWatch
+            ? input.prepared.waitingReason
+            : null,
           version: nextSignalVersion,
           updatedBy: input.actorId,
           updatedAt: createdAt,
@@ -483,6 +512,7 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
         opportunityStatement: null,
         nextReviewDate: null,
         watchFocus: null,
+        waitingReason: null,
         dismissReason: null,
         pendingFieldCodes: prepared.pendingFieldCodes,
         createdBy: input.actorId,
@@ -500,6 +530,10 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       },
       data: {
         currentDestination: prepared.nextDestination,
+        activeValidationOwnerActorId: null,
+        activeValidationDueDate: null,
+        activeValidationFocus: null,
+        activeValidationWaitingReason: null,
         version: nextSignalVersion,
         updatedBy: input.actorId,
         updatedAt: createdAt,
@@ -522,6 +556,65 @@ async function ownedSignal(
   return row;
 }
 
+function listAfterWhere(
+  destination: MarketSignalRecord["currentDestination"],
+  after: Parameters<MarketSignalRepository["list"]>[0]["after"],
+): Prisma.MarketSignalWhereInput {
+  if (!after) return {};
+  if (destination !== "watching") {
+    if (after.sort !== "updated") {
+      conflict("MARKET_SIGNAL_CURSOR_SORT_CONFLICT");
+    }
+    return {
+      OR: [
+        { updatedAt: { lt: after.updatedAt } },
+        {
+          AND: [
+            { updatedAt: after.updatedAt },
+            { id: { lt: after.id } },
+          ],
+        },
+      ],
+    };
+  }
+  if (after.sort !== "watching_due") {
+    conflict("MARKET_SIGNAL_CURSOR_SORT_CONFLICT");
+  }
+  if (after.activeValidationDueDate === null) {
+    return {
+      activeValidationDueDate: null,
+      OR: [
+        { updatedAt: { lt: after.updatedAt } },
+        {
+          AND: [
+            { updatedAt: after.updatedAt },
+            { id: { lt: after.id } },
+          ],
+        },
+      ],
+    };
+  }
+  return {
+    OR: [
+      { activeValidationDueDate: { gt: after.activeValidationDueDate } },
+      { activeValidationDueDate: null },
+      {
+        AND: [
+          { activeValidationDueDate: after.activeValidationDueDate },
+          { updatedAt: { lt: after.updatedAt } },
+        ],
+      },
+      {
+        AND: [
+          { activeValidationDueDate: after.activeValidationDueDate },
+          { updatedAt: after.updatedAt },
+          { id: { lt: after.id } },
+        ],
+      },
+    ],
+  };
+}
+
 function mapSignal(row: SignalRow): MarketSignalRecord {
   return {
     id: row.id,
@@ -535,6 +628,17 @@ function mapSignal(row: SignalRow): MarketSignalRecord {
     currentDestination:
       row.currentDestination as MarketSignalRecord["currentDestination"],
     ownerTeamCode: row.ownerTeamCode,
+    activeValidation:
+      row.activeValidationOwnerActorId && row.activeValidationDueDate
+        ? {
+            responsibleActorId: row.activeValidationOwnerActorId,
+            nextReviewDate: row.activeValidationDueDate
+              .toISOString()
+              .slice(0, 10),
+            watchFocus: row.activeValidationFocus,
+            waitingReason: row.activeValidationWaitingReason,
+          }
+        : null,
     version: row.version,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

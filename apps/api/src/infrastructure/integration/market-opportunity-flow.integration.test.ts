@@ -209,6 +209,212 @@ describe("market opportunity persistence flow", () => {
     });
   });
 
+  it("persists one self-owned active validation and rejects silent takeover", async () => {
+    const tenantId = randomUUID();
+    const signalId = randomUUID();
+    const created = await marketSignals.create({
+      tenantId,
+      actorId: "market-owner-a",
+      command: normalizeMarketSignalCreate({
+        contractVersion: "market-signal-create.v1",
+        requestId: signalId,
+        title: "[合成演练] 春季户外收纳窗口提前",
+        idempotencyKey: `create:${signalId}`,
+      }),
+    });
+    const firstCommand = prepareMarketSignalDecision(
+      { ...created.record, evidenceRefs: [] },
+      {
+        contractVersion: "market-signal-decision.v1",
+        expectedSignalVersion: 1,
+        decisionType: "watch",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "确认趋势是否持续两周",
+        waitingReason: "等待第二客服队列",
+        idempotencyKey: `watch:${signalId}:1`,
+      },
+    );
+
+    const first = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner-a",
+      signalId,
+      evidenceRefs: [],
+      prepared: firstCommand,
+    });
+    const replay = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner-a",
+      signalId,
+      evidenceRefs: [],
+      prepared: firstCommand,
+    });
+
+    expect(first).toMatchObject({
+      duplicate: false,
+      signal: {
+        currentDestination: "watching",
+        activeValidation: {
+          responsibleActorId: "market-owner-a",
+          nextReviewDate: "2026-02-12",
+          watchFocus: "确认趋势是否持续两周",
+          waitingReason: "等待第二客服队列",
+        },
+      },
+    });
+    expect(replay).toMatchObject({
+      duplicate: true,
+      signal: { activeValidation: first.signal.activeValidation },
+    });
+    await expect(
+      marketSignals.decide({
+        tenantId,
+        actorId: "market-owner-b",
+        signalId,
+        evidenceRefs: [],
+        prepared: prepareMarketSignalDecision(
+          { ...first.signal, evidenceRefs: [] },
+          {
+            contractVersion: "market-signal-decision.v1",
+            expectedSignalVersion: first.signal.version,
+            decisionType: "watch",
+            nextReviewDate: "2026-02-19",
+            watchFocus: "确认客户痛点是否重复",
+            idempotencyKey: `watch:${signalId}:takeover`,
+          },
+        ),
+      }),
+    ).rejects.toThrow("MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT");
+
+    const rescheduled = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner-a",
+      signalId,
+      evidenceRefs: [],
+      prepared: prepareMarketSignalDecision(
+        { ...first.signal, evidenceRefs: [] },
+        {
+          contractVersion: "market-signal-decision.v1",
+          expectedSignalVersion: first.signal.version,
+          decisionType: "watch",
+          nextReviewDate: "2026-02-19",
+          watchFocus: "确认客户痛点是否重复",
+          idempotencyKey: `watch:${signalId}:2`,
+        },
+      ),
+    });
+    expect(rescheduled.signal.activeValidation).toMatchObject({
+      responsibleActorId: "market-owner-a",
+      nextReviewDate: "2026-02-19",
+      watchFocus: "确认客户痛点是否重复",
+      waitingReason: null,
+    });
+    await expect(
+      prisma.marketSignalDecision.count({ where: { tenantId, signalId } }),
+    ).resolves.toBe(2);
+
+    const dismissed = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner-a",
+      signalId,
+      evidenceRefs: [],
+      prepared: prepareMarketSignalDecision(
+        { ...rescheduled.signal, evidenceRefs: [] },
+        {
+          contractVersion: "market-signal-decision.v1",
+          expectedSignalVersion: rescheduled.signal.version,
+          decisionType: "dismiss",
+          dismissReason: "短期峰值，不进入选品",
+          idempotencyKey: `dismiss:${signalId}`,
+        },
+      ),
+    });
+    expect(dismissed.signal.activeValidation).toBeNull();
+    await expect(
+      prisma.marketSignalDecision.count({ where: { tenantId, signalId } }),
+    ).resolves.toBe(3);
+  });
+
+  it("keeps needs-decision reachable while paging more than 100 watching rows by due date", async () => {
+    const tenantId = randomUUID();
+    const watchedIds: string[] = [];
+    for (let index = 0; index < 101; index += 1) {
+      const signalId = randomUUID();
+      const created = await marketSignals.create({
+        tenantId,
+        actorId: "market-owner",
+        command: normalizeMarketSignalCreate({
+          contractVersion: "market-signal-create.v1",
+          requestId: signalId,
+          title: `[合成分页] 验证信号 ${index}`,
+          idempotencyKey: `create:${signalId}`,
+        }),
+      });
+      await marketSignals.decide({
+        tenantId,
+        actorId: "market-owner",
+        signalId,
+        evidenceRefs: [],
+        prepared: prepareMarketSignalDecision(
+          { ...created.record, evidenceRefs: [] },
+          {
+            contractVersion: "market-signal-decision.v1",
+            expectedSignalVersion: 1,
+            decisionType: "watch",
+            nextReviewDate: `2026-03-${String((index % 28) + 1).padStart(2, "0")}`,
+            watchFocus: `验证重点 ${index}`,
+            idempotencyKey: `watch:${signalId}`,
+          },
+        ),
+      });
+      watchedIds.push(signalId);
+    }
+    const pendingId = randomUUID();
+    await marketSignals.create({
+      tenantId,
+      actorId: "market-owner",
+      command: normalizeMarketSignalCreate({
+        contractVersion: "market-signal-create.v1",
+        requestId: pendingId,
+        title: "不能被观察队列挤出的待判断信号",
+        idempotencyKey: `create:${pendingId}`,
+      }),
+    });
+
+    const pending = await marketSignals.list({
+      tenantId,
+      destination: "needs_decision",
+      take: 10,
+    });
+    expect(pending.map(({ id }) => id)).toContain(pendingId);
+
+    const seen = new Set<string>();
+    let after: Parameters<typeof marketSignals.list>[0]["after"];
+    do {
+      const page = await marketSignals.list({
+        tenantId,
+        destination: "watching",
+        take: 25,
+        ...(after ? { after } : {}),
+      });
+      page.forEach((row) => seen.add(row.id));
+      const last = page.at(-1);
+      after =
+        page.length === 25 && last
+          ? {
+              sort: "watching_due",
+              activeValidationDueDate: last.activeValidation
+                ? new Date(`${last.activeValidation.nextReviewDate}T00:00:00.000Z`)
+                : null,
+              updatedAt: last.updatedAt,
+              id: last.id,
+            }
+          : undefined;
+    } while (after);
+
+    expect(seen).toEqual(new Set(watchedIds));
+  }, 120_000);
+
   it("allows only one concurrent claim for the same queued handoff", async () => {
     const tenantId = randomUUID();
     const handoffId = await createHandoff(tenantId, "并发领取验证信号");

@@ -59,8 +59,8 @@ model ProductIdentityRelease {
   payloadHash       String   @map("payload_hash")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  quotations            SupplierQuotation[]
-  nominations           SupplierNominationRelease[]
+  quotations  SupplierQuotation[]
+  nominations SupplierNominationRelease[]
 
   @@unique([id, tenantId], map: "product_identity_release_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "product_identity_release_idempotency_key")
@@ -71,30 +71,30 @@ model ProductIdentityRelease {
 // 事项交接（shipment-registry 拥有）：出运运营把票级事项交给专业岗位队列，该岗位领取、了结。
 // **只到岗位不到人**；`state` 只说明"有没有人接、了没了的"，不是 Shipment 的生命周期状态。
 model ShipmentWorkHandoff {
-  id                 String                     @id @default(uuid()) @map("id") @db.Uuid
-  tenantId           String                     @map("tenant_id")
-  shipmentId         String                     @map("shipment_id") @db.Uuid
-  shipment           Shipment                   @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  id                 String                      @id @default(uuid()) @map("id") @db.Uuid
+  tenantId           String                      @map("tenant_id")
+  shipmentId         String                      @map("shipment_id") @db.Uuid
+  shipment           Shipment                    @relation(fields: [shipmentId, tenantId], references: [id, tenantId], onDelete: Restrict)
   // TEXT 不是 Uuid：`container_record.id` 建表时就没有 @db.Uuid。
-  containerRecordId  String?                    @map("container_record_id")
-  containerRecord    ContainerRecord?           @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  recipientQueueCode String                     @map("recipient_queue_code")
-  title              String                     @map("title")
-  detail             String?                    @map("detail")
-  state              String                     @map("state")
-  version            Int                        @map("version")
-  raisedBy           String                     @map("raised_by")
-  raisedAt           DateTime                   @map("raised_at") @db.Timestamptz
-  claimedByActorId   String?                    @map("claimed_by_actor_id")
-  claimedAt          DateTime?                  @map("claimed_at") @db.Timestamptz
-  closedByActorId    String?                    @map("closed_by_actor_id")
-  closedAt           DateTime?                  @map("closed_at") @db.Timestamptz
-  conclusion         String?                    @map("conclusion")
-  actedBy            String                     @map("acted_by")
-  idempotencyKey     String                     @map("idempotency_key")
-  payloadHash        String                     @map("payload_hash")
-  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  containerRecordId  String?                     @map("container_record_id")
+  containerRecord    ContainerRecord?            @relation(fields: [containerRecordId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  recipientQueueCode String                      @map("recipient_queue_code")
+  title              String                      @map("title")
+  detail             String?                     @map("detail")
+  state              String                      @map("state")
+  version            Int                         @map("version")
+  raisedBy           String                      @map("raised_by")
+  raisedAt           DateTime                    @map("raised_at") @db.Timestamptz
+  claimedByActorId   String?                     @map("claimed_by_actor_id")
+  claimedAt          DateTime?                   @map("claimed_at") @db.Timestamptz
+  closedByActorId    String?                     @map("closed_by_actor_id")
+  closedAt           DateTime?                   @map("closed_at") @db.Timestamptz
+  conclusion         String?                     @map("conclusion")
+  actedBy            String                      @map("acted_by")
+  idempotencyKey     String                      @map("idempotency_key")
+  payloadHash        String                      @map("payload_hash")
+  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   actions            ShipmentWorkHandoffAction[]
 
   @@unique([id, tenantId], map: "shipment_work_handoff_id_tenant_key")
@@ -126,19 +126,19 @@ model ShipmentWorkHandoffAction {
 
 // 供应商身份（sourcing 拥有）。名称在租户内唯一 —— 重名会让"定点给谁"说不清。
 model Supplier {
-  id             String              @id @default(uuid()) @map("id") @db.Uuid
-  tenantId       String              @map("tenant_id")
-  name           String              @map("name")
-  countryCode    String              @map("country_code") @db.Char(2)
-  contactName    String?             @map("contact_name")
-  contactEmail   String?             @map("contact_email")
-  admissionState String              @map("admission_state")
-  version        Int                 @map("version")
-  actedBy        String              @map("acted_by")
-  idempotencyKey String              @map("idempotency_key")
-  payloadHash    String              @map("payload_hash")
-  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  id             String                      @id @default(uuid()) @map("id") @db.Uuid
+  tenantId       String                      @map("tenant_id")
+  name           String                      @map("name")
+  countryCode    String                      @map("country_code") @db.Char(2)
+  contactName    String?                     @map("contact_name")
+  contactEmail   String?                     @map("contact_email")
+  admissionState String                      @map("admission_state")
+  version        Int                         @map("version")
+  actedBy        String                      @map("acted_by")
+  idempotencyKey String                      @map("idempotency_key")
+  payloadHash    String                      @map("payload_hash")
+  createdAt      DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   quotations     SupplierQuotation[]
   nominations    SupplierNominationRelease[]
 
@@ -152,34 +152,34 @@ model Supplier {
 // 报价：一家供应商对一份可售 SKU 发布报的价与条件（十项），关键物料由报价带入。
 // 一家供应商对一份发布只留一条当前版，被选中的那一版由定点快照冻结。
 model SupplierQuotation {
-  id                   String                   @id @default(uuid()) @map("id") @db.Uuid
-  tenantId             String                   @map("tenant_id")
-  supplierId           String                   @map("supplier_id") @db.Uuid
-  supplier             Supplier                 @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  skuReleaseId         String                   @map("sku_release_id") @db.Uuid
-  skuRelease           ProductIdentityRelease   @relation(fields: [skuReleaseId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  skuId                String                   @map("sku_id") @db.Uuid
-  version              Int                      @map("version")
-  priceTiers           Json                     @map("price_tiers")
-  incoterms            String                   @map("incoterms")
-  minimumOrderQuantity Json?                    @map("minimum_order_quantity")
-  toolingCost          Json?                    @map("tooling_cost")
-  sampleCost           Json?                    @map("sample_cost")
-  sampleRefundable     Boolean?                 @map("sample_refundable")
-  leadTimeDays         Int?                     @map("lead_time_days")
-  packagingSpec        String?                  @map("packaging_spec")
-  paymentTerms         String?                  @map("payment_terms")
-  qualityTerms         String?                  @map("quality_terms")
-  validUntil           DateTime?                @map("valid_until") @db.Timestamptz
-  keyMaterials         Json                     @map("key_materials")
-  exclusions           String?                  @map("exclusions")
-  quotedBy             String                   @map("quoted_by")
-  quotedAt             DateTime                 @map("quoted_at") @db.Timestamptz
-  actedBy              String                   @map("acted_by")
-  idempotencyKey       String                   @map("idempotency_key")
-  payloadHash          String                   @map("payload_hash")
-  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String                      @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                      @map("tenant_id")
+  supplierId           String                      @map("supplier_id") @db.Uuid
+  supplier             Supplier                    @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  skuReleaseId         String                      @map("sku_release_id") @db.Uuid
+  skuRelease           ProductIdentityRelease      @relation(fields: [skuReleaseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  skuId                String                      @map("sku_id") @db.Uuid
+  version              Int                         @map("version")
+  priceTiers           Json                        @map("price_tiers")
+  incoterms            String                      @map("incoterms")
+  minimumOrderQuantity Json?                       @map("minimum_order_quantity")
+  toolingCost          Json?                       @map("tooling_cost")
+  sampleCost           Json?                       @map("sample_cost")
+  sampleRefundable     Boolean?                    @map("sample_refundable")
+  leadTimeDays         Int?                        @map("lead_time_days")
+  packagingSpec        String?                     @map("packaging_spec")
+  paymentTerms         String?                     @map("payment_terms")
+  qualityTerms         String?                     @map("quality_terms")
+  validUntil           DateTime?                   @map("valid_until") @db.Timestamptz
+  keyMaterials         Json                        @map("key_materials")
+  exclusions           String?                     @map("exclusions")
+  quotedBy             String                      @map("quoted_by")
+  quotedAt             DateTime                    @map("quoted_at") @db.Timestamptz
+  actedBy              String                      @map("acted_by")
+  idempotencyKey       String                      @map("idempotency_key")
+  payloadHash          String                      @map("payload_hash")
+  createdAt            DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   nominations          SupplierNominationRelease[]
 
   @@unique([id, tenantId], map: "supplier_quotation_id_tenant_key")
@@ -192,30 +192,30 @@ model SupplierQuotation {
 // 定点交接快照（sourcing 拥有）：交给需求与补货侧。不可变；再次定点追加版本。
 // 供应商名称与国别随快照冻结 —— 主数据后来改名，不影响当时定的是什么。
 model SupplierNominationRelease {
-  id                   String            @id @default(uuid()) @map("id") @db.Uuid
-  tenantId             String            @map("tenant_id")
-  skuReleaseId         String            @map("sku_release_id") @db.Uuid
+  id                   String                 @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String                 @map("tenant_id")
+  skuReleaseId         String                 @map("sku_release_id") @db.Uuid
   skuRelease           ProductIdentityRelease @relation(fields: [skuReleaseId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  skuId                String            @map("sku_id") @db.Uuid
-  supplierId           String            @map("supplier_id") @db.Uuid
-  supplier             Supplier          @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  supplierName         String            @map("supplier_name")
-  supplierCountryCode  String            @map("supplier_country_code") @db.Char(2)
-  quotationId          String            @map("quotation_id") @db.Uuid
-  quotation            SupplierQuotation @relation(fields: [quotationId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  quotationVersion     Int               @map("quotation_version")
-  incoterms            String            @map("incoterms")
-  priceTiers           Json              @map("price_tiers")
-  leadTimeDays         Int?              @map("lead_time_days")
-  minimumOrderQuantity Json?             @map("minimum_order_quantity")
-  sampleConclusion     String            @map("sample_conclusion")
-  capacityConstraint   String            @map("capacity_constraint")
-  version              Int               @map("version")
-  nominatedBy          String            @map("nominated_by")
-  nominatedAt          DateTime          @map("nominated_at") @db.Timestamptz
-  idempotencyKey       String            @map("idempotency_key")
-  payloadHash          String            @map("payload_hash")
-  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  skuId                String                 @map("sku_id") @db.Uuid
+  supplierId           String                 @map("supplier_id") @db.Uuid
+  supplier             Supplier               @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  supplierName         String                 @map("supplier_name")
+  supplierCountryCode  String                 @map("supplier_country_code") @db.Char(2)
+  quotationId          String                 @map("quotation_id") @db.Uuid
+  quotation            SupplierQuotation      @relation(fields: [quotationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  quotationVersion     Int                    @map("quotation_version")
+  incoterms            String                 @map("incoterms")
+  priceTiers           Json                   @map("price_tiers")
+  leadTimeDays         Int?                   @map("lead_time_days")
+  minimumOrderQuantity Json?                  @map("minimum_order_quantity")
+  sampleConclusion     String                 @map("sample_conclusion")
+  capacityConstraint   String                 @map("capacity_constraint")
+  version              Int                    @map("version")
+  nominatedBy          String                 @map("nominated_by")
+  nominatedAt          DateTime               @map("nominated_at") @db.Timestamptz
+  idempotencyKey       String                 @map("idempotency_key")
+  payloadHash          String                 @map("payload_hash")
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([id, tenantId], map: "supplier_nomination_release_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "supplier_nomination_release_idempotency_key")
@@ -2042,29 +2042,34 @@ model NodeEventApplication {
 // 领域事件插入与 pending 同行。发布器领取后写入 publishing 租约，成功则 published。
 // 单体用 owner_module 区分写入方。
 model MarketSignal {
-  id                   String                     @id @default(uuid()) @map("id") @db.Uuid
-  tenantId             String                     @map("tenant_id")
-  title                String                     @map("title")
-  marketCode           String?                    @map("market_code")
-  channelCode          String?                    @map("channel_code")
-  categoryRef          String?                    @map("category_ref")
-  observedFactSummary  String?                    @map("observed_fact_summary")
-  hypothesis           String?                    @map("hypothesis")
-  currentDestination   String                     @default("needs_decision") @map("current_destination")
-  ownerTeamCode        String                     @map("owner_team_code")
-  version              Int                        @default(1) @map("version")
-  createdBy            String                     @map("created_by")
-  updatedBy            String                     @map("updated_by")
-  createIdempotencyKey String                     @map("create_idempotency_key")
-  createPayloadHash    String                     @map("create_payload_hash")
-  createdAt            DateTime                   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
-  decisions            MarketSignalDecision[]
-  handoffs             MarketOpportunityHandoff[]
+  id                            String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                      String                     @map("tenant_id")
+  title                         String                     @map("title")
+  marketCode                    String?                    @map("market_code")
+  channelCode                   String?                    @map("channel_code")
+  categoryRef                   String?                    @map("category_ref")
+  observedFactSummary           String?                    @map("observed_fact_summary")
+  hypothesis                    String?                    @map("hypothesis")
+  currentDestination            String                     @default("needs_decision") @map("current_destination")
+  ownerTeamCode                 String                     @map("owner_team_code")
+  activeValidationOwnerActorId  String?                    @map("active_validation_owner_actor_id")
+  activeValidationDueDate       DateTime?                  @map("active_validation_due_date") @db.Date
+  activeValidationFocus         String?                    @map("active_validation_focus")
+  activeValidationWaitingReason String?                    @map("active_validation_waiting_reason")
+  version                       Int                        @default(1) @map("version")
+  createdBy                     String                     @map("created_by")
+  updatedBy                     String                     @map("updated_by")
+  createIdempotencyKey          String                     @map("create_idempotency_key")
+  createPayloadHash             String                     @map("create_payload_hash")
+  createdAt                     DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                     DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  decisions                     MarketSignalDecision[]
+  handoffs                      MarketOpportunityHandoff[]
 
   @@unique([id, tenantId], map: "market_signal_id_tenant_key")
   @@unique([tenantId, createIdempotencyKey], map: "market_signal_create_idempotency_key")
   @@index([tenantId, currentDestination, updatedAt, id], map: "market_signal_queue_idx")
+  @@index([tenantId, currentDestination, activeValidationDueDate, updatedAt, id], map: "market_signal_validation_queue_idx")
   @@map("market_signal")
 }
 
@@ -2081,6 +2086,7 @@ model MarketSignalDecision {
   opportunityStatement String?      @map("opportunity_statement")
   nextReviewDate       DateTime?    @map("next_review_date") @db.Date
   watchFocus           String?      @map("watch_focus")
+  waitingReason        String?      @map("waiting_reason")
   dismissReason        String?      @map("dismiss_reason")
   pendingFieldCodes    String[]     @map("pending_field_codes")
   createdBy            String       @map("created_by")
@@ -2149,25 +2155,25 @@ model ProductOpportunityIntake {
 }
 
 model ProductInitiative {
-  id                  String                   @id @default(uuid()) @map("id") @db.Uuid
-  tenantId            String                   @map("tenant_id")
-  handoffId           String                   @map("handoff_id") @db.Uuid
-  handoff             MarketOpportunityHandoff @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  version             Int                      @map("version")
-  outcome             String                   @map("outcome")
-  completionState     String                   @map("completion_state")
-  currentDestination  String                   @map("current_destination")
-  responsibleActorId  String                   @map("responsible_actor_id")
-  objective           String?                  @map("objective")
-  reviewPoints        Json                     @map("review_points")
-  reason              String?                  @map("reason")
-  pendingFieldCodes   String[]                 @map("pending_field_codes")
-  actedBy             String                   @map("acted_by")
-  idempotencyKey      String                   @map("idempotency_key")
-  payloadHash         String                   @map("payload_hash")
-  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
-  handoffs            ProductInitiativeHandoff[]
+  id                 String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId           String                     @map("tenant_id")
+  handoffId          String                     @map("handoff_id") @db.Uuid
+  handoff            MarketOpportunityHandoff   @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version            Int                        @map("version")
+  outcome            String                     @map("outcome")
+  completionState    String                     @map("completion_state")
+  currentDestination String                     @map("current_destination")
+  responsibleActorId String                     @map("responsible_actor_id")
+  objective          String?                    @map("objective")
+  reviewPoints       Json                       @map("review_points")
+  reason             String?                    @map("reason")
+  pendingFieldCodes  String[]                   @map("pending_field_codes")
+  actedBy            String                     @map("acted_by")
+  idempotencyKey     String                     @map("idempotency_key")
+  payloadHash        String                     @map("payload_hash")
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  handoffs           ProductInitiativeHandoff[]
 
   @@unique([id, tenantId], map: "product_initiative_id_tenant_key")
   @@unique([tenantId, handoffId], map: "product_initiative_handoff_key")
@@ -2177,22 +2183,22 @@ model ProductInitiative {
 }
 
 model ProductInitiativeHandoff {
-  id                 String            @id @default(uuid()) @map("id") @db.Uuid
-  tenantId           String            @map("tenant_id")
-  initiativeId       String            @map("initiative_id") @db.Uuid
-  initiative         ProductInitiative @relation(fields: [initiativeId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  signalId           String            @map("signal_id") @db.Uuid
-  version            Int               @map("version")
-  marketCode         String?           @map("market_code")
-  userProblem        String?           @map("user_problem")
-  objective          String            @map("objective")
-  responsibleActorId String            @map("responsible_actor_id")
-  reviewPoints       Json              @map("review_points")
-  evidenceRefs       String[]          @map("evidence_refs") @db.Uuid
-  createdBy          String            @map("created_by")
-  idempotencyKey     String            @map("idempotency_key")
-  payloadHash        String            @map("payload_hash")
-  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  id                 String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId           String                   @map("tenant_id")
+  initiativeId       String                   @map("initiative_id") @db.Uuid
+  initiative         ProductInitiative        @relation(fields: [initiativeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  signalId           String                   @map("signal_id") @db.Uuid
+  version            Int                      @map("version")
+  marketCode         String?                  @map("market_code")
+  userProblem        String?                  @map("user_problem")
+  objective          String                   @map("objective")
+  responsibleActorId String                   @map("responsible_actor_id")
+  reviewPoints       Json                     @map("review_points")
+  evidenceRefs       String[]                 @map("evidence_refs") @db.Uuid
+  createdBy          String                   @map("created_by")
+  idempotencyKey     String                   @map("idempotency_key")
+  payloadHash        String                   @map("payload_hash")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz
   claims             ProductInitiativeClaim[]
   productDefinitions ProductDefinition[]
 
@@ -2227,22 +2233,22 @@ model ProductInitiativeClaim {
 // 与立项同构 —— 一票一行、version 递增的当前态；发布时另写不可变交接快照。
 // 不存缺口码：缺口按当前阶段现算，存成状态会阶段动了、缺口还停在原地。
 model ProductDefinition {
-  id                    String                   @id @default(uuid()) @map("id") @db.Uuid
-  tenantId              String                   @map("tenant_id")
-  initiativeHandoffId   String                   @map("initiative_handoff_id") @db.Uuid
-  initiativeHandoff     ProductInitiativeHandoff @relation(fields: [initiativeHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  productOwnerActorId   String                   @map("product_owner_actor_id")
-  npiStage              String                   @map("npi_stage")
-  version               Int                      @map("version")
-  releaseState          String                   @map("release_state")
-  specification         String                   @map("specification")
-  complianceAssumptions String[]                 @map("compliance_assumptions")
-  stageOutcomes         Json                     @map("stage_outcomes")
-  actedBy               String                   @map("acted_by")
-  idempotencyKey        String                   @map("idempotency_key")
-  payloadHash           String                   @map("payload_hash")
-  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  id                    String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId              String                     @map("tenant_id")
+  initiativeHandoffId   String                     @map("initiative_handoff_id") @db.Uuid
+  initiativeHandoff     ProductInitiativeHandoff   @relation(fields: [initiativeHandoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productOwnerActorId   String                     @map("product_owner_actor_id")
+  npiStage              String                     @map("npi_stage")
+  version               Int                        @map("version")
+  releaseState          String                     @map("release_state")
+  specification         String                     @map("specification")
+  complianceAssumptions String[]                   @map("compliance_assumptions")
+  stageOutcomes         Json                       @map("stage_outcomes")
+  actedBy               String                     @map("acted_by")
+  idempotencyKey        String                     @map("idempotency_key")
+  payloadHash           String                     @map("payload_hash")
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   releases              ProductDefinitionRelease[]
 
   @@unique([id, tenantId], map: "product_definition_id_tenant_key")
