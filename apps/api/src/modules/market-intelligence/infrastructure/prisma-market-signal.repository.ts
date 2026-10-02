@@ -413,11 +413,7 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
           version: input.prepared.expectedSignalVersion,
         },
         data: {
-          currentDestination: completedWatch
-            ? input.prepared.nextDestination
-            : completedExit
-              ? input.prepared.nextDestination
-              : signal.currentDestination,
+          currentDestination: input.prepared.nextDestination,
           activeValidationOwnerActorId: completedWatch
             ? input.actorId
             : completedExit
