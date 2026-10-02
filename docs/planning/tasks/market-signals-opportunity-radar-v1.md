@@ -33,6 +33,7 @@ writeScopes:
   - apps/web/src/api/marketSignals.test.ts
   - apps/web/src/composables/useMarketSignalWorkbench.ts
   - apps/web/src/data/marketSignalScenarios.ts
+  - apps/web/src/data/marketSignalEvidenceFlow.test.ts
   - apps/web/src/components/market-signals/**
   - apps/web/src/views/MarketSignalsWorkbench.vue
   - apps/web/src/views/MarketSignalsWorkbench.test.ts
@@ -410,6 +411,52 @@ Cursor 接管任务：
 
 ```text
 TASK docs/planning/tasks/market-signals-opportunity-radar-v1.md#C-TAKEOVER base=5b2143085cc4831e45c4ca241f4fb5b539d95e0e role=cursor workspace=D:\Logixs\.claude\worktrees\market-signals-slice-a
+```
+
+## Claude 对 `C-TAKEOVER` 的 finding 裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: C-TAKEOVER
+next: fix
+```
+
+| Finding                         | 裁决                                           | 理由与写回                                                                                                                                                                                                                                                                                               |
+| ------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MS-VAL-TAKEOVER-01              | `accepted`                                     | 非 owner 可先提交 completed exit 清投影再 watch 自领，绕过 `doc/08` 4.1 的禁止静默接管；C-TAKEOVER-FIX 统一要求任何替换或清空当前承诺的决定由当前 owner 执行                                                                                                                                             |
+| MS-DB-001                       | `accepted`                                     | 旧库回填只看当前 `watching`，会漏掉 completed watch 之后只有 pending 决定的仍有效承诺；迁移按“最新有效 completed 决定”重建并由旧库升级测试反证                                                                                                                                                           |
+| MS-API-001                      | `accepted`                                     | 旧 idempotency key replay 混合历史 decision 与当前 signal 投影；本片采用明确契约：replay 返回该历史操作写入后的 coherent signal snapshot，不与后续版本混合                                                                                                                                               |
+| MS-WEB-001                      | `accepted`                                     | deep link 指向第 2 页对象时首屏找不到且不读详情；显式 route id 必须独立读取并合并到对应分组                                                                                                                                                                                                              |
+| MS-WEB-002                      | `accepted`                                     | 慢 v1 detail 可覆盖保存后的 v2；按 signal/version 丢弃旧响应                                                                                                                                                                                                                                             |
+| MS-WEB-003                      | `accepted`                                     | 保存 watch 后仅用 signal 响应重建场景会丢证据/选品退回原因；合并既有 detail 或保存后重读详情                                                                                                                                                                                                             |
+| MS-WEB-004 / F-SORT-LOCAL       | `accepted`                                     | 本地写/改期后 watching 必须立即按与服务端一致的 due/null/updated/id 顺序重排                                                                                                                                                                                                                             |
+| MS-WEB-005                      | `accepted`                                     | 一个归档组失败会清空全部组；改为每组独立 data/loading/error/retry，成功组继续可用                                                                                                                                                                                                                        |
+| MS-WEB-006                      | `accepted`                                     | load-more 可并发复用同 cursor 并回滚 nextCursor；每组 single-flight 或 generation 防旧响应覆盖                                                                                                                                                                                                           |
+| MS-COMPAT-001                   | `accepted`                                     | 新 Web 对旧 API 七次全量响应会重复数据；保留 backend-first 不是仓库现有发布政策，因此实现可探测的一次旧 API fallback                                                                                                                                                                                     |
+| MS-WEB-007                      | `accepted`                                     | watching 队列未显示验证重点，岗位必须打开每条才能区分承诺；卡片显示 focus，旧行显示诚实缺失文案                                                                                                                                                                                                          |
+| C-TAKEOVER-API-01               | `accepted`                                     | 无 destination 旧 V1 请求必须保持 baseline V1 严格响应形状，不返回 `activeValidation/totalCount`；destination 模式返回增强投影                                                                                                                                                                           |
+| C-TAKEOVER-IDEMPOTENCY-ACTOR-01 | `accepted`                                     | replay 早于 owner 校验且 payload hash 不含 actor；B 可复用 A 的 key/body 获 duplicate 成功。先核对 replay decision 的 createdBy，A 才可 duplicate，B 返回 owner conflict                                                                                                                                 |
+| TASK-SCOPE-001 / F-SCOPE        | `accepted`                                     | `marketSignalEvidenceFlow.test.ts` 已加入精确 `writeScopes`，最终范围检查须为零越界                                                                                                                                                                                                                      |
+| F-WEB-PENDING                   | `rejected`                                     | Web 只提交完整承诺，服务端保留 pending 供旧客户端/部分保存兼容，边界已在契约和 UI 文案中分开，不要求 Web 暴露不完整提交                                                                                                                                                                                  |
+| F-AUDIT                         | `pending-owner`                                | AuditModule 当前为空，首片无可复用持久审计载体；不得声称已有审计。当前以不可变 decision `createdBy/createdAt` 和稳定 owner conflict 作为最低证据；通用审计载体另立安全前置，不在本片临时建平台                                                                                                           |
+| F-KEYBOARD                      | `accepted`                                     | 本片声明键盘验收，现有 ARIA tabs 缺 roving tabindex/Arrow/Home/End/tablist-tabpanel 关系；作为当前 UI 可访问性修复，不延期                                                                                                                                                                               |
+| F-WHITESPACE                    | `rejected`（Prisma）/`accepted-minor`（INDEX） | Prisma 对齐由标准 `prisma format` 产生且 Schema/生成客户端需要一致；保留。INDEX 纯表格对齐如可独立移除则减噪，不阻塞功能                                                                                                                                                                                 |
+| verification gaps               | `accepted`                                     | 补 latest-effective migration、null due/order、same-key-different-payload/concurrent decision、cursor malformed/wrong tenant、legacy HTTP path、deep-link、detail race/preservation、group isolation、load-more race、owner conflict envelope、negative synthetic、320/375 长文本与 archived closed mode |
+
+### Cursor 修复切片 `C-TAKEOVER-FIX`
+
+| 项目         | 内容                                                                                                                                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 基线         | `b1a299cee55fd5b95cb4139fe902fbf301e3f596` 加当前 7 个未提交接管 diff；以实际工作树状态为准，不得丢失 Cursor 已完成修改                                                                                                                                                   |
+| 执行角色     | Cursor，唯一写入者；Claude 保持只读                                                                                                                                                                                                                                       |
+| 写入范围     | 仅现有 `writeScopes`；可修改 brief 记录检查结果，但不得改变业务政策、状态为 done 或扩展范围                                                                                                                                                                               |
+| 必修 finding | 上表所有 `accepted` 高/中 finding；`F-AUDIT` 只记录 pending-owner，不在本片建设通用审计平台                                                                                                                                                                               |
+| 必测反证     | 跨 actor 直接/两步 exit→watch/同 key replay；latest-effective 迁移；K1/K2/replay coherent result；deep-link page2；旧 detail race；证据/退回原因保留；本地重排；单组失败；load-more single-flight；legacy V1 strict schema；negative synthetic；键盘 tabs；320/375 长文本 |
+| 门禁         | affected unit/integration/E2E；contract/dictionary/db/authz/security/repo/format；生产风险面变化后完整 `pnpm validate`。端口 5173 被其他进程占用时返回 `blocked`，不得终止未获授权进程                                                                                    |
+| 停止条件     | 返回完整 `HANDOFF ...#C-TAKEOVER-FIX` + `logix-handoff/v1`；不得推送、建 PR、合并；不得把真实业务验收、WB-B10、KPI 或上线 gate 标完成                                                                                                                                     |
+
+```text
+TASK docs/planning/tasks/market-signals-opportunity-radar-v1.md#C-TAKEOVER-FIX base=b1a299cee55fd5b95cb4139fe902fbf301e3f596 role=cursor workspace=D:\Logixs\.claude\worktrees\market-signals-slice-a
 ```
 
 ## 当前 coding 切片五面映射
