@@ -54,7 +54,7 @@ ALTER TABLE "market_signal_decision"
       "opportunity_statement" IS NULL AND
       "dismiss_reason" IS NULL AND
       (("completion_state" = 'completed' AND "next_review_date" IS NOT NULL) OR
-       ("completion_state" = 'pending_completion' AND "next_review_date" IS NULL))
+       ("completion_state" = 'pending_completion'))
     ) OR (
       "decision_type" = 'handoff' AND
       "completion_state" = 'completed' AND

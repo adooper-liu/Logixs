@@ -313,7 +313,7 @@ describe("market opportunity persistence flow", () => {
       prisma.marketSignalDecision.count({ where: { tenantId, signalId } }),
     ).resolves.toBe(2);
 
-    const dismissed = await marketSignals.decide({
+    const pendingWatch = await marketSignals.decide({
       tenantId,
       actorId: "market-owner-a",
       signalId,
@@ -323,6 +323,26 @@ describe("market opportunity persistence flow", () => {
         {
           contractVersion: "market-signal-decision.v1",
           expectedSignalVersion: rescheduled.signal.version,
+          decisionType: "watch",
+          nextReviewDate: "2026-02-26",
+          idempotencyKey: `watch:${signalId}:pending`,
+        },
+      ),
+    });
+    expect(pendingWatch.signal.activeValidation).toEqual(
+      rescheduled.signal.activeValidation,
+    );
+
+    const dismissed = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner-a",
+      signalId,
+      evidenceRefs: [],
+      prepared: prepareMarketSignalDecision(
+        { ...pendingWatch.signal, evidenceRefs: [] },
+        {
+          contractVersion: "market-signal-decision.v1",
+          expectedSignalVersion: pendingWatch.signal.version,
           decisionType: "dismiss",
           dismissReason: "短期峰值，不进入选品",
           idempotencyKey: `dismiss:${signalId}`,
@@ -332,7 +352,7 @@ describe("market opportunity persistence flow", () => {
     expect(dismissed.signal.activeValidation).toBeNull();
     await expect(
       prisma.marketSignalDecision.count({ where: { tenantId, signalId } }),
-    ).resolves.toBe(3);
+    ).resolves.toBe(4);
   });
 
   it("keeps needs-decision reachable while paging more than 100 watching rows by due date", async () => {

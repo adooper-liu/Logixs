@@ -263,7 +263,6 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       }
       if (
         input.prepared.decisionType === "watch" &&
-        input.prepared.completion === "completed" &&
         signal.activeValidationOwnerActorId &&
         signal.activeValidationOwnerActorId !== input.actorId
       ) {
@@ -404,6 +403,9 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       const completedWatch =
         input.prepared.decisionType === "watch" &&
         input.prepared.completion === "completed";
+      const completedExit =
+        input.prepared.decisionType !== "watch" &&
+        input.prepared.completion === "completed";
       const updated = await tx.marketSignal.updateMany({
         where: {
           id: input.signalId,
@@ -411,17 +413,31 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
           version: input.prepared.expectedSignalVersion,
         },
         data: {
-          currentDestination: input.prepared.nextDestination,
-          activeValidationOwnerActorId: completedWatch ? input.actorId : null,
+          currentDestination: completedWatch
+            ? input.prepared.nextDestination
+            : completedExit
+              ? input.prepared.nextDestination
+              : signal.currentDestination,
+          activeValidationOwnerActorId: completedWatch
+            ? input.actorId
+            : completedExit
+              ? null
+              : signal.activeValidationOwnerActorId,
           activeValidationDueDate: completedWatch
             ? new Date(`${input.prepared.nextReviewDate!}T00:00:00.000Z`)
-            : null,
+            : completedExit
+              ? null
+              : signal.activeValidationDueDate,
           activeValidationFocus: completedWatch
             ? input.prepared.watchFocus
-            : null,
+            : completedExit
+              ? null
+              : signal.activeValidationFocus,
           activeValidationWaitingReason: completedWatch
             ? input.prepared.waitingReason
-            : null,
+            : completedExit
+              ? null
+              : signal.activeValidationWaitingReason,
           version: nextSignalVersion,
           updatedBy: input.actorId,
           updatedAt: createdAt,
