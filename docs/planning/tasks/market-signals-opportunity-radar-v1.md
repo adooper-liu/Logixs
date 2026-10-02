@@ -34,6 +34,7 @@ writeScopes:
   - apps/web/src/views/MarketSignalsWorkbench.vue
   - apps/web/src/views/MarketSignalsWorkbench.test.ts
   - apps/web/e2e/workbench-network.spec.ts
+  - apps/web/e2e/auth-session.spec.ts
 exclusiveLocks:
   - business-policy:market-signals-opportunity-radar-v1
   - database-schema
@@ -48,6 +49,7 @@ sharedIntegrationScopes:
   - packages/contracts/schemas/v1/market-opportunity.schema.json
   - packages/contracts/generated/contracts.d.ts
   - apps/web/e2e/workbench-network.spec.ts
+  - apps/web/e2e/auth-session.spec.ts
 authorityRefs:
   - AGENTS.md
   - doc/cross-border-supply-chain/01-authoritative-business-chain.md
