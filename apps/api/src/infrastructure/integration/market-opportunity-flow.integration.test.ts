@@ -355,6 +355,70 @@ describe("market opportunity persistence flow", () => {
     ).resolves.toBe(4);
   });
 
+  it.each([
+    ["handoff", { opportunityStatement: "交给选品评估" }],
+    ["dismiss", { dismissReason: "不进入选品" }],
+    ["void", { judgmentNote: "重复登记" }],
+    ["archive", { judgmentNote: "观察结束" }],
+  ] as const)(
+    "clears the current validation when a completed %s decision takes effect",
+    async (decisionType, extra) => {
+      const tenantId = randomUUID();
+      const signalId = randomUUID();
+      const created = await marketSignals.create({
+        tenantId,
+        actorId: "market-owner",
+        command: normalizeMarketSignalCreate({
+          contractVersion: "market-signal-create.v1",
+          requestId: signalId,
+          title: `[清理投影] ${decisionType}`,
+          idempotencyKey: `create:${signalId}`,
+        }),
+      });
+      const watched = await marketSignals.decide({
+        tenantId,
+        actorId: "market-owner",
+        signalId,
+        evidenceRefs: [],
+        prepared: prepareMarketSignalDecision(
+          { ...created.record, evidenceRefs: [] },
+          {
+            contractVersion: "market-signal-decision.v1",
+            expectedSignalVersion: 1,
+            decisionType: "watch",
+            nextReviewDate: "2026-02-12",
+            watchFocus: "验证当前承诺清理",
+            idempotencyKey: `watch:${signalId}`,
+          },
+        ),
+      });
+      expect(watched.signal.activeValidation).not.toBeNull();
+
+      const exited = await marketSignals.decide({
+        tenantId,
+        actorId: "market-owner",
+        signalId,
+        evidenceRefs: [],
+        prepared: prepareMarketSignalDecision(
+          { ...watched.signal, evidenceRefs: [] },
+          {
+            contractVersion: "market-signal-decision.v1",
+            expectedSignalVersion: watched.signal.version,
+            decisionType,
+            ...extra,
+            idempotencyKey: `${decisionType}:${signalId}`,
+          },
+        ),
+      });
+
+      expect(exited.decision.completion).toBe("completed");
+      expect(exited.signal.activeValidation).toBeNull();
+      await expect(
+        prisma.marketSignalDecision.count({ where: { tenantId, signalId } }),
+      ).resolves.toBe(2);
+    },
+  );
+
   it("keeps needs-decision reachable while paging more than 100 watching rows by due date", async () => {
     const tenantId = randomUUID();
     const watchedIds: string[] = [];

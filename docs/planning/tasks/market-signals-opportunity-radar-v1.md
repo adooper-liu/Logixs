@@ -25,6 +25,7 @@ writeScopes:
   - database/dictionary/database-data-dictionary.xlsx
   - apps/api/src/modules/market-intelligence/**
   - apps/api/src/infrastructure/integration/market-opportunity-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
   - apps/api/src/infrastructure/integration/market-signal-validation-migration-upgrade.integration.test.ts
   - apps/web/src/api/marketSignals.ts
   - apps/web/src/api/marketSignals.test.ts
@@ -48,6 +49,7 @@ sharedIntegrationScopes:
   - database/migrations/**
   - packages/contracts/schemas/v1/market-opportunity.schema.json
   - packages/contracts/generated/contracts.d.ts
+  - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
   - apps/web/e2e/workbench-network.spec.ts
   - apps/web/e2e/auth-session.spec.ts
 authorityRefs:
