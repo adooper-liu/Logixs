@@ -64,6 +64,12 @@ export interface MarketSignalScenario {
   channel: string | null;
   category: string | null;
   owner: string;
+  activeValidation: null | {
+    responsibleActorId: string;
+    nextReviewDate: string;
+    watchFocus: string | null;
+    waitingReason: string | null;
+  };
   observedFacts: readonly string[];
   hypothesis: string | null;
   evidence: readonly MarketSignalEvidence[];
@@ -78,6 +84,7 @@ export interface MarketSignalDecisionDraft {
   opportunityStatement: string;
   nextReviewDate: string;
   watchFocus: string;
+  waitingReason: string;
   dismissReason: string;
 }
 
@@ -119,6 +126,7 @@ export function createMarketSignalDraft(): MarketSignalDecisionDraft {
     opportunityStatement: "",
     nextReviewDate: "",
     watchFocus: "",
+    waitingReason: "",
     dismissReason: "",
   };
 }
@@ -136,17 +144,20 @@ export function buildMarketSignalResult(
 
   if (draft.decision === "watch") {
     const hasReviewDate = Boolean(draft.nextReviewDate);
+    const hasFocus = Boolean(draft.watchFocus.trim());
+    const completed = hasReviewDate && hasFocus;
     return {
       decision: draft.decision,
-      completion: hasReviewDate ? "completed" : "pending_completion",
-      statusLabel: hasReviewDate ? "已安排继续观察" : "已保存，待补查看日期",
-      message: hasReviewDate
-        ? `将在 ${draft.nextReviewDate} 重新查看这条信号。`
-        : "补充下次查看日期后，才会从待判断队列移出。",
-      nextOwner: signal.owner,
+      completion: completed ? "completed" : "pending_completion",
+      statusLabel: completed ? "已安排下一项验证" : "已保存，待补验证承诺",
+      message: completed
+        ? `由我负责，在 ${draft.nextReviewDate} 检查：${draft.watchFocus.trim()}`
+        : "补充检查日期和验证重点后，才会形成当前验证承诺。",
+      nextOwner: completed ? "我" : signal.owner,
       pendingItems: [
         ...pendingItems,
-        ...(!hasReviewDate ? ["下次查看日期待补"] : []),
+        ...(!hasReviewDate ? ["下次检查日期待补"] : []),
+        ...(!hasFocus ? ["验证重点待补"] : []),
       ],
       handoffFacts: [],
     };

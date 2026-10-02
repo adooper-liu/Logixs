@@ -53,16 +53,25 @@ afterEach(() => {
 });
 
 describe("marketSignals 经共享 Client", () => {
-  it("GET 列表保持原 URL 并返回服务端分页", async () => {
-    const page = { items: [], pageInfo: { nextCursor: null } };
+  it("GET 列表按业务分组请求并保持服务端分页", async () => {
+    const page = { items: [], pageSize: 50, totalCount: 0, nextCursor: null };
     fetchMock.mockResolvedValue(ok(page));
 
-    await expect(listMarketSignals()).resolves.toEqual(page);
-    expect(fetchMock).toHaveBeenCalledWith("/api/market-signals?pageSize=100", {
-      method: "GET",
-      redirect: "error",
-      headers: DEV_HEADERS,
-    });
+    await expect(
+      listMarketSignals({
+        destination: "watching",
+        pageSize: 50,
+        cursor: "a/b",
+      }),
+    ).resolves.toEqual(page);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/market-signals?destination=watching&pageSize=50&cursor=a%2Fb",
+      {
+        method: "GET",
+        redirect: "error",
+        headers: DEV_HEADERS,
+      },
+    );
   });
 
   it("POST 登记保持 JSON 契约", async () => {
@@ -95,7 +104,7 @@ describe("marketSignals 经共享 Client", () => {
     credentials.mockResolvedValue({ mode: "oidc", accessToken: "token-xyz" });
     fetchMock.mockResolvedValue(ok({ items: [] }));
 
-    await listMarketSignals();
+    await listMarketSignals({ destination: "needs_decision" });
 
     expect(fetchMock.mock.calls[0][1].headers).toEqual({
       Authorization: "Bearer token-xyz",

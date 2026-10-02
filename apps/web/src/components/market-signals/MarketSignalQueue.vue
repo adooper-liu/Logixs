@@ -9,12 +9,15 @@ import type {
 const props = defineProps<{
   items: readonly MarketSignalQueueItem[];
   selectedId: string;
+  counts?: Partial<Record<MarketSignalWorkflowState, number>>;
+  hasMore?: Partial<Record<MarketSignalWorkflowState, boolean>>;
 }>();
 
 const emit = defineEmits<{
   select: [id: string];
   clear: [];
   create: [];
+  loadMore: [destination: MarketSignalWorkflowState];
 }>();
 
 type QueueFilter = MarketSignalWorkflowState;
@@ -42,7 +45,10 @@ watch(
 );
 
 function countFor(state: QueueFilter): number {
-  return props.items.filter((item) => item.workflowState === state).length;
+  return (
+    props.counts?.[state] ??
+    props.items.filter((item) => item.workflowState === state).length
+  );
 }
 
 function chooseFilter(code: QueueFilter): void {
@@ -127,6 +133,16 @@ function isClosedState(state: QueueFilter): boolean {
           {{ item.workReason }}
         </span>
         <span
+          v-if="item.activeValidation && item.workflowState === 'watching'"
+          class="queue-item__validation"
+        >
+          检查日 {{ item.activeValidation.nextReviewDate }} · 负责人
+          {{ item.activeValidation.responsibleActorId }}
+          <template v-if="item.activeValidation.waitingReason">
+            · 等待 {{ item.activeValidation.waitingReason }}
+          </template>
+        </span>
+        <span
           v-if="item.gaps.length && !isClosedState(item.workflowState)"
           class="queue-item__gaps"
         >
@@ -138,6 +154,15 @@ function isClosedState(state: QueueFilter): boolean {
         >
           关闭时未补 {{ item.gaps.length }} 项
         </span>
+      </button>
+
+      <button
+        v-if="hasMore?.[filter]"
+        type="button"
+        class="load-more"
+        @click="emit('loadMore', filter)"
+      >
+        加载更多
       </button>
 
       <p v-if="visibleItems.length === 0" class="empty-state">
@@ -345,6 +370,27 @@ function isClosedState(state: QueueFilter): boolean {
 
 .queue-item__gaps--closed {
   color: var(--muted);
+}
+
+.queue-item__validation {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  overflow-wrap: anywhere;
+}
+
+.load-more {
+  width: calc(100% - 2 * var(--space-3));
+  min-height: var(--touch-target);
+  margin: var(--space-2) var(--space-3);
+  border: 1px solid var(--brand-line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--brand-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-label);
+  font-weight: 700;
 }
 
 .empty-state {

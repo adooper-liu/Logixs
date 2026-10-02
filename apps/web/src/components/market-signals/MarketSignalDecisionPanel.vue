@@ -6,7 +6,14 @@ import type { MarketSignalDecisionDraft } from "../../data/marketSignalScenarios
 const emit = defineEmits<{
   submit: [];
 }>();
-defineProps<{
+const props = defineProps<{
+  activeValidation?: {
+    responsibleActorId: string;
+    nextReviewDate: string;
+    watchFocus: string | null;
+    waitingReason: string | null;
+  } | null;
+  actorId?: string | null;
   busy?: boolean;
   closed?: boolean;
   closedLabel?: string;
@@ -17,10 +24,23 @@ const model = defineModel<MarketSignalDecisionDraft>({ required: true });
 const isClose = computed(
   () => model.value.decision === "void" || model.value.decision === "archive",
 );
+const ownedByAnother = computed(
+  () =>
+    Boolean(props.activeValidation?.responsibleActorId) &&
+    props.activeValidation?.responsibleActorId !== props.actorId,
+);
+const watchComplete = computed(() =>
+  Boolean(model.value.nextReviewDate && model.value.watchFocus.trim()),
+);
 
 const actionLabel = computed(() => {
   if (model.value.decision === "watch") {
-    return model.value.nextReviewDate ? "保存并继续观察" : "保存，日期稍后补";
+    if (ownedByAnother.value) return "当前验证由其他负责人承担";
+    return watchComplete.value
+      ? props.activeValidation
+        ? "更新我的验证承诺"
+        : "由我负责并安排验证"
+      : "补齐日期和验证重点";
   }
   if (model.value.decision === "dismiss") {
     return model.value.dismissReason ? "记录不采纳" : "保存，原因稍后补";
@@ -80,7 +100,10 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
           @change="chooseDecision('watch')"
         />
         <Eye :size="17" aria-hidden="true" />
-        <span><b>继续观察</b><small>现在还不足以交给选品</small></span>
+        <span
+          ><b>安排下一项验证</b
+          ><small>由我负责，明确验证重点和检查日</small></span
+        >
       </label>
       <label :class="{ selected: model.decision === 'handoff' }">
         <input
@@ -129,8 +152,15 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
     </fieldset>
 
     <div v-if="model.decision === 'watch'" class="decision-fields">
+      <p v-if="ownedByAnother" class="validation-owner-conflict" role="status">
+        当前验证由
+        {{
+          activeValidation?.responsibleActorId
+        }}
+        负责。本片不支持静默接管或转派。
+      </p>
       <label>
-        <span>下次查看日期</span>
+        <span>下次检查日期</span>
         <input
           type="date"
           :value="model.nextReviewDate"
@@ -138,12 +168,23 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
         />
       </label>
       <label>
-        <span>下次重点看什么 <small>可后补</small></span>
+        <span>这次要验证什么</span>
         <textarea
           rows="3"
+          aria-label="这次要验证什么"
           :value="model.watchFocus"
           placeholder="例如：搜索趋势是否持续、价格带是否稳定"
           @input="updateField('watchFocus', $event)"
+        />
+      </label>
+      <label>
+        <span>当前在等什么 <small>可选</small></span>
+        <textarea
+          rows="2"
+          aria-label="当前在等什么"
+          :value="model.waitingReason"
+          placeholder="例如：等待第二客服队列导出"
+          @input="updateField('waitingReason', $event)"
         />
       </label>
     </div>
@@ -210,7 +251,14 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       />
     </label>
 
-    <button class="primary-action" type="submit" :disabled="busy">
+    <button
+      class="primary-action"
+      type="submit"
+      :disabled="
+        busy ||
+        (model.decision === 'watch' && (!watchComplete || ownedByAnother))
+      "
+    >
       <CalendarClock
         v-if="model.decision === 'watch'"
         :size="17"
@@ -257,6 +305,15 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
   margin: var(--space-1) 0 0;
   color: var(--ink);
   font-size: var(--text-title);
+}
+
+.validation-owner-conflict {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--warn);
+  background: var(--warn-bg);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
 }
 
 .decision-options {

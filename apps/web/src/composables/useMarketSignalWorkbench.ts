@@ -31,11 +31,27 @@ import {
   type MarketSignalQueueItem,
   type MarketSignalScenario,
   type MarketSignalSupplementDraft,
+  type MarketSignalWorkflowState,
 } from "../data/marketSignalScenarios";
 
 interface UseMarketSignalWorkbenchOptions {
   selectedId: MaybeRefOrGetter<string>;
   selectSignal: (id: string) => Promise<void>;
+}
+
+const DESTINATIONS: readonly MarketSignalWorkflowState[] = [
+  "needs_decision",
+  "returned_from_selection",
+  "watching",
+  "handed_off",
+  "dismissed",
+  "voided",
+  "archived",
+];
+
+interface QueuePageState {
+  nextCursor: string | null;
+  totalCount: number;
 }
 
 export function useMarketSignalWorkbench(
@@ -47,6 +63,14 @@ export function useMarketSignalWorkbench(
   const loading = shallowRef(true);
   const saving = shallowRef(false);
   const error = shallowRef<string | null>(null);
+  const pages = reactive<Record<MarketSignalWorkflowState, QueuePageState>>(
+    Object.fromEntries(
+      DESTINATIONS.map((destination) => [
+        destination,
+        { nextCursor: null, totalCount: 0 },
+      ]),
+    ) as unknown as Record<MarketSignalWorkflowState, QueuePageState>,
+  );
 
   const selectedSignal = computed(() => {
     const selectedId = toValue(options.selectedId);
@@ -83,8 +107,21 @@ export function useMarketSignalWorkbench(
     loading.value = true;
     error.value = null;
     try {
-      const page = await listMarketSignals();
-      signals.value = page.items.map((signal) => toScenario(signal));
+      const responses = await Promise.all(
+        DESTINATIONS.map(async (destination) => ({
+          destination,
+          page: await listMarketSignals({ destination, pageSize: 50 }),
+        })),
+      );
+      signals.value = responses.flatMap(({ page }) =>
+        page.items.map((signal) => toScenario(signal)),
+      );
+      responses.forEach(({ destination, page }) => {
+        pages[destination] = {
+          nextCursor: page.nextCursor,
+          totalCount: page.totalCount ?? page.items.length,
+        };
+      });
       const requested = toValue(options.selectedId);
       const matched = signals.value.find(({ id }) => id === requested);
       // 首屏无选中时默认第一条；筛选切换清空选中后不再回退到首条，避免右侧错位。
@@ -107,6 +144,33 @@ export function useMarketSignalWorkbench(
     try {
       const detail = await getMarketSignal(id);
       replaceScenario(toScenario(detail.signal, detail));
+    } catch (caught) {
+      error.value = message(caught);
+    }
+  }
+
+  async function loadMore(
+    destination: MarketSignalWorkflowState,
+  ): Promise<void> {
+    const cursor = pages[destination].nextCursor;
+    if (!cursor || pages[destination].nextCursor === null) return;
+    try {
+      const page = await listMarketSignals({
+        destination,
+        cursor,
+        pageSize: 50,
+      });
+      const existing = new Set(signals.value.map(({ id }) => id));
+      signals.value = [
+        ...signals.value,
+        ...page.items
+          .filter(({ signalId }) => !existing.has(signalId))
+          .map((signal) => toScenario(signal)),
+      ];
+      pages[destination] = {
+        nextCursor: page.nextCursor,
+        totalCount: page.totalCount ?? pages[destination].totalCount,
+      };
     } catch (caught) {
       error.value = message(caught);
     }
@@ -183,6 +247,9 @@ export function useMarketSignalWorkbench(
         ...(draft.watchFocus.trim()
           ? { watchFocus: draft.watchFocus.trim() }
           : {}),
+        ...(draft.waitingReason.trim()
+          ? { waitingReason: draft.waitingReason.trim() }
+          : {}),
         ...(draft.dismissReason.trim()
           ? { dismissReason: draft.dismissReason.trim() }
           : {}),
@@ -199,7 +266,7 @@ export function useMarketSignalWorkbench(
         signalTitle: signal.title,
         result,
       };
-      if (response.completion === "completed") {
+      if (response.completion === "completed" && draft.decision !== "watch") {
         const next = signals.value.find(
           (item) =>
             item.initialState === "needs_decision" && item.id !== signal.id,
@@ -266,11 +333,13 @@ export function useMarketSignalWorkbench(
     selectedSignal,
     selectedDraft,
     queueItems,
+    pages,
     receipt,
     loading,
     saving,
     error,
     loadSignals,
+    loadMore,
     registerSignal,
     submitDecision,
     supplementSignal,
@@ -297,6 +366,7 @@ function toScenario(
       signal.ownerTeamCode === "market_intelligence"
         ? "经营与市场团队"
         : signal.ownerTeamCode,
+    activeValidation: signal.activeValidation ?? null,
     observedFacts: signal.observedFactSummary
       ? [signal.observedFactSummary]
       : [],
@@ -387,7 +457,8 @@ function pendingFieldLabel(code: MarketSignalPendingFieldCodeV1): string {
     hypothesis: "经营假设待补",
     evidence_refs: "来源证据待补",
     opportunity_statement: "机会说明待补",
-    next_review_date: "下次查看日期待补",
+    next_review_date: "下次检查日期待补",
+    watch_focus: "验证重点待补",
     dismiss_reason: "不采纳原因待补",
     close_reason: "关闭理由待补",
   };

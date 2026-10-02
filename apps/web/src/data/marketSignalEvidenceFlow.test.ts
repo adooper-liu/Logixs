@@ -22,6 +22,7 @@ function scenario(
     channel: null,
     category: null,
     owner: "经营与市场负责人",
+    activeValidation: null,
     observedFacts: [],
     hypothesis: null,
     evidence: [],

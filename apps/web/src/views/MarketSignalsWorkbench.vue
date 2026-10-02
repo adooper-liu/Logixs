@@ -8,6 +8,7 @@ import {
 } from "@lucide/vue";
 import { computed, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import MarketSignalActiveValidation from "../components/market-signals/MarketSignalActiveValidation.vue";
 import MarketSignalCreatePanel from "../components/market-signals/MarketSignalCreatePanel.vue";
 import MarketSignalDecisionPanel from "../components/market-signals/MarketSignalDecisionPanel.vue";
 import MarketSignalEvidencePanel from "../components/market-signals/MarketSignalEvidencePanel.vue";
@@ -15,10 +16,12 @@ import MarketSignalOperationReceipt from "../components/market-signals/MarketSig
 import MarketSignalQueue from "../components/market-signals/MarketSignalQueue.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useMarketSignalWorkbench } from "../composables/useMarketSignalWorkbench";
+import { useAuthSession } from "../auth/useAuthSession";
 import type { ManualMarketSignalDraft } from "../data/marketSignalScenarios";
 
 const route = useRoute();
 const router = useRouter();
+const { actorId } = useAuthSession();
 const showCreatePanel = shallowRef(false);
 
 const requestedSignalId = computed(() => String(route.query.signalId ?? ""));
@@ -41,11 +44,13 @@ const {
   selectedSignal,
   selectedDraft,
   queueItems,
+  pages,
   receipt,
   loading,
   saving,
   error,
   loadSignals,
+  loadMore,
   registerSignal,
   submitDecision,
   supplementSignal,
@@ -54,6 +59,17 @@ const {
   selectedId: requestedSignalId,
   selectSignal,
 });
+
+const queueCounts = computed(() =>
+  Object.fromEntries(
+    Object.entries(pages).map(([key, page]) => [key, page.totalCount]),
+  ),
+);
+const queueHasMore = computed(() =>
+  Object.fromEntries(
+    Object.entries(pages).map(([key, page]) => [key, Boolean(page.nextCursor)]),
+  ),
+);
 
 const isClosed = computed(
   () =>
@@ -154,15 +170,23 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
         <MarketSignalQueue
           :items="queueItems"
           :selected-id="selectedSignal?.id ?? ''"
+          :counts="queueCounts"
+          :has-more="queueHasMore"
           @select="selectSignal"
           @clear="clearSignalSelection"
           @create="showCreatePanel = true"
+          @load-more="loadMore"
         />
       </section>
       <section
         class="workbench-pane workbench-pane--main"
         aria-label="信号事实与依据"
       >
+        <MarketSignalActiveValidation
+          v-if="selectedSignal"
+          :validation="selectedSignal.activeValidation"
+          :actor-id="actorId"
+        />
         <MarketSignalEvidencePanel
           v-if="selectedSignal"
           :signal="selectedSignal"
@@ -186,6 +210,8 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
           v-if="selectedSignal"
           v-model="selectedDraft"
           :busy="saving"
+          :active-validation="selectedSignal.activeValidation"
+          :actor-id="actorId"
           @submit="submitDecision"
         />
         <p v-else class="empty-workbench">

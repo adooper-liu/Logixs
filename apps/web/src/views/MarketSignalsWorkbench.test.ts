@@ -4,6 +4,7 @@ import type {
   MarketSignalDetailV1,
   MarketSignalV1,
 } from "@logix/contracts";
+import { computed } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +25,10 @@ vi.mock("../api/marketSignals", () => ({
   registerMarketSignalEvidence: (...args: unknown[]) =>
     registerMarketSignalEvidence(...args),
   decideMarketSignal: (...args: unknown[]) => decideMarketSignal(...args),
+}));
+
+vi.mock("../auth/useAuthSession", () => ({
+  useAuthSession: () => ({ actorId: computed(() => "operator-dev") }),
 }));
 
 const signalOneId = "11111111-1111-4111-8111-111111111111";
@@ -86,12 +91,20 @@ describe("MarketSignalsWorkbench", () => {
       ],
     ]);
 
-    listMarketSignals.mockImplementation(async () => ({
-      contractVersion: "market-signal-page.v1",
-      items: signals,
-      pageSize: 100,
-      nextCursor: null,
-    }));
+    listMarketSignals.mockImplementation(
+      async (input: { destination: MarketSignalV1["currentDestination"] }) => {
+        const items = signals.filter(
+          (signal) => signal.currentDestination === input.destination,
+        );
+        return {
+          contractVersion: "market-signal-page.v1",
+          items,
+          pageSize: 50,
+          totalCount: items.length,
+          nextCursor: null,
+        };
+      },
+    );
     getMarketSignal.mockImplementation(async (id: string) => details.get(id));
     registerMarketSignalEvidence.mockResolvedValue(undefined);
   });
@@ -99,7 +112,7 @@ describe("MarketSignalsWorkbench", () => {
   it("loads the work reason and separates observed facts from hypotheses", async () => {
     const wrapper = await mountPage();
 
-    expect(listMarketSignals).toHaveBeenCalledOnce();
+    expect(listMarketSignals).toHaveBeenCalledTimes(7);
     expect(getMarketSignal).toHaveBeenCalledWith(signalOneId);
     expect(wrapper.text()).toContain("为什么现在处理");
     expect(wrapper.text()).toContain("已观察到");
@@ -260,6 +273,84 @@ describe("MarketSignalsWorkbench", () => {
     expect(wrapper.find('button[aria-label="选择渠道"]').exists()).toBe(false);
   });
 
+  it("lets the session actor schedule one resumable validation commitment", async () => {
+    const watching = marketSignal({
+      ...signals[0]!,
+      currentDestination: "watching",
+      version: 2,
+      activeValidation: {
+        responsibleActorId: "operator-dev",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "确认趋势是否持续两周",
+        waitingReason: "等待第二客服队列",
+      },
+    });
+    decideMarketSignal.mockResolvedValue({
+      contractVersion: "market-signal-decision-result.v1",
+      status: "saved",
+      signal: watching,
+      decisionId: "66666666-6666-4666-8666-666666666666",
+      decisionVersion: 1,
+      completion: "completed",
+      handoff: null,
+    });
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    const watchRadio = wrapper.get('input[value="watch"]');
+    await watchRadio.setValue(true);
+    await wrapper.get('input[type="date"]').setValue("2026-02-12");
+    await wrapper
+      .get('textarea[aria-label="这次要验证什么"]')
+      .setValue("确认趋势是否持续两周");
+    await wrapper
+      .get('textarea[aria-label="当前在等什么"]')
+      .setValue("等待第二客服队列");
+    await wrapper.get(".decision-panel").trigger("submit");
+    await flushPromises();
+
+    expect(decideMarketSignal).toHaveBeenCalledWith(
+      signalOneId,
+      expect.objectContaining({
+        decisionType: "watch",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "确认趋势是否持续两周",
+        waitingReason: "等待第二客服队列",
+      }),
+    );
+    expect(decideMarketSignal.mock.calls[0]![1]).not.toHaveProperty(
+      "responsibleActorId",
+    );
+    expect(wrapper.text()).toContain("当前验证承诺");
+    expect(wrapper.text()).toContain("负责人：我");
+    expect(wrapper.text()).toContain("等待第二客服队列");
+    expect(wrapper.text()).not.toContain("机会已证明");
+  });
+
+  it("shows legacy watching rows without inventing a validation focus", async () => {
+    signals = [
+      marketSignal({
+        ...signals[0]!,
+        currentDestination: "watching",
+        activeValidation: {
+          responsibleActorId: "operator-dev",
+          nextReviewDate: "2026-02-12",
+          watchFocus: null,
+          waitingReason: null,
+        },
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.text()).toContain("旧记录未填写，需重新安排");
+    expect(wrapper.text()).not.toContain("机会已证明");
+  });
+
   it("hands ordinary gaps to the product-selection queue without blocking", async () => {
     const handedOff = marketSignal({
       ...signals[1]!,
@@ -319,7 +410,7 @@ describe("MarketSignalsWorkbench", () => {
     await wrapper.get('[role="alert"] button').trigger("click");
     await flushPromises();
 
-    expect(listMarketSignals).toHaveBeenCalledTimes(2);
+    expect(listMarketSignals).toHaveBeenCalledTimes(14);
     expect(wrapper.text()).toContain(signals[0]!.title);
   });
 

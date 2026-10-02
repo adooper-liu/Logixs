@@ -26,8 +26,17 @@ import type {
 } from "@logix/contracts";
 import { requestJson } from "./httpClient";
 
-export async function listMarketSignals(): Promise<MarketSignalPageV1> {
-  return requestJson<MarketSignalPageV1>("/api/market-signals?pageSize=100", {
+export async function listMarketSignals(input: {
+  destination: MarketSignalV1["currentDestination"];
+  cursor?: string;
+  pageSize?: number;
+}): Promise<MarketSignalPageV1> {
+  const params = new URLSearchParams({
+    destination: input.destination,
+    pageSize: String(input.pageSize ?? 50),
+  });
+  if (input.cursor) params.set("cursor", input.cursor);
+  return requestJson<MarketSignalPageV1>(`/api/market-signals?${params}`, {
     fallback: "暂时无法加载经营信号",
   });
 }
