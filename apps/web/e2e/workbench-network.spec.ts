@@ -1,5 +1,6 @@
 import type {
   MarketOpportunityHandoffV1,
+  MarketSignalDecisionCommandV1,
   MarketSignalV1,
   ProductInitiativeDecisionCommandV1,
   ProductInitiativeV1,
@@ -169,6 +170,50 @@ test("a market owner can open a gap form and save the missing fact in place", as
   await expect(page.getByRole("button", { name: "选择渠道" })).toHaveCount(0);
 });
 
+test("market validation: a synthetic signal gets one resumable self-owned commitment", async ({
+  page,
+}) => {
+  await mockMarketOpportunityApis(page);
+  await page.setViewportSize({ width: 680, height: 900 });
+  await page.goto("/workspaces/market-signals");
+
+  await page
+    .getByRole("button", { name: /美国站庭院收纳需求连续三周上升/ })
+    .click();
+  await page.getByRole("radio", { name: /安排下一项验证/ }).check();
+  await page.getByLabel("这次要验证什么").fill("确认趋势是否持续两周");
+  await page.getByLabel("当前在等什么").fill("等待第二客服队列");
+  await page.locator('input[type="date"]').fill("2026-02-12");
+  await page
+    .getByRole("button", { name: "由我负责并安排验证", exact: true })
+    .click();
+
+  await expect(page.getByRole("region", { name: "当前验证承诺" })).toContainText(
+    "负责人：我",
+  );
+  await expect(page.getByRole("region", { name: "当前验证承诺" })).toContainText(
+    "确认趋势是否持续两周",
+  );
+  await expect(page.getByRole("region", { name: "当前验证承诺" })).toContainText(
+    "等待第二客服队列",
+  );
+  await expect(page.getByRole("status")).toContainText("已安排下一项验证");
+  await expect(page.locator(".market-workbench")).not.toContainText(
+    "机会已证明",
+  );
+
+  const widths = await page.evaluate(() => ({
+    pageClient: document.documentElement.clientWidth,
+    pageScroll: document.documentElement.scrollWidth,
+    contentClient:
+      document.querySelector<HTMLElement>(".app-content")?.clientWidth ?? 0,
+    contentScroll:
+      document.querySelector<HTMLElement>(".app-content")?.scrollWidth ?? 0,
+  }));
+  expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
+  expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
+});
+
 test("the workbench network stays within the viewport", async ({ page }) => {
   await page.goto("/workspaces");
   await expect(
@@ -239,10 +284,15 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
     const signalId = segments[segments.indexOf("market-signals") + 1];
 
     if (!signalId && request.method() === "GET") {
+      const destination = url.searchParams.get("destination");
+      const items = [...signals.values()].filter(
+        (item) => item.currentDestination === destination,
+      );
       await json(route, {
         contractVersion: "market-signal-page.v1",
-        items: [...signals.values()],
-        pageSize: 100,
+        items,
+        pageSize: 50,
+        totalCount: items.length,
         nextCursor: null,
       });
       return;
@@ -263,7 +313,31 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       return;
     }
     if (segments.at(-1) === "decisions" && request.method() === "POST") {
-      const body = request.postDataJSON() as { opportunityStatement?: string };
+      const body = request.postDataJSON() as MarketSignalDecisionCommandV1;
+      if (body.decisionType === "watch") {
+        const watched = {
+          ...current,
+          currentDestination: "watching" as const,
+          activeValidation: {
+            responsibleActorId: "dev-operator",
+            nextReviewDate: body.nextReviewDate!,
+            watchFocus: body.watchFocus!,
+            waitingReason: body.waitingReason ?? null,
+          },
+          version: current.version + 1,
+        };
+        signals.set(current.signalId, watched);
+        await json(route, {
+          contractVersion: "market-signal-decision-result.v1",
+          status: "saved",
+          signal: watched,
+          decisionId: "66666666-6666-4666-8666-666666666667",
+          decisionVersion: 1,
+          completion: "completed",
+          handoff: null,
+        });
+        return;
+      }
       const handedOff = {
         ...current,
         currentDestination: "handed_off" as const,
