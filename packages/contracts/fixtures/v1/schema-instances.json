@@ -945,6 +945,50 @@
         "createdAt": "2026-09-25T10:00:00Z",
         "idempotencyKey": "market-handoff-001"
       }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "synthetic positive active validation rehearsal",
+      "schemaRef": "market-opportunity.schema.json#/$defs/MarketSignalV1",
+      "data": {
+        "signalId": "77100000-0000-4000-8000-000000000001",
+        "title": "[合成演练] 春季户外收纳窗口提前",
+        "currentDestination": "watching",
+        "ownerTeamCode": "market_intelligence",
+        "activeValidation": {
+          "responsibleActorId": "demo_market_analyst_01",
+          "nextReviewDate": "2026-02-12",
+          "watchFocus": "确认趋势是否持续两周",
+          "waitingReason": "等待第二客服队列"
+        },
+        "version": 2,
+        "evidenceRefs": [],
+        "pendingFieldCodes": [],
+        "createdAt": "2026-02-02T10:00:00Z",
+        "updatedAt": "2026-02-02T10:05:00Z"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "synthetic negative active validation rehearsal",
+      "schemaRef": "market-opportunity.schema.json#/$defs/MarketSignalV1",
+      "data": {
+        "signalId": "77100000-0000-4000-8000-000000000002",
+        "title": "[合成演练] 短期高热的便携降温设备",
+        "currentDestination": "watching",
+        "ownerTeamCode": "market_intelligence",
+        "activeValidation": {
+          "responsibleActorId": "demo_market_analyst_02",
+          "nextReviewDate": "2026-06-17",
+          "watchFocus": "确认热浪后关注度是否持续",
+          "waitingReason": null
+        },
+        "version": 2,
+        "evidenceRefs": [],
+        "pendingFieldCodes": [],
+        "createdAt": "2026-05-24T17:00:00Z",
+        "updatedAt": "2026-05-24T17:05:00Z"
+      }
     }
   ]
 }

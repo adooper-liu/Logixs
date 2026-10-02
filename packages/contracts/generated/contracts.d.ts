@@ -318,7 +318,7 @@ export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalPendingFieldCodeV1".
  */
-export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "dismiss_reason" | "close_reason")
+export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "watch_focus" | "dismiss_reason" | "close_reason")
 /**
  * 立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。
  * 
@@ -1763,6 +1763,16 @@ failed: number
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSignalActiveValidationV1".
+ */
+export interface MarketSignalActiveValidationV1 {
+responsibleActorId: string
+nextReviewDate: string
+watchFocus: (string | null)
+waitingReason: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalV1".
  */
 export interface MarketSignalV1 {
@@ -1776,6 +1786,7 @@ hypothesis?: (string | null)
 evidenceRefs: Uuid[]
 currentDestination: MarketSignalDestinationV1
 ownerTeamCode: string
+activeValidation?: (MarketSignalActiveValidationV1 | null)
 version: number
 pendingFieldCodes: MarketSignalPendingFieldCodeV1[]
 createdAt: DateTime
@@ -1813,6 +1824,7 @@ judgmentNote?: string
 opportunityStatement?: string
 nextReviewDate?: string
 watchFocus?: string
+waitingReason?: string
 dismissReason?: string
 idempotencyKey: string
 }

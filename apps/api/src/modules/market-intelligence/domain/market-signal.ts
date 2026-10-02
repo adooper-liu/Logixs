@@ -51,6 +51,7 @@ export interface PreparedMarketSignalDecision {
   opportunityStatement: string | null;
   nextReviewDate: string | null;
   watchFocus: string | null;
+  waitingReason: string | null;
   dismissReason: string | null;
   pendingFieldCodes: MarketSignalPendingFieldCodeV1[];
   idempotencyKey: string;
@@ -148,6 +149,11 @@ export function prepareMarketSignalDecision(
   );
   const nextReviewDate = optionalDate(command.nextReviewDate);
   const watchFocus = optionalText(command.watchFocus, "watchFocus", 4000);
+  const waitingReason = optionalText(
+    command.waitingReason,
+    "waitingReason",
+    500,
+  );
   const dismissReason = optionalText(
     command.dismissReason,
     "dismissReason",
@@ -156,6 +162,7 @@ export function prepareMarketSignalDecision(
   const completion = decisionCompletion(
     command.decisionType,
     nextReviewDate,
+    watchFocus,
     dismissReason,
     judgmentNote,
   );
@@ -172,11 +179,13 @@ export function prepareMarketSignalDecision(
       command.decisionType === "handoff" ? opportunityStatement : null,
     nextReviewDate: command.decisionType === "watch" ? nextReviewDate : null,
     watchFocus: command.decisionType === "watch" ? watchFocus : null,
+    waitingReason: command.decisionType === "watch" ? waitingReason : null,
     dismissReason: command.decisionType === "dismiss" ? dismissReason : null,
     pendingFieldCodes: pendingFieldCodes(facts, {
       decisionType: command.decisionType,
       opportunityStatement,
       nextReviewDate,
+      watchFocus,
       dismissReason,
       judgmentNote,
     }),
@@ -204,6 +213,7 @@ export function prepareSelectionReturnDecision(input: {
     opportunityStatement: null,
     nextReviewDate: null,
     watchFocus: null,
+    waitingReason: null,
     dismissReason: null,
     pendingFieldCodes: [] as MarketSignalPendingFieldCodeV1[],
     idempotencyKey: text(input.idempotencyKey, "idempotencyKey", 200),
@@ -217,6 +227,7 @@ export function pendingFieldCodes(
     decisionType: MarketSignalDecisionCommandV1["decisionType"];
     opportunityStatement: string | null;
     nextReviewDate: string | null;
+    watchFocus: string | null;
     dismissReason: string | null;
     judgmentNote?: string | null;
   },
@@ -234,6 +245,9 @@ export function pendingFieldCodes(
   if (decision?.decisionType === "watch" && !decision.nextReviewDate) {
     missing.add("next_review_date");
   }
+  if (decision?.decisionType === "watch" && !decision.watchFocus) {
+    missing.add("watch_focus");
+  }
   if (decision?.decisionType === "dismiss" && !decision.dismissReason) {
     missing.add("dismiss_reason");
   }
@@ -250,11 +264,12 @@ export function pendingFieldCodes(
 function decisionCompletion(
   decision: MarketSignalDecisionCommandV1["decisionType"],
   nextReviewDate: string | null,
+  watchFocus: string | null,
   dismissReason: string | null,
   closeReason: string | null,
 ): MarketSignalDecisionCompletionV1 {
   if (decision === "watch") {
-    return nextReviewDate ? "completed" : "pending_completion";
+    return nextReviewDate && watchFocus ? "completed" : "pending_completion";
   }
   if (decision === "dismiss") {
     return dismissReason ? "completed" : "pending_completion";
@@ -359,6 +374,7 @@ const PENDING_FIELD_ORDER: MarketSignalPendingFieldCodeV1[] = [
   "evidence_refs",
   "opportunity_statement",
   "next_review_date",
+  "watch_focus",
   "dismiss_reason",
   "close_reason",
 ];

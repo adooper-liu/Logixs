@@ -45,9 +45,30 @@
         "evidence_refs",
         "opportunity_statement",
         "next_review_date",
+        "watch_focus",
         "dismiss_reason",
         "close_reason"
       ]
+    },
+    "MarketSignalActiveValidationV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "responsibleActorId",
+        "nextReviewDate",
+        "watchFocus",
+        "waitingReason"
+      ],
+      "properties": {
+        "responsibleActorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "nextReviewDate": { "type": "string", "format": "date" },
+        "watchFocus": { "type": ["string", "null"], "maxLength": 4000 },
+        "waitingReason": { "type": ["string", "null"], "maxLength": 500 }
+      }
     },
     "MarketSignalV1": {
       "type": "object",
@@ -81,6 +102,12 @@
         },
         "currentDestination": { "$ref": "#/$defs/MarketSignalDestinationV1" },
         "ownerTeamCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "activeValidation": {
+          "oneOf": [
+            { "$ref": "#/$defs/MarketSignalActiveValidationV1" },
+            { "type": "null" }
+          ]
+        },
         "version": { "type": "integer", "minimum": 1 },
         "pendingFieldCodes": {
           "type": "array",
@@ -141,6 +168,11 @@
         },
         "nextReviewDate": { "type": "string", "format": "date" },
         "watchFocus": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "waitingReason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
         "dismissReason": { "type": "string", "minLength": 1, "maxLength": 500 },
         "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
       }
