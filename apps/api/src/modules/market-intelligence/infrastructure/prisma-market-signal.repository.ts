@@ -585,10 +585,7 @@ function listAfterWhere(
       OR: [
         { updatedAt: { lt: after.updatedAt } },
         {
-          AND: [
-            { updatedAt: after.updatedAt },
-            { id: { lt: after.id } },
-          ],
+          AND: [{ updatedAt: after.updatedAt }, { id: { lt: after.id } }],
         },
       ],
     };
@@ -602,10 +599,7 @@ function listAfterWhere(
       OR: [
         { updatedAt: { lt: after.updatedAt } },
         {
-          AND: [
-            { updatedAt: after.updatedAt },
-            { id: { lt: after.id } },
-          ],
+          AND: [{ updatedAt: after.updatedAt }, { id: { lt: after.id } }],
         },
       ],
     };

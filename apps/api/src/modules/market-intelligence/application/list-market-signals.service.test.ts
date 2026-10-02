@@ -40,7 +40,10 @@ function setup(rows = [row]) {
 
 describe("ListMarketSignalsService", () => {
   it("binds a watching cursor to tenant, destination and due-date sort", async () => {
-    const { repository, service } = setup([row, { ...row, id: "22222222-2222-4222-8222-222222222222" }]);
+    const { repository, service } = setup([
+      row,
+      { ...row, id: "22222222-2222-4222-8222-222222222222" },
+    ]);
     const first = await service.execute({
       tenantId: "tenant-a",
       destination: "watching",
@@ -82,7 +85,10 @@ describe("ListMarketSignalsService", () => {
   });
 
   it("rejects a cursor reused for another destination", async () => {
-    const { service } = setup([row, { ...row, id: "22222222-2222-4222-8222-222222222222" }]);
+    const { service } = setup([
+      row,
+      { ...row, id: "22222222-2222-4222-8222-222222222222" },
+    ]);
     const first = await service.execute({
       tenantId: "tenant-a",
       destination: "watching",

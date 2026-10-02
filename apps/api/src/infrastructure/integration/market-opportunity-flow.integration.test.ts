@@ -424,7 +424,9 @@ describe("market opportunity persistence flow", () => {
           ? {
               sort: "watching_due",
               activeValidationDueDate: last.activeValidation
-                ? new Date(`${last.activeValidation.nextReviewDate}T00:00:00.000Z`)
+                ? new Date(
+                    `${last.activeValidation.nextReviewDate}T00:00:00.000Z`,
+                  )
                 : null,
               updatedAt: last.updatedAt,
               id: last.id,

@@ -188,15 +188,15 @@ test("market validation: a synthetic signal gets one resumable self-owned commit
     .getByRole("button", { name: "由我负责并安排验证", exact: true })
     .click();
 
-  await expect(page.getByRole("region", { name: "当前验证承诺" })).toContainText(
-    "负责人：我",
-  );
-  await expect(page.getByRole("region", { name: "当前验证承诺" })).toContainText(
-    "确认趋势是否持续两周",
-  );
-  await expect(page.getByRole("region", { name: "当前验证承诺" })).toContainText(
-    "等待第二客服队列",
-  );
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("负责人：我");
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("确认趋势是否持续两周");
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("等待第二客服队列");
   await expect(page.getByRole("status")).toContainText("已安排下一项验证");
   await expect(page.locator(".market-workbench")).not.toContainText(
     "机会已证明",

@@ -154,9 +154,7 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
     <div v-if="model.decision === 'watch'" class="decision-fields">
       <p v-if="ownedByAnother" class="validation-owner-conflict" role="status">
         当前验证由
-        {{
-          activeValidation?.responsibleActorId
-        }}
+        {{ activeValidation?.responsibleActorId }}
         负责。本片不支持静默接管或转派。
       </p>
       <label>

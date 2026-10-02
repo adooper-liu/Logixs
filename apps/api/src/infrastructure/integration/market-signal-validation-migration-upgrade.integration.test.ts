@@ -88,9 +88,9 @@ describe("market signal active validation migration upgrade", () => {
       active_validation_focus: "确认趋势是否持续两周",
       active_validation_waiting_reason: null,
     });
-    expect(focused?.active_validation_due_date?.toISOString().slice(0, 10)).toBe(
-      "2026-02-12",
-    );
+    expect(
+      focused?.active_validation_due_date?.toISOString().slice(0, 10),
+    ).toBe("2026-02-12");
     expect(legacy).toMatchObject({
       active_validation_owner_actor_id: "market-owner-legacy",
       active_validation_focus: null,

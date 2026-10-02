@@ -85,7 +85,9 @@ export class ListMarketSignalsService {
   }
 }
 
-function parseDestination(value: string | undefined): MarketSignalDestinationV1 {
+function parseDestination(
+  value: string | undefined,
+): MarketSignalDestinationV1 {
   if (!value || !DESTINATIONS.has(value as MarketSignalDestinationV1)) {
     invalid("destination");
   }
@@ -100,7 +102,9 @@ function parsePageSize(value: string | undefined): number {
   return parsed;
 }
 
-function cursorFor(record: Parameters<typeof presentMarketSignal>[0]): MarketSignalListCursor {
+function cursorFor(
+  record: Parameters<typeof presentMarketSignal>[0],
+): MarketSignalListCursor {
   if (record.currentDestination === "watching") {
     return {
       sort: "watching_due",
