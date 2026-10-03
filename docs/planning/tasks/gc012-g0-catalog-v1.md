@@ -144,9 +144,40 @@ authorityRefs:
 | 范围     | `origin/main...HEAD` 全量；重点为 G0 计划 Review Focus 1～5 与 G0 Completion Contract |
 | 产出     | `logix-review/v1`，主代理形成 `logix-disposition/v1` 写回本 brief                     |
 
+#### S3 复审处置（`logix-disposition/v1`）
+
+复审基线 `9ede156b`，复审对象 `4bebc6bf`，结论 `approve-with-findings`。
+
+| finding      | 严重度 | 处置       | 理由与写回                                                                                                                                                                                                                              |
+| ------------ | ------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GC012-S3-F01 | major  | `accepted` | 主代理核实 `workbenchRelations` 无 `from: "dispatch"`，`DispatchWorkbench.vue` 不回退旧交接，真实出运页出向显示为“主链责任收口”，与 spec §3.1/§3.2“交海运运营”冲突；由 S5 修复                                                          |
+| GC012-S3-F02 | minor  | `accepted` | spec §3.1 只列“至少包括”的新关系，未声明取代旧交接；按 `from`/`to` 合并新关系与旧交接、保留 `supply_readiness → shipment_planning`，不改业务口径；目录卡片显示全部出向或条数；由 S5 修复，同时落实延后的“Task 3 关系遍历集中化”         |
+| GC012-S3-F03 | minor  | `accepted` | 08 原文“不新增 route、页面”与 G0 计划及实现的 `planned` 目录占位页矛盾；主代理已在 `doc/cross-border-supply-chain/08-role-workbenches.md` 改为“只新增无业务动作的 `planned` 目录占位 route 与页面，不新增 API 或生产写动作”，属措辞校正 |
+| GC012-S3-F04 | minor  | `accepted` | 采用选项 (1) 默认失败：`workbenchStages` 未识别的元素形态、override 对象中的展开或非字面量属性、路由初始化表达式中除 `map` 外的数组变换均须报错；先补能复现 B、C、E、F 四种绕过的失败测试；由 S5 修复                                   |
+| GC012-S3-F05 | minor  | `accepted` | 在目录源诱饵用例中恢复字符串与模板字符串诱饵断言，不改检查器；由 S5 修复                                                                                                                                                                |
+| GC012-S3-F06 | minor  | `accepted` | 320/375 视口循环扩展到三台目录占位页，并断言 `button`/`form`/`input`/`textarea`/`select` 数量为 0；由 S5 修复                                                                                                                           |
+| GC012-S3-F07 | nit    | `accepted` | `DispatchWorkbench.vue` 外层 `<main>` 改为非地标容器；目录缺失 `dispatch` 时不得隐藏真实业务组件；由 S5 与 F01 一并修复                                                                                                                 |
+| GC012-S3-F08 | minor  | `accepted` | 本地 E2E 替代运行只作参考；E2E 门禁以 S4 PR CI 的 `test:e2e` 对最终提交通过为权威证据，未通过不合并；不重跑本地 `validate`                                                                                                              |
+
+`next: S5-review-fixes`；S5 改变出运页交接语义与检查器失败策略，回交后由新的 fresh 只读 Claude Opus 复审只针对 S5 增量。
+
+### 切片 `S5-review-fixes`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 执行角色 | 实现执行器：工具 `Codex`，实际模型 `GPT-5.6`                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 复审     | S5 增量复审：Cursor fresh 只读会话，实际模型 `Claude Opus`                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 写入范围 | `apps/web/src/data/workbenchNetwork.ts`、`apps/web/src/data/workbenchNetwork.test.ts`、`apps/web/src/views/DispatchWorkbench.vue`、`apps/web/src/views/DispatchWorkbench.test.ts`、`apps/web/src/views/PlannedWorkbenchView.vue`、`apps/web/src/views/PlannedWorkbenchView.test.ts`、`apps/web/src/views/WorkbenchNetworkView.vue`、`apps/web/src/views/WorkbenchNetworkView.test.ts`、`apps/web/e2e/workbench-network.spec.ts`、`scripts/check-repository.mjs`、`scripts/check-repository.test.mjs` |
+| 禁止范围 | 其他所有文件，包括本 brief 与 `doc/`；不得新增或删除 `workbenchRelations` 中的业务关系，不得改变 23 台目录、名称、成熟度或评估状态                                                                                                                                                                                                                                                                                                                                                                   |
+| 待修问题 | 见上表 F01、F02、F04、F05、F06、F07 的处置                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 方案     | 在 `workbenchNetwork.ts` 提供唯一的入向/出向交接查询 helper（新关系与旧交接按 `from`/`to` 去重合并），`DispatchWorkbench.vue`、`PlannedWorkbenchView.vue`、`WorkbenchNetworkView.vue` 共用；检查器按 F04 选项 (1) 默认失败                                                                                                                                                                                                                                                                           |
+| 验收要求 | 先写失败测试：出运出向包含交给 `ocean_operations` 的 `shipment_handoff`；`supply_readiness` 出向包含 `shipment_planning`；多出向卡片显示全部或条数；B、C、E、F 四种绕过各自报错；目录源字符串/模板诱饵仍报缺失；三台占位页 320/375 无控件；渲染后 DOM 只有一个 `main`                                                                                                                                                                                                                                |
+| 验证命令 | `node --test scripts/check-repository.test.mjs`；`pnpm repo:check`；`pnpm --filter @logix/web test`；`pnpm --filter @logix/web lint`；`pnpm --filter @logix/web typecheck`；`pnpm --filter @logix/web exec playwright test e2e/workbench-network.spec.ts`（5173/5174 被占用时报告 `blocked`，不得终止他人进程）；`pnpm exec prettier --check` 本切片文件；`git diff --check`                                                                                                                         |
+| 停止条件 | 全部通过后 `ready-for-review` 停手，按 `AGENTS.md` §1.3 回交 `HANDOFF`；允许在本分支本地提交，不推送                                                                                                                                                                                                                                                                                                                                                                                                 |
+
 ### 切片 `S4-pr`
 
-推送 `feat/gc012-g0-catalog-v1`、建 PR、跑 CI；合并须负责人授权。
+S5 及其增量复审通过后执行：推送 `feat/gc012-g0-catalog-v1`、建 PR、跑 CI；合并须负责人授权。
 
 ## 进度
 
@@ -156,3 +187,4 @@ authorityRefs:
 - 2026-10-03 17:48：负责人确认 Claude Code 会话已停止；主代理核对原 worktree 自 17:39:59 起无新提交与文件写入，原分支止于 `50d6a6bb`。S1 下发给 Codex。
 - 2026-10-03：S1 `ready-for-review` 回交；主代理复现 RED（`4a0c9370` 失败 3 项、`50d6a6bb` 失败 2 项）与 GREEN（56/56），验收并提交 `7f69174d`。`50d6a6bb` 新增的目录源文件字符串/模板诱饵用例在 S1 中被移除，列入 S3 复审重点。
 - 2026-10-03 19:40～19:48：S2 于 `7f69174d` 完成。G0 计划 Task 4 Step 4：检查器测试 56/56、`docs:check`、`repo:check`、web 单测 636/636、web lint、web typecheck、web E2E 157 通过/7 按视口条件跳过、web build、`format:check`、`git diff --check` 全部通过。`pnpm validate`（`DATABASE_URL` 指向 `.env.example` 的本地 5433 库，`AUTH_MODE=development`）中 `repo:check`、`contract:check`、`contract:drift`、`data-dictionary:check`、`db:generate`、lint、`format:check`、typecheck、test（api 1425/1425、web 636/636）、`test:integration`（153/153）通过；其 E2E 阶段因负责人 19:42 启动的 `dev:all` 占用 5173 触发 `E2E_DEV_SERVER_CONFLICT`，未终止该进程，E2E 采用同一提交上 19:42 独立运行的同一套件结果；根 `pnpm build` 补跑通过。S2 通过，进入 S3。
+- 2026-10-03 20:12：S3 由 fresh 只读 Claude Opus 子代理复审 `4bebc6bf`，结论 `approve-with-findings`（1 major、6 minor、1 nit，`writes: none`，复审后工作树无已跟踪变化）；writeScopes 与 37 个差异文件双向一致，无生成物或密钥。主代理核实 F01、F02 后全部 `accepted`，F03 已写回 08，其余进入 S5；E2E 门禁以 S4 PR CI 为准（F08）。

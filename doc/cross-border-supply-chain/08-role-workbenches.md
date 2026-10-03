@@ -132,7 +132,7 @@
 | 22       | `charges`               | 费用结算             | 支撑/横向 | 以真实业务事件为依据，形成从费用暴露到核定、分摊、支付、贷项和争议的唯一金额账本                 |
 | 23       | `exceptions`            | 异常中心             | 支撑/横向 | 协调跨域异常在最早业务期限前取得专业处置或允许的风险决定，并把可执行结果归还原业务域接受         |
 
-`booking`、`export_customs`、`compliance_operations` 是批准后的目录项，不因此新增 route、页面、API 或生产写动作。`customs` 保留 stable code，正式名称为“进口清关”。
+`booking`、`export_customs`、`compliance_operations` 是批准后的目录项，只新增无业务动作的 `planned` 目录占位 route 与页面，不因此新增 API 或生产写动作。`customs` 保留 stable code，正式名称为“进口清关”。
 
 ### 3.1 成熟度与评估状态
 
