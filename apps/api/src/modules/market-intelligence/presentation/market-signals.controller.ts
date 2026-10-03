@@ -46,7 +46,7 @@ export class MarketSignalsController {
 
   @Get()
   @RequireCapabilities("planning.read")
-  @ApiQuery({ name: "destination", required: true, type: String })
+  @ApiQuery({ name: "destination", required: false, type: String })
   @ApiQuery({ name: "pageSize", required: false, type: Number })
   @ApiQuery({ name: "cursor", required: false, type: String })
   @ApiOkResponse({ type: MarketSignalPageResponseDto })

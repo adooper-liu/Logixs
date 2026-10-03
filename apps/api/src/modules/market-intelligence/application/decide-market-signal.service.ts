@@ -62,7 +62,7 @@ export class DecideMarketSignalService {
       return {
         contractVersion: "market-signal-decision-result.v1",
         status: persisted.duplicate ? "duplicate" : "saved",
-        signal: presentMarketSignal(persisted.signal, evidenceRefs),
+        signal: presentMarketSignal(persisted.signal, persisted.evidenceRefs),
         decisionId: persisted.decision.id,
         decisionVersion: persisted.decision.version,
         completion: persisted.decision.completion,

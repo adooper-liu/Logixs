@@ -5,6 +5,17 @@ BEGIN;
 ALTER TABLE "market_signal_decision"
   ADD COLUMN "waiting_reason" TEXT;
 
+-- 幂等重放必须返回该次判断写入后的完整信号与 evidence 快照，不能混入当前事实；
+-- 旧判断没有完整快照，保持 NULL，并由应用层稳定拒绝为已被后续语义取代。
+ALTER TABLE "market_signal_decision"
+  ADD COLUMN "result_signal_snapshot" JSONB;
+
+ALTER TABLE "market_signal_decision"
+  ADD CONSTRAINT "market_signal_decision_result_snapshot_check" CHECK (
+    "result_signal_snapshot" IS NULL OR
+    jsonb_typeof("result_signal_snapshot") = 'object'
+  );
+
 ALTER TABLE "market_signal"
   ADD COLUMN "active_validation_owner_actor_id" TEXT,
   ADD COLUMN "active_validation_due_date" DATE,
@@ -116,21 +127,20 @@ ALTER TABLE "market_signal_decision"
     ]::TEXT[]
   );
 
--- 当前处于 watching 的旧记录，从最新 completed watch 回填；不从 judgment_note
--- 猜 focus，也不为旧行制造 waiting reason。
-WITH latest_watch AS (
-  SELECT DISTINCT ON (d."signal_id")
+-- 按「最新生效（completed）判断」重建投影：只有它是 watch 时承诺仍有效。
+-- pending 判断不替换也不清空承诺（信号可能已回到 needs_decision），
+-- completed 的退出判断才清空。不从 judgment_note 猜 focus，也不制造 waiting reason。
+WITH latest_effective AS (
+  SELECT DISTINCT ON (d."tenant_id", d."signal_id")
+    d."tenant_id",
     d."signal_id",
+    d."decision_type",
     d."created_by",
     d."next_review_date",
     d."watch_focus"
   FROM "market_signal_decision" d
-  JOIN "market_signal" s
-    ON s."id" = d."signal_id" AND s."tenant_id" = d."tenant_id"
-  WHERE s."current_destination" = 'watching'
-    AND d."decision_type" = 'watch'
-    AND d."completion_state" = 'completed'
-  ORDER BY d."signal_id", d."decision_version" DESC
+  WHERE d."completion_state" = 'completed'
+  ORDER BY d."tenant_id", d."signal_id", d."decision_version" DESC
 )
 UPDATE "market_signal" s
 SET
@@ -138,8 +148,11 @@ SET
   "active_validation_due_date" = w."next_review_date",
   "active_validation_focus" = w."watch_focus",
   "active_validation_waiting_reason" = NULL
-FROM latest_watch w
-WHERE s."id" = w."signal_id";
+FROM latest_effective w
+WHERE s."id" = w."signal_id"
+  AND s."tenant_id" = w."tenant_id"
+  AND w."decision_type" = 'watch'
+  AND s."current_destination" IN ('watching', 'needs_decision');
 
 CREATE INDEX "market_signal_validation_queue_idx"
   ON "market_signal"(
@@ -155,7 +168,8 @@ COMMIT;
 -- Verification after deploy:
 -- SELECT id, active_validation_owner_actor_id, active_validation_due_date,
 --        active_validation_focus, active_validation_waiting_reason
--- FROM market_signal WHERE current_destination = 'watching';
--- Recovery before any business write: drop the index, new constraints and columns,
+-- FROM market_signal WHERE active_validation_owner_actor_id IS NOT NULL;
+-- Recovery before any business write: drop the index, new constraints and columns
+-- (including market_signal_decision.result_signal_snapshot),
 -- then restore the prior decision constraints. After business writes exist, preserve data
 -- and roll forward with a corrective migration.

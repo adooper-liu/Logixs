@@ -56,7 +56,7 @@ export type MarketSignalListCursor =
 
 export interface MarketSignalListQuery {
   tenantId: string;
-  destination: MarketSignalDestinationV1;
+  destination?: MarketSignalDestinationV1;
   after?: MarketSignalListCursor;
   take: number;
 }
@@ -78,7 +78,9 @@ export interface ApplySelectionReturnInput {
 }
 
 export interface MarketSignalDecisionPersistenceResult {
+  /** 该次判断写入后的信号；重放时也是当时的快照，不混入后续版本。 */
   signal: MarketSignalRecord;
+  evidenceRefs: string[];
   decision: MarketSignalDecisionRecord;
   handoff: MarketOpportunityHandoffV1 | null;
   duplicate: boolean;
@@ -97,7 +99,7 @@ export interface MarketSignalRepository {
   list(query: MarketSignalListQuery): Promise<MarketSignalRecord[]>;
   count(input: {
     tenantId: string;
-    destination: MarketSignalDestinationV1;
+    destination?: MarketSignalDestinationV1;
   }): Promise<number>;
   findLatestSelectionReturnReason(
     tenantId: string,

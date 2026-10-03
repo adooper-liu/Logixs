@@ -1,5 +1,6 @@
 import type {
   MarketSignalDetailV1,
+  MarketSignalPageV1,
   MarketSignalPendingFieldCodeV1,
   MarketSignalUpdateCommandV1,
   MarketSignalV1,
@@ -23,6 +24,7 @@ import {
 } from "../api/marketSignals";
 import {
   buildMarketSignalResult,
+  compareWatchingOrder,
   createMarketSignalDraft,
   marketSignalGap,
   type ManualMarketSignalDraft,
@@ -49,9 +51,26 @@ const DESTINATIONS: readonly MarketSignalWorkflowState[] = [
   "archived",
 ];
 
-interface QueuePageState {
+export interface QueuePageState {
   nextCursor: string | null;
-  totalCount: number;
+  /** 旧 API 不提供分组总数时为 null，界面退回到已加载条数。 */
+  totalCount: number | null;
+  loading: boolean;
+  loadingMore: boolean;
+  error: string | null;
+  /** 每次重载分组递增；迟到的旧响应据此丢弃。 */
+  generation: number;
+}
+
+function emptyPage(): QueuePageState {
+  return {
+    nextCursor: null,
+    totalCount: null,
+    loading: false,
+    loadingMore: false,
+    error: null,
+    generation: 0,
+  };
 }
 
 export function useMarketSignalWorkbench(
@@ -65,12 +84,18 @@ export function useMarketSignalWorkbench(
   const error = shallowRef<string | null>(null);
   const pages = reactive<Record<MarketSignalWorkflowState, QueuePageState>>(
     Object.fromEntries(
-      DESTINATIONS.map((destination) => [
-        destination,
-        { nextCursor: null, totalCount: 0 },
-      ]),
+      DESTINATIONS.map((destination) => [destination, emptyPage()]),
     ) as unknown as Record<MarketSignalWorkflowState, QueuePageState>,
   );
+  // 旧 API 忽略 destination、按跨状态顺序分页；探测到后只走一条全局游标。
+  const legacy = reactive({
+    active: false,
+    nextCursor: null as string | null,
+    loadingMore: false,
+  });
+  const details = new Map<string, MarketSignalDetailV1>();
+  const detailRequests = new Map<string, number>();
+  let loadGeneration = 0;
 
   const selectedSignal = computed(() => {
     const selectedId = toValue(options.selectedId);
@@ -85,66 +110,198 @@ export function useMarketSignalWorkbench(
       drafts[selectedSignal.value?.id ?? "__empty"] = value;
     },
   });
-  const queueItems = computed<readonly MarketSignalQueueItem[]>(() =>
-    signals.value.map((signal) => ({
+  const queueItems = computed<readonly MarketSignalQueueItem[]>(() => {
+    const items = signals.value.map((signal) => ({
       ...signal,
       workflowState: signal.initialState,
-    })),
+    }));
+    const watching = items
+      .filter((item) => item.workflowState === "watching")
+      .sort(compareWatchingOrder);
+    return [
+      ...items.filter((item) => item.workflowState !== "watching"),
+      ...watching,
+    ];
+  });
+  const hasMore = computed(
+    () =>
+      Object.fromEntries(
+        DESTINATIONS.map((destination) => [
+          destination,
+          legacy.active
+            ? Boolean(legacy.nextCursor)
+            : Boolean(pages[destination].nextCursor),
+        ]),
+      ) as Record<MarketSignalWorkflowState, boolean>,
   );
 
   watch(
-    () => selectedSignal.value?.id,
-    (id) => {
+    () => toValue(options.selectedId),
+    async (id) => {
       if (!id) return;
       drafts[id] ??= createMarketSignalDraft();
-      void loadDetail(id);
+      if (!signals.value.some((item) => item.id === id)) {
+        await ensureRequestedSignal(id);
+        return;
+      }
+      await loadDetail(id);
     },
   );
 
   onMounted(loadSignals);
 
   async function loadSignals(): Promise<void> {
+    const generation = ++loadGeneration;
     loading.value = true;
     error.value = null;
-    try {
-      const responses = await Promise.all(
-        DESTINATIONS.map(async (destination) => ({
-          destination,
-          page: await listMarketSignals({ destination, pageSize: 50 }),
-        })),
-      );
-      signals.value = responses.flatMap(({ page }) =>
-        page.items.map((signal) => toScenario(signal)),
-      );
-      responses.forEach(({ destination, page }) => {
+    if (legacy.active) {
+      try {
+        const result = await listMarketSignals({ pageSize: 50 });
+        if (loadGeneration !== generation) return;
+        legacy.nextCursor = result.nextCursor;
+        signals.value = [];
+        upsertSignals(result.items);
+        await ensureRequestedSignal();
+      } catch (caught) {
+        error.value = message(caught);
+      } finally {
+        if (loadGeneration === generation) loading.value = false;
+      }
+      return;
+    }
+    DESTINATIONS.forEach((destination) => {
+      pages[destination].generation += 1;
+      pages[destination].loading = true;
+      pages[destination].error = null;
+    });
+    const results = await Promise.allSettled(
+      DESTINATIONS.map((destination) =>
+        listMarketSignals({ destination, pageSize: 50 }),
+      ),
+    );
+    if (loadGeneration !== generation) return;
+    const legacyPage = results.find(
+      (result): result is PromiseFulfilledResult<MarketSignalPageV1> =>
+        result.status === "fulfilled" && result.value.totalCount === undefined,
+    );
+    if (legacyPage) {
+      // 旧 API 对每个 destination 都返回同一份跨状态首页，只采用一份避免重复。
+      legacy.active = true;
+      legacy.nextCursor = legacyPage.value.nextCursor;
+      signals.value = [];
+      upsertSignals(legacyPage.value.items);
+      DESTINATIONS.forEach((destination) => {
         pages[destination] = {
-          nextCursor: page.nextCursor,
-          totalCount: page.totalCount ?? page.items.length,
+          ...emptyPage(),
+          generation: pages[destination].generation,
         };
       });
-      const requested = toValue(options.selectedId);
-      const matched = signals.value.find(({ id }) => id === requested);
-      // 首屏无选中时默认第一条；筛选切换清空选中后不再回退到首条，避免右侧错位。
-      const initial =
-        matched ?? (requested ? null : (signals.value[0] ?? null));
-      if (initial && initial.id !== requested) {
-        await options.selectSignal(initial.id);
-      } else if (initial) {
-        await loadDetail(initial.id);
-      }
+    } else {
+      legacy.active = false;
+      legacy.nextCursor = null;
+      signals.value = [];
+      results.forEach((result, index) => {
+        const destination = DESTINATIONS[index]!;
+        const page = pages[destination];
+        page.loading = false;
+        page.loadingMore = false;
+        if (result.status === "fulfilled") {
+          upsertSignals(result.value.items);
+          page.nextCursor = result.value.nextCursor;
+          page.totalCount = result.value.totalCount ?? null;
+          page.error = null;
+        } else {
+          page.nextCursor = null;
+          page.totalCount = null;
+          page.error = message(result.reason);
+        }
+      });
+    }
+    if (results.every((result) => result.status === "rejected")) {
+      error.value = message((results[0] as PromiseRejectedResult).reason);
+    }
+    await ensureRequestedSignal();
+    const requested = toValue(options.selectedId);
+    const matched = signals.value.find(({ id }) => id === requested);
+    // 首屏无选中时默认第一条；筛选切换清空选中后不再回退到首条，避免右侧错位。
+    const initial = matched ?? (requested ? null : (signals.value[0] ?? null));
+    loading.value = false;
+    if (initial && initial.id !== requested) {
+      await options.selectSignal(initial.id);
+    } else if (initial) {
+      await loadDetail(initial.id);
+    }
+  }
+
+  /** 深链对象可能不在各组首页：独立读取并并入其所属分组，不改分组总数。 */
+  async function ensureRequestedSignal(
+    requested = toValue(options.selectedId),
+  ): Promise<void> {
+    if (!requested || signals.value.some(({ id }) => id === requested)) return;
+    try {
+      const detail = await getMarketSignal(requested);
+      details.set(requested, detail);
+      upsertScenario(toScenario(detail.signal, detail));
     } catch (caught) {
       error.value = message(caught);
-      signals.value = [];
+    }
+  }
+
+  async function retryGroup(
+    destination: MarketSignalWorkflowState,
+  ): Promise<void> {
+    if (legacy.active) {
+      await loadSignals();
+      return;
+    }
+    const page = pages[destination];
+    page.generation += 1;
+    const generation = page.generation;
+    page.loading = true;
+    page.loadingMore = false;
+    page.error = null;
+    try {
+      const result = await listMarketSignals({ destination, pageSize: 50 });
+      if (pages[destination].generation !== generation) return;
+      replaceDestinationSignals(destination, result.items);
+      page.nextCursor = result.nextCursor;
+      page.totalCount = result.totalCount ?? null;
+    } catch (caught) {
+      if (pages[destination].generation !== generation) return;
+      page.error = message(caught);
     } finally {
-      loading.value = false;
+      if (pages[destination].generation === generation) page.loading = false;
     }
   }
 
   async function loadDetail(id: string): Promise<void> {
+    const request = (detailRequests.get(id) ?? 0) + 1;
+    detailRequests.set(id, request);
     try {
       const detail = await getMarketSignal(id);
-      replaceScenario(toScenario(detail.signal, detail));
+      if (detailRequests.get(id) !== request) return;
+      const current = signals.value.find((item) => item.id === id);
+      // 保存后的新版本先到、旧详情后到时，只保护信号字段；证据与退回原因仍是独立详情事实。
+      if (current && current.version > detail.signal.version) {
+        details.set(id, detail);
+        const enriched = toScenario(detail.signal, detail);
+        upsertScenario({
+          ...current,
+          evidence: enriched.evidence,
+          workReason: detail.selectionReturnReason
+            ? enriched.workReason
+            : current.workReason,
+          gaps: [
+            ...current.gaps.filter((gap) => gap.code !== "source_name"),
+            ...enriched.gaps.filter((gap) => gap.code === "source_name"),
+          ],
+        });
+        return;
+      }
+      details.set(id, detail);
+      upsertScenario(toScenario(detail.signal, detail));
     } catch (caught) {
+      if (detailRequests.get(id) !== request) return;
       error.value = message(caught);
     }
   }
@@ -152,27 +309,47 @@ export function useMarketSignalWorkbench(
   async function loadMore(
     destination: MarketSignalWorkflowState,
   ): Promise<void> {
-    const cursor = pages[destination].nextCursor;
-    if (!cursor || pages[destination].nextCursor === null) return;
+    if (legacy.active) {
+      await loadMoreLegacy();
+      return;
+    }
+    const page = pages[destination];
+    const cursor = page.nextCursor;
+    if (!cursor || page.loadingMore) return;
+    const generation = page.generation;
+    page.loadingMore = true;
     try {
-      const page = await listMarketSignals({
+      const result = await listMarketSignals({
         destination,
         cursor,
         pageSize: 50,
       });
-      const existing = new Set(signals.value.map(({ id }) => id));
-      signals.value = [
-        ...signals.value,
-        ...page.items
-          .filter(({ signalId }) => !existing.has(signalId))
-          .map((signal) => toScenario(signal)),
-      ];
-      pages[destination] = {
-        nextCursor: page.nextCursor,
-        totalCount: page.totalCount ?? pages[destination].totalCount,
-      };
+      if (pages[destination].generation !== generation) return;
+      upsertSignals(result.items);
+      page.nextCursor = result.nextCursor;
+      page.totalCount = result.totalCount ?? page.totalCount;
+    } catch (caught) {
+      if (pages[destination].generation !== generation) return;
+      page.error = message(caught);
+    } finally {
+      if (pages[destination].generation === generation) {
+        page.loadingMore = false;
+      }
+    }
+  }
+
+  async function loadMoreLegacy(): Promise<void> {
+    const cursor = legacy.nextCursor;
+    if (!cursor || legacy.loadingMore) return;
+    legacy.loadingMore = true;
+    try {
+      const result = await listMarketSignals({ cursor, pageSize: 50 });
+      upsertSignals(result.items);
+      legacy.nextCursor = result.nextCursor;
     } catch (caught) {
       error.value = message(caught);
+    } finally {
+      legacy.loadingMore = false;
     }
   }
 
@@ -212,6 +389,7 @@ export function useMarketSignalWorkbench(
         created = (await getMarketSignal(created.signalId)).signal;
       }
       signals.value = [toScenario(created), ...signals.value];
+      moveCount(null, created.currentDestination);
       receipt.value = null;
       await options.selectSignal(created.signalId);
       await loadDetail(created.signalId);
@@ -227,10 +405,19 @@ export function useMarketSignalWorkbench(
   async function submitDecision(): Promise<void> {
     const signal = selectedSignal.value;
     if (!signal || saving.value) return;
+    const draft = selectedDraft.value;
+    if (
+      (draft.decision === "watch" &&
+        (!draft.nextReviewDate || !draft.watchFocus.trim())) ||
+      (draft.decision === "dismiss" && !draft.dismissReason) ||
+      ((draft.decision === "void" || draft.decision === "archive") &&
+        !draft.judgmentNote.trim())
+    ) {
+      return;
+    }
     saving.value = true;
     error.value = null;
     try {
-      const draft = selectedDraft.value;
       const response = await decideMarketSignal(signal.id, {
         contractVersion: "market-signal-decision.v1",
         expectedSignalVersion: signal.version,
@@ -255,7 +442,11 @@ export function useMarketSignalWorkbench(
           : {}),
         idempotencyKey: `market-signal-decision:${signal.id}:${signal.version}:${crypto.randomUUID()}`,
       });
-      replaceScenario(toScenario(response.signal));
+      loadGeneration += 1;
+      loading.value = false;
+      // 判断响应只带信号本体；证据与选品退回原因沿用已读详情，避免保存后丢失。
+      upsertScenario(toScenario(response.signal, details.get(signal.id)));
+      moveCount(signal.initialState, response.signal.currentDestination);
       const result = buildMarketSignalResult(signal, draft);
       if (response.handoff) {
         result.pendingItems =
@@ -291,7 +482,7 @@ export function useMarketSignalWorkbench(
     try {
       const field = updateForGap(draft);
       if (field) {
-        replaceScenario(
+        upsertScenario(
           toScenario(
             await updateMarketSignal(signal.id, {
               contractVersion: "market-signal-update.v1",
@@ -299,6 +490,7 @@ export function useMarketSignalWorkbench(
               ...field,
               idempotencyKey: `market-signal-update:${signal.id}:${signal.version}:${draft.gapCode}:${crypto.randomUUID()}`,
             }),
+            details.get(signal.id),
           ),
         );
       } else {
@@ -319,7 +511,42 @@ export function useMarketSignalWorkbench(
     }
   }
 
-  function replaceScenario(next: MarketSignalScenario): void {
+  // 分组计数来自服务端 totalCount；本地写成功后同步迁移计数，避免分组标签与列表不一致。
+  function moveCount(
+    from: MarketSignalWorkflowState | null,
+    to: MarketSignalWorkflowState,
+  ): void {
+    if (from === to) return;
+    if (from && pages[from].totalCount !== null) {
+      pages[from].totalCount = Math.max(0, pages[from].totalCount - 1);
+    }
+    if (pages[to].totalCount !== null) pages[to].totalCount += 1;
+  }
+
+  function replaceDestinationSignals(
+    destination: MarketSignalWorkflowState,
+    items: readonly MarketSignalV1[],
+  ): void {
+    const incomingIds = new Set(items.map(({ signalId }) => signalId));
+    signals.value = signals.value.filter(
+      (item) => item.initialState !== destination || incomingIds.has(item.id),
+    );
+    upsertSignals(items);
+  }
+
+  function upsertSignals(items: readonly MarketSignalV1[]): void {
+    items.forEach((item) => {
+      upsertScenario(toScenario(item, details.get(item.signalId)));
+    });
+  }
+
+  function upsertScenario(next: MarketSignalScenario): void {
+    const current = signals.value.find((item) => item.id === next.id);
+    if (!current) {
+      signals.value = [...signals.value, next];
+      return;
+    }
+    if (current.version > next.version) return;
     signals.value = signals.value.map((item) =>
       item.id === next.id ? next : item,
     );
@@ -334,12 +561,14 @@ export function useMarketSignalWorkbench(
     selectedDraft,
     queueItems,
     pages,
+    hasMore,
     receipt,
     loading,
     saving,
     error,
     loadSignals,
     loadMore,
+    retryGroup,
     registerSignal,
     submitDecision,
     supplementSignal,
@@ -397,6 +626,7 @@ function toScenario(
     ],
     initialState: signal.currentDestination,
     version: signal.version,
+    updatedAt: signal.updatedAt,
   };
 }
 

@@ -76,6 +76,30 @@ export interface MarketSignalScenario {
   supplements: readonly MarketSignalSupplement[];
   gaps: readonly MarketSignalGap[];
   initialState: MarketSignalWorkflowState;
+  /** 服务端 updatedAt；继续观察分组按它做同日检查的稳定次序。 */
+  updatedAt: string;
+}
+
+/**
+ * 与服务端 watching 列表同序：检查日升序、无检查日在后，同日按 updatedAt、id 倒序。
+ * 只用于本地写入或改期后立即重排，不产生到期结论。
+ */
+export function compareWatchingOrder(
+  left: Pick<MarketSignalScenario, "id" | "updatedAt" | "activeValidation">,
+  right: Pick<MarketSignalScenario, "id" | "updatedAt" | "activeValidation">,
+): number {
+  const leftDue = left.activeValidation?.nextReviewDate ?? null;
+  const rightDue = right.activeValidation?.nextReviewDate ?? null;
+  if (leftDue !== rightDue) {
+    if (leftDue === null) return 1;
+    if (rightDue === null) return -1;
+    return leftDue < rightDue ? -1 : 1;
+  }
+  if (left.updatedAt !== right.updatedAt) {
+    return left.updatedAt < right.updatedAt ? 1 : -1;
+  }
+  if (left.id === right.id) return 0;
+  return left.id < right.id ? 1 : -1;
 }
 
 export interface MarketSignalDecisionDraft {

@@ -17,6 +17,8 @@ const repositoryRoot = resolve(__dirname, "../../../../..");
 const tenantId = randomUUID();
 const focusedSignalId = randomUUID();
 const legacySignalId = randomUUID();
+const pendingAfterWatchId = randomUUID();
+const exitedAfterWatchId = randomUUID();
 let prisma: PrismaClient;
 
 beforeAll(async () => {
@@ -40,6 +42,34 @@ beforeAll(async () => {
     actorId: "market-owner-legacy",
     focus: null,
     dueDate: "2026-02-19",
+  });
+  await seedPreviousVersionWatchingSignal({
+    signalId: pendingAfterWatchId,
+    actorId: "market-owner-pending",
+    focus: "确认第二来源",
+    dueDate: "2026-02-26",
+  });
+  await appendPreviousVersionDecision({
+    signalId: pendingAfterWatchId,
+    decisionVersion: 2,
+    decisionType: "dismiss",
+    completionState: "pending_completion",
+    destination: "needs_decision",
+    actorId: "market-colleague",
+  });
+  await seedPreviousVersionWatchingSignal({
+    signalId: exitedAfterWatchId,
+    actorId: "market-owner-exited",
+    focus: "确认持续性",
+    dueDate: "2026-03-05",
+  });
+  await appendPreviousVersionDecision({
+    signalId: exitedAfterWatchId,
+    decisionVersion: 2,
+    decisionType: "dismiss",
+    completionState: "completed",
+    destination: "dismissed",
+    actorId: "market-owner-exited",
   });
 
   deploy();
@@ -101,6 +131,41 @@ describe("market signal active validation migration upgrade", () => {
     );
   });
 
+  it("rebuilds from the latest effective decision across pending and completed exits", async () => {
+    const rows = await prisma.$queryRawUnsafe<
+      {
+        id: string;
+        current_destination: string;
+        active_validation_owner_actor_id: string | null;
+        active_validation_due_date: Date | null;
+        active_validation_focus: string | null;
+      }[]
+    >(
+      `SELECT "id", "current_destination", "active_validation_owner_actor_id",
+              "active_validation_due_date", "active_validation_focus"
+       FROM "${schemaName}"."market_signal"
+       WHERE "id" = ANY($1::uuid[])`,
+      [pendingAfterWatchId, exitedAfterWatchId],
+    );
+    const pending = rows.find(({ id }) => id === pendingAfterWatchId);
+    const exited = rows.find(({ id }) => id === exitedAfterWatchId);
+
+    expect(pending).toMatchObject({
+      current_destination: "needs_decision",
+      active_validation_owner_actor_id: "market-owner-pending",
+      active_validation_focus: "确认第二来源",
+    });
+    expect(
+      pending?.active_validation_due_date?.toISOString().slice(0, 10),
+    ).toBe("2026-02-26");
+    expect(exited).toMatchObject({
+      current_destination: "dismissed",
+      active_validation_owner_actor_id: null,
+      active_validation_due_date: null,
+      active_validation_focus: null,
+    });
+  });
+
   it("records the migration exactly once", async () => {
     const rows = await prisma.$queryRawUnsafe<
       { migration_name: string; finished_at: Date | null }[]
@@ -134,6 +199,15 @@ describe("market signal active validation migration upgrade", () => {
         focusedSignalId,
       ),
     ).rejects.toThrow(/market_signal_active_validation_text_check/);
+
+    await expect(
+      prisma.$executeRawUnsafe(
+        `UPDATE "${schemaName}"."market_signal_decision"
+         SET "result_signal_snapshot" = '[]'::jsonb
+         WHERE "signal_id" = $1::uuid`,
+        focusedSignalId,
+      ),
+    ).rejects.toThrow(/market_signal_decision_result_snapshot_check/);
   });
 });
 
@@ -157,7 +231,9 @@ async function rollBackActiveValidationMigration(): Promise<void> {
        DROP CONSTRAINT IF EXISTS "market_signal_decision_text_check",
        DROP CONSTRAINT IF EXISTS "market_signal_decision_pending_codes_check",
        DROP CONSTRAINT IF EXISTS "market_signal_decision_waiting_reason_check",
-       DROP COLUMN IF EXISTS "waiting_reason"`,
+       DROP CONSTRAINT IF EXISTS "market_signal_decision_result_snapshot_check",
+       DROP COLUMN IF EXISTS "waiting_reason",
+       DROP COLUMN IF EXISTS "result_signal_snapshot"`,
   );
   await prisma.$executeRawUnsafe(
     `ALTER TABLE "${schemaName}"."market_signal_decision"
@@ -236,6 +312,43 @@ async function seedPreviousVersionWatchingSignal(input: {
     input.focus,
     input.actorId,
     `watch:${input.signalId}`,
+  );
+}
+
+async function appendPreviousVersionDecision(input: {
+  signalId: string;
+  decisionVersion: number;
+  decisionType: "dismiss";
+  completionState: "completed" | "pending_completion";
+  destination: string;
+  actorId: string;
+}): Promise<void> {
+  const signalVersion = input.decisionVersion + 1;
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "${schemaName}"."market_signal_decision" (
+       "id", "tenant_id", "signal_id", "decision_version", "signal_version",
+       "decision_type", "completion_state", "dismiss_reason",
+       "pending_field_codes", "created_by", "idempotency_key", "payload_hash"
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::text[],$10,$11,repeat('c',64))`,
+    randomUUID(),
+    tenantId,
+    input.signalId,
+    input.decisionVersion,
+    signalVersion,
+    input.decisionType,
+    input.completionState,
+    input.completionState === "completed" ? "短期峰值" : null,
+    input.completionState === "completed" ? [] : ["dismiss_reason"],
+    input.actorId,
+    `${input.decisionType}:${input.signalId}:${input.decisionVersion}`,
+  );
+  await prisma.$executeRawUnsafe(
+    `UPDATE "${schemaName}"."market_signal"
+     SET "current_destination" = $1, "version" = $2
+     WHERE "id" = $3::uuid`,
+    input.destination,
+    signalVersion,
+    input.signalId,
   );
 }
 

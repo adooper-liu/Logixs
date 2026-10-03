@@ -7496,6 +7496,16 @@
       "ownerModule": "market-intelligence",
       "notes": []
     },
+    "public.market_signal_decision.result_signal_snapshot": {
+      "nameZh": "判断结果信号快照",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该次判断写入后的信号视图，供同一幂等键重放时返回一致结果，不混入后续版本。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["升级前的历史判断为空；不参与业务判断或排序。"]
+    },
     "public.market_signal_decision.tenant_id": {
       "nameZh": "租户标识",
       "nameStatus": "confirmed_implementation",

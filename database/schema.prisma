@@ -2092,6 +2092,7 @@ model MarketSignalDecision {
   createdBy            String       @map("created_by")
   idempotencyKey       String       @map("idempotency_key")
   payloadHash          String       @map("payload_hash")
+  resultSignalSnapshot Json?        @map("result_signal_snapshot")
   createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([tenantId, idempotencyKey], map: "market_signal_decision_idempotency_key")

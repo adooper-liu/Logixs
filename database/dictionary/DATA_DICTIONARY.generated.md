@@ -5,10 +5,10 @@
 - baselineCommit: `a3fddd0945f132848f44fd621d600ca1fd3b342f`
 - verifiedThroughMigration: `20261002120000_add_market_signal_active_validation`
 - tables: 112
-- physical fields: 1594
+- physical fields: 1595
 - Prisma relations: 278
 - pending tables: 112
-- pending fields: 1594
+- pending fields: 1595
 
 ## 表清单
 
@@ -766,6 +766,7 @@
 | public.market_signal_decision.payload_hash | MarketSignalDecision.payloadHash | text | 是 | — | 载荷哈希 | 校验同一幂等键对应的规范化载荷是否一致。 | confirmed_implementation | confirmed_implementation | — | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | engineering-data-governance |  |
 | public.market_signal_decision.created_at | MarketSignalDecision.createdAt | timestamp with time zone | 是 | CURRENT_TIMESTAMP | 创建时间 | 记录该行首次写入数据库的时间。 | confirmed_implementation | confirmed_implementation | — | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | engineering-data-governance |  |
 | public.market_signal_decision.waiting_reason | MarketSignalDecision.waitingReason | text | 否 | — | 验证等待原因 | 记录本次观察判断正在等待的输入或责任；只属于 watch，不暂停指标或自动改变业务状态。 | confirmed_business | confirmed_business | market-intelligence | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | doc-workbench-market-signals |  |
+| public.market_signal_decision.result_signal_snapshot | MarketSignalDecision.resultSignalSnapshot | jsonb | 否 | — | 判断结果信号快照 | 保存该次判断写入后的信号视图，供同一幂等键重放时返回一致结果，不混入后续版本。 | confirmed_implementation | confirmed_implementation | market-intelligence | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | engineering-data-governance | 升级前的历史判断为空；不参与业务判断或排序。 |
 | public.market_signal_decision.tenant_id | MarketSignalDecision.tenantId | text | 是 | — | 租户标识 | 限定记录所属租户并参与租户隔离。 | confirmed_implementation | confirmed_implementation | — | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | engineering-data-governance |  |
 | public.market_signal_decision.signal_id | MarketSignalDecision.signalId | uuid | 是 | — | 待业务确认 | 业务用途待确认；当前仅确认结构与技术消费者 | needs_business_confirmation | needs_business_confirmation | — | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation |  |  |
 | public.market_signal_decision.decision_version | MarketSignalDecision.decisionVersion | integer | 是 | — | 待业务确认 | 业务用途待确认；当前仅确认结构与技术消费者 | needs_business_confirmation | needs_business_confirmation | — | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation | 待确认 \| needs_business_confirmation |  |  |

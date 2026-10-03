@@ -1,14 +1,16 @@
 ---
-status: fix
+status: review
 branch: feat/market-signal-active-validation-v1
 verification: |
   2026-10-02 负责人决定两份永久标注为 `synthetic_rehearsal` 的正反演练可作为首版产品机制与自动化测试基线，
   不再以真实样本阻塞开发。真实/脱敏样本、完整 cohort 和独立结果集仍阻止 KPI 发布、WB-B10、上线业务验收
   及“经营损失已下降”声明。本切片只实现“单一当前验证承诺”，不实现可信机会、双轴、权限拆分或共享控制面。
-  当前分支 5b214308..9191eaf8 的生产实现由 Claude 越过 writer 边界直接写成，只能作为待 Cursor 接管复核的候选；
-  已运行的测试和门禁是复核输入，不构成 Claude 自证或任务验收。Cursor 完成 C-TAKEOVER handoff 前不得推送、建 PR 或合并。
+  2026-10-03 C-TAKEOVER-FIX 最终验证：负责人明确授权停止仍占用 5173 的 PID 21572；focused market E2E 8/8、
+  OIDC 401 1/1、全量 E2E 142 passed / 7 skipped、全量 PostgreSQL integration 24 文件 153/153、API 1425/1425、
+  Web 631/631、两端 build、contract、dictionary、authz、repo、format、security:audit 与完整 `pnpm validate` 通过。
+  这只证明当前 coding 切片的技术与合成演练门禁成立；真实样本、KPI、WB-B10、上线业务验收和经营成效声明仍未完成。
 owner: claude
-writer: cursor
+writer: claude
 risk: high
 dependsOn: []
 writeScopes:
@@ -459,6 +461,42 @@ next: fix
 TASK docs/planning/tasks/market-signals-opportunity-radar-v1.md#C-TAKEOVER-FIX base=b1a299cee55fd5b95cb4139fe902fbf301e3f596 role=cursor workspace=D:\Logixs\.claude\worktrees\market-signals-slice-a
 ```
 
+### Claude 对 `C-TAKEOVER-FIX` 的增量 finding 裁决（2026-10-03）
+
+```yaml
+protocol: logix-disposition/v1
+slice: C-TAKEOVER-FIX
+next: fix
+```
+
+| Finding                      | 裁决                | 理由与实现边界                                                                                              |
+| ---------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `MS-FIX-001` / `005` / `006` | `accepted` / 已修复 | 删除重复 Web helper，HTTP transport 测试改用本模块 use-case double，修复 lint/format；未放宽规则。          |
+| `MS-FIX-002`                 | `accepted` / 已修复 | 慢旧详情不得覆盖新 signal，但其独立 evidence 与 selection return reason 必须并入当前详情。                  |
+| `MS-FIX-003`                 | `accepted` / 已修复 | 旧 API 只在首次加载探测；同一 composable 生命周期重载改为单次无 destination 请求。                          |
+| `MS-FIX-004`                 | `accepted` / 已修复 | 监听显式 route `signalId`；mounted 后切到首页外对象时独立读取并合并。                                       |
+| `MS-FIX-REPLAY-01`           | `accepted` / 已修复 | 判断幂等身份只哈希规范化请求字段，不把当前 facts/evidence 派生的 pending 结果混入。                         |
+| `MS-FIX-REPLAY-02`           | `accepted` / 已修复 | 旧决定缺完整 result/evidence snapshot 时无法诚实重放，一律返回 `MARKET_SIGNAL_DECISION_REPLAY_SUPERSEDED`。 |
+| `MS-FIX-CURSOR-01`           | `accepted` / 已修复 | legacy/destination cursor 的 id 在 Application 边界验证 UUID，非法值稳定返回 400。                          |
+| `MS-FIX-IDEMPOTENCY-RACE-01` | `accepted` / 已修复 | 事务先按 tenant+idempotencyKey 唯一域锁，再按 tenant+signal 锁；跨信号同 key 并发得到稳定冲突。             |
+| `F-AUDIT`                    | `pending-owner`     | 保持原裁决；本片不临时建设通用审计平台，也不声称已有持久审计载体。                                          |
+
+增量验证证据：API market 35/35；API 全量 1425/1425；Web focused 30/30、全量 631/631；目标 PostgreSQL 3 文件 28/28；全量 PostgreSQL integration 24 文件 153/153；两端 lint/typecheck/build、contract、dictionary、authz、repo、format、`git diff --check` 通过。focused market E2E desktop 8/8、OIDC 401 1/1、全量 E2E 142 passed / 7 skipped；完整 `pnpm validate` 通过。
+
+### Final fresh review disposition（2026-10-03）
+
+| Finding                           | 裁决                | 修复证据                                                                                                |
+| --------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
+| `MS-FIX-IDEMPOTENCY-CROSSPATH-01` | `accepted` / 已修复 | selection return 与普通 decision 使用同一 tenant+key 锁顺序；跨 writer 同 key PostgreSQL 竞态回归通过。 |
+| `MS-WEB-PENDING-EXIT-01`          | `accepted` / 已修复 | Web 对 dismiss/void/archive 强制完整理由；他人承诺的所有 exit 均阻止；composable 再次失败关闭。         |
+| `MS-WEB-RELOAD-RACE-01`           | `accepted` / 已修复 | 全量 reload 使用 generation，成功写入使旧 reload 失效；慢 reload 不再回滚 v2。                          |
+| `MS-WEB-GROUP-REFRESH-01`         | `accepted` / 已修复 | group retry 替换该组成员；load-more 按版本 upsert 已有对象，不保留移组/旧版本行。                       |
+| `MS-E2E-NEG-001`                  | `accepted` / 已修复 | 409 用例断言稳定错误、detail 重读、输入保留和 owner 不变；另测当前 owner 完整退出清投影。               |
+| `MS-E2E-VIEWPORT-001`             | `accepted` / 已修复 | 320/375 使用边界长度连续 token，并核对队列卡、承诺、冲突和动作控件边界/内部滚动。                       |
+| `MS-E2E-ARCHIVE-001`              | `accepted` / 已修复 | 断言真实 `.gap-action`、decision panel 和所有编辑控件均不存在。                                         |
+
+上述修复后的 focused API 35/35、focused Web 30/30、目标 PostgreSQL 28/28、全量 PostgreSQL 153/153、API 全量 1425/1425、Web 全量 631/631、focused market E2E 8/8、OIDC 401 1/1、全量 E2E 142 passed / 7 skipped、两端 build 与完整 `pnpm validate` 均通过。当前 coding 切片可进入集成评审；这不代表真实业务验收、WB-B10、KPI、上线或经营成效完成。
+
 ## 当前 coding 切片五面映射
 
 | 业务步骤与岗位结果         | 岗位任务来源/状态                       | 相关数据事实子集                                                                                | 技术保障                                                                                                 | 权限边界                                                                                                                         | 界面承接                                                                                             | 验收证据/状态                                                                        |
@@ -489,15 +527,15 @@ TASK docs/planning/tasks/market-signals-opportunity-radar-v1.md#C-TAKEOVER-FIX b
 
 ## 当前 coding 切片验收
 
-- [ ] `watch` 新写入只有检查日期和验证重点齐全时才完成；等待原因可选且不影响 KPI
-- [ ] 当前认证用户成为验证负责人，客户端不能代填他人 ID
-- [ ] 当前验证承诺可在队列、详情和刷新后恢复；历史决定不可变
-- [ ] 重新安排验证替换当前投影但保留历史；既有 handoff/dismiss/void/archive/selection return 生效后清空当前投影
-- [ ] `watching` 分组内按检查日期稳定分页；无日期 watching 排后，翻页不重不漏；超过 100 条 watching 时 `needs_decision` 分组仍可达且不被全局排序挤出
-- [ ] 旧 watching 数据不伪造验证重点，页面提供重新安排入口
-- [ ] 两份 synthetic 进入契约/API/Web 测试，但不进入生产 Seed，文案不声称真实机会、可信资格或经营成效
-- [ ] 领域、契约、迁移、真实 PostgreSQL、Web 组件和关键 E2E 覆盖正常、等待、冲突和恢复；纸面或自动化演练不冒充 WB-B10
-- [ ] 高风险最终候选通过 contract、dictionary、db、API/Web、authz、E2E 和一次完整 `pnpm validate`
+- [x] `watch` 新写入只有检查日期和验证重点齐全时才完成；等待原因可选且不影响 KPI
+- [x] 当前认证用户成为验证负责人，客户端不能代填他人 ID
+- [x] 当前验证承诺可在队列、详情和刷新后恢复；历史决定不可变
+- [x] 重新安排验证替换当前投影但保留历史；既有 handoff/dismiss/void/archive/selection return 生效后清空当前投影
+- [x] `watching` 分组内按检查日期稳定分页；无日期 watching 排后，翻页不重不漏；超过 100 条 watching 时 `needs_decision` 分组仍可达且不被全局排序挤出
+- [x] 旧 watching 数据不伪造验证重点，页面提供重新安排入口
+- [x] 两份 synthetic 进入契约/API/Web 测试，但不进入生产 Seed，文案不声称真实机会、可信资格或经营成效
+- [x] 领域、契约、迁移、真实 PostgreSQL、Web 组件和关键 E2E 覆盖正常、等待、冲突和恢复；纸面或自动化演练不冒充 WB-B10
+- [x] 高风险最终候选通过 contract、dictionary、db、API/Web、authz、E2E 和一次完整 `pnpm validate`
 
 ## 后续业务验收 gate
 
@@ -510,9 +548,10 @@ TASK docs/planning/tasks/market-signals-opportunity-radar-v1.md#C-TAKEOVER-FIX b
 
 ## 进度记录
 
-| 日期       | 阶段    | 负责   | commit | 说明                                                                                                                                         |
-| ---------- | ------- | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-02 | design  | Claude | —      | 锁定业务目的、两类损失、首个岗位闭环、四项首批指标与最低保障；详细政策回到候选，等待真实样本                                                 |
-| 2026-10-02 | blocked | Claude | —      | 仓库可见范围未发现可关联“市场观察 → 判断 → 独立商业结果”的合格正反样本；记录排除清单、结构能/不能矩阵和分级样本 gate，等待受控样本来源       |
-| 2026-10-02 | blocked | Claude | —      | 按负责人要求增加一正一反 `synthetic_rehearsal`；只供流程/字段/六类路径/UI 评审，不定阈值或 KPI，fresh 复审 no-findings                       |
-| 2026-10-02 | coding  | Claude | —      | 负责人明确 synthetic 作为首版产品与自动化测试基线，不再等待真实案例；真实证据后置为 KPI、WB-B10、上线与成效声明 gate；启动“单一当前验证承诺” |
+| 日期       | 阶段    | 负责   | commit | 说明                                                                                                                                           |
+| ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-02 | design  | Claude | —      | 锁定业务目的、两类损失、首个岗位闭环、四项首批指标与最低保障；详细政策回到候选，等待真实样本                                                   |
+| 2026-10-02 | blocked | Claude | —      | 仓库可见范围未发现可关联“市场观察 → 判断 → 独立商业结果”的合格正反样本；记录排除清单、结构能/不能矩阵和分级样本 gate，等待受控样本来源         |
+| 2026-10-02 | blocked | Claude | —      | 按负责人要求增加一正一反 `synthetic_rehearsal`；只供流程/字段/六类路径/UI 评审，不定阈值或 KPI，fresh 复审 no-findings                         |
+| 2026-10-02 | coding  | Claude | —      | 负责人明确 synthetic 作为首版产品与自动化测试基线，不再等待真实案例；真实证据后置为 KPI、WB-B10、上线与成效声明 gate；启动“单一当前验证承诺”   |
+| 2026-10-03 | review  | Claude | —      | C-TAKEOVER-FIX 与 final fresh review finding 已修复；完整 validate、全量 integration/E2E 和 build 通过，进入任务集成评审；真实业务 gate 仍后置 |

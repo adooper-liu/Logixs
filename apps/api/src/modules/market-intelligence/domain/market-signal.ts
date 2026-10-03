@@ -191,7 +191,18 @@ export function prepareMarketSignalDecision(
     }),
     idempotencyKey: text(command.idempotencyKey, "idempotencyKey", 200),
   };
-  return { ...normalized, payloadHash: hash(normalized) };
+  const payloadHash = hash({
+    expectedSignalVersion: normalized.expectedSignalVersion,
+    decisionType: normalized.decisionType,
+    judgmentNote: normalized.judgmentNote,
+    opportunityStatement: normalized.opportunityStatement,
+    nextReviewDate: normalized.nextReviewDate,
+    watchFocus: normalized.watchFocus,
+    waitingReason: normalized.waitingReason,
+    dismissReason: normalized.dismissReason,
+    idempotencyKey: normalized.idempotencyKey,
+  });
+  return { ...normalized, payloadHash };
 }
 
 /** 选品退回：由 Port 写入，不经经营岗判断命令。理由落在 judgment_note。 */

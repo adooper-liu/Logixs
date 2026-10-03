@@ -207,6 +207,11 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
     input: PersistMarketSignalDecisionInput,
   ): Promise<MarketSignalDecisionPersistenceResult> {
     return this.prisma.$transaction(async (tx) => {
+      // 幂等键在租户内唯一，先按唯一键域串行，再按信号串行；固定顺序避免跨信号同键竞态。
+      await advisoryLock(
+        tx,
+        `market-signal:decision-key:${input.tenantId}:${input.prepared.idempotencyKey}`,
+      );
       await advisoryLock(
         tx,
         `market-signal:decision:${input.tenantId}:${input.signalId}`,
@@ -220,13 +225,21 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
         },
       });
       if (replay) {
-        if (
-          replay.signalId !== input.signalId ||
-          replay.payloadHash !== input.prepared.payloadHash
-        ) {
+        if (replay.signalId !== input.signalId) {
           conflict("MARKET_SIGNAL_DECISION_IDEMPOTENCY_CONFLICT");
         }
-        const signal = await ownedSignal(tx, input.tenantId, input.signalId);
+        // payload hash 不含 actor：他人复用同一键和载荷不得借重放拿到成功结果。
+        if (replay.createdBy !== input.actorId) {
+          conflict(
+            replay.decisionType === "watch"
+              ? "MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT"
+              : "MARKET_SIGNAL_DECISION_IDEMPOTENCY_CONFLICT",
+          );
+        }
+        const snapshot = replaySnapshot(replay);
+        if (replay.payloadHash !== input.prepared.payloadHash) {
+          conflict("MARKET_SIGNAL_DECISION_IDEMPOTENCY_CONFLICT");
+        }
         const handoff = await tx.marketOpportunityHandoff.findFirst({
           where: {
             tenantId: input.tenantId,
@@ -235,7 +248,8 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
           },
         });
         return {
-          signal: mapSignal(signal),
+          signal: snapshot.signal,
+          evidenceRefs: snapshot.evidenceRefs,
           decision: {
             id: replay.id,
             version: replay.decisionVersion,
@@ -261,10 +275,18 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       if (signal.version !== input.prepared.expectedSignalVersion) {
         conflict("MARKET_SIGNAL_VERSION_CONFLICT");
       }
-      if (
+      const completedWatch =
         input.prepared.decisionType === "watch" &&
+        input.prepared.completion === "completed";
+      const completedExit =
+        input.prepared.decisionType !== "watch" &&
+        input.prepared.completion === "completed";
+      // 替换（watch）或清空（completed 退出）当前承诺的判断只能由当前负责人执行；
+      // 否则他人可先退出清空再自领，绕过“不静默接管”。
+      if (
         signal.activeValidationOwnerActorId &&
-        signal.activeValidationOwnerActorId !== input.actorId
+        signal.activeValidationOwnerActorId !== input.actorId &&
+        (input.prepared.decisionType === "watch" || completedExit)
       ) {
         conflict("MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT");
       }
@@ -276,6 +298,43 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       const nextSignalVersion = signal.version + 1;
       const decisionVersion = (latestDecision?.decisionVersion ?? 0) + 1;
       const createdAt = new Date();
+      const updated = await tx.marketSignal.updateMany({
+        where: {
+          id: input.signalId,
+          tenantId: input.tenantId,
+          version: input.prepared.expectedSignalVersion,
+        },
+        data: {
+          currentDestination: input.prepared.nextDestination,
+          activeValidationOwnerActorId: completedWatch
+            ? input.actorId
+            : completedExit
+              ? null
+              : signal.activeValidationOwnerActorId,
+          activeValidationDueDate: completedWatch
+            ? new Date(`${input.prepared.nextReviewDate!}T00:00:00.000Z`)
+            : completedExit
+              ? null
+              : signal.activeValidationDueDate,
+          activeValidationFocus: completedWatch
+            ? input.prepared.watchFocus
+            : completedExit
+              ? null
+              : signal.activeValidationFocus,
+          activeValidationWaitingReason: completedWatch
+            ? input.prepared.waitingReason
+            : completedExit
+              ? null
+              : signal.activeValidationWaitingReason,
+          version: nextSignalVersion,
+          updatedBy: input.actorId,
+          updatedAt: createdAt,
+        },
+      });
+      if (updated.count !== 1) conflict("MARKET_SIGNAL_VERSION_CONFLICT");
+      const updatedSignal = mapSignal(
+        await ownedSignal(tx, input.tenantId, input.signalId),
+      );
       const decision = await tx.marketSignalDecision.create({
         data: {
           id: randomUUID(),
@@ -297,6 +356,10 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
           createdBy: input.actorId,
           idempotencyKey: input.prepared.idempotencyKey,
           payloadHash: input.prepared.payloadHash,
+          resultSignalSnapshot: serializeSnapshot(
+            updatedSignal,
+            input.evidenceRefs,
+          ),
           createdAt,
         },
       });
@@ -400,53 +463,9 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
         });
       }
 
-      const completedWatch =
-        input.prepared.decisionType === "watch" &&
-        input.prepared.completion === "completed";
-      const completedExit =
-        input.prepared.decisionType !== "watch" &&
-        input.prepared.completion === "completed";
-      const updated = await tx.marketSignal.updateMany({
-        where: {
-          id: input.signalId,
-          tenantId: input.tenantId,
-          version: input.prepared.expectedSignalVersion,
-        },
-        data: {
-          currentDestination: input.prepared.nextDestination,
-          activeValidationOwnerActorId: completedWatch
-            ? input.actorId
-            : completedExit
-              ? null
-              : signal.activeValidationOwnerActorId,
-          activeValidationDueDate: completedWatch
-            ? new Date(`${input.prepared.nextReviewDate!}T00:00:00.000Z`)
-            : completedExit
-              ? null
-              : signal.activeValidationDueDate,
-          activeValidationFocus: completedWatch
-            ? input.prepared.watchFocus
-            : completedExit
-              ? null
-              : signal.activeValidationFocus,
-          activeValidationWaitingReason: completedWatch
-            ? input.prepared.waitingReason
-            : completedExit
-              ? null
-              : signal.activeValidationWaitingReason,
-          version: nextSignalVersion,
-          updatedBy: input.actorId,
-          updatedAt: createdAt,
-        },
-      });
-      if (updated.count !== 1) conflict("MARKET_SIGNAL_VERSION_CONFLICT");
-      const updatedSignal = await ownedSignal(
-        tx,
-        input.tenantId,
-        input.signalId,
-      );
       return {
-        signal: mapSignal(updatedSignal),
+        signal: updatedSignal,
+        evidenceRefs: input.evidenceRefs,
         decision: {
           id: decision.id,
           version: decision.decisionVersion,
@@ -465,6 +484,10 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
     input: ApplySelectionReturnInput,
   ): Promise<{ duplicate: boolean }> {
     const tx = txInput as Transaction;
+    await advisoryLock(
+      tx,
+      `market-signal:decision-key:${input.tenantId}:${input.idempotencyKey}`,
+    );
     await advisoryLock(
       tx,
       `market-signal:decision:${input.tenantId}:${input.signalId}`,
@@ -568,8 +591,53 @@ async function ownedSignal(
   return row;
 }
 
+interface ResultSignalSnapshotV1 {
+  snapshotVersion: 1;
+  signal: Omit<MarketSignalRecord, "createdAt" | "updatedAt"> & {
+    createdAt: string;
+    updatedAt: string;
+  };
+  evidenceRefs: string[];
+}
+
+function serializeSnapshot(
+  signal: MarketSignalRecord,
+  evidenceRefs: string[],
+): Prisma.InputJsonObject {
+  const snapshot: ResultSignalSnapshotV1 = {
+    snapshotVersion: 1,
+    signal: {
+      ...signal,
+      createdAt: signal.createdAt.toISOString(),
+      updatedAt: signal.updatedAt.toISOString(),
+    },
+    evidenceRefs,
+  };
+  return snapshot as unknown as Prisma.InputJsonObject;
+}
+
+function replaySnapshot(replay: { resultSignalSnapshot: Prisma.JsonValue }): {
+  signal: MarketSignalRecord;
+  evidenceRefs: string[];
+} {
+  const snapshot = replay.resultSignalSnapshot as ResultSignalSnapshotV1 | null;
+  if (snapshot?.snapshotVersion === 1) {
+    return {
+      signal: {
+        ...snapshot.signal,
+        createdAt: new Date(snapshot.signal.createdAt),
+        updatedAt: new Date(snapshot.signal.updatedAt),
+      },
+      evidenceRefs: snapshot.evidenceRefs,
+    };
+  }
+  // 升级前的判断没有完整结果快照，也无法证明当时的 evidence 集合。
+  // 即使信号版本未前进，也不得把重试时的当前 evidence 混入历史结果。
+  conflict("MARKET_SIGNAL_DECISION_REPLAY_SUPERSEDED");
+}
+
 function listAfterWhere(
-  destination: MarketSignalRecord["currentDestination"],
+  destination: MarketSignalRecord["currentDestination"] | undefined,
   after: Parameters<MarketSignalRepository["list"]>[0]["after"],
 ): Prisma.MarketSignalWhereInput {
   if (!after) return {};

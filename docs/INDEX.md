@@ -83,7 +83,7 @@
 | [货柜运营管理框架](./product/OPERATIONS_CONTAINER_LIFECYCLE.md)                              | 历史运营手册候选，用于提取证据与评审，不直接定义当前岗位规格                        | 评审输入 v0.1                          |
 | [UI 体系标准](./product/UI_SYSTEM.md)                                                        | Operations Shell、页面模板、人本动线 UI-D10、三状态视觉、token、组件分层            | 设计决策 v1.1                          |
 | [经营链视觉动线改版](./product/WORKBENCH_VISUAL_FLOW_REDESIGN.md)                            | 详情四屏 + 枢纽页两类骨架；Mode/进度/预填；色与主题以 UI_SYSTEM + logix tokens 为准 | 设计决策草案                           |
-| [任务：市场信号机会雷达 V1](./planning/tasks/market-signals-opportunity-radar-v1.md)         | 先减少真实机会遗漏/响应过晚，并制衡弱信号误判；首片实现单一当前验证承诺             | coding（synthetic 基线；真实验收后置） |
+| [任务：市场信号机会雷达 V1](./planning/tasks/market-signals-opportunity-radar-v1.md)         | 先减少真实机会遗漏/响应过晚，并制衡弱信号误判；首片实现单一当前验证承诺             | review（完整门禁已通过；真实验收后置） |
 | [任务：信号活跃态依据区动线](./planning/tasks/market-signal-active-evidence-flow-v1.md)      | 进度头、动词化、预填、事实→判断锁定；承接关闭 Mode 后的活跃态 P0                    | done（#84）                            |
 | [任务：交接后补合并投影](./planning/tasks/product-opportunity-handoff-live-projection-v1.md) | 快照保留交接当日原文；选品中栏看交接包+信号后补，后补字段标明（方案 A）             | done（#84）                            |
 | [任务：选品中间区 Mode](./planning/tasks/product-selection-form-mode-v1.md)                  | 已立项整页 Mode、进度头、评审要点方案 A 选项化、快照带入                            | done（#86）                            |

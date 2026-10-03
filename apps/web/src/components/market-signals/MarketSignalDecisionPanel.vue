@@ -32,10 +32,29 @@ const ownedByAnother = computed(
 const watchComplete = computed(() =>
   Boolean(model.value.nextReviewDate && model.value.watchFocus.trim()),
 );
+const exitComplete = computed(() => {
+  const draft = model.value;
+  if (draft.decision === "dismiss") return Boolean(draft.dismissReason);
+  if (draft.decision === "void" || draft.decision === "archive") {
+    return Boolean(draft.judgmentNote.trim());
+  }
+  return true;
+});
+const replacesOrClearsCommitment = computed(
+  () =>
+    model.value.decision === "watch" ||
+    model.value.decision === "handoff" ||
+    model.value.decision === "dismiss" ||
+    model.value.decision === "void" ||
+    model.value.decision === "archive",
+);
+const blockedByOwner = computed(
+  () => ownedByAnother.value && replacesOrClearsCommitment.value,
+);
 
 const actionLabel = computed(() => {
+  if (blockedByOwner.value) return "当前验证由其他负责人承担";
   if (model.value.decision === "watch") {
-    if (ownedByAnother.value) return "当前验证由其他负责人承担";
     return watchComplete.value
       ? props.activeValidation
         ? "更新我的验证承诺"
@@ -43,13 +62,13 @@ const actionLabel = computed(() => {
       : "补齐日期和验证重点";
   }
   if (model.value.decision === "dismiss") {
-    return model.value.dismissReason ? "记录不采纳" : "保存，原因稍后补";
+    return model.value.dismissReason ? "记录不采纳" : "补齐不采纳原因";
   }
   if (model.value.decision === "void") {
-    return model.value.judgmentNote.trim() ? "确认作废" : "保存，理由稍后补";
+    return model.value.judgmentNote.trim() ? "确认作废" : "补齐作废理由";
   }
   if (model.value.decision === "archive") {
-    return model.value.judgmentNote.trim() ? "确认归档" : "保存，理由稍后补";
+    return model.value.judgmentNote.trim() ? "确认归档" : "补齐归档理由";
   }
   return "交给选品评估";
 });
@@ -151,12 +170,13 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       </label>
     </fieldset>
 
+    <p v-if="blockedByOwner" class="validation-owner-conflict" role="status">
+      当前验证由
+      {{ activeValidation?.responsibleActorId }}
+      负责；改期、交选品、不采纳、作废或归档需由其本人提交。本片不支持静默接管或转派。
+    </p>
+
     <div v-if="model.decision === 'watch'" class="decision-fields">
-      <p v-if="ownedByAnother" class="validation-owner-conflict" role="status">
-        当前验证由
-        {{ activeValidation?.responsibleActorId }}
-        负责。本片不支持静默接管或转派。
-      </p>
       <label>
         <span>下次检查日期</span>
         <input
@@ -206,12 +226,12 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
 
     <div v-else-if="model.decision === 'dismiss'" class="decision-fields">
       <label>
-        <span>不采纳原因 <small>可后补</small></span>
+        <span>不采纳原因</span>
         <select
           :value="model.dismissReason"
           @change="updateField('dismissReason', $event)"
         >
-          <option value="">稍后补充</option>
+          <option value="" disabled>请选择原因</option>
           <option>证据不足</option>
           <option>不符合当前经营方向</option>
           <option>已有商品覆盖</option>
@@ -222,10 +242,7 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
 
     <div v-else-if="isClose" class="decision-fields">
       <label>
-        <span
-          >{{ model.decision === "void" ? "作废" : "归档" }}理由
-          <small>可后补</small></span
-        >
+        <span>{{ model.decision === "void" ? "作废" : "归档" }}理由</span>
         <textarea
           rows="3"
           :value="model.judgmentNote"
@@ -254,7 +271,9 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       type="submit"
       :disabled="
         busy ||
-        (model.decision === 'watch' && (!watchComplete || ownedByAnother))
+        blockedByOwner ||
+        (model.decision === 'watch' && !watchComplete) ||
+        !exitComplete
       "
     >
       <CalendarClock

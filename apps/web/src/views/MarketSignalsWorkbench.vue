@@ -45,12 +45,14 @@ const {
   selectedDraft,
   queueItems,
   pages,
+  hasMore,
   receipt,
   loading,
   saving,
   error,
   loadSignals,
   loadMore,
+  retryGroup,
   registerSignal,
   submitDecision,
   supplementSignal,
@@ -62,12 +64,21 @@ const {
 
 const queueCounts = computed(() =>
   Object.fromEntries(
-    Object.entries(pages).map(([key, page]) => [key, page.totalCount]),
+    Object.entries(pages).flatMap(([key, page]) =>
+      page.totalCount === null ? [] : [[key, page.totalCount]],
+    ),
   ),
 );
-const queueHasMore = computed(() =>
+const queueGroupErrors = computed(() =>
   Object.fromEntries(
-    Object.entries(pages).map(([key, page]) => [key, Boolean(page.nextCursor)]),
+    Object.entries(pages).flatMap(([key, page]) =>
+      page.error ? [[key, page.error]] : [],
+    ),
+  ),
+);
+const queueLoadingMore = computed(() =>
+  Object.fromEntries(
+    Object.entries(pages).map(([key, page]) => [key, page.loadingMore]),
   ),
 );
 
@@ -171,11 +182,14 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
           :items="queueItems"
           :selected-id="selectedSignal?.id ?? ''"
           :counts="queueCounts"
-          :has-more="queueHasMore"
+          :has-more="hasMore"
+          :loading-more="queueLoadingMore"
+          :group-errors="queueGroupErrors"
           @select="selectSignal"
           @clear="clearSignalSelection"
           @create="showCreatePanel = true"
           @load-more="loadMore"
+          @retry-group="retryGroup"
         />
       </section>
       <section

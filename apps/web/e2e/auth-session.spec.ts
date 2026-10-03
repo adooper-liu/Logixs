@@ -211,7 +211,9 @@ test("403 保留拒绝原因，不重新登录", async ({ page }) => {
   await page.goto(MARKET_SIGNALS);
 
   await expect(
-    page.getByText("暂时无法加载经营信号（403）：无权查看经营信号"),
+    page.getByText("暂时无法加载经营信号（403）：无权查看经营信号", {
+      exact: true,
+    }),
   ).toBeVisible();
   await page.waitForLoadState("networkidle");
   await expect(signedIn(page)).toBeVisible();

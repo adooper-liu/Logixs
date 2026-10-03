@@ -50,6 +50,7 @@ function ownerLabel(): string {
 <style scoped>
 .active-validation {
   display: grid;
+  min-width: 0;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--line);
@@ -58,6 +59,7 @@ function ownerLabel(): string {
 
 .active-validation header {
   display: flex;
+  min-width: 0;
   justify-content: space-between;
   gap: var(--space-3);
 }
@@ -87,7 +89,15 @@ function ownerLabel(): string {
 
 .validation-meta span {
   display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: var(--space-1);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.validation-meta svg {
+  flex: 0 0 auto;
 }
 </style>
