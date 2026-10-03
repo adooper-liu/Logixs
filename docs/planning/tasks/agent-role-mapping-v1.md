@@ -11,11 +11,15 @@ writeScopes:
   - ENGINEERING_RULES.md
   - CLAUDE.md
   - docs/planning/tasks/_template.md
+  - doc/cross-border-supply-chain/08-role-workbenches.md
+  - docs/INDEX.md
 exclusiveLocks:
   - repository-governance
 sharedIntegrationScopes:
   - AGENTS.md
   - docs/planning/tasks/_template.md
+  - doc/cross-border-supply-chain/08-role-workbenches.md
+  - docs/INDEX.md
 authorityRefs:
   - AGENTS.md
   - ENGINEERING_RULES.md
@@ -34,19 +38,19 @@ authorityRefs:
 - 不改变任何角色的职责、写入边界、指令链、单写入者、WIP 上限、锁与复审触发条件；除替换承担者名称外，只新增映射表及负责人已定的复审模型家族、实际模型登记、映射调整须定案和未登记工具不得写入四项约束。
 - 不修改 `scripts/check-repository.mjs`：`owner` / `writer` 已是自由的小写稳定编码，同一 `writer` 互斥的现有校验继续有效。
 - 不追溯改写历史 brief、进度日志和提交中的 `claude` / `cursor` / `codex` 署名与 frontmatter（`AGENTS.md` §1.2 第 11 条）。
-- 不改业务权威、工作台定义或“20/23 台”口径。
+- 不改业务政策、工作台定义或“20/23 台”口径；`08-role-workbenches.md` 只替换 §2.5 中的代理承担者名称。
 
 ## 负责人决策记录
 
-| 日期       | 决定                         | 选项与结论                                                                                                                           | 写回                     |
-| ---------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
-| 2026-10-03 | 事实：Claude Code 实际模型   | 负责人确认 Claude Code 经映射转发，实际挂载 GPT-5.6                                                                                  | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 规则约束方式                 | A 按角色约束并登记实际模型（采纳）/ B 直接互换工具名 / C 维持现状仅改模型配置                                                        | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 角色映射                     | 主代理 Cursor + Claude Opus；实现执行器 Codex + GPT-5.6；独立复审 Cursor 独立只读会话 + Claude Opus                                  | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 智慧开启决策顾问             | 候选：Codex 独立只读会话 / 主代理兼任 / 第三方模型；负责人改定为 Cursor 独立只读会话 + GPT-5.6                                       | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 写入授权                     | 授权在独立 worktree 与分支修改并本地提交；不推送、不建 PR，交负责人审阅                                                              | 本 brief                 |
-| 2026-10-03 | 复审模型家族                 | 负责人确认分工时同意“复审和实现不同家族，盲点不重叠”                                                                                 | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 家族判定口径与主代理自写切片 | A 按切片实际写入者判定、家族按模型厂商划分，主代理自写切片由 GPT-5.6 复审（采纳）/ B 只按角色判定 / C 主代理自写切片由负责人直接审阅 | `AGENTS.md` §1.2 第 4 条 |
+| 日期       | 决定                         | 选项与结论                                                                                                                                                                                | 写回                     |
+| ---------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 2026-10-03 | 事实：Claude Code 实际模型   | 负责人确认 Claude Code 经映射转发，实际挂载 GPT-5.6                                                                                                                                       | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 规则约束方式                 | A 按角色约束并登记实际模型（采纳）/ B 直接互换工具名 / C 维持现状仅改模型配置                                                                                                             | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 角色映射                     | 主代理 Cursor + Claude Opus；实现执行器 Codex + GPT-5.6；独立复审 Cursor 独立只读会话 + Claude Opus（已被下方“家族判定口径”定案细化：实现执行器写入用 Claude Opus，主代理写入用 GPT-5.6） | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 智慧开启决策顾问             | 候选：Codex 独立只读会话 / 主代理兼任 / 第三方模型；负责人改定为 Cursor 独立只读会话 + GPT-5.6                                                                                            | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 写入授权                     | 授权在独立 worktree 与分支修改并本地提交；不推送、不建 PR，交负责人审阅                                                                                                                   | 本 brief                 |
+| 2026-10-03 | 复审模型家族                 | 负责人确认分工时同意“复审和实现不同家族，盲点不重叠”                                                                                                                                      | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 家族判定口径与主代理自写切片 | A 按切片实际写入者判定、家族按模型厂商划分，主代理自写切片由 GPT-5.6 复审（采纳）/ B 只按角色判定 / C 主代理自写切片由负责人直接审阅                                                      | `AGENTS.md` §1.2 第 4 条 |
 
 ## 执行切片
 
@@ -114,10 +118,34 @@ next: owner-decision
 另：复审建议把 `risk` 提为 `high`，不采纳。本切片只改文档，不涉及 §8 列举的数据库、授权、公共契约、依赖或核心工作流；
 `repo:check` 与格式门禁已足够覆盖其风险面。
 
-## 后续事项
+## 复审裁决（S1 第二轮，有效复审：GPT-5.6）
 
-- `doc/cross-border-supply-chain/08-role-workbenches.md:91-100` 仍把负责人澄清互动和局部技术定案归给 Codex，与新映射冲突；须另建任务并持业务权威锁改为角色名。
-- `docs/INDEX.md:62` 的 `database-data-dictionary-v1` 状态描述过时（实际已 `done`），并写着“Codex 收口”；随下一次索引维护修正。
+```yaml
+protocol: logix-disposition/v1
+slice: S1-role-mapping
+decisions:
+  - finding: GPT-001
+    status: accepted
+    reason: >
+      延期会让合并后同时存在两套相互冲突的代理分工。只替换 08-role-workbenches.md §2.5 中的承担者名称，
+      不改任何业务政策，因此改为在本切片内修正，并推翻第一轮对 ARM-002 的延期处理。
+    writeback: doc/cross-border-supply-chain/08-role-workbenches.md §2.5
+  - finding: GPT-002
+    status: accepted
+    reason: 补充“独立复审与决策顾问之间也不得共用会话”。
+    writeback: AGENTS.md §1.2 第 4 条
+  - finding: GPT-003
+    status: accepted
+    reason: 保留当时的决策原文，追加细化说明，使其与家族判定口径一致。
+    writeback: 本 brief 决策记录
+  - finding: GPT-004
+    status: accepted
+    reason: 索引是现行导航；对照该 brief 的 frontmatter，将状态改为“done（验证证据见该 brief 元数据）”，去掉“Codex 收口”；保持原单元格宽度，避免整表重排与并行分支冲突。
+    writeback: docs/INDEX.md:62
+next: pr
+```
+
+`next: pr` 只表示本切片已可进入集成；推送与建 PR 仍须负责人另行授权。
 
 ## 集成注意
 
@@ -135,3 +163,4 @@ next: owner-decision
 - 2026-10-03：S1 完成修改与本地验证（`f2b9841f`）；状态 `review`。
 - 2026-10-03：第一轮独立复审返回 7 项 finding，无阻断项；已修正可在本切片处理的部分（`424e4df2`）。
 - 2026-10-03：负责人对 ARM-003 定案方案 A，已写回 §1.2 第 4 条；转由 GPT-5.6 fresh 只读会话做有效复审。
+- 2026-10-03：GPT-5.6 有效复审返回 4 项 finding（1 high、2 medium、1 low），全部采纳并在本切片修正；ARM-002 的延期由 GPT-001 推翻。
