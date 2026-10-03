@@ -7,7 +7,7 @@
 
 ## 结构速览
 
-- 业务入口：[业务资料](../doc/README.md) · [20 个岗位工作台](../doc/cross-border-supply-chain/08-role-workbenches.md)
+- 业务入口：[业务资料](../doc/README.md) · [23 个岗位工作台](../doc/cross-border-supply-chain/08-role-workbenches.md)
 - 技术白话：[货柜生命周期技术导读](./人话导读.md) · [货柜技术主链](./人话-货柜怎么往前走.md) · [代码怎么往前推](./planning/PROJECT_BOOTSTRAP_PLAIN_LANGUAGE.md)
 - 架构：AI 工作流技术架构 · 模块依赖 · 安全威胁模型 · ADR-001~010（索引见 INDEX §三）
 - 产品/理念：VISION · PRINCIPLES · PRODUCT_BRIEF · GLOSSARY · NFR · UX 工作台（INDEX §四）

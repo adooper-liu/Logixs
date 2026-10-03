@@ -2,7 +2,7 @@
 
 > 状态：**Shipment 接管与出运后子域技术边界 v1.0；Shipment 核心已落库** · 2026-09-24 · 负责人：刘志高。
 > 一句话：本技术子域从可证明的实际出运事实接手，管理在途、到港和后段生命周期；它只通过稳定引用消费出运前事实，不限制项目其他上游工作台。
-> 项目端到端范围、20 台清单和岗位职责以[业务岗位工作台](../../../doc/cross-border-supply-chain/08-role-workbenches.md)为准；本文不是整个项目的产品边界。
+> 项目端到端范围、23 台清单、成熟度评估状态和岗位职责以[业务岗位工作台](../../../doc/cross-border-supply-chain/08-role-workbenches.md)为准；本文不是整个项目的产品边界。
 > 目标模型及现状差异以 [`POST_DEPARTURE_CORE_MODEL_GAP_V1`](./POST_DEPARTURE_CORE_MODEL_GAP_V1.md) 为唯一评审清单。
 > 证实度 S·R·O·C。Shipment 核心、货物、柜关系、运输单证和统一 Handoff 已由 PR #45 进入当前 schema；前端岗位接管见工作台交付基线。
 

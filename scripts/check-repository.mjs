@@ -70,6 +70,22 @@ const textExtensions = new Set([
 
 const normalizePath = (value) => value.replaceAll("\\", "/");
 
+function lineNumberAt(text, offset) {
+  return text.slice(0, offset).split("\n").length;
+}
+
+export function findStaleWorkbenchBaselineReferences(root, paths) {
+  return paths.flatMap((path) => {
+    const text = readFileSync(resolve(root, path), "utf8");
+    return [
+      ...text.matchAll(/(?:20 台工作台|20 个工作台|项目定义的 20 台)/g),
+    ].map(
+      (match) =>
+        `${path}:${lineNumberAt(text, match.index)} stale workbench baseline`,
+    );
+  });
+}
+
 export function findForbiddenTrackedPaths(paths) {
   return paths.filter((rawPath) => {
     const path = normalizePath(rawPath);

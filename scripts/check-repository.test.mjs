@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { findArchitectureBoundaryViolations } from "./check-architecture-boundaries.mjs";
 import { isKnownEmptyDatabaseFailure } from "./migrate-deploy.mjs";
@@ -17,6 +18,7 @@ import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
   findBrokenMarkdownLinks,
+  findStaleWorkbenchBaselineReferences,
   findForbiddenTrackedPaths,
   findMisleadingContractPackageScripts,
   findMissingRequiredPolicyFiles,
@@ -27,11 +29,30 @@ import {
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
 
+const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+
+const CURRENT_WORKBENCH_AUTHORITY_PATHS = [
+  "AGENTS.md",
+  "doc/cross-border-supply-chain/08-role-workbenches.md",
+  "docs/planning/tasks/_template.md",
+  "docs/README.md",
+  "docs/product/ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN.md",
+  "docs/product/domain/SHIPMENT_FLOW_OVERVIEW.md",
+];
+
 const temporaryDirectories = [];
 after(() => {
   temporaryDirectories.forEach((directory) =>
     rmSync(directory, { force: true, recursive: true }),
   );
+});
+
+test("current workbench authorities use the approved 23-workbench baseline", () => {
+  const violations = findStaleWorkbenchBaselineReferences(
+    repositoryRoot,
+    CURRENT_WORKBENCH_AUTHORITY_PATHS,
+  );
+  assert.deepEqual(violations, []);
 });
 
 test("requires every style scale token to be defined", () => {
