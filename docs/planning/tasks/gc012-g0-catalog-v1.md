@@ -176,9 +176,34 @@ authorityRefs:
 | 停止条件 | 全部通过后 `ready-for-review` 停手，按 `AGENTS.md` §1.3 回交 `HANDOFF`；允许在本分支本地提交，不推送                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 返工 R2  | 第 1 次回交未通过：`inspectWorkbenchRouteSource` 只拦截作用于 `catalogStubWorkbenchStages` 的变换，主代理实测 `...frameworkWorkbenchStages.filter((s) => s.code !== "booking")` 仍返回 `[]`。须使路由初始化表达式中作用于 `frameworkWorkbenchStages` 或 `catalogStubWorkbenchStages` 的任何非 `map` 数组变换都报错，并补该用例与 `catalogStubWorkbenchStages.slice(0, 1)` 用例；仅改 `scripts/check-repository.mjs`、`scripts/check-repository.test.mjs`，保留第 1 次回交的其余未提交差异            |
 
+#### S5 增量复审处置（`logix-disposition/v1`）
+
+复审基线 `efb0de9e`，复审对象 `5ee04e49`，结论 `approve-with-findings`；F01、F02、F05、F06、F07 落实，F04 原四种绕过与 R2 用例均报错。
+
+| finding      | 严重度 | 处置       | 理由与写回                                                                                                                                                                                                                      |
+| ------------ | ------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GC012-S5-F01 | minor  | `accepted` | 主代理复现：`customs` override 写 ``path: `/workspaces/wrong` `` 或 `path: "/workspaces/wrong" as const` 时返回 `[]`，普通字符串则报错；读值与校验口径不一致，违背 F04 默认失败。由 S6 修复                                     |
+| GC012-S5-F02 | minor  | `accepted` | 在路由初始化表达式外过滤正式工作台的写法静默通过，且无运行时测试覆盖；采用行为断言兜底：新增 vitest 断言 `workbenchStages` 每个 `path` 都在 `router.getRoutes()` 中；AST 检查器不再为初始化表达式之外的写法继续加固。由 S6 修复 |
+| GC012-S5-F03 | nit    | `accepted` | `PlannedWorkbenchView.vue` 的 `withLegacyHandoffDetails` 与 `WorkbenchRelationDetail` 在合并 helper 后已无作用，属重复逻辑；由 S6 删除                                                                                          |
+
+`next: S6-review2-fixes`；S6 为同一已定政策下的机械修复，主代理直接验收，不再触发独立复审（`AGENTS.md` §1.2 第 15 条）。
+
+### 切片 `S6-review2-fixes`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                                                                                                                |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 执行角色 | 实现执行器：工具 `Codex`，实际模型 `GPT-5.6`                                                                                                                                                                                                                                                                                                                        |
+| 复审     | 主代理直接验收                                                                                                                                                                                                                                                                                                                                                      |
+| 写入范围 | `scripts/check-repository.mjs`、`scripts/check-repository.test.mjs`、`apps/web/src/components/shell/navigation.test.ts`、`apps/web/src/views/PlannedWorkbenchView.vue`                                                                                                                                                                                              |
+| 禁止范围 | 其他所有文件；不得改变目录、关系、名称、成熟度、路由或页面行为                                                                                                                                                                                                                                                                                                      |
+| 待修问题 | S5-F01：`title`/`path`/`kind` override 的读值与 `isStaticLiteral` 校验口径统一（按实际值校验，或对这三项只接受普通字符串字面量，二选一），补模板字符串与 `as const` 两个失败用例；S5-F02：在 `navigation.test.ts` 新增断言 `workbenchStages` 每个 `path` 都在 `router.getRoutes()` 中；S5-F03：删除无作用的 `withLegacyHandoffDetails` 与 `WorkbenchRelationDetail` |
+| 验收要求 | 新用例先在 `5ee04e49` 版本失败再通过；S5-F02 的测试须在 `routes.ts` 外过滤某台正式工作台时失败（可用临时改动自证后还原，不得提交）                                                                                                                                                                                                                                  |
+| 验证命令 | `node --test scripts/check-repository.test.mjs`；`pnpm repo:check`；`pnpm --filter @logix/web test`；`pnpm --filter @logix/web lint`；`pnpm --filter @logix/web typecheck`；`pnpm exec prettier --check` 本切片文件；`git diff --check`                                                                                                                             |
+| 停止条件 | 全部通过后 `ready-for-review` 停手，回交 `HANDOFF`；不推送                                                                                                                                                                                                                                                                                                          |
+
 ### 切片 `S4-pr`
 
-S5 及其增量复审通过后执行：推送 `feat/gc012-g0-catalog-v1`、建 PR、跑 CI；合并须负责人授权。
+S6 验收后执行：推送 `feat/gc012-g0-catalog-v1`、建 PR、跑 CI；合并须负责人授权。
 
 ## 进度
 
@@ -190,3 +215,4 @@ S5 及其增量复审通过后执行：推送 `feat/gc012-g0-catalog-v1`、建 P
 - 2026-10-03 19:40～19:48：S2 于 `7f69174d` 完成。G0 计划 Task 4 Step 4：检查器测试 56/56、`docs:check`、`repo:check`、web 单测 636/636、web lint、web typecheck、web E2E 157 通过/7 按视口条件跳过、web build、`format:check`、`git diff --check` 全部通过。`pnpm validate`（`DATABASE_URL` 指向 `.env.example` 的本地 5433 库，`AUTH_MODE=development`）中 `repo:check`、`contract:check`、`contract:drift`、`data-dictionary:check`、`db:generate`、lint、`format:check`、typecheck、test（api 1425/1425、web 636/636）、`test:integration`（153/153）通过；其 E2E 阶段因负责人 19:42 启动的 `dev:all` 占用 5173 触发 `E2E_DEV_SERVER_CONFLICT`，未终止该进程，E2E 采用同一提交上 19:42 独立运行的同一套件结果；根 `pnpm build` 补跑通过。S2 通过，进入 S3。
 - 2026-10-03 20:12：S3 由 fresh 只读 Claude Opus 子代理复审 `4bebc6bf`，结论 `approve-with-findings`（1 major、6 minor、1 nit，`writes: none`，复审后工作树无已跟踪变化）；writeScopes 与 37 个差异文件双向一致，无生成物或密钥。主代理核实 F01、F02 后全部 `accepted`，F03 已写回 08，其余进入 S5；E2E 门禁以 S4 PR CI 为准（F08）。
 - 2026-10-03 20:48：S5 第 1 次回交（未提交差异，11 个文件均在写入范围内）。主代理复跑检查器测试 61/61、`repo:check`、web 单测 639/639、web typecheck 均通过；F01、F02、F03、F05、F06、F07 落实，F04 对正式工作台路由数组的 `.filter` 仍静默通过，退回 S5 返工 R2。
+- 2026-10-03 20:59～21:25：R2 回交只改检查器两文件，主代理复测正式工作台 `.filter`/`.slice` 均报错、检查器 63/63，验收 S5 并提交 `5ee04e49`。首次增量复审被中断（未留改动），重派的 fresh 只读 Claude Opus 复审结论 `approve-with-findings`（2 minor、1 nit，`writes: none`）；主代理复现 S5-F01 后全部 `accepted`，进入 S6。
