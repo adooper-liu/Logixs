@@ -46,6 +46,16 @@ describe("PlannedWorkbenchView", () => {
     expect(wrapper.text()).toContain("出口报关");
   });
 
+  it("keeps the legacy shipment-planning handoff beside new fan-out relations", () => {
+    const wrapper = mountPlanned("supply_readiness");
+
+    expect(wrapper.findAll('[data-testid="outbound-relation"]')).toHaveLength(
+      2,
+    );
+    expect(wrapper.text()).toContain("可出运供给交接");
+    expect(wrapper.text()).toContain("供给准备提供可出运数量和限制");
+  });
+
   for (const stageCode of [
     "booking",
     "export_customs",

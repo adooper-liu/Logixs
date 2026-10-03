@@ -39,8 +39,9 @@ function openLoadingHistory(): void {
 </script>
 
 <template>
-  <main v-if="stage" class="dispatch-workbench">
+  <div class="dispatch-workbench">
     <WorkbenchFlowContext
+      v-if="stage"
       :stage="stage"
       :inbound="inbound"
       :outbound="outbound"
@@ -54,7 +55,7 @@ function openLoadingHistory(): void {
       v-else
       @show-loading-history="openLoadingHistory"
     />
-  </main>
+  </div>
 </template>
 
 <style scoped>

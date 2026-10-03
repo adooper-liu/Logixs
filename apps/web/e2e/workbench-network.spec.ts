@@ -89,14 +89,22 @@ for (const width of [320, 375, 1440]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/workspaces/booking", "/workspaces/dispatch"]) {
+    for (const path of [
+      "/workspaces/booking",
+      "/workspaces/export-customs",
+      "/workspaces/compliance-operations",
+      "/workspaces/dispatch",
+    ]) {
       await page.goto(path);
       if (path === "/workspaces/dispatch") {
         await expect(page.getByTestId("inbound-relation")).toHaveCount(3);
       } else {
+        await expect(page.locator(".planned-page")).toBeVisible();
         await expect(
-          page.getByRole("heading", { name: "订舱", exact: true }),
-        ).toBeVisible();
+          page
+            .locator(".planned-page")
+            .locator("button, form, input, textarea, select"),
+        ).toHaveCount(0);
       }
 
       const widths = await page.evaluate(() => ({

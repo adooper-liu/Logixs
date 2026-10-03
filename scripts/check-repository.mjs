@@ -183,6 +183,66 @@ function numericLiteral(node) {
   return node && ts.isNumericLiteral(node) ? Number(node.text) : null;
 }
 
+const catalogOverrideProperties = new Set([
+  "title",
+  "path",
+  "kind",
+  "phase",
+  "sequence",
+  "assessmentState",
+  "maturity",
+  "surface",
+  "ownerRole",
+  "roleResult",
+  "requiredFacts",
+]);
+
+function isStaticLiteral(node) {
+  const expression = unwrap(node);
+  return (
+    ts.isStringLiteral(expression) ||
+    ts.isNoSubstitutionTemplateLiteral(expression) ||
+    ts.isNumericLiteral(expression) ||
+    expression.kind === ts.SyntaxKind.TrueKeyword ||
+    expression.kind === ts.SyntaxKind.FalseKeyword ||
+    expression.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isArrayLiteralExpression(expression) &&
+      expression.elements.every(
+        (element) => !ts.isSpreadElement(element) && isStaticLiteral(element),
+      ))
+  );
+}
+
+function validateCatalogOverrides(overrides, errors) {
+  for (const property of overrides.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      errors.push(
+        "workbenchStages: catalogStage overrides must not use spread properties",
+      );
+      continue;
+    }
+    if (
+      !ts.isPropertyAssignment(property) ||
+      (!ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name))
+    ) {
+      errors.push(
+        `workbenchStages: catalogStage has unsupported override '${ts.SyntaxKind[property.kind]}'`,
+      );
+      continue;
+    }
+    const name = property.name.text;
+    if (!catalogOverrideProperties.has(name)) {
+      errors.push(
+        `workbenchStages: catalogStage has unsupported override '${name}'`,
+      );
+    } else if (!isStaticLiteral(property.initializer)) {
+      errors.push(
+        `workbenchStages: catalogStage override '${name}' must be a literal`,
+      );
+    }
+  }
+}
+
 function helperKind(sourceFile, name) {
   const variable = topLevelVariable(sourceFile, name);
   const arrow = variable?.initializer;
@@ -214,7 +274,7 @@ function callName(expression) {
     : null;
 }
 
-function effectiveStages(sourceFile) {
+function effectiveStages(sourceFile, errors) {
   const legacy = new Map();
   const network = topLevelVariable(sourceFile, "workbenchNetwork");
   for (const expression of ts.isArrayLiteralExpression(
@@ -250,6 +310,13 @@ function effectiveStages(sourceFile) {
         overrides && ts.isObjectLiteralExpression(overrides)
           ? overrides
           : undefined;
+      if (overrides && !overrideObject) {
+        errors.push(
+          "workbenchStages: catalogStage overrides must be an object literal",
+        );
+      } else if (overrideObject) {
+        validateCatalogOverrides(overrideObject, errors);
+      }
       return [
         {
           ...base,
@@ -285,6 +352,9 @@ function effectiveStages(sourceFile) {
         },
       ];
     }
+    errors.push(
+      `workbenchStages: unsupported element '${ts.SyntaxKind[expression.kind]}'`,
+    );
     return [];
   });
 }
@@ -334,7 +404,7 @@ export function inspectWorkbenchCatalogSource(source) {
         `workbenchBaseline: ${name} must be ${expected}, found '${actual ?? "missing"}'`,
       );
   }
-  const stages = effectiveStages(sourceFile);
+  const stages = effectiveStages(sourceFile, errors);
   if (stages.length !== 23)
     errors.push(`workbenchStages: expected 23 rows, found ${stages.length}`);
   for (const [kind, expected] of [
@@ -389,13 +459,27 @@ export function inspectWorkbenchRouteSource(source) {
     "catalogStubWorkbenchStages",
   );
   const mapCalls = [];
+  const unsupportedTransforms = new Set();
   const visit = (node) => {
     if (
       ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.name.text === "map"
-    )
-      mapCalls.push(node);
+      ts.isPropertyAccessExpression(node.expression)
+    ) {
+      const receiver = node.expression.expression;
+      const usesCatalogStages = expressionContainsIdentifier(
+        receiver,
+        "catalogStubWorkbenchStages",
+      );
+      const usesFrameworkStages = expressionContainsIdentifier(
+        receiver,
+        "frameworkWorkbenchStages",
+      );
+      if (node.expression.name.text === "map") {
+        if (usesCatalogStages) mapCalls.push(node);
+      } else if (usesCatalogStages || usesFrameworkStages) {
+        unsupportedTransforms.add(node.expression.name.text);
+      }
+    }
     ts.forEachChild(node, visit);
   };
   if (initializer) visit(initializer);
@@ -415,6 +499,11 @@ export function inspectWorkbenchRouteSource(source) {
     errors.push(
       "workbench-network routes: catalog stubs must map each stage.path",
     );
+  for (const transform of unsupportedTransforms) {
+    errors.push(
+      `workbench-network routes: unsupported array transform '${transform}'`,
+    );
+  }
   return errors;
 }
 

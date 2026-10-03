@@ -41,6 +41,12 @@ describe("WorkbenchNetworkView", () => {
     expect(wrapper.text()).toContain("异常中心");
     expect(wrapper.text()).toContain("经营机会交接");
     expect(wrapper.text()).toContain("采购承诺交接");
+    expect(
+      wrapper
+        .get('a[href="/workspaces/shipment-planning"]')
+        .get(".stage-handoff")
+        .text(),
+    ).toContain("2 项出向交接");
     expect(wrapper.text()).toContain("已接真实能力");
     expect(wrapper.text()).toContain("不代表业务闭环已经验收");
     expect(wrapper.text()).not.toContain("可工作");

@@ -226,6 +226,65 @@ test("catalog inspection ignores commented constructor decoys", () => {
   assert.ok(violations.includes("workbenchStages: code 'booking' is missing"));
 });
 
+test("catalog inspection ignores quoted and template constructor decoys", () => {
+  const source = `${readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  ).replace(/plannedCatalogStage\(\s*10,[\s\S]*?\n {2}\),/, "")}
+const stringDecoy = 'plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")';
+const templateDecoy = \`plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")\`;`;
+
+  const violations = inspectWorkbenchCatalogSource(source);
+  assert.ok(violations.includes("workbenchStages: code 'booking' is missing"));
+});
+
+test("catalog inspection rejects unsupported row shapes", () => {
+  const catalog = readWorkbenchCatalogSource();
+  const unknownRow = catalog.replace(
+    "export const workbenchStages = [",
+    "export const workbenchStages = [...extraStages,",
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(unknownRow).includes(
+      "workbenchStages: unsupported element 'SpreadElement'",
+    ),
+  );
+});
+
+test("catalog inspection rejects spread overrides", () => {
+  const spreadOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
+    'catalogStage("customs", { ...customsOverride, sequence: 16, title: "进口清关" })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(spreadOverride).includes(
+      "workbenchStages: catalogStage overrides must not use spread properties",
+    ),
+  );
+});
+
+test("catalog inspection rejects dynamic override values", () => {
+  const dynamicOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("market_signals")',
+    'catalogStage("market_signals", { sequence: currentSequence })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(dynamicOverride).includes(
+      "workbenchStages: catalogStage override 'sequence' must be a literal",
+    ),
+  );
+});
+
+function readWorkbenchCatalogSource() {
+  return readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  );
+}
+
 test("route inspection ignores decoy snippets outside the exported route initializer", () => {
   const commentDecoy = `
     // export const decoy = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
@@ -248,6 +307,50 @@ test("route inspection ignores decoy snippets outside the exported route initial
   assert.ok(
     inspectWorkbenchRouteSource(deadDecoy).includes(
       "workbench-network routes: catalog stubs must map each stage.path",
+    ),
+  );
+});
+
+test("route inspection rejects array transforms other than map", () => {
+  const transformed = `
+    export const workbenchNetworkRoutes = [
+      ...frameworkWorkbenchStages,
+      ...catalogStubWorkbenchStages,
+    ]
+      .filter(() => true)
+      .map((stage) => ({ path: stage.path }));`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(transformed).includes(
+      "workbench-network routes: unsupported array transform 'filter'",
+    ),
+  );
+});
+
+test("route inspection rejects transforms applied only to framework stages", () => {
+  const transformed = `
+    export const workbenchNetworkRoutes = [
+      ...frameworkWorkbenchStages.filter((stage) => stage.code !== "booking"),
+      ...catalogStubWorkbenchStages,
+    ].map((stage) => ({ path: stage.path }));`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(transformed).includes(
+      "workbench-network routes: unsupported array transform 'filter'",
+    ),
+  );
+});
+
+test("route inspection rejects slice applied to catalog stub stages", () => {
+  const transformed = `
+    export const workbenchNetworkRoutes = [
+      ...frameworkWorkbenchStages,
+      ...catalogStubWorkbenchStages.slice(0, 1),
+    ].map((stage) => ({ path: stage.path }));`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(transformed).includes(
+      "workbench-network routes: unsupported array transform 'slice'",
     ),
   );
 });

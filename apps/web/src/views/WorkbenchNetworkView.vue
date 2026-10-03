@@ -10,7 +10,6 @@ import PageHeader from "../components/ui/PageHeader.vue";
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import {
   getOutboundWorkbenchRelations,
-  getWorkbenchHandoff,
   mainWorkbenchChain,
   supportingWorkbenches,
   workbenchOperationalSpecs,
@@ -37,12 +36,10 @@ const phases = computed(() =>
 );
 
 function outboundLabel(stage: WorkbenchStage): string {
-  const relation = getOutboundWorkbenchRelations(stage.code)[0];
-  return (
-    relation?.label ??
-    getWorkbenchHandoff(stage.outboundHandoffCode)?.name ??
-    "主链责任收口"
-  );
+  const relations = getOutboundWorkbenchRelations(stage.code);
+  if (relations.length === 0) return "主链责任收口";
+  if (relations.length === 1) return relations[0]!.label;
+  return `${relations.length} 项出向交接`;
 }
 
 // 岗位作业规格：网络里的字段说明"这个岗位在链上的位置"，

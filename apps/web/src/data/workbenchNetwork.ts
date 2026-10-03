@@ -77,6 +77,7 @@ export interface WorkbenchRelation {
   handoffCode: string | null;
   label: string;
   facts: readonly string[];
+  timing?: string;
 }
 
 export const workbenchBaseline = {
@@ -1039,12 +1040,22 @@ export function workbenchStage(
   return workbenchStages.find((item) => item.code === code);
 }
 
-export function getInboundWorkbenchRelations(code: WorkbenchCode) {
-  return workbenchRelations.filter(({ to }) => to === code);
+export function getInboundWorkbenchRelations(
+  code: WorkbenchCode,
+): readonly WorkbenchRelation[] {
+  return mergeWorkbenchRelations(
+    workbenchRelations.filter(({ to }) => to === code),
+    workbenchHandoffs.filter(({ to }) => to === code),
+  );
 }
 
-export function getOutboundWorkbenchRelations(code: WorkbenchCode) {
-  return workbenchRelations.filter(({ from }) => from === code);
+export function getOutboundWorkbenchRelations(
+  code: WorkbenchCode,
+): readonly WorkbenchRelation[] {
+  return mergeWorkbenchRelations(
+    workbenchRelations.filter(({ from }) => from === code),
+    workbenchHandoffs.filter(({ from }) => from === code),
+  );
 }
 
 export function getUpstreamWorkbenchStages(code: WorkbenchCode) {
@@ -1074,6 +1085,34 @@ export function getWorkbenchHandoff(
 ): WorkbenchHandoff | null {
   if (!code) return null;
   return workbenchHandoffs.find((item) => item.code === code) ?? null;
+}
+
+function mergeWorkbenchRelations(
+  relations: readonly WorkbenchRelation[],
+  handoffs: readonly WorkbenchHandoff[],
+): readonly WorkbenchRelation[] {
+  const merged = [...relations];
+  const endpointPairs = new Set(
+    relations.map(({ from, to }) => `${from}->${to}`),
+  );
+
+  for (const handoff of handoffs) {
+    const endpointPair = `${handoff.from}->${handoff.to}`;
+    if (endpointPairs.has(endpointPair)) continue;
+    endpointPairs.add(endpointPair);
+    merged.push({
+      code: handoff.code,
+      from: handoff.from,
+      to: handoff.to,
+      kind: "handoff",
+      handoffCode: handoff.code,
+      label: handoff.name,
+      facts: handoff.facts,
+      timing: handoff.timing,
+    });
+  }
+
+  return merged;
 }
 
 function relation(

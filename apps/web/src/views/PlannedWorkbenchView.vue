@@ -23,19 +23,15 @@ const operationalSpec = computed(() =>
 );
 const inbound = computed(() => {
   if (!stage.value) return [];
-
-  const relations = getInboundWorkbenchRelations(stage.value.code);
-  if (relations.length) return withLegacyHandoffDetails(relations);
-
-  return asLegacyRelations(stage.value.inboundHandoffCode);
+  return withLegacyHandoffDetails(
+    getInboundWorkbenchRelations(stage.value.code),
+  );
 });
 const outbound = computed(() => {
   if (!stage.value) return [];
-
-  const relations = getOutboundWorkbenchRelations(stage.value.code);
-  if (relations.length) return withLegacyHandoffDetails(relations);
-
-  return asLegacyRelations(stage.value.outboundHandoffCode);
+  return withLegacyHandoffDetails(
+    getOutboundWorkbenchRelations(stage.value.code),
+  );
 });
 const upstream = computed(() =>
   inbound.value.flatMap(({ from }) => {
@@ -54,26 +50,6 @@ const consumedHandoffs = computed(() =>
     .map((code) => getWorkbenchHandoff(code))
     .filter((item) => item !== null),
 );
-
-function asLegacyRelations(
-  handoffCode: string | null,
-): readonly WorkbenchRelationDetail[] {
-  const handoff = getWorkbenchHandoff(handoffCode);
-  if (!handoff) return [];
-
-  return [
-    {
-      code: handoff.code,
-      from: handoff.from,
-      to: handoff.to,
-      kind: "handoff",
-      handoffCode: handoff.code,
-      label: handoff.name,
-      facts: handoff.facts,
-      timing: handoff.timing,
-    },
-  ];
-}
 
 function withLegacyHandoffDetails(
   relations: readonly WorkbenchRelation[],

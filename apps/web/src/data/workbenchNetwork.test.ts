@@ -139,6 +139,26 @@ describe("workbench catalog", () => {
     ).toBe(true);
   });
 
+  it("merges legacy handoffs without duplicating explicit relation endpoints", () => {
+    expect(getOutboundWorkbenchRelations("dispatch")).toEqual([
+      expect.objectContaining({
+        code: "shipment_handoff",
+        from: "dispatch",
+        to: "ocean_operations",
+        kind: "handoff",
+        handoffCode: "shipment_handoff",
+      }),
+    ]);
+    expect(
+      getOutboundWorkbenchRelations("supply_readiness").map(({ to }) => to),
+    ).toEqual(["cargo_ready", "shipment_planning"]);
+    expect(
+      getInboundWorkbenchRelations("dispatch").filter(
+        ({ from }) => from === "stuffing",
+      ),
+    ).toHaveLength(1);
+  });
+
   it("only relates catalog stages that exist", () => {
     const codes = new Set(workbenchStages.map(({ code }) => code));
 
