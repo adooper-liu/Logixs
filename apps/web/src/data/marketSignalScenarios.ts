@@ -64,12 +64,42 @@ export interface MarketSignalScenario {
   channel: string | null;
   category: string | null;
   owner: string;
+  activeValidation: null | {
+    responsibleActorId: string;
+    nextReviewDate: string;
+    watchFocus: string | null;
+    waitingReason: string | null;
+  };
   observedFacts: readonly string[];
   hypothesis: string | null;
   evidence: readonly MarketSignalEvidence[];
   supplements: readonly MarketSignalSupplement[];
   gaps: readonly MarketSignalGap[];
   initialState: MarketSignalWorkflowState;
+  /** 服务端 updatedAt；继续观察分组按它做同日检查的稳定次序。 */
+  updatedAt: string;
+}
+
+/**
+ * 与服务端 watching 列表同序：检查日升序、无检查日在后，同日按 updatedAt、id 倒序。
+ * 只用于本地写入或改期后立即重排，不产生到期结论。
+ */
+export function compareWatchingOrder(
+  left: Pick<MarketSignalScenario, "id" | "updatedAt" | "activeValidation">,
+  right: Pick<MarketSignalScenario, "id" | "updatedAt" | "activeValidation">,
+): number {
+  const leftDue = left.activeValidation?.nextReviewDate ?? null;
+  const rightDue = right.activeValidation?.nextReviewDate ?? null;
+  if (leftDue !== rightDue) {
+    if (leftDue === null) return 1;
+    if (rightDue === null) return -1;
+    return leftDue < rightDue ? -1 : 1;
+  }
+  if (left.updatedAt !== right.updatedAt) {
+    return left.updatedAt < right.updatedAt ? 1 : -1;
+  }
+  if (left.id === right.id) return 0;
+  return left.id < right.id ? 1 : -1;
 }
 
 export interface MarketSignalDecisionDraft {
@@ -78,6 +108,7 @@ export interface MarketSignalDecisionDraft {
   opportunityStatement: string;
   nextReviewDate: string;
   watchFocus: string;
+  waitingReason: string;
   dismissReason: string;
 }
 
@@ -119,6 +150,7 @@ export function createMarketSignalDraft(): MarketSignalDecisionDraft {
     opportunityStatement: "",
     nextReviewDate: "",
     watchFocus: "",
+    waitingReason: "",
     dismissReason: "",
   };
 }
@@ -136,17 +168,20 @@ export function buildMarketSignalResult(
 
   if (draft.decision === "watch") {
     const hasReviewDate = Boolean(draft.nextReviewDate);
+    const hasFocus = Boolean(draft.watchFocus.trim());
+    const completed = hasReviewDate && hasFocus;
     return {
       decision: draft.decision,
-      completion: hasReviewDate ? "completed" : "pending_completion",
-      statusLabel: hasReviewDate ? "已安排继续观察" : "已保存，待补查看日期",
-      message: hasReviewDate
-        ? `将在 ${draft.nextReviewDate} 重新查看这条信号。`
-        : "补充下次查看日期后，才会从待判断队列移出。",
-      nextOwner: signal.owner,
+      completion: completed ? "completed" : "pending_completion",
+      statusLabel: completed ? "已安排下一项验证" : "已保存，待补验证承诺",
+      message: completed
+        ? `由我负责，在 ${draft.nextReviewDate} 检查：${draft.watchFocus.trim()}`
+        : "补充检查日期和验证重点后，才会形成当前验证承诺。",
+      nextOwner: completed ? "我" : signal.owner,
       pendingItems: [
         ...pendingItems,
-        ...(!hasReviewDate ? ["下次查看日期待补"] : []),
+        ...(!hasReviewDate ? ["下次检查日期待补"] : []),
+        ...(!hasFocus ? ["验证重点待补"] : []),
       ],
       handoffFacts: [],
     };

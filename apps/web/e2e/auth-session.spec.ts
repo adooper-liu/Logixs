@@ -184,9 +184,15 @@ test("401 只重新登录一次，服务端仍拒绝时停在会话无效且不�
   ).toBeVisible();
   await page.waitForLoadState("networkidle");
   expect(idp.authorizeRequests).toBe(2);
+  const signalCalls = apiCalls.filter(({ path }) =>
+    path.startsWith("/api/market-signals"),
+  );
+  expect(signalCalls).toHaveLength(14);
   expect(
-    apiCalls.filter(({ path }) => path.startsWith("/api/market-signals")),
-  ).toHaveLength(2);
+    signalCalls.every(
+      ({ method, path }) => method === "GET" && path === "/api/market-signals",
+    ),
+  ).toBe(true);
   expect(apiCalls.every(({ bearer }) => bearer)).toBe(true);
   await expect(page).toHaveURL(`${OIDC_APP_URL}${MARKET_SIGNALS}`);
   await expectNoTokenLeak(page, idp, urls);
@@ -205,7 +211,9 @@ test("403 保留拒绝原因，不重新登录", async ({ page }) => {
   await page.goto(MARKET_SIGNALS);
 
   await expect(
-    page.getByText("暂时无法加载经营信号（403）：无权查看经营信号"),
+    page.getByText("暂时无法加载经营信号（403）：无权查看经营信号", {
+      exact: true,
+    }),
   ).toBeVisible();
   await page.waitForLoadState("networkidle");
   await expect(signedIn(page)).toBeVisible();

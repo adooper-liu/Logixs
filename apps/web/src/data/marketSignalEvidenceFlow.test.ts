@@ -22,12 +22,14 @@ function scenario(
     channel: null,
     category: null,
     owner: "经营与市场负责人",
+    activeValidation: null,
     observedFacts: [],
     hypothesis: null,
     evidence: [],
     supplements: [],
     gaps: [],
     initialState: "needs_decision",
+    updatedAt: "2026-09-25T01:00:00.000Z",
     ...overrides,
   };
 }

@@ -13,6 +13,13 @@ import type {
 
 export const MARKET_SIGNAL_REPOSITORY = Symbol("MarketSignalRepository");
 
+export interface MarketSignalActiveValidationRecord {
+  responsibleActorId: string;
+  nextReviewDate: string;
+  watchFocus: string | null;
+  waitingReason: string | null;
+}
+
 export interface MarketSignalRecord {
   id: string;
   tenantId: string;
@@ -24,6 +31,7 @@ export interface MarketSignalRecord {
   hypothesis: string | null;
   currentDestination: MarketSignalDestinationV1;
   ownerTeamCode: string;
+  activeValidation: MarketSignalActiveValidationRecord | null;
   version: number;
   createdAt: Date;
   updatedAt: Date;
@@ -37,9 +45,19 @@ export interface MarketSignalDecisionRecord {
   pendingFieldCodes: MarketSignalPendingFieldCodeV1[];
 }
 
+export type MarketSignalListCursor =
+  | { sort: "updated"; updatedAt: Date; id: string }
+  | {
+      sort: "watching_due";
+      activeValidationDueDate: Date | null;
+      updatedAt: Date;
+      id: string;
+    };
+
 export interface MarketSignalListQuery {
   tenantId: string;
-  after?: { updatedAt: Date; id: string };
+  destination?: MarketSignalDestinationV1;
+  after?: MarketSignalListCursor;
   take: number;
 }
 
@@ -60,7 +78,9 @@ export interface ApplySelectionReturnInput {
 }
 
 export interface MarketSignalDecisionPersistenceResult {
+  /** 该次判断写入后的信号；重放时也是当时的快照，不混入后续版本。 */
   signal: MarketSignalRecord;
+  evidenceRefs: string[];
   decision: MarketSignalDecisionRecord;
   handoff: MarketOpportunityHandoffV1 | null;
   duplicate: boolean;
@@ -77,6 +97,10 @@ export interface MarketSignalRepository {
     signalId: string,
   ): Promise<MarketSignalRecord | null>;
   list(query: MarketSignalListQuery): Promise<MarketSignalRecord[]>;
+  count(input: {
+    tenantId: string;
+    destination?: MarketSignalDestinationV1;
+  }): Promise<number>;
   findLatestSelectionReturnReason(
     tenantId: string,
     signalId: string,

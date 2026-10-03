@@ -268,6 +268,14 @@ describe("product initiative persistence flow", () => {
 
   it("退回经营团队且理由齐：同事务把信号改成选品退回", async () => {
     const { tenantId, handoffId, signalId } = await seedOpportunity();
+    await prisma.marketSignal.update({
+      where: { id: signalId },
+      data: {
+        activeValidationOwnerActorId: "legacy-owner",
+        activeValidationDueDate: new Date("2026-02-12T00:00:00.000Z"),
+        activeValidationFocus: "遗留验证投影",
+      },
+    });
 
     const { record, duplicate } = await initiatives.persistDecision({
       tenantId,
@@ -294,6 +302,10 @@ describe("product initiative persistence flow", () => {
       where: { id: signalId, tenantId },
     });
     expect(signal.currentDestination).toBe("returned_from_selection");
+    expect(signal.activeValidationOwnerActorId).toBeNull();
+    expect(signal.activeValidationDueDate).toBeNull();
+    expect(signal.activeValidationFocus).toBeNull();
+    expect(signal.activeValidationWaitingReason).toBeNull();
 
     const decision = await prisma.marketSignalDecision.findFirstOrThrow({
       where: {

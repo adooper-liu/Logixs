@@ -1,5 +1,6 @@
 import type {
   MarketOpportunityHandoffV1,
+  MarketSignalDecisionCommandV1,
   MarketSignalV1,
   ProductInitiativeDecisionCommandV1,
   ProductInitiativeV1,
@@ -169,6 +170,250 @@ test("a market owner can open a gap form and save the missing fact in place", as
   await expect(page.getByRole("button", { name: "选择渠道" })).toHaveCount(0);
 });
 
+test("market validation: a synthetic signal gets one resumable self-owned commitment", async ({
+  page,
+}) => {
+  await mockMarketOpportunityApis(page);
+  await page.setViewportSize({ width: 680, height: 900 });
+  await page.goto("/workspaces/market-signals");
+
+  await page
+    .getByRole("button", { name: /美国站庭院收纳需求连续三周上升/ })
+    .click();
+  await page.getByRole("radio", { name: /安排下一项验证/ }).check();
+  await page.getByLabel("这次要验证什么").fill("确认趋势是否持续两周");
+  await page.getByLabel("当前在等什么").fill("等待第二客服队列");
+  await page.locator('input[type="date"]').fill("2026-02-12");
+  await page
+    .getByRole("button", { name: "由我负责并安排验证", exact: true })
+    .click();
+
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("负责人：我");
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("确认趋势是否持续两周");
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("等待第二客服队列");
+  await expect(page.getByRole("status")).toContainText("已安排下一项验证");
+  await expect(page.locator(".market-workbench")).not.toContainText(
+    "机会已证明",
+  );
+
+  const widths = await page.evaluate(() => ({
+    pageClient: document.documentElement.clientWidth,
+    pageScroll: document.documentElement.scrollWidth,
+    contentClient:
+      document.querySelector<HTMLElement>(".app-content")?.clientWidth ?? 0,
+    contentScroll:
+      document.querySelector<HTMLElement>(".app-content")?.scrollWidth ?? 0,
+  }));
+  expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
+  expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
+});
+
+test("market validation restores a cross-actor 409 and keeps the attempted focus", async ({
+  page,
+}) => {
+  const { signals, detailReads } = await mockMarketOpportunityApis(page);
+  const owned = signal({
+    ...signals.get(firstSignalId)!,
+    currentDestination: "watching",
+    activeValidation: {
+      responsibleActorId: "dev-operator",
+      nextReviewDate: "2026-02-12",
+      watchFocus: "原验证重点",
+      waitingReason: null,
+    },
+  });
+  signals.set(firstSignalId, owned);
+  await page.goto(`/workspaces/market-signals?signalId=${firstSignalId}`);
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("原验证重点");
+  const readsBeforeSubmit = detailReads();
+  await page.getByRole("radio", { name: /安排下一项验证/ }).check();
+  await page.getByLabel("这次要验证什么").fill("改期后的验证重点");
+  await page.locator('input[type="date"]').fill("2026-02-20");
+
+  signals.set(firstSignalId, {
+    ...owned,
+    activeValidation: {
+      ...owned.activeValidation!,
+      responsibleActorId: "market-colleague",
+    },
+  });
+  await page.route("**/api/market-signals/*/decisions", async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({
+        message: "MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT",
+      }),
+    });
+  });
+  await page.getByRole("button", { name: "更新我的验证承诺" }).click();
+
+  await expect(page.locator(".operation-error")).toContainText(
+    "MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT",
+  );
+  await expect(page.getByLabel("这次要验证什么")).toHaveValue(
+    "改期后的验证重点",
+  );
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("market-colleague");
+  expect(detailReads()).toBe(readsBeforeSubmit + 1);
+  expect(signals.get(firstSignalId)?.activeValidation?.responsibleActorId).toBe(
+    "market-colleague",
+  );
+});
+
+test("market validation current owner can complete an exit and clear the projection", async ({
+  page,
+}) => {
+  const { signals } = await mockMarketOpportunityApis(page);
+  signals.set(
+    firstSignalId,
+    signal({
+      ...signals.get(firstSignalId)!,
+      currentDestination: "watching",
+      activeValidation: {
+        responsibleActorId: "dev-operator",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "确认趋势",
+        waitingReason: null,
+      },
+    }),
+  );
+  await page.goto(`/workspaces/market-signals?signalId=${firstSignalId}`);
+  await page.getByRole("radio", { name: /不采纳/ }).check();
+  await page.locator(".decision-fields select").selectOption("证据不足");
+  await page.getByRole("button", { name: "记录不采纳" }).click();
+
+  expect(signals.get(firstSignalId)?.activeValidation).toBeNull();
+  expect(signals.get(firstSignalId)?.currentDestination).toBe("dismissed");
+  await expect(page.getByRole("status", { name: "处理结果" })).toContainText(
+    "已记录不采纳",
+  );
+  await expect(
+    page.getByRole("heading", { name: /美国站庭院收纳需求连续三周上升/ }),
+  ).toHaveCount(0);
+});
+
+test("market validation negative rehearsal blocks takeover without inventing a score", async ({
+  page,
+}) => {
+  await mockMarketOpportunityApis(page);
+  await page.goto(`/workspaces/market-signals?signalId=${negativeSignalId}`);
+
+  await expect(
+    page.getByRole("heading", {
+      name: /\[合成演练\] 短期高热的便携降温设备/,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "当前验证承诺" }),
+  ).toContainText("market-colleague");
+  await page.getByRole("radio", { name: /安排下一项验证/ }).check();
+  await expect(page.locator(".validation-owner-conflict")).toContainText(
+    "不支持静默接管或转派",
+  );
+  await expect(
+    page.getByRole("button", { name: "当前验证由其他负责人承担" }),
+  ).toBeDisabled();
+  await expect(page.locator(".market-workbench")).not.toContainText("总分");
+  await expect(page.locator(".market-workbench")).not.toContainText(
+    "机会已证明",
+  );
+});
+
+for (const width of [320, 375]) {
+  test(`market validation long text fits a ${width}px viewport`, async ({
+    page,
+  }) => {
+    await mockMarketOpportunityApis(page);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/workspaces/market-signals?signalId=${negativeSignalId}`);
+    await expect(
+      page
+        .getByRole("region", { name: "当前验证承诺" })
+        .getByText(/等待热浪后两周数据/),
+    ).toBeVisible();
+
+    const bounds = await page.evaluate(() => {
+      const selectors = [
+        ".queue-item.selected",
+        ".active-validation",
+        ".validation-owner-conflict",
+        ".primary-action",
+      ];
+      return {
+        viewport: document.documentElement.clientWidth,
+        pageScroll: document.documentElement.scrollWidth,
+        boxes: selectors.flatMap((selector) => {
+          const element = document.querySelector<HTMLElement>(selector);
+          if (!element) return [];
+          const rect = element.getBoundingClientRect();
+          return [
+            {
+              selector,
+              left: rect.left,
+              right: rect.right,
+              scrollWidth: element.scrollWidth,
+              clientWidth: element.clientWidth,
+            },
+          ];
+        }),
+      };
+    });
+    expect(bounds.pageScroll).toBeLessThanOrEqual(bounds.viewport + 1);
+    for (const box of bounds.boxes) {
+      expect(box.left, box.selector).toBeGreaterThanOrEqual(-1);
+      expect(box.right, box.selector).toBeLessThanOrEqual(bounds.viewport + 1);
+      expect(box.scrollWidth, box.selector).toBeLessThanOrEqual(
+        box.clientWidth + 1,
+      );
+    }
+  });
+}
+
+test("market validation tabs move real keyboard focus", async ({ page }) => {
+  await mockMarketOpportunityApis(page);
+  await page.goto("/workspaces/market-signals");
+  const tabs = page.getByRole("tab");
+
+  await tabs.first().focus();
+  await tabs.first().press("ArrowRight");
+  await expect(tabs.nth(1)).toBeFocused();
+  await tabs.nth(1).press("End");
+  await expect(tabs.last()).toBeFocused();
+  await tabs.last().press("Home");
+  await expect(tabs.first()).toBeFocused();
+});
+
+test("market validation archived mode stays read-only", async ({ page }) => {
+  await mockMarketOpportunityApis(page);
+  await page.goto(`/workspaces/market-signals?signalId=${archivedSignalId}`);
+
+  await expect(
+    page.getByRole("region", { name: "信号关闭结论" }),
+  ).toContainText("已归档关闭");
+  await expect(page.getByText("关闭时 3 项未补齐")).toBeVisible();
+  await expect(page.getByRole("region", { name: "信号处理动作" })).toHaveCount(
+    0,
+  );
+  await expect(page.locator(".gap-action")).toHaveCount(0);
+  await expect(page.locator(".decision-panel")).toHaveCount(0);
+  await expect(
+    page.locator(
+      '.workbench-pane--main input, .workbench-pane--main textarea, .workbench-pane--main select, .workbench-pane--main [role="radio"]',
+    ),
+  ).toHaveCount(0);
+});
+
 test("the workbench network stays within the viewport", async ({ page }) => {
   await page.goto("/workspaces");
   await expect(
@@ -190,12 +435,18 @@ test("the workbench network stays within the viewport", async ({ page }) => {
 
 const firstSignalId = "11111111-1111-4111-8111-111111111111";
 const secondSignalId = "22222222-2222-4222-8222-222222222222";
+const negativeSignalId = "77777777-7777-4777-8777-777777777777";
+const archivedSignalId = "88888888-8888-4888-8888-888888888888";
 const evidenceId = "33333333-3333-4333-8333-333333333333";
 const handoffId = "44444444-4444-4444-8444-444444444444";
 
 async function mockMarketOpportunityApis(page: Page): Promise<{
   decisions: ProductInitiativeDecisionCommandV1[];
+  signals: Map<string, MarketSignalV1>;
+  detailReads: () => number;
 }> {
+  let detailReads = 0;
+  const longToken = "LONGVALIDATIONTOKEN".repeat(24);
   const signals = new Map<string, MarketSignalV1>([
     [
       firstSignalId,
@@ -226,6 +477,39 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
         ],
       }),
     ],
+    [
+      negativeSignalId,
+      signal({
+        signalId: negativeSignalId,
+        title: "[合成演练] 短期高热的便携降温设备",
+        marketCode: "US",
+        observedFactSummary:
+          "热浪期间搜索量快速上升，但热浪后回落且相似商品购买转化偏低。",
+        hypothesis:
+          "需要继续确认热度是否可持续，不能按关注度自动形成可信机会。",
+        currentDestination: "watching",
+        activeValidation: {
+          responsibleActorId: "market-colleague",
+          nextReviewDate: "2026-06-17",
+          watchFocus: `确认热浪后需求是否仍然持续，并核对重复使用障碍 ${longToken}`,
+          waitingReason: `等待热浪后两周数据 ${longToken}`,
+        },
+        pendingFieldCodes: [],
+      }),
+    ],
+    [
+      archivedSignalId,
+      signal({
+        signalId: archivedSignalId,
+        title: "[合成演练] 已归档的旧观察信号",
+        currentDestination: "archived",
+        pendingFieldCodes: [
+          "market_code",
+          "channel_code",
+          "observed_fact_summary",
+        ],
+      }),
+    ],
   ]);
   let opportunity: ProductOpportunityV1 | null = null;
   let initiative: ProductInitiativeV1 | null = null;
@@ -239,10 +523,15 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
     const signalId = segments[segments.indexOf("market-signals") + 1];
 
     if (!signalId && request.method() === "GET") {
+      const destination = url.searchParams.get("destination");
+      const items = [...signals.values()].filter(
+        (item) => item.currentDestination === destination,
+      );
       await json(route, {
         contractVersion: "market-signal-page.v1",
-        items: [...signals.values()],
-        pageSize: 100,
+        items,
+        pageSize: 50,
+        totalCount: items.length,
         nextCursor: null,
       });
       return;
@@ -263,7 +552,50 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       return;
     }
     if (segments.at(-1) === "decisions" && request.method() === "POST") {
-      const body = request.postDataJSON() as { opportunityStatement?: string };
+      const body = request.postDataJSON() as MarketSignalDecisionCommandV1;
+      if (body.decisionType === "watch") {
+        const watched = {
+          ...current,
+          currentDestination: "watching" as const,
+          activeValidation: {
+            responsibleActorId: "dev-operator",
+            nextReviewDate: body.nextReviewDate!,
+            watchFocus: body.watchFocus!,
+            waitingReason: body.waitingReason ?? null,
+          },
+          version: current.version + 1,
+        };
+        signals.set(current.signalId, watched);
+        await json(route, {
+          contractVersion: "market-signal-decision-result.v1",
+          status: "saved",
+          signal: watched,
+          decisionId: "66666666-6666-4666-8666-666666666667",
+          decisionVersion: 1,
+          completion: "completed",
+          handoff: null,
+        });
+        return;
+      }
+      if (body.decisionType === "dismiss") {
+        const dismissed = {
+          ...current,
+          currentDestination: "dismissed" as const,
+          activeValidation: null,
+          version: current.version + 1,
+        };
+        signals.set(current.signalId, dismissed);
+        await json(route, {
+          contractVersion: "market-signal-decision-result.v1",
+          status: "saved",
+          signal: dismissed,
+          decisionId: "66666666-6666-4666-8666-666666666668",
+          decisionVersion: 2,
+          completion: "completed",
+          handoff: null,
+        });
+        return;
+      }
       const handedOff = {
         ...current,
         currentDestination: "handed_off" as const,
@@ -303,6 +635,7 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       await json(route, updated);
       return;
     }
+    detailReads += 1;
     await json(route, {
       signal: current,
       evidence:
@@ -412,7 +745,7 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
     await json(route, initiative);
   });
 
-  return { decisions };
+  return { decisions, signals, detailReads: () => detailReads };
 }
 
 async function json(route: Route, body: unknown): Promise<void> {

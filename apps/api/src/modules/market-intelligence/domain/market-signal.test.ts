@@ -84,6 +84,75 @@ describe("market signal rules", () => {
     expect(dismiss.pendingFieldCodes).toContain("dismiss_reason");
   });
 
+  it("requires date and focus before watch becomes a current validation commitment", () => {
+    const complete = prepareMarketSignalDecision(facts(), {
+      contractVersion: "market-signal-decision.v1",
+      expectedSignalVersion: 1,
+      decisionType: "watch",
+      nextReviewDate: "2026-02-12",
+      watchFocus: "确认趋势是否持续两周",
+      waitingReason: "等待第二客服队列",
+      idempotencyKey: "watch-complete",
+    });
+    const missingFocus = prepareMarketSignalDecision(facts(), {
+      contractVersion: "market-signal-decision.v1",
+      expectedSignalVersion: 1,
+      decisionType: "watch",
+      nextReviewDate: "2026-02-12",
+      idempotencyKey: "watch-no-focus",
+    });
+    const missingDate = prepareMarketSignalDecision(facts(), {
+      contractVersion: "market-signal-decision.v1",
+      expectedSignalVersion: 1,
+      decisionType: "watch",
+      watchFocus: "确认趋势是否持续两周",
+      idempotencyKey: "watch-no-date",
+    });
+
+    expect(complete).toMatchObject({
+      completion: "completed",
+      nextDestination: "watching",
+      nextReviewDate: "2026-02-12",
+      watchFocus: "确认趋势是否持续两周",
+      waitingReason: "等待第二客服队列",
+    });
+    expect(complete.pendingFieldCodes).not.toContain("watch_focus");
+    expect(missingFocus.completion).toBe("pending_completion");
+    expect(missingFocus.pendingFieldCodes).toContain("watch_focus");
+    expect(missingDate.completion).toBe("pending_completion");
+    expect(missingDate.pendingFieldCodes).toContain("next_review_date");
+  });
+
+  it.each([
+    ["blank waiting reason", "   "],
+    ["control character", "等待\u0007审批"],
+    ["over 500", "x".repeat(501)],
+  ])("rejects %s", (_name, waitingReason) => {
+    expect(() =>
+      prepareMarketSignalDecision(facts(), {
+        contractVersion: "market-signal-decision.v1",
+        expectedSignalVersion: 1,
+        decisionType: "watch",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "验证持续性",
+        waitingReason,
+        idempotencyKey: `watch-${_name}`,
+      }),
+    ).toThrow(MarketSignalValidationError);
+  });
+
+  it("drops waiting reason from non-watch decisions", () => {
+    const decision = prepareMarketSignalDecision(facts(), {
+      contractVersion: "market-signal-decision.v1",
+      expectedSignalVersion: 1,
+      decisionType: "handoff",
+      waitingReason: "不得保存",
+      idempotencyKey: "handoff-waiting",
+    });
+
+    expect(decision.waitingReason).toBeNull();
+  });
+
   it("normalizes a controlled one-field supplement", () => {
     const update = normalizeMarketSignalUpdate({
       contractVersion: "market-signal-update.v1",

@@ -4,6 +4,7 @@ import type {
   MarketSignalDetailV1,
   MarketSignalV1,
 } from "@logix/contracts";
+import { computed } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +25,10 @@ vi.mock("../api/marketSignals", () => ({
   registerMarketSignalEvidence: (...args: unknown[]) =>
     registerMarketSignalEvidence(...args),
   decideMarketSignal: (...args: unknown[]) => decideMarketSignal(...args),
+}));
+
+vi.mock("../auth/useAuthSession", () => ({
+  useAuthSession: () => ({ actorId: computed(() => "operator-dev") }),
 }));
 
 const signalOneId = "11111111-1111-4111-8111-111111111111";
@@ -86,12 +91,20 @@ describe("MarketSignalsWorkbench", () => {
       ],
     ]);
 
-    listMarketSignals.mockImplementation(async () => ({
-      contractVersion: "market-signal-page.v1",
-      items: signals,
-      pageSize: 100,
-      nextCursor: null,
-    }));
+    listMarketSignals.mockImplementation(
+      async (input: { destination: MarketSignalV1["currentDestination"] }) => {
+        const items = signals.filter(
+          (signal) => signal.currentDestination === input.destination,
+        );
+        return {
+          contractVersion: "market-signal-page.v1",
+          items,
+          pageSize: 50,
+          totalCount: items.length,
+          nextCursor: null,
+        };
+      },
+    );
     getMarketSignal.mockImplementation(async (id: string) => details.get(id));
     registerMarketSignalEvidence.mockResolvedValue(undefined);
   });
@@ -99,7 +112,7 @@ describe("MarketSignalsWorkbench", () => {
   it("loads the work reason and separates observed facts from hypotheses", async () => {
     const wrapper = await mountPage();
 
-    expect(listMarketSignals).toHaveBeenCalledOnce();
+    expect(listMarketSignals).toHaveBeenCalledTimes(7);
     expect(getMarketSignal).toHaveBeenCalledWith(signalOneId);
     expect(wrapper.text()).toContain("为什么现在处理");
     expect(wrapper.text()).toContain("已观察到");
@@ -260,6 +273,94 @@ describe("MarketSignalsWorkbench", () => {
     expect(wrapper.find('button[aria-label="选择渠道"]').exists()).toBe(false);
   });
 
+  it("lets the session actor schedule one resumable validation commitment", async () => {
+    const watching = marketSignal({
+      ...signals[0]!,
+      currentDestination: "watching",
+      version: 2,
+      activeValidation: {
+        responsibleActorId: "operator-dev",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "确认趋势是否持续两周",
+        waitingReason: "等待第二客服队列",
+      },
+    });
+    decideMarketSignal.mockResolvedValue({
+      contractVersion: "market-signal-decision-result.v1",
+      status: "saved",
+      signal: watching,
+      decisionId: "66666666-6666-4666-8666-666666666666",
+      decisionVersion: 1,
+      completion: "completed",
+      handoff: null,
+    });
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    const tabCount = (label: string) =>
+      wrapper
+        .findAll('[role="tab"]')
+        .find((tab) => tab.text().includes(label))!
+        .get("b")
+        .text();
+    expect(tabCount("待判断")).toBe("2");
+    expect(tabCount("继续观察")).toBe("0");
+
+    const watchRadio = wrapper.get('input[value="watch"]');
+    await watchRadio.setValue(true);
+    await wrapper.get('input[type="date"]').setValue("2026-02-12");
+    await wrapper
+      .get('textarea[aria-label="这次要验证什么"]')
+      .setValue("确认趋势是否持续两周");
+    await wrapper
+      .get('textarea[aria-label="当前在等什么"]')
+      .setValue("等待第二客服队列");
+    await wrapper.get(".decision-panel").trigger("submit");
+    await flushPromises();
+
+    expect(decideMarketSignal).toHaveBeenCalledWith(
+      signalOneId,
+      expect.objectContaining({
+        decisionType: "watch",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "确认趋势是否持续两周",
+        waitingReason: "等待第二客服队列",
+      }),
+    );
+    expect(decideMarketSignal.mock.calls[0]![1]).not.toHaveProperty(
+      "responsibleActorId",
+    );
+    expect(wrapper.text()).toContain("当前验证承诺");
+    expect(wrapper.text()).toContain("负责人：我");
+    expect(wrapper.text()).toContain("等待第二客服队列");
+    expect(wrapper.text()).not.toContain("机会已证明");
+    expect(tabCount("待判断")).toBe("1");
+    expect(tabCount("继续观察")).toBe("1");
+  });
+
+  it("shows legacy watching rows without inventing a validation focus", async () => {
+    signals = [
+      marketSignal({
+        ...signals[0]!,
+        currentDestination: "watching",
+        activeValidation: {
+          responsibleActorId: "operator-dev",
+          nextReviewDate: "2026-02-12",
+          watchFocus: null,
+          waitingReason: null,
+        },
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.text()).toContain("旧记录未填写，需重新安排");
+    expect(wrapper.text()).not.toContain("机会已证明");
+  });
+
   it("hands ordinary gaps to the product-selection queue without blocking", async () => {
     const handedOff = marketSignal({
       ...signals[1]!,
@@ -303,24 +404,515 @@ describe("MarketSignalsWorkbench", () => {
   });
 
   it("shows an actionable error and retries the queue request", async () => {
-    listMarketSignals
-      .mockRejectedValueOnce(new Error("经营信号服务暂不可用"))
-      .mockImplementation(async () => ({
-        contractVersion: "market-signal-page.v1",
-        items: signals,
-        pageSize: 100,
-        nextCursor: null,
-      }));
+    const working = listMarketSignals.getMockImplementation()!;
+    listMarketSignals.mockRejectedValue(new Error("经营信号服务暂不可用"));
     const wrapper = await mountPage();
 
-    expect(wrapper.get('[role="alert"]').text()).toContain(
+    expect(wrapper.get(".operation-error").text()).toContain(
       "经营信号服务暂不可用",
     );
-    await wrapper.get('[role="alert"] button').trigger("click");
+    listMarketSignals.mockImplementation(working);
+    await wrapper.get(".operation-error button").trigger("click");
     await flushPromises();
 
-    expect(listMarketSignals).toHaveBeenCalledTimes(2);
+    expect(listMarketSignals).toHaveBeenCalledTimes(14);
     expect(wrapper.text()).toContain(signals[0]!.title);
+  });
+
+  it("keeps healthy groups usable when one group fails and retries only that group", async () => {
+    const working = listMarketSignals.getMockImplementation()!;
+    signals = [
+      ...signals,
+      marketSignal({
+        signalId: "77777777-7777-4777-8777-777777777777",
+        title: "已归档的历史信号",
+        currentDestination: "archived",
+      }),
+    ];
+    listMarketSignals.mockImplementation(async (input) =>
+      input.destination === "archived"
+        ? Promise.reject(new Error("归档分组暂不可用"))
+        : working(input),
+    );
+    const wrapper = await mountPage();
+
+    expect(wrapper.find(".operation-error").exists()).toBe(false);
+    expect(wrapper.text()).toContain(signals[0]!.title);
+    await tab(wrapper, "已归档").trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".group-error").text()).toContain("归档分组暂不可用");
+
+    listMarketSignals.mockImplementation(working);
+    await wrapper.get(".group-error button").trigger("click");
+    await flushPromises();
+
+    expect(listMarketSignals).toHaveBeenLastCalledWith({
+      destination: "archived",
+      pageSize: 50,
+    });
+    expect(listMarketSignals).toHaveBeenCalledTimes(8);
+    expect(wrapper.find(".group-error").exists()).toBe(false);
+    expect(wrapper.get(".queue-list").text()).toContain("已归档的历史信号");
+  });
+
+  it("opens an unloaded deep link after in-place route navigation", async () => {
+    const deepId = "88888888-8888-4888-8888-888888888888";
+    const deep = marketSignal({
+      signalId: deepId,
+      title: "第二页上的观察信号",
+      currentDestination: "watching",
+      activeValidation: {
+        responsibleActorId: "operator-dev",
+        nextReviewDate: "2026-06-01",
+        watchFocus: "确认第二页对象可直接打开",
+        waitingReason: null,
+      },
+    });
+    details.set(deepId, {
+      signal: deep,
+      evidence: [],
+      selectionReturnReason: null,
+    });
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    getMarketSignal.mockClear();
+
+    await wrapper.vm.$router.push(
+      `/workspaces/market-signals?signalId=${deepId}`,
+    );
+    await flushPromises();
+
+    expect(
+      getMarketSignal.mock.calls.filter(([id]) => id === deepId),
+    ).toHaveLength(1);
+    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).toContain(
+      "第二页上的观察信号",
+    );
+    expect(tab(wrapper, "继续观察").attributes("aria-selected")).toBe("true");
+    expect(wrapper.get(".queue-list").text()).toContain(
+      "确认第二页对象可直接打开",
+    );
+  });
+
+  it("drops a stale detail response that arrives after a newer saved version", async () => {
+    let releaseStale: (value: unknown) => void = () => undefined;
+    const saved = marketSignal({
+      ...signals[0]!,
+      currentDestination: "watching",
+      version: 2,
+      updatedAt: "2026-09-26T00:00:00.000Z",
+      activeValidation: {
+        responsibleActorId: "operator-dev",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "确认趋势是否持续两周",
+        waitingReason: null,
+      },
+    });
+    details.set(signalOneId, {
+      ...details.get(signalOneId)!,
+      selectionReturnReason: "选品要求补充季节窗口证据",
+    });
+    // 首屏详情读取被拖慢；用户在它返回前保存出 v2。
+    getMarketSignal.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseStale = resolve;
+        }),
+    );
+    decideMarketSignal.mockResolvedValue(decisionResult(saved));
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    await scheduleWatch(wrapper, "2026-02-12", "确认趋势是否持续两周");
+    releaseStale(details.get(signalOneId));
+    await flushPromises();
+
+    expect(wrapper.get(".active-validation").text()).toContain(
+      "确认趋势是否持续两周",
+    );
+    expect(tab(wrapper, "继续观察").attributes("aria-selected")).toBe("true");
+    expect(wrapper.get(".evidence-panel").text()).toContain("1 条来源");
+    expect(wrapper.text()).toContain("选品要求补充季节窗口证据");
+  });
+
+  it("keeps loaded evidence after saving a watch decision", async () => {
+    decideMarketSignal.mockResolvedValue(
+      decisionResult(
+        marketSignal({
+          ...signals[0]!,
+          currentDestination: "watching",
+          version: 2,
+          activeValidation: {
+            responsibleActorId: "operator-dev",
+            nextReviewDate: "2026-02-12",
+            watchFocus: "确认趋势是否持续两周",
+            waitingReason: null,
+          },
+        }),
+      ),
+    );
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    expect(wrapper.get(".evidence-panel").text()).toContain("1 条来源");
+    const detailReads = getMarketSignal.mock.calls.length;
+
+    await scheduleWatch(wrapper, "2026-02-12", "确认趋势是否持续两周");
+
+    expect(getMarketSignal.mock.calls.length).toBe(detailReads);
+    expect(wrapper.get(".evidence-panel").text()).toContain("1 条来源");
+  });
+
+  it("does not let an older full reload roll back a saved signal", async () => {
+    const initialList = listMarketSignals.getMockImplementation()!;
+    let releaseReload: (value: unknown) => void = () => undefined;
+    const saved = marketSignal({
+      ...signals[0]!,
+      currentDestination: "watching",
+      version: 2,
+      activeValidation: {
+        responsibleActorId: "operator-dev",
+        nextReviewDate: "2026-02-12",
+        watchFocus: "保存后的新承诺",
+        waitingReason: null,
+      },
+    });
+    decideMarketSignal.mockResolvedValue(decisionResult(saved));
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    listMarketSignals.mockImplementation(async (input) => {
+      if (input.destination === "needs_decision") {
+        return new Promise((resolve) => {
+          releaseReload = resolve;
+        });
+      }
+      return initialList(input);
+    });
+
+    const reload = (
+      wrapper.vm as unknown as { loadSignals: () => Promise<void> }
+    ).loadSignals();
+    await scheduleWatch(wrapper, "2026-02-12", "保存后的新承诺");
+    releaseReload({
+      contractVersion: "market-signal-page.v1",
+      items: [signals[0]],
+      pageSize: 50,
+      totalCount: 1,
+      nextCursor: null,
+    });
+    await reload;
+    await flushPromises();
+
+    expect(wrapper.get(".active-validation").text()).toContain(
+      "保存后的新承诺",
+    );
+    expect(tab(wrapper, "继续观察").attributes("aria-selected")).toBe("true");
+  });
+
+  it("replaces stale group membership on retry and refreshes existing rows on load more", async () => {
+    const movedId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const movedV1 = marketSignal({
+      signalId: movedId,
+      title: "第二页后已移走",
+      currentDestination: "watching",
+      version: 1,
+    });
+    signals = [signals[0]!, movedV1];
+    details.set(movedId, {
+      signal: movedV1,
+      evidence: [],
+      selectionReturnReason: null,
+    });
+    const working = listMarketSignals.getMockImplementation()!;
+    listMarketSignals.mockImplementation(async (input) => {
+      const page = await working(input);
+      return input.destination === "watching"
+        ? { ...page, nextCursor: "watching-page-2" }
+        : page;
+    });
+    const wrapper = await mountPage(`?signalId=${movedId}`);
+    expect(wrapper.text()).toContain("第二页后已移走");
+
+    listMarketSignals.mockImplementation(async (input) => {
+      if (input.cursor) {
+        return {
+          contractVersion: "market-signal-page.v1",
+          items: [{ ...movedV1, version: 2, title: "第二页新版本" }],
+          pageSize: 50,
+          totalCount: 1,
+          nextCursor: null,
+        };
+      }
+      const page = await working(input);
+      return input.destination === "watching"
+        ? { ...page, items: [], totalCount: 0, nextCursor: "watching-page-2" }
+        : page;
+    });
+    await (
+      wrapper.vm as unknown as {
+        retryGroup: (destination: string) => Promise<void>;
+      }
+    ).retryGroup("watching");
+    expect(wrapper.text()).not.toContain("第二页后已移走");
+
+    await tab(wrapper, "继续观察").trigger("click");
+    await wrapper.get(".load-more").trigger("click");
+    await flushPromises();
+    expect(wrapper.text()).toContain("第二页新版本");
+  });
+
+  it("re-sorts the watching group locally after a reschedule", async () => {
+    const watchingSignal = (
+      signalId: string,
+      title: string,
+      nextReviewDate: string | null,
+      updatedAt: string,
+    ) =>
+      marketSignal({
+        signalId,
+        title,
+        currentDestination: "watching",
+        updatedAt,
+        activeValidation: nextReviewDate
+          ? {
+              responsibleActorId: "operator-dev",
+              nextReviewDate,
+              watchFocus: `验证 ${title}`,
+              waitingReason: null,
+            }
+          : null,
+      });
+    signals = [
+      watchingSignal(signalOneId, "甲", "2026-03-01", "2026-09-20T00:00:00Z"),
+      watchingSignal(signalTwoId, "乙", "2026-03-05", "2026-09-21T00:00:00Z"),
+      watchingSignal(
+        "99999999-9999-4999-8999-999999999999",
+        "丙旧行",
+        null,
+        "2026-09-22T00:00:00Z",
+      ),
+    ];
+    details = new Map(
+      signals.map((signal) => [
+        signal.signalId,
+        { signal, evidence: [], selectionReturnReason: null },
+      ]),
+    );
+    decideMarketSignal.mockResolvedValue(
+      decisionResult(
+        watchingSignal(signalOneId, "甲", "2026-03-09", "2026-09-25T00:00:00Z"),
+        { version: 2 },
+      ),
+    );
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    const order = () =>
+      wrapper.findAll(".queue-item strong").map((item) => item.text());
+    expect(order()).toEqual(["甲", "乙", "丙旧行"]);
+    expect(wrapper.get(".queue-list").text()).toContain(
+      "旧记录没有当前验证承诺，需重新安排",
+    );
+
+    await scheduleWatch(wrapper, "2026-03-09", "验证 甲");
+
+    expect(order()).toEqual(["乙", "甲", "丙旧行"]);
+  });
+
+  it("loads more of one group only once while a request is in flight", async () => {
+    const working = listMarketSignals.getMockImplementation()!;
+    let releaseMore: (value: unknown) => void = () => undefined;
+    listMarketSignals.mockImplementation(async (input) => {
+      if (input.cursor) {
+        return new Promise((resolve) => {
+          releaseMore = resolve;
+        });
+      }
+      const page = await working(input);
+      return input.destination === "needs_decision"
+        ? { ...page, nextCursor: "cursor-page-2" }
+        : page;
+    });
+    const wrapper = await mountPage();
+
+    const more = wrapper.get(".load-more");
+    await more.trigger("click");
+    await more.trigger("click");
+    await flushPromises();
+    expect(
+      listMarketSignals.mock.calls.filter(([input]) => input.cursor),
+    ).toHaveLength(1);
+    expect(wrapper.get(".load-more").attributes("disabled")).toBeDefined();
+
+    releaseMore({
+      contractVersion: "market-signal-page.v1",
+      items: [
+        marketSignal({
+          signalId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          title: "第二页待判断信号",
+        }),
+      ],
+      pageSize: 50,
+      totalCount: 3,
+      nextCursor: null,
+    });
+    await flushPromises();
+    expect(wrapper.get(".queue-list").text()).toContain("第二页待判断信号");
+    expect(wrapper.find(".load-more").exists()).toBe(false);
+  });
+
+  it("falls back to one cross-destination list when the API predates destination paging", async () => {
+    const legacyItems = signals.map((signal) => {
+      const legacy = { ...signal };
+      delete legacy.activeValidation;
+      return legacy as MarketSignalV1;
+    });
+    listMarketSignals.mockImplementation(async () => ({
+      contractVersion: "market-signal-page.v1",
+      items: legacyItems,
+      pageSize: 50,
+      nextCursor: null,
+    }));
+    const wrapper = await mountPage();
+
+    expect(wrapper.findAll(".queue-item")).toHaveLength(2);
+    expect(tab(wrapper, "待判断").get("b").text()).toBe("2");
+
+    listMarketSignals.mockClear();
+    await (
+      wrapper.vm as unknown as { loadSignals: () => Promise<void> }
+    ).loadSignals();
+    await flushPromises();
+
+    expect(listMarketSignals).toHaveBeenCalledTimes(1);
+    expect(listMarketSignals).toHaveBeenCalledWith({ pageSize: 50 });
+  });
+
+  it("moves between queue tabs with arrow, Home and End keys", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const wrapper = await mountPage("", host);
+    const tabs = () => wrapper.findAll('[role="tab"]');
+    expect(tabs().map((item) => item.attributes("tabindex"))).toEqual([
+      "0",
+      "-1",
+      "-1",
+      "-1",
+      "-1",
+      "-1",
+      "-1",
+    ]);
+    expect(wrapper.get('[role="tabpanel"]').attributes("aria-labelledby")).toBe(
+      tabs()[0]!.attributes("id"),
+    );
+
+    await tabs()[0]!.trigger("keydown", { key: "ArrowRight" });
+    expect(tabs()[1]!.attributes("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tabs()[1]!.element);
+    await tabs()[1]!.trigger("keydown", { key: "End" });
+    expect(tabs()[6]!.attributes("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tabs()[6]!.element);
+    await tabs()[6]!.trigger("keydown", { key: "ArrowRight" });
+    expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
+    await tabs()[0]!.trigger("keydown", { key: "ArrowLeft" });
+    expect(tabs()[6]!.attributes("aria-selected")).toBe("true");
+    await tabs()[6]!.trigger("keydown", { key: "Home" });
+    expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
+    expect(tabs()[0]!.attributes("tabindex")).toBe("0");
+    wrapper.unmount();
+    host.remove();
+  });
+
+  it("blocks completed exits on another person's commitment and explains why", async () => {
+    signals = [
+      marketSignal({
+        ...signals[0]!,
+        currentDestination: "watching",
+        activeValidation: {
+          responsibleActorId: "market-colleague",
+          nextReviewDate: "2026-02-12",
+          watchFocus: "同事负责的验证",
+          waitingReason: null,
+        },
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    await wrapper.get('input[value="handoff"]').setValue(true);
+    expect(wrapper.get(".validation-owner-conflict").text()).toContain(
+      "market-colleague",
+    );
+    expect(wrapper.get(".primary-action").attributes("disabled")).toBeDefined();
+
+    await wrapper.get('input[value="dismiss"]').setValue(true);
+    expect(wrapper.get(".validation-owner-conflict").text()).toContain(
+      "market-colleague",
+    );
+    expect(wrapper.get(".primary-action").attributes("disabled")).toBeDefined();
+    await wrapper.get("select").setValue("证据不足");
+    expect(wrapper.get(".primary-action").attributes("disabled")).toBeDefined();
+
+    for (const decision of ["void", "archive"] as const) {
+      await wrapper.get(`input[value="${decision}"]`).setValue(true);
+      expect(wrapper.get(".validation-owner-conflict").text()).toContain(
+        "market-colleague",
+      );
+      expect(
+        wrapper.get(".primary-action").attributes("disabled"),
+      ).toBeDefined();
+    }
+  });
+
+  it("does not submit incomplete exits from the Web", async () => {
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    for (const decision of ["dismiss", "void", "archive"] as const) {
+      await wrapper.get(`input[value="${decision}"]`).setValue(true);
+      expect(
+        wrapper.get(".primary-action").attributes("disabled"),
+      ).toBeDefined();
+      await wrapper.get(".decision-panel").trigger("submit");
+    }
+
+    expect(decideMarketSignal).not.toHaveBeenCalled();
+  });
+
+  it("restores the conflict feedback and reloads detail after a 409", async () => {
+    signals = [
+      marketSignal({
+        ...signals[0]!,
+        currentDestination: "watching",
+        activeValidation: {
+          responsibleActorId: "operator-dev",
+          nextReviewDate: "2026-02-12",
+          watchFocus: "我的验证",
+          waitingReason: null,
+        },
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    decideMarketSignal.mockRejectedValue(
+      new Error("MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT"),
+    );
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    const detailReads = getMarketSignal.mock.calls.length;
+
+    await scheduleWatch(wrapper, "2026-02-20", "改期后的验证");
+
+    expect(wrapper.get(".operation-error").text()).toContain(
+      "MARKET_SIGNAL_VALIDATION_OWNER_CONFLICT",
+    );
+    expect(getMarketSignal.mock.calls.length).toBe(detailReads + 1);
+    expect(
+      (
+        wrapper.get('textarea[aria-label="这次要验证什么"]')
+          .element as HTMLTextAreaElement
+      ).value,
+    ).toBe("改期后的验证");
   });
 
   it("clears detail panes when switching queue filters", async () => {
@@ -421,7 +1013,7 @@ describe("MarketSignalsWorkbench", () => {
   });
 });
 
-async function mountPage(query = "") {
+async function mountPage(query = "", attachTo?: Element) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -438,6 +1030,7 @@ async function mountPage(query = "") {
   await router.push(`/workspaces/market-signals${query}`);
   await router.isReady();
   const wrapper = mount(MarketSignalsWorkbench, {
+    ...(attachTo ? { attachTo } : {}),
     global: {
       plugins: [router],
       stubs: {
@@ -507,5 +1100,42 @@ function handoff(
     createdBy: "market-owner",
     createdAt: "2026-09-25T02:00:00.000Z",
     idempotencyKey: "handoff-test",
+  };
+}
+
+type PageWrapper = Awaited<ReturnType<typeof mountPage>>;
+
+function tab(wrapper: PageWrapper, label: string) {
+  return wrapper
+    .findAll('[role="tab"]')
+    .find((item) => item.text().includes(label))!;
+}
+
+async function scheduleWatch(
+  wrapper: PageWrapper,
+  nextReviewDate: string,
+  watchFocus: string,
+): Promise<void> {
+  await wrapper.get('input[value="watch"]').setValue(true);
+  await wrapper.get('input[type="date"]').setValue(nextReviewDate);
+  await wrapper
+    .get('textarea[aria-label="这次要验证什么"]')
+    .setValue(watchFocus);
+  await wrapper.get(".decision-panel").trigger("submit");
+  await flushPromises();
+}
+
+function decisionResult(
+  signal: MarketSignalV1,
+  overrides: Partial<MarketSignalV1> = {},
+) {
+  return {
+    contractVersion: "market-signal-decision-result.v1",
+    status: "saved",
+    signal: { ...signal, ...overrides },
+    decisionId: "66666666-6666-4666-8666-666666666666",
+    decisionVersion: 1,
+    completion: "completed",
+    handoff: null,
   };
 }

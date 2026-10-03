@@ -9,12 +9,18 @@ import type {
 const props = defineProps<{
   items: readonly MarketSignalQueueItem[];
   selectedId: string;
+  counts?: Partial<Record<MarketSignalWorkflowState, number>>;
+  hasMore?: Partial<Record<MarketSignalWorkflowState, boolean>>;
+  loadingMore?: Partial<Record<MarketSignalWorkflowState, boolean>>;
+  groupErrors?: Partial<Record<MarketSignalWorkflowState, string>>;
 }>();
 
 const emit = defineEmits<{
   select: [id: string];
   clear: [];
   create: [];
+  loadMore: [destination: MarketSignalWorkflowState];
+  retryGroup: [destination: MarketSignalWorkflowState];
 }>();
 
 type QueueFilter = MarketSignalWorkflowState;
@@ -42,7 +48,10 @@ watch(
 );
 
 function countFor(state: QueueFilter): number {
-  return props.items.filter((item) => item.workflowState === state).length;
+  return (
+    props.counts?.[state] ??
+    props.items.filter((item) => item.workflowState === state).length
+  );
 }
 
 function chooseFilter(code: QueueFilter): void {
@@ -50,6 +59,31 @@ function chooseFilter(code: QueueFilter): void {
   filter.value = code;
   // 分组切换后旧选中不在当前列表里，右侧若继续展示会造成事实/动作错位。
   emit("clear");
+}
+
+const tabRefs = ref<HTMLButtonElement[]>([]);
+
+// WAI-ARIA tabs：Tab 只停在当前分组，方向键/Home/End 切换并移动焦点。
+function onTabKeydown(event: KeyboardEvent, index: number): void {
+  const last = filters.length - 1;
+  const nextIndex =
+    event.key === "ArrowRight" || event.key === "ArrowDown"
+      ? index === last
+        ? 0
+        : index + 1
+      : event.key === "ArrowLeft" || event.key === "ArrowUp"
+        ? index === 0
+          ? last
+          : index - 1
+        : event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? last
+            : null;
+  if (nextIndex === null) return;
+  event.preventDefault();
+  chooseFilter(filters[nextIndex]!.code);
+  tabRefs.value[nextIndex]?.focus();
 }
 
 function isClosedState(state: QueueFilter): boolean {
@@ -71,19 +105,35 @@ function isClosedState(state: QueueFilter): boolean {
 
     <div class="queue-filters" role="tablist" aria-label="信号处理进度">
       <button
-        v-for="item in filters"
+        v-for="(item, index) in filters"
+        :id="`signal-queue-tab-${item.code}`"
         :key="item.code"
+        ref="tabRefs"
         type="button"
         role="tab"
+        aria-controls="signal-queue-panel"
         :aria-selected="filter === item.code"
+        :tabindex="filter === item.code ? 0 : -1"
         :class="{ active: filter === item.code }"
         @click="chooseFilter(item.code)"
+        @keydown="onTabKeydown($event, index)"
       >
         {{ item.label }} <b>{{ countFor(item.code) }}</b>
       </button>
     </div>
 
-    <div class="queue-list" aria-label="经营信号列表">
+    <div
+      id="signal-queue-panel"
+      class="queue-list"
+      role="tabpanel"
+      :aria-labelledby="`signal-queue-tab-${filter}`"
+    >
+      <p v-if="groupErrors?.[filter]" class="group-error" role="alert">
+        <span>这一组暂时没加载成功：{{ groupErrors[filter] }}</span>
+        <button type="button" @click="emit('retryGroup', filter)">
+          重试这一组
+        </button>
+      </p>
       <button
         v-for="item in visibleItems"
         :key="item.id"
@@ -126,6 +176,24 @@ function isClosedState(state: QueueFilter): boolean {
           <AlertCircle :size="14" aria-hidden="true" />
           {{ item.workReason }}
         </span>
+        <template v-if="item.workflowState === 'watching'">
+          <span v-if="item.activeValidation" class="queue-item__validation">
+            <span class="queue-item__focus">
+              验证：{{
+                item.activeValidation.watchFocus ||
+                "旧记录未填写验证重点，需重新安排"
+              }}
+            </span>
+            检查日 {{ item.activeValidation.nextReviewDate }} · 负责人
+            {{ item.activeValidation.responsibleActorId }}
+            <template v-if="item.activeValidation.waitingReason">
+              · 等待 {{ item.activeValidation.waitingReason }}
+            </template>
+          </span>
+          <span v-else class="queue-item__validation">
+            旧记录没有当前验证承诺，需重新安排
+          </span>
+        </template>
         <span
           v-if="item.gaps.length && !isClosedState(item.workflowState)"
           class="queue-item__gaps"
@@ -140,7 +208,20 @@ function isClosedState(state: QueueFilter): boolean {
         </span>
       </button>
 
-      <p v-if="visibleItems.length === 0" class="empty-state">
+      <button
+        v-if="hasMore?.[filter]"
+        type="button"
+        class="load-more"
+        :disabled="loadingMore?.[filter]"
+        @click="emit('loadMore', filter)"
+      >
+        {{ loadingMore?.[filter] ? "正在加载..." : "加载更多" }}
+      </button>
+
+      <p
+        v-if="visibleItems.length === 0 && !groupErrors?.[filter]"
+        class="empty-state"
+      >
         这一组暂时没有信号。
       </p>
     </div>
@@ -249,7 +330,9 @@ function isClosedState(state: QueueFilter): boolean {
 
 .queue-item:focus-visible,
 .queue-filters button:focus-visible,
-.create-button:focus-visible {
+.create-button:focus-visible,
+.group-error button:focus-visible,
+.load-more:focus-visible {
   outline: 0;
   box-shadow: inset var(--focus-ring);
 }
@@ -345,6 +428,63 @@ function isClosedState(state: QueueFilter): boolean {
 
 .queue-item__gaps--closed {
   color: var(--muted);
+}
+
+.queue-item__validation {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  overflow-wrap: anywhere;
+}
+
+.queue-item__focus {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.group-error {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--risk);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  overflow-wrap: anywhere;
+}
+
+.group-error button {
+  justify-self: start;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--brand-line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--brand-strong);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.load-more:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.load-more {
+  width: calc(100% - 2 * var(--space-3));
+  min-height: var(--touch-target);
+  margin: var(--space-2) var(--space-3);
+  border: 1px solid var(--brand-line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--brand-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-label);
+  font-weight: 700;
 }
 
 .empty-state {

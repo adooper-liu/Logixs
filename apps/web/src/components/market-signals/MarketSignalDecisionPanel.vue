@@ -6,7 +6,14 @@ import type { MarketSignalDecisionDraft } from "../../data/marketSignalScenarios
 const emit = defineEmits<{
   submit: [];
 }>();
-defineProps<{
+const props = defineProps<{
+  activeValidation?: {
+    responsibleActorId: string;
+    nextReviewDate: string;
+    watchFocus: string | null;
+    waitingReason: string | null;
+  } | null;
+  actorId?: string | null;
   busy?: boolean;
   closed?: boolean;
   closedLabel?: string;
@@ -17,19 +24,51 @@ const model = defineModel<MarketSignalDecisionDraft>({ required: true });
 const isClose = computed(
   () => model.value.decision === "void" || model.value.decision === "archive",
 );
+const ownedByAnother = computed(
+  () =>
+    Boolean(props.activeValidation?.responsibleActorId) &&
+    props.activeValidation?.responsibleActorId !== props.actorId,
+);
+const watchComplete = computed(() =>
+  Boolean(model.value.nextReviewDate && model.value.watchFocus.trim()),
+);
+const exitComplete = computed(() => {
+  const draft = model.value;
+  if (draft.decision === "dismiss") return Boolean(draft.dismissReason);
+  if (draft.decision === "void" || draft.decision === "archive") {
+    return Boolean(draft.judgmentNote.trim());
+  }
+  return true;
+});
+const replacesOrClearsCommitment = computed(
+  () =>
+    model.value.decision === "watch" ||
+    model.value.decision === "handoff" ||
+    model.value.decision === "dismiss" ||
+    model.value.decision === "void" ||
+    model.value.decision === "archive",
+);
+const blockedByOwner = computed(
+  () => ownedByAnother.value && replacesOrClearsCommitment.value,
+);
 
 const actionLabel = computed(() => {
+  if (blockedByOwner.value) return "当前验证由其他负责人承担";
   if (model.value.decision === "watch") {
-    return model.value.nextReviewDate ? "保存并继续观察" : "保存，日期稍后补";
+    return watchComplete.value
+      ? props.activeValidation
+        ? "更新我的验证承诺"
+        : "由我负责并安排验证"
+      : "补齐日期和验证重点";
   }
   if (model.value.decision === "dismiss") {
-    return model.value.dismissReason ? "记录不采纳" : "保存，原因稍后补";
+    return model.value.dismissReason ? "记录不采纳" : "补齐不采纳原因";
   }
   if (model.value.decision === "void") {
-    return model.value.judgmentNote.trim() ? "确认作废" : "保存，理由稍后补";
+    return model.value.judgmentNote.trim() ? "确认作废" : "补齐作废理由";
   }
   if (model.value.decision === "archive") {
-    return model.value.judgmentNote.trim() ? "确认归档" : "保存，理由稍后补";
+    return model.value.judgmentNote.trim() ? "确认归档" : "补齐归档理由";
   }
   return "交给选品评估";
 });
@@ -80,7 +119,10 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
           @change="chooseDecision('watch')"
         />
         <Eye :size="17" aria-hidden="true" />
-        <span><b>继续观察</b><small>现在还不足以交给选品</small></span>
+        <span
+          ><b>安排下一项验证</b
+          ><small>由我负责，明确验证重点和检查日</small></span
+        >
       </label>
       <label :class="{ selected: model.decision === 'handoff' }">
         <input
@@ -128,9 +170,15 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       </label>
     </fieldset>
 
+    <p v-if="blockedByOwner" class="validation-owner-conflict" role="status">
+      当前验证由
+      {{ activeValidation?.responsibleActorId }}
+      负责；改期、交选品、不采纳、作废或归档需由其本人提交。本片不支持静默接管或转派。
+    </p>
+
     <div v-if="model.decision === 'watch'" class="decision-fields">
       <label>
-        <span>下次查看日期</span>
+        <span>下次检查日期</span>
         <input
           type="date"
           :value="model.nextReviewDate"
@@ -138,12 +186,23 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
         />
       </label>
       <label>
-        <span>下次重点看什么 <small>可后补</small></span>
+        <span>这次要验证什么</span>
         <textarea
           rows="3"
+          aria-label="这次要验证什么"
           :value="model.watchFocus"
           placeholder="例如：搜索趋势是否持续、价格带是否稳定"
           @input="updateField('watchFocus', $event)"
+        />
+      </label>
+      <label>
+        <span>当前在等什么 <small>可选</small></span>
+        <textarea
+          rows="2"
+          aria-label="当前在等什么"
+          :value="model.waitingReason"
+          placeholder="例如：等待第二客服队列导出"
+          @input="updateField('waitingReason', $event)"
         />
       </label>
     </div>
@@ -167,12 +226,12 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
 
     <div v-else-if="model.decision === 'dismiss'" class="decision-fields">
       <label>
-        <span>不采纳原因 <small>可后补</small></span>
+        <span>不采纳原因</span>
         <select
           :value="model.dismissReason"
           @change="updateField('dismissReason', $event)"
         >
-          <option value="">稍后补充</option>
+          <option value="" disabled>请选择原因</option>
           <option>证据不足</option>
           <option>不符合当前经营方向</option>
           <option>已有商品覆盖</option>
@@ -183,10 +242,7 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
 
     <div v-else-if="isClose" class="decision-fields">
       <label>
-        <span
-          >{{ model.decision === "void" ? "作废" : "归档" }}理由
-          <small>可后补</small></span
-        >
+        <span>{{ model.decision === "void" ? "作废" : "归档" }}理由</span>
         <textarea
           rows="3"
           :value="model.judgmentNote"
@@ -210,7 +266,16 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
       />
     </label>
 
-    <button class="primary-action" type="submit" :disabled="busy">
+    <button
+      class="primary-action"
+      type="submit"
+      :disabled="
+        busy ||
+        blockedByOwner ||
+        (model.decision === 'watch' && !watchComplete) ||
+        !exitComplete
+      "
+    >
       <CalendarClock
         v-if="model.decision === 'watch'"
         :size="17"
@@ -257,6 +322,15 @@ function chooseDecision(decision: MarketSignalDecisionDraft["decision"]): void {
   margin: var(--space-1) 0 0;
   color: var(--ink);
   font-size: var(--text-title);
+}
+
+.validation-owner-conflict {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--warn);
+  background: var(--warn-bg);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
 }
 
 .decision-options {
