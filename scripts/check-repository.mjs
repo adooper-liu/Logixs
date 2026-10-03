@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
@@ -419,8 +420,19 @@ export function inspectWorkbenchRouteSource(source) {
 
 export function inspectWorkbenchRouterSource(source) {
   const router = topLevelVariable(astSource(source), "router")?.initializer;
-  const text = router?.getText() ?? "";
-  return /path:\s*["']\/compliance["']/.test(text)
+  let hasCompliancePath = false;
+  const visit = (node) => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      node.name.text === "path" &&
+      stringLiteral(unwrap(node.initializer)) === "/compliance"
+    )
+      hasCompliancePath = true;
+    if (!hasCompliancePath) ts.forEachChild(node, visit);
+  };
+  if (router) visit(router);
+  return hasCompliancePath
     ? []
     : [
         "router: must retain /compliance separately from /workspaces/compliance-operations",

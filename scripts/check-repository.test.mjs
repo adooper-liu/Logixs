@@ -30,6 +30,7 @@ import {
   findRouteAccessViolations,
   findStyleScaleViolations,
   findUiThemeBoundaryViolations,
+  runRepositoryChecks,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
 
@@ -62,6 +63,10 @@ test("current workbench authorities use the approved 23-workbench baseline", () 
 test("workbench catalog declares the approved 23-code baseline", () => {
   const violations = checkWorkbenchCatalogSource(repositoryRoot);
   assert.deepEqual(violations, []);
+});
+
+test("repository check entry executes tracked-file checks", () => {
+  assert.deepEqual(runRepositoryChecks(), []);
 });
 
 test("workbench catalog guard requires the legacy compliance route beside the new stub", () => {
@@ -131,7 +136,7 @@ test("catalog inspection rejects misleading comments and structural row drift", 
 // booking export_customs compliance_operations /workspaces/booking
 // /workspaces/export-customs /workspaces/compliance-operations
 // catalogStage("customs", { title: "进口清关" })`
-    .replace(/plannedCatalogStage\(\s*10,[\s\S]*?\n  \),/, "")
+    .replace(/plannedCatalogStage\(\s*10,[\s\S]*?\n {2}\),/, "")
     .replace(
       'plannedSupportCatalogStage(\n    "compliance_operations"',
       'plannedCatalogStage(\n    21,\n    "compliance_operations"',
@@ -185,12 +190,12 @@ test("catalog route inspection rejects filtered compliance stubs and ignored sta
 });
 
 test("catalog inspection ignores commented constructor decoys", () => {
-  const source = `${readFileSync(
+  const source = readFileSync(
     join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
     "utf8",
   )
     .replace(
-      /plannedCatalogStage\(\s*10,[\s\S]*?\n  \),/,
+      /plannedCatalogStage\(\s*10,[\s\S]*?\n {2}\),/,
       `// plannedCatalogStage(
     10,
     "booking",
@@ -215,9 +220,7 @@ test("catalog inspection ignores commented constructor decoys", () => {
     [],
   ), */
   catalogStage("charges"),`,
-    )}
-const stringDecoy = 'plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")';
-const templateDecoy = \`plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")\`;`;
+    );
 
   const violations = inspectWorkbenchCatalogSource(source);
   assert.ok(violations.includes("workbenchStages: code 'booking' is missing"));
@@ -249,7 +252,7 @@ test("route inspection ignores decoy snippets outside the exported route initial
   );
 });
 
-test("router inspection ignores /compliance decoys outside the router initializer", () => {
+test("router inspection ignores a nested router that shadows the top-level router", () => {
   const source = `
     function decoy() { const router = createRouter({ routes: [{ path: "/compliance" }] }); }
     // { path: "/compliance" }
@@ -260,18 +263,40 @@ test("router inspection ignores /compliance decoys outside the router initialize
   ]);
 });
 
-test("catalog inspection validates baseline values and effective helper kinds", () => {
+test("router inspection ignores quoted and template path decoys", () => {
+  const source = `
+    const router = createRouter({
+      routes: [{
+        path: "/tasks",
+        stringDecoy: 'path: "/compliance"',
+        templateDecoy: \`path: "/compliance"\`,
+      }],
+    });`;
+
+  assert.deepEqual(inspectWorkbenchRouterSource(source), [
+    "router: must retain /compliance separately from /workspaces/compliance-operations",
+  ]);
+});
+
+test("catalog inspection validates baseline values", () => {
   const source = readFileSync(
     join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
     "utf8",
-  )
-    .replace("total: 23", "total: 20")
-    .replace('kind: "support",\n    phase,', 'kind: "main",\n    phase,');
+  ).replace("total: 23", "total: 20");
   const violations = inspectWorkbenchCatalogSource(source);
 
   assert.ok(
     violations.includes("workbenchBaseline: total must be 23, found '20'"),
   );
+});
+
+test("catalog inspection reads kind from an arrow helper return value", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  ).replace('kind: "support",\n  phase,', 'kind: "main",\n  phase,');
+  const violations = inspectWorkbenchCatalogSource(source);
+
   assert.ok(violations.some((violation) => violation.includes("support rows")));
 });
 
