@@ -1326,9 +1326,24 @@ function architectureSourceFiles() {
   }));
 }
 
+const WISDOM_BASELINE_DIRECTORY =
+  "doc/cross-border-supply-chain/wisdom-baseline/";
+
+// 基线原文须逐字保留（AGENTS.md §1.2.1 第 13 条），其中指向当时本机路径的链接不能修正；目录说明仍受链接检查。
+export function isVerbatimWisdomBaseline(path) {
+  return (
+    path.startsWith(WISDOM_BASELINE_DIRECTORY) &&
+    path !== `${WISDOM_BASELINE_DIRECTORY}README.md`
+  );
+}
+
 export function runRepositoryChecks({ docsOnly = false } = {}) {
   const markdownFiles = walkFiles(repositoryRoot, (path) =>
     path.endsWith(".md"),
+  );
+  const linkCheckedMarkdownFiles = markdownFiles.filter(
+    (absolutePath) =>
+      !isVerbatimWisdomBaseline(toRepositoryRelativePath(absolutePath)),
   );
   const contractAuthorityFiles = markdownFiles.filter((absolutePath) => {
     const path = toRepositoryRelativePath(absolutePath);
@@ -1337,7 +1352,7 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
     );
   });
   const errors = [
-    ...findBrokenMarkdownLinks(markdownFiles),
+    ...findBrokenMarkdownLinks(linkCheckedMarkdownFiles),
     ...taskStatusErrors(),
     ...findAmbiguousContractPhaseReferences(
       contractAuthorityFiles.map((path) => ({
