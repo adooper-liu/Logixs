@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { workbenchStages } from "../../data/workbenchNetwork";
 import router from "../../router";
 import { navigationForRole } from "./navigation";
 
@@ -44,6 +45,14 @@ describe("navigationForRole", () => {
         .getRoutes()
         .some((route) => route.path === "/workspaces/compliance-operations"),
     ).toBe(true);
+  });
+
+  it("registers every catalog workbench path in the runtime router", () => {
+    const registeredPaths = new Set(router.getRoutes().map(({ path }) => path));
+
+    for (const stage of workbenchStages) {
+      expect(registeredPaths.has(stage.path), stage.code).toBe(true);
+    }
   });
 
   it("does not put the developer console in the operations shell", () => {

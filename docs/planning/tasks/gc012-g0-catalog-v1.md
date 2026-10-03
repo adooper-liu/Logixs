@@ -216,3 +216,4 @@ S6 验收后执行：推送 `feat/gc012-g0-catalog-v1`、建 PR、跑 CI；合�
 - 2026-10-03 20:12：S3 由 fresh 只读 Claude Opus 子代理复审 `4bebc6bf`，结论 `approve-with-findings`（1 major、6 minor、1 nit，`writes: none`，复审后工作树无已跟踪变化）；writeScopes 与 37 个差异文件双向一致，无生成物或密钥。主代理核实 F01、F02 后全部 `accepted`，F03 已写回 08，其余进入 S5；E2E 门禁以 S4 PR CI 为准（F08）。
 - 2026-10-03 20:48：S5 第 1 次回交（未提交差异，11 个文件均在写入范围内）。主代理复跑检查器测试 61/61、`repo:check`、web 单测 639/639、web typecheck 均通过；F01、F02、F03、F05、F06、F07 落实，F04 对正式工作台路由数组的 `.filter` 仍静默通过，退回 S5 返工 R2。
 - 2026-10-03 20:59～21:25：R2 回交只改检查器两文件，主代理复测正式工作台 `.filter`/`.slice` 均报错、检查器 63/63，验收 S5 并提交 `5ee04e49`。首次增量复审被中断（未留改动），重派的 fresh 只读 Claude Opus 复审结论 `approve-with-findings`（2 minor、1 nit，`writes: none`）；主代理复现 S5-F01 后全部 `accepted`，进入 S6。
+- 2026-10-03 21:34：S6 回交（4 个文件，均在写入范围内；Codex 报告 RED 与路由删除变异自证，`router/index.ts` 无残留差异）。主代理复测模板字符串、`as const` 与普通字符串三种错误 `path` 均报错；检查器 65/65、`repo:check`、web 单测 640/640、web lint、web typecheck、Prettier、`git diff --check` 通过，验收 S6。下一步 S4。

@@ -10,10 +10,7 @@ import {
   getWorkbenchHandoff,
   getWorkbenchOperationalSpec,
   getWorkbenchStage,
-  type WorkbenchRelation,
 } from "../data/workbenchNetwork";
-
-type WorkbenchRelationDetail = WorkbenchRelation & { timing?: string };
 
 const props = defineProps<{ stageCode: string }>();
 
@@ -23,15 +20,11 @@ const operationalSpec = computed(() =>
 );
 const inbound = computed(() => {
   if (!stage.value) return [];
-  return withLegacyHandoffDetails(
-    getInboundWorkbenchRelations(stage.value.code),
-  );
+  return getInboundWorkbenchRelations(stage.value.code);
 });
 const outbound = computed(() => {
   if (!stage.value) return [];
-  return withLegacyHandoffDetails(
-    getOutboundWorkbenchRelations(stage.value.code),
-  );
+  return getOutboundWorkbenchRelations(stage.value.code);
 });
 const upstream = computed(() =>
   inbound.value.flatMap(({ from }) => {
@@ -50,22 +43,6 @@ const consumedHandoffs = computed(() =>
     .map((code) => getWorkbenchHandoff(code))
     .filter((item) => item !== null),
 );
-
-function withLegacyHandoffDetails(
-  relations: readonly WorkbenchRelation[],
-): readonly WorkbenchRelationDetail[] {
-  return relations.map((relation) => {
-    const handoff = getWorkbenchHandoff(relation.handoffCode);
-    return handoff
-      ? {
-          ...relation,
-          label: handoff.name,
-          facts: handoff.facts,
-          timing: handoff.timing,
-        }
-      : relation;
-  });
-}
 </script>
 
 <template>

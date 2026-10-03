@@ -176,7 +176,13 @@ function objectProperty(object, name) {
 }
 
 function stringLiteral(node) {
-  return node && ts.isStringLiteral(node) ? node.text : null;
+  if (!node) return null;
+  const expression = unwrap(node);
+  return expression &&
+    (ts.isStringLiteral(expression) ||
+      ts.isNoSubstitutionTemplateLiteral(expression))
+    ? expression.text
+    : null;
 }
 
 function numericLiteral(node) {

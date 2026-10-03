@@ -278,6 +278,32 @@ test("catalog inspection rejects dynamic override values", () => {
   );
 });
 
+test("catalog inspection validates no-substitution template overrides by value", () => {
+  const templateOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
+    'catalogStage("customs", { sequence: 16, title: "进口清关", path: `/workspaces/wrong` })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(templateOverride).includes(
+      "workbenchStages: customs path must be '/workspaces/customs', found '/workspaces/wrong'",
+    ),
+  );
+});
+
+test("catalog inspection validates const-asserted overrides by value", () => {
+  const constOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
+    'catalogStage("customs", { sequence: 16, title: "进口清关", path: "/workspaces/wrong" as const })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(constOverride).includes(
+      "workbenchStages: customs path must be '/workspaces/customs', found '/workspaces/wrong'",
+    ),
+  );
+});
+
 function readWorkbenchCatalogSource() {
   return readFileSync(
     join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
