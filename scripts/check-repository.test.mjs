@@ -18,6 +18,8 @@ import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
   checkWorkbenchCatalogSource,
+  inspectWorkbenchCatalogSource,
+  inspectWorkbenchRouteSource,
   findBrokenMarkdownLinks,
   findStaleWorkbenchBaselineReferences,
   findForbiddenTrackedPaths,
@@ -68,7 +70,10 @@ test("workbench catalog guard requires the legacy compliance route beside the ne
   mkdirSync(catalogDirectory, { recursive: true });
   writeFileSync(
     join(catalogDirectory, "workbenchNetwork.ts"),
-    `total: 23\nmain: 20\nsupport: 3\n"booking"\n"export_customs"\n"compliance_operations"\n"/workspaces/booking"\n"/workspaces/export-customs"\n"/workspaces/compliance-operations"\ncatalogStage("customs", { sequence: 16, title: "进口清关" })`,
+    readFileSync(
+      join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+      "utf8",
+    ),
   );
   const routerDirectory = join(root, "apps", "web", "src", "router");
   mkdirSync(routerDirectory, { recursive: true });
@@ -84,7 +89,18 @@ test("workbench catalog guard requires the legacy compliance route beside the ne
   mkdirSync(workbenchNetworkRoutesDirectory, { recursive: true });
   writeFileSync(
     join(workbenchNetworkRoutesDirectory, "routes.ts"),
-    "catalogStubWorkbenchStages",
+    readFileSync(
+      join(
+        repositoryRoot,
+        "apps",
+        "web",
+        "src",
+        "modules",
+        "workbench-network",
+        "routes.ts",
+      ),
+      "utf8",
+    ),
   );
   for (const path of [
     "docs/product/WORKSPACE_UI_INVENTORY.md",
@@ -103,6 +119,65 @@ test("workbench catalog guard requires the legacy compliance route beside the ne
 
   assert.deepEqual(checkWorkbenchCatalogSource(root), [
     "apps/web/src/router/index.ts: must retain /compliance separately from /workspaces/compliance-operations",
+  ]);
+});
+
+test("catalog inspection rejects misleading comments and structural row drift", () => {
+  const source = `${readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  )}
+// booking export_customs compliance_operations /workspaces/booking
+// /workspaces/export-customs /workspaces/compliance-operations
+// catalogStage("customs", { title: "进口清关" })`
+    .replace(/plannedCatalogStage\(\s*10,[\s\S]*?\n  \),/, "")
+    .replace(
+      'plannedSupportCatalogStage(\n    "compliance_operations"',
+      'plannedCatalogStage(\n    21,\n    "compliance_operations"',
+    )
+    .replace('title: "进口清关"', 'title: "清关"')
+    .replace(
+      '  catalogStage("charges"),',
+      `  plannedSupportCatalogStage(
+    "compliance_operations",
+    "合规运营",
+    "/workspaces/compliance-operations",
+    "product",
+    "合规运营人员",
+    "重复目录桩",
+    [],
+  ),
+  catalogStage("charges"),`,
+    );
+  const violations = inspectWorkbenchCatalogSource(source);
+
+  for (const expected of [
+    "workbenchStages: duplicate code 'compliance_operations'",
+    "workbenchStages: duplicate path '/workspaces/compliance-operations'",
+    "workbenchStages: code 'booking' is missing",
+    "workbenchStages: customs title must be '进口清关', found '清关'",
+    "workbenchStages: compliance_operations kind must be 'support', found 'main'",
+  ]) {
+    assert.ok(violations.includes(expected), `missing violation: ${expected}`);
+  }
+});
+
+test("catalog route inspection rejects filtered compliance stubs and ignored stage paths", () => {
+  const excludedCompliance = `
+    export const routes = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages]
+      .filter((stage) => stage.code !== "compliance_operations")
+      .map((stage) => ({ path: stage.path }));`;
+  const ignoredStagePath = `
+    export const routes = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
+      (stage) => ({ path: "/workspaces/planned" }),
+    );`;
+
+  assert.deepEqual(inspectWorkbenchRouteSource(excludedCompliance), [
+    "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
+    "workbench-network routes: must not exclude compliance_operations from catalog stubs",
+  ]);
+  assert.deepEqual(inspectWorkbenchRouteSource(ignoredStagePath), [
+    "workbench-network routes: catalog stubs must map each stage.path",
   ]);
 });
 

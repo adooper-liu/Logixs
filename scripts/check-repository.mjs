@@ -100,49 +100,245 @@ const CURRENT_TECHNICAL_REFERENCE_PATHS = [
 const MATURITY_EVIDENCE_DISCLAIMER =
   "路由、页面或 API 存在不等于 `operational` 或 `validated`。";
 
+function stringValue(value) {
+  return value.trim().match(/^['"]([^'"]+)['"]$/)?.[1] ?? null;
+}
+
+function balancedEnd(source, start, open = "(", close = ")") {
+  let depth = 0;
+  let quote = null;
+  for (let index = start; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (character === "\\") index += 1;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (["'", '"', "`"].includes(character)) quote = character;
+    else if (character === open) depth += 1;
+    else if (character === close && --depth === 0) return index;
+  }
+  return -1;
+}
+
+function splitArguments(source) {
+  const argumentsList = [];
+  let start = 0;
+  let depth = 0;
+  let quote = null;
+  for (let index = 0; index <= source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (character === "\\") index += 1;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (["'", '"', "`"].includes(character)) quote = character;
+    else if (["(", "[", "{"].includes(character)) depth += 1;
+    else if ([")", "]", "}"].includes(character)) depth -= 1;
+    else if ((character === "," && depth === 0) || index === source.length) {
+      argumentsList.push(source.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  return argumentsList;
+}
+
+function functionCalls(source, name) {
+  const calls = [];
+  const pattern = new RegExp(`\\b${name}\\s*\\(`, "g");
+  for (const match of source.matchAll(pattern)) {
+    const open = source.indexOf("(", match.index);
+    const end = balancedEnd(source, open);
+    if (end !== -1) calls.push(splitArguments(source.slice(open + 1, end)));
+  }
+  return calls;
+}
+
+function arraySource(source, declaration) {
+  const start = source.indexOf(declaration);
+  if (start === -1) return "";
+  const equals = source.indexOf("=", start);
+  const open = source.indexOf("[", equals);
+  const end = balancedEnd(source, open, "[", "]");
+  return end === -1 ? "" : source.slice(open + 1, end);
+}
+
+const EXPECTED_WORKBENCH_PATHS = new Map([
+  ["market_signals", "/workspaces/market-signals"],
+  ["product_selection", "/workspaces/product-selection"],
+  ["product_npi", "/workspaces/product-npi"],
+  ["master_data", "/workspaces/master-data"],
+  ["sourcing", "/workspaces/sourcing"],
+  ["demand_replenishment", "/workspaces/demand-replenishment"],
+  ["procurement", "/workspaces/procurement"],
+  ["supply_readiness", "/workspaces/supply-readiness"],
+  ["shipment_planning", "/workspaces/shipment-planning"],
+  ["booking", "/workspaces/booking"],
+  ["cargo_ready", "/workspaces/cargo-ready"],
+  ["stuffing", "/workspaces/stuffing"],
+  ["export_customs", "/workspaces/export-customs"],
+  ["dispatch", "/workspaces/dispatch"],
+  ["ocean_operations", "/workspaces/ocean-operations"],
+  ["customs", "/workspaces/customs"],
+  ["pickup", "/workspaces/pickup"],
+  ["delivery", "/workspaces/delivery"],
+  ["unloading", "/workspaces/unloading"],
+  ["empty_return", "/workspaces/empty-return"],
+  ["compliance_operations", "/workspaces/compliance-operations"],
+  ["charges", "/workspaces/charges"],
+  ["exceptions", "/workspaces/exceptions"],
+]);
+
+export function inspectWorkbenchCatalogSource(source) {
+  const errors = [];
+  const legacy = new Map();
+  for (const [kind, name] of [
+    ["main", "liveStage"],
+    ["main", "stage"],
+    ["support", "supportStage"],
+  ]) {
+    for (const args of functionCalls(
+      arraySource(source, "export const workbenchNetwork"),
+      name,
+    )) {
+      const offset = kind === "support" ? 0 : 1;
+      const code = stringValue(args[offset]);
+      if (code)
+        legacy.set(code, {
+          code,
+          title: stringValue(args[offset + 1]),
+          path: stringValue(args[offset + 2]),
+          kind,
+        });
+    }
+  }
+  const stages = [];
+  const catalog = arraySource(source, "export const workbenchStages");
+  for (const args of functionCalls(catalog, "catalogStage")) {
+    const code = stringValue(args[0]);
+    const base = legacy.get(code);
+    if (!base) continue;
+    stages.push({
+      ...base,
+      title: args[1]?.match(/title:\s*["']([^"']+)["']/)?.[1] ?? base.title,
+      path: args[1]?.match(/path:\s*["']([^"']+)["']/)?.[1] ?? base.path,
+      kind: args[1]?.match(/kind:\s*["']([^"']+)["']/)?.[1] ?? base.kind,
+    });
+  }
+  for (const [name, kind] of [
+    ["plannedCatalogStage", "main"],
+    ["plannedSupportCatalogStage", "support"],
+  ]) {
+    for (const args of functionCalls(catalog, name)) {
+      const offset = name === "plannedCatalogStage" ? 1 : 0;
+      stages.push({
+        code: stringValue(args[offset]),
+        title: stringValue(args[offset + 1]),
+        path: stringValue(args[offset + 2]),
+        kind,
+      });
+    }
+  }
+  if (stages.length !== 23)
+    errors.push(`workbenchStages: expected 23 rows, found ${stages.length}`);
+  for (const [kind, expected] of [
+    ["main", 20],
+    ["support", 3],
+  ]) {
+    const actual = stages.filter((stage) => stage.kind === kind).length;
+    if (actual !== expected)
+      errors.push(
+        `workbenchStages: expected ${expected} ${kind} rows, found ${actual}`,
+      );
+  }
+  for (const [field] of [["code"], ["path"]]) {
+    const seen = new Set();
+    for (const stage of stages) {
+      if (stage[field] && seen.has(stage[field]))
+        errors.push(`workbenchStages: duplicate ${field} '${stage[field]}'`);
+      seen.add(stage[field]);
+    }
+  }
+  for (const [code, path] of EXPECTED_WORKBENCH_PATHS) {
+    const stage = stages.find((item) => item.code === code);
+    if (!stage) errors.push(`workbenchStages: code '${code}' is missing`);
+    else if (stage.path !== path)
+      errors.push(
+        `workbenchStages: ${code} path must be '${path}', found '${stage.path}'`,
+      );
+  }
+  const customs = stages.find((stage) => stage.code === "customs");
+  if (customs && customs.title !== "进口清关")
+    errors.push(
+      `workbenchStages: customs title must be '进口清关', found '${customs.title}'`,
+    );
+  const compliance = stages.find(
+    (stage) => stage.code === "compliance_operations",
+  );
+  if (compliance && compliance.kind !== "support")
+    errors.push(
+      `workbenchStages: compliance_operations kind must be 'support', found '${compliance.kind}'`,
+    );
+  return errors;
+}
+
+export function inspectWorkbenchRouteSource(source) {
+  const errors = [];
+  if (
+    !/\[\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\]\s*\.map\s*\(/.test(
+      source,
+    )
+  )
+    errors.push(
+      "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
+    );
+  if (
+    /catalogStubWorkbenchStages[\s\S]*?\.filter\([\s\S]*?compliance_operations/.test(
+      source,
+    )
+  )
+    errors.push(
+      "workbench-network routes: must not exclude compliance_operations from catalog stubs",
+    );
+  if (
+    !/\[\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\][\s\S]*?\.map\s*\([\s\S]*?path:\s*stage\.path/.test(
+      source,
+    )
+  )
+    errors.push(
+      "workbench-network routes: catalog stubs must map each stage.path",
+    );
+  return errors;
+}
+
 export function checkWorkbenchCatalogSource(root) {
   const source = readFileSync(resolve(root, WORKBENCH_CATALOG_PATH), "utf8");
   const routerSource = readFileSync(resolve(root, ROUTER_PATH), "utf8");
-  const workbenchNetworkRoutesSource = readFileSync(
+  const routesSource = readFileSync(
     resolve(root, WORKBENCH_NETWORK_ROUTES_PATH),
     "utf8",
   );
-  const errors = [];
-  const requiredCatalogFragments = [
-    "total: 23",
-    "main: 20",
-    "support: 3",
-    '"booking"',
-    '"export_customs"',
-    '"compliance_operations"',
-    '"/workspaces/booking"',
-    '"/workspaces/export-customs"',
-    '"/workspaces/compliance-operations"',
-    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
-  ];
-
-  for (const fragment of requiredCatalogFragments) {
-    if (!source.includes(fragment)) {
-      errors.push(`${WORKBENCH_CATALOG_PATH}: missing '${fragment}'`);
-    }
-  }
-
-  if (
-    !routerSource.includes('path: "/compliance"') ||
-    !workbenchNetworkRoutesSource.includes("catalogStubWorkbenchStages")
-  ) {
+  const errors = inspectWorkbenchCatalogSource(source).map(
+    (error) => `${WORKBENCH_CATALOG_PATH}: ${error}`,
+  );
+  if (!routerSource.includes('path: "/compliance"'))
     errors.push(
       `${ROUTER_PATH}: must retain /compliance separately from /workspaces/compliance-operations`,
     );
-  }
-
+  errors.push(
+    ...inspectWorkbenchRouteSource(routesSource).map(
+      (error) => `${WORKBENCH_NETWORK_ROUTES_PATH}: ${error}`,
+    ),
+  );
   for (const path of CURRENT_TECHNICAL_REFERENCE_PATHS) {
-    const text = readFileSync(resolve(root, path), "utf8");
-    if (!text.includes(MATURITY_EVIDENCE_DISCLAIMER)) {
+    if (
+      !readFileSync(resolve(root, path), "utf8").includes(
+        MATURITY_EVIDENCE_DISCLAIMER,
+      )
+    )
       errors.push(`${path}: missing catalog maturity evidence disclaimer`);
-    }
   }
-
   return errors;
 }
 
