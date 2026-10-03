@@ -2,6 +2,7 @@
 
 本目录收存负责人此前对各工作台逐台“智慧开启”形成的结论原文，2026-10-03 自仓库外 `D:\Logixs docs` 原样导入，
 除行尾按仓库规范统一为 LF 外未改一字，并由 `.prettierignore` 排除格式化。
+2026-10-04 负责人在仓库内直接补入 `业务工作台持续打磨受阻原因.md`，同样按原文收存。
 
 ## 地位
 
@@ -16,31 +17,32 @@
 
 ## 文件与工作台对应
 
-| 文件                     | 工作台 stable code      |
-| ------------------------ | ----------------------- |
-| `市场与经营信号.md`      | `market_signals`        |
-| `选品立项.md`            | `product_selection`     |
-| `产品开发与NPI工作台.md` | `product_npi`           |
-| `商品与物料主数据.md`    | `master_data`           |
-| `寻源与供应商工作台.md`  | `sourcing`              |
-| `需求与补货.md`          | `demand_replenishment`  |
-| `采购.md`                | `procurement`           |
-| `生产.md`                | `supply_readiness`      |
-| `出运计划.md`            | `shipment_planning`     |
-| `订舱.md`                | `booking`               |
-| `备货.md`                | `cargo_ready`           |
-| `装箱.md`                | `stuffing`              |
-| `出口报关.md`            | `export_customs`        |
-| `出运.md`                | `dispatch`              |
-| `海运运营工作台.md`      | `ocean_operations`      |
-| `清关.md`                | `customs`（进口清关）   |
-| `提柜.md`                | `pickup`                |
-| `送仓.md`                | `delivery`              |
-| `卸柜.md`                | `unloading`             |
-| `还箱.md`                | `empty_return`          |
-| `合规运营.md`            | `compliance_operations` |
-| `费用.md`                | `charges`               |
-| `异常中心.md`            | `exceptions`            |
-| `全局.md`                | 跨工作台共同问题        |
-| `进度.md`                | 项目整体进度判断        |
-| `三体一面.md`            | 集团租户与账套主体      |
+| 文件                            | 工作台 stable code      |
+| ------------------------------- | ----------------------- |
+| `市场与经营信号.md`             | `market_signals`        |
+| `选品立项.md`                   | `product_selection`     |
+| `产品开发与NPI工作台.md`        | `product_npi`           |
+| `商品与物料主数据.md`           | `master_data`           |
+| `寻源与供应商工作台.md`         | `sourcing`              |
+| `需求与补货.md`                 | `demand_replenishment`  |
+| `采购.md`                       | `procurement`           |
+| `生产.md`                       | `supply_readiness`      |
+| `出运计划.md`                   | `shipment_planning`     |
+| `订舱.md`                       | `booking`               |
+| `备货.md`                       | `cargo_ready`           |
+| `装箱.md`                       | `stuffing`              |
+| `出口报关.md`                   | `export_customs`        |
+| `出运.md`                       | `dispatch`              |
+| `海运运营工作台.md`             | `ocean_operations`      |
+| `清关.md`                       | `customs`（进口清关）   |
+| `提柜.md`                       | `pickup`                |
+| `送仓.md`                       | `delivery`              |
+| `卸柜.md`                       | `unloading`             |
+| `还箱.md`                       | `empty_return`          |
+| `合规运营.md`                   | `compliance_operations` |
+| `费用.md`                       | `charges`               |
+| `异常中心.md`                   | `exceptions`            |
+| `全局.md`                       | 跨工作台共同问题        |
+| `进度.md`                       | 项目整体进度判断        |
+| `三体一面.md`                   | 集团租户与账套主体      |
+| `业务工作台持续打磨受阻原因.md` | 跨工作台交付节奏诊断    |
