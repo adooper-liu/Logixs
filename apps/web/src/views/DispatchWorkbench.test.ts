@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import WorkbenchFlowContext from "../components/workbench/WorkbenchFlowContext.vue";
 import DispatchWorkbench from "./DispatchWorkbench.vue";
 
 const listContainers = vi.fn();
@@ -97,6 +98,15 @@ describe("DispatchWorkbench", () => {
     expect(listContainers).not.toHaveBeenCalled();
   });
 
+  it("renders graph fan-in above the live dispatch workspace", async () => {
+    const wrapper = await mountPage("/workspaces/dispatch");
+
+    expect(wrapper.findAll('[data-testid="inbound-relation"]')).toHaveLength(3);
+    expect(wrapper.text()).toContain("订舱提供当前有效承运人承诺");
+    expect(wrapper.text()).toContain("装箱提供实际柜货和 VGM 事实");
+    expect(wrapper.text()).toContain("出口报关提供可信出口放行");
+  });
+
   it("shows the shipping role sequence and blocks handoff until stuffing exists", async () => {
     const wrapper = await mountPage(
       "/workspaces/dispatch?view=loading&containerId=container-1",
@@ -132,6 +142,7 @@ async function mountPage(path: string) {
           template:
             "<header><h1>{{ title }}</h1><slot name='actions' /></header>",
         },
+        WorkbenchFlowContext,
       },
     },
   });

@@ -29,6 +29,10 @@ describe("PlannedWorkbenchView", () => {
     expect(wrapper.text()).toContain("形成可追踪的采购承诺");
     expect(wrapper.text()).toContain("补货决策交接");
     expect(wrapper.text()).toContain("采购承诺交接");
+    expect(wrapper.text()).toContain(
+      "预测、库存策略和补货计算形成责任人决定时",
+    );
+    expect(wrapper.text()).toContain("SKU 与国家");
     expect(wrapper.text()).toContain("框架已建立，业务能力待接通");
     expect(wrapper.findAll("button")).toHaveLength(0);
   });

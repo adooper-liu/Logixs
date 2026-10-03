@@ -39,6 +39,8 @@ describe("WorkbenchNetworkView", () => {
     expect(wrapper.text()).toContain("进口清关");
     expect(wrapper.text()).toContain("费用结算工作台");
     expect(wrapper.text()).toContain("异常中心");
+    expect(wrapper.text()).toContain("经营机会交接");
+    expect(wrapper.text()).toContain("采购承诺交接");
     expect(wrapper.text()).toContain("已接真实能力");
     expect(wrapper.text()).toContain("不代表业务闭环已经验收");
     expect(wrapper.text()).not.toContain("可工作");

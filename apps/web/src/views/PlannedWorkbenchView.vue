@@ -13,6 +13,8 @@ import {
   type WorkbenchRelation,
 } from "../data/workbenchNetwork";
 
+type WorkbenchRelationDetail = WorkbenchRelation & { timing?: string };
+
 const props = defineProps<{ stageCode: string }>();
 
 const stage = computed(() => getWorkbenchStage(props.stageCode));
@@ -23,7 +25,7 @@ const inbound = computed(() => {
   if (!stage.value) return [];
 
   const relations = getInboundWorkbenchRelations(stage.value.code);
-  if (relations.length) return relations;
+  if (relations.length) return withLegacyHandoffDetails(relations);
 
   return asLegacyRelations(stage.value.inboundHandoffCode);
 });
@@ -31,7 +33,7 @@ const outbound = computed(() => {
   if (!stage.value) return [];
 
   const relations = getOutboundWorkbenchRelations(stage.value.code);
-  if (relations.length) return relations;
+  if (relations.length) return withLegacyHandoffDetails(relations);
 
   return asLegacyRelations(stage.value.outboundHandoffCode);
 });
@@ -55,7 +57,7 @@ const consumedHandoffs = computed(() =>
 
 function asLegacyRelations(
   handoffCode: string | null,
-): readonly WorkbenchRelation[] {
+): readonly WorkbenchRelationDetail[] {
   const handoff = getWorkbenchHandoff(handoffCode);
   if (!handoff) return [];
 
@@ -68,8 +70,25 @@ function asLegacyRelations(
       handoffCode: handoff.code,
       label: handoff.name,
       facts: handoff.facts,
+      timing: handoff.timing,
     },
   ];
+}
+
+function withLegacyHandoffDetails(
+  relations: readonly WorkbenchRelation[],
+): readonly WorkbenchRelationDetail[] {
+  return relations.map((relation) => {
+    const handoff = getWorkbenchHandoff(relation.handoffCode);
+    return handoff
+      ? {
+          ...relation,
+          label: handoff.name,
+          facts: handoff.facts,
+          timing: handoff.timing,
+        }
+      : relation;
+  });
 }
 </script>
 
@@ -122,24 +141,46 @@ function asLegacyRelations(
           <small>{{
             stage.kind === "support" ? "横向接入" : "完成工作后"
           }}</small>
-          <h2 id="handoff-result-title">
-            {{ stage.kind === "support" ? "消费哪些主链事实" : "交出什么" }}
-          </h2>
+          <h2 id="handoff-result-title">交接事实</h2>
+          <template v-if="inbound.length">
+            <small class="relation-direction">接收什么</small>
+            <div
+              v-for="relation in inbound"
+              :key="relation.code"
+              class="relation-detail"
+            >
+              <b class="handoff-name">{{ relation.label }}</b>
+              <p v-if="relation.timing">{{ relation.timing }}</p>
+              <ul>
+                <li v-for="fact in relation.facts" :key="fact">{{ fact }}</li>
+              </ul>
+            </div>
+          </template>
           <template v-if="outbound.length">
-            <b
+            <small class="relation-direction">交出什么</small>
+            <div
               v-for="relation in outbound"
               :key="relation.code"
-              class="handoff-name"
+              class="relation-detail"
             >
-              {{ relation.label }}
-            </b>
+              <b class="handoff-name">{{ relation.label }}</b>
+              <p v-if="relation.timing">{{ relation.timing }}</p>
+              <ul>
+                <li v-for="fact in relation.facts" :key="fact">{{ fact }}</li>
+              </ul>
+            </div>
           </template>
-          <ul v-else-if="consumedHandoffs.length" class="consumed-list">
+          <ul
+            v-else-if="!inbound.length && consumedHandoffs.length"
+            class="consumed-list"
+          >
             <li v-for="handoff in consumedHandoffs" :key="handoff.code">
               {{ handoff.name }}
             </li>
           </ul>
-          <p v-else>以可核验的业务回执完成当前主链责任。</p>
+          <p v-else-if="!inbound.length">
+            以可核验的业务回执完成当前主链责任。
+          </p>
         </div>
       </section>
     </div>

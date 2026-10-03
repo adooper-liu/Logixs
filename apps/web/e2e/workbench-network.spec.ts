@@ -62,18 +62,46 @@ test("catalog stubs stay read-only and dispatch shows all inbound dependencies",
   }
 });
 
+test("catalog topology is keyboard navigable", async ({ page }) => {
+  await page.goto("/workspaces");
+  const booking = page.getByRole("link", { name: /订舱/ });
+
+  await booking.focus();
+  await expect(booking).toBeFocused();
+  await booking.press("Enter");
+  await expect(page).toHaveURL(/\/workspaces\/booking$/);
+  await expect(page.getByRole("heading", { name: "订舱" })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "当前责任与交接" }),
+  ).toContainText("出运计划提供获批订舱边界");
+});
+
 for (const width of [320, 375, 1440]) {
-  test(`catalog pages avoid horizontal overflow at ${width}px`, async ({
+  test(`catalog stub and live dispatch avoid horizontal overflow at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/workspaces");
+    for (const path of ["/workspaces/booking", "/workspaces/dispatch"]) {
+      await page.goto(path);
+      if (path === "/workspaces/dispatch") {
+        await expect(page.getByTestId("inbound-relation")).toHaveCount(3);
+      } else {
+        await expect(page.getByRole("heading", { name: "订舱" })).toBeVisible();
+      }
 
-    const widths = await page.evaluate(() => ({
-      client: document.documentElement.clientWidth,
-      scroll: document.documentElement.scrollWidth,
-    }));
-    expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+      const widths = await page.evaluate(() => ({
+        pageClient: document.documentElement.clientWidth,
+        pageScroll: document.documentElement.scrollWidth,
+        contentClient:
+          document.querySelector<HTMLElement>(".app-content")?.clientWidth ?? 0,
+        contentScroll:
+          document.querySelector<HTMLElement>(".app-content")?.scrollWidth ?? 0,
+      }));
+      expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
+      expect(widths.contentScroll).toBeLessThanOrEqual(
+        widths.contentClient + 1,
+      );
+    }
   });
 }
 
