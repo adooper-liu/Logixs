@@ -31,34 +31,36 @@ authorityRefs:
 
 ## 边界 / 不做
 
-- 不改变任何角色的职责、写入边界、指令链、单写入者、WIP 上限、锁与复审触发条件；只替换承担者名称并新增映射表。
+- 不改变任何角色的职责、写入边界、指令链、单写入者、WIP 上限、锁与复审触发条件；除替换承担者名称外，只新增映射表及负责人已定的复审模型家族、实际模型登记、映射调整须定案和未登记工具不得写入四项约束。
 - 不修改 `scripts/check-repository.mjs`：`owner` / `writer` 已是自由的小写稳定编码，同一 `writer` 互斥的现有校验继续有效。
 - 不追溯改写历史 brief、进度日志和提交中的 `claude` / `cursor` / `codex` 署名与 frontmatter（`AGENTS.md` §1.2 第 11 条）。
 - 不改业务权威、工作台定义或“20/23 台”口径。
 
 ## 负责人决策记录
 
-| 日期       | 决定                       | 选项与结论                                                                                          | 写回                     |
-| ---------- | -------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------ |
-| 2026-10-03 | 事实：Claude Code 实际模型 | 负责人确认 Claude Code 经映射转发，实际挂载 GPT-5.6                                                 | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 规则约束方式               | A 按角色约束并登记实际模型（采纳）/ B 直接互换工具名 / C 维持现状仅改模型配置                       | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 角色映射                   | 主代理 Cursor + Claude Opus；实现执行器 Codex + GPT-5.6；独立复审 Cursor 独立只读会话 + Claude Opus | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 智慧开启决策顾问           | 候选：Codex 独立只读会话 / 主代理兼任 / 第三方模型；负责人改定为 Cursor 独立只读会话 + GPT-5.6      | `AGENTS.md` §1.2 第 4 条 |
-| 2026-10-03 | 写入授权                   | 授权在独立 worktree 与分支修改并本地提交；不推送、不建 PR，交负责人审阅                             | 本 brief                 |
+| 日期       | 决定                         | 选项与结论                                                                                          | 写回                     |
+| ---------- | ---------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------ |
+| 2026-10-03 | 事实：Claude Code 实际模型   | 负责人确认 Claude Code 经映射转发，实际挂载 GPT-5.6                                                 | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 规则约束方式                 | A 按角色约束并登记实际模型（采纳）/ B 直接互换工具名 / C 维持现状仅改模型配置                       | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 角色映射                     | 主代理 Cursor + Claude Opus；实现执行器 Codex + GPT-5.6；独立复审 Cursor 独立只读会话 + Claude Opus | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 智慧开启决策顾问             | 候选：Codex 独立只读会话 / 主代理兼任 / 第三方模型；负责人改定为 Cursor 独立只读会话 + GPT-5.6      | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 写入授权                     | 授权在独立 worktree 与分支修改并本地提交；不推送、不建 PR，交负责人审阅                             | 本 brief                 |
+| 2026-10-03 | 复审模型家族                 | 负责人确认分工时同意“复审和实现不同家族，盲点不重叠”                                                | `AGENTS.md` §1.2 第 4 条 |
+| 2026-10-03 | 家族判定口径与主代理自写切片 | `pending`：见 ARM-003，只阻塞本切片复审资格的判定                                                   | 待定                     |
 
 ## 执行切片
 
 ### 切片 `S1-role-mapping`
 
-| 项目     | 内容                                                                |
-| -------- | ------------------------------------------------------------------- |
-| 基线     | `d7046ab6`（`origin/main`）                                         |
-| 执行角色 | 主代理直接写入治理权威：工具 `Cursor`，实际模型 `Claude Opus`       |
-| 复审     | 待定：独立复审（Cursor 独立只读会话 + Claude Opus）或负责人直接审阅 |
-| 写入范围 | 见 frontmatter `writeScopes`                                        |
-| 禁止范围 | 角色职责、指令链、锁与 WIP 规则的语义；`scripts/**`；历史 brief     |
-| 验证命令 | `pnpm repo:check`；`pnpm exec prettier --check` 本切片触及文件      |
-| 停止条件 | 本地提交后停手，等待负责人审阅；不推送、不建 PR                     |
+| 项目     | 内容                                                                           |
+| -------- | ------------------------------------------------------------------------------ |
+| 基线     | `d7046ab6`（`origin/main`）                                                    |
+| 执行角色 | 主代理直接写入治理权威：工具 `Cursor`，实际模型 `Claude Opus`                  |
+| 复审     | 已完成一轮独立复审（Cursor fresh 只读会话 + Claude Opus），资格待 ARM-003 定案 |
+| 写入范围 | 见 frontmatter `writeScopes`                                                   |
+| 禁止范围 | 角色职责、指令链、锁与 WIP 规则的语义；`scripts/**`；历史 brief                |
+| 验证命令 | `pnpm repo:check`；`pnpm exec prettier --check` 本切片触及文件                 |
+| 停止条件 | 本地提交后停手，等待负责人审阅；不推送、不建 PR                                |
 
 改动要点：
 
@@ -67,6 +69,55 @@ authorityRefs:
 3. `ENGINEERING_RULES.md` 中“最终 PR 集成与合并仍由 Codex 排队执行”与现行规则早已不符，改为由主代理执行。
 4. `_template.md` 同步角色称呼与指令取值，默认 `owner: main`、`writer: codex`，切片表登记执行角色与复审的工具和实际模型。
 5. `CLAUDE.md` 改为指向角色映射，不再暗示 Claude Code 承担特定角色。
+
+## 复审裁决（S1 第一轮）
+
+```yaml
+protocol: logix-disposition/v1
+slice: S1-role-mapping
+decisions:
+  - finding: ARM-001
+    status: accepted
+    reason: >
+      模型家族规则已有负责人同意，补入决策记录；映射调整改为须负责人定案；删除模板中放宽并行面的 `codex:<会话>` 提示，
+      writer 互斥面恢复与原规则一致。
+    writeback: AGENTS.md §1.2 第 4 条；_template.md；本 brief 决策记录
+  - finding: ARM-002
+    status: accepted
+    reason: 现行业务权威与新映射冲突，但修改 doc/ 须持业务权威锁，不夹带进本切片。
+    writeback: 本 brief “后续事项”
+  - finding: ARM-003
+    status: pending-owner
+    reason: 家族判定口径和主代理自写切片的复审要求属于复审政策，须负责人定案。
+    writeback: 本 brief 决策记录
+  - finding: ARM-004
+    status: accepted
+    reason: 恢复“每个 brief 新开（fresh）”限定，消除对复审独立性的放宽。
+    writeback: AGENTS.md §1.2 第 4 条映射表
+  - finding: ARM-005
+    status: accepted
+    reason: 模板切片表改为引用映射表；AGENTS.md 写明调整映射须同步模板。
+    writeback: _template.md；AGENTS.md §1.2 第 4 条
+  - finding: ARM-006
+    status: accepted
+    reason: 补充“未列入映射表的工具（包括 Claude Code）不承担角色、不得写入”。
+    writeback: AGENTS.md §1.2 第 4 条
+  - finding: ARM-007
+    status: accepted
+    reason: >
+      docs/INDEX.md:62 描述的是另一任务的过时状态，不在本切片范围，登记为后续清理；ADR-013 属于已接受决策的历史表述，
+      按 §1.2 第 11 条按当时映射理解。
+    writeback: 本 brief “后续事项”
+next: owner-decision
+```
+
+另：复审建议把 `risk` 提为 `high`，不采纳。本切片只改文档，不涉及 §8 列举的数据库、授权、公共契约、依赖或核心工作流；
+`repo:check` 与格式门禁已足够覆盖其风险面。
+
+## 后续事项
+
+- `doc/cross-border-supply-chain/08-role-workbenches.md:91-100` 仍把负责人澄清互动和局部技术定案归给 Codex，与新映射冲突；须另建任务并持业务权威锁改为角色名。
+- `docs/INDEX.md:62` 的 `database-data-dictionary-v1` 状态描述过时（实际已 `done`），并写着“Codex 收口”；随下一次索引维护修正。
 
 ## 集成注意
 
@@ -81,4 +132,5 @@ authorityRefs:
 
 ## 进度
 
-- 2026-10-03：S1 完成修改与本地验证，见本切片提交；状态 `review`，等待负责人审阅。
+- 2026-10-03：S1 完成修改与本地验证（`f2b9841f`）；状态 `review`。
+- 2026-10-03：第一轮独立复审返回 7 项 finding，无阻断项；已修正 6 项中可在本切片处理的部分，ARM-003 待负责人定案。

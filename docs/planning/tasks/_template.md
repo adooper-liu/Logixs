@@ -3,7 +3,7 @@ status: design # design | coding | review | fix | blocked | done（机器可校�
 branch: # git 初始化后填：feat/<任务名>
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
 owner: main # 端到端主代理；design/coding/fix 必填
-writer: codex # 当前唯一写入者的工具编码，并行时用 codex:<会话>；design/coding/fix 必填，独立复审默认只读
+writer: codex # 当前唯一写入者的工具编码，按 AGENTS.md §1.2 第 4 条映射填写；design/coding/fix 必填，独立复审默认只读
 risk: medium # low | medium | high；design/coding/fix 必填
 dependsOn: [] # task brief 文件名（不含 .md）；依赖未 done 时不得写
 writeScopes: # design/coding/fix 必填；精确文件，或目录/**；不得使用其它 glob
@@ -49,15 +49,15 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 
 ### 切片 `<slice-id>`
 
-| 项目     | 内容                                                                   |
-| -------- | ---------------------------------------------------------------------- |
-| 基线     | `<commit-sha>`                                                         |
-| 执行角色 | 实现执行器：工具 `Codex`，实际模型 `GPT-5.6`（经转发的工具填实际模型） |
-| 复审     | `不适用` 或 独立复审：工具与实际模型，须与实现执行器不同模型家族       |
-| 写入范围 | 精确文件或目录                                                         |
-| 禁止范围 | 不得顺带修改的模块、契约、状态或入口                                   |
-| 验证命令 | 切片最近测试、模块 lint/typecheck、专项门禁及预期非零结果              |
-| 停止条件 | `ready-for-review` 后停手；是否允许提交；哪些情况返回 `blocked`        |
+| 项目     | 内容                                                                                |
+| -------- | ----------------------------------------------------------------------------------- |
+| 基线     | `<commit-sha>`                                                                      |
+| 执行角色 | 角色、工具与实际模型，按 `AGENTS.md` §1.2 第 4 条映射填写（经转发的工具填实际模型） |
+| 复审     | `不适用` 或 独立复审：工具与实际模型，须符合 `AGENTS.md` §1.2 第 4 条的模型家族要求 |
+| 写入范围 | 精确文件或目录                                                                      |
+| 禁止范围 | 不得顺带修改的模块、契约、状态或入口                                                |
+| 验证命令 | 切片最近测试、模块 lint/typecheck、专项门禁及预期非零结果                           |
+| 停止条件 | `ready-for-review` 后停手；是否允许提交；哪些情况返回 `blocked`                     |
 
 主代理下发任务：
 
