@@ -1,110 +1,127 @@
 import { describe, expect, it } from "vitest";
 import {
-  getWorkbenchHandoff,
-  liveWorkbenchCodes,
+  getDownstreamWorkbenchStages,
+  getInboundWorkbenchRelations,
+  getOutboundWorkbenchRelations,
+  getUpstreamWorkbenchStages,
+  isProductionMaturity,
   mainWorkbenchChain,
-  prototypeWorkbenchCodes,
   supportingWorkbenches,
-  workbenchHandoffs,
-  workbenchNetwork,
-  workbenchOperationalReviewOrder,
+  workbenchBaseline,
+  workbenchRelations,
+  workbenchStage,
+  workbenchStages,
 } from "./workbenchNetwork";
 
-describe("workbenchNetwork", () => {
-  it("keeps workbench codes and paths unique", () => {
-    expect(new Set(workbenchNetwork.map((item) => item.code)).size).toBe(
-      workbenchNetwork.length,
-    );
-    expect(new Set(workbenchNetwork.map((item) => item.path)).size).toBe(
-      workbenchNetwork.length,
-    );
-  });
-
-  it("keeps every workbench in the operational-spec review order exactly once", () => {
-    expect(new Set(workbenchOperationalReviewOrder).size).toBe(
-      workbenchOperationalReviewOrder.length,
-    );
-    expect([...workbenchOperationalReviewOrder].sort()).toEqual(
-      workbenchNetwork.map((item) => item.code).sort(),
-    );
-  });
-
-  it("connects every adjacent main-chain workbench with one explicit handoff", () => {
-    const handoffsByCode = new Map(
-      workbenchHandoffs.map((handoff) => [handoff.code, handoff]),
-    );
-
-    for (let index = 0; index < mainWorkbenchChain.length - 1; index += 1) {
-      const current = mainWorkbenchChain[index]!;
-      const next = mainWorkbenchChain[index + 1]!;
-      const handoff = handoffsByCode.get(current.outboundHandoffCode!);
-
-      expect(handoff).toMatchObject({
-        from: current.code,
-        to: next.code,
-      });
-      expect(next.inboundHandoffCode).toBe(handoff?.code);
-    }
-  });
-
-  it("maps the connected strategy and operational workbenches to their live routes", () => {
-    expect(liveWorkbenchCodes).toEqual([
-      "market_signals",
-      "product_selection",
-      "product_npi",
-      "master_data",
-      "sourcing",
-      "cargo_ready",
-      "stuffing",
-      "dispatch",
-      "customs",
-      "pickup",
-      "delivery",
-      "unloading",
-    ]);
-    expect(
-      workbenchNetwork
-        .filter((item) => item.implementation === "live")
-        .map((item) => item.path),
-    ).toEqual([
-      "/workspaces/market-signals",
-      "/workspaces/product-selection",
-      "/workspaces/product-npi",
-      "/workspaces/master-data",
-      "/workspaces/sourcing",
-      "/workspaces/cargo-ready",
-      "/workspaces/stuffing",
-      "/workspaces/dispatch",
-      "/workspaces/customs",
-      "/workspaces/pickup",
-      "/workspaces/delivery",
-      "/workspaces/unloading",
-    ]);
-  });
-
-  it("marks market signals and product selection as live after API integration", () => {
-    expect(prototypeWorkbenchCodes).toEqual([]);
-    expect(liveWorkbenchCodes).toEqual(
-      expect.arrayContaining(["market_signals", "product_selection"]),
-    );
-  });
-
-  it("allows ordinary gaps to follow the market opportunity handoff", () => {
-    expect(getWorkbenchHandoff("market_opportunity")).toMatchObject({
-      from: "market_signals",
-      to: "product_selection",
-      timing: "经营负责人决定交给选品评估时；普通资料缺失随交接继续保留",
-      facts: ["信号标题", "已有事实与证据", "经营假设", "机会说明", "待补事项"],
+describe("workbench catalog", () => {
+  it("keeps the approved 23-workbench baseline and unique catalog identities", () => {
+    expect(workbenchBaseline).toEqual({
+      version: "2026-10-03",
+      total: 23,
+      main: 20,
+      support: 3,
     });
-  });
-
-  it("keeps fees and exceptions outside the lifecycle successor chain", () => {
-    expect(supportingWorkbenches.map((item) => item.code)).toEqual([
+    expect(mainWorkbenchChain).toHaveLength(20);
+    expect(supportingWorkbenches.map(({ code }) => code)).toEqual([
+      "compliance_operations",
       "charges",
       "exceptions",
     ]);
-    expect(supportingWorkbenches.every((item) => item.sequence === null)).toBe(
-      true,
+    expect(new Set(workbenchStages.map(({ code }) => code)).size).toBe(23);
+    expect(new Set(workbenchStages.map(({ path }) => path)).size).toBe(23);
+    expect(mainWorkbenchChain.map(({ sequence }) => sequence)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    ]);
+    expect(
+      supportingWorkbenches.every(({ sequence }) => sequence === null),
+    ).toBe(true);
+  });
+
+  it("records the approved titles and catalog-only surfaces without promoting runtime capability", () => {
+    expect(workbenchStage("customs")?.title).toBe("进口清关");
+    expect(workbenchStage("booking")).toMatchObject({
+      path: "/workspaces/booking",
+      assessmentState: "assessed",
+      maturity: "planned",
+      surface: "catalog_stub",
+    });
+    expect(workbenchStage("export_customs")).toMatchObject({
+      path: "/workspaces/export-customs",
+      assessmentState: "assessed",
+      maturity: "planned",
+      surface: "catalog_stub",
+    });
+    expect(workbenchStage("compliance_operations")).toMatchObject({
+      path: "/workspaces/compliance-operations",
+      assessmentState: "assessed",
+      maturity: "planned",
+      surface: "catalog_stub",
+    });
+    expect(
+      workbenchStages
+        .filter(
+          ({ assessmentState }) => assessmentState === "pending_assessment",
+        )
+        .every(
+          ({ maturity, surface }) =>
+            maturity === null && surface === "dedicated",
+        ),
+    ).toBe(true);
+    expect(isProductionMaturity(null)).toBe(false);
+    expect(isProductionMaturity("planned")).toBe(false);
+    expect(isProductionMaturity("facts_only")).toBe(false);
+    expect(isProductionMaturity("operational")).toBe(true);
+    expect(isProductionMaturity("validated")).toBe(true);
+  });
+
+  it("models the approved fan-in and fan-out dependencies", () => {
+    const relationPairs = workbenchRelations.map(
+      ({ from, to }) => `${from}->${to}`,
     );
+
+    expect(relationPairs).toEqual(
+      expect.arrayContaining([
+        "shipment_planning->booking",
+        "shipment_planning->cargo_ready",
+        "supply_readiness->cargo_ready",
+        "booking->stuffing",
+        "cargo_ready->stuffing",
+        "booking->export_customs",
+        "stuffing->export_customs",
+        "booking->dispatch",
+        "stuffing->dispatch",
+        "export_customs->dispatch",
+      ]),
+    );
+    expect(
+      getInboundWorkbenchRelations("dispatch").map(({ from }) => from),
+    ).toEqual(
+      expect.arrayContaining(["booking", "stuffing", "export_customs"]),
+    );
+    expect(
+      getUpstreamWorkbenchStages("dispatch").map(({ code }) => code),
+    ).toEqual(
+      expect.arrayContaining(["booking", "stuffing", "export_customs"]),
+    );
+    expect(
+      getDownstreamWorkbenchStages("booking").map(({ code }) => code),
+    ).toEqual(
+      expect.arrayContaining(["stuffing", "export_customs", "dispatch"]),
+    );
+    expect(
+      getOutboundWorkbenchRelations("booking").every(
+        ({ kind, handoffCode }) =>
+          kind === "fact_dependency" && handoffCode === null,
+      ),
+    ).toBe(true);
+  });
+
+  it("only relates catalog stages that exist", () => {
+    const codes = new Set(workbenchStages.map(({ code }) => code));
+
+    for (const relation of workbenchRelations) {
+      expect(codes.has(relation.from)).toBe(true);
+      expect(codes.has(relation.to)).toBe(true);
+    }
   });
 });

@@ -1,7 +1,11 @@
-export type WorkbenchImplementation = "live" | "prototype" | "framework";
 export type WorkbenchKind = "main" | "support";
 export type WorkbenchPhase =
   "strategy" | "product" | "supply" | "shipment" | "arrival";
+export type WorkbenchMaturity =
+  "planned" | "facts_only" | "operational" | "validated";
+export type WorkbenchSurface = "dedicated" | "catalog_stub";
+export type WorkbenchRelationKind = "handoff" | "fact_dependency";
+export type WorkbenchAssessmentState = "pending_assessment" | "assessed";
 
 export type WorkbenchCode =
   | "market_signals"
@@ -13,8 +17,10 @@ export type WorkbenchCode =
   | "procurement"
   | "supply_readiness"
   | "shipment_planning"
+  | "booking"
   | "cargo_ready"
   | "stuffing"
+  | "export_customs"
   | "dispatch"
   | "ocean_operations"
   | "customs"
@@ -22,6 +28,7 @@ export type WorkbenchCode =
   | "delivery"
   | "unloading"
   | "empty_return"
+  | "compliance_operations"
   | "charges"
   | "exceptions";
 
@@ -38,17 +45,46 @@ export interface WorkbenchStage {
   code: WorkbenchCode;
   title: string;
   path: string;
-  kind: WorkbenchKind;
+  kind: "main" | "support";
   phase: WorkbenchPhase;
   sequence: number | null;
-  implementation: WorkbenchImplementation;
+  assessmentState: WorkbenchAssessmentState;
+  maturity: WorkbenchMaturity | null;
+  surface: WorkbenchSurface;
   ownerRole: string;
   roleResult: string;
   requiredFacts: readonly string[];
+  implementation: WorkbenchImplementation;
   inboundHandoffCode: string | null;
   outboundHandoffCode: string | null;
   consumesHandoffCodes?: readonly string[];
 }
+
+type WorkbenchImplementation = "live" | "prototype" | "framework";
+
+type LegacyWorkbenchStage = Omit<
+  WorkbenchStage,
+  "assessmentState" | "maturity" | "surface"
+>;
+
+type CatalogWorkbenchStage = WorkbenchStage;
+
+export interface WorkbenchRelation {
+  code: string;
+  from: WorkbenchCode;
+  to: WorkbenchCode;
+  kind: WorkbenchRelationKind;
+  handoffCode: string | null;
+  label: string;
+  facts: readonly string[];
+}
+
+export const workbenchBaseline = {
+  version: "2026-10-03",
+  total: 23,
+  main: 20,
+  support: 3,
+} as const;
 
 export const workbenchHandoffs = [
   handoff(
@@ -436,16 +472,244 @@ export const workbenchNetwork = [
     ["受影响对象", "来源事实", "责任方", "时限与恢复条件"],
     workbenchHandoffs.map((item) => item.code),
   ),
-] as const satisfies readonly WorkbenchStage[];
+] as const satisfies readonly LegacyWorkbenchStage[];
 
-export const mainWorkbenchChain = workbenchNetwork.filter(
+const legacyStageByCode = new Map(
+  workbenchNetwork.map((stage) => [stage.code, stage]),
+);
+
+const catalogStage = (
+  code: WorkbenchCode,
+  overrides: Partial<
+    Pick<
+      WorkbenchStage,
+      | "title"
+      | "path"
+      | "kind"
+      | "phase"
+      | "sequence"
+      | "assessmentState"
+      | "maturity"
+      | "surface"
+      | "ownerRole"
+      | "roleResult"
+      | "requiredFacts"
+    >
+  > = {},
+): CatalogWorkbenchStage => {
+  const legacyStage = legacyStageByCode.get(code);
+
+  if (!legacyStage) {
+    throw new Error(`Missing legacy stage for ${code}`);
+  }
+
+  return {
+    code,
+    title: legacyStage.title,
+    path: legacyStage.path,
+    kind: legacyStage.kind,
+    phase: legacyStage.phase,
+    sequence: legacyStage.sequence,
+    assessmentState: "pending_assessment",
+    maturity: null,
+    surface: "dedicated",
+    ownerRole: legacyStage.ownerRole,
+    roleResult: legacyStage.roleResult,
+    requiredFacts: legacyStage.requiredFacts,
+    implementation: legacyStage.implementation,
+    inboundHandoffCode: legacyStage.inboundHandoffCode,
+    outboundHandoffCode: legacyStage.outboundHandoffCode,
+    consumesHandoffCodes: legacyStage.consumesHandoffCodes,
+    ...overrides,
+  };
+};
+
+const plannedCatalogStage = (
+  sequence: number,
+  code: WorkbenchCode,
+  title: string,
+  path: string,
+  phase: WorkbenchPhase,
+  ownerRole: string,
+  roleResult: string,
+  requiredFacts: readonly string[],
+): CatalogWorkbenchStage => ({
+  code,
+  title,
+  path,
+  kind: "main",
+  phase,
+  sequence,
+  assessmentState: "assessed",
+  maturity: "planned",
+  surface: "catalog_stub",
+  ownerRole,
+  roleResult,
+  requiredFacts,
+  implementation: "framework",
+  inboundHandoffCode: null,
+  outboundHandoffCode: null,
+});
+
+const plannedSupportCatalogStage = (
+  code: WorkbenchCode,
+  title: string,
+  path: string,
+  phase: WorkbenchPhase,
+  ownerRole: string,
+  roleResult: string,
+  requiredFacts: readonly string[],
+): CatalogWorkbenchStage => ({
+  code,
+  title,
+  path,
+  kind: "support",
+  phase,
+  sequence: null,
+  assessmentState: "assessed",
+  maturity: "planned",
+  surface: "catalog_stub",
+  ownerRole,
+  roleResult,
+  requiredFacts,
+  implementation: "framework",
+  inboundHandoffCode: null,
+  outboundHandoffCode: null,
+});
+
+export const workbenchStages = [
+  catalogStage("market_signals"),
+  catalogStage("product_selection"),
+  catalogStage("product_npi"),
+  catalogStage("master_data"),
+  catalogStage("sourcing"),
+  catalogStage("demand_replenishment"),
+  catalogStage("procurement"),
+  catalogStage("supply_readiness"),
+  catalogStage("shipment_planning"),
+  plannedCatalogStage(
+    10,
+    "booking",
+    "订舱",
+    "/workspaces/booking",
+    "shipment",
+    "订舱运营人员",
+    "取得并维护承运人确认、当前有效且可执行的订舱承诺",
+    ["获批出运边界", "承运人确认", "运价与合同适用性"],
+  ),
+  catalogStage("cargo_ready", { sequence: 11 }),
+  catalogStage("stuffing", { sequence: 12 }),
+  plannedCatalogStage(
+    13,
+    "export_customs",
+    "出口报关",
+    "/workspaces/export-customs",
+    "shipment",
+    "出口报关操作人员",
+    "形成全部必要出口案卷已可信放行的结果",
+    ["出口案卷", "申报资料", "外部海关放行证据"],
+  ),
+  catalogStage("dispatch", { sequence: 14 }),
+  catalogStage("ocean_operations", { sequence: 15 }),
+  catalogStage("customs", { sequence: 16, title: "进口清关" }),
+  catalogStage("pickup", { sequence: 17 }),
+  catalogStage("delivery", { sequence: 18 }),
+  catalogStage("unloading", { sequence: 19 }),
+  catalogStage("empty_return", { sequence: 20 }),
+  plannedSupportCatalogStage(
+    "compliance_operations",
+    "合规运营",
+    "/workspaces/compliance-operations",
+    "product",
+    "合规运营人员",
+    "形成有证据、可追溯、在有效期内的准入决定及变化影响",
+    ["产品版本", "制造主体", "目标国家", "用途", "业务日期"],
+  ),
+  catalogStage("charges"),
+  catalogStage("exceptions"),
+] as const satisfies readonly CatalogWorkbenchStage[];
+
+export const workbenchRelations = [
+  relation(
+    "shipment_planning_to_booking",
+    "shipment_planning",
+    "booking",
+    "出运计划提供获批订舱边界",
+    ["获批计划", "路线", "货物范围"],
+  ),
+  relation(
+    "shipment_planning_to_cargo_ready",
+    "shipment_planning",
+    "cargo_ready",
+    "出运计划提供备货范围",
+    ["计划身份", "货物范围", "目的仓"],
+  ),
+  relation(
+    "supply_readiness_to_cargo_ready",
+    "supply_readiness",
+    "cargo_ready",
+    "供给准备提供可出运数量和限制",
+    ["可用数量", "验货结论", "限制条件"],
+  ),
+  relation(
+    "booking_to_stuffing",
+    "booking",
+    "stuffing",
+    "订舱提供当前有效装箱窗口和承运人要求",
+    ["订舱确认", "装箱窗口", "VGM 要求"],
+  ),
+  relation(
+    "cargo_ready_to_stuffing",
+    "cargo_ready",
+    "stuffing",
+    "备货提供可装产品行",
+    ["备货单", "可装产品行", "适用资料"],
+  ),
+  relation(
+    "booking_to_export_customs",
+    "booking",
+    "export_customs",
+    "订舱提供申报运输范围",
+    ["订舱确认", "航线", "货柜计划"],
+  ),
+  relation(
+    "stuffing_to_export_customs",
+    "stuffing",
+    "export_customs",
+    "装箱提供出口申报所需实际事实",
+    ["货柜身份", "货物装载", "VGM"],
+  ),
+  relation(
+    "booking_to_dispatch",
+    "booking",
+    "dispatch",
+    "订舱提供当前有效承运人承诺",
+    ["订舱确认", "航次", "截点"],
+  ),
+  relation(
+    "stuffing_to_dispatch",
+    "stuffing",
+    "dispatch",
+    "装箱提供实际柜货和 VGM 事实",
+    ["货柜身份", "装载事实", "VGM"],
+  ),
+  relation(
+    "export_customs_to_dispatch",
+    "export_customs",
+    "dispatch",
+    "出口报关提供可信出口放行",
+    ["出口放行", "案卷范围", "限制条件"],
+  ),
+] as const satisfies readonly WorkbenchRelation[];
+
+export const mainWorkbenchChain = workbenchStages.filter(
   (item) => item.kind === "main",
 );
-export const supportingWorkbenches = workbenchNetwork.filter(
+export const supportingWorkbenches = workbenchStages.filter(
   (item) => item.kind === "support",
 );
-export const frameworkWorkbenchStages = workbenchNetwork.filter(
-  (item) => item.implementation === "framework",
+export const frameworkWorkbenchStages = workbenchStages.filter(
+  (item) => item.implementation === "framework" && item.surface === "dedicated",
 );
 export const liveWorkbenchCodes = workbenchNetwork
   .filter((item) => item.implementation === "live")
@@ -766,8 +1030,44 @@ export function getWorkbenchOperationalSpec(
   return workbenchOperationalSpecs.find((item) => item.code === code);
 }
 
-export function getWorkbenchStage(code: string): WorkbenchStage | undefined {
-  return workbenchNetwork.find((item) => item.code === code);
+export function workbenchStage(
+  code: WorkbenchCode,
+): WorkbenchStage | undefined {
+  return workbenchStages.find((item) => item.code === code);
+}
+
+export function getInboundWorkbenchRelations(code: WorkbenchCode) {
+  return workbenchRelations.filter(({ to }) => to === code);
+}
+
+export function getOutboundWorkbenchRelations(code: WorkbenchCode) {
+  return workbenchRelations.filter(({ from }) => from === code);
+}
+
+export function getUpstreamWorkbenchStages(code: WorkbenchCode) {
+  return getInboundWorkbenchRelations(code).flatMap(({ from }) => {
+    const stage = workbenchStage(from);
+    return stage ? [stage] : [];
+  });
+}
+
+export function getDownstreamWorkbenchStages(code: WorkbenchCode) {
+  return getOutboundWorkbenchRelations(code).flatMap(({ to }) => {
+    const stage = workbenchStage(to);
+    return stage ? [stage] : [];
+  });
+}
+
+export function isProductionMaturity(maturity: WorkbenchMaturity | null) {
+  return maturity === "operational" || maturity === "validated";
+}
+
+export function getWorkbenchStage(
+  code: string,
+): CatalogWorkbenchStage | undefined {
+  return workbenchNetwork.find(
+    (item): item is CatalogWorkbenchStage => item.code === code,
+  );
 }
 
 export function getWorkbenchHandoff(
@@ -775,6 +1075,24 @@ export function getWorkbenchHandoff(
 ): WorkbenchHandoff | null {
   if (!code) return null;
   return workbenchHandoffs.find((item) => item.code === code) ?? null;
+}
+
+function relation(
+  code: string,
+  from: WorkbenchCode,
+  to: WorkbenchCode,
+  label: string,
+  facts: readonly string[],
+): WorkbenchRelation {
+  return {
+    code,
+    from,
+    to,
+    kind: "fact_dependency",
+    handoffCode: null,
+    label,
+    facts,
+  };
 }
 
 function handoff(
@@ -799,7 +1117,7 @@ function stage(
   requiredFacts: readonly string[],
   inboundHandoffCode: string | null,
   outboundHandoffCode: string | null,
-): WorkbenchStage {
+): LegacyWorkbenchStage {
   return {
     code,
     title,
@@ -827,7 +1145,7 @@ function liveStage(
   requiredFacts: readonly string[],
   inboundHandoffCode: string | null,
   outboundHandoffCode: string | null,
-): WorkbenchStage {
+): LegacyWorkbenchStage {
   return {
     ...stage(
       sequence,
@@ -854,7 +1172,7 @@ function supportStage(
   roleResult: string,
   requiredFacts: readonly string[],
   consumesHandoffCodes: readonly string[],
-): WorkbenchStage {
+): LegacyWorkbenchStage {
   return {
     code,
     title,
