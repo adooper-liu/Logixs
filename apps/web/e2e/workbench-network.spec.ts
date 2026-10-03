@@ -16,7 +16,7 @@ test("the business-workbench directory opens live and framework stages honestly"
   await expect(
     page.getByRole("heading", { name: "业务工作台", exact: true }),
   ).toBeVisible();
-  await expect(page.getByTestId("main-workbench-stage")).toHaveCount(18);
+  await expect(page.getByTestId("main-workbench-stage")).toHaveCount(20);
   await expect(page.locator('[data-implementation="live"]')).toHaveCount(12);
   await expect(page.locator('[data-implementation="prototype"]')).toHaveCount(
     0,
@@ -38,6 +38,44 @@ test("the business-workbench directory opens live and framework stages honestly"
   await expect(flowContext.getByText("补货决策交接")).toBeVisible();
   await expect(flowContext.getByText("采购承诺交接")).toBeVisible();
 });
+
+test("catalog stubs stay read-only and dispatch shows all inbound dependencies", async ({
+  page,
+}) => {
+  for (const [path, title] of [
+    ["/workspaces/booking", "订舱"],
+    ["/workspaces/export-customs", "出口报关"],
+    ["/workspaces/compliance-operations", "合规运营"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(
+      page.locator("button, form, input, textarea, select"),
+    ).toHaveCount(0);
+  }
+
+  await page.goto("/workspaces/dispatch");
+  for (const label of ["订舱", "装箱", "出口报关"]) {
+    await expect(
+      page.getByTestId("inbound-relation").filter({ hasText: label }),
+    ).toBeVisible();
+  }
+});
+
+for (const width of [320, 375, 1440]) {
+  test(`catalog pages avoid horizontal overflow at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/workspaces");
+
+    const widths = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+  });
+}
 
 test("a market owner can hand off a signal for a selector to claim, accept and take a decision", async ({
   page,

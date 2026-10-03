@@ -30,6 +30,22 @@ describe("navigationForRole", () => {
     }
   });
 
+  it("registers catalog-stub routes without adding them to shell navigation", () => {
+    expect(
+      router.getRoutes().some((route) => route.path === "/workspaces/booking"),
+    ).toBe(true);
+    expect(
+      router
+        .getRoutes()
+        .some((route) => route.path === "/workspaces/export-customs"),
+    ).toBe(true);
+    expect(
+      router
+        .getRoutes()
+        .some((route) => route.path === "/workspaces/compliance-operations"),
+    ).toBe(true);
+  });
+
   it("does not put the developer console in the operations shell", () => {
     for (const role of ["operator", "planner", "manager"] as const) {
       const items = navigationForRole(router.getRoutes(), role);

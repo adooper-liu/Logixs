@@ -5,10 +5,12 @@ import WorkbenchFlowContext from "../components/workbench/WorkbenchFlowContext.v
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import {
+  getInboundWorkbenchRelations,
+  getOutboundWorkbenchRelations,
   getWorkbenchHandoff,
   getWorkbenchOperationalSpec,
   getWorkbenchStage,
-  type WorkbenchHandoff,
+  type WorkbenchRelation,
 } from "../data/workbenchNetwork";
 
 const props = defineProps<{ stageCode: string }>();
@@ -17,23 +19,58 @@ const stage = computed(() => getWorkbenchStage(props.stageCode));
 const operationalSpec = computed(() =>
   getWorkbenchOperationalSpec(props.stageCode),
 );
-const inbound = computed(() =>
-  getWorkbenchHandoff(stage.value?.inboundHandoffCode ?? null),
+const inbound = computed(() => {
+  if (!stage.value) return [];
+
+  const relations = getInboundWorkbenchRelations(stage.value.code);
+  if (relations.length) return relations;
+
+  return asLegacyRelations(stage.value.inboundHandoffCode);
+});
+const outbound = computed(() => {
+  if (!stage.value) return [];
+
+  const relations = getOutboundWorkbenchRelations(stage.value.code);
+  if (relations.length) return relations;
+
+  return asLegacyRelations(stage.value.outboundHandoffCode);
+});
+const upstream = computed(() =>
+  inbound.value.flatMap(({ from }) => {
+    const item = getWorkbenchStage(from);
+    return item ? [item] : [];
+  }),
 );
-const outbound = computed(() =>
-  getWorkbenchHandoff(stage.value?.outboundHandoffCode ?? null),
+const downstream = computed(() =>
+  outbound.value.flatMap(({ to }) => {
+    const item = getWorkbenchStage(to);
+    return item ? [item] : [];
+  }),
 );
 const consumedHandoffs = computed(() =>
   (stage.value?.consumesHandoffCodes ?? [])
     .map((code) => getWorkbenchHandoff(code))
-    .filter((item): item is WorkbenchHandoff => item !== null),
+    .filter((item) => item !== null),
 );
-const upstream = computed(() =>
-  inbound.value ? getWorkbenchStage(inbound.value.from) : undefined,
-);
-const downstream = computed(() =>
-  outbound.value ? getWorkbenchStage(outbound.value.to) : undefined,
-);
+
+function asLegacyRelations(
+  handoffCode: string | null,
+): readonly WorkbenchRelation[] {
+  const handoff = getWorkbenchHandoff(handoffCode);
+  if (!handoff) return [];
+
+  return [
+    {
+      code: handoff.code,
+      from: handoff.from,
+      to: handoff.to,
+      kind: "handoff",
+      handoffCode: handoff.code,
+      label: handoff.name,
+      facts: handoff.facts,
+    },
+  ];
+}
 </script>
 
 <template>
@@ -88,12 +125,14 @@ const downstream = computed(() =>
           <h2 id="handoff-result-title">
             {{ stage.kind === "support" ? "消费哪些主链事实" : "交出什么" }}
           </h2>
-          <template v-if="outbound">
-            <b class="handoff-name">{{ outbound.name }}</b>
-            <p>{{ outbound.timing }}</p>
-            <ul>
-              <li v-for="fact in outbound.facts" :key="fact">{{ fact }}</li>
-            </ul>
+          <template v-if="outbound.length">
+            <b
+              v-for="relation in outbound"
+              :key="relation.code"
+              class="handoff-name"
+            >
+              {{ relation.label }}
+            </b>
           </template>
           <ul v-else-if="consumedHandoffs.length" class="consumed-list">
             <li v-for="handoff in consumedHandoffs" :key="handoff.code">
@@ -121,15 +160,15 @@ const downstream = computed(() =>
     </section>
 
     <nav class="adjacent-navigation" aria-label="相邻工作台">
-      <RouterLink v-if="upstream" :to="upstream.path">
+      <RouterLink v-if="upstream.length === 1" :to="upstream[0]!.path">
         <ArrowLeft :size="16" aria-hidden="true" />
-        上游：{{ upstream.title }}
+        上游：{{ upstream[0]!.title }}
       </RouterLink>
       <RouterLink class="directory-link" to="/workspaces">
         返回业务工作台
       </RouterLink>
-      <RouterLink v-if="downstream" :to="downstream.path">
-        下游：{{ downstream.title }}
+      <RouterLink v-if="downstream.length === 1" :to="downstream[0]!.path">
+        下游：{{ downstream[0]!.title }}
         <ArrowRight :size="16" aria-hidden="true" />
       </RouterLink>
     </nav>

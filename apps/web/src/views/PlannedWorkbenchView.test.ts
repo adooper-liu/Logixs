@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import PlannedWorkbenchView from "./PlannedWorkbenchView.vue";
 
 describe("PlannedWorkbenchView", () => {
-  it("shows the role result and handoff boundaries without fake execution controls", () => {
-    const wrapper = mount(PlannedWorkbenchView, {
-      props: { stageCode: "procurement" },
+  function mountPlanned(stageCode: string) {
+    return mount(PlannedWorkbenchView, {
+      props: { stageCode },
       global: {
         stubs: {
           PageHeader: {
@@ -20,6 +20,10 @@ describe("PlannedWorkbenchView", () => {
         },
       },
     });
+  }
+
+  it("shows the role result and handoff boundaries without fake execution controls", () => {
+    const wrapper = mountPlanned("procurement");
 
     expect(wrapper.get("h1").text()).toBe("采购履约工作台");
     expect(wrapper.text()).toContain("形成可追踪的采购承诺");
@@ -28,4 +32,29 @@ describe("PlannedWorkbenchView", () => {
     expect(wrapper.text()).toContain("框架已建立，业务能力待接通");
     expect(wrapper.findAll("button")).toHaveLength(0);
   });
+
+  it("renders every inbound dependency for a fan-in workbench", () => {
+    const wrapper = mountPlanned("dispatch");
+
+    expect(wrapper.findAll('[data-testid="inbound-relation"]')).toHaveLength(3);
+    expect(wrapper.text()).toContain("订舱");
+    expect(wrapper.text()).toContain("装箱");
+    expect(wrapper.text()).toContain("出口报关");
+  });
+
+  for (const stageCode of [
+    "booking",
+    "export_customs",
+    "compliance_operations",
+  ]) {
+    it(`keeps the ${stageCode} catalog stub read-only`, () => {
+      const wrapper = mountPlanned(stageCode);
+
+      expect(
+        wrapper.findAll(
+          "button, form, input:not([readonly]), textarea:not([readonly]), select",
+        ),
+      ).toHaveLength(0);
+    });
+  }
 });
