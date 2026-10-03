@@ -185,7 +185,7 @@ test("catalog route inspection rejects filtered compliance stubs and ignored sta
 });
 
 test("catalog inspection ignores commented constructor decoys", () => {
-  const source = readFileSync(
+  const source = `${readFileSync(
     join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
     "utf8",
   )
@@ -215,7 +215,9 @@ test("catalog inspection ignores commented constructor decoys", () => {
     [],
   ), */
   catalogStage("charges"),`,
-    );
+    )}
+const stringDecoy = 'plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")';
+const templateDecoy = \`plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")\`;`;
 
   const violations = inspectWorkbenchCatalogSource(source);
   assert.ok(violations.includes("workbenchStages: code 'booking' is missing"));
@@ -249,7 +251,7 @@ test("route inspection ignores decoy snippets outside the exported route initial
 
 test("router inspection ignores /compliance decoys outside the router initializer", () => {
   const source = `
-    const decoy = { path: "/compliance" };
+    function decoy() { const router = createRouter({ routes: [{ path: "/compliance" }] }); }
     // { path: "/compliance" }
     const router = createRouter({ routes: [{ path: "/tasks" }] });`;
 

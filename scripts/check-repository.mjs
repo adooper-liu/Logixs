@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +10,8 @@ import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 import { auditApiControllers } from "./check-route-access-metadata.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+const require = createRequire(resolve(repositoryRoot, "apps/web/package.json"));
+const ts = require("typescript");
 
 const ignoredDirectories = new Set([
   ".agents",
@@ -100,179 +102,190 @@ const CURRENT_TECHNICAL_REFERENCE_PATHS = [
 const MATURITY_EVIDENCE_DISCLAIMER =
   "路由、页面或 API 存在不等于 `operational` 或 `validated`。";
 
-function stripComments(source) {
-  let output = "";
-  let quote = null;
-  for (let index = 0; index < source.length; index += 1) {
-    const character = source[index];
-    const next = source[index + 1];
-    if (quote) {
-      output += character;
-      if (character === "\\") output += source[++index] ?? "";
-      else if (character === quote) quote = null;
-      continue;
-    }
-    if (["'", '"', "`"].includes(character)) {
-      quote = character;
-      output += character;
-      continue;
-    }
-    if (character === "/" && next === "/") {
-      while (index < source.length && source[index] !== "\n") {
-        output += " ";
-        index += 1;
-      }
-      output += source[index] ?? "";
-      continue;
-    }
-    if (character === "/" && next === "*") {
-      output += "  ";
-      index += 2;
-      while (
-        index < source.length &&
-        !(source[index] === "*" && source[index + 1] === "/")
-      ) {
-        output += source[index] === "\n" ? "\n" : " ";
-        index += 1;
-      }
-      output += "  ";
-      index += 1;
-      continue;
-    }
-    output += character;
-  }
-  return output;
-}
-function stringValue(value) {
-  return value.trim().match(/^['"]([^'"]+)['"]$/)?.[1] ?? null;
+function unwrap(expression) {
+  return ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isParenthesizedExpression(expression)
+    ? unwrap(expression.expression)
+    : expression;
 }
 
-function balancedEnd(source, start, open = "(", close = ")") {
-  let depth = 0;
-  let quote = null;
-  for (let index = start; index < source.length; index += 1) {
-    const character = source[index];
-    if (quote) {
-      if (character === "\\") index += 1;
-      else if (character === quote) quote = null;
-      continue;
-    }
-    if (["'", '"', "`"].includes(character)) quote = character;
-    else if (character === open) depth += 1;
-    else if (character === close && --depth === 0) return index;
-  }
-  return -1;
+function expressionContainsIdentifier(expression, name) {
+  let found = false;
+  const visit = (node) => {
+    if (ts.isIdentifier(node) && node.text === name) found = true;
+    if (!found) ts.forEachChild(node, visit);
+  };
+  if (expression) visit(expression);
+  return found;
 }
 
-function splitArguments(source) {
-  const argumentsList = [];
-  let start = 0;
-  let depth = 0;
-  let quote = null;
-  for (let index = 0; index <= source.length; index += 1) {
-    const character = source[index];
-    if (quote) {
-      if (character === "\\") index += 1;
-      else if (character === quote) quote = null;
-      continue;
-    }
-    if (["'", '"', "`"].includes(character)) quote = character;
-    else if (["(", "[", "{"].includes(character)) depth += 1;
-    else if ([")", "]", "}"].includes(character)) depth -= 1;
-    else if ((character === "," && depth === 0) || index === source.length) {
-      argumentsList.push(source.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-  return argumentsList;
+function mapCallbackUsesStagePath(call) {
+  const callback = call.arguments[0];
+  if (
+    !callback ||
+    (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback))
+  )
+    return false;
+  let found = false;
+  const visit = (node) => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      node.name.text === "path" &&
+      ts.isPropertyAccessExpression(node.initializer) &&
+      ts.isIdentifier(node.initializer.expression) &&
+      node.initializer.expression.text === "stage" &&
+      node.initializer.name.text === "path"
+    )
+      found = true;
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(callback.body, visit);
+  return found;
 }
-
-function codeIndexOf(source, token, from = 0) {
-  let quote = null;
-  for (let index = from; index < source.length; index += 1) {
-    const character = source[index];
-    if (quote) {
-      if (character === "\\") index += 1;
-      else if (character === quote) quote = null;
-      continue;
-    }
-    if (["'", '"', "`"].includes(character)) {
-      quote = character;
-      continue;
-    }
-    if (source.startsWith(token, index)) return index;
-  }
-  return -1;
-}
-
-function functionCalls(source, name) {
-  const calls = [];
-  for (let start = 0; start < source.length; start += 1) {
-    const index = codeIndexOf(source, name, start);
-    if (index === -1) break;
-    start = index + name.length;
-    if (/[$\w]/.test(source[index - 1] ?? "") || /[$\w]/.test(source[start]))
-      continue;
-    const open = source.indexOf("(", start);
-    if (source.slice(start, open).trim()) continue;
-    const end = balancedEnd(source, open);
-    if (end !== -1) calls.push(splitArguments(source.slice(open + 1, end)));
-  }
-  return calls;
-}
-
-function arraySource(source, declaration) {
-  const start = codeIndexOf(source, declaration);
-  if (start === -1) return "";
-  const equals = codeIndexOf(source, "=", start + declaration.length);
-  const open = codeIndexOf(source, "[", equals + 1);
-  const end = balancedEnd(source, open, "[", "]");
-  return end === -1 ? "" : source.slice(open + 1, end);
-}
-
-function declarationSource(source, declaration) {
-  const start = codeIndexOf(source, declaration);
-  if (start === -1) return "";
-  const equals = codeIndexOf(source, "=", start + declaration.length);
-  if (equals === -1) return "";
-  let depth = 0;
-  let quote = null;
-  for (let index = equals + 1; index < source.length; index += 1) {
-    const character = source[index];
-    if (quote) {
-      if (character === "\\") index += 1;
-      else if (character === quote) quote = null;
-      continue;
-    }
-    if (["'", '"', "`"].includes(character)) quote = character;
-    else if (["(", "[", "{"].includes(character)) depth += 1;
-    else if ([")", "]", "}"].includes(character)) depth -= 1;
-    else if (character === ";" && depth === 0)
-      return source.slice(equals + 1, index);
-  }
-  return source.slice(equals + 1);
-}
-
-function propertyArraySource(source, property) {
-  const start = codeIndexOf(source, `${property}:`);
-  if (start === -1) return "";
-  const open = codeIndexOf(source, "[", start + property.length + 1);
-  const end = balancedEnd(source, open, "[", "]");
-  return end === -1 ? "" : source.slice(open + 1, end);
-}
-function functionBody(source, name) {
-  const start = codeIndexOf(source, `function ${name}`);
-  if (start === -1) return "";
-  const open = codeIndexOf(source, "{", start);
-  const end = balancedEnd(source, open, "{", "}");
-  return end === -1 ? "" : source.slice(open + 1, end);
-}
-
-function declaredKind(source, name) {
-  return (
-    functionBody(source, name).match(/kind:\s*["'](main|support)["']/)?.[1] ??
-    null
+function astSource(source) {
+  return ts.createSourceFile(
+    "workbenchNetwork.ts",
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
   );
+}
+
+function topLevelVariable(sourceFile, name) {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === name)
+        return declaration;
+    }
+  }
+  return undefined;
+}
+
+function objectProperty(object, name) {
+  return object.properties.find(
+    (item) =>
+      ts.isPropertyAssignment(item) &&
+      (ts.isIdentifier(item.name) || ts.isStringLiteral(item.name)) &&
+      item.name.text === name,
+  );
+}
+
+function stringLiteral(node) {
+  return node && ts.isStringLiteral(node) ? node.text : null;
+}
+
+function numericLiteral(node) {
+  return node && ts.isNumericLiteral(node) ? Number(node.text) : null;
+}
+
+function helperKind(sourceFile, name) {
+  const variable = topLevelVariable(sourceFile, name);
+  const arrow = variable?.initializer;
+  if (arrow && ts.isArrowFunction(arrow)) {
+    const result = unwrap(arrow.body);
+    return result && ts.isObjectLiteralExpression(result)
+      ? stringLiteral(objectProperty(result, "kind")?.initializer)
+      : null;
+  }
+  const declaration = sourceFile.statements.find(
+    (statement) =>
+      ts.isFunctionDeclaration(statement) && statement.name?.text === name,
+  );
+  const result = declaration?.body?.statements.find(
+    (statement) =>
+      ts.isReturnStatement(statement) &&
+      statement.expression &&
+      ts.isObjectLiteralExpression(statement.expression),
+  )?.expression;
+  return result && ts.isObjectLiteralExpression(result)
+    ? stringLiteral(objectProperty(result, "kind")?.initializer)
+    : null;
+}
+
+function callName(expression) {
+  return ts.isCallExpression(expression) &&
+    ts.isIdentifier(expression.expression)
+    ? expression.expression.text
+    : null;
+}
+
+function effectiveStages(sourceFile) {
+  const legacy = new Map();
+  const network = topLevelVariable(sourceFile, "workbenchNetwork");
+  for (const expression of ts.isArrayLiteralExpression(
+    unwrap(network?.initializer),
+  )
+    ? unwrap(network.initializer).elements
+    : []) {
+    const name = callName(expression);
+    if (!name) continue;
+    const offset = name === "supportStage" ? 0 : 1;
+    const code = stringLiteral(expression.arguments?.[offset]);
+    if (code)
+      legacy.set(code, {
+        code,
+        title: stringLiteral(expression.arguments?.[offset + 1]),
+        path: stringLiteral(expression.arguments?.[offset + 2]),
+        kind: helperKind(
+          sourceFile,
+          name === "supportStage" ? "supportStage" : "stage",
+        ),
+      });
+  }
+  const catalog = topLevelVariable(sourceFile, "workbenchStages");
+  const catalogInitializer = unwrap(catalog?.initializer);
+  if (!catalog || !ts.isArrayLiteralExpression(catalogInitializer)) return [];
+  return catalogInitializer.elements.flatMap((expression) => {
+    const name = callName(expression);
+    if (name === "catalogStage") {
+      const base = legacy.get(stringLiteral(expression.arguments[0]));
+      if (!base) return [];
+      const overrides = expression.arguments[1];
+      const overrideObject =
+        overrides && ts.isObjectLiteralExpression(overrides)
+          ? overrides
+          : undefined;
+      return [
+        {
+          ...base,
+          title:
+            stringLiteral(
+              overrideObject &&
+                objectProperty(overrideObject, "title")?.initializer,
+            ) ?? base.title,
+          path:
+            stringLiteral(
+              overrideObject &&
+                objectProperty(overrideObject, "path")?.initializer,
+            ) ?? base.path,
+          kind:
+            stringLiteral(
+              overrideObject &&
+                objectProperty(overrideObject, "kind")?.initializer,
+            ) ?? base.kind,
+        },
+      ];
+    }
+    if (
+      name === "plannedCatalogStage" ||
+      name === "plannedSupportCatalogStage"
+    ) {
+      const offset = name === "plannedCatalogStage" ? 1 : 0;
+      return [
+        {
+          code: stringLiteral(expression.arguments[offset]),
+          title: stringLiteral(expression.arguments[offset + 1]),
+          path: stringLiteral(expression.arguments[offset + 2]),
+          kind: helperKind(sourceFile, name),
+        },
+      ];
+    }
+    return [];
+  });
 }
 
 const EXPECTED_WORKBENCH_PATHS = new Map([
@@ -302,76 +315,25 @@ const EXPECTED_WORKBENCH_PATHS = new Map([
 ]);
 
 export function inspectWorkbenchCatalogSource(source) {
-  source = stripComments(source);
+  const sourceFile = astSource(source);
   const errors = [];
-  const baseline = propertyArraySource(source, "workbenchBaseline");
-  for (const [field, expected] of [
+  const baseline = unwrap(
+    topLevelVariable(sourceFile, "workbenchBaseline")?.initializer,
+  );
+  for (const [name, expected] of [
     ["total", 23],
     ["main", 20],
     ["support", 3],
   ]) {
-    const actual = source
-      .slice(
-        codeIndexOf(source, "export const workbenchBaseline"),
-        codeIndexOf(source, "export const workbenchHandoffs"),
-      )
-      .match(new RegExp(`${field}:\\s*(\\d+)`))?.[1];
-    if (actual !== String(expected))
+    const actual = ts.isObjectLiteralExpression(baseline)
+      ? numericLiteral(objectProperty(baseline, name)?.initializer)
+      : null;
+    if (actual !== expected)
       errors.push(
-        `workbenchBaseline: ${field} must be ${expected}, found '${actual ?? "missing"}'`,
+        `workbenchBaseline: ${name} must be ${expected}, found '${actual ?? "missing"}'`,
       );
   }
-  const legacy = new Map();
-  const mainKind = declaredKind(source, "stage");
-  const supportKind = declaredKind(source, "supportStage");
-  for (const [kind, name] of [
-    [mainKind, "liveStage"],
-    [mainKind, "stage"],
-    [supportKind, "supportStage"],
-  ]) {
-    for (const args of functionCalls(
-      arraySource(source, "export const workbenchNetwork"),
-      name,
-    )) {
-      const offset = kind === "support" ? 0 : 1;
-      const code = stringValue(args[offset]);
-      if (code)
-        legacy.set(code, {
-          code,
-          title: stringValue(args[offset + 1]),
-          path: stringValue(args[offset + 2]),
-          kind,
-        });
-    }
-  }
-  const stages = [];
-  const catalog = arraySource(source, "export const workbenchStages");
-  for (const args of functionCalls(catalog, "catalogStage")) {
-    const code = stringValue(args[0]);
-    const base = legacy.get(code);
-    if (!base) continue;
-    stages.push({
-      ...base,
-      title: args[1]?.match(/title:\s*["']([^"']+)["']/)?.[1] ?? base.title,
-      path: args[1]?.match(/path:\s*["']([^"']+)["']/)?.[1] ?? base.path,
-      kind: args[1]?.match(/kind:\s*["']([^"']+)["']/)?.[1] ?? base.kind,
-    });
-  }
-  for (const [name, defaultKind] of [
-    ["plannedCatalogStage", "main"],
-    ["plannedSupportCatalogStage", "support"],
-  ]) {
-    const kind = declaredKind(source, name) ?? defaultKind;
-    for (const args of functionCalls(catalog, name)) {
-      const offset = name === "plannedCatalogStage" ? 1 : 0;
-      stages.push({
-        code: stringValue(args[offset]),
-        title: stringValue(args[offset + 1]),
-        path: stringValue(args[offset + 2]),
-        kind,
-      });
-    }
-  }
+  const stages = effectiveStages(sourceFile);
   if (stages.length !== 23)
     errors.push(`workbenchStages: expected 23 rows, found ${stages.length}`);
   for (const [kind, expected] of [
@@ -384,7 +346,7 @@ export function inspectWorkbenchCatalogSource(source) {
         `workbenchStages: expected ${expected} ${kind} rows, found ${actual}`,
       );
   }
-  for (const [field] of [["code"], ["path"]]) {
+  for (const field of ["code", "path"]) {
     const seen = new Set();
     for (const stage of stages) {
       if (stage[field] && seen.has(stage[field]))
@@ -416,32 +378,39 @@ export function inspectWorkbenchCatalogSource(source) {
 }
 
 export function inspectWorkbenchRouteSource(source) {
-  const initializer = declarationSource(
-    stripComments(source),
-    "export const workbenchNetworkRoutes",
-  );
+  const initializer = topLevelVariable(
+    astSource(source),
+    "workbenchNetworkRoutes",
+  )?.initializer;
   const errors = [];
-  if (
-    !/\[\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\]\s*\.map\s*\(/.test(
-      initializer,
+  const hasStubSpread = expressionContainsIdentifier(
+    initializer,
+    "catalogStubWorkbenchStages",
+  );
+  const mapCalls = [];
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === "map"
     )
-  )
+      mapCalls.push(node);
+    ts.forEachChild(node, visit);
+  };
+  if (initializer) visit(initializer);
+  if (!hasStubSpread || mapCalls.length === 0)
     errors.push(
       "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
     );
-  if (
-    /\[\s*\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\][\s\S]*?\.filter\([\s\S]*?compliance_operations/.test(
-      initializer,
-    )
-  )
+  const filteredCompliance =
+    initializer &&
+    /compliance_operations/.test(initializer.getText()) &&
+    /\.filter\s*\(/.test(initializer.getText());
+  if (filteredCompliance)
     errors.push(
       "workbench-network routes: must not exclude compliance_operations from catalog stubs",
     );
-  if (
-    !/\[\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\][\s\S]*?\.map\s*\([\s\S]*?path:\s*stage\.path/.test(
-      initializer,
-    )
-  )
+  if (!mapCalls.some(mapCallbackUsesStagePath))
     errors.push(
       "workbench-network routes: catalog stubs must map each stage.path",
     );
@@ -449,8 +418,9 @@ export function inspectWorkbenchRouteSource(source) {
 }
 
 export function inspectWorkbenchRouterSource(source) {
-  const router = declarationSource(stripComments(source), "const router");
-  return /path:\s*["']\/compliance["']/.test(router)
+  const router = topLevelVariable(astSource(source), "router")?.initializer;
+  const text = router?.getText() ?? "";
+  return /path:\s*["']\/compliance["']/.test(text)
     ? []
     : [
         "router: must retain /compliance separately from /workspaces/compliance-operations",
