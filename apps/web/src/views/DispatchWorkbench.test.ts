@@ -1,7 +1,22 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import WorkbenchFlowContext from "../components/workbench/WorkbenchFlowContext.vue";
 import DispatchWorkbench from "./DispatchWorkbench.vue";
+
+const workbenchCatalogState = vi.hoisted(() => ({ hasDispatch: true }));
+
+vi.mock("../data/workbenchNetwork", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../data/workbenchNetwork")>();
+  return {
+    ...actual,
+    workbenchStage: (code: Parameters<typeof actual.workbenchStage>[0]) =>
+      code === "dispatch" && !workbenchCatalogState.hasDispatch
+        ? undefined
+        : actual.workbenchStage(code),
+  };
+});
 
 const listContainers = vi.fn();
 const getContainer = vi.fn();
@@ -57,6 +72,7 @@ const container = {
 
 describe("DispatchWorkbench", () => {
   beforeEach(() => {
+    workbenchCatalogState.hasDispatch = true;
     for (const mock of [
       listContainers,
       getContainer,
@@ -97,6 +113,30 @@ describe("DispatchWorkbench", () => {
     expect(listContainers).not.toHaveBeenCalled();
   });
 
+  it("renders graph fan-in above the live dispatch workspace", async () => {
+    const wrapper = await mountPage("/workspaces/dispatch");
+
+    expect(wrapper.findAll('[data-testid="inbound-relation"]')).toHaveLength(3);
+    expect(wrapper.text()).toContain("订舱提供当前有效承运人承诺");
+    expect(wrapper.text()).toContain("装箱提供实际柜货和 VGM 事实");
+    expect(wrapper.text()).toContain("出口报关提供可信出口放行");
+    expect(wrapper.findAll('[data-testid="outbound-relation"]')).toHaveLength(
+      1,
+    );
+    expect(wrapper.text()).toContain("已出运交接");
+    expect(wrapper.findAll("main")).toHaveLength(1);
+  });
+
+  it("keeps the live workspace visible when its catalog row is unavailable", async () => {
+    workbenchCatalogState.hasDispatch = false;
+
+    const wrapper = await mountPage("/workspaces/dispatch");
+
+    expect(wrapper.get("h1").text()).toBe("接管已出运数据");
+    expect(wrapper.find('[aria-label="当前责任与交接"]').exists()).toBe(false);
+    expect(wrapper.findAll("main")).toHaveLength(1);
+  });
+
   it("shows the shipping role sequence and blocks handoff until stuffing exists", async () => {
     const wrapper = await mountPage(
       "/workspaces/dispatch?view=loading&containerId=container-1",
@@ -132,6 +172,7 @@ async function mountPage(path: string) {
           template:
             "<header><h1>{{ title }}</h1><slot name='actions' /></header>",
         },
+        WorkbenchFlowContext,
       },
     },
   });

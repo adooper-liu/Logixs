@@ -16,7 +16,7 @@ test("the business-workbench directory opens live and framework stages honestly"
   await expect(
     page.getByRole("heading", { name: "业务工作台", exact: true }),
   ).toBeVisible();
-  await expect(page.getByTestId("main-workbench-stage")).toHaveCount(18);
+  await expect(page.getByTestId("main-workbench-stage")).toHaveCount(20);
   await expect(page.locator('[data-implementation="live"]')).toHaveCount(12);
   await expect(page.locator('[data-implementation="prototype"]')).toHaveCount(
     0,
@@ -38,6 +38,90 @@ test("the business-workbench directory opens live and framework stages honestly"
   await expect(flowContext.getByText("补货决策交接")).toBeVisible();
   await expect(flowContext.getByText("采购承诺交接")).toBeVisible();
 });
+
+test("catalog stubs stay read-only and dispatch shows all inbound dependencies", async ({
+  page,
+}) => {
+  for (const [path, title] of [
+    ["/workspaces/booking", "订舱"],
+    ["/workspaces/export-customs", "出口报关"],
+    ["/workspaces/compliance-operations", "合规运营"],
+  ] as const) {
+    await page.goto(path);
+    await expect(
+      page.getByRole("heading", { name: title, exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".planned-page")
+        .locator("button, form, input, textarea, select"),
+    ).toHaveCount(0);
+  }
+
+  await page.goto("/workspaces/dispatch");
+  for (const label of ["订舱", "装箱", "出口报关"]) {
+    await expect(
+      page.getByTestId("inbound-relation").filter({ hasText: label }),
+    ).toBeVisible();
+  }
+});
+
+test("catalog topology is keyboard navigable", async ({ page }) => {
+  await page.goto("/workspaces");
+  const booking = page.locator('a.stage-link[href="/workspaces/booking"]');
+
+  await expect(booking).toHaveCount(1);
+
+  await booking.focus();
+  await expect(booking).toBeFocused();
+  await booking.press("Enter");
+  await expect(page).toHaveURL(/\/workspaces\/booking$/);
+  await expect(
+    page.getByRole("heading", { name: "订舱", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "当前责任与交接" }),
+  ).toContainText("出运计划提供获批订舱边界");
+});
+
+for (const width of [320, 375, 1440]) {
+  test(`catalog stub and live dispatch avoid horizontal overflow at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of [
+      "/workspaces/booking",
+      "/workspaces/export-customs",
+      "/workspaces/compliance-operations",
+      "/workspaces/dispatch",
+    ]) {
+      await page.goto(path);
+      if (path === "/workspaces/dispatch") {
+        await expect(page.getByTestId("inbound-relation")).toHaveCount(3);
+      } else {
+        await expect(page.locator(".planned-page")).toBeVisible();
+        await expect(
+          page
+            .locator(".planned-page")
+            .locator("button, form, input, textarea, select"),
+        ).toHaveCount(0);
+      }
+
+      const widths = await page.evaluate(() => ({
+        pageClient: document.documentElement.clientWidth,
+        pageScroll: document.documentElement.scrollWidth,
+        contentClient:
+          document.querySelector<HTMLElement>(".app-content")?.clientWidth ?? 0,
+        contentScroll:
+          document.querySelector<HTMLElement>(".app-content")?.scrollWidth ?? 0,
+      }));
+      expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
+      expect(widths.contentScroll).toBeLessThanOrEqual(
+        widths.contentClient + 1,
+      );
+    }
+  });
+}
 
 test("a market owner can hand off a signal for a selector to claim, accept and take a decision", async ({
   page,

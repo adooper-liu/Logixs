@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { findArchitectureBoundaryViolations } from "./check-architecture-boundaries.mjs";
 import { isKnownEmptyDatabaseFailure } from "./migrate-deploy.mjs";
@@ -16,7 +17,12 @@ import { analyzeControllerSources } from "./check-route-access-metadata.mjs";
 import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
+  checkWorkbenchCatalogSource,
+  inspectWorkbenchCatalogSource,
+  inspectWorkbenchRouteSource,
+  inspectWorkbenchRouterSource,
   findBrokenMarkdownLinks,
+  findStaleWorkbenchBaselineReferences,
   findForbiddenTrackedPaths,
   findMisleadingContractPackageScripts,
   findMissingRequiredPolicyFiles,
@@ -24,14 +30,403 @@ import {
   findRouteAccessViolations,
   findStyleScaleViolations,
   findUiThemeBoundaryViolations,
+  runRepositoryChecks,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
+
+const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+
+const CURRENT_WORKBENCH_AUTHORITY_PATHS = [
+  "AGENTS.md",
+  "doc/cross-border-supply-chain/08-role-workbenches.md",
+  "docs/planning/tasks/_template.md",
+  "docs/README.md",
+  "docs/product/ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN.md",
+  "docs/product/domain/SHIPMENT_FLOW_OVERVIEW.md",
+];
 
 const temporaryDirectories = [];
 after(() => {
   temporaryDirectories.forEach((directory) =>
     rmSync(directory, { force: true, recursive: true }),
   );
+});
+
+test("current workbench authorities use the approved 23-workbench baseline", () => {
+  const violations = findStaleWorkbenchBaselineReferences(
+    repositoryRoot,
+    CURRENT_WORKBENCH_AUTHORITY_PATHS,
+  );
+  assert.deepEqual(violations, []);
+});
+
+test("workbench catalog declares the approved 23-code baseline", () => {
+  const violations = checkWorkbenchCatalogSource(repositoryRoot);
+  assert.deepEqual(violations, []);
+});
+
+test("repository check entry executes tracked-file checks", () => {
+  assert.deepEqual(runRepositoryChecks(), []);
+});
+
+test("workbench catalog guard requires the legacy compliance route beside the new stub", () => {
+  const root = mkdtempSync(join(tmpdir(), "logixs-workbench-catalog-"));
+  temporaryDirectories.push(root);
+  const catalogDirectory = join(root, "apps", "web", "src", "data");
+  mkdirSync(catalogDirectory, { recursive: true });
+  writeFileSync(
+    join(catalogDirectory, "workbenchNetwork.ts"),
+    readFileSync(
+      join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+      "utf8",
+    ),
+  );
+  const routerDirectory = join(root, "apps", "web", "src", "router");
+  mkdirSync(routerDirectory, { recursive: true });
+  writeFileSync(join(routerDirectory, "index.ts"), "export {}");
+  const workbenchNetworkRoutesDirectory = join(
+    root,
+    "apps",
+    "web",
+    "src",
+    "modules",
+    "workbench-network",
+  );
+  mkdirSync(workbenchNetworkRoutesDirectory, { recursive: true });
+  writeFileSync(
+    join(workbenchNetworkRoutesDirectory, "routes.ts"),
+    readFileSync(
+      join(
+        repositoryRoot,
+        "apps",
+        "web",
+        "src",
+        "modules",
+        "workbench-network",
+        "routes.ts",
+      ),
+      "utf8",
+    ),
+  );
+  for (const path of [
+    "docs/product/WORKSPACE_UI_INVENTORY.md",
+    "docs/product/POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE.md",
+    "doc/cross-border-supply-chain/05-shipment-lifecycle-blueprint.md",
+    "doc/cross-border-supply-chain/09-customs-compliance-ai.md",
+    "doc/cross-border-supply-chain/13-dcsa-business-map.md",
+  ]) {
+    const parts = path.split("/");
+    mkdirSync(join(root, ...parts.slice(0, -1)), { recursive: true });
+    writeFileSync(
+      join(root, ...parts),
+      "路由、页面或 API 存在不等于 `operational` 或 `validated`。",
+    );
+  }
+
+  assert.deepEqual(checkWorkbenchCatalogSource(root), [
+    "apps/web/src/router/index.ts: must retain /compliance separately from /workspaces/compliance-operations",
+  ]);
+});
+
+test("catalog inspection rejects misleading comments and structural row drift", () => {
+  const source = `${readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  )}
+// booking export_customs compliance_operations /workspaces/booking
+// /workspaces/export-customs /workspaces/compliance-operations
+// catalogStage("customs", { title: "进口清关" })`
+    .replace(/plannedCatalogStage\(\s*10,[\s\S]*?\n {2}\),/, "")
+    .replace(
+      'plannedSupportCatalogStage(\n    "compliance_operations"',
+      'plannedCatalogStage(\n    21,\n    "compliance_operations"',
+    )
+    .replace('title: "进口清关"', 'title: "清关"')
+    .replace(
+      '  catalogStage("charges"),',
+      `  plannedSupportCatalogStage(
+    "compliance_operations",
+    "合规运营",
+    "/workspaces/compliance-operations",
+    "product",
+    "合规运营人员",
+    "重复目录桩",
+    [],
+  ),
+  catalogStage("charges"),`,
+    );
+  const violations = inspectWorkbenchCatalogSource(source);
+
+  for (const expected of [
+    "workbenchStages: duplicate code 'compliance_operations'",
+    "workbenchStages: duplicate path '/workspaces/compliance-operations'",
+    "workbenchStages: code 'booking' is missing",
+    "workbenchStages: customs title must be '进口清关', found '清关'",
+    "workbenchStages: compliance_operations kind must be 'support', found 'main'",
+  ]) {
+    assert.ok(violations.includes(expected), `missing violation: ${expected}`);
+  }
+});
+
+test("catalog route inspection rejects filtered compliance stubs and ignored stage paths", () => {
+  const excludedCompliance = `
+    export const routes = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages]
+      .filter((stage) => stage.code !== "compliance_operations")
+      .map((stage) => ({ path: stage.path }));`;
+  const ignoredStagePath = `
+    export const routes = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
+      (stage) => ({ path: "/workspaces/planned" }),
+    );`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(excludedCompliance).length > 0,
+    "filtered compliance stub route must be rejected",
+  );
+  assert.ok(
+    inspectWorkbenchRouteSource(ignoredStagePath).includes(
+      "workbench-network routes: catalog stubs must map each stage.path",
+    ),
+  );
+});
+
+test("catalog inspection ignores commented constructor decoys", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  )
+    .replace(
+      /plannedCatalogStage\(\s*10,[\s\S]*?\n {2}\),/,
+      `// plannedCatalogStage(
+    10,
+    "booking",
+    "订舱",
+    "/workspaces/booking",
+    "shipment",
+    "订舱运营人员",
+    "注释诱饵",
+    [],
+  ),`,
+    )
+    .replace(
+      '  catalogStage("charges"),',
+      `  /* plannedCatalogStage(
+    10,
+    "booking",
+    "订舱",
+    "/workspaces/booking",
+    "shipment",
+    "订舱运营人员",
+    "块注释诱饵",
+    [],
+  ), */
+  catalogStage("charges"),`,
+    );
+
+  const violations = inspectWorkbenchCatalogSource(source);
+  assert.ok(violations.includes("workbenchStages: code 'booking' is missing"));
+});
+
+test("catalog inspection ignores quoted and template constructor decoys", () => {
+  const source = `${readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  ).replace(/plannedCatalogStage\(\s*10,[\s\S]*?\n {2}\),/, "")}
+const stringDecoy = 'plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")';
+const templateDecoy = \`plannedCatalogStage(10, "booking", "订舱", "/workspaces/booking")\`;`;
+
+  const violations = inspectWorkbenchCatalogSource(source);
+  assert.ok(violations.includes("workbenchStages: code 'booking' is missing"));
+});
+
+test("catalog inspection rejects unsupported row shapes", () => {
+  const catalog = readWorkbenchCatalogSource();
+  const unknownRow = catalog.replace(
+    "export const workbenchStages = [",
+    "export const workbenchStages = [...extraStages,",
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(unknownRow).includes(
+      "workbenchStages: unsupported element 'SpreadElement'",
+    ),
+  );
+});
+
+test("catalog inspection rejects spread overrides", () => {
+  const spreadOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
+    'catalogStage("customs", { ...customsOverride, sequence: 16, title: "进口清关" })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(spreadOverride).includes(
+      "workbenchStages: catalogStage overrides must not use spread properties",
+    ),
+  );
+});
+
+test("catalog inspection rejects dynamic override values", () => {
+  const dynamicOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("market_signals")',
+    'catalogStage("market_signals", { sequence: currentSequence })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(dynamicOverride).includes(
+      "workbenchStages: catalogStage override 'sequence' must be a literal",
+    ),
+  );
+});
+
+test("catalog inspection validates no-substitution template overrides by value", () => {
+  const templateOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
+    'catalogStage("customs", { sequence: 16, title: "进口清关", path: `/workspaces/wrong` })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(templateOverride).includes(
+      "workbenchStages: customs path must be '/workspaces/customs', found '/workspaces/wrong'",
+    ),
+  );
+});
+
+test("catalog inspection validates const-asserted overrides by value", () => {
+  const constOverride = readWorkbenchCatalogSource().replace(
+    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
+    'catalogStage("customs", { sequence: 16, title: "进口清关", path: "/workspaces/wrong" as const })',
+  );
+
+  assert.ok(
+    inspectWorkbenchCatalogSource(constOverride).includes(
+      "workbenchStages: customs path must be '/workspaces/customs', found '/workspaces/wrong'",
+    ),
+  );
+});
+
+function readWorkbenchCatalogSource() {
+  return readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  );
+}
+
+test("route inspection ignores decoy snippets outside the exported route initializer", () => {
+  const commentDecoy = `
+    // export const decoy = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
+    //   (stage) => ({ path: stage.path }),
+    // );
+    export const workbenchNetworkRoutes = [{ path: "/workspaces" }];`;
+  const deadDecoy = `
+    const decoy = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
+      (stage) => ({ path: stage.path }),
+    );
+    export const workbenchNetworkRoutes = [...catalogStubWorkbenchStages].map(
+      (stage) => ({ path: "/workspaces/planned" }),
+    );`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(commentDecoy).includes(
+      "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
+    ),
+  );
+  assert.ok(
+    inspectWorkbenchRouteSource(deadDecoy).includes(
+      "workbench-network routes: catalog stubs must map each stage.path",
+    ),
+  );
+});
+
+test("route inspection rejects array transforms other than map", () => {
+  const transformed = `
+    export const workbenchNetworkRoutes = [
+      ...frameworkWorkbenchStages,
+      ...catalogStubWorkbenchStages,
+    ]
+      .filter(() => true)
+      .map((stage) => ({ path: stage.path }));`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(transformed).includes(
+      "workbench-network routes: unsupported array transform 'filter'",
+    ),
+  );
+});
+
+test("route inspection rejects transforms applied only to framework stages", () => {
+  const transformed = `
+    export const workbenchNetworkRoutes = [
+      ...frameworkWorkbenchStages.filter((stage) => stage.code !== "booking"),
+      ...catalogStubWorkbenchStages,
+    ].map((stage) => ({ path: stage.path }));`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(transformed).includes(
+      "workbench-network routes: unsupported array transform 'filter'",
+    ),
+  );
+});
+
+test("route inspection rejects slice applied to catalog stub stages", () => {
+  const transformed = `
+    export const workbenchNetworkRoutes = [
+      ...frameworkWorkbenchStages,
+      ...catalogStubWorkbenchStages.slice(0, 1),
+    ].map((stage) => ({ path: stage.path }));`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(transformed).includes(
+      "workbench-network routes: unsupported array transform 'slice'",
+    ),
+  );
+});
+
+test("router inspection ignores a nested router that shadows the top-level router", () => {
+  const source = `
+    function decoy() { const router = createRouter({ routes: [{ path: "/compliance" }] }); }
+    // { path: "/compliance" }
+    const router = createRouter({ routes: [{ path: "/tasks" }] });`;
+
+  assert.deepEqual(inspectWorkbenchRouterSource(source), [
+    "router: must retain /compliance separately from /workspaces/compliance-operations",
+  ]);
+});
+
+test("router inspection ignores quoted and template path decoys", () => {
+  const source = `
+    const router = createRouter({
+      routes: [{
+        path: "/tasks",
+        stringDecoy: 'path: "/compliance"',
+        templateDecoy: \`path: "/compliance"\`,
+      }],
+    });`;
+
+  assert.deepEqual(inspectWorkbenchRouterSource(source), [
+    "router: must retain /compliance separately from /workspaces/compliance-operations",
+  ]);
+});
+
+test("catalog inspection validates baseline values", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  ).replace("total: 23", "total: 20");
+  const violations = inspectWorkbenchCatalogSource(source);
+
+  assert.ok(
+    violations.includes("workbenchBaseline: total must be 23, found '20'"),
+  );
+});
+
+test("catalog inspection reads kind from an arrow helper return value", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  ).replace('kind: "support",\n  phase,', 'kind: "main",\n  phase,');
+  const violations = inspectWorkbenchCatalogSource(source);
+
+  assert.ok(violations.some((violation) => violation.includes("support rows")));
 });
 
 test("requires every style scale token to be defined", () => {

@@ -174,7 +174,7 @@ next: fix | pr | owner-decision
 | `approved_gap`       |           |                      |               |          |      |                |            |                 | `undecided`  |         | approved / blocked-on-carrier          |
 | `industry_candidate` |           |                      |               |          |      |                |            |                 | `undecided`  |         | pending                                |
 
-## 20 台共同最低可用线（工作台任务必填）
+## 23 台共同最低可用线（工作台任务必填）
 
 > 含义唯一引用 `doc/cross-border-supply-chain/08-role-workbenches.md` 的 `WB-B01`～`WB-B10`。
 > 每项填写本台适用性、当前证据、本切片承接和最终验收证据；单个切片可部分完成，但不得据此宣称整台通过。

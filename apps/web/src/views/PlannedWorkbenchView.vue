@@ -5,10 +5,11 @@ import WorkbenchFlowContext from "../components/workbench/WorkbenchFlowContext.v
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import {
+  getInboundWorkbenchRelations,
+  getOutboundWorkbenchRelations,
   getWorkbenchHandoff,
   getWorkbenchOperationalSpec,
   getWorkbenchStage,
-  type WorkbenchHandoff,
 } from "../data/workbenchNetwork";
 
 const props = defineProps<{ stageCode: string }>();
@@ -17,22 +18,30 @@ const stage = computed(() => getWorkbenchStage(props.stageCode));
 const operationalSpec = computed(() =>
   getWorkbenchOperationalSpec(props.stageCode),
 );
-const inbound = computed(() =>
-  getWorkbenchHandoff(stage.value?.inboundHandoffCode ?? null),
+const inbound = computed(() => {
+  if (!stage.value) return [];
+  return getInboundWorkbenchRelations(stage.value.code);
+});
+const outbound = computed(() => {
+  if (!stage.value) return [];
+  return getOutboundWorkbenchRelations(stage.value.code);
+});
+const upstream = computed(() =>
+  inbound.value.flatMap(({ from }) => {
+    const item = getWorkbenchStage(from);
+    return item ? [item] : [];
+  }),
 );
-const outbound = computed(() =>
-  getWorkbenchHandoff(stage.value?.outboundHandoffCode ?? null),
+const downstream = computed(() =>
+  outbound.value.flatMap(({ to }) => {
+    const item = getWorkbenchStage(to);
+    return item ? [item] : [];
+  }),
 );
 const consumedHandoffs = computed(() =>
   (stage.value?.consumesHandoffCodes ?? [])
     .map((code) => getWorkbenchHandoff(code))
-    .filter((item): item is WorkbenchHandoff => item !== null),
-);
-const upstream = computed(() =>
-  inbound.value ? getWorkbenchStage(inbound.value.from) : undefined,
-);
-const downstream = computed(() =>
-  outbound.value ? getWorkbenchStage(outbound.value.to) : undefined,
+    .filter((item) => item !== null),
 );
 </script>
 
@@ -85,22 +94,46 @@ const downstream = computed(() =>
           <small>{{
             stage.kind === "support" ? "横向接入" : "完成工作后"
           }}</small>
-          <h2 id="handoff-result-title">
-            {{ stage.kind === "support" ? "消费哪些主链事实" : "交出什么" }}
-          </h2>
-          <template v-if="outbound">
-            <b class="handoff-name">{{ outbound.name }}</b>
-            <p>{{ outbound.timing }}</p>
-            <ul>
-              <li v-for="fact in outbound.facts" :key="fact">{{ fact }}</li>
-            </ul>
+          <h2 id="handoff-result-title">交接事实</h2>
+          <template v-if="inbound.length">
+            <small class="relation-direction">接收什么</small>
+            <div
+              v-for="relation in inbound"
+              :key="relation.code"
+              class="relation-detail"
+            >
+              <b class="handoff-name">{{ relation.label }}</b>
+              <p v-if="relation.timing">{{ relation.timing }}</p>
+              <ul>
+                <li v-for="fact in relation.facts" :key="fact">{{ fact }}</li>
+              </ul>
+            </div>
           </template>
-          <ul v-else-if="consumedHandoffs.length" class="consumed-list">
+          <template v-if="outbound.length">
+            <small class="relation-direction">交出什么</small>
+            <div
+              v-for="relation in outbound"
+              :key="relation.code"
+              class="relation-detail"
+            >
+              <b class="handoff-name">{{ relation.label }}</b>
+              <p v-if="relation.timing">{{ relation.timing }}</p>
+              <ul>
+                <li v-for="fact in relation.facts" :key="fact">{{ fact }}</li>
+              </ul>
+            </div>
+          </template>
+          <ul
+            v-else-if="!inbound.length && consumedHandoffs.length"
+            class="consumed-list"
+          >
             <li v-for="handoff in consumedHandoffs" :key="handoff.code">
               {{ handoff.name }}
             </li>
           </ul>
-          <p v-else>以可核验的业务回执完成当前主链责任。</p>
+          <p v-else-if="!inbound.length">
+            以可核验的业务回执完成当前主链责任。
+          </p>
         </div>
       </section>
     </div>
@@ -121,15 +154,15 @@ const downstream = computed(() =>
     </section>
 
     <nav class="adjacent-navigation" aria-label="相邻工作台">
-      <RouterLink v-if="upstream" :to="upstream.path">
+      <RouterLink v-if="upstream.length === 1" :to="upstream[0]!.path">
         <ArrowLeft :size="16" aria-hidden="true" />
-        上游：{{ upstream.title }}
+        上游：{{ upstream[0]!.title }}
       </RouterLink>
       <RouterLink class="directory-link" to="/workspaces">
         返回业务工作台
       </RouterLink>
-      <RouterLink v-if="downstream" :to="downstream.path">
-        下游：{{ downstream.title }}
+      <RouterLink v-if="downstream.length === 1" :to="downstream[0]!.path">
+        下游：{{ downstream[0]!.title }}
         <ArrowRight :size="16" aria-hidden="true" />
       </RouterLink>
     </nav>

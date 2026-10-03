@@ -9,6 +9,8 @@ verification: |
 owner: claude
 ---
 
+> 2026-10-03 supersession note: the approved 23-workbench directory and maturity assessment policy now live in [GC-012 G0 catalog authority](../../superpowers/specs/2026-10-03-gc12.md) and the [business workbench authority](../../../doc/cross-border-supply-chain/08-role-workbenches.md). This historical blocked brief is not rewritten; its 20-workbench statements describe its then-current context and must not govern new work.
+
 # 任务：工作台共享控制面 V1
 
 > 本 brief 是跨工作台技术控制面的唯一活动设计载体，不是第三套业务规格。

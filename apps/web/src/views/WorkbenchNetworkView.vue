@@ -9,7 +9,7 @@ import { computed } from "vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import {
-  getWorkbenchHandoff,
+  getOutboundWorkbenchRelations,
   mainWorkbenchChain,
   supportingWorkbenches,
   workbenchOperationalSpecs,
@@ -36,7 +36,10 @@ const phases = computed(() =>
 );
 
 function outboundLabel(stage: WorkbenchStage): string {
-  return getWorkbenchHandoff(stage.outboundHandoffCode)?.name ?? "主链责任收口";
+  const relations = getOutboundWorkbenchRelations(stage.code);
+  if (relations.length === 0) return "主链责任收口";
+  if (relations.length === 1) return relations[0]!.label;
+  return `${relations.length} 项出向交接`;
 }
 
 // 岗位作业规格：网络里的字段说明"这个岗位在链上的位置"，
@@ -148,6 +151,7 @@ const totalStageCount = computed(
           :key="stage.code"
           class="support-link"
           :to="stage.path"
+          data-testid="support-workbench-stage"
         >
           <div>
             <small>{{ stage.ownerRole }}</small>

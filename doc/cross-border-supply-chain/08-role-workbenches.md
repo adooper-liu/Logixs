@@ -2,8 +2,9 @@
 
 > 定位：全部岗位工作台的业务范围、共同操作规则、复审顺序和岗位规格权威。
 > 技术实现、当前完成度、DTO、状态码、数据库和测试证据由 `docs/` 承接。
-> 状态：20 个工作台及其岗位结果是业务范围基线；任何“已有页面”“已接真实 API”
-> 或“已有技术操作规格”都不自动等于通过本轮业务复审。
+> 状态：23 个工作台及其岗位结果是业务范围基线；任何“已有页面”“已接真实 API”
+> 或“已有技术操作规格”都不自动等于通过本轮业务复审。成熟度与评估状态分开记录，
+> 现有运行表面不因目录迁移被提升或降级。
 
 ## 一、业务规格如何使用
 
@@ -75,7 +76,7 @@
 
 一台工作台可以拆成多个实现切片，但所有切片必须回到同一份岗位规格、同一份相关数据事实子集和同一张业务步骤映射中收口。任何一面缺失时，只能声明该面完成；三面全部形成证据并通过真实岗位约定路径验收后，才能声明工作台闭环完成。
 
-### 2.4 20 台共同最低可用线
+### 2.4 23 台共同最低可用线
 
 `WB-B01`～`WB-B10` 合起来才是工作台的共同最低可用线，不是十个可以任选的功能点。每台进入“本轮复审通过”前，必须逐项留下当前事实、适用性、剩余缺口、实现承接和验收证据；不适用项也要说明业务理由并由负责人确认。
 
@@ -101,33 +102,80 @@
 
 每台 task brief 必须保存“事实与未知、候选选项、推荐与理由、负责人结论、权威落点”五项记录。聊天中形成但尚未写回权威的结论，不得进入实现。
 
-## 三、当前项目定义的全部 20 个工作台
+## 三、当前项目定义的全部 23 个工作台
 
-| 业务顺序 | 稳定 code              | 工作台               | 类型 | 岗位要完成的结果                                   |
-| -------- | ---------------------- | -------------------- | ---- | -------------------------------------------------- |
-| 1        | `market_signals`       | 市场与经营信号       | 主链 | 把可信市场和经营信号整理成可评审机会               |
-| 2        | `product_selection`    | 选品立项             | 主链 | 判断机会是否值得投入并形成有责任人的产品立项       |
-| 3        | `product_npi`          | 产品开发与 NPI       | 主链 | 把立项推进为可发布、可追溯版本的产品定义           |
-| 4        | `master_data`          | 商品与物料主数据     | 主链 | 建立产品、物料、BOM、SKU 和 Listing 的稳定业务身份 |
-| 5        | `sourcing`             | 寻源与供应商定点     | 主链 | 完成供应商准入、询报价、打样和定点                 |
-| 6        | `demand_replenishment` | 需求与补货           | 主链 | 把预测、库存策略和补货计算转成可解释的补货决定     |
-| 7        | `procurement`          | 采购履约             | 主链 | 形成可追踪的采购承诺并管理供应商履约偏差           |
-| 8        | `supply_readiness`     | 生产验货与可出运供给 | 主链 | 把生产、验货和整改结果汇成可出运供给池             |
-| 9        | `shipment_planning`    | 出运计划             | 主链 | 完成国家、渠道、仓库、港口和整柜或拼柜方案         |
-| 10       | `cargo_ready`          | 备货                 | 主链 | 释放备货范围并跟踪供应商备货和适用资料             |
-| 11       | `stuffing`             | 装箱                 | 主链 | 记录货柜、备货单和 SKU 的实际装载事实              |
-| 12       | `dispatch`             | 出运                 | 主链 | 完成进港、装船和离港交接                           |
-| 13       | `ocean_operations`     | 海运运营             | 主链 | 跟踪航段、ETA 版本和到港风险并发起到港准备         |
-| 14       | `customs`              | 清关                 | 主链 | 按销售国家和货物属性完成资料、申报、查验和放行交接 |
-| 15       | `pickup`               | 提柜                 | 主链 | 确认联合可提条件并完成可信 Gate Out                |
-| 16       | `delivery`             | 送仓                 | 主链 | 把已提货柜送达正确仓库并取得到仓回执               |
-| 17       | `unloading`            | 卸柜                 | 主链 | 记录实收差异、卸空事实并把空箱交给还箱责任方       |
-| 18       | `empty_return`         | 还箱                 | 主链 | 安排取空、提交 EIR 并以场站接收事实关闭箱级责任    |
-| 19       | `charges`              | 费用结算             | 支撑 | 按真实生命周期事实核费、分摊、请款和结算           |
-| 20       | `exceptions`           | 异常中心             | 支撑 | 集中分派跨域异常并把处理结果归还权威业务域         |
+目录按业务阅读顺序排列，不强制运行拓扑为线性：主链允许 fan-in/fan-out；支撑/横向工作台按真实消费者接入。
 
-仓库和三方堆场目前只是候选协同视图，不计入上述 20 个正式工作台。是否升格必须
-经过独立业务评审，不能因为页面或数据存在就自动增加工作台数量。
+| 业务顺序 | 稳定 code               | 工作台               | 类型      | 岗位要完成的结果                                                                                 |
+| -------- | ----------------------- | -------------------- | --------- | ------------------------------------------------------------------------------------------------ |
+| 1        | `market_signals`        | 市场与经营信号       | 主链      | 把经过最低验证的真实市场信号形成不可变新品候选交接，并披露证据、反证和未决不确定性               |
+| 2        | `product_selection`     | 选品立项             | 主链      | 完成商业论证和资源取舍，决定是否形成有责任人的产品立项                                           |
+| 3        | `product_npi`           | 产品开发与 NPI       | 主链      | 在重大投入扩大前作继续、返工、暂停或终止决定，并发布经过验证的产品定义                           |
+| 4        | `master_data`           | 商品与物料主数据     | 主链      | 建立无歧义、可追溯的产品、物料、BOM、SKU 和 Listing 身份，使寻源可直接引用                       |
+| 5        | `sourcing`              | 寻源与供应商定点     | 主链      | 为指定产品、物料或供应范围形成并批准可执行的稳定供给方案                                         |
+| 6        | `demand_replenishment`  | 需求与补货           | 主链      | 在缺货与过量之间形成经批准的执行需求：哪里需要多少、何时要，以及不处理风险                       |
+| 7        | `procurement`           | 采购履约             | 主链      | 对获批采购需求取得并维护可追溯的供应商书面商业承诺，处理数量、日期和条款偏差                     |
+| 8        | `supply_readiness`      | 生产验货与可出运供给 | 主链      | 形成真实可出运数量、可信时间窗和当前限制，并及时反映生产、短装、验货和整改偏差                   |
+| 9        | `shipment_planning`     | 出运计划             | 主链      | 把已批需求与可用供给形成版本化、可执行的分配、路线、港口和整拼柜方案                             |
+| 10       | `booking`               | 订舱                 | 主链      | 在获批边界内取得并维持承运人确认、当前有效且可执行的订舱承诺                                     |
+| 11       | `cargo_ready`           | 备货                 | 主链      | 在装箱窗口前形成按时、足量、按版本且满足本节点要求的可装产品行                                   |
+| 12       | `stuffing`              | 装箱                 | 主链      | 形成可信的实际柜货关系、柜封、件重体及 VGM 生成版本                                              |
+| 13       | `export_customs`        | 出口报关             | 主链      | 让全部必要出口案卷取得范围正确、来源可信的出口放行                                               |
+| 14       | `dispatch`              | 出运                 | 主链      | 汇合当前有效订舱、装箱/VGM、出口放行和码头条件，确认可信实际离港并交海运运营                     |
+| 15       | `ocean_operations`      | 海运运营             | 主链      | 从可信离港开始裁决航段、港序、ETA 和重大变化，使下游及时获得可行动信息                           |
+| 16       | `customs`               | 进口清关             | 主链      | 形成可信进口放行和未解除限制，交给提柜作联合可提判断                                             |
+| 17       | `pickup`                | 提柜                 | 主链      | 汇合联合可提条件并取得正确货柜的可信重柜 Gate Out                                                |
+| 18       | `delivery`              | 送仓                 | 主链      | 把已提货柜送至正确目的仓，并取得仓库、WMS、门岗或合格 POD 的权威接收                             |
+| 19       | `unloading`             | 卸柜                 | 主链      | 形成实收完成和独立卸空确认两个事实，并把可执行空箱交还箱                                         |
+| 20       | `empty_return`          | 还箱                 | 主链      | 在期限内把空箱还到当前有效场站并取得 EIR/接收证据，关闭柜级设备物流责任                          |
+| 21       | `compliance_operations` | 合规运营             | 支撑/横向 | 对产品版本、制造主体、目标国家、用途和业务日期形成有证据、可追溯、在有效期内的准入决定及变化影响 |
+| 22       | `charges`               | 费用结算             | 支撑/横向 | 以真实业务事件为依据，形成从费用暴露到核定、分摊、支付、贷项和争议的唯一金额账本                 |
+| 23       | `exceptions`            | 异常中心             | 支撑/横向 | 协调跨域异常在最早业务期限前取得专业处置或允许的风险决定，并把可执行结果归还原业务域接受         |
+
+`booking`、`export_customs`、`compliance_operations` 是批准后的目录项，只新增无业务动作的 `planned` 目录占位 route 与页面，不因此新增 API 或生产写动作。`customs` 保留 stable code，正式名称为“进口清关”。
+
+### 3.1 成熟度与评估状态
+
+成熟度只允许以下四级，且页面、route、API、HTTP 成功、运行时操作规格或旧 `live/framework` 标记均不能单独证明任一成熟度：
+
+- `planned`：身份、目标岗位、唯一结果和边界已定；可展示目标和现有事实入口，不允许生产写动作或虚假队列。
+- `facts_only`：可读取、导入或受控更正事实，并提供来源、版本、新鲜度和冲突；没有原生岗位任务、责任/时限闭环和真实岗位验收。
+- `operational`：具备服务端动作、授权与对象范围、责任、时限、事务/幂等/并发、交接回执和六类自动化路径；只证明岗位机制可用，不证明经营损失下降。
+- `validated`：在 `operational` 之上完成真实/脱敏样本、真实岗位、六类路径、下游使用和指标口径验收；只有该级可计入 `WB-B10` 或宣称真实业务验收。
+
+评估状态与成熟度分开：`pending_assessment` 表示尚未按本权威完成证据审查；`assessed` 表示已有证据清单、缺失门禁和负责人结论，可写入正式成熟度。`pending_assessment` 不是第五个成熟度，不产生任何运行时 promotion/demotion 语义。
+
+### 3.2 目录迁移评估表
+
+| stable code             | assessmentState      | maturity  | 当前证据缺口 / 保持行为                               |
+| ----------------------- | -------------------- | --------- | ----------------------------------------------------- |
+| `market_signals`        | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `product_selection`     | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `product_npi`           | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `master_data`           | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `sourcing`              | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `demand_replenishment`  | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `procurement`           | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `supply_readiness`      | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `shipment_planning`     | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `cargo_ready`           | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `stuffing`              | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `dispatch`              | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `ocean_operations`      | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `customs`               | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `pickup`                | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `delivery`              | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `unloading`             | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `empty_return`          | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `charges`               | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `exceptions`            | `pending_assessment` | `null`    | 缺逐台成熟度证据审查；保留现有 surface/runtime 行为。 |
+| `booking`               | `assessed`           | `planned` | 目录边界已定；无 production surface/runtime 行为。    |
+| `export_customs`        | `assessed`           | `planned` | 目录边界已定；无 production surface/runtime 行为。    |
+| `compliance_operations` | `assessed`           | `planned` | 目录边界已定；无 production surface/runtime 行为。    |
+
+后续逐台评估只能依据证据清单、缺失门禁和负责人结论更新 `assessmentState` 与 `maturity`；不得为了目录迁移改写历史 completed brief、archive 或 log。
+
+仓库和三方堆场目前只是候选协同视图，不计入上述 23 个正式工作台。是否升格必须经过独立业务评审，不能因为页面或数据存在就自动增加工作台数量。
 
 ## 四、逐台复审顺序与当前规格状态
 

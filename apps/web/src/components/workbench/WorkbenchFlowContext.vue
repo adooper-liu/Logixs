@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ArrowRight, BriefcaseBusiness } from "@lucide/vue";
 import type {
-  WorkbenchHandoff,
+  WorkbenchRelation,
   WorkbenchStage,
 } from "../../data/workbenchNetwork";
 
-defineProps<{
+const props = defineProps<{
   stage: WorkbenchStage;
-  inbound: WorkbenchHandoff | null;
-  outbound: WorkbenchHandoff | null;
+  inbound: readonly WorkbenchRelation[];
+  outbound: readonly WorkbenchRelation[];
 }>();
 </script>
 
@@ -16,7 +16,16 @@ defineProps<{
   <section class="flow-context" aria-label="当前责任与交接">
     <div class="flow-party">
       <small>上游交接</small>
-      <b>{{ inbound?.name ?? "业务链起点" }}</b>
+      <ul v-if="props.inbound.length" class="relation-list">
+        <li
+          v-for="relation in props.inbound"
+          :key="relation.code"
+          data-testid="inbound-relation"
+        >
+          {{ relation.label }}
+        </li>
+      </ul>
+      <b v-else>业务链起点</b>
     </div>
     <ArrowRight class="flow-arrow" :size="18" aria-hidden="true" />
     <div class="flow-party flow-party--current">
@@ -29,7 +38,16 @@ defineProps<{
     <ArrowRight class="flow-arrow" :size="18" aria-hidden="true" />
     <div class="flow-party">
       <small>下一交接</small>
-      <b>{{ outbound?.name ?? "主链责任收口" }}</b>
+      <ul v-if="props.outbound.length" class="relation-list">
+        <li
+          v-for="relation in props.outbound"
+          :key="relation.code"
+          data-testid="outbound-relation"
+        >
+          {{ relation.label }}
+        </li>
+      </ul>
+      <b v-else>主链责任收口</b>
     </div>
   </section>
 </template>
@@ -79,9 +97,18 @@ defineProps<{
   font-size: var(--text-micro);
 }
 
-.flow-party b {
+.flow-party b,
+.relation-list {
   overflow-wrap: anywhere;
   font-size: var(--text-meta);
+}
+
+.relation-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .flow-arrow {

@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +11,8 @@ import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 import { auditApiControllers } from "./check-route-access-metadata.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+const require = createRequire(resolve(repositoryRoot, "apps/web/package.json"));
+const ts = require("typescript");
 
 const ignoredDirectories = new Set([
   ".agents",
@@ -69,6 +72,500 @@ const textExtensions = new Set([
 ]);
 
 const normalizePath = (value) => value.replaceAll("\\", "/");
+
+function lineNumberAt(text, offset) {
+  return text.slice(0, offset).split("\n").length;
+}
+
+export function findStaleWorkbenchBaselineReferences(root, paths) {
+  return paths.flatMap((path) => {
+    const text = readFileSync(resolve(root, path), "utf8");
+    return [
+      ...text.matchAll(/(?:20 台工作台|20 个工作台|项目定义的 20 台)/g),
+    ].map(
+      (match) =>
+        `${path}:${lineNumberAt(text, match.index)} stale workbench baseline`,
+    );
+  });
+}
+
+const WORKBENCH_CATALOG_PATH = "apps/web/src/data/workbenchNetwork.ts";
+const WORKBENCH_NETWORK_ROUTES_PATH =
+  "apps/web/src/modules/workbench-network/routes.ts";
+const ROUTER_PATH = "apps/web/src/router/index.ts";
+const CURRENT_TECHNICAL_REFERENCE_PATHS = [
+  "docs/product/WORKSPACE_UI_INVENTORY.md",
+  "docs/product/POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE.md",
+  "doc/cross-border-supply-chain/05-shipment-lifecycle-blueprint.md",
+  "doc/cross-border-supply-chain/09-customs-compliance-ai.md",
+  "doc/cross-border-supply-chain/13-dcsa-business-map.md",
+];
+const MATURITY_EVIDENCE_DISCLAIMER =
+  "路由、页面或 API 存在不等于 `operational` 或 `validated`。";
+
+function unwrap(expression) {
+  return ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isParenthesizedExpression(expression)
+    ? unwrap(expression.expression)
+    : expression;
+}
+
+function expressionContainsIdentifier(expression, name) {
+  let found = false;
+  const visit = (node) => {
+    if (ts.isIdentifier(node) && node.text === name) found = true;
+    if (!found) ts.forEachChild(node, visit);
+  };
+  if (expression) visit(expression);
+  return found;
+}
+
+function mapCallbackUsesStagePath(call) {
+  const callback = call.arguments[0];
+  if (
+    !callback ||
+    (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback))
+  )
+    return false;
+  let found = false;
+  const visit = (node) => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      node.name.text === "path" &&
+      ts.isPropertyAccessExpression(node.initializer) &&
+      ts.isIdentifier(node.initializer.expression) &&
+      node.initializer.expression.text === "stage" &&
+      node.initializer.name.text === "path"
+    )
+      found = true;
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(callback.body, visit);
+  return found;
+}
+function astSource(source) {
+  return ts.createSourceFile(
+    "workbenchNetwork.ts",
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+}
+
+function topLevelVariable(sourceFile, name) {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === name)
+        return declaration;
+    }
+  }
+  return undefined;
+}
+
+function objectProperty(object, name) {
+  return object.properties.find(
+    (item) =>
+      ts.isPropertyAssignment(item) &&
+      (ts.isIdentifier(item.name) || ts.isStringLiteral(item.name)) &&
+      item.name.text === name,
+  );
+}
+
+function stringLiteral(node) {
+  if (!node) return null;
+  const expression = unwrap(node);
+  return expression &&
+    (ts.isStringLiteral(expression) ||
+      ts.isNoSubstitutionTemplateLiteral(expression))
+    ? expression.text
+    : null;
+}
+
+function numericLiteral(node) {
+  return node && ts.isNumericLiteral(node) ? Number(node.text) : null;
+}
+
+const catalogOverrideProperties = new Set([
+  "title",
+  "path",
+  "kind",
+  "phase",
+  "sequence",
+  "assessmentState",
+  "maturity",
+  "surface",
+  "ownerRole",
+  "roleResult",
+  "requiredFacts",
+]);
+
+function isStaticLiteral(node) {
+  const expression = unwrap(node);
+  return (
+    ts.isStringLiteral(expression) ||
+    ts.isNoSubstitutionTemplateLiteral(expression) ||
+    ts.isNumericLiteral(expression) ||
+    expression.kind === ts.SyntaxKind.TrueKeyword ||
+    expression.kind === ts.SyntaxKind.FalseKeyword ||
+    expression.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isArrayLiteralExpression(expression) &&
+      expression.elements.every(
+        (element) => !ts.isSpreadElement(element) && isStaticLiteral(element),
+      ))
+  );
+}
+
+function validateCatalogOverrides(overrides, errors) {
+  for (const property of overrides.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      errors.push(
+        "workbenchStages: catalogStage overrides must not use spread properties",
+      );
+      continue;
+    }
+    if (
+      !ts.isPropertyAssignment(property) ||
+      (!ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name))
+    ) {
+      errors.push(
+        `workbenchStages: catalogStage has unsupported override '${ts.SyntaxKind[property.kind]}'`,
+      );
+      continue;
+    }
+    const name = property.name.text;
+    if (!catalogOverrideProperties.has(name)) {
+      errors.push(
+        `workbenchStages: catalogStage has unsupported override '${name}'`,
+      );
+    } else if (!isStaticLiteral(property.initializer)) {
+      errors.push(
+        `workbenchStages: catalogStage override '${name}' must be a literal`,
+      );
+    }
+  }
+}
+
+function helperKind(sourceFile, name) {
+  const variable = topLevelVariable(sourceFile, name);
+  const arrow = variable?.initializer;
+  if (arrow && ts.isArrowFunction(arrow)) {
+    const result = unwrap(arrow.body);
+    return result && ts.isObjectLiteralExpression(result)
+      ? stringLiteral(objectProperty(result, "kind")?.initializer)
+      : null;
+  }
+  const declaration = sourceFile.statements.find(
+    (statement) =>
+      ts.isFunctionDeclaration(statement) && statement.name?.text === name,
+  );
+  const result = declaration?.body?.statements.find(
+    (statement) =>
+      ts.isReturnStatement(statement) &&
+      statement.expression &&
+      ts.isObjectLiteralExpression(statement.expression),
+  )?.expression;
+  return result && ts.isObjectLiteralExpression(result)
+    ? stringLiteral(objectProperty(result, "kind")?.initializer)
+    : null;
+}
+
+function callName(expression) {
+  return ts.isCallExpression(expression) &&
+    ts.isIdentifier(expression.expression)
+    ? expression.expression.text
+    : null;
+}
+
+function effectiveStages(sourceFile, errors) {
+  const legacy = new Map();
+  const network = topLevelVariable(sourceFile, "workbenchNetwork");
+  for (const expression of ts.isArrayLiteralExpression(
+    unwrap(network?.initializer),
+  )
+    ? unwrap(network.initializer).elements
+    : []) {
+    const name = callName(expression);
+    if (!name) continue;
+    const offset = name === "supportStage" ? 0 : 1;
+    const code = stringLiteral(expression.arguments?.[offset]);
+    if (code)
+      legacy.set(code, {
+        code,
+        title: stringLiteral(expression.arguments?.[offset + 1]),
+        path: stringLiteral(expression.arguments?.[offset + 2]),
+        kind: helperKind(
+          sourceFile,
+          name === "supportStage" ? "supportStage" : "stage",
+        ),
+      });
+  }
+  const catalog = topLevelVariable(sourceFile, "workbenchStages");
+  const catalogInitializer = unwrap(catalog?.initializer);
+  if (!catalog || !ts.isArrayLiteralExpression(catalogInitializer)) return [];
+  return catalogInitializer.elements.flatMap((expression) => {
+    const name = callName(expression);
+    if (name === "catalogStage") {
+      const base = legacy.get(stringLiteral(expression.arguments[0]));
+      if (!base) return [];
+      const overrides = expression.arguments[1];
+      const overrideObject =
+        overrides && ts.isObjectLiteralExpression(overrides)
+          ? overrides
+          : undefined;
+      if (overrides && !overrideObject) {
+        errors.push(
+          "workbenchStages: catalogStage overrides must be an object literal",
+        );
+      } else if (overrideObject) {
+        validateCatalogOverrides(overrideObject, errors);
+      }
+      return [
+        {
+          ...base,
+          title:
+            stringLiteral(
+              overrideObject &&
+                objectProperty(overrideObject, "title")?.initializer,
+            ) ?? base.title,
+          path:
+            stringLiteral(
+              overrideObject &&
+                objectProperty(overrideObject, "path")?.initializer,
+            ) ?? base.path,
+          kind:
+            stringLiteral(
+              overrideObject &&
+                objectProperty(overrideObject, "kind")?.initializer,
+            ) ?? base.kind,
+        },
+      ];
+    }
+    if (
+      name === "plannedCatalogStage" ||
+      name === "plannedSupportCatalogStage"
+    ) {
+      const offset = name === "plannedCatalogStage" ? 1 : 0;
+      return [
+        {
+          code: stringLiteral(expression.arguments[offset]),
+          title: stringLiteral(expression.arguments[offset + 1]),
+          path: stringLiteral(expression.arguments[offset + 2]),
+          kind: helperKind(sourceFile, name),
+        },
+      ];
+    }
+    errors.push(
+      `workbenchStages: unsupported element '${ts.SyntaxKind[expression.kind]}'`,
+    );
+    return [];
+  });
+}
+
+const EXPECTED_WORKBENCH_PATHS = new Map([
+  ["market_signals", "/workspaces/market-signals"],
+  ["product_selection", "/workspaces/product-selection"],
+  ["product_npi", "/workspaces/product-npi"],
+  ["master_data", "/workspaces/master-data"],
+  ["sourcing", "/workspaces/sourcing"],
+  ["demand_replenishment", "/workspaces/demand-replenishment"],
+  ["procurement", "/workspaces/procurement"],
+  ["supply_readiness", "/workspaces/supply-readiness"],
+  ["shipment_planning", "/workspaces/shipment-planning"],
+  ["booking", "/workspaces/booking"],
+  ["cargo_ready", "/workspaces/cargo-ready"],
+  ["stuffing", "/workspaces/stuffing"],
+  ["export_customs", "/workspaces/export-customs"],
+  ["dispatch", "/workspaces/dispatch"],
+  ["ocean_operations", "/workspaces/ocean-operations"],
+  ["customs", "/workspaces/customs"],
+  ["pickup", "/workspaces/pickup"],
+  ["delivery", "/workspaces/delivery"],
+  ["unloading", "/workspaces/unloading"],
+  ["empty_return", "/workspaces/empty-return"],
+  ["compliance_operations", "/workspaces/compliance-operations"],
+  ["charges", "/workspaces/charges"],
+  ["exceptions", "/workspaces/exceptions"],
+]);
+
+export function inspectWorkbenchCatalogSource(source) {
+  const sourceFile = astSource(source);
+  const errors = [];
+  const baseline = unwrap(
+    topLevelVariable(sourceFile, "workbenchBaseline")?.initializer,
+  );
+  for (const [name, expected] of [
+    ["total", 23],
+    ["main", 20],
+    ["support", 3],
+  ]) {
+    const actual = ts.isObjectLiteralExpression(baseline)
+      ? numericLiteral(objectProperty(baseline, name)?.initializer)
+      : null;
+    if (actual !== expected)
+      errors.push(
+        `workbenchBaseline: ${name} must be ${expected}, found '${actual ?? "missing"}'`,
+      );
+  }
+  const stages = effectiveStages(sourceFile, errors);
+  if (stages.length !== 23)
+    errors.push(`workbenchStages: expected 23 rows, found ${stages.length}`);
+  for (const [kind, expected] of [
+    ["main", 20],
+    ["support", 3],
+  ]) {
+    const actual = stages.filter((stage) => stage.kind === kind).length;
+    if (actual !== expected)
+      errors.push(
+        `workbenchStages: expected ${expected} ${kind} rows, found ${actual}`,
+      );
+  }
+  for (const field of ["code", "path"]) {
+    const seen = new Set();
+    for (const stage of stages) {
+      if (stage[field] && seen.has(stage[field]))
+        errors.push(`workbenchStages: duplicate ${field} '${stage[field]}'`);
+      seen.add(stage[field]);
+    }
+  }
+  for (const [code, path] of EXPECTED_WORKBENCH_PATHS) {
+    const stage = stages.find((item) => item.code === code);
+    if (!stage) errors.push(`workbenchStages: code '${code}' is missing`);
+    else if (stage.path !== path)
+      errors.push(
+        `workbenchStages: ${code} path must be '${path}', found '${stage.path}'`,
+      );
+  }
+  const customs = stages.find((stage) => stage.code === "customs");
+  if (customs && customs.title !== "进口清关")
+    errors.push(
+      `workbenchStages: customs title must be '进口清关', found '${customs.title}'`,
+    );
+  const compliance = stages.find(
+    (stage) => stage.code === "compliance_operations",
+  );
+  if (compliance && compliance.kind !== "support")
+    errors.push(
+      `workbenchStages: compliance_operations kind must be 'support', found '${compliance.kind}'`,
+    );
+  return errors;
+}
+
+export function inspectWorkbenchRouteSource(source) {
+  const initializer = topLevelVariable(
+    astSource(source),
+    "workbenchNetworkRoutes",
+  )?.initializer;
+  const errors = [];
+  const hasStubSpread = expressionContainsIdentifier(
+    initializer,
+    "catalogStubWorkbenchStages",
+  );
+  const mapCalls = [];
+  const unsupportedTransforms = new Set();
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression)
+    ) {
+      const receiver = node.expression.expression;
+      const usesCatalogStages = expressionContainsIdentifier(
+        receiver,
+        "catalogStubWorkbenchStages",
+      );
+      const usesFrameworkStages = expressionContainsIdentifier(
+        receiver,
+        "frameworkWorkbenchStages",
+      );
+      if (node.expression.name.text === "map") {
+        if (usesCatalogStages) mapCalls.push(node);
+      } else if (usesCatalogStages || usesFrameworkStages) {
+        unsupportedTransforms.add(node.expression.name.text);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  if (initializer) visit(initializer);
+  if (!hasStubSpread || mapCalls.length === 0)
+    errors.push(
+      "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
+    );
+  const filteredCompliance =
+    initializer &&
+    /compliance_operations/.test(initializer.getText()) &&
+    /\.filter\s*\(/.test(initializer.getText());
+  if (filteredCompliance)
+    errors.push(
+      "workbench-network routes: must not exclude compliance_operations from catalog stubs",
+    );
+  if (!mapCalls.some(mapCallbackUsesStagePath))
+    errors.push(
+      "workbench-network routes: catalog stubs must map each stage.path",
+    );
+  for (const transform of unsupportedTransforms) {
+    errors.push(
+      `workbench-network routes: unsupported array transform '${transform}'`,
+    );
+  }
+  return errors;
+}
+
+export function inspectWorkbenchRouterSource(source) {
+  const router = topLevelVariable(astSource(source), "router")?.initializer;
+  let hasCompliancePath = false;
+  const visit = (node) => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      node.name.text === "path" &&
+      stringLiteral(unwrap(node.initializer)) === "/compliance"
+    )
+      hasCompliancePath = true;
+    if (!hasCompliancePath) ts.forEachChild(node, visit);
+  };
+  if (router) visit(router);
+  return hasCompliancePath
+    ? []
+    : [
+        "router: must retain /compliance separately from /workspaces/compliance-operations",
+      ];
+}
+
+function hasComplianceRoute(source) {
+  return inspectWorkbenchRouterSource(source).length === 0;
+}
+export function checkWorkbenchCatalogSource(root) {
+  const source = readFileSync(resolve(root, WORKBENCH_CATALOG_PATH), "utf8");
+  const routerSource = readFileSync(resolve(root, ROUTER_PATH), "utf8");
+  const routesSource = readFileSync(
+    resolve(root, WORKBENCH_NETWORK_ROUTES_PATH),
+    "utf8",
+  );
+  const errors = inspectWorkbenchCatalogSource(source).map(
+    (error) => `${WORKBENCH_CATALOG_PATH}: ${error}`,
+  );
+  if (!hasComplianceRoute(routerSource))
+    errors.push(
+      `${ROUTER_PATH}: must retain /compliance separately from /workspaces/compliance-operations`,
+    );
+  errors.push(
+    ...inspectWorkbenchRouteSource(routesSource).map(
+      (error) => `${WORKBENCH_NETWORK_ROUTES_PATH}: ${error}`,
+    ),
+  );
+  for (const path of CURRENT_TECHNICAL_REFERENCE_PATHS) {
+    if (
+      !readFileSync(resolve(root, path), "utf8").includes(
+        MATURITY_EVIDENCE_DISCLAIMER,
+      )
+    )
+      errors.push(`${path}: missing catalog maturity evidence disclaimer`);
+  }
+  return errors;
+}
 
 export function findForbiddenTrackedPaths(paths) {
   return paths.filter((rawPath) => {

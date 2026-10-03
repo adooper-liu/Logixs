@@ -1,5 +1,8 @@
 import type { RouteRecordRaw } from "vue-router";
-import { frameworkWorkbenchStages } from "../../data/workbenchNetwork";
+import {
+  catalogStubWorkbenchStages,
+  frameworkWorkbenchStages,
+} from "../../data/workbenchNetwork";
 
 export const workbenchNetworkRoutes: RouteRecordRaw[] = [
   {
@@ -73,14 +76,16 @@ export const workbenchNetworkRoutes: RouteRecordRaw[] = [
       roles: ["planner", "manager"],
     },
   },
-  ...frameworkWorkbenchStages.map((stage): RouteRecordRaw => ({
-    path: stage.path,
-    component: () => import("../../views/PlannedWorkbenchView.vue"),
-    props: { stageCode: stage.code },
-    meta: {
-      title: stage.title,
-      section: "业务工作台",
-      roles: ["operator", "planner", "manager"],
-    },
-  })),
+  ...[...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
+    (stage): RouteRecordRaw => ({
+      path: stage.path,
+      component: () => import("../../views/PlannedWorkbenchView.vue"),
+      props: { stageCode: stage.code },
+      meta: {
+        title: stage.title,
+        section: "业务工作台",
+        roles: ["operator", "planner", "manager"],
+      },
+    }),
+  ),
 ];

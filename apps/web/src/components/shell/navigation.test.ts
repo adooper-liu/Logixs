@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { workbenchStages } from "../../data/workbenchNetwork";
 import router from "../../router";
 import { navigationForRole } from "./navigation";
 
@@ -27,6 +28,30 @@ describe("navigationForRole", () => {
             ].includes(item.path),
         ),
       ).toHaveLength(0);
+    }
+  });
+
+  it("registers catalog-stub routes without adding them to shell navigation", () => {
+    expect(
+      router.getRoutes().some((route) => route.path === "/workspaces/booking"),
+    ).toBe(true);
+    expect(
+      router
+        .getRoutes()
+        .some((route) => route.path === "/workspaces/export-customs"),
+    ).toBe(true);
+    expect(
+      router
+        .getRoutes()
+        .some((route) => route.path === "/workspaces/compliance-operations"),
+    ).toBe(true);
+  });
+
+  it("registers every catalog workbench path in the runtime router", () => {
+    const registeredPaths = new Set(router.getRoutes().map(({ path }) => path));
+
+    for (const stage of workbenchStages) {
+      expect(registeredPaths.has(stage.path), stage.code).toBe(true);
     }
   });
 
