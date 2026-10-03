@@ -86,6 +86,66 @@ export function findStaleWorkbenchBaselineReferences(root, paths) {
   });
 }
 
+const WORKBENCH_CATALOG_PATH = "apps/web/src/data/workbenchNetwork.ts";
+const WORKBENCH_NETWORK_ROUTES_PATH =
+  "apps/web/src/modules/workbench-network/routes.ts";
+const ROUTER_PATH = "apps/web/src/router/index.ts";
+const CURRENT_TECHNICAL_REFERENCE_PATHS = [
+  "docs/product/WORKSPACE_UI_INVENTORY.md",
+  "docs/product/POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE.md",
+  "doc/cross-border-supply-chain/05-shipment-lifecycle-blueprint.md",
+  "doc/cross-border-supply-chain/09-customs-compliance-ai.md",
+  "doc/cross-border-supply-chain/13-dcsa-business-map.md",
+];
+const MATURITY_EVIDENCE_DISCLAIMER =
+  "路由、页面或 API 存在不等于 `operational` 或 `validated`。";
+
+export function checkWorkbenchCatalogSource(root) {
+  const source = readFileSync(resolve(root, WORKBENCH_CATALOG_PATH), "utf8");
+  const routerSource = readFileSync(resolve(root, ROUTER_PATH), "utf8");
+  const workbenchNetworkRoutesSource = readFileSync(
+    resolve(root, WORKBENCH_NETWORK_ROUTES_PATH),
+    "utf8",
+  );
+  const errors = [];
+  const requiredCatalogFragments = [
+    "total: 23",
+    "main: 20",
+    "support: 3",
+    '"booking"',
+    '"export_customs"',
+    '"compliance_operations"',
+    '"/workspaces/booking"',
+    '"/workspaces/export-customs"',
+    '"/workspaces/compliance-operations"',
+    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
+  ];
+
+  for (const fragment of requiredCatalogFragments) {
+    if (!source.includes(fragment)) {
+      errors.push(`${WORKBENCH_CATALOG_PATH}: missing '${fragment}'`);
+    }
+  }
+
+  if (
+    !routerSource.includes('path: "/compliance"') ||
+    !workbenchNetworkRoutesSource.includes("catalogStubWorkbenchStages")
+  ) {
+    errors.push(
+      `${ROUTER_PATH}: must retain /compliance separately from /workspaces/compliance-operations`,
+    );
+  }
+
+  for (const path of CURRENT_TECHNICAL_REFERENCE_PATHS) {
+    const text = readFileSync(resolve(root, path), "utf8");
+    if (!text.includes(MATURITY_EVIDENCE_DISCLAIMER)) {
+      errors.push(`${path}: missing catalog maturity evidence disclaimer`);
+    }
+  }
+
+  return errors;
+}
+
 export function findForbiddenTrackedPaths(paths) {
   return paths.filter((rawPath) => {
     const path = normalizePath(rawPath);

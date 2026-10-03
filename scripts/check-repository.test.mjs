@@ -17,6 +17,7 @@ import { analyzeControllerSources } from "./check-route-access-metadata.mjs";
 import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
+  checkWorkbenchCatalogSource,
   findBrokenMarkdownLinks,
   findStaleWorkbenchBaselineReferences,
   findForbiddenTrackedPaths,
@@ -53,6 +54,56 @@ test("current workbench authorities use the approved 23-workbench baseline", () 
     CURRENT_WORKBENCH_AUTHORITY_PATHS,
   );
   assert.deepEqual(violations, []);
+});
+
+test("workbench catalog declares the approved 23-code baseline", () => {
+  const violations = checkWorkbenchCatalogSource(repositoryRoot);
+  assert.deepEqual(violations, []);
+});
+
+test("workbench catalog guard requires the legacy compliance route beside the new stub", () => {
+  const root = mkdtempSync(join(tmpdir(), "logixs-workbench-catalog-"));
+  temporaryDirectories.push(root);
+  const catalogDirectory = join(root, "apps", "web", "src", "data");
+  mkdirSync(catalogDirectory, { recursive: true });
+  writeFileSync(
+    join(catalogDirectory, "workbenchNetwork.ts"),
+    `total: 23\nmain: 20\nsupport: 3\n"booking"\n"export_customs"\n"compliance_operations"\n"/workspaces/booking"\n"/workspaces/export-customs"\n"/workspaces/compliance-operations"\ncatalogStage("customs", { sequence: 16, title: "进口清关" })`,
+  );
+  const routerDirectory = join(root, "apps", "web", "src", "router");
+  mkdirSync(routerDirectory, { recursive: true });
+  writeFileSync(join(routerDirectory, "index.ts"), "export {}");
+  const workbenchNetworkRoutesDirectory = join(
+    root,
+    "apps",
+    "web",
+    "src",
+    "modules",
+    "workbench-network",
+  );
+  mkdirSync(workbenchNetworkRoutesDirectory, { recursive: true });
+  writeFileSync(
+    join(workbenchNetworkRoutesDirectory, "routes.ts"),
+    "catalogStubWorkbenchStages",
+  );
+  for (const path of [
+    "docs/product/WORKSPACE_UI_INVENTORY.md",
+    "docs/product/POST_DEPARTURE_WORKBENCH_DELIVERY_BASELINE.md",
+    "doc/cross-border-supply-chain/05-shipment-lifecycle-blueprint.md",
+    "doc/cross-border-supply-chain/09-customs-compliance-ai.md",
+    "doc/cross-border-supply-chain/13-dcsa-business-map.md",
+  ]) {
+    const parts = path.split("/");
+    mkdirSync(join(root, ...parts.slice(0, -1)), { recursive: true });
+    writeFileSync(
+      join(root, ...parts),
+      "路由、页面或 API 存在不等于 `operational` 或 `validated`。",
+    );
+  }
+
+  assert.deepEqual(checkWorkbenchCatalogSource(root), [
+    "apps/web/src/router/index.ts: must retain /compliance separately from /workspaces/compliance-operations",
+  ]);
 });
 
 test("requires every style scale token to be defined", () => {
