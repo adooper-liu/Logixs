@@ -79,10 +79,10 @@ authorityRefs:
 按 superpowers 子代理流程推进，未建 task brief，进度记在未纳入版本控制的 `.superpowers/sdd/2026-10-03-gc012-g0-catalog/progress.md`。
 该会话实际运行 GPT-5.6；PR #128 生效后，Claude Code 不在角色映射内，不得继续写入。
 
-- 已接收提交：`origin/main...4a0c9370` 共 13 个，按 `AGENTS.md` §1.2 第 11 条保留原署名，登记为“Claude Code（实际 GPT-5.6），规则生效前写入”。
+- 已接收提交：`origin/main...4a0c9370` 共 13 个，另加定案后提交的 `50d6a6bb`（不采信，见 S1），按 `AGENTS.md` §1.2 第 11 条保留原署名，登记为“Claude Code（实际 GPT-5.6），规则生效前写入”。
 - 接手基线：新分支 `feat/gc012-g0-catalog-v1` 自 `4a0c9370` 建立，并合并 `origin/main`（`9ede156b`）；原分支与原 worktree 不再写入，由负责人决定清理。
 - 进度账本只作参考，其中裁定已转入下方决策记录；账本本身不是权威。
-- 原会话在 Task 4 第 3 轮留有约 440 行未提交改动（`scripts/check-repository*`），仅作 S1 的参考输入，不直接采信。
+- 原会话在定案后提交了 Task 4 第 3 轮改写 `50d6a6bb`（`scripts/check-repository*`），已合入作为 S1 起点，不直接采信。
 
 ## 负责人决策记录
 
@@ -115,14 +115,16 @@ authorityRefs:
 
 | 项目     | 内容                                                                                                                                                                         |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 基线     | S0 合并提交                                                                                                                                                                  |
+| 基线     | 合并 `50d6a6bb` 后的提交（见进度）                                                                                                                                           |
 | 执行角色 | 实现执行器：工具 `Codex`，实际模型 `GPT-5.6`                                                                                                                                 |
 | 复审     | S3 统一复审（Claude Opus）                                                                                                                                                   |
 | 写入范围 | `scripts/check-repository.mjs`、`scripts/check-repository.test.mjs`                                                                                                          |
 | 禁止范围 | 其他所有文件；不得改变目录口径、成熟度语义或历史文档排除规则                                                                                                                 |
 | 待修问题 | I-01 箭头函数 helper 的返回 kind 回退为 helper 名；I-02 嵌套的无效 `const router` 可遮蔽顶层 router；缺少引号/模板字符串诱饵用例                                             |
 | 方案     | 改用现有 TypeScript 依赖的编译器 AST 检查顶层声明与实际导出初始化表达式，替代自写正则解析；先补能复现 I-01、I-02 与诱饵的失败测试                                            |
-| 参考输入 | 原会话未提交补丁（由主代理导出到仓库外后提供路径），只作参考                                                                                                                 |
+| 起点     | 原会话 17:39 提交的 `50d6a6bb`（AST 改写）已合入本分支，未经验证、不得直接采信                                                                                               |
+| 已知缺陷 | `pnpm repo:check` 抛出 `ReferenceError: execFileSync is not defined`（改写时删掉了导入）；测试文件仅改 8 行，I-01、I-02 与诱饵覆盖不足                                       |
+| 验收要求 | 每个问题都要有在 `4a0c9370` 版本上失败、在修复后通过的测试；补一条覆盖 `runRepositoryChecks` 入口的测试，防止同类导入缺失                                                    |
 | 验证命令 | `node --test scripts/check-repository.test.mjs`；`pnpm repo:check`；`pnpm exec prettier --check scripts/check-repository.mjs scripts/check-repository.test.mjs`；`pnpm lint` |
 | 停止条件 | 测试全绿后 `ready-for-review` 停手，按 `AGENTS.md` §1.3 回交 `HANDOFF`；允许在本分支本地提交，不推送                                                                         |
 
@@ -149,4 +151,5 @@ authorityRefs:
 ## 进度
 
 - 2026-10-03：负责人定案 1A、2A；主代理建立接手分支与 worktree，合并 `origin/main` 并解决 `AGENTS.md` 冲突（保留 23 台与新角色名）。
-- 2026-10-03：原 Claude Code 会话 17:33 仍在写入 `scripts/check-repository*`，S1 等待负责人确认其停止。
+- 2026-10-03：原 Claude Code 会话在定案后于 17:39 提交 `50d6a6bb`（Task 4 第 3 轮 AST 改写），晚于新规则生效；为保留历史，已合入本分支作为 S1 起点，不采信。
+- 2026-10-03：合入后检查器测试 53/53 通过，但 `pnpm repo:check` 因缺少 `execFileSync` 导入失败；分支当前为红，由 S1 修复。S1 须在负责人确认原会话已停止后下发。
