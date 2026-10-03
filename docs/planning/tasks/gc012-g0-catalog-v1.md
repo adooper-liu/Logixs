@@ -154,3 +154,5 @@ authorityRefs:
 - 2026-10-03：原 Claude Code 会话在定案后于 17:39 提交 `50d6a6bb`（Task 4 第 3 轮 AST 改写），晚于新规则生效；为保留历史，已合入本分支作为 S1 起点，不采信。
 - 2026-10-03：合入后检查器测试 53/53 通过，但 `pnpm repo:check` 因缺少 `execFileSync` 导入失败；分支当前为红，由 S1 修复。S1 须在负责人确认原会话已停止后下发。
 - 2026-10-03 17:48：负责人确认 Claude Code 会话已停止；主代理核对原 worktree 自 17:39:59 起无新提交与文件写入，原分支止于 `50d6a6bb`。S1 下发给 Codex。
+- 2026-10-03：S1 `ready-for-review` 回交；主代理复现 RED（`4a0c9370` 失败 3 项、`50d6a6bb` 失败 2 项）与 GREEN（56/56），验收并提交 `7f69174d`。`50d6a6bb` 新增的目录源文件字符串/模板诱饵用例在 S1 中被移除，列入 S3 复审重点。
+- 2026-10-03 19:40～19:48：S2 于 `7f69174d` 完成。G0 计划 Task 4 Step 4：检查器测试 56/56、`docs:check`、`repo:check`、web 单测 636/636、web lint、web typecheck、web E2E 157 通过/7 按视口条件跳过、web build、`format:check`、`git diff --check` 全部通过。`pnpm validate`（`DATABASE_URL` 指向 `.env.example` 的本地 5433 库，`AUTH_MODE=development`）中 `repo:check`、`contract:check`、`contract:drift`、`data-dictionary:check`、`db:generate`、lint、`format:check`、typecheck、test（api 1425/1425、web 636/636）、`test:integration`（153/153）通过；其 E2E 阶段因负责人 19:42 启动的 `dev:all` 占用 5173 触发 `E2E_DEV_SERVER_CONFLICT`，未终止该进程，E2E 采用同一提交上 19:42 独立运行的同一套件结果；根 `pnpm build` 补跑通过。S2 通过，进入 S3。
