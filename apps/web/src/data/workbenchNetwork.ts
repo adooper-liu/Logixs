@@ -708,6 +708,9 @@ export const mainWorkbenchChain = workbenchStages.filter(
 export const supportingWorkbenches = workbenchStages.filter(
   (item) => item.kind === "support",
 );
+export const catalogStubWorkbenchStages = workbenchStages.filter(
+  (item) => item.surface === "catalog_stub",
+);
 export const frameworkWorkbenchStages = workbenchStages.filter(
   (item) => item.implementation === "framework" && item.surface === "dedicated",
 );
@@ -1062,12 +1065,8 @@ export function isProductionMaturity(maturity: WorkbenchMaturity | null) {
   return maturity === "operational" || maturity === "validated";
 }
 
-export function getWorkbenchStage(
-  code: string,
-): CatalogWorkbenchStage | undefined {
-  return workbenchNetwork.find(
-    (item): item is CatalogWorkbenchStage => item.code === code,
-  );
+export function getWorkbenchStage(code: string): WorkbenchStage | undefined {
+  return workbenchStages.find((item) => item.code === code);
 }
 
 export function getWorkbenchHandoff(

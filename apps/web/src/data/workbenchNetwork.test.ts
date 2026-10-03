@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  catalogStubWorkbenchStages,
   getDownstreamWorkbenchStages,
   getInboundWorkbenchRelations,
+  getWorkbenchStage,
   getOutboundWorkbenchRelations,
   getUpstreamWorkbenchStages,
   isProductionMaturity,
@@ -72,6 +74,27 @@ describe("workbench catalog", () => {
     expect(isProductionMaturity("facts_only")).toBe(false);
     expect(isProductionMaturity("operational")).toBe(true);
     expect(isProductionMaturity("validated")).toBe(true);
+  });
+
+  it("resolves runtime lookup through the typed catalog", () => {
+    expect(getWorkbenchStage("cargo_ready")).toMatchObject({
+      assessmentState: "pending_assessment",
+      maturity: null,
+    });
+    expect(getWorkbenchStage("booking")).toMatchObject({
+      assessmentState: "assessed",
+      maturity: "planned",
+      surface: "catalog_stub",
+    });
+    expect(getWorkbenchStage("unknown_workbench")).toBeUndefined();
+  });
+
+  it("exposes exactly the catalog-only workbenches for later consumers", () => {
+    expect(catalogStubWorkbenchStages.map(({ code }) => code)).toEqual([
+      "booking",
+      "export_customs",
+      "compliance_operations",
+    ]);
   });
 
   it("models the approved fan-in and fan-out dependencies", () => {
