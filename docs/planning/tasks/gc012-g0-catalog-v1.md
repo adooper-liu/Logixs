@@ -1,6 +1,13 @@
 ---
-status: coding
+status: done
 branch: feat/gc012-g0-catalog-v1
+verification: |
+  https://github.com/adooper-liu/Logixs/pull/130 已合并到 main，merge commit `159cf643bf40c6296dc8a5ed82602890db741ecc`。
+  CI https://github.com/adooper-liu/Logixs/actions/runs/37126959806 中 changes、static、unit、e2e、build、quality 通过，
+  dictionary、security 按变更检测跳过；E2E 门禁以该次 CI 为权威证据（GC012-S3-F08）。本地 check-repository 测试 65/65、
+  repo:check、web 单测 640/640、web lint/typecheck 通过；S2 validate 在 E2E 之前各阶段通过（含 test:integration 153/153）。
+  独立复审为两次 fresh 只读 Claude Opus 会话，全部 finding 已 accepted 并修复。G0 只交付目录、关系与漂移防护，
+  不构成任何工作台 WB-B 最低线、业务闭环或上线验收结论。
 owner: main
 writer: codex
 risk: high
@@ -217,3 +224,4 @@ S6 验收后执行：推送 `feat/gc012-g0-catalog-v1`、建 PR、跑 CI；合�
 - 2026-10-03 20:48：S5 第 1 次回交（未提交差异，11 个文件均在写入范围内）。主代理复跑检查器测试 61/61、`repo:check`、web 单测 639/639、web typecheck 均通过；F01、F02、F03、F05、F06、F07 落实，F04 对正式工作台路由数组的 `.filter` 仍静默通过，退回 S5 返工 R2。
 - 2026-10-03 20:59～21:25：R2 回交只改检查器两文件，主代理复测正式工作台 `.filter`/`.slice` 均报错、检查器 63/63，验收 S5 并提交 `5ee04e49`。首次增量复审被中断（未留改动），重派的 fresh 只读 Claude Opus 复审结论 `approve-with-findings`（2 minor、1 nit，`writes: none`）；主代理复现 S5-F01 后全部 `accepted`，进入 S6。
 - 2026-10-03 21:34：S6 回交（4 个文件，均在写入范围内；Codex 报告 RED 与路由删除变异自证，`router/index.ts` 无残留差异）。主代理复测模板字符串、`as const` 与普通字符串三种错误 `path` 均报错；检查器 65/65、`repo:check`、web 单测 640/640、web lint、web typecheck、Prettier、`git diff --check` 通过，验收 S6。下一步 S4。
+- 2026-10-03 21:46：负责人授权推送与建 PR，S4 推送分支并建立 PR #130，CI 必需检查全部通过；负责人授权后以 merge commit `159cf643` 合并，本 brief 标为 `done`。
