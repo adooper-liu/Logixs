@@ -1,6 +1,11 @@
 ---
-status: review
+status: done
 branch: docs/agent-role-mapping-v1
+verification: |
+  https://github.com/adooper-liu/Logixs/pull/128 已合入 main，merge commit `999eeba37e35352d0c6749f92de90f5f61337499`。
+  CI https://github.com/adooper-liu/Logixs/actions/runs/37111310006 的 changes、dictionary、static、quality 通过，
+  build、unit、e2e、security 按变更检测跳过（仅文档与治理规则）。本地 prettier --check、repo:check 与
+  check-repository 测试 44/44 通过；有效独立复审为 GPT-5.6 fresh 只读会话，4 项 finding 均已采纳修正。
 owner: main
 writer: cursor
 risk: medium
@@ -164,3 +169,4 @@ next: pr
 - 2026-10-03：第一轮独立复审返回 7 项 finding，无阻断项；已修正可在本切片处理的部分（`424e4df2`）。
 - 2026-10-03：负责人对 ARM-003 定案方案 A，已写回 §1.2 第 4 条；转由 GPT-5.6 fresh 只读会话做有效复审。
 - 2026-10-03：GPT-5.6 有效复审返回 4 项 finding（1 high、2 medium、1 low），全部采纳并在本切片修正；ARM-002 的延期由 GPT-001 推翻。
+- 2026-10-03：负责人授权推送并建 PR；[PR #128](https://github.com/adooper-liu/Logixs/pull/128) CI 通过后经负责人授权合并（`999eeba3`），任务 `done`。
