@@ -1,6 +1,6 @@
 ---
-status: review
-branch: feat/market-signal-active-validation-v1
+status: blocked
+branch: docs/market-signals-post-merge-status
 verification: |
   2026-10-02 负责人决定两份永久标注为 `synthetic_rehearsal` 的正反演练可作为首版产品机制与自动化测试基线，
   不再以真实样本阻塞开发。真实/脱敏样本、完整 cohort 和独立结果集仍阻止 KPI 发布、WB-B10、上线业务验收
@@ -9,6 +9,8 @@ verification: |
   OIDC 401 1/1、全量 E2E 142 passed / 7 skipped、全量 PostgreSQL integration 24 文件 153/153、API 1425/1425、
   Web 631/631、两端 build、contract、dictionary、authz、repo、format、security:audit 与完整 `pnpm validate` 通过。
   这只证明当前 coding 切片的技术与合成演练门禁成立；真实样本、KPI、WB-B10、上线业务验收和经营成效声明仍未完成。
+  2026-10-03 PR #126 已合入 main，merge commit `afee82d3699a40e0f4ae16320327b32b8fa33a6a`；当前没有下一项已批准
+  coding slice，任务转 blocked，等待 MS-D02 后续业务政策定案或真实业务验收 gate，不回退已合入能力。
 owner: claude
 writer: claude
 risk: high
@@ -548,10 +550,11 @@ next: fix
 
 ## 进度记录
 
-| 日期       | 阶段    | 负责   | commit | 说明                                                                                                                                           |
-| ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-02 | design  | Claude | —      | 锁定业务目的、两类损失、首个岗位闭环、四项首批指标与最低保障；详细政策回到候选，等待真实样本                                                   |
-| 2026-10-02 | blocked | Claude | —      | 仓库可见范围未发现可关联“市场观察 → 判断 → 独立商业结果”的合格正反样本；记录排除清单、结构能/不能矩阵和分级样本 gate，等待受控样本来源         |
-| 2026-10-02 | blocked | Claude | —      | 按负责人要求增加一正一反 `synthetic_rehearsal`；只供流程/字段/六类路径/UI 评审，不定阈值或 KPI，fresh 复审 no-findings                         |
-| 2026-10-02 | coding  | Claude | —      | 负责人明确 synthetic 作为首版产品与自动化测试基线，不再等待真实案例；真实证据后置为 KPI、WB-B10、上线与成效声明 gate；启动“单一当前验证承诺”   |
-| 2026-10-03 | review  | Claude | —      | C-TAKEOVER-FIX 与 final fresh review finding 已修复；完整 validate、全量 integration/E2E 和 build 通过，进入任务集成评审；真实业务 gate 仍后置 |
+| 日期       | 阶段    | 负责   | commit     | 说明                                                                                                                                           |
+| ---------- | ------- | ------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-02 | design  | Claude | —          | 锁定业务目的、两类损失、首个岗位闭环、四项首批指标与最低保障；详细政策回到候选，等待真实样本                                                   |
+| 2026-10-02 | blocked | Claude | —          | 仓库可见范围未发现可关联“市场观察 → 判断 → 独立商业结果”的合格正反样本；记录排除清单、结构能/不能矩阵和分级样本 gate，等待受控样本来源         |
+| 2026-10-02 | blocked | Claude | —          | 按负责人要求增加一正一反 `synthetic_rehearsal`；只供流程/字段/六类路径/UI 评审，不定阈值或 KPI，fresh 复审 no-findings                         |
+| 2026-10-02 | coding  | Claude | —          | 负责人明确 synthetic 作为首版产品与自动化测试基线，不再等待真实案例；真实证据后置为 KPI、WB-B10、上线与成效声明 gate；启动“单一当前验证承诺”   |
+| 2026-10-03 | review  | Claude | `6e6952e8` | C-TAKEOVER-FIX 与 final fresh review finding 已修复；完整 validate、全量 integration/E2E 和 build 通过，进入任务集成评审；真实业务 gate 仍后置 |
+| 2026-10-03 | blocked | Claude | `afee82d3` | PR #126 已合入 main；当前无下一项已批准 coding slice，等待 MS-D02 后续政策或真实业务验收 gate，不把本台标 done                                 |
