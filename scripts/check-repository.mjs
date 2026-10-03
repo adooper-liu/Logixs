@@ -100,6 +100,49 @@ const CURRENT_TECHNICAL_REFERENCE_PATHS = [
 const MATURITY_EVIDENCE_DISCLAIMER =
   "路由、页面或 API 存在不等于 `operational` 或 `validated`。";
 
+function stripComments(source) {
+  let output = "";
+  let quote = null;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    const next = source[index + 1];
+    if (quote) {
+      output += character;
+      if (character === "\\") output += source[++index] ?? "";
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (["'", '"', "`"].includes(character)) {
+      quote = character;
+      output += character;
+      continue;
+    }
+    if (character === "/" && next === "/") {
+      while (index < source.length && source[index] !== "\n") {
+        output += " ";
+        index += 1;
+      }
+      output += source[index] ?? "";
+      continue;
+    }
+    if (character === "/" && next === "*") {
+      output += "  ";
+      index += 2;
+      while (
+        index < source.length &&
+        !(source[index] === "*" && source[index + 1] === "/")
+      ) {
+        output += source[index] === "\n" ? "\n" : " ";
+        index += 1;
+      }
+      output += "  ";
+      index += 1;
+      continue;
+    }
+    output += character;
+  }
+  return output;
+}
 function stringValue(value) {
   return value.trim().match(/^['"]([^'"]+)['"]$/)?.[1] ?? null;
 }
@@ -144,11 +187,34 @@ function splitArguments(source) {
   return argumentsList;
 }
 
+function codeIndexOf(source, token, from = 0) {
+  let quote = null;
+  for (let index = from; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (character === "\\") index += 1;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (["'", '"', "`"].includes(character)) {
+      quote = character;
+      continue;
+    }
+    if (source.startsWith(token, index)) return index;
+  }
+  return -1;
+}
+
 function functionCalls(source, name) {
   const calls = [];
-  const pattern = new RegExp(`\\b${name}\\s*\\(`, "g");
-  for (const match of source.matchAll(pattern)) {
-    const open = source.indexOf("(", match.index);
+  for (let start = 0; start < source.length; start += 1) {
+    const index = codeIndexOf(source, name, start);
+    if (index === -1) break;
+    start = index + name.length;
+    if (/[$\w]/.test(source[index - 1] ?? "") || /[$\w]/.test(source[start]))
+      continue;
+    const open = source.indexOf("(", start);
+    if (source.slice(start, open).trim()) continue;
     const end = balancedEnd(source, open);
     if (end !== -1) calls.push(splitArguments(source.slice(open + 1, end)));
   }
@@ -156,12 +222,57 @@ function functionCalls(source, name) {
 }
 
 function arraySource(source, declaration) {
-  const start = source.indexOf(declaration);
+  const start = codeIndexOf(source, declaration);
   if (start === -1) return "";
-  const equals = source.indexOf("=", start);
-  const open = source.indexOf("[", equals);
+  const equals = codeIndexOf(source, "=", start + declaration.length);
+  const open = codeIndexOf(source, "[", equals + 1);
   const end = balancedEnd(source, open, "[", "]");
   return end === -1 ? "" : source.slice(open + 1, end);
+}
+
+function declarationSource(source, declaration) {
+  const start = codeIndexOf(source, declaration);
+  if (start === -1) return "";
+  const equals = codeIndexOf(source, "=", start + declaration.length);
+  if (equals === -1) return "";
+  let depth = 0;
+  let quote = null;
+  for (let index = equals + 1; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (character === "\\") index += 1;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (["'", '"', "`"].includes(character)) quote = character;
+    else if (["(", "[", "{"].includes(character)) depth += 1;
+    else if ([")", "]", "}"].includes(character)) depth -= 1;
+    else if (character === ";" && depth === 0)
+      return source.slice(equals + 1, index);
+  }
+  return source.slice(equals + 1);
+}
+
+function propertyArraySource(source, property) {
+  const start = codeIndexOf(source, `${property}:`);
+  if (start === -1) return "";
+  const open = codeIndexOf(source, "[", start + property.length + 1);
+  const end = balancedEnd(source, open, "[", "]");
+  return end === -1 ? "" : source.slice(open + 1, end);
+}
+function functionBody(source, name) {
+  const start = codeIndexOf(source, `function ${name}`);
+  if (start === -1) return "";
+  const open = codeIndexOf(source, "{", start);
+  const end = balancedEnd(source, open, "{", "}");
+  return end === -1 ? "" : source.slice(open + 1, end);
+}
+
+function declaredKind(source, name) {
+  return (
+    functionBody(source, name).match(/kind:\s*["'](main|support)["']/)?.[1] ??
+    null
+  );
 }
 
 const EXPECTED_WORKBENCH_PATHS = new Map([
@@ -191,12 +302,32 @@ const EXPECTED_WORKBENCH_PATHS = new Map([
 ]);
 
 export function inspectWorkbenchCatalogSource(source) {
+  source = stripComments(source);
   const errors = [];
+  const baseline = propertyArraySource(source, "workbenchBaseline");
+  for (const [field, expected] of [
+    ["total", 23],
+    ["main", 20],
+    ["support", 3],
+  ]) {
+    const actual = source
+      .slice(
+        codeIndexOf(source, "export const workbenchBaseline"),
+        codeIndexOf(source, "export const workbenchHandoffs"),
+      )
+      .match(new RegExp(`${field}:\\s*(\\d+)`))?.[1];
+    if (actual !== String(expected))
+      errors.push(
+        `workbenchBaseline: ${field} must be ${expected}, found '${actual ?? "missing"}'`,
+      );
+  }
   const legacy = new Map();
+  const mainKind = declaredKind(source, "stage");
+  const supportKind = declaredKind(source, "supportStage");
   for (const [kind, name] of [
-    ["main", "liveStage"],
-    ["main", "stage"],
-    ["support", "supportStage"],
+    [mainKind, "liveStage"],
+    [mainKind, "stage"],
+    [supportKind, "supportStage"],
   ]) {
     for (const args of functionCalls(
       arraySource(source, "export const workbenchNetwork"),
@@ -226,10 +357,11 @@ export function inspectWorkbenchCatalogSource(source) {
       kind: args[1]?.match(/kind:\s*["']([^"']+)["']/)?.[1] ?? base.kind,
     });
   }
-  for (const [name, kind] of [
+  for (const [name, defaultKind] of [
     ["plannedCatalogStage", "main"],
     ["plannedSupportCatalogStage", "support"],
   ]) {
+    const kind = declaredKind(source, name) ?? defaultKind;
     for (const args of functionCalls(catalog, name)) {
       const offset = name === "plannedCatalogStage" ? 1 : 0;
       stages.push({
@@ -284,18 +416,22 @@ export function inspectWorkbenchCatalogSource(source) {
 }
 
 export function inspectWorkbenchRouteSource(source) {
+  const initializer = declarationSource(
+    stripComments(source),
+    "export const workbenchNetworkRoutes",
+  );
   const errors = [];
   if (
     !/\[\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\]\s*\.map\s*\(/.test(
-      source,
+      initializer,
     )
   )
     errors.push(
       "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
     );
   if (
-    /catalogStubWorkbenchStages[\s\S]*?\.filter\([\s\S]*?compliance_operations/.test(
-      source,
+    /\[\s*\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\][\s\S]*?\.filter\([\s\S]*?compliance_operations/.test(
+      initializer,
     )
   )
     errors.push(
@@ -303,7 +439,7 @@ export function inspectWorkbenchRouteSource(source) {
     );
   if (
     !/\[\.\.\.frameworkWorkbenchStages,\s*\.\.\.catalogStubWorkbenchStages\][\s\S]*?\.map\s*\([\s\S]*?path:\s*stage\.path/.test(
-      source,
+      initializer,
     )
   )
     errors.push(
@@ -312,6 +448,18 @@ export function inspectWorkbenchRouteSource(source) {
   return errors;
 }
 
+export function inspectWorkbenchRouterSource(source) {
+  const router = declarationSource(stripComments(source), "const router");
+  return /path:\s*["']\/compliance["']/.test(router)
+    ? []
+    : [
+        "router: must retain /compliance separately from /workspaces/compliance-operations",
+      ];
+}
+
+function hasComplianceRoute(source) {
+  return inspectWorkbenchRouterSource(source).length === 0;
+}
 export function checkWorkbenchCatalogSource(root) {
   const source = readFileSync(resolve(root, WORKBENCH_CATALOG_PATH), "utf8");
   const routerSource = readFileSync(resolve(root, ROUTER_PATH), "utf8");
@@ -322,7 +470,7 @@ export function checkWorkbenchCatalogSource(root) {
   const errors = inspectWorkbenchCatalogSource(source).map(
     (error) => `${WORKBENCH_CATALOG_PATH}: ${error}`,
   );
-  if (!routerSource.includes('path: "/compliance"'))
+  if (!hasComplianceRoute(routerSource))
     errors.push(
       `${ROUTER_PATH}: must retain /compliance separately from /workspaces/compliance-operations`,
     );

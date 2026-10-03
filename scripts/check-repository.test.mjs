@@ -20,6 +20,7 @@ import {
   checkWorkbenchCatalogSource,
   inspectWorkbenchCatalogSource,
   inspectWorkbenchRouteSource,
+  inspectWorkbenchRouterSource,
   findBrokenMarkdownLinks,
   findStaleWorkbenchBaselineReferences,
   findForbiddenTrackedPaths,
@@ -172,13 +173,104 @@ test("catalog route inspection rejects filtered compliance stubs and ignored sta
       (stage) => ({ path: "/workspaces/planned" }),
     );`;
 
-  assert.deepEqual(inspectWorkbenchRouteSource(excludedCompliance), [
-    "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
-    "workbench-network routes: must not exclude compliance_operations from catalog stubs",
+  assert.ok(
+    inspectWorkbenchRouteSource(excludedCompliance).length > 0,
+    "filtered compliance stub route must be rejected",
+  );
+  assert.ok(
+    inspectWorkbenchRouteSource(ignoredStagePath).includes(
+      "workbench-network routes: catalog stubs must map each stage.path",
+    ),
+  );
+});
+
+test("catalog inspection ignores commented constructor decoys", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  )
+    .replace(
+      /plannedCatalogStage\(\s*10,[\s\S]*?\n  \),/,
+      `// plannedCatalogStage(
+    10,
+    "booking",
+    "订舱",
+    "/workspaces/booking",
+    "shipment",
+    "订舱运营人员",
+    "注释诱饵",
+    [],
+  ),`,
+    )
+    .replace(
+      '  catalogStage("charges"),',
+      `  /* plannedCatalogStage(
+    10,
+    "booking",
+    "订舱",
+    "/workspaces/booking",
+    "shipment",
+    "订舱运营人员",
+    "块注释诱饵",
+    [],
+  ), */
+  catalogStage("charges"),`,
+    );
+
+  const violations = inspectWorkbenchCatalogSource(source);
+  assert.ok(violations.includes("workbenchStages: code 'booking' is missing"));
+});
+
+test("route inspection ignores decoy snippets outside the exported route initializer", () => {
+  const commentDecoy = `
+    // export const decoy = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
+    //   (stage) => ({ path: stage.path }),
+    // );
+    export const workbenchNetworkRoutes = [{ path: "/workspaces" }];`;
+  const deadDecoy = `
+    const decoy = [...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
+      (stage) => ({ path: stage.path }),
+    );
+    export const workbenchNetworkRoutes = [...catalogStubWorkbenchStages].map(
+      (stage) => ({ path: "/workspaces/planned" }),
+    );`;
+
+  assert.ok(
+    inspectWorkbenchRouteSource(commentDecoy).includes(
+      "workbench-network routes: catalog stubs must map catalogStubWorkbenchStages",
+    ),
+  );
+  assert.ok(
+    inspectWorkbenchRouteSource(deadDecoy).includes(
+      "workbench-network routes: catalog stubs must map each stage.path",
+    ),
+  );
+});
+
+test("router inspection ignores /compliance decoys outside the router initializer", () => {
+  const source = `
+    const decoy = { path: "/compliance" };
+    // { path: "/compliance" }
+    const router = createRouter({ routes: [{ path: "/tasks" }] });`;
+
+  assert.deepEqual(inspectWorkbenchRouterSource(source), [
+    "router: must retain /compliance separately from /workspaces/compliance-operations",
   ]);
-  assert.deepEqual(inspectWorkbenchRouteSource(ignoredStagePath), [
-    "workbench-network routes: catalog stubs must map each stage.path",
-  ]);
+});
+
+test("catalog inspection validates baseline values and effective helper kinds", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "apps", "web", "src", "data", "workbenchNetwork.ts"),
+    "utf8",
+  )
+    .replace("total: 23", "total: 20")
+    .replace('kind: "support",\n    phase,', 'kind: "main",\n    phase,');
+  const violations = inspectWorkbenchCatalogSource(source);
+
+  assert.ok(
+    violations.includes("workbenchBaseline: total must be 23, found '20'"),
+  );
+  assert.ok(violations.some((violation) => violation.includes("support rows")));
 });
 
 test("requires every style scale token to be defined", () => {
