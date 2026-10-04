@@ -1,5 +1,5 @@
 ---
-status: coding
+status: fix
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -25,10 +25,13 @@ writeScopes:
   - apps/web/src/components/product-selection/**
   - apps/web/src/composables/useProductInitiativeDecision.ts
   - apps/web/src/composables/useProductInitiativeDecision.test.ts
+  - apps/web/src/composables/useProductOpportunityWorkbench.ts
+  - apps/web/src/composables/useProductOpportunityWorkbench.test.ts
   - apps/web/src/data/productInitiativeQueue.ts
   - apps/web/src/data/productInitiativeQueue.test.ts
   - apps/web/src/views/ProductSelectionWorkbench.vue
   - apps/web/src/views/ProductSelectionWorkbench.test.ts
+  - apps/web/src/views/ProductNpiWorkbench.test.ts
   - apps/web/src/components/product-npi/ProductNpiHandoffDetail.vue
   - apps/web/e2e/workbench-network.spec.ts
 exclusiveLocks:
@@ -172,6 +175,53 @@ authorityRefs:
 | `WB-B07` | 交接快照携带承诺且不可变             | S1   |
 | 其余     | 后续切片；WB-B10 需真实岗位六类路径  | —    |
 
+## S1 主代理验收裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: S1-resource-commitment
+decisions:
+  - finding: PS-S1-R01
+    status: accepted
+    reason: >
+      brief 要求暂缓的验证重点与重判日期缺任一项时“待补、不关闭”。当前领域只用 reason 判断 completion；只填
+      validationFocus、缺 reconsiderationDate 时实际返回 completed/deferred，且数据库 defer plan CHECK 会拒绝半组写入。
+      这会让无重判日期的暂缓事项错误关闭或保存失败，是当前业务恢复路径与数据一致性风险。
+    writeback: 本 brief S1；doc/08 选品立项资源责任
+  - finding: PS-S1-R02
+    status: accepted
+    reason: >
+      服务端投影按 pageSize/cursor 稳定分页，但 Web 固定只取 pageSize=200 的第一页并把缺失投影视为“还没看过”。
+      超过 200 条立项记录时，后续机会的到期暂缓事实会消失，无法保证“到期项出现在队列最前、不重不漏”。
+      修复只需完整消费投影分页并增加跨页反例，不扩展业务政策。
+    writeback: 本 brief S1
+  - finding: PS-S1-R03
+    status: accepted
+    reason: >
+      PS-D01～D03 已由负责人批准，doc/08 在本片正式写回；当前字典却把新责任、资源、日期和验证字段标成
+      needs_business_confirmation、无 owner/source，形成“代码已落库、数据权威仍宣称未知”的第二套事实。
+      必须按已定业务含义补齐字典注释并重新生成，不新增字段或政策。
+    writeback: 本 brief S1；doc/08 选品立项资源责任
+  - finding: PS-S1-R04
+    status: accepted
+    reason: >
+      ProductNpiWorkbench.test.ts 与新增 ProductOpportunityQueue.test.ts 都覆盖 S1 明确要求的 NPI 只读承诺和到期分组，
+      属当前业务路径而非扩单；主代理补入 writeScopes。分页修复允许补 useProductOpportunityWorkbench 及其测试的精确范围。
+    writeback: 本 brief frontmatter
+unknowns: []
+verificationGaps:
+  - 完整 validate 按 brief 留到风险切片集成候选；本轮修复后先复跑 S1 定向门禁。
+nonBlockingSuggestions: []
+next: fix
+```
+
+修复验收反证：
+
+1. 领域单测分别覆盖“只填验证重点”和“只填重判日期”，两者都必须保存为 `pending_completion / needs_decision`；两项齐全才是 `completed / deferred`，迁移 CHECK 不拒绝待补形态。
+2. Web 单测构造超过一页的立项投影，证明继续请求 `nextCursor`，跨页的到期暂缓仍进入第一组；请求失败时不得把缺失投影伪装成未处理。
+3. 新增字段的数据字典注释使用 `confirmed_business`、`moduleCode/ownerModule=product-selection`，引用正式选品工作台权威；重新生成后 `data-dictionary:check` 通过。
+4. 复跑 S1 交接中的全部定向检查；不为范围外重构、通用分页抽象或未来人员目录扩单。
+
 ## 验收
 
 - [ ] 缺任一资源承诺项不能立项，提示具体缺项；立项责任人只能是当前登录用户
@@ -184,9 +234,10 @@ authorityRefs:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                   |
-| ---------- | ------ | ----------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-04 | design | Cursor      | —          | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                             |
-| 2026-10-04 | design | Cursor      | —          | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                        |
-| 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权 |
-| 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。    |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                                                  |
+| ---------- | ------ | ----------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | design | Cursor      | —          | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                                                            |
+| 2026-10-04 | design | Cursor      | —          | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                                                       |
+| 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权                                |
+| 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。                                   |
+| 2026-10-04 | fix    | Claude Code | 未提交     | 主代理核验 S1 handoff，接受 PS-S1-R01～R04：暂缓半填错误关闭/落库失败、Web 漏消费投影分页、字典错误标记已定字段、测试范围漏列。已写回 doc/08 与 brief，定向下发修复。 |
