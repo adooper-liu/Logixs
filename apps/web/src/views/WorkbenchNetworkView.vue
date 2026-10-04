@@ -35,12 +35,17 @@ const phases = computed(() =>
   })),
 );
 
-function outboundLabel(stage: WorkbenchStage): string {
+// 交接是节点之间的关系，画在连接处；链尾没有出向交接就不画连接。
+function outboundLabel(stage: WorkbenchStage): string | null {
   const relations = getOutboundWorkbenchRelations(stage.code);
-  if (relations.length === 0) return "主链责任收口";
+  if (relations.length === 0) return null;
   if (relations.length === 1) return relations[0]!.label;
   return `${relations.length} 项出向交接`;
 }
+
+const exceptionCenter = computed(() =>
+  supportingWorkbenches.find((stage) => stage.code === "exceptions"),
+);
 
 // 岗位作业规格：网络里的字段说明"这个岗位在链上的位置"，
 // 规格说明"他具体怎么干"。未定义 = 尚未梳理，不是"没有要求"。
@@ -63,6 +68,29 @@ const totalStageCount = computed(
       title="业务工作台"
       summary="从市场机会到还箱收口，按事实产生顺序进入正确岗位；实施状态只说明技术链路是否接入，不代表岗位业务已经通过复审。"
     />
+
+    <section class="volume-band" aria-label="全局业务量">
+      <dl>
+        <div>
+          <dt>在办</dt>
+          <dd>—</dd>
+        </div>
+        <div>
+          <dt>本周流转</dt>
+          <dd>—</dd>
+        </div>
+        <div>
+          <dt>阻塞</dt>
+          <dd>—</dd>
+        </div>
+      </dl>
+      <p>
+        尚无业务量投影：各台在办与阻塞的计数口径确定并由服务端提供前，这里不显示数字。
+      </p>
+      <RouterLink v-if="exceptionCenter" :to="exceptionCenter.path">
+        进入异常中心 <ArrowRight :size="15" aria-hidden="true" />
+      </RouterLink>
+    </section>
 
     <section class="network-legend" aria-label="工作台实施状态说明">
       <span><CircleCheck :size="16" aria-hidden="true" /> 已接真实能力</span>
@@ -100,49 +128,55 @@ const totalStageCount = computed(
           data-testid="main-workbench-stage"
           :data-implementation="stage.implementation"
         >
-          <RouterLink class="stage-link" :to="stage.path">
-            <div class="stage-topline">
-              <span class="stage-number">{{ stage.sequence }}</span>
-              <span class="stage-status">
-                <CircleCheck
-                  v-if="stage.implementation === 'live'"
-                  :size="14"
-                  aria-hidden="true"
-                />
-                <MousePointer2
-                  v-else-if="stage.implementation === 'prototype'"
-                  :size="14"
-                  aria-hidden="true"
-                />
-                <Construction v-else :size="14" aria-hidden="true" />
-                {{
-                  stage.implementation === "live"
-                    ? "已接能力"
-                    : stage.implementation === "prototype"
-                      ? "可体验"
-                      : "待接通"
-                }}
-              </span>
-            </div>
-            <h3>{{ stage.title }}</h3>
-            <p>{{ stage.roleResult }}</p>
-            <div class="stage-handoff">
-              <span>{{ outboundLabel(stage) }}</span>
-              <ArrowRight :size="15" aria-hidden="true" />
-            </div>
-          </RouterLink>
+          <div class="stage-card">
+            <RouterLink class="stage-link" :to="stage.path">
+              <div class="stage-topline">
+                <span class="stage-number">{{ stage.sequence }}</span>
+                <span class="stage-status">
+                  <CircleCheck
+                    v-if="stage.implementation === 'live'"
+                    :size="14"
+                    aria-hidden="true"
+                  />
+                  <MousePointer2
+                    v-else-if="stage.implementation === 'prototype'"
+                    :size="14"
+                    aria-hidden="true"
+                  />
+                  <Construction v-else :size="14" aria-hidden="true" />
+                  {{
+                    stage.implementation === "live"
+                      ? "已接能力"
+                      : stage.implementation === "prototype"
+                        ? "可体验"
+                        : "待接通"
+                  }}
+                </span>
+              </div>
+              <h3>{{ stage.title }}</h3>
+              <p>{{ stage.roleResult }}</p>
+            </RouterLink>
 
-          <details v-if="specByCode[stage.code]" class="stage-spec">
-            <summary>已有技术操作映射 · 展开查看</summary>
-            <WorkbenchOperationalSpecPanel :spec="specByCode[stage.code]!" />
-          </details>
+            <details v-if="specByCode[stage.code]" class="stage-spec">
+              <summary>已有技术操作映射 · 展开查看</summary>
+              <WorkbenchOperationalSpecPanel :spec="specByCode[stage.code]!" />
+            </details>
+          </div>
+          <p
+            v-if="outboundLabel(stage)"
+            class="stage-connector"
+            :data-from="stage.code"
+          >
+            <ArrowRight :size="14" aria-hidden="true" />
+            <span>{{ outboundLabel(stage) }}</span>
+          </p>
         </li>
       </ol>
     </section>
 
     <section class="support-band" aria-labelledby="support-title">
       <header class="support-heading">
-        <span>横向协同</span>
+        <span>支撑模块</span>
         <h2 id="support-title">不改变主链顺序，但持续消费主链事实</h2>
       </header>
       <div class="support-grid">
@@ -189,8 +223,61 @@ const totalStageCount = computed(
   font-weight: 600;
 }
 
-.network-legend span:first-child {
+.network-legend span:first-child svg {
   color: var(--ok);
+}
+
+.volume-band {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.volume-band dl {
+  display: flex;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.volume-band dt {
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+
+.volume-band dd {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-title);
+  font-weight: 700;
+}
+
+.volume-band p {
+  flex: 1 1 280px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+
+.volume-band a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--brand-strong);
+  font-size: var(--text-label);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.volume-band a:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 
 .network-legend p {
@@ -243,20 +330,36 @@ const totalStageCount = computed(
 
 .stage-item {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stage-card {
+  flex: 1;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
 }
 
-.stage-item--live {
-  border-color: var(--brand-line);
-  box-shadow: inset 3px 0 var(--brand);
+/* 交接画在卡片外的连接处：虚线引出，不占卡面。 */
+.stage-connector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 1px dashed var(--line-strong);
+  margin-left: var(--space-3);
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
 }
 
-.stage-item--prototype {
-  border-color: var(--info);
-  box-shadow: inset 3px 0 var(--info);
+.stage-connector svg {
+  flex: none;
+  color: var(--muted);
 }
 
 .stage-link {
@@ -302,11 +405,11 @@ const totalStageCount = computed(
   font-weight: 600;
 }
 
-.stage-item--live .stage-status {
+.stage-item--live .stage-status svg {
   color: var(--ok);
 }
 
-.stage-item--prototype .stage-status {
+.stage-item--prototype .stage-status svg {
   color: var(--info);
 }
 
@@ -325,23 +428,6 @@ const totalStageCount = computed(
   color: var(--ink-soft);
   font-size: var(--text-label);
   line-height: var(--leading-body);
-}
-
-.stage-handoff {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: auto;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--line);
-  color: var(--brand-strong);
-  font-size: var(--text-micro);
-  font-weight: 600;
-}
-
-.stage-handoff svg {
-  flex: none;
 }
 
 /* 岗位作业规格：展开在卡片内，不跳页 —— 与卡片链接是同级，避免交互嵌套。 */
