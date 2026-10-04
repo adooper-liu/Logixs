@@ -24,6 +24,10 @@ writeScopes:
   - apps/api/src/infrastructure/integration/market-opportunity-flow.integration.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
   - apps/api/src/infrastructure/integration/market-selection-handoff-migration-upgrade.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-definition-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-identity-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-npi-intake-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/supplier-nomination-flow.integration.test.ts
   - apps/web/src/api/marketSignals.ts
   - apps/web/src/api/marketSignals.test.ts
   - apps/web/src/composables/useMarketSignalWorkbench.ts
@@ -130,6 +134,15 @@ authorityRefs:
 5. 只改文案与对应单测/E2E 断言，不改服务端、契约或缺口计算；验证为受影响 Web 单测、`workbench-network.spec.ts` 中相关断言和 Web lint/typecheck，并在 `apps/web/src` 内搜索不再出现“仍待补”“市场待补”“渠道待补”。
 6. 主代理扩范围（S2b 首次交回 blocked 后 accepted）：`apps/web/src/data/workbenchNetwork.ts` 市场台 `missingHandling` 说明同步新口径——队列写“依据缺 N 项”而非“仍待补 N 项，不影响先处理”，交给选品时未填项在选品侧显示为“交接时未填”；只改该说明文字，不改阶段、路由、关系或状态；如 `workbenchNetwork.test.ts` 断言该文字则同步。`gc012-g0-catalog-v1` 已 `done`，无在途任务写该文件。
 
+### 切片 `S2c-downstream-fixtures`：下游集成测试种子补“接受”（收口门禁发现，主代理 accepted）
+
+岗位结果：不改变任何业务行为；让下游 NPI、产品定义、产品身份、寻源的集成测试按 MS-D04 的真实路径（领取 → 接受 → 决定）准备数据，证明 S1 的接受前置没有打断下游流程。
+
+1. 收口 `pnpm validate`（基线 `6a221ca2`）中 `product-definition-flow`、`product-identity-flow`、`product-npi-intake-flow`、`supplier-nomination-flow` 四个集成文件共 38 条以 `PRODUCT_INITIATIVE_NOT_ACCEPTED` 失败：其种子直接 `persistDecision`，未先领取并接受 intake。
+2. 只改这四个文件的种子：在决定前按 `product-initiative-flow.integration.test.ts` `seedOpportunity` 的同一方式完成领取与接受（服务端命令或仓储正式路径，不直接改表绕过规则）；若存在共享种子助手，改助手并在交接中说明。
+3. 不改生产代码、断言语义或跳过用例；如发现生产路径（非测试）同样绕过接受，立即 `blocked` 回报。
+4. 验证：`pnpm test:integration -- product-definition-flow product-identity-flow product-npi-intake-flow supplier-nomination-flow product-initiative-flow market-opportunity-flow`（`apps/api`），以及受影响文件的 lint/format；不跑完整 `validate`。前端无变化（纯测试种子），交接中写明。
+
 ### 切片 `S3-post-accept-evidence`：接受后市场追加新证据（延后，HO-D05）
 
 > 2026-10-04 Codex 首次执行返回 `blocked`，主代理核实属实：市场证据登记走通用 `POST /api/evidence`，`EvidenceController.register` 未传认证 actor，`RegisterEvidenceInput` 不落登记人，而 `evidence-record.schema.json` 要求 `manual_backfill` 带 `source.actorId`；该端点也不校验 `subjectId` 信号存在、版本与幂等。修复属共享 `document-records` 控制面（约 8 台消费方），不在本 brief 范围。负责人定案 HO-D05“C（推荐）先合并已完成的部分”：本分支以 S1～S2b 收口；S3 移入 `evidence-actor-binding-v1` 完成后的后续任务，下列五面要求原样保留作为其输入。
@@ -230,3 +243,4 @@ authorityRefs:
 | 2026-10-04 | coding | Cursor | `aa5dafa4` | S2b 验收通过：11 个文件均在 writeScopes 内，仅改文案与 `2px` 改为 `var(--space-1)`；主代理复核 `repo:check` 通过，`apps/web/src` 内“仍待补/市场待补/渠道待补”零命中。纯文案低风险切片，不另起独立复审；按预授权下发 S3                                                                                                                                                                                                                                                                          |
 | 2026-10-04 | coding | Cursor | `ed28b767` | 按负责人要求（界面、数据字段、任务、技术底层协同，不漂移不漏项，前端可感知）校正：五面表验收列回写 S1/S2/S2b 实际状态；补 S2b 文案行；S3 改为五面逐项（岗位、数据派生、幂等并发、权限、市场与选品两侧界面）并要求 HANDOFF 分列五面改动                                                                                                                                                                                                                                                          |
 | 2026-10-04 | coding | Cursor | `b022eb00` | S3 首次执行 blocked（证据登记不绑定认证 actor、不校验信号，修复属共享 `document-records`），主代理核实属实。负责人定案 HO-D05“C（推荐）先合并已完成的部分”：S3 延后至 `evidence-actor-binding-v1`（新建 design brief）之后；本分支已合入 `origin/main`（`7038b209`），进入 R-branch-review                                                                                                                                                                                                      |
+| 2026-10-04 | coding | Cursor | `6a221ca2` | 收口 `pnpm validate` 失败：下游 4 个集成文件 38 条因种子未接受 intake 触发 `PRODUCT_INITIATIVE_NOT_ACCEPTED`（S1 规则正确，测试种子过时）。主代理扩入四个文件，新增 S2c 交 Codex；独立复审并行进行中，S2c 验收后重跑 `validate`                                                                                                                                                                                                                                                                 |
