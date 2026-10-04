@@ -131,6 +131,9 @@ function repository(
     persistDecision: async () => {
       throw new Error("not used");
     },
+    takeBackSelectionReturn: async () => {
+      throw new Error("not used");
+    },
     listNpiQueue: async () => {
       throw new Error("not used");
     },

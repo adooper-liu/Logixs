@@ -39,5 +39,6 @@ export function initiativeQueueBadge(
 const DESTINATION_LABELS = {
   deferred: "已暂缓",
   rejected: "已记录不立项",
+  return_requested: "等待市场接回",
   returned_to_market: "已退回经营团队",
 } as const;

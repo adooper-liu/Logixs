@@ -167,6 +167,7 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
     expect(pending.completion).toBe("pending_completion");
     expect(pending.nextDestination).toBe("needs_decision");
     expect(pending.pendingFieldCodes).toContain("return_reason");
+    expect(pending.pendingFieldCodes).toContain("return_basis");
 
     const prepared = prepareProductInitiativeDecision(
       NEW_INITIATIVE,
@@ -176,8 +177,20 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
         returnReason: "机会定义成了渠道问题",
       }),
     );
-    expect(prepared.nextDestination).toBe("returned_to_market");
-    expect(prepared.completion).toBe("completed");
+    expect(prepared.nextDestination).toBe("needs_decision");
+    expect(prepared.completion).toBe("pending_completion");
+
+    const requested = prepareProductInitiativeDecision(
+      NEW_INITIATIVE,
+      ACTOR,
+      command({
+        outcome: "return_to_market",
+        returnReason: "机会定义成了渠道问题",
+        returnBasis: "wrong_direction",
+      }),
+    );
+    expect(requested.nextDestination).toBe("return_requested");
+    expect(requested.completion).toBe("completed");
   });
 });
 

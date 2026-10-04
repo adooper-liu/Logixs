@@ -113,7 +113,7 @@ describe("ProductInitiativeOutcomePanel", () => {
     });
 
     expect(wrapper.get(".outcome-hint").text()).toContain("关闭");
-    expect(wrapper.get(".outcome-submit").text()).toContain("退回经营团队");
+    expect(wrapper.get(".outcome-submit").text()).toContain("请求退回市场");
   });
 
   it("目标结果与原因都由上层持有，组件只透传输入", async () => {

@@ -266,7 +266,22 @@ describe("product initiative persistence flow", () => {
     ).rejects.toThrowError(/PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND/);
   });
 
-  it("退回经营团队且理由齐：同事务把信号改成选品退回", async () => {
+  it("未接受的机会不能写入任何立项判断", async () => {
+    const { tenantId, handoffId } = await seedOpportunity(false);
+    await expect(
+      initiatives.persistDecision({
+        tenantId,
+        handoffId,
+        actorId: "selector-1",
+        command: decide({ handoffId }, { outcome: "defer" }),
+      }),
+    ).rejects.toThrowError(/PRODUCT_INITIATIVE_NOT_ACCEPTED/);
+    await expect(
+      prisma.productInitiative.count({ where: { tenantId, handoffId } }),
+    ).resolves.toBe(0);
+  });
+
+  it("退回请求与市场接回分两步且各自原子落库", async () => {
     const { tenantId, handoffId, signalId } = await seedOpportunity();
     await prisma.marketSignal.update({
       where: { id: signalId },
@@ -286,6 +301,7 @@ describe("product initiative persistence flow", () => {
         {
           outcome: "return_to_market",
           returnReason: "机会定义成了渠道问题",
+          returnBasis: "wrong_direction",
         },
       ),
     });
@@ -294,14 +310,15 @@ describe("product initiative persistence flow", () => {
     expect(record).toMatchObject({
       outcome: "return_to_market",
       completion: "completed",
-      currentDestination: "returned_to_market",
+      currentDestination: "return_requested",
       reason: "机会定义成了渠道问题",
+      returnBasis: "wrong_direction",
     });
 
     const signal = await prisma.marketSignal.findFirstOrThrow({
       where: { id: signalId, tenantId },
     });
-    expect(signal.currentDestination).toBe("returned_from_selection");
+    expect(signal.currentDestination).toBe("selection_return_requested");
     expect(signal.activeValidationOwnerActorId).toBeNull();
     expect(signal.activeValidationDueDate).toBeNull();
     expect(signal.activeValidationFocus).toBeNull();
@@ -311,13 +328,14 @@ describe("product initiative persistence flow", () => {
       where: {
         tenantId,
         signalId,
-        decisionType: "selection_return",
+        decisionType: "selection_return_request",
       },
       orderBy: { decisionVersion: "desc" },
     });
     expect(decision).toMatchObject({
       completionState: "completed",
       judgmentNote: "机会定义成了渠道问题",
+      returnBasis: "wrong_direction",
     });
 
     const handoff = await prisma.marketOpportunityHandoff.findFirstOrThrow({
@@ -327,8 +345,74 @@ describe("product initiative persistence flow", () => {
     expect(handoff.opportunityStatement).toBe("验证宠物出行机会是否值得立项。");
 
     expect(
-      await marketSignals.findLatestSelectionReturnReason(tenantId, signalId),
-    ).toBe("机会定义成了渠道问题");
+      await marketSignals.findLatestSelectionReturn(tenantId, signalId),
+    ).toEqual({ reason: "机会定义成了渠道问题", basis: "wrong_direction" });
+
+    await expect(
+      initiatives.persistDecision({
+        tenantId,
+        handoffId,
+        actorId: "selector-1",
+        command: decide(
+          { handoffId, expectedInitiativeVersion: record.version },
+          { outcome: "defer", deferReason: "改为暂缓" },
+        ),
+      }),
+    ).rejects.toThrowError(/PRODUCT_INITIATIVE_RETURN_PENDING/);
+
+    await expect(
+      initiatives.takeBackSelectionReturn({
+        tenantId,
+        signalId,
+        actorId: "market-owner",
+        command: {
+          contractVersion: "market-selection-return-takeback.v1",
+          expectedSignalVersion: signal.version - 1,
+          idempotencyKey: `takeback-stale:${signalId}`,
+        },
+      }),
+    ).rejects.toThrowError(/MARKET_SIGNAL_VERSION_CONFLICT/);
+    await expect(
+      prisma.productInitiative.findFirstOrThrow({
+        where: { tenantId, handoffId },
+      }),
+    ).resolves.toMatchObject({ currentDestination: "return_requested" });
+    await expect(
+      prisma.marketSignal.findFirstOrThrow({
+        where: { id: signalId, tenantId },
+      }),
+    ).resolves.toMatchObject({
+      currentDestination: "selection_return_requested",
+    });
+
+    const takenBack = await initiatives.takeBackSelectionReturn({
+      tenantId,
+      signalId,
+      actorId: "market-owner",
+      command: {
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: signal.version,
+        idempotencyKey: `takeback:${signalId}`,
+      },
+    });
+    expect(takenBack.record.currentDestination).toBe("returned_to_market");
+    expect(takenBack.record.responsibleActorId).toBe("market-owner");
+    const replay = await initiatives.takeBackSelectionReturn({
+      tenantId,
+      signalId,
+      actorId: "market-owner",
+      command: {
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: signal.version,
+        idempotencyKey: `takeback:${signalId}`,
+      },
+    });
+    expect(replay.duplicate).toBe(true);
+    await expect(
+      prisma.marketSignal.findFirstOrThrow({
+        where: { id: signalId, tenantId },
+      }),
+    ).resolves.toMatchObject({ currentDestination: "returned_from_selection" });
   });
 
   it("退回缺理由时保存但不关闭，也不回推信号", async () => {
@@ -353,7 +437,7 @@ describe("product initiative persistence flow", () => {
     expect(signal.currentDestination).toBe("handed_off");
     await expect(
       prisma.marketSignalDecision.count({
-        where: { tenantId, signalId, decisionType: "selection_return" },
+        where: { tenantId, signalId, decisionType: "selection_return_request" },
       }),
     ).resolves.toBe(0);
   });
@@ -435,7 +519,7 @@ describe("product initiative persistence flow", () => {
   });
 });
 
-async function seedOpportunity(): Promise<{
+async function seedOpportunity(accepted = true): Promise<{
   tenantId: string;
   handoffId: string;
   signalId: string;
@@ -469,6 +553,22 @@ async function seedOpportunity(): Promise<{
       },
     ),
   });
+  if (accepted) {
+    await prisma.productOpportunityIntake.create({
+      data: {
+        id: randomUUID(),
+        tenantId,
+        handoffId: decided.handoff!.handoffId,
+        version: 1,
+        state: "accepted",
+        assignedActorId: "selector-1",
+        actedBy: "selector-1",
+        actedAt: new Date(),
+        idempotencyKey: `accept:${signalId}`,
+        payloadHash: "a".repeat(64),
+      },
+    });
+  }
   return { tenantId, handoffId: decided.handoff!.handoffId, signalId };
 }
 

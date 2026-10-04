@@ -20,6 +20,7 @@ import {
   getMarketSignal,
   listMarketSignals,
   registerMarketSignalEvidence,
+  takeBackSelectionReturn,
   updateMarketSignal,
 } from "../api/marketSignals";
 import {
@@ -43,6 +44,7 @@ interface UseMarketSignalWorkbenchOptions {
 
 const DESTINATIONS: readonly MarketSignalWorkflowState[] = [
   "needs_decision",
+  "selection_return_requested",
   "returned_from_selection",
   "watching",
   "handed_off",
@@ -82,6 +84,7 @@ export function useMarketSignalWorkbench(
   const loading = shallowRef(true);
   const saving = shallowRef(false);
   const error = shallowRef<string | null>(null);
+  const takebackReceipt = shallowRef<string | null>(null);
   const pages = reactive<Record<MarketSignalWorkflowState, QueuePageState>>(
     Object.fromEntries(
       DESTINATIONS.map((destination) => [destination, emptyPage()]),
@@ -303,6 +306,42 @@ export function useMarketSignalWorkbench(
     } catch (caught) {
       if (detailRequests.get(id) !== request) return;
       error.value = message(caught);
+    }
+  }
+
+  async function takeBackReturn(): Promise<boolean> {
+    const selected = selectedSignal.value;
+    if (
+      !selected ||
+      selected.initialState !== "selection_return_requested" ||
+      saving.value
+    ) {
+      return false;
+    }
+    saving.value = true;
+    error.value = null;
+    takebackReceipt.value = null;
+    try {
+      await takeBackSelectionReturn(selected.id, {
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: selected.version,
+        idempotencyKey: `selection-return-takeback:${selected.id}:${selected.version}:${crypto.randomUUID()}`,
+      });
+      await loadSignals();
+      takebackReceipt.value =
+        "已接回。信号已回到经营队列，可补充事实后重新判断并交接新版本。";
+      return true;
+    } catch (caught) {
+      const raw = message(caught);
+      if (raw.includes("VERSION_CONFLICT") || raw.includes("INVALID_STATE")) {
+        await loadDetail(selected.id);
+        error.value = "接回时信号已被更新，已重读最新状态，请核对后再试。";
+      } else {
+        error.value = raw;
+      }
+      return false;
+    } finally {
+      saving.value = false;
     }
   }
 
@@ -566,12 +605,14 @@ export function useMarketSignalWorkbench(
     loading,
     saving,
     error,
+    takebackReceipt,
     loadSignals,
     loadMore,
     retryGroup,
     registerSignal,
     submitDecision,
     supplementSignal,
+    takeBackReturn,
     clearReceipt,
   };
 }
@@ -584,10 +625,12 @@ function toScenario(
     id: signal.signalId,
     title: signal.title,
     workReason: detail?.selectionReturnReason
-      ? `选品退回：${detail.selectionReturnReason}`
+      ? `选品请求退回：${detail.selectionReturnReason}`
       : workReason(signal),
     urgency: "normal",
     urgencyLabel: destinationLabel(signal.currentDestination),
+    selectionReturnBasis: detail?.selectionReturnBasis ?? null,
+    selectionReturnReason: detail?.selectionReturnReason ?? null,
     market: signal.marketCode ?? null,
     channel: signal.channelCode ?? null,
     category: signal.categoryRef ?? null,
@@ -661,6 +704,9 @@ function workReason(signal: MarketSignalV1): string {
   if (signal.currentDestination === "returned_from_selection") {
     return "选品已退回，需重新判断去向";
   }
+  if (signal.currentDestination === "selection_return_requested") {
+    return "选品请求退回，等待市场接回";
+  }
   if (signal.currentDestination === "voided") return "已作废，只读回看";
   if (signal.currentDestination === "archived") return "已归档，只读回看";
   return "需要判断下一步去向";
@@ -673,6 +719,7 @@ function destinationLabel(
   if (destination === "handed_off") return "已交接";
   if (destination === "dismissed") return "不采纳";
   if (destination === "returned_from_selection") return "选品退回";
+  if (destination === "selection_return_requested") return "选品请求退回";
   if (destination === "voided") return "已作废";
   if (destination === "archived") return "已归档";
   return "待判断";

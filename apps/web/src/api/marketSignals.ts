@@ -6,6 +6,7 @@ import type {
   MarketSignalPageV1,
   MarketSignalUpdateCommandV1,
   MarketSignalV1,
+  MarketSelectionReturnTakebackCommandV1,
   ProductDefinitionReleaseCommandV1,
   ProductIdentityDraftCommandV1,
   ProductIdentityV1,
@@ -84,6 +85,20 @@ export async function decideMarketSignal(
       method: "POST",
       body: command,
       fallback: "暂时无法保存本次判断",
+    },
+  );
+}
+
+export async function takeBackSelectionReturn(
+  signalId: string,
+  command: MarketSelectionReturnTakebackCommandV1,
+): Promise<ProductInitiativeV1> {
+  return requestJson<ProductInitiativeV1>(
+    `/api/market-signals/${encodeURIComponent(signalId)}/selection-return/takeback`,
+    {
+      method: "POST",
+      body: command,
+      fallback: "暂时无法接回选品退回请求",
     },
   );
 }

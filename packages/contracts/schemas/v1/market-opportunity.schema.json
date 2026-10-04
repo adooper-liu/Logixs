@@ -11,6 +11,7 @@
         "watching",
         "handed_off",
         "dismissed",
+        "selection_return_requested",
         "returned_from_selection",
         "voided",
         "archived"
@@ -21,6 +22,7 @@
         "watch",
         "handoff",
         "dismiss",
+        "selection_return_request",
         "selection_return",
         "void",
         "archive"
@@ -31,6 +33,9 @@
     },
     "MarketSignalDecisionCompletionV1": {
       "enum": ["pending_completion", "completed"]
+    },
+    "MarketSelectionReturnBasisV1": {
+      "enum": ["insufficient_evidence", "wrong_direction"]
     },
     "MarketOpportunityIntakeStateV1": {
       "enum": ["queued", "claimed", "accepted", "superseded"]
@@ -332,7 +337,27 @@
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 500
+        },
+        "selectionReturnBasis": {
+          "anyOf": [
+            { "$ref": "#/$defs/MarketSelectionReturnBasisV1" },
+            { "type": "null" }
+          ]
         }
+      }
+    },
+    "MarketSelectionReturnTakebackCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedSignalVersion",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "market-selection-return-takeback.v1" },
+        "expectedSignalVersion": { "type": "integer", "minimum": 1 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
       }
     },
     "ProductOpportunityV1": {

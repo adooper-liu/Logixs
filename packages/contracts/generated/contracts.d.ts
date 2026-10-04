@@ -293,12 +293,12 @@ kind: "new_independent_shipment"
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDestinationV1".
  */
-export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed" | "returned_from_selection" | "voided" | "archived")
+export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed" | "selection_return_requested" | "returned_from_selection" | "voided" | "archived")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDecisionTypeV1".
  */
-export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "selection_return" | "void" | "archive")
+export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "selection_return_request" | "selection_return" | "void" | "archive")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalOperatorDecisionTypeV1".
@@ -309,6 +309,11 @@ export type MarketSignalOperatorDecisionTypeV1 = ("watch" | "handoff" | "dismiss
  * via the `definition` "MarketSignalDecisionCompletionV1".
  */
 export type MarketSignalDecisionCompletionV1 = ("pending_completion" | "completed")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSelectionReturnBasisV1".
+ */
+export type MarketSelectionReturnBasisV1 = ("insufficient_evidence" | "wrong_direction")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketOpportunityIntakeStateV1".
@@ -347,14 +352,19 @@ export type ProductInitiativeStoredOutcomeV1 = ("approve" | "defer" | "reject" |
 export type ProductInitiativeCompletionV1 = ("pending_completion" | "completed")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeReturnBasisV1".
+ */
+export type ProductInitiativeReturnBasisV1 = ("insufficient_evidence" | "wrong_direction")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeDestinationV1".
  */
-export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "returned_to_market" | "handed_off" | "returned_from_npi")
+export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "return_requested" | "returned_to_market" | "handed_off" | "returned_from_npi")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativePendingFieldCodeV1".
  */
-export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback" | "defer_reason" | "reject_reason" | "return_reason")
+export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback" | "defer_reason" | "reject_reason" | "return_basis" | "return_reason")
 /**
  * NPI 执行阶段。用行业通用的四段名，代工厂说的就是这四个词，运营与供应商之间不用翻译。
  * 
@@ -1914,6 +1924,16 @@ export interface MarketSignalDetailV1 {
 signal: MarketSignalV1
 evidence: MarketSignalEvidenceV1[]
 selectionReturnReason: (string | null)
+selectionReturnBasis?: (MarketSelectionReturnBasisV1 | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSelectionReturnTakebackCommandV1".
+ */
+export interface MarketSelectionReturnTakebackCommandV1 {
+contractVersion: "market-selection-return-takeback.v1"
+expectedSignalVersion: number
+idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -1970,6 +1990,7 @@ reviewPoints: ProductInitiativeReviewPointV1[]
 deferReason?: string
 rejectReason?: string
 returnReason?: string
+returnBasis?: ProductInitiativeReturnBasisV1
 idempotencyKey: string
 }
 /**
@@ -1985,6 +2006,7 @@ responsibleActorId: string
 objective?: (string | null)
 reviewPoints: ProductInitiativeReviewPointV1[]
 reason?: (string | null)
+returnBasis?: (ProductInitiativeReturnBasisV1 | null)
 pendingFieldCodes: ProductInitiativePendingFieldCodeV1[]
 version: number
 createdAt: DateTime

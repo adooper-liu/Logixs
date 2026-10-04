@@ -27,6 +27,7 @@ type QueueFilter = MarketSignalWorkflowState;
 
 const filters: readonly { code: QueueFilter; label: string }[] = [
   { code: "needs_decision", label: "待判断" },
+  { code: "selection_return_requested", label: "选品请求退回" },
   { code: "returned_from_selection", label: "选品退回" },
   { code: "watching", label: "继续观察" },
   { code: "handed_off", label: "已交接" },

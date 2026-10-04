@@ -292,10 +292,10 @@ describe("ProductSelectionWorkbench", () => {
     await wrapper.get(".destination:nth-of-type(4) input").setValue(true);
 
     expect(
-      wrapper.get('textarea[aria-label="退回原因"]').element,
+      wrapper.get('textarea[aria-label="市场需要补什么"]').element,
     ).toHaveProperty("value", "");
     await wrapper
-      .get('textarea[aria-label="退回原因"]')
+      .get('textarea[aria-label="市场需要补什么"]')
       .setValue("该由经营团队重新判断");
     await wrapper.get(".destination:nth-of-type(2) input").setValue(true);
 
@@ -470,7 +470,7 @@ describe("ProductSelectionWorkbench", () => {
     // 已记下的原因回填，重放同一去向不会把它抹掉
     expect(
       (
-        wrapper.get('textarea[aria-label="退回原因"]')
+        wrapper.get('textarea[aria-label="市场需要补什么"]')
           .element as HTMLTextAreaElement
       ).value,
     ).toBe("该由经营团队重新判断");

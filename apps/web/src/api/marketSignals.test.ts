@@ -17,6 +17,7 @@ const {
   createMarketSignal,
   decideMarketSignal,
   listMarketSignals,
+  takeBackSelectionReturn,
   updateMarketSignal,
 } = await import("./marketSignals");
 
@@ -85,6 +86,25 @@ describe("marketSignals 经共享 Client", () => {
       headers: { ...DEV_HEADERS, "Content-Type": "application/json" },
       body: JSON.stringify(command),
     });
+  });
+
+  it("POST 市场接回携带信号版本和幂等键", async () => {
+    const command = {
+      contractVersion: "market-selection-return-takeback.v1" as const,
+      expectedSignalVersion: 3,
+      idempotencyKey: "takeback-1",
+    };
+    fetchMock.mockResolvedValue(ok({ initiativeId: "i-1" }));
+    await takeBackSelectionReturn("s/1", command);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/market-signals/s%2F1/selection-return/takeback",
+      {
+        method: "POST",
+        redirect: "error",
+        headers: { ...DEV_HEADERS, "Content-Type": "application/json" },
+        body: JSON.stringify(command),
+      },
+    );
   });
 
   it("PATCH 补充对 ID 编码并保持方法", async () => {

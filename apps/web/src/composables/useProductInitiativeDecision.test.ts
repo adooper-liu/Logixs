@@ -367,6 +367,7 @@ describe("useProductInitiativeDecision", () => {
     const state = await mountComposable();
     state.setDestination("return_to_market");
     state.currentReason.value = "该由经营团队重新判断";
+    state.returnBasis.value = "wrong_direction";
 
     await state.decide();
     await flushPromises();
@@ -376,6 +377,7 @@ describe("useProductInitiativeDecision", () => {
       expect.objectContaining({
         outcome: "return_to_market",
         returnReason: "该由经营团队重新判断",
+        returnBasis: "wrong_direction",
       }),
     );
   });

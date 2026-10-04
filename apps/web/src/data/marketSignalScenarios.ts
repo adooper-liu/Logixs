@@ -3,6 +3,7 @@ export type MarketSignalWorkflowState =
   | "watching"
   | "handed_off"
   | "dismissed"
+  | "selection_return_requested"
   | "returned_from_selection"
   | "voided"
   | "archived";
@@ -58,6 +59,8 @@ export interface MarketSignalScenario {
   version: number;
   title: string;
   workReason: string;
+  selectionReturnBasis?: "insufficient_evidence" | "wrong_direction" | null;
+  selectionReturnReason?: string | null;
   urgency: "today" | "this_week" | "normal";
   urgencyLabel: string;
   market: string | null;

@@ -12,6 +12,7 @@ import {
 import {
   ProductInitiativeConflictError,
   ProductInitiativeNotFoundError,
+  ProductInitiativeValidationError,
   type PreparedProductInitiativeDecision,
   type ProductInitiativeReviewPoint,
 } from "../domain/product-initiative";
@@ -142,6 +143,14 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         );
       }
       if (!opportunity.isCurrent) conflict("PRODUCT_INITIATIVE_SUPERSEDED");
+      const intake = await tx.productOpportunityIntake.findFirst({
+        where: { tenantId: input.tenantId, handoffId: input.handoffId },
+        orderBy: { version: "desc" },
+        select: { state: true },
+      });
+      if (intake?.state !== "accepted") {
+        conflict("PRODUCT_INITIATIVE_NOT_ACCEPTED");
+      }
 
       const existing = await tx.productInitiative.findUnique({
         where: {
@@ -160,6 +169,9 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       if (existing?.currentDestination === "handed_off") {
         conflict("PRODUCT_INITIATIVE_ALREADY_APPROVED");
       }
+      if (existing?.currentDestination === "return_requested") {
+        conflict("PRODUCT_INITIATIVE_RETURN_PENDING");
+      }
 
       const data = {
         version: currentVersion + 1,
@@ -170,6 +182,7 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         objective: command.objective,
         reviewPoints: command.reviewPoints as unknown as Prisma.InputJsonValue,
         reason: command.reason,
+        returnBasis: command.returnBasis,
         pendingFieldCodes: command.pendingFieldCodes,
         actedBy: input.actorId,
         idempotencyKey: command.idempotencyKey,
@@ -243,6 +256,7 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
           signalId: opportunity.signalId,
           actorId: input.actorId,
           returnReason: command.reason,
+          returnBasis: command.returnBasis!,
           idempotencyKey: `selection-return:${command.idempotencyKey}`,
         });
       }
@@ -258,6 +272,7 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       signalId: string;
       actorId: string;
       returnReason: string;
+      returnBasis: "insufficient_evidence" | "wrong_direction";
       idempotencyKey: string;
     },
   ): Promise<void> {
@@ -276,6 +291,101 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       }
       throw error;
     }
+  }
+
+  takeBackSelectionReturn(
+    input: Parameters<
+      ProductInitiativeRepository["takeBackSelectionReturn"]
+    >[0],
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await advisoryLock(
+        tx,
+        `product-initiative:takeback:${input.tenantId}:${input.signalId}`,
+      );
+      if (
+        input.command.contractVersion !== "market-selection-return-takeback.v1"
+      ) {
+        throw new ProductInitiativeValidationError(
+          "VALIDATION_FORMAT: contractVersion",
+        );
+      }
+      if (!this.applySelectionReturn) {
+        conflict("PRODUCT_INITIATIVE_SELECTION_RETURN_UNAVAILABLE");
+      }
+      const initiative = await tx.productInitiative.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          handoff: { signalId: input.signalId },
+          currentDestination: "return_requested",
+        },
+        include: { handoff: { select: { signalId: true } } },
+        orderBy: { updatedAt: "desc" },
+      });
+      const current =
+        initiative ??
+        (await tx.productInitiative.findFirst({
+          where: {
+            tenantId: input.tenantId,
+            handoff: { signalId: input.signalId },
+          },
+          include: { handoff: { select: { signalId: true } } },
+          orderBy: { updatedAt: "desc" },
+        }));
+      if (!current) {
+        throw new ProductInitiativeNotFoundError(
+          "PRODUCT_INITIATIVE_NOT_FOUND",
+        );
+      }
+      if (!current.reason) {
+        conflict("PRODUCT_INITIATIVE_RETURN_REASON_MISSING");
+      }
+      let result: { duplicate: boolean };
+      try {
+        result = await this.applySelectionReturn.takeBackInTransaction(tx, {
+          tenantId: input.tenantId,
+          signalId: input.signalId,
+          actorId: input.actorId,
+          expectedSignalVersion: input.command.expectedSignalVersion,
+          returnReason: current.reason,
+          idempotencyKey: input.command.idempotencyKey,
+        });
+      } catch (error) {
+        if (
+          error instanceof MarketSignalConflictError ||
+          error instanceof MarketSignalNotFoundError ||
+          error instanceof MarketSignalValidationError
+        ) {
+          conflict(error.message);
+        }
+        throw error;
+      }
+      if (result.duplicate) {
+        return { record: toRecord(current), duplicate: true };
+      }
+      if (!initiative) conflict("PRODUCT_INITIATIVE_RETURN_NOT_PENDING");
+      const updated = await tx.productInitiative.updateMany({
+        where: {
+          id: initiative.id,
+          tenantId: input.tenantId,
+          version: initiative.version,
+          currentDestination: "return_requested",
+        },
+        data: {
+          currentDestination: "returned_to_market",
+          responsibleActorId: input.actorId,
+          version: initiative.version + 1,
+          actedBy: input.actorId,
+          updatedAt: new Date(),
+        },
+      });
+      if (updated.count !== 1) conflict("PRODUCT_INITIATIVE_VERSION_CONFLICT");
+      const row = await tx.productInitiative.findUniqueOrThrow({
+        where: { id: initiative.id },
+        include: { handoff: { select: { signalId: true } } },
+      });
+      return { record: toRecord(row), duplicate: false };
+    });
   }
 
   async listNpiQueue(
@@ -562,6 +672,7 @@ function toRecord(row: InitiativeRow): ProductInitiativeRecord {
     objective: row.objective,
     reviewPoints: row.reviewPoints as unknown as ProductInitiativeReviewPoint[],
     reason: row.reason,
+    returnBasis: row.returnBasis as ProductInitiativeRecord["returnBasis"],
     pendingFieldCodes:
       row.pendingFieldCodes as ProductInitiativeRecord["pendingFieldCodes"],
     createdAt: row.createdAt,

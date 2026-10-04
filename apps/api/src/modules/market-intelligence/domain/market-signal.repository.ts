@@ -4,6 +4,7 @@ import type {
   MarketSignalDecisionTypeV1,
   MarketSignalDestinationV1,
   MarketSignalPendingFieldCodeV1,
+  MarketSelectionReturnBasisV1,
 } from "@logix/contracts";
 import type {
   NormalizedMarketSignalCreate,
@@ -74,6 +75,15 @@ export interface ApplySelectionReturnInput {
   signalId: string;
   actorId: string;
   returnReason: string;
+  returnBasis: MarketSelectionReturnBasisV1;
+  idempotencyKey: string;
+}
+export interface TakeBackSelectionReturnInput {
+  tenantId: string;
+  signalId: string;
+  actorId: string;
+  expectedSignalVersion: number;
+  returnReason: string;
   idempotencyKey: string;
 }
 
@@ -101,10 +111,13 @@ export interface MarketSignalRepository {
     tenantId: string;
     destination?: MarketSignalDestinationV1;
   }): Promise<number>;
-  findLatestSelectionReturnReason(
+  findLatestSelectionReturn(
     tenantId: string,
     signalId: string,
-  ): Promise<string | null>;
+  ): Promise<{
+    reason: string;
+    basis: MarketSelectionReturnBasisV1 | null;
+  } | null>;
   updateFacts(input: {
     tenantId: string;
     signalId: string;
@@ -118,5 +131,9 @@ export interface MarketSignalRepository {
   applySelectionReturnWithin(
     tx: unknown,
     input: ApplySelectionReturnInput,
+  ): Promise<{ duplicate: boolean }>;
+  takeBackSelectionReturnWithin(
+    tx: unknown,
+    input: TakeBackSelectionReturnInput,
   ): Promise<{ duplicate: boolean }>;
 }

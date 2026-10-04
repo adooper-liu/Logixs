@@ -62,8 +62,10 @@ const initiativeHandoffId = computed(() =>
 const {
   initiative,
   decided,
+  returnPending,
   objective,
   destination,
+  returnBasis,
   currentReason,
   points,
   reviewPointViews,
@@ -142,6 +144,10 @@ async function reloadInitiative(): Promise<void> {
 
 function setCurrentReason(value: string): void {
   currentReason.value = value;
+}
+
+function setReturnBasis(value: typeof returnBasis.value): void {
+  returnBasis.value = value;
 }
 
 function setObjective(value: string): void {
@@ -371,13 +377,16 @@ function applyFromHandoff(): void {
           :outcome="destination"
           :objective="objective"
           :reason="currentReason"
+          :return-basis="returnBasis"
           :gaps="blockingGaps"
           :optional-gaps="optionalGaps"
           :busy="deciding"
           :decided="decided"
+          :return-pending="returnPending"
           @change-outcome="setDestination"
           @update-objective="setObjective"
           @update-reason="setCurrentReason"
+          @update-return-basis="setReturnBasis"
           @submit="submitDecision"
         />
         <p v-else class="empty">选择一条机会后显示接收动作。</p>

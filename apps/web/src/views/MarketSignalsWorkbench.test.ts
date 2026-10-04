@@ -16,6 +16,7 @@ const createMarketSignal = vi.fn();
 const updateMarketSignal = vi.fn();
 const registerMarketSignalEvidence = vi.fn();
 const decideMarketSignal = vi.fn();
+const takeBackSelectionReturn = vi.fn();
 
 vi.mock("../api/marketSignals", () => ({
   listMarketSignals: (...args: unknown[]) => listMarketSignals(...args),
@@ -25,6 +26,8 @@ vi.mock("../api/marketSignals", () => ({
   registerMarketSignalEvidence: (...args: unknown[]) =>
     registerMarketSignalEvidence(...args),
   decideMarketSignal: (...args: unknown[]) => decideMarketSignal(...args),
+  takeBackSelectionReturn: (...args: unknown[]) =>
+    takeBackSelectionReturn(...args),
 }));
 
 vi.mock("../auth/useAuthSession", () => ({
@@ -107,12 +110,48 @@ describe("MarketSignalsWorkbench", () => {
     );
     getMarketSignal.mockImplementation(async (id: string) => details.get(id));
     registerMarketSignalEvidence.mockResolvedValue(undefined);
+    takeBackSelectionReturn.mockResolvedValue({});
+  });
+
+  it("shows the structured return request and lets market take it back", async () => {
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: "选品请求补充市场方向",
+        currentDestination: "selection_return_requested",
+        version: 3,
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        {
+          signal: signals[0]!,
+          evidence: [],
+          selectionReturnBasis: "wrong_direction",
+          selectionReturnReason: "请重新核对目标市场与渠道",
+        },
+      ],
+    ]);
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    expect(wrapper.text()).toContain("方向错误");
+    expect(wrapper.text()).toContain("请重新核对目标市场与渠道");
+    await wrapper.get(".return-request button").trigger("click");
+    await flushPromises();
+    expect(takeBackSelectionReturn).toHaveBeenCalledWith(
+      signalOneId,
+      expect.objectContaining({
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: 3,
+      }),
+    );
+    expect(wrapper.text()).toContain("已接回");
   });
 
   it("loads the work reason and separates observed facts from hypotheses", async () => {
     const wrapper = await mountPage();
 
-    expect(listMarketSignals).toHaveBeenCalledTimes(7);
+    expect(listMarketSignals).toHaveBeenCalledTimes(8);
     expect(getMarketSignal).toHaveBeenCalledWith(signalOneId);
     expect(wrapper.text()).toContain("为什么现在处理");
     expect(wrapper.text()).toContain("已观察到");
@@ -415,7 +454,7 @@ describe("MarketSignalsWorkbench", () => {
     await wrapper.get(".operation-error button").trigger("click");
     await flushPromises();
 
-    expect(listMarketSignals).toHaveBeenCalledTimes(14);
+    expect(listMarketSignals).toHaveBeenCalledTimes(16);
     expect(wrapper.text()).toContain(signals[0]!.title);
   });
 
@@ -450,7 +489,7 @@ describe("MarketSignalsWorkbench", () => {
       destination: "archived",
       pageSize: 50,
     });
-    expect(listMarketSignals).toHaveBeenCalledTimes(8);
+    expect(listMarketSignals).toHaveBeenCalledTimes(9);
     expect(wrapper.find(".group-error").exists()).toBe(false);
     expect(wrapper.get(".queue-list").text()).toContain("已归档的历史信号");
   });
@@ -794,6 +833,7 @@ describe("MarketSignalsWorkbench", () => {
       "-1",
       "-1",
       "-1",
+      "-1",
     ]);
     expect(wrapper.get('[role="tabpanel"]').attributes("aria-labelledby")).toBe(
       tabs()[0]!.attributes("id"),
@@ -803,13 +843,13 @@ describe("MarketSignalsWorkbench", () => {
     expect(tabs()[1]!.attributes("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(tabs()[1]!.element);
     await tabs()[1]!.trigger("keydown", { key: "End" });
-    expect(tabs()[6]!.attributes("aria-selected")).toBe("true");
-    expect(document.activeElement).toBe(tabs()[6]!.element);
-    await tabs()[6]!.trigger("keydown", { key: "ArrowRight" });
+    expect(tabs()[7]!.attributes("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tabs()[7]!.element);
+    await tabs()[7]!.trigger("keydown", { key: "ArrowRight" });
     expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
     await tabs()[0]!.trigger("keydown", { key: "ArrowLeft" });
-    expect(tabs()[6]!.attributes("aria-selected")).toBe("true");
-    await tabs()[6]!.trigger("keydown", { key: "Home" });
+    expect(tabs()[7]!.attributes("aria-selected")).toBe("true");
+    await tabs()[7]!.trigger("keydown", { key: "Home" });
     expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
     expect(tabs()[0]!.attributes("tabindex")).toBe("0");
     wrapper.unmount();
