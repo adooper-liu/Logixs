@@ -233,6 +233,25 @@ decisions:
 unknowns: []
 verificationGaps:
   - 完整 validate 按 brief 留到风险切片集成候选；本轮修复后先复跑 S1 定向门禁。
+  - finding: PS-S1-R08
+    status: accepted
+    reason: >
+      新迁移的 resource commitment CHECK 仅允许承诺字段非空时 outcome=approve；现有 NPI 回程会把当前立项行改成
+      returned_from_npi 而保留承诺字段，PostgreSQL 必然拒绝，直接破坏已定恢复路径。修复应允许已承诺的当前行进入
+      returned_from_npi 并保留事实，不改写不可变 handoff；增加“立项→NPI 领取→退回选品”真实 PostgreSQL 集成反例。
+    writeback: 本 brief S1；doc/08 §4.2 交接快照与恢复
+  - finding: PS-S1-R09
+    status: accepted
+    reason: >
+      legacy handoff 的 responsibilityAccepted=null 表示没有显式责任承诺，responsibleActorId 仅能证明历史操作人。
+      NPI 详情无条件标为“立项责任人”会伪造责任；仅 true 时显示 actor，null 时显示“历史交接未记录”。
+    writeback: 本 brief S1；doc/08 §4.2 存量快照规则
+  - finding: PS-S1-R10
+    status: accepted
+    reason: >
+      outcomeHintFor 只看 reason，未接收 reconsiderationDate；暂缓只填验证重点时会预告“提交后关闭”，而服务端正确保存为
+      pending_completion/needs_decision。提示和 CTA 必须同时依据验证重点与重判日期：两项齐全才预测关闭，半填或全缺都明确待补。
+    writeback: 本 brief S1
 nonBlockingSuggestions: []
 next: fix
 ```
@@ -248,6 +267,9 @@ next: fix
 7. 进度头的总必填数必须由当前 `blockingGaps` 对应的完整门槛集合计算：空草稿显示 `必填剩 11 · 已齐 0/11`；逐项补齐后单调到 `11/11`，不得硬编码旧分母 5。
 8. 立项输入把“由我负责 + 承接团队/岗位 + 资源说明”组织为责任与资源组，把目标日期、下一决策日期和问题组织为时间与下一决策组；组标题和 helper 使用现有人话与 token，不增字段、不改业务政策。
 9. 保留现有桌面三栏。桌面行动 pane 在应用内容滚动容器内 sticky 且主 CTA 在 1440×900 可达；≤1100px 与移动端只在同一行动 pane 内提供 sticky 底部动作区，不能复制业务按钮或另存状态。覆盖 1440×900、1024×768、390×844 结构断言、无横向溢出和真实页面视觉复验。
+10. PostgreSQL 集成测试走完“带完整承诺立项 → NPI 领取 → NPI 退回选品”，当前立项行允许转为 `returned_from_npi` 且保留责任/资源承诺；不可变 handoff 值不变。迁移 CHECK 同时继续拒绝非立项/非回程状态携带伪造承诺。
+11. NPI UI 测试覆盖 legacy `responsibilityAccepted=null` 显示“历史交接未记录”，新快照 `true` 才显示 `responsibleActorId`；不得从 actor 字段自行推断承诺。
+12. 提示函数和组件测试覆盖暂缓四种组合：全缺、只填验证重点、只填重判日期均提示“保存为待补、不关闭”；两项齐全才提示“提交后关闭”。移动 CTA 文案不得反向暗示半填已成立。
 
 ## 验收
 
@@ -270,3 +292,4 @@ next: fix
 | 2026-10-04 | fix    | Claude Code | 未提交     | 主代理核验 S1 handoff，接受 PS-S1-R01～R04：暂缓半填错误关闭/落库失败、Web 漏消费投影分页、字典错误标记已定字段、测试范围漏列。已写回 doc/08 与 brief，定向下发修复。  |
 | 2026-10-04 | fix    | Claude Code | 未提交     | 复验 R01～R03 通过；追加 PS-S1-R05/R06：机会源仍只取首 100 条使老到期项不可见，半填暂缓回执与服务端 needs_decision 不符。限定最后一轮 Web 修复。                       |
 | 2026-10-04 | fix    | Claude Code | 未提交     | R05/R06 代码复验通过；真实三视口视觉检查追加 PS-S1-R07：主 CTA 远离首屏、承诺区形成长填空墙、进度分母仍为旧值 5。限定为分组、正确口径与同一动作区 sticky，不重做整页。 |
+| 2026-10-04 | fix    | Claude Code | 未提交     | R07 真实三视口复验通过。fresh Codex 独立复审返回 R08～R10，主代理逐项核验并全部接受：NPI 回程触发新 CHECK、legacy 操作人被冒充责任人、半填暂缓提示错误预测关闭。       |
