@@ -1,5 +1,5 @@
 ---
-status: review
+status: done
 branch: feat/workbench-network-hub-volume-v1
 owner: cursor
 writer: cursor
@@ -173,3 +173,4 @@ verification: |
 | 2026-10-04 | fix     | Codex  | 未提交   | 独立复审 `HUB-S2-R02` 已接受：寻源 SQL 只按发布去重会折叠同一发布内多个 SKU。写入 S2b，按复合 SKU 身份修复并补双 SKU 集成反例。                                                                                                                                                                                                                                                                         |
 | 2026-10-04 | review  | Codex  | 未提交   | `HUB-S2-R02` 已修复：寻源在办/待接受按 `(sku_release_id, sku_id)` 计数；同发布双 SKU 报价、定点反例通过。workbench-network 集成 5、API typecheck、定向 lint、diff check 通过。该修复未改变业务政策或公共契约，按 AGENTS §1.2.15 不重复复审，进入集成候选。                                                                                                                                              |
 | 2026-10-04 | review  | Cursor | f2655bdc | S2/S2a/S2b 已形成集成候选提交；三份范围外治理改动未纳入。待推送、PR CI 与最终集成。                                                                                                                                                                                                                                                                                                                     |
+| 2026-10-04 | done    | Cursor | PR #137  | 独立复审 finding 均已修复；远程 `changes`、`static`、`unit`、`build`、全量 `e2e`、`quality` 全部通过。S2 完成并进入合并；本次只回写 brief 状态，按 AGENTS §1.2.14 不重跑无关完整门禁。                                                                                                                                                                                                                  |
