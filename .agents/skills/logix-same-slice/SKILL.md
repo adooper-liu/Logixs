@@ -7,6 +7,8 @@ description: 在 Logix 中实现一个已经定案的业务步骤，并在同一
 
 本技能只约束一个已定案步骤的实现范围。它不是业务权威，也不复制 `AGENTS.md`。冲突时以 `AGENTS.md`、`doc/cross-border-supply-chain/08-role-workbenches.md`、已接受 ADR 和现行 brief 为准，并写明冲突。
 
+下发实现时，在 TASK 行后附上 `.agents/prompts/implement.md`，并先写出其中三句。
+
 `wisdom-baseline/业务工作台持续打磨受阻原因.md`（2026-10-04）只说明交付节奏曾经怎样偏离规则。它不新增状态，也不修改完成标准。
 
 开始编码前先用 `logix-task-bootstrap` 核对权威、工作区和最近验证。若本步依赖的目的、损失、责任、退出或权限仍未定案，停止并改用 `logix-clarify`。不要用默认真值、空按钮或临时字段绕过缺口。
@@ -36,6 +38,8 @@ description: 在 Logix 中实现一个已经定案的业务步骤，并在同一
 不可关闭的最低项包括：写操作默认拒绝、租户隔离、服务端授权、未知值明确失败、幂等、并发控制和事务。缺这些能力时，只挡住依赖它们的受保护写动作，不据此停掉无关步骤。范围见 `AGENTS.md` §5。外部身份、迁移环境或生产配置缺证据时，才适用 §1.2 第 16 条：阻塞部署和 task `done`，不阻塞不依赖该环境的本地实现。
 
 跨工作台的共享能力必须点名当前消费者，并先由一个真实业务动作验真。见 `AGENTS.md` §1.1 第 7 条。不要为本片提前建设其余工作台的目录、契约或权限平台。
+
+兄弟模块的引用必须写入 `depends`，并且只进入对方公开入口，不进入 `domain/`、`application/`、`infrastructure/`、`presentation/`、`security/` 或 `engines/`。`kind` 为 `base` 的模块不引用 `kind` 为 `incremental` 的模块。`scripts/check-module-manifests.mjs` 拒绝新增的这类边。脚本里 `existingBaseOnIncremental` 只登记已经存在的违反，不得再加条目。
 
 外部候选，不是新规则：Matthew Skelton 与 Manuel Pais 在 Team Topologies 中把 thinnest viable platform 定义为刚好加速流对齐团队的最小 API、文档和工具；公开说明里，一页已经够用的 wiki 就不要再加厚（[teamtopologies.com 的 TVP 说明](https://teamtopologies.com/key-concepts-content/what-is-a-thinnest-viable-platform-tvp)）。这是内部平台的组织说法。把它用于 Logix 时，只用来对照第 7 条，不另加平台厚度指标。诊断把 GC-012 G0 记为投入比例和串行位置偏离第 7 条的实例；引用前重读 `docs/planning/tasks/gc012-g0-catalog-v1.md`，不要把诊断中的约数当成门禁。
 

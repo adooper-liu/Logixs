@@ -8,6 +8,7 @@ export const moduleManifest = defineModuleManifest({
     "document-records",
     "identity",
     "lifecycle-control",
+    "master-data",
     "shipment-registry",
   ],
   permissions: ["container.operate"],

@@ -9,6 +9,8 @@ export const moduleManifest = defineModuleManifest({
     "notification",
     "document-records",
     "compliance-management",
+    "customs-compliance",
+    "inland-fulfillment",
     "shipment-registry",
     "work-execution",
   ],

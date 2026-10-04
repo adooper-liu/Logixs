@@ -211,6 +211,11 @@
    提供可读取的 worktree 或 PR。接收方必须先读取 `AGENTS.md`、指定 brief 与准确基线；引用不存在、SHA 不符或
    工作区不可读时立即返回 `blocked`，不得靠聊天上下文猜测。
 
+   下发时在该行之后附上对应阶段提示词，不把本文件再贴一遍。澄清用 `.agents/prompts/clarify.md`（先读
+   `logix-clarify`），实现用 `.agents/prompts/implement.md`（先读 `logix-same-slice`），评审用
+   `.agents/prompts/review.md`（先读 `logix-risk-review`）。接收方先回答提示词要求的开头几句，再做其他事。
+   提示词与本文件、`08-role-workbenches.md` 或现行 brief 冲突时，以这三处为准。
+
 4. 实现执行器完成切片并进入 `ready-for-review` 时，交回消息第一行必须是给主代理的单行交接指令：
 
    ```text

@@ -4,7 +4,7 @@ export const moduleManifest = defineModuleManifest({
   id: "master-data",
   kind: "base",
   version: "1.0.0",
-  depends: [],
+  depends: ["identity"],
   permissions: [],
   publicPorts: [
     "GET_PRODUCT_COMPLIANCE_PROFILE",

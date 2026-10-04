@@ -66,6 +66,11 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<implementer|reviewer> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
 ```
 
+TASK 行之后附上对应阶段提示词，不复述 `AGENTS.md`。澄清用 `.agents/prompts/clarify.md`（先读
+`logix-clarify`），实现用 `.agents/prompts/implement.md`（先读 `logix-same-slice`），评审用
+`.agents/prompts/review.md`（先读 `logix-risk-review`）。接收方先回答提示词要求的开头几句。提示词与
+`AGENTS.md`、`08-role-workbenches.md` 或现行 brief 冲突时，以这三处为准。
+
 实现执行器交回实现：
 
 ```text

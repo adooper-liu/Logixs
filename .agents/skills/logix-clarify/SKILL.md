@@ -7,6 +7,8 @@ description: 在 Logix 仓库澄清某台工作台的业务目的、优先损失
 
 本技能只约束澄清动作。它不是业务权威，也不复制 `AGENTS.md`。与 `AGENTS.md`、`doc/cross-border-supply-chain/08-role-workbenches.md`、已接受 ADR 或现行 brief 冲突时，以那些权威为准，并在输出里指出冲突。
 
+下发澄清时，在 TASK 行后附上 `.agents/prompts/clarify.md`，并先回答其中三句。
+
 `doc/cross-border-supply-chain/wisdom-baseline/` 是必读基线，不是权威。其中 `业务工作台持续打磨受阻原因.md`（2026-10-04）是交付节奏诊断，不是规则修订。
 
 ## 先读什么
