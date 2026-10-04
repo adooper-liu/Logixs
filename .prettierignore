@@ -16,6 +16,9 @@ __pycache__
 **/.pytest_cache
 # 由 scripts/generate-contracts.mjs 生成的派生产物，不手工格式化
 packages/contracts/generated
+# 智慧开启基线原文须逐字保留，不得被格式化改写；目录说明 README 仍受格式检查。
+doc/cross-border-supply-chain/wisdom-baseline/*.md
+!doc/cross-border-supply-chain/wisdom-baseline/README.md
 # 由 scripts/build-progress-board.mjs 生成的派生产物，不手工格式化
 docs/planning/progress-board.html
 # Prisma Client 单一输出（见 database/schema.prisma generator output）

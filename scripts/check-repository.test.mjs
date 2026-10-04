@@ -22,6 +22,7 @@ import {
   inspectWorkbenchRouteSource,
   inspectWorkbenchRouterSource,
   findBrokenMarkdownLinks,
+  isVerbatimWisdomBaseline,
   findStaleWorkbenchBaselineReferences,
   findForbiddenTrackedPaths,
   findMisleadingContractPackageScripts,
@@ -1091,6 +1092,27 @@ test("reports missing relative markdown targets and ignores external links", () 
   const errors = findBrokenMarkdownLinks([sourcePath]);
   assert.equal(errors.length, 1);
   assert.match(errors[0], /missing\.md/);
+});
+
+test("exempts only verbatim wisdom baseline files from link checks", () => {
+  assert.equal(
+    isVerbatimWisdomBaseline(
+      "doc/cross-border-supply-chain/wisdom-baseline/采购.md",
+    ),
+    true,
+  );
+  assert.equal(
+    isVerbatimWisdomBaseline(
+      "doc/cross-border-supply-chain/wisdom-baseline/README.md",
+    ),
+    false,
+  );
+  assert.equal(
+    isVerbatimWisdomBaseline(
+      "doc/cross-border-supply-chain/08-role-workbenches.md",
+    ),
+    false,
+  );
 });
 
 test("rejects ambiguous P6/P7 references in global contract authorities", () => {
