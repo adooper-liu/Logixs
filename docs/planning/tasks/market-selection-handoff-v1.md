@@ -49,8 +49,12 @@ writeScopes:
   - apps/web/src/views/ProductSelectionWorkbench.test.ts
   - apps/web/e2e/workbench-network.spec.ts
   - apps/web/e2e/auth-session.spec.ts
+  - AGENTS.md
+  - docs/planning/tasks/_template.md
+  - docs/planning/tasks/agent-role-mapping-v1.md
 exclusiveLocks:
   - business-policy:ms-d04
+  - repository-governance
   - database-schema
   - database-migrations
   - database-dictionary
@@ -184,7 +188,9 @@ authorityRefs:
 
 ### `R-branch-review` 与 `PR`
 
-按 HO-D05，S2b 验收后即进入收口（S3 不随本 PR）：同步最新 `main` 后主代理运行一次完整 `pnpm validate`（需 `pnpm infra:up`），派 fresh Opus 只读复审整条分支，按 `logix-disposition/v1` 裁决；无 finding 即按本 brief 预授权推送、建单一 PR、CI 通过后合并。brief 状态回写随该 PR，不另开状态 PR。合并后若 MS-D04 未定项仍无定案，下一片从市场信号 brief 的候选中由负责人每轮定 1～3 项继续，不让两台同时回到 `blocked`。
+按 HO-D05，S2b 验收后即进入收口（S3 不随本 PR）：同步最新 `main` 后主代理运行一次完整 `pnpm validate`（需 `pnpm infra:up`），派 fresh 只读复审，按 `logix-disposition/v1` 裁决；无 finding 即按本 brief 预授权推送、建单一 PR、CI 通过后合并。brief 状态回写随该 PR，不另开状态 PR。合并后若 MS-D04 未定项仍无定案，下一片从市场信号 brief 的候选中由负责人每轮定 1～3 项继续，不让两台同时回到 `blocked`。
+
+2026-10-04 负责人先说“独立复审交给 Codex”，随后定案“以后独立复审都交回给 Codex”（见 `AGENTS.md` §1.2 第 4 条）。本分支在 `6a221ca2` 已有一次 Opus 复审并留下 finding。Codex 用新开只读会话复审 `6a221ca2..HEAD` 中尚未由另一会话复审的提交，包括 S2c、S2d 和主代理随后改的 401 恢复与退回依据测试。S2c/S2d 为 Codex 所写，按新定案仍由 Codex 复审，但不得与当时的实现会话共用，也不得改文件、提交或跑 `pnpm validate`。无 finding 后主代理建 PR。
 
 ## 智慧开启基线
 
@@ -271,3 +277,4 @@ authorityRefs:
 | 2026-10-04 | coding | Cursor | `799b27b5` | 收口 `pnpm validate` 在 Web 单测失败：`ProductInitiativeOutcomePanel.test.ts` 仍断言未选依据的退回会“关闭”。主代理按已接受的 MSH-R05 改为“没选依据不能提交；选了依据并写了原因才说明会关闭”，定向 11 条通过。增量复审三次（Opus thinking、Opus medium、Gemini）均因账号用量上限未产生结论，不视为通过；PR 继续等待可用的独立复审                                                                                                                                                                |
 | 2026-10-04 | coding | Cursor | `f6cda422` | 第二次完整门禁只剩 `auth-session` 的 401 用例失败，单独重跑仍失败。原因：市场台把责任投影和分组列表并行发出，投影的 404 会清掉一次性重新登录标记，回调停住。改为分组全部失败时不读投影，并把该用例的请求数改为 8 组×2 次。定向单测 29 条与该 E2E 通过。自动模型复审因未授权失败，不再重开                                                                                                                                                                                                       |
 | 2026-10-04 | review | Cursor | `e8eff0f5` | 收口 `pnpm validate` 通过：API 单测 276 文件 1435 条、Web 单测 142 文件 649 条、集成 25 文件 159 条、E2E 166 条、构建通过。状态改为 `review`。独立复审仍无结论（用量上限与未授权），PR 与合并继续等待                                                                                                                                                                                                                                                                                           |
+| 2026-10-04 | review | Cursor | `40c6deff` | 负责人定案“以后独立复审都交回给 Codex”：写回 `AGENTS.md` §1.2 第 4 条、任务模板和 `agent-role-mapping-v1`。本分支未复审增量交 Codex 新开只读会话；S2c/S2d 与写入者同家族，按定案接受并在规则中写明                                                                                                                                                                                                                                                                                              |
