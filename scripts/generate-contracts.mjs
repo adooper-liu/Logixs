@@ -81,6 +81,7 @@ const CONTRACT_FILES = [
   "client-operation.schema.json",
   "container-operational-view.schema.json",
   "ops-assistant.schema.json",
+  "workbench-network-volume.schema.json",
   "error-response.schema.json",
 ];
 

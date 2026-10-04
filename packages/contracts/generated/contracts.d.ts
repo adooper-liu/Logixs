@@ -541,6 +541,21 @@ export type ShipmentRiskDeadlineKindV1 = ("eta" | "task_due" | "free_time")
 export type ShipmentRiskSortV1 = ("nearest_deadline" | "eta" | "task_due" | "updated_at")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeMetricV1".
+ */
+export type WorkbenchNetworkVolumeMetricV1 = (WorkbenchNetworkVolumeCountMetricV1 | WorkbenchNetworkVolumeSemanticMetricV1)
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeDeskCodeV1".
+ */
+export type WorkbenchNetworkVolumeDeskCodeV1 = ("market_signals" | "product_selection" | "sourcing")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumePhaseV1".
+ */
+export type WorkbenchNetworkVolumePhaseV1 = ("strategy" | "product" | "supply" | "shipment" | "arrival")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "PublicErrorCode".
  */
 export type PublicErrorCode = ("VALIDATION_REQUIRED" | "VALIDATION_FORMAT" | "VALIDATION_RANGE" | "VALIDATION_FIELD_CONFLICT" | "AUTHENTICATION_REQUIRED" | "AUTHENTICATION_EXPIRED" | "AUTHORIZATION_FORBIDDEN" | "AUTHORIZATION_SCOPE_DENIED" | "RESOURCE_NOT_FOUND" | "RATE_LIMIT_EXCEEDED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "IDEMPOTENCY_KEY_CONFLICT" | "VERSION_CONFLICT" | "HISTORY_SEALED" | "MANUAL_LOCK_CONFLICT" | "REVIEW_REQUIRED" | "CURSOR_INVALID" | "CURSOR_EXPIRED" | "PROJECTION_VERSION_CONFLICT" | "PROJECTION_UNAVAILABLE" | "ACTION_UNKNOWN" | "ACTION_TARGET_MISMATCH" | "ACTION_CONFIRMATION_REQUIRED" | "ACTION_REVIEW_REQUIRED" | "BUSINESS_STATE_VIOLATION" | "BUSINESS_PRECONDITION_FAILED" | "EVIDENCE_REQUIRED" | "SOURCE_NOT_AUTHORIZED" | "UNKNOWN_EXTERNAL_MAPPING" | "LIFECYCLE_FLOW_NOT_FOUND" | "LIFECYCLE_FLOW_ALREADY_ACTIVE" | "LIFECYCLE_DEFINITION_VERSION_UNSUPPORTED" | "LIFECYCLE_NODE_NOT_CURRENT" | "LIFECYCLE_NODE_NOT_OPTIONAL" | "LIFECYCLE_NODE_APPLICABILITY_CONFLICT" | "LIFECYCLE_EVENT_TYPE_UNKNOWN" | "LIFECYCLE_EVENT_NOT_STATE_EVIDENCE" | "LIFECYCLE_EVENT_PENDING_PREDECESSOR" | "LIFECYCLE_EVENT_PENDING_COMPLIANCE" | "LIFECYCLE_EVENT_PENDING_CONTAINER_IDENTITY" | "LIFECYCLE_EVENT_PENDING_STUFFING_SNAPSHOT" | "LIFECYCLE_EVENT_PENDING_STUFFING_SNAPSHOT_STALE" | "LIFECYCLE_EVENT_PENDING_STUFFING_EVIDENCE" | "LIFECYCLE_EVENT_PENDING_DISPATCH_SNAPSHOT" | "LIFECYCLE_EVENT_PENDING_DISPATCH_SNAPSHOT_STALE" | "LIFECYCLE_EVENT_PENDING_DISPATCH_EVIDENCE" | "LIFECYCLE_EVENT_PENDING_LOCATION_CONTEXT" | "LIFECYCLE_EVENT_PENDING_ROUTE_CONTEXT" | "LIFECYCLE_EVENT_ROUTE_MISMATCH" | "LIFECYCLE_EVENT_PENDING_TERMINAL_AVAILABILITY" | "LIFECYCLE_EVENT_PENDING_PICKUP_LOCATION_CONTEXT" | "LIFECYCLE_EVENT_PICKUP_LOCATION_MISMATCH" | "LIFECYCLE_EVENT_PICKUP_BEFORE_AVAILABLE" | "LIFECYCLE_SOURCE_NOT_AUTHORIZED" | "LIFECYCLE_EVIDENCE_REQUIRED" | "LIFECYCLE_GUARD_NOT_SATISFIED" | "LIFECYCLE_ACTIVE_BLOCK_EXISTS" | "LIFECYCLE_TIME_ORDER_CONFLICT" | "LIFECYCLE_HISTORY_SEALED" | "LIFECYCLE_IDEMPOTENCY_CONFLICT" | "LIFECYCLE_VERSION_CONFLICT" | "LIFECYCLE_REENTRY_NOT_ALLOWED" | "LIFECYCLE_MANUAL_REVIEW_REQUIRED" | "TIMELINE_EVENT_INVALID" | "TIMELINE_TIMEZONE_UNKNOWN" | "TIMELINE_EVENT_DUPLICATE_CONFLICT" | "TIMELINE_EVENT_RELATION_INVALID" | "TIMELINE_PROJECTION_VERSION_CONFLICT" | "TIMELINE_MANUAL_REVIEW_REQUIRED" | "CUSTOMS_CASE_NOT_FOUND" | "CUSTOMS_WORK_ORDER_NOT_FOUND" | "CUSTOMS_EXTERNAL_PAYLOAD_INVALID" | "CUSTOMS_REQUIRED_CASE_MISSING" | "CUSTOMS_RELEASE_EVIDENCE_MISSING" | "CUSTOMS_EVIDENCE_SCOPE_MISMATCH" | "CUSTOMS_WORK_ORDER_EVIDENCE_MISMATCH" | "CUSTOMS_EXTERNAL_MAPPING_UNKNOWN" | "CUSTOMS_INVALID_TRANSITION" | "CUSTOMS_ACTIVE_BLOCK_EXISTS" | "CUSTOMS_IDEMPOTENCY_CONFLICT" | "CUSTOMS_VERSION_CONFLICT" | "CUSTOMS_MANUAL_REVIEW_REQUIRED" | "DEPENDENCY_UNAVAILABLE" | "DEPENDENCY_TIMEOUT" | "DEPENDENCY_RESPONSE_INVALID" | "SYNC_MESSAGE_CONFLICT" | "SYNC_DEAD_LETTERED" | "SYNC_COMMIT_FAILED")
@@ -4305,6 +4320,50 @@ history: OpsQuestionHistoryMessage[]
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeCountMetricV1".
+ */
+export interface WorkbenchNetworkVolumeCountMetricV1 {
+state: "count"
+count: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeSemanticMetricV1".
+ */
+export interface WorkbenchNetworkVolumeSemanticMetricV1 {
+state: ("not_connected" | "undefined" | "forbidden")
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeSliceV1".
+ */
+export interface WorkbenchNetworkVolumeSliceV1 {
+open: WorkbenchNetworkVolumeMetricV1
+weeklyFlow: WorkbenchNetworkVolumeMetricV1
+blocked: WorkbenchNetworkVolumeMetricV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeDeskV1".
+ */
+export interface WorkbenchNetworkVolumeDeskV1 {
+code: WorkbenchNetworkVolumeDeskCodeV1
+open: WorkbenchNetworkVolumeMetricV1
+weeklyFlow: WorkbenchNetworkVolumeMetricV1
+blocked: WorkbenchNetworkVolumeMetricV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeConnectionV1".
+ */
+export interface WorkbenchNetworkVolumeConnectionV1 {
+fromCode: string
+toCode: string
+pendingAcceptance: WorkbenchNetworkVolumeMetricV1
+overdue: WorkbenchNetworkVolumeMetricV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ErrorDetail".
  */
 export interface ErrorDetail {
@@ -4561,6 +4620,18 @@ version: number
 }[]
 asOf: DateTime
 freshness: Freshness
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolume".
+ */
+export interface WorkbenchNetworkVolume {
+contractVersion: "workbench-network-volume.v1"
+weekStart: string
+currentPhase: (WorkbenchNetworkVolumePhaseV1 | null)
+global: WorkbenchNetworkVolumeSliceV1
+workbenches: WorkbenchNetworkVolumeDeskV1[]
+connections: WorkbenchNetworkVolumeConnectionV1[]
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema

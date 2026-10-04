@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/workbench-network-volume.schema.json",
+  "title": "Workbench Network Volume V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "weekStart",
+    "currentPhase",
+    "global",
+    "workbenches",
+    "connections"
+  ],
+  "properties": {
+    "contractVersion": { "const": "workbench-network-volume.v1" },
+    "weekStart": { "type": "string", "format": "date-time" },
+    "currentPhase": {
+      "anyOf": [
+        { "$ref": "#/$defs/WorkbenchNetworkVolumePhaseV1" },
+        { "type": "null" }
+      ]
+    },
+    "global": { "$ref": "#/$defs/WorkbenchNetworkVolumeSliceV1" },
+    "workbenches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/WorkbenchNetworkVolumeDeskV1" }
+    },
+    "connections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/WorkbenchNetworkVolumeConnectionV1" }
+    }
+  },
+  "$defs": {
+    "WorkbenchNetworkVolumeMetricV1": {
+      "oneOf": [
+        { "$ref": "#/$defs/WorkbenchNetworkVolumeCountMetricV1" },
+        { "$ref": "#/$defs/WorkbenchNetworkVolumeSemanticMetricV1" }
+      ]
+    },
+    "WorkbenchNetworkVolumeCountMetricV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "count"],
+      "properties": {
+        "state": { "const": "count" },
+        "count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "WorkbenchNetworkVolumeSemanticMetricV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": { "enum": ["not_connected", "undefined", "forbidden"] }
+      }
+    },
+    "WorkbenchNetworkVolumeDeskCodeV1": {
+      "enum": ["market_signals", "product_selection", "sourcing"]
+    },
+    "WorkbenchNetworkVolumePhaseV1": {
+      "enum": ["strategy", "product", "supply", "shipment", "arrival"]
+    },
+    "WorkbenchNetworkVolumeSliceV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open", "weeklyFlow", "blocked"],
+      "properties": {
+        "open": { "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1" },
+        "weeklyFlow": { "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1" },
+        "blocked": { "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1" }
+      }
+    },
+    "WorkbenchNetworkVolumeDeskV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "open", "weeklyFlow", "blocked"],
+      "properties": {
+        "code": { "$ref": "#/$defs/WorkbenchNetworkVolumeDeskCodeV1" },
+        "open": { "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1" },
+        "weeklyFlow": { "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1" },
+        "blocked": { "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1" }
+      }
+    },
+    "WorkbenchNetworkVolumeConnectionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromCode", "toCode", "pendingAcceptance", "overdue"],
+      "properties": {
+        "fromCode": { "type": "string", "minLength": 1 },
+        "toCode": { "type": "string", "minLength": 1 },
+        "pendingAcceptance": {
+          "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1"
+        },
+        "overdue": { "$ref": "#/$defs/WorkbenchNetworkVolumeMetricV1" }
+      }
+    }
+  }
+}

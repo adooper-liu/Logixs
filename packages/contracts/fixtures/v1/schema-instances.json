@@ -2,6 +2,51 @@
   "fixtureVersion": "1.0.0",
   "cases": [
     {
+      "contractId": "GC-007",
+      "name": "workbench network volume with undefined block",
+      "schemaRef": "workbench-network-volume.schema.json",
+      "data": {
+        "contractVersion": "workbench-network-volume.v1",
+        "weekStart": "2026-09-28T00:00:00.000Z",
+        "currentPhase": null,
+        "global": {
+          "open": { "state": "count", "count": 1 },
+          "weeklyFlow": { "state": "not_connected" },
+          "blocked": { "state": "undefined" }
+        },
+        "workbenches": [
+          {
+            "code": "market_signals",
+            "open": { "state": "count", "count": 1 },
+            "weeklyFlow": { "state": "count", "count": 0 },
+            "blocked": { "state": "undefined" }
+          }
+        ],
+        "connections": [
+          {
+            "fromCode": "market_signals",
+            "toCode": "product_selection",
+            "pendingAcceptance": { "state": "count", "count": 0 },
+            "overdue": { "state": "undefined" }
+          }
+        ]
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "workbench count metric requires a count",
+      "schemaRef": "workbench-network-volume.schema.json#/$defs/WorkbenchNetworkVolumeMetricV1",
+      "valid": false,
+      "data": { "state": "count" }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "workbench semantic metric forbids a count",
+      "schemaRef": "workbench-network-volume.schema.json#/$defs/WorkbenchNetworkVolumeMetricV1",
+      "valid": false,
+      "data": { "state": "not_connected", "count": 0 }
+    },
+    {
       "contractId": "GC-001",
       "name": "registered lifecycle node code",
       "schemaRef": "common.schema.json#/$defs/LifecycleNodeCode",
