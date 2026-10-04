@@ -134,6 +134,70 @@ test("sourcing owner collects a quotation and nominates the supplier", async ({
   await expect(page.getByText(/定点给\s*宁波某某塑胶/)).toBeVisible();
 });
 
+/**
+ * 两家报价放在一起时，前端不得自行比价排名，也不得把供应商写成"当前责任"。
+ * 可比性只能由服务端判定。
+ */
+test("sourcing workbench shows every quote without ranking them", async ({
+  page,
+}) => {
+  const suppliers = [
+    { ...supplier({ name: "宁波甲厂", admissionState: "admitted" }) },
+    {
+      ...supplier({ name: "深圳乙厂", admissionState: "admitted" }),
+      supplierId: "supplier-2",
+    },
+  ];
+  const quotations = [
+    quotation({
+      priceTiers: [{ unitPrice: "100.0000" }],
+      incoterms: "FOB Ningbo / Incoterms 2020",
+      keyMaterials: [],
+      exclusions: null,
+    }),
+    {
+      ...quotation({
+        priceTiers: [{ unitPrice: "9.0000" }],
+        incoterms: "EXW Shenzhen / Incoterms 2020",
+        keyMaterials: [],
+        exclusions: null,
+      }),
+      quotationId: "quotation-2",
+      supplierId: "supplier-2",
+      priceTiers: [{ minQuantity: 200, unitPrice: "9.0000", currency: "CNY" }],
+    },
+  ];
+
+  await page.route(/^http:\/\/localhost:5173\/api\//, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/sourcing/queue") {
+      await route.fulfill({
+        json: {
+          suppliers,
+          entries: [entry({ suppliers, quotations, nominated: null })],
+        },
+      });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { code: "NOT_FOUND" } });
+  });
+
+  await page.goto("/workspaces/sourcing");
+
+  await expect(
+    page.getByText("报价可比性待服务端判定，暂不排名。"),
+  ).toBeVisible();
+  await expect(page.getByText("500 起 100.0000 USD")).toBeVisible();
+  await expect(page.getByText("200 起 9.0000 CNY")).toBeVisible();
+
+  const context = page.getByLabel("当前岗位与责任");
+  await expect(context).toContainText("当前责任");
+  await expect(context).toContainText("寻源负责人");
+  await expect(context).not.toContainText("宁波甲厂");
+  await expect(context).not.toContainText("深圳乙厂");
+  await expect(page.getByText(/同口径价低/)).toHaveCount(0);
+});
+
 function entry(input: {
   suppliers: Record<string, unknown>[];
   quotations: Record<string, unknown>[];

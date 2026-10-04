@@ -14,7 +14,16 @@ import {
   registerSupplier,
   type SourcingQueueEntry,
 } from "../api/sourcing";
-import { quotationsAreComparable } from "../data/sourcingQuotationCompare";
+
+/**
+ * 报价的价格档按录入顺序原样列出。金额是十进制字符串，前端不换算、不比大小；
+ * 跨家可比性与排名只能由服务端判定。
+ */
+export function priceTierLabels(quotation: SupplierQuotationV1): string[] {
+  return quotation.priceTiers.map(
+    (tier) => `${tier.minQuantity} 起 ${tier.unitPrice} ${tier.currency}`,
+  );
+}
 
 /** 队列条目的稳定键：**一份发布里的一个 SKU** —— 寻源的对象是它，不是"这一票"。 */
 export function entryKey(entry: {
@@ -74,18 +83,6 @@ export function useSourcingWorkbench(options: { selectedKey: Ref<string> }) {
     } finally {
       loading.value = false;
     }
-  }
-
-  /** 各家报价的最低单价 —— 仅同口径时用于提示，不可比时不算排名。 */
-  function lowestPrice(quotation: SupplierQuotationV1): string {
-    const cheapest = [...quotation.priceTiers].sort(
-      (left, right) => Number(left.unitPrice) - Number(right.unitPrice),
-    )[0];
-    return cheapest ? `${cheapest.unitPrice} ${cheapest.currency}` : "—";
-  }
-
-  function canRankByPrice(rows: readonly SupplierQuotationV1[]): boolean {
-    return quotationsAreComparable(rows);
   }
 
   async function addSupplier(command: {
@@ -197,8 +194,6 @@ export function useSourcingWorkbench(options: { selectedKey: Ref<string> }) {
     error,
     receipt,
     load,
-    lowestPrice,
-    canRankByPrice,
     addSupplier,
     admit,
     addQuotation,
