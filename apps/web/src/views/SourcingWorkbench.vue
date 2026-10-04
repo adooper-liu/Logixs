@@ -278,7 +278,11 @@ async function reload(): Promise<void> {
             <p v-if="selected.quotations.length > 1" class="note">
               报价可比性待服务端判定，暂不排名。
             </p>
-            <ul v-if="selected.quotations.length > 0" class="quotes">
+            <ul
+              v-if="selected.quotations.length > 0"
+              class="quotes"
+              aria-label="各家报价"
+            >
               <li
                 v-for="quotation in selected.quotations"
                 :key="quotation.quotationId"

@@ -198,8 +198,9 @@ test("sourcing workbench shows every quote without ranking them", async ({
   await expect(
     page.getByText("报价可比性待服务端判定，暂不排名。"),
   ).toBeVisible();
-  const first = page.locator(".quotes > li").filter({ hasText: "宁波甲厂" });
-  const second = page.locator(".quotes > li").filter({ hasText: "深圳乙厂" });
+  const quotes = page.getByRole("list", { name: "各家报价" });
+  const first = quotes.getByRole("listitem").filter({ hasText: "宁波甲厂" });
+  const second = quotes.getByRole("listitem").filter({ hasText: "深圳乙厂" });
   await expect(first.locator(".price > span")).toHaveText([
     "500 起 100.0000 USD",
   ]);
