@@ -1,5 +1,5 @@
 ---
-status: review
+status: coding
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -13,11 +13,22 @@ writeScopes:
   - packages/contracts/generated/contracts.d.ts
   - database/schema.prisma
   - database/migrations/**
+  - database/seed.ts
+  - database/seeds/seed-authoritative-currency-reference-data.ts
+  - database/seeds/seed-authoritative-currency-reference-data.test.ts
+  - database/seeds/reference-data/iso-4217-list-one-synthetic-rehearsal.json
+  - scripts/generate-currency-reference-snapshot.mjs
+  - scripts/generate-currency-reference-snapshot.test.mjs
   - database/dictionary/dictionary.annotations.json
   - database/dictionary/DATA_DICTIONARY.generated.md
   - database/dictionary/NATIVE_OBJECTS.generated.md
   - database/dictionary/database-data-dictionary.xlsx
   - apps/api/src/modules/product-selection/**
+  - apps/api/src/modules/master-data/master-data.module.ts
+  - apps/api/src/modules/master-data/index.ts
+  - apps/api/src/modules/master-data/reference-currency-directory.port.ts
+  - apps/api/src/modules/master-data/infrastructure/prisma-reference-currency-directory.ts
+  - apps/api/src/modules/master-data/infrastructure/prisma-reference-currency-directory.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-migration-upgrade.integration.test.ts
   - apps/web/src/api/marketSignals.ts
@@ -36,16 +47,20 @@ writeScopes:
   - apps/web/e2e/workbench-network.spec.ts
 exclusiveLocks:
   - business-policy:ps-d01
+  - business-policy:ue-d01
+  - business-policy:ue-d02
   - database-schema
   - database-migrations
   - database-dictionary
   - generated:database-catalog
   - public-contract:product-initiative-v1
+  - reference-data:iso-4217
   - generated:contracts
 sharedIntegrationScopes:
   - apps/web/e2e/workbench-network.spec.ts
 authorityRefs:
   - AGENTS.md
+  - docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - doc/cross-border-supply-chain/wisdom-baseline/选品立项.md
   - doc/cross-border-supply-chain/wisdom-baseline/全局.md
@@ -61,7 +76,7 @@ authorityRefs:
 ## 阶段与调度
 
 - `market-selection-handoff-v1` 已由 PR #136 合入 `main`，本分支已合并至 `eb5e2598`（含 PR #137、#138）；原串行前置与 Schema / 契约锁冲突均已解除。
-- 2026-10-04 转 `coding`；S1 已由主代理验收并形成提交 `4f75798e`，当前执行 `S2-evidence-integrity`。S3 保持预授权，须待 S2 由主代理验收并回写 brief 后再下发。
+- 2026-10-04 转 `coding`；S1 提交 `4f75798e`、S2 提交 `ae796ac2` 均已由主代理验收，当前执行 `S3a-unit-economics-core`。S3b 保持预授权，须待 S3a 验收并写回 brief 后再下发。
 - 主代理在 S1 同步把负责人 2026-10-04 对 `选品立项.md` 13 条基线中本片涉及的资源责任、暂缓重判和 NPI 交接承诺写回 `doc/08`；未进入本片的结论仍按后续切片留存，不提前铺字段。
 - frontmatter 是当前 coding 写入范围和锁的唯一机器事实；正文不再维护第二份范围清单。
 
@@ -130,7 +145,7 @@ authorityRefs:
 6. **界面**：立项面板写明“由我对此立项负责”，资源承诺四项直接填写；暂缓面板写“这次要验证什么”“哪天重判”。回执重读服务端，409 重读后保留输入。
 7. **验证命令**：选品领域单测、`product-initiative-flow` 与迁移升级 PostgreSQL 集成测试、契约生成物一致、字典检查、受影响 Web 单测、一条选品立项 E2E、受影响模块 lint/typecheck。
 
-### 切片 `S2-evidence-integrity`（当前执行）
+### 切片 `S2-evidence-integrity`（已验收）
 
 岗位结果：选品人员引用证据形成评审结论时，系统只允许使用当前租户、当前机会来源信号上真实存在的证据；格式正确的任意 UUID 不能满足立项门槛。
 
@@ -144,17 +159,64 @@ authorityRefs:
 
 **禁止范围**：不校验证据是否足以支持结论、不改变 verificationState/validity 采信政策、不实现 U1 完整元数据、不新增证据评分、角色、迁移、字段、契约或页面；这些不是 S2 已定业务结果。
 
-### 切片 `S3-unit-economics`（S2 通过即预授权）
+### 切片 `S3-unit-economics`（当前执行：S3a core）
 
-岗位结果：“利润可接受”变成第二个人能复算的两组数字；口径不明不能立项。
+岗位结果：“利润可接受”必须变成第二个人能复算的基准/保守两组单件金额区间；口径或币种不明不能立项。没有证据的数字只能标为待验证假设，不能冒充事实。本片不设利润率阈值、不做汇率换算。
 
-1. **输入**：每个立项一个市场（沿用机会包）、一个渠道、一种币种（ISO 4217）。基准、保守两个情景，每个情景填单件售价区间、到岸成本区间，以及平台费、履约费、广告、退货四项单件金额区间。金额为定点十进制字符串并共用该币种，不做汇率换算。每项标明“有证据”（须引用已登记证据，S2 核验）或“待验证假设”；无依据的数字只能是假设，不得冒充证据。
-2. **计算**：服务端按情景算贡献空间区间：下限 = 售价下限 − 各成本上限之和，上限 = 售价上限 − 各成本下限之和。领域层单一实现，前端只展示服务端结果，不自行计算。
-3. **门槛**（UE-D02）：立项新写入要求两个情景全部可算且币种明确，否则 `PRODUCT_INITIATIVE_INCOMPLETE` 并列出缺项；保守情景贡献下限为负时必须填写“仍要投入的理由”，不自动拦截，不设利润率阈值。“保守情景为负”按下限判断，属主代理技术解释，可逆。
-4. **暂缓与草稿**：单位经济可部分保存为待补，不阻塞暂缓或不立项。
-5. **快照**：交 NPI 的不可变快照冻结输入与计算结果；存量立项不回填。现有 `price_band_and_margin` 评审要点保留，不在本刀删除或改义。
-6. **界面**：两个情景并排，逐项显示“有证据 / 待验证假设”（文字标签，不只靠颜色），服务端算出的贡献区间与缺项；保守为负时就地要求理由。
-7. **验证**：领域计算与门槛单测（含边界与负值）、PostgreSQL 集成与迁移升级、契约生成物、Web 单测、一条 E2E。
+#### A. 公共契约与唯一结构
+
+1. 在 `product-initiative.v1` 新增两类结构，禁止用一个“看似完整”的对象混装草稿和快照：
+   - `ProductInitiativeUnitEconomicsDraftV1`：命令与当前 initiative 的可恢复草稿；`channelCode`、`currencyCode`、两个情景及各区间都允许部分缺失，不含客户端计算结果。
+   - `ProductInitiativeUnitEconomicsSnapshotV1`：完整、规范化且服务端已计算的快照；只在所有口径齐全时产生，approve 当前态和 NPI handoff 使用。
+   - 两者的 `marketCode` 都由服务端只读继承当前机会包；命令不得另传一份市场。
+   - `channelCode` 来自当前机会包；命令草稿可带 `channelCode`，服务端要求与 handoff 当前非空值一致，机会缺渠道或输入不一致均明确失败，不允许选品改写上游事实。
+   - `currencyCode` 是 ISO 4217 大写代码，完整计算前必须由 master-data 当前 active `CurrencyCodeReference` 解析成功。
+   - `scenarios.baseline`、`scenarios.conservative`：各包含 `salePrice`、`landedCost`、`platformFee`、`fulfillmentFee`、`advertisingCost`、`returnCost` 六个单件金额区间。
+   - 每个区间为 `{ min, max, basis, evidenceRefs }`；草稿属性可部分缺失，快照全部必填。`min/max` 是 0～999999999999.9999 的规范定点十进制字符串且 `min <= max`；`basis` 只允许 `evidence | assumption`。`evidence` 至少一个当前机会合法证据，`assumption` 必须 `evidenceRefs=[]`，不得以任意 UUID 冒充依据。
+   - 快照每个情景包含服务端 `contribution: { min, max }`；命令和 draft 不接受计算结果。计算固定为 `售价下限 - 六类中除售价外五项成本的上限之和` 与 `售价上限 - 五项成本下限之和`。
+   - `negativeConservativeReason: string | null` 独立保存在 initiative 与 handoff；只有保守情景 contribution.min < 0 时立项必填，非负时必须为空，避免无意义理由。
+2. `ProductInitiativeDecisionCommandV1` 增加可选 `unitEconomicsDraft` 和 `negativeConservativeReason`；`ProductInitiativeV1` 必返可空的 `unitEconomicsDraft`、`unitEconomicsSnapshot`、`negativeConservativeReason`；`ProductInitiativeHandoffV1` 只增加可空 `unitEconomicsSnapshot` 与理由。存量均为 null，不回填。
+3. 保留现有 `price_band_and_margin` 评审要点及其证据引用，不删除、不改义；S3 的结构化单位经济是新增的投资门事实，不能从旧自由文本推导。
+
+#### B. 金额与计算
+
+1. 在 product-selection Domain 新建独立、纯函数的单位经济模块；不依赖 Web/Prisma。金额解析与格式化只使用 `bigint` 定点 4 位，不用 `number`、浮点库或费用模块内部实现。
+2. 输入规范化：允许 `0`、`1`、`1.2`、`1.2300`，统一输出最多 4 位且去除无意义尾零；拒绝负输入、指数、千分位、符号前缀、超过 12 位整数或超过 4 位小数。贡献结果可为负，规范输出负号 + 定点字符串。
+3. 两情景和六项字段顺序使用固定常量，缺项错误稳定列出完整路径，例如 `unitEconomics.scenarios.baseline.salePrice.min`；不得只返回笼统“单位经济不完整”。
+4. `approve` 新写入必须有完整且可计算的 `unitEconomics`，否则沿用 `PRODUCT_INITIATIVE_INCOMPLETE` 并列出单位经济缺口；defer/reject/return 可部分提交并保存为草稿，不改变它们的完成语义。
+5. 同一事务内把规范输入和计算结果写入当前 initiative；`approve` 时冻结进不可变 NPI handoff。NPI 只读显示市场、渠道、币种、两情景各项区间、依据/假设标签、贡献区间和负值理由；存量 null 明确“历史交接未记录”。
+
+#### C. 币种参考数据（最小可信底座）
+
+1. 复用 master-data 的 `ReferenceDataRelease`，新增 `CurrencyCodeReference`：`releaseId`、alphaCode、numericCode、minorUnit（`N.A.` 显式可空）、currencyName、sourceRowHash；同一 release 下代码和数字码唯一。`ReferenceDataRelease` 的 datasetCode 固定 `ISO_4217_LIST_ONE`，version 使用官方 XML `Pblshd` 日期。
+2. master-data 新增稳定 `REFERENCE_CURRENCY_DIRECTORY` Port，仅提供列出当前 active 币种和按 code 解析；product-selection 通过 `MasterDataModule` 注入消费，不跨包导入 repository 或直接查表。
+3. 新增离线 snapshot validator/generator，输入人工从官方 XML 转换并复核的 JSON snapshot；本片不以正则解析 XML，也不新增 XML 依赖。脚本校验 metadata 中的官方 source URL、`Pblshd` 版本、retrievedAt、sourceSha256、recordsSha256、license/status，以及每条 alpha/numeric/minor-unit 结构、重复币种折叠和同码元数据一致性，再生成 deterministic IDs。官方同一币种可对应多个国家/地区，snapshot 只保留一个币种定义；同码元数据冲突必须失败。原始 XML、转换过程与使用依据保存在 deployment evidence，不提交进仓库。
+4. 因 SIX 页面未提供可确认的开源再分发许可，本仓库不提交完整官方 XML 或派生全量清单，不编造许可。测试提交最小 synthetic fixture（至少 USD、EUR、JPY、XUA/N.A.），永久标记 `synthetic_rehearsal`，只验证机制，不证明生产参考数据已就绪。
+5. deployment/done gate：生产启用 S3 前必须由获准官方 List One 导入 active release，并留存来源 URL、发布日期/版本、检索时间、源文件哈希、记录哈希和实际许可/使用依据。缺该外部证据不阻止代码、PR 和合并，但阻止生产启用和 task 最终 `done`。
+
+#### D. 数据库与迁移
+
+1. `ProductInitiative` 增加可空 JSON 字段 `unit_economics_draft` 与 `unit_economics_snapshot`，分别承载可恢复草稿和服务端完整计算；`ProductInitiativeHandoff` 只增加可空 `unit_economics_snapshot`。当前态与 handoff 各增加可空 `negative_conservative_reason`，handoff 只在 approve 时冻结。JSON 避免把 24 个区间端点铺成列，但 Schema、Domain 和 PostgreSQL CHECK 共同保证新写形状；Repository 显式映射，不把 JSON 当无校验袋。
+2. 加法迁移保留存量 null；CHECK 约束：非 approve/returned_from_npi 可为空或部分草稿，approve/returned_from_npi 完整；handoff 要么整组 null（legacy），要么完整快照。不可修改已共享迁移。
+3. 数据字典把新字段标为 `confirmed_business`，引用 `doc/08` 选品单位经济权威，owner/module=`product-selection`；生成物随片更新。
+
+#### E. 界面承接
+
+1. 在现有选品行动 pane 内新增 `ProductInitiativeUnitEconomicsPanel`，位于“责任与资源”之后、提交动作之前；不另建页面、不复制状态。先显示只读市场/渠道与币种选择，再显示基准/保守两个可辨识分组。
+2. 每个情景六项使用紧凑区间行：项目名、min、max、`有证据/待验证假设` 文字选择；有证据时就地选择当前合法 evidence，假设时不显示伪证据。前端只展示服务端返回贡献，编辑中显示“保存后由服务端计算”，不得自行算金额。
+3. 服务端返回单位经济缺口时，进度头和行动按钮使用具体人话；保守贡献下限为负时，就地要求“仍要投入的理由”，不自动拦截为不立项、不显示 AI 建议阈值。
+4. NPI 快照只读展示输入、标签和贡献；桌面/窄屏/移动端继续满足 S1 的 sticky 主动作和无横向溢出。金额表在窄屏改为逐项纵向，不依赖横向滚动。
+
+#### F. 执行分片、验证与停止条件
+
+1. **S3a-unit-economics-core（当前执行）**：只交付币种参考模型/Port/离线 importer synthetic 机制、公共契约、Domain 定点计算、Schema/迁移、Repository 当前态与不可变快照、API 与 PostgreSQL/迁移/契约/字典验证；不修改 Web 页面和 E2E。完成后主代理验收并按高风险增量决定独立复审。
+2. **S3b-unit-economics-ui（S3a 通过即预授权）**：只消费 S3a 契约，交付选品录入组件、服务端计算结果/缺口显示、NPI 只读快照、Web 单测与选品到 NPI 三视口 E2E；不得改 S3a 计算、Schema、迁移或币种政策，除非真实 finding 经主代理接受并写回 brief。
+3. TDD 顺序：Domain 计算/格式/缺口/负值测试先红；契约 fixture/drift；迁移空库和旧版升级；Repository PostgreSQL 成功、部分草稿、完整 approve、NPI 回程、handoff 不可变；币种 active/missing/inactive；S3b 再做 Web 组件和真实路径 E2E。
+4. S3a 定向门禁：单位经济 Domain/API 单测，product-initiative PostgreSQL 与迁移升级，币种目录/导入器测试，contract generate/check/drift，data-dictionary generate/check，db generate，API lint/typecheck，`repo:check`、格式与 diff 检查。S3b 增加 Web lint/typecheck/unit 与选品到 NPI E2E 三视口。
+5. 出现需要新增利润率、默认币种、汇率、销售量、预算或证据采信阈值时返回 `blocked` 交负责人定案；不得自行填默认。官方币种数据未导入只记录 deployment gate，不阻止本地 synthetic 机制实现。
+6. 实现执行器每片完成后返回 HANDOFF；不得推送、建 PR、修改 brief 状态或把 synthetic 数据描述为生产参考数据。
+
+**一手来源**：SIX 是 ISO 4217 官方维护机构。官方说明页为 `https://www.six-group.com/en/products-services/financial-information/market-reference-data/data-standards.html`，List One XML 为 `https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml`，当前公开根属性为 `Pblshd=2026-09-17`。来源页与 XML URL 必须记录在部署证据，不将网页摘要当作生产数据本身；在取得并记录实际使用依据前，不把官方 XML 或完整派生清单提交进仓库。
 
 ## 业务步骤五面映射
 
@@ -169,12 +231,12 @@ authorityRefs:
 
 ### 相关数据事实子集（三轨）
 
-| 轨道                 | 字段/事实                                                      | 当前证据/来源                                                                                               | 建议承载方式                     | 决策 ID     | 决策与实现状态      |
-| -------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------- | ----------- | ------------------- |
-| `current_physical`   | `responsibleActorId`=操作人；暂缓仅 `reason`；快照无资源与日期 | `database/schema.prisma` `ProductInitiative`、`ProductInitiativeHandoff`；`product-initiative.ts` 37 行注释 | 已有                             | —           | structure-confirmed |
-| `current_physical`   | 评审证据只校验 UUID 格式与去重                                 | `product-initiative.ts` `uniqueUuids`                                                                       | 已有                             | —           | gap-confirmed       |
-| `approved_gap`       | 资源承诺四项、立项责任、暂缓验证重点与重判日期、证据核验       | `选品立项.md` 已定基线（负责人 2026-10-04 确认）；PS-D01～D03                                               | 列 + CHECK、不可变快照、派生队列 | PS-D01～D03 | approved / design   |
-| `industry_candidate` | 预算区间、逾期标记、指定他人为立项责任人                       | 本轮未采纳选项 B                                                                                            | `undecided`                      | PS-D01～D03 | 不进入本任务        |
+| 轨道                 | 字段/事实                                                                   | 当前证据/来源                                                                                         | 建议承载方式                                     | 决策 ID                | 决策与实现状态               |
+| -------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------- | ---------------------------- |
+| `current_physical`   | 当前认证用户显式接受立项责任；资源承诺与暂缓重判已落当前态和不可变 NPI 快照 | `database/schema.prisma`、`ProductInitiative` / `ProductInitiativeHandoff`、S1 PostgreSQL 集成        | 已有                                             | PS-D01～D03            | implemented                  |
+| `current_physical`   | 评审证据写入时按当前租户与当前机会来源信号核验；无效引用整体拒绝且不落账    | `DecideProductInitiativeService`、`READ_EVIDENCE_REFS`、`product-initiative-flow.integration.test.ts` | 已有                                             | S2                     | implemented                  |
+| `approved_gap`       | 资源承诺四项、立项责任、暂缓验证重点与重判日期、证据核验、两情景单位经济    | `选品立项.md` 已定基线（负责人 2026-10-04 确认）；PS-D01～D03、UE-D01/UE-D02                          | 列 + CHECK、JSON 草稿/快照、不可变快照、派生队列 | PS-D01～D03、UE-D01/02 | S1/S2 implemented；S3 coding |
+| `industry_candidate` | 预算区间、逾期标记、指定他人为立项责任人                                    | 本轮未采纳选项 B                                                                                      | `undecided`                                      | PS-D01～D03            | 不进入本任务                 |
 
 ## 23 台共同最低可用线（本任务承接）
 
@@ -305,3 +367,4 @@ next: S2-evidence-integrity
 | 2026-10-04 | fix    | Claude Code | 未提交     | R07 真实三视口复验通过。fresh Codex 独立复审返回 R08～R10，主代理逐项核验并全部接受：NPI 回程触发新 CHECK、legacy 操作人被冒充责任人、半填暂缓提示错误预测关闭。                               |
 | 2026-10-04 | coding | Claude Code | `4f75798e` | R08～R10 修复通过 API 37、Web 48、PostgreSQL 27 条及契约/字典/静态门禁；S1 生产提交完成并合入最新 main。修正 disposition 结构后按预授权下发 S2 证据真实性。                                    |
 | 2026-10-04 | review | Claude Code | 未提交     | S2 实现交回后主代理核验：API 31、Web 22、PostgreSQL 24 条及 API/Web lint/typecheck、repo:check、diff check 通过；7 个文件均在范围内，无 Schema/契约漂移。转 fresh Codex 只读复审当前证据边界。 |
+| 2026-10-04 | coding | Claude Code | `ae796ac2` | S2 fresh Codex 独立复审 no-findings，主代理 fresh verification 通过后提交。S3 核对正式币种权威与仓库现状，拆为 S3a 核心和 S3b UI；当前下发 S3a。                                               |
