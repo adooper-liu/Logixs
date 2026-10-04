@@ -2,7 +2,7 @@
 status: design # design | coding | review | fix | blocked | done（机器可校验）
 branch: # git 初始化后填：feat/<任务名>
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
-owner: main # 端到端主代理；design/coding/fix 必填
+owner: main # 端到端主代理：Claude Code，按 AGENTS.md §1.2 第 4 条映射；design/coding/fix 必填
 writer: codex # 当前唯一写入者的工具编码，按 AGENTS.md §1.2 第 4 条映射填写；design/coding/fix 必填，独立复审默认只读
 risk: medium # low | medium | high；design/coding/fix 必填
 dependsOn: [] # task brief 文件名（不含 .md）；依赖未 done 时不得写
@@ -103,13 +103,18 @@ findings:
     severity: blocking | high | medium | low
     type: confirmed | risk | verification-gap | policy-decision
     evidence: <file:line-or-contract-clause>
+    scopeBasis: <current-slice-requirement-or-risk-boundary>
     impact: <concrete-failure-scenario>
     acceptanceProbe: <test-or-counterexample>
+    currentSliceNecessity: <why-this-must-be-fixed-now>
     suggestedDisposition: accepted | rejected | pending-owner
 unknowns: []
 verificationGaps: []
+nonBlockingSuggestions: [] # 范围外重构、完美契约、未来扩展、纯偏好或一般优化只记此处，不得阻塞交接、PR、CI 或合并
 writes: none # 独立复审固定只读；提交、PR 和 CI 证据由主代理在集成阶段记录
 ```
+
+> `blocking` 只用于当前切片中可复现的业务结果、安全边界、数据真实性、兼容性或发布风险。缺少 `scopeBasis`、具体失败场景、验收反证或 `currentSliceNecessity` 的意见不得作为阻塞 finding；未知项和验证缺口仅在其使当前切片无法安全判定时阻塞。
 
 主代理裁决评审：
 
