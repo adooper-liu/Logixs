@@ -1,5 +1,5 @@
 ---
-status: review
+status: coding
 branch: feat/market-selection-handoff-v1
 owner: cursor
 writer: codex
@@ -98,7 +98,7 @@ authorityRefs:
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | 基线     | 见下发的 `TASK` 行；各切片在同一分支上连续提交                                                                                                |
 | 执行角色 | 实现执行器：Codex（GPT-5.6）                                                                                                                  |
-| 复审     | 独立复审：Cursor 独立只读会话，Claude Opus（写入者为 GPT-5.6，家族不同），在 S3 完成后对整条分支一次复审；S1 迁移若出现新风险由主代理加审     |
+| 复审     | 独立复审：Codex（GPT-5.6）新开只读会话。`6a221ca2` 的 Opus 复审已完成；其后增量按负责人 2026-10-04 定案交 Codex                               |
 | 写入范围 | frontmatter `writeScopes`；`doc/08` 与两份 brief 只由主代理写                                                                                 |
 | 禁止范围 | NPI 回程与产品定义语义、`apps/api/src/modules/product-selection/**` 中 NPI/产品定义文件的业务行为、授权控制面、共享 UI 门面、GC-012 目录/契约 |
 | 提交     | 授权实现执行器在本分支按切片形成单一主题提交，不推送、不建 PR、不合并、不改 brief 状态                                                        |
@@ -167,6 +167,25 @@ authorityRefs:
 | G-01/02 | —      | rejected | 迁移其余 shape 分支与 `restorePreviousShape` 用 `CHECK (true)`：新增条件 `return_basis IS NULL` 对新可空列恒成立，复审确认推理安全；接受残余风险，不加样本。                                                                                                                |
 
 验证：受影响 API 单测；`pnpm test:integration -- market-opportunity-flow product-initiative-flow market-selection-handoff-migration-upgrade`（`apps/api`）；受影响 Web 单测；`workbench-network.spec.ts`；契约检查与生成物一致（如改错误码）；受影响模块 lint/typecheck 与 `node scripts/check-repository.mjs`。前端可感知：市场“选品请求退回”分组有真实数据可接回；选品退回后不再误显“已立项”；缺依据不能提交。HANDOFF `changed` 按五面分列。
+
+### 切片 `S2e-review-followup`：Codex 增量复审的 accepted 项（主代理裁决后预授权）
+
+来源：Codex 只读复审 `6a221ca2..33b31ebc`，`changes-requested`。只实现下表 `accepted` 项。
+
+| Finding             | 严重度       | 处置                 | 实现要求                                                                                                                                                                                                                                                              |
+| ------------------- | ------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SR-01               | high         | accepted（范围收窄） | 市场台：分组请求因 401 失败时，不再读取责任投影，也不再为深链调用详情。共享 `httpClient` 的 `confirmAuthorized` 不在本片修改。单测覆盖深链在 401 后不再发详情请求。                                                                                                   |
+| MSH-INC-R01         | medium       | accepted             | 只有 401 才跳过责任投影。分组全部是 5xx 或网络失败时，仍请求 `retained_by_market` 投影。                                                                                                                                                                              |
+| VR-01               | medium       | accepted             | 责任投影返回后再次核对 `loadGeneration`，过期结果不得覆盖新队列或提前清掉 loading。补一条交错 Promise 的单测。                                                                                                                                                        |
+| SR-02               | high         | accepted（范围收窄） | 把“`selection_return_requested` 期间拒绝市场新判断”抽成领域函数，由 Repository 在事务内读到新鲜记录后调用。错误码仍是 `MARKET_SIGNAL_SELECTION_RETURN_PENDING`。不搬迁既有 `MARKET_SIGNAL_ALREADY_CLOSED`。领域单测覆盖该守卫；已有集成测试保持通过。不另写并发压测。 |
+| SR-03               | medium       | accepted（范围收窄） | `DESTINATIONS` 用 `MarketSignalDestinationV1` 做编译期穷尽检查，漏一个去向则类型失败。不从 JSON Schema 生成运行时解析器。                                                                                                                                             |
+| SR-04               | medium       | accepted             | 主代理撤回对 `status: done` 的 `agent-role-mapping-v1.md` 的修改。决定只留在 `AGENTS.md`、任务模板和本 brief。                                                                                                                                                        |
+| SR-05 / MSH-INC-R02 | medium / low | accepted             | 主代理已把本 brief 执行表和验收项中的 fresh Opus 改为 fresh Codex。无实现动作。                                                                                                                                                                                       |
+| SR-06               | low          | rejected             | 四份种子里的 `acceptOpportunity` 重复是测试结构，不改变行为，本片不抽取共享 fixture。                                                                                                                                                                                 |
+| SR-07               | low          | rejected             | `16` 旁已有“8 组 × 2 次”说明，断言保持字面量。                                                                                                                                                                                                                        |
+| CP-01               | medium       | rejected             | `MARKET_SIGNAL_ALREADY_CLOSED` 与新错误码一样由 Repository `conflict()` 抛出，都不在 `PublicErrorCode`。本模块既有冲突码未迁到 GC-011 信封；只改新码会造成同一接口两种错误形态。公共信封迁移不在本 PR。                                                               |
+
+验证：`market-signal` 领域单测、`MarketSignalsWorkbench` 单测、`pnpm test:integration -- product-initiative-flow`（`apps/api`）、受影响文件 lint/typecheck 与 `node scripts/check-repository.mjs`。不跑完整 `validate`。前端可感知：信号接口 401 时不再被深链或责任投影拖进再次登录；信号接口故障时“已交待接受”仍会尝试加载。
 
 ### 切片 `S3-post-accept-evidence`：接受后市场追加新证据（延后，HO-D05）
 
@@ -257,7 +276,7 @@ authorityRefs:
 - [ ] 接受后市场可追加证据，交接快照不变，选品可分辨新增证据（HO-D05 延后，不随本 PR；不得在本任务 `done` 时勾选）
 - [ ] 迁移空库与旧版本升级通过，存量退回记录合法
 - [ ] 契约、生成物、字典一致；跨租户与未知值拒绝；关键路径 E2E 通过
-- [ ] 最终候选完整 `pnpm validate` 通过并经 fresh Opus 复审裁决
+- [ ] 最终候选完整 `pnpm validate` 通过并经 fresh Codex 复审裁决（`6a221ca2` 的 Opus 复审已完成，不重复）
 
 ## 进度 log
 
@@ -278,3 +297,4 @@ authorityRefs:
 | 2026-10-04 | coding | Cursor | `f6cda422` | 第二次完整门禁只剩 `auth-session` 的 401 用例失败，单独重跑仍失败。原因：市场台把责任投影和分组列表并行发出，投影的 404 会清掉一次性重新登录标记，回调停住。改为分组全部失败时不读投影，并把该用例的请求数改为 8 组×2 次。定向单测 29 条与该 E2E 通过。自动模型复审因未授权失败，不再重开                                                                                                                                                                                                       |
 | 2026-10-04 | review | Cursor | `e8eff0f5` | 收口 `pnpm validate` 通过：API 单测 276 文件 1435 条、Web 单测 142 文件 649 条、集成 25 文件 159 条、E2E 166 条、构建通过。状态改为 `review`。独立复审仍无结论（用量上限与未授权），PR 与合并继续等待                                                                                                                                                                                                                                                                                           |
 | 2026-10-04 | review | Cursor | `40c6deff` | 负责人定案“以后独立复审都交回给 Codex”：写回 `AGENTS.md` §1.2 第 4 条、任务模板和 `agent-role-mapping-v1`。本分支未复审增量交 Codex 新开只读会话；S2c/S2d 与写入者同家族，按定案接受并在规则中写明                                                                                                                                                                                                                                                                                              |
+| 2026-10-04 | coding | Cursor | `33b31ebc` | Codex 增量复审 changes-requested。accepted：SR-01 收窄为 401 后停止详情与责任读取，MSH-INC-R01 非 401 仍加载责任投影，VR-01 二次 generation 检查，SR-02 领域守卫仍在事务内调用，SR-03 编译期穷尽，SR-04 撤回对 done brief 的修改，SR-05 文案改为 Codex。rejected：SR-06、SR-07、CP-01。下发 S2e                                                                                                                                                                                                 |
