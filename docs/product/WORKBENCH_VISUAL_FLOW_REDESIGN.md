@@ -430,17 +430,18 @@ authority: ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN + UI_SYSTEM
 
 ## 13. 口径确认记录（2026-09-28）
 
-| 项                     | 确认                                                                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------- |
-| P0 第一项先做状态 Mode | **同意**；详情四屏矛盾同源                                                                          |
-| 清单 A 组优先于视觉层  | **同意**；状态自相矛盾时配色无效                                                                    |
-| 色值与主题             | **以当前项目为准**：只使用 `UI_SYSTEM` + `themes/logix/tokens.css` 既有令牌；不另定色板、不写死 hex |
-| NPI 完成度             | 2026-09-28 曾定“齐/半/缺（结论+依据条数）”；2026-09-29 已由结构化阶段门和具体缺口取代               |
-| NPI 退回               | **要做**（独立实现片）                                                                              |
-| 选品评审要点           | **方案 A**：UI 选项化 → 规范化短句落库                                                              |
-| 枢纽页 vs 详情页       | **并列两类骨架**：枢纽=横向扫描找落点；详情=纵向沉淀；§2 不套枢纽                                   |
-| 枢纽页优化目标         | **管道自述状态**；不是「结论上提」                                                                  |
-| 交接后补如何给选品看   | **方案 A**：快照保留交接当日原文；选品中栏默认「交接包 + 信号后补」合并视图，后补字段标明「后补」   |
+| 项                     | 确认                                                                                                                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0 第一项先做状态 Mode | **同意**；详情四屏矛盾同源                                                                                                                                                                   |
+| 清单 A 组优先于视觉层  | **同意**；状态自相矛盾时配色无效                                                                                                                                                             |
+| 色值与主题             | **以当前项目为准**：只使用 `UI_SYSTEM` + `themes/logix/tokens.css` 既有令牌；不另定色板、不写死 hex                                                                                          |
+| NPI 完成度             | 2026-09-28 曾定“齐/半/缺（结论+依据条数）”；2026-09-29 已由结构化阶段门和具体缺口取代                                                                                                        |
+| NPI 退回               | **要做**（独立实现片）                                                                                                                                                                       |
+| 选品评审要点           | **方案 A**：UI 选项化 → 规范化短句落库                                                                                                                                                       |
+| 枢纽页 vs 详情页       | **并列两类骨架**：枢纽=横向扫描找落点；详情=纵向沉淀；§2 不套枢纽                                                                                                                            |
+| 枢纽页优化目标         | **管道自述状态**；不是「结论上提」                                                                                                                                                           |
+| 剩余排期（2026-10-04） | **屏四剩余**（队列、回执、选品详情中的“待补”文案）并入 `market-selection-handoff-v1` 的 S2b；**屏五**先做不依赖数字的结构片，在办/阻塞数字待计数口径定案。负责人原话“屏四并入交接、屏五开工” |
+| 交接后补如何给选品看   | **方案 A**：快照保留交接当日原文；选品中栏默认「交接包 + 信号后补」合并视图，后补字段标明「后补」                                                                                            |
 
 ---
 
@@ -451,6 +452,7 @@ authority: ROLE_WORKBENCH_HUMAN_CENTERED_DESIGN + UI_SYSTEM
 - 选品中栏后补投影（coding）：[product-opportunity-handoff-live-projection-v1](../planning/tasks/product-opportunity-handoff-live-projection-v1.md)
 - 选品中间区 Mode（blocked）：[product-selection-form-mode-v1](../planning/tasks/product-selection-form-mode-v1.md)
 - NPI 五阶段闭环（design，保留退回 WIP）：[product-npi-visual-flow-return-v1](../planning/tasks/product-npi-visual-flow-return-v1.md)
-- 枢纽/管道总览（blocked）：[workbench-network-hub-flow-v1](../planning/tasks/workbench-network-hub-flow-v1.md)
+- 枢纽/管道总览（coding，S1 结构片）：[workbench-network-hub-flow-v1](../planning/tasks/workbench-network-hub-flow-v1.md)
+- 屏四剩余文案：`market-selection-handoff-v1` 切片 S2b（brief 随交接分支合入）
 
-**当前执行顺序（同时仅一个 design/coding）**：NPI 五阶段闭环为当前唯一 `design`；寻源和枢纽等任务保持 `blocked`，不得并行改写同一业务链。
+上列各 brief 的状态以其 frontmatter 为准，本节不另记执行顺序；并行上限按 `AGENTS.md` §1.2 第 17 条。
