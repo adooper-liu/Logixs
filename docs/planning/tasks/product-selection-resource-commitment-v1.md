@@ -1,5 +1,5 @@
 ---
-status: coding
+status: fix
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -9,6 +9,7 @@ writeScopes:
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - docs/planning/tasks/product-selection-resource-commitment-v1.md
   - packages/contracts/schemas/v1/product-initiative.schema.json
+  - packages/contracts/schemas/v1/index.json
   - packages/contracts/fixtures/v1/schema-instances.json
   - packages/contracts/generated/contracts.d.ts
   - database/schema.prisma
@@ -19,6 +20,10 @@ writeScopes:
   - database/seeds/reference-data/iso-4217-list-one-synthetic-rehearsal.json
   - scripts/generate-currency-reference-snapshot.mjs
   - scripts/generate-currency-reference-snapshot.test.mjs
+  - scripts/import-authorized-currency-reference.mts
+  - scripts/import-authorized-currency-reference.test.ts
+  - scripts/verify-currency-reference-data.mts
+  - package.json
   - database/dictionary/dictionary.annotations.json
   - database/dictionary/DATA_DICTIONARY.generated.md
   - database/dictionary/NATIVE_OBJECTS.generated.md
@@ -31,6 +36,14 @@ writeScopes:
   - apps/api/src/modules/master-data/infrastructure/prisma-reference-currency-directory.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-migration-upgrade.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-initiative-test-fixtures.ts
+  - apps/api/src/infrastructure/integration/product-definition-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-identity-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-npi-intake-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/supplier-nomination-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/workbench-network-volume.integration.test.ts
+  - apps/api/src/modules/master-data/module.manifest.ts
+  - apps/api/src/modules/product-selection/module.manifest.ts
   - apps/web/src/api/marketSignals.ts
   - apps/web/src/api/marketSignals.test.ts
   - apps/web/src/components/product-selection/**
@@ -343,6 +356,63 @@ next: S2-evidence-integrity
 11. NPI UI 测试覆盖 legacy `responsibilityAccepted=null` 显示“历史交接未记录”，新快照 `true` 才显示 `responsibleActorId`；不得从 actor 字段自行推断承诺。
 12. 提示函数和组件测试覆盖暂缓四种组合：全缺、只填验证重点、只填重判日期均提示“保存为待补、不关闭”；两项齐全才提示“提交后关闭”。移动 CTA 文案不得反向暗示半填已成立。
 
+## S3a 主代理验收裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: S3a-unit-economics-core
+decisions:
+  - finding: PS-S3A-R01
+    status: accepted
+    reason: >
+      迁移宣称 Domain + Schema + PostgreSQL CHECK 共同保证快照形状，但主代理以同一 CHECK 建临时表后插入
+      min="garbage"、assumption 带非 UUID evidenceRefs 的完整外壳，数据库实际接受并输出 INVALID_SNAPSHOT_ACCEPTED。
+      当前 CHECK 只数键和 contribution，未逐项验证 min/max/basis/evidenceRefs；负值理由对 NULL 也受 SQL 三值逻辑影响。
+      这会允许绕过应用写入的 JSON 破坏不可变 NPI 快照，属于当前数据真实性风险。
+    writeback: 本 brief S3a D/F
+  - finding: PS-S3A-R02
+    status: accepted
+    reason: >
+      active currency 仅有内部 Port，没有公共契约/API 向 S3b 提供可选项；按 S3b 不改 S3a 契约的边界，UI 只能手输或硬编码，
+      与“只从 active 参考数据选择”冲突。最小修复是在 ProductInitiativeDetailV1 增加 currencyOptions，
+      GetProductInitiativeService 通过 REFERENCE_CURRENCY_DIRECTORY.listActive() 返回 code/name/minorUnit，不建维护后台或新 Controller。
+    writeback: 本 brief S3a A/C/F
+  - finding: PS-S3A-R03
+    status: accepted
+    reason: >
+      resolve() 在找不到 active 行后，只要存在 staged/superseded 行就统一返回 inactive。默认 db:seed 会写 staged synthetic USD，
+      因而生产参考数据未就绪时会错误报“USD 已停用”。Port 必须区分 unavailable（没有 active release）与 inactive
+      （存在 active release，但该 code 仅在非 active 历史 release 中），服务端返回稳定 REFERENCE_CURRENCY_RELEASE_UNAVAILABLE。
+    writeback: 本 brief S3a C
+  - finding: PS-S3A-R04
+    status: accepted
+    reason: >
+      generator 能生成 authorized_official snapshot，但 seed 函数和路径硬编码 synthetic fixture、类型固定 synthetic_rehearsal、
+      并拒绝非 staged；仓库没有官方 snapshot 导入/激活命令，deployment gate 无法被执行关闭。必须提供受审计 CLI：
+      对外部 authorized snapshot 复用 validator，事务导入记录、supersede 旧 active、activate 新 release，并提供 verify 命令；
+      不提交官方数据、不自动联网、不允许 synthetic 激活。
+    writeback: 本 brief S3a C/F
+  - finding: PS-S3A-R05
+    status: accepted
+    reason: >
+      5 个下游集成测试只把既有合法 approve fixture 补齐渠道、资源承诺和单位经济，共享 fixture 消除重复；两个 module manifest
+      只登记新增 Port 与依赖边。它们是新 approve 不变量和仓库治理的当前兼容范围，不改变下游业务断言；主代理补入 writeScopes。
+    writeback: 本 brief frontmatter
+unknowns: []
+verificationGaps:
+  - S3a 修复后重跑单位经济/币种单测、PostgreSQL flow 与 migration upgrade、受影响下游集成、契约/字典/生成物和静态门禁。
+nonBlockingSuggestions: []
+next: fix
+```
+
+修复验收反证：
+
+1. 迁移升级 PostgreSQL 测试逐项插入非法 snapshot：非法/缺失 min/max、min>max、basis 非法、assumption 有 refs、evidence 空 refs/非 UUID、缺 contribution、贡献非法、负值理由 NULL；均须由具体 CHECK 拒绝。合法 snapshot 与 legacy null 通过。CHECK 可以调用 immutable SQL function 校验 JSON，但函数和约束必须由同一迁移创建、可升级验证且不复制第二套业务计算。
+2. `ProductInitiativeDetailV1.currencyOptions` 使用正式契约类型 `{ code, name, minorUnit }[]`；只返回 active release、按 code 稳定排序。无 active release 返回空列表供页面明确显示“币种参考数据未接通”，写操作则稳定失败 `REFERENCE_CURRENCY_RELEASE_UNAVAILABLE`。
+3. `REFERENCE_CURRENCY_DIRECTORY.resolve` 区分 `active | inactive | unknown | unavailable`：先查 active release 是否存在；无 active release 为 unavailable；有 active release且 code 在该 release 中为 active；仅历史/superseded含该 code 为 inactive；完全不存在为 unknown。
+4. 新增只读/离线 CLI（精确路径写回当前 brief）：`currency:snapshot:validate` 校验外部 snapshot；`db:import:currency-reference -- <snapshot>` 只接受 `authorized_official` 且许可/来源/hash 完整，事务导入并激活；`db:verify:currency-reference-data` 验证唯一 active release、元数据、记录数与 hash。不得联网下载或提交 official snapshot。synthetic seed 始终 staged，任何激活尝试失败。
+5. 下游兼容测试只引用共享合法 fixture，不改原业务断言；manifest 只登记 `REFERENCE_CURRENCY_DIRECTORY` 与 product-selection→master-data 依赖。
+
 ## 验收
 
 - [ ] 缺任一资源承诺项不能立项，提示具体缺项；立项责任人只能是当前登录用户
@@ -368,3 +438,4 @@ next: S2-evidence-integrity
 | 2026-10-04 | coding | Claude Code | `4f75798e` | R08～R10 修复通过 API 37、Web 48、PostgreSQL 27 条及契约/字典/静态门禁；S1 生产提交完成并合入最新 main。修正 disposition 结构后按预授权下发 S2 证据真实性。                                    |
 | 2026-10-04 | review | Claude Code | 未提交     | S2 实现交回后主代理核验：API 31、Web 22、PostgreSQL 24 条及 API/Web lint/typecheck、repo:check、diff check 通过；7 个文件均在范围内，无 Schema/契约漂移。转 fresh Codex 只读复审当前证据边界。 |
 | 2026-10-04 | coding | Claude Code | `ae796ac2` | S2 fresh Codex 独立复审 no-findings，主代理 fresh verification 通过后提交。S3 核对正式币种权威与仓库现状，拆为 S3a 核心和 S3b UI；当前下发 S3a。                                               |
+| 2026-10-04 | fix    | Claude Code | 未提交     | S3a 主代理核验接受 R01～R05：数据库 CHECK 接受非法 JSON、S3b 无 active 币种公共边界、staged 被误报 inactive、官方 snapshot 无导入激活路径；下游 fixture/manifest 范围接受。                    |
