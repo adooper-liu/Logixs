@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "../../../../../generated/prisma";
+import { ReadEvidenceRefsService } from "../../modules/document-records/application/read-evidence-refs.service";
+import { PrismaEvidenceRepository } from "../../modules/document-records/infrastructure/prisma-evidence.repository";
 import { ApplySelectionReturnService } from "../../modules/market-intelligence/application/apply-selection-return.service";
 import {
   normalizeMarketSignalCreate,
@@ -17,6 +19,7 @@ import {
 } from "../../modules/product-selection/domain/product-initiative";
 import { prepareProductDefinitionClaim } from "../../modules/product-selection/domain/product-initiative-claim";
 import { prepareProductInitiativeNpiReturn } from "../../modules/product-selection/domain/product-initiative-npi-return";
+import { DecideProductInitiativeService } from "../../modules/product-selection/application/decide-product-initiative.service";
 import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
 import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
 import { toOpportunityV1 } from "../../modules/product-selection/application/list-product-opportunities.service";
@@ -33,6 +36,7 @@ let prisma: PrismaClient;
 let marketSignals: PrismaMarketSignalRepository;
 let initiatives: PrismaProductInitiativeRepository;
 let productOpportunities: PrismaProductOpportunityRepository;
+let decideInitiatives: DecideProductInitiativeService;
 
 const REVIEW_POINT_CODES = [
   "target_user_and_market",
@@ -62,6 +66,11 @@ beforeAll(async () => {
   productOpportunities = new PrismaProductOpportunityRepository(
     prisma as never,
   );
+  decideInitiatives = new DecideProductInitiativeService(
+    initiatives,
+    productOpportunities,
+    new ReadEvidenceRefsService(new PrismaEvidenceRepository(prisma as never)),
+  );
 });
 
 afterAll(async () => {
@@ -82,6 +91,53 @@ afterAll(async () => {
 });
 
 describe("product initiative persistence flow", () => {
+  it("只引用当前租户当前来源信号的真实证据时可立项", async () => {
+    const opportunity = await seedOpportunity();
+    const evidenceId = await seedSignalEvidence(
+      opportunity.tenantId,
+      opportunity.signalId,
+    );
+
+    const result = await decideInitiatives.execute({
+      tenantId: opportunity.tenantId,
+      actorId: "selector-1",
+      handoffId: opportunity.handoffId,
+      command: completeApproveCommand(evidenceId),
+    });
+
+    expect(result.currentDestination).toBe("handed_off");
+    await expect(
+      prisma.productInitiativeHandoff.findFirstOrThrow({
+        where: {
+          tenantId: opportunity.tenantId,
+          initiativeId: result.initiativeId,
+        },
+      }),
+    ).resolves.toMatchObject({ evidenceRefs: [evidenceId] });
+  });
+
+  it("拒绝同租户其他来源信号的证据且不写任何立项事实", async () => {
+    const opportunity = await seedOpportunity();
+    const other = await seedOpportunity(true, opportunity.tenantId);
+    const evidenceId = await seedSignalEvidence(other.tenantId, other.signalId);
+
+    await expectEvidenceRejected(opportunity, evidenceId);
+  });
+
+  it("拒绝跨租户证据且不泄露归属、不写任何立项事实", async () => {
+    const opportunity = await seedOpportunity();
+    const other = await seedOpportunity();
+    const evidenceId = await seedSignalEvidence(other.tenantId, other.signalId);
+
+    await expectEvidenceRejected(opportunity, evidenceId);
+  });
+
+  it("拒绝完全不存在的证据且不写任何立项事实", async () => {
+    const opportunity = await seedOpportunity();
+
+    await expectEvidenceRejected(opportunity, randomUUID());
+  });
+
   it("暂缓缺原因时保存但不关闭，且不改写缺口之外的任何东西", async () => {
     const { tenantId, handoffId } = await seedOpportunity();
 
@@ -1018,6 +1074,78 @@ async function seedOpportunity(
   return { tenantId, handoffId: decided.handoff!.handoffId, signalId };
 }
 
+async function seedSignalEvidence(
+  tenantId: string,
+  signalId: string,
+): Promise<string> {
+  const evidenceId = randomUUID();
+  await prisma.evidenceRecord.create({
+    data: {
+      id: evidenceId,
+      tenantId,
+      idempotencyKey: `initiative-evidence:${evidenceId}`,
+      evidenceType: "market_observation",
+      subjectType: "market_signal",
+      subjectId: signalId,
+      authorityLevel: "observed",
+      contentRef: `evidence://${evidenceId}`,
+      contentHash: "e".repeat(64),
+      source: {
+        sourceId: evidenceId,
+        sourceType: "integration_test",
+        originatorSystem: "logix.test",
+        authoritySystem: "logix.test",
+        ingestionChannel: "manual",
+        captureSource: "integration_test",
+      },
+      verificationState: "unverified",
+      confidenceState: "unknown",
+      validity: "effective",
+      receivedAt: new Date(),
+      recordedAt: new Date(),
+    },
+  });
+  return evidenceId;
+}
+
+async function expectEvidenceRejected(
+  opportunity: { tenantId: string; handoffId: string; signalId: string },
+  evidenceId: string,
+): Promise<void> {
+  await expect(
+    decideInitiatives.execute({
+      tenantId: opportunity.tenantId,
+      actorId: "selector-1",
+      handoffId: opportunity.handoffId,
+      command: completeApproveCommand(evidenceId),
+    }),
+  ).rejects.toMatchObject({
+    status: 400,
+    message: `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${evidenceId}`,
+  });
+  await expect(
+    prisma.productInitiative.count({
+      where: {
+        tenantId: opportunity.tenantId,
+        handoffId: opportunity.handoffId,
+      },
+    }),
+  ).resolves.toBe(0);
+  await expect(
+    prisma.productInitiativeHandoff.count({
+      where: { tenantId: opportunity.tenantId },
+    }),
+  ).resolves.toBe(0);
+  await expect(
+    prisma.outboxMessage.count({
+      where: {
+        tenantId: opportunity.tenantId,
+        eventType: "product_initiative.handed_off",
+      },
+    }),
+  ).resolves.toBe(0);
+}
+
 function decide(
   current: { handoffId: string; expectedInitiativeVersion?: number },
   overrides: Partial<ProductInitiativeDecisionCommandV1> = {},
@@ -1054,6 +1182,31 @@ function completeApprove(current: { handoffId: string }) {
       conclusion: `${code} 的结论`,
     })),
   });
+}
+
+function completeApproveCommand(
+  evidenceId: string,
+): ProductInitiativeDecisionCommandV1 {
+  const requestId = randomUUID();
+  return {
+    contractVersion: "product-initiative-decision.v1",
+    requestId,
+    outcome: "approve",
+    expectedInitiativeVersion: 0,
+    objective: "把折叠宠物出行包做成可发布版本",
+    acceptResponsibility: true,
+    receivingTeamOrRole: "产品开发 / NPI",
+    resourceDescription: "结构工程 1 人，采购验证 1 人",
+    targetDate: "2026-11-15",
+    nextDecisionDate: "2026-10-20",
+    nextDecisionQuestion: "是否进入 EVT 打样",
+    reviewPoints: REVIEW_POINT_CODES.map((code) => ({
+      code,
+      evidenceRefs: [evidenceId],
+      conclusion: `${code} 的结论`,
+    })),
+    idempotencyKey: `decision:${requestId}`,
+  };
 }
 
 function evidenceId(index: number): string {

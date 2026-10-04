@@ -28,6 +28,8 @@ const HANDOFF_ID = "22222222-2222-4222-8222-222222222222";
 const OTHER_HANDOFF_ID = "33333333-3333-4333-8333-333333333333";
 const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
+const INVALID_EVIDENCE_A = "00000000-0000-4000-8000-000000000091";
+const INVALID_EVIDENCE_B = "00000000-0000-4000-8000-000000000092";
 
 /** 只关心缺了什么时，标签就够了；"在哪补"由面板负责呈现。 */
 function gapLabels(state: {
@@ -402,6 +404,31 @@ describe("useProductInitiativeDecision", () => {
     expect(state.receivingTeamOrRole.value).toBe("产品开发 / NPI");
     expect(state.resourceDescription.value).toBe("结构工程 1 人");
     expect(state.reconsiderationDate.value).toBe("2026-10-20");
+  });
+
+  it("无效证据显示具体引用并保留当前未提交草稿", async () => {
+    decideProductInitiative.mockRejectedValue(
+      new Error(
+        `暂时无法保存本次立项判断（400）：PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${INVALID_EVIDENCE_A},${INVALID_EVIDENCE_B}`,
+      ),
+    );
+    const state = await mountComposable();
+    state.objective.value = "尚未保存的目标结果";
+    state.points.compliance_risk.evidenceRefs = [INVALID_EVIDENCE_B];
+    state.points.compliance_risk.conclusion = "尚未保存的合规结论";
+
+    await state.decide("approve");
+    await flushPromises();
+
+    expect(state.error.value).toBe(
+      `该证据不存在或不属于当前机会，请重新选择：${INVALID_EVIDENCE_A}、${INVALID_EVIDENCE_B}`,
+    );
+    expect(state.objective.value).toBe("尚未保存的目标结果");
+    expect(state.points.compliance_risk).toEqual({
+      evidenceRefs: [INVALID_EVIDENCE_B],
+      conclusion: "尚未保存的合规结论",
+    });
+    expect(getProductInitiative).toHaveBeenCalledTimes(1);
   });
 
   it("已立项后服务端拒绝不再判断时，说明是终态而不是普通失败", async () => {

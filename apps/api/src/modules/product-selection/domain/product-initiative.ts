@@ -230,6 +230,23 @@ export function prepareProductInitiativeDecision(
   return { ...normalized, payloadHash: hash(normalized) };
 }
 
+export function assertProductInitiativeEvidenceRefs(
+  decision: Pick<PreparedProductInitiativeDecision, "reviewPoints">,
+  availableEvidenceRefs: readonly string[],
+): void {
+  const available = new Set(availableEvidenceRefs);
+  const invalid = [
+    ...new Set(decision.reviewPoints.flatMap((point) => point.evidenceRefs)),
+  ]
+    .filter((evidenceRef) => !available.has(evidenceRef))
+    .sort();
+  if (invalid.length > 0) {
+    throw new ProductInitiativeValidationError(
+      `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${invalid.join(",")}`,
+    );
+  }
+}
+
 function draftFromCommand(
   command: ProductInitiativeDecisionCommandV1,
 ): ProductInitiativeDraft {

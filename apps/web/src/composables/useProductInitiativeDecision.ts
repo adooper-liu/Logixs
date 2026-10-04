@@ -557,6 +557,14 @@ const VERSION_CONFLICT = "PRODUCT_INITIATIVE_VERSION_CONFLICT";
  * 也不知道该重试还是该换个做法。未知错误保持原文，不编造解释。
  */
 export function initiativeErrorMessage(raw: string): string {
+  const invalidEvidence = raw.match(
+    /PRODUCT_INITIATIVE_EVIDENCE_INVALID:\s*([0-9a-f-]+(?:,[0-9a-f-]+)*)/i,
+  );
+  if (invalidEvidence?.[1]) {
+    return `该证据不存在或不属于当前机会，请重新选择：${invalidEvidence[1]
+      .split(",")
+      .join("、")}`;
+  }
   if (raw.includes(VERSION_CONFLICT)) {
     return "这条机会的立项判断已被其他人更新过。已重新读取最新版本，请核对后再提交。";
   }

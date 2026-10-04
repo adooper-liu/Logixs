@@ -7,6 +7,8 @@ import type { ProductInitiativeRecord } from "../domain/product-initiative.repos
 const HANDOFF_ID = "22222222-2222-4222-8222-222222222222";
 const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
+const INVALID_EVIDENCE_A = "00000000-0000-4000-8000-000000000091";
+const INVALID_EVIDENCE_B = "00000000-0000-4000-8000-000000000092";
 
 describe("DecideProductInitiativeService", () => {
   it("并发判定用服务端读到的版本，而不是信客户端自称的版本", async () => {
@@ -26,7 +28,9 @@ describe("DecideProductInitiativeService", () => {
   });
 
   it("落库记录映射成契约形状", async () => {
-    const { service } = decideHarness({ currentVersion: 0 });
+    const { service, evidenceReader, opportunities } = decideHarness({
+      currentVersion: 0,
+    });
 
     await expect(
       service.execute({
@@ -41,6 +45,44 @@ describe("DecideProductInitiativeService", () => {
       responsibleActorId: "selector-1",
       version: 1,
     });
+    expect(opportunities.findByHandoffId).toHaveBeenCalledWith("t", HANDOFF_ID);
+    expect(evidenceReader.execute).toHaveBeenCalledWith({
+      tenantId: "t",
+      subjectType: "market_signal",
+      subjectIds: [SIGNAL_ID],
+    });
+  });
+
+  it("无效证据排序去重后稳定失败，且不调用持久化", async () => {
+    const { service, persistDecision } = decideHarness({ currentVersion: 0 });
+    const reviewPoints = [
+      "target_user_and_market",
+      "competitive_supply",
+      "price_band_and_margin",
+      "compliance_risk",
+    ].map((code, index) => ({
+      code,
+      evidenceRefs:
+        index === 0
+          ? [INVALID_EVIDENCE_B, INVALID_EVIDENCE_A]
+          : index === 1
+            ? [INVALID_EVIDENCE_B]
+            : [EVIDENCE_ID],
+      conclusion: "结论",
+    }));
+
+    await expect(
+      service.execute({
+        tenantId: "t",
+        actorId: "selector-1",
+        handoffId: HANDOFF_ID,
+        command: completeCommand({ reviewPoints }),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${INVALID_EVIDENCE_A},${INVALID_EVIDENCE_B}`,
+    });
+    expect(persistDecision).not.toHaveBeenCalled();
   });
 
   it("缺租户或操作人时拒绝而不是放行", async () => {
@@ -138,11 +180,24 @@ function decideHarness(input: { currentVersion: number }) {
     record: record({ signalId: SIGNAL_ID }),
     duplicate: false,
   });
-  const service = new DecideProductInitiativeService({
+  const repository = {
     currentVersion: vi.fn().mockResolvedValue(input.currentVersion),
     persistDecision,
-  } as never);
-  return { service, persistDecision };
+  };
+  const opportunities = {
+    findByHandoffId: vi.fn().mockResolvedValue({
+      handoff: { signalId: SIGNAL_ID },
+    }),
+  };
+  const evidenceReader = {
+    execute: vi.fn().mockResolvedValue({ [SIGNAL_ID]: [EVIDENCE_ID] }),
+  };
+  const service = new DecideProductInitiativeService(
+    repository as never,
+    opportunities as never,
+    evidenceReader as never,
+  );
+  return { service, persistDecision, opportunities, evidenceReader };
 }
 
 function record(overrides: Partial<ProductInitiativeRecord>) {

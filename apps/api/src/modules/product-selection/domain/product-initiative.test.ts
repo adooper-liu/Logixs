@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProductInitiativeDecisionCommandV1 } from "@logix/contracts";
 import {
+  assertProductInitiativeEvidenceRefs,
   PRODUCT_INITIATIVE_GATE,
   ProductInitiativeConflictError,
   ProductInitiativeValidationError,
@@ -343,6 +344,54 @@ describe("prepareProductInitiativeDecision 校验与并发", () => {
 
     expect(first.payloadHash).toBe(second.payloadHash);
     expect(first.payloadHash).toHaveLength(64);
+  });
+});
+
+describe("assertProductInitiativeEvidenceRefs", () => {
+  it("合法集合覆盖全部引用时通过", () => {
+    const prepared = prepareProductInitiativeDecision(
+      NEW_INITIATIVE,
+      ACTOR,
+      completeCommand(),
+    );
+
+    expect(() =>
+      assertProductInitiativeEvidenceRefs(
+        prepared,
+        REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
+      ),
+    ).not.toThrow();
+  });
+
+  it("无效引用跨要点排序去重后稳定失败", () => {
+    const invalidA = "00000000-0000-4000-8000-000000000091";
+    const invalidB = "00000000-0000-4000-8000-000000000092";
+    const prepared = prepareProductInitiativeDecision(
+      NEW_INITIATIVE,
+      ACTOR,
+      completeCommand({
+        reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
+          code,
+          evidenceRefs:
+            index === 0
+              ? [invalidB, invalidA]
+              : index === 1
+                ? [invalidB]
+                : [evidenceId(index)],
+          conclusion: `${code} 的结论`,
+        })),
+      }),
+    );
+
+    expect(() =>
+      assertProductInitiativeEvidenceRefs(prepared, [
+        evidenceId(2),
+        evidenceId(3),
+        evidenceId(4),
+      ]),
+    ).toThrowError(
+      `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${invalidA},${invalidB}`,
+    );
   });
 });
 
