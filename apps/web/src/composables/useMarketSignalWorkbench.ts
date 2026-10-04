@@ -171,16 +171,14 @@ export function useMarketSignalWorkbench(
     const responsibilityGeneration = responsibilityPage.generation;
     responsibilityPage.loading = true;
     responsibilityPage.error = null;
-    const responsibilityRequest = listProductOpportunities({
-      responsibilityStatus: "retained_by_market",
-      pageSize: 50,
-    });
     if (legacy.active) {
       try {
-        const [result, projected] = await Promise.all([
-          listMarketSignals({ pageSize: 50 }),
-          responsibilityRequest,
-        ]);
+        const result = await listMarketSignals({ pageSize: 50 });
+        if (loadGeneration !== generation) return;
+        const projected = await listProductOpportunities({
+          responsibilityStatus: "retained_by_market",
+          pageSize: 50,
+        });
         if (loadGeneration !== generation) return;
         legacy.nextCursor = result.nextCursor;
         signals.value = [];
@@ -200,15 +198,29 @@ export function useMarketSignalWorkbench(
       pages[destination].loading = true;
       pages[destination].error = null;
     });
-    const [results, responsibilityResult] = await Promise.all([
-      Promise.allSettled(
-        MARKET_DESTINATIONS.map((destination) =>
-          listMarketSignals({ destination, pageSize: 50 }),
-        ),
+    const results = await Promise.allSettled(
+      MARKET_DESTINATIONS.map((destination) =>
+        listMarketSignals({ destination, pageSize: 50 }),
       ),
-      Promise.allSettled([responsibilityRequest]).then(([result]) => result!),
-    ]);
+    );
     if (loadGeneration !== generation) return;
+    // 分组全部被拒（典型是 401）时不再读责任投影。并行的 404/200 会清掉
+    // 一次性重新登录标记，使会话恢复停不下来。
+    const responsibilityResult = results.every(
+      (result) => result.status === "rejected",
+    )
+      ? ({
+          status: "rejected" as const,
+          reason: (results[0] as PromiseRejectedResult).reason,
+        } satisfies PromiseRejectedResult)
+      : (
+          await Promise.allSettled([
+            listProductOpportunities({
+              responsibilityStatus: "retained_by_market",
+              pageSize: 50,
+            }),
+          ])
+        )[0]!;
     const legacyPage = results.find(
       (result): result is PromiseFulfilledResult<MarketSignalPageV1> =>
         result.status === "fulfilled" && result.value.totalCount === undefined,

@@ -48,6 +48,7 @@ writeScopes:
   - apps/web/src/views/ProductSelectionWorkbench.vue
   - apps/web/src/views/ProductSelectionWorkbench.test.ts
   - apps/web/e2e/workbench-network.spec.ts
+  - apps/web/e2e/auth-session.spec.ts
 exclusiveLocks:
   - business-policy:ms-d04
   - database-schema
@@ -268,3 +269,4 @@ authorityRefs:
 | 2026-10-04 | coding | Cursor | `8ba95704` | S2c 验收通过：4 个下游集成种子改为经领域/仓储正式路径领取再接受，未改生产代码与断言；主代理复跑 6 文件 65 条通过。按预授权下发 S2d                                                                                                                                                                                                                                                                                                                                                              |
 | 2026-10-04 | coding | Cursor | `87c8feac` | S2d 验收通过：15 个文件均在 writeScopes 内。主代理核对 R01 白名单、R02 待接回拒绝、R03 空状态、R04 退回结论、R05 缺依据不提交、R06 空依据不默认、R07 幂等键缓存、takeback UUID 校验，以及接回后再交接与跨租户接回两条集成；复跑 3 文件 30 条通过。进入增量复审与完整门禁                                                                                                                                                                                                                        |
 | 2026-10-04 | coding | Cursor | `799b27b5` | 收口 `pnpm validate` 在 Web 单测失败：`ProductInitiativeOutcomePanel.test.ts` 仍断言未选依据的退回会“关闭”。主代理按已接受的 MSH-R05 改为“没选依据不能提交；选了依据并写了原因才说明会关闭”，定向 11 条通过。增量复审三次（Opus thinking、Opus medium、Gemini）均因账号用量上限未产生结论，不视为通过；PR 继续等待可用的独立复审                                                                                                                                                                |
+| 2026-10-04 | coding | Cursor | `f6cda422` | 第二次完整门禁只剩 `auth-session` 的 401 用例失败，单独重跑仍失败。原因：市场台把责任投影和分组列表并行发出，投影的 404 会清掉一次性重新登录标记，回调停住。改为分组全部失败时不读投影，并把该用例的请求数改为 8 组×2 次。定向单测 29 条与该 E2E 通过。自动模型复审因未授权失败，不再重开                                                                                                                                                                                                       |
