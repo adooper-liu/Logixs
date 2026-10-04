@@ -41,7 +41,7 @@ writeScopes:
   - apps/web/src/views/ProductSelectionWorkbench.test.ts
   - apps/web/e2e/workbench-network.spec.ts
 exclusiveLocks:
-  - business-policy:MS-D04
+  - business-policy:ms-d04
   - database-schema
   - database-migrations
   - database-dictionary
