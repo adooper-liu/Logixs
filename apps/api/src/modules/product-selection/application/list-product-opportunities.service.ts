@@ -23,6 +23,7 @@ import {
   type ProductOpportunityRecord,
   type ProductOpportunityRepository,
 } from "../domain/product-opportunity.repository";
+import { projectMarketOpportunityResponsibility } from "../domain/product-opportunity";
 import {
   mergeHandoffWithSignalLive,
   type SignalLiveFields,
@@ -46,6 +47,8 @@ export class ListProductOpportunitiesService {
 
   async execute(input: {
     tenantId: string;
+    signalId?: string;
+    responsibilityStatus?: string;
     pageSize?: string;
     cursor?: string;
   }): Promise<ProductOpportunityPageV1> {
@@ -55,11 +58,25 @@ export class ListProductOpportunitiesService {
     const cursor = input.cursor
       ? decodeKeysetCursor(input.cursor, input.tenantId)
       : undefined;
-    const rows = await this.repository.list({
+    const signalId = parseSignalId(input.signalId);
+    const responsibilityStatus = parseResponsibilityStatus(
+      input.responsibilityStatus,
+    );
+    const query = {
       tenantId: input.tenantId,
-      after: cursor ? { createdAt: cursor.at, id: cursor.id } : undefined,
-      take: pageSize + 1,
-    });
+      ...(signalId ? { signalId } : {}),
+      ...(responsibilityStatus ? { responsibilityStatus } : {}),
+    };
+    const [rows, totalCount] = await Promise.all([
+      this.repository.list({
+        ...query,
+        after: cursor ? { createdAt: cursor.at, id: cursor.id } : undefined,
+        take: pageSize + 1,
+      }),
+      responsibilityStatus || signalId
+        ? this.repository.count(query)
+        : undefined,
+    ]);
     const hasNext = rows.length > pageSize;
     const items = hasNext ? rows.slice(0, pageSize) : rows;
     const last = items.at(-1);
@@ -73,6 +90,7 @@ export class ListProductOpportunitiesService {
         toOpportunityV1(row, liveBySignal.get(row.handoff.signalId) ?? null),
       ),
       pageSize,
+      ...(totalCount === undefined ? {} : { totalCount }),
       nextCursor:
         hasNext && last
           ? encodeKeysetCursor(
@@ -126,6 +144,19 @@ export function toOpportunityV1(
     intakeState: row.intakeState,
     intakeVersion: row.intakeVersion,
     assignedActorId: row.assignedActorId,
+    responsibility: projectMarketOpportunityResponsibility({
+      intakeState: row.intakeState,
+      handedOffAt: row.handoff.createdAt,
+      assignedActorId: row.assignedActorId,
+      claimedAt: row.claimedAt,
+      acceptedAt: row.acceptedAt,
+    }),
+    latestSelectionDecision: row.latestSelectionDecision
+      ? {
+          ...row.latestSelectionDecision,
+          decidedAt: row.latestSelectionDecision.decidedAt.toISOString(),
+        }
+      : null,
   };
   if (merged.supplementedFieldCodes.length > 0) {
     return { ...base, handoffSnapshot: row.handoff };
@@ -141,9 +172,28 @@ function parsePageSize(value: string | undefined): number {
   return parsed;
 }
 
+function parseSignalId(value: string | undefined): string | undefined {
+  if (value === undefined || value === "") return undefined;
+  if (!UUID_PATTERN.test(value)) invalid("signalId");
+  return value.toLowerCase();
+}
+
+function parseResponsibilityStatus(
+  value: string | undefined,
+): "retained_by_market" | "transferred_to_selection" | undefined {
+  if (value === undefined || value === "") return undefined;
+  if (value !== "retained_by_market" && value !== "transferred_to_selection") {
+    invalid("responsibilityStatus");
+  }
+  return value;
+}
+
 function invalid(field: string): never {
   throw new HttpException(
     `VALIDATION_FORMAT: ${field}`,
     HttpStatus.BAD_REQUEST,
   );
 }
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

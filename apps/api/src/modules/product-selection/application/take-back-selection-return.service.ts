@@ -7,6 +7,7 @@ import {
   PRODUCT_INITIATIVE_REPOSITORY,
   type ProductInitiativeRepository,
 } from "../domain/product-initiative.repository";
+import { prepareSelectionReturnTakeback } from "../domain/product-initiative";
 import { toProductInitiativeV1 } from "./decide-product-initiative.service";
 import { throwProductInitiativeHttpError } from "./product-initiative-errors";
 
@@ -27,7 +28,10 @@ export class TakeBackSelectionReturnService {
       throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
     }
     try {
-      const result = await this.repository.takeBackSelectionReturn(input);
+      const result = await this.repository.takeBackSelectionReturn({
+        ...input,
+        command: prepareSelectionReturnTakeback(input.command),
+      });
       return toProductInitiativeV1(result.record);
     } catch (error) {
       throwProductInitiativeHttpError(error);

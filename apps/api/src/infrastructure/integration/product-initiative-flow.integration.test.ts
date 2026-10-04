@@ -13,8 +13,11 @@ import type { ProductInitiativeDecisionCommandV1 } from "@logix/contracts";
 import {
   ProductInitiativeConflictError,
   prepareProductInitiativeDecision,
+  prepareSelectionReturnTakeback,
 } from "../../modules/product-selection/domain/product-initiative";
 import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
+import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
+import { toOpportunityV1 } from "../../modules/product-selection/application/list-product-opportunities.service";
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 
 const BASE_DATABASE_URL =
@@ -27,6 +30,7 @@ const repositoryRoot = resolve(__dirname, "../../../../..");
 let prisma: PrismaClient;
 let marketSignals: PrismaMarketSignalRepository;
 let initiatives: PrismaProductInitiativeRepository;
+let productOpportunities: PrismaProductOpportunityRepository;
 
 const REVIEW_POINT_CODES = [
   "target_user_and_market",
@@ -52,6 +56,9 @@ beforeAll(async () => {
   initiatives = new PrismaProductInitiativeRepository(
     prisma as never,
     applySelectionReturn,
+  );
+  productOpportunities = new PrismaProductOpportunityRepository(
+    prisma as never,
   );
 });
 
@@ -281,6 +288,85 @@ describe("product initiative persistence flow", () => {
     ).resolves.toBe(0);
   });
 
+  it("从 queued/claimed/accepted 事实派生市场责任并拒绝跨租户读取", async () => {
+    const queued = await seedOpportunity(false);
+    const claimed = await seedOpportunity(false);
+    const accepted = await seedOpportunity();
+    const claimedAt = new Date("2026-10-04T00:10:00.000Z");
+    await prisma.productOpportunityIntake.create({
+      data: {
+        id: randomUUID(),
+        tenantId: claimed.tenantId,
+        handoffId: claimed.handoffId,
+        version: 1,
+        state: "claimed",
+        assignedActorId: "selector-claimed",
+        actedBy: "selector-claimed",
+        actedAt: claimedAt,
+        idempotencyKey: `claim:${claimed.signalId}`,
+        payloadHash: "c".repeat(64),
+      },
+    });
+
+    const queuedView = toOpportunityV1(
+      (
+        await productOpportunities.list({
+          tenantId: queued.tenantId,
+          responsibilityStatus: "retained_by_market",
+          take: 2,
+        })
+      )[0]!,
+      null,
+    );
+    const claimedView = toOpportunityV1(
+      (
+        await productOpportunities.list({
+          tenantId: claimed.tenantId,
+          responsibilityStatus: "retained_by_market",
+          take: 2,
+        })
+      )[0]!,
+      null,
+    );
+    const acceptedRows = await productOpportunities.list({
+      tenantId: accepted.tenantId,
+      take: 2,
+    });
+
+    expect(queuedView.responsibility).toMatchObject({
+      status: "retained_by_market",
+      assignedActorId: null,
+      claimedAt: null,
+      acceptedAt: null,
+    });
+    expect(claimedView.responsibility).toMatchObject({
+      status: "retained_by_market",
+      assignedActorId: "selector-claimed",
+      claimedAt: claimedAt.toISOString(),
+      acceptedAt: null,
+    });
+    expect(
+      toOpportunityV1(acceptedRows[0]!, null).responsibility,
+    ).toMatchObject({
+      status: "transferred_to_selection",
+      responsibleTeamCode: "product_selection",
+    });
+    await expect(
+      productOpportunities.list({
+        tenantId: accepted.tenantId,
+        responsibilityStatus: "retained_by_market",
+        take: 2,
+      }),
+    ).resolves.toEqual([]);
+    await expect(
+      productOpportunities.list({
+        tenantId: queued.tenantId,
+        signalId: accepted.signalId,
+        take: 2,
+      }),
+    ).resolves.toEqual([]);
+  });
+
   it("退回请求与市场接回分两步且各自原子落库", async () => {
     const { tenantId, handoffId, signalId } = await seedOpportunity();
     await prisma.marketSignal.update({
@@ -365,11 +451,11 @@ describe("product initiative persistence flow", () => {
         tenantId,
         signalId,
         actorId: "market-owner",
-        command: {
+        command: prepareSelectionReturnTakeback({
           contractVersion: "market-selection-return-takeback.v1",
           expectedSignalVersion: signal.version - 1,
           idempotencyKey: `takeback-stale:${signalId}`,
-        },
+        }),
       }),
     ).rejects.toThrowError(/MARKET_SIGNAL_VERSION_CONFLICT/);
     await expect(
@@ -389,11 +475,11 @@ describe("product initiative persistence flow", () => {
       tenantId,
       signalId,
       actorId: "market-owner",
-      command: {
+      command: prepareSelectionReturnTakeback({
         contractVersion: "market-selection-return-takeback.v1",
         expectedSignalVersion: signal.version,
         idempotencyKey: `takeback:${signalId}`,
-      },
+      }),
     });
     expect(takenBack.record.currentDestination).toBe("returned_to_market");
     expect(takenBack.record.responsibleActorId).toBe("market-owner");
@@ -401,11 +487,11 @@ describe("product initiative persistence flow", () => {
       tenantId,
       signalId,
       actorId: "market-owner",
-      command: {
+      command: prepareSelectionReturnTakeback({
         contractVersion: "market-selection-return-takeback.v1",
         expectedSignalVersion: signal.version,
         idempotencyKey: `takeback:${signalId}`,
-      },
+      }),
     });
     expect(replay.duplicate).toBe(true);
     await expect(

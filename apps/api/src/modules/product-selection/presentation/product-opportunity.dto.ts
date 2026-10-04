@@ -16,6 +16,9 @@ export class ProductOpportunityResponseDto {
   intakeState!: string;
   @ApiProperty() intakeVersion!: number;
   @ApiPropertyOptional({ nullable: true }) assignedActorId!: string | null;
+  @ApiProperty({ type: Object }) responsibility!: object;
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  latestSelectionDecision!: object | null;
 }
 
 export class ProductOpportunityPageResponseDto {
@@ -24,5 +27,6 @@ export class ProductOpportunityPageResponseDto {
   @ApiProperty({ type: [ProductOpportunityResponseDto] })
   items!: ProductOpportunityResponseDto[];
   @ApiProperty() pageSize!: number;
+  @ApiPropertyOptional() totalCount?: number;
   @ApiPropertyOptional({ nullable: true }) nextCursor!: string | null;
 }

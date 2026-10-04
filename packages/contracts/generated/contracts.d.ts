@@ -325,19 +325,10 @@ export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" 
  */
 export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "watch_focus" | "dismiss_reason" | "close_reason")
 /**
- * 立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。
- * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
- * via the `definition` "ProductInitiativeReviewPointCodeV1".
+ * via the `definition` "MarketOpportunityResponsibilityStatusV1".
  */
-export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback")
-/**
- * 选品立项 decision 命令可用去向。不含 `returned_from_npi`（仅 NPI 退回写口）。
- * 
- * This interface was referenced by `LogixContractsV1`'s JSON-Schema
- * via the `definition` "ProductInitiativeOutcomeV1".
- */
-export type ProductInitiativeOutcomeV1 = ("approve" | "defer" | "reject" | "return_to_market")
+export type MarketOpportunityResponsibilityStatusV1 = ("retained_by_market" | "transferred_to_selection" | "superseded")
 /**
  * 立项行已落库的 outcome，含 NPI→选品退回。
  * 
@@ -352,14 +343,28 @@ export type ProductInitiativeStoredOutcomeV1 = ("approve" | "defer" | "reject" |
 export type ProductInitiativeCompletionV1 = ("pending_completion" | "completed")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeDestinationV1".
+ */
+export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "return_requested" | "returned_to_market" | "handed_off" | "returned_from_npi")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeReturnBasisV1".
  */
 export type ProductInitiativeReturnBasisV1 = ("insufficient_evidence" | "wrong_direction")
 /**
+ * 立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。
+ * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
- * via the `definition` "ProductInitiativeDestinationV1".
+ * via the `definition` "ProductInitiativeReviewPointCodeV1".
  */
-export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "return_requested" | "returned_to_market" | "handed_off" | "returned_from_npi")
+export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback")
+/**
+ * 选品立项 decision 命令可用去向。不含 `returned_from_npi`（仅 NPI 退回写口）。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeOutcomeV1".
+ */
+export type ProductInitiativeOutcomeV1 = ("approve" | "defer" | "reject" | "return_to_market")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativePendingFieldCodeV1".
@@ -1937,6 +1942,31 @@ idempotencyKey: string
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketOpportunityResponsibilityProjectionV1".
+ */
+export interface MarketOpportunityResponsibilityProjectionV1 {
+status: MarketOpportunityResponsibilityStatusV1
+responsibleTeamCode: ("market_intelligence" | "product_selection" | null)
+handedOffAt: DateTime
+assignedActorId: (string | null)
+claimedAt: (DateTime | null)
+acceptedAt: (DateTime | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductOpportunityLatestSelectionDecisionV1".
+ */
+export interface ProductOpportunityLatestSelectionDecisionV1 {
+outcome: ProductInitiativeStoredOutcomeV1
+completion: ProductInitiativeCompletionV1
+currentDestination: ProductInitiativeDestinationV1
+responsibleActorId: string
+reason: (string | null)
+returnBasis: (ProductInitiativeReturnBasisV1 | null)
+decidedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductOpportunityV1".
  */
 export interface ProductOpportunityV1 {
@@ -1946,6 +1976,8 @@ supplementedFieldCodes: MarketSignalPendingFieldCodeV1[]
 intakeState: MarketOpportunityIntakeStateV1
 intakeVersion: number
 assignedActorId: (string | null)
+responsibility: MarketOpportunityResponsibilityProjectionV1
+latestSelectionDecision: (ProductOpportunityLatestSelectionDecisionV1 | null)
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -1955,6 +1987,7 @@ export interface ProductOpportunityPageV1 {
 contractVersion: "product-opportunity-page.v1"
 items: ProductOpportunityV1[]
 pageSize: number
+totalCount?: number
 nextCursor: (string | null)
 }
 /**

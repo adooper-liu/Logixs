@@ -215,6 +215,46 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
 });
 
+test("market keeps claimed handoffs until selection accepts and then shows feedback", async ({
+  page,
+}) => {
+  await mockMarketOpportunityApis(page);
+  await page.goto("/workspaces/market-signals");
+  await page.getByRole("button", { name: /加拿大站宠物出行需求上升/ }).click();
+  await page.getByRole("radio", { name: /交给选品评估/ }).check();
+  await page.getByLabel("机会说明").fill("请选品确认是否接受这份机会包。");
+  await page.getByRole("button", { name: "交给选品评估", exact: true }).click();
+
+  await page.goto(`/workspaces/market-signals?signalId=${secondSignalId}`);
+  await page.getByRole("tab", { name: /已交选品·待接受/ }).click();
+  await expect(
+    page.getByRole("button", { name: /加拿大站宠物出行需求上升/ }),
+  ).toContainText("选品尚未领取");
+  await expect(page.locator(".work-context")).toContainText(
+    "当前责任经营与市场团队",
+  );
+
+  await page.goto("/workspaces/product-selection");
+  await page.getByRole("button", { name: "领取此机会" }).click();
+  await page.goto(`/workspaces/market-signals?signalId=${secondSignalId}`);
+  await page.getByRole("tab", { name: /已交选品·待接受/ }).click();
+  await expect(
+    page.getByRole("button", { name: /加拿大站宠物出行需求上升/ }),
+  ).toContainText("dev-operator 于");
+  await expect(page.locator(".selection-feedback")).toContainText(
+    "结果责任仍在经营与市场团队",
+  );
+
+  await page.goto("/workspaces/product-selection");
+  await page.getByRole("button", { name: "接受并进入立项判断" }).click();
+  await page.goto(`/workspaces/market-signals?signalId=${secondSignalId}`);
+  await expect(
+    page.getByRole("tab", { name: /已交选品·待接受/ }),
+  ).toContainText("0");
+  await expect(page.locator(".selection-feedback")).toContainText("选品已接受");
+  await expect(page.locator(".work-context")).toContainText("当前责任选品团队");
+});
+
 test("selection requests a return, market takes it back, then hands off a new version", async ({
   page,
 }) => {
@@ -698,6 +738,20 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
           responsibleActorId: "dev-operator",
           version: initiative.version + 1,
         };
+        if (opportunity) {
+          opportunity = {
+            ...opportunity,
+            latestSelectionDecision: {
+              outcome: initiative.outcome,
+              completion: initiative.completion,
+              currentDestination: initiative.currentDestination,
+              responsibleActorId: initiative.responsibleActorId,
+              reason: initiative.reason ?? null,
+              returnBasis: initiative.returnBasis ?? null,
+              decidedAt: "2026-09-27T00:10:00.000Z",
+            },
+          };
+        }
       }
       await json(route, initiative);
       return;
@@ -761,6 +815,15 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
         intakeVersion: 1,
         assignedActorId: null,
         supplementedFieldCodes: [],
+        responsibility: {
+          status: "retained_by_market",
+          responsibleTeamCode: "market_intelligence",
+          handedOffAt: snapshot.createdAt,
+          assignedActorId: null,
+          claimedAt: null,
+          acceptedAt: null,
+        },
+        latestSelectionDecision: null,
       };
       await json(route, {
         contractVersion: "market-signal-decision-result.v1",
@@ -811,10 +874,22 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
   await page.route("**/api/product-opportunities**", async (route) => {
     const request = route.request();
     if (request.method() === "GET") {
+      const url = new URL(request.url());
+      const requestedSignalId = url.searchParams.get("signalId");
+      const responsibilityStatus = url.searchParams.get("responsibilityStatus");
+      const visible =
+        opportunity &&
+        (!requestedSignalId ||
+          opportunity.handoff.signalId === requestedSignalId) &&
+        (!responsibilityStatus ||
+          opportunity.responsibility.status === responsibilityStatus)
+          ? [opportunity]
+          : [];
       await json(route, {
         contractVersion: "product-opportunity-page.v1",
-        items: opportunity ? [opportunity] : [],
-        pageSize: 100,
+        items: visible,
+        pageSize: Number(url.searchParams.get("pageSize") ?? 100),
+        totalCount: visible.length,
         nextCursor: null,
       });
       return;
@@ -829,6 +904,20 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       intakeState: body.action === "claim" ? "claimed" : "accepted",
       intakeVersion: opportunity.intakeVersion + 1,
       assignedActorId: "dev-operator",
+      responsibility: {
+        ...opportunity.responsibility,
+        status:
+          body.action === "claim"
+            ? "retained_by_market"
+            : "transferred_to_selection",
+        responsibleTeamCode:
+          body.action === "claim" ? "market_intelligence" : "product_selection",
+        assignedActorId: "dev-operator",
+        claimedAt:
+          opportunity.responsibility.claimedAt ?? "2026-09-25T02:10:00.000Z",
+        acceptedAt:
+          body.action === "accept" ? "2026-09-25T02:20:00.000Z" : null,
+      },
     };
     await json(route, opportunity);
   });
@@ -906,6 +995,20 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
         createdAt: "2026-09-27T00:00:00.000Z",
         updatedAt: "2026-09-27T00:00:00.000Z",
       };
+      if (opportunity) {
+        opportunity = {
+          ...opportunity,
+          latestSelectionDecision: {
+            outcome: initiative.outcome,
+            completion: initiative.completion,
+            currentDestination: initiative.currentDestination,
+            responsibleActorId: initiative.responsibleActorId,
+            reason: initiative.reason ?? null,
+            returnBasis: initiative.returnBasis ?? null,
+            decidedAt: initiative.updatedAt,
+          },
+        };
+      }
       await json(route, initiative);
       return;
     }
@@ -923,6 +1026,20 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       createdAt: "2026-09-27T00:00:00.000Z",
       updatedAt: "2026-09-27T00:00:00.000Z",
     };
+    if (opportunity) {
+      opportunity = {
+        ...opportunity,
+        latestSelectionDecision: {
+          outcome: initiative.outcome,
+          completion: initiative.completion,
+          currentDestination: initiative.currentDestination,
+          responsibleActorId: initiative.responsibleActorId,
+          reason: initiative.reason ?? null,
+          returnBasis: null,
+          decidedAt: initiative.updatedAt,
+        },
+      };
+    }
     await json(route, initiative);
   });
 

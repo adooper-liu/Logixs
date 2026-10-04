@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type {
+  MarketOpportunityResponsibilityProjectionV1,
   MarketOpportunityIntakeStateV1,
   ProductOpportunityIntakeCommandV1,
 } from "@logix/contracts";
@@ -21,6 +22,34 @@ export interface PreparedOpportunityIntake {
 export class ProductOpportunityValidationError extends Error {}
 export class ProductOpportunityConflictError extends Error {}
 export class ProductOpportunityNotFoundError extends Error {}
+
+export function projectMarketOpportunityResponsibility(input: {
+  intakeState: MarketOpportunityIntakeStateV1;
+  handedOffAt: string;
+  assignedActorId: string | null;
+  claimedAt: Date | null;
+  acceptedAt: Date | null;
+}): MarketOpportunityResponsibilityProjectionV1 {
+  if (input.intakeState === "superseded") {
+    return {
+      status: "superseded",
+      responsibleTeamCode: null,
+      handedOffAt: input.handedOffAt,
+      assignedActorId: null,
+      claimedAt: input.claimedAt?.toISOString() ?? null,
+      acceptedAt: input.acceptedAt?.toISOString() ?? null,
+    };
+  }
+  const accepted = input.intakeState === "accepted";
+  return {
+    status: accepted ? "transferred_to_selection" : "retained_by_market",
+    responsibleTeamCode: accepted ? "product_selection" : "market_intelligence",
+    handedOffAt: input.handedOffAt,
+    assignedActorId: input.assignedActorId,
+    claimedAt: input.claimedAt?.toISOString() ?? null,
+    acceptedAt: input.acceptedAt?.toISOString() ?? null,
+  };
+}
 
 export function prepareOpportunityIntake(
   current: CurrentOpportunityIntake,

@@ -1,5 +1,11 @@
+import type {
+  MarketOpportunityResponsibilityProjectionV1,
+  ProductOpportunityLatestSelectionDecisionV1,
+} from "@logix/contracts";
+
 export type MarketSignalWorkflowState =
   | "needs_decision"
+  | "awaiting_selection_acceptance"
   | "watching"
   | "handed_off"
   | "dismissed"
@@ -61,6 +67,8 @@ export interface MarketSignalScenario {
   workReason: string;
   selectionReturnBasis?: "insufficient_evidence" | "wrong_direction" | null;
   selectionReturnReason?: string | null;
+  responsibility: MarketOpportunityResponsibilityProjectionV1 | null;
+  latestSelectionDecision: ProductOpportunityLatestSelectionDecisionV1 | null;
   urgency: "today" | "this_week" | "normal";
   urgencyLabel: string;
   market: string | null;

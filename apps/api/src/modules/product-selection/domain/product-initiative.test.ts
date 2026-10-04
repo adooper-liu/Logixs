@@ -5,6 +5,7 @@ import {
   ProductInitiativeConflictError,
   ProductInitiativeValidationError,
   prepareProductInitiativeDecision,
+  prepareSelectionReturnTakeback,
   productInitiativePendingFieldCodes,
   type CurrentProductInitiative,
   type ProductInitiativeDraft,
@@ -252,6 +253,28 @@ describe("PRODUCT_INITIATIVE_GATE", () => {
       "compliance_risk",
     ]);
     expect(PRODUCT_INITIATIVE_GATE).not.toContain("customer_feedback");
+  });
+});
+
+describe("prepareSelectionReturnTakeback", () => {
+  it("rejects an unknown contract version before persistence", () => {
+    expect(() =>
+      prepareSelectionReturnTakeback({
+        contractVersion: "market-selection-return-takeback.v2" as never,
+        expectedSignalVersion: 2,
+        idempotencyKey: "takeback-1",
+      }),
+    ).toThrowError(/VALIDATION_FORMAT: contractVersion/);
+  });
+
+  it("normalizes a valid takeback command", () => {
+    expect(
+      prepareSelectionReturnTakeback({
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: 2,
+        idempotencyKey: " takeback-1 ",
+      }),
+    ).toEqual({ expectedSignalVersion: 2, idempotencyKey: "takeback-1" });
   });
 });
 

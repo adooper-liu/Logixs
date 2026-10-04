@@ -140,9 +140,24 @@ export async function registerMarketSignalEvidence(input: {
   });
 }
 
-export async function listProductOpportunities(): Promise<ProductOpportunityPageV1> {
+export async function listProductOpportunities(
+  input: {
+    cursor?: string;
+    pageSize?: number;
+    signalId?: string;
+    responsibilityStatus?: "retained_by_market" | "transferred_to_selection";
+  } = {},
+): Promise<ProductOpportunityPageV1> {
+  const params = new URLSearchParams({
+    pageSize: String(input.pageSize ?? 100),
+  });
+  if (input.cursor) params.set("cursor", input.cursor);
+  if (input.signalId) params.set("signalId", input.signalId);
+  if (input.responsibilityStatus) {
+    params.set("responsibilityStatus", input.responsibilityStatus);
+  }
   return requestJson<ProductOpportunityPageV1>(
-    "/api/product-opportunities?pageSize=100",
+    `/api/product-opportunities?${params}`,
     { fallback: "暂时无法加载待领取机会" },
   );
 }

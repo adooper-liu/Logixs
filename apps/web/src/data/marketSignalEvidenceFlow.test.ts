@@ -18,6 +18,8 @@ function scenario(
     workReason: "需要判断下一步去向",
     urgency: "normal",
     urgencyLabel: "本周内看",
+    responsibility: null,
+    latestSelectionDecision: null,
     market: null,
     channel: null,
     category: null,

@@ -14,6 +14,7 @@ import MarketSignalDecisionPanel from "../components/market-signals/MarketSignal
 import MarketSignalEvidencePanel from "../components/market-signals/MarketSignalEvidencePanel.vue";
 import MarketSignalOperationReceipt from "../components/market-signals/MarketSignalOperationReceipt.vue";
 import MarketSignalQueue from "../components/market-signals/MarketSignalQueue.vue";
+import MarketSelectionFeedback from "../components/market-signals/MarketSelectionFeedback.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useMarketSignalWorkbench } from "../composables/useMarketSignalWorkbench";
 import { useAuthSession } from "../auth/useAuthSession";
@@ -64,13 +65,18 @@ const {
   selectSignal,
 });
 
-const queueCounts = computed(() =>
-  Object.fromEntries(
+const queueCounts = computed(() => {
+  const counts = Object.fromEntries(
     Object.entries(pages).flatMap(([key, page]) =>
       page.totalCount === null ? [] : [[key, page.totalCount]],
     ),
-  ),
-);
+  );
+  // `handed_off` 的服务端总数含尚未接受项；这些已由责任投影移入独立待办组。
+  counts.handed_off = queueItems.value.filter(
+    ({ workflowState }) => workflowState === "handed_off",
+  ).length;
+  return counts;
+});
 const queueGroupErrors = computed(() =>
   Object.fromEntries(
     Object.entries(pages).flatMap(([key, page]) =>
@@ -214,6 +220,11 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
           :signal="selectedSignal"
           :closed="isClosed"
           @supplement="supplementSignal"
+        />
+        <MarketSelectionFeedback
+          v-if="selectedSignal?.responsibility"
+          :responsibility="selectedSignal.responsibility"
+          :latest-decision="selectedSignal.latestSelectionDecision"
         />
         <p v-else class="empty-workbench">
           {{

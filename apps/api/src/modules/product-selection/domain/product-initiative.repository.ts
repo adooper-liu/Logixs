@@ -4,12 +4,12 @@ import type {
   ProductInitiativeStoredOutcomeV1,
   ProductInitiativePendingFieldCodeV1,
   ProductInitiativeReturnBasisV1,
-  MarketSelectionReturnTakebackCommandV1,
 } from "@logix/contracts";
 import type { PreparedProductInitiativeClaim } from "./product-initiative-claim";
 import type { PreparedProductInitiativeNpiReturn } from "./product-initiative-npi-return";
 import type {
   PreparedProductInitiativeDecision,
+  PreparedSelectionReturnTakeback,
   ProductInitiativeReviewPoint,
 } from "./product-initiative";
 
@@ -99,7 +99,7 @@ export interface ProductInitiativeRepository {
     tenantId: string;
     signalId: string;
     actorId: string;
-    command: MarketSelectionReturnTakebackCommandV1;
+    command: PreparedSelectionReturnTakeback;
   }): Promise<{ record: ProductInitiativeRecord; duplicate: boolean }>;
   /**
    * NPI 待办队列：交到产品侧的不可变快照，左连当前领取状态。

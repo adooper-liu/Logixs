@@ -617,6 +617,14 @@ function acceptedOpportunity(
     intakeState: "accepted",
     intakeVersion: 3,
     assignedActorId: "dev-operator",
+    responsibility: {
+      status: "transferred_to_selection",
+      responsibleTeamCode: "product_selection",
+      handedOffAt: "2026-09-25T02:00:00.000Z",
+      assignedActorId: "dev-operator",
+      claimedAt: "2026-09-25T02:10:00.000Z",
+      acceptedAt: "2026-09-25T02:20:00.000Z",
+    },
     ...overrides,
   });
 }
@@ -703,6 +711,15 @@ function opportunity(
     intakeVersion: 1,
     assignedActorId: null,
     supplementedFieldCodes: [],
+    responsibility: {
+      status: "retained_by_market",
+      responsibleTeamCode: "market_intelligence",
+      handedOffAt: "2026-09-25T02:00:00.000Z",
+      assignedActorId: null,
+      claimedAt: null,
+      acceptedAt: null,
+    },
+    latestSelectionDecision: null,
     ...overrides,
   };
 }

@@ -12,7 +12,6 @@ import {
 import {
   ProductInitiativeConflictError,
   ProductInitiativeNotFoundError,
-  ProductInitiativeValidationError,
   type PreparedProductInitiativeDecision,
   type ProductInitiativeReviewPoint,
 } from "../domain/product-initiative";
@@ -303,13 +302,6 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         tx,
         `product-initiative:takeback:${input.tenantId}:${input.signalId}`,
       );
-      if (
-        input.command.contractVersion !== "market-selection-return-takeback.v1"
-      ) {
-        throw new ProductInitiativeValidationError(
-          "VALIDATION_FORMAT: contractVersion",
-        );
-      }
       if (!this.applySelectionReturn) {
         conflict("PRODUCT_INITIATIVE_SELECTION_RETURN_UNAVAILABLE");
       }

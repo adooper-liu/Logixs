@@ -33,6 +33,10 @@ describe("ListProductOpportunitiesService", () => {
       rows[1]!.handoff.handoffId,
     ]);
     expect(page.items[0]!.supplementedFieldCodes).toEqual([]);
+    expect(page.items[0]!.responsibility).toMatchObject({
+      status: "retained_by_market",
+      responsibleTeamCode: "market_intelligence",
+    });
     expect(decodeKeysetCursor(page.nextCursor!, TENANT)).toEqual({
       at: new Date("2026-09-27T02:00:00Z"),
       id: rows[1]!.handoff.handoffId,
@@ -73,6 +77,14 @@ describe("ListProductOpportunitiesService", () => {
     await expect(
       service.execute({ tenantId: TENANT, pageSize: "abc" }),
     ).rejects.toThrow(/VALIDATION_FORMAT: pageSize/);
+  });
+
+  it("责任筛选未知值明确失败，不退回未筛选列表", async () => {
+    const service = new ListProductOpportunitiesService(repository([]));
+
+    await expect(
+      service.execute({ tenantId: TENANT, responsibilityStatus: "unknown" }),
+    ).rejects.toThrow(/VALIDATION_FORMAT: responsibilityStatus/);
   });
 
   it("合并信号后补到工作视图，并保留交接当日快照", async () => {
@@ -128,6 +140,43 @@ describe("toOpportunityV1", () => {
     expect(view.handoffSnapshot).toBeUndefined();
     expect(view.supplementedFieldCodes).toEqual([]);
   });
+
+  it("presents acceptance and the latest selection decision from server facts", () => {
+    const acceptedAt = new Date("2026-10-04T00:20:00.000Z");
+    const decidedAt = new Date("2026-10-04T00:30:00.000Z");
+    const view = toOpportunityV1(
+      {
+        ...record(
+          "aaaaaaaa-0000-4000-8000-000000000001",
+          "2026-09-27T03:00:00Z",
+        ),
+        intakeState: "accepted",
+        intakeVersion: 2,
+        assignedActorId: "selector-1",
+        claimedAt: new Date("2026-10-04T00:10:00.000Z"),
+        acceptedAt,
+        latestSelectionDecision: {
+          outcome: "defer",
+          completion: "completed",
+          currentDestination: "deferred",
+          responsibleActorId: "selector-1",
+          reason: "等待下一轮成本验证",
+          returnBasis: null,
+          decidedAt,
+        },
+      },
+      null,
+    );
+
+    expect(view.responsibility).toMatchObject({
+      status: "transferred_to_selection",
+      acceptedAt: acceptedAt.toISOString(),
+    });
+    expect(view.latestSelectionDecision).toMatchObject({
+      outcome: "defer",
+      decidedAt: decidedAt.toISOString(),
+    });
+  });
 });
 
 function repository(
@@ -135,6 +184,7 @@ function repository(
 ): ProductOpportunityRepository {
   return {
     list: async () => rows,
+    count: async () => rows.length,
     findByHandoffId: async () => null,
     appendIntake: async () => {
       throw new Error("not used");
@@ -152,6 +202,9 @@ function record(
     intakeState: "queued",
     intakeVersion: 1,
     assignedActorId: null,
+    claimedAt: null,
+    acceptedAt: null,
+    latestSelectionDecision: null,
   };
 }
 

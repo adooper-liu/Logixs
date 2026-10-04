@@ -7,6 +7,7 @@ import type {
   ProductInitiativePendingFieldCodeV1,
   ProductInitiativeReturnBasisV1,
   ProductInitiativeReviewPointCodeV1,
+  MarketSelectionReturnTakebackCommandV1,
 } from "@logix/contracts";
 
 export interface ProductInitiativeReviewPoint {
@@ -47,9 +48,28 @@ export interface PreparedProductInitiativeDecision {
   payloadHash: string;
 }
 
+export interface PreparedSelectionReturnTakeback {
+  expectedSignalVersion: number;
+  idempotencyKey: string;
+}
+
 export class ProductInitiativeValidationError extends Error {}
 export class ProductInitiativeConflictError extends Error {}
 export class ProductInitiativeNotFoundError extends Error {}
+
+export function prepareSelectionReturnTakeback(
+  command: MarketSelectionReturnTakebackCommandV1,
+): PreparedSelectionReturnTakeback {
+  if (command.contractVersion !== "market-selection-return-takeback.v1") {
+    invalid("contractVersion");
+  }
+  const expectedSignalVersion = version(command.expectedSignalVersion);
+  if (expectedSignalVersion < 1) invalid("expectedSignalVersion");
+  return {
+    expectedSignalVersion,
+    idempotencyKey: text(command.idempotencyKey, "idempotencyKey", 200),
+  };
+}
 
 /**
  * 立项门槛：这几项缺失时**不能**立项（其余只作为待补）。

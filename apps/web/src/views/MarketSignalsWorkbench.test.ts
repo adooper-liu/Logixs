@@ -3,6 +3,7 @@ import type {
   MarketSignalDecisionCommandV1,
   MarketSignalDetailV1,
   MarketSignalV1,
+  ProductOpportunityV1,
 } from "@logix/contracts";
 import { computed } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
@@ -17,6 +18,7 @@ const updateMarketSignal = vi.fn();
 const registerMarketSignalEvidence = vi.fn();
 const decideMarketSignal = vi.fn();
 const takeBackSelectionReturn = vi.fn();
+const listProductOpportunities = vi.fn();
 
 vi.mock("../api/marketSignals", () => ({
   listMarketSignals: (...args: unknown[]) => listMarketSignals(...args),
@@ -28,6 +30,8 @@ vi.mock("../api/marketSignals", () => ({
   decideMarketSignal: (...args: unknown[]) => decideMarketSignal(...args),
   takeBackSelectionReturn: (...args: unknown[]) =>
     takeBackSelectionReturn(...args),
+  listProductOpportunities: (...args: unknown[]) =>
+    listProductOpportunities(...args),
 }));
 
 vi.mock("../auth/useAuthSession", () => ({
@@ -111,6 +115,64 @@ describe("MarketSignalsWorkbench", () => {
     getMarketSignal.mockImplementation(async (id: string) => details.get(id));
     registerMarketSignalEvidence.mockResolvedValue(undefined);
     takeBackSelectionReturn.mockResolvedValue({});
+    listProductOpportunities.mockResolvedValue({
+      contractVersion: "product-opportunity-page.v1",
+      items: [],
+      pageSize: 50,
+      totalCount: 0,
+      nextCursor: null,
+    });
+  });
+
+  it("keeps claimed handoffs in market follow-up and removes them after acceptance", async () => {
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: "已交选品的加拿大机会",
+        currentDestination: "handed_off",
+        pendingFieldCodes: [],
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    let opportunity = productOpportunity("claimed");
+    listProductOpportunities.mockImplementation(
+      async (input: { responsibilityStatus?: string; signalId?: string }) => ({
+        contractVersion: "product-opportunity-page.v1",
+        items:
+          input.signalId ||
+          (input.responsibilityStatus === "retained_by_market" &&
+            opportunity.responsibility.status === "retained_by_market")
+            ? [opportunity]
+            : [],
+        pageSize: 50,
+        totalCount:
+          opportunity.responsibility.status === "retained_by_market" ? 1 : 0,
+        nextCursor: null,
+      }),
+    );
+
+    const claimed = await mountPage(`?signalId=${signalOneId}`);
+    await tab(claimed, "已交选品·待接受").trigger("click");
+    expect(claimed.text()).toContain("selector-1 于");
+    expect(claimed.text()).toContain("结果责任仍在经营与市场团队");
+    claimed.unmount();
+
+    opportunity = productOpportunity("accepted");
+    const accepted = await mountPage(`?signalId=${signalOneId}`);
+    expect(
+      accepted
+        .findAll('[role="tab"]')
+        .find((tab) => tab.text().includes("已交选品·待接受"))!
+        .text(),
+    ).toContain("0");
+    expect(accepted.text()).toContain("选品已接受");
+    expect(accepted.text()).toContain("选品暂缓");
+    expect(accepted.text()).toContain("当前责任选品团队");
   });
 
   it("shows the structured return request and lets market take it back", async () => {
@@ -825,15 +887,10 @@ describe("MarketSignalsWorkbench", () => {
     document.body.append(host);
     const wrapper = await mountPage("", host);
     const tabs = () => wrapper.findAll('[role="tab"]');
+    const last = tabs().length - 1;
     expect(tabs().map((item) => item.attributes("tabindex"))).toEqual([
       "0",
-      "-1",
-      "-1",
-      "-1",
-      "-1",
-      "-1",
-      "-1",
-      "-1",
+      ...Array.from({ length: last }, () => "-1"),
     ]);
     expect(wrapper.get('[role="tabpanel"]').attributes("aria-labelledby")).toBe(
       tabs()[0]!.attributes("id"),
@@ -843,13 +900,13 @@ describe("MarketSignalsWorkbench", () => {
     expect(tabs()[1]!.attributes("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(tabs()[1]!.element);
     await tabs()[1]!.trigger("keydown", { key: "End" });
-    expect(tabs()[7]!.attributes("aria-selected")).toBe("true");
-    expect(document.activeElement).toBe(tabs()[7]!.element);
-    await tabs()[7]!.trigger("keydown", { key: "ArrowRight" });
+    expect(tabs()[last]!.attributes("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tabs()[last]!.element);
+    await tabs()[last]!.trigger("keydown", { key: "ArrowRight" });
     expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
     await tabs()[0]!.trigger("keydown", { key: "ArrowLeft" });
-    expect(tabs()[7]!.attributes("aria-selected")).toBe("true");
-    await tabs()[7]!.trigger("keydown", { key: "Home" });
+    expect(tabs()[last]!.attributes("aria-selected")).toBe("true");
+    await tabs()[last]!.trigger("keydown", { key: "Home" });
     expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
     expect(tabs()[0]!.attributes("tabindex")).toBe("0");
     wrapper.unmount();
@@ -1140,6 +1197,46 @@ function handoff(
     createdBy: "market-owner",
     createdAt: "2026-09-25T02:00:00.000Z",
     idempotencyKey: "handoff-test",
+  };
+}
+
+function productOpportunity(
+  state: "claimed" | "accepted",
+): ProductOpportunityV1 {
+  const source = marketSignal({
+    signalId: signalOneId,
+    title: "已交选品的加拿大机会",
+    currentDestination: "handed_off",
+    pendingFieldCodes: [],
+  });
+  const accepted = state === "accepted";
+  return {
+    handoff: handoff(source, "验证加拿大机会是否值得立项"),
+    supplementedFieldCodes: [],
+    intakeState: state,
+    intakeVersion: accepted ? 2 : 1,
+    assignedActorId: "selector-1",
+    responsibility: {
+      status: accepted ? "transferred_to_selection" : "retained_by_market",
+      responsibleTeamCode: accepted
+        ? "product_selection"
+        : "market_intelligence",
+      handedOffAt: "2026-10-04T00:00:00.000Z",
+      assignedActorId: "selector-1",
+      claimedAt: "2026-10-04T00:10:00.000Z",
+      acceptedAt: accepted ? "2026-10-04T00:20:00.000Z" : null,
+    },
+    latestSelectionDecision: accepted
+      ? {
+          outcome: "defer",
+          completion: "completed",
+          currentDestination: "deferred",
+          responsibleActorId: "selector-1",
+          reason: "等待下一轮成本验证",
+          returnBasis: null,
+          decidedAt: "2026-10-04T00:30:00.000Z",
+        }
+      : null,
   };
 }
 
