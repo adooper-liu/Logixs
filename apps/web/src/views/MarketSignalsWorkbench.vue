@@ -14,6 +14,7 @@ import MarketSignalDecisionPanel from "../components/market-signals/MarketSignal
 import MarketSignalEvidencePanel from "../components/market-signals/MarketSignalEvidencePanel.vue";
 import MarketSignalOperationReceipt from "../components/market-signals/MarketSignalOperationReceipt.vue";
 import MarketSignalQueue from "../components/market-signals/MarketSignalQueue.vue";
+import MarketSelectionFeedback from "../components/market-signals/MarketSelectionFeedback.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 import { useMarketSignalWorkbench } from "../composables/useMarketSignalWorkbench";
 import { useAuthSession } from "../auth/useAuthSession";
@@ -50,25 +51,32 @@ const {
   loading,
   saving,
   error,
+  takebackReceipt,
   loadSignals,
   loadMore,
   retryGroup,
   registerSignal,
   submitDecision,
   supplementSignal,
+  takeBackReturn,
   clearReceipt,
 } = useMarketSignalWorkbench({
   selectedId: requestedSignalId,
   selectSignal,
 });
 
-const queueCounts = computed(() =>
-  Object.fromEntries(
+const queueCounts = computed(() => {
+  const counts = Object.fromEntries(
     Object.entries(pages).flatMap(([key, page]) =>
       page.totalCount === null ? [] : [[key, page.totalCount]],
     ),
-  ),
-);
+  );
+  // `handed_off` 的服务端总数含尚未接受项；这些已由责任投影移入独立待办组。
+  counts.handed_off = queueItems.value.filter(
+    ({ workflowState }) => workflowState === "handed_off",
+  ).length;
+  return counts;
+});
 const queueGroupErrors = computed(() =>
   Object.fromEntries(
     Object.entries(pages).flatMap(([key, page]) =>
@@ -86,6 +94,9 @@ const isClosed = computed(
   () =>
     selectedSignal.value?.initialState === "voided" ||
     selectedSignal.value?.initialState === "archived",
+);
+const isReturnRequest = computed(
+  () => selectedSignal.value?.initialState === "selection_return_requested",
 );
 
 const closedLabel = computed(() => {
@@ -117,6 +128,9 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
       <button type="button" @click="loadSignals">
         <RefreshCw :size="15" aria-hidden="true" />重新加载
       </button>
+    </section>
+    <section v-else-if="takebackReceipt" class="takeback-receipt" role="status">
+      {{ takebackReceipt }}
     </section>
 
     <section v-else-if="loading" class="loading-state" role="status">
@@ -207,7 +221,12 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
           :closed="isClosed"
           @supplement="supplementSignal"
         />
-        <p v-else class="empty-workbench">
+        <MarketSelectionFeedback
+          v-if="selectedSignal?.responsibility"
+          :responsibility="selectedSignal.responsibility"
+          :latest-decision="selectedSignal.latestSelectionDecision"
+        />
+        <p v-else-if="!selectedSignal" class="empty-workbench">
           {{
             queueItems.length
               ? "请从左侧当前分组选择一条信号。"
@@ -220,8 +239,20 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
         class="workbench-pane"
         aria-label="信号处理动作"
       >
+        <div v-if="selectedSignal && isReturnRequest" class="return-request">
+          <small>选品请求退回</small>
+          <b v-if="selectedSignal.selectionReturnBasis">{{
+            selectedSignal.selectionReturnBasis === "wrong_direction"
+              ? "方向错误"
+              : "证据不足"
+          }}</b>
+          <p>{{ selectedSignal.selectionReturnReason }}</p>
+          <button type="button" :disabled="saving" @click="takeBackReturn">
+            {{ saving ? "正在接回" : "接回" }}
+          </button>
+        </div>
         <MarketSignalDecisionPanel
-          v-if="selectedSignal"
+          v-else-if="selectedSignal"
           v-model="selectedDraft"
           :busy="saving"
           :active-validation="selectedSignal.activeValidation"
@@ -248,9 +279,37 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
 .market-workbench--closed {
   filter: saturate(0.85);
 }
+.return-request {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.return-request small {
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+.return-request b {
+  color: var(--ink);
+}
+.return-request p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: var(--leading-body);
+}
+.return-request button {
+  min-height: var(--touch-target);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-control);
+  background: var(--brand);
+  color: var(--on-brand);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
 
 .operation-error,
-.loading-state {
+.loading-state,
+.takeback-receipt {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -260,6 +319,10 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
   background: var(--risk-bg);
   color: var(--ink-soft);
   font-size: var(--text-label);
+}
+.takeback-receipt {
+  border-left-color: var(--ok);
+  background: var(--ok-bg);
 }
 
 .operation-error svg,

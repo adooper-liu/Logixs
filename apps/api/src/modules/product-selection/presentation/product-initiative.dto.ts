@@ -22,6 +22,7 @@ const DESTINATIONS = [
   "needs_decision",
   "deferred",
   "rejected",
+  "return_requested",
   "returned_to_market",
   "handed_off",
   "returned_from_npi",
@@ -49,6 +50,8 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
   @ApiPropertyOptional() deferReason?: string;
   @ApiPropertyOptional() rejectReason?: string;
   @ApiPropertyOptional() returnReason?: string;
+  @ApiPropertyOptional({ enum: ["insufficient_evidence", "wrong_direction"] })
+  returnBasis?: ProductInitiativeDecisionCommandV1["returnBasis"];
   @ApiProperty() idempotencyKey!: string;
 }
 
@@ -64,6 +67,11 @@ export class ProductInitiativeResponseDto {
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
   @ApiPropertyOptional({ nullable: true }) reason!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ["insufficient_evidence", "wrong_direction"],
+  })
+  returnBasis!: string | null;
   @ApiProperty({ type: [String] }) pendingFieldCodes!: string[];
   @ApiProperty() version!: number;
   @ApiProperty() createdAt!: string;

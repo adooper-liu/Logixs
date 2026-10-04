@@ -7,6 +7,7 @@ import type {
   MarketSignalDestinationV1,
   MarketSignalPendingFieldCodeV1,
   MarketSignalUpdateCommandV1,
+  MarketSelectionReturnBasisV1,
 } from "@logix/contracts";
 
 export interface MarketSignalFacts {
@@ -53,6 +54,7 @@ export interface PreparedMarketSignalDecision {
   watchFocus: string | null;
   waitingReason: string | null;
   dismissReason: string | null;
+  returnBasis?: MarketSelectionReturnBasisV1 | null;
   pendingFieldCodes: MarketSignalPendingFieldCodeV1[];
   idempotencyKey: string;
   payloadHash: string;
@@ -61,6 +63,16 @@ export interface PreparedMarketSignalDecision {
 export class MarketSignalValidationError extends Error {}
 export class MarketSignalConflictError extends Error {}
 export class MarketSignalNotFoundError extends Error {}
+
+export function assertNoPendingSelectionReturn(
+  currentDestination: MarketSignalDestinationV1,
+): void {
+  if (currentDestination === "selection_return_requested") {
+    throw new MarketSignalConflictError(
+      "MARKET_SIGNAL_SELECTION_RETURN_PENDING",
+    );
+  }
+}
 
 export function normalizeMarketSignalCreate(
   command: MarketSignalCreateCommandV1,
@@ -205,8 +217,41 @@ export function prepareMarketSignalDecision(
   return { ...normalized, payloadHash };
 }
 
-/** 选品退回：由 Port 写入，不经经营岗判断命令。理由落在 judgment_note。 */
-export function prepareSelectionReturnDecision(input: {
+export function prepareSelectionReturnRequestDecision(input: {
+  expectedSignalVersion: number;
+  returnReason: string;
+  returnBasis: MarketSelectionReturnBasisV1;
+  idempotencyKey: string;
+}): PreparedMarketSignalDecision {
+  const judgmentNote = text(input.returnReason, "returnReason", 500);
+  if (
+    input.returnBasis !== "insufficient_evidence" &&
+    input.returnBasis !== "wrong_direction"
+  ) {
+    fail("returnBasis");
+  }
+  const normalized = {
+    expectedSignalVersion: version(
+      input.expectedSignalVersion,
+      "expectedSignalVersion",
+    ),
+    decisionType: "selection_return_request" as const,
+    completion: "completed" as const,
+    nextDestination: "selection_return_requested" as const,
+    judgmentNote,
+    opportunityStatement: null,
+    nextReviewDate: null,
+    watchFocus: null,
+    waitingReason: null,
+    dismissReason: null,
+    returnBasis: input.returnBasis,
+    pendingFieldCodes: [] as MarketSignalPendingFieldCodeV1[],
+    idempotencyKey: text(input.idempotencyKey, "idempotencyKey", 200),
+  };
+  return { ...normalized, payloadHash: hash(normalized) };
+}
+
+export function prepareSelectionReturnTakebackDecision(input: {
   expectedSignalVersion: number;
   returnReason: string;
   idempotencyKey: string;
@@ -226,6 +271,7 @@ export function prepareSelectionReturnDecision(input: {
     watchFocus: null,
     waitingReason: null,
     dismissReason: null,
+    returnBasis: null,
     pendingFieldCodes: [] as MarketSignalPendingFieldCodeV1[],
     idempotencyKey: text(input.idempotencyKey, "idempotencyKey", 200),
   };

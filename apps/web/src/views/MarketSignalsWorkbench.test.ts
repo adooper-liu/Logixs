@@ -3,11 +3,13 @@ import type {
   MarketSignalDecisionCommandV1,
   MarketSignalDetailV1,
   MarketSignalV1,
+  ProductOpportunityV1,
 } from "@logix/contracts";
 import { computed } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpRequestError } from "../api/httpClient";
 import MarketSignalsWorkbench from "./MarketSignalsWorkbench.vue";
 
 const listMarketSignals = vi.fn();
@@ -16,6 +18,8 @@ const createMarketSignal = vi.fn();
 const updateMarketSignal = vi.fn();
 const registerMarketSignalEvidence = vi.fn();
 const decideMarketSignal = vi.fn();
+const takeBackSelectionReturn = vi.fn();
+const listProductOpportunities = vi.fn();
 
 vi.mock("../api/marketSignals", () => ({
   listMarketSignals: (...args: unknown[]) => listMarketSignals(...args),
@@ -25,6 +29,10 @@ vi.mock("../api/marketSignals", () => ({
   registerMarketSignalEvidence: (...args: unknown[]) =>
     registerMarketSignalEvidence(...args),
   decideMarketSignal: (...args: unknown[]) => decideMarketSignal(...args),
+  takeBackSelectionReturn: (...args: unknown[]) =>
+    takeBackSelectionReturn(...args),
+  listProductOpportunities: (...args: unknown[]) =>
+    listProductOpportunities(...args),
 }));
 
 vi.mock("../auth/useAuthSession", () => ({
@@ -107,12 +115,151 @@ describe("MarketSignalsWorkbench", () => {
     );
     getMarketSignal.mockImplementation(async (id: string) => details.get(id));
     registerMarketSignalEvidence.mockResolvedValue(undefined);
+    takeBackSelectionReturn.mockResolvedValue({});
+    listProductOpportunities.mockResolvedValue({
+      contractVersion: "product-opportunity-page.v1",
+      items: [],
+      pageSize: 50,
+      totalCount: 0,
+      nextCursor: null,
+    });
+  });
+
+  it("keeps claimed handoffs in market follow-up and removes them after acceptance", async () => {
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: "已交选品的加拿大机会",
+        currentDestination: "handed_off",
+        pendingFieldCodes: [],
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        { signal: signals[0]!, evidence: [], selectionReturnReason: null },
+      ],
+    ]);
+    let opportunity = productOpportunity("claimed");
+    listProductOpportunities.mockImplementation(
+      async (input: { responsibilityStatus?: string; signalId?: string }) => ({
+        contractVersion: "product-opportunity-page.v1",
+        items:
+          input.signalId ||
+          (input.responsibilityStatus === "retained_by_market" &&
+            opportunity.responsibility.status === "retained_by_market")
+            ? [opportunity]
+            : [],
+        pageSize: 50,
+        totalCount:
+          opportunity.responsibility.status === "retained_by_market" ? 1 : 0,
+        nextCursor: null,
+      }),
+    );
+
+    const claimed = await mountPage(`?signalId=${signalOneId}`);
+    await tab(claimed, "已交选品·待接受").trigger("click");
+    expect(claimed.text()).toContain("selector-1 于");
+    expect(claimed.text()).toContain("结果责任仍在经营与市场团队");
+    claimed.unmount();
+
+    opportunity = productOpportunity("accepted");
+    const accepted = await mountPage(`?signalId=${signalOneId}`);
+    expect(
+      accepted
+        .findAll('[role="tab"]')
+        .find((tab) => tab.text().includes("已交选品·待接受"))!
+        .text(),
+    ).toContain("0");
+    expect(accepted.text()).toContain("选品已接受");
+    expect(accepted.text()).toContain("选品暂缓");
+    expect(accepted.text()).toContain("当前责任选品团队");
+  });
+
+  it("shows the structured return request and lets market take it back", async () => {
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: "选品请求补充市场方向",
+        currentDestination: "selection_return_requested",
+        version: 3,
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        {
+          signal: signals[0]!,
+          evidence: [],
+          selectionReturnBasis: "wrong_direction",
+          selectionReturnReason: "请重新核对目标市场与渠道",
+        },
+      ],
+    ]);
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+    expect(wrapper.text()).toContain("方向错误");
+    expect(wrapper.text()).toContain("请重新核对目标市场与渠道");
+    await wrapper.get(".return-request button").trigger("click");
+    await flushPromises();
+    expect(takeBackSelectionReturn).toHaveBeenCalledWith(
+      signalOneId,
+      expect.objectContaining({
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: 3,
+      }),
+    );
+    expect(wrapper.text()).toContain("已接回");
+
+    await wrapper.get(".return-request button").trigger("click");
+    await flushPromises();
+    expect(takeBackSelectionReturn).toHaveBeenCalledTimes(2);
+    const firstCommand = takeBackSelectionReturn.mock.calls[0]?.[1];
+    const replayCommand = takeBackSelectionReturn.mock.calls[1]?.[1];
+    expect(replayCommand.idempotencyKey).toBe(firstCommand.idempotencyKey);
+    expect(wrapper.text()).toContain("已接回");
+  });
+
+  it("does not render an empty state when a needs-decision signal is selected", async () => {
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.findAll(".empty-workbench")).toHaveLength(0);
+    expect(wrapper.text()).toContain("美国站庭院收纳需求连续三周上升");
+  });
+
+  it("does not invent an insufficient-evidence basis while return details load", async () => {
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: "选品请求补充市场方向",
+        currentDestination: "selection_return_requested",
+        version: 3,
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        {
+          signal: signals[0]!,
+          evidence: [],
+          selectionReturnBasis: null,
+          selectionReturnReason: "请重新核对目标市场与渠道",
+        },
+      ],
+    ]);
+
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.get(".return-request").text()).toContain(
+      "请重新核对目标市场与渠道",
+    );
+    expect(wrapper.get(".return-request").text()).not.toContain("证据不足");
+    expect(wrapper.get(".return-request").text()).not.toContain("方向错误");
   });
 
   it("loads the work reason and separates observed facts from hypotheses", async () => {
     const wrapper = await mountPage();
 
-    expect(listMarketSignals).toHaveBeenCalledTimes(7);
+    expect(listMarketSignals).toHaveBeenCalledTimes(8);
     expect(getMarketSignal).toHaveBeenCalledWith(signalOneId);
     expect(wrapper.text()).toContain("为什么现在处理");
     expect(wrapper.text()).toContain("已观察到");
@@ -127,6 +274,10 @@ describe("MarketSignalsWorkbench", () => {
   it("locks hypothesis until an observed fact exists and verbs field actions", async () => {
     const wrapper = await mountPage(`?signalId=${signalTwoId}`);
 
+    const selectedQueueItem = wrapper.get(".queue-item.selected");
+    expect(selectedQueueItem.text()).toContain("CA · 渠道未填");
+    expect(selectedQueueItem.text()).toContain("依据缺 5 项");
+    expect(selectedQueueItem.text()).not.toContain("不影响先处理");
     expect(wrapper.find('button[aria-label="填写经营判断"]').exists()).toBe(
       false,
     );
@@ -399,6 +550,7 @@ describe("MarketSignalsWorkbench", () => {
     expect(wrapper.get('[role="status"]').text()).toContain(
       "下一责任选品团队（待领取）",
     );
+    expect(wrapper.get('[role="status"]').text()).toContain("尚未填写");
     expect(wrapper.get('[role="status"]').text()).toContain("商品类别待选择");
     expect(wrapper.get('[role="status"]').text()).toContain("来源证据待补");
   });
@@ -408,6 +560,10 @@ describe("MarketSignalsWorkbench", () => {
     listMarketSignals.mockRejectedValue(new Error("经营信号服务暂不可用"));
     const wrapper = await mountPage();
 
+    expect(listProductOpportunities).toHaveBeenCalledWith({
+      responsibilityStatus: "retained_by_market",
+      pageSize: 50,
+    });
     expect(wrapper.get(".operation-error").text()).toContain(
       "经营信号服务暂不可用",
     );
@@ -415,7 +571,7 @@ describe("MarketSignalsWorkbench", () => {
     await wrapper.get(".operation-error button").trigger("click");
     await flushPromises();
 
-    expect(listMarketSignals).toHaveBeenCalledTimes(14);
+    expect(listMarketSignals).toHaveBeenCalledTimes(16);
     expect(wrapper.text()).toContain(signals[0]!.title);
   });
 
@@ -450,9 +606,78 @@ describe("MarketSignalsWorkbench", () => {
       destination: "archived",
       pageSize: 50,
     });
-    expect(listMarketSignals).toHaveBeenCalledTimes(8);
+    expect(listMarketSignals).toHaveBeenCalledTimes(9);
     expect(wrapper.find(".group-error").exists()).toBe(false);
     expect(wrapper.get(".queue-list").text()).toContain("已归档的历史信号");
+  });
+
+  it("stops follow-up and deep-link requests after a grouped 401", async () => {
+    listMarketSignals.mockRejectedValue(
+      new HttpRequestError({
+        kind: "unauthorized",
+        status: 401,
+        message: "登录已失效",
+      }),
+    );
+
+    await mountPage(`?signalId=${signalOneId}`);
+
+    expect(listProductOpportunities).not.toHaveBeenCalled();
+    expect(getMarketSignal).not.toHaveBeenCalled();
+  });
+
+  it("drops a stale responsibility projection without clearing newer loading", async () => {
+    let releaseFirst: (value: unknown) => void = () => undefined;
+    let releaseSecond: (value: unknown) => void = () => undefined;
+    let projectionRequest = 0;
+    listProductOpportunities.mockImplementation(
+      (input: { responsibilityStatus?: string }) => {
+        if (!input.responsibilityStatus) {
+          return Promise.resolve({
+            contractVersion: "product-opportunity-page.v1",
+            items: [],
+            pageSize: 1,
+            totalCount: 0,
+            nextCursor: null,
+          });
+        }
+        projectionRequest += 1;
+        return new Promise((resolve) => {
+          if (projectionRequest === 1) releaseFirst = resolve;
+          else releaseSecond = resolve;
+        });
+      },
+    );
+    const wrapper = await mountPage();
+
+    const reload = (
+      wrapper.vm as unknown as { loadSignals: () => Promise<void> }
+    ).loadSignals();
+    await flushPromises();
+    releaseFirst({
+      contractVersion: "product-opportunity-page.v1",
+      items: [productOpportunity("claimed")],
+      pageSize: 50,
+      totalCount: 1,
+      nextCursor: null,
+    });
+    await flushPromises();
+
+    expect(wrapper.find(".loading-state").exists()).toBe(true);
+    expect(tab(wrapper, "已交选品·待接受").text()).toContain("0");
+
+    releaseSecond({
+      contractVersion: "product-opportunity-page.v1",
+      items: [],
+      pageSize: 50,
+      totalCount: 0,
+      nextCursor: null,
+    });
+    await reload;
+    await flushPromises();
+
+    expect(wrapper.find(".loading-state").exists()).toBe(false);
+    expect(tab(wrapper, "已交选品·待接受").text()).toContain("0");
   });
 
   it("opens an unloaded deep link after in-place route navigation", async () => {
@@ -786,14 +1011,10 @@ describe("MarketSignalsWorkbench", () => {
     document.body.append(host);
     const wrapper = await mountPage("", host);
     const tabs = () => wrapper.findAll('[role="tab"]');
+    const last = tabs().length - 1;
     expect(tabs().map((item) => item.attributes("tabindex"))).toEqual([
       "0",
-      "-1",
-      "-1",
-      "-1",
-      "-1",
-      "-1",
-      "-1",
+      ...Array.from({ length: last }, () => "-1"),
     ]);
     expect(wrapper.get('[role="tabpanel"]').attributes("aria-labelledby")).toBe(
       tabs()[0]!.attributes("id"),
@@ -803,13 +1024,13 @@ describe("MarketSignalsWorkbench", () => {
     expect(tabs()[1]!.attributes("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(tabs()[1]!.element);
     await tabs()[1]!.trigger("keydown", { key: "End" });
-    expect(tabs()[6]!.attributes("aria-selected")).toBe("true");
-    expect(document.activeElement).toBe(tabs()[6]!.element);
-    await tabs()[6]!.trigger("keydown", { key: "ArrowRight" });
+    expect(tabs()[last]!.attributes("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tabs()[last]!.element);
+    await tabs()[last]!.trigger("keydown", { key: "ArrowRight" });
     expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
     await tabs()[0]!.trigger("keydown", { key: "ArrowLeft" });
-    expect(tabs()[6]!.attributes("aria-selected")).toBe("true");
-    await tabs()[6]!.trigger("keydown", { key: "Home" });
+    expect(tabs()[last]!.attributes("aria-selected")).toBe("true");
+    await tabs()[last]!.trigger("keydown", { key: "Home" });
     expect(tabs()[0]!.attributes("aria-selected")).toBe("true");
     expect(tabs()[0]!.attributes("tabindex")).toBe("0");
     wrapper.unmount();
@@ -1100,6 +1321,46 @@ function handoff(
     createdBy: "market-owner",
     createdAt: "2026-09-25T02:00:00.000Z",
     idempotencyKey: "handoff-test",
+  };
+}
+
+function productOpportunity(
+  state: "claimed" | "accepted",
+): ProductOpportunityV1 {
+  const source = marketSignal({
+    signalId: signalOneId,
+    title: "已交选品的加拿大机会",
+    currentDestination: "handed_off",
+    pendingFieldCodes: [],
+  });
+  const accepted = state === "accepted";
+  return {
+    handoff: handoff(source, "验证加拿大机会是否值得立项"),
+    supplementedFieldCodes: [],
+    intakeState: state,
+    intakeVersion: accepted ? 2 : 1,
+    assignedActorId: "selector-1",
+    responsibility: {
+      status: accepted ? "transferred_to_selection" : "retained_by_market",
+      responsibleTeamCode: accepted
+        ? "product_selection"
+        : "market_intelligence",
+      handedOffAt: "2026-10-04T00:00:00.000Z",
+      assignedActorId: "selector-1",
+      claimedAt: "2026-10-04T00:10:00.000Z",
+      acceptedAt: accepted ? "2026-10-04T00:20:00.000Z" : null,
+    },
+    latestSelectionDecision: accepted
+      ? {
+          outcome: "defer",
+          completion: "completed",
+          currentDestination: "deferred",
+          responsibleActorId: "selector-1",
+          reason: "等待下一轮成本验证",
+          returnBasis: null,
+          decidedAt: "2026-10-04T00:30:00.000Z",
+        }
+      : null,
   };
 }
 

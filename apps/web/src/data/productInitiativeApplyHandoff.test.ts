@@ -34,6 +34,15 @@ function opportunity(
     intakeVersion: 1,
     assignedActorId: "selector",
     supplementedFieldCodes: [],
+    responsibility: {
+      status: "transferred_to_selection",
+      responsibleTeamCode: "product_selection",
+      handedOffAt: "2026-09-27T00:00:00.000Z",
+      assignedActorId: "selector",
+      claimedAt: "2026-09-27T00:05:00.000Z",
+      acceptedAt: "2026-09-27T00:10:00.000Z",
+    },
+    latestSelectionDecision: null,
   };
 }
 

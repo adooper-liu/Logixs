@@ -114,12 +114,12 @@ function isSupplemented(code: MarketSignalPendingFieldCodeV1): boolean {
       >
     </section>
     <section v-if="item.handoff.pendingFieldCodes.length" class="pending">
-      <b>仍待补</b>
+      <b>交接时未填</b>
       <span v-for="code in item.handoff.pendingFieldCodes" :key="code">{{
         labels[code] || code
       }}</span>
       <small
-        >合并信号后补后仍缺这些；不阻止领取和评估。已后补项不会出现在此。</small
+        >这些项来自交接快照，选品不在此处补录；信号侧已后补项不会出现在此。</small
       >
     </section>
     <section

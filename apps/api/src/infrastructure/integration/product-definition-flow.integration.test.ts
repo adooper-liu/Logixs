@@ -25,7 +25,9 @@ import {
   prepareProductDefinitionWrite,
 } from "../../modules/product-selection/domain/product-definition";
 import { prepareProductInitiativeDecision } from "../../modules/product-selection/domain/product-initiative";
+import { prepareOpportunityIntake } from "../../modules/product-selection/domain/product-opportunity";
 import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
+import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
 import { PrismaProductDefinitionRepository } from "../../modules/product-selection/infrastructure/prisma-product-definition.repository";
 
 const BASE_DATABASE_URL =
@@ -46,6 +48,7 @@ const REVIEW_POINT_CODES = [
 let prisma: PrismaClient;
 let definitions: PrismaProductDefinitionRepository;
 let initiatives: PrismaProductInitiativeRepository;
+let productOpportunities: PrismaProductOpportunityRepository;
 let marketSignals: PrismaMarketSignalRepository;
 const tenantId = randomUUID();
 
@@ -73,6 +76,9 @@ beforeAll(async () => {
   await prisma.$connect();
   definitions = new PrismaProductDefinitionRepository(prisma as never);
   initiatives = new PrismaProductInitiativeRepository(prisma as never);
+  productOpportunities = new PrismaProductOpportunityRepository(
+    prisma as never,
+  );
   marketSignals = new PrismaMarketSignalRepository(prisma as never);
 }, 180_000);
 
@@ -428,6 +434,11 @@ async function seedHandoff(): Promise<{ handoffId: string }> {
       },
     ),
   });
+  await acceptOpportunity(
+    productOpportunities,
+    tenantId,
+    decided.handoff!.handoffId,
+  );
   const approved = await initiatives.persistDecision({
     tenantId,
     handoffId: decided.handoff!.handoffId,
@@ -457,6 +468,44 @@ async function seedHandoff(): Promise<{ handoffId: string }> {
     command: prepareProductDefinitionClaim(OWNER, `claim-${handoff.id}`),
   });
   return { handoffId: handoff.id };
+}
+
+async function acceptOpportunity(
+  repository: PrismaProductOpportunityRepository,
+  owner: string,
+  handoffId: string,
+): Promise<void> {
+  const actorId = "selector-1";
+  await repository.appendIntake({
+    tenantId: owner,
+    handoffId,
+    actorId,
+    command: prepareOpportunityIntake(
+      { version: 0, state: "queued", assignedActorId: null },
+      actorId,
+      {
+        contractVersion: "product-opportunity-intake.v1",
+        action: "claim",
+        expectedIntakeVersion: 0,
+        idempotencyKey: `claim:${handoffId}`,
+      },
+    ),
+  });
+  await repository.appendIntake({
+    tenantId: owner,
+    handoffId,
+    actorId,
+    command: prepareOpportunityIntake(
+      { version: 1, state: "claimed", assignedActorId: actorId },
+      actorId,
+      {
+        contractVersion: "product-opportunity-intake.v1",
+        action: "accept",
+        expectedIntakeVersion: 1,
+        idempotencyKey: `accept:${handoffId}`,
+      },
+    ),
+  });
 }
 
 function withSchema(databaseUrl: string, schema: string): string {

@@ -674,6 +674,7 @@ describe("market opportunity persistence flow", () => {
           signalId: returned.record.id,
           actorId: "selector",
           returnReason: "交叉路径同键竞态",
+          returnBasis: "wrong_direction",
           idempotencyKey,
         }),
       ),

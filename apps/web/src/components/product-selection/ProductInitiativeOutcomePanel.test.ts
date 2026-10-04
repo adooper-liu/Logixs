@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
+import type { ProductInitiativeReturnBasisV1 } from "@logix/contracts";
 import type {
   ProductInitiativeGap,
   ProductInitiativeOutcome,
@@ -10,6 +11,7 @@ interface PanelProps {
   outcome: ProductInitiativeOutcome;
   objective: string;
   reason: string;
+  returnBasis: ProductInitiativeReturnBasisV1 | "";
   gaps: ProductInitiativeGap[];
   busy: boolean;
   decided: boolean;
@@ -106,14 +108,32 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(wrapper.emitted("submit")).toEqual([["defer"]]);
   });
 
-  it("填了原因就说明本次判断会关闭", () => {
+  it("退回没选依据时不能提交，即使已经写了原因", async () => {
     const wrapper = mountPanel({
       outcome: "return_to_market",
       reason: "证据不足以判断是否存在需求",
     });
 
+    const button = wrapper.get(".outcome-submit");
+    expect(wrapper.get(".outcome-hint").text()).toContain("请选择退回依据");
+    expect(button.text()).toContain("请选择退回依据");
+    expect(button.attributes("disabled")).toBeDefined();
+    await button.trigger("click");
+    expect(wrapper.emitted("submit")).toBeUndefined();
+  });
+
+  it("选了依据并写了原因后，说明本次退回请求会关闭", () => {
+    const wrapper = mountPanel({
+      outcome: "return_to_market",
+      reason: "需要补渠道销量",
+      returnBasis: "insufficient_evidence",
+    });
+
     expect(wrapper.get(".outcome-hint").text()).toContain("关闭");
-    expect(wrapper.get(".outcome-submit").text()).toContain("退回经营团队");
+    expect(wrapper.get(".outcome-submit").text()).toContain("请求退回市场");
+    expect(
+      wrapper.get(".outcome-submit").attributes("disabled"),
+    ).toBeUndefined();
   });
 
   it("目标结果与原因都由上层持有，组件只透传输入", async () => {
@@ -177,6 +197,7 @@ function defaultProps(): PanelProps {
     outcome: "approve",
     objective: "",
     reason: "",
+    returnBasis: "",
     gaps: [],
     busy: false,
     decided: false,

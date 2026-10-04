@@ -16,6 +16,10 @@ type Transaction = Prisma.TransactionClient;
 type HandoffRow = Prisma.MarketOpportunityHandoffGetPayload<
   Record<string, never>
 >;
+type IntakeRow = Prisma.ProductOpportunityIntakeGetPayload<
+  Record<string, never>
+>;
+type InitiativeRow = Prisma.ProductInitiativeGetPayload<Record<string, never>>;
 
 @Injectable()
 export class PrismaProductOpportunityRepository implements ProductOpportunityRepository {
@@ -25,50 +29,32 @@ export class PrismaProductOpportunityRepository implements ProductOpportunityRep
     input: Parameters<ProductOpportunityRepository["list"]>[0],
   ): Promise<ProductOpportunityRecord[]> {
     const rows = await this.prisma.marketOpportunityHandoff.findMany({
-      where: {
-        tenantId: input.tenantId,
-        recipientQueueCode: "product_selection",
-        isCurrent: true,
-        ...(input.after
-          ? {
-              OR: [
-                { createdAt: { lt: input.after.createdAt } },
-                {
-                  AND: [
-                    { createdAt: input.after.createdAt },
-                    { id: { lt: input.after.id } },
-                  ],
-                },
-              ],
-            }
-          : {}),
-      },
+      where: opportunityWhere(input),
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: input.take,
     });
-    const intakes = await this.prisma.productOpportunityIntake.findMany({
-      where: {
-        tenantId: input.tenantId,
-        handoffId: { in: rows.map(({ id }) => id) },
-      },
-      orderBy: [{ version: "desc" }, { id: "desc" }],
-    });
-    const latestByHandoff = new Map<string, (typeof intakes)[number]>();
-    for (const intake of intakes) {
-      if (!latestByHandoff.has(intake.handoffId)) {
-        latestByHandoff.set(intake.handoffId, intake);
-      }
-    }
-    return rows.map((row) => {
-      const intake = latestByHandoff.get(row.id);
-      return {
-        handoff: mapHandoff(row),
-        intakeState: intake
-          ? (intake.state as ProductOpportunityRecord["intakeState"])
-          : "queued",
-        intakeVersion: intake?.version ?? 0,
-        assignedActorId: intake?.assignedActorId ?? null,
-      };
+    const ids = rows.map(({ id }) => id);
+    const [intakes, initiatives] = await Promise.all([
+      this.prisma.productOpportunityIntake.findMany({
+        where: { tenantId: input.tenantId, handoffId: { in: ids } },
+        orderBy: [{ version: "asc" }, { id: "asc" }],
+      }),
+      this.prisma.productInitiative.findMany({
+        where: { tenantId: input.tenantId, handoffId: { in: ids } },
+      }),
+    ]);
+    return rows.map((row) =>
+      toRecord(
+        row,
+        intakes.filter(({ handoffId }) => handoffId === row.id),
+        initiatives.find(({ handoffId }) => handoffId === row.id) ?? null,
+      ),
+    );
+  }
+
+  count(input: Parameters<ProductOpportunityRepository["count"]>[0]) {
+    return this.prisma.marketOpportunityHandoff.count({
+      where: opportunityWhere(input),
     });
   }
 
@@ -80,19 +66,16 @@ export class PrismaProductOpportunityRepository implements ProductOpportunityRep
       where: { id: handoffId, tenantId },
     });
     if (!handoff) return null;
-    if (!handoff.isCurrent) {
-      return {
-        handoff: mapHandoff(handoff),
-        intakeState: "superseded",
-        intakeVersion: 0,
-        assignedActorId: null,
-      };
-    }
-    const intake = await this.prisma.productOpportunityIntake.findFirst({
-      where: { tenantId, handoffId },
-      orderBy: { version: "desc" },
-    });
-    return toRecord(handoff, intake ?? null);
+    const [intakes, initiative] = await Promise.all([
+      this.prisma.productOpportunityIntake.findMany({
+        where: { tenantId, handoffId },
+        orderBy: [{ version: "asc" }, { id: "asc" }],
+      }),
+      this.prisma.productInitiative.findFirst({
+        where: { tenantId, handoffId },
+      }),
+    ]);
+    return toRecord(handoff, intakes, initiative, !handoff.isCurrent);
   }
 
   appendIntake(
@@ -144,7 +127,7 @@ export class PrismaProductOpportunityRepository implements ProductOpportunityRep
       if (currentVersion !== input.command.expectedVersion) {
         conflict("PRODUCT_OPPORTUNITY_VERSION_CONFLICT");
       }
-      const created = await tx.productOpportunityIntake.create({
+      await tx.productOpportunityIntake.create({
         data: {
           id: randomUUID(),
           tenantId: input.tenantId,
@@ -159,7 +142,7 @@ export class PrismaProductOpportunityRepository implements ProductOpportunityRep
         },
       });
       return {
-        record: toRecord(handoff, created),
+        record: await readOwnedOpportunity(tx, input.tenantId, input.handoffId),
         duplicate: false,
       };
     });
@@ -177,28 +160,86 @@ async function readOwnedOpportunity(
   if (!handoff) {
     throw new ProductOpportunityNotFoundError("PRODUCT_OPPORTUNITY_NOT_FOUND");
   }
-  const intake = await tx.productOpportunityIntake.findFirst({
-    where: { tenantId, handoffId },
-    orderBy: { version: "desc" },
-  });
-  return toRecord(handoff, intake ?? null);
+  const [intakes, initiative] = await Promise.all([
+    tx.productOpportunityIntake.findMany({
+      where: { tenantId, handoffId },
+      orderBy: [{ version: "asc" }, { id: "asc" }],
+    }),
+    tx.productInitiative.findFirst({ where: { tenantId, handoffId } }),
+  ]);
+  return toRecord(handoff, intakes, initiative, !handoff.isCurrent);
 }
 
 function toRecord(
   handoff: HandoffRow,
-  intake: {
-    state: string;
-    version: number;
-    assignedActorId: string | null;
-  } | null,
+  intakes: IntakeRow[],
+  initiative: InitiativeRow | null,
+  superseded = false,
 ): ProductOpportunityRecord {
+  const intake = intakes.at(-1);
+  const claimed = intakes.find(({ state }) => state === "claimed");
+  const accepted = intakes.find(({ state }) => state === "accepted");
   return {
     handoff: mapHandoff(handoff),
-    intakeState: intake
-      ? (intake.state as ProductOpportunityRecord["intakeState"])
-      : "queued",
+    intakeState: superseded
+      ? "superseded"
+      : intake
+        ? (intake.state as ProductOpportunityRecord["intakeState"])
+        : "queued",
     intakeVersion: intake?.version ?? 0,
-    assignedActorId: intake?.assignedActorId ?? null,
+    assignedActorId: superseded ? null : (intake?.assignedActorId ?? null),
+    claimedAt: claimed?.actedAt ?? null,
+    acceptedAt: accepted?.actedAt ?? null,
+    latestSelectionDecision: initiative
+      ? {
+          outcome: initiative.outcome as NonNullable<
+            ProductOpportunityRecord["latestSelectionDecision"]
+          >["outcome"],
+          completion: initiative.completionState as NonNullable<
+            ProductOpportunityRecord["latestSelectionDecision"]
+          >["completion"],
+          currentDestination: initiative.currentDestination as NonNullable<
+            ProductOpportunityRecord["latestSelectionDecision"]
+          >["currentDestination"],
+          responsibleActorId: initiative.responsibleActorId,
+          reason: initiative.reason,
+          returnBasis: initiative.returnBasis as NonNullable<
+            ProductOpportunityRecord["latestSelectionDecision"]
+          >["returnBasis"],
+          decidedAt: initiative.updatedAt,
+        }
+      : null,
+  };
+}
+
+function opportunityWhere(
+  input: Parameters<ProductOpportunityRepository["count"]>[0] & {
+    after?: { createdAt: Date; id: string };
+  },
+): Prisma.MarketOpportunityHandoffWhereInput {
+  return {
+    tenantId: input.tenantId,
+    recipientQueueCode: "product_selection",
+    isCurrent: true,
+    ...(input.signalId ? { signalId: input.signalId } : {}),
+    ...(input.responsibilityStatus === "retained_by_market"
+      ? { intakes: { none: { state: "accepted" } } }
+      : input.responsibilityStatus === "transferred_to_selection"
+        ? { intakes: { some: { state: "accepted" } } }
+        : {}),
+    ...(input.after
+      ? {
+          OR: [
+            { createdAt: { lt: input.after.createdAt } },
+            {
+              AND: [
+                { createdAt: input.after.createdAt },
+                { id: { lt: input.after.id } },
+              ],
+            },
+          ],
+        }
+      : {}),
   };
 }
 

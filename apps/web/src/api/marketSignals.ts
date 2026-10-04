@@ -6,6 +6,7 @@ import type {
   MarketSignalPageV1,
   MarketSignalUpdateCommandV1,
   MarketSignalV1,
+  MarketSelectionReturnTakebackCommandV1,
   ProductDefinitionReleaseCommandV1,
   ProductIdentityDraftCommandV1,
   ProductIdentityV1,
@@ -88,6 +89,20 @@ export async function decideMarketSignal(
   );
 }
 
+export async function takeBackSelectionReturn(
+  signalId: string,
+  command: MarketSelectionReturnTakebackCommandV1,
+): Promise<ProductInitiativeV1> {
+  return requestJson<ProductInitiativeV1>(
+    `/api/market-signals/${encodeURIComponent(signalId)}/selection-return/takeback`,
+    {
+      method: "POST",
+      body: command,
+      fallback: "暂时无法接回选品退回请求",
+    },
+  );
+}
+
 export async function registerMarketSignalEvidence(input: {
   signalId: string;
   sourceName: string;
@@ -125,9 +140,24 @@ export async function registerMarketSignalEvidence(input: {
   });
 }
 
-export async function listProductOpportunities(): Promise<ProductOpportunityPageV1> {
+export async function listProductOpportunities(
+  input: {
+    cursor?: string;
+    pageSize?: number;
+    signalId?: string;
+    responsibilityStatus?: "retained_by_market" | "transferred_to_selection";
+  } = {},
+): Promise<ProductOpportunityPageV1> {
+  const params = new URLSearchParams({
+    pageSize: String(input.pageSize ?? 100),
+  });
+  if (input.cursor) params.set("cursor", input.cursor);
+  if (input.signalId) params.set("signalId", input.signalId);
+  if (input.responsibilityStatus) {
+    params.set("responsibilityStatus", input.responsibilityStatus);
+  }
   return requestJson<ProductOpportunityPageV1>(
-    "/api/product-opportunities?pageSize=100",
+    `/api/product-opportunities?${params}`,
     { fallback: "暂时无法加载待领取机会" },
   );
 }

@@ -20,15 +20,16 @@ import {
 } from "../domain/market-signal.repository";
 import { presentMarketSignal } from "./market-signal.presenter";
 
-const DESTINATIONS = new Set<MarketSignalDestinationV1>([
-  "needs_decision",
-  "watching",
-  "handed_off",
-  "dismissed",
-  "returned_from_selection",
-  "voided",
-  "archived",
-]);
+const DESTINATIONS = {
+  needs_decision: true,
+  watching: true,
+  handed_off: true,
+  dismissed: true,
+  selection_return_requested: true,
+  returned_from_selection: true,
+  voided: true,
+  archived: true,
+} satisfies Record<MarketSignalDestinationV1, true>;
 
 @Injectable()
 export class ListMarketSignalsService {
@@ -102,7 +103,7 @@ function parseDestination(
   value: string | undefined,
 ): MarketSignalDestinationV1 | undefined {
   if (value === undefined) return undefined;
-  if (!DESTINATIONS.has(value as MarketSignalDestinationV1)) {
+  if (!Object.hasOwn(DESTINATIONS, value)) {
     invalid("destination");
   }
   return value as MarketSignalDestinationV1;

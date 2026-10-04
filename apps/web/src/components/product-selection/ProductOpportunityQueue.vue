@@ -53,8 +53,8 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
       <span class="state">{{ stateLabel(item.intakeState) }}</span>
       <strong>{{ item.handoff.title }}</strong>
       <span
-        >{{ item.handoff.marketCode || "市场待补" }} ·
-        {{ item.handoff.channelCode || "渠道待补" }}</span
+        >{{ item.handoff.marketCode || "市场未填" }} ·
+        {{ item.handoff.channelCode || "渠道未填" }}</span
       >
       <!--
         这一行是队列上唯一能分出"看过但先放着"和"还没看过"的地方：

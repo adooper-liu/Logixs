@@ -26,8 +26,10 @@ import {
 } from "../../modules/product-selection/domain/product-definition";
 import { prepareProductInitiativeClaim } from "../../modules/product-selection/domain/product-initiative-claim";
 import { prepareProductInitiativeDecision } from "../../modules/product-selection/domain/product-initiative";
+import { prepareOpportunityIntake } from "../../modules/product-selection/domain/product-opportunity";
 import { PrismaProductDefinitionRepository } from "../../modules/product-selection/infrastructure/prisma-product-definition.repository";
 import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
+import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
 import {
   prepareProductIdentityDraft,
   prepareSellableSkuRelease,
@@ -54,6 +56,7 @@ let prisma: PrismaClient;
 let identities: PrismaProductIdentityRepository;
 let definitions: PrismaProductDefinitionRepository;
 let initiatives: PrismaProductInitiativeRepository;
+let productOpportunities: PrismaProductOpportunityRepository;
 let marketSignals: PrismaMarketSignalRepository;
 const tenantId = randomUUID();
 
@@ -82,6 +85,9 @@ beforeAll(async () => {
   identities = new PrismaProductIdentityRepository(prisma as never);
   definitions = new PrismaProductDefinitionRepository(prisma as never);
   initiatives = new PrismaProductInitiativeRepository(prisma as never);
+  productOpportunities = new PrismaProductOpportunityRepository(
+    prisma as never,
+  );
   marketSignals = new PrismaMarketSignalRepository(prisma as never);
 }, 180_000);
 
@@ -451,6 +457,11 @@ async function seedRelease(owner = tenantId): Promise<string> {
       },
     ),
   });
+  await acceptOpportunity(
+    productOpportunities,
+    owner,
+    decided.handoff!.handoffId,
+  );
   const approved = await initiatives.persistDecision({
     tenantId: owner,
     handoffId: decided.handoff!.handoffId,
@@ -547,6 +558,44 @@ async function seedRelease(owner = tenantId): Promise<string> {
     orderBy: { version: "desc" },
   });
   return releaseRow.id;
+}
+
+async function acceptOpportunity(
+  repository: PrismaProductOpportunityRepository,
+  owner: string,
+  handoffId: string,
+): Promise<void> {
+  const actorId = "selector-1";
+  await repository.appendIntake({
+    tenantId: owner,
+    handoffId,
+    actorId,
+    command: prepareOpportunityIntake(
+      { version: 0, state: "queued", assignedActorId: null },
+      actorId,
+      {
+        contractVersion: "product-opportunity-intake.v1",
+        action: "claim",
+        expectedIntakeVersion: 0,
+        idempotencyKey: `claim:${handoffId}`,
+      },
+    ),
+  });
+  await repository.appendIntake({
+    tenantId: owner,
+    handoffId,
+    actorId,
+    command: prepareOpportunityIntake(
+      { version: 1, state: "claimed", assignedActorId: actorId },
+      actorId,
+      {
+        contractVersion: "product-opportunity-intake.v1",
+        action: "accept",
+        expectedIntakeVersion: 1,
+        idempotencyKey: `accept:${handoffId}`,
+      },
+    ),
+  });
 }
 
 function withSchema(databaseUrl: string, schema: string): string {

@@ -1,0 +1,318 @@
+---
+status: review
+branch: feat/market-selection-handoff-v1
+owner: cursor
+writer: codex
+risk: high
+dependsOn: []
+writeScopes:
+  - doc/cross-border-supply-chain/08-role-workbenches.md
+  - docs/planning/tasks/market-selection-handoff-v1.md
+  - docs/planning/tasks/market-signals-opportunity-radar-v1.md
+  - packages/contracts/schemas/v1/market-opportunity.schema.json
+  - packages/contracts/schemas/v1/product-initiative.schema.json
+  - packages/contracts/fixtures/v1/schema-instances.json
+  - packages/contracts/generated/contracts.d.ts
+  - database/schema.prisma
+  - database/migrations/**
+  - database/dictionary/dictionary.annotations.json
+  - database/dictionary/DATA_DICTIONARY.generated.md
+  - database/dictionary/NATIVE_OBJECTS.generated.md
+  - database/dictionary/database-data-dictionary.xlsx
+  - apps/api/src/modules/market-intelligence/**
+  - apps/api/src/modules/product-selection/**
+  - apps/api/src/infrastructure/integration/market-opportunity-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/market-selection-handoff-migration-upgrade.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-definition-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-identity-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-npi-intake-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/supplier-nomination-flow.integration.test.ts
+  - apps/web/src/api/marketSignals.ts
+  - apps/web/src/api/marketSignals.test.ts
+  - apps/web/src/composables/useMarketSignalWorkbench.ts
+  - apps/web/src/composables/useProductOpportunityWorkbench.ts
+  - apps/web/src/composables/useProductInitiativeDecision.ts
+  - apps/web/src/composables/useProductInitiativeDecision.test.ts
+  - apps/web/src/data/marketSignalScenarios.ts
+  - apps/web/src/data/workbenchNetwork.ts
+  - apps/web/src/data/workbenchNetwork.test.ts
+  - apps/web/src/data/productInitiativeQueue.ts
+  - apps/web/src/data/productInitiativeQueue.test.ts
+  - apps/web/src/data/marketSignalEvidenceFlow.test.ts
+  - apps/web/src/data/productInitiativeApplyHandoff.test.ts
+  - apps/web/src/components/market-signals/**
+  - apps/web/src/components/product-selection/**
+  - apps/web/src/views/MarketSignalsWorkbench.vue
+  - apps/web/src/views/MarketSignalsWorkbench.test.ts
+  - apps/web/src/views/ProductSelectionWorkbench.vue
+  - apps/web/src/views/ProductSelectionWorkbench.test.ts
+  - apps/web/e2e/workbench-network.spec.ts
+  - apps/web/e2e/auth-session.spec.ts
+  - AGENTS.md
+  - docs/planning/tasks/_template.md
+  - docs/planning/tasks/agent-role-mapping-v1.md
+exclusiveLocks:
+  - business-policy:ms-d04
+  - repository-governance
+  - database-schema
+  - database-migrations
+  - database-dictionary
+  - generated:database-catalog
+  - public-contract:market-opportunity-v1
+  - public-contract:product-initiative-v1
+  - generated:contracts
+sharedIntegrationScopes:
+  - database/schema.prisma
+  - database/migrations/**
+  - packages/contracts/generated/contracts.d.ts
+  - apps/web/e2e/workbench-network.spec.ts
+authorityRefs:
+  - AGENTS.md
+  - doc/cross-border-supply-chain/08-role-workbenches.md
+  - docs/planning/tasks/market-signals-opportunity-radar-v1.md
+  - doc/cross-border-supply-chain/wisdom-baseline/市场与经营信号.md
+  - doc/cross-border-supply-chain/wisdom-baseline/选品立项.md
+  - doc/cross-border-supply-chain/wisdom-baseline/全局.md
+---
+
+# 任务：市场信号 → 选品立项交接责任 V1
+
+## 目标
+
+让市场信号和选品立项之间“谁对机会负责”在任一时刻只有一个答案，并由服务端执行：领取不转责，接受才转责；接受后选品只能请求退回，市场接回后责任才转回；选品自身判断不成立时在选品侧暂缓或不立项，不退给市场代办。业务权威见 `doc/08` 4.1.1（MS-D04）。
+
+本任务是 `market_signals` 与 `product_selection` 的连续业务队列：三个切片共用本分支和一个最终 PR，每片完成即按本 brief 预授权进入下一片，不另开状态 PR。
+
+## 边界 / 不做
+
+- 不实现退回被市场拒绝、选品撤回退回请求、接受前选品判定机会包不可行动，也不拆分领取/接受/正式决定的能力码；这些在 `doc/08` 4.1.1 明确未定，只阻塞依赖它们的动作。
+- 不改变 NPI 回程（`returned_from_npi`）、立项门槛、立项后交 NPI 的语义。
+- 不实现 GC-012 共享交接契约（G1 已暂停）；本任务只在两台工作台的领域内实现，状态名对齐 GC-012 spec 的 `return_requested` / `return_accepted` 词汇，便于将来收编，不建共享平台。
+- 不新增可信机会、评分、KPI 或真实样本结论；合成演练不冒充 WB-B10。
+- 安全不变量沿用：默认拒绝、租户隔离、服务端从认证身份绑定 actor、未知值拒绝；本任务继续使用 `planning.read` / `planning.draft`，不新增角色。
+
+## 执行切片与代理交接
+
+| 项目     | 内容                                                                                                                                          |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 基线     | 见下发的 `TASK` 行；各切片在同一分支上连续提交                                                                                                |
+| 执行角色 | 实现执行器：Codex（GPT-5.6）                                                                                                                  |
+| 复审     | 独立复审：Codex（GPT-5.6）新开只读会话。`6a221ca2` 的 Opus 复审已完成；其后增量按负责人 2026-10-04 定案交 Codex                               |
+| 写入范围 | frontmatter `writeScopes`；`doc/08` 与两份 brief 只由主代理写                                                                                 |
+| 禁止范围 | NPI 回程与产品定义语义、`apps/api/src/modules/product-selection/**` 中 NPI/产品定义文件的业务行为、授权控制面、共享 UI 门面、GC-012 目录/契约 |
+| 提交     | 授权实现执行器在本分支按切片形成单一主题提交，不推送、不建 PR、不合并、不改 brief 状态                                                        |
+| 停止条件 | 每片完成后返回 `HANDOFF`，state 只能 `ready-for-review` 或 `blocked`；5173 等端口被占用时返回 `blocked`，不得终止未获授权进程                 |
+
+### 切片 `S1-return-request-takeback`：接受前置 + 退回请求 + 市场接回
+
+岗位结果：选品只能对已接受的机会作决定；退回变成“请求 → 市场接回”两步，责任在接回时才转回；接回后同一信号可再验证并再次交接出新版本。
+
+1. **选品决定前置**：立项、暂缓、不立项、请求退回的新写入，要求该机会包当前 intake 为 `accepted`；否则稳定冲突 `PRODUCT_INITIATIVE_NOT_ACCEPTED`。存量已有判断的记录不改写；对它们的后续新写入同样执行前置（可先领取再接受，路径已存在）。
+2. **请求退回**：`return_to_market` 新写入必须带结构化 `returnBasis`（仅 `insufficient_evidence` 证据不足 / `wrong_direction` 方向错误，来源 `doc/08` 4.1 与 4.1.1）和 `returnReason`（市场需要补什么）。缺任一项沿用现有“待补、不关闭”规则；未知 basis 失败关闭。立项记录进入新去向 `return_requested`，责任仍是选品；请求期间选品不得再作其他决定（`PRODUCT_INITIATIVE_RETURN_PENDING`）。
+3. **市场侧待接回**：同一事务内，信号追加不可变 `selection_return_request` 判断并进入新去向 `selection_return_requested`；不再在请求时直接写 `returned_from_selection`。
+4. **市场接回**：新增市场动作“接回”（`planning.draft`，租户内，`expectedSignalVersion` + 幂等键）。同一事务内追加现有 `selection_return` 判断、信号转 `returned_from_selection`、立项转 `returned_to_market`；任一侧版本不符整体失败，不留半边状态。
+5. **恢复**：接回后沿用现有观察/交接动作；再次交接生成新的机会包版本，旧版本 `isCurrent=false` 且旧立项、旧判断不改写。只补自动化证明，不新设动作。
+6. **迁移**：追加迁移，放宽两张表去向/判断类型 CHECK、加入 `return_basis`（可空、受 CHECK 约束）；存量 `returned_to_market` / `returned_from_selection` 行保持合法。附空库与旧版本升级集成测试。
+7. **界面**：选品“退回市场”改为“请求退回市场”，必须选择“证据不足 / 方向错误”并写“市场需要补什么”；旁注“利润、供应或组合不成立请选暂缓或不立项”。请求后显示“等待市场接回”。市场队列新增“选品请求退回”分组，详情显示退回依据与需补内容，主动作“接回”；接回回执后重读服务端结果，409 重读并保留可恢复反馈。
+8. **验证命令**：两个模块 domain/unit 测试；`market-opportunity-flow`、`product-initiative-flow` 与新迁移升级 PostgreSQL 集成测试；`pnpm --filter @logix/contracts` 契约检查与生成物一致；dictionary 检查；受影响 Web 单测；`workbench-network.spec.ts` 中市场 ↔ 选品退回路径 E2E；受影响模块 lint/typecheck。不跑完整 `validate`。
+
+### 切片 `S2-responsibility-projection`：领取不转责，接受才退出（S1 通过即预授权）
+
+岗位结果：市场能看见“已交给选品但尚未被接受”的机会仍是自己的结果责任，接受后自动离开待办，并持续看到选品反馈。
+
+1. 市场队列把“已交选品·待接受”（当前交接 intake 为 `queued` 或 `claimed`）列为市场待跟进，显示领取人与领取时间、交出时长；`accepted` 后离开市场待办。由服务端从 intake 事实派生投影，不新增可写状态。
+2. 信号详情显示选品反馈（接受、立项/暂缓/不立项、请求退回、接回）的时间与结果，只读，来源为选品侧事实；不复制选品数据为第二份权威。
+3. 跨模块读取经现有 Port，不跨包引用内部路径；分页、稳定排序和租户隔离沿用。
+4. 验证：领域投影单测、PostgreSQL 集成（queued/claimed/accepted 三态与跨租户反例）、Web 单测和一条 E2E。
+5. S1 验收遗留（主代理 accepted）：接回命令的 `contractVersion` 校验目前在 `PrismaProductInitiativeRepository.takeBackSelectionReturn` 内，移到领域或 Application 层的命令校验（与 `prepareProductInitiativeDecision` 同一模式），Repository 只做持久化；补一条错误版本被拒的单测。
+
+### 切片 `S2b-pending-wording`：队列与回执去“待补”催办（S2 通过即预授权）
+
+岗位结果：市场和选品在队列、回执上看到的是“哪项没填”的事实，而不是状态当文案的催办；“待补”只在依据区进度头出现一次（`docs/product/WORKBENCH_VISUAL_FLOW_REDESIGN.md` §1 T2、§6.3 第 1 条、§8.1，及 §4.2 禁止“仍待补，不影响先处理”）。依据区本体已由 #84 完成，本片只清剩余处。
+
+0. S2 遗留（主代理 accepted）：`MarketSelectionFeedback.vue` 的 `margin-top: 2px` 未通过 `repo:check` 令牌纪律，改用 `var(--space-*)` 令牌；本片交回前必须运行 `node scripts/check-repository.mjs` 并通过。
+1. `MarketSignalQueue.vue`：活跃态缺市场/渠道时与关闭态一致写“市场未填 / 渠道未填”；删除“仍待补 N 项，不影响先处理”，改为中性的“依据缺 N 项”。
+2. `MarketSignalOperationReceipt.vue`：回执里的“仍待补”改为“尚未填写”，列出项不变。
+3. `ProductOpportunityQueue.vue`：“市场待补 / 渠道待补”改为“市场未填 / 渠道未填”。
+4. `ProductOpportunityDetail.vue`：“仍待补”改为“交接时未填”，说明这些项来自交接快照，选品不在此处补录。
+5. 只改文案与对应单测/E2E 断言，不改服务端、契约或缺口计算；验证为受影响 Web 单测、`workbench-network.spec.ts` 中相关断言和 Web lint/typecheck，并在 `apps/web/src` 内搜索不再出现“仍待补”“市场待补”“渠道待补”。
+6. 主代理扩范围（S2b 首次交回 blocked 后 accepted）：`apps/web/src/data/workbenchNetwork.ts` 市场台 `missingHandling` 说明同步新口径——队列写“依据缺 N 项”而非“仍待补 N 项，不影响先处理”，交给选品时未填项在选品侧显示为“交接时未填”；只改该说明文字，不改阶段、路由、关系或状态；如 `workbenchNetwork.test.ts` 断言该文字则同步。`gc012-g0-catalog-v1` 已 `done`，无在途任务写该文件。
+
+### 切片 `S2c-downstream-fixtures`：下游集成测试种子补“接受”（收口门禁发现，主代理 accepted）
+
+岗位结果：不改变任何业务行为；让下游 NPI、产品定义、产品身份、寻源的集成测试按 MS-D04 的真实路径（领取 → 接受 → 决定）准备数据，证明 S1 的接受前置没有打断下游流程。
+
+1. 收口 `pnpm validate`（基线 `6a221ca2`）中 `product-definition-flow`、`product-identity-flow`、`product-npi-intake-flow`、`supplier-nomination-flow` 四个集成文件共 38 条以 `PRODUCT_INITIATIVE_NOT_ACCEPTED` 失败：其种子直接 `persistDecision`，未先领取并接受 intake。
+2. 只改这四个文件的种子：在决定前按 `product-initiative-flow.integration.test.ts` `seedOpportunity` 的同一方式完成领取与接受（服务端命令或仓储正式路径，不直接改表绕过规则）；若存在共享种子助手，改助手并在交接中说明。
+3. 不改生产代码、断言语义或跳过用例；如发现生产路径（非测试）同样绕过接受，立即 `blocked` 回报。
+4. 验证：`pnpm test:integration -- product-definition-flow product-identity-flow product-npi-intake-flow supplier-nomination-flow product-initiative-flow market-opportunity-flow`（`apps/api`），以及受影响文件的 lint/format；不跑完整 `validate`。前端无变化（纯测试种子），交接中写明。
+
+### 切片 `S2d-review-fixes`：独立复审 finding 修复（S2c 通过即预授权）
+
+来源：fresh Opus 独立复审（基线 `6a221ca2`）`changes-requested`，主代理 `logix-disposition/v1` 裁决如下；只有本节列出的 accepted 项进入实现。
+
+| Finding | 严重度 | 处置     | 实现要求（五面）                                                                                                                                                                                                                                                            |
+| ------- | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MSH-R01 | high   | accepted | 技术：`list-market-signals.service.ts` `DESTINATIONS` 补 `selection_return_requested`，计数同步；验证：打到真实 `ListMarketSignalsService` 的集成或服务测试断言 200 与 `totalCount`。界面：市场队列“选品请求退回”分组真实可加载、可选中并“接回”。                           |
+| MSH-R02 | high   | accepted | 状态机：`persistDecision` 在信号处于 `selection_return_requested` 时拒绝市场任何新判断，新增稳定冲突码 `MARKET_SIGNAL_SELECTION_RETURN_PENDING`（同步契约错误码/字典如有登记）；退回被拒、撤回仍按 HO-P01 延期。验证：接受 → 请求退回 → 市场 dismiss 被拒，随后接回仍成功。 |
+| MSH-R03 | medium | accepted | 界面：`MarketSignalsWorkbench.vue` 空状态只在未选中信号时出现；单测选中 `needs_decision` 信号时 `.empty-workbench` 为 0。                                                                                                                                                   |
+| MSH-R04 | medium | accepted | 界面：选品结论条与 `workResult` 按 `currentDestination` 区分，`return_requested` 显示“已请求退回市场，等待市场接回”，不得出现“已立项”；E2E 补断言结论条不含“已立项”。                                                                                                       |
+| MSH-R05 | medium | accepted | 界面：选“退回市场”时未选依据则阻止提交并就地提示“请选择退回依据”（S1 第 7 项“必须选择”）；`outcomeHintFor` 纳入 `returnBasis`；回执仅在服务端返回 `return_requested` 时写“等待市场接回”。单测覆盖缺依据不提交。                                                             |
+| MSH-R06 | low    | accepted | 界面：`selectionReturnBasis` 为 null 时不渲染依据文案（显示“依据加载中”或省略），不默认“证据不足”。                                                                                                                                                                         |
+| MSH-R07 | low    | accepted | 技术：接回幂等键按 `signalId + expectedSignalVersion` 缓存，沿用 `useCustomsCommands.ts` 等既有约定；重复点击得到 duplicate 成功回执。主代理裁决为技术约定对齐，非业务政策。                                                                                                |
+| U-02    | —      | accepted | 权限/输入：takeback 路由 `signalId` 做 UUID 校验，非法值 400 `VALIDATION_FORMAT`（新路由收紧，不追改既有 GET）。                                                                                                                                                            |
+| G-03/04 | —      | accepted | 验证缺口：补“接回后再次交接生成新版本，旧机会包/旧立项/旧判断不改写”与“跨租户接回被拒”两条集成用例。                                                                                                                                                                        |
+| U-01    | —      | accepted | 治理：`evidence-actor-binding-v1.md` 由主代理按 HO-D05 新建，未列入本 brief writeScopes 系为避免两 brief 写入范围重叠，登记为主代理治理例外；无实现动作。                                                                                                                   |
+| G-01/02 | —      | rejected | 迁移其余 shape 分支与 `restorePreviousShape` 用 `CHECK (true)`：新增条件 `return_basis IS NULL` 对新可空列恒成立，复审确认推理安全；接受残余风险，不加样本。                                                                                                                |
+
+验证：受影响 API 单测；`pnpm test:integration -- market-opportunity-flow product-initiative-flow market-selection-handoff-migration-upgrade`（`apps/api`）；受影响 Web 单测；`workbench-network.spec.ts`；契约检查与生成物一致（如改错误码）；受影响模块 lint/typecheck 与 `node scripts/check-repository.mjs`。前端可感知：市场“选品请求退回”分组有真实数据可接回；选品退回后不再误显“已立项”；缺依据不能提交。HANDOFF `changed` 按五面分列。
+
+### 切片 `S2e-review-followup`：Codex 增量复审的 accepted 项（主代理裁决后预授权）
+
+来源：Codex 只读复审 `6a221ca2..33b31ebc`，`changes-requested`。只实现下表 `accepted` 项。
+
+| Finding             | 严重度       | 处置                 | 实现要求                                                                                                                                                                                                                                                              |
+| ------------------- | ------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SR-01               | high         | accepted（范围收窄） | 市场台：分组请求因 401 失败时，不再读取责任投影，也不再为深链调用详情。共享 `httpClient` 的 `confirmAuthorized` 不在本片修改。单测覆盖深链在 401 后不再发详情请求。                                                                                                   |
+| MSH-INC-R01         | medium       | accepted             | 只有 401 才跳过责任投影。分组全部是 5xx 或网络失败时，仍请求 `retained_by_market` 投影。                                                                                                                                                                              |
+| VR-01               | medium       | accepted             | 责任投影返回后再次核对 `loadGeneration`，过期结果不得覆盖新队列或提前清掉 loading。补一条交错 Promise 的单测。                                                                                                                                                        |
+| SR-02               | high         | accepted（范围收窄） | 把“`selection_return_requested` 期间拒绝市场新判断”抽成领域函数，由 Repository 在事务内读到新鲜记录后调用。错误码仍是 `MARKET_SIGNAL_SELECTION_RETURN_PENDING`。不搬迁既有 `MARKET_SIGNAL_ALREADY_CLOSED`。领域单测覆盖该守卫；已有集成测试保持通过。不另写并发压测。 |
+| SR-03               | medium       | accepted（范围收窄） | `DESTINATIONS` 用 `MarketSignalDestinationV1` 做编译期穷尽检查，漏一个去向则类型失败。不从 JSON Schema 生成运行时解析器。                                                                                                                                             |
+| SR-04               | medium       | accepted             | 主代理撤回对 `status: done` 的 `agent-role-mapping-v1.md` 的修改。决定只留在 `AGENTS.md`、任务模板和本 brief。                                                                                                                                                        |
+| SR-05 / MSH-INC-R02 | medium / low | accepted             | 主代理已把本 brief 执行表和验收项中的 fresh Opus 改为 fresh Codex。无实现动作。                                                                                                                                                                                       |
+| SR-06               | low          | rejected             | 四份种子里的 `acceptOpportunity` 重复是测试结构，不改变行为，本片不抽取共享 fixture。                                                                                                                                                                                 |
+| SR-07               | low          | rejected             | `16` 旁已有“8 组 × 2 次”说明，断言保持字面量。                                                                                                                                                                                                                        |
+| CP-01               | medium       | rejected             | `MARKET_SIGNAL_ALREADY_CLOSED` 与新错误码一样由 Repository `conflict()` 抛出，都不在 `PublicErrorCode`。本模块既有冲突码未迁到 GC-011 信封；只改新码会造成同一接口两种错误形态。公共信封迁移不在本 PR。                                                               |
+
+验证：`market-signal` 领域单测、`MarketSignalsWorkbench` 单测、`pnpm test:integration -- product-initiative-flow`（`apps/api`）、受影响文件 lint/typecheck 与 `node scripts/check-repository.mjs`。不跑完整 `validate`。前端可感知：信号接口 401 时不再被深链或责任投影拖进再次登录；信号接口故障时“已交待接受”仍会尝试加载。
+
+### `R-branch-review` 裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: R-branch-review
+decisions: []
+next: pr
+```
+
+2026-10-04 fresh Codex 只读复审 `17801fb4..aef13380`，`verdict: approved`，`findings: []`，`writes: none`。复审自述已跑：市场信号领域单测 16、MarketSignalsWorkbench 单测 31、`product-initiative-flow` 集成 15、`auth-session` OIDC E2E 5、API/Web typecheck、`repo:check`、增量 diff。主代理在 `aef13380` 另有完整 `pnpm validate` 通过（E2E 166）。
+
+非阻塞验证缺口：深链详情与手工重载交界处，旧加载仍可能在新一代分组请求完成前写回详情或提前结束 loading。复审定为既存瞬时边界，不进入本 PR，留给后续界面稳定性任务。本任务不据此再开切片。
+
+### 切片 `S3-post-accept-evidence`：接受后市场追加新证据（延后，HO-D05）
+
+> 2026-10-04 Codex 首次执行返回 `blocked`，主代理核实属实：市场证据登记走通用 `POST /api/evidence`，`EvidenceController.register` 未传认证 actor，`RegisterEvidenceInput` 不落登记人，而 `evidence-record.schema.json` 要求 `manual_backfill` 带 `source.actorId`；该端点也不校验 `subjectId` 信号存在、版本与幂等。修复属共享 `document-records` 控制面（约 8 台消费方），不在本 brief 范围。负责人定案 HO-D05“C（推荐）先合并已完成的部分”：本分支以 S1～S2b 收口；S3 移入 `evidence-actor-binding-v1` 完成后的后续任务，下列五面要求原样保留作为其输入。
+
+岗位结果：市场退出结果责任后仍能维护来源事实、追加新证据；选品在机会详情看到“交接后新增证据”，已交出的机会包快照不改。
+
+按同一业务步骤五面推进，缺一面不得交回 `ready-for-review`：
+
+1. **岗位任务**：市场在已交选品（含已接受）的信号上仍可“追加证据”；选品在机会详情看到市场交接后新增了什么，自行判断是否影响决定。不触发重新接受、不生成新版本；是否要求选品重新确认属于 `doc/08` 4.1.1 未定政策，本片不实现。
+2. **数据事实**：先核对现有证据登记在 `handed_off` 去向下是否被拒；按 `doc/08` 4.1.1 允许追加，复用现有证据记录，不新增可写状态。“交接后新增”由服务端以证据登记时间晚于当前机会包交接快照时间派生，不在前端推断；交接快照及其哈希不改。
+3. **技术保障**：沿用现有证据登记的 `expectedSignalVersion`、幂等键与稳定冲突码；选品侧读取经现有 Port，分页/稳定排序与租户隔离沿用；如契约需增加只读字段，同步契约检查与生成物。
+4. **权限边界**：追加沿用现有证据登记能力（`planning.draft`），actor 来自认证身份；选品读取沿用 `planning.read`；跨租户与未知信号拒绝。不新增能力码。
+5. **界面承接（前端必须可感知）**：
+   - 市场信号详情：已交选品后证据入口仍可用，旁注“交接后新增，不改已交给选品的快照”；登记回执写明“已追加，选品可见”，失败或 409 时重读并保留可恢复反馈。
+   - 选品机会详情：依据区分两组——“交接时快照”与“交接后市场新增（N）”，后者逐条显示时间、登记人；无新增时不显示空组。
+   - 文案不得写“待补”“仍待补”等催办词（承接 S2b）。
+6. **验证**：集成测试证明快照哈希不变、新增证据可见、跨租户拒绝、重复提交不产生第二条；Web 单测覆盖两组分列与空组隐藏；`workbench-network.spec.ts` 增一条“市场交接后追加 → 选品详情可见”E2E；受影响模块 lint/typecheck 与 `node scripts/check-repository.mjs`。交回时 HANDOFF `changed` 须分列五面各自的改动。
+
+### `R-branch-review` 与 `PR`
+
+按 HO-D05，S2b 验收后即进入收口（S3 不随本 PR）：同步最新 `main` 后主代理运行一次完整 `pnpm validate`（需 `pnpm infra:up`），派 fresh 只读复审，按 `logix-disposition/v1` 裁决；无 finding 即按本 brief 预授权推送、建单一 PR、CI 通过后合并。brief 状态回写随该 PR，不另开状态 PR。合并后若 MS-D04 未定项仍无定案，下一片从市场信号 brief 的候选中由负责人每轮定 1～3 项继续，不让两台同时回到 `blocked`。
+
+2026-10-04 负责人先说“独立复审交给 Codex”，随后定案“以后独立复审都交回给 Codex”（见 `AGENTS.md` §1.2 第 4 条）。本分支在 `6a221ca2` 已有一次 Opus 复审并留下 finding。Codex 用新开只读会话复审 `6a221ca2..HEAD` 中尚未由另一会话复审的提交，包括 S2c、S2d 和主代理随后改的 401 恢复与退回依据测试。S2c/S2d 为 Codex 所写，按新定案仍由 Codex 复审，但不得与当时的实现会话共用，也不得改文件、提交或跑 `pnpm validate`。无 finding 后主代理建 PR。
+
+## 智慧开启基线
+
+| 基线文件与原结论（摘要 + 位置）                                                         | 处置   | 依据                                                              | 落点 / 决策 ID      |
+| --------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------- | ------------------- |
+| 市场 R1：分阶段回流，先回流选品接受、退回、不立项及原因（`市场与经营信号.md` 247、296） | `沿用` | `doc/08` 4.1.1“接收选品反馈”                                      | S2 / MS-D04         |
+| 市场 X1：不采纳可重开、归档可激活、作废关联正确记录（248、297）                         | `补强` | 负责人 D3-A：接回后沿用同一信号开启新验证周期，再交接出新版本     | S1 第 5 项 / MS-D04 |
+| 市场指标“因证据不足或方向错误被退回的比例”（549）                                       | `沿用` | `doc/08` 4.1 首批指标；据此限定退回依据两类                       | S1 第 2 项          |
+| 选品：上游机会领取、接受和具体责任人（`选品立项.md` 26）                                | `补强` | 负责人 D1-A：领取只登记处理人不转责，接受才转责                   | S1 第 1 项、S2      |
+| 选品 G1：四种结果都有后续责任，退回须指出上游需补什么（98）                             | `补强` | 负责人 D3-A：先请求后接回；选品自身利润/供应/组合不成立不得退回   | S1 第 2～4 项       |
+| 选品 L1：市场退回与 NPI 退回均形成新版本，不改旧快照（156、218）                        | `沿用` | `doc/08` 4.1.1 恢复规则                                           | S1 第 5 项          |
+| 选品：领取、接受与正式决定共用 `planning.draft`，权限过粗（50、952）                    | `存疑` | `doc/08` 4.1.1 列为未定；本任务不拆能力码                         | 待负责人            |
+| 选品 R1：投入前须明确立项责任人与资源承诺（124）                                        | `沿用` | 不在本任务范围，不改动                                            | —                   |
+| 全局 3：每个未关闭对象任一时刻只有一个责任主体，下游显式接收或拒收（`全局.md`）         | `沿用` | 本任务即该规则在市场 ↔ 选品段的参考实现；“拒收”在接受前的处理未定 | MS-D04 / 待负责人   |
+
+## 负责人决策记录
+
+| 决策 ID              | 已知事实与未知                                                                                           | 选项、成本/收益/风险/可逆性                                                                        | 推荐与理由                                 | 负责人结论                                         | 权威落点 / 状态           |
+| -------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------- | ------------------------- |
+| MS-D04 交接责任      | 领取/接受只登记处理人；决定不查接受；退回一步改写市场；市场在交接时即退出                                | D1 领取/接受语义；D2 市场退出时点；D3 退回与恢复（A/B/C 由决策顾问提供）                           | A/A/A：单一责任主体，接受才转责            | 2026-10-04 定案 D1-A + D2-A + D3-A                 | `doc/08` 4.1.1 / approved |
+| HO-T01 退回依据两类  | 负责人要求选品自身判断不成立不得退回；`doc/08` 4.1 指标只列证据不足、方向错误                            | 主代理据权威派生，结构化两类；可逆：后续追加类别只需放宽 CHECK                                     | 采用，防止退回沦为代办通道                 | 主代理技术派生，非新业务政策                       | 本 brief / approved       |
+| HO-UI01 屏四剩余并入 | 改版规范屏四依据区已由 #84 完成；队列、回执、选品详情仍有“待补”状态文案；这些文件均在本 brief 写入范围内 | 并入本 brief 由同一写入者做，或交接合并后另开 brief                                                | 并入：不新增写入者冲突，随同一 PR 上线     | 2026-10-04 负责人原话“屏四并入交接、屏五开工”      | 本 brief S2b / approved   |
+| HO-D05 S3 推进路径   | S3 依赖的证据登记不绑定认证 actor、不校验信号，修复属共享 `document-records`                             | C 先合并 S1～S2b、证据底层另开修复 brief 后再做 S3；A 缩小 S3 带缺口上线；B 本分支扩改共享证据模块 | C：已完成界面变化先上线，S3 建在可信底层上 | 2026-10-04 负责人原话“C（推荐）先合并已完成的部分” | 本 brief / approved       |
+| HO-P01 未定事项      | 退回被拒、撤回请求、接受前不可行动、能力拆分                                                             | 每轮定 1～3 项                                                                                     | 先跑通已定路径，再按真实使用暴露的问题定   | 未定                                               | `pending`，只阻塞对应动作 |
+
+## 业务步骤五面映射
+
+| 业务步骤与岗位结果       | 岗位任务来源/状态                                                        | 相关数据事实子集                                  | 技术保障                                   | 权限边界                                  | 界面承接                                                                                      | 验收证据/状态                                         |
+| ------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------ | ----------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 选品领取（不转责）       | `doc/08` 4.1.1 / approved                                                | intake `claimed`、处理人、时间                    | 现有幂等、expectedVersion                  | `planning.draft`；actor 来自认证身份      | 市场看到“已被领取·待接受”（S2）                                                               | S2 主代理验收（`a4b5f52e`），终审待 R                 |
+| 选品接受（转责）         | 同上                                                                     | intake `accepted`                                 | 现有；成为后续决定前置                     | 同上；仅领取人可接受（现有）              | 市场待办移出、详情显示已接受（S2）                                                            | S1（`8101512e`）/S2（`a4b5f52e`）主代理验收，终审待 R |
+| 选品决定须已接受         | 同上                                                                     | intake 状态 × initiative 版本                     | 同事务读取 intake；稳定冲突码              | 有权 ≠ 业务允许：未接受即拒绝并审计       | 未接受时只显示“先接受”                                                                        | S1 主代理验收（`8101512e`），终审待 R                 |
+| 请求退回（责任仍在选品） | 同上                                                                     | `returnBasis`、`returnReason`、`return_requested` | 跨模块同事务追加不可变判断；幂等重放不重复 | `planning.draft`；租户内                  | 两类依据必选、需补内容必填；“等待市场接回”                                                    | S1 主代理验收（`8101512e`），终审待 R                 |
+| 市场接回（责任转回）     | 同上                                                                     | `selection_return` 判断、两侧去向                 | 两侧 expectedVersion，原子提交或整体失败   | `planning.draft`；租户内；未知/跨租户拒绝 | “选品请求退回”分组 + 主动作“接回”，回执与 409 恢复                                            | S1 主代理验收（`8101512e`），终审待 R                 |
+| 再验证并再次交接         | 同上                                                                     | 机会包新版本、旧版本 `isCurrent=false`            | 旧行不改写                                 | 沿用                                      | 沿用现有入口                                                                                  | S1 主代理验收（`8101512e`），终审待 R                 |
+| 接受后追加证据           | 同上                                                                     | 证据登记时间晚于交接快照                          | 快照哈希不变                               | 沿用证据登记能力                          | 市场详情证据入口保留 + 回执“已追加，选品可见”；选品详情分列“交接时快照 / 交接后市场新增（N）” | 延后（HO-D05，待 `evidence-actor-binding-v1`）        |
+| 队列与回执只陈述未填事实 | `docs/product/WORKBENCH_VISUAL_FLOW_REDESIGN.md` 屏四 / HO-UI01 approved | 交接快照 `pendingFieldCodes`、信号缺口            | 只改文案，不改缺口计算                     | 不涉及                                    | “依据缺 N 项”“市场未填/渠道未填”“尚未填写”“交接时未填”                                        | S2b 主代理验收（`aa5dafa4`）                          |
+
+### 相关数据事实子集（三轨）
+
+| 轨道                 | 字段/事实                                                                                                        | 对应业务步骤与消费者 | 当前证据/来源                                                                                                                         | 建议承载方式                                        | 决策 ID | 决策与实现状态      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------- | ------------------- |
+| `current_physical`   | intake `queued/claimed/accepted/superseded`；initiative 去向含 `returned_to_market`；信号判断 `selection_return` | 领取、接受、退回     | `database/schema.prisma` `ProductOpportunityIntake`、`ProductInitiative`、`MarketSignalDecision`；迁移 20260925223000、20260928150000 | 已有                                                | —       | structure-confirmed |
+| `current_physical`   | 选品决定不检查 intake；退回经 `applySelectionReturnWithin` 一步改写信号                                          | 决定前置、退回       | `prisma-product-initiative.repository.ts` 136～248；`prisma-market-signal.repository.ts` 482～560                                     | 需修改                                              | MS-D04  | gap-confirmed       |
+| `approved_gap`       | 退回请求/接回两步、退回依据、接受才转责、接受后追加证据                                                          | S1～S3               | `doc/08` 4.1.1                                                                                                                        | 去向 CHECK、`return_basis` 列、不可变判断、派生投影 | MS-D04  | approved / coding   |
+| `industry_candidate` | GC-012 共享交接回执（`return_requested` / `return_accepted`）                                                    | 将来跨台收编         | `docs/superpowers/specs/2026-10-03-gc12.md` 5.4                                                                                       | `undecided`（只对齐词汇）                           | —       | pending             |
+
+## 23 台共同最低可用线（本任务承接）
+
+| 基线     | 本任务承接                                                  | 状态        |
+| -------- | ----------------------------------------------------------- | ----------- |
+| `WB-B03` | 退回请求、接回与再交接的恢复路径                            | S1          |
+| `WB-B04` | 接受前后与退回请求期间的当前/下一责任                       | S1、S2      |
+| `WB-B07` | 再交接新版本、旧快照不改；接受后新增证据不改快照（延后）    | S1；S3 延后 |
+| 其余     | 不在本任务范围；WB-B10 仍需真实岗位六类路径，合成演练不计入 | —           |
+
+## 验收
+
+- [ ] 未接受的机会，选品任何决定被服务端拒绝；接受后才能决定
+- [ ] 退回只能以“证据不足 / 方向错误”请求，且写明需补内容；请求期间责任仍在选品，选品不能再作其他决定
+- [ ] 市场接回原子完成两侧转回；任一侧版本冲突整体失败
+- [ ] 接回后再次交接生成新版本，旧机会包、旧立项、旧判断不改写
+- [ ] 市场能看到“已交待接受”仍属自己的待跟进，接受后移出并持续看到选品反馈
+- [ ] 接受后市场可追加证据，交接快照不变，选品可分辨新增证据（HO-D05 延后，不随本 PR；不得在本任务 `done` 时勾选）
+- [ ] 迁移空库与旧版本升级通过，存量退回记录合法
+- [ ] 契约、生成物、字典一致；跨租户与未知值拒绝；关键路径 E2E 通过
+- [x] 最终候选完整 `pnpm validate` 通过并经 fresh Codex 复审裁决（`aef13380`：`pnpm validate` 退出码 0，E2E 166；`17801fb4..aef13380` Codex 复审 approved、无 finding。`6a221ca2` 的 Opus 复审已完成，不重复）
+
+## 进度 log
+
+| 日期       | 阶段   | 负责   | commit     | 说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------- | ------ | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | coding | Cursor | `cb44abcb` | 负责人定案 MS-D04 并写回 `doc/08` 4.1.1；建立连续三片队列，下发 S1；GC-012 G1 暂停不派发                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-10-04 | coding | Cursor | `8101512e` | S1 验收通过：46 个文件均在 writeScopes 内；接受前置、退回请求期间阻断、双边原子接回和幂等重放已核对；主代理复跑迁移升级与两条流程集成 3 文件 27 条通过。遗留 contractVersion 校验分层并入 S2 第 5 项；下发 S2                                                                                                                                                                                                                                                                                   |
+| 2026-10-04 | coding | Cursor | `a4b5f52e` | S2 验收通过：责任投影由服务端按 intake 派生（queued/claimed 留在市场，accepted 转选品），筛选参数有格式校验，租户隔离与键集分页沿用；S1 遗留 contractVersion 校验已移到领域层。主代理复跑集成 3 文件 28 条通过。两处测试夹具（`marketSignalEvidenceFlow.test.ts`、`productInitiativeApplyHandoff.test.ts`）因契约新增必填字段而改，原未列入 writeScopes 且交接未报，主代理补登记为 accepted 例外。`repo:check` 未过（`MarketSelectionFeedback.vue` 裸值 `2px`），并入 S2b 第 0 项修复；下发 S2b |
+| 2026-10-04 | coding | Cursor | `e22dca02` | S2b 首次交回 blocked：10 个授权文件文案与 `2px` 令牌已改，`repo:check`、Web lint/format/typecheck、单测 50、E2E 3 通过；全仓搜索仍命中 `workbenchNetwork.ts:796`（不在写入范围）。主代理扩入 `workbenchNetwork.ts` 及其单测（S2b 第 6 项），原未提交差异保留在工作树，Codex 续做同一切片                                                                                                                                                                                                        |
+| 2026-10-04 | coding | Cursor | `aa5dafa4` | S2b 验收通过：11 个文件均在 writeScopes 内，仅改文案与 `2px` 改为 `var(--space-1)`；主代理复核 `repo:check` 通过，`apps/web/src` 内“仍待补/市场待补/渠道待补”零命中。纯文案低风险切片，不另起独立复审；按预授权下发 S3                                                                                                                                                                                                                                                                          |
+| 2026-10-04 | coding | Cursor | `ed28b767` | 按负责人要求（界面、数据字段、任务、技术底层协同，不漂移不漏项，前端可感知）校正：五面表验收列回写 S1/S2/S2b 实际状态；补 S2b 文案行；S3 改为五面逐项（岗位、数据派生、幂等并发、权限、市场与选品两侧界面）并要求 HANDOFF 分列五面改动                                                                                                                                                                                                                                                          |
+| 2026-10-04 | coding | Cursor | `b022eb00` | S3 首次执行 blocked（证据登记不绑定认证 actor、不校验信号，修复属共享 `document-records`），主代理核实属实。负责人定案 HO-D05“C（推荐）先合并已完成的部分”：S3 延后至 `evidence-actor-binding-v1`（新建 design brief）之后；本分支已合入 `origin/main`（`7038b209`），进入 R-branch-review                                                                                                                                                                                                      |
+| 2026-10-04 | coding | Cursor | `6a221ca2` | 收口 `pnpm validate` 失败：下游 4 个集成文件 38 条因种子未接受 intake 触发 `PRODUCT_INITIATIVE_NOT_ACCEPTED`（S1 规则正确，测试种子过时）。主代理扩入四个文件，新增 S2c 交 Codex；独立复审并行进行中，S2c 验收后重跑 `validate`                                                                                                                                                                                                                                                                 |
+| 2026-10-04 | coding | Cursor | `195089a1` | fresh Opus 独立复审 `changes-requested`：MSH-R01/R02（high，主代理复核代码属实：待接回分组被服务端白名单 400、待接回期间市场判断未拦截致不可恢复）与 R03～R07、U-01/U-02、G-03/04 accepted，G-01/02 rejected（残余风险接受）；新增 S2d，S2c 通过后执行，之后重跑 `validate` 与增量复审                                                                                                                                                                                                          |
+| 2026-10-04 | coding | Cursor | `8ba95704` | S2c 验收通过：4 个下游集成种子改为经领域/仓储正式路径领取再接受，未改生产代码与断言；主代理复跑 6 文件 65 条通过。按预授权下发 S2d                                                                                                                                                                                                                                                                                                                                                              |
+| 2026-10-04 | coding | Cursor | `87c8feac` | S2d 验收通过：15 个文件均在 writeScopes 内。主代理核对 R01 白名单、R02 待接回拒绝、R03 空状态、R04 退回结论、R05 缺依据不提交、R06 空依据不默认、R07 幂等键缓存、takeback UUID 校验，以及接回后再交接与跨租户接回两条集成；复跑 3 文件 30 条通过。进入增量复审与完整门禁                                                                                                                                                                                                                        |
+| 2026-10-04 | coding | Cursor | `799b27b5` | 收口 `pnpm validate` 在 Web 单测失败：`ProductInitiativeOutcomePanel.test.ts` 仍断言未选依据的退回会“关闭”。主代理按已接受的 MSH-R05 改为“没选依据不能提交；选了依据并写了原因才说明会关闭”，定向 11 条通过。增量复审三次（Opus thinking、Opus medium、Gemini）均因账号用量上限未产生结论，不视为通过；PR 继续等待可用的独立复审                                                                                                                                                                |
+| 2026-10-04 | coding | Cursor | `f6cda422` | 第二次完整门禁只剩 `auth-session` 的 401 用例失败，单独重跑仍失败。原因：市场台把责任投影和分组列表并行发出，投影的 404 会清掉一次性重新登录标记，回调停住。改为分组全部失败时不读投影，并把该用例的请求数改为 8 组×2 次。定向单测 29 条与该 E2E 通过。自动模型复审因未授权失败，不再重开                                                                                                                                                                                                       |
+| 2026-10-04 | review | Cursor | `e8eff0f5` | 收口 `pnpm validate` 通过：API 单测 276 文件 1435 条、Web 单测 142 文件 649 条、集成 25 文件 159 条、E2E 166 条、构建通过。状态改为 `review`。独立复审仍无结论（用量上限与未授权），PR 与合并继续等待                                                                                                                                                                                                                                                                                           |
+| 2026-10-04 | review | Cursor | `40c6deff` | 负责人定案“以后独立复审都交回给 Codex”：写回 `AGENTS.md` §1.2 第 4 条、任务模板和 `agent-role-mapping-v1`。本分支未复审增量交 Codex 新开只读会话；S2c/S2d 与写入者同家族，按定案接受并在规则中写明                                                                                                                                                                                                                                                                                              |
+| 2026-10-04 | coding | Cursor | `33b31ebc` | Codex 增量复审 changes-requested。accepted：SR-01 收窄为 401 后停止详情与责任读取，MSH-INC-R01 非 401 仍加载责任投影，VR-01 二次 generation 检查，SR-02 领域守卫仍在事务内调用，SR-03 编译期穷尽，SR-04 撤回对 done brief 的修改，SR-05 文案改为 Codex。rejected：SR-06、SR-07、CP-01。下发 S2e                                                                                                                                                                                                 |
+| 2026-10-04 | review | Cursor | `aef13380` | S2e 已验收。`aef13380` 上完整 `pnpm validate` 通过。fresh Codex 复审 `17801fb4..aef13380` 结论 approved、无 finding。深链详情与手工重载的瞬时 loading 记为非阻塞缺口，不进本 PR。状态改为 review，进入单一 PR                                                                                                                                                                                                                                                                                   |
+
+- 2026-10-04 主代理验收 S2e（`53e13035`）：差异 6 文件均在 writeScopes 内；SR-01/MSH-INC-R01（仅 401 跳过投影且不再拉深链详情）、VR-01（投影 await 后复核 generation）、SR-02（领域守卫 `assertNoPendingSelectionReturn` 在仓储事务内调用，错误码不变）、SR-03（`satisfies Record<MarketSignalDestinationV1, true>` 编译期穷举）逐项落实。复跑：MarketSignalsWorkbench 31、market-signal 领域 16、product-initiative-flow 集成 15、auth-session E2E 5，全部通过。下一步：完整 `pnpm validate`，再交 fresh Codex 增量复审 `17801fb4..HEAD`。
+
+- 2026-10-04 主代理裁决 R-branch-review：`17801fb4..aef13380` approved，findings 为空，`next: pr`。非阻塞缺口（深链详情与手工重载的瞬时 loading）留到后续界面稳定性任务，本 PR 不改代码。
