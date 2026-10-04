@@ -11,6 +11,7 @@ import PageHeader from "../components/ui/PageHeader.vue";
 import type { SupplierQuotationV1 } from "@logix/contracts";
 import {
   entryKey,
+  priceTierLabels,
   useSourcingWorkbench,
 } from "../composables/useSourcingWorkbench";
 
@@ -32,8 +33,6 @@ const {
   error,
   receipt,
   load,
-  lowestPrice,
-  canRankByPrice,
   addSupplier,
   admit,
   addQuotation,
@@ -85,29 +84,14 @@ watch(requestedKey, () => {
 
 const workResult = computed(() => {
   if (!selected.value) return "选一件开始";
-  if (selected.value.nominated) return "已定点";
+  if (selected.value.nominated) return "已定点，待需求与补货侧明确接受";
   return selected.value.quotations.length > 0
     ? `已收 ${selected.value.quotations.length} 家报价`
     : "还没有人报价";
 });
 
-const currentOwner = computed(() => {
-  if (!selected.value) return "寻源负责人";
-  const rows = selected.value.quotations;
-  if (rows.length === 0) return "寻源负责人（待询价）";
-  if (!canRankByPrice(rows)) {
-    return "寻源负责人（口径不一，待比较）";
-  }
-  const cheapest = [...rows].sort(
-    (left, right) =>
-      Number(lowestPrice(left).split(" ")[0]) -
-      Number(lowestPrice(right).split(" ")[0]),
-  )[0]!;
-  const supplier = selected.value.suppliers.find(
-    (row) => row.supplierId === cheapest.supplierId,
-  );
-  return `${supplier?.name ?? cheapest.supplierId}（同口径价低）`;
-});
+// 没有持久化的责任人，也没有下游接受事实：责任停在寻源岗位，定点不转移责任，供应商不是责任人。
+const currentOwner = "寻源负责人";
 
 async function submitSupplier(): Promise<void> {
   const countryCode = newSupplier.value.countryCode.trim().toUpperCase();
@@ -221,7 +205,7 @@ async function reload(): Promise<void> {
       >
       <span
         ><UserRound :size="16" /><span
-          ><small>同口径提示</small><b>{{ currentOwner }}</b></span
+          ><small>当前责任</small><b>{{ currentOwner }}</b></span
         ></span
       >
     </section>
@@ -291,7 +275,14 @@ async function reload(): Promise<void> {
             <p v-if="selected.quotations.length === 0" class="note">
               还没有人报价。先在右栏登记供应商，再录入报价。
             </p>
-            <ul v-else class="quotes">
+            <p v-if="selected.quotations.length > 1" class="note">
+              报价可比性待服务端判定，暂不排名。
+            </p>
+            <ul
+              v-if="selected.quotations.length > 0"
+              class="quotes"
+              aria-label="各家报价"
+            >
               <li
                 v-for="quotation in selected.quotations"
                 :key="quotation.quotationId"
@@ -304,7 +295,13 @@ async function reload(): Promise<void> {
                       )?.name ?? quotation.supplierId
                     }}
                   </b>
-                  <span class="price">{{ lowestPrice(quotation) }}</span>
+                  <span class="price">
+                    <span
+                      v-for="label in priceTierLabels(quotation)"
+                      :key="label"
+                      >{{ label }}</span
+                    >
+                  </span>
                 </div>
                 <small>
                   {{ quotation.incoterms }}
@@ -331,7 +328,7 @@ async function reload(): Promise<void> {
           </div>
 
           <div v-if="selected.nominated" class="block">
-            <span class="label">已定点的交接</span>
+            <span class="label">定点记录（待需求与补货侧明确接受）</span>
             <p class="note">
               {{ selected.nominated.supplierName }} ·
               {{ selected.nominated.incoterms }} · 报价第
@@ -648,6 +645,9 @@ async function reload(): Promise<void> {
   gap: var(--space-2);
 }
 .price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   color: var(--brand-strong);
   font-weight: 700;
 }
