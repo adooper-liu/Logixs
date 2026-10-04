@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertNoPendingSelectionReturn,
+  MarketSignalConflictError,
   MarketSignalValidationError,
   normalizeMarketSignalCreate,
   normalizeMarketSignalUpdate,
   prepareMarketSignalDecision,
-  prepareSelectionReturnDecision,
+  prepareSelectionReturnRequestDecision,
   type MarketSignalFacts,
 } from "./market-signal";
 
@@ -24,6 +26,17 @@ function facts(overrides: Partial<MarketSignalFacts> = {}): MarketSignalFacts {
 }
 
 describe("market signal rules", () => {
+  it("rejects a new market decision while selection return is pending", () => {
+    expect(() =>
+      assertNoPendingSelectionReturn("selection_return_requested"),
+    ).toThrowError(
+      new MarketSignalConflictError("MARKET_SIGNAL_SELECTION_RETURN_PENDING"),
+    );
+    expect(() =>
+      assertNoPendingSelectionReturn("needs_decision"),
+    ).not.toThrow();
+  });
+
   it("allows title-only registration and reports ordinary gaps", () => {
     const normalized = normalizeMarketSignalCreate({
       contractVersion: "market-signal-create.v1",
@@ -164,17 +177,18 @@ describe("market signal rules", () => {
     expect(update.changes).toEqual({ categoryRef: "庭院收纳" });
   });
 
-  it("prepares a completed selection return with reason in judgment note", () => {
-    const decision = prepareSelectionReturnDecision({
+  it("prepares a completed selection return request with basis and reason", () => {
+    const decision = prepareSelectionReturnRequestDecision({
       expectedSignalVersion: 2,
       returnReason: "  机会陈述与当前类目不对齐  ",
+      returnBasis: "wrong_direction",
       idempotencyKey: "selection-return:initiative-1",
     });
 
     expect(decision).toMatchObject({
-      decisionType: "selection_return",
+      decisionType: "selection_return_request",
       completion: "completed",
-      nextDestination: "returned_from_selection",
+      nextDestination: "selection_return_requested",
       judgmentNote: "机会陈述与当前类目不对齐",
       dismissReason: null,
       pendingFieldCodes: [],
@@ -243,9 +257,10 @@ describe("market signal rules", () => {
     [
       "blank selection return reason",
       () =>
-        prepareSelectionReturnDecision({
+        prepareSelectionReturnRequestDecision({
           expectedSignalVersion: 2,
           returnReason: "  ",
+          returnBasis: "insufficient_evidence",
           idempotencyKey: "selection-return:blank",
         }),
     ],

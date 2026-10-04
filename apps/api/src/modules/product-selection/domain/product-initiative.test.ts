@@ -5,6 +5,7 @@ import {
   ProductInitiativeConflictError,
   ProductInitiativeValidationError,
   prepareProductInitiativeDecision,
+  prepareSelectionReturnTakeback,
   productInitiativePendingFieldCodes,
   type CurrentProductInitiative,
   type ProductInitiativeDraft,
@@ -167,6 +168,7 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
     expect(pending.completion).toBe("pending_completion");
     expect(pending.nextDestination).toBe("needs_decision");
     expect(pending.pendingFieldCodes).toContain("return_reason");
+    expect(pending.pendingFieldCodes).toContain("return_basis");
 
     const prepared = prepareProductInitiativeDecision(
       NEW_INITIATIVE,
@@ -176,8 +178,20 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
         returnReason: "机会定义成了渠道问题",
       }),
     );
-    expect(prepared.nextDestination).toBe("returned_to_market");
-    expect(prepared.completion).toBe("completed");
+    expect(prepared.nextDestination).toBe("needs_decision");
+    expect(prepared.completion).toBe("pending_completion");
+
+    const requested = prepareProductInitiativeDecision(
+      NEW_INITIATIVE,
+      ACTOR,
+      command({
+        outcome: "return_to_market",
+        returnReason: "机会定义成了渠道问题",
+        returnBasis: "wrong_direction",
+      }),
+    );
+    expect(requested.nextDestination).toBe("return_requested");
+    expect(requested.completion).toBe("completed");
   });
 });
 
@@ -239,6 +253,28 @@ describe("PRODUCT_INITIATIVE_GATE", () => {
       "compliance_risk",
     ]);
     expect(PRODUCT_INITIATIVE_GATE).not.toContain("customer_feedback");
+  });
+});
+
+describe("prepareSelectionReturnTakeback", () => {
+  it("rejects an unknown contract version before persistence", () => {
+    expect(() =>
+      prepareSelectionReturnTakeback({
+        contractVersion: "market-selection-return-takeback.v2" as never,
+        expectedSignalVersion: 2,
+        idempotencyKey: "takeback-1",
+      }),
+    ).toThrowError(/VALIDATION_FORMAT: contractVersion/);
+  });
+
+  it("normalizes a valid takeback command", () => {
+    expect(
+      prepareSelectionReturnTakeback({
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: 2,
+        idempotencyKey: " takeback-1 ",
+      }),
+    ).toEqual({ expectedSignalVersion: 2, idempotencyKey: "takeback-1" });
   });
 });
 

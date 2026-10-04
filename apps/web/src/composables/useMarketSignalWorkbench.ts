@@ -4,6 +4,7 @@ import type {
   MarketSignalPendingFieldCodeV1,
   MarketSignalUpdateCommandV1,
   MarketSignalV1,
+  ProductOpportunityV1,
 } from "@logix/contracts";
 import {
   computed,
@@ -19,9 +20,12 @@ import {
   decideMarketSignal,
   getMarketSignal,
   listMarketSignals,
+  listProductOpportunities,
   registerMarketSignalEvidence,
+  takeBackSelectionReturn,
   updateMarketSignal,
 } from "../api/marketSignals";
+import { HttpRequestError } from "../api/httpClient";
 import {
   buildMarketSignalResult,
   compareWatchingOrder,
@@ -41,14 +45,19 @@ interface UseMarketSignalWorkbenchOptions {
   selectSignal: (id: string) => Promise<void>;
 }
 
-const DESTINATIONS: readonly MarketSignalWorkflowState[] = [
+const MARKET_DESTINATIONS: readonly MarketSignalV1["currentDestination"][] = [
   "needs_decision",
+  "selection_return_requested",
   "returned_from_selection",
   "watching",
   "handed_off",
   "dismissed",
   "voided",
   "archived",
+];
+const QUEUE_STATES: readonly MarketSignalWorkflowState[] = [
+  "awaiting_selection_acceptance",
+  ...MARKET_DESTINATIONS,
 ];
 
 export interface QueuePageState {
@@ -82,9 +91,10 @@ export function useMarketSignalWorkbench(
   const loading = shallowRef(true);
   const saving = shallowRef(false);
   const error = shallowRef<string | null>(null);
+  const takebackReceipt = shallowRef<string | null>(null);
   const pages = reactive<Record<MarketSignalWorkflowState, QueuePageState>>(
     Object.fromEntries(
-      DESTINATIONS.map((destination) => [destination, emptyPage()]),
+      QUEUE_STATES.map((destination) => [destination, emptyPage()]),
     ) as unknown as Record<MarketSignalWorkflowState, QueuePageState>,
   );
   // 旧 API 忽略 destination、按跨状态顺序分页；探测到后只走一条全局游标。
@@ -94,7 +104,9 @@ export function useMarketSignalWorkbench(
     loadingMore: false,
   });
   const details = new Map<string, MarketSignalDetailV1>();
+  const responsibilities = new Map<string, ProductOpportunityV1>();
   const detailRequests = new Map<string, number>();
+  const takebackKeys = new Map<string, string>();
   let loadGeneration = 0;
 
   const selectedSignal = computed(() => {
@@ -126,7 +138,7 @@ export function useMarketSignalWorkbench(
   const hasMore = computed(
     () =>
       Object.fromEntries(
-        DESTINATIONS.map((destination) => [
+        QUEUE_STATES.map((destination) => [
           destination,
           legacy.active
             ? Boolean(legacy.nextCursor)
@@ -154,31 +166,60 @@ export function useMarketSignalWorkbench(
     const generation = ++loadGeneration;
     loading.value = true;
     error.value = null;
+    responsibilities.clear();
+    const responsibilityPage = pages.awaiting_selection_acceptance;
+    responsibilityPage.generation += 1;
+    const responsibilityGeneration = responsibilityPage.generation;
+    responsibilityPage.loading = true;
+    responsibilityPage.error = null;
     if (legacy.active) {
       try {
         const result = await listMarketSignals({ pageSize: 50 });
         if (loadGeneration !== generation) return;
+        const projected = await listProductOpportunities({
+          responsibilityStatus: "retained_by_market",
+          pageSize: 50,
+        });
+        if (loadGeneration !== generation) return;
         legacy.nextCursor = result.nextCursor;
         signals.value = [];
         upsertSignals(result.items);
+        applyResponsibilityPage(projected, true);
         await ensureRequestedSignal();
       } catch (caught) {
         error.value = message(caught);
       } finally {
+        responsibilityPage.loading = false;
         if (loadGeneration === generation) loading.value = false;
       }
       return;
     }
-    DESTINATIONS.forEach((destination) => {
+    MARKET_DESTINATIONS.forEach((destination) => {
       pages[destination].generation += 1;
       pages[destination].loading = true;
       pages[destination].error = null;
     });
     const results = await Promise.allSettled(
-      DESTINATIONS.map((destination) =>
+      MARKET_DESTINATIONS.map((destination) =>
         listMarketSignals({ destination, pageSize: 50 }),
       ),
     );
+    if (loadGeneration !== generation) return;
+    // 任一分组已经触发会话恢复时，不再发后续请求；其他失败仍允许责任投影独立恢复。
+    const unauthorizedResult = results.find(
+      (result): result is PromiseRejectedResult =>
+        result.status === "rejected" && isUnauthorized(result.reason),
+    );
+    const responsibilityResult = unauthorizedResult
+      ? null
+      : (
+          await Promise.allSettled([
+            listProductOpportunities({
+              responsibilityStatus: "retained_by_market",
+              pageSize: 50,
+            }),
+          ])
+        )[0]!;
     if (loadGeneration !== generation) return;
     const legacyPage = results.find(
       (result): result is PromiseFulfilledResult<MarketSignalPageV1> =>
@@ -190,7 +231,7 @@ export function useMarketSignalWorkbench(
       legacy.nextCursor = legacyPage.value.nextCursor;
       signals.value = [];
       upsertSignals(legacyPage.value.items);
-      DESTINATIONS.forEach((destination) => {
+      MARKET_DESTINATIONS.forEach((destination) => {
         pages[destination] = {
           ...emptyPage(),
           generation: pages[destination].generation,
@@ -201,7 +242,7 @@ export function useMarketSignalWorkbench(
       legacy.nextCursor = null;
       signals.value = [];
       results.forEach((result, index) => {
-        const destination = DESTINATIONS[index]!;
+        const destination = MARKET_DESTINATIONS[index]!;
         const page = pages[destination];
         page.loading = false;
         page.loadingMore = false;
@@ -217,8 +258,30 @@ export function useMarketSignalWorkbench(
         }
       });
     }
+    if (
+      pages.awaiting_selection_acceptance.generation ===
+      responsibilityGeneration
+    ) {
+      responsibilityPage.loading = false;
+      if (responsibilityResult?.status === "fulfilled") {
+        applyResponsibilityPage(responsibilityResult.value, true);
+        responsibilityPage.error = null;
+      } else if (responsibilityResult) {
+        responsibilityPage.nextCursor = null;
+        responsibilityPage.totalCount = null;
+        responsibilityPage.error = message(responsibilityResult.reason);
+      } else {
+        responsibilityPage.nextCursor = null;
+        responsibilityPage.totalCount = null;
+        responsibilityPage.error = message(unauthorizedResult!.reason);
+      }
+    }
     if (results.every((result) => result.status === "rejected")) {
       error.value = message((results[0] as PromiseRejectedResult).reason);
+    }
+    if (unauthorizedResult) {
+      loading.value = false;
+      return;
     }
     await ensureRequestedSignal();
     const requested = toValue(options.selectedId);
@@ -238,18 +301,16 @@ export function useMarketSignalWorkbench(
     requested = toValue(options.selectedId),
   ): Promise<void> {
     if (!requested || signals.value.some(({ id }) => id === requested)) return;
-    try {
-      const detail = await getMarketSignal(requested);
-      details.set(requested, detail);
-      upsertScenario(toScenario(detail.signal, detail));
-    } catch (caught) {
-      error.value = message(caught);
-    }
+    await loadDetail(requested);
   }
 
   async function retryGroup(
     destination: MarketSignalWorkflowState,
   ): Promise<void> {
+    if (destination === "awaiting_selection_acceptance") {
+      await loadSignals();
+      return;
+    }
     if (legacy.active) {
       await loadSignals();
       return;
@@ -278,13 +339,24 @@ export function useMarketSignalWorkbench(
     const request = (detailRequests.get(id) ?? 0) + 1;
     detailRequests.set(id, request);
     try {
-      const detail = await getMarketSignal(id);
+      const [detailResult, responsibilityResult] = await Promise.allSettled([
+        getMarketSignal(id),
+        listProductOpportunities({ signalId: id, pageSize: 1 }),
+      ]);
       if (detailRequests.get(id) !== request) return;
+      if (detailResult.status === "rejected") throw detailResult.reason;
+      const detail = detailResult.value;
+      if (responsibilityResult.status === "fulfilled") {
+        const opportunity = responsibilityResult.value.items[0];
+        if (opportunity) responsibilities.set(id, opportunity);
+        else responsibilities.delete(id);
+      }
+      const responsibility = responsibilities.get(id);
       const current = signals.value.find((item) => item.id === id);
       // 保存后的新版本先到、旧详情后到时，只保护信号字段；证据与退回原因仍是独立详情事实。
       if (current && current.version > detail.signal.version) {
         details.set(id, detail);
-        const enriched = toScenario(detail.signal, detail);
+        const enriched = toScenario(detail.signal, detail, responsibility);
         upsertScenario({
           ...current,
           evidence: enriched.evidence,
@@ -299,11 +371,56 @@ export function useMarketSignalWorkbench(
         return;
       }
       details.set(id, detail);
-      upsertScenario(toScenario(detail.signal, detail));
+      upsertScenario(toScenario(detail.signal, detail, responsibility));
     } catch (caught) {
       if (detailRequests.get(id) !== request) return;
       error.value = message(caught);
     }
+  }
+
+  async function takeBackReturn(): Promise<boolean> {
+    const selected = selectedSignal.value;
+    if (
+      !selected ||
+      selected.initialState !== "selection_return_requested" ||
+      saving.value
+    ) {
+      return false;
+    }
+    saving.value = true;
+    error.value = null;
+    takebackReceipt.value = null;
+    try {
+      await takeBackSelectionReturn(selected.id, {
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: selected.version,
+        idempotencyKey: takebackKey(selected.id, selected.version),
+      });
+      await loadSignals();
+      takebackReceipt.value =
+        "已接回。信号已回到经营队列，可补充事实后重新判断并交接新版本。";
+      return true;
+    } catch (caught) {
+      const raw = message(caught);
+      if (raw.includes("VERSION_CONFLICT") || raw.includes("INVALID_STATE")) {
+        await loadDetail(selected.id);
+        error.value = "接回时信号已被更新，已重读最新状态，请核对后再试。";
+      } else {
+        error.value = raw;
+      }
+      return false;
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  function takebackKey(signalId: string, expectedVersion: number): string {
+    const scope = `${signalId}:${expectedVersion}`;
+    const current = takebackKeys.get(scope);
+    if (current) return current;
+    const created = `selection-return-takeback:${scope}:${crypto.randomUUID()}`;
+    takebackKeys.set(scope, created);
+    return created;
   }
 
   async function loadMore(
@@ -319,6 +436,16 @@ export function useMarketSignalWorkbench(
     const generation = page.generation;
     page.loadingMore = true;
     try {
+      if (destination === "awaiting_selection_acceptance") {
+        const result = await listProductOpportunities({
+          responsibilityStatus: "retained_by_market",
+          cursor,
+          pageSize: 50,
+        });
+        if (pages[destination].generation !== generation) return;
+        applyResponsibilityPage(result, false);
+        return;
+      }
       const result = await listMarketSignals({
         destination,
         cursor,
@@ -445,12 +572,19 @@ export function useMarketSignalWorkbench(
       loadGeneration += 1;
       loading.value = false;
       // 判断响应只带信号本体；证据与选品退回原因沿用已读详情，避免保存后丢失。
-      upsertScenario(toScenario(response.signal, details.get(signal.id)));
+      upsertScenario(
+        toScenario(
+          response.signal,
+          details.get(signal.id),
+          responsibilities.get(signal.id),
+        ),
+      );
       moveCount(signal.initialState, response.signal.currentDestination);
       const result = buildMarketSignalResult(signal, draft);
       if (response.handoff) {
         result.pendingItems =
           response.handoff.pendingFieldCodes.map(pendingFieldLabel);
+        await refreshResponsibility(signal.id);
       }
       receipt.value = {
         signalId: signal.id,
@@ -491,6 +625,7 @@ export function useMarketSignalWorkbench(
               idempotencyKey: `market-signal-update:${signal.id}:${signal.version}:${draft.gapCode}:${crypto.randomUUID()}`,
             }),
             details.get(signal.id),
+            responsibilities.get(signal.id),
           ),
         );
       } else {
@@ -534,9 +669,72 @@ export function useMarketSignalWorkbench(
     upsertSignals(items);
   }
 
+  function applyResponsibilityPage(
+    result: Awaited<ReturnType<typeof listProductOpportunities>>,
+    replace: boolean,
+  ): void {
+    const page = pages.awaiting_selection_acceptance;
+    if (replace) {
+      const incoming = new Set(
+        result.items.map(({ handoff }) => handoff.signalId),
+      );
+      for (const [signalId, opportunity] of responsibilities) {
+        if (
+          opportunity.responsibility.status === "retained_by_market" &&
+          !incoming.has(signalId)
+        ) {
+          responsibilities.delete(signalId);
+        }
+      }
+    }
+    result.items.forEach((opportunity) => {
+      const signalId = opportunity.handoff.signalId;
+      responsibilities.set(signalId, opportunity);
+      const detail = details.get(signalId);
+      upsertScenario(
+        toScenario(
+          detail?.signal ?? signalFromOpportunity(opportunity),
+          detail,
+          opportunity,
+        ),
+      );
+    });
+    page.nextCursor = result.nextCursor;
+    page.totalCount = result.totalCount ?? result.items.length;
+  }
+
+  async function refreshResponsibility(signalId: string): Promise<void> {
+    try {
+      const result = await listProductOpportunities({ signalId, pageSize: 1 });
+      const opportunity = result.items[0];
+      if (!opportunity) return;
+      responsibilities.set(signalId, opportunity);
+      const detail = details.get(signalId);
+      upsertScenario(
+        toScenario(
+          detail?.signal ?? signalFromOpportunity(opportunity),
+          detail,
+          opportunity,
+        ),
+      );
+      const page = pages.awaiting_selection_acceptance;
+      if (opportunity.responsibility.status === "retained_by_market") {
+        page.totalCount = Math.max(page.totalCount ?? 0, 1);
+      }
+    } catch (caught) {
+      pages.awaiting_selection_acceptance.error = message(caught);
+    }
+  }
+
   function upsertSignals(items: readonly MarketSignalV1[]): void {
     items.forEach((item) => {
-      upsertScenario(toScenario(item, details.get(item.signalId)));
+      upsertScenario(
+        toScenario(
+          item,
+          details.get(item.signalId),
+          responsibilities.get(item.signalId),
+        ),
+      );
     });
   }
 
@@ -566,12 +764,14 @@ export function useMarketSignalWorkbench(
     loading,
     saving,
     error,
+    takebackReceipt,
     loadSignals,
     loadMore,
     retryGroup,
     registerSignal,
     submitDecision,
     supplementSignal,
+    takeBackReturn,
     clearReceipt,
   };
 }
@@ -579,20 +779,40 @@ export function useMarketSignalWorkbench(
 function toScenario(
   signal: MarketSignalV1,
   detail?: MarketSignalDetailV1,
+  opportunity?: ProductOpportunityV1,
 ): MarketSignalScenario {
+  const responsibility = opportunity?.responsibility ?? null;
+  const awaitingAcceptance =
+    signal.currentDestination === "handed_off" &&
+    responsibility?.status === "retained_by_market";
   return {
     id: signal.signalId,
     title: signal.title,
     workReason: detail?.selectionReturnReason
-      ? `选品退回：${detail.selectionReturnReason}`
-      : workReason(signal),
+      ? `选品请求退回：${detail.selectionReturnReason}`
+      : awaitingAcceptance
+        ? responsibility.assignedActorId
+          ? `选品已领取，等待 ${responsibility.assignedActorId} 接受交接`
+          : "已交给选品，等待领取并接受交接"
+        : workReason(signal),
     urgency: "normal",
-    urgencyLabel: destinationLabel(signal.currentDestination),
+    urgencyLabel: awaitingAcceptance
+      ? "待选品接受"
+      : destinationLabel(signal.currentDestination),
+    selectionReturnBasis: detail?.selectionReturnBasis ?? null,
+    selectionReturnReason: detail?.selectionReturnReason ?? null,
+    responsibility,
+    latestSelectionDecision: opportunity?.latestSelectionDecision ?? null,
     market: signal.marketCode ?? null,
     channel: signal.channelCode ?? null,
     category: signal.categoryRef ?? null,
-    owner:
-      signal.ownerTeamCode === "market_intelligence"
+    owner: responsibility
+      ? responsibility.responsibleTeamCode === "market_intelligence"
+        ? "经营与市场团队"
+        : responsibility.responsibleTeamCode === "product_selection"
+          ? "选品团队"
+          : "该交接已失效"
+      : signal.ownerTeamCode === "market_intelligence"
         ? "经营与市场团队"
         : signal.ownerTeamCode,
     activeValidation: signal.activeValidation ?? null,
@@ -624,9 +844,34 @@ function toScenario(
         ? [marketSignalGap("source_name")]
         : []),
     ],
-    initialState: signal.currentDestination,
+    initialState: awaitingAcceptance
+      ? "awaiting_selection_acceptance"
+      : signal.currentDestination,
     version: signal.version,
     updatedAt: signal.updatedAt,
+  };
+}
+
+function signalFromOpportunity(
+  opportunity: ProductOpportunityV1,
+): MarketSignalV1 {
+  const handoff = opportunity.handoff;
+  return {
+    signalId: handoff.signalId,
+    title: handoff.title,
+    marketCode: handoff.marketCode,
+    channelCode: handoff.channelCode,
+    categoryRef: handoff.categoryRef,
+    observedFactSummary: handoff.observedFactSummary,
+    hypothesis: handoff.hypothesis,
+    evidenceRefs: handoff.evidenceRefs,
+    currentDestination: "handed_off",
+    ownerTeamCode: "market_intelligence",
+    activeValidation: null,
+    version: handoff.signalVersion,
+    pendingFieldCodes: handoff.pendingFieldCodes,
+    createdAt: handoff.createdAt,
+    updatedAt: handoff.createdAt,
   };
 }
 
@@ -661,6 +906,9 @@ function workReason(signal: MarketSignalV1): string {
   if (signal.currentDestination === "returned_from_selection") {
     return "选品已退回，需重新判断去向";
   }
+  if (signal.currentDestination === "selection_return_requested") {
+    return "选品请求退回，等待市场接回";
+  }
   if (signal.currentDestination === "voided") return "已作废，只读回看";
   if (signal.currentDestination === "archived") return "已归档，只读回看";
   return "需要判断下一步去向";
@@ -673,6 +921,7 @@ function destinationLabel(
   if (destination === "handed_off") return "已交接";
   if (destination === "dismissed") return "不采纳";
   if (destination === "returned_from_selection") return "选品退回";
+  if (destination === "selection_return_requested") return "选品请求退回";
   if (destination === "voided") return "已作废";
   if (destination === "archived") return "已归档";
   return "待判断";
@@ -680,8 +929,8 @@ function destinationLabel(
 
 function pendingFieldLabel(code: MarketSignalPendingFieldCodeV1): string {
   const labels: Record<MarketSignalPendingFieldCodeV1, string> = {
-    market_code: "市场待补",
-    channel_code: "渠道待补",
+    market_code: "市场未填",
+    channel_code: "渠道未填",
     category_ref: "商品类别待选择",
     observed_fact_summary: "观察事实待补",
     hypothesis: "经营假设待补",
@@ -697,4 +946,8 @@ function pendingFieldLabel(code: MarketSignalPendingFieldCodeV1): string {
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : "操作失败，请稍后重试";
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof HttpRequestError && error.kind === "unauthorized";
 }

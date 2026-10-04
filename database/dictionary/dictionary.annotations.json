@@ -7516,6 +7516,16 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.market_signal_decision.return_basis": {
+      "nameZh": "选品退回依据",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录选品请求退回市场时的结构化依据，仅允许证据不足或方向错误。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "market-intelligence",
+      "ownerModule": "market-intelligence",
+      "notes": ["只属于 selection_return_request；市场接回判断本身为空。"]
+    },
     "public.market_signal_decision.signal_id": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
@@ -12405,6 +12415,16 @@
       "moduleCode": null,
       "ownerModule": null,
       "notes": []
+    },
+    "public.product_initiative.return_basis": {
+      "nameZh": "请求退回依据",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录选品请求市场补充上游事实的结构化依据，仅允许证据不足或方向错误。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-market-signals"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["利润、供应或组合判断不成立由暂缓或不立项承载。"]
     },
     "public.product_initiative.tenant_id": {
       "nameZh": "租户标识",

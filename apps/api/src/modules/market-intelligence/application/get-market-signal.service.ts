@@ -35,13 +35,13 @@ export class GetMarketSignalService {
       );
       if (!signal)
         throw new MarketSignalNotFoundError("MARKET_SIGNAL_NOT_FOUND");
-      const [details, selectionReturnReason] = await Promise.all([
+      const [details, selectionReturn] = await Promise.all([
         this.evidenceReader.executeDetails({
           tenantId: input.tenantId,
           subjectType: "market_signal",
           subjectIds: [input.signalId],
         }),
-        this.repository.findLatestSelectionReturnReason(
+        this.repository.findLatestSelectionReturn(
           input.tenantId,
           input.signalId,
         ),
@@ -58,7 +58,8 @@ export class GetMarketSignalService {
           verificationState:
             detail.verificationState as MarketSignalDetailV1["evidence"][number]["verificationState"],
         })),
-        selectionReturnReason,
+        selectionReturnReason: selectionReturn?.reason ?? null,
+        selectionReturnBasis: selectionReturn?.basis ?? null,
       };
     } catch (error) {
       throwMarketSignalHttpError(error);

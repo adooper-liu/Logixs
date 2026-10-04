@@ -33,7 +33,8 @@
       "cross-module-reference.schema.json",
       "shipment-handoff.schema.json",
       "market-opportunity.schema.json",
-      "product-initiative.schema.json"
+      "product-initiative.schema.json",
+      "workbench-network-volume.schema.json"
     ],
     "GC-008": ["action-command.schema.json"],
     "GC-009": ["client-operation.schema.json"],
@@ -88,6 +89,9 @@
     },
     "errorResponse": {
       "$ref": "error-response.schema.json"
+    },
+    "workbenchNetworkVolume": {
+      "$ref": "workbench-network-volume.schema.json"
     }
   }
 }

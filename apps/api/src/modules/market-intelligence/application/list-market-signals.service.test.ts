@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import type { MarketSignalRepository } from "../domain/market-signal.repository";
+import type {
+  MarketSignalRecord,
+  MarketSignalRepository,
+} from "../domain/market-signal.repository";
 import { ListMarketSignalsService } from "./list-market-signals.service";
 
-const row = {
+const row: MarketSignalRecord = {
   id: "11111111-1111-4111-8111-111111111111",
   tenantId: "tenant-a",
   title: "验证信号",
@@ -24,7 +27,7 @@ const row = {
   updatedAt: new Date("2026-02-02T00:00:00.000Z"),
 };
 
-function setup(rows = [row]) {
+function setup(rows: MarketSignalRecord[] = [row]) {
   const repository = {
     list: vi.fn().mockResolvedValue(rows),
     count: vi.fn().mockResolvedValue(rows.length),
@@ -82,6 +85,36 @@ describe("ListMarketSignalsService", () => {
   ])("rejects %s", async (_name, input) => {
     const { service } = setup();
     await expect(service.execute(input)).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("lists selection return requests with a filtered total count", async () => {
+    const returnRequest = {
+      ...row,
+      currentDestination: "selection_return_requested" as const,
+      activeValidation: null,
+    };
+    const { repository, service } = setup([returnRequest]);
+
+    const result = await service.execute({
+      tenantId: "tenant-a",
+      destination: "selection_return_requested",
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.currentDestination).toBe(
+      "selection_return_requested",
+    );
+    expect(result.totalCount).toBe(1);
+    expect(repository.list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-a",
+        destination: "selection_return_requested",
+      }),
+    );
+    expect(repository.count).toHaveBeenCalledWith({
+      tenantId: "tenant-a",
+      destination: "selection_return_requested",
+    });
   });
 
   it("keeps the pre-upgrade cross-destination list and cursor when destination is omitted", async () => {

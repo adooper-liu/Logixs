@@ -27,6 +27,8 @@ type QueueFilter = MarketSignalWorkflowState;
 
 const filters: readonly { code: QueueFilter; label: string }[] = [
   { code: "needs_decision", label: "待判断" },
+  { code: "awaiting_selection_acceptance", label: "已交选品·待接受" },
+  { code: "selection_return_requested", label: "选品请求退回" },
   { code: "returned_from_selection", label: "选品退回" },
   { code: "watching", label: "继续观察" },
   { code: "handed_off", label: "已交接" },
@@ -88,6 +90,21 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
 
 function isClosedState(state: QueueFilter): boolean {
   return state === "voided" || state === "archived";
+}
+
+function elapsedSince(value: string): string {
+  const elapsed = Math.max(0, Date.now() - new Date(value).getTime());
+  const hours = Math.floor(elapsed / 3_600_000);
+  if (hours < 1) return "不足 1 小时";
+  if (hours < 24) return `${hours} 小时`;
+  return `${Math.floor(hours / 24)} 天`;
+}
+
+function dateTime(value: string): string {
+  return new Intl.DateTimeFormat("zh-CN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 </script>
 
@@ -164,7 +181,7 @@ function isClosedState(state: QueueFilter): boolean {
             {{ item.market || "市场未填" }} · {{ item.channel || "渠道未填" }}
           </template>
           <template v-else>
-            {{ item.market || "市场待补" }} · {{ item.channel || "渠道待补" }}
+            {{ item.market || "市场未填" }} · {{ item.channel || "渠道未填" }}
           </template>
         </span>
         <span class="queue-item__reason-label">
@@ -175,6 +192,20 @@ function isClosedState(state: QueueFilter): boolean {
         <span class="queue-item__reason">
           <AlertCircle :size="14" aria-hidden="true" />
           {{ item.workReason }}
+        </span>
+        <span
+          v-if="
+            item.workflowState === 'awaiting_selection_acceptance' &&
+            item.responsibility
+          "
+          class="queue-item__responsibility"
+        >
+          <template v-if="item.responsibility.claimedAt">
+            {{ item.responsibility.assignedActorId }} 于
+            {{ dateTime(item.responsibility.claimedAt) }} 领取
+          </template>
+          <template v-else>选品尚未领取</template>
+          · 已交出 {{ elapsedSince(item.responsibility.handedOffAt) }}
         </span>
         <template v-if="item.workflowState === 'watching'">
           <span v-if="item.activeValidation" class="queue-item__validation">
@@ -198,7 +229,7 @@ function isClosedState(state: QueueFilter): boolean {
           v-if="item.gaps.length && !isClosedState(item.workflowState)"
           class="queue-item__gaps"
         >
-          仍待补 {{ item.gaps.length }} 项，不影响先处理
+          依据缺 {{ item.gaps.length }} 项
         </span>
         <span
           v-else-if="item.gaps.length && isClosedState(item.workflowState)"
@@ -322,6 +353,13 @@ function isClosedState(state: QueueFilter): boolean {
   cursor: pointer;
   font: inherit;
   text-align: left;
+}
+
+.queue-item__responsibility {
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
 }
 
 .queue-item:hover {

@@ -2,6 +2,51 @@
   "fixtureVersion": "1.0.0",
   "cases": [
     {
+      "contractId": "GC-007",
+      "name": "workbench network volume with undefined block",
+      "schemaRef": "workbench-network-volume.schema.json",
+      "data": {
+        "contractVersion": "workbench-network-volume.v1",
+        "weekStart": "2026-09-28T00:00:00.000Z",
+        "currentPhase": null,
+        "global": {
+          "open": { "state": "count", "count": 1 },
+          "weeklyFlow": { "state": "not_connected" },
+          "blocked": { "state": "undefined" }
+        },
+        "workbenches": [
+          {
+            "code": "market_signals",
+            "open": { "state": "count", "count": 1 },
+            "weeklyFlow": { "state": "count", "count": 0 },
+            "blocked": { "state": "undefined" }
+          }
+        ],
+        "connections": [
+          {
+            "fromCode": "market_signals",
+            "toCode": "product_selection",
+            "pendingAcceptance": { "state": "count", "count": 0 },
+            "overdue": { "state": "undefined" }
+          }
+        ]
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "workbench count metric requires a count",
+      "schemaRef": "workbench-network-volume.schema.json#/$defs/WorkbenchNetworkVolumeMetricV1",
+      "valid": false,
+      "data": { "state": "count" }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "workbench semantic metric forbids a count",
+      "schemaRef": "workbench-network-volume.schema.json#/$defs/WorkbenchNetworkVolumeMetricV1",
+      "valid": false,
+      "data": { "state": "not_connected", "count": 0 }
+    },
+    {
       "contractId": "GC-001",
       "name": "registered lifecycle node code",
       "schemaRef": "common.schema.json#/$defs/LifecycleNodeCode",
@@ -944,6 +989,47 @@
         "createdBy": "market-owner-001",
         "createdAt": "2026-09-25T10:00:00Z",
         "idempotencyKey": "market-handoff-001"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "claimed opportunity keeps market responsibility until acceptance",
+      "schemaRef": "market-opportunity.schema.json#/$defs/ProductOpportunityV1",
+      "data": {
+        "handoff": {
+          "contractVersion": "market_opportunity_handoff.v1",
+          "handoffId": "77200000-0000-4000-8000-000000000001",
+          "version": 1,
+          "signalId": "77200000-0000-4000-8000-000000000002",
+          "signalVersion": 2,
+          "title": "加拿大站宠物出行需求上升",
+          "recipientQueueCode": "product_selection",
+          "marketCode": "CA",
+          "channelCode": null,
+          "categoryRef": null,
+          "observedFactSummary": "搜索量连续三周增长。",
+          "evidenceRefs": [],
+          "hypothesis": "验证宠物出行机会是否值得立项。",
+          "opportunityStatement": "验证宠物出行机会是否值得立项。",
+          "judgmentNote": null,
+          "pendingFieldCodes": [],
+          "createdBy": "market-owner-001",
+          "createdAt": "2026-10-04T01:00:00Z",
+          "idempotencyKey": "market-handoff-responsibility-001"
+        },
+        "supplementedFieldCodes": [],
+        "intakeState": "claimed",
+        "intakeVersion": 1,
+        "assignedActorId": "selector-001",
+        "responsibility": {
+          "status": "retained_by_market",
+          "responsibleTeamCode": "market_intelligence",
+          "handedOffAt": "2026-10-04T01:00:00Z",
+          "assignedActorId": "selector-001",
+          "claimedAt": "2026-10-04T01:10:00Z",
+          "acceptedAt": null
+        },
+        "latestSelectionDecision": null
       }
     },
     {

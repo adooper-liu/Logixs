@@ -1,8 +1,15 @@
+import type {
+  MarketOpportunityResponsibilityProjectionV1,
+  ProductOpportunityLatestSelectionDecisionV1,
+} from "@logix/contracts";
+
 export type MarketSignalWorkflowState =
   | "needs_decision"
+  | "awaiting_selection_acceptance"
   | "watching"
   | "handed_off"
   | "dismissed"
+  | "selection_return_requested"
   | "returned_from_selection"
   | "voided"
   | "archived";
@@ -58,6 +65,10 @@ export interface MarketSignalScenario {
   version: number;
   title: string;
   workReason: string;
+  selectionReturnBasis?: "insufficient_evidence" | "wrong_direction" | null;
+  selectionReturnReason?: string | null;
+  responsibility: MarketOpportunityResponsibilityProjectionV1 | null;
+  latestSelectionDecision: ProductOpportunityLatestSelectionDecisionV1 | null;
   urgency: "today" | "this_week" | "normal";
   urgencyLabel: string;
   market: string | null;
@@ -233,7 +244,7 @@ export function buildMarketSignalResult(
     pendingItems,
     handoffFacts: [
       [signal.market, signal.channel].filter(Boolean).join(" · ") ||
-        "市场与渠道待补",
+        "市场与渠道未填",
       `${signal.evidence.length} 项来源证据`,
       signal.hypothesis ? "经营假设已带入" : "经营假设待补",
     ],
@@ -269,7 +280,7 @@ export function marketSignalGap(code: MarketSignalGapCode): MarketSignalGap {
     case "market":
       return gap(
         code,
-        "市场待补",
+        "市场未填",
         "市场",
         "text",
         "填写实际销售市场，例如：加拿大",
@@ -277,7 +288,7 @@ export function marketSignalGap(code: MarketSignalGapCode): MarketSignalGap {
     case "channel":
       return gap(
         code,
-        "渠道待补",
+        "渠道未填",
         "渠道",
         "text",
         "填写实际渠道，例如：Aosom.ca",

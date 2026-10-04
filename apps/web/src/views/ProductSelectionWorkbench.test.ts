@@ -50,11 +50,11 @@ describe("ProductSelectionWorkbench", () => {
 
     expect(wrapper.text()).toContain("加拿大站宠物出行需求上升");
     expect(wrapper.text()).toContain("验证宠物出行机会是否值得立项");
+    expect(wrapper.get(".opportunity-queue").text()).toContain("渠道未填");
+    expect(wrapper.get(".pending").text()).toContain("交接时未填");
     expect(wrapper.text()).toContain("商品类别");
     expect(wrapper.text()).toContain("来源证据");
-    expect(wrapper.text()).toContain(
-      "合并信号后补后仍缺这些；不阻止领取和评估",
-    );
+    expect(wrapper.text()).toContain("这些项来自交接快照，选品不在此处补录");
     expect(wrapper.get(".action-body button").text()).toBe("领取此机会");
   });
 
@@ -292,10 +292,10 @@ describe("ProductSelectionWorkbench", () => {
     await wrapper.get(".destination:nth-of-type(4) input").setValue(true);
 
     expect(
-      wrapper.get('textarea[aria-label="退回原因"]').element,
+      wrapper.get('textarea[aria-label="市场需要补什么"]').element,
     ).toHaveProperty("value", "");
     await wrapper
-      .get('textarea[aria-label="退回原因"]')
+      .get('textarea[aria-label="市场需要补什么"]')
       .setValue("该由经营团队重新判断");
     await wrapper.get(".destination:nth-of-type(2) input").setValue(true);
 
@@ -315,6 +315,24 @@ describe("ProductSelectionWorkbench", () => {
     const [, command] = decideProductInitiative.mock.calls[0]!;
     expect(command).toEqual(expect.objectContaining({ outcome: "defer" }));
     expect(command).not.toHaveProperty("deferReason");
+  });
+
+  it("请求退回市场时必须先选择退回依据", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    const wrapper = await mountPage();
+
+    await wrapper.get(".destination:nth-of-type(4) input").setValue(true);
+
+    const button = wrapper.get(".outcome-submit");
+    expect(button.attributes("disabled")).toBeDefined();
+    expect(button.text()).toContain("请选择退回依据");
+    await button.trigger("click");
+    expect(decideProductInitiative).not.toHaveBeenCalled();
+
+    await wrapper
+      .get('select[aria-label="退回依据"]')
+      .setValue("wrong_direction");
+    expect(button.attributes("disabled")).toBeUndefined();
   });
 
   it("换一条机会时重新读该机会的立项判断，不沿用上一条", async () => {
@@ -470,10 +488,32 @@ describe("ProductSelectionWorkbench", () => {
     // 已记下的原因回填，重放同一去向不会把它抹掉
     expect(
       (
-        wrapper.get('textarea[aria-label="退回原因"]')
+        wrapper.get('textarea[aria-label="市场需要补什么"]')
           .element as HTMLTextAreaElement
       ).value,
     ).toBe("该由经营团队重新判断");
+  });
+
+  it("退回请求等待市场接回时不误显示为已立项", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockResolvedValue(
+      initiativeDetail({
+        initiative: {
+          ...initiativeRecord(),
+          outcome: "return_to_market",
+          completion: "completed",
+          currentDestination: "return_requested",
+          reason: "请市场重新核对目标方向",
+          returnBasis: "wrong_direction",
+        },
+      }),
+    );
+    const wrapper = await mountPage();
+
+    const conclusion = wrapper.get(".conclusion-strip");
+    expect(conclusion.text()).toContain("已请求退回市场，等待市场接回");
+    expect(conclusion.text()).toContain("当前责任仍在选品");
+    expect(conclusion.text()).not.toContain("已立项");
   });
 
   it("已立项后评审要点只读，不再提供系统不会接受的编辑", async () => {
@@ -617,6 +657,14 @@ function acceptedOpportunity(
     intakeState: "accepted",
     intakeVersion: 3,
     assignedActorId: "dev-operator",
+    responsibility: {
+      status: "transferred_to_selection",
+      responsibleTeamCode: "product_selection",
+      handedOffAt: "2026-09-25T02:00:00.000Z",
+      assignedActorId: "dev-operator",
+      claimedAt: "2026-09-25T02:10:00.000Z",
+      acceptedAt: "2026-09-25T02:20:00.000Z",
+    },
     ...overrides,
   });
 }
@@ -703,6 +751,15 @@ function opportunity(
     intakeVersion: 1,
     assignedActorId: null,
     supplementedFieldCodes: [],
+    responsibility: {
+      status: "retained_by_market",
+      responsibleTeamCode: "market_intelligence",
+      handedOffAt: "2026-09-25T02:00:00.000Z",
+      assignedActorId: null,
+      claimedAt: null,
+      acceptedAt: null,
+    },
+    latestSelectionDecision: null,
     ...overrides,
   };
 }

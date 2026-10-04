@@ -3,11 +3,13 @@ import type {
   ProductInitiativeDestinationV1,
   ProductInitiativeStoredOutcomeV1,
   ProductInitiativePendingFieldCodeV1,
+  ProductInitiativeReturnBasisV1,
 } from "@logix/contracts";
 import type { PreparedProductInitiativeClaim } from "./product-initiative-claim";
 import type { PreparedProductInitiativeNpiReturn } from "./product-initiative-npi-return";
 import type {
   PreparedProductInitiativeDecision,
+  PreparedSelectionReturnTakeback,
   ProductInitiativeReviewPoint,
 } from "./product-initiative";
 
@@ -27,6 +29,7 @@ export interface ProductInitiativeRecord {
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   reason: string | null;
+  returnBasis?: ProductInitiativeReturnBasisV1 | null;
   pendingFieldCodes: ProductInitiativePendingFieldCodeV1[];
   createdAt: Date;
   updatedAt: Date;
@@ -91,6 +94,12 @@ export interface ProductInitiativeRepository {
     handoffId: string;
     actorId: string;
     command: PreparedProductInitiativeDecision;
+  }): Promise<{ record: ProductInitiativeRecord; duplicate: boolean }>;
+  takeBackSelectionReturn(input: {
+    tenantId: string;
+    signalId: string;
+    actorId: string;
+    command: PreparedSelectionReturnTakeback;
   }): Promise<{ record: ProductInitiativeRecord; duplicate: boolean }>;
   /**
    * NPI 待办队列：交到产品侧的不可变快照，左连当前领取状态。

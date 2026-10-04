@@ -26,7 +26,7 @@ const emit = defineEmits<{
         <b>{{ receipt.result.handoffFacts.join("；") }}</b>
       </span>
       <span v-if="receipt.result.pendingItems.length">
-        <small>仍待补</small>
+        <small>尚未填写</small>
         <b>{{ receipt.result.pendingItems.join("；") }}</b>
       </span>
     </div>

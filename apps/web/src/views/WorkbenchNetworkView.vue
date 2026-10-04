@@ -5,7 +5,13 @@ import {
   Construction,
   MousePointer2,
 } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
+import type {
+  WorkbenchNetworkVolume,
+  WorkbenchNetworkVolumeMetricV1,
+} from "@logix/contracts";
+import { HttpRequestError } from "../api/httpClient";
+import { getWorkbenchNetworkVolume } from "../api/workbenchNetworkVolume";
 import PageHeader from "../components/ui/PageHeader.vue";
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import {
@@ -35,11 +41,91 @@ const phases = computed(() =>
   })),
 );
 
-function outboundLabel(stage: WorkbenchStage): string {
+// 交接是节点之间的关系，画在连接处；链尾没有出向交接就不画连接。
+function outboundLabel(stage: WorkbenchStage): string | null {
   const relations = getOutboundWorkbenchRelations(stage.code);
-  if (relations.length === 0) return "主链责任收口";
+  if (relations.length === 0) return null;
   if (relations.length === 1) return relations[0]!.label;
   return `${relations.length} 项出向交接`;
+}
+
+const exceptionCenter = computed(() =>
+  supportingWorkbenches.find((stage) => stage.code === "exceptions"),
+);
+
+type VolumeStatus = "loading" | "ready" | "forbidden" | "error";
+const volumeStatus = ref<VolumeStatus>("loading");
+const volume = ref<WorkbenchNetworkVolume | null>(null);
+
+onMounted(() => {
+  void loadVolume();
+});
+
+async function loadVolume(): Promise<void> {
+  volumeStatus.value = "loading";
+  volume.value = null;
+  try {
+    volume.value = await getWorkbenchNetworkVolume();
+    volumeStatus.value = "ready";
+  } catch (caught) {
+    volume.value = null;
+    volumeStatus.value =
+      caught instanceof HttpRequestError && caught.kind === "forbidden"
+        ? "forbidden"
+        : "error";
+  }
+}
+
+function deskVolume(code: string) {
+  return volume.value?.workbenches.find((desk) => desk.code === code) ?? null;
+}
+
+function connectionVolume(code: string) {
+  return (
+    volume.value?.connections.find(
+      (connection) => connection.fromCode === code,
+    ) ?? null
+  );
+}
+
+function metricLabel(
+  metric: WorkbenchNetworkVolumeMetricV1 | undefined,
+): string {
+  if (!metric) return "未接通";
+  if (metric.state === "count") {
+    return Number.isInteger(metric.count) && metric.count >= 0
+      ? String(metric.count)
+      : "—";
+  }
+  if (metric.state === "undefined") return "未定义";
+  if (metric.state === "forbidden") return "无权查看";
+  return "未接通";
+}
+
+function globalMetric(key: "open" | "weeklyFlow" | "blocked"): string {
+  if (volumeStatus.value !== "ready" || !volume.value) return "—";
+  return metricLabel(volume.value.global[key]);
+}
+
+function stageVolumeText(code: string): string {
+  if (volumeStatus.value === "loading") return "正在读取";
+  if (volumeStatus.value === "forbidden") return "无权查看";
+  if (volumeStatus.value === "error") return "暂时读不出来";
+  const desk = deskVolume(code);
+  if (!desk) return "未接通";
+  return `在办 ${metricLabel(desk.open)} · 本周 ${metricLabel(desk.weeklyFlow)} · 阻塞 ${metricLabel(desk.blocked)}`;
+}
+
+function connectorText(stage: WorkbenchStage): string | null {
+  const label = outboundLabel(stage);
+  const connection = connectionVolume(stage.code);
+  if (!connection || volumeStatus.value !== "ready") return label;
+  const pending = metricLabel(connection.pendingAcceptance);
+  const suffix =
+    connection.pendingAcceptance.state === "count"
+      ? `待接受 ${pending}，超时${metricLabel(connection.overdue)}`
+      : pending;
+  return label ? `${label} · ${suffix}` : suffix;
 }
 
 // 岗位作业规格：网络里的字段说明"这个岗位在链上的位置"，
@@ -64,6 +150,30 @@ const totalStageCount = computed(
       summary="从市场机会到还箱收口，按事实产生顺序进入正确岗位；实施状态只说明技术链路是否接入，不代表岗位业务已经通过复审。"
     />
 
+    <section class="volume-band" aria-label="全局业务量">
+      <dl>
+        <div>
+          <dt>在办</dt>
+          <dd>{{ globalMetric("open") }}</dd>
+        </div>
+        <div>
+          <dt>本周流转</dt>
+          <dd>{{ globalMetric("weeklyFlow") }}</dd>
+        </div>
+        <div>
+          <dt>阻塞</dt>
+          <dd>{{ globalMetric("blocked") }}</dd>
+        </div>
+      </dl>
+      <p v-if="volumeStatus === 'loading'">正在读取业务量。</p>
+      <p v-else-if="volumeStatus === 'forbidden'">无权查看业务量。</p>
+      <p v-else-if="volumeStatus === 'error'">业务量暂时读不出来。</p>
+      <p v-else>数字来自服务端当前责任，没有事实的项不会显示成 0。</p>
+      <RouterLink v-if="exceptionCenter" :to="exceptionCenter.path">
+        进入异常中心 <ArrowRight :size="15" aria-hidden="true" />
+      </RouterLink>
+    </section>
+
     <section class="network-legend" aria-label="工作台实施状态说明">
       <span><CircleCheck :size="16" aria-hidden="true" /> 已接真实能力</span>
       <span><MousePointer2 :size="16" aria-hidden="true" /> 交互样板</span>
@@ -82,6 +192,8 @@ const totalStageCount = computed(
       v-for="phase in phases"
       :key="phase.code"
       class="phase-band"
+      :class="{ 'phase-band--current': volume?.currentPhase === phase.code }"
+      :aria-current="volume?.currentPhase === phase.code ? 'true' : undefined"
       :aria-labelledby="`phase-${phase.code}`"
     >
       <header class="phase-heading">
@@ -89,6 +201,7 @@ const totalStageCount = computed(
           String(phaseOrder.indexOf(phase.code) + 1).padStart(2, "0")
         }}</span>
         <h2 :id="`phase-${phase.code}`">{{ phase.label }}</h2>
+        <b v-if="volume?.currentPhase === phase.code">当前阶段</b>
       </header>
 
       <ol class="stage-grid">
@@ -100,49 +213,58 @@ const totalStageCount = computed(
           data-testid="main-workbench-stage"
           :data-implementation="stage.implementation"
         >
-          <RouterLink class="stage-link" :to="stage.path">
-            <div class="stage-topline">
-              <span class="stage-number">{{ stage.sequence }}</span>
-              <span class="stage-status">
-                <CircleCheck
-                  v-if="stage.implementation === 'live'"
-                  :size="14"
-                  aria-hidden="true"
-                />
-                <MousePointer2
-                  v-else-if="stage.implementation === 'prototype'"
-                  :size="14"
-                  aria-hidden="true"
-                />
-                <Construction v-else :size="14" aria-hidden="true" />
-                {{
-                  stage.implementation === "live"
-                    ? "已接能力"
-                    : stage.implementation === "prototype"
-                      ? "可体验"
-                      : "待接通"
-                }}
-              </span>
-            </div>
-            <h3>{{ stage.title }}</h3>
-            <p>{{ stage.roleResult }}</p>
-            <div class="stage-handoff">
-              <span>{{ outboundLabel(stage) }}</span>
-              <ArrowRight :size="15" aria-hidden="true" />
-            </div>
-          </RouterLink>
+          <div class="stage-card">
+            <RouterLink class="stage-link" :to="stage.path">
+              <div class="stage-topline">
+                <span class="stage-number">{{ stage.sequence }}</span>
+                <span class="stage-status">
+                  <CircleCheck
+                    v-if="stage.implementation === 'live'"
+                    :size="14"
+                    aria-hidden="true"
+                  />
+                  <MousePointer2
+                    v-else-if="stage.implementation === 'prototype'"
+                    :size="14"
+                    aria-hidden="true"
+                  />
+                  <Construction v-else :size="14" aria-hidden="true" />
+                  {{
+                    stage.implementation === "live"
+                      ? "已接能力"
+                      : stage.implementation === "prototype"
+                        ? "可体验"
+                        : "待接通"
+                  }}
+                </span>
+              </div>
+              <h3>{{ stage.title }}</h3>
+              <p>{{ stage.roleResult }}</p>
+              <p class="stage-volume" data-testid="stage-volume">
+                {{ stageVolumeText(stage.code) }}
+              </p>
+            </RouterLink>
 
-          <details v-if="specByCode[stage.code]" class="stage-spec">
-            <summary>已有技术操作映射 · 展开查看</summary>
-            <WorkbenchOperationalSpecPanel :spec="specByCode[stage.code]!" />
-          </details>
+            <details v-if="specByCode[stage.code]" class="stage-spec">
+              <summary>已有技术操作映射 · 展开查看</summary>
+              <WorkbenchOperationalSpecPanel :spec="specByCode[stage.code]!" />
+            </details>
+          </div>
+          <p
+            v-if="connectorText(stage)"
+            class="stage-connector"
+            :data-from="stage.code"
+          >
+            <ArrowRight :size="14" aria-hidden="true" />
+            <span>{{ connectorText(stage) }}</span>
+          </p>
         </li>
       </ol>
     </section>
 
     <section class="support-band" aria-labelledby="support-title">
       <header class="support-heading">
-        <span>横向协同</span>
+        <span>支撑模块</span>
         <h2 id="support-title">不改变主链顺序，但持续消费主链事实</h2>
       </header>
       <div class="support-grid">
@@ -189,8 +311,61 @@ const totalStageCount = computed(
   font-weight: 600;
 }
 
-.network-legend span:first-child {
+.network-legend span:first-child svg {
   color: var(--ok);
+}
+
+.volume-band {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.volume-band dl {
+  display: flex;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.volume-band dt {
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+
+.volume-band dd {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-title);
+  font-weight: 700;
+}
+
+.volume-band p {
+  flex: 1 1 280px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+
+.volume-band a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--brand-strong);
+  font-size: var(--text-label);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.volume-band a:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 
 .network-legend p {
@@ -210,6 +385,10 @@ const totalStageCount = computed(
   border-top: 1px solid var(--line-strong);
 }
 
+.phase-band--current {
+  background: var(--surface-sunken);
+}
+
 .phase-heading {
   display: flex;
   align-items: flex-start;
@@ -219,6 +398,12 @@ const totalStageCount = computed(
 .phase-heading span {
   color: var(--brand);
   font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.phase-heading b {
+  color: var(--ink);
   font-size: var(--text-label);
   font-weight: 700;
 }
@@ -243,20 +428,43 @@ const totalStageCount = computed(
 
 .stage-item {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stage-card {
+  flex: 1;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
 }
 
-.stage-item--live {
-  border-color: var(--brand-line);
-  box-shadow: inset 3px 0 var(--brand);
+.stage-volume {
+  margin: var(--space-2) 0 0;
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 700;
 }
 
-.stage-item--prototype {
-  border-color: var(--info);
-  box-shadow: inset 3px 0 var(--info);
+/* 交接画在卡片外的连接处：虚线引出，不占卡面。 */
+.stage-connector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 1px dashed var(--line-strong);
+  margin-left: var(--space-3);
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+}
+
+.stage-connector svg {
+  flex: none;
+  color: var(--muted);
 }
 
 .stage-link {
@@ -302,11 +510,11 @@ const totalStageCount = computed(
   font-weight: 600;
 }
 
-.stage-item--live .stage-status {
+.stage-item--live .stage-status svg {
   color: var(--ok);
 }
 
-.stage-item--prototype .stage-status {
+.stage-item--prototype .stage-status svg {
   color: var(--info);
 }
 
@@ -325,23 +533,6 @@ const totalStageCount = computed(
   color: var(--ink-soft);
   font-size: var(--text-label);
   line-height: var(--leading-body);
-}
-
-.stage-handoff {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: auto;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--line);
-  color: var(--brand-strong);
-  font-size: var(--text-micro);
-  font-weight: 600;
-}
-
-.stage-handoff svg {
-  flex: none;
 }
 
 /* 岗位作业规格：展开在卡片内，不跳页 —— 与卡片链接是同级，避免交互嵌套。 */

@@ -62,8 +62,10 @@ const initiativeHandoffId = computed(() =>
 const {
   initiative,
   decided,
+  returnPending,
   objective,
   destination,
+  returnBasis,
   currentReason,
   points,
   reviewPointViews,
@@ -110,6 +112,8 @@ const workResult = computed(() => {
       return "已暂缓，仍留在选品队列";
     case "rejected":
       return "已记录不立项";
+    case "return_requested":
+      return "已请求退回市场，等待市场接回";
     case "returned_to_market":
       return "已退回经营团队";
     case "returned_from_npi":
@@ -142,6 +146,10 @@ async function reloadInitiative(): Promise<void> {
 
 function setCurrentReason(value: string): void {
   currentReason.value = value;
+}
+
+function setReturnBasis(value: typeof returnBasis.value): void {
+  returnBasis.value = value;
 }
 
 function setObjective(value: string): void {
@@ -180,6 +188,17 @@ async function submitDecision(
 
 /** 已立项 = 整页 Mode（与信号关闭态同构）。 */
 const isInitiated = computed(() => decided.value);
+const conclusion = computed(() =>
+  returnPending.value
+    ? {
+        label: "已请求退回市场，等待市场接回",
+        detail: "请求已写入，当前责任仍在选品；市场接回前不能再次判断。",
+      }
+    : {
+        label: "已立项",
+        detail: "已立项无待办；缺口仅作摘要，不可再改结论。",
+      },
+);
 
 const requiredRemaining = computed(() => blockingGaps.value.length);
 const gatingPointCount = computed(
@@ -246,18 +265,18 @@ function applyFromHandoff(): void {
     <section
       v-if="selected && isInitiated"
       class="conclusion-strip"
-      aria-label="立项结论"
+      aria-label="选品结论"
     >
       <div>
         <small>结论</small>
         <h2>
           {{ selected.handoff.title }}
-          <span>· 已立项</span>
+          <span>· {{ conclusion.label }}</span>
         </h2>
         <p>{{ currentOwner }} · 只读回看 · 写入口已关闭</p>
       </div>
       <p class="conclusion-strip__action">
-        已立项无待办；缺口仅作摘要，不可再改结论。
+        {{ conclusion.detail }}
       </p>
     </section>
 
@@ -371,13 +390,16 @@ function applyFromHandoff(): void {
           :outcome="destination"
           :objective="objective"
           :reason="currentReason"
+          :return-basis="returnBasis"
           :gaps="blockingGaps"
           :optional-gaps="optionalGaps"
           :busy="deciding"
           :decided="decided"
+          :return-pending="returnPending"
           @change-outcome="setDestination"
           @update-objective="setObjective"
           @update-reason="setCurrentReason"
+          @update-return-basis="setReturnBasis"
           @submit="submitDecision"
         />
         <p v-else class="empty">选择一条机会后显示接收动作。</p>

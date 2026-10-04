@@ -293,12 +293,12 @@ kind: "new_independent_shipment"
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDestinationV1".
  */
-export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed" | "returned_from_selection" | "voided" | "archived")
+export type MarketSignalDestinationV1 = ("needs_decision" | "watching" | "handed_off" | "dismissed" | "selection_return_requested" | "returned_from_selection" | "voided" | "archived")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalDecisionTypeV1".
  */
-export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "selection_return" | "void" | "archive")
+export type MarketSignalDecisionTypeV1 = ("watch" | "handoff" | "dismiss" | "selection_return_request" | "selection_return" | "void" | "archive")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketSignalOperatorDecisionTypeV1".
@@ -311,6 +311,11 @@ export type MarketSignalOperatorDecisionTypeV1 = ("watch" | "handoff" | "dismiss
 export type MarketSignalDecisionCompletionV1 = ("pending_completion" | "completed")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSelectionReturnBasisV1".
+ */
+export type MarketSelectionReturnBasisV1 = ("insufficient_evidence" | "wrong_direction")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "MarketOpportunityIntakeStateV1".
  */
 export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" | "superseded")
@@ -320,19 +325,10 @@ export type MarketOpportunityIntakeStateV1 = ("queued" | "claimed" | "accepted" 
  */
 export type MarketSignalPendingFieldCodeV1 = ("market_code" | "channel_code" | "category_ref" | "observed_fact_summary" | "hypothesis" | "evidence_refs" | "opportunity_statement" | "next_review_date" | "watch_focus" | "dismiss_reason" | "close_reason")
 /**
- * 立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。
- * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
- * via the `definition` "ProductInitiativeReviewPointCodeV1".
+ * via the `definition` "MarketOpportunityResponsibilityStatusV1".
  */
-export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback")
-/**
- * 选品立项 decision 命令可用去向。不含 `returned_from_npi`（仅 NPI 退回写口）。
- * 
- * This interface was referenced by `LogixContractsV1`'s JSON-Schema
- * via the `definition` "ProductInitiativeOutcomeV1".
- */
-export type ProductInitiativeOutcomeV1 = ("approve" | "defer" | "reject" | "return_to_market")
+export type MarketOpportunityResponsibilityStatusV1 = ("retained_by_market" | "transferred_to_selection" | "superseded")
 /**
  * 立项行已落库的 outcome，含 NPI→选品退回。
  * 
@@ -349,12 +345,31 @@ export type ProductInitiativeCompletionV1 = ("pending_completion" | "completed")
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeDestinationV1".
  */
-export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "returned_to_market" | "handed_off" | "returned_from_npi")
+export type ProductInitiativeDestinationV1 = ("needs_decision" | "deferred" | "rejected" | "return_requested" | "returned_to_market" | "handed_off" | "returned_from_npi")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeReturnBasisV1".
+ */
+export type ProductInitiativeReturnBasisV1 = ("insufficient_evidence" | "wrong_direction")
+/**
+ * 立项评审要点。`customer_feedback` 由「售后原声」这类专业要求喂证据 —— 没有它，那些证据收了却没有地方形成结论。**它不进立项硬门槛**：加第 5 项门槛会让存量记录追溯性变成不合格。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeReviewPointCodeV1".
+ */
+export type ProductInitiativeReviewPointCodeV1 = ("target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback")
+/**
+ * 选品立项 decision 命令可用去向。不含 `returned_from_npi`（仅 NPI 退回写口）。
+ * 
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeOutcomeV1".
+ */
+export type ProductInitiativeOutcomeV1 = ("approve" | "defer" | "reject" | "return_to_market")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativePendingFieldCodeV1".
  */
-export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback" | "defer_reason" | "reject_reason" | "return_reason")
+export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback" | "defer_reason" | "reject_reason" | "return_basis" | "return_reason")
 /**
  * NPI 执行阶段。用行业通用的四段名，代工厂说的就是这四个词，运营与供应商之间不用翻译。
  * 
@@ -524,6 +539,21 @@ export type ShipmentRiskDeadlineKindV1 = ("eta" | "task_due" | "free_time")
  * via the `definition` "ShipmentRiskSortV1".
  */
 export type ShipmentRiskSortV1 = ("nearest_deadline" | "eta" | "task_due" | "updated_at")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeMetricV1".
+ */
+export type WorkbenchNetworkVolumeMetricV1 = (WorkbenchNetworkVolumeCountMetricV1 | WorkbenchNetworkVolumeSemanticMetricV1)
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeDeskCodeV1".
+ */
+export type WorkbenchNetworkVolumeDeskCodeV1 = ("market_signals" | "product_selection" | "sourcing")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumePhaseV1".
+ */
+export type WorkbenchNetworkVolumePhaseV1 = ("strategy" | "product" | "supply" | "shipment" | "arrival")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "PublicErrorCode".
@@ -1914,6 +1944,41 @@ export interface MarketSignalDetailV1 {
 signal: MarketSignalV1
 evidence: MarketSignalEvidenceV1[]
 selectionReturnReason: (string | null)
+selectionReturnBasis?: (MarketSelectionReturnBasisV1 | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketSelectionReturnTakebackCommandV1".
+ */
+export interface MarketSelectionReturnTakebackCommandV1 {
+contractVersion: "market-selection-return-takeback.v1"
+expectedSignalVersion: number
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "MarketOpportunityResponsibilityProjectionV1".
+ */
+export interface MarketOpportunityResponsibilityProjectionV1 {
+status: MarketOpportunityResponsibilityStatusV1
+responsibleTeamCode: ("market_intelligence" | "product_selection" | null)
+handedOffAt: DateTime
+assignedActorId: (string | null)
+claimedAt: (DateTime | null)
+acceptedAt: (DateTime | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductOpportunityLatestSelectionDecisionV1".
+ */
+export interface ProductOpportunityLatestSelectionDecisionV1 {
+outcome: ProductInitiativeStoredOutcomeV1
+completion: ProductInitiativeCompletionV1
+currentDestination: ProductInitiativeDestinationV1
+responsibleActorId: string
+reason: (string | null)
+returnBasis: (ProductInitiativeReturnBasisV1 | null)
+decidedAt: DateTime
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -1926,6 +1991,8 @@ supplementedFieldCodes: MarketSignalPendingFieldCodeV1[]
 intakeState: MarketOpportunityIntakeStateV1
 intakeVersion: number
 assignedActorId: (string | null)
+responsibility: MarketOpportunityResponsibilityProjectionV1
+latestSelectionDecision: (ProductOpportunityLatestSelectionDecisionV1 | null)
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -1935,6 +2002,7 @@ export interface ProductOpportunityPageV1 {
 contractVersion: "product-opportunity-page.v1"
 items: ProductOpportunityV1[]
 pageSize: number
+totalCount?: number
 nextCursor: (string | null)
 }
 /**
@@ -1970,6 +2038,7 @@ reviewPoints: ProductInitiativeReviewPointV1[]
 deferReason?: string
 rejectReason?: string
 returnReason?: string
+returnBasis?: ProductInitiativeReturnBasisV1
 idempotencyKey: string
 }
 /**
@@ -1985,6 +2054,7 @@ responsibleActorId: string
 objective?: (string | null)
 reviewPoints: ProductInitiativeReviewPointV1[]
 reason?: (string | null)
+returnBasis?: (ProductInitiativeReturnBasisV1 | null)
 pendingFieldCodes: ProductInitiativePendingFieldCodeV1[]
 version: number
 createdAt: DateTime
@@ -4250,6 +4320,50 @@ history: OpsQuestionHistoryMessage[]
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeCountMetricV1".
+ */
+export interface WorkbenchNetworkVolumeCountMetricV1 {
+state: "count"
+count: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeSemanticMetricV1".
+ */
+export interface WorkbenchNetworkVolumeSemanticMetricV1 {
+state: ("not_connected" | "undefined" | "forbidden")
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeSliceV1".
+ */
+export interface WorkbenchNetworkVolumeSliceV1 {
+open: WorkbenchNetworkVolumeMetricV1
+weeklyFlow: WorkbenchNetworkVolumeMetricV1
+blocked: WorkbenchNetworkVolumeMetricV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeDeskV1".
+ */
+export interface WorkbenchNetworkVolumeDeskV1 {
+code: WorkbenchNetworkVolumeDeskCodeV1
+open: WorkbenchNetworkVolumeMetricV1
+weeklyFlow: WorkbenchNetworkVolumeMetricV1
+blocked: WorkbenchNetworkVolumeMetricV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolumeConnectionV1".
+ */
+export interface WorkbenchNetworkVolumeConnectionV1 {
+fromCode: string
+toCode: string
+pendingAcceptance: WorkbenchNetworkVolumeMetricV1
+overdue: WorkbenchNetworkVolumeMetricV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ErrorDetail".
  */
 export interface ErrorDetail {
@@ -4506,6 +4620,18 @@ version: number
 }[]
 asOf: DateTime
 freshness: Freshness
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkbenchNetworkVolume".
+ */
+export interface WorkbenchNetworkVolume {
+contractVersion: "workbench-network-volume.v1"
+weekStart: string
+currentPhase: (WorkbenchNetworkVolumePhaseV1 | null)
+global: WorkbenchNetworkVolumeSliceV1
+workbenches: WorkbenchNetworkVolumeDeskV1[]
+connections: WorkbenchNetworkVolumeConnectionV1[]
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema

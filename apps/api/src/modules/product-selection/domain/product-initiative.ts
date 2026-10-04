@@ -5,7 +5,9 @@ import type {
   ProductInitiativeDestinationV1,
   ProductInitiativeOutcomeV1,
   ProductInitiativePendingFieldCodeV1,
+  ProductInitiativeReturnBasisV1,
   ProductInitiativeReviewPointCodeV1,
+  MarketSelectionReturnTakebackCommandV1,
 } from "@logix/contracts";
 
 export interface ProductInitiativeReviewPoint {
@@ -21,6 +23,7 @@ export interface ProductInitiativeDraft {
   deferReason: string | null;
   rejectReason: string | null;
   returnReason: string | null;
+  returnBasis?: ProductInitiativeReturnBasisV1 | null;
 }
 
 /** 该机会上已存在的立项判断版本；0 表示还没有立项判断。 */
@@ -39,14 +42,34 @@ export interface PreparedProductInitiativeDecision {
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   reason: string | null;
+  returnBasis: ProductInitiativeReturnBasisV1 | null;
   pendingFieldCodes: ProductInitiativePendingFieldCodeV1[];
   idempotencyKey: string;
   payloadHash: string;
 }
 
+export interface PreparedSelectionReturnTakeback {
+  expectedSignalVersion: number;
+  idempotencyKey: string;
+}
+
 export class ProductInitiativeValidationError extends Error {}
 export class ProductInitiativeConflictError extends Error {}
 export class ProductInitiativeNotFoundError extends Error {}
+
+export function prepareSelectionReturnTakeback(
+  command: MarketSelectionReturnTakebackCommandV1,
+): PreparedSelectionReturnTakeback {
+  if (command.contractVersion !== "market-selection-return-takeback.v1") {
+    invalid("contractVersion");
+  }
+  const expectedSignalVersion = version(command.expectedSignalVersion);
+  if (expectedSignalVersion < 1) invalid("expectedSignalVersion");
+  return {
+    expectedSignalVersion,
+    idempotencyKey: text(command.idempotencyKey, "idempotencyKey", 200),
+  };
+}
 
 /**
  * 立项门槛：这几项缺失时**不能**立项（其余只作为待补）。
@@ -72,6 +95,7 @@ export function productInitiativePendingFieldCodes(
     deferReason: string | null;
     rejectReason: string | null;
     returnReason: string | null;
+    returnBasis: ProductInitiativeReturnBasisV1 | null;
   },
 ): ProductInitiativePendingFieldCodeV1[] {
   const missing = new Set<ProductInitiativePendingFieldCodeV1>();
@@ -93,6 +117,9 @@ export function productInitiativePendingFieldCodes(
   }
   if (decision?.outcome === "return_to_market" && !decision.returnReason) {
     missing.add("return_reason");
+  }
+  if (decision?.outcome === "return_to_market" && !decision.returnBasis) {
+    missing.add("return_basis");
   }
   return PENDING_FIELD_ORDER.filter((code) => missing.has(code));
 }
@@ -122,6 +149,7 @@ export function prepareProductInitiativeDecision(
     deferReason: draft.deferReason,
     rejectReason: draft.rejectReason,
     returnReason: draft.returnReason,
+    returnBasis: draft.returnBasis ?? null,
   });
 
   if (outcome === "approve") {
@@ -139,12 +167,14 @@ export function prepareProductInitiativeDecision(
     expectedVersion,
     initiativeId,
     outcome,
-    completion: completionFor(outcome, reason),
-    nextDestination: destinationFor(outcome, reason),
+    completion: completionFor(outcome, reason, draft.returnBasis ?? null),
+    nextDestination: destinationFor(outcome, reason, draft.returnBasis ?? null),
     responsibleActorId: normalizedActorId,
     objective: draft.objective,
     reviewPoints: draft.reviewPoints,
     reason,
+    returnBasis:
+      outcome === "return_to_market" ? (draft.returnBasis ?? null) : null,
     pendingFieldCodes,
     idempotencyKey,
   };
@@ -177,6 +207,7 @@ function draftFromCommand(
     deferReason: optionalText(command.deferReason, "deferReason", 500),
     rejectReason: optionalText(command.rejectReason, "rejectReason", 500),
     returnReason: optionalText(command.returnReason, "returnReason", 500),
+    returnBasis: returnBasis(command.returnBasis),
   };
 }
 
@@ -202,20 +233,40 @@ function reasonFor(
 function completionFor(
   outcome: ProductInitiativeOutcomeV1,
   reason: string | null,
+  returnBasis: ProductInitiativeReturnBasisV1 | null,
 ): ProductInitiativeCompletionV1 {
   if (outcome === "approve") return "completed";
+  if (outcome === "return_to_market") {
+    return reason && returnBasis ? "completed" : "pending_completion";
+  }
   return reason ? "completed" : "pending_completion";
 }
 
 function destinationFor(
   outcome: ProductInitiativeOutcomeV1,
   reason: string | null,
+  returnBasis: ProductInitiativeReturnBasisV1 | null,
 ): ProductInitiativeDestinationV1 {
-  if (!reason && outcome !== "approve") return "needs_decision";
+  if (
+    outcome !== "approve" &&
+    (!reason || (outcome === "return_to_market" && !returnBasis))
+  ) {
+    return "needs_decision";
+  }
   if (outcome === "approve") return "handed_off";
   if (outcome === "defer") return "deferred";
   if (outcome === "reject") return "rejected";
-  return "returned_to_market";
+  return "return_requested";
+}
+
+function returnBasis(
+  value: ProductInitiativeReturnBasisV1 | undefined,
+): ProductInitiativeReturnBasisV1 | null {
+  if (value === undefined) return null;
+  if (value !== "insufficient_evidence" && value !== "wrong_direction") {
+    invalid("returnBasis");
+  }
+  return value;
 }
 
 function text(value: string, field: string, maxLength: number): string {
@@ -280,6 +331,7 @@ const PENDING_FIELD_ORDER: ProductInitiativePendingFieldCodeV1[] = [
   ...REVIEW_POINT_ORDER,
   "defer_reason",
   "reject_reason",
+  "return_basis",
   "return_reason",
 ];
 const OUTCOMES = new Set<string>([

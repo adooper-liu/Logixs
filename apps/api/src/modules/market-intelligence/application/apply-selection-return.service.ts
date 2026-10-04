@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import {
   MARKET_SIGNAL_REPOSITORY,
   type ApplySelectionReturnInput,
+  type TakeBackSelectionReturnInput,
   type MarketSignalRepository,
 } from "../domain/market-signal.repository";
 
@@ -21,5 +22,11 @@ export class ApplySelectionReturnService {
     input: ApplySelectionReturnInput,
   ): Promise<{ duplicate: boolean }> {
     return this.repository.applySelectionReturnWithin(tx, input);
+  }
+  takeBackInTransaction(
+    tx: unknown,
+    input: TakeBackSelectionReturnInput,
+  ): Promise<{ duplicate: boolean }> {
+    return this.repository.takeBackSelectionReturnWithin(tx, input);
   }
 }

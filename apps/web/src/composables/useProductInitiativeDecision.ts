@@ -2,6 +2,7 @@ import type {
   ProductInitiativeDecisionCommandV1,
   ProductInitiativeDetailV1,
   ProductInitiativeReviewPointCodeV1,
+  ProductInitiativeReturnBasisV1,
 } from "@logix/contracts";
 import {
   computed,
@@ -106,6 +107,7 @@ export function useProductInitiativeDecision(options: {
   const deferReason = shallowRef("");
   const rejectReason = shallowRef("");
   const returnReason = shallowRef("");
+  const returnBasis = shallowRef<ProductInitiativeReturnBasisV1 | "">("");
   const points = reactive<
     Record<ProductInitiativeReviewPointCodeV1, ReviewPointDraft>
   >({
@@ -145,7 +147,12 @@ export function useProductInitiativeDecision(options: {
   const initiative = computed(() => detail.value?.initiative ?? null);
   /** 已立项就是终态，界面不再提供任何判断动作。 */
   const decided = computed(
-    () => initiative.value?.currentDestination === "handed_off",
+    () =>
+      initiative.value?.currentDestination === "handed_off" ||
+      initiative.value?.currentDestination === "return_requested",
+  );
+  const returnPending = computed(
+    () => initiative.value?.currentDestination === "return_requested",
   );
 
   /** 四项要点的只读视图：缺口判定只在这里做一次，面板与按钮都读同一份。 */
@@ -233,6 +240,7 @@ export function useProductInitiativeDecision(options: {
     deferReason.value = "";
     rejectReason.value = "";
     returnReason.value = "";
+    returnBasis.value = "";
     for (const point of REVIEW_POINTS) {
       points[point.code] = { evidenceRefs: [], conclusion: "" };
     }
@@ -262,6 +270,8 @@ export function useProductInitiativeDecision(options: {
       saved?.outcome === "reject" ? (saved.reason ?? "") : "";
     returnReason.value =
       saved?.outcome === "return_to_market" ? (saved.reason ?? "") : "";
+    returnBasis.value =
+      saved?.outcome === "return_to_market" ? (saved.returnBasis ?? "") : "";
     for (const point of REVIEW_POINTS) {
       const savedPoint = saved?.reviewPoints.find(
         (item) => item.code === point.code,
@@ -320,7 +330,7 @@ export function useProductInitiativeDecision(options: {
     const handoffId = toValue(options.handoffId);
     const expectedInitiativeVersion = initiative.value?.version ?? 0;
     try {
-      await decideProductInitiative(handoffId, {
+      const saved = await decideProductInitiative(handoffId, {
         contractVersion: "product-initiative-decision.v1",
         requestId: crypto.randomUUID(),
         outcome: chosen,
@@ -343,10 +353,18 @@ export function useProductInitiativeDecision(options: {
         ...(chosen === "return_to_market" && returnReason.value.trim()
           ? { returnReason: returnReason.value.trim() }
           : {}),
+        ...(chosen === "return_to_market" && returnBasis.value
+          ? { returnBasis: returnBasis.value }
+          : {}),
       });
       // 成功后从服务端重读，不用前端临时状态冒充落库结果。
       await load();
-      receipt.value = RECEIPTS[chosen];
+      receipt.value =
+        chosen === "return_to_market"
+          ? saved.currentDestination === "return_requested"
+            ? RECEIPTS.return_to_market
+            : "已保存退回判断，尚未形成退回请求。"
+          : RECEIPTS[chosen];
       return true;
     } catch (caught) {
       const raw = message(caught);
@@ -364,6 +382,7 @@ export function useProductInitiativeDecision(options: {
     detail,
     initiative,
     decided,
+    returnPending,
     evidenceCandidates,
     loading,
     saving,
@@ -371,6 +390,7 @@ export function useProductInitiativeDecision(options: {
     receipt,
     objective,
     destination,
+    returnBasis,
     currentReason,
     points,
     reviewPointViews,
@@ -389,7 +409,7 @@ const RECEIPTS: Record<ProductInitiativeOutcome, string> = {
   approve: "已立项，并交给产品开发与 NPI 队列。",
   defer: "已暂缓，仍留在选品队列。",
   reject: "已记录不立项。",
-  return_to_market: "已退回经营团队重新判断。",
+  return_to_market: "已请求退回市场，等待市场接回。",
 };
 
 /**
@@ -401,11 +421,15 @@ export function outcomeHintFor(input: {
   /** 只用到条数；缺口长什么样（带不带"在哪补"）不关这句话的事。 */
   gaps: { readonly length: number };
   reason: string;
+  returnBasis?: ProductInitiativeReturnBasisV1 | "";
 }): string {
   if (input.outcome === "approve") {
     return input.gaps.length > 0
       ? `还差 ${input.gaps.length} 项才能立项`
       : "可以立项";
+  }
+  if (input.outcome === "return_to_market" && !input.returnBasis) {
+    return "请选择退回依据";
   }
   return input.reason.trim()
     ? "已写明原因，提交后本次判断会关闭。"
@@ -425,6 +449,12 @@ export function initiativeErrorMessage(raw: string): string {
   }
   if (raw.includes("PRODUCT_INITIATIVE_ALREADY_APPROVED")) {
     return "这条机会已经立项，不能再改动判断；如需新版本，请走 NPI 侧。";
+  }
+  if (raw.includes("PRODUCT_INITIATIVE_NOT_ACCEPTED")) {
+    return "这条机会尚未接受交接，不能形成立项判断。请先领取并接受。";
+  }
+  if (raw.includes("PRODUCT_INITIATIVE_RETURN_PENDING")) {
+    return "这条机会正在等待市场接回，暂时不能再作其他判断。";
   }
   if (raw.includes("PRODUCT_INITIATIVE_INCOMPLETE")) {
     return "评审要点或目标结果还没齐，不能立项；补齐后再提交。";
