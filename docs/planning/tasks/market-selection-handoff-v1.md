@@ -1,5 +1,5 @@
 ---
-status: coding
+status: review
 branch: feat/market-selection-handoff-v1
 owner: cursor
 writer: codex
@@ -187,6 +187,19 @@ authorityRefs:
 
 验证：`market-signal` 领域单测、`MarketSignalsWorkbench` 单测、`pnpm test:integration -- product-initiative-flow`（`apps/api`）、受影响文件 lint/typecheck 与 `node scripts/check-repository.mjs`。不跑完整 `validate`。前端可感知：信号接口 401 时不再被深链或责任投影拖进再次登录；信号接口故障时“已交待接受”仍会尝试加载。
 
+### `R-branch-review` 裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: R-branch-review
+decisions: []
+next: pr
+```
+
+2026-10-04 fresh Codex 只读复审 `17801fb4..aef13380`，`verdict: approved`，`findings: []`，`writes: none`。复审自述已跑：市场信号领域单测 16、MarketSignalsWorkbench 单测 31、`product-initiative-flow` 集成 15、`auth-session` OIDC E2E 5、API/Web typecheck、`repo:check`、增量 diff。主代理在 `aef13380` 另有完整 `pnpm validate` 通过（E2E 166）。
+
+非阻塞验证缺口：深链详情与手工重载交界处，旧加载仍可能在新一代分组请求完成前写回详情或提前结束 loading。复审定为既存瞬时边界，不进入本 PR，留给后续界面稳定性任务。本任务不据此再开切片。
+
 ### 切片 `S3-post-accept-evidence`：接受后市场追加新证据（延后，HO-D05）
 
 > 2026-10-04 Codex 首次执行返回 `blocked`，主代理核实属实：市场证据登记走通用 `POST /api/evidence`，`EvidenceController.register` 未传认证 actor，`RegisterEvidenceInput` 不落登记人，而 `evidence-record.schema.json` 要求 `manual_backfill` 带 `source.actorId`；该端点也不校验 `subjectId` 信号存在、版本与幂等。修复属共享 `document-records` 控制面（约 8 台消费方），不在本 brief 范围。负责人定案 HO-D05“C（推荐）先合并已完成的部分”：本分支以 S1～S2b 收口；S3 移入 `evidence-actor-binding-v1` 完成后的后续任务，下列五面要求原样保留作为其输入。
@@ -276,7 +289,7 @@ authorityRefs:
 - [ ] 接受后市场可追加证据，交接快照不变，选品可分辨新增证据（HO-D05 延后，不随本 PR；不得在本任务 `done` 时勾选）
 - [ ] 迁移空库与旧版本升级通过，存量退回记录合法
 - [ ] 契约、生成物、字典一致；跨租户与未知值拒绝；关键路径 E2E 通过
-- [ ] 最终候选完整 `pnpm validate` 通过并经 fresh Codex 复审裁决（`6a221ca2` 的 Opus 复审已完成，不重复）
+- [x] 最终候选完整 `pnpm validate` 通过并经 fresh Codex 复审裁决（`aef13380`：`pnpm validate` 退出码 0，E2E 166；`17801fb4..aef13380` Codex 复审 approved、无 finding。`6a221ca2` 的 Opus 复审已完成，不重复）
 
 ## 进度 log
 
@@ -298,5 +311,8 @@ authorityRefs:
 | 2026-10-04 | review | Cursor | `e8eff0f5` | 收口 `pnpm validate` 通过：API 单测 276 文件 1435 条、Web 单测 142 文件 649 条、集成 25 文件 159 条、E2E 166 条、构建通过。状态改为 `review`。独立复审仍无结论（用量上限与未授权），PR 与合并继续等待                                                                                                                                                                                                                                                                                           |
 | 2026-10-04 | review | Cursor | `40c6deff` | 负责人定案“以后独立复审都交回给 Codex”：写回 `AGENTS.md` §1.2 第 4 条、任务模板和 `agent-role-mapping-v1`。本分支未复审增量交 Codex 新开只读会话；S2c/S2d 与写入者同家族，按定案接受并在规则中写明                                                                                                                                                                                                                                                                                              |
 | 2026-10-04 | coding | Cursor | `33b31ebc` | Codex 增量复审 changes-requested。accepted：SR-01 收窄为 401 后停止详情与责任读取，MSH-INC-R01 非 401 仍加载责任投影，VR-01 二次 generation 检查，SR-02 领域守卫仍在事务内调用，SR-03 编译期穷尽，SR-04 撤回对 done brief 的修改，SR-05 文案改为 Codex。rejected：SR-06、SR-07、CP-01。下发 S2e                                                                                                                                                                                                 |
+| 2026-10-04 | review | Cursor | `aef13380` | S2e 已验收。`aef13380` 上完整 `pnpm validate` 通过。fresh Codex 复审 `17801fb4..aef13380` 结论 approved、无 finding。深链详情与手工重载的瞬时 loading 记为非阻塞缺口，不进本 PR。状态改为 review，进入单一 PR                                                                                                                                                                                                                                                                                   |
 
 - 2026-10-04 主代理验收 S2e（`53e13035`）：差异 6 文件均在 writeScopes 内；SR-01/MSH-INC-R01（仅 401 跳过投影且不再拉深链详情）、VR-01（投影 await 后复核 generation）、SR-02（领域守卫 `assertNoPendingSelectionReturn` 在仓储事务内调用，错误码不变）、SR-03（`satisfies Record<MarketSignalDestinationV1, true>` 编译期穷举）逐项落实。复跑：MarketSignalsWorkbench 31、market-signal 领域 16、product-initiative-flow 集成 15、auth-session E2E 5，全部通过。下一步：完整 `pnpm validate`，再交 fresh Codex 增量复审 `17801fb4..HEAD`。
+
+- 2026-10-04 主代理裁决 R-branch-review：`17801fb4..aef13380` approved，findings 为空，`next: pr`。非阻塞缺口（深链详情与手工重载的瞬时 loading）留到后续界面稳定性任务，本 PR 不改代码。
