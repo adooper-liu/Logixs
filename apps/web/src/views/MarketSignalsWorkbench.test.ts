@@ -9,6 +9,7 @@ import { computed } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpRequestError } from "../api/httpClient";
 import MarketSignalsWorkbench from "./MarketSignalsWorkbench.vue";
 
 const listMarketSignals = vi.fn();
@@ -559,6 +560,10 @@ describe("MarketSignalsWorkbench", () => {
     listMarketSignals.mockRejectedValue(new Error("经营信号服务暂不可用"));
     const wrapper = await mountPage();
 
+    expect(listProductOpportunities).toHaveBeenCalledWith({
+      responsibilityStatus: "retained_by_market",
+      pageSize: 50,
+    });
     expect(wrapper.get(".operation-error").text()).toContain(
       "经营信号服务暂不可用",
     );
@@ -604,6 +609,75 @@ describe("MarketSignalsWorkbench", () => {
     expect(listMarketSignals).toHaveBeenCalledTimes(9);
     expect(wrapper.find(".group-error").exists()).toBe(false);
     expect(wrapper.get(".queue-list").text()).toContain("已归档的历史信号");
+  });
+
+  it("stops follow-up and deep-link requests after a grouped 401", async () => {
+    listMarketSignals.mockRejectedValue(
+      new HttpRequestError({
+        kind: "unauthorized",
+        status: 401,
+        message: "登录已失效",
+      }),
+    );
+
+    await mountPage(`?signalId=${signalOneId}`);
+
+    expect(listProductOpportunities).not.toHaveBeenCalled();
+    expect(getMarketSignal).not.toHaveBeenCalled();
+  });
+
+  it("drops a stale responsibility projection without clearing newer loading", async () => {
+    let releaseFirst: (value: unknown) => void = () => undefined;
+    let releaseSecond: (value: unknown) => void = () => undefined;
+    let projectionRequest = 0;
+    listProductOpportunities.mockImplementation(
+      (input: { responsibilityStatus?: string }) => {
+        if (!input.responsibilityStatus) {
+          return Promise.resolve({
+            contractVersion: "product-opportunity-page.v1",
+            items: [],
+            pageSize: 1,
+            totalCount: 0,
+            nextCursor: null,
+          });
+        }
+        projectionRequest += 1;
+        return new Promise((resolve) => {
+          if (projectionRequest === 1) releaseFirst = resolve;
+          else releaseSecond = resolve;
+        });
+      },
+    );
+    const wrapper = await mountPage();
+
+    const reload = (
+      wrapper.vm as unknown as { loadSignals: () => Promise<void> }
+    ).loadSignals();
+    await flushPromises();
+    releaseFirst({
+      contractVersion: "product-opportunity-page.v1",
+      items: [productOpportunity("claimed")],
+      pageSize: 50,
+      totalCount: 1,
+      nextCursor: null,
+    });
+    await flushPromises();
+
+    expect(wrapper.find(".loading-state").exists()).toBe(true);
+    expect(tab(wrapper, "已交选品·待接受").text()).toContain("0");
+
+    releaseSecond({
+      contractVersion: "product-opportunity-page.v1",
+      items: [],
+      pageSize: 50,
+      totalCount: 0,
+      nextCursor: null,
+    });
+    await reload;
+    await flushPromises();
+
+    expect(wrapper.find(".loading-state").exists()).toBe(false);
+    expect(tab(wrapper, "已交选品·待接受").text()).toContain("0");
   });
 
   it("opens an unloaded deep link after in-place route navigation", async () => {

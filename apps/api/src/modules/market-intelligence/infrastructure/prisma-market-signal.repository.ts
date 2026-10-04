@@ -1,9 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
-import type { MarketOpportunityHandoffV1 } from "@logix/contracts";
+import type {
+  MarketOpportunityHandoffV1,
+  MarketSignalDestinationV1,
+} from "@logix/contracts";
 import { Prisma } from "../../../../../../generated/prisma";
 import { PrismaService } from "../../../prisma/prisma.service";
 import {
+  assertNoPendingSelectionReturn,
   MarketSignalConflictError,
   MarketSignalNotFoundError,
   prepareSelectionReturnRequestDecision,
@@ -277,9 +281,9 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       ) {
         conflict("MARKET_SIGNAL_ALREADY_CLOSED");
       }
-      if (signal.currentDestination === "selection_return_requested") {
-        conflict("MARKET_SIGNAL_SELECTION_RETURN_PENDING");
-      }
+      assertNoPendingSelectionReturn(
+        signal.currentDestination as MarketSignalDestinationV1,
+      );
       if (signal.version !== input.prepared.expectedSignalVersion) {
         conflict("MARKET_SIGNAL_VERSION_CONFLICT");
       }

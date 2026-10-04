@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertNoPendingSelectionReturn,
+  MarketSignalConflictError,
   MarketSignalValidationError,
   normalizeMarketSignalCreate,
   normalizeMarketSignalUpdate,
@@ -24,6 +26,17 @@ function facts(overrides: Partial<MarketSignalFacts> = {}): MarketSignalFacts {
 }
 
 describe("market signal rules", () => {
+  it("rejects a new market decision while selection return is pending", () => {
+    expect(() =>
+      assertNoPendingSelectionReturn("selection_return_requested"),
+    ).toThrowError(
+      new MarketSignalConflictError("MARKET_SIGNAL_SELECTION_RETURN_PENDING"),
+    );
+    expect(() =>
+      assertNoPendingSelectionReturn("needs_decision"),
+    ).not.toThrow();
+  });
+
   it("allows title-only registration and reports ordinary gaps", () => {
     const normalized = normalizeMarketSignalCreate({
       contractVersion: "market-signal-create.v1",

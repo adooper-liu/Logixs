@@ -64,6 +64,16 @@ export class MarketSignalValidationError extends Error {}
 export class MarketSignalConflictError extends Error {}
 export class MarketSignalNotFoundError extends Error {}
 
+export function assertNoPendingSelectionReturn(
+  currentDestination: MarketSignalDestinationV1,
+): void {
+  if (currentDestination === "selection_return_requested") {
+    throw new MarketSignalConflictError(
+      "MARKET_SIGNAL_SELECTION_RETURN_PENDING",
+    );
+  }
+}
+
 export function normalizeMarketSignalCreate(
   command: MarketSignalCreateCommandV1,
 ): NormalizedMarketSignalCreate {

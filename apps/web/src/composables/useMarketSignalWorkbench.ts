@@ -25,6 +25,7 @@ import {
   takeBackSelectionReturn,
   updateMarketSignal,
 } from "../api/marketSignals";
+import { HttpRequestError } from "../api/httpClient";
 import {
   buildMarketSignalResult,
   compareWatchingOrder,
@@ -204,15 +205,13 @@ export function useMarketSignalWorkbench(
       ),
     );
     if (loadGeneration !== generation) return;
-    // 分组全部被拒（典型是 401）时不再读责任投影。并行的 404/200 会清掉
-    // 一次性重新登录标记，使会话恢复停不下来。
-    const responsibilityResult = results.every(
-      (result) => result.status === "rejected",
-    )
-      ? ({
-          status: "rejected" as const,
-          reason: (results[0] as PromiseRejectedResult).reason,
-        } satisfies PromiseRejectedResult)
+    // 任一分组已经触发会话恢复时，不再发后续请求；其他失败仍允许责任投影独立恢复。
+    const unauthorizedResult = results.find(
+      (result): result is PromiseRejectedResult =>
+        result.status === "rejected" && isUnauthorized(result.reason),
+    );
+    const responsibilityResult = unauthorizedResult
+      ? null
       : (
           await Promise.allSettled([
             listProductOpportunities({
@@ -221,6 +220,7 @@ export function useMarketSignalWorkbench(
             }),
           ])
         )[0]!;
+    if (loadGeneration !== generation) return;
     const legacyPage = results.find(
       (result): result is PromiseFulfilledResult<MarketSignalPageV1> =>
         result.status === "fulfilled" && result.value.totalCount === undefined,
@@ -263,17 +263,25 @@ export function useMarketSignalWorkbench(
       responsibilityGeneration
     ) {
       responsibilityPage.loading = false;
-      if (responsibilityResult.status === "fulfilled") {
+      if (responsibilityResult?.status === "fulfilled") {
         applyResponsibilityPage(responsibilityResult.value, true);
         responsibilityPage.error = null;
-      } else {
+      } else if (responsibilityResult) {
         responsibilityPage.nextCursor = null;
         responsibilityPage.totalCount = null;
         responsibilityPage.error = message(responsibilityResult.reason);
+      } else {
+        responsibilityPage.nextCursor = null;
+        responsibilityPage.totalCount = null;
+        responsibilityPage.error = message(unauthorizedResult!.reason);
       }
     }
     if (results.every((result) => result.status === "rejected")) {
       error.value = message((results[0] as PromiseRejectedResult).reason);
+    }
+    if (unauthorizedResult) {
+      loading.value = false;
+      return;
     }
     await ensureRequestedSignal();
     const requested = toValue(options.selectedId);
@@ -938,4 +946,8 @@ function pendingFieldLabel(code: MarketSignalPendingFieldCodeV1): string {
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : "操作失败，请稍后重试";
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof HttpRequestError && error.kind === "unauthorized";
 }
