@@ -39,6 +39,61 @@ test("the business-workbench directory opens live and framework stages honestly"
   await expect(flowContext.getByText("采购承诺交接")).toBeVisible();
 });
 
+test("a counted market card opens the market workbench", async ({ page }) => {
+  await page.route("**/api/workbench-network/volume", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        contractVersion: "workbench-network-volume.v1",
+        weekStart: "2026-09-28T00:00:00.000Z",
+        currentPhase: null,
+        global: {
+          open: { state: "count", count: 4 },
+          weeklyFlow: { state: "not_connected" },
+          blocked: { state: "undefined" },
+        },
+        workbenches: [
+          {
+            code: "market_signals",
+            open: { state: "count", count: 4 },
+            weeklyFlow: { state: "count", count: 1 },
+            blocked: { state: "undefined" },
+          },
+          {
+            code: "product_selection",
+            open: { state: "count", count: 0 },
+            weeklyFlow: { state: "not_connected" },
+            blocked: { state: "undefined" },
+          },
+          {
+            code: "sourcing",
+            open: { state: "count", count: 0 },
+            weeklyFlow: { state: "not_connected" },
+            blocked: { state: "undefined" },
+          },
+        ],
+        connections: [
+          {
+            fromCode: "market_signals",
+            toCode: "product_selection",
+            pendingAcceptance: { state: "count", count: 1 },
+            overdue: { state: "undefined" },
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/workspaces");
+  const market = page
+    .getByTestId("main-workbench-stage")
+    .filter({ hasText: "市场与经营信号" });
+  await expect(market).toContainText("在办 4");
+  await market.getByRole("link").click();
+  await expect(page).toHaveURL(/\/workspaces\/market-signals$/);
+});
+
 test("catalog stubs stay read-only and dispatch shows all inbound dependencies", async ({
   page,
 }) => {

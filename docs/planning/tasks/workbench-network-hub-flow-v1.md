@@ -1,8 +1,8 @@
 ---
-status: coding
+status: review
 branch: feat/workbench-network-hub-volume-v1
 owner: cursor
-writer: codex
+writer: cursor
 risk: high
 dependsOn: []
 writeScopes:
@@ -11,6 +11,7 @@ writeScopes:
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - packages/contracts/schemas/v1/workbench-network-volume.schema.json
   - packages/contracts/schemas/v1/index.json
+  - scripts/generate-contracts.mjs
   - packages/contracts/fixtures/v1/schema-instances.json
   - packages/contracts/generated/contracts.d.ts
   - apps/api/src/app.module.ts
@@ -84,7 +85,7 @@ verification: |
 | 选品 | 已接受 intake 中尚无完成态立项判断的，含 `return_requested`（市场接回前责任仍在选品） | 选品 → NPI：按 NPI 接收事实核对                | 本周 `approve` 完成数        | 同上                     |
 | 寻源 | 未定点的 SKU，加已定点但下游尚无明确接受事实的（`doc/03` 完成点为明确接受）           | 寻源 → 补货/采购：已定点待接受数               | 下游接受事实尚不存在：未接通 | 同上                     |
 
-2026-10-04 主代理核对当前 `main`（含 PR #136）后的代码事实。上表里对不上的格子按 §12.7 已有规则改成「未接通 / 未定义」，不发明时限、时间戳或接受事实。只读查询，不新增迁移。
+2026-10-04 主代理核对当前 `main`（含 PR #136）后的代码事实。上表里对不上的格子按 §12.7 已有规则改成「未接通 / 未定义」，不发明时限、时间戳或接受事实。只读查询，不新增迁移。`queued` 不能落成 intake 行，表约束只允许 `claimed`、`accepted`、`superseded`；没有领取行时，领域把当前版本视为 `queued`。
 
 | 项              | 核对结果                                                                                                                   | 本片计数                                                                                                                                                  |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -116,6 +117,23 @@ verification: |
 
 验证：`pnpm test:integration -- workbench-network-volume`（`apps/api`，含跨租户、无能力、上表每条反例）、`WorkbenchNetworkView` 单测、契约 drift、受影响文件 lint/typecheck、`workbench-network.spec.ts` 一条总览能看见市场在办数字并能点进市场台。不跑完整 `validate`。不要改寻源 brief，不要新增迁移。
 
+### 切片 `S2a-contract-metric-invariant`（review fix）
+
+主代理验收接受 finding `HUB-S2-R01`：当前 `WorkbenchNetworkVolumeMetricV1` 允许 `state=count` 缺少 `count`，Web 又用 `count ?? 0` 静默补零，会把缺失事实伪装为业务零值，违反本 brief §边界与 S2 的事实语义。
+
+1. 把 metric 公共契约收紧为判别联合：`count` 分支必须且只允许非负整数 `count`；`not_connected`、`undefined`、`forbidden` 分支不得携带 `count`。
+2. 重新生成 `packages/contracts/generated/contracts.d.ts`；Web 使用生成的 metric 类型并移除静默补零。
+3. 增加能反证 `{ state: "count" }` 和非 `count` 分支携带 `count` 的契约验证，并增加 Web 缺失/语义态不显示数字的定向断言。
+4. 只修改契约 schema/fixture/生成物、`WorkbenchNetworkView.vue` 与其测试、当前 brief；运行契约 generate/drift/check、Web 定向单测与 typecheck、`git diff --check`。不跑完整 `validate`。
+
+### 切片 `S2b-sourcing-sku-count`（review fix）
+
+主代理接受独立复审 finding `HUB-S2-R02`：寻源队列以 `skuReleaseId + skuId` 标识逐 SKU 工作项，但 S2 SQL 只按 `sku_release_id` 去重，会把同一发布内多个已有报价或定点的 SKU 折叠成 1。
+
+1. 寻源在办和待接受都按 `(sku_release_id, sku_id)` 复合键计数；不改变现有报价、定点或完成点政策。
+2. 增加同一发布含两个 SKU、两者分别报价和定点的集成反例，分别断言在办和待接受为 2。
+3. 只修改 workbench-network 查询、其集成测试和当前 brief；运行 workbench-network 集成测试、API typecheck/lint、`git diff --check`。不跑完整 `validate`。
+
 ## 五面映射（S1）
 
 | 业务步骤       | 岗位任务                       | 数据事实                                      | 技术保障           | 权限边界                 | 界面承接                       |
@@ -141,11 +159,16 @@ verification: |
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责   | commit  | 说明                                                                                                                                                                                                                                                                                                                                  |
-| ---------- | ------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-28 | design  | —      | —       | 按 §12 开 brief                                                                                                                                                                                                                                                                                                                       |
-| 2026-09-28 | blocked | —      | —       | 串行 + 待业务量投影口径                                                                                                                                                                                                                                                                                                               |
-| 2026-10-04 | coding  | Cursor | —       | 负责人定“屏五开工”；拆为 S1 结构（不依赖数字）与 S2 投影（待口径定案）；寻源 brief 转 blocked 腾出名额                                                                                                                                                                                                                                |
-| 2026-10-04 | coding  | Cursor | S1 提交 | S1 完成：页首业务量带无投影时只显示“—”与说明并链到异常中心；卡内交接页脚移到卡外连接处；能力态只留小角标，去掉品牌色内描边与绿色文字；横向协同更名“支撑模块”。WorkbenchNetworkView 单测 2 条、Web typecheck/lint、workbench-network E2E 54 条通过。纯展示、不改业务口径与契约，未安排独立复审，以 PR 必需 CI 为准；S2 待 HUB-P01 定案 |
-| 2026-10-04 | blocked | Cursor | —       | S1 已由 PR #135 合入。HUB-P01 定案 A + 阻塞优先并写回改版规范 §12.7；S2 需要新公共契约，等 `market-selection-handoff-v1` 合并释放 `generated:contracts` 后恢复 coding，不需负责人再授权；`doc/08` 写回随 S2                                                                                                                           |
-| 2026-10-04 | coding  | Cursor | —       | PR #136 已合并，契约锁释放。主代理核对三台事实后下发 S2：市场在办/待接受/本周接受可计数；选品本周批准和选品到 NPI、寻源本周接受没有事实，显示未接通；三台阻塞和超时显示未定义。不发明时限。                                                                                                                                           |
+| 日期       | 阶段    | 负责   | commit  | 说明                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------- | ------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-28 | design  | —      | —       | 按 §12 开 brief                                                                                                                                                                                                                                                                                                                                                                                         |
+| 2026-09-28 | blocked | —      | —       | 串行 + 待业务量投影口径                                                                                                                                                                                                                                                                                                                                                                                 |
+| 2026-10-04 | coding  | Cursor | —       | 负责人定“屏五开工”；拆为 S1 结构（不依赖数字）与 S2 投影（待口径定案）；寻源 brief 转 blocked 腾出名额                                                                                                                                                                                                                                                                                                  |
+| 2026-10-04 | coding  | Cursor | S1 提交 | S1 完成：页首业务量带无投影时只显示“—”与说明并链到异常中心；卡内交接页脚移到卡外连接处；能力态只留小角标，去掉品牌色内描边与绿色文字；横向协同更名“支撑模块”。WorkbenchNetworkView 单测 2 条、Web typecheck/lint、workbench-network E2E 54 条通过。纯展示、不改业务口径与契约，未安排独立复审，以 PR 必需 CI 为准；S2 待 HUB-P01 定案                                                                   |
+| 2026-10-04 | blocked | Cursor | —       | S1 已由 PR #135 合入。HUB-P01 定案 A + 阻塞优先并写回改版规范 §12.7；S2 需要新公共契约，等 `market-selection-handoff-v1` 合并释放 `generated:contracts` 后恢复 coding，不需负责人再授权；`doc/08` 写回随 S2                                                                                                                                                                                             |
+| 2026-10-04 | coding  | Cursor | —       | PR #136 已合并，契约锁释放。主代理核对三台事实后下发 S2：市场在办/待接受/本周接受可计数；选品本周批准和选品到 NPI、寻源本周接受没有事实，显示未接通；三台阻塞和超时显示未定义。不发明时限。                                                                                                                                                                                                             |
+| 2026-10-04 | coding  | Cursor | 未提交  | S2 实现：只读 `GET /api/workbench-network/volume`。市场在办 5、待接受 2、本周接受 5，选品在办 3；寻源报价后在办 1，定点后仍在办且待接受 1，未报价 SKU 不计。阻塞与超时为未定义，选品本周、选品到 NPI、寻源本周、全局本周为未接通。`queued` 按没有 intake 行计。集成 4、API 单测 3、Web 单测 6、契约 drift、API/Web typecheck、repo:check、一条总览 E2E 通过。未跑完整 validate。待独立复审，不标 done。 |
+| 2026-10-04 | fix     | Cursor | 未提交  | 主代理接受 `HUB-S2-R01`：metric 契约未约束 `count` 与状态一致，Web 的 `count ?? 0` 会伪造零值。已写入 S2a，交实现执行器修复后再验收。                                                                                                                                                                                                                                                                   |
+| 2026-10-04 | review  | Codex  | 未提交  | S2a 已修复：metric 为判别联合，契约反例拒绝缺失/越界 `count`，Web 不再补零并对残缺响应显示 `—`。主代理复跑：API 单测 3、集成 4、Web 视图 6、API 客户端 1、契约 check/drift、API/Web typecheck、Web 定向 lint、repo:check、diff check 均通过。目标 E2E 本轮因 5173 已有非测试开发服务器未执行；沿用实现交接中同一用例已通过的证据。未跑完整 validate，按本片约定不要求。进入高风险独立复审。             |
+| 2026-10-04 | fix     | Codex  | 未提交  | 独立复审 `HUB-S2-R02` 已接受：寻源 SQL 只按发布去重会折叠同一发布内多个 SKU。写入 S2b，按复合 SKU 身份修复并补双 SKU 集成反例。                                                                                                                                                                                                                                                                         |
+| 2026-10-04 | review  | Codex  | 未提交  | `HUB-S2-R02` 已修复：寻源在办/待接受按 `(sku_release_id, sku_id)` 计数；同发布双 SKU 报价、定点反例通过。workbench-network 集成 5、API typecheck、定向 lint、diff check 通过。该修复未改变业务政策或公共契约，按 AGENTS §1.2.15 不重复复审，进入集成候选。                                                                                                                                              |

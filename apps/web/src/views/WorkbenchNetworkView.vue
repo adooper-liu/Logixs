@@ -5,7 +5,13 @@ import {
   Construction,
   MousePointer2,
 } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
+import type {
+  WorkbenchNetworkVolume,
+  WorkbenchNetworkVolumeMetricV1,
+} from "@logix/contracts";
+import { HttpRequestError } from "../api/httpClient";
+import { getWorkbenchNetworkVolume } from "../api/workbenchNetworkVolume";
 import PageHeader from "../components/ui/PageHeader.vue";
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import {
@@ -47,6 +53,81 @@ const exceptionCenter = computed(() =>
   supportingWorkbenches.find((stage) => stage.code === "exceptions"),
 );
 
+type VolumeStatus = "loading" | "ready" | "forbidden" | "error";
+const volumeStatus = ref<VolumeStatus>("loading");
+const volume = ref<WorkbenchNetworkVolume | null>(null);
+
+onMounted(() => {
+  void loadVolume();
+});
+
+async function loadVolume(): Promise<void> {
+  volumeStatus.value = "loading";
+  volume.value = null;
+  try {
+    volume.value = await getWorkbenchNetworkVolume();
+    volumeStatus.value = "ready";
+  } catch (caught) {
+    volume.value = null;
+    volumeStatus.value =
+      caught instanceof HttpRequestError && caught.kind === "forbidden"
+        ? "forbidden"
+        : "error";
+  }
+}
+
+function deskVolume(code: string) {
+  return volume.value?.workbenches.find((desk) => desk.code === code) ?? null;
+}
+
+function connectionVolume(code: string) {
+  return (
+    volume.value?.connections.find(
+      (connection) => connection.fromCode === code,
+    ) ?? null
+  );
+}
+
+function metricLabel(
+  metric: WorkbenchNetworkVolumeMetricV1 | undefined,
+): string {
+  if (!metric) return "未接通";
+  if (metric.state === "count") {
+    return Number.isInteger(metric.count) && metric.count >= 0
+      ? String(metric.count)
+      : "—";
+  }
+  if (metric.state === "undefined") return "未定义";
+  if (metric.state === "forbidden") return "无权查看";
+  return "未接通";
+}
+
+function globalMetric(key: "open" | "weeklyFlow" | "blocked"): string {
+  if (volumeStatus.value !== "ready" || !volume.value) return "—";
+  return metricLabel(volume.value.global[key]);
+}
+
+function stageVolumeText(code: string): string {
+  if (volumeStatus.value === "loading") return "正在读取";
+  if (volumeStatus.value === "forbidden") return "无权查看";
+  if (volumeStatus.value === "error") return "暂时读不出来";
+  const desk = deskVolume(code);
+  if (!desk) return "未接通";
+  return `在办 ${metricLabel(desk.open)} · 本周 ${metricLabel(desk.weeklyFlow)} · 阻塞 ${metricLabel(desk.blocked)}`;
+}
+
+function connectorText(stage: WorkbenchStage): string | null {
+  const label = outboundLabel(stage);
+  const connection = connectionVolume(stage.code);
+  if (!connection || volumeStatus.value !== "ready") return label;
+  const pending = metricLabel(connection.pendingAcceptance);
+  const suffix =
+    connection.pendingAcceptance.state === "count"
+      ? `待接受 ${pending}，超时${metricLabel(connection.overdue)}`
+      : pending;
+  return label ? `${label} · ${suffix}` : suffix;
+}
+
 // 岗位作业规格：网络里的字段说明"这个岗位在链上的位置"，
 // 规格说明"他具体怎么干"。未定义 = 尚未梳理，不是"没有要求"。
 const specByCode = computed<Record<string, WorkbenchOperationalSpec>>(() =>
@@ -73,20 +154,21 @@ const totalStageCount = computed(
       <dl>
         <div>
           <dt>在办</dt>
-          <dd>—</dd>
+          <dd>{{ globalMetric("open") }}</dd>
         </div>
         <div>
           <dt>本周流转</dt>
-          <dd>—</dd>
+          <dd>{{ globalMetric("weeklyFlow") }}</dd>
         </div>
         <div>
           <dt>阻塞</dt>
-          <dd>—</dd>
+          <dd>{{ globalMetric("blocked") }}</dd>
         </div>
       </dl>
-      <p>
-        尚无业务量投影：各台在办与阻塞的计数口径确定并由服务端提供前，这里不显示数字。
-      </p>
+      <p v-if="volumeStatus === 'loading'">正在读取业务量。</p>
+      <p v-else-if="volumeStatus === 'forbidden'">无权查看业务量。</p>
+      <p v-else-if="volumeStatus === 'error'">业务量暂时读不出来。</p>
+      <p v-else>数字来自服务端当前责任，没有事实的项不会显示成 0。</p>
       <RouterLink v-if="exceptionCenter" :to="exceptionCenter.path">
         进入异常中心 <ArrowRight :size="15" aria-hidden="true" />
       </RouterLink>
@@ -110,6 +192,8 @@ const totalStageCount = computed(
       v-for="phase in phases"
       :key="phase.code"
       class="phase-band"
+      :class="{ 'phase-band--current': volume?.currentPhase === phase.code }"
+      :aria-current="volume?.currentPhase === phase.code ? 'true' : undefined"
       :aria-labelledby="`phase-${phase.code}`"
     >
       <header class="phase-heading">
@@ -117,6 +201,7 @@ const totalStageCount = computed(
           String(phaseOrder.indexOf(phase.code) + 1).padStart(2, "0")
         }}</span>
         <h2 :id="`phase-${phase.code}`">{{ phase.label }}</h2>
+        <b v-if="volume?.currentPhase === phase.code">当前阶段</b>
       </header>
 
       <ol class="stage-grid">
@@ -155,6 +240,9 @@ const totalStageCount = computed(
               </div>
               <h3>{{ stage.title }}</h3>
               <p>{{ stage.roleResult }}</p>
+              <p class="stage-volume" data-testid="stage-volume">
+                {{ stageVolumeText(stage.code) }}
+              </p>
             </RouterLink>
 
             <details v-if="specByCode[stage.code]" class="stage-spec">
@@ -163,12 +251,12 @@ const totalStageCount = computed(
             </details>
           </div>
           <p
-            v-if="outboundLabel(stage)"
+            v-if="connectorText(stage)"
             class="stage-connector"
             :data-from="stage.code"
           >
             <ArrowRight :size="14" aria-hidden="true" />
-            <span>{{ outboundLabel(stage) }}</span>
+            <span>{{ connectorText(stage) }}</span>
           </p>
         </li>
       </ol>
@@ -297,6 +385,10 @@ const totalStageCount = computed(
   border-top: 1px solid var(--line-strong);
 }
 
+.phase-band--current {
+  background: var(--surface-sunken);
+}
+
 .phase-heading {
   display: flex;
   align-items: flex-start;
@@ -306,6 +398,12 @@ const totalStageCount = computed(
 .phase-heading span {
   color: var(--brand);
   font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.phase-heading b {
+  color: var(--ink);
   font-size: var(--text-label);
   font-weight: 700;
 }
@@ -342,6 +440,13 @@ const totalStageCount = computed(
   border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
+}
+
+.stage-volume {
+  margin: var(--space-2) 0 0;
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 700;
 }
 
 /* 交接画在卡片外的连接处：虚线引出，不占卡面。 */

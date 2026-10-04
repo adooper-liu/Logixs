@@ -27,6 +27,7 @@ import { ProductSelectionModule } from "./modules/product-selection";
 import { ShipmentRegistryModule } from "./modules/shipment-registry";
 import { ShipmentLifecycleOrchestrationModule } from "./modules/shipment-lifecycle-orchestration";
 import { WorkExecutionModule } from "./modules/work-execution";
+import { WorkbenchNetworkModule } from "./modules/workbench-network";
 import { WorkflowModule } from "./modules/workflow";
 
 @Module({
@@ -57,6 +58,7 @@ import { WorkflowModule } from "./modules/workflow";
     ProductSelectionModule,
     ShipmentRegistryModule,
     ShipmentLifecycleOrchestrationModule,
+    WorkbenchNetworkModule,
     WorkExecutionModule,
     WorkflowModule,
   ],
