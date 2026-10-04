@@ -1,5 +1,5 @@
 ---
-status: fix
+status: coding
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -61,7 +61,7 @@ authorityRefs:
 ## 阶段与调度
 
 - `market-selection-handoff-v1` 已由 PR #136 合入 `main`，本分支已合并至 `eb5e2598`（含 PR #137、#138）；原串行前置与 Schema / 契约锁冲突均已解除。
-- 2026-10-04 转 `coding`：当前只执行 `S1-resource-commitment`；S2、S3 保持预授权，但须待前一片由主代理验收并回写 brief 后再下发。
+- 2026-10-04 转 `coding`；S1 已由主代理验收并形成提交 `4f75798e`，当前执行 `S2-evidence-integrity`。S3 保持预授权，须待 S2 由主代理验收并回写 brief 后再下发。
 - 主代理在 S1 同步把负责人 2026-10-04 对 `选品立项.md` 13 条基线中本片涉及的资源责任、暂缓重判和 NPI 交接承诺写回 `doc/08`；未进入本片的结论仍按后续切片留存，不提前铺字段。
 - frontmatter 是当前 coding 写入范围和锁的唯一机器事实；正文不再维护第二份范围清单。
 
@@ -130,9 +130,19 @@ authorityRefs:
 6. **界面**：立项面板写明“由我对此立项负责”，资源承诺四项直接填写；暂缓面板写“这次要验证什么”“哪天重判”。回执重读服务端，409 重读后保留输入。
 7. **验证命令**：选品领域单测、`product-initiative-flow` 与迁移升级 PostgreSQL 集成测试、契约生成物一致、字典检查、受影响 Web 单测、一条选品立项 E2E、受影响模块 lint/typecheck。
 
-### 切片 `S2-evidence-integrity`（S1 通过即预授权）
+### 切片 `S2-evidence-integrity`（当前执行）
 
-服务端核验评审要点引用的证据确实存在、属于同租户、且来自该机会的来源信号（基线差距 1，数据真实性不变量，无需新业务定案）。不存在、跨租户或不适用的引用稳定失败并指出是哪条；存量记录不改写。验证：领域单测、PostgreSQL 集成（含跨租户反例）、Web 错误呈现单测。
+岗位结果：选品人员引用证据形成评审结论时，系统只允许使用当前租户、当前机会来源信号上真实存在的证据；格式正确的任意 UUID 不能满足立项门槛。
+
+1. **服务端核验**：`DecideProductInitiativeService` 在领域准备完成、持久化之前，从当前 `handoffId` 的机会记录取得来源 `signalId`，通过现有 `READ_EVIDENCE_REFS` 读取该租户该信号的合法证据集合，并核对命令中每个评审要点的 `evidenceRefs`。无需新表、迁移、公共契约字段或通用证据平台。
+2. **失败语义**：任一引用不存在、属于其他租户、或属于同租户其他信号时，整个决定稳定失败为 `PRODUCT_INITIATIVE_EVIDENCE_INVALID: <sorted-comma-separated-uuids>`；不得部分采信、静默丢弃或把错误引用写入当前态/快照。UUID 排序去重，便于岗位定位具体条目和测试稳定。
+3. **事务与并发**：证据核验发生在写事务之前，不改变现有 initiative 版本、幂等和 advisory lock 语义；核验通过后仍由 repository 在事务内重新检查机会已接受、版本与当前去向。存量记录与历史快照不回填、不重写。
+4. **权限与租户**：沿用写接口认证、`planning.draft` 和现有 tenantId；证据读取必须带同一 tenantId。跨租户 UUID 在当前租户合法集合中不存在，按同一稳定错误拒绝，不泄露该证据属于哪个租户或信号。
+5. **界面反馈**：Web 把稳定错误翻成岗位语言并列出无效引用，明确“该证据不存在或不属于当前机会，请重新选择”；保留当前未提交草稿，不新增证据管理界面或自动替换证据。
+6. **测试先行**：先增加失败测试，证明当前实现会接受格式正确但不存在/其他信号/跨租户的 UUID；再实现最小核验。领域/Application 单测覆盖合法集合、排序去重和不调用 persist；真实 PostgreSQL 集成分别覆盖成功、同租户其他信号、跨租户、完全不存在以及失败后没有 initiative/handoff/outbox 写入；Web 单测覆盖人话与草稿保留。
+7. **验证命令**：选品决定相关 API 单测、`product-initiative-flow` PostgreSQL 集成、受影响 Web 单测、API/Web lint 与 typecheck、`repo:check`、`git diff --check`。本片不改契约/Schema/字典，`contract:drift` 只在发现意外生成差异时运行。
+
+**禁止范围**：不校验证据是否足以支持结论、不改变 verificationState/validity 采信政策、不实现 U1 完整元数据、不新增证据评分、角色、迁移、字段、契约或页面；这些不是 S2 已定业务结果。
 
 ### 切片 `S3-unit-economics`（S2 通过即预授权）
 
@@ -230,9 +240,6 @@ decisions:
       同时进度头显示“必填剩 11 · 已齐 0/5”，分母仍只算目标结果和四项门槛，已与七项新增必填不一致。
       这违反 UI_SYSTEM UI-D06/UI-D10 与改版规范的一屏焦点、常驻行动条和真实完备度要求，属于当前岗位可用性风险。
     writeback: 本 brief S1；UI_SYSTEM §3/§5 与 WORKBENCH_VISUAL_FLOW_REDESIGN §2/§5
-unknowns: []
-verificationGaps:
-  - 完整 validate 按 brief 留到风险切片集成候选；本轮修复后先复跑 S1 定向门禁。
   - finding: PS-S1-R08
     status: accepted
     reason: >
@@ -252,8 +259,11 @@ verificationGaps:
       outcomeHintFor 只看 reason，未接收 reconsiderationDate；暂缓只填验证重点时会预告“提交后关闭”，而服务端正确保存为
       pending_completion/needs_decision。提示和 CTA 必须同时依据验证重点与重判日期：两项齐全才预测关闭，半填或全缺都明确待补。
     writeback: 本 brief S1
+unknowns: []
+verificationGaps:
+  - 完整 validate 按 brief 留到任务级最终集成候选；S1 的定向门禁、真实三视口与独立复审 finding 修复已完成。
 nonBlockingSuggestions: []
-next: fix
+next: S2-evidence-integrity
 ```
 
 修复验收反证：
@@ -293,3 +303,4 @@ next: fix
 | 2026-10-04 | fix    | Claude Code | 未提交     | 复验 R01～R03 通过；追加 PS-S1-R05/R06：机会源仍只取首 100 条使老到期项不可见，半填暂缓回执与服务端 needs_decision 不符。限定最后一轮 Web 修复。                       |
 | 2026-10-04 | fix    | Claude Code | 未提交     | R05/R06 代码复验通过；真实三视口视觉检查追加 PS-S1-R07：主 CTA 远离首屏、承诺区形成长填空墙、进度分母仍为旧值 5。限定为分组、正确口径与同一动作区 sticky，不重做整页。 |
 | 2026-10-04 | fix    | Claude Code | 未提交     | R07 真实三视口复验通过。fresh Codex 独立复审返回 R08～R10，主代理逐项核验并全部接受：NPI 回程触发新 CHECK、legacy 操作人被冒充责任人、半填暂缓提示错误预测关闭。       |
+| 2026-10-04 | coding | Claude Code | `4f75798e` | R08～R10 修复通过 API 37、Web 48、PostgreSQL 27 条及契约/字典/静态门禁；S1 生产提交完成并合入最新 main。修正 disposition 结构后按预授权下发 S2 证据真实性。            |
