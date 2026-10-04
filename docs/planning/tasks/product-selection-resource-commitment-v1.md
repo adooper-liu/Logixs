@@ -1,14 +1,46 @@
 ---
-status: design
+status: coding
 branch: feat/product-selection-resource-commitment-v1
-owner: cursor
-writer: cursor
+owner: main
+writer: codex
 risk: high
 dependsOn: []
 writeScopes:
+  - doc/cross-border-supply-chain/08-role-workbenches.md
   - docs/planning/tasks/product-selection-resource-commitment-v1.md
-exclusiveLocks: []
-sharedIntegrationScopes: []
+  - packages/contracts/schemas/v1/product-initiative.schema.json
+  - packages/contracts/fixtures/v1/schema-instances.json
+  - packages/contracts/generated/contracts.d.ts
+  - database/schema.prisma
+  - database/migrations/**
+  - database/dictionary/dictionary.annotations.json
+  - database/dictionary/DATA_DICTIONARY.generated.md
+  - database/dictionary/NATIVE_OBJECTS.generated.md
+  - database/dictionary/database-data-dictionary.xlsx
+  - apps/api/src/modules/product-selection/**
+  - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-initiative-migration-upgrade.integration.test.ts
+  - apps/web/src/api/marketSignals.ts
+  - apps/web/src/api/marketSignals.test.ts
+  - apps/web/src/components/product-selection/**
+  - apps/web/src/composables/useProductInitiativeDecision.ts
+  - apps/web/src/composables/useProductInitiativeDecision.test.ts
+  - apps/web/src/data/productInitiativeQueue.ts
+  - apps/web/src/data/productInitiativeQueue.test.ts
+  - apps/web/src/views/ProductSelectionWorkbench.vue
+  - apps/web/src/views/ProductSelectionWorkbench.test.ts
+  - apps/web/src/components/product-npi/ProductNpiHandoffDetail.vue
+  - apps/web/e2e/workbench-network.spec.ts
+exclusiveLocks:
+  - business-policy:ps-d01
+  - database-schema
+  - database-migrations
+  - database-dictionary
+  - generated:database-catalog
+  - public-contract:product-initiative-v1
+  - generated:contracts
+sharedIntegrationScopes:
+  - apps/web/e2e/workbench-network.spec.ts
 authorityRefs:
   - AGENTS.md
   - doc/cross-border-supply-chain/08-role-workbenches.md
@@ -25,11 +57,10 @@ authorityRefs:
 
 ## 阶段与调度
 
-- 本 brief 在 `design` 阶段只写自身文件，与 `market-selection-handoff-v1`（coding）的写入范围和锁不交叉。
-- 转 `coding` 的前置：`market-selection-handoff-v1` 合入 `main`（同为选品模块、`product-initiative` 契约、Schema 与迁移，必须串行）。转 `coding` 时同步把下方“计划写入范围”写入 frontmatter，并加锁 `business-policy:PS-D01`、`database-schema`、`database-migrations`、`database-dictionary`、`generated:database-catalog`、`public-contract:product-initiative-v1`、`generated:contracts`。
-- 同时主代理把负责人 2026-10-04 对 `选品立项.md` 13 条基线的确认写回 `doc/08` 选品岗位规格（该文件当前在交接任务写入范围内，故顺延到交接合入后）。
-
-计划写入范围（coding 时生效）：`doc/cross-border-supply-chain/08-role-workbenches.md`、本 brief、`packages/contracts/schemas/v1/product-initiative.schema.json`、契约 fixtures 与生成物、`database/schema.prisma`、`database/migrations/**`、数据字典生成物、`apps/api/src/modules/product-selection/**`、`apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts`、新增迁移升级集成测试、`apps/web/src/components/product-selection/**`、`apps/web/src/composables/useProductInitiativeDecision*.ts`、`apps/web/src/data/productInitiativeQueue*.ts`、`apps/web/src/views/ProductSelectionWorkbench*`、NPI 只读展示所需的 `apps/web/src/components/product-npi/ProductNpiHandoffDetail.vue`。
+- `market-selection-handoff-v1` 已由 PR #136 合入 `main`，本分支已合并至 `eb5e2598`（含 PR #137、#138）；原串行前置与 Schema / 契约锁冲突均已解除。
+- 2026-10-04 转 `coding`：当前只执行 `S1-resource-commitment`；S2、S3 保持预授权，但须待前一片由主代理验收并回写 brief 后再下发。
+- 主代理在 S1 同步把负责人 2026-10-04 对 `选品立项.md` 13 条基线中本片涉及的资源责任、暂缓重判和 NPI 交接承诺写回 `doc/08`；未进入本片的结论仍按后续切片留存，不提前铺字段。
+- frontmatter 是当前 coding 写入范围和锁的唯一机器事实；正文不再维护第二份范围清单。
 
 ## 边界 / 不做
 
@@ -77,13 +108,14 @@ authorityRefs:
 
 ## 执行切片（转 coding 后生效；同一分支、一个最终 PR）
 
-| 项目     | 内容                                                                                                           |
-| -------- | -------------------------------------------------------------------------------------------------------------- |
-| 执行角色 | 实现执行器：Codex（GPT-5.6）                                                                                   |
-| 复审     | S3 完成后 fresh Claude Opus 只读复审整条分支（迁移、公共契约、状态语义）                                       |
-| 禁止范围 | 市场信号模块、NPI 阶段与回程语义、授权控制面、`market-selection-handoff-v1` 已定的接受与退回规则               |
-| 提交     | 允许按切片在本分支提交；不推送、不建 PR、不改 brief 状态                                                       |
-| 停止条件 | 每片返回 `HANDOFF`，state 只能 `ready-for-review` 或 `blocked`；端口被占用返回 `blocked`，不得终止未获授权进程 |
+| 项目     | 内容                                                                                                                                                             |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 基线     | `5401efea`（旧设计分支合并最新 `main` 后的提交；`main` / `origin/main` 同步点为 `eb5e2598`）                                                                     |
+| 执行角色 | 实现执行器：Codex（GPT-5.6）                                                                                                                                     |
+| 复审     | 高风险切片完成后由 Codex（GPT-5.6）新开只读会话独立复审；只阻塞当前切片可复现的真实业务、安全、数据真实性、兼容性或发布风险                                      |
+| 禁止范围 | 市场信号模块、NPI 阶段与回程语义、授权控制面、`market-selection-handoff-v1` 已定的接受与退回规则；不得扩展人员目录、预算、权限拆分或通用契约                     |
+| 提交     | 实现执行器可按切片在本分支提交；不得推送、建 PR、改 brief 状态或写入 frontmatter / `doc/08`，这些由主代理收口                                                    |
+| 停止条件 | 每片返回 `HANDOFF`，state 只能 `ready-for-review` 或 `blocked`；只以真实当前业务风险、权威冲突、范围冲突或验证环境不可用为 blocked，不以范围外重构或未来扩展阻塞 |
 
 ### 切片 `S1-resource-commitment`
 
@@ -152,8 +184,9 @@ authorityRefs:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责   | commit | 说明                                                                                                                                   |
-| ---------- | ------ | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-04 | design | Cursor | —      | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                             |
-| 2026-10-04 | design | Cursor | —      | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                        |
-| 2026-10-04 | design | Cursor | —      | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权 |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                   |
+| ---------- | ------ | ----------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | design | Cursor      | —          | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                             |
+| 2026-10-04 | design | Cursor      | —          | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                        |
+| 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权 |
+| 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。    |
