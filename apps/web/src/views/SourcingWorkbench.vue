@@ -84,17 +84,14 @@ watch(requestedKey, () => {
 
 const workResult = computed(() => {
   if (!selected.value) return "选一件开始";
-  if (selected.value.nominated) return "已定点";
+  if (selected.value.nominated) return "已定点，待需求与补货侧明确接受";
   return selected.value.quotations.length > 0
     ? `已收 ${selected.value.quotations.length} 家报价`
     : "还没有人报价";
 });
 
-// 当前没有持久化的寻源责任人，只能如实写岗位；供应商不是责任人。
-const currentOwner = computed(() => {
-  if (selected.value?.nominated) return "需求与补货侧（已交接）";
-  return "寻源负责人";
-});
+// 没有持久化的责任人，也没有下游接受事实：责任停在寻源岗位，定点不转移责任，供应商不是责任人。
+const currentOwner = "寻源负责人";
 
 async function submitSupplier(): Promise<void> {
   const countryCode = newSupplier.value.countryCode.trim().toUpperCase();
@@ -327,7 +324,7 @@ async function reload(): Promise<void> {
           </div>
 
           <div v-if="selected.nominated" class="block">
-            <span class="label">已定点的交接</span>
+            <span class="label">定点记录（待需求与补货侧明确接受）</span>
             <p class="note">
               {{ selected.nominated.supplierName }} ·
               {{ selected.nominated.incoterms }} · 报价第

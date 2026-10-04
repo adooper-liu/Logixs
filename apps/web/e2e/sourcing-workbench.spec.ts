@@ -125,7 +125,14 @@ test("sourcing owner collects a quotation and nominates the supplier", async ({
   await page.getByLabel("产能约束").fill("月产能约 3 万件");
   await page.getByRole("button", { name: "确认定点" }).click();
 
-  await expect(page.getByText(/已定点，交接已交给需求与补货侧/)).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText(
+    "已定点，待需求与补货侧明确接受",
+  );
+  // 定点不是完成点：下游明确接受前，责任仍在寻源岗位。
+  const context = page.getByLabel("当前岗位与责任");
+  await expect(context).toContainText("寻源负责人");
+  await expect(context).toContainText("待需求与补货侧明确接受");
+  await expect(context).not.toContainText("已交接");
   // 同样是两处同名：队列分组标题与"本次结果"。定位到分组标题。
   await expect(
     page.getByRole("heading", { level: 3, name: /已定点/ }),
@@ -164,7 +171,11 @@ test("sourcing workbench shows every quote without ranking them", async ({
       }),
       quotationId: "quotation-2",
       supplierId: "supplier-2",
-      priceTiers: [{ minQuantity: 200, unitPrice: "9.0000", currency: "CNY" }],
+      // 服务端给出的档次顺序即展示顺序，前端不得按金额或起订量重排。
+      priceTiers: [
+        { minQuantity: 1000, unitPrice: "9.0000", currency: "CNY" },
+        { minQuantity: 200, unitPrice: "12.5000", currency: "CNY" },
+      ],
     },
   ];
 
@@ -187,8 +198,17 @@ test("sourcing workbench shows every quote without ranking them", async ({
   await expect(
     page.getByText("报价可比性待服务端判定，暂不排名。"),
   ).toBeVisible();
-  await expect(page.getByText("500 起 100.0000 USD")).toBeVisible();
-  await expect(page.getByText("200 起 9.0000 CNY")).toBeVisible();
+  const first = page.locator(".quotes > li").filter({ hasText: "宁波甲厂" });
+  const second = page.locator(".quotes > li").filter({ hasText: "深圳乙厂" });
+  await expect(first.locator(".price > span")).toHaveText([
+    "500 起 100.0000 USD",
+  ]);
+  await expect(second.locator(".price > span")).toHaveText([
+    "1000 起 9.0000 CNY",
+    "200 起 12.5000 CNY",
+  ]);
+  await expect(first).toContainText("FOB Ningbo / Incoterms 2020");
+  await expect(second).toContainText("EXW Shenzhen / Incoterms 2020");
 
   const context = page.getByLabel("当前岗位与责任");
   await expect(context).toContainText("当前责任");

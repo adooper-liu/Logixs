@@ -159,7 +159,7 @@ export function useSourcingWorkbench(options: { selectedKey: Ref<string> }) {
         capacityConstraint: command.capacityConstraint,
         idempotencyKey: `nominate:${quotation.quotationId}:${quotation.version}`,
       });
-      return "已定点，交接已交给需求与补货侧";
+      return "已定点，待需求与补货侧明确接受";
     });
     if (saved) await load();
     return saved;
