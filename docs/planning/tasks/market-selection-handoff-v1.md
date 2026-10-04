@@ -33,6 +33,8 @@ writeScopes:
   - apps/web/src/data/marketSignalScenarios.ts
   - apps/web/src/data/productInitiativeQueue.ts
   - apps/web/src/data/productInitiativeQueue.test.ts
+  - apps/web/src/data/marketSignalEvidenceFlow.test.ts
+  - apps/web/src/data/productInitiativeApplyHandoff.test.ts
   - apps/web/src/components/market-signals/**
   - apps/web/src/components/product-selection/**
   - apps/web/src/views/MarketSignalsWorkbench.vue
@@ -118,6 +120,7 @@ authorityRefs:
 
 岗位结果：市场和选品在队列、回执上看到的是“哪项没填”的事实，而不是状态当文案的催办；“待补”只在依据区进度头出现一次（`docs/product/WORKBENCH_VISUAL_FLOW_REDESIGN.md` §1 T2、§6.3 第 1 条、§8.1，及 §4.2 禁止“仍待补，不影响先处理”）。依据区本体已由 #84 完成，本片只清剩余处。
 
+0. S2 遗留（主代理 accepted）：`MarketSelectionFeedback.vue` 的 `margin-top: 2px` 未通过 `repo:check` 令牌纪律，改用 `var(--space-*)` 令牌；本片交回前必须运行 `node scripts/check-repository.mjs` 并通过。
 1. `MarketSignalQueue.vue`：活跃态缺市场/渠道时与关闭态一致写“市场未填 / 渠道未填”；删除“仍待补 N 项，不影响先处理”，改为中性的“依据缺 N 项”。
 2. `MarketSignalOperationReceipt.vue`：回执里的“仍待补”改为“尚未填写”，列出项不变。
 3. `ProductOpportunityQueue.vue`：“市场待补 / 渠道待补”改为“市场未填 / 渠道未填”。
@@ -203,7 +206,8 @@ S3 完成后主代理运行一次完整 `pnpm validate`（需 `pnpm infra:up`）
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责   | commit     | 说明                                                                                                                                                                                                          |
-| ---------- | ------ | ------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-04 | coding | Cursor | `cb44abcb` | 负责人定案 MS-D04 并写回 `doc/08` 4.1.1；建立连续三片队列，下发 S1；GC-012 G1 暂停不派发                                                                                                                      |
-| 2026-10-04 | coding | Cursor | `8101512e` | S1 验收通过：46 个文件均在 writeScopes 内；接受前置、退回请求期间阻断、双边原子接回和幂等重放已核对；主代理复跑迁移升级与两条流程集成 3 文件 27 条通过。遗留 contractVersion 校验分层并入 S2 第 5 项；下发 S2 |
+| 日期       | 阶段   | 负责   | commit     | 说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------- | ------ | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | coding | Cursor | `cb44abcb` | 负责人定案 MS-D04 并写回 `doc/08` 4.1.1；建立连续三片队列，下发 S1；GC-012 G1 暂停不派发                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-10-04 | coding | Cursor | `8101512e` | S1 验收通过：46 个文件均在 writeScopes 内；接受前置、退回请求期间阻断、双边原子接回和幂等重放已核对；主代理复跑迁移升级与两条流程集成 3 文件 27 条通过。遗留 contractVersion 校验分层并入 S2 第 5 项；下发 S2                                                                                                                                                                                                                                                                                   |
+| 2026-10-04 | coding | Cursor | `a4b5f52e` | S2 验收通过：责任投影由服务端按 intake 派生（queued/claimed 留在市场，accepted 转选品），筛选参数有格式校验，租户隔离与键集分页沿用；S1 遗留 contractVersion 校验已移到领域层。主代理复跑集成 3 文件 28 条通过。两处测试夹具（`marketSignalEvidenceFlow.test.ts`、`productInitiativeApplyHandoff.test.ts`）因契约新增必填字段而改，原未列入 writeScopes 且交接未报，主代理补登记为 accepted 例外。`repo:check` 未过（`MarketSelectionFeedback.vue` 裸值 `2px`），并入 S2b 第 0 项修复；下发 S2b |
