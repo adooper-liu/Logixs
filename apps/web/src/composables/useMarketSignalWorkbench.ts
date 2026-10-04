@@ -899,8 +899,8 @@ function destinationLabel(
 
 function pendingFieldLabel(code: MarketSignalPendingFieldCodeV1): string {
   const labels: Record<MarketSignalPendingFieldCodeV1, string> = {
-    market_code: "市场待补",
-    channel_code: "渠道待补",
+    market_code: "市场未填",
+    channel_code: "渠道未填",
     category_ref: "商品类别待选择",
     observed_fact_summary: "观察事实待补",
     hypothesis: "经营假设待补",

@@ -228,6 +228,10 @@ describe("MarketSignalsWorkbench", () => {
   it("locks hypothesis until an observed fact exists and verbs field actions", async () => {
     const wrapper = await mountPage(`?signalId=${signalTwoId}`);
 
+    const selectedQueueItem = wrapper.get(".queue-item.selected");
+    expect(selectedQueueItem.text()).toContain("CA · 渠道未填");
+    expect(selectedQueueItem.text()).toContain("依据缺 5 项");
+    expect(selectedQueueItem.text()).not.toContain("不影响先处理");
     expect(wrapper.find('button[aria-label="填写经营判断"]').exists()).toBe(
       false,
     );
@@ -500,6 +504,7 @@ describe("MarketSignalsWorkbench", () => {
     expect(wrapper.get('[role="status"]').text()).toContain(
       "下一责任选品团队（待领取）",
     );
+    expect(wrapper.get('[role="status"]').text()).toContain("尚未填写");
     expect(wrapper.get('[role="status"]').text()).toContain("商品类别待选择");
     expect(wrapper.get('[role="status"]').text()).toContain("来源证据待补");
   });

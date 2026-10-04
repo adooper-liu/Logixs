@@ -244,7 +244,7 @@ export function buildMarketSignalResult(
     pendingItems,
     handoffFacts: [
       [signal.market, signal.channel].filter(Boolean).join(" · ") ||
-        "市场与渠道待补",
+        "市场与渠道未填",
       `${signal.evidence.length} 项来源证据`,
       signal.hypothesis ? "经营假设已带入" : "经营假设待补",
     ],
@@ -280,7 +280,7 @@ export function marketSignalGap(code: MarketSignalGapCode): MarketSignalGap {
     case "market":
       return gap(
         code,
-        "市场待补",
+        "市场未填",
         "市场",
         "text",
         "填写实际销售市场，例如：加拿大",
@@ -288,7 +288,7 @@ export function marketSignalGap(code: MarketSignalGapCode): MarketSignalGap {
     case "channel":
       return gap(
         code,
-        "渠道待补",
+        "渠道未填",
         "渠道",
         "text",
         "填写实际渠道，例如：Aosom.ca",

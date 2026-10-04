@@ -138,7 +138,7 @@ function dateTime(value: string): string {
 
 .feedback-timeline svg {
   flex: none;
-  margin-top: 2px;
+  margin-top: var(--space-1);
   color: var(--brand-strong);
 }
 

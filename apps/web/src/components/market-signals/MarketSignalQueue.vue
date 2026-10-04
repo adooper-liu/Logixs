@@ -181,7 +181,7 @@ function dateTime(value: string): string {
             {{ item.market || "市场未填" }} · {{ item.channel || "渠道未填" }}
           </template>
           <template v-else>
-            {{ item.market || "市场待补" }} · {{ item.channel || "渠道待补" }}
+            {{ item.market || "市场未填" }} · {{ item.channel || "渠道未填" }}
           </template>
         </span>
         <span class="queue-item__reason-label">
@@ -229,7 +229,7 @@ function dateTime(value: string): string {
           v-if="item.gaps.length && !isClosedState(item.workflowState)"
           class="queue-item__gaps"
         >
-          仍待补 {{ item.gaps.length }} 项，不影响先处理
+          依据缺 {{ item.gaps.length }} 项
         </span>
         <span
           v-else-if="item.gaps.length && isClosedState(item.workflowState)"

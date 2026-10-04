@@ -50,11 +50,11 @@ describe("ProductSelectionWorkbench", () => {
 
     expect(wrapper.text()).toContain("加拿大站宠物出行需求上升");
     expect(wrapper.text()).toContain("验证宠物出行机会是否值得立项");
+    expect(wrapper.get(".opportunity-queue").text()).toContain("渠道未填");
+    expect(wrapper.get(".pending").text()).toContain("交接时未填");
     expect(wrapper.text()).toContain("商品类别");
     expect(wrapper.text()).toContain("来源证据");
-    expect(wrapper.text()).toContain(
-      "合并信号后补后仍缺这些；不阻止领取和评估",
-    );
+    expect(wrapper.text()).toContain("这些项来自交接快照，选品不在此处补录");
     expect(wrapper.get(".action-body button").text()).toBe("领取此机会");
   });
 

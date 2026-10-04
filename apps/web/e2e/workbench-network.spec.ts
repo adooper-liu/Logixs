@@ -143,6 +143,7 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   await expect(page.getByRole("status")).toContainText(
     "下一责任选品团队（待领取）",
   );
+  await expect(page.getByRole("status")).toContainText("尚未填写");
   await expect(
     page.getByRole("heading", {
       name: "美国站庭院收纳需求连续三周上升",
@@ -155,9 +156,10 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   ).toBeVisible();
   await expect(
     page.getByText(
-      "合并信号后补后仍缺这些；不阻止领取和评估。已后补项不会出现在此。",
+      "这些项来自交接快照，选品不在此处补录；信号侧已后补项不会出现在此。",
     ),
   ).toBeVisible();
+  await expect(page.locator(".opportunity-queue")).toContainText("渠道未填");
   await page.getByRole("button", { name: "领取此机会" }).click();
   await expect(page.getByRole("status")).toContainText("已领取");
   await page.getByRole("button", { name: "接受并进入立项判断" }).click();
