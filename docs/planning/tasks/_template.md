@@ -17,6 +17,7 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 # 任务：<简短标题>
 
 > 复制本文件为 `docs/planning/tasks/<任务名>.md`，作为执行、评审与交接的**唯一载体**。
+> 工作台任务由 `业务开工：<工作台或业务节点>` 触发时，统一按 `AGENTS.md` §1.2.2 执行：先继承 `wisdom-baseline`，再围绕同一业务步骤同步映射岗位任务、数据事实、前端 UI、技术底层和权限边界；本 brief 不建立第二套需求。
 > 状态以文件顶部 frontmatter 的 `status` / `branch` 为准，改状态就改 frontmatter，不要在正文另写自由文本状态。
 >
 > 调度规则统一见 `AGENTS.md` §1.2 第 17～23 条：`design` 不占两个 `coding/fix` 名额，但与 `coding/fix`
