@@ -1464,6 +1464,97 @@ test("module manifests must exist and reference known module ids", async () => {
   ]);
 });
 
+test("module manifests reject undeclared sibling imports and new base-to-incremental edges", async () => {
+  const { findModuleManifestViolations } =
+    await import("./check-module-manifests.mjs");
+  const root = mkdtempSync(join(tmpdir(), "logix-manifest-edges-"));
+  temporaryDirectories.push(root);
+  const modulesDir = join(root, "modules");
+  const writeModule = (id, kind, depends, source) => {
+    mkdirSync(join(modulesDir, id), { recursive: true });
+    writeFileSync(join(modulesDir, id, `${id}.module.ts`), source);
+    writeFileSync(
+      join(modulesDir, id, "module.manifest.ts"),
+      `export const moduleManifest = {
+  id: "${id}",
+  kind: "${kind}",
+  version: "1.0.0",
+  depends: [${depends.map((item) => `"${item}"`).join(", ")}],
+  permissions: [],
+};`,
+    );
+  };
+  writeModule("audit", "base", ["identity"], "export {};\n");
+  writeModule(
+    "identity",
+    "base",
+    [],
+    'import { AuditModule } from "../audit";\nexport { AuditModule };\n',
+  );
+  writeModule("plugin", "incremental", [], "export {};\n");
+  writeModule(
+    "core",
+    "base",
+    ["plugin"],
+    'import { PluginModule } from "../plugin";\nimport { rule } from "../plugin/domain/rule";\nimport { AuditModule } from "../audit";\nexport { PluginModule, rule, AuditModule };\n',
+  );
+
+  const errors = findModuleManifestViolations({
+    modulesDirectory: modulesDir,
+    baseOnIncrementalAllowlist: new Set(),
+  }).sort();
+  assert.deepEqual(errors, [
+    "apps/api/src/modules/core/core.module.ts: imports internal path 'plugin/domain' of another module",
+    "apps/api/src/modules/core/module.manifest.ts: base module cannot depend on incremental 'plugin'",
+    "apps/api/src/modules/core/module.manifest.ts: sibling import 'audit' is missing from depends",
+    "apps/api/src/modules/identity/module.manifest.ts: sibling import 'audit' is missing from depends",
+  ]);
+});
+
+test("module manifests allow an already recorded base-to-incremental edge", async () => {
+  const { findModuleManifestViolations } =
+    await import("./check-module-manifests.mjs");
+  const root = mkdtempSync(join(tmpdir(), "logix-manifest-allow-"));
+  temporaryDirectories.push(root);
+  const modulesDir = join(root, "modules");
+  mkdirSync(join(modulesDir, "records"), { recursive: true });
+  writeFileSync(
+    join(modulesDir, "records", "records.module.ts"),
+    "export {};\n",
+  );
+  writeFileSync(
+    join(modulesDir, "records", "module.manifest.ts"),
+    `export const moduleManifest = {
+  id: "records",
+  kind: "incremental",
+  version: "1.0.0",
+  depends: [],
+  permissions: [],
+};`,
+  );
+  mkdirSync(join(modulesDir, "core"), { recursive: true });
+  writeFileSync(
+    join(modulesDir, "core", "core.module.ts"),
+    'import { RecordsModule } from "../records";\nexport { RecordsModule };\n',
+  );
+  writeFileSync(
+    join(modulesDir, "core", "module.manifest.ts"),
+    `export const moduleManifest = {
+  id: "core",
+  kind: "base",
+  version: "1.0.0",
+  depends: ["records"],
+  permissions: [],
+};`,
+  );
+
+  const errors = findModuleManifestViolations({
+    modulesDirectory: modulesDir,
+    baseOnIncrementalAllowlist: new Set(["core>records"]),
+  });
+  assert.deepEqual(errors, []);
+});
+
 const ROUTE_FIXTURE_FILE =
   "apps/api/src/modules/example/presentation/fixture.controller.ts";
 const ROUTE_FIXTURE_IMPORTS = `import { Controller, Get, Post } from "@nestjs/common";

@@ -33,6 +33,8 @@
 
 ## 3. 基础模块与增量模块
 
+现行分类以各模块 `module.manifest.ts` 的 `kind` 为准。下面名单是 2026-09-17 的快照，不是完整现状。
+
 **基础（始终启用，`kind: "base"`）**
 
 - 平台：`identity`、`audit`、`master-data`、`notification`、`workflow`、`exception-management`
@@ -86,17 +88,19 @@ defineModuleManifest({
 2. `depends` 必须是已存在的模块 `id`，不得自依赖。
 3. Nest `@Module({ imports })` 引入的兄弟业务模块必须出现在 `depends` 中（`identity` 同理）。
 4. `permissions` 中的能力码须与 [IDENTITY_ACCESS_MODEL_V1](../product/domain/IDENTITY_ACCESS_MODEL_V1.md) 对齐；动作级绑定仍以 GC-008 为准。
+5. `kind: "base"` 不得 `depends` 或引用 `kind: "incremental"`。已经存在的违反只登记在 `scripts/check-module-manifests.mjs` 的 `existingBaseOnIncremental`，不得新增条目。
 
 ## 6. 权限约定
 
 - 能力码是稳定授权键（如 `planning.draft`），不是按钮文案或 `actionCode`。
 - 写接口默认需认证；带 `@RequireCapabilities(...)` 的处理器还需能力校验。
-- 模块在 `security/permissions.ts` 声明本模块相关能力；运行时由 `identity` 强制。
+- 模块在 `module.manifest.ts` 的 `permissions` 声明本模块相关能力；运行时由 `identity` 强制。`security/permissions.ts` 只在该模块已有消费者时保留，不要求每个模块补一份空文件。
 - 前端 `meta.roles` / 允许动作投影不是安全边界。
 
 ## 7. 校验与验收
 
-- `pnpm repo:check` 调用模块清单检查：每个含 `*.module.ts` 的业务目录必须有 `module.manifest.ts`，且 `depends` 合法。
+- `pnpm repo:check` 调用 `scripts/check-module-manifests.mjs`：每个含 `*.module.ts` 的业务目录必须有合法 `module.manifest.ts`。生产代码（不含 `*.test.ts`）引用的兄弟模块必须写入 `depends`，且不得进入对方的 `domain/`、`application/`、`infrastructure/`、`presentation/`、`security/` 或 `engines/`。`base` 不得新增对 `incremental` 的依赖。
+- 现存 `base` → `incremental` 只允许这几条，不得新增：`lifecycle-control` → `compliance-management`、`customs-compliance`、`document-records`、`inland-fulfillment`；`work-execution` → `document-records`。拆掉引用后再从脚本名单删除。
 - 样板：`inland-fulfillment` 具备 `security/`、Web `modules/inland-fulfillment` 导航贡献，写接口挂能力守卫。
 - 变更本约定或模块分类须更新本文与 MODULE_DEPENDENCIES；触及部署边界时另立 ADR。
 - **怎么切下一刀、Odoo 业务能力采纳优先序**：见 [INCREMENTAL_MODULE_PLAYBOOK](./INCREMENTAL_MODULE_PLAYBOOK.md)。
