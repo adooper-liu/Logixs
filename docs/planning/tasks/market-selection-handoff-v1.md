@@ -31,6 +31,8 @@ writeScopes:
   - apps/web/src/composables/useProductInitiativeDecision.ts
   - apps/web/src/composables/useProductInitiativeDecision.test.ts
   - apps/web/src/data/marketSignalScenarios.ts
+  - apps/web/src/data/workbenchNetwork.ts
+  - apps/web/src/data/workbenchNetwork.test.ts
   - apps/web/src/data/productInitiativeQueue.ts
   - apps/web/src/data/productInitiativeQueue.test.ts
   - apps/web/src/data/marketSignalEvidenceFlow.test.ts
@@ -126,6 +128,7 @@ authorityRefs:
 3. `ProductOpportunityQueue.vue`：“市场待补 / 渠道待补”改为“市场未填 / 渠道未填”。
 4. `ProductOpportunityDetail.vue`：“仍待补”改为“交接时未填”，说明这些项来自交接快照，选品不在此处补录。
 5. 只改文案与对应单测/E2E 断言，不改服务端、契约或缺口计算；验证为受影响 Web 单测、`workbench-network.spec.ts` 中相关断言和 Web lint/typecheck，并在 `apps/web/src` 内搜索不再出现“仍待补”“市场待补”“渠道待补”。
+6. 主代理扩范围（S2b 首次交回 blocked 后 accepted）：`apps/web/src/data/workbenchNetwork.ts` 市场台 `missingHandling` 说明同步新口径——队列写“依据缺 N 项”而非“仍待补 N 项，不影响先处理”，交给选品时未填项在选品侧显示为“交接时未填”；只改该说明文字，不改阶段、路由、关系或状态；如 `workbenchNetwork.test.ts` 断言该文字则同步。`gc012-g0-catalog-v1` 已 `done`，无在途任务写该文件。
 
 ### 切片 `S3-post-accept-evidence`：接受后市场追加新证据（S2b 通过即预授权）
 
@@ -211,3 +214,4 @@ S3 完成后主代理运行一次完整 `pnpm validate`（需 `pnpm infra:up`）
 | 2026-10-04 | coding | Cursor | `cb44abcb` | 负责人定案 MS-D04 并写回 `doc/08` 4.1.1；建立连续三片队列，下发 S1；GC-012 G1 暂停不派发                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-10-04 | coding | Cursor | `8101512e` | S1 验收通过：46 个文件均在 writeScopes 内；接受前置、退回请求期间阻断、双边原子接回和幂等重放已核对；主代理复跑迁移升级与两条流程集成 3 文件 27 条通过。遗留 contractVersion 校验分层并入 S2 第 5 项；下发 S2                                                                                                                                                                                                                                                                                   |
 | 2026-10-04 | coding | Cursor | `a4b5f52e` | S2 验收通过：责任投影由服务端按 intake 派生（queued/claimed 留在市场，accepted 转选品），筛选参数有格式校验，租户隔离与键集分页沿用；S1 遗留 contractVersion 校验已移到领域层。主代理复跑集成 3 文件 28 条通过。两处测试夹具（`marketSignalEvidenceFlow.test.ts`、`productInitiativeApplyHandoff.test.ts`）因契约新增必填字段而改，原未列入 writeScopes 且交接未报，主代理补登记为 accepted 例外。`repo:check` 未过（`MarketSelectionFeedback.vue` 裸值 `2px`），并入 S2b 第 0 项修复；下发 S2b |
+| 2026-10-04 | coding | Cursor | `e22dca02` | S2b 首次交回 blocked：10 个授权文件文案与 `2px` 令牌已改，`repo:check`、Web lint/format/typecheck、单测 50、E2E 3 通过；全仓搜索仍命中 `workbenchNetwork.ts:796`（不在写入范围）。主代理扩入 `workbenchNetwork.ts` 及其单测（S2b 第 6 项），原未提交差异保留在工作树，Codex 续做同一切片                                                                                                                                                                                                        |
