@@ -208,6 +208,20 @@ decisions:
       ProductNpiWorkbench.test.ts 与新增 ProductOpportunityQueue.test.ts 都覆盖 S1 明确要求的 NPI 只读承诺和到期分组，
       属当前业务路径而非扩单；主代理补入 writeScopes。分页修复允许补 useProductOpportunityWorkbench 及其测试的精确范围。
     writeback: 本 brief frontmatter
+  - finding: PS-S1-R05
+    status: accepted
+    reason: >
+      R02 修复已完整消费立项投影分页，但工作台的机会源仍只调用一次 listProductOpportunities()，默认最多 100 条。
+      第 101 条之后的机会即使对应“暂缓到期”投影，也不会进入 UI 对象集合，因而无法出现在第一组。
+      必须在当前 workbench 消费完机会分页并保留服务端顺序；只做本台局部消费，不建设通用分页抽象。
+    writeback: 本 brief S1
+  - finding: PS-S1-R06
+    status: accepted
+    reason: >
+      半填暂缓经服务端保存为 pending_completion / needs_decision 后，Web 仍固定回执“已暂缓，仍留在选品队列”。
+      这与实际落账不符，会让岗位误以为重判承诺已经成立。回执必须读取保存响应的 currentDestination：只有 deferred
+      才称“已暂缓”，needs_decision 明确提示已保存但仍待补验证重点或重判日期。
+    writeback: 本 brief S1
 unknowns: []
 verificationGaps:
   - 完整 validate 按 brief 留到风险切片集成候选；本轮修复后先复跑 S1 定向门禁。
@@ -221,6 +235,8 @@ next: fix
 2. Web 单测构造超过一页的立项投影，证明继续请求 `nextCursor`，跨页的到期暂缓仍进入第一组；请求失败时不得把缺失投影伪装成未处理。
 3. 新增字段的数据字典注释使用 `confirmed_business`、`moduleCode/ownerModule=product-selection`，引用正式选品工作台权威；重新生成后 `data-dictionary:check` 通过。
 4. 复跑 S1 交接中的全部定向检查；不为范围外重构、通用分页抽象或未来人员目录扩单。
+5. Web 单测构造超过 100 条机会、到期项位于第二页，证明继续请求机会 `nextCursor` 且该项进入“暂缓到期”第一组；重复 cursor 必须明确失败，不能无限请求或静默截断。
+6. Web 单测分别模拟暂缓保存响应为 `needs_decision` 与 `deferred`：前者回执“已保存、仍待补”，后者才回执“已暂缓”；两者都以服务端响应为准。
 
 ## 验收
 
@@ -241,3 +257,4 @@ next: fix
 | 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权                                |
 | 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。                                   |
 | 2026-10-04 | fix    | Claude Code | 未提交     | 主代理核验 S1 handoff，接受 PS-S1-R01～R04：暂缓半填错误关闭/落库失败、Web 漏消费投影分页、字典错误标记已定字段、测试范围漏列。已写回 doc/08 与 brief，定向下发修复。 |
+| 2026-10-04 | fix    | Claude Code | 未提交     | 复验 R01～R03 通过；追加 PS-S1-R05/R06：机会源仍只取首 100 条使老到期项不可见，半填暂缓回执与服务端 needs_decision 不符。限定最后一轮 Web 修复。                      |
