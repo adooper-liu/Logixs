@@ -27,16 +27,22 @@ export class ProductOpportunitiesController {
   @RequireCapabilities("planning.read")
   @ApiQuery({ name: "pageSize", required: false, type: Number })
   @ApiQuery({ name: "cursor", required: false, type: String })
+  @ApiQuery({ name: "signalId", required: false, type: String })
+  @ApiQuery({ name: "responsibilityStatus", required: false, type: String })
   @ApiOkResponse({ type: ProductOpportunityPageResponseDto })
   list(
     @Req() request: IdentityRequest,
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
+    @Query("signalId") signalId?: string,
+    @Query("responsibilityStatus") responsibilityStatus?: string,
   ): Promise<ProductOpportunityPageV1> {
     return this.listOpportunities.execute({
       tenantId: request.identity.tenantId,
       pageSize,
       cursor,
+      signalId,
+      responsibilityStatus,
     });
   }
 

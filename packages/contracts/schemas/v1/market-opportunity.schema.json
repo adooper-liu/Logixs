@@ -11,6 +11,7 @@
         "watching",
         "handed_off",
         "dismissed",
+        "selection_return_requested",
         "returned_from_selection",
         "voided",
         "archived"
@@ -21,6 +22,7 @@
         "watch",
         "handoff",
         "dismiss",
+        "selection_return_request",
         "selection_return",
         "void",
         "archive"
@@ -31,6 +33,9 @@
     },
     "MarketSignalDecisionCompletionV1": {
       "enum": ["pending_completion", "completed"]
+    },
+    "MarketSelectionReturnBasisV1": {
+      "enum": ["insufficient_evidence", "wrong_direction"]
     },
     "MarketOpportunityIntakeStateV1": {
       "enum": ["queued", "claimed", "accepted", "superseded"]
@@ -332,7 +337,104 @@
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 500
+        },
+        "selectionReturnBasis": {
+          "anyOf": [
+            { "$ref": "#/$defs/MarketSelectionReturnBasisV1" },
+            { "type": "null" }
+          ]
         }
+      }
+    },
+    "MarketSelectionReturnTakebackCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedSignalVersion",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "market-selection-return-takeback.v1" },
+        "expectedSignalVersion": { "type": "integer", "minimum": 1 },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "MarketOpportunityResponsibilityStatusV1": {
+      "enum": ["retained_by_market", "transferred_to_selection", "superseded"]
+    },
+    "MarketOpportunityResponsibilityProjectionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "responsibleTeamCode",
+        "handedOffAt",
+        "assignedActorId",
+        "claimedAt",
+        "acceptedAt"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/MarketOpportunityResponsibilityStatusV1"
+        },
+        "responsibleTeamCode": {
+          "type": ["string", "null"],
+          "enum": ["market_intelligence", "product_selection", null]
+        },
+        "handedOffAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "assignedActorId": { "type": ["string", "null"], "maxLength": 200 },
+        "claimedAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        },
+        "acceptedAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/DateTime" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "ProductOpportunityLatestSelectionDecisionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "completion",
+        "currentDestination",
+        "responsibleActorId",
+        "reason",
+        "returnBasis",
+        "decidedAt"
+      ],
+      "properties": {
+        "outcome": {
+          "$ref": "product-initiative.schema.json#/$defs/ProductInitiativeStoredOutcomeV1"
+        },
+        "completion": {
+          "$ref": "product-initiative.schema.json#/$defs/ProductInitiativeCompletionV1"
+        },
+        "currentDestination": {
+          "$ref": "product-initiative.schema.json#/$defs/ProductInitiativeDestinationV1"
+        },
+        "responsibleActorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reason": { "type": ["string", "null"], "maxLength": 500 },
+        "returnBasis": {
+          "anyOf": [
+            {
+              "$ref": "product-initiative.schema.json#/$defs/ProductInitiativeReturnBasisV1"
+            },
+            { "type": "null" }
+          ]
+        },
+        "decidedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
       }
     },
     "ProductOpportunityV1": {
@@ -343,6 +445,8 @@
         "intakeState",
         "intakeVersion",
         "assignedActorId",
+        "responsibility",
+        "latestSelectionDecision",
         "supplementedFieldCodes"
       ],
       "properties": {
@@ -355,7 +459,16 @@
         },
         "intakeState": { "$ref": "#/$defs/MarketOpportunityIntakeStateV1" },
         "intakeVersion": { "type": "integer", "minimum": 0 },
-        "assignedActorId": { "type": ["string", "null"], "maxLength": 200 }
+        "assignedActorId": { "type": ["string", "null"], "maxLength": 200 },
+        "responsibility": {
+          "$ref": "#/$defs/MarketOpportunityResponsibilityProjectionV1"
+        },
+        "latestSelectionDecision": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductOpportunityLatestSelectionDecisionV1" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "ProductOpportunityPageV1": {
@@ -369,6 +482,7 @@
           "items": { "$ref": "#/$defs/ProductOpportunityV1" }
         },
         "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "totalCount": { "type": "integer", "minimum": 0 },
         "nextCursor": { "type": ["string", "null"] }
       }
     },

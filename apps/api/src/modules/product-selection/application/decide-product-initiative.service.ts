@@ -61,6 +61,7 @@ export function toProductInitiativeV1(
     objective: record.objective,
     reviewPoints: record.reviewPoints,
     reason: record.reason,
+    returnBasis: record.returnBasis,
     pendingFieldCodes: record.pendingFieldCodes,
     version: record.version,
     createdAt: record.createdAt.toISOString(),

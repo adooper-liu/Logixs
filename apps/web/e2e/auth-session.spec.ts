@@ -187,7 +187,8 @@ test("401 只重新登录一次，服务端仍拒绝时停在会话无效且不�
   const signalCalls = apiCalls.filter(({ path }) =>
     path.startsWith("/api/market-signals"),
   );
-  expect(signalCalls).toHaveLength(14);
+  // 8 个去向分组 ×（首次 + 一次重新登录）。分组增加时这里要跟着改。
+  expect(signalCalls).toHaveLength(16);
   expect(
     signalCalls.every(
       ({ method, path }) => method === "GET" && path === "/api/market-signals",

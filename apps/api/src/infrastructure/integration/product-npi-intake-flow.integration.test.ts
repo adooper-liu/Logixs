@@ -17,7 +17,9 @@ import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 import { prepareProductInitiativeDecision } from "../../modules/product-selection/domain/product-initiative";
 import { prepareProductInitiativeClaim } from "../../modules/product-selection/domain/product-initiative-claim";
+import { prepareOpportunityIntake } from "../../modules/product-selection/domain/product-opportunity";
 import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
+import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
 
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
@@ -29,6 +31,7 @@ const repositoryRoot = resolve(__dirname, "../../../../..");
 
 let prisma: PrismaClient;
 let repository: PrismaProductInitiativeRepository;
+let productOpportunities: PrismaProductOpportunityRepository;
 let marketSignals: PrismaMarketSignalRepository;
 const tenantId = randomUUID();
 
@@ -56,6 +59,9 @@ ${output.stderr?.toString() ?? ""}`,
   });
   await prisma.$connect();
   repository = new PrismaProductInitiativeRepository(prisma as never);
+  productOpportunities = new PrismaProductOpportunityRepository(
+    prisma as never,
+  );
   marketSignals = new PrismaMarketSignalRepository(prisma as never);
 }, 180_000);
 
@@ -265,6 +271,11 @@ async function seedHandoff(
       },
     ),
   });
+  await acceptOpportunity(
+    productOpportunities,
+    owner,
+    decided.handoff!.handoffId,
+  );
 
   const objective = options.objective ?? "验证宠物出行品类是否值得立项";
   const approved = await repository.persistDecision({
@@ -291,6 +302,44 @@ async function seedHandoff(
     orderBy: { version: "desc" },
   });
   return { handoffId: handoff.id };
+}
+
+async function acceptOpportunity(
+  opportunities: PrismaProductOpportunityRepository,
+  owner: string,
+  handoffId: string,
+): Promise<void> {
+  const actorId = "selector-1";
+  await opportunities.appendIntake({
+    tenantId: owner,
+    handoffId,
+    actorId,
+    command: prepareOpportunityIntake(
+      { version: 0, state: "queued", assignedActorId: null },
+      actorId,
+      {
+        contractVersion: "product-opportunity-intake.v1",
+        action: "claim",
+        expectedIntakeVersion: 0,
+        idempotencyKey: `claim:${handoffId}`,
+      },
+    ),
+  });
+  await opportunities.appendIntake({
+    tenantId: owner,
+    handoffId,
+    actorId,
+    command: prepareOpportunityIntake(
+      { version: 1, state: "claimed", assignedActorId: actorId },
+      actorId,
+      {
+        contractVersion: "product-opportunity-intake.v1",
+        action: "accept",
+        expectedIntakeVersion: 1,
+        idempotencyKey: `accept:${handoffId}`,
+      },
+    ),
+  });
 }
 
 const REVIEW_POINT_CODES = [

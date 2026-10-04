@@ -71,6 +71,7 @@ export class MarketSignalResponseDto {
       "watching",
       "handed_off",
       "dismissed",
+      "selection_return_requested",
       "returned_from_selection",
       "voided",
       "archived",
@@ -116,6 +117,11 @@ export class MarketSignalDetailResponseDto {
   evidence!: MarketSignalEvidenceResponseDto[];
   @ApiPropertyOptional({ nullable: true })
   selectionReturnReason!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ["insufficient_evidence", "wrong_direction"],
+  })
+  selectionReturnBasis!: string | null;
 }
 
 export class MarketSignalDecisionResponseDto {

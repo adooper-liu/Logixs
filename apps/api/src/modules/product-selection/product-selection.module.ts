@@ -11,6 +11,7 @@ import { ClaimProductInitiativeService } from "./application/claim-product-initi
 import { GetProductDefinitionService } from "./application/get-product-definition.service";
 import { ReleaseProductDefinitionService } from "./application/release-product-definition.service";
 import { DecideProductInitiativeService } from "./application/decide-product-initiative.service";
+import { TakeBackSelectionReturnService } from "./application/take-back-selection-return.service";
 import { ListNpiQueueService } from "./application/list-npi-queue.service";
 import { ReturnProductInitiativeFromNpiService } from "./application/return-product-initiative-from-npi.service";
 import { GetProductInitiativeService } from "./application/get-product-initiative.service";
@@ -27,6 +28,7 @@ import { ProductInitiativesController } from "./presentation/product-initiatives
 import { ProductDefinitionController } from "./presentation/product-definition.controller";
 import { ProductNpiController } from "./presentation/product-npi.controller";
 import { ProductOpportunitiesController } from "./presentation/product-opportunities.controller";
+import { SelectionReturnTakebackController } from "./presentation/selection-return-takeback.controller";
 
 @Module({
   imports: [IdentityModule, DocumentRecordsModule, MarketIntelligenceModule],
@@ -35,6 +37,7 @@ import { ProductOpportunitiesController } from "./presentation/product-opportuni
     ProductInitiativesController,
     ProductNpiController,
     ProductDefinitionController,
+    SelectionReturnTakebackController,
   ],
   providers: [
     ListProductOpportunitiesService,
@@ -42,6 +45,7 @@ import { ProductOpportunitiesController } from "./presentation/product-opportuni
     ListProductInitiativesService,
     GetProductInitiativeService,
     DecideProductInitiativeService,
+    TakeBackSelectionReturnService,
     ListNpiQueueService,
     ClaimProductInitiativeService,
     ReturnProductInitiativeFromNpiService,
@@ -71,6 +75,7 @@ export class ProductSelectionModule implements NestModule {
         ProductInitiativesController,
         ProductNpiController,
         ProductDefinitionController,
+        SelectionReturnTakebackController,
       );
   }
 }
