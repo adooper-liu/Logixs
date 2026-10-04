@@ -1,4 +1,11 @@
-import { Body, Controller, Param, Post, Req } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Param,
+  Post,
+  Req,
+} from "@nestjs/common";
 import { ApiOkResponse, ApiProperty, ApiTags } from "@nestjs/swagger";
 import type {
   MarketSelectionReturnTakebackCommandV1,
@@ -33,8 +40,18 @@ export class SelectionReturnTakebackController {
     return this.takeBack.execute({
       tenantId: request.identity.tenantId,
       actorId: request.identity.actorId,
-      signalId,
+      signalId: parseSignalId(signalId),
       command: body,
     });
   }
 }
+
+function parseSignalId(value: string): string {
+  if (!UUID_PATTERN.test(value)) {
+    throw new BadRequestException("VALIDATION_FORMAT: signalId");
+  }
+  return value.toLowerCase();
+}
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

@@ -208,6 +208,51 @@ describe("MarketSignalsWorkbench", () => {
       }),
     );
     expect(wrapper.text()).toContain("已接回");
+
+    await wrapper.get(".return-request button").trigger("click");
+    await flushPromises();
+    expect(takeBackSelectionReturn).toHaveBeenCalledTimes(2);
+    const firstCommand = takeBackSelectionReturn.mock.calls[0]?.[1];
+    const replayCommand = takeBackSelectionReturn.mock.calls[1]?.[1];
+    expect(replayCommand.idempotencyKey).toBe(firstCommand.idempotencyKey);
+    expect(wrapper.text()).toContain("已接回");
+  });
+
+  it("does not render an empty state when a needs-decision signal is selected", async () => {
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.findAll(".empty-workbench")).toHaveLength(0);
+    expect(wrapper.text()).toContain("美国站庭院收纳需求连续三周上升");
+  });
+
+  it("does not invent an insufficient-evidence basis while return details load", async () => {
+    signals = [
+      marketSignal({
+        signalId: signalOneId,
+        title: "选品请求补充市场方向",
+        currentDestination: "selection_return_requested",
+        version: 3,
+      }),
+    ];
+    details = new Map([
+      [
+        signalOneId,
+        {
+          signal: signals[0]!,
+          evidence: [],
+          selectionReturnBasis: null,
+          selectionReturnReason: "请重新核对目标市场与渠道",
+        },
+      ],
+    ]);
+
+    const wrapper = await mountPage(`?signalId=${signalOneId}`);
+
+    expect(wrapper.get(".return-request").text()).toContain(
+      "请重新核对目标市场与渠道",
+    );
+    expect(wrapper.get(".return-request").text()).not.toContain("证据不足");
+    expect(wrapper.get(".return-request").text()).not.toContain("方向错误");
   });
 
   it("loads the work reason and separates observed facts from hypotheses", async () => {

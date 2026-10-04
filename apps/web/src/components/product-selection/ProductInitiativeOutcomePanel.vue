@@ -96,11 +96,13 @@ const hint = computed(() =>
     outcome: props.outcome,
     gaps: props.gaps,
     reason: props.reason,
+    returnBasis: props.returnBasis,
   }),
 );
-/** 只有立项能被缺口挡住；其余三个去向没填原因也照样保存。 */
 const blocked = computed(
-  () => props.outcome === "approve" && props.gaps.length > 0,
+  () =>
+    (props.outcome === "approve" && props.gaps.length > 0) ||
+    (props.outcome === "return_to_market" && !props.returnBasis),
 );
 
 function submit(): void {

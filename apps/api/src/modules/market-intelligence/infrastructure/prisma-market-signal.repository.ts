@@ -277,6 +277,9 @@ export class PrismaMarketSignalRepository implements MarketSignalRepository {
       ) {
         conflict("MARKET_SIGNAL_ALREADY_CLOSED");
       }
+      if (signal.currentDestination === "selection_return_requested") {
+        conflict("MARKET_SIGNAL_SELECTION_RETURN_PENDING");
+      }
       if (signal.version !== input.prepared.expectedSignalVersion) {
         conflict("MARKET_SIGNAL_VERSION_CONFLICT");
       }

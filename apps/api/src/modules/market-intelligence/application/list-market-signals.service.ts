@@ -25,6 +25,7 @@ const DESTINATIONS = new Set<MarketSignalDestinationV1>([
   "watching",
   "handed_off",
   "dismissed",
+  "selection_return_requested",
   "returned_from_selection",
   "voided",
   "archived",

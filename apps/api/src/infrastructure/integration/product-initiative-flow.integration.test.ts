@@ -447,6 +447,25 @@ describe("product initiative persistence flow", () => {
     ).rejects.toThrowError(/PRODUCT_INITIATIVE_RETURN_PENDING/);
 
     await expect(
+      marketSignals.decide({
+        tenantId,
+        actorId: "market-owner",
+        signalId,
+        evidenceRefs: [],
+        prepared: prepareMarketSignalDecision(
+          { ...signal, evidenceRefs: [] },
+          {
+            contractVersion: "market-signal-decision.v1",
+            expectedSignalVersion: signal.version,
+            decisionType: "dismiss",
+            dismissReason: "不应在待接回期间改变去向",
+            idempotencyKey: `dismiss-return-pending:${signalId}`,
+          },
+        ),
+      }),
+    ).rejects.toThrowError(/MARKET_SIGNAL_SELECTION_RETURN_PENDING/);
+
+    await expect(
       initiatives.takeBackSelectionReturn({
         tenantId,
         signalId,
@@ -499,6 +518,128 @@ describe("product initiative persistence flow", () => {
         where: { id: signalId, tenantId },
       }),
     ).resolves.toMatchObject({ currentDestination: "returned_from_selection" });
+  });
+
+  it("接回后再次交接生成新版本且不改写旧机会包、立项和判断", async () => {
+    const { tenantId, handoffId, signalId } = await seedOpportunity();
+    await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId },
+        {
+          outcome: "return_to_market",
+          returnReason: "补充新的目标市场证据",
+          returnBasis: "insufficient_evidence",
+        },
+      ),
+    });
+    const pendingSignal = await marketSignals.findById(tenantId, signalId);
+    await initiatives.takeBackSelectionReturn({
+      tenantId,
+      signalId,
+      actorId: "market-owner",
+      command: prepareSelectionReturnTakeback({
+        contractVersion: "market-selection-return-takeback.v1",
+        expectedSignalVersion: pendingSignal!.version,
+        idempotencyKey: `takeback-for-rehandoff:${signalId}`,
+      }),
+    });
+
+    const oldHandoff = await prisma.marketOpportunityHandoff.findFirstOrThrow({
+      where: { id: handoffId, tenantId },
+    });
+    const oldInitiative = await prisma.productInitiative.findFirstOrThrow({
+      where: { tenantId, handoffId },
+    });
+    const oldDecisions = await prisma.marketSignalDecision.findMany({
+      where: { tenantId, signalId },
+      orderBy: { decisionVersion: "asc" },
+    });
+    const returnedSignal = await marketSignals.findById(tenantId, signalId);
+    const rehandoff = await marketSignals.decide({
+      tenantId,
+      actorId: "market-owner",
+      signalId,
+      evidenceRefs: [],
+      prepared: prepareMarketSignalDecision(
+        { ...returnedSignal!, evidenceRefs: [] },
+        {
+          contractVersion: "market-signal-decision.v1",
+          expectedSignalVersion: returnedSignal!.version,
+          decisionType: "handoff",
+          opportunityStatement: "已补充目标市场证据，请重新评估。",
+          idempotencyKey: `rehandoff:${signalId}`,
+        },
+      ),
+    });
+
+    expect(rehandoff.handoff).toMatchObject({
+      version: 2,
+      signalId,
+      opportunityStatement: "已补充目标市场证据，请重新评估。",
+    });
+    expect(rehandoff.handoff!.handoffId).not.toBe(handoffId);
+    const oldHandoffAfter =
+      await prisma.marketOpportunityHandoff.findFirstOrThrow({
+        where: { id: handoffId, tenantId },
+      });
+    expect(oldHandoffAfter).toEqual({ ...oldHandoff, isCurrent: false });
+    await expect(
+      prisma.productInitiative.findFirstOrThrow({
+        where: { tenantId, handoffId },
+      }),
+    ).resolves.toEqual(oldInitiative);
+    await expect(
+      prisma.marketSignalDecision.findMany({
+        where: { id: { in: oldDecisions.map(({ id }) => id) } },
+        orderBy: { decisionVersion: "asc" },
+      }),
+    ).resolves.toEqual(oldDecisions);
+  });
+
+  it("跨租户不能接回选品退回请求且两侧状态保持不变", async () => {
+    const { tenantId, handoffId, signalId } = await seedOpportunity();
+    await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId },
+        {
+          outcome: "return_to_market",
+          returnReason: "需要市场补充证据",
+          returnBasis: "insufficient_evidence",
+        },
+      ),
+    });
+    const pendingSignal = await marketSignals.findById(tenantId, signalId);
+
+    await expect(
+      initiatives.takeBackSelectionReturn({
+        tenantId: randomUUID(),
+        signalId,
+        actorId: "other-market-owner",
+        command: prepareSelectionReturnTakeback({
+          contractVersion: "market-selection-return-takeback.v1",
+          expectedSignalVersion: pendingSignal!.version,
+          idempotencyKey: `cross-tenant-takeback:${signalId}`,
+        }),
+      }),
+    ).rejects.toThrowError(/PRODUCT_INITIATIVE_NOT_FOUND/);
+    await expect(
+      prisma.marketSignal.findFirstOrThrow({
+        where: { id: signalId, tenantId },
+      }),
+    ).resolves.toMatchObject({
+      currentDestination: "selection_return_requested",
+    });
+    await expect(
+      prisma.productInitiative.findFirstOrThrow({
+        where: { tenantId, handoffId },
+      }),
+    ).resolves.toMatchObject({ currentDestination: "return_requested" });
   });
 
   it("退回缺理由时保存但不关闭，也不回推信号", async () => {

@@ -330,7 +330,7 @@ export function useProductInitiativeDecision(options: {
     const handoffId = toValue(options.handoffId);
     const expectedInitiativeVersion = initiative.value?.version ?? 0;
     try {
-      await decideProductInitiative(handoffId, {
+      const saved = await decideProductInitiative(handoffId, {
         contractVersion: "product-initiative-decision.v1",
         requestId: crypto.randomUUID(),
         outcome: chosen,
@@ -359,7 +359,12 @@ export function useProductInitiativeDecision(options: {
       });
       // 成功后从服务端重读，不用前端临时状态冒充落库结果。
       await load();
-      receipt.value = RECEIPTS[chosen];
+      receipt.value =
+        chosen === "return_to_market"
+          ? saved.currentDestination === "return_requested"
+            ? RECEIPTS.return_to_market
+            : "已保存退回判断，尚未形成退回请求。"
+          : RECEIPTS[chosen];
       return true;
     } catch (caught) {
       const raw = message(caught);
@@ -416,11 +421,15 @@ export function outcomeHintFor(input: {
   /** 只用到条数；缺口长什么样（带不带"在哪补"）不关这句话的事。 */
   gaps: { readonly length: number };
   reason: string;
+  returnBasis?: ProductInitiativeReturnBasisV1 | "";
 }): string {
   if (input.outcome === "approve") {
     return input.gaps.length > 0
       ? `还差 ${input.gaps.length} 项才能立项`
       : "可以立项";
+  }
+  if (input.outcome === "return_to_market" && !input.returnBasis) {
+    return "请选择退回依据";
   }
   return input.reason.trim()
     ? "已写明原因，提交后本次判断会关闭。"

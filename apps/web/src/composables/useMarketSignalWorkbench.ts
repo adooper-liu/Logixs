@@ -105,6 +105,7 @@ export function useMarketSignalWorkbench(
   const details = new Map<string, MarketSignalDetailV1>();
   const responsibilities = new Map<string, ProductOpportunityV1>();
   const detailRequests = new Map<string, number>();
+  const takebackKeys = new Map<string, string>();
   let loadGeneration = 0;
 
   const selectedSignal = computed(() => {
@@ -373,7 +374,7 @@ export function useMarketSignalWorkbench(
       await takeBackSelectionReturn(selected.id, {
         contractVersion: "market-selection-return-takeback.v1",
         expectedSignalVersion: selected.version,
-        idempotencyKey: `selection-return-takeback:${selected.id}:${selected.version}:${crypto.randomUUID()}`,
+        idempotencyKey: takebackKey(selected.id, selected.version),
       });
       await loadSignals();
       takebackReceipt.value =
@@ -391,6 +392,15 @@ export function useMarketSignalWorkbench(
     } finally {
       saving.value = false;
     }
+  }
+
+  function takebackKey(signalId: string, expectedVersion: number): string {
+    const scope = `${signalId}:${expectedVersion}`;
+    const current = takebackKeys.get(scope);
+    if (current) return current;
+    const created = `selection-return-takeback:${scope}:${crypto.randomUUID()}`;
+    takebackKeys.set(scope, created);
+    return created;
   }
 
   async function loadMore(

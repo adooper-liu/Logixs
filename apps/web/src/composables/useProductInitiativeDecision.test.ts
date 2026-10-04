@@ -77,6 +77,14 @@ describe("useProductInitiativeDecision", () => {
         reason: "证据还不够",
       }),
     ).toContain("会关闭");
+    expect(
+      outcomeHintFor({
+        outcome: "return_to_market",
+        gaps: [],
+        reason: "请重新核对方向",
+        returnBasis: "",
+      }),
+    ).toBe("请选择退回依据");
   });
 
   it("引用证据且写明结论后该项不再算缺口", async () => {
@@ -380,6 +388,24 @@ describe("useProductInitiativeDecision", () => {
         returnBasis: "wrong_direction",
       }),
     );
+  });
+
+  it("只有服务端形成 return_requested 才回执等待市场接回", async () => {
+    const state = await mountComposable();
+    state.returnBasis.value = "wrong_direction";
+    state.currentReason.value = "请重新核对方向";
+    decideProductInitiative.mockResolvedValueOnce({
+      currentDestination: "needs_decision",
+    });
+
+    await state.decide("return_to_market");
+    expect(state.receipt.value).toBe("已保存退回判断，尚未形成退回请求。");
+
+    decideProductInitiative.mockResolvedValueOnce({
+      currentDestination: "return_requested",
+    });
+    await state.decide("return_to_market");
+    expect(state.receipt.value).toBe("已请求退回市场，等待市场接回。");
   });
 
   it("前端长度上限直接读契约，契约改了这里会红而不是悄悄漂移", () => {

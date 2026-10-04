@@ -275,6 +275,10 @@ test("selection requests a return, market takes it back, then hands off a new ve
   await page.getByLabel("市场需要补什么").fill("重新核对目标市场与渠道证据。");
   await page.getByRole("button", { name: "请求退回市场" }).click();
   await expect(page.getByText("等待市场接回", { exact: true })).toBeVisible();
+  await expect(page.locator(".conclusion-strip")).toContainText(
+    "已请求退回市场，等待市场接回",
+  );
+  await expect(page.locator(".conclusion-strip")).not.toContainText("已立项");
 
   await page.goto("/workspaces/market-signals");
   await page.getByRole("tab", { name: /选品请求退回/ }).click();

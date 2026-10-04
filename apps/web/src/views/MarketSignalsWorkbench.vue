@@ -226,7 +226,7 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
           :responsibility="selectedSignal.responsibility"
           :latest-decision="selectedSignal.latestSelectionDecision"
         />
-        <p v-else class="empty-workbench">
+        <p v-else-if="!selectedSignal" class="empty-workbench">
           {{
             queueItems.length
               ? "请从左侧当前分组选择一条信号。"
@@ -241,7 +241,7 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
       >
         <div v-if="selectedSignal && isReturnRequest" class="return-request">
           <small>选品请求退回</small>
-          <b>{{
+          <b v-if="selectedSignal.selectionReturnBasis">{{
             selectedSignal.selectionReturnBasis === "wrong_direction"
               ? "方向错误"
               : "证据不足"

@@ -317,6 +317,24 @@ describe("ProductSelectionWorkbench", () => {
     expect(command).not.toHaveProperty("deferReason");
   });
 
+  it("请求退回市场时必须先选择退回依据", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    const wrapper = await mountPage();
+
+    await wrapper.get(".destination:nth-of-type(4) input").setValue(true);
+
+    const button = wrapper.get(".outcome-submit");
+    expect(button.attributes("disabled")).toBeDefined();
+    expect(button.text()).toContain("请选择退回依据");
+    await button.trigger("click");
+    expect(decideProductInitiative).not.toHaveBeenCalled();
+
+    await wrapper
+      .get('select[aria-label="退回依据"]')
+      .setValue("wrong_direction");
+    expect(button.attributes("disabled")).toBeUndefined();
+  });
+
   it("换一条机会时重新读该机会的立项判断，不沿用上一条", async () => {
     const second = acceptedOpportunity({
       handoff: {
@@ -474,6 +492,28 @@ describe("ProductSelectionWorkbench", () => {
           .element as HTMLTextAreaElement
       ).value,
     ).toBe("该由经营团队重新判断");
+  });
+
+  it("退回请求等待市场接回时不误显示为已立项", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockResolvedValue(
+      initiativeDetail({
+        initiative: {
+          ...initiativeRecord(),
+          outcome: "return_to_market",
+          completion: "completed",
+          currentDestination: "return_requested",
+          reason: "请市场重新核对目标方向",
+          returnBasis: "wrong_direction",
+        },
+      }),
+    );
+    const wrapper = await mountPage();
+
+    const conclusion = wrapper.get(".conclusion-strip");
+    expect(conclusion.text()).toContain("已请求退回市场，等待市场接回");
+    expect(conclusion.text()).toContain("当前责任仍在选品");
+    expect(conclusion.text()).not.toContain("已立项");
   });
 
   it("已立项后评审要点只读，不再提供系统不会接受的编辑", async () => {
