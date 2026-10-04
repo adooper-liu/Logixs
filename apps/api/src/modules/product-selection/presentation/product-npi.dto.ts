@@ -13,6 +13,15 @@ export class ProductInitiativeHandoffResponseDto {
   @ApiPropertyOptional({ nullable: true }) userProblem!: string | null;
   @ApiProperty() objective!: string;
   @ApiProperty() responsibleActorId!: string;
+  @ApiPropertyOptional({ nullable: true }) responsibilityAccepted!:
+    boolean | null;
+  @ApiPropertyOptional({ nullable: true }) receivingTeamOrRole!: string | null;
+  @ApiPropertyOptional({ nullable: true }) resourceDescription!: string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" }) targetDate!:
+    string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" }) nextDecisionDate!:
+    string | null;
+  @ApiPropertyOptional({ nullable: true }) nextDecisionQuestion!: string | null;
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
   @ApiProperty({ type: [String] }) evidenceRefs!: string[];

@@ -64,11 +64,19 @@ const {
   decided,
   returnPending,
   objective,
+  acceptResponsibility,
+  receivingTeamOrRole,
+  resourceDescription,
+  targetDate,
+  nextDecisionDate,
+  nextDecisionQuestion,
+  reconsiderationDate,
   destination,
   returnBasis,
   currentReason,
   points,
   reviewPointViews,
+  requiredCount,
   blockingGaps,
   optionalGaps,
   evidenceCandidates,
@@ -201,16 +209,13 @@ const conclusion = computed(() =>
 );
 
 const requiredRemaining = computed(() => blockingGaps.value.length);
-const gatingPointCount = computed(
-  () => reviewPointViews.value.filter((point) => point.gating).length + 1,
-);
 const progressFilled = computed(() =>
-  Math.max(0, gatingPointCount.value - requiredRemaining.value),
+  Math.max(0, requiredCount.value - requiredRemaining.value),
 );
 const progressPercent = computed(() =>
-  gatingPointCount.value === 0
+  requiredCount.value === 0
     ? 100
-    : Math.round((progressFilled.value / gatingPointCount.value) * 100),
+    : Math.round((progressFilled.value / requiredCount.value) * 100),
 );
 
 const applyNotice = shallowRef<string | null>(null);
@@ -232,7 +237,11 @@ function applyFromHandoff(): void {
 <template>
   <main
     class="selection-workbench page-frame"
-    :class="{ 'selection-workbench--initiated': isInitiated }"
+    :class="{
+      'selection-workbench--initiated': isInitiated,
+      'selection-workbench--decision-ready':
+        selected && initiativeReady && !isInitiated,
+    }"
   >
     <PageHeader
       eyebrow="选品岗位工作台"
@@ -297,7 +306,7 @@ function applyFromHandoff(): void {
       class="workbench-grid"
       :class="{ 'workbench-grid--initiated': isInitiated }"
     >
-      <section class="pane">
+      <section class="pane pane--queue">
         <ProductOpportunityQueue
           :items="items"
           :initiatives="initiatives"
@@ -305,7 +314,7 @@ function applyFromHandoff(): void {
           @select="selectOpportunity"
         />
       </section>
-      <section class="pane">
+      <section class="pane pane--detail">
         <template v-if="selected">
           <header
             v-if="initiativeReady && !isInitiated"
@@ -316,7 +325,7 @@ function applyFromHandoff(): void {
               <small>立项完备度</small>
               <b
                 >必填剩 {{ requiredRemaining }} · 已齐 {{ progressFilled }}/{{
-                  gatingPointCount
+                  requiredCount
                 }}</b
               >
             </div>
@@ -370,7 +379,11 @@ function applyFromHandoff(): void {
           {{ loading ? "正在读取经营机会" : "暂无待处理机会" }}
         </p>
       </section>
-      <section v-if="!isInitiated" class="pane">
+      <section
+        v-if="!isInitiated"
+        class="pane pane--action"
+        :class="{ 'pane--decision': selected && initiativeReady }"
+      >
         <ProductOpportunityActions
           v-if="selected && !accepted"
           :item="selected"
@@ -389,6 +402,13 @@ function applyFromHandoff(): void {
           v-else-if="selected"
           :outcome="destination"
           :objective="objective"
+          :accept-responsibility="acceptResponsibility"
+          :receiving-team-or-role="receivingTeamOrRole"
+          :resource-description="resourceDescription"
+          :target-date="targetDate"
+          :next-decision-date="nextDecisionDate"
+          :next-decision-question="nextDecisionQuestion"
+          :reconsideration-date="reconsiderationDate"
           :reason="currentReason"
           :return-basis="returnBasis"
           :gaps="blockingGaps"
@@ -398,6 +418,13 @@ function applyFromHandoff(): void {
           :return-pending="returnPending"
           @change-outcome="setDestination"
           @update-objective="setObjective"
+          @update-accept-responsibility="acceptResponsibility = $event"
+          @update-receiving-team-or-role="receivingTeamOrRole = $event"
+          @update-resource-description="resourceDescription = $event"
+          @update-target-date="targetDate = $event"
+          @update-next-decision-date="nextDecisionDate = $event"
+          @update-next-decision-question="nextDecisionQuestion = $event"
+          @update-reconsideration-date="reconsiderationDate = $event"
           @update-reason="setCurrentReason"
           @update-return-basis="setReturnBasis"
           @submit="submitDecision"
@@ -595,11 +622,13 @@ function applyFromHandoff(): void {
       290px,
       0.8fr
     );
+  grid-template-areas: "queue detail action";
   align-items: start;
   gap: var(--space-3);
 }
 .workbench-grid--initiated {
   grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
+  grid-template-areas: "queue detail";
 }
 .pane {
   min-width: 0;
@@ -607,6 +636,21 @@ function applyFromHandoff(): void {
   border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
+}
+.pane--queue {
+  grid-area: queue;
+}
+.pane--detail {
+  grid-area: detail;
+}
+.pane--action {
+  grid-area: action;
+  position: sticky;
+  top: var(--space-3);
+  align-self: start;
+}
+.pane--decision {
+  height: clamp(420px, calc(100dvh - var(--topbar-height) - 260px), 660px);
 }
 .empty {
   margin: 0;
@@ -618,9 +662,9 @@ function applyFromHandoff(): void {
 @media (max-width: 1100px) {
   .workbench-grid {
     grid-template-columns: minmax(250px, 0.7fr) minmax(0, 1.3fr);
-  }
-  .pane:last-child {
-    grid-column: 1 / -1;
+    grid-template-areas:
+      "queue action"
+      "detail detail";
   }
 }
 @media (max-width: 680px) {
@@ -636,6 +680,20 @@ function applyFromHandoff(): void {
   .workbench-grid--initiated {
     grid-template-columns: 1fr;
   }
+  .selection-workbench--decision-ready {
+    padding-bottom: calc(var(--touch-target) + var(--space-6));
+  }
+  .workbench-grid {
+    grid-template-areas:
+      "queue"
+      "action"
+      "detail";
+  }
+  .workbench-grid--initiated {
+    grid-template-areas:
+      "queue"
+      "detail";
+  }
   .work-context > svg {
     display: none;
   }
@@ -644,8 +702,11 @@ function applyFromHandoff(): void {
     border-top: 1px solid var(--line);
     border-left: 0;
   }
-  .pane:last-child {
-    grid-column: auto;
+  .pane--action {
+    position: static;
+  }
+  .pane--decision {
+    height: auto;
   }
 }
 </style>

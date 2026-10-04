@@ -80,28 +80,77 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
   async list(
     input: Parameters<ProductInitiativeRepository["list"]>[0],
   ): Promise<ProductInitiativeRecord[]> {
-    const rows = await this.prisma.productInitiative.findMany({
+    const dueWhere: Prisma.ProductInitiativeWhereInput = {
+      tenantId: input.tenantId,
+      outcome: "defer",
+      currentDestination: "deferred",
+      reconsiderationDate: { lte: input.todayUtc },
+    };
+    const standardWhere: Prisma.ProductInitiativeWhereInput = {
+      tenantId: input.tenantId,
+      OR: [
+        { outcome: { not: "defer" } },
+        { currentDestination: { not: "deferred" } },
+        { reconsiderationDate: null },
+        { reconsiderationDate: { gt: input.todayUtc } },
+      ],
+    };
+    const include = { handoff: { select: { signalId: true } } } as const;
+    const dueAfter =
+      input.after?.group === "defer_reconsideration_due" &&
+      input.after.reconsiderationDate
+        ? {
+            OR: [
+              { reconsiderationDate: { gt: input.after.reconsiderationDate } },
+              {
+                reconsiderationDate: input.after.reconsiderationDate,
+                OR: [
+                  { updatedAt: { lt: input.after.updatedAt } },
+                  {
+                    updatedAt: input.after.updatedAt,
+                    id: { lt: input.after.id },
+                  },
+                ],
+              },
+            ],
+          }
+        : {};
+    const standardAfter = input.after
+      ? {
+          OR: [
+            { updatedAt: { lt: input.after.updatedAt } },
+            { updatedAt: input.after.updatedAt, id: { lt: input.after.id } },
+          ],
+        }
+      : {};
+
+    let dueRows: InitiativeRow[] = [];
+    if (!input.after || input.after.group === "defer_reconsideration_due") {
+      dueRows = await this.prisma.productInitiative.findMany({
+        where: { AND: [dueWhere, dueAfter] },
+        orderBy: [
+          { reconsiderationDate: "asc" },
+          { updatedAt: "desc" },
+          { id: "desc" },
+        ],
+        take: input.take,
+        include,
+      });
+    }
+    if (dueRows.length >= input.take) return dueRows.map(toRecord);
+
+    const standardRows = await this.prisma.productInitiative.findMany({
       where: {
-        tenantId: input.tenantId,
-        ...(input.after
-          ? {
-              OR: [
-                { updatedAt: { lt: input.after.updatedAt } },
-                {
-                  AND: [
-                    { updatedAt: input.after.updatedAt },
-                    { id: { lt: input.after.id } },
-                  ],
-                },
-              ],
-            }
-          : {}),
+        AND: [
+          standardWhere,
+          input.after?.group === "standard" ? standardAfter : {},
+        ],
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      take: input.take,
-      include: { handoff: { select: { signalId: true } } },
+      take: input.take - dueRows.length,
+      include,
     });
-    return rows.map(toRecord);
+    return [...dueRows, ...standardRows].map(toRecord);
   }
 
   persistDecision(
@@ -182,6 +231,14 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         reviewPoints: command.reviewPoints as unknown as Prisma.InputJsonValue,
         reason: command.reason,
         returnBasis: command.returnBasis,
+        responsibilityAccepted: command.responsibilityAccepted,
+        receivingTeamOrRole: command.receivingTeamOrRole,
+        resourceDescription: command.resourceDescription,
+        targetDate: toDate(command.targetDate),
+        nextDecisionDate: toDate(command.nextDecisionDate),
+        nextDecisionQuestion: command.nextDecisionQuestion,
+        validationFocus: command.validationFocus,
+        reconsiderationDate: toDate(command.reconsiderationDate),
         pendingFieldCodes: command.pendingFieldCodes,
         actedBy: input.actorId,
         idempotencyKey: command.idempotencyKey,
@@ -217,6 +274,12 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
             userProblem: opportunity.opportunityStatement,
             objective: command.objective!,
             responsibleActorId: command.responsibleActorId,
+            responsibilityAccepted: command.responsibilityAccepted,
+            receivingTeamOrRole: command.receivingTeamOrRole,
+            resourceDescription: command.resourceDescription,
+            targetDate: toDate(command.targetDate),
+            nextDecisionDate: toDate(command.nextDecisionDate),
+            nextDecisionQuestion: command.nextDecisionQuestion,
             reviewPoints:
               command.reviewPoints as unknown as Prisma.InputJsonValue,
             evidenceRefs: evidenceRefsOf(command.reviewPoints),
@@ -625,6 +688,12 @@ function toNpiEntry(row: NpiEntryRow): ProductInitiativeNpiEntryRecord {
       userProblem: row.userProblem,
       objective: row.objective,
       responsibleActorId: row.responsibleActorId,
+      responsibilityAccepted: row.responsibilityAccepted,
+      receivingTeamOrRole: row.receivingTeamOrRole,
+      resourceDescription: row.resourceDescription,
+      targetDate: row.targetDate,
+      nextDecisionDate: row.nextDecisionDate,
+      nextDecisionQuestion: row.nextDecisionQuestion,
       reviewPoints:
         row.reviewPoints as unknown as ProductInitiativeReviewPoint[],
       evidenceRefs: row.evidenceRefs,
@@ -661,6 +730,14 @@ function toRecord(row: InitiativeRow): ProductInitiativeRecord {
     currentDestination:
       row.currentDestination as ProductInitiativeRecord["currentDestination"],
     responsibleActorId: row.responsibleActorId,
+    responsibilityAccepted: row.responsibilityAccepted,
+    receivingTeamOrRole: row.receivingTeamOrRole,
+    resourceDescription: row.resourceDescription,
+    targetDate: row.targetDate,
+    nextDecisionDate: row.nextDecisionDate,
+    nextDecisionQuestion: row.nextDecisionQuestion,
+    validationFocus: row.validationFocus,
+    reconsiderationDate: row.reconsiderationDate,
     objective: row.objective,
     reviewPoints: row.reviewPoints as unknown as ProductInitiativeReviewPoint[],
     reason: row.reason,
@@ -670,6 +747,10 @@ function toRecord(row: InitiativeRow): ProductInitiativeRecord {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function toDate(value: string | null): Date | null {
+  return value ? new Date(`${value}T00:00:00.000Z`) : null;
 }
 
 async function advisoryLock(tx: Transaction, key: string): Promise<void> {

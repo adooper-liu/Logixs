@@ -20,13 +20,42 @@ defineEmits<{ select: [id: string] }>();
 
 /** 每条机会连同它的立项标记一次算好，模板里不再重复查。 */
 const decorated = computed<
-  { item: ProductOpportunityV1; badge: ProductInitiativeQueueBadge | null }[]
->(() =>
-  props.items.map((item) => ({
-    item,
-    badge: initiativeQueueBadge(props.initiatives.get(item.handoff.handoffId)),
-  })),
-);
+  {
+    item: ProductOpportunityV1;
+    badge: ProductInitiativeQueueBadge | null;
+    group: "defer_reconsideration_due" | "standard";
+    groupStart: boolean;
+  }[]
+>(() => {
+  const initiativeOrder = new Map(
+    [...props.initiatives.keys()].map((id, index) => [id, index]),
+  );
+  const rows = props.items
+    .map((item, originalIndex) => {
+      const initiative = props.initiatives.get(item.handoff.handoffId);
+      return {
+        item,
+        badge: initiativeQueueBadge(initiative),
+        group: initiative?.queueGroup ?? "standard",
+        rank: initiativeOrder.get(item.handoff.handoffId) ?? originalIndex,
+        originalIndex,
+      };
+    })
+    .sort((left, right) => {
+      if (left.group !== right.group) {
+        return left.group === "defer_reconsideration_due" ? -1 : 1;
+      }
+      return left.group === "defer_reconsideration_due"
+        ? left.rank - right.rank
+        : left.originalIndex - right.originalIndex;
+    });
+  return rows.map((row, index) => ({
+    item: row.item,
+    badge: row.badge,
+    group: row.group,
+    groupStart: index === 0 || rows[index - 1]?.group !== row.group,
+  }));
+});
 
 function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
   if (state === "claimed") return "已领取";
@@ -42,48 +71,54 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
       <small>先处理什么</small>
       <h2>经营机会</h2>
     </header>
-    <button
-      v-for="{ item, badge } in decorated"
+    <template
+      v-for="{ item, badge, group, groupStart } in decorated"
       :key="item.handoff.handoffId"
-      type="button"
-      class="queue-item"
-      :class="{ selected: item.handoff.handoffId === selectedId }"
-      @click="$emit('select', item.handoff.handoffId)"
     >
-      <span class="state">{{ stateLabel(item.intakeState) }}</span>
-      <strong>{{ item.handoff.title }}</strong>
-      <span
-        >{{ item.handoff.marketCode || "市场未填" }} ·
-        {{ item.handoff.channelCode || "渠道未填" }}</span
+      <h3 v-if="groupStart" class="queue-group">
+        {{ group === "defer_reconsideration_due" ? "暂缓到期" : "其他机会" }}
+      </h3>
+      <button
+        type="button"
+        class="queue-item"
+        :class="{ selected: item.handoff.handoffId === selectedId }"
+        @click="$emit('select', item.handoff.handoffId)"
       >
-      <!--
+        <span class="state">{{ stateLabel(item.intakeState) }}</span>
+        <strong>{{ item.handoff.title }}</strong>
+        <span
+          >{{ item.handoff.marketCode || "市场未填" }} ·
+          {{ item.handoff.channelCode || "渠道未填" }}</span
+        >
+        <!--
         这一行是队列上唯一能分出"看过但先放着"和"还没看过"的地方：
         没有立项记录的机会不显示任何标记，而不是和已处理的长得一样。
       -->
-      <span
-        v-if="badge"
-        class="initiative"
-        :class="`initiative--${badge.state}`"
-      >
-        {{ badge.label
-        }}<template v-if="badge.pendingCount">
-          · 待补 {{ badge.pendingCount }} 项</template
+        <span
+          v-if="badge"
+          class="initiative"
+          :class="`initiative--${badge.state}`"
         >
-      </span>
-      <span v-else class="reason"
-        ><CircleAlert :size="14" />经营团队判断值得进一步评估</span
-      >
-      <span v-if="item.handoff.pendingFieldCodes.length" class="gaps">
-        随交接待补 {{ item.handoff.pendingFieldCodes.length }} 项
-      </span>
-      <span
-        v-else-if="(item.supplementedFieldCodes?.length ?? 0) > 0"
-        class="gaps gaps--ok"
-      >
-        含信号后补 {{ item.supplementedFieldCodes.length }} 项
-      </span>
-      <ArrowRight class="arrow" :size="16" aria-hidden="true" />
-    </button>
+          {{ badge.label
+          }}<template v-if="badge.pendingCount">
+            · 待补 {{ badge.pendingCount }} 项</template
+          >
+        </span>
+        <span v-else class="reason"
+          ><CircleAlert :size="14" />经营团队判断值得进一步评估</span
+        >
+        <span v-if="item.handoff.pendingFieldCodes.length" class="gaps">
+          随交接待补 {{ item.handoff.pendingFieldCodes.length }} 项
+        </span>
+        <span
+          v-else-if="(item.supplementedFieldCodes?.length ?? 0) > 0"
+          class="gaps gaps--ok"
+        >
+          含信号后补 {{ item.supplementedFieldCodes.length }} 项
+        </span>
+        <ArrowRight class="arrow" :size="16" aria-hidden="true" />
+      </button>
+    </template>
     <p v-if="items.length === 0" class="empty">暂无经营团队交来的机会。</p>
   </section>
 </template>
@@ -102,6 +137,15 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
 .opportunity-queue h2 {
   margin: var(--space-1) 0 0;
   font-size: var(--text-title);
+}
+.queue-group {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+  font-weight: 700;
 }
 .queue-item {
   position: relative;

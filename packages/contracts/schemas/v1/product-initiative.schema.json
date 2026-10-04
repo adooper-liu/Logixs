@@ -55,6 +55,14 @@
         "compliance_risk",
         "customer_feedback",
         "defer_reason",
+        "responsibility_commitment",
+        "receiving_team_or_role",
+        "resource_description",
+        "target_date",
+        "next_decision_date",
+        "next_decision_question",
+        "validation_focus",
+        "reconsideration_date",
         "reject_reason",
         "return_basis",
         "return_reason"
@@ -96,6 +104,30 @@
           "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
         },
         "deferReason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "acceptResponsibility": { "const": true },
+        "receivingTeamOrRole": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "resourceDescription": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "targetDate": { "type": "string", "format": "date" },
+        "nextDecisionDate": { "type": "string", "format": "date" },
+        "nextDecisionQuestion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "validationFocus": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "reconsiderationDate": { "type": "string", "format": "date" },
         "rejectReason": { "type": "string", "minLength": 1, "maxLength": 500 },
         "returnReason": { "type": "string", "minLength": 1, "maxLength": 500 },
         "returnBasis": { "$ref": "#/$defs/ProductInitiativeReturnBasisV1" },
@@ -115,6 +147,14 @@
         "completion",
         "currentDestination",
         "responsibleActorId",
+        "responsibilityAccepted",
+        "receivingTeamOrRole",
+        "resourceDescription",
+        "targetDate",
+        "nextDecisionDate",
+        "nextDecisionQuestion",
+        "validationFocus",
+        "reconsiderationDate",
         "reviewPoints",
         "pendingFieldCodes",
         "version",
@@ -132,6 +172,32 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 200
+        },
+        "responsibilityAccepted": { "type": ["boolean", "null"] },
+        "receivingTeamOrRole": {
+          "type": ["string", "null"],
+          "maxLength": 200
+        },
+        "resourceDescription": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "targetDate": {
+          "anyOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
+        },
+        "nextDecisionDate": {
+          "anyOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
+        },
+        "nextDecisionQuestion": {
+          "type": ["string", "null"],
+          "maxLength": 1000
+        },
+        "validationFocus": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "reconsiderationDate": {
+          "anyOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
         },
         "objective": { "type": ["string", "null"], "maxLength": 4000 },
         "reviewPoints": {
@@ -198,6 +264,8 @@
         "handoffId",
         "outcome",
         "currentDestination",
+        "queueGroup",
+        "reconsiderationDate",
         "pendingFieldCodes",
         "updatedAt"
       ],
@@ -206,6 +274,12 @@
         "outcome": { "$ref": "#/$defs/ProductInitiativeStoredOutcomeV1" },
         "currentDestination": {
           "$ref": "#/$defs/ProductInitiativeDestinationV1"
+        },
+        "queueGroup": {
+          "enum": ["defer_reconsideration_due", "standard"]
+        },
+        "reconsiderationDate": {
+          "anyOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
         },
         "pendingFieldCodes": {
           "type": "array",
@@ -240,6 +314,12 @@
         "signalId",
         "objective",
         "responsibleActorId",
+        "responsibilityAccepted",
+        "receivingTeamOrRole",
+        "resourceDescription",
+        "targetDate",
+        "nextDecisionDate",
+        "nextDecisionQuestion",
         "reviewPoints",
         "evidenceRefs",
         "createdAt",
@@ -258,6 +338,25 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 200
+        },
+        "responsibilityAccepted": { "type": ["boolean", "null"] },
+        "receivingTeamOrRole": {
+          "type": ["string", "null"],
+          "maxLength": 200
+        },
+        "resourceDescription": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "targetDate": {
+          "anyOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
+        },
+        "nextDecisionDate": {
+          "anyOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
+        },
+        "nextDecisionQuestion": {
+          "type": ["string", "null"],
+          "maxLength": 1000
         },
         "reviewPoints": {
           "type": "array",

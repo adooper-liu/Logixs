@@ -30,6 +30,12 @@ describe("productInitiativePendingFieldCodes", () => {
     expect(productInitiativePendingFieldCodes(emptyDraft())).toEqual([
       "objective",
       ...REVIEW_POINT_CODES,
+      "responsibility_commitment",
+      "receiving_team_or_role",
+      "resource_description",
+      "target_date",
+      "next_decision_date",
+      "next_decision_question",
     ]);
   });
 
@@ -79,6 +85,33 @@ describe("prepareProductInitiativeDecision 立项", () => {
     ).toThrowError(/PRODUCT_INITIATIVE_INCOMPLETE: objective/);
   });
 
+  it("资源承诺缺项时逐项拒绝，且责任人只能绑定认证 actor", () => {
+    const incomplete = completeCommand();
+    delete incomplete.acceptResponsibility;
+    delete incomplete.receivingTeamOrRole;
+
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, incomplete),
+    ).toThrowError(
+      /PRODUCT_INITIATIVE_INCOMPLETE: responsibility_commitment,receiving_team_or_role/,
+    );
+
+    const prepared = prepareProductInitiativeDecision(
+      NEW_INITIATIVE,
+      ACTOR,
+      completeCommand(),
+    );
+    expect(prepared).toMatchObject({
+      responsibleActorId: ACTOR,
+      responsibilityAccepted: true,
+      receivingTeamOrRole: "产品开发 / NPI",
+      resourceDescription: "结构工程 1 人，采购验证 1 人",
+      targetDate: "2026-11-15",
+      nextDecisionDate: "2026-10-20",
+      nextDecisionQuestion: "是否进入 EVT 打样",
+    });
+  });
+
   it("把某要点移出门槛后，该项缺失不再阻止立项，只作为待补", () => {
     const command = completeCommand();
     command.reviewPoints = command.reviewPoints.map((point) =>
@@ -114,24 +147,94 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
 
     expect(prepared.completion).toBe("pending_completion");
     expect(prepared.nextDestination).toBe("needs_decision");
-    expect(prepared.pendingFieldCodes).toContain("defer_reason");
+    expect(prepared.pendingFieldCodes).toContain("validation_focus");
+    expect(prepared.pendingFieldCodes).toContain("reconsideration_date");
   });
 
-  it("暂缓填了原因就成立，并留在选品队列", () => {
+  it.each([
+    [
+      "验证重点",
+      {
+        validationFocus: "核实大促后的真实转化",
+        reconsiderationDate: undefined,
+      },
+      "reconsideration_date",
+      "validation_focus",
+    ],
+    [
+      "重判日期",
+      { validationFocus: undefined, reconsiderationDate: "2026-10-20" },
+      "validation_focus",
+      "reconsideration_date",
+    ],
+  ] as const)(
+    "暂缓只填%s时保存为待补，不提前关闭",
+    (_label, partial, missingCode, presentCode) => {
+      const prepared = prepareProductInitiativeDecision(
+        NEW_INITIATIVE,
+        ACTOR,
+        command({ outcome: "defer", ...partial }),
+        PRODUCT_INITIATIVE_GATE,
+        "2026-10-04",
+      );
+
+      expect(prepared.completion).toBe("pending_completion");
+      expect(prepared.nextDestination).toBe("needs_decision");
+      expect(prepared.reason).toBeNull();
+      expect(prepared.pendingFieldCodes).toContain(missingCode);
+      expect(prepared.pendingFieldCodes).not.toContain(presentCode);
+      expect(prepared.validationFocus).toBe(partial.validationFocus ?? null);
+      expect(prepared.reconsiderationDate).toBe(
+        partial.reconsiderationDate ?? null,
+      );
+    },
+  );
+
+  it("暂缓填了验证重点和重判日期就成立，并留在选品队列", () => {
     const prepared = prepareProductInitiativeDecision(
       NEW_INITIATIVE,
       ACTOR,
-      command({ outcome: "defer", deferReason: "等大促后重看竞争供给" }),
+      command({
+        outcome: "defer",
+        validationFocus: "等大促后重看竞争供给",
+        reconsiderationDate: "2026-10-20",
+      }),
+      PRODUCT_INITIATIVE_GATE,
+      "2026-10-04",
     );
 
     expect(prepared.completion).toBe("completed");
     expect(prepared.nextDestination).toBe("deferred");
     expect(prepared.reason).toBe("等大促后重看竞争供给");
+    expect(prepared.validationFocus).toBe("等大促后重看竞争供给");
+    expect(prepared.reconsiderationDate).toBe("2026-10-20");
     // 暂缓不改写要点缺口，补齐后仍可再判
     expect(prepared.pendingFieldCodes).toEqual([
       "objective",
       ...REVIEW_POINT_CODES,
+      "responsibility_commitment",
+      "receiving_team_or_role",
+      "resource_description",
+      "target_date",
+      "next_decision_date",
+      "next_decision_question",
     ]);
+  });
+
+  it("暂缓重判日期早于 UTC 当天时明确失败", () => {
+    expect(() =>
+      prepareProductInitiativeDecision(
+        NEW_INITIATIVE,
+        ACTOR,
+        command({
+          outcome: "defer",
+          validationFocus: "核实大促转化",
+          reconsiderationDate: "2026-10-03",
+        }),
+        PRODUCT_INITIATIVE_GATE,
+        "2026-10-04",
+      ),
+    ).toThrowError(/VALIDATION_FORMAT: reconsiderationDate/);
   });
 
   it("不立项缺原因时保存但不关闭", () => {
@@ -285,6 +388,14 @@ function emptyDraft(): ProductInitiativeDraft {
     deferReason: null,
     rejectReason: null,
     returnReason: null,
+    responsibilityAccepted: false,
+    receivingTeamOrRole: null,
+    resourceDescription: null,
+    targetDate: null,
+    nextDecisionDate: null,
+    nextDecisionQuestion: null,
+    validationFocus: null,
+    reconsiderationDate: null,
   };
 }
 
@@ -299,6 +410,14 @@ function completeDraft(): ProductInitiativeDraft {
     deferReason: null,
     rejectReason: null,
     returnReason: null,
+    responsibilityAccepted: true,
+    receivingTeamOrRole: "产品开发 / NPI",
+    resourceDescription: "结构工程 1 人，采购验证 1 人",
+    targetDate: "2026-11-15",
+    nextDecisionDate: "2026-10-20",
+    nextDecisionQuestion: "是否进入 EVT 打样",
+    validationFocus: null,
+    reconsiderationDate: null,
   };
 }
 
@@ -314,6 +433,12 @@ function completeCommand(
   return command({
     objective: draft.objective ?? undefined,
     reviewPoints: draft.reviewPoints,
+    acceptResponsibility: true,
+    receivingTeamOrRole: draft.receivingTeamOrRole ?? undefined,
+    resourceDescription: draft.resourceDescription ?? undefined,
+    targetDate: draft.targetDate ?? undefined,
+    nextDecisionDate: draft.nextDecisionDate ?? undefined,
+    nextDecisionQuestion: draft.nextDecisionQuestion ?? undefined,
     ...overrides,
   });
 }

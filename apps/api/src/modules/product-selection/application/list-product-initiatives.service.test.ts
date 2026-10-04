@@ -3,7 +3,7 @@ import type {
   ProductInitiativeRecord,
   ProductInitiativeRepository,
 } from "../domain/product-initiative.repository";
-import { decodeKeysetCursor, encodeKeysetCursor } from "./keyset-cursor";
+import { encodeKeysetCursor } from "./keyset-cursor";
 import { ListProductInitiativesService } from "./list-product-initiatives.service";
 
 const TENANT = "11111111-1111-4111-8111-111111111111";
@@ -31,6 +31,8 @@ describe("ListProductInitiativesService", () => {
         handoffId: "aaaaaaaa-0000-4000-8000-000000000001",
         outcome: "defer",
         currentDestination: "needs_decision",
+        queueGroup: "standard",
+        reconsiderationDate: null,
         pendingFieldCodes: ["defer_reason", "compliance_risk"],
         updatedAt: "2026-09-27T00:00:00.000Z",
       },
@@ -61,10 +63,7 @@ describe("ListProductInitiativesService", () => {
 
     expect(page.items).toHaveLength(2);
     expect(page.pageSize).toBe(2);
-    expect(decodeKeysetCursor(page.nextCursor!, TENANT)).toEqual({
-      at: new Date("2026-09-27T02:00:00Z"),
-      id: "cccccccc-0000-4000-8000-000000000002",
-    });
+    expect(page.nextCursor).toEqual(expect.any(String));
 
     await service.execute({
       tenantId: TENANT,
@@ -74,6 +73,8 @@ describe("ListProductInitiativesService", () => {
     expect(calls[1]).toEqual(
       expect.objectContaining({
         after: {
+          group: "standard",
+          reconsiderationDate: null,
           updatedAt: new Date("2026-09-27T02:00:00Z"),
           id: "cccccccc-0000-4000-8000-000000000002",
         },
@@ -164,6 +165,14 @@ function record(
     completion: "completed",
     currentDestination: "deferred",
     responsibleActorId: "selector-1",
+    responsibilityAccepted: null,
+    receivingTeamOrRole: null,
+    resourceDescription: null,
+    targetDate: null,
+    nextDecisionDate: null,
+    nextDecisionQuestion: null,
+    validationFocus: null,
+    reconsiderationDate: null,
     objective: null,
     reviewPoints: [],
     reason: "证据不足",

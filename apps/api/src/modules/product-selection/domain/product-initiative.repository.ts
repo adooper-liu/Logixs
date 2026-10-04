@@ -26,6 +26,14 @@ export interface ProductInitiativeRecord {
   completion: ProductInitiativeCompletionV1;
   currentDestination: ProductInitiativeDestinationV1;
   responsibleActorId: string;
+  responsibilityAccepted: boolean | null;
+  receivingTeamOrRole: string | null;
+  resourceDescription: string | null;
+  targetDate: Date | null;
+  nextDecisionDate: Date | null;
+  nextDecisionQuestion: string | null;
+  validationFocus: string | null;
+  reconsiderationDate: Date | null;
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   reason: string | null;
@@ -45,6 +53,12 @@ export interface ProductInitiativeHandoffRecord {
   userProblem: string | null;
   objective: string;
   responsibleActorId: string;
+  responsibilityAccepted: boolean | null;
+  receivingTeamOrRole: string | null;
+  resourceDescription: string | null;
+  targetDate: Date | null;
+  nextDecisionDate: Date | null;
+  nextDecisionQuestion: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   evidenceRefs: string[];
   createdBy: string;
@@ -81,7 +95,13 @@ export interface ProductInitiativeRepository {
   ): Promise<ProductInitiativeRecord | null>;
   list(input: {
     tenantId: string;
-    after?: { updatedAt: Date; id: string };
+    todayUtc: Date;
+    after?: {
+      group: "defer_reconsideration_due" | "standard";
+      reconsiderationDate: Date | null;
+      updatedAt: Date;
+      id: string;
+    };
     take: number;
   }): Promise<ProductInitiativeRecord[]>;
   /**

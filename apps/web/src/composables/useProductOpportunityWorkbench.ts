@@ -62,10 +62,10 @@ export function useProductOpportunityWorkbench(options: {
       // 队列与它的立项标记一起读：分两次读会出现"机会已经处理过、标记还没到"
       // 的中间态，岗位会重复处理同一条。
       const [opportunities, initiativeQueue] = await Promise.all([
-        listProductOpportunities(),
+        listAllProductOpportunities(),
         listProductInitiatives(),
       ]);
-      items.value = opportunities.items;
+      items.value = opportunities;
       initiatives.value = new Map(
         initiativeQueue.items.map((entry) => [entry.handoffId, entry]),
       );
@@ -157,6 +157,25 @@ export function useProductOpportunityWorkbench(options: {
     accept: () => act("accept"),
     addEvidence,
   };
+}
+
+async function listAllProductOpportunities(): Promise<ProductOpportunityV1[]> {
+  const opportunities: ProductOpportunityV1[] = [];
+  const seenCursors = new Set<string>();
+  let cursor: string | undefined;
+
+  while (true) {
+    const page = await listProductOpportunities(
+      cursor === undefined ? { pageSize: 100 } : { pageSize: 100, cursor },
+    );
+    opportunities.push(...page.items);
+    if (page.nextCursor === null) return opportunities;
+    if (seenCursors.has(page.nextCursor)) {
+      throw new Error("机会队列分页异常（重复游标），请重新加载。");
+    }
+    seenCursors.add(page.nextCursor);
+    cursor = page.nextCursor;
+  }
 }
 
 function message(error: unknown): string {

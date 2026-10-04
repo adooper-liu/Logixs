@@ -50,6 +50,12 @@ describe("useProductInitiativeDecision", () => {
     // 挡住立项的只有目标结果 + **门槛**要点。
     expect(state.blockingGaps.value.map((gap) => gap.label)).toEqual([
       "目标结果",
+      "由我对此立项负责",
+      "承接团队或岗位",
+      "资源说明",
+      "目标日期",
+      "下一决策日期",
+      "下一决策问题",
       ...REVIEW_POINTS.filter((point) => point.gating).map(
         (point) => point.label,
       ),
@@ -62,26 +68,50 @@ describe("useProductInitiativeDecision", () => {
         outcome: "approve",
         gaps: state.blockingGaps.value,
         reason: "",
+        reconsiderationDate: "",
       }),
-    ).toBe("还差 5 项才能立项");
+    ).toBe("还差 11 项才能立项");
   });
 
-  it("非立项去向的说明只看向因，不冒充已关闭也不冒充已立项", () => {
+  it("非立项去向的说明按所需事实判断，不冒充已关闭也不冒充已立项", () => {
     expect(
-      outcomeHintFor({ outcome: "defer", gaps: ["合规风险"], reason: "" }),
+      outcomeHintFor({
+        outcome: "defer",
+        gaps: ["合规风险"],
+        reason: "",
+        reconsiderationDate: "",
+      }),
     ).toContain("不会关闭");
     expect(
       outcomeHintFor({
         outcome: "defer",
         gaps: ["合规风险"],
         reason: "证据还不够",
+        reconsiderationDate: "",
       }),
-    ).toContain("会关闭");
+    ).toContain("不会关闭");
+    expect(
+      outcomeHintFor({
+        outcome: "defer",
+        gaps: ["合规风险"],
+        reason: "",
+        reconsiderationDate: "2026-10-20",
+      }),
+    ).toContain("不会关闭");
+    expect(
+      outcomeHintFor({
+        outcome: "defer",
+        gaps: ["合规风险"],
+        reason: "证据还不够",
+        reconsiderationDate: "2026-10-20",
+      }),
+    ).toContain("提交后本次判断会关闭");
     expect(
       outcomeHintFor({
         outcome: "return_to_market",
         gaps: [],
         reason: "请重新核对方向",
+        reconsiderationDate: "",
         returnBasis: "",
       }),
     ).toBe("请选择退回依据");
@@ -147,6 +177,9 @@ describe("useProductInitiativeDecision", () => {
   });
 
   it("暂缓没填原因时不提交原因字段，交给服务端按待补处理", async () => {
+    decideProductInitiative.mockResolvedValueOnce({
+      currentDestination: "needs_decision",
+    });
     const state = await mountComposable();
 
     await state.decide("defer");
@@ -154,6 +187,19 @@ describe("useProductInitiativeDecision", () => {
 
     const [, command] = decideProductInitiative.mock.calls[0]!;
     expect(command).not.toHaveProperty("deferReason");
+    expect(state.receipt.value).toBe("已保存但仍待补验证重点或重判日期。");
+  });
+
+  it("只有服务端形成 deferred 才回执已暂缓", async () => {
+    decideProductInitiative.mockResolvedValueOnce({
+      currentDestination: "deferred",
+    });
+    const state = await mountComposable();
+
+    await state.decide("defer");
+    await flushPromises();
+
+    expect(state.receipt.value).toBe("已暂缓，仍留在选品队列。");
   });
 
   it("用服务端已有判断回填草稿，刷新后接着补", async () => {
@@ -267,7 +313,7 @@ describe("useProductInitiativeDecision", () => {
     expect(command).toEqual(
       expect.objectContaining({
         outcome: "defer",
-        deferReason: "证据不足，等双十一数据",
+        validationFocus: "证据不足，等双十一数据",
       }),
     );
   });
@@ -341,6 +387,9 @@ describe("useProductInitiativeDecision", () => {
       ),
     );
     const state = await mountComposable();
+    state.receivingTeamOrRole.value = "产品开发 / NPI";
+    state.resourceDescription.value = "结构工程 1 人";
+    state.reconsiderationDate.value = "2026-10-20";
 
     await state.decide("defer");
     await flushPromises();
@@ -350,6 +399,9 @@ describe("useProductInitiativeDecision", () => {
       "PRODUCT_INITIATIVE_VERSION_CONFLICT",
     );
     expect(getProductInitiative).toHaveBeenCalledTimes(2);
+    expect(state.receivingTeamOrRole.value).toBe("产品开发 / NPI");
+    expect(state.resourceDescription.value).toBe("结构工程 1 人");
+    expect(state.reconsiderationDate.value).toBe("2026-10-20");
   });
 
   it("已立项后服务端拒绝不再判断时，说明是终态而不是普通失败", async () => {

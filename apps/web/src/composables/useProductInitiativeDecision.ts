@@ -48,6 +48,10 @@ export type ProductInitiativeOutcome =
 export const CONCLUSION_MAX_LENGTH = 4000;
 export const OBJECTIVE_MAX_LENGTH = 4000;
 export const REASON_MAX_LENGTH = 500;
+export const TEAM_OR_ROLE_MAX_LENGTH = 200;
+export const RESOURCE_DESCRIPTION_MAX_LENGTH = 2000;
+export const NEXT_DECISION_QUESTION_MAX_LENGTH = 1000;
+export const VALIDATION_FOCUS_MAX_LENGTH = 2000;
 
 export interface ProductInitiativeEvidenceDraft {
   sourceName: string;
@@ -71,7 +75,11 @@ interface ReviewPointDraft {
  */
 export interface ProductInitiativeGap {
   label: string;
-  panel: "objective" | "review_points";
+  panel:
+    | "objective"
+    | "responsibility_resources"
+    | "timeline_decision"
+    | "review_points";
 }
 
 /** 交给面板渲染的只读视图；`missing` 由本模块唯一计算，面板不重复判定。 */
@@ -105,6 +113,13 @@ export function useProductInitiativeDecision(options: {
   const objective = shallowRef("");
   const destination = shallowRef<ProductInitiativeOutcome>("approve");
   const deferReason = shallowRef("");
+  const acceptResponsibility = shallowRef(false);
+  const receivingTeamOrRole = shallowRef("");
+  const resourceDescription = shallowRef("");
+  const targetDate = shallowRef("");
+  const nextDecisionDate = shallowRef("");
+  const nextDecisionQuestion = shallowRef("");
+  const reconsiderationDate = shallowRef("");
   const rejectReason = shallowRef("");
   const returnReason = shallowRef("");
   const returnBasis = shallowRef<ProductInitiativeReturnBasisV1 | "">("");
@@ -167,19 +182,61 @@ export function useProductInitiativeDecision(options: {
     })),
   );
 
-  /** 挡住立项的缺口：目标结果 + **门槛**要点。 */
-  const blockingGaps = computed<ProductInitiativeGap[]>(() => {
-    const missing: ProductInitiativeGap[] = [];
-    if (!objective.value.trim()) {
-      missing.push({ label: "目标结果", panel: "objective" });
-    }
-    for (const point of reviewPointViews.value) {
-      if (point.missing && point.gating) {
-        missing.push({ label: point.label, panel: "review_points" });
-      }
-    }
-    return missing;
-  });
+  const commitmentRequirements = computed(() => [
+    {
+      label: "目标结果",
+      panel: "objective" as const,
+      missing: !objective.value.trim(),
+    },
+    {
+      label: "由我对此立项负责",
+      panel: "responsibility_resources" as const,
+      missing: !acceptResponsibility.value,
+    },
+    {
+      label: "承接团队或岗位",
+      panel: "responsibility_resources" as const,
+      missing: !receivingTeamOrRole.value.trim(),
+    },
+    {
+      label: "资源说明",
+      panel: "responsibility_resources" as const,
+      missing: !resourceDescription.value.trim(),
+    },
+    {
+      label: "目标日期",
+      panel: "timeline_decision" as const,
+      missing: !targetDate.value,
+    },
+    {
+      label: "下一决策日期",
+      panel: "timeline_decision" as const,
+      missing: !nextDecisionDate.value,
+    },
+    {
+      label: "下一决策问题",
+      panel: "timeline_decision" as const,
+      missing: !nextDecisionQuestion.value.trim(),
+    },
+  ]);
+
+  /** 总数和缺口读同一份门槛投影，新增必填时不会再出现 11/5。 */
+  const requiredCount = computed(
+    () =>
+      commitmentRequirements.value.length +
+      reviewPointViews.value.filter((point) => point.gating).length,
+  );
+  const blockingGaps = computed<ProductInitiativeGap[]>(() => [
+    ...commitmentRequirements.value
+      .filter((requirement) => requirement.missing)
+      .map(({ label, panel }) => ({ label, panel })),
+    ...reviewPointViews.value
+      .filter((point) => point.missing && point.gating)
+      .map((point) => ({
+        label: point.label,
+        panel: "review_points" as const,
+      })),
+  ]);
   /**
    * 不挡立项、但补了更扎实的要点。**单独列出来**，不混进"还差 N 项" ——
    * 混进去会让人以为非补不可，而那正是"证据收了没地方下结论"要修的另一半。
@@ -238,6 +295,13 @@ export function useProductInitiativeDecision(options: {
     objective.value = "";
     destination.value = "approve";
     deferReason.value = "";
+    acceptResponsibility.value = false;
+    receivingTeamOrRole.value = "";
+    resourceDescription.value = "";
+    targetDate.value = "";
+    nextDecisionDate.value = "";
+    nextDecisionQuestion.value = "";
+    reconsiderationDate.value = "";
     rejectReason.value = "";
     returnReason.value = "";
     returnBasis.value = "";
@@ -265,7 +329,17 @@ export function useProductInitiativeDecision(options: {
       outcome === "return_to_market"
         ? outcome
         : "approve";
-    deferReason.value = saved?.outcome === "defer" ? (saved.reason ?? "") : "";
+    deferReason.value =
+      saved?.outcome === "defer"
+        ? (saved.validationFocus ?? saved.reason ?? "")
+        : "";
+    acceptResponsibility.value = saved?.responsibilityAccepted ?? false;
+    receivingTeamOrRole.value = saved?.receivingTeamOrRole ?? "";
+    resourceDescription.value = saved?.resourceDescription ?? "";
+    targetDate.value = saved?.targetDate ?? "";
+    nextDecisionDate.value = saved?.nextDecisionDate ?? "";
+    nextDecisionQuestion.value = saved?.nextDecisionQuestion ?? "";
+    reconsiderationDate.value = saved?.reconsiderationDate ?? "";
     rejectReason.value =
       saved?.outcome === "reject" ? (saved.reason ?? "") : "";
     returnReason.value =
@@ -345,7 +419,28 @@ export function useProductInitiativeDecision(options: {
           conclusion: points[point.code].conclusion.trim() || null,
         })),
         ...(chosen === "defer" && deferReason.value.trim()
-          ? { deferReason: deferReason.value.trim() }
+          ? { validationFocus: deferReason.value.trim() }
+          : {}),
+        ...(chosen === "defer" && reconsiderationDate.value
+          ? { reconsiderationDate: reconsiderationDate.value }
+          : {}),
+        ...(chosen === "approve" && acceptResponsibility.value
+          ? { acceptResponsibility: true as const }
+          : {}),
+        ...(chosen === "approve" && receivingTeamOrRole.value.trim()
+          ? { receivingTeamOrRole: receivingTeamOrRole.value.trim() }
+          : {}),
+        ...(chosen === "approve" && resourceDescription.value.trim()
+          ? { resourceDescription: resourceDescription.value.trim() }
+          : {}),
+        ...(chosen === "approve" && targetDate.value
+          ? { targetDate: targetDate.value }
+          : {}),
+        ...(chosen === "approve" && nextDecisionDate.value
+          ? { nextDecisionDate: nextDecisionDate.value }
+          : {}),
+        ...(chosen === "approve" && nextDecisionQuestion.value.trim()
+          ? { nextDecisionQuestion: nextDecisionQuestion.value.trim() }
           : {}),
         ...(chosen === "reject" && rejectReason.value.trim()
           ? { rejectReason: rejectReason.value.trim() }
@@ -364,13 +459,17 @@ export function useProductInitiativeDecision(options: {
           ? saved.currentDestination === "return_requested"
             ? RECEIPTS.return_to_market
             : "已保存退回判断，尚未形成退回请求。"
-          : RECEIPTS[chosen];
+          : chosen === "defer"
+            ? saved.currentDestination === "deferred"
+              ? RECEIPTS.defer
+              : "已保存但仍待补验证重点或重判日期。"
+            : RECEIPTS[chosen];
       return true;
     } catch (caught) {
       const raw = message(caught);
       // 冲突意味着别人已经改过这条机会：重读版本，别让人拿着旧版本反复撞同一堵墙。
       // 重读会清空 error，所以说明要放在重读之后写，否则冲突提示会被自己抹掉。
-      if (raw.includes(VERSION_CONFLICT)) await load();
+      if (raw.includes(VERSION_CONFLICT)) await load({ keepDraft: true });
       error.value = initiativeErrorMessage(raw);
       return false;
     } finally {
@@ -389,11 +488,19 @@ export function useProductInitiativeDecision(options: {
     error,
     receipt,
     objective,
+    acceptResponsibility,
+    receivingTeamOrRole,
+    resourceDescription,
+    targetDate,
+    nextDecisionDate,
+    nextDecisionQuestion,
+    reconsiderationDate,
     destination,
     returnBasis,
     currentReason,
     points,
     reviewPointViews,
+    requiredCount,
     blockingGaps,
     optionalGaps,
     canApprove,
@@ -421,6 +528,7 @@ export function outcomeHintFor(input: {
   /** 只用到条数；缺口长什么样（带不带"在哪补"）不关这句话的事。 */
   gaps: { readonly length: number };
   reason: string;
+  reconsiderationDate: string;
   returnBasis?: ProductInitiativeReturnBasisV1 | "";
 }): string {
   if (input.outcome === "approve") {
@@ -430,6 +538,11 @@ export function outcomeHintFor(input: {
   }
   if (input.outcome === "return_to_market" && !input.returnBasis) {
     return "请选择退回依据";
+  }
+  if (input.outcome === "defer") {
+    return input.reason.trim() && input.reconsiderationDate
+      ? "验证重点和重判日期已齐，提交后本次判断会关闭。"
+      : "验证重点或重判日期未齐，保存后仍是待补，不会关闭。";
   }
   return input.reason.trim()
     ? "已写明原因，提交后本次判断会关闭。"

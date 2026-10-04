@@ -27,6 +27,8 @@ const DEFINITION_MIGRATION = "20260927190000_add_product_definition";
 const IDENTITY_MIGRATION = "20260927200000_add_product_identity";
 const ATTRIBUTES_MIGRATION = "20260927210000_add_product_attributes";
 const NOMINATION_MIGRATION = "20260928120000_add_supplier_nomination";
+const RESOURCE_COMMITMENT_MIGRATION =
+  "20261004160000_add_product_initiative_resource_commitment";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -115,6 +117,7 @@ beforeAll(async () => {
       IDENTITY_MIGRATION,
       ATTRIBUTES_MIGRATION,
       NOMINATION_MIGRATION,
+      RESOURCE_COMMITMENT_MIGRATION,
     ],
   );
 
@@ -235,8 +238,10 @@ async function insertInitiative(
     `INSERT INTO "${schemaName}"."product_initiative" (
        "id", "tenant_id", "handoff_id", "version", "outcome", "completion_state",
        "current_destination", "responsible_actor_id", "objective", "review_points",
-       "reason", "pending_field_codes", "acted_by", "idempotency_key", "payload_hash"
-     ) VALUES ($1,$2,$3,1,$4,$5,$6,'selector-1',NULL,'[]'::jsonb,$7,'{}'::text[],'selector-1',$8,repeat('a',64))`,
+       "reason", "pending_field_codes", "acted_by", "idempotency_key", "payload_hash",
+       "validation_focus", "reconsideration_date"
+     ) VALUES ($1,$2,$3,1,$4,$5,$6,'selector-1',NULL,'[]'::jsonb,$7,'{}'::text[],'selector-1',$8,
+       repeat('a',64),$9,'2099-12-31')`,
     id,
     tenantId,
     overrides.handoffId ?? handoffId,
@@ -245,6 +250,7 @@ async function insertInitiative(
     fields.currentDestination,
     fields.reason,
     `decision:${id}`,
+    fields.reason ?? "测试夹具验证重点",
   );
 }
 
@@ -288,4 +294,186 @@ function withSchema(databaseUrl: string, schema: string): string {
   const url = new URL(databaseUrl);
   url.searchParams.set("schema", schema);
   return url.toString();
+}
+
+describe("resource commitment migration upgrade", () => {
+  const migration = "20261004160000_add_product_initiative_resource_commitment";
+  const upgradeSchema = `it_pi_commit_upgrade_${process.pid}_${randomUUID().replaceAll("-", "")}`;
+  const upgradeDatabaseUrl = withSchema(BASE_DATABASE_URL, upgradeSchema);
+  let upgradePrisma: PrismaClient;
+  let legacyInitiativeId: string;
+
+  beforeAll(async () => {
+    deployAt(upgradeDatabaseUrl);
+    upgradePrisma = new PrismaClient({
+      adapter: createPostgresAdapter(upgradeDatabaseUrl, upgradeSchema),
+    });
+    await upgradePrisma.$connect();
+
+    const repository = new PrismaMarketSignalRepository(upgradePrisma as never);
+    const seeded = await seedOpportunityForUpgrade(repository, upgradePrisma);
+    legacyInitiativeId = randomUUID();
+    await upgradePrisma.$executeRawUnsafe(
+      `DROP INDEX "${upgradeSchema}"."product_initiative_reconsideration_queue_idx"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative"
+         DROP CONSTRAINT "product_initiative_resource_commitment_shape_check",
+         DROP CONSTRAINT "product_initiative_defer_plan_shape_check",
+         DROP CONSTRAINT "product_initiative_commitment_text_check",
+         DROP COLUMN "responsibility_accepted",
+         DROP COLUMN "receiving_team_or_role",
+         DROP COLUMN "resource_description",
+         DROP COLUMN "target_date",
+         DROP COLUMN "next_decision_date",
+         DROP COLUMN "next_decision_question",
+         DROP COLUMN "validation_focus",
+         DROP COLUMN "reconsideration_date"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative_handoff"
+         DROP CONSTRAINT "product_initiative_handoff_resource_commitment_shape_check",
+         DROP CONSTRAINT "product_initiative_handoff_commitment_text_check",
+         DROP COLUMN "responsibility_accepted",
+         DROP COLUMN "receiving_team_or_role",
+         DROP COLUMN "resource_description",
+         DROP COLUMN "target_date",
+         DROP COLUMN "next_decision_date",
+         DROP COLUMN "next_decision_question"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" DROP CONSTRAINT "product_initiative_pending_codes_check"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" ADD CONSTRAINT "product_initiative_pending_codes_check" CHECK (
+        "pending_field_codes" <@ ARRAY['objective','target_user_and_market','competitive_supply','price_band_and_margin','compliance_risk','customer_feedback','defer_reason','reject_reason','return_basis','return_reason']::TEXT[]
+      )`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `INSERT INTO "${upgradeSchema}"."product_initiative" (
+         "id", "tenant_id", "handoff_id", "version", "outcome", "completion_state",
+         "current_destination", "responsible_actor_id", "objective", "review_points",
+         "reason", "return_basis", "pending_field_codes", "acted_by", "idempotency_key", "payload_hash"
+       ) VALUES ($1,$2,$3,1,'defer','completed','deferred','selector-legacy',NULL,'[]'::jsonb,
+         '等待样本',NULL,'{}'::text[],'selector-legacy',$4,repeat('a',64))`,
+      legacyInitiativeId,
+      seeded.tenantId,
+      seeded.handoffId,
+      `legacy:${legacyInitiativeId}`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DELETE FROM "${upgradeSchema}"."_prisma_migrations" WHERE "migration_name" = $1`,
+      migration,
+    );
+    deployAt(upgradeDatabaseUrl);
+  }, 180_000);
+
+  afterAll(async () => {
+    await upgradePrisma?.$disconnect();
+    const admin = new PrismaClient({
+      adapter: createPostgresAdapter(
+        withSchema(BASE_DATABASE_URL, "public"),
+        "public",
+      ),
+    });
+    try {
+      await admin.$executeRawUnsafe(
+        `DROP SCHEMA IF EXISTS "${upgradeSchema}" CASCADE`,
+      );
+    } finally {
+      await admin.$disconnect();
+    }
+  });
+
+  it("keeps the existing initiative and leaves new facts unknown", async () => {
+    const row = await upgradePrisma.productInitiative.findUniqueOrThrow({
+      where: { id: legacyInitiativeId },
+    });
+    expect(row).toMatchObject({
+      outcome: "defer",
+      currentDestination: "deferred",
+      reason: "等待样本",
+      responsibilityAccepted: null,
+      receivingTeamOrRole: null,
+      validationFocus: null,
+      reconsiderationDate: null,
+    });
+  });
+
+  it("rejects a partial resource commitment", async () => {
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          receivingTeamOrRole: "NPI",
+          completionState: "pending_completion",
+          currentDestination: "needs_decision",
+          reason: null,
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_resource_commitment_shape_check/);
+  });
+});
+
+function deployAt(databaseUrl: string): void {
+  const pnpmEntrypoint = process.env.npm_execpath;
+  if (!pnpmEntrypoint) throw new Error("INTEGRATION_PNPM_ENTRYPOINT_MISSING");
+  execFileSync(process.execPath, [pnpmEntrypoint, "db:migrate"], {
+    cwd: repositoryRoot,
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+    stdio: "pipe",
+  });
+}
+
+async function seedOpportunityForUpgrade(
+  repository: PrismaMarketSignalRepository,
+  client: PrismaClient,
+): Promise<{ tenantId: string; handoffId: string }> {
+  const seededTenantId = randomUUID();
+  const signalId = randomUUID();
+  const created = await repository.create({
+    tenantId: seededTenantId,
+    actorId: "market-owner",
+    command: normalizeMarketSignalCreate({
+      contractVersion: "market-signal-create.v1",
+      requestId: signalId,
+      title: "加拿大站宠物出行需求上升",
+      marketCode: "CA",
+      idempotencyKey: `create:${signalId}`,
+    }),
+  });
+  const decided = await repository.decide({
+    tenantId: seededTenantId,
+    actorId: "market-owner",
+    signalId,
+    evidenceRefs: [],
+    prepared: prepareMarketSignalDecision(
+      { ...created.record, evidenceRefs: [] },
+      {
+        contractVersion: "market-signal-decision.v1",
+        expectedSignalVersion: 1,
+        decisionType: "handoff",
+        opportunityStatement: "验证宠物出行机会是否值得立项。",
+        idempotencyKey: `handoff:${signalId}`,
+      },
+    ),
+  });
+  await client.productOpportunityIntake.create({
+    data: {
+      id: randomUUID(),
+      tenantId: seededTenantId,
+      handoffId: decided.handoff!.handoffId,
+      version: 1,
+      state: "accepted",
+      assignedActorId: "selector-legacy",
+      actedBy: "selector-legacy",
+      actedAt: new Date(),
+      idempotencyKey: `accept:${signalId}`,
+      payloadHash: "b".repeat(64),
+    },
+  });
+  return {
+    tenantId: seededTenantId,
+    handoffId: decided.handoff!.handoffId,
+  };
 }

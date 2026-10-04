@@ -58,6 +58,14 @@ export function toProductInitiativeV1(
     completion: record.completion,
     currentDestination: record.currentDestination,
     responsibleActorId: record.responsibleActorId,
+    responsibilityAccepted: record.responsibilityAccepted,
+    receivingTeamOrRole: record.receivingTeamOrRole,
+    resourceDescription: record.resourceDescription,
+    targetDate: dateOnly(record.targetDate),
+    nextDecisionDate: dateOnly(record.nextDecisionDate),
+    nextDecisionQuestion: record.nextDecisionQuestion,
+    validationFocus: record.validationFocus,
+    reconsiderationDate: dateOnly(record.reconsiderationDate),
     objective: record.objective,
     reviewPoints: record.reviewPoints,
     reason: record.reason,
@@ -67,4 +75,8 @@ export function toProductInitiativeV1(
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
+}
+
+function dateOnly(value: Date | null): string | null {
+  return value?.toISOString().slice(0, 10) ?? null;
 }

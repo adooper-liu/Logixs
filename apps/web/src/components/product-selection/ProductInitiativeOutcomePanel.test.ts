@@ -10,6 +10,13 @@ import ProductInitiativeOutcomePanel from "./ProductInitiativeOutcomePanel.vue";
 interface PanelProps {
   outcome: ProductInitiativeOutcome;
   objective: string;
+  acceptResponsibility: boolean;
+  receivingTeamOrRole: string;
+  resourceDescription: string;
+  targetDate: string;
+  nextDecisionDate: string;
+  nextDecisionQuestion: string;
+  reconsiderationDate: string;
   reason: string;
   returnBasis: ProductInitiativeReturnBasisV1 | "";
   gaps: ProductInitiativeGap[];
@@ -52,9 +59,36 @@ describe("ProductInitiativeOutcomePanel", () => {
       false,
     );
     expect(deferring.find(".gap-list").exists()).toBe(false);
-    expect(deferring.find('textarea[aria-label="暂缓原因"]').exists()).toBe(
-      true,
+    expect(
+      deferring.find('textarea[aria-label="这次要验证什么"]').exists(),
+    ).toBe(true);
+    expect(deferring.find('input[aria-label="哪天重判"]').exists()).toBe(true);
+  });
+
+  it("把立项承诺按责任资源与时间决策分组，不增加第二套输入", () => {
+    const wrapper = mountPanel({ outcome: "approve" });
+    const groups = wrapper.findAll(".commitment-group");
+
+    expect(groups.map((group) => group.get("legend").text())).toEqual([
+      "责任与资源",
+      "时间与下一决策",
+    ]);
+    expect(groups[0]!.text()).toContain("谁负责、由谁承接、投入什么资源");
+    expect(
+      groups[0]!.findAll('input[aria-label="承接团队或岗位"]'),
+    ).toHaveLength(1);
+    expect(groups[0]!.findAll('textarea[aria-label="资源说明"]')).toHaveLength(
+      1,
     );
+    expect(groups[1]!.text()).toContain("什么时候拿到结果、下一次决定什么");
+    expect(groups[1]!.findAll('input[aria-label="目标日期"]')).toHaveLength(1);
+    expect(groups[1]!.findAll('input[aria-label="下一决策日期"]')).toHaveLength(
+      1,
+    );
+    expect(
+      groups[1]!.findAll('textarea[aria-label="下一决策问题"]'),
+    ).toHaveLength(1);
+    expect(wrapper.findAll('textarea[aria-label="目标结果"]')).toHaveLength(1);
   });
 
   it("要点没齐时不能立项，主按钮说明还差几项而不是静默失败", async () => {
@@ -96,16 +130,42 @@ describe("ProductInitiativeOutcomePanel", () => {
     ).toBeUndefined();
   });
 
-  it("暂缓没填原因时仍可提交，但说明会留在待补而不关闭", async () => {
-    const wrapper = mountPanel({ outcome: "defer", gaps: [gap("合规风险")] });
+  it.each([
+    ["全缺", "", ""],
+    ["只填验证重点", "核实大促后的真实转化", ""],
+    ["只填日期", "", "2026-10-20"],
+  ])(
+    "暂缓%s时仍可保存，但提示与 CTA 都明确待补",
+    async (_case, reason, reconsiderationDate) => {
+      const wrapper = mountPanel({
+        outcome: "defer",
+        gaps: [gap("合规风险")],
+        reason,
+        reconsiderationDate,
+      });
 
-    const button = wrapper.get(".outcome-submit");
-    expect(button.attributes("disabled")).toBeUndefined();
-    expect(button.text()).toContain("暂缓此机会");
-    expect(wrapper.get(".outcome-hint").text()).toContain("待补");
+      const button = wrapper.get(".outcome-submit");
+      expect(button.attributes("disabled")).toBeUndefined();
+      expect(button.text()).toBe("保存为待补");
+      expect(wrapper.get(".outcome-hint").text()).toContain("待补");
+      expect(wrapper.get(".outcome-hint").text()).toContain("不会关闭");
 
-    await button.trigger("click");
-    expect(wrapper.emitted("submit")).toEqual([["defer"]]);
+      await button.trigger("click");
+      expect(wrapper.emitted("submit")).toEqual([["defer"]]);
+    },
+  );
+
+  it("暂缓验证重点与重判日期齐全时才提示提交后关闭", () => {
+    const wrapper = mountPanel({
+      outcome: "defer",
+      reason: "核实大促后的真实转化",
+      reconsiderationDate: "2026-10-20",
+    });
+
+    expect(wrapper.get(".outcome-hint").text()).toContain(
+      "提交后本次判断会关闭",
+    );
+    expect(wrapper.get(".outcome-submit").text()).toBe("暂缓此机会");
   });
 
   it("退回没选依据时不能提交，即使已经写了原因", async () => {
@@ -158,8 +218,10 @@ describe("ProductInitiativeOutcomePanel", () => {
 
     const deferring = mountPanel({ outcome: "defer" });
     expect(
-      deferring.get('textarea[aria-label="暂缓原因"]').attributes("maxlength"),
-    ).toBe("500");
+      deferring
+        .get('textarea[aria-label="这次要验证什么"]')
+        .attributes("maxlength"),
+    ).toBe("2000");
   });
 
   it("已立项是终态，不再提供任何判断动作", () => {
@@ -196,6 +258,13 @@ function defaultProps(): PanelProps {
   return {
     outcome: "approve",
     objective: "",
+    acceptResponsibility: false,
+    receivingTeamOrRole: "",
+    resourceDescription: "",
+    targetDate: "",
+    nextDecisionDate: "",
+    nextDecisionQuestion: "",
+    reconsiderationDate: "",
     reason: "",
     returnBasis: "",
     gaps: [],

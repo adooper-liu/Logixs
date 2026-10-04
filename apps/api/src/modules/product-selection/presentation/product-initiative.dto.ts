@@ -48,6 +48,14 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
   @ApiPropertyOptional() deferReason?: string;
+  @ApiPropertyOptional({ enum: [true] }) acceptResponsibility?: true;
+  @ApiPropertyOptional() receivingTeamOrRole?: string;
+  @ApiPropertyOptional() resourceDescription?: string;
+  @ApiPropertyOptional({ format: "date" }) targetDate?: string;
+  @ApiPropertyOptional({ format: "date" }) nextDecisionDate?: string;
+  @ApiPropertyOptional() nextDecisionQuestion?: string;
+  @ApiPropertyOptional() validationFocus?: string;
+  @ApiPropertyOptional({ format: "date" }) reconsiderationDate?: string;
   @ApiPropertyOptional() rejectReason?: string;
   @ApiPropertyOptional() returnReason?: string;
   @ApiPropertyOptional({ enum: ["insufficient_evidence", "wrong_direction"] })
@@ -63,6 +71,18 @@ export class ProductInitiativeResponseDto {
   @ApiProperty({ enum: DESTINATIONS })
   currentDestination!: string;
   @ApiProperty() responsibleActorId!: string;
+  @ApiPropertyOptional({ nullable: true }) responsibilityAccepted!:
+    boolean | null;
+  @ApiPropertyOptional({ nullable: true }) receivingTeamOrRole!: string | null;
+  @ApiPropertyOptional({ nullable: true }) resourceDescription!: string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" }) targetDate!:
+    string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" }) nextDecisionDate!:
+    string | null;
+  @ApiPropertyOptional({ nullable: true }) nextDecisionQuestion!: string | null;
+  @ApiPropertyOptional({ nullable: true }) validationFocus!: string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" })
+  reconsiderationDate!: string | null;
   @ApiPropertyOptional({ nullable: true }) objective!: string | null;
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
@@ -89,6 +109,10 @@ export class ProductInitiativeQueueEntryResponseDto {
   @ApiProperty() handoffId!: string;
   @ApiProperty({ enum: RESPONSE_OUTCOMES }) outcome!: string;
   @ApiProperty({ enum: DESTINATIONS }) currentDestination!: string;
+  @ApiProperty({ enum: ["defer_reconsideration_due", "standard"] })
+  queueGroup!: string;
+  @ApiPropertyOptional({ nullable: true, format: "date" })
+  reconsiderationDate!: string | null;
   @ApiProperty({ type: [String] }) pendingFieldCodes!: string[];
   @ApiProperty() updatedAt!: string;
 }

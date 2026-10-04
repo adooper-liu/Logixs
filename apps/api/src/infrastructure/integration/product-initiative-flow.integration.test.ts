@@ -15,6 +15,8 @@ import {
   prepareProductInitiativeDecision,
   prepareSelectionReturnTakeback,
 } from "../../modules/product-selection/domain/product-initiative";
+import { prepareProductDefinitionClaim } from "../../modules/product-selection/domain/product-initiative-claim";
+import { prepareProductInitiativeNpiReturn } from "../../modules/product-selection/domain/product-initiative-npi-return";
 import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
 import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
 import { toOpportunityV1 } from "../../modules/product-selection/application/list-product-opportunities.service";
@@ -100,7 +102,8 @@ describe("product initiative persistence flow", () => {
       responsibleActorId: "selector-1",
       reason: null,
     });
-    expect(record.pendingFieldCodes).toContain("defer_reason");
+    expect(record.pendingFieldCodes).toContain("validation_focus");
+    expect(record.pendingFieldCodes).toContain("reconsideration_date");
     // 没有立项就不该有交接快照，也不该有对外事件。
     // 注意按事件类型收窄：建场时经营交接本身已写过一条 Outbox，属正常。
     await expect(
@@ -113,11 +116,55 @@ describe("product initiative persistence flow", () => {
     ).resolves.toBe(0);
   });
 
+  it.each([
+    [
+      "验证重点",
+      {
+        validationFocus: "核实大促后的真实转化",
+        reconsiderationDate: undefined,
+      },
+      "reconsideration_date",
+    ],
+    [
+      "重判日期",
+      { validationFocus: undefined, reconsiderationDate: "2026-10-20" },
+      "validation_focus",
+    ],
+  ] as const)(
+    "暂缓只填%s时仍可持久化为待补",
+    async (_label, partial, missingCode) => {
+      const { tenantId, handoffId } = await seedOpportunity();
+
+      const { record } = await initiatives.persistDecision({
+        tenantId,
+        handoffId,
+        actorId: "selector-1",
+        command: decide({ handoffId }, { outcome: "defer", ...partial }),
+      });
+
+      expect(record).toMatchObject({
+        outcome: "defer",
+        completion: "pending_completion",
+        currentDestination: "needs_decision",
+        reason: null,
+      });
+      expect(record.validationFocus).toEqual(partial.validationFocus ?? null);
+      expect(
+        record.reconsiderationDate?.toISOString().slice(0, 10) ?? null,
+      ).toBe(partial.reconsiderationDate ?? null);
+      expect(record.pendingFieldCodes).toContain(missingCode);
+    },
+  );
+
   it("同一幂等键重放返回同一结果且不新增行", async () => {
     const { tenantId, handoffId } = await seedOpportunity();
     const command = decide(
       { handoffId },
-      { outcome: "defer", deferReason: "等大促后重看竞争供给" },
+      {
+        outcome: "defer",
+        validationFocus: "等大促后重看竞争供给",
+        reconsiderationDate: "2026-10-20",
+      },
     );
 
     const first = await initiatives.persistDecision({
@@ -180,6 +227,12 @@ describe("product initiative persistence flow", () => {
         {
           outcome: "approve",
           objective: "把折叠宠物出行包做成可发布版本",
+          acceptResponsibility: true,
+          receivingTeamOrRole: "产品开发 / NPI",
+          resourceDescription: "结构工程 1 人，采购验证 1 人",
+          targetDate: "2026-11-15",
+          nextDecisionDate: "2026-10-20",
+          nextDecisionQuestion: "是否进入 EVT 打样",
           reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
             code,
             evidenceRefs: [evidenceId(index)],
@@ -204,6 +257,12 @@ describe("product initiative persistence flow", () => {
       version: 2,
       objective: "把折叠宠物出行包做成可发布版本",
       responsibleActorId: "selector-1",
+      responsibilityAccepted: true,
+      receivingTeamOrRole: "产品开发 / NPI",
+      resourceDescription: "结构工程 1 人，采购验证 1 人",
+      targetDate: new Date("2026-11-15T00:00:00.000Z"),
+      nextDecisionDate: new Date("2026-10-20T00:00:00.000Z"),
+      nextDecisionQuestion: "是否进入 EVT 打样",
       marketCode: "CA",
       userProblem: "验证宠物出行机会是否值得立项。",
     });
@@ -219,6 +278,85 @@ describe("product initiative persistence flow", () => {
         where: { tenantId, eventType: "product_initiative.handed_off" },
       }),
     ).resolves.toBe(1);
+  });
+
+  it("完整立项经 NPI 领取后可退回选品，保留当前承诺且不改快照", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+    const approved = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: completeApprove({ handoffId }),
+    });
+    const snapshotBefore =
+      await prisma.productInitiativeHandoff.findFirstOrThrow({
+        where: { tenantId, initiativeId: approved.record.initiativeId },
+      });
+
+    await initiatives.appendClaim({
+      tenantId,
+      handoffId: snapshotBefore.id,
+      command: prepareProductDefinitionClaim(
+        "npi-owner",
+        `claim-for-return:${snapshotBefore.id}`,
+      ),
+    });
+    const returned = await initiatives.persistNpiReturn({
+      tenantId,
+      initiativeHandoffId: snapshotBefore.id,
+      actorId: "npi-owner",
+      command: prepareProductInitiativeNpiReturn(
+        {
+          version: approved.record.version,
+          currentDestination: approved.record.currentDestination,
+          productOwnerActorId: "npi-owner",
+        },
+        "npi-owner",
+        {
+          contractVersion: "product-initiative-npi-return.v1",
+          expectedInitiativeVersion: approved.record.version,
+          returnReason: "工程验证发现结构方案需要重判",
+          idempotencyKey: `npi-return:${snapshotBefore.id}`,
+        },
+      ),
+    });
+
+    expect(returned.record).toMatchObject({
+      outcome: "returned_from_npi",
+      currentDestination: "returned_from_npi",
+      responsibilityAccepted: true,
+      receivingTeamOrRole: "产品开发 / NPI",
+      resourceDescription: "结构工程 1 人，采购验证 1 人",
+      targetDate: new Date("2026-11-15T00:00:00.000Z"),
+      nextDecisionDate: new Date("2026-10-20T00:00:00.000Z"),
+      nextDecisionQuestion: "是否进入 EVT 打样",
+    });
+    await expect(
+      prisma.productInitiativeHandoff.findUniqueOrThrow({
+        where: { id: snapshotBefore.id },
+      }),
+    ).resolves.toEqual(snapshotBefore);
+  });
+
+  it("除立项与 NPI 退回外，其他结果仍不能携带资源承诺", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+    const approved = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: completeApprove({ handoffId }),
+    });
+
+    await expect(
+      prisma.productInitiative.update({
+        where: { id: approved.record.initiativeId },
+        data: {
+          outcome: "reject",
+          currentDestination: "rejected",
+          reason: "不进入本轮",
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_resource_commitment_shape_check/);
   });
 
   it("期望版本过期时冲突而不是覆盖", async () => {
@@ -238,6 +376,85 @@ describe("product initiative persistence flow", () => {
         command: decide({ handoffId }, { outcome: "defer" }),
       }),
     ).rejects.toThrowError(/PRODUCT_INITIATIVE_VERSION_CONFLICT/);
+  });
+
+  it("暂缓到期项排在普通项之前，并按重判日期稳定翻页", async () => {
+    const firstOpportunity = await seedOpportunity();
+    const secondOpportunity = await seedOpportunity(
+      true,
+      firstOpportunity.tenantId,
+    );
+    const standardOpportunity = await seedOpportunity(
+      true,
+      firstOpportunity.tenantId,
+    );
+    const today = new Date().toISOString().slice(0, 10);
+    const tomorrow = addUtcDays(today, 1);
+    const projectionDay = new Date(`${addUtcDays(today, 2)}T00:00:00.000Z`);
+
+    const first = await initiatives.persistDecision({
+      tenantId: firstOpportunity.tenantId,
+      handoffId: firstOpportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId: firstOpportunity.handoffId },
+        {
+          outcome: "defer",
+          validationFocus: "先验证样本 A",
+          reconsiderationDate: today,
+        },
+      ),
+    });
+    const second = await initiatives.persistDecision({
+      tenantId: secondOpportunity.tenantId,
+      handoffId: secondOpportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId: secondOpportunity.handoffId },
+        {
+          outcome: "defer",
+          validationFocus: "再验证样本 B",
+          reconsiderationDate: tomorrow,
+        },
+      ),
+    });
+    const standard = await initiatives.persistDecision({
+      tenantId: standardOpportunity.tenantId,
+      handoffId: standardOpportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId: standardOpportunity.handoffId },
+        { outcome: "reject", rejectReason: "不进入本轮" },
+      ),
+    });
+
+    const page = await initiatives.list({
+      tenantId: firstOpportunity.tenantId,
+      todayUtc: projectionDay,
+      take: 3,
+    });
+    expect(page.map((row) => row.initiativeId)).toEqual([
+      first.record.initiativeId,
+      second.record.initiativeId,
+      standard.record.initiativeId,
+    ]);
+    const next = await initiatives.list({
+      tenantId: firstOpportunity.tenantId,
+      todayUtc: projectionDay,
+      after: {
+        group: "defer_reconsideration_due",
+        reconsiderationDate: first.record.reconsiderationDate,
+        updatedAt: first.record.updatedAt,
+        id: first.record.initiativeId,
+      },
+      take: 1,
+    });
+    expect(next.map((row) => row.initiativeId)).toEqual([
+      second.record.initiativeId,
+    ]);
+    expect(second.record.reconsiderationDate?.toISOString().slice(0, 10)).toBe(
+      tomorrow,
+    );
   });
 
   it("已立项的机会不再接受新的判断", async () => {
@@ -746,12 +963,14 @@ describe("product initiative persistence flow", () => {
   });
 });
 
-async function seedOpportunity(accepted = true): Promise<{
+async function seedOpportunity(
+  accepted = true,
+  tenantId: string = randomUUID(),
+): Promise<{
   tenantId: string;
   handoffId: string;
   signalId: string;
 }> {
-  const tenantId = randomUUID();
   const signalId = randomUUID();
   const created = await marketSignals.create({
     tenantId,
@@ -823,6 +1042,12 @@ function completeApprove(current: { handoffId: string }) {
   return decide(current, {
     outcome: "approve",
     objective: "把折叠宠物出行包做成可发布版本",
+    acceptResponsibility: true,
+    receivingTeamOrRole: "产品开发 / NPI",
+    resourceDescription: "结构工程 1 人，采购验证 1 人",
+    targetDate: "2026-11-15",
+    nextDecisionDate: "2026-10-20",
+    nextDecisionQuestion: "是否进入 EVT 打样",
     reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
       code,
       evidenceRefs: [evidenceId(index)],
@@ -839,4 +1064,10 @@ function withSchema(databaseUrl: string, schema: string): string {
   const url = new URL(databaseUrl);
   url.searchParams.set("schema", schema);
   return url.toString();
+}
+
+function addUtcDays(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
 }

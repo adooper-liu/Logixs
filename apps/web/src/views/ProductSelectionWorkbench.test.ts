@@ -214,6 +214,99 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.text()).toContain("加拿大站宠物出行需求上升");
   });
 
+  it("读取全部机会分页，并把第二页的暂缓到期项排在最前", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) =>
+      opportunity({
+        handoff: {
+          ...opportunity().handoff,
+          handoffId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+          title: `普通机会 ${String(index + 1).padStart(3, "0")}`,
+        },
+      }),
+    );
+    const due = opportunity({
+      handoff: {
+        ...opportunity().handoff,
+        handoffId: SECOND_HANDOFF_ID,
+        title: "第二页暂缓到期机会",
+      },
+    });
+    listProductOpportunities
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: firstPage,
+        pageSize: 100,
+        nextCursor: "opportunity/page-2",
+      })
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: [due],
+        pageSize: 100,
+        nextCursor: null,
+      });
+    listProductInitiatives.mockResolvedValue({
+      contractVersion: "product-initiative-queue.v1",
+      items: [
+        {
+          handoffId: SECOND_HANDOFF_ID,
+          outcome: "defer",
+          currentDestination: "deferred",
+          queueGroup: "defer_reconsideration_due",
+          reconsiderationDate: "2026-10-04",
+          pendingFieldCodes: [],
+          updatedAt: "2026-10-04T00:00:00.000Z",
+        },
+      ],
+      pageSize: 200,
+      nextCursor: null,
+    });
+
+    const wrapper = await mountPage();
+
+    expect(listProductOpportunities).toHaveBeenNthCalledWith(1, {
+      pageSize: 100,
+    });
+    expect(listProductOpportunities).toHaveBeenNthCalledWith(2, {
+      pageSize: 100,
+      cursor: "opportunity/page-2",
+    });
+    expect(wrapper.findAll(".queue-item")).toHaveLength(101);
+    expect(wrapper.findAll(".queue-group")[0]!.text()).toBe("暂缓到期");
+    expect(wrapper.findAll(".queue-item strong")[0]!.text()).toBe(
+      "第二页暂缓到期机会",
+    );
+    expect(wrapper.findAll(".queue-item strong")[1]!.text()).toBe(
+      "普通机会 001",
+    );
+    expect(wrapper.findAll(".queue-item strong")[100]!.text()).toBe(
+      "普通机会 100",
+    );
+  });
+
+  it("机会分页重复游标时明确失败并停止继续请求", async () => {
+    listProductOpportunities
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: [opportunity()],
+        pageSize: 100,
+        nextCursor: "opportunity/repeated",
+      })
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: [opportunity()],
+        pageSize: 100,
+        nextCursor: "opportunity/repeated",
+      });
+
+    const wrapper = await mountPage();
+
+    expect(listProductOpportunities).toHaveBeenCalledTimes(2);
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      "机会队列分页异常（重复游标），请重新加载。",
+    );
+    expect(wrapper.findAll(".queue-item")).toHaveLength(0);
+  });
+
   it("只给已接受的机会显示立项判断，待领取的先不显示", async () => {
     const queued = await mountPage();
 
@@ -228,9 +321,15 @@ describe("ProductSelectionWorkbench", () => {
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeDefined();
-    expect(button.text()).toContain("还差 5 项才能立项");
+    expect(button.text()).toContain("还差 11 项才能立项");
     expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
       "目标结果在上面的「目标结果」里补",
+      "由我对此立项负责在上面的「责任与资源」里补",
+      "承接团队或岗位在上面的「责任与资源」里补",
+      "资源说明在上面的「责任与资源」里补",
+      "目标日期在上面的「时间与下一决策」里补",
+      "下一决策日期在上面的「时间与下一决策」里补",
+      "下一决策问题在上面的「时间与下一决策」里补",
       "目标用户与市场在评审要点面板里补",
       "竞争供给在评审要点面板里补",
       "价格带与利润在评审要点面板里补",
@@ -238,13 +337,27 @@ describe("ProductSelectionWorkbench", () => {
     ]);
   });
 
-  it("补齐目标结果与四项要点后立项，带服务端版本与机会来源", async () => {
+  it("补齐资源承诺、目标结果与四项要点后立项", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     const wrapper = await mountPage();
 
     await wrapper
       .get('textarea[aria-label="目标结果"]')
       .setValue("把折叠宠物出行包做成可发布版本");
+    await wrapper.get(".responsibility-check input").setValue(true);
+    await wrapper
+      .get('input[aria-label="承接团队或岗位"]')
+      .setValue("产品开发 / NPI");
+    await wrapper
+      .get('textarea[aria-label="资源说明"]')
+      .setValue("结构工程 1 人，采购验证 1 人");
+    await wrapper.get('input[aria-label="目标日期"]').setValue("2026-11-15");
+    await wrapper
+      .get('input[aria-label="下一决策日期"]')
+      .setValue("2026-10-20");
+    await wrapper
+      .get('textarea[aria-label="下一决策问题"]')
+      .setValue("是否进入 EVT 打样");
     const labels = ["目标用户与市场", "竞争供给", "价格带与利润", "合规风险"];
     for (const [index, label] of labels.entries()) {
       const point = wrapper.findAll(".review-point")[index]!;
@@ -260,6 +373,9 @@ describe("ProductSelectionWorkbench", () => {
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeUndefined();
     expect(button.text()).toContain("立项并交给产品开发");
+    expect(wrapper.get(".progress-head").text()).toContain(
+      "必填剩 0 · 已齐 11/11",
+    );
     await button.trigger("click");
     await flushPromises();
 
@@ -269,6 +385,12 @@ describe("ProductSelectionWorkbench", () => {
         outcome: "approve",
         expectedInitiativeVersion: 0,
         objective: "把折叠宠物出行包做成可发布版本",
+        acceptResponsibility: true,
+        receivingTeamOrRole: "产品开发 / NPI",
+        resourceDescription: "结构工程 1 人，采购验证 1 人",
+        targetDate: "2026-11-15",
+        nextDecisionDate: "2026-10-20",
+        nextDecisionQuestion: "是否进入 EVT 打样",
         reviewPoints: expect.arrayContaining([
           expect.objectContaining({
             code: "compliance_risk",
@@ -287,7 +409,7 @@ describe("ProductSelectionWorkbench", () => {
 
     await wrapper.get(".destination:nth-of-type(2) input").setValue(true);
     await wrapper
-      .get('textarea[aria-label="暂缓原因"]')
+      .get('textarea[aria-label="这次要验证什么"]')
       .setValue("证据还不够，先放着");
     await wrapper.get(".destination:nth-of-type(4) input").setValue(true);
 
@@ -300,7 +422,7 @@ describe("ProductSelectionWorkbench", () => {
     await wrapper.get(".destination:nth-of-type(2) input").setValue(true);
 
     expect(
-      wrapper.get('textarea[aria-label="暂缓原因"]').element,
+      wrapper.get('textarea[aria-label="这次要验证什么"]').element,
     ).toHaveProperty("value", "证据还不够，先放着");
   });
 
@@ -616,10 +738,15 @@ describe("ProductSelectionWorkbench", () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     const wrapper = await mountPage();
 
-    expect(wrapper.get(".progress-head").text()).toMatch(/必填剩/);
+    expect(wrapper.get(".progress-head").text()).toContain(
+      "必填剩 11 · 已齐 0/11",
+    );
     expect(wrapper.get(".progress-head__apply").text()).toContain("带入");
     await wrapper.get(".progress-head__apply").trigger("click");
     expect(wrapper.get('[role="status"]').text()).toContain("已自动带入");
+    expect(wrapper.get(".progress-head").text()).toContain(
+      "必填剩 10 · 已齐 1/11",
+    );
   });
 });
 

@@ -21,6 +21,11 @@
       "path": "doc/cross-border-supply-chain/08-role-workbenches.md",
       "authority": "business",
       "note": "市场与经营信号工作台的业务目的、单一当前验证承诺、责任与真实验收边界。"
+    },
+    "doc-workbench-product-selection": {
+      "path": "doc/cross-border-supply-chain/08-role-workbenches.md",
+      "authority": "business",
+      "note": "选品立项工作台的资源责任、暂缓重判与 NPI 交接快照业务规则。"
     }
   },
   "tables": {
@@ -12426,6 +12431,16 @@
       "ownerModule": "product-selection",
       "notes": ["利润、供应或组合判断不成立由暂缓或不立项承载。"]
     },
+    "public.product_initiative.responsibility_accepted": {
+      "nameZh": "立项责任承诺已接受",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录当前认证用户显式接受本次立项责任；新立项必须为真，其他去向和存量记录允许为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
     "public.product_initiative.tenant_id": {
       "nameZh": "租户标识",
       "nameStatus": "confirmed_implementation",
@@ -12434,6 +12449,76 @@
       "sourceRefs": ["engineering-data-governance"],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.product_initiative.receiving_team_or_role": {
+      "nameZh": "承接团队或岗位",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录立项通过后负责下一阶段工作的团队或岗位；新立项必填，存量记录允许为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.resource_description": {
+      "nameZh": "资源说明",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录立项后下一阶段承诺投入的人员、能力或其他资源；新立项必填，存量记录允许为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.target_date": {
+      "nameZh": "立项目标日期",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录立项后下一阶段资源承诺的目标日期；新立项必填，存量记录允许为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.next_decision_date": {
+      "nameZh": "下一决策日期",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录立项后再次作出阶段决定的日期；新立项必填，存量记录允许为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.next_decision_question": {
+      "nameZh": "下一决策问题",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录立项后下一决策点需要回答的业务问题；新立项必填，存量记录允许为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.validation_focus": {
+      "nameZh": "暂缓验证重点",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录暂缓期间需要验证的问题；可先保存待补草稿，与重判日期齐全后本次暂缓才关闭。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.reconsideration_date": {
+      "nameZh": "暂缓重判日期",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录暂缓事项重新判断的日期；可先保存待补草稿，与验证重点齐全后才进入暂缓及到期队列。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
       "notes": []
     },
     "public.product_initiative.handoff_id": {
@@ -12666,6 +12751,46 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.product_initiative_handoff.responsibility_accepted": {
+      "nameZh": "立项责任承诺快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结立项交给 NPI 时责任人已接受责任的事实；新交接为真，存量交接允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["不可变交接快照。"]
+    },
+    "public.product_initiative_handoff.receiving_team_or_role": {
+      "nameZh": "承接团队或岗位快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结立项交给 NPI 时约定的下一阶段承接团队或岗位；存量交接允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["不可变交接快照。"]
+    },
+    "public.product_initiative_handoff.resource_description": {
+      "nameZh": "资源说明快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结立项交给 NPI 时承诺投入的人员、能力或其他资源；存量交接允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["不可变交接快照。"]
+    },
+    "public.product_initiative_handoff.target_date": {
+      "nameZh": "立项目标日期快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结立项交给 NPI 时承诺的下一阶段目标日期；存量交接允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["不可变交接快照。"]
+    },
     "public.product_initiative_handoff.tenant_id": {
       "nameZh": "租户标识",
       "nameStatus": "confirmed_implementation",
@@ -12675,6 +12800,26 @@
       "moduleCode": null,
       "ownerModule": null,
       "notes": []
+    },
+    "public.product_initiative_handoff.next_decision_date": {
+      "nameZh": "下一决策日期快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结立项交给 NPI 时约定的下一决策日期；存量交接允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["不可变交接快照。"]
+    },
+    "public.product_initiative_handoff.next_decision_question": {
+      "nameZh": "下一决策问题快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结立项交给 NPI 时约定的下一决策问题；存量交接允许为空且不得伪造。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["不可变交接快照。"]
     },
     "public.product_initiative_handoff.initiative_id": {
       "nameZh": "待业务确认",

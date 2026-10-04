@@ -167,10 +167,30 @@ export async function listProductOpportunities(
  * 队列本身仍以机会列表为主选择源。
  */
 export async function listProductInitiatives(): Promise<ProductInitiativeQueuePageV1> {
-  return requestJson<ProductInitiativeQueuePageV1>(
-    "/api/product-initiatives?pageSize=200",
-    { fallback: "暂时无法加载队列上的立项判断" },
-  );
+  const items: ProductInitiativeQueuePageV1["items"] = [];
+  const seenCursors = new Set<string>();
+  let cursor: string | null = null;
+  let firstPage: ProductInitiativeQueuePageV1 | null = null;
+
+  do {
+    const params = new URLSearchParams({ pageSize: "200" });
+    if (cursor) params.set("cursor", cursor);
+    const page = await requestJson<ProductInitiativeQueuePageV1>(
+      `/api/product-initiatives?${params}`,
+      { fallback: "暂时无法加载队列上的立项判断" },
+    );
+    firstPage ??= page;
+    items.push(...page.items);
+
+    cursor = page.nextCursor;
+    if (cursor && seenCursors.has(cursor)) {
+      throw new Error("PRODUCT_INITIATIVE_PAGINATION_CURSOR_REPEATED");
+    }
+    if (cursor) seenCursors.add(cursor);
+  } while (cursor);
+
+  if (!firstPage) throw new Error("PRODUCT_INITIATIVE_PAGE_MISSING");
+  return { ...firstPage, items, nextCursor: null };
 }
 
 export async function getProductInitiative(

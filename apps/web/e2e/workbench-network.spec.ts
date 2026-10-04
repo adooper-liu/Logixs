@@ -223,9 +223,45 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   // 接受之后主动作换成立项结论：先被缺口挡住，并说清还差几项。
   const submit = page.locator(".outcome-submit");
   await expect(submit).toBeDisabled();
-  await expect(submit).toContainText("还差 5 项才能立项");
+  await expect(submit).toContainText("还差 11 项才能立项");
+  await expect(page.locator(".progress-head")).toContainText(
+    "必填剩 11 · 已齐 0/11",
+  );
+  await expect(page.getByRole("group", { name: "责任与资源" })).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "时间与下一决策" }),
+  ).toBeVisible();
+  await expect(submit).toHaveCount(1);
+  await expect(submit).toBeInViewport();
 
+  const viewport = page.viewportSize();
+  const submitBox = await submit.boundingBox();
+  expect(submitBox).not.toBeNull();
+  expect(submitBox!.y).toBeGreaterThanOrEqual(0);
+  expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(
+    viewport?.height ?? 0,
+  );
+  const persistentAction = await page.evaluate(() => ({
+    pane: getComputedStyle(
+      document.querySelector<HTMLElement>(".pane--action")!,
+    ).position,
+    bar: getComputedStyle(
+      document.querySelector<HTMLElement>(".outcome-action")!,
+    ).position,
+  }));
+  if ((viewport?.width ?? 0) > 1100) {
+    expect(persistentAction.pane).toBe("sticky");
+  } else {
+    expect(["sticky", "fixed"]).toContain(persistentAction.bar);
+  }
+
+  await page.getByRole("checkbox", { name: "由我对此立项负责" }).check();
   await page.getByLabel("目标结果").fill("把折叠宠物出行包做成可发布版本");
+  await page.getByLabel("承接团队或岗位").fill("产品开发 / NPI");
+  await page.getByLabel("资源说明").fill("结构工程 1 人，采购验证 1 人");
+  await page.getByLabel("目标日期").fill("2026-11-15");
+  await page.getByLabel("下一决策日期").fill("2026-10-20");
+  await page.getByLabel("下一决策问题").fill("是否进入 EVT 打样");
   for (const label of [
     "目标用户与市场",
     "竞争供给",
@@ -257,6 +293,8 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   expect(decisions[0]?.expectedInitiativeVersion).toBe(0);
   expect(decisions[0]?.contractVersion).toBe("product-initiative-decision.v1");
   expect(decisions[0]?.outcome).toBe("approve");
+  expect(decisions[0]?.acceptResponsibility).toBe(true);
+  expect(decisions[0]?.receivingTeamOrRole).toBe("产品开发 / NPI");
   // 队列上的立项标记来自服务端投影：立项后这一条不再看起来像没处理过。
   await expect(page.locator(".queue-item").first()).toContainText("已立项");
 
@@ -1047,6 +1085,14 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
         completion: "completed",
         currentDestination: "return_requested",
         responsibleActorId: "dev-operator",
+        responsibilityAccepted: null,
+        receivingTeamOrRole: null,
+        resourceDescription: null,
+        targetDate: null,
+        nextDecisionDate: null,
+        nextDecisionQuestion: null,
+        validationFocus: null,
+        reconsiderationDate: null,
         objective: null,
         reviewPoints: [],
         reason: selectionReturnReason,
@@ -1079,6 +1125,14 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       completion: "completed",
       currentDestination: "handed_off",
       responsibleActorId: "dev-operator",
+      responsibilityAccepted: true,
+      receivingTeamOrRole: body.receivingTeamOrRole ?? null,
+      resourceDescription: body.resourceDescription ?? null,
+      targetDate: body.targetDate ?? null,
+      nextDecisionDate: body.nextDecisionDate ?? null,
+      nextDecisionQuestion: body.nextDecisionQuestion ?? null,
+      validationFocus: null,
+      reconsiderationDate: null,
       objective: "把折叠宠物出行包做成可发布版本",
       reviewPoints: [],
       reason: null,

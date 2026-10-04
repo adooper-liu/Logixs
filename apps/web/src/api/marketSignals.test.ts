@@ -17,6 +17,7 @@ const {
   createMarketSignal,
   decideMarketSignal,
   listMarketSignals,
+  listProductInitiatives,
   listProductOpportunities,
   takeBackSelectionReturn,
   updateMarketSignal,
@@ -108,6 +109,55 @@ describe("marketSignals 经共享 Client", () => {
         headers: DEV_HEADERS,
       },
     );
+  });
+
+  it("完整消费立项投影分页并保留服务端顺序", async () => {
+    const firstPageItems = Array.from({ length: 200 }, (_, index) => ({
+      handoffId: `handoff-${index}`,
+      queueGroup: "defer_reconsideration_due",
+    }));
+    const crossPageDue = {
+      handoffId: "handoff-200",
+      queueGroup: "defer_reconsideration_due",
+    };
+    fetchMock
+      .mockResolvedValueOnce(
+        ok({
+          contractVersion: "product-initiative-queue.v1",
+          items: firstPageItems,
+          pageSize: 200,
+          nextCursor: "due/page-2",
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok({
+          contractVersion: "product-initiative-queue.v1",
+          items: [crossPageDue],
+          pageSize: 200,
+          nextCursor: null,
+        }),
+      );
+
+    const result = await listProductInitiatives();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/product-initiatives?pageSize=200",
+      { method: "GET", redirect: "error", headers: DEV_HEADERS },
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/product-initiatives?pageSize=200&cursor=due%2Fpage-2",
+      { method: "GET", redirect: "error", headers: DEV_HEADERS },
+    );
+    expect(result.items).toHaveLength(201);
+    expect(result.items[200]).toEqual(crossPageDue);
+    expect(
+      result.items.every(
+        ({ queueGroup }) => queueGroup === "defer_reconsideration_due",
+      ),
+    ).toBe(true);
+    expect(result.nextCursor).toBeNull();
   });
 
   it("POST 市场接回携带信号版本和幂等键", async () => {

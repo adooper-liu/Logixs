@@ -369,7 +369,7 @@ export type ProductInitiativeOutcomeV1 = ("approve" | "defer" | "reject" | "retu
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativePendingFieldCodeV1".
  */
-export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback" | "defer_reason" | "reject_reason" | "return_basis" | "return_reason")
+export type ProductInitiativePendingFieldCodeV1 = ("objective" | "target_user_and_market" | "competitive_supply" | "price_band_and_margin" | "compliance_risk" | "customer_feedback" | "defer_reason" | "responsibility_commitment" | "receiving_team_or_role" | "resource_description" | "target_date" | "next_decision_date" | "next_decision_question" | "validation_focus" | "reconsideration_date" | "reject_reason" | "return_basis" | "return_reason")
 /**
  * NPI 执行阶段。用行业通用的四段名，代工厂说的就是这四个词，运营与供应商之间不用翻译。
  * 
@@ -2036,6 +2036,14 @@ expectedInitiativeVersion: number
 objective?: string
 reviewPoints: ProductInitiativeReviewPointV1[]
 deferReason?: string
+acceptResponsibility?: true
+receivingTeamOrRole?: string
+resourceDescription?: string
+targetDate?: string
+nextDecisionDate?: string
+nextDecisionQuestion?: string
+validationFocus?: string
+reconsiderationDate?: string
 rejectReason?: string
 returnReason?: string
 returnBasis?: ProductInitiativeReturnBasisV1
@@ -2051,6 +2059,14 @@ outcome: ProductInitiativeStoredOutcomeV1
 completion: ProductInitiativeCompletionV1
 currentDestination: ProductInitiativeDestinationV1
 responsibleActorId: string
+responsibilityAccepted: (boolean | null)
+receivingTeamOrRole: (string | null)
+resourceDescription: (string | null)
+targetDate: (string | null)
+nextDecisionDate: (string | null)
+nextDecisionQuestion: (string | null)
+validationFocus: (string | null)
+reconsiderationDate: (string | null)
 objective?: (string | null)
 reviewPoints: ProductInitiativeReviewPointV1[]
 reason?: (string | null)
@@ -2088,6 +2104,8 @@ export interface ProductInitiativeQueueEntryV1 {
 handoffId: Uuid
 outcome: ProductInitiativeStoredOutcomeV1
 currentDestination: ProductInitiativeDestinationV1
+queueGroup: ("defer_reconsideration_due" | "standard")
+reconsiderationDate: (string | null)
 pendingFieldCodes: ProductInitiativePendingFieldCodeV1[]
 updatedAt: DateTime
 }
@@ -2115,6 +2133,12 @@ marketCode?: (string | null)
 userProblem?: (string | null)
 objective: string
 responsibleActorId: string
+responsibilityAccepted: (boolean | null)
+receivingTeamOrRole: (string | null)
+resourceDescription: (string | null)
+targetDate: (string | null)
+nextDecisionDate: (string | null)
+nextDecisionQuestion: (string | null)
 reviewPoints: ProductInitiativeReviewPointV1[]
 evidenceRefs: Uuid[]
 createdAt: DateTime
