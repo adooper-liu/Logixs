@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, ref } from "vue";
+import type {
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
+} from "@logix/contracts";
 import {
   CONCLUSION_MAX_LENGTH,
   OBJECTIVE_MAX_LENGTH,
@@ -49,8 +53,8 @@ describe("useProductInitiativeDecision", () => {
   it("门槛要点与目标结果都缺时列出缺口；非门槛的另列，不混进「还差 N 项」", async () => {
     const state = await mountComposable();
 
-    // 挡住立项的只有目标结果 + **门槛**要点。
-    expect(state.blockingGaps.value.map((gap) => gap.label)).toEqual([
+    const labels = state.blockingGaps.value.map((gap) => gap.label);
+    expect(labels.slice(0, 11)).toEqual([
       "目标结果",
       "由我对此立项负责",
       "承接团队或岗位",
@@ -62,6 +66,10 @@ describe("useProductInitiativeDecision", () => {
         (point) => point.label,
       ),
     ]);
+    expect(labels).toContain("单位经济 · 币种");
+    expect(labels).toContain("单位经济 · 基准情景 · 销售价 · 最低值");
+    expect(labels).toHaveLength(60);
+    expect(state.requiredCount.value).toBe(62);
     // 非门槛的缺了只提示 —— 混进去会让人以为非补不可。
     expect(state.optionalGaps.value).toEqual(["客户反馈与痛点"]);
     expect(state.canApprove.value).toBe(false);
@@ -72,7 +80,7 @@ describe("useProductInitiativeDecision", () => {
         reason: "",
         reconsiderationDate: "",
       }),
-    ).toBe("还差 11 项才能立项");
+    ).toBe("还差 60 项才能立项");
   });
 
   it("非立项去向的说明按所需事实判断，不冒充已关闭也不冒充已立项", () => {
@@ -392,6 +400,13 @@ describe("useProductInitiativeDecision", () => {
     state.receivingTeamOrRole.value = "产品开发 / NPI";
     state.resourceDescription.value = "结构工程 1 人";
     state.reconsiderationDate.value = "2026-10-20";
+    state.setUnitEconomicsCurrency("CAD");
+    state.setUnitEconomicsRangeValue(
+      "conservative",
+      "salePrice",
+      "min",
+      "80.00",
+    );
 
     await state.decide("defer");
     await flushPromises();
@@ -404,6 +419,10 @@ describe("useProductInitiativeDecision", () => {
     expect(state.receivingTeamOrRole.value).toBe("产品开发 / NPI");
     expect(state.resourceDescription.value).toBe("结构工程 1 人");
     expect(state.reconsiderationDate.value).toBe("2026-10-20");
+    expect(state.unitEconomicsDraft.currencyCode).toBe("CAD");
+    expect(state.unitEconomicsDraft.scenarios.conservative.salePrice.min).toBe(
+      "80.00",
+    );
   });
 
   it("无效证据显示具体引用并保留当前未提交草稿", async () => {
@@ -469,6 +488,101 @@ describe("useProductInitiativeDecision", () => {
     );
   });
 
+  it("回填服务端单位经济草稿与计算快照，不在前端重算贡献", async () => {
+    getProductInitiative.mockResolvedValue(
+      detail({
+        initiative: {
+          ...initiative(),
+          unitEconomicsDraft: completeUnitEconomicsDraft(),
+          unitEconomicsSnapshot: completeUnitEconomicsSnapshot(),
+        },
+      }),
+    );
+
+    const state = await mountComposable();
+
+    expect(state.unitEconomicsDraft.currencyCode).toBe("CAD");
+    expect(state.unitEconomicsDraft.scenarios.conservative.salePrice.min).toBe(
+      "100.00",
+    );
+    expect(
+      state.unitEconomicsSnapshot.value?.scenarios.conservative.contribution,
+    ).toEqual({ min: "50.00", max: "95.00" });
+    expect(
+      state.blockingGaps.value.filter((gap) => gap.panel === "unit_economics"),
+    ).toEqual([]);
+  });
+
+  it("所有去向都提交可恢复的部分单位经济草稿，且不回传只读市场", async () => {
+    const state = await mountComposable();
+    state.setUnitEconomicsCurrency("CAD");
+    state.setUnitEconomicsRangeValue("baseline", "salePrice", "min", "80.00");
+    state.setUnitEconomicsBasis("baseline", "salePrice", "evidence");
+    state.toggleUnitEconomicsEvidence("baseline", "salePrice", EVIDENCE_ID);
+
+    await state.decide("defer");
+    await flushPromises();
+
+    const [, command] = decideProductInitiative.mock.calls[0]!;
+    expect(command.unitEconomicsDraft).toEqual({
+      channelCode: "Amazon CA",
+      currencyCode: "CAD",
+      scenarios: {
+        baseline: {
+          salePrice: {
+            min: "80.00",
+            basis: "evidence",
+            evidenceRefs: [EVIDENCE_ID],
+          },
+        },
+      },
+    });
+    expect(command.unitEconomicsDraft).not.toHaveProperty("marketCode");
+  });
+
+  it("切换到待验证假设会清除不再合法的证据引用", async () => {
+    const state = await mountComposable();
+    state.setUnitEconomicsBasis("baseline", "salePrice", "evidence");
+    state.toggleUnitEconomicsEvidence("baseline", "salePrice", EVIDENCE_ID);
+
+    state.setUnitEconomicsBasis("baseline", "salePrice", "assumption");
+
+    expect(state.unitEconomicsDraft.scenarios.baseline.salePrice).toMatchObject(
+      {
+        basis: "assumption",
+        evidenceRefs: [],
+      },
+    );
+  });
+
+  it("服务端确认负贡献缺口后就地要求理由，填写后保留该事实供重提", async () => {
+    decideProductInitiative.mockRejectedValueOnce(
+      new Error(
+        "暂时无法保存本次立项判断（400）：PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason",
+      ),
+    );
+    const state = await mountComposable();
+
+    await state.decide("approve");
+
+    expect(state.negativeContributionNeedsReason.value).toBe(true);
+    expect(gapLabels(state)).toContain("单位经济 · 仍要投入的理由");
+
+    state.setNegativeConservativeReason("战略品类入口仍需小规模验证");
+
+    expect(state.negativeContributionNeedsReason.value).toBe(true);
+    expect(gapLabels(state)).not.toContain("单位经济 · 仍要投入的理由");
+  });
+
+  it("无 active 币种 release 时明确暴露空选项，不填默认币种", async () => {
+    getProductInitiative.mockResolvedValue(detail({ currencyOptions: [] }));
+
+    const state = await mountComposable();
+
+    expect(state.currencyOptions.value).toEqual([]);
+    expect(state.unitEconomicsDraft.currencyCode).toBe("");
+  });
+
   it("只有服务端形成 return_requested 才回执等待市场接回", async () => {
     const state = await mountComposable();
     state.returnBasis.value = "wrong_direction";
@@ -514,7 +628,12 @@ const handoffId = ref(HANDOFF_ID);
 let state!: ReturnType<typeof useProductInitiativeDecision>;
 const Host = defineComponent({
   setup() {
-    state = useProductInitiativeDecision({ handoffId, signalId: SIGNAL_ID });
+    state = useProductInitiativeDecision({
+      handoffId,
+      signalId: SIGNAL_ID,
+      marketCode: "CA",
+      channelCode: "Amazon CA",
+    });
     return () => h("div");
   },
 });
@@ -541,6 +660,17 @@ function initiative() {
     completion: "pending_completion" as const,
     currentDestination: "needs_decision" as const,
     responsibleActorId: "dev-operator",
+    responsibilityAccepted: null,
+    receivingTeamOrRole: null,
+    resourceDescription: null,
+    targetDate: null,
+    nextDecisionDate: null,
+    nextDecisionQuestion: null,
+    validationFocus: null,
+    reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
     objective: null,
     reviewPoints: [],
     reason: null,
@@ -564,6 +694,62 @@ function detail(overrides: Record<string, unknown> = {}) {
         recordedAt: "2026-09-27T00:00:00.000Z",
       },
     ],
+    currencyOptions: [
+      { code: "CAD", name: "Canadian Dollar", minorUnit: 2 },
+      { code: "USD", name: "US Dollar", minorUnit: 2 },
+    ],
     ...overrides,
+  };
+}
+
+function completeUnitEconomicsDraft(): ProductInitiativeUnitEconomicsDraftV1 {
+  const price = {
+    min: "100.00",
+    max: "120.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const cost = {
+    min: "5.00",
+    max: "10.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const scenario = () => ({
+    salePrice: { ...price },
+    landedCost: { ...cost },
+    platformFee: { ...cost },
+    fulfillmentFee: { ...cost },
+    advertisingCost: { ...cost },
+    returnCost: { ...cost },
+  });
+  return {
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyCode: "CAD",
+    scenarios: {
+      baseline: scenario(),
+      conservative: scenario(),
+    },
+  };
+}
+
+function completeUnitEconomicsSnapshot(): ProductInitiativeUnitEconomicsSnapshotV1 {
+  const draft = completeUnitEconomicsDraft();
+  const scenario = draft.scenarios!.baseline!;
+  return {
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyCode: "CAD",
+    scenarios: {
+      baseline: {
+        ...scenario,
+        contribution: { min: "50.00", max: "95.00" },
+      } as ProductInitiativeUnitEconomicsSnapshotV1["scenarios"]["baseline"],
+      conservative: {
+        ...scenario,
+        contribution: { min: "50.00", max: "95.00" },
+      } as ProductInitiativeUnitEconomicsSnapshotV1["scenarios"]["conservative"],
+    },
   };
 }

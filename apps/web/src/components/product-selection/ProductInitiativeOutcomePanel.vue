@@ -4,8 +4,17 @@ import { computed } from "vue";
 import type {
   ProductInitiativeGap,
   ProductInitiativeOutcome,
+  UnitEconomicsBasisChange,
+  UnitEconomicsDraftState,
+  UnitEconomicsEvidenceChange,
+  UnitEconomicsRangeChange,
 } from "../../composables/useProductInitiativeDecision";
-import type { ProductInitiativeReturnBasisV1 } from "@logix/contracts";
+import type {
+  ProductInitiativeCurrencyOptionV1,
+  ProductInitiativeEvidenceCandidateV1,
+  ProductInitiativeReturnBasisV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
+} from "@logix/contracts";
 import {
   OBJECTIVE_MAX_LENGTH,
   NEXT_DECISION_QUESTION_MAX_LENGTH,
@@ -15,6 +24,7 @@ import {
   TEAM_OR_ROLE_MAX_LENGTH,
   VALIDATION_FOCUS_MAX_LENGTH,
 } from "../../composables/useProductInitiativeDecision";
+import ProductInitiativeUnitEconomicsPanel from "./ProductInitiativeUnitEconomicsPanel.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -29,6 +39,14 @@ const props = withDefaults(
     reconsiderationDate: string;
     reason: string;
     returnBasis?: ProductInitiativeReturnBasisV1 | "";
+    marketCode: string;
+    channelCode: string;
+    currencyOptions: readonly ProductInitiativeCurrencyOptionV1[];
+    unitEconomicsDraft: UnitEconomicsDraftState;
+    unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+    evidenceCandidates: readonly ProductInitiativeEvidenceCandidateV1[];
+    negativeContributionNeedsReason: boolean;
+    negativeConservativeReason: string;
     /** 立项还差哪些、各在哪补；按钮文案与缺口清单都读它，不在本组件里另判一遍。 */
     gaps: readonly ProductInitiativeGap[];
     /** 不挡立项、但补了更扎实的要点。**不混进「还差 N 项」**。 */
@@ -53,6 +71,11 @@ const emit = defineEmits<{
   updateReconsiderationDate: [value: string];
   updateReason: [value: string];
   updateReturnBasis: [value: ProductInitiativeReturnBasisV1 | ""];
+  updateUnitEconomicsCurrency: [value: string];
+  updateUnitEconomicsRange: [change: UnitEconomicsRangeChange];
+  updateUnitEconomicsBasis: [change: UnitEconomicsBasisChange];
+  toggleUnitEconomicsEvidence: [change: UnitEconomicsEvidenceChange];
+  updateNegativeConservativeReason: [value: string];
   submit: [outcome: ProductInitiativeOutcome];
 }>();
 
@@ -146,6 +169,7 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
   if (panel === "timeline_decision") {
     return "在上面的「时间与下一决策」里补";
   }
+  if (panel === "unit_economics") return "在上面的「单位经济」里补";
   return "在评审要点面板里补";
 }
 </script>
@@ -314,19 +338,6 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
               />
             </label>
           </fieldset>
-
-          <p v-if="optionalGaps?.length" class="optional-gaps">
-            还可以补（不挡立项）：{{ optionalGaps.join("、") }}
-          </p>
-          <div v-if="gaps.length" class="gap-list">
-            <b>还不能立项</b>
-            <ul>
-              <li v-for="gap in gaps" :key="gap.label">
-                <span>{{ gap.label }}</span>
-                <small>{{ gapLocation(gap.panel) }}</small>
-              </li>
-            </ul>
-          </div>
         </div>
 
         <div v-else class="destination-input">
@@ -397,6 +408,44 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
           <p v-if="outcome === 'return_to_market'" class="optional-gaps">
             利润、供应或组合不成立，请选择“暂缓”或“不立项”。
           </p>
+        </div>
+
+        <div class="unit-economics-wrap">
+          <ProductInitiativeUnitEconomicsPanel
+            :market-code="marketCode"
+            :channel-code="channelCode"
+            :currency-options="currencyOptions"
+            :draft="unitEconomicsDraft"
+            :snapshot="unitEconomicsSnapshot"
+            :evidence-candidates="evidenceCandidates"
+            :negative-contribution-needs-reason="
+              negativeContributionNeedsReason
+            "
+            :negative-conservative-reason="negativeConservativeReason"
+            :busy="busy"
+            @update-currency="emit('updateUnitEconomicsCurrency', $event)"
+            @update-range="emit('updateUnitEconomicsRange', $event)"
+            @update-basis="emit('updateUnitEconomicsBasis', $event)"
+            @toggle-evidence="emit('toggleUnitEconomicsEvidence', $event)"
+            @update-negative-reason="
+              emit('updateNegativeConservativeReason', $event)
+            "
+          />
+        </div>
+
+        <div v-if="outcome === 'approve'" class="decision-gaps">
+          <p v-if="optionalGaps?.length" class="optional-gaps">
+            还可以补（不挡立项）：{{ optionalGaps.join("、") }}
+          </p>
+          <div v-if="gaps.length" class="gap-list">
+            <b>还不能立项</b>
+            <ul>
+              <li v-for="gap in gaps" :key="gap.label">
+                <span>{{ gap.label }}</span>
+                <small>{{ gapLocation(gap.panel) }}</small>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -508,6 +557,13 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
   scrollbar-gutter: stable;
 }
 .destination-input {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.unit-economics-wrap,
+.decision-gaps {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);

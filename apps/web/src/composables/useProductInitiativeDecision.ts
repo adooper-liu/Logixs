@@ -3,6 +3,9 @@ import type {
   ProductInitiativeDetailV1,
   ProductInitiativeReviewPointCodeV1,
   ProductInitiativeReturnBasisV1,
+  ProductInitiativeUnitEconomicsBasisV1,
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
 } from "@logix/contracts";
 import {
   computed,
@@ -52,6 +55,60 @@ export const TEAM_OR_ROLE_MAX_LENGTH = 200;
 export const RESOURCE_DESCRIPTION_MAX_LENGTH = 2000;
 export const NEXT_DECISION_QUESTION_MAX_LENGTH = 1000;
 export const VALIDATION_FOCUS_MAX_LENGTH = 2000;
+export const NEGATIVE_CONSERVATIVE_REASON_MAX_LENGTH = 2000;
+
+export const UNIT_ECONOMICS_SCENARIOS = [
+  { code: "baseline", label: "基准情景" },
+  { code: "conservative", label: "保守情景" },
+] as const;
+
+export const UNIT_ECONOMICS_FIELDS = [
+  { code: "salePrice", label: "销售价" },
+  { code: "landedCost", label: "落地成本" },
+  { code: "platformFee", label: "平台费" },
+  { code: "fulfillmentFee", label: "履约费" },
+  { code: "advertisingCost", label: "广告成本" },
+  { code: "returnCost", label: "退货成本" },
+] as const;
+
+export type UnitEconomicsScenarioCode =
+  (typeof UNIT_ECONOMICS_SCENARIOS)[number]["code"];
+export type UnitEconomicsFieldCode =
+  (typeof UNIT_ECONOMICS_FIELDS)[number]["code"];
+
+export interface UnitEconomicsRangeDraftState {
+  min: string;
+  max: string;
+  basis: ProductInitiativeUnitEconomicsBasisV1 | "";
+  evidenceRefs: string[];
+}
+
+export interface UnitEconomicsDraftState {
+  currencyCode: string;
+  scenarios: Record<
+    UnitEconomicsScenarioCode,
+    Record<UnitEconomicsFieldCode, UnitEconomicsRangeDraftState>
+  >;
+}
+
+export interface UnitEconomicsRangeChange {
+  scenario: UnitEconomicsScenarioCode;
+  field: UnitEconomicsFieldCode;
+  endpoint: "min" | "max";
+  value: string;
+}
+
+export interface UnitEconomicsBasisChange {
+  scenario: UnitEconomicsScenarioCode;
+  field: UnitEconomicsFieldCode;
+  basis: ProductInitiativeUnitEconomicsBasisV1 | "";
+}
+
+export interface UnitEconomicsEvidenceChange {
+  scenario: UnitEconomicsScenarioCode;
+  field: UnitEconomicsFieldCode;
+  evidenceId: string;
+}
 
 export interface ProductInitiativeEvidenceDraft {
   sourceName: string;
@@ -79,7 +136,8 @@ export interface ProductInitiativeGap {
     | "objective"
     | "responsibility_resources"
     | "timeline_decision"
-    | "review_points";
+    | "review_points"
+    | "unit_economics";
 }
 
 /** 交给面板渲染的只读视图；`missing` 由本模块唯一计算，面板不重复判定。 */
@@ -104,6 +162,8 @@ export function reviewPointMissing(draft: ReviewPointDraft): boolean {
 export function useProductInitiativeDecision(options: {
   handoffId: MaybeRefOrGetter<string>;
   signalId: MaybeRefOrGetter<string>;
+  marketCode?: MaybeRefOrGetter<string | null | undefined>;
+  channelCode?: MaybeRefOrGetter<string | null | undefined>;
 }) {
   const detail = shallowRef<ProductInitiativeDetailV1 | null>(null);
   const loading = shallowRef(false);
@@ -123,6 +183,12 @@ export function useProductInitiativeDecision(options: {
   const rejectReason = shallowRef("");
   const returnReason = shallowRef("");
   const returnBasis = shallowRef<ProductInitiativeReturnBasisV1 | "">("");
+  const unitEconomicsDraft = reactive<UnitEconomicsDraftState>(
+    emptyUnitEconomicsDraft(),
+  );
+  const negativeConservativeReason = shallowRef("");
+  const unitEconomicsDirty = shallowRef(false);
+  const serverUnitEconomicsPending = shallowRef<Set<string>>(new Set());
   const points = reactive<
     Record<ProductInitiativeReviewPointCodeV1, ReviewPointDraft>
   >({
@@ -159,7 +225,21 @@ export function useProductInitiativeDecision(options: {
   const evidenceCandidates = computed(
     () => detail.value?.evidenceCandidates ?? [],
   );
+  const currencyOptions = computed(() => detail.value?.currencyOptions ?? []);
   const initiative = computed(() => detail.value?.initiative ?? null);
+  const marketCode = computed(() => toValue(options.marketCode) ?? "");
+  const channelCode = computed(() => toValue(options.channelCode) ?? "");
+  const unitEconomicsSnapshot =
+    computed<ProductInitiativeUnitEconomicsSnapshotV1 | null>(() =>
+      unitEconomicsDirty.value
+        ? null
+        : (initiative.value?.unitEconomicsSnapshot ?? null),
+    );
+  const negativeContributionNeedsReason = computed(
+    () =>
+      serverUnitEconomicsPending.value.has("negativeConservativeReason") ||
+      isNegativeContribution(unitEconomicsSnapshot.value),
+  );
   /** 已立项就是终态，界面不再提供任何判断动作。 */
   const decided = computed(
     () =>
@@ -220,11 +300,45 @@ export function useProductInitiativeDecision(options: {
     },
   ]);
 
+  const unitEconomicsGapCodes = computed(() => {
+    const gaps = new Set<string>();
+    if (!marketCode.value) gaps.add("unitEconomics.marketCode");
+    if (!channelCode.value) gaps.add("unitEconomics.channelCode");
+    if (!unitEconomicsDraft.currencyCode) {
+      gaps.add("unitEconomics.currencyCode");
+    }
+    for (const scenario of UNIT_ECONOMICS_SCENARIOS) {
+      for (const field of UNIT_ECONOMICS_FIELDS) {
+        const range = unitEconomicsDraft.scenarios[scenario.code][field.code];
+        const path = `unitEconomics.scenarios.${scenario.code}.${field.code}`;
+        if (!range.min.trim()) gaps.add(`${path}.min`);
+        if (!range.max.trim()) gaps.add(`${path}.max`);
+        if (!range.basis) gaps.add(`${path}.basis`);
+        if (
+          !range.basis ||
+          (range.basis === "evidence" && range.evidenceRefs.length === 0)
+        ) {
+          gaps.add(`${path}.evidenceRefs`);
+        }
+      }
+    }
+    for (const code of serverUnitEconomicsPending.value) gaps.add(code);
+    if (
+      gaps.has("negativeConservativeReason") &&
+      negativeConservativeReason.value.trim()
+    ) {
+      gaps.delete("negativeConservativeReason");
+    }
+    return [...gaps];
+  });
+
   /** 总数和缺口读同一份门槛投影，新增必填时不会再出现 11/5。 */
   const requiredCount = computed(
     () =>
       commitmentRequirements.value.length +
-      reviewPointViews.value.filter((point) => point.gating).length,
+      reviewPointViews.value.filter((point) => point.gating).length +
+      unitEconomicsRequiredCount() +
+      (negativeContributionNeedsReason.value ? 1 : 0),
   );
   const blockingGaps = computed<ProductInitiativeGap[]>(() => [
     ...commitmentRequirements.value
@@ -236,6 +350,10 @@ export function useProductInitiativeDecision(options: {
         label: point.label,
         panel: "review_points" as const,
       })),
+    ...unitEconomicsGapCodes.value.map((code) => ({
+      label: unitEconomicsGapLabel(code),
+      panel: "unit_economics" as const,
+    })),
   ]);
   /**
    * 不挡立项、但补了更扎实的要点。**单独列出来**，不混进"还差 N 项" ——
@@ -305,6 +423,10 @@ export function useProductInitiativeDecision(options: {
     rejectReason.value = "";
     returnReason.value = "";
     returnBasis.value = "";
+    Object.assign(unitEconomicsDraft, emptyUnitEconomicsDraft());
+    negativeConservativeReason.value = "";
+    unitEconomicsDirty.value = false;
+    serverUnitEconomicsPending.value = new Set();
     for (const point of REVIEW_POINTS) {
       points[point.code] = { evidenceRefs: [], conclusion: "" };
     }
@@ -346,6 +468,15 @@ export function useProductInitiativeDecision(options: {
       saved?.outcome === "return_to_market" ? (saved.reason ?? "") : "";
     returnBasis.value =
       saved?.outcome === "return_to_market" ? (saved.returnBasis ?? "") : "";
+    Object.assign(
+      unitEconomicsDraft,
+      unitEconomicsDraftFrom(saved?.unitEconomicsDraft ?? null),
+    );
+    negativeConservativeReason.value = saved?.negativeConservativeReason ?? "";
+    unitEconomicsDirty.value = false;
+    serverUnitEconomicsPending.value = new Set(
+      (saved?.pendingFieldCodes ?? []).filter(isUnitEconomicsPendingCode),
+    );
     for (const point of REVIEW_POINTS) {
       const savedPoint = saved?.reviewPoints.find(
         (item) => item.code === point.code,
@@ -366,6 +497,68 @@ export function useProductInitiativeDecision(options: {
     draft.evidenceRefs = draft.evidenceRefs.includes(evidenceId)
       ? draft.evidenceRefs.filter((id) => id !== evidenceId)
       : [...draft.evidenceRefs, evidenceId];
+  }
+
+  function setUnitEconomicsCurrency(value: string): void {
+    unitEconomicsDraft.currencyCode = value;
+    markUnitEconomicsChanged("unitEconomics.currencyCode");
+  }
+
+  function setUnitEconomicsRangeValue(
+    scenario: UnitEconomicsScenarioCode,
+    field: UnitEconomicsFieldCode,
+    endpoint: "min" | "max",
+    value: string,
+  ): void {
+    unitEconomicsDraft.scenarios[scenario][field][endpoint] = value;
+    markUnitEconomicsChanged(
+      `unitEconomics.scenarios.${scenario}.${field}.${endpoint}`,
+    );
+  }
+
+  function setUnitEconomicsBasis(
+    scenario: UnitEconomicsScenarioCode,
+    field: UnitEconomicsFieldCode,
+    basis: ProductInitiativeUnitEconomicsBasisV1 | "",
+  ): void {
+    const range = unitEconomicsDraft.scenarios[scenario][field];
+    range.basis = basis;
+    if (basis !== "evidence") range.evidenceRefs = [];
+    const path = `unitEconomics.scenarios.${scenario}.${field}`;
+    markUnitEconomicsChanged(`${path}.basis`);
+    if (basis === "assumption") removeServerPending(`${path}.evidenceRefs`);
+  }
+
+  function toggleUnitEconomicsEvidence(
+    scenario: UnitEconomicsScenarioCode,
+    field: UnitEconomicsFieldCode,
+    evidenceId: string,
+  ): void {
+    const range = unitEconomicsDraft.scenarios[scenario][field];
+    range.evidenceRefs = range.evidenceRefs.includes(evidenceId)
+      ? range.evidenceRefs.filter((id) => id !== evidenceId)
+      : [...range.evidenceRefs, evidenceId];
+    markUnitEconomicsChanged(
+      `unitEconomics.scenarios.${scenario}.${field}.evidenceRefs`,
+    );
+  }
+
+  function setNegativeConservativeReason(value: string): void {
+    negativeConservativeReason.value = value;
+  }
+
+  function markUnitEconomicsChanged(code: string): void {
+    unitEconomicsDirty.value = true;
+    removeServerPending(code);
+    removeServerPending("negativeConservativeReason");
+    negativeConservativeReason.value = "";
+  }
+
+  function removeServerPending(code: string): void {
+    if (!serverUnitEconomicsPending.value.has(code)) return;
+    const next = new Set(serverUnitEconomicsPending.value);
+    next.delete(code);
+    serverUnitEconomicsPending.value = next;
   }
 
   /** 登记一条新证据到来源信号；登完刷新候选，让它能被引用。 */
@@ -451,6 +644,16 @@ export function useProductInitiativeDecision(options: {
         ...(chosen === "return_to_market" && returnBasis.value
           ? { returnBasis: returnBasis.value }
           : {}),
+        unitEconomicsDraft: serializeUnitEconomicsDraft(
+          unitEconomicsDraft,
+          channelCode.value,
+        ),
+        ...(negativeConservativeReason.value.trim()
+          ? {
+              negativeConservativeReason:
+                negativeConservativeReason.value.trim(),
+            }
+          : {}),
       });
       // 成功后从服务端重读，不用前端临时状态冒充落库结果。
       await load();
@@ -467,6 +670,7 @@ export function useProductInitiativeDecision(options: {
       return true;
     } catch (caught) {
       const raw = message(caught);
+      rememberServerUnitEconomicsGaps(raw);
       // 冲突意味着别人已经改过这条机会：重读版本，别让人拿着旧版本反复撞同一堵墙。
       // 重读会清空 error，所以说明要放在重读之后写，否则冲突提示会被自己抹掉。
       if (raw.includes(VERSION_CONFLICT)) await load({ keepDraft: true });
@@ -477,12 +681,30 @@ export function useProductInitiativeDecision(options: {
     }
   }
 
+  function rememberServerUnitEconomicsGaps(raw: string): void {
+    const incomplete = raw.match(/PRODUCT_INITIATIVE_INCOMPLETE:\s*([^\r\n]+)/);
+    if (!incomplete?.[1]) return;
+    const next = new Set(serverUnitEconomicsPending.value);
+    for (const code of incomplete[1].split(",")) {
+      const normalized = code.trim();
+      if (isUnitEconomicsPendingCode(normalized)) next.add(normalized);
+    }
+    serverUnitEconomicsPending.value = next;
+  }
+
   return {
     detail,
     initiative,
     decided,
     returnPending,
     evidenceCandidates,
+    currencyOptions,
+    marketCode,
+    channelCode,
+    unitEconomicsDraft,
+    unitEconomicsSnapshot,
+    negativeContributionNeedsReason,
+    negativeConservativeReason,
     loading,
     saving,
     error,
@@ -507,9 +729,151 @@ export function useProductInitiativeDecision(options: {
     load,
     setDestination,
     toggleEvidence,
+    setUnitEconomicsCurrency,
+    setUnitEconomicsRangeValue,
+    setUnitEconomicsBasis,
+    toggleUnitEconomicsEvidence,
+    setNegativeConservativeReason,
     addEvidence,
     decide,
   };
+}
+
+function emptyUnitEconomicsDraft(): UnitEconomicsDraftState {
+  const range = (): UnitEconomicsRangeDraftState => ({
+    min: "",
+    max: "",
+    basis: "",
+    evidenceRefs: [],
+  });
+  return {
+    currencyCode: "",
+    scenarios: {
+      baseline: {
+        salePrice: range(),
+        landedCost: range(),
+        platformFee: range(),
+        fulfillmentFee: range(),
+        advertisingCost: range(),
+        returnCost: range(),
+      },
+      conservative: {
+        salePrice: range(),
+        landedCost: range(),
+        platformFee: range(),
+        fulfillmentFee: range(),
+        advertisingCost: range(),
+        returnCost: range(),
+      },
+    },
+  };
+}
+
+function unitEconomicsDraftFrom(
+  source: ProductInitiativeUnitEconomicsDraftV1 | null,
+): UnitEconomicsDraftState {
+  const draft = emptyUnitEconomicsDraft();
+  draft.currencyCode = source?.currencyCode ?? "";
+  for (const scenario of UNIT_ECONOMICS_SCENARIOS) {
+    for (const field of UNIT_ECONOMICS_FIELDS) {
+      const saved = source?.scenarios?.[scenario.code]?.[field.code];
+      draft.scenarios[scenario.code][field.code] = {
+        min: saved?.min ?? "",
+        max: saved?.max ?? "",
+        basis: saved?.basis ?? "",
+        evidenceRefs: [...(saved?.evidenceRefs ?? [])],
+      };
+    }
+  }
+  return draft;
+}
+
+function serializeUnitEconomicsDraft(
+  state: UnitEconomicsDraftState,
+  channelCode: string,
+): ProductInitiativeUnitEconomicsDraftV1 {
+  const scenarios: NonNullable<
+    ProductInitiativeUnitEconomicsDraftV1["scenarios"]
+  > = {};
+  for (const scenario of UNIT_ECONOMICS_SCENARIOS) {
+    const scenarioDraft: NonNullable<
+      ProductInitiativeUnitEconomicsDraftV1["scenarios"]
+    >[UnitEconomicsScenarioCode] = {};
+    for (const field of UNIT_ECONOMICS_FIELDS) {
+      const range = state.scenarios[scenario.code][field.code];
+      if (
+        !range.min.trim() &&
+        !range.max.trim() &&
+        !range.basis &&
+        range.evidenceRefs.length === 0
+      ) {
+        continue;
+      }
+      scenarioDraft[field.code] = {
+        ...(range.min.trim() ? { min: range.min.trim() } : {}),
+        ...(range.max.trim() ? { max: range.max.trim() } : {}),
+        ...(range.basis ? { basis: range.basis } : {}),
+        ...(range.basis
+          ? { evidenceRefs: [...range.evidenceRefs] }
+          : range.evidenceRefs.length
+            ? { evidenceRefs: [...range.evidenceRefs] }
+            : {}),
+      };
+    }
+    if (Object.keys(scenarioDraft).length > 0) {
+      scenarios[scenario.code] = scenarioDraft;
+    }
+  }
+  return {
+    ...(channelCode ? { channelCode } : {}),
+    ...(state.currencyCode ? { currencyCode: state.currencyCode } : {}),
+    ...(Object.keys(scenarios).length > 0 ? { scenarios } : {}),
+  };
+}
+
+function unitEconomicsRequiredCount(): number {
+  return 3 + UNIT_ECONOMICS_SCENARIOS.length * UNIT_ECONOMICS_FIELDS.length * 4;
+}
+
+function isUnitEconomicsPendingCode(code: string): boolean {
+  return (
+    code === "negativeConservativeReason" || code.startsWith("unitEconomics.")
+  );
+}
+
+export function unitEconomicsGapLabel(code: string): string {
+  if (code === "unitEconomics.marketCode") return "单位经济 · 市场";
+  if (code === "unitEconomics.channelCode") return "单位经济 · 渠道";
+  if (code === "unitEconomics.currencyCode") return "单位经济 · 币种";
+  if (code === "negativeConservativeReason") {
+    return "单位经济 · 仍要投入的理由";
+  }
+  const match = code.match(
+    /^unitEconomics\.scenarios\.(baseline|conservative)\.([^.]+)\.(min|max|basis|evidenceRefs)$/,
+  );
+  if (!match) return code;
+  const scenario = UNIT_ECONOMICS_SCENARIOS.find(
+    (item) => item.code === match[1],
+  )?.label;
+  const field = UNIT_ECONOMICS_FIELDS.find(
+    (item) => item.code === match[2],
+  )?.label;
+  const part = {
+    min: "最低值",
+    max: "最高值",
+    basis: "依据类型",
+    evidenceRefs: "证据引用",
+  }[match[3] as "min" | "max" | "basis" | "evidenceRefs"];
+  return `单位经济 · ${scenario ?? match[1]} · ${field ?? match[2]} · ${part}`;
+}
+
+function isNegativeContribution(
+  snapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null,
+): boolean {
+  return Boolean(
+    snapshot &&
+    /^-/.test(snapshot.scenarios.conservative.contribution.min.trim()),
+  );
 }
 
 const RECEIPTS: Record<ProductInitiativeOutcome, string> = {
@@ -577,14 +941,48 @@ export function initiativeErrorMessage(raw: string): string {
   if (raw.includes("PRODUCT_INITIATIVE_RETURN_PENDING")) {
     return "这条机会正在等待市场接回，暂时不能再作其他判断。";
   }
-  if (raw.includes("PRODUCT_INITIATIVE_INCOMPLETE")) {
-    return "评审要点或目标结果还没齐，不能立项；补齐后再提交。";
+  const incomplete = raw.match(/PRODUCT_INITIATIVE_INCOMPLETE:\s*([^\r\n]+)/);
+  if (incomplete?.[1]) {
+    const labels = incomplete[1]
+      .split(",")
+      .map((code) => code.trim())
+      .map((code) =>
+        isUnitEconomicsPendingCode(code)
+          ? unitEconomicsGapLabel(code)
+          : (PENDING_LABELS[code] ?? code),
+      );
+    return "还不能立项，请补齐：" + labels.join("、");
+  }
+  if (raw.includes("REFERENCE_CURRENCY_RELEASE_UNAVAILABLE")) {
+    return "币种参考数据未接通，当前无法保存单位经济。";
+  }
+  const inactiveCurrency = raw.match(/CURRENCY_INACTIVE:\s*([A-Z]{3})/);
+  if (inactiveCurrency?.[1]) {
+    return "币种 " + inactiveCurrency[1] + " 已停用，请改选 active 币种。";
+  }
+  const unknownCurrency = raw.match(/CURRENCY_UNKNOWN:\s*([A-Z]{3})/);
+  if (unknownCurrency?.[1]) {
+    return "币种 " + unknownCurrency[1] + " 不在当前参考目录中，请重新选择。";
   }
   if (raw.includes("PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND")) {
     return "找不到这条机会的交接，可能已被新版替代。请回队列重新选择。";
   }
   return raw;
 }
+
+const PENDING_LABELS: Record<string, string> = {
+  objective: "目标结果",
+  target_user_and_market: "目标用户与市场",
+  competitive_supply: "竞争供给",
+  price_band_and_margin: "价格带与利润",
+  compliance_risk: "合规风险",
+  responsibility_commitment: "由我对此立项负责",
+  receiving_team_or_role: "承接团队或岗位",
+  resource_description: "资源说明",
+  target_date: "目标日期",
+  next_decision_date: "下一决策日期",
+  next_decision_question: "下一决策问题",
+};
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : "操作失败，请稍后重试";

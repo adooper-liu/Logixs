@@ -321,8 +321,9 @@ describe("ProductSelectionWorkbench", () => {
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeDefined();
-    expect(button.text()).toContain("还差 11 项才能立项");
-    expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
+    expect(button.text()).toContain("还差 61 项才能立项");
+    const gaps = wrapper.findAll(".gap-list li").map((node) => node.text());
+    expect(gaps.slice(0, 11)).toEqual([
       "目标结果在上面的「目标结果」里补",
       "由我对此立项负责在上面的「责任与资源」里补",
       "承接团队或岗位在上面的「责任与资源」里补",
@@ -335,46 +336,25 @@ describe("ProductSelectionWorkbench", () => {
       "价格带与利润在评审要点面板里补",
       "合规风险在评审要点面板里补",
     ]);
+    expect(gaps).toContain("单位经济 · 渠道在上面的「单位经济」里补");
+    expect(gaps).toContain(
+      "单位经济 · 基准情景 · 销售价 · 最低值在上面的「单位经济」里补",
+    );
   });
 
   it("补齐资源承诺、目标结果与四项要点后立项", async () => {
-    listProductOpportunities.mockResolvedValue(acceptedPage());
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([acceptedOpportunityWithChannel()]),
+    );
     const wrapper = await mountPage();
 
-    await wrapper
-      .get('textarea[aria-label="目标结果"]')
-      .setValue("把折叠宠物出行包做成可发布版本");
-    await wrapper.get(".responsibility-check input").setValue(true);
-    await wrapper
-      .get('input[aria-label="承接团队或岗位"]')
-      .setValue("产品开发 / NPI");
-    await wrapper
-      .get('textarea[aria-label="资源说明"]')
-      .setValue("结构工程 1 人，采购验证 1 人");
-    await wrapper.get('input[aria-label="目标日期"]').setValue("2026-11-15");
-    await wrapper
-      .get('input[aria-label="下一决策日期"]')
-      .setValue("2026-10-20");
-    await wrapper
-      .get('textarea[aria-label="下一决策问题"]')
-      .setValue("是否进入 EVT 打样");
-    const labels = ["目标用户与市场", "竞争供给", "价格带与利润", "合规风险"];
-    for (const [index, label] of labels.entries()) {
-      const point = wrapper.findAll(".review-point")[index]!;
-      await point.get(".picker-toggle").trigger("click");
-      await point
-        .get(`input[type="checkbox"][value="${EVIDENCE_ID}"]`)
-        .setValue(true);
-      await wrapper
-        .get(`textarea[aria-label="${label}结论"]`)
-        .setValue(`${label} 的判断`);
-    }
+    await fillApprovalDraft(wrapper);
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeUndefined();
     expect(button.text()).toContain("立项并交给产品开发");
     expect(wrapper.get(".progress-head").text()).toContain(
-      "必填剩 0 · 已齐 11/11",
+      "必填剩 0 · 已齐 62/62",
     );
     await button.trigger("click");
     await flushPromises();
@@ -401,6 +381,64 @@ describe("ProductSelectionWorkbench", () => {
       }),
     );
     expect(wrapper.get('[role="status"]').text()).toContain("已立项");
+  });
+
+  it("负贡献理由缺口写失败后保留行动区和草稿，可就地补理由重提", async () => {
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([acceptedOpportunityWithChannel()]),
+    );
+    decideProductInitiative
+      .mockRejectedValueOnce(
+        new Error(
+          "暂时无法保存本次立项判断（400）：PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason",
+        ),
+      )
+      .mockResolvedValueOnce({});
+    const wrapper = await mountPage();
+    await fillApprovalDraft(wrapper);
+
+    await wrapper.get(".outcome-submit").trigger("click");
+    await flushPromises();
+
+    const alert = wrapper.get('[role="alert"]');
+    expect(alert.text()).toContain("单位经济 · 仍要投入的理由");
+    expect(alert.find("button").exists()).toBe(false);
+    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
+    expect(wrapper.find(".outcome-submit").exists()).toBe(true);
+    expect(
+      (
+        wrapper.get('[aria-label="基准情景 销售价 最低值"]')
+          .element as HTMLInputElement
+      ).value,
+    ).toBe("100.00");
+    expect(
+      (
+        wrapper.get('[aria-label="保守情景 销售价 最高值"]')
+          .element as HTMLInputElement
+      ).value,
+    ).toBe("120.00");
+
+    const reason = wrapper.get('textarea[aria-label="仍要投入的理由"]');
+    await reason.setValue("战略品类入口仍需小规模验证");
+    expect(
+      wrapper.get(".outcome-submit").attributes("disabled"),
+    ).toBeUndefined();
+    await wrapper.get(".outcome-submit").trigger("click");
+    await flushPromises();
+
+    expect(decideProductInitiative).toHaveBeenCalledTimes(2);
+    expect(decideProductInitiative.mock.calls[1]![1]).toEqual(
+      expect.objectContaining({
+        negativeConservativeReason: "战略品类入口仍需小规模验证",
+        unitEconomicsDraft: expect.objectContaining({
+          currencyCode: "CAD",
+          scenarios: expect.objectContaining({
+            baseline: expect.any(Object),
+            conservative: expect.any(Object),
+          }),
+        }),
+      }),
+    );
   });
 
   it("四个去向的原因各存各的，来回切换不丢已写内容", async () => {
@@ -739,13 +777,13 @@ describe("ProductSelectionWorkbench", () => {
     const wrapper = await mountPage();
 
     expect(wrapper.get(".progress-head").text()).toContain(
-      "必填剩 11 · 已齐 0/11",
+      "必填剩 61 · 已齐 1/62",
     );
     expect(wrapper.get(".progress-head__apply").text()).toContain("带入");
     await wrapper.get(".progress-head__apply").trigger("click");
     expect(wrapper.get('[role="status"]').text()).toContain("已自动带入");
     expect(wrapper.get(".progress-head").text()).toContain(
-      "必填剩 10 · 已齐 1/11",
+      "必填剩 60 · 已齐 2/62",
     );
   });
 });
@@ -796,6 +834,20 @@ function acceptedOpportunity(
   });
 }
 
+function acceptedOpportunityWithChannel(): ProductOpportunityV1 {
+  const accepted = acceptedOpportunity();
+  return {
+    ...accepted,
+    handoff: {
+      ...accepted.handoff,
+      channelCode: "Amazon CA",
+      pendingFieldCodes: accepted.handoff.pendingFieldCodes.filter(
+        (code) => code !== "channel_code",
+      ),
+    },
+  };
+}
+
 function acceptedPage(items: ProductOpportunityV1[] = [acceptedOpportunity()]) {
   return {
     contractVersion: "product-opportunity-page.v1",
@@ -817,6 +869,10 @@ function initiativeDetail(overrides: Record<string, unknown> = {}) {
         contentRef: "https://example.test/report",
         recordedAt: "2026-09-27T00:00:00.000Z",
       },
+    ],
+    currencyOptions: [
+      { code: "CAD", name: "Canadian Dollar", minorUnit: 2 },
+      { code: "USD", name: "US Dollar", minorUnit: 2 },
     ],
     ...overrides,
   };
@@ -847,6 +903,66 @@ async function mountPage() {
   });
   await flushPromises();
   return wrapper;
+}
+
+async function fillUnitEconomics(
+  wrapper: Awaited<ReturnType<typeof mountPage>>,
+): Promise<void> {
+  await wrapper.get('[aria-label="单位经济币种"]').setValue("CAD");
+  for (const scenario of ["基准情景", "保守情景"]) {
+    for (const field of [
+      "销售价",
+      "落地成本",
+      "平台费",
+      "履约费",
+      "广告成本",
+      "退货成本",
+    ]) {
+      const minimum = field === "销售价" ? "100.00" : "5.00";
+      const maximum = field === "销售价" ? "120.00" : "10.00";
+      await wrapper
+        .get('[aria-label="' + scenario + " " + field + ' 最低值"]')
+        .setValue(minimum);
+      await wrapper
+        .get('[aria-label="' + scenario + " " + field + ' 最高值"]')
+        .setValue(maximum);
+      await wrapper
+        .get('[aria-label="' + scenario + " " + field + ' 依据类型"]')
+        .setValue("assumption");
+    }
+  }
+}
+
+async function fillApprovalDraft(
+  wrapper: Awaited<ReturnType<typeof mountPage>>,
+): Promise<void> {
+  await wrapper
+    .get('textarea[aria-label="目标结果"]')
+    .setValue("把折叠宠物出行包做成可发布版本");
+  await wrapper.get(".responsibility-check input").setValue(true);
+  await wrapper
+    .get('input[aria-label="承接团队或岗位"]')
+    .setValue("产品开发 / NPI");
+  await wrapper
+    .get('textarea[aria-label="资源说明"]')
+    .setValue("结构工程 1 人，采购验证 1 人");
+  await wrapper.get('input[aria-label="目标日期"]').setValue("2026-11-15");
+  await wrapper.get('input[aria-label="下一决策日期"]').setValue("2026-10-20");
+  await wrapper
+    .get('textarea[aria-label="下一决策问题"]')
+    .setValue("是否进入 EVT 打样");
+  const labels = ["目标用户与市场", "竞争供给", "价格带与利润", "合规风险"];
+  for (const [index, label] of labels.entries()) {
+    const point = wrapper.findAll(".review-point")[index]!;
+    await point.get(".picker-toggle").trigger("click");
+    await point
+      .get(`input[type="checkbox"][value="${EVIDENCE_ID}"]`)
+      .setValue(true);
+    await wrapper
+      .get(`textarea[aria-label="${label}结论"]`)
+      .setValue(`${label} 的判断`);
+  }
+  await fillUnitEconomics(wrapper);
 }
 
 function opportunity(

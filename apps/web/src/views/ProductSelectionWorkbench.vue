@@ -19,6 +19,9 @@ import PageHeader from "../components/ui/PageHeader.vue";
 import {
   useProductInitiativeDecision,
   type ProductInitiativeOutcome,
+  type UnitEconomicsBasisChange,
+  type UnitEconomicsEvidenceChange,
+  type UnitEconomicsRangeChange,
 } from "../composables/useProductInitiativeDecision";
 import { useProductOpportunityWorkbench } from "../composables/useProductOpportunityWorkbench";
 import { applyHandoffToObjective } from "../data/productInitiativeApplyHandoff";
@@ -60,6 +63,7 @@ const initiativeHandoffId = computed(() =>
   accepted.value ? (selected.value?.handoff.handoffId ?? "") : "",
 );
 const {
+  detail: initiativeDetail,
   initiative,
   decided,
   returnPending,
@@ -80,6 +84,13 @@ const {
   blockingGaps,
   optionalGaps,
   evidenceCandidates,
+  currencyOptions,
+  marketCode,
+  channelCode,
+  unitEconomicsDraft,
+  unitEconomicsSnapshot,
+  negativeContributionNeedsReason,
+  negativeConservativeReason,
   loading: readingInitiative,
   saving: deciding,
   error: initiativeError,
@@ -87,11 +98,18 @@ const {
   load: loadInitiative,
   setDestination,
   toggleEvidence,
+  setUnitEconomicsCurrency,
+  setUnitEconomicsRangeValue,
+  setUnitEconomicsBasis,
+  toggleUnitEconomicsEvidence,
+  setNegativeConservativeReason,
   addEvidence: addInitiativeEvidence,
   decide: decideInitiative,
 } = useProductInitiativeDecision({
   handoffId: initiativeHandoffId,
   signalId: computed(() => selected.value?.handoff.signalId ?? ""),
+  marketCode: computed(() => selected.value?.handoff.marketCode),
+  channelCode: computed(() => selected.value?.handoff.channelCode),
 });
 
 /**
@@ -99,7 +117,16 @@ const {
  * 机会的真实状态，照着它填完提交会拿版本 0 去撞冲突。
  */
 const initiativeReady = computed(
-  () => accepted.value && !readingInitiative.value && !initiativeError.value,
+  () =>
+    accepted.value &&
+    !readingInitiative.value &&
+    initiativeDetail.value !== null,
+);
+
+const feedbackCanReload = computed(
+  () =>
+    Boolean(error.value) ||
+    Boolean(initiativeError.value && initiativeDetail.value === null),
 );
 
 // 接收动作与立项判断共用一个反馈位：谁刚失败就显示谁，不静默吞掉。
@@ -162,6 +189,25 @@ function setReturnBasis(value: typeof returnBasis.value): void {
 
 function setObjective(value: string): void {
   objective.value = value;
+}
+
+function updateUnitEconomicsRange(change: UnitEconomicsRangeChange): void {
+  setUnitEconomicsRangeValue(
+    change.scenario,
+    change.field,
+    change.endpoint,
+    change.value,
+  );
+}
+
+function updateUnitEconomicsBasis(change: UnitEconomicsBasisChange): void {
+  setUnitEconomicsBasis(change.scenario, change.field, change.basis);
+}
+
+function updateUnitEconomicsEvidence(
+  change: UnitEconomicsEvidenceChange,
+): void {
+  toggleUnitEconomicsEvidence(change.scenario, change.field, change.evidenceId);
 }
 
 function setConclusion(
@@ -252,7 +298,7 @@ function applyFromHandoff(): void {
     <section v-if="feedbackError" class="feedback feedback--error" role="alert">
       <AlertCircle :size="17" />
       <span>{{ feedbackError }}</span>
-      <button type="button" @click="reload">
+      <button v-if="feedbackCanReload" type="button" @click="reload">
         <RefreshCw :size="15" />重新加载
       </button>
     </section>
@@ -411,6 +457,14 @@ function applyFromHandoff(): void {
           :reconsideration-date="reconsiderationDate"
           :reason="currentReason"
           :return-basis="returnBasis"
+          :market-code="marketCode"
+          :channel-code="channelCode"
+          :currency-options="currencyOptions"
+          :unit-economics-draft="unitEconomicsDraft"
+          :unit-economics-snapshot="unitEconomicsSnapshot"
+          :evidence-candidates="evidenceCandidates"
+          :negative-contribution-needs-reason="negativeContributionNeedsReason"
+          :negative-conservative-reason="negativeConservativeReason"
           :gaps="blockingGaps"
           :optional-gaps="optionalGaps"
           :busy="deciding"
@@ -427,6 +481,11 @@ function applyFromHandoff(): void {
           @update-reconsideration-date="reconsiderationDate = $event"
           @update-reason="setCurrentReason"
           @update-return-basis="setReturnBasis"
+          @update-unit-economics-currency="setUnitEconomicsCurrency"
+          @update-unit-economics-range="updateUnitEconomicsRange"
+          @update-unit-economics-basis="updateUnitEconomicsBasis"
+          @toggle-unit-economics-evidence="updateUnitEconomicsEvidence"
+          @update-negative-conservative-reason="setNegativeConservativeReason"
           @submit="submitDecision"
         />
         <p v-else class="empty">选择一条机会后显示接收动作。</p>

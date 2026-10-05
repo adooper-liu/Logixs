@@ -130,6 +130,80 @@ describe("DecideProductInitiativeService", () => {
     });
     expect(persistDecision).not.toHaveBeenCalled();
   });
+
+  it("用同租户来源信号后补的市场与渠道形成单位经济快照", async () => {
+    const { service, persistDecision, signalLive } = decideHarness({
+      currentVersion: 0,
+      handoffContext: { marketCode: null, channelCode: null },
+      liveContext: { marketCode: "CA", channelCode: "amazon" },
+    });
+
+    await service.execute({
+      tenantId: "t",
+      actorId: "selector-1",
+      handoffId: HANDOFF_ID,
+      command: completeCommand(),
+    });
+
+    expect(signalLive.execute).toHaveBeenCalledWith({
+      tenantId: "t",
+      signalIds: [SIGNAL_ID],
+    });
+    expect(persistDecision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: expect.objectContaining({
+          unitEconomicsSnapshot: expect.objectContaining({
+            marketCode: "CA",
+            channelCode: "amazon",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("交接与当前信号仍缺市场渠道时保留真实缺口且不写入", async () => {
+    const { service, persistDecision } = decideHarness({
+      currentVersion: 0,
+      handoffContext: { marketCode: null, channelCode: null },
+      liveContext: null,
+    });
+
+    await expect(
+      service.execute({
+        tenantId: "t",
+        actorId: "selector-1",
+        handoffId: HANDOFF_ID,
+        command: completeCommand(),
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(persistDecision).not.toHaveBeenCalled();
+  });
+
+  it("交接已有市场渠道时不被当前信号覆盖", async () => {
+    const { service, persistDecision } = decideHarness({
+      currentVersion: 0,
+      handoffContext: { marketCode: "US", channelCode: "amazon" },
+      liveContext: { marketCode: "CA", channelCode: "shopify" },
+    });
+
+    await service.execute({
+      tenantId: "t",
+      actorId: "selector-1",
+      handoffId: HANDOFF_ID,
+      command: completeCommand(),
+    });
+
+    expect(persistDecision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: expect.objectContaining({
+          unitEconomicsSnapshot: expect.objectContaining({
+            marketCode: "US",
+            channelCode: "amazon",
+          }),
+        }),
+      }),
+    );
+  });
 });
 
 describe("GetProductInitiativeService", () => {
@@ -220,6 +294,11 @@ describe("GetProductInitiativeService", () => {
 function decideHarness(input: {
   currentVersion: number;
   currencyStatus?: "active" | "unavailable";
+  handoffContext?: { marketCode: string | null; channelCode: string | null };
+  liveContext?: {
+    marketCode: string | null;
+    channelCode: string | null;
+  } | null;
 }) {
   const persistDecision = vi.fn().mockResolvedValue({
     record: record({ signalId: SIGNAL_ID }),
@@ -233,13 +312,38 @@ function decideHarness(input: {
     findByHandoffId: vi.fn().mockResolvedValue({
       handoff: {
         signalId: SIGNAL_ID,
-        marketCode: "US",
-        channelCode: "amazon",
+        evidenceRefs: [],
+        pendingFieldCodes: [],
+        marketCode: input.handoffContext
+          ? input.handoffContext.marketCode
+          : "US",
+        channelCode: input.handoffContext
+          ? input.handoffContext.channelCode
+          : "amazon",
       },
     }),
   };
   const evidenceReader = {
     execute: vi.fn().mockResolvedValue({ [SIGNAL_ID]: [EVIDENCE_ID] }),
+  };
+  const liveContext =
+    input.liveContext === undefined
+      ? { marketCode: "US", channelCode: "amazon" }
+      : input.liveContext;
+  const signalLive = {
+    execute: vi.fn().mockResolvedValue(
+      liveContext
+        ? [
+            {
+              signalId: SIGNAL_ID,
+              ...liveContext,
+              categoryRef: null,
+              observedFactSummary: null,
+              hypothesis: null,
+            },
+          ]
+        : [],
+    ),
   };
   const service = new DecideProductInitiativeService(
     repository as never,
@@ -251,8 +355,15 @@ function decideHarness(input: {
         currency: input.currencyStatus === "unavailable" ? null : {},
       }),
     } as never,
+    signalLive as never,
   );
-  return { service, persistDecision, opportunities, evidenceReader };
+  return {
+    service,
+    persistDecision,
+    opportunities,
+    evidenceReader,
+    signalLive,
+  };
 }
 
 function record(overrides: Partial<ProductInitiativeRecord>) {

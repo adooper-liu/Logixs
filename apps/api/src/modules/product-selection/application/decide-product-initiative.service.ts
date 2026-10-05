@@ -1,4 +1,9 @@
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Optional,
+} from "@nestjs/common";
 import type {
   ProductInitiativeDecisionCommandV1,
   ProductInitiativeV1,
@@ -11,6 +16,11 @@ import {
   REFERENCE_CURRENCY_DIRECTORY,
   type ReferenceCurrencyDirectoryPort,
 } from "../../master-data";
+import {
+  READ_MARKET_SIGNAL_LIVE,
+  type ReadMarketSignalLivePort,
+} from "../../market-intelligence";
+import { mergeHandoffWithSignalLive } from "../domain/merge-handoff-with-signal";
 import {
   assertProductInitiativeEvidenceRefs,
   prepareProductInitiativeDecision,
@@ -41,6 +51,9 @@ export class DecideProductInitiativeService {
     private readonly evidenceReader: ReadEvidenceRefsPort,
     @Inject(REFERENCE_CURRENCY_DIRECTORY)
     private readonly currencies: ReferenceCurrencyDirectoryPort,
+    @Optional()
+    @Inject(READ_MARKET_SIGNAL_LIVE)
+    private readonly signalLive: ReadMarketSignalLivePort | null = null,
   ) {}
 
   async execute(input: {
@@ -62,6 +75,14 @@ export class DecideProductInitiativeService {
           "PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND",
         );
       }
+      const live = await this.loadLive(
+        input.tenantId,
+        opportunity.handoff.signalId,
+      );
+      const workingHandoff = mergeHandoffWithSignalLive(
+        opportunity.handoff,
+        live,
+      ).display;
       const currencyCode = requestedUnitEconomicsCurrencyCode(
         input.command.unitEconomicsDraft,
       );
@@ -78,8 +99,8 @@ export class DecideProductInitiativeService {
         undefined,
         undefined,
         {
-          marketCode: opportunity.handoff.marketCode ?? null,
-          channelCode: opportunity.handoff.channelCode ?? null,
+          marketCode: workingHandoff.marketCode ?? null,
+          channelCode: workingHandoff.channelCode ?? null,
           currencyResolution,
         },
       );
@@ -103,6 +124,15 @@ export class DecideProductInitiativeService {
     } catch (error) {
       throwProductInitiativeHttpError(error);
     }
+  }
+
+  private async loadLive(tenantId: string, signalId: string) {
+    if (!this.signalLive) return null;
+    const [row] = await this.signalLive.execute({
+      tenantId,
+      signalIds: [signalId],
+    });
+    return row ? { ...row, evidenceRefs: [] } : null;
   }
 }
 

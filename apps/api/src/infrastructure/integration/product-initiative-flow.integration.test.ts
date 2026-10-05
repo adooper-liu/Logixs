@@ -8,9 +8,11 @@ import { PrismaEvidenceRepository } from "../../modules/document-records/infrast
 import { ApplySelectionReturnService } from "../../modules/market-intelligence/application/apply-selection-return.service";
 import {
   normalizeMarketSignalCreate,
+  normalizeMarketSignalUpdate,
   prepareMarketSignalDecision,
 } from "../../modules/market-intelligence/domain/market-signal";
 import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/infrastructure/prisma-market-signal.repository";
+import { ReadMarketSignalLiveService } from "../../modules/market-intelligence/read-market-signal-live.port";
 import type { ProductInitiativeDecisionCommandV1 } from "@logix/contracts";
 import {
   ProductInitiativeConflictError,
@@ -73,6 +75,7 @@ beforeAll(async () => {
     productOpportunities,
     new ReadEvidenceRefsService(new PrismaEvidenceRepository(prisma as never)),
     new PrismaReferenceCurrencyDirectory(prisma as never),
+    new ReadMarketSignalLiveService(marketSignals),
   );
 });
 
@@ -117,6 +120,75 @@ describe("product initiative persistence flow", () => {
         },
       }),
     ).resolves.toMatchObject({ evidenceRefs: [evidenceId] });
+  });
+
+  it("交接后补齐来源信号市场渠道时按工作视图落单位经济且不改交接快照", async () => {
+    const opportunity = await seedOpportunity(true, randomUUID(), {
+      marketCode: null,
+      channelCode: null,
+    });
+    const handoffBefore =
+      await prisma.marketOpportunityHandoff.findUniqueOrThrow({
+        where: { id: opportunity.handoffId },
+      });
+    expect(handoffBefore).toMatchObject({
+      tenantId: opportunity.tenantId,
+      signalId: opportunity.signalId,
+      marketCode: null,
+      channelCode: null,
+    });
+
+    const currentSignal = await marketSignals.findById(
+      opportunity.tenantId,
+      opportunity.signalId,
+    );
+    expect(currentSignal).not.toBeNull();
+    await marketSignals.updateFacts({
+      tenantId: opportunity.tenantId,
+      signalId: opportunity.signalId,
+      actorId: "market-owner",
+      command: normalizeMarketSignalUpdate({
+        contractVersion: "market-signal-update.v1",
+        expectedSignalVersion: currentSignal!.version,
+        marketCode: "CA",
+        channelCode: "amazon",
+        idempotencyKey: `supplement:${opportunity.signalId}`,
+      }),
+    });
+    const evidenceId = await seedSignalEvidence(
+      opportunity.tenantId,
+      opportunity.signalId,
+    );
+
+    const result = await decideInitiatives.execute({
+      tenantId: opportunity.tenantId,
+      actorId: "selector-1",
+      handoffId: opportunity.handoffId,
+      command: completeApproveCommand(evidenceId),
+    });
+
+    expect(result.unitEconomicsSnapshot).toMatchObject({
+      marketCode: "CA",
+      channelCode: "amazon",
+    });
+    await expect(
+      prisma.productInitiative.findFirstOrThrow({
+        where: {
+          tenantId: opportunity.tenantId,
+          handoffId: opportunity.handoffId,
+        },
+      }),
+    ).resolves.toMatchObject({
+      unitEconomicsSnapshot: expect.objectContaining({
+        marketCode: "CA",
+        channelCode: "amazon",
+      }),
+    });
+    await expect(
+      prisma.marketOpportunityHandoff.findUniqueOrThrow({
+        where: { id: opportunity.handoffId },
+      }),
+    ).resolves.toEqual(handoffBefore);
   });
 
   it.each([
@@ -1267,6 +1339,10 @@ describe("product initiative persistence flow", () => {
 async function seedOpportunity(
   accepted = true,
   tenantId: string = randomUUID(),
+  initialContext: {
+    marketCode: string | null;
+    channelCode: string | null;
+  } = { marketCode: "CA", channelCode: "amazon" },
 ): Promise<{
   tenantId: string;
   handoffId: string;
@@ -1280,8 +1356,12 @@ async function seedOpportunity(
       contractVersion: "market-signal-create.v1",
       requestId: signalId,
       title: "加拿大站宠物出行需求上升",
-      marketCode: "CA",
-      channelCode: "amazon",
+      ...(initialContext.marketCode === null
+        ? {}
+        : { marketCode: initialContext.marketCode }),
+      ...(initialContext.channelCode === null
+        ? {}
+        : { channelCode: initialContext.channelCode }),
       idempotencyKey: `create:${signalId}`,
     }),
   });

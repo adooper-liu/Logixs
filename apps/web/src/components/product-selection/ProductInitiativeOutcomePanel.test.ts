@@ -4,6 +4,7 @@ import type { ProductInitiativeReturnBasisV1 } from "@logix/contracts";
 import type {
   ProductInitiativeGap,
   ProductInitiativeOutcome,
+  UnitEconomicsDraftState,
 } from "../../composables/useProductInitiativeDecision";
 import ProductInitiativeOutcomePanel from "./ProductInitiativeOutcomePanel.vue";
 
@@ -19,6 +20,14 @@ interface PanelProps {
   reconsiderationDate: string;
   reason: string;
   returnBasis: ProductInitiativeReturnBasisV1 | "";
+  marketCode: string;
+  channelCode: string;
+  currencyOptions: { code: string; name: string; minorUnit: number | null }[];
+  unitEconomicsDraft: UnitEconomicsDraftState;
+  unitEconomicsSnapshot: null;
+  evidenceCandidates: [];
+  negativeContributionNeedsReason: boolean;
+  negativeConservativeReason: string;
   gaps: ProductInitiativeGap[];
   busy: boolean;
   decided: boolean;
@@ -267,8 +276,46 @@ function defaultProps(): PanelProps {
     reconsiderationDate: "",
     reason: "",
     returnBasis: "",
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyOptions: [{ code: "CAD", name: "Canadian Dollar", minorUnit: 2 }],
+    unitEconomicsDraft: emptyUnitEconomicsDraft(),
+    unitEconomicsSnapshot: null,
+    evidenceCandidates: [],
+    negativeContributionNeedsReason: false,
+    negativeConservativeReason: "",
     gaps: [],
     busy: false,
     decided: false,
+  };
+}
+
+function emptyUnitEconomicsDraft(): UnitEconomicsDraftState {
+  const range = () => ({
+    min: "",
+    max: "",
+    basis: "" as const,
+    evidenceRefs: [],
+  });
+  return {
+    currencyCode: "",
+    scenarios: {
+      baseline: {
+        salePrice: range(),
+        landedCost: range(),
+        platformFee: range(),
+        fulfillmentFee: range(),
+        advertisingCost: range(),
+        returnCost: range(),
+      },
+      conservative: {
+        salePrice: range(),
+        landedCost: range(),
+        platformFee: range(),
+        fulfillmentFee: range(),
+        advertisingCost: range(),
+        returnCost: range(),
+      },
+    },
   };
 }

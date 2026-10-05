@@ -1,4 +1,7 @@
-import type { ProductInitiativeNpiQueueEntryV1 } from "@logix/contracts";
+import type {
+  ProductInitiativeNpiQueueEntryV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
+} from "@logix/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -94,6 +97,47 @@ describe("ProductNpiWorkbench", () => {
       "立项责任人历史交接未记录",
     );
     expect(wrapper.get(".commitment").text()).not.toContain("selector-1");
+  });
+
+  it("NPI 原样展示服务端冻结的单位经济输入、依据与贡献", async () => {
+    const wrapper = await mountWorkbench("h-1");
+    const economics = wrapper.get(".unit-economics-snapshot");
+
+    expect(economics.text()).toContain("CA");
+    expect(economics.text()).toContain("Amazon CA");
+    expect(economics.text()).toContain("CAD");
+    expect(economics.text()).toContain("基准情景");
+    expect(economics.text()).toContain("保守情景");
+    expect(economics.text()).toContain("50.00～95.00");
+    expect(economics.text()).toContain("待验证假设");
+  });
+
+  it("存量 NPI 交接没有单位经济快照时明确显示历史未记录", async () => {
+    listProductInitiativeNpiQueue.mockResolvedValue(
+      page([entry({ unitEconomicsSnapshot: null })]),
+    );
+    const wrapper = await mountWorkbench("h-1");
+
+    expect(wrapper.text()).toContain("单位经济快照（只读）");
+    expect(wrapper.text()).toContain("历史交接未记录");
+    expect(wrapper.find(".unit-economics-snapshot").exists()).toBe(false);
+  });
+
+  it("负贡献快照同时展示立项时冻结的仍要投入理由", async () => {
+    const negative = unitEconomicsSnapshot();
+    negative.scenarios.conservative.contribution.min = "-5.00";
+    listProductInitiativeNpiQueue.mockResolvedValue(
+      page([
+        entry({
+          unitEconomicsSnapshot: negative,
+          negativeConservativeReason: "以小规模验证换取战略品类入口",
+        }),
+      ]),
+    );
+    const wrapper = await mountWorkbench("h-1");
+
+    expect(wrapper.text()).toContain("保守情景仍要投入的理由");
+    expect(wrapper.text()).toContain("以小规模验证换取战略品类入口");
   });
 
   it("中栏展示阶段轨与齐半缺，未领取落在概念", async () => {
@@ -244,6 +288,8 @@ function entry(options: {
   claimed?: boolean;
   claimedBy?: string;
   responsibilityAccepted?: true | null;
+  unitEconomicsSnapshot?: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  negativeConservativeReason?: string | null;
 }): ProductInitiativeNpiQueueEntryV1 {
   const handoffId = options.handoffId ?? "h-1";
   return {
@@ -266,6 +312,11 @@ function entry(options: {
       targetDate: "2026-11-15",
       nextDecisionDate: "2026-10-20",
       nextDecisionQuestion: "是否进入 EVT 打样",
+      unitEconomicsSnapshot:
+        options.unitEconomicsSnapshot === undefined
+          ? unitEconomicsSnapshot()
+          : options.unitEconomicsSnapshot,
+      negativeConservativeReason: options.negativeConservativeReason ?? null,
       reviewPoints: [
         {
           code: "target_user_and_market",
@@ -296,5 +347,38 @@ function entry(options: {
         : null,
     initiativeVersion: 1,
     initiativeDestination: "handed_off",
+  };
+}
+
+function unitEconomicsSnapshot(): ProductInitiativeUnitEconomicsSnapshotV1 {
+  const price = {
+    min: "100.00",
+    max: "120.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const cost = {
+    min: "5.00",
+    max: "10.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const scenario = () => ({
+    salePrice: { ...price },
+    landedCost: { ...cost },
+    platformFee: { ...cost },
+    fulfillmentFee: { ...cost },
+    advertisingCost: { ...cost },
+    returnCost: { ...cost },
+    contribution: { min: "50.00", max: "95.00" },
+  });
+  return {
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyCode: "CAD",
+    scenarios: {
+      baseline: scenario(),
+      conservative: scenario(),
+    },
   };
 }

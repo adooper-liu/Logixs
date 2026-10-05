@@ -2,6 +2,7 @@
 import { FileText } from "@lucide/vue";
 import type { ProductInitiativeNpiQueueEntryV1 } from "@logix/contracts";
 import { REVIEW_POINTS } from "../../composables/useProductInitiativeDecision";
+import ProductInitiativeUnitEconomicsSnapshot from "../product-selection/ProductInitiativeUnitEconomicsSnapshot.vue";
 
 /**
  * 立项快照：选品交接时锁定的原样内容，**只读**。
@@ -83,6 +84,16 @@ function pointLabel(code: string): string {
       <p v-if="entry.handoff.reviewPoints.length === 0" class="empty">
         交接快照里没有评审要点
       </p>
+    </div>
+
+    <div class="block">
+      <h3>单位经济快照（只读）</h3>
+      <ProductInitiativeUnitEconomicsSnapshot
+        v-if="entry.handoff.unitEconomicsSnapshot"
+        :snapshot="entry.handoff.unitEconomicsSnapshot"
+        :negative-conservative-reason="entry.handoff.negativeConservativeReason"
+      />
+      <p v-else class="empty">历史交接未记录</p>
     </div>
 
     <p class="discipline">
