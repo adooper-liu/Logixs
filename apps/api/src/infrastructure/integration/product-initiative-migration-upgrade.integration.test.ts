@@ -29,6 +29,8 @@ const ATTRIBUTES_MIGRATION = "20260927210000_add_product_attributes";
 const NOMINATION_MIGRATION = "20260928120000_add_supplier_nomination";
 const RESOURCE_COMMITMENT_MIGRATION =
   "20261004160000_add_product_initiative_resource_commitment";
+const UNIT_ECONOMICS_MIGRATION =
+  "20261004200000_add_product_initiative_unit_economics";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -109,6 +111,12 @@ beforeAll(async () => {
     `DROP TABLE IF EXISTS "${schemaName}"."product_initiative"`,
   );
   await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."currency_code_reference"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `DROP FUNCTION IF EXISTS "${schemaName}"."product_initiative_unit_economics_snapshot_is_valid"(jsonb,text,boolean)`,
+  );
+  await prisma.$executeRawUnsafe(
     `DELETE FROM "${schemaName}"."_prisma_migrations" WHERE "migration_name" = ANY($1)`,
     [
       INITIATIVE_MIGRATION,
@@ -118,6 +126,7 @@ beforeAll(async () => {
       ATTRIBUTES_MIGRATION,
       NOMINATION_MIGRATION,
       RESOURCE_COMMITMENT_MIGRATION,
+      UNIT_ECONOMICS_MIGRATION,
     ],
   );
 
@@ -414,6 +423,367 @@ describe("resource commitment migration upgrade", () => {
     ).rejects.toThrow(/product_initiative_resource_commitment_shape_check/);
   });
 });
+
+describe("unit economics migration upgrade", () => {
+  const upgradeSchema = `it_pi_economics_upgrade_${process.pid}_${randomUUID().replaceAll("-", "")}`;
+  const upgradeDatabaseUrl = withSchema(BASE_DATABASE_URL, upgradeSchema);
+  let upgradePrisma: PrismaClient;
+  let legacyInitiativeId: string;
+  let legacyHandoffSnapshotId: string;
+  let seededTenantId: string;
+
+  beforeAll(async () => {
+    deployAt(upgradeDatabaseUrl);
+    upgradePrisma = new PrismaClient({
+      adapter: createPostgresAdapter(upgradeDatabaseUrl, upgradeSchema),
+    });
+    await upgradePrisma.$connect();
+
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative"
+         DROP CONSTRAINT "product_initiative_unit_economics_draft_shape_check",
+         DROP CONSTRAINT "product_initiative_unit_economics_snapshot_shape_check",
+         DROP CONSTRAINT "product_initiative_unit_economics_terminal_check",
+         DROP CONSTRAINT "product_initiative_negative_conservative_reason_check",
+         DROP COLUMN "unit_economics_draft",
+         DROP COLUMN "unit_economics_snapshot",
+         DROP COLUMN "negative_conservative_reason"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative_handoff"
+         DROP CONSTRAINT "product_initiative_handoff_unit_economics_shape_check",
+         DROP COLUMN "unit_economics_snapshot",
+         DROP COLUMN "negative_conservative_reason"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DROP TABLE "${upgradeSchema}"."currency_code_reference"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DROP FUNCTION "${upgradeSchema}"."product_initiative_unit_economics_snapshot_is_valid"(jsonb,text,boolean)`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" DROP CONSTRAINT "product_initiative_pending_codes_check"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" ADD CONSTRAINT "product_initiative_pending_codes_check" CHECK (
+        "pending_field_codes" <@ ARRAY[
+          'objective','target_user_and_market','competitive_supply','price_band_and_margin',
+          'compliance_risk','customer_feedback','defer_reason','responsibility_commitment',
+          'receiving_team_or_role','resource_description','target_date','next_decision_date',
+          'next_decision_question','validation_focus','reconsideration_date','reject_reason',
+          'return_basis','return_reason'
+        ]::TEXT[]
+      )`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DELETE FROM "${upgradeSchema}"."_prisma_migrations" WHERE "migration_name" = $1`,
+      UNIT_ECONOMICS_MIGRATION,
+    );
+
+    const repository = new PrismaMarketSignalRepository(upgradePrisma as never);
+    const seeded = await seedOpportunityForUpgrade(repository, upgradePrisma);
+    seededTenantId = seeded.tenantId;
+    legacyInitiativeId = randomUUID();
+    legacyHandoffSnapshotId = randomUUID();
+    await upgradePrisma.$executeRawUnsafe(
+      `INSERT INTO "${upgradeSchema}"."product_initiative" (
+         "id","tenant_id","handoff_id","version","outcome","completion_state",
+         "current_destination","responsible_actor_id","responsibility_accepted",
+         "receiving_team_or_role","resource_description","target_date","next_decision_date",
+         "next_decision_question","objective","review_points","pending_field_codes",
+         "acted_by","idempotency_key","payload_hash"
+       ) VALUES ($1,$2,$3,1,'approve','completed','handed_off','selector-legacy',true,
+         'NPI','legacy resource','2026-11-15','2026-10-20','是否进入 EVT','legacy objective',
+         '[]'::jsonb,'{}'::text[],'selector-legacy',$4,repeat('a',64))`,
+      legacyInitiativeId,
+      seededTenantId,
+      seeded.handoffId,
+      `legacy-economics:${legacyInitiativeId}`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `INSERT INTO "${upgradeSchema}"."product_initiative_handoff" (
+         "id","tenant_id","initiative_id","signal_id","version","market_code","objective",
+         "responsible_actor_id","responsibility_accepted","receiving_team_or_role",
+         "resource_description","target_date","next_decision_date","next_decision_question",
+         "review_points","evidence_refs","created_by","idempotency_key","payload_hash"
+       ) SELECT $1,$2,$3,"signal_id",1,'CA','legacy objective','selector-legacy',true,
+         'NPI','legacy resource','2026-11-15','2026-10-20','是否进入 EVT','[]'::jsonb,
+         '{}'::uuid[],'selector-legacy',$4,repeat('b',64)
+       FROM "${upgradeSchema}"."market_opportunity_handoff" WHERE "id" = $5`,
+      legacyHandoffSnapshotId,
+      seededTenantId,
+      legacyInitiativeId,
+      `legacy-economics-handoff:${legacyInitiativeId}`,
+      seeded.handoffId,
+    );
+
+    deployAt(upgradeDatabaseUrl);
+  }, 180_000);
+
+  afterAll(async () => {
+    await upgradePrisma?.$disconnect();
+    const admin = new PrismaClient({
+      adapter: createPostgresAdapter(
+        withSchema(BASE_DATABASE_URL, "public"),
+        "public",
+      ),
+    });
+    try {
+      await admin.$executeRawUnsafe(
+        `DROP SCHEMA IF EXISTS "${upgradeSchema}" CASCADE`,
+      );
+    } finally {
+      await admin.$disconnect();
+    }
+  });
+
+  it("preserves legacy nulls without fabricating unit economics", async () => {
+    await expect(
+      upgradePrisma.productInitiative.findUniqueOrThrow({
+        where: { id: legacyInitiativeId },
+      }),
+    ).resolves.toMatchObject({
+      unitEconomicsDraft: null,
+      unitEconomicsSnapshot: null,
+      negativeConservativeReason: null,
+    });
+    await expect(
+      upgradePrisma.productInitiativeHandoff.findUniqueOrThrow({
+        where: { id: legacyHandoffSnapshotId },
+      }),
+    ).resolves.toMatchObject({
+      unitEconomicsSnapshot: null,
+      negativeConservativeReason: null,
+    });
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          outcome: "returned_from_npi",
+          currentDestination: "returned_from_npi",
+          reason: "NPI 验证后退回选品",
+        },
+      }),
+    ).resolves.toMatchObject({
+      outcome: "returned_from_npi",
+      unitEconomicsDraft: null,
+      unitEconomicsSnapshot: null,
+    });
+  });
+
+  it("accepts a complete snapshot group and rejects a new incomplete approve", async () => {
+    const snapshot = completeUnitEconomicsSnapshot();
+    await expect(
+      upgradePrisma.productInitiativeHandoff.update({
+        where: { id: legacyHandoffSnapshotId },
+        data: {
+          unitEconomicsSnapshot: {
+            marketCode: "CA",
+            channelCode: "amazon",
+            currencyCode: "USD",
+            scenarios: { baseline: {}, conservative: {} },
+          },
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_handoff_unit_economics_shape_check/);
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          unitEconomicsDraft: unitEconomicsDraft(),
+          unitEconomicsSnapshot: snapshot,
+        },
+      }),
+    ).resolves.toMatchObject({ unitEconomicsSnapshot: snapshot });
+    await expect(
+      upgradePrisma.productInitiativeHandoff.update({
+        where: { id: legacyHandoffSnapshotId },
+        data: { unitEconomicsSnapshot: snapshot },
+      }),
+    ).resolves.toMatchObject({ unitEconomicsSnapshot: snapshot });
+
+    const repository = new PrismaMarketSignalRepository(upgradePrisma as never);
+    const second = await seedOpportunityForUpgrade(repository, upgradePrisma);
+    await expect(
+      upgradePrisma.$executeRawUnsafe(
+        `INSERT INTO "${upgradeSchema}"."product_initiative" (
+           "id","tenant_id","handoff_id","version","outcome","completion_state",
+           "current_destination","responsible_actor_id","responsibility_accepted",
+           "receiving_team_or_role","resource_description","target_date","next_decision_date",
+           "next_decision_question","objective","review_points","pending_field_codes",
+           "acted_by","idempotency_key","payload_hash"
+         ) VALUES ($1,$2,$3,1,'approve','completed','handed_off','selector-new',true,
+           'NPI','resource','2026-11-15','2026-10-20','是否进入 EVT','objective',
+           '[]'::jsonb,'{}'::text[],'selector-new',$4,repeat('c',64))`,
+        randomUUID(),
+        second.tenantId,
+        second.handoffId,
+        `new-incomplete:${randomUUID()}`,
+      ),
+    ).rejects.toThrow(/product_initiative_unit_economics_terminal_check/);
+  });
+
+  it("rejects malformed ranges, evidence semantics and reason combinations", async () => {
+    const invalidCases = invalidUnitEconomicsSnapshots();
+    for (const invalid of invalidCases) {
+      await expect(
+        upgradePrisma.productInitiativeHandoff.update({
+          where: { id: legacyHandoffSnapshotId },
+          data: {
+            unitEconomicsSnapshot: invalid.snapshot,
+            negativeConservativeReason: invalid.reason,
+          },
+        }),
+        invalid.name,
+      ).rejects.toThrow(
+        /product_initiative_handoff_unit_economics_shape_check/,
+      );
+    }
+
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          unitEconomicsSnapshot: invalidCases[0].snapshot,
+          negativeConservativeReason: invalidCases[0].reason,
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_unit_economics_snapshot_shape_check/);
+  });
+
+  it("requires a negative contribution reason for returned current state", async () => {
+    const snapshot = completeUnitEconomicsSnapshot();
+    snapshot.scenarios.conservative.contribution.min = "-1";
+
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          outcome: "returned_from_npi",
+          unitEconomicsDraft: unitEconomicsDraft(),
+          unitEconomicsSnapshot: snapshot,
+          negativeConservativeReason: null,
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_unit_economics_snapshot_shape_check/);
+  });
+});
+
+function invalidUnitEconomicsSnapshots() {
+  const invalidAmount = completeUnitEconomicsSnapshot();
+  invalidAmount.scenarios.baseline.salePrice.min = "garbage";
+
+  const reversedRange = completeUnitEconomicsSnapshot();
+  reversedRange.scenarios.baseline.landedCost.min = "3";
+  reversedRange.scenarios.baseline.landedCost.max = "2";
+
+  const assumptionWithEvidence = completeUnitEconomicsSnapshot();
+  assumptionWithEvidence.scenarios.baseline.platformFee.evidenceRefs = [
+    "00000000-0000-4000-8000-000000000001",
+  ];
+
+  const evidenceWithoutReference = completeUnitEconomicsSnapshot();
+  evidenceWithoutReference.scenarios.baseline.fulfillmentFee.basis = "evidence";
+
+  const malformedReference = completeUnitEconomicsSnapshot();
+  malformedReference.scenarios.baseline.advertisingCost.basis = "evidence";
+  malformedReference.scenarios.baseline.advertisingCost.evidenceRefs = [
+    "not-a-uuid",
+  ];
+
+  const invalidContribution = completeUnitEconomicsSnapshot();
+  invalidContribution.scenarios.conservative.contribution.min = "garbage";
+
+  const negativeWithoutReason = completeUnitEconomicsSnapshot();
+  negativeWithoutReason.scenarios.conservative.contribution.min = "-1";
+
+  return [
+    { name: "invalid min", snapshot: invalidAmount, reason: null },
+    { name: "min above max", snapshot: reversedRange, reason: null },
+    {
+      name: "assumption with evidence",
+      snapshot: assumptionWithEvidence,
+      reason: null,
+    },
+    {
+      name: "evidence without reference",
+      snapshot: evidenceWithoutReference,
+      reason: null,
+    },
+    {
+      name: "malformed evidence UUID",
+      snapshot: malformedReference,
+      reason: null,
+    },
+    {
+      name: "invalid contribution",
+      snapshot: invalidContribution,
+      reason: null,
+    },
+    {
+      name: "negative contribution without reason",
+      snapshot: negativeWithoutReason,
+      reason: null,
+    },
+    {
+      name: "non-negative contribution with reason",
+      snapshot: completeUnitEconomicsSnapshot(),
+      reason: "不应存在的负值理由",
+    },
+  ];
+}
+
+function unitEconomicsDraft() {
+  const snapshot = completeUnitEconomicsSnapshot();
+  const withoutContribution = (
+    scenario: typeof snapshot.scenarios.baseline,
+  ) => ({
+    salePrice: scenario.salePrice,
+    landedCost: scenario.landedCost,
+    platformFee: scenario.platformFee,
+    fulfillmentFee: scenario.fulfillmentFee,
+    advertisingCost: scenario.advertisingCost,
+    returnCost: scenario.returnCost,
+  });
+  return {
+    marketCode: snapshot.marketCode,
+    channelCode: snapshot.channelCode,
+    currencyCode: snapshot.currencyCode,
+    scenarios: {
+      baseline: withoutContribution(snapshot.scenarios.baseline),
+      conservative: withoutContribution(snapshot.scenarios.conservative),
+    },
+  };
+}
+
+function completeUnitEconomicsSnapshot() {
+  const cost: {
+    min: string;
+    max: string;
+    basis: "evidence" | "assumption";
+    evidenceRefs: string[];
+  } = {
+    min: "1",
+    max: "2",
+    basis: "assumption",
+    evidenceRefs: [],
+  };
+  const scenario = {
+    salePrice: { ...cost, min: "20", max: "30" },
+    landedCost: cost,
+    platformFee: cost,
+    fulfillmentFee: cost,
+    advertisingCost: cost,
+    returnCost: cost,
+    contribution: { min: "10", max: "25" },
+  };
+  return {
+    marketCode: "CA",
+    channelCode: "amazon",
+    currencyCode: "USD",
+    scenarios: { baseline: scenario, conservative: scenario },
+  };
+}
 
 function deployAt(databaseUrl: string): void {
   const pnpmEntrypoint = process.env.npm_execpath;

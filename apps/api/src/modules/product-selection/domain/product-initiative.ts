@@ -7,8 +7,14 @@ import type {
   ProductInitiativePendingFieldCodeV1,
   ProductInitiativeReturnBasisV1,
   ProductInitiativeReviewPointCodeV1,
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
   MarketSelectionReturnTakebackCommandV1,
 } from "@logix/contracts";
+import {
+  prepareProductInitiativeUnitEconomics,
+  type ProductInitiativeUnitEconomicsContext,
+} from "./unit-economics";
 
 export interface ProductInitiativeReviewPoint {
   code: ProductInitiativeReviewPointCodeV1;
@@ -32,6 +38,9 @@ export interface ProductInitiativeDraft {
   nextDecisionQuestion: string | null;
   validationFocus: string | null;
   reconsiderationDate: string | null;
+  unitEconomicsDraft: ProductInitiativeUnitEconomicsDraftV1 | null;
+  unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  negativeConservativeReason: string | null;
 }
 
 /** 该机会上已存在的立项判断版本；0 表示还没有立项判断。 */
@@ -55,6 +64,9 @@ export interface PreparedProductInitiativeDecision {
   nextDecisionQuestion: string | null;
   validationFocus: string | null;
   reconsiderationDate: string | null;
+  unitEconomicsDraft: ProductInitiativeUnitEconomicsDraftV1 | null;
+  unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  negativeConservativeReason: string | null;
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   reason: string | null;
@@ -155,6 +167,11 @@ export function prepareProductInitiativeDecision(
   command: ProductInitiativeDecisionCommandV1,
   gate: readonly ProductInitiativeReviewPointCodeV1[] = PRODUCT_INITIATIVE_GATE,
   todayUtc = new Date().toISOString().slice(0, 10),
+  unitEconomicsContext: ProductInitiativeUnitEconomicsContext = {
+    marketCode: null,
+    channelCode: null,
+    currencyResolution: null,
+  },
 ): PreparedProductInitiativeDecision {
   if (command.contractVersion !== "product-initiative-decision.v1") {
     invalid("contractVersion");
@@ -169,19 +186,31 @@ export function prepareProductInitiativeDecision(
   const initiativeId = uuid(command.requestId, "requestId");
 
   const draft = draftFromCommand(command);
-  const outcome = command.outcome;
-  const pendingFieldCodes = productInitiativePendingFieldCodes(draft, {
-    outcome,
-    deferReason: draft.deferReason,
-    rejectReason: draft.rejectReason,
-    returnReason: draft.returnReason,
-    returnBasis: draft.returnBasis ?? null,
+  const unitEconomics = prepareProductInitiativeUnitEconomics({
+    draft: command.unitEconomicsDraft,
+    negativeConservativeReason: command.negativeConservativeReason,
+    context: unitEconomicsContext,
   });
+  draft.unitEconomicsDraft = unitEconomics.draft;
+  draft.unitEconomicsSnapshot = unitEconomics.snapshot;
+  draft.negativeConservativeReason = unitEconomics.negativeConservativeReason;
+  const outcome = command.outcome;
+  const pendingFieldCodes = [
+    ...productInitiativePendingFieldCodes(draft, {
+      outcome,
+      deferReason: draft.deferReason,
+      rejectReason: draft.rejectReason,
+      returnReason: draft.returnReason,
+      returnBasis: draft.returnBasis ?? null,
+    }),
+    ...unitEconomics.pendingFieldCodes,
+  ];
 
   if (outcome === "approve") {
     // 立项是硬门槛：门槛项没齐就明确失败，并说明还差哪几项。
-    const blocking = pendingFieldCodes.filter((code) =>
-      isApproveGateCode(code, gate),
+    const blocking = pendingFieldCodes.filter(
+      (code) =>
+        isUnitEconomicsPendingFieldCode(code) || isApproveGateCode(code, gate),
     );
     if (blocking.length > 0) {
       throw new ProductInitiativeValidationError(
@@ -219,6 +248,9 @@ export function prepareProductInitiativeDecision(
       outcome === "approve" ? draft.nextDecisionQuestion : null,
     validationFocus: outcome === "defer" ? draft.validationFocus : null,
     reconsiderationDate: outcome === "defer" ? draft.reconsiderationDate : null,
+    unitEconomicsDraft: draft.unitEconomicsDraft,
+    unitEconomicsSnapshot: draft.unitEconomicsSnapshot,
+    negativeConservativeReason: draft.negativeConservativeReason,
     objective: draft.objective,
     reviewPoints: draft.reviewPoints,
     reason,
@@ -231,12 +263,25 @@ export function prepareProductInitiativeDecision(
 }
 
 export function assertProductInitiativeEvidenceRefs(
-  decision: Pick<PreparedProductInitiativeDecision, "reviewPoints">,
+  decision: Pick<
+    PreparedProductInitiativeDecision,
+    "reviewPoints" | "unitEconomicsDraft"
+  >,
   availableEvidenceRefs: readonly string[],
 ): void {
   const available = new Set(availableEvidenceRefs);
+  const unitEconomicsRefs = UNIT_ECONOMICS_SCENARIO_KEYS.flatMap((scenario) =>
+    UNIT_ECONOMICS_AMOUNT_KEYS.flatMap(
+      (amount) =>
+        decision.unitEconomicsDraft?.scenarios?.[scenario]?.[amount]
+          ?.evidenceRefs ?? [],
+    ),
+  );
   const invalid = [
-    ...new Set(decision.reviewPoints.flatMap((point) => point.evidenceRefs)),
+    ...new Set([
+      ...decision.reviewPoints.flatMap((point) => point.evidenceRefs),
+      ...unitEconomicsRefs,
+    ]),
   ]
     .filter((evidenceRef) => !available.has(evidenceRef))
     .sort();
@@ -304,7 +349,18 @@ function draftFromCommand(
       command.reconsiderationDate,
       "reconsiderationDate",
     ),
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
   };
+}
+
+function isUnitEconomicsPendingFieldCode(
+  code: ProductInitiativePendingFieldCodeV1,
+): boolean {
+  return (
+    code === "negativeConservativeReason" || code.startsWith("unitEconomics.")
+  );
 }
 
 function isApproveGateCode(
@@ -467,6 +523,15 @@ const APPROVE_REQUIRED_CODES = new Set<ProductInitiativePendingFieldCodeV1>([
   "next_decision_date",
   "next_decision_question",
 ]);
+const UNIT_ECONOMICS_SCENARIO_KEYS = ["baseline", "conservative"] as const;
+const UNIT_ECONOMICS_AMOUNT_KEYS = [
+  "salePrice",
+  "landedCost",
+  "platformFee",
+  "fulfillmentFee",
+  "advertisingCost",
+  "returnCost",
+] as const;
 const OUTCOMES = new Set<string>([
   "approve",
   "defer",

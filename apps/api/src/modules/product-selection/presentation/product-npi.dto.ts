@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import type { ProductInitiativeClaimCommandV1 } from "@logix/contracts";
+import type {
+  ProductInitiativeClaimCommandV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
+} from "@logix/contracts";
 import { ProductInitiativeReviewPointDto } from "./product-initiative.dto";
 
 export class ProductInitiativeHandoffResponseDto {
@@ -22,6 +25,10 @@ export class ProductInitiativeHandoffResponseDto {
   @ApiPropertyOptional({ nullable: true, format: "date" }) nextDecisionDate!:
     string | null;
   @ApiPropertyOptional({ nullable: true }) nextDecisionQuestion!: string | null;
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  unitEconomicsSnapshot!: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  @ApiPropertyOptional({ nullable: true })
+  negativeConservativeReason!: string | null;
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
   @ApiProperty({ type: [String] }) evidenceRefs!: string[];

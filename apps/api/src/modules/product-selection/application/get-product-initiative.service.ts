@@ -4,6 +4,10 @@ import {
   READ_EVIDENCE_REFS,
   type ReadEvidenceRefsPort,
 } from "../../document-records";
+import {
+  REFERENCE_CURRENCY_DIRECTORY,
+  type ReferenceCurrencyDirectoryPort,
+} from "../../master-data";
 import { ProductInitiativeNotFoundError } from "../domain/product-initiative";
 import {
   PRODUCT_INITIATIVE_REPOSITORY,
@@ -28,6 +32,8 @@ export class GetProductInitiativeService {
     private readonly opportunities: ProductOpportunityRepository,
     @Inject(READ_EVIDENCE_REFS)
     private readonly evidenceReader: ReadEvidenceRefsPort,
+    @Inject(REFERENCE_CURRENCY_DIRECTORY)
+    private readonly currencies: ReferenceCurrencyDirectoryPort,
   ) {}
 
   async execute(input: {
@@ -56,14 +62,24 @@ export class GetProductInitiativeService {
           "PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND",
         );
       }
-      const candidates = await this.evidenceReader.executeDetails({
-        tenantId: input.tenantId,
-        subjectType: MARKET_SIGNAL_SUBJECT,
-        subjectIds: [signalId],
-      });
+      const [candidates, currencies] = await Promise.all([
+        this.evidenceReader.executeDetails({
+          tenantId: input.tenantId,
+          subjectType: MARKET_SIGNAL_SUBJECT,
+          subjectIds: [signalId],
+        }),
+        this.currencies.listActive(),
+      ]);
       return {
         handoffId: input.handoffId,
         initiative: record ? toProductInitiativeV1(record) : null,
+        currencyOptions: currencies
+          .map((currency) => ({
+            code: currency.alphaCode,
+            name: currency.currencyName,
+            minorUnit: currency.minorUnit,
+          }))
+          .sort((left, right) => left.code.localeCompare(right.code)),
         evidenceCandidates: candidates.map((candidate) => ({
           evidenceId: candidate.evidenceId,
           sourceName: candidate.sourceName,

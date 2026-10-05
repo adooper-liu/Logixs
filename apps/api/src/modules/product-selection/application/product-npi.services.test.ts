@@ -35,6 +35,8 @@ function entry(
       targetDate: null,
       nextDecisionDate: null,
       nextDecisionQuestion: null,
+      unitEconomicsSnapshot: null,
+      negativeConservativeReason: null,
       reviewPoints: [
         {
           code: "target_user_and_market",
@@ -166,6 +168,7 @@ describe("ListNpiQueueService", () => {
         "idempotencyKey",
         "initiativeId",
         "marketCode",
+        "negativeConservativeReason",
         "nextDecisionDate",
         "nextDecisionQuestion",
         "objective",
@@ -176,6 +179,7 @@ describe("ListNpiQueueService", () => {
         "reviewPoints",
         "signalId",
         "targetDate",
+        "unitEconomicsSnapshot",
         "userProblem",
         "version",
       ].sort(),

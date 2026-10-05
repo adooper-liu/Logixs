@@ -6,6 +6,7 @@ import {
 import { DocumentRecordsModule } from "../document-records";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { MarketIntelligenceModule } from "../market-intelligence";
+import { MasterDataModule } from "../master-data";
 import { AdvanceProductDefinitionService } from "./application/advance-product-definition.service";
 import { ClaimProductInitiativeService } from "./application/claim-product-initiative.service";
 import { GetProductDefinitionService } from "./application/get-product-definition.service";
@@ -31,7 +32,12 @@ import { ProductOpportunitiesController } from "./presentation/product-opportuni
 import { SelectionReturnTakebackController } from "./presentation/selection-return-takeback.controller";
 
 @Module({
-  imports: [IdentityModule, DocumentRecordsModule, MarketIntelligenceModule],
+  imports: [
+    IdentityModule,
+    DocumentRecordsModule,
+    MarketIntelligenceModule,
+    MasterDataModule,
+  ],
   controllers: [
     ProductOpportunitiesController,
     ProductInitiativesController,

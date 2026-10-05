@@ -46,6 +46,62 @@
         "returned_from_npi"
       ]
     },
+    "ProductInitiativeUnitEconomicsPendingFieldCodeV1": {
+      "enum": [
+        "unitEconomics.marketCode",
+        "unitEconomics.channelCode",
+        "unitEconomics.currencyCode",
+        "unitEconomics.scenarios.baseline.salePrice.min",
+        "unitEconomics.scenarios.baseline.salePrice.max",
+        "unitEconomics.scenarios.baseline.salePrice.basis",
+        "unitEconomics.scenarios.baseline.salePrice.evidenceRefs",
+        "unitEconomics.scenarios.baseline.landedCost.min",
+        "unitEconomics.scenarios.baseline.landedCost.max",
+        "unitEconomics.scenarios.baseline.landedCost.basis",
+        "unitEconomics.scenarios.baseline.landedCost.evidenceRefs",
+        "unitEconomics.scenarios.baseline.platformFee.min",
+        "unitEconomics.scenarios.baseline.platformFee.max",
+        "unitEconomics.scenarios.baseline.platformFee.basis",
+        "unitEconomics.scenarios.baseline.platformFee.evidenceRefs",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.min",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.max",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.basis",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.evidenceRefs",
+        "unitEconomics.scenarios.baseline.advertisingCost.min",
+        "unitEconomics.scenarios.baseline.advertisingCost.max",
+        "unitEconomics.scenarios.baseline.advertisingCost.basis",
+        "unitEconomics.scenarios.baseline.advertisingCost.evidenceRefs",
+        "unitEconomics.scenarios.baseline.returnCost.min",
+        "unitEconomics.scenarios.baseline.returnCost.max",
+        "unitEconomics.scenarios.baseline.returnCost.basis",
+        "unitEconomics.scenarios.baseline.returnCost.evidenceRefs",
+        "unitEconomics.scenarios.conservative.salePrice.min",
+        "unitEconomics.scenarios.conservative.salePrice.max",
+        "unitEconomics.scenarios.conservative.salePrice.basis",
+        "unitEconomics.scenarios.conservative.salePrice.evidenceRefs",
+        "unitEconomics.scenarios.conservative.landedCost.min",
+        "unitEconomics.scenarios.conservative.landedCost.max",
+        "unitEconomics.scenarios.conservative.landedCost.basis",
+        "unitEconomics.scenarios.conservative.landedCost.evidenceRefs",
+        "unitEconomics.scenarios.conservative.platformFee.min",
+        "unitEconomics.scenarios.conservative.platformFee.max",
+        "unitEconomics.scenarios.conservative.platformFee.basis",
+        "unitEconomics.scenarios.conservative.platformFee.evidenceRefs",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.min",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.max",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.basis",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.evidenceRefs",
+        "unitEconomics.scenarios.conservative.advertisingCost.min",
+        "unitEconomics.scenarios.conservative.advertisingCost.max",
+        "unitEconomics.scenarios.conservative.advertisingCost.basis",
+        "unitEconomics.scenarios.conservative.advertisingCost.evidenceRefs",
+        "unitEconomics.scenarios.conservative.returnCost.min",
+        "unitEconomics.scenarios.conservative.returnCost.max",
+        "unitEconomics.scenarios.conservative.returnCost.basis",
+        "unitEconomics.scenarios.conservative.returnCost.evidenceRefs",
+        "negativeConservativeReason"
+      ]
+    },
     "ProductInitiativePendingFieldCodeV1": {
       "enum": [
         "objective",
@@ -65,7 +121,59 @@
         "reconsideration_date",
         "reject_reason",
         "return_basis",
-        "return_reason"
+        "return_reason",
+        "unitEconomics.marketCode",
+        "unitEconomics.channelCode",
+        "unitEconomics.currencyCode",
+        "unitEconomics.scenarios.baseline.salePrice.min",
+        "unitEconomics.scenarios.baseline.salePrice.max",
+        "unitEconomics.scenarios.baseline.salePrice.basis",
+        "unitEconomics.scenarios.baseline.salePrice.evidenceRefs",
+        "unitEconomics.scenarios.baseline.landedCost.min",
+        "unitEconomics.scenarios.baseline.landedCost.max",
+        "unitEconomics.scenarios.baseline.landedCost.basis",
+        "unitEconomics.scenarios.baseline.landedCost.evidenceRefs",
+        "unitEconomics.scenarios.baseline.platformFee.min",
+        "unitEconomics.scenarios.baseline.platformFee.max",
+        "unitEconomics.scenarios.baseline.platformFee.basis",
+        "unitEconomics.scenarios.baseline.platformFee.evidenceRefs",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.min",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.max",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.basis",
+        "unitEconomics.scenarios.baseline.fulfillmentFee.evidenceRefs",
+        "unitEconomics.scenarios.baseline.advertisingCost.min",
+        "unitEconomics.scenarios.baseline.advertisingCost.max",
+        "unitEconomics.scenarios.baseline.advertisingCost.basis",
+        "unitEconomics.scenarios.baseline.advertisingCost.evidenceRefs",
+        "unitEconomics.scenarios.baseline.returnCost.min",
+        "unitEconomics.scenarios.baseline.returnCost.max",
+        "unitEconomics.scenarios.baseline.returnCost.basis",
+        "unitEconomics.scenarios.baseline.returnCost.evidenceRefs",
+        "unitEconomics.scenarios.conservative.salePrice.min",
+        "unitEconomics.scenarios.conservative.salePrice.max",
+        "unitEconomics.scenarios.conservative.salePrice.basis",
+        "unitEconomics.scenarios.conservative.salePrice.evidenceRefs",
+        "unitEconomics.scenarios.conservative.landedCost.min",
+        "unitEconomics.scenarios.conservative.landedCost.max",
+        "unitEconomics.scenarios.conservative.landedCost.basis",
+        "unitEconomics.scenarios.conservative.landedCost.evidenceRefs",
+        "unitEconomics.scenarios.conservative.platformFee.min",
+        "unitEconomics.scenarios.conservative.platformFee.max",
+        "unitEconomics.scenarios.conservative.platformFee.basis",
+        "unitEconomics.scenarios.conservative.platformFee.evidenceRefs",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.min",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.max",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.basis",
+        "unitEconomics.scenarios.conservative.fulfillmentFee.evidenceRefs",
+        "unitEconomics.scenarios.conservative.advertisingCost.min",
+        "unitEconomics.scenarios.conservative.advertisingCost.max",
+        "unitEconomics.scenarios.conservative.advertisingCost.basis",
+        "unitEconomics.scenarios.conservative.advertisingCost.evidenceRefs",
+        "unitEconomics.scenarios.conservative.returnCost.min",
+        "unitEconomics.scenarios.conservative.returnCost.max",
+        "unitEconomics.scenarios.conservative.returnCost.basis",
+        "unitEconomics.scenarios.conservative.returnCost.evidenceRefs",
+        "negativeConservativeReason"
       ]
     },
     "ProductInitiativeReviewPointV1": {
@@ -80,6 +188,191 @@
           "items": { "$ref": "common.schema.json#/$defs/Uuid" }
         },
         "conclusion": { "type": ["string", "null"], "maxLength": 4000 }
+      }
+    },
+    "ProductInitiativeUnitEconomicsBasisV1": {
+      "enum": ["evidence", "assumption"]
+    },
+    "ProductInitiativeUnitEconomicsRangeDraftV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,4})?$"
+        },
+        "max": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,4})?$"
+        },
+        "basis": { "$ref": "#/$defs/ProductInitiativeUnitEconomicsBasisV1" },
+        "evidenceRefs": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "basis": { "const": "assumption" } },
+            "required": ["basis"]
+          },
+          "then": {
+            "properties": { "evidenceRefs": { "maxItems": 0 } }
+          }
+        }
+      ]
+    },
+    "ProductInitiativeUnitEconomicsRangeSnapshotV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max", "basis", "evidenceRefs"],
+      "properties": {
+        "min": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,4})?$"
+        },
+        "max": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,4})?$"
+        },
+        "basis": { "$ref": "#/$defs/ProductInitiativeUnitEconomicsBasisV1" },
+        "evidenceRefs": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "basis": { "const": "evidence" } } },
+          "then": { "properties": { "evidenceRefs": { "minItems": 1 } } },
+          "else": { "properties": { "evidenceRefs": { "maxItems": 0 } } }
+        }
+      ]
+    },
+    "ProductInitiativeUnitEconomicsScenarioDraftV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "salePrice": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeDraftV1"
+        },
+        "landedCost": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeDraftV1"
+        },
+        "platformFee": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeDraftV1"
+        },
+        "fulfillmentFee": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeDraftV1"
+        },
+        "advertisingCost": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeDraftV1"
+        },
+        "returnCost": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeDraftV1"
+        }
+      }
+    },
+    "ProductInitiativeUnitEconomicsScenarioSnapshotV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "salePrice",
+        "landedCost",
+        "platformFee",
+        "fulfillmentFee",
+        "advertisingCost",
+        "returnCost",
+        "contribution"
+      ],
+      "properties": {
+        "salePrice": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeSnapshotV1"
+        },
+        "landedCost": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeSnapshotV1"
+        },
+        "platformFee": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeSnapshotV1"
+        },
+        "fulfillmentFee": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeSnapshotV1"
+        },
+        "advertisingCost": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeSnapshotV1"
+        },
+        "returnCost": {
+          "$ref": "#/$defs/ProductInitiativeUnitEconomicsRangeSnapshotV1"
+        },
+        "contribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": {
+              "type": "string",
+              "pattern": "^-?(0|[1-9][0-9]{0,12})(\\.[0-9]{1,4})?$"
+            },
+            "max": {
+              "type": "string",
+              "pattern": "^-?(0|[1-9][0-9]{0,12})(\\.[0-9]{1,4})?$"
+            }
+          }
+        }
+      }
+    },
+    "ProductInitiativeUnitEconomicsDraftV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "marketCode": { "type": ["string", "null"], "maxLength": 100 },
+        "channelCode": { "type": ["string", "null"], "maxLength": 100 },
+        "currencyCode": {
+          "anyOf": [
+            { "type": "string", "pattern": "^[A-Z]{3}$" },
+            { "type": "null" }
+          ]
+        },
+        "scenarios": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baseline": {
+              "$ref": "#/$defs/ProductInitiativeUnitEconomicsScenarioDraftV1"
+            },
+            "conservative": {
+              "$ref": "#/$defs/ProductInitiativeUnitEconomicsScenarioDraftV1"
+            }
+          }
+        }
+      }
+    },
+    "ProductInitiativeUnitEconomicsSnapshotV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["marketCode", "channelCode", "currencyCode", "scenarios"],
+      "properties": {
+        "marketCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "channelCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "currencyCode": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "scenarios": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["baseline", "conservative"],
+          "properties": {
+            "baseline": {
+              "$ref": "#/$defs/ProductInitiativeUnitEconomicsScenarioSnapshotV1"
+            },
+            "conservative": {
+              "$ref": "#/$defs/ProductInitiativeUnitEconomicsScenarioSnapshotV1"
+            }
+          }
+        }
       }
     },
     "ProductInitiativeDecisionCommandV1": {
@@ -131,6 +424,17 @@
         "rejectReason": { "type": "string", "minLength": 1, "maxLength": 500 },
         "returnReason": { "type": "string", "minLength": 1, "maxLength": 500 },
         "returnBasis": { "$ref": "#/$defs/ProductInitiativeReturnBasisV1" },
+        "unitEconomicsDraft": {
+          "allOf": [
+            { "$ref": "#/$defs/ProductInitiativeUnitEconomicsDraftV1" },
+            { "not": { "required": ["marketCode"] } }
+          ]
+        },
+        "negativeConservativeReason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
         "idempotencyKey": {
           "type": "string",
           "minLength": 1,
@@ -155,6 +459,9 @@
         "nextDecisionQuestion",
         "validationFocus",
         "reconsiderationDate",
+        "unitEconomicsDraft",
+        "unitEconomicsSnapshot",
+        "negativeConservativeReason",
         "reviewPoints",
         "pendingFieldCodes",
         "version",
@@ -199,6 +506,22 @@
         "reconsiderationDate": {
           "anyOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
         },
+        "unitEconomicsDraft": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeUnitEconomicsDraftV1" },
+            { "type": "null" }
+          ]
+        },
+        "unitEconomicsSnapshot": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeUnitEconomicsSnapshotV1" },
+            { "type": "null" }
+          ]
+        },
+        "negativeConservativeReason": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
         "objective": { "type": ["string", "null"], "maxLength": 4000 },
         "reviewPoints": {
           "type": "array",
@@ -239,10 +562,25 @@
         "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
       }
     },
+    "ProductInitiativeCurrencyOptionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "name", "minorUnit"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "minorUnit": {
+          "anyOf": [
+            { "type": "integer", "minimum": 0, "maximum": 9 },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
     "ProductInitiativeDetailV1": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["handoffId", "evidenceCandidates"],
+      "required": ["handoffId", "currencyOptions", "evidenceCandidates"],
       "properties": {
         "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "initiative": {
@@ -254,6 +592,10 @@
         "evidenceCandidates": {
           "type": "array",
           "items": { "$ref": "#/$defs/ProductInitiativeEvidenceCandidateV1" }
+        },
+        "currencyOptions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeCurrencyOptionV1" }
         }
       }
     },
@@ -320,6 +662,8 @@
         "targetDate",
         "nextDecisionDate",
         "nextDecisionQuestion",
+        "unitEconomicsSnapshot",
+        "negativeConservativeReason",
         "reviewPoints",
         "evidenceRefs",
         "createdAt",
@@ -357,6 +701,16 @@
         "nextDecisionQuestion": {
           "type": ["string", "null"],
           "maxLength": 1000
+        },
+        "unitEconomicsSnapshot": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeUnitEconomicsSnapshotV1" },
+            { "type": "null" }
+          ]
+        },
+        "negativeConservativeReason": {
+          "type": ["string", "null"],
+          "maxLength": 2000
         },
         "reviewPoints": {
           "type": "array",

@@ -4,6 +4,7 @@ import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { seedAuthoritativeLocationReferenceData } from "./seeds/seed-authoritative-location-reference-data";
 import { seedCargoOwnerReferenceData } from "./seeds/seed-cargo-owner-reference-data";
+import { seedAuthoritativeCurrencyReferenceData } from "./seeds/seed-authoritative-currency-reference-data";
 import { seedRealReplenishmentSample } from "./seeds/seed-real-replenishment-sample";
 
 // 本地开发回退到 docker-compose 默认值（与 prisma.config.ts / apps/api config/env.ts 一致）。
@@ -26,6 +27,11 @@ async function main(): Promise<void> {
   const cargoOwners = await seedCargoOwnerReferenceData(prisma);
   console.log(
     `Seeded internal cargo owner mappings: ${cargoOwners.cargoOwnerCount} confirmed owners.`,
+  );
+  const currencies = await seedAuthoritativeCurrencyReferenceData(prisma);
+  console.log(
+    `Seeded ${currencies.currencyCount} synthetic rehearsal currencies as staged only; ` +
+      "this does not satisfy the production ISO 4217 List One deployment gate.",
   );
   const realSample = await seedRealReplenishmentSample(prisma);
   console.log(

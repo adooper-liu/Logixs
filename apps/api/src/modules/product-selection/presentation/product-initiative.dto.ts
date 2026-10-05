@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import type {
   ProductInitiativeDecisionCommandV1,
   ProductInitiativeReviewPointV1,
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
 } from "@logix/contracts";
 
 const REVIEW_POINT_CODES = [
@@ -60,6 +62,9 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
   @ApiPropertyOptional() returnReason?: string;
   @ApiPropertyOptional({ enum: ["insufficient_evidence", "wrong_direction"] })
   returnBasis?: ProductInitiativeDecisionCommandV1["returnBasis"];
+  @ApiPropertyOptional({ type: Object })
+  unitEconomicsDraft?: ProductInitiativeUnitEconomicsDraftV1;
+  @ApiPropertyOptional() negativeConservativeReason?: string;
   @ApiProperty() idempotencyKey!: string;
 }
 
@@ -83,6 +88,12 @@ export class ProductInitiativeResponseDto {
   @ApiPropertyOptional({ nullable: true }) validationFocus!: string | null;
   @ApiPropertyOptional({ nullable: true, format: "date" })
   reconsiderationDate!: string | null;
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  unitEconomicsDraft!: ProductInitiativeUnitEconomicsDraftV1 | null;
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  unitEconomicsSnapshot!: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  @ApiPropertyOptional({ nullable: true })
+  negativeConservativeReason!: string | null;
   @ApiPropertyOptional({ nullable: true }) objective!: string | null;
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
@@ -102,6 +113,7 @@ export class ProductInitiativeDetailResponseDto {
   @ApiProperty() handoffId!: string;
   @ApiPropertyOptional({ type: ProductInitiativeResponseDto, nullable: true })
   initiative!: ProductInitiativeResponseDto | null;
+  @ApiProperty({ type: [Object] }) currencyOptions!: object[];
   @ApiProperty({ type: [Object] }) evidenceCandidates!: object[];
 }
 

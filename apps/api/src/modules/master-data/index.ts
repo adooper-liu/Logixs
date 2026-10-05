@@ -47,3 +47,9 @@ export {
   type CargoOwnerDirectoryPort,
   type CargoOwnerDirectoryRecord,
 } from "./cargo-owner-directory.port";
+export {
+  REFERENCE_CURRENCY_DIRECTORY,
+  type ReferenceCurrencyDirectoryPort,
+  type ReferenceCurrencyRecord,
+  type ReferenceCurrencyResolution,
+} from "./reference-currency-directory.port";

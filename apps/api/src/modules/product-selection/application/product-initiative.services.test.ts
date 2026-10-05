@@ -110,10 +110,44 @@ describe("DecideProductInitiativeService", () => {
       }),
     ).rejects.toMatchObject({ status: 400 });
   });
+
+  it("币种参考发布不可用时稳定拒绝且不写入", async () => {
+    const { service, persistDecision } = decideHarness({
+      currentVersion: 0,
+      currencyStatus: "unavailable",
+    });
+
+    await expect(
+      service.execute({
+        tenantId: "t",
+        actorId: "selector-1",
+        handoffId: HANDOFF_ID,
+        command: completeCommand(),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "REFERENCE_CURRENCY_RELEASE_UNAVAILABLE",
+    });
+    expect(persistDecision).not.toHaveBeenCalled();
+  });
 });
 
 describe("GetProductInitiativeService", () => {
   it("还没有立项判断时返回空并列出该信号已登记的证据", async () => {
+    const listActive = vi.fn().mockResolvedValue([
+      {
+        alphaCode: "USD",
+        currencyName: "US Dollar",
+        numericCode: "840",
+        minorUnit: 2,
+      },
+      {
+        alphaCode: "EUR",
+        currencyName: "Euro",
+        numericCode: "978",
+        minorUnit: 2,
+      },
+    ]);
     const service = new GetProductInitiativeService(
       { findByHandoffId: vi.fn().mockResolvedValue(null) } as never,
       {
@@ -122,6 +156,7 @@ describe("GetProductInitiativeService", () => {
           .mockResolvedValue({ handoff: { signalId: SIGNAL_ID } }),
       } as never,
       { executeDetails: vi.fn().mockResolvedValue([candidate()]) } as never,
+      { listActive } as never,
     );
 
     await expect(
@@ -129,6 +164,10 @@ describe("GetProductInitiativeService", () => {
     ).resolves.toEqual({
       handoffId: HANDOFF_ID,
       initiative: null,
+      currencyOptions: [
+        { code: "EUR", name: "Euro", minorUnit: 2 },
+        { code: "USD", name: "US Dollar", minorUnit: 2 },
+      ],
       evidenceCandidates: [
         {
           evidenceId: EVIDENCE_ID,
@@ -151,6 +190,7 @@ describe("GetProductInitiativeService", () => {
       } as never,
       opportunities as never,
       { executeDetails: vi.fn().mockResolvedValue([]) } as never,
+      { listActive: vi.fn().mockResolvedValue([]) } as never,
     );
 
     const detail = await service.execute({
@@ -159,6 +199,7 @@ describe("GetProductInitiativeService", () => {
     });
 
     expect(detail.initiative).toMatchObject({ version: 1 });
+    expect(detail.currencyOptions).toEqual([]);
     expect(opportunities.findByHandoffId).not.toHaveBeenCalled();
   });
 
@@ -167,6 +208,7 @@ describe("GetProductInitiativeService", () => {
       { findByHandoffId: vi.fn().mockResolvedValue(null) } as never,
       { findByHandoffId: vi.fn().mockResolvedValue(null) } as never,
       { executeDetails: vi.fn() } as never,
+      { listActive: vi.fn() } as never,
     );
 
     await expect(
@@ -175,7 +217,10 @@ describe("GetProductInitiativeService", () => {
   });
 });
 
-function decideHarness(input: { currentVersion: number }) {
+function decideHarness(input: {
+  currentVersion: number;
+  currencyStatus?: "active" | "unavailable";
+}) {
   const persistDecision = vi.fn().mockResolvedValue({
     record: record({ signalId: SIGNAL_ID }),
     duplicate: false,
@@ -186,7 +231,11 @@ function decideHarness(input: { currentVersion: number }) {
   };
   const opportunities = {
     findByHandoffId: vi.fn().mockResolvedValue({
-      handoff: { signalId: SIGNAL_ID },
+      handoff: {
+        signalId: SIGNAL_ID,
+        marketCode: "US",
+        channelCode: "amazon",
+      },
     }),
   };
   const evidenceReader = {
@@ -196,6 +245,12 @@ function decideHarness(input: { currentVersion: number }) {
     repository as never,
     opportunities as never,
     evidenceReader as never,
+    {
+      resolve: vi.fn().mockResolvedValue({
+        status: input.currencyStatus ?? "active",
+        currency: input.currencyStatus === "unavailable" ? null : {},
+      }),
+    } as never,
   );
   return { service, persistDecision, opportunities, evidenceReader };
 }
@@ -218,6 +273,9 @@ function record(overrides: Partial<ProductInitiativeRecord>) {
     nextDecisionQuestion: "是否进入 EVT 打样",
     validationFocus: null,
     reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
     objective: "把折叠宠物出行包做成可发布版本",
     reviewPoints: [],
     reason: null,
@@ -263,7 +321,30 @@ function completeCommand(overrides: Record<string, unknown> = {}) {
       evidenceRefs: [EVIDENCE_ID],
       conclusion: "结论",
     })),
+    unitEconomicsDraft: completeUnitEconomicsDraft(),
     idempotencyKey: "k",
     ...overrides,
   } as never;
+}
+
+function completeUnitEconomicsDraft() {
+  const range = {
+    min: "1",
+    max: "2",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const scenario = {
+    salePrice: { ...range, min: "20", max: "30" },
+    landedCost: range,
+    platformFee: range,
+    fulfillmentFee: range,
+    advertisingCost: range,
+    returnCost: range,
+  };
+  return {
+    channelCode: "amazon",
+    currencyCode: "USD",
+    scenarios: { baseline: scenario, conservative: scenario },
+  };
 }

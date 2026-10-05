@@ -8,10 +8,15 @@ import {
   type ReadEvidenceRefsPort,
 } from "../../document-records";
 import {
+  REFERENCE_CURRENCY_DIRECTORY,
+  type ReferenceCurrencyDirectoryPort,
+} from "../../master-data";
+import {
   assertProductInitiativeEvidenceRefs,
   prepareProductInitiativeDecision,
   ProductInitiativeNotFoundError,
 } from "../domain/product-initiative";
+import { requestedUnitEconomicsCurrencyCode } from "../domain/unit-economics";
 import {
   PRODUCT_INITIATIVE_REPOSITORY,
   type ProductInitiativeRecord,
@@ -34,6 +39,8 @@ export class DecideProductInitiativeService {
     private readonly opportunities: ProductOpportunityRepository,
     @Inject(READ_EVIDENCE_REFS)
     private readonly evidenceReader: ReadEvidenceRefsPort,
+    @Inject(REFERENCE_CURRENCY_DIRECTORY)
+    private readonly currencies: ReferenceCurrencyDirectoryPort,
   ) {}
 
   async execute(input: {
@@ -46,15 +53,6 @@ export class DecideProductInitiativeService {
       throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
     }
     try {
-      const currentVersion = await this.repository.currentVersion(
-        input.tenantId,
-        input.handoffId,
-      );
-      const prepared = prepareProductInitiativeDecision(
-        { version: currentVersion },
-        input.actorId,
-        input.command,
-      );
       const opportunity = await this.opportunities.findByHandoffId(
         input.tenantId,
         input.handoffId,
@@ -64,6 +62,27 @@ export class DecideProductInitiativeService {
           "PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND",
         );
       }
+      const currencyCode = requestedUnitEconomicsCurrencyCode(
+        input.command.unitEconomicsDraft,
+      );
+      const [currentVersion, currencyResolution] = await Promise.all([
+        this.repository.currentVersion(input.tenantId, input.handoffId),
+        currencyCode
+          ? this.currencies.resolve(currencyCode).then(({ status }) => status)
+          : Promise.resolve(null),
+      ]);
+      const prepared = prepareProductInitiativeDecision(
+        { version: currentVersion },
+        input.actorId,
+        input.command,
+        undefined,
+        undefined,
+        {
+          marketCode: opportunity.handoff.marketCode ?? null,
+          channelCode: opportunity.handoff.channelCode ?? null,
+          currencyResolution,
+        },
+      );
       const signalId = opportunity.handoff.signalId;
       const evidenceRefs = await this.evidenceReader.execute({
         tenantId: input.tenantId,
@@ -104,6 +123,9 @@ export function toProductInitiativeV1(
     nextDecisionQuestion: record.nextDecisionQuestion,
     validationFocus: record.validationFocus,
     reconsiderationDate: dateOnly(record.reconsiderationDate),
+    unitEconomicsDraft: record.unitEconomicsDraft,
+    unitEconomicsSnapshot: record.unitEconomicsSnapshot,
+    negativeConservativeReason: record.negativeConservativeReason,
     objective: record.objective,
     reviewPoints: record.reviewPoints,
     reason: record.reason,

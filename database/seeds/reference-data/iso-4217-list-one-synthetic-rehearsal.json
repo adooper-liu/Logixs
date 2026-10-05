@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureKind": "synthetic_rehearsal",
+  "release": {
+    "id": "0c899e7a-99f4-5783-a906-0d2e05f623be",
+    "authority": "SIX",
+    "datasetCode": "ISO_4217_LIST_ONE",
+    "version": "2026-09-17",
+    "publishedAt": "2026-09-17",
+    "sourceUrl": "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+    "retrievedAt": "2026-10-04T00:00:00.000Z",
+    "sourceSha256": "c756b4ab5107726de3501829fe49839db42c197586292f3bc5f25f8a20974de9",
+    "recordsSha256": "07d766bfa37ec5b8b5365b90f10de0e23e78947b67e1eac6ceb6548bd2ceae77",
+    "license": "Synthetic test data; not licensed official List One data",
+    "status": "staged"
+  },
+  "recordCount": 4,
+  "records": [
+    {
+      "id": "cddbf323-ae00-5a0d-99c3-ce9a14bb0fb2",
+      "alphaCode": "EUR",
+      "numericCode": "978",
+      "minorUnit": 2,
+      "currencyName": "Euro",
+      "sourceRowHash": "b98483e8908e505469bad467e26bc5c7d46d104c687c4893c27b75228ce059ef"
+    },
+    {
+      "id": "c46d857b-1ea0-511c-863a-e889c8d5a110",
+      "alphaCode": "JPY",
+      "numericCode": "392",
+      "minorUnit": 0,
+      "currencyName": "Yen",
+      "sourceRowHash": "e8dc143d15a4d4a96d72d66660348472dfa78a4b71c70e0ecc8e212281c945fe"
+    },
+    {
+      "id": "d23ba7e0-48e0-5e54-be6e-526b2bba3afe",
+      "alphaCode": "USD",
+      "numericCode": "840",
+      "minorUnit": 2,
+      "currencyName": "US Dollar",
+      "sourceRowHash": "a3e5b66421016888b1c0ab8af1780631a90ab9a8918079189ce8f6f9d2ee84ba"
+    },
+    {
+      "id": "70b35576-8d13-5e75-83e3-7b32c3ef7e17",
+      "alphaCode": "XUA",
+      "numericCode": "965",
+      "minorUnit": null,
+      "currencyName": "ADB Unit of Account",
+      "sourceRowHash": "4fb9a1b0e7df17e6df2c29fed7cf75662c808daf6340da4402deda57b03b37ab"
+    }
+  ]
+}

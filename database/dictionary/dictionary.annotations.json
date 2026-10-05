@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "baselineCommit": "a3fddd0945f132848f44fd621d600ca1fd3b342f",
+  "baselineCommit": "60c14924469c9c7ae2e4445d3c429bb5aa7e2565",
   "sources": {
     "engineering-data-governance": {
       "path": "ENGINEERING_RULES.md",
@@ -248,6 +248,21 @@
       "moduleCode": null,
       "ownerModule": null,
       "notes": []
+    },
+    "public.currency_code_reference": {
+      "nameZh": "ISO 4217 币种参考",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "按不可变参考数据发布保存 ISO 4217 List One 币种定义，供单位经济币种校验使用。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": [
+        "time-currency-contract",
+        "doc-workbench-product-selection"
+      ],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": [
+        "生产启用必须导入获准官方 List One active release；synthetic_rehearsal 只能保持 staged。"
+      ]
     },
     "public.customs_clearance_case": {
       "nameZh": "清关案件版本",
@@ -4362,6 +4377,98 @@
       "notes": []
     },
     "public.country_code_reference.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.currency_code_reference.id": {
+      "nameZh": "币种参考标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "稳定标识同一发布中的币种定义。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.release_id": {
+      "nameZh": "参考数据发布标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "关联不可变的 ISO 4217 List One 发布版本。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.alpha_code": {
+      "nameZh": "ISO 4217 字母代码",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存当前发布中的三位大写币种代码，单位经济必须解析到 active 发布。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": [
+        "time-currency-contract",
+        "doc-workbench-product-selection"
+      ],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.numeric_code": {
+      "nameZh": "ISO 4217 数字代码",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存当前发布中的三位数字币种代码。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": [
+        "time-currency-contract",
+        "doc-workbench-product-selection"
+      ],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.minor_unit": {
+      "nameZh": "币种小数位",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存 ISO 4217 minor unit；官方值为 N.A. 时显式为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": [
+        "time-currency-contract",
+        "doc-workbench-product-selection"
+      ],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.currency_name": {
+      "nameZh": "币种名称",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存 List One 中与币种代码对应的正式币种名称。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": [
+        "time-currency-contract",
+        "doc-workbench-product-selection"
+      ],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.source_row_hash": {
+      "nameZh": "来源行哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验归一化币种定义与导入快照的一致性。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.created_at": {
       "nameZh": "创建时间",
       "nameStatus": "confirmed_implementation",
       "purposeZh": "记录该行首次写入数据库的时间。",
@@ -12521,6 +12628,36 @@
       "ownerModule": "product-selection",
       "notes": []
     },
+    "public.product_initiative.unit_economics_draft": {
+      "nameZh": "单位经济草稿",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存可恢复的基准与保守两组单件金额区间、依据类型及证据引用；允许部分填写。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.unit_economics_snapshot": {
+      "nameZh": "单位经济计算快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存服务端规范化并计算的完整单位经济事实；立项及 NPI 退回当前态必须保留。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.negative_conservative_reason": {
+      "nameZh": "保守贡献为负仍投入理由",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保守情景贡献下限为负时记录仍决定投入的理由；非负时必须为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
     "public.product_initiative.handoff_id": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
@@ -12820,6 +12957,26 @@
       "moduleCode": "product-selection",
       "ownerModule": "product-selection",
       "notes": ["不可变交接快照。"]
+    },
+    "public.product_initiative_handoff.unit_economics_snapshot": {
+      "nameZh": "单位经济交接快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结立项交给 NPI 时完整且可复算的单位经济输入与服务端贡献结果。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["存量交接允许为空且不得伪造。"]
+    },
+    "public.product_initiative_handoff.negative_conservative_reason": {
+      "nameZh": "保守贡献为负仍投入理由快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结负保守贡献下限下继续投入的立项理由。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": ["不可变交接快照；非负时为空。"]
     },
     "public.product_initiative_handoff.initiative_id": {
       "nameZh": "待业务确认",

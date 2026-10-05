@@ -83,6 +83,8 @@ export function toQueueEntry(
       targetDate: dateOnly(record.handoff.targetDate),
       nextDecisionDate: dateOnly(record.handoff.nextDecisionDate),
       nextDecisionQuestion: record.handoff.nextDecisionQuestion,
+      unitEconomicsSnapshot: record.handoff.unitEconomicsSnapshot,
+      negativeConservativeReason: record.handoff.negativeConservativeReason,
       reviewPoints: record.handoff.reviewPoints,
       evidenceRefs: record.handoff.evidenceRefs,
       createdAt: record.handoff.createdAt.toISOString(),

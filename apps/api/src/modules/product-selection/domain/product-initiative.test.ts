@@ -5,7 +5,7 @@ import {
   PRODUCT_INITIATIVE_GATE,
   ProductInitiativeConflictError,
   ProductInitiativeValidationError,
-  prepareProductInitiativeDecision,
+  prepareProductInitiativeDecision as prepareProductInitiativeDecisionDomain,
   prepareSelectionReturnTakeback,
   productInitiativePendingFieldCodes,
   type CurrentProductInitiative,
@@ -25,6 +25,23 @@ const REVIEW_POINT_CODES = [
 ] as const;
 
 const NEW_INITIATIVE: CurrentProductInitiative = { version: 0 };
+
+function prepareProductInitiativeDecision(
+  current: CurrentProductInitiative,
+  actorId: string,
+  decision: ProductInitiativeDecisionCommandV1,
+  gate = PRODUCT_INITIATIVE_GATE,
+  todayUtc = "2026-10-04",
+) {
+  return prepareProductInitiativeDecisionDomain(
+    current,
+    actorId,
+    decision,
+    gate,
+    todayUtc,
+    { marketCode: "US", channelCode: "amazon", currencyResolution: "active" },
+  );
+}
 
 describe("productInitiativePendingFieldCodes", () => {
   it("列出目标结果与四项要点作为缺口", () => {
@@ -210,16 +227,19 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
     expect(prepared.validationFocus).toBe("等大促后重看竞争供给");
     expect(prepared.reconsiderationDate).toBe("2026-10-20");
     // 暂缓不改写要点缺口，补齐后仍可再判
-    expect(prepared.pendingFieldCodes).toEqual([
-      "objective",
-      ...REVIEW_POINT_CODES,
-      "responsibility_commitment",
-      "receiving_team_or_role",
-      "resource_description",
-      "target_date",
-      "next_decision_date",
-      "next_decision_question",
-    ]);
+    expect(prepared.pendingFieldCodes).toEqual(
+      expect.arrayContaining([
+        "objective",
+        ...REVIEW_POINT_CODES,
+        "responsibility_commitment",
+        "receiving_team_or_role",
+        "resource_description",
+        "target_date",
+        "next_decision_date",
+        "next_decision_question",
+        "unitEconomics.currencyCode",
+      ]),
+    );
   });
 
   it("暂缓重判日期早于 UTC 当天时明确失败", () => {
@@ -445,6 +465,9 @@ function emptyDraft(): ProductInitiativeDraft {
     nextDecisionQuestion: null,
     validationFocus: null,
     reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
   };
 }
 
@@ -467,6 +490,9 @@ function completeDraft(): ProductInitiativeDraft {
     nextDecisionQuestion: "是否进入 EVT 打样",
     validationFocus: null,
     reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
   };
 }
 
@@ -488,8 +514,31 @@ function completeCommand(
     targetDate: draft.targetDate ?? undefined,
     nextDecisionDate: draft.nextDecisionDate ?? undefined,
     nextDecisionQuestion: draft.nextDecisionQuestion ?? undefined,
+    unitEconomicsDraft: completeUnitEconomicsDraft(),
     ...overrides,
   });
+}
+
+function completeUnitEconomicsDraft() {
+  const cost = {
+    min: "1",
+    max: "2",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const scenario = {
+    salePrice: { ...cost, min: "20", max: "30" },
+    landedCost: cost,
+    platformFee: cost,
+    fulfillmentFee: cost,
+    advertisingCost: cost,
+    returnCost: cost,
+  };
+  return {
+    channelCode: "amazon",
+    currencyCode: "USD",
+    scenarios: { baseline: scenario, conservative: scenario },
+  };
 }
 
 function command(

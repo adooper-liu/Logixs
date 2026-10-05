@@ -24,6 +24,7 @@ import { PrismaProductInitiativeRepository } from "../../modules/product-selecti
 import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
 import { toOpportunityV1 } from "../../modules/product-selection/application/list-product-opportunities.service";
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
+import { PrismaReferenceCurrencyDirectory } from "../../modules/master-data/infrastructure/prisma-reference-currency-directory";
 
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
@@ -57,6 +58,7 @@ beforeAll(async () => {
     adapter: createPostgresAdapter(testDatabaseUrl, schemaName),
   });
   await prisma.$connect();
+  await seedActiveCurrency();
   marketSignals = new PrismaMarketSignalRepository(prisma as never);
   const applySelectionReturn = new ApplySelectionReturnService(marketSignals);
   initiatives = new PrismaProductInitiativeRepository(
@@ -70,6 +72,7 @@ beforeAll(async () => {
     initiatives,
     productOpportunities,
     new ReadEvidenceRefsService(new PrismaEvidenceRepository(prisma as never)),
+    new PrismaReferenceCurrencyDirectory(prisma as never),
   );
 });
 
@@ -116,6 +119,43 @@ describe("product initiative persistence flow", () => {
     ).resolves.toMatchObject({ evidenceRefs: [evidenceId] });
   });
 
+  it.each([
+    ["不存在", "ZZZ", "CURRENCY_UNKNOWN: ZZZ"],
+    ["非 active", "EUR", "CURRENCY_INACTIVE: EUR"],
+  ] as const)(
+    "%s币种明确拒绝且不写立项",
+    async (_label, currencyCode, message) => {
+      const opportunity = await seedOpportunity();
+      const evidenceId = await seedSignalEvidence(
+        opportunity.tenantId,
+        opportunity.signalId,
+      );
+      if (currencyCode === "EUR") await seedInactiveCurrency();
+      const unitEconomicsDraft = completeUnitEconomicsDraft();
+      unitEconomicsDraft.currencyCode = currencyCode;
+
+      await expect(
+        decideInitiatives.execute({
+          tenantId: opportunity.tenantId,
+          actorId: "selector-1",
+          handoffId: opportunity.handoffId,
+          command: {
+            ...completeApproveCommand(evidenceId),
+            unitEconomicsDraft,
+          },
+        }),
+      ).rejects.toMatchObject({ status: 400, message });
+      await expect(
+        prisma.productInitiative.count({
+          where: {
+            tenantId: opportunity.tenantId,
+            handoffId: opportunity.handoffId,
+          },
+        }),
+      ).resolves.toBe(0);
+    },
+  );
+
   it("拒绝同租户其他来源信号的证据且不写任何立项事实", async () => {
     const opportunity = await seedOpportunity();
     const other = await seedOpportunity(true, opportunity.tenantId);
@@ -136,6 +176,47 @@ describe("product initiative persistence flow", () => {
     const opportunity = await seedOpportunity();
 
     await expectEvidenceRejected(opportunity, randomUUID());
+  });
+
+  it("单位经济引用不属于当前机会的证据时原子拒绝", async () => {
+    const opportunity = await seedOpportunity();
+    const other = await seedOpportunity(true, opportunity.tenantId);
+    const invalidEvidenceId = await seedSignalEvidence(
+      other.tenantId,
+      other.signalId,
+    );
+    const validEvidenceId = await seedSignalEvidence(
+      opportunity.tenantId,
+      opportunity.signalId,
+    );
+
+    await expect(
+      decideInitiatives.execute({
+        tenantId: opportunity.tenantId,
+        actorId: "selector-1",
+        handoffId: opportunity.handoffId,
+        command: {
+          ...completeApproveCommand(validEvidenceId),
+          unitEconomicsDraft: completeUnitEconomicsDraft(invalidEvidenceId),
+        },
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${invalidEvidenceId}`,
+    });
+    await expect(
+      prisma.productInitiative.count({
+        where: {
+          tenantId: opportunity.tenantId,
+          handoffId: opportunity.handoffId,
+        },
+      }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.productInitiativeHandoff.count({
+        where: { tenantId: opportunity.tenantId },
+      }),
+    ).resolves.toBe(0);
   });
 
   it("暂缓缺原因时保存但不关闭，且不改写缺口之外的任何东西", async () => {
@@ -170,6 +251,161 @@ describe("product initiative persistence flow", () => {
         where: { tenantId, eventType: "product_initiative.handed_off" },
       }),
     ).resolves.toBe(0);
+  });
+
+  it("非立项结果保留部分单位经济草稿但不生成完整快照", async () => {
+    const { tenantId, handoffId } = await seedOpportunity();
+
+    const { record } = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId },
+        {
+          outcome: "defer",
+          unitEconomicsDraft: {
+            channelCode: "amazon",
+            currencyCode: "USD",
+            scenarios: { baseline: { salePrice: { min: "20" } } },
+          },
+        },
+      ),
+    });
+
+    expect(record.unitEconomicsDraft).toMatchObject({
+      marketCode: "CA",
+      channelCode: "amazon",
+      currencyCode: "USD",
+      scenarios: { baseline: { salePrice: { min: "20" } } },
+    });
+    expect(record.unitEconomicsSnapshot).toBeNull();
+    expect(record.pendingFieldCodes).toContain(
+      "unitEconomics.scenarios.baseline.salePrice.max",
+    );
+  });
+
+  it.each([
+    [
+      "defer",
+      {
+        outcome: "defer",
+        validationFocus: "核实负贡献假设",
+        reconsiderationDate: "2026-10-20",
+      },
+    ],
+    ["reject", { outcome: "reject", rejectReason: "保守情景不值得投入" }],
+    [
+      "return_to_market",
+      {
+        outcome: "return_to_market",
+        returnReason: "市场事实仍不足",
+        returnBasis: "insufficient_evidence",
+      },
+    ],
+  ] as const)(
+    "完整负贡献单位经济无理由时允许 %s 保存待补快照",
+    async (_label, outcomeFields) => {
+      const { tenantId, handoffId } = await seedOpportunity();
+
+      const { record } = await initiatives.persistDecision({
+        tenantId,
+        handoffId,
+        actorId: "selector-1",
+        command: decide(
+          { handoffId },
+          {
+            ...outcomeFields,
+            unitEconomicsDraft: negativeConservativeUnitEconomicsDraft(),
+          },
+        ),
+      });
+
+      expect(record.unitEconomicsDraft).not.toBeNull();
+      expect(record.unitEconomicsSnapshot).toMatchObject({
+        scenarios: {
+          conservative: { contribution: { min: "-5", max: "25" } },
+        },
+      });
+      expect(record.negativeConservativeReason).toBeNull();
+      expect(record.pendingFieldCodes).toContain("negativeConservativeReason");
+      await expect(
+        prisma.productInitiativeHandoff.count({ where: { tenantId } }),
+      ).resolves.toBe(0);
+    },
+  );
+
+  it("完整负贡献单位经济无理由时拒绝立项", async () => {
+    const { handoffId } = await seedOpportunity();
+
+    expect(() =>
+      decide(
+        { handoffId },
+        {
+          outcome: "approve",
+          objective: "把折叠宠物出行包做成可发布版本",
+          acceptResponsibility: true,
+          receivingTeamOrRole: "产品开发 / NPI",
+          resourceDescription: "结构工程 1 人，采购验证 1 人",
+          targetDate: "2026-11-15",
+          nextDecisionDate: "2026-10-20",
+          nextDecisionQuestion: "是否进入 EVT 打样",
+          reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
+            code,
+            evidenceRefs: [evidenceId(index)],
+            conclusion: `${code} 的结论`,
+          })),
+          unitEconomicsDraft: negativeConservativeUnitEconomicsDraft(),
+        },
+      ),
+    ).toThrow("PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason");
+  });
+
+  it("币种目录只把 SIX 的同名数据集视为权威", async () => {
+    const untrustedReleaseId = randomUUID();
+    await prisma.referenceDataRelease.create({
+      data: {
+        id: untrustedReleaseId,
+        authority: "UNTRUSTED TEST AUTHORITY",
+        datasetCode: "ISO_4217_LIST_ONE",
+        version: `untrusted-${randomUUID()}`,
+        publishedAt: new Date("2026-09-17T00:00:00.000Z"),
+        sourceUrl: "https://untrusted.invalid/list-one.xml",
+        retrievedAt: new Date("2026-10-04T00:00:00.000Z"),
+        sourceSha256: "d".repeat(64),
+        recordsSha256: "e".repeat(64),
+        license: "integration test fixture",
+        status: "active",
+        currencyCodes: {
+          create: {
+            id: randomUUID(),
+            alphaCode: "ZZZ",
+            numericCode: "999",
+            minorUnit: 2,
+            currencyName: "Untrusted Currency",
+            sourceRowHash: "f".repeat(64),
+          },
+        },
+      },
+    });
+
+    try {
+      const directory = new PrismaReferenceCurrencyDirectory(prisma as never);
+      await expect(directory.listActive()).resolves.toEqual([
+        expect.objectContaining({ alphaCode: "USD" }),
+      ]);
+      await expect(directory.resolve("ZZZ")).resolves.toEqual({
+        status: "unknown",
+        currency: null,
+      });
+    } finally {
+      await prisma.currencyCodeReference.deleteMany({
+        where: { releaseId: untrustedReleaseId },
+      });
+      await prisma.referenceDataRelease.delete({
+        where: { id: untrustedReleaseId },
+      });
+    }
   });
 
   it.each([
@@ -289,6 +525,7 @@ describe("product initiative persistence flow", () => {
           targetDate: "2026-11-15",
           nextDecisionDate: "2026-10-20",
           nextDecisionQuestion: "是否进入 EVT 打样",
+          unitEconomicsDraft: completeUnitEconomicsDraft(),
           reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
             code,
             evidenceRefs: [evidenceId(index)],
@@ -321,6 +558,11 @@ describe("product initiative persistence flow", () => {
       nextDecisionQuestion: "是否进入 EVT 打样",
       marketCode: "CA",
       userProblem: "验证宠物出行机会是否值得立项。",
+      unitEconomicsSnapshot: expect.objectContaining({
+        marketCode: "CA",
+        channelCode: "amazon",
+        currencyCode: "USD",
+      }),
     });
     // 快照汇总要点引用到的证据，产品侧一次取全依据。
     expect(snapshot!.evidenceRefs).toEqual([
@@ -386,6 +628,9 @@ describe("product initiative persistence flow", () => {
       targetDate: new Date("2026-11-15T00:00:00.000Z"),
       nextDecisionDate: new Date("2026-10-20T00:00:00.000Z"),
       nextDecisionQuestion: "是否进入 EVT 打样",
+      unitEconomicsSnapshot: expect.objectContaining({
+        currencyCode: "USD",
+      }),
     });
     await expect(
       prisma.productInitiativeHandoff.findUniqueOrThrow({
@@ -1036,6 +1281,7 @@ async function seedOpportunity(
       requestId: signalId,
       title: "加拿大站宠物出行需求上升",
       marketCode: "CA",
+      channelCode: "amazon",
       idempotencyKey: `create:${signalId}`,
     }),
   });
@@ -1163,6 +1409,9 @@ function decide(
       reviewPoints: [],
       ...overrides,
     } as ProductInitiativeDecisionCommandV1,
+    undefined,
+    undefined,
+    { marketCode: "CA", channelCode: "amazon", currencyResolution: "active" },
   );
 }
 
@@ -1181,6 +1430,7 @@ function completeApprove(current: { handoffId: string }) {
       evidenceRefs: [evidenceId(index)],
       conclusion: `${code} 的结论`,
     })),
+    unitEconomicsDraft: completeUnitEconomicsDraft(),
   });
 }
 
@@ -1205,8 +1455,112 @@ function completeApproveCommand(
       evidenceRefs: [evidenceId],
       conclusion: `${code} 的结论`,
     })),
+    unitEconomicsDraft: completeUnitEconomicsDraft(),
     idempotencyKey: `decision:${requestId}`,
   };
+}
+
+function completeUnitEconomicsDraft(evidenceRef?: string) {
+  const cost = {
+    min: "1",
+    max: "2",
+    basis: evidenceRef ? ("evidence" as const) : ("assumption" as const),
+    evidenceRefs: evidenceRef ? [evidenceRef] : [],
+  };
+  const scenario = {
+    salePrice: { ...cost, min: "20", max: "30" },
+    landedCost: cost,
+    platformFee: cost,
+    fulfillmentFee: cost,
+    advertisingCost: cost,
+    returnCost: cost,
+  };
+  return {
+    channelCode: "amazon",
+    currencyCode: "USD",
+    scenarios: { baseline: scenario, conservative: scenario },
+  };
+}
+
+function negativeConservativeUnitEconomicsDraft() {
+  const draft = completeUnitEconomicsDraft();
+  return {
+    ...draft,
+    scenarios: {
+      ...draft.scenarios,
+      conservative: {
+        ...draft.scenarios.conservative,
+        salePrice: {
+          ...draft.scenarios.conservative.salePrice,
+          min: "5",
+        },
+      },
+    },
+  };
+}
+
+async function seedActiveCurrency(): Promise<void> {
+  const releaseId = randomUUID();
+  await prisma.referenceDataRelease.create({
+    data: {
+      id: releaseId,
+      authority: "SIX",
+      datasetCode: "ISO_4217_LIST_ONE",
+      version: "2026-09-17-integration",
+      publishedAt: new Date("2026-09-17T00:00:00.000Z"),
+      sourceUrl:
+        "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+      retrievedAt: new Date("2026-10-04T00:00:00.000Z"),
+      sourceSha256: "a".repeat(64),
+      recordsSha256: "b".repeat(64),
+      license: "integration test fixture",
+      status: "active",
+      currencyCodes: {
+        create: {
+          id: randomUUID(),
+          alphaCode: "USD",
+          numericCode: "840",
+          minorUnit: 2,
+          currencyName: "US Dollar",
+          sourceRowHash: "c".repeat(64),
+        },
+      },
+    },
+  });
+}
+
+async function seedInactiveCurrency(): Promise<void> {
+  const existing = await prisma.currencyCodeReference.findFirst({
+    where: { alphaCode: "EUR" },
+  });
+  if (existing) return;
+  const releaseId = randomUUID();
+  await prisma.referenceDataRelease.create({
+    data: {
+      id: releaseId,
+      authority: "SIX",
+      datasetCode: "ISO_4217_LIST_ONE",
+      version: `2026-09-16-inactive-${releaseId}`,
+      publishedAt: new Date("2026-09-16T00:00:00.000Z"),
+      sourceUrl:
+        "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+      retrievedAt: new Date("2026-10-04T00:00:00.000Z"),
+      sourceSha256: "d".repeat(64),
+      recordsSha256: "e".repeat(64),
+      license: "integration test fixture",
+      status: "superseded",
+      currencyCodes: {
+        create: {
+          id: randomUUID(),
+          alphaCode: "EUR",
+          numericCode: "978",
+          minorUnit: 2,
+          currencyName: "Euro",
+          sourceRowHash: "f".repeat(64),
+        },
+      },
+    },
+  });
 }
 
 function evidenceId(index: number): string {

@@ -49,6 +49,11 @@ import { PrismaWorkbenchNetworkVolumeRepository } from "../../modules/workbench-
 import { WorkbenchNetworkModule } from "../../modules/workbench-network/workbench-network.module";
 import { utcWeekStart } from "../../modules/workbench-network/domain/workbench-network-volume";
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
+import {
+  completeUnitEconomicsDraft,
+  PRODUCT_INITIATIVE_TEST_COMMITMENT,
+  PRODUCT_INITIATIVE_TEST_CONTEXT,
+} from "./product-initiative-test-fixtures";
 
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
@@ -420,6 +425,7 @@ async function createSignal(tenantId: string): Promise<{ signalId: string }> {
       requestId: signalId,
       title: "加拿大站宠物出行需求上升",
       marketCode: "CA",
+      channelCode: "amazon",
       idempotencyKey: `create:${signalId}`,
     }),
   });
@@ -525,15 +531,24 @@ function initiativeDecision(
   overrides: Partial<ProductInitiativeDecisionCommandV1>,
 ) {
   const requestId = randomUUID();
-  return prepareProductInitiativeDecision({ version: 0 }, "selector-1", {
-    contractVersion: "product-initiative-decision.v1",
-    requestId,
-    outcome: "defer",
-    expectedInitiativeVersion: 0,
-    reviewPoints: [],
-    idempotencyKey: `decision:${requestId}`,
-    ...overrides,
-  } as ProductInitiativeDecisionCommandV1);
+  return prepareProductInitiativeDecision(
+    { version: 0 },
+    "selector-1",
+    {
+      contractVersion: "product-initiative-decision.v1",
+      requestId,
+      outcome: "defer",
+      expectedInitiativeVersion: 0,
+      reviewPoints: [],
+      ...PRODUCT_INITIATIVE_TEST_COMMITMENT,
+      unitEconomicsDraft: completeUnitEconomicsDraft(),
+      idempotencyKey: `decision:${requestId}`,
+      ...overrides,
+    } as ProductInitiativeDecisionCommandV1,
+    undefined,
+    undefined,
+    PRODUCT_INITIATIVE_TEST_CONTEXT,
+  );
 }
 
 async function seedSellableSkus(
