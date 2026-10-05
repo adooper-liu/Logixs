@@ -252,7 +252,7 @@
     "public.currency_code_reference": {
       "nameZh": "ISO 4217 币种参考",
       "nameStatus": "confirmed_business",
-      "purposeZh": "按不可变参考数据发布保存 ISO 4217 List One 币种定义，供单位经济币种校验使用。",
+      "purposeZh": "保存迁移内置的 ISO 4217 List One 币种定义，供单位经济币种校验使用。",
       "purposeStatus": "confirmed_business",
       "sourceRefs": [
         "time-currency-contract",
@@ -261,7 +261,7 @@
       "moduleCode": "master-data",
       "ownerModule": "master-data",
       "notes": [
-        "生产启用必须导入获准官方 List One active release；synthetic_rehearsal 只能保持 staged。"
+        "迁移内置 SIX List One 2026-09-17 的 178 个唯一币种，并保存来源校验哈希。"
       ]
     },
     "public.customs_clearance_case": {
@@ -4389,27 +4389,37 @@
     "public.currency_code_reference.id": {
       "nameZh": "币种参考标识",
       "nameStatus": "confirmed_implementation",
-      "purposeZh": "稳定标识同一发布中的币种定义。",
+      "purposeZh": "稳定标识内置币种定义。",
       "purposeStatus": "confirmed_implementation",
       "sourceRefs": ["prisma-schema"],
       "moduleCode": "master-data",
       "ownerModule": "master-data",
       "notes": []
     },
-    "public.currency_code_reference.release_id": {
-      "nameZh": "参考数据发布标识",
+    "public.currency_code_reference.source_row_hash": {
+      "nameZh": "来源行哈希",
       "nameStatus": "confirmed_implementation",
-      "purposeZh": "关联不可变的 ISO 4217 List One 发布版本。",
+      "purposeZh": "校验归一化币种定义与迁移内置记录的一致性。",
       "purposeStatus": "confirmed_implementation",
-      "sourceRefs": ["prisma-schema"],
+      "sourceRefs": ["engineering-data-governance"],
       "moduleCode": "master-data",
       "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
       "notes": []
     },
     "public.currency_code_reference.alpha_code": {
       "nameZh": "ISO 4217 字母代码",
       "nameStatus": "confirmed_business",
-      "purposeZh": "保存当前发布中的三位大写币种代码，单位经济必须解析到 active 发布。",
+      "purposeZh": "保存迁移内置的三位大写币种代码，单位经济必须解析到该目录。",
       "purposeStatus": "confirmed_business",
       "sourceRefs": [
         "time-currency-contract",
@@ -4422,7 +4432,7 @@
     "public.currency_code_reference.numeric_code": {
       "nameZh": "ISO 4217 数字代码",
       "nameStatus": "confirmed_business",
-      "purposeZh": "保存当前发布中的三位数字币种代码。",
+      "purposeZh": "保存迁移内置的三位数字币种代码。",
       "purposeStatus": "confirmed_business",
       "sourceRefs": [
         "time-currency-contract",
@@ -4458,24 +4468,44 @@
       "ownerModule": "master-data",
       "notes": []
     },
-    "public.currency_code_reference.source_row_hash": {
-      "nameZh": "来源行哈希",
+    "public.currency_code_reference.source_version": {
+      "nameZh": "来源版本",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "保存该内置币种记录采用的 SIX List One 发布版本。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.source_url": {
+      "nameZh": "来源地址",
       "nameStatus": "confirmed_implementation",
-      "purposeZh": "校验归一化币种定义与导入快照的一致性。",
+      "purposeZh": "保存该内置记录的可追溯来源地址。",
       "purposeStatus": "confirmed_implementation",
       "sourceRefs": ["engineering-data-governance"],
       "moduleCode": "master-data",
       "ownerModule": "master-data",
       "notes": []
     },
-    "public.currency_code_reference.created_at": {
-      "nameZh": "创建时间",
+    "public.currency_code_reference.source_sha256": {
+      "nameZh": "源文件哈希",
       "nameStatus": "confirmed_implementation",
-      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeZh": "保存来源 XML 的 SHA-256 校验值。",
       "purposeStatus": "confirmed_implementation",
       "sourceRefs": ["engineering-data-governance"],
-      "moduleCode": null,
-      "ownerModule": null,
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
+      "notes": []
+    },
+    "public.currency_code_reference.records_sha256": {
+      "nameZh": "记录集哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存按 alpha code 排序后内置币种记录集的 SHA-256 校验值。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": "master-data",
+      "ownerModule": "master-data",
       "notes": []
     },
     "public.customs_clearance_case.id": {

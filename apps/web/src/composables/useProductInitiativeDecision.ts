@@ -956,10 +956,6 @@ export function initiativeErrorMessage(raw: string): string {
   if (raw.includes("REFERENCE_CURRENCY_RELEASE_UNAVAILABLE")) {
     return "币种参考数据未接通，当前无法保存单位经济。";
   }
-  const inactiveCurrency = raw.match(/CURRENCY_INACTIVE:\s*([A-Z]{3})/);
-  if (inactiveCurrency?.[1]) {
-    return "币种 " + inactiveCurrency[1] + " 已停用，请改选 active 币种。";
-  }
   const unknownCurrency = raw.match(/CURRENCY_UNKNOWN:\s*([A-Z]{3})/);
   if (unknownCurrency?.[1]) {
     return "币种 " + unknownCurrency[1] + " 不在当前参考目录中，请重新选择。";

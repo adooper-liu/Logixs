@@ -432,6 +432,33 @@ describe("unit economics migration upgrade", () => {
   let legacyHandoffSnapshotId: string;
   let seededTenantId: string;
 
+  it("creates the complete direct currency reference table with source evidence", async () => {
+    const currencies = await prisma.currencyCodeReference.findMany({
+      orderBy: { alphaCode: "asc" },
+    });
+
+    expect(currencies).toHaveLength(178);
+    expect(currencies.map(({ alphaCode }) => alphaCode)).toEqual(
+      expect.arrayContaining(["EUR", "JPY", "USD", "XUA"]),
+    );
+    expect(new Set(currencies.map(({ alphaCode }) => alphaCode)).size).toBe(
+      178,
+    );
+    expect(new Set(currencies.map(({ numericCode }) => numericCode)).size).toBe(
+      178,
+    );
+    expect(currencies[0]).toMatchObject({
+      sourceVersion: "2026-09-17",
+      sourceUrl:
+        "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+      sourceSha256:
+        "33139b438657d1cee116ba737807ea71d19d6de4b90f799a09c56f0cc6a1b0ff",
+      recordsSha256:
+        "10f3266f8cfefacda248330d0612cf3b61febdcb38875432a20025bab607673d",
+      sourceRowHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+  });
+
   beforeAll(async () => {
     deployAt(upgradeDatabaseUrl);
     upgradePrisma = new PrismaClient({

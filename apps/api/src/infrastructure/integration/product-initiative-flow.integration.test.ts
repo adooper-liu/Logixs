@@ -191,10 +191,7 @@ describe("product initiative persistence flow", () => {
     ).resolves.toEqual(handoffBefore);
   });
 
-  it.each([
-    ["不存在", "ZZZ", "CURRENCY_UNKNOWN: ZZZ"],
-    ["非 active", "EUR", "CURRENCY_INACTIVE: EUR"],
-  ] as const)(
+  it.each([["不存在", "ZZZ", "CURRENCY_UNKNOWN: ZZZ"]] as const)(
     "%s币种明确拒绝且不写立项",
     async (_label, currencyCode, message) => {
       const opportunity = await seedOpportunity();
@@ -202,7 +199,6 @@ describe("product initiative persistence flow", () => {
         opportunity.tenantId,
         opportunity.signalId,
       );
-      if (currencyCode === "EUR") await seedInactiveCurrency();
       const unitEconomicsDraft = completeUnitEconomicsDraft();
       unitEconomicsDraft.currencyCode = currencyCode;
 
@@ -433,51 +429,29 @@ describe("product initiative persistence flow", () => {
     ).toThrow("PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason");
   });
 
-  it("币种目录只把 SIX 的同名数据集视为权威", async () => {
-    const untrustedReleaseId = randomUUID();
-    await prisma.referenceDataRelease.create({
-      data: {
-        id: untrustedReleaseId,
-        authority: "UNTRUSTED TEST AUTHORITY",
-        datasetCode: "ISO_4217_LIST_ONE",
-        version: `untrusted-${randomUUID()}`,
-        publishedAt: new Date("2026-09-17T00:00:00.000Z"),
-        sourceUrl: "https://untrusted.invalid/list-one.xml",
-        retrievedAt: new Date("2026-10-04T00:00:00.000Z"),
-        sourceSha256: "d".repeat(64),
-        recordsSha256: "e".repeat(64),
-        license: "integration test fixture",
-        status: "active",
-        currencyCodes: {
-          create: {
-            id: randomUUID(),
-            alphaCode: "ZZZ",
-            numericCode: "999",
-            minorUnit: 2,
-            currencyName: "Untrusted Currency",
-            sourceRowHash: "f".repeat(64),
-          },
-        },
-      },
+  it("币种目录直接读取迁移内置的完整参考表", async () => {
+    const directory = new PrismaReferenceCurrencyDirectory(prisma as never);
+    await expect(directory.listActive()).resolves.toHaveLength(178);
+    await expect(directory.resolve("USD")).resolves.toMatchObject({
+      status: "active",
+      currency: { alphaCode: "USD", numericCode: "840", minorUnit: 2 },
     });
-
-    try {
-      const directory = new PrismaReferenceCurrencyDirectory(prisma as never);
-      await expect(directory.listActive()).resolves.toEqual([
-        expect.objectContaining({ alphaCode: "USD" }),
-      ]);
-      await expect(directory.resolve("ZZZ")).resolves.toEqual({
-        status: "unknown",
-        currency: null,
-      });
-    } finally {
-      await prisma.currencyCodeReference.deleteMany({
-        where: { releaseId: untrustedReleaseId },
-      });
-      await prisma.referenceDataRelease.delete({
-        where: { id: untrustedReleaseId },
-      });
-    }
+    await expect(directory.resolve("EUR")).resolves.toMatchObject({
+      status: "active",
+      currency: { alphaCode: "EUR", numericCode: "978", minorUnit: 2 },
+    });
+    await expect(directory.resolve("JPY")).resolves.toMatchObject({
+      status: "active",
+      currency: { alphaCode: "JPY", numericCode: "392", minorUnit: 0 },
+    });
+    await expect(directory.resolve("XUA")).resolves.toMatchObject({
+      status: "active",
+      currency: { alphaCode: "XUA", numericCode: "965", minorUnit: null },
+    });
+    await expect(directory.resolve("ZZZ")).resolves.toEqual({
+      status: "unknown",
+      currency: null,
+    });
   });
 
   it.each([
@@ -1580,67 +1554,7 @@ function negativeConservativeUnitEconomicsDraft() {
 }
 
 async function seedActiveCurrency(): Promise<void> {
-  const releaseId = randomUUID();
-  await prisma.referenceDataRelease.create({
-    data: {
-      id: releaseId,
-      authority: "SIX",
-      datasetCode: "ISO_4217_LIST_ONE",
-      version: "2026-09-17-integration",
-      publishedAt: new Date("2026-09-17T00:00:00.000Z"),
-      sourceUrl:
-        "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
-      retrievedAt: new Date("2026-10-04T00:00:00.000Z"),
-      sourceSha256: "a".repeat(64),
-      recordsSha256: "b".repeat(64),
-      license: "integration test fixture",
-      status: "active",
-      currencyCodes: {
-        create: {
-          id: randomUUID(),
-          alphaCode: "USD",
-          numericCode: "840",
-          minorUnit: 2,
-          currencyName: "US Dollar",
-          sourceRowHash: "c".repeat(64),
-        },
-      },
-    },
-  });
-}
-
-async function seedInactiveCurrency(): Promise<void> {
-  const existing = await prisma.currencyCodeReference.findFirst({
-    where: { alphaCode: "EUR" },
-  });
-  if (existing) return;
-  const releaseId = randomUUID();
-  await prisma.referenceDataRelease.create({
-    data: {
-      id: releaseId,
-      authority: "SIX",
-      datasetCode: "ISO_4217_LIST_ONE",
-      version: `2026-09-16-inactive-${releaseId}`,
-      publishedAt: new Date("2026-09-16T00:00:00.000Z"),
-      sourceUrl:
-        "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
-      retrievedAt: new Date("2026-10-04T00:00:00.000Z"),
-      sourceSha256: "d".repeat(64),
-      recordsSha256: "e".repeat(64),
-      license: "integration test fixture",
-      status: "superseded",
-      currencyCodes: {
-        create: {
-          id: randomUUID(),
-          alphaCode: "EUR",
-          numericCode: "978",
-          minorUnit: 2,
-          currencyName: "Euro",
-          sourceRowHash: "f".repeat(64),
-        },
-      },
-    },
-  });
+  await expect(prisma.currencyCodeReference.count()).resolves.toBe(178);
 }
 
 function evidenceId(index: number): string {

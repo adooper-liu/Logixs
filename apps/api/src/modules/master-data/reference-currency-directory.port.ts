@@ -11,7 +11,6 @@ export interface ReferenceCurrencyRecord {
 
 export type ReferenceCurrencyResolution =
   | { status: "active"; currency: ReferenceCurrencyRecord }
-  | { status: "inactive"; currency: null }
   | { status: "unknown"; currency: null }
   | { status: "unavailable"; currency: null };
 

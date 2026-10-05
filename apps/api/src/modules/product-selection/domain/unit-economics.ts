@@ -20,8 +20,7 @@ export const UNIT_ECONOMICS_AMOUNT_FIELDS = [
 
 type ScenarioCode = (typeof UNIT_ECONOMICS_SCENARIOS)[number];
 type AmountField = (typeof UNIT_ECONOMICS_AMOUNT_FIELDS)[number];
-type CurrencyResolution =
-  "active" | "inactive" | "unknown" | "unavailable" | null;
+type CurrencyResolution = "active" | "unknown" | "unavailable" | null;
 
 export interface ProductInitiativeUnitEconomicsContext {
   marketCode: string | null;
@@ -91,11 +90,6 @@ export function prepareProductInitiativeUnitEconomics(input: {
   if (currencyCode && input.context.currencyResolution === "unknown") {
     throw new ProductInitiativeUnitEconomicsValidationError(
       `CURRENCY_UNKNOWN: ${currencyCode}`,
-    );
-  }
-  if (currencyCode && input.context.currencyResolution === "inactive") {
-    throw new ProductInitiativeUnitEconomicsValidationError(
-      `CURRENCY_INACTIVE: ${currencyCode}`,
     );
   }
   if (currencyCode && input.context.currencyResolution === "unavailable") {

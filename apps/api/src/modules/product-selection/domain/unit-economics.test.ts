@@ -149,7 +149,7 @@ describe("product initiative unit economics", () => {
     ).toContain("unitEconomics.scenarios.baseline.salePrice.evidenceRefs");
   });
 
-  it("does not allow the command to rewrite market/channel or use inactive currency", () => {
+  it("does not allow the command to rewrite market/channel or use unknown currency", () => {
     expect(() =>
       prepareProductInitiativeUnitEconomics({
         draft: { ...completeDraft(), marketCode: "US" },
@@ -168,15 +168,15 @@ describe("product initiative unit economics", () => {
       prepareProductInitiativeUnitEconomics({
         draft: completeDraft(),
         negativeConservativeReason: undefined,
-        context: { ...activeContext(), currencyResolution: "inactive" },
+        context: { ...activeContext(), currencyResolution: "unknown" },
       }),
-    ).toThrow("CURRENCY_INACTIVE: USD");
+    ).toThrow("CURRENCY_UNKNOWN: USD");
     expect(requestedUnitEconomicsCurrencyCode({ currencyCode: "USD" })).toBe(
       "USD",
     );
   });
 
-  it("distinguishes an unavailable reference release from an inactive code", () => {
+  it("rejects an unavailable currency reference directory", () => {
     expect(() =>
       prepareProductInitiativeUnitEconomics({
         draft: completeDraft(),

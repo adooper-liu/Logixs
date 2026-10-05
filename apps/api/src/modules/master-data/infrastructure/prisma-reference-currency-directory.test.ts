@@ -24,46 +24,30 @@ describe("PrismaReferenceCurrencyDirectory", () => {
     await expect(directory.listActive()).resolves.toHaveLength(2);
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          release: {
-            authority: "SIX",
-            datasetCode: "ISO_4217_LIST_ONE",
-            status: "active",
-          },
-        },
         orderBy: { alphaCode: "asc" },
       }),
     );
   });
 
-  it("returns unavailable before interpreting staged rows as inactive", async () => {
-    const releaseFindFirst = vi.fn().mockResolvedValue(null);
-    const currencyFindFirst = vi.fn();
+  it("returns unavailable when the direct currency table is empty", async () => {
+    const findUnique = vi.fn().mockResolvedValue(null);
+    const count = vi.fn().mockResolvedValue(0);
     const directory = new PrismaReferenceCurrencyDirectory({
-      referenceDataRelease: { findFirst: releaseFindFirst },
-      currencyCodeReference: { findFirst: currencyFindFirst },
+      currencyCodeReference: { findUnique, count },
     } as never);
 
     await expect(directory.resolve("USD")).resolves.toEqual({
       status: "unavailable",
       currency: null,
     });
-    expect(releaseFindFirst).toHaveBeenCalledWith({
-      where: {
-        authority: "SIX",
-        datasetCode: "ISO_4217_LIST_ONE",
-        status: "active",
-      },
-      select: { id: true },
-    });
-    expect(currencyFindFirst).not.toHaveBeenCalled();
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { alphaCode: "USD" } }),
+    );
+    expect(count).toHaveBeenCalledWith();
   });
 
-  it("distinguishes active, inactive and unknown codes once a release is active", async () => {
-    const releaseFindFirst = vi
-      .fn()
-      .mockResolvedValue({ id: "active-release" });
-    const currencyFindFirst = vi
+  it("distinguishes active and unknown codes without release queries", async () => {
+    const findUnique = vi
       .fn()
       .mockResolvedValueOnce({
         alphaCode: "USD",
@@ -71,37 +55,23 @@ describe("PrismaReferenceCurrencyDirectory", () => {
         minorUnit: 2,
         currencyName: "US Dollar",
       })
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: "inactive" })
-      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
+    const count = vi.fn().mockResolvedValue(178);
     const directory = new PrismaReferenceCurrencyDirectory({
-      referenceDataRelease: { findFirst: releaseFindFirst },
-      currencyCodeReference: { findFirst: currencyFindFirst },
+      currencyCodeReference: { findUnique, count },
     } as never);
 
     await expect(directory.resolve("USD")).resolves.toMatchObject({
       status: "active",
     });
-    await expect(directory.resolve("EUR")).resolves.toEqual({
-      status: "inactive",
-      currency: null,
-    });
     await expect(directory.resolve("ZZZ")).resolves.toEqual({
       status: "unknown",
       currency: null,
     });
-    expect(releaseFindFirst).toHaveBeenCalledTimes(3);
-    expect(currencyFindFirst).toHaveBeenNthCalledWith(
-      3,
+    expect(findUnique).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
-        where: {
-          alphaCode: "EUR",
-          release: {
-            authority: "SIX",
-            datasetCode: "ISO_4217_LIST_ONE",
-          },
-        },
+        where: { alphaCode: "ZZZ" },
       }),
     );
   });

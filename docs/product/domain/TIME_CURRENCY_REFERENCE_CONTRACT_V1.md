@@ -82,7 +82,7 @@ sourceEvidenceRef
 | 业务伙伴   | 合同、账户或报价上的币种关系                           | 表达业务约定，不改写币种定义              |
 | 供应商映射 | 外部时区、偏移、币种名称/符号到规范 ID                 | 处理来源差异和歧义，不能直接发布标准数据  |
 
-不在 TypeScript 枚举中手抄完整 IANA 或 ISO 4217 列表。标准数据通过有版本、可重复执行、可审计的 Seed/导入进入数据库；代码只维护稳定状态和错误码。
+不在 TypeScript 枚举中手抄完整 IANA 或 ISO 4217 列表。标准数据通过有版本、可审计的数据库迁移或对应纵向切片批准的导入进入数据库；代码只维护稳定状态和错误码。
 
 ## 4. 入口和失败规则
 
@@ -92,9 +92,9 @@ API、Webhook、文件导入和人工界面共用同一个解析与校验能力�
 2. 解析规范时区/币种身份及适用的数据集版本。
 3. 校验业务发生时点是否落在有效期内。
 4. 生成 UTC 时间或定点金额事实。
-5. 未知、歧义、停用或时区跳空明确失败或进入复核，不静默默认。
+5. 未知、歧义或时区跳空明确失败或进入复核，不静默默认。
 
-稳定错误码应覆盖：`TIMEZONE_UNKNOWN`、`TIMEZONE_AMBIGUOUS`、`TIMEZONE_LOCAL_TIME_INVALID`、`CURRENCY_UNKNOWN`、`CURRENCY_INACTIVE`、`CURRENCY_AMBIGUOUS` 和 `MONEY_PRECISION_INVALID`。进入公共 API 前须登记到 GC-011 并同步契约消费者。
+稳定错误码应覆盖：`TIMEZONE_UNKNOWN`、`TIMEZONE_AMBIGUOUS`、`TIMEZONE_LOCAL_TIME_INVALID`、`CURRENCY_UNKNOWN`、`CURRENCY_AMBIGUOUS` 和 `MONEY_PRECISION_INVALID`。进入公共 API 前须登记到 GC-011 并同步契约消费者。
 
 ## 5. 实施边界
 

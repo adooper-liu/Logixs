@@ -239,7 +239,6 @@ model ReferenceDataRelease {
   status        String                  @map("status")
   createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz
   countryCodes  CountryCodeReference[]
-  currencyCodes CurrencyCodeReference[]
   unlocodeAreas UnlocodeAreaReference[]
   portCodes     PortCodeReference[]
   cargoOwners   CargoOwnerReference[]
@@ -249,21 +248,20 @@ model ReferenceDataRelease {
   @@map("reference_data_release")
 }
 
-// ISO 4217 List One currency identity for one immutable reference-data release.
+// ISO 4217 List One currency identity, bundled directly with the migration.
 model CurrencyCodeReference {
-  id            String               @id @map("id") @db.Uuid
-  releaseId     String               @map("release_id") @db.Uuid
-  release       ReferenceDataRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict)
-  alphaCode     String               @map("alpha_code") @db.Char(3)
-  numericCode   String               @map("numeric_code") @db.Char(3)
-  minorUnit     Int?                 @map("minor_unit")
-  currencyName  String               @map("currency_name")
-  sourceRowHash String               @map("source_row_hash") @db.Char(64)
-  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  id            String   @id @map("id") @db.Uuid
+  alphaCode     String   @unique(map: "currency_code_alpha_key") @map("alpha_code") @db.Char(3)
+  numericCode   String   @unique(map: "currency_code_numeric_key") @map("numeric_code") @db.Char(3)
+  minorUnit     Int?     @map("minor_unit")
+  currencyName  String   @map("currency_name")
+  sourceVersion String   @map("source_version")
+  sourceUrl     String   @map("source_url")
+  sourceSha256  String   @map("source_sha256") @db.Char(64)
+  recordsSha256 String   @map("records_sha256") @db.Char(64)
+  sourceRowHash String   @map("source_row_hash") @db.Char(64)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  @@unique([releaseId, alphaCode], map: "currency_code_release_alpha_key")
-  @@unique([releaseId, numericCode], map: "currency_code_release_numeric_key")
-  @@index([alphaCode, releaseId], map: "currency_code_alpha_release_idx")
   @@map("currency_code_reference")
 }
 

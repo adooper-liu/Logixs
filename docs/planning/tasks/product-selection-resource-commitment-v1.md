@@ -1,5 +1,5 @@
 ---
-status: fix
+status: review
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -8,6 +8,7 @@ dependsOn: []
 writeScopes:
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - docs/planning/tasks/product-selection-resource-commitment-v1.md
+  - docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md
   - packages/contracts/schemas/v1/product-initiative.schema.json
   - packages/contracts/schemas/v1/index.json
   - packages/contracts/fixtures/v1/schema-instances.json
@@ -221,16 +222,63 @@ authorityRefs:
 2. 每个情景六项使用紧凑区间行：项目名、min、max、`有证据/待验证假设` 文字选择；有证据时就地选择当前合法 evidence，假设时不显示伪证据。前端只展示服务端返回贡献，编辑中显示“保存后由服务端计算”，不得自行算金额。
 3. 服务端返回单位经济缺口时，进度头和行动按钮使用具体人话；保守贡献下限为负时，就地要求“仍要投入的理由”，不自动拦截为不立项、不显示 AI 建议阈值。
 4. NPI 快照只读展示输入、标签和贡献；桌面/窄屏/移动端继续满足 S1 的 sticky 主动作和无横向溢出。金额表在窄屏改为逐项纵向，不依赖横向滚动。
+5. 负责人 2026-10-05 确认方案 A：选品工作态与结果态彻底分离。工作态服务于“是否值得投入”的投资门判断；结果态服务于读取已冻结并交给 NPI 的投资结论，不再渲染 disabled radio/textarea 或把当前新门槛反算成历史记录的“待补 55 项”。
+6. 结果态按 `结论与责任 → 经营机会摘要 → 单位经济与下一决策 → 评审依据摘要 → 按需展开证据/交接原文` 排列。历史没有记录的事实使用“历史未记录”聚合说明，不计入当前待办，不使用警示色冒充阻断。
+7. 删除大量常驻免责声明、教学句和重复眉题；只有“为何只读”“后补事实语义”“历史为何未记录”等不影响当前动作的说明进入现有 `InfoTooltip`，并保持点击、键盘聚焦、Esc 关闭。当前状态、责任、目标/下一决策日期、引用失效、真实阻断、失败与恢复动作必须常驻。
 
 #### F. 执行分片、验证与停止条件
 
 1. **S3a-unit-economics-core（已完成，待 S3c 收窄）**：已交付单位经济 Domain、契约、Schema/迁移、Repository、API 与初版币种 release/importer 机制；负责人 2026-10-05 取消其中 release/importer 方案，由 S3c 原位收窄。
 2. **S3b-unit-economics-ui（已完成）**：消费单位经济契约，交付选品录入、服务端计算结果/缺口显示、NPI 只读快照、Web 单测与选品到 NPI 三视口 E2E。
 3. **S3c-currency-reference-simplification（当前执行）**：把 `CurrencyCodeReference` 收窄为迁移内置的 178 币种直接表；删除 release 关联、authorized/synthetic snapshot、importer/verifier、seed 和脚本；保持目录 Port 与选品消费者行为，不改单位经济契约或 UI。
-4. TDD 顺序：先改币种目录单测与真实 PostgreSQL/迁移测试，证明直接表 178 条、USD/EUR/JPY/XUA、空表 unavailable、非空未知码 unknown、无 inactive/release 查询；观看旧实现失败后再改 Schema/迁移/adapter，并删除失效机制。
-5. S3c 定向门禁：币种目录/API 单测，product-initiative PostgreSQL 与迁移升级，空库 178 条/唯一性/来源哈希测试，contract/drift，data-dictionary generate/check，db generate，API/Web lint/typecheck/unit，选品到 NPI 三视口 E2E、`repo:check`、格式与 diff 检查。
-6. 出现需要新增利润率、默认币种、汇率、销售量、预算或证据采信阈值时返回 `blocked` 交负责人定案；不得自行填默认。
-7. 实现执行器完成后返回 HANDOFF；不得推送、建 PR、修改 brief 状态或覆盖当前工作树中不属于 S3c 的 Web 改动。
+4. **S4-product-selection-result-mode（S3c 验收后执行）**：按负责人确认的方案 A 把工作态与结果态分开；基于当前未提交的 `ProductInitiativeReviewPanel` / `ProductSelectionWorkbench` 改动继续收口，不回退。只改 Web 视图与组件/测试，不改 API、契约、Schema、迁移、立项门槛或责任政策。
+5. S4 结果态验收：顶部只保留对象、真实结果、当前责任与下一决策；机会事实合并为紧凑摘要；评审要点每项一行显示结论/证据数/失效状态，展开才显示证据和备注；单位经济有快照时显示基准/保守贡献摘要，无快照时显示“历史立项未记录”；禁止把历史缺失渲染成当前“还不能立项/待补 N 项”。
+6. S4 工作态验收：保留三栏与 sticky 主动作，但完备度按业务区域聚合，不把 48 个金额端点铺成警示墙；点击区域可定位到对应输入。大量免责声明与解释删除，必要说明使用 `InfoTooltip`，不能隐藏真实状态、当前阻断或恢复动作。
+7. TDD 顺序：S3c 先完成币种目录测试与收口；S4 再先写结果态/历史快照/工作态聚合缺口的失败组件与页面测试，再改 UI，并按 1440×900、1024×768、390×844 做真实页面视觉复验。
+8. S3c 定向门禁：币种目录/API 单测，product-initiative PostgreSQL 与迁移升级，空库 178 条/唯一性/来源哈希测试，contract/drift，data-dictionary generate/check，db generate，API/Web lint/typecheck/unit，选品到 NPI 三视口 E2E、`repo:check`、格式与 diff 检查。S4 增加受影响 Web 全量单测与三视口 E2E/截图复验。
+9. 出现需要新增利润率、默认币种、汇率、销售量、预算或证据采信阈值时返回 `blocked` 交负责人定案；不得自行填默认。
+10. 实现执行器每片完成后返回 HANDOFF；不得推送、建 PR、修改 brief 状态或覆盖不属于当前片的并行改动。
+
+### S3c 主代理验收裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: S3c-currency-reference-simplification
+decisions:
+  - finding: PS-S3C-R01
+    status: accepted
+    reason: >
+      负责人已取消 authorized snapshot、active release 与许可部署门禁，但单位经济迁移尾注仍声称生产启用依赖 approved official
+      active release；TIME_CURRENCY_REFERENCE_CONTRACT_V1 仍把 CURRENCY_INACTIVE 列为当前稳定错误码，Web 也保留不可达的 inactive
+      翻译。这三处会让代码、权威和运维说明继续传播已取消政策，必须在 S3c 同步删除或改为直接表语义。
+    writeback: 本 brief S3c C/F；doc/08 4.2；TIME_CURRENCY_REFERENCE_CONTRACT_V1
+  - finding: PS-S3C-R02
+    status: accepted
+    reason: >
+      TIME_CURRENCY_REFERENCE_CONTRACT_V1 的迁移内置措辞是负责人新政策的必要权威同步；该文件已在 authorityRefs 但遗漏于
+      writeScopes。主代理补入精确写入范围，不扩大生产实现。
+    writeback: 本 brief frontmatter
+unknowns: []
+verificationGaps:
+  - id: PS-S3C-VG01
+    status: non-blocking-external
+    reason: >
+      repo:check 当前只因未归属的 ProductInitiativeReviewPanel.vue 使用裸 padding-top:2px 失败；该文件属于已批准、排在 S3c 后的
+      S4 UI 现有工作，S3c 未覆盖。主代理逐条核验迁移 178 条与负责人提供 XML 完全一致，alpha/numeric/id 唯一且逐行哈希无误。
+  - id: PS-S3C-VG02
+    status: closed
+    reason: >
+      PS-S3C-R01/R02 已收口：迁移删除 active release gate 注释，时间/币种权威移除 CURRENCY_INACTIVE，Web 删除不可达翻译，
+      TIME_CURRENCY_REFERENCE_CONTRACT_V1 已纳入精确 writeScopes。API 28、Web 27、PostgreSQL 45 及 db/contract/dictionary/lint/typecheck/format/diff 均通过。
+nonBlockingSuggestions: []
+next: review
+```
+
+修复验收反证：
+
+1. 删除迁移中 approved official active release 的生产 gate 尾注，改成内置 178 币种及来源哈希语义；不得恢复 importer/release 流程。
+2. `TIME_CURRENCY_REFERENCE_CONTRACT_V1.md` 当前稳定错误码移除 `CURRENCY_INACTIVE`，说明内置表只区分 unknown 与目录 unavailable；Web 删除不可达的 inactive 错误翻译及对应测试（若有）。
+3. 复跑币种目录/单位经济/API 单测、两条 product-initiative PostgreSQL 集成、db generate、contract/drift、dictionary check、API/Web lint/typecheck、受影响格式和 diff；`repo:check` 若仍仅由未归属 Web 裸值失败，按路径如实报告，不修改该文件。
 
 **一手来源**：负责人提供 `D:\aosom\Downloads\list-one.xml`，根属性 `Pblshd=2026-09-17`。S3c 只提交迁移内置的 178 个折叠币种记录和来源哈希，不提交原始 XML；该文件已核验为 277 coded rows、178 个唯一币种、无格式/alpha 元数据/numeric code 冲突。
 

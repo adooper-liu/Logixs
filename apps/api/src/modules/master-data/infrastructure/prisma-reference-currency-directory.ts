@@ -6,22 +6,12 @@ import type {
   ReferenceCurrencyResolution,
 } from "../reference-currency-directory.port";
 
-const DATASET_CODE = "ISO_4217_LIST_ONE";
-const AUTHORITY = "SIX";
-
 @Injectable()
 export class PrismaReferenceCurrencyDirectory implements ReferenceCurrencyDirectoryPort {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listActive(): Promise<ReferenceCurrencyRecord[]> {
     const rows = await this.prisma.currencyCodeReference.findMany({
-      where: {
-        release: {
-          authority: AUTHORITY,
-          datasetCode: DATASET_CODE,
-          status: "active",
-        },
-      },
       orderBy: { alphaCode: "asc" },
       select: CURRENCY_SELECT,
     });
@@ -29,36 +19,15 @@ export class PrismaReferenceCurrencyDirectory implements ReferenceCurrencyDirect
   }
 
   async resolve(alphaCode: string): Promise<ReferenceCurrencyResolution> {
-    const activeRelease = await this.prisma.referenceDataRelease.findFirst({
-      where: {
-        authority: AUTHORITY,
-        datasetCode: DATASET_CODE,
-        status: "active",
-      },
-      select: { id: true },
-    });
-    if (!activeRelease) {
-      return { status: "unavailable", currency: null };
-    }
-
-    const active = await this.prisma.currencyCodeReference.findFirst({
-      where: {
-        alphaCode,
-        releaseId: activeRelease.id,
-      },
+    const active = await this.prisma.currencyCodeReference.findUnique({
+      where: { alphaCode },
       select: CURRENCY_SELECT,
     });
     if (active) return { status: "active", currency: toRecord(active) };
 
-    const exists = await this.prisma.currencyCodeReference.findFirst({
-      where: {
-        alphaCode,
-        release: { authority: AUTHORITY, datasetCode: DATASET_CODE },
-      },
-      select: { id: true },
-    });
-    return exists
-      ? { status: "inactive", currency: null }
+    const count = await this.prisma.currencyCodeReference.count();
+    return count === 0
+      ? { status: "unavailable", currency: null }
       : { status: "unknown", currency: null };
   }
 }
