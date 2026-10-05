@@ -8,6 +8,7 @@ import type {
   ProductOpportunityV1,
 } from "@logix/contracts";
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 
 test("the business-workbench directory opens live and framework stages honestly", async ({
   page,
@@ -181,7 +182,7 @@ for (const width of [320, 375, 1440]) {
 
 test("a market owner can hand off a signal for a selector to claim, accept and take a decision", async ({
   page,
-}) => {
+}, testInfo) => {
   const { decisions, supplementSecondSignalScope } =
     await mockMarketOpportunityApis(page, {
       secondMarketCode: null,
@@ -276,7 +277,11 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     "合规风险",
   ]) {
     const point = page.locator(".review-point").filter({ hasText: label });
-    await point.getByRole("button", { name: /从已登记证据中引用/ }).click();
+    const toggle = point.locator(".review-point__toggle");
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+      await toggle.click();
+    }
+    await point.getByRole("button", { name: /引用证据/ }).click();
     await point.getByRole("checkbox").check();
     await point.getByLabel(`${label}结论`).fill(`${label} 的判断`);
   }
@@ -319,16 +324,122 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   );
   await submit.click();
 
-  await expect(page.locator(".feedback")).toContainText("已立项");
   // 成功后从服务端重读：终态由服务端返回的 currentDestination 决定，不是前端猜的。
-  await expect(page.locator(".conclusion-strip")).toContainText("已立项");
+  await expect(page.locator(".initiative-result")).toContainText(
+    "已立项 · 已交 NPI",
+  );
   await expect(page.locator(".product-initiative-outcome")).toHaveCount(0);
   await expect(page.locator(".destination")).toHaveCount(0);
-  // 评审要点只读：系统不会再接受改动，就不该继续摆出写入口。
-  await expect(page.locator(".review-point textarea").first()).toHaveAttribute(
-    "readonly",
-    "",
+  const result = page.locator(".initiative-result");
+  await expect(result.getByText("立项责任", { exact: true })).toBeVisible();
+  await expect(
+    result.getByText("产品开发 / NPI", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(result.getByText("目标日期", { exact: true })).toBeVisible();
+  await expect(result.getByText("下一决策日期", { exact: true })).toBeVisible();
+  await expect(result.getByText("下一决策问题", { exact: true })).toBeVisible();
+  await expect(
+    result.locator("input, select, textarea, [role='radio']"),
+  ).toHaveCount(0);
+  await expect(page.locator(".queue-item.selected")).toContainText(
+    /历史缺失 \d+ 类/,
   );
+  await expect(page.locator(".queue-item.selected")).not.toContainText("待补");
+  await expect(result.locator(".initiative-result__reviews")).not.toContainText(
+    /target_user_and_market|competitive_supply|price_band_and_margin|compliance_risk/,
+  );
+  const resultFacts = await page.evaluate(() => {
+    const resultElement =
+      document.querySelector<HTMLElement>(".initiative-result");
+    const header = document.querySelector<HTMLElement>(
+      ".initiative-result__strip",
+    );
+    const appContent = document.querySelector<HTMLElement>(".app-content");
+    const resultRect = resultElement?.getBoundingClientRect();
+    const headerRect = header?.getBoundingClientRect();
+    return {
+      viewportWidth: document.documentElement.clientWidth,
+      pageScrollWidth: document.documentElement.scrollWidth,
+      appScrollWidth: appContent?.scrollWidth ?? 0,
+      appClientWidth: appContent?.clientWidth ?? 0,
+      resultScrollWidth: resultElement?.scrollWidth ?? 0,
+      resultClientWidth: resultElement?.clientWidth ?? 0,
+      headerTop: headerRect?.top ?? Number.POSITIVE_INFINITY,
+      headerBottom: headerRect?.bottom ?? Number.POSITIVE_INFINITY,
+      resultTop: resultRect?.top ?? Number.POSITIVE_INFINITY,
+      investmentFacts: [
+        "基准贡献",
+        "保守贡献",
+        "目标日期",
+        "下一决策日期",
+        "下一决策问题",
+      ].map((label) => {
+        const labelElement = [
+          ...document.querySelectorAll<HTMLElement>("dt"),
+        ].find((element) => element.textContent?.trim() === label);
+        const row = labelElement?.parentElement?.getBoundingClientRect();
+        return {
+          label,
+          top: row?.top ?? Number.POSITIVE_INFINITY,
+          bottom: row?.bottom ?? Number.POSITIVE_INFINITY,
+        };
+      }),
+    };
+  });
+  expect(resultFacts.pageScrollWidth).toBeLessThanOrEqual(
+    resultFacts.viewportWidth + 1,
+  );
+  expect(resultFacts.appScrollWidth).toBeLessThanOrEqual(
+    resultFacts.appClientWidth + 1,
+  );
+  expect(resultFacts.resultScrollWidth).toBeLessThanOrEqual(
+    resultFacts.resultClientWidth + 1,
+  );
+  expect(resultFacts.resultTop).toBeGreaterThanOrEqual(0);
+  expect(resultFacts.headerTop).toBeGreaterThanOrEqual(0);
+  expect(resultFacts.headerBottom).toBeLessThanOrEqual(
+    page.viewportSize()?.height ?? 0,
+  );
+  for (const fact of resultFacts.investmentFacts) {
+    expect(fact.top, fact.label).toBeGreaterThanOrEqual(0);
+    expect(fact.bottom, fact.label).toBeLessThanOrEqual(
+      page.viewportSize()?.height ?? 0,
+    );
+  }
+  const historyMissingCount = await result
+    .getByText("历史未记录", {
+      exact: true,
+    })
+    .count();
+  expect(historyMissingCount).toBeLessThanOrEqual(1);
+  const screenshotViewport = page.viewportSize();
+  const screenshotPath = testInfo.outputPath(
+    `product-selection-result-${screenshotViewport?.width ?? 0}x${screenshotViewport?.height ?? 0}.png`,
+  );
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  await testInfo.attach("product-selection-result-mode", {
+    path: screenshotPath,
+    contentType: "image/png",
+  });
+  const evidencePath = testInfo.outputPath(
+    `product-selection-result-${screenshotViewport?.width ?? 0}x${screenshotViewport?.height ?? 0}.json`,
+  );
+  await writeFile(
+    evidencePath,
+    JSON.stringify(
+      {
+        ...resultFacts,
+        historyMissingCount,
+        queueText: await page.locator(".queue-item.selected").innerText(),
+      },
+      null,
+      2,
+    ),
+  );
+  await testInfo.attach("product-selection-result-evidence", {
+    path: evidencePath,
+    contentType: "application/json",
+  });
   // 桩不校验版本，所以只能在这里断言"发出去的版本正确"：首次立项必须是 0。
   expect(decisions).toHaveLength(1);
   expect(decisions[0]?.expectedInitiativeVersion).toBe(0);
@@ -425,10 +536,12 @@ test("selection requests a return, market takes it back, then hands off a new ve
   await page.getByLabel("市场需要补什么").fill("重新核对目标市场与渠道证据。");
   await page.getByRole("button", { name: "请求退回市场" }).click();
   await expect(page.getByText("等待市场接回", { exact: true })).toBeVisible();
-  await expect(page.locator(".conclusion-strip")).toContainText(
+  await expect(page.locator(".initiative-result")).toContainText(
     "已请求退回市场，等待市场接回",
   );
-  await expect(page.locator(".conclusion-strip")).not.toContainText("已立项");
+  await expect(page.locator(".initiative-result")).not.toContainText(
+    "已立项并交给产品侧",
+  );
 
   await page.goto("/workspaces/market-signals");
   await page.getByRole("tab", { name: /选品请求退回/ }).click();

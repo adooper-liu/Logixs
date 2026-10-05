@@ -13,6 +13,7 @@ import {
 const props = defineProps<{
   items: ProductOpportunityV1[];
   selectedId: string;
+  resultMode?: boolean;
   /** 队列上的立项投影；没有条目就是"还没看过"。 */
   initiatives: Map<string, ProductInitiativeQueueEntryV1>;
 }>();
@@ -57,22 +58,55 @@ const decorated = computed<
   }));
 });
 
+const resultItem = computed(() =>
+  decorated.value.find(
+    ({ item }) => item.handoff.handoffId === props.selectedId,
+  ),
+);
+
 function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
   if (state === "claimed") return "已领取";
   if (state === "accepted") return "已接受";
   if (state === "superseded") return "已有新版";
   return "待领取";
 }
+
+function historicalMissingCategories(item: ProductOpportunityV1): number {
+  const supplemented = new Set(item.supplementedFieldCodes ?? []);
+  return new Set(
+    item.handoff.pendingFieldCodes.filter((code) => !supplemented.has(code)),
+  ).size;
+}
 </script>
 
 <template>
   <section class="opportunity-queue" aria-label="选品机会队列">
-    <header>
+    <header v-if="!resultMode">
       <small>先处理什么</small>
       <h2>经营机会</h2>
     </header>
+    <template v-if="resultMode && resultItem">
+      <button
+        type="button"
+        class="queue-item queue-item--result selected"
+        @click="$emit('select', resultItem.item.handoff.handoffId)"
+      >
+        <span class="initiative initiative--handed_off">
+          {{ resultItem.badge?.label ?? "已立项" }}
+        </span>
+        <strong>{{ resultItem.item.handoff.title }}</strong>
+        <span
+          >{{ resultItem.item.handoff.marketCode || "市场未填" }} ·
+          {{ resultItem.item.handoff.channelCode || "渠道未填" }}</span
+        >
+        <span v-if="historicalMissingCategories(resultItem.item)" class="gaps">
+          历史缺失 {{ historicalMissingCategories(resultItem.item) }} 类
+        </span>
+      </button>
+    </template>
     <template
       v-for="{ item, badge, group, groupStart } in decorated"
+      v-else-if="!resultMode"
       :key="item.handoff.handoffId"
     >
       <h3 v-if="groupStart" class="queue-group">
@@ -107,7 +141,13 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
         <span v-else class="reason"
           ><CircleAlert :size="14" />经营团队判断值得进一步评估</span
         >
-        <span v-if="item.handoff.pendingFieldCodes.length" class="gaps">
+        <span
+          v-if="
+            item.handoff.pendingFieldCodes.length &&
+            badge?.state !== 'handed_off'
+          "
+          class="gaps"
+        >
           随交接待补 {{ item.handoff.pendingFieldCodes.length }} 项
         </span>
         <span
@@ -165,6 +205,9 @@ function stateLabel(state: ProductOpportunityV1["intakeState"]): string {
 .queue-item.selected {
   box-shadow: inset 3px 0 var(--brand);
   background: var(--brand-soft);
+}
+.queue-item--result {
+  cursor: default;
 }
 .queue-item strong {
   color: var(--ink);

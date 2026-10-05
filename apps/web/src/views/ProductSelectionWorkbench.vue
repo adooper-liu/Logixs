@@ -7,10 +7,11 @@ import {
   Zap,
 } from "@lucide/vue";
 import type { ProductInitiativeReviewPointCodeV1 } from "@logix/contracts";
-import { computed, shallowRef } from "vue";
+import { computed, nextTick, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
 import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
+import ProductInitiativeResultPanel from "../components/product-selection/ProductInitiativeResultPanel.vue";
 import ProductInitiativeReviewPanel from "../components/product-selection/ProductInitiativeReviewPanel.vue";
 import ProductOpportunityActions from "../components/product-selection/ProductOpportunityActions.vue";
 import ProductOpportunityDetail from "../components/product-selection/ProductOpportunityDetail.vue";
@@ -163,11 +164,26 @@ const workResult = computed(() => {
 });
 
 const currentOwner = computed(() => {
+  if (initiative.value?.currentDestination === "handed_off") {
+    return initiative.value.receivingTeamOrRole || "历史未记录";
+  }
   if (initiative.value?.currentDestination === "returned_to_market") {
     return "经营团队（重新判断）";
   }
+  if (initiative.value) {
+    return initiative.value.responsibleActorId || "历史未记录";
+  }
   if (selected.value?.intakeState === "queued") return "选品团队（待领取）";
   return selected.value?.assignedActorId || "选品负责人";
+});
+
+const historicalMissingCategoryCount = computed(() => {
+  const item = selected.value;
+  if (!item) return 0;
+  const supplemented = new Set(item.supplementedFieldCodes);
+  return new Set(
+    item.handoff.pendingFieldCodes.filter((code) => !supplemented.has(code)),
+  ).size;
 });
 
 async function reload(): Promise<void> {
@@ -242,18 +258,13 @@ async function submitDecision(
 
 /** 已立项 = 整页 Mode（与信号关闭态同构）。 */
 const isInitiated = computed(() => decided.value);
-const conclusion = computed(() =>
-  returnPending.value
-    ? {
-        label: "已请求退回市场，等待市场接回",
-        detail: "请求已写入，当前责任仍在选品；市场接回前不能再次判断。",
-      }
-    : {
-        label: "已立项",
-        detail: "已立项无待办；缺口仅作摘要，不可再改结论。",
-      },
-);
-
+watch(isInitiated, async (initiated) => {
+  if (!initiated) return;
+  await nextTick();
+  document
+    .querySelector<HTMLElement>(".app-content")
+    ?.scrollTo({ top: 0, behavior: "auto" });
+});
 const requiredRemaining = computed(() => blockingGaps.value.length);
 const progressFilled = computed(() =>
   Math.max(0, requiredCount.value - requiredRemaining.value),
@@ -303,14 +314,14 @@ function applyFromHandoff(): void {
       </button>
     </section>
     <section
-      v-else-if="feedbackReceipt"
+      v-else-if="feedbackReceipt && !isInitiated"
       class="feedback feedback--success"
       role="status"
     >
       {{ feedbackReceipt }}
     </section>
     <section
-      v-else-if="applyNotice"
+      v-else-if="applyNotice && !isInitiated"
       class="feedback feedback--success"
       role="status"
     >
@@ -318,24 +329,10 @@ function applyFromHandoff(): void {
     </section>
 
     <section
-      v-if="selected && isInitiated"
-      class="conclusion-strip"
-      aria-label="选品结论"
+      v-if="!isInitiated"
+      class="work-context"
+      aria-label="当前岗位与交接责任"
     >
-      <div>
-        <small>结论</small>
-        <h2>
-          {{ selected.handoff.title }}
-          <span>· {{ conclusion.label }}</span>
-        </h2>
-        <p>{{ currentOwner }} · 只读回看 · 写入口已关闭</p>
-      </div>
-      <p class="conclusion-strip__action">
-        {{ conclusion.detail }}
-      </p>
-    </section>
-
-    <section v-else class="work-context" aria-label="当前岗位与交接责任">
       <BriefcaseBusiness :size="19" />
       <span><small>谁在工作</small><b>选品负责人</b></span>
       <span
@@ -356,6 +353,7 @@ function applyFromHandoff(): void {
         <ProductOpportunityQueue
           :items="items"
           :initiatives="initiatives"
+          :result-mode="isInitiated"
           :selected-id="selected?.handoff.handoffId ?? ''"
           @select="selectOpportunity"
         />
@@ -393,15 +391,25 @@ function applyFromHandoff(): void {
               <Zap :size="15" aria-hidden="true" />带入
             </button>
           </header>
-          <p
-            v-else-if="isInitiated && blockingGaps.length"
-            class="initiated-gap-summary"
-          >
-            立项时仍缺：{{
-              blockingGaps.map((gap) => gap.label).join("、")
-            }}（仅摘要）
-          </p>
-          <ProductOpportunityDetail :item="selected" />
+          <ProductInitiativeResultPanel
+            v-if="isInitiated && initiative"
+            :title="selected.handoff.title"
+            :market-code="selected.handoff.marketCode"
+            :channel-code="selected.handoff.channelCode"
+            :category-ref="selected.handoff.categoryRef"
+            :opportunity-statement="selected.handoff.opportunityStatement"
+            :observed-fact-summary="selected.handoff.observedFactSummary"
+            :hypothesis="selected.handoff.hypothesis"
+            :supplemented-fact-count="selected.supplementedFieldCodes.length"
+            :historical-missing-category-count="historicalMissingCategoryCount"
+            :initiative="initiative"
+            :points="reviewPointViews"
+            :candidates="evidenceCandidates"
+            :unit-economics-snapshot="unitEconomicsSnapshot"
+          />
+          <template v-else>
+            <ProductOpportunityDetail :item="selected" />
+          </template>
           <ProductEvaluationRequirementsPanel
             v-if="!isInitiated"
             :requirements="requirements.requirements"
@@ -410,12 +418,11 @@ function applyFromHandoff(): void {
             :save-evidence="addRequirementEvidence"
           />
           <ProductInitiativeReviewPanel
-            v-if="initiativeReady"
+            v-if="initiativeReady && !isInitiated"
             :key="initiativeHandoffId"
             :points="reviewPointViews"
             :candidates="evidenceCandidates"
             :busy="deciding"
-            :readonly="decided"
             :add-evidence="addInitiativeEvidence"
             @toggle-evidence="toggleEvidence"
             @update-conclusion="setConclusion"
@@ -498,53 +505,6 @@ function applyFromHandoff(): void {
 .selection-workbench {
   min-width: 0;
 }
-.selection-workbench--initiated {
-  filter: saturate(0.85);
-}
-.conclusion-strip {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--line-strong);
-  border-left: 4px solid var(--ink-soft);
-  border-radius: var(--radius-card);
-  background: var(--surface-2);
-}
-.conclusion-strip small {
-  color: var(--muted);
-  font-size: var(--text-micro);
-  font-weight: 700;
-}
-.conclusion-strip h2 {
-  margin: var(--space-1) 0 0;
-  color: var(--ink);
-  font-size: var(--text-title);
-  line-height: var(--leading-title);
-}
-.conclusion-strip h2 span {
-  color: var(--ink-soft);
-  font-weight: 600;
-}
-.conclusion-strip p {
-  margin: var(--space-2) 0 0;
-  color: var(--muted);
-  font-size: var(--text-meta);
-}
-.conclusion-strip__action {
-  flex: none;
-  max-width: 220px;
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-control);
-  color: var(--ink-soft);
-  font-size: var(--text-label);
-  line-height: var(--leading-body);
-  text-align: right;
-}
 .progress-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -596,14 +556,6 @@ function applyFromHandoff(): void {
 .progress-head__apply:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-}
-.initiated-gap-summary {
-  margin: 0;
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--line);
-  color: var(--ink-soft);
-  font-size: var(--text-label);
-  background: var(--surface-2);
 }
 .feedback {
   display: flex;
@@ -725,15 +677,12 @@ function applyFromHandoff(): void {
       "queue action"
       "detail detail";
   }
+  .workbench-grid--initiated {
+    grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
+    grid-template-areas: "queue detail";
+  }
 }
 @media (max-width: 680px) {
-  .conclusion-strip {
-    display: grid;
-  }
-  .conclusion-strip__action {
-    max-width: none;
-    text-align: left;
-  }
   .work-context,
   .workbench-grid,
   .workbench-grid--initiated {
@@ -750,8 +699,8 @@ function applyFromHandoff(): void {
   }
   .workbench-grid--initiated {
     grid-template-areas:
-      "queue"
-      "detail";
+      "detail"
+      "queue";
   }
   .work-context > svg {
     display: none;

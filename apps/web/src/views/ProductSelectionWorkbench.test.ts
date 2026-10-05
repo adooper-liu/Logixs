@@ -670,13 +670,13 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
-    const conclusion = wrapper.get(".conclusion-strip");
-    expect(conclusion.text()).toContain("已请求退回市场，等待市场接回");
-    expect(conclusion.text()).toContain("当前责任仍在选品");
-    expect(conclusion.text()).not.toContain("已立项");
+    const result = wrapper.get(".initiative-result");
+    expect(result.text()).toContain("立项结论已记录");
+    expect(result.text()).toContain("dev-operator");
+    expect(result.text()).not.toContain("已立项并交给产品侧");
   });
 
-  it("已立项后评审要点只读，不再提供系统不会接受的编辑", async () => {
+  it("已立项后展示结果摘要，不把历史缺失显示成当前待补", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     getProductInitiative.mockResolvedValue(
       initiativeDetail({
@@ -690,28 +690,16 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
-    const review = wrapper.get(".product-initiative-review");
-    const conclusion = review.get('textarea[aria-label="竞争供给结论"]');
-    expect(conclusion.attributes("readonly")).toBeDefined();
-    // 专业要求面板另有自己的“添加证据”，这里只断言评审要点面板不再给写入口
-    expect(review.find("button.add-evidence").exists()).toBe(false);
-    expect(review.find(".picker-toggle").exists()).toBe(false);
-    // 短句落在档位单选；补充框为空不算丢结论
-    expect(
-      (
-        review.get(
-          '.review-point[data-code="competitive_supply"] input[value="concentrated"]',
-        ).element as HTMLInputElement
-      ).checked,
-    ).toBe(true);
-    expect((conclusion.element as HTMLTextAreaElement).value).toBe("");
-    expect(
-      review
-        .get(
-          '.review-point[data-code="competitive_supply"] .review-point__facts',
-        )
-        .text(),
-    ).toContain("在售同款 320 个");
+    const result = wrapper.get(".initiative-result");
+    expect(result.text()).toContain("已立项 · 已交 NPI");
+    expect(result.text()).toContain("立项责任");
+    expect(result.text()).toContain("历史未记录");
+    expect(result.text()).toContain("头部集中");
+    expect(result.text()).toContain("1 项证据");
+    expect(result.text()).toContain("历史立项未记录");
+    expect(result.text()).not.toContain("待补");
+    expect(result.find("input, select, textarea").exists()).toBe(false);
+    expect(wrapper.find(".product-initiative-review").exists()).toBe(false);
   });
 
   it("立项判断读不出来时不提供判断动作，先让人重新加载", async () => {
@@ -750,7 +738,7 @@ describe("ProductSelectionWorkbench", () => {
     expect(getProductInitiative).toHaveBeenCalledTimes(2);
   });
 
-  it("已立项的机会整页 Mode：结论条优先，无右侧判断动作", async () => {
+  it("已立项的机会整页 Mode：结果优先，无右侧判断动作", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     getProductInitiative.mockResolvedValue(
       initiativeDetail({
@@ -765,11 +753,58 @@ describe("ProductSelectionWorkbench", () => {
     const wrapper = await mountPage();
 
     expect(wrapper.classes()).toContain("selection-workbench--initiated");
-    expect(wrapper.get(".conclusion-strip").text()).toContain("已立项");
+    expect(wrapper.get(".initiative-result").text()).toContain(
+      "已立项 · 已交 NPI",
+    );
+    expect(wrapper.text()).toContain("选品岗位工作台");
+    expect(wrapper.findAll("header h1")).toHaveLength(1);
     expect(wrapper.find(".destination").exists()).toBe(false);
     expect(wrapper.find(".outcome-submit").exists()).toBe(false);
     expect(wrapper.find(".product-initiative-outcome").exists()).toBe(false);
     expect(wrapper.find(".progress-head").exists()).toBe(false);
+  });
+
+  it("已交 NPI 后当前责任来自承接团队，不沿用机会领取人", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockResolvedValue(
+      initiativeDetail({
+        initiative: {
+          ...initiativeRecord(),
+          receivingTeamOrRole: "产品开发 / NPI",
+        },
+      }),
+    );
+    const wrapper = await mountPage();
+
+    const header = wrapper.get(".initiative-result__strip");
+    expect(header.text()).toContain("产品开发 / NPI");
+    expect(header.text()).toContain("立项责任");
+    expect(header.text()).not.toContain("当前责任");
+  });
+
+  it("结果态只显示立项快照中的贡献摘要", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockResolvedValue(
+      initiativeDetail({
+        initiative: {
+          ...initiativeRecord(),
+          unitEconomicsSnapshot: {
+            currencyCode: "CAD",
+            scenarios: {
+              baseline: { contribution: { min: "12.00", max: "18.00" } },
+              conservative: { contribution: { min: "4.00", max: "8.00" } },
+            },
+          },
+        },
+      }),
+    );
+    const wrapper = await mountPage();
+
+    const result = wrapper.get(".initiative-result");
+    expect(result.text()).toContain("基准贡献");
+    expect(result.text()).toContain("12.00～18.00 CAD");
+    expect(result.text()).toContain("4.00～8.00 CAD");
+    expect(result.text()).not.toContain("历史立项未记录");
   });
 
   it("接受后显示完备度进度头与带入，待补不进进度头以外的催办墙", async () => {
@@ -895,8 +930,9 @@ async function mountPage() {
       plugins: [router],
       stubs: {
         PageHeader: {
-          props: ["title", "summary"],
-          template: "<header><h1>{{ title }}</h1><p>{{ summary }}</p></header>",
+          props: ["eyebrow", "title", "summary"],
+          template:
+            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p></header>",
         },
       },
     },

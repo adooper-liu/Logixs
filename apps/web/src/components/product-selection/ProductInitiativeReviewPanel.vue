@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { ProductInitiativeEvidenceCandidateV1 } from "@logix/contracts";
 import { ChevronDown, ChevronRight, FilePlus2, Save, X } from "@lucide/vue";
-import { computed, reactive, shallowRef } from "vue";
+import { computed, reactive, shallowRef, watch } from "vue";
 import type {
   ProductInitiativeEvidenceDraft,
   ProductInitiativeReviewPointView,
 } from "../../composables/useProductInitiativeDecision";
 import { CONCLUSION_MAX_LENGTH } from "../../composables/useProductInitiativeDecision";
-import { REVIEW_POINTS_WITH_REQUIREMENTS } from "../../data/productEvaluationRequirements";
 import {
   composeReviewConclusion,
   extractReviewSupplement,
@@ -15,20 +14,10 @@ import {
   reviewPointOptions,
 } from "../../data/productInitiativeReviewOptions";
 
-/**
- * 这一项有没有对应的**生成要求**。没有的要如实说明依据来自哪 ——
- * 不说的话，人分不清"系统认为不需要"和"系统漏了"。
- */
-function hasGeneratedRequirement(code: string): boolean {
-  return REVIEW_POINTS_WITH_REQUIREMENTS.has(code);
-}
-
 const props = defineProps<{
   points: readonly ProductInitiativeReviewPointView[];
   candidates: readonly ProductInitiativeEvidenceCandidateV1[];
   busy: boolean;
-  /** 已立项是终态：结论与引用还看得见，但不再提供系统不会接受的写入口。 */
-  readonly: boolean;
   addEvidence: (draft: ProductInitiativeEvidenceDraft) => Promise<boolean>;
 }>();
 
@@ -59,6 +48,24 @@ const draft = reactive<ProductInitiativeEvidenceDraft>({
 const missingCount = computed(
   () => props.points.filter((point) => point.missing).length,
 );
+const expandedCode = shallowRef<
+  ProductInitiativeReviewPointView["code"] | null
+>(null);
+
+watch(
+  () => props.points,
+  (points) => {
+    if (
+      expandedCode.value &&
+      points.some((point) => point.code === expandedCode.value)
+    ) {
+      return;
+    }
+    expandedCode.value =
+      points.find((point) => point.missing)?.code ?? points[0]?.code ?? null;
+  },
+  { immediate: true },
+);
 
 function byId(evidenceId: string): ProductInitiativeEvidenceCandidateV1 | null {
   return (
@@ -79,6 +86,24 @@ function referenced(
 /** 引用了但已不在候选里的证据：如实说明，不静默丢掉这条引用。 */
 function staleRefs(point: ProductInitiativeReviewPointView): string[] {
   return point.evidenceRefs.filter((evidenceId) => !byId(evidenceId));
+}
+
+function isExpanded(point: ProductInitiativeReviewPointView): boolean {
+  return expandedCode.value === point.code;
+}
+
+function togglePoint(point: ProductInitiativeReviewPointView): void {
+  expandedCode.value = isExpanded(point) ? null : point.code;
+}
+
+function selectedOptionLabel(
+  point: ProductInitiativeReviewPointView,
+): string | null {
+  const optionId = matchReviewOptionId(point.code, point.conclusion);
+  return (
+    reviewPointOptions(point.code).find((option) => option.id === optionId)
+      ?.label ?? null
+  );
 }
 
 function togglePicker(code: ProductInitiativeReviewPointView["code"]): void {
@@ -150,14 +175,13 @@ function updateSupplement(
     aria-labelledby="product-initiative-review-title"
   >
     <header>
-      <small>立项依据 · 评审要点 ○选填强度可先选</small>
+      <small>立项依据</small>
       <h3 id="product-initiative-review-title">评审要点</h3>
       <p>
-        事实栏只读，来自该信号已登记的证据；判断强度用档位单选，落库为短句。
         <template v-if="missingCount">
-          还有
-          <b>{{ missingCount }}</b> 项未齐（缺证据或缺结论）；完备度见进度头。
+          优先处理 <b>{{ missingCount }}</b> 项未齐的要点。
         </template>
+        <template v-else> 四项门槛要点均已齐备。 </template>
       </p>
     </header>
 
@@ -169,26 +193,30 @@ function updateSupplement(
         :data-code="point.code"
       >
         <div class="review-point__head">
-          <b>{{ point.label }}</b>
-          <span
-            v-if="!hasGeneratedRequirement(point.code)"
-            class="no-requirement"
-          >
-            本项没有系统生成的要求：依据来自上游信号与你自己的判断，不是系统漏了
-          </span>
-          <span v-if="point.missing" class="review-point__gap">
-            {{ point.evidenceRefs.length ? "还缺结论" : "还缺证据" }}
-          </span>
-          <!--
-            引用了已不在候选里的证据时不能说"已成立"：那样面板会一边说成立、
-            一边又说引用要重做。门槛口径仍与服务端一致（只数引用条数）。
-          -->
-          <span v-else-if="staleRefs(point).length" class="review-point__stale">
-            引用已失效，需重新引用
-          </span>
-          <span v-else class="review-point__ok">已成立</span>
           <button
-            v-if="!readonly"
+            type="button"
+            class="review-point__toggle"
+            :aria-expanded="isExpanded(point)"
+            @click="togglePoint(point)"
+          >
+            <b>{{ point.label }}</b>
+            <span v-if="point.missing" class="review-point__gap">
+              {{ point.evidenceRefs.length ? "缺结论" : "缺证据" }}
+            </span>
+            <span
+              v-else-if="staleRefs(point).length"
+              class="review-point__stale"
+            >
+              引用失效
+            </span>
+            <span v-else class="review-point__ok">已齐</span>
+            <small v-if="selectedOptionLabel(point)">
+              {{ selectedOptionLabel(point) }}
+            </small>
+            <ChevronDown :size="16" :class="{ open: isExpanded(point) }" />
+          </button>
+          <button
+            v-if="isExpanded(point)"
             type="button"
             class="add-evidence"
             :aria-label="`${point.label}添加证据`"
@@ -199,154 +227,150 @@ function updateSupplement(
           </button>
         </div>
 
-        <div class="review-point__facts">
-          <small>立项当时的事实（只读）</small>
-          <ul v-if="referenced(point).length" class="referenced">
-            <li v-for="item in referenced(point)" :key="item.evidenceId">
-              <b>{{ item.sourceName }}</b>
-              <span>{{ item.summary }}</span>
-              <small>{{ item.contentRef }}</small>
-            </li>
-          </ul>
-          <p v-else-if="!staleRefs(point).length" class="empty">
-            还没有引用任何已登记证据
-          </p>
-          <p v-if="staleRefs(point).length" class="empty">
-            有
-            {{ staleRefs(point).length }}
-            条引用已不在该信号的证据里，需要重新引用。
-          </p>
+        <div v-show="isExpanded(point)" class="review-point__content">
+          <div class="review-point__facts">
+            <small>证据</small>
+            <ul v-if="referenced(point).length" class="referenced">
+              <li v-for="item in referenced(point)" :key="item.evidenceId">
+                <b>{{ item.sourceName }}</b>
+                <span>{{ item.summary }}</span>
+                <small>{{ item.contentRef }}</small>
+              </li>
+            </ul>
+            <p v-else-if="!staleRefs(point).length" class="empty">
+              暂无已引用证据
+            </p>
+            <p v-if="staleRefs(point).length" class="empty">
+              {{ staleRefs(point).length }} 条引用失效
+            </p>
 
-          <button
-            v-if="candidates.length && !readonly"
-            type="button"
-            class="picker-toggle"
-            :aria-expanded="pickerCode === point.code"
-            @click="togglePicker(point.code)"
-          >
-            <component
-              :is="pickerCode === point.code ? ChevronDown : ChevronRight"
-              :size="14"
-              aria-hidden="true"
-            />
-            从已登记证据中引用（{{ candidates.length }} 条可选，已引用
-            {{ point.evidenceRefs.length }} 条）
-          </button>
-          <p v-else-if="!readonly" class="empty">
-            该信号还没有已登记证据，先用“添加证据”登记一条。
-          </p>
-
-          <ul v-if="pickerCode === point.code" class="candidates">
-            <li v-for="item in candidates" :key="item.evidenceId">
-              <label>
-                <input
-                  type="checkbox"
-                  :value="item.evidenceId"
-                  :checked="point.evidenceRefs.includes(item.evidenceId)"
-                  @change="emit('toggleEvidence', point.code, item.evidenceId)"
-                />
-                <span
-                  ><b>{{ item.sourceName }}</b
-                  >{{ item.summary }}</span
-                >
-              </label>
-            </li>
-          </ul>
-        </div>
-
-        <fieldset class="review-point__conclusion" :disabled="readonly">
-          <legend>{{ point.label }}判断强度</legend>
-          <p class="helper">选一档即可落库；需要细节时再写补充说明。</p>
-          <div
-            class="option-row"
-            role="radiogroup"
-            :aria-label="`${point.label}判断强度`"
-          >
-            <label
-              v-for="option in reviewPointOptions(point.code)"
-              :key="option.id"
-              class="option"
-              :class="{
-                selected:
-                  matchReviewOptionId(point.code, point.conclusion) ===
-                  option.id,
-              }"
+            <button
+              v-if="candidates.length"
+              type="button"
+              class="picker-toggle"
+              :aria-expanded="pickerCode === point.code"
+              @click="togglePicker(point.code)"
             >
-              <input
-                type="radio"
-                :name="`review-option-${point.code}`"
-                :value="option.id"
-                :checked="
-                  matchReviewOptionId(point.code, point.conclusion) ===
-                  option.id
-                "
-                :disabled="readonly"
-                @change="selectOption(point, option.id)"
+              <component
+                :is="pickerCode === point.code ? ChevronDown : ChevronRight"
+                :size="14"
+                aria-hidden="true"
               />
-              <span>{{ option.label }}</span>
-            </label>
-          </div>
-          <label class="supplement">
-            <span>补充说明 <small>可选</small></span>
-            <textarea
-              :value="extractReviewSupplement(point.code, point.conclusion)"
-              :aria-label="`${point.label}结论`"
-              :readonly="readonly"
-              :maxlength="CONCLUSION_MAX_LENGTH"
-              rows="2"
-              placeholder="例如：头部约占六成、需关注认证周期"
-              @input="
-                updateSupplement(
-                  point,
-                  ($event.target as HTMLTextAreaElement).value,
-                )
-              "
-            />
-          </label>
-        </fieldset>
+              引用证据 · {{ candidates.length }}
+            </button>
+            <p v-else class="empty">暂无可引用证据</p>
 
-        <form
-          v-if="formCode === point.code"
-          class="evidence-form"
-          @submit.prevent="submit"
-        >
-          <label>
-            <span>来源名称 <small>可后补</small></span>
-            <input
-              v-model.trim="draft.sourceName"
-              :aria-label="`${point.label}证据来源名称`"
-              placeholder="例如：站点类目周报、评价导出或竞品调研"
-            />
-          </label>
-          <label>
-            <span>来源链接 <small>可后补</small></span>
-            <input
-              v-model.trim="draft.sourceUrl"
-              type="url"
-              :aria-label="`${point.label}证据来源链接`"
-              placeholder="https://"
-            />
-          </label>
-          <label class="content">
-            <span>证据内容</span>
-            <textarea
-              v-model.trim="draft.content"
-              :aria-label="`${point.label}证据内容`"
-              rows="3"
-              required
-            />
-          </label>
-          <div class="form-actions">
-            <button type="button" class="secondary" @click="formCode = null">
-              <X :size="15" aria-hidden="true" />取消
-            </button>
-            <button type="submit" class="primary" :disabled="busy">
-              <Save :size="15" aria-hidden="true" />{{
-                busy ? "正在登记" : "登记证据"
-              }}
-            </button>
+            <ul v-if="pickerCode === point.code" class="candidates">
+              <li v-for="item in candidates" :key="item.evidenceId">
+                <label>
+                  <input
+                    type="checkbox"
+                    :value="item.evidenceId"
+                    :checked="point.evidenceRefs.includes(item.evidenceId)"
+                    @change="
+                      emit('toggleEvidence', point.code, item.evidenceId)
+                    "
+                  />
+                  <span
+                    ><b>{{ item.sourceName }}</b
+                    >{{ item.summary }}</span
+                  >
+                </label>
+              </li>
+            </ul>
           </div>
-        </form>
+
+          <fieldset class="review-point__conclusion">
+            <legend>判断</legend>
+            <div
+              class="option-row"
+              role="radiogroup"
+              :aria-label="`${point.label}判断强度`"
+            >
+              <label
+                v-for="option in reviewPointOptions(point.code)"
+                :key="option.id"
+                class="option"
+                :class="{
+                  selected:
+                    matchReviewOptionId(point.code, point.conclusion) ===
+                    option.id,
+                }"
+              >
+                <input
+                  type="radio"
+                  :name="`review-option-${point.code}`"
+                  :value="option.id"
+                  :checked="
+                    matchReviewOptionId(point.code, point.conclusion) ===
+                    option.id
+                  "
+                  @change="selectOption(point, option.id)"
+                />
+                <span>{{ option.label }}</span>
+              </label>
+            </div>
+            <label class="supplement">
+              <span>备注</span>
+              <textarea
+                :value="extractReviewSupplement(point.code, point.conclusion)"
+                :aria-label="`${point.label}结论`"
+                :maxlength="CONCLUSION_MAX_LENGTH"
+                rows="1"
+                placeholder="可选备注"
+                @input="
+                  updateSupplement(
+                    point,
+                    ($event.target as HTMLTextAreaElement).value,
+                  )
+                "
+              />
+            </label>
+          </fieldset>
+
+          <form
+            v-if="formCode === point.code"
+            class="evidence-form"
+            @submit.prevent="submit"
+          >
+            <label>
+              <span>来源名称 <small>可后补</small></span>
+              <input
+                v-model.trim="draft.sourceName"
+                :aria-label="`${point.label}证据来源名称`"
+                placeholder="例如：站点类目周报、评价导出或竞品调研"
+              />
+            </label>
+            <label>
+              <span>来源链接 <small>可后补</small></span>
+              <input
+                v-model.trim="draft.sourceUrl"
+                type="url"
+                :aria-label="`${point.label}证据来源链接`"
+                placeholder="https://"
+              />
+            </label>
+            <label class="content">
+              <span>证据内容</span>
+              <textarea
+                v-model.trim="draft.content"
+                :aria-label="`${point.label}证据内容`"
+                rows="3"
+                required
+              />
+            </label>
+            <div class="form-actions">
+              <button type="button" class="secondary" @click="formCode = null">
+                <X :size="15" aria-hidden="true" />取消
+              </button>
+              <button type="submit" class="primary" :disabled="busy">
+                <Save :size="15" aria-hidden="true" />{{
+                  busy ? "正在登记" : "登记证据"
+                }}
+              </button>
+            </div>
+          </form>
+        </div>
       </li>
     </ul>
   </section>
@@ -405,15 +429,57 @@ function updateSupplement(
 
 .review-point__head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
 }
 
-.review-point__head b {
+.review-point__toggle {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.review-point__toggle b {
   color: var(--ink);
   font-size: var(--text-label);
+}
+
+.review-point__toggle small {
+  color: var(--muted);
+  font-size: var(--text-micro);
+}
+
+.review-point__toggle svg {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.review-point__toggle svg.open {
+  transform: rotate(180deg);
+}
+
+.review-point__toggle:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.review-point__content {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
 }
 
 .review-point__gap,
@@ -435,7 +501,6 @@ function updateSupplement(
 .add-evidence {
   flex: none;
   min-height: 32px;
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -452,11 +517,13 @@ function updateSupplement(
 
 .review-point__facts {
   display: grid;
-  gap: var(--space-1);
-  padding: 0 var(--space-3) var(--space-2);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-2);
+  align-items: start;
 }
 
 .review-point__facts > small {
+  align-self: center;
   color: var(--muted);
   font-size: var(--text-micro);
   font-weight: 700;
@@ -468,6 +535,10 @@ function updateSupplement(
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.review-point__facts > :not(small) {
+  grid-column: 2;
 }
 
 .referenced li {
@@ -550,7 +621,7 @@ function updateSupplement(
   display: grid;
   gap: var(--space-2);
   margin: 0;
-  padding: 0 var(--space-3) var(--space-3);
+  padding: 0;
   border: 0;
   min-width: 0;
 }
@@ -560,13 +631,6 @@ function updateSupplement(
   color: var(--ink);
   font-size: var(--text-label);
   font-weight: 600;
-}
-
-.review-point__conclusion .helper {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: var(--text-micro);
-  line-height: var(--leading-body);
 }
 
 .option-row {
@@ -600,17 +664,15 @@ function updateSupplement(
 
 .supplement {
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
 }
 
 .supplement > span {
   color: var(--ink-soft);
   font-size: var(--text-micro);
   font-weight: 700;
-}
-
-.supplement small {
-  font-weight: 400;
 }
 
 .review-point__conclusion textarea,
@@ -642,18 +704,11 @@ function updateSupplement(
   box-shadow: var(--focus-ring);
 }
 
-/* 已立项后只读：看起来就不像能改，不靠光标提示。 */
-.review-point__conclusion textarea[readonly] {
-  border-color: var(--line);
-  background: var(--surface-2);
-  color: var(--ink-soft);
-}
-
 .evidence-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-2);
-  padding: 0 var(--space-3) var(--space-3);
+  padding: 0;
 }
 
 .evidence-form label {
