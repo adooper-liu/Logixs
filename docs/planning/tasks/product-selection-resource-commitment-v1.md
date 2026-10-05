@@ -6,8 +6,17 @@ writer: codex
 risk: high
 dependsOn: []
 writeScopes:
+  - AGENTS.md
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - docs/planning/tasks/product-selection-resource-commitment-v1.md
+  - docs/planning/tasks/market-signals-opportunity-radar-v1.md
+  - docs/planning/tasks/_template.md
+  - .claude/settings.json
+  - package.json
+  - scripts/check-ui-structure-gate.mjs
+  - scripts/check-ui-structure-gate.test.mjs
+  - scripts/check-repository.mjs
+  - scripts/check-repository.test.mjs
   - docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md
   - packages/contracts/schemas/v1/product-initiative.schema.json
   - packages/contracts/schemas/v1/index.json
@@ -70,6 +79,7 @@ exclusiveLocks:
   - public-contract:product-initiative-v1
   - reference-data:iso-4217
   - generated:contracts
+  - repository-governance
 sharedIntegrationScopes:
   - apps/web/e2e/workbench-network.spec.ts
 authorityRefs:
@@ -79,6 +89,22 @@ authorityRefs:
   - doc/cross-border-supply-chain/wisdom-baseline/选品立项.md
   - doc/cross-border-supply-chain/wisdom-baseline/全局.md
   - docs/planning/tasks/market-selection-handoff-v1.md
+uiStructure:
+  - 工作态：机会队列 → 机会事实与评审依据 → 去向/资源承诺/单位经济/主动作
+  - 结果态：紧凑结果带 → 经营机会 → 投资结论与责任/下一决策 → 评审依据 → 交接原文
+uiMustStayVisible:
+  - 真实结果、立项责任人、NPI 承接、资源说明、目标日期、下一决策日期与问题
+  - 单位经济基准/保守贡献、引用失效、当前阻断、失败原因、恢复动作与主动作
+uiProgressiveDisclosure:
+  - 后补事实语义、为何只读、历史未记录原因进入 InfoTooltip
+  - 评审证据、备注与交接原文按需展开
+uiForbidden:
+  - 结果态编辑控件、历史缺失冒充当前待补、内部字段 code、重复状态横幅、免责声明墙
+  - 等权字段卡墙、逐端点缺口警示墙、用 text contains 或测试通过代替截图验收
+uiViewportEvidence:
+  - 1440x900：首屏可见结果、责任、单位经济、目标日期与下一决策且无横向溢出
+  - 1024x768：首屏可见相同投资摘要且无横向溢出
+  - 390x844：顺序为结果 → 责任/投资摘要 → 机会 → 评审依据 → 原文，投资摘要在首屏
 ---
 
 # 任务：选品立项——立项资源责任与可复算单位经济 V1
@@ -238,6 +264,62 @@ authorityRefs:
 8. S3c 定向门禁：币种目录/API 单测，product-initiative PostgreSQL 与迁移升级，空库 178 条/唯一性/来源哈希测试，contract/drift，data-dictionary generate/check，db generate，API/Web lint/typecheck/unit，选品到 NPI 三视口 E2E、`repo:check`、格式与 diff 检查。S4 增加受影响 Web 全量单测与三视口 E2E/截图复验。
 9. 出现需要新增利润率、默认币种、汇率、销售量、预算或证据采信阈值时返回 `blocked` 交负责人定案；不得自行填默认。
 10. 实现执行器每片完成后返回 HANDOFF；不得推送、建 PR、修改 brief 状态或覆盖不属于当前片的并行改动。
+
+### S4 主代理验收裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: S4-product-selection-result-mode
+decisions:
+  - finding: PS-S4-R01
+    status: accepted
+    reason: >
+      新结果面板正确移除了 disabled 编辑器和历史“待补 N 项”，但同时遗漏 S1 已定且新立项强制写入的核心资源承诺：立项责任人、
+      承接团队/岗位、资源说明、目标日期、下一决策日期。页面只显示机会领取人的 currentOwner 和下一决策问题，已交 NPI 后仍可能把
+      dev-operator 标成“当前责任”，无法回答“谁接、投入什么、何时交付、何时再决定”。测试夹具也遗漏这些字段，导致回归未被发现。
+      同时 DOM 把评审摘要放在单位经济之前，违背负责人确认的“单位经济与下一决策优先于评审依据”结果主线。
+    writeback: 本 brief S4 E/F；doc/08 4.2 资源承诺与交接快照
+  - finding: PS-S4-R02
+    status: accepted
+    reason: >
+      负责人用真实截图复验确认：R01 修复虽补回字段，但整体仍偏离方案 A。页面保留“选品岗位工作台”眉题和长说明；队列仍有“先处理什么”、
+      “经营团队判断值得进一步评估”、逐项待补/后补噪声，并在 handed_off 项上显示“已立项 · 待补 N 项”；结果页继续采用大量等权灰底字段卡，
+      重复“历史未记录”，没有紧凑状态条、市场/渠道/商品范围与一次性后补说明，也没有把投资结论组织成责任资源与单位经济的双主轴。
+      评审摘要还暴露 target_user_and_market 等内部 code 和“已核实（走查）”原始拼接，而非岗位可读结论。该实现满足了组件存在性，未满足
+      “投资结果优先、历史缺失不冒充当前待办、删除免责声明与重复解释”的已批准视觉与业务动线。
+    writeback: 本 brief S4 E/F；负责人 2026-10-05 真实截图复验
+  - finding: PS-S4-R03
+    status: accepted
+    reason: >
+      第二轮真实截图复验显示 R02 仍未关闭：1440/1024 结果页继续用 10+ 个等权灰底字段块，顶部同时保留 PageHeader、成功横幅、队列状态和结果头；
+      390×844 首屏只看到页头、横幅、结果/责任卡与部分机会摘要，单位经济、目标日期和下一决策仍在首屏之外。队列继续显示“先处理什么/其他机会/含信号后补”，
+      结果页没有市场、渠道、商品范围、验证目标、一次性后补说明或交接原文入口。说明实现仍在“给旧结构补字段”，而非按方案 A 删除旧结构并建立
+      `紧凑结果带 + 经营机会 + 投资结论/责任与下一决策 + 评审依据` 的两层信息架构。
+    writeback: 本 brief S4 E/F；负责人第二轮 1440/1024/390 截图复验
+unknowns: []
+verificationGaps:
+  - 当前 focused Web 42 条、lint/typecheck/format、repo、diff 和生产 build 均通过，但尚未按 1440×900、1024×768、390×844 对修复后的结果态做真实视觉复验。
+nonBlockingSuggestions: []
+next: fix
+```
+
+修复验收反证：
+
+1. `initiativeRecord()` 使用完整新立项契约字段：responsibleActorId、receivingTeamOrRole、resourceDescription、targetDate、nextDecisionDate、nextDecisionQuestion。结果态必须常驻显示立项责任、NPI 承接、资源、目标日期与完整下一决策点；缺失的 legacy 字段只显示“历史未记录”。
+2. handed_off 结果态不得把 selected.assignedActorId 作为“当前责任”。选品页面应分别显示“立项责任人”与“已交 NPI / 承接团队或岗位”；若尚无 NPI 领取事实，不虚构具体产品负责人。
+3. 结果态 DOM 顺序固定为：结论与责任 → 机会摘要 → 单位经济与时间/下一决策 → 评审摘要。评审详情继续按需展开；不恢复编辑控件或“待补 N 项”。
+4. 新组件必须被 Git 跟踪并有独立组件测试，覆盖完整新快照与 legacy 缺失；复跑 focused Web、全量 Web、lint/typecheck/format/repo/build、三视口 E2E 和真实视觉截图。
+5. 结果态移除页面眉题与长 summary；顶部使用一条紧凑结果带：对象标题、`已立项 · 已交 NPI`、立项责任人、目标日期/下一决策日期。不得再以“实际结果/当前责任”两个等权灰底字段重复表达状态。
+6. 左侧队列删除“先处理什么”和无信息量的“经营团队判断值得进一步评估”；handed_off 项只显示“已立项”和聚合的“历史缺失 N 类”，不得显示“已立项 · 待补 N 项”。后补事实聚合为一次性状态，不逐行重复。
+7. 经营机会摘要必须常驻市场、渠道、商品范围与验证目标；后补语义只显示一次 `含后补事实 + InfoTooltip`。事实与经营判断并排，证据折叠；原始交接仅按需展开。
+8. 投资结果使用两个主区而非多张等权字段卡：左侧 `投资结论`（目标结果 + 单位经济贡献摘要），右侧 `责任与下一决策`（立项责任人、NPI 承接、资源、目标日期、下一决策日期/问题）。相同的“历史未记录”按业务类别聚合一次，不为每个字段复制灰卡。
+9. 评审依据每项单行使用岗位文案：要点名、结论档位、证据数、引用失效；禁止展示 `target_user_and_market` 等内部 code，禁止把“已核实（走查）”等存储拼接原样作为主结论。展开后才显示原文、备注与证据详情。
+10. 视觉验收不以 text contains 代替：三视口截图必须证明首屏先看到结果、责任、经济性与下一决策；桌面结果态不超过 2 个主要内容层级、无横向溢出；移动端顺序为结果 → 机会 → 投资摘要 → 评审依据 → 原文。对比负责人截图，常驻“历史未记录”不得形成重复墙。
+11. 结果态必须使用独立页面结构，而不是在工作态壳中继续堆卡：隐藏 PageHeader 的 eyebrow/summary 与成功横幅重复状态，只保留单个 compact result header；队列头只保留“经营机会”或直接省略，删除“先处理什么/其他机会/经营团队判断值得进一步评估”，后补仅一个短标记 + tooltip。
+12. 桌面主要结构最多四块：结果带、经营机会、两列投资摘要、评审依据；单块内部用 definition rows/分隔线，不为每个字段单独铺灰底。1440/1024 截图中目标日期、下一决策日期/问题、基准/保守贡献必须在首屏可见。
+13. 390×844 截图首屏必须至少完整显示：状态+对象、立项责任/NPI 承接、基准/保守贡献、目标日期、下一决策日期/问题；经营机会摘要可紧随其后，评审依据在下方。若空间不足，压缩页头和队列，不得牺牲投资摘要。
+14. 结果态经营机会必须显示 `市场 · 渠道 · 商品范围`、验证目标、事实/经营判断与证据折叠；当字段来自后补时只在对象级显示一次“含后补事实”及 tooltip，不重复每字段标签。交接原文提供折叠入口。
+15. 自动化结构断言增加：结果态无 eyebrow/summary/success duplicate、队列无上述噪声词、主内容灰底数据块数量受限、内部 code 不可见；E2E 记录关键元素 bounding boxes，断言三视口投资摘要在首屏。截图必须由主代理肉眼验收，不能只报告数字。
 
 ### S3c 主代理验收裁决
 

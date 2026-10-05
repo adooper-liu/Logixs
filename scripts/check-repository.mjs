@@ -729,6 +729,39 @@ function writeScopesOverlap(left, right) {
   return left.path === right.path || left.path.startsWith(`${right.path}/`);
 }
 
+const uiStructureFields = [
+  "uiStructure",
+  "uiMustStayVisible",
+  "uiProgressiveDisclosure",
+  "uiForbidden",
+  "uiViewportEvidence",
+];
+
+function isUiImplementationScope(scope) {
+  const normalized = normalizePath(scope).toLowerCase();
+  return (
+    normalized.startsWith("apps/web/src/") &&
+    (normalized.endsWith(".vue") || normalized.endsWith("/**"))
+  );
+}
+
+function requireUiStructureMetadata(record, metadata, errors) {
+  if (
+    !Array.isArray(metadata.writeScopes) ||
+    !metadata.writeScopes.some(isUiImplementationScope)
+  ) {
+    return;
+  }
+
+  for (const field of uiStructureFields) {
+    if (!Array.isArray(metadata[field])) {
+      errors.push(`${record.path}: active UI task is missing ${field}`);
+    } else if (metadata[field].length === 0) {
+      errors.push(`${record.path}: active UI task ${field} must not be empty`);
+    }
+  }
+}
+
 function requireWriteTaskMetadata(record, metadata, errors) {
   for (const field of ["owner", "writer", "risk"]) {
     if (typeof metadata[field] !== "string" || !metadata[field]) {
@@ -774,6 +807,7 @@ function requireWriteTaskMetadata(record, metadata, errors) {
   ) {
     errors.push(`${record.path}: active write task must declare authorityRefs`);
   }
+  requireUiStructureMetadata(record, metadata, errors);
 }
 
 export function validateTaskStatusRecords(records) {

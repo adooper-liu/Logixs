@@ -12,6 +12,12 @@ exclusiveLocks: [] # 例如 database-schema / authz-control-plane / business-pol
 sharedIntegrationScopes: [] # 可并行开发、最终必须串行同步的文件
 authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
   - AGENTS.md
+# UI 任务强制结构：writeScopes 触及 apps/web/src/**/*.vue 或 apps/web/src/** 时，以下五项均须为非空数组；非 UI 任务可省略。
+uiStructure: [] # 工作态/结果态的区域顺序；按岗位决策流写，不按组件或字段表写
+uiMustStayVisible: [] # 状态、责任、日期、阻断、恢复、主动作等不得藏入 tooltip/折叠
+uiProgressiveDisclosure: [] # 允许进入 InfoTooltip、details、折叠区的解释/审计/历史内容
+uiForbidden: [] # 禁止重复状态、免责声明墙、内部 code、字段卡墙等明确反例
+uiViewportEvidence: [] # 至少 1440x900 / 1024x768 / 390x844；写明首屏与溢出验收
 ---
 
 # 任务：<简短标题>
@@ -50,15 +56,16 @@ authorityRefs: # 当前任务引用的既有权威；不得在此复制正文
 
 ### 切片 `<slice-id>`
 
-| 项目     | 内容                                                                                |
-| -------- | ----------------------------------------------------------------------------------- |
-| 基线     | `<commit-sha>`                                                                      |
-| 执行角色 | 角色、工具与实际模型，按 `AGENTS.md` §1.2 第 4 条映射填写（经转发的工具填实际模型） |
-| 复审     | `不适用` 或 独立复审：Codex（GPT-5.6）新开只读会话，见 `AGENTS.md` §1.2 第 4 条     |
-| 写入范围 | 精确文件或目录                                                                      |
-| 禁止范围 | 不得顺带修改的模块、契约、状态或入口                                                |
-| 验证命令 | 切片最近测试、模块 lint/typecheck、专项门禁及预期非零结果                           |
-| 停止条件 | `ready-for-review` 后停手；是否允许提交；哪些情况返回 `blocked`                     |
+| 项目        | 内容                                                                                                                                                      |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 基线        | `<commit-sha>`                                                                                                                                            |
+| 执行角色    | 角色、工具与实际模型，按 `AGENTS.md` §1.2 第 4 条映射填写（经转发的工具填实际模型）                                                                       |
+| 复审        | `不适用` 或 独立复审：Codex（GPT-5.6）新开只读会话，见 `AGENTS.md` §1.2 第 4 条                                                                           |
+| 写入范围    | 精确文件或目录                                                                                                                                            |
+| 禁止范围    | 不得顺带修改的模块、契约、状态或入口                                                                                                                      |
+| UI 强制结构 | UI 切片逐项引用 frontmatter 的 `uiStructure` / `uiMustStayVisible` / `uiProgressiveDisclosure` / `uiForbidden` / `uiViewportEvidence`；实现前不得自行改写 |
+| 验证命令    | 切片最近测试、模块 lint/typecheck、专项门禁及预期非零结果                                                                                                 |
+| 停止条件    | `ready-for-review` 后停手；是否允许提交；哪些情况返回 `blocked`                                                                                           |
 
 主代理下发任务：
 

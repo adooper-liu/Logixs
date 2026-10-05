@@ -66,6 +66,22 @@ authorityRefs:
   - doc/cross-border-supply-chain/17-confirmed-upstream-business-baseline.md
   - docs/architecture/DATABASE_SCHEMA_CONTRACT_V1.md
   - docs/product/domain/ACTION_PERMISSION_CONTRACT_V1.md
+uiStructure:
+  - 工作态：经营信号队列 → 当前信号事实/判断/范围/证据 → 处理方式与单一主动作
+  - 关闭态：紧凑结论带 → 关闭时事实与依据 → 下游回执/历史
+uiMustStayVisible:
+  - 当前责任、当前状态、验证负责人/重点/检查日、事实与经营判断、引用失效
+  - 冲突、拒绝原因、缺失事实、失败恢复动作与当前主动作
+uiProgressiveDisclosure:
+  - 规则解释、后补语义、接收方责任说明进入 InfoTooltip
+  - 完整选品回执时间线、来源证据明细与审计原文按需展开
+uiForbidden:
+  - 页头眉题和长教学说明、谁在工作/本次结果/当前责任三栏、重复标题和免责声明墙
+  - 队列“先处理什么/为什么现在处理”标签、未选动作的解释常驻、内部字段 code
+uiViewportEvidence:
+  - 1440x900：三栏成立，首屏可见对象事实、当前验证承诺与处理方式，无横向溢出
+  - 1024x768：队列/动作/事实顺序清晰，主动作可达，无横向溢出
+  - 390x844：顺序为当前责任 → 队列 → 事实/判断 → 处理方式，关键状态和主动作不被说明文案挤出
 ---
 
 # 任务：市场与经营信号机会雷达 V1

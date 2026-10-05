@@ -817,6 +817,11 @@ const taskRecord = ({
   writeScopes = [],
   exclusiveLocks = [],
   sharedIntegrationScopes = [],
+  uiStructure,
+  uiMustStayVisible,
+  uiProgressiveDisclosure,
+  uiForbidden,
+  uiViewportEvidence,
 }) => ({
   path: `${path}.md`,
   source: `---
@@ -828,9 +833,84 @@ dependsOn: [${dependsOn.join(", ")}]
 writeScopes:${writeScopes.length === 0 ? " []" : `\n${writeScopes.map((scope) => `  - ${scope}`).join("\n")}`}
 exclusiveLocks:${exclusiveLocks.length === 0 ? " []" : `\n${exclusiveLocks.map((lock) => `  - ${lock}`).join("\n")}`}
 sharedIntegrationScopes:${sharedIntegrationScopes.length === 0 ? " []" : `\n${sharedIntegrationScopes.map((scope) => `  - ${scope}`).join("\n")}`}
+uiStructure:${uiStructure === undefined ? "" : uiStructure.length === 0 ? " []" : `\n${uiStructure.map((item) => `  - ${item}`).join("\n")}`}
+uiMustStayVisible:${uiMustStayVisible === undefined ? "" : uiMustStayVisible.length === 0 ? " []" : `\n${uiMustStayVisible.map((item) => `  - ${item}`).join("\n")}`}
+uiProgressiveDisclosure:${uiProgressiveDisclosure === undefined ? "" : uiProgressiveDisclosure.length === 0 ? " []" : `\n${uiProgressiveDisclosure.map((item) => `  - ${item}`).join("\n")}`}
+uiForbidden:${uiForbidden === undefined ? "" : uiForbidden.length === 0 ? " []" : `\n${uiForbidden.map((item) => `  - ${item}`).join("\n")}`}
+uiViewportEvidence:${uiViewportEvidence === undefined ? "" : uiViewportEvidence.length === 0 ? " []" : `\n${uiViewportEvidence.map((item) => `  - ${item}`).join("\n")}`}
 authorityRefs:
   - AGENTS.md
 ---`,
+});
+
+test("requires mandatory UI structure metadata for active Vue implementation briefs", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "ui-missing",
+        status: "coding",
+        writer: "codex",
+        writeScopes: ["apps/web/src/views/Workbench.vue"],
+      }),
+    ]),
+    [
+      "ui-missing.md: active UI task is missing uiStructure",
+      "ui-missing.md: active UI task is missing uiMustStayVisible",
+      "ui-missing.md: active UI task is missing uiProgressiveDisclosure",
+      "ui-missing.md: active UI task is missing uiForbidden",
+      "ui-missing.md: active UI task is missing uiViewportEvidence",
+    ],
+  );
+});
+
+test("rejects empty mandatory UI structure metadata", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "ui-empty",
+        status: "fix",
+        writer: "codex",
+        writeScopes: ["apps/web/src/components/workbench/**"],
+        uiStructure: [],
+        uiMustStayVisible: [],
+        uiProgressiveDisclosure: [],
+        uiForbidden: [],
+        uiViewportEvidence: [],
+      }),
+    ]),
+    [
+      "ui-empty.md: active UI task uiStructure must not be empty",
+      "ui-empty.md: active UI task uiMustStayVisible must not be empty",
+      "ui-empty.md: active UI task uiProgressiveDisclosure must not be empty",
+      "ui-empty.md: active UI task uiForbidden must not be empty",
+      "ui-empty.md: active UI task uiViewportEvidence must not be empty",
+    ],
+  );
+});
+
+test("accepts mandatory UI structure metadata and ignores non-UI tasks", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      taskRecord({
+        path: "ui-complete",
+        status: "coding",
+        writer: "codex",
+        writeScopes: ["apps/web/src/views/Workbench.vue"],
+        uiStructure: ["queue -> facts -> action"],
+        uiMustStayVisible: ["current status and recovery action"],
+        uiProgressiveDisclosure: ["audit details in InfoTooltip or disclosure"],
+        uiForbidden: ["duplicate status banners"],
+        uiViewportEvidence: ["1440x900", "1024x768", "390x844"],
+      }),
+      taskRecord({
+        path: "api-only",
+        status: "fix",
+        writer: "other",
+        writeScopes: ["apps/api/src/modules/orders/**"],
+      }),
+    ]),
+    [],
+  );
 });
 
 test("allows two non-conflicting write tasks plus design and read-only review", () => {
