@@ -1,5 +1,5 @@
 ---
-status: coding
+status: review
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -446,6 +446,57 @@ next: S3b-unit-economics-ui
 6. PostgreSQL flow 增加完整负贡献单位经济在 `defer`（验证计划齐全）、`reject`（原因齐全）和 `return_to_market`（原因/依据齐全）且无 negative reason 的保存反例：当前态保存 draft/snapshot、pending 含 `negativeConservativeReason`，不生成 handoff；同样输入用于 approve 必须被 Domain 门槛拒绝。NPI handoff 和 returned_from_npi 仍必须带理由。
 7. 币种目录、importer、verifier 的所有 release 查询/更新都同时限定 `authority='SIX'` 与 `datasetCode='ISO_4217_LIST_ONE'`。增加回滚 PostgreSQL 或 Prisma adapter 反例：其他 authority 的同名 active ZZZ 不出现在 listActive/resolve，不被 SIX importer supersede，也不被 verifier 计入；SIX staged-only 仍为 unavailable。
 
+## S3b 主代理验收裁决
+
+```yaml
+protocol: logix-disposition/v1
+slice: S3b-unit-economics-ui
+decisions:
+  - finding: PS-S3B-R01
+    status: accepted
+    reason: >
+      useProductInitiativeDecision.decide() 对服务端 400 PRODUCT_INITIATIVE_INCOMPLETE 会把人话写入 initiativeError，并正确把
+      negativeConservativeReason 记入服务端单位经济缺口；但 ProductSelectionWorkbench 的 initiativeReady 同时要求
+      !initiativeError，导致同一次响应后整个 ProductInitiativeOutcomePanel、单位经济输入和主动作被隐藏，只剩“重新加载”。
+      负责人无法按 brief 要求就地填写“仍要投入的理由”；点击重新加载还会用未保存的服务端旧值 hydrate，丢失本次完整单位经济草稿。
+      这是当前负贡献立项恢复路径的可复现业务阻塞，不是一般错误提示偏好。
+    writeback: 本 brief S3b E/F
+  - finding: PS-S3B-R02
+    status: accepted
+    reason: >
+      ListProductOpportunitiesService 与 IntakeProductOpportunityService 已使用 READ_MARKET_SIGNAL_LIVE + mergeHandoffWithSignalLive，
+      把原始不可变 handoff 的空 market/channel 用同一来源信号当前态补全为工作视图，同时保留 handoffSnapshot；这是现有已测试的正式
+      业务投影。S3b 从该工作视图显示并提交 channelCode，但 DecideProductInitiativeService 仍只从 repository 返回的原始 handoff
+      读取 market/channel。原始交接为空、信号后补后，页面显示完整却必然被服务端以 channel mismatch 或 market 缺失拒绝，且岗位无可执行恢复入口。
+      决定服务必须复用既有 live-signal 补全规则，不能让 Web 猜测或改写不可变 handoff。
+    writeback: 本 brief S3b A/E/F
+unknowns: []
+verificationGaps:
+  - id: PS-S3B-VG01
+    status: closed
+    reason: >
+      主代理在 R02 修复后新鲜复跑 API 单测、真实 PostgreSQL flow、Web 145 文件 682 条、三视口专项 E2E 63 条、完整 E2E
+      169 passed / 7 skipped，以及 API/Web lint、typecheck、受控路径格式、repo/diff 和 build，均通过。
+  - id: PS-TASK-VG01
+    status: non-blocking-environment
+    reason: >
+      最终 pnpm validate 在 repo/contract/drift/dictionary/db generate/lint 通过后，根 format:check 枚举已被 .prettierignore 排除且与本任务无关的
+      apps/ai-service/.pytest_cache 时被 Windows ACL 以 EPERM 拒绝，因而整条命令退出 2。未删除缓存或修改权限；随后对 API、Web、database、contracts、
+      scripts 与当前 brief 显式执行 Prettier 均通过，并继续执行剩余 typecheck、unit、integration、E2E、build 到末尾全部通过。
+nonBlockingSuggestions: []
+next: final-review
+```
+
+修复验收反证：
+
+1. `ProductSelectionWorkbench.test.ts` 从真实页面链模拟 `PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason`：首次提交后错误横幅显示人话，但 action pane、单位经济草稿、服务端缺口和主按钮继续存在；出现“仍要投入的理由”输入，已填两情景内容不丢，补理由后可再次提交。
+2. 明确分离“初始详情读取失败”和“写动作失败”：只有读取失败隐藏判断入口；保存失败保留当前未提交草稿与可恢复动作。现有版本冲突仍按既定语义重读服务端事实并保留草稿，不回退该能力。
+3. 复跑 S3b 全部 Web 单测、Web lint/typecheck/format、三视口 `workbench-network` E2E、`repo:check` 与 `git diff --check`；不改 API、契约、Schema、迁移或币种政策。
+4. `DecideProductInitiativeService` 增加原始 handoff 的 `marketCode/channelCode` 均为空、`READ_MARKET_SIGNAL_LIVE` 对同一 signal 返回两者的失败先行单测；完整单位经济命令必须使用 `mergeHandoffWithSignalLive` 的 display market/channel 通过 prepare，不得返回 channel mismatch 或 market 缺失，且持久化收到规范化 snapshot。
+5. 决定服务对 live signal 不存在或仍未补齐的情形继续保留真实缺口；原始 handoff 已有值时继续优先不可变快照，不得由 live signal 覆盖。复用现有 Port 与 merge helper，不复制补全规则，不改公共契约、Schema、迁移或币种政策。
+6. 增加真实 PostgreSQL 或应用集成反例：先生成 market/channel 为空的 handoff，再更新同租户来源 signal 补齐两者、接受交接并完成单位经济决定；服务端须采用同一补全工作上下文成功落当前态/快照。Web E2E 不得通过“交接前先填渠道”绕开该路径。
+7. 复跑受影响 API 单测、`product-initiative-flow` PostgreSQL 集成、S3b Web 全量单测与三视口 E2E、API/Web lint/typecheck、`repo:check`、格式和 diff 检查；不扩展到可编辑市场/渠道或重写历史 handoff。
+
 ## 验收
 
 - [ ] 缺任一资源承诺项不能立项，提示具体缺项；立项责任人只能是当前登录用户
@@ -475,3 +526,8 @@ next: S3b-unit-economics-ui
 | 2026-10-05 | fix    | Claude Code | 未提交     | S3a 增量复验 R01～R04 路径已落；追加 R06/R07：数据库错误阻断非 terminal 负贡献草稿、其他 authority 同名 active 数据集可冒充 SIX 并被误参与激活/验证。限定迁移与币种目录/importer/verifier 修复。                                                                                              |
 | 2026-10-05 | review | Claude Code | 未提交     | 主代理验收 R06/R07：聚焦 API 单测 48 条、importer/verifier 6 条、snapshot 5 条、真实 PostgreSQL flow+migration 44 条及 contract/drift、字典、repo、lint、API typecheck、diff check 均通过；未发现新 blocking finding。按治理待 fresh Codex 只读复审，当前环境未安装 Codex，未以 Claude 替代。 |
 | 2026-10-05 | coding | Claude Code | `06cb41ab` | fresh Codex 独立复审 no-findings；VG01/NBS01 为非阻塞测试纵深并延期，NBS02 因复合身份已先验证而拒绝重复条件。S3a 提交完成，按预授权立即下发 S3b 单位经济录入与 NPI 只读承接。                                                                                                                 |
+| 2026-10-05 | fix    | Claude Code | 未提交     | S3b 主代理验收接受 PS-S3B-R01：服务端负贡献理由缺口返回后，保存错误被误当作初始读取错误，整个行动 pane 被隐藏且重新加载会覆盖未保存草稿。限定分离读/写错误并增加真实页面恢复反例，不改 API/契约/Schema。                                                                                      |
+| 2026-10-05 | review | Claude Code | 未提交     | R01 增量复验通过：真实工作台覆盖负贡献缺理由首次 400 后保留两情景草稿、action pane、理由输入与重提；Web 145 文件 682 条、三视口 E2E 63 条、lint/typecheck/format/repo/diff 均通过。转 fresh Codex 只读复审 S3b 全差异。                                                                       |
+| 2026-10-05 | review | Claude Code | 未提交     | 首次 reviewer 指令被送回该切片原实现会话；该会话按治理返回 blocked、未运行评审、无 finding、无写入。此为复审席位不独立，不是产品代码阻塞；S3b 保持 review，重新下发全新 Codex 只读会话。                                                                                                      |
+| 2026-10-05 | fix    | Claude Code | 未提交     | fresh Codex 确认 PS-S3B-R02：机会列表/接收用信号当前态补全原始 handoff 空市场/渠道，但决定服务仍只读原始快照，形成页面完整却必然保存失败。主代理接受并限定复用 READ_MARKET_SIGNAL_LIVE + 既有 merge 规则，补 API 与真实 PostgreSQL 反例。                                                     |
+| 2026-10-05 | review | Claude Code | `897e4a34` | R02 修复复用 live-signal merge，API 12、PostgreSQL 34、Web 682、专项 E2E 63 及静态门禁通过并提交。任务级剩余 typecheck/test/integration 189/E2E 169+7 skipped/build 均通过；根 format:check 仅被无关 ignored `.pytest_cache` ACL EPERM 中断，受控路径格式通过。                               |
