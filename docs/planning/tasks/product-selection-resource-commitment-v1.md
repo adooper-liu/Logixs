@@ -1,5 +1,5 @@
 ---
-status: blocked
+status: fix
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -126,16 +126,17 @@ authorityRefs:
 
 ## 负责人决策记录
 
-| 决策 ID             | 已知事实与未知                                                     | 选项、成本/收益/风险/可逆性                                                                                        | 推荐与理由                                   | 负责人结论                                              | 权威落点 / 状态          |
-| ------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------- | ------------------------ |
-| PS-D00 基线确认     | 13 条“已定基线”此前未写回 `doc/08`                                 | 全部确认 / 部分确认 / 再开智慧开启                                                                                 | 全部确认，分刀实现                           | 2026-10-04 全部确认                                     | 待写回 doc/08            |
-| PS-D00b 第一刀      | 候选：资源责任 / 单位经济 / 证据完整性                             | —                                                                                                                  | 资源责任                                     | 2026-10-04 选资源责任                                   | 本 brief                 |
-| PS-D01 立项责任人   | 现有 `responsibleActorId` = 作决定的操作人，界面未表达其为立项责任 | A 当前认证用户，服务端绑定 / B 指定他人并经其接受 / C 取机会接受人                                                 | A：最小改动，转派另定，可逆                  | 2026-10-04 选 A                                         | 待写回 doc/08 / approved |
-| PS-D02 资源承诺内容 | 现有快照无资源、目标日期、下一决策点                               | A 承接团队或岗位 + 资源说明 + 目标日期 + 下一决策点（日期 + 决策问题），不含金额 / B 另加预算区间 / C 只要两个日期 | A：针对“没人没资源”，预算随单位经济切片      | 2026-10-04 选 A                                         | 待写回 doc/08 / approved |
-| PS-D01-X 与基线冲突 | PS-D01 A 与基线 R1“不得由点按钮的人自动代替”冲突；系统无人员目录   | 过渡保留 A / 改为指定他人并接受 / 本刀不写责任人                                                                   | 过渡保留 A：先解决没资源没日期，退出条件明确 | 2026-10-04 选过渡保留 A                                 | 待写回 doc/08 / approved |
-| UE-D01 单位经济范围 | 现有“价格带与利润”只有自由文本结论与证据引用                       | 薄版 F1 / F1+U1 / 单情景                                                                                           | 薄版 F1：可复算，录入负担可控                | 2026-10-04 选薄版 F1                                    | 待写回 doc/08 / approved |
-| UE-D02 单位经济门槛 | 基线：口径不明不能立项；无数据前无可信阈值                         | 口径门槛 / 另加数值门槛 / 只展示                                                                                   | 口径门槛：不硬编码利润阈值                   | 2026-10-04 选口径门槛；保守情景贡献为负时须写仍投入理由 | 待写回 doc/08 / approved |
-| PS-D03 暂缓验证计划 | 现有暂缓只要 `deferReason`；无重判日期，队列按更新时间             | A 验证重点 + 重判日期，责任人为当前用户，到期进最前分组，不自动改状态 / B 另加逾期标记 / C 只要日期                | A：与市场“单一当前验证承诺”同构              | 2026-10-04 选 A                                         | 待写回 doc/08 / approved |
+| 决策 ID             | 已知事实与未知                                                                   | 选项、成本/收益/风险/可逆性                                                                                        | 推荐与理由                                       | 负责人结论                                                    | 权威落点 / 状态              |
+| ------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------- | ---------------------------- |
+| PS-D00 基线确认     | 13 条“已定基线”此前未写回 `doc/08`                                               | 全部确认 / 部分确认 / 再开智慧开启                                                                                 | 全部确认，分刀实现                               | 2026-10-04 全部确认                                           | 待写回 doc/08                |
+| PS-D00b 第一刀      | 候选：资源责任 / 单位经济 / 证据完整性                                           | —                                                                                                                  | 资源责任                                         | 2026-10-04 选资源责任                                         | 本 brief                     |
+| PS-D01 立项责任人   | 现有 `responsibleActorId` = 作决定的操作人，界面未表达其为立项责任               | A 当前认证用户，服务端绑定 / B 指定他人并经其接受 / C 取机会接受人                                                 | A：最小改动，转派另定，可逆                      | 2026-10-04 选 A                                               | 待写回 doc/08 / approved     |
+| PS-D02 资源承诺内容 | 现有快照无资源、目标日期、下一决策点                                             | A 承接团队或岗位 + 资源说明 + 目标日期 + 下一决策点（日期 + 决策问题），不含金额 / B 另加预算区间 / C 只要两个日期 | A：针对“没人没资源”，预算随单位经济切片          | 2026-10-04 选 A                                               | 待写回 doc/08 / approved     |
+| PS-D01-X 与基线冲突 | PS-D01 A 与基线 R1“不得由点按钮的人自动代替”冲突；系统无人员目录                 | 过渡保留 A / 改为指定他人并接受 / 本刀不写责任人                                                                   | 过渡保留 A：先解决没资源没日期，退出条件明确     | 2026-10-04 选过渡保留 A                                       | 待写回 doc/08 / approved     |
+| UE-D01 单位经济范围 | 现有“价格带与利润”只有自由文本结论与证据引用                                     | 薄版 F1 / F1+U1 / 单情景                                                                                           | 薄版 F1：可复算，录入负担可控                    | 2026-10-04 选薄版 F1                                          | 待写回 doc/08 / approved     |
+| UE-D02 单位经济门槛 | 基线：口径不明不能立项；无数据前无可信阈值                                       | 口径门槛 / 另加数值门槛 / 只展示                                                                                   | 口径门槛：不硬编码利润阈值                       | 2026-10-04 选口径门槛；保守情景贡献为负时须写仍投入理由       | 待写回 doc/08 / approved     |
+| PS-D03 暂缓验证计划 | 现有暂缓只要 `deferReason`；无重判日期，队列按更新时间                           | A 验证重点 + 重判日期，责任人为当前用户，到期进最前分组，不自动改状态 / B 另加逾期标记 / C 只要日期                | A：与市场“单一当前验证承诺”同构                  | 2026-10-04 选 A                                               | 待写回 doc/08 / approved     |
+| UE-D03 币种底座收窄 | S3a 已实现 authorized snapshot + release 生命周期；负责人只需 178 个币种直接可用 | A 内置 178 币种直接表 / B 保留 release/importer / C 只支持单币种                                                   | A：删除无消费者的发布机制，保留来源哈希和 lookup | 2026-10-05 选 A；取消授权 snapshot、active release 与许可门禁 | doc/08 + 本 brief / approved |
 
 ## 执行切片（转 coding 后生效；同一分支、一个最终 PR）
 
@@ -183,7 +184,7 @@ authorityRefs:
    - `ProductInitiativeUnitEconomicsSnapshotV1`：完整、规范化且服务端已计算的快照；只在所有口径齐全时产生，approve 当前态和 NPI handoff 使用。
    - 两者的 `marketCode` 都由服务端只读继承当前机会包；命令不得另传一份市场。
    - `channelCode` 来自当前机会包；命令草稿可带 `channelCode`，服务端要求与 handoff 当前非空值一致，机会缺渠道或输入不一致均明确失败，不允许选品改写上游事实。
-   - `currencyCode` 是 ISO 4217 大写代码，完整计算前必须由 master-data 当前 active `CurrencyCodeReference` 解析成功。
+   - `currencyCode` 是 ISO 4217 大写代码，完整计算前必须由 master-data 内置 `CurrencyCodeReference` 解析成功。
    - `scenarios.baseline`、`scenarios.conservative`：各包含 `salePrice`、`landedCost`、`platformFee`、`fulfillmentFee`、`advertisingCost`、`returnCost` 六个单件金额区间。
    - 每个区间为 `{ min, max, basis, evidenceRefs }`；草稿属性可部分缺失，快照全部必填。`min/max` 是 0～999999999999.9999 的规范定点十进制字符串且 `min <= max`；`basis` 只允许 `evidence | assumption`。`evidence` 至少一个当前机会合法证据，`assumption` 必须 `evidenceRefs=[]`，不得以任意 UUID 冒充依据。
    - 快照每个情景包含服务端 `contribution: { min, max }`；命令和 draft 不接受计算结果。计算固定为 `售价下限 - 六类中除售价外五项成本的上限之和` 与 `售价上限 - 五项成本下限之和`。
@@ -199,19 +200,20 @@ authorityRefs:
 4. `approve` 新写入必须有完整且可计算的 `unitEconomics`，否则沿用 `PRODUCT_INITIATIVE_INCOMPLETE` 并列出单位经济缺口；defer/reject/return 可部分提交并保存为草稿，不改变它们的完成语义。
 5. 同一事务内把规范输入和计算结果写入当前 initiative；`approve` 时冻结进不可变 NPI handoff。NPI 只读显示市场、渠道、币种、两情景各项区间、依据/假设标签、贡献区间和负值理由；存量 null 明确“历史交接未记录”。
 
-#### C. 币种参考数据（最小可信底座）
+#### C. 币种参考数据（负责人 2026-10-05 收窄）
 
-1. 复用 master-data 的 `ReferenceDataRelease`，新增 `CurrencyCodeReference`：`releaseId`、alphaCode、numericCode、minorUnit（`N.A.` 显式可空）、currencyName、sourceRowHash；同一 release 下代码和数字码唯一。`ReferenceDataRelease` 的 datasetCode 固定 `ISO_4217_LIST_ONE`，version 使用官方 XML `Pblshd` 日期。
-2. master-data 新增稳定 `REFERENCE_CURRENCY_DIRECTORY` Port，仅提供列出当前 active 币种和按 code 解析；product-selection 通过 `MasterDataModule` 注入消费，不跨包导入 repository 或直接查表。
-3. 新增离线 snapshot validator/generator，输入人工从官方 XML 转换并复核的 JSON snapshot；本片不以正则解析 XML，也不新增 XML 依赖。脚本校验 metadata 中的官方 source URL、`Pblshd` 版本、retrievedAt、sourceSha256、recordsSha256、license/status，以及每条 alpha/numeric/minor-unit 结构、重复币种折叠和同码元数据一致性，再生成 deterministic IDs。官方同一币种可对应多个国家/地区，snapshot 只保留一个币种定义；同码元数据冲突必须失败。原始 XML、转换过程与使用依据保存在 deployment evidence，不提交进仓库。
-4. 因 SIX 页面未提供可确认的开源再分发许可，本仓库不提交完整官方 XML 或派生全量清单，不编造许可。测试提交最小 synthetic fixture（至少 USD、EUR、JPY、XUA/N.A.），永久标记 `synthetic_rehearsal`，只验证机制，不证明生产参考数据已就绪。
-5. deployment/done gate：生产启用 S3 前必须由获准官方 List One 导入 active release，并留存来源 URL、发布日期/版本、检索时间、源文件哈希、记录哈希和实际许可/使用依据。缺该外部证据不阻止代码、PR 和合并，但阻止生产启用和 task 最终 `done`。
+1. 负责人定案直接使用所提供 `D:\aosom\Downloads\list-one.xml` 中 `Pblshd=2026-09-17` 的数据，按 alpha code 折叠地区重复后内置 178 个唯一币种；不再建设 `authorized_official` snapshot、synthetic rehearsal、staged/active/superseded release 生命周期或生产导入门禁。
+2. `CurrencyCodeReference` 改为独立内置参考表：alphaCode、numericCode、minorUnit（`N.A.` 显式可空）、currencyName、sourceVersion、sourceUrl、sourceSha256、recordsSha256、sourceRowHash；alpha 与 numeric code 全局唯一。迁移直接写入 178 条确定性记录，不提交原始 XML。
+3. master-data 保留稳定 `REFERENCE_CURRENCY_DIRECTORY` Port；`listActive()` 的兼容方法名直接列出全部内置币种并按 code 稳定排序，`resolve()` 只区分 `active | unknown | unavailable`：表有 178 条且代码存在为 active，表为空为 unavailable，表非空但代码不存在为 unknown；删除 inactive/release 判断。
+4. 固定来源证据：source URL=`https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml`、version=`2026-09-17`、sourceSha256=`33139b438657d1cee116ba737807ea71d19d6de4b90f799a09c56f0cc6a1b0ff`、recordsSha256=`10f3266f8cfefacda248330d0612cf3b61febdcb38875432a20025bab607673d`；277 coded rows 折叠为 178 个币种，无格式、alpha 元数据或 numeric code 冲突。
+5. 删除 currency snapshot generator/validator、authorized importer/verifier、synthetic fixture/seed 和对应 package scripts；其他使用 `ReferenceDataRelease` 的国家/港口/货主等参考数据不受影响。
 
 #### D. 数据库与迁移
 
-1. `ProductInitiative` 增加可空 JSON 字段 `unit_economics_draft` 与 `unit_economics_snapshot`，分别承载可恢复草稿和服务端完整计算；`ProductInitiativeHandoff` 只增加可空 `unit_economics_snapshot`。当前态与 handoff 各增加可空 `negative_conservative_reason`，handoff 只在 approve 时冻结。JSON 避免把 24 个区间端点铺成列，但 Schema、Domain 和 PostgreSQL CHECK 共同保证新写形状；Repository 显式映射，不把 JSON 当无校验袋。
-2. 加法迁移保留存量 null；CHECK 约束：非 approve/returned_from_npi 可为空或部分草稿，approve/returned_from_npi 完整；handoff 要么整组 null（legacy），要么完整快照。不可修改已共享迁移。
-3. 数据字典把新字段标为 `confirmed_business`，引用 `doc/08` 选品单位经济权威，owner/module=`product-selection`；生成物随片更新。
+1. `CurrencyCodeReference` 改为不依赖 release 的内置表，迁移直接创建并写入 178 条确定性记录；每条保留 alpha/numeric/minorUnit/name 及来源版本、URL、源文件哈希、记录哈希、逐行哈希。Schema、Domain 和 PostgreSQL 约束共同保证新写形状；Repository 显式映射。
+2. `ProductInitiative` 增加可空 JSON 字段 `unit_economics_draft` 与 `unit_economics_snapshot`，分别承载可恢复草稿和服务端完整计算；`ProductInitiativeHandoff` 只增加可空 `unit_economics_snapshot`。当前态与 handoff 各增加可空 `negative_conservative_reason`，handoff 只在 approve 时冻结。JSON 避免把 24 个区间端点铺成列，但 Schema、Domain 和 PostgreSQL CHECK 共同保证新写形状；Repository 显式映射，不把 JSON 当无校验袋。
+3. 加法迁移保留存量 null；CHECK 约束：非 approve/returned_from_npi 可为空或部分草稿，approve/returned_from_npi 完整；handoff 要么整组 null（legacy），要么完整快照。当前任务迁移尚未进入共享环境，按负责人收窄决定原位调整，不另叠加过渡 release 迁移。
+4. 数据字典把新字段标为 `confirmed_business`，引用 `doc/08` 选品单位经济权威，owner/module=`product-selection`；生成物随片更新。
 
 #### E. 界面承接
 
@@ -222,14 +224,15 @@ authorityRefs:
 
 #### F. 执行分片、验证与停止条件
 
-1. **S3a-unit-economics-core（当前执行）**：只交付币种参考模型/Port/离线 importer synthetic 机制、公共契约、Domain 定点计算、Schema/迁移、Repository 当前态与不可变快照、API 与 PostgreSQL/迁移/契约/字典验证；不修改 Web 页面和 E2E。完成后主代理验收并按高风险增量决定独立复审。
-2. **S3b-unit-economics-ui（S3a 通过即预授权）**：只消费 S3a 契约，交付选品录入组件、服务端计算结果/缺口显示、NPI 只读快照、Web 单测与选品到 NPI 三视口 E2E；不得改 S3a 计算、Schema、迁移或币种政策，除非真实 finding 经主代理接受并写回 brief。
-3. TDD 顺序：Domain 计算/格式/缺口/负值测试先红；契约 fixture/drift；迁移空库和旧版升级；Repository PostgreSQL 成功、部分草稿、完整 approve、NPI 回程、handoff 不可变；币种 active/missing/inactive；S3b 再做 Web 组件和真实路径 E2E。
-4. S3a 定向门禁：单位经济 Domain/API 单测，product-initiative PostgreSQL 与迁移升级，币种目录/导入器测试，contract generate/check/drift，data-dictionary generate/check，db generate，API lint/typecheck，`repo:check`、格式与 diff 检查。S3b 增加 Web lint/typecheck/unit 与选品到 NPI E2E 三视口。
-5. 出现需要新增利润率、默认币种、汇率、销售量、预算或证据采信阈值时返回 `blocked` 交负责人定案；不得自行填默认。官方币种数据未导入只记录 deployment gate，不阻止本地 synthetic 机制实现。
-6. 实现执行器每片完成后返回 HANDOFF；不得推送、建 PR、修改 brief 状态或把 synthetic 数据描述为生产参考数据。
+1. **S3a-unit-economics-core（已完成，待 S3c 收窄）**：已交付单位经济 Domain、契约、Schema/迁移、Repository、API 与初版币种 release/importer 机制；负责人 2026-10-05 取消其中 release/importer 方案，由 S3c 原位收窄。
+2. **S3b-unit-economics-ui（已完成）**：消费单位经济契约，交付选品录入、服务端计算结果/缺口显示、NPI 只读快照、Web 单测与选品到 NPI 三视口 E2E。
+3. **S3c-currency-reference-simplification（当前执行）**：把 `CurrencyCodeReference` 收窄为迁移内置的 178 币种直接表；删除 release 关联、authorized/synthetic snapshot、importer/verifier、seed 和脚本；保持目录 Port 与选品消费者行为，不改单位经济契约或 UI。
+4. TDD 顺序：先改币种目录单测与真实 PostgreSQL/迁移测试，证明直接表 178 条、USD/EUR/JPY/XUA、空表 unavailable、非空未知码 unknown、无 inactive/release 查询；观看旧实现失败后再改 Schema/迁移/adapter，并删除失效机制。
+5. S3c 定向门禁：币种目录/API 单测，product-initiative PostgreSQL 与迁移升级，空库 178 条/唯一性/来源哈希测试，contract/drift，data-dictionary generate/check，db generate，API/Web lint/typecheck/unit，选品到 NPI 三视口 E2E、`repo:check`、格式与 diff 检查。
+6. 出现需要新增利润率、默认币种、汇率、销售量、预算或证据采信阈值时返回 `blocked` 交负责人定案；不得自行填默认。
+7. 实现执行器完成后返回 HANDOFF；不得推送、建 PR、修改 brief 状态或覆盖当前工作树中不属于 S3c 的 Web 改动。
 
-**一手来源**：SIX 是 ISO 4217 官方维护机构。官方说明页为 `https://www.six-group.com/en/products-services/financial-information/market-reference-data/data-standards.html`，List One XML 为 `https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml`，当前公开根属性为 `Pblshd=2026-09-17`。来源页与 XML URL 必须记录在部署证据，不将网页摘要当作生产数据本身；在取得并记录实际使用依据前，不把官方 XML 或完整派生清单提交进仓库。
+**一手来源**：负责人提供 `D:\aosom\Downloads\list-one.xml`，根属性 `Pblshd=2026-09-17`。S3c 只提交迁移内置的 178 个折叠币种记录和来源哈希，不提交原始 XML；该文件已核验为 277 coded rows、178 个唯一币种、无格式/alpha 元数据/numeric code 冲突。
 
 ## 业务步骤五面映射
 
@@ -491,13 +494,8 @@ finalReview:
   scope: S1/S2/S3a/S3b full integration
   reviewer: fresh Codex read-only
   writes: none
-externalGates:
-  - id: PS-DEPLOY-CURRENCY-REFERENCE
-    status: blocking-production-enable-and-task-done
-    reason: >
-      生产启用 S3 前仍须导入获准官方 SIX ISO 4217 List One active release，并留存来源 URL、发布日期、检索时间、源文件哈希、
-      记录哈希和实际许可/使用依据。当前仅提交 synthetic_rehearsal，足以验证机制但不能冒充生产参考数据。
-next: pr
+externalGates: []
+next: S3c-currency-reference-simplification
 ```
 
 修复验收反证：
@@ -546,3 +544,5 @@ next: pr
 | 2026-10-05 | review  | Claude Code | `897e4a34` | R02 修复复用 live-signal merge，API 12、PostgreSQL 34、Web 682、专项 E2E 63 及静态门禁通过并提交。任务级剩余 typecheck/test/integration 189/E2E 169+7 skipped/build 均通过；根 format:check 仅被无关 ignored `.pytest_cache` ACL EPERM 中断，受控路径格式通过。                               |
 | 2026-10-05 | review  | Claude Code | `ab9b0e8c` | fresh Codex 对 `b9621af6..HEAD` 的 S3b 复审 no-findings，确认 live-signal merge 与写失败草稿恢复；该范围仅 2 个提交/16 文件。任务最终范围 `eb5e2598..HEAD` 另含此前 20 个提交/70 文件，故只关闭 S3b 复审，不冒充最终集成复审。                                                                |
 | 2026-10-05 | blocked | Claude Code | `35193da1` | fresh Codex 对 `eb5e2598..35193da1` 全任务最终复审 no-findings。代码与任务级门禁达到 PR 集成条件；根 format ACL 例外已披露。因官方 SIX List One 获准数据与许可证据尚未导入，按既定 deployment gate 阻止生产启用与 task done，但不阻止 PR/合并。                                               |
+| 2026-10-05 | blocked | Claude Code | 未提交     | 负责人提供 `D:\aosom\Downloads\list-one.xml`。主代理核验 Pblshd=2026-09-17、源 SHA-256 `33139b…b0ff`、277 coded rows 折叠为 178 币种、记录哈希 `10f3266…673d`，无格式/同码冲突；SIX 一手法律页未授予本用途许可且商业使用要求事先书面同意，故未生成 official snapshot、未 active 导入。        |
+| 2026-10-05 | fix     | Claude Code | 未提交     | 负责人明确收窄：直接内置 178 个币种，不要 authorized snapshot 与 active release。主代理写回 doc/08 与 UE-D03，取消许可/deployment gate，建立 S3c 删除 release/importer/synthetic 机制并保留来源哈希与现有 lookup/UI 行为。                                                                    |
