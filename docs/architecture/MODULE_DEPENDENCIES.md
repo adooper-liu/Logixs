@@ -7,19 +7,17 @@
 
 ```text
 apps/web ──REST/SSE/WS──▶ apps/api
-apps/api ──▶ packages/{domain, contracts, workflow-contracts, config}
+apps/api ──▶ packages/contracts
 apps/api ──▶ database/migrations（唯一写库入口，Prisma）
 apps/api ──▶ 业务 AI Gateway ──HTTP──▶ apps/ai-service     （AI 能力，见下）
 apps/api ──▶ Temporal（发起/查询/取消工作流）
-workers/business-worker ──▶ packages/{domain, contracts, workflow-contracts}
+workers/business-worker ──▶ packages/contracts
 workers/business-worker ──▶ Temporal（订阅调度）；写库走自身 adapter（业务 Activity）
-workers/ai-worker ──▶ apps/ai-service（HTTP）· packages/ai-contracts
-apps/ai-service ──▶ packages/ai-contracts（JSON Schema）· LiteLLM Proxy · 对象存储
-packages/api-client（OpenAPI 生成）──▶ packages/contracts
-packages/*（domain/contracts/config/testing）不依赖任何 apps/*
+workers/ai-worker ──▶ apps/ai-service（HTTP）
+apps/ai-service ──▶ LiteLLM Proxy · 对象存储
 ```
 
-AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm）。跨语言共享面只走 `packages/ai-contracts` / JSON Schema / OpenAPI，配合 Contract Parity 测试（ADR-009）。
+上面是 2026-10-05 对照仓库目录后的可读图。`packages/` 里目前只有 `contracts`。`packages/*` 不依赖任何 `apps/*`。2026-09-04 原图还写了 `domain`、`workflow-contracts`、`config`、`api-client`、`ai-contracts`、`testing`，这些目录现在不存在，不能当作可 import 的包。跨语言共享面仍以 JSON Schema / OpenAPI 和 Contract Parity 测试为准（ADR-009）。AI Service 与 AI Worker 仍是 Python 进程。
 
 ## 2. 业务 API 内部模块（apps/api）
 
@@ -34,6 +32,8 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 支撑：integration-import  exception-management  identity  master-data
       notification  audit  workflow  ai-governance
 ```
+
+上表是 2026-09-04 的分组说明。当前目录里还有 `customs-lifecycle-orchestration`、`inland-lifecycle-orchestration`、`market-intelligence`、`ops-assistant`、`product-selection`、`sourcing`、`workbench-network`。完整名单以 `apps/api/src/modules/` 为准。
 
 | 规则           | 说明                                                                                                                  |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -67,7 +67,7 @@ AI Service 与 AI Worker 属 Python（uv）；其余上层为 TypeScript（pnpm�
 ## 3. 禁止依赖
 
 - 禁止跨包引用对方内部实现（只走公共入口）。
-- 禁止 apps/web 直连业务模块内部或数据库；一律经 `apps/api` / `api-client`。
+- 禁止 apps/web 直连业务模块内部或数据库。浏览器经 `apps/web/src/api/httpClient.ts` 调用 `apps/api`。仓库里没有 `packages/api-client`。
 - 禁止 AI Service / AI Worker 直接写生产业务表；禁止业务模块直接调模型供应商（只经 AI Gateway / AI Service）。
 - 禁止 Python 与 TypeScript 包互相 import 运行时代码；只共享中性契约。
 - 禁止 `packages/*` 依赖 `apps/*`；`contracts` 不带框架依赖。
