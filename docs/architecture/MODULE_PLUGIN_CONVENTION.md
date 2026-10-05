@@ -20,18 +20,20 @@
 
 ## 2. Odoo → Logix 映射
 
-| Odoo                          | Logix                                                      |
-| ----------------------------- | ---------------------------------------------------------- |
-| `odoo` 内核                   | Nest 应用壳 + Prisma + `packages/contracts` + `repo:check` |
-| `base` addon                  | 支撑模块 + 主链核（见 §3）                                 |
-| `__manifest__.py` / `depends` | `module.manifest.ts` 的 `id` / `depends` / `kind`          |
-| `models/`                     | `domain/`（纯规则）+ `application/`（用例）+ Prisma 映射   |
-| `controllers/`                | `presentation/*.controller.ts`                             |
-| `views/`                      | `apps/web/src/modules/<id>/` 路由与导航贡献（代码化 UI）   |
-| `security/` + access CSV      | `security/permissions.ts` + `identity` 授权守卫            |
-| Registry / 安装图             | 静态依赖图 + `scripts/check-module-manifests.mjs`          |
+| Odoo                          | Logix                                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| `odoo` 内核                   | Nest 应用壳 + Prisma + `packages/contracts` + `repo:check`                                         |
+| `base` addon                  | 支撑模块 + 主链核（见 §3）                                                                         |
+| `__manifest__.py` / `depends` | `module.manifest.ts` 的 `id` / `depends` / `kind`                                                  |
+| `models/`                     | `domain/`（纯规则）+ `application/`（用例）+ Prisma 映射                                           |
+| `controllers/`                | `presentation/*.controller.ts`                                                                     |
+| `views/`                      | `apps/web/src/modules/<id>/` 路由与导航贡献（代码化 UI）                                           |
+| `security/` + access CSV      | `@RequireCapabilities` + `identity` 角色能力表。`security/permissions.ts` 只说明能力码，守卫不读取 |
+| Registry / 安装图             | 静态依赖图 + `scripts/check-module-manifests.mjs`                                                  |
 
 ## 3. 基础模块与增量模块
+
+现行分类以各模块 `module.manifest.ts` 的 `kind` 为准。下面名单是 2026-09-17 的快照，不是完整现状。后来增加的模块以清单为准，并应回写本段。
 
 **基础（始终启用，`kind: "base"`）**
 
@@ -56,7 +58,7 @@ apps/api/src/modules/<feature>/
   application/            # 用例编排
   presentation/           # ≈ control
   infrastructure/         # 持久化适配
-  security/               # 权限声明（能力码清单）
+  security/               # 按需：能力码说明，守卫不读取
   engines/                # 可选纯求值引擎
 
 apps/web/src/modules/<feature>/
@@ -90,13 +92,15 @@ defineModuleManifest({
 ## 6. 权限约定
 
 - 能力码是稳定授权键（如 `planning.draft`），不是按钮文案或 `actionCode`。
-- 写接口默认需认证；带 `@RequireCapabilities(...)` 的处理器还需能力校验。
-- 模块在 `security/permissions.ts` 声明本模块相关能力；运行时由 `identity` 强制。
-- 前端 `meta.roles` / 允许动作投影不是安全边界。
+- 写接口默认需认证。敏感读/写在处理器上挂 `@RequireCapabilities(...)`。`AuthenticationGuard` 与 `AuthorizationGuard` 已全局注册；没写能力、也没标 `@PublicEndpoint()` 或 `@ServiceEndpoint()` 的路由会被拒绝。
+- 角色是否拥有能力码，看 `apps/api/src/modules/identity/domain/role-capabilities.ts`。守卫不读取 `security/permissions.ts`。该文件只在需要向人说明能力码时照 `inland-fulfillment` 或 `notification` 保留，不要求每个模块补一份空文件。
+- 清单里的 `permissions` 登记本模块使用的能力码。
+- 前端 `meta.roles` / `meta.requiredCapabilities` 不是安全边界。`createAuthGuard` 只判断是否已登录。
 
 ## 7. 校验与验收
 
-- `pnpm repo:check` 调用模块清单检查：每个含 `*.module.ts` 的业务目录必须有 `module.manifest.ts`，且 `depends` 合法。
-- 样板：`inland-fulfillment` 具备 `security/`、Web `modules/inland-fulfillment` 导航贡献，写接口挂能力守卫。
+- `pnpm repo:check` 调用模块清单检查：每个含 `*.module.ts` 的业务目录必须有 `module.manifest.ts`，且 `depends` 指向已存在模块、不得自依赖。Nest `imports` 里的兄弟模块必须写入 `depends`（约定 §5 第 3 条）。
+- 样板：API 看 `inland-fulfillment`（清单、用例、控制器、`security/permissions.ts`）。页面看 `notification`（自有视图）。`inland-fulfillment` 的 Web 路由目前指向 `MesoPaper.vue`，不是内陆计划页面。
+- 第一次改代码先读 [INCREMENTAL_MODULE_PLAYBOOK](./INCREMENTAL_MODULE_PLAYBOOK.md) §0.1。
 - 变更本约定或模块分类须更新本文与 MODULE_DEPENDENCIES；触及部署边界时另立 ADR。
 - **怎么切下一刀、Odoo 业务能力采纳优先序**：见 [INCREMENTAL_MODULE_PLAYBOOK](./INCREMENTAL_MODULE_PLAYBOOK.md)。
