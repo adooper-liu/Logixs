@@ -1,5 +1,5 @@
 ---
-status: review
+status: coding
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -230,8 +230,8 @@ authorityRefs:
 
 1. **S3a-unit-economics-core（已完成，待 S3c 收窄）**：已交付单位经济 Domain、契约、Schema/迁移、Repository、API 与初版币种 release/importer 机制；负责人 2026-10-05 取消其中 release/importer 方案，由 S3c 原位收窄。
 2. **S3b-unit-economics-ui（已完成）**：消费单位经济契约，交付选品录入、服务端计算结果/缺口显示、NPI 只读快照、Web 单测与选品到 NPI 三视口 E2E。
-3. **S3c-currency-reference-simplification（当前执行）**：把 `CurrencyCodeReference` 收窄为迁移内置的 178 币种直接表；删除 release 关联、authorized/synthetic snapshot、importer/verifier、seed 和脚本；保持目录 Port 与选品消费者行为，不改单位经济契约或 UI。
-4. **S4-product-selection-result-mode（S3c 验收后执行）**：按负责人确认的方案 A 把工作态与结果态分开；基于当前未提交的 `ProductInitiativeReviewPanel` / `ProductSelectionWorkbench` 改动继续收口，不回退。只改 Web 视图与组件/测试，不改 API、契约、Schema、迁移、立项门槛或责任政策。
+3. **S3c-currency-reference-simplification（已完成，提交 `35e92bad`）**：`CurrencyCodeReference` 已收窄为迁移内置的 178 币种直接表；release 关联、authorized/synthetic snapshot、importer/verifier、seed 和脚本已删除；目录 Port 与选品消费者行为保持兼容。
+4. **S4-product-selection-result-mode（当前执行）**：按负责人确认的方案 A 把工作态与结果态分开；基于当前未提交的 `ProductInitiativeReviewPanel` / `ProductSelectionWorkbench` 改动继续收口，不回退。只改 Web 视图与组件/测试，不改 API、契约、Schema、迁移、立项门槛或责任政策。
 5. S4 结果态验收：顶部只保留对象、真实结果、当前责任与下一决策；机会事实合并为紧凑摘要；评审要点每项一行显示结论/证据数/失效状态，展开才显示证据和备注；单位经济有快照时显示基准/保守贡献摘要，无快照时显示“历史立项未记录”；禁止把历史缺失渲染成当前“还不能立项/待补 N 项”。
 6. S4 工作态验收：保留三栏与 sticky 主动作，但完备度按业务区域聚合，不把 48 个金额端点铺成警示墙；点击区域可定位到对应输入。大量免责声明与解释删除，必要说明使用 `InfoTooltip`，不能隐藏真实状态、当前阻断或恢复动作。
 7. TDD 顺序：S3c 先完成币种目录测试与收口；S4 再先写结果态/历史快照/工作态聚合缺口的失败组件与页面测试，再改 UI，并按 1440×900、1024×768、390×844 做真实页面视觉复验。
@@ -594,3 +594,4 @@ next: S3c-currency-reference-simplification
 | 2026-10-05 | blocked | Claude Code | `35193da1` | fresh Codex 对 `eb5e2598..35193da1` 全任务最终复审 no-findings。代码与任务级门禁达到 PR 集成条件；根 format ACL 例外已披露。因官方 SIX List One 获准数据与许可证据尚未导入，按既定 deployment gate 阻止生产启用与 task done，但不阻止 PR/合并。                                               |
 | 2026-10-05 | blocked | Claude Code | 未提交     | 负责人提供 `D:\aosom\Downloads\list-one.xml`。主代理核验 Pblshd=2026-09-17、源 SHA-256 `33139b…b0ff`、277 coded rows 折叠为 178 币种、记录哈希 `10f3266…673d`，无格式/同码冲突；SIX 一手法律页未授予本用途许可且商业使用要求事先书面同意，故未生成 official snapshot、未 active 导入。        |
 | 2026-10-05 | fix     | Claude Code | 未提交     | 负责人明确收窄：直接内置 178 个币种，不要 authorized snapshot 与 active release。主代理写回 doc/08 与 UE-D03，取消许可/deployment gate，建立 S3c 删除 release/importer/synthetic 机制并保留来源哈希与现有 lookup/UI 行为。                                                                    |
+| 2026-10-05 | coding  | Claude Code | `35e92bad` | S3c 主代理验收及定向门禁通过；同一实现会话复查 no-findings 但不满足 fresh 独立性，仅作辅助证据。负责人同意不单独重派，S3c 与 S4 在最终增量统一交 fresh Codex。当前按方案 A 执行 S4，并继承 4 个未提交 Web 文件。                                                                              |
