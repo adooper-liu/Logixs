@@ -1,5 +1,5 @@
 ---
-status: fix
+status: coding
 branch: feat/product-selection-resource-commitment-v1
 owner: main
 writer: codex
@@ -89,7 +89,7 @@ authorityRefs:
 ## 阶段与调度
 
 - `market-selection-handoff-v1` 已由 PR #136 合入 `main`，本分支已合并至 `eb5e2598`（含 PR #137、#138）；原串行前置与 Schema / 契约锁冲突均已解除。
-- 2026-10-04 转 `coding`；S1 提交 `4f75798e`、S2 提交 `ae796ac2` 均已由主代理验收，当前执行 `S3a-unit-economics-core`。S3b 保持预授权，须待 S3a 验收并写回 brief 后再下发。
+- 2026-10-05 S3a 提交 `06cb41ab` 已经主代理验收及 fresh Codex 独立复审 no-findings；当前按预授权执行 `S3b-unit-economics-ui`。
 - 主代理在 S1 同步把负责人 2026-10-04 对 `选品立项.md` 13 条基线中本片涉及的资源责任、暂缓重判和 NPI 交接承诺写回 `doc/08`；未进入本片的结论仍按后续切片留存，不提前铺字段。
 - frontmatter 是当前 coding 写入范围和锁的唯一机器事实；正文不再维护第二份范围清单。
 
@@ -416,9 +416,24 @@ decisions:
     writeback: 本 brief S3a C/F
 unknowns: []
 verificationGaps:
-  - S3a 修复后重跑单位经济/币种单测、PostgreSQL flow 与 migration upgrade、受影响下游集成、契约/字典/生成物和静态门禁。
-nonBlockingSuggestions: []
-next: fix
+  - id: PS-S3A-VG01
+    status: deferred-non-blocking
+    reason: >
+      fresh Codex 确认当前代码与查询条件正确且没有可复现业务风险；验收反证 7 明确允许 PostgreSQL 或 Prisma adapter
+      反例，现有 adapter 查询断言已覆盖 importer supersede 与 verifier 的 SIX + datasetCode 边界，真实 PostgreSQL 已覆盖目录隔离。
+      临时 schema 的 importer/verifier 全事务反例可增强证据，但不阻塞当前切片。
+nonBlockingSuggestions:
+  - id: PS-S3A-NBS01
+    disposition: deferred
+    reason: >
+      临时 schema 的跨 authority importer/verifier 事务测试是额外纵深，不改变当前消费者结果、数据边界或发布安全；待后续参考数据
+      运维测试切片与其他 authority 场景共同收口，避免为本片重复铺基础设施。
+  - id: PS-S3A-NBS02
+    disposition: rejected
+    reason: >
+      importer 在激活前已对 authorized snapshot 做 SIX + datasetCode 强校验，并按 authority_datasetCode_version 复合身份查找或创建；随后
+      id 来自该已验证 release。给 update 再叠相同条件并断言行数只增加防御性重复，不修复当前可达风险。
+next: S3b-unit-economics-ui
 ```
 
 修复验收反证：
@@ -443,18 +458,20 @@ next: fix
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                                                                             |
-| ---------- | ------ | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-10-04 | design | Cursor      | —          | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                                                                                       |
-| 2026-10-04 | design | Cursor      | —          | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                                                                                  |
-| 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权                                                           |
-| 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。                                                              |
-| 2026-10-04 | fix    | Claude Code | 未提交     | 主代理核验 S1 handoff，接受 PS-S1-R01～R04：暂缓半填错误关闭/落库失败、Web 漏消费投影分页、字典错误标记已定字段、测试范围漏列。已写回 doc/08 与 brief，定向下发修复。                            |
-| 2026-10-04 | fix    | Claude Code | 未提交     | 复验 R01～R03 通过；追加 PS-S1-R05/R06：机会源仍只取首 100 条使老到期项不可见，半填暂缓回执与服务端 needs_decision 不符。限定最后一轮 Web 修复。                                                 |
-| 2026-10-04 | fix    | Claude Code | 未提交     | R05/R06 代码复验通过；真实三视口视觉检查追加 PS-S1-R07：主 CTA 远离首屏、承诺区形成长填空墙、进度分母仍为旧值 5。限定为分组、正确口径与同一动作区 sticky，不重做整页。                           |
-| 2026-10-04 | fix    | Claude Code | 未提交     | R07 真实三视口复验通过。fresh Codex 独立复审返回 R08～R10，主代理逐项核验并全部接受：NPI 回程触发新 CHECK、legacy 操作人被冒充责任人、半填暂缓提示错误预测关闭。                                 |
-| 2026-10-04 | coding | Claude Code | `4f75798e` | R08～R10 修复通过 API 37、Web 48、PostgreSQL 27 条及契约/字典/静态门禁；S1 生产提交完成并合入最新 main。修正 disposition 结构后按预授权下发 S2 证据真实性。                                      |
-| 2026-10-04 | review | Claude Code | 未提交     | S2 实现交回后主代理核验：API 31、Web 22、PostgreSQL 24 条及 API/Web lint/typecheck、repo:check、diff check 通过；7 个文件均在范围内，无 Schema/契约漂移。转 fresh Codex 只读复审当前证据边界。   |
-| 2026-10-04 | coding | Claude Code | `ae796ac2` | S2 fresh Codex 独立复审 no-findings，主代理 fresh verification 通过后提交。S3 核对正式币种权威与仓库现状，拆为 S3a 核心和 S3b UI；当前下发 S3a。                                                 |
-| 2026-10-04 | fix    | Claude Code | 未提交     | S3a 主代理核验接受 R01～R05：数据库 CHECK 接受非法 JSON、S3b 无 active 币种公共边界、staged 被误报 inactive、官方 snapshot 无导入激活路径；下游 fixture/manifest 范围接受。                      |
-| 2026-10-05 | fix    | Claude Code | 未提交     | S3a 增量复验 R01～R04 路径已落；追加 R06/R07：数据库错误阻断非 terminal 负贡献草稿、其他 authority 同名 active 数据集可冒充 SIX 并被误参与激活/验证。限定迁移与币种目录/importer/verifier 修复。 |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                                                                                                                                                                          |
+| ---------- | ------ | ----------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | design | Cursor      | —          | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                                                                                                                                                                                    |
+| 2026-10-04 | design | Cursor      | —          | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                                                                                                                                                                               |
+| 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权                                                                                                                                                        |
+| 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。                                                                                                                                                           |
+| 2026-10-04 | fix    | Claude Code | 未提交     | 主代理核验 S1 handoff，接受 PS-S1-R01～R04：暂缓半填错误关闭/落库失败、Web 漏消费投影分页、字典错误标记已定字段、测试范围漏列。已写回 doc/08 与 brief，定向下发修复。                                                                                                                         |
+| 2026-10-04 | fix    | Claude Code | 未提交     | 复验 R01～R03 通过；追加 PS-S1-R05/R06：机会源仍只取首 100 条使老到期项不可见，半填暂缓回执与服务端 needs_decision 不符。限定最后一轮 Web 修复。                                                                                                                                              |
+| 2026-10-04 | fix    | Claude Code | 未提交     | R05/R06 代码复验通过；真实三视口视觉检查追加 PS-S1-R07：主 CTA 远离首屏、承诺区形成长填空墙、进度分母仍为旧值 5。限定为分组、正确口径与同一动作区 sticky，不重做整页。                                                                                                                        |
+| 2026-10-04 | fix    | Claude Code | 未提交     | R07 真实三视口复验通过。fresh Codex 独立复审返回 R08～R10，主代理逐项核验并全部接受：NPI 回程触发新 CHECK、legacy 操作人被冒充责任人、半填暂缓提示错误预测关闭。                                                                                                                              |
+| 2026-10-04 | coding | Claude Code | `4f75798e` | R08～R10 修复通过 API 37、Web 48、PostgreSQL 27 条及契约/字典/静态门禁；S1 生产提交完成并合入最新 main。修正 disposition 结构后按预授权下发 S2 证据真实性。                                                                                                                                   |
+| 2026-10-04 | review | Claude Code | 未提交     | S2 实现交回后主代理核验：API 31、Web 22、PostgreSQL 24 条及 API/Web lint/typecheck、repo:check、diff check 通过；7 个文件均在范围内，无 Schema/契约漂移。转 fresh Codex 只读复审当前证据边界。                                                                                                |
+| 2026-10-04 | coding | Claude Code | `ae796ac2` | S2 fresh Codex 独立复审 no-findings，主代理 fresh verification 通过后提交。S3 核对正式币种权威与仓库现状，拆为 S3a 核心和 S3b UI；当前下发 S3a。                                                                                                                                              |
+| 2026-10-04 | fix    | Claude Code | 未提交     | S3a 主代理核验接受 R01～R05：数据库 CHECK 接受非法 JSON、S3b 无 active 币种公共边界、staged 被误报 inactive、官方 snapshot 无导入激活路径；下游 fixture/manifest 范围接受。                                                                                                                   |
+| 2026-10-05 | fix    | Claude Code | 未提交     | S3a 增量复验 R01～R04 路径已落；追加 R06/R07：数据库错误阻断非 terminal 负贡献草稿、其他 authority 同名 active 数据集可冒充 SIX 并被误参与激活/验证。限定迁移与币种目录/importer/verifier 修复。                                                                                              |
+| 2026-10-05 | review | Claude Code | 未提交     | 主代理验收 R06/R07：聚焦 API 单测 48 条、importer/verifier 6 条、snapshot 5 条、真实 PostgreSQL flow+migration 44 条及 contract/drift、字典、repo、lint、API typecheck、diff check 均通过；未发现新 blocking finding。按治理待 fresh Codex 只读复审，当前环境未安装 Codex，未以 Claude 替代。 |
+| 2026-10-05 | coding | Claude Code | `06cb41ab` | fresh Codex 独立复审 no-findings；VG01/NBS01 为非阻塞测试纵深并延期，NBS02 因复合身份已先验证而拒绝重复条件。S3a 提交完成，按预授权立即下发 S3b 单位经济录入与 NPI 只读承接。                                                                                                                 |
