@@ -398,6 +398,22 @@ decisions:
       5 个下游集成测试只把既有合法 approve fixture 补齐渠道、资源承诺和单位经济，共享 fixture 消除重复；两个 module manifest
       只登记新增 Port 与依赖边。它们是新 approve 不变量和仓库治理的当前兼容范围，不改变下游业务断言；主代理补入 writeScopes。
     writeback: 本 brief frontmatter
+  - finding: PS-S3A-R06
+    status: accepted
+    reason: >
+      Domain 对完整但保守贡献为负、未填理由的 draft 生成 snapshot 并把 negativeConservativeReason 记为 pending；这对 defer/reject/return
+      应允许保存草稿。Repository 会写 snapshot + null reason，但 PostgreSQL validator 对任何 snapshot 都要求负值理由，导致非 approve 去向
+      被数据库拒绝，违背“单位经济可部分保存，不阻塞暂缓或不立项”。数据库只应在 terminal approve/returned_from_npi 或 handoff
+      快照强制负值理由；当前态非 terminal snapshot 可带 pending reason 缺口。
+    writeback: 本 brief S3a B/D
+  - finding: PS-S3A-R07
+    status: accepted
+    reason: >
+      主代理在回滚事务中插入 authority='UNTRUSTED TEST AUTHORITY'、datasetCode='ISO_4217_LIST_ONE' 的 active release 与 ZZZ，
+      `REFERENCE_CURRENCY_DIRECTORY.resolve('ZZZ')` 实际返回 active。directory、importer supersede 和 verifier 都只按 datasetCode/status，
+      未共同限定 authority='SIX'，会让任意同名数据集冒充 ISO 4217 权威或被官方导入错误 supersede。
+      所有读取、唯一 active 判断、supersede 和 verify 必须同时限定 SIX + datasetCode；数据库现有唯一索引已按 authority+datasetCode 分轨。
+    writeback: 本 brief S3a C/F
 unknowns: []
 verificationGaps:
   - S3a 修复后重跑单位经济/币种单测、PostgreSQL flow 与 migration upgrade、受影响下游集成、契约/字典/生成物和静态门禁。
@@ -412,6 +428,8 @@ next: fix
 3. `REFERENCE_CURRENCY_DIRECTORY.resolve` 区分 `active | inactive | unknown | unavailable`：先查 active release 是否存在；无 active release 为 unavailable；有 active release且 code 在该 release 中为 active；仅历史/superseded含该 code 为 inactive；完全不存在为 unknown。
 4. 新增只读/离线 CLI（精确路径写回当前 brief）：`currency:snapshot:validate` 校验外部 snapshot；`db:import:currency-reference -- <snapshot>` 只接受 `authorized_official` 且许可/来源/hash 完整，事务导入并激活；`db:verify:currency-reference-data` 验证唯一 active release、元数据、记录数与 hash。不得联网下载或提交 official snapshot。synthetic seed 始终 staged，任何激活尝试失败。
 5. 下游兼容测试只引用共享合法 fixture，不改原业务断言；manifest 只登记 `REFERENCE_CURRENCY_DIRECTORY` 与 product-selection→master-data 依赖。
+6. PostgreSQL flow 增加完整负贡献单位经济在 `defer`（验证计划齐全）、`reject`（原因齐全）和 `return_to_market`（原因/依据齐全）且无 negative reason 的保存反例：当前态保存 draft/snapshot、pending 含 `negativeConservativeReason`，不生成 handoff；同样输入用于 approve 必须被 Domain 门槛拒绝。NPI handoff 和 returned_from_npi 仍必须带理由。
+7. 币种目录、importer、verifier 的所有 release 查询/更新都同时限定 `authority='SIX'` 与 `datasetCode='ISO_4217_LIST_ONE'`。增加回滚 PostgreSQL 或 Prisma adapter 反例：其他 authority 的同名 active ZZZ 不出现在 listActive/resolve，不被 SIX importer supersede，也不被 verifier 计入；SIX staged-only 仍为 unavailable。
 
 ## 验收
 
@@ -425,17 +443,18 @@ next: fix
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                                                                           |
-| ---------- | ------ | ----------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-04 | design | Cursor      | —          | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                                                                                     |
-| 2026-10-04 | design | Cursor      | —          | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                                                                                |
-| 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权                                                         |
-| 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。                                                            |
-| 2026-10-04 | fix    | Claude Code | 未提交     | 主代理核验 S1 handoff，接受 PS-S1-R01～R04：暂缓半填错误关闭/落库失败、Web 漏消费投影分页、字典错误标记已定字段、测试范围漏列。已写回 doc/08 与 brief，定向下发修复。                          |
-| 2026-10-04 | fix    | Claude Code | 未提交     | 复验 R01～R03 通过；追加 PS-S1-R05/R06：机会源仍只取首 100 条使老到期项不可见，半填暂缓回执与服务端 needs_decision 不符。限定最后一轮 Web 修复。                                               |
-| 2026-10-04 | fix    | Claude Code | 未提交     | R05/R06 代码复验通过；真实三视口视觉检查追加 PS-S1-R07：主 CTA 远离首屏、承诺区形成长填空墙、进度分母仍为旧值 5。限定为分组、正确口径与同一动作区 sticky，不重做整页。                         |
-| 2026-10-04 | fix    | Claude Code | 未提交     | R07 真实三视口复验通过。fresh Codex 独立复审返回 R08～R10，主代理逐项核验并全部接受：NPI 回程触发新 CHECK、legacy 操作人被冒充责任人、半填暂缓提示错误预测关闭。                               |
-| 2026-10-04 | coding | Claude Code | `4f75798e` | R08～R10 修复通过 API 37、Web 48、PostgreSQL 27 条及契约/字典/静态门禁；S1 生产提交完成并合入最新 main。修正 disposition 结构后按预授权下发 S2 证据真实性。                                    |
-| 2026-10-04 | review | Claude Code | 未提交     | S2 实现交回后主代理核验：API 31、Web 22、PostgreSQL 24 条及 API/Web lint/typecheck、repo:check、diff check 通过；7 个文件均在范围内，无 Schema/契约漂移。转 fresh Codex 只读复审当前证据边界。 |
-| 2026-10-04 | coding | Claude Code | `ae796ac2` | S2 fresh Codex 独立复审 no-findings，主代理 fresh verification 通过后提交。S3 核对正式币种权威与仓库现状，拆为 S3a 核心和 S3b UI；当前下发 S3a。                                               |
-| 2026-10-04 | fix    | Claude Code | 未提交     | S3a 主代理核验接受 R01～R05：数据库 CHECK 接受非法 JSON、S3b 无 active 币种公共边界、staged 被误报 inactive、官方 snapshot 无导入激活路径；下游 fixture/manifest 范围接受。                    |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                                                                             |
+| ---------- | ------ | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-04 | design | Cursor      | —          | 负责人确认选品 13 条基线、第一刀为资源责任；与交接 S1 并行澄清 PS-D01～D03                                                                                                                       |
+| 2026-10-04 | design | Cursor      | —          | 负责人定案 PS-D01～D03 均为 A；切片 S1 资源责任、S2 证据完整性已定义，待交接任务合入后转 coding                                                                                                  |
+| 2026-10-04 | design | Cursor      | —          | 主代理发现 PS-D01 与基线 R1 冲突并提请裁决：负责人选过渡保留 A（PS-D01-X）；单位经济定薄版 F1 + 口径门槛（UE-D01/D02），作为 S3 预授权                                                           |
+| 2026-10-04 | coding | Claude Code | `5401efea` | 前置 PR #136 已合入；分支合并最新 `main`（含 PR #137、#138），角色、写入范围与锁按现行治理更新。当前下发 S1，不重复请求负责人授权。                                                              |
+| 2026-10-04 | fix    | Claude Code | 未提交     | 主代理核验 S1 handoff，接受 PS-S1-R01～R04：暂缓半填错误关闭/落库失败、Web 漏消费投影分页、字典错误标记已定字段、测试范围漏列。已写回 doc/08 与 brief，定向下发修复。                            |
+| 2026-10-04 | fix    | Claude Code | 未提交     | 复验 R01～R03 通过；追加 PS-S1-R05/R06：机会源仍只取首 100 条使老到期项不可见，半填暂缓回执与服务端 needs_decision 不符。限定最后一轮 Web 修复。                                                 |
+| 2026-10-04 | fix    | Claude Code | 未提交     | R05/R06 代码复验通过；真实三视口视觉检查追加 PS-S1-R07：主 CTA 远离首屏、承诺区形成长填空墙、进度分母仍为旧值 5。限定为分组、正确口径与同一动作区 sticky，不重做整页。                           |
+| 2026-10-04 | fix    | Claude Code | 未提交     | R07 真实三视口复验通过。fresh Codex 独立复审返回 R08～R10，主代理逐项核验并全部接受：NPI 回程触发新 CHECK、legacy 操作人被冒充责任人、半填暂缓提示错误预测关闭。                                 |
+| 2026-10-04 | coding | Claude Code | `4f75798e` | R08～R10 修复通过 API 37、Web 48、PostgreSQL 27 条及契约/字典/静态门禁；S1 生产提交完成并合入最新 main。修正 disposition 结构后按预授权下发 S2 证据真实性。                                      |
+| 2026-10-04 | review | Claude Code | 未提交     | S2 实现交回后主代理核验：API 31、Web 22、PostgreSQL 24 条及 API/Web lint/typecheck、repo:check、diff check 通过；7 个文件均在范围内，无 Schema/契约漂移。转 fresh Codex 只读复审当前证据边界。   |
+| 2026-10-04 | coding | Claude Code | `ae796ac2` | S2 fresh Codex 独立复审 no-findings，主代理 fresh verification 通过后提交。S3 核对正式币种权威与仓库现状，拆为 S3a 核心和 S3b UI；当前下发 S3a。                                                 |
+| 2026-10-04 | fix    | Claude Code | 未提交     | S3a 主代理核验接受 R01～R05：数据库 CHECK 接受非法 JSON、S3b 无 active 币种公共边界、staged 被误报 inactive、官方 snapshot 无导入激活路径；下游 fixture/manifest 范围接受。                      |
+| 2026-10-05 | fix    | Claude Code | 未提交     | S3a 增量复验 R01～R04 路径已落；追加 R06/R07：数据库错误阻断非 terminal 负贡献草稿、其他 authority 同名 active 数据集可冒充 SIX 并被误参与激活/验证。限定迁移与币种目录/importer/verifier 修复。 |
