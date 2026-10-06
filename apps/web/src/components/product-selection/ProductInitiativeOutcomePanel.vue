@@ -2,7 +2,8 @@
 import { CheckCircle2, CircleSlash, PackageCheck, Undo2 } from "@lucide/vue";
 import { computed } from "vue";
 import type {
-  ProductInitiativeGap,
+  ProductInitiativeGapGroup,
+  ProductInitiativeGapPanel,
   ProductInitiativeOutcome,
   UnitEconomicsBasisChange,
   UnitEconomicsDraftState,
@@ -48,7 +49,8 @@ const props = withDefaults(
     negativeContributionNeedsReason: boolean;
     negativeConservativeReason: string;
     /** 立项还差哪些、各在哪补；按钮文案与缺口清单都读它，不在本组件里另判一遍。 */
-    gaps: readonly ProductInitiativeGap[];
+    gaps: readonly ProductInitiativeGapGroup[];
+    activePanel?: ProductInitiativeGapPanel;
     /** 不挡立项、但补了更扎实的要点。**不混进「还差 N 项」**。 */
     optionalGaps?: readonly string[];
     busy: boolean;
@@ -56,7 +58,12 @@ const props = withDefaults(
     decided: boolean;
     returnPending?: boolean;
   }>(),
-  { returnBasis: "", returnPending: false, optionalGaps: () => [] },
+  {
+    activePanel: "objective",
+    returnBasis: "",
+    returnPending: false,
+    optionalGaps: () => [],
+  },
 );
 
 const emit = defineEmits<{
@@ -149,6 +156,11 @@ const actionLabel = computed(() =>
     ? "保存为待补"
     : current.value.action,
 );
+const blockedActionLabel = computed(() =>
+  props.outcome === "approve"
+    ? `先补齐上方 ${props.gaps.length} 类`
+    : hint.value,
+);
 const blocked = computed(
   () =>
     (props.outcome === "approve" && props.gaps.length > 0) ||
@@ -159,18 +171,6 @@ const todayUtc = new Date().toISOString().slice(0, 10);
 function submit(): void {
   if (props.busy || props.decided || blocked.value) return;
   emit("submit", props.outcome);
-}
-
-function gapLocation(panel: ProductInitiativeGap["panel"]): string {
-  if (panel === "objective") return "在上面的「目标结果」里补";
-  if (panel === "responsibility_resources") {
-    return "在上面的「责任与资源」里补";
-  }
-  if (panel === "timeline_decision") {
-    return "在上面的「时间与下一决策」里补";
-  }
-  if (panel === "unit_economics") return "在上面的「单位经济」里补";
-  return "在评审要点面板里补";
 }
 </script>
 
@@ -221,7 +221,12 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
         </fieldset>
 
         <div v-if="outcome === 'approve'" class="destination-input">
-          <label class="field">
+          <label
+            v-show="activePanel === 'objective'"
+            class="field"
+            data-gap-panel="objective"
+            tabindex="-1"
+          >
             <span>目标结果</span>
             <textarea
               :value="objective"
@@ -238,7 +243,12 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
             />
           </label>
 
-          <fieldset class="commitment-group">
+          <fieldset
+            v-show="activePanel === 'responsibility_resources'"
+            class="commitment-group"
+            data-gap-panel="responsibility_resources"
+            tabindex="-1"
+          >
             <legend>责任与资源</legend>
             <p class="commitment-group__helper">
               谁负责、由谁承接、投入什么资源
@@ -287,7 +297,12 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
             </label>
           </fieldset>
 
-          <fieldset class="commitment-group">
+          <fieldset
+            v-show="activePanel === 'timeline_decision'"
+            class="commitment-group"
+            data-gap-panel="timeline_decision"
+            tabindex="-1"
+          >
             <legend>时间与下一决策</legend>
             <p class="commitment-group__helper">
               什么时候拿到结果、下一次决定什么
@@ -410,7 +425,12 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
           </p>
         </div>
 
-        <div class="unit-economics-wrap">
+        <div
+          v-show="outcome !== 'approve' || activePanel === 'unit_economics'"
+          class="unit-economics-wrap"
+          data-gap-panel="unit_economics"
+          tabindex="-1"
+        >
           <ProductInitiativeUnitEconomicsPanel
             :market-code="marketCode"
             :channel-code="channelCode"
@@ -432,21 +452,6 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
             "
           />
         </div>
-
-        <div v-if="outcome === 'approve'" class="decision-gaps">
-          <p v-if="optionalGaps?.length" class="optional-gaps">
-            还可以补（不挡立项）：{{ optionalGaps.join("、") }}
-          </p>
-          <div v-if="gaps.length" class="gap-list">
-            <b>还不能立项</b>
-            <ul>
-              <li v-for="gap in gaps" :key="gap.label">
-                <span>{{ gap.label }}</span>
-                <small>{{ gapLocation(gap.panel) }}</small>
-              </li>
-            </ul>
-          </div>
-        </div>
       </div>
 
       <div class="outcome-action">
@@ -460,7 +465,7 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
           :disabled="busy || blocked"
           @click="submit"
         >
-          {{ blocked ? hint : busy ? "正在保存" : actionLabel }}
+          {{ blocked ? blockedActionLabel : busy ? "正在保存" : actionLabel }}
         </button>
       </div>
     </template>
@@ -562,8 +567,7 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
   padding: var(--space-4);
   border-bottom: 1px solid var(--line);
 }
-.unit-economics-wrap,
-.decision-gaps {
+.unit-economics-wrap {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
@@ -643,37 +647,6 @@ function gapLocation(panel: ProductInitiativeGap["panel"]): string {
 /* 阻断与待补分轨：这是"不能立项"，用警示色而不是错误色。 */
 .optional-gaps {
   margin: 0;
-  color: var(--ink-soft);
-  font-size: var(--text-micro);
-  line-height: var(--leading-body);
-}
-.gap-list {
-  padding: var(--space-3);
-  border-left: 3px solid var(--warn);
-  background: var(--warn-bg);
-}
-.gap-list b {
-  color: var(--warn);
-  font-size: var(--text-label);
-}
-.gap-list ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-.gap-list li {
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--warn);
-  border-radius: var(--radius-control);
-  color: var(--warn);
-  font-size: var(--text-micro);
-}
-.gap-list small {
-  display: block;
-  margin-top: var(--space-2);
   color: var(--ink-soft);
   font-size: var(--text-micro);
   line-height: var(--leading-body);

@@ -216,29 +216,23 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   await expect(
     page.getByRole("heading", { name: "选品立项", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText(
-      "这些项来自交接快照，选品不在此处补录；信号侧已后补项不会出现在此。",
-    ),
-  ).toBeVisible();
+  await expect(page.locator(".opportunity-status")).toContainText("交接缺失");
   await expect(page.locator(".opportunity-queue")).toContainText("Amazon CA");
   await page.getByRole("button", { name: "领取此机会" }).click();
   await expect(page.getByRole("status")).toContainText("已领取");
   await page.getByRole("button", { name: "接受并进入立项判断" }).click();
   await expect(page.getByRole("status")).toContainText("已接受经营机会");
 
-  // 接受之后主动作换成立项结论：先被缺口挡住，并说清还差几项。
+  // 接受之后主动作换成立项结论：先按五个业务区域补齐。
   const submit = page.locator(".outcome-submit");
   await expect(submit).toBeDisabled();
-  await expect(submit).toContainText("还差 60 项才能立项");
+  await expect(submit).toContainText("先补齐上方 5 类");
   await expect(page.locator(".progress-head")).toContainText(
-    "必填剩 60 · 已齐 2/62",
+    "待处理 5 类 · 已齐 0/5",
   );
-  await expect(page.getByRole("group", { name: "责任与资源" })).toBeVisible();
   await expect(
-    page.getByRole("group", { name: "时间与下一决策" }),
-  ).toBeVisible();
-  await expect(page.getByRole("group", { name: "单位经济" })).toBeVisible();
+    page.getByRole("navigation", { name: "立项缺口导航" }).getByRole("button"),
+  ).toHaveCount(5);
   await expect(submit).toHaveCount(1);
   await expect(submit).toBeInViewport();
 
@@ -262,11 +256,28 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   } else {
     expect(["sticky", "fixed"]).toContain(persistentAction.bar);
   }
+  await page
+    .locator(".progress-head")
+    .evaluate((element) => element.scrollIntoView({ block: "start" }));
+  const workingScreenshotPath = testInfo.outputPath(
+    `product-selection-working-${viewport?.width ?? 0}x${viewport?.height ?? 0}.png`,
+  );
+  await page.screenshot({ path: workingScreenshotPath, fullPage: true });
+  await testInfo.attach("product-selection-working-mode", {
+    path: workingScreenshotPath,
+    contentType: "image/png",
+  });
 
-  await page.getByRole("checkbox", { name: "由我对此立项负责" }).check();
+  await page.getByRole("button", { name: /目标结果.*1 项未齐/ }).click();
   await page.getByLabel("目标结果").fill("把折叠宠物出行包做成可发布版本");
+  await page.getByRole("button", { name: /责任与资源.*3 项未齐/ }).click();
+  await expect(
+    page.getByRole("checkbox", { name: "由我对此立项负责" }),
+  ).toBeFocused();
+  await page.getByRole("checkbox", { name: "由我对此立项负责" }).check();
   await page.getByLabel("承接团队或岗位").fill("产品开发 / NPI");
   await page.getByLabel("资源说明").fill("结构工程 1 人，采购验证 1 人");
+  await page.getByRole("button", { name: /时间与下一决策.*3 项未齐/ }).click();
   await page.getByLabel("目标日期").fill("2026-11-15");
   await page.getByLabel("下一决策日期").fill("2026-10-20");
   await page.getByLabel("下一决策问题").fill("是否进入 EVT 打样");
@@ -286,8 +297,13 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     await point.getByLabel(`${label}结论`).fill(`${label} 的判断`);
   }
 
+  await page.getByRole("button", { name: /单位经济.*项未齐/ }).click();
   await page.getByLabel("单位经济币种").selectOption("CAD");
   for (const scenario of ["基准情景", "保守情景"]) {
+    await page
+      .getByRole("group", { name: "单位经济" })
+      .getByText(`填写${scenario}金额与依据`, { exact: true })
+      .click();
     for (const field of [
       "销售价",
       "落地成本",
@@ -341,6 +357,11 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   await expect(
     result.locator("input, select, textarea, [role='radio']"),
   ).toHaveCount(0);
+  await expect(page.locator(".pane")).toHaveCount(3);
+  await expect(page.locator(".work-context")).toBeVisible();
+  await expect(page.locator(".initiative-readonly-context")).toContainText(
+    "结论已冻结",
+  );
   await expect(page.locator(".queue-item.selected")).toContainText(
     /历史缺失 \d+ 类/,
   );

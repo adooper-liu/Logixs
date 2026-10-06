@@ -4,13 +4,13 @@ import {
   BriefcaseBusiness,
   RefreshCw,
   UserRound,
-  Zap,
 } from "@lucide/vue";
 import type { ProductInitiativeReviewPointCodeV1 } from "@logix/contracts";
 import { computed, nextTick, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
 import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
+import ProductInitiativeGapGroup from "../components/product-selection/ProductInitiativeGapGroup.vue";
 import ProductInitiativeResultPanel from "../components/product-selection/ProductInitiativeResultPanel.vue";
 import ProductInitiativeReviewPanel from "../components/product-selection/ProductInitiativeReviewPanel.vue";
 import ProductOpportunityActions from "../components/product-selection/ProductOpportunityActions.vue";
@@ -23,9 +23,9 @@ import {
   type UnitEconomicsBasisChange,
   type UnitEconomicsEvidenceChange,
   type UnitEconomicsRangeChange,
+  type ProductInitiativeGapPanel,
 } from "../composables/useProductInitiativeDecision";
 import { useProductOpportunityWorkbench } from "../composables/useProductOpportunityWorkbench";
-import { applyHandoffToObjective } from "../data/productInitiativeApplyHandoff";
 import type { ProductEvaluationEvidenceDraft } from "../data/productEvaluationRequirements";
 
 const route = useRoute();
@@ -82,7 +82,7 @@ const {
   points,
   reviewPointViews,
   requiredCount,
-  blockingGaps,
+  blockingGapGroups,
   optionalGaps,
   evidenceCandidates,
   currencyOptions,
@@ -121,7 +121,7 @@ const initiativeReady = computed(
   () =>
     accepted.value &&
     !readingInitiative.value &&
-    initiativeDetail.value !== null,
+    initiativeDetail.value?.handoffId === initiativeHandoffId.value,
 );
 
 const feedbackCanReload = computed(
@@ -256,7 +256,6 @@ async function submitDecision(
   if (ok) await load();
 }
 
-/** 已立项 = 整页 Mode（与信号关闭态同构）。 */
 const isInitiated = computed(() => decided.value);
 watch(isInitiated, async (initiated) => {
   if (!initiated) return;
@@ -265,45 +264,58 @@ watch(isInitiated, async (initiated) => {
     .querySelector<HTMLElement>(".app-content")
     ?.scrollTo({ top: 0, behavior: "auto" });
 });
-const requiredRemaining = computed(() => blockingGaps.value.length);
+const activeGapPanel = shallowRef<ProductInitiativeGapPanel>("objective");
+watch(
+  blockingGapGroups,
+  (groups) => {
+    if (!groups.some((group) => group.panel === activeGapPanel.value)) {
+      activeGapPanel.value = groups[0]?.panel ?? "objective";
+    }
+  },
+  { immediate: true },
+);
+
+async function selectGapPanel(panel: ProductInitiativeGapPanel): Promise<void> {
+  activeGapPanel.value = panel;
+  await nextTick();
+  const target = document.querySelector<HTMLElement>(
+    '[data-gap-panel="' + panel + '"]',
+  );
+  target?.scrollIntoView({ block: "nearest" });
+  const control = target?.querySelector<HTMLElement>(
+    "input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), summary",
+  );
+  (control ?? target)?.focus({ preventScroll: true });
+}
+
 const progressFilled = computed(() =>
-  Math.max(0, requiredCount.value - requiredRemaining.value),
+  Math.max(0, requiredCount.value - blockingGapGroups.value.length),
 );
 const progressPercent = computed(() =>
   requiredCount.value === 0
     ? 100
     : Math.round((progressFilled.value / requiredCount.value) * 100),
 );
-
-const applyNotice = shallowRef<string | null>(null);
-
-function applyFromHandoff(): void {
-  if (!selected.value || isInitiated.value) return;
-  const result = applyHandoffToObjective({
-    current: objective.value,
-    item: selected.value,
-  });
-  if (!result.applied) {
-    applyNotice.value = "目标结果已有内容，未覆盖；可先清空再带入。";
-    return;
-  }
-  setObjective(result.next);
-  applyNotice.value = "已自动带入交接合并视图到目标结果。";
-}
 </script>
 <template>
   <main
     class="selection-workbench page-frame"
     :class="{
-      'selection-workbench--initiated': isInitiated,
       'selection-workbench--decision-ready':
         selected && initiativeReady && !isInitiated,
     }"
   >
     <PageHeader
+      :class="{ 'page-header--result': isInitiated }"
       eyebrow="选品岗位工作台"
       title="选品立项"
-      summary="领取经营团队交来的机会，核对依据与待补项，再决定是否进入正式立项评审。"
+      :summary="
+        isInitiated
+          ? returnPending
+            ? '等待市场接回；当前责任仍在选品。'
+            : '查看已冻结的立项结论与 NPI 交接。'
+          : '领取经营团队交来的机会，核对依据与待补项，再决定是否进入正式立项评审。'
+      "
     />
 
     <section v-if="feedbackError" class="feedback feedback--error" role="alert">
@@ -320,19 +332,7 @@ function applyFromHandoff(): void {
     >
       {{ feedbackReceipt }}
     </section>
-    <section
-      v-else-if="applyNotice && !isInitiated"
-      class="feedback feedback--success"
-      role="status"
-    >
-      {{ applyNotice }}
-    </section>
-
-    <section
-      v-if="!isInitiated"
-      class="work-context"
-      aria-label="当前岗位与交接责任"
-    >
+    <section class="work-context" aria-label="当前岗位与交接责任">
       <BriefcaseBusiness :size="19" />
       <span><small>谁在工作</small><b>选品负责人</b></span>
       <span
@@ -345,97 +345,102 @@ function applyFromHandoff(): void {
       >
     </section>
 
-    <div
-      class="workbench-grid"
-      :class="{ 'workbench-grid--initiated': isInitiated }"
-    >
+    <div class="workbench-grid">
       <section class="pane pane--queue">
         <ProductOpportunityQueue
           :items="items"
           :initiatives="initiatives"
-          :result-mode="isInitiated"
           :selected-id="selected?.handoff.handoffId ?? ''"
           @select="selectOpportunity"
         />
       </section>
       <section class="pane pane--detail">
         <template v-if="selected">
-          <header
-            v-if="initiativeReady && !isInitiated"
-            class="progress-head"
-            aria-label="立项完备度"
-          >
-            <div class="progress-head__copy">
-              <small>立项完备度</small>
-              <b
-                >必填剩 {{ requiredRemaining }} · 已齐 {{ progressFilled }}/{{
-                  requiredCount
-                }}</b
-              >
-            </div>
-            <div
-              class="progress-head__bar"
-              role="progressbar"
-              :aria-valuenow="progressPercent"
-              aria-valuemin="0"
-              aria-valuemax="100"
-            >
-              <span :style="{ width: `${progressPercent}%` }" />
-            </div>
-            <button
-              type="button"
-              class="progress-head__apply"
-              :disabled="deciding"
-              @click="applyFromHandoff"
-            >
-              <Zap :size="15" aria-hidden="true" />带入
-            </button>
-          </header>
-          <ProductInitiativeResultPanel
-            v-if="isInitiated && initiative"
-            :title="selected.handoff.title"
-            :market-code="selected.handoff.marketCode"
-            :channel-code="selected.handoff.channelCode"
-            :category-ref="selected.handoff.categoryRef"
-            :opportunity-statement="selected.handoff.opportunityStatement"
-            :observed-fact-summary="selected.handoff.observedFactSummary"
-            :hypothesis="selected.handoff.hypothesis"
-            :supplemented-fact-count="selected.supplementedFieldCodes.length"
-            :historical-missing-category-count="historicalMissingCategoryCount"
-            :initiative="initiative"
-            :points="reviewPointViews"
-            :candidates="evidenceCandidates"
-            :unit-economics-snapshot="unitEconomicsSnapshot"
-          />
+          <p v-if="readingInitiative" class="empty">
+            正在读取该机会已有的立项判断
+          </p>
           <template v-else>
-            <ProductOpportunityDetail :item="selected" />
+            <header
+              v-if="initiativeReady && !isInitiated"
+              class="progress-head"
+              aria-label="立项完备度"
+            >
+              <div class="progress-head__copy">
+                <small>立项完备度</small>
+                <b
+                  >待处理 {{ blockingGapGroups.length }} 类 · 已齐
+                  {{ progressFilled }}/{{ requiredCount }}</b
+                >
+              </div>
+              <div
+                class="progress-head__bar"
+                role="progressbar"
+                :aria-valuenow="progressPercent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <span :style="{ width: `${progressPercent}%` }" />
+              </div>
+            </header>
+            <ProductInitiativeGapGroup
+              v-if="initiativeReady && !isInitiated"
+              :groups="blockingGapGroups"
+              :active-panel="activeGapPanel"
+              @select="selectGapPanel"
+            />
+            <ProductInitiativeResultPanel
+              v-if="isInitiated && initiative"
+              :title="selected.handoff.title"
+              :market-code="selected.handoff.marketCode"
+              :channel-code="selected.handoff.channelCode"
+              :category-ref="selected.handoff.categoryRef"
+              :opportunity-statement="selected.handoff.opportunityStatement"
+              :observed-fact-summary="selected.handoff.observedFactSummary"
+              :hypothesis="selected.handoff.hypothesis"
+              :supplemented-fact-count="selected.supplementedFieldCodes.length"
+              :historical-missing-category-count="
+                historicalMissingCategoryCount
+              "
+              :initiative="initiative"
+              :points="reviewPointViews"
+              :candidates="evidenceCandidates"
+              :unit-economics-snapshot="unitEconomicsSnapshot"
+            />
+            <template v-else>
+              <ProductOpportunityDetail :item="selected" />
+            </template>
+            <ProductEvaluationRequirementsPanel
+              v-if="!isInitiated"
+              :key="initiativeHandoffId"
+              :requirements="requirements.requirements"
+              :withheld="requirements.withheld"
+              :busy="saving"
+              :save-evidence="addRequirementEvidence"
+            />
+            <ProductInitiativeReviewPanel
+              v-if="initiativeReady && !isInitiated"
+              :key="initiativeHandoffId"
+              data-gap-panel="review_points"
+              tabindex="-1"
+              :points="reviewPointViews"
+              :candidates="evidenceCandidates"
+              :busy="deciding"
+              :add-evidence="addInitiativeEvidence"
+              :active="activeGapPanel === 'review_points'"
+              @toggle-evidence="toggleEvidence"
+              @update-conclusion="setConclusion"
+            />
           </template>
-          <ProductEvaluationRequirementsPanel
-            v-if="!isInitiated"
-            :requirements="requirements.requirements"
-            :withheld="requirements.withheld"
-            :busy="saving"
-            :save-evidence="addRequirementEvidence"
-          />
-          <ProductInitiativeReviewPanel
-            v-if="initiativeReady && !isInitiated"
-            :key="initiativeHandoffId"
-            :points="reviewPointViews"
-            :candidates="evidenceCandidates"
-            :busy="deciding"
-            :add-evidence="addInitiativeEvidence"
-            @toggle-evidence="toggleEvidence"
-            @update-conclusion="setConclusion"
-          />
         </template>
         <p v-else class="empty">
           {{ loading ? "正在读取经营机会" : "暂无待处理机会" }}
         </p>
       </section>
       <section
-        v-if="!isInitiated"
         class="pane pane--action"
-        :class="{ 'pane--decision': selected && initiativeReady }"
+        :class="{
+          'pane--decision': selected && initiativeReady && !isInitiated,
+        }"
       >
         <ProductOpportunityActions
           v-if="selected && !accepted"
@@ -451,6 +456,24 @@ function applyFromHandoff(): void {
               : "立项判断没能读出来，请先用上方的“重新加载”再继续。"
           }}
         </p>
+        <section
+          v-else-if="selected && isInitiated"
+          class="initiative-readonly-context"
+          :aria-label="returnPending ? '等待市场接回' : '冻结立项结论'"
+        >
+          <small>{{ returnPending ? "退回请求" : "立项结果" }}</small>
+          <h2>{{ returnPending ? "等待市场接回" : "结论已冻结" }}</h2>
+          <p v-if="returnPending">
+            当前责任仍在选品，市场接回前不提供编辑或重新提交动作。
+          </p>
+          <p v-else>已交 NPI，当前不提供编辑或重新提交动作。</p>
+          <dl>
+            <div>
+              <dt>{{ returnPending ? "当前责任" : "当前承接" }}</dt>
+              <dd>{{ returnPending ? "当前责任仍在选品" : currentOwner }}</dd>
+            </div>
+          </dl>
+        </section>
         <ProductInitiativeOutcomePanel
           v-else-if="selected"
           :outcome="destination"
@@ -472,7 +495,8 @@ function applyFromHandoff(): void {
           :evidence-candidates="evidenceCandidates"
           :negative-contribution-needs-reason="negativeContributionNeedsReason"
           :negative-conservative-reason="negativeConservativeReason"
-          :gaps="blockingGaps"
+          :gaps="blockingGapGroups"
+          :active-panel="activeGapPanel"
           :optional-gaps="optionalGaps"
           :busy="deciding"
           :decided="decided"
@@ -538,24 +562,6 @@ function applyFromHandoff(): void {
   display: block;
   height: 100%;
   background: var(--brand-strong);
-}
-.progress-head__apply {
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--ink);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--text-label);
-}
-.progress-head__apply:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 .feedback {
   display: flex;
@@ -637,10 +643,6 @@ function applyFromHandoff(): void {
   align-items: start;
   gap: var(--space-3);
 }
-.workbench-grid--initiated {
-  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
-  grid-template-areas: "queue detail";
-}
 .pane {
   min-width: 0;
   border: 1px solid var(--line);
@@ -670,40 +672,112 @@ function applyFromHandoff(): void {
   font-size: var(--text-label);
   text-align: center;
 }
+.initiative-readonly-context {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.initiative-readonly-context > small,
+.initiative-readonly-context dt {
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+.initiative-readonly-context h2,
+.initiative-readonly-context p,
+.initiative-readonly-context dl,
+.initiative-readonly-context dd {
+  margin: 0;
+}
+.initiative-readonly-context h2,
+.initiative-readonly-context dd {
+  color: var(--ink);
+  font-size: var(--text-meta);
+}
+.initiative-readonly-context p {
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+}
+.initiative-readonly-context dl {
+  display: grid;
+  gap: var(--space-2);
+}
+.initiative-readonly-context dl > div {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
 @media (max-width: 1100px) {
+  .selection-workbench :deep(.page-header--result .eyebrow) {
+    display: none;
+  }
+  .selection-workbench :deep(.page-header--result .page-heading > p) {
+    margin-top: 0;
+    font-size: var(--text-micro);
+  }
+  .work-context {
+    margin-bottom: var(--space-2);
+  }
   .workbench-grid {
     grid-template-columns: minmax(250px, 0.7fr) minmax(0, 1.3fr);
     grid-template-areas:
       "queue action"
       "detail detail";
   }
-  .workbench-grid--initiated {
-    grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
-    grid-template-areas: "queue detail";
+  .pane--action {
+    position: static;
+  }
+  .initiative-readonly-context {
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+  }
+  .initiative-readonly-context > small {
+    display: none;
+  }
+  .initiative-readonly-context h2 {
+    font-size: var(--text-label);
+  }
+  .initiative-readonly-context p {
+    font-size: var(--text-micro);
+  }
+  .initiative-readonly-context dl > div {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    padding-top: var(--space-1);
   }
 }
 @media (max-width: 680px) {
+  .selection-workbench :deep(.page-header--result .page-heading > p) {
+    display: none;
+  }
   .work-context,
-  .workbench-grid,
-  .workbench-grid--initiated {
+  .workbench-grid {
     grid-template-columns: 1fr;
   }
   .selection-workbench--decision-ready {
     padding-bottom: calc(var(--touch-target) + var(--space-6));
   }
   .workbench-grid {
+    gap: var(--space-2);
     grid-template-areas:
       "queue"
-      "action"
-      "detail";
-  }
-  .workbench-grid--initiated {
-    grid-template-areas:
       "detail"
-      "queue";
+      "action";
   }
   .work-context > svg {
     display: none;
+  }
+  .work-context {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+    padding: var(--space-2);
+  }
+  .work-context > span:last-child {
+    grid-column: 1 / -1;
   }
   .work-context > span:last-child {
     padding: var(--space-2) 0 0;
@@ -715,6 +789,22 @@ function applyFromHandoff(): void {
   }
   .pane--decision {
     height: auto;
+  }
+  .initiative-readonly-context {
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+  .initiative-readonly-context > small {
+    display: none;
+  }
+  .initiative-readonly-context h2 {
+    font-size: var(--text-label);
+  }
+  .initiative-readonly-context p {
+    font-size: var(--text-micro);
+  }
+  .initiative-readonly-context dl > div {
+    padding-top: var(--space-2);
   }
 }
 </style>

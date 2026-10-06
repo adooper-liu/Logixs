@@ -69,18 +69,25 @@ describe("useProductInitiativeDecision", () => {
     expect(labels).toContain("单位经济 · 币种");
     expect(labels).toContain("单位经济 · 基准情景 · 销售价 · 最低值");
     expect(labels).toHaveLength(60);
-    expect(state.requiredCount.value).toBe(62);
+    expect(state.blockingGapGroups.value).toEqual([
+      { panel: "objective", label: "目标结果", count: 1 },
+      { panel: "responsibility_resources", label: "责任与资源", count: 3 },
+      { panel: "timeline_decision", label: "时间与下一决策", count: 3 },
+      { panel: "review_points", label: "评审依据", count: 4 },
+      { panel: "unit_economics", label: "单位经济", count: 49 },
+    ]);
+    expect(state.requiredCount.value).toBe(5);
     // 非门槛的缺了只提示 —— 混进去会让人以为非补不可。
     expect(state.optionalGaps.value).toEqual(["客户反馈与痛点"]);
     expect(state.canApprove.value).toBe(false);
     expect(
       outcomeHintFor({
         outcome: "approve",
-        gaps: state.blockingGaps.value,
+        gaps: state.blockingGapGroups.value,
         reason: "",
         reconsiderationDate: "",
       }),
-    ).toBe("还差 60 项才能立项");
+    ).toBe("还差 5 类才能立项");
   });
 
   it("非立项去向的说明按所需事实判断，不冒充已关闭也不冒充已立项", () => {

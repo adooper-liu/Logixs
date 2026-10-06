@@ -2,7 +2,8 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import type { ProductInitiativeReturnBasisV1 } from "@logix/contracts";
 import type {
-  ProductInitiativeGap,
+  ProductInitiativeGapGroup,
+  ProductInitiativeGapPanel,
   ProductInitiativeOutcome,
   UnitEconomicsDraftState,
 } from "../../composables/useProductInitiativeDecision";
@@ -28,7 +29,8 @@ interface PanelProps {
   evidenceCandidates: [];
   negativeContributionNeedsReason: boolean;
   negativeConservativeReason: string;
-  gaps: ProductInitiativeGap[];
+  gaps: ProductInitiativeGapGroup[];
+  activePanel: ProductInitiativeGapPanel;
   busy: boolean;
   decided: boolean;
 }
@@ -50,7 +52,7 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(wrapper.emitted("changeOutcome")).toEqual([["defer"]]);
   });
 
-  it("立项时显示目标结果与缺口清单，暂缓时改成写原因", () => {
+  it("立项时只显示当前区域编辑器，暂缓时改成写原因", () => {
     const approving = mountPanel({
       outcome: "approve",
       gaps: [gap("合规风险")],
@@ -58,7 +60,7 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(approving.find('textarea[aria-label="目标结果"]').exists()).toBe(
       true,
     );
-    expect(approving.find(".gap-list").exists()).toBe(true);
+    expect(approving.find(".gap-list").exists()).toBe(false);
     expect(approving.find('textarea[aria-label="暂缓原因"]').exists()).toBe(
       false,
     );
@@ -67,7 +69,6 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(deferring.find('textarea[aria-label="目标结果"]').exists()).toBe(
       false,
     );
-    expect(deferring.find(".gap-list").exists()).toBe(false);
     expect(
       deferring.find('textarea[aria-label="这次要验证什么"]').exists(),
     ).toBe(true);
@@ -75,12 +76,16 @@ describe("ProductInitiativeOutcomePanel", () => {
   });
 
   it("把立项承诺按责任资源与时间决策分组，不增加第二套输入", () => {
-    const wrapper = mountPanel({ outcome: "approve" });
-    const groups = wrapper.findAll(".commitment-group");
+    const wrapper = mountPanel({
+      outcome: "approve",
+      activePanel: "responsibility_resources",
+    });
+    const groups = wrapper.findAll(
+      ".commitment-group:not([style*='display: none'])",
+    );
 
     expect(groups.map((group) => group.get("legend").text())).toEqual([
       "责任与资源",
-      "时间与下一决策",
     ]);
     expect(groups[0]!.text()).toContain("谁负责、由谁承接、投入什么资源");
     expect(
@@ -89,15 +94,9 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(groups[0]!.findAll('textarea[aria-label="资源说明"]')).toHaveLength(
       1,
     );
-    expect(groups[1]!.text()).toContain("什么时候拿到结果、下一次决定什么");
-    expect(groups[1]!.findAll('input[aria-label="目标日期"]')).toHaveLength(1);
-    expect(groups[1]!.findAll('input[aria-label="下一决策日期"]')).toHaveLength(
-      1,
-    );
     expect(
-      groups[1]!.findAll('textarea[aria-label="下一决策问题"]'),
-    ).toHaveLength(1);
-    expect(wrapper.findAll('textarea[aria-label="目标结果"]')).toHaveLength(1);
+      wrapper.get('[data-gap-panel="objective"]').attributes("style"),
+    ).toContain("display: none");
   });
 
   it("要点没齐时不能立项，主按钮说明还差几项而不是静默失败", async () => {
@@ -108,26 +107,18 @@ describe("ProductInitiativeOutcomePanel", () => {
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeDefined();
-    expect(button.text()).toContain("还差 3 项才能立项");
-    expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
-      "目标结果在上面的「目标结果」里补",
-      "合规风险在评审要点面板里补",
-      "价格带与利润在评审要点面板里补",
-    ]);
+    expect(button.text()).toContain("先补齐上方 3 类");
     await button.trigger("click");
     expect(wrapper.emitted("submit")).toBeUndefined();
   });
 
-  it("缺口逐项说清在哪补 —— 目标结果与评审要点不在同一个面板", () => {
+  it("缺口不在操作栏重复罗列，避免和五类导航重复", () => {
     const wrapper = mountPanel({
       outcome: "approve",
       gaps: [gap("目标结果"), gap("合规风险")],
     });
 
-    expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
-      "目标结果在上面的「目标结果」里补",
-      "合规风险在评审要点面板里补",
-    ]);
+    expect(wrapper.find(".gap-list").exists()).toBe(false);
   });
 
   it("要点齐备时主按钮可用且说明可以立项", () => {
@@ -250,10 +241,11 @@ describe("ProductInitiativeOutcomePanel", () => {
  * 缺口带"在哪补"。缺的两类东西在两个不同的面板里 —— 只说"还差 N 项"、
  * 或一句话把全部缺口指去同一个面板，人就会在错的地方找。
  */
-function gap(label: string): ProductInitiativeGap {
+function gap(label: string): ProductInitiativeGapGroup {
   return {
     label,
     panel: label === "目标结果" ? "objective" : "review_points",
+    count: 1,
   };
 }
 
@@ -285,6 +277,7 @@ function defaultProps(): PanelProps {
     negativeContributionNeedsReason: false,
     negativeConservativeReason: "",
     gaps: [],
+    activePanel: "objective",
     busy: false,
     decided: false,
   };

@@ -25,6 +25,28 @@ describe("ProductInitiativeUnitEconomicsPanel", () => {
     expect(wrapper.text()).not.toContain("单件贡献");
   });
 
+  it("默认收起两种情景的精确字段，按需展开后才显示", async () => {
+    const wrapper = mountPanel();
+
+    expect(wrapper.findAll(".unit-economics__scenario-details")).toHaveLength(
+      2,
+    );
+    expect(
+      wrapper.findAll(".unit-economics__scenario-details[open]"),
+    ).toHaveLength(0);
+    expect(
+      wrapper.get('[aria-label="基准情景 销售价 最低值"]').isVisible(),
+    ).toBe(false);
+
+    await wrapper
+      .get(".unit-economics__scenario-details summary")
+      .trigger("click");
+
+    expect(
+      wrapper.get('[aria-label="基准情景 销售价 最低值"]').isVisible(),
+    ).toBe(true);
+  });
+
   it("有服务端快照时原样显示两情景贡献", () => {
     const wrapper = mountPanel({ snapshot: snapshot() });
 

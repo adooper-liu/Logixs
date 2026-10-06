@@ -42,6 +42,9 @@ const statusLabel = computed(() => {
   if (props.initiative.currentDestination === "handed_off") {
     return "已立项 · 已交 NPI";
   }
+  if (props.initiative.currentDestination === "return_requested") {
+    return "等待市场接回";
+  }
   if (props.initiative.currentDestination === "deferred") return "已暂缓立项";
   if (props.initiative.currentDestination === "rejected") return "未立项";
   if (props.initiative.currentDestination === "returned_to_market") {
@@ -108,9 +111,13 @@ function contribution(scenario: "baseline" | "conservative"): string | null {
           <dt>立项责任</dt>
           <dd>{{ initiative.responsibleActorId || "历史未记录" }}</dd>
         </div>
-        <div>
+        <div v-if="initiative.currentDestination !== 'return_requested'">
           <dt>NPI 承接</dt>
           <dd>{{ initiative.receivingTeamOrRole || "历史未记录" }}</dd>
+        </div>
+        <div v-else>
+          <dt>当前责任</dt>
+          <dd>当前责任仍在选品</dd>
         </div>
       </dl>
     </header>
@@ -440,11 +447,17 @@ function contribution(scenario: "baseline" | "conservative"): string | null {
 }
 @media (max-width: 680px) {
   .initiative-result {
-    gap: var(--space-3);
-    padding: var(--space-3);
+    gap: var(--space-2);
+    padding: var(--space-2);
   }
   .initiative-result__strip,
-  .initiative-result__investment-layout {
+  .initiative-result__block {
+    padding-bottom: var(--space-2);
+  }
+  .initiative-result h2 {
+    margin-top: var(--space-1);
+  }
+  .initiative-result__strip {
     grid-template-columns: 1fr;
   }
   .initiative-result__handoff {
@@ -452,19 +465,53 @@ function contribution(scenario: "baseline" | "conservative"): string | null {
   }
   .initiative-result__opportunity-facts {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: var(--space-1);
   }
   .initiative-result__investment-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
+    margin-top: var(--space-1);
   }
   .initiative-result__investment-facts > div,
   .initiative-result__next-decision > div {
-    grid-template-columns: 100px minmax(0, 1fr);
+    grid-template-columns: 56px minmax(0, 1fr);
+    padding: 0;
   }
   .initiative-result__reviews summary {
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .initiative-result__reviews summary span {
     grid-column: 1 / -1;
+  }
+  .initiative-result__history-note {
+    display: none;
+  }
+}
+@media (min-width: 681px) and (max-width: 1100px) {
+  .initiative-result {
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+  .initiative-result__strip,
+  .initiative-result__block {
+    padding-bottom: var(--space-2);
+  }
+  .initiative-result__strip {
+    gap: var(--space-2);
+  }
+  .initiative-result__opportunity-meta,
+  .initiative-result__objective,
+  .initiative-result__opportunity-facts,
+  .initiative-result__investment-layout,
+  .initiative-result__reviews {
+    margin-top: var(--space-1);
+  }
+  .initiative-result__investment-layout {
+    gap: var(--space-3);
+  }
+  .initiative-result__investment-facts > div,
+  .initiative-result__next-decision > div {
+    padding: 0;
   }
 }
 </style>

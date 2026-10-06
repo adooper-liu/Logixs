@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { FilePlus2, Save, X } from "@lucide/vue";
 import { reactive, shallowRef } from "vue";
-import { REVIEW_POINTS } from "../../composables/useProductInitiativeDecision";
+import InfoTooltip from "../ui/InfoTooltip.vue";
 import type {
   ProductEvaluationEvidenceDraft,
   ProductEvaluationRequirement,
@@ -17,11 +17,6 @@ const props = defineProps<{
 }>();
 
 const openCode = shallowRef<ProductEvaluationRequirementCode | null>(null);
-
-/** 要求与要点是**上下游**关系：这里管拿到依据，评审要点管写下结论。 */
-function reviewPointLabel(code: string): string {
-  return REVIEW_POINTS.find((point) => point.code === code)?.label ?? code;
-}
 const draft = reactive<ProductEvaluationEvidenceDraft>(
   createDraft("competitive_supply_evidence"),
 );
@@ -48,24 +43,13 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <!--
-    只有已经存在适用要求时才出现：还没有商品范围、也还没进入评估的机会，
-    此时每一项都还是"还判断不了"，整块面板只会是噪音，也和自己"评估阶段才会
-    出现"的说明矛盾。withheld 说明只在旁边有真正可办的要求时才有对照意义。
-  -->
   <section
     v-if="requirements.length"
     class="evaluation-requirements"
     aria-labelledby="evaluation-requirements-title"
   >
     <header>
-      <small>评估阶段才会出现</small>
-      <h3 id="evaluation-requirements-title">本机会适用的专业要求</h3>
-      <p>
-        这些要求由适用规则生成，并向你说明为什么适用。补进去的证据会进入本信号的证据链，
-        在「四项评审要点」里可以直接引用 ——
-        这里管"拿到依据"，评审要点管"写下结论"。
-      </p>
+      <h3 id="evaluation-requirements-title">专业要求</h3>
     </header>
 
     <ul>
@@ -73,14 +57,10 @@ async function submit(): Promise<void> {
         <div class="requirement-head">
           <div>
             <b>{{ requirement.label }}</b>
-            <span class="rationale"
-              >为什么适用：{{ requirement.rationale }}</span
-            >
-            <span class="feeds-review-point"
-              >补进去会成为「{{
-                reviewPointLabel(requirement.reviewPointCode)
-              }}」要点的依据</span
-            >
+            <InfoTooltip
+              label="查看专业要求说明"
+              :text="`${requirement.rationale} 登记后可在评审依据中引用。`"
+            />
           </div>
           <button
             type="button"
@@ -137,16 +117,15 @@ async function submit(): Promise<void> {
       </li>
     </ul>
 
-    <div v-if="withheld.length" class="withheld-notice">
-      <b>还有 {{ withheld.length }} 项暂时生成不了</b>
+    <details v-if="withheld.length" class="withheld-notice">
+      <summary>另有 {{ withheld.length }} 项待商品范围后生成</summary>
       <ul>
         <li v-for="item in withheld" :key="item.code">
           <span>{{ item.label }}</span>
           <small>{{ item.missing }}</small>
         </li>
       </ul>
-      <p>这些不是“不适用”，而是缺少判断依据；补齐后会自动出现。</p>
-    </div>
+    </details>
   </section>
 </template>
 
@@ -155,23 +134,10 @@ async function submit(): Promise<void> {
   padding: var(--space-4);
 }
 
-.evaluation-requirements > header small {
-  color: var(--brand-strong);
-  font-size: var(--text-micro);
-  font-weight: 700;
-}
-
 .evaluation-requirements > header h3 {
-  margin: var(--space-1) 0 0;
+  margin: 0;
   color: var(--ink);
   font-size: var(--text-meta);
-}
-
-.evaluation-requirements > header p {
-  margin: var(--space-1) 0 0;
-  color: var(--ink-soft);
-  font-size: var(--text-label);
-  line-height: var(--leading-body);
 }
 
 .evaluation-requirements ul {
@@ -189,17 +155,15 @@ async function submit(): Promise<void> {
   background: var(--surface);
 }
 
-/* 与"适用要求"区分：这是"还判断不了"，不是待办 —— 所以不给卡片样式。 */
 .withheld-notice {
   margin-top: var(--space-3);
-  padding: var(--space-3);
-  border-left: 3px solid var(--info);
-  background: var(--info-bg);
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
 }
 
-.withheld-notice > b {
-  color: var(--ink);
-  font-size: var(--text-label);
+.withheld-notice summary {
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .withheld-notice ul {
@@ -229,13 +193,6 @@ async function submit(): Promise<void> {
   font-size: var(--text-micro);
 }
 
-.withheld-notice > p {
-  margin: var(--space-2) 0 0;
-  color: var(--ink-soft);
-  font-size: var(--text-micro);
-  line-height: var(--leading-body);
-}
-
 .requirement-head {
   display: flex;
   align-items: flex-start;
@@ -246,25 +203,15 @@ async function submit(): Promise<void> {
 
 .requirement-head > div {
   min-width: 0;
-  display: grid;
-  gap: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
 }
 
 .requirement-head b {
   color: var(--ink);
   font-size: var(--text-label);
-}
-
-.feeds-review-point {
-  color: var(--ink-soft);
-  font-size: var(--text-micro);
-}
-
-.rationale {
-  display: block;
-  color: var(--ink-soft);
-  font-size: var(--text-micro);
-  line-height: var(--leading-body);
 }
 
 .add-evidence {

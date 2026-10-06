@@ -130,15 +130,31 @@ interface ReviewPointDraft {
  * 「目标结果」是动作面板里的输入框，评审要点在另一个面板。
  * 只说"还差 N 项"、或者一句话把全部缺口指去同一个面板，人就会在错的地方找。
  */
+export type ProductInitiativeGapPanel =
+  | "objective"
+  | "responsibility_resources"
+  | "timeline_decision"
+  | "review_points"
+  | "unit_economics";
+
 export interface ProductInitiativeGap {
   label: string;
-  panel:
-    | "objective"
-    | "responsibility_resources"
-    | "timeline_decision"
-    | "review_points"
-    | "unit_economics";
+  panel: ProductInitiativeGapPanel;
 }
+
+export interface ProductInitiativeGapGroup {
+  panel: ProductInitiativeGapPanel;
+  label: string;
+  count: number;
+}
+
+const GAP_GROUP_ORDER: readonly Omit<ProductInitiativeGapGroup, "count">[] = [
+  { panel: "objective", label: "目标结果" },
+  { panel: "responsibility_resources", label: "责任与资源" },
+  { panel: "timeline_decision", label: "时间与下一决策" },
+  { panel: "review_points", label: "评审依据" },
+  { panel: "unit_economics", label: "单位经济" },
+];
 
 /** 交给面板渲染的只读视图；`missing` 由本模块唯一计算，面板不重复判定。 */
 export interface ProductInitiativeReviewPointView {
@@ -332,14 +348,8 @@ export function useProductInitiativeDecision(options: {
     return [...gaps];
   });
 
-  /** 总数和缺口读同一份门槛投影，新增必填时不会再出现 11/5。 */
-  const requiredCount = computed(
-    () =>
-      commitmentRequirements.value.length +
-      reviewPointViews.value.filter((point) => point.gating).length +
-      unitEconomicsRequiredCount() +
-      (negativeContributionNeedsReason.value ? 1 : 0),
-  );
+  /** 岗位只处理五类业务区域；精确字段码继续留在 blockingGaps 给服务端错误与定位。 */
+  const requiredCount = computed(() => GAP_GROUP_ORDER.length);
   const blockingGaps = computed<ProductInitiativeGap[]>(() => [
     ...commitmentRequirements.value
       .filter((requirement) => requirement.missing)
@@ -355,6 +365,16 @@ export function useProductInitiativeDecision(options: {
       panel: "unit_economics" as const,
     })),
   ]);
+  const blockingGapGroups = computed<ProductInitiativeGapGroup[]>(() => {
+    const counts = new Map<ProductInitiativeGapPanel, number>();
+    for (const gap of blockingGaps.value) {
+      counts.set(gap.panel, (counts.get(gap.panel) ?? 0) + 1);
+    }
+    return GAP_GROUP_ORDER.flatMap((group) => {
+      const count = counts.get(group.panel) ?? 0;
+      return count > 0 ? [{ ...group, count }] : [];
+    });
+  });
   /**
    * 不挡立项、但补了更扎实的要点。**单独列出来**，不混进"还差 N 项" ——
    * 混进去会让人以为非补不可，而那正是"证据收了没地方下结论"要修的另一半。
@@ -391,11 +411,17 @@ export function useProductInitiativeDecision(options: {
       reset();
       return;
     }
+    if (detail.value?.handoffId !== handoffId) reset();
     loading.value = true;
     error.value = null;
     try {
       const loaded = await getProductInitiative(handoffId);
       if (token !== loadToken) return;
+      if (loaded.handoffId !== handoffId) {
+        detail.value = null;
+        error.value = "读取到的立项判断与当前机会不一致，请重新加载。";
+        return;
+      }
       detail.value = loaded;
       if (!options_?.keepDraft) hydrate(loaded);
     } catch (caught) {
@@ -724,6 +750,7 @@ export function useProductInitiativeDecision(options: {
     reviewPointViews,
     requiredCount,
     blockingGaps,
+    blockingGapGroups,
     optionalGaps,
     canApprove,
     load,
@@ -831,10 +858,6 @@ function serializeUnitEconomicsDraft(
   };
 }
 
-function unitEconomicsRequiredCount(): number {
-  return 3 + UNIT_ECONOMICS_SCENARIOS.length * UNIT_ECONOMICS_FIELDS.length * 4;
-}
-
 function isUnitEconomicsPendingCode(code: string): boolean {
   return (
     code === "negativeConservativeReason" || code.startsWith("unitEconomics.")
@@ -897,7 +920,7 @@ export function outcomeHintFor(input: {
 }): string {
   if (input.outcome === "approve") {
     return input.gaps.length > 0
-      ? `还差 ${input.gaps.length} 项才能立项`
+      ? `还差 ${input.gaps.length} 类才能立项`
       : "可以立项";
   }
   if (input.outcome === "return_to_market" && !input.returnBasis) {

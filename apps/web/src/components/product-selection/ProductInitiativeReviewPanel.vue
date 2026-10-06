@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ProductInitiativeEvidenceCandidateV1 } from "@logix/contracts";
 import { ChevronDown, ChevronRight, FilePlus2, Save, X } from "@lucide/vue";
-import { computed, reactive, shallowRef, watch } from "vue";
+import { reactive, shallowRef, watch } from "vue";
 import type {
   ProductInitiativeEvidenceDraft,
   ProductInitiativeReviewPointView,
@@ -19,6 +19,7 @@ const props = defineProps<{
   candidates: readonly ProductInitiativeEvidenceCandidateV1[];
   busy: boolean;
   addEvidence: (draft: ProductInitiativeEvidenceDraft) => Promise<boolean>;
+  active?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -45,9 +46,6 @@ const draft = reactive<ProductInitiativeEvidenceDraft>({
   sourceUrl: "",
   content: "",
 });
-const missingCount = computed(
-  () => props.points.filter((point) => point.missing).length,
-);
 const expandedCode = shallowRef<
   ProductInitiativeReviewPointView["code"] | null
 >(null);
@@ -65,6 +63,17 @@ watch(
       points.find((point) => point.missing)?.code ?? points[0]?.code ?? null;
   },
   { immediate: true },
+);
+
+watch(
+  () => props.active,
+  (active) => {
+    if (!active) return;
+    expandedCode.value =
+      props.points.find((point) => point.missing)?.code ??
+      props.points[0]?.code ??
+      null;
+  },
 );
 
 function byId(evidenceId: string): ProductInitiativeEvidenceCandidateV1 | null {
@@ -175,14 +184,7 @@ function updateSupplement(
     aria-labelledby="product-initiative-review-title"
   >
     <header>
-      <small>立项依据</small>
-      <h3 id="product-initiative-review-title">评审要点</h3>
-      <p>
-        <template v-if="missingCount">
-          优先处理 <b>{{ missingCount }}</b> 项未齐的要点。
-        </template>
-        <template v-else> 四项门槛要点均已齐备。 </template>
-      </p>
+      <h3 id="product-initiative-review-title">评审依据</h3>
     </header>
 
     <ul>
@@ -229,7 +231,6 @@ function updateSupplement(
 
         <div v-show="isExpanded(point)" class="review-point__content">
           <div class="review-point__facts">
-            <small>证据</small>
             <ul v-if="referenced(point).length" class="referenced">
               <li v-for="item in referenced(point)" :key="item.evidenceId">
                 <b>{{ item.sourceName }}</b>
@@ -237,9 +238,6 @@ function updateSupplement(
                 <small>{{ item.contentRef }}</small>
               </li>
             </ul>
-            <p v-else-if="!staleRefs(point).length" class="empty">
-              暂无已引用证据
-            </p>
             <p v-if="staleRefs(point).length" class="empty">
               {{ staleRefs(point).length }} 条引用失效
             </p>
@@ -258,7 +256,6 @@ function updateSupplement(
               />
               引用证据 · {{ candidates.length }}
             </button>
-            <p v-else class="empty">暂无可引用证据</p>
 
             <ul v-if="pickerCode === point.code" class="candidates">
               <li v-for="item in candidates" :key="item.evidenceId">
@@ -389,27 +386,10 @@ function updateSupplement(
   border-bottom: 1px solid var(--line);
 }
 
-.product-initiative-review > header small {
-  color: var(--brand-strong);
-  font-size: var(--text-micro);
-  font-weight: 700;
-}
-
 .product-initiative-review > header h3 {
-  margin: var(--space-1) 0 0;
+  margin: 0;
   color: var(--ink);
   font-size: var(--text-meta);
-}
-
-.product-initiative-review > header p {
-  margin: var(--space-1) 0 0;
-  color: var(--ink-soft);
-  font-size: var(--text-label);
-  line-height: var(--leading-body);
-}
-
-.product-initiative-review > header b {
-  color: var(--warn);
 }
 
 .product-initiative-review > ul {
@@ -517,16 +497,7 @@ function updateSupplement(
 
 .review-point__facts {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-1) var(--space-2);
-  align-items: start;
-}
-
-.review-point__facts > small {
-  align-self: center;
-  color: var(--muted);
-  font-size: var(--text-micro);
-  font-weight: 700;
+  gap: var(--space-2);
 }
 
 .referenced {
@@ -535,10 +506,6 @@ function updateSupplement(
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.review-point__facts > :not(small) {
-  grid-column: 2;
 }
 
 .referenced li {

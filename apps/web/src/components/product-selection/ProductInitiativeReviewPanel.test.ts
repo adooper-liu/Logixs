@@ -86,12 +86,26 @@ describe("ProductInitiativeReviewPanel", () => {
     expect(facts.find("input, textarea").exists()).toBe(false);
   });
 
-  it("没有引用证据时说明事实从哪来，不冒充已有结论", async () => {
+  it("没有引用证据时保留添加和引用入口，不重复显示空状态", async () => {
     const wrapper = mountPanel();
 
-    expect(wrapper.get(".review-point__facts").text()).toContain(
+    expect(wrapper.get(".review-point__facts").text()).not.toContain(
       "暂无已引用证据",
     );
+    expect(wrapper.get(".review-point__facts").text()).not.toContain(
+      "暂无可引用证据",
+    );
+    expect(wrapper.get(".picker-toggle").text()).toContain("引用证据");
+    expect(wrapper.get("button.add-evidence").text()).toContain("添加证据");
+  });
+
+  it("只保留评审依据标题和摘要行，不重复显示缺口催办", () => {
+    const wrapper = mountPanel();
+
+    expect(wrapper.get("header").text()).toBe("评审依据");
+    expect(wrapper.text()).not.toContain("立项依据");
+    expect(wrapper.text()).not.toContain("评审要点");
+    expect(wrapper.text()).not.toContain("优先处理");
   });
 
   it("勾选与取消引用已登记证据都发给上层，不在组件里自己改草稿", async () => {

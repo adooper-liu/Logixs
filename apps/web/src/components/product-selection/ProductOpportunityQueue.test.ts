@@ -26,7 +26,6 @@ describe("ProductOpportunityQueue", () => {
 
     expect(wrapper.findAll(".queue-group").map((node) => node.text())).toEqual([
       "暂缓到期",
-      "其他机会",
     ]);
     expect(
       wrapper.findAll(".queue-item strong").map((node) => node.text()),
@@ -51,7 +50,7 @@ describe("ProductOpportunityQueue", () => {
     expect(wrapper.get(".queue-item").text()).not.toContain("待补");
   });
 
-  it("结果态只保留当前立项机会和聚合的历史缺失", () => {
+  it("已交 NPI 后仍保留完整队列，并在该行聚合历史缺失", () => {
     const handoffId = "11111111-1111-4111-8111-111111111111";
     const item = opportunity(handoffId, "已立项机会");
     item.handoff.pendingFieldCodes = ["channel_code", "category_ref"];
@@ -62,7 +61,6 @@ describe("ProductOpportunityQueue", () => {
           opportunity("22222222-2222-4222-8222-222222222222", "其他机会"),
         ],
         selectedId: handoffId,
-        resultMode: true,
         initiatives: new Map([
           [handoffId, initiative(handoffId, "standard", null, "handed_off")],
         ]),
@@ -71,10 +69,24 @@ describe("ProductOpportunityQueue", () => {
 
     expect(wrapper.text()).toContain("已立项");
     expect(wrapper.text()).toContain("历史缺失 2 类");
-    expect(wrapper.text()).not.toContain("先处理什么");
-    expect(wrapper.text()).not.toContain("其他机会");
     expect(wrapper.text()).not.toContain("待补");
-    expect(wrapper.findAll(".queue-item")).toHaveLength(1);
+    expect(wrapper.findAll(".queue-item")).toHaveLength(2);
+    expect(wrapper.text()).not.toContain("先处理什么");
+    expect(wrapper.findAll(".queue-group")).toHaveLength(0);
+  });
+
+  it("普通机会不显示无信息量的经营判断原因", () => {
+    const wrapper = mount(ProductOpportunityQueue, {
+      props: {
+        items: [
+          opportunity("11111111-1111-4111-8111-111111111111", "普通机会"),
+        ],
+        selectedId: "",
+        initiatives: new Map(),
+      },
+    });
+
+    expect(wrapper.text()).not.toContain("经营团队判断值得进一步评估");
   });
 });
 

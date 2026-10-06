@@ -13,6 +13,7 @@ writeScopes:
   - docs/planning/tasks/_template.md
   - .claude/settings.json
   - package.json
+  - docs/product/UI_SYSTEM.md
   - scripts/check-ui-structure-gate.mjs
   - scripts/check-ui-structure-gate.test.mjs
   - scripts/check-repository.mjs
@@ -84,27 +85,30 @@ sharedIntegrationScopes:
   - apps/web/e2e/workbench-network.spec.ts
 authorityRefs:
   - AGENTS.md
+  - docs/product/UI_SYSTEM.md
   - docs/product/domain/TIME_CURRENCY_REFERENCE_CONTRACT_V1.md
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - doc/cross-border-supply-chain/wisdom-baseline/选品立项.md
   - doc/cross-border-supply-chain/wisdom-baseline/全局.md
   - docs/planning/tasks/market-selection-handoff-v1.md
 uiStructure:
-  - 工作态：机会队列 → 机会事实与评审依据 → 去向/资源承诺/单位经济/主动作
-  - 结果态：紧凑结果带 → 经营机会 → 投资结论与责任/下一决策 → 评审依据 → 交接原文
+  - 全局工作台固定壳（负责人 2026-10-05 定案）：PageHeader → 岗位/交接上下文 → 左侧任务队列 + 中间任务详情 + 右侧操作上下文
+  - 任务状态只驱动局部内容：未完成任务的中间栏显示机会事实/评审依据、右栏显示办理动作；已立项任务的中间栏显示冻结结果、右栏显示只读状态/后续入口；不得改变三栏壳
 uiMustStayVisible:
+  - 任务切换时 PageHeader、岗位/交接上下文、左侧任务队列与右侧操作上下文栏位保持不变
   - 真实结果、立项责任人、NPI 承接、资源说明、目标日期、下一决策日期与问题
   - 单位经济基准/保守贡献、引用失效、当前阻断、失败原因、恢复动作与主动作
 uiProgressiveDisclosure:
-  - 后补事实语义、为何只读、历史未记录原因进入 InfoTooltip
-  - 评审证据、备注与交接原文按需展开
+  - 后补事实语义、为何只读、历史未记录原因与专业要求适用理由进入 InfoTooltip
+  - 评审证据、备注、单位经济精确字段缺口与交接原文按需展开
 uiForbidden:
-  - 结果态编辑控件、历史缺失冒充当前待补、内部字段 code、重复状态横幅、免责声明墙
-  - 等权字段卡墙、逐端点缺口警示墙、用 text contains 或测试通过代替截图验收
+  - 已立项任务的编辑控件、历史缺失冒充当前待补、内部字段 code、重复状态横幅、免责声明墙
+  - 以所选任务结果状态切换整页 Mode、隐藏岗位/交接上下文、移除右侧栏或把三栏收缩成两栏
+  - 等权字段卡墙、逐端点缺口警示墙、技术字段总数作为岗位待办、用 text contains 或测试通过代替截图验收
 uiViewportEvidence:
-  - 1440x900：首屏可见结果、责任、单位经济、目标日期与下一决策且无横向溢出
-  - 1024x768：首屏可见相同投资摘要且无横向溢出
-  - 390x844：顺序为结果 → 责任/投资摘要 → 机会 → 评审依据 → 原文，投资摘要在首屏
+  - 1440x900：固定三栏壳与岗位上下文可见；选择已立项任务时仅中栏切为结果详情，首屏可见结果、责任、单位经济、目标日期与下一决策且无横向溢出
+  - 1024x768：固定三栏壳不因任务状态改成两栏；结果摘要可见且无横向溢出
+  - 390x844：保持同一办理台区域顺序并可切回未完成任务；结果详情顺序为结果 → 责任/投资摘要 → 机会 → 评审依据 → 原文
 ---
 
 # 任务：选品立项——立项资源责任与可复算单位经济 V1
@@ -248,7 +252,7 @@ uiViewportEvidence:
 2. 每个情景六项使用紧凑区间行：项目名、min、max、`有证据/待验证假设` 文字选择；有证据时就地选择当前合法 evidence，假设时不显示伪证据。前端只展示服务端返回贡献，编辑中显示“保存后由服务端计算”，不得自行算金额。
 3. 服务端返回单位经济缺口时，进度头和行动按钮使用具体人话；保守贡献下限为负时，就地要求“仍要投入的理由”，不自动拦截为不立项、不显示 AI 建议阈值。
 4. NPI 快照只读展示输入、标签和贡献；桌面/窄屏/移动端继续满足 S1 的 sticky 主动作和无横向溢出。金额表在窄屏改为逐项纵向，不依赖横向滚动。
-5. 负责人 2026-10-05 确认方案 A：选品工作态与结果态彻底分离。工作态服务于“是否值得投入”的投资门判断；结果态服务于读取已冻结并交给 NPI 的投资结论，不再渲染 disabled radio/textarea 或把当前新门槛反算成历史记录的“待补 55 项”。
+5. 负责人 2026-10-05 确认方案 A：同一选品办理台内，工作详情与结果详情彻底分离。未完成任务的中间详情服务于“是否值得投入”的投资门判断；已立项任务的中间详情服务于读取已冻结并交给 NPI 的投资结论，不再渲染 disabled radio/textarea 或把当前新门槛反算成历史记录的“待补 55 项”。任务详情切换不得改变办理台三栏壳、队列和岗位上下文。
 6. 结果态按 `结论与责任 → 经营机会摘要 → 单位经济与下一决策 → 评审依据摘要 → 按需展开证据/交接原文` 排列。历史没有记录的事实使用“历史未记录”聚合说明，不计入当前待办，不使用警示色冒充阻断。
 7. 删除大量常驻免责声明、教学句和重复眉题；只有“为何只读”“后补事实语义”“历史为何未记录”等不影响当前动作的说明进入现有 `InfoTooltip`，并保持点击、键盘聚焦、Esc 关闭。当前状态、责任、目标/下一决策日期、引用失效、真实阻断、失败与恢复动作必须常驻。
 
@@ -257,8 +261,8 @@ uiViewportEvidence:
 1. **S3a-unit-economics-core（已完成，待 S3c 收窄）**：已交付单位经济 Domain、契约、Schema/迁移、Repository、API 与初版币种 release/importer 机制；负责人 2026-10-05 取消其中 release/importer 方案，由 S3c 原位收窄。
 2. **S3b-unit-economics-ui（已完成）**：消费单位经济契约，交付选品录入、服务端计算结果/缺口显示、NPI 只读快照、Web 单测与选品到 NPI 三视口 E2E。
 3. **S3c-currency-reference-simplification（已完成，提交 `35e92bad`）**：`CurrencyCodeReference` 已收窄为迁移内置的 178 币种直接表；release 关联、authorized/synthetic snapshot、importer/verifier、seed 和脚本已删除；目录 Port 与选品消费者行为保持兼容。
-4. **S4-product-selection-result-mode（当前执行）**：按负责人确认的方案 A 把工作态与结果态分开；基于当前未提交的 `ProductInitiativeReviewPanel` / `ProductSelectionWorkbench` 改动继续收口，不回退。只改 Web 视图与组件/测试，不改 API、契约、Schema、迁移、立项门槛或责任政策。
-5. S4 结果态验收：顶部只保留对象、真实结果、当前责任与下一决策；机会事实合并为紧凑摘要；评审要点每项一行显示结论/证据数/失效状态，展开才显示证据和备注；单位经济有快照时显示基准/保守贡献摘要，无快照时显示“历史立项未记录”；禁止把历史缺失渲染成当前“还不能立项/待补 N 项”。
+4. **S4-product-selection-result-mode（当前修复）**：按负责人确认的方案 A 在固定办理台三栏壳内分开未完成详情与冻结结果详情；基于当前未提交的 `ProductInitiativeReviewPanel` / `ProductSelectionWorkbench` 改动继续收口，不回退。只改 Web 视图与组件/测试，不改 API、契约、Schema、迁移、立项门槛或责任政策。
+5. S4 结果详情验收：办理台 PageHeader、岗位/交接上下文、队列与右侧操作上下文栏位保持不变；中间详情只保留对象、真实结果、当前责任与下一决策，机会事实合并为紧凑摘要；评审要点每项一行显示结论/证据数/失效状态，展开才显示证据和备注；单位经济有快照时显示基准/保守贡献摘要，无快照时显示“历史立项未记录”；禁止把历史缺失渲染成当前“还不能立项/待补 N 项”。
 6. S4 工作态验收：保留三栏与 sticky 主动作，但完备度按业务区域聚合，不把 48 个金额端点铺成警示墙；点击区域可定位到对应输入。大量免责声明与解释删除，必要说明使用 `InfoTooltip`，不能隐藏真实状态、当前阻断或恢复动作。
 7. TDD 顺序：S3c 先完成币种目录测试与收口；S4 再先写结果态/历史快照/工作态聚合缺口的失败组件与页面测试，再改 UI，并按 1440×900、1024×768、390×844 做真实页面视觉复验。
 8. S3c 定向门禁：币种目录/API 单测，product-initiative PostgreSQL 与迁移升级，空库 178 条/唯一性/来源哈希测试，contract/drift，data-dictionary generate/check，db generate，API/Web lint/typecheck/unit，选品到 NPI 三视口 E2E、`repo:check`、格式与 diff 检查。S4 增加受影响 Web 全量单测与三视口 E2E/截图复验。
@@ -296,17 +300,115 @@ decisions:
       问题是其下重复表达结果的成功横幅与第二套状态头。队列继续显示“先处理什么/其他机会/含信号后补”，结果页没有市场、渠道、商品范围、验证目标、
       一次性后补说明或交接原文入口。说明实现仍在“给旧结构补字段”，而非按方案 A 建立 `PageHeader + 紧凑结果带 + 经营机会 + 投资结论/责任与下一决策 + 评审依据` 的信息架构。
     writeback: 本 brief S4 E/F；负责人第二轮 1440/1024/390 截图复验
+  - finding: PS-S4-R04
+    status: accepted
+    reason: >
+      fresh Codex 复审确认结果态 PageHeader 仍复用“核对依据与待补项，再决定是否进入正式立项评审”的工作态说明。负责人要求保留 PageHeader，
+      但结果态必须改用简短已完成语义，不能继续显示当前待补/待决文案。主代理已按 TDD 增加反例并修复为“查看已冻结的立项结论与 NPI 交接”。
+    writeback: 本 brief S4 uiStructure/uiForbidden；ProductSelectionWorkbench
+  - finding: PS-S4-R05
+    status: accepted
+    reason: >
+      工作态“还差 60 项”把单位经济两情景的 48 个 min/max/basis/evidenceRefs 技术字段，与目标、责任、时间、评审和币种混成一个总数；
+      当前样本为 目标1 + 责任资源3 + 时间决策3 + 评审4 + 币种1 + 基准24 + 保守24 = 60。用户无法知道先做什么、去哪里补，且提示与禁用按钮
+      重复同一句。底层精确缺口继续用于服务端校验，界面必须聚合为 `目标结果 / 责任与资源 / 时间与下一决策 / 评审依据 / 单位经济` 五个业务区域，
+      每类显示内部缺口数并提供直接定位入口；按钮只显示主动作或“先补齐上方 5 类”，不得再展示技术字段总数。
+    writeback: 本 brief S4 工作态强制结构；ProductSelectionWorkbench/ProductInitiativeOutcomePanel
+  - finding: PS-S4-R06
+    status: accepted
+    reason: >
+      负责人 2026-10-05 真实路径验收确认：从业务工作台进入选品立项后，选择已立项任务时，当前实现把“所选任务已形成结果”提升为
+      “整个工作台进入结果模式”，隐藏顶部岗位/交接上下文与右侧操作上下文，并把三栏收缩为两栏。正确语义是选品岗位办理台的三栏壳始终不变：
+      左侧任务队列负责切换当前对象，中间详情依据所选任务状态显示办理详情或冻结结果，右侧保持该对象的操作上下文位置；已完成对象只关闭写入口，
+      不得替换整个工作台模式、改变队列语义或丢失岗位上下文。负责人进一步定案该结构为所有工作台统一全局 UI 布局不变量，而非本页特例。
+    writeback: 本 brief S4 uiStructure/uiMustStayVisible；负责人 2026-10-05 真实路径验收与全局 UI 布局定案
+  - finding: PS-S4-R07
+    status: accepted
+    reason: >
+      R06 实现已恢复固定三栏和完整任务队列，但为让三视口 E2E 通过删除了结果头与投资事实必须位于首屏的 bounding-box 断言。
+      新截图证据显示 1024×768 的基准/保守贡献、目标日期、下一决策日期/问题底部达到 785～855px，未满足首屏要求；390×844 在立项后
+      仍保留编辑阶段滚动位置，结果头 top=-235px，截图直接从投资结论中段开始，用户看不到结果起点、队列和只读操作上下文。自动化无横向溢出
+      不能替代已删除的首屏与滚动复位验收，必须恢复结果切换后的可见起点和三视口断言，不得继续降低门槛。
+    writeback: 本 brief uiViewportEvidence；workbench-network E2E；负责人 2026-10-06 截图复验
+  - finding: PS-S4-R08
+    status: accepted
+    reason: >
+      R06 要求“保留完整队列”不等于恢复此前已判定为噪声的队列标题和解释。当前结果截图重新出现“先处理什么 / 其他机会”，回退了 R02/R03
+      与验收反证 6/11；handed_off 行本身已正确只显示“已立项 / 历史缺失 N 类”。队列须在工作态和结果详情态都保留完整可切换对象，统一只保留
+      “经营机会”或省略队列头，并删除“其他机会”分组标题及无信息量原因文案；暂缓到期等真实优先分组仍须保留。
+    writeback: 本 brief S4 R02/R03/R06；ProductOpportunityQueue
+  - finding: PS-S4-R09
+    status: accepted
+    reason: >
+      R07/R08 截图与坐标已满足三视口首屏及无横向溢出，但主代理新鲜 `pnpm repo:check` 发现
+      `ProductInitiativeResultPanel.vue` 新增 `margin-top: 3px`，违反 UI_SYSTEM 只允许间距令牌的门禁。该值须改为最接近的现有
+      `var(--space-1)`，不得加 style-scale 豁免；修复后复跑 repo:check、focused Web 与三视口专项 E2E。
+    writeback: UI_SYSTEM §7.3；ProductInitiativeResultPanel
+  - finding: PS-S4-R10
+    status: accepted
+    reason: >
+      负责人 2026-10-06 对真实工作态截图复验确认，中间详情仍把同一缺口和操作说明重复表达：五类缺口导航已经说明“先补什么”，下方又用
+      “交接时未填”“暂时生成不了”“优先处理 N 项”形成第二、第三套催办；“经营团队交来了什么 / 希望选品验证 / 机会说明”与事实区拆成过多
+      等权标题；“评估阶段才会出现 / 本机会适用的专业要求 / 为什么适用 / 补进去会成为……”是常驻教学文案；“立项依据 / 评审要点 /
+      优先处理 N 项”再次重复导航职责。固定三栏壳下，中栏应只保留当前对象的紧凑事实、当前适用专业要求和评审依据摘要；五类导航唯一负责
+      缺口定位，规则适用理由、证据流向、交接缺失语义和 withheld 原因进入 InfoTooltip 或按需展开，不得再铺说明墙或第二套缺口墙。
+    writeback: 本 brief uiProgressiveDisclosure/uiForbidden；ProductOpportunityDetail/ProductEvaluationRequirementsPanel/ProductInitiativeReviewPanel
+  - finding: PS-S4-R11
+    status: accepted
+    reason: >
+      负责人追问顶部“带入”的价值后核验实现：它只在目标结果为空时，把市场、渠道、商品范围、机会说明和经营判断机械拼成一段文字写入
+      objective；不补责任、资源、日期、评审或单位经济，不调用服务端、不落账。上游机会事实不等于选品负责人承诺的目标结果，机械拼接容易把
+      事实摘要冒充投资目标；目标已有内容时按钮无动作，只产生“未覆盖”提示和额外视觉焦点。当前无真实岗位证据证明该捷径减少损失，删除按钮、
+      提示、`productInitiativeApplyHandoff` helper 及测试/E2E 引用；未来若有样本再另行评估“用机会摘要起草”，不得在本片保留无效入口。
+    writeback: 本 brief uiForbidden；ProductSelectionWorkbench/productInitiativeApplyHandoff
+  - finding: PS-S4-REVIEW-01
+    status: accepted
+    reason: >
+      fresh Codex 独立复审确认：`return_requested` 与 `handed_off` 都被 `decided` 归为只读详情，但 S4 新右栏与 PageHeader 对所有只读对象固定写成
+      “结论已冻结 / 已交 NPI”。退回请求实际仍等待市场接回，责任仍在选品，尚未发生 NPI 交接；当前文案会伪造责任转移。只读壳可以共用，
+      结果语义必须按 `returnPending` 分支：退回请求显示“等待市场接回 / 当前责任仍在选品”，不得出现“已交 NPI”；handed_off 保持冻结交接语义。
+    writeback: doc/08 §4.2 恢复路径；ProductSelectionWorkbench
+  - finding: PS-S4-REVIEW-02
+    status: accepted
+    reason: >
+      fresh Codex 独立复审确认：专业要求的“已登记证据”来自组件本地 `registeredCodes`，任务切换不清空、重载不能恢复，会跨对象泄漏并把一次点击
+      冒充服务端事实。进一步核对契约发现 `requirementCode` 只存在 Web 草稿，`registerMarketSignalEvidence` 不提交该字段，服务端 evidence candidate
+      也无专业要求归属，因此当前不能可靠显示逐要求“已登记/待添加”。删除该二态标签，不扩公共契约；登记成功后继续重读服务端证据候选，评审依据
+      才是证据是否可引用/已引用的权威呈现。同时按 handoffId 重建专业要求面板，避免半开表单与草稿切到另一任务。
+    writeback: ProductEvaluationRequirementsPanel/ProductSelectionWorkbench；不改 API/契约
+  - finding: PS-S4-R12
+    status: accepted
+    outcome: fixed
+    reason: >
+      独立 reviewer 核验发现：任务切换触发新详情请求时 `load()` 只设置 loading，旧 `detail` 仍保留；`loadToken` 只阻止迟到响应写回，不能阻止等待期间
+      页面把新 `selected` 的标题/机会事实与旧 initiative 的冻结结论、责任和金额一起渲染。`initiativeReady` 只保护工作态，结果面板与右栏仍由旧
+      `isInitiated` 驱动。这是当前任务切换的数据真实性风险。详情及其派生状态必须携带/核对当前 handoffId：切换后直到新 handoff 的详情加载完成，
+      中栏与右栏只显示该任务正在读取，不能显示旧任务结果；同对象 `keepDraft` 证据刷新继续保留草稿和现有详情，不制造闪烁。实现现已在跨 handoff
+      请求开始时清除旧详情，并拒绝响应 handoffId 不匹配；同对象 keepDraft 路径不 reset。deferred request 回归与定向 58 条通过。
+    writeback: useProductInitiativeDecision/ProductSelectionWorkbench
+  - finding: PS-S4-R13
+    status: deferred-non-blocking
+    reason: >
+      独立 reviewer 核验发现：无单位经济快照时结果面板仅用 `initiative-result__history-note` 显示“历史立项未记录单位经济”，但移动端媒体查询把所有
+      history-note 隐藏；贡献行又因无快照不渲染，导致 390px 历史立项完全看不出是历史缺失还是界面遗漏。该问题真实，但只影响 legacy 无快照对象的
+      移动端解释，不影响当前主任务的固定工作台壳、任务切换和新立项路径；按负责人 2026-10-06 收口要求延期，不阻塞 S4 提交与集成。
+    writeback: 后续 legacy 结果兼容切片候选；不在本轮继续扩单
 unknowns: []
 verificationGaps:
   - id: PS-S4-VG01
     status: closed
     reason: >
-      端口 5173 的用户开发服务未停止、未修改。主代理在隔离 5183 以相同 development 身份运行三视口专项 E2E 3/3，并逐张人工复核
-      1440x900、1024x768、390x844：PageHeader 保留且全页单一 h1，重复成功横幅消失；结果带、经营机会、投资结论、评审依据四块成立；
-      基准/保守贡献、资源、目标日期、下一决策日期/问题均在三视口首屏内；页面/result scrollWidth=clientWidth；队列无待补、内部 code 不可见、
-      历史缺失按类别聚合。focused Web 49、全量 Web 146 文件/691 条、lint/typecheck/format/build/repo/diff 均通过。
-nonBlockingSuggestions: []
-next: review
+      端口 5173 的用户开发服务未停止、未修改。主代理在相同 development 身份下完成三视口专项 E2E 3/3，并逐张人工复核
+      1440x900、1024x768、390x844：PageHeader、岗位上下文、完整任务队列、中栏详情与右栏上下文保持统一壳；结果详情关键投资事实均在首屏，
+      工作详情已合并对象事实、收拢专业要求与评审依据且无重复说明墙；页面无横向溢出。R11 的“带入”按钮、提示、helper 与测试已删除，目标结果只由
+      负责人手填。独立复审 REVIEW-01/02 修复后，return_requested 三处语义与责任已分轨，专业要求虚假本地证据状态已删除且任务切换草稿隔离。
+      focused review-fix 35、全量 Web 148 文件/695 条、三视口专项 3/3、typecheck/lint/format/repo/build/diff 均通过。R12 修复另经 deferred request
+      反例与定向 58 条验证通过；R13 按负责人收口要求转非阻塞延期。
+nonBlockingSuggestions:
+  - id: PS-S4-R13
+    disposition: deferred
+    reason: legacy 无单位经济快照的移动端缺失说明真实但不在当前主路径；后续结果兼容切片处理。
+next: commit
 ```
 
 修复验收反证：
@@ -326,6 +428,27 @@ next: review
 13. 390×844 截图首屏必须至少完整显示：状态+对象、立项责任/NPI 承接、基准/保守贡献、目标日期、下一决策日期/问题；经营机会摘要可紧随其后，评审依据在下方。若空间不足，压缩页头和队列，不得牺牲投资摘要。
 14. 结果态经营机会必须显示 `市场 · 渠道 · 商品范围`、验证目标、事实/经营判断与证据折叠；当字段来自后补时只在对象级显示一次“含后补事实”及 tooltip，不重复每字段标签。交接原文提供折叠入口。
 15. 自动化结构断言增加：结果态只有一个 PageHeader、无 success duplicate/第二套页面说明、队列无上述噪声词、主内容灰底数据块数量受限、内部 code 不可见；E2E 记录关键元素 bounding boxes，断言三视口投资摘要在首屏。截图必须由主代理肉眼验收，不能只报告数字。
+16. 工作态缺口必须按五个业务区域聚合：`目标结果`、`责任与资源`、`时间与下一决策`、`评审依据`、`单位经济`。每类显示真实内部缺口数，但不得把 min/max/basis/evidenceRefs 等端点总数作为主 CTA；点击区域入口须将焦点/滚动定位到对应输入组。单位经济可在展开后按基准/保守情景和金额项说明具体缺什么。
+17. 工作态顶部改为“还差 N 类”及区域入口；主按钮禁用时显示“先补齐上方 N 类”，旁边只保留一处原因说明。补齐任一区域后类别数单调减少，全部齐备后显示“立项并交给产品开发”。测试须证明空草稿为 5 类而不是 60/61 项，并覆盖每类定位目标存在。
+18. 五类入口必须解决“在哪里补”：`目标结果` 聚焦目标结果输入；`责任与资源` 聚焦责任承诺组；`时间与下一决策` 聚焦日期/问题组；`评审依据` 滚动到评审面板并展开第一个缺口；`单位经济` 聚焦币种或第一个缺失金额项。区域入口使用按钮或链接语义，支持键盘触发；定位后目标获得可见焦点，不能只滚动到附近。
+19. 专业要求面板删除“评估阶段才会出现”“规则生成/这里管拿依据”等教学段落；常驻只保留适用要求名和添加证据动作。适用理由和证据如何进入评审放入 `InfoTooltip`；逐要求证据状态因当前服务端契约不能证明而不得显示，证据候选与引用事实统一在评审依据呈现。暂时生成不了的要求压成一行状态，可展开查看原因，不再用大面积蓝色说明块抢占注意力。
+20. 评审面板删除“立项依据/评审要点/优先处理 N 项”等重复标题链；只保留“评审依据”与五个摘要行。每行显示缺证据/缺结论/已齐，点击缺口入口时自动展开对应项。展开内容直接进入证据选择和判断，不重复“证据/判断/暂无证据”等多层标签。
+21. 选品办理台的三栏壳不得由当前选中任务的结果状态控制：PageHeader、岗位/交接上下文、左侧任务队列、中间详情区和右侧操作上下文的区域顺序及网格宽度保持办理态；删除整页 `selection-workbench--initiated` / `workbench-grid--initiated` 模式切换。
+22. 左侧选择任务只更新 `handoffId` 和当前对象。中间详情依据该对象状态局部切换：未完成对象显示机会事实、专业要求与评审依据；已立项对象显示 `ProductInitiativeResultPanel` 冻结结果。随后选择另一条未完成对象，必须恢复该对象的办理详情，且队列、页头和三栏壳全程不卸载、不改序。
+23. 右侧操作上下文始终保留原栏位。未完成对象显示接收或立项动作；已立项对象显示紧凑只读状态，明确“结论已冻结/已交 NPI”、当前责任去向及无可编辑动作，不得重新显示提交控件，也不得删除整栏造成布局跳变。
+24. 回归测试先构造同一队列中一条办理中任务与一条 handed_off 任务：点击 handed_off 后断言三栏、工作上下文和队列仍存在，仅中栏出现结果详情且右栏为只读状态；再点回办理中任务，断言中栏恢复办理详情与右栏动作。该测试必须在修复前因当前两栏整页 Mode 失败，再实施最小修复。
+25. 已立项详情显示后必须把应用内容滚动容器恢复到能看到 PageHeader、岗位/交接上下文和结果详情起点的位置；不得沿用单位经济编辑阶段的深滚动位置。E2E 必须恢复并保留结果头、基准/保守贡献、目标日期、下一决策日期/问题的三视口 bounding-box 断言；若 1024/390 因固定壳占位无法满足，则压缩结果详情的首屏信息密度，不删除断言。
+26. 完整队列在所有任务状态下保持可切换，但队列头只保留“经营机会”或省略；标准组不显示“其他机会”，无 initiative 的对象不显示“经营团队判断值得进一步评估”。真实优先分组（如“暂缓到期”）继续显示，不得为去噪破坏优先级。
+27. 工作态中栏的对象事实合并为一个紧凑区：对象标题 + 市场/渠道/商品范围 + 验证目标 + 事实/经营判断 + 证据数；删除“经营团队交来了什么”“希望选品验证”“机会说明”等重复眉题。交接缺失只保留一次短状态及 InfoTooltip，原始快照继续按需展开，不再常驻逐项标签和说明段。
+28. 专业要求区只保留“专业要求”标题、每项要求名和“添加证据”动作。删除“评估阶段才会出现”“本机会适用的”“这里管拿依据”等教学段落；适用理由和进入哪个评审要点通过既有 InfoTooltip 按需查看。当前契约无法证明逐要求证据状态，因此不显示“已登记/待添加”；真实候选与引用状态在评审依据统一呈现。withheld 压成一行“另有 N 项待商品范围后生成”，展开后才显示名称和缺失原因，不使用大面积蓝色说明块。
+29. 评审区只保留单个“评审依据”标题和五个摘要行；删除“立项依据 / 评审要点 / 优先处理 N 项”标题链。五类导航激活评审区域时自动展开第一个缺口；摘要行已表达“缺证据 / 缺结论 / 已齐”，展开后直接进入引用证据和判断，不再显示“证据 / 暂无已引用证据 / 暂无可引用证据”等重复空话，只有可操作入口或真实失效原因常驻。
+30. R10 的截图验收同时覆盖工作态 1440×900、1024×768、390×844：同一中栏可快速识别对象、当前事实、唯一缺口导航和当前编辑区域；删除的文案不得残留，纵向高度须明显低于负责人 2026-10-06 截图，不得以缩小字号或隐藏真实事实换密度。
+31. 删除进度头“带入”按钮、`applyNotice` 成功/未覆盖提示、`applyHandoffToObjective` / `buildObjectiveFromHandoff` 及其专用测试和 E2E 操作。目标结果必须由选品负责人明确填写；上游市场/渠道/范围/机会说明/经营判断继续作为旁边可见事实，不得机械拼接成 objective。移除后进度头只保留完备度与进度条，不新增替代按钮或默认值。
+32. R11 回归测试须断言工作态无“带入”入口，目标结果初始为空且不会因加载/选择任务自动变化；手工填写目标结果后五类缺口从 5 降为 4，证明进度仍由真实草稿驱动。
+33. `return_requested` 与 `handed_off` 都保持只读详情和固定三栏壳，但文案、责任和交接事实必须分轨：前者 PageHeader/中栏状态/右栏显示“等待市场接回”，右栏常驻“当前责任仍在选品”，全页不得出现“已交 NPI”或 NPI 承接已成立；后者继续显示“已立项 · 已交 NPI / 结论已冻结 / 当前承接”。页面测试分别覆盖两种去向，不得只断言中栏没有误显示。
+34. 专业要求区不得显示无法由服务端证明的逐要求“已登记证据 / 待添加证据”状态；删除 `registeredCodes` 与相应测试。要求行只保留名称、InfoTooltip 和添加动作。`ProductEvaluationRequirementsPanel` 必须以当前 handoffId 为 key 或显式重置，在任务 A 半开表单并填写草稿后切到任务 B 时，表单关闭且草稿不可见；切回 A 也不得把未提交草稿冒充已登记事实。成功登记后的服务端候选刷新继续由现有 `reloadInitiative()` 证明。
+35. 任务详情必须与当前 `handoffId` 绑定。测试用 deferred promise 构造 A=`handed_off`、B=`accepted/needs_decision`：A 已显示冻结结果后点击 B，在 B 的详情请求 resolve 前，中栏不得出现 B 标题配 A 结果、右栏不得出现 A 的已交 NPI/冻结责任，只显示 B 正在读取；resolve 后只显示 B 的工作详情和动作。反向快速切换与迟到 A 响应仍由 loadToken 拒绝。实现优先为 detail/current handoff identity gate，不得在切换时无条件 reset 破坏同对象 `keepDraft` 刷新。
+36. 历史 initiative 的 `unitEconomicsSnapshot=null` 时，1440×900、1024×768、390×844 均须在投资结论区显示一次“历史立项未记录单位经济”；该说明不使用 warn/risk、不进入当前待补类别。移动端只可隐藏机会区重复的 `历史缺失 N 类`，不得用共用 class 隐藏单位经济缺失。组件测试与 390×844 实际渲染都须覆盖。
 
 ### S3c 主代理验收裁决
 
@@ -683,3 +806,4 @@ next: S3c-currency-reference-simplification
 | 2026-10-05 | blocked | Claude Code | 未提交     | 负责人提供 `D:\aosom\Downloads\list-one.xml`。主代理核验 Pblshd=2026-09-17、源 SHA-256 `33139b…b0ff`、277 coded rows 折叠为 178 币种、记录哈希 `10f3266…673d`，无格式/同码冲突；SIX 一手法律页未授予本用途许可且商业使用要求事先书面同意，故未生成 official snapshot、未 active 导入。        |
 | 2026-10-05 | fix     | Claude Code | 未提交     | 负责人明确收窄：直接内置 178 个币种，不要 authorized snapshot 与 active release。主代理写回 doc/08 与 UE-D03，取消许可/deployment gate，建立 S3c 删除 release/importer/synthetic 机制并保留来源哈希与现有 lookup/UI 行为。                                                                    |
 | 2026-10-05 | coding  | Claude Code | `35e92bad` | S3c 主代理验收及定向门禁通过；同一实现会话复查 no-findings 但不满足 fresh 独立性，仅作辅助证据。负责人同意不单独重派，S3c 与 S4 在最终增量统一交 fresh Codex。当前按方案 A 执行 S4，并继承 4 个未提交 Web 文件。                                                                              |
+| 2026-10-06 | review  | Claude Code | 未提交     | S4 R06～R11 主代理验收通过：固定工作台办理壳、结果/工作详情局部切换、队列去噪、结果首屏、工作详情减密及删除低价值“带入”均已落；三视口专项 3/3、focused Web 99、Web 全量 148 文件/695 条及 typecheck/lint/format/repo/build/diff 通过。转 fresh Codex 只读复审当前 S3c 后的 S4 增量。          |

@@ -130,119 +130,124 @@ function rangeLabel(
         <p v-else class="unit-economics__pending">保存后由服务端计算</p>
       </header>
 
-      <div class="unit-economics__rows">
-        <div
-          v-for="field in UNIT_ECONOMICS_FIELDS"
-          :key="field.code"
-          class="unit-economics__row"
-        >
-          <b>{{ field.label }}</b>
-          <div class="unit-economics__range-controls">
-            <label>
-              <span>最低</span>
-              <input
-                type="text"
-                inputmode="decimal"
-                :value="draft.scenarios[scenario.code][field.code].min"
-                :aria-label="rangeLabel(scenario.code, field.code, '最低值')"
-                :disabled="busy"
-                @input="
-                  emit('updateRange', {
-                    scenario: scenario.code,
-                    field: field.code,
-                    endpoint: 'min',
-                    value: ($event.target as HTMLInputElement).value,
-                  })
-                "
-              />
-            </label>
-            <label>
-              <span>最高</span>
-              <input
-                type="text"
-                inputmode="decimal"
-                :value="draft.scenarios[scenario.code][field.code].max"
-                :aria-label="rangeLabel(scenario.code, field.code, '最高值')"
-                :disabled="busy"
-                @input="
-                  emit('updateRange', {
-                    scenario: scenario.code,
-                    field: field.code,
-                    endpoint: 'max',
-                    value: ($event.target as HTMLInputElement).value,
-                  })
-                "
-              />
-            </label>
-            <label class="unit-economics__basis">
-              <span>依据</span>
-              <select
-                :value="draft.scenarios[scenario.code][field.code].basis"
-                :aria-label="rangeLabel(scenario.code, field.code, '依据类型')"
-                :disabled="busy"
-                @change="
-                  emit('updateBasis', {
-                    scenario: scenario.code,
-                    field: field.code,
-                    basis: ($event.target as HTMLSelectElement).value as
-                      ProductInitiativeUnitEconomicsBasisV1 | '',
-                  })
-                "
-              >
-                <option value="">请选择</option>
-                <option value="evidence">有证据</option>
-                <option value="assumption">待验证假设</option>
-              </select>
-            </label>
-          </div>
-
-          <details
-            v-if="
-              draft.scenarios[scenario.code][field.code].basis === 'evidence'
-            "
-            class="unit-economics__evidence"
+      <details class="unit-economics__scenario-details">
+        <summary>填写{{ scenario.label }}金额与依据</summary>
+        <div class="unit-economics__rows">
+          <div
+            v-for="field in UNIT_ECONOMICS_FIELDS"
+            :key="field.code"
+            class="unit-economics__row"
           >
-            <summary>
-              已选
-              {{
-                draft.scenarios[scenario.code][field.code].evidenceRefs.length
-              }}
-              项证据
-            </summary>
-            <p v-if="evidenceCandidates.length === 0">当前没有可引用证据</p>
-            <label
-              v-for="candidate in evidenceCandidates"
-              :key="candidate.evidenceId"
+            <b>{{ field.label }}</b>
+            <div class="unit-economics__range-controls">
+              <label>
+                <span>最低</span>
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  :value="draft.scenarios[scenario.code][field.code].min"
+                  :aria-label="rangeLabel(scenario.code, field.code, '最低值')"
+                  :disabled="busy"
+                  @input="
+                    emit('updateRange', {
+                      scenario: scenario.code,
+                      field: field.code,
+                      endpoint: 'min',
+                      value: ($event.target as HTMLInputElement).value,
+                    })
+                  "
+                />
+              </label>
+              <label>
+                <span>最高</span>
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  :value="draft.scenarios[scenario.code][field.code].max"
+                  :aria-label="rangeLabel(scenario.code, field.code, '最高值')"
+                  :disabled="busy"
+                  @input="
+                    emit('updateRange', {
+                      scenario: scenario.code,
+                      field: field.code,
+                      endpoint: 'max',
+                      value: ($event.target as HTMLInputElement).value,
+                    })
+                  "
+                />
+              </label>
+              <label class="unit-economics__basis">
+                <span>依据</span>
+                <select
+                  :value="draft.scenarios[scenario.code][field.code].basis"
+                  :aria-label="
+                    rangeLabel(scenario.code, field.code, '依据类型')
+                  "
+                  :disabled="busy"
+                  @change="
+                    emit('updateBasis', {
+                      scenario: scenario.code,
+                      field: field.code,
+                      basis: ($event.target as HTMLSelectElement).value as
+                        ProductInitiativeUnitEconomicsBasisV1 | '',
+                    })
+                  "
+                >
+                  <option value="">请选择</option>
+                  <option value="evidence">有证据</option>
+                  <option value="assumption">待验证假设</option>
+                </select>
+              </label>
+            </div>
+
+            <details
+              v-if="
+                draft.scenarios[scenario.code][field.code].basis === 'evidence'
+              "
+              class="unit-economics__evidence"
             >
-              <input
-                type="checkbox"
-                :checked="
-                  draft.scenarios[scenario.code][
-                    field.code
-                  ].evidenceRefs.includes(candidate.evidenceId)
-                "
-                :disabled="busy"
-                :aria-label="
-                  rangeLabel(scenario.code, field.code, '证据') +
-                  ' ' +
-                  candidate.sourceName
-                "
-                @change="
-                  emit('toggleEvidence', {
-                    scenario: scenario.code,
-                    field: field.code,
-                    evidenceId: candidate.evidenceId,
-                  })
-                "
-              />
-              <span>
-                <b>{{ candidate.sourceName }}</b>
-                <small>{{ candidate.summary }}</small>
-              </span>
-            </label>
-          </details>
+              <summary>
+                已选
+                {{
+                  draft.scenarios[scenario.code][field.code].evidenceRefs.length
+                }}
+                项证据
+              </summary>
+              <p v-if="evidenceCandidates.length === 0">当前没有可引用证据</p>
+              <label
+                v-for="candidate in evidenceCandidates"
+                :key="candidate.evidenceId"
+              >
+                <input
+                  type="checkbox"
+                  :checked="
+                    draft.scenarios[scenario.code][
+                      field.code
+                    ].evidenceRefs.includes(candidate.evidenceId)
+                  "
+                  :disabled="busy"
+                  :aria-label="
+                    rangeLabel(scenario.code, field.code, '证据') +
+                    ' ' +
+                    candidate.sourceName
+                  "
+                  @change="
+                    emit('toggleEvidence', {
+                      scenario: scenario.code,
+                      field: field.code,
+                      evidenceId: candidate.evidenceId,
+                    })
+                  "
+                />
+                <span>
+                  <b>{{ candidate.sourceName }}</b>
+                  <small>{{ candidate.summary }}</small>
+                </span>
+              </label>
+            </details>
+          </div>
         </div>
-      </div>
+      </details>
     </section>
 
     <label
@@ -375,6 +380,22 @@ function rangeLabel(
   margin: 0;
   color: var(--ink);
   font-size: var(--text-meta);
+}
+.unit-economics__scenario-details {
+  min-width: 0;
+}
+.unit-economics__scenario-details > summary {
+  cursor: pointer;
+  color: var(--brand-strong);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+.unit-economics__scenario-details[open] > summary {
+  margin-bottom: var(--space-2);
+}
+.unit-economics__scenario-details > summary:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 .unit-economics__contribution b {
   display: block;
