@@ -35,6 +35,8 @@ import { CargoOwnerDirectoryService } from "./application/cargo-owner-directory.
 import { CARGO_OWNER_REPOSITORY } from "./domain/cargo-owner.repository";
 import { PrismaCargoOwnerRepository } from "./infrastructure/prisma-cargo-owner.repository";
 import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
+import { REFERENCE_CURRENCY_DIRECTORY } from "./reference-currency-directory.port";
+import { PrismaReferenceCurrencyDirectory } from "./infrastructure/prisma-reference-currency-directory";
 
 @Module({
   imports: [IdentityModule],
@@ -54,6 +56,10 @@ import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
     ReferencePortDirectoryService,
     ResolveProductSkusService,
     CargoOwnerDirectoryService,
+    {
+      provide: REFERENCE_CURRENCY_DIRECTORY,
+      useClass: PrismaReferenceCurrencyDirectory,
+    },
     {
       provide: PRODUCT_SKU_REPOSITORY,
       useClass: PrismaProductSkuRepository,
@@ -109,6 +115,7 @@ import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
     REGISTER_PRODUCT_SKU,
     REPLACE_PRODUCT_COMPLIANCE_PROFILE,
     REFERENCE_PORT_DIRECTORY,
+    REFERENCE_CURRENCY_DIRECTORY,
     REFERENCE_LOCATION_CATALOG,
     CARGO_OWNER_DIRECTORY,
     RESOLVE_PRODUCT_SKUS,

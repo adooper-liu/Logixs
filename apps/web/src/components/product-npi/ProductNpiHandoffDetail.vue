@@ -2,6 +2,7 @@
 import { FileText } from "@lucide/vue";
 import type { ProductInitiativeNpiQueueEntryV1 } from "@logix/contracts";
 import { REVIEW_POINTS } from "../../composables/useProductInitiativeDecision";
+import ProductInitiativeUnitEconomicsSnapshot from "../product-selection/ProductInitiativeUnitEconomicsSnapshot.vue";
 
 /**
  * 立项快照：选品交接时锁定的原样内容，**只读**。
@@ -34,6 +35,41 @@ function pointLabel(code: string): string {
     </div>
 
     <div class="block">
+      <h3>资源与责任承诺（只读）</h3>
+      <dl class="commitment">
+        <div>
+          <dt>立项责任人</dt>
+          <dd>
+            {{
+              entry.handoff.responsibilityAccepted === true
+                ? entry.handoff.responsibleActorId
+                : "历史交接未记录"
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt>承接团队或岗位</dt>
+          <dd>{{ entry.handoff.receivingTeamOrRole || "历史交接未记录" }}</dd>
+        </div>
+        <div>
+          <dt>资源说明</dt>
+          <dd>{{ entry.handoff.resourceDescription || "历史交接未记录" }}</dd>
+        </div>
+        <div>
+          <dt>目标日期</dt>
+          <dd>{{ entry.handoff.targetDate || "历史交接未记录" }}</dd>
+        </div>
+        <div>
+          <dt>下一决策点</dt>
+          <dd>
+            {{ entry.handoff.nextDecisionDate || "历史交接未记录" }} ·
+            {{ entry.handoff.nextDecisionQuestion || "未记录决策问题" }}
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="block">
       <h3>立项阶段的四项结论（只读）</h3>
       <ul>
         <li v-for="point in entry.handoff.reviewPoints" :key="point.code">
@@ -48,6 +84,16 @@ function pointLabel(code: string): string {
       <p v-if="entry.handoff.reviewPoints.length === 0" class="empty">
         交接快照里没有评审要点
       </p>
+    </div>
+
+    <div class="block">
+      <h3>单位经济快照（只读）</h3>
+      <ProductInitiativeUnitEconomicsSnapshot
+        v-if="entry.handoff.unitEconomicsSnapshot"
+        :snapshot="entry.handoff.unitEconomicsSnapshot"
+        :negative-conservative-reason="entry.handoff.negativeConservativeReason"
+      />
+      <p v-else class="empty">历史交接未记录</p>
     </div>
 
     <p class="discipline">
@@ -91,6 +137,26 @@ h3 {
 .block p {
   margin: 0;
   line-height: var(--leading-body);
+}
+.commitment {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+.commitment > div {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.35fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+.commitment dt {
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+.commitment dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-label);
 }
 ul {
   display: grid;

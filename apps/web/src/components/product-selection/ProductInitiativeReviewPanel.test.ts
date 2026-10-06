@@ -8,7 +8,7 @@ const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
 const OTHER_EVIDENCE_ID = "00000000-0000-4000-8000-000000000002";
 
 describe("ProductInitiativeReviewPanel", () => {
-  it("四项要点都列出，且每项都有自己的添加证据入口", async () => {
+  it("四项要点以紧凑状态列出，只展开首个未齐项", async () => {
     const wrapper = mountPanel();
 
     const points = wrapper.findAll(".review-point");
@@ -18,9 +18,50 @@ describe("ProductInitiativeReviewPanel", () => {
       "价格带与利润",
       "合规风险",
     ]);
-    for (const node of points) {
-      expect(node.find("button.add-evidence").exists()).toBe(true);
-    }
+    expect(wrapper.findAll("button.add-evidence")).toHaveLength(1);
+    expect(
+      points[0]!.get(".review-point__toggle").attributes("aria-expanded"),
+    ).toBe("true");
+    expect(
+      points[1]!.get(".review-point__toggle").attributes("aria-expanded"),
+    ).toBe("false");
+    expect(points[1]!.text()).toContain("缺证据");
+    expect(points[1]!.text()).not.toContain("0 条证据");
+  });
+
+  it("切换要点后只显示当前项的详细编辑区", async () => {
+    const wrapper = mountPanel();
+    const points = wrapper.findAll(".review-point");
+
+    await points[1]!.get(".review-point__toggle").trigger("click");
+
+    expect(
+      points[0]!.get(".review-point__toggle").attributes("aria-expanded"),
+    ).toBe("false");
+    expect(
+      points[1]!.get(".review-point__toggle").attributes("aria-expanded"),
+    ).toBe("true");
+    expect(points[0]!.find("button.add-evidence").exists()).toBe(false);
+    expect(points[1]!.find("button.add-evidence").exists()).toBe(true);
+  });
+
+  it("切换要点不会丢失未提交的证据草稿", async () => {
+    const wrapper = mountPanel();
+    const points = wrapper.findAll(".review-point");
+
+    await points[0]!.get("button.add-evidence").trigger("click");
+    await wrapper
+      .get('textarea[aria-label="目标用户与市场证据内容"]')
+      .setValue("目标市场搜索量连续三周上升。");
+    await points[1]!.get(".review-point__toggle").trigger("click");
+    await points[0]!.get(".review-point__toggle").trigger("click");
+
+    expect(
+      (
+        wrapper.get('textarea[aria-label="目标用户与市场证据内容"]')
+          .element as HTMLTextAreaElement
+      ).value,
+    ).toBe("目标市场搜索量连续三周上升。");
   });
 
   it("已引用的证据只读呈现当时事实，不给编辑入口", async () => {
@@ -37,7 +78,7 @@ describe("ProductInitiativeReviewPanel", () => {
     });
 
     const facts = wrapper.get(".review-point__facts");
-    expect(facts.text()).toContain("立项当时的事实");
+    expect(facts.text()).toContain("证据");
     expect(facts.text()).toContain("站点类目周报");
     expect(facts.text()).toContain("在售同款 320 个");
     expect(facts.text()).toContain("https://example.test/report");
@@ -45,12 +86,26 @@ describe("ProductInitiativeReviewPanel", () => {
     expect(facts.find("input, textarea").exists()).toBe(false);
   });
 
-  it("没有引用证据时说明事实从哪来，不冒充已有结论", async () => {
+  it("没有引用证据时保留添加和引用入口，不重复显示空状态", async () => {
     const wrapper = mountPanel();
 
-    expect(wrapper.get(".review-point__facts").text()).toContain(
-      "还没有引用任何已登记证据",
+    expect(wrapper.get(".review-point__facts").text()).not.toContain(
+      "暂无已引用证据",
     );
+    expect(wrapper.get(".review-point__facts").text()).not.toContain(
+      "暂无可引用证据",
+    );
+    expect(wrapper.get(".picker-toggle").text()).toContain("引用证据");
+    expect(wrapper.get("button.add-evidence").text()).toContain("添加证据");
+  });
+
+  it("只保留评审依据标题和摘要行，不重复显示缺口催办", () => {
+    const wrapper = mountPanel();
+
+    expect(wrapper.get("header").text()).toBe("评审依据");
+    expect(wrapper.text()).not.toContain("立项依据");
+    expect(wrapper.text()).not.toContain("评审要点");
+    expect(wrapper.text()).not.toContain("优先处理");
   });
 
   it("勾选与取消引用已登记证据都发给上层，不在组件里自己改草稿", async () => {
@@ -109,7 +164,7 @@ describe("ProductInitiativeReviewPanel", () => {
 
     const points = wrapper.findAll(".review-point");
     expect(points[0]!.find(".review-point__gap").exists()).toBe(false);
-    expect(points[1]!.get(".review-point__gap").text()).toContain("还缺结论");
+    expect(points[1]!.get(".review-point__gap").text()).toContain("缺结论");
     expect(points[1]!.get(".review-point__gap").text()).not.toContain("待补");
   });
 
@@ -171,7 +226,7 @@ describe("ProductInitiativeReviewPanel", () => {
 
     const node = wrapper.get(".review-point");
     expect(node.find(".review-point__ok").exists()).toBe(false);
-    expect(node.get(".review-point__stale").text()).toContain("引用已失效");
+    expect(node.get(".review-point__stale").text()).toContain("引用失效");
   });
 
   it("结论长度上限与服务端契约一致，不让人写完才被 400 拒绝", () => {
@@ -184,33 +239,13 @@ describe("ProductInitiativeReviewPanel", () => {
     ).toBe("4000");
   });
 
-  it("已立项后只读：结论与引用还看得见，但不再提供写入口", () => {
-    const wrapper = mountPanel({
-      readonly: true,
-      points: [
-        point({
-          code: "competitive_supply",
-          label: "竞争供给",
-          evidenceRefs: [EVIDENCE_ID],
-          conclusion: "头部集中",
-          missing: false,
-        }),
-      ],
-    });
+  it("只服务工作态，始终提供可编辑的评审输入", () => {
+    const wrapper = mountPanel();
 
-    expect(wrapper.get("textarea").attributes("readonly")).toBeDefined();
-    expect(wrapper.find("button.add-evidence").exists()).toBe(false);
-    expect(wrapper.find(".picker-toggle").exists()).toBe(false);
-    expect(wrapper.get(".review-point__facts").text()).toContain(
-      "在售同款 320 个",
-    );
+    expect(wrapper.find("textarea").attributes("readonly")).toBeUndefined();
     expect(
-      (
-        wrapper.get('input[type="radio"][value="concentrated"]')
-          .element as HTMLInputElement
-      ).checked,
-    ).toBe(true);
-    expect(wrapper.get(".option.selected").text()).toContain("头部集中");
+      wrapper.find('input[type="radio"]').attributes("disabled"),
+    ).toBeUndefined();
   });
 });
 
@@ -218,7 +253,6 @@ function mountPanel(
   overrides: {
     points?: ProductInitiativeReviewPointView[];
     candidates?: ProductInitiativeEvidenceCandidateV1[];
-    readonly?: boolean;
     addEvidence?: (draft: {
       sourceName: string;
       sourceUrl: string;
@@ -236,7 +270,6 @@ function mountPanel(
       ],
       candidates: overrides.candidates ?? [candidate(), otherCandidate()],
       busy: false,
-      readonly: overrides.readonly ?? false,
       addEvidence: overrides.addEvidence ?? vi.fn().mockResolvedValue(true),
     },
   });

@@ -27,6 +27,10 @@ const DEFINITION_MIGRATION = "20260927190000_add_product_definition";
 const IDENTITY_MIGRATION = "20260927200000_add_product_identity";
 const ATTRIBUTES_MIGRATION = "20260927210000_add_product_attributes";
 const NOMINATION_MIGRATION = "20260928120000_add_supplier_nomination";
+const RESOURCE_COMMITMENT_MIGRATION =
+  "20261004160000_add_product_initiative_resource_commitment";
+const UNIT_ECONOMICS_MIGRATION =
+  "20261004200000_add_product_initiative_unit_economics";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -107,6 +111,12 @@ beforeAll(async () => {
     `DROP TABLE IF EXISTS "${schemaName}"."product_initiative"`,
   );
   await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."currency_code_reference"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `DROP FUNCTION IF EXISTS "${schemaName}"."product_initiative_unit_economics_snapshot_is_valid"(jsonb,text,boolean)`,
+  );
+  await prisma.$executeRawUnsafe(
     `DELETE FROM "${schemaName}"."_prisma_migrations" WHERE "migration_name" = ANY($1)`,
     [
       INITIATIVE_MIGRATION,
@@ -115,6 +125,8 @@ beforeAll(async () => {
       IDENTITY_MIGRATION,
       ATTRIBUTES_MIGRATION,
       NOMINATION_MIGRATION,
+      RESOURCE_COMMITMENT_MIGRATION,
+      UNIT_ECONOMICS_MIGRATION,
     ],
   );
 
@@ -235,8 +247,10 @@ async function insertInitiative(
     `INSERT INTO "${schemaName}"."product_initiative" (
        "id", "tenant_id", "handoff_id", "version", "outcome", "completion_state",
        "current_destination", "responsible_actor_id", "objective", "review_points",
-       "reason", "pending_field_codes", "acted_by", "idempotency_key", "payload_hash"
-     ) VALUES ($1,$2,$3,1,$4,$5,$6,'selector-1',NULL,'[]'::jsonb,$7,'{}'::text[],'selector-1',$8,repeat('a',64))`,
+       "reason", "pending_field_codes", "acted_by", "idempotency_key", "payload_hash",
+       "validation_focus", "reconsideration_date"
+     ) VALUES ($1,$2,$3,1,$4,$5,$6,'selector-1',NULL,'[]'::jsonb,$7,'{}'::text[],'selector-1',$8,
+       repeat('a',64),$9,'2099-12-31')`,
     id,
     tenantId,
     overrides.handoffId ?? handoffId,
@@ -245,6 +259,7 @@ async function insertInitiative(
     fields.currentDestination,
     fields.reason,
     `decision:${id}`,
+    fields.reason ?? "测试夹具验证重点",
   );
 }
 
@@ -288,4 +303,574 @@ function withSchema(databaseUrl: string, schema: string): string {
   const url = new URL(databaseUrl);
   url.searchParams.set("schema", schema);
   return url.toString();
+}
+
+describe("resource commitment migration upgrade", () => {
+  const migration = "20261004160000_add_product_initiative_resource_commitment";
+  const upgradeSchema = `it_pi_commit_upgrade_${process.pid}_${randomUUID().replaceAll("-", "")}`;
+  const upgradeDatabaseUrl = withSchema(BASE_DATABASE_URL, upgradeSchema);
+  let upgradePrisma: PrismaClient;
+  let legacyInitiativeId: string;
+
+  beforeAll(async () => {
+    deployAt(upgradeDatabaseUrl);
+    upgradePrisma = new PrismaClient({
+      adapter: createPostgresAdapter(upgradeDatabaseUrl, upgradeSchema),
+    });
+    await upgradePrisma.$connect();
+
+    const repository = new PrismaMarketSignalRepository(upgradePrisma as never);
+    const seeded = await seedOpportunityForUpgrade(repository, upgradePrisma);
+    legacyInitiativeId = randomUUID();
+    await upgradePrisma.$executeRawUnsafe(
+      `DROP INDEX "${upgradeSchema}"."product_initiative_reconsideration_queue_idx"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative"
+         DROP CONSTRAINT "product_initiative_resource_commitment_shape_check",
+         DROP CONSTRAINT "product_initiative_defer_plan_shape_check",
+         DROP CONSTRAINT "product_initiative_commitment_text_check",
+         DROP COLUMN "responsibility_accepted",
+         DROP COLUMN "receiving_team_or_role",
+         DROP COLUMN "resource_description",
+         DROP COLUMN "target_date",
+         DROP COLUMN "next_decision_date",
+         DROP COLUMN "next_decision_question",
+         DROP COLUMN "validation_focus",
+         DROP COLUMN "reconsideration_date"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative_handoff"
+         DROP CONSTRAINT "product_initiative_handoff_resource_commitment_shape_check",
+         DROP CONSTRAINT "product_initiative_handoff_commitment_text_check",
+         DROP COLUMN "responsibility_accepted",
+         DROP COLUMN "receiving_team_or_role",
+         DROP COLUMN "resource_description",
+         DROP COLUMN "target_date",
+         DROP COLUMN "next_decision_date",
+         DROP COLUMN "next_decision_question"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" DROP CONSTRAINT "product_initiative_pending_codes_check"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" ADD CONSTRAINT "product_initiative_pending_codes_check" CHECK (
+        "pending_field_codes" <@ ARRAY['objective','target_user_and_market','competitive_supply','price_band_and_margin','compliance_risk','customer_feedback','defer_reason','reject_reason','return_basis','return_reason']::TEXT[]
+      )`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `INSERT INTO "${upgradeSchema}"."product_initiative" (
+         "id", "tenant_id", "handoff_id", "version", "outcome", "completion_state",
+         "current_destination", "responsible_actor_id", "objective", "review_points",
+         "reason", "return_basis", "pending_field_codes", "acted_by", "idempotency_key", "payload_hash"
+       ) VALUES ($1,$2,$3,1,'defer','completed','deferred','selector-legacy',NULL,'[]'::jsonb,
+         '等待样本',NULL,'{}'::text[],'selector-legacy',$4,repeat('a',64))`,
+      legacyInitiativeId,
+      seeded.tenantId,
+      seeded.handoffId,
+      `legacy:${legacyInitiativeId}`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DELETE FROM "${upgradeSchema}"."_prisma_migrations" WHERE "migration_name" = $1`,
+      migration,
+    );
+    deployAt(upgradeDatabaseUrl);
+  }, 180_000);
+
+  afterAll(async () => {
+    await upgradePrisma?.$disconnect();
+    const admin = new PrismaClient({
+      adapter: createPostgresAdapter(
+        withSchema(BASE_DATABASE_URL, "public"),
+        "public",
+      ),
+    });
+    try {
+      await admin.$executeRawUnsafe(
+        `DROP SCHEMA IF EXISTS "${upgradeSchema}" CASCADE`,
+      );
+    } finally {
+      await admin.$disconnect();
+    }
+  });
+
+  it("keeps the existing initiative and leaves new facts unknown", async () => {
+    const row = await upgradePrisma.productInitiative.findUniqueOrThrow({
+      where: { id: legacyInitiativeId },
+    });
+    expect(row).toMatchObject({
+      outcome: "defer",
+      currentDestination: "deferred",
+      reason: "等待样本",
+      responsibilityAccepted: null,
+      receivingTeamOrRole: null,
+      validationFocus: null,
+      reconsiderationDate: null,
+    });
+  });
+
+  it("rejects a partial resource commitment", async () => {
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          receivingTeamOrRole: "NPI",
+          completionState: "pending_completion",
+          currentDestination: "needs_decision",
+          reason: null,
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_resource_commitment_shape_check/);
+  });
+});
+
+describe("unit economics migration upgrade", () => {
+  const upgradeSchema = `it_pi_economics_upgrade_${process.pid}_${randomUUID().replaceAll("-", "")}`;
+  const upgradeDatabaseUrl = withSchema(BASE_DATABASE_URL, upgradeSchema);
+  let upgradePrisma: PrismaClient;
+  let legacyInitiativeId: string;
+  let legacyHandoffSnapshotId: string;
+  let seededTenantId: string;
+
+  it("creates the complete direct currency reference table with source evidence", async () => {
+    const currencies = await prisma.currencyCodeReference.findMany({
+      orderBy: { alphaCode: "asc" },
+    });
+
+    expect(currencies).toHaveLength(178);
+    expect(currencies.map(({ alphaCode }) => alphaCode)).toEqual(
+      expect.arrayContaining(["EUR", "JPY", "USD", "XUA"]),
+    );
+    expect(new Set(currencies.map(({ alphaCode }) => alphaCode)).size).toBe(
+      178,
+    );
+    expect(new Set(currencies.map(({ numericCode }) => numericCode)).size).toBe(
+      178,
+    );
+    expect(currencies[0]).toMatchObject({
+      sourceVersion: "2026-09-17",
+      sourceUrl:
+        "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+      sourceSha256:
+        "33139b438657d1cee116ba737807ea71d19d6de4b90f799a09c56f0cc6a1b0ff",
+      recordsSha256:
+        "10f3266f8cfefacda248330d0612cf3b61febdcb38875432a20025bab607673d",
+      sourceRowHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+  });
+
+  beforeAll(async () => {
+    deployAt(upgradeDatabaseUrl);
+    upgradePrisma = new PrismaClient({
+      adapter: createPostgresAdapter(upgradeDatabaseUrl, upgradeSchema),
+    });
+    await upgradePrisma.$connect();
+
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative"
+         DROP CONSTRAINT "product_initiative_unit_economics_draft_shape_check",
+         DROP CONSTRAINT "product_initiative_unit_economics_snapshot_shape_check",
+         DROP CONSTRAINT "product_initiative_unit_economics_terminal_check",
+         DROP CONSTRAINT "product_initiative_negative_conservative_reason_check",
+         DROP COLUMN "unit_economics_draft",
+         DROP COLUMN "unit_economics_snapshot",
+         DROP COLUMN "negative_conservative_reason"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative_handoff"
+         DROP CONSTRAINT "product_initiative_handoff_unit_economics_shape_check",
+         DROP COLUMN "unit_economics_snapshot",
+         DROP COLUMN "negative_conservative_reason"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DROP TABLE "${upgradeSchema}"."currency_code_reference"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DROP FUNCTION "${upgradeSchema}"."product_initiative_unit_economics_snapshot_is_valid"(jsonb,text,boolean)`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" DROP CONSTRAINT "product_initiative_pending_codes_check"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative" ADD CONSTRAINT "product_initiative_pending_codes_check" CHECK (
+        "pending_field_codes" <@ ARRAY[
+          'objective','target_user_and_market','competitive_supply','price_band_and_margin',
+          'compliance_risk','customer_feedback','defer_reason','responsibility_commitment',
+          'receiving_team_or_role','resource_description','target_date','next_decision_date',
+          'next_decision_question','validation_focus','reconsideration_date','reject_reason',
+          'return_basis','return_reason'
+        ]::TEXT[]
+      )`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `DELETE FROM "${upgradeSchema}"."_prisma_migrations" WHERE "migration_name" = $1`,
+      UNIT_ECONOMICS_MIGRATION,
+    );
+
+    const repository = new PrismaMarketSignalRepository(upgradePrisma as never);
+    const seeded = await seedOpportunityForUpgrade(repository, upgradePrisma);
+    seededTenantId = seeded.tenantId;
+    legacyInitiativeId = randomUUID();
+    legacyHandoffSnapshotId = randomUUID();
+    await upgradePrisma.$executeRawUnsafe(
+      `INSERT INTO "${upgradeSchema}"."product_initiative" (
+         "id","tenant_id","handoff_id","version","outcome","completion_state",
+         "current_destination","responsible_actor_id","responsibility_accepted",
+         "receiving_team_or_role","resource_description","target_date","next_decision_date",
+         "next_decision_question","objective","review_points","pending_field_codes",
+         "acted_by","idempotency_key","payload_hash"
+       ) VALUES ($1,$2,$3,1,'approve','completed','handed_off','selector-legacy',true,
+         'NPI','legacy resource','2026-11-15','2026-10-20','是否进入 EVT','legacy objective',
+         '[]'::jsonb,'{}'::text[],'selector-legacy',$4,repeat('a',64))`,
+      legacyInitiativeId,
+      seededTenantId,
+      seeded.handoffId,
+      `legacy-economics:${legacyInitiativeId}`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `INSERT INTO "${upgradeSchema}"."product_initiative_handoff" (
+         "id","tenant_id","initiative_id","signal_id","version","market_code","objective",
+         "responsible_actor_id","responsibility_accepted","receiving_team_or_role",
+         "resource_description","target_date","next_decision_date","next_decision_question",
+         "review_points","evidence_refs","created_by","idempotency_key","payload_hash"
+       ) SELECT $1,$2,$3,"signal_id",1,'CA','legacy objective','selector-legacy',true,
+         'NPI','legacy resource','2026-11-15','2026-10-20','是否进入 EVT','[]'::jsonb,
+         '{}'::uuid[],'selector-legacy',$4,repeat('b',64)
+       FROM "${upgradeSchema}"."market_opportunity_handoff" WHERE "id" = $5`,
+      legacyHandoffSnapshotId,
+      seededTenantId,
+      legacyInitiativeId,
+      `legacy-economics-handoff:${legacyInitiativeId}`,
+      seeded.handoffId,
+    );
+
+    deployAt(upgradeDatabaseUrl);
+  }, 180_000);
+
+  afterAll(async () => {
+    await upgradePrisma?.$disconnect();
+    const admin = new PrismaClient({
+      adapter: createPostgresAdapter(
+        withSchema(BASE_DATABASE_URL, "public"),
+        "public",
+      ),
+    });
+    try {
+      await admin.$executeRawUnsafe(
+        `DROP SCHEMA IF EXISTS "${upgradeSchema}" CASCADE`,
+      );
+    } finally {
+      await admin.$disconnect();
+    }
+  });
+
+  it("preserves legacy nulls without fabricating unit economics", async () => {
+    await expect(
+      upgradePrisma.productInitiative.findUniqueOrThrow({
+        where: { id: legacyInitiativeId },
+      }),
+    ).resolves.toMatchObject({
+      unitEconomicsDraft: null,
+      unitEconomicsSnapshot: null,
+      negativeConservativeReason: null,
+    });
+    await expect(
+      upgradePrisma.productInitiativeHandoff.findUniqueOrThrow({
+        where: { id: legacyHandoffSnapshotId },
+      }),
+    ).resolves.toMatchObject({
+      unitEconomicsSnapshot: null,
+      negativeConservativeReason: null,
+    });
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          outcome: "returned_from_npi",
+          currentDestination: "returned_from_npi",
+          reason: "NPI 验证后退回选品",
+        },
+      }),
+    ).resolves.toMatchObject({
+      outcome: "returned_from_npi",
+      unitEconomicsDraft: null,
+      unitEconomicsSnapshot: null,
+    });
+  });
+
+  it("accepts a complete snapshot group and rejects a new incomplete approve", async () => {
+    const snapshot = completeUnitEconomicsSnapshot();
+    await expect(
+      upgradePrisma.productInitiativeHandoff.update({
+        where: { id: legacyHandoffSnapshotId },
+        data: {
+          unitEconomicsSnapshot: {
+            marketCode: "CA",
+            channelCode: "amazon",
+            currencyCode: "USD",
+            scenarios: { baseline: {}, conservative: {} },
+          },
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_handoff_unit_economics_shape_check/);
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          unitEconomicsDraft: unitEconomicsDraft(),
+          unitEconomicsSnapshot: snapshot,
+        },
+      }),
+    ).resolves.toMatchObject({ unitEconomicsSnapshot: snapshot });
+    await expect(
+      upgradePrisma.productInitiativeHandoff.update({
+        where: { id: legacyHandoffSnapshotId },
+        data: { unitEconomicsSnapshot: snapshot },
+      }),
+    ).resolves.toMatchObject({ unitEconomicsSnapshot: snapshot });
+
+    const repository = new PrismaMarketSignalRepository(upgradePrisma as never);
+    const second = await seedOpportunityForUpgrade(repository, upgradePrisma);
+    await expect(
+      upgradePrisma.$executeRawUnsafe(
+        `INSERT INTO "${upgradeSchema}"."product_initiative" (
+           "id","tenant_id","handoff_id","version","outcome","completion_state",
+           "current_destination","responsible_actor_id","responsibility_accepted",
+           "receiving_team_or_role","resource_description","target_date","next_decision_date",
+           "next_decision_question","objective","review_points","pending_field_codes",
+           "acted_by","idempotency_key","payload_hash"
+         ) VALUES ($1,$2,$3,1,'approve','completed','handed_off','selector-new',true,
+           'NPI','resource','2026-11-15','2026-10-20','是否进入 EVT','objective',
+           '[]'::jsonb,'{}'::text[],'selector-new',$4,repeat('c',64))`,
+        randomUUID(),
+        second.tenantId,
+        second.handoffId,
+        `new-incomplete:${randomUUID()}`,
+      ),
+    ).rejects.toThrow(/product_initiative_unit_economics_terminal_check/);
+  });
+
+  it("rejects malformed ranges, evidence semantics and reason combinations", async () => {
+    const invalidCases = invalidUnitEconomicsSnapshots();
+    for (const invalid of invalidCases) {
+      await expect(
+        upgradePrisma.productInitiativeHandoff.update({
+          where: { id: legacyHandoffSnapshotId },
+          data: {
+            unitEconomicsSnapshot: invalid.snapshot,
+            negativeConservativeReason: invalid.reason,
+          },
+        }),
+        invalid.name,
+      ).rejects.toThrow(
+        /product_initiative_handoff_unit_economics_shape_check/,
+      );
+    }
+
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          unitEconomicsSnapshot: invalidCases[0].snapshot,
+          negativeConservativeReason: invalidCases[0].reason,
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_unit_economics_snapshot_shape_check/);
+  });
+
+  it("requires a negative contribution reason for returned current state", async () => {
+    const snapshot = completeUnitEconomicsSnapshot();
+    snapshot.scenarios.conservative.contribution.min = "-1";
+
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: legacyInitiativeId },
+        data: {
+          outcome: "returned_from_npi",
+          unitEconomicsDraft: unitEconomicsDraft(),
+          unitEconomicsSnapshot: snapshot,
+          negativeConservativeReason: null,
+        },
+      }),
+    ).rejects.toThrow(/product_initiative_unit_economics_snapshot_shape_check/);
+  });
+});
+
+function invalidUnitEconomicsSnapshots() {
+  const invalidAmount = completeUnitEconomicsSnapshot();
+  invalidAmount.scenarios.baseline.salePrice.min = "garbage";
+
+  const reversedRange = completeUnitEconomicsSnapshot();
+  reversedRange.scenarios.baseline.landedCost.min = "3";
+  reversedRange.scenarios.baseline.landedCost.max = "2";
+
+  const assumptionWithEvidence = completeUnitEconomicsSnapshot();
+  assumptionWithEvidence.scenarios.baseline.platformFee.evidenceRefs = [
+    "00000000-0000-4000-8000-000000000001",
+  ];
+
+  const evidenceWithoutReference = completeUnitEconomicsSnapshot();
+  evidenceWithoutReference.scenarios.baseline.fulfillmentFee.basis = "evidence";
+
+  const malformedReference = completeUnitEconomicsSnapshot();
+  malformedReference.scenarios.baseline.advertisingCost.basis = "evidence";
+  malformedReference.scenarios.baseline.advertisingCost.evidenceRefs = [
+    "not-a-uuid",
+  ];
+
+  const invalidContribution = completeUnitEconomicsSnapshot();
+  invalidContribution.scenarios.conservative.contribution.min = "garbage";
+
+  const negativeWithoutReason = completeUnitEconomicsSnapshot();
+  negativeWithoutReason.scenarios.conservative.contribution.min = "-1";
+
+  return [
+    { name: "invalid min", snapshot: invalidAmount, reason: null },
+    { name: "min above max", snapshot: reversedRange, reason: null },
+    {
+      name: "assumption with evidence",
+      snapshot: assumptionWithEvidence,
+      reason: null,
+    },
+    {
+      name: "evidence without reference",
+      snapshot: evidenceWithoutReference,
+      reason: null,
+    },
+    {
+      name: "malformed evidence UUID",
+      snapshot: malformedReference,
+      reason: null,
+    },
+    {
+      name: "invalid contribution",
+      snapshot: invalidContribution,
+      reason: null,
+    },
+    {
+      name: "negative contribution without reason",
+      snapshot: negativeWithoutReason,
+      reason: null,
+    },
+    {
+      name: "non-negative contribution with reason",
+      snapshot: completeUnitEconomicsSnapshot(),
+      reason: "不应存在的负值理由",
+    },
+  ];
+}
+
+function unitEconomicsDraft() {
+  const snapshot = completeUnitEconomicsSnapshot();
+  const withoutContribution = (
+    scenario: typeof snapshot.scenarios.baseline,
+  ) => ({
+    salePrice: scenario.salePrice,
+    landedCost: scenario.landedCost,
+    platformFee: scenario.platformFee,
+    fulfillmentFee: scenario.fulfillmentFee,
+    advertisingCost: scenario.advertisingCost,
+    returnCost: scenario.returnCost,
+  });
+  return {
+    marketCode: snapshot.marketCode,
+    channelCode: snapshot.channelCode,
+    currencyCode: snapshot.currencyCode,
+    scenarios: {
+      baseline: withoutContribution(snapshot.scenarios.baseline),
+      conservative: withoutContribution(snapshot.scenarios.conservative),
+    },
+  };
+}
+
+function completeUnitEconomicsSnapshot() {
+  const cost: {
+    min: string;
+    max: string;
+    basis: "evidence" | "assumption";
+    evidenceRefs: string[];
+  } = {
+    min: "1",
+    max: "2",
+    basis: "assumption",
+    evidenceRefs: [],
+  };
+  const scenario = {
+    salePrice: { ...cost, min: "20", max: "30" },
+    landedCost: cost,
+    platformFee: cost,
+    fulfillmentFee: cost,
+    advertisingCost: cost,
+    returnCost: cost,
+    contribution: { min: "10", max: "25" },
+  };
+  return {
+    marketCode: "CA",
+    channelCode: "amazon",
+    currencyCode: "USD",
+    scenarios: { baseline: scenario, conservative: scenario },
+  };
+}
+
+function deployAt(databaseUrl: string): void {
+  const pnpmEntrypoint = process.env.npm_execpath;
+  if (!pnpmEntrypoint) throw new Error("INTEGRATION_PNPM_ENTRYPOINT_MISSING");
+  execFileSync(process.execPath, [pnpmEntrypoint, "db:migrate"], {
+    cwd: repositoryRoot,
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+    stdio: "pipe",
+  });
+}
+
+async function seedOpportunityForUpgrade(
+  repository: PrismaMarketSignalRepository,
+  client: PrismaClient,
+): Promise<{ tenantId: string; handoffId: string }> {
+  const seededTenantId = randomUUID();
+  const signalId = randomUUID();
+  const created = await repository.create({
+    tenantId: seededTenantId,
+    actorId: "market-owner",
+    command: normalizeMarketSignalCreate({
+      contractVersion: "market-signal-create.v1",
+      requestId: signalId,
+      title: "加拿大站宠物出行需求上升",
+      marketCode: "CA",
+      idempotencyKey: `create:${signalId}`,
+    }),
+  });
+  const decided = await repository.decide({
+    tenantId: seededTenantId,
+    actorId: "market-owner",
+    signalId,
+    evidenceRefs: [],
+    prepared: prepareMarketSignalDecision(
+      { ...created.record, evidenceRefs: [] },
+      {
+        contractVersion: "market-signal-decision.v1",
+        expectedSignalVersion: 1,
+        decisionType: "handoff",
+        opportunityStatement: "验证宠物出行机会是否值得立项。",
+        idempotencyKey: `handoff:${signalId}`,
+      },
+    ),
+  });
+  await client.productOpportunityIntake.create({
+    data: {
+      id: randomUUID(),
+      tenantId: seededTenantId,
+      handoffId: decided.handoff!.handoffId,
+      version: 1,
+      state: "accepted",
+      assignedActorId: "selector-legacy",
+      actedBy: "selector-legacy",
+      actedAt: new Date(),
+      idempotencyKey: `accept:${signalId}`,
+      payloadHash: "b".repeat(64),
+    },
+  });
+  return {
+    tenantId: seededTenantId,
+    handoffId: decided.handoff!.handoffId,
+  };
 }

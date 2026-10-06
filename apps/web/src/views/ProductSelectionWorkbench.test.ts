@@ -45,16 +45,18 @@ describe("ProductSelectionWorkbench", () => {
     });
   });
 
-  it("shows the received facts and keeps ordinary gaps actionable", async () => {
+  it("shows compact opportunity facts and keeps handoff gaps on demand", async () => {
     const wrapper = await mountPage();
 
     expect(wrapper.text()).toContain("加拿大站宠物出行需求上升");
     expect(wrapper.text()).toContain("验证宠物出行机会是否值得立项");
     expect(wrapper.get(".opportunity-queue").text()).toContain("渠道未填");
-    expect(wrapper.get(".pending").text()).toContain("交接时未填");
-    expect(wrapper.text()).toContain("商品类别");
-    expect(wrapper.text()).toContain("来源证据");
-    expect(wrapper.text()).toContain("这些项来自交接快照，选品不在此处补录");
+    expect(wrapper.get(".opportunity-facts").text()).toContain("经营范围");
+    expect(wrapper.get(".opportunity-facts").text()).toContain("证据");
+    expect(wrapper.get(".opportunity-status").text()).toContain("交接缺失");
+    expect(wrapper.text()).not.toContain("经营团队交来了什么");
+    expect(wrapper.text()).not.toContain("希望选品验证");
+    expect(wrapper.text()).not.toContain("交接时未填");
     expect(wrapper.get(".action-body button").text()).toBe("领取此机会");
   });
 
@@ -147,8 +149,10 @@ describe("ProductSelectionWorkbench", () => {
     expect(panel.text()).toContain("竞争供给证据");
     expect(panel.text()).toContain("目标价格带");
     expect(panel.text()).toContain("售后原声");
-    expect(panel.text()).toContain("为什么适用");
-    expect(panel.text()).toContain("宠物出行");
+    expect(panel.get("h3").text()).toBe("专业要求");
+    expect(panel.findAll('[aria-label="查看专业要求说明"]')).toHaveLength(3);
+    expect(panel.text()).not.toContain("为什么适用");
+    expect(panel.text()).not.toContain("评估阶段才会出现");
 
     const addButtons = panel.findAll("button.add-evidence");
     expect(addButtons).toHaveLength(3);
@@ -190,6 +194,8 @@ describe("ProductSelectionWorkbench", () => {
     expect(
       panel.findAll(".requirement-head b").map((node) => node.text()),
     ).toEqual(["售后原声"]);
+    expect(panel.get(".withheld-notice summary").text()).toContain("另有 2 项");
+    await panel.get(".withheld-notice summary").trigger("click");
     expect(
       panel.findAll(".withheld-notice li span").map((node) => node.text()),
     ).toEqual(["竞争供给证据", "目标价格带"]);
@@ -214,6 +220,99 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.text()).toContain("加拿大站宠物出行需求上升");
   });
 
+  it("读取全部机会分页，并把第二页的暂缓到期项排在最前", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) =>
+      opportunity({
+        handoff: {
+          ...opportunity().handoff,
+          handoffId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+          title: `普通机会 ${String(index + 1).padStart(3, "0")}`,
+        },
+      }),
+    );
+    const due = opportunity({
+      handoff: {
+        ...opportunity().handoff,
+        handoffId: SECOND_HANDOFF_ID,
+        title: "第二页暂缓到期机会",
+      },
+    });
+    listProductOpportunities
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: firstPage,
+        pageSize: 100,
+        nextCursor: "opportunity/page-2",
+      })
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: [due],
+        pageSize: 100,
+        nextCursor: null,
+      });
+    listProductInitiatives.mockResolvedValue({
+      contractVersion: "product-initiative-queue.v1",
+      items: [
+        {
+          handoffId: SECOND_HANDOFF_ID,
+          outcome: "defer",
+          currentDestination: "deferred",
+          queueGroup: "defer_reconsideration_due",
+          reconsiderationDate: "2026-10-04",
+          pendingFieldCodes: [],
+          updatedAt: "2026-10-04T00:00:00.000Z",
+        },
+      ],
+      pageSize: 200,
+      nextCursor: null,
+    });
+
+    const wrapper = await mountPage();
+
+    expect(listProductOpportunities).toHaveBeenNthCalledWith(1, {
+      pageSize: 100,
+    });
+    expect(listProductOpportunities).toHaveBeenNthCalledWith(2, {
+      pageSize: 100,
+      cursor: "opportunity/page-2",
+    });
+    expect(wrapper.findAll(".queue-item")).toHaveLength(101);
+    expect(wrapper.findAll(".queue-group")[0]!.text()).toBe("暂缓到期");
+    expect(wrapper.findAll(".queue-item strong")[0]!.text()).toBe(
+      "第二页暂缓到期机会",
+    );
+    expect(wrapper.findAll(".queue-item strong")[1]!.text()).toBe(
+      "普通机会 001",
+    );
+    expect(wrapper.findAll(".queue-item strong")[100]!.text()).toBe(
+      "普通机会 100",
+    );
+  });
+
+  it("机会分页重复游标时明确失败并停止继续请求", async () => {
+    listProductOpportunities
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: [opportunity()],
+        pageSize: 100,
+        nextCursor: "opportunity/repeated",
+      })
+      .mockResolvedValueOnce({
+        contractVersion: "product-opportunity-page.v1",
+        items: [opportunity()],
+        pageSize: 100,
+        nextCursor: "opportunity/repeated",
+      });
+
+    const wrapper = await mountPage();
+
+    expect(listProductOpportunities).toHaveBeenCalledTimes(2);
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      "机会队列分页异常（重复游标），请重新加载。",
+    );
+    expect(wrapper.findAll(".queue-item")).toHaveLength(0);
+  });
+
   it("只给已接受的机会显示立项判断，待领取的先不显示", async () => {
     const queued = await mountPage();
 
@@ -222,44 +321,48 @@ describe("ProductSelectionWorkbench", () => {
     expect(getProductInitiative).not.toHaveBeenCalled();
   });
 
-  it("立项前先说清还差几项，并逐项列出缺口", async () => {
+  it("立项前把缺口聚合为五类，并由导航直达当前编辑区域", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     const wrapper = await mountPage();
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeDefined();
-    expect(button.text()).toContain("还差 5 项才能立项");
-    expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
-      "目标结果在上面的「目标结果」里补",
-      "目标用户与市场在评审要点面板里补",
-      "竞争供给在评审要点面板里补",
-      "价格带与利润在评审要点面板里补",
-      "合规风险在评审要点面板里补",
+    expect(button.text()).toContain("先补齐上方 5 类");
+    const gaps = wrapper
+      .findAll(".initiative-gap-groups button")
+      .map((node) => node.text());
+    expect(gaps.slice(0, 4)).toEqual([
+      "目标结果· 1 项未齐",
+      "责任与资源· 3 项未齐",
+      "时间与下一决策· 3 项未齐",
+      "评审依据· 4 项未齐",
     ]);
+    expect(gaps[4]).toMatch(/^单位经济· \d+ 项未齐$/);
+    await wrapper
+      .get(".initiative-gap-groups button:nth-child(2)")
+      .trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(
+      wrapper
+        .get('[data-gap-panel="responsibility_resources"]')
+        .attributes("style"),
+    ).toBeUndefined();
   });
 
-  it("补齐目标结果与四项要点后立项，带服务端版本与机会来源", async () => {
-    listProductOpportunities.mockResolvedValue(acceptedPage());
+  it("补齐资源承诺、目标结果与四项要点后立项", async () => {
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([acceptedOpportunityWithChannel()]),
+    );
     const wrapper = await mountPage();
 
-    await wrapper
-      .get('textarea[aria-label="目标结果"]')
-      .setValue("把折叠宠物出行包做成可发布版本");
-    const labels = ["目标用户与市场", "竞争供给", "价格带与利润", "合规风险"];
-    for (const [index, label] of labels.entries()) {
-      const point = wrapper.findAll(".review-point")[index]!;
-      await point.get(".picker-toggle").trigger("click");
-      await point
-        .get(`input[type="checkbox"][value="${EVIDENCE_ID}"]`)
-        .setValue(true);
-      await wrapper
-        .get(`textarea[aria-label="${label}结论"]`)
-        .setValue(`${label} 的判断`);
-    }
+    await fillApprovalDraft(wrapper);
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeUndefined();
     expect(button.text()).toContain("立项并交给产品开发");
+    expect(wrapper.get(".progress-head").text()).toContain(
+      "待处理 0 类 · 已齐 5/5",
+    );
     await button.trigger("click");
     await flushPromises();
 
@@ -269,6 +372,12 @@ describe("ProductSelectionWorkbench", () => {
         outcome: "approve",
         expectedInitiativeVersion: 0,
         objective: "把折叠宠物出行包做成可发布版本",
+        acceptResponsibility: true,
+        receivingTeamOrRole: "产品开发 / NPI",
+        resourceDescription: "结构工程 1 人，采购验证 1 人",
+        targetDate: "2026-11-15",
+        nextDecisionDate: "2026-10-20",
+        nextDecisionQuestion: "是否进入 EVT 打样",
         reviewPoints: expect.arrayContaining([
           expect.objectContaining({
             code: "compliance_risk",
@@ -281,13 +390,71 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.get('[role="status"]').text()).toContain("已立项");
   });
 
+  it("负贡献理由缺口写失败后保留行动区和草稿，可就地补理由重提", async () => {
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([acceptedOpportunityWithChannel()]),
+    );
+    decideProductInitiative
+      .mockRejectedValueOnce(
+        new Error(
+          "暂时无法保存本次立项判断（400）：PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason",
+        ),
+      )
+      .mockResolvedValueOnce({});
+    const wrapper = await mountPage();
+    await fillApprovalDraft(wrapper);
+
+    await wrapper.get(".outcome-submit").trigger("click");
+    await flushPromises();
+
+    const alert = wrapper.get('[role="alert"]');
+    expect(alert.text()).toContain("单位经济 · 仍要投入的理由");
+    expect(alert.find("button").exists()).toBe(false);
+    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
+    expect(wrapper.find(".outcome-submit").exists()).toBe(true);
+    expect(
+      (
+        wrapper.get('[aria-label="基准情景 销售价 最低值"]')
+          .element as HTMLInputElement
+      ).value,
+    ).toBe("100.00");
+    expect(
+      (
+        wrapper.get('[aria-label="保守情景 销售价 最高值"]')
+          .element as HTMLInputElement
+      ).value,
+    ).toBe("120.00");
+
+    const reason = wrapper.get('textarea[aria-label="仍要投入的理由"]');
+    await reason.setValue("战略品类入口仍需小规模验证");
+    expect(
+      wrapper.get(".outcome-submit").attributes("disabled"),
+    ).toBeUndefined();
+    await wrapper.get(".outcome-submit").trigger("click");
+    await flushPromises();
+
+    expect(decideProductInitiative).toHaveBeenCalledTimes(2);
+    expect(decideProductInitiative.mock.calls[1]![1]).toEqual(
+      expect.objectContaining({
+        negativeConservativeReason: "战略品类入口仍需小规模验证",
+        unitEconomicsDraft: expect.objectContaining({
+          currencyCode: "CAD",
+          scenarios: expect.objectContaining({
+            baseline: expect.any(Object),
+            conservative: expect.any(Object),
+          }),
+        }),
+      }),
+    );
+  });
+
   it("四个去向的原因各存各的，来回切换不丢已写内容", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     const wrapper = await mountPage();
 
     await wrapper.get(".destination:nth-of-type(2) input").setValue(true);
     await wrapper
-      .get('textarea[aria-label="暂缓原因"]')
+      .get('textarea[aria-label="这次要验证什么"]')
       .setValue("证据还不够，先放着");
     await wrapper.get(".destination:nth-of-type(4) input").setValue(true);
 
@@ -300,7 +467,7 @@ describe("ProductSelectionWorkbench", () => {
     await wrapper.get(".destination:nth-of-type(2) input").setValue(true);
 
     expect(
-      wrapper.get('textarea[aria-label="暂缓原因"]').element,
+      wrapper.get('textarea[aria-label="这次要验证什么"]').element,
     ).toHaveProperty("value", "证据还不够，先放着");
   });
 
@@ -358,7 +525,54 @@ describe("ProductSelectionWorkbench", () => {
     expect(getProductInitiative).toHaveBeenLastCalledWith(SECOND_HANDOFF_ID);
   });
 
-  it("换一条机会时半开的证据登记表单不会跟着过去", async () => {
+  it("切换任务期间不把上一条的冻结结论混进当前机会", async () => {
+    let releaseSecond!: (value: ReturnType<typeof initiativeDetail>) => void;
+    const second = acceptedOpportunity({
+      handoff: {
+        ...opportunity().handoff,
+        handoffId: SECOND_HANDOFF_ID,
+        title: "德国站收纳需求上升",
+      },
+      intakeVersion: 3,
+    });
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([acceptedOpportunity(), second]),
+    );
+    getProductInitiative.mockImplementation((handoffId: string) =>
+      handoffId === HANDOFF_ID
+        ? Promise.resolve(initiativeDetail({ initiative: initiativeRecord() }))
+        : new Promise((resolve) => {
+            releaseSecond = resolve;
+          }),
+    );
+    const wrapper = await mountPage();
+
+    expect(wrapper.get(".initiative-result").text()).toContain("已交 NPI");
+
+    await wrapper.findAll(".queue-item")[1]!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get(".pane--detail").text()).toContain(
+      "正在读取该机会已有的立项判断",
+    );
+    expect(wrapper.get(".pane--action").text()).toContain(
+      "正在读取该机会已有的立项判断",
+    );
+    expect(wrapper.find(".initiative-result").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("已交 NPI");
+    expect(wrapper.text()).not.toContain("结论已冻结");
+
+    releaseSecond(initiativeDetail({ handoffId: SECOND_HANDOFF_ID }));
+    await flushPromises();
+
+    expect(wrapper.find(".initiative-result").exists()).toBe(false);
+    expect(wrapper.get(".opportunity-detail").text()).toContain(
+      "德国站收纳需求上升",
+    );
+    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
+  });
+
+  it("换一条机会时专业要求的半开证据表单和草稿不会跟着过去", async () => {
     const second = acceptedOpportunity({
       handoff: {
         ...opportunity().handoff,
@@ -376,10 +590,10 @@ describe("ProductSelectionWorkbench", () => {
     const wrapper = await mountPage();
 
     await wrapper
-      .findAll(".product-initiative-review button.add-evidence")[0]!
+      .get(".evaluation-requirements button.add-evidence")
       .trigger("click");
     await wrapper
-      .get('textarea[aria-label="目标用户与市场证据内容"]')
+      .get(".evaluation-requirements textarea")
       .setValue("这条是写给第一条机会的");
     expect(wrapper.find(".evidence-form").exists()).toBe(true);
 
@@ -388,6 +602,12 @@ describe("ProductSelectionWorkbench", () => {
 
     // 表单属于上一条机会：留着它会导致这条内容被登记到另一条机会的信号上
     expect(wrapper.find(".evidence-form").exists()).toBe(false);
+
+    await wrapper.findAll(".queue-item")[0]!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".evidence-form").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("这条是写给第一条机会的");
   });
 
   it("队列上能分出「看过但先放着」与「还没看过」", async () => {
@@ -494,7 +714,7 @@ describe("ProductSelectionWorkbench", () => {
     ).toBe("该由经营团队重新判断");
   });
 
-  it("退回请求等待市场接回时不误显示为已立项", async () => {
+  it("退回请求在三栏各处都显示等待市场接回，不伪造 NPI 交接", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     getProductInitiative.mockResolvedValue(
       initiativeDetail({
@@ -510,13 +730,16 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
-    const conclusion = wrapper.get(".conclusion-strip");
-    expect(conclusion.text()).toContain("已请求退回市场，等待市场接回");
-    expect(conclusion.text()).toContain("当前责任仍在选品");
-    expect(conclusion.text()).not.toContain("已立项");
+    expect(wrapper.findAll(".pane")).toHaveLength(3);
+    expect(wrapper.get("header").text()).toContain("等待市场接回");
+    expect(wrapper.get(".initiative-result").text()).toContain("等待市场接回");
+    expect(wrapper.get(".pane--action").text()).toContain("等待市场接回");
+    expect(wrapper.get(".pane--action").text()).toContain("当前责任仍在选品");
+    expect(wrapper.text()).not.toContain("已交 NPI");
+    expect(wrapper.text()).not.toContain("NPI 承接");
   });
 
-  it("已立项后评审要点只读，不再提供系统不会接受的编辑", async () => {
+  it("已立项后展示结果摘要，不把历史缺失显示成当前待补", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     getProductInitiative.mockResolvedValue(
       initiativeDetail({
@@ -530,28 +753,16 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
-    const review = wrapper.get(".product-initiative-review");
-    const conclusion = review.get('textarea[aria-label="竞争供给结论"]');
-    expect(conclusion.attributes("readonly")).toBeDefined();
-    // 专业要求面板另有自己的“添加证据”，这里只断言评审要点面板不再给写入口
-    expect(review.find("button.add-evidence").exists()).toBe(false);
-    expect(review.find(".picker-toggle").exists()).toBe(false);
-    // 短句落在档位单选；补充框为空不算丢结论
-    expect(
-      (
-        review.get(
-          '.review-point[data-code="competitive_supply"] input[value="concentrated"]',
-        ).element as HTMLInputElement
-      ).checked,
-    ).toBe(true);
-    expect((conclusion.element as HTMLTextAreaElement).value).toBe("");
-    expect(
-      review
-        .get(
-          '.review-point[data-code="competitive_supply"] .review-point__facts',
-        )
-        .text(),
-    ).toContain("在售同款 320 个");
+    const result = wrapper.get(".initiative-result");
+    expect(result.text()).toContain("已立项 · 已交 NPI");
+    expect(result.text()).toContain("立项责任");
+    expect(result.text()).toContain("历史未记录");
+    expect(result.text()).toContain("头部集中");
+    expect(result.text()).toContain("1 项证据");
+    expect(result.text()).toContain("历史立项未记录");
+    expect(result.text()).not.toContain("待补");
+    expect(result.find("input, select, textarea").exists()).toBe(false);
+    expect(wrapper.find(".product-initiative-review").exists()).toBe(false);
   });
 
   it("立项判断读不出来时不提供判断动作，先让人重新加载", async () => {
@@ -590,36 +801,127 @@ describe("ProductSelectionWorkbench", () => {
     expect(getProductInitiative).toHaveBeenCalledTimes(2);
   });
 
-  it("已立项的机会整页 Mode：结论条优先，无右侧判断动作", async () => {
+  it("在办理中与已交 NPI 机会间往返时固定三栏壳，只切换详情与右栏", async () => {
+    const working = acceptedOpportunityWithChannel();
+    const handedOff = acceptedOpportunity({
+      handoff: {
+        ...acceptedOpportunity().handoff,
+        handoffId: SECOND_HANDOFF_ID,
+        title: "加拿大站宠物出行已立项机会",
+      },
+    });
+    listProductOpportunities.mockResolvedValue(
+      acceptedPage([working, handedOff]),
+    );
+    getProductInitiative.mockImplementation((handoffId: string) =>
+      Promise.resolve(
+        handoffId === SECOND_HANDOFF_ID
+          ? initiativeDetail({
+              handoffId: SECOND_HANDOFF_ID,
+              initiative: initiativeRecord(),
+            })
+          : initiativeDetail(),
+      ),
+    );
+    const wrapper = await mountPage();
+
+    expect(wrapper.findAll(".pane")).toHaveLength(3);
+    expect(wrapper.find(".work-context").exists()).toBe(true);
+    expect(wrapper.find(".initiative-result").exists()).toBe(false);
+    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
+
+    await wrapper
+      .findAll(".queue-item")
+      .find((item) => item.text().includes("已立项机会"))!
+      .trigger("click");
+    await flushPromises();
+
+    expect(wrapper.classes()).not.toContain("selection-workbench--initiated");
+    expect(wrapper.findAll(".pane")).toHaveLength(3);
+    expect(wrapper.find(".work-context").exists()).toBe(true);
+    expect(wrapper.get(".initiative-result").text()).toContain(
+      "已立项 · 已交 NPI",
+    );
+    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(false);
+    expect(wrapper.get(".pane--action").text()).toContain("结论已冻结");
+
+    await wrapper
+      .findAll(".queue-item")
+      .find((item) => item.text().includes("加拿大站宠物出行需求上升"))!
+      .trigger("click");
+    await flushPromises();
+
+    expect(wrapper.findAll(".pane")).toHaveLength(3);
+    expect(wrapper.find(".initiative-result").exists()).toBe(false);
+    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
+    expect(wrapper.text()).toContain("选品岗位工作台");
+  });
+
+  it("已交 NPI 后当前责任来自承接团队，不沿用机会领取人", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     getProductInitiative.mockResolvedValue(
       initiativeDetail({
         initiative: {
           ...initiativeRecord(),
-          outcome: "approve",
-          completion: "completed",
-          currentDestination: "handed_off",
+          receivingTeamOrRole: "产品开发 / NPI",
         },
       }),
     );
     const wrapper = await mountPage();
 
-    expect(wrapper.classes()).toContain("selection-workbench--initiated");
-    expect(wrapper.get(".conclusion-strip").text()).toContain("已立项");
-    expect(wrapper.find(".destination").exists()).toBe(false);
-    expect(wrapper.find(".outcome-submit").exists()).toBe(false);
-    expect(wrapper.find(".product-initiative-outcome").exists()).toBe(false);
-    expect(wrapper.find(".progress-head").exists()).toBe(false);
+    const header = wrapper.get(".initiative-result__strip");
+    expect(header.text()).toContain("产品开发 / NPI");
+    expect(header.text()).toContain("立项责任");
+    expect(header.text()).not.toContain("当前责任");
   });
 
-  it("接受后显示完备度进度头与带入，待补不进进度头以外的催办墙", async () => {
+  it("结果态只显示立项快照中的贡献摘要", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    getProductInitiative.mockResolvedValue(
+      initiativeDetail({
+        initiative: {
+          ...initiativeRecord(),
+          unitEconomicsSnapshot: {
+            currencyCode: "CAD",
+            scenarios: {
+              baseline: { contribution: { min: "12.00", max: "18.00" } },
+              conservative: { contribution: { min: "4.00", max: "8.00" } },
+            },
+          },
+        },
+      }),
+    );
+    const wrapper = await mountPage();
+
+    const result = wrapper.get(".initiative-result");
+    expect(result.text()).toContain("基准贡献");
+    expect(result.text()).toContain("12.00～18.00 CAD");
+    expect(result.text()).toContain("4.00～8.00 CAD");
+    expect(result.text()).not.toContain("历史立项未记录");
+  });
+
+  it("接受后仅显示完备度与缺口导航，不自动生成目标结果", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     const wrapper = await mountPage();
 
-    expect(wrapper.get(".progress-head").text()).toMatch(/必填剩/);
-    expect(wrapper.get(".progress-head__apply").text()).toContain("带入");
-    await wrapper.get(".progress-head__apply").trigger("click");
-    expect(wrapper.get('[role="status"]').text()).toContain("已自动带入");
+    expect(wrapper.get(".progress-head").text()).toContain(
+      "待处理 5 类 · 已齐 0/5",
+    );
+    expect(wrapper.find(".progress-head__apply").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("已自动带入交接合并视图");
+    expect(wrapper.text()).not.toContain("目标结果已有内容，未覆盖");
+    expect(
+      (
+        wrapper.get('textarea[aria-label="目标结果"]')
+          .element as HTMLTextAreaElement
+      ).value,
+    ).toBe("");
+    await wrapper
+      .get('textarea[aria-label="目标结果"]')
+      .setValue("把折叠宠物出行包做成可发布版本");
+    expect(wrapper.get(".progress-head").text()).toContain(
+      "待处理 4 类 · 已齐 1/5",
+    );
   });
 });
 
@@ -669,6 +971,20 @@ function acceptedOpportunity(
   });
 }
 
+function acceptedOpportunityWithChannel(): ProductOpportunityV1 {
+  const accepted = acceptedOpportunity();
+  return {
+    ...accepted,
+    handoff: {
+      ...accepted.handoff,
+      channelCode: "Amazon CA",
+      pendingFieldCodes: accepted.handoff.pendingFieldCodes.filter(
+        (code) => code !== "channel_code",
+      ),
+    },
+  };
+}
+
 function acceptedPage(items: ProductOpportunityV1[] = [acceptedOpportunity()]) {
   return {
     contractVersion: "product-opportunity-page.v1",
@@ -691,6 +1007,10 @@ function initiativeDetail(overrides: Record<string, unknown> = {}) {
         recordedAt: "2026-09-27T00:00:00.000Z",
       },
     ],
+    currencyOptions: [
+      { code: "CAD", name: "Canadian Dollar", minorUnit: 2 },
+      { code: "USD", name: "US Dollar", minorUnit: 2 },
+    ],
     ...overrides,
   };
 }
@@ -712,14 +1032,75 @@ async function mountPage() {
       plugins: [router],
       stubs: {
         PageHeader: {
-          props: ["title", "summary"],
-          template: "<header><h1>{{ title }}</h1><p>{{ summary }}</p></header>",
+          props: ["eyebrow", "title", "summary"],
+          template:
+            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p></header>",
         },
       },
     },
   });
   await flushPromises();
   return wrapper;
+}
+
+async function fillUnitEconomics(
+  wrapper: Awaited<ReturnType<typeof mountPage>>,
+): Promise<void> {
+  await wrapper.get('[aria-label="单位经济币种"]').setValue("CAD");
+  for (const scenario of ["基准情景", "保守情景"]) {
+    for (const field of [
+      "销售价",
+      "落地成本",
+      "平台费",
+      "履约费",
+      "广告成本",
+      "退货成本",
+    ]) {
+      const minimum = field === "销售价" ? "100.00" : "5.00";
+      const maximum = field === "销售价" ? "120.00" : "10.00";
+      await wrapper
+        .get('[aria-label="' + scenario + " " + field + ' 最低值"]')
+        .setValue(minimum);
+      await wrapper
+        .get('[aria-label="' + scenario + " " + field + ' 最高值"]')
+        .setValue(maximum);
+      await wrapper
+        .get('[aria-label="' + scenario + " " + field + ' 依据类型"]')
+        .setValue("assumption");
+    }
+  }
+}
+
+async function fillApprovalDraft(
+  wrapper: Awaited<ReturnType<typeof mountPage>>,
+): Promise<void> {
+  await wrapper
+    .get('textarea[aria-label="目标结果"]')
+    .setValue("把折叠宠物出行包做成可发布版本");
+  await wrapper.get(".responsibility-check input").setValue(true);
+  await wrapper
+    .get('input[aria-label="承接团队或岗位"]')
+    .setValue("产品开发 / NPI");
+  await wrapper
+    .get('textarea[aria-label="资源说明"]')
+    .setValue("结构工程 1 人，采购验证 1 人");
+  await wrapper.get('input[aria-label="目标日期"]').setValue("2026-11-15");
+  await wrapper.get('input[aria-label="下一决策日期"]').setValue("2026-10-20");
+  await wrapper
+    .get('textarea[aria-label="下一决策问题"]')
+    .setValue("是否进入 EVT 打样");
+  const labels = ["目标用户与市场", "竞争供给", "价格带与利润", "合规风险"];
+  for (const [index, label] of labels.entries()) {
+    const point = wrapper.findAll(".review-point")[index]!;
+    await point.get(".picker-toggle").trigger("click");
+    await point
+      .get(`input[type="checkbox"][value="${EVIDENCE_ID}"]`)
+      .setValue(true);
+    await wrapper
+      .get(`textarea[aria-label="${label}结论"]`)
+      .setValue(`${label} 的判断`);
+  }
+  await fillUnitEconomics(wrapper);
 }
 
 function opportunity(

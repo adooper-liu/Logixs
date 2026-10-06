@@ -77,6 +77,14 @@ export function toQueueEntry(
       userProblem: record.handoff.userProblem,
       objective: record.handoff.objective,
       responsibleActorId: record.handoff.responsibleActorId,
+      responsibilityAccepted: record.handoff.responsibilityAccepted,
+      receivingTeamOrRole: record.handoff.receivingTeamOrRole,
+      resourceDescription: record.handoff.resourceDescription,
+      targetDate: dateOnly(record.handoff.targetDate),
+      nextDecisionDate: dateOnly(record.handoff.nextDecisionDate),
+      nextDecisionQuestion: record.handoff.nextDecisionQuestion,
+      unitEconomicsSnapshot: record.handoff.unitEconomicsSnapshot,
+      negativeConservativeReason: record.handoff.negativeConservativeReason,
       reviewPoints: record.handoff.reviewPoints,
       evidenceRefs: record.handoff.evidenceRefs,
       createdAt: record.handoff.createdAt.toISOString(),
@@ -94,6 +102,10 @@ export function toQueueEntry(
     initiativeVersion: record.initiativeVersion,
     initiativeDestination: record.initiativeDestination,
   };
+}
+
+function dateOnly(value: Date | null): string | null {
+  return value?.toISOString().slice(0, 10) ?? null;
 }
 
 function parsePageSize(value: string | undefined): number {

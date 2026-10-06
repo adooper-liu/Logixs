@@ -4,7 +4,7 @@ export const moduleManifest = defineModuleManifest({
   id: "product-selection",
   kind: "incremental",
   version: "1.0.0",
-  depends: ["identity", "market-intelligence"],
+  depends: ["identity", "market-intelligence", "master-data"],
   permissions: ["planning.read", "planning.draft"],
   publicPorts: ["product opportunity queue intake"],
 });

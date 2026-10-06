@@ -4,6 +4,7 @@ import {
   ProductInitiativeNotFoundError,
   ProductInitiativeValidationError,
 } from "../domain/product-initiative";
+import { ProductInitiativeUnitEconomicsValidationError } from "../domain/unit-economics";
 import {
   ProductInitiativeClaimConflictError,
   ProductInitiativeClaimValidationError,
@@ -13,7 +14,8 @@ export function throwProductInitiativeHttpError(error: unknown): never {
   if (error instanceof HttpException) throw error;
   if (
     error instanceof ProductInitiativeValidationError ||
-    error instanceof ProductInitiativeClaimValidationError
+    error instanceof ProductInitiativeClaimValidationError ||
+    error instanceof ProductInitiativeUnitEconomicsValidationError
   ) {
     throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
   }

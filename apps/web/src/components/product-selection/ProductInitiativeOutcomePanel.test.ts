@@ -2,17 +2,35 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import type { ProductInitiativeReturnBasisV1 } from "@logix/contracts";
 import type {
-  ProductInitiativeGap,
+  ProductInitiativeGapGroup,
+  ProductInitiativeGapPanel,
   ProductInitiativeOutcome,
+  UnitEconomicsDraftState,
 } from "../../composables/useProductInitiativeDecision";
 import ProductInitiativeOutcomePanel from "./ProductInitiativeOutcomePanel.vue";
 
 interface PanelProps {
   outcome: ProductInitiativeOutcome;
   objective: string;
+  acceptResponsibility: boolean;
+  receivingTeamOrRole: string;
+  resourceDescription: string;
+  targetDate: string;
+  nextDecisionDate: string;
+  nextDecisionQuestion: string;
+  reconsiderationDate: string;
   reason: string;
   returnBasis: ProductInitiativeReturnBasisV1 | "";
-  gaps: ProductInitiativeGap[];
+  marketCode: string;
+  channelCode: string;
+  currencyOptions: { code: string; name: string; minorUnit: number | null }[];
+  unitEconomicsDraft: UnitEconomicsDraftState;
+  unitEconomicsSnapshot: null;
+  evidenceCandidates: [];
+  negativeContributionNeedsReason: boolean;
+  negativeConservativeReason: string;
+  gaps: ProductInitiativeGapGroup[];
+  activePanel: ProductInitiativeGapPanel;
   busy: boolean;
   decided: boolean;
 }
@@ -34,7 +52,7 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(wrapper.emitted("changeOutcome")).toEqual([["defer"]]);
   });
 
-  it("立项时显示目标结果与缺口清单，暂缓时改成写原因", () => {
+  it("立项时只显示当前区域编辑器，暂缓时改成写原因", () => {
     const approving = mountPanel({
       outcome: "approve",
       gaps: [gap("合规风险")],
@@ -42,7 +60,7 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(approving.find('textarea[aria-label="目标结果"]').exists()).toBe(
       true,
     );
-    expect(approving.find(".gap-list").exists()).toBe(true);
+    expect(approving.find(".gap-list").exists()).toBe(false);
     expect(approving.find('textarea[aria-label="暂缓原因"]').exists()).toBe(
       false,
     );
@@ -51,10 +69,34 @@ describe("ProductInitiativeOutcomePanel", () => {
     expect(deferring.find('textarea[aria-label="目标结果"]').exists()).toBe(
       false,
     );
-    expect(deferring.find(".gap-list").exists()).toBe(false);
-    expect(deferring.find('textarea[aria-label="暂缓原因"]').exists()).toBe(
-      true,
+    expect(
+      deferring.find('textarea[aria-label="这次要验证什么"]').exists(),
+    ).toBe(true);
+    expect(deferring.find('input[aria-label="哪天重判"]').exists()).toBe(true);
+  });
+
+  it("把立项承诺按责任资源与时间决策分组，不增加第二套输入", () => {
+    const wrapper = mountPanel({
+      outcome: "approve",
+      activePanel: "responsibility_resources",
+    });
+    const groups = wrapper.findAll(
+      ".commitment-group:not([style*='display: none'])",
     );
+
+    expect(groups.map((group) => group.get("legend").text())).toEqual([
+      "责任与资源",
+    ]);
+    expect(groups[0]!.text()).toContain("谁负责、由谁承接、投入什么资源");
+    expect(
+      groups[0]!.findAll('input[aria-label="承接团队或岗位"]'),
+    ).toHaveLength(1);
+    expect(groups[0]!.findAll('textarea[aria-label="资源说明"]')).toHaveLength(
+      1,
+    );
+    expect(
+      wrapper.get('[data-gap-panel="objective"]').attributes("style"),
+    ).toContain("display: none");
   });
 
   it("要点没齐时不能立项，主按钮说明还差几项而不是静默失败", async () => {
@@ -65,26 +107,18 @@ describe("ProductInitiativeOutcomePanel", () => {
 
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeDefined();
-    expect(button.text()).toContain("还差 3 项才能立项");
-    expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
-      "目标结果在上面的「目标结果」里补",
-      "合规风险在评审要点面板里补",
-      "价格带与利润在评审要点面板里补",
-    ]);
+    expect(button.text()).toContain("先补齐上方 3 类");
     await button.trigger("click");
     expect(wrapper.emitted("submit")).toBeUndefined();
   });
 
-  it("缺口逐项说清在哪补 —— 目标结果与评审要点不在同一个面板", () => {
+  it("缺口不在操作栏重复罗列，避免和五类导航重复", () => {
     const wrapper = mountPanel({
       outcome: "approve",
       gaps: [gap("目标结果"), gap("合规风险")],
     });
 
-    expect(wrapper.findAll(".gap-list li").map((node) => node.text())).toEqual([
-      "目标结果在上面的「目标结果」里补",
-      "合规风险在评审要点面板里补",
-    ]);
+    expect(wrapper.find(".gap-list").exists()).toBe(false);
   });
 
   it("要点齐备时主按钮可用且说明可以立项", () => {
@@ -96,16 +130,42 @@ describe("ProductInitiativeOutcomePanel", () => {
     ).toBeUndefined();
   });
 
-  it("暂缓没填原因时仍可提交，但说明会留在待补而不关闭", async () => {
-    const wrapper = mountPanel({ outcome: "defer", gaps: [gap("合规风险")] });
+  it.each([
+    ["全缺", "", ""],
+    ["只填验证重点", "核实大促后的真实转化", ""],
+    ["只填日期", "", "2026-10-20"],
+  ])(
+    "暂缓%s时仍可保存，但提示与 CTA 都明确待补",
+    async (_case, reason, reconsiderationDate) => {
+      const wrapper = mountPanel({
+        outcome: "defer",
+        gaps: [gap("合规风险")],
+        reason,
+        reconsiderationDate,
+      });
 
-    const button = wrapper.get(".outcome-submit");
-    expect(button.attributes("disabled")).toBeUndefined();
-    expect(button.text()).toContain("暂缓此机会");
-    expect(wrapper.get(".outcome-hint").text()).toContain("待补");
+      const button = wrapper.get(".outcome-submit");
+      expect(button.attributes("disabled")).toBeUndefined();
+      expect(button.text()).toBe("保存为待补");
+      expect(wrapper.get(".outcome-hint").text()).toContain("待补");
+      expect(wrapper.get(".outcome-hint").text()).toContain("不会关闭");
 
-    await button.trigger("click");
-    expect(wrapper.emitted("submit")).toEqual([["defer"]]);
+      await button.trigger("click");
+      expect(wrapper.emitted("submit")).toEqual([["defer"]]);
+    },
+  );
+
+  it("暂缓验证重点与重判日期齐全时才提示提交后关闭", () => {
+    const wrapper = mountPanel({
+      outcome: "defer",
+      reason: "核实大促后的真实转化",
+      reconsiderationDate: "2026-10-20",
+    });
+
+    expect(wrapper.get(".outcome-hint").text()).toContain(
+      "提交后本次判断会关闭",
+    );
+    expect(wrapper.get(".outcome-submit").text()).toBe("暂缓此机会");
   });
 
   it("退回没选依据时不能提交，即使已经写了原因", async () => {
@@ -158,8 +218,10 @@ describe("ProductInitiativeOutcomePanel", () => {
 
     const deferring = mountPanel({ outcome: "defer" });
     expect(
-      deferring.get('textarea[aria-label="暂缓原因"]').attributes("maxlength"),
-    ).toBe("500");
+      deferring
+        .get('textarea[aria-label="这次要验证什么"]')
+        .attributes("maxlength"),
+    ).toBe("2000");
   });
 
   it("已立项是终态，不再提供任何判断动作", () => {
@@ -179,10 +241,11 @@ describe("ProductInitiativeOutcomePanel", () => {
  * 缺口带"在哪补"。缺的两类东西在两个不同的面板里 —— 只说"还差 N 项"、
  * 或一句话把全部缺口指去同一个面板，人就会在错的地方找。
  */
-function gap(label: string): ProductInitiativeGap {
+function gap(label: string): ProductInitiativeGapGroup {
   return {
     label,
     panel: label === "目标结果" ? "objective" : "review_points",
+    count: 1,
   };
 }
 
@@ -196,10 +259,56 @@ function defaultProps(): PanelProps {
   return {
     outcome: "approve",
     objective: "",
+    acceptResponsibility: false,
+    receivingTeamOrRole: "",
+    resourceDescription: "",
+    targetDate: "",
+    nextDecisionDate: "",
+    nextDecisionQuestion: "",
+    reconsiderationDate: "",
     reason: "",
     returnBasis: "",
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyOptions: [{ code: "CAD", name: "Canadian Dollar", minorUnit: 2 }],
+    unitEconomicsDraft: emptyUnitEconomicsDraft(),
+    unitEconomicsSnapshot: null,
+    evidenceCandidates: [],
+    negativeContributionNeedsReason: false,
+    negativeConservativeReason: "",
     gaps: [],
+    activePanel: "objective",
     busy: false,
     decided: false,
+  };
+}
+
+function emptyUnitEconomicsDraft(): UnitEconomicsDraftState {
+  const range = () => ({
+    min: "",
+    max: "",
+    basis: "" as const,
+    evidenceRefs: [],
+  });
+  return {
+    currencyCode: "",
+    scenarios: {
+      baseline: {
+        salePrice: range(),
+        landedCost: range(),
+        platformFee: range(),
+        fulfillmentFee: range(),
+        advertisingCost: range(),
+        returnCost: range(),
+      },
+      conservative: {
+        salePrice: range(),
+        landedCost: range(),
+        platformFee: range(),
+        fulfillmentFee: range(),
+        advertisingCost: range(),
+        returnCost: range(),
+      },
+    },
   };
 }

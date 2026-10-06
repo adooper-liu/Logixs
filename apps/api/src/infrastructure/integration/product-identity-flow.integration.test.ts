@@ -21,6 +21,11 @@ import {
 import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/infrastructure/prisma-market-signal.repository";
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 import {
+  completeUnitEconomicsDraft,
+  PRODUCT_INITIATIVE_TEST_COMMITMENT,
+  PRODUCT_INITIATIVE_TEST_CONTEXT,
+} from "./product-initiative-test-fixtures";
+import {
   prepareProductDefinitionRelease,
   prepareProductDefinitionWrite,
 } from "../../modules/product-selection/domain/product-definition";
@@ -438,6 +443,7 @@ async function seedRelease(owner = tenantId): Promise<string> {
       requestId: signalId,
       title: "加拿大站宠物出行需求上升",
       marketCode: "CA",
+      channelCode: "amazon",
       idempotencyKey: `create:${signalId}`,
     }),
   });
@@ -466,19 +472,28 @@ async function seedRelease(owner = tenantId): Promise<string> {
     tenantId: owner,
     handoffId: decided.handoff!.handoffId,
     actorId: "selector-1",
-    command: prepareProductInitiativeDecision({ version: 0 }, "selector-1", {
-      contractVersion: "product-initiative-decision.v1",
-      requestId: randomUUID(),
-      outcome: "approve",
-      expectedInitiativeVersion: 0,
-      objective: "验证宠物出行品类是否值得立项",
-      reviewPoints: REVIEW_POINT_CODES.map((code) => ({
-        code,
-        evidenceRefs: [randomUUID()],
-        conclusion: "已核实",
-      })),
-      idempotencyKey: `decision:${randomUUID()}`,
-    } as ProductInitiativeDecisionCommandV1),
+    command: prepareProductInitiativeDecision(
+      { version: 0 },
+      "selector-1",
+      {
+        contractVersion: "product-initiative-decision.v1",
+        requestId: randomUUID(),
+        outcome: "approve",
+        expectedInitiativeVersion: 0,
+        objective: "验证宠物出行品类是否值得立项",
+        ...PRODUCT_INITIATIVE_TEST_COMMITMENT,
+        unitEconomicsDraft: completeUnitEconomicsDraft(),
+        reviewPoints: REVIEW_POINT_CODES.map((code) => ({
+          code,
+          evidenceRefs: [randomUUID()],
+          conclusion: "已核实",
+        })),
+        idempotencyKey: `decision:${randomUUID()}`,
+      } as ProductInitiativeDecisionCommandV1,
+      undefined,
+      undefined,
+      PRODUCT_INITIATIVE_TEST_CONTEXT,
+    ),
   });
   const handoff = await prisma.productInitiativeHandoff.findFirstOrThrow({
     where: { initiativeId: approved.record.initiativeId, tenantId: owner },

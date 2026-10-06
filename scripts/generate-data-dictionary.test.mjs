@@ -31,6 +31,7 @@ import {
   createPendingAnnotations,
   enrichTechnicalAnnotations,
   mergeAnnotationCoverage,
+  normalizeCatalogSchema,
   createTemporarySchemaName,
   parseCommand,
   parsePrismaModelComments,
@@ -46,6 +47,25 @@ import {
 } from "./generate-data-dictionary.mjs";
 
 const LOCAL_URL = "postgresql://logix:logix@localhost:5433/logix";
+
+test("catalog normalization makes database definitions platform independent", () => {
+  const schema = "logix_dictionary_tmp_42_12345678abcd4321";
+  const normalized = normalizeCatalogSchema(
+    {
+      functions: [
+        {
+          definition: `CREATE FUNCTION ${schema}.sample()\r\nRETURNS void\rLANGUAGE sql`,
+        },
+      ],
+    },
+    schema,
+  );
+
+  assert.equal(
+    normalized.functions[0].definition,
+    "CREATE FUNCTION public.sample()\nRETURNS void\nLANGUAGE sql",
+  );
+});
 
 test("annotation document schema reports malformed nested containers deterministically", () => {
   const valid = createPendingAnnotations(dictionaryFixture(), {

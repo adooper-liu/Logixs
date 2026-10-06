@@ -3,10 +3,12 @@ import type {
   MarketSignalDecisionCommandV1,
   MarketSignalV1,
   ProductInitiativeDecisionCommandV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
   ProductInitiativeV1,
   ProductOpportunityV1,
 } from "@logix/contracts";
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 
 test("the business-workbench directory opens live and framework stages honestly", async ({
   page,
@@ -180,8 +182,12 @@ for (const width of [320, 375, 1440]) {
 
 test("a market owner can hand off a signal for a selector to claim, accept and take a decision", async ({
   page,
-}) => {
-  const { decisions } = await mockMarketOpportunityApis(page);
+}, testInfo) => {
+  const { decisions, supplementSecondSignalScope } =
+    await mockMarketOpportunityApis(page, {
+      secondMarketCode: null,
+      secondChannelCode: null,
+    });
   await page.goto("/workspaces/market-signals");
 
   await expect(
@@ -199,6 +205,7 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     "下一责任选品团队（待领取）",
   );
   await expect(page.getByRole("status")).toContainText("尚未填写");
+  supplementSecondSignalScope();
   await expect(
     page.getByRole("heading", {
       name: "美国站庭院收纳需求连续三周上升",
@@ -209,23 +216,71 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   await expect(
     page.getByRole("heading", { name: "选品立项", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText(
-      "这些项来自交接快照，选品不在此处补录；信号侧已后补项不会出现在此。",
-    ),
-  ).toBeVisible();
-  await expect(page.locator(".opportunity-queue")).toContainText("渠道未填");
+  await expect(page.locator(".opportunity-status")).toContainText("交接缺失");
+  await expect(page.locator(".opportunity-queue")).toContainText("Amazon CA");
   await page.getByRole("button", { name: "领取此机会" }).click();
   await expect(page.getByRole("status")).toContainText("已领取");
   await page.getByRole("button", { name: "接受并进入立项判断" }).click();
   await expect(page.getByRole("status")).toContainText("已接受经营机会");
 
-  // 接受之后主动作换成立项结论：先被缺口挡住，并说清还差几项。
+  // 接受之后主动作换成立项结论：先按五个业务区域补齐。
   const submit = page.locator(".outcome-submit");
   await expect(submit).toBeDisabled();
-  await expect(submit).toContainText("还差 5 项才能立项");
+  await expect(submit).toContainText("先补齐上方 5 类");
+  await expect(page.locator(".progress-head")).toContainText(
+    "待处理 5 类 · 已齐 0/5",
+  );
+  await expect(
+    page.getByRole("navigation", { name: "立项缺口导航" }).getByRole("button"),
+  ).toHaveCount(5);
+  await expect(submit).toHaveCount(1);
+  await expect(submit).toBeInViewport();
 
+  const viewport = page.viewportSize();
+  const submitBox = await submit.boundingBox();
+  expect(submitBox).not.toBeNull();
+  expect(submitBox!.y).toBeGreaterThanOrEqual(0);
+  expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(
+    viewport?.height ?? 0,
+  );
+  const persistentAction = await page.evaluate(() => ({
+    pane: getComputedStyle(
+      document.querySelector<HTMLElement>(".pane--action")!,
+    ).position,
+    bar: getComputedStyle(
+      document.querySelector<HTMLElement>(".outcome-action")!,
+    ).position,
+  }));
+  if ((viewport?.width ?? 0) > 1100) {
+    expect(persistentAction.pane).toBe("sticky");
+  } else {
+    expect(["sticky", "fixed"]).toContain(persistentAction.bar);
+  }
+  await page
+    .locator(".progress-head")
+    .evaluate((element) => element.scrollIntoView({ block: "start" }));
+  const workingScreenshotPath = testInfo.outputPath(
+    `product-selection-working-${viewport?.width ?? 0}x${viewport?.height ?? 0}.png`,
+  );
+  await page.screenshot({ path: workingScreenshotPath, fullPage: true });
+  await testInfo.attach("product-selection-working-mode", {
+    path: workingScreenshotPath,
+    contentType: "image/png",
+  });
+
+  await page.getByRole("button", { name: /目标结果.*1 项未齐/ }).click();
   await page.getByLabel("目标结果").fill("把折叠宠物出行包做成可发布版本");
+  await page.getByRole("button", { name: /责任与资源.*3 项未齐/ }).click();
+  await expect(
+    page.getByRole("checkbox", { name: "由我对此立项负责" }),
+  ).toBeFocused();
+  await page.getByRole("checkbox", { name: "由我对此立项负责" }).check();
+  await page.getByLabel("承接团队或岗位").fill("产品开发 / NPI");
+  await page.getByLabel("资源说明").fill("结构工程 1 人，采购验证 1 人");
+  await page.getByRole("button", { name: /时间与下一决策.*3 项未齐/ }).click();
+  await page.getByLabel("目标日期").fill("2026-11-15");
+  await page.getByLabel("下一决策日期").fill("2026-10-20");
+  await page.getByLabel("下一决策问题").fill("是否进入 EVT 打样");
   for (const label of [
     "目标用户与市场",
     "竞争供给",
@@ -233,30 +288,191 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     "合规风险",
   ]) {
     const point = page.locator(".review-point").filter({ hasText: label });
-    await point.getByRole("button", { name: /从已登记证据中引用/ }).click();
+    const toggle = point.locator(".review-point__toggle");
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+      await toggle.click();
+    }
+    await point.getByRole("button", { name: /引用证据/ }).click();
     await point.getByRole("checkbox").check();
     await point.getByLabel(`${label}结论`).fill(`${label} 的判断`);
   }
 
+  await page.getByRole("button", { name: /单位经济.*项未齐/ }).click();
+  await page.getByLabel("单位经济币种").selectOption("CAD");
+  for (const scenario of ["基准情景", "保守情景"]) {
+    await page
+      .getByRole("group", { name: "单位经济" })
+      .getByText(`填写${scenario}金额与依据`, { exact: true })
+      .click();
+    for (const field of [
+      "销售价",
+      "落地成本",
+      "平台费",
+      "履约费",
+      "广告成本",
+      "退货成本",
+    ]) {
+      const minimum = field === "销售价" ? "100.00" : "5.00";
+      const maximum = field === "销售价" ? "120.00" : "10.00";
+      await page.getByLabel(scenario + " " + field + " 最低值").fill(minimum);
+      await page.getByLabel(scenario + " " + field + " 最高值").fill(maximum);
+      await page
+        .getByLabel(scenario + " " + field + " 依据类型")
+        .selectOption("assumption");
+    }
+  }
+
   await expect(submit).toBeEnabled();
   await expect(submit).toContainText("立项并交给产品开发");
+  const editingWidths = await page.evaluate(() => ({
+    pageClient: document.documentElement.clientWidth,
+    pageScroll: document.documentElement.scrollWidth,
+    actionClient:
+      document.querySelector<HTMLElement>(".pane--action")?.clientWidth ?? 0,
+    actionScroll:
+      document.querySelector<HTMLElement>(".pane--action")?.scrollWidth ?? 0,
+  }));
+  expect(editingWidths.pageScroll).toBeLessThanOrEqual(
+    editingWidths.pageClient + 1,
+  );
+  expect(editingWidths.actionScroll).toBeLessThanOrEqual(
+    editingWidths.actionClient + 1,
+  );
   await submit.click();
 
-  await expect(page.locator(".feedback")).toContainText("已立项");
   // 成功后从服务端重读：终态由服务端返回的 currentDestination 决定，不是前端猜的。
-  await expect(page.locator(".conclusion-strip")).toContainText("已立项");
+  await expect(page.locator(".initiative-result")).toContainText(
+    "已立项 · 已交 NPI",
+  );
   await expect(page.locator(".product-initiative-outcome")).toHaveCount(0);
   await expect(page.locator(".destination")).toHaveCount(0);
-  // 评审要点只读：系统不会再接受改动，就不该继续摆出写入口。
-  await expect(page.locator(".review-point textarea").first()).toHaveAttribute(
-    "readonly",
-    "",
+  const result = page.locator(".initiative-result");
+  await expect(result.getByText("立项责任", { exact: true })).toBeVisible();
+  await expect(
+    result.getByText("产品开发 / NPI", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(result.getByText("目标日期", { exact: true })).toBeVisible();
+  await expect(result.getByText("下一决策日期", { exact: true })).toBeVisible();
+  await expect(result.getByText("下一决策问题", { exact: true })).toBeVisible();
+  await expect(
+    result.locator("input, select, textarea, [role='radio']"),
+  ).toHaveCount(0);
+  await expect(page.locator(".pane")).toHaveCount(3);
+  await expect(page.locator(".work-context")).toBeVisible();
+  await expect(page.locator(".initiative-readonly-context")).toContainText(
+    "结论已冻结",
   );
+  await expect(page.locator(".queue-item.selected")).toContainText(
+    /历史缺失 \d+ 类/,
+  );
+  await expect(page.locator(".queue-item.selected")).not.toContainText("待补");
+  await expect(result.locator(".initiative-result__reviews")).not.toContainText(
+    /target_user_and_market|competitive_supply|price_band_and_margin|compliance_risk/,
+  );
+  const resultFacts = await page.evaluate(() => {
+    const resultElement =
+      document.querySelector<HTMLElement>(".initiative-result");
+    const header = document.querySelector<HTMLElement>(
+      ".initiative-result__strip",
+    );
+    const appContent = document.querySelector<HTMLElement>(".app-content");
+    const resultRect = resultElement?.getBoundingClientRect();
+    const headerRect = header?.getBoundingClientRect();
+    return {
+      viewportWidth: document.documentElement.clientWidth,
+      pageScrollWidth: document.documentElement.scrollWidth,
+      appScrollWidth: appContent?.scrollWidth ?? 0,
+      appClientWidth: appContent?.clientWidth ?? 0,
+      resultScrollWidth: resultElement?.scrollWidth ?? 0,
+      resultClientWidth: resultElement?.clientWidth ?? 0,
+      headerTop: headerRect?.top ?? Number.POSITIVE_INFINITY,
+      headerBottom: headerRect?.bottom ?? Number.POSITIVE_INFINITY,
+      resultTop: resultRect?.top ?? Number.POSITIVE_INFINITY,
+      investmentFacts: [
+        "基准贡献",
+        "保守贡献",
+        "目标日期",
+        "下一决策日期",
+        "下一决策问题",
+      ].map((label) => {
+        const labelElement = [
+          ...document.querySelectorAll<HTMLElement>("dt"),
+        ].find((element) => element.textContent?.trim() === label);
+        const row = labelElement?.parentElement?.getBoundingClientRect();
+        return {
+          label,
+          top: row?.top ?? Number.POSITIVE_INFINITY,
+          bottom: row?.bottom ?? Number.POSITIVE_INFINITY,
+        };
+      }),
+    };
+  });
+  expect(resultFacts.pageScrollWidth).toBeLessThanOrEqual(
+    resultFacts.viewportWidth + 1,
+  );
+  expect(resultFacts.appScrollWidth).toBeLessThanOrEqual(
+    resultFacts.appClientWidth + 1,
+  );
+  expect(resultFacts.resultScrollWidth).toBeLessThanOrEqual(
+    resultFacts.resultClientWidth + 1,
+  );
+  expect(resultFacts.resultTop).toBeGreaterThanOrEqual(0);
+  expect(resultFacts.headerTop).toBeGreaterThanOrEqual(0);
+  expect(resultFacts.headerBottom).toBeLessThanOrEqual(
+    page.viewportSize()?.height ?? 0,
+  );
+  for (const fact of resultFacts.investmentFacts) {
+    expect(fact.top, fact.label).toBeGreaterThanOrEqual(0);
+    expect(fact.bottom, fact.label).toBeLessThanOrEqual(
+      page.viewportSize()?.height ?? 0,
+    );
+  }
+  const historyMissingCount = await result
+    .getByText("历史未记录", {
+      exact: true,
+    })
+    .count();
+  expect(historyMissingCount).toBeLessThanOrEqual(1);
+  const screenshotViewport = page.viewportSize();
+  const screenshotPath = testInfo.outputPath(
+    `product-selection-result-${screenshotViewport?.width ?? 0}x${screenshotViewport?.height ?? 0}.png`,
+  );
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  await testInfo.attach("product-selection-result-mode", {
+    path: screenshotPath,
+    contentType: "image/png",
+  });
+  const evidencePath = testInfo.outputPath(
+    `product-selection-result-${screenshotViewport?.width ?? 0}x${screenshotViewport?.height ?? 0}.json`,
+  );
+  await writeFile(
+    evidencePath,
+    JSON.stringify(
+      {
+        ...resultFacts,
+        historyMissingCount,
+        queueText: await page.locator(".queue-item.selected").innerText(),
+      },
+      null,
+      2,
+    ),
+  );
+  await testInfo.attach("product-selection-result-evidence", {
+    path: evidencePath,
+    contentType: "application/json",
+  });
   // 桩不校验版本，所以只能在这里断言"发出去的版本正确"：首次立项必须是 0。
   expect(decisions).toHaveLength(1);
   expect(decisions[0]?.expectedInitiativeVersion).toBe(0);
   expect(decisions[0]?.contractVersion).toBe("product-initiative-decision.v1");
   expect(decisions[0]?.outcome).toBe("approve");
+  expect(decisions[0]?.acceptResponsibility).toBe(true);
+  expect(decisions[0]?.receivingTeamOrRole).toBe("产品开发 / NPI");
+  expect(decisions[0]?.unitEconomicsDraft).toMatchObject({
+    channelCode: "Amazon CA",
+    currencyCode: "CAD",
+  });
+  expect(decisions[0]?.unitEconomicsDraft).not.toHaveProperty("marketCode");
   // 队列上的立项标记来自服务端投影：立项后这一条不再看起来像没处理过。
   await expect(page.locator(".queue-item").first()).toContainText("已立项");
 
@@ -270,6 +486,17 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   }));
   expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
   expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
+
+  await page.goto("/workspaces/product-npi");
+  await expect(page.getByText("单位经济快照（只读）")).toBeVisible();
+  await expect(page.getByText("基准情景", { exact: true })).toBeVisible();
+  await expect(page.getByText("保守情景", { exact: true })).toBeVisible();
+  await expect(page.getByText("50.00～95.00 CAD").first()).toBeVisible();
+  const npiWidths = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(npiWidths.scroll).toBeLessThanOrEqual(npiWidths.client + 1);
 });
 
 test("market keeps claimed handoffs until selection accepts and then shows feedback", async ({
@@ -329,11 +556,15 @@ test("selection requests a return, market takes it back, then hands off a new ve
   await page.getByLabel("退回依据").selectOption("wrong_direction");
   await page.getByLabel("市场需要补什么").fill("重新核对目标市场与渠道证据。");
   await page.getByRole("button", { name: "请求退回市场" }).click();
-  await expect(page.getByText("等待市场接回", { exact: true })).toBeVisible();
-  await expect(page.locator(".conclusion-strip")).toContainText(
-    "已请求退回市场，等待市场接回",
+  await expect(
+    page.getByRole("heading", { name: "等待市场接回", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".initiative-result")).toContainText(
+    "当前责任仍在选品",
   );
-  await expect(page.locator(".conclusion-strip")).not.toContainText("已立项");
+  await expect(page.locator(".initiative-result")).not.toContainText(
+    "已立项并交给产品侧",
+  );
 
   await page.goto("/workspaces/market-signals");
   await page.getByRole("tab", { name: /选品请求退回/ }).click();
@@ -665,11 +896,18 @@ const archivedSignalId = "88888888-8888-4888-8888-888888888888";
 const evidenceId = "33333333-3333-4333-8333-333333333333";
 const handoffId = "44444444-4444-4444-8444-444444444444";
 
-async function mockMarketOpportunityApis(page: Page): Promise<{
+async function mockMarketOpportunityApis(
+  page: Page,
+  options: {
+    secondMarketCode?: string | null;
+    secondChannelCode?: string | null;
+  } = {},
+): Promise<{
   decisions: ProductInitiativeDecisionCommandV1[];
   signals: Map<string, MarketSignalV1>;
   detailReads: () => number;
   marketHandoffs: () => number;
+  supplementSecondSignalScope: () => void;
 }> {
   let detailReads = 0;
   const longToken = "LONGVALIDATIONTOKEN".repeat(24);
@@ -693,9 +931,19 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       signal({
         signalId: secondSignalId,
         title: "加拿大站宠物出行需求上升",
-        marketCode: "CA",
+        marketCode:
+          options.secondMarketCode === undefined
+            ? "CA"
+            : options.secondMarketCode,
+        channelCode:
+          options.secondChannelCode === undefined
+            ? null
+            : options.secondChannelCode,
         pendingFieldCodes: [
-          "channel_code",
+          ...(options.secondMarketCode === null
+            ? (["market_code"] as const)
+            : []),
+          ...(options.secondChannelCode ? [] : (["channel_code"] as const)),
           "category_ref",
           "observed_fact_summary",
           "hypothesis",
@@ -745,6 +993,36 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
   let selectionReturnBasis: "insufficient_evidence" | "wrong_direction" | null =
     null;
   let selectionReturnReason: string | null = null;
+  const supplementSecondSignalScope = () => {
+    const current = signals.get(secondSignalId);
+    if (!current || !opportunity) {
+      throw new Error("SECOND_SIGNAL_HANDOFF_NOT_READY");
+    }
+    const supplemented = {
+      ...current,
+      marketCode: "CA",
+      channelCode: "Amazon CA",
+      version: current.version + 1,
+      pendingFieldCodes: current.pendingFieldCodes.filter(
+        (code) => code !== "market_code" && code !== "channel_code",
+      ),
+    };
+    signals.set(secondSignalId, supplemented);
+    const handoffSnapshot = opportunity.handoffSnapshot ?? opportunity.handoff;
+    opportunity = {
+      ...opportunity,
+      handoffSnapshot,
+      handoff: {
+        ...opportunity.handoff,
+        marketCode: supplemented.marketCode,
+        channelCode: supplemented.channelCode,
+        pendingFieldCodes: opportunity.handoff.pendingFieldCodes.filter(
+          (code) => code !== "market_code" && code !== "channel_code",
+        ),
+      },
+      supplementedFieldCodes: ["market_code", "channel_code"],
+    };
+  };
 
   await page.route("**/api/market-signals**", async (route) => {
     const request = route.request();
@@ -1024,6 +1302,10 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
             recordedAt: "2026-09-25T01:00:00.000Z",
           },
         ],
+        currencyOptions: [
+          { code: "CAD", name: "Canadian Dollar", minorUnit: 2 },
+          { code: "USD", name: "US Dollar", minorUnit: 2 },
+        ],
       });
       return;
     }
@@ -1047,6 +1329,17 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
         completion: "completed",
         currentDestination: "return_requested",
         responsibleActorId: "dev-operator",
+        responsibilityAccepted: null,
+        receivingTeamOrRole: null,
+        resourceDescription: null,
+        targetDate: null,
+        nextDecisionDate: null,
+        nextDecisionQuestion: null,
+        validationFocus: null,
+        reconsiderationDate: null,
+        unitEconomicsDraft: body.unitEconomicsDraft ?? null,
+        unitEconomicsSnapshot: null,
+        negativeConservativeReason: null,
         objective: null,
         reviewPoints: [],
         reason: selectionReturnReason,
@@ -1079,6 +1372,17 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
       completion: "completed",
       currentDestination: "handed_off",
       responsibleActorId: "dev-operator",
+      responsibilityAccepted: true,
+      receivingTeamOrRole: body.receivingTeamOrRole ?? null,
+      resourceDescription: body.resourceDescription ?? null,
+      targetDate: body.targetDate ?? null,
+      nextDecisionDate: body.nextDecisionDate ?? null,
+      nextDecisionQuestion: body.nextDecisionQuestion ?? null,
+      validationFocus: null,
+      reconsiderationDate: null,
+      unitEconomicsDraft: body.unitEconomicsDraft ?? null,
+      unitEconomicsSnapshot: completeUnitEconomicsSnapshot(),
+      negativeConservativeReason: body.negativeConservativeReason ?? null,
       objective: "把折叠宠物出行包做成可发布版本",
       reviewPoints: [],
       reason: null,
@@ -1104,11 +1408,94 @@ async function mockMarketOpportunityApis(page: Page): Promise<{
     await json(route, initiative);
   });
 
+  await page.route("**/api/product-initiative-npi/queue**", async (route) => {
+    const visible =
+      initiative?.currentDestination === "handed_off" && opportunity
+        ? [
+            {
+              handoff: {
+                contractVersion: "product_initiative_handoff.v1",
+                handoffId,
+                version: 1,
+                initiativeId: initiative.initiativeId,
+                signalId: opportunity.handoff.signalId,
+                marketCode: opportunity.handoff.marketCode,
+                userProblem:
+                  opportunity.handoff.opportunityStatement ??
+                  opportunity.handoff.observedFactSummary,
+                objective: initiative.objective,
+                responsibleActorId: initiative.responsibleActorId,
+                responsibilityAccepted: initiative.responsibilityAccepted,
+                receivingTeamOrRole: initiative.receivingTeamOrRole,
+                resourceDescription: initiative.resourceDescription,
+                targetDate: initiative.targetDate,
+                nextDecisionDate: initiative.nextDecisionDate,
+                nextDecisionQuestion: initiative.nextDecisionQuestion,
+                unitEconomicsSnapshot: initiative.unitEconomicsSnapshot,
+                negativeConservativeReason:
+                  initiative.negativeConservativeReason,
+                reviewPoints: initiative.reviewPoints,
+                evidenceRefs: [evidenceId],
+                createdAt: initiative.updatedAt,
+                idempotencyKey: "e2e-unit-economics-handoff",
+              },
+              claim: null,
+              initiativeVersion: initiative.version,
+              initiativeDestination: initiative.currentDestination,
+            },
+          ]
+        : [];
+    await json(route, {
+      contractVersion: "product-initiative-npi-queue.v1",
+      items: visible,
+      pageSize: 200,
+      nextCursor: null,
+    });
+  });
+
+  await page.route("**/api/product-definitions/**", async (route) => {
+    await json(route, null);
+  });
+
   return {
     decisions,
     signals,
     detailReads: () => detailReads,
     marketHandoffs: () => marketHandoffs,
+    supplementSecondSignalScope,
+  };
+}
+
+function completeUnitEconomicsSnapshot(): ProductInitiativeUnitEconomicsSnapshotV1 {
+  const price = {
+    min: "100.00",
+    max: "120.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const cost = {
+    min: "5.00",
+    max: "10.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const scenario = () => ({
+    salePrice: { ...price },
+    landedCost: { ...cost },
+    platformFee: { ...cost },
+    fulfillmentFee: { ...cost },
+    advertisingCost: { ...cost },
+    returnCost: { ...cost },
+    contribution: { min: "50.00", max: "95.00" },
+  });
+  return {
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyCode: "CAD",
+    scenarios: {
+      baseline: scenario(),
+      conservative: scenario(),
+    },
   };
 }
 

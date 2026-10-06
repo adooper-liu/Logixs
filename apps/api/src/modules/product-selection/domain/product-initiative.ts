@@ -7,8 +7,14 @@ import type {
   ProductInitiativePendingFieldCodeV1,
   ProductInitiativeReturnBasisV1,
   ProductInitiativeReviewPointCodeV1,
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
   MarketSelectionReturnTakebackCommandV1,
 } from "@logix/contracts";
+import {
+  prepareProductInitiativeUnitEconomics,
+  type ProductInitiativeUnitEconomicsContext,
+} from "./unit-economics";
 
 export interface ProductInitiativeReviewPoint {
   code: ProductInitiativeReviewPointCodeV1;
@@ -24,6 +30,17 @@ export interface ProductInitiativeDraft {
   rejectReason: string | null;
   returnReason: string | null;
   returnBasis?: ProductInitiativeReturnBasisV1 | null;
+  responsibilityAccepted: boolean;
+  receivingTeamOrRole: string | null;
+  resourceDescription: string | null;
+  targetDate: string | null;
+  nextDecisionDate: string | null;
+  nextDecisionQuestion: string | null;
+  validationFocus: string | null;
+  reconsiderationDate: string | null;
+  unitEconomicsDraft: ProductInitiativeUnitEconomicsDraftV1 | null;
+  unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  negativeConservativeReason: string | null;
 }
 
 /** 该机会上已存在的立项判断版本；0 表示还没有立项判断。 */
@@ -39,6 +56,17 @@ export interface PreparedProductInitiativeDecision {
   nextDestination: ProductInitiativeDestinationV1;
   /** 立项责任人 = 操作人；产品负责人要到 NPI 领取时才产生。 */
   responsibleActorId: string;
+  responsibilityAccepted: boolean | null;
+  receivingTeamOrRole: string | null;
+  resourceDescription: string | null;
+  targetDate: string | null;
+  nextDecisionDate: string | null;
+  nextDecisionQuestion: string | null;
+  validationFocus: string | null;
+  reconsiderationDate: string | null;
+  unitEconomicsDraft: ProductInitiativeUnitEconomicsDraftV1 | null;
+  unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  negativeConservativeReason: string | null;
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   reason: string | null;
@@ -100,6 +128,12 @@ export function productInitiativePendingFieldCodes(
 ): ProductInitiativePendingFieldCodeV1[] {
   const missing = new Set<ProductInitiativePendingFieldCodeV1>();
   if (!draft.objective) missing.add("objective");
+  if (!draft.responsibilityAccepted) missing.add("responsibility_commitment");
+  if (!draft.receivingTeamOrRole) missing.add("receiving_team_or_role");
+  if (!draft.resourceDescription) missing.add("resource_description");
+  if (!draft.targetDate) missing.add("target_date");
+  if (!draft.nextDecisionDate) missing.add("next_decision_date");
+  if (!draft.nextDecisionQuestion) missing.add("next_decision_question");
   for (const code of REVIEW_POINT_ORDER) {
     const point = draft.reviewPoints.find((item) => item.code === code);
     // 有结论没证据、或有证据没结论，都还不算这条要点成立。
@@ -109,8 +143,11 @@ export function productInitiativePendingFieldCodes(
   }
   // 三个带原因的向缺失原因时只做待补、不关闭记录 —— 与市场信号阶段
   // "缺不采纳原因时保存但不关闭" 是同一条规则，不另发明一套。
-  if (decision?.outcome === "defer" && !decision.deferReason) {
-    missing.add("defer_reason");
+  if (decision?.outcome === "defer" && !draft.validationFocus) {
+    missing.add("validation_focus");
+  }
+  if (decision?.outcome === "defer" && !draft.reconsiderationDate) {
+    missing.add("reconsideration_date");
   }
   if (decision?.outcome === "reject" && !decision.rejectReason) {
     missing.add("reject_reason");
@@ -129,6 +166,12 @@ export function prepareProductInitiativeDecision(
   actorId: string,
   command: ProductInitiativeDecisionCommandV1,
   gate: readonly ProductInitiativeReviewPointCodeV1[] = PRODUCT_INITIATIVE_GATE,
+  todayUtc = new Date().toISOString().slice(0, 10),
+  unitEconomicsContext: ProductInitiativeUnitEconomicsContext = {
+    marketCode: null,
+    channelCode: null,
+    currencyResolution: null,
+  },
 ): PreparedProductInitiativeDecision {
   if (command.contractVersion !== "product-initiative-decision.v1") {
     invalid("contractVersion");
@@ -143,23 +186,46 @@ export function prepareProductInitiativeDecision(
   const initiativeId = uuid(command.requestId, "requestId");
 
   const draft = draftFromCommand(command);
-  const outcome = command.outcome;
-  const pendingFieldCodes = productInitiativePendingFieldCodes(draft, {
-    outcome,
-    deferReason: draft.deferReason,
-    rejectReason: draft.rejectReason,
-    returnReason: draft.returnReason,
-    returnBasis: draft.returnBasis ?? null,
+  const unitEconomics = prepareProductInitiativeUnitEconomics({
+    draft: command.unitEconomicsDraft,
+    negativeConservativeReason: command.negativeConservativeReason,
+    context: unitEconomicsContext,
   });
+  draft.unitEconomicsDraft = unitEconomics.draft;
+  draft.unitEconomicsSnapshot = unitEconomics.snapshot;
+  draft.negativeConservativeReason = unitEconomics.negativeConservativeReason;
+  const outcome = command.outcome;
+  const pendingFieldCodes = [
+    ...productInitiativePendingFieldCodes(draft, {
+      outcome,
+      deferReason: draft.deferReason,
+      rejectReason: draft.rejectReason,
+      returnReason: draft.returnReason,
+      returnBasis: draft.returnBasis ?? null,
+    }),
+    ...unitEconomics.pendingFieldCodes,
+  ];
 
   if (outcome === "approve") {
     // 立项是硬门槛：门槛项没齐就明确失败，并说明还差哪几项。
-    const blocking = pendingFieldCodes.filter((code) => isGateCode(code, gate));
+    const blocking = pendingFieldCodes.filter(
+      (code) =>
+        isUnitEconomicsPendingFieldCode(code) || isApproveGateCode(code, gate),
+    );
     if (blocking.length > 0) {
       throw new ProductInitiativeValidationError(
         `PRODUCT_INITIATIVE_INCOMPLETE: ${blocking.join(",")}`,
       );
     }
+  }
+  if (
+    outcome === "defer" &&
+    draft.reconsiderationDate &&
+    draft.reconsiderationDate < todayUtc
+  ) {
+    throw new ProductInitiativeValidationError(
+      "VALIDATION_FORMAT: reconsiderationDate",
+    );
   }
 
   const reason = reasonFor(outcome, draft);
@@ -170,6 +236,21 @@ export function prepareProductInitiativeDecision(
     completion: completionFor(outcome, reason, draft.returnBasis ?? null),
     nextDestination: destinationFor(outcome, reason, draft.returnBasis ?? null),
     responsibleActorId: normalizedActorId,
+    responsibilityAccepted:
+      outcome === "approve" ? draft.responsibilityAccepted : null,
+    receivingTeamOrRole:
+      outcome === "approve" ? draft.receivingTeamOrRole : null,
+    resourceDescription:
+      outcome === "approve" ? draft.resourceDescription : null,
+    targetDate: outcome === "approve" ? draft.targetDate : null,
+    nextDecisionDate: outcome === "approve" ? draft.nextDecisionDate : null,
+    nextDecisionQuestion:
+      outcome === "approve" ? draft.nextDecisionQuestion : null,
+    validationFocus: outcome === "defer" ? draft.validationFocus : null,
+    reconsiderationDate: outcome === "defer" ? draft.reconsiderationDate : null,
+    unitEconomicsDraft: draft.unitEconomicsDraft,
+    unitEconomicsSnapshot: draft.unitEconomicsSnapshot,
+    negativeConservativeReason: draft.negativeConservativeReason,
     objective: draft.objective,
     reviewPoints: draft.reviewPoints,
     reason,
@@ -179,6 +260,36 @@ export function prepareProductInitiativeDecision(
     idempotencyKey,
   };
   return { ...normalized, payloadHash: hash(normalized) };
+}
+
+export function assertProductInitiativeEvidenceRefs(
+  decision: Pick<
+    PreparedProductInitiativeDecision,
+    "reviewPoints" | "unitEconomicsDraft"
+  >,
+  availableEvidenceRefs: readonly string[],
+): void {
+  const available = new Set(availableEvidenceRefs);
+  const unitEconomicsRefs = UNIT_ECONOMICS_SCENARIO_KEYS.flatMap((scenario) =>
+    UNIT_ECONOMICS_AMOUNT_KEYS.flatMap(
+      (amount) =>
+        decision.unitEconomicsDraft?.scenarios?.[scenario]?.[amount]
+          ?.evidenceRefs ?? [],
+    ),
+  );
+  const invalid = [
+    ...new Set([
+      ...decision.reviewPoints.flatMap((point) => point.evidenceRefs),
+      ...unitEconomicsRefs,
+    ]),
+  ]
+    .filter((evidenceRef) => !available.has(evidenceRef))
+    .sort();
+  if (invalid.length > 0) {
+    throw new ProductInitiativeValidationError(
+      `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${invalid.join(",")}`,
+    );
+  }
 }
 
 function draftFromCommand(
@@ -208,23 +319,68 @@ function draftFromCommand(
     rejectReason: optionalText(command.rejectReason, "rejectReason", 500),
     returnReason: optionalText(command.returnReason, "returnReason", 500),
     returnBasis: returnBasis(command.returnBasis),
+    responsibilityAccepted: command.acceptResponsibility === true,
+    receivingTeamOrRole: optionalText(
+      command.receivingTeamOrRole,
+      "receivingTeamOrRole",
+      200,
+    ),
+    resourceDescription: optionalText(
+      command.resourceDescription,
+      "resourceDescription",
+      2000,
+    ),
+    targetDate: optionalDate(command.targetDate, "targetDate"),
+    nextDecisionDate: optionalDate(
+      command.nextDecisionDate,
+      "nextDecisionDate",
+    ),
+    nextDecisionQuestion: optionalText(
+      command.nextDecisionQuestion,
+      "nextDecisionQuestion",
+      1000,
+    ),
+    validationFocus: optionalText(
+      command.validationFocus,
+      "validationFocus",
+      2000,
+    ),
+    reconsiderationDate: optionalDate(
+      command.reconsiderationDate,
+      "reconsiderationDate",
+    ),
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
   };
 }
 
-function isGateCode(
+function isUnitEconomicsPendingFieldCode(
+  code: ProductInitiativePendingFieldCodeV1,
+): boolean {
+  return (
+    code === "negativeConservativeReason" || code.startsWith("unitEconomics.")
+  );
+}
+
+function isApproveGateCode(
   code: ProductInitiativePendingFieldCodeV1,
   gate: readonly ProductInitiativeReviewPointCodeV1[],
 ): boolean {
   return (REVIEW_POINT_ORDER as readonly string[]).includes(code)
     ? gate.includes(code as ProductInitiativeReviewPointCodeV1)
-    : code === "objective";
+    : APPROVE_REQUIRED_CODES.has(code);
 }
 
 function reasonFor(
   outcome: ProductInitiativeOutcomeV1,
   draft: ProductInitiativeDraft,
 ): string | null {
-  if (outcome === "defer") return draft.deferReason;
+  if (outcome === "defer") {
+    return draft.validationFocus && draft.reconsiderationDate
+      ? draft.validationFocus
+      : null;
+  }
   if (outcome === "reject") return draft.rejectReason;
   if (outcome === "return_to_market") return draft.returnReason;
   return null;
@@ -285,6 +441,22 @@ function optionalText(
   return text(value, field, maxLength);
 }
 
+function optionalDate(
+  value: string | undefined | null,
+  field: string,
+): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string" || !DATE_PATTERN.test(value)) invalid(field);
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
+    invalid(field);
+  }
+  return value;
+}
+
 function version(value: number): number {
   if (!Number.isSafeInteger(value) || value < 0) {
     invalid("expectedInitiativeVersion");
@@ -330,10 +502,36 @@ const PENDING_FIELD_ORDER: ProductInitiativePendingFieldCodeV1[] = [
   "objective",
   ...REVIEW_POINT_ORDER,
   "defer_reason",
+  "responsibility_commitment",
+  "receiving_team_or_role",
+  "resource_description",
+  "target_date",
+  "next_decision_date",
+  "next_decision_question",
+  "validation_focus",
+  "reconsideration_date",
   "reject_reason",
   "return_basis",
   "return_reason",
 ];
+const APPROVE_REQUIRED_CODES = new Set<ProductInitiativePendingFieldCodeV1>([
+  "objective",
+  "responsibility_commitment",
+  "receiving_team_or_role",
+  "resource_description",
+  "target_date",
+  "next_decision_date",
+  "next_decision_question",
+]);
+const UNIT_ECONOMICS_SCENARIO_KEYS = ["baseline", "conservative"] as const;
+const UNIT_ECONOMICS_AMOUNT_KEYS = [
+  "salePrice",
+  "landedCost",
+  "platformFee",
+  "fulfillmentFee",
+  "advertisingCost",
+  "returnCost",
+] as const;
 const OUTCOMES = new Set<string>([
   "approve",
   "defer",
@@ -342,3 +540,4 @@ const OUTCOMES = new Set<string>([
 ]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

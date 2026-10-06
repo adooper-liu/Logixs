@@ -4,6 +4,8 @@ import type {
   ProductInitiativeStoredOutcomeV1,
   ProductInitiativePendingFieldCodeV1,
   ProductInitiativeReturnBasisV1,
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
 } from "@logix/contracts";
 import type { PreparedProductInitiativeClaim } from "./product-initiative-claim";
 import type { PreparedProductInitiativeNpiReturn } from "./product-initiative-npi-return";
@@ -26,6 +28,17 @@ export interface ProductInitiativeRecord {
   completion: ProductInitiativeCompletionV1;
   currentDestination: ProductInitiativeDestinationV1;
   responsibleActorId: string;
+  responsibilityAccepted: boolean | null;
+  receivingTeamOrRole: string | null;
+  resourceDescription: string | null;
+  targetDate: Date | null;
+  nextDecisionDate: Date | null;
+  nextDecisionQuestion: string | null;
+  validationFocus: string | null;
+  reconsiderationDate: Date | null;
+  unitEconomicsDraft: ProductInitiativeUnitEconomicsDraftV1 | null;
+  unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  negativeConservativeReason: string | null;
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   reason: string | null;
@@ -45,6 +58,14 @@ export interface ProductInitiativeHandoffRecord {
   userProblem: string | null;
   objective: string;
   responsibleActorId: string;
+  responsibilityAccepted: boolean | null;
+  receivingTeamOrRole: string | null;
+  resourceDescription: string | null;
+  targetDate: Date | null;
+  nextDecisionDate: Date | null;
+  nextDecisionQuestion: string | null;
+  unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  negativeConservativeReason: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   evidenceRefs: string[];
   createdBy: string;
@@ -81,7 +102,13 @@ export interface ProductInitiativeRepository {
   ): Promise<ProductInitiativeRecord | null>;
   list(input: {
     tenantId: string;
-    after?: { updatedAt: Date; id: string };
+    todayUtc: Date;
+    after?: {
+      group: "defer_reconsideration_due" | "standard";
+      reconsiderationDate: Date | null;
+      updatedAt: Date;
+      id: string;
+    };
     take: number;
   }): Promise<ProductInitiativeRecord[]>;
   /**

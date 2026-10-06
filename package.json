@@ -15,7 +15,9 @@
       "brace-expansion@2": "2.1.6",
       "deepmerge-ts": "8.0.0",
       "multer": "2.3.0",
-      "mysql2": "3.22.0"
+      "mysql2": "3.22.0",
+      "proxy-addr": "2.0.8",
+      "source-map-js": "1.2.2"
     }
   },
   "scripts": {
@@ -30,7 +32,7 @@
     "format:check": "prettier --check . --ignore-unknown",
     "format": "prettier --write . --ignore-unknown",
     "typecheck": "turbo run typecheck",
-    "test": "node --test scripts/check-repository.test.mjs scripts/check-route-access-metadata.test.mjs scripts/generate-data-dictionary.test.mjs && turbo run test",
+    "test": "node --test scripts/check-repository.test.mjs scripts/check-ui-structure-gate.test.mjs scripts/check-route-access-metadata.test.mjs scripts/generate-data-dictionary.test.mjs && turbo run test",
     "test:integration": "turbo run test:integration",
     "test:e2e": "turbo run test:e2e --filter=@logix/web",
     "playwright:install": "pnpm --filter @logix/web exec playwright install chromium",

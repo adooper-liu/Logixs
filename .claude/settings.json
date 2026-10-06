@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/check-ui-structure-gate.mjs",
+            "timeout": 10,
+            "statusMessage": "Checking mandatory UI structure"
+          }
+        ]
+      }
+    ]
+  }
+}

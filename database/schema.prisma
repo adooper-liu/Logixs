@@ -248,6 +248,23 @@ model ReferenceDataRelease {
   @@map("reference_data_release")
 }
 
+// ISO 4217 List One currency identity, bundled directly with the migration.
+model CurrencyCodeReference {
+  id            String   @id @map("id") @db.Uuid
+  alphaCode     String   @unique(map: "currency_code_alpha_key") @map("alpha_code") @db.Char(3)
+  numericCode   String   @unique(map: "currency_code_numeric_key") @map("numeric_code") @db.Char(3)
+  minorUnit     Int?     @map("minor_unit")
+  currencyName  String   @map("currency_name")
+  sourceVersion String   @map("source_version")
+  sourceUrl     String   @map("source_url")
+  sourceSha256  String   @map("source_sha256") @db.Char(64)
+  recordsSha256 String   @map("records_sha256") @db.Char(64)
+  sourceRowHash String   @map("source_row_hash") @db.Char(64)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("currency_code_reference")
+}
+
 // ISO 3166-1 正式分配代码；名称与 alpha-3/numeric 一并保留，禁止由业务文本猜测国家。
 model CountryCodeReference {
   id            String                  @id @default(uuid()) @map("id") @db.Uuid
@@ -2157,53 +2174,73 @@ model ProductOpportunityIntake {
 }
 
 model ProductInitiative {
-  id                 String                     @id @default(uuid()) @map("id") @db.Uuid
-  tenantId           String                     @map("tenant_id")
-  handoffId          String                     @map("handoff_id") @db.Uuid
-  handoff            MarketOpportunityHandoff   @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  version            Int                        @map("version")
-  outcome            String                     @map("outcome")
-  completionState    String                     @map("completion_state")
-  currentDestination String                     @map("current_destination")
-  responsibleActorId String                     @map("responsible_actor_id")
-  objective          String?                    @map("objective")
-  reviewPoints       Json                       @map("review_points")
-  reason             String?                    @map("reason")
-  returnBasis        String?                    @map("return_basis")
-  pendingFieldCodes  String[]                   @map("pending_field_codes")
-  actedBy            String                     @map("acted_by")
-  idempotencyKey     String                     @map("idempotency_key")
-  payloadHash        String                     @map("payload_hash")
-  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
-  handoffs           ProductInitiativeHandoff[]
+  id                         String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                   String                     @map("tenant_id")
+  handoffId                  String                     @map("handoff_id") @db.Uuid
+  handoff                    MarketOpportunityHandoff   @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version                    Int                        @map("version")
+  outcome                    String                     @map("outcome")
+  completionState            String                     @map("completion_state")
+  currentDestination         String                     @map("current_destination")
+  responsibleActorId         String                     @map("responsible_actor_id")
+  responsibilityAccepted     Boolean?                   @map("responsibility_accepted")
+  receivingTeamOrRole        String?                    @map("receiving_team_or_role")
+  resourceDescription        String?                    @map("resource_description")
+  targetDate                 DateTime?                  @map("target_date") @db.Date
+  nextDecisionDate           DateTime?                  @map("next_decision_date") @db.Date
+  nextDecisionQuestion       String?                    @map("next_decision_question")
+  validationFocus            String?                    @map("validation_focus")
+  reconsiderationDate        DateTime?                  @map("reconsideration_date") @db.Date
+  unitEconomicsDraft         Json?                      @map("unit_economics_draft")
+  unitEconomicsSnapshot      Json?                      @map("unit_economics_snapshot")
+  negativeConservativeReason String?                    @map("negative_conservative_reason")
+  objective                  String?                    @map("objective")
+  reviewPoints               Json                       @map("review_points")
+  reason                     String?                    @map("reason")
+  returnBasis                String?                    @map("return_basis")
+  pendingFieldCodes          String[]                   @map("pending_field_codes")
+  actedBy                    String                     @map("acted_by")
+  idempotencyKey             String                     @map("idempotency_key")
+  payloadHash                String                     @map("payload_hash")
+  createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  handoffs                   ProductInitiativeHandoff[]
 
   @@unique([id, tenantId], map: "product_initiative_id_tenant_key")
   @@unique([tenantId, handoffId], map: "product_initiative_handoff_key")
   @@unique([tenantId, idempotencyKey], map: "product_initiative_idempotency_key")
   @@index([tenantId, currentDestination, updatedAt, id], map: "product_initiative_queue_idx")
+  @@index([tenantId, currentDestination, reconsiderationDate, updatedAt, id], map: "product_initiative_reconsideration_queue_idx")
   @@map("product_initiative")
 }
 
 model ProductInitiativeHandoff {
-  id                 String                   @id @default(uuid()) @map("id") @db.Uuid
-  tenantId           String                   @map("tenant_id")
-  initiativeId       String                   @map("initiative_id") @db.Uuid
-  initiative         ProductInitiative        @relation(fields: [initiativeId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  signalId           String                   @map("signal_id") @db.Uuid
-  version            Int                      @map("version")
-  marketCode         String?                  @map("market_code")
-  userProblem        String?                  @map("user_problem")
-  objective          String                   @map("objective")
-  responsibleActorId String                   @map("responsible_actor_id")
-  reviewPoints       Json                     @map("review_points")
-  evidenceRefs       String[]                 @map("evidence_refs") @db.Uuid
-  createdBy          String                   @map("created_by")
-  idempotencyKey     String                   @map("idempotency_key")
-  payloadHash        String                   @map("payload_hash")
-  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  claims             ProductInitiativeClaim[]
-  productDefinitions ProductDefinition[]
+  id                         String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                   String                   @map("tenant_id")
+  initiativeId               String                   @map("initiative_id") @db.Uuid
+  initiative                 ProductInitiative        @relation(fields: [initiativeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  signalId                   String                   @map("signal_id") @db.Uuid
+  version                    Int                      @map("version")
+  marketCode                 String?                  @map("market_code")
+  userProblem                String?                  @map("user_problem")
+  objective                  String                   @map("objective")
+  responsibleActorId         String                   @map("responsible_actor_id")
+  responsibilityAccepted     Boolean?                 @map("responsibility_accepted")
+  receivingTeamOrRole        String?                  @map("receiving_team_or_role")
+  resourceDescription        String?                  @map("resource_description")
+  targetDate                 DateTime?                @map("target_date") @db.Date
+  nextDecisionDate           DateTime?                @map("next_decision_date") @db.Date
+  nextDecisionQuestion       String?                  @map("next_decision_question")
+  unitEconomicsSnapshot      Json?                    @map("unit_economics_snapshot")
+  negativeConservativeReason String?                  @map("negative_conservative_reason")
+  reviewPoints               Json                     @map("review_points")
+  evidenceRefs               String[]                 @map("evidence_refs") @db.Uuid
+  createdBy                  String                   @map("created_by")
+  idempotencyKey             String                   @map("idempotency_key")
+  payloadHash                String                   @map("payload_hash")
+  createdAt                  DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  claims                     ProductInitiativeClaim[]
+  productDefinitions         ProductDefinition[]
 
   @@unique([id, tenantId], map: "product_initiative_handoff_id_tenant_key")
   @@unique([tenantId, idempotencyKey], map: "product_initiative_handoff_idempotency_key")

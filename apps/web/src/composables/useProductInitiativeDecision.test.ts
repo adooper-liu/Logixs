@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, ref } from "vue";
+import type {
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
+} from "@logix/contracts";
 import {
   CONCLUSION_MAX_LENGTH,
   OBJECTIVE_MAX_LENGTH,
@@ -28,6 +32,8 @@ const HANDOFF_ID = "22222222-2222-4222-8222-222222222222";
 const OTHER_HANDOFF_ID = "33333333-3333-4333-8333-333333333333";
 const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
+const INVALID_EVIDENCE_A = "00000000-0000-4000-8000-000000000091";
+const INVALID_EVIDENCE_B = "00000000-0000-4000-8000-000000000092";
 
 /** 只关心缺了什么时，标签就够了；"在哪补"由面板负责呈现。 */
 function gapLabels(state: {
@@ -47,41 +53,82 @@ describe("useProductInitiativeDecision", () => {
   it("门槛要点与目标结果都缺时列出缺口；非门槛的另列，不混进「还差 N 项」", async () => {
     const state = await mountComposable();
 
-    // 挡住立项的只有目标结果 + **门槛**要点。
-    expect(state.blockingGaps.value.map((gap) => gap.label)).toEqual([
+    const labels = state.blockingGaps.value.map((gap) => gap.label);
+    expect(labels.slice(0, 11)).toEqual([
       "目标结果",
+      "由我对此立项负责",
+      "承接团队或岗位",
+      "资源说明",
+      "目标日期",
+      "下一决策日期",
+      "下一决策问题",
       ...REVIEW_POINTS.filter((point) => point.gating).map(
         (point) => point.label,
       ),
     ]);
+    expect(labels).toContain("单位经济 · 币种");
+    expect(labels).toContain("单位经济 · 基准情景 · 销售价 · 最低值");
+    expect(labels).toHaveLength(60);
+    expect(state.blockingGapGroups.value).toEqual([
+      { panel: "objective", label: "目标结果", count: 1 },
+      { panel: "responsibility_resources", label: "责任与资源", count: 3 },
+      { panel: "timeline_decision", label: "时间与下一决策", count: 3 },
+      { panel: "review_points", label: "评审依据", count: 4 },
+      { panel: "unit_economics", label: "单位经济", count: 49 },
+    ]);
+    expect(state.requiredCount.value).toBe(5);
     // 非门槛的缺了只提示 —— 混进去会让人以为非补不可。
     expect(state.optionalGaps.value).toEqual(["客户反馈与痛点"]);
     expect(state.canApprove.value).toBe(false);
     expect(
       outcomeHintFor({
         outcome: "approve",
-        gaps: state.blockingGaps.value,
+        gaps: state.blockingGapGroups.value,
         reason: "",
+        reconsiderationDate: "",
       }),
-    ).toBe("还差 5 项才能立项");
+    ).toBe("还差 5 类才能立项");
   });
 
-  it("非立项去向的说明只看向因，不冒充已关闭也不冒充已立项", () => {
+  it("非立项去向的说明按所需事实判断，不冒充已关闭也不冒充已立项", () => {
     expect(
-      outcomeHintFor({ outcome: "defer", gaps: ["合规风险"], reason: "" }),
+      outcomeHintFor({
+        outcome: "defer",
+        gaps: ["合规风险"],
+        reason: "",
+        reconsiderationDate: "",
+      }),
     ).toContain("不会关闭");
     expect(
       outcomeHintFor({
         outcome: "defer",
         gaps: ["合规风险"],
         reason: "证据还不够",
+        reconsiderationDate: "",
       }),
-    ).toContain("会关闭");
+    ).toContain("不会关闭");
+    expect(
+      outcomeHintFor({
+        outcome: "defer",
+        gaps: ["合规风险"],
+        reason: "",
+        reconsiderationDate: "2026-10-20",
+      }),
+    ).toContain("不会关闭");
+    expect(
+      outcomeHintFor({
+        outcome: "defer",
+        gaps: ["合规风险"],
+        reason: "证据还不够",
+        reconsiderationDate: "2026-10-20",
+      }),
+    ).toContain("提交后本次判断会关闭");
     expect(
       outcomeHintFor({
         outcome: "return_to_market",
         gaps: [],
         reason: "请重新核对方向",
+        reconsiderationDate: "",
         returnBasis: "",
       }),
     ).toBe("请选择退回依据");
@@ -147,6 +194,9 @@ describe("useProductInitiativeDecision", () => {
   });
 
   it("暂缓没填原因时不提交原因字段，交给服务端按待补处理", async () => {
+    decideProductInitiative.mockResolvedValueOnce({
+      currentDestination: "needs_decision",
+    });
     const state = await mountComposable();
 
     await state.decide("defer");
@@ -154,6 +204,19 @@ describe("useProductInitiativeDecision", () => {
 
     const [, command] = decideProductInitiative.mock.calls[0]!;
     expect(command).not.toHaveProperty("deferReason");
+    expect(state.receipt.value).toBe("已保存但仍待补验证重点或重判日期。");
+  });
+
+  it("只有服务端形成 deferred 才回执已暂缓", async () => {
+    decideProductInitiative.mockResolvedValueOnce({
+      currentDestination: "deferred",
+    });
+    const state = await mountComposable();
+
+    await state.decide("defer");
+    await flushPromises();
+
+    expect(state.receipt.value).toBe("已暂缓，仍留在选品队列。");
   });
 
   it("用服务端已有判断回填草稿，刷新后接着补", async () => {
@@ -267,7 +330,7 @@ describe("useProductInitiativeDecision", () => {
     expect(command).toEqual(
       expect.objectContaining({
         outcome: "defer",
-        deferReason: "证据不足，等双十一数据",
+        validationFocus: "证据不足，等双十一数据",
       }),
     );
   });
@@ -341,6 +404,16 @@ describe("useProductInitiativeDecision", () => {
       ),
     );
     const state = await mountComposable();
+    state.receivingTeamOrRole.value = "产品开发 / NPI";
+    state.resourceDescription.value = "结构工程 1 人";
+    state.reconsiderationDate.value = "2026-10-20";
+    state.setUnitEconomicsCurrency("CAD");
+    state.setUnitEconomicsRangeValue(
+      "conservative",
+      "salePrice",
+      "min",
+      "80.00",
+    );
 
     await state.decide("defer");
     await flushPromises();
@@ -350,6 +423,38 @@ describe("useProductInitiativeDecision", () => {
       "PRODUCT_INITIATIVE_VERSION_CONFLICT",
     );
     expect(getProductInitiative).toHaveBeenCalledTimes(2);
+    expect(state.receivingTeamOrRole.value).toBe("产品开发 / NPI");
+    expect(state.resourceDescription.value).toBe("结构工程 1 人");
+    expect(state.reconsiderationDate.value).toBe("2026-10-20");
+    expect(state.unitEconomicsDraft.currencyCode).toBe("CAD");
+    expect(state.unitEconomicsDraft.scenarios.conservative.salePrice.min).toBe(
+      "80.00",
+    );
+  });
+
+  it("无效证据显示具体引用并保留当前未提交草稿", async () => {
+    decideProductInitiative.mockRejectedValue(
+      new Error(
+        `暂时无法保存本次立项判断（400）：PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${INVALID_EVIDENCE_A},${INVALID_EVIDENCE_B}`,
+      ),
+    );
+    const state = await mountComposable();
+    state.objective.value = "尚未保存的目标结果";
+    state.points.compliance_risk.evidenceRefs = [INVALID_EVIDENCE_B];
+    state.points.compliance_risk.conclusion = "尚未保存的合规结论";
+
+    await state.decide("approve");
+    await flushPromises();
+
+    expect(state.error.value).toBe(
+      `该证据不存在或不属于当前机会，请重新选择：${INVALID_EVIDENCE_A}、${INVALID_EVIDENCE_B}`,
+    );
+    expect(state.objective.value).toBe("尚未保存的目标结果");
+    expect(state.points.compliance_risk).toEqual({
+      evidenceRefs: [INVALID_EVIDENCE_B],
+      conclusion: "尚未保存的合规结论",
+    });
+    expect(getProductInitiative).toHaveBeenCalledTimes(1);
   });
 
   it("已立项后服务端拒绝不再判断时，说明是终态而不是普通失败", async () => {
@@ -388,6 +493,101 @@ describe("useProductInitiativeDecision", () => {
         returnBasis: "wrong_direction",
       }),
     );
+  });
+
+  it("回填服务端单位经济草稿与计算快照，不在前端重算贡献", async () => {
+    getProductInitiative.mockResolvedValue(
+      detail({
+        initiative: {
+          ...initiative(),
+          unitEconomicsDraft: completeUnitEconomicsDraft(),
+          unitEconomicsSnapshot: completeUnitEconomicsSnapshot(),
+        },
+      }),
+    );
+
+    const state = await mountComposable();
+
+    expect(state.unitEconomicsDraft.currencyCode).toBe("CAD");
+    expect(state.unitEconomicsDraft.scenarios.conservative.salePrice.min).toBe(
+      "100.00",
+    );
+    expect(
+      state.unitEconomicsSnapshot.value?.scenarios.conservative.contribution,
+    ).toEqual({ min: "50.00", max: "95.00" });
+    expect(
+      state.blockingGaps.value.filter((gap) => gap.panel === "unit_economics"),
+    ).toEqual([]);
+  });
+
+  it("所有去向都提交可恢复的部分单位经济草稿，且不回传只读市场", async () => {
+    const state = await mountComposable();
+    state.setUnitEconomicsCurrency("CAD");
+    state.setUnitEconomicsRangeValue("baseline", "salePrice", "min", "80.00");
+    state.setUnitEconomicsBasis("baseline", "salePrice", "evidence");
+    state.toggleUnitEconomicsEvidence("baseline", "salePrice", EVIDENCE_ID);
+
+    await state.decide("defer");
+    await flushPromises();
+
+    const [, command] = decideProductInitiative.mock.calls[0]!;
+    expect(command.unitEconomicsDraft).toEqual({
+      channelCode: "Amazon CA",
+      currencyCode: "CAD",
+      scenarios: {
+        baseline: {
+          salePrice: {
+            min: "80.00",
+            basis: "evidence",
+            evidenceRefs: [EVIDENCE_ID],
+          },
+        },
+      },
+    });
+    expect(command.unitEconomicsDraft).not.toHaveProperty("marketCode");
+  });
+
+  it("切换到待验证假设会清除不再合法的证据引用", async () => {
+    const state = await mountComposable();
+    state.setUnitEconomicsBasis("baseline", "salePrice", "evidence");
+    state.toggleUnitEconomicsEvidence("baseline", "salePrice", EVIDENCE_ID);
+
+    state.setUnitEconomicsBasis("baseline", "salePrice", "assumption");
+
+    expect(state.unitEconomicsDraft.scenarios.baseline.salePrice).toMatchObject(
+      {
+        basis: "assumption",
+        evidenceRefs: [],
+      },
+    );
+  });
+
+  it("服务端确认负贡献缺口后就地要求理由，填写后保留该事实供重提", async () => {
+    decideProductInitiative.mockRejectedValueOnce(
+      new Error(
+        "暂时无法保存本次立项判断（400）：PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason",
+      ),
+    );
+    const state = await mountComposable();
+
+    await state.decide("approve");
+
+    expect(state.negativeContributionNeedsReason.value).toBe(true);
+    expect(gapLabels(state)).toContain("单位经济 · 仍要投入的理由");
+
+    state.setNegativeConservativeReason("战略品类入口仍需小规模验证");
+
+    expect(state.negativeContributionNeedsReason.value).toBe(true);
+    expect(gapLabels(state)).not.toContain("单位经济 · 仍要投入的理由");
+  });
+
+  it("无 active 币种 release 时明确暴露空选项，不填默认币种", async () => {
+    getProductInitiative.mockResolvedValue(detail({ currencyOptions: [] }));
+
+    const state = await mountComposable();
+
+    expect(state.currencyOptions.value).toEqual([]);
+    expect(state.unitEconomicsDraft.currencyCode).toBe("");
   });
 
   it("只有服务端形成 return_requested 才回执等待市场接回", async () => {
@@ -435,7 +635,12 @@ const handoffId = ref(HANDOFF_ID);
 let state!: ReturnType<typeof useProductInitiativeDecision>;
 const Host = defineComponent({
   setup() {
-    state = useProductInitiativeDecision({ handoffId, signalId: SIGNAL_ID });
+    state = useProductInitiativeDecision({
+      handoffId,
+      signalId: SIGNAL_ID,
+      marketCode: "CA",
+      channelCode: "Amazon CA",
+    });
     return () => h("div");
   },
 });
@@ -462,6 +667,17 @@ function initiative() {
     completion: "pending_completion" as const,
     currentDestination: "needs_decision" as const,
     responsibleActorId: "dev-operator",
+    responsibilityAccepted: null,
+    receivingTeamOrRole: null,
+    resourceDescription: null,
+    targetDate: null,
+    nextDecisionDate: null,
+    nextDecisionQuestion: null,
+    validationFocus: null,
+    reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
     objective: null,
     reviewPoints: [],
     reason: null,
@@ -485,6 +701,62 @@ function detail(overrides: Record<string, unknown> = {}) {
         recordedAt: "2026-09-27T00:00:00.000Z",
       },
     ],
+    currencyOptions: [
+      { code: "CAD", name: "Canadian Dollar", minorUnit: 2 },
+      { code: "USD", name: "US Dollar", minorUnit: 2 },
+    ],
     ...overrides,
+  };
+}
+
+function completeUnitEconomicsDraft(): ProductInitiativeUnitEconomicsDraftV1 {
+  const price = {
+    min: "100.00",
+    max: "120.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const cost = {
+    min: "5.00",
+    max: "10.00",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const scenario = () => ({
+    salePrice: { ...price },
+    landedCost: { ...cost },
+    platformFee: { ...cost },
+    fulfillmentFee: { ...cost },
+    advertisingCost: { ...cost },
+    returnCost: { ...cost },
+  });
+  return {
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyCode: "CAD",
+    scenarios: {
+      baseline: scenario(),
+      conservative: scenario(),
+    },
+  };
+}
+
+function completeUnitEconomicsSnapshot(): ProductInitiativeUnitEconomicsSnapshotV1 {
+  const draft = completeUnitEconomicsDraft();
+  const scenario = draft.scenarios!.baseline!;
+  return {
+    marketCode: "CA",
+    channelCode: "Amazon CA",
+    currencyCode: "CAD",
+    scenarios: {
+      baseline: {
+        ...scenario,
+        contribution: { min: "50.00", max: "95.00" },
+      } as ProductInitiativeUnitEconomicsSnapshotV1["scenarios"]["baseline"],
+      conservative: {
+        ...scenario,
+        contribution: { min: "50.00", max: "95.00" },
+      } as ProductInitiativeUnitEconomicsSnapshotV1["scenarios"]["conservative"],
+    },
   };
 }

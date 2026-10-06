@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import type {
   ProductInitiativeDecisionCommandV1,
   ProductInitiativeReviewPointV1,
+  ProductInitiativeUnitEconomicsDraftV1,
+  ProductInitiativeUnitEconomicsSnapshotV1,
 } from "@logix/contracts";
 
 const REVIEW_POINT_CODES = [
@@ -48,10 +50,21 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
   @ApiPropertyOptional() deferReason?: string;
+  @ApiPropertyOptional({ enum: [true] }) acceptResponsibility?: true;
+  @ApiPropertyOptional() receivingTeamOrRole?: string;
+  @ApiPropertyOptional() resourceDescription?: string;
+  @ApiPropertyOptional({ format: "date" }) targetDate?: string;
+  @ApiPropertyOptional({ format: "date" }) nextDecisionDate?: string;
+  @ApiPropertyOptional() nextDecisionQuestion?: string;
+  @ApiPropertyOptional() validationFocus?: string;
+  @ApiPropertyOptional({ format: "date" }) reconsiderationDate?: string;
   @ApiPropertyOptional() rejectReason?: string;
   @ApiPropertyOptional() returnReason?: string;
   @ApiPropertyOptional({ enum: ["insufficient_evidence", "wrong_direction"] })
   returnBasis?: ProductInitiativeDecisionCommandV1["returnBasis"];
+  @ApiPropertyOptional({ type: Object })
+  unitEconomicsDraft?: ProductInitiativeUnitEconomicsDraftV1;
+  @ApiPropertyOptional() negativeConservativeReason?: string;
   @ApiProperty() idempotencyKey!: string;
 }
 
@@ -63,6 +76,24 @@ export class ProductInitiativeResponseDto {
   @ApiProperty({ enum: DESTINATIONS })
   currentDestination!: string;
   @ApiProperty() responsibleActorId!: string;
+  @ApiPropertyOptional({ nullable: true }) responsibilityAccepted!:
+    boolean | null;
+  @ApiPropertyOptional({ nullable: true }) receivingTeamOrRole!: string | null;
+  @ApiPropertyOptional({ nullable: true }) resourceDescription!: string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" }) targetDate!:
+    string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" }) nextDecisionDate!:
+    string | null;
+  @ApiPropertyOptional({ nullable: true }) nextDecisionQuestion!: string | null;
+  @ApiPropertyOptional({ nullable: true }) validationFocus!: string | null;
+  @ApiPropertyOptional({ nullable: true, format: "date" })
+  reconsiderationDate!: string | null;
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  unitEconomicsDraft!: ProductInitiativeUnitEconomicsDraftV1 | null;
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  unitEconomicsSnapshot!: ProductInitiativeUnitEconomicsSnapshotV1 | null;
+  @ApiPropertyOptional({ nullable: true })
+  negativeConservativeReason!: string | null;
   @ApiPropertyOptional({ nullable: true }) objective!: string | null;
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
@@ -82,6 +113,7 @@ export class ProductInitiativeDetailResponseDto {
   @ApiProperty() handoffId!: string;
   @ApiPropertyOptional({ type: ProductInitiativeResponseDto, nullable: true })
   initiative!: ProductInitiativeResponseDto | null;
+  @ApiProperty({ type: [Object] }) currencyOptions!: object[];
   @ApiProperty({ type: [Object] }) evidenceCandidates!: object[];
 }
 
@@ -89,6 +121,10 @@ export class ProductInitiativeQueueEntryResponseDto {
   @ApiProperty() handoffId!: string;
   @ApiProperty({ enum: RESPONSE_OUTCOMES }) outcome!: string;
   @ApiProperty({ enum: DESTINATIONS }) currentDestination!: string;
+  @ApiProperty({ enum: ["defer_reconsideration_due", "standard"] })
+  queueGroup!: string;
+  @ApiPropertyOptional({ nullable: true, format: "date" })
+  reconsiderationDate!: string | null;
   @ApiProperty({ type: [String] }) pendingFieldCodes!: string[];
   @ApiProperty() updatedAt!: string;
 }

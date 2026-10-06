@@ -7,6 +7,8 @@ import type { ProductInitiativeRecord } from "../domain/product-initiative.repos
 const HANDOFF_ID = "22222222-2222-4222-8222-222222222222";
 const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
+const INVALID_EVIDENCE_A = "00000000-0000-4000-8000-000000000091";
+const INVALID_EVIDENCE_B = "00000000-0000-4000-8000-000000000092";
 
 describe("DecideProductInitiativeService", () => {
   it("并发判定用服务端读到的版本，而不是信客户端自称的版本", async () => {
@@ -26,7 +28,9 @@ describe("DecideProductInitiativeService", () => {
   });
 
   it("落库记录映射成契约形状", async () => {
-    const { service } = decideHarness({ currentVersion: 0 });
+    const { service, evidenceReader, opportunities } = decideHarness({
+      currentVersion: 0,
+    });
 
     await expect(
       service.execute({
@@ -41,6 +45,44 @@ describe("DecideProductInitiativeService", () => {
       responsibleActorId: "selector-1",
       version: 1,
     });
+    expect(opportunities.findByHandoffId).toHaveBeenCalledWith("t", HANDOFF_ID);
+    expect(evidenceReader.execute).toHaveBeenCalledWith({
+      tenantId: "t",
+      subjectType: "market_signal",
+      subjectIds: [SIGNAL_ID],
+    });
+  });
+
+  it("无效证据排序去重后稳定失败，且不调用持久化", async () => {
+    const { service, persistDecision } = decideHarness({ currentVersion: 0 });
+    const reviewPoints = [
+      "target_user_and_market",
+      "competitive_supply",
+      "price_band_and_margin",
+      "compliance_risk",
+    ].map((code, index) => ({
+      code,
+      evidenceRefs:
+        index === 0
+          ? [INVALID_EVIDENCE_B, INVALID_EVIDENCE_A]
+          : index === 1
+            ? [INVALID_EVIDENCE_B]
+            : [EVIDENCE_ID],
+      conclusion: "结论",
+    }));
+
+    await expect(
+      service.execute({
+        tenantId: "t",
+        actorId: "selector-1",
+        handoffId: HANDOFF_ID,
+        command: completeCommand({ reviewPoints }),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${INVALID_EVIDENCE_A},${INVALID_EVIDENCE_B}`,
+    });
+    expect(persistDecision).not.toHaveBeenCalled();
   });
 
   it("缺租户或操作人时拒绝而不是放行", async () => {
@@ -68,10 +110,118 @@ describe("DecideProductInitiativeService", () => {
       }),
     ).rejects.toMatchObject({ status: 400 });
   });
+
+  it("币种参考发布不可用时稳定拒绝且不写入", async () => {
+    const { service, persistDecision } = decideHarness({
+      currentVersion: 0,
+      currencyStatus: "unavailable",
+    });
+
+    await expect(
+      service.execute({
+        tenantId: "t",
+        actorId: "selector-1",
+        handoffId: HANDOFF_ID,
+        command: completeCommand(),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "REFERENCE_CURRENCY_RELEASE_UNAVAILABLE",
+    });
+    expect(persistDecision).not.toHaveBeenCalled();
+  });
+
+  it("用同租户来源信号后补的市场与渠道形成单位经济快照", async () => {
+    const { service, persistDecision, signalLive } = decideHarness({
+      currentVersion: 0,
+      handoffContext: { marketCode: null, channelCode: null },
+      liveContext: { marketCode: "CA", channelCode: "amazon" },
+    });
+
+    await service.execute({
+      tenantId: "t",
+      actorId: "selector-1",
+      handoffId: HANDOFF_ID,
+      command: completeCommand(),
+    });
+
+    expect(signalLive.execute).toHaveBeenCalledWith({
+      tenantId: "t",
+      signalIds: [SIGNAL_ID],
+    });
+    expect(persistDecision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: expect.objectContaining({
+          unitEconomicsSnapshot: expect.objectContaining({
+            marketCode: "CA",
+            channelCode: "amazon",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("交接与当前信号仍缺市场渠道时保留真实缺口且不写入", async () => {
+    const { service, persistDecision } = decideHarness({
+      currentVersion: 0,
+      handoffContext: { marketCode: null, channelCode: null },
+      liveContext: null,
+    });
+
+    await expect(
+      service.execute({
+        tenantId: "t",
+        actorId: "selector-1",
+        handoffId: HANDOFF_ID,
+        command: completeCommand(),
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(persistDecision).not.toHaveBeenCalled();
+  });
+
+  it("交接已有市场渠道时不被当前信号覆盖", async () => {
+    const { service, persistDecision } = decideHarness({
+      currentVersion: 0,
+      handoffContext: { marketCode: "US", channelCode: "amazon" },
+      liveContext: { marketCode: "CA", channelCode: "shopify" },
+    });
+
+    await service.execute({
+      tenantId: "t",
+      actorId: "selector-1",
+      handoffId: HANDOFF_ID,
+      command: completeCommand(),
+    });
+
+    expect(persistDecision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: expect.objectContaining({
+          unitEconomicsSnapshot: expect.objectContaining({
+            marketCode: "US",
+            channelCode: "amazon",
+          }),
+        }),
+      }),
+    );
+  });
 });
 
 describe("GetProductInitiativeService", () => {
   it("还没有立项判断时返回空并列出该信号已登记的证据", async () => {
+    const listActive = vi.fn().mockResolvedValue([
+      {
+        alphaCode: "USD",
+        currencyName: "US Dollar",
+        numericCode: "840",
+        minorUnit: 2,
+      },
+      {
+        alphaCode: "EUR",
+        currencyName: "Euro",
+        numericCode: "978",
+        minorUnit: 2,
+      },
+    ]);
     const service = new GetProductInitiativeService(
       { findByHandoffId: vi.fn().mockResolvedValue(null) } as never,
       {
@@ -80,6 +230,7 @@ describe("GetProductInitiativeService", () => {
           .mockResolvedValue({ handoff: { signalId: SIGNAL_ID } }),
       } as never,
       { executeDetails: vi.fn().mockResolvedValue([candidate()]) } as never,
+      { listActive } as never,
     );
 
     await expect(
@@ -87,6 +238,10 @@ describe("GetProductInitiativeService", () => {
     ).resolves.toEqual({
       handoffId: HANDOFF_ID,
       initiative: null,
+      currencyOptions: [
+        { code: "EUR", name: "Euro", minorUnit: 2 },
+        { code: "USD", name: "US Dollar", minorUnit: 2 },
+      ],
       evidenceCandidates: [
         {
           evidenceId: EVIDENCE_ID,
@@ -109,6 +264,7 @@ describe("GetProductInitiativeService", () => {
       } as never,
       opportunities as never,
       { executeDetails: vi.fn().mockResolvedValue([]) } as never,
+      { listActive: vi.fn().mockResolvedValue([]) } as never,
     );
 
     const detail = await service.execute({
@@ -117,6 +273,7 @@ describe("GetProductInitiativeService", () => {
     });
 
     expect(detail.initiative).toMatchObject({ version: 1 });
+    expect(detail.currencyOptions).toEqual([]);
     expect(opportunities.findByHandoffId).not.toHaveBeenCalled();
   });
 
@@ -125,6 +282,7 @@ describe("GetProductInitiativeService", () => {
       { findByHandoffId: vi.fn().mockResolvedValue(null) } as never,
       { findByHandoffId: vi.fn().mockResolvedValue(null) } as never,
       { executeDetails: vi.fn() } as never,
+      { listActive: vi.fn() } as never,
     );
 
     await expect(
@@ -133,16 +291,79 @@ describe("GetProductInitiativeService", () => {
   });
 });
 
-function decideHarness(input: { currentVersion: number }) {
+function decideHarness(input: {
+  currentVersion: number;
+  currencyStatus?: "active" | "unavailable";
+  handoffContext?: { marketCode: string | null; channelCode: string | null };
+  liveContext?: {
+    marketCode: string | null;
+    channelCode: string | null;
+  } | null;
+}) {
   const persistDecision = vi.fn().mockResolvedValue({
     record: record({ signalId: SIGNAL_ID }),
     duplicate: false,
   });
-  const service = new DecideProductInitiativeService({
+  const repository = {
     currentVersion: vi.fn().mockResolvedValue(input.currentVersion),
     persistDecision,
-  } as never);
-  return { service, persistDecision };
+  };
+  const opportunities = {
+    findByHandoffId: vi.fn().mockResolvedValue({
+      handoff: {
+        signalId: SIGNAL_ID,
+        evidenceRefs: [],
+        pendingFieldCodes: [],
+        marketCode: input.handoffContext
+          ? input.handoffContext.marketCode
+          : "US",
+        channelCode: input.handoffContext
+          ? input.handoffContext.channelCode
+          : "amazon",
+      },
+    }),
+  };
+  const evidenceReader = {
+    execute: vi.fn().mockResolvedValue({ [SIGNAL_ID]: [EVIDENCE_ID] }),
+  };
+  const liveContext =
+    input.liveContext === undefined
+      ? { marketCode: "US", channelCode: "amazon" }
+      : input.liveContext;
+  const signalLive = {
+    execute: vi.fn().mockResolvedValue(
+      liveContext
+        ? [
+            {
+              signalId: SIGNAL_ID,
+              ...liveContext,
+              categoryRef: null,
+              observedFactSummary: null,
+              hypothesis: null,
+            },
+          ]
+        : [],
+    ),
+  };
+  const service = new DecideProductInitiativeService(
+    repository as never,
+    opportunities as never,
+    evidenceReader as never,
+    {
+      resolve: vi.fn().mockResolvedValue({
+        status: input.currencyStatus ?? "active",
+        currency: input.currencyStatus === "unavailable" ? null : {},
+      }),
+    } as never,
+    signalLive as never,
+  );
+  return {
+    service,
+    persistDecision,
+    opportunities,
+    evidenceReader,
+    signalLive,
+  };
 }
 
 function record(overrides: Partial<ProductInitiativeRecord>) {
@@ -155,6 +376,17 @@ function record(overrides: Partial<ProductInitiativeRecord>) {
     completion: "completed",
     currentDestination: "handed_off",
     responsibleActorId: "selector-1",
+    responsibilityAccepted: true,
+    receivingTeamOrRole: "产品开发 / NPI",
+    resourceDescription: "结构工程 1 人",
+    targetDate: new Date("2026-11-15T00:00:00.000Z"),
+    nextDecisionDate: new Date("2026-10-20T00:00:00.000Z"),
+    nextDecisionQuestion: "是否进入 EVT 打样",
+    validationFocus: null,
+    reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
     objective: "把折叠宠物出行包做成可发布版本",
     reviewPoints: [],
     reason: null,
@@ -184,6 +416,12 @@ function completeCommand(overrides: Record<string, unknown> = {}) {
     outcome: "approve",
     expectedInitiativeVersion: 0,
     objective: "把折叠宠物出行包做成可发布版本",
+    acceptResponsibility: true,
+    receivingTeamOrRole: "产品开发 / NPI",
+    resourceDescription: "结构工程 1 人",
+    targetDate: "2026-11-15",
+    nextDecisionDate: "2026-10-20",
+    nextDecisionQuestion: "是否进入 EVT 打样",
     reviewPoints: [
       "target_user_and_market",
       "competitive_supply",
@@ -194,7 +432,30 @@ function completeCommand(overrides: Record<string, unknown> = {}) {
       evidenceRefs: [EVIDENCE_ID],
       conclusion: "结论",
     })),
+    unitEconomicsDraft: completeUnitEconomicsDraft(),
     idempotencyKey: "k",
     ...overrides,
   } as never;
+}
+
+function completeUnitEconomicsDraft() {
+  const range = {
+    min: "1",
+    max: "2",
+    basis: "assumption" as const,
+    evidenceRefs: [],
+  };
+  const scenario = {
+    salePrice: { ...range, min: "20", max: "30" },
+    landedCost: range,
+    platformFee: range,
+    fulfillmentFee: range,
+    advertisingCost: range,
+    returnCost: range,
+  };
+  return {
+    channelCode: "amazon",
+    currencyCode: "USD",
+    scenarios: { baseline: scenario, conservative: scenario },
+  };
 }

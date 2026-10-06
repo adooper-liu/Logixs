@@ -59,6 +59,8 @@ function entry(
     handoffId: "44444444-4444-4444-8444-444444444444",
     outcome: "defer",
     currentDestination: "needs_decision",
+    queueGroup: "standard",
+    reconsiderationDate: null,
     pendingFieldCodes: [],
     updatedAt: "2026-09-27T00:00:00.000Z",
     ...overrides,

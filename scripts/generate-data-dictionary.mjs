@@ -1640,7 +1640,7 @@ function referentialAction(code) {
   );
 }
 
-function normalizeCatalogSchema(catalog, extractionSchema) {
+export function normalizeCatalogSchema(catalog, extractionSchema) {
   return Object.fromEntries(
     Object.entries(catalog).map(([key, rows]) => [
       key,
@@ -1649,7 +1649,10 @@ function normalizeCatalogSchema(catalog, extractionSchema) {
           Object.entries(row).map(([field, value]) => [
             field,
             typeof value === "string"
-              ? value.replaceAll(extractionSchema, "public")
+              ? value
+                  .replaceAll("\r\n", "\n")
+                  .replaceAll("\r", "\n")
+                  .replaceAll(extractionSchema, "public")
               : value,
           ]),
         ),

@@ -1075,6 +1075,168 @@
         "createdAt": "2026-05-24T17:00:00Z",
         "updatedAt": "2026-05-24T17:05:00Z"
       }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "product initiative partial unit economics draft",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeUnitEconomicsDraftV1",
+      "data": {
+        "marketCode": "US",
+        "channelCode": "amazon",
+        "currencyCode": "USD",
+        "scenarios": {
+          "baseline": {
+            "salePrice": {
+              "min": "29.9",
+              "basis": "assumption",
+              "evidenceRefs": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "product initiative detail exposes active currency options",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeDetailV1",
+      "data": {
+        "handoffId": "00000000-0000-4000-8000-000000000001",
+        "initiative": null,
+        "currencyOptions": [
+          { "code": "JPY", "name": "Yen", "minorUnit": 0 },
+          { "code": "XUA", "name": "ADB Unit of Account", "minorUnit": null }
+        ],
+        "evidenceCandidates": []
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "product initiative complete unit economics snapshot",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeUnitEconomicsSnapshotV1",
+      "data": {
+        "marketCode": "US",
+        "channelCode": "amazon",
+        "currencyCode": "USD",
+        "scenarios": {
+          "baseline": {
+            "salePrice": {
+              "min": "30",
+              "max": "32",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "landedCost": {
+              "min": "8",
+              "max": "9",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "platformFee": {
+              "min": "4",
+              "max": "5",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "fulfillmentFee": {
+              "min": "3",
+              "max": "4",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "advertisingCost": {
+              "min": "2",
+              "max": "3",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "returnCost": {
+              "min": "1",
+              "max": "2",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "contribution": { "min": "7", "max": "14" }
+          },
+          "conservative": {
+            "salePrice": {
+              "min": "28",
+              "max": "30",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "landedCost": {
+              "min": "9",
+              "max": "10",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "platformFee": {
+              "min": "4",
+              "max": "5",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "fulfillmentFee": {
+              "min": "3",
+              "max": "4",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "advertisingCost": {
+              "min": "3",
+              "max": "4",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "returnCost": {
+              "min": "1",
+              "max": "2",
+              "basis": "assumption",
+              "evidenceRefs": []
+            },
+            "contribution": { "min": "3", "max": "10" }
+          }
+        }
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "product initiative draft rejects client contribution",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeUnitEconomicsDraftV1",
+      "valid": false,
+      "data": {
+        "currencyCode": "USD",
+        "scenarios": {
+          "baseline": { "contribution": { "min": "1", "max": "2" } }
+        }
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "product initiative decision rejects client market code",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeDecisionCommandV1",
+      "valid": false,
+      "data": {
+        "contractVersion": "product-initiative-decision.v1",
+        "requestId": "00000000-0000-4000-8000-000000000001",
+        "outcome": "defer",
+        "expectedInitiativeVersion": 0,
+        "reviewPoints": [],
+        "unitEconomicsDraft": { "marketCode": "US" },
+        "idempotencyKey": "decision-rejects-client-market"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "product initiative assumption rejects evidence references",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeUnitEconomicsRangeDraftV1",
+      "valid": false,
+      "data": {
+        "min": "1",
+        "max": "2",
+        "basis": "assumption",
+        "evidenceRefs": ["00000000-0000-4000-8000-000000000001"]
+      }
     }
   ]
 }
