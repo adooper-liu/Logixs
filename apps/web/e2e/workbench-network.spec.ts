@@ -556,9 +556,11 @@ test("selection requests a return, market takes it back, then hands off a new ve
   await page.getByLabel("退回依据").selectOption("wrong_direction");
   await page.getByLabel("市场需要补什么").fill("重新核对目标市场与渠道证据。");
   await page.getByRole("button", { name: "请求退回市场" }).click();
-  await expect(page.getByText("等待市场接回", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "等待市场接回", exact: true }),
+  ).toBeVisible();
   await expect(page.locator(".initiative-result")).toContainText(
-    "已请求退回市场，等待市场接回",
+    "当前责任仍在选品",
   );
   await expect(page.locator(".initiative-result")).not.toContainText(
     "已立项并交给产品侧",
