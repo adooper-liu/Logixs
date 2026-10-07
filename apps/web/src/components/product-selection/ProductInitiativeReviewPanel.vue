@@ -207,6 +207,12 @@ async function register(): Promise<void> {
   display: grid;
   gap: var(--space-3);
   min-width: 0;
+  padding: var(--space-4);
+}
+@media (max-width: 680px) {
+  .business-case {
+    padding: var(--space-3);
+  }
 }
 .business-case header small,
 .business-case__summary small {

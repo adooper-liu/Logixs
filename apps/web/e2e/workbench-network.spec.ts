@@ -299,8 +299,18 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
       appScrollWidth: content.scrollWidth,
       summaryTop: summary.getBoundingClientRect().top,
       summaryBottom: summary.getBoundingClientRect().bottom,
+      summaryLeft: summary.getBoundingClientRect().left,
+      summaryRight: summary.getBoundingClientRect().right,
       editorTop: editor.getBoundingClientRect().top,
+      editorLeft: editor.getBoundingClientRect().left,
+      editorRight: editor.getBoundingClientRect().right,
       actionTop: action.getBoundingClientRect().top,
+      detailLeft: document
+        .querySelector<HTMLElement>(".pane--detail")!
+        .getBoundingClientRect().left,
+      detailRight: document
+        .querySelector<HTMLElement>(".pane--detail")!
+        .getBoundingClientRect().right,
     };
   });
   expect(workingFacts.pageScrollWidth).toBeLessThanOrEqual(
@@ -312,6 +322,18 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   expect(workingFacts.summaryTop).toBeGreaterThanOrEqual(0);
   expect(workingFacts.summaryBottom).toBeLessThanOrEqual(viewport?.height ?? 0);
   expect(workingFacts.editorTop).toBeLessThan(viewport?.height ?? 0);
+  const expectedInset = (viewport?.width ?? 0) <= 680 ? 12 : 16;
+  for (const [left, right] of [
+    [workingFacts.summaryLeft, workingFacts.summaryRight],
+    [workingFacts.editorLeft, workingFacts.editorRight],
+  ]) {
+    expect(left - workingFacts.detailLeft).toBeGreaterThanOrEqual(
+      expectedInset,
+    );
+    expect(workingFacts.detailRight - right).toBeGreaterThanOrEqual(
+      expectedInset,
+    );
+  }
   await expect(submit).toBeInViewport();
   if ((viewport?.width ?? 0) <= 1100) {
     expect(workingFacts.summaryBottom).toBeLessThan(workingFacts.actionTop);
