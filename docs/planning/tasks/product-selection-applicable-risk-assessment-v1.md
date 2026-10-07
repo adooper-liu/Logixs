@@ -1,8 +1,8 @@
 ---
-status: design
+status: coding
 branch: feat/product-selection-applicable-risk-assessment-v1
 owner: main
-writer: main
+writer: codex
 risk: high
 dependsOn:
   - product-selection-five-dimension-business-case-v1
@@ -10,9 +10,58 @@ writeScopes:
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - doc/cross-border-supply-chain/wisdom-baseline/选品立项.md
   - docs/planning/tasks/product-selection-applicable-risk-assessment-v1.md
+  - packages/contracts/schemas/v1/product-initiative.schema.json
+  - packages/contracts/schemas/v1/index.json
+  - packages/contracts/fixtures/v1/schema-instances.json
+  - packages/contracts/generated/contracts.d.ts
+  - database/schema.prisma
+  - database/migrations/**
+  - database/dictionary/dictionary.annotations.json
+  - database/dictionary/DATA_DICTIONARY.generated.md
+  - database/dictionary/NATIVE_OBJECTS.generated.md
+  - database/dictionary/database-data-dictionary.xlsx
+  - apps/api/src/modules/product-selection/domain/product-initiative.ts
+  - apps/api/src/modules/product-selection/domain/product-initiative.test.ts
+  - apps/api/src/modules/product-selection/domain/product-initiative.repository.ts
+  - apps/api/src/modules/product-selection/application/decide-product-initiative.service.ts
+  - apps/api/src/modules/product-selection/application/get-product-initiative.service.ts
+  - apps/api/src/modules/product-selection/application/list-npi-queue.service.ts
+  - apps/api/src/modules/product-selection/application/list-product-initiatives.service.ts
+  - apps/api/src/modules/product-selection/application/product-initiative.services.test.ts
+  - apps/api/src/modules/product-selection/application/product-npi.services.test.ts
+  - apps/api/src/modules/product-selection/infrastructure/prisma-product-initiative.repository.ts
+  - apps/api/src/modules/product-selection/presentation/product-initiative.dto.ts
+  - apps/api/src/modules/product-selection/presentation/product-npi.dto.ts
+  - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-initiative-migration-upgrade.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-initiative-test-fixtures.ts
+  - apps/web/src/data/productEvaluationRequirements.ts
+  - apps/web/src/data/productEvaluationRequirements.test.ts
+  - apps/web/src/composables/useProductOpportunityWorkbench.ts
+  - apps/web/src/composables/useProductOpportunityWorkbench.test.ts
+  - apps/web/src/composables/useProductInitiativeDecision.ts
+  - apps/web/src/composables/useProductInitiativeDecision.test.ts
+  - apps/web/src/components/product-selection/ProductEvaluationRequirementsPanel.vue
+  - apps/web/src/components/product-selection/ProductEvaluationRequirementsPanel.test.ts
+  - apps/web/src/components/product-selection/ProductInitiativeReviewPanel.vue
+  - apps/web/src/components/product-selection/ProductInitiativeReviewPanel.test.ts
+  - apps/web/src/components/product-selection/ProductInitiativeResultPanel.vue
+  - apps/web/src/components/product-selection/ProductInitiativeResultPanel.test.ts
+  - apps/web/src/components/product-npi/ProductNpiHandoffDetail.vue
+  - apps/web/src/views/ProductSelectionWorkbench.vue
+  - apps/web/src/views/ProductSelectionWorkbench.test.ts
+  - apps/web/src/views/ProductNpiWorkbench.test.ts
+  - apps/web/e2e/workbench-network.spec.ts
 exclusiveLocks:
   - business-policy:ps-applicable-risk-assessment
-sharedIntegrationScopes: []
+  - public-contract:product-initiative-v1
+  - generated:contracts
+  - database-schema
+  - database-migrations
+  - database-dictionary
+  - generated:database-catalog
+sharedIntegrationScopes:
+  - apps/web/e2e/workbench-network.spec.ts
 authorityRefs:
   - AGENTS.md
   - doc/cross-border-supply-chain/01-authoritative-business-chain.md
@@ -214,10 +263,10 @@ recommendationReason
 
 | 项目        | 内容                                                                                                                                                                       |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 基线        | 设计 PR 合并后的 `main`                                                                                                                                                    |
+| 基线        | `4488604d7b252d7b8a5c99a764a364657845ff48`                                                                                                                                 |
 | 执行角色    | 实现执行器：Codex（GPT-5.6）                                                                                                                                               |
 | 复审        | 高风险：fresh Codex 只读复审公共契约、状态/责任语义、迁移、证据、快照和核心工作流                                                                                          |
-| 写入范围    | 实现前由主代理依据最终设计差异列出精确路径；包含契约/生成物、Schema/迁移/字典、product-selection Domain/Application/Repository/DTO、Web/NPI、相关测试                      |
+| 写入范围    | 精确路径见 frontmatter；只允许契约/生成物、Schema/迁移/字典、product-selection Domain/Application/Repository/DTO、Web/NPI 和列明测试                                       |
 | 禁止范围    | 自动规则目录、推荐来源字段、逐风险责任/NPI 接受、权限新能力码、Q1/P1/U1/组合优化/M1、下游合规规则泛化                                                                      |
 | UI 强制结构 | 逐项遵守 frontmatter 五项，保持既定三栏、信息顺序和响应式边距                                                                                                              |
 | 验证命令    | contract/check/drift；Domain/Application；真实 PostgreSQL flow + migration upgrade；API/Web lint/typecheck/full unit；三视口 E2E/截图；dictionary；repo/diff；最终完整门禁 |
