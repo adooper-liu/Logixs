@@ -86,6 +86,9 @@ export function toQueueEntry(
       unitEconomicsSnapshot: record.handoff.unitEconomicsSnapshot,
       negativeConservativeReason: record.handoff.negativeConservativeReason,
       reviewPoints: record.handoff.reviewPoints,
+      ...(record.handoff.businessCaseSnapshot
+        ? { businessCaseSnapshot: record.handoff.businessCaseSnapshot }
+        : {}),
       evidenceRefs: record.handoff.evidenceRefs,
       createdAt: record.handoff.createdAt.toISOString(),
       idempotencyKey: record.handoff.idempotencyKey,

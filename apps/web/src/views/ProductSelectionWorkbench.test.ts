@@ -104,8 +104,20 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.get('[role="status"]').text()).toContain("已接受经营机会");
     // 接受之后主动作就地换成立项结论：同一页面上继续做完，不再只提示"下一步"。
     expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
-    expect(wrapper.find(".product-initiative-review").exists()).toBe(true);
+    expect(wrapper.find(".business-case").exists()).toBe(true);
     expect(wrapper.find(".action-body").exists()).toBe(false);
+    const detail = wrapper.get(".opportunity-detail").element;
+    const businessCase = wrapper.get(".business-case").element;
+    const professionalFollowup = wrapper.get(".professional-followup");
+    expect(
+      detail.compareDocumentPosition(businessCase) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      businessCase.compareDocumentPosition(professionalFollowup.element) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(professionalFollowup.attributes("open")).toBeUndefined();
   });
 
   it("does not expose intake actions for a superseded handoff", async () => {
@@ -335,7 +347,7 @@ describe("ProductSelectionWorkbench", () => {
       "目标结果· 1 项未齐",
       "责任与资源· 3 项未齐",
       "时间与下一决策· 3 项未齐",
-      "评审依据· 4 项未齐",
+      "评审依据· 5 项未齐",
     ]);
     expect(gaps[4]).toMatch(/^单位经济· \d+ 项未齐$/);
     await wrapper
@@ -349,7 +361,7 @@ describe("ProductSelectionWorkbench", () => {
     ).toBeUndefined();
   });
 
-  it("补齐资源承诺、目标结果与四项要点后立项", async () => {
+  it("补齐资源承诺、目标结果与五面判断后立项", async () => {
     listProductOpportunities.mockResolvedValue(
       acceptedPage([acceptedOpportunityWithChannel()]),
     );
@@ -378,11 +390,11 @@ describe("ProductSelectionWorkbench", () => {
         targetDate: "2026-11-15",
         nextDecisionDate: "2026-10-20",
         nextDecisionQuestion: "是否进入 EVT 打样",
-        reviewPoints: expect.arrayContaining([
+        businessCaseDraft: expect.arrayContaining([
           expect.objectContaining({
-            code: "compliance_risk",
+            dimensionCode: "strategy_portfolio",
             evidenceRefs: [EVIDENCE_ID],
-            conclusion: "合规风险 的判断",
+            decision: "supports_investment",
           }),
         ]),
       }),
@@ -765,6 +777,76 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.find(".product-initiative-review").exists()).toBe(false);
   });
 
+  it.each(["rejected", "deferred"] as const)(
+    "completed legacy %s 显示历史四项只读，而非 NPI 结论",
+    async (currentDestination) => {
+      listProductOpportunities.mockResolvedValue(acceptedPage());
+      getProductInitiative.mockResolvedValue(
+        initiativeDetail({
+          initiative: {
+            ...initiativeRecord(),
+            outcome: currentDestination === "rejected" ? "reject" : "defer",
+            completion: "completed",
+            currentDestination,
+            businessCaseDraft: [],
+            businessCaseSnapshot: null,
+          },
+        }),
+      );
+      const wrapper = await mountPage();
+
+      expect(wrapper.findAll(".pane")).toHaveLength(3);
+      expect(wrapper.get("header").text()).toContain("历史四项评审");
+      expect(wrapper.get(".initiative-result").text()).toContain(
+        "历史四项评审（只读，非五面判断）",
+      );
+      expect(wrapper.get(".initiative-result").text()).toContain("头部集中");
+      expect(
+        wrapper.get(".initiative-result__reviews").element.children,
+      ).toHaveLength(4);
+      expect(wrapper.get(".initiative-result__reviews").text()).not.toContain(
+        "客户反馈与痛点",
+      );
+      expect(wrapper.get(".pane--action").text()).toContain("历史记录只读");
+      expect(wrapper.find(".outcome-submit").exists()).toBe(false);
+      expect(wrapper.find(".product-initiative-review").exists()).toBe(false);
+      expect(wrapper.text()).not.toContain("结论已冻结");
+      expect(wrapper.text()).not.toContain("已交 NPI");
+    },
+  );
+
+  it.each([
+    ["pending legacy", "defer", "pending_completion", "needs_decision", []],
+    ["新式拒绝", "reject", "completed", "rejected", ["customer_need"]],
+  ] as const)(
+    "%s 留有五面判断入口",
+    async (
+      _label,
+      outcome,
+      completion,
+      currentDestination,
+      pendingFieldCodes,
+    ) => {
+      listProductOpportunities.mockResolvedValue(acceptedPage());
+      getProductInitiative.mockResolvedValue(
+        initiativeDetail({
+          initiative: {
+            ...initiativeRecord(),
+            outcome,
+            completion,
+            currentDestination,
+            businessCaseDraft: [],
+            businessCaseSnapshot: null,
+            pendingFieldCodes: [...pendingFieldCodes],
+          },
+        }),
+      );
+      const wrapper = await mountPage();
+      expect(wrapper.find(".business-case").exists()).toBe(true);
+      expect(wrapper.find(".outcome-submit").exists()).toBe(true);
+    },
+  );
+
   it("立项判断读不出来时不提供判断动作，先让人重新加载", async () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     getProductInitiative.mockRejectedValue(
@@ -1089,16 +1171,25 @@ async function fillApprovalDraft(
   await wrapper
     .get('textarea[aria-label="下一决策问题"]')
     .setValue("是否进入 EVT 打样");
-  const labels = ["目标用户与市场", "竞争供给", "价格带与利润", "合规风险"];
+  const labels = [
+    "客户与需求",
+    "价值与差异",
+    "商业可行性",
+    "供应与技术可行性",
+    "战略与组合",
+  ];
   for (const [index, label] of labels.entries()) {
-    const point = wrapper.findAll(".review-point")[index]!;
-    await point.get(".picker-toggle").trigger("click");
-    await point
-      .get(`input[type="checkbox"][value="${EVIDENCE_ID}"]`)
-      .setValue(true);
     await wrapper
-      .get(`textarea[aria-label="${label}结论"]`)
-      .setValue(`${label} 的判断`);
+      .findAll(".business-case__summary button")
+      [index]!.trigger("click");
+    await wrapper.get('input[value="supports_investment"]').setValue();
+    await wrapper
+      .get(".business-case__editor textarea")
+      .setValue(label + " 的判断");
+    await wrapper.get(".business-case__editor summary").trigger("click");
+    await wrapper
+      .get('.business-case__editor input[type="checkbox"]')
+      .setValue(true);
   }
   await fillUnitEconomics(wrapper);
 }

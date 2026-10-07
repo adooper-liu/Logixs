@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { FileText } from "@lucide/vue";
 import type { ProductInitiativeNpiQueueEntryV1 } from "@logix/contracts";
-import { REVIEW_POINTS } from "../../composables/useProductInitiativeDecision";
+import {
+  BUSINESS_CASE_DIMENSIONS,
+  REVIEW_POINTS,
+} from "../../composables/useProductInitiativeDecision";
 import ProductInitiativeUnitEconomicsSnapshot from "../product-selection/ProductInitiativeUnitEconomicsSnapshot.vue";
 
 /**
@@ -11,6 +14,9 @@ import ProductInitiativeUnitEconomicsSnapshot from "../product-selection/Product
 defineProps<{ entry: ProductInitiativeNpiQueueEntryV1 }>();
 
 const LABELS = new Map(REVIEW_POINTS.map((point) => [point.code, point.label]));
+const BUSINESS_CASE_LABELS = new Map(
+  BUSINESS_CASE_DIMENSIONS.map((point) => [point.code, point.label]),
+);
 
 function pointLabel(code: string): string {
   return LABELS.get(code as (typeof REVIEW_POINTS)[number]["code"]) ?? code;
@@ -69,8 +75,21 @@ function pointLabel(code: string): string {
       </dl>
     </div>
 
-    <div class="block">
-      <h3>立项阶段的四项结论（只读）</h3>
+    <div v-if="entry.handoff.businessCaseSnapshot?.length" class="block">
+      <h3>五面商业论证（立项冻结，只读）</h3>
+      <ul>
+        <li
+          v-for="point in entry.handoff.businessCaseSnapshot"
+          :key="point.dimensionCode"
+        >
+          <b>{{ BUSINESS_CASE_LABELS.get(point.dimensionCode) }}</b
+          ><span>支持投入 · {{ point.conclusion }}</span
+          ><small>依据 {{ point.evidenceRefs.length }} 项</small>
+        </li>
+      </ul>
+    </div>
+    <div v-else class="block">
+      <h3>历史四项评审（只读，非五面判断）</h3>
       <ul>
         <li v-for="point in entry.handoff.reviewPoints" :key="point.code">
           <b>{{ pointLabel(point.code) }}</b>

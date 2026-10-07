@@ -24,7 +24,7 @@ import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 import {
   completeUnitEconomicsDraft,
-  PRODUCT_INITIATIVE_TEST_COMMITMENT,
+  PRODUCT_INITIATIVE_TEST_APPROVE_PREREQUISITE,
   PRODUCT_INITIATIVE_TEST_CONTEXT,
 } from "./product-initiative-test-fixtures";
 import {
@@ -469,7 +469,7 @@ async function seedRelease(): Promise<{ releaseId: string; skuId: string }> {
         outcome: "approve",
         expectedInitiativeVersion: 0,
         objective: "验证宠物出行品类是否值得立项",
-        ...PRODUCT_INITIATIVE_TEST_COMMITMENT,
+        ...PRODUCT_INITIATIVE_TEST_APPROVE_PREREQUISITE,
         unitEconomicsDraft: completeUnitEconomicsDraft(),
         reviewPoints: REVIEW_POINT_CODES.map((code) => ({
           code,

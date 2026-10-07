@@ -158,6 +158,8 @@ export function toProductInitiativeV1(
     negativeConservativeReason: record.negativeConservativeReason,
     objective: record.objective,
     reviewPoints: record.reviewPoints,
+    businessCaseDraft: record.businessCaseDraft ?? [],
+    businessCaseSnapshot: record.businessCaseSnapshot ?? null,
     reason: record.reason,
     returnBasis: record.returnBasis,
     pendingFieldCodes: record.pendingFieldCodes,

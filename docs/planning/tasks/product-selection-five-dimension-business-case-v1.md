@@ -1,5 +1,5 @@
 ---
-status: coding
+status: review
 branch: feat/product-selection-five-dimension-business-case-v1
 owner: main
 writer: codex
@@ -24,12 +24,18 @@ writeScopes:
   - apps/api/src/modules/product-selection/application/decide-product-initiative.service.ts
   - apps/api/src/modules/product-selection/application/get-product-initiative.service.ts
   - apps/api/src/modules/product-selection/application/list-npi-queue.service.ts
+  - apps/api/src/modules/product-selection/application/product-initiative.services.test.ts
   - apps/api/src/modules/product-selection/infrastructure/prisma-product-initiative.repository.ts
   - apps/api/src/modules/product-selection/presentation/product-initiative.dto.ts
   - apps/api/src/modules/product-selection/presentation/product-npi.dto.ts
   - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-migration-upgrade.integration.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-test-fixtures.ts
+  - apps/api/src/infrastructure/integration/workbench-network-volume.integration.test.ts
+  - apps/api/src/infrastructure/integration/supplier-nomination-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-npi-intake-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-identity-flow.integration.test.ts
+  - apps/api/src/infrastructure/integration/product-definition-flow.integration.test.ts
   - apps/web/src/composables/useProductInitiativeDecision.ts
   - apps/web/src/composables/useProductInitiativeDecision.test.ts
   - apps/web/src/components/product-selection/ProductInitiativeReviewPanel.vue
@@ -156,6 +162,90 @@ uiViewportEvidence:
 | 验证命令    | product-selection Domain/Application 单测；product-initiative flow + migration PostgreSQL；contract/drift；dictionary；Web focused/full；三视口专项 E2E；API/Web lint/typecheck；repo/diff |
 | 停止条件    | 完成后 `ready-for-review`，不得推送/建 PR/改状态；若发现需要队列、权限、动态风险或新数值阈值则返回 blocked                                                                                 |
 
+### 修复切片 `S1F1-legacy-evidence-closure`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 依据     | `S1-five-dimension-investment-gate-evidence-01` 已由主代理核验并接受；旧四项冻结进新 handoff 时，其引用也必须进入同一不可变快照的 `evidenceRefs` 汇总。                                                                                                                            |
+| 写入范围 | `apps/api/src/modules/product-selection/infrastructure/prisma-product-initiative.repository.ts`、`apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts`、`apps/api/src/modules/product-selection/application/product-initiative.services.test.ts`。 |
+| 实现要求 | 从最终写入 handoff 的旧 `reviewPoints`、新五面 snapshot/draft 与单位经济 snapshot 统一汇总、去重并稳定排序证据引用；不得自动映射旧四项为五面。更新旧 Application 完整命令 fixture，使其按新五面门槛表达，不放宽生产规则或既有断言。                                                |
+| 验收反证 | pending legacy 含旧证据 `E_old`，本次五面使用不同证据 `E_new` 后完成立项；handoff 保留旧四项且 `evidenceRefs` 同时包含 `E_old`、`E_new`。Application 模块原 4 条失败恢复通过。                                                                                                     |
+| 验证     | Application 定向测试；product-initiative Domain 测试；product-initiative flow PostgreSQL 测试；API lint/typecheck；`git diff --check`。                                                                                                                                            |
+| 禁止     | 不改 task brief、业务权威、公共契约、UI、迁移、权限、状态语义；不提交、不推送、不改任务状态。                                                                                                                                                                                      |
+| 停止条件 | 返回 `ready-for-review`；若修复需要改变快照契约或历史兼容政策则返回 `blocked`。                                                                                                                                                                                                    |
+
+### 修复切片 `S1F2-viewport-information-order`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 依据     | 三视口专项 E2E 3/3 通过且无横向溢出，但主代理人工核对工作态截图后确认：1440×900 与 1024×768 首屏只到五面标题，390×844 完全看不到五面摘要或当前维度；不满足 frontmatter 要求的“首屏可见五面状态 / 移动端队列→对象事实→五面摘要→当前维度→动作”。                                   |
+| 写入范围 | `apps/web/src/views/ProductSelectionWorkbench.vue`、`apps/web/src/views/ProductSelectionWorkbench.test.ts`、`apps/web/e2e/workbench-network.spec.ts`；只有确需压缩五面摘要本身时才允许改 `apps/web/src/components/product-selection/ProductInitiativeReviewPanel.vue` 及其测试。 |
+| 实现要求 | 保持 PageHeader、岗位/交接上下文、队列、三栏/响应式办理壳和单一主动作不变；把五面摘要与当前维度编辑提升到紧凑机会事实之后，专业要求与历史审计下移为后续渐进披露。桌面/窄屏首屏必须同时看见五面状态、当前阻断和主动作；移动端按既定顺序可达，不让固定动作条遮住五面摘要。         |
+| 验收反证 | 在 1440×900、1024×768、390×844 的工作态真实截图中，五面摘要与当前维度完全不可见，或页面/内容横向溢出，或专业要求仍排在五面之前，均判失败；结果态只读三栏/顺序不得回归。                                                                                                          |
+| 验证     | Web focused/full 单测、lint/typecheck、三项目专项 E2E；保留 working/result 六张真实截图及 overflow JSON，由主代理逐张人工核对。                                                                                                                                                  |
+| 禁止     | 不改 API、契约、Schema、业务状态、权限、队列双轴、单位经济规则；不把五面铺成五份长表单，不删除专业要求或 legacy 审计，不用缩小字体掩盖信息层级问题；不提交、不推送、不改 brief 状态。                                                                                            |
+| 停止条件 | 三视口证据齐全后返回 `ready-for-review`；若必须改变既定三栏壳或业务顺序则返回 `blocked`。                                                                                                                                                                                        |
+
+### 修复切片 `S1F3-unsupported-routing-guard`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 依据     | 业务权威明确利润、供应或组合判断不成立必须由选品暂缓或不立项，不得退回市场代办；当前 Domain 只限制 `validate_before_investment` 的去向，实测 `does_not_support + return_to_market` 会形成 `return_requested`。                                                                            |
+| 写入范围 | `apps/api/src/modules/product-selection/domain/product-initiative.ts`、`apps/api/src/modules/product-selection/domain/product-initiative.test.ts`；若需服务层错误映射回归，可改 `apps/api/src/modules/product-selection/application/product-initiative.services.test.ts`。                |
+| 实现要求 | 服务端拒绝任一五面为 `does_not_support` 时使用 `return_to_market`；仍允许选品侧 `reject`，以及按既定规则保存/暂缓后修改论证。不得由前端按钮状态代替 Domain 守卫，不改变 `returnBasis` 的上游机会退回语义。                                                                                |
+| 验收反证 | 完整五面中 `strategy_portfolio=does_not_support`，同时提交 `outcome=return_to_market`、合法 `returnBasis` 与原因；当前实现返回 `completion=completed/currentDestination=return_requested`，修复后必须稳定拒绝且不产生持久化、市场退回或 Outbox。`outcome=reject` 仍可按既有原因规则关闭。 |
+| 验证     | Domain/Application 定向测试、API lint/typecheck、`git diff --check`；如触及服务编排，补 product-initiative PostgreSQL flow。                                                                                                                                                              |
+| 禁止     | 不改业务权威、公共契约、Schema/迁移、UI、权限、队列或 NPI 行为；不新增状态、阈值或通用路由策略；不提交、不推送、不改 brief 状态。                                                                                                                                                         |
+| 停止条件 | 返回 `ready-for-review`；若需要改变市场退回政策或新增状态则返回 `blocked`。                                                                                                                                                                                                               |
+
+### 修复切片 `S1F4-completed-legacy-readonly`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 依据     | PS5-D02 明确 completed legacy 只读、pending legacy 才建立空五面草稿继续办理；当前 UI 仅把 `handed_off/return_requested` 视为只读，Repository 也只拒绝这两种 destination，因此迁移前已 `completion=completed` 的 `rejected/deferred` 旧四项记录仍会出现五面编辑器并可被覆盖。                                                                                                                                                      |
+| 写入范围 | `apps/api/src/modules/product-selection/infrastructure/prisma-product-initiative.repository.ts`、`apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts`、`apps/web/src/composables/useProductInitiativeDecision.ts`、`apps/web/src/composables/useProductInitiativeDecision.test.ts`、`apps/web/src/views/ProductSelectionWorkbench.vue`、`apps/web/src/views/ProductSelectionWorkbench.test.ts`。 |
+| 实现要求 | 只把“无五面快照/草稿且在迁移前已 completed”的 legacy 记录锁为历史只读；pending legacy 仍建立空五面草稿并可恢复。服务端必须拒绝改写，前端以独立的 `legacyReadOnly` 语义呈现旧四项审计，不得只靠隐藏按钮形成安全边界，也不得把历史拒绝/暂缓写成“已交 NPI”或“结论已冻结”。不得把 NPI 退回后的新式记录误锁死，也不得把普通在办 defer 当作 completed legacy。                                                                          |
+| 验收反证 | 构造 `completion=completed + currentDestination=rejected/deferred + businessCaseDraft=[] + businessCaseSnapshot=null + legacy reviewPoints`：页面只读显示历史四项，服务端新决定稳定拒绝且原行不变；构造 `completion=pending_completion` 的同形 legacy 记录仍可创建五面草稿；NPI `returned_from_npi` 当前态仍可再判断。                                                                                                            |
+| 验证     | Domain/Application/Web focused；product-initiative PostgreSQL flow；API/Web lint/typecheck；`git diff --check`。                                                                                                                                                                                                                                                                                                                  |
+| 禁止     | 不改 completed 判定的业务政策、公共契约、Schema/迁移、权限、NPI 状态机或队列双轴；不回填/映射旧四项，不新建 legacy 状态码；不提交、不推送、不改 brief 状态。                                                                                                                                                                                                                                                                      |
+| 停止条件 | 返回 `ready-for-review`；若无法从现有持久化事实无歧义地区分 completed legacy 与新式当前态，则返回 `blocked`，不得猜默认值。                                                                                                                                                                                                                                                                                                       |
+
+### 修复切片 `S1F5-contract-semantic-parity`
+
+| 项目     | 内容                                                                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 依据     | 公共 Schema 当前接受 Domain 会拒绝的五面草稿：`validate_before_investment + criticalUnknown=null`、`supports_investment + 非空 criticalUnknown`；五面 snapshot 数组只限制长度为 5，仍接受五个重复 `dimensionCode`。这违反“公共契约 + Domain 单一解释”验收。 |
+| 写入范围 | `packages/contracts/schemas/v1/product-initiative.schema.json`、`packages/contracts/fixtures/v1/schema-instances.json`、`packages/contracts/generated/contracts.d.ts`；如生成器要求索引漂移同步，可改 `packages/contracts/schemas/v1/index.json`。          |
+| 实现要求 | 在公共契约表达与 Domain 相同的关键未知条件：验证态必须是非空字符串，其他状态必须为 null 或缺省；对完整五面集合表达五个稳定维度各一次。优先使用 JSON Schema 2020-12 可验证结构，不复制业务评分或新增状态。生成类型必须由标准生成命令更新，不手写。           |
+| 验收反证 | `validate_before_investment + criticalUnknown=null`、`supports_investment + criticalUnknown='unexpected'`、完整 snapshot 含五个重复 `customer_need` 当前均通过 AJV；修复后均失败。合法部分草稿、合法验证态及完整五面 snapshot 继续通过。                    |
+| 验证     | `pnpm contract:generate`、`pnpm contract:check`、`pnpm contract:drift`、API/Web typecheck、相关 Domain/fixture 测试、`git diff --check`。                                                                                                                   |
+| 禁止     | 不改 Domain 行为、Schema/迁移、API 路由、UI、权限或业务权威；不把 draft 强制为五面齐全，不新增评分、阈值或动态风险项；不提交、不推送、不改 brief 状态。                                                                                                     |
+| 停止条件 | 返回 `ready-for-review`；若 JSON Schema 无法在不破坏 partial draft 的前提下表达唯一五面集合，则返回 `blocked`，不得仅依赖 TypeScript 类型冒充运行时契约。                                                                                                   |
+
+### 修复切片 `S1F6-business-case-migration-upgrade`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 依据     | 本片新增迁移 `20261006120000_add_product_initiative_business_case`，但现有 upgrade 测试只在已应用全部迁移的库中顺带断言新列，没有回退该迁移的记账与列后再部署，因此没有验证“真实旧库 → 本次迁移”的升级路径。                                                                                                                               |
+| 写入范围 | `apps/api/src/infrastructure/integration/product-initiative-migration-upgrade.integration.test.ts`。                                                                                                                                                                                                                                       |
+| 实现要求 | 为本次五面迁移建立独立旧版本升级场景：先部署并造 legacy current/handoff 数据，再移除本迁移新增约束与列、删除该迁移记账，重新执行标准迁移入口；验证旧 current 得到空 draft/null snapshot、旧 handoff 得到 null snapshot，旧四项原样不变，pending/completed 事实不被伪造，并验证新 shape 约束会拒绝非法长度。不得复制迁移 SQL 作为测试实现。 |
+| 验收反证 | 若测试没有删除 `20261006120000_add_product_initiative_business_case` 的 `_prisma_migrations` 记录与新增列，它不能证明升级；若重部署后旧 reviewPoints、outcome/completion/destination 被改写，或五面被自动回填，判失败。                                                                                                                    |
+| 验证     | 定向 migration upgrade PostgreSQL 测试、现有 product-initiative flow、API typecheck/lint、`git diff --check`。                                                                                                                                                                                                                             |
+| 禁止     | 不改迁移 SQL、Schema、Domain、契约、UI、业务权威或状态；不新建第二套迁移器，不用测试专用数据修复绕过标准迁移入口；不提交、不推送、不改 brief 状态。                                                                                                                                                                                        |
+| 停止条件 | 返回 `ready-for-review`；若历史迁移不可安全回退构造，则返回 `blocked` 并给出具体依赖，不得把空库测试冒充升级测试。                                                                                                                                                                                                                         |
+
+### 修复切片 `S1F7-downstream-integration-fixture`
+
+| 项目     | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 依据     | 最终 `pnpm test:integration` 中 S1 自身 flow/migration 51 条通过，但 5 个下游集成套件共 41 条失败；共同根因是它们通过共享 `product-initiative-test-fixtures.ts` 构造“完整立项前置”时仍只带旧四项或空 reviewPoints，未携带本片新增的五面支持投入事实，因此在进入各自被测模块前被新投资门拒绝。                                                                                                                                                                                                                                      |
+| 写入范围 | `apps/api/src/infrastructure/integration/product-initiative-test-fixtures.ts`、`apps/api/src/infrastructure/integration/workbench-network-volume.integration.test.ts`、`apps/api/src/infrastructure/integration/supplier-nomination-flow.integration.test.ts`、`apps/api/src/infrastructure/integration/product-npi-intake-flow.integration.test.ts`、`apps/api/src/infrastructure/integration/product-identity-flow.integration.test.ts`、`apps/api/src/infrastructure/integration/product-definition-flow.integration.test.ts`。 |
+| 实现要求 | 在共享集成 fixture 中新增唯一的完整五面支持投入草稿，并建立语义明确的“完整 approve 前置”对象；五个下游 handoff 构造器显式使用该 approve 前置。资源承诺 fixture 保持只含责任/资源事实，`workbench-network-volume` 的 defer/reject/return_to_market 样本不得被无条件注入五面支持投入。不得逐文件复制五面常量。保持证据 UUID 合法且不依赖真实证据仓储，因为这些套件直接测试领域准备后的下游持久化，不得修改生产门槛或新增测试旁路。                                                                                                   |
+| 验收反证 | `workbench-network-volume`、`supplier-nomination-flow`、`product-npi-intake-flow`、`product-identity-flow`、`product-definition-flow` 当前在立项前置处报五面缺失；修复后完整 `pnpm test:integration` 必须通过，且 S1 flow/migration 继续通过。任何通过放宽 `prepareProductInitiativeDecision`、跳过测试或逐文件复制 fixture 的做法均失败。                                                                                                                                                                                         |
+| 验证     | 先定向运行上述 5 个套件，再运行完整 `pnpm test:integration`；API lint/typecheck、定向 Prettier、`git diff --check`。                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 禁止     | 不改五个下游测试文件、生产 Domain/Application/Repository、契约、Schema/迁移、UI 或业务权威；不新增环境分支或测试专用后门；不提交、不推送、不改 brief 状态。                                                                                                                                                                                                                                                                                                                                                                        |
+| 停止条件 | 返回 `ready-for-review`；若某个下游套件需要不同五面事实才能表达其前置业务，则返回 `blocked` 并指出消费者，不得在共享 fixture 中混入特例。                                                                                                                                                                                                                                                                                                                                                                                          |
+
 ## 业务步骤五面映射
 
 | 业务步骤与岗位结果 | 岗位任务                               | 数据事实                                 | 技术保障                                      | 权限边界                       | 界面承接                         | 验收证据/状态 |
@@ -185,17 +275,31 @@ uiViewportEvidence:
 
 ## 验收
 
-- [ ] 新写五面语义由公共契约 + Domain 单一解释，前端不发明判断档位
-- [ ] approve 不能带 `validate_before_investment`、`does_not_support` 或未说明的关键未知
-- [ ] defer/reject 可保存部分草稿，刷新和任务切换不串线
-- [ ] 证据继续限定当前租户与当前机会来源信号；无效引用整体拒绝
-- [ ] 新立项冻结五面、单位经济和资源责任；NPI 只读消费同一快照
-- [ ] completed legacy 不回填、不冒充五面；pending legacy 按已定迁移政策可恢复
-- [ ] 固定三栏壳及 1440×900、1024×768、390×844 视觉顺序不变
-- [ ] 定向门禁、完整 Web、真实 PostgreSQL、专项 E2E、最终 CI 与独立复审通过
+- [x] 新写五面语义由公共契约 + Domain 单一解释，前端不发明判断档位
+- [x] approve 不能带 `validate_before_investment`、`does_not_support` 或未说明的关键未知
+- [x] defer/reject 可保存部分草稿，刷新和任务切换不串线
+- [x] 证据继续限定当前租户与当前机会来源信号；无效引用整体拒绝
+- [x] 新立项冻结五面、单位经济和资源责任；NPI 只读消费同一快照
+- [x] completed legacy 不回填、不冒充五面；pending legacy 按已定迁移政策可恢复
+- [x] 固定三栏壳及 1440×900、1024×768、390×844 视觉顺序不变
+- [ ] 最终 CI 通过
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                                   |
-| ---------- | ------ | ----------- | ------ | -------------------------------------------------------------------------------------- |
-| 2026-10-06 | design | Claude Code | —      | PR #145 合并后建立下一业务薄片；继承选品智慧基线，限定为五面三态投资门，不夹带后续能力 |
+| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                                                                                                                                                                                                            |
+| ---------- | ------ | ----------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-06 | design | Claude Code | —      | PR #145 合并后建立下一业务薄片；继承选品智慧基线，限定为五面三态投资门，不夹带后续能力                                                                                                                                                                                                                          |
+| 2026-10-06 | fix    | Claude Code | —      | 主代理接受 `evidence-01`：pending legacy 旧四项虽冻结进 handoff，但证据汇总只读取新命令，会令不可变快照丢失旧引用；修复片同时补齐既有 Application 测试夹具。该回报声明复用了实现上下文，不计为 fresh 独立复审通过。                                                                                             |
+| 2026-10-06 | review | Claude Code | —      | 主代理验收 S1F1：核对最终 handoff 证据汇总与 `E_old`/`E_new` 回归场景；独立复跑 Domain/Application 38 条、PostgreSQL flow 34 条、API lint/typecheck、定向格式及 diff 检查均通过。整片仍待 fresh Codex 独立复审与三视口视觉证据。                                                                                |
+| 2026-10-06 | review | Codex       | —      | fresh 只读复审未建立新的业务、安全、兼容或数据真实性 finding。主代理驳回自指的 `S1-RV-001`（当前回报本身即 fresh review），接受 `S1-RV-002` 为外部验收缺口；三视口 E2E 因普通 Vite 占用固定 5173 端口而尚未执行。                                                                                               |
+| 2026-10-06 | fix    | Claude Code | —      | 经负责人授权释放 5173/5174 后，三视口专项 E2E 3/3 通过且 overflow 数据合格；人工核对确认结果态合格，但工作态五面摘要/当前维度未进入约定首屏与移动顺序，接受为 `S1F2-viewport-information-order`，不得以自动化通过结案。                                                                                         |
+| 2026-10-06 | review | Claude Code | —      | 主代理验收 S1F2：逐张核对六张截图和 overflow JSON；独立复跑 Web 685 条、lint/typecheck、三视口专项 E2E 3/3 均通过，工作态与结果态满足既定结构。整片继续修复已确认的 `does_not_support` 错误退回市场路径。                                                                                                       |
+| 2026-10-06 | review | Claude Code | —      | 主代理验收 S1F3：Domain 守卫在证据读取与仓储事务前拒绝错误退回，Application 反证确认不调用 evidence reader 或 repository；独立复跑 40 条及 API lint/typecheck 通过。整片继续处理 completed legacy 只读兼容。                                                                                                    |
+| 2026-10-06 | fix    | Claude Code | —      | S1F4 服务端阶段验收：completed legacy reject/defer 拒改、原行不变、pending legacy 与 NPI return 可继续；PostgreSQL flow 37/37。实现器正确因 UI 文案越界返回 blocked，主代理扩入 Workbench 页面并要求独立 `legacyReadOnly` 呈现。                                                                                |
+| 2026-10-06 | review | Claude Code | —      | 主代理验收 S1F4：服务端与前端使用同一组现有事实识别 completed legacy；历史拒绝/暂缓独立只读，pending/new-style/NPI return 不误锁。复跑 PostgreSQL 37、API 40、Web 74、双方 lint/typecheck、三视口 3/3 均通过。                                                                                                  |
+| 2026-10-06 | review | Claude Code | —      | 主代理验收 S1F5：AJV 正反探针、54 个 fixture、contract generate/check/drift、API/Web typecheck、API 40 与 Web 66 均通过；本次收紧只作用于同一未提交 S1 新增结构且与 Domain 既有拒绝一致。继续补真实旧库升级验证。                                                                                               |
+| 2026-10-07 | review | Claude Code | —      | 主代理验收 S1F6：独立旧库场景真实删除五面列/约束与目标迁移记账，再走标准入口重放；legacy current/handoff 原事实保留、五面不回填、新约束生效。复跑 migration 14 + flow 37、API lint/typecheck 通过，进入最终 fresh 独立复审。                                                                                    |
+| 2026-10-07 | review | Codex       | —      | 最终 fresh 只读复审覆盖 S1F1～S1F6 后返回 `no-blocking-findings`，无 finding/unknown。reviewer 未独立重跑 PostgreSQL；该证据缺口由主代理本轮新鲜执行的 flow 37/37 与 migration+flow 51/51 覆盖，进入最终完整门禁。                                                                                              |
+| 2026-10-07 | fix    | Claude Code | —      | 最终 `validate` 的 repo/contract/dictionary/generate/lint 通过；全仓 format 仅被非任务 `.pytest_cache` 的 Windows EPERM 阻断，任务差异逐路径格式通过。全仓 unit 2164 条、typecheck、build 通过；完整 integration 暴露 5 个下游套件共 41 条旧前置 fixture 失败，进入 S1F7。                                      |
+| 2026-10-07 | fix    | Claude Code | —      | S1F7 初次交回的五套件 44/44 已复验，但共享 `COMMITMENT` 无条件携带五面支持投入，污染 defer/reject/return 样本；主代理扩充同片范围，要求资源承诺与 approve 前置分离并由五个 handoff 构造器显式使用。                                                                                                             |
+| 2026-10-07 | review | Claude Code | —      | 主代理验收 S1F7：资源承诺与 approve prerequisite 分离，五个消费者显式使用；全量 PostgreSQL 26 files / 195 tests 与 Web E2E 169 passed / 7 skipped 均通过。全仓 unit 2164、typecheck、lint、build、契约/字典/生成物通过；仅全仓格式扫描受非任务 `.pytest_cache` EPERM 阻断，任务差异逐路径格式通过。进入 PR/CI。 |

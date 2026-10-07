@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import type {
   ProductInitiativeDecisionCommandV1,
+  ProductInitiativeBusinessCaseDimensionSnapshotV1,
   ProductInitiativeReviewPointV1,
   ProductInitiativeUnitEconomicsDraftV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
@@ -11,6 +12,7 @@ const REVIEW_POINT_CODES = [
   "competitive_supply",
   "price_band_and_margin",
   "compliance_risk",
+  "customer_feedback",
 ] as const;
 
 const DECISION_OUTCOMES = [
@@ -49,6 +51,8 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
   @ApiPropertyOptional() objective?: string;
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
+  @ApiPropertyOptional({ type: [Object] })
+  businessCaseDraft?: ProductInitiativeDecisionCommandV1["businessCaseDraft"];
   @ApiPropertyOptional() deferReason?: string;
   @ApiPropertyOptional({ enum: [true] }) acceptResponsibility?: true;
   @ApiPropertyOptional() receivingTeamOrRole?: string;
@@ -97,6 +101,11 @@ export class ProductInitiativeResponseDto {
   @ApiPropertyOptional({ nullable: true }) objective!: string | null;
   @ApiProperty({ type: [ProductInitiativeReviewPointDto] })
   reviewPoints!: ProductInitiativeReviewPointDto[];
+  @ApiPropertyOptional({ type: [Object] })
+  businessCaseDraft?: ProductInitiativeDecisionCommandV1["businessCaseDraft"];
+  @ApiPropertyOptional({ type: [Object], nullable: true })
+  businessCaseSnapshot?:
+    ProductInitiativeBusinessCaseDimensionSnapshotV1[] | null;
   @ApiPropertyOptional({ nullable: true }) reason!: string | null;
   @ApiPropertyOptional({
     nullable: true,

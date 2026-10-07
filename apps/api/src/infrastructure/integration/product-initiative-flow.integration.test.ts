@@ -15,6 +15,7 @@ import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/
 import { ReadMarketSignalLiveService } from "../../modules/market-intelligence/read-market-signal-live.port";
 import type { ProductInitiativeDecisionCommandV1 } from "@logix/contracts";
 import {
+  BUSINESS_CASE_DIMENSIONS,
   ProductInitiativeConflictError,
   prepareProductInitiativeDecision,
   prepareSelectionReturnTakeback,
@@ -119,7 +120,21 @@ describe("product initiative persistence flow", () => {
           initiativeId: result.initiativeId,
         },
       }),
-    ).resolves.toMatchObject({ evidenceRefs: [evidenceId] });
+    ).resolves.toMatchObject({
+      evidenceRefs: [evidenceId],
+      businessCaseSnapshot: completeBusinessCase([evidenceId]),
+    });
+    await expect(
+      prisma.productInitiative.findFirstOrThrow({
+        where: {
+          tenantId: opportunity.tenantId,
+          handoffId: opportunity.handoffId,
+        },
+      }),
+    ).resolves.toMatchObject({
+      businessCaseDraft: completeBusinessCase([evidenceId]),
+      businessCaseSnapshot: completeBusinessCase([evidenceId]),
+    });
   });
 
   it("交接后补齐来源信号市场渠道时按工作视图落单位经济且不改交接快照", async () => {
@@ -321,6 +336,109 @@ describe("product initiative persistence flow", () => {
     ).resolves.toBe(0);
   });
 
+  it("pending 旧四项保留审计，建立空五面草稿后可部分暂缓并刷新恢复", async () => {
+    const opportunity = await seedOpportunity();
+    const legacyEvidenceId = await seedSignalEvidence(
+      opportunity.tenantId,
+      opportunity.signalId,
+    );
+    const legacy = await initiatives.persistDecision({
+      tenantId: opportunity.tenantId,
+      handoffId: opportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(opportunity, {
+        outcome: "defer",
+        reviewPoints: [
+          {
+            code: "competitive_supply",
+            evidenceRefs: [legacyEvidenceId],
+            conclusion: "历史评审",
+          },
+        ],
+      }),
+    });
+    expect(legacy.record.businessCaseDraft).toEqual([]);
+    await prisma.productInitiative.update({
+      where: { id: legacy.record.initiativeId },
+      data: {
+        pendingFieldCodes: legacy.record.pendingFieldCodes.filter(
+          (code) =>
+            !BUSINESS_CASE_DIMENSIONS.includes(
+              code as (typeof BUSINESS_CASE_DIMENSIONS)[number],
+            ),
+        ),
+      },
+    });
+    const current = await initiatives.persistDecision({
+      tenantId: opportunity.tenantId,
+      handoffId: opportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { ...opportunity, expectedInitiativeVersion: 1 },
+        {
+          outcome: "defer",
+          reviewPoints: [],
+          businessCaseDraft: [
+            {
+              dimensionCode: "customer_need",
+              decision: "validate_before_investment",
+              conclusion: "还需验证购买需求",
+              evidenceRefs: [],
+              criticalUnknown: "真实需求规模",
+            },
+          ],
+        },
+      ),
+    });
+    expect(current.record).toMatchObject({
+      businessCaseDraft: [
+        { dimensionCode: "customer_need", criticalUnknown: "真实需求规模" },
+      ],
+      businessCaseSnapshot: null,
+      reviewPoints: [{ code: "competitive_supply", conclusion: "历史评审" }],
+    });
+    const restored = await initiatives.findByHandoffId(
+      opportunity.tenantId,
+      opportunity.handoffId,
+    );
+    expect(restored?.businessCaseDraft).toEqual(
+      current.record.businessCaseDraft,
+    );
+    expect(restored?.reviewPoints).toEqual(legacy.record.reviewPoints);
+
+    const currentEvidenceId = await seedSignalEvidence(
+      opportunity.tenantId,
+      opportunity.signalId,
+    );
+    const approved = await initiatives.persistDecision({
+      tenantId: opportunity.tenantId,
+      handoffId: opportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { ...opportunity, expectedInitiativeVersion: 2 },
+        {
+          ...completeApproveCommand(currentEvidenceId),
+          expectedInitiativeVersion: 2,
+          reviewPoints: [],
+          unitEconomicsDraft: completeUnitEconomicsDraft(currentEvidenceId),
+        },
+      ),
+    });
+    const handoff = await prisma.productInitiativeHandoff.findFirstOrThrow({
+      where: {
+        tenantId: opportunity.tenantId,
+        initiativeId: approved.record.initiativeId,
+      },
+    });
+    expect(handoff.reviewPoints).toEqual(legacy.record.reviewPoints);
+    expect(handoff.businessCaseSnapshot).toEqual(
+      completeBusinessCase([currentEvidenceId]),
+    );
+    expect(handoff.evidenceRefs).toEqual(
+      [legacyEvidenceId, currentEvidenceId].sort(),
+    );
+  });
+
   it("非立项结果保留部分单位经济草稿但不生成完整快照", async () => {
     const { tenantId, handoffId } = await seedOpportunity();
 
@@ -424,6 +542,9 @@ describe("product initiative persistence flow", () => {
             conclusion: `${code} 的结论`,
           })),
           unitEconomicsDraft: negativeConservativeUnitEconomicsDraft(),
+          businessCaseDraft: completeBusinessCase(
+            REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
+          ),
         },
       ),
     ).toThrow("PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason");
@@ -572,6 +693,9 @@ describe("product initiative persistence flow", () => {
           nextDecisionDate: "2026-10-20",
           nextDecisionQuestion: "是否进入 EVT 打样",
           unitEconomicsDraft: completeUnitEconomicsDraft(),
+          businessCaseDraft: completeBusinessCase(
+            REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
+          ),
           reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
             code,
             evidenceRefs: [evidenceId(index)],
@@ -586,8 +710,7 @@ describe("product initiative persistence flow", () => {
       outcome: "approve",
       completion: "completed",
       currentDestination: "handed_off",
-      // customer_feedback 是非门槛缺口：立项可完成但仍会报告待补。
-      pendingFieldCodes: ["customer_feedback"],
+      pendingFieldCodes: [],
     });
     const snapshot = await prisma.productInitiativeHandoff.findFirst({
       where: { tenantId, initiativeId: approved.record.initiativeId },
@@ -683,7 +806,102 @@ describe("product initiative persistence flow", () => {
         where: { id: snapshotBefore.id },
       }),
     ).resolves.toEqual(snapshotBefore);
+    const reconsidered = await initiatives.persistDecision({
+      tenantId,
+      handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { handoffId, expectedInitiativeVersion: returned.record.version },
+        { outcome: "reject", rejectReason: "复核后不投入" },
+      ),
+    });
+    expect(reconsidered.record).toMatchObject({
+      version: returned.record.version + 1,
+      currentDestination: "rejected",
+    });
   });
+
+  it.each([
+    ["reject", { outcome: "reject", rejectReason: "历史不立项" }],
+    [
+      "defer",
+      {
+        outcome: "defer",
+        validationFocus: "历史待验证",
+        reconsiderationDate: "2026-10-20",
+      },
+    ],
+  ] as const)(
+    "completed legacy %s 保留原记录且拒绝改写",
+    async (_label, outcomeFields) => {
+      const opportunity = await seedOpportunity();
+      const legacyEvidenceId = await seedSignalEvidence(
+        opportunity.tenantId,
+        opportunity.signalId,
+      );
+      const legacy = await initiatives.persistDecision({
+        tenantId: opportunity.tenantId,
+        handoffId: opportunity.handoffId,
+        actorId: "selector-1",
+        command: decide(opportunity, {
+          ...outcomeFields,
+          reviewPoints: [
+            {
+              code: "competitive_supply",
+              evidenceRefs: [legacyEvidenceId],
+              conclusion: "历史评审",
+            },
+          ],
+        }),
+      });
+      expect(legacy.record.completion).toBe("completed");
+      await prisma.productInitiative.update({
+        where: { id: legacy.record.initiativeId },
+        data: {
+          pendingFieldCodes: legacy.record.pendingFieldCodes.filter(
+            (code) =>
+              !BUSINESS_CASE_DIMENSIONS.includes(
+                code as (typeof BUSINESS_CASE_DIMENSIONS)[number],
+              ),
+          ),
+        },
+      });
+      const original = await prisma.productInitiative.findUniqueOrThrow({
+        where: { id: legacy.record.initiativeId },
+      });
+      expect(original.businessCaseDraft).toEqual([]);
+      expect(original.businessCaseSnapshot).toBeNull();
+      await expect(
+        initiatives.persistDecision({
+          tenantId: opportunity.tenantId,
+          handoffId: opportunity.handoffId,
+          actorId: "selector-1",
+          command: decide(
+            { ...opportunity, expectedInitiativeVersion: original.version },
+            { outcome: "reject", rejectReason: "尝试覆盖历史" },
+          ),
+        }),
+      ).rejects.toThrowError(/PRODUCT_INITIATIVE_LEGACY_READ_ONLY/);
+      await expect(
+        prisma.productInitiative.findUniqueOrThrow({
+          where: { id: legacy.record.initiativeId },
+        }),
+      ).resolves.toEqual(original);
+      await expect(
+        prisma.productInitiativeHandoff.count({
+          where: { tenantId: opportunity.tenantId },
+        }),
+      ).resolves.toBe(0);
+      await expect(
+        prisma.outboxMessage.count({
+          where: {
+            tenantId: opportunity.tenantId,
+            eventType: "product_initiative.handed_off",
+          },
+        }),
+      ).resolves.toBe(0);
+    },
+  );
 
   it("除立项与 NPI 退回外，其他结果仍不能携带资源承诺", async () => {
     const { tenantId, handoffId } = await seedOpportunity();
@@ -850,6 +1068,36 @@ describe("product initiative persistence flow", () => {
     await expect(
       prisma.productInitiative.count({ where: { tenantId, handoffId } }),
     ).resolves.toBe(0);
+  });
+
+  it("新式完成但五面草稿为空的拒绝仍可重判", async () => {
+    const opportunity = await seedOpportunity();
+    const first = await initiatives.persistDecision({
+      tenantId: opportunity.tenantId,
+      handoffId: opportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(opportunity, {
+        outcome: "reject",
+        rejectReason: "当前不投入",
+      }),
+    });
+    expect(first.record).toMatchObject({
+      completion: "completed",
+      currentDestination: "rejected",
+      businessCaseDraft: [],
+      businessCaseSnapshot: null,
+    });
+    expect(first.record.pendingFieldCodes).toContain("customer_need");
+    const reconsidered = await initiatives.persistDecision({
+      tenantId: opportunity.tenantId,
+      handoffId: opportunity.handoffId,
+      actorId: "selector-1",
+      command: decide(
+        { ...opportunity, expectedInitiativeVersion: first.record.version },
+        { outcome: "reject", rejectReason: "复核后仍不投入" },
+      ),
+    });
+    expect(reconsidered.record.version).toBe(first.record.version + 1);
   });
 
   it("从 queued/claimed/accepted 事实派生市场责任并拒绝跨租户读取", async () => {
@@ -1485,6 +1733,9 @@ function completeApprove(current: { handoffId: string }) {
       conclusion: `${code} 的结论`,
     })),
     unitEconomicsDraft: completeUnitEconomicsDraft(),
+    businessCaseDraft: completeBusinessCase(
+      REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
+    ),
   });
 }
 
@@ -1510,8 +1761,19 @@ function completeApproveCommand(
       conclusion: `${code} 的结论`,
     })),
     unitEconomicsDraft: completeUnitEconomicsDraft(),
+    businessCaseDraft: completeBusinessCase([evidenceId]),
     idempotencyKey: `decision:${requestId}`,
   };
+}
+
+function completeBusinessCase(evidenceRefs: string[]) {
+  return BUSINESS_CASE_DIMENSIONS.map((dimensionCode, index) => ({
+    dimensionCode,
+    decision: "supports_investment" as const,
+    conclusion: "可追溯投入依据",
+    evidenceRefs: [evidenceRefs[index % evidenceRefs.length]!],
+    criticalUnknown: null,
+  }));
 }
 
 function completeUnitEconomicsDraft(evidenceRef?: string) {

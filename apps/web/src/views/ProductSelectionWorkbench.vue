@@ -5,7 +5,6 @@ import {
   RefreshCw,
   UserRound,
 } from "@lucide/vue";
-import type { ProductInitiativeReviewPointCodeV1 } from "@logix/contracts";
 import { computed, nextTick, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
@@ -67,6 +66,7 @@ const {
   detail: initiativeDetail,
   initiative,
   decided,
+  legacyReadOnly,
   returnPending,
   objective,
   acceptResponsibility,
@@ -79,8 +79,9 @@ const {
   destination,
   returnBasis,
   currentReason,
-  points,
   reviewPointViews,
+  businessCase,
+  businessCaseViews,
   requiredCount,
   blockingGapGroups,
   optionalGaps,
@@ -98,7 +99,6 @@ const {
   receipt: initiativeReceipt,
   load: loadInitiative,
   setDestination,
-  toggleEvidence,
   setUnitEconomicsCurrency,
   setUnitEconomicsRangeValue,
   setUnitEconomicsBasis,
@@ -226,13 +226,6 @@ function updateUnitEconomicsEvidence(
   toggleUnitEconomicsEvidence(change.scenario, change.field, change.evidenceId);
 }
 
-function setConclusion(
-  code: ProductInitiativeReviewPointCodeV1,
-  value: string,
-): void {
-  points[code].conclusion = value;
-}
-
 /**
  * 专业要求面板登记的证据同样挂在该信号的证据链上，评审要点的可引用列表
  * 必须跟着更新，否则同一个动作在两个面板里表现不一致。
@@ -256,9 +249,16 @@ async function submitDecision(
   if (ok) await load();
 }
 
-const isInitiated = computed(() => decided.value);
-watch(isInitiated, async (initiated) => {
-  if (!initiated) return;
+const isReadOnly = computed(() => decided.value);
+const resultReviewPoints = computed(() =>
+  legacyReadOnly.value
+    ? reviewPointViews.value.filter(
+        (point) => point.code !== "customer_feedback",
+      )
+    : reviewPointViews.value,
+);
+watch(isReadOnly, async (readOnly) => {
+  if (!readOnly) return;
   await nextTick();
   document
     .querySelector<HTMLElement>(".app-content")
@@ -302,18 +302,20 @@ const progressPercent = computed(() =>
     class="selection-workbench page-frame"
     :class="{
       'selection-workbench--decision-ready':
-        selected && initiativeReady && !isInitiated,
+        selected && initiativeReady && !isReadOnly,
     }"
   >
     <PageHeader
-      :class="{ 'page-header--result': isInitiated }"
+      :class="{ 'page-header--result': isReadOnly }"
       eyebrow="选品岗位工作台"
       title="选品立项"
       :summary="
-        isInitiated
-          ? returnPending
-            ? '等待市场接回；当前责任仍在选品。'
-            : '查看已冻结的立项结论与 NPI 交接。'
+        isReadOnly
+          ? legacyReadOnly
+            ? '查看历史四项评审；这条旧立项判断只读，不生成五面结论。'
+            : returnPending
+              ? '等待市场接回；当前责任仍在选品。'
+              : '查看已冻结的立项结论与 NPI 交接。'
           : '领取经营团队交来的机会，核对依据与待补项，再决定是否进入正式立项评审。'
       "
     />
@@ -326,7 +328,7 @@ const progressPercent = computed(() =>
       </button>
     </section>
     <section
-      v-else-if="feedbackReceipt && !isInitiated"
+      v-else-if="feedbackReceipt && !isReadOnly"
       class="feedback feedback--success"
       role="status"
     >
@@ -361,7 +363,7 @@ const progressPercent = computed(() =>
           </p>
           <template v-else>
             <header
-              v-if="initiativeReady && !isInitiated"
+              v-if="initiativeReady && !isReadOnly"
               class="progress-head"
               aria-label="立项完备度"
             >
@@ -383,13 +385,13 @@ const progressPercent = computed(() =>
               </div>
             </header>
             <ProductInitiativeGapGroup
-              v-if="initiativeReady && !isInitiated"
+              v-if="initiativeReady && !isReadOnly"
               :groups="blockingGapGroups"
               :active-panel="activeGapPanel"
               @select="selectGapPanel"
             />
             <ProductInitiativeResultPanel
-              v-if="isInitiated && initiative"
+              v-if="isReadOnly && initiative"
               :title="selected.handoff.title"
               :market-code="selected.handoff.marketCode"
               :channel-code="selected.handoff.channelCode"
@@ -402,34 +404,56 @@ const progressPercent = computed(() =>
                 historicalMissingCategoryCount
               "
               :initiative="initiative"
-              :points="reviewPointViews"
+              :points="resultReviewPoints"
               :candidates="evidenceCandidates"
               :unit-economics-snapshot="unitEconomicsSnapshot"
             />
             <template v-else>
               <ProductOpportunityDetail :item="selected" />
             </template>
-            <ProductEvaluationRequirementsPanel
-              v-if="!isInitiated"
-              :key="initiativeHandoffId"
-              :requirements="requirements.requirements"
-              :withheld="requirements.withheld"
-              :busy="saving"
-              :save-evidence="addRequirementEvidence"
-            />
             <ProductInitiativeReviewPanel
-              v-if="initiativeReady && !isInitiated"
+              v-if="initiativeReady && !isReadOnly"
               :key="initiativeHandoffId"
               data-gap-panel="review_points"
               tabindex="-1"
-              :points="reviewPointViews"
+              :dimensions="businessCaseViews"
+              :legacy-points="initiative?.reviewPoints ?? []"
               :candidates="evidenceCandidates"
               :busy="deciding"
               :add-evidence="addInitiativeEvidence"
               :active="activeGapPanel === 'review_points'"
-              @toggle-evidence="toggleEvidence"
-              @update-conclusion="setConclusion"
+              @toggle-evidence="
+                (code, id) => {
+                  const draft = businessCase[code];
+                  draft.evidenceRefs = draft.evidenceRefs.includes(id)
+                    ? draft.evidenceRefs.filter((ref) => ref !== id)
+                    : [...draft.evidenceRefs, id];
+                }
+              "
+              @update-decision="
+                (code, decision) => {
+                  businessCase[code].decision = decision;
+                  if (decision !== 'validate_before_investment')
+                    businessCase[code].criticalUnknown = '';
+                }
+              "
+              @update-conclusion="
+                (code, value) => (businessCase[code].conclusion = value)
+              "
+              @update-unknown="
+                (code, value) => (businessCase[code].criticalUnknown = value)
+              "
             />
+            <details v-if="!isReadOnly" class="professional-followup">
+              <summary>专业要求与专项证据（按需展开）</summary>
+              <ProductEvaluationRequirementsPanel
+                :key="initiativeHandoffId"
+                :requirements="requirements.requirements"
+                :withheld="requirements.withheld"
+                :busy="saving"
+                :save-evidence="addRequirementEvidence"
+              />
+            </details>
           </template>
         </template>
         <p v-else class="empty">
@@ -439,7 +463,7 @@ const progressPercent = computed(() =>
       <section
         class="pane pane--action"
         :class="{
-          'pane--decision': selected && initiativeReady && !isInitiated,
+          'pane--decision': selected && initiativeReady && !isReadOnly,
         }"
       >
         <ProductOpportunityActions
@@ -457,13 +481,23 @@ const progressPercent = computed(() =>
           }}
         </p>
         <section
-          v-else-if="selected && isInitiated"
+          v-else-if="selected && isReadOnly"
           class="initiative-readonly-context"
-          :aria-label="returnPending ? '等待市场接回' : '冻结立项结论'"
+          :aria-label="
+            legacyReadOnly
+              ? '历史立项判断只读'
+              : returnPending
+                ? '等待市场接回'
+                : '冻结立项结论'
+          "
         >
           <small>{{ returnPending ? "退回请求" : "立项结果" }}</small>
-          <h2>{{ returnPending ? "等待市场接回" : "结论已冻结" }}</h2>
-          <p v-if="returnPending">
+          <h2 v-if="legacyReadOnly">历史记录只读</h2>
+          <h2 v-else>{{ returnPending ? "等待市场接回" : "结论已冻结" }}</h2>
+          <p v-if="legacyReadOnly">
+            仅供核对历史四项评审，不提供五面编辑或重新提交动作。
+          </p>
+          <p v-else-if="returnPending">
             当前责任仍在选品，市场接回前不提供编辑或重新提交动作。
           </p>
           <p v-else>已交 NPI，当前不提供编辑或重新提交动作。</p>
@@ -665,6 +699,21 @@ const progressPercent = computed(() =>
 .pane--decision {
   height: clamp(420px, calc(100dvh - var(--topbar-height) - 260px), 660px);
 }
+.selection-workbench--decision-ready :deep(.opportunity-detail > header),
+.selection-workbench--decision-ready :deep(.opportunity-detail > section),
+.selection-workbench--decision-ready :deep(.opportunity-facts),
+.selection-workbench--decision-ready :deep(.opportunity-status) {
+  padding: var(--space-2) var(--space-3);
+}
+.selection-workbench--decision-ready :deep(.opportunity-facts) {
+  gap: var(--space-2) var(--space-3);
+}
+.professional-followup > summary {
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
 .empty {
   margin: 0;
   padding: var(--space-6) var(--space-4);
@@ -747,6 +796,32 @@ const progressPercent = computed(() =>
     gap: var(--space-2);
     align-items: baseline;
     padding-top: var(--space-1);
+  }
+}
+@media (min-width: 681px) and (max-width: 1100px) {
+  .selection-workbench--decision-ready {
+    padding-bottom: calc(var(--touch-target) + var(--space-6));
+  }
+  .selection-workbench--decision-ready :deep(.opportunity-facts) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .selection-workbench--decision-ready :deep(.outcome-action) {
+    position: fixed;
+    right: var(--space-4);
+    bottom: var(--space-3);
+    left: calc(var(--sidebar-folded-width) + var(--space-5));
+    z-index: 5;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 17rem);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-overlay);
+  }
+}
+@media (min-width: 681px) and (max-width: 959px) {
+  .selection-workbench--decision-ready :deep(.outcome-action) {
+    left: var(--space-4);
   }
 }
 @media (max-width: 680px) {

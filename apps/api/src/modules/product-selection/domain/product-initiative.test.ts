@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { ProductInitiativeDecisionCommandV1 } from "@logix/contracts";
 import {
   assertProductInitiativeEvidenceRefs,
+  BUSINESS_CASE_DIMENSIONS,
   PRODUCT_INITIATIVE_GATE,
   ProductInitiativeConflictError,
-  ProductInitiativeValidationError,
   prepareProductInitiativeDecision as prepareProductInitiativeDecisionDomain,
   prepareSelectionReturnTakeback,
   productInitiativePendingFieldCodes,
@@ -44,10 +44,10 @@ function prepareProductInitiativeDecision(
 }
 
 describe("productInitiativePendingFieldCodes", () => {
-  it("列出目标结果与四项要点作为缺口", () => {
+  it("列出目标结果与五面作为缺口", () => {
     expect(productInitiativePendingFieldCodes(emptyDraft())).toEqual([
       "objective",
-      ...REVIEW_POINT_CODES,
+      ...BUSINESS_CASE_DIMENSIONS,
       "responsibility_commitment",
       "receiving_team_or_role",
       "resource_description",
@@ -57,27 +57,109 @@ describe("productInitiativePendingFieldCodes", () => {
     ]);
   });
 
-  it("要点只差结论时仍算缺口，证据为空也算", () => {
+  it("五面只差结论或证据时仍算缺口", () => {
     const draft = completeDraft();
-    draft.reviewPoints = draft.reviewPoints.map((point) =>
-      point.code === "competitive_supply"
+    draft.businessCaseDraft = draft.businessCaseDraft!.map((point) =>
+      point.dimensionCode === "value_differentiation"
         ? { ...point, conclusion: null }
         : point,
     );
-    draft.reviewPoints = draft.reviewPoints.map((point) =>
-      point.code === "price_band_and_margin"
+    draft.businessCaseDraft = draft.businessCaseDraft.map((point) =>
+      point.dimensionCode === "commercial_viability"
         ? { ...point, evidenceRefs: [] }
         : point,
     );
 
     expect(productInitiativePendingFieldCodes(draft)).toEqual([
-      "competitive_supply",
-      "price_band_and_margin",
+      "value_differentiation",
+      "commercial_viability",
     ]);
   });
 });
 
 describe("prepareProductInitiativeDecision 立项", () => {
+  it("三态只允许支持投入立项，验证态须注明阻断未知并仅能暂缓", () => {
+    const validate = completeCommand();
+    validate.businessCaseDraft![0] = {
+      ...validate.businessCaseDraft![0]!,
+      decision: "validate_before_investment",
+      criticalUnknown: "客户规模仍须验证",
+    };
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, validate),
+    ).toThrowError(/PRODUCT_INITIATIVE_INCOMPLETE: customer_need/);
+    const defer = {
+      ...validate,
+      outcome: "defer" as const,
+      validationFocus: "验证客户规模",
+      reconsiderationDate: "2026-10-20",
+    };
+    expect(
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, defer),
+    ).toMatchObject({
+      businessCaseSnapshot: null,
+      businessCaseDraft: expect.arrayContaining([
+        {
+          dimensionCode: "customer_need",
+          decision: "validate_before_investment",
+          conclusion: "有依据支持投入",
+          evidenceRefs: [evidenceId(0)],
+          criticalUnknown: "客户规模仍须验证",
+        },
+      ]),
+    });
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+        ...validate,
+        outcome: "reject",
+      }),
+    ).toThrowError(/businessCaseDraft.decision/);
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+        ...defer,
+        businessCaseDraft: [
+          { ...validate.businessCaseDraft![0]!, criticalUnknown: null },
+        ],
+      }),
+    ).toThrowError(/businessCaseDraft.criticalUnknown/);
+    const unsupported = completeCommand();
+    unsupported.businessCaseDraft![1] = {
+      ...unsupported.businessCaseDraft![1]!,
+      decision: "does_not_support",
+    };
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, unsupported),
+    ).toThrowError(/PRODUCT_INITIATIVE_INCOMPLETE: value_differentiation/);
+  });
+
+  it("不接受重复维度、伪造状态或非阻断未知；新快照只冻结五面", () => {
+    const complete = completeCommand();
+    const approved = prepareProductInitiativeDecision(
+      NEW_INITIATIVE,
+      ACTOR,
+      complete,
+    );
+    expect(
+      approved.businessCaseSnapshot?.map((point) => point.dimensionCode),
+    ).toEqual(BUSINESS_CASE_DIMENSIONS);
+    expect(
+      approved.businessCaseSnapshot?.every(
+        (point) => point.criticalUnknown === null,
+      ),
+    ).toBe(true);
+    complete.businessCaseDraft![1] = complete.businessCaseDraft![0]!;
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, complete),
+    ).toThrowError(/businessCaseDraft.dimensionCode/);
+    complete.businessCaseDraft![1] = {
+      ...approved.businessCaseSnapshot![1]!,
+      criticalUnknown: "仍待确定",
+    };
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, complete),
+    ).toThrowError(/businessCaseDraft.criticalUnknown/);
+  });
+
   it("要点与目标结果齐备时立项成立并交到产品侧", () => {
     const prepared = prepareProductInitiativeDecision(
       NEW_INITIATIVE,
@@ -91,7 +173,7 @@ describe("prepareProductInitiativeDecision 立项", () => {
     expect(prepared.initiativeId).toBe(INITIATIVE_ID);
     expect(prepared.responsibleActorId).toBe(ACTOR);
     expect(prepared.objective).toBe("把折叠宠物出行包做成可发布版本");
-    expect(prepared.reviewPoints).toHaveLength(5);
+    expect(prepared.businessCaseSnapshot).toHaveLength(5);
   });
 
   it("缺项时拒绝立项，并说明还差哪几项", () => {
@@ -130,28 +212,19 @@ describe("prepareProductInitiativeDecision 立项", () => {
     });
   });
 
-  it("把某要点移出门槛后，该项缺失不再阻止立项，只作为待补", () => {
+  it("旧四项不再作为新立项门槛，五面缺项不能旁路", () => {
     const command = completeCommand();
     command.reviewPoints = command.reviewPoints.map((point) =>
       point.code === "compliance_risk" ? { ...point, conclusion: null } : point,
     );
-
-    // 默认门槛下不能立项
+    expect(
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, command)
+        .businessCaseSnapshot,
+    ).toHaveLength(5);
+    command.businessCaseDraft = command.businessCaseDraft!.slice(1);
     expect(() =>
-      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, command),
-    ).toThrowError(ProductInitiativeValidationError);
-
-    // 单一配置处把合规风险降为待补后即可立项
-    const prepared = prepareProductInitiativeDecision(
-      NEW_INITIATIVE,
-      ACTOR,
-      command,
-      REVIEW_POINT_CODES.slice(0, 3),
-    );
-
-    expect(prepared.completion).toBe("completed");
-    expect(prepared.nextDestination).toBe("handed_off");
-    expect(prepared.pendingFieldCodes).toEqual(["compliance_risk"]);
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, command, []),
+    ).toThrowError(/PRODUCT_INITIATIVE_INCOMPLETE: customer_need/);
   });
 });
 
@@ -230,7 +303,7 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
     expect(prepared.pendingFieldCodes).toEqual(
       expect.arrayContaining([
         "objective",
-        ...REVIEW_POINT_CODES,
+        ...BUSINESS_CASE_DIMENSIONS,
         "responsibility_commitment",
         "receiving_team_or_role",
         "resource_description",
@@ -280,6 +353,57 @@ describe("prepareProductInitiativeDecision 其余去向", () => {
     expect(prepared.completion).toBe("completed");
     expect(prepared.nextDestination).toBe("rejected");
     expect(prepared.pendingFieldCodes).not.toContain("reject_reason");
+  });
+
+  it("任一五面不支持投入时不得退回市场，仍可不立项或暂缓修改论证", () => {
+    const unsupported = completeCommand();
+    unsupported.businessCaseDraft![4] = {
+      ...unsupported.businessCaseDraft![4]!,
+      decision: "does_not_support",
+    };
+    const returnCommand = {
+      ...unsupported,
+      outcome: "return_to_market" as const,
+      returnReason: "机会定义成了渠道问题",
+      returnBasis: "wrong_direction" as const,
+    };
+
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, returnCommand),
+    ).toThrowError(/VALIDATION_FORMAT: businessCaseDraft.decision/);
+
+    expect(
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+        ...unsupported,
+        outcome: "reject",
+        rejectReason: "组合代价不支持投入",
+      }),
+    ).toMatchObject({
+      completion: "completed",
+      nextDestination: "rejected",
+      businessCaseSnapshot: null,
+    });
+    expect(
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+        ...unsupported,
+        outcome: "defer",
+        validationFocus: "调整组合论证",
+        reconsiderationDate: "2026-10-20",
+      }),
+    ).toMatchObject({
+      completion: "completed",
+      nextDestination: "deferred",
+      businessCaseSnapshot: null,
+    });
+    expect(
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+        ...returnCommand,
+        businessCaseDraft: completeCommand().businessCaseDraft,
+      }),
+    ).toMatchObject({
+      completion: "completed",
+      nextDestination: "return_requested",
+    });
   });
 
   it("退回经营团队缺理由时保存但不关闭", () => {
@@ -368,6 +492,22 @@ describe("prepareProductInitiativeDecision 校验与并发", () => {
 });
 
 describe("assertProductInitiativeEvidenceRefs", () => {
+  it("五面证据不属于当前机会时整体拒绝", () => {
+    const prepared = prepareProductInitiativeDecision(
+      NEW_INITIATIVE,
+      ACTOR,
+      completeCommand(),
+    );
+    const available = REVIEW_POINT_CODES.map((_, index) => evidenceId(index));
+    prepared.businessCaseDraft[0]!.evidenceRefs = [
+      "00000000-0000-4000-8000-000000000099",
+    ];
+    expect(() =>
+      assertProductInitiativeEvidenceRefs(prepared, available),
+    ).toThrowError(
+      /PRODUCT_INITIATIVE_EVIDENCE_INVALID: 00000000-0000-4000-8000-000000000099/,
+    );
+  });
   it("合法集合覆盖全部引用时通过", () => {
     const prepared = prepareProductInitiativeDecision(
       NEW_INITIATIVE,
@@ -405,6 +545,8 @@ describe("assertProductInitiativeEvidenceRefs", () => {
 
     expect(() =>
       assertProductInitiativeEvidenceRefs(prepared, [
+        evidenceId(0),
+        evidenceId(1),
         evidenceId(2),
         evidenceId(3),
         evidenceId(4),
@@ -416,8 +558,7 @@ describe("assertProductInitiativeEvidenceRefs", () => {
 });
 
 describe("PRODUCT_INITIATIVE_GATE", () => {
-  it("默认门槛是前四项要点；客户反馈不算门槛", () => {
-    // 把它加成第 5 项门槛，会让**存量记录追溯性变成不合格** —— 门槛是政策，不能顺手加。
+  it("旧四项名单仅用于历史兼容，新审批不可绕过五面", () => {
     expect(PRODUCT_INITIATIVE_GATE).toEqual([
       "target_user_and_market",
       "competitive_supply",
@@ -425,6 +566,7 @@ describe("PRODUCT_INITIATIVE_GATE", () => {
       "compliance_risk",
     ]);
     expect(PRODUCT_INITIATIVE_GATE).not.toContain("customer_feedback");
+    expect(BUSINESS_CASE_DIMENSIONS).toHaveLength(5);
   });
 });
 
@@ -479,6 +621,13 @@ function completeDraft(): ProductInitiativeDraft {
       evidenceRefs: [evidenceId(index)],
       conclusion: `${code} 的结论`,
     })),
+    businessCaseDraft: BUSINESS_CASE_DIMENSIONS.map((dimensionCode, index) => ({
+      dimensionCode,
+      decision: "supports_investment" as const,
+      conclusion: "有依据支持投入",
+      evidenceRefs: [evidenceId(index)],
+      criticalUnknown: null,
+    })),
     deferReason: null,
     rejectReason: null,
     returnReason: null,
@@ -508,6 +657,7 @@ function completeCommand(
   return command({
     objective: draft.objective ?? undefined,
     reviewPoints: draft.reviewPoints,
+    businessCaseDraft: draft.businessCaseDraft,
     acceptResponsibility: true,
     receivingTeamOrRole: draft.receivingTeamOrRole ?? undefined,
     resourceDescription: draft.resourceDescription ?? undefined,

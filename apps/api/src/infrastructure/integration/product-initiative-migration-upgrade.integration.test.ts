@@ -31,6 +31,8 @@ const RESOURCE_COMMITMENT_MIGRATION =
   "20261004160000_add_product_initiative_resource_commitment";
 const UNIT_ECONOMICS_MIGRATION =
   "20261004200000_add_product_initiative_unit_economics";
+const BUSINESS_CASE_MIGRATION =
+  "20261006120000_add_product_initiative_business_case";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -570,6 +572,8 @@ describe("unit economics migration upgrade", () => {
         where: { id: legacyInitiativeId },
       }),
     ).resolves.toMatchObject({
+      businessCaseDraft: [],
+      businessCaseSnapshot: null,
       unitEconomicsDraft: null,
       unitEconomicsSnapshot: null,
       negativeConservativeReason: null,
@@ -579,6 +583,7 @@ describe("unit economics migration upgrade", () => {
         where: { id: legacyHandoffSnapshotId },
       }),
     ).resolves.toMatchObject({
+      businessCaseSnapshot: null,
       unitEconomicsSnapshot: null,
       negativeConservativeReason: null,
     });
@@ -693,6 +698,330 @@ describe("unit economics migration upgrade", () => {
         },
       }),
     ).rejects.toThrow(/product_initiative_unit_economics_snapshot_shape_check/);
+  });
+});
+
+describe("business case migration upgrade", () => {
+  const upgradeSchema = `it_pi_case_up_${process.pid}_${randomUUID().replaceAll("-", "")}`;
+  const upgradeDatabaseUrl = withSchema(BASE_DATABASE_URL, upgradeSchema);
+  const legacyReviewPoints = [
+    {
+      code: "target_user_and_market",
+      conclusion: "历史用户判断",
+      evidenceRefs: [],
+    },
+    {
+      code: "competitive_supply",
+      conclusion: "历史竞争判断",
+      evidenceRefs: [],
+    },
+    {
+      code: "price_band_and_margin",
+      conclusion: "历史价格判断",
+      evidenceRefs: [],
+    },
+    { code: "compliance_risk", conclusion: "历史合规判断", evidenceRefs: [] },
+  ];
+  let upgradePrisma: PrismaClient;
+  let completedInitiativeId: string;
+  let pendingInitiativeId: string;
+  let handoffSnapshotId: string;
+  let originalCurrentFacts: {
+    id: string;
+    outcome: string;
+    completionState: string;
+    currentDestination: string;
+    reviewPoints: unknown;
+    pendingFieldCodes: string[];
+  }[] = [];
+  let originalHandoffFacts: {
+    id: string;
+    initiativeId: string;
+    reviewPoints: unknown;
+    evidenceRefs: string[];
+  };
+
+  beforeAll(async () => {
+    deployAt(upgradeDatabaseUrl);
+    upgradePrisma = new PrismaClient({
+      adapter: createPostgresAdapter(upgradeDatabaseUrl, upgradeSchema),
+    });
+    await upgradePrisma.$connect();
+
+    const repository = new PrismaMarketSignalRepository(upgradePrisma as never);
+    const approvedOpportunity = await seedOpportunityForUpgrade(
+      repository,
+      upgradePrisma,
+    );
+    const rejectedOpportunity = await seedOpportunityForUpgrade(
+      repository,
+      upgradePrisma,
+    );
+    const pendingOpportunity = await seedOpportunityForUpgrade(
+      repository,
+      upgradePrisma,
+    );
+    const base = (opportunity: { tenantId: string; handoffId: string }) => ({
+      id: randomUUID(),
+      tenantId: opportunity.tenantId,
+      handoffId: opportunity.handoffId,
+      version: 1,
+      responsibleActorId: "selector-legacy",
+      reviewPoints: legacyReviewPoints,
+      pendingFieldCodes: [] as string[],
+      actedBy: "selector-legacy",
+      idempotencyKey: `legacy-business-case:${randomUUID()}`,
+      payloadHash: "a".repeat(64),
+    });
+    const completed = await upgradePrisma.productInitiative.create({
+      data: {
+        ...base(approvedOpportunity),
+        outcome: "approve",
+        completionState: "completed",
+        currentDestination: "handed_off",
+        objective: "历史立项目标",
+        responsibilityAccepted: true,
+        receivingTeamOrRole: "NPI",
+        resourceDescription: "历史资源说明",
+        targetDate: new Date("2026-11-15T00:00:00.000Z"),
+        nextDecisionDate: new Date("2026-10-20T00:00:00.000Z"),
+        nextDecisionQuestion: "是否进入 EVT",
+        unitEconomicsDraft: unitEconomicsDraft(),
+        unitEconomicsSnapshot: completeUnitEconomicsSnapshot(),
+      },
+    });
+    completedInitiativeId = completed.id;
+    const rejected = await upgradePrisma.productInitiative.create({
+      data: {
+        ...base(rejectedOpportunity),
+        outcome: "reject",
+        completionState: "completed",
+        currentDestination: "rejected",
+        reason: "历史不立项",
+      },
+    });
+    const pending = await upgradePrisma.productInitiative.create({
+      data: {
+        ...base(pendingOpportunity),
+        outcome: "defer",
+        completionState: "pending_completion",
+        currentDestination: "needs_decision",
+        pendingFieldCodes: ["validation_focus", "reconsideration_date"],
+      },
+    });
+    pendingInitiativeId = pending.id;
+    const marketHandoff =
+      await upgradePrisma.marketOpportunityHandoff.findUniqueOrThrow({
+        where: { id: approvedOpportunity.handoffId },
+      });
+    const handoff = await upgradePrisma.productInitiativeHandoff.create({
+      data: {
+        id: randomUUID(),
+        tenantId: approvedOpportunity.tenantId,
+        initiativeId: completed.id,
+        signalId: marketHandoff.signalId,
+        version: 1,
+        marketCode: "CA",
+        objective: "历史立项目标",
+        responsibleActorId: "selector-legacy",
+        responsibilityAccepted: true,
+        receivingTeamOrRole: "NPI",
+        resourceDescription: "历史资源说明",
+        targetDate: new Date("2026-11-15T00:00:00.000Z"),
+        nextDecisionDate: new Date("2026-10-20T00:00:00.000Z"),
+        nextDecisionQuestion: "是否进入 EVT",
+        unitEconomicsSnapshot: completeUnitEconomicsSnapshot(),
+        reviewPoints: legacyReviewPoints,
+        evidenceRefs: [],
+        createdBy: "selector-legacy",
+        idempotencyKey: `legacy-business-case-handoff:${randomUUID()}`,
+        payloadHash: "b".repeat(64),
+      },
+    });
+    handoffSnapshotId = handoff.id;
+    const currentRows = await upgradePrisma.productInitiative.findMany({
+      where: { id: { in: [completed.id, rejected.id, pending.id] } },
+    });
+    originalCurrentFacts = currentRows.map((row) => ({
+      id: row.id,
+      outcome: row.outcome,
+      completionState: row.completionState,
+      currentDestination: row.currentDestination,
+      reviewPoints: row.reviewPoints,
+      pendingFieldCodes: row.pendingFieldCodes,
+    }));
+    originalHandoffFacts = {
+      id: handoff.id,
+      initiativeId: handoff.initiativeId,
+      reviewPoints: handoff.reviewPoints,
+      evidenceRefs: handoff.evidenceRefs,
+    };
+
+    const pendingConstraints = await upgradePrisma.$queryRawUnsafe<
+      { definition: string }[]
+    >(
+      `SELECT pg_get_constraintdef(c.oid) AS "definition"
+       FROM pg_constraint c
+       JOIN pg_class t ON t.oid = c.conrelid
+       JOIN pg_namespace n ON n.oid = t.relnamespace
+       WHERE n.nspname = $1 AND t.relname = 'product_initiative'
+         AND c.conname = 'product_initiative_pending_codes_check'`,
+      upgradeSchema,
+    );
+    expect(pendingConstraints).toHaveLength(1);
+    let priorPendingConstraint = pendingConstraints[0]!.definition;
+    for (const code of [
+      "customer_need",
+      "value_differentiation",
+      "commercial_viability",
+      "supply_technical_feasibility",
+      "strategy_portfolio",
+    ]) {
+      const addedLiteral = `'${code}'::text, `;
+      if (!priorPendingConstraint.includes(addedLiteral)) {
+        throw new Error(`BUSINESS_CASE_PENDING_CODE_NOT_FOUND: ${code}`);
+      }
+      priorPendingConstraint = priorPendingConstraint.replace(addedLiteral, "");
+    }
+
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative"
+         DROP CONSTRAINT "product_initiative_business_case_shape_check",
+         DROP COLUMN "business_case_draft",
+         DROP COLUMN "business_case_snapshot"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative_handoff"
+         DROP CONSTRAINT "product_initiative_handoff_business_case_shape_check",
+         DROP COLUMN "business_case_snapshot"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative"
+         DROP CONSTRAINT "product_initiative_pending_codes_check",
+         ADD CONSTRAINT "product_initiative_pending_codes_check" ${priorPendingConstraint}`,
+    );
+    const deletedMigrations = await upgradePrisma.$queryRawUnsafe<
+      { migration_name: string }[]
+    >(
+      `DELETE FROM "${upgradeSchema}"."_prisma_migrations"
+       WHERE "migration_name" = $1 RETURNING "migration_name"`,
+      BUSINESS_CASE_MIGRATION,
+    );
+    expect(deletedMigrations).toEqual([
+      { migration_name: BUSINESS_CASE_MIGRATION },
+    ]);
+
+    const oldColumns = await upgradePrisma.$queryRawUnsafe<
+      { column_name: string }[]
+    >(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = $1 AND table_name IN ('product_initiative', 'product_initiative_handoff')
+         AND column_name IN ('business_case_draft', 'business_case_snapshot')`,
+      upgradeSchema,
+    );
+    expect(oldColumns).toEqual([]);
+    await expect(
+      upgradePrisma.$executeRawUnsafe(
+        `UPDATE "${upgradeSchema}"."product_initiative"
+         SET "pending_field_codes" = ARRAY['customer_need']::text[]
+         WHERE "id" = $1`,
+        pending.id,
+      ),
+    ).rejects.toThrow(/product_initiative_pending_codes_check/);
+    deployAt(upgradeDatabaseUrl);
+  }, 180_000);
+
+  afterAll(async () => {
+    await upgradePrisma?.$disconnect();
+    const admin = new PrismaClient({
+      adapter: createPostgresAdapter(
+        withSchema(BASE_DATABASE_URL, "public"),
+        "public",
+      ),
+    });
+    try {
+      await admin.$executeRawUnsafe(
+        `DROP SCHEMA IF EXISTS "${upgradeSchema}" CASCADE`,
+      );
+    } finally {
+      await admin.$disconnect();
+    }
+  });
+
+  it("reapplies the migration without remapping legacy current or handoff facts", async () => {
+    const migrations = await upgradePrisma.$queryRawUnsafe<
+      { finished_at: Date | null }[]
+    >(
+      `SELECT "finished_at" FROM "${upgradeSchema}"."_prisma_migrations"
+       WHERE "migration_name" = $1`,
+      BUSINESS_CASE_MIGRATION,
+    );
+    expect(migrations).toHaveLength(1);
+    expect(migrations[0]?.finished_at).toBeInstanceOf(Date);
+
+    const rows = await upgradePrisma.productInitiative.findMany({
+      where: { id: { in: originalCurrentFacts.map(({ id }) => id) } },
+    });
+    expect(rows).toHaveLength(3);
+    for (const original of originalCurrentFacts) {
+      expect(rows.find(({ id }) => id === original.id)).toMatchObject({
+        ...original,
+        businessCaseDraft: [],
+        businessCaseSnapshot: null,
+      });
+    }
+    const handoff =
+      await upgradePrisma.productInitiativeHandoff.findUniqueOrThrow({
+        where: { id: handoffSnapshotId },
+      });
+    expect(handoff).toMatchObject({
+      ...originalHandoffFacts,
+      businessCaseSnapshot: null,
+    });
+    expect(
+      rows.find(({ id }) => id === completedInitiativeId)?.completionState,
+    ).toBe("completed");
+    expect(
+      rows.find(({ id }) => id === pendingInitiativeId)?.completionState,
+    ).toBe("pending_completion");
+    expect(rows.find(({ outcome }) => outcome === "reject")).toMatchObject({
+      completionState: "completed",
+      currentDestination: "rejected",
+      reason: "历史不立项",
+    });
+  });
+
+  it("enforces the new draft and snapshot array lengths after upgrade", async () => {
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: pendingInitiativeId },
+        data: { businessCaseDraft: Array.from({ length: 6 }, () => ({})) },
+      }),
+    ).rejects.toThrow(/product_initiative_business_case_shape_check/);
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: completedInitiativeId },
+        data: { businessCaseSnapshot: [{}, {}, {}, {}] },
+      }),
+    ).rejects.toThrow(/product_initiative_business_case_shape_check/);
+    await expect(
+      upgradePrisma.productInitiativeHandoff.update({
+        where: { id: handoffSnapshotId },
+        data: { businessCaseSnapshot: [{}, {}, {}, {}] },
+      }),
+    ).rejects.toThrow(/product_initiative_handoff_business_case_shape_check/);
+    await expect(
+      upgradePrisma.productInitiative.update({
+        where: { id: pendingInitiativeId },
+        data: {
+          businessCaseDraft: [{ dimensionCode: "customer_need" }],
+          pendingFieldCodes: ["customer_need"],
+        },
+      }),
+    ).resolves.toMatchObject({
+      businessCaseDraft: [{ dimensionCode: "customer_need" }],
+      pendingFieldCodes: ["customer_need"],
+    });
   });
 });
 
