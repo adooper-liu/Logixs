@@ -7,6 +7,9 @@ import type {
   ProductInitiativePendingFieldCodeV1,
   ProductInitiativeReturnBasisV1,
   ProductInitiativeReviewPointCodeV1,
+  ProductInitiativeBusinessCaseDimensionCodeV1,
+  ProductInitiativeBusinessCaseDimensionDraftV1,
+  ProductInitiativeV1,
   ProductInitiativeUnitEconomicsDraftV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
   MarketSelectionReturnTakebackCommandV1,
@@ -26,6 +29,7 @@ export interface ProductInitiativeReviewPoint {
 export interface ProductInitiativeDraft {
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
+  businessCaseDraft?: ProductInitiativeBusinessCaseDimensionDraftV1[];
   deferReason: string | null;
   rejectReason: string | null;
   returnReason: string | null;
@@ -69,6 +73,8 @@ export interface PreparedProductInitiativeDecision {
   negativeConservativeReason: string | null;
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
+  businessCaseDraft: ProductInitiativeBusinessCaseDimensionDraftV1[];
+  businessCaseSnapshot: ProductInitiativeV1["businessCaseSnapshot"];
   reason: string | null;
   returnBasis: ProductInitiativeReturnBasisV1 | null;
   pendingFieldCodes: ProductInitiativePendingFieldCodeV1[];
@@ -99,12 +105,6 @@ export function prepareSelectionReturnTakeback(
   };
 }
 
-/**
- * 立项门槛：这几项缺失时**不能**立项（其余只作为待补）。
- *
- * 这是"严门槛"的单一可调处：若第一半验收发现队列积压，把某项从这里移出即可
- * 降级为待补，不需要改页面、接口或校验以外的任何地方。
- */
 export const PRODUCT_INITIATIVE_GATE: readonly ProductInitiativeReviewPointCodeV1[] =
   [
     "target_user_and_market",
@@ -112,9 +112,6 @@ export const PRODUCT_INITIATIVE_GATE: readonly ProductInitiativeReviewPointCodeV
     "price_band_and_margin",
     "compliance_risk",
   ];
-// 注意 `customer_feedback` **不在这张门槛表里**：它由「售后原声」这类专业要求喂证据，
-// 收了没地方下结论才是问题；但把它加成第 5 项门槛，会让**存量记录追溯性变成不合格**。
-// 门槛是政策，改它要连存量一起算，不能顺手加。
 
 export function productInitiativePendingFieldCodes(
   draft: ProductInitiativeDraft,
@@ -134,10 +131,17 @@ export function productInitiativePendingFieldCodes(
   if (!draft.targetDate) missing.add("target_date");
   if (!draft.nextDecisionDate) missing.add("next_decision_date");
   if (!draft.nextDecisionQuestion) missing.add("next_decision_question");
-  for (const code of REVIEW_POINT_ORDER) {
-    const point = draft.reviewPoints.find((item) => item.code === code);
-    // 有结论没证据、或有证据没结论，都还不算这条要点成立。
-    if (!point || point.evidenceRefs.length === 0 || !point.conclusion) {
+  for (const code of BUSINESS_CASE_DIMENSIONS) {
+    const point = draft.businessCaseDraft?.find(
+      (item) => item.dimensionCode === code,
+    );
+    if (
+      !point ||
+      !point.decision ||
+      !point.conclusion ||
+      point.evidenceRefs.length === 0 ||
+      point.decision !== "supports_investment"
+    ) {
       missing.add(code);
     }
   }
@@ -186,6 +190,9 @@ export function prepareProductInitiativeDecision(
   const initiativeId = uuid(command.requestId, "requestId");
 
   const draft = draftFromCommand(command);
+  draft.businessCaseDraft = normalizeBusinessCase(
+    command.businessCaseDraft ?? [],
+  );
   const unitEconomics = prepareProductInitiativeUnitEconomics({
     draft: command.unitEconomicsDraft,
     negativeConservativeReason: command.negativeConservativeReason,
@@ -217,6 +224,22 @@ export function prepareProductInitiativeDecision(
         `PRODUCT_INITIATIVE_INCOMPLETE: ${blocking.join(",")}`,
       );
     }
+  }
+  if (
+    outcome !== "defer" &&
+    draft.businessCaseDraft?.some(
+      (point) => point.decision === "validate_before_investment",
+    )
+  ) {
+    invalid("businessCaseDraft.decision");
+  }
+  if (
+    outcome === "return_to_market" &&
+    draft.businessCaseDraft?.some(
+      (point) => point.decision === "does_not_support",
+    )
+  ) {
+    invalid("businessCaseDraft.decision");
   }
   if (
     outcome === "defer" &&
@@ -253,6 +276,17 @@ export function prepareProductInitiativeDecision(
     negativeConservativeReason: draft.negativeConservativeReason,
     objective: draft.objective,
     reviewPoints: draft.reviewPoints,
+    businessCaseDraft: draft.businessCaseDraft ?? [],
+    businessCaseSnapshot:
+      outcome === "approve"
+        ? ((draft.businessCaseDraft ?? []).map((point) => ({
+            dimensionCode: point.dimensionCode,
+            decision: "supports_investment" as const,
+            conclusion: point.conclusion!,
+            evidenceRefs: [...point.evidenceRefs],
+            criticalUnknown: null,
+          })) as NonNullable<ProductInitiativeV1["businessCaseSnapshot"]>)
+        : null,
     reason,
     returnBasis:
       outcome === "return_to_market" ? (draft.returnBasis ?? null) : null,
@@ -266,7 +300,8 @@ export function assertProductInitiativeEvidenceRefs(
   decision: Pick<
     PreparedProductInitiativeDecision,
     "reviewPoints" | "unitEconomicsDraft"
-  >,
+  > &
+    Partial<Pick<PreparedProductInitiativeDecision, "businessCaseDraft">>,
   availableEvidenceRefs: readonly string[],
 ): void {
   const available = new Set(availableEvidenceRefs);
@@ -280,6 +315,9 @@ export function assertProductInitiativeEvidenceRefs(
   const invalid = [
     ...new Set([
       ...decision.reviewPoints.flatMap((point) => point.evidenceRefs),
+      ...(decision.businessCaseDraft ?? []).flatMap(
+        (point) => point.evidenceRefs,
+      ),
       ...unitEconomicsRefs,
     ]),
   ]
@@ -315,6 +353,7 @@ function draftFromCommand(
     reviewPoints: REVIEW_POINT_ORDER.flatMap((code) =>
       reviewPoints.filter((point) => point.code === code),
     ),
+    businessCaseDraft: [],
     deferReason: optionalText(command.deferReason, "deferReason", 500),
     rejectReason: optionalText(command.rejectReason, "rejectReason", 500),
     returnReason: optionalText(command.returnReason, "returnReason", 500),
@@ -365,11 +404,76 @@ function isUnitEconomicsPendingFieldCode(
 
 function isApproveGateCode(
   code: ProductInitiativePendingFieldCodeV1,
-  gate: readonly ProductInitiativeReviewPointCodeV1[],
+  _gate: readonly ProductInitiativeReviewPointCodeV1[],
 ): boolean {
-  return (REVIEW_POINT_ORDER as readonly string[]).includes(code)
-    ? gate.includes(code as ProductInitiativeReviewPointCodeV1)
-    : APPROVE_REQUIRED_CODES.has(code);
+  void _gate;
+  return (
+    (BUSINESS_CASE_DIMENSIONS as readonly string[]).includes(code) ||
+    APPROVE_REQUIRED_CODES.has(code)
+  );
+}
+
+export const BUSINESS_CASE_DIMENSIONS: readonly ProductInitiativeBusinessCaseDimensionCodeV1[] =
+  [
+    "customer_need",
+    "value_differentiation",
+    "commercial_viability",
+    "supply_technical_feasibility",
+    "strategy_portfolio",
+  ];
+
+function normalizeBusinessCase(
+  raw: ProductInitiativeBusinessCaseDimensionDraftV1[],
+): ProductInitiativeBusinessCaseDimensionDraftV1[] {
+  if (!Array.isArray(raw) || raw.length > BUSINESS_CASE_DIMENSIONS.length)
+    invalid("businessCaseDraft");
+  const seen = new Set<string>();
+  const points = raw.map((point) => {
+    if (
+      !point ||
+      !BUSINESS_CASE_DIMENSIONS.includes(point.dimensionCode) ||
+      seen.has(point.dimensionCode)
+    )
+      invalid("businessCaseDraft.dimensionCode");
+    seen.add(point.dimensionCode);
+    if (
+      point.decision &&
+      ![
+        "supports_investment",
+        "validate_before_investment",
+        "does_not_support",
+      ].includes(point.decision)
+    )
+      invalid("businessCaseDraft.decision");
+    const criticalUnknown = optionalText(
+      point.criticalUnknown,
+      "businessCaseDraft.criticalUnknown",
+      2000,
+    );
+    if (
+      point.decision === "validate_before_investment"
+        ? !criticalUnknown
+        : !!criticalUnknown
+    )
+      invalid("businessCaseDraft.criticalUnknown");
+    return {
+      dimensionCode: point.dimensionCode,
+      ...(point.decision ? { decision: point.decision } : {}),
+      conclusion: optionalText(
+        point.conclusion,
+        "businessCaseDraft.conclusion",
+        4000,
+      ),
+      evidenceRefs: uniqueUuids(
+        point.evidenceRefs ?? [],
+        "businessCaseDraft.evidenceRefs",
+      ),
+      criticalUnknown,
+    };
+  });
+  return BUSINESS_CASE_DIMENSIONS.flatMap((code) =>
+    points.filter((point) => point.dimensionCode === code),
+  );
 }
 
 function reasonFor(
@@ -500,7 +604,7 @@ const REVIEW_POINT_ORDER: ProductInitiativeReviewPointCodeV1[] = [
 const REVIEW_POINT_CODES = new Set<string>(REVIEW_POINT_ORDER);
 const PENDING_FIELD_ORDER: ProductInitiativePendingFieldCodeV1[] = [
   "objective",
-  ...REVIEW_POINT_ORDER,
+  ...BUSINESS_CASE_DIMENSIONS,
   "defer_reason",
   "responsibility_commitment",
   "receiving_team_or_role",

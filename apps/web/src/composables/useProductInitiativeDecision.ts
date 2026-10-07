@@ -1,5 +1,7 @@
 import type {
   ProductInitiativeDecisionCommandV1,
+  ProductInitiativeBusinessCaseDimensionCodeV1,
+  ProductInitiativeBusinessCaseDecisionV1,
   ProductInitiativeDetailV1,
   ProductInitiativeReviewPointCodeV1,
   ProductInitiativeReturnBasisV1,
@@ -21,24 +23,40 @@ import {
   registerMarketSignalEvidence,
 } from "../api/marketSignals";
 
-/**
- * 评审要点。`gating` 表示**缺了它就不能立项**。
- *
- * 与**服务端 `PRODUCT_INITIATIVE_GATE` 是同一份口径，两处改动必须一起动**。
- * `customer_feedback` **不是门槛**：它由「售后原声」这类专业要求喂证据，
- * 缺了进待补但不挡立项 —— 把它加成第 5 项门槛，会让存量记录追溯性变成不合格。
- */
 export const REVIEW_POINTS = [
-  { code: "target_user_and_market", label: "目标用户与市场", gating: true },
-  { code: "competitive_supply", label: "竞争供给", gating: true },
-  { code: "price_band_and_margin", label: "价格带与利润", gating: true },
-  { code: "compliance_risk", label: "合规风险", gating: true },
-  { code: "customer_feedback", label: "客户反馈与痛点", gating: false },
+  { code: "target_user_and_market", label: "目标用户与市场" },
+  { code: "competitive_supply", label: "竞争供给" },
+  { code: "price_band_and_margin", label: "价格带与利润" },
+  { code: "compliance_risk", label: "合规风险" },
+  { code: "customer_feedback", label: "客户反馈与痛点" },
 ] as const satisfies readonly {
   code: ProductInitiativeReviewPointCodeV1;
   label: string;
-  gating: boolean;
 }[];
+
+export const BUSINESS_CASE_DIMENSIONS = [
+  { code: "customer_need", label: "客户与需求" },
+  { code: "value_differentiation", label: "价值与差异" },
+  { code: "commercial_viability", label: "商业可行性" },
+  { code: "supply_technical_feasibility", label: "供应与技术可行性" },
+  { code: "strategy_portfolio", label: "战略与组合" },
+] as const satisfies readonly {
+  code: ProductInitiativeBusinessCaseDimensionCodeV1;
+  label: string;
+}[];
+
+export interface BusinessCaseDraftState {
+  decision: ProductInitiativeBusinessCaseDecisionV1 | "";
+  conclusion: string;
+  evidenceRefs: string[];
+  criticalUnknown: string;
+}
+
+export interface BusinessCaseDimensionView extends BusinessCaseDraftState {
+  code: ProductInitiativeBusinessCaseDimensionCodeV1;
+  label: string;
+  missing: boolean;
+}
 
 export type ProductInitiativeOutcome =
   ProductInitiativeDecisionCommandV1["outcome"];
@@ -163,14 +181,8 @@ export interface ProductInitiativeReviewPointView {
   evidenceRefs: readonly string[];
   conclusion: string;
   missing: boolean;
-  /** 缺了它能不能立项。非门槛的缺了只提示，不挡。 */
-  gating: boolean;
 }
 
-/**
- * 一条评审要点算不算成立。服务端 `productInitiativePendingFieldCodes` 用同一口径
- * （有结论没证据、或有证据没结论都不算成立），改动时两边必须一起动。
- */
 export function reviewPointMissing(draft: ReviewPointDraft): boolean {
   return draft.evidenceRefs.length === 0 || !draft.conclusion.trim();
 }
@@ -214,6 +226,15 @@ export function useProductInitiativeDecision(options: {
     compliance_risk: { evidenceRefs: [], conclusion: "" },
     customer_feedback: { evidenceRefs: [], conclusion: "" },
   });
+  const businessCase = reactive<
+    Record<ProductInitiativeBusinessCaseDimensionCodeV1, BusinessCaseDraftState>
+  >({
+    customer_need: emptyBusinessCaseDimension(),
+    value_differentiation: emptyBusinessCaseDimension(),
+    commercial_viability: emptyBusinessCaseDimension(),
+    supply_technical_feasibility: emptyBusinessCaseDimension(),
+    strategy_portfolio: emptyBusinessCaseDimension(),
+  });
 
   // 三个带原因的去向各存各的：来回切换时已写了一半的依据不该被清掉，
   // 也不该把暂缓的理由带到退回里。
@@ -256,17 +277,30 @@ export function useProductInitiativeDecision(options: {
       serverUnitEconomicsPending.value.has("negativeConservativeReason") ||
       isNegativeContribution(unitEconomicsSnapshot.value),
   );
-  /** 已立项就是终态，界面不再提供任何判断动作。 */
+  const legacyReadOnly = computed(() => {
+    const current = initiative.value;
+    return (
+      current?.completion === "completed" &&
+      (current.currentDestination === "rejected" ||
+        current.currentDestination === "deferred") &&
+      Array.isArray(current.businessCaseDraft) &&
+      current.businessCaseDraft.length === 0 &&
+      current.businessCaseSnapshot === null &&
+      !BUSINESS_CASE_DIMENSIONS.some(({ code }) =>
+        current.pendingFieldCodes.includes(code),
+      )
+    );
+  });
   const decided = computed(
     () =>
       initiative.value?.currentDestination === "handed_off" ||
-      initiative.value?.currentDestination === "return_requested",
+      initiative.value?.currentDestination === "return_requested" ||
+      legacyReadOnly.value,
   );
   const returnPending = computed(
     () => initiative.value?.currentDestination === "return_requested",
   );
 
-  /** 四项要点的只读视图：缺口判定只在这里做一次，面板与按钮都读同一份。 */
   const reviewPointViews = computed<ProductInitiativeReviewPointView[]>(() =>
     REVIEW_POINTS.map((point) => ({
       code: point.code,
@@ -274,7 +308,18 @@ export function useProductInitiativeDecision(options: {
       evidenceRefs: points[point.code].evidenceRefs,
       conclusion: points[point.code].conclusion,
       missing: reviewPointMissing(points[point.code]),
-      gating: point.gating,
+    })),
+  );
+  const businessCaseViews = computed<BusinessCaseDimensionView[]>(() =>
+    BUSINESS_CASE_DIMENSIONS.map(({ code, label }) => ({
+      code,
+      label,
+      ...businessCase[code],
+      missing:
+        !businessCase[code].decision ||
+        !businessCase[code].conclusion.trim() ||
+        !businessCase[code].evidenceRefs.length ||
+        businessCase[code].decision !== "supports_investment",
     })),
   );
 
@@ -354,8 +399,8 @@ export function useProductInitiativeDecision(options: {
     ...commitmentRequirements.value
       .filter((requirement) => requirement.missing)
       .map(({ label, panel }) => ({ label, panel })),
-    ...reviewPointViews.value
-      .filter((point) => point.missing && point.gating)
+    ...businessCaseViews.value
+      .filter((point) => point.missing)
       .map((point) => ({
         label: point.label,
         panel: "review_points" as const,
@@ -375,15 +420,7 @@ export function useProductInitiativeDecision(options: {
       return count > 0 ? [{ ...group, count }] : [];
     });
   });
-  /**
-   * 不挡立项、但补了更扎实的要点。**单独列出来**，不混进"还差 N 项" ——
-   * 混进去会让人以为非补不可，而那正是"证据收了没地方下结论"要修的另一半。
-   */
-  const optionalGaps = computed<string[]>(() =>
-    reviewPointViews.value
-      .filter((point) => point.missing && !point.gating)
-      .map((point) => point.label),
-  );
+  const optionalGaps = computed<string[]>(() => []);
   const canApprove = computed(() => blockingGaps.value.length === 0);
 
   // 换一条机会就要重读那一条的立项判断；只看 handoffId，不沿用上一条的草稿。
@@ -456,6 +493,8 @@ export function useProductInitiativeDecision(options: {
     for (const point of REVIEW_POINTS) {
       points[point.code] = { evidenceRefs: [], conclusion: "" };
     }
+    for (const { code } of BUSINESS_CASE_DIMENSIONS)
+      businessCase[code] = emptyBusinessCaseDimension();
   }
 
   /**
@@ -510,6 +549,17 @@ export function useProductInitiativeDecision(options: {
       points[point.code] = {
         evidenceRefs: [...(savedPoint?.evidenceRefs ?? [])],
         conclusion: savedPoint?.conclusion ?? "",
+      };
+    }
+    for (const { code } of BUSINESS_CASE_DIMENSIONS) {
+      const savedPoint = saved?.businessCaseDraft?.find(
+        (item) => item.dimensionCode === code,
+      );
+      businessCase[code] = {
+        decision: savedPoint?.decision ?? "",
+        conclusion: savedPoint?.conclusion ?? "",
+        evidenceRefs: [...(savedPoint?.evidenceRefs ?? [])],
+        criticalUnknown: savedPoint?.criticalUnknown ?? "",
       };
     }
   }
@@ -615,7 +665,7 @@ export function useProductInitiativeDecision(options: {
   }
 
   async function decide(outcome?: ProductInitiativeOutcome): Promise<boolean> {
-    if (saving.value) return false;
+    if (saving.value || decided.value) return false;
     const chosen = outcome ?? destination.value;
     saving.value = true;
     error.value = null;
@@ -632,10 +682,15 @@ export function useProductInitiativeDecision(options: {
         ...(objective.value.trim()
           ? { objective: objective.value.trim() }
           : {}),
-        reviewPoints: REVIEW_POINTS.map((point) => ({
-          code: point.code,
-          evidenceRefs: points[point.code].evidenceRefs,
-          conclusion: points[point.code].conclusion.trim() || null,
+        reviewPoints: [],
+        businessCaseDraft: BUSINESS_CASE_DIMENSIONS.map(({ code }) => ({
+          dimensionCode: code,
+          ...(businessCase[code].decision
+            ? { decision: businessCase[code].decision }
+            : {}),
+          conclusion: businessCase[code].conclusion.trim() || null,
+          evidenceRefs: businessCase[code].evidenceRefs,
+          criticalUnknown: businessCase[code].criticalUnknown.trim() || null,
         })),
         ...(chosen === "defer" && deferReason.value.trim()
           ? { validationFocus: deferReason.value.trim() }
@@ -722,6 +777,7 @@ export function useProductInitiativeDecision(options: {
     detail,
     initiative,
     decided,
+    legacyReadOnly,
     returnPending,
     evidenceCandidates,
     currencyOptions,
@@ -747,6 +803,8 @@ export function useProductInitiativeDecision(options: {
     returnBasis,
     currentReason,
     points,
+    businessCase,
+    businessCaseViews,
     reviewPointViews,
     requiredCount,
     blockingGaps,
@@ -763,6 +821,15 @@ export function useProductInitiativeDecision(options: {
     setNegativeConservativeReason,
     addEvidence,
     decide,
+  };
+}
+
+function emptyBusinessCaseDimension(): BusinessCaseDraftState {
+  return {
+    decision: "",
+    conclusion: "",
+    evidenceRefs: [],
+    criticalUnknown: "",
   };
 }
 
@@ -964,6 +1031,15 @@ export function initiativeErrorMessage(raw: string): string {
   if (raw.includes("PRODUCT_INITIATIVE_RETURN_PENDING")) {
     return "这条机会正在等待市场接回，暂时不能再作其他判断。";
   }
+  if (raw.includes("PRODUCT_INITIATIVE_LEGACY_READ_ONLY")) {
+    return "这条历史立项判断只供查阅，不可改写。请重新读取当前记录。";
+  }
+  if (raw.includes("VALIDATION_FORMAT: businessCaseDraft.criticalUnknown")) {
+    return "投入前需验证时请说明会使结论失效的关键未知；其余判断不要填写阻断未知。";
+  }
+  if (raw.includes("VALIDATION_FORMAT: businessCaseDraft.decision")) {
+    return "投入前需验证的判断只能暂缓并继续验证，不能立项或不立项。";
+  }
   const incomplete = raw.match(/PRODUCT_INITIATIVE_INCOMPLETE:\s*([^\r\n]+)/);
   if (incomplete?.[1]) {
     const labels = incomplete[1]
@@ -991,6 +1067,11 @@ export function initiativeErrorMessage(raw: string): string {
 
 const PENDING_LABELS: Record<string, string> = {
   objective: "目标结果",
+  customer_need: "客户与需求",
+  value_differentiation: "价值与差异",
+  commercial_viability: "商业可行性",
+  supply_technical_feasibility: "供应与技术可行性",
+  strategy_portfolio: "战略与组合",
   target_user_and_market: "目标用户与市场",
   competitive_supply: "竞争供给",
   price_band_and_margin: "价格带与利润",

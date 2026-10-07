@@ -12,7 +12,7 @@ import {
   OBJECTIVE_MAX_LENGTH,
   outcomeHintFor,
   REASON_MAX_LENGTH,
-  REVIEW_POINTS,
+  BUSINESS_CASE_DIMENSIONS,
   useProductInitiativeDecision,
 } from "./useProductInitiativeDecision";
 
@@ -54,7 +54,7 @@ describe("useProductInitiativeDecision", () => {
     const state = await mountComposable();
 
     const labels = state.blockingGaps.value.map((gap) => gap.label);
-    expect(labels.slice(0, 11)).toEqual([
+    expect(labels.slice(0, 12)).toEqual([
       "目标结果",
       "由我对此立项负责",
       "承接团队或岗位",
@@ -62,23 +62,21 @@ describe("useProductInitiativeDecision", () => {
       "目标日期",
       "下一决策日期",
       "下一决策问题",
-      ...REVIEW_POINTS.filter((point) => point.gating).map(
-        (point) => point.label,
-      ),
+      ...BUSINESS_CASE_DIMENSIONS.map((point) => point.label),
     ]);
     expect(labels).toContain("单位经济 · 币种");
     expect(labels).toContain("单位经济 · 基准情景 · 销售价 · 最低值");
-    expect(labels).toHaveLength(60);
+    expect(labels).toHaveLength(61);
     expect(state.blockingGapGroups.value).toEqual([
       { panel: "objective", label: "目标结果", count: 1 },
       { panel: "responsibility_resources", label: "责任与资源", count: 3 },
       { panel: "timeline_decision", label: "时间与下一决策", count: 3 },
-      { panel: "review_points", label: "评审依据", count: 4 },
+      { panel: "review_points", label: "评审依据", count: 5 },
       { panel: "unit_economics", label: "单位经济", count: 49 },
     ]);
     expect(state.requiredCount.value).toBe(5);
     // 非门槛的缺了只提示 —— 混进去会让人以为非补不可。
-    expect(state.optionalGaps.value).toEqual(["客户反馈与痛点"]);
+    expect(state.optionalGaps.value).toEqual([]);
     expect(state.canApprove.value).toBe(false);
     expect(
       outcomeHintFor({
@@ -137,24 +135,29 @@ describe("useProductInitiativeDecision", () => {
   it("引用证据且写明结论后该项不再算缺口", async () => {
     const state = await mountComposable();
 
-    state.toggleEvidence("compliance_risk", EVIDENCE_ID);
-    state.points.compliance_risk.conclusion = "无强制认证，需注意材料标识";
+    state.businessCase.supply_technical_feasibility.evidenceRefs = [
+      EVIDENCE_ID,
+    ];
+    state.businessCase.supply_technical_feasibility.decision =
+      "supports_investment";
+    state.businessCase.supply_technical_feasibility.conclusion =
+      "供应验证有依据";
 
-    expect(gapLabels(state)).not.toContain("合规风险");
+    expect(gapLabels(state)).not.toContain("供应与技术可行性");
     // 再点一次取消引用，缺口回来
-    state.toggleEvidence("compliance_risk", EVIDENCE_ID);
-    expect(gapLabels(state)).toContain("合规风险");
+    state.businessCase.supply_technical_feasibility.evidenceRefs = [];
+    expect(gapLabels(state)).toContain("供应与技术可行性");
   });
 
   it("只引用证据但没有结论仍算缺口", async () => {
     const state = await mountComposable();
 
-    state.toggleEvidence("competitive_supply", EVIDENCE_ID);
+    state.businessCase.value_differentiation.evidenceRefs = [EVIDENCE_ID];
 
-    expect(gapLabels(state)).toContain("竞争供给");
+    expect(gapLabels(state)).toContain("价值与差异");
   });
 
-  it("提交立项时带上服务端版本、幂等键与四项要点", async () => {
+  it("提交立项时带上服务端版本、幂等键与五面草稿", async () => {
     // 服务端已有第 3 版草稿：提交必须带这个版本，而不是 0
     getProductInitiative.mockResolvedValue(
       detail({ initiative: initiative() }),
@@ -177,9 +180,10 @@ describe("useProductInitiativeDecision", () => {
         outcome: "approve",
         expectedInitiativeVersion: 3,
         objective: "把折叠宠物出行包做成可发布版本",
-        reviewPoints: expect.arrayContaining([
+        businessCaseDraft: expect.arrayContaining([
           expect.objectContaining({
-            code: "compliance_risk",
+            dimensionCode: "strategy_portfolio",
+            decision: "supports_investment",
             evidenceRefs: [EVIDENCE_ID],
           }),
         ]),
@@ -232,6 +236,15 @@ describe("useProductInitiativeDecision", () => {
               conclusion: "头部集中",
             },
           ],
+          businessCaseDraft: [
+            {
+              dimensionCode: "customer_need",
+              decision: "validate_before_investment",
+              conclusion: "仍在验证真实需求",
+              evidenceRefs: [EVIDENCE_ID],
+              criticalUnknown: "真实购买量",
+            },
+          ],
         },
       }),
     );
@@ -243,7 +256,12 @@ describe("useProductInitiativeDecision", () => {
       evidenceRefs: [EVIDENCE_ID],
       conclusion: "头部集中",
     });
-    expect(gapLabels(state)).not.toContain("竞争供给");
+    expect(state.businessCase.customer_need).toMatchObject({
+      decision: "validate_before_investment",
+      criticalUnknown: "真实购买量",
+    });
+    expect(gapLabels(state)).toContain("客户与需求");
+    expect(gapLabels(state)).toContain("价值与差异");
   });
 
   it("已立项是终态，界面不再提供判断动作", async () => {
@@ -256,16 +274,102 @@ describe("useProductInitiativeDecision", () => {
     const state = await mountComposable();
 
     expect(state.decided.value).toBe(true);
+    expect(state.legacyReadOnly.value).toBe(false);
+  });
+
+  it.each(["rejected", "deferred"] as const)(
+    "completed legacy %s 仅供查看，不能提交新决定",
+    async (currentDestination) => {
+      getProductInitiative.mockResolvedValue(
+        detail({
+          initiative: {
+            ...initiative(),
+            outcome: currentDestination === "rejected" ? "reject" : "defer",
+            completion: "completed",
+            currentDestination,
+            businessCaseDraft: [],
+            businessCaseSnapshot: null,
+            reviewPoints: [
+              {
+                code: "competitive_supply",
+                evidenceRefs: [EVIDENCE_ID],
+                conclusion: "历史评审",
+              },
+            ],
+          },
+        }),
+      );
+      const state = await mountComposable();
+
+      expect(state.legacyReadOnly.value).toBe(true);
+      expect(state.decided.value).toBe(true);
+      expect(
+        state.reviewPointViews.value.find(
+          (point) => point.code === "competitive_supply",
+        )?.conclusion,
+      ).toBe("历史评审");
+      expect(await state.decide("reject")).toBe(false);
+      expect(decideProductInitiative).not.toHaveBeenCalled();
+    },
+  );
+
+  it("pending legacy 仍可建立空五面草稿", async () => {
+    getProductInitiative.mockResolvedValue(
+      detail({
+        initiative: {
+          ...initiative(),
+          businessCaseDraft: [],
+          businessCaseSnapshot: null,
+        },
+      }),
+    );
+    const state = await mountComposable();
+
+    expect(state.legacyReadOnly.value).toBe(false);
+    expect(state.decided.value).toBe(false);
+    await state.decide("defer");
+    expect(decideProductInitiative).toHaveBeenCalledOnce();
+    expect(
+      decideProductInitiative.mock.calls[0]?.[1].businessCaseDraft,
+    ).toEqual(
+      BUSINESS_CASE_DIMENSIONS.map(({ code }) => ({
+        dimensionCode: code,
+        conclusion: null,
+        criticalUnknown: null,
+        evidenceRefs: [],
+      })),
+    );
+  });
+
+  it("新式已拒绝但五面草稿为空时保留再判断入口", async () => {
+    getProductInitiative.mockResolvedValue(
+      detail({
+        initiative: {
+          ...initiative(),
+          completion: "completed",
+          currentDestination: "rejected",
+          businessCaseDraft: [],
+          businessCaseSnapshot: null,
+          pendingFieldCodes: ["customer_need"],
+        },
+      }),
+    );
+    const state = await mountComposable();
+
+    expect(state.legacyReadOnly.value).toBe(false);
+    expect(state.decided.value).toBe(false);
   });
 
   it("换一条机会就重读那一条的立项判断，不沿用上一条", async () => {
-    await mountComposable();
+    const state = await mountComposable();
+    state.businessCase.customer_need.conclusion = "上一条机会的判断";
     expect(getProductInitiative).toHaveBeenCalledTimes(1);
 
     handoffId.value = OTHER_HANDOFF_ID;
     await flushPromises();
 
     expect(getProductInitiative).toHaveBeenLastCalledWith(OTHER_HANDOFF_ID);
+    expect(state.businessCase.customer_need.conclusion).toBe("");
   });
 
   it("已记录的去向与原因回填，不让人以为还没判断过", async () => {
@@ -307,6 +411,7 @@ describe("useProductInitiativeDecision", () => {
     expect(state.currentReason.value).toBe("");
     expect(state.objective.value).toBe("可折叠宠物出行包");
     expect(state.decided.value).toBe(false);
+    expect(state.legacyReadOnly.value).toBe(false);
   });
 
   it("回填后重放同一去向会带上已记录的原因，不会把它抹掉", async () => {
@@ -654,9 +759,10 @@ async function mountComposable() {
 
 function fillAll(state: ReturnType<typeof useProductInitiativeDecision>): void {
   state.objective.value = "把折叠宠物出行包做成可发布版本";
-  for (const point of REVIEW_POINTS) {
-    state.toggleEvidence(point.code, EVIDENCE_ID);
-    state.points[point.code].conclusion = `${point.label} 的结论`;
+  for (const point of BUSINESS_CASE_DIMENSIONS) {
+    state.businessCase[point.code].evidenceRefs = [EVIDENCE_ID];
+    state.businessCase[point.code].decision = "supports_investment";
+    state.businessCase[point.code].conclusion = point.label + " 的结论";
   }
 }
 

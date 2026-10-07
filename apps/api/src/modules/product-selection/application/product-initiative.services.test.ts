@@ -9,6 +9,13 @@ const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const EVIDENCE_ID = "00000000-0000-4000-8000-000000000001";
 const INVALID_EVIDENCE_A = "00000000-0000-4000-8000-000000000091";
 const INVALID_EVIDENCE_B = "00000000-0000-4000-8000-000000000092";
+const BUSINESS_CASE_DIMENSIONS = [
+  "customer_need",
+  "value_differentiation",
+  "commercial_viability",
+  "supply_technical_feasibility",
+  "strategy_portfolio",
+] as const;
 
 describe("DecideProductInitiativeService", () => {
   it("并发判定用服务端读到的版本，而不是信客户端自称的版本", async () => {
@@ -82,6 +89,41 @@ describe("DecideProductInitiativeService", () => {
       status: 400,
       message: `PRODUCT_INITIATIVE_EVIDENCE_INVALID: ${INVALID_EVIDENCE_A},${INVALID_EVIDENCE_B}`,
     });
+    expect(persistDecision).not.toHaveBeenCalled();
+  });
+
+  it("不支持投入不能退市场，仓储事务未触发，因此无市场退回与 Outbox", async () => {
+    const { service, persistDecision, evidenceReader } = decideHarness({
+      currentVersion: 0,
+    });
+    const businessCaseDraft = BUSINESS_CASE_DIMENSIONS.map((dimensionCode) => ({
+      dimensionCode,
+      decision:
+        dimensionCode === "strategy_portfolio"
+          ? "does_not_support"
+          : "supports_investment",
+      conclusion: "已复核投入依据",
+      evidenceRefs: [EVIDENCE_ID],
+      criticalUnknown: null,
+    }));
+
+    await expect(
+      service.execute({
+        tenantId: "t",
+        actorId: "selector-1",
+        handoffId: HANDOFF_ID,
+        command: completeCommand({
+          outcome: "return_to_market",
+          returnReason: "机会定义成了渠道问题",
+          returnBasis: "wrong_direction",
+          businessCaseDraft,
+        }),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "VALIDATION_FORMAT: businessCaseDraft.decision",
+    });
+    expect(evidenceReader.execute).not.toHaveBeenCalled();
     expect(persistDecision).not.toHaveBeenCalled();
   });
 
@@ -431,6 +473,13 @@ function completeCommand(overrides: Record<string, unknown> = {}) {
       code,
       evidenceRefs: [EVIDENCE_ID],
       conclusion: "结论",
+    })),
+    businessCaseDraft: BUSINESS_CASE_DIMENSIONS.map((dimensionCode) => ({
+      dimensionCode,
+      decision: "supports_investment",
+      conclusion: "可追溯投入依据",
+      evidenceRefs: [EVIDENCE_ID],
+      criticalUnknown: null,
     })),
     unitEconomicsDraft: completeUnitEconomicsDraft(),
     idempotencyKey: "k",

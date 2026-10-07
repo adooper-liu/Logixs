@@ -6,6 +6,9 @@ import type {
   ProductInitiativeReturnBasisV1,
   ProductInitiativeUnitEconomicsDraftV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
+  ProductInitiativeBusinessCaseDimensionDraftV1,
+  ProductInitiativeV1,
+  ProductInitiativeHandoffV1,
 } from "@logix/contracts";
 import type { PreparedProductInitiativeClaim } from "./product-initiative-claim";
 import type { PreparedProductInitiativeNpiReturn } from "./product-initiative-npi-return";
@@ -41,6 +44,8 @@ export interface ProductInitiativeRecord {
   negativeConservativeReason: string | null;
   objective: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
+  businessCaseDraft?: ProductInitiativeBusinessCaseDimensionDraftV1[];
+  businessCaseSnapshot?: ProductInitiativeV1["businessCaseSnapshot"];
   reason: string | null;
   returnBasis?: ProductInitiativeReturnBasisV1 | null;
   pendingFieldCodes: ProductInitiativePendingFieldCodeV1[];
@@ -67,6 +72,7 @@ export interface ProductInitiativeHandoffRecord {
   unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
   negativeConservativeReason: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
+  businessCaseSnapshot?: ProductInitiativeHandoffV1["businessCaseSnapshot"];
   evidenceRefs: string[];
   createdBy: string;
   createdAt: Date;

@@ -259,13 +259,78 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   await page
     .locator(".progress-head")
     .evaluate((element) => element.scrollIntoView({ block: "start" }));
+  const businessCase = page.locator(".business-case");
+  const professionalFollowup = page.locator(".professional-followup");
+  await expect(professionalFollowup).not.toHaveAttribute("open");
+  const informationOrder = await page.evaluate(() => {
+    const opportunity = document.querySelector(".opportunity-detail")!;
+    const review = document.querySelector(".business-case")!;
+    const professional = document.querySelector(".professional-followup")!;
+    return (
+      Boolean(
+        opportunity.compareDocumentPosition(review) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      ) &&
+      Boolean(
+        review.compareDocumentPosition(professional) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
+    );
+  });
+  expect(informationOrder).toBe(true);
+  if ((viewport?.width ?? 0) <= 680) {
+    await businessCase.evaluate((element) =>
+      element.scrollIntoView({ block: "start" }),
+    );
+  }
+  const workingFacts = await page.evaluate(() => {
+    const summary = document.querySelector<HTMLElement>(
+      ".business-case__summary",
+    )!;
+    const editor = document.querySelector<HTMLElement>(
+      ".business-case__editor",
+    )!;
+    const action = document.querySelector<HTMLElement>(".outcome-action")!;
+    const content = document.querySelector<HTMLElement>(".app-content")!;
+    return {
+      viewportWidth: document.documentElement.clientWidth,
+      pageScrollWidth: document.documentElement.scrollWidth,
+      appClientWidth: content.clientWidth,
+      appScrollWidth: content.scrollWidth,
+      summaryTop: summary.getBoundingClientRect().top,
+      summaryBottom: summary.getBoundingClientRect().bottom,
+      editorTop: editor.getBoundingClientRect().top,
+      actionTop: action.getBoundingClientRect().top,
+    };
+  });
+  expect(workingFacts.pageScrollWidth).toBeLessThanOrEqual(
+    workingFacts.viewportWidth + 1,
+  );
+  expect(workingFacts.appScrollWidth).toBeLessThanOrEqual(
+    workingFacts.appClientWidth + 1,
+  );
+  expect(workingFacts.summaryTop).toBeGreaterThanOrEqual(0);
+  expect(workingFacts.summaryBottom).toBeLessThanOrEqual(viewport?.height ?? 0);
+  expect(workingFacts.editorTop).toBeLessThan(viewport?.height ?? 0);
+  await expect(submit).toBeInViewport();
+  if ((viewport?.width ?? 0) <= 1100) {
+    expect(workingFacts.summaryBottom).toBeLessThan(workingFacts.actionTop);
+  }
   const workingScreenshotPath = testInfo.outputPath(
     `product-selection-working-${viewport?.width ?? 0}x${viewport?.height ?? 0}.png`,
   );
-  await page.screenshot({ path: workingScreenshotPath, fullPage: true });
+  await page.screenshot({ path: workingScreenshotPath });
   await testInfo.attach("product-selection-working-mode", {
     path: workingScreenshotPath,
     contentType: "image/png",
+  });
+  const workingEvidencePath = testInfo.outputPath(
+    `product-selection-working-${viewport?.width ?? 0}x${viewport?.height ?? 0}.json`,
+  );
+  await writeFile(workingEvidencePath, JSON.stringify(workingFacts, null, 2));
+  await testInfo.attach("product-selection-working-evidence", {
+    path: workingEvidencePath,
+    contentType: "application/json",
   });
 
   await page.getByRole("button", { name: /目标结果.*1 项未齐/ }).click();
@@ -282,19 +347,25 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   await page.getByLabel("下一决策日期").fill("2026-10-20");
   await page.getByLabel("下一决策问题").fill("是否进入 EVT 打样");
   for (const label of [
-    "目标用户与市场",
-    "竞争供给",
-    "价格带与利润",
-    "合规风险",
+    "客户与需求",
+    "价值与差异",
+    "商业可行性",
+    "供应与技术可行性",
+    "战略与组合",
   ]) {
-    const point = page.locator(".review-point").filter({ hasText: label });
-    const toggle = point.locator(".review-point__toggle");
-    if ((await toggle.getAttribute("aria-expanded")) !== "true") {
-      await toggle.click();
-    }
-    await point.getByRole("button", { name: /引用证据/ }).click();
-    await point.getByRole("checkbox").check();
-    await point.getByLabel(`${label}结论`).fill(`${label} 的判断`);
+    await page
+      .locator(".business-case__summary button")
+      .filter({ hasText: label })
+      .click();
+    await page
+      .locator('.business-case__editor input[value="supports_investment"]')
+      .check();
+    await page
+      .locator(".business-case__editor textarea")
+      .first()
+      .fill(label + " 的判断");
+    await page.locator(".business-case__editor summary").click();
+    await page.locator('.business-case__editor input[type="checkbox"]').check();
   }
 
   await page.getByRole("button", { name: /单位经济.*项未齐/ }).click();
@@ -437,7 +508,7 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   const screenshotPath = testInfo.outputPath(
     `product-selection-result-${screenshotViewport?.width ?? 0}x${screenshotViewport?.height ?? 0}.png`,
   );
-  await page.screenshot({ path: screenshotPath, fullPage: true });
+  await page.screenshot({ path: screenshotPath });
   await testInfo.attach("product-selection-result-mode", {
     path: screenshotPath,
     contentType: "image/png",
@@ -1366,7 +1437,7 @@ async function mockMarketOpportunityApis(
       await json(route, initiative);
       return;
     }
-    initiative = {
+    const approvedInitiative: ProductInitiativeV1 = {
       initiativeId: "66666666-6666-4666-8666-666666666666",
       outcome: "approve",
       completion: "completed",
@@ -1385,23 +1456,35 @@ async function mockMarketOpportunityApis(
       negativeConservativeReason: body.negativeConservativeReason ?? null,
       objective: "把折叠宠物出行包做成可发布版本",
       reviewPoints: [],
+      businessCaseDraft: body.businessCaseDraft ?? [],
+      businessCaseSnapshot:
+        (body.businessCaseDraft?.map((point) => ({
+          dimensionCode: point.dimensionCode,
+          decision: "supports_investment" as const,
+          conclusion: point.conclusion ?? "",
+          evidenceRefs: point.evidenceRefs,
+          criticalUnknown: null,
+        })) as
+          | NonNullable<ProductInitiativeV1["businessCaseSnapshot"]>
+          | undefined) ?? null,
       reason: null,
       pendingFieldCodes: [],
       version: (initiative?.version ?? 0) + 1,
       createdAt: "2026-09-27T00:00:00.000Z",
       updatedAt: "2026-09-27T00:00:00.000Z",
     };
+    initiative = approvedInitiative;
     if (opportunity) {
       opportunity = {
         ...opportunity,
         latestSelectionDecision: {
-          outcome: initiative.outcome,
-          completion: initiative.completion,
-          currentDestination: initiative.currentDestination,
-          responsibleActorId: initiative.responsibleActorId,
-          reason: initiative.reason ?? null,
+          outcome: approvedInitiative.outcome,
+          completion: approvedInitiative.completion,
+          currentDestination: approvedInitiative.currentDestination,
+          responsibleActorId: approvedInitiative.responsibleActorId,
+          reason: approvedInitiative.reason ?? null,
           returnBasis: null,
-          decidedAt: initiative.updatedAt,
+          decidedAt: approvedInitiative.updatedAt,
         },
       };
     }
@@ -1435,6 +1518,7 @@ async function mockMarketOpportunityApis(
                 negativeConservativeReason:
                   initiative.negativeConservativeReason,
                 reviewPoints: initiative.reviewPoints,
+                businessCaseSnapshot: initiative.businessCaseSnapshot,
                 evidenceRefs: [evidenceId],
                 createdAt: initiative.updatedAt,
                 idempotencyKey: "e2e-unit-economics-handoff",

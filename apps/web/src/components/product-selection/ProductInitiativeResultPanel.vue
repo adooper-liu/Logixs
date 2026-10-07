@@ -6,6 +6,7 @@ import type {
 } from "@logix/contracts";
 import { computed } from "vue";
 import type { ProductInitiativeReviewPointView } from "../../composables/useProductInitiativeDecision";
+import { BUSINESS_CASE_DIMENSIONS } from "../../composables/useProductInitiativeDecision";
 import {
   extractReviewSupplement,
   matchReviewOptionId,
@@ -30,6 +31,9 @@ const props = defineProps<{
   candidates: readonly ProductInitiativeEvidenceCandidateV1[];
   unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
 }>();
+const businessCaseLabels = new Map(
+  BUSINESS_CASE_DIMENSIONS.map((item) => [item.code, item.label]),
+);
 
 const evidenceById = computed(
   () =>
@@ -222,8 +226,38 @@ function contribution(scenario: "baseline" | "conservative"): string | null {
       </div>
     </section>
 
-    <section class="initiative-result__block" aria-labelledby="review-title">
-      <h2 id="review-title">评审依据</h2>
+    <section
+      v-if="initiative.businessCaseSnapshot?.length"
+      class="initiative-result__block"
+      aria-labelledby="business-case-result-title"
+    >
+      <h2 id="business-case-result-title">五面投资判断（立项冻结）</h2>
+      <ul class="initiative-result__reviews">
+        <li
+          v-for="point in initiative.businessCaseSnapshot"
+          :key="point.dimensionCode"
+        >
+          <details>
+            <summary>
+              <b>{{ businessCaseLabels.get(point.dimensionCode) }}</b
+              ><span>支持投入 · {{ point.conclusion }}</span
+              ><small>{{ point.evidenceRefs.length }} 项证据</small>
+            </summary>
+            <div class="initiative-result__review-details">
+              <p v-for="ref in point.evidenceRefs" :key="ref">
+                {{ evidenceById.get(ref)?.summary ?? "引用证据当前不可展示" }}
+              </p>
+            </div>
+          </details>
+        </li>
+      </ul>
+    </section>
+    <section
+      v-else
+      class="initiative-result__block"
+      aria-labelledby="review-title"
+    >
+      <h2 id="review-title">历史四项评审（只读，非五面判断）</h2>
       <ul class="initiative-result__reviews">
         <li v-for="point in points" :key="point.code">
           <details>

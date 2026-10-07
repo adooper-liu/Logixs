@@ -1237,6 +1237,242 @@
         "basis": "assumption",
         "evidenceRefs": ["00000000-0000-4000-8000-000000000001"]
       }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case partial validation draft",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1",
+      "valid": true,
+      "data": {
+        "dimensionCode": "customer_need",
+        "decision": "validate_before_investment",
+        "conclusion": "客户规模尚不明朗",
+        "criticalUnknown": "是否有可持续购买需求",
+        "evidenceRefs": ["00000000-0000-4000-8000-000000000001"]
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case snapshot supports investment",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionSnapshotV1",
+      "valid": true,
+      "data": {
+        "dimensionCode": "commercial_viability",
+        "decision": "supports_investment",
+        "conclusion": "贡献区间支持当前资源投入",
+        "criticalUnknown": null,
+        "evidenceRefs": ["00000000-0000-4000-8000-000000000001"]
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case rejects invented decision status",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1",
+      "valid": false,
+      "data": {
+        "dimensionCode": "strategy_portfolio",
+        "decision": "auto_scored",
+        "evidenceRefs": []
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case validation needs a critical unknown",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1",
+      "valid": false,
+      "data": {
+        "dimensionCode": "customer_need",
+        "decision": "validate_before_investment",
+        "criticalUnknown": null,
+        "evidenceRefs": []
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case validation rejects blank critical unknown",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1",
+      "valid": false,
+      "data": {
+        "dimensionCode": "customer_need",
+        "decision": "validate_before_investment",
+        "criticalUnknown": "   ",
+        "evidenceRefs": []
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case support cannot carry critical unknown",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1",
+      "valid": false,
+      "data": {
+        "dimensionCode": "value_differentiation",
+        "decision": "supports_investment",
+        "criticalUnknown": "unexpected",
+        "evidenceRefs": []
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case rejected investment accepts null critical unknown",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1",
+      "data": {
+        "dimensionCode": "strategy_portfolio",
+        "decision": "does_not_support",
+        "criticalUnknown": null,
+        "evidenceRefs": []
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case partial draft accepts unique dimensions",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeDecisionCommandV1/properties/businessCaseDraft",
+      "data": [
+        { "dimensionCode": "strategy_portfolio", "evidenceRefs": [] },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "validate_before_investment",
+          "criticalUnknown": "购买意愿尚未验证",
+          "evidenceRefs": []
+        }
+      ]
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case partial draft rejects repeated dimension",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeDecisionCommandV1/properties/businessCaseDraft",
+      "valid": false,
+      "data": [
+        { "dimensionCode": "customer_need", "evidenceRefs": [] },
+        { "dimensionCode": "customer_need", "evidenceRefs": [] }
+      ]
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case snapshot contains each dimension exactly once",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeV1/properties/businessCaseSnapshot",
+      "data": [
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "value_differentiation",
+          "decision": "supports_investment",
+          "conclusion": "差异已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "commercial_viability",
+          "decision": "supports_investment",
+          "conclusion": "商业已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "supply_technical_feasibility",
+          "decision": "supports_investment",
+          "conclusion": "供应已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "strategy_portfolio",
+          "decision": "supports_investment",
+          "conclusion": "战略已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        }
+      ]
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case current snapshot rejects repeated dimension",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeV1/properties/businessCaseSnapshot",
+      "valid": false,
+      "data": [
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        }
+      ]
+    },
+    {
+      "contractId": "GC-007",
+      "name": "business case NPI snapshot rejects repeated dimension",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeHandoffV1/properties/businessCaseSnapshot",
+      "valid": false,
+      "data": [
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        },
+        {
+          "dimensionCode": "customer_need",
+          "decision": "supports_investment",
+          "conclusion": "需求已核对",
+          "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+          "criticalUnknown": null
+        }
+      ]
     }
   ]
 }

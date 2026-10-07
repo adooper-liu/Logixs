@@ -25,7 +25,7 @@ describe("ProductInitiativeResultPanel", () => {
     expect(text).toContain("CA · Amazon CA · 宠物出行");
     expect(text).toContain("含后补事实");
     expect(text.indexOf("经营机会")).toBeLessThan(text.indexOf("投资结论"));
-    expect(text.indexOf("投资结论")).toBeLessThan(text.indexOf("评审依据"));
+    expect(text.indexOf("投资结论")).toBeLessThan(text.indexOf("历史四项评审"));
     expect(wrapper.findAll(".initiative-result__block")).toHaveLength(3);
     expect(wrapper.findAll(".initiative-result__facts")).toHaveLength(0);
     expect(wrapper.find("input, select, textarea").exists()).toBe(false);
@@ -46,6 +46,29 @@ describe("ProductInitiativeResultPanel", () => {
     expect(wrapper.text()).toContain("历史缺失 2 类");
     expect(wrapper.text()).toContain("历史立项未记录");
     expect(wrapper.text()).not.toContain("待补");
+  });
+
+  it("新立项展示冻结五面，不把历史四项冒充当前评审", () => {
+    const wrapper = mountPanel({
+      initiative: initiative({
+        businessCaseSnapshot: [
+          "customer_need",
+          "value_differentiation",
+          "commercial_viability",
+          "supply_technical_feasibility",
+          "strategy_portfolio",
+        ].map((dimensionCode) => ({
+          dimensionCode: dimensionCode as "customer_need",
+          decision: "supports_investment" as const,
+          conclusion: "已核验的投入理由",
+          evidenceRefs: [EVIDENCE_ID],
+          criticalUnknown: null,
+        })) as NonNullable<ProductInitiative["businessCaseSnapshot"]>,
+      }),
+    });
+    expect(wrapper.text()).toContain("五面投资判断（立项冻结）");
+    expect(wrapper.findAll(".initiative-result__reviews li")).toHaveLength(5);
+    expect(wrapper.text()).not.toContain("历史四项评审");
   });
 
   it("缺少商品范围时仍如实显示三段机会范围", () => {
@@ -147,7 +170,6 @@ function point(
     evidenceRefs: [EVIDENCE_ID],
     conclusion: "头部集中",
     missing: false,
-    gating: true,
     ...overrides,
   };
 }

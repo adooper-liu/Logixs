@@ -17,7 +17,7 @@ import { PrismaMarketSignalRepository } from "../../modules/market-intelligence/
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 import {
   completeUnitEconomicsDraft,
-  PRODUCT_INITIATIVE_TEST_COMMITMENT,
+  PRODUCT_INITIATIVE_TEST_APPROVE_PREREQUISITE,
   PRODUCT_INITIATIVE_TEST_CONTEXT,
 } from "./product-initiative-test-fixtures";
 import { prepareProductInitiativeDecision } from "../../modules/product-selection/domain/product-initiative";
@@ -297,7 +297,7 @@ async function seedHandoff(
         outcome: "approve",
         expectedInitiativeVersion: 0,
         objective,
-        ...PRODUCT_INITIATIVE_TEST_COMMITMENT,
+        ...PRODUCT_INITIATIVE_TEST_APPROVE_PREREQUISITE,
         unitEconomicsDraft: completeUnitEconomicsDraft(),
         reviewPoints: REVIEW_POINT_CODES.map((code) => ({
           code,

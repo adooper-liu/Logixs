@@ -1,6 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/product-selection-resource-commitment-v1
+verification: PR #145 merged as 9a507b92d6efd0c2b791352edce0d083b13e67e6; CI run 37423464110 quality passed
 owner: main
 writer: codex
 risk: high

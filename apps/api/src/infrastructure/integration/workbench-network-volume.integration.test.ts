@@ -51,6 +51,7 @@ import { utcWeekStart } from "../../modules/workbench-network/domain/workbench-n
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 import {
   completeUnitEconomicsDraft,
+  PRODUCT_INITIATIVE_TEST_APPROVE_PREREQUISITE,
   PRODUCT_INITIATIVE_TEST_COMMITMENT,
   PRODUCT_INITIATIVE_TEST_CONTEXT,
 } from "./product-initiative-test-fixtures";
@@ -540,7 +541,9 @@ function initiativeDecision(
       outcome: "defer",
       expectedInitiativeVersion: 0,
       reviewPoints: [],
-      ...PRODUCT_INITIATIVE_TEST_COMMITMENT,
+      ...(overrides.outcome === "approve"
+        ? PRODUCT_INITIATIVE_TEST_APPROVE_PREREQUISITE
+        : PRODUCT_INITIATIVE_TEST_COMMITMENT),
       unitEconomicsDraft: completeUnitEconomicsDraft(),
       idempotencyKey: `decision:${requestId}`,
       ...overrides,

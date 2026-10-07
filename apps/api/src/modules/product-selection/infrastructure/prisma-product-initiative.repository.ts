@@ -10,6 +10,7 @@ import {
   type ApplySelectionReturnPort,
 } from "../../market-intelligence";
 import {
+  BUSINESS_CASE_DIMENSIONS,
   ProductInitiativeConflictError,
   ProductInitiativeNotFoundError,
   type PreparedProductInitiativeDecision,
@@ -221,7 +222,22 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
       if (existing?.currentDestination === "return_requested") {
         conflict("PRODUCT_INITIATIVE_RETURN_PENDING");
       }
+      if (
+        existing?.completionState === "completed" &&
+        (existing.currentDestination === "rejected" ||
+          existing.currentDestination === "deferred") &&
+        Array.isArray(existing.businessCaseDraft) &&
+        existing.businessCaseDraft.length === 0 &&
+        existing.businessCaseSnapshot === null &&
+        !BUSINESS_CASE_DIMENSIONS.some((code) =>
+          existing.pendingFieldCodes.includes(code),
+        )
+      ) {
+        conflict("PRODUCT_INITIATIVE_LEGACY_READ_ONLY");
+      }
 
+      const reviewPoints = (existing?.reviewPoints ??
+        command.reviewPoints) as ProductInitiativeReviewPoint[];
       const data = {
         version: currentVersion + 1,
         outcome: command.outcome,
@@ -229,7 +245,12 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         currentDestination: command.nextDestination,
         responsibleActorId: command.responsibleActorId,
         objective: command.objective,
-        reviewPoints: command.reviewPoints as unknown as Prisma.InputJsonValue,
+        reviewPoints: reviewPoints as unknown as Prisma.InputJsonValue,
+        businessCaseDraft:
+          command.businessCaseDraft as unknown as Prisma.InputJsonValue,
+        businessCaseSnapshot: nullableJson(
+          command.businessCaseSnapshot ?? null,
+        ),
         reason: command.reason,
         returnBasis: command.returnBasis,
         responsibilityAccepted: command.responsibilityAccepted,
@@ -287,9 +308,10 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
             unitEconomicsSnapshot:
               command.unitEconomicsSnapshot as unknown as Prisma.InputJsonValue,
             negativeConservativeReason: command.negativeConservativeReason,
-            reviewPoints:
-              command.reviewPoints as unknown as Prisma.InputJsonValue,
-            evidenceRefs: evidenceRefsOf(command),
+            reviewPoints: reviewPoints as unknown as Prisma.InputJsonValue,
+            businessCaseSnapshot:
+              command.businessCaseSnapshot as unknown as Prisma.InputJsonValue,
+            evidenceRefs: evidenceRefsOf(command, reviewPoints),
             createdBy: input.actorId,
             idempotencyKey: command.idempotencyKey,
             payloadHash: command.payloadHash,
@@ -676,7 +698,10 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
 }
 
 /** 要点引用的证据去重后汇总到交接快照，便于产品侧一次取到全部依据。 */
-function evidenceRefsOf(command: PreparedProductInitiativeDecision): string[] {
+function evidenceRefsOf(
+  command: PreparedProductInitiativeDecision,
+  reviewPoints: ProductInitiativeReviewPoint[],
+): string[] {
   const unitEconomicsRefs = Object.values(
     command.unitEconomicsSnapshot?.scenarios ?? {},
   ).flatMap((scenario) =>
@@ -690,7 +715,11 @@ function evidenceRefsOf(command: PreparedProductInitiativeDecision): string[] {
   );
   return [
     ...new Set([
-      ...command.reviewPoints.flatMap((point) => point.evidenceRefs),
+      ...reviewPoints.flatMap((point) => point.evidenceRefs),
+      ...(command.businessCaseSnapshot ?? []).flatMap(
+        (point) => point.evidenceRefs,
+      ),
+      ...command.businessCaseDraft.flatMap((point) => point.evidenceRefs),
       ...unitEconomicsRefs,
     ]),
   ].sort();
@@ -718,6 +747,8 @@ function toNpiEntry(row: NpiEntryRow): ProductInitiativeNpiEntryRecord {
       negativeConservativeReason: row.negativeConservativeReason,
       reviewPoints:
         row.reviewPoints as unknown as ProductInitiativeReviewPoint[],
+      businessCaseSnapshot:
+        row.businessCaseSnapshot as ProductInitiativeHandoffRecord["businessCaseSnapshot"],
       evidenceRefs: row.evidenceRefs,
       createdBy: row.createdBy,
       createdAt: row.createdAt,
@@ -767,6 +798,10 @@ function toRecord(row: InitiativeRow): ProductInitiativeRecord {
     negativeConservativeReason: row.negativeConservativeReason,
     objective: row.objective,
     reviewPoints: row.reviewPoints as unknown as ProductInitiativeReviewPoint[],
+    businessCaseDraft:
+      row.businessCaseDraft as unknown as ProductInitiativeRecord["businessCaseDraft"],
+    businessCaseSnapshot:
+      row.businessCaseSnapshot as ProductInitiativeRecord["businessCaseSnapshot"],
     reason: row.reason,
     returnBasis: row.returnBasis as ProductInitiativeRecord["returnBasis"],
     pendingFieldCodes:

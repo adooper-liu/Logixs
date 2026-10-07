@@ -12698,6 +12698,26 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.product_initiative.business_case_draft": {
+      "nameZh": "五面商业论证草稿",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "记录五面部分判断、结论、当前机会证据引用与投入前阻断未知；旧四项不自动映射。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative.business_case_snapshot": {
+      "nameZh": "五面投资判断当前快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "新立项通过投资门时形成五面支持投入快照；存量立项为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
+    },
     "public.product_initiative.version": {
       "nameZh": "版本号",
       "nameStatus": "confirmed_implementation",
@@ -13007,6 +13027,16 @@
       "moduleCode": "product-selection",
       "ownerModule": "product-selection",
       "notes": ["不可变交接快照；非负时为空。"]
+    },
+    "public.product_initiative_handoff.business_case_snapshot": {
+      "nameZh": "五面商业论证交接快照",
+      "nameStatus": "confirmed_business",
+      "purposeZh": "冻结新立项五面支持投入的结论与证据引用供 NPI 只读；存量交接为空。",
+      "purposeStatus": "confirmed_business",
+      "sourceRefs": ["doc-workbench-product-selection"],
+      "moduleCode": "product-selection",
+      "ownerModule": "product-selection",
+      "notes": []
     },
     "public.product_initiative_handoff.initiative_id": {
       "nameZh": "待业务确认",

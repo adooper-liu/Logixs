@@ -110,6 +110,11 @@
         "price_band_and_margin",
         "compliance_risk",
         "customer_feedback",
+        "customer_need",
+        "value_differentiation",
+        "commercial_viability",
+        "supply_technical_feasibility",
+        "strategy_portfolio",
         "defer_reason",
         "responsibility_commitment",
         "receiving_team_or_role",
@@ -189,6 +194,139 @@
         },
         "conclusion": { "type": ["string", "null"], "maxLength": 4000 }
       }
+    },
+    "ProductInitiativeBusinessCaseDimensionCodeV1": {
+      "enum": [
+        "customer_need",
+        "value_differentiation",
+        "commercial_viability",
+        "supply_technical_feasibility",
+        "strategy_portfolio"
+      ]
+    },
+    "ProductInitiativeBusinessCaseDecisionV1": {
+      "enum": [
+        "supports_investment",
+        "validate_before_investment",
+        "does_not_support"
+      ]
+    },
+    "ProductInitiativeBusinessCaseDimensionDraftV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimensionCode", "evidenceRefs"],
+      "properties": {
+        "dimensionCode": {
+          "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionCodeV1"
+        },
+        "decision": {
+          "$ref": "#/$defs/ProductInitiativeBusinessCaseDecisionV1"
+        },
+        "conclusion": { "type": ["string", "null"], "maxLength": 4000 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "criticalUnknown": { "type": ["string", "null"], "maxLength": 2000 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "validate_before_investment" }
+            },
+            "required": ["decision"]
+          },
+          "then": {
+            "required": ["criticalUnknown"],
+            "properties": {
+              "criticalUnknown": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          },
+          "else": {
+            "properties": { "criticalUnknown": { "type": "null" } }
+          }
+        }
+      ]
+    },
+    "ProductInitiativeBusinessCaseDimensionSnapshotV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimensionCode",
+        "decision",
+        "conclusion",
+        "evidenceRefs",
+        "criticalUnknown"
+      ],
+      "properties": {
+        "dimensionCode": {
+          "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionCodeV1"
+        },
+        "decision": { "const": "supports_investment" },
+        "conclusion": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "criticalUnknown": { "type": "null" }
+      }
+    },
+    "ProductInitiativeBusinessCaseDuplicateDimensionCodesV1": {
+      "anyOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["dimensionCode"],
+            "properties": { "dimensionCode": { "const": "customer_need" } }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["dimensionCode"],
+            "properties": {
+              "dimensionCode": { "const": "value_differentiation" }
+            }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["dimensionCode"],
+            "properties": {
+              "dimensionCode": { "const": "commercial_viability" }
+            }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["dimensionCode"],
+            "properties": {
+              "dimensionCode": { "const": "supply_technical_feasibility" }
+            }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["dimensionCode"],
+            "properties": { "dimensionCode": { "const": "strategy_portfolio" } }
+          },
+          "minContains": 2
+        }
+      ]
     },
     "ProductInitiativeUnitEconomicsBasisV1": {
       "enum": ["evidence", "assumption"]
@@ -396,6 +534,15 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
         },
+        "businessCaseDraft": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1"
+          },
+          "not": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
+          }
+        },
         "deferReason": { "type": "string", "minLength": 1, "maxLength": 500 },
         "acceptResponsibility": { "const": true },
         "receivingTeamOrRole": {
@@ -526,6 +673,31 @@
         "reviewPoints": {
           "type": "array",
           "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
+        },
+        "businessCaseDraft": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1"
+          },
+          "not": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
+          }
+        },
+        "businessCaseSnapshot": {
+          "anyOf": [
+            {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": {
+                "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionSnapshotV1"
+              },
+              "not": {
+                "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
+              }
+            },
+            { "type": "null" }
+          ]
         },
         "reason": { "type": ["string", "null"], "maxLength": 500 },
         "returnBasis": {
@@ -715,6 +887,22 @@
         "reviewPoints": {
           "type": "array",
           "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
+        },
+        "businessCaseSnapshot": {
+          "anyOf": [
+            {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": {
+                "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionSnapshotV1"
+              },
+              "not": {
+                "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
+              }
+            },
+            { "type": "null" }
+          ]
         },
         "evidenceRefs": {
           "type": "array",

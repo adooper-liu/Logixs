@@ -1,6 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/market-selection-handoff-v1
+verification: PR #136 merged as 37f38019288bb00277ae3d951f9fa7d9d2bb3509
 owner: cursor
 writer: codex
 risk: high
