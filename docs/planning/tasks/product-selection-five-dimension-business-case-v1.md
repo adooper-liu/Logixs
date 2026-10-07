@@ -1,6 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/product-selection-five-dimension-business-case-v1
+verification: https://github.com/adooper-liu/Logixs/pull/146
 owner: main
 writer: codex
 risk: high
@@ -282,7 +283,7 @@ uiViewportEvidence:
 - [x] 新立项冻结五面、单位经济和资源责任；NPI 只读消费同一快照
 - [x] completed legacy 不回填、不冒充五面；pending legacy 按已定迁移政策可恢复
 - [x] 固定三栏壳及 1440×900、1024×768、390×844 视觉顺序不变
-- [ ] 最终 CI 通过
+- [x] 最终 CI 通过
 
 ## 进度 log
 
@@ -303,3 +304,4 @@ uiViewportEvidence:
 | 2026-10-07 | fix    | Claude Code | —      | 最终 `validate` 的 repo/contract/dictionary/generate/lint 通过；全仓 format 仅被非任务 `.pytest_cache` 的 Windows EPERM 阻断，任务差异逐路径格式通过。全仓 unit 2164 条、typecheck、build 通过；完整 integration 暴露 5 个下游套件共 41 条旧前置 fixture 失败，进入 S1F7。                                      |
 | 2026-10-07 | fix    | Claude Code | —      | S1F7 初次交回的五套件 44/44 已复验，但共享 `COMMITMENT` 无条件携带五面支持投入，污染 defer/reject/return 样本；主代理扩充同片范围，要求资源承诺与 approve 前置分离并由五个 handoff 构造器显式使用。                                                                                                             |
 | 2026-10-07 | review | Claude Code | —      | 主代理验收 S1F7：资源承诺与 approve prerequisite 分离，五个消费者显式使用；全量 PostgreSQL 26 files / 195 tests 与 Web E2E 169 passed / 7 skipped 均通过。全仓 unit 2164、typecheck、lint、build、契约/字典/生成物通过；仅全仓格式扫描受非任务 `.pytest_cache` EPERM 阻断，任务差异逐路径格式通过。进入 PR/CI。 |
+| 2026-10-07 | done   | Claude Code | —      | PR #146 必需检查全部通过：quality、static、unit、dictionary、e2e、build、changes 为 success，security 按路径规则 skipped；PR 状态 CLEAN/MERGEABLE。完成最终 brief 收口并合并。                                                                                                                                  |
