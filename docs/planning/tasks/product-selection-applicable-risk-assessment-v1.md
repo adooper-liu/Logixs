@@ -1,6 +1,7 @@
 ---
 status: done
 branch: feat/product-selection-applicable-risk-assessment-v1
+verification: https://github.com/adooper-liu/Logixs/actions/runs/37876002837
 owner: main
 writer: codex
 risk: high
