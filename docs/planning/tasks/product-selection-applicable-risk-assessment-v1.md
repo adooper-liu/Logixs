@@ -1,5 +1,5 @@
 ---
-status: review
+status: done
 branch: feat/product-selection-applicable-risk-assessment-v1
 owner: main
 writer: codex
@@ -388,7 +388,7 @@ recommendationReason
 - [x] completed legacy 不回填、不产生风险缺口；pending legacy 可恢复
 - [x] 空库和真实旧库迁移、幂等、并发、原子失败通过
 - [x] 固定三栏及 1440×900、1024×768、390×844 视觉顺序与边距通过人工截图验收
-- [ ] fresh 独立复审、完整门禁和最终 CI 通过
+- [x] fresh 独立复审、完整门禁和最终 CI 通过
 
 ## 进度 log
 
@@ -407,3 +407,4 @@ recommendationReason
 | 2026-10-08 | blocked | Claude Code | —      | 负责人已授权 fresh Codex 复审，但 Claude Code 环境仍以数据外传策略拒绝调用；未绕过。brief 保持 `coding`，不宣称独立复审、最终 CI 或任务完成。                                                       |
 | 2026-10-09 | review  | Codex       | —      | 负责人手工转发标准 TASK 至 fresh GPT-5.6；独立复审确认 PSR-S1F5-001～003 全部 addressed，最终累计集成 `verdict: pass`、`findings: []`、`writes: none`。                                             |
 | 2026-10-09 | review  | Claude Code | —      | 本地高风险门禁通过 repo/contract/drift/dictionary/lint/typecheck、Web 698 + API 1474 单测、PostgreSQL 195 集成、Playwright 172 passed/7 skipped、build 与改动路径格式；最终 CI 待 PR。              |
+| 2026-10-09 | done    | Claude Code | —      | PR #149 的 `changes/static/unit/build/e2e/dictionary/quality` 全部通过，`security` 按条件跳过；合并状态 `CLEAN`，task brief 完成。                                                                  |
