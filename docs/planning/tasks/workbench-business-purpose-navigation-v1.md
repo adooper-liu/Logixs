@@ -214,6 +214,789 @@ wisdom-baseline 原始决策输入
 | 验证        | navigation、shell、目录页单测，shell/workbench-network E2E，键盘/移动抽屉，三视口截图与 overflow 数据 |
 | 停止条件    | 侧栏仅有一个正式工作台目录入口；23 route 均可由目录或深链访问；ready-for-review 后停手，不提交        |
 
+## 详细实施计划
+
+> **执行要求**：实现执行器必须逐任务遵循 TDD：先写测试并观察预期失败，再做最小实现并观察转绿。
+> 每个切片在 `ready-for-review` 停手并返回 `HANDOFF`，不得自行提交、改变业务口径或扩大写入范围。
+> 本节只展开前述 S1/S2/S3，不建立新的需求或业务权威。
+
+**目标**：让正式 23 台工作台的核心业务目的成为可生成、可检查、全前端共用的唯一投影，并让侧栏收敛为不重复业务目录的入口层。
+
+**架构**：仓库脚本在构建/校验阶段解析 `08-role-workbenches.md` 第三节的正式 23 台表，生成只读 TypeScript 投影；浏览器不读取 Markdown。技术目录、统一工作台页头和目录卡片只按 stable code 消费该投影；路由继续拥有路径、组件和演示角色等技术事实。一级侧栏通过移除重复 route 的 nav 元数据收敛，不新增隐藏名单或授权逻辑。
+
+**技术栈**：Node.js `node:test`、Prettier、TypeScript、Vue 3、Vitest、Vue Test Utils、Vue Router、Playwright、现有主题门面与 pnpm/Turbo 门禁。
+
+**规格**：本文件从开头至“执行切片与代理交接”是本计划实现的唯一规格；业务内容锚定 `doc/cross-border-supply-chain/08-role-workbenches.md`。
+
+### 全局约束
+
+- 唯一业务目的来源固定为 `doc/cross-border-supply-chain/08-role-workbenches.md` 第三节五列表；生成器不得读取 `wisdom-baseline`。
+- 正式目的投影字段固定为 `code`、`title`、`businessPurpose`；path、phase、kind、maturity、surface、ownerRole 和 handoff 仍属于技术目录事实。
+- 浏览器 bundle 不引入 `fs`、Markdown parser 或运行时网络请求；生成与 drift check 只在仓库命令执行。
+- `PageHeader.summary` 继续作为展示层 API；不把业务语义写进主题组件，也不在 route meta 或 `uiCopyCatalog` 复制 purpose。
+- purpose 不接受页面覆写；对象状态、错误、等待、只读、完成和内部视图不得改变工作台 identity。
+- 菜单隐藏不构成授权；服务端 capability、租户、账套主体、对象范围和审计均保持不变。
+- 三个切片共用本任务集成分支和最终一个 PR；Codex 不提交，主代理验收后按精确路径提交。
+- S2 必须等待 NPI A1 合并并同步最新 `main`；如果任何在途 worktree 仍改写重叠文件，S2 保持 blocked。
+
+### Review Focus
+
+1. **权威表出现重复、缺失、未知 stable code 或顺序断裂**：生成/check 必须稳定失败并指出具体 code，不能静默丢行或重排。
+2. **权威变更但生成物未更新**：`--check` 必须非零退出且绝不写文件；正常 generate 必须产生确定性字节结果。
+3. **工作台对象状态或出运内部视图变化**：正式名称和 purpose 必须保持一份且不变化，当前责任、主动作和回执仍然存在。
+4. **planned 工作台**：可显示正式目的与成熟度，但不能因统一页头产生生产队列、写控件或“已完成”暗示。
+5. **侧栏快捷入口移除后**：全部 23 条目录链接与深链仍可访问；移动抽屉、键盘关闭和演示角色投影保持可用。
+
+---
+
+### Task S1.1：权威表解析、生成与 drift check
+
+#### S1.1 Files
+
+- Create: `scripts/generate-workbench-purposes.mjs`
+- Create: `scripts/generate-workbench-purposes.test.mjs`
+- Create/generated: `apps/web/src/data/workbenchPurposes.generated.ts`
+- Modify: `package.json`
+
+#### S1.1 Interfaces
+
+- Produces:
+
+```js
+export const EXPECTED_WORKBENCH_CODES;
+export function parseWorkbenchPurposeTable(markdown);
+export function renderWorkbenchPurposeProjection(rows);
+export function compareWorkbenchPurposeProjection({ authorityText, committedText });
+```
+
+- Generated TypeScript produces:
+
+```ts
+export interface WorkbenchPurpose {
+  readonly code: WorkbenchCode;
+  readonly title: string;
+  readonly businessPurpose: string;
+}
+
+export const workbenchPurposes: readonly WorkbenchPurpose[];
+export const workbenchPurposeByCode: Readonly<
+  Record<WorkbenchCode, WorkbenchPurpose>
+>;
+```
+
+- [ ] **Step 1：先写解析与失败模式测试**
+
+在 `scripts/generate-workbench-purposes.test.mjs` 使用 `node:test` 建立以下测试：
+
+```js
+test("parses exactly the approved 23 workbench purposes from the authority table", () => {
+  const rows = parseWorkbenchPurposeTable(authorityMarkdown);
+  assert.equal(rows.length, 23);
+  assert.deepEqual(
+    rows.map((row) => row.sequence),
+    Array.from({ length: 23 }, (_, index) => index + 1),
+  );
+  assert.equal(rows[0].code, "market_signals");
+  assert.equal(rows.at(-1).code, "exceptions");
+  assert.equal(rows.find((row) => row.code === "customs").title, "进口清关");
+  assert.ok(
+    rows.every((row) => row.title.length > 0 && row.businessPurpose.length > 0),
+  );
+});
+
+test("rejects duplicate stable codes", () => {
+  assert.throws(
+    () => parseWorkbenchPurposeTable(markdownWithDuplicate),
+    /WORKBENCH_PURPOSE_DUPLICATE_CODE:market_signals/,
+  );
+});
+
+test("rejects a missing approved stable code", () => {
+  assert.throws(
+    () => parseWorkbenchPurposeTable(markdownWithoutBooking),
+    /WORKBENCH_PURPOSE_MISSING_CODE:booking/,
+  );
+});
+
+test("rejects an unknown stable code", () => {
+  assert.throws(
+    () => parseWorkbenchPurposeTable(markdownWithUnknown),
+    /WORKBENCH_PURPOSE_UNKNOWN_CODE:unknown_workbench/,
+  );
+});
+```
+
+再增加 `renders a deterministic TypeScript projection` 和 `check mode reports projection drift without writing`：同一输入两次输出必须字节相等；check 针对旧内容返回 drift，且旧文件内容不变。
+
+- [ ] **Step 2：运行 RED**
+
+```bash
+node --test scripts/generate-workbench-purposes.test.mjs
+```
+
+预期：首先因 `generate-workbench-purposes.mjs` 不存在而 `ERR_MODULE_NOT_FOUND`；建立导出骨架后，重复/缺失/未知 code、确定性和 drift 测试仍失败。只有失败原因指向缺少目标行为才进入实现。
+
+- [ ] **Step 3：实现纯解析和渲染函数**
+
+解析器只定位标题 `## 三、当前项目定义的全部 23 个工作台` 后的五列表，跳过表头与分隔线，将 Markdown code 标记去除后解析为：
+
+```js
+{
+  sequence: 1,
+  code: "market_signals",
+  title: "市场与经营信号",
+  kind: "主链",
+  businessPurpose: "把经过最低验证的真实市场信号形成不可变新品候选交接，并披露证据、反证和未决不确定性",
+}
+```
+
+固定结构白名单必须包含 23 个 stable code；校验顺序连续、code 全集且唯一、title/purpose 非空。稳定错误格式固定为：
+
+```text
+WORKBENCH_PURPOSE_DUPLICATE_CODE:<code>
+WORKBENCH_PURPOSE_MISSING_CODE:<code>
+WORKBENCH_PURPOSE_UNKNOWN_CODE:<code>
+WORKBENCH_PURPOSE_SEQUENCE:<actual>
+WORKBENCH_PURPOSE_EMPTY_FIELD:<code>
+```
+
+渲染器使用项目锁定的 Prettier TypeScript parser，文件首部写入来源路径与“禁止手工修改”。CLI 只提供：
+
+```text
+node scripts/generate-workbench-purposes.mjs
+node scripts/generate-workbench-purposes.mjs --check
+```
+
+默认 generate 覆盖固定生成文件；`--check` 缺文件或内容漂移时设置非零 exit code，绝不写入。
+
+- [ ] **Step 4：生成并运行 GREEN**
+
+```bash
+node --test scripts/generate-workbench-purposes.test.mjs
+pnpm workbench-purposes:generate
+pnpm workbench-purposes:check
+```
+
+预期：所有生成器测试通过，生成后 check 输出无漂移。
+
+- [ ] **Step 5：接入标准命令**
+
+在根 `package.json`：
+
+```json
+"workbench-purposes:generate": "node scripts/generate-workbench-purposes.mjs",
+"workbench-purposes:check": "node scripts/generate-workbench-purposes.mjs --check"
+```
+
+把新 Node 测试加入根 `test` 的 `node --test` 列表；把 `pnpm workbench-purposes:check` 加在 `validate` 的 `repo:check` 之后。不得把 generate 放进只读检查命令。
+
+- [ ] **Step 6：重跑命令契约**
+
+```bash
+pnpm workbench-purposes:check
+pnpm test --filter=logixs
+pnpm exec prettier --check package.json scripts/generate-workbench-purposes.mjs scripts/generate-workbench-purposes.test.mjs apps/web/src/data/workbenchPurposes.generated.ts
+```
+
+如根 `test` 不支持过滤，则只运行其前置 Node 测试清单，并在 S1 集成门禁运行完整受影响套件；不得伪报未执行命令。
+
+### Task S1.2：技术目录消费生成目的
+
+#### S1.2 Files
+
+- Modify: `apps/web/src/data/workbenchNetwork.ts`
+- Modify: `apps/web/src/data/workbenchNetwork.test.ts`
+- Modify: `apps/web/src/views/WorkbenchNetworkView.vue`
+- Modify: `apps/web/src/views/WorkbenchNetworkView.test.ts`
+- Modify: `scripts/check-repository.mjs`
+- Modify: `scripts/check-repository.test.mjs`
+
+#### S1.2 Interfaces
+
+- Produces: `WorkbenchStage.businessPurpose`；保留所有现有 path/phase/kind/maturity/surface/ownerRole/handoff 技术字段。
+
+- [ ] **Step 1：先写 catalog 投影测试**
+
+在 `workbenchNetwork.test.ts` 增加：
+
+```ts
+it("projects all 23 generated identities into the technical catalog", () => {
+  expect(
+    workbenchStages.map(({ code, title, businessPurpose }) => ({
+      code,
+      title,
+      businessPurpose,
+    })),
+  ).toEqual(workbenchPurposes);
+});
+
+it("does not keep a handwritten roleResult copy", () => {
+  expect(workbenchStages.every((stage) => !("roleResult" in stage))).toBe(true);
+});
+```
+
+保留并继续断言 23 code/path 唯一、20+3 类型、maturity/surface 和 handoff 关系。
+
+更新 `WorkbenchNetworkView.test.ts`：逐台断言生成 title/purpose 出现在目录卡片中，不再使用旧 `roleResult` 和多余“工作台”后缀。
+
+更新 repository guard 测试：generated title/purpose + 技术 path 组合应通过；duplicate/missing code 和 path drift 仍拒绝；正式 `customs` 名称由生成器测试负责，不再由 AST literal 负责。
+
+- [ ] **Step 2：运行 RED**
+
+```bash
+pnpm --filter @logix/web test -- src/data/workbenchNetwork.test.ts src/views/WorkbenchNetworkView.test.ts
+node --test scripts/check-repository.test.mjs
+```
+
+预期：`WorkbenchStage` 尚无 `businessPurpose`、仍含 `roleResult`，目录文案不一致；若先改变 catalog 构造器，旧 repository guard 会因 AST 参数形状失败。
+
+- [ ] **Step 3：最小接入生成 identity**
+
+`workbenchNetwork.ts` 改为：
+
+```ts
+import {
+  workbenchPurposeByCode,
+  type WorkbenchCode,
+} from "./workbenchPurposes.generated";
+export type { WorkbenchCode } from "./workbenchPurposes.generated";
+
+export interface WorkbenchStage {
+  code: WorkbenchCode;
+  title: string;
+  businessPurpose: string;
+  path: string;
+  // 现有技术字段原样保留
+}
+
+function identity(code: WorkbenchCode) {
+  return workbenchPurposeByCode[code];
+}
+```
+
+20 个既有 stage 和 3 个 planned stage 的构造调用删除手写 title/roleResult，返回值展开 `...identity(code)`；不得改变 path、phase、kind、sequence、assessmentState、maturity、surface、ownerRole、requiredFacts 或 handoff code。
+
+目录页统一渲染 `stage.businessPurpose`。
+
+- [ ] **Step 4：同步 repository guard**
+
+`check-repository.mjs` 继续验证 23 code/path、20+3 kind、maturity 声明、`/compliance` 独立 route 和 planned 免责声明；只移除对旧构造器 title/roleResult 参数与 `customs` title literal 的依赖。不得削弱路径、数量、重复和 maturity 检查。
+
+- [ ] **Step 5：运行 GREEN**
+
+```bash
+pnpm --filter @logix/web test -- src/data/workbenchNetwork.test.ts src/views/WorkbenchNetworkView.test.ts
+node --test scripts/check-repository.test.mjs scripts/generate-workbench-purposes.test.mjs
+pnpm workbench-purposes:check
+pnpm --filter @logix/web typecheck
+pnpm --filter @logix/web lint
+pnpm repo:check
+```
+
+### Task S1.3：写回前端产品规则并收口 S1
+
+#### S1.3 Files
+
+- Modify by main: `docs/product/UI_SYSTEM.md`
+- Modify by main: `docs/planning/tasks/workbench-business-purpose-navigation-v1.md`
+
+- [ ] **Step 1：写回已批准规则**
+
+在 `UI_SYSTEM.md` 的壳层与固定办理壳附近补充：
+
+- 工作台正式 identity 为 stable code、正式名称、一行核心业务目的；目的来自 `08` 第三节生成投影。
+- `PageHeader` 顺序为岗位类别、正式名称、固定目的；对象状态、内部标签和完成结果不得替换 identity。
+- Markdown 只在仓库生成/check 阶段读取；前端运行时不解析业务权威。
+- 菜单可见性不是服务端授权；完整 23 台网络由 `/workspaces` 目录承载。
+
+不得复制 23 句正文；只记录投影规则和边界。
+
+- [ ] **Step 2：运行 S1 集成门禁**
+
+```bash
+node --test scripts/generate-workbench-purposes.test.mjs scripts/check-repository.test.mjs
+pnpm workbench-purposes:check
+pnpm --filter @logix/web test -- src/data/workbenchNetwork.test.ts src/views/WorkbenchNetworkView.test.ts
+pnpm --filter @logix/web typecheck
+pnpm --filter @logix/web lint
+pnpm repo:check
+pnpm exec prettier --check package.json scripts/generate-workbench-purposes.mjs scripts/generate-workbench-purposes.test.mjs scripts/check-repository.mjs scripts/check-repository.test.mjs apps/web/src/data/workbenchPurposes.generated.ts apps/web/src/data/workbenchNetwork.ts apps/web/src/data/workbenchNetwork.test.ts apps/web/src/views/WorkbenchNetworkView.vue apps/web/src/views/WorkbenchNetworkView.test.ts docs/product/UI_SYSTEM.md docs/planning/tasks/workbench-business-purpose-navigation-v1.md
+```
+
+- [ ] **Step 3：主代理验收和提交**
+
+核对生成物逐行对应 `08`、`--check` 不写文件、目录不再保存第二份目的。精确暂存 S1 文件并提交：
+
+```text
+feat(workbenches): generate authoritative purpose projection
+```
+
+在 brief 进度 log 记录实际 commit、检查与未运行项。S1 不单独建 PR。
+
+---
+
+### Task S2.0：等待并同步 NPI A1
+
+#### NPI A1 direct overlap
+
+- `apps/web/src/views/ProductNpiWorkbench.vue`
+- `apps/web/src/views/ProductSelectionWorkbench.vue`
+- `apps/web/e2e/workbench-network.spec.ts`
+
+#### NPI A1 adjacent validation files
+
+- `apps/web/src/views/ProductNpiWorkbench.test.ts`
+- `apps/web/src/views/ProductSelectionWorkbench.test.ts`
+- `apps/web/e2e/product-npi-workbench.spec.ts`
+
+- [ ] **Step 1：确认 A1 已集成**
+
+只有在 NPI A1 PR/CI 已合并、其 brief 不再处于 `coding/fix`、所有相关 worktree 的实际 diff 不再改写重叠文件时继续。否则将本任务 S2 标记为 `blocked`，不回退已完成 S1。
+
+- [ ] **Step 2：同步最新 main**
+
+由主代理在本 worktree 合入最新 `origin/main`；不得使用 stash、hard reset 或覆盖式 checkout。记录合并后的 S2 base。
+
+- [ ] **Step 3：重读并验证 A1 当前行为**
+
+重读上述 6 个文件，运行 A1 定向 Web 单测和 NPI E2E。冲突解决只允许替换页头接线；不得改变阶段门、非 MP 发布拒绝、退回选品、mock 数据或主动作语义。
+
+- [ ] **Step 4：扩展 S2 写入范围并下发**
+
+主代理把 brief frontmatter 更新为 `status: coding`、`writer: codex`，只列 S2 精确路径与 UI 锁，提交 brief/base 后再下发 `TASK ...#S2`。
+
+### Task S2.1：统一 `WorkbenchPageHeader` 门面
+
+#### S2.1 Files
+
+- Create: `apps/web/src/components/workbench/WorkbenchPageHeader.vue`
+- Create: `apps/web/src/components/workbench/WorkbenchPageHeader.test.ts`
+- Modify: `apps/web/src/ui-theme/test-fixtures/ContractTestPageHeader.vue`
+- Modify: `apps/web/src/ui-theme/UiThemeProvider.test.ts`
+
+#### S2.1 Interfaces
+
+```ts
+interface WorkbenchPageHeaderProps {
+  stageCode: WorkbenchCode;
+  eyebrow?: string;
+  updatedAt?: string;
+}
+```
+
+Produces existing `PageHeader` help/actions slots; deliberately does not accept `title` or `summary` overrides.
+
+- [ ] **Step 1：先写 facade 测试**
+
+测试名固定为：
+
+- `renders the generated formal title and business purpose for a stage code`
+- `keeps the generated purpose stable when surrounding state changes`
+- `forwards help and actions slots without accepting title or summary overrides`
+
+给 `product_selection` 时精确断言 generated title/purpose；更新父状态后文案不变；slots 仍存在。主题 fixture 必须实际渲染并断言 eyebrow/summary，避免替代主题静默丢掉目的。
+
+- [ ] **Step 2：运行 RED**
+
+```bash
+pnpm --filter @logix/web test -- src/components/workbench/WorkbenchPageHeader.test.ts src/ui-theme/UiThemeProvider.test.ts
+```
+
+预期：组件不存在；创建空组件后因 generated identity 与 slot 转发缺失继续失败。
+
+- [ ] **Step 3：实现薄门面**
+
+```vue
+<script setup lang="ts">
+import { computed } from "vue";
+import {
+  workbenchPurposeByCode,
+  type WorkbenchCode,
+} from "../../data/workbenchPurposes.generated";
+import PageHeader from "../ui/PageHeader.vue";
+
+const props = withDefaults(
+  defineProps<{
+    stageCode: WorkbenchCode;
+    eyebrow?: string;
+    updatedAt?: string;
+  }>(),
+  { eyebrow: "岗位工作台" },
+);
+const identity = computed(() => workbenchPurposeByCode[props.stageCode]);
+</script>
+
+<template>
+  <PageHeader
+    :eyebrow="eyebrow"
+    :title="identity.title"
+    :summary="identity.businessPurpose"
+    :updated-at="updatedAt"
+  >
+    <template v-if="$slots.help" #help><slot name="help" /></template>
+    <template v-if="$slots.actions" #actions><slot name="actions" /></template>
+  </PageHeader>
+</template>
+```
+
+- [ ] **Step 4：运行 GREEN**
+
+```bash
+pnpm --filter @logix/web test -- src/components/workbench/WorkbenchPageHeader.test.ts src/ui-theme/UiThemeProvider.test.ts
+```
+
+### Task S2.2：共享办理壳与 planned 页面接线
+
+#### S2.2 Files
+
+- Modify: `apps/web/src/components/workbench/RoleWorkbenchFrame.vue`
+- Modify: `apps/web/src/components/workbench/RoleWorkbenchFrame.test.ts`
+- Modify: `apps/web/src/views/PlannedWorkbenchView.vue`
+- Modify: `apps/web/src/views/PlannedWorkbenchView.test.ts`
+
+#### S2.2 Interfaces
+
+```ts
+interface RoleWorkbenchFrameProps {
+  stageCode: WorkbenchCode;
+  contextLabel: string;
+  embedded?: boolean;
+  // 其余既有非 identity props 原样保留
+}
+```
+
+`embedded=false` 时渲染统一 header；`embedded=true` 时根元素为 `section` 且不渲染工作台 header，用于出运内部视图。
+
+- [ ] **Step 1：先写 frame/planned 失败测试**
+
+- `RoleWorkbenchFrame`: `derives its immutable page identity from stageCode while preserving the three-pane shell`，断 generated purpose、队列/事实/待办区域顺序与存在性不变。
+- `PlannedWorkbenchView`: `shows one generated purpose beside the planned maturity boundary`，断 purpose 精确出现一次、只读 maturity notice 同屏、无写控件。
+
+- [ ] **Step 2：运行 RED**
+
+```bash
+pnpm --filter @logix/web test -- src/components/workbench/RoleWorkbenchFrame.test.ts src/views/PlannedWorkbenchView.test.ts
+```
+
+预期：frame 仍要求任意 title/summary；planned 的旧 roleResult 在 header 和正文重复。
+
+- [ ] **Step 3：实现最小接线**
+
+删除 frame 的 title/summary props，新增 `stageCode` 与 `embedded`；非 embedded 最前渲染 `WorkbenchPageHeader`，其余 context/queue/primary/secondary DOM 顺序和 CSS 网格不变。planned 页使用 generated header；删除相邻正文中逐字重复的“岗位结果”，保留 owner、maturity、事实、交接和只读边界。
+
+- [ ] **Step 4：运行 GREEN**
+
+```bash
+pnpm --filter @logix/web test -- src/components/workbench/RoleWorkbenchFrame.test.ts src/views/PlannedWorkbenchView.test.ts
+```
+
+### Task S2.3：12 个 dedicated 工作台统一接线
+
+#### S2.3 Files
+
+- Modify: `apps/web/src/views/MarketSignalsWorkbench.vue`
+- Modify: `apps/web/src/views/ProductSelectionWorkbench.vue`
+- Modify: `apps/web/src/views/ProductNpiWorkbench.vue`
+- Modify: `apps/web/src/views/MasterDataWorkbench.vue`
+- Modify: `apps/web/src/views/SourcingWorkbench.vue`
+- Modify: `apps/web/src/views/CargoReadyWorkbench.vue`
+- Modify: `apps/web/src/views/StuffingWorkbench.vue`
+- Modify: `apps/web/src/views/DispatchWorkbench.vue`
+- Modify: `apps/web/src/views/CustomsWorkbench.vue`
+- Modify: `apps/web/src/views/PickupWorkbench.vue`
+- Modify: `apps/web/src/views/WarehouseDeliveryWorkbench.vue`
+- Modify: `apps/web/src/views/ContainerUnloadingWorkbench.vue`
+- Modify: `apps/web/src/router/index.ts`（只同步七条 dedicated route 的正式 topbar title；S3 才移除 nav meta）
+- Create: `apps/web/e2e/workbench-purpose-navigation.spec.ts`
+- Modify as required by formal-title assertions: relevant workbench E2E files listed in S2 integration command.
+
+- [ ] **Step 1：先写 23 route 失败 E2E**
+
+在新 spec 从 generated 23 rows 参数化：
+
+```ts
+test("all 23 workbench routes render exactly one generated business purpose", async ({
+  page,
+}) => {
+  for (const workbench of workbenchPurposes) {
+    await page.goto(workbenchPathByCode[workbench.code]);
+    await expect(
+      page.getByRole("heading", { level: 1, name: workbench.title }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(workbench.businessPurpose, { exact: true }),
+    ).toHaveCount(1);
+  }
+});
+```
+
+另测选品/NPI 在待领取、我负责、只读/完成状态间 purpose 不变；booking/export_customs/compliance_operations 同时显示 purpose 与 planned 边界，且无生产写控件。
+
+- [ ] **Step 2：运行 RED**
+
+```bash
+pnpm --filter @logix/web exec playwright test e2e/workbench-purpose-navigation.spec.ts --project=desktop-chromium
+```
+
+预期：多台仍显示硬编码动作说明；选品 summary 随对象状态变化；planned purpose 重复；正式标题后缀漂移。
+
+- [ ] **Step 3：替换专用页面 identity 接线**
+
+市场、选品、NPI、主数据、寻源的直接 `PageHeader` 改成固定 `WorkbenchPageHeader stage-code`，保留 eyebrow/help/actions/updatedAt，删除动态或手写 summary。六个 `RoleWorkbenchFrame` 页面只传 stageCode，删除 title/summary；slots、队列、当前对象、动作、回执和 CSS 不变。
+
+七个 dedicated route 的 `meta.title` 从 `workbenchPurposeByCode[code].title` 取得正式名称；暂时保留 navLabel/navIcon/navOrder 到 S3。
+
+- [ ] **Step 4：运行初步 GREEN**
+
+```bash
+pnpm --filter @logix/web exec playwright test e2e/workbench-purpose-navigation.spec.ts --project=desktop-chromium
+```
+
+### Task S2.4：出运顶层唯一 identity
+
+#### S2.4 Files
+
+- Modify: `apps/web/src/views/DispatchWorkbench.vue`
+- Modify: `apps/web/src/views/DispatchWorkbench.test.ts`
+- Modify: `apps/web/src/components/dispatch/PreDepartureDispatchWorkbench.vue`
+- Modify: `apps/web/src/components/shipment-handoff/PostDepartureHandoffWorkbench.vue`
+- Modify: `apps/web/src/views/ShipmentRiskWorkbench.vue`
+- Modify: `apps/web/e2e/dispatch-workbench.spec.ts`
+
+- [ ] **Step 1：先写出运失败测试**
+
+测试名：
+
+- `renders one dispatch identity across intake loading and risk views`
+- `switching dispatch views does not replace the workbench purpose`
+
+对默认、`?view=loading`、`?view=risk` 断言唯一 H1 为“出运”、唯一 generated purpose；局部标题分别为“接管已出运数据 / 装船交接历史 / 在途风险”，只能是 H2；`WorkbenchFlowContext` 仍只有一份。
+
+- [ ] **Step 2：运行 RED**
+
+```bash
+pnpm --filter @logix/web test -- src/views/DispatchWorkbench.test.ts
+```
+
+预期：顶层没有统一出运 header，三个子视图各自渲染整页 PageHeader。
+
+- [ ] **Step 3：实现顶层壳**
+
+```vue
+<main class="dispatch-workbench page-frame">
+  <WorkbenchPageHeader stage-code="dispatch" />
+  <WorkbenchFlowContext ... />
+  <nav aria-label="出运工作台内部视图">...</nav>
+  <component :is="currentView" />
+</main>
+```
+
+三个子视图删除整页 PageHeader 和重复 view-switch，根改为局部 `section`；loading 使用 `RoleWorkbenchFrame stage-code="dispatch" embedded`；risk 局部 H2 固定为“在途风险”。不得改变 API、选择状态、mock、出运事实或风险动作。
+
+- [ ] **Step 4：运行 GREEN**
+
+```bash
+pnpm --filter @logix/web test -- src/views/DispatchWorkbench.test.ts src/components/workbench/RoleWorkbenchFrame.test.ts
+pnpm --filter @logix/web exec playwright test e2e/dispatch-workbench.spec.ts e2e/workbench-purpose-navigation.spec.ts --project=desktop-chromium
+```
+
+### Task S2.5：S2 集成门禁、视觉证据与提交
+
+- [ ] **Step 1：运行 S2 自动化门禁**
+
+```bash
+pnpm workbench-purposes:check
+pnpm --filter @logix/web test -- src/components/workbench/WorkbenchPageHeader.test.ts src/components/workbench/RoleWorkbenchFrame.test.ts src/views/PlannedWorkbenchView.test.ts src/views/DispatchWorkbench.test.ts src/data/workbenchNetwork.test.ts src/views/WorkbenchNetworkView.test.ts
+pnpm --filter @logix/web typecheck
+pnpm --filter @logix/web lint
+pnpm --filter @logix/web build
+pnpm --filter @logix/web exec playwright test e2e/workbench-purpose-navigation.spec.ts e2e/workbench-network.spec.ts e2e/cargo-ready-workbench.spec.ts e2e/stuffing-workbench.spec.ts e2e/dispatch-workbench.spec.ts e2e/customs-workbench.spec.ts e2e/pickup-workbench.spec.ts e2e/warehouse-delivery-workbench.spec.ts e2e/container-unloading-workbench.spec.ts --project=desktop-chromium
+pnpm repo:check
+pnpm --filter @logix/web format:check
+```
+
+- [ ] **Step 2：生成三视口本地证据**
+
+`workbench-purpose-navigation.spec.ts` 按 `testInfo.project.name` 写入以下未跟踪路径：
+
+```text
+.tmp/workbench-purpose-navigation-v1/<project>/workbench-directory.png
+.tmp/workbench-purpose-navigation-v1/<project>/dispatch-risk.png
+.tmp/workbench-purpose-navigation-v1/<project>/planned-booking.png
+.tmp/workbench-purpose-navigation-v1/<project>/overflow.json
+```
+
+项目固定为 `desktop-chromium`、`narrow-chromium`、`mobile-chromium`。`overflow.json` 记录 documentElement 与 `.app-content` 的 clientWidth/scrollWidth，并自动断言 `scrollWidth <= clientWidth + 1`。
+
+- [ ] **Step 3：主代理人工审图**
+
+逐张核对：
+
+- 1440x900：名称/目的首屏可读，三栏办理壳未重排。
+- 1024x768：目的不遮当前责任、对象和主动作。
+- 390x844：名称 → 目的 → 当前上下文 → 内容顺序连续。
+- 三视口：planned 目的与成熟度同屏但无写动作；出运内部视图不冒充整页；无相邻重复 purpose；无横向溢出。
+
+- [ ] **Step 4：主代理提交 S2**
+
+Codex 返回未提交 HANDOFF 后，主代理核对没有夹带 NPI A1 行为修改，精确提交：
+
+```text
+feat(workbenches): unify authoritative purpose headers
+```
+
+---
+
+### Task S3.1：侧栏 route meta 与静态范围清理
+
+#### S3.1 Files
+
+- Modify: `apps/web/src/router/index.ts`
+- Modify: `apps/web/src/components/shell/AppSidebar.vue`
+- Modify: `apps/web/src/components/shell/navigation.test.ts`
+- Modify: `apps/web/src/components/shell/AppShell.test.ts`
+- Modify by main: `docs/product/UI_SYSTEM.md`
+- Modify by main: `docs/product/WORKSPACE_UI_INVENTORY.md`
+
+- [ ] **Step 1：先写 navigation/shell 失败测试**
+
+`navigation.test.ts`：
+
+```ts
+it("keeps formal workbenches behind the single business-workbench directory entry", () => {
+  for (const role of demoRoles) {
+    const items = navigationForRole(router.getRoutes(), role);
+    expect(items.filter((item) => item.to === "/workspaces")).toHaveLength(1);
+    expect(
+      items.filter(
+        (item) =>
+          item.to.startsWith("/workspaces/") &&
+          item.to !== "/workspaces/work-inbox",
+      ),
+    ).toEqual([]);
+  }
+});
+```
+
+继续断言 23 个 workbench path 已注册，并断“我的任务、业务工作台、岗位待办、干活、导入货柜”按其既有角色投影保留；不得错误要求每个角色都看见“我的任务”。
+
+`AppShell.test.ts` 增加 `does not render an obsolete static workspace scope`：`.workspace-switcher` 不存在，“工作区 / 已出运”和旧 tooltip 不出现，移动 drawer 仍可导航。
+
+- [ ] **Step 2：运行 RED**
+
+```bash
+pnpm --filter @logix/web test -- src/components/shell/navigation.test.ts src/components/shell/AppShell.test.ts
+```
+
+预期：七个专业 route 仍在 nav，AppSidebar 仍渲染旧静态范围块。
+
+- [ ] **Step 3：最小清理生产代码**
+
+从 `cargo_ready`、`stuffing`、`dispatch`、`customs`、`pickup`、`delivery`、`unloading` 七条 route 只删除 `navLabel`、`navIcon`、`navOrder`；保留 path/component/title/section/roles。
+
+`AppSidebar.vue` 删除 InfoTooltip import、`.workspace-switcher` DOM 与只为该区块服务的 CSS；不以新静态文案替代。`navigation.ts` 不改，不新增 formal-workbench blacklist。
+
+- [ ] **Step 4：运行 GREEN**
+
+```bash
+pnpm --filter @logix/web test -- src/components/shell/navigation.test.ts src/components/shell/AppShell.test.ts
+```
+
+- [ ] **Step 5：写回导航权威和 inventory**
+
+`UI_SYSTEM.md` 明确：侧栏只承担入口层，完整 23 台网络由 `/workspaces` 目录承载，菜单可见性不代表授权。`WORKSPACE_UI_INVENTORY.md` 把七台的“侧栏名”修正为目录/深链可达，并删除“已出运”作为全应用当前工作区的陈述；保留真实 route、组件和 API 事实。
+
+### Task S3.2：导航深链 E2E 与最终视觉证据
+
+#### S3.2 Files
+
+- Modify: `apps/web/e2e/shell-layout.spec.ts`
+- Modify: `apps/web/e2e/workbench-purpose-navigation.spec.ts`
+- Modify: `apps/web/e2e/workbench-network.spec.ts` only if existing assertions assume shortcuts.
+
+- [ ] **Step 1：先写 E2E 失败反证**
+
+增加：
+
+- `sidebar exposes one workbench directory entry and no formal workbench shortcuts`
+- `all 23 workbench deep links remain reachable after sidebar convergence`
+- `mobile drawer preserves entry order and closes after navigation`
+
+宽屏直接检查 nav；移动端打开 drawer；断 `/workspaces` 唯一、七个旧快捷项为 0。逐 route goto 后正式 H1 + purpose 可见。键盘 Escape 和点击目录后 drawer 正常关闭。
+
+- [ ] **Step 2：运行 RED（若 S3.1 测试已先改实现，则在同一 TDD 批次先提交测试或保留 RED 输出）**
+
+```bash
+pnpm --filter @logix/web exec playwright test e2e/shell-layout.spec.ts e2e/workbench-purpose-navigation.spec.ts
+```
+
+预期：实现前侧栏仍有七个快捷项和静态范围块。执行器必须在修改生产代码前保存该 RED 结果；不得事后补测并声称测试先行。
+
+- [ ] **Step 3：运行 S3 GREEN**
+
+```bash
+pnpm --filter @logix/web test -- src/components/shell/navigation.test.ts src/components/shell/AppShell.test.ts
+pnpm --filter @logix/web typecheck
+pnpm --filter @logix/web lint
+pnpm --filter @logix/web build
+pnpm --filter @logix/web exec playwright test e2e/shell-layout.spec.ts e2e/workbench-purpose-navigation.spec.ts e2e/workbench-network.spec.ts
+pnpm repo:check
+pnpm --filter @logix/web format:check
+```
+
+不指定 Playwright project，让现有三项目覆盖 1440x900、1024x768、390x844。
+
+- [ ] **Step 4：更新三视口证据并人工审图**
+
+复用 S2 证据路径，重点核对：宽屏侧栏只剩入口层；窄屏 folded rail 不重复铺台；移动 drawer 只显示入口；工作台目录仍能进入 23 台；无横向溢出。
+
+- [ ] **Step 5：主代理提交 S3**
+
+精确提交：
+
+```text
+feat(navigation): converge workbench entry layer
+```
+
+---
+
+### Task Final：复审、完整门禁与单 PR 收口
+
+- [ ] **Step 1：fresh Codex 只读复审**
+
+复审范围为任务基线至当前 HEAD，重点检查：权威解析稳健性、生成物漂移、23 台唯一 purpose、状态不变性、planned 边界、dispatch identity、深链可达、菜单与授权分离、三视口证据。reviewer 固定 `writes: none`。
+
+- [ ] **Step 2：主代理裁决 findings**
+
+逐项写入 `logix-disposition/v1`；只有 `accepted` 且已写回本 brief、现有权威或契约的 finding 才进入 fix。范围外重构、未来权限平台和逐台业务完善不得阻止当前收口。
+
+- [ ] **Step 3：启动基础设施并运行一次完整门禁**
+
+```bash
+pnpm infra:up
+pnpm workbench-purposes:check
+pnpm validate
+git diff --check
+git status --short
+```
+
+`validate` 包含 repo/contract/drift/data dictionary/db generate、lint、format、typecheck、unit、真实 PostgreSQL integration、三项目 E2E 和 build。失败时记录准确命令、用例和环境原因，不隐藏或伪报。
+
+- [ ] **Step 4：最终人工验收**
+
+主代理逐张复核 `.tmp/workbench-purpose-navigation-v1/` 三项目截图与 overflow JSON；抽查市场、选品、NPI、出运、planned 订舱和移动目录。确认原责任、对象、缺口、主动作、回执和恢复入口未丢失。
+
+- [ ] **Step 5：brief 与 Git 收口**
+
+仅在 CI/验证事实具备时勾选验收、填写 `verification`、将 status 改为 `done`。精确暂存 brief 验证记录，提交后推送功能分支、创建单一 PR，等待必需 CI 通过后合并。不得删除用户 worktree、强推、绕过钩子或直接写 main。
+
+### 计划自检结果
+
+- **规格覆盖**：S1 覆盖权威投影与 drift，S2 覆盖统一页头、状态不变和出运组合，S3 覆盖侧栏入口层、路由/深链与旧范围清理，Final 覆盖复审、三视口和完整门禁；未发现遗漏的批准需求。
+- **占位检查**：计划不含 TBD/TODO、“稍后实现”或无测试的泛化步骤；所有生产变更都有明确 RED/GREEN 命令。
+- **类型一致性**：统一使用 generated `WorkbenchCode`、`WorkbenchPurpose.businessPurpose`、`workbenchPurposeByCode`、`WorkbenchPageHeader.stageCode` 和 `RoleWorkbenchFrame.stageCode/embedded`。
+- **Review Focus 覆盖**：五类风险分别由 S1.1、S1.2、S2.1～S2.4、S2.3 planned E2E、S3.1～S3.2 测试固定。
+
 ## 业务步骤五面映射
 
 | 业务步骤与岗位结果 | 岗位任务来源/状态                     | 相关数据事实子集                           | 技术保障                                | 权限边界                                | 界面承接                             | 验收证据/状态    |
