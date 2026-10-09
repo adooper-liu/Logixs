@@ -66,12 +66,12 @@ describe("useProductInitiativeDecision", () => {
     ]);
     expect(labels).toContain("单位经济 · 币种");
     expect(labels).toContain("单位经济 · 基准情景 · 销售价 · 最低值");
-    expect(labels).toHaveLength(61);
+    expect(labels).toHaveLength(66);
     expect(state.blockingGapGroups.value).toEqual([
       { panel: "objective", label: "目标结果", count: 1 },
       { panel: "responsibility_resources", label: "责任与资源", count: 3 },
       { panel: "timeline_decision", label: "时间与下一决策", count: 3 },
-      { panel: "review_points", label: "评审依据", count: 5 },
+      { panel: "review_points", label: "评审依据", count: 10 },
       { panel: "unit_economics", label: "单位经济", count: 49 },
     ]);
     expect(state.requiredCount.value).toBe(5);
@@ -287,7 +287,13 @@ describe("useProductInitiativeDecision", () => {
             outcome: currentDestination === "rejected" ? "reject" : "defer",
             completion: "completed",
             currentDestination,
-            businessCaseDraft: [],
+            businessCaseDraft: BUSINESS_CASE_DIMENSIONS.map(({ code }) => ({
+              dimensionCode: code,
+              decision: "supports_investment",
+              conclusion: "历史五面结论",
+              evidenceRefs: [EVIDENCE_ID],
+              criticalUnknown: null,
+            })),
             businessCaseSnapshot: null,
             reviewPoints: [
               {
@@ -341,7 +347,67 @@ describe("useProductInitiativeDecision", () => {
     );
   });
 
-  it("新式已拒绝但五面草稿为空时保留再判断入口", async () => {
+  it("未触碰风险时部分保存发送空风险草稿", async () => {
+    const state = await mountComposable();
+
+    await state.decide("defer");
+    const [, command] = decideProductInitiative.mock.calls[0]!;
+
+    expect(command.riskAssessmentDraft).toEqual([]);
+  });
+
+  it("触碰风险后只发送该项，空未知由服务端拒绝前保留在草稿", async () => {
+    const state = await mountComposable();
+    state.updateRisk("returns", {
+      applicability: "undetermined",
+      criticalUnknown: "",
+    });
+
+    await state.decide("defer");
+    const [, command] = decideProductInitiative.mock.calls[0]!;
+
+    expect(command.riskAssessmentDraft).toEqual([
+      expect.objectContaining({
+        riskCode: "returns",
+        applicability: "undetermined",
+        criticalUnknown: null,
+      }),
+    ]);
+  });
+
+  it("尚不能判断可保存关键未知，不适用空理由仍阻断立项", async () => {
+    const state = await mountComposable();
+    state.updateRisk("returns", {
+      applicability: "undetermined",
+      criticalUnknown: "等待退货样本",
+    });
+    state.updateRisk("platform_restrictions", {
+      applicability: "not_applicable",
+      applicabilityReason: "   ",
+    });
+
+    expect(
+      state.riskAssessmentViews.value.find(
+        (risk) => risk.riskCode === "platform_restrictions",
+      )?.missing,
+    ).toBe(true);
+    expect(gapLabels(state)).toContain("平台限制风险");
+    expect(state.canApprove.value).toBe(false);
+
+    await state.decide("defer");
+    const [, command] = decideProductInitiative.mock.calls[0]!;
+    expect(command.riskAssessmentDraft).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          riskCode: "returns",
+          applicability: "undetermined",
+          criticalUnknown: "等待退货样本",
+        }),
+      ]),
+    );
+  });
+
+  it("风险仍有记录时已拒绝仍保留再判断入口", async () => {
     getProductInitiative.mockResolvedValue(
       detail({
         initiative: {
@@ -350,7 +416,18 @@ describe("useProductInitiativeDecision", () => {
           currentDestination: "rejected",
           businessCaseDraft: [],
           businessCaseSnapshot: null,
-          pendingFieldCodes: ["customer_need"],
+          riskAssessmentDraft: [
+            {
+              riskCode: "returns",
+              applicability: "undetermined",
+              applicabilityReason: null,
+              investmentDecision: null,
+              conclusion: null,
+              evidenceRefs: [],
+              criticalUnknown: "退货成本待验证",
+            },
+          ],
+          pendingFieldCodes: ["risk.returns"],
         },
       }),
     );
@@ -381,6 +458,17 @@ describe("useProductInitiativeDecision", () => {
           completion: "completed",
           currentDestination: "deferred",
           reason: "证据不足，等双十一数据",
+          riskAssessmentDraft: [
+            {
+              riskCode: "returns",
+              applicability: "not_applicable",
+              applicabilityReason: "本机会不涉及退货",
+              investmentDecision: null,
+              conclusion: null,
+              evidenceRefs: [],
+              criticalUnknown: null,
+            },
+          ],
         },
       }),
     );
@@ -423,6 +511,17 @@ describe("useProductInitiativeDecision", () => {
           completion: "completed",
           currentDestination: "deferred",
           reason: "证据不足，等双十一数据",
+          riskAssessmentDraft: [
+            {
+              riskCode: "returns",
+              applicability: "not_applicable",
+              applicabilityReason: "本机会不涉及退货",
+              investmentDecision: null,
+              conclusion: null,
+              evidenceRefs: [],
+              criticalUnknown: null,
+            },
+          ],
         },
       }),
     );
@@ -786,6 +885,8 @@ function initiative() {
     negativeConservativeReason: null,
     objective: null,
     reviewPoints: [],
+    riskAssessmentDraft: [],
+    riskAssessmentSnapshot: null,
     reason: null,
     pendingFieldCodes: [],
     version: 3,

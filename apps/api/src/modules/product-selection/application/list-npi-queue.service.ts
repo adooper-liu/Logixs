@@ -89,6 +89,9 @@ export function toQueueEntry(
       ...(record.handoff.businessCaseSnapshot
         ? { businessCaseSnapshot: record.handoff.businessCaseSnapshot }
         : {}),
+      ...(record.handoff.riskAssessmentSnapshot
+        ? { riskAssessmentSnapshot: record.handoff.riskAssessmentSnapshot }
+        : {}),
       evidenceRefs: record.handoff.evidenceRefs,
       createdAt: record.handoff.createdAt.toISOString(),
       idempotencyKey: record.handoff.idempotencyKey,

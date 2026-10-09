@@ -48,6 +48,11 @@ describe("productInitiativePendingFieldCodes", () => {
     expect(productInitiativePendingFieldCodes(emptyDraft())).toEqual([
       "objective",
       ...BUSINESS_CASE_DIMENSIONS,
+      "risk.compliance",
+      "risk.intellectual_property",
+      "risk.packaging_logistics",
+      "risk.returns",
+      "risk.platform_restrictions",
       "responsibility_commitment",
       "receiving_team_or_role",
       "resource_description",
@@ -78,6 +83,57 @@ describe("productInitiativePendingFieldCodes", () => {
 });
 
 describe("prepareProductInitiativeDecision 立项", () => {
+  it("风险未知或验证态不能通过严格投入门", () => {
+    const command = completeCommand();
+    command.riskAssessmentDraft = command.riskAssessmentDraft!.map((risk) =>
+      risk.riskCode === "returns"
+        ? {
+            ...risk,
+            applicability: "undetermined" as const,
+            investmentDecision: null,
+            conclusion: null,
+            evidenceRefs: [],
+            criticalUnknown: "真实退货成本待验证",
+          }
+        : risk,
+    );
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, command),
+    ).toThrowError(/PRODUCT_INITIATIVE_INCOMPLETE: .*risk\.returns/);
+  });
+
+  it("不适用必须带理由，适用风险快照只在完整门通过后产生", () => {
+    const command = completeCommand();
+    command.riskAssessmentDraft = command.riskAssessmentDraft!.map((risk) =>
+      risk.riskCode === "packaging_logistics"
+        ? {
+            ...risk,
+            applicability: "not_applicable" as const,
+            applicabilityReason: "本机会仅在本地自提渠道销售",
+            investmentDecision: null,
+            conclusion: null,
+            evidenceRefs: [],
+            criticalUnknown: null,
+          }
+        : risk,
+    );
+    const prepared = prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+      ...command,
+      outcome: "defer",
+      validationFocus: "确认渠道范围",
+      reconsiderationDate: "2026-10-20",
+    });
+    expect(prepared.riskAssessmentSnapshot).toBeNull();
+    expect(
+      prepared.riskAssessmentDraft.find(
+        (risk) => risk.riskCode === "packaging_logistics",
+      ),
+    ).toMatchObject({
+      applicability: "not_applicable",
+      applicabilityReason: "本机会仅在本地自提渠道销售",
+    });
+  });
+
   it("三态只允许支持投入立项，验证态须注明阻断未知并仅能暂缓", () => {
     const validate = completeCommand();
     validate.businessCaseDraft![0] = {
@@ -132,6 +188,51 @@ describe("prepareProductInitiativeDecision 立项", () => {
     ).toThrowError(/PRODUCT_INITIATIVE_INCOMPLETE: value_differentiation/);
   });
 
+  it("风险验证态只能暂缓，风险不支持投入只能拒绝", () => {
+    const validate = completeCommand();
+    validate.riskAssessmentDraft = validate.riskAssessmentDraft!.map((risk) =>
+      risk.riskCode === "returns"
+        ? {
+            ...risk,
+            investmentDecision: "validate_before_investment" as const,
+            conclusion: "退货成本仍待验证",
+            criticalUnknown: "需要真实退货样本",
+          }
+        : risk,
+    );
+
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+        ...validate,
+        outcome: "reject",
+        rejectReason: "暂不投入",
+      }),
+    ).toThrowError(/VALIDATION_FORMAT: riskAssessmentDraft\.applicability/);
+
+    const unsupported = completeCommand();
+    unsupported.riskAssessmentDraft = unsupported.riskAssessmentDraft!.map(
+      (risk) =>
+        risk.riskCode === "returns"
+          ? {
+              ...risk,
+              investmentDecision: "does_not_support" as const,
+              conclusion: "退货成本不支持投入",
+            }
+          : risk,
+    );
+
+    expect(() =>
+      prepareProductInitiativeDecision(NEW_INITIATIVE, ACTOR, {
+        ...unsupported,
+        outcome: "defer",
+        validationFocus: "重新评估退货成本",
+        reconsiderationDate: "2026-10-20",
+      }),
+    ).toThrowError(
+      /VALIDATION_FORMAT: riskAssessmentDraft\.investmentDecision/,
+    );
+  });
+
   it("不接受重复维度、伪造状态或非阻断未知；新快照只冻结五面", () => {
     const complete = completeCommand();
     const approved = prepareProductInitiativeDecision(
@@ -145,6 +246,14 @@ describe("prepareProductInitiativeDecision 立项", () => {
     expect(
       approved.businessCaseSnapshot?.every(
         (point) => point.criticalUnknown === null,
+      ),
+    ).toBe(true);
+    expect(approved.riskAssessmentSnapshot).toHaveLength(5);
+    expect(
+      approved.riskAssessmentSnapshot?.every(
+        (point) =>
+          point.applicability === "applicable" &&
+          point.investmentDecision === "supports_investment",
       ),
     ).toBe(true);
     complete.businessCaseDraft![1] = complete.businessCaseDraft![0]!;
@@ -610,6 +719,7 @@ function emptyDraft(): ProductInitiativeDraft {
     unitEconomicsDraft: null,
     unitEconomicsSnapshot: null,
     negativeConservativeReason: null,
+    riskAssessmentDraft: [],
   };
 }
 
@@ -625,6 +735,21 @@ function completeDraft(): ProductInitiativeDraft {
       dimensionCode,
       decision: "supports_investment" as const,
       conclusion: "有依据支持投入",
+      evidenceRefs: [evidenceId(index)],
+      criticalUnknown: null,
+    })),
+    riskAssessmentDraft: [
+      "compliance",
+      "intellectual_property",
+      "packaging_logistics",
+      "returns",
+      "platform_restrictions",
+    ].map((riskCode, index) => ({
+      riskCode: riskCode as never,
+      applicability: "applicable" as const,
+      applicabilityReason: null,
+      investmentDecision: "supports_investment" as const,
+      conclusion: "当前风险可控，支持投入",
       evidenceRefs: [evidenceId(index)],
       criticalUnknown: null,
     })),
@@ -658,6 +783,7 @@ function completeCommand(
     objective: draft.objective ?? undefined,
     reviewPoints: draft.reviewPoints,
     businessCaseDraft: draft.businessCaseDraft,
+    riskAssessmentDraft: draft.riskAssessmentDraft,
     acceptResponsibility: true,
     receivingTeamOrRole: draft.receivingTeamOrRole ?? undefined,
     resourceDescription: draft.resourceDescription ?? undefined,

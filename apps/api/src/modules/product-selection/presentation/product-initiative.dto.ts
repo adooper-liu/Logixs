@@ -5,6 +5,8 @@ import type {
   ProductInitiativeReviewPointV1,
   ProductInitiativeUnitEconomicsDraftV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
+  ProductInitiativeRiskAssessmentDraftV1,
+  ProductInitiativeRiskAssessmentSnapshotV1,
 } from "@logix/contracts";
 
 const REVIEW_POINT_CODES = [
@@ -103,9 +105,13 @@ export class ProductInitiativeResponseDto {
   reviewPoints!: ProductInitiativeReviewPointDto[];
   @ApiPropertyOptional({ type: [Object] })
   businessCaseDraft?: ProductInitiativeDecisionCommandV1["businessCaseDraft"];
+  @ApiPropertyOptional({ type: [Object] })
+  riskAssessmentDraft?: ProductInitiativeRiskAssessmentDraftV1[];
   @ApiPropertyOptional({ type: [Object], nullable: true })
   businessCaseSnapshot?:
     ProductInitiativeBusinessCaseDimensionSnapshotV1[] | null;
+  @ApiPropertyOptional({ type: [Object], nullable: true })
+  riskAssessmentSnapshot!: ProductInitiativeRiskAssessmentSnapshotV1[] | null;
   @ApiPropertyOptional({ nullable: true }) reason!: string | null;
   @ApiPropertyOptional({
     nullable: true,

@@ -3,6 +3,7 @@ import type {
   ProductInitiativeClaimCommandV1,
   ProductInitiativeBusinessCaseDimensionSnapshotV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
+  ProductInitiativeRiskAssessmentSnapshotV1,
 } from "@logix/contracts";
 import { ProductInitiativeReviewPointDto } from "./product-initiative.dto";
 
@@ -35,6 +36,8 @@ export class ProductInitiativeHandoffResponseDto {
   @ApiPropertyOptional({ type: [Object], nullable: true })
   businessCaseSnapshot?:
     ProductInitiativeBusinessCaseDimensionSnapshotV1[] | null;
+  @ApiProperty({ type: [Object], nullable: true })
+  riskAssessmentSnapshot!: ProductInitiativeRiskAssessmentSnapshotV1[] | null;
   @ApiProperty({ type: [String] }) evidenceRefs!: string[];
   @ApiProperty() createdAt!: string;
   @ApiProperty() idempotencyKey!: string;

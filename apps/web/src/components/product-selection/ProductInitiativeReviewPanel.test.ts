@@ -17,6 +17,23 @@ function mountPanel() {
         criticalUnknown: "",
         missing: true,
       })),
+      risks: [
+        "compliance",
+        "intellectual_property",
+        "packaging_logistics",
+        "returns",
+        "platform_restrictions",
+      ].map((riskCode) => ({
+        riskCode: riskCode as never,
+        applicability: "undetermined" as const,
+        applicabilityReason: null,
+        investmentDecision: null,
+        conclusion: null,
+        evidenceRefs: [],
+        criticalUnknown: "",
+        label: riskCode,
+        missing: true,
+      })),
       legacyPoints: [
         {
           code: "competitive_supply" as const,
@@ -83,5 +100,56 @@ describe("ProductInitiativeReviewPanel", () => {
       })),
     });
     expect(wrapper.findAll(".business-case__editor textarea")).toHaveLength(2);
+  });
+
+  it("把五面和风险摘要接到同一个当前编辑区", async () => {
+    const wrapper = mountPanel();
+    expect(
+      wrapper.findAll(".business-case__editor, .risk-editor"),
+    ).toHaveLength(1);
+    expect(wrapper.get(".active-editor").element.previousElementSibling).toBe(
+      wrapper.get(".risk-assessment").element,
+    );
+    await wrapper.get(".risk-summary button").trigger("click");
+    expect(wrapper.find(".business-case__editor").exists()).toBe(false);
+    expect(wrapper.find(".risk-editor").exists()).toBe(true);
+    expect(
+      wrapper.findAll(".business-case__editor, .risk-editor"),
+    ).toHaveLength(1);
+  });
+
+  it("尚不能判断时可编辑关键未知，并把适用但未判断明确显示为缺失结论", async () => {
+    const wrapper = mountPanel();
+    await wrapper.get(".risk-summary button").trigger("click");
+
+    expect(wrapper.get(".risk-editor").text()).toContain("关键未知");
+    await wrapper.get(".risk-editor textarea").setValue("等待平台限制清单");
+    expect(wrapper.emitted("updateRisk")?.at(-1)).toEqual([
+      "compliance",
+      { criticalUnknown: "等待平台限制清单" },
+    ]);
+
+    await wrapper.setProps({
+      risks: [
+        {
+          riskCode: "compliance",
+          applicability: "applicable",
+          applicabilityReason: null,
+          investmentDecision: null,
+          conclusion: null,
+          evidenceRefs: [],
+          criticalUnknown: null,
+          label: "合规",
+          missing: true,
+        },
+      ],
+    });
+
+    expect(wrapper.get(".risk-summary button").text()).toContain(
+      "尚未判断投资结论",
+    );
+    expect(wrapper.get(".risk-summary button").text()).not.toContain(
+      "不支持投入",
+    );
   });
 });

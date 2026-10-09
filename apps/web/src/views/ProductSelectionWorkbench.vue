@@ -82,6 +82,8 @@ const {
   reviewPointViews,
   businessCase,
   businessCaseViews,
+  riskAssessmentViews,
+  updateRisk,
   requiredCount,
   blockingGapGroups,
   optionalGaps,
@@ -417,6 +419,7 @@ const progressPercent = computed(() =>
               data-gap-panel="review_points"
               tabindex="-1"
               :dimensions="businessCaseViews"
+              :risks="riskAssessmentViews"
               :legacy-points="initiative?.reviewPoints ?? []"
               :candidates="evidenceCandidates"
               :busy="deciding"
@@ -443,6 +446,7 @@ const progressPercent = computed(() =>
               @update-unknown="
                 (code, value) => (businessCase[code].criticalUnknown = value)
               "
+              @update-risk="updateRisk"
             />
             <details v-if="!isReadOnly" class="professional-followup">
               <summary>专业要求与专项证据（按需展开）</summary>
@@ -568,7 +572,7 @@ const progressPercent = computed(() =>
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-2) var(--space-3);
   align-items: center;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -587,7 +591,7 @@ const progressPercent = computed(() =>
 }
 .progress-head__bar {
   grid-column: 1 / -1;
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: var(--line);
   overflow: hidden;
@@ -707,6 +711,14 @@ const progressPercent = computed(() =>
 }
 .selection-workbench--decision-ready :deep(.opportunity-facts) {
   gap: var(--space-2) var(--space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.selection-workbench--decision-ready :deep(.initiative-gap-groups) {
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+}
+.selection-workbench--decision-ready :deep(.initiative-gap-groups > p) {
+  display: none;
 }
 .professional-followup > summary {
   padding: var(--space-3) var(--space-4);
@@ -824,6 +836,20 @@ const progressPercent = computed(() =>
     left: var(--space-4);
   }
 }
+@media (min-width: 960px) and (max-width: 1100px) {
+  .selection-workbench--decision-ready :deep(.outcome-action) {
+    left: auto;
+    width: 17rem;
+    grid-template-columns: 1fr;
+  }
+  .selection-workbench--decision-ready :deep(.outcome-hint) {
+    display: none;
+  }
+  .selection-workbench--decision-ready :deep(.active-editor) {
+    box-sizing: border-box;
+    padding-right: calc(17rem + var(--space-6));
+  }
+}
 @media (max-width: 680px) {
   .selection-workbench :deep(.page-header--result .page-heading > p) {
     display: none;
@@ -833,7 +859,7 @@ const progressPercent = computed(() =>
     grid-template-columns: 1fr;
   }
   .selection-workbench--decision-ready {
-    padding-bottom: calc(var(--touch-target) + var(--space-6));
+    padding-bottom: 0;
   }
   .workbench-grid {
     gap: var(--space-2);
@@ -854,6 +880,9 @@ const progressPercent = computed(() =>
   .work-context > span:last-child {
     grid-column: 1 / -1;
   }
+  .selection-workbench--decision-ready :deep(.opportunity-facts) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .work-context > span:last-child {
     padding: var(--space-2) 0 0;
     border-top: 1px solid var(--line);
@@ -861,6 +890,17 @@ const progressPercent = computed(() =>
   }
   .pane--action {
     position: static;
+  }
+  .selection-workbench--decision-ready :deep(.outcome-action) {
+    position: static;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
   .pane--decision {
     height: auto;

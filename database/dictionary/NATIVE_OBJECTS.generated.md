@@ -2,7 +2,7 @@
 
 # 数据库原生对象清单
 
-- verifiedThroughMigration: `20261006120000_add_product_initiative_business_case`
+- verifiedThroughMigration: `20261007100000_add_product_initiative_risk_assessment`
 - 结构对账差异统一见 [主字典 reconciliation findings](./DATA_DICTIONARY.generated.md#findings)。
 
 ## Prisma 未完整表达的约束与索引

@@ -41,6 +41,15 @@ test("NPI owner sees the handed-off initiative and takes it", async ({
   // 看懂它为什么值得做：立项快照只读带出，含四项结论。
   await expect(page.getByText("目标用户与市场")).toBeVisible();
   await expect(page.getByText("本岗位只读")).toBeVisible();
+  await expect(page.getByText("五类适用风险（冻结，只读）")).toBeVisible();
+  await expect(page.getByText("合规").last()).toBeVisible();
+  await expect(page.getByText("支持投入 · 合规支持投入").last()).toBeVisible();
+  await expect(
+    page.getByText("不适用：本机会采用本地自提，不涉及退货"),
+  ).toBeVisible();
+  await expect(page.locator(".npi-detail")).not.toContainText(
+    /risk\.|supports_investment|not_applicable/,
+  );
 
   await page.getByRole("button", { name: "领取此立项" }).click();
 
@@ -179,6 +188,7 @@ function queue(claimed: boolean) {
               conclusion: "加拿大养宠家庭",
             },
           ],
+          riskAssessmentSnapshot: riskSnapshot(),
           evidenceRefs: [],
           createdAt: "2026-09-27T10:00:00.000Z",
           idempotencyKey: "handoff-1",
@@ -197,4 +207,54 @@ function queue(claimed: boolean) {
     pageSize: 200,
     nextCursor: null,
   };
+}
+
+function riskSnapshot() {
+  return [
+    {
+      riskCode: "compliance",
+      applicability: "applicable",
+      applicabilityReason: null,
+      investmentDecision: "supports_investment",
+      conclusion: "合规支持投入",
+      evidenceRefs: [],
+      criticalUnknown: null,
+    },
+    {
+      riskCode: "intellectual_property",
+      applicability: "applicable",
+      applicabilityReason: null,
+      investmentDecision: "supports_investment",
+      conclusion: "知识产权支持投入",
+      evidenceRefs: [],
+      criticalUnknown: null,
+    },
+    {
+      riskCode: "packaging_logistics",
+      applicability: "applicable",
+      applicabilityReason: null,
+      investmentDecision: "supports_investment",
+      conclusion: "包装物流支持投入",
+      evidenceRefs: [],
+      criticalUnknown: null,
+    },
+    {
+      riskCode: "returns",
+      applicability: "not_applicable",
+      applicabilityReason: "本机会采用本地自提，不涉及退货",
+      investmentDecision: null,
+      conclusion: null,
+      evidenceRefs: [],
+      criticalUnknown: null,
+    },
+    {
+      riskCode: "platform_restrictions",
+      applicability: "applicable",
+      applicabilityReason: null,
+      investmentDecision: "supports_investment",
+      conclusion: "平台限制支持投入",
+      evidenceRefs: [],
+      criticalUnknown: null,
+    },
+  ];
 }

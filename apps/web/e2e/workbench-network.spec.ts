@@ -8,7 +8,13 @@ import type {
   ProductOpportunityV1,
 } from "@logix/contracts";
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const S1F7_EVIDENCE_DIRECTORY = resolve(
+  process.cwd(),
+  "../../.tmp/s1f7-viewport-evidence-20261008",
+);
 
 test("the business-workbench directory opens live and framework stages honestly", async ({
   page,
@@ -183,6 +189,7 @@ for (const width of [320, 375, 1440]) {
 test("a market owner can hand off a signal for a selector to claim, accept and take a decision", async ({
   page,
 }, testInfo) => {
+  await mkdir(S1F7_EVIDENCE_DIRECTORY, { recursive: true });
   const { decisions, supplementSecondSignalScope } =
     await mockMarketOpportunityApis(page, {
       secondMarketCode: null,
@@ -234,15 +241,17 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     page.getByRole("navigation", { name: "立项缺口导航" }).getByRole("button"),
   ).toHaveCount(5);
   await expect(submit).toHaveCount(1);
-  await expect(submit).toBeInViewport();
 
   const viewport = page.viewportSize();
-  const submitBox = await submit.boundingBox();
-  expect(submitBox).not.toBeNull();
-  expect(submitBox!.y).toBeGreaterThanOrEqual(0);
-  expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(
-    viewport?.height ?? 0,
-  );
+  if ((viewport?.width ?? 0) > 680) {
+    await expect(submit).toBeInViewport();
+    const submitBox = await submit.boundingBox();
+    expect(submitBox).not.toBeNull();
+    expect(submitBox!.y).toBeGreaterThanOrEqual(0);
+    expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(
+      viewport?.height ?? 0,
+    );
+  }
   const persistentAction = await page.evaluate(() => ({
     pane: getComputedStyle(
       document.querySelector<HTMLElement>(".pane--action")!,
@@ -253,26 +262,44 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   }));
   if ((viewport?.width ?? 0) > 1100) {
     expect(persistentAction.pane).toBe("sticky");
-  } else {
+  } else if ((viewport?.width ?? 0) > 680) {
     expect(["sticky", "fixed"]).toContain(persistentAction.bar);
+  } else {
+    expect(persistentAction.bar).toBe("static");
   }
   await page
     .locator(".progress-head")
     .evaluate((element) => element.scrollIntoView({ block: "start" }));
   const businessCase = page.locator(".business-case");
+  const riskAssessment = page.locator(".risk-assessment");
+  const activeEditor = page.locator(".active-editor");
   const professionalFollowup = page.locator(".professional-followup");
   await expect(professionalFollowup).not.toHaveAttribute("open");
+  await expect(riskAssessment.locator(".risk-summary")).toBeVisible();
+  await expect(activeEditor).toBeVisible();
+  await expect(
+    page.locator(".business-case__editor, .risk-editor"),
+  ).toHaveCount(1);
   const informationOrder = await page.evaluate(() => {
     const opportunity = document.querySelector(".opportunity-detail")!;
-    const review = document.querySelector(".business-case")!;
+    const business = document.querySelector(".business-case")!;
+    const risk = document.querySelector(".risk-assessment")!;
+    const editor = document.querySelector(".active-editor")!;
     const professional = document.querySelector(".professional-followup")!;
     return (
       Boolean(
-        opportunity.compareDocumentPosition(review) &
+        opportunity.compareDocumentPosition(business) &
         Node.DOCUMENT_POSITION_FOLLOWING,
       ) &&
       Boolean(
-        review.compareDocumentPosition(professional) &
+        business.compareDocumentPosition(risk) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      ) &&
+      Boolean(
+        risk.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ) &&
+      Boolean(
+        editor.compareDocumentPosition(professional) &
         Node.DOCUMENT_POSITION_FOLLOWING,
       )
     );
@@ -287,11 +314,27 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     const summary = document.querySelector<HTMLElement>(
       ".business-case__summary",
     )!;
-    const editor = document.querySelector<HTMLElement>(
-      ".business-case__editor",
+    const editor = document.querySelector<HTMLElement>(".active-editor")!;
+    const editorContent = editor.querySelector<HTMLElement>(
+      ".business-case__editor, .risk-editor",
     )!;
     const action = document.querySelector<HTMLElement>(".outcome-action")!;
     const content = document.querySelector<HTMLElement>(".app-content")!;
+    const riskButtons = Array.from(
+      document.querySelectorAll<HTMLElement>(".risk-summary button"),
+    ).map((button) => {
+      const rect = button.getBoundingClientRect();
+      return {
+        text: button.innerText,
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+      };
+    });
+    const actionRect = action.getBoundingClientRect();
+    const editorRect = editor.getBoundingClientRect();
+    const editorContentRect = editorContent.getBoundingClientRect();
     return {
       viewportWidth: document.documentElement.clientWidth,
       pageScrollWidth: document.documentElement.scrollWidth,
@@ -301,10 +344,26 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
       summaryBottom: summary.getBoundingClientRect().bottom,
       summaryLeft: summary.getBoundingClientRect().left,
       summaryRight: summary.getBoundingClientRect().right,
-      editorTop: editor.getBoundingClientRect().top,
-      editorLeft: editor.getBoundingClientRect().left,
-      editorRight: editor.getBoundingClientRect().right,
-      actionTop: action.getBoundingClientRect().top,
+      riskTop: document
+        .querySelector<HTMLElement>(".risk-summary")!
+        .getBoundingClientRect().top,
+      riskBottom: document
+        .querySelector<HTMLElement>(".risk-summary")!
+        .getBoundingClientRect().bottom,
+      firstRiskTop: document
+        .querySelector<HTMLElement>(".risk-summary button")!
+        .getBoundingClientRect().top,
+      riskButtons,
+      blockingRiskCount: document.querySelectorAll(".risk-summary button small")
+        .length,
+      editorTop: editorRect.top,
+      editorBottom: editorRect.bottom,
+      editorLeft: editorContentRect.left,
+      editorRight: editorContentRect.right,
+      actionTop: actionRect.top,
+      actionBottom: actionRect.bottom,
+      actionLeft: actionRect.left,
+      actionRight: actionRect.right,
       detailLeft: document
         .querySelector<HTMLElement>(".pane--detail")!
         .getBoundingClientRect().left,
@@ -321,7 +380,13 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   );
   expect(workingFacts.summaryTop).toBeGreaterThanOrEqual(0);
   expect(workingFacts.summaryBottom).toBeLessThanOrEqual(viewport?.height ?? 0);
-  expect(workingFacts.editorTop).toBeLessThan(viewport?.height ?? 0);
+  expect(workingFacts.riskTop).toBeGreaterThanOrEqual(0);
+  expect(workingFacts.riskTop).toBeLessThan(viewport?.height ?? 0);
+  expect(workingFacts.firstRiskTop).toBeLessThan(viewport?.height ?? 0);
+  expect(workingFacts.riskButtons).toHaveLength(5);
+  expect(workingFacts.editorTop).toBeGreaterThanOrEqual(
+    workingFacts.riskBottom,
+  );
   const expectedInset = (viewport?.width ?? 0) <= 680 ? 12 : 16;
   for (const [left, right] of [
     [workingFacts.summaryLeft, workingFacts.summaryRight],
@@ -334,11 +399,69 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
       expectedInset,
     );
   }
-  await expect(submit).toBeInViewport();
-  if ((viewport?.width ?? 0) <= 1100) {
-    expect(workingFacts.summaryBottom).toBeLessThan(workingFacts.actionTop);
+  if ((viewport?.width ?? 0) > 680) {
+    await expect(submit).toBeInViewport();
   }
-  const workingScreenshotPath = testInfo.outputPath(
+  const viewportHeight = viewport?.height ?? 0;
+  if ((viewport?.width ?? 0) >= 1024) {
+    for (const risk of workingFacts.riskButtons) {
+      expect(risk.top, risk.text).toBeGreaterThanOrEqual(0);
+      expect(risk.bottom, risk.text).toBeLessThanOrEqual(viewportHeight);
+    }
+    expect(workingFacts.blockingRiskCount).toBeGreaterThan(0);
+    expect(workingFacts.riskBottom).toBeLessThanOrEqual(viewportHeight);
+    expect(
+      workingFacts.editorTop - workingFacts.riskBottom,
+    ).toBeLessThanOrEqual(16);
+  }
+  if ((viewport?.width ?? 0) === 1440) {
+    expect(workingFacts.summaryBottom).toBeLessThanOrEqual(viewportHeight);
+    expect(workingFacts.actionTop).toBeGreaterThanOrEqual(0);
+    expect(workingFacts.actionBottom).toBeLessThanOrEqual(viewportHeight);
+  }
+  if ((viewport?.width ?? 0) <= 1100) {
+    const actionOverlapsEditor = !(
+      workingFacts.actionBottom <= workingFacts.editorTop ||
+      workingFacts.actionTop >= workingFacts.editorBottom ||
+      workingFacts.actionRight <= workingFacts.editorLeft ||
+      workingFacts.actionLeft >= workingFacts.editorRight
+    );
+    expect(actionOverlapsEditor).toBe(false);
+  }
+  if ((viewport?.width ?? 0) <= 680) {
+    const fifthRisk = workingFacts.riskButtons.at(-1)!;
+    const actionOverlapsFifthRisk = !(
+      workingFacts.actionBottom <= fifthRisk.top ||
+      workingFacts.actionTop >= fifthRisk.bottom ||
+      workingFacts.actionRight <= fifthRisk.left ||
+      workingFacts.actionLeft >= fifthRisk.right
+    );
+    expect(actionOverlapsFifthRisk).toBe(false);
+
+    await activeEditor.evaluate((element) =>
+      element.scrollIntoView({ block: "start" }),
+    );
+    const mobileEditorOverlap = await page.evaluate(() => {
+      const editorRect = document
+        .querySelector<HTMLElement>(".active-editor")!
+        .getBoundingClientRect();
+      const actionRect = document
+        .querySelector<HTMLElement>(".outcome-action")!
+        .getBoundingClientRect();
+      return !(
+        actionRect.bottom <= editorRect.top ||
+        actionRect.top >= editorRect.bottom ||
+        actionRect.right <= editorRect.left ||
+        actionRect.left >= editorRect.right
+      );
+    });
+    expect(mobileEditorOverlap).toBe(false);
+    await businessCase.evaluate((element) =>
+      element.scrollIntoView({ block: "start" }),
+    );
+  }
+  const workingScreenshotPath = resolve(
+    S1F7_EVIDENCE_DIRECTORY,
     `product-selection-working-${viewport?.width ?? 0}x${viewport?.height ?? 0}.png`,
   );
   await page.screenshot({ path: workingScreenshotPath });
@@ -346,7 +469,8 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     path: workingScreenshotPath,
     contentType: "image/png",
   });
-  const workingEvidencePath = testInfo.outputPath(
+  const workingEvidencePath = resolve(
+    S1F7_EVIDENCE_DIRECTORY,
     `product-selection-working-${viewport?.width ?? 0}x${viewport?.height ?? 0}.json`,
   );
   await writeFile(workingEvidencePath, JSON.stringify(workingFacts, null, 2));
@@ -354,8 +478,32 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     path: workingEvidencePath,
     contentType: "application/json",
   });
+  if ((viewport?.width ?? 0) <= 680) {
+    await submit.scrollIntoViewIfNeeded();
+    await expect(submit).toBeInViewport();
+  }
 
   await page.getByRole("button", { name: /目标结果.*1 项未齐/ }).click();
+
+  // 风险验证态不能通过 approve，但允许带关键未知暂缓并获得服务端回执。
+  const riskEditor = page.locator(".risk-editor");
+  await page
+    .locator(".risk-summary button")
+    .filter({ hasText: "合规" })
+    .click();
+  await riskEditor.locator('input[value="applicable"]').check();
+  await riskEditor.locator('input[value="validate_before_investment"]').check();
+  await riskEditor.locator("textarea").first().fill("合规路径仍需验证");
+  await riskEditor.locator("textarea").nth(1).fill("等待真实合规样本");
+  await riskEditor.locator("details").click();
+  await riskEditor.locator('input[type="checkbox"]').check();
+  await expect(submit).toBeDisabled();
+
+  // 严格门只允许验证态暂缓；恢复为支持投入后才能继续验证完整立项路径。
+  await riskEditor.locator('input[value="supports_investment"]').check();
+  await riskEditor.locator("textarea").first().fill("合规支持投入");
+  await riskEditor.locator('input[type="checkbox"]').uncheck();
+
   await page.getByLabel("目标结果").fill("把折叠宠物出行包做成可发布版本");
   await page.getByRole("button", { name: /责任与资源.*3 项未齐/ }).click();
   await expect(
@@ -415,6 +563,26 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     }
   }
 
+  // 经济事实齐备仍不能绕过五类风险：逐项留下适用/不适用事实。
+  for (const label of ["合规", "知识产权", "包装物流", "退货", "平台限制"]) {
+    await page
+      .locator(".risk-summary button")
+      .filter({ hasText: label })
+      .click();
+    if (label === "退货") {
+      await riskEditor.locator('input[value="not_applicable"]').check();
+      await riskEditor
+        .locator("textarea")
+        .fill("本机会采用本地自提，不涉及退货");
+      continue;
+    }
+    await riskEditor.locator('input[value="applicable"]').check();
+    await riskEditor.locator('input[value="supports_investment"]').check();
+    await riskEditor.locator("textarea").first().fill(`${label}支持投入`);
+    await riskEditor.locator("details").click();
+    await riskEditor.locator('input[type="checkbox"]').check();
+  }
+
   await expect(submit).toBeEnabled();
   await expect(submit).toContainText("立项并交给产品开发");
   const editingWidths = await page.evaluate(() => ({
@@ -459,8 +627,17 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     /历史缺失 \d+ 类/,
   );
   await expect(page.locator(".queue-item.selected")).not.toContainText("待补");
-  await expect(result.locator(".initiative-result__reviews")).not.toContainText(
+  await expect(
+    result.locator(".initiative-result__reviews").last(),
+  ).not.toContainText(
     /target_user_and_market|competitive_supply|price_band_and_margin|compliance_risk/,
+  );
+  await expect(result).toContainText("五类适用风险（只读）");
+  await expect(result).toContainText("合规");
+  await expect(result).toContainText("支持投入 · 合规支持投入");
+  await expect(result).toContainText("不适用：本机会采用本地自提，不涉及退货");
+  await expect(result).not.toContainText(
+    /risk\.|supports_investment|not_applicable/,
   );
   const resultFacts = await page.evaluate(() => {
     const resultElement =
@@ -527,7 +704,8 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     .count();
   expect(historyMissingCount).toBeLessThanOrEqual(1);
   const screenshotViewport = page.viewportSize();
-  const screenshotPath = testInfo.outputPath(
+  const screenshotPath = resolve(
+    S1F7_EVIDENCE_DIRECTORY,
     `product-selection-result-${screenshotViewport?.width ?? 0}x${screenshotViewport?.height ?? 0}.png`,
   );
   await page.screenshot({ path: screenshotPath });
@@ -535,7 +713,8 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     path: screenshotPath,
     contentType: "image/png",
   });
-  const evidencePath = testInfo.outputPath(
+  const evidencePath = resolve(
+    S1F7_EVIDENCE_DIRECTORY,
     `product-selection-result-${screenshotViewport?.width ?? 0}x${screenshotViewport?.height ?? 0}.json`,
   );
   await writeFile(
@@ -556,16 +735,29 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   });
   // 桩不校验版本，所以只能在这里断言"发出去的版本正确"：首次立项必须是 0。
   expect(decisions).toHaveLength(1);
-  expect(decisions[0]?.expectedInitiativeVersion).toBe(0);
-  expect(decisions[0]?.contractVersion).toBe("product-initiative-decision.v1");
-  expect(decisions[0]?.outcome).toBe("approve");
-  expect(decisions[0]?.acceptResponsibility).toBe(true);
-  expect(decisions[0]?.receivingTeamOrRole).toBe("产品开发 / NPI");
-  expect(decisions[0]?.unitEconomicsDraft).toMatchObject({
+  const approveDecision = decisions[0]!;
+  expect(approveDecision.expectedInitiativeVersion).toBe(0);
+  expect(approveDecision.contractVersion).toBe(
+    "product-initiative-decision.v1",
+  );
+  expect(approveDecision.outcome).toBe("approve");
+  expect(approveDecision.riskAssessmentDraft).toHaveLength(5);
+  expect(
+    approveDecision.riskAssessmentDraft?.map((risk) => risk.riskCode),
+  ).toEqual([
+    "compliance",
+    "intellectual_property",
+    "packaging_logistics",
+    "returns",
+    "platform_restrictions",
+  ]);
+  expect(approveDecision.acceptResponsibility).toBe(true);
+  expect(approveDecision.receivingTeamOrRole).toBe("产品开发 / NPI");
+  expect(approveDecision.unitEconomicsDraft).toMatchObject({
     channelCode: "Amazon CA",
     currencyCode: "CAD",
   });
-  expect(decisions[0]?.unitEconomicsDraft).not.toHaveProperty("marketCode");
+  expect(approveDecision.unitEconomicsDraft).not.toHaveProperty("marketCode");
   // 队列上的立项标记来自服务端投影：立项后这一条不再看起来像没处理过。
   await expect(page.locator(".queue-item").first()).toContainText("已立项");
 
@@ -581,6 +773,15 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
   expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
 
   await page.goto("/workspaces/product-npi");
+  await expect(page.getByText("五类适用风险（冻结，只读）")).toBeVisible();
+  await expect(page.getByText("合规").last()).toBeVisible();
+  await expect(page.getByText("支持投入 · 合规支持投入").last()).toBeVisible();
+  await expect(
+    page.getByText("不适用：本机会采用本地自提，不涉及退货"),
+  ).toBeVisible();
+  await expect(page.locator(".npi-detail")).not.toContainText(
+    /risk\.|supports_investment|not_applicable/,
+  );
   await expect(page.getByText("单位经济快照（只读）")).toBeVisible();
   await expect(page.getByText("基准情景", { exact: true })).toBeVisible();
   await expect(page.getByText("保守情景", { exact: true })).toBeVisible();
@@ -590,6 +791,60 @@ test("a market owner can hand off a signal for a selector to claim, accept and t
     scroll: document.documentElement.scrollWidth,
   }));
   expect(npiWidths.scroll).toBeLessThanOrEqual(npiWidths.client + 1);
+});
+
+test("an undetermined risk keeps its critical unknown through defer and reload", async ({
+  page,
+}) => {
+  const { decisions } = await mockMarketOpportunityApis(page, {
+    secondMarketCode: null,
+    secondChannelCode: null,
+  });
+  await page.goto("/workspaces/market-signals");
+  await page.getByRole("button", { name: /加拿大站宠物出行需求上升/ }).click();
+  await page.getByRole("radio", { name: /交给选品评估/ }).check();
+  await page.getByLabel("机会说明").fill("验证合规风险后再决定是否立项。");
+  await page.getByRole("button", { name: "交给选品评估", exact: true }).click();
+  await page.getByRole("link", { name: "查看选品队列" }).click();
+  await page.getByRole("button", { name: "领取此机会" }).click();
+  await page.getByRole("button", { name: "接受并进入立项判断" }).click();
+  await page.getByRole("button", { name: /目标结果.*1 项未齐/ }).click();
+
+  const riskEditor = page.locator(".risk-editor");
+  await page
+    .locator(".risk-summary button")
+    .filter({ hasText: "合规" })
+    .click();
+  await riskEditor.locator('input[value="undetermined"]').check();
+  await riskEditor.getByLabel("关键未知").fill("等待真实合规样本");
+  await page.getByRole("radio", { name: "暂缓" }).check();
+  await page.getByLabel("这次要验证什么").fill("先完成合规样本验证");
+  await page.getByLabel("哪天重判").fill("2026-10-20");
+  await page.getByRole("button", { name: "暂缓此机会", exact: true }).click();
+
+  await expect(page.locator(".work-context")).toContainText("已暂缓");
+  expect(decisions).toHaveLength(1);
+  expect(decisions[0]).toMatchObject({
+    outcome: "defer",
+    validationFocus: "先完成合规样本验证",
+    reconsiderationDate: "2026-10-20",
+  });
+  expect(decisions[0]?.riskAssessmentDraft).toHaveLength(1);
+  expect(decisions[0]?.riskAssessmentDraft?.[0]).toMatchObject({
+    riskCode: "compliance",
+    applicability: "undetermined",
+    investmentDecision: null,
+    criticalUnknown: "等待真实合规样本",
+  });
+
+  await page.reload();
+  await page
+    .locator(".risk-summary button")
+    .filter({ hasText: "合规" })
+    .click();
+  await expect(page.locator(".risk-editor").getByLabel("关键未知")).toHaveValue(
+    "等待真实合规样本",
+  );
 });
 
 test("market keeps claimed handoffs until selection accepts and then shows feedback", async ({
@@ -1459,6 +1714,40 @@ async function mockMarketOpportunityApis(
       await json(route, initiative);
       return;
     }
+    if (body.outcome === "defer") {
+      initiative = {
+        initiativeId: "66666666-6666-4666-8666-666666666666",
+        outcome: "defer",
+        completion: "completed",
+        currentDestination: "deferred",
+        responsibleActorId: "dev-operator",
+        responsibilityAccepted: null,
+        receivingTeamOrRole: null,
+        resourceDescription: null,
+        targetDate: null,
+        nextDecisionDate: null,
+        nextDecisionQuestion: null,
+        validationFocus: body.validationFocus ?? null,
+        reconsiderationDate: body.reconsiderationDate ?? null,
+        unitEconomicsDraft: body.unitEconomicsDraft ?? null,
+        unitEconomicsSnapshot: null,
+        negativeConservativeReason: null,
+        objective: body.objective ?? null,
+        reviewPoints: [],
+        businessCaseDraft: body.businessCaseDraft ?? [],
+        businessCaseSnapshot: null,
+        riskAssessmentDraft: body.riskAssessmentDraft ?? [],
+        riskAssessmentSnapshot: null,
+        reason: body.validationFocus ?? null,
+        returnBasis: null,
+        pendingFieldCodes: [],
+        version: (initiative?.version ?? 0) + 1,
+        createdAt: "2026-09-27T00:00:00.000Z",
+        updatedAt: "2026-09-27T00:00:00.000Z",
+      };
+      await json(route, initiative);
+      return;
+    }
     const approvedInitiative: ProductInitiativeV1 = {
       initiativeId: "66666666-6666-4666-8666-666666666666",
       outcome: "approve",
@@ -1489,6 +1778,9 @@ async function mockMarketOpportunityApis(
         })) as
           | NonNullable<ProductInitiativeV1["businessCaseSnapshot"]>
           | undefined) ?? null,
+      riskAssessmentDraft: body.riskAssessmentDraft ?? [],
+      riskAssessmentSnapshot:
+        body.riskAssessmentDraft as unknown as ProductInitiativeV1["riskAssessmentSnapshot"],
       reason: null,
       pendingFieldCodes: [],
       version: (initiative?.version ?? 0) + 1,
@@ -1541,6 +1833,7 @@ async function mockMarketOpportunityApis(
                   initiative.negativeConservativeReason,
                 reviewPoints: initiative.reviewPoints,
                 businessCaseSnapshot: initiative.businessCaseSnapshot,
+                riskAssessmentSnapshot: initiative.riskAssessmentSnapshot,
                 evidenceRefs: [evidenceId],
                 createdAt: initiative.updatedAt,
                 idempotencyKey: "e2e-unit-economics-handoff",

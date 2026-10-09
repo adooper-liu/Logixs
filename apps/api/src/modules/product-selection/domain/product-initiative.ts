@@ -12,6 +12,8 @@ import type {
   ProductInitiativeV1,
   ProductInitiativeUnitEconomicsDraftV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
+  ProductInitiativeRiskAssessmentDraftV1,
+  ProductInitiativeRiskCodeV1,
   MarketSelectionReturnTakebackCommandV1,
 } from "@logix/contracts";
 import {
@@ -25,6 +27,9 @@ export interface ProductInitiativeReviewPoint {
   evidenceRefs: string[];
   conclusion: string | null;
 }
+
+export type ProductInitiativeRiskAssessmentDraft =
+  ProductInitiativeRiskAssessmentDraftV1;
 
 export interface ProductInitiativeDraft {
   objective: string | null;
@@ -45,6 +50,7 @@ export interface ProductInitiativeDraft {
   unitEconomicsDraft: ProductInitiativeUnitEconomicsDraftV1 | null;
   unitEconomicsSnapshot: ProductInitiativeUnitEconomicsSnapshotV1 | null;
   negativeConservativeReason: string | null;
+  riskAssessmentDraft?: ProductInitiativeRiskAssessmentDraft[];
 }
 
 /** 该机会上已存在的立项判断版本；0 表示还没有立项判断。 */
@@ -75,6 +81,8 @@ export interface PreparedProductInitiativeDecision {
   reviewPoints: ProductInitiativeReviewPoint[];
   businessCaseDraft: ProductInitiativeBusinessCaseDimensionDraftV1[];
   businessCaseSnapshot: ProductInitiativeV1["businessCaseSnapshot"];
+  riskAssessmentDraft: ProductInitiativeRiskAssessmentDraft[];
+  riskAssessmentSnapshot?: ProductInitiativeV1["riskAssessmentSnapshot"];
   reason: string | null;
   returnBasis: ProductInitiativeReturnBasisV1 | null;
   pendingFieldCodes: ProductInitiativePendingFieldCodeV1[];
@@ -113,6 +121,15 @@ export const PRODUCT_INITIATIVE_GATE: readonly ProductInitiativeReviewPointCodeV
     "compliance_risk",
   ];
 
+export const PRODUCT_INITIATIVE_RISK_CODES: readonly ProductInitiativeRiskCodeV1[] =
+  [
+    "compliance",
+    "intellectual_property",
+    "packaging_logistics",
+    "returns",
+    "platform_restrictions",
+  ];
+
 export function productInitiativePendingFieldCodes(
   draft: ProductInitiativeDraft,
   decision?: {
@@ -143,6 +160,20 @@ export function productInitiativePendingFieldCodes(
       point.decision !== "supports_investment"
     ) {
       missing.add(code);
+    }
+  }
+  for (const code of PRODUCT_INITIATIVE_RISK_CODES) {
+    const assessment = (draft.riskAssessmentDraft ?? []).find(
+      (item) => item.riskCode === code,
+    );
+    if (!assessment || assessment.applicability === "undetermined") {
+      missing.add(`risk.${code}` as ProductInitiativePendingFieldCodeV1);
+    }
+    if (
+      assessment?.applicability === "applicable" &&
+      assessment.investmentDecision !== "supports_investment"
+    ) {
+      missing.add(`risk.${code}` as ProductInitiativePendingFieldCodeV1);
     }
   }
   // 三个带原因的向缺失原因时只做待补、不关闭记录 —— 与市场信号阶段
@@ -234,12 +265,30 @@ export function prepareProductInitiativeDecision(
     invalid("businessCaseDraft.decision");
   }
   if (
+    outcome !== "defer" &&
+    draft.riskAssessmentDraft?.some(
+      (point) =>
+        point.applicability === "undetermined" ||
+        point.investmentDecision === "validate_before_investment",
+    )
+  ) {
+    invalid("riskAssessmentDraft.applicability");
+  }
+  if (
     outcome === "return_to_market" &&
     draft.businessCaseDraft?.some(
       (point) => point.decision === "does_not_support",
     )
   ) {
     invalid("businessCaseDraft.decision");
+  }
+  if (
+    outcome !== "reject" &&
+    draft.riskAssessmentDraft?.some(
+      (point) => point.investmentDecision === "does_not_support",
+    )
+  ) {
+    invalid("riskAssessmentDraft.investmentDecision");
   }
   if (
     outcome === "defer" &&
@@ -277,6 +326,11 @@ export function prepareProductInitiativeDecision(
     objective: draft.objective,
     reviewPoints: draft.reviewPoints,
     businessCaseDraft: draft.businessCaseDraft ?? [],
+    riskAssessmentDraft: draft.riskAssessmentDraft ?? [],
+    riskAssessmentSnapshot:
+      outcome === "approve"
+        ? (draft.riskAssessmentDraft as ProductInitiativeV1["riskAssessmentSnapshot"])
+        : null,
     businessCaseSnapshot:
       outcome === "approve"
         ? ((draft.businessCaseDraft ?? []).map((point) => ({
@@ -299,7 +353,7 @@ export function prepareProductInitiativeDecision(
 export function assertProductInitiativeEvidenceRefs(
   decision: Pick<
     PreparedProductInitiativeDecision,
-    "reviewPoints" | "unitEconomicsDraft"
+    "reviewPoints" | "unitEconomicsDraft" | "riskAssessmentDraft"
   > &
     Partial<Pick<PreparedProductInitiativeDecision, "businessCaseDraft">>,
   availableEvidenceRefs: readonly string[],
@@ -316,6 +370,9 @@ export function assertProductInitiativeEvidenceRefs(
     ...new Set([
       ...decision.reviewPoints.flatMap((point) => point.evidenceRefs),
       ...(decision.businessCaseDraft ?? []).flatMap(
+        (point) => point.evidenceRefs,
+      ),
+      ...(decision.riskAssessmentDraft ?? []).flatMap(
         (point) => point.evidenceRefs,
       ),
       ...unitEconomicsRefs,
@@ -348,6 +405,9 @@ function draftFromCommand(
       conclusion: optionalText(point.conclusion, "conclusion", 4000),
     };
   });
+  const riskAssessmentDraft = normalizeRiskAssessment(
+    command.riskAssessmentDraft ?? [],
+  );
   return {
     objective: optionalText(command.objective, "objective", 4000),
     reviewPoints: REVIEW_POINT_ORDER.flatMap((code) =>
@@ -391,6 +451,7 @@ function draftFromCommand(
     unitEconomicsDraft: null,
     unitEconomicsSnapshot: null,
     negativeConservativeReason: null,
+    riskAssessmentDraft,
   };
 }
 
@@ -409,6 +470,7 @@ function isApproveGateCode(
   void _gate;
   return (
     (BUSINESS_CASE_DIMENSIONS as readonly string[]).includes(code) ||
+    code.startsWith("risk.") ||
     APPROVE_REQUIRED_CODES.has(code)
   );
 }
@@ -473,6 +535,100 @@ function normalizeBusinessCase(
   });
   return BUSINESS_CASE_DIMENSIONS.flatMap((code) =>
     points.filter((point) => point.dimensionCode === code),
+  );
+}
+
+function normalizeRiskAssessment(
+  raw: ProductInitiativeRiskAssessmentDraftV1[],
+): ProductInitiativeRiskAssessmentDraft[] {
+  if (
+    !Array.isArray(raw) ||
+    raw.length > PRODUCT_INITIATIVE_RISK_CODES.length
+  ) {
+    invalid("riskAssessmentDraft");
+  }
+  const seen = new Set<string>();
+  const points = raw.map((point) => {
+    if (
+      !point ||
+      !PRODUCT_INITIATIVE_RISK_CODES.includes(point.riskCode) ||
+      seen.has(point.riskCode)
+    ) {
+      invalid("riskAssessmentDraft.riskCode");
+    }
+    seen.add(point.riskCode);
+    const applicabilityReason = optionalText(
+      point.applicabilityReason,
+      "riskAssessmentDraft.applicabilityReason",
+      2000,
+    );
+    const conclusion = optionalText(
+      point.conclusion,
+      "riskAssessmentDraft.conclusion",
+      4000,
+    );
+    const criticalUnknown = optionalText(
+      point.criticalUnknown,
+      "riskAssessmentDraft.criticalUnknown",
+      2000,
+    );
+    const investmentDecision = point.investmentDecision ?? null;
+    if (point.applicability === "not_applicable") {
+      if (
+        !applicabilityReason ||
+        investmentDecision ||
+        conclusion ||
+        criticalUnknown
+      ) {
+        invalid("riskAssessmentDraft.not_applicable");
+      }
+    } else if (point.applicability === "undetermined") {
+      if (
+        !criticalUnknown ||
+        investmentDecision ||
+        conclusion ||
+        applicabilityReason
+      ) {
+        invalid("riskAssessmentDraft.undetermined");
+      }
+    } else if (point.applicability === "applicable") {
+      if (applicabilityReason || !investmentDecision || !conclusion) {
+        invalid("riskAssessmentDraft.applicable");
+      }
+      if (
+        investmentDecision === "validate_before_investment"
+          ? !criticalUnknown
+          : !!criticalUnknown
+      ) {
+        invalid("riskAssessmentDraft.criticalUnknown");
+      }
+      uniqueUuids(point.evidenceRefs ?? [], "riskAssessmentDraft.evidenceRefs");
+      if ((point.evidenceRefs ?? []).length === 0)
+        invalid("riskAssessmentDraft.evidenceRefs");
+    } else {
+      invalid("riskAssessmentDraft.applicability");
+    }
+    if (
+      point.applicability !== "applicable" &&
+      (point.evidenceRefs ?? []).length > 0
+    ) {
+      uniqueUuids(point.evidenceRefs, "riskAssessmentDraft.evidenceRefs");
+    }
+    return {
+      riskCode: point.riskCode,
+      applicability: point.applicability,
+      applicabilityReason,
+      investmentDecision,
+      conclusion,
+      evidenceRefs: uniqueUuids(
+        point.evidenceRefs ?? [],
+        "riskAssessmentDraft.evidenceRefs",
+      ),
+      criticalUnknown,
+    };
+  });
+  return PRODUCT_INITIATIVE_RISK_CODES.flatMap((code) =>
+    points.filter((point) => point.riskCode === code),
   );
 }
 
@@ -605,6 +761,11 @@ const REVIEW_POINT_CODES = new Set<string>(REVIEW_POINT_ORDER);
 const PENDING_FIELD_ORDER: ProductInitiativePendingFieldCodeV1[] = [
   "objective",
   ...BUSINESS_CASE_DIMENSIONS,
+  "risk.compliance",
+  "risk.intellectual_property",
+  "risk.packaging_logistics",
+  "risk.returns",
+  "risk.platform_restrictions",
   "defer_reason",
   "responsibility_commitment",
   "receiving_team_or_role",

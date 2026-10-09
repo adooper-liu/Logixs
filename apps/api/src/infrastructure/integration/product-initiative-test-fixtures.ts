@@ -21,6 +21,24 @@ export const PRODUCT_INITIATIVE_TEST_BUSINESS_CASE =
     ProductInitiativeDecisionCommandV1["businessCaseDraft"]
   >;
 
+export const PRODUCT_INITIATIVE_TEST_RISK_ASSESSMENT = (
+  [
+    "compliance",
+    "intellectual_property",
+    "packaging_logistics",
+    "returns",
+    "platform_restrictions",
+  ] as const
+).map((riskCode, index) => ({
+  riskCode,
+  applicability: "applicable" as const,
+  applicabilityReason: null,
+  investmentDecision: "supports_investment" as const,
+  conclusion: `集成测试已确认 ${riskCode} 支持投入`,
+  evidenceRefs: [PRODUCT_INITIATIVE_TEST_EVIDENCE_IDS[index]],
+  criticalUnknown: null,
+}));
+
 export const PRODUCT_INITIATIVE_TEST_CONTEXT: ProductInitiativeUnitEconomicsContext =
   {
     marketCode: "CA",
@@ -40,6 +58,7 @@ export const PRODUCT_INITIATIVE_TEST_COMMITMENT = {
 export const PRODUCT_INITIATIVE_TEST_APPROVE_PREREQUISITE = {
   ...PRODUCT_INITIATIVE_TEST_COMMITMENT,
   businessCaseDraft: PRODUCT_INITIATIVE_TEST_BUSINESS_CASE,
+  riskAssessmentDraft: PRODUCT_INITIATIVE_TEST_RISK_ASSESSMENT,
 } satisfies Partial<ProductInitiativeDecisionCommandV1>;
 
 export function completeUnitEconomicsDraft() {

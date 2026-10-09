@@ -12718,6 +12718,26 @@
       "ownerModule": "product-selection",
       "notes": []
     },
+    "public.product_initiative.risk_assessment_draft": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.product_initiative.risk_assessment_snapshot": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
     "public.product_initiative.version": {
       "nameZh": "版本号",
       "nameStatus": "confirmed_implementation",
@@ -13036,6 +13056,16 @@
       "sourceRefs": ["doc-workbench-product-selection"],
       "moduleCode": "product-selection",
       "ownerModule": "product-selection",
+      "notes": []
+    },
+    "public.product_initiative_handoff.risk_assessment_snapshot": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
       "notes": []
     },
     "public.product_initiative_handoff.initiative_id": {

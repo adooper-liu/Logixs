@@ -5,22 +5,21 @@ import {
 } from "./productEvaluationRequirements";
 
 describe("productEvaluationRequirements", () => {
-  it("登记阶段和未进入评估的机会不产生要求，但说明缺什么", () => {
+  it("任何阶段只提供静态证据提示，不生成适用性结论", () => {
     const result = productEvaluationRequirements({
       categoryRef: null,
       evaluationStarted: false,
     });
 
-    expect(result.requirements).toEqual([]);
-    // 关键：不能只给空数组 —— 那样"不适用"和"还判断不了"在界面上分不开。
-    expect(result.withheld.map((item) => item.code)).toEqual([
+    expect(result.requirements.map((item) => item.code)).toEqual([
       "competitive_supply_evidence",
       "price_band",
       "after_sales_voice",
     ]);
-    for (const item of result.withheld) {
-      expect(item.missing).not.toHaveLength(0);
-    }
+    expect(result.withheld).toEqual([]);
+    expect(
+      result.requirements.every((item) => item.rationale.includes("不表示")),
+    ).toBe(true);
   });
 
   it("对空白商品范围按未选定处理", () => {
@@ -29,11 +28,11 @@ describe("productEvaluationRequirements", () => {
       evaluationStarted: false,
     });
 
-    expect(result.requirements).toEqual([]);
-    expect(result.withheld.map((item) => item.code)).toContain("price_band");
+    expect(result.requirements).toHaveLength(3);
+    expect(result.withheld).toEqual([]);
   });
 
-  it("选定商品范围后生成竞争供给与价格带要求，并说明为什么适用", () => {
+  it("商品范围不会改变静态证据提示集合", () => {
     const result = productEvaluationRequirements({
       categoryRef: "庭院收纳",
       evaluationStarted: false,
@@ -42,34 +41,23 @@ describe("productEvaluationRequirements", () => {
     expect(result.requirements.map((item) => item.code)).toEqual([
       "competitive_supply_evidence",
       "price_band",
-    ]);
-    for (const requirement of result.requirements) {
-      expect(requirement.rationale).toContain("庭院收纳");
-      expect(requirement.placeholder).not.toHaveLength(0);
-    }
-    // 范围已定，只有"未进入评估"这一项被 withhold。
-    expect(result.withheld.map((item) => item.code)).toEqual([
       "after_sales_voice",
     ]);
+    expect(result.requirements).toHaveLength(3);
+    expect(
+      result.requirements.every((item) => item.placeholder.length > 0),
+    ).toBe(true);
+    expect(result.withheld).toEqual([]);
   });
 
-  it("进入评估动作后单独生成售后原声要求", () => {
+  it("进入评估动作不会生成新的适用性判断", () => {
     const result = productEvaluationRequirements({
       categoryRef: null,
       evaluationStarted: true,
     });
 
-    expect(result.requirements.map((item) => item.code)).toEqual([
-      "after_sales_voice",
-    ]);
-    // 已进入评估但范围未定 —— 两项因缺商品范围而 withhold，并写明缺的是它。
-    expect(result.withheld.map((item) => item.code)).toEqual([
-      "competitive_supply_evidence",
-      "price_band",
-    ]);
-    for (const item of result.withheld) {
-      expect(item.missing).toContain("商品范围");
-    }
+    expect(result.requirements).toHaveLength(3);
+    expect(result.withheld).toEqual([]);
   });
 
   it("范围与评估动作都成立时给出全部适用要求且不重复，没有 withhold", () => {

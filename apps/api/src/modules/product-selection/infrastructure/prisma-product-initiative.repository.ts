@@ -10,7 +10,7 @@ import {
   type ApplySelectionReturnPort,
 } from "../../market-intelligence";
 import {
-  BUSINESS_CASE_DIMENSIONS,
+  PRODUCT_INITIATIVE_RISK_CODES,
   ProductInitiativeConflictError,
   ProductInitiativeNotFoundError,
   type PreparedProductInitiativeDecision,
@@ -226,11 +226,11 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         existing?.completionState === "completed" &&
         (existing.currentDestination === "rejected" ||
           existing.currentDestination === "deferred") &&
-        Array.isArray(existing.businessCaseDraft) &&
-        existing.businessCaseDraft.length === 0 &&
-        existing.businessCaseSnapshot === null &&
-        !BUSINESS_CASE_DIMENSIONS.some((code) =>
-          existing.pendingFieldCodes.includes(code),
+        Array.isArray(existing.riskAssessmentDraft) &&
+        existing.riskAssessmentDraft.length === 0 &&
+        existing.riskAssessmentSnapshot === null &&
+        !PRODUCT_INITIATIVE_RISK_CODES.some((code) =>
+          existing.pendingFieldCodes.includes(`risk.${code}`),
         )
       ) {
         conflict("PRODUCT_INITIATIVE_LEGACY_READ_ONLY");
@@ -250,6 +250,11 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
           command.businessCaseDraft as unknown as Prisma.InputJsonValue,
         businessCaseSnapshot: nullableJson(
           command.businessCaseSnapshot ?? null,
+        ),
+        riskAssessmentDraft:
+          command.riskAssessmentDraft as unknown as Prisma.InputJsonValue,
+        riskAssessmentSnapshot: nullableJson(
+          command.riskAssessmentSnapshot ?? null,
         ),
         reason: command.reason,
         returnBasis: command.returnBasis,
@@ -311,6 +316,8 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
             reviewPoints: reviewPoints as unknown as Prisma.InputJsonValue,
             businessCaseSnapshot:
               command.businessCaseSnapshot as unknown as Prisma.InputJsonValue,
+            riskAssessmentSnapshot:
+              command.riskAssessmentSnapshot as unknown as Prisma.InputJsonValue,
             evidenceRefs: evidenceRefsOf(command, reviewPoints),
             createdBy: input.actorId,
             idempotencyKey: command.idempotencyKey,
@@ -720,6 +727,7 @@ function evidenceRefsOf(
         (point) => point.evidenceRefs,
       ),
       ...command.businessCaseDraft.flatMap((point) => point.evidenceRefs),
+      ...command.riskAssessmentDraft.flatMap((point) => point.evidenceRefs),
       ...unitEconomicsRefs,
     ]),
   ].sort();
@@ -749,6 +757,9 @@ function toNpiEntry(row: NpiEntryRow): ProductInitiativeNpiEntryRecord {
         row.reviewPoints as unknown as ProductInitiativeReviewPoint[],
       businessCaseSnapshot:
         row.businessCaseSnapshot as ProductInitiativeHandoffRecord["businessCaseSnapshot"],
+      riskAssessmentSnapshot:
+        (row.riskAssessmentSnapshot as ProductInitiativeHandoffRecord["riskAssessmentSnapshot"]) ??
+        null,
       evidenceRefs: row.evidenceRefs,
       createdBy: row.createdBy,
       createdAt: row.createdAt,
@@ -802,6 +813,11 @@ function toRecord(row: InitiativeRow): ProductInitiativeRecord {
       row.businessCaseDraft as unknown as ProductInitiativeRecord["businessCaseDraft"],
     businessCaseSnapshot:
       row.businessCaseSnapshot as ProductInitiativeRecord["businessCaseSnapshot"],
+    riskAssessmentDraft:
+      row.riskAssessmentDraft as unknown as ProductInitiativeRecord["riskAssessmentDraft"],
+    riskAssessmentSnapshot:
+      (row.riskAssessmentSnapshot as ProductInitiativeRecord["riskAssessmentSnapshot"]) ??
+      null,
     reason: row.reason,
     returnBasis: row.returnBasis as ProductInitiativeRecord["returnBasis"],
     pendingFieldCodes:

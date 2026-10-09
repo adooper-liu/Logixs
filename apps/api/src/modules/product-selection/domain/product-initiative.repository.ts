@@ -7,6 +7,7 @@ import type {
   ProductInitiativeUnitEconomicsDraftV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
   ProductInitiativeBusinessCaseDimensionDraftV1,
+  ProductInitiativeRiskAssessmentDraftV1,
   ProductInitiativeV1,
   ProductInitiativeHandoffV1,
 } from "@logix/contracts";
@@ -46,6 +47,8 @@ export interface ProductInitiativeRecord {
   reviewPoints: ProductInitiativeReviewPoint[];
   businessCaseDraft?: ProductInitiativeBusinessCaseDimensionDraftV1[];
   businessCaseSnapshot?: ProductInitiativeV1["businessCaseSnapshot"];
+  riskAssessmentDraft?: ProductInitiativeRiskAssessmentDraftV1[];
+  riskAssessmentSnapshot?: ProductInitiativeV1["riskAssessmentSnapshot"];
   reason: string | null;
   returnBasis?: ProductInitiativeReturnBasisV1 | null;
   pendingFieldCodes: ProductInitiativePendingFieldCodeV1[];
@@ -73,6 +76,7 @@ export interface ProductInitiativeHandoffRecord {
   negativeConservativeReason: string | null;
   reviewPoints: ProductInitiativeReviewPoint[];
   businessCaseSnapshot?: ProductInitiativeHandoffV1["businessCaseSnapshot"];
+  riskAssessmentSnapshot?: ProductInitiativeHandoffV1["riskAssessmentSnapshot"];
   evidenceRefs: string[];
   createdBy: string;
   createdAt: Date;
