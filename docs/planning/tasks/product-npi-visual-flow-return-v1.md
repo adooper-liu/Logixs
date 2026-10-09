@@ -1,12 +1,52 @@
 ---
-status: blocked
+status: review
 branch: feat/product-npi-return-to-selection
-verification: |
-  设计阶段：已核对业务规格、现有契约、领域规则、API、Vue 页面和退回写路径。
-  视觉部分已由 PR #88 合入；退回写路径随本分支提交。
-  当前实现仍是“通用规格 + 合规假设 + 阶段自由文本结论”，不满足逐阶段工作闭环。
-  尚未进行真实岗位样本验收，不得标记为闭环或 done。
-owner: claude
+verification:
+owner: main
+writer: codex
+risk: high
+dependsOn:
+  - product-selection-applicable-risk-assessment-v1
+writeScopes:
+  - docs/planning/tasks/product-npi-visual-flow-return-v1.md
+  - apps/api/src/modules/product-selection/domain/product-initiative-npi-return.ts
+  - apps/api/src/modules/product-selection/domain/product-initiative-npi-return.test.ts
+  - apps/api/src/modules/product-selection/domain/product-initiative.repository.ts
+  - apps/api/src/modules/product-selection/application/return-product-initiative-from-npi.service.ts
+  - apps/api/src/modules/product-selection/application/product-npi.services.test.ts
+  - apps/api/src/modules/product-selection/infrastructure/prisma-product-initiative.repository.ts
+  - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
+  - apps/web/src/composables/useProductNpiWorkbench.ts
+  - apps/web/src/composables/useProductNpiWorkbench.test.ts
+  - apps/web/src/composables/useProductInitiativeDecision.ts
+  - apps/web/src/composables/useProductInitiativeDecision.test.ts
+  - apps/web/src/components/product-npi/ProductNpiReturnAction.vue
+  - apps/web/src/views/ProductNpiWorkbench.vue
+  - apps/web/src/views/ProductNpiWorkbench.test.ts
+  - apps/web/src/views/ProductSelectionWorkbench.vue
+  - apps/web/src/views/ProductSelectionWorkbench.test.ts
+  - apps/web/e2e/product-npi-workbench.spec.ts
+  - apps/web/e2e/workbench-network.spec.ts
+exclusiveLocks:
+  - business-policy:product-npi-return-redecision
+sharedIntegrationScopes: []
+authorityRefs:
+  - AGENTS.md
+  - doc/cross-border-supply-chain/08-role-workbenches.md
+  - doc/cross-border-supply-chain/wisdom-baseline/全局.md
+  - doc/cross-border-supply-chain/wisdom-baseline/选品立项.md
+uiStructure:
+  - 保持选品与 NPI 既有固定办理壳；只在当前对象详情和动作区承接退回、重判、再交接
+uiMustStayVisible:
+  - NPI 退回原因、旧冻结快照、当前责任、选品重判入口、新旧交接版本和当前主动作
+uiProgressiveDisclosure:
+  - 历史旧交接与旧领取记录只读展开，不占据当前办理主线
+uiForbidden:
+  - 覆盖旧快照、原地复活旧 handoff、复制第二套立项结论、扩写完整五阶段 NPI
+uiViewportEvidence:
+  - 1440x900：NPI 退回、选品重判和新版 NPI 待办主线清晰，无横向溢出
+  - 1024x768：退回原因、当前动作和版本差异可达，动作不遮挡
+  - 390x844：退回原因 → 重判 → 新交接 → NPI 新版待办顺序连续，无页面级横向溢出
 ---
 
 # 任务：产品开发与 NPI 五阶段工作闭环
@@ -174,7 +214,21 @@ owner: claude
 - 解决 `returned_from_npi` 生成类型与 Web 消费者的一致性，不手改生成文件掩盖 drift。
 - 联合选品完成退回、重判、重新交接和 NPI 重新接受的端到端路径。
 
-## 验收
+### E1. 先跑通 NPI 退回后的再交接
+
+- NPI 当前领取人填写原因退回；理由、责任和旧 handoff 保持可审计。
+- 选品在同一立项记录上看到退回原因并重新办理，不把 NPI 退回误当成退回市场。
+- 选品再次通过现有投资门时追加新 handoff；新 handoff ID/version 与旧版不同，旧快照不变。
+- NPI 队列只把当前新版作为待领取事项，旧版保留只读审计但不重复进入待办；队列查询、按 ID 读取和领取都必须校验 `handoff.version === initiative.version`，不能只看 initiative 当前去向；集成测试须在再立项后直接对旧 handoff 执行读取和领取并证明拒绝。
+- 真实 PostgreSQL 集成和三视口 E2E 跑通 `退回 → 重判 → 新 handoff → NPI 新版待办`。
+- 本片只先跑通，不要求 NPI 显式“重新接受”回执，不扩写 EVT～MP 五阶段结构。
+
+### E1F1. 跑通浏览器回程并修复移动回执
+
+- `E1-BLOCK-001 accepted`：同一条三视口 E2E 必须先在 NPI 退回，再进入选品工作台读取退回原因、执行现有重判/再次立项动作，最后回到 NPI 工作台看到新 handoff；禁止在 return mock 中直接把队列切成新版冒充重判。
+- E2E 可继续使用当前仓库的全链 mock，但 mock 必须承接真实页面请求与命令：选品页面提交成功后才创建新版 handoff，并断言请求体经过现有严格投资门；不要求本片把浏览器接入真实 PostgreSQL。
+- `E1-BLOCK-002 accepted`：移动端截图必须清楚显示退回回执/原因；若 receipt 被固定壳裁切，最小修复页面反馈布局，不改变业务状态或设计系统。
+- 三视口重新生成 `NPI 退回 → 选品重判 → NPI 新版待办` 证据，人工核对回执、原因、新旧版本和无横向溢出。
 
 - [ ] 概念只读承接选品权威，缺口可待补，实质问题可退回并以新版本重新交接
 - [ ] EVT、DVT、PVT、MP 各自具备计划、交付物、证据、问题、决定和不可变阶段快照
@@ -203,10 +257,16 @@ owner: claude
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责   | commit | 说明                                                             |
-| ---------- | ------- | ------ | ------ | ---------------------------------------------------------------- |
-| 2026-09-28 | design  | —      | —      | 原视觉动线与退回 brief 建立                                      |
-| 2026-09-29 | coding  | Cursor | —      | 阶段轨和退回写路径产生本地 WIP                                   |
-| 2026-09-29 | blocked | Codex  | —      | 负责人曾将寻源规格缺口调整为第一优先，WIP 原样保留               |
-| 2026-09-29 | design  | Codex  | —      | 负责人重新聚焦 NPI；扩展为五阶段业务闭环，完成现状与技术差距审查 |
-| 2026-09-29 | blocked | Codex  | —      | 共享控制面和默认拒绝授权定案前暂停实现；本地退回 WIP 保留        |
+| 日期       | 阶段    | 负责        | commit | 说明                                                                                                                                                                                            |
+| ---------- | ------- | ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-28 | design  | —           | —      | 原视觉动线与退回 brief 建立                                                                                                                                                                     |
+| 2026-09-29 | coding  | Cursor      | —      | 阶段轨和退回写路径产生本地 WIP                                                                                                                                                                  |
+| 2026-09-29 | blocked | Codex       | —      | 负责人曾将寻源规格缺口调整为第一优先，WIP 原样保留                                                                                                                                              |
+| 2026-09-29 | design  | Codex       | —      | 负责人重新聚焦 NPI；扩展为五阶段业务闭环，完成现状与技术差距审查                                                                                                                                |
+| 2026-09-29 | blocked | Codex       | —      | 共享控制面和默认拒绝授权定案前暂停实现；本地退回 WIP 保留                                                                                                                                       |
+| 2026-10-09 | fix     | Claude Code | —      | E1a 验收：退回期间旧 handoff 已隐藏且不可领取，但再立项后旧、新两个 handoff 同时回到 NPI 队列；PostgreSQL 反证为 expected 1 / received 2，继续收窄修复当前版本过滤。                            |
+| 2026-10-09 | review  | Claude Code | —      | E1 当前版本过滤已覆盖队列、按 ID 读取和领取；PostgreSQL 37/37、API unit 14/14、API/Web typecheck/lint、三视口 E2E 3/3 与人工截图通过，进入独立复审。                                            |
+| 2026-10-09 | fix     | Claude Code | —      | 独立复审接受 E1-BLOCK-001/002：浏览器用例必须实际经过选品重判再生成新 handoff；移动端必须完整显示退回回执与原因，不以 mock 队列切换或裁切截图冒充通过。                                         |
+| 2026-10-09 | review  | Claude Code | —      | E1F1 已让三视口浏览器实际经过 NPI 退回、选品重判/approve 和新版 NPI 待办；E2E 9/9，移动回执可读，定向单测/typecheck/lint/format/diff 通过。                                                     |
+| 2026-10-09 | review  | Codex       | —      | fresh GPT-5.6 scoped re-review：E1-BLOCK-001/002 均已关闭，`verdict: pass`、`findings: []`、`writes: none`；窄屏标题紧凑仅为非阻塞观察。                                                        |
+| 2026-10-09 | review  | Claude Code | —      | E1 集成门禁：repo/contract/drift/dictionary/lint/typecheck、API 1475 + Web 698 单测、PostgreSQL 195、build、改动路径格式与三视口 E2E 9/9 通过；全量 E2E 因已有 dev Vite 占用 5173 留待隔离 CI。 |

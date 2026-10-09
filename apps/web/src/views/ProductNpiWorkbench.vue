@@ -199,7 +199,8 @@ async function claimSelected(): Promise<void> {
 }
 .feedback {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
   padding: var(--space-3);
@@ -207,6 +208,8 @@ async function claimSelected(): Promise<void> {
   background: var(--ok-bg);
   color: var(--ink-soft);
   font-size: var(--text-label);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
 }
 .feedback--error {
   border-left-color: var(--risk);
