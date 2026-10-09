@@ -2198,6 +2198,8 @@ model ProductInitiative {
   reviewPoints               Json                       @map("review_points")
   businessCaseDraft          Json                       @default("[]") @map("business_case_draft")
   businessCaseSnapshot       Json?                      @map("business_case_snapshot")
+  riskAssessmentDraft        Json                       @default("[]") @map("risk_assessment_draft")
+  riskAssessmentSnapshot     Json?                      @map("risk_assessment_snapshot")
   reason                     String?                    @map("reason")
   returnBasis                String?                    @map("return_basis")
   pendingFieldCodes          String[]                   @map("pending_field_codes")
@@ -2237,6 +2239,7 @@ model ProductInitiativeHandoff {
   negativeConservativeReason String?                  @map("negative_conservative_reason")
   reviewPoints               Json                     @map("review_points")
   businessCaseSnapshot       Json?                    @map("business_case_snapshot")
+  riskAssessmentSnapshot     Json?                    @map("risk_assessment_snapshot")
   evidenceRefs               String[]                 @map("evidence_refs") @db.Uuid
   createdBy                  String                   @map("created_by")
   idempotencyKey             String                   @map("idempotency_key")

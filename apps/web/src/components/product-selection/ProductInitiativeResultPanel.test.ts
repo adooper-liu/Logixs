@@ -26,7 +26,7 @@ describe("ProductInitiativeResultPanel", () => {
     expect(text).toContain("含后补事实");
     expect(text.indexOf("经营机会")).toBeLessThan(text.indexOf("投资结论"));
     expect(text.indexOf("投资结论")).toBeLessThan(text.indexOf("历史四项评审"));
-    expect(wrapper.findAll(".initiative-result__block")).toHaveLength(3);
+    expect(wrapper.findAll(".initiative-result__block")).toHaveLength(4);
     expect(wrapper.findAll(".initiative-result__facts")).toHaveLength(0);
     expect(wrapper.find("input, select, textarea").exists()).toBe(false);
   });
@@ -151,6 +151,8 @@ function initiative(
     negativeConservativeReason: null,
     objective: "把折叠宠物出行包做成可发布版本",
     reviewPoints: [],
+    riskAssessmentDraft: [],
+    riskAssessmentSnapshot: null,
     reason: null,
     returnBasis: null,
     pendingFieldCodes: [],

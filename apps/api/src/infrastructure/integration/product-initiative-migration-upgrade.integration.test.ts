@@ -33,6 +33,8 @@ const UNIT_ECONOMICS_MIGRATION =
   "20261004200000_add_product_initiative_unit_economics";
 const BUSINESS_CASE_MIGRATION =
   "20261006120000_add_product_initiative_business_case";
+const RISK_ASSESSMENT_MIGRATION =
+  "20261007100000_add_product_initiative_risk_assessment";
 const BASE_DATABASE_URL =
   process.env.INTEGRATION_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -883,6 +885,19 @@ describe("business case migration upgrade", () => {
       }
       priorPendingConstraint = priorPendingConstraint.replace(addedLiteral, "");
     }
+    for (const code of [
+      "risk.compliance",
+      "risk.intellectual_property",
+      "risk.packaging_logistics",
+      "risk.returns",
+      "risk.platform_restrictions",
+    ]) {
+      const addedLiteral = `'${code}'::text, `;
+      if (!priorPendingConstraint.includes(addedLiteral)) {
+        throw new Error(`RISK_PENDING_CODE_NOT_FOUND: ${code}`);
+      }
+      priorPendingConstraint = priorPendingConstraint.replace(addedLiteral, "");
+    }
 
     await upgradePrisma.$executeRawUnsafe(
       `ALTER TABLE "${upgradeSchema}"."product_initiative"
@@ -897,6 +912,17 @@ describe("business case migration upgrade", () => {
     );
     await upgradePrisma.$executeRawUnsafe(
       `ALTER TABLE "${upgradeSchema}"."product_initiative"
+         DROP CONSTRAINT "product_initiative_risk_assessment_shape_check",
+         DROP COLUMN "risk_assessment_draft",
+         DROP COLUMN "risk_assessment_snapshot"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative_handoff"
+         DROP CONSTRAINT "product_initiative_handoff_risk_assessment_shape_check",
+         DROP COLUMN "risk_assessment_snapshot"`,
+    );
+    await upgradePrisma.$executeRawUnsafe(
+      `ALTER TABLE "${upgradeSchema}"."product_initiative"
          DROP CONSTRAINT "product_initiative_pending_codes_check",
          ADD CONSTRAINT "product_initiative_pending_codes_check" ${priorPendingConstraint}`,
     );
@@ -904,19 +930,24 @@ describe("business case migration upgrade", () => {
       { migration_name: string }[]
     >(
       `DELETE FROM "${upgradeSchema}"."_prisma_migrations"
-       WHERE "migration_name" = $1 RETURNING "migration_name"`,
-      BUSINESS_CASE_MIGRATION,
+       WHERE "migration_name" = ANY($1) RETURNING "migration_name"`,
+      [BUSINESS_CASE_MIGRATION, RISK_ASSESSMENT_MIGRATION],
     );
-    expect(deletedMigrations).toEqual([
-      { migration_name: BUSINESS_CASE_MIGRATION },
-    ]);
+    expect(
+      deletedMigrations.map(({ migration_name }) => migration_name),
+    ).toEqual(
+      expect.arrayContaining([
+        BUSINESS_CASE_MIGRATION,
+        RISK_ASSESSMENT_MIGRATION,
+      ]),
+    );
 
     const oldColumns = await upgradePrisma.$queryRawUnsafe<
       { column_name: string }[]
     >(
       `SELECT column_name FROM information_schema.columns
        WHERE table_schema = $1 AND table_name IN ('product_initiative', 'product_initiative_handoff')
-         AND column_name IN ('business_case_draft', 'business_case_snapshot')`,
+         AND column_name IN ('business_case_draft', 'business_case_snapshot', 'risk_assessment_draft', 'risk_assessment_snapshot')`,
       upgradeSchema,
     );
     expect(oldColumns).toEqual([]);
@@ -954,7 +985,7 @@ describe("business case migration upgrade", () => {
     >(
       `SELECT "finished_at" FROM "${upgradeSchema}"."_prisma_migrations"
        WHERE "migration_name" = $1`,
-      BUSINESS_CASE_MIGRATION,
+      RISK_ASSESSMENT_MIGRATION,
     );
     expect(migrations).toHaveLength(1);
     expect(migrations[0]?.finished_at).toBeInstanceOf(Date);
@@ -968,6 +999,8 @@ describe("business case migration upgrade", () => {
         ...original,
         businessCaseDraft: [],
         businessCaseSnapshot: null,
+        riskAssessmentDraft: [],
+        riskAssessmentSnapshot: null,
       });
     }
     const handoff =
@@ -977,6 +1010,7 @@ describe("business case migration upgrade", () => {
     expect(handoff).toMatchObject({
       ...originalHandoffFacts,
       businessCaseSnapshot: null,
+      riskAssessmentSnapshot: null,
     });
     expect(
       rows.find(({ id }) => id === completedInitiativeId)?.completionState,

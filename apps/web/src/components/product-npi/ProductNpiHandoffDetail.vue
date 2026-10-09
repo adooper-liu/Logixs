@@ -7,6 +7,14 @@ import {
 } from "../../composables/useProductInitiativeDecision";
 import ProductInitiativeUnitEconomicsSnapshot from "../product-selection/ProductInitiativeUnitEconomicsSnapshot.vue";
 
+const RISK_LABELS = new Map([
+  ["compliance", "合规"],
+  ["intellectual_property", "知识产权"],
+  ["packaging_logistics", "包装物流"],
+  ["returns", "退货"],
+  ["platform_restrictions", "平台限制"],
+]);
+
 /**
  * 立项快照：选品交接时锁定的原样内容，**只读**。
  * NPI 不得改写立项阶段的任何结论 —— 要改只能走退回或新版本，不在这里。
@@ -20,6 +28,23 @@ const BUSINESS_CASE_LABELS = new Map(
 
 function pointLabel(code: string): string {
   return LABELS.get(code as (typeof REVIEW_POINTS)[number]["code"]) ?? code;
+}
+
+function riskSummary(
+  risk: NonNullable<
+    ProductInitiativeNpiQueueEntryV1["handoff"]["riskAssessmentSnapshot"]
+  >[number],
+): string {
+  if (risk.applicability === "not_applicable") {
+    return `不适用：${risk.applicabilityReason}`;
+  }
+  const decision =
+    risk.investmentDecision === "supports_investment"
+      ? "支持投入"
+      : risk.investmentDecision === "validate_before_investment"
+        ? "投入前需验证"
+        : "不支持投入";
+  return `${decision} · ${risk.conclusion}`;
 }
 </script>
 
@@ -103,6 +128,24 @@ function pointLabel(code: string): string {
       <p v-if="entry.handoff.reviewPoints.length === 0" class="empty">
         交接快照里没有评审要点
       </p>
+    </div>
+
+    <div v-if="entry.handoff.riskAssessmentSnapshot?.length" class="block">
+      <h3>五类适用风险（冻结，只读）</h3>
+      <ul>
+        <li
+          v-for="risk in entry.handoff.riskAssessmentSnapshot"
+          :key="risk.riskCode"
+        >
+          <b>{{ RISK_LABELS.get(risk.riskCode) }}</b>
+          <span>{{ riskSummary(risk) }}</span>
+          <small>依据 {{ risk.evidenceRefs.length }} 项</small>
+        </li>
+      </ul>
+    </div>
+    <div v-else class="block">
+      <h3>五类适用风险（只读）</h3>
+      <p class="empty">历史交接未记录适用风险</p>
     </div>
 
     <div class="block">

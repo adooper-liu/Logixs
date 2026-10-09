@@ -160,6 +160,8 @@ export function toProductInitiativeV1(
     reviewPoints: record.reviewPoints,
     businessCaseDraft: record.businessCaseDraft ?? [],
     businessCaseSnapshot: record.businessCaseSnapshot ?? null,
+    riskAssessmentDraft: record.riskAssessmentDraft ?? [],
+    riskAssessmentSnapshot: record.riskAssessmentSnapshot ?? null,
     reason: record.reason,
     returnBasis: record.returnBasis,
     pendingFieldCodes: record.pendingFieldCodes,

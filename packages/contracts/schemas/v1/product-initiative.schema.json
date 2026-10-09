@@ -127,6 +127,11 @@
         "reject_reason",
         "return_basis",
         "return_reason",
+        "risk.compliance",
+        "risk.intellectual_property",
+        "risk.packaging_logistics",
+        "risk.returns",
+        "risk.platform_restrictions",
         "unitEconomics.marketCode",
         "unitEconomics.channelCode",
         "unitEconomics.currencyCode",
@@ -194,6 +199,228 @@
         },
         "conclusion": { "type": ["string", "null"], "maxLength": 4000 }
       }
+    },
+    "ProductInitiativeRiskCodeV1": {
+      "enum": [
+        "compliance",
+        "intellectual_property",
+        "packaging_logistics",
+        "returns",
+        "platform_restrictions"
+      ]
+    },
+    "ProductInitiativeRiskApplicabilityV1": {
+      "enum": ["applicable", "not_applicable", "undetermined"]
+    },
+    "ProductInitiativeRiskInvestmentDecisionV1": {
+      "enum": [
+        "supports_investment",
+        "validate_before_investment",
+        "does_not_support"
+      ]
+    },
+    "ProductInitiativeRiskAssessmentDraftV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["riskCode", "applicability", "evidenceRefs"],
+      "properties": {
+        "riskCode": { "$ref": "#/$defs/ProductInitiativeRiskCodeV1" },
+        "applicability": {
+          "$ref": "#/$defs/ProductInitiativeRiskApplicabilityV1"
+        },
+        "applicabilityReason": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "investmentDecision": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeRiskInvestmentDecisionV1" },
+            { "type": "null" }
+          ]
+        },
+        "conclusion": { "type": ["string", "null"], "maxLength": 4000 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "criticalUnknown": { "type": ["string", "null"], "maxLength": 2000 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "applicability": { "const": "not_applicable" } },
+            "required": ["applicability"]
+          },
+          "then": {
+            "required": ["applicabilityReason"],
+            "properties": {
+              "applicabilityReason": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "investmentDecision": { "type": "null" },
+              "conclusion": { "type": "null" },
+              "criticalUnknown": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "applicability": { "const": "undetermined" } },
+            "required": ["applicability"]
+          },
+          "then": {
+            "required": ["criticalUnknown"],
+            "properties": {
+              "applicabilityReason": { "type": "null" },
+              "investmentDecision": { "type": "null" },
+              "conclusion": { "type": "null" },
+              "criticalUnknown": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "applicability": { "const": "applicable" } },
+            "required": ["applicability"]
+          },
+          "then": {
+            "required": ["investmentDecision", "conclusion"],
+            "properties": {
+              "applicabilityReason": { "type": "null" },
+              "conclusion": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "evidenceRefs": { "minItems": 1 }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "investmentDecision": {
+                      "const": "validate_before_investment"
+                    }
+                  },
+                  "required": ["investmentDecision"]
+                },
+                "then": {
+                  "required": ["criticalUnknown"],
+                  "properties": {
+                    "criticalUnknown": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": { "criticalUnknown": { "type": "null" } }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "ProductInitiativeRiskAssessmentSnapshotV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "riskCode",
+        "applicability",
+        "applicabilityReason",
+        "investmentDecision",
+        "conclusion",
+        "evidenceRefs",
+        "criticalUnknown"
+      ],
+      "properties": {
+        "riskCode": { "$ref": "#/$defs/ProductInitiativeRiskCodeV1" },
+        "applicability": { "enum": ["not_applicable", "applicable"] },
+        "applicabilityReason": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "investmentDecision": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeRiskInvestmentDecisionV1" },
+            { "type": "null" }
+          ]
+        },
+        "conclusion": { "type": ["string", "null"], "maxLength": 4000 },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "criticalUnknown": { "type": ["string", "null"], "maxLength": 2000 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "applicability": { "const": "not_applicable" } },
+            "required": ["applicability"]
+          },
+          "then": {
+            "required": ["applicabilityReason"],
+            "properties": {
+              "applicabilityReason": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "investmentDecision": { "type": "null" },
+              "conclusion": { "type": "null" },
+              "criticalUnknown": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "applicability": { "const": "undetermined" } },
+            "required": ["applicability"]
+          },
+          "then": {
+            "properties": {
+              "applicabilityReason": { "type": "null" },
+              "investmentDecision": { "type": "null" },
+              "conclusion": { "type": "null" },
+              "criticalUnknown": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "applicability": { "const": "applicable" } },
+            "required": ["applicability"]
+          },
+          "then": {
+            "properties": {
+              "applicabilityReason": { "type": "null" },
+              "investmentDecision": { "const": "supports_investment" },
+              "conclusion": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "criticalUnknown": { "type": "null" }
+            },
+            "required": ["conclusion"]
+          }
+        }
+      ]
     },
     "ProductInitiativeBusinessCaseDimensionCodeV1": {
       "enum": [
@@ -323,6 +550,50 @@
             "type": "object",
             "required": ["dimensionCode"],
             "properties": { "dimensionCode": { "const": "strategy_portfolio" } }
+          },
+          "minContains": 2
+        }
+      ]
+    },
+    "ProductInitiativeDuplicateRiskCodesV1": {
+      "anyOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["riskCode"],
+            "properties": { "riskCode": { "const": "compliance" } }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["riskCode"],
+            "properties": { "riskCode": { "const": "intellectual_property" } }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["riskCode"],
+            "properties": { "riskCode": { "const": "packaging_logistics" } }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["riskCode"],
+            "properties": { "riskCode": { "const": "returns" } }
+          },
+          "minContains": 2
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["riskCode"],
+            "properties": { "riskCode": { "const": "platform_restrictions" } }
           },
           "minContains": 2
         }
@@ -543,6 +814,11 @@
             "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
           }
         },
+        "riskAssessmentDraft": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeRiskAssessmentDraftV1" },
+          "not": { "$ref": "#/$defs/ProductInitiativeDuplicateRiskCodesV1" }
+        },
         "deferReason": { "type": "string", "minLength": 1, "maxLength": 500 },
         "acceptResponsibility": { "const": true },
         "receivingTeamOrRole": {
@@ -695,6 +971,25 @@
               "not": {
                 "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
               }
+            },
+            { "type": "null" }
+          ]
+        },
+        "riskAssessmentDraft": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeRiskAssessmentDraftV1" },
+          "not": { "$ref": "#/$defs/ProductInitiativeDuplicateRiskCodesV1" }
+        },
+        "riskAssessmentSnapshot": {
+          "anyOf": [
+            {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": {
+                "$ref": "#/$defs/ProductInitiativeRiskAssessmentSnapshotV1"
+              },
+              "not": { "$ref": "#/$defs/ProductInitiativeDuplicateRiskCodesV1" }
             },
             { "type": "null" }
           ]
@@ -900,6 +1195,20 @@
               "not": {
                 "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
               }
+            },
+            { "type": "null" }
+          ]
+        },
+        "riskAssessmentSnapshot": {
+          "anyOf": [
+            {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": {
+                "$ref": "#/$defs/ProductInitiativeRiskAssessmentSnapshotV1"
+              },
+              "not": { "$ref": "#/$defs/ProductInitiativeDuplicateRiskCodesV1" }
             },
             { "type": "null" }
           ]

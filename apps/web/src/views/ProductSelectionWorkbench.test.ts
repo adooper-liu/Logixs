@@ -133,12 +133,13 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.find(".action-body button").exists()).toBe(false);
   });
 
-  it("does not show professional requirements before evaluation starts", async () => {
+  it("shows static evidence prompts before evaluation starts without risk conclusions", async () => {
     const wrapper = await mountPage();
 
-    expect(wrapper.find(".evaluation-requirements").exists()).toBe(false);
-    expect(wrapper.text()).not.toContain("竞争供给证据");
-    expect(wrapper.text()).not.toContain("售后原声");
+    expect(wrapper.find(".evaluation-requirements").exists()).toBe(true);
+    expect(wrapper.text()).toContain("竞争供给证据提示");
+    expect(wrapper.text()).toContain("售后原声证据提示");
+    expect(wrapper.text()).not.toContain("尚未选定商品范围");
   });
 
   it("generates scoped professional requirements with reasons once evaluation starts", async () => {
@@ -158,9 +159,9 @@ describe("ProductSelectionWorkbench", () => {
     const wrapper = await mountPage();
 
     const panel = wrapper.get(".evaluation-requirements");
-    expect(panel.text()).toContain("竞争供给证据");
-    expect(panel.text()).toContain("目标价格带");
-    expect(panel.text()).toContain("售后原声");
+    expect(panel.text()).toContain("竞争供给证据提示");
+    expect(panel.text()).toContain("目标价格带证据提示");
+    expect(panel.text()).toContain("售后原声证据提示");
     expect(panel.get("h3").text()).toBe("专业要求");
     expect(panel.findAll('[aria-label="查看专业要求说明"]')).toHaveLength(3);
     expect(panel.text()).not.toContain("为什么适用");
@@ -186,7 +187,7 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.find(".evidence-form").exists()).toBe(false);
   });
 
-  it("hides scope-only requirements when evaluation starts without a scope", async () => {
+  it("keeps the same static evidence prompts when evaluation starts without a scope", async () => {
     listProductOpportunities.mockResolvedValue({
       contractVersion: "product-opportunity-page.v1",
       items: [
@@ -202,15 +203,10 @@ describe("ProductSelectionWorkbench", () => {
     const wrapper = await mountPage();
 
     const panel = wrapper.get(".evaluation-requirements");
-    // 缺商品范围的两项不冒充“适用要求”，只在 withheld 里说明缺什么。
     expect(
       panel.findAll(".requirement-head b").map((node) => node.text()),
-    ).toEqual(["售后原声"]);
-    expect(panel.get(".withheld-notice summary").text()).toContain("另有 2 项");
-    await panel.get(".withheld-notice summary").trigger("click");
-    expect(
-      panel.findAll(".withheld-notice li span").map((node) => node.text()),
-    ).toEqual(["竞争供给证据", "目标价格带"]);
+    ).toEqual(["竞争供给证据提示", "目标价格带证据提示", "售后原声证据提示"]);
+    expect(panel.find(".withheld-notice").exists()).toBe(false);
   });
 
   it("shows a recoverable error when the queue cannot load", async () => {
@@ -347,7 +343,7 @@ describe("ProductSelectionWorkbench", () => {
       "目标结果· 1 项未齐",
       "责任与资源· 3 项未齐",
       "时间与下一决策· 3 项未齐",
-      "评审依据· 5 项未齐",
+      "评审依据· 10 项未齐",
     ]);
     expect(gaps[4]).toMatch(/^单位经济· \d+ 项未齐$/);
     await wrapper
@@ -837,6 +833,20 @@ describe("ProductSelectionWorkbench", () => {
             currentDestination,
             businessCaseDraft: [],
             businessCaseSnapshot: null,
+            riskAssessmentDraft:
+              _label === "新式拒绝"
+                ? [
+                    {
+                      riskCode: "returns",
+                      applicability: "not_applicable",
+                      applicabilityReason: "本机会不涉及退货",
+                      investmentDecision: null,
+                      conclusion: null,
+                      evidenceRefs: [],
+                      criticalUnknown: null,
+                    },
+                  ]
+                : [],
             pendingFieldCodes: [...pendingFieldCodes],
           },
         }),
@@ -1022,6 +1032,21 @@ function initiativeRecord() {
         conclusion: "头部集中",
       },
     ],
+    businessCaseDraft: [],
+    businessCaseSnapshot: null,
+    riskAssessmentDraft: [],
+    riskAssessmentSnapshot: null,
+    responsibilityAccepted: null,
+    receivingTeamOrRole: null,
+    resourceDescription: null,
+    targetDate: null,
+    nextDecisionDate: null,
+    nextDecisionQuestion: null,
+    validationFocus: null,
+    reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
     reason: null,
     pendingFieldCodes: [],
     version: 1,
@@ -1190,6 +1215,15 @@ async function fillApprovalDraft(
     await wrapper
       .get('.business-case__editor input[type="checkbox"]')
       .setValue(true);
+  }
+  for (const [index] of wrapper.findAll(".risk-summary > li").entries()) {
+    await wrapper.findAll(".risk-summary > li button")[index]!.trigger("click");
+    await wrapper.get('.risk-editor input[value="applicable"]').setValue();
+    await wrapper
+      .get('.risk-editor input[value="supports_investment"]')
+      .setValue();
+    await wrapper.get(".risk-editor textarea").setValue("当前风险结论");
+    await wrapper.get('.risk-editor input[type="checkbox"]').setValue(true);
   }
   await fillUnitEconomics(wrapper);
 }

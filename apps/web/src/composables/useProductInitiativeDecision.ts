@@ -8,6 +8,8 @@ import type {
   ProductInitiativeUnitEconomicsBasisV1,
   ProductInitiativeUnitEconomicsDraftV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
+  ProductInitiativeRiskAssessmentDraftV1,
+  ProductInitiativeRiskCodeV1,
 } from "@logix/contracts";
 import {
   computed,
@@ -44,6 +46,22 @@ export const BUSINESS_CASE_DIMENSIONS = [
   code: ProductInitiativeBusinessCaseDimensionCodeV1;
   label: string;
 }[];
+
+export const RISK_ASSESSMENTS = [
+  { code: "compliance", label: "合规" },
+  { code: "intellectual_property", label: "知识产权" },
+  { code: "packaging_logistics", label: "包装物流" },
+  { code: "returns", label: "退货" },
+  { code: "platform_restrictions", label: "平台限制" },
+] as const satisfies readonly {
+  code: ProductInitiativeRiskCodeV1;
+  label: string;
+}[];
+
+export interface RiskAssessmentView extends ProductInitiativeRiskAssessmentDraftV1 {
+  label: string;
+  missing: boolean;
+}
 
 export interface BusinessCaseDraftState {
   decision: ProductInitiativeBusinessCaseDecisionV1 | "";
@@ -235,6 +253,17 @@ export function useProductInitiativeDecision(options: {
     supply_technical_feasibility: emptyBusinessCaseDimension(),
     strategy_portfolio: emptyBusinessCaseDimension(),
   });
+  const riskAssessment = reactive<
+    Record<ProductInitiativeRiskCodeV1, ProductInitiativeRiskAssessmentDraftV1>
+  >(
+    Object.fromEntries(
+      RISK_ASSESSMENTS.map(({ code }) => [code, emptyRiskAssessment(code)]),
+    ) as Record<
+      ProductInitiativeRiskCodeV1,
+      ProductInitiativeRiskAssessmentDraftV1
+    >,
+  );
+  const touchedRiskCodes = new Set<ProductInitiativeRiskCodeV1>();
 
   // 三个带原因的去向各存各的：来回切换时已写了一半的依据不该被清掉，
   // 也不该把暂缓的理由带到退回里。
@@ -283,11 +312,11 @@ export function useProductInitiativeDecision(options: {
       current?.completion === "completed" &&
       (current.currentDestination === "rejected" ||
         current.currentDestination === "deferred") &&
-      Array.isArray(current.businessCaseDraft) &&
-      current.businessCaseDraft.length === 0 &&
-      current.businessCaseSnapshot === null &&
-      !BUSINESS_CASE_DIMENSIONS.some(({ code }) =>
-        current.pendingFieldCodes.includes(code),
+      Array.isArray(current.riskAssessmentDraft) &&
+      current.riskAssessmentDraft.length === 0 &&
+      current.riskAssessmentSnapshot === null &&
+      !RISK_ASSESSMENTS.some(({ code }) =>
+        current.pendingFieldCodes.includes(`risk.${code}`),
       )
     );
   });
@@ -320,6 +349,20 @@ export function useProductInitiativeDecision(options: {
         !businessCase[code].conclusion.trim() ||
         !businessCase[code].evidenceRefs.length ||
         businessCase[code].decision !== "supports_investment",
+    })),
+  );
+  const riskAssessmentViews = computed<RiskAssessmentView[]>(() =>
+    RISK_ASSESSMENTS.map(({ code, label }) => ({
+      ...riskAssessment[code],
+      label,
+      missing:
+        riskAssessment[code].applicability === "undetermined" ||
+        (riskAssessment[code].applicability === "not_applicable" &&
+          !riskAssessment[code].applicabilityReason?.trim()) ||
+        (riskAssessment[code].applicability === "applicable" &&
+          (riskAssessment[code].investmentDecision !== "supports_investment" ||
+            !riskAssessment[code].conclusion?.trim() ||
+            !riskAssessment[code].evidenceRefs.length)),
     })),
   );
 
@@ -403,6 +446,12 @@ export function useProductInitiativeDecision(options: {
       .filter((point) => point.missing)
       .map((point) => ({
         label: point.label,
+        panel: "review_points" as const,
+      })),
+    ...riskAssessmentViews.value
+      .filter((risk) => risk.missing)
+      .map((risk) => ({
+        label: `${risk.label}风险`,
         panel: "review_points" as const,
       })),
     ...unitEconomicsGapCodes.value.map((code) => ({
@@ -562,6 +611,25 @@ export function useProductInitiativeDecision(options: {
         criticalUnknown: savedPoint?.criticalUnknown ?? "",
       };
     }
+    for (const { code } of RISK_ASSESSMENTS) {
+      const savedRisk = saved?.riskAssessmentDraft?.find(
+        (item) => item.riskCode === code,
+      );
+      Object.assign(
+        riskAssessment[code],
+        savedRisk ?? emptyRiskAssessment(code),
+      );
+      if (savedRisk) touchedRiskCodes.add(code);
+      else touchedRiskCodes.delete(code);
+    }
+  }
+
+  function updateRisk(
+    code: ProductInitiativeRiskCodeV1,
+    patch: Partial<ProductInitiativeRiskAssessmentDraftV1>,
+  ): void {
+    touchedRiskCodes.add(code);
+    Object.assign(riskAssessment[code], patch);
   }
 
   /** 勾选/取消引用一条已登记证据。 */
@@ -692,6 +760,15 @@ export function useProductInitiativeDecision(options: {
           evidenceRefs: businessCase[code].evidenceRefs,
           criticalUnknown: businessCase[code].criticalUnknown.trim() || null,
         })),
+        riskAssessmentDraft: RISK_ASSESSMENTS.filter(({ code }) =>
+          touchedRiskCodes.has(code),
+        ).map(({ code }) => ({
+          ...riskAssessment[code],
+          applicabilityReason:
+            riskAssessment[code].applicabilityReason?.trim() || null,
+          conclusion: riskAssessment[code].conclusion?.trim() || null,
+          criticalUnknown: riskAssessment[code].criticalUnknown?.trim() || null,
+        })),
         ...(chosen === "defer" && deferReason.value.trim()
           ? { validationFocus: deferReason.value.trim() }
           : {}),
@@ -805,6 +882,9 @@ export function useProductInitiativeDecision(options: {
     points,
     businessCase,
     businessCaseViews,
+    riskAssessment,
+    riskAssessmentViews,
+    updateRisk,
     reviewPointViews,
     requiredCount,
     blockingGaps,
@@ -828,6 +908,20 @@ function emptyBusinessCaseDimension(): BusinessCaseDraftState {
   return {
     decision: "",
     conclusion: "",
+    evidenceRefs: [],
+    criticalUnknown: "",
+  };
+}
+
+function emptyRiskAssessment(
+  riskCode: ProductInitiativeRiskCodeV1,
+): ProductInitiativeRiskAssessmentDraftV1 {
+  return {
+    riskCode,
+    applicability: "undetermined",
+    applicabilityReason: null,
+    investmentDecision: null,
+    conclusion: null,
     evidenceRefs: [],
     criticalUnknown: "",
   };

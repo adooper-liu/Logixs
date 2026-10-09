@@ -2,6 +2,7 @@
 import type {
   ProductInitiativeDetailV1,
   ProductInitiativeEvidenceCandidateV1,
+  ProductInitiativeRiskCodeV1,
   ProductInitiativeUnitEconomicsSnapshotV1,
 } from "@logix/contracts";
 import { computed } from "vue";
@@ -34,6 +35,13 @@ const props = defineProps<{
 const businessCaseLabels = new Map(
   BUSINESS_CASE_DIMENSIONS.map((item) => [item.code, item.label]),
 );
+const riskLabels = new Map<ProductInitiativeRiskCodeV1, string>([
+  ["compliance", "合规"],
+  ["intellectual_property", "知识产权"],
+  ["packaging_logistics", "包装物流"],
+  ["returns", "退货"],
+  ["platform_restrictions", "平台限制"],
+]);
 
 const evidenceById = computed(
   () =>
@@ -99,6 +107,29 @@ function contribution(scenario: "baseline" | "conservative"): string | null {
   const range = snapshot.scenarios[scenario].contribution;
   return `${range.min}～${range.max} ${snapshot.currencyCode}`;
 }
+
+function riskSummary(
+  risk: NonNullable<ProductInitiative["riskAssessmentSnapshot"]>[number],
+): string {
+  if (risk.applicability === "not_applicable") {
+    return `不适用：${risk.applicabilityReason}`;
+  }
+  const decision =
+    risk.investmentDecision === "supports_investment"
+      ? "支持投入"
+      : risk.investmentDecision === "validate_before_investment"
+        ? "投入前需验证"
+        : "不支持投入";
+  return `${decision} · ${risk.conclusion}`;
+}
+
+const legacyRiskMissing = computed(
+  () =>
+    !props.initiative.riskAssessmentSnapshot?.length &&
+    !props.initiative.riskAssessmentDraft?.length &&
+    (props.initiative.currentDestination === "rejected" ||
+      props.initiative.currentDestination === "deferred"),
+);
 </script>
 
 <template>
@@ -224,6 +255,44 @@ function contribution(scenario: "baseline" | "conservative"): string | null {
           </div>
         </dl>
       </div>
+    </section>
+    <section
+      class="initiative-result__block"
+      aria-labelledby="risk-result-title"
+    >
+      <h2 id="risk-result-title">五类适用风险（只读）</h2>
+      <ul
+        v-if="initiative.riskAssessmentSnapshot?.length"
+        class="initiative-result__reviews"
+      >
+        <li
+          v-for="risk in initiative.riskAssessmentSnapshot"
+          :key="risk.riskCode"
+        >
+          <details>
+            <summary>
+              <b>{{ riskLabels.get(risk.riskCode) }}</b>
+              <span>{{ riskSummary(risk) }}</span>
+              <small>{{ risk.evidenceRefs.length }} 项证据</small>
+            </summary>
+            <div class="initiative-result__review-details">
+              <p v-if="risk.criticalUnknown">
+                <b>关键未知：</b>{{ risk.criticalUnknown }}
+              </p>
+              <p v-for="ref in risk.evidenceRefs" :key="ref">
+                {{ evidenceById.get(ref)?.summary ?? "引用证据当前不可展示" }}
+              </p>
+            </div>
+          </details>
+        </li>
+      </ul>
+      <p v-else class="initiative-result__history-note">
+        {{
+          legacyRiskMissing
+            ? "历史未记录适用风险"
+            : "本次结果未形成冻结风险快照"
+        }}
+      </p>
     </section>
 
     <section

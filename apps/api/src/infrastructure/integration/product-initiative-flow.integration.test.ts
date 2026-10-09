@@ -16,6 +16,7 @@ import { ReadMarketSignalLiveService } from "../../modules/market-intelligence/r
 import type { ProductInitiativeDecisionCommandV1 } from "@logix/contracts";
 import {
   BUSINESS_CASE_DIMENSIONS,
+  PRODUCT_INITIATIVE_RISK_CODES,
   ProductInitiativeConflictError,
   prepareProductInitiativeDecision,
   prepareSelectionReturnTakeback,
@@ -545,9 +546,12 @@ describe("product initiative persistence flow", () => {
           businessCaseDraft: completeBusinessCase(
             REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
           ),
+          riskAssessmentDraft: completeRiskAssessment(
+            REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
+          ),
         },
       ),
-    ).toThrow("PRODUCT_INITIATIVE_INCOMPLETE: negativeConservativeReason");
+    ).toThrow(/PRODUCT_INITIATIVE_INCOMPLETE: .*negativeConservativeReason/);
   });
 
   it("币种目录直接读取迁移内置的完整参考表", async () => {
@@ -694,6 +698,9 @@ describe("product initiative persistence flow", () => {
           nextDecisionQuestion: "是否进入 EVT 打样",
           unitEconomicsDraft: completeUnitEconomicsDraft(),
           businessCaseDraft: completeBusinessCase(
+            REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
+          ),
+          riskAssessmentDraft: completeRiskAssessment(
             REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
           ),
           reviewPoints: REVIEW_POINT_CODES.map((code, index) => ({
@@ -845,6 +852,7 @@ describe("product initiative persistence flow", () => {
         actorId: "selector-1",
         command: decide(opportunity, {
           ...outcomeFields,
+          businessCaseDraft: completeBusinessCase([legacyEvidenceId]),
           reviewPoints: [
             {
               code: "competitive_supply",
@@ -862,6 +870,9 @@ describe("product initiative persistence flow", () => {
             (code) =>
               !BUSINESS_CASE_DIMENSIONS.includes(
                 code as (typeof BUSINESS_CASE_DIMENSIONS)[number],
+              ) &&
+              !PRODUCT_INITIATIVE_RISK_CODES.some(
+                (riskCode) => code === `risk.${riskCode}`,
               ),
           ),
         },
@@ -869,7 +880,7 @@ describe("product initiative persistence flow", () => {
       const original = await prisma.productInitiative.findUniqueOrThrow({
         where: { id: legacy.record.initiativeId },
       });
-      expect(original.businessCaseDraft).toEqual([]);
+      expect(original.businessCaseDraft).toHaveLength(5);
       expect(original.businessCaseSnapshot).toBeNull();
       await expect(
         initiatives.persistDecision({
@@ -1736,6 +1747,9 @@ function completeApprove(current: { handoffId: string }) {
     businessCaseDraft: completeBusinessCase(
       REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
     ),
+    riskAssessmentDraft: completeRiskAssessment(
+      REVIEW_POINT_CODES.map((_, index) => evidenceId(index)),
+    ),
   });
 }
 
@@ -1762,6 +1776,7 @@ function completeApproveCommand(
     })),
     unitEconomicsDraft: completeUnitEconomicsDraft(),
     businessCaseDraft: completeBusinessCase([evidenceId]),
+    riskAssessmentDraft: completeRiskAssessment([evidenceId]),
     idempotencyKey: `decision:${requestId}`,
   };
 }
@@ -1771,6 +1786,26 @@ function completeBusinessCase(evidenceRefs: string[]) {
     dimensionCode,
     decision: "supports_investment" as const,
     conclusion: "可追溯投入依据",
+    evidenceRefs: [evidenceRefs[index % evidenceRefs.length]!],
+    criticalUnknown: null,
+  }));
+}
+
+function completeRiskAssessment(evidenceRefs: string[]) {
+  return (
+    [
+      "compliance",
+      "intellectual_property",
+      "packaging_logistics",
+      "returns",
+      "platform_restrictions",
+    ] as const
+  ).map((riskCode, index) => ({
+    riskCode,
+    applicability: "applicable" as const,
+    applicabilityReason: null,
+    investmentDecision: "supports_investment" as const,
+    conclusion: "可追溯风险依据",
     evidenceRefs: [evidenceRefs[index % evidenceRefs.length]!],
     criticalUnknown: null,
   }));

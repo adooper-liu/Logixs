@@ -1240,6 +1240,131 @@
     },
     {
       "contractId": "GC-007",
+      "name": "risk not applicable requires a reason",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeRiskAssessmentDraftV1",
+      "valid": false,
+      "data": {
+        "riskCode": "returns",
+        "applicability": "not_applicable",
+        "applicabilityReason": null,
+        "investmentDecision": null,
+        "conclusion": null,
+        "evidenceRefs": [],
+        "criticalUnknown": null
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "risk undetermined requires a critical unknown",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeRiskAssessmentDraftV1",
+      "valid": false,
+      "data": {
+        "riskCode": "compliance",
+        "applicability": "undetermined",
+        "applicabilityReason": null,
+        "investmentDecision": null,
+        "conclusion": null,
+        "evidenceRefs": [],
+        "criticalUnknown": null
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "risk applicable requires decision conclusion and evidence",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeRiskAssessmentDraftV1",
+      "valid": false,
+      "data": {
+        "riskCode": "intellectual_property",
+        "applicability": "applicable",
+        "applicabilityReason": null,
+        "investmentDecision": null,
+        "conclusion": null,
+        "evidenceRefs": [],
+        "criticalUnknown": null
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "risk draft rejects duplicate risk code",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeDecisionCommandV1/properties/riskAssessmentDraft",
+      "valid": false,
+      "data": [
+        {
+          "riskCode": "returns",
+          "applicability": "undetermined",
+          "criticalUnknown": "需要验证",
+          "evidenceRefs": []
+        },
+        {
+          "riskCode": "returns",
+          "applicability": "undetermined",
+          "criticalUnknown": "需要另一份验证",
+          "evidenceRefs": []
+        }
+      ]
+    },
+    {
+      "contractId": "GC-007",
+      "name": "risk partial draft accepts a valid not applicable assessment",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeDecisionCommandV1/properties/riskAssessmentDraft",
+      "data": [
+        {
+          "riskCode": "packaging_logistics",
+          "applicability": "not_applicable",
+          "applicabilityReason": "当前只做本地自提",
+          "investmentDecision": null,
+          "conclusion": null,
+          "evidenceRefs": [],
+          "criticalUnknown": null
+        }
+      ]
+    },
+    {
+      "contractId": "GC-007",
+      "name": "risk snapshot accepts a valid not applicable assessment",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeRiskAssessmentSnapshotV1",
+      "data": {
+        "riskCode": "packaging_logistics",
+        "applicability": "not_applicable",
+        "applicabilityReason": "当前只做本地自提",
+        "investmentDecision": null,
+        "conclusion": null,
+        "evidenceRefs": [],
+        "criticalUnknown": null
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "risk snapshot rejects undetermined applicability",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeRiskAssessmentSnapshotV1",
+      "valid": false,
+      "data": {
+        "riskCode": "returns",
+        "applicability": "undetermined",
+        "applicabilityReason": null,
+        "investmentDecision": null,
+        "conclusion": null,
+        "evidenceRefs": [],
+        "criticalUnknown": "需要验证"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "risk snapshot rejects applicable non-support decision",
+      "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeRiskAssessmentSnapshotV1",
+      "valid": false,
+      "data": {
+        "riskCode": "returns",
+        "applicability": "applicable",
+        "applicabilityReason": null,
+        "investmentDecision": "validate_before_investment",
+        "conclusion": "仍需验证",
+        "evidenceRefs": ["00000000-0000-4000-8000-000000000001"],
+        "criticalUnknown": "需要真实退货样本"
+      }
+    },
+    {
+      "contractId": "GC-007",
       "name": "business case partial validation draft",
       "schemaRef": "product-initiative.schema.json#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1",
       "valid": true,
