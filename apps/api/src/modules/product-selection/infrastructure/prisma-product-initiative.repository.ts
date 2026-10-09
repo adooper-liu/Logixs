@@ -482,26 +482,39 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
   async listNpiQueue(
     input: Parameters<ProductInitiativeRepository["listNpiQueue"]>[0],
   ): Promise<ProductInitiativeNpiEntryRecord[]> {
+    const currentHandoffs = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT h.id
+      FROM "product_initiative_handoff" h
+      INNER JOIN "product_initiative" i
+        ON i.id = h.initiative_id
+       AND i.tenant_id = h.tenant_id
+      WHERE h.tenant_id = ${input.tenantId}
+        AND i.current_destination = 'handed_off'
+        AND h.version = i.version
+        ${
+          input.after
+            ? Prisma.sql`
+              AND (
+                h.created_at < ${input.after.createdAt}
+                OR (
+                  h.created_at = ${input.after.createdAt}
+                  AND h.id < ${input.after.id}
+                )
+              )
+            `
+            : Prisma.empty
+        }
+      ORDER BY h.created_at DESC, h.id DESC
+      LIMIT ${input.take}
+    `;
+    if (currentHandoffs.length === 0) return [];
+
     const rows = await this.prisma.productInitiativeHandoff.findMany({
       where: {
         tenantId: input.tenantId,
-        initiative: { currentDestination: "handed_off" },
-        ...(input.after
-          ? {
-              OR: [
-                { createdAt: { lt: input.after.createdAt } },
-                {
-                  AND: [
-                    { createdAt: input.after.createdAt },
-                    { id: { lt: input.after.id } },
-                  ],
-                },
-              ],
-            }
-          : {}),
+        id: { in: currentHandoffs.map(({ id }) => id) },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: input.take,
       include: {
         claims: { orderBy: { claimVersion: "desc" }, take: 1 },
         initiative: {
@@ -517,7 +530,11 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
     handoffId: string,
   ): Promise<ProductInitiativeNpiEntryRecord | null> {
     const row = await this.prisma.productInitiativeHandoff.findFirst({
-      where: { id: handoffId, tenantId },
+      where: {
+        id: handoffId,
+        tenantId,
+        initiative: { currentDestination: "handed_off" },
+      },
       include: {
         claims: { orderBy: { claimVersion: "desc" }, take: 1 },
         initiative: {
@@ -525,7 +542,8 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         },
       },
     });
-    return row ? toNpiEntry(row) : null;
+    if (!row || row.version !== row.initiative.version) return null;
+    return toNpiEntry(row);
   }
 
   appendClaim(input: {
@@ -562,12 +580,22 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
 
       const entry = await tx.productInitiativeHandoff.findFirst({
         where: { id: input.handoffId, tenantId: input.tenantId },
-        select: { id: true },
+        select: {
+          id: true,
+          version: true,
+          initiative: { select: { version: true, currentDestination: true } },
+        },
       });
       if (!entry) {
         throw new ProductInitiativeNotFoundError(
           "PRODUCT_INITIATIVE_HANDOFF_NOT_FOUND",
         );
+      }
+      if (
+        entry.initiative.currentDestination !== "handed_off" ||
+        entry.version !== entry.initiative.version
+      ) {
+        conflict("PRODUCT_INITIATIVE_NPI_HANDOFF_NOT_ACTIVE");
       }
 
       const latest = await tx.productInitiativeClaim.findFirst({

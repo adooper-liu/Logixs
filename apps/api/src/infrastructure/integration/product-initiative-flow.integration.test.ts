@@ -817,15 +817,55 @@ describe("product initiative persistence flow", () => {
       tenantId,
       handoffId,
       actorId: "selector-1",
-      command: decide(
-        { handoffId, expectedInitiativeVersion: returned.record.version },
-        { outcome: "reject", rejectReason: "复核后不投入" },
-      ),
+      command: completeApprove({
+        handoffId,
+        expectedInitiativeVersion: returned.record.version,
+      }),
     });
     expect(reconsidered.record).toMatchObject({
       version: returned.record.version + 1,
-      currentDestination: "rejected",
+      currentDestination: "handed_off",
     });
+    const snapshots = await prisma.productInitiativeHandoff.findMany({
+      where: { tenantId, initiativeId: approved.record.initiativeId },
+      orderBy: { version: "asc" },
+    });
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots[0]).toEqual(snapshotBefore);
+    expect(snapshots[1]).toMatchObject({
+      version: returned.record.version + 1,
+      initiativeId: approved.record.initiativeId,
+    });
+    expect(snapshots[1].id).not.toBe(snapshotBefore.id);
+
+    const npiQueue = await initiatives.listNpiQueue({
+      tenantId,
+      take: 10,
+    });
+    expect(
+      npiQueue.some((entry) => entry.handoff.handoffId === snapshots[1]?.id),
+    ).toBe(true);
+    expect(
+      npiQueue.some((entry) => entry.handoff.handoffId === snapshotBefore.id),
+    ).toBe(false);
+    expect(
+      npiQueue.find((entry) => entry.handoff.handoffId === snapshots[1]?.id)
+        ?.claim,
+    ).toBeNull();
+
+    await expect(
+      initiatives.findNpiEntry(tenantId, snapshotBefore.id),
+    ).resolves.toBeNull();
+    await expect(
+      initiatives.appendClaim({
+        tenantId,
+        handoffId: snapshotBefore.id,
+        command: prepareProductDefinitionClaim(
+          "npi-owner-2",
+          `stale-claim:${snapshotBefore.id}`,
+        ),
+      }),
+    ).rejects.toThrowError(/PRODUCT_INITIATIVE_NPI_HANDOFF_NOT_ACTIVE/);
   });
 
   it.each([
@@ -1728,7 +1768,10 @@ function decide(
   );
 }
 
-function completeApprove(current: { handoffId: string }) {
+function completeApprove(current: {
+  handoffId: string;
+  expectedInitiativeVersion?: number;
+}) {
   return decide(current, {
     outcome: "approve",
     objective: "把折叠宠物出行包做成可发布版本",

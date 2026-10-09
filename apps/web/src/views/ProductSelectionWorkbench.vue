@@ -137,6 +137,11 @@ const feedbackError = computed(() => initiativeError.value ?? error.value);
 const feedbackReceipt = computed(
   () => initiativeReceipt.value ?? receipt.value,
 );
+const npiReturnReason = computed(() =>
+  initiative.value?.currentDestination === "returned_from_npi"
+    ? (initiative.value.reason ?? "").trim()
+    : "",
+);
 
 /**
  * 本次结果按服务端事实说：已退回／已暂缓／已立项都不再是"形成立项结论"，
@@ -347,6 +352,13 @@ const progressPercent = computed(() =>
           ><small>当前责任</small><b>{{ currentOwner }}</b></span
         ></span
       >
+    </section>
+    <section
+      v-if="npiReturnReason"
+      class="feedback feedback--notice"
+      aria-label="NPI 退回原因"
+    >
+      <span>NPI 退回原因：{{ npiReturnReason }}</span>
     </section>
 
     <div class="workbench-grid">
@@ -603,7 +615,8 @@ const progressPercent = computed(() =>
 }
 .feedback {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
   padding: var(--space-3);
@@ -611,10 +624,16 @@ const progressPercent = computed(() =>
   background: var(--ok-bg);
   color: var(--ink-soft);
   font-size: var(--text-label);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
 }
 .feedback--error {
   border-left-color: var(--risk);
   background: var(--risk-bg);
+}
+.feedback--notice {
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
 }
 .feedback span {
   flex: 1;

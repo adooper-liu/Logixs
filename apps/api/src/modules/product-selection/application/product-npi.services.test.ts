@@ -337,4 +337,19 @@ describe("ClaimProductInitiativeService", () => {
       }),
     ).rejects.toMatchObject({ status: 400 });
   });
+
+  it("旧 handoff 已退回选品后不再作为 NPI 待办领取", async () => {
+    const service = new ClaimProductInitiativeService(
+      repository({ findNpiEntry: vi.fn().mockResolvedValue(null) }),
+    );
+
+    await expect(
+      service.execute({
+        tenantId: TENANT,
+        actorId: "product-owner",
+        handoffId: HANDOFF,
+        command,
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+  });
 });
