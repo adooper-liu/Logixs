@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/full-chain-sample-compiler-implementation
-verification: "design and plan merged via PR #153 at 113d7a4e; FC1a-FC1e implementation handed off from base 821b3e80 with 15 focused tests passing; main-agent acceptance found six blocking fail-closed gaps; FC1R1 authorized below"
+verification: "FC1a-FC1e handed off from 821b3e80; FC1R1 handed off with 25 focused tests passing; main-agent verification found remaining fail-closed defects and behavior gaps; FC1R2 authorized below"
 owner: main
 writer: codex
 risk: high
@@ -199,6 +199,20 @@ git diff --check
 - 返回标准 `HANDOFF` + `logix-handoff/v1`，列出每组测试名、RED 失败原因、GREEN 计数和未运行的 FC1f；
 - 不提交实现；是否形成 checkpoint/提交由主代理验收后决定。
 
+### FC1R2：剩余可复现缺陷与行为反证
+
+> FC1R1 增加到 25 项测试，但主代理逐项核对实现后仍存在以下可复现缺陷。FC1R2 只关闭这些项目，不重复已绿范围，不运行 FC1f。
+
+1. **Symlink 检查恒为假**：`(entry.externalAttributes >>> 16) & (0xf000 === 0xa000)` 将右侧比较先算成 boolean，永远无法识别 symlink。先构造 symlink-like central-directory member 观察 RED；修正为对 mode bitmask 的正确比较，并覆盖大小写重复成员、encrypted flag、workbook protection。测试必须真实构造对应 ZIP 元数据，不能只循环几个普通文件名。
+2. **Policy 仍不能表达已批准 source / construction override**：当前 `approvedDirectSources` 从所有 payload 字段自动生成，等于默认批准；`policy.schema.json` / v0.5 policy 没有 `constructionOverrideAllowed` 或字段级 source reference。按 plan 为每个 pilot 字段显式声明 direct-source approval 和 construction override；没有批准的 R、未批准的 S override 均进入 blocking gap。补 33 Sheet 唯一全集、未知 Sheet、header fingerprint drift 和 conversation-only/未授权 policy rule 的失败测试。
+3. **对账测试不能只断 code 存在**：为九个稳定 check code 各构造至少一个真实 pass/fail 或 applicable/not-applicable 场景。必须覆盖重复 key、缺 cargo-ready、stuffing 断链、MBL mismatch、customs HBL scope、date order、quantity/weight/volume mismatch、D recomputation mismatch。若真实业务字段不足以计算某项，policy 必须显式声明 `not_applicable` 原因，不能在 `runPackageChecks` 末尾无条件补码冒充完成。
+4. **Normalization 接入需行为测试**：用 `compilePilotRecords` 真实输入证明非法日期/精度/时区、金额、code 产生 blocking gap 且不产 record；合法金额输出定点字符串、Refs 输出数组。不得只直接测试 helper。
+5. **Manifest 仍缺 Git commit 与完整 source 元数据**：按 spec 增加 `gitCommit`（由调用上下文显式传入，不由编译器执行 git）、最后修改时间或明确受控 manifest 版本字段、lineage hash/count，并在 schema/validation/hash projection 中核对；测试篡改 counts/hashes/manifest/packageHash 必须被拒绝。不得在日志输出这些值。
+6. **原子失败与 CLI exit/privacy 仍缺覆盖**：注入 write/rename 失败，证明只清理本次 staging 且 sibling/既有输出不变；真实 CLI synthetic fixtures 覆盖 valid=0、diagnostic publishable=false=2、unsafe source=3 且无输出、existing/publish failure=4；stdout/stderr 不含绝对路径、secret/raw value、完整 source/package hash。`publishable=false` 仍可写诊断包，但不得打印成功发布语义。
+7. **测试真实性**：测试必须断行为和产物，不得以“所有 check code 被自动补成 `not_applicable`”或只断测试名/计数关闭 finding。FC1R2 完成后 `pnpm test:full-chain-sample` 的测试数不是验收标准，以上场景逐项通过才是标准。
+
+FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF 时逐条映射 1～7 的 RED/GREEN 测试名与结果。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -225,10 +239,10 @@ git diff --check
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                           |
-| ---------- | ------- | ----------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                               |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                             |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                                     |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                                       |
-| 2026-10-10 | fix     | Claude Code | `821b3e80`              | FC1a～FC1e 交回 15 项聚焦测试；主代理验收确认安全扫描、证据分级、类型规范化、跨表对账、manifest 和 CLI/原子发布反证不足，授权 FC1R1 一次性修复 |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                              |
+| ---------- | ------- | ----------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                  |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                        |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                          |
+| 2026-10-10 | fix     | Claude Code | `74b6ee94`              | FC1R1 交回 25 项测试；主代理逐项复核确认 symlink 检查恒假、policy 自动批准、对账码占位、manifest/CLI/原子失败反证不足，授权 FC1R2 |
