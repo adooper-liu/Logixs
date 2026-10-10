@@ -32,7 +32,7 @@
     "format:check": "prettier --check . --ignore-unknown",
     "format": "prettier --write . --ignore-unknown",
     "typecheck": "turbo run typecheck",
-    "test": "node --test scripts/check-repository.test.mjs scripts/check-ui-structure-gate.test.mjs scripts/check-route-access-metadata.test.mjs scripts/generate-data-dictionary.test.mjs && turbo run test",
+    "test": "node --test scripts/check-repository.test.mjs scripts/check-ui-structure-gate.test.mjs scripts/check-route-access-metadata.test.mjs scripts/generate-data-dictionary.test.mjs scripts/generate-workbench-purposes.test.mjs && turbo run test",
     "test:integration": "turbo run test:integration",
     "test:e2e": "turbo run test:e2e --filter=@logix/web",
     "playwright:install": "pnpm --filter @logix/web exec playwright install chromium",
@@ -71,8 +71,10 @@
     "data-dictionary:check": "node scripts/generate-data-dictionary.mjs --check",
     "authz:routes": "node scripts/check-route-access-metadata.mjs",
     "repo:check": "node scripts/check-repository.mjs",
+    "workbench-purposes:generate": "node scripts/generate-workbench-purposes.mjs",
+    "workbench-purposes:check": "node scripts/generate-workbench-purposes.mjs --check",
     "security:audit": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level high",
-    "validate": "pnpm repo:check && pnpm contract:check && pnpm contract:drift && pnpm data-dictionary:check && pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e && pnpm build"
+    "validate": "pnpm repo:check && pnpm workbench-purposes:check && pnpm contract:check && pnpm contract:drift && pnpm data-dictionary:check && pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

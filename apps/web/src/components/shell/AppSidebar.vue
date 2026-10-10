@@ -45,17 +45,6 @@ const changeRole = (event: Event) => {
       </button>
     </div>
 
-    <div class="workspace-switcher">
-      <span class="workspace-label">工作区</span>
-      <div class="workspace-name">
-        <strong>已出运</strong>
-        <InfoTooltip
-          label="查看工作区范围"
-          text="看出运后的货柜，并做这一柜的任务。"
-        />
-      </div>
-    </div>
-
     <nav class="navigation" aria-label="主导航">
       <router-link
         v-for="item in navigation"
@@ -136,14 +125,12 @@ const changeRole = (event: Event) => {
 }
 
 .brand-copy,
-.workspace-switcher,
 .sidebar-footer > div {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.workspace-name,
 .role-label {
   min-width: 0;
   display: flex;
@@ -158,7 +145,6 @@ const changeRole = (event: Event) => {
 }
 
 .brand-copy span,
-.workspace-switcher span,
 .sidebar-footer span,
 .role-switcher small {
   color: var(--muted);
@@ -168,20 +154,6 @@ const changeRole = (event: Event) => {
 .close-drawer {
   display: none;
   margin-left: auto;
-}
-
-.workspace-switcher {
-  gap: var(--space-1);
-  margin: var(--space-3) var(--space-2) var(--space-1);
-  padding: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--surface-2);
-}
-
-.workspace-switcher .workspace-label {
-  color: var(--brand);
-  font-weight: 700;
 }
 
 .navigation {
@@ -265,7 +237,6 @@ const changeRole = (event: Event) => {
 }
 
 .sidebar--collapsed .brand-copy,
-.sidebar--collapsed .workspace-switcher,
 .sidebar--collapsed .nav-item span,
 .sidebar--collapsed .role-switcher,
 .sidebar--collapsed .sidebar-footer > div {
@@ -294,7 +265,6 @@ const changeRole = (event: Event) => {
   }
 
   .brand-copy,
-  .workspace-switcher,
   .nav-item span,
   .role-switcher,
   .sidebar-footer > div {
@@ -334,7 +304,6 @@ const changeRole = (event: Event) => {
   }
 
   .sidebar--collapsed .brand-copy,
-  .sidebar--collapsed .workspace-switcher,
   .sidebar--collapsed .nav-item span,
   .sidebar--collapsed .role-switcher,
   .sidebar--collapsed .sidebar-footer > div {

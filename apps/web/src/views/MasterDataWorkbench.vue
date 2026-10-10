@@ -7,7 +7,7 @@ import {
 } from "@lucide/vue";
 import { computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import PageHeader from "../components/ui/PageHeader.vue";
+import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import { useProductIdentity } from "../composables/useProductIdentity";
 
 const route = useRoute();
@@ -111,10 +111,9 @@ async function publish(): Promise<void> {
 
 <template>
   <main class="master-data-workbench page-frame">
-    <PageHeader
+    <WorkbenchPageHeader
+      stage-code="master_data"
       eyebrow="商品与主数据岗位工作台"
-      title="商品与物料主数据"
-      summary="把已发布的产品设计建成可被下游稳定引用的产品与 SKU 身份，交给寻源侧。"
     />
 
     <section v-if="error" class="feedback feedback--error" role="alert">

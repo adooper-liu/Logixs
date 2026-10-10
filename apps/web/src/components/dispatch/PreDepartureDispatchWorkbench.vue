@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { History, Import } from "@lucide/vue";
 import { computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -14,7 +13,6 @@ import DispatchActionPanel from "./DispatchActionPanel.vue";
 import DispatchSnapshotPanel from "./DispatchSnapshotPanel.vue";
 import DispatchWorkQueue from "./DispatchWorkQueue.vue";
 
-const emit = defineEmits<{ showHandoffIntake: [] }>();
 const route = useRoute();
 const router = useRouter();
 const containerId = computed(() =>
@@ -73,67 +71,58 @@ function submitActual(eventCode: "gate_in" | "loaded", localDateTime: string) {
 </script>
 
 <template>
-  <RoleWorkbenchFrame
-    title="装船交接历史"
-    summary="查看已有订舱、进港与装船事实；新的已出运数据从接管视图进入。"
-    workspace-label="船务出运"
-    node-scope-label="出运前交接"
-    :selected-container="selectedContainer"
-    :nodes="nodes"
-    :selection-loading="loading"
-    :container-list-error="error"
-    :selection-error="error"
-    :warnings="warnings"
-  >
-    <template #actions>
-      <div class="view-switch" aria-label="出运工作台视图">
-        <button type="button" @click="emit('showHandoffIntake')">
-          <Import :size="16" aria-hidden="true" />
-          接管已出运数据
-        </button>
-        <button type="button" class="view-switch__active" aria-current="page">
-          <History :size="16" aria-hidden="true" />
-          装船交接历史
-        </button>
-      </div>
-    </template>
-    <template #queue>
-      <DispatchWorkQueue
-        :items="queueItems"
-        :selected-task-id="selectedTask?.id ?? taskId"
-        :loading="queueLoading"
-        @select="selectTask"
-      />
-    </template>
-    <template #primary>
-      <DispatchSnapshotPanel
-        :stuffing="stuffing"
-        :dispatch="dispatch"
-        :gate-in-fact="gateInFact"
-        :loaded-fact="loadedFact"
-        :node="dispatchNode"
-      />
-    </template>
-    <template #secondary>
-      <DispatchActionPanel
-        :stuffing="stuffing"
-        :dispatch="dispatch"
-        :gate-in-fact="gateInFact"
-        :loaded-fact="loadedFact"
-        :task="selectedTask"
-        :saving="commands.saving.value"
-        :save-error="commands.saveError.value"
-        :save-message="commands.saveMessage.value"
-        :date-submitting="commands.dateSubmitting.value"
-        :date-error="commands.dateError.value"
-        :date-result="commands.dateResult.value"
-        :task-submitting="taskOperation.submitting.value"
-        @save="saveSnapshot"
-        @submit-actual="submitActual"
-        @execute-task="taskOperation.execute()"
-      />
-    </template>
-  </RoleWorkbenchFrame>
+  <section class="dispatch-loading-workbench">
+    <h2>装船交接历史</h2>
+    <RoleWorkbenchFrame
+      stage-code="dispatch"
+      embedded
+      workspace-label="船务出运"
+      node-scope-label="出运前交接"
+      :selected-container="selectedContainer"
+      :nodes="nodes"
+      :selection-loading="loading"
+      :container-list-error="error"
+      :selection-error="error"
+      :warnings="warnings"
+    >
+      <template #queue>
+        <DispatchWorkQueue
+          :items="queueItems"
+          :selected-task-id="selectedTask?.id ?? taskId"
+          :loading="queueLoading"
+          @select="selectTask"
+        />
+      </template>
+      <template #primary>
+        <DispatchSnapshotPanel
+          :stuffing="stuffing"
+          :dispatch="dispatch"
+          :gate-in-fact="gateInFact"
+          :loaded-fact="loadedFact"
+          :node="dispatchNode"
+        />
+      </template>
+      <template #secondary>
+        <DispatchActionPanel
+          :stuffing="stuffing"
+          :dispatch="dispatch"
+          :gate-in-fact="gateInFact"
+          :loaded-fact="loadedFact"
+          :task="selectedTask"
+          :saving="commands.saving.value"
+          :save-error="commands.saveError.value"
+          :save-message="commands.saveMessage.value"
+          :date-submitting="commands.dateSubmitting.value"
+          :date-error="commands.dateError.value"
+          :date-result="commands.dateResult.value"
+          :task-submitting="taskOperation.submitting.value"
+          @save="saveSnapshot"
+          @submit-actual="submitActual"
+          @execute-task="taskOperation.execute()"
+        />
+      </template>
+    </RoleWorkbenchFrame>
+  </section>
 </template>
 
 <style scoped>

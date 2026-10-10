@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import PreDepartureDispatchWorkbench from "../components/dispatch/PreDepartureDispatchWorkbench.vue";
 import PostDepartureHandoffWorkbench from "../components/shipment-handoff/PostDepartureHandoffWorkbench.vue";
 import WorkbenchFlowContext from "../components/workbench/WorkbenchFlowContext.vue";
+import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import {
   getInboundWorkbenchRelations,
   getOutboundWorkbenchRelations,
@@ -39,7 +40,36 @@ function openLoadingHistory(): void {
 </script>
 
 <template>
-  <div class="dispatch-workbench">
+  <main class="dispatch-workbench page-frame">
+    <WorkbenchPageHeader stage-code="dispatch" eyebrow="出运运营岗位工作台" />
+    <nav class="dispatch-view-switch" aria-label="出运工作台内部视图">
+      <button
+        type="button"
+        :aria-current="!showLoadingHistory && !showRisk ? 'page' : undefined"
+        @click="openHandoffIntake"
+      >
+        接管已出运数据
+      </button>
+      <button
+        type="button"
+        :aria-current="showLoadingHistory ? 'page' : undefined"
+        @click="openLoadingHistory"
+      >
+        装船交接历史
+      </button>
+      <button
+        type="button"
+        :aria-current="showRisk ? 'page' : undefined"
+        @click="
+          router.replace({
+            path: '/workspaces/dispatch',
+            query: { view: 'risk' },
+          })
+        "
+      >
+        在途风险
+      </button>
+    </nav>
     <WorkbenchFlowContext
       v-if="stage"
       :stage="stage"
@@ -55,7 +85,7 @@ function openLoadingHistory(): void {
       v-else
       @show-loading-history="openLoadingHistory"
     />
-  </div>
+  </main>
 </template>
 
 <style scoped>
@@ -63,5 +93,59 @@ function openLoadingHistory(): void {
   min-width: 0;
   display: grid;
   gap: var(--space-4);
+}
+
+.dispatch-view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.dispatch-view-switch button {
+  min-height: 44px;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+  white-space: normal;
+  cursor: pointer;
+}
+
+.dispatch-view-switch button:hover {
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.dispatch-view-switch button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.dispatch-view-switch button[aria-current="page"] {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--brand-strong);
+  font-weight: 600;
+}
+
+@media (max-width: 680px) {
+  .dispatch-view-switch {
+    width: 100%;
+  }
+
+  .dispatch-view-switch button {
+    flex: 1 1 9rem;
+  }
 }
 </style>

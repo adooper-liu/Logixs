@@ -15,7 +15,7 @@ import MarketSignalEvidencePanel from "../components/market-signals/MarketSignal
 import MarketSignalOperationReceipt from "../components/market-signals/MarketSignalOperationReceipt.vue";
 import MarketSignalQueue from "../components/market-signals/MarketSignalQueue.vue";
 import MarketSelectionFeedback from "../components/market-signals/MarketSelectionFeedback.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
+import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import { useMarketSignalWorkbench } from "../composables/useMarketSignalWorkbench";
 import { useAuthSession } from "../auth/useAuthSession";
 import type { ManualMarketSignalDraft } from "../data/marketSignalScenarios";
@@ -116,11 +116,7 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
     class="market-workbench page-frame"
     :class="{ 'market-workbench--closed': isClosed }"
   >
-    <PageHeader
-      eyebrow="经营岗位工作台"
-      title="市场与经营信号"
-      summary="看清变化依据，给每条信号一个明确去向；不要求先做产品方案，也不因普通资料未齐而停住。"
-    />
+    <WorkbenchPageHeader stage-code="market_signals" eyebrow="经营岗位工作台" />
 
     <section v-if="error" class="operation-error" role="alert">
       <AlertCircle :size="17" aria-hidden="true" />

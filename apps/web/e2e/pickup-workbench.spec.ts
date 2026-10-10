@@ -72,7 +72,7 @@ test("pickup operator records terminal availability and laden gate-out for revie
   });
 
   await page.goto("/workspaces/pickup");
-  await expect(page.getByRole("heading", { name: "提柜工作台" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "提柜" })).toBeVisible();
   await page.getByRole("button", { name: /KOCU4960726.*领取提柜任务/ }).click();
   await page.getByLabel("UN/LOCODE").fill("USLAX");
   await page.getByLabel("IANA 时区").fill("America/Los_Angeles");

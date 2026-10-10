@@ -14,7 +14,7 @@ import ProductNpiHandoffDetail from "../components/product-npi/ProductNpiHandoff
 import ProductNpiQueue from "../components/product-npi/ProductNpiQueue.vue";
 import ProductNpiReturnAction from "../components/product-npi/ProductNpiReturnAction.vue";
 import ProductNpiStageProgress from "../components/product-npi/ProductNpiStageProgress.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
+import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import { useProductDefinition } from "../composables/useProductDefinition";
 import { useProductNpiWorkbench } from "../composables/useProductNpiWorkbench";
 
@@ -94,10 +94,9 @@ async function claimSelected(): Promise<void> {
 
 <template>
   <main class="npi-workbench page-frame">
-    <PageHeader
+    <WorkbenchPageHeader
+      stage-code="product_npi"
       eyebrow="产品开发与 NPI 岗位工作台"
-      title="产品开发与 NPI"
-      summary="接住选品交过来的立项，让它有明确的产品负责人，再推进到可发布的产品定义。"
     />
 
     <section v-if="error" class="feedback feedback--error" role="alert">

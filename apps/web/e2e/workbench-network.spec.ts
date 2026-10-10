@@ -32,13 +32,12 @@ test("the business-workbench directory opens live and framework stages honestly"
   await expect(
     page
       .getByTestId("main-workbench-stage")
-      .filter({ hasText: "出运工作台" })
-      .getByRole("link"),
+      .locator('a[href="/workspaces/dispatch"]'),
   ).toHaveAttribute("href", "/workspaces/dispatch");
 
-  await page.getByRole("link", { name: /采购履约工作台/ }).click();
+  await page.getByRole("link", { name: /采购履约/ }).click();
   await expect(
-    page.getByRole("heading", { name: "采购履约工作台", exact: true }),
+    page.getByRole("heading", { name: "采购履约", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("框架已建立，业务能力待接通")).toBeVisible();
   await expect(page.locator(".planned-page button")).toHaveCount(0);

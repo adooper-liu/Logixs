@@ -70,8 +70,7 @@ function submitActual(localDateTime: string) {
 
 <template>
   <RoleWorkbenchFrame
-    title="进口清关工作台"
-    summary="处理进口申报、海关扣留与放行，提交实际清关时间，并清楚区分岗位完工和流程过站。"
+    stage-code="customs"
     workspace-label="进口清关"
     node-scope-label="进口清关"
     :selected-container="selectedContainer"

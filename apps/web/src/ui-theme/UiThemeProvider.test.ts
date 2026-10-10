@@ -41,7 +41,12 @@ describe("UI theme contract", () => {
         default: () =>
           h(
             PageHeader,
-            { title: "清关计划", updatedAt: "14:20" },
+            {
+              eyebrow: "进口清关工作台",
+              title: "清关计划",
+              summary: "形成可信进口放行和未解除限制，交给提柜作联合可提判断",
+              updatedAt: "14:20",
+            },
             {
               help: () => h("button", { "aria-label": "查看清关计划口径" }),
               actions: () =>
@@ -53,6 +58,10 @@ describe("UI theme contract", () => {
     const header = wrapper.get('[data-testid="test-page-header"]');
 
     expect(header.text()).toContain("清关计划");
+    expect(header.text()).toContain("进口清关工作台");
+    expect(header.text()).toContain(
+      "形成可信进口放行和未解除限制，交给提柜作联合可提判断",
+    );
     expect(header.text()).toContain("14:20");
     expect(header.get('[aria-label="查看清关计划口径"]')).toBeTruthy();
     expect(header.get('[aria-label="发布计划"]').text()).toBe("发布计划");

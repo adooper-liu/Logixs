@@ -50,8 +50,7 @@ function submit(draft: UnloadingReportDraft) {
 
 <template>
   <RoleWorkbenchFrame
-    title="卸柜工作台"
-    summary="按柜记录开始、部分卸货和实际卸完，核对实收差异并提交仓方完成事实复核。"
+    stage-code="unloading"
     workspace-label="仓库收货"
     node-scope-label="卸柜"
     :selected-container="workbench.selectedContainer.value"

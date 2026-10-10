@@ -36,6 +36,77 @@ test("shell follows the responsive navigation contract", async ({
   });
 });
 
+test("sidebar exposes one workbench directory entry and no formal workbench shortcuts", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  const navigation = page.getByRole("navigation", { name: "主导航" });
+
+  await expect(
+    navigation.getByRole("link", { name: "业务工作台" }),
+  ).toHaveCount(1);
+  for (const label of [
+    "备货工作台",
+    "装箱工作台",
+    "出运工作台",
+    "进口清关工作台",
+    "提柜工作台",
+    "送仓工作台",
+    "卸柜工作台",
+  ]) {
+    await expect(navigation.getByRole("link", { name: label })).toHaveCount(0);
+  }
+  await expect(page.locator(".workspace-switcher")).toHaveCount(0);
+});
+
+test("all 23 workbench deep links remain reachable after sidebar convergence", async ({
+  page,
+}) => {
+  for (const path of [
+    "/workspaces/market-signals",
+    "/workspaces/product-selection",
+    "/workspaces/product-npi",
+    "/workspaces/master-data",
+    "/workspaces/sourcing",
+    "/workspaces/demand-replenishment",
+    "/workspaces/procurement",
+    "/workspaces/supply-readiness",
+    "/workspaces/shipment-planning",
+    "/workspaces/booking",
+    "/workspaces/cargo-ready",
+    "/workspaces/stuffing",
+    "/workspaces/export-customs",
+    "/workspaces/dispatch",
+    "/workspaces/ocean-operations",
+    "/workspaces/customs",
+    "/workspaces/pickup",
+    "/workspaces/delivery",
+    "/workspaces/unloading",
+    "/workspaces/empty-return",
+    "/workspaces/compliance-operations",
+    "/workspaces/charges",
+    "/workspaces/exceptions",
+  ]) {
+    await page.goto(path);
+    await expect(page.locator("main h2").first()).toBeVisible();
+  }
+});
+
+test("mobile drawer preserves entry order and closes after navigation", async ({
+  page,
+}) => {
+  test.skip((page.viewportSize()?.width ?? 0) >= 960, "mobile drawer only");
+  await page.goto("/tasks");
+  await page.getByRole("button", { name: "打开主导航" }).click();
+  const navigation = page.getByRole("navigation", { name: "主导航" });
+  const links = navigation.getByRole("link");
+  await expect(links.nth(0)).toHaveAccessibleName("我的任务");
+  await expect(links.nth(1)).toHaveAccessibleName("业务工作台");
+  await navigation.getByRole("link", { name: "业务工作台" }).click();
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await expect(page.getByTestId("app-sidebar")).not.toBeInViewport();
+});
+
 test("mobile drawer closes with Escape", async ({ page }) => {
   test.skip(page.viewportSize()!.width >= 960, "mobile drawer only");
   await page.goto("/tasks");
@@ -67,9 +138,9 @@ test("explanatory tooltips work with click and Escape", async ({ page }) => {
     await expect(page.getByTestId("app-sidebar")).toBeInViewport();
   }
 
-  const explanation = "看出运后的货柜，并做这一柜的任务。";
+  const explanation = "角色切换只裁剪演示视图，不代表生产环境的服务端权限。";
   await expect(page.getByText(explanation)).toHaveCount(0);
-  await page.getByRole("button", { name: "查看工作区范围" }).click();
+  await page.getByRole("button", { name: "查看演示角色说明" }).click();
   await expect(page.getByRole("tooltip")).toHaveText(explanation);
 
   await page.keyboard.press("Escape");
@@ -81,8 +152,8 @@ test("all migrated workspaces keep the shared shell and bounded overflow", async
 }) => {
   const routes = [
     ["/containers", "干活"],
-    ["/workspaces/cargo-ready", "备货工作台"],
-    ["/workspaces/stuffing", "装箱工作台"],
+    ["/workspaces/cargo-ready", "备货"],
+    ["/workspaces/stuffing", "装箱"],
     ["/real-tasks", "我的任务"],
     ["/real-containers", "干活"],
     ["/dashboard", "货柜"],

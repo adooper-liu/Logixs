@@ -136,22 +136,19 @@ test("catalog inspection rejects misleading comments and structural row drift", 
   )}
 // booking export_customs compliance_operations /workspaces/booking
 // /workspaces/export-customs /workspaces/compliance-operations
-// catalogStage("customs", { title: "进口清关" })`
+// catalogStage("customs", { sequence: 16 })`
     .replace(/plannedCatalogStage\(\s*10,[\s\S]*?\n {2}\),/, "")
     .replace(
       'plannedSupportCatalogStage(\n    "compliance_operations"',
       'plannedCatalogStage(\n    21,\n    "compliance_operations"',
     )
-    .replace('title: "进口清关"', 'title: "清关"')
     .replace(
       '  catalogStage("charges"),',
       `  plannedSupportCatalogStage(
     "compliance_operations",
-    "合规运营",
     "/workspaces/compliance-operations",
     "product",
     "合规运营人员",
-    "重复目录桩",
     [],
   ),
   catalogStage("charges"),`,
@@ -162,7 +159,6 @@ test("catalog inspection rejects misleading comments and structural row drift", 
     "workbenchStages: duplicate code 'compliance_operations'",
     "workbenchStages: duplicate path '/workspaces/compliance-operations'",
     "workbenchStages: code 'booking' is missing",
-    "workbenchStages: customs title must be '进口清关', found '清关'",
     "workbenchStages: compliance_operations kind must be 'support', found 'main'",
   ]) {
     assert.ok(violations.includes(expected), `missing violation: ${expected}`);
@@ -255,8 +251,8 @@ test("catalog inspection rejects unsupported row shapes", () => {
 
 test("catalog inspection rejects spread overrides", () => {
   const spreadOverride = readWorkbenchCatalogSource().replace(
-    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
-    'catalogStage("customs", { ...customsOverride, sequence: 16, title: "进口清关" })',
+    'catalogStage("customs", { sequence: 16 })',
+    'catalogStage("customs", { ...customsOverride, sequence: 16 })',
   );
 
   assert.ok(
@@ -281,8 +277,8 @@ test("catalog inspection rejects dynamic override values", () => {
 
 test("catalog inspection validates no-substitution template overrides by value", () => {
   const templateOverride = readWorkbenchCatalogSource().replace(
-    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
-    'catalogStage("customs", { sequence: 16, title: "进口清关", path: `/workspaces/wrong` })',
+    'catalogStage("customs", { sequence: 16 })',
+    'catalogStage("customs", { sequence: 16, path: `/workspaces/wrong` })',
   );
 
   assert.ok(
@@ -294,8 +290,8 @@ test("catalog inspection validates no-substitution template overrides by value",
 
 test("catalog inspection validates const-asserted overrides by value", () => {
   const constOverride = readWorkbenchCatalogSource().replace(
-    'catalogStage("customs", { sequence: 16, title: "进口清关" })',
-    'catalogStage("customs", { sequence: 16, title: "进口清关", path: "/workspaces/wrong" as const })',
+    'catalogStage("customs", { sequence: 16 })',
+    'catalogStage("customs", { sequence: 16, path: "/workspaces/wrong" as const })',
   );
 
   assert.ok(

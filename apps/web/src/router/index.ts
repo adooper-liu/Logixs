@@ -3,6 +3,7 @@ import { AUTH_CALLBACK_PATH, AUTH_LOGOUT_CALLBACK_PATH } from "../auth/config";
 import { createAuthGuard } from "../auth/routeGuard";
 import { getAuthSession } from "../auth/session";
 import { uiCopy } from "../data/uiCopyCatalog";
+import { workbenchPurposeByCode } from "../data/workbenchPurposes.generated";
 import { moduleRouteContributions } from "../modules/registry";
 
 const router = createRouter({
@@ -45,11 +46,8 @@ const router = createRouter({
       path: "/workspaces/cargo-ready",
       component: () => import("../views/CargoReadyWorkbench.vue"),
       meta: {
-        title: "备货工作台",
+        title: workbenchPurposeByCode.cargo_ready.title,
         section: "作业",
-        navLabel: "备货工作台",
-        navIcon: "package-check",
-        navOrder: 15,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -57,11 +55,8 @@ const router = createRouter({
       path: "/workspaces/stuffing",
       component: () => import("../views/StuffingWorkbench.vue"),
       meta: {
-        title: "装箱工作台",
+        title: workbenchPurposeByCode.stuffing.title,
         section: "作业",
-        navLabel: "装箱工作台",
-        navIcon: "package-open",
-        navOrder: 16,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -69,11 +64,8 @@ const router = createRouter({
       path: "/workspaces/dispatch",
       component: () => import("../views/DispatchWorkbench.vue"),
       meta: {
-        title: "出运工作台",
+        title: workbenchPurposeByCode.dispatch.title,
         section: "作业",
-        navLabel: "出运工作台",
-        navIcon: "ship",
-        navOrder: 17,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -81,11 +73,8 @@ const router = createRouter({
       path: "/workspaces/customs",
       component: () => import("../views/CustomsWorkbench.vue"),
       meta: {
-        title: "进口清关工作台",
+        title: workbenchPurposeByCode.customs.title,
         section: "作业",
-        navLabel: "进口清关工作台",
-        navIcon: "landmark",
-        navOrder: 18,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -93,11 +82,8 @@ const router = createRouter({
       path: "/workspaces/pickup",
       component: () => import("../views/PickupWorkbench.vue"),
       meta: {
-        title: "提柜工作台",
+        title: workbenchPurposeByCode.pickup.title,
         section: "作业",
-        navLabel: "提柜工作台",
-        navIcon: "truck",
-        navOrder: 19,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -105,11 +91,8 @@ const router = createRouter({
       path: "/workspaces/delivery",
       component: () => import("../views/WarehouseDeliveryWorkbench.vue"),
       meta: {
-        title: "送仓工作台",
+        title: workbenchPurposeByCode.delivery.title,
         section: "作业",
-        navLabel: "送仓工作台",
-        navIcon: "warehouse",
-        navOrder: 20,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -117,11 +100,8 @@ const router = createRouter({
       path: "/workspaces/unloading",
       component: () => import("../views/ContainerUnloadingWorkbench.vue"),
       meta: {
-        title: "卸柜工作台",
+        title: workbenchPurposeByCode.unloading.title,
         section: "作业",
-        navLabel: "卸柜工作台",
-        navIcon: "package-open",
-        navOrder: 21,
         roles: ["operator", "planner", "manager"],
       },
     },
