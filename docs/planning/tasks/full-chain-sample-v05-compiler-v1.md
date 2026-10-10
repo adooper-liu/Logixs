@@ -1,7 +1,7 @@
 ---
 status: coding
-branch: feat/full-chain-sample-compiler-v1
-verification: "design restored at 6fc5c380; implementation plan restored at aaafb507; implementation pending"
+branch: feat/full-chain-sample-compiler-implementation
+verification: "design and plan merged via PR #153 at 113d7a4e; FC1a-FC1e implementation pending"
 owner: main
 writer: codex
 risk: high
@@ -174,8 +174,9 @@ TASK docs/planning/tasks/full-chain-sample-v05-compiler-v1.md#FC1a-FC1e base=<br
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit                  | 说明                                                                       |
-| ---------- | ------ | ----------- | ----------------------- | -------------------------------------------------------------------------- |
-| 2026-10-06 | design | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1           |
-| 2026-10-06 | design | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                         |
-| 2026-10-10 | coding | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex |
+| 日期       | 阶段   | 负责        | commit                  | 说明                                                                             |
+| ---------- | ------ | ----------- | ----------------------- | -------------------------------------------------------------------------------- |
+| 2026-10-06 | design | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                 |
+| 2026-10-06 | design | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                               |
+| 2026-10-10 | coding | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex       |
+| 2026-10-10 | coding | Claude Code | `113d7a4e`              | 设计、计划与 Brief 1 经 PR #153 合入 `main`；切换到实现分支，准备下发 FC1a～FC1e |
