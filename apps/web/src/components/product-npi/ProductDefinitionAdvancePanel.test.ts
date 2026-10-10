@@ -117,6 +117,16 @@ describe("ProductDefinitionAdvancePanel", () => {
     expect(wrapper.text()).not.toContain("保存并前进到");
   });
 
+  it.each(["evt", "dvt", "pvt"] as const)("%s 阶段不呈现发布动作", (stage) => {
+    const { wrapper } = mountPanel({
+      stage,
+      definition: definition({ npiStage: stage }),
+    });
+
+    expect(wrapper.find(".release button").text()).not.toBe("发布");
+    expect(wrapper.text()).toContain("发布动作将在 MP 阶段");
+  });
+
   it("合规假设的增删交给上层，组件不改 props；并说明它是假设不是结论", async () => {
     const { wrapper } = mountPanel();
 

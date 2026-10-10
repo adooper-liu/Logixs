@@ -1,7 +1,7 @@
 ---
-status: review
-branch: feat/product-npi-return-to-selection
-verification:
+status: coding
+branch: feat/product-npi-non-mp-release-hard-stop
+verification: "E1 merged via PR #150 at 6b034955; A1 pending"
 owner: main
 writer: codex
 risk: high
@@ -9,6 +9,8 @@ dependsOn:
   - product-selection-applicable-risk-assessment-v1
 writeScopes:
   - docs/planning/tasks/product-npi-visual-flow-return-v1.md
+  - apps/api/src/modules/product-selection/domain/product-definition.ts
+  - apps/api/src/modules/product-selection/domain/product-definition.test.ts
   - apps/api/src/modules/product-selection/domain/product-initiative-npi-return.ts
   - apps/api/src/modules/product-selection/domain/product-initiative-npi-return.test.ts
   - apps/api/src/modules/product-selection/domain/product-initiative.repository.ts
@@ -21,6 +23,8 @@ writeScopes:
   - apps/web/src/composables/useProductInitiativeDecision.ts
   - apps/web/src/composables/useProductInitiativeDecision.test.ts
   - apps/web/src/components/product-npi/ProductNpiReturnAction.vue
+  - apps/web/src/components/product-npi/ProductDefinitionAdvancePanel.vue
+  - apps/web/src/components/product-npi/ProductDefinitionAdvancePanel.test.ts
   - apps/web/src/views/ProductNpiWorkbench.vue
   - apps/web/src/views/ProductNpiWorkbench.test.ts
   - apps/web/src/views/ProductSelectionWorkbench.vue
@@ -29,24 +33,26 @@ writeScopes:
   - apps/web/e2e/workbench-network.spec.ts
 exclusiveLocks:
   - business-policy:product-npi-return-redecision
+  - business-policy:product-npi-release-gate
 sharedIntegrationScopes: []
 authorityRefs:
   - AGENTS.md
   - doc/cross-border-supply-chain/08-role-workbenches.md
   - doc/cross-border-supply-chain/wisdom-baseline/全局.md
+  - doc/cross-border-supply-chain/wisdom-baseline/产品开发与NPI工作台.md
   - doc/cross-border-supply-chain/wisdom-baseline/选品立项.md
 uiStructure:
-  - 保持选品与 NPI 既有固定办理壳；只在当前对象详情和动作区承接退回、重判、再交接
+  - 保持选品与 NPI 既有固定办理壳；A1 只在当前阶段事实和动作区纠正发布入口，不重排工作台
 uiMustStayVisible:
-  - NPI 退回原因、旧冻结快照、当前责任、选品重判入口、新旧交接版本和当前主动作
+  - 当前 NPI 阶段、规格与合规缺口、服务端拒绝原因、允许的阶段动作和退回选品入口
 uiProgressiveDisclosure:
-  - 历史旧交接与旧领取记录只读展开，不占据当前办理主线
+  - 非 MP 阶段不提供发布动作；历史旧交接与旧领取记录只读展开，不占据当前办理主线
 uiForbidden:
-  - 覆盖旧快照、原地复活旧 handoff、复制第二套立项结论、扩写完整五阶段 NPI
+  - 覆盖旧快照、原地复活旧 handoff、复制第二套立项结论、把到达 MP 冒充 MP 已通过、扩写完整五阶段 NPI
 uiViewportEvidence:
-  - 1440x900：NPI 退回、选品重判和新版 NPI 待办主线清晰，无横向溢出
-  - 1024x768：退回原因、当前动作和版本差异可达，动作不遮挡
-  - 390x844：退回原因 → 重判 → 新交接 → NPI 新版待办顺序连续，无页面级横向溢出
+  - 1440x900：非 MP 阶段无发布主动作，当前阶段和可执行动作清晰，无横向溢出
+  - 1024x768：阶段事实、现有门槛和允许动作可达，动作不遮挡
+  - 390x844：当前阶段 → 现有缺口 → 允许动作 → 拒绝或成功回执顺序连续，无页面级横向溢出
 ---
 
 # 任务：产品开发与 NPI 五阶段工作闭环
@@ -56,6 +62,28 @@ uiViewportEvidence:
 > [岗位工作台第五节](../../../doc/cross-border-supply-chain/08-role-workbenches.md#五产品开发与-npi-工作台product_npi)。
 > 已完成的 `product-npi-intake-v1` 和 `product-definition-npi-release-v1` 只证明历史 V1
 > 实现及当时验证，不证明当前五阶段闭环已经完成。
+
+## 智慧开启基线
+
+本任务恢复实现前已先读取 `wisdom-baseline/README.md`、`全局.md`、
+`产品开发与NPI工作台.md`，并把 `选品立项.md` 仅作为跨台退回与再交接参考。
+基线不是业务权威；实现只采用已经由负责人确认且已写回正式业务权威的内容。
+
+| 基线结论                                                        | 处置             | 本任务依据与边界                                                                           |
+| --------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| `F1` 增量投资决策台                                             | 沿用             | 正式权威已把岗位结果写为重大投入扩大前作继续、返工、暂停或终止决定；阶段完整度不是产品目标 |
+| `OWN1` 单一结果负责人 + 专业任务负责人                          | 沿用方向         | A1 不改组织或权限映射；现有身份与授权继续生效                                              |
+| `INV1` 项目级重大承诺前作决定                                   | 沿用             | 后续主流程必须围绕真实承诺事件，不按 EVT/DVT/PVT/MP 名称机械制造投资门                     |
+| `DEC1` 结果负责人建议、资源负责人批准                           | 存疑             | 正式权威尚未完整落定组织映射；A1 不实现该政策                                              |
+| `MET1` / `MEAS1` 晚发现实际损失                                 | 沿用为结果方向   | A1 只阻断已证实的过早发布，不新增指标模型                                                  |
+| `SAMP1` 两个真实或脱敏对照项目                                  | 沿用为新设计门禁 | 缺样本阻止新的字段、状态、契约、算法和 UI 设计，不阻止按现行权威修复缺陷                   |
+| 前半段 `B/T1/G1/I1/C1/E1/P1/H1/M1/W1/O1` 与 `V1`～`L1` 细化方案 | 修正为历史候选   | 未经真实样本与正式权威再确认，不作为 A1 或后续自动扩建依据                                 |
+| 非 MP 或 MP 未通过仍可发布                                      | 与权威冲突       | 正式权威明确禁止；A1 先修复“非 MP 可发布”这一无需新增事实即可判定的缺陷                    |
+| 到达 MP 即视为 MP 通过                                          | 禁止             | 当前没有可信的 MP 通过事实；A1 不把自由文本结论或阶段值冒充通过决定                        |
+
+因此当前不自动执行旧方案中的完整 A→B→C→D 平台扩建。先以 A1 停止非 MP
+越级发布并跑通现有主路径；其后只从 `F1 → 重大承诺 → 投资决定 → 结果回执`
+选择经真实样本证明必要的下一薄片。
 
 ## 目标
 
@@ -182,6 +210,44 @@ uiViewportEvidence:
 原“齐/半/缺”可保留为非门槛摘要，但必须由结构化交付物计算，并同时给出具体缺口；
 不得再按“一段文字 + 一个附件”显示为齐。禁止阶段百分比。
 
+## A1：非 MP 发布硬阻断（当前切片）
+
+### 业务结果与边界
+
+当前运行实现允许在 EVT、DVT、PVT 发布，与正式权威直接冲突。本片只关闭这条已证实的
+越级发布路径，使产品/NPI 结果负责人必须先走到 MP，才可能进入现有发布准备；它不把
+“到达 MP”解释成“MP 已通过”，也不新增尚无可信事实承载的 MP 通过模型。
+
+### 五面承接
+
+| 面       | 当前切片承接                                                                  |
+| -------- | ----------------------------------------------------------------------------- |
+| 岗位任务 | 非 MP 阶段只能处理当前阶段或退回，不得误把未完成验证的产品发布给主数据        |
+| 数据事实 | 只读取现有 `npiStage`；不制造 MP 通过、证据完整或阻断已关闭事实               |
+| 前端 UI  | EVT/DVT/PVT 不呈现发布动作；当前阶段、现有规格/合规缺口和允许动作继续可见     |
+| 技术底层 | 领域发布准备函数默认拒绝非 MP；直接 API 调用不能绕过；稳定错误写入回归测试    |
+| 权限边界 | 保留现有服务端 capability、租户和对象范围；阶段门是领域业务前置，不与授权混合 |
+
+### 明确不做
+
+- 不新增 Schema、迁移、公共契约或阶段决定状态。
+- 不把 `npiStage === mp`、自由文本结论或证据数量冒充 MP 已通过。
+- 不建设完整阶段计划、交付物、问题、冻结、变更或通用控制面。
+- 不修改选品、主数据、寻源及跨台交接政策。
+- 不更换固定办理壳，不把页面改造成字段卡墙或通用后台。
+
+### 测试先行与验收反证
+
+1. 先以领域回归测试证明 EVT、DVT、PVT 当前错误地允许发布；实现后均返回稳定拒绝。
+2. MP 仍进入既有规格和合规假设门槛；测试不得断言到达 MP 即代表 MP 已通过。
+3. 组件测试证明非 MP 没有发布动作，MP 仍按既有缺口呈现。
+4. 原“DVT 直接发布成功”E2E 改为反证，再推进到 MP 验证现有主路径可继续。
+5. 三视口按 frontmatter 的 `uiViewportEvidence` 截图并人工核对；测试文字或 bounding box 不替代视觉判断。
+
+### 切片顺序
+
+`A1a 失败回归 → A1b 最小领域门 → A1c UI/E2E 主流程 → 主代理验收 → fresh Codex 独立复审 → 最终门禁/PR`。
+
 ## 实施切片
 
 ### A. 先锁住错误推进
@@ -257,16 +323,21 @@ uiViewportEvidence:
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit | 说明                                                                                                                                                                                            |
-| ---------- | ------- | ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-28 | design  | —           | —      | 原视觉动线与退回 brief 建立                                                                                                                                                                     |
-| 2026-09-29 | coding  | Cursor      | —      | 阶段轨和退回写路径产生本地 WIP                                                                                                                                                                  |
-| 2026-09-29 | blocked | Codex       | —      | 负责人曾将寻源规格缺口调整为第一优先，WIP 原样保留                                                                                                                                              |
-| 2026-09-29 | design  | Codex       | —      | 负责人重新聚焦 NPI；扩展为五阶段业务闭环，完成现状与技术差距审查                                                                                                                                |
-| 2026-09-29 | blocked | Codex       | —      | 共享控制面和默认拒绝授权定案前暂停实现；本地退回 WIP 保留                                                                                                                                       |
-| 2026-10-09 | fix     | Claude Code | —      | E1a 验收：退回期间旧 handoff 已隐藏且不可领取，但再立项后旧、新两个 handoff 同时回到 NPI 队列；PostgreSQL 反证为 expected 1 / received 2，继续收窄修复当前版本过滤。                            |
-| 2026-10-09 | review  | Claude Code | —      | E1 当前版本过滤已覆盖队列、按 ID 读取和领取；PostgreSQL 37/37、API unit 14/14、API/Web typecheck/lint、三视口 E2E 3/3 与人工截图通过，进入独立复审。                                            |
-| 2026-10-09 | fix     | Claude Code | —      | 独立复审接受 E1-BLOCK-001/002：浏览器用例必须实际经过选品重判再生成新 handoff；移动端必须完整显示退回回执与原因，不以 mock 队列切换或裁切截图冒充通过。                                         |
-| 2026-10-09 | review  | Claude Code | —      | E1F1 已让三视口浏览器实际经过 NPI 退回、选品重判/approve 和新版 NPI 待办；E2E 9/9，移动回执可读，定向单测/typecheck/lint/format/diff 通过。                                                     |
-| 2026-10-09 | review  | Codex       | —      | fresh GPT-5.6 scoped re-review：E1-BLOCK-001/002 均已关闭，`verdict: pass`、`findings: []`、`writes: none`；窄屏标题紧凑仅为非阻塞观察。                                                        |
-| 2026-10-09 | review  | Claude Code | —      | E1 集成门禁：repo/contract/drift/dictionary/lint/typecheck、API 1475 + Web 698 单测、PostgreSQL 195、build、改动路径格式与三视口 E2E 9/9 通过；全量 E2E 因已有 dev Vite 占用 5173 留待隔离 CI。 |
+| 日期       | 阶段    | 负责        | commit     | 说明                                                                                                                                                                                                                             |
+| ---------- | ------- | ----------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-28 | design  | —           | —          | 原视觉动线与退回 brief 建立                                                                                                                                                                                                      |
+| 2026-09-29 | coding  | Cursor      | —          | 阶段轨和退回写路径产生本地 WIP                                                                                                                                                                                                   |
+| 2026-09-29 | blocked | Codex       | —          | 负责人曾将寻源规格缺口调整为第一优先，WIP 原样保留                                                                                                                                                                               |
+| 2026-09-29 | design  | Codex       | —          | 负责人重新聚焦 NPI；扩展为五阶段业务闭环，完成现状与技术差距审查                                                                                                                                                                 |
+| 2026-09-29 | blocked | Codex       | —          | 共享控制面和默认拒绝授权定案前暂停实现；本地退回 WIP 保留                                                                                                                                                                        |
+| 2026-10-09 | fix     | Claude Code | —          | E1a 验收：退回期间旧 handoff 已隐藏且不可领取，但再立项后旧、新两个 handoff 同时回到 NPI 队列；PostgreSQL 反证为 expected 1 / received 2，继续收窄修复当前版本过滤。                                                             |
+| 2026-10-09 | review  | Claude Code | —          | E1 当前版本过滤已覆盖队列、按 ID 读取和领取；PostgreSQL 37/37、API unit 14/14、API/Web typecheck/lint、三视口 E2E 3/3 与人工截图通过，进入独立复审。                                                                             |
+| 2026-10-09 | fix     | Claude Code | —          | 独立复审接受 E1-BLOCK-001/002：浏览器用例必须实际经过选品重判再生成新 handoff；移动端必须完整显示退回回执与原因，不以 mock 队列切换或裁切截图冒充通过。                                                                          |
+| 2026-10-09 | review  | Claude Code | —          | E1F1 已让三视口浏览器实际经过 NPI 退回、选品重判/approve 和新版 NPI 待办；E2E 9/9，移动回执可读，定向单测/typecheck/lint/format/diff 通过。                                                                                      |
+| 2026-10-09 | review  | Codex       | —          | fresh GPT-5.6 scoped re-review：E1-BLOCK-001/002 均已关闭，`verdict: pass`、`findings: []`、`writes: none`；窄屏标题紧凑仅为非阻塞观察。                                                                                         |
+| 2026-10-09 | review  | Claude Code | `6b034955` | E1/E1F1 经 PR #150 合入 `main`；CI `changes/static/unit/build/e2e/quality` 成功，dictionary/security 按变更规则跳过。此证据只关闭 E1，不关闭整份 NPI brief。                                                                     |
+| 2026-10-09 | coding  | Claude Code | —          | 恢复前补读 NPI 智慧基线：F1/OWN1/INV1 等当前有效结论已登记，旧完整控制台细化降为候选；启动 A1，只修复非 MP 可发布的权威冲突。                                                                                                    |
+| 2026-10-09 | coding  | Codex       | —          | A1 实现：服务端发布准备拒绝 EVT/DVT/PVT，Web 仅在 MP 显示发布按钮；领域、应用、控制器、组件回归与类型/lint/format 通过。NPI Playwright 因 5173 已被非测试 Logix 进程占用未运行，待主代理在可控服务器环境复核。                   |
+| 2026-10-10 | review  | Codex       | —          | fresh GPT-5.6 scoped review：`verdict: pass`、`findings: []`、`writes: none`；记录 release mock 未模拟非 MP API 拒绝和当轮未生成新三视口截图两项验证缺口。                                                                       |
+| 2026-10-10 | review  | Claude Code | —          | A1 验收：可控 5173/5174 测试服务器下 NPI Playwright 三视口 9/9；补充 DVT 发布隐藏、暂缓/终止、退回选品和 MP 发布动作的定向截图并人工核对，无页面级或内容区横向溢出。                                                             |
+| 2026-10-10 | review  | Claude Code | —          | A1 最终门禁：完整 `validate` 仅因 `apps/ai-service/.pytest_cache` 的既知 EPERM 在全仓 `format:check` 中断；A1 定向格式通过，API/Web 单测 1478/701、PostgreSQL 集成 195、E2E 175 通过（7 跳过），全仓 typecheck/lint/build 通过。 |
