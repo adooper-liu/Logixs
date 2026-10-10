@@ -13,6 +13,7 @@ const HELP = [
   "取消集成授权——撤销当前活动线的集成授权",
   "收支线：<名称>——关闭支线并切回主线",
   "任务线——只列主线、支线和当前活动线",
+  "下一步——最小核对 Git/brief/PR/CI 后给出唯一下一动作；已有集成授权时直接执行",
   "归线——停止漂移，回到当前活动线的唯一下一动作",
   "口令——查询本清单",
 ];
@@ -120,6 +121,17 @@ process.stdin.on("end", () => {
     }
   } else if (prompt === "任务线") {
     context = response(formatTaskLines(state));
+  } else if (prompt === "下一步") {
+    const active = activeLine(state);
+    if (active) {
+      const authorization = active.integrationAuthorization
+        ? "当前线已有安全完整集成授权；若唯一下一动作属于授权范围，直接执行，不要求用户再发第二条指令。"
+        : "当前线没有集成授权；若唯一下一动作是实现，只给标准 TASK；若是 outward-facing 集成动作，给出应发送的精确授权指令。";
+      context = `【下一步判断已触发】只做最小增量核对：当前 worktree/Git 状态、活动 brief frontmatter、最近 commit、对应 PR/CI；禁止重新解读完整项目上下文，禁止新增计划或切片。固定输出四行：\n当前活动线：${active.name}｜${active.pointer}\n实际状态：以核对后的 Git/brief/PR/CI 为准（登记状态：${active.status}，commit：${active.commit}）\n唯一下一动作：核对后只能给一个；优先使用已登记动作“${active.next}”\n你要发送的指令：若无需用户动作写“无需，直接执行”；否则给一条可复制的精确指令。\n${authorization}`;
+    } else {
+      context =
+        "【下一步判断已触发】当前未登记任务线。只扫描当前 Git 状态、active brief frontmatter、最近 commit 与 PR/CI，不读取完整业务文档；推荐唯一主线候选，并只输出一条可复制的“主线：<brief#slice>｜<状态>｜<唯一下一动作>”登记指令。不得擅自开工。";
+    }
   } else if (prompt === "归线") {
     const active = activeLine(state);
     context = active
