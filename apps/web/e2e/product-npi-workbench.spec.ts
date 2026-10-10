@@ -6,6 +6,10 @@ const E1_VIEWPORT_EVIDENCE = resolve(
   process.cwd(),
   "../../.tmp/e1-three-viewport-evidence-20261009",
 );
+const A1_VIEWPORT_EVIDENCE = resolve(
+  process.cwd(),
+  "../../.tmp/a1-non-mp-release-hard-stop-20261010",
+);
 
 /**
  * 3 号节点「产品开发与 NPI 工作台」的岗位动线：
@@ -74,8 +78,9 @@ test("NPI owner sees the handed-off initiative and takes it", async ({
  */
 test("NPI owner advances a claimed initiative and releases the product design", async ({
   page,
-}) => {
+}, testInfo) => {
   let definition: Record<string, unknown> | null = null;
+  const stages = ["evt", "dvt", "pvt", "mp"] as const;
 
   await page.route(/^http:\/\/localhost:5173\/api\//, async (route) => {
     const request = route.request();
@@ -94,15 +99,22 @@ test("NPI owner advances a claimed initiative and releases the product design", 
       request.method() === "POST"
     ) {
       const body = request.postDataJSON() as Record<string, unknown>;
+      const currentStage = String(
+        definition?.npiStage ?? "evt",
+      ) as (typeof stages)[number];
+      const currentIndex = stages.indexOf(currentStage);
+      const nextStage = body.advanceStage
+        ? stages[Math.min(currentIndex + 1, stages.length - 1)]
+        : currentStage;
       definition = productDefinition({
         version: Number(definition?.version ?? 0) + 1,
         specification: String(body.specification),
         complianceAssumptions: body.complianceAssumptions as string[],
-        npiStage: body.advanceStage ? "dvt" : "evt",
+        npiStage: nextStage,
         stageOutcomes: body.conclusion
           ? [
               {
-                stage: "evt",
+                stage: currentStage,
                 conclusion: (body.conclusion as { text: string }).text,
                 evidenceRefs: [],
                 recordedBy: "dev-operator",
@@ -148,6 +160,97 @@ test("NPI owner advances a claimed initiative and releases the product design", 
     page.getByText("设计验证（DVT）", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("功能样机通过，关键料有替代来源")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "发布", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "暂缓" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "终止" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "退回选品" })).toBeVisible();
+
+  const nonMpWidths = await page.evaluate(() => ({
+    pageClient: document.documentElement.clientWidth,
+    pageScroll: document.documentElement.scrollWidth,
+    contentClient:
+      document.querySelector<HTMLElement>(".app-content")?.clientWidth ?? 0,
+    contentScroll:
+      document.querySelector<HTMLElement>(".app-content")?.scrollWidth ?? 0,
+  }));
+  expect(nonMpWidths.pageScroll).toBeLessThanOrEqual(
+    nonMpWidths.pageClient + 1,
+  );
+  expect(nonMpWidths.contentScroll).toBeLessThanOrEqual(
+    nonMpWidths.contentClient + 1,
+  );
+  await mkdir(A1_VIEWPORT_EVIDENCE, { recursive: true });
+  await page
+    .locator(".workbench-grid > .pane")
+    .nth(2)
+    .screenshot({
+      path: resolve(
+        A1_VIEWPORT_EVIDENCE,
+        `${testInfo.project.name}-dvt-release-hidden.png`,
+      ),
+    });
+  await page.locator(".release").screenshot({
+    path: resolve(
+      A1_VIEWPORT_EVIDENCE,
+      `${testInfo.project.name}-dvt-release-decisions.png`,
+    ),
+  });
+  await page.locator(".npi-return").screenshot({
+    path: resolve(
+      A1_VIEWPORT_EVIDENCE,
+      `${testInfo.project.name}-dvt-return-action.png`,
+    ),
+  });
+
+  for (const [nextStageLabel, conclusion] of [
+    ["生产验证（PVT）", "设计冻结，合规风险已盘清"],
+    ["量产（MP）", "正式产线试产达到预设门槛"],
+  ] as const) {
+    await page.getByLabel("本阶段结论").fill(conclusion);
+    await page.getByRole("button", { name: /保存并前进到/ }).click();
+    await expect(page.getByText(nextStageLabel, { exact: true })).toBeVisible();
+  }
+
+  await expect(
+    page.getByRole("button", { name: "发布", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "退回选品" })).toBeVisible();
+
+  const mpWidths = await page.evaluate(() => ({
+    pageClient: document.documentElement.clientWidth,
+    pageScroll: document.documentElement.scrollWidth,
+    contentClient:
+      document.querySelector<HTMLElement>(".app-content")?.clientWidth ?? 0,
+    contentScroll:
+      document.querySelector<HTMLElement>(".app-content")?.scrollWidth ?? 0,
+  }));
+  expect(mpWidths.pageScroll).toBeLessThanOrEqual(mpWidths.pageClient + 1);
+  expect(mpWidths.contentScroll).toBeLessThanOrEqual(
+    mpWidths.contentClient + 1,
+  );
+  await page
+    .locator(".workbench-grid > .pane")
+    .nth(2)
+    .screenshot({
+      path: resolve(
+        A1_VIEWPORT_EVIDENCE,
+        `${testInfo.project.name}-mp-release-available.png`,
+      ),
+    });
+  await page.locator(".release").screenshot({
+    path: resolve(
+      A1_VIEWPORT_EVIDENCE,
+      `${testInfo.project.name}-mp-release-decisions.png`,
+    ),
+  });
+  await page.locator(".npi-return").screenshot({
+    path: resolve(
+      A1_VIEWPORT_EVIDENCE,
+      `${testInfo.project.name}-mp-return-action.png`,
+    ),
+  });
 
   await page.getByRole("button", { name: "发布", exact: true }).click();
 

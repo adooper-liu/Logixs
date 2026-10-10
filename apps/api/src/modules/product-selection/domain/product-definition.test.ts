@@ -208,6 +208,19 @@ describe("prepareProductDefinitionRelease", () => {
     }
   });
 
+  it.each(["evt", "dvt", "pvt"] as const)(
+    "%s 阶段不允许发布，即使规格和合规假设齐全",
+    (npiStage) => {
+      expect(() =>
+        prepareProductDefinitionRelease(
+          { ...READY, npiStage },
+          "product-owner",
+          RELEASE,
+        ),
+      ).toThrow("PRODUCT_DEFINITION_RELEASE_REQUIRES_MP");
+    },
+  );
+
   it("暂缓与终止必须说明原因 —— 不写为什么，事后无从复盘", () => {
     for (const decision of ["defer", "terminate"] as const) {
       expect(() =>
