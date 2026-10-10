@@ -1,9 +1,9 @@
 ---
-status: review
-branch: feat/full-chain-sample-compiler-implementation
-verification: "FC1R4 checkpoint f7e630ba with 43 focused tests passing; real v0.5 input failed closed with exit 3 on workbookProtection; PostgreSQL/MinIO/Temporal deltas all zero; compliant unprotected source export required before done"
+status: fix
+branch: fix/full-chain-sample-empty-protection
+verification: "compiler merged via PR #163 at 17e2b58b; FC1f found all generated v0.1-v0.5 workbooks contain an empty workbookProtection element with no attributes; FC1R5 authorized below"
 owner: main
-writer: main
+writer: codex
 risk: high
 dependsOn: []
 writeScopes:
@@ -248,6 +248,27 @@ scripts/full-chain-sample/compile-records.test.mjs
 
 每项先写行为 RED，再最小 GREEN。最终运行对应单测、`pnpm test:full-chain-sample`、lint、scoped format、repo check、diff check，返回 HANDOFF，不提交，不扩写测试矩阵、不运行 FC1f、不触及备份/删除/写库/UI。
 
+### FC1R5：空保护占位兼容修复
+
+FC1f 进一步核对发现，v0.1～v0.5 都由 `openpyxl.Workbook()` 直接生成，生成脚本未启用工作簿保护，但所有版本的 `xl/workbook.xml` 均包含无任何属性的空 `<workbookProtection/>`。这类占位元素没有锁定效果；当前扫描器仅凭元素存在即 exit 3，属于对受控生成器输出的误拒绝。
+
+本片只修复以下行为：
+
+1. 先构造与真实源同构的无属性 `<workbookProtection/>` fixture，观察当前 `inspectXlsxArchive()` RED；最小修改为允许空元素。
+2. 继续拒绝任何带属性的工作簿保护，包括 `lockStructure`、`lockWindows`、`lockRevision`、password/hash/salt/spin 等，无论属性值为何；已有 protection 测试不得放宽。
+3. 不通过直接删改真实 XLSX 内部 XML、重新打包原件或绕过 fingerprint 解决；修复必须发生在明确的安全语义判断上。
+4. 最终运行 XLSX security tests、`pnpm test:full-chain-sample`、lint、scoped format、repo check、diff check，并交回 HANDOFF，不提交、不运行备份/删除/写库/UI。
+
+允许写入：
+
+```text
+scripts/full-chain-sample/xlsx-security.mjs
+scripts/full-chain-sample/xlsx-security.test.mjs
+scripts/full-chain-sample/test-support.mjs（仅 fixture 必需时）
+```
+
+FC1R5 通过后由主代理立即重跑 FC1f 两次真实编译和三域零写入验证。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -288,3 +309,4 @@ scripts/full-chain-sample/compile-records.test.mjs
 | 2026-10-10 | fix     | Claude Code | —                       | fresh Codex 最终复审 3 项 high finding 均已独立复现并接受：publishable 可篡改、十进制定点失真、重复 provenance 随行序变化；授权 FC1R4 同分支修复                                                                   |
 | 2026-10-10 | coding  | Claude Code | —                       | FC1R4 三条原始反证均转为 GREEN，focused 43/43、lint、repo check、scoped format、diff check 通过；进入 FC1f 只读真实输入诊断和三域零写入验证                                                                        |
 | 2026-10-10 | review  | Claude Code | `f7e630ba`              | FC1f 真实 v0.5 输入因 `workbookProtection` 按安全契约 exit 3 失败关闭且未创建输出；PostgreSQL demo 行、MinIO bucket/object、Temporal schedule/workflow 前后差值均为 0。需提供同版本未保护受控导出后重跑才能标 done |
+| 2026-10-10 | fix     | Claude Code | `17e2b58b`              | 进一步核对 v0.1～v0.5 与生成脚本后确认均为 openpyxl 生成的无属性空 `<workbookProtection/>`，无实际锁定效果；当前存在性判断误拒绝，授权 FC1R5 精确兼容修复                                                          |
