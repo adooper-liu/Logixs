@@ -120,6 +120,21 @@ git diff --check
 
 三视口密度测试已证明 1440/1024 的首屏和所有视口横向溢出要求；390 用例的生产行为正确地不渲染空 `.stage-volume`，但 `not.toContainText()` 会等待不存在的元素并超时。只修改 `workbench-network.spec.ts`：通过 `allTextContents()` 读取现有指标文本后断言合并文本不含“未接通/未定义”；不得为让测试通过而渲染空指标、修改 Vue 或新增测试矩阵。修复后仅重跑目录 E2E 全三项目，再读取已生成的 1440/1024/390 截图与 overflow 证据。
 
+## 独立复审 finding 处置
+
+```yaml
+protocol: logix-disposition/v1
+slice: ND1-review
+decisions:
+  - finding: ND1-REVIEW-001
+    status: accepted
+    reason: E2E 的 a[href^="/workspaces/"] 同时统计 23 张目录卡、岗位待办和异常中心快捷入口，实际 25；断言由当前切片新增并阻断完整目录 E2E
+    writeback: docs/planning/tasks/workbench-network-density-v1.md
+next: fix
+```
+
+修复只允许修改 `apps/web/e2e/workbench-network.spec.ts`：将计数收窄为 `.stage-link` 20 条和 `.support-link` 3 条，并断言 23 个卡片 href 唯一且等于目录技术事实；异常中心额外入口继续单独验证。不得修改 Vue、隐藏非目录入口或放宽 23 台目录要求。修复后重跑该文件全三项目。
+
 ## 验收
 
 - [ ] 23 台与分组、正式目的、路由全部保留
@@ -132,6 +147,6 @@ git diff --check
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit     | 说明                                                                                         |
-| ---------- | ------ | ----------- | ---------- | -------------------------------------------------------------------------------------------- |
-| 2026-10-10 | review | Claude Code | `9a437b6d` | ND1 基础门禁通过；主代理验收发现页头免责声明、逐指标过滤和三视口密度证据三项缺口，进入 ND1F1 |
+| 日期       | 阶段   | 负责  | commit     | 说明                                                                                                            |
+| ---------- | ------ | ----- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| 2026-10-10 | review | Codex | `d58e68bc` | fresh read-only review 阻断：目录卡片链接断言误统计岗位待办和异常中心，接受 ND1-REVIEW-001，进入单文件 E2E 修复 |
