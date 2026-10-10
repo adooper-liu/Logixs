@@ -89,14 +89,17 @@
       "identity": ["出运计划编号"],
       "payload": {
         "planNo": "出运计划编号",
-        "containerRefs": "柜号",
-        "bookingNo": "订舱编号"
+        "containerRefs": "合并备货单",
+        "bookingNo": "订舱号/SO"
       },
       "fieldPolicy": {
-        "planNo": { "directSource": true, "constructionOverrideAllowed": true },
+        "planNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": false
+        },
         "containerRefs": {
           "directSource": true,
-          "constructionOverrideAllowed": true
+          "constructionOverrideAllowed": false
         },
         "bookingNo": {
           "directSource": true,
@@ -111,8 +114,8 @@
       "payload": {
         "bookingNo": "订舱编号",
         "masterBillNo": "MBL",
-        "houseBillRefs": "HBL",
-        "containerRefs": "柜号"
+        "houseBillRefs": "HBL/AMS",
+        "containerRefs": "主备货单号"
       },
       "fieldPolicy": {
         "bookingNo": {
@@ -129,7 +132,7 @@
         },
         "containerRefs": {
           "directSource": true,
-          "constructionOverrideAllowed": true
+          "constructionOverrideAllowed": false
         }
       }
     },
@@ -139,25 +142,21 @@
       "identity": ["备货单号"],
       "payload": {
         "cargoReadyNo": "备货单号",
-        "planNo": "出运计划编号",
-        "sku": "SKU",
-        "quantity": "数量",
-        "quantityUnit": "数量单位"
+        "planNo": "主备货单号",
+        "quantity": "数量合计"
       },
       "fieldPolicy": {
         "cargoReadyNo": {
           "directSource": true,
           "constructionOverrideAllowed": true
         },
-        "planNo": { "directSource": true, "constructionOverrideAllowed": true },
-        "sku": { "directSource": true, "constructionOverrideAllowed": true },
+        "planNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": false
+        },
         "quantity": {
           "directSource": true,
-          "constructionOverrideAllowed": true
-        },
-        "quantityUnit": {
-          "directSource": true,
-          "constructionOverrideAllowed": true
+          "constructionOverrideAllowed": false
         }
       }
     },
@@ -170,9 +169,9 @@
         "cargoReadyNo": "备货单号",
         "sku": "SKU",
         "houseBillNo": "分提单",
-        "quantity": "数量",
-        "grossWeight": "毛重",
-        "volume": "体积"
+        "quantity": "装载数量",
+        "grossWeight": "毛重kg",
+        "volume": "体积m³"
       },
       "fieldPolicy": {
         "containerNo": {
@@ -183,7 +182,10 @@
           "directSource": true,
           "constructionOverrideAllowed": true
         },
-        "sku": { "directSource": true, "constructionOverrideAllowed": true },
+        "sku": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
         "houseBillNo": {
           "directSource": true,
           "constructionOverrideAllowed": true
@@ -206,9 +208,9 @@
       "rowFilter": { "层级": "报关票" },
       "payload": {
         "invoiceNo": "报关发票号",
-        "houseBillNo": "HBL",
+        "houseBillNo": "分提单",
         "declarationNo": "报关单号",
-        "amount": "金额",
+        "amount": "报关金额",
         "currency": "币种"
       },
       "fieldPolicy": {
@@ -224,7 +226,10 @@
           "directSource": true,
           "constructionOverrideAllowed": true
         },
-        "amount": { "directSource": true, "constructionOverrideAllowed": true },
+        "amount": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
         "currency": {
           "directSource": true,
           "constructionOverrideAllowed": true
@@ -269,11 +274,21 @@
         },
         "gateInDate": {
           "directSource": true,
-          "constructionOverrideAllowed": true
+          "constructionOverrideAllowed": true,
+          "normalization": {
+            "precision": "date",
+            "timezone": "+08:00",
+            "formats": ["iso-date", "m/d/yyyy", "datetime-seconds"]
+          }
         },
         "departedAt": {
           "directSource": true,
-          "constructionOverrideAllowed": true
+          "constructionOverrideAllowed": true,
+          "normalization": {
+            "precision": "date",
+            "timezone": "+08:00",
+            "formats": ["iso-date", "m/d/yyyy", "datetime-seconds"]
+          }
         },
         "departedPrecision": {
           "directSource": true,
@@ -281,7 +296,12 @@
         },
         "motherVesselDepartedAt": {
           "directSource": true,
-          "constructionOverrideAllowed": true
+          "constructionOverrideAllowed": true,
+          "normalization": {
+            "precision": "date",
+            "timezone": "+08:00",
+            "formats": ["iso-date", "m/d/yyyy", "datetime-seconds"]
+          }
         }
       }
     }

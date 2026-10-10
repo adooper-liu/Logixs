@@ -6,12 +6,56 @@ const text = (row, field) => row?.valuesByHeader?.[field] ?? null;
 const rank = { R: 1, D: 2, S: 3 };
 const recordRef = (record) => `${record.recordType}:${record.businessKey}`;
 
+function mappingConsumesField(policy, sheet, field) {
+  return policy.pilotMappings.some(
+    (mapping) =>
+      mapping.sheet === sheet && Object.values(mapping.payload).includes(field),
+  );
+}
+
+function isPilotProvenanceConflict(conflict, indexes, policy) {
+  const [kind, ...parts] = conflict.split(":");
+  if (kind === "constructed" || kind === "derivation-binding-duplicate") {
+    const [sheet, ...fieldParts] = parts.join(":").split("|");
+    return mappingConsumesField(policy, sheet, fieldParts.at(-1));
+  }
+  if (kind === "derivation") {
+    const id = parts.join(":");
+    for (const [binding, ids] of indexes.derivationBindings ?? []) {
+      if (!ids.has(id)) continue;
+      const [sheet, ...fieldParts] = binding.split("|");
+      if (mappingConsumesField(policy, sheet, fieldParts.join("|")))
+        return true;
+    }
+  }
+  return false;
+}
+
 function stableValue(value) {
   return Array.isArray(value) ? value.join("|") : String(value ?? "").trim();
 }
 
-function normalizePayloadField(output, raw, row) {
+export function normalizeHouseBillReference(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value)
+    .normalize("NFC")
+    .replace(/\r\n?/gu, "\n")
+    .trim();
+  if (!normalized) throw new Error("CODE_INVALID");
+  return normalized;
+}
+
+function normalizeIdentityValue(field, raw) {
+  if (field === "分提单") {
+    if (raw === null || raw === undefined || !String(raw).trim()) return "";
+    return normalizeHouseBillReference(raw);
+  }
+  return stableValue(raw);
+}
+
+function normalizePayloadField(output, raw, row, fieldPolicy) {
   if (raw === null || raw === "") return null;
+  if (output === "houseBillNo") return normalizeHouseBillReference(raw);
   if (
     [
       "planNo",
@@ -23,7 +67,6 @@ function normalizePayloadField(output, raw, row) {
       "invoiceNo",
       "declarationNo",
       "masterBillNo",
-      "vesselName",
       "voyageNo",
     ].includes(output)
   )
@@ -35,14 +78,15 @@ function normalizePayloadField(output, raw, row) {
     return normalizeDecimal(raw);
   if (output.toLowerCase().includes("date") || output.endsWith("At"))
     return normalizeDate(raw, {
-      precision: text(row, "日期精度"),
-      timezone: text(row, "时区"),
+      precision: fieldPolicy?.normalization?.precision ?? text(row, "日期精度"),
+      timezone: fieldPolicy?.normalization?.timezone ?? text(row, "时区"),
+      formats: fieldPolicy?.normalization?.formats,
     });
   if (output.endsWith("Refs")) return normalizeList(raw);
   return raw;
 }
 
-export function normalizeDate(value, { precision, timezone } = {}) {
+export function normalizeDate(value, { precision, timezone, formats } = {}) {
   if (!value) return null;
   if (!precision || (precision !== "date" && precision !== "datetime"))
     throw new Error("DATE_PRECISION_REQUIRED");
@@ -53,6 +97,9 @@ export function normalizeDate(value, { precision, timezone } = {}) {
   const textValue = String(rawValue).trim();
   const dateText =
     precision === "date" && isExcelDate ? textValue.slice(0, 10) : textValue;
+  if (precision === "date" && formats?.length) {
+    return normalizeDateOnlyFormat(dateText, formats);
+  }
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(dateText);
   if (precision === "date") {
     if (!dateMatch) throw new Error("DATE_PRECISION_INVALID");
@@ -62,6 +109,38 @@ export function normalizeDate(value, { precision, timezone } = {}) {
   const parsed = parseExplicitTimezoneDateTime(textValue, timezone);
   if (Number.isNaN(parsed.valueOf())) throw new Error("DATE_INVALID");
   return parsed.toISOString();
+}
+
+function normalizeDateOnlyFormat(value, formats) {
+  for (const format of formats) {
+    if (format === "iso-date") {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
+      if (match) {
+        assertCalendarDate(match);
+        return value;
+      }
+    }
+    if (format === "m/d/yyyy") {
+      const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/u.exec(value);
+      if (match) {
+        const [, month, day, year] = match;
+        const iso = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        assertCalendarDate(["", year, iso.slice(5, 7), iso.slice(8, 10)]);
+        return iso;
+      }
+    }
+    if (format === "datetime-seconds") {
+      const match =
+        /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/u.exec(value);
+      if (match) {
+        const [, year, month, day, hour, minute, second] = match;
+        assertCalendarDate(["", year, month, day]);
+        if (Number(hour) <= 23 && Number(minute) <= 59 && Number(second) <= 59)
+          return `${year}-${month}-${day}`;
+      }
+    }
+  }
+  throw new Error("DATE_PRECISION_INVALID");
 }
 
 function assertCalendarDate(match) {
@@ -206,20 +285,31 @@ export function normalizeCode(value, { pattern = /^[^\s]+$/u } = {}) {
   return String(value).trim();
 }
 
-function classifyRow(row, mapping, indexes) {
+function classifyRow(row, mapping, indexes, policy) {
   const declaredClass = text(row, "证据等级") ?? text(row, "证据级别");
+  if (!declaredClass && policy?.policyVersion !== "full-chain-policy.v0.5")
+    return {
+      gap: {
+        code: "PROVENANCE_PENDING",
+        status: "blocking",
+        reason: "mapped value lacks field-level evidence policy",
+      },
+    };
   const identity = mapping.identity
     .map((field) => stableValue(text(row, field)))
     .join("|");
   let strongest = "R";
   let derivation = null;
   let scenario = null;
-  for (const field of Object.keys(mapping.payload)) {
+  for (const [output, input] of Object.entries(mapping.payload)) {
     const result = classifyMappedValue({
       indexes,
       sheet: mapping.sheet,
       identity,
-      field,
+      rowKey: row.rowKey,
+      field: input,
+      fieldPolicy: mapping.fieldPolicy?.[output],
+      rawValue: text(row, input),
       declaredClass,
       derivationRef: text(row, "推导依据ID") ?? text(row, "推导 ID"),
       sourceRef: `${mapping.sheet}#${row.workbookRow}`,
@@ -252,16 +342,13 @@ export function compilePilotRecords({
   const records = [];
   const lineage = [];
   const gaps = [];
-  for (
-    let index = 0;
-    index < (indexes.provenanceConflicts?.size ?? 0);
-    index += 1
-  )
-    gaps.push({
-      code: "PROVENANCE_CONFLICT",
-      status: "blocking",
-      reason: "duplicate provenance index",
-    });
+  for (const conflict of indexes.provenanceConflicts ?? [])
+    if (isPilotProvenanceConflict(conflict, indexes, policy))
+      gaps.push({
+        code: "PROVENANCE_CONFLICT",
+        status: "blocking",
+        reason: "duplicate provenance index",
+      });
   for (const mapping of policy.pilotMappings) {
     const sheet = scan.sheets.find(
       (candidate) => candidate.name === mapping.sheet,
@@ -278,8 +365,8 @@ export function compilePilotRecords({
       if (mapping.sheet === "11a_出口报关" && text(row, "层级") === "品名行") {
         gaps.push({
           code: "CUSTOMS_LINE_IDENTITY_UNSUPPORTED",
-          status: "blocking",
-          reason: "customs item rows have no stable declaration-line identity",
+          status: "informational",
+          reason: "customs item rows are evidence-only in Brief 1",
         });
         continue;
       }
@@ -291,7 +378,7 @@ export function compilePilotRecords({
       )
         continue;
       const identityParts = mapping.identity.map((field) =>
-        stableValue(text(row, field)),
+        normalizeIdentityValue(field, text(row, field)),
       );
       if (identityParts.some((part) => !part)) {
         gaps.push({
@@ -304,7 +391,7 @@ export function compilePilotRecords({
       const businessKey = identityParts.join("|");
       let evidence;
       try {
-        evidence = classifyRow(row, mapping, indexes);
+        evidence = classifyRow(row, mapping, indexes, policy);
       } catch (error) {
         gaps.push({
           code: error.message,
@@ -328,7 +415,12 @@ export function compilePilotRecords({
         const raw = text(row, input);
         sourceValues[output] = raw;
         try {
-          const normalized = normalizePayloadField(output, raw, row);
+          const normalized = normalizePayloadField(
+            output,
+            raw,
+            row,
+            mapping.fieldPolicy?.[output],
+          );
           if (normalized !== null) payload[output] = normalized;
         } catch (error) {
           normalizationError = error;
@@ -383,6 +475,7 @@ export function compilePilotRecords({
     gaps,
     checks,
     publishable:
-      gaps.length === 0 && checks.every((item) => item.status !== "fail"),
+      gaps.every((item) => item.status !== "blocking") &&
+      checks.every((item) => item.status !== "fail"),
   };
 }

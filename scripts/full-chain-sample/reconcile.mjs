@@ -91,8 +91,8 @@ export function runPackageChecks({ records, policy }) {
         ),
       );
   }
-  const numericCheck = (code, actual, expected, recordRefs) => {
-    if (actual === undefined || expected === undefined) return;
+  const numericCheck = (code, actual, expected, recordRefs, applicable) => {
+    if (!applicable || actual === undefined || expected === undefined) return;
     checks.push(
       check(
         code,
@@ -116,6 +116,7 @@ export function runPackageChecks({ records, policy }) {
       ),
       cargo.payload.quantity,
       [ref(cargo), ...lines.map(ref)],
+      lines.length > 0,
     );
     numericCheck(
       "CHECK_WEIGHT_RECONCILIATION",
@@ -125,6 +126,7 @@ export function runPackageChecks({ records, policy }) {
       ),
       cargo.payload.grossWeight,
       [ref(cargo), ...lines.map(ref)],
+      lines.length > 0,
     );
     numericCheck(
       "CHECK_VOLUME_RECONCILIATION",
@@ -134,6 +136,7 @@ export function runPackageChecks({ records, policy }) {
       ),
       cargo.payload.volume,
       [ref(cargo), ...lines.map(ref)],
+      lines.length > 0,
     );
   }
   for (const record of records) {

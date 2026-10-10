@@ -13,16 +13,22 @@ const policy = {
 };
 
 test("scanner returns a value-neutral sheet model", async () => {
-  const buffer = await createSyntheticWorkbook();
+  const buffer = await createSyntheticWorkbook({
+    sheets: [
+      {
+        name: "09_出运计划",
+        headers: ["说明", "生成器键一", "生成器键二"],
+        rows: [["计划", "ROW-A", "ROW-B"]],
+      },
+    ],
+  });
   const scan = await scanWorkbook({
     buffer,
     sourceManifest: manifestFor(buffer),
     policy,
   });
-  assert.equal(
-    scan.sheets[0].rows[0].valuesByHeader["出运计划编号"],
-    "PLAN-DEMO-001",
-  );
+  assert.equal(scan.sheets[0].rows[0].valuesByHeader["生成器键一"], "ROW-A");
+  assert.equal(scan.sheets[0].rows[0].rowKey, "ROW-A / ROW-B");
 });
 
 test("scanner rejects formulas", async () => {
@@ -92,7 +98,7 @@ test("archive preflight rejects forbidden parts and traversal", async () => {
   }
 });
 
-test("archive preflight rejects central-directory symlinks, case duplicates, encryption and protection", async () => {
+test("archive preflight rejects central-directory symlinks, case duplicates and encryption", async () => {
   const symlink = setCentralExternalAttributes(
     await mutateArchive(async () => undefined),
     0xa0000000,
@@ -107,10 +113,24 @@ test("archive preflight rejects central-directory symlinks, case duplicates, enc
     0x0001,
   );
   await assert.rejects(() => inspectXlsxArchive(encrypted), /XLSX_UNSAFE/);
-  const protectedZip = await mutateArchive(async (zip) =>
+  const emptyProtection = await mutateArchive(async (zip) =>
     zip.file("xl/workbook.xml", "<workbookProtection/>"),
   );
-  await assert.rejects(() => inspectXlsxArchive(protectedZip), /XLSX_UNSAFE/);
+  await assert.doesNotReject(() => inspectXlsxArchive(emptyProtection));
+});
+
+test("archive preflight rejects workbook protection with any attributes", async () => {
+  for (const protection of [
+    '<workbookProtection lockStructure="0"/>',
+    '<workbookProtection lockWindows="false"/>',
+    '<workbookProtection lockRevision="0"/>',
+    '<workbookProtection password="" hash="" salt="" spin="0"/>',
+  ]) {
+    const protectedZip = await mutateArchive(async (zip) =>
+      zip.file("xl/workbook.xml", protection),
+    );
+    await assert.rejects(() => inspectXlsxArchive(protectedZip), /XLSX_UNSAFE/);
+  }
 });
 
 test("archive preflight enforces each resource limit", async () => {

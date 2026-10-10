@@ -117,6 +117,324 @@ test("R is blocked when the policy does not approve the field", () => {
   indexes.approvedDirectSources = new Set();
   assert.equal(classifyMappedValue({ ...input(), indexes }).kind, "gap");
 });
+test("real provenance columns classify S and D without a row evidence grade", () => {
+  const scan = {
+    sheets: [
+      {
+        name: "25_推导依据",
+        rows: [
+          {
+            valuesByHeader: {
+              编号: "DERIVE-DEMO-001",
+              性质: "推导",
+              "支撑的样本表/字段": "09_出运计划/订舱号/SO",
+            },
+          },
+        ],
+      },
+      {
+        name: "26_样本构建清单",
+        rows: [
+          {
+            valuesByHeader: {
+              工作表: "09_出运计划",
+              行: "ROW-A / ROW-B",
+              字段: "柜号",
+              值: "CONT-DEMO-001",
+              构建依据: "constructed-chain",
+            },
+          },
+        ],
+      },
+      { name: "23_待确认", rows: [] },
+    ],
+  };
+  const indexes = buildProvenanceIndexes(scan, {
+    pilotMappings: [
+      {
+        sheet: "09_出运计划",
+        payload: { bookingNo: "订舱号/SO", containerRefs: "柜号" },
+        fieldPolicy: {
+          柜号: { directSource: true, constructionOverrideAllowed: true },
+          "订舱号/SO": {
+            directSource: false,
+            constructionOverrideAllowed: false,
+          },
+        },
+      },
+    ],
+  });
+  assert.equal(
+    classifyMappedValue({
+      indexes,
+      sheet: "09_出运计划",
+      identity: "PLAN-DEMO-001",
+      rowKey: "ROW-A / ROW-B",
+      field: "柜号",
+    }).evidenceClass,
+    "S",
+  );
+  assert.equal(
+    classifyMappedValue({
+      indexes,
+      sheet: "09_出运计划",
+      identity: "PLAN-DEMO-001",
+      rowKey: "OTHER/ROW",
+      field: "订舱号/SO",
+    }).evidenceClass,
+    "D",
+  );
+});
+test("single-column derivation support binds only exact mapped fields", () => {
+  const scan = {
+    sheets: [
+      {
+        name: "25_推导依据",
+        rows: [
+          {
+            valuesByHeader: {
+              编号: "DERIVE-EXACT",
+              性质: "推导",
+              "支撑的样本表/字段": "12_出运/航次",
+            },
+          },
+          {
+            valuesByHeader: {
+              编号: "DERIVE-VAGUE",
+              性质: "推导",
+              "支撑的样本表/字段": "说明：跨表参考",
+            },
+          },
+        ],
+      },
+      { name: "26_样本构建清单", rows: [] },
+      { name: "23_待确认", rows: [] },
+    ],
+  };
+  const indexes = buildProvenanceIndexes(scan, {
+    pilotMappings: [
+      {
+        recordType: "dispatch_fact",
+        sheet: "12_出运",
+        payload: { voyageNo: "航次", vesselName: "船名" },
+        fieldPolicy: {},
+      },
+    ],
+  });
+  assert.deepEqual(
+    [...indexes.derivationBindings.get("12_出运|航次")],
+    ["DERIVE-EXACT"],
+  );
+  assert.equal(indexes.derivationBindings.has("说明：跨表参考"), false);
+  assert.equal(
+    classifyMappedValue({
+      indexes,
+      sheet: "12_出运",
+      identity: "CONT-FIXTURE",
+      field: "航次",
+      sourceRef: "12_出运#7",
+    }).evidenceClass,
+    "D",
+  );
+});
+test("construction evidence matches raw value and folds exact duplicates", () => {
+  const makeScan = (rows) => ({
+    sheets: [
+      { name: "25_推导依据", rows: [] },
+      { name: "23_待确认", rows: [] },
+      { name: "26_样本构建清单", rows },
+    ],
+  });
+  const policy = {
+    pilotMappings: [
+      {
+        sheet: "11_装箱",
+        payload: { houseBillNo: "分提单" },
+        fieldPolicy: {
+          houseBillNo: {
+            directSource: true,
+            constructionOverrideAllowed: true,
+          },
+        },
+      },
+    ],
+  };
+  const duplicateRow = {
+    valuesByHeader: {
+      工作表: "11_装箱",
+      行: "CONT-A / 1",
+      字段: "分提单",
+      值: "HBL-A",
+      构建依据: "fixture",
+    },
+  };
+  const folded = buildProvenanceIndexes(
+    makeScan([duplicateRow, structuredClone(duplicateRow)]),
+    policy,
+  );
+  assert.equal(folded.provenanceConflicts.size, 0);
+  assert.equal(
+    classifyMappedValue({
+      indexes: folded,
+      sheet: "11_装箱",
+      rowKey: "CONT-A / 1",
+      identity: "CONT-A",
+      field: "分提单",
+      rawValue: "HBL-A",
+      sourceRef: "11_装箱#7",
+      fieldPolicy: policy.pilotMappings[0].fieldPolicy.houseBillNo,
+    }).evidenceClass,
+    "S",
+  );
+  const distinctCandidates = buildProvenanceIndexes(
+    makeScan([
+      duplicateRow,
+      {
+        ...duplicateRow,
+        valuesByHeader: { ...duplicateRow.valuesByHeader, 值: "HBL-B" },
+      },
+    ]),
+    policy,
+  );
+  assert.equal(distinctCandidates.provenanceConflicts.size, 0);
+  assert.equal(
+    classifyMappedValue({
+      indexes: distinctCandidates,
+      sheet: "11_装箱",
+      rowKey: "CONT-A / 1",
+      identity: "CONT-A",
+      field: "分提单",
+      rawValue: "HBL-A",
+      sourceRef: "11_装箱#7",
+      fieldPolicy: policy.pilotMappings[0].fieldPolicy.houseBillNo,
+    }).evidenceClass,
+    "S",
+  );
+});
+
+test("construction evidence keeps different raw values as distinct candidates", () => {
+  const policy = {
+    pilotMappings: [
+      {
+        sheet: "11_装箱",
+        payload: { houseBillNo: "分提单" },
+        fieldPolicy: {
+          houseBillNo: {
+            directSource: true,
+            constructionOverrideAllowed: true,
+          },
+        },
+      },
+    ],
+  };
+  const indexes = buildProvenanceIndexes(
+    {
+      sheets: [
+        {
+          name: "26_样本构建清单",
+          rows: [
+            {
+              valuesByHeader: {
+                工作表: "11_装箱",
+                行: "CONT-A / 1",
+                字段: "分提单",
+                值: "HBL-A",
+                构建依据: "sku-a",
+              },
+            },
+            {
+              valuesByHeader: {
+                工作表: "11_装箱",
+                行: "CONT-A / 1",
+                字段: "分提单",
+                值: "HBL-B",
+                构建依据: "sku-b",
+              },
+            },
+          ],
+        },
+        { name: "25_推导依据", rows: [] },
+        { name: "23_待确认", rows: [] },
+      ],
+    },
+    policy,
+  );
+  assert.equal(indexes.provenanceConflicts.size, 0);
+  const classify = (rawValue) =>
+    classifyMappedValue({
+      indexes,
+      sheet: "11_装箱",
+      rowKey: "CONT-A / 1",
+      field: "分提单",
+      rawValue,
+      sourceRef: "11_装箱#7",
+      fieldPolicy: policy.pilotMappings[0].fieldPolicy.houseBillNo,
+    });
+  assert.equal(classify("HBL-A").evidenceClass, "S");
+  assert.equal(classify("HBL-B").evidenceClass, "S");
+});
+
+test("construction evidence conflicts when the selected raw value has different bases", () => {
+  const policy = {
+    pilotMappings: [
+      {
+        sheet: "11_装箱",
+        payload: { houseBillNo: "分提单" },
+        fieldPolicy: {
+          houseBillNo: {
+            directSource: true,
+            constructionOverrideAllowed: true,
+          },
+        },
+      },
+    ],
+  };
+  const indexes = buildProvenanceIndexes(
+    {
+      sheets: [
+        {
+          name: "26_样本构建清单",
+          rows: [
+            {
+              valuesByHeader: {
+                工作表: "11_装箱",
+                行: "CONT-A / 1",
+                字段: "分提单",
+                值: "HBL-A",
+                构建依据: "sku-a",
+              },
+            },
+            {
+              valuesByHeader: {
+                工作表: "11_装箱",
+                行: "CONT-A / 1",
+                字段: "分提单",
+                值: "HBL-A",
+                构建依据: "sku-b",
+              },
+            },
+          ],
+        },
+        { name: "25_推导依据", rows: [] },
+        { name: "23_待确认", rows: [] },
+      ],
+    },
+    policy,
+  );
+  assert.equal(indexes.provenanceConflicts.size, 1);
+  assert.equal(
+    classifyMappedValue({
+      indexes,
+      sheet: "11_装箱",
+      rowKey: "CONT-A / 1",
+      field: "分提单",
+      rawValue: "HBL-A",
+      sourceRef: "11_装箱#7",
+      fieldPolicy: policy.pilotMappings[0].fieldPolicy.houseBillNo,
+    }).code,
+    "PROVENANCE_CONFLICT",
+  );
+});
 
 test("v0.5 policy is exactly 33 sheets and rejects unauthorized rules", () => {
   const policy = loadCompilerPolicy(
@@ -124,6 +442,14 @@ test("v0.5 policy is exactly 33 sheets and rejects unauthorized rules", () => {
   );
   assert.equal(policy.sheets.length, 33);
   assert.equal(new Set(policy.sheets.map((sheet) => sheet.name)).size, 33);
+  const dispatch = policy.pilotMappings.find(
+    (mapping) => mapping.recordType === "dispatch_fact",
+  );
+  assert.deepEqual(dispatch.fieldPolicy.gateInDate.normalization, {
+    precision: "date",
+    timezone: "+08:00",
+    formats: ["iso-date", "m/d/yyyy", "datetime-seconds"],
+  });
   assert.throws(
     () =>
       validatePolicy({

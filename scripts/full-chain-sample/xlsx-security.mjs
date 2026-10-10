@@ -144,7 +144,12 @@ export async function inspectXlsxArchive(buffer, limits = XLSX_LIMITS) {
   const workbook = zip.file("xl/workbook.xml");
   if (!workbook) unsafe("missing workbook");
   const workbookXml = await workbook.async("string");
-  if (/<fileSharing|workbookProtection|encryptedPackage/iu.test(workbookXml))
+  const protectionTags =
+    workbookXml.match(/<workbookProtection\b[^>]*>/giu) ?? [];
+  if (
+    /<fileSharing|encryptedPackage/iu.test(workbookXml) ||
+    protectionTags.some((tag) => !/<workbookProtection\b\s*\/>/iu.test(tag))
+  )
     unsafe("encrypted workbook");
   return {
     entryCount: names.size,
@@ -165,6 +170,16 @@ function normalizeText(value, limits = XLSX_LIMITS) {
   return text.length > limits.cellTextLength
     ? unsafe("cell text length")
     : text;
+}
+
+function generatorRowKey(row, limits = XLSX_LIMITS) {
+  const parts = [2, 3].map((columnNumber) => {
+    const value = normalizeText(row.getCell(columnNumber).value, limits);
+    return value && typeof value === "object" && "rawText" in value
+      ? value.rawText.trim()
+      : String(value ?? "").trim();
+  });
+  return parts.some(Boolean) ? parts.join(" / ") : null;
 }
 
 export async function scanWorkbook(
@@ -220,7 +235,11 @@ export async function scanWorkbook(
       )
         unsafe("cell text length");
       if (Object.keys(valuesByHeader).length)
-        rows.push({ workbookRow: rowNumber, valuesByHeader });
+        rows.push({
+          workbookRow: rowNumber,
+          rowKey: generatorRowKey(row, limits),
+          valuesByHeader,
+        });
     });
     sheets.push({
       name: sheet.name,
