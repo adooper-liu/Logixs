@@ -312,6 +312,19 @@ scripts/full-chain-sample/test-support.mjs
 
 每项先 RED 后 GREEN。最终运行相关单测、`pnpm test:full-chain-sample`、lint、scoped format、repo check、diff check，交回 HANDOFF，不提交、不执行备份/删除/写库/UI。主代理随后再次运行 FC1f。
 
+### FC1R6F1：真实 v0.5 反证修复
+
+FC1R6 focused 48/48 不能关闭真实结构验收。主代理在未提交 diff 上重跑真实 v0.5，得到 9 records、68 gaps、21 checks，仍有 25 `BUSINESS_KEY_MISSING`、29 `PROVENANCE_CONFLICT`、2 `DATE_PRECISION_REQUIRED`、1 `CODE_INVALID` blocking gaps。必须修复以下偏差：
+
+1. `generatorRowKey()` 必须与生成器 `row_key()` 完全一致：数据列 2 和 3以 `" / "` 连接。测试 fixture 也必须使用该格式；不得用 `A/B` 自证。
+2. 25 表只有单列 `支撑的样本表/字段`，不得读取不存在的 `支撑的样本表` 和 `字段`。只有能从该单列唯一解析到 `Sheet + exact mapped field` 的批准“推导”才绑定 D；“说明”、跨表模糊文本或零/多字段命中不得绑定。
+3. 恢复 plan 规定的六类业务主键，不得用 cross-reference 代替：shipment=`出运计划编号`、booking=`订舱编号`、cargo-ready=`备货单号`、stuffing=`柜号+备货单号+SKU+分提单`、customs=`报关发票号`、dispatch=`柜号`。cross-reference 只进入 payload。
+4. policy payload 只使用真实表头，但不得删除计划所需业务身份：shipment 使用 `合并备货单` 作为 cargo-ready refs、`订舱号/SO` 作为 booking ref；booking 使用 `主备货单号`、`MBL`、`HBL/AMS`；cargo-ready 使用 `主备货单号` 和 `数量合计`；stuffing 使用 `备货单号/SKU/分提单/装载数量/毛重kg/体积m³`；customs 使用 `报关发票号/分提单/报关单号/报关金额/币种`。
+5. normalization 不得对一般文本字段套 `normalizeCode()`：船名允许空格和非 ASCII；code 规则只用于稳定编号字段。日期 precision/timezone 必须由 policy 字段级配置或已映射字段明确提供；真实 v0.5 的 `日期精度` 文本如不符合已批准枚举，产生清晰 gap，不得猜机器时区。
+6. 真实 v0.5 再跑必须至少满足：六类 record type 均有记录；不存在 `BUSINESS_KEY_MISSING`、因索引错误造成的 `PROVENANCE_CONFLICT` 或错误 `CODE_INVALID`；informational 品名行不阻断。其他真实 P/日期缺口可使 exit 2，但必须是来源事实而非 mapping 缺陷。
+
+保持 FC1R6 原写入范围。新增真实结构回归必须使用脱敏结构 fixture，不复制真实业务值。最终交回除 focused tests 外，必须报告一轮真实 v0.5 的脱敏摘要（exit、六类 record counts、gap/check code counts），不得回显路径、hash 或业务值。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -354,3 +367,4 @@ scripts/full-chain-sample/test-support.mjs
 | 2026-10-10 | review  | Claude Code | `f7e630ba`              | FC1f 真实 v0.5 输入因 `workbookProtection` 按安全契约 exit 3 失败关闭且未创建输出；PostgreSQL demo 行、MinIO bucket/object、Temporal schedule/workflow 前后差值均为 0。需提供同版本未保护受控导出后重跑才能标 done |
 | 2026-10-10 | fix     | Claude Code | `17e2b58b`              | 进一步核对 v0.1～v0.5 与生成脚本后确认均为 openpyxl 生成的无属性空 `<workbookProtection/>`，无实际锁定效果；当前存在性判断误拒绝，授权 FC1R5 精确兼容修复                                                          |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R5 后真实 v0.5 两次 exit 2、hash 一致、三域差值 0；诊断包 33 Sheet/0 records/48 gaps/9 checks。确认真实表头、26 row-key、分级与 policy mapping 不一致，授权 FC1R6 结构适配                                      |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6 focused 48/48 但真实 probe 仅 9 records、68 gaps，仍有 25 主键缺失、29 provenance 冲突、2 日期精度和 1 code 阻断；fixture 未复现真实 row-key/25 表结构且 policy 改错业务键，进入 FC1R6F1                     |
