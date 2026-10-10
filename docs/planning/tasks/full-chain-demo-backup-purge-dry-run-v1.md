@@ -1,7 +1,7 @@
 ---
-status: coding
+status: fix
 branch: feat/full-chain-demo-backup-purge-dry-run
-verification: "Brief 1 merged via PR #164 at be56f2e9; Brief 2 design and implementation plan approved; implementation pending"
+verification: "B2a-B2g initial handoff passed focused tests but main-agent verification found skipped placeholder integrations and missing real adapters/indirect ownership/dry-run/backup flows; B2R1 authorized below"
 owner: main
 writer: codex
 risk: high
@@ -102,6 +102,45 @@ authorityRefs:
 TASK docs/planning/tasks/full-chain-demo-backup-purge-dry-run-v1.md#B2a-B2g base=<brief-commit-sha> role=implementer workspace=D:\Logixs
 ```
 
+## B2R1：从架构壳补齐到可执行隔离工具
+
+主代理验收确认当前交回不能视为 B2a～B2g 完成。Docker engine 29.7.2 与 PostgreSQL/MinIO/Temporal 服务均健康；“Docker 不可访问”与现场不符。以下 finding 均属当前 brief 必须关闭的安全/数据完整性缺口：
+
+1. `B2-BLOCK-001`：4 个 integration 文件全部是 `describe.skip + expect(true)`；必须替换为真实临时数据库、隔离 MinIO prefix 与 injected/本地 Temporal inventory 测试，不得保留永久 skip 或空断言。
+2. `B2-BLOCK-002`：`collectPostgresInventory()` 对全部 13 个间接 model 一律返回 `OWNERSHIP_RESOLVER_REQUIRED`；按 spec §5.3 实现每条父链/逻辑 resolver，并覆盖 missing/ambiguous/cross-tenant blocker。
+3. `B2-BLOCK-003`：catalog 113 models 虽数量齐全，但 104 个候选规则只有一个重复 `deleteRank=100`，而 `buildDeletePlan()` 会拒绝重复 rank。delete order 必须按 FK/逻辑依赖形成 child-first DAG；同 rank 若允许并列则 plan 算法必须按稳定 table/model 次序处理，不能自相矛盾。测试必须覆盖实际 catalog 可生成 plan。
+4. `B2-BLOCK-004`：manifest CLI 使用 `query: async () => ({ rows: [] })` 假客户端，只生成空 PostgreSQL，完全未采集 MinIO/Temporal。改为真实本地 Prisma/PostgreSQL、S3、Temporal read-only adapters，且 `--execute` 必须在创建客户端前拒绝。
+5. `B2-BLOCK-005`：purge dry-run CLI 只校验 manifest 字符串后打印全 0，未重采三域、未 compare stale、未调用 `rehearseDeletePlan()`。必须接真实 read-only inventory、重算 manifest、比较 hash/差异，并在 PostgreSQL serializable transaction 中执行 child-first DELETE RETURNING 后强制 rollback；MinIO/Temporal 不修改。
+6. `B2-BLOCK-006`：backup/restore CLI 恒抛 `*_REQUIRES_LOCAL_ISOLATED_RUNNER`，不是工具实现。必须实际调用 `createBackupArtifacts()` / `rehearseRestore()`，并只允许本次创建的隔离目标；真实 demo backup 仍不运行，但 integration 必须在临时 DB 与隔离对象前缀完成。
+7. `B2-BLOCK-007`：`createBackupArtifacts()` 只包装 injected callbacks，未验证 MinIO copy/checksum、Temporal inventory、source before/after fingerprint，也没有 incomplete/verified receipt 状态机；按 plan Task 7 补齐失败注入和源环境不变反证。
+8. `B2-BLOCK-008`：Seed verifier 在 Windows 直接调用出现 `spawn EINVAL`，脚本入口检测也未可靠执行。改为通过 `process.execPath + process.env.npm_execpath` 调 pnpm，并修正语义：参考 seed 第一次应改变全局参考快照但 tenant-owned delta=0；第二次才要求稳定。legacy seed 两次幂等且其他租户 delta=0。
+9. `B2-BLOCK-009`：manifest/contracts 测试仅验证 `deletable=false` 和一个 order hash；补齐 counts/hashes/tamper/stale/privacy、atomic write failure、existing output、blocker set、schema/migration/catalog fingerprint 变化。
+10. `B2-BLOCK-010`：MinIO/Temporal unit 仅各 1 个场景；补齐 missing/orphan/duplicate/checksum、target/other/global/ambiguous、global schedule 与禁止 mutation 方法。
+11. `B2-BLOCK-011`：当前无 `generate-manifest.cli.test.ts`，purge CLI 测试只 grep 错误字符串；必须以子进程或导出 `run()` 的行为测试证明参数校验在 client factory 前发生，stderr/stdout 脱敏，exit code 稳定。
+12. `B2-BLOCK-012`：runbook 只有 21 行概述，缺少 plan 要求的 prerequisites、manifest、backup、isolated restore、dry-run、证据、禁止项和未来授权 gate；补齐但不得放凭据、路径、key、ID。
+
+### B2R1 写入和验证边界
+
+沿用 frontmatter `writeScopes`，不得修改 Schema、迁移、生产模块、API route、Web 或 UI；不得提交外部 manifest/backup/dump。允许本地 Docker 中创建并清理本次测试拥有的临时数据库与隔离 MinIO prefix；Temporal 只 list/describe/inventory，不 pause/unpause/cancel/terminate。
+
+按 finding 分组 RED→GREEN。最终至少运行：
+
+```text
+node --test scripts/full-chain-demo/*.test.mjs
+pnpm --filter @logix/api test -- src/tools/full-chain-demo
+pnpm --filter @logix/api test:integration -- src/tools/full-chain-demo
+pnpm exec tsx scripts/full-chain-demo/verify-seed-boundaries.mts
+pnpm test:full-chain-demo
+pnpm lint
+pnpm typecheck
+pnpm docs:check
+pnpm repo:check
+pnpm exec prettier --check <Brief 2 scopes> --ignore-unknown
+git diff --check
+```
+
+交回必须列出 integration 实际文件/用例/计数，不得使用 skip 或“Docker 不可用”替代；不得创建提交。
+
 ## 验收
 
 - [ ] `db:seed` 仅参考数据，重复执行幂等且 tenant-owned 表不变
@@ -135,6 +174,7 @@ Brief 2 代码 `done` 不代表真实 demo 已备份或可删除。以下外部�
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                                           |
-| ---------- | ------ | ----------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-11 | design | Claude Code | —      | 负责人批准 Brief 2 纯运维脚本方案：Seed 分轨、完整 ownership catalog、三域 manifest、rollback-only dry-run 与隔离恢复演练；无 execute 删除入口 |
+| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                                                                                                       |
+| ---------- | ------ | ----------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-11 | design | Claude Code | —      | 负责人批准 Brief 2 纯运维脚本方案：Seed 分轨、完整 ownership catalog、三域 manifest、rollback-only dry-run 与隔离恢复演练；无 execute 删除入口                                                             |
+| 2026-10-11 | fix    | Claude Code | —      | B2a～B2g 初交回 focused tests 通过，但 Docker 现场健康且 integration 全为 skip 占位；间接归属、真实三域 adapters、rollback dry-run、backup/restore CLI 和隔离演练未实现，接受 B2-BLOCK-001～012，进入 B2R1 |
