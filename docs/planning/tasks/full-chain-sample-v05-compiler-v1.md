@@ -1,9 +1,9 @@
 ---
-status: fix
+status: review
 branch: fix/full-chain-sample-empty-protection
-verification: "FC1R5 verified: XLSX 10/10 and focused 44/44; real v0.5 compiles deterministically to exit 2 diagnostic package with 33 sheets, 0 records, 48 gaps, 9 checks; all external-system deltas zero; FC1R6 authorized below"
+verification: "FC1R6 final checkpoint pending: focused 58/58; real v0.5 compiles twice with matching hash to 37 records across six types, 11 informational gaps, 74 checks; publishable=false from one real HBL-scope failure and one real duplicate-key failure; PostgreSQL/MinIO/Temporal deltas all zero; fresh final review pending"
 owner: main
-writer: codex
+writer: main
 risk: high
 dependsOn: []
 writeScopes:
@@ -393,21 +393,22 @@ FC1R6F3 focused 56/56 后，真实 v0.5 六类共 27 records；provenance/date f
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                                                                                               |
-| ---------- | ------- | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                                                                                                   |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                                                                                                 |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                                                                                                         |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                                                                                                           |
-| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复                                                                                                                       |
-| 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库                                                                               |
-| 2026-10-10 | review  | Claude Code | `cd1c7bb9`              | FC1R3 五项风险已按行为测试关闭并形成 checkpoint；过期 review 槽已由 PR #162 收口，当前只做 fresh 整体复审，所有后续处置与 FC1f 继续留在同一最终实现 PR                                                             |
-| 2026-10-10 | fix     | Claude Code | —                       | fresh Codex 最终复审 3 项 high finding 均已独立复现并接受：publishable 可篡改、十进制定点失真、重复 provenance 随行序变化；授权 FC1R4 同分支修复                                                                   |
-| 2026-10-10 | coding  | Claude Code | —                       | FC1R4 三条原始反证均转为 GREEN，focused 43/43、lint、repo check、scoped format、diff check 通过；进入 FC1f 只读真实输入诊断和三域零写入验证                                                                        |
-| 2026-10-10 | review  | Claude Code | `f7e630ba`              | FC1f 真实 v0.5 输入因 `workbookProtection` 按安全契约 exit 3 失败关闭且未创建输出；PostgreSQL demo 行、MinIO bucket/object、Temporal schedule/workflow 前后差值均为 0。需提供同版本未保护受控导出后重跑才能标 done |
-| 2026-10-10 | fix     | Claude Code | `17e2b58b`              | 进一步核对 v0.1～v0.5 与生成脚本后确认均为 openpyxl 生成的无属性空 `<workbookProtection/>`，无实际锁定效果；当前存在性判断误拒绝，授权 FC1R5 精确兼容修复                                                          |
-| 2026-10-10 | fix     | Claude Code | —                       | FC1R5 后真实 v0.5 两次 exit 2、hash 一致、三域差值 0；诊断包 33 Sheet/0 records/48 gaps/9 checks。确认真实表头、26 row-key、分级与 policy mapping 不一致，授权 FC1R6 结构适配                                      |
-| 2026-10-10 | fix     | Claude Code | —                       | FC1R6 focused 48/48 但真实 probe 仅 9 records、68 gaps，仍有 25 主键缺失、29 provenance 冲突、2 日期精度和 1 code 阻断；fixture 未复现真实 row-key/25 表结构且 policy 改错业务键，进入 FC1R6F1                     |
-| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F1 focused 50/50，真实 probe 产 5/6 类共 24 records；剩余阻断来自 unsupported provenance 全局化、stuffing row-key 碰撞、customs S override、dispatch 日期参数及无子行数量对账误判，进入 FC1R6F2               |
-| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F2 focused 53/53，真实 probe 六类共 26 records；剩余 12 provenance 与 1 日期为适配误判，1 HBL scope 为真实来源缺口应保留。进入 FC1R6F3，不以强行 publishable=true 为目标                                      |
-| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F3 focused 56/56，真实 probe 六类共 27 records；provenance/date 误判清零，仅 10 个 stuffing 分提单因内部空格误触 code 校验。HBL scope 真实 failed check 保留，进入 FC1R6F4 单点修复                           |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                                                                                                  |
+| ---------- | ------- | ----------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                                                                                                      |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                                                                                                    |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                                                                                                            |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                                                                                                              |
+| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复                                                                                                                          |
+| 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库                                                                                  |
+| 2026-10-10 | review  | Claude Code | `cd1c7bb9`              | FC1R3 五项风险已按行为测试关闭并形成 checkpoint；过期 review 槽已由 PR #162 收口，当前只做 fresh 整体复审，所有后续处置与 FC1f 继续留在同一最终实现 PR                                                                |
+| 2026-10-10 | fix     | Claude Code | —                       | fresh Codex 最终复审 3 项 high finding 均已独立复现并接受：publishable 可篡改、十进制定点失真、重复 provenance 随行序变化；授权 FC1R4 同分支修复                                                                      |
+| 2026-10-10 | coding  | Claude Code | —                       | FC1R4 三条原始反证均转为 GREEN，focused 43/43、lint、repo check、scoped format、diff check 通过；进入 FC1f 只读真实输入诊断和三域零写入验证                                                                           |
+| 2026-10-10 | review  | Claude Code | `f7e630ba`              | FC1f 真实 v0.5 输入因 `workbookProtection` 按安全契约 exit 3 失败关闭且未创建输出；PostgreSQL demo 行、MinIO bucket/object、Temporal schedule/workflow 前后差值均为 0。需提供同版本未保护受控导出后重跑才能标 done    |
+| 2026-10-10 | fix     | Claude Code | `17e2b58b`              | 进一步核对 v0.1～v0.5 与生成脚本后确认均为 openpyxl 生成的无属性空 `<workbookProtection/>`，无实际锁定效果；当前存在性判断误拒绝，授权 FC1R5 精确兼容修复                                                             |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R5 后真实 v0.5 两次 exit 2、hash 一致、三域差值 0；诊断包 33 Sheet/0 records/48 gaps/9 checks。确认真实表头、26 row-key、分级与 policy mapping 不一致，授权 FC1R6 结构适配                                         |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6 focused 48/48 但真实 probe 仅 9 records、68 gaps，仍有 25 主键缺失、29 provenance 冲突、2 日期精度和 1 code 阻断；fixture 未复现真实 row-key/25 表结构且 policy 改错业务键，进入 FC1R6F1                        |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F1 focused 50/50，真实 probe 产 5/6 类共 24 records；剩余阻断来自 unsupported provenance 全局化、stuffing row-key 碰撞、customs S override、dispatch 日期参数及无子行数量对账误判，进入 FC1R6F2                  |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F2 focused 53/53，真实 probe 六类共 26 records；剩余 12 provenance 与 1 日期为适配误判，1 HBL scope 为真实来源缺口应保留。进入 FC1R6F3，不以强行 publishable=true 为目标                                         |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F3 focused 56/56，真实 probe 六类共 27 records；provenance/date 误判清零，仅 10 个 stuffing 分提单因内部空格误触 code 校验。HBL scope 真实 failed check 保留，进入 FC1R6F4 单点修复                              |
+| 2026-10-10 | review  | Claude Code | —                       | FC1R6 最终真实验收：六类 37 records、11 informational gaps、74 checks；两次 exit 2 且 package hash/计数一致，三域差值 0。publishable=false 仅来自 1 个真实 HBL scope 与 1 个真实 stuffing 重复键，进入 fresh 最终复审 |

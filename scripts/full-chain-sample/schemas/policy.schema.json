@@ -62,7 +62,23 @@
               "required": ["directSource", "constructionOverrideAllowed"],
               "properties": {
                 "directSource": { "type": "boolean" },
-                "constructionOverrideAllowed": { "type": "boolean" }
+                "constructionOverrideAllowed": { "type": "boolean" },
+                "normalization": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "precision": { "enum": ["date", "datetime"] },
+                    "timezone": { "type": "string", "minLength": 1 },
+                    "formats": {
+                      "type": "array",
+                      "items": {
+                        "enum": ["iso-date", "m/d/yyyy", "datetime-seconds"]
+                      },
+                      "minItems": 1,
+                      "uniqueItems": true
+                    }
+                  }
+                }
               }
             }
           }

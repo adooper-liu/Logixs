@@ -172,6 +172,16 @@ function normalizeText(value, limits = XLSX_LIMITS) {
     : text;
 }
 
+function generatorRowKey(row, limits = XLSX_LIMITS) {
+  const parts = [2, 3].map((columnNumber) => {
+    const value = normalizeText(row.getCell(columnNumber).value, limits);
+    return value && typeof value === "object" && "rawText" in value
+      ? value.rawText.trim()
+      : String(value ?? "").trim();
+  });
+  return parts.some(Boolean) ? parts.join(" / ") : null;
+}
+
 export async function scanWorkbook(
   { buffer, sourceManifest, policy },
   limits = XLSX_LIMITS,
@@ -225,7 +235,11 @@ export async function scanWorkbook(
       )
         unsafe("cell text length");
       if (Object.keys(valuesByHeader).length)
-        rows.push({ workbookRow: rowNumber, valuesByHeader });
+        rows.push({
+          workbookRow: rowNumber,
+          rowKey: generatorRowKey(row, limits),
+          valuesByHeader,
+        });
     });
     sheets.push({
       name: sheet.name,

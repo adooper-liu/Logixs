@@ -13,16 +13,22 @@ const policy = {
 };
 
 test("scanner returns a value-neutral sheet model", async () => {
-  const buffer = await createSyntheticWorkbook();
+  const buffer = await createSyntheticWorkbook({
+    sheets: [
+      {
+        name: "09_出运计划",
+        headers: ["说明", "生成器键一", "生成器键二"],
+        rows: [["计划", "ROW-A", "ROW-B"]],
+      },
+    ],
+  });
   const scan = await scanWorkbook({
     buffer,
     sourceManifest: manifestFor(buffer),
     policy,
   });
-  assert.equal(
-    scan.sheets[0].rows[0].valuesByHeader["出运计划编号"],
-    "PLAN-DEMO-001",
-  );
+  assert.equal(scan.sheets[0].rows[0].valuesByHeader["生成器键一"], "ROW-A");
+  assert.equal(scan.sheets[0].rows[0].rowKey, "ROW-A / ROW-B");
 });
 
 test("scanner rejects formulas", async () => {
