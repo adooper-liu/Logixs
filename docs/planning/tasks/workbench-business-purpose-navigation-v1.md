@@ -17,6 +17,7 @@ writeScopes:
   - apps/web/e2e/shell-layout.spec.ts
   - apps/web/e2e/workbench-purpose-navigation.spec.ts
   - apps/web/e2e/workbench-network.spec.ts
+  - apps/web/src/views/ProductSelectionWorkbench.vue
 exclusiveLocks:
   - business-policy:workbench-business-purpose-presentation
   - ui-navigation:workbench-entry-layer
@@ -1018,6 +1019,10 @@ S2 主实现通过定向测试后，主代理按真实截图和代码核对形�
 6. **S2-BLOCK-006 相关 E2E 仍锁定旧标题**：S2 正式标题从权威投影收敛后，`cargo-ready`、`stuffing`、`customs`、`pickup`、`delivery`、`unloading` 和 `workbench-network` 相关 E2E 仍期待带“工作台”后缀的旧 H1，导致完整相关桌面套件失败。仅把这些页面身份断言改为 generated 正式 title 或准确新标题；不得全局替换侧栏 `navLabel`、内部局部标题或 S3 才处理的 shell 导航文案。修改后必须重跑完整相关桌面 E2E 列表并保持业务动作断言通过。
 
 修复边界：不改 API、领域状态、权限、NPI 发布门、工作台业务动作或 S3 侧栏入口；不重排固定办理壳。完成后重跑 S2 全部单测、三项目 E2E、负责人指定的三个 E2E 文件单 worker、完整相关桌面 E2E、typecheck/lint/build/repo/format，并重新提交三视口证据供主代理人工复核。
+
+### S3F1 集成回归修复
+
+S3 自身导航与 Shell 门禁通过后，全项目 `workbench-network.spec.ts` 在 narrow/mobile 暴露 S2 结果态密度回归：统一页头接线时移除了 `ProductSelectionWorkbench` 传给旧 `PageHeader` 的 `page-header--result` class，导致既有 `@media` 压缩规则失效；“保守贡献”分别超出首屏 5.08px / 14.41px。修复只允许在统一页头调用恢复该状态 class，复用现有响应式规则；不得隐藏核心业务目的、删除事实、放宽首屏断言或改变选品业务行为。修复后重跑 `workbench-network.spec.ts` 全三项目、S2 指定串行套件、S3 Shell/目的套件和全部 Web 门禁。
 
 ## 业务步骤五面映射
 
