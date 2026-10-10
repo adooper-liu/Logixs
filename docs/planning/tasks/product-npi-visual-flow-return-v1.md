@@ -1,7 +1,7 @@
 ---
-status: coding
+status: blocked
 branch: feat/product-npi-non-mp-release-hard-stop
-verification: "E1 merged via PR #150 at 6b034955; A1 pending"
+verification: "E1 merged via PR #150 at 6b034955; A1 merged via PR #151 at aaec6c4e; remaining NPI design blocked on SAMP1 and formal policy alignment"
 owner: main
 writer: codex
 risk: high
@@ -341,3 +341,4 @@ uiViewportEvidence:
 | 2026-10-10 | review  | Codex       | —          | fresh GPT-5.6 scoped review：`verdict: pass`、`findings: []`、`writes: none`；记录 release mock 未模拟非 MP API 拒绝和当轮未生成新三视口截图两项验证缺口。                                                                       |
 | 2026-10-10 | review  | Claude Code | —          | A1 验收：可控 5173/5174 测试服务器下 NPI Playwright 三视口 9/9；补充 DVT 发布隐藏、暂缓/终止、退回选品和 MP 发布动作的定向截图并人工核对，无页面级或内容区横向溢出。                                                             |
 | 2026-10-10 | review  | Claude Code | —          | A1 最终门禁：完整 `validate` 仅因 `apps/ai-service/.pytest_cache` 的既知 EPERM 在全仓 `format:check` 中断；A1 定向格式通过，API/Web 单测 1478/701、PostgreSQL 集成 195、E2E 175 通过（7 跳过），全仓 typecheck/lint/build 通过。 |
+| 2026-10-10 | blocked | Claude Code | `aaec6c4e` | A1 经 PR #151 合入 `main`，CI `changes/static/unit/build/e2e/quality` 成功；整份 NPI brief 不标 done，后续新设计等待 SAMP1 两个真实/脱敏对照样本和 F1 正式政策对齐。                                                             |

@@ -1,26 +1,59 @@
 ---
 status: coding
 branch: worktree-workbench-purpose-navigation
-verification: "S1 completed at 0daf6087; generator/repository 75/75, web full suite 148 files/700 tests; S2 pending main sync"
+verification: "S1 completed at 0daf6087; synced origin/main at 587bbacf; NPI A1 regression API 36/36, Web unit 61/61, desktop E2E 3/3; S2 pending"
 owner: main
 writer: codex
 risk: medium
 dependsOn: []
 writeScopes:
   - docs/planning/tasks/workbench-business-purpose-navigation-v1.md
-  - docs/product/UI_SYSTEM.md
-  - package.json
-  - scripts/generate-workbench-purposes.mjs
-  - scripts/generate-workbench-purposes.test.mjs
-  - scripts/check-repository.mjs
-  - scripts/check-repository.test.mjs
-  - apps/web/src/data/workbenchPurposes.generated.ts
-  - apps/web/src/data/workbenchNetwork.ts
-  - apps/web/src/data/workbenchNetwork.test.ts
-  - apps/web/src/views/WorkbenchNetworkView.vue
-  - apps/web/src/views/WorkbenchNetworkView.test.ts
+  - apps/web/src/components/workbench/WorkbenchPageHeader.vue
+  - apps/web/src/components/workbench/WorkbenchPageHeader.test.ts
+  - apps/web/src/components/workbench/RoleWorkbenchFrame.vue
+  - apps/web/src/components/workbench/RoleWorkbenchFrame.test.ts
+  - apps/web/src/ui-theme/test-fixtures/ContractTestPageHeader.vue
+  - apps/web/src/ui-theme/UiThemeProvider.test.ts
   - apps/web/src/views/PlannedWorkbenchView.vue
   - apps/web/src/views/PlannedWorkbenchView.test.ts
+  - apps/web/src/views/MarketSignalsWorkbench.vue
+  - apps/web/src/views/MarketSignalsWorkbench.test.ts
+  - apps/web/src/views/ProductSelectionWorkbench.vue
+  - apps/web/src/views/ProductSelectionWorkbench.test.ts
+  - apps/web/src/views/ProductNpiWorkbench.vue
+  - apps/web/src/views/ProductNpiWorkbench.test.ts
+  - apps/web/src/views/MasterDataWorkbench.vue
+  - apps/web/src/views/MasterDataWorkbench.test.ts
+  - apps/web/src/views/SourcingWorkbench.vue
+  - apps/web/src/views/CargoReadyWorkbench.vue
+  - apps/web/src/views/CargoReadyWorkbench.test.ts
+  - apps/web/src/views/StuffingWorkbench.vue
+  - apps/web/src/views/StuffingWorkbench.test.ts
+  - apps/web/src/views/DispatchWorkbench.vue
+  - apps/web/src/views/DispatchWorkbench.test.ts
+  - apps/web/src/views/CustomsWorkbench.vue
+  - apps/web/src/views/CustomsWorkbench.test.ts
+  - apps/web/src/views/PickupWorkbench.vue
+  - apps/web/src/views/PickupWorkbench.test.ts
+  - apps/web/src/views/WarehouseDeliveryWorkbench.vue
+  - apps/web/src/views/WarehouseDeliveryWorkbench.test.ts
+  - apps/web/src/views/ContainerUnloadingWorkbench.vue
+  - apps/web/src/views/ContainerUnloadingWorkbench.test.ts
+  - apps/web/src/views/ShipmentRiskWorkbench.vue
+  - apps/web/src/components/dispatch/PreDepartureDispatchWorkbench.vue
+  - apps/web/src/components/shipment-handoff/PostDepartureHandoffWorkbench.vue
+  - apps/web/src/router/index.ts
+  - apps/web/e2e/workbench-purpose-navigation.spec.ts
+  - apps/web/e2e/workbench-network.spec.ts
+  - apps/web/e2e/product-npi-workbench.spec.ts
+  - apps/web/e2e/cargo-ready-workbench.spec.ts
+  - apps/web/e2e/stuffing-workbench.spec.ts
+  - apps/web/e2e/dispatch-workbench.spec.ts
+  - apps/web/e2e/customs-workbench.spec.ts
+  - apps/web/e2e/pickup-workbench.spec.ts
+  - apps/web/e2e/warehouse-delivery-workbench.spec.ts
+  - apps/web/e2e/container-unloading-workbench.spec.ts
+  - apps/web/e2e/shell-layout.spec.ts
 exclusiveLocks:
   - business-policy:workbench-business-purpose-presentation
   - ui-navigation:workbench-entry-layer
