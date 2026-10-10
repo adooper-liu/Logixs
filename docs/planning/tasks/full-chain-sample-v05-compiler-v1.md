@@ -213,6 +213,18 @@ git diff --check
 
 FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF 时逐条映射 1～7 的 RED/GREEN 测试名与结果。
 
+### FC1R3：Git commit 必填
+
+FC1R2 验收只剩一个阻塞项：CLI 当前在未传 `--git-commit` 时使用 `not-provided`，仍可能生成 `publishable=true` package。修复要求：
+
+- `--git-commit` 成为 CLI 必填参数；缺失时 `ARGUMENTS_INVALID`，不得创建输出目录；
+- `buildPackageArtifacts()` 不得为 git commit 提供占位默认值；缺失/空值必须使 package validation 失败；
+- package manifest schema 保持 `gitCommit` 必填，测试证明值由调用上下文原样进入 manifest；
+- CLI valid/diagnostic 测试显式传入 fictional commit；增加缺 commit 的 RED→GREEN 测试；
+- 不执行 git 命令自动猜测 commit，不在日志打印 commit，不修改其他已绿行为。
+
+写入范围仅：`package-writer.mjs`、manifest schema/contract tests、CLI 与 CLI/package writer tests。完成后重跑 `pnpm test:full-chain-sample`、lint、scoped format、repo check、diff check，返回 HANDOFF，不提交。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -239,10 +251,10 @@ FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF �
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                              |
-| ---------- | ------- | ----------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                  |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                        |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                          |
-| 2026-10-10 | fix     | Claude Code | `74b6ee94`              | FC1R1 交回 25 项测试；主代理逐项复核确认 symlink 检查恒假、policy 自动批准、对账码占位、manifest/CLI/原子失败反证不足，授权 FC1R2 |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                     |
+| ---------- | ------- | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                         |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                       |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                               |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                 |
+| 2026-10-10 | fix     | Claude Code | `5859296e`              | FC1R2 交回 35 项测试，六组行为修复基本通过；主代理验收发现 CLI 仍允许 `gitCommit=not-provided` 发布，授权 FC1R3 唯一修复 |
