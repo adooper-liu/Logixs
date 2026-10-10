@@ -36,6 +36,10 @@ export function packageHashProjection(artifacts) {
     mappingVersion: artifacts.manifest?.mappingVersion ?? null,
     policyVersion: artifacts.manifest?.policyVersion ?? null,
     gitCommit: artifacts.manifest?.gitCommit ?? null,
+    publishable: artifacts.manifest?.publishable ?? null,
+    allowedProof: artifacts.manifest?.allowedProof ?? null,
+    prohibitedProof: artifacts.manifest?.prohibitedProof ?? null,
+    sensitiveDataHandling: artifacts.manifest?.sensitiveDataHandling ?? null,
     records: [...(artifacts.records ?? [])].sort((a, b) =>
       compareCanonicalStrings(
         `${a.recordType}|${a.businessKey}`,

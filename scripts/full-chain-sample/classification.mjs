@@ -10,25 +10,32 @@ export function buildProvenanceIndexes(scan, policy) {
   const constructed = new Map();
   const derivations = new Map();
   const pending = new Set();
+  const provenanceConflicts = new Set();
   for (const row of scan.sheets.find(
     (sheet) => sheet.name === "26_样本构建清单",
   )?.rows ?? []) {
     const sheet = value(row, "工作表");
     const identity = value(row, "行 identity") ?? value(row, "行标识");
     const field = value(row, "字段");
-    if (sheet && identity && field)
-      constructed.set(`${sheet}|${identity}|${field}`, { ...scenario });
+    if (sheet && identity && field) {
+      const key = `${sheet}|${identity}|${field}`;
+      if (constructed.has(key)) provenanceConflicts.add(`constructed:${key}`);
+      else constructed.set(key, { ...scenario });
+    }
   }
   for (const row of scan.sheets.find((sheet) => sheet.name === "25_推导依据")
     ?.rows ?? []) {
     const id = value(row, "推导依据ID") ?? value(row, "推导 ID");
     const nature = value(row, "性质");
-    if (id && nature)
-      derivations.set(id, {
-        code: id,
-        version: value(row, "版本") ?? "v1",
-        kind: nature,
-      });
+    if (id && nature) {
+      if (derivations.has(id)) provenanceConflicts.add(`derivation:${id}`);
+      else
+        derivations.set(id, {
+          code: id,
+          version: value(row, "版本") ?? "v1",
+          kind: nature,
+        });
+    }
   }
   for (const row of scan.sheets.find((sheet) => sheet.name === "23_待确认")
     ?.rows ?? []) {
@@ -53,6 +60,7 @@ export function buildProvenanceIndexes(scan, policy) {
     pending,
     approvedDirectSources,
     constructionOverrides,
+    provenanceConflicts,
     policy,
   };
 }
@@ -68,6 +76,12 @@ export function classifyMappedValue(input) {
     sourceRef,
   } = input;
   const key = `${sheet}|${identity}|${field}`;
+  if (
+    indexes?.provenanceConflicts?.has(`constructed:${key}`) ||
+    (derivationRef &&
+      indexes?.provenanceConflicts?.has(`derivation:${derivationRef}`))
+  )
+    return { kind: "gap", code: "PROVENANCE_CONFLICT" };
   if (
     indexes?.pending?.has(key) ||
     declaredClass === "P" ||

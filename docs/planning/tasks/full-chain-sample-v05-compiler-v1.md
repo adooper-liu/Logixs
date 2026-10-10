@@ -1,9 +1,9 @@
 ---
-status: fix
+status: coding
 branch: feat/full-chain-sample-compiler-implementation
-verification: "FC1R3 checkpoint cd1c7bb9 with 41 focused tests passing; final review reproduced three high findings; FC1R4 authorized below; FC1f not run"
+verification: "FC1R4 verified with 43 focused tests passing; FC1f real-input diagnostic and zero-write evidence pending"
 owner: main
-writer: codex
+writer: main
 risk: high
 dependsOn: []
 writeScopes:
@@ -286,3 +286,4 @@ scripts/full-chain-sample/compile-records.test.mjs
 | 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库                   |
 | 2026-10-10 | review  | Claude Code | `cd1c7bb9`              | FC1R3 五项风险已按行为测试关闭并形成 checkpoint；过期 review 槽已由 PR #162 收口，当前只做 fresh 整体复审，所有后续处置与 FC1f 继续留在同一最终实现 PR |
 | 2026-10-10 | fix     | Claude Code | —                       | fresh Codex 最终复审 3 项 high finding 均已独立复现并接受：publishable 可篡改、十进制定点失真、重复 provenance 随行序变化；授权 FC1R4 同分支修复       |
+| 2026-10-10 | coding  | Claude Code | —                       | FC1R4 三条原始反证均转为 GREEN，focused 43/43、lint、repo check、scoped format、diff check 通过；进入 FC1f 只读真实输入诊断和三域零写入验证            |

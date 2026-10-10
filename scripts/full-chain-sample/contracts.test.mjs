@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   canonicalStringify,
+  packageHash,
   packageHashProjection,
 } from "./canonical-json.mjs";
 import {
@@ -136,6 +137,39 @@ test("package validation rejects manifest count, hash, and package hash tamperin
       /PACKAGE_(MANIFEST|HASH)_INVALID/,
     );
   }
+});
+
+test("package validation rejects publishable tampering and hashes proof claims", () => {
+  const artifacts = buildPackageArtifacts(
+    {
+      records: [],
+      lineage: [],
+      gaps: [{ code: "PENDING", status: "blocking", reason: "redacted" }],
+      checks: [],
+      publishable: false,
+    },
+    {
+      sourceManifest,
+      sheetCount: 1,
+      policy: { mappingVersion: "mapping-v1", policyVersion: "policy-v1" },
+      compiledAt: "2026-01-01T00:00:00.000Z",
+    },
+  );
+  assert.throws(
+    () =>
+      validatePackageArtifacts({
+        ...artifacts,
+        manifest: { ...artifacts.manifest, publishable: true },
+      }),
+    /PACKAGE_PUBLISHABLE_INVALID/,
+  );
+  assert.notEqual(
+    artifacts.manifest.packageHash,
+    packageHash({
+      ...artifacts,
+      manifest: { ...artifacts.manifest, allowedProof: ["tampered"] },
+    }),
+  );
 });
 
 test("canonical JSON normalizes order and line endings", () => {

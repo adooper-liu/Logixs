@@ -82,6 +82,9 @@ test("normalizers require explicit temporal and financial semantics", () => {
     /TIMEZONE_REQUIRED/,
   );
   assert.equal(normalizeDecimal("1,234.50"), "1234.50");
+  assert.equal(normalizeDecimal("9007199254740993"), "9007199254740993.00");
+  assert.throws(() => normalizeDecimal("1,2,3"), /DECIMAL_INVALID/);
+  assert.throws(() => normalizeDecimal("1e3"), /DECIMAL_INVALID/);
   assert.deepEqual(normalizeList("A + B/C"), ["A", "B", "C"]);
   assert.equal(normalizeCode("BOOK-DEMO-001"), "BOOK-DEMO-001");
   assert.throws(() => normalizeCode("bad code"), /CODE_INVALID/);

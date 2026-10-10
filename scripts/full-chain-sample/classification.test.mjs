@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { classifyMappedValue } from "./classification.mjs";
+import {
+  buildProvenanceIndexes,
+  classifyMappedValue,
+} from "./classification.mjs";
 import { loadCompilerPolicy } from "./policy.mjs";
 import { validatePolicy } from "./contracts.mjs";
 
@@ -63,6 +66,38 @@ test("derived values require an approved derivation nature", () => {
     ).kind,
     "gap",
   );
+});
+test("duplicate provenance keys become order-independent conflicts", () => {
+  const makeScan = (rows) => ({
+    sheets: [
+      { name: "25_推导依据", rows },
+      { name: "26_样本构建清单", rows: [] },
+      { name: "23_待确认", rows: [] },
+    ],
+  });
+  const rows = [
+    { valuesByHeader: { 推导依据ID: "DUP", 性质: "候选" } },
+    { valuesByHeader: { 推导依据ID: "DUP", 性质: "推导" } },
+  ];
+  const first = buildProvenanceIndexes(makeScan(rows), { pilotMappings: [] });
+  const second = buildProvenanceIndexes(makeScan(rows.reverse()), {
+    pilotMappings: [],
+  });
+  assert.deepEqual([...first.provenanceConflicts], ["derivation:DUP"]);
+  assert.deepEqual([...second.provenanceConflicts], ["derivation:DUP"]);
+  for (const indexes of [first, second])
+    assert.equal(
+      classifyMappedValue({
+        indexes,
+        sheet: "S",
+        identity: "I",
+        field: "f",
+        declaredClass: "D",
+        derivationRef: "DUP",
+        sourceRef: "S#1",
+      }).kind,
+      "gap",
+    );
 });
 test("pending and unclassified values become gaps", () => {
   assert.equal(classifyMappedValue(input({ declaredClass: "P" })).kind, "gap");

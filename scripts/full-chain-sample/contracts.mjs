@@ -190,6 +190,11 @@ export function validatePackageArtifacts(artifacts) {
     artifacts.manifest.checkCount !== (artifacts.checks ?? []).length
   )
     fail("PACKAGE_MANIFEST_INVALID");
+  const publishable =
+    (artifacts.gaps ?? []).length === 0 &&
+    (artifacts.checks ?? []).every((item) => item.status !== "fail");
+  if (artifacts.manifest.publishable !== publishable)
+    fail("PACKAGE_PUBLISHABLE_INVALID");
   if (
     artifacts.manifest.recordsHash !==
       sha256Hex(canonicalStringify(artifacts.records)) ||

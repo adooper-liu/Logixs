@@ -162,10 +162,35 @@ export function normalizeDecimal(
   { scale = 2, allowNegative = false } = {},
 ) {
   if (value === null || value === undefined || value === "") return null;
-  const numeric = Number(String(value).replaceAll(",", ""));
-  if (!Number.isFinite(numeric) || (!allowNegative && numeric < 0))
-    throw new Error("DECIMAL_INVALID");
-  return numeric.toFixed(scale);
+  if (!Number.isInteger(scale) || scale < 0) throw new Error("DECIMAL_INVALID");
+  const match = /^([+-]?)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?$/u.exec(
+    String(value).trim(),
+  );
+  if (!match) throw new Error("DECIMAL_INVALID");
+  const [, sign, groupedInteger, fraction = ""] = match;
+  if (sign === "-" && !allowNegative) throw new Error("DECIMAL_INVALID");
+  const integer = groupedInteger.replaceAll(",", "").replace(/^0+(?=\d)/u, "");
+  let scaled = `${integer}${fraction.slice(0, scale).padEnd(scale, "0")}`;
+  if (fraction.length > scale && fraction[scale] >= "5") {
+    const digits = scaled.split("");
+    for (let index = digits.length - 1; index >= 0; index -= 1) {
+      if (digits[index] === "9") digits[index] = "0";
+      else {
+        digits[index] = String.fromCharCode(digits[index].charCodeAt(0) + 1);
+        break;
+      }
+    }
+    if (digits[0] === "0") digits.unshift("1");
+    scaled = digits.join("");
+  }
+  const integerEnd = scaled.length - scale;
+  const output =
+    scale === 0
+      ? scaled
+      : `${scaled.slice(0, integerEnd)}.${scaled.slice(integerEnd)}`;
+  return sign === "-" && output !== "0" && !/^0+\.0+$/u.test(output)
+    ? `-${output}`
+    : output;
 }
 
 export function normalizeList(value, { separator = /\s*[+,/]\s*/u } = {}) {
@@ -227,6 +252,16 @@ export function compilePilotRecords({
   const records = [];
   const lineage = [];
   const gaps = [];
+  for (
+    let index = 0;
+    index < (indexes.provenanceConflicts?.size ?? 0);
+    index += 1
+  )
+    gaps.push({
+      code: "PROVENANCE_CONFLICT",
+      status: "blocking",
+      reason: "duplicate provenance index",
+    });
   for (const mapping of policy.pilotMappings) {
     const sheet = scan.sheets.find(
       (candidate) => candidate.name === mapping.sheet,
