@@ -430,7 +430,6 @@ export function inspectWorkbenchCatalogSource(source) {
         `workbenchStages: ${code} path must be '${path}', found '${stage.path}'`,
       );
   }
-  const customs = stages.find((stage) => stage.code === "customs");
   const compliance = stages.find(
     (stage) => stage.code === "compliance_operations",
   );
