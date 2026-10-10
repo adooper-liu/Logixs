@@ -1052,8 +1052,9 @@ S2 主实现通过定向测试后，主代理按真实截图和代码核对形�
 2. **S2-BLOCK-002 出运内部导航脱离设计系统**：新增 `dispatch-view-switch` 没有组件样式，三视口截图显示浏览器默认描边按钮。先增加 class/aria-current 的组件断言和截图基线反证，再使用既有 token 实现紧凑、可换行、44px 移动触控的局部导航；不得复制旧 view-switch 的 `!important` 或阴影反例。
 3. **S2-BLOCK-003 跨状态不变性证据不足**：现有 E2E 只 reload fresh render，没有覆盖选品 `returnPending`、legacy read-only、冻结结果和 NPI 已领取/已发布状态。必须复用现有 mock 场景或扩展专门 E2E，逐状态断言同一 generated purpose 恰好一条，并确认状态说明仍在上下文/结果区。
 4. **S2-BLOCK-004 overflow 证据不完整**：`overflow.json` 只记录 documentElement；frontmatter 要求页面与内容区无溢出。扩展为同时记录并断言 `documentElement` 与 `.app-content` 的 `clientWidth/scrollWidth`，重新生成三视口 JSON 与截图。
+5. **S2-BLOCK-005 选品跨状态 E2E 未建立有效页面状态**：新增 `product-selection-workbench.spec.ts` 在首个 legacy 场景中 `<main>` 为空，目的断言为 0；串行运行还出现未拦截 API 代理错误。必须先修正 route matcher、请求 query/分页响应和 fixture 契约，使页面正式标题先可见，再逐一证明 legacy read-only、return-pending、frozen 三状态中 generated purpose 恰好一条且状态说明仍可见。不得通过延长超时、删除状态或只断 fresh render 关闭此 finding。
 
-修复边界：不改 API、领域状态、权限、NPI 发布门、工作台业务动作或 S3 侧栏入口；不重排固定办理壳。完成后重跑 S2 全部单测、三项目 E2E、typecheck/lint/build/repo/format，并重新提交三视口证据供主代理人工复核。
+修复边界：不改 API、领域状态、权限、NPI 发布门、工作台业务动作或 S3 侧栏入口；不重排固定办理壳。完成后重跑 S2 全部单测、三项目 E2E、负责人指定的三个 E2E 文件单 worker、typecheck/lint/build/repo/format，并重新提交三视口证据供主代理人工复核。
 
 ## 业务步骤五面映射
 
