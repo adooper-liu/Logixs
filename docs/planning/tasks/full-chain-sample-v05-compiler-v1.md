@@ -1,7 +1,7 @@
 ---
-status: coding
+status: review
 branch: feat/full-chain-sample-compiler-implementation
-verification: "FC1R4 verified with 43 focused tests passing; FC1f real-input diagnostic and zero-write evidence pending"
+verification: "FC1R4 checkpoint f7e630ba with 43 focused tests passing; real v0.5 input failed closed with exit 3 on workbookProtection; PostgreSQL/MinIO/Temporal deltas all zero; compliant unprotected source export required before done"
 owner: main
 writer: main
 risk: high
@@ -276,14 +276,15 @@ scripts/full-chain-sample/compile-records.test.mjs
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                                   |
-| ---------- | ------- | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                                       |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                                     |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                                             |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                                               |
-| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复                                                           |
-| 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库                   |
-| 2026-10-10 | review  | Claude Code | `cd1c7bb9`              | FC1R3 五项风险已按行为测试关闭并形成 checkpoint；过期 review 槽已由 PR #162 收口，当前只做 fresh 整体复审，所有后续处置与 FC1f 继续留在同一最终实现 PR |
-| 2026-10-10 | fix     | Claude Code | —                       | fresh Codex 最终复审 3 项 high finding 均已独立复现并接受：publishable 可篡改、十进制定点失真、重复 provenance 随行序变化；授权 FC1R4 同分支修复       |
-| 2026-10-10 | coding  | Claude Code | —                       | FC1R4 三条原始反证均转为 GREEN，focused 43/43、lint、repo check、scoped format、diff check 通过；进入 FC1f 只读真实输入诊断和三域零写入验证            |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                                                                                               |
+| ---------- | ------- | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                                                                                                   |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                                                                                                 |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                                                                                                         |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                                                                                                           |
+| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复                                                                                                                       |
+| 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库                                                                               |
+| 2026-10-10 | review  | Claude Code | `cd1c7bb9`              | FC1R3 五项风险已按行为测试关闭并形成 checkpoint；过期 review 槽已由 PR #162 收口，当前只做 fresh 整体复审，所有后续处置与 FC1f 继续留在同一最终实现 PR                                                             |
+| 2026-10-10 | fix     | Claude Code | —                       | fresh Codex 最终复审 3 项 high finding 均已独立复现并接受：publishable 可篡改、十进制定点失真、重复 provenance 随行序变化；授权 FC1R4 同分支修复                                                                   |
+| 2026-10-10 | coding  | Claude Code | —                       | FC1R4 三条原始反证均转为 GREEN，focused 43/43、lint、repo check、scoped format、diff check 通过；进入 FC1f 只读真实输入诊断和三域零写入验证                                                                        |
+| 2026-10-10 | review  | Claude Code | `f7e630ba`              | FC1f 真实 v0.5 输入因 `workbookProtection` 按安全契约 exit 3 失败关闭且未创建输出；PostgreSQL demo 行、MinIO bucket/object、Temporal schedule/workflow 前后差值均为 0。需提供同版本未保护受控导出后重跑才能标 done |
