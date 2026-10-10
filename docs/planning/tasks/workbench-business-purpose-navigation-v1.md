@@ -1053,8 +1053,9 @@ S2 主实现通过定向测试后，主代理按真实截图和代码核对形�
 3. **S2-BLOCK-003 跨状态不变性证据不足**：现有 E2E 只 reload fresh render，没有覆盖选品 `returnPending`、legacy read-only、冻结结果和 NPI 已领取/已发布状态。必须复用现有 mock 场景或扩展专门 E2E，逐状态断言同一 generated purpose 恰好一条，并确认状态说明仍在上下文/结果区。
 4. **S2-BLOCK-004 overflow 证据不完整**：`overflow.json` 只记录 documentElement；frontmatter 要求页面与内容区无溢出。扩展为同时记录并断言 `documentElement` 与 `.app-content` 的 `clientWidth/scrollWidth`，重新生成三视口 JSON 与截图。
 5. **S2-BLOCK-005 选品跨状态 E2E 未建立有效页面状态**：新增 `product-selection-workbench.spec.ts` 在首个 legacy 场景中 `<main>` 为空，目的断言为 0；串行运行还出现未拦截 API 代理错误。必须先修正 route matcher、请求 query/分页响应和 fixture 契约，使页面正式标题先可见，再逐一证明 legacy read-only、return-pending、frozen 三状态中 generated purpose 恰好一条且状态说明仍可见。不得通过延长超时、删除状态或只断 fresh render 关闭此 finding。
+6. **S2-BLOCK-006 相关 E2E 仍锁定旧标题**：S2 正式标题从权威投影收敛后，`cargo-ready`、`stuffing`、`customs`、`pickup`、`delivery`、`unloading` 和 `workbench-network` 相关 E2E 仍期待带“工作台”后缀的旧 H1，导致完整相关桌面套件失败。仅把这些页面身份断言改为 generated 正式 title 或准确新标题；不得全局替换侧栏 `navLabel`、内部局部标题或 S3 才处理的 shell 导航文案。修改后必须重跑完整相关桌面 E2E 列表并保持业务动作断言通过。
 
-修复边界：不改 API、领域状态、权限、NPI 发布门、工作台业务动作或 S3 侧栏入口；不重排固定办理壳。完成后重跑 S2 全部单测、三项目 E2E、负责人指定的三个 E2E 文件单 worker、typecheck/lint/build/repo/format，并重新提交三视口证据供主代理人工复核。
+修复边界：不改 API、领域状态、权限、NPI 发布门、工作台业务动作或 S3 侧栏入口；不重排固定办理壳。完成后重跑 S2 全部单测、三项目 E2E、负责人指定的三个 E2E 文件单 worker、完整相关桌面 E2E、typecheck/lint/build/repo/format，并重新提交三视口证据供主代理人工复核。
 
 ## 业务步骤五面映射
 
