@@ -50,7 +50,7 @@ const consumedHandoffs = computed(() =>
     <PageHeader
       eyebrow="业务工作台 · 框架"
       :title="stage.title"
-      :summary="stage.roleResult"
+      :summary="stage.businessPurpose"
     />
 
     <WorkbenchFlowContext
@@ -73,7 +73,7 @@ const consumedHandoffs = computed(() =>
         <div>
           <small>岗位结果</small>
           <h2 id="role-result-title">{{ stage.ownerRole }}要完成什么</h2>
-          <p>{{ stage.roleResult }}</p>
+          <p>{{ stage.businessPurpose }}</p>
         </div>
       </section>
 

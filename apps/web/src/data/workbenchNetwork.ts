@@ -27,8 +27,6 @@ export interface WorkbenchStage {
   code: WorkbenchCode;
   title: string;
   businessPurpose: string;
-  /** @deprecated PlannedWorkbenchView still reads this legacy fallback; catalog stages do not populate it. */
-  roleResult?: string;
   path: string;
   kind: "main" | "support";
   phase: WorkbenchPhase;
@@ -48,10 +46,8 @@ type WorkbenchImplementation = "live" | "prototype" | "framework";
 
 type LegacyWorkbenchStage = Omit<
   WorkbenchStage,
-  "assessmentState" | "maturity" | "surface" | "businessPurpose"
-> & {
-  roleResult: string;
-};
+  "title" | "assessmentState" | "maturity" | "surface" | "businessPurpose"
+>;
 
 type CatalogWorkbenchStage = WorkbenchStage;
 
@@ -216,11 +212,9 @@ export const workbenchNetwork = [
   liveStage(
     1,
     "market_signals",
-    "市场与经营信号",
     "/workspaces/market-signals",
     "strategy",
     "经营与市场负责人",
-    "把可信市场和经营信号整理成可评审机会",
     [
       "可识别标题",
       "已有市场与渠道（可后补）",
@@ -233,11 +227,9 @@ export const workbenchNetwork = [
   liveStage(
     2,
     "product_selection",
-    "选品立项工作台",
     "/workspaces/product-selection",
     "strategy",
     "选品负责人",
-    "判断机会是否值得投入并形成有责任人的产品立项",
     ["机会证据", "目标用户", "目标市场", "收益与风险假设"],
     "market_opportunity",
     "product_initiative",
@@ -245,11 +237,9 @@ export const workbenchNetwork = [
   liveStage(
     3,
     "product_npi",
-    "产品开发与 NPI 工作台",
     "/workspaces/product-npi",
     "product",
     "产品经理与 NPI 负责人",
-    "把立项推进为可发布、可追溯版本的产品定义",
     ["立项目标", "产品规格", "里程碑", "验证与合规要求"],
     "product_initiative",
     "released_product_design",
@@ -257,11 +247,9 @@ export const workbenchNetwork = [
   liveStage(
     4,
     "master_data",
-    "商品与物料主数据工作台",
     "/workspaces/master-data",
     "product",
     "商品与主数据负责人",
-    "建立产品、物料、BOM、SKU 和 Listing 的稳定业务身份",
     ["已发布产品设计", "编码规则", "BOM", "销售国家与渠道"],
     "released_product_design",
     "sellable_sku_release",
@@ -269,11 +257,9 @@ export const workbenchNetwork = [
   liveStage(
     5,
     "sourcing",
-    "寻源与供应商定点工作台",
     "/workspaces/sourcing",
     "supply",
     "采购开发与供应商质量负责人",
-    "完成供应商准入、询报价、打样和定点",
     ["可售 SKU", "技术与质量要求", "候选供应商", "商务条件"],
     "sellable_sku_release",
     "supplier_nomination",
@@ -281,11 +267,9 @@ export const workbenchNetwork = [
   stage(
     6,
     "demand_replenishment",
-    "需求与补货工作台",
     "/workspaces/demand-replenishment",
     "supply",
     "需求计划与库存负责人",
-    "把预测、库存策略和补货计算转成可解释的补货决定",
     ["SKU 与国家", "销售预测", "库存与在途", "库存策略"],
     "supplier_nomination",
     "replenishment_decision",
@@ -293,11 +277,9 @@ export const workbenchNetwork = [
   stage(
     7,
     "procurement",
-    "采购履约工作台",
     "/workspaces/procurement",
     "supply",
     "采购计划与跟单负责人",
-    "形成可追踪的采购承诺并管理供应商履约偏差",
     ["补货决定", "供应商定点", "采购条款", "交付窗口"],
     "replenishment_decision",
     "purchase_commitment",
@@ -305,11 +287,9 @@ export const workbenchNetwork = [
   stage(
     8,
     "supply_readiness",
-    "生产验货与可出运供给工作台",
     "/workspaces/supply-readiness",
     "supply",
     "跟单、质量与供应协调负责人",
-    "把生产、验货和整改结果汇成可出运供给池",
     ["采购承诺", "生产进度", "验货与整改", "可用数量"],
     "purchase_commitment",
     "shippable_supply_lot",
@@ -317,11 +297,9 @@ export const workbenchNetwork = [
   stage(
     9,
     "shipment_planning",
-    "出运计划工作台",
     "/workspaces/shipment-planning",
     "shipment",
     "出运计划负责人",
-    "完成国家、渠道、仓库、港口和整柜或拼柜方案",
     ["可出运供给", "国家与渠道需求", "仓库容量", "港口与装柜约束"],
     "shippable_supply_lot",
     "shipment_plan_release",
@@ -329,11 +307,9 @@ export const workbenchNetwork = [
   liveStage(
     10,
     "cargo_ready",
-    "备货工作台",
     "/workspaces/cargo-ready",
     "shipment",
     "备货协调人员",
-    "释放备货范围并跟踪供应商备货和适用资料",
     ["出运计划", "备货单", "SKU 属性", "供应商与目的仓"],
     "shipment_plan_release",
     "replenishment_ready_snapshot",
@@ -341,11 +317,9 @@ export const workbenchNetwork = [
   liveStage(
     11,
     "stuffing",
-    "装箱工作台",
     "/workspaces/stuffing",
     "shipment",
     "装箱协调人员",
-    "记录柜、备货单和 SKU 的实际装载事实",
     ["备货范围", "货柜身份", "装载明细", "装箱证据"],
     "replenishment_ready_snapshot",
     "stuffing_snapshot",
@@ -353,11 +327,9 @@ export const workbenchNetwork = [
   liveStage(
     12,
     "dispatch",
-    "出运工作台",
     "/workspaces/dispatch",
     "shipment",
     "出运运营人员",
-    "完成进港、装船和离港交接",
     ["装箱快照", "航线与提单", "实际离港事实", "来源证据"],
     "stuffing_snapshot",
     "shipment_handoff",
@@ -365,11 +337,9 @@ export const workbenchNetwork = [
   stage(
     13,
     "ocean_operations",
-    "海运运营工作台",
     "/workspaces/ocean-operations",
     "shipment",
     "海运运营人员",
-    "跟踪航段、ETA 版本和到港风险并发起到港准备",
     ["已出运 Shipment", "航段计划", "承运人更新", "到货通知"],
     "shipment_handoff",
     "arrival_readiness",
@@ -377,11 +347,9 @@ export const workbenchNetwork = [
   liveStage(
     14,
     "customs",
-    "清关工作台",
     "/workspaces/customs",
     "arrival",
     "清关操作人员",
-    "按销售国家和货物属性完成资料、申报、查验和放行交接",
     ["到港准备", "SKU 合规属性", "适用资料", "清关接收方"],
     "arrival_readiness",
     "customs_release",
@@ -389,11 +357,9 @@ export const workbenchNetwork = [
   liveStage(
     15,
     "pickup",
-    "提柜工作台",
     "/workspaces/pickup",
     "arrival",
     "提柜调度人员",
-    "确认联合可提条件并完成可信 Gate Out",
     ["清关放行", "Carrier 与 Terminal 可提", "Hold", "免费期与车队"],
     "customs_release",
     "gate_out_fact",
@@ -401,11 +367,9 @@ export const workbenchNetwork = [
   liveStage(
     16,
     "delivery",
-    "送仓工作台",
     "/workspaces/delivery",
     "arrival",
     "内陆运输调度人员",
-    "把已提货柜送达正确仓库并取得到仓回执",
     ["Gate Out", "目的仓", "预约窗口", "承运与路线"],
     "gate_out_fact",
     "warehouse_arrival",
@@ -413,11 +377,9 @@ export const workbenchNetwork = [
   liveStage(
     17,
     "unloading",
-    "卸柜工作台",
     "/workspaces/unloading",
     "arrival",
     "仓库收货人员",
-    "记录实收差异、卸空事实并把空箱交给还箱责任方",
     ["到仓事实", "货物范围", "仓库实收", "空箱状态"],
     "warehouse_arrival",
     "empty_container_ready",
@@ -425,22 +387,18 @@ export const workbenchNetwork = [
   stage(
     18,
     "empty_return",
-    "还箱工作台",
     "/workspaces/empty-return",
     "arrival",
     "还箱调度人员",
-    "安排取空、提交 EIR 并以场站接收事实关闭箱级责任",
     ["空箱可用", "还箱点", "截止时间", "EIR 与场站回执"],
     "empty_container_ready",
     null,
   ),
   supportStage(
     "charges",
-    "费用结算工作台",
     "/workspaces/charges",
     "arrival",
     "费用与结算人员",
-    "按真实生命周期事实核费、分摊、请款和结算",
     ["费用标准", "服务与时间事实", "账单", "分摊对象"],
     [
       "shipment_handoff",
@@ -451,11 +409,9 @@ export const workbenchNetwork = [
   ),
   supportStage(
     "exceptions",
-    "异常中心",
     "/workspaces/exceptions",
     "arrival",
     "业务域负责人和协同人员",
-    "集中分派跨域异常并把处理结果归还权威业务域",
     ["受影响对象", "来源事实", "责任方", "时限与恢复条件"],
     workbenchHandoffs.map((item) => item.code),
   ),
@@ -1115,25 +1071,21 @@ function handoff(
 function stage(
   sequence: number,
   code: WorkbenchCode,
-  title: string,
   path: string,
   phase: WorkbenchPhase,
   ownerRole: string,
-  roleResult: string,
   requiredFacts: readonly string[],
   inboundHandoffCode: string | null,
   outboundHandoffCode: string | null,
 ): LegacyWorkbenchStage {
   return {
     code,
-    title,
     path,
     kind: "main",
     phase,
     sequence,
     implementation: "framework",
     ownerRole,
-    roleResult,
     requiredFacts,
     inboundHandoffCode,
     outboundHandoffCode,
@@ -1143,11 +1095,9 @@ function stage(
 function liveStage(
   sequence: number,
   code: WorkbenchCode,
-  title: string,
   path: string,
   phase: WorkbenchPhase,
   ownerRole: string,
-  roleResult: string,
   requiredFacts: readonly string[],
   inboundHandoffCode: string | null,
   outboundHandoffCode: string | null,
@@ -1156,11 +1106,9 @@ function liveStage(
     ...stage(
       sequence,
       code,
-      title,
       path,
       phase,
       ownerRole,
-      roleResult,
       requiredFacts,
       inboundHandoffCode,
       outboundHandoffCode,
@@ -1171,24 +1119,20 @@ function liveStage(
 
 function supportStage(
   code: WorkbenchCode,
-  title: string,
   path: string,
   phase: WorkbenchPhase,
   ownerRole: string,
-  roleResult: string,
   requiredFacts: readonly string[],
   consumesHandoffCodes: readonly string[],
 ): LegacyWorkbenchStage {
   return {
     code,
-    title,
     path,
     kind: "support",
     phase,
     sequence: null,
     implementation: "framework",
     ownerRole,
-    roleResult,
     requiredFacts,
     inboundHandoffCode: null,
     outboundHandoffCode: null,

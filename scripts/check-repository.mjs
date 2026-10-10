@@ -293,8 +293,7 @@ function effectiveStages(sourceFile, errors) {
     if (code)
       legacy.set(code, {
         code,
-        title: stringLiteral(expression.arguments?.[offset + 1]),
-        path: stringLiteral(expression.arguments?.[offset + 2]),
+        path: stringLiteral(expression.arguments?.[offset + 1]),
         kind: helperKind(
           sourceFile,
           name === "supportStage" ? "supportStage" : "stage",
