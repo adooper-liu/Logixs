@@ -15,14 +15,12 @@ import { getWorkbenchNetworkVolume } from "../api/workbenchNetworkVolume";
 import PageHeader from "../components/ui/PageHeader.vue";
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import {
-  getOutboundWorkbenchRelations,
   mainWorkbenchChain,
   supportingWorkbenches,
   workbenchOperationalSpecs,
   workbenchPhaseLabels,
   type WorkbenchOperationalSpec,
   type WorkbenchPhase,
-  type WorkbenchStage,
 } from "../data/workbenchNetwork";
 
 const phaseOrder: readonly WorkbenchPhase[] = [
@@ -40,14 +38,6 @@ const phases = computed(() =>
     items: mainWorkbenchChain.filter((item) => item.phase === phase),
   })),
 );
-
-// 交接是节点之间的关系，画在连接处；链尾没有出向交接就不画连接。
-function outboundLabel(stage: WorkbenchStage): string | null {
-  const relations = getOutboundWorkbenchRelations(stage.code);
-  if (relations.length === 0) return null;
-  if (relations.length === 1) return relations[0]!.label;
-  return `${relations.length} 项出向交接`;
-}
 
 const exceptionCenter = computed(() =>
   supportingWorkbenches.find((stage) => stage.code === "exceptions"),
@@ -80,14 +70,6 @@ function deskVolume(code: string) {
   return volume.value?.workbenches.find((desk) => desk.code === code) ?? null;
 }
 
-function connectionVolume(code: string) {
-  return (
-    volume.value?.connections.find(
-      (connection) => connection.fromCode === code,
-    ) ?? null
-  );
-}
-
 function metricLabel(
   metric: WorkbenchNetworkVolumeMetricV1 | undefined,
 ): string {
@@ -108,24 +90,29 @@ function globalMetric(key: "open" | "weeklyFlow" | "blocked"): string {
 }
 
 function stageVolumeText(code: string): string {
-  if (volumeStatus.value === "loading") return "正在读取";
-  if (volumeStatus.value === "forbidden") return "无权查看";
-  if (volumeStatus.value === "error") return "暂时读不出来";
   const desk = deskVolume(code);
-  if (!desk) return "未接通";
-  return `在办 ${metricLabel(desk.open)} · 本周 ${metricLabel(desk.weeklyFlow)} · 阻塞 ${metricLabel(desk.blocked)}`;
-}
+  if (!desk) return "";
+  const positiveMetric = (
+    label: string,
+    metric: WorkbenchNetworkVolumeMetricV1 | undefined,
+  ): string | null => {
+    if (
+      metric?.state !== "count" ||
+      !Number.isInteger(metric.count) ||
+      metric.count <= 0
+    ) {
+      return null;
+    }
+    return `${label} ${metric.count}`;
+  };
 
-function connectorText(stage: WorkbenchStage): string | null {
-  const label = outboundLabel(stage);
-  const connection = connectionVolume(stage.code);
-  if (!connection || volumeStatus.value !== "ready") return label;
-  const pending = metricLabel(connection.pendingAcceptance);
-  const suffix =
-    connection.pendingAcceptance.state === "count"
-      ? `待接受 ${pending}，超时${metricLabel(connection.overdue)}`
-      : pending;
-  return label ? `${label} · ${suffix}` : suffix;
+  return [
+    positiveMetric("在办", desk.open),
+    positiveMetric("本周", desk.weeklyFlow),
+    positiveMetric("阻塞", desk.blocked),
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" · ");
 }
 
 // 岗位作业规格：网络里的字段说明"这个岗位在链上的位置"，
@@ -147,7 +134,7 @@ const totalStageCount = computed(
     <PageHeader
       eyebrow="端到端业务接力"
       title="业务工作台"
-      summary="从市场机会到还箱收口，按事实产生顺序进入正确岗位；实施状态只说明技术链路是否接入，不代表岗位业务已经通过复审。"
+      summary="从市场机会到还箱收口，按事实产生顺序进入正确岗位"
     />
 
     <section class="volume-band" aria-label="全局业务量">
@@ -178,14 +165,17 @@ const totalStageCount = computed(
       <span><CircleCheck :size="16" aria-hidden="true" /> 已接真实能力</span>
       <span><MousePointer2 :size="16" aria-hidden="true" /> 交互样板</span>
       <span><Construction :size="16" aria-hidden="true" /> 框架已建立</span>
-      <p>
-        已接真实能力只表示页面连接了真实 API
-        或写入链路，不代表业务闭环已经验收；交互样板和框架节点也不得冒充已落库能力。
-        <b
-          >已有技术操作映射 {{ definedSpecCount }} /
-          {{ totalStageCount }} 个工作台</b
-        >，这些映射仍须逐台对照业务规格复审。
-      </p>
+      <details>
+        <summary>状态说明</summary>
+        <p>
+          已接真实能力只表示页面连接了真实 API
+          或写入链路，不代表业务闭环已经验收；交互样板和框架节点也不得冒充已落库能力。
+          <b
+            >已有技术操作映射 {{ definedSpecCount }} /
+            {{ totalStageCount }} 个工作台</b
+          >，这些映射仍须逐台对照业务规格复审。
+        </p>
+      </details>
     </section>
 
     <section
@@ -240,7 +230,11 @@ const totalStageCount = computed(
               </div>
               <h3>{{ stage.title }}</h3>
               <p>{{ stage.businessPurpose }}</p>
-              <p class="stage-volume" data-testid="stage-volume">
+              <p
+                v-if="stageVolumeText(stage.code)"
+                class="stage-volume"
+                data-testid="stage-volume"
+              >
                 {{ stageVolumeText(stage.code) }}
               </p>
             </RouterLink>
@@ -250,14 +244,6 @@ const totalStageCount = computed(
               <WorkbenchOperationalSpecPanel :spec="specByCode[stage.code]!" />
             </details>
           </div>
-          <p
-            v-if="connectorText(stage)"
-            class="stage-connector"
-            :data-from="stage.code"
-          >
-            <ArrowRight :size="14" aria-hidden="true" />
-            <span>{{ connectorText(stage) }}</span>
-          </p>
         </li>
       </ol>
     </section>
@@ -315,6 +301,24 @@ const totalStageCount = computed(
   color: var(--ok);
 }
 
+.network-legend details {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.network-legend summary {
+  width: fit-content;
+  color: var(--brand-strong);
+  font-size: var(--text-label);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.network-legend summary:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
 .volume-band {
   display: flex;
   align-items: center;
@@ -368,12 +372,11 @@ const totalStageCount = computed(
   box-shadow: var(--focus-ring);
 }
 
-.network-legend p {
-  flex: 1 1 320px;
+.network-legend details p {
   margin: 0;
+  padding-top: var(--space-2);
   color: var(--ink-soft);
   font-size: var(--text-label);
-  text-align: right;
 }
 
 .phase-band {
@@ -447,24 +450,6 @@ const totalStageCount = computed(
   color: var(--ink);
   font-size: var(--text-label);
   font-weight: 700;
-}
-
-/* 交接画在卡片外的连接处：虚线引出，不占卡面。 */
-.stage-connector {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin: 0;
-  padding-left: var(--space-3);
-  border-left: 1px dashed var(--line-strong);
-  margin-left: var(--space-3);
-  color: var(--ink-soft);
-  font-size: var(--text-micro);
-}
-
-.stage-connector svg {
-  flex: none;
-  color: var(--muted);
 }
 
 .stage-link {
@@ -605,10 +590,6 @@ const totalStageCount = computed(
   .support-band {
     grid-template-columns: 1fr;
     gap: var(--space-3);
-  }
-
-  .network-legend p {
-    text-align: left;
   }
 }
 
