@@ -10,10 +10,15 @@ import type {
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { workbenchStages } from "../src/data/workbenchNetwork";
 
 const S1F7_EVIDENCE_DIRECTORY = resolve(
   process.cwd(),
   "../../.tmp/s1f7-viewport-evidence-20261008",
+);
+const ND1F1_EVIDENCE_DIRECTORY = resolve(
+  process.cwd(),
+  "../../.tmp/nd1f1-directory-density-20261010",
 );
 
 test("the business-workbench directory opens live and framework stages honestly", async ({
@@ -25,6 +30,13 @@ test("the business-workbench directory opens live and framework stages honestly"
     page.getByRole("heading", { name: "业务工作台", exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId("main-workbench-stage")).toHaveCount(20);
+  await expect(page.getByTestId("support-workbench-stage")).toHaveCount(3);
+  await expect(page.locator(".stage-connector")).toHaveCount(0);
+  await expect(page.locator(".stage-status")).toHaveCount(20);
+  await expect(page.locator(".network-legend > p")).toHaveCount(0);
+  await expect(page.locator(".network-legend details")).toContainText(
+    "不代表业务闭环已经验收",
+  );
   await expect(page.locator('[data-implementation="live"]')).toHaveCount(12);
   await expect(page.locator('[data-implementation="prototype"]')).toHaveCount(
     0,
@@ -34,6 +46,18 @@ test("the business-workbench directory opens live and framework stages honestly"
       .getByTestId("main-workbench-stage")
       .locator('a[href="/workspaces/dispatch"]'),
   ).toHaveAttribute("href", "/workspaces/dispatch");
+  const directoryCards = page.locator("a.stage-link, a.support-link");
+  await expect(directoryCards).toHaveCount(23);
+  const cardHrefs = await directoryCards.evaluateAll((links) =>
+    links.map((link) => link.getAttribute("href")),
+  );
+  expect(new Set(cardHrefs).size).toBe(23);
+  expect(new Set(cardHrefs)).toEqual(
+    new Set(workbenchStages.map((stage) => stage.path)),
+  );
+  await expect(
+    page.locator('.volume-band a[href="/workspaces/exceptions"]'),
+  ).toHaveCount(1);
 
   await page.getByRole("link", { name: /采购履约/ }).click();
   await expect(
@@ -182,6 +206,68 @@ for (const width of [320, 375, 1440]) {
         widths.contentClient + 1,
       );
     }
+  });
+}
+
+for (const [width, height] of [
+  [1440, 900],
+  [1024, 768],
+  [390, 844],
+] as const) {
+  test(`directory density stays readable without horizontal overflow at ${width}x${height}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/workspaces");
+
+    await expect(page.getByTestId("main-workbench-stage")).toHaveCount(20);
+    await expect(page.getByTestId("support-workbench-stage")).toHaveCount(3);
+    await expect(page.locator(".stage-connector")).toHaveCount(0);
+    await expect(page.locator(".network-legend details")).toBeVisible();
+    await expect(page.locator(".stage-link h3").first()).toBeVisible();
+    await expect(page.locator(".stage-link p").first()).toBeVisible();
+
+    if (width === 1440) {
+      const supplyHeading = page.getByRole("heading", { name: "供应与采购" });
+      await expect(supplyHeading).toBeVisible();
+      const supplyBox = await supplyHeading.boundingBox();
+      expect(supplyBox).not.toBeNull();
+      expect(supplyBox!.y + supplyBox!.height).toBeLessThanOrEqual(height);
+    }
+    if (width === 1024) {
+      await expect(page.locator(".network-legend > p")).toHaveCount(0);
+      await expect(page.locator(".stage-link p").first()).toBeVisible();
+    }
+    if (width === 390) {
+      await expect(page.locator(".stage-connector")).toHaveCount(0);
+      const stageVolumeText = (
+        await page.locator(".stage-volume").allTextContents()
+      ).join(" ");
+      expect(stageVolumeText).not.toContain("未接通");
+      expect(stageVolumeText).not.toContain("未定义");
+    }
+
+    const widths = await page.evaluate(() => ({
+      pageClient: document.documentElement.clientWidth,
+      pageScroll: document.documentElement.scrollWidth,
+      contentClient:
+        document.querySelector<HTMLElement>(".app-content")?.clientWidth ?? 0,
+      contentScroll:
+        document.querySelector<HTMLElement>(".app-content")?.scrollWidth ?? 0,
+    }));
+    expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
+    expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
+
+    await mkdir(ND1F1_EVIDENCE_DIRECTORY, { recursive: true });
+    const evidencePrefix = `${testInfo.project.name}-${width}x${height}`;
+    await page.screenshot({
+      path: resolve(ND1F1_EVIDENCE_DIRECTORY, `${evidencePrefix}.png`),
+      fullPage: true,
+    });
+    await writeFile(
+      resolve(ND1F1_EVIDENCE_DIRECTORY, `${evidencePrefix}.overflow.json`),
+      JSON.stringify(widths, null, 2),
+    );
   });
 }
 

@@ -34,6 +34,9 @@ describe("WorkbenchNetworkView", () => {
     });
 
     expect(wrapper.get("h1").text()).toBe("业务工作台");
+    expect(wrapper.get("header p").text()).toBe(
+      "从市场机会到还箱收口，按事实产生顺序进入正确岗位",
+    );
     expect(
       wrapper.findAll('[data-testid="main-workbench-stage"]'),
     ).toHaveLength(20);
@@ -52,18 +55,15 @@ describe("WorkbenchNetworkView", () => {
     expect(wrapper.text()).toContain("进口清关");
     expect(wrapper.text()).toContain("费用结算");
     expect(wrapper.text()).toContain("异常中心");
-    expect(wrapper.text()).toContain("经营机会交接");
-    expect(wrapper.text()).toContain("采购承诺交接");
+    expect(wrapper.findAll(".stage-connector")).toHaveLength(0);
     expect(wrapper.findAll(".stage-link .stage-handoff")).toHaveLength(0);
-    expect(
-      wrapper.get('.stage-connector[data-from="shipment_planning"]').text(),
-    ).toContain("2 项出向交接");
-    expect(
-      wrapper.get('a[href="/workspaces/shipment-planning"]').text(),
-    ).not.toContain("出向交接");
+    expect(wrapper.findAll(".stage-status")).toHaveLength(20);
     expect(wrapper.text()).toContain("支撑模块");
     expect(wrapper.text()).toContain("已接真实能力");
-    expect(wrapper.text()).toContain("不代表业务闭环已经验收");
+    expect(wrapper.get(".network-legend details").text()).toContain(
+      "不代表业务闭环已经验收",
+    );
+    expect(wrapper.findAll(".network-legend > p")).toHaveLength(0);
     expect(wrapper.text()).not.toContain("可工作");
     expect(wrapper.get('a[href="/workspaces/dispatch"]')).toBeTruthy();
   });
@@ -85,12 +85,72 @@ describe("WorkbenchNetworkView", () => {
       .findAll('[data-testid="main-workbench-stage"]')
       .find((stage) => stage.text().includes("市场与经营信号"));
     expect(market?.text()).toContain("在办 5");
-    expect(market?.text()).toContain("待接受 2，超时未定义");
+    expect(
+      wrapper
+        .findAll('[data-testid="stage-volume"]')
+        .map((volume) => volume.text()),
+    ).toEqual(["在办 5 · 本周 4", "在办 3", "在办 1"]);
+    expect(
+      wrapper
+        .findAll('[data-testid="main-workbench-stage"]')
+        .find((stage) => stage.text().includes("订舱"))
+        ?.findAll('[data-testid="stage-volume"]'),
+    ).toHaveLength(0);
     expect(market?.get("a").attributes("href")).toBe(
       "/workspaces/market-signals",
     );
     expect(wrapper.text()).not.toContain("当前阶段");
     expect(band.get("a").attributes("href")).toBe("/workspaces/exceptions");
+  });
+
+  it("keeps the full state explanation in progressive disclosure", () => {
+    const wrapper = mount(WorkbenchNetworkView, {
+      global: { stubs },
+    });
+
+    const details = wrapper.get(".network-legend details");
+    expect(details.get("summary").text()).toBe("状态说明");
+    expect(details.text()).toContain("已有技术操作映射 11 / 23 个工作台");
+  });
+
+  it("does not render an empty volume row while loading", () => {
+    const wrapper = mount(WorkbenchNetworkView, {
+      global: { stubs },
+    });
+
+    expect(wrapper.findAll('[data-testid="stage-volume"]')).toHaveLength(0);
+  });
+
+  it("filters zero and non-count stage metrics independently", async () => {
+    const fixture = volumeFixture();
+    vi.mocked(getWorkbenchNetworkVolume).mockResolvedValue({
+      ...fixture,
+      workbenches: [
+        {
+          ...fixture.workbenches[0],
+          open: { state: "count", count: 0 },
+          weeklyFlow: { state: "count", count: 2 },
+          blocked: { state: "forbidden" },
+        },
+        {
+          ...fixture.workbenches[1],
+          open: { state: "count", count: 0 },
+        },
+        fixture.workbenches[2],
+      ],
+    });
+    const wrapper = mount(WorkbenchNetworkView, {
+      global: { stubs },
+    });
+    await flushPromises();
+
+    const stageVolumeText = wrapper
+      .findAll('[data-testid="stage-volume"]')
+      .map((volume) => volume.text());
+    expect(stageVolumeText).toEqual(["本周 2", "在办 1"]);
+    expect(stageVolumeText.join(" ")).not.toContain("无权查看");
+    expect(stageVolumeText.join(" ")).not.toContain("未定义");
+    expect(stageVolumeText.join(" ")).not.toContain("未接通");
   });
 
   it("highlights only the phase the server names", async () => {
