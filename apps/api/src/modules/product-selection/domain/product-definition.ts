@@ -172,6 +172,9 @@ export function prepareProductDefinitionRelease(
 
   const reason = optionalText(command.reason, "reason", 500);
   if (command.decision === "release") {
+    if (current.npiStage !== "mp") {
+      invalid("PRODUCT_DEFINITION_RELEASE_REQUIRES_MP");
+    }
     // 发布的硬门槛：下游要拿它建稳定身份，没规格或没合规假设就发不出去。
     const missing = productDefinitionPendingFieldCodes(current).filter(
       (code) => code === "specification" || code === "compliance_assumptions",

@@ -176,7 +176,7 @@ async function submitReason(): Promise<void> {
       </div>
 
       <div v-if="pendingFields.length" class="block">
-        <b>还差这些才能发布</b>
+        <b>{{ stage === "mp" ? "还差这些才能发布" : "还差这些才能前进" }}</b>
         <ul class="pending">
           <li v-for="field in pendingFields" :key="field.code">
             <span>{{ field.code }}</span>
@@ -200,13 +200,22 @@ async function submitReason(): Promise<void> {
         </button>
       </div>
 
+      <p v-if="stage !== 'mp'" class="release-gate-note">
+        发布动作将在 MP 阶段且现有门槛满足后提供。
+      </p>
+
       <div class="release">
         <span class="label">发布决定</span>
         <p class="note">
           发布会把当前规格、阶段与各段结论冻结成不可变交接，交给主数据侧建档。
         </p>
         <div class="actions">
-          <button type="button" :disabled="busy" @click="release('release')">
+          <button
+            v-if="stage === 'mp'"
+            type="button"
+            :disabled="busy"
+            @click="release('release')"
+          >
             发布
           </button>
           <button

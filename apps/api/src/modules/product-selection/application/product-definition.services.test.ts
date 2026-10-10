@@ -315,7 +315,9 @@ describe("ReleaseProductDefinitionService", () => {
 
   it("发布按负责人落库并返回已发布状态", async () => {
     const repo = definitions({
-      findByInitiativeHandoffId: vi.fn().mockResolvedValue(definition()),
+      findByInitiativeHandoffId: vi
+        .fn()
+        .mockResolvedValue(definition({ npiStage: "mp" })),
     });
 
     const result = await release(repo).execute({
