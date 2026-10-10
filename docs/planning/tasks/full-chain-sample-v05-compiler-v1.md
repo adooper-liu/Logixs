@@ -1,7 +1,7 @@
 ---
-status: blocked
+status: coding
 branch: feat/full-chain-sample-compiler-implementation
-verification: "design and plan merged via PR #153 at 113d7a4e; FC1a-FC1e implementation pending; temporarily paused before implementation to release the single Codex writer slot for workbench-network-density-v1"
+verification: "design and plan merged via PR #153 at 113d7a4e; FC1a-FC1e implementation pending; Codex writer slot restored after workbench-network-density-v1 entered review"
 owner: main
 writer: codex
 risk: high
@@ -180,3 +180,4 @@ TASK docs/planning/tasks/full-chain-sample-v05-compiler-v1.md#FC1a-FC1e base=<br
 | 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                       |
 | 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                               |
 | 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复 |
+| 2026-10-10 | coding  | Claude Code | `f3dc2951`              | 目录减法已完成实现与独立复审修复并进入 PR 集成，恢复 FC1a～FC1e 实现调度                                 |

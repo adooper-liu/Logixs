@@ -1,7 +1,7 @@
 ---
-status: coding
+status: review
 branch: feat/workbench-network-density-v1
-verification: "ND1 unit 8/8, type/lint/build/format/repo/diff pass; E2E pending; ND1F1 pending header disclaimer, per-metric filtering and viewport evidence"
+verification: "ND1 implementation d58e68bc; review fix f3dc2951; unit 9/9, directory density E2E 9/9, full workbench-network E2E 75/75 reported by Codex after scoped link fix, type/lint/build/format/repo/diff passed; three-viewport screenshots and overflow evidence reviewed by main; fresh Codex review finding ND1-REVIEW-001 accepted and fixed"
 owner: main
 writer: codex
 risk: medium
@@ -137,13 +137,13 @@ next: fix
 
 ## 验收
 
-- [ ] 23 台与分组、正式目的、路由全部保留
-- [ ] 顶部长技术说明改为一行图例 + 可展开状态说明
-- [ ] 卡片只保留一个实现状态，不重复“未接通”
-- [ ] 空/未知业务量不占卡片首屏；真实非零或异常量仍显示
-- [ ] 交接文案不再出现在目录首屏
-- [ ] 三视口截图和无横向溢出数据经主代理人工核对
-- [ ] 定向单测/E2E、type/lint/build/format/repo/diff 通过
+- [x] 23 台与分组、正式目的、路由全部保留
+- [x] 顶部长技术说明改为一行图例 + 可展开状态说明
+- [x] 卡片只保留一个实现状态，不重复“未接通”
+- [x] 空/未知业务量不占卡片首屏；真实非零或异常量仍显示
+- [x] 交接文案不再出现在目录首屏
+- [x] 三视口截图和无横向溢出数据经主代理人工核对
+- [x] 定向单测/E2E、type/lint/build/format/repo/diff 通过
 
 ## 进度 log
 
