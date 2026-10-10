@@ -1,9 +1,9 @@
 ---
-status: fix
+status: done
 branch: fix/full-chain-sample-empty-protection
-verification: "FC1R6 checkpoint 6380cab7; real v0.5 twice produced matching diagnostic package with 37 records, 11 informational gaps and 74 checks; all external-system deltas zero; final review finding FC1-FINAL-BLOCK-001 reproduced and FC1R7 authorized below"
+verification: "real v0.5 compiled twice with matching package hash: 33 sheets, six record types/37 records, 11 informational gaps, 74 checks; publishable=false truthfully preserves one HBL-scope and one duplicate-key failure; PostgreSQL/MinIO/Temporal deltas all zero; focused 59/59, API 1478/1478, Web 710/710, worker 5/5, lint/typecheck/build/repo/docs/scoped-format/diff passed"
 owner: main
-writer: codex
+writer: main
 risk: high
 dependsOn: []
 writeScopes:
@@ -426,3 +426,4 @@ fresh 最终复审 finding `FC1-FINAL-BLOCK-001` 已由主代理独立复现并�
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6F3 focused 56/56，真实 probe 六类共 27 records；provenance/date 误判清零，仅 10 个 stuffing 分提单因内部空格误触 code 校验。HBL scope 真实 failed check 保留，进入 FC1R6F4 单点修复                              |
 | 2026-10-10 | review  | Claude Code | —                       | FC1R6 最终真实验收：六类 37 records、11 informational gaps、74 checks；两次 exit 2 且 package hash/计数一致，三域差值 0。publishable=false 仅来自 1 个真实 HBL scope 与 1 个真实 stuffing 重复键，进入 fresh 最终复审 |
 | 2026-10-10 | fix     | Claude Code | `6380cab7`              | fresh 最终复审发现 informational-only package 被 validator 错拒；主代理最小反证复现 `PACKAGE_PUBLISHABLE_INVALID`，接受 FC1-FINAL-BLOCK-001，授权 FC1R7 两文件修复                                                    |
+| 2026-10-10 | done    | Claude Code | —                       | FC1R7 原反证转 GREEN；最终 focused 59/59、API 1478/1478、Web 710/710、worker 5/5 及全部代码门禁通过。真实 v0.5 两次 hash 一致、37 records、11 informational gaps、74 checks、三域差值 0；两个真实 failed checks 保留  |

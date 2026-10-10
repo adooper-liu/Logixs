@@ -191,7 +191,7 @@ export function validatePackageArtifacts(artifacts) {
   )
     fail("PACKAGE_MANIFEST_INVALID");
   const publishable =
-    (artifacts.gaps ?? []).length === 0 &&
+    (artifacts.gaps ?? []).every((item) => item.status !== "blocking") &&
     (artifacts.checks ?? []).every((item) => item.status !== "fail");
   if (artifacts.manifest.publishable !== publishable)
     fail("PACKAGE_PUBLISHABLE_INVALID");

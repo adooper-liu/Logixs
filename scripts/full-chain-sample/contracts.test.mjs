@@ -163,6 +163,30 @@ test("package validation rejects publishable tampering and hashes proof claims",
       }),
     /PACKAGE_PUBLISHABLE_INVALID/,
   );
+
+  const failedCheckArtifacts = buildPackageArtifacts(
+    {
+      records: [],
+      lineage: [],
+      gaps: [],
+      checks: [{ code: "CHECK_FAILED", status: "fail", reason: "mismatch" }],
+      publishable: false,
+    },
+    {
+      sourceManifest,
+      sheetCount: 1,
+      policy: { mappingVersion: "mapping-v1", policyVersion: "policy-v1" },
+      compiledAt: "2026-01-01T00:00:00.000Z",
+    },
+  );
+  assert.throws(
+    () =>
+      validatePackageArtifacts({
+        ...failedCheckArtifacts,
+        manifest: { ...failedCheckArtifacts.manifest, publishable: true },
+      }),
+    /PACKAGE_PUBLISHABLE_INVALID/,
+  );
   assert.notEqual(
     artifacts.manifest.packageHash,
     packageHash({
@@ -170,6 +194,32 @@ test("package validation rejects publishable tampering and hashes proof claims",
       manifest: { ...artifacts.manifest, allowedProof: ["tampered"] },
     }),
   );
+});
+
+test("package validation accepts informational gaps as publishable", () => {
+  const artifacts = buildPackageArtifacts(
+    {
+      records: [],
+      lineage: [],
+      gaps: [
+        {
+          code: "CUSTOMS_LINE_IDENTITY_UNSUPPORTED",
+          status: "informational",
+          reason: "evidence-only",
+        },
+      ],
+      checks: [],
+      publishable: true,
+    },
+    {
+      sourceManifest,
+      sheetCount: 1,
+      policy: { mappingVersion: "mapping-v1", policyVersion: "policy-v1" },
+      compiledAt: "2026-01-01T00:00:00.000Z",
+    },
+  );
+
+  assert.doesNotThrow(() => validatePackageArtifacts(artifacts));
 });
 
 test("canonical JSON normalizes order and line endings", () => {
