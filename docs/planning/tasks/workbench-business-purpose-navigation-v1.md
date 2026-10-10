@@ -1,7 +1,7 @@
 ---
-status: blocked
+status: coding
 branch: worktree-workbench-purpose-navigation
-verification: "S1 WIP 7965c2dd; directed checks pass; planned-view regression confirmed; awaiting actual GPT-5.6 Codex for S1F1"
+verification: "S1 completed at 0daf6087; generator/repository 75/75, web full suite 148 files/700 tests; S2 pending main sync"
 owner: main
 writer: codex
 risk: medium
@@ -1073,10 +1073,12 @@ git status --short
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit     | 说明                                                                                                                            |
-| ---------- | ------- | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-09 | design  | Claude Code | —          | 负责人批准推荐方案；建立独立 worktree，继承 23 台智慧基线并形成 S1/S2/S3 唯一实施 brief；等待书面规格复核                       |
-| 2026-10-10 | coding  | Claude Code | `d9254ac8` | 负责人批准规格与计划并要求不再重复确认；主代理写回 UI identity/navigation 规则，S1 切换为 Codex 唯一实现写入者。                |
-| 2026-10-10 | blocked | Claude Code | `23ae9684` | 转发实现会话实际为 Claude Opus 4.8，按 AGENTS 角色映射在写入前阻断；工作树无产品差异，等待实际 GPT-5.6 Codex 从同一 base 接续。 |
-| 2026-10-10 | fix     | Claude Code | `bf2aadd6` | 收到实际 S1 差异并通过定向门禁；验收发现 planned 页仍读已移除的 `roleResult`、legacy 源仍手写 identity，进入 S1F1 根因修复。    |
-| 2026-10-10 | blocked | Claude Code | `7965c2dd` | S1 主体形成 WIP checkpoint；planned 定向测试稳定失败，S1F1 转发会话仍为 Claude，等待实际 GPT-5.6 Codex 从干净 WIP 基线接续。    |
+| 日期       | 阶段    | 负责        | commit     | 说明                                                                                                                                       |
+| ---------- | ------- | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-09 | design  | Claude Code | —          | 负责人批准推荐方案；建立独立 worktree，继承 23 台智慧基线并形成 S1/S2/S3 唯一实施 brief；等待书面规格复核                                  |
+| 2026-10-10 | coding  | Claude Code | `d9254ac8` | 负责人批准规格与计划并要求不再重复确认；主代理写回 UI identity/navigation 规则，S1 切换为 Codex 唯一实现写入者。                           |
+| 2026-10-10 | blocked | Claude Code | `23ae9684` | 转发实现会话实际为 Claude Opus 4.8，按 AGENTS 角色映射在写入前阻断；工作树无产品差异，等待实际 GPT-5.6 Codex 从同一 base 接续。            |
+| 2026-10-10 | fix     | Claude Code | `bf2aadd6` | 收到实际 S1 差异并通过定向门禁；验收发现 planned 页仍读已移除的 `roleResult`、legacy 源仍手写 identity，进入 S1F1 根因修复。               |
+| 2026-10-10 | blocked | Claude Code | `7965c2dd` | S1 主体形成 WIP checkpoint；planned 定向测试稳定失败，S1F1 转发会话仍为 Claude，等待实际 GPT-5.6 Codex 从干净 WIP 基线接续。               |
+| 2026-10-10 | review  | Claude Code | `0daf6087` | S1F1 消除 planned 数据源断链和 legacy 手写 identity；生成/仓库 75/75、Web 全套 148 文件/700 测试及 lint/typecheck/format/repo check 通过。 |
+| 2026-10-10 | coding  | Claude Code | —          | NPI A1 已经 PR #151 合并且必需 CI 全绿；S2 前置解除，开始同步最新 `main` 并保护非 MP 发布门行为。                                          |
