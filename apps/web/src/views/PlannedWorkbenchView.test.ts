@@ -13,6 +13,11 @@ describe("PlannedWorkbenchView", () => {
             template:
               "<header><h1>{{ title }}</h1><p>{{ summary }}</p></header>",
           },
+          WorkbenchPageHeader: {
+            props: ["stageCode", "eyebrow"],
+            template:
+              "<header><h1>{{ stageCode === 'procurement' ? '采购履约' : stageCode }}</h1><p v-if=\"stageCode === 'procurement'\">对获批采购需求取得并维护可追溯的供应商书面商业承诺，处理数量、日期和条款偏差</p></header>",
+          },
           RouterLink: {
             props: ["to"],
             template: "<a :href='to'><slot /></a>",
@@ -25,8 +30,10 @@ describe("PlannedWorkbenchView", () => {
   it("shows the role result and handoff boundaries without fake execution controls", () => {
     const wrapper = mountPlanned("procurement");
 
-    expect(wrapper.get("h1").text()).toBe("采购履约工作台");
-    expect(wrapper.text()).toContain("形成可追踪的采购承诺");
+    expect(wrapper.get("h1").text()).toBe("采购履约");
+    expect(wrapper.text()).toContain(
+      "对获批采购需求取得并维护可追溯的供应商书面商业承诺，处理数量、日期和条款偏差",
+    );
     expect(wrapper.text()).toContain("补货决策交接");
     expect(wrapper.text()).toContain("采购承诺交接");
     expect(wrapper.text()).toContain(

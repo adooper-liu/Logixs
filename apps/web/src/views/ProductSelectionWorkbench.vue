@@ -15,7 +15,7 @@ import ProductInitiativeReviewPanel from "../components/product-selection/Produc
 import ProductOpportunityActions from "../components/product-selection/ProductOpportunityActions.vue";
 import ProductOpportunityDetail from "../components/product-selection/ProductOpportunityDetail.vue";
 import ProductOpportunityQueue from "../components/product-selection/ProductOpportunityQueue.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
+import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import {
   useProductInitiativeDecision,
   type ProductInitiativeOutcome,
@@ -312,20 +312,21 @@ const progressPercent = computed(() =>
         selected && initiativeReady && !isReadOnly,
     }"
   >
-    <PageHeader
-      :class="{ 'page-header--result': isReadOnly }"
+    <WorkbenchPageHeader
+      stage-code="product_selection"
       eyebrow="选品岗位工作台"
-      title="选品立项"
-      :summary="
-        isReadOnly
-          ? legacyReadOnly
-            ? '查看历史四项评审；这条旧立项判断只读，不生成五面结论。'
-            : returnPending
-              ? '等待市场接回；当前责任仍在选品。'
-              : '查看已冻结的立项结论与 NPI 交接。'
-          : '领取经营团队交来的机会，核对依据与待补项，再决定是否进入正式立项评审。'
-      "
-    />
+      :class="{ 'page-header--result': isReadOnly }"
+    >
+      <template #help>
+        <span v-if="isReadOnly && legacyReadOnly"
+          >历史四项评审（只读，非五面判断）</span
+        >
+        <span v-else-if="isReadOnly && returnPending"
+          >等待市场接回；当前责任仍在选品。</span
+        >
+        <span v-else-if="isReadOnly">查看已冻结的立项结论与 NPI 交接。</span>
+      </template>
+    </WorkbenchPageHeader>
 
     <section v-if="feedbackError" class="feedback feedback--error" role="alert">
       <AlertCircle :size="17" />
@@ -871,7 +872,8 @@ const progressPercent = computed(() =>
 }
 @media (max-width: 680px) {
   .selection-workbench :deep(.page-header--result .page-heading > p) {
-    display: none;
+    margin-top: 0;
+    font-size: var(--text-micro);
   }
   .work-context,
   .workbench-grid {

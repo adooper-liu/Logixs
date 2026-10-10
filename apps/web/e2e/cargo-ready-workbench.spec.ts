@@ -6,7 +6,9 @@ test("cargo-ready operator moves from an order reason to the real SKU gap and al
   await routeWorkbench(page, [orderWithEvidenceGap]);
   await page.goto("/workspaces/cargo-ready?orderId=order-1");
 
-  await expect(page.getByRole("heading", { name: "备货工作台" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "备货", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /补合规资料.*26DSC01812/ }),
   ).toBeVisible();

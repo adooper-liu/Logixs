@@ -4,12 +4,12 @@ import { computed } from "vue";
 import type { ContainerSummary } from "../../api/containers";
 import type { LiveNodeView } from "../../data/liveNodeProjection";
 import LiveNodeRail from "../container/LiveNodeRail.vue";
-import PageHeader from "../ui/PageHeader.vue";
+import WorkbenchPageHeader from "./WorkbenchPageHeader.vue";
 
 const props = withDefaults(
   defineProps<{
-    title: string;
-    summary: string;
+    stageCode: import("../../data/workbenchPurposes.generated").WorkbenchCode;
+    embedded?: boolean;
     workspaceLabel: string;
     nodeScopeLabel: string;
     selectedContainer: ContainerSummary | null;
@@ -23,6 +23,7 @@ const props = withDefaults(
     loadingMessage?: string;
   }>(),
   {
+    embedded: false,
     contextReady: undefined,
     emptyMessage: "从左侧任务队列选择一项工作，查看事实与当前可执行动作。",
     loadingMessage: "正在加载当前岗位事实…",
@@ -43,12 +44,16 @@ const hasContext = computed(
 </script>
 
 <template>
-  <main class="role-workbench page-frame">
-    <PageHeader eyebrow="岗位工作台" :title="title" :summary="summary">
+  <component
+    :is="embedded ? 'section' : 'main'"
+    class="role-workbench"
+    :class="{ 'page-frame': !embedded }"
+  >
+    <WorkbenchPageHeader v-if="!embedded" :stage-code="stageCode">
       <template v-if="$slots.actions" #actions>
         <slot name="actions" />
       </template>
-    </PageHeader>
+    </WorkbenchPageHeader>
 
     <section class="context-band" aria-label="岗位与货柜范围">
       <div class="role-context">
@@ -124,7 +129,7 @@ const hasContext = computed(
         <slot name="secondary" />
       </section>
     </div>
-  </main>
+  </component>
 </template>
 
 <style scoped>

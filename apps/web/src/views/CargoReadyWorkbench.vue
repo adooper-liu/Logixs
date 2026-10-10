@@ -76,8 +76,7 @@ async function selectOrderById(value: string): Promise<void> {
 
 <template>
   <RoleWorkbenchFrame
-    title="备货工作台"
-    summary="从备货单开始，只处理 SKU 身份、物料属性、适用资料和装柜分配的真实缺口。"
+    stage-code="cargo_ready"
     workspace-label="备货"
     node-scope-label="备货确认"
     :selected-container="null"

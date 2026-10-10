@@ -60,6 +60,43 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.get(".action-body button").text()).toBe("领取此机会");
   });
 
+  it.each([
+    ["办理中", null, false],
+    ["历史只读", { outcome: "reject", currentDestination: "rejected" }, true],
+    [
+      "退回等待",
+      { outcome: "return_to_market", currentDestination: "return_requested" },
+      true,
+    ],
+    [
+      "冻结结果",
+      { outcome: "approve", currentDestination: "handed_off" },
+      true,
+    ],
+  ] as const)(
+    "%s按状态控制结果态页头密度 class",
+    async (_label, result, hasResultClass) => {
+      if (result) {
+        listProductOpportunities.mockResolvedValue(acceptedPage());
+        getProductInitiative.mockResolvedValue(
+          initiativeDetail({
+            initiative: {
+              ...initiativeRecord(),
+              ...result,
+              completion: "completed",
+            },
+          }),
+        );
+      }
+
+      const wrapper = await mountPage();
+
+      expect(wrapper.find(".page-header--result").exists()).toBe(
+        hasResultClass,
+      );
+    },
+  );
+
   it("claims the team-queue item and then accepts the same handoff", async () => {
     const claimed = opportunity({
       intakeState: "claimed",
@@ -1141,7 +1178,7 @@ async function mountPage() {
         PageHeader: {
           props: ["eyebrow", "title", "summary"],
           template:
-            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p></header>",
+            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p><slot name='help' /></header>",
         },
       },
     },

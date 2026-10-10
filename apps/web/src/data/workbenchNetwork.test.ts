@@ -14,6 +14,7 @@ import {
   workbenchStage,
   workbenchStages,
 } from "./workbenchNetwork";
+import { workbenchPurposes } from "./workbenchPurposes.generated";
 
 describe("workbench catalog", () => {
   it("keeps the approved 23-workbench baseline and unique catalog identities", () => {
@@ -37,6 +38,22 @@ describe("workbench catalog", () => {
     expect(
       supportingWorkbenches.every(({ sequence }) => sequence === null),
     ).toBe(true);
+  });
+
+  it("projects all 23 generated identities into the technical catalog", () => {
+    expect(
+      workbenchStages.map(({ code, title, businessPurpose }) => ({
+        code,
+        title,
+        businessPurpose,
+      })),
+    ).toEqual(workbenchPurposes);
+  });
+
+  it("does not keep a handwritten roleResult copy", () => {
+    expect(workbenchStages.every((stage) => !("roleResult" in stage))).toBe(
+      true,
+    );
   });
 
   it("records the approved titles and catalog-only surfaces without promoting runtime capability", () => {

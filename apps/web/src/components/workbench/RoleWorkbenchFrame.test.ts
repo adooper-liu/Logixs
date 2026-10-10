@@ -14,8 +14,7 @@ describe("RoleWorkbenchFrame", () => {
   it("keeps the queue as the only selector and shows the selected context", () => {
     const wrapper = mount(RoleWorkbenchFrame, {
       props: {
-        title: "备货工作台",
-        summary: "备货事实",
+        stageCode: "cargo_ready",
         workspaceLabel: "备货",
         nodeScopeLabel: "备货",
         selectedContainer: container,
@@ -30,7 +29,7 @@ describe("RoleWorkbenchFrame", () => {
         primary: "<div data-testid='primary'>装载事实</div>",
         secondary: "<div data-testid='secondary'>岗位待办</div>",
       },
-      global: { stubs: { PageHeader: true } },
+      global: { stubs: { WorkbenchPageHeader: true } },
     });
 
     expect(wrapper.text()).toContain("MSCU1234567");
@@ -50,8 +49,7 @@ describe("RoleWorkbenchFrame", () => {
   it("keeps the role queue usable before a container is selected", () => {
     const wrapper = mount(RoleWorkbenchFrame, {
       props: {
-        title: "备货工作台",
-        summary: "备货事实",
+        stageCode: "cargo_ready",
         workspaceLabel: "备货",
         nodeScopeLabel: "备货",
         selectedContainer: null,
@@ -62,7 +60,7 @@ describe("RoleWorkbenchFrame", () => {
         warnings: [],
       },
       slots: { queue: "<div>可执行任务</div>" },
-      global: { stubs: { PageHeader: true } },
+      global: { stubs: { WorkbenchPageHeader: true } },
     });
 
     expect(wrapper.get('[aria-label="岗位任务池"]').text()).toContain(
@@ -74,8 +72,7 @@ describe("RoleWorkbenchFrame", () => {
   it("shows auxiliary warnings without hiding the selected container", () => {
     const wrapper = mount(RoleWorkbenchFrame, {
       props: {
-        title: "备货工作台",
-        summary: "备货事实",
+        stageCode: "cargo_ready",
         workspaceLabel: "备货",
         nodeScopeLabel: "备货",
         selectedContainer: container,
@@ -85,7 +82,7 @@ describe("RoleWorkbenchFrame", () => {
         selectionError: "",
         warnings: [{ code: "compliance", message: "合规评审暂时没能加载" }],
       },
-      global: { stubs: { PageHeader: true } },
+      global: { stubs: { WorkbenchPageHeader: true } },
     });
 
     expect(wrapper.get('[aria-label="局部数据提示"]').text()).toContain(

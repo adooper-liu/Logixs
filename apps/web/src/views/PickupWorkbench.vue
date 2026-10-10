@@ -67,8 +67,7 @@ function submit(draft: PickupFactDraft) {
 
 <template>
   <RoleWorkbenchFrame
-    title="提柜工作台"
-    summary="核对到港、清关与码头可提，登记重柜实际出场，并处理提柜岗位工单。"
+    stage-code="pickup"
     workspace-label="内陆运输"
     node-scope-label="拖卡提柜"
     :selected-container="selectedContainer"

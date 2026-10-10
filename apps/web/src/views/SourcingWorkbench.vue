@@ -7,7 +7,7 @@ import {
 } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import PageHeader from "../components/ui/PageHeader.vue";
+import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import type { SupplierQuotationV1 } from "@logix/contracts";
 import {
   entryKey,
@@ -176,10 +176,9 @@ async function reload(): Promise<void> {
 
 <template>
   <main class="sourcing-workbench page-frame">
-    <PageHeader
+    <WorkbenchPageHeader
+      stage-code="sourcing"
       eyebrow="寻源与供应商定点岗位工作台"
-      title="寻源与供应商定点"
-      summary="为一件可售 SKU 收齐供应商报价，比的不只是单价，选定一家定点交给需求与补货。"
     />
 
     <section v-if="error" class="feedback feedback--error" role="alert">

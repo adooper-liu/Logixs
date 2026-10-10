@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { workbenchPurposeByCode } from "../src/data/workbenchPurposes.generated";
 
 const E1_VIEWPORT_EVIDENCE = resolve(
   process.cwd(),
@@ -10,6 +11,7 @@ const A1_VIEWPORT_EVIDENCE = resolve(
   process.cwd(),
   "../../.tmp/a1-non-mp-release-hard-stop-20261010",
 );
+const NPI_PURPOSE = workbenchPurposeByCode.product_npi.businessPurpose;
 
 /**
  * 3 号节点「产品开发与 NPI 工作台」的岗位动线：
@@ -42,6 +44,7 @@ test("NPI owner sees the handed-off initiative and takes it", async ({
   });
 
   await page.goto("/workspaces/product-npi");
+  await expect(page.getByText(NPI_PURPOSE, { exact: true })).toHaveCount(1);
 
   // 首屏先回答"为什么现在处理"：这一票还没有人接。
   await expect(page.getByText("等我接手")).toBeVisible();
@@ -67,6 +70,7 @@ test("NPI owner sees the handed-off initiative and takes it", async ({
   // 接到自己名下：回执 + 分组跟着变，并且右栏**从"领取"换成"推进"** ——
   // 接住了就该看见下一步做什么，而不是停在一条"已由某人负责"的回执上。
   await expect(page.getByText(/已接到你名下/)).toBeVisible();
+  await expect(page.getByText(NPI_PURPOSE, { exact: true })).toHaveCount(1);
   await expect(page.getByText("我负责的")).toBeVisible();
   await expect(page.getByText("推进产品定义")).toBeVisible();
   await expect(page.getByRole("button", { name: "领取此立项" })).toHaveCount(0);
@@ -143,6 +147,7 @@ test("NPI owner advances a claimed initiative and releases the product design", 
   });
 
   await page.goto("/workspaces/product-npi");
+  await expect(page.getByText(NPI_PURPOSE, { exact: true })).toHaveCount(1);
 
   // 领取之后才轮到推进。
   await page.getByRole("button", { name: /宠物出行品类/ }).click();
@@ -255,6 +260,7 @@ test("NPI owner advances a claimed initiative and releases the product design", 
   await page.getByRole("button", { name: "发布", exact: true }).click();
 
   await expect(page.getByText("已发布，交给主数据侧建档")).toBeVisible();
+  await expect(page.getByText(NPI_PURPOSE, { exact: true })).toHaveCount(1);
 });
 
 test("NPI return hands the current queue item back as a new handoff", async ({

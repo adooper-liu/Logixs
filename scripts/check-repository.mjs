@@ -190,7 +190,6 @@ function numericLiteral(node) {
 }
 
 const catalogOverrideProperties = new Set([
-  "title",
   "path",
   "kind",
   "phase",
@@ -199,7 +198,6 @@ const catalogOverrideProperties = new Set([
   "maturity",
   "surface",
   "ownerRole",
-  "roleResult",
   "requiredFacts",
 ]);
 
@@ -295,8 +293,7 @@ function effectiveStages(sourceFile, errors) {
     if (code)
       legacy.set(code, {
         code,
-        title: stringLiteral(expression.arguments?.[offset + 1]),
-        path: stringLiteral(expression.arguments?.[offset + 2]),
+        path: stringLiteral(expression.arguments?.[offset + 1]),
         kind: helperKind(
           sourceFile,
           name === "supportStage" ? "supportStage" : "stage",
@@ -326,11 +323,6 @@ function effectiveStages(sourceFile, errors) {
       return [
         {
           ...base,
-          title:
-            stringLiteral(
-              overrideObject &&
-                objectProperty(overrideObject, "title")?.initializer,
-            ) ?? base.title,
           path:
             stringLiteral(
               overrideObject &&
@@ -352,8 +344,7 @@ function effectiveStages(sourceFile, errors) {
       return [
         {
           code: stringLiteral(expression.arguments[offset]),
-          title: stringLiteral(expression.arguments[offset + 1]),
-          path: stringLiteral(expression.arguments[offset + 2]),
+          path: stringLiteral(expression.arguments[offset + 1]),
           kind: helperKind(sourceFile, name),
         },
       ];
@@ -439,11 +430,6 @@ export function inspectWorkbenchCatalogSource(source) {
         `workbenchStages: ${code} path must be '${path}', found '${stage.path}'`,
       );
   }
-  const customs = stages.find((stage) => stage.code === "customs");
-  if (customs && customs.title !== "进口清关")
-    errors.push(
-      `workbenchStages: customs title must be '进口清关', found '${customs.title}'`,
-    );
   const compliance = stages.find(
     (stage) => stage.code === "compliance_operations",
   );

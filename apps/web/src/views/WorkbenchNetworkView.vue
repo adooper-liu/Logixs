@@ -239,7 +239,7 @@ const totalStageCount = computed(
                 </span>
               </div>
               <h3>{{ stage.title }}</h3>
-              <p>{{ stage.roleResult }}</p>
+              <p>{{ stage.businessPurpose }}</p>
               <p class="stage-volume" data-testid="stage-volume">
                 {{ stageVolumeText(stage.code) }}
               </p>
@@ -279,7 +279,7 @@ const totalStageCount = computed(
             <small>{{ stage.ownerRole }}</small>
             <h3>{{ stage.title }}</h3>
           </div>
-          <p>{{ stage.roleResult }}</p>
+          <p>{{ stage.businessPurpose }}</p>
           <ArrowRight :size="17" aria-hidden="true" />
         </RouterLink>
       </div>

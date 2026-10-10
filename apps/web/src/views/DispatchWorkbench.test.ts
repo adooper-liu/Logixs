@@ -105,7 +105,15 @@ describe("DispatchWorkbench", () => {
   it("opens the post-departure intake as the default shipping workspace", async () => {
     const wrapper = await mountPage("/workspaces/dispatch");
 
-    expect(wrapper.get("h1").text()).toBe("接管已出运数据");
+    expect(wrapper.get("h1").text()).toBe("出运");
+    expect(
+      wrapper.get('[aria-label="出运工作台内部视图"]').classes(),
+    ).toContain("dispatch-view-switch");
+    expect(
+      wrapper
+        .get('[aria-label="出运工作台内部视图"] button[aria-current="page"]')
+        .text(),
+    ).toContain("接管已出运数据");
     expect(wrapper.text()).toContain("上传当前已有的来源文件");
     expect(
       wrapper.get('[data-testid="post-departure-preflight"]').text(),
@@ -132,7 +140,7 @@ describe("DispatchWorkbench", () => {
 
     const wrapper = await mountPage("/workspaces/dispatch");
 
-    expect(wrapper.get("h1").text()).toBe("接管已出运数据");
+    expect(wrapper.get("h1").text()).toBe("出运");
     expect(wrapper.find('[aria-label="当前责任与交接"]').exists()).toBe(false);
     expect(wrapper.findAll("main")).toHaveLength(1);
   });
