@@ -19,6 +19,9 @@ writeScopes:
   - apps/web/e2e/workbench-network.spec.ts
   - apps/web/src/views/ProductSelectionWorkbench.vue
   - apps/web/src/views/ProductSelectionWorkbench.test.ts
+  - apps/web/e2e/product-selection-workbench.spec.ts
+  - scripts/generate-workbench-purposes.mjs
+  - scripts/generate-workbench-purposes.test.mjs
 exclusiveLocks:
   - business-policy:workbench-business-purpose-presentation
   - ui-navigation:workbench-entry-layer
@@ -1020,6 +1023,30 @@ S2 主实现通过定向测试后，主代理按真实截图和代码核对形�
 6. **S2-BLOCK-006 相关 E2E 仍锁定旧标题**：S2 正式标题从权威投影收敛后，`cargo-ready`、`stuffing`、`customs`、`pickup`、`delivery`、`unloading` 和 `workbench-network` 相关 E2E 仍期待带“工作台”后缀的旧 H1，导致完整相关桌面套件失败。仅把这些页面身份断言改为 generated 正式 title 或准确新标题；不得全局替换侧栏 `navLabel`、内部局部标题或 S3 才处理的 shell 导航文案。修改后必须重跑完整相关桌面 E2E 列表并保持业务动作断言通过。
 
 修复边界：不改 API、领域状态、权限、NPI 发布门、工作台业务动作或 S3 侧栏入口；不重排固定办理壳。完成后重跑 S2 全部单测、三项目 E2E、负责人指定的三个 E2E 文件单 worker、完整相关桌面 E2E、typecheck/lint/build/repo/format，并重新提交三视口证据供主代理人工复核。
+
+### Final review finding 处置
+
+```yaml
+protocol: logix-disposition/v1
+slice: final-review
+decisions:
+  - finding: FINAL-AUTHORITY-ORDER-01
+    status: accepted
+    reason: stable code 对调但序号不变时当前 parser 会接受，可能把两台工作台正式身份静默串位
+    writeback: docs/planning/tasks/workbench-business-purpose-navigation-v1.md
+  - finding: FINAL-MOBILE-PURPOSE-02
+    status: accepted
+    reason: <=680px 结果态 CSS 将 generated purpose 设为 display:none，违反 uiMustStayVisible
+    writeback: docs/planning/tasks/workbench-business-purpose-navigation-v1.md
+next: fix
+```
+
+修复要求：
+
+1. 先新增两行 code 对调的生成器回归测试并确认 RED；解析顺序校验必须同时要求 `row.sequence === index + 1` 与 `row.code === EXPECTED_WORKBENCH_CODES[index]`，新增稳定错误码说明实际/预期 code 和位置，且不破坏 duplicate/missing/unknown 诊断。
+2. 先新增 390px 选品 legacy、return-pending、frozen 结果态 purpose `toBeVisible()` 回归并确认 RED；移动端只能压缩字号/间距或隐藏非关键 eyebrow/help，不得隐藏 generated purpose。补一张结果态首屏截图或 bounds 证据，并保持办理中/结果态 class 条件不变。
+3. 复审 minor：dispatch 已废弃 parent listeners 与旧 `.view-switch` CSS 记为 deferred，不进入本次唯一 fix pass；除非其导致当前门禁失败，否则留待后续简化。
+4. 修复后重跑 generator/repository 测试与 drift、选品 unit/E2E 三项目、purpose/shell/network 三项目、type/lint/build/repo/format；完整 validate 的 `.tmp` 证据格式阻塞单独记录。
 
 ### S3F1 集成回归修复
 
