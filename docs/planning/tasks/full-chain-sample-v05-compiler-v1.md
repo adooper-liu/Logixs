@@ -325,6 +325,21 @@ FC1R6 focused 48/48 不能关闭真实结构验收。主代理在未提交 diff 
 
 保持 FC1R6 原写入范围。新增真实结构回归必须使用脱敏结构 fixture，不复制真实业务值。最终交回除 focused tests 外，必须报告一轮真实 v0.5 的脱敏摘要（exit、六类 record counts、gap/check code counts），不得回显路径、hash 或业务值。
 
+### FC1R6F2：剩余真实结构与对账语义修复
+
+FC1R6F1 focused 50/50 后，主代理真实 v0.5 probe 已生成 24 records（shipment 2、booking 2、cargo-ready 3、stuffing 15、customs 2），但缺 dispatch，且仍有 39 provenance conflict、1 construction override、2 date precision blocking gaps 和 2 quantity check failures。根因已经只读定位：
+
+1. provenance conflict 不能按整个 workbook 全局阻断 Brief 1：29 个重复键来自 unsupported Sheet。仅 pilot mappings 实际消费的 provenance 冲突可以阻断 package；其他 Sheet 保留在 evidence-only/unsupported 诊断，不进入 package-level blocking gap。
+2. `11_装箱` 的 26 清单 row-key 为 `柜号 / 封号`，同柜多 SKU 行会共享 row-key；必须使用 `工作表 + row-key + 字段 + 原始值` 精确匹配 construction evidence。完全相同的重复清单行可幂等折叠；同 key 但值或依据冲突时才 `PROVENANCE_CONFLICT`。不得把原始值写入 gap/log/package，只用于内存匹配与 hash。
+3. customs 有一条报关票被 26 清单明确标记为 S，五个 mapped 字段都应在 policy 显式允许 construction override；未命中 26 的其他票仍按批准 direct source 为 R。
+4. dispatch 日期字段需要 policy 字段级 normalization：`进港日期`、`ATD/出运日期`、`母船出运日期` 的 precision/timezone 必须显式声明。真实表内 `日期精度` 只描述出运日期且文本不是当前枚举，不能直接当机器参数；本片只能采用已经由 source/业务权威明确的 date-only 与起运港 UTC+08:00 口径。若 policy 无配置则继续 gap，不从机器时区猜测。
+5. quantity reconciliation 只在 cargo-ready 有一个或多个 stuffing 子行且双方数量都存在时适用。无任何子行的 cargo-ready record 必须 `not_applicable`，不得 fail；有子行但合计不等继续 fail。weight/volume 同理遵循适用性，不以缺子行冒充 mismatch。
+6. 真实 v0.5 再跑最低验收：六类 record type 均有记录；不存在因 unsupported Sheet、row-key 碰撞或无子行对账造成的 false blocking；两次 hash 一致；三域变化 0。真实 P 或真实数据不一致仍可 exit 2，但必须按稳定 code 如实留下。
+
+允许写入沿用 FC1R6，并允许修改 `scripts/full-chain-sample/schemas/policy.schema.json` 表达字段级 normalization。新增测试必须使用脱敏 fixture，覆盖：同 row-key 不同值精确 S 匹配、完全重复折叠、冲突值阻断、unsupported provenance 不阻断、dispatch policy 日期规范、无子行 quantity `not_applicable` 与有子行 mismatch `fail`。
+
+最终交回必须包含 focused tests 和真实 v0.5 的脱敏摘要；不得仅报告测试计数，不提交，不进入备份/删除/写库/UI。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -368,3 +383,4 @@ FC1R6 focused 48/48 不能关闭真实结构验收。主代理在未提交 diff 
 | 2026-10-10 | fix     | Claude Code | `17e2b58b`              | 进一步核对 v0.1～v0.5 与生成脚本后确认均为 openpyxl 生成的无属性空 `<workbookProtection/>`，无实际锁定效果；当前存在性判断误拒绝，授权 FC1R5 精确兼容修复                                                          |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R5 后真实 v0.5 两次 exit 2、hash 一致、三域差值 0；诊断包 33 Sheet/0 records/48 gaps/9 checks。确认真实表头、26 row-key、分级与 policy mapping 不一致，授权 FC1R6 结构适配                                      |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6 focused 48/48 但真实 probe 仅 9 records、68 gaps，仍有 25 主键缺失、29 provenance 冲突、2 日期精度和 1 code 阻断；fixture 未复现真实 row-key/25 表结构且 policy 改错业务键，进入 FC1R6F1                     |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F1 focused 50/50，真实 probe 产 5/6 类共 24 records；剩余阻断来自 unsupported provenance 全局化、stuffing row-key 碰撞、customs S override、dispatch 日期参数及无子行数量对账误判，进入 FC1R6F2               |
