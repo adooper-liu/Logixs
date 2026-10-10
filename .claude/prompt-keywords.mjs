@@ -15,6 +15,7 @@ const HELP = [
   "任务线——只列主线、支线和当前活动线",
   "下一步——最小核对 Git/brief/PR/CI 后给出唯一下一动作；已有集成授权时直接执行",
   "归线——停止漂移，回到当前活动线的唯一下一动作",
+  "续线——新对话从仓库事实恢复主线、支线、当前活动线和唯一下一动作",
   "口令——查询本清单",
 ];
 
@@ -137,6 +138,8 @@ process.stdin.on("end", () => {
     context = active
       ? realign(active)
       : response("尚未登记任务线。先发送：主线：<brief#slice>｜<状态>｜<唯一下一动作>");
+  } else if (prompt === "续线") {
+    context = resumeFromRepository(state);
   } else if (prompt === "口令") {
     context = response(HELP.map((item, index) => `${index + 1}. ${item}`).join("\n"));
   } else {
@@ -240,6 +243,33 @@ function realign(active) {
     ? "\n集成授权：已授权安全完整闭环；条件具备后直接集成，不重复索权。"
     : "\n集成授权：未授予。";
   return `【归线纠偏已触发】\n业务主线位置：以正式业务权威和已登记主线为准，不重新解释项目背景。\n当前批准任务：${active.name}｜${active.pointer}｜${active.status}\n尚未满足的收口条件：只核对该 brief、实际 Git diff 与最近 commit ${active.commit} 的增量变化。\n唯一下一动作：${active.next}${integration}\n立即停止其他节奏，只执行上述唯一下一动作。禁止新增计划、文档或切片，禁止重复确认，禁止扩范围，禁止把横向门禁当业务主线。严格按 AGENTS.md 角色：Claude 主代理只写 brief、权威和集成；产品实现只输出标准 TASK 给真实 GPT-5.6 Codex，由负责人手工转交。`;
+}
+
+function resumeFromRepository(state) {
+  const registered = formatTaskLines(state);
+  return `【续线恢复已触发】
+这是新对话恢复，不依赖旧聊天、聊天摘要或口头复述。先读取并遵守根 AGENTS.md、当前目录适用的嵌套 AGENTS.md、项目 MEMORY.md 与相关 memory；随后只从仓库事实恢复：
+1. 扫描 docs/planning/tasks/ 的 active brief（frontmatter status 为 design/coding/fix/review/blocked 等），核对依赖、锁、进度 log 和唯一下一动作。
+2. 盘点 git worktree list 及每个 worktree 的分支、HEAD、实际 diff、未提交与未跟踪内容；不得删除或覆盖任何 worktree、.tmp 或未提交改动。
+3. 核对本地/远端分支、最近提交、对应 GitHub PR 与 CI；以 brief/Git/PR/CI 为准，登记任务线只作定位提示。
+4. 恢复关键词纪律：口令、任务线、下一步、归线、切线：<名称>、集成授权、取消集成授权、主线：…、支线：…、更新线：…、收支线：…、续线。
+
+登记任务线提示（必须用仓库事实校正，不得照抄）：
+${registered}
+
+恢复时继承以下纪律：
+- 唯一业务主线是 NPI；若 SAMP1 的两个合格真实或脱敏对比样本仍缺失，明确标为阻塞，不伪造完成。
+- 当前可执行支线候选是全链样本 v0.5；以 active brief、worktree、PR/CI 的最新事实确认其具体阶段。
+- Claude 主代理只负责 brief、业务权威、验收裁决和 Git/PR 集成；产品实现只给标准 TASK，由负责人手工转交真实 GPT-5.6 Codex；独立复审使用 fresh、只读 GPT-5.6 Codex。
+- 只有可复现的业务损失、安全越界、数据失真、兼容或发布风险才阻塞；其他问题降为非阻塞，不反复返工。
+- 不重复解读完整项目，只核对增量事实；回复使用简短人话。
+- 全链样本 Brief 1 完成后停止，不自动启动 Brief 2～4；FC1f 必须有仓外真实 workbook/manifest 才能执行，缺失时不得运行。
+
+完成核对后只输出四项，不执行恢复结果中的下一动作：
+主线：<业务主线及真实状态>
+支线：<在途支线及真实状态；无则写无>
+当前活动线：<唯一一条>
+唯一下一动作：<一个可执行动作>`;
 }
 
 function activeReminder(active) {
