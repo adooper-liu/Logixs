@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/workbench-business-purpose-navigation-v1
-verification: "S1 0daf6087; S2 b5690ceb; S3 216910c6; final fix a4af2a53; fresh GPT-5.6 review pass at df01fe9d with findings []; unit 149 files/707 tests, integration 26 files/195 tests, full E2E 201 passed/11 skipped, build/type/lint/repo/drift pass; tracked/target format pass; full format blocked only by 6 untracked .tmp evidence JSON files"
+verification: "PR #154 https://github.com/adooper-liu/Logixs/pull/154 merged at eea45ac1; CI changes/static/unit/build/e2e/security/quality passed; fresh GPT-5.6 review pass at df01fe9d with findings []; local unit 149 files/707 tests, integration 26 files/195 tests, full E2E 201 passed/11 skipped, build/type/lint/repo/drift passed; tracked/target format passed; full local format was blocked only by six untracked .tmp evidence JSON files"
 owner: main
 writer: codex
 risk: medium
@@ -1097,7 +1097,7 @@ S3 自身导航与 Shell 门禁通过后，全项目 `workbench-network.spec.ts`
 - [x] 全部 23 个 route、目录链接和深链仍可访问；菜单隐藏未被用作授权
 - [x] 页面原有责任、对象、事实缺口、动作、结果反馈和恢复入口未因页头接线丢失或重排
 - [x] `1440x900`、`1024x768`、`390x844` 真实截图和无横向溢出数据已生成并由主代理逐张人工核对
-- [ ] 完整 `format:check` 仅被 6 个未跟踪 `.tmp/s1f7-viewport-evidence-20261008/*.json` 阻断；受控/目标路径格式、lint、typecheck、unit、integration、E2E、build 均通过，待 PR CI 最终确认
+- [x] 完整 `format:check` 本地仅被 6 个未跟踪 `.tmp/s1f7-viewport-evidence-20261008/*.json` 阻断；受控/目标路径格式、lint、typecheck、unit、integration、E2E、build 均通过，PR #154 必需 CI 全绿并已合并
 - [x] fresh GPT-5.6 Codex 只读复审 `65bb3f93..df01fe9d` 结论 `pass`、`findings: []`；本轮未重复全量 E2E，沿用主代理已执行的 201 passed / 11 skipped 证据
 - [x] 未把页面存在、目的可见或 CI 通过宣称为任一工作台业务闭环
 
@@ -1115,12 +1115,12 @@ S3 自身导航与 Shell 门禁通过后，全项目 `workbench-network.spec.ts`
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit     | 说明                                                                                                                                                |
-| ---------- | ------- | ----------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-09 | design  | Claude Code | —          | 负责人批准推荐方案；建立独立 worktree，继承 23 台智慧基线并形成 S1/S2/S3 唯一实施 brief；等待书面规格复核                                           |
-| 2026-10-10 | coding  | Claude Code | `d9254ac8` | 负责人批准规格与计划并要求不再重复确认；主代理写回 UI identity/navigation 规则，S1 切换为 Codex 唯一实现写入者。                                    |
-| 2026-10-10 | blocked | Claude Code | `23ae9684` | 转发实现会话实际为 Claude Opus 4.8，按 AGENTS 角色映射在写入前阻断；工作树无产品差异，等待实际 GPT-5.6 Codex 从同一 base 接续。                     |
-| 2026-10-10 | fix     | Claude Code | `bf2aadd6` | 收到实际 S1 差异并通过定向门禁；验收发现 planned 页仍读已移除的 `roleResult`、legacy 源仍手写 identity，进入 S1F1 根因修复。                        |
-| 2026-10-10 | blocked | Claude Code | `7965c2dd` | S1 主体形成 WIP checkpoint；planned 定向测试稳定失败，S1F1 转发会话仍为 Claude，等待实际 GPT-5.6 Codex 从干净 WIP 基线接续。                        |
-| 2026-10-10 | review  | Claude Code | `0daf6087` | S1F1 消除 planned 数据源断链和 legacy 手写 identity；生成/仓库 75/75、Web 全套 148 文件/700 测试及 lint/typecheck/format/repo check 通过。          |
-| 2026-10-10 | review  | Claude Code | `df01fe9d` | fresh GPT-5.6 full-task review `verdict: pass`、`findings: []`、`writes: none`；verification gap 仅为复审轮未重复全量 E2E，沿用 201/11 主代理证据。 |
+| 日期       | 阶段    | 负责        | commit     | 说明                                                                                                                                       |
+| ---------- | ------- | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-09 | design  | Claude Code | —          | 负责人批准推荐方案；建立独立 worktree，继承 23 台智慧基线并形成 S1/S2/S3 唯一实施 brief；等待书面规格复核                                  |
+| 2026-10-10 | coding  | Claude Code | `d9254ac8` | 负责人批准规格与计划并要求不再重复确认；主代理写回 UI identity/navigation 规则，S1 切换为 Codex 唯一实现写入者。                           |
+| 2026-10-10 | blocked | Claude Code | `23ae9684` | 转发实现会话实际为 Claude Opus 4.8，按 AGENTS 角色映射在写入前阻断；工作树无产品差异，等待实际 GPT-5.6 Codex 从同一 base 接续。            |
+| 2026-10-10 | fix     | Claude Code | `bf2aadd6` | 收到实际 S1 差异并通过定向门禁；验收发现 planned 页仍读已移除的 `roleResult`、legacy 源仍手写 identity，进入 S1F1 根因修复。               |
+| 2026-10-10 | blocked | Claude Code | `7965c2dd` | S1 主体形成 WIP checkpoint；planned 定向测试稳定失败，S1F1 转发会话仍为 Claude，等待实际 GPT-5.6 Codex 从干净 WIP 基线接续。               |
+| 2026-10-10 | review  | Claude Code | `0daf6087` | S1F1 消除 planned 数据源断链和 legacy 手写 identity；生成/仓库 75/75、Web 全套 148 文件/700 测试及 lint/typecheck/format/repo check 通过。 |
+| 2026-10-10 | done    | Claude Code | `eea45ac1` | PR #154 必需 CI 全绿并合入 `main`；正式业务目的投影、23 台统一页头、状态不变性和侧栏入口收敛完成，但不提升任何工作台成熟度。               |
