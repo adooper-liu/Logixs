@@ -1,7 +1,7 @@
 ---
 status: fix
 branch: fix/full-chain-sample-empty-protection
-verification: "compiler merged via PR #163 at 17e2b58b; FC1f found all generated v0.1-v0.5 workbooks contain an empty workbookProtection element with no attributes; FC1R5 authorized below"
+verification: "FC1R5 verified: XLSX 10/10 and focused 44/44; real v0.5 compiles deterministically to exit 2 diagnostic package with 33 sheets, 0 records, 48 gaps, 9 checks; all external-system deltas zero; FC1R6 authorized below"
 owner: main
 writer: codex
 risk: high
@@ -269,6 +269,49 @@ scripts/full-chain-sample/test-support.mjs（仅 fixture 必需时）
 
 FC1R5 通过后由主代理立即重跑 FC1f 两次真实编译和三域零写入验证。
 
+### FC1R6：真实 v0.5 结构与分级适配
+
+FC1R5 后真实 v0.5 已通过安全扫描并两次确定性生成诊断包，package hash 一致、三域变化均为 0；但 package 为 `publishable=false`，仅有 0 records、48 blocking gaps、9 not-applicable checks。结构对拍确认这是 compiler/policy 与已批准 v0.5 结构不一致，不是进入 Brief 2 的信号：
+
+- 六个 pilot Sheet 不存在“证据等级/证据级别”列，生成器写出时也没有保留 R/D/S/P cell style；当前 `declaredClass` 必然为空。
+- `26_样本构建清单` 的真实表头是 `工作表 / 行 / 字段 / 值 / 构建依据`；其中“行”是生成器 `row_key`（数据列 2 与 3 用 `/` 连接），不是 policy business key，也不是 Excel 行号。当前索引器读取不存在的 `行 identity`。
+- `25_推导依据` 的 ID 列是 `编号`，当前索引器读取不存在的 `推导依据ID`；pilot 相关条目只支撑说明/跨表事实，不能静默把所有 mapped cell 判 D。
+- policy 多个 payload 输入名与真实表头不符；计划要求报关品名行 evidence-only，当前实现却产生 11 个 blocking gaps。
+
+本片只完成以下适配：
+
+1. `WorkbookScan` 为每行提供稳定的生成器 row-key（数据列 2 与 3，外层空白规范化后以 `/` 连接），不把它当 record business key；测试证明 26 清单可按 `工作表 + row-key + 字段` 命中 S。
+2. provenance 索引读取真实列名：26 的 `工作表/行/字段`，25 的 `编号/性质/支撑的样本表/字段`；保留旧别名仅用于测试兼容时必须显式说明。重复 key 继续稳定 conflict。
+3. 移除对不存在的 row-level “证据等级”列的依赖。逐 mapped field 分类顺序固定为：26 命中且 policy 允许 override → S；明确 P/未授权/冲突 → blocking gap；可唯一绑定批准“推导”的字段 → D；否则只有 policy 字段明确 `directSource=true` 才为 R。不得用默认 R 掩盖未知。
+4. 仅按既有 plan 六类 record 和 cross-reference 修正 policy 到真实表头：
+   - shipment plan：`合并备货单`、`订舱号/SO`；
+   - booking：`主备货单号`、`MBL`、`HBL/AMS`；
+   - cargo ready：`主备货单号`、`数量合计`，不虚构当前表没有的 SKU/数量单位；
+   - stuffing：`装载数量`、`毛重kg`、`体积m³`；
+   - customs：`分提单`、`报关金额`；
+   - dispatch：沿用当前真实表头。
+     对应 canonical payload allowlist 与 checks 只做上述既有语义的同步，不增加新 record 类型。
+5. `层级=品名行` 按 plan 作为 informational/evidence-only gap，不阻断 publishable；只有 status=`blocking` 的 gap 才阻止发布。P、未分类、无稳定键和 failed checks 继续阻断。
+6. 新增一份只含结构、虚构值和 R/D/S/P 组合的 v0.5-like fixture，证明六类 records 可生成、S 由 26 命中、P 不进 records、品名行不阻断、mapping 与 33 Sheet policy 一致。不得复制真实业务值、hash 或 workbook 行。
+
+允许写入：
+
+```text
+scripts/full-chain-sample/workbook-scan.mjs
+scripts/full-chain-sample/xlsx-security.mjs
+scripts/full-chain-sample/classification.mjs
+scripts/full-chain-sample/classification.test.mjs
+scripts/full-chain-sample/compile-records.mjs
+scripts/full-chain-sample/compile-records.test.mjs
+scripts/full-chain-sample/reconcile.mjs（仅字段同步）
+scripts/full-chain-sample/contracts.mjs（仅 allowlist 同步）
+scripts/full-chain-sample/policies/v0.5.json
+scripts/full-chain-sample/schemas/policy.schema.json（仅 policy 表达能力必需时）
+scripts/full-chain-sample/test-support.mjs
+```
+
+每项先 RED 后 GREEN。最终运行相关单测、`pnpm test:full-chain-sample`、lint、scoped format、repo check、diff check，交回 HANDOFF，不提交、不执行备份/删除/写库/UI。主代理随后再次运行 FC1f。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -310,3 +353,4 @@ FC1R5 通过后由主代理立即重跑 FC1f 两次真实编译和三域零写�
 | 2026-10-10 | coding  | Claude Code | —                       | FC1R4 三条原始反证均转为 GREEN，focused 43/43、lint、repo check、scoped format、diff check 通过；进入 FC1f 只读真实输入诊断和三域零写入验证                                                                        |
 | 2026-10-10 | review  | Claude Code | `f7e630ba`              | FC1f 真实 v0.5 输入因 `workbookProtection` 按安全契约 exit 3 失败关闭且未创建输出；PostgreSQL demo 行、MinIO bucket/object、Temporal schedule/workflow 前后差值均为 0。需提供同版本未保护受控导出后重跑才能标 done |
 | 2026-10-10 | fix     | Claude Code | `17e2b58b`              | 进一步核对 v0.1～v0.5 与生成脚本后确认均为 openpyxl 生成的无属性空 `<workbookProtection/>`，无实际锁定效果；当前存在性判断误拒绝，授权 FC1R5 精确兼容修复                                                          |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R5 后真实 v0.5 两次 exit 2、hash 一致、三域差值 0；诊断包 33 Sheet/0 records/48 gaps/9 checks。确认真实表头、26 row-key、分级与 policy mapping 不一致，授权 FC1R6 结构适配                                      |

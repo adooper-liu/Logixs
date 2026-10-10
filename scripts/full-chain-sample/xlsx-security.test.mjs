@@ -92,7 +92,7 @@ test("archive preflight rejects forbidden parts and traversal", async () => {
   }
 });
 
-test("archive preflight rejects central-directory symlinks, case duplicates, encryption and protection", async () => {
+test("archive preflight rejects central-directory symlinks, case duplicates and encryption", async () => {
   const symlink = setCentralExternalAttributes(
     await mutateArchive(async () => undefined),
     0xa0000000,
@@ -107,10 +107,24 @@ test("archive preflight rejects central-directory symlinks, case duplicates, enc
     0x0001,
   );
   await assert.rejects(() => inspectXlsxArchive(encrypted), /XLSX_UNSAFE/);
-  const protectedZip = await mutateArchive(async (zip) =>
+  const emptyProtection = await mutateArchive(async (zip) =>
     zip.file("xl/workbook.xml", "<workbookProtection/>"),
   );
-  await assert.rejects(() => inspectXlsxArchive(protectedZip), /XLSX_UNSAFE/);
+  await assert.doesNotReject(() => inspectXlsxArchive(emptyProtection));
+});
+
+test("archive preflight rejects workbook protection with any attributes", async () => {
+  for (const protection of [
+    '<workbookProtection lockStructure="0"/>',
+    '<workbookProtection lockWindows="false"/>',
+    '<workbookProtection lockRevision="0"/>',
+    '<workbookProtection password="" hash="" salt="" spin="0"/>',
+  ]) {
+    const protectedZip = await mutateArchive(async (zip) =>
+      zip.file("xl/workbook.xml", protection),
+    );
+    await assert.rejects(() => inspectXlsxArchive(protectedZip), /XLSX_UNSAFE/);
+  }
 });
 
 test("archive preflight enforces each resource limit", async () => {
