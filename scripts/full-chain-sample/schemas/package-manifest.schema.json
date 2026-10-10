@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "source",
+    "compilerVersion",
+    "mappingVersion",
+    "policyVersion",
+    "gitCommit",
+    "packageHash",
+    "recordCount",
+    "gapCount",
+    "checkCount",
+    "recordsHash",
+    "gapsHash",
+    "checksHash",
+    "lineageCount",
+    "lineageHash",
+    "publishable",
+    "allowedProof",
+    "prohibitedProof",
+    "sensitiveDataHandling"
+  ],
+  "properties": {
+    "manifestVersion": { "type": "string" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifestVersion",
+        "sourceAlias",
+        "sourceSha256",
+        "sizeBytes",
+        "workbookVersion",
+        "sheetCount"
+      ],
+      "properties": {
+        "manifestVersion": {
+          "type": "string",
+          "const": "full-chain-source-manifest.v1"
+        },
+        "sourceAlias": { "type": "string", "minLength": 1 },
+        "sourceSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sizeBytes": { "type": "integer", "minimum": 1 },
+        "workbookVersion": { "type": "string", "minLength": 1 },
+        "sheetCount": { "type": "integer", "minimum": 0 },
+        "lastModified": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "compilerVersion": { "type": "string", "minLength": 1 },
+    "mappingVersion": { "type": "string", "minLength": 1 },
+    "policyVersion": { "type": "string", "minLength": 1 },
+    "gitCommit": { "type": "string", "minLength": 1 },
+    "packageHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "recordCount": { "type": "integer", "minimum": 0 },
+    "gapCount": { "type": "integer", "minimum": 0 },
+    "checkCount": { "type": "integer", "minimum": 0 },
+    "recordsHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "gapsHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "checksHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "lineageCount": { "type": "integer", "minimum": 0 },
+    "lineageHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "publishable": { "type": "boolean" },
+    "allowedProof": { "type": "array", "items": { "type": "string" } },
+    "prohibitedProof": { "type": "array", "items": { "type": "string" } },
+    "sensitiveDataHandling": { "type": "string", "minLength": 1 },
+    "compiledAt": { "type": "string", "format": "date-time" },
+    "operator": { "type": "string", "minLength": 1 }
+  }
+}

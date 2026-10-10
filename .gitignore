@@ -36,3 +36,4 @@ Thumbs.db
 
 # 可视化原型（brainstorming 临时产物）
 .superpowers/
+.sample-output/
