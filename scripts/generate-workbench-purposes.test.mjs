@@ -70,6 +70,23 @@ test("rejects an unknown stable code", () => {
   );
 });
 
+test("rejects stable codes swapped between otherwise valid sequence rows", () => {
+  const swapped = authorityMarkdown
+    .replace(
+      "| 1        | `market_signals`",
+      "| 1        | `product_selection`",
+    )
+    .replace(
+      "| 2        | `product_selection`",
+      "| 2        | `market_signals`",
+    );
+
+  assert.throws(
+    () => parseWorkbenchPurposeTable(swapped),
+    /WORKBENCH_PURPOSE_ORDER:position=1:sequence=1:actual=product_selection:expected=market_signals/,
+  );
+});
+
 test("renders a deterministic TypeScript projection", async () => {
   const rows = parseWorkbenchPurposeTable(authorityMarkdown);
   const first = await renderWorkbenchPurposeProjection(rows);

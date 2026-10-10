@@ -48,10 +48,32 @@ test("keeps the generated purpose through historical, return-pending, and frozen
     await page.goto(
       `/workspaces/product-selection?handoffId=${handoffId}&state=${state}`,
     );
-    await expect(page.getByText(purpose, { exact: true })).toHaveCount(1);
+    await expect(page.getByText(purpose, { exact: true })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: stateText, exact: true }),
     ).toBeVisible();
+  }
+});
+
+test("keeps the result purpose visible at 390px across result states", async ({
+  page,
+}, testInfo) => {
+  test.skip(page.viewportSize()?.width !== 390, "390px evidence only");
+
+  for (const state of ["legacy", "return", "frozen"] as const) {
+    await page.goto(
+      `/workspaces/product-selection?handoffId=${handoffId}&state=${state}`,
+    );
+    const purposeLocator = page.getByText(purpose, { exact: true });
+    await expect(purposeLocator).toBeVisible();
+    const bounds = await purposeLocator.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeGreaterThan(0);
+    expect(bounds!.height).toBeGreaterThan(0);
+    await testInfo.attach(`purpose-bounds-${state}`, {
+      body: JSON.stringify(bounds),
+      contentType: "application/json",
+    });
   }
 });
 

@@ -91,8 +91,12 @@ export function parseWorkbenchPurposeTable(markdown) {
   }
 
   for (const [index, row] of rows.entries()) {
-    if (row.sequence !== index + 1) {
-      throw new Error(`WORKBENCH_PURPOSE_SEQUENCE:${row.sequence}`);
+    const expectedSequence = index + 1;
+    const expectedCode = EXPECTED_WORKBENCH_CODES[index];
+    if (row.sequence !== expectedSequence || row.code !== expectedCode) {
+      throw new Error(
+        `WORKBENCH_PURPOSE_ORDER:position=${expectedSequence}:sequence=${row.sequence}:actual=${row.code}:expected=${expectedCode}`,
+      );
     }
   }
 

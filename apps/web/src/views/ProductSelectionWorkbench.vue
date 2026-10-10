@@ -872,7 +872,8 @@ const progressPercent = computed(() =>
 }
 @media (max-width: 680px) {
   .selection-workbench :deep(.page-header--result .page-heading > p) {
-    display: none;
+    margin-top: 0;
+    font-size: var(--text-micro);
   }
   .work-context,
   .workbench-grid {
