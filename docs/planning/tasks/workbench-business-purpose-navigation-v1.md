@@ -1,60 +1,22 @@
 ---
 status: coding
 branch: worktree-workbench-purpose-navigation
-verification: "S1 completed; S2 directed unit 81/81 and three-viewport E2E 21/21 pass; S2F1 pending four acceptance findings"
+verification: "S1 0daf6087; S2 b5690ceb; S2 gates unit 83/83, requested serial E2E 27/27, related desktop E2E 36/36, type/lint/build/repo/drift/format pass; S3 pending"
 owner: main
 writer: codex
 risk: medium
 dependsOn: []
 writeScopes:
   - docs/planning/tasks/workbench-business-purpose-navigation-v1.md
-  - apps/web/src/components/workbench/WorkbenchPageHeader.vue
-  - apps/web/src/components/workbench/WorkbenchPageHeader.test.ts
-  - apps/web/src/components/workbench/RoleWorkbenchFrame.vue
-  - apps/web/src/components/workbench/RoleWorkbenchFrame.test.ts
-  - apps/web/src/ui-theme/test-fixtures/ContractTestPageHeader.vue
-  - apps/web/src/ui-theme/UiThemeProvider.test.ts
-  - apps/web/src/views/PlannedWorkbenchView.vue
-  - apps/web/src/views/PlannedWorkbenchView.test.ts
-  - apps/web/src/views/MarketSignalsWorkbench.vue
-  - apps/web/src/views/MarketSignalsWorkbench.test.ts
-  - apps/web/src/views/ProductSelectionWorkbench.vue
-  - apps/web/src/views/ProductSelectionWorkbench.test.ts
-  - apps/web/src/views/ProductNpiWorkbench.vue
-  - apps/web/src/views/ProductNpiWorkbench.test.ts
-  - apps/web/src/views/MasterDataWorkbench.vue
-  - apps/web/src/views/MasterDataWorkbench.test.ts
-  - apps/web/src/views/SourcingWorkbench.vue
-  - apps/web/src/views/CargoReadyWorkbench.vue
-  - apps/web/src/views/CargoReadyWorkbench.test.ts
-  - apps/web/src/views/StuffingWorkbench.vue
-  - apps/web/src/views/StuffingWorkbench.test.ts
-  - apps/web/src/views/DispatchWorkbench.vue
-  - apps/web/src/views/DispatchWorkbench.test.ts
-  - apps/web/src/views/CustomsWorkbench.vue
-  - apps/web/src/views/CustomsWorkbench.test.ts
-  - apps/web/src/views/PickupWorkbench.vue
-  - apps/web/src/views/PickupWorkbench.test.ts
-  - apps/web/src/views/WarehouseDeliveryWorkbench.vue
-  - apps/web/src/views/WarehouseDeliveryWorkbench.test.ts
-  - apps/web/src/views/ContainerUnloadingWorkbench.vue
-  - apps/web/src/views/ContainerUnloadingWorkbench.test.ts
-  - apps/web/src/views/ShipmentRiskWorkbench.vue
-  - apps/web/src/components/dispatch/PreDepartureDispatchWorkbench.vue
-  - apps/web/src/components/shipment-handoff/PostDepartureHandoffWorkbench.vue
+  - docs/product/UI_SYSTEM.md
+  - docs/product/WORKSPACE_UI_INVENTORY.md
   - apps/web/src/router/index.ts
+  - apps/web/src/components/shell/AppSidebar.vue
+  - apps/web/src/components/shell/navigation.test.ts
+  - apps/web/src/components/shell/AppShell.test.ts
+  - apps/web/e2e/shell-layout.spec.ts
   - apps/web/e2e/workbench-purpose-navigation.spec.ts
   - apps/web/e2e/workbench-network.spec.ts
-  - apps/web/e2e/product-npi-workbench.spec.ts
-  - apps/web/e2e/cargo-ready-workbench.spec.ts
-  - apps/web/e2e/stuffing-workbench.spec.ts
-  - apps/web/e2e/dispatch-workbench.spec.ts
-  - apps/web/e2e/customs-workbench.spec.ts
-  - apps/web/e2e/pickup-workbench.spec.ts
-  - apps/web/e2e/warehouse-delivery-workbench.spec.ts
-  - apps/web/e2e/container-unloading-workbench.spec.ts
-  - apps/web/e2e/shell-layout.spec.ts
-  - apps/web/e2e/product-selection-workbench.spec.ts
 exclusiveLocks:
   - business-policy:workbench-business-purpose-presentation
   - ui-navigation:workbench-entry-layer
