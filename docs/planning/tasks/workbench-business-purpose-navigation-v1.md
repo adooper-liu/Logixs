@@ -1,13 +1,24 @@
 ---
-status: design
+status: coding
 branch: worktree-workbench-purpose-navigation
-verification:
+verification: "spec c6243638; plan d9254ac8; S1 pending"
 owner: main
-writer: main
+writer: codex
 risk: medium
 dependsOn: []
 writeScopes:
   - docs/planning/tasks/workbench-business-purpose-navigation-v1.md
+  - docs/product/UI_SYSTEM.md
+  - package.json
+  - scripts/generate-workbench-purposes.mjs
+  - scripts/generate-workbench-purposes.test.mjs
+  - scripts/check-repository.mjs
+  - scripts/check-repository.test.mjs
+  - apps/web/src/data/workbenchPurposes.generated.ts
+  - apps/web/src/data/workbenchNetwork.ts
+  - apps/web/src/data/workbenchNetwork.test.ts
+  - apps/web/src/views/WorkbenchNetworkView.vue
+  - apps/web/src/views/WorkbenchNetworkView.test.ts
 exclusiveLocks:
   - business-policy:workbench-business-purpose-presentation
   - ui-navigation:workbench-entry-layer
@@ -1060,6 +1071,7 @@ git status --short
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                                                      |
-| ---------- | ------ | ----------- | ------ | --------------------------------------------------------------------------------------------------------- |
-| 2026-10-09 | design | Claude Code | —      | 负责人批准推荐方案；建立独立 worktree，继承 23 台智慧基线并形成 S1/S2/S3 唯一实施 brief；等待书面规格复核 |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                             |
+| ---------- | ------ | ----------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| 2026-10-09 | design | Claude Code | —          | 负责人批准推荐方案；建立独立 worktree，继承 23 台智慧基线并形成 S1/S2/S3 唯一实施 brief；等待书面规格复核        |
+| 2026-10-10 | coding | Claude Code | `d9254ac8` | 负责人批准规格与计划并要求不再重复确认；主代理写回 UI identity/navigation 规则，S1 切换为 Codex 唯一实现写入者。 |
