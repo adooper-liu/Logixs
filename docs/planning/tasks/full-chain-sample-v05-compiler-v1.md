@@ -9,6 +9,7 @@ dependsOn: []
 writeScopes:
   - docs/planning/tasks/full-chain-sample-v05-compiler-v1.md
   - docs/planning/tasks/product-npi-visual-flow-return-v1.md
+  - docs/superpowers/specs/2026-10-06-full-chain-sample-rebuild-design.md
   - scripts/full-chain-sample/**
   - scripts/compile-full-chain-sample.mjs
   - scripts/compile-full-chain-sample.test.mjs
@@ -241,6 +242,8 @@ FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF �
 
 ## Deployment / done gate
 
+负责人 2026-10-10 确认总顺序为：`只读编译 package → 备份 → 仅清 demo 租户旧业务数据 → 领域 adapter 写入演示库 → 页面核对新单据并确认旧演示单消失`。当前只授权第一步；本 brief 不执行备份、删除、写库或页面切换。Brief 1 package 仍只含六类中段 pilot records；市场、选品和产品开发/NPI 留待后续 adapter brief 从同一工作簿承接，禁止 Excel 直写数据库。
+
 以下证据只阻止 FC1f 和任务 `done`，不阻止 FC1a～FC1e 代码交付、PR 审查与合并：
 
 - 受控外部 source 与 source manifest 可读；
@@ -251,10 +254,11 @@ FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF �
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                     |
-| ---------- | ------- | ----------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                         |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                       |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                               |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复 |
-| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复             |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                 |
+| ---------- | ------- | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                     |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                   |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                           |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                             |
+| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复                                         |
+| 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库 |
