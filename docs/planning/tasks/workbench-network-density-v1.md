@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/workbench-network-density-v1
-verification: pending
+verification: "ND1 unit 8/8, type/lint/build/format/repo/diff pass; E2E pending; ND1F1 pending header disclaimer, per-metric filtering and viewport evidence"
 owner: main
 writer: codex
 risk: medium
@@ -108,6 +108,14 @@ pnpm repo:check
 git diff --check
 ```
 
+## ND1F1 主代理验收 finding
+
+1. `PageHeader.summary` 仍包含“实施状态只说明技术链路是否接入，不代表岗位业务已经通过复审”，与已批准“页头只保留一句全链定位”冲突。先写失败断言，summary 只保留“从市场机会到还箱收口，按事实产生顺序进入正确岗位”；完整免责继续只在“状态说明” details。
+2. `stageVolumeText()` 仍拼出全部三个指标；只要一个 count > 0，就连带显示“本周 未接通 / 阻塞 未定义”。改为逐指标过滤：只显示 `count > 0` 的指标；`count=0`、undefined、forbidden、not_connected、缺 desk 全部不出现在卡片。不得把未知显示成 0。
+3. 三视口 E2E 必须补真实密度反证：1440x900 断言“供应与采购”分组标题进入首屏；1024 不存在 `.network-legend > p` 长文案且目的可见；390 卡片没有 `.stage-connector`、没有“未接通/未定义”业务量尾巴并且 `.app-content` 无横向溢出。现有只测宽度的断言不足以关闭 UI finding。
+
+修复后重跑 brief 全部验证命令并生成三视口截图供主代理人工核对。
+
 ## 验收
 
 - [ ] 23 台与分组、正式目的、路由全部保留
@@ -120,6 +128,6 @@ git diff --check
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit     | 说明                                                  |
-| ---------- | ------ | ----------- | ---------- | ----------------------------------------------------- |
-| 2026-10-10 | coding | Claude Code | `36bc07c7` | 负责人批准目录减法；建立独立支线，等待 Codex ND1 实现 |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                         |
+| ---------- | ------ | ----------- | ---------- | -------------------------------------------------------------------------------------------- |
+| 2026-10-10 | review | Claude Code | `9a437b6d` | ND1 基础门禁通过；主代理验收发现页头免责声明、逐指标过滤和三视口密度证据三项缺口，进入 ND1F1 |
