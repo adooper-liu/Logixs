@@ -352,6 +352,19 @@ FC1R6F2 focused 53/53 后，真实 v0.5 已生成六类共 26 records；剩余 1
 
 沿用 FC1R6 写入范围。新增 fixture 不得复制真实值。最终交回必须附真实 v0.5 脱敏摘要，不提交、不进入备份/删除/写库/UI。
 
+### FC1R6F4：分提单引用文本兼容
+
+FC1R6F3 focused 56/56 后，真实 v0.5 六类共 27 records；provenance/date false blocking 已清零，仅剩 stuffing 的 10 个 `CODE_INVALID`、11 个 informational 品名行和 1 个真实 HBL scope failed check。结构核对确认这 10 行全部来自 `分提单` 的带空格引用文本，其他 stuffing 编号字段均为单 token。
+
+本片只修复：
+
+1. `houseBillNo`/分提单按规范化文本处理：NFC、CRLF→LF、外层 trim，保留内部空格；不得静默删空格或拆成多个 HBL。
+2. `planNo`、`bookingNo`、`cargoReadyNo`、`containerNo`、`sku`、`invoiceNo`、`declarationNo`、`masterBillNo`、`voyageNo` 继续使用严格 code 校验。
+3. 补行为测试：带空格分提单可生成 stuffing record 且业务键稳定；空白值仍失败/缺口；普通 code 字段含空格仍 `CODE_INVALID`。
+4. HBL scope failed check 逻辑和真实结果不得放宽。
+
+允许修改：`compile-records.mjs`、`compile-records.test.mjs`，必要时 `test-support.mjs`。最终必须运行 focused tests、完整 `test:full-chain-sample`、lint、scoped format、repo/diff，并附真实 v0.5 脱敏摘要。若真实结果只剩 informational 品名行和已确认 HBL scope failed check，则 FC1R6 验收通过；不提交、不进入备份/删除/写库/UI。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -397,3 +410,4 @@ FC1R6F2 focused 53/53 后，真实 v0.5 已生成六类共 26 records；剩余 1
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6 focused 48/48 但真实 probe 仅 9 records、68 gaps，仍有 25 主键缺失、29 provenance 冲突、2 日期精度和 1 code 阻断；fixture 未复现真实 row-key/25 表结构且 policy 改错业务键，进入 FC1R6F1                     |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6F1 focused 50/50，真实 probe 产 5/6 类共 24 records；剩余阻断来自 unsupported provenance 全局化、stuffing row-key 碰撞、customs S override、dispatch 日期参数及无子行数量对账误判，进入 FC1R6F2               |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6F2 focused 53/53，真实 probe 六类共 26 records；剩余 12 provenance 与 1 日期为适配误判，1 HBL scope 为真实来源缺口应保留。进入 FC1R6F3，不以强行 publishable=true 为目标                                      |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F3 focused 56/56，真实 probe 六类共 27 records；provenance/date 误判清零，仅 10 个 stuffing 分提单因内部空格误触 code 校验。HBL scope 真实 failed check 保留，进入 FC1R6F4 单点修复                           |
