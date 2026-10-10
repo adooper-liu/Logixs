@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: worktree-workbench-purpose-navigation
-verification: "S1 completed at 0daf6087; synced origin/main at 587bbacf; NPI A1 regression API 36/36, Web unit 61/61, desktop E2E 3/3; S2 pending"
+verification: "S1 completed; S2 directed unit 81/81 and three-viewport E2E 21/21 pass; S2F1 pending four acceptance findings"
 owner: main
 writer: codex
 risk: medium
@@ -54,6 +54,7 @@ writeScopes:
   - apps/web/e2e/warehouse-delivery-workbench.spec.ts
   - apps/web/e2e/container-unloading-workbench.spec.ts
   - apps/web/e2e/shell-layout.spec.ts
+  - apps/web/e2e/product-selection-workbench.spec.ts
 exclusiveLocks:
   - business-policy:workbench-business-purpose-presentation
   - ui-navigation:workbench-entry-layer
@@ -1042,6 +1043,17 @@ git status --short
 - **占位检查**：计划不含 TBD/TODO、“稍后实现”或无测试的泛化步骤；所有生产变更都有明确 RED/GREEN 命令。
 - **类型一致性**：统一使用 generated `WorkbenchCode`、`WorkbenchPurpose.businessPurpose`、`workbenchPurposeByCode`、`WorkbenchPageHeader.stageCode` 和 `RoleWorkbenchFrame.stageCode/embedded`。
 - **Review Focus 覆盖**：五类风险分别由 S1.1、S1.2、S2.1～S2.4、S2.3 planned E2E、S3.1～S3.2 测试固定。
+
+### S2F1 验收 finding 修复
+
+S2 主实现通过定向测试后，主代理按真实截图和代码核对形成以下当前切片 findings；四项必须一次性关闭后才能接受 S2：
+
+1. **S2-BLOCK-001 主题契约丢目的**：`ContractTestPageHeader.vue` 仍不渲染 `eyebrow/summary`，`UiThemeProvider.test.ts` 未证明替代主题保留工作台目的。先增加会失败的契约断言，再让 fixture 渲染这两个字段。
+2. **S2-BLOCK-002 出运内部导航脱离设计系统**：新增 `dispatch-view-switch` 没有组件样式，三视口截图显示浏览器默认描边按钮。先增加 class/aria-current 的组件断言和截图基线反证，再使用既有 token 实现紧凑、可换行、44px 移动触控的局部导航；不得复制旧 view-switch 的 `!important` 或阴影反例。
+3. **S2-BLOCK-003 跨状态不变性证据不足**：现有 E2E 只 reload fresh render，没有覆盖选品 `returnPending`、legacy read-only、冻结结果和 NPI 已领取/已发布状态。必须复用现有 mock 场景或扩展专门 E2E，逐状态断言同一 generated purpose 恰好一条，并确认状态说明仍在上下文/结果区。
+4. **S2-BLOCK-004 overflow 证据不完整**：`overflow.json` 只记录 documentElement；frontmatter 要求页面与内容区无溢出。扩展为同时记录并断言 `documentElement` 与 `.app-content` 的 `clientWidth/scrollWidth`，重新生成三视口 JSON 与截图。
+
+修复边界：不改 API、领域状态、权限、NPI 发布门、工作台业务动作或 S3 侧栏入口；不重排固定办理壳。完成后重跑 S2 全部单测、三项目 E2E、typecheck/lint/build/repo/format，并重新提交三视口证据供主代理人工复核。
 
 ## 业务步骤五面映射
 
