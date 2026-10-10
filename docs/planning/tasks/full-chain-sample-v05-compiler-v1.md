@@ -340,6 +340,18 @@ FC1R6F1 focused 50/50 后，主代理真实 v0.5 probe 已生成 24 records（sh
 
 最终交回必须包含 focused tests 和真实 v0.5 的脱敏摘要；不得仅报告测试计数，不提交，不进入备份/删除/写库/UI。
 
+### FC1R6F3：最后两类适配误判修复
+
+FC1R6F2 focused 53/53 后，真实 v0.5 已生成六类共 26 records；剩余 12 provenance conflict、1 dispatch date 阻断和 1 HBL scope failed check。主代理只读分析确认：HBL scope 中两票能匹配 stuffing、一票既不在 stuffing 也不在 booking，属于真实来源范围缺口，应保留 failed check；不得为追求 `publishable=true` 放宽。其余两类属于 compiler 适配误判：
+
+1. construction index 不得在仅 `sheet + row-key + field` 层面把不同 raw value 标成 conflict。索引应保留同 key 下按规范化 raw value 分组的候选；完全相同 value+basis 幂等折叠；同 raw value 但 basis 冲突才阻断；分类时以当前 cell raw value 精确选择唯一候选。不同 raw value 是同柜多 SKU 的合法清单行，不构成冲突。
+2. unsupported Sheet provenance 继续不进入 pilot blocking；package-level conflict gap 只为实际消费并在 raw-value 匹配后仍冲突的 pilot cell 产生一次，不得按 record 重复放大。
+3. dispatch 的真实受控格式包括 ISO date、`M/DD/YYYY` 和 `YYYY-MM-DD HH:mm:ss`。policy 字段级 normalization 必须显式声明允许格式集合及 `+08:00`，规范化到 ISO；不接受任意字符串、不依赖机器 locale/timezone。测试覆盖三种允许格式和至少两个非法格式。
+4. `日期精度` 是源业务描述字段，可保留原文，不作为 normalization 参数；precision/timezone 只来自 policy。
+5. 真实 FC1f 验收：六类 records 仍齐全；`PROVENANCE_CONFLICT` 与 `DATE_PRECISION_INVALID` 的上述 false blocking 清零；HBL scope 真实 failed check 原样保留；两次 package hash 一致，三域变化 0。允许 exit 2/publishable=false，因为诊断 package 的职责就是诚实暴露真实来源缺口。
+
+沿用 FC1R6 写入范围。新增 fixture 不得复制真实值。最终交回必须附真实 v0.5 脱敏摘要，不提交、不进入备份/删除/写库/UI。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -384,3 +396,4 @@ FC1R6F1 focused 50/50 后，主代理真实 v0.5 probe 已生成 24 records（sh
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R5 后真实 v0.5 两次 exit 2、hash 一致、三域差值 0；诊断包 33 Sheet/0 records/48 gaps/9 checks。确认真实表头、26 row-key、分级与 policy mapping 不一致，授权 FC1R6 结构适配                                      |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6 focused 48/48 但真实 probe 仅 9 records、68 gaps，仍有 25 主键缺失、29 provenance 冲突、2 日期精度和 1 code 阻断；fixture 未复现真实 row-key/25 表结构且 policy 改错业务键，进入 FC1R6F1                     |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6F1 focused 50/50，真实 probe 产 5/6 类共 24 records；剩余阻断来自 unsupported provenance 全局化、stuffing row-key 碰撞、customs S override、dispatch 日期参数及无子行数量对账误判，进入 FC1R6F2               |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R6F2 focused 53/53，真实 probe 六类共 26 records；剩余 12 provenance 与 1 日期为适配误判，1 HBL scope 为真实来源缺口应保留。进入 FC1R6F3，不以强行 publishable=true 为目标                                      |
