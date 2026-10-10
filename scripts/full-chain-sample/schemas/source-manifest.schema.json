@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "sourceAlias",
+    "sha256",
+    "sizeBytes",
+    "workbookVersion",
+    "authorizedUse"
+  ],
+  "properties": {
+    "manifestVersion": { "const": "full-chain-source-manifest.v1" },
+    "sourceAlias": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sizeBytes": { "type": "integer", "minimum": 1 },
+    "workbookVersion": { "type": "string", "minLength": 1 },
+    "authorizedUse": { "const": "local_demo_rehearsal" },
+    "lastModified": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recordType",
+    "recordVersion",
+    "businessKey",
+    "sampleLine",
+    "evidenceClass",
+    "source",
+    "derivation",
+    "scenario",
+    "payload"
+  ],
+  "properties": {
+    "recordType": { "type": "string", "minLength": 1 },
+    "recordVersion": { "const": "v1" },
+    "businessKey": { "type": "string", "minLength": 1 },
+    "sampleLine": { "type": "string", "minLength": 1 },
+    "evidenceClass": { "enum": ["R", "D", "S"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sheet", "row", "sourceRef", "originalValueHash"],
+      "properties": {
+        "sheet": { "type": "string" },
+        "row": { "type": "integer", "minimum": 1 },
+        "sourceRef": { "type": "string" },
+        "originalValueHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "derivation": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "version", "inputRefs"],
+          "properties": {
+            "code": { "type": "string" },
+            "version": { "type": "string" },
+            "inputRefs": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "scenario": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "allowedUse"],
+          "properties": {
+            "label": { "type": "string" },
+            "allowedUse": { "const": "local_demo_rehearsal" }
+          }
+        }
+      ]
+    },
+    "payload": { "type": "object" }
+  }
+}

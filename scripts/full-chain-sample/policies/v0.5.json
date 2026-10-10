@@ -1,0 +1,289 @@
+{
+  "policyVersion": "full-chain-policy.v0.5",
+  "mappingVersion": "full-chain-mapping.v0.5",
+  "checks": {
+    "CHECK_UNIQUE_BUSINESS_KEY": {
+      "defaultStatus": "not_applicable",
+      "reason": "no pilot records in scope"
+    },
+    "CHECK_REFERENCE_EXISTS": {
+      "defaultStatus": "not_applicable",
+      "reason": "no reference-bearing records in scope"
+    },
+    "CHECK_MBL_MATCH": {
+      "defaultStatus": "not_applicable",
+      "reason": "no booking/dispatch pair in scope"
+    },
+    "CHECK_HBL_SCOPE": {
+      "defaultStatus": "not_applicable",
+      "reason": "no customs HBL in scope"
+    },
+    "CHECK_DATE_ORDER": {
+      "defaultStatus": "not_applicable",
+      "reason": "required date pair is absent"
+    },
+    "CHECK_QUANTITY_RECONCILIATION": {
+      "defaultStatus": "not_applicable",
+      "reason": "no quantity-bearing parent and lines in scope"
+    },
+    "CHECK_WEIGHT_RECONCILIATION": {
+      "defaultStatus": "not_applicable",
+      "reason": "no weight-bearing parent and lines in scope"
+    },
+    "CHECK_VOLUME_RECONCILIATION": {
+      "defaultStatus": "not_applicable",
+      "reason": "no volume-bearing parent and lines in scope"
+    },
+    "CHECK_DERIVATION_RECOMPUTED": {
+      "defaultStatus": "not_applicable",
+      "reason": "no derived record with recomputation in scope"
+    }
+  },
+  "sheets": [
+    { "name": "00_说明与总览", "headerRow": 6, "disposition": "evidence_only" },
+    { "name": "00b_资料分类", "headerRow": 6, "disposition": "evidence_only" },
+    { "name": "01_市场信号", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "02_选品立项", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "03_NPI", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "04_主数据", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "05_寻源", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "06_需求补货", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "07_采购", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "08_可出运供给", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "09_出运计划", "headerRow": 6, "disposition": "records" },
+    { "name": "09a_订舱", "headerRow": 6, "disposition": "records" },
+    { "name": "10_备货", "headerRow": 6, "disposition": "records" },
+    { "name": "11_装箱", "headerRow": 6, "disposition": "records" },
+    { "name": "11a_出口报关", "headerRow": 6, "disposition": "records" },
+    { "name": "12_出运", "headerRow": 6, "disposition": "records" },
+    { "name": "13_海运运营", "headerRow": 6, "disposition": "unsupported" },
+    {
+      "name": "13a_外部跟踪字段",
+      "headerRow": 6,
+      "disposition": "evidence_only"
+    },
+    { "name": "14_进口清关", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "15_提柜", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "16_送仓", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "17_卸柜", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "18_还箱", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "19_费用", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "19a_费率表", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "19b_滞港费计算", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "20_异常中心", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "21_交接链", "headerRow": 6, "disposition": "unsupported" },
+    { "name": "22_对账", "headerRow": 6, "disposition": "evidence_only" },
+    { "name": "23_待确认", "headerRow": 6, "disposition": "gap" },
+    { "name": "24_历史实绩", "headerRow": 6, "disposition": "evidence_only" },
+    { "name": "25_推导依据", "headerRow": 6, "disposition": "evidence_only" },
+    {
+      "name": "26_样本构建清单",
+      "headerRow": 6,
+      "disposition": "evidence_only"
+    }
+  ],
+  "pilotMappings": [
+    {
+      "recordType": "shipment_plan",
+      "sheet": "09_出运计划",
+      "identity": ["出运计划编号"],
+      "payload": {
+        "planNo": "出运计划编号",
+        "containerRefs": "柜号",
+        "bookingNo": "订舱编号"
+      },
+      "fieldPolicy": {
+        "planNo": { "directSource": true, "constructionOverrideAllowed": true },
+        "containerRefs": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "bookingNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        }
+      }
+    },
+    {
+      "recordType": "booking_commitment",
+      "sheet": "09a_订舱",
+      "identity": ["订舱编号"],
+      "payload": {
+        "bookingNo": "订舱编号",
+        "masterBillNo": "MBL",
+        "houseBillRefs": "HBL",
+        "containerRefs": "柜号"
+      },
+      "fieldPolicy": {
+        "bookingNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "masterBillNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "houseBillRefs": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "containerRefs": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        }
+      }
+    },
+    {
+      "recordType": "cargo_ready_release",
+      "sheet": "10_备货",
+      "identity": ["备货单号"],
+      "payload": {
+        "cargoReadyNo": "备货单号",
+        "planNo": "出运计划编号",
+        "sku": "SKU",
+        "quantity": "数量",
+        "quantityUnit": "数量单位"
+      },
+      "fieldPolicy": {
+        "cargoReadyNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "planNo": { "directSource": true, "constructionOverrideAllowed": true },
+        "sku": { "directSource": true, "constructionOverrideAllowed": true },
+        "quantity": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "quantityUnit": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        }
+      }
+    },
+    {
+      "recordType": "stuffing_snapshot_line",
+      "sheet": "11_装箱",
+      "identity": ["柜号", "备货单号", "SKU", "分提单"],
+      "payload": {
+        "containerNo": "柜号",
+        "cargoReadyNo": "备货单号",
+        "sku": "SKU",
+        "houseBillNo": "分提单",
+        "quantity": "数量",
+        "grossWeight": "毛重",
+        "volume": "体积"
+      },
+      "fieldPolicy": {
+        "containerNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "cargoReadyNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "sku": { "directSource": true, "constructionOverrideAllowed": true },
+        "houseBillNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "quantity": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "grossWeight": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "volume": { "directSource": true, "constructionOverrideAllowed": true }
+      }
+    },
+    {
+      "recordType": "export_customs_case",
+      "sheet": "11a_出口报关",
+      "identity": ["报关发票号"],
+      "rowFilter": { "层级": "报关票" },
+      "payload": {
+        "invoiceNo": "报关发票号",
+        "houseBillNo": "HBL",
+        "declarationNo": "报关单号",
+        "amount": "金额",
+        "currency": "币种"
+      },
+      "fieldPolicy": {
+        "invoiceNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "houseBillNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "declarationNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "amount": { "directSource": true, "constructionOverrideAllowed": true },
+        "currency": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        }
+      }
+    },
+    {
+      "recordType": "dispatch_fact",
+      "sheet": "12_出运",
+      "identity": ["柜号"],
+      "payload": {
+        "containerNo": "柜号",
+        "vesselName": "船名",
+        "voyageNo": "航次",
+        "masterBillNo": "MBL",
+        "houseBillRefs": "HBL",
+        "gateInDate": "进港日期",
+        "departedAt": "ATD/出运日期",
+        "departedPrecision": "日期精度",
+        "motherVesselDepartedAt": "母船出运日期"
+      },
+      "fieldPolicy": {
+        "containerNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "vesselName": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "voyageNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "masterBillNo": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "houseBillRefs": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "gateInDate": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "departedAt": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "departedPrecision": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        },
+        "motherVesselDepartedAt": {
+          "directSource": true,
+          "constructionOverrideAllowed": true
+        }
+      }
+    }
+  ]
+}
