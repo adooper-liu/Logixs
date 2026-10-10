@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/workbench-network-density-v1
-verification: "ND1 implementation d58e68bc; review fix f3dc2951; unit 9/9, directory density E2E 9/9, full workbench-network E2E 75/75 reported by Codex after scoped link fix, type/lint/build/format/repo/diff passed; three-viewport screenshots and overflow evidence reviewed by main; fresh Codex review finding ND1-REVIEW-001 accepted and fixed"
+verification: "PR #156 merged at ec9ac500; changes/static/unit/build/e2e/quality successful; dictionary/security skipped by change rules"
 owner: main
 writer: codex
 risk: medium
@@ -147,6 +147,7 @@ next: fix
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责  | commit     | 说明                                                                                                            |
-| ---------- | ------ | ----- | ---------- | --------------------------------------------------------------------------------------------------------------- |
-| 2026-10-10 | review | Codex | `d58e68bc` | fresh read-only review 阻断：目录卡片链接断言误统计岗位待办和异常中心，接受 ND1-REVIEW-001，进入单文件 E2E 修复 |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                            |
+| ---------- | ------ | ----------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| 2026-10-10 | review | Codex       | `d58e68bc` | fresh read-only review 阻断：目录卡片链接断言误统计岗位待办和异常中心，接受 ND1-REVIEW-001，进入单文件 E2E 修复 |
+| 2026-10-10 | done   | Claude Code | `ec9ac500` | PR #156 已合入 `main`，必需 CI 全绿；补录完成状态，释放过期 review 席位。                                       |

@@ -1,6 +1,7 @@
 ---
-status: review
+status: done
 branch: fix/product-selection-business-case-spacing
+verification: "PR #147 merged at e5f9e342; changes/static/unit/build/e2e/quality successful; dictionary/security skipped by change rules"
 owner: main
 writer: main
 risk: low
@@ -62,10 +63,11 @@ uiViewportEvidence:
 - [x] 三视口专项 E2E 3/3 通过，页面与内容无横向溢出
 - [x] Web 全量单测 693/693、lint、typecheck、build 通过
 - [x] 三张 working 截图人工核对通过，固定主动作未遮挡
-- [ ] PR 必需 CI 通过
+- [x] PR 必需 CI 通过
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                                                  |
-| ---------- | ------ | ----------- | ------ | ----------------------------------------------------------------------------------------------------- |
-| 2026-10-07 | review | Claude Code | —      | 负责人截图反馈后测试先行修复；三视口从 1px 增加到桌面/窄屏 16px、移动 12px，定向与 Web 全量验证通过。 |
+| 日期       | 阶段   | 负责        | commit     | 说明                                                                                                  |
+| ---------- | ------ | ----------- | ---------- | ----------------------------------------------------------------------------------------------------- |
+| 2026-10-07 | review | Claude Code | —          | 负责人截图反馈后测试先行修复；三视口从 1px 增加到桌面/窄屏 16px、移动 12px，定向与 Web 全量验证通过。 |
+| 2026-10-10 | done   | Claude Code | `e5f9e342` | PR #147 已合入 `main`，必需 CI 全绿；补录完成状态，释放过期 review 席位。                             |
