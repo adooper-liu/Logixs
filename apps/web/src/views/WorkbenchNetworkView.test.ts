@@ -45,12 +45,12 @@ describe("WorkbenchNetworkView", () => {
       0,
     );
     expect(wrapper.text()).toContain("市场与经营信号");
-    expect(wrapper.text()).toContain("还箱工作台");
+    expect(wrapper.text()).toContain("还箱");
     expect(wrapper.text()).toContain("订舱");
     expect(wrapper.text()).toContain("出口报关");
     expect(wrapper.text()).toContain("合规运营");
     expect(wrapper.text()).toContain("进口清关");
-    expect(wrapper.text()).toContain("费用结算工作台");
+    expect(wrapper.text()).toContain("费用结算");
     expect(wrapper.text()).toContain("异常中心");
     expect(wrapper.text()).toContain("经营机会交接");
     expect(wrapper.text()).toContain("采购承诺交接");

@@ -1,3 +1,10 @@
+import {
+  workbenchPurposeByCode,
+  type WorkbenchCode,
+} from "./workbenchPurposes.generated";
+
+export type { WorkbenchCode } from "./workbenchPurposes.generated";
+
 export type WorkbenchKind = "main" | "support";
 export type WorkbenchPhase =
   "strategy" | "product" | "supply" | "shipment" | "arrival";
@@ -6,31 +13,6 @@ export type WorkbenchMaturity =
 export type WorkbenchSurface = "dedicated" | "catalog_stub";
 export type WorkbenchRelationKind = "handoff" | "fact_dependency";
 export type WorkbenchAssessmentState = "pending_assessment" | "assessed";
-
-export type WorkbenchCode =
-  | "market_signals"
-  | "product_selection"
-  | "product_npi"
-  | "master_data"
-  | "sourcing"
-  | "demand_replenishment"
-  | "procurement"
-  | "supply_readiness"
-  | "shipment_planning"
-  | "booking"
-  | "cargo_ready"
-  | "stuffing"
-  | "export_customs"
-  | "dispatch"
-  | "ocean_operations"
-  | "customs"
-  | "pickup"
-  | "delivery"
-  | "unloading"
-  | "empty_return"
-  | "compliance_operations"
-  | "charges"
-  | "exceptions";
 
 export interface WorkbenchHandoff {
   code: string;
@@ -44,6 +26,9 @@ export interface WorkbenchHandoff {
 export interface WorkbenchStage {
   code: WorkbenchCode;
   title: string;
+  businessPurpose: string;
+  /** @deprecated PlannedWorkbenchView still reads this legacy fallback; catalog stages do not populate it. */
+  roleResult?: string;
   path: string;
   kind: "main" | "support";
   phase: WorkbenchPhase;
@@ -52,7 +37,6 @@ export interface WorkbenchStage {
   maturity: WorkbenchMaturity | null;
   surface: WorkbenchSurface;
   ownerRole: string;
-  roleResult: string;
   requiredFacts: readonly string[];
   implementation: WorkbenchImplementation;
   inboundHandoffCode: string | null;
@@ -64,8 +48,10 @@ type WorkbenchImplementation = "live" | "prototype" | "framework";
 
 type LegacyWorkbenchStage = Omit<
   WorkbenchStage,
-  "assessmentState" | "maturity" | "surface"
->;
+  "assessmentState" | "maturity" | "surface" | "businessPurpose"
+> & {
+  roleResult: string;
+};
 
 type CatalogWorkbenchStage = WorkbenchStage;
 
@@ -484,7 +470,6 @@ const catalogStage = (
   overrides: Partial<
     Pick<
       WorkbenchStage,
-      | "title"
       | "path"
       | "kind"
       | "phase"
@@ -493,7 +478,6 @@ const catalogStage = (
       | "maturity"
       | "surface"
       | "ownerRole"
-      | "roleResult"
       | "requiredFacts"
     >
   > = {},
@@ -505,8 +489,7 @@ const catalogStage = (
   }
 
   return {
-    code,
-    title: legacyStage.title,
+    ...workbenchPurposeByCode[code],
     path: legacyStage.path,
     kind: legacyStage.kind,
     phase: legacyStage.phase,
@@ -515,7 +498,6 @@ const catalogStage = (
     maturity: null,
     surface: "dedicated",
     ownerRole: legacyStage.ownerRole,
-    roleResult: legacyStage.roleResult,
     requiredFacts: legacyStage.requiredFacts,
     implementation: legacyStage.implementation,
     inboundHandoffCode: legacyStage.inboundHandoffCode,
@@ -528,15 +510,12 @@ const catalogStage = (
 const plannedCatalogStage = (
   sequence: number,
   code: WorkbenchCode,
-  title: string,
   path: string,
   phase: WorkbenchPhase,
   ownerRole: string,
-  roleResult: string,
   requiredFacts: readonly string[],
 ): CatalogWorkbenchStage => ({
-  code,
-  title,
+  ...workbenchPurposeByCode[code],
   path,
   kind: "main",
   phase,
@@ -545,7 +524,6 @@ const plannedCatalogStage = (
   maturity: "planned",
   surface: "catalog_stub",
   ownerRole,
-  roleResult,
   requiredFacts,
   implementation: "framework",
   inboundHandoffCode: null,
@@ -554,15 +532,12 @@ const plannedCatalogStage = (
 
 const plannedSupportCatalogStage = (
   code: WorkbenchCode,
-  title: string,
   path: string,
   phase: WorkbenchPhase,
   ownerRole: string,
-  roleResult: string,
   requiredFacts: readonly string[],
 ): CatalogWorkbenchStage => ({
-  code,
-  title,
+  ...workbenchPurposeByCode[code],
   path,
   kind: "support",
   phase,
@@ -571,7 +546,6 @@ const plannedSupportCatalogStage = (
   maturity: "planned",
   surface: "catalog_stub",
   ownerRole,
-  roleResult,
   requiredFacts,
   implementation: "framework",
   inboundHandoffCode: null,
@@ -591,11 +565,9 @@ export const workbenchStages = [
   plannedCatalogStage(
     10,
     "booking",
-    "订舱",
     "/workspaces/booking",
     "shipment",
     "订舱运营人员",
-    "取得并维护承运人确认、当前有效且可执行的订舱承诺",
     ["获批出运边界", "承运人确认", "运价与合同适用性"],
   ),
   catalogStage("cargo_ready", { sequence: 11 }),
@@ -603,27 +575,23 @@ export const workbenchStages = [
   plannedCatalogStage(
     13,
     "export_customs",
-    "出口报关",
     "/workspaces/export-customs",
     "shipment",
     "出口报关操作人员",
-    "形成全部必要出口案卷已可信放行的结果",
     ["出口案卷", "申报资料", "外部海关放行证据"],
   ),
   catalogStage("dispatch", { sequence: 14 }),
   catalogStage("ocean_operations", { sequence: 15 }),
-  catalogStage("customs", { sequence: 16, title: "进口清关" }),
+  catalogStage("customs", { sequence: 16 }),
   catalogStage("pickup", { sequence: 17 }),
   catalogStage("delivery", { sequence: 18 }),
   catalogStage("unloading", { sequence: 19 }),
   catalogStage("empty_return", { sequence: 20 }),
   plannedSupportCatalogStage(
     "compliance_operations",
-    "合规运营",
     "/workspaces/compliance-operations",
     "product",
     "合规运营人员",
-    "形成有证据、可追溯、在有效期内的准入决定及变化影响",
     ["产品版本", "制造主体", "目标国家", "用途", "业务日期"],
   ),
   catalogStage("charges"),
