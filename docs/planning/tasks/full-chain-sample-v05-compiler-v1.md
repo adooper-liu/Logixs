@@ -1,9 +1,9 @@
 ---
-status: review
+status: fix
 branch: fix/full-chain-sample-empty-protection
-verification: "FC1R6 final checkpoint pending: focused 58/58; real v0.5 compiles twice with matching hash to 37 records across six types, 11 informational gaps, 74 checks; publishable=false from one real HBL-scope failure and one real duplicate-key failure; PostgreSQL/MinIO/Temporal deltas all zero; fresh final review pending"
+verification: "FC1R6 checkpoint 6380cab7; real v0.5 twice produced matching diagnostic package with 37 records, 11 informational gaps and 74 checks; all external-system deltas zero; final review finding FC1-FINAL-BLOCK-001 reproduced and FC1R7 authorized below"
 owner: main
-writer: main
+writer: codex
 risk: high
 dependsOn: []
 writeScopes:
@@ -365,6 +365,19 @@ FC1R6F3 focused 56/56 后，真实 v0.5 六类共 27 records；provenance/date f
 
 允许修改：`compile-records.mjs`、`compile-records.test.mjs`，必要时 `test-support.mjs`。最终必须运行 focused tests、完整 `test:full-chain-sample`、lint、scoped format、repo/diff，并附真实 v0.5 脱敏摘要。若真实结果只剩 informational 品名行和已确认 HBL scope failed check，则 FC1R6 验收通过；不提交、不进入备份/删除/写库/UI。
 
+### FC1R7：informational gap 发布语义一致性
+
+fresh 最终复审 finding `FC1-FINAL-BLOCK-001` 已由主代理独立复现并接受：compiler 仅让 `status=blocking` 的 gap 阻断 publishable，但 `validatePackageArtifacts()` 仍用 `gaps.length===0` 重算，导致只有 informational gaps 的合法 package 被 `PACKAGE_PUBLISHABLE_INVALID` 错拒。
+
+本片只修复：
+
+1. 先在 `contracts.test.mjs` 增加 RED：只有 informational gap、无 failed checks、manifest publishable=true 的 package 必须验证通过。
+2. validator 的重算规则与 compiler 完全一致：所有 gaps 的 status 均非 blocking，且所有 checks 均非 fail，才为 publishable。
+3. 保留现有篡改测试：blocking gap 或 failed check 时把 manifest 改为 true 必须拒绝；proof claims/hash 仍受保护。
+4. 只允许修改 `contracts.mjs`、`contracts.test.mjs`。不得改 compiler、gap schema、mapping、真实 HBL/duplicate checks、FC1f 证据或外部系统。
+
+最终运行 contracts focused、`pnpm test:full-chain-sample`、lint、scoped format、repo/diff，交回 HANDOFF，不提交。该修复不需重跑真实 workbook，因为真实 package 本就有 failed checks；主代理验收后直接形成最终 checkpoint。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -412,3 +425,4 @@ FC1R6F3 focused 56/56 后，真实 v0.5 六类共 27 records；provenance/date f
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6F2 focused 53/53，真实 probe 六类共 26 records；剩余 12 provenance 与 1 日期为适配误判，1 HBL scope 为真实来源缺口应保留。进入 FC1R6F3，不以强行 publishable=true 为目标                                         |
 | 2026-10-10 | fix     | Claude Code | —                       | FC1R6F3 focused 56/56，真实 probe 六类共 27 records；provenance/date 误判清零，仅 10 个 stuffing 分提单因内部空格误触 code 校验。HBL scope 真实 failed check 保留，进入 FC1R6F4 单点修复                              |
 | 2026-10-10 | review  | Claude Code | —                       | FC1R6 最终真实验收：六类 37 records、11 informational gaps、74 checks；两次 exit 2 且 package hash/计数一致，三域差值 0。publishable=false 仅来自 1 个真实 HBL scope 与 1 个真实 stuffing 重复键，进入 fresh 最终复审 |
+| 2026-10-10 | fix     | Claude Code | `6380cab7`              | fresh 最终复审发现 informational-only package 被 validator 错拒；主代理最小反证复现 `PACKAGE_PUBLISHABLE_INVALID`，接受 FC1-FINAL-BLOCK-001，授权 FC1R7 两文件修复                                                    |
