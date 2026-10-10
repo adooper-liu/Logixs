@@ -83,9 +83,13 @@ export function classifyMappedValue(input) {
     !indexes?.constructionOverrides?.has(`${sheet}|${field}`)
   )
     return { kind: "gap", code: "CONSTRUCTION_OVERRIDE_UNAUTHORIZED" };
+  if (declaredClass === "S" && !isConstructed)
+    return { kind: "gap", code: "CONSTRUCTION_REQUIRED" };
   if (declaredClass === "D") {
     if (!derivationRef || !indexes?.derivations?.has(derivationRef))
       throw new Error("DERIVATION_REQUIRED");
+    if (indexes.derivations.get(derivationRef).kind !== "推导")
+      return { kind: "gap", code: "DERIVATION_NOT_APPROVED" };
     return {
       evidenceClass: "D",
       derivation: {

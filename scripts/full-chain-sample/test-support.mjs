@@ -14,6 +14,7 @@ export async function createSyntheticWorkbook({
   ],
   formula = null,
   cachedValue = null,
+  formulaCell = "A7",
 } = {}) {
   const workbook = new ExcelJS.Workbook();
   for (const definition of sheets) {
@@ -21,7 +22,8 @@ export async function createSyntheticWorkbook({
     sheet.getRow(6).values = definition.headers;
     for (const [index, values] of (definition.rows ?? []).entries())
       sheet.getRow(7 + index).values = values;
-    if (formula) sheet.getCell("A7").value = { formula, result: cachedValue };
+    if (formula)
+      sheet.getCell(formulaCell).value = { formula, result: cachedValue };
   }
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }

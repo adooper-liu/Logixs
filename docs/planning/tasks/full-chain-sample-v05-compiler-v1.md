@@ -1,9 +1,9 @@
 ---
-status: coding
+status: fix
 branch: feat/full-chain-sample-compiler-implementation
-verification: "FC1a-FC1e handed off from 821b3e80; FC1R1 handed off with 25 focused tests passing; main-agent verification found remaining fail-closed defects and behavior gaps; FC1R2 authorized below"
+verification: "FC1a-FC1e checkpoint 4f697bb8; FC1R3 handed off with 41 focused tests passing; main-agent checkpoint pending; FC1f not run"
 owner: main
-writer: codex
+writer: main
 risk: high
 dependsOn: []
 writeScopes:
@@ -254,11 +254,12 @@ FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF �
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                 |
-| ---------- | ------- | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                     |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                   |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                           |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                             |
-| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复                                         |
-| 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库 |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                                                                                |
+| ---------- | ------- | ----------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                                                                                    |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                                                                                  |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                                                                                          |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                                                                                            |
+| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复                                                                                                        |
+| 2026-10-10 | coding  | Claude Code | —                       | 负责人确认五步固定顺序，当前仅完成编译 package；后续备份、仅清 demo 租户、领域 adapter 写库和页面核对均未开始，禁止 Excel 直写数据库                                                                |
+| 2026-10-10 | fix     | Claude Code | —                       | FC1R3 主代理验收：五项独立复审风险均已按行为测试关闭，focused 41/41、lint、repo check、scoped format、diff check 通过；两个已合并旧 brief 占满 review 槽，先形成 checkpoint 后治理收口，FC1f 未运行 |

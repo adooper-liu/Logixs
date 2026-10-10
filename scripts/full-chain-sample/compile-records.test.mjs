@@ -86,6 +86,41 @@ test("normalizers require explicit temporal and financial semantics", () => {
   assert.equal(normalizeCode("BOOK-DEMO-001"), "BOOK-DEMO-001");
   assert.throws(() => normalizeCode("bad code"), /CODE_INVALID/);
 });
+test("date normalization rejects impossible dates and uses explicit timezone", () => {
+  assert.throws(
+    () => normalizeDate("2026-02-31", { precision: "date" }),
+    /DATE_INVALID/,
+  );
+  assert.equal(
+    normalizeDate("2026-01-02T03:04:05", {
+      precision: "datetime",
+      timezone: "Asia/Shanghai",
+    }),
+    "2026-01-01T19:04:05.000Z",
+  );
+  assert.equal(
+    normalizeDate("2026-01-02T03:04:05", {
+      precision: "datetime",
+      timezone: "+08:00",
+    }),
+    "2026-01-01T19:04:05.000Z",
+  );
+  assert.throws(
+    () =>
+      normalizeDate("2026-02-31T03:04:05Z", {
+        precision: "datetime",
+        timezone: "UTC",
+      }),
+    /DATE_INVALID/,
+  );
+  assert.equal(
+    normalizeDate(
+      { rawText: "2026-01-02T00:00:00.000Z", kind: "datetime" },
+      { precision: "date" },
+    ),
+    "2026-01-02",
+  );
+});
 
 test("all reconciliation check codes have an explicit result", () => {
   const checkPolicy = {
@@ -263,4 +298,42 @@ test("compiler normalization changes records and blocks invalid values", () => {
   });
   assert.equal(invalid.records.length, 0);
   assert.equal(invalid.publishable, false);
+});
+test("source hash preserves pre-normalization mapped values", () => {
+  const compile = (amount) =>
+    compilePilotRecords({
+      policy: {
+        pilotMappings: [
+          {
+            recordType: "shipment_plan",
+            sheet: "09_出运计划",
+            identity: ["出运计划编号"],
+            payload: {
+              planNo: "出运计划编号",
+              amount: "金额",
+              currency: "币种",
+            },
+          },
+        ],
+      },
+      scan: {
+        sheets: [
+          {
+            name: "09_出运计划",
+            rows: [
+              {
+                workbookRow: 7,
+                valuesByHeader: {
+                  出运计划编号: "PLAN-DEMO-HASH",
+                  金额: amount,
+                  币种: "USD",
+                  证据等级: "R",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }).records[0].source.originalValueHash;
+  assert.notEqual(compile("1,234.00"), compile("1234.00"));
 });

@@ -5,21 +5,24 @@ import { validatePackageArtifacts } from "./contracts.mjs";
 import {
   canonicalStringify,
   canonicalText,
+  compareCanonicalStrings,
   packageHash,
   sha256Hex,
 } from "./canonical-json.mjs";
 
 function sortedRecords(records) {
   return [...records].sort((a, b) =>
-    `${a.recordType}|${a.businessKey}`.localeCompare(
+    compareCanonicalStrings(
+      `${a.recordType}|${a.businessKey}`,
       `${b.recordType}|${b.businessKey}`,
     ),
   );
 }
 function sortedByCode(items) {
   return [...items].sort((a, b) =>
-    `${a.code}|${a.recordRef ?? ""}`.localeCompare(
-      `${b.code}|${b.recordRef ?? ""}`,
+    compareCanonicalStrings(
+      `${a.code}|${a.recordRef ?? a.recordRefs?.join("|") ?? ""}`,
+      `${b.code}|${b.recordRef ?? b.recordRefs?.join("|") ?? ""}`,
     ),
   );
 }
@@ -62,7 +65,8 @@ export function buildPackageArtifacts(compileResult, context = {}) {
     manifest,
     records,
     lineage: [...(compileResult.lineage ?? [])].sort((a, b) =>
-      `${a.recordRef}|${a.sourceRef}`.localeCompare(
+      compareCanonicalStrings(
+        `${a.recordRef}|${a.sourceRef}`,
         `${b.recordRef}|${b.sourceRef}`,
       ),
     ),

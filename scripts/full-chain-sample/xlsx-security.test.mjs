@@ -35,6 +35,20 @@ test("scanner rejects formulas", async () => {
     /XLSX_FORMULA_FORBIDDEN/,
   );
 });
+test("scanner rejects formulas in headers and pre-header metadata", async () => {
+  for (const formulaCell of ["A6", "A5"]) {
+    const buffer = await createSyntheticWorkbook({
+      formula: "1+1",
+      cachedValue: "出运计划编号",
+      formulaCell,
+    });
+    await assert.rejects(
+      () =>
+        scanWorkbook({ buffer, sourceManifest: manifestFor(buffer), policy }),
+      /XLSX_FORMULA_FORBIDDEN/,
+    );
+  }
+});
 
 test("archive inspection rejects invalid input", async () => {
   await assert.rejects(

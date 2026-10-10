@@ -1,4 +1,4 @@
-import { sha256Hex } from "./canonical-json.mjs";
+import { canonicalStringify, sha256Hex } from "./canonical-json.mjs";
 import { classifyMappedValue } from "./classification.mjs";
 import { runPackageChecks } from "./reconcile.mjs";
 
@@ -48,11 +48,113 @@ export function normalizeDate(value, { precision, timezone } = {}) {
     throw new Error("DATE_PRECISION_REQUIRED");
   if (precision === "datetime" && !timezone)
     throw new Error("TIMEZONE_REQUIRED");
-  if (precision === "date" && /T|\d{2}:\d{2}/u.test(String(value)))
-    throw new Error("DATE_PRECISION_INVALID");
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) throw new Error("DATE_INVALID");
-  return precision === "date" ? String(value).slice(0, 10) : date.toISOString();
+  const isExcelDate = value && typeof value === "object" && "rawText" in value;
+  const rawValue = isExcelDate ? value.rawText : value;
+  const textValue = String(rawValue).trim();
+  const dateText =
+    precision === "date" && isExcelDate ? textValue.slice(0, 10) : textValue;
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(dateText);
+  if (precision === "date") {
+    if (!dateMatch) throw new Error("DATE_PRECISION_INVALID");
+    assertCalendarDate(dateMatch);
+    return dateText;
+  }
+  const parsed = parseExplicitTimezoneDateTime(textValue, timezone);
+  if (Number.isNaN(parsed.valueOf())) throw new Error("DATE_INVALID");
+  return parsed.toISOString();
+}
+
+function assertCalendarDate(match) {
+  const [, year, month, day] = match;
+  const candidate = new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day)),
+  );
+  if (
+    candidate.getUTCFullYear() !== Number(year) ||
+    candidate.getUTCMonth() !== Number(month) - 1 ||
+    candidate.getUTCDate() !== Number(day)
+  )
+    throw new Error("DATE_INVALID");
+}
+
+function parseExplicitTimezoneDateTime(value, timezone) {
+  const explicitOffset = /(?:Z|[+-]\d{2}:?\d{2})$/u.test(value);
+  if (explicitOffset) {
+    validateTimezone(timezone);
+    const datePart = /^(\d{4}-\d{2}-\d{2})[T ]/u.exec(value)?.[1];
+    if (!datePart) throw new Error("DATE_INVALID");
+    assertCalendarDate(["", ...datePart.split("-")]);
+    return new Date(value);
+  }
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/u.exec(
+      value,
+    );
+  if (!match) throw new Error("DATE_INVALID");
+  const [, year, month, day, hour, minute, second, fraction = "0"] = match;
+  assertCalendarDate(["", year, month, day]);
+  if (Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59)
+    throw new Error("DATE_INVALID");
+  const milliseconds = Number(fraction.padEnd(3, "0"));
+  const wallClock = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+    milliseconds,
+  );
+  const offsetMinutes = timezoneOffsetMinutes(timezone, wallClock);
+  return new Date(wallClock - offsetMinutes * 60_000);
+}
+
+function validateTimezone(timezone) {
+  const offset = /^([+-])(\d{2}):?(\d{2})$/u.exec(String(timezone));
+  if (offset) {
+    const hours = Number(offset[2]);
+    const minutes = Number(offset[3]);
+    if (hours > 23 || minutes > 59) throw new Error("TIMEZONE_INVALID");
+    return;
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
+  } catch {
+    throw new Error("TIMEZONE_INVALID");
+  }
+}
+
+function timezoneOffsetMinutes(timezone, wallClock) {
+  const offset = /^([+-])(\d{2}):?(\d{2})$/u.exec(String(timezone));
+  if (offset) {
+    const minutes = Number(offset[2]) * 60 + Number(offset[3]);
+    return offset[1] === "+" ? minutes : -minutes;
+  }
+  validateTimezone(timezone);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(wallClock));
+  const values = Object.fromEntries(
+    parts
+      .filter(({ type }) => type !== "literal")
+      .map(({ type, value }) => [type, value]),
+  );
+  const rendered = Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second),
+  );
+  return Math.round((rendered - wallClock) / 60_000);
 }
 
 export function normalizeDecimal(
@@ -185,9 +287,11 @@ export function compilePilotRecords({
         continue;
       }
       const payload = {};
+      const sourceValues = {};
       let normalizationError = null;
       for (const [output, input] of Object.entries(mapping.payload)) {
         const raw = text(row, input);
+        sourceValues[output] = raw;
         try {
           const normalized = normalizePayloadField(output, raw, row);
           if (normalized !== null) payload[output] = normalized;
@@ -223,7 +327,7 @@ export function compilePilotRecords({
           sheet: mapping.sheet,
           row: row.workbookRow,
           sourceRef: `${mapping.sheet}#${row.workbookRow}`,
-          originalValueHash: sha256Hex(JSON.stringify(payload)),
+          originalValueHash: sha256Hex(canonicalStringify(sourceValues)),
         },
         derivation: evidence.evidenceClass === "D" ? evidence.derivation : null,
         scenario: evidence.evidenceClass === "S" ? evidence.scenario : null,

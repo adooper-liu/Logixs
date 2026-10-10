@@ -14,6 +14,12 @@ function normalize(value) {
   return value;
 }
 
+export function compareCanonicalStrings(left, right) {
+  return Buffer.from(String(left), "utf8").compare(
+    Buffer.from(String(right), "utf8"),
+  );
+}
+
 export function canonicalStringify(value) {
   return JSON.stringify(normalize(value));
 }
@@ -31,21 +37,24 @@ export function packageHashProjection(artifacts) {
     policyVersion: artifacts.manifest?.policyVersion ?? null,
     gitCommit: artifacts.manifest?.gitCommit ?? null,
     records: [...(artifacts.records ?? [])].sort((a, b) =>
-      `${a.recordType}|${a.businessKey}`.localeCompare(
+      compareCanonicalStrings(
+        `${a.recordType}|${a.businessKey}`,
         `${b.recordType}|${b.businessKey}`,
       ),
     ),
     lineage: [...(artifacts.lineage ?? [])].sort((a, b) =>
-      JSON.stringify(a).localeCompare(JSON.stringify(b)),
+      compareCanonicalStrings(JSON.stringify(a), JSON.stringify(b)),
     ),
     gaps: [...(artifacts.gaps ?? [])].sort((a, b) =>
-      `${a.code}|${a.recordRef ?? ""}`.localeCompare(
+      compareCanonicalStrings(
+        `${a.code}|${a.recordRef ?? ""}`,
         `${b.code}|${b.recordRef ?? ""}`,
       ),
     ),
     checks: [...(artifacts.checks ?? [])].sort((a, b) =>
-      `${a.code}|${a.recordRef ?? ""}`.localeCompare(
-        `${b.code}|${b.recordRef ?? ""}`,
+      compareCanonicalStrings(
+        `${a.code}|${a.recordRef ?? a.recordRefs?.join("|") ?? ""}`,
+        `${b.code}|${b.recordRef ?? b.recordRefs?.join("|") ?? ""}`,
       ),
     ),
   };

@@ -45,12 +45,25 @@ test("constructed scenario values require an explicit construction override", ()
     "gap",
   );
 });
+test("scenario evidence requires a matching construction index", () => {
+  assert.equal(classifyMappedValue(input({ declaredClass: "S" })).kind, "gap");
+});
 test("derived values require a derivation reference", () =>
   assert.throws(
     () =>
       classifyMappedValue(input({ declaredClass: "D", derivationRef: null })),
     /DERIVATION_REQUIRED/,
   ));
+test("derived values require an approved derivation nature", () => {
+  const indexes = input().indexes;
+  indexes.derivations.set("DERIVE-CANDIDATE", { version: "v1", kind: "候选" });
+  assert.equal(
+    classifyMappedValue(
+      input({ declaredClass: "D", derivationRef: "DERIVE-CANDIDATE", indexes }),
+    ).kind,
+    "gap",
+  );
+});
 test("pending and unclassified values become gaps", () => {
   assert.equal(classifyMappedValue(input({ declaredClass: "P" })).kind, "gap");
   assert.equal(classifyMappedValue(input({ declaredClass: null })).kind, "gap");

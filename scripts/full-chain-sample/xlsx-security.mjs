@@ -185,6 +185,16 @@ export async function scanWorkbook(
   for (const sheet of workbook.worksheets) {
     const rule = policy?.sheets?.find((item) => item.name === sheet.name);
     if (!rule) fail("UNKNOWN_SHEET");
+    sheet.eachRow({ includeEmpty: false }, (row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        if (
+          cell.type === ExcelJS.ValueType.Formula ||
+          cell.model?.formula ||
+          cell.formula
+        )
+          throw new Error("XLSX_FORMULA_FORBIDDEN");
+      });
+    });
     const headerRow = rule.headerRow;
     const header = sheet.getRow(headerRow);
     const headers = header.values
@@ -197,12 +207,6 @@ export async function scanWorkbook(
       if (rows.length >= limits.rowsPerSheet) unsafe("row count");
       const valuesByHeader = {};
       row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
-        if (
-          cell.type === ExcelJS.ValueType.Formula ||
-          cell.model?.formula ||
-          cell.formula
-        )
-          throw new Error("XLSX_FORMULA_FORBIDDEN");
         const name = headers[columnNumber - 1];
         if (name) valuesByHeader[name] = normalizeText(cell.value, limits);
       });

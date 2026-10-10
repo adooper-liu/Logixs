@@ -145,6 +145,19 @@ test("canonical JSON normalizes order and line endings", () => {
   );
 });
 
+test("canonical sorting is independent of locale for non-ASCII keys", async () => {
+  const { compareCanonicalStrings } = await import("./canonical-json.mjs");
+  const values = ["A|中", "A|阿", "A|a", "A|Z"];
+  assert.deepEqual(
+    values.slice().sort(compareCanonicalStrings),
+    values
+      .slice()
+      .sort((left, right) =>
+        Buffer.from(left, "utf8").compare(Buffer.from(right, "utf8")),
+      ),
+  );
+});
+
 test("volatile package receipt fields are excluded from hash projection", () => {
   const first = {
     manifest: { source: "fixture", compilerVersion: "v1" },
