@@ -1141,7 +1141,7 @@ async function mountPage() {
         PageHeader: {
           props: ["eyebrow", "title", "summary"],
           template:
-            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p></header>",
+            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p><slot name='help' /></header>",
         },
       },
     },

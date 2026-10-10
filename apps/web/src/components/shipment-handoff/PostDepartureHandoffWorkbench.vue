@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileCheck2, History, Import, ListTodo, Upload } from "@lucide/vue";
+import { FileCheck2, Import, ListTodo, Upload } from "@lucide/vue";
 import {
   computed,
   nextTick,
@@ -14,7 +14,6 @@ import {
   handoffIssueAction,
   type HandoffResolutionTarget,
 } from "../../data/postDepartureHandoffCopy";
-import PageHeader from "../ui/PageHeader.vue";
 import HandoffCandidateDetail from "./HandoffCandidateDetail.vue";
 import HandoffAcceptancePanel from "./HandoffAcceptancePanel.vue";
 import HandoffCandidateCorrectionForm from "./HandoffCandidateCorrectionForm.vue";
@@ -26,10 +25,6 @@ import PostDepartureStandardUploader from "./PostDepartureStandardUploader.vue";
 import InternalShipmentHandoffPanel from "./InternalShipmentHandoffPanel.vue";
 import ShipmentRelationshipPanel from "./ShipmentRelationshipPanel.vue";
 import PostDeparturePendingCompletionPanel from "./PostDeparturePendingCompletionPanel.vue";
-
-const emit = defineEmits<{
-  showLoadingHistory: [];
-}>();
 
 const workbench = usePostDepartureHandoffWorkbench();
 const route = useRoute();
@@ -137,26 +132,8 @@ async function runPreflight(): Promise<void> {
 </script>
 
 <template>
-  <main class="handoff-workbench page-frame">
-    <PageHeader
-      eyebrow="出运工作台"
-      title="接管已出运数据"
-      summary="从当前已有资料开始接管；缺失内容持续提示并可后补。"
-    >
-      <template #actions>
-        <div class="view-switch" aria-label="出运工作台视图">
-          <button type="button" class="view-switch__active" aria-current="page">
-            <Import :size="16" aria-hidden="true" />
-            接管已出运数据
-          </button>
-          <button type="button" @click="emit('showLoadingHistory')">
-            <History :size="16" aria-hidden="true" />
-            装船交接历史
-          </button>
-        </div>
-      </template>
-    </PageHeader>
-
+  <section class="handoff-workbench">
+    <h2>接管已出运数据</h2>
     <nav class="stage-switch" aria-label="接管作业阶段">
       <button
         type="button"
@@ -352,7 +329,7 @@ async function runPreflight(): Promise<void> {
       @bind-sku="workbench.bindPendingShipmentSku"
       @save-documents="workbench.savePendingShipmentDocuments"
     />
-  </main>
+  </section>
 </template>
 
 <style scoped>

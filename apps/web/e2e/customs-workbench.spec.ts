@@ -94,9 +94,7 @@ test("customs operator saves release case and sends actual clearance for review"
   });
 
   await page.goto("/workspaces/customs");
-  await expect(
-    page.getByRole("heading", { name: "进口清关工作台" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "进口清关" })).toBeVisible();
   await page.getByRole("button", { name: /KOCU4960726.*领取清关任务/ }).click();
   await expect(page.getByText("尚未建立清关案件")).toBeVisible();
 

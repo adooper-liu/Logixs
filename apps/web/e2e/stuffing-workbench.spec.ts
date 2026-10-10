@@ -98,7 +98,7 @@ test("stuffing operator records a versioned snapshot and submits the actual time
   });
 
   await page.goto("/workspaces/stuffing");
-  await expect(page.getByRole("heading", { name: "装箱工作台" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "装箱" })).toBeVisible();
   await page.getByRole("button", { name: /完成装箱确认/ }).click();
   await expect(page.getByText("833-066V00BK", { exact: true })).toBeVisible();
   await expect(page.getByText("待记录装箱结果", { exact: true })).toBeVisible();

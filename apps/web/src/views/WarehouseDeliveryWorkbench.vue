@@ -61,8 +61,7 @@ function submitFact(draft: DeliveryFactDraft) {
 
 <template>
   <RoleWorkbenchFrame
-    title="送仓工作台"
-    summary="锁定目的仓与预约，登记 POD 或仓库权威到场，并跟进复核与送仓岗位工单。"
+    stage-code="delivery"
     workspace-label="内陆运输"
     node-scope-label="送仓"
     :selected-container="workbench.selectedContainer.value"

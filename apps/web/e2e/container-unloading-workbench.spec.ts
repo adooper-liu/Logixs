@@ -96,7 +96,7 @@ test("warehouse operator records partial unloading then submits completed unload
   });
 
   await page.goto("/workspaces/unloading?containerId=container-1");
-  await expect(page.getByRole("heading", { name: "卸柜工作台" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "卸柜" })).toBeVisible();
   await expect(page.getByText("开始或部分卸货只更新进度")).toBeVisible();
 
   await page.getByRole("button", { name: "部分卸货" }).click();

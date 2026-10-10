@@ -7,7 +7,6 @@ import {
 } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import PageHeader from "../components/ui/PageHeader.vue";
 import {
   RECIPIENTS,
   SORT_LABELS,
@@ -108,13 +107,8 @@ async function reload(): Promise<void> {
 </script>
 
 <template>
-  <main class="risk-workbench page-frame">
-    <PageHeader
-      eyebrow="出运运营岗位工作台"
-      title="在途 Shipment"
-      summary="按业务原因找到现在该处理哪一票，看懂它为什么排在前面，再把它交给正确的专业岗位。"
-    />
-
+  <section class="risk-workbench">
+    <h2>在途风险</h2>
     <section v-if="error" class="feedback feedback--error" role="alert">
       <AlertCircle :size="17" />
       <span>{{ error }}</span>
@@ -359,7 +353,7 @@ async function reload(): Promise<void> {
         <p v-else class="empty">先从左边的队列选一票。</p>
       </section>
     </div>
-  </main>
+  </section>
 </template>
 
 <style scoped>

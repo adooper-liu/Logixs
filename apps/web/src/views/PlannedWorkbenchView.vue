@@ -4,6 +4,7 @@ import { computed } from "vue";
 import WorkbenchFlowContext from "../components/workbench/WorkbenchFlowContext.vue";
 import WorkbenchOperationalSpecPanel from "../components/workbench/WorkbenchOperationalSpecPanel.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
+import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import {
   getInboundWorkbenchRelations,
   getOutboundWorkbenchRelations,
@@ -47,11 +48,7 @@ const consumedHandoffs = computed(() =>
 
 <template>
   <main v-if="stage" class="planned-page page-frame">
-    <PageHeader
-      eyebrow="业务工作台 · 框架"
-      :title="stage.title"
-      :summary="stage.businessPurpose"
-    />
+    <WorkbenchPageHeader :stage-code="stage.code" eyebrow="业务工作台 · 框架" />
 
     <WorkbenchFlowContext
       :stage="stage"
@@ -71,9 +68,12 @@ const consumedHandoffs = computed(() =>
       <section class="planned-block" aria-labelledby="role-result-title">
         <span class="block-index">01</span>
         <div>
-          <small>岗位结果</small>
-          <h2 id="role-result-title">{{ stage.ownerRole }}要完成什么</h2>
-          <p>{{ stage.businessPurpose }}</p>
+          <small>岗位边界</small>
+          <h2 id="role-result-title">{{ stage.ownerRole }}</h2>
+          <p>
+            正式目的已固定在页面身份中；当前工作台仍处于
+            planned，只读展示事实与交接边界。
+          </p>
         </div>
       </section>
 

@@ -100,7 +100,7 @@ test("delivery operator locks the destination and sends POD arrival for review",
   });
 
   await page.goto("/workspaces/delivery");
-  await expect(page.getByRole("heading", { name: "送仓工作台" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "送仓" })).toBeVisible();
   await page.getByRole("button", { name: /KOCU4960726.*领取送仓任务/ }).click();
   await expect(page.getByText("先锁定本柜本次目的仓")).toBeVisible();
 

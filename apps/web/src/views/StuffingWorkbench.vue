@@ -83,8 +83,7 @@ async function reloadWorkbench(): Promise<void> {
 
 <template>
   <RoleWorkbenchFrame
-    title="装箱工作台"
-    summary="从岗位任务池核对本柜装载范围，保存可追溯的装箱记录，并提交实际装箱时间。"
+    stage-code="stuffing"
     workspace-label="出运装箱"
     node-scope-label="装箱"
     :selected-container="selectedContainer"
