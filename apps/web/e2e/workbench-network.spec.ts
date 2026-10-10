@@ -10,6 +10,7 @@ import type {
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { workbenchStages } from "../src/data/workbenchNetwork";
 
 const S1F7_EVIDENCE_DIRECTORY = resolve(
   process.cwd(),
@@ -45,7 +46,18 @@ test("the business-workbench directory opens live and framework stages honestly"
       .getByTestId("main-workbench-stage")
       .locator('a[href="/workspaces/dispatch"]'),
   ).toHaveAttribute("href", "/workspaces/dispatch");
-  await expect(page.locator('a[href^="/workspaces/"]')).toHaveCount(23);
+  const directoryCards = page.locator("a.stage-link, a.support-link");
+  await expect(directoryCards).toHaveCount(23);
+  const cardHrefs = await directoryCards.evaluateAll((links) =>
+    links.map((link) => link.getAttribute("href")),
+  );
+  expect(new Set(cardHrefs).size).toBe(23);
+  expect(new Set(cardHrefs)).toEqual(
+    new Set(workbenchStages.map((stage) => stage.path)),
+  );
+  await expect(
+    page.locator('.volume-band a[href="/workspaces/exceptions"]'),
+  ).toHaveCount(1);
 
   await page.getByRole("link", { name: /采购履约/ }).click();
   await expect(
