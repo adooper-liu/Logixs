@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/full-chain-sample-compiler-implementation
-verification: "design and plan merged via PR #153 at 113d7a4e; FC1a-FC1e implementation pending; Codex writer slot restored after workbench-network-density-v1 entered review"
+verification: "design and plan merged via PR #153 at 113d7a4e; FC1a-FC1e implementation handed off from base 821b3e80 with 15 focused tests passing; main-agent acceptance found six blocking fail-closed gaps; FC1R1 authorized below"
 owner: main
 writer: codex
 risk: high
@@ -148,6 +148,57 @@ TASK docs/planning/tasks/full-chain-sample-v05-compiler-v1.md#FC1a-FC1e base=<br
 
 实现完成后必须交回 `HANDOFF` + `logix-handoff/v1`，列出每个 plan Task 的提交、RED/GREEN 检查和未运行的 FC1f 外部证据；不得将状态写成 `done`。
 
+### FC1R1：主代理验收 finding 修复
+
+> FC1R1 只修复 FC1a～FC1e 与已批准 spec/plan 的偏差，不运行 FC1f 真实外部样本，不启动 Brief 2～4。
+
+| Finding                                   | 当前反证                                                                                   | 当前片必须完成                                                                                                                                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FC1-BLOCK-001` XLSX 安全反证不足         | 测试只有非法 ZIP 与公式                                                                    | 先 RED 后 GREEN 覆盖宏、外链、连接、路径穿越、大小写不敏感重复成员、symlink-like member、加密/保护内容、entry/展开大小/压缩比、Sheet/行/列/单元格上限；所有项在产生 canonical record 前失败                                              |
+| `FC1-BLOCK-002` 未分类值泄漏              | `declaredClass ?? "R"` 会把缺失等级提升为 R                                                | 缺失/未知等级进入 blocking gap；P 永不进 records；构造冲突、D 缺准确 derivation、S 缺 scenario 均失败关闭；policy R 需要明确批准 source reference，construction override 需 policy 显式允许                                              |
+| `FC1-BLOCK-003` policy 门禁不足           | 现有测试未证明 33 Sheet 唯一全集、header/fingerprint 漂移和未授权规则拒绝                  | 严格校验 33 个唯一 Sheet、批准 disposition、header row/fingerprint、未知 Sheet/未授权规则失败；六类 pilot mapping 和字段白名单固定                                                                                                       |
+| `FC1-BLOCK-004` 编译/对账不完整           | normalize helpers 未接入；checks 只实现 3 类                                               | 实现六类稳定 key；重复 key、cargo/stuffing/booking/dispatch/customs 引用、HBL/MBL、日期/时区、金额/币种、数量/重量/体积、D 重算、品名行、P 排除；接入 normalizeDate/Decimal/List/Code；实现 plan 全部九个稳定 check code                 |
+| `FC1-BLOCK-005` manifest/package 契约不足 | package manifest schema 只要求 source/hash/publishable，package validation 不校验 manifest | 按 spec 校验 source alias/fingerprint 元数据、workbook 版本/Sheet 数、compiler/mapping/policy/Git 版本、package hash、record/gap/check 数量与 hash、publishable、允许/禁止证明、敏感处理声明；package validation 必须验证 manifest       |
+| `FC1-BLOCK-006` 原子发布/CLI 隐私未证明   | 只测成功写包和已有输出；CLI 只测缺参数                                                     | 已有输出不改写；写/rename 失败只清理本次 staging、保留 sibling；publishable false=exit2 诊断包，unsafe=3 无输出，output/publish=4，valid=0；stdout/stderr 不泄露绝对路径、原始值、完整 hash；Windows/Linux 路径和换行不影响 package hash |
+
+#### FC1R1 写入范围
+
+仅允许修改现有 frontmatter `writeScopes` 中与 finding 直接相关的：
+
+```text
+scripts/full-chain-sample/**
+scripts/compile-full-chain-sample.mjs
+scripts/compile-full-chain-sample.test.mjs
+package.json
+.gitignore
+```
+
+不得修改 NPI brief、业务权威、数据库、API、Web、迁移、Seed、MinIO、Temporal 或外部系统。不得提交 workbook、source manifest、package、records、lineage、gaps、checks、report、绝对路径、完整 hash 或商业值。
+
+#### FC1R1 RED / GREEN 命令
+
+按 finding 分组先新增真实失败测试并逐组观察 RED；禁止一次写完实现后补测。最终 GREEN 至少执行：
+
+```text
+node --test scripts/full-chain-sample/contracts.test.mjs
+node --test scripts/full-chain-sample/xlsx-security.test.mjs
+node --test scripts/full-chain-sample/classification.test.mjs
+node --test scripts/full-chain-sample/compile-records.test.mjs
+node --test scripts/full-chain-sample/package-writer.test.mjs scripts/compile-full-chain-sample.test.mjs
+pnpm test:full-chain-sample
+pnpm lint
+pnpm format:check
+pnpm repo:check
+git diff --check
+```
+
+#### FC1R1 停止条件
+
+- 六组 finding 均有对应 RED→GREEN 证据；
+- `pnpm test:full-chain-sample` 覆盖 plan 五项 Review Focus，不再只保留烟雾测试；
+- 返回标准 `HANDOFF` + `logix-handoff/v1`，列出每组测试名、RED 失败原因、GREEN 计数和未运行的 FC1f；
+- 不提交实现；是否形成 checkpoint/提交由主代理验收后决定。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -174,10 +225,10 @@ TASK docs/planning/tasks/full-chain-sample-v05-compiler-v1.md#FC1a-FC1e base=<br
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                     |
-| ---------- | ------- | ----------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                         |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                       |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                               |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复 |
-| 2026-10-10 | coding  | Claude Code | `f3dc2951`              | 目录减法已完成实现与独立复审修复并进入 PR 集成，恢复 FC1a～FC1e 实现调度                                 |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                                           |
+| ---------- | ------- | ----------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                               |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                             |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                                     |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                                       |
+| 2026-10-10 | fix     | Claude Code | `821b3e80`              | FC1a～FC1e 交回 15 项聚焦测试；主代理验收确认安全扫描、证据分级、类型规范化、跨表对账、manifest 和 CLI/原子发布反证不足，授权 FC1R1 一次性修复 |
