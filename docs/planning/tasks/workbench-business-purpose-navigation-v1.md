@@ -18,6 +18,7 @@ writeScopes:
   - apps/web/e2e/workbench-purpose-navigation.spec.ts
   - apps/web/e2e/workbench-network.spec.ts
   - apps/web/src/views/ProductSelectionWorkbench.vue
+  - apps/web/src/views/ProductSelectionWorkbench.test.ts
 exclusiveLocks:
   - business-policy:workbench-business-purpose-presentation
   - ui-navigation:workbench-entry-layer
@@ -1022,7 +1023,7 @@ S2 主实现通过定向测试后，主代理按真实截图和代码核对形�
 
 ### S3F1 集成回归修复
 
-S3 自身导航与 Shell 门禁通过后，全项目 `workbench-network.spec.ts` 在 narrow/mobile 暴露 S2 结果态密度回归：统一页头接线时移除了 `ProductSelectionWorkbench` 传给旧 `PageHeader` 的 `page-header--result` class，导致既有 `@media` 压缩规则失效；“保守贡献”分别超出首屏 5.08px / 14.41px。修复只允许在统一页头调用恢复该状态 class，复用现有响应式规则；不得隐藏核心业务目的、删除事实、放宽首屏断言或改变选品业务行为。修复后重跑 `workbench-network.spec.ts` 全三项目、S2 指定串行套件、S3 Shell/目的套件和全部 Web 门禁。
+S3 自身导航与 Shell 门禁通过后，全项目 `workbench-network.spec.ts` 在 narrow/mobile 暴露 S2 结果态密度回归：统一页头接线时移除了 `ProductSelectionWorkbench` 传给旧 `PageHeader` 的 `page-header--result` class，导致既有 `@media` 压缩规则失效；“保守贡献”分别超出首屏 5.08px / 14.41px。修复只允许在统一页头调用按 `isReadOnly` 条件恢复该状态 class，复用现有响应式规则；必须增加组件测试证明办理中不带该 class、历史/退回等待/冻结结果态带该 class。不得无条件压缩工作态、隐藏核心业务目的、删除事实、放宽首屏断言或改变选品业务行为。修复后重跑 `workbench-network.spec.ts` 全三项目、S2 指定串行套件、S3 Shell/目的套件和全部 Web 门禁。
 
 ## 业务步骤五面映射
 
