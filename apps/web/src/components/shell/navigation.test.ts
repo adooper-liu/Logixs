@@ -4,7 +4,7 @@ import router from "../../router";
 import { navigationForRole } from "./navigation";
 
 describe("navigationForRole", () => {
-  it("shows one business-workbench directory without flooding navigation with framework pages", () => {
+  it("keeps formal workbenches behind the single business-workbench directory entry", () => {
     for (const role of ["operator", "planner", "manager"] as const) {
       const items = navigationForRole(router.getRoutes(), role);
       expect(items.filter((item) => item.path === "/workspaces")).toHaveLength(
@@ -14,20 +14,31 @@ describe("navigationForRole", () => {
         items.filter(
           (item) =>
             item.path.startsWith("/workspaces/") &&
-            ![
-              "/workspaces/cargo-ready",
-              "/workspaces/stuffing",
-              "/workspaces/dispatch",
-              "/workspaces/customs",
-              "/workspaces/pickup",
-              "/workspaces/delivery",
-              "/workspaces/unloading",
-              // 岗位待办是四个专业岗位每天要看的收件箱，不是框架页 —— 它该在侧栏。
-              // 其余新增页（市场/选品/NPI/主数据）走 /workspaces 目录进，不给侧栏项。
-              "/workspaces/work-inbox",
-            ].includes(item.path),
+            item.path !== "/workspaces/work-inbox",
         ),
       ).toHaveLength(0);
+    }
+  });
+
+  it("keeps formal workbenches behind the directory entry without shortcuts", () => {
+    const formalPaths = [
+      "/workspaces/cargo-ready",
+      "/workspaces/stuffing",
+      "/workspaces/dispatch",
+      "/workspaces/customs",
+      "/workspaces/pickup",
+      "/workspaces/delivery",
+      "/workspaces/unloading",
+    ];
+
+    for (const role of ["operator", "planner", "manager"] as const) {
+      const items = navigationForRole(router.getRoutes(), role);
+      expect(items.filter((item) => item.path === "/workspaces")).toHaveLength(
+        1,
+      );
+      expect(items.filter((item) => formalPaths.includes(item.path))).toEqual(
+        [],
+      );
     }
   });
 
@@ -160,79 +171,5 @@ describe("navigationForRole", () => {
         (item) => item.path,
       ),
     ).not.toContain("/reviews/date-facts");
-  });
-
-  it("shows the cargo-ready role workbench to every operating role", () => {
-    for (const role of ["operator", "planner", "manager"] as const) {
-      const items = navigationForRole(router.getRoutes(), role);
-      expect(items).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            label: "备货工作台",
-            path: "/workspaces/cargo-ready",
-            section: "作业",
-          }),
-        ]),
-      );
-      expect(
-        items.findIndex((item) => item.path === "/workspaces/cargo-ready"),
-      ).toBeLessThan(items.findIndex((item) => item.path === "/containers"));
-    }
-  });
-
-  it("shows the stuffing workbench immediately after cargo-ready", () => {
-    for (const role of ["operator", "planner", "manager"] as const) {
-      const items = navigationForRole(router.getRoutes(), role);
-      const cargoReady = items.findIndex(
-        (item) => item.path === "/workspaces/cargo-ready",
-      );
-      const stuffing = items.findIndex(
-        (item) => item.path === "/workspaces/stuffing",
-      );
-      expect(stuffing).toBe(cargoReady + 1);
-      expect(items[stuffing]?.label).toBe("装箱工作台");
-    }
-  });
-
-  it("shows the dispatch workbench immediately after stuffing", () => {
-    for (const role of ["operator", "planner", "manager"] as const) {
-      const items = navigationForRole(router.getRoutes(), role);
-      const stuffing = items.findIndex(
-        (item) => item.path === "/workspaces/stuffing",
-      );
-      const dispatch = items.findIndex(
-        (item) => item.path === "/workspaces/dispatch",
-      );
-      expect(dispatch).toBe(stuffing + 1);
-      expect(items[dispatch]?.label).toBe("出运工作台");
-    }
-  });
-
-  it("shows the pickup workbench immediately after customs", () => {
-    for (const role of ["operator", "planner", "manager"] as const) {
-      const items = navigationForRole(router.getRoutes(), role);
-      const customs = items.findIndex(
-        (item) => item.path === "/workspaces/customs",
-      );
-      const pickup = items.findIndex(
-        (item) => item.path === "/workspaces/pickup",
-      );
-      expect(pickup).toBe(customs + 1);
-      expect(items[pickup]?.label).toBe("提柜工作台");
-    }
-  });
-
-  it("shows the delivery workbench immediately after pickup", () => {
-    for (const role of ["operator", "planner", "manager"] as const) {
-      const items = navigationForRole(router.getRoutes(), role);
-      const pickup = items.findIndex(
-        (item) => item.path === "/workspaces/pickup",
-      );
-      const delivery = items.findIndex(
-        (item) => item.path === "/workspaces/delivery",
-      );
-      expect(delivery).toBe(pickup + 1);
-      expect(items[delivery]?.label).toBe("送仓工作台");
-    }
   });
 });

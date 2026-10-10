@@ -252,6 +252,19 @@ describe("AppShell", () => {
     expect(navigation.text()).not.toContain("我的任务");
   });
 
+  it("does not render an obsolete static workspace scope", async () => {
+    const wrapper = await mountShell();
+
+    expect(wrapper.find(".workspace-switcher").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("工作区");
+    expect(wrapper.find('[aria-label="查看工作区范围"]').exists()).toBe(false);
+
+    await wrapper.get('[aria-label="打开主导航"]').trigger("click");
+    expect(wrapper.get('[data-testid="app-sidebar"]').classes()).toContain(
+      "sidebar--open",
+    );
+  });
+
   it("opens quick navigation from the keyboard and closes it with Escape", async () => {
     const router = createTestRouter();
     await router.push("/tasks");

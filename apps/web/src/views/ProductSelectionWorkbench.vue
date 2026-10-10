@@ -315,6 +315,7 @@ const progressPercent = computed(() =>
     <WorkbenchPageHeader
       stage-code="product_selection"
       eyebrow="选品岗位工作台"
+      :class="{ 'page-header--result': isReadOnly }"
     >
       <template #help>
         <span v-if="isReadOnly && legacyReadOnly"

@@ -48,9 +48,6 @@ const router = createRouter({
       meta: {
         title: workbenchPurposeByCode.cargo_ready.title,
         section: "作业",
-        navLabel: "备货工作台",
-        navIcon: "package-check",
-        navOrder: 15,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -60,9 +57,6 @@ const router = createRouter({
       meta: {
         title: workbenchPurposeByCode.stuffing.title,
         section: "作业",
-        navLabel: "装箱工作台",
-        navIcon: "package-open",
-        navOrder: 16,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -72,9 +66,6 @@ const router = createRouter({
       meta: {
         title: workbenchPurposeByCode.dispatch.title,
         section: "作业",
-        navLabel: "出运工作台",
-        navIcon: "ship",
-        navOrder: 17,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -84,9 +75,6 @@ const router = createRouter({
       meta: {
         title: workbenchPurposeByCode.customs.title,
         section: "作业",
-        navLabel: "进口清关工作台",
-        navIcon: "landmark",
-        navOrder: 18,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -96,9 +84,6 @@ const router = createRouter({
       meta: {
         title: workbenchPurposeByCode.pickup.title,
         section: "作业",
-        navLabel: "提柜工作台",
-        navIcon: "truck",
-        navOrder: 19,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -108,9 +93,6 @@ const router = createRouter({
       meta: {
         title: workbenchPurposeByCode.delivery.title,
         section: "作业",
-        navLabel: "送仓工作台",
-        navIcon: "warehouse",
-        navOrder: 20,
         roles: ["operator", "planner", "manager"],
       },
     },
@@ -120,9 +102,6 @@ const router = createRouter({
       meta: {
         title: workbenchPurposeByCode.unloading.title,
         section: "作业",
-        navLabel: "卸柜工作台",
-        navIcon: "package-open",
-        navOrder: 21,
         roles: ["operator", "planner", "manager"],
       },
     },
