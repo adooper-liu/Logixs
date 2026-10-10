@@ -27,6 +27,7 @@ adminator/
 .env.*
 !.env.example
 !.env.*.example
+.claude/task-lines.local.json
 .DS_Store
 Thumbs.db
 .idea/

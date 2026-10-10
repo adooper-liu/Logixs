@@ -12,6 +12,18 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/prompt-keywords.mjs",
+            "timeout": 5,
+            "statusMessage": "Checking realignment keyword"
+          }
+        ]
+      }
     ]
   }
 }
