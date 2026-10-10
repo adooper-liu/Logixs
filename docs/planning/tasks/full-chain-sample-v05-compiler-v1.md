@@ -213,6 +213,18 @@ git diff --check
 
 FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF 时逐条映射 1～7 的 RED/GREEN 测试名与结果。
 
+### FC1R3：独立复审真实风险修复
+
+独立复审 5 项 finding 均已复现并接受，只修以下风险：
+
+1. `S` 必须有匹配的 `26_样本构建清单` 且 policy 允许 override；`D` 引用的 derivation `性质` 必须是批准的“推导”，候选/事实不得冒充 D。
+2. 日期必须严格校验真实日历；`2026-02-31` 等不得滚入 3 月。datetime 必须按显式时区解释；ExcelJS Date 对象必须可靠规范化。
+3. `originalValueHash` 必须覆盖原始映射源值，不得对 normalize 后 payload 求 hash；`1,234.00` 与 `1234.00` 必须得到不同 source hash。
+4. 公式检查覆盖 header row 及其之前所有非空单元格，任何公式在读取为 header/元数据前失败关闭。
+5. canonical/package 排序不得使用 locale-dependent `localeCompare`；改用明确 UTF-8/Unicode code-point 字节稳定比较，并用非 ASCII key 证明跨 locale 一致。
+
+每项先写可复现 RED，再最小 GREEN。不得顺手补元数据、扩测试矩阵或改 FC1f。最终只跑对应 focused tests、`pnpm test:full-chain-sample`、lint、scoped format、repo check、diff check，返回 HANDOFF，不提交。
+
 ## 验收
 
 - [ ] 六个 canonical schema 严格拒绝未知字段，P、缺 derivation 的 D、缺 scenario 的 S 均不可进入 records
@@ -239,10 +251,10 @@ FC1R2 写入范围、禁止范围和最终命令沿用 FC1R1；返回 HANDOFF �
 
 ## 进度 log
 
-| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                                              |
-| ---------- | ------- | ----------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                                                  |
-| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                                                |
-| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                                                        |
-| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复                          |
-| 2026-10-10 | fix     | Claude Code | `74b6ee94`              | FC1R1 交回 25 项测试；主代理逐项复核确认 symlink 检查恒假、policy 自动批准、对账码占位、manifest/CLI/原子失败反证不足，授权 FC1R2 |
+| 日期       | 阶段    | 负责        | commit                  | 说明                                                                                                     |
+| ---------- | ------- | ----------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| 2026-10-06 | design  | Claude Code | `83cd4c10`              | 负责人批准全链样本 v0.5 分层编译与 demo 重建设计；只启动 Brief 1                                         |
+| 2026-10-06 | design  | Claude Code | `8721509e`              | 完成六任务 TDD 实施计划，尚未建立 brief 或实现代码                                                       |
+| 2026-10-10 | coding  | Claude Code | `6fc5c380` / `aaafb507` | 将未合并设计和计划接回 PR #151 后的最新 main；建立 Brief 1，准备下发 Codex                               |
+| 2026-10-10 | blocked | Claude Code | `36bc07c7`              | FC1a 尚未下发且无产品差异；按负责人当前优先级暂停，释放唯一 Codex 写入席位给目录减法，目录支线收口后恢复 |
+| 2026-10-10 | fix     | Codex       | `4f697bb8`              | 独立复审 5 项均属安全、数据真实性或确定性发布风险；主代理复现后全部接受，授权 FC1R3 唯一修复             |
