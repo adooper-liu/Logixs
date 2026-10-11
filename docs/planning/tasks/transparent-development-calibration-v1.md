@@ -155,25 +155,36 @@ authorityRefs:
 ## 验收
 
 - [ ] `task-brief-state` 是 repository gate、UI hook、progress board 唯一 parser/normalizer
-- [ ] parser 对当前受支持 frontmatter 子集给出稳定值和带路径/行号的错误，不静默吞掉畸形字段
-- [ ] 显式 `--brief` 可校准指定任务；无显式参数时按实际 branch 唯一匹配活动 brief
-- [ ] 本地使用 merge-base，CI 使用传入 base SHA；投影显示 base 来源且不静默猜 stacked branch
-- [ ] committed/staged/unstaged tracked 越出 `writeScopes` 会阻断
-- [ ] `writeScopes` 内 untracked 计入 task-owned；范围外 untracked 只列为 unowned，不归责、不删除
-- [ ] `authorityRefs` 缺失、未完成依赖、branch mismatch、done 无 verification 保持 fail-closed
-- [ ] 修改的 authority ref 若不在 `writeScopes`，形成稳定阻断 finding
-- [ ] 历史 `done/blocked` brief 不因新 parser 被无差别追溯失败
+- [x] parser 对当前受支持 frontmatter 子集给出稳定值和带路径/行号的错误，不静默吞掉畸形字段
+- [x] 显式 `--brief` 可校准指定任务；无显式参数时按实际 branch 唯一匹配活动 brief
+- [x] 本地使用 merge-base，CI 使用传入 base SHA；投影显示 base 来源且不静默猜 stacked branch
+- [x] committed/staged/unstaged tracked 越出 `writeScopes` 会阻断
+- [x] `writeScopes` 内 untracked 计入 task-owned；范围外 untracked 只列为 unowned，不归责、不删除
+- [x] `authorityRefs` 缺失、未完成依赖、branch mismatch、done 无 verification 保持 fail-closed
+- [x] 修改的 authority ref 若不在 `writeScopes`，形成稳定阻断 finding
+- [x] 历史 `done/blocked` brief 不因新 parser 被无差别追溯失败
 - [ ] progress board 以同一投影显示当前 task、authority、diff、dependency、checks、review/integration unknown 和下一 gate
 - [ ] board 明确区分 computed fact、editorial judgment、unknown/not-observed
 - [ ] `calibration:check` / `board:check` 都是只读命令，生成命令才允许写 HTML
 - [ ] CI static job 运行只读 checks，失败输出稳定 finding 与修复入口
-- [ ] 当前分支的既有 `.claude/worktrees/`、`.tmp/`、`apps/api/.tmp/` 只作为 unowned/untracked 现场报告，不进入当前任务提交
+- [x] 当前分支的既有 `.claude/worktrees/`、`.tmp/`、`apps/api/.tmp/` 只作为 unowned/untracked 现场报告，不进入当前任务提交
 - [ ] 定向测试、repository tests、格式、lint、typecheck、board 视觉核对和最终 CI 通过
 - [ ] fresh Claude 整体复审 finding 全部裁决
 
+## 第一薄片验证（2026-10-11）
+
+- 共享 parser/scope authority：`scripts/task-brief-state.mjs`；repository gate 与 UI hook 已删除私有 parser/scope matcher，progress board 迁移明确留给 `TDC3`。
+- 自动化：`task-brief-state` + repository + UI gate 合计 `99/99` tests 通过；根 `lint`、`typecheck`、`repo:check`、`docs:check` 通过。
+- 格式：本片全部 tracked 路径 scoped Prettier 通过；根 `format:check` 仅因非本任务 `apps/ai-service/.pytest_cache` 的 `EPERM scandir` 退出 `2`，未修改该目录。
+- 真实校准：显式 base `5deb703b`，观察 head `dcc105c6`；task-owned tracked `8`、tracked 越界 `0`、task-owned untracked `0`、unowned untracked `143`。
+- 未归属现场：`.claude/worktrees/`、`.tmp/`、`apps/api/.tmp/` 仅产生 `TASK_UNOWNED_UNTRACKED_PRESENT` warning；报告最多显示 50 条并保留总数，不读取内容，不影响退出码。
+- fail-closed：active malformed frontmatter、branch/base、四轨路径、authority 缺失/越界写、dependency、done verification、仓库外 authority、Git observation failure 均有稳定测试；历史 `done/blocked` 不追溯失败。
+- 本片不创建 PR、不执行最终 fresh 整体复审、不标记本 brief `done`。下一步单独规划 `TDC3` progress-board 可视化纵向薄片与 `board:check`。
+
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit   | 说明                                                                                         |
-| ---------- | ------ | ----------- | -------- | -------------------------------------------------------------------------------------------- |
-| 2026-10-11 | design | Claude Code | —        | 负责人批准方案 A；建立唯一 brief，第一片限定当前 checkout 的共享只读校准投影                 |
-| 2026-10-11 | coding | Claude Code | 5deb703b | 负责人批准 Native 执行；第一薄片从共享 parser 与 scope authority 开始，board/CI 留待后续计划 |
+| 日期       | 阶段   | 负责        | commit   | 说明                                                                                                             |
+| ---------- | ------ | ----------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| 2026-10-11 | design | Claude Code | —        | 负责人批准方案 A；建立唯一 brief，第一片限定当前 checkout 的共享只读校准投影                                     |
+| 2026-10-11 | coding | Claude Code | 5deb703b | 负责人批准 Native 执行；第一薄片从共享 parser 与 scope authority 开始，board/CI 留待后续计划                     |
+| 2026-10-11 | coding | Claude Code | dcc105c6 | 第一薄片实现完成：parser、repository/UI gate、checkout projection/CLI；99 tests 与静态门禁通过，等待本片证据提交 |
