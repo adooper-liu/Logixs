@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from "vue-router";
 import { inlandFulfillmentRoutes } from "./inland-fulfillment/routes";
 import { notificationRoutes } from "./notification/routes";
+import { referenceRoutes } from "./reference/routes";
 import { workbenchNetworkRoutes } from "./workbench-network/routes";
 
 /**
@@ -11,4 +12,5 @@ export const moduleRouteContributions: RouteRecordRaw[] = [
   ...workbenchNetworkRoutes,
   ...inlandFulfillmentRoutes,
   ...notificationRoutes,
+  ...referenceRoutes,
 ];
