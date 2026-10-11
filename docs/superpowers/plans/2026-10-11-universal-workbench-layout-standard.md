@@ -31,7 +31,7 @@
 - The reference surface is DEV/test-only, permanently marked as synthetic, absent from navigation, and performs no production API requests.
 - Visual baselines supplement structural assertions and human review; they never prove business correctness by themselves.
 - This plan does not implement resumable work sessions, task dossiers, collaboration conversations, AI orchestration, or any concrete “more functions” feature.
-- When Codex is the slice implementer, every task stops at `ready-for-review` with uncommitted changes and a `HANDOFF`; the main agent runs the listed commit command only after reviewing the diff and fresh verification evidence. Under native execution, the main agent performs both implementation and checkpoint commits.
+- The current Claude Code main agent implements every slice directly, runs the task's RED→GREEN cycle and checkpoint commit, and records evidence in the brief/ledger. Per-task implementer handoffs and per-task independent reviewers are not used under the Claude-only governance. After all tasks and real visual evidence pass, one fresh Claude Code read-only session reviews the whole branch.
 
 ## Review Focus
 
@@ -131,7 +131,7 @@ Set these frontmatter fields without widening any scope:
 status: coding
 branch: worktree-universal-workbench-ui-standard
 owner: main
-writer: codex
+writer: main
 risk: medium
 ```
 
@@ -1324,15 +1324,18 @@ git diff --cached --check
 git commit -m "docs(ui): record workbench layout verification"
 ```
 
-- [ ] **Step 10: Request fresh independent review**
+- [ ] **Step 10: Request one fresh whole-branch review after all implementation and visual evidence are complete**
 
-Provide the reviewer this pointer only:
+The main agent generates the final review package from the branch merge base to `HEAD`, then opens one fresh Claude Code read-only review context against:
 
 ```text
-TASK docs/planning/tasks/universal-workbench-layout-standard-v1.md#L5-market-consumer-and-integration base=58d34d406eb916fa12983e390093db692bc265c7 role=reviewer workspace=D:\Logixs\.claude\worktrees\universal-workbench-ui-standard mode=worktree-diff
+docs/planning/tasks/universal-workbench-layout-standard-v1.md
+docs/superpowers/specs/2026-10-11-universal-workbench-ui-standard-design.md
+docs/superpowers/plans/2026-10-11-universal-workbench-layout-standard.md
+<review-package-path>
 ```
 
-The fresh reviewer must return `logix-review/v1`, make no writes, and focus on:
+The reviewer makes no writes and focuses on:
 
 - business-state leakage into shared components;
 - layout stability across state and viewport;

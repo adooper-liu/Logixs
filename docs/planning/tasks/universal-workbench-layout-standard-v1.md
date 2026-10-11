@@ -1,8 +1,8 @@
 ---
-status: design
+status: coding
 branch: worktree-universal-workbench-ui-standard
 owner: main
-writer: codex
+writer: main
 risk: medium
 dependsOn: []
 writeScopes:
@@ -124,7 +124,7 @@ uiViewportEvidence:
 | 项目        | 内容                                                                                                                                    |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | 基线        | `58d34d406eb916fa12983e390093db692bc265c7`                                                                                              |
-| 执行角色    | 实现执行器：Codex / GPT-5.6                                                                                                             |
+| 执行角色    | 主代理：Claude Code / Claude Opus 4.8，当前会话直接实现                                                                                 |
 | 复审        | 主代理验收；中性组件契约和状态稳定性进入最终独立复审                                                                                    |
 | 写入范围    | 本 brief、`UI_SYSTEM.md`、`workbenchLayout.types.ts`、`WorkbenchPane`、`WorkbenchResponsibilityBand`、`WorkbenchDecisionStrip` 及其测试 |
 | 禁止范围    | 其他 Vue、数据库、API、契约、主题、单元二至五                                                                                           |
@@ -137,7 +137,7 @@ uiViewportEvidence:
 | 项目        | 内容                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------ |
 | 基线        | `L1` 主代理验收后的当前 SHA                                                                |
-| 执行角色    | 实现执行器：Codex / GPT-5.6                                                                |
+| 执行角色    | 主代理：Claude Code / Claude Opus 4.8，当前会话直接实现                                    |
 | 复审        | 主代理验收                                                                                 |
 | 写入范围    | `WorkbenchLayout`、`CollapsibleRail`、`WorkbenchPageHeader`、`RoleWorkbenchFrame` 及其测试 |
 | 禁止范围    | 两个消费者、参考页、E2E、主题、业务逻辑                                                    |
@@ -150,7 +150,7 @@ uiViewportEvidence:
 | 项目        | 内容                                                                                                                 |
 | ----------- | -------------------------------------------------------------------------------------------------------------------- |
 | 基线        | `L2` 主代理验收后的当前 SHA                                                                                          |
-| 执行角色    | 实现执行器：Codex / GPT-5.6                                                                                          |
+| 执行角色    | 主代理：Claude Code / Claude Opus 4.8，当前会话直接实现                                                              |
 | 复审        | 主代理逐张视觉核对；视觉门禁进入最终独立复审                                                                         |
 | 写入范围    | DEV-only 参考页、reference routes、registry、Playwright 支持/视觉 spec/snapshots、Playwright 配置、repo check 与测试 |
 | 禁止范围    | 生产导航、业务消费者、生产 API、旧孤儿截图批量清理                                                                   |
@@ -163,7 +163,7 @@ uiViewportEvidence:
 | 项目        | 内容                                                                 |
 | ----------- | -------------------------------------------------------------------- |
 | 基线        | `L3` 主代理验收后的当前 SHA                                          |
-| 执行角色    | 实现执行器：Codex / GPT-5.6                                          |
+| 执行角色    | 主代理：Claude Code / Claude Opus 4.8，当前会话直接实现              |
 | 复审        | 主代理验收                                                           |
 | 写入范围    | `ProductSelectionWorkbench.vue/.test.ts`、选品 E2E 最小适配          |
 | 禁止范围    | 选品 composable/API/领域组件/契约；不得把 N/5 改成 N/8               |
@@ -176,8 +176,8 @@ uiViewportEvidence:
 | 项目        | 内容                                                                                                  |
 | ----------- | ----------------------------------------------------------------------------------------------------- |
 | 基线        | `L4` 主代理验收后的当前 SHA                                                                           |
-| 执行角色    | 实现执行器：Codex / GPT-5.6                                                                           |
-| 复审        | Codex / GPT-5.6 新开只读会话独立复审；与写入会话分离                                                  |
+| 执行角色    | 主代理：Claude Code / Claude Opus 4.8，当前会话直接实现                                               |
+| 复审        | 主代理验收；任务全部实现、真实视觉证据和完整门禁通过后，新开 fresh Claude Code 只读会话做整体独立复审 |
 | 写入范围    | `MarketSignalsWorkbench.vue/.test.ts`、`workbench-network.spec.ts` 最小适配、集成验证证据回写本 brief |
 | 禁止范围    | 市场 composable/API/契约/业务政策；不得复用选品分母或改变关闭业务语义                                 |
 | UI 强制结构 | archived/voided 保留责任带与右栏，只移除写控件；关闭与办理中网格一致                                  |
