@@ -52,6 +52,40 @@ test("reference page preserves the standard region order at all three viewports"
   });
 });
 
+test("narrow queue drawer traps focus and closes by selection, Escape, or backdrop", async ({
+  page,
+}) => {
+  test.skip(
+    (page.viewportSize()?.width ?? 0) < 681 ||
+      (page.viewportSize()?.width ?? 0) >= 1280,
+    "narrow drawer contract",
+  );
+  await gotoReference(page);
+  const trigger = page.getByRole("button", { name: "打开对象与任务队列" });
+  const detail = page.locator('[data-workbench-pane="detail"]');
+
+  await trigger.click();
+  const drawer = page.getByRole("dialog", { name: "对象与任务队列" });
+  await expect(drawer).toBeVisible();
+  await expect(detail).toHaveAttribute("inert", "");
+  await expect(
+    drawer.getByRole("button", { name: /合成机会 REF-001/ }),
+  ).toBeFocused();
+  await drawer.getByRole("button", { name: /合成机会 REF-002/ }).click();
+  await expect(drawer).toBeHidden();
+  await expect(trigger).toBeFocused();
+
+  await trigger.click();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(trigger).toBeFocused();
+
+  await trigger.click();
+  await page.getByRole("button", { name: "关闭任务队列抽屉" }).click();
+  await expect(drawer).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
 test("desktop rails fold independently and together without losing full height", async ({
   page,
 }) => {
@@ -96,20 +130,33 @@ test("business states change pane content without changing workbench identity or
   const heading = page.getByRole("heading", { name: "选品立项" });
   const initial = await captureLayout(page);
   await page.getByText("参考场景 · working").click();
-  for (const [scenario, image] of [
-    ["waiting", "reference-waiting.png"],
-    ["failed", "reference-failed.png"],
-    ["conflict", "reference-conflict.png"],
-    ["readonly", "reference-readonly.png"],
-  ] as const) {
-    await page.locator(`[data-scenario="${scenario}"]`).click();
-    await expect(heading).toBeVisible();
-    const current = await captureLayout(page);
-    expect(current.panes.map(({ id }) => id)).toEqual(
-      initial.panes.map(({ id }) => id),
-    );
-    await screenshot(page, image);
-  }
+  await page.locator('[data-scenario="waiting"]').click();
+  await expect(heading).toBeVisible();
+  expect((await captureLayout(page)).panes.map(({ id }) => id)).toEqual(
+    initial.panes.map(({ id }) => id),
+  );
+  await screenshot(page, "reference-waiting.png");
+
+  await page.locator('[data-scenario="failed"]').click();
+  await expect(heading).toBeVisible();
+  expect((await captureLayout(page)).panes.map(({ id }) => id)).toEqual(
+    initial.panes.map(({ id }) => id),
+  );
+  await screenshot(page, "reference-failed.png");
+
+  await page.locator('[data-scenario="conflict"]').click();
+  await expect(heading).toBeVisible();
+  expect((await captureLayout(page)).panes.map(({ id }) => id)).toEqual(
+    initial.panes.map(({ id }) => id),
+  );
+  await screenshot(page, "reference-conflict.png");
+
+  await page.locator('[data-scenario="readonly"]').click();
+  await expect(heading).toBeVisible();
+  expect((await captureLayout(page)).panes.map(({ id }) => id)).toEqual(
+    initial.panes.map(({ id }) => id),
+  );
+  await screenshot(page, "reference-readonly.png");
 });
 
 test("session switching keeps exactly one current session and does not move it on save failure", async ({
@@ -177,11 +224,32 @@ test("mobile moves explicitly from queue to detail to editing and restores scrol
     page.getByRole("region", { name: "事实、缺口与推进任务" }),
   ).toBeVisible();
   await screenshot(page, "reference-mobile-detail.png");
-  await page.locator('[data-item="pricing"]').last().click();
+  const detailPane = page.locator('[data-workbench-pane="detail"]');
+  const appContent = page.locator(".app-content");
+  const item = page.locator('[data-item="pricing"]').last();
+  await item.focus();
+  await detailPane.evaluate((element) => {
+    element.style.minHeight = "1200px";
+  });
+  await appContent.evaluate((element) => {
+    element.scrollTop = 180;
+  });
+  const rememberedPageScroll = await appContent.evaluate(
+    (element) => element.scrollTop,
+  );
+  expect(rememberedPageScroll).toBeGreaterThan(0);
+  await item.evaluate((element) => {
+    if (element instanceof HTMLElement) element.click();
+  });
   await expect(
     page.getByRole("region", { name: "当前事项操作上下文" }),
   ).toBeVisible();
   await screenshot(page, "reference-edit.png");
+  await page.getByRole("button", { name: "详情", exact: true }).click();
+  await expect(item).toBeFocused();
+  await expect
+    .poll(() => appContent.evaluate((element) => element.scrollTop))
+    .toBe(rememberedPageScroll);
 });
 
 test("keyboard order follows queue detail action causality and reduced motion is honored", async ({

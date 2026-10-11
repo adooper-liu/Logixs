@@ -38,6 +38,61 @@ import {
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
+const COMPLETE_WORKBENCH_SCREENSHOT_SOURCE = [
+  "const screenshot = () => expect(page).toHaveScreenshot();",
+  "reference-default.png",
+  "reference-left-rail.png",
+  "reference-both-rails.png",
+  "reference-right-rail.png",
+  "reference-edit.png",
+  "reference-waiting.png",
+  "reference-failed.png",
+  "reference-conflict.png",
+  "reference-readonly.png",
+  "reference-session-menu.png",
+  "reference-session-switched.png",
+  "reference-more-menu.png",
+  "reference-linked-feature.png",
+  "reference-mobile-detail.png",
+  "reference-dark.png",
+]
+  .map((name) => `await screenshot(page, "${name}");`)
+  .join("\n");
+
+const COMPLETE_WORKBENCH_BASELINES = [
+  "reference-default-desktop-chromium-win32.png",
+  "reference-default-narrow-chromium-win32.png",
+  "reference-default-mobile-chromium-win32.png",
+  "reference-left-rail-desktop-chromium-win32.png",
+  "reference-both-rails-desktop-chromium-win32.png",
+  "reference-right-rail-desktop-chromium-win32.png",
+  "reference-edit-desktop-chromium-win32.png",
+  "reference-edit-narrow-chromium-win32.png",
+  "reference-edit-mobile-chromium-win32.png",
+  "reference-waiting-desktop-chromium-win32.png",
+  "reference-failed-desktop-chromium-win32.png",
+  "reference-conflict-desktop-chromium-win32.png",
+  "reference-readonly-desktop-chromium-win32.png",
+  "reference-session-menu-desktop-chromium-win32.png",
+  "reference-session-switched-desktop-chromium-win32.png",
+  "reference-more-menu-desktop-chromium-win32.png",
+  "reference-linked-feature-desktop-chromium-win32.png",
+  "reference-mobile-detail-mobile-chromium-win32.png",
+  "reference-dark-desktop-chromium-win32.png",
+];
+
+function completeWorkbenchVisualContract(overrides = {}) {
+  return {
+    routeSource:
+      "export const referenceRoutes = import.meta.env.DEV ? [] : [];",
+    visualSpecSource: COMPLETE_WORKBENCH_SCREENSHOT_SOURCE,
+    scenarioSource: "working waiting failed conflict readonly dirty-session",
+    productionSources: [],
+    snapshotPaths: COMPLETE_WORKBENCH_BASELINES,
+    ...overrides,
+  };
+}
+
 const CURRENT_WORKBENCH_AUTHORITY_PATHS = [
   "AGENTS.md",
   "doc/cross-border-supply-chain/08-role-workbenches.md",
@@ -1629,6 +1684,33 @@ test("workbench visual contract rejects production imports from reference fixtur
   assert.match(
     violations.join("\n"),
     /production source cannot import workbench reference/i,
+  );
+});
+
+test("workbench visual contract rejects an incomplete screenshot matrix or missing baseline", () => {
+  const missingInvocation = findWorkbenchVisualContractViolations(
+    completeWorkbenchVisualContract({
+      visualSpecSource: COMPLETE_WORKBENCH_SCREENSHOT_SOURCE.replace(
+        'await screenshot(page, "reference-mobile-detail.png");',
+        "",
+      ),
+    }),
+  );
+  assert.match(
+    missingInvocation.join("\n"),
+    /missing required screenshot invocation 'reference-mobile-detail\.png'/i,
+  );
+
+  const missingBaseline = findWorkbenchVisualContractViolations(
+    completeWorkbenchVisualContract({
+      snapshotPaths: COMPLETE_WORKBENCH_BASELINES.filter(
+        (path) => path !== "reference-default-narrow-chromium-win32.png",
+      ),
+    }),
+  );
+  assert.match(
+    missingBaseline.join("\n"),
+    /missing required baseline 'reference-default-narrow-chromium-win32\.png'/i,
   );
 });
 

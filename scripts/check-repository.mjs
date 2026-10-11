@@ -1357,11 +1357,77 @@ export function isVerbatimWisdomBaseline(path) {
   );
 }
 
+const REQUIRED_WORKBENCH_SCREENSHOTS = [
+  "reference-default.png",
+  "reference-left-rail.png",
+  "reference-both-rails.png",
+  "reference-right-rail.png",
+  "reference-edit.png",
+  "reference-waiting.png",
+  "reference-failed.png",
+  "reference-conflict.png",
+  "reference-readonly.png",
+  "reference-session-menu.png",
+  "reference-session-switched.png",
+  "reference-more-menu.png",
+  "reference-linked-feature.png",
+  "reference-mobile-detail.png",
+  "reference-dark.png",
+];
+
+const REQUIRED_WORKBENCH_BASELINES = [
+  "reference-default-desktop-chromium-win32.png",
+  "reference-default-narrow-chromium-win32.png",
+  "reference-default-mobile-chromium-win32.png",
+  "reference-left-rail-desktop-chromium-win32.png",
+  "reference-both-rails-desktop-chromium-win32.png",
+  "reference-right-rail-desktop-chromium-win32.png",
+  "reference-edit-desktop-chromium-win32.png",
+  "reference-edit-narrow-chromium-win32.png",
+  "reference-edit-mobile-chromium-win32.png",
+  "reference-waiting-desktop-chromium-win32.png",
+  "reference-failed-desktop-chromium-win32.png",
+  "reference-conflict-desktop-chromium-win32.png",
+  "reference-readonly-desktop-chromium-win32.png",
+  "reference-session-menu-desktop-chromium-win32.png",
+  "reference-session-switched-desktop-chromium-win32.png",
+  "reference-more-menu-desktop-chromium-win32.png",
+  "reference-linked-feature-desktop-chromium-win32.png",
+  "reference-mobile-detail-mobile-chromium-win32.png",
+  "reference-dark-desktop-chromium-win32.png",
+];
+
+function workbenchScreenshotInvocations(source) {
+  const sourceFile = ts.createSourceFile(
+    "universal-workbench-reference.visual.spec.ts",
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const names = new Set();
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "screenshot" &&
+      node.arguments.length >= 2 &&
+      ts.isStringLiteralLike(node.arguments[1])
+    ) {
+      names.add(node.arguments[1].text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return names;
+}
+
 export function findWorkbenchVisualContractViolations({
   routeSource,
   visualSpecSource,
   scenarioSource,
   productionSources,
+  snapshotPaths = [],
 }) {
   const errors = [];
   if (
@@ -1376,6 +1442,25 @@ export function findWorkbenchVisualContractViolations({
     errors.push(
       "workbench visual contract: visual spec must contain toHaveScreenshot",
     );
+  }
+  const screenshotInvocations =
+    workbenchScreenshotInvocations(visualSpecSource);
+  for (const screenshot of REQUIRED_WORKBENCH_SCREENSHOTS) {
+    if (!screenshotInvocations.has(screenshot)) {
+      errors.push(
+        `workbench visual contract: missing required screenshot invocation '${screenshot}'`,
+      );
+    }
+  }
+  const snapshotNames = new Set(
+    snapshotPaths.map((path) => path.split("/").at(-1)),
+  );
+  for (const baseline of REQUIRED_WORKBENCH_BASELINES) {
+    if (!snapshotNames.has(baseline)) {
+      errors.push(
+        `workbench visual contract: missing required baseline '${baseline}'`,
+      );
+    }
   }
   for (const scenario of [
     "working",
@@ -1485,6 +1570,11 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
             source: readFileSync(path, "utf8"),
           }))
           .filter((source) => !source.path.includes("/reference/")),
+        snapshotPaths: trackedFiles.filter((path) =>
+          path.startsWith(
+            "apps/web/e2e/universal-workbench-reference.visual.spec.ts-snapshots/",
+          ),
+        ),
       }),
       ...findMissingStyleScaleTokens(
         readFileSync(

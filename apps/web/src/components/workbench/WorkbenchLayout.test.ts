@@ -30,7 +30,7 @@ const mountLayout = () => {
       decision: '<div data-region="decision">decision</div>',
       queue: '<button data-region="queue" id="queue-item">queue</button>',
       detail:
-        '<div data-region="detail"><button id="detail-item">detail</button><input id="draft" /></div>',
+        '<div data-region="detail"><div class="workbench-pane__scroll--independent"><button id="detail-item">detail</button><button id="detail-secondary">secondary</button><input id="draft" /></div></div>',
       context:
         '<div data-region="context"><button id="context-action">context</button></div>',
     },
@@ -109,6 +109,51 @@ describe("WorkbenchLayout", () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" });
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
     expect(document.activeElement).toBe(wrapper.get("#context-action").element);
+  });
+
+  it("restores each mobile pane's focused control and scroll position", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const wrapper = mountLayout();
+    const detailScroll = wrapper.get(
+      '[data-workbench-pane="detail"] .workbench-pane__scroll--independent',
+    ).element as HTMLElement;
+
+    await wrapper.setProps({ mobileScreen: "detail" });
+    detailScroll.scrollTop = 144;
+    (wrapper.get("#detail-secondary").element as HTMLElement).focus();
+
+    await wrapper.setProps({ mobileScreen: "context" });
+    detailScroll.scrollTop = 0;
+    await wrapper.setProps({ mobileScreen: "detail" });
+    await wrapper.vm.$nextTick();
+
+    expect(detailScroll.scrollTop).toBe(144);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    expect(document.activeElement).toBe(
+      wrapper.get("#detail-secondary").element,
+    );
+  });
+
+  it("treats the narrow queue overlay as a dismissible drawer", async () => {
+    const wrapper = mountLayout();
+    const trigger = wrapper.get('[aria-label="打开任务队列"]');
+
+    await trigger.trigger("click");
+    expect(
+      wrapper.get('[data-workbench-pane="queue"]').attributes("role"),
+    ).toBe("dialog");
+    expect(
+      wrapper.get('[data-workbench-pane="detail"]').attributes("inert"),
+    ).toBe("");
+
+    await wrapper.get('[data-workbench-pane="queue"]').trigger("keydown", {
+      key: "Escape",
+    });
+    expect(
+      wrapper.get('[aria-label="打开任务队列"]').attributes("aria-expanded"),
+    ).toBe("false");
+    expect(document.activeElement).toBe(trigger.element);
   });
 
   it("requests detail focus restoration after returning from context", async () => {

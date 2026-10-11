@@ -46,33 +46,160 @@ defineSlots<{
 
 const narrowQueueOpen = ref(false);
 const workspace = ref<HTMLElement | null>(null);
+const narrowQueueTrigger = ref<HTMLButtonElement | null>(null);
+const paneFocusMemory = new Map<WorkbenchPaneId, HTMLElement>();
+const paneScrollMemory = new Map<WorkbenchPaneId, number>();
+const pageScrollMemory = new Map<WorkbenchPaneId, number>();
+
+function containingScrollOwner(): HTMLElement | null {
+  let candidate = workspace.value?.parentElement ?? null;
+  while (candidate) {
+    const style = getComputedStyle(candidate);
+    if (/(auto|scroll)/.test(`${style.overflow} ${style.overflowY}`)) {
+      return candidate;
+    }
+    candidate = candidate.parentElement;
+  }
+  return null;
+}
+
+function paneFor(screen: WorkbenchPaneId): HTMLElement | null {
+  return (
+    workspace.value?.querySelector<HTMLElement>(
+      `[data-workbench-pane="${screen}"]`,
+    ) ?? null
+  );
+}
+
+function scrollOwnerFor(pane: HTMLElement | null): HTMLElement | null {
+  return (
+    pane?.querySelector<HTMLElement>(".workbench-pane__scroll--independent") ??
+    null
+  );
+}
+
+function rememberPane(screen: WorkbenchPaneId): void {
+  const scrollOwner = scrollOwnerFor(paneFor(screen));
+  if (scrollOwner) paneScrollMemory.set(screen, scrollOwner.scrollTop);
+  pageScrollMemory.set(
+    screen,
+    containingScrollOwner()?.scrollTop ?? window.scrollY,
+  );
+}
+
+function rememberFocusedControl(event: FocusEvent): void {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const pane = target.closest<HTMLElement>("[data-workbench-pane]");
+  const id = pane?.dataset.workbenchPane as WorkbenchPaneId | undefined;
+  if (id) paneFocusMemory.set(id, target);
+}
 
 function selectMobileScreen(screen: WorkbenchMobileScreen): void {
   emit("update:mobileScreen", screen);
-  emit("restoreFocus", screen);
 }
 
 async function revealMobileScreen(
   screen: WorkbenchMobileScreen,
 ): Promise<void> {
   await nextTick();
-  const pane = workspace.value?.querySelector<HTMLElement>(
-    `[data-workbench-pane="${screen}"]`,
-  );
-  pane?.scrollIntoView({ block: "start" });
-  const control = Array.from(
-    pane?.querySelectorAll<HTMLElement>(
-      "button:not([disabled]):not(.collapsible-rail__toggle), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]",
+  const pane = paneFor(screen);
+  const rememberedPageScroll = pageScrollMemory.get(screen);
+  if (rememberedPageScroll !== undefined) {
+    const pageScrollOwner = containingScrollOwner();
+    if (pageScrollOwner) pageScrollOwner.scrollTop = rememberedPageScroll;
+    else window.scrollTo({ top: rememberedPageScroll });
+  } else {
+    pane?.scrollIntoView({ block: "start" });
+  }
+  const rememberedControl = paneFocusMemory.get(screen);
+  const control =
+    rememberedControl?.isConnected && pane?.contains(rememberedControl)
+      ? rememberedControl
+      : Array.from(
+          pane?.querySelectorAll<HTMLElement>(
+            "button:not([disabled]):not(.collapsible-rail__toggle), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]",
+          ) ?? [],
+        ).find((candidate) => candidate.getClientRects().length > 0);
+  const scrollOwner = scrollOwnerFor(pane);
+  const rememberedScroll = paneScrollMemory.get(screen);
+  if (scrollOwner && rememberedScroll !== undefined) {
+    scrollOwner.scrollTop = rememberedScroll;
+  }
+  if (control) {
+    if (control !== rememberedControl) {
+      control.scrollIntoView({ block: "nearest" });
+    }
+    control.focus({ preventScroll: true });
+  }
+  emit("restoreFocus", screen);
+}
+
+function openNarrowQueue(): void {
+  narrowQueueOpen.value = true;
+  void nextTick(() => {
+    const firstControl = paneFor("queue")?.querySelector<HTMLElement>(
+      "button:not([disabled]):not(.collapsible-rail__toggle), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled])",
+    );
+    firstControl?.focus();
+  });
+}
+
+function closeNarrowQueue(): void {
+  narrowQueueOpen.value = false;
+  void nextTick(() => narrowQueueTrigger.value?.focus());
+}
+
+function toggleNarrowQueue(): void {
+  if (narrowQueueOpen.value) closeNarrowQueue();
+  else openNarrowQueue();
+}
+
+function drawerControls(): HTMLElement[] {
+  return Array.from(
+    paneFor("queue")?.querySelectorAll<HTMLElement>(
+      "button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
     ) ?? [],
-  ).find((candidate) => candidate.getClientRects().length > 0);
-  control?.scrollIntoView({ block: "nearest" });
-  control?.focus({ preventScroll: true });
+  ).filter((control) => control.getClientRects().length > 0);
+}
+
+function handleNarrowQueueKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape") {
+    closeNarrowQueue();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const controls = drawerControls();
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function handleQueueInteraction(event: Event): void {
+  const target = event.target;
+  if (
+    narrowQueueOpen.value &&
+    target instanceof HTMLElement &&
+    target.closest("button, a[href]")
+  ) {
+    closeNarrowQueue();
+  }
 }
 
 watch(
   () => props.mobileScreen,
   (screen, previous) => {
-    if (screen !== previous) void revealMobileScreen(screen);
+    if (screen !== previous) {
+      rememberPane(previous);
+      void revealMobileScreen(screen);
+    }
   },
 );
 </script>
@@ -109,25 +236,44 @@ watch(
       <slot name="mobileBreadcrumb" :screen="mobileScreen" />
     </div>
 
-    <div ref="workspace" class="workbench-layout__workspace">
+    <div
+      ref="workspace"
+      class="workbench-layout__workspace"
+      @focusin="rememberFocusedControl"
+    >
       <button
+        ref="narrowQueueTrigger"
         class="workbench-layout__narrow-queue"
         type="button"
         :aria-label="
           narrowQueueOpen ? `关闭${leftRailLabel}` : `打开${leftRailLabel}`
         "
         :aria-expanded="narrowQueueOpen"
-        @click="narrowQueueOpen = !narrowQueueOpen"
+        aria-controls="workbench-narrow-queue-drawer"
+        @click="toggleNarrowQueue"
       >
         <slot name="queueRail">
           <span>{{ leftRailSummary ?? leftRailLabel }}</span>
         </slot>
       </button>
+      <button
+        v-if="narrowQueueOpen"
+        class="workbench-layout__narrow-backdrop"
+        type="button"
+        aria-label="关闭任务队列抽屉"
+        @click="closeNarrowQueue"
+      />
       <div
+        id="workbench-narrow-queue-drawer"
         class="workbench-layout__pane workbench-layout__pane--queue"
         :class="{ 'workbench-layout__pane--queue-open': narrowQueueOpen }"
         data-workbench-pane="queue"
         :data-mobile-active="mobileScreen === 'queue' || undefined"
+        :role="narrowQueueOpen ? 'dialog' : undefined"
+        :aria-modal="narrowQueueOpen || undefined"
+        :aria-label="narrowQueueOpen ? leftRailLabel : undefined"
+        @keydown="handleNarrowQueueKeydown"
+        @click="handleQueueInteraction"
       >
         <CollapsibleRail
           side="left"
@@ -146,6 +292,7 @@ watch(
         class="workbench-layout__pane workbench-layout__pane--detail"
         data-workbench-pane="detail"
         :data-mobile-active="mobileScreen === 'detail' || undefined"
+        :inert="narrowQueueOpen || undefined"
       >
         <slot name="detail" />
       </div>
@@ -153,6 +300,7 @@ watch(
         class="workbench-layout__pane workbench-layout__pane--context"
         data-workbench-pane="context"
         :data-mobile-active="mobileScreen === 'context' || undefined"
+        :inert="narrowQueueOpen || undefined"
       >
         <CollapsibleRail
           side="right"
@@ -191,6 +339,7 @@ watch(
 }
 
 .workbench-layout__workspace {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(224px, 0.65fr) minmax(360px, 1.5fr) minmax(
       280px,
@@ -265,9 +414,18 @@ watch(
     display: none;
   }
 
+  .workbench-layout__narrow-backdrop {
+    position: absolute;
+    z-index: var(--z-backdrop);
+    inset: 0;
+    border: 0;
+    background: var(--overlay);
+    cursor: pointer;
+  }
+
   .workbench-layout__pane--queue-open {
     position: absolute;
-    z-index: 30;
+    z-index: calc(var(--z-backdrop) + 1);
     top: 0;
     bottom: 0;
     left: 0;

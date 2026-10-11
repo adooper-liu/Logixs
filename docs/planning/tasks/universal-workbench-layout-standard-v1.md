@@ -237,6 +237,15 @@ uiViewportEvidence:
 - 修正记录：最终验收发现移动屏切换后活动 pane 未主动滚入首屏、pane 滚动所有权缺少可检查结构钩子、右侧折叠控件位置与选品主动作层级不稳；均由回归测试先失败后最小修正，并重跑上述门禁。
 - 范围核对：以当前 `merge-base(main, HEAD)=a509e4a8` 核对，布局实现路径全部落在本 brief `writeScopes`；同分支前置设计 brief/spec/plan 由已完成设计任务覆盖；`.tmp/` 为既有其他任务证据，未修改、未暂存、未提交。
 
+## 独立复审裁决（2026-10-11）
+
+- `WB-LAYOUT-REV-001`：`accepted / fixed`。回归测试先得到 `scrollTop 0 != 144`，并证明只能聚焦 pane 首控件；`WorkbenchLayout` 现按 pane 记忆原焦点、pane scroll owner 与最近可滚动宿主位置，移动 Playwright 真实验证详情 → 编辑 → 详情恢复原事项焦点和非零 `.app-content.scrollTop`。
+- `WB-LAYOUT-REV-002`：`accepted / fixed`。回归测试先得到 narrow queue 无 `role=dialog`；现实现遮罩、背景 `inert`、焦点进入/循环、Escape/遮罩/选择关闭及触发器焦点回归，narrow Playwright 覆盖三种退出路径。
+- `WB-LAYOUT-REV-003`：`accepted / fixed`。负向测试先证明缺失截图调用或 PNG 只能得到宽泛字符串门禁；现以 TypeScript AST 检查 15 个显式截图调用，并核对完整 19 文件 viewport/state 基线集合，缺少任一项会报告精确名称。
+- `WB-LAYOUT-REV-004`：`Minor / deferred`。冻结记录的 `3/5` 可进一步标注为历史快照，当前值仍是真实五区数据且页面明确显示“结论已冻结 / 当前不提供编辑或重提”，不影响本单元布局、安全或数据真实性；后续选品领域文案切片再决定省略或改成“冻结快照：3/5”。
+- 修复批次验证：定向 suite `111/111`，Web 全量 `745/745`，repo tests `73/73`；reference Playwright `18 passed / 15 viewport-specific skipped`；消费者 Playwright `85 passed / 2 viewport-specific skipped`；lint、format、typecheck、build、repo/purpose checks 全部通过，19 张像素基线无需更新。
+- reviewer unknowns：`.tmp/`、后续四个交付单元与临时 `test-results` 均已按既有任务边界排除；不形成当前 finding。
+
 ## 完成门槛
 
 - 中性组件不含市场/选品/货柜业务码和硬编码分母；

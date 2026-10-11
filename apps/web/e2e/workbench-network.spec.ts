@@ -880,6 +880,7 @@ test("market keeps claimed handoffs until selection accepts and then shows feedb
   await page.goto(`/workspaces/market-signals?signalId=${secondSignalId}`);
   await openWorkbenchQueue(page, "经营信号队列");
   await page.getByRole("tab", { name: /已交选品·待接受/ }).click();
+  await openWorkbenchQueue(page, "经营信号队列");
   await expect(
     page.getByRole("button", { name: /加拿大站宠物出行需求上升/ }),
   ).toContainText("选品尚未领取");
@@ -900,6 +901,7 @@ test("market keeps claimed handoffs until selection accepts and then shows feedb
   await page.goto(`/workspaces/market-signals?signalId=${secondSignalId}`);
   await openWorkbenchQueue(page, "经营信号队列");
   await page.getByRole("tab", { name: /已交选品·待接受/ }).click();
+  await openWorkbenchQueue(page, "经营信号队列");
   await expect(
     page.getByRole("button", { name: /加拿大站宠物出行需求上升/ }),
   ).toContainText("dev-operator 于");
