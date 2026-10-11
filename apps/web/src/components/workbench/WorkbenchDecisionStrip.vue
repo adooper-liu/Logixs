@@ -4,7 +4,7 @@ import type { WorkbenchTone } from "./workbenchLayout.types";
 withDefaults(
   defineProps<{
     conclusion: string;
-    ariaLabel: string;
+    regionLabel: string;
     tone?: WorkbenchTone;
     disabledReason?: string;
   }>(),
@@ -23,7 +23,7 @@ defineSlots<{
   <section
     class="decision-strip"
     :class="`decision-strip--${tone}`"
-    :aria-label="ariaLabel"
+    :aria-label="regionLabel"
   >
     <div class="decision-strip__conclusion">
       <b>{{ conclusion }}</b>

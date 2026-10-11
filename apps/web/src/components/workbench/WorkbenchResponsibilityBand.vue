@@ -2,7 +2,7 @@
 import type { WorkbenchResponsibilityItem } from "./workbenchLayout.types";
 
 defineProps<{
-  ariaLabel: string;
+  regionLabel: string;
   items: readonly WorkbenchResponsibilityItem[];
 }>();
 
@@ -19,7 +19,7 @@ const displayValue = (item: WorkbenchResponsibilityItem) =>
 </script>
 
 <template>
-  <section class="responsibility-band" :aria-label="ariaLabel">
+  <section class="responsibility-band" :aria-label="regionLabel">
     <dl>
       <div v-for="item in items" :key="item.label">
         <dt>{{ item.label }}</dt>

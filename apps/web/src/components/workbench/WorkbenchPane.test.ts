@@ -14,7 +14,7 @@ describe("WorkbenchPane", () => {
         props: {
           id: "detail-pane",
           title: "事实、缺口与推进任务",
-          ariaLabel: "事实、缺口与推进任务",
+          regionLabel: "事实、缺口与推进任务",
           state,
         },
       });
@@ -32,7 +32,7 @@ describe("WorkbenchPane", () => {
       props: {
         id: "detail-pane",
         title: "事实、缺口与推进任务",
-        ariaLabel: "事实、缺口与推进任务",
+        regionLabel: "事实、缺口与推进任务",
         state: { kind: "error", message: "没能加载", traceId: "trace-1" },
       },
       attrs: { onRetry: () => undefined },
@@ -48,7 +48,7 @@ describe("WorkbenchPane", () => {
       props: {
         id: "queue-pane",
         title: "对象与任务队列",
-        ariaLabel: "对象与任务队列",
+        regionLabel: "对象与任务队列",
       },
       slots: { default: "队列内容" },
     });

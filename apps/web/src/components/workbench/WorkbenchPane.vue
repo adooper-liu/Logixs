@@ -6,7 +6,7 @@ withDefaults(
   defineProps<{
     id: string;
     title: string;
-    ariaLabel: string;
+    regionLabel: string;
     count?: number;
     state?: WorkbenchPaneState;
   }>(),
@@ -22,7 +22,7 @@ const canRetry = computed(() => Boolean(instance?.vnode.props?.onRetry));
 </script>
 
 <template>
-  <section :id="id" class="workbench-pane" :aria-label="ariaLabel">
+  <section :id="id" class="workbench-pane" :aria-label="regionLabel">
     <header class="workbench-pane__header">
       <h2>{{ title }}</h2>
       <span v-if="count !== undefined" class="workbench-pane__count">{{ count }}</span>

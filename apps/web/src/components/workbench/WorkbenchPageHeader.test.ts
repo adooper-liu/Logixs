@@ -43,6 +43,23 @@ describe("WorkbenchPageHeader", () => {
     expect(wrapper.get("time").text()).toBe("11:45");
   });
 
+  it("renders switcher and more-functions slots without changing generated identity", () => {
+    const wrapper = mount(WorkbenchPageHeader, {
+      props: { stageCode: "product_selection" },
+      slots: {
+        switcher: '<button aria-label="切换工作现场">切换</button>',
+        moreFunctions: '<button aria-label="更多关联功能">更多功能</button>',
+        actions: '<button aria-label="旧动作">旧动作</button>',
+      },
+      global: { stubs: { PageHeader: PageHeaderStub } },
+    });
+
+    expect(wrapper.get("h1").text()).toBe("选品立项");
+    expect(wrapper.find('[aria-label="切换工作现场"]').exists()).toBe(true);
+    expect(wrapper.find('[aria-label="更多关联功能"]').exists()).toBe(true);
+    expect(wrapper.find('[aria-label="旧动作"]').exists()).toBe(false);
+  });
+
   it("forwards help and actions slots without accepting title or summary overrides", () => {
     const wrapper = mount(WorkbenchPageHeader, {
       props: {

@@ -9,7 +9,7 @@ describe("WorkbenchDecisionStrip", () => {
     ["absent", ""],
   ])("passes through %s progress without inventing content", (_, progress) => {
     const wrapper = mount(WorkbenchDecisionStrip, {
-      props: { conclusion: "办理中", ariaLabel: "当前结论与办理缺口" },
+      props: { conclusion: "办理中", regionLabel: "当前结论与办理缺口" },
       slots: progress ? { progress } : {},
     });
 
@@ -25,7 +25,7 @@ describe("WorkbenchDecisionStrip", () => {
     const wrapper = mount(WorkbenchDecisionStrip, {
       props: {
         conclusion: "当前门槛未满足",
-        ariaLabel: "当前结论与办理缺口",
+        regionLabel: "当前结论与办理缺口",
         disabledReason: "还缺价格带证据",
       },
       slots: {

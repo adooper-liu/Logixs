@@ -6,7 +6,7 @@ describe("WorkbenchResponsibilityBand", () => {
   it("renders known, unknown, and not-applicable responsibility facts without defaults", () => {
     const wrapper = mount(WorkbenchResponsibilityBand, {
       props: {
-        ariaLabel: "岗位、对象与责任上下文",
+        regionLabel: "岗位、对象与责任上下文",
         items: [
           { label: "当前对象", value: "机会 A", state: "known" },
           { label: "下一责任", value: null, state: "unknown" },
