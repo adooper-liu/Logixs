@@ -20,6 +20,18 @@ beforeEach(async () => {
 });
 
 describe("UniversalWorkbenchReferenceView", () => {
+  it("sets the synthetic scenario controls to the viewport contract explicitly", () => {
+    const wrapper = mount(UniversalWorkbenchReferenceView, {
+      props: { scenarioControlsOpen: true },
+      global: {
+        plugins: [router],
+        provide: { [uiThemeKey as symbol]: shallowRef(logixTheme) },
+      },
+    });
+
+    expect(wrapper.get(".reference-scenarios").attributes("open")).toBe("");
+  });
+
   it("renders every required visual-contract scenario with production primitives", async () => {
     const wrapper = mount(UniversalWorkbenchReferenceView, {
       global: {

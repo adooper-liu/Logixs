@@ -14,6 +14,19 @@ import {
   type ReferenceScenarioKey,
 } from "./referenceScenarios";
 
+const props = withDefaults(
+  defineProps<{
+    scenarioControlsOpen?: boolean;
+  }>(),
+  { scenarioControlsOpen: undefined },
+);
+
+const scenarioControlsInitiallyOpen = computed(
+  () =>
+    props.scenarioControlsOpen ??
+    window.matchMedia("(min-width: 681px)").matches,
+);
+
 const router = useRouter();
 const scenarioKey = ref<ReferenceScenarioKey>("working");
 const leftCollapsed = ref(false);
@@ -65,7 +78,7 @@ function switchSession(id: string): void {
 <template>
   <main class="reference-page page-frame">
     <p class="reference-notice" role="note">{{ syntheticNotice }}</p>
-    <details class="reference-scenarios">
+    <details class="reference-scenarios" :open="scenarioControlsInitiallyOpen">
       <summary>参考场景 · {{ scenarioKey }}</summary>
       <div class="reference-scenarios__controls" aria-label="参考场景">
         <button

@@ -12,6 +12,14 @@ const gotoReference = async (page: Page) => {
   await expect(page.getByText("合成结构演练数据，不是生产记录")).toBeVisible();
 };
 
+const ensureScenarioControlsOpen = async (page: Page) => {
+  const scenarios = page.locator(".reference-scenarios");
+  if ((await scenarios.getAttribute("open")) === null) {
+    await scenarios.getByText(/参考场景/).click();
+  }
+  await expect(scenarios).toHaveAttribute("open", "");
+};
+
 const screenshot = async (page: Page, name: string) => {
   await expect(page).toHaveScreenshot(name, screenshotOptions);
 };
@@ -21,6 +29,12 @@ test("reference page preserves the standard region order at all three viewports"
 }, testInfo) => {
   await gotoReference(page);
   await expectStandardRegions(page);
+  const scenarioControls = page.locator(".reference-scenarios");
+  if ((page.viewportSize()?.width ?? 0) >= 681) {
+    await expect(scenarioControls).toHaveAttribute("open", "");
+  } else {
+    await expect(scenarioControls).not.toHaveAttribute("open", "");
+  }
   await expectNoWorkbenchOverflow(page);
   const evidence = await captureLayout(page);
   expect(evidence.panes.map((pane) => pane.id)).toEqual([
@@ -129,7 +143,8 @@ test("business states change pane content without changing workbench identity or
   await gotoReference(page);
   const heading = page.getByRole("heading", { name: "选品立项" });
   const initial = await captureLayout(page);
-  await page.getByText("参考场景 · working").click();
+  await ensureScenarioControlsOpen(page);
+  await page.locator('[data-scenario="working"]').click();
   await page.locator('[data-scenario="waiting"]').click();
   await expect(heading).toBeVisible();
   expect((await captureLayout(page)).panes.map(({ id }) => id)).toEqual(
@@ -176,7 +191,8 @@ test("session switching keeps exactly one current session and does not move it o
   await expect(page.locator('[aria-current="true"]')).toContainText("寻源");
   await screenshot(page, "reference-session-switched.png");
   await page.getByRole("button", { name: "切换工作现场（结构参考）" }).click();
-  await page.getByText("参考场景 · working").click();
+  await ensureScenarioControlsOpen(page);
+  await page.locator('[data-scenario="working"]').click();
   await page.locator('[data-scenario="dirty-session"]').click();
   await page.getByRole("button", { name: "切换工作现场（结构参考）" }).click();
   await page.locator('[data-session="unloading"]').click();
