@@ -1,6 +1,7 @@
 ---
-status: review
+status: done
 branch: worktree-universal-workbench-ui-standard
+verification: "PR #167 merged to main at e158290a; final CI changes/static/unit/build/e2e/quality successful; independent review Important findings fixed, one Minor deferred; reference and real-consumer visual evidence recorded below"
 owner: main
 writer: main
 risk: medium
@@ -254,6 +255,8 @@ uiViewportEvidence:
 - 测试修正：NPI 回流在移动视口显式进入“编辑”屏后执行主动作；移动 scroll/focus 反证先截标准编辑基线，再注入 overflow，避免验证代码污染像素基线。
 - `WB-LAYOUT-CI-002`：第二轮 CI 仅剩 reference narrow/mobile 默认像素差异。下载 artifact 后确认 expected SHA 与 tracked PNG 一致，actual 稳定为场景 `<details>` 折叠态；根因是 fixture 未显式声明初始 `open`，本机与 fresh CI 浏览器行为不一致。现由视口明确初始化（`>=681` 展开、移动折叠），E2E 截图前断言状态，交互 helper 只在折叠时打开；unit RED 为 `open undefined != ''`，修复后 reference/layout 单测 `21/21`。
 - `WB-LAYOUT-CI-003`：第三至五轮 CI 的 `open` 状态与全部业务路径通过，剩余为 Windows runner narrow 文字抗锯齿差异和 stacked mobile 漏设单列导致的 overflow。artifact 人工核对确认区域、顺序、尺寸和业务主线一致；Playwright comparator 量化后采用最小颜色阈值 `0.30`，仍保持 `maxDiffPixelRatio=0.03`，并以 summary/controls 可见性、pane 顺序/几何、无溢出断言承担结构门禁；desktop/narrow 截图前归零 scroll owner，mobile 保留分屏滚动。`stacked` mobile 明确 `grid-template-columns: minmax(0,1fr)`。不覆盖 PNG；reference + shell 三项目 2 workers 组合 `35 passed / 22 viewport-specific skipped`，unit `21/21`、lint/typecheck/format 通过。
+
+- `WB-LAYOUT-CI-004`：PR #167 第六轮 CI 的 `changes`、`static`、`unit`、`build`、`e2e`、`quality` 全部成功；PR 于 2026-10-11 合并为 `e158290a`。单元一代码和门禁已进入 `main`，本 brief 收口为 `done`。
 
 ## 完成门槛
 
