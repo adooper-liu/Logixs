@@ -1,5 +1,5 @@
 ---
-status: coding
+status: review
 branch: docs/transparent-development-calibration-v1
 owner: main
 writer: main
@@ -169,9 +169,9 @@ authorityRefs:
 - [x] progress board 以同一投影显示当前 task、authority、diff、dependency、checks、review/integration unknown 和下一 gate
 - [x] board 明确区分 computed fact、editorial judgment、unknown/not-observed
 - [x] `calibration:check` / `board:check` 都是只读命令，生成命令才允许写 HTML
-- [ ] CI static job 运行只读 checks，失败输出稳定 finding 与修复入口
+- [x] CI static job 运行只读 checks，失败输出稳定 finding 与修复入口
 - [x] 当前分支的既有 `.claude/worktrees/`、`.tmp/`、`apps/api/.tmp/` 只作为 unowned/untracked 现场报告，不进入当前任务提交
-- [ ] 定向测试、repository tests、格式、lint、typecheck、board 视觉核对和最终 CI 通过
+- [ ] 定向测试、repository tests、格式、lint、typecheck、board 视觉核对和最终 CI 通过（本地项已通过；待远端 CI）
 - [ ] fresh Claude 整体复审 finding 全部裁决
 
 ## 第一薄片验证（2026-10-11）
@@ -194,6 +194,16 @@ authorityRefs:
 - 复核：四路 cleanup 复核未发现可复用 helper；已合并重复 fact 状态、未知集成渲染和状态计数。结构化稳定投影替代 HTML marker 属于后续演进，本片按批准 plan 保留精确 `META/CALIBRATION/COMMIT` marker，并用测试证明 task title、finding code、module/gap 等稳定语义漂移仍会阻断。
 - 本 brief 保持 `coding`；下一步为 `TDC4` CI static read-only wiring、完整门禁、fresh Claude 整体复审和最终集成。
 
+## TDC4 本地集成验证（2026-10-11）
+
+- CI static：`3c9c0307` 已按 `repo:check → calibration:check → board:check → format:check` 接线；PR 显式传 base/head/head branch，manual dispatch 使用全历史 checkout + merge-base，schedule 继续跳过 static；源码契约测试 `2/2` 通过。
+- Synthetic checkout：board loader 接受与 calibration CLI 相同的 `BASE_SHA/HEAD_SHA/HEAD_BRANCH`；本地 dirty checkout 与显式 PR identity 的 `board:check` 均为 `current`。只有 `TASK_UNOWNED_UNTRACKED_PRESENT` 进入 checkout volatile 区，blocking finding、task title、module/gap 仍参与 drift check。
+- 全量自动化：`pnpm test` 重跑通过（full-chain `59/59`、root governance `188/188`、business-worker `5/5`、web `747/747`、api `1529/1529`）；`test:integration` `30 files / 204 tests` 通过；`build` 三个 workspace 通过。
+- E2E：首次整套在 `mobile drawer preserves entry order and closes after navigation` 出现一次 locator 在视口外的 `30s` 超时；该用例单独重跑 `1/1` 通过，随后整套重跑 `234 passed / 26 skipped`，未改 UI 或 E2E 测试。
+- 完整门禁事实：`pnpm validate` 运行至 `format:check` 前的 repo、workbench purpose、contract schema/drift、data dictionary、Prisma generate、lint 均通过；根格式仍因非本任务 `apps/ai-service/.pytest_cache` 的 `EPERM scandir` 退出 `2`，因此不声明 `validate` 整体通过。任务从 `5deb703b` 起的全部 tracked 路径 scoped Prettier 通过，后续 typecheck/test/integration/E2E/build 已逐项通过。
+- 最终校准：显式 base `5deb703b`、head `3c9c0307`；local/CI 两种模式均 pass，task-owned tracked `16`、tracked 越界 `0`、task-owned untracked `0`、unowned untracked `143`；`board:check`、`repo:check`、`docs:check` 与 branch `git diff --check` 通过。
+- 当前状态移到 `review`。remote PR/CI 与 fresh Claude 整体复审仍为 `not-observed`，不得据本地门禁标记 task `done`。
+
 ## 进度 log
 
 | 日期       | 阶段   | 负责        | commit   | 说明                                                                                                             |
@@ -202,3 +212,4 @@ authorityRefs:
 | 2026-10-11 | coding | Claude Code | 5deb703b | 负责人批准 Native 执行；第一薄片从共享 parser 与 scope authority 开始，board/CI 留待后续计划                     |
 | 2026-10-11 | coding | Claude Code | dcc105c6 | 第一薄片实现完成：parser、repository/UI gate、checkout projection/CLI；99 tests 与静态门禁通过，等待本片证据提交 |
 | 2026-10-11 | coding | Claude Code | 293cde92 | TDC3 完成：看板消费同一投影、board check 提交后稳定、111 tests 与四视口人工核对通过；下一片接 CI static          |
+| 2026-10-11 | review | Claude Code | 3c9c0307 | TDC4 本地完成：CI static 只读接线、全量门禁分轨通过；等待 fresh 整体复审与 PR CI                                 |
