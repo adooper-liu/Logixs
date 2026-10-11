@@ -1,5 +1,5 @@
 ---
-status: fix
+status: review
 branch: docs/transparent-development-calibration-v1
 owner: main
 writer: main
@@ -228,12 +228,18 @@ items:
     disposition: accepted
     reason: quoted scalar/list 与尾注释组合被误解析，违反共享 parser 已声明的 quoted/comment 子集。
     authority: design §4.2 / §12.1；修复落点 comment tokenizer + parser regressions。
-next: one TDD fix pass, affected/full governance suites, then fresh whole-branch re-review before PR.
+next: one TDD fix pass, affected/full governance suites, then PR/CI integration.
 ```
 
 - 复审 unknown 保持：其他 worktree 与 remote PR/CI 未观察；不读其内容。
 - 复审 verification gap 保持：根 `validate` 仍受 `.pytest_cache` EPERM 阻断；任务 scoped format 与其余分轨门禁为当前证据。
-- 当前状态移到 `fix`；四项均未要求负责人定案，按已批准安全/契约边界连续修复。
+- 一次 fix pass 已提交为 `0a92ddea`：
+  - `TDC-REV-001 fixed`：三消费者改用 `git ls-files -z -- docs/planning/tasks/*.md` 后再读内容；`loads only tracked task briefs and never reads untracked task contents` RED→GREEN。
+  - `TDC-REV-002 fixed`：tracked diff 改为 `--name-status -z`，R/C 同时展开源/目标；`expands committed and staged rename sources for scope enforcement` RED→GREEN。
+  - `TDC-REV-003 fixed`：board 装饰 Git 与 calibration strict Git 分层；invalid base/head/diff 分别变为稳定 not-observed，negative identity tests RED→GREEN。
+  - `TDC-REV-004 fixed`：quote-aware comment/list tokenizer；`combines quoted values and trailing comments without losing internal hashes` RED→GREEN。
+- fix 验证：affected governance suites `119/119`，root test fresh `59 + 192 + 5 + 747 + 1529` 全绿；lint/typecheck、repo/docs/board、task scoped Prettier、`git diff --check` 和提交后 CI calibration 通过。
+- 当前状态恢复 `review`。按一次 fix pass 的执行约束不重复派发整分支复审；下一门禁是远端 PR required `quality` 与合并证据。
 
 ## 进度 log
 
@@ -245,3 +251,4 @@ next: one TDD fix pass, affected/full governance suites, then fresh whole-branch
 | 2026-10-11 | coding | Claude Code | 293cde92 | TDC3 完成：看板消费同一投影、board check 提交后稳定、111 tests 与四视口人工核对通过；下一片接 CI static          |
 | 2026-10-11 | review | Claude Code | 3c9c0307 | TDC4 本地完成：CI static 只读接线、全量门禁分轨通过；等待 fresh 整体复审与 PR CI                                 |
 | 2026-10-11 | fix    | Claude Code | 04e3fb82 | fresh 整体复审返回 4 个 Important finding；全部 accepted，进入一次 TDD fix pass                                  |
+| 2026-10-11 | review | Claude Code | 0a92ddea | 4 个 finding 全部 RED→GREEN 修复；root/affected suites 与静态门禁通过，进入 PR required quality                  |
