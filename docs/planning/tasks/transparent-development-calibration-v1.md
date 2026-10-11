@@ -12,6 +12,7 @@ writeScopes:
   - docs/superpowers/specs/2026-10-11-transparent-development-calibration-design.md
   - docs/superpowers/plans/2026-10-11-transparent-development-calibration.md
   - docs/superpowers/plans/2026-10-11-transparent-progress-board-slice.md
+  - docs/superpowers/plans/2026-10-11-transparent-static-ci-gate.md
   - scripts/task-brief-state.mjs
   - scripts/task-brief-state.test.mjs
   - scripts/check-repository.mjs
