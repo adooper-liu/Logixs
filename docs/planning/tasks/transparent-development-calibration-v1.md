@@ -1,5 +1,5 @@
 ---
-status: review
+status: fix
 branch: docs/transparent-development-calibration-v1
 owner: main
 writer: main
@@ -204,6 +204,37 @@ authorityRefs:
 - 最终校准：显式 base `5deb703b`、head `3c9c0307`；local/CI 两种模式均 pass，task-owned tracked `16`、tracked 越界 `0`、task-owned untracked `0`、unowned untracked `143`；`board:check`、`repo:check`、`docs:check` 与 branch `git diff --check` 通过。
 - 当前状态移到 `review`。remote PR/CI 与 fresh Claude 整体复审仍为 `not-observed`，不得据本地门禁标记 task `done`。
 
+## Fresh 整体复审与 disposition（2026-10-11）
+
+`logix-review/v1`：baseline `e158290a`，reviewed `04e3fb82`，verdict `findings`，writes `none`。复审确认架构与主要门禁成立，但返回 4 个当前范围 Important finding；主代理逐项复现后全部接受：
+
+```text
+logix-disposition/v1
+slice: transparent-development-calibration-v1
+items:
+  - id: TDC-REV-001
+    disposition: accepted
+    reason: loader 先 readdir/read task markdown，未跟踪 brief 内容可改变 current-task resolution，违反 unowned-untracked 只按路径 warning 且不读内容。
+    authority: design §3.2 / §11；修复落点 task-brief-state + board loader/tests。
+  - id: TDC-REV-002
+    disposition: accepted
+    reason: --name-only 对 R100 仅返回目标路径，out-of-scope 源路径可借 rename 绕过 writeScopes。
+    authority: design §3.2 / §5；修复落点 checkout observer + committed/staged rename regressions。
+  - id: TDC-REV-003
+    disposition: accepted
+    reason: board git fallback 吞掉 explicit head/base/diff 失败，可返回 observed 空 head 并被 volatile normalization 掩盖。
+    authority: TDC4 Review Focus / shared projection contract；修复落点 strict calibration Git adapter + negative board tests。
+  - id: TDC-REV-004
+    disposition: accepted
+    reason: quoted scalar/list 与尾注释组合被误解析，违反共享 parser 已声明的 quoted/comment 子集。
+    authority: design §4.2 / §12.1；修复落点 comment tokenizer + parser regressions。
+next: one TDD fix pass, affected/full governance suites, then fresh whole-branch re-review before PR.
+```
+
+- 复审 unknown 保持：其他 worktree 与 remote PR/CI 未观察；不读其内容。
+- 复审 verification gap 保持：根 `validate` 仍受 `.pytest_cache` EPERM 阻断；任务 scoped format 与其余分轨门禁为当前证据。
+- 当前状态移到 `fix`；四项均未要求负责人定案，按已批准安全/契约边界连续修复。
+
 ## 进度 log
 
 | 日期       | 阶段   | 负责        | commit   | 说明                                                                                                             |
@@ -213,3 +244,4 @@ authorityRefs:
 | 2026-10-11 | coding | Claude Code | dcc105c6 | 第一薄片实现完成：parser、repository/UI gate、checkout projection/CLI；99 tests 与静态门禁通过，等待本片证据提交 |
 | 2026-10-11 | coding | Claude Code | 293cde92 | TDC3 完成：看板消费同一投影、board check 提交后稳定、111 tests 与四视口人工核对通过；下一片接 CI static          |
 | 2026-10-11 | review | Claude Code | 3c9c0307 | TDC4 本地完成：CI static 只读接线、全量门禁分轨通过；等待 fresh 整体复审与 PR CI                                 |
+| 2026-10-11 | fix    | Claude Code | 04e3fb82 | fresh 整体复审返回 4 个 Important finding；全部 accepted，进入一次 TDD fix pass                                  |
