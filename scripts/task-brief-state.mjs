@@ -1,4 +1,9 @@
-import { basename } from "node:path";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { basename, relative, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
 export const ACTIVE_TASK_STATUSES = new Set([
   "design",
@@ -241,4 +246,538 @@ export function writeScopesOverlap(left, right) {
   return (
     exact.path === directory.path || exact.path.startsWith(`${directory.path}/`)
   );
+}
+
+const makeFinding = (
+  code,
+  severity,
+  subject,
+  evidence,
+  remedy,
+  extra = {},
+) => ({
+  code,
+  severity,
+  subject,
+  evidence: [...evidence],
+  remedy,
+  ...extra,
+});
+
+export function resolveCurrentTask({ records, branch, explicitBrief }) {
+  if (explicitBrief) {
+    const expected = normalizeRepositoryPath(explicitBrief).toLowerCase();
+    const task = records.find(
+      (record) => record.path.toLowerCase() === expected,
+    );
+    return task
+      ? { task }
+      : {
+          finding: makeFinding(
+            "TASK_CURRENT_NOT_FOUND",
+            "blocking",
+            explicitBrief,
+            [explicitBrief],
+            "Pass an existing task brief path.",
+          ),
+        };
+  }
+
+  const matches = records.filter(
+    (record) =>
+      ACTIVE_TASK_STATUSES.has(record.status) && record.branch === branch,
+  );
+  if (matches.length === 1) return { task: matches[0] };
+
+  return {
+    finding: makeFinding(
+      matches.length === 0
+        ? "TASK_CURRENT_NOT_FOUND"
+        : "TASK_CURRENT_AMBIGUOUS",
+      "blocking",
+      branch,
+      matches.map(({ path }) => path),
+      "Declare exactly one active task for the branch or pass --brief.",
+    ),
+  };
+}
+
+const stablePaths = (paths) =>
+  [...new Set(paths.map(normalizeRepositoryPath))].sort();
+
+const ownsPath = (task, path) =>
+  task.writeScopes.some((scope) => scopeOwnsPath(scope, path));
+
+const isRepositoryRelativePath = (path) => {
+  const value = String(path);
+  const normalized = normalizeRepositoryPath(value);
+  const segments = normalized.split("/");
+  return (
+    Boolean(normalized) &&
+    !value.includes("\\") &&
+    !normalized.startsWith("/") &&
+    !/^[A-Za-z]:/.test(normalized) &&
+    !segments.includes("") &&
+    !segments.includes(".") &&
+    !segments.includes("..")
+  );
+};
+
+const cappedEvidence = (paths, limit = 50) => {
+  if (paths.length <= limit) return paths;
+  return [...paths.slice(0, limit), `... ${paths.length - limit} more`];
+};
+
+const findingSort = (left, right) =>
+  left.code.localeCompare(right.code) ||
+  left.subject.localeCompare(right.subject) ||
+  left.evidence.join("\n").localeCompare(right.evidence.join("\n"));
+
+const nextGate = (findings, task) => {
+  if (findings.some(({ severity }) => severity === "blocking")) {
+    return "fix-calibration-findings";
+  }
+  if (task.status === "design") return "approve-spec-or-plan";
+  if (task.status === "coding" || task.status === "fix") {
+    return "run-slice-verification";
+  }
+  if (task.status === "review") return "dispose-review-and-integrate";
+  return "no-active-delivery-gate";
+};
+
+export function buildCalibrationProjection({
+  task,
+  records,
+  authorityExists,
+  observation,
+}) {
+  const trackedChangedPaths = stablePaths([
+    ...observation.committedPaths,
+    ...observation.stagedPaths,
+    ...observation.unstagedPaths,
+  ]);
+  const untrackedPaths = stablePaths(observation.untrackedPaths);
+  const ownedChangedPaths = trackedChangedPaths.filter((path) =>
+    ownsPath(task, path),
+  );
+  const blockingOutOfScopePaths = trackedChangedPaths.filter(
+    (path) => !ownsPath(task, path),
+  );
+  const ownedUntrackedPaths = untrackedPaths.filter((path) =>
+    ownsPath(task, path),
+  );
+  const unownedUntrackedPaths = untrackedPaths.filter(
+    (path) => !ownsPath(task, path),
+  );
+
+  const recordsById = new Map(records.map((record) => [record.id, record]));
+  const dependencies = task.dependsOn.map((id) => {
+    const record = recordsById.get(id);
+    return {
+      id,
+      path: record?.path ?? null,
+      status: record?.status ?? "missing",
+    };
+  });
+  const authorities = task.authorityRefs.map((path) => ({
+    path,
+    state:
+      isRepositoryRelativePath(path) && authorityExists(path)
+        ? "present"
+        : "missing",
+  }));
+
+  const findings = [];
+  for (const error of task.parseErrors) {
+    findings.push(
+      makeFinding(
+        "TASK_PARSE_INVALID",
+        "blocking",
+        `${error.path}:${error.line}`,
+        [error.message],
+        "Fix the active task frontmatter using the supported task template syntax.",
+      ),
+    );
+  }
+  if (task.branch !== observation.actualBranch) {
+    findings.push(
+      makeFinding(
+        "TASK_BRANCH_MISMATCH",
+        "blocking",
+        task.path,
+        [
+          `declared=${task.branch || "missing"}`,
+          `observed=${observation.actualBranch || "detached"}`,
+        ],
+        "Use the declared task branch or update the brief through an approved decision.",
+      ),
+    );
+  }
+  if (!observation.baseSha || observation.baseSource === "unknown") {
+    findings.push(
+      makeFinding(
+        "TASK_BASE_UNKNOWN",
+        "blocking",
+        task.path,
+        ["base source is unknown"],
+        "Pass an explicit verified --base SHA.",
+      ),
+    );
+  }
+  if (blockingOutOfScopePaths.length > 0) {
+    findings.push(
+      makeFinding(
+        "TASK_CHANGED_PATH_OUT_OF_SCOPE",
+        "blocking",
+        `${blockingOutOfScopePaths.length} tracked path${blockingOutOfScopePaths.length === 1 ? "" : "s"}`,
+        blockingOutOfScopePaths,
+        "Move the change into a declared scope, update the brief, or remove unrelated tracked work.",
+      ),
+    );
+  }
+  for (const authority of authorities) {
+    if (authority.state === "missing") {
+      findings.push(
+        makeFinding(
+          "TASK_AUTHORITY_MISSING",
+          "blocking",
+          authority.path,
+          [authority.path],
+          "Reference an existing repository authority path.",
+        ),
+      );
+    }
+    if (
+      trackedChangedPaths.some(
+        (path) => path.toLowerCase() === authority.path.toLowerCase(),
+      ) &&
+      !ownsPath(task, authority.path)
+    ) {
+      findings.push(
+        makeFinding(
+          "TASK_AUTHORITY_WRITE_UNDECLARED",
+          "blocking",
+          authority.path,
+          [authority.path],
+          "Add the authority path to writeScopes and hold the matching lock before modifying it.",
+        ),
+      );
+    }
+  }
+  for (const dependency of dependencies) {
+    if (dependency.status === "missing") {
+      findings.push(
+        makeFinding(
+          "TASK_DEPENDENCY_MISSING",
+          "blocking",
+          dependency.id,
+          [dependency.id],
+          "Reference an existing task brief ID.",
+        ),
+      );
+    } else if (dependency.status !== "done") {
+      findings.push(
+        makeFinding(
+          "TASK_DEPENDENCY_NOT_DONE",
+          "blocking",
+          dependency.id,
+          [`status=${dependency.status}`],
+          "Complete the dependency before continuing this task.",
+        ),
+      );
+    }
+  }
+  if (task.status === "done" && !task.verification) {
+    findings.push(
+      makeFinding(
+        "TASK_DONE_VERIFICATION_MISSING",
+        "blocking",
+        task.path,
+        [task.path],
+        "Record traceable verification evidence before marking the task done.",
+      ),
+    );
+  }
+  if (unownedUntrackedPaths.length > 0) {
+    const count = unownedUntrackedPaths.length;
+    findings.push(
+      makeFinding(
+        "TASK_UNOWNED_UNTRACKED_PRESENT",
+        "warning",
+        `${count} unowned untracked path${count === 1 ? "" : "s"}`,
+        cappedEvidence(unownedUntrackedPaths),
+        "Leave unowned work untouched and report it separately.",
+      ),
+    );
+  }
+
+  findings.sort(findingSort);
+  return {
+    task,
+    declared: {
+      status: task.status,
+      branch: task.branch,
+      risk: task.risk,
+      verification: task.verification,
+      writeScopes: task.writeScopes,
+      authorityRefs: task.authorityRefs,
+      dependsOn: task.dependsOn,
+    },
+    observed: observation,
+    derived: {
+      trackedChangedPaths,
+      ownedChangedPaths,
+      blockingOutOfScopePaths,
+      ownedUntrackedPaths,
+      unownedUntrackedPaths,
+      dependencies,
+      authorities,
+      findings,
+      nextGate: nextGate(findings, task),
+    },
+  };
+}
+
+export const calibrationFindings = (projection) => projection.derived.findings;
+
+const splitPaths = (output) =>
+  output.split(/\r?\n/).filter(Boolean).map(normalizeRepositoryPath).sort();
+
+export function observeCheckout({
+  base,
+  baseRef = "origin/main",
+  head,
+  branch,
+  git,
+}) {
+  const actualBranch = branch ?? git(["branch", "--show-current"]).trim();
+  const headTarget = head ?? "HEAD";
+  const headSha = git(
+    head ? ["rev-parse", "--verify", head] : ["rev-parse", "HEAD"],
+  ).trim();
+
+  const [baseSha, baseSource] = (() => {
+    if (base) {
+      try {
+        return [git(["rev-parse", "--verify", base]).trim(), "explicit"];
+      } catch {
+        return [null, "unknown"];
+      }
+    }
+    try {
+      git(["rev-parse", "--verify", baseRef]);
+      return [git(["merge-base", baseRef, headTarget]).trim(), "merge-base"];
+    } catch {
+      return [null, "unknown"];
+    }
+  })();
+
+  const committedPaths = baseSha
+    ? splitPaths(
+        git([
+          "diff",
+          "--name-only",
+          "--diff-filter=ACMRD",
+          `${baseSha}...${headTarget}`,
+        ]),
+      )
+    : [];
+  return {
+    actualBranch,
+    baseSha,
+    baseSource,
+    headSha,
+    committedPaths,
+    stagedPaths: splitPaths(
+      git(["diff", "--name-only", "--cached", "--diff-filter=ACMRD"]),
+    ),
+    unstagedPaths: splitPaths(
+      git(["diff", "--name-only", "--diff-filter=ACMRD"]),
+    ),
+    untrackedPaths: splitPaths(
+      git(["ls-files", "--others", "--exclude-standard"]),
+    ),
+  };
+}
+
+const displayPaths = (paths, limit = 50) => {
+  const shown = paths.slice(0, limit);
+  if (paths.length > limit) shown.push(`... ${paths.length - limit} more`);
+  return shown;
+};
+
+export function formatCalibrationReport(projection) {
+  const blocking = projection.derived.findings.filter(
+    ({ severity }) => severity === "blocking",
+  );
+  const lines = [
+    `calibration: ${blocking.length === 0 ? "pass" : "fail"}`,
+    `brief: ${projection.task.path}`,
+    `branch: ${projection.observed.actualBranch}`,
+    `base: ${projection.observed.baseSha ?? "unknown"} (${projection.observed.baseSource})`,
+    `head: ${projection.observed.headSha}`,
+  ];
+  for (const [label, paths] of [
+    ["owned tracked", projection.derived.ownedChangedPaths],
+    ["out-of-scope tracked", projection.derived.blockingOutOfScopePaths],
+    ["owned untracked", projection.derived.ownedUntrackedPaths],
+    ["unowned untracked", projection.derived.unownedUntrackedPaths],
+  ]) {
+    lines.push(`${label}: ${paths.length}`);
+    lines.push(...displayPaths(paths).map((path) => `  - ${path}`));
+  }
+  for (const item of projection.derived.findings) {
+    lines.push(`[${item.severity}] ${item.code} ${item.subject}`);
+    lines.push(...item.evidence.map((evidence) => `  - ${evidence}`));
+  }
+  lines.push(`next gate: ${projection.derived.nextGate}`);
+  return `${lines.join("\n")}\n`;
+}
+
+function parseCliArguments(argv) {
+  const options = {
+    baseRef: "origin/main",
+    json: false,
+    ci: false,
+  };
+  const valueOptions = new Map([
+    ["--brief", "brief"],
+    ["--base", "base"],
+    ["--base-ref", "baseRef"],
+    ["--branch", "branch"],
+    ["--head", "head"],
+  ]);
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--json") {
+      options.json = true;
+      continue;
+    }
+    if (arg === "--ci") {
+      options.ci = true;
+      continue;
+    }
+    const key = valueOptions.get(arg);
+    if (!key || !argv[index + 1]) {
+      return { error: `unknown or incomplete argument '${arg}'` };
+    }
+    options[key] = argv[index + 1];
+    index += 1;
+  }
+  return { options };
+}
+
+export async function runCalibrationCli(argv, dependencies) {
+  const parsed = parseCliArguments(argv);
+  if (parsed.error) {
+    return { exitCode: 2, stdout: "", stderr: `${parsed.error}\n` };
+  }
+  const options = parsed.options;
+  if (options.ci) {
+    options.base ??= process.env.BASE_SHA;
+    options.head ??= process.env.HEAD_SHA;
+    options.branch ??= process.env.HEAD_BRANCH;
+    if (!options.base || !options.head || !options.branch) {
+      return {
+        exitCode: 2,
+        stdout: "",
+        stderr: "--ci requires base, head, and branch identity\n",
+      };
+    }
+  }
+
+  const records = normalizeTaskRecords(dependencies.loadRecords());
+  let observation;
+  try {
+    observation = dependencies.observe(options);
+  } catch {
+    return {
+      exitCode: 2,
+      stdout: "",
+      stderr: "calibration observation failed: GIT_READ_FAILED\n",
+    };
+  }
+  const resolution = resolveCurrentTask({
+    records,
+    branch: observation.actualBranch,
+    explicitBrief: options.brief,
+  });
+  if (!resolution.task) {
+    const projection = {
+      task: { path: options.brief ?? "unknown" },
+      observed: observation,
+      derived: {
+        ownedChangedPaths: [],
+        blockingOutOfScopePaths: [],
+        ownedUntrackedPaths: [],
+        unownedUntrackedPaths: [],
+        findings: [resolution.finding],
+        nextGate: "fix-calibration-findings",
+      },
+    };
+    return {
+      exitCode: 1,
+      stdout: options.json
+        ? `${JSON.stringify(projection, null, 2)}\n`
+        : formatCalibrationReport(projection),
+      stderr: "",
+    };
+  }
+
+  const projection = buildCalibrationProjection({
+    task: resolution.task,
+    records,
+    authorityExists: dependencies.authorityExists,
+    observation,
+  });
+  const hasBlocking = projection.derived.findings.some(
+    ({ severity }) => severity === "blocking",
+  );
+  return {
+    exitCode: hasBlocking ? 1 : 0,
+    stdout: options.json
+      ? `${JSON.stringify(projection, null, 2)}\n`
+      : formatCalibrationReport(projection),
+    stderr: "",
+  };
+}
+
+const loadTaskRecords = () => {
+  const directory = resolve(repositoryRoot, "docs/planning/tasks");
+  return readdirSync(directory)
+    .filter((name) => name.endsWith(".md") && !name.startsWith("_"))
+    .map((name) => {
+      const absolutePath = resolve(directory, name);
+      return {
+        path: normalizeRepositoryPath(relative(repositoryRoot, absolutePath)),
+        source: readFileSync(absolutePath, "utf8"),
+      };
+    });
+};
+
+const defaultDependencies = () => ({
+  loadRecords: loadTaskRecords,
+  observe: (options) =>
+    observeCheckout({
+      ...options,
+      git: (args) =>
+        execFileSync("git", args, {
+          cwd: repositoryRoot,
+          encoding: "utf8",
+        }),
+    }),
+  authorityExists: (path) => existsSync(resolve(repositoryRoot, path)),
+});
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  const result = await runCalibrationCli(
+    process.argv.slice(2),
+    defaultDependencies(),
+  );
+  process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  process.exitCode = result.exitCode;
 }

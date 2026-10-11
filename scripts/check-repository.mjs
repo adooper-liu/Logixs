@@ -11,7 +11,9 @@ import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 import { auditApiControllers } from "./check-route-access-metadata.mjs";
 import {
   ACTIVE_TASK_STATUSES,
+  buildCalibrationProjection,
   normalizeTaskRecords,
+  observeCheckout,
   parseWriteScope,
   writeScopesOverlap,
 } from "./task-brief-state.mjs";
@@ -1215,17 +1217,64 @@ function listTrackedFiles() {
     .filter(Boolean);
 }
 
-function taskStatusErrors() {
+export function calibrationErrors(projection) {
+  return projection.findings
+    .filter(({ severity }) => severity === "blocking")
+    .map(
+      ({ code, subject, evidence }) =>
+        `${code} ${subject}: ${evidence.join(", ")}`,
+    );
+}
+
+function loadTaskRecords() {
   const taskDirectory = resolve(repositoryRoot, "docs/planning/tasks");
-  const taskFiles = readdirSync(taskDirectory)
+  return readdirSync(taskDirectory)
     .filter((name) => name.endsWith(".md") && !name.startsWith("_"))
-    .map((name) => resolve(taskDirectory, name));
-  return validateTaskStatusRecords(
-    taskFiles.map((path) => ({
-      path: toRepositoryRelativePath(path),
-      source: readFileSync(path, "utf8"),
-    })),
+    .map((name) => {
+      const absolutePath = resolve(taskDirectory, name);
+      return {
+        path: toRepositoryRelativePath(absolutePath),
+        source: readFileSync(absolutePath, "utf8"),
+      };
+    });
+}
+
+function taskStatusErrors() {
+  return validateTaskStatusRecords(loadTaskRecords());
+}
+
+function currentCheckoutCalibrationErrors() {
+  const records = normalizeTaskRecords(loadTaskRecords());
+  const actualBranch = execFileSync("git", ["branch", "--show-current"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  }).trim();
+  if (!actualBranch || actualBranch === "main" || actualBranch === "master") {
+    return [];
+  }
+  const matches = records.filter(
+    (record) =>
+      ACTIVE_TASK_STATUSES.has(record.status) &&
+      record.branch === actualBranch &&
+      record.parseErrors.length === 0,
   );
+  if (matches.length !== 1) return [];
+
+  const observation = observeCheckout({
+    branch: actualBranch,
+    git: (args) =>
+      execFileSync("git", args, {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+      }),
+  });
+  const projection = buildCalibrationProjection({
+    task: matches[0],
+    records,
+    authorityExists: (path) => existsSync(resolve(repositoryRoot, path)),
+    observation,
+  });
+  return calibrationErrors(projection.derived);
 }
 
 const architectureSourceExtensions = new Set([
@@ -1437,6 +1486,7 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
       (path) => [".css", ".ts", ".vue"].includes(extname(path).toLowerCase()),
     );
     errors.push(
+      ...currentCheckoutCalibrationErrors(),
       ...findMissingRequiredPolicyFiles([
         ...trackedFiles,
         ...requiredPolicyFiles.filter((file) =>

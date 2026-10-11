@@ -19,6 +19,7 @@ import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
   checkWorkbenchCatalogSource,
+  calibrationErrors,
   inspectWorkbenchCatalogSource,
   inspectWorkbenchRouteSource,
   inspectWorkbenchRouterSource,
@@ -108,6 +109,28 @@ after(() => {
   temporaryDirectories.forEach((directory) =>
     rmSync(directory, { force: true, recursive: true }),
   );
+});
+
+test("repo check converts blocking calibration findings to errors", () => {
+  const errors = calibrationErrors({
+    findings: [
+      {
+        code: "TASK_CHANGED_PATH_OUT_OF_SCOPE",
+        severity: "blocking",
+        subject: "outside.txt",
+        evidence: ["outside.txt"],
+      },
+      {
+        code: "TASK_UNOWNED_UNTRACKED_PRESENT",
+        severity: "warning",
+        subject: "1 unowned untracked path",
+        evidence: [".tmp/evidence.json"],
+      },
+    ],
+  });
+  assert.deepEqual(errors, [
+    "TASK_CHANGED_PATH_OUT_OF_SCOPE outside.txt: outside.txt",
+  ]);
 });
 
 test("current workbench authorities use the approved 23-workbench baseline", () => {
