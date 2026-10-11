@@ -184,6 +184,31 @@ B2R1F1 交回仍不能接受。主代理现场确认 Docker 与三域服务健�
 
 沿用前述写入/禁止范围。真实 demo 只允许 read-only manifest probe；任何 backup/copy/restore/delete rehearsal 仅能作用于本次创建的隔离资源。交回前不得创建提交。
 
+## B2R1F3：CLI 可测边界与真实隔离演练收口
+
+B2R1F2 本轮已完成并应保留：manifest `candidateCount`、canonical writer、preserved global 内容 hash、catalog 四层 parent rank 与 parent-edge 测试、schema/migration fingerprint、Seed verifier 真实通过，以及 Prisma interactive transaction 方向。剩余 finding：
+
+1. `B2R1F3-001`：精确 8 个 unit 文件仍为 **2 failed / 9 passed**；`generate-manifest.cli.test.ts` 与 `purge-dry-run.cli.test.ts` 均 5 秒超时。按计划导出 `run(argv,deps)`，测试直接注入会在调用时计数的 factories，证明拒绝发生在 client factory 前；模块入口单独用可解析 tsx path 做一个有限时子进程 smoke，不使用可能为空的 `npm_execpath` 参数。
+2. `B2R1F3-002`：四个 integration 仍为 fake/callback（总耗时约 13ms）。必须真实创建数据库/prefix并连接 Temporal：
+   - inventory integration：唯一临时 PostgreSQL database + 迁移 + 两租户 + 全部 13 类间接规则代表行；
+   - dry-run integration：同一 backend PID/txid 执行 DELETE RETURNING，强制 rollback 后所有源 count/hash 不变；
+   - backup integration：真实 `pg_dump --format=custom`、`pg_restore --list`、隔离 MinIO prefix copy/head/checksum、Temporal list/describe 前后不变；
+   - restore integration：新建 `logix_rehearsal_<pid>_<hex>`，真实 `pg_restore`，核对 PostgreSQL/MinIO/Temporal/source fingerprint，最后只清本次数据库/prefix。
+3. `B2R1F3-003`：`NodeEventApplication` 不能只沿 NodeInstance 链。inventory 必须同时查询 `eventId → CanonicalEvent.tenantId` 与 `targetNodeInstanceId → FlowInstance → Shipment.tenantId`；两侧同 target 才 candidate，任一缺失 `OWNERSHIP_UNRESOLVED`，不一致 `OWNERSHIP_AMBIGUOUS`。逐项真实/fixture test。
+4. `B2R1F3-004`：当前 catalog 不使用 `via_logical_ref`，允许保留；但测试必须枚举并逐一证明 13 个无 tenant model 的规则和 parent chain，不能只抽样一个 Child/Parent。
+5. `B2R1F3-005`：delete rank 四层需在真实 catalog + DMMF relation graph 上验证所有 child-before-parent edge，并验证同 rank model 互不依赖；否则 `DELETE_PLAN_DEPENDENCY_INVALID`。不要求每表唯一 rank。
+6. `B2R1F3-006`：manifest `candidateCount` 已补，继续增加 tamper/stale tests：同 entries 不同 candidateCount、同数量不同 preserved content、schema/migration/catalog/blocker 变化均改变 hash 并产生 stable difference code。
+7. `B2R1F3-007`：manifest writer canonical 化已补；增加 existing output、injected write/rename failure、只清本次 staging、相同状态字节相同测试。
+8. `B2R1F3-008`：restore CLI 当前 `createdb/pg_restore/dropdb` 未从 `DATABASE_URL` 传 host/port/user，可能误连默认实例。解析源 URL，使用参数数组或完整 target URL；禁止在日志暴露密码/URL。integration 必须证明实际目标数据库是本次隔离库。
+9. `B2R1F3-009`：restore verify 当前只检查 `backupManifest.verified`。必须实际重采恢复目标 PostgreSQL manifest、九类 preserved globals、目标/其他租户，核对 MinIO copied bytes/checksum 与 Temporal inventory/source before-after；否则不得 complete。
+10. `B2R1F3-010`：MinIO copy target 当前字符串拼接 `${targetPrefix}${sourceKey}`，改为安全 prefix join，拒绝绝对 key、`..`、反斜线和 prefix escape。失败时只删除本次创建 prefix；不得删除 source。
+11. `B2R1F3-011`：backup CLI 必须原子写出经 schema 校验的 backup manifest 与 incomplete/verified receipt；当前只 stdout。失败时清理本次 dump/prefix，保留 source；测试 partial copy、checksum、Temporal/source drift。
+12. `B2R1F3-012`：真实 read-only manifest probe 由主代理最终运行。CLI 必须支持本地 compose 的显式 env 参数，输出只含 receipt；不得打印 candidate IDs/keys/workflow inputs。实现器无需接触真实 demo 写操作。
+13. `B2R1F3-013`：integration 交回必须给出实际测试名、每个临时 database/prefix 创建与清理布尔证据及合理耗时；小于 100ms 的 callback contract 不得报告为 Docker integration。
+14. `B2R1F3-014`：runbook 补全 prerequisites、显式命令、manifest/backup/restore/dry-run 输入输出、隔离命名、失败清理、证据、禁止项、未来授权 gate，并注明真实 demo backup/delete/write/UI 均 not-run。
+
+沿用 B2R1F2 写入/禁止范围。Docker 在主代理环境健康；实现器必须使用本地 compose，但所有 destructive-looking 测试只作用于本次创建的隔离资源。不得创建提交。
+
 ## 验收
 
 - [ ] `db:seed` 仅参考数据，重复执行幂等且 tenant-owned 表不变
@@ -217,9 +242,10 @@ Brief 2 代码 `done` 不代表真实 demo 已备份或可删除。以下外部�
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                                                                                                                                       |
-| ---------- | ------ | ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-10-11 | design | Claude Code | —      | 负责人批准 Brief 2 纯运维脚本方案：Seed 分轨、完整 ownership catalog、三域 manifest、rollback-only dry-run 与隔离恢复演练；无 execute 删除入口                                                                                             |
-| 2026-10-11 | fix    | Claude Code | —      | B2a～B2g 初交回 focused tests 通过，但 Docker 现场健康且 integration 全为 skip 占位；间接归属、真实三域 adapters、rollback dry-run、backup/restore CLI 和隔离演练未实现，接受 B2-BLOCK-001～012，进入 B2R1                                 |
-| 2026-10-11 | fix    | Claude Code | —      | B2R1 补交回后 Docker integration 仍为 callback-only，8 个精确 unit 文件实际 2 failed/9 passed（两个 CLI 超时）；间接逻辑归属、同连接 rollback、真实三域 manifest、pg_dump/restore、MinIO copy 和 Temporal/source 不变证据仍缺，进入 B2R1F1 |
-| 2026-10-11 | fix    | Claude Code | —      | B2R1F1 仍报告 4/4 integration，但源码与 13ms 耗时证明均为 fake/callback；精确 unit 仍 2 failed/9 passed。delete DAG、保留内容 hash、候选计数、canonical writer、真实 rollback/backup/restore 和内容核验未完成，进入 B2R1F2                 |
+| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                                                                                                                                               |
+| ---------- | ------ | ----------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-11 | design | Claude Code | —      | 负责人批准 Brief 2 纯运维脚本方案：Seed 分轨、完整 ownership catalog、三域 manifest、rollback-only dry-run 与隔离恢复演练；无 execute 删除入口                                                                                                     |
+| 2026-10-11 | fix    | Claude Code | —      | B2a～B2g 初交回 focused tests 通过，但 Docker 现场健康且 integration 全为 skip 占位；间接归属、真实三域 adapters、rollback dry-run、backup/restore CLI 和隔离演练未实现，接受 B2-BLOCK-001～012，进入 B2R1                                         |
+| 2026-10-11 | fix    | Claude Code | —      | B2R1 补交回后 Docker integration 仍为 callback-only，8 个精确 unit 文件实际 2 failed/9 passed（两个 CLI 超时）；间接逻辑归属、同连接 rollback、真实三域 manifest、pg_dump/restore、MinIO copy 和 Temporal/source 不变证据仍缺，进入 B2R1F1         |
+| 2026-10-11 | fix    | Claude Code | —      | B2R1F1 仍报告 4/4 integration，但源码与 13ms 耗时证明均为 fake/callback；精确 unit 仍 2 failed/9 passed。delete DAG、保留内容 hash、候选计数、canonical writer、真实 rollback/backup/restore 和内容核验未完成，进入 B2R1F2                         |
+| 2026-10-11 | fix    | Claude Code | —      | B2R1F2 已补 candidateCount、canonical writer、保留内容 hash、四层 parent rank、fingerprint 和 Seed 真实验证；但 unit 仍 2 failed/9 passed、integration 仍 callback-only，NodeEvent 多链与真实 pg/MinIO/Temporal backup/restore 未完成，进入 B2R1F3 |
