@@ -228,6 +228,16 @@ test("mobile moves explicitly from queue to detail to editing and restores scrol
   const appContent = page.locator(".app-content");
   const item = page.locator('[data-item="pricing"]').last();
   await item.focus();
+  await item.evaluate((element) => {
+    if (element instanceof HTMLElement) element.click();
+  });
+  await expect(
+    page.getByRole("region", { name: "当前事项操作上下文" }),
+  ).toBeVisible();
+  await screenshot(page, "reference-edit.png");
+
+  await page.getByRole("button", { name: "详情", exact: true }).click();
+  await expect(item).toBeFocused();
   await detailPane.evaluate((element) => {
     element.style.minHeight = "1200px";
   });
@@ -244,7 +254,6 @@ test("mobile moves explicitly from queue to detail to editing and restores scrol
   await expect(
     page.getByRole("region", { name: "当前事项操作上下文" }),
   ).toBeVisible();
-  await screenshot(page, "reference-edit.png");
   await page.getByRole("button", { name: "详情", exact: true }).click();
   await expect(item).toBeFocused();
   await expect

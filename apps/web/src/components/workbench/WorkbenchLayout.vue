@@ -15,6 +15,7 @@ const props = withDefaults(
     rightRailLabel: string;
     leftRailSummary?: string;
     rightRailSummary?: string;
+    responsiveMode?: "standard" | "stacked";
   }>(),
   {
     leftCollapsed: false,
@@ -22,6 +23,7 @@ const props = withDefaults(
     mobileScreen: "queue",
     leftRailSummary: undefined,
     rightRailSummary: undefined,
+    responsiveMode: "standard",
   },
 );
 
@@ -210,6 +212,7 @@ watch(
     :class="{
       'workbench-layout--left-collapsed': leftCollapsed,
       'workbench-layout--right-collapsed': rightCollapsed,
+      'workbench-layout--stacked-responsive': responsiveMode === 'stacked',
     }"
   >
     <div class="workbench-layout__header"><slot name="header" /></div>
@@ -374,6 +377,23 @@ watch(
 }
 
 @media (max-width: 1100px) and (min-width: 681px) {
+  .workbench-layout--stacked-responsive .workbench-layout__workspace {
+    grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+    overflow: visible;
+  }
+
+  .workbench-layout--stacked-responsive .workbench-layout__narrow-queue {
+    display: none;
+  }
+
+  .workbench-layout--stacked-responsive .workbench-layout__pane--queue {
+    display: block;
+  }
+
+  .workbench-layout--stacked-responsive .workbench-layout__pane--context {
+    grid-column: 1 / -1;
+  }
+
   .workbench-layout__workspace,
   .workbench-layout--right-collapsed .workbench-layout__workspace {
     grid-template-columns: 48px minmax(0, 1.45fr) minmax(260px, 0.85fr);
@@ -503,6 +523,28 @@ watch(
     clip: rect(0, 0, 0, 0);
     transform: translateX(-200vw);
     white-space: nowrap;
+  }
+
+  .workbench-layout--stacked-responsive .workbench-layout__mobile-nav,
+  .workbench-layout--stacked-responsive .workbench-layout__breadcrumb {
+    display: none;
+  }
+
+  .workbench-layout--stacked-responsive .workbench-layout__workspace {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .workbench-layout--stacked-responsive .workbench-layout__pane,
+  .workbench-layout--stacked-responsive
+    .workbench-layout__pane:not([data-mobile-active="true"]) {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    transform: none;
+    white-space: normal;
   }
 
   .workbench-layout__pane :deep(.collapsible-rail__toggle) {

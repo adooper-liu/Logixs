@@ -395,6 +395,9 @@ test("NPI return hands the current queue item back as a new handoff", async ({
   await expect(page.getByText("NPI 退回，需再判断")).toBeVisible();
   await expect(page.getByText("NPI 退回原因：")).toBeVisible();
   await expect(page.getByText("工程验证发现结构方案需要重判")).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.getByRole("button", { name: "编辑", exact: true }).click();
+  }
   await page.getByRole("button", { name: "立项并交给产品开发" }).click();
   await expect(page.getByText("已立项 · 已交 NPI")).toBeVisible();
   expect(selectionDecisionRequested).toBe(true);

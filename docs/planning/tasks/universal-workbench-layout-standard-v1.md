@@ -246,6 +246,13 @@ uiViewportEvidence:
 - 修复批次验证：定向 suite `111/111`，Web 全量 `745/745`，repo tests `73/73`；reference Playwright `18 passed / 15 viewport-specific skipped`；消费者 Playwright `85 passed / 2 viewport-specific skipped`；lint、format、typecheck、build、repo/purpose checks 全部通过，19 张像素基线无需更新。
 - reviewer unknowns：`.tmp/`、后续四个交付单元与临时 `test-results` 均已按既有任务边界排除；不形成当前 finding。
 
+## CI 兼容修复（2026-10-11）
+
+- `WB-LAYOUT-CI-001`：PR #167 首轮 CI 的 static/unit/build 通过，E2E 暴露 21 个同源失败。根因是 `RoleWorkbenchFrame` 作为未迁移工作台兼容适配器，却默认采用新标准的 1024 queue drawer 与 390 显式分屏，令 cargo-ready、customs、dispatch、pickup、stuffing、warehouse 等既有消费者在未点击新导航时隐藏原有队列/事实/动作。
+- 处置：`accepted / fixed`。`WorkbenchLayout` 增加仅拥有响应式几何的 `responsiveMode`；默认 `standard` 保持本单元选品、市场与 reference 的新合同，`RoleWorkbenchFrame` 显式使用 `stacked` 保留原 1024 两列/右栏下沉和 390 顺序堆叠，避免把其余 21 台静默算作已迁移。
+- 验收反证：RoleWorkbenchFrame 单测先失败为 `responsiveMode undefined != stacked`，修复后布局/兼容单测 `13/13`；首轮 CI 失败涉及的 cargo-ready、customs、dispatch、pickup、stuffing、warehouse、container-unloading、product-NPI 与 reference 共 9 个 spec 在三项目、2 workers 下 `54 passed / 15 viewport-specific skipped`，19 张 reference 基线无漂移。
+- 测试修正：NPI 回流在移动视口显式进入“编辑”屏后执行主动作；移动 scroll/focus 反证先截标准编辑基线，再注入 overflow，避免验证代码污染像素基线。
+
 ## 完成门槛
 
 - 中性组件不含市场/选品/货柜业务码和硬编码分母；

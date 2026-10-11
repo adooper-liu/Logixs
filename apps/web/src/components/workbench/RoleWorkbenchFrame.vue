@@ -91,6 +91,7 @@ const contextState = computed<WorkbenchPaneState>(() => {
     :class="{ 'page-frame': !embedded }"
   >
     <WorkbenchLayout
+      responsive-mode="stacked"
       left-rail-label="岗位任务池"
       right-rail-label="岗位待办"
       :left-rail-summary="selectedContainer?.containerNumber ?? '待选择'"
