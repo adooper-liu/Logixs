@@ -1,5 +1,5 @@
 ---
-status: design
+status: coding
 branch: docs/transparent-development-calibration-v1
 owner: main
 writer: main
@@ -173,6 +173,7 @@ authorityRefs:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                         |
-| ---------- | ------ | ----------- | ------ | ---------------------------------------------------------------------------- |
-| 2026-10-11 | design | Claude Code | —      | 负责人批准方案 A；建立唯一 brief，第一片限定当前 checkout 的共享只读校准投影 |
+| 日期       | 阶段   | 负责        | commit   | 说明                                                                                         |
+| ---------- | ------ | ----------- | -------- | -------------------------------------------------------------------------------------------- |
+| 2026-10-11 | design | Claude Code | —        | 负责人批准方案 A；建立唯一 brief，第一片限定当前 checkout 的共享只读校准投影                 |
+| 2026-10-11 | coding | Claude Code | 5deb703b | 负责人批准 Native 执行；第一薄片从共享 parser 与 scope authority 开始，board/CI 留待后续计划 |
