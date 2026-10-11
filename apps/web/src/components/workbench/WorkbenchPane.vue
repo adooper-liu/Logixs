@@ -9,8 +9,9 @@ withDefaults(
     regionLabel: string;
     count?: number;
     state?: WorkbenchPaneState;
+    scroll?: "contained" | "content";
   }>(),
-  { count: undefined, state: () => ({ kind: "ready" }) },
+  { count: undefined, state: () => ({ kind: "ready" }), scroll: "contained" },
 );
 
 const emit = defineEmits<{
@@ -22,13 +23,22 @@ const canRetry = computed(() => Boolean(instance?.vnode.props?.onRetry));
 </script>
 
 <template>
-  <section :id="id" class="workbench-pane" :aria-label="regionLabel">
+  <section
+    :id="id"
+    class="workbench-pane workbench-pane--bounded"
+    :aria-label="regionLabel"
+  >
     <header class="workbench-pane__header">
       <h2>{{ title }}</h2>
-      <span v-if="count !== undefined" class="workbench-pane__count">{{ count }}</span>
+      <span v-if="count !== undefined" class="workbench-pane__count">{{
+        count
+      }}</span>
       <slot name="actions" />
     </header>
-    <div class="workbench-pane__scroll">
+    <div
+      class="workbench-pane__scroll workbench-pane__scroll--independent"
+      :class="{ 'workbench-pane__scroll--content': scroll === 'content' }"
+    >
       <slot name="summary" />
       <slot v-if="state.kind === 'ready'" />
       <slot v-else-if="state.kind === 'loading'" name="loading">
@@ -38,10 +48,15 @@ const canRetry = computed(() => Boolean(instance?.vnode.props?.onRetry));
         <p class="workbench-pane__state">{{ state.message }}</p>
       </slot>
       <slot v-else-if="state.kind === 'error'" name="error" :state="state">
-        <div class="workbench-pane__state workbench-pane__state--error" role="alert">
+        <div
+          class="workbench-pane__state workbench-pane__state--error"
+          role="alert"
+        >
           <p>{{ state.message }}</p>
           <small v-if="state.traceId">追踪 ID：{{ state.traceId }}</small>
-          <button v-if="canRetry" type="button" @click="emit('retry')">重试</button>
+          <button v-if="canRetry" type="button" @click="emit('retry')">
+            重试
+          </button>
         </div>
       </slot>
       <slot v-else name="receipt">
@@ -95,6 +110,12 @@ const canRetry = computed(() => Boolean(instance?.vnode.props?.onRetry));
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.workbench-pane__scroll--content {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .workbench-pane__state {

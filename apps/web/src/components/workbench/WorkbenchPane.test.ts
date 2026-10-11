@@ -43,6 +43,24 @@ describe("WorkbenchPane", () => {
     expect(wrapper.text()).toContain("trace-1");
   });
 
+  it("keeps a single independently scrollable body inside a bounded pane", () => {
+    const wrapper = mount(WorkbenchPane, {
+      props: {
+        id: "queue-pane",
+        title: "对象与任务队列",
+        regionLabel: "对象与任务队列",
+      },
+      slots: { default: '<div style="height: 900px">长队列</div>' },
+      attachTo: document.body,
+    });
+
+    const pane = wrapper.get(".workbench-pane");
+    const scroll = wrapper.get(".workbench-pane__scroll");
+    expect(pane.classes()).toContain("workbench-pane--bounded");
+    expect(scroll.classes()).toContain("workbench-pane__scroll--independent");
+    wrapper.unmount();
+  });
+
   it("renders ready content inside the single scroll owner", () => {
     const wrapper = mount(WorkbenchPane, {
       props: {

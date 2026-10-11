@@ -1,12 +1,7 @@
 import type { WorkbenchResponsibilityItem } from "../../components/workbench/workbenchLayout.types";
 
 export type ReferenceScenarioKey =
-  | "working"
-  | "waiting"
-  | "failed"
-  | "conflict"
-  | "readonly"
-  | "dirty-session";
+  "working" | "waiting" | "failed" | "conflict" | "readonly" | "dirty-session";
 
 export interface ReferenceScenario {
   key: ReferenceScenarioKey;
@@ -28,7 +23,9 @@ const baseResponsibility: readonly WorkbenchResponsibilityItem[] = [
   { label: "截至时间", value: "2026-10-14T17:00:00+08:00", state: "known" },
 ];
 
-export const referenceScenarios: Readonly<Record<ReferenceScenarioKey, ReferenceScenario>> = {
+export const referenceScenarios: Readonly<
+  Record<ReferenceScenarioKey, ReferenceScenario>
+> = {
   working: {
     key: "working",
     conclusion: "办理中 · 当前门槛未满足",

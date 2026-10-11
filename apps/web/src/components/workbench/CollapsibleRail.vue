@@ -61,7 +61,11 @@ function handleKeydown(event: KeyboardEvent): void {
       :inert="collapsed || undefined"
     >
       <button
-        class="collapsible-rail__toggle"
+        :class="[
+          'collapsible-rail__toggle',
+          'collapsible-rail__toggle--compact',
+          `collapsible-rail__toggle--${side}`,
+        ]"
         type="button"
         :aria-label="`折叠${label}`"
         aria-expanded="true"
@@ -115,6 +119,20 @@ function handleKeydown(event: KeyboardEvent): void {
   font: inherit;
 }
 
+.collapsible-rail__toggle--compact {
+  min-width: 24px;
+  min-height: 24px;
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+}
+
+.collapsible-rail__toggle--compact:hover,
+.collapsible-rail__toggle--compact:focus-visible {
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
 .collapsible-rail__body > .collapsible-rail__toggle {
   position: absolute;
   z-index: 2;
@@ -126,7 +144,7 @@ function handleKeydown(event: KeyboardEvent): void {
 }
 
 .collapsible-rail--right .collapsible-rail__body > .collapsible-rail__toggle {
-  left: var(--space-2);
+  right: var(--space-2);
 }
 
 .collapsible-rail__summary {

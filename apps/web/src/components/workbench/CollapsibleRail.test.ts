@@ -50,6 +50,37 @@ describe("CollapsibleRail", () => {
     expect(wrapper.find('[aria-label="展开操作上下文"]').exists()).toBe(true);
   });
 
+  it("uses a compact desktop toggle without losing its accessible label", () => {
+    const wrapper = mount(CollapsibleRail, {
+      props: {
+        side: "left",
+        collapsed: false,
+        label: "任务队列",
+      },
+      slots: { default: "队列内容" },
+    });
+
+    const toggle = wrapper.get('[aria-label="折叠任务队列"]');
+    expect(toggle.classes()).toContain("collapsible-rail__toggle--compact");
+    expect(toggle.attributes("aria-expanded")).toBe("true");
+    expect(toggle.attributes("aria-label")).toBe("折叠任务队列");
+  });
+
+  it("places the right collapse control on the right edge", () => {
+    const wrapper = mount(CollapsibleRail, {
+      props: {
+        side: "right",
+        collapsed: false,
+        label: "操作上下文",
+      },
+      slots: { default: "操作内容" },
+    });
+
+    expect(wrapper.get('[aria-label="折叠操作上下文"]').classes()).toContain(
+      "collapsible-rail__toggle--right",
+    );
+  });
+
   it("closes drawer mode with Escape", async () => {
     const wrapper = mount(CollapsibleRail, {
       attachTo: document.body,

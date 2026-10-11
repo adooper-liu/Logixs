@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { nextTick, ref, watch } from "vue";
 import CollapsibleRail from "./CollapsibleRail.vue";
 import type {
   WorkbenchMobileScreen,
   WorkbenchPaneId,
 } from "./workbenchLayout.types";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     leftCollapsed?: boolean;
     rightCollapsed?: boolean;
@@ -45,11 +45,36 @@ defineSlots<{
 }>();
 
 const narrowQueueOpen = ref(false);
+const workspace = ref<HTMLElement | null>(null);
 
 function selectMobileScreen(screen: WorkbenchMobileScreen): void {
   emit("update:mobileScreen", screen);
   emit("restoreFocus", screen);
 }
+
+async function revealMobileScreen(
+  screen: WorkbenchMobileScreen,
+): Promise<void> {
+  await nextTick();
+  const pane = workspace.value?.querySelector<HTMLElement>(
+    `[data-workbench-pane="${screen}"]`,
+  );
+  pane?.scrollIntoView({ block: "start" });
+  const control = Array.from(
+    pane?.querySelectorAll<HTMLElement>(
+      "button:not([disabled]):not(.collapsible-rail__toggle), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]",
+    ) ?? [],
+  ).find((candidate) => candidate.getClientRects().length > 0);
+  control?.scrollIntoView({ block: "nearest" });
+  control?.focus({ preventScroll: true });
+}
+
+watch(
+  () => props.mobileScreen,
+  (screen, previous) => {
+    if (screen !== previous) void revealMobileScreen(screen);
+  },
+);
 </script>
 
 <template>
@@ -84,7 +109,7 @@ function selectMobileScreen(screen: WorkbenchMobileScreen): void {
       <slot name="mobileBreadcrumb" :screen="mobileScreen" />
     </div>
 
-    <div class="workbench-layout__workspace">
+    <div ref="workspace" class="workbench-layout__workspace">
       <button
         class="workbench-layout__narrow-queue"
         type="button"

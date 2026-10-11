@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import WorkbenchLayout from "./WorkbenchLayout.vue";
 
 const mounted: Array<ReturnType<typeof mount>> = [];
@@ -26,11 +26,9 @@ const mountLayout = () => {
     },
     slots: {
       header: '<div data-region="header">header</div>',
-      responsibility:
-        '<div data-region="responsibility">responsibility</div>',
+      responsibility: '<div data-region="responsibility">responsibility</div>',
       decision: '<div data-region="decision">decision</div>',
-      queue:
-        '<button data-region="queue" id="queue-item">queue</button>',
+      queue: '<button data-region="queue" id="queue-item">queue</button>',
       detail:
         '<div data-region="detail"><button id="detail-item">detail</button><input id="draft" /></div>',
       context:
@@ -66,11 +64,11 @@ describe("WorkbenchLayout", () => {
     await wrapper.setProps({ rightRailSummary: "结论已冻结" });
 
     expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
-    expect(wrapper.findAll("[data-workbench-pane]").map((node) => node.attributes("data-workbench-pane"))).toEqual([
-      "queue",
-      "detail",
-      "context",
-    ]);
+    expect(
+      wrapper
+        .findAll("[data-workbench-pane]")
+        .map((node) => node.attributes("data-workbench-pane")),
+    ).toEqual(["queue", "detail", "context"]);
   });
 
   it("folds either or both rails without removing pane content", async () => {
@@ -97,6 +95,20 @@ describe("WorkbenchLayout", () => {
     expect((wrapper.get("#draft").element as HTMLInputElement).value).toBe(
       "未提交草稿",
     );
+  });
+
+  it("scrolls and focuses the selected mobile screen action", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const wrapper = mountLayout();
+
+    await wrapper.get('[data-mobile-target="context"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    expect(document.activeElement).toBe(wrapper.get("#context-action").element);
   });
 
   it("requests detail focus restoration after returning from context", async () => {

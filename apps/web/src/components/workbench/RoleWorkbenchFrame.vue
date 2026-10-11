@@ -117,10 +117,16 @@ const contextState = computed<WorkbenchPaneState>(() => {
 
       <template #decision>
         <div class="role-workbench__feedback">
-          <p v-if="containerListError" class="notice notice--error" role="alert">
+          <p
+            v-if="containerListError"
+            class="notice notice--error"
+            role="alert"
+          >
             {{ containerListError }}
           </p>
-          <template v-if="selectedContainer && !selectionLoading && !selectionError">
+          <template
+            v-if="selectedContainer && !selectionLoading && !selectionError"
+          >
             <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
             <p v-else class="notice">这柜尚未初始化生命周期流程。</p>
           </template>

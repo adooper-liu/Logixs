@@ -7,21 +7,29 @@ import WorkbenchPageHeader from "../../components/workbench/WorkbenchPageHeader.
     <p class="linked-feature-reference__notice">
       合成结构演练数据，不是生产记录
     </p>
-    <WorkbenchPageHeader
-      stage-code="sourcing"
-      eyebrow="关联子功能结构参考"
-    />
+    <WorkbenchPageHeader stage-code="sourcing" eyebrow="关联子功能结构参考" />
     <section aria-label="来源上下文">
       <h2>受控来源引用</h2>
       <dl>
-        <div><dt>来源工作台</dt><dd>选品立项</dd></div>
-        <div><dt>来源对象</dt><dd>合成机会 REF-001</dd></div>
-        <div><dt>来源事项</dt><dd>品类定义</dd></div>
+        <div>
+          <dt>来源工作台</dt>
+          <dd>选品立项</dd>
+        </div>
+        <div>
+          <dt>来源对象</dt>
+          <dd>合成机会 REF-001</dd>
+        </div>
+        <div>
+          <dt>来源事项</dt>
+          <dd>品类定义</dd>
+        </div>
       </dl>
     </section>
     <section aria-label="独立业务界面">
       <h2>独立业务界面</h2>
-      <p>该子功能拥有自己的业务目的、事实、权限、动作与结果，不嵌入原工作台右栏。</p>
+      <p>
+        该子功能拥有自己的业务目的、事实、权限、动作与结果，不嵌入原工作台右栏。
+      </p>
     </section>
   </main>
 </template>

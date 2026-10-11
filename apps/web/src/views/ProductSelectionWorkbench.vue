@@ -500,9 +500,11 @@ const decisionDisabledReason = computed(() =>
           id="product-selection-context"
           title="立项操作上下文"
           region-label="当前事项操作上下文"
+          :scroll="activeGapPanel === 'review_points' ? 'contained' : 'content'"
         >
           <ProductInitiativeReviewPanel
             v-if="selected && initiativeReady && !isReadOnly"
+            v-show="activeGapPanel === 'review_points'"
             :key="initiativeHandoffId"
             data-gap-panel="review_points"
             tabindex="-1"
@@ -584,6 +586,7 @@ const decisionDisabledReason = computed(() =>
           </section>
           <ProductInitiativeOutcomePanel
             v-else-if="selected"
+            v-show="activeGapPanel !== 'review_points'"
             :outcome="destination"
             :objective="objective"
             :accept-responsibility="acceptResponsibility"
@@ -664,6 +667,19 @@ const decisionDisabledReason = computed(() =>
 .selection-workbench :deep(.risk-summary button.selected) {
   border-left: 3px solid var(--brand);
   box-shadow: none;
+}
+
+.selection-workbench :deep(.product-initiative-outcome) {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.selection-workbench :deep(.outcome-action) {
+  grid-row: 2;
+  position: static;
+}
+
+.selection-workbench :deep(.outcome-body) {
+  grid-row: 3;
 }
 
 .selection-feedback {
