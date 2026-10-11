@@ -1,13 +1,9 @@
 ---
-status: done
-branch: docs/agent-role-mapping-v1
-verification: |
-  https://github.com/adooper-liu/Logixs/pull/128 已合入 main，merge commit `999eeba37e35352d0c6749f92de90f5f61337499`。
-  CI https://github.com/adooper-liu/Logixs/actions/runs/37111310006 的 changes、dictionary、static、quality 通过，
-  build、unit、e2e、security 按变更检测跳过（仅文档与治理规则）。本地 prettier --check、repo:check 与
-  check-repository 测试 44/44 通过；有效独立复审为 GPT-5.6 fresh 只读会话，4 项 finding 均已采纳修正。
+status: review
+branch: docs/claude-only-delivery-v1
+verification: "S2 local governance verification: docs:check, repo:check, scoped Prettier and git diff --check passed; PR/CI pending"
 owner: main
-writer: cursor
+writer: main
 risk: medium
 dependsOn: []
 writeScopes:
@@ -58,6 +54,9 @@ authorityRefs:
 | 2026-10-03 | 家族判定口径与主代理自写切片 | A 按切片实际写入者判定、家族按模型厂商划分，主代理自写切片由 GPT-5.6 复审（采纳）/ B 只按角色判定 / C 主代理自写切片由负责人直接审阅                                                      | `AGENTS.md` §1.2 第 4 条                 |
 | 2026-10-04 | 主代理承担工具               | 负责人原话“主代理（Cursor / Claude Opus）修改为你”：主代理由 Cursor 改为当前 Claude Code 会话，实际模型登记为 Claude Opus 4.8（`claude-opus-4-8[1m]`）；职责、写入边界与默认指令链不变    | `AGENTS.md` §1.2 第 4 条、`_template.md` |
 | 2026-10-04 | 评审阻塞纪律                 | 负责人原话“评审按‘只阻塞真实业务风险’执行”：仅当前切片可复现的业务、安全、数据真实性、兼容性或发布风险可阻塞；范围外重构、完美契约、未来扩展与一般优化不得升级为阻塞项                    | `AGENTS.md` §1.2 第 7 条、`_template.md` |
+| 2026-10-11 | 默认交付模式                 | 负责人采用方案 A：取消 Claude + Codex 默认协同；当前 Claude Code 主代理直接完成澄清、唯一 brief、实现、验证和集成，普通切片不再 `TASK` / `HANDOFF` 往返                                   | `AGENTS.md` §1.2、§1.3；`_template.md`   |
+| 2026-10-11 | 澄清与 brief                 | 需求澄清和唯一活动 brief 保留；仅业务/安全/契约/不可逆成本等负责人必决事项升级，普通可逆工程选择由主代理直接负责；低风险小改不机械建 brief                                                | `AGENTS.md` §1.2 第 4 条、§2             |
+| 2026-10-11 | 高风险独立复审               | 高风险任务在实现、真实环境验证和主代理验收完成后，新开 fresh Claude Code 只读会话整体复审一次；同模型家族，不称跨家族复审                                                                 | `AGENTS.md` §1.2 第 4～9 条              |
 
 ## 执行切片
 
@@ -80,6 +79,39 @@ authorityRefs:
 3. `ENGINEERING_RULES.md` 中“最终 PR 集成与合并仍由 Codex 排队执行”与现行规则早已不符，改为由主代理执行。
 4. `_template.md` 同步角色称呼与指令取值，默认 `owner: main`、`writer: codex`，切片表登记执行角色与复审的工具和实际模型。
 5. `CLAUDE.md` 改为指向角色映射，不再暗示 Claude Code 承担特定角色。
+
+### 切片 `S2-claude-only-delivery`
+
+| 项目     | 内容                                                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------ |
+| 基线     | `be56f2e9`（`origin/main`）                                                                                  |
+| 执行角色 | 当前 Claude Code 主代理直接修改治理权威                                                                      |
+| 复审     | 治理文档低风险定向核对；如形成高风险歧义则由 fresh Claude Code 只读整体复审                                  |
+| 写入范围 | `AGENTS.md`、`docs/planning/tasks/_template.md`、本 brief                                                    |
+| 禁止范围 | 业务政策、Schema、生产代码、历史 brief 与历史进度署名                                                        |
+| 验证命令 | `pnpm repo:check`、`pnpm docs:check`、三文件 Prettier、`git diff --check`                                    |
+| 停止条件 | 默认链只剩 `负责人 -> 主代理`；高风险复审仍只读独立；澄清和唯一 brief 保留；跨会话 TASK/HANDOFF 仅为例外协议 |
+
+改动要点：
+
+1. 主代理直接承担实现，不再设置 Codex 实现执行器。
+2. 高风险任务只在实现完成后安排一次 fresh Claude 整体复审。
+3. 普通同会话切片不生成 `TASK` / `HANDOFF`；跨会话、worktree 或恢复场景才启用交接协议。
+4. 模板默认 `writer: main`，执行角色为当前 Claude Code 主代理。
+5. 历史 Codex/Cursor/Claude 记录保持原样，不追溯改写。
+
+S2 明确覆盖本 brief §“边界 / 不做”中“不改变角色职责与默认指令链”的历史 S1 约束：本次负责人已经重新定案，允许取消独立实现执行器和默认转发链；单写入者、高风险独立复审、WIP/锁、唯一 brief、测试与 CI 门禁继续保留。
+
+S2 验收：
+
+- [x] 角色映射表不再包含 Codex 实现执行器
+- [x] 默认链为 `负责人 -> 主代理`
+- [x] 模板默认 `writer: main`
+- [x] 普通同会话切片不要求 `TASK` / `HANDOFF`
+- [x] 跨会话例外协议仍可用且必须独立 worktree
+- [x] 高风险 fresh Claude 只读整体复审保留
+- [x] 澄清与唯一活动 brief 保留
+- [x] 历史署名未追溯改写
 
 ## 复审裁决（S1 第一轮）
 
@@ -172,3 +204,5 @@ next: pr
 - 2026-10-03：负责人对 ARM-003 定案方案 A，已写回 §1.2 第 4 条；转由 GPT-5.6 fresh 只读会话做有效复审。
 - 2026-10-03：GPT-5.6 有效复审返回 4 项 finding（1 high、2 medium、1 low），全部采纳并在本切片修正；ARM-002 的延期由 GPT-001 推翻。
 - 2026-10-03：负责人授权推送并建 PR；[PR #128](https://github.com/adooper-liu/Logixs/pull/128) CI 通过后经负责人授权合并（`999eeba3`），任务 `done`。
+- 2026-10-11：负责人采用方案 A，取消 Claude + Codex 默认实现协同；澄清和唯一 brief 保留，当前 Claude 主代理直接实现，高风险任务末尾由 fresh Claude 只读整体复审一次；启动 S2 治理更新。
+- 2026-10-11：S2 已完成 `AGENTS.md`、task 模板和治理留痕同步；docs/repo/format/diff 门禁通过，进入 PR/CI。
