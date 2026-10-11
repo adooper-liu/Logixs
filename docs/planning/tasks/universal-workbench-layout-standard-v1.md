@@ -1,5 +1,5 @@
 ---
-status: coding
+status: review
 branch: worktree-universal-workbench-ui-standard
 owner: main
 writer: main
@@ -223,6 +223,19 @@ uiViewportEvidence:
 - 首轮 finding：1024 左轨摘要未显示；已改为独立窄轨和两级摘要，并增加真实几何/文字断言。
 - 首轮 finding：390 场景工具、责任带和决策条过高导致任务内容首屏不可见；已将场景控制折叠、压缩移动责任带，重建基线。
 - 视觉门禁：隔离端口 5197 下 Playwright `17 passed / 13 viewport-specific skipped`；无生产 API 请求；仓库静态门禁 `72/72`。
+
+## 最终集成验证（2026-10-11）
+
+- 定向单测：10 个工作台相关 suite，`109/109` 通过。
+- Web 全量单测：`155` 个 test files、`743/743` tests 通过。
+- 静态与构建：Web `lint`、`format:check`、`typecheck`、`build` 全部通过；生产 build 不包含 reference route。
+- 仓库门禁：`scripts/check-repository.test.mjs` `72/72` 通过；`pnpm repo:check`、`pnpm workbench-purposes:check` 通过。
+- 参考视觉契约：canonical Playwright 三项目 `17 passed / 13 viewport-specific skipped`；全部结构、交互、无 API 与像素基线断言通过。
+- 真实消费者 E2E：选品与市场三项目 `85 passed / 2 viewport-specific skipped`；输出存在被用例旁路查询触发的 Vite proxy `ECONNREFUSED` 警告，但所有被验收路径使用受控 route fixture，断言和进程退出码均通过。
+- 人工视觉复核：19 张 reference 基线通过；本轮重新核对 2 张变化的移动基线，详情/编辑屏目标内容进入首屏且焦点恢复；选品 working/frozen 与市场 working/archived 在 `1440×900`、`1024×768`、`390×844` 共 12 张真实截图通过。
+- 视觉结论：工作台身份与目的保持；责任和期限可见；动线维持定位 → 缺口 → 办理；选品保持真实 `N/5`，市场保持自身 `N/6` / 判断状态；移动端显式队列/详情/编辑分屏；市场归档态保留右栏且无写控件；没有页面级横向溢出。
+- 修正记录：最终验收发现移动屏切换后活动 pane 未主动滚入首屏、pane 滚动所有权缺少可检查结构钩子、右侧折叠控件位置与选品主动作层级不稳；均由回归测试先失败后最小修正，并重跑上述门禁。
+- 范围核对：以当前 `merge-base(main, HEAD)=a509e4a8` 核对，布局实现路径全部落在本 brief `writeScopes`；同分支前置设计 brief/spec/plan 由已完成设计任务覆盖；`.tmp/` 为既有其他任务证据，未修改、未暂存、未提交。
 
 ## 完成门槛
 
