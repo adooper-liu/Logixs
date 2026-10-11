@@ -1,10 +1,13 @@
 # 透明开发校准 V1 · 设计
 
-> 状态：**负责人已批准方案 A，待书面复核** · 2026-10-11  
+> 状态：**负责人已批准方案 A，待书面复核** · 2026-10-11
+>
 > 一句话：**从唯一 task brief 生成一份只读、确定性的当前 checkout 校准投影，让门禁和看板使用同一事实。**
 >
-> 治理权威：[AGENTS](../../../AGENTS.md)  
-> 工程规则：[ENGINEERING_RULES](../../../ENGINEERING_RULES.md)  
+> 治理权威：[AGENTS](../../../AGENTS.md)
+>
+> 工程规则：[ENGINEERING_RULES](../../../ENGINEERING_RULES.md)
+>
 > 实施载体：[transparent-development-calibration-v1](../../planning/tasks/transparent-development-calibration-v1.md)
 
 ## 1. 目的与成功判据
