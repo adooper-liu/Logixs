@@ -4,7 +4,6 @@ import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { seedAuthoritativeLocationReferenceData } from "./seeds/seed-authoritative-location-reference-data";
 import { seedCargoOwnerReferenceData } from "./seeds/seed-cargo-owner-reference-data";
-import { seedRealReplenishmentSample } from "./seeds/seed-real-replenishment-sample";
 
 // 本地开发回退到 docker-compose 默认值（与 prisma.config.ts / apps/api config/env.ts 一致）。
 const LOCAL_DEV_DATABASE_URL =
@@ -26,16 +25,6 @@ async function main(): Promise<void> {
   const cargoOwners = await seedCargoOwnerReferenceData(prisma);
   console.log(
     `Seeded internal cargo owner mappings: ${cargoOwners.cargoOwnerCount} confirmed owners.`,
-  );
-  const realSample = await seedRealReplenishmentSample(prisma);
-  console.log(
-    `Seeded real replenishment sample ${realSample.tenantId}: ` +
-      `${realSample.replenishmentOrderCount} orders, ` +
-      `${realSample.containerCount} containers, ` +
-      `${realSample.productSkuCount} SKUs, ` +
-      `${realSample.replenishmentOrderLineCount} lines, ` +
-      `${realSample.allocationSetCount} allocation sets, ` +
-      `${realSample.allocationCount} allocations.`,
   );
 }
 

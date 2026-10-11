@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "receiptVersion",
+    "status",
+    "verified",
+    "backupManifestHash",
+    "sourceManifestHash",
+    "cleanup",
+    "traceId",
+    "receiptHash"
+  ],
+  "properties": {
+    "receiptVersion": { "const": "full-chain-demo-restore-receipt.v1" },
+    "status": { "enum": ["verified", "incomplete"] },
+    "verified": { "type": "boolean" },
+    "backupManifestHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sourceManifestHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["database", "objectPrefix"],
+      "properties": {
+        "database": { "enum": ["removed", "not_created", "failed"] },
+        "objectPrefix": { "enum": ["removed", "not_created", "failed"] }
+      }
+    },
+    "errorCode": { "type": "string" },
+    "cleanupErrorCodes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "traceId": { "type": "string", "minLength": 1 },
+    "receiptHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "verified" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "verified": { "const": true },
+          "cleanup": {
+            "type": "object",
+            "properties": {
+              "database": { "const": "removed" },
+              "objectPrefix": { "const": "removed" }
+            }
+          },
+          "errorCode": false,
+          "cleanupErrorCodes": false
+        }
+      },
+      "else": {
+        "properties": { "verified": { "const": false } },
+        "required": ["errorCode"]
+      }
+    }
+  ]
+}

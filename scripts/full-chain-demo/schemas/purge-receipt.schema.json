@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "result",
+    "postgresCandidateCount",
+    "minioCandidateCount",
+    "temporalTargetCount",
+    "blockerCount",
+    "manifestHash"
+  ],
+  "properties": {
+    "result": {
+      "enum": ["manifest_generated", "dry_run_complete", "incomplete"]
+    },
+    "postgresCandidateCount": { "type": "integer", "minimum": 0 },
+    "minioCandidateCount": { "type": "integer", "minimum": 0 },
+    "temporalTargetCount": { "type": "integer", "minimum": 0 },
+    "blockerCount": { "type": "integer", "minimum": 0 },
+    "manifestHash": { "type": "string" },
+    "traceId": { "type": "string" }
+  }
+}

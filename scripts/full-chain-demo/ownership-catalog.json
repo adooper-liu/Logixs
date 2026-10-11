@@ -1,0 +1,693 @@
+{
+  "catalogVersion": "full-chain-demo-ownership.v1",
+  "targetTenant": "demo-real-sample-20260921",
+  "models": {
+    "Product": {
+      "table": "product",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductIdentityRelease": {
+      "table": "product_identity_release",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentWorkHandoff": {
+      "table": "shipment_work_handoff",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentWorkHandoffAction": {
+      "table": "shipment_work_handoff_action",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "Supplier": {
+      "table": "supplier",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "SupplierQuotation": {
+      "table": "supplier_quotation",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "SupplierNominationRelease": {
+      "table": "supplier_nomination_release",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ReferenceDataRelease": {
+      "table": "reference_data_release",
+      "rule": "preserve_global"
+    },
+    "CurrencyCodeReference": {
+      "table": "currency_code_reference",
+      "rule": "preserve_global"
+    },
+    "CountryCodeReference": {
+      "table": "country_code_reference",
+      "rule": "preserve_global"
+    },
+    "CargoOwnerReference": {
+      "table": "cargo_owner_reference",
+      "rule": "preserve_global"
+    },
+    "UnlocodeAreaReference": {
+      "table": "unlocode_area_reference",
+      "rule": "preserve_global"
+    },
+    "PortCodeReference": {
+      "table": "port_code_reference",
+      "rule": "preserve_global"
+    },
+    "PortCodeEntry": {
+      "table": "port_code_entry",
+      "rule": "preserve_global"
+    },
+    "PortNameAlias": {
+      "table": "port_name_alias",
+      "rule": "preserve_global"
+    },
+    "ProductSku": {
+      "table": "product_sku",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductSkuRegistration": {
+      "table": "product_sku_registration",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductComplianceProfile": {
+      "table": "product_compliance_profile",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductBatteryProfile": {
+      "table": "product_battery_profile",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductRefrigerantProfile": {
+      "table": "product_refrigerant_profile",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductDangerousGoodsProfile": {
+      "table": "product_dangerous_goods_profile",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductInspectionRequirement": {
+      "table": "product_inspection_requirement",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductCertificate": {
+      "table": "product_certificate",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductCertificateVersion": {
+      "table": "product_certificate_version",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductCertificateCountryCoverage": {
+      "table": "product_certificate_country_coverage",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductComplianceProfileCertificate": {
+      "table": "product_compliance_profile_certificate",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ComplianceRule": {
+      "table": "compliance_rule",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ComplianceRuleVersion": {
+      "table": "compliance_rule_version",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ComplianceRuleVersionSkuScope": {
+      "table": "compliance_rule_version_sku_scope",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CargoReadyComplianceAssessment": {
+      "table": "cargo_ready_compliance_assessment",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CargoReadyComplianceAssessmentItem": {
+      "table": "cargo_ready_compliance_assessment_item",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CargoReadyComplianceFinding": {
+      "table": "cargo_ready_compliance_finding",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CargoReadyComplianceAssessmentRule": {
+      "table": "cargo_ready_compliance_assessment_rule",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CargoReadyComplianceDecision": {
+      "table": "cargo_ready_compliance_decision",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerRecord": {
+      "table": "container_record",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerImportBinding": {
+      "table": "container_import_binding",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerSourceIdentity": {
+      "table": "container_source_identity",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OceanRoutePlan": {
+      "table": "ocean_route_plan",
+      "rule": "via_parent",
+      "parentModel": "ContainerRecord",
+      "foreignKey": "containerId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "OceanRouteSegment": {
+      "table": "ocean_route_segment",
+      "rule": "via_parent",
+      "parentModel": "OceanRoutePlan",
+      "foreignKey": "routePlanId",
+      "parentKey": "id",
+      "deleteRank": 300
+    },
+    "ShipmentTimeFact": {
+      "table": "shipment_time_fact",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "LifecycleDateFact": {
+      "table": "lifecycle_date_fact",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "SourceAuthorityPolicy": {
+      "table": "source_authority_policy",
+      "rule": "preserve_global"
+    },
+    "ReplenishmentOrder": {
+      "table": "replenishment_order",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ReplenishmentOrderLine": {
+      "table": "replenishment_order_line",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "Shipment": {
+      "table": "shipment",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentHandoffRecord": {
+      "table": "shipment_handoff_record",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentHandoffObjectResult": {
+      "table": "shipment_handoff_object_result",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentContainerLink": {
+      "table": "shipment_container_link",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OperationalExceptionCase": {
+      "table": "operational_exception_case",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentCargoLine": {
+      "table": "shipment_cargo_line",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentTransportDocument": {
+      "table": "shipment_transport_document",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentContainerDocumentLink": {
+      "table": "shipment_container_document_link",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentUpstreamReference": {
+      "table": "shipment_upstream_reference",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerCargoAllocationSet": {
+      "table": "container_cargo_allocation_set",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerStuffingSnapshot": {
+      "table": "container_stuffing_snapshot",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerDispatchSnapshot": {
+      "table": "container_dispatch_snapshot",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CustomsClearanceCase": {
+      "table": "customs_clearance_case",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerCargoAllocation": {
+      "table": "container_cargo_allocation",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "EvidenceRecord": {
+      "table": "evidence_record",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "EvidenceVerificationDecision": {
+      "table": "evidence_verification_decision",
+      "rule": "via_parent",
+      "parentModel": "EvidenceRecord",
+      "foreignKey": "evidenceId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "ImportBatch": {
+      "table": "import_batch",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "PostDepartureSourcePackageReview": {
+      "table": "post_departure_source_package_review",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "PostDepartureSourceCandidateCorrection": {
+      "table": "post_departure_source_candidate_correction",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "PostDepartureSourceCandidateCargoLine": {
+      "table": "post_departure_source_candidate_cargo_line",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "PostDepartureSourcePackageSource": {
+      "table": "post_departure_source_package_source",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ImportRow": {
+      "table": "import_row",
+      "rule": "via_parent",
+      "parentModel": "ImportBatch",
+      "foreignKey": "batchId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "ImportReview": {
+      "table": "import_review",
+      "rule": "via_parent",
+      "parentModel": "ImportBatch",
+      "foreignKey": "batchId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "ImportRowResult": {
+      "table": "import_row_result",
+      "rule": "via_parent",
+      "parentModel": "ImportBatch",
+      "foreignKey": "batchId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "FlowInstance": {
+      "table": "flow_instance",
+      "rule": "via_parent",
+      "parentModel": "Shipment",
+      "foreignKey": "shipmentId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "NodeInstance": {
+      "table": "node_instance",
+      "rule": "via_parent",
+      "parentModel": "FlowInstance",
+      "foreignKey": "flowInstanceId",
+      "parentKey": "id",
+      "deleteRank": 300
+    },
+    "NodeBlock": {
+      "table": "node_block",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "NodeBlockResolution": {
+      "table": "node_block_resolution",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "NodeApplicabilityDecision": {
+      "table": "node_applicability_decision",
+      "rule": "via_parent",
+      "parentModel": "FlowInstance",
+      "foreignKey": "flowInstanceId",
+      "parentKey": "id",
+      "deleteRank": 300
+    },
+    "CanonicalEvent": {
+      "table": "canonical_event",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CanonicalEventScopeMember": {
+      "table": "canonical_event_scope_member",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ShipmentEventApplication": {
+      "table": "shipment_event_application",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "NodeEventApplication": {
+      "table": "node_event_application",
+      "rule": "via_parent",
+      "parentModel": "NodeInstance",
+      "foreignKey": "targetNodeInstanceId",
+      "parentKey": "id",
+      "resolver": "node_event_dual_tenant",
+      "deleteRank": 400
+    },
+    "MarketSignal": {
+      "table": "market_signal",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "MarketSignalDecision": {
+      "table": "market_signal_decision",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "MarketOpportunityHandoff": {
+      "table": "market_opportunity_handoff",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductOpportunityIntake": {
+      "table": "product_opportunity_intake",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductInitiative": {
+      "table": "product_initiative",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductInitiativeHandoff": {
+      "table": "product_initiative_handoff",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductInitiativeClaim": {
+      "table": "product_initiative_claim",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductDefinition": {
+      "table": "product_definition",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductDefinitionRelease": {
+      "table": "product_definition_release",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OutboxMessage": {
+      "table": "outbox_message",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OutboxReplayRequest": {
+      "table": "outbox_replay_request",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "InboxMessage": {
+      "table": "inbox_message",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "InboxReplayRequest": {
+      "table": "inbox_replay_request",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OceanProviderEventIngestion": {
+      "table": "ocean_provider_event_ingestion",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ClientOperation": {
+      "table": "client_operation",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "CompensationRecord": {
+      "table": "compensation_record",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "NodeTask": {
+      "table": "node_task",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "WorkOrder": {
+      "table": "work_order",
+      "rule": "via_parent",
+      "parentModel": "NodeTask",
+      "foreignKey": "nodeTaskId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "WorkOrderFactApplication": {
+      "table": "work_order_fact_application",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ExternalWorkItemProjection": {
+      "table": "external_work_item_projection",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ExternalWorkItem": {
+      "table": "external_work_item",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "NodeTaskOutcome": {
+      "table": "node_task_outcome",
+      "rule": "via_parent",
+      "parentModel": "NodeTask",
+      "foreignKey": "nodeTaskId",
+      "parentKey": "id",
+      "deleteRank": 200
+    },
+    "InlandPlanningParameter": {
+      "table": "inland_planning_parameter",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "InlandPlanningStrategy": {
+      "table": "inland_planning_strategy",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "WarehouseUnloadCapacity": {
+      "table": "warehouse_unload_capacity",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "FleetHaulageCapacity": {
+      "table": "fleet_haulage_capacity",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "PortFleetWarehouseAllocation": {
+      "table": "port_fleet_warehouse_allocation",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "InlandPlan": {
+      "table": "inland_plan",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "WarehouseDeliveryInstruction": {
+      "table": "warehouse_delivery_instruction",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ContainerUnloadingReport": {
+      "table": "container_unloading_report",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "InlandResourceOccupancy": {
+      "table": "inland_resource_occupancy",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OverdueChargeStandard": {
+      "table": "overdue_charge_standard",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OverdueChargeRateTier": {
+      "table": "overdue_charge_rate_tier",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OpsNotification": {
+      "table": "ops_notification",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OpsAssistantSession": {
+      "table": "ops_assistant_session",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "OpsAssistantMessage": {
+      "table": "ops_assistant_message",
+      "rule": "via_parent",
+      "parentModel": "OpsAssistantSession",
+      "foreignKey": "sessionId",
+      "parentKey": "id",
+      "deleteRank": 200
+    }
+  }
+}

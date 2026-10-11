@@ -1,9 +1,9 @@
 ---
-status: fix
+status: review
 branch: feat/full-chain-demo-backup-purge-dry-run
-verification: "B2a-B2g initial handoff passed focused tests but main-agent verification found skipped placeholder integrations and missing real adapters/indirect ownership/dry-run/backup flows; B2R1 authorized below"
+verification: "B2R2 focused scripts 21 tests, exact API units 15 files/50 tests, aggregate API 296 files/1529 tests, real integrations 4 files/9 tests, seed boundary receipt, root lint/typecheck/build and focused format passed; final validate pending"
 owner: main
-writer: codex
+writer: main
 risk: high
 dependsOn:
   - full-chain-sample-v05-compiler-v1
@@ -12,6 +12,8 @@ writeScopes:
   - database/seed.ts
   - database/seed-legacy-demo.ts
   - scripts/full-chain-demo/**
+  - scripts/check-architecture-boundaries.mjs
+  - scripts/check-architecture-boundaries.full-chain-demo.test.mjs
   - apps/api/src/tools/full-chain-demo/**
   - docs/operations/full-chain-demo-backup-restore.md
   - package.json
@@ -89,18 +91,12 @@ authorityRefs:
 
 ### 统一执行要求
 
-- Codex（GPT-5.6）为唯一实现执行器；按 plan 逐任务 RED→GREEN 并提交。
+- 当前 Claude Code 主代理按 plan 逐任务 RED→GREEN 直接实现、验收和提交，不再转发 Codex。
 - 每个 commit 只暂存 plan 指定文件；不得修改 Schema、迁移、生产模块、API route 或 Web。
 - 外部 manifest、backup、dump、对象副本和 restore 输出不得进入 Git。
 - 所有基础设施测试仅使用本地 Docker 和本次创建的隔离目标。
 - 真实目标租户只能读取清单；不得执行真实备份、复制、暂停、恢复或 rollback 之外的 DELETE。
-- Task 7 完成后返回标准 HANDOFF；不得将状态改为 `done`。
-
-首轮实现任务：
-
-```text
-TASK docs/planning/tasks/full-chain-demo-backup-purge-dry-run-v1.md#B2a-B2g base=<brief-commit-sha> role=implementer workspace=D:\Logixs
-```
+- Task 7 和 B2R1F3 完成后，主代理运行真实隔离验收；高风险整体由 fresh Claude 只读复审一次，再进入最终门禁和单一 PR。
 
 ## B2R1：从架构壳补齐到可执行隔离工具
 
@@ -188,26 +184,40 @@ B2R1F1 交回仍不能接受。主代理现场确认 Docker 与三域服务健�
 
 B2R1F2 本轮已完成并应保留：manifest `candidateCount`、canonical writer、preserved global 内容 hash、catalog 四层 parent rank 与 parent-edge 测试、schema/migration fingerprint、Seed verifier 真实通过，以及 Prisma interactive transaction 方向。剩余 finding：
 
-1. `B2R1F3-001`：精确 8 个 unit 文件仍为 **2 failed / 9 passed**；`generate-manifest.cli.test.ts` 与 `purge-dry-run.cli.test.ts` 均 5 秒超时。按计划导出 `run(argv,deps)`，测试直接注入会在调用时计数的 factories，证明拒绝发生在 client factory 前；模块入口单独用可解析 tsx path 做一个有限时子进程 smoke，不使用可能为空的 `npm_execpath` 参数。
-2. `B2R1F3-002`：四个 integration 仍为 fake/callback（总耗时约 13ms）。必须真实创建数据库/prefix并连接 Temporal：
-   - inventory integration：唯一临时 PostgreSQL database + 迁移 + 两租户 + 全部 13 类间接规则代表行；
-   - dry-run integration：同一 backend PID/txid 执行 DELETE RETURNING，强制 rollback 后所有源 count/hash 不变；
-   - backup integration：真实 `pg_dump --format=custom`、`pg_restore --list`、隔离 MinIO prefix copy/head/checksum、Temporal list/describe 前后不变；
-   - restore integration：新建 `logix_rehearsal_<pid>_<hex>`，真实 `pg_restore`，核对 PostgreSQL/MinIO/Temporal/source fingerprint，最后只清本次数据库/prefix。
-3. `B2R1F3-003`：`NodeEventApplication` 不能只沿 NodeInstance 链。inventory 必须同时查询 `eventId → CanonicalEvent.tenantId` 与 `targetNodeInstanceId → FlowInstance → Shipment.tenantId`；两侧同 target 才 candidate，任一缺失 `OWNERSHIP_UNRESOLVED`，不一致 `OWNERSHIP_AMBIGUOUS`。逐项真实/fixture test。
-4. `B2R1F3-004`：当前 catalog 不使用 `via_logical_ref`，允许保留；但测试必须枚举并逐一证明 13 个无 tenant model 的规则和 parent chain，不能只抽样一个 Child/Parent。
-5. `B2R1F3-005`：delete rank 四层需在真实 catalog + DMMF relation graph 上验证所有 child-before-parent edge，并验证同 rank model 互不依赖；否则 `DELETE_PLAN_DEPENDENCY_INVALID`。不要求每表唯一 rank。
-6. `B2R1F3-006`：manifest `candidateCount` 已补，继续增加 tamper/stale tests：同 entries 不同 candidateCount、同数量不同 preserved content、schema/migration/catalog/blocker 变化均改变 hash 并产生 stable difference code。
-7. `B2R1F3-007`：manifest writer canonical 化已补；增加 existing output、injected write/rename failure、只清本次 staging、相同状态字节相同测试。
-8. `B2R1F3-008`：restore CLI 当前 `createdb/pg_restore/dropdb` 未从 `DATABASE_URL` 传 host/port/user，可能误连默认实例。解析源 URL，使用参数数组或完整 target URL；禁止在日志暴露密码/URL。integration 必须证明实际目标数据库是本次隔离库。
-9. `B2R1F3-009`：restore verify 当前只检查 `backupManifest.verified`。必须实际重采恢复目标 PostgreSQL manifest、九类 preserved globals、目标/其他租户，核对 MinIO copied bytes/checksum 与 Temporal inventory/source before-after；否则不得 complete。
-10. `B2R1F3-010`：MinIO copy target 当前字符串拼接 `${targetPrefix}${sourceKey}`，改为安全 prefix join，拒绝绝对 key、`..`、反斜线和 prefix escape。失败时只删除本次创建 prefix；不得删除 source。
-11. `B2R1F3-011`：backup CLI 必须原子写出经 schema 校验的 backup manifest 与 incomplete/verified receipt；当前只 stdout。失败时清理本次 dump/prefix，保留 source；测试 partial copy、checksum、Temporal/source drift。
-12. `B2R1F3-012`：真实 read-only manifest probe 由主代理最终运行。CLI 必须支持本地 compose 的显式 env 参数，输出只含 receipt；不得打印 candidate IDs/keys/workflow inputs。实现器无需接触真实 demo 写操作。
-13. `B2R1F3-013`：integration 交回必须给出实际测试名、每个临时 database/prefix 创建与清理布尔证据及合理耗时；小于 100ms 的 callback contract 不得报告为 Docker integration。
-14. `B2R1F3-014`：runbook 补全 prerequisites、显式命令、manifest/backup/restore/dry-run 输入输出、隔离命名、失败清理、证据、禁止项、未来授权 gate，并注明真实 demo backup/delete/write/UI 均 not-run。
+1. `B2R1F3-001`（已关闭，2026-10-11）：manifest/dry-run CLI 均导出 `run(argv,deps)`；`--execute`、错误 tenant、缺参数及 manifest hash/deletable 错误均在 client factory 前快速拒绝。显式 `tsx/cli` 子进程 smoke 在 5 秒内稳定退出；Windows 本地 ESM 路径统一转换为 `file://` URL。
+2. `B2R1F3-002`（已关闭，2026-10-11）：四个 integration 文件均连接本地真实基础设施；inventory 与 dry-run 创建并迁移唯一临时 PostgreSQL database，backup 实际执行 custom dump/list 与 MinIO copy/head/checksum、Temporal list/describe，restore 实际创建新库并恢复后核对三域和源 fingerprint。所有测试只清理本次 database/prefix。
+3. `B2R1F3-003`（已关闭，2026-10-11）：`NodeEventApplication` inventory 同时查询 `eventId → CanonicalEvent.tenantId` 与 `targetNodeInstanceId → FlowInstance → Shipment.tenantId`；两侧同 target 才 candidate，任一侧缺失为 `OWNERSHIP_UNRESOLVED`，不一致为 `OWNERSHIP_AMBIGUOUS`。unit 与真实临时 PostgreSQL 均覆盖 target/other/null/cross-tenant。
+4. `B2R1F3-004`（已关闭，2026-10-11）：catalog contract 精确枚举并验证 13 个无 tenant model 的 parent chain；`NodeEventApplication` 丢失 `node_event_dual_tenant` resolver 时 catalog drift 失败关闭。
+5. `B2R1F3-005`（已关闭，2026-10-11）：inventory 从迁移后 PostgreSQL `pg_constraint` 读取全 catalog 真实 FK，并与 catalog 逻辑父链合并推导 child-first rank；真实 catalog 测试验证所有非保留表均进入 plan、每条跨表 FK 的 child rank 严格高于 parent、plan 顺序 child-before-parent，跨表环稳定拒绝为 `DELETE_PLAN_DEPENDENCY_INVALID`。
+6. `B2R1F3-006`（已关闭，2026-10-11）：manifest tests 覆盖 entries 相同但 candidateCount 改变、同数量 preserved 内容替换、catalog/schema/migration/blocker 漂移和 canonical 文件 round-trip；均产生稳定 difference code，键顺序不再造成假 stale。
+7. `B2R1F3-007`（已关闭，2026-10-11）：manifest writer 的 existing output、write/rename failure、仅清本次 staging、同状态字节一致均有 fault-injection 测试。
+8. `B2R1F3-008`（已关闭，2026-10-11）：restore 从源 `DATABASE_URL` 派生 host/port/user/password env 与精确 target URL；PostgreSQL 命令参数不含密码或源数据库名。Windows 本地动态 import 使用 `file://` URL。
+9. `B2R1F3-009`（已关闭，2026-10-11）：restore 同时验证 backup manifest 与原始 purge manifest；恢复目标重采 PostgreSQL inventory/schema/migration、全 catalog 内容 fingerprint、MinIO copy bytes/checksum、Temporal inventory，并比较源前后四域 fingerprint。全 catalog 内容 fingerprint 覆盖目标租户、其他租户、九类全局表与 `_prisma_migrations`。
+10. `B2R1F3-010`（已关闭，2026-10-11）：MinIO target key 仅允许 `rehearsal/` prefix 与相对 source key；绝对路径、`..`、反斜线和 prefix escape 在 S3 调用前拒绝，失败仅清本次 prefix。
+11. `B2R1F3-011`（已关闭，2026-10-11）：backup custom dump 非空、可 list、MinIO copy/checksum、Temporal 与源 fingerprint 全部成立后才 `verified`；manifest/receipt 通过 schema 校验后由 staging 原子发布，失败输出 `incomplete` 并清本次 dump/prefix。missing callback、empty dump、copy/checksum/Temporal/source drift 均有测试。
+12. `B2R1F3-012`（已关闭，2026-10-11）：主代理对本地真实三域连续生成两次只读 manifest，完整 hash 相同；候选计数为 PostgreSQL 140、MinIO 1、Temporal 0。当前真实 blocker 为 `MINIO_ORPHAN_OBJECT`，因此 dry-run 在事务前以 `OWNERSHIP_BLOCKERS_PRESENT` 拒绝；第三次 manifest 证明 PostgreSQL/MinIO/Temporal/blocker/总 hash 全部不变。真实 demo backup/delete/write/UI 均未运行。
+13. `B2R1F3-013`（已关闭，2026-10-11）：精确 unit 为 9 files / 32 tests，附加三域 source fingerprint unit 1 test；四个真实 integration 为 4 files / 8 tests，总耗时约 80 秒，逐项创建并清理临时 database/prefix，Temporal 仅 list/describe。后续强化 dry-run 3 tests 约 20 秒、restore 1 test 约 16 秒再次通过。
+14. `B2R1F3-014`（已关闭，2026-10-11）：runbook 已补 prerequisites、显式命令、manifest/backup/restore/dry-run 输入输出、隔离命名、失败清理、证据、禁止项、未来授权 gate 和全部真实动作 `not run` 状态。
 
 沿用 B2R1F2 写入/禁止范围。Docker 在主代理环境健康；实现器必须使用本地 compose，但所有 destructive-looking 测试只作用于本次创建的隔离资源。不得创建提交。
+
+## B2R2：fresh 整体复审安全与数据完整性收口
+
+fresh Claude 只读整体复审确认初版 B2R1F3 仍有两个 Critical、八个 Important 和一个 Minor；主代理逐项复现并接受 `B2-REV-001`～`010`。当前处置：
+
+1. `B2-REV-001`（Critical，已修复）：backup 在复制前拒绝非空 rehearsal prefix；失败只删除本次成功创建的精确 keys，生产 adapter 不再暴露 broad `deletePrefix`。
+2. `B2-REV-002`（Critical，已修复）：PostgreSQL 密码只走 `PGPASSWORD`；子进程参数不含 URL/密码，受控制品以 staging cwd + basename 传递；四个 CLI 错误出口只输出稳定 code + traceId。
+3. `B2-REV-003`（Important，已修复）：catalog drift 强制九类 preserve、十三类 indirect 与其余 tenant model 的 approved partition，重分类稳定失败关闭。
+4. `B2-REV-004`（Important，已修复）：Temporal schedule 作为 entry 进入 manifest；workflow input 不可取得时明确 `TEMPORAL_INPUT_UNAVAILABLE` blocker，不伪造空 fingerprint。
+5. `B2-REV-005`（Important，已修复）：purge、backup、restore 三个消费入口都先做 schema + canonical hash + tenant/catalog/source-hash 校验；backup 在复制前重采三域并 compare stale；restore 要求 source/backup 两个 expected hash。
+6. `B2-REV-006`（Important，已修复）：MinIO source inventory 和 copy verification 读取实际字节流计算 SHA-256/size；无 metadata 仍有内容证据，同大小不同内容稳定拒绝。
+7. `B2-REV-007`（Important，已修复）：PostgreSQL inventory、schema/migration fingerprint、ImportBatch ownership projection 和 DELETE 共用同一 Serializable interactive transaction/current manifest；rollback 后 MinIO/Temporal 第二次采集，漂移不输出成功 receipt。
+8. `B2-REV-008`（Important，已修复）：restore 生成 schema-validated、canonical-hashed 的 durable `verified/incomplete` receipt；数据库和对象 cleanup 分轨，cleanup 失败不覆盖主错误且不能产生 verified。
+9. `B2-REV-009`（Important，已修复）：manifest、backup、restore output 及 consuming artifact input 均限制在批准仓外根；realpath + existing ancestor 检查拒绝 repo 内、existing output、symlink/junction escape，并在 staging 后再次复核。
+10. `B2-REV-010`（Important，已修复）：移除动态拼接 Prisma/Temporal imports；架构门禁仅对 `apps/api/src/tools/full-chain-demo/**` 加精确 infrastructure allowlist，其他 tools 仍拒绝，并有独立 RED→GREEN 门禁测试。
+11. `B2-REV-011`（Minor，延期）：错误码仍有历史 ad hoc 名称；本轮已集中所有对外错误映射并禁止原文泄露，命名归一不改变当前安全结果，留待后续治理切片。
+
+新增/强化验证：脚本与架构门禁 21 tests；精确 API unit 15 files / 50 tests（后续增加 restore CLI 后为 16 files / 51 tests）；四个真实 integration 4 files / 9 tests；Seed 边界真实临时数据库；API typecheck/lint/build；focused Prettier 与 `git diff --check`。`docs:check` / `repo:check` 当前唯一失败仍为并行 UI brief 同 `writer: main`，待该独立 worktree 按已定优先级退出 active 状态后重跑。
 
 ## 验收
 
@@ -224,7 +234,7 @@ B2R1F2 本轮已完成并应保留：manifest `candidateCount`、canonical write
 - [ ] PostgreSQL dry-run 全程强制 rollback，planned/actual count 一致，源环境零变化
 - [ ] 备份/恢复只在新建隔离目标演练；源环境零变化，失败只清本次目标
 - [ ] 日志和 receipt 不含 ID、key、input、业务值、凭据或路径
-- [ ] fresh Codex 安全与数据完整性复审通过
+- [ ] fresh Claude 安全与数据完整性整体复审通过
 - [ ] 完整质量门禁通过；环境阻断如实记录
 
 ## Deployment / done gate
@@ -242,10 +252,11 @@ Brief 2 代码 `done` 不代表真实 demo 已备份或可删除。以下外部�
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                                                                                                                                               |
-| ---------- | ------ | ----------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-11 | design | Claude Code | —      | 负责人批准 Brief 2 纯运维脚本方案：Seed 分轨、完整 ownership catalog、三域 manifest、rollback-only dry-run 与隔离恢复演练；无 execute 删除入口                                                                                                     |
-| 2026-10-11 | fix    | Claude Code | —      | B2a～B2g 初交回 focused tests 通过，但 Docker 现场健康且 integration 全为 skip 占位；间接归属、真实三域 adapters、rollback dry-run、backup/restore CLI 和隔离演练未实现，接受 B2-BLOCK-001～012，进入 B2R1                                         |
-| 2026-10-11 | fix    | Claude Code | —      | B2R1 补交回后 Docker integration 仍为 callback-only，8 个精确 unit 文件实际 2 failed/9 passed（两个 CLI 超时）；间接逻辑归属、同连接 rollback、真实三域 manifest、pg_dump/restore、MinIO copy 和 Temporal/source 不变证据仍缺，进入 B2R1F1         |
-| 2026-10-11 | fix    | Claude Code | —      | B2R1F1 仍报告 4/4 integration，但源码与 13ms 耗时证明均为 fake/callback；精确 unit 仍 2 failed/9 passed。delete DAG、保留内容 hash、候选计数、canonical writer、真实 rollback/backup/restore 和内容核验未完成，进入 B2R1F2                         |
-| 2026-10-11 | fix    | Claude Code | —      | B2R1F2 已补 candidateCount、canonical writer、保留内容 hash、四层 parent rank、fingerprint 和 Seed 真实验证；但 unit 仍 2 failed/9 passed、integration 仍 callback-only，NodeEvent 多链与真实 pg/MinIO/Temporal backup/restore 未完成，进入 B2R1F3 |
+| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------- | ------ | ----------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-11 | design | Claude Code | —      | 负责人批准 Brief 2 纯运维脚本方案：Seed 分轨、完整 ownership catalog、三域 manifest、rollback-only dry-run 与隔离恢复演练；无 execute 删除入口                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 2026-10-11 | fix    | Claude Code | —      | B2a～B2g 初交回 focused tests 通过，但 Docker 现场健康且 integration 全为 skip 占位；间接归属、真实三域 adapters、rollback dry-run、backup/restore CLI 和隔离演练未实现，接受 B2-BLOCK-001～012，进入 B2R1                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-10-11 | fix    | Claude Code | —      | B2R1 补交回后 Docker integration 仍为 callback-only，8 个精确 unit 文件实际 2 failed/9 passed（两个 CLI 超时）；间接逻辑归属、同连接 rollback、真实三域 manifest、pg_dump/restore、MinIO copy 和 Temporal/source 不变证据仍缺，进入 B2R1F1                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-10-11 | fix    | Claude Code | —      | B2R1F1 仍报告 4/4 integration，但源码与 13ms 耗时证明均为 fake/callback；精确 unit 仍 2 failed/9 passed。delete DAG、保留内容 hash、候选计数、canonical writer、真实 rollback/backup/restore 和内容核验未完成，进入 B2R1F2                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-10-11 | fix    | Claude Code | —      | B2R1F3-001～014 已关闭：CLI fail-before-factory、Windows ESM、真实四文件 integration、NodeEvent 双链、全 catalog DAG、manifest canonical stale、原子 writer、restore URL/三域复验、MinIO 安全 key、backup evidence 与完整 runbook 均已收口。真实本地 manifest 两次完整 hash 一致；当前 `MINIO_ORPHAN_OBJECT` blocker 正确阻止 dry-run transaction，失败前后三域和 blocker hash 全部不变。API lint/typecheck/build、聚合 unit 与专项 integration 通过；docs/repo 门禁仍被并行 `universal-workbench-ui-standard-v1` 同 writer 冲突阻断。此处为当时判断，随后 fresh 整体复审发现 B2-REV-001～011 并进入 B2R2，不再作为最终完成结论。 |
+| 2026-10-11 | fix    | Claude Code | —      | B2R2 接受并修复 fresh 整体复审的 B2-REV-001～010：精确对象清理、错误脱敏、catalog partition、Temporal fail-closed、三 CLI manifest integrity、MinIO bytes hash、同事务 stale/delete、durable restore receipt、仓外 realpath boundary 与显式架构 allowlist。focused 脚本 21 tests、API unit 16 files / 51 tests、真实 integration 4 files / 9 tests、Seed 临时库、API typecheck/lint/build 与格式检查通过；REV-011 Minor 延期。docs/repo 等待 UI brief 退出 active writer 后重跑。                                                                                                                                                 |
