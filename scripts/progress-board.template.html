@@ -93,6 +93,7 @@
 
   body {
     margin: 0;
+    overflow-x: hidden;
     background: var(--plane);
     color: var(--ink);
     font-family: var(--font-body);
@@ -291,6 +292,205 @@
     background: var(--surface);
     border: 1px solid var(--rule);
     border-radius: 3px;
+  }
+
+  /* ---------- current delivery calibration ---------- */
+
+  .cal-board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .cal-column {
+    min-width: 0;
+    border-right: 1px solid var(--rule);
+  }
+
+  .cal-column:last-child {
+    border-right: 0;
+  }
+
+  .cal-cell {
+    min-width: 0;
+    padding: 16px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .cal-column .cal-cell:last-child {
+    border-bottom: 0;
+  }
+
+  .cal-cell[data-fact-kind="computed"] {
+    border-top: 3px solid var(--accent);
+  }
+
+  .cal-cell[data-fact-kind="declared"] {
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .cal-cell[data-fact-kind="unknown"],
+  .cal-cell[data-fact-kind="editorial"] {
+    border-top: 1px dashed var(--rule-strong);
+  }
+
+  .fact-tag {
+    display: inline-block;
+    margin-bottom: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .cal-cell h3,
+  .cal-cell h4,
+  .cal-cell p {
+    margin-top: 0;
+  }
+
+  .cal-cell h3 {
+    margin-bottom: 10px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: 0.03em;
+  }
+
+  .cal-cell h4 {
+    margin-bottom: 6px;
+    font-family: var(--font-display);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .cal-title {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .cal-cell dl {
+    display: grid;
+    grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+    gap: 5px 10px;
+    margin: 0 0 14px;
+    font-size: 12.5px;
+  }
+
+  .cal-cell dt {
+    color: var(--ink-3);
+  }
+
+  .cal-cell dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .cal-list,
+  .cal-findings {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cal-list li {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+
+  .cal-track + .cal-track {
+    margin-top: 14px;
+  }
+
+  .cal-track-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .cal-paths {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    max-height: 220px;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .cal-path {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .cal-more,
+  .cal-empty {
+    font-size: 12px;
+    color: var(--ink-3);
+    font-style: italic;
+  }
+
+  .cal-finding {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 5px 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 12px;
+  }
+
+  .cal-finding strong,
+  .cal-finding > span:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .finding-severity {
+    align-self: start;
+    border: 1px solid currentColor;
+    padding: 2px 5px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .cal-finding[data-severity="blocking"] .finding-severity {
+    color: var(--st-blocked);
+  }
+
+  .cal-finding[data-severity="warning"] .finding-severity {
+    color: var(--st-active);
+  }
+
+  .next-gate {
+    margin-top: 14px;
+    padding: 10px;
+    border: 1px solid var(--rule-strong);
+    background: var(--surface-2);
+  }
+
+  .next-gate span {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .next-gate strong {
+    overflow-wrap: anywhere;
   }
 
   /* ---------- module tables ---------- */
@@ -854,6 +1054,21 @@
     }
   }
 
+  @media (max-width: 760px) {
+    .cal-board {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .cal-column {
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .cal-column:last-child {
+      border-bottom: 0;
+    }
+  }
+
   @media (max-width: 560px) {
     .page {
       gap: 32px;
@@ -880,14 +1095,28 @@
         增量业务」分层看每一块的进度，并对照十四站主链与启动清单门禁。全部数字由仓库现场算出，页面不保存任何手工维护的副本。
       </p>
     </div>
+    <!--VOLATILE_META_START-->
     <dl class="mast-meta">
       <!--__META__-->
     </dl>
+    <!--VOLATILE_META_END-->
   </header>
 
   <div class="band" aria-label="关键计数">
     <!--__TILES__-->
   </div>
+
+  <section id="calibration" aria-labelledby="calibration-title">
+    <div class="sec-head">
+      <h2 id="calibration-title">当前交付薄片</h2>
+      <span class="sec-note">声明 → 现场 → 门禁</span>
+    </div>
+    <p class="lede">
+      从唯一 task brief 与当前 checkout 派生；其他 worktree、远端评审、PR 与 CI
+      未被本页观察，不以空白或绿色代替。
+    </p>
+    <!--__CALIBRATION__-->
+  </section>
 
   <section id="modules">
     <div class="sec-head">
