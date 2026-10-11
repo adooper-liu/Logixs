@@ -21,6 +21,11 @@ const ensureScenarioControlsOpen = async (page: Page) => {
 };
 
 const screenshot = async (page: Page, name: string) => {
+  if ((page.viewportSize()?.width ?? 0) >= 681) {
+    await page.locator(".app-content").evaluate((element) => {
+      element.scrollTop = 0;
+    });
+  }
   await expect(page).toHaveScreenshot(name, screenshotOptions);
 };
 
@@ -30,10 +35,18 @@ test("reference page preserves the standard region order at all three viewports"
   await gotoReference(page);
   await expectStandardRegions(page);
   const scenarioControls = page.locator(".reference-scenarios");
+  const scenarioSummary = scenarioControls.locator("summary");
+  const scenarioButtons = scenarioControls.locator(
+    ".reference-scenarios__controls",
+  );
   if ((page.viewportSize()?.width ?? 0) >= 681) {
     await expect(scenarioControls).toHaveAttribute("open", "");
+    await expect(scenarioSummary).toBeHidden();
+    await expect(scenarioButtons).toBeVisible();
   } else {
     await expect(scenarioControls).not.toHaveAttribute("open", "");
+    await expect(scenarioSummary).toBeVisible();
+    await expect(scenarioButtons).toBeHidden();
   }
   await expectNoWorkbenchOverflow(page);
   const evidence = await captureLayout(page);

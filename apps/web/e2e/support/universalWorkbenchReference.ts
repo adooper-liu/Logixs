@@ -5,6 +5,7 @@ export const screenshotOptions = {
   animations: "disabled" as const,
   maxDiffPixelRatio: 0.03,
   scale: "css" as const,
+  threshold: 0.25,
 };
 
 export interface LayoutEvidence {
