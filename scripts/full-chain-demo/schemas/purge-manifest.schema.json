@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "targetTenant",
+    "catalogVersion",
+    "catalogHash",
+    "schemaFingerprint",
+    "migrationFingerprint",
+    "postgres",
+    "minio",
+    "temporal",
+    "blockers",
+    "deletable",
+    "manifestHash",
+    "allowedProof",
+    "prohibitedProof"
+  ],
+  "properties": {
+    "manifestVersion": { "const": "full-chain-demo-purge-manifest.v1" },
+    "targetTenant": { "const": "demo-real-sample-20260921" },
+    "catalogVersion": { "type": "string" },
+    "catalogHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "schemaFingerprint": { "type": "string" },
+    "migrationFingerprint": { "type": "string" },
+    "postgres": { "$ref": "#/$defs/domain" },
+    "minio": { "$ref": "#/$defs/domain" },
+    "temporal": { "$ref": "#/$defs/domain" },
+    "blockers": { "$ref": "#/$defs/domain" },
+    "deletable": { "const": false },
+    "manifestHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "allowedProof": { "type": "array", "items": { "type": "string" } },
+    "prohibitedProof": { "type": "array", "items": { "type": "string" } },
+    "generatedAt": { "type": "string" },
+    "operator": { "type": "string" },
+    "traceId": { "type": "string" }
+  },
+  "$defs": {
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entries", "count", "candidateCount", "hash"],
+      "properties": {
+        "entries": { "type": "array" },
+        "count": { "type": "integer", "minimum": 0 },
+        "candidateCount": { "type": "integer", "minimum": 0 },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

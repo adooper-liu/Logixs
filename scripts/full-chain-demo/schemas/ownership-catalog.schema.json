@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalogVersion", "targetTenant", "models"],
+  "properties": {
+    "catalogVersion": { "const": "full-chain-demo-ownership.v1" },
+    "targetTenant": { "const": "demo-real-sample-20260921" },
+    "models": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["table", "rule"],
+        "properties": {
+          "table": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "rule": {
+            "enum": [
+              "preserve_global",
+              "direct_tenant",
+              "via_parent",
+              "via_logical_ref"
+            ]
+          },
+          "tenantField": { "const": "tenantId" },
+          "parentModel": { "type": "string" },
+          "foreignKey": { "type": "string" },
+          "parentKey": { "type": "string" },
+          "resolver": { "type": "string" },
+          "deleteRank": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

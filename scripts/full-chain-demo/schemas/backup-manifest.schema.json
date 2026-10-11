@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "targetTenant",
+    "sourceManifestHash",
+    "backupManifestHash",
+    "backupDirectory",
+    "postgres",
+    "minio",
+    "temporal",
+    "verified"
+  ],
+  "properties": {
+    "manifestVersion": { "const": "full-chain-demo-backup-manifest.v1" },
+    "targetTenant": { "const": "demo-real-sample-20260921" },
+    "sourceManifestHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "backupManifestHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "backupDirectory": { "type": "string", "minLength": 1 },
+    "postgres": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "size", "sha256"],
+      "properties": {
+        "file": { "type": "string" },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "minio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "hash"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "temporal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["freezeRequired"],
+      "properties": { "freezeRequired": { "type": "boolean" } }
+    },
+    "verified": { "type": "boolean" },
+    "status": { "enum": ["verified", "incomplete"] },
+    "errorCode": { "type": "string" },
+    "traceId": { "type": "string" },
+    "generatedAt": { "type": "string" }
+  }
+}
