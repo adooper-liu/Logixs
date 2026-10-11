@@ -166,6 +166,7 @@ export function loadProgressBoardData({
   root = repositoryRoot,
   now = () => new Date(),
   calibrationIdentity = {},
+  taskRecordSources,
   git = (args) =>
     execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim(),
 } = {}) {
@@ -187,7 +188,8 @@ export function loadProgressBoardData({
   );
 
   const taskRecords = normalizeTaskRecords(
-    loadTrackedTaskRecords({ root, git, readFile: readFileSync }),
+    taskRecordSources ??
+      loadTrackedTaskRecords({ root, git, readFile: readFileSync }),
   );
   const tasks = taskRecords.map((task) => {
     const phase = (task.id.match(/^p(\d+)-/) || [])[1];

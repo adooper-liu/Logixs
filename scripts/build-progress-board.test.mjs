@@ -210,17 +210,35 @@ test("board loader rejects invalid synthetic head and diff reads", () => {
     ["diff --name-status -z --cached --diff-filter=ACMRD", ""],
     ["diff --name-status -z --diff-filter=ACMRD", ""],
     ["ls-files --others --exclude-standard", ""],
-    [
-      "ls-files -z -- docs/planning/tasks/*.md",
-      "docs/planning/tasks/transparent-development-calibration-v1.md\0",
-    ],
   ]);
   const load = (failedCall) =>
     loadProgressBoardData({
+      taskRecordSources: [
+        {
+          path: "docs/planning/tasks/calibration.md",
+          source: `---
+status: coding
+branch: feat/calibration
+verification:
+owner: main
+writer: main
+risk: high
+dependsOn: []
+writeScopes:
+  - scripts/**
+exclusiveLocks: []
+sharedIntegrationScopes: []
+authorityRefs:
+  - AGENTS.md
+---
+# 任务：校准
+`,
+        },
+      ],
       calibrationIdentity: {
         base: "base123",
         head: "head456",
-        branch: "docs/transparent-development-calibration-v1",
+        branch: "feat/calibration",
       },
       git: (args, fallback = "") => {
         const key = args.join(" ");
