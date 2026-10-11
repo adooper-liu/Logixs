@@ -97,6 +97,20 @@ test("Vue edits reject ambiguous ownership", () => {
   );
 });
 
+test("UI gate rejects malformed active task metadata", () => {
+  const result = evaluateUiStructureGate({
+    filePath: "apps/web/src/views/Workbench.vue",
+    records: [
+      {
+        path: "docs/planning/tasks/ui.md",
+        source: "---\nstatus: coding\nwriteScopes:\n  nested: value\n---",
+      },
+    ],
+  });
+  assert.equal(result.allowed, false);
+  assert.match(result.reason, /TASK_PARSE_INVALID .*ui\.md:\d+/);
+});
+
 test("parser retains active status, scopes, and mandatory UI lists", () => {
   assert.deepEqual(parseUiTaskRecord(task()), {
     path: "docs/planning/tasks/ui.md",
@@ -107,5 +121,6 @@ test("parser retains active status, scopes, and mandatory UI lists", () => {
     uiProgressiveDisclosure: ["audit details"],
     uiForbidden: ["duplicate status"],
     uiViewportEvidence: ["1440x900", "1024x768", "390x844"],
+    parseErrors: [],
   });
 });

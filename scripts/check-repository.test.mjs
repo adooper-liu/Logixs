@@ -14,10 +14,12 @@ import { after, test } from "node:test";
 import { findArchitectureBoundaryViolations } from "./check-architecture-boundaries.mjs";
 import { isKnownEmptyDatabaseFailure } from "./migrate-deploy.mjs";
 import { analyzeControllerSources } from "./check-route-access-metadata.mjs";
+import { normalizeTaskRecord } from "./task-brief-state.mjs";
 import {
   extractMarkdownTargets,
   findAmbiguousContractPhaseReferences,
   checkWorkbenchCatalogSource,
+  calibrationErrors,
   inspectWorkbenchCatalogSource,
   inspectWorkbenchRouteSource,
   inspectWorkbenchRouterSource,
@@ -107,6 +109,28 @@ after(() => {
   temporaryDirectories.forEach((directory) =>
     rmSync(directory, { force: true, recursive: true }),
   );
+});
+
+test("repo check converts blocking calibration findings to errors", () => {
+  const errors = calibrationErrors({
+    findings: [
+      {
+        code: "TASK_CHANGED_PATH_OUT_OF_SCOPE",
+        severity: "blocking",
+        subject: "outside.txt",
+        evidence: ["outside.txt"],
+      },
+      {
+        code: "TASK_UNOWNED_UNTRACKED_PRESENT",
+        severity: "warning",
+        subject: "1 unowned untracked path",
+        evidence: [".tmp/evidence.json"],
+      },
+    ],
+  });
+  assert.deepEqual(errors, [
+    "TASK_CHANGED_PATH_OUT_OF_SCOPE outside.txt: outside.txt",
+  ]);
 });
 
 test("current workbench authorities use the approved 23-workbench baseline", () => {
@@ -893,6 +917,49 @@ uiViewportEvidence:${uiViewportEvidence === undefined ? "" : uiViewportEvidence.
 authorityRefs:
   - AGENTS.md
 ---`,
+});
+
+test("repository validation consumes the normalized task model", () => {
+  const record = taskRecord({
+    path: "calibration",
+    status: "coding",
+    writer: "main",
+    writeScopes: ["Scripts/Calibration/**"],
+    exclusiveLocks: ["task-brief-contract"],
+  });
+  const normalized = normalizeTaskRecord(record);
+  assert.equal(normalized.path, "calibration.md");
+  assert.deepEqual(normalized.writeScopes, ["Scripts/Calibration/**"]);
+  assert.deepEqual(validateTaskStatusRecords([record]), []);
+});
+
+test("active malformed frontmatter reports file and line", () => {
+  assert.match(
+    validateTaskStatusRecords([
+      {
+        path: "bad.md",
+        source: "---\nstatus: coding\nwriteScopes:\n  nested: value\n---",
+      },
+    ]).join("\n"),
+    /bad\.md:\d+: nested mappings are not supported/,
+  );
+});
+
+test("legacy done and blocked records are not retroactively failed", () => {
+  assert.deepEqual(
+    validateTaskStatusRecords([
+      {
+        path: "done.md",
+        source:
+          "---\nstatus: done\nverification: CI-1\nlegacy:\n  nested: value\n---",
+      },
+      {
+        path: "blocked.md",
+        source: "---\nstatus: blocked\nlegacy:\n  nested: value\n---",
+      },
+    ]),
+    [],
+  );
 });
 
 test("requires mandatory UI structure metadata for active Vue implementation briefs", () => {

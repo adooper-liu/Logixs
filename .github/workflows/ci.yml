@@ -110,8 +110,15 @@ jobs:
     needs: changes
     runs-on: windows-latest
     timeout-minutes: 15
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -119,6 +126,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm repo:check
+      - name: Calibrate task checkout
+        shell: pwsh
+        run: |
+          if ($env:EVENT_NAME -eq "pull_request") {
+            pnpm calibration:check -- --ci --base "$env:BASE_SHA" --head "$env:HEAD_SHA" --branch "$env:HEAD_BRANCH"
+          } else {
+            pnpm calibration:check
+          }
+      - run: pnpm board:check
       - run: pnpm format:check
       - name: Validate production code
         if: needs.changes.outputs.code == 'true'

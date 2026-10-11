@@ -1,6 +1,11 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  normalizeRepositoryPath,
+  normalizeTaskRecord,
+  scopeOwnsPath,
+} from "./task-brief-state.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const taskDirectory = resolve(repositoryRoot, "docs/planning/tasks");
@@ -13,98 +18,52 @@ const mandatoryUiFields = [
   "uiViewportEvidence",
 ];
 
-const normalizePath = (value) => value.replaceAll("\\", "/");
-
-function cleanScalar(value) {
-  const withoutComment = value.replace(/\s+#.*$/, "").trim();
-  if (
-    (withoutComment.startsWith('"') && withoutComment.endsWith('"')) ||
-    (withoutComment.startsWith("'") && withoutComment.endsWith("'"))
-  ) {
-    return withoutComment.slice(1, -1);
-  }
-  return withoutComment;
-}
-
-function parseInlineList(value) {
-  const inner = value.slice(1, -1).trim();
-  return inner ? inner.split(",").map(cleanScalar) : [];
-}
-
-function parseFrontmatter(source) {
-  const block = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
-  if (block === undefined) return null;
-
-  const result = {};
-  const lines = block.split(/\r?\n/);
-  for (let index = 0; index < lines.length; index += 1) {
-    const match = lines[index].match(/^([A-Za-z][A-Za-z0-9]*):(?:\s*(.*))?$/);
-    if (!match) continue;
-    const [, key, rawValue = ""] = match;
-    const value = cleanScalar(rawValue);
-    if (value.startsWith("[") && value.endsWith("]")) {
-      result[key] = parseInlineList(value);
-      continue;
-    }
-    if (!value) {
-      const items = [];
-      while (index + 1 < lines.length) {
-        const item = lines[index + 1].match(/^\s+-\s+(.+)$/);
-        if (!item) break;
-        items.push(cleanScalar(item[1]));
-        index += 1;
-      }
-      result[key] = items.length > 0 ? items : "";
-      continue;
-    }
-    result[key] = value;
-  }
-  return result;
-}
-
 export function parseUiTaskRecord(record) {
-  const metadata = parseFrontmatter(record.source) ?? {};
+  const task = normalizeTaskRecord(record);
   return {
-    path: normalizePath(record.path),
-    status: metadata.status,
-    writeScopes: metadata.writeScopes,
-    uiStructure: metadata.uiStructure,
-    uiMustStayVisible: metadata.uiMustStayVisible,
-    uiProgressiveDisclosure: metadata.uiProgressiveDisclosure,
-    uiForbidden: metadata.uiForbidden,
-    uiViewportEvidence: metadata.uiViewportEvidence,
+    path: task.path,
+    status: task.status,
+    writeScopes: task.frontmatter.writeScopes,
+    uiStructure: task.frontmatter.uiStructure,
+    uiMustStayVisible: task.frontmatter.uiMustStayVisible,
+    uiProgressiveDisclosure: task.frontmatter.uiProgressiveDisclosure,
+    uiForbidden: task.frontmatter.uiForbidden,
+    uiViewportEvidence: task.frontmatter.uiViewportEvidence,
+    parseErrors: task.parseErrors,
   };
 }
 
-function scopeOwnsPath(scope, filePath) {
-  const normalizedScope = normalizePath(scope).toLowerCase();
-  const normalizedFile = normalizePath(filePath).toLowerCase();
-  if (normalizedScope.endsWith("/**")) {
-    const prefix = normalizedScope.slice(0, -3).replace(/\/$/, "");
-    return normalizedFile === prefix || normalizedFile.startsWith(`${prefix}/`);
-  }
-  return normalizedFile === normalizedScope;
-}
-
 function isBusinessVue(filePath) {
-  const normalized = normalizePath(filePath).toLowerCase();
+  const normalized = normalizeRepositoryPath(filePath).toLowerCase();
   return normalized.startsWith("apps/web/src/") && normalized.endsWith(".vue");
 }
 
 export function evaluateUiStructureGate({ filePath, records }) {
-  const normalizedFile = normalizePath(filePath);
+  const normalizedFile = normalizeRepositoryPath(filePath);
   if (!isBusinessVue(normalizedFile)) return { allowed: true };
 
-  const owners = records
-    .map(parseUiTaskRecord)
-    .filter(
-      (record) =>
-        activeStatuses.has(record.status) &&
-        Array.isArray(record.writeScopes) &&
-        record.writeScopes.some((scope) =>
-          scopeOwnsPath(scope, normalizedFile),
-        ),
-    );
+  const parsed = records.map(parseUiTaskRecord);
+  const malformed = parsed.filter(
+    (record) =>
+      activeStatuses.has(record.status) && record.parseErrors.length > 0,
+  );
+  if (malformed.length > 0) {
+    return {
+      allowed: false,
+      reason: `UI edit blocked: ${malformed
+        .flatMap(({ parseErrors }) =>
+          parseErrors.map(({ code, path, line }) => `${code} ${path}:${line}`),
+        )
+        .join(", ")}`,
+    };
+  }
+
+  const owners = parsed.filter(
+    (record) =>
+      activeStatuses.has(record.status) &&
+      Array.isArray(record.writeScopes) &&
+      record.writeScopes.some((scope) => scopeOwnsPath(scope, normalizedFile)),
+  );
 
   if (owners.length === 0) {
     return {
@@ -139,7 +98,7 @@ function loadTaskRecords() {
     .map((entry) => {
       const absolutePath = resolve(taskDirectory, entry.name);
       return {
-        path: normalizePath(relative(repositoryRoot, absolutePath)),
+        path: normalizeRepositoryPath(relative(repositoryRoot, absolutePath)),
         source: readFileSync(absolutePath, "utf8"),
       };
     });
@@ -147,7 +106,7 @@ function loadTaskRecords() {
 
 function repositoryRelativeFilePath(filePath) {
   const absolutePath = resolve(repositoryRoot, filePath);
-  return normalizePath(relative(repositoryRoot, absolutePath));
+  return normalizeRepositoryPath(relative(repositoryRoot, absolutePath));
 }
 
 async function main() {
