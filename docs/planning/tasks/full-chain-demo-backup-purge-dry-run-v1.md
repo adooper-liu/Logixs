@@ -160,6 +160,30 @@ B2R1 补交回仍不能接受。主代理现场验证：Docker engine 与三域�
 
 继续沿用 B2R1 写入/禁止范围。真实 demo 只读 inventory 可由主代理最终运行；实现器的 destructive-looking integration 只能在本次创建的隔离资源内。交回前不得创建提交。
 
+## B2R1F2：真实基础设施验收与 manifest 语义收口
+
+B2R1F1 交回仍不能接受。主代理现场确认 Docker 与三域服务健康；精确 unit 仍为 **2 failed / 9 passed**，两个 CLI 测试超时；所谓 4 个 integration 用例总耗时约 13ms，源码只调用 fake query/callback/临时文本文件，不创建或访问真实 PostgreSQL database、MinIO prefix 或 Temporal。必须关闭：
+
+1. `B2R1F2-001`：CLI 测试不得依赖可能为空的 `npm_execpath` 启动子进程。所有 CLI 导出 `run(argv, deps)`，模块入口只负责调用；unit 以 injected client factories 证明 `--execute`、错误 tenant、缺参数在 factory 前拒绝，子进程测试另设明确超时并使用可解析的 tsx CLI。
+2. `B2R1F2-002`：四个 integration 必须真实连接本地基础设施。`postgres-inventory` 和 `postgres-dry-run` 创建唯一临时数据库、部署迁移、插入目标/其他租户及间接链；`backup-create` 实际 `pg_dump --format=custom`、`pg_restore --list`、隔离 MinIO prefix copy/head/checksum、Temporal list/describe；`restore-rehearsal` 实际创建新数据库并 `pg_restore` 后核对 counts/hashes，再清理本次资源。禁止 callback-only 测试继续以 `.integration.test.ts` 命名。
+3. `B2R1F2-003`：catalog 104 个候选全部 `deleteRank=100`。根据 Prisma DMMF relation/FK 计算或显式维护 child-first DAG；同 rank 仅用于互不依赖表，并按稳定 table/model 排序。真实 catalog 测试必须断言每条 parent edge 都满足 child 在 parent 前，不只断“不抛错”。
+4. `B2R1F2-004`：间接归属不能只跟一个 parent 链。`NodeEventApplication` 必须同时核对 NodeInstance/Flow/Shipment 与 CanonicalEvent tenant 一致；逻辑引用和裸 ID 缺失/跨租户/多归属必须 blocker。若 catalog 不使用 `via_logical_ref`，必须证明 13 个间接 model 都能由已声明 `via_parent` 规则完整表达，并逐 model 有测试。
+5. `B2R1F2-005`：preserved global entry 当前 `primaryKeyHash=hash(count)`，只能发现数量变化，不能发现内容替换。九类保留表 manifest 必须含稳定主键/权威字段投影 hash；`_prisma_migrations` 单独 fingerprint。测试同 count 不同内容必须 stale。
+6. `B2R1F2-006`：manifest domain `count` 当前是 entry 数，writer receipt 却称 `postgresCandidateCount`。manifest 增加或明确 `candidateCount`，receipt 报候选 row/object/workflow 数，不得把表数冒充候选数；schema/contracts/tamper tests 同步。
+7. `B2R1F2-007`：manifest writer 使用普通 `JSON.stringify`。改用 canonical JSON 写 manifest/domain 文件；existing output、write/rename failure、staging cleanup、同状态字节稳定全部测试。
+8. `B2R1F2-008`：manifest CLI 必须用真实 schema/migration fingerprint，禁止 `not-provided`；本地主代理最终会运行真实三域 probe。CLI 需支持 injected deps 便于 unit，同时生产入口连接真实 PostgreSQL/S3/Temporal read-only adapters。
+9. `B2R1F2-009`：dry-run 必须证明同一 session transaction。Prisma interactive transaction 可用，但 integration 必须记录 backend PID/txid，证明所有 DELETE 与强制 rollback 同连接，异常后源 row count/hash 完全不变；为多表计划设置显式 timeout。`DELETE ... ANY($1)` 必须在真实 PostgreSQL 运行验证。
+10. `B2R1F2-010`：dry-run stale 重算必须通过 `composePurgeManifest()` 形成完整 count/hash/fingerprint/blocker/manifestHash，并使用 `compareManifestState()`；unit 逐域 mutation，integration 在 manifest 后插入/改写一条隔离数据稳定 `MANIFEST_STALE`。
+11. `B2R1F2-011`：backup CLI 必须把验证后的 backup manifest 原子写到外部 output；失败写 incomplete receipt 并清理由本次创建的 dump/目标 prefix。MinIO target key 必须安全 join prefix/key；copy 后验证 bytes/checksum；失败清理只删本次 prefix，绝不删 source。
+12. `B2R1F2-012`：restore CLI 当前只检查 `manifest.verified`，未验证恢复内容。隔离 restore 后必须核对 PostgreSQL manifest counts/hashes、九类 preserved globals、target/other tenant；MinIO copy bytes/checksum；Temporal inventory/freeze假设；source before/after fingerprint。任一失败不得返回 complete。
+13. `B2R1F2-013`：backup verified 状态必须由四类必需证据产生且写入受 schema 校验的 manifest；不得因为 callbacks 被调用就 verified。测试 missing callback、empty dump、copy 部分失败、checksum mismatch、Temporal drift、source drift 都 incomplete。
+14. `B2R1F2-014`：专项 unit 命令必须实际报告 8 个文件、11+ tests 全绿；integration 报告必须列出 4 个真实文件的测试名、创建/清理的数据库/prefix/Temporal只读证据和各自耗时。全量 API 287 files 不能替代 focused 结果。
+15. `B2R1F2-015`：runbook 补充实际命令、输入/输出、隔离目标命名、失败清理、证据字段和明确 not-run 项；仍不得包含凭据、绝对路径、key、ID 或业务值。
+
+已关闭：Seed verifier 在主代理本地真实临时数据库运行通过，标准/legacy seed 幂等与租户隔离成立；保留当前实现并加 integration 记录，不重复改语义。
+
+沿用前述写入/禁止范围。真实 demo 只允许 read-only manifest probe；任何 backup/copy/restore/delete rehearsal 仅能作用于本次创建的隔离资源。交回前不得创建提交。
+
 ## 验收
 
 - [ ] `db:seed` 仅参考数据，重复执行幂等且 tenant-owned 表不变
@@ -198,3 +222,4 @@ Brief 2 代码 `done` 不代表真实 demo 已备份或可删除。以下外部�
 | 2026-10-11 | design | Claude Code | —      | 负责人批准 Brief 2 纯运维脚本方案：Seed 分轨、完整 ownership catalog、三域 manifest、rollback-only dry-run 与隔离恢复演练；无 execute 删除入口                                                                                             |
 | 2026-10-11 | fix    | Claude Code | —      | B2a～B2g 初交回 focused tests 通过，但 Docker 现场健康且 integration 全为 skip 占位；间接归属、真实三域 adapters、rollback dry-run、backup/restore CLI 和隔离演练未实现，接受 B2-BLOCK-001～012，进入 B2R1                                 |
 | 2026-10-11 | fix    | Claude Code | —      | B2R1 补交回后 Docker integration 仍为 callback-only，8 个精确 unit 文件实际 2 failed/9 passed（两个 CLI 超时）；间接逻辑归属、同连接 rollback、真实三域 manifest、pg_dump/restore、MinIO copy 和 Temporal/source 不变证据仍缺，进入 B2R1F1 |
+| 2026-10-11 | fix    | Claude Code | —      | B2R1F1 仍报告 4/4 integration，但源码与 13ms 耗时证明均为 fake/callback；精确 unit 仍 2 failed/9 passed。delete DAG、保留内容 hash、候选计数、canonical writer、真实 rollback/backup/restore 和内容核验未完成，进入 B2R1F2                 |
