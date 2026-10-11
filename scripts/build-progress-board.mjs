@@ -164,6 +164,7 @@ const repositoryUrl = (remote) => {
 export function loadProgressBoardData({
   root = repositoryRoot,
   now = () => new Date(),
+  calibrationIdentity = {},
   git = (args, fallback = "") => {
     try {
       return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
@@ -345,6 +346,7 @@ export function loadProgressBoardData({
   let calibration;
   try {
     const observation = observeCheckout({
+      ...calibrationIdentity,
       git: (args) => git(args),
     });
     const resolution = resolveCurrentTask({
@@ -428,6 +430,12 @@ export function renderCalibrationPanel(projection) {
   }
 
   const { task, declared, observed, derived } = projection;
+  const checkoutWarnings = derived.findings.filter(
+    ({ code }) => code === "TASK_UNOWNED_UNTRACKED_PRESENT",
+  );
+  const stableFindings = derived.findings.filter(
+    ({ code }) => code !== "TASK_UNOWNED_UNTRACKED_PRESENT",
+  );
   return `<div class="cal-board panel" data-state="observed">
     <div class="cal-column">
       <section class="cal-cell" data-fact-kind="declared">${factTag("declared")}<h3>任务与声明</h3><p class="cal-title">${esc(task.title)}</p><dl><dt>brief</dt><dd><code>${esc(task.path)}</code></dd><dt>状态 / 风险</dt><dd>${esc(declared.status)} / ${esc(declared.risk || "unknown")}</dd><dt>声明分支</dt><dd><code>${esc(declared.branch || "unknown")}</code></dd></dl><h4>声明写域</h4>${factList(declared.writeScopes)}</section>
@@ -435,11 +443,11 @@ export function renderCalibrationPanel(projection) {
     </div>
     <div class="cal-column">
       <section class="cal-cell" data-fact-kind="computed">${factTag("computed")}<h3>Checkout 与范围</h3>
-        <!--VOLATILE_CALIBRATION_START--><dl><dt>实际分支</dt><dd><code>${esc(observed.actualBranch || "detached")}</code></dd><dt>base</dt><dd><code>${esc(observed.baseSha ?? "unknown")}</code> (${esc(observed.baseSource)})</dd><dt>head</dt><dd><code>${esc(observed.headSha ?? "unknown")}</code></dd></dl>${pathTrack("task-owned tracked", derived.ownedChangedPaths)}${pathTrack("out-of-scope tracked", derived.blockingOutOfScopePaths)}${pathTrack("task-owned untracked", derived.ownedUntrackedPaths)}${pathTrack("unowned untracked", derived.unownedUntrackedPaths)}<!--VOLATILE_CALIBRATION_END-->
+        <!--VOLATILE_CALIBRATION_START--><dl><dt>实际分支</dt><dd><code>${esc(observed.actualBranch || "detached")}</code></dd><dt>base</dt><dd><code>${esc(observed.baseSha ?? "unknown")}</code> (${esc(observed.baseSource)})</dd><dt>head</dt><dd><code>${esc(observed.headSha ?? "unknown")}</code></dd></dl>${pathTrack("task-owned tracked", derived.ownedChangedPaths)}${pathTrack("out-of-scope tracked", derived.blockingOutOfScopePaths)}${pathTrack("task-owned untracked", derived.ownedUntrackedPaths)}${pathTrack("unowned untracked", derived.unownedUntrackedPaths)}${checkoutWarnings.length ? `<h4>Checkout warnings</h4><ul class="cal-findings">${checkoutWarnings.map(findingItem).join("")}</ul>` : ""}<!--VOLATILE_CALIBRATION_END-->
       </section>
     </div>
     <div class="cal-column">
-      <section class="cal-cell" data-fact-kind="computed">${factTag("computed")}<h3>Finding 与下一门禁</h3><ul class="cal-findings">${derived.findings.length ? derived.findings.map(findingItem).join("") : '<li class="cal-empty">no findings</li>'}</ul><div class="next-gate"><span>next gate</span><strong>${esc(derived.nextGate)}</strong></div></section>
+      <section class="cal-cell" data-fact-kind="computed">${factTag("computed")}<h3>Finding 与下一门禁</h3><ul class="cal-findings">${stableFindings.length ? stableFindings.map(findingItem).join("") : '<li class="cal-empty">no blocking findings</li>'}</ul><div class="next-gate"><span>next gate</span><strong>${esc(derived.nextGate)}</strong></div></section>
       <section class="cal-cell" data-fact-kind="declared">${factTag("declared")}<h3>已声明验证</h3><p>${esc(declared.verification || "none declared")}</p></section>
       <section class="cal-cell" data-fact-kind="unknown">${factTag("unknown")}<h3>未观察集成证据</h3>${unobservedIntegration(projection)}</section>
       <section class="cal-cell" data-fact-kind="editorial">${factTag("editorial")}<h3>解释边界</h3><p>绿色校准不等于业务闭环、部署完成或负责人验收。</p></section>
@@ -707,10 +715,16 @@ export async function runBoardCommand(argv, dependencies) {
   };
 }
 
+const calibrationIdentityFromEnvironment = () => {
+  const { BASE_SHA: base, HEAD_SHA: head, HEAD_BRANCH: branch } = process.env;
+  return base && head && branch ? { base, head, branch } : {};
+};
+
 const defaultDependencies = () => ({
   load: ({ deterministic }) =>
-    loadProgressBoardData(
-      deterministic
+    loadProgressBoardData({
+      calibrationIdentity: calibrationIdentityFromEnvironment(),
+      ...(deterministic
         ? {
             now: () => new Date("2000-01-01T00:00:00.000Z"),
             git: (args, fallback = "") => {
@@ -726,8 +740,8 @@ const defaultDependencies = () => ({
                 : fallback;
             },
           }
-        : {},
-    ),
+        : {}),
+    }),
   readTemplate: () => readFileSync(templatePath, "utf8"),
   readOutput: () => readFileSync(outputPath, "utf8"),
   writeOutput: (html) => writeFileSync(outputPath, html, "utf8"),

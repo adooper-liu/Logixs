@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+  loadProgressBoardData,
   normalizeCheckableBoard,
   renderCalibrationPanel,
   renderProgressBoard,
@@ -161,6 +162,55 @@ const observedProjection = {
   otherWorktrees: "not-observed",
   remoteIntegration: "not-observed",
 };
+
+test("board loader observes an explicit synthetic PR identity", () => {
+  const calls = [];
+  const output = new Map([
+    ["rev-parse --short HEAD", "head456"],
+    ["rev-parse --abbrev-ref HEAD", "HEAD"],
+    ["status --porcelain", ""],
+    ["remote get-url origin", ""],
+    ["rev-parse --verify base123", "base123"],
+    ["rev-parse --verify head456", "head456"],
+    ["diff --name-only --diff-filter=ACMRD base123...head456", ""],
+    ["diff --name-only --cached --diff-filter=ACMRD", ""],
+    ["diff --name-only --diff-filter=ACMRD", ""],
+    ["ls-files --others --exclude-standard", ""],
+  ]);
+
+  const data = loadProgressBoardData({
+    calibrationIdentity: {
+      base: "base123",
+      head: "head456",
+      branch: "feat/calibration",
+    },
+    git: (args, fallback = "") => {
+      const key = args.join(" ");
+      calls.push(key);
+      return output.get(key) ?? fallback;
+    },
+  });
+
+  assert.equal(data.calibration.state, "not-observed");
+  assert.equal(data.calibration.reason, "TASK_CURRENT_NOT_FOUND");
+  assert.ok(calls.includes("rev-parse --verify base123"));
+  assert.ok(calls.includes("rev-parse --verify head456"));
+  assert.ok(!calls.includes("branch --show-current"));
+});
+
+test("check normalization ignores only the unowned-untracked warning", () => {
+  const html = renderCalibrationPanel(observedProjection);
+  assert.equal(
+    normalizeCheckableBoard(html),
+    normalizeCheckableBoard(html.replace("55 paths", "0 paths")),
+  );
+  assert.notEqual(
+    normalizeCheckableBoard(html),
+    normalizeCheckableBoard(
+      html.replace("TASK_CHANGED_PATH_OUT_OF_SCOPE", "TASK_BRANCH_MISMATCH"),
+    ),
+  );
+});
 
 test("calibration panel keeps the declared to observed to gate causal order", () => {
   const html = renderCalibrationPanel(observedProjection);
