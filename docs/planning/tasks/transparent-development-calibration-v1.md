@@ -21,6 +21,7 @@ writeScopes:
   - scripts/check-ui-structure-gate.test.mjs
   - scripts/build-progress-board.mjs
   - scripts/build-progress-board.test.mjs
+  - scripts/check-ci-workflow.test.mjs
   - scripts/progress-board.template.html
   - docs/planning/progress-board.html
   - package.json
