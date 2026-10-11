@@ -101,15 +101,20 @@ const isCompositionRoot = (path) => COMPOSITION_ROOTS.has(path);
 const isGeneratedPrismaClient = (resolved) =>
   /(^|\/)generated\/prisma(\/|$)/.test(normalizePath(resolved));
 
+const isFullChainDemoMaintenanceTool = (path) =>
+  path.startsWith("apps/api/src/tools/full-chain-demo/");
+
 const isPrismaAllowedImporter = (path) =>
   path.startsWith("apps/api/src/prisma/") ||
   path.startsWith("apps/api/src/health/") ||
-  hasPathSegment(path, "infrastructure");
+  hasPathSegment(path, "infrastructure") ||
+  isFullChainDemoMaintenanceTool(path);
 
 const isTemporalAllowedImporter = (path) =>
   path.startsWith("apps/api/src/modules/workflow/") ||
   path.startsWith("workers/business-worker/") ||
-  path.startsWith("workers/ai-worker/");
+  path.startsWith("workers/ai-worker/") ||
+  isFullChainDemoMaintenanceTool(path);
 
 const isAiSurface = (path) =>
   path.startsWith("apps/ai-service/") || path.startsWith("workers/ai-worker/");
