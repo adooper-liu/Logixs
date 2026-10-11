@@ -247,6 +247,15 @@ test("the same data and template render identical bytes", () => {
   assert.equal(renderFixture(), renderFixture());
 });
 
+test("check normalization ignores commit-only links and snapshot metadata", () => {
+  const before = renderFixture();
+  const after = renderProgressBoard(
+    { ...fixture, commit: "def5678" },
+    { template: BOARD_TEMPLATE },
+  );
+  assert.equal(normalizeCheckableBoard(before), normalizeCheckableBoard(after));
+});
+
 test("check normalization ignores only named volatile blocks", () => {
   const html = renderFixture();
   const changedMeta = html.replace("abc1234", "def5678");

@@ -483,7 +483,7 @@ export function renderProgressBoard(data, { template }) {
   const maxLines = Math.max(1, ...modules.map((module) => module.lines));
   const blame = (relativePath) => {
     if (!repoUrl) return `<span class="mono">${esc(relativePath)}</span>`;
-    return `<a href="${repoUrl}/blob/${commit}/${relativePath}">${esc(relativePath)}</a>`;
+    return `<a href="${repoUrl}/blob/HEAD/${relativePath}">${esc(relativePath)}</a>`;
   };
 
   const tiles = [
@@ -640,7 +640,7 @@ export function renderProgressBoard(data, { template }) {
     .replace(
       "<!--__FOOTER_NOTE__-->",
       () =>
-        `本页由 ${blame("scripts/build-progress-board.mjs")} 从仓库生成，快照取自 <span class="mono">${esc(commit)}</span>。frontmatter 变了要重跑生成再发布，页面本身不会自己去读仓库。`,
+        `本页由 ${blame("scripts/build-progress-board.mjs")} 从仓库生成，快照取自 <!--VOLATILE_COMMIT_START--><span class="mono">${esc(commit)}</span><!--VOLATILE_COMMIT_END-->。frontmatter 变了要重跑生成再发布，页面本身不会自己去读仓库。`,
     );
 
   for (const placeholder of html.match(/<!--__[A-Z_]+__-->/g) || []) {
@@ -664,7 +664,7 @@ const normalizeVolatileBlock = (html, name) => {
 };
 
 export function normalizeCheckableBoard(html) {
-  return ["META", "CALIBRATION"].reduce(normalizeVolatileBlock, html);
+  return ["META", "CALIBRATION", "COMMIT"].reduce(normalizeVolatileBlock, html);
 }
 
 const parseCommand = (argv) => {
