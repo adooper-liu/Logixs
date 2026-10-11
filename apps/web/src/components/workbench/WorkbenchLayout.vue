@@ -532,6 +532,7 @@ watch(
 
   .workbench-layout--stacked-responsive .workbench-layout__workspace {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
   }
 
