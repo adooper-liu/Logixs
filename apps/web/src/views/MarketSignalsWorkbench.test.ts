@@ -709,7 +709,7 @@ describe("MarketSignalsWorkbench", () => {
     expect(
       getMarketSignal.mock.calls.filter(([id]) => id === deepId),
     ).toHaveLength(1);
-    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).toContain(
+    expect(wrapper.get('[aria-label="事实、缺口与推进任务"]').text()).toContain(
       "第二页上的观察信号",
     );
     expect(tab(wrapper, "继续观察").attributes("aria-selected")).toBe("true");
@@ -1167,7 +1167,7 @@ describe("MarketSignalsWorkbench", () => {
     ]);
     const wrapper = await mountPage(`?signalId=${signalOneId}`);
 
-    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).toContain(
+    expect(wrapper.get('[aria-label="事实、缺口与推进任务"]').text()).toContain(
       handedOffTitle,
     );
 
@@ -1178,21 +1178,21 @@ describe("MarketSignalsWorkbench", () => {
     await voidTab!.trigger("click");
     await flushPromises();
 
-    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).not.toContain(
-      handedOffTitle,
-    );
-    expect(wrapper.get('[aria-label="信号事实与依据"]').text()).toContain(
+    expect(
+      wrapper.get('[aria-label="事实、缺口与推进任务"]').text(),
+    ).not.toContain(handedOffTitle);
+    expect(wrapper.get('[aria-label="事实、缺口与推进任务"]').text()).toContain(
       "请从左侧当前分组选择一条信号。",
     );
-    expect(wrapper.get('[aria-label="信号处理动作"]').text()).toContain(
+    expect(wrapper.get('[aria-label="当前事项操作上下文"]').text()).toContain(
       "请从左侧当前分组选择一条信号后再判断去向。",
     );
-    expect(wrapper.get('[aria-label="信号处理动作"]').text()).not.toContain(
-      "给这条信号一个去向",
-    );
+    expect(
+      wrapper.get('[aria-label="当前事项操作上下文"]').text(),
+    ).not.toContain("给这条信号一个去向");
   });
 
-  it("treats voided signals as a closed page mode without supplement CTAs", async () => {
+  it("keeps responsibility and a read-only context pane for voided signals", async () => {
     signals = [
       marketSignal({
         signalId: signalOneId,
@@ -1215,16 +1215,25 @@ describe("MarketSignalsWorkbench", () => {
     ]);
     const wrapper = await mountPage(`?signalId=${signalOneId}`);
 
-    expect(wrapper.get('[aria-label="信号关闭结论"]').text()).toContain(
+    expect(wrapper.get('[aria-label="当前结论与办理缺口"]').text()).toContain(
       "已作废关闭",
     );
-    expect(wrapper.get('[aria-label="信号关闭结论"]').text()).toContain("udu");
+    expect(wrapper.get('[aria-label="当前结论与办理缺口"]').text()).toContain(
+      "udu",
+    );
     expect(wrapper.get(".closed-gap-summary").text()).toContain(
       "关闭时 5 项未补齐",
     );
     expect(wrapper.find('button[aria-label^="补充"]').exists()).toBe(false);
     expect(wrapper.find(".gap-strip").exists()).toBe(false);
-    expect(wrapper.find('[aria-label="信号处理动作"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="岗位、对象与责任上下文"]').exists()).toBe(
+      true,
+    );
+    expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
+    const context = wrapper.get('[aria-label="当前事项操作上下文"]');
+    expect(context.text()).toContain("已作废关闭");
+    expect(context.find("input, textarea, select").exists()).toBe(false);
+    expect(context.text()).not.toContain("提交判断");
     expect(wrapper.get(".queue-item--closed").text()).toContain(
       "关闭时未补 5 项",
     );

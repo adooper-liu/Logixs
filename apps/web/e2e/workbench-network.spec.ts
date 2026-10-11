@@ -1283,24 +1283,66 @@ test("market validation tabs move real keyboard focus", async ({ page }) => {
   await expect(tabs.first()).toBeFocused();
 });
 
-test("market validation archived mode stays read-only", async ({ page }) => {
+test("market workbench keeps shared regions in working state", async ({
+  page,
+}, testInfo) => {
+  await mockMarketOpportunityApis(page);
+  await page.goto(`/workspaces/market-signals?signalId=${firstSignalId}`);
+
+  await expect(
+    page.getByRole("region", { name: "岗位、对象与责任上下文" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "当前结论与办理缺口" }),
+  ).toContainText("办理中");
+  await expect(page.locator("[data-workbench-pane]")).toHaveCount(3);
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.getByRole("button", { name: "编辑", exact: true }).click();
+    await expect(
+      page.locator('[data-workbench-pane="context"]'),
+    ).toHaveAttribute("data-mobile-active", "true");
+  }
+  const path = testInfo.outputPath("market-working.png");
+  await page.screenshot({ path });
+  await testInfo.attach("market-working", { path, contentType: "image/png" });
+});
+
+test("market validation archived mode stays read-only", async ({
+  page,
+}, testInfo) => {
   await mockMarketOpportunityApis(page);
   await page.goto(`/workspaces/market-signals?signalId=${archivedSignalId}`);
 
   await expect(
-    page.getByRole("region", { name: "信号关闭结论" }),
+    page.getByRole("region", { name: "当前结论与办理缺口" }),
   ).toContainText("已归档关闭");
   await expect(page.getByText("关闭时 3 项未补齐")).toBeVisible();
-  await expect(page.getByRole("region", { name: "信号处理动作" })).toHaveCount(
-    0,
-  );
-  await expect(page.locator(".gap-action")).toHaveCount(0);
-  await expect(page.locator(".decision-panel")).toHaveCount(0);
   await expect(
-    page.locator(
-      '.workbench-pane--main input, .workbench-pane--main textarea, .workbench-pane--main select, .workbench-pane--main [role="radio"]',
-    ),
+    page.getByRole("region", { name: "岗位、对象与责任上下文" }),
+  ).toBeVisible();
+  const context = page.getByRole("region", { name: "当前事项操作上下文" });
+  await expect(context).toHaveCount(1);
+  await expect(context).toContainText("已归档关闭");
+  await expect(context.locator("input, textarea, select")).toHaveCount(0);
+  await expect(
+    context.getByRole("button", { name: /提交|确认|交给选品/ }),
   ).toHaveCount(0);
+  await expect(page.locator(".gap-action")).toHaveCount(0);
+  await expect(page.locator("[data-workbench-pane]")).toHaveCount(3);
+  await expect(
+    page
+      .getByRole("region", { name: "事实、缺口与推进任务" })
+      .locator('input, textarea, select, [role="radio"]'),
+  ).toHaveCount(0);
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.getByRole("button", { name: "编辑", exact: true }).click();
+    await expect(
+      page.locator('[data-workbench-pane="context"]'),
+    ).toHaveAttribute("data-mobile-active", "true");
+  }
+  const path = testInfo.outputPath("market-archived.png");
+  await page.screenshot({ path });
+  await testInfo.attach("market-archived", { path, contentType: "image/png" });
 });
 
 test("the workbench network stays within the viewport", async ({ page }) => {

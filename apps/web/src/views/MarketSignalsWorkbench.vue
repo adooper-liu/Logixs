@@ -1,12 +1,6 @@
 <script setup lang="ts">
-import {
-  AlertCircle,
-  BriefcaseBusiness,
-  LoaderCircle,
-  RefreshCw,
-  UserRound,
-} from "@lucide/vue";
-import { computed, shallowRef } from "vue";
+import { AlertCircle, LoaderCircle, RefreshCw } from "@lucide/vue";
+import { computed, ref, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import MarketSignalActiveValidation from "../components/market-signals/MarketSignalActiveValidation.vue";
 import MarketSignalCreatePanel from "../components/market-signals/MarketSignalCreatePanel.vue";
@@ -15,7 +9,11 @@ import MarketSignalEvidencePanel from "../components/market-signals/MarketSignal
 import MarketSignalOperationReceipt from "../components/market-signals/MarketSignalOperationReceipt.vue";
 import MarketSignalQueue from "../components/market-signals/MarketSignalQueue.vue";
 import MarketSelectionFeedback from "../components/market-signals/MarketSelectionFeedback.vue";
+import WorkbenchDecisionStrip from "../components/workbench/WorkbenchDecisionStrip.vue";
+import WorkbenchLayout from "../components/workbench/WorkbenchLayout.vue";
 import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
+import WorkbenchPane from "../components/workbench/WorkbenchPane.vue";
+import WorkbenchResponsibilityBand from "../components/workbench/WorkbenchResponsibilityBand.vue";
 import { useMarketSignalWorkbench } from "../composables/useMarketSignalWorkbench";
 import { useAuthSession } from "../auth/useAuthSession";
 import type { ManualMarketSignalDraft } from "../data/marketSignalScenarios";
@@ -24,6 +22,9 @@ const route = useRoute();
 const router = useRouter();
 const { actorId } = useAuthSession();
 const showCreatePanel = shallowRef(false);
+const leftCollapsed = ref(false);
+const rightCollapsed = ref(false);
+const mobileScreen = ref<"queue" | "detail" | "context">("queue");
 
 const requestedSignalId = computed(() => String(route.query.signalId ?? ""));
 
@@ -105,6 +106,36 @@ const closedLabel = computed(() => {
   return "";
 });
 
+const responsibilityItems = computed(() => [
+  {
+    label: "当前对象",
+    value: selectedSignal.value?.title ?? null,
+    state: selectedSignal.value ? ("known" as const) : ("unknown" as const),
+  },
+  { label: "本次结果", value: "判断信号去向", state: "known" as const },
+  {
+    label: "当前责任",
+    value:
+      selectedSignal.value?.owner === "经营与市场团队"
+        ? "经营与市场负责人"
+        : selectedSignal.value?.owner || "经营与市场负责人",
+    state: "known" as const,
+  },
+  {
+    label: "下一责任",
+    value: selectedSignal.value?.responsibility?.responsibleTeamCode ?? null,
+    state: selectedSignal.value?.responsibility?.responsibleTeamCode
+      ? ("known" as const)
+      : ("unknown" as const),
+  },
+]);
+const decisionConclusion = computed(() => {
+  if (!selectedSignal.value) return "等待选择信号";
+  if (isClosed.value) return `${closedLabel.value} · 只读回看`;
+  if (isReturnRequest.value) return "选品请求退回 · 等待接回";
+  return "办理中 · 判断信号去向";
+});
+
 async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
   const created = await registerSignal(draft);
   if (created) showCreatePanel.value = false;
@@ -112,158 +143,172 @@ async function createSignal(draft: ManualMarketSignalDraft): Promise<void> {
 </script>
 
 <template>
-  <main
-    class="market-workbench page-frame"
-    :class="{ 'market-workbench--closed': isClosed }"
-  >
-    <WorkbenchPageHeader stage-code="market_signals" eyebrow="经营岗位工作台" />
-
-    <section v-if="error" class="operation-error" role="alert">
-      <AlertCircle :size="17" aria-hidden="true" />
-      <span>{{ error }}</span>
-      <button type="button" @click="loadSignals">
-        <RefreshCw :size="15" aria-hidden="true" />重新加载
-      </button>
-    </section>
-    <section v-else-if="takebackReceipt" class="takeback-receipt" role="status">
-      {{ takebackReceipt }}
-    </section>
-
-    <section v-else-if="loading" class="loading-state" role="status">
-      <LoaderCircle :size="17" aria-hidden="true" />正在读取经营信号
-    </section>
-
-    <section
-      v-if="selectedSignal && isClosed"
-      class="conclusion-strip"
-      aria-label="信号关闭结论"
+  <main class="market-workbench page-frame">
+    <WorkbenchLayout
+      v-model:left-collapsed="leftCollapsed"
+      v-model:right-collapsed="rightCollapsed"
+      v-model:mobile-screen="mobileScreen"
+      left-rail-label="经营信号队列"
+      right-rail-label="信号操作上下文"
+      :left-rail-summary="`${queueItems.length} 个信号`"
+      :right-rail-summary="isClosed ? '只读' : '可办理'"
     >
-      <div>
-        <small>结论</small>
-        <h2>
-          信号 {{ selectedSignal.title }}
-          <span>· {{ closedLabel }}</span>
-        </h2>
-        <p>{{ selectedSignal.owner }} · 只读回看 · 本片不支持重开</p>
-      </div>
-      <p class="conclusion-strip__action" role="status">
-        关闭态无待办；不可补录、不可重开。
-      </p>
-    </section>
-
-    <section
-      v-else
-      class="work-context"
-      :class="{ 'work-context--quiet': selectedSignal }"
-      aria-label="当前岗位与处理目标"
-    >
-      <span class="context-icon"
-        ><BriefcaseBusiness :size="18" aria-hidden="true"
-      /></span>
-      <span><small>谁在工作</small><b>经营与市场负责人</b></span>
-      <span><small>本次结果</small><b>判断信号去向</b></span>
-      <span class="current-owner">
-        <UserRound :size="16" aria-hidden="true" />
-        <span
-          ><small>当前责任</small
-          ><b>{{ selectedSignal?.owner || "经营与市场团队" }}</b></span
-        >
-      </span>
-    </section>
-
-    <MarketSignalCreatePanel
-      v-if="showCreatePanel"
-      @create="createSignal"
-      @cancel="showCreatePanel = false"
-    />
-
-    <MarketSignalOperationReceipt
-      v-if="receipt"
-      :receipt="receipt"
-      @dismiss="clearReceipt"
-    />
-
-    <div class="workbench-grid" :class="{ 'workbench-grid--closed': isClosed }">
-      <section
-        class="workbench-pane workbench-pane--queue"
-        aria-label="待处理信号"
-      >
-        <MarketSignalQueue
-          :items="queueItems"
-          :selected-id="selectedSignal?.id ?? ''"
-          :counts="queueCounts"
-          :has-more="hasMore"
-          :loading-more="queueLoadingMore"
-          :group-errors="queueGroupErrors"
-          @select="selectSignal"
-          @clear="clearSignalSelection"
-          @create="showCreatePanel = true"
-          @load-more="loadMore"
-          @retry-group="retryGroup"
+      <template #header>
+        <WorkbenchPageHeader
+          stage-code="market_signals"
+          eyebrow="经营岗位工作台"
         />
-      </section>
-      <section
-        class="workbench-pane workbench-pane--main"
-        aria-label="信号事实与依据"
-      >
-        <MarketSignalActiveValidation
-          v-if="selectedSignal"
-          :validation="selectedSignal.activeValidation"
-          :actor-id="actorId"
+      </template>
+      <template #responsibility>
+        <WorkbenchResponsibilityBand
+          region-label="岗位、对象与责任上下文"
+          :items="responsibilityItems"
         />
-        <MarketSignalEvidencePanel
-          v-if="selectedSignal"
-          :signal="selectedSignal"
-          :closed="isClosed"
-          @supplement="supplementSignal"
-        />
-        <MarketSelectionFeedback
-          v-if="selectedSignal?.responsibility"
-          :responsibility="selectedSignal.responsibility"
-          :latest-decision="selectedSignal.latestSelectionDecision"
-        />
-        <p v-else-if="!selectedSignal" class="empty-workbench">
-          {{
-            queueItems.length
-              ? "请从左侧当前分组选择一条信号。"
-              : "暂无经营信号。登记一条刚发生的市场变化后即可开始判断。"
-          }}
-        </p>
-      </section>
-      <section
-        v-if="!isClosed"
-        class="workbench-pane"
-        aria-label="信号处理动作"
-      >
-        <div v-if="selectedSignal && isReturnRequest" class="return-request">
-          <small>选品请求退回</small>
-          <b v-if="selectedSignal.selectionReturnBasis">{{
-            selectedSignal.selectionReturnBasis === "wrong_direction"
-              ? "方向错误"
-              : "证据不足"
-          }}</b>
-          <p>{{ selectedSignal.selectionReturnReason }}</p>
-          <button type="button" :disabled="saving" @click="takeBackReturn">
-            {{ saving ? "正在接回" : "接回" }}
-          </button>
+      </template>
+      <template #decision>
+        <div class="market-feedback">
+          <section v-if="error" class="operation-error" role="alert">
+            <AlertCircle :size="17" aria-hidden="true" />
+            <span>{{ error }}</span>
+            <button type="button" @click="loadSignals">
+              <RefreshCw :size="15" aria-hidden="true" />重新加载
+            </button>
+          </section>
+          <section
+            v-else-if="takebackReceipt"
+            class="takeback-receipt"
+            role="status"
+          >
+            {{ takebackReceipt }}
+          </section>
+          <section v-else-if="loading" class="loading-state" role="status">
+            <LoaderCircle :size="17" aria-hidden="true" />正在读取经营信号
+          </section>
+          <MarketSignalOperationReceipt
+            v-if="receipt"
+            :receipt="receipt"
+            @dismiss="clearReceipt"
+          />
+          <WorkbenchDecisionStrip
+            region-label="当前结论与办理缺口"
+            :conclusion="decisionConclusion"
+            :tone="isClosed ? 'neutral' : isReturnRequest ? 'warn' : 'info'"
+            :disabled-reason="
+              isClosed
+                ? '关闭态不可补录、不可重开；保留事实与责任回看。'
+                : undefined
+            "
+          >
+            <template v-if="selectedSignal && isClosed" #conclusionDetail>
+              <span
+                >{{ selectedSignal.title }} · {{ selectedSignal.owner }}</span
+              >
+            </template>
+          </WorkbenchDecisionStrip>
         </div>
-        <MarketSignalDecisionPanel
-          v-else-if="selectedSignal"
-          v-model="selectedDraft"
-          :busy="saving"
-          :active-validation="selectedSignal.activeValidation"
-          :actor-id="actorId"
-          @submit="submitDecision"
-        />
-        <p v-else class="empty-workbench">
-          {{
-            queueItems.length
-              ? "请从左侧当前分组选择一条信号后再判断去向。"
-              : "选择一条信号后显示可执行动作。"
-          }}
-        </p>
-      </section>
-    </div>
+      </template>
+      <template #queue>
+        <WorkbenchPane
+          id="market-signal-queue"
+          title="经营信号队列"
+          region-label="对象与任务队列"
+        >
+          <MarketSignalQueue
+            :items="queueItems"
+            :selected-id="selectedSignal?.id ?? ''"
+            :counts="queueCounts"
+            :has-more="hasMore"
+            :loading-more="queueLoadingMore"
+            :group-errors="queueGroupErrors"
+            @select="selectSignal"
+            @clear="clearSignalSelection"
+            @create="showCreatePanel = true"
+            @load-more="loadMore"
+            @retry-group="retryGroup"
+          />
+        </WorkbenchPane>
+      </template>
+      <template #queueRail
+        ><strong>{{ queueItems.length }}</strong
+        ><span>信号</span></template
+      >
+      <template #detail>
+        <WorkbenchPane
+          id="market-signal-detail"
+          title="信号事实与依据"
+          region-label="事实、缺口与推进任务"
+        >
+          <MarketSignalCreatePanel
+            v-if="showCreatePanel"
+            @create="createSignal"
+            @cancel="showCreatePanel = false"
+          />
+          <MarketSignalActiveValidation
+            v-if="selectedSignal"
+            :validation="selectedSignal.activeValidation"
+            :actor-id="actorId"
+          />
+          <MarketSignalEvidencePanel
+            v-if="selectedSignal"
+            :signal="selectedSignal"
+            :closed="isClosed"
+            @supplement="supplementSignal"
+          />
+          <MarketSelectionFeedback
+            v-if="selectedSignal?.responsibility"
+            :responsibility="selectedSignal.responsibility"
+            :latest-decision="selectedSignal.latestSelectionDecision"
+          />
+          <p v-else-if="!selectedSignal" class="empty-workbench">
+            {{
+              queueItems.length
+                ? "请从左侧当前分组选择一条信号。"
+                : "暂无经营信号。登记一条刚发生的市场变化后即可开始判断。"
+            }}
+          </p>
+        </WorkbenchPane>
+      </template>
+      <template #context>
+        <WorkbenchPane
+          id="market-signal-context"
+          title="信号操作上下文"
+          region-label="当前事项操作上下文"
+        >
+          <div v-if="selectedSignal && isReturnRequest" class="return-request">
+            <small>选品请求退回</small>
+            <b v-if="selectedSignal.selectionReturnBasis">{{
+              selectedSignal.selectionReturnBasis === "wrong_direction"
+                ? "方向错误"
+                : "证据不足"
+            }}</b>
+            <p>{{ selectedSignal.selectionReturnReason }}</p>
+            <button type="button" :disabled="saving" @click="takeBackReturn">
+              {{ saving ? "正在接回" : "接回" }}
+            </button>
+          </div>
+          <MarketSignalDecisionPanel
+            v-else-if="selectedSignal"
+            v-model="selectedDraft"
+            :busy="saving"
+            :closed="isClosed"
+            :closed-label="closedLabel"
+            :active-validation="selectedSignal.activeValidation"
+            :actor-id="actorId"
+            @submit="submitDecision"
+          />
+          <p v-else class="empty-workbench">
+            {{
+              queueItems.length
+                ? "请从左侧当前分组选择一条信号后再判断去向。"
+                : "选择一条信号后显示可执行动作。"
+            }}
+          </p>
+        </WorkbenchPane>
+      </template>
+      <template #contextRail
+        ><span>{{ isClosed ? "只读" : "动作" }}</span></template
+      >
+    </WorkbenchLayout>
   </main>
 </template>
 

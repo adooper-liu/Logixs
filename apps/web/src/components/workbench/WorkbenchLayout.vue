@@ -256,7 +256,8 @@ function selectMobileScreen(screen: WorkbenchMobileScreen): void {
   .workbench-layout {
     height: auto;
     min-height: calc(100dvh - var(--topbar-height) - var(--space-6));
-    grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+    grid-template-rows: repeat(6, auto);
+    align-content: start;
     gap: var(--space-2);
   }
 
