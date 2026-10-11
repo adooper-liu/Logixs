@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { BriefcaseBusiness, Container } from "@lucide/vue";
 import { computed } from "vue";
 import type { ContainerSummary } from "../../api/containers";
 import type { LiveNodeView } from "../../data/liveNodeProjection";
 import LiveNodeRail from "../container/LiveNodeRail.vue";
+import WorkbenchLayout from "./WorkbenchLayout.vue";
 import WorkbenchPageHeader from "./WorkbenchPageHeader.vue";
+import WorkbenchPane from "./WorkbenchPane.vue";
+import WorkbenchResponsibilityBand from "./WorkbenchResponsibilityBand.vue";
+import type {
+  WorkbenchPaneState,
+  WorkbenchResponsibilityItem,
+} from "./workbenchLayout.types";
 
 const props = withDefaults(
   defineProps<{
@@ -41,6 +47,41 @@ defineSlots<{
 const hasContext = computed(
   () => props.contextReady ?? Boolean(props.selectedContainer),
 );
+
+const responsibilityItems = computed<readonly WorkbenchResponsibilityItem[]>(
+  () => [
+    { label: "当前岗位", value: props.workspaceLabel, state: "known" },
+    { label: "负责节点", value: props.nodeScopeLabel, state: "known" },
+    props.selectedContainer
+      ? {
+          label: "当前货柜",
+          value:
+            props.selectedContainer.containerNumber ??
+            props.selectedContainer.orderNumber,
+          state: "known",
+        }
+      : { label: "当前货柜", value: null, state: "unknown" },
+  ],
+);
+
+const detailState = computed<WorkbenchPaneState>(() => {
+  if (!hasContext.value) return { kind: "empty", message: props.emptyMessage };
+  if (props.selectionLoading)
+    return { kind: "loading", message: props.loadingMessage };
+  if (props.selectionError)
+    return { kind: "error", message: props.selectionError };
+  return { kind: "ready" };
+});
+
+const contextState = computed<WorkbenchPaneState>(() => {
+  if (!hasContext.value)
+    return { kind: "empty", message: "选择对象后显示动作。" };
+  if (props.selectionLoading)
+    return { kind: "loading", message: props.loadingMessage };
+  if (props.selectionError)
+    return { kind: "error", message: props.selectionError };
+  return { kind: "ready" };
+});
 </script>
 
 <template>
@@ -49,165 +90,107 @@ const hasContext = computed(
     class="role-workbench"
     :class="{ 'page-frame': !embedded }"
   >
-    <WorkbenchPageHeader v-if="!embedded" :stage-code="stageCode">
-      <template v-if="$slots.actions" #actions>
-        <slot name="actions" />
+    <WorkbenchLayout
+      responsive-mode="stacked"
+      left-rail-label="岗位任务池"
+      right-rail-label="岗位待办"
+      :left-rail-summary="selectedContainer?.containerNumber ?? '待选择'"
+      :right-rail-summary="hasContext ? '查看动作' : '待选择'"
+    >
+      <template #header>
+        <WorkbenchPageHeader v-if="!embedded" :stage-code="stageCode">
+          <template v-if="$slots.actions" #actions>
+            <slot name="actions" />
+          </template>
+        </WorkbenchPageHeader>
       </template>
-    </WorkbenchPageHeader>
 
-    <section class="context-band" aria-label="岗位与货柜范围">
-      <div class="role-context">
-        <span class="context-icon" aria-hidden="true">
-          <BriefcaseBusiness :size="18" />
-        </span>
-        <span>
-          <small>当前岗位</small>
-          <b>{{ workspaceLabel }}</b>
-        </span>
-        <span class="node-scope">
-          <small>负责节点</small>
-          <b>{{ nodeScopeLabel }}</b>
-        </span>
-      </div>
+      <template #responsibility>
+        <WorkbenchResponsibilityBand
+          :region-label="'岗位与货柜范围'"
+          :items="responsibilityItems"
+        >
+          <template v-if="$slots.context" #tail>
+            <slot name="context" />
+          </template>
+        </WorkbenchResponsibilityBand>
+      </template>
 
-      <slot v-if="$slots.context" name="context" />
+      <template #decision>
+        <div class="role-workbench__feedback">
+          <p
+            v-if="containerListError"
+            class="notice notice--error"
+            role="alert"
+          >
+            {{ containerListError }}
+          </p>
+          <template
+            v-if="selectedContainer && !selectionLoading && !selectionError"
+          >
+            <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
+            <p v-else class="notice">这柜尚未初始化生命周期流程。</p>
+          </template>
+          <ul
+            v-if="warnings.length"
+            class="projection-warnings"
+            aria-label="局部数据提示"
+          >
+            <li v-for="warning in warnings" :key="warning.code">
+              {{ warning.message }}
+            </li>
+          </ul>
+        </div>
+      </template>
 
-      <div
-        v-if="!$slots.context && selectedContainer"
-        class="container-identity"
-      >
-        <Container :size="18" aria-hidden="true" />
-        <span>
-          <b>{{ selectedContainer.containerNumber ?? "未绑箱号" }}</b>
-          <small>{{ selectedContainer.orderNumber }}</small>
-        </span>
-      </div>
-    </section>
+      <template #queue>
+        <WorkbenchPane
+          id="role-workbench-queue"
+          title="岗位任务池"
+          :region-label="'岗位任务池'"
+        >
+          <slot name="queue" />
+        </WorkbenchPane>
+      </template>
 
-    <p v-if="containerListError" class="notice notice--error" role="alert">
-      {{ containerListError }}
-    </p>
-    <p v-if="!hasContext" class="notice">
-      {{ emptyMessage }}
-    </p>
-    <p v-else-if="selectionLoading" class="notice">
-      {{ loadingMessage }}
-    </p>
-    <p v-else-if="selectionError" class="notice notice--error" role="alert">
-      {{ selectionError }}
-    </p>
+      <template #detail>
+        <WorkbenchPane
+          id="role-workbench-detail"
+          title="岗位事实"
+          :region-label="'岗位事实'"
+          :state="detailState"
+        >
+          <slot name="primary" />
+        </WorkbenchPane>
+      </template>
 
-    <template v-if="selectedContainer && !selectionLoading && !selectionError">
-      <LiveNodeRail v-if="nodes.length" :nodes="nodes" />
-      <p v-else class="notice">这柜尚未初始化生命周期流程。</p>
-    </template>
-
-    <ul
-      v-if="warnings.length"
-      class="projection-warnings"
-      aria-label="局部数据提示"
-    >
-      <li v-for="warning in warnings" :key="warning.code">
-        {{ warning.message }}
-      </li>
-    </ul>
-
-    <div
-      class="workbench-grid"
-      :class="{ 'workbench-grid--queue-only': !hasContext }"
-    >
-      <section
-        class="workbench-pane workbench-pane--queue"
-        aria-label="岗位任务池"
-      >
-        <slot name="queue" />
-      </section>
-      <section v-if="hasContext" class="workbench-pane" aria-label="岗位事实">
-        <slot name="primary" />
-      </section>
-      <section v-if="hasContext" class="workbench-pane" aria-label="岗位待办">
-        <slot name="secondary" />
-      </section>
-    </div>
+      <template #context>
+        <WorkbenchPane
+          id="role-workbench-context"
+          title="岗位待办"
+          :region-label="'岗位待办'"
+          :state="contextState"
+        >
+          <slot name="secondary" />
+        </WorkbenchPane>
+      </template>
+    </WorkbenchLayout>
   </component>
 </template>
 
 <style scoped>
 .role-workbench {
   min-width: 0;
+  min-height: 0;
 }
 
-.context-band {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(250px, 0.8fr) minmax(180px, 0.65fr);
-  align-items: stretch;
-  margin-bottom: var(--space-3);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--brand);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.role-context,
-.container-identity {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-}
-
-.role-context {
-  border-right: 1px solid var(--line);
-}
-
-.role-context > span:not(.context-icon),
-.container-identity > span {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.context-icon {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-s);
-  background: var(--brand-soft);
-  color: var(--brand-strong);
-}
-
-.node-scope {
-  margin-left: auto;
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--line);
-}
-
-.role-context small,
-.container-identity small {
-  color: var(--muted);
-  font-size: var(--text-micro);
-}
-
-.role-context b,
-.container-identity b {
-  overflow-wrap: anywhere;
-  font-size: var(--text-meta);
-}
-
-.container-identity > svg {
-  flex: none;
-  color: var(--brand-strong);
+.role-workbench__feedback:empty {
+  display: none;
 }
 
 .notice,
 .projection-warnings {
-  margin: 0 0 var(--space-3);
+  margin: 0;
   padding: var(--space-3);
   border-left: 3px solid var(--info);
   background: var(--info-bg);
@@ -228,74 +211,5 @@ const hasContext = computed(
   padding-left: var(--space-8);
   border-left-color: var(--warn);
   background: var(--warn-bg);
-}
-
-.workbench-grid {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(280px, 0.7fr) minmax(520px, 1.5fr) minmax(
-      300px,
-      0.8fr
-    );
-  gap: var(--space-3);
-  align-items: start;
-}
-
-.workbench-pane--queue {
-  position: sticky;
-  top: 12px;
-}
-
-.workbench-grid--queue-only {
-  grid-template-columns: minmax(280px, 420px);
-}
-
-.workbench-pane {
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-@media (max-width: 1280px) {
-  .context-band {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .workbench-grid {
-    grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
-  }
-
-  .workbench-pane:last-child {
-    grid-column: 1 / -1;
-  }
-
-  .workbench-pane--queue {
-    position: static;
-  }
-}
-
-@media (max-width: 680px) {
-  .context-band {
-    grid-template-columns: 1fr;
-  }
-
-  .role-context {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .node-scope {
-    margin-left: 0;
-  }
-
-  .workbench-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .workbench-pane:last-child {
-    grid-column: auto;
-  }
 }
 </style>

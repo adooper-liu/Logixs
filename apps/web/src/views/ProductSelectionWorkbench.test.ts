@@ -45,6 +45,19 @@ describe("ProductSelectionWorkbench", () => {
     });
   });
 
+  it("keeps the shared workbench regions and the real five-area progress", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    const wrapper = await mountPage();
+
+    expect(wrapper.find('[aria-label="岗位、对象与责任上下文"]').exists()).toBe(
+      true,
+    );
+    const decision = wrapper.get('[aria-label="当前结论与办理缺口"]');
+    expect(decision.text()).toContain("/5");
+    expect(decision.text()).not.toContain("/8");
+    expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
+  });
+
   it("shows compact opportunity facts and keeps handoff gaps on demand", async () => {
     const wrapper = await mountPage();
 
@@ -143,18 +156,15 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
     expect(wrapper.find(".business-case").exists()).toBe(true);
     expect(wrapper.find(".action-body").exists()).toBe(false);
-    const detail = wrapper.get(".opportunity-detail").element;
+    const detailPane = wrapper.get('[data-workbench-pane="detail"]').element;
+    const contextPane = wrapper.get('[data-workbench-pane="context"]').element;
     const businessCase = wrapper.get(".business-case").element;
-    const professionalFollowup = wrapper.get(".professional-followup");
+    const professionalFollowup = wrapper.get(".professional-followup").element;
+    expect(contextPane.contains(businessCase)).toBe(true);
+    expect(detailPane.contains(professionalFollowup)).toBe(true);
     expect(
-      detail.compareDocumentPosition(businessCase) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      businessCase.compareDocumentPosition(professionalFollowup.element) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(professionalFollowup.attributes("open")).toBeUndefined();
+      wrapper.get(".professional-followup").attributes("open"),
+    ).toBeUndefined();
   });
 
   it("does not expose intake actions for a superseded handoff", async () => {
@@ -405,7 +415,7 @@ describe("ProductSelectionWorkbench", () => {
     const button = wrapper.get(".outcome-submit");
     expect(button.attributes("disabled")).toBeUndefined();
     expect(button.text()).toContain("立项并交给产品开发");
-    expect(wrapper.get(".progress-head").text()).toContain(
+    expect(wrapper.get('[aria-label="当前结论与办理缺口"]').text()).toContain(
       "待处理 0 类 · 已齐 5/5",
     );
     await button.trigger("click");
@@ -597,10 +607,10 @@ describe("ProductSelectionWorkbench", () => {
     await wrapper.findAll(".queue-item")[1]!.trigger("click");
     await flushPromises();
 
-    expect(wrapper.get(".pane--detail").text()).toContain(
+    expect(wrapper.get('[data-workbench-pane="detail"]').text()).toContain(
       "正在读取该机会已有的立项判断",
     );
-    expect(wrapper.get(".pane--action").text()).toContain(
+    expect(wrapper.get('[data-workbench-pane="context"]').text()).toContain(
       "正在读取该机会已有的立项判断",
     );
     expect(wrapper.find(".initiative-result").exists()).toBe(false);
@@ -747,7 +757,7 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
-    const context = wrapper.get(".work-context");
+    const context = wrapper.get('[aria-label="岗位、对象与责任上下文"]');
     expect(context.text()).toContain("已退回经营团队");
     expect(context.text()).not.toContain("形成立项结论");
     // 已记下的原因回填，重放同一去向不会把它抹掉
@@ -775,11 +785,15 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
-    expect(wrapper.findAll(".pane")).toHaveLength(3);
+    expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
     expect(wrapper.get("header").text()).toContain("等待市场接回");
     expect(wrapper.get(".initiative-result").text()).toContain("等待市场接回");
-    expect(wrapper.get(".pane--action").text()).toContain("等待市场接回");
-    expect(wrapper.get(".pane--action").text()).toContain("当前责任仍在选品");
+    expect(wrapper.get('[data-workbench-pane="context"]').text()).toContain(
+      "等待市场接回",
+    );
+    expect(wrapper.get('[data-workbench-pane="context"]').text()).toContain(
+      "当前责任仍在选品",
+    );
     expect(wrapper.text()).not.toContain("已交 NPI");
     expect(wrapper.text()).not.toContain("NPI 承接");
   });
@@ -828,7 +842,7 @@ describe("ProductSelectionWorkbench", () => {
       );
       const wrapper = await mountPage();
 
-      expect(wrapper.findAll(".pane")).toHaveLength(3);
+      expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
       expect(wrapper.get("header").text()).toContain("历史四项评审");
       expect(wrapper.get(".initiative-result").text()).toContain(
         "历史四项评审（只读，非五面判断）",
@@ -840,7 +854,9 @@ describe("ProductSelectionWorkbench", () => {
       expect(wrapper.get(".initiative-result__reviews").text()).not.toContain(
         "客户反馈与痛点",
       );
-      expect(wrapper.get(".pane--action").text()).toContain("历史记录只读");
+      expect(wrapper.get('[data-workbench-pane="context"]').text()).toContain(
+        "历史记录只读",
+      );
       expect(wrapper.find(".outcome-submit").exists()).toBe(false);
       expect(wrapper.find(".product-initiative-review").exists()).toBe(false);
       expect(wrapper.text()).not.toContain("结论已冻结");
@@ -954,8 +970,10 @@ describe("ProductSelectionWorkbench", () => {
     );
     const wrapper = await mountPage();
 
-    expect(wrapper.findAll(".pane")).toHaveLength(3);
-    expect(wrapper.find(".work-context").exists()).toBe(true);
+    expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
+    expect(wrapper.find('[aria-label="岗位、对象与责任上下文"]').exists()).toBe(
+      true,
+    );
     expect(wrapper.find(".initiative-result").exists()).toBe(false);
     expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
 
@@ -966,13 +984,17 @@ describe("ProductSelectionWorkbench", () => {
     await flushPromises();
 
     expect(wrapper.classes()).not.toContain("selection-workbench--initiated");
-    expect(wrapper.findAll(".pane")).toHaveLength(3);
-    expect(wrapper.find(".work-context").exists()).toBe(true);
+    expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
+    expect(wrapper.find('[aria-label="岗位、对象与责任上下文"]').exists()).toBe(
+      true,
+    );
     expect(wrapper.get(".initiative-result").text()).toContain(
       "已立项 · 已交 NPI",
     );
     expect(wrapper.find(".product-initiative-outcome").exists()).toBe(false);
-    expect(wrapper.get(".pane--action").text()).toContain("结论已冻结");
+    expect(wrapper.get('[data-workbench-pane="context"]').text()).toContain(
+      "结论已冻结",
+    );
 
     await wrapper
       .findAll(".queue-item")
@@ -980,7 +1002,7 @@ describe("ProductSelectionWorkbench", () => {
       .trigger("click");
     await flushPromises();
 
-    expect(wrapper.findAll(".pane")).toHaveLength(3);
+    expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
     expect(wrapper.find(".initiative-result").exists()).toBe(false);
     expect(wrapper.find(".product-initiative-outcome").exists()).toBe(true);
     expect(wrapper.text()).toContain("选品岗位工作台");
@@ -1033,10 +1055,14 @@ describe("ProductSelectionWorkbench", () => {
     listProductOpportunities.mockResolvedValue(acceptedPage());
     const wrapper = await mountPage();
 
-    expect(wrapper.get(".progress-head").text()).toContain(
+    expect(wrapper.get('[aria-label="当前结论与办理缺口"]').text()).toContain(
       "待处理 5 类 · 已齐 0/5",
     );
-    expect(wrapper.find(".progress-head__apply").exists()).toBe(false);
+    expect(
+      wrapper
+        .find('[aria-label="当前结论与办理缺口"] .progress-head__apply')
+        .exists(),
+    ).toBe(false);
     expect(wrapper.text()).not.toContain("已自动带入交接合并视图");
     expect(wrapper.text()).not.toContain("目标结果已有内容，未覆盖");
     expect(
@@ -1048,7 +1074,7 @@ describe("ProductSelectionWorkbench", () => {
     await wrapper
       .get('textarea[aria-label="目标结果"]')
       .setValue("把折叠宠物出行包做成可发布版本");
-    expect(wrapper.get(".progress-head").text()).toContain(
+    expect(wrapper.get('[aria-label="当前结论与办理缺口"]').text()).toContain(
       "待处理 4 类 · 已齐 1/5",
     );
   });

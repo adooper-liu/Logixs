@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import {
-  AlertCircle,
-  BriefcaseBusiness,
-  RefreshCw,
-  UserRound,
-} from "@lucide/vue";
-import { computed, nextTick, shallowRef, watch } from "vue";
+import { AlertCircle, RefreshCw } from "@lucide/vue";
+import { computed, nextTick, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
 import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
@@ -15,7 +10,11 @@ import ProductInitiativeReviewPanel from "../components/product-selection/Produc
 import ProductOpportunityActions from "../components/product-selection/ProductOpportunityActions.vue";
 import ProductOpportunityDetail from "../components/product-selection/ProductOpportunityDetail.vue";
 import ProductOpportunityQueue from "../components/product-selection/ProductOpportunityQueue.vue";
+import WorkbenchDecisionStrip from "../components/workbench/WorkbenchDecisionStrip.vue";
+import WorkbenchLayout from "../components/workbench/WorkbenchLayout.vue";
 import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
+import WorkbenchPane from "../components/workbench/WorkbenchPane.vue";
+import WorkbenchResponsibilityBand from "../components/workbench/WorkbenchResponsibilityBand.vue";
 import {
   useProductInitiativeDecision,
   type ProductInitiativeOutcome,
@@ -272,6 +271,9 @@ watch(isReadOnly, async (readOnly) => {
     ?.scrollTo({ top: 0, behavior: "auto" });
 });
 const activeGapPanel = shallowRef<ProductInitiativeGapPanel>("objective");
+const leftCollapsed = ref(false);
+const rightCollapsed = ref(false);
+const mobileScreen = ref<"queue" | "detail" | "context">("queue");
 watch(
   blockingGapGroups,
   (groups) => {
@@ -284,6 +286,7 @@ watch(
 
 async function selectGapPanel(panel: ProductInitiativeGapPanel): Promise<void> {
   activeGapPanel.value = panel;
+  mobileScreen.value = "context";
   await nextTick();
   const target = document.querySelector<HTMLElement>(
     '[data-gap-panel="' + panel + '"]',
@@ -298,321 +301,390 @@ async function selectGapPanel(panel: ProductInitiativeGapPanel): Promise<void> {
 const progressFilled = computed(() =>
   Math.max(0, requiredCount.value - blockingGapGroups.value.length),
 );
-const progressPercent = computed(() =>
-  requiredCount.value === 0
-    ? 100
-    : Math.round((progressFilled.value / requiredCount.value) * 100),
+const responsibilityItems = computed(() => [
+  {
+    label: "当前对象",
+    value: selected.value?.handoff.title ?? null,
+    state: selected.value ? ("known" as const) : ("unknown" as const),
+  },
+  { label: "本次结果", value: workResult.value, state: "known" as const },
+  { label: "当前责任", value: currentOwner.value, state: "known" as const },
+  {
+    label: "下一责任",
+    value: decided.value && !returnPending.value ? "产品开发 / NPI" : null,
+    state:
+      decided.value && !returnPending.value
+        ? ("known" as const)
+        : ("unknown" as const),
+  },
+]);
+const decisionConclusion = computed(() => {
+  if (legacyReadOnly.value) return "历史判断只读";
+  if (returnPending.value) return "等待市场接回";
+  if (isReadOnly.value) return "立项结论已冻结";
+  if (!selected.value) return "等待选择机会";
+  return `待处理 ${blockingGapGroups.value.length} 类`;
+});
+const progressLabel = computed(
+  () => ` · 已齐 ${progressFilled.value}/${requiredCount.value}`,
+);
+const decisionDisabledReason = computed(() =>
+  !isReadOnly.value && blockingGapGroups.value.length
+    ? `还缺 ${blockingGapGroups.value.map((gap) => gap.label).join("、")}`
+    : undefined,
 );
 </script>
 <template>
-  <main
-    class="selection-workbench page-frame"
-    :class="{
-      'selection-workbench--decision-ready':
-        selected && initiativeReady && !isReadOnly,
-    }"
-  >
-    <WorkbenchPageHeader
-      stage-code="product_selection"
-      eyebrow="选品岗位工作台"
-      :class="{ 'page-header--result': isReadOnly }"
+  <main class="selection-workbench page-frame">
+    <WorkbenchLayout
+      v-model:left-collapsed="leftCollapsed"
+      v-model:right-collapsed="rightCollapsed"
+      v-model:mobile-screen="mobileScreen"
+      left-rail-label="选品机会队列"
+      right-rail-label="立项操作上下文"
+      :left-rail-summary="`${items.length} 个机会`"
+      :right-rail-summary="
+        blockingGapGroups.length ? `${blockingGapGroups.length} 阻塞` : '可办理'
+      "
     >
-      <template #help>
-        <span v-if="isReadOnly && legacyReadOnly"
-          >历史四项评审（只读，非五面判断）</span
+      <template #header>
+        <WorkbenchPageHeader
+          stage-code="product_selection"
+          eyebrow="选品岗位工作台"
+          :class="{ 'page-header--result': isReadOnly }"
         >
-        <span v-else-if="isReadOnly && returnPending"
-          >等待市场接回；当前责任仍在选品。</span
-        >
-        <span v-else-if="isReadOnly">查看已冻结的立项结论与 NPI 交接。</span>
-      </template>
-    </WorkbenchPageHeader>
-
-    <section v-if="feedbackError" class="feedback feedback--error" role="alert">
-      <AlertCircle :size="17" />
-      <span>{{ feedbackError }}</span>
-      <button v-if="feedbackCanReload" type="button" @click="reload">
-        <RefreshCw :size="15" />重新加载
-      </button>
-    </section>
-    <section
-      v-else-if="feedbackReceipt && !isReadOnly"
-      class="feedback feedback--success"
-      role="status"
-    >
-      {{ feedbackReceipt }}
-    </section>
-    <section class="work-context" aria-label="当前岗位与交接责任">
-      <BriefcaseBusiness :size="19" />
-      <span><small>谁在工作</small><b>选品负责人</b></span>
-      <span
-        ><small>本次结果</small><b>{{ workResult }}</b></span
-      >
-      <span
-        ><UserRound :size="16" /><span
-          ><small>当前责任</small><b>{{ currentOwner }}</b></span
-        ></span
-      >
-    </section>
-    <section
-      v-if="npiReturnReason"
-      class="feedback feedback--notice"
-      aria-label="NPI 退回原因"
-    >
-      <span>NPI 退回原因：{{ npiReturnReason }}</span>
-    </section>
-
-    <div class="workbench-grid">
-      <section class="pane pane--queue">
-        <ProductOpportunityQueue
-          :items="items"
-          :initiatives="initiatives"
-          :selected-id="selected?.handoff.handoffId ?? ''"
-          @select="selectOpportunity"
-        />
-      </section>
-      <section class="pane pane--detail">
-        <template v-if="selected">
-          <p v-if="readingInitiative" class="empty">
-            正在读取该机会已有的立项判断
-          </p>
-          <template v-else>
-            <header
-              v-if="initiativeReady && !isReadOnly"
-              class="progress-head"
-              aria-label="立项完备度"
+          <template #help>
+            <span v-if="isReadOnly && legacyReadOnly"
+              >历史四项评审（只读，非五面判断）</span
             >
-              <div class="progress-head__copy">
-                <small>立项完备度</small>
-                <b
-                  >待处理 {{ blockingGapGroups.length }} 类 · 已齐
-                  {{ progressFilled }}/{{ requiredCount }}</b
-                >
-              </div>
-              <div
-                class="progress-head__bar"
-                role="progressbar"
-                :aria-valuenow="progressPercent"
-                aria-valuemin="0"
-                aria-valuemax="100"
-              >
-                <span :style="{ width: `${progressPercent}%` }" />
-              </div>
-            </header>
-            <ProductInitiativeGapGroup
-              v-if="initiativeReady && !isReadOnly"
-              :groups="blockingGapGroups"
-              :active-panel="activeGapPanel"
-              @select="selectGapPanel"
-            />
-            <ProductInitiativeResultPanel
-              v-if="isReadOnly && initiative"
-              :title="selected.handoff.title"
-              :market-code="selected.handoff.marketCode"
-              :channel-code="selected.handoff.channelCode"
-              :category-ref="selected.handoff.categoryRef"
-              :opportunity-statement="selected.handoff.opportunityStatement"
-              :observed-fact-summary="selected.handoff.observedFactSummary"
-              :hypothesis="selected.handoff.hypothesis"
-              :supplemented-fact-count="selected.supplementedFieldCodes.length"
-              :historical-missing-category-count="
-                historicalMissingCategoryCount
-              "
-              :initiative="initiative"
-              :points="resultReviewPoints"
-              :candidates="evidenceCandidates"
-              :unit-economics-snapshot="unitEconomicsSnapshot"
-            />
-            <template v-else>
-              <ProductOpportunityDetail :item="selected" />
-            </template>
-            <ProductInitiativeReviewPanel
-              v-if="initiativeReady && !isReadOnly"
-              :key="initiativeHandoffId"
-              data-gap-panel="review_points"
-              tabindex="-1"
-              :dimensions="businessCaseViews"
-              :risks="riskAssessmentViews"
-              :legacy-points="initiative?.reviewPoints ?? []"
-              :candidates="evidenceCandidates"
-              :busy="deciding"
-              :add-evidence="addInitiativeEvidence"
-              :active="activeGapPanel === 'review_points'"
-              @toggle-evidence="
-                (code, id) => {
-                  const draft = businessCase[code];
-                  draft.evidenceRefs = draft.evidenceRefs.includes(id)
-                    ? draft.evidenceRefs.filter((ref) => ref !== id)
-                    : [...draft.evidenceRefs, id];
-                }
-              "
-              @update-decision="
-                (code, decision) => {
-                  businessCase[code].decision = decision;
-                  if (decision !== 'validate_before_investment')
-                    businessCase[code].criticalUnknown = '';
-                }
-              "
-              @update-conclusion="
-                (code, value) => (businessCase[code].conclusion = value)
-              "
-              @update-unknown="
-                (code, value) => (businessCase[code].criticalUnknown = value)
-              "
-              @update-risk="updateRisk"
-            />
-            <details v-if="!isReadOnly" class="professional-followup">
-              <summary>专业要求与专项证据（按需展开）</summary>
-              <ProductEvaluationRequirementsPanel
-                :key="initiativeHandoffId"
-                :requirements="requirements.requirements"
-                :withheld="requirements.withheld"
-                :busy="saving"
-                :save-evidence="addRequirementEvidence"
-              />
-            </details>
+            <span v-else-if="isReadOnly && returnPending"
+              >等待市场接回；当前责任仍在选品。</span
+            >
+            <span v-else-if="isReadOnly"
+              >查看已冻结的立项结论与 NPI 交接。</span
+            >
           </template>
-        </template>
-        <p v-else class="empty">
-          {{ loading ? "正在读取经营机会" : "暂无待处理机会" }}
-        </p>
-      </section>
-      <section
-        class="pane pane--action"
-        :class="{
-          'pane--decision': selected && initiativeReady && !isReadOnly,
-        }"
-      >
-        <ProductOpportunityActions
-          v-if="selected && !accepted"
-          :item="selected"
-          :busy="saving"
-          @claim="claim"
-          @accept="accept"
+        </WorkbenchPageHeader>
+      </template>
+
+      <template #responsibility>
+        <WorkbenchResponsibilityBand
+          region-label="岗位、对象与责任上下文"
+          :items="responsibilityItems"
         />
-        <p v-else-if="selected && !initiativeReady" class="empty">
-          {{
-            readingInitiative
-              ? "正在读取该机会已有的立项判断"
-              : "立项判断没能读出来，请先用上方的“重新加载”再继续。"
-          }}
-        </p>
-        <section
-          v-else-if="selected && isReadOnly"
-          class="initiative-readonly-context"
-          :aria-label="
-            legacyReadOnly
-              ? '历史立项判断只读'
-              : returnPending
-                ? '等待市场接回'
-                : '冻结立项结论'
-          "
+      </template>
+
+      <template #decision>
+        <div class="selection-feedback">
+          <section
+            v-if="feedbackError"
+            class="feedback feedback--error"
+            role="alert"
+          >
+            <AlertCircle :size="17" />
+            <span>{{ feedbackError }}</span>
+            <button v-if="feedbackCanReload" type="button" @click="reload">
+              <RefreshCw :size="15" />重新加载
+            </button>
+          </section>
+          <section
+            v-else-if="feedbackReceipt && !isReadOnly"
+            class="feedback feedback--success"
+            role="status"
+          >
+            {{ feedbackReceipt }}
+          </section>
+          <section
+            v-if="npiReturnReason"
+            class="feedback feedback--notice"
+            aria-label="NPI 退回原因"
+          >
+            <span>NPI 退回原因：{{ npiReturnReason }}</span>
+          </section>
+          <WorkbenchDecisionStrip
+            region-label="当前结论与办理缺口"
+            :conclusion="decisionConclusion"
+            :disabled-reason="decisionDisabledReason"
+            :tone="
+              isReadOnly ? 'neutral' : blockingGapGroups.length ? 'warn' : 'ok'
+            "
+          >
+            <template v-if="initiativeReady" #progress>
+              <b>{{ progressLabel }}</b>
+            </template>
+            <template v-if="initiativeReady && !isReadOnly" #gaps>
+              <ProductInitiativeGapGroup
+                :groups="blockingGapGroups"
+                :active-panel="activeGapPanel"
+                @select="selectGapPanel"
+              />
+            </template>
+          </WorkbenchDecisionStrip>
+        </div>
+      </template>
+
+      <template #queue>
+        <WorkbenchPane
+          id="product-selection-queue"
+          title="选品机会队列"
+          region-label="对象与任务队列"
         >
-          <small>{{ returnPending ? "退回请求" : "立项结果" }}</small>
-          <h2 v-if="legacyReadOnly">历史记录只读</h2>
-          <h2 v-else>{{ returnPending ? "等待市场接回" : "结论已冻结" }}</h2>
-          <p v-if="legacyReadOnly">
-            仅供核对历史四项评审，不提供五面编辑或重新提交动作。
+          <ProductOpportunityQueue
+            :items="items"
+            :initiatives="initiatives"
+            :selected-id="selected?.handoff.handoffId ?? ''"
+            @select="selectOpportunity"
+          />
+        </WorkbenchPane>
+      </template>
+      <template #queueRail>
+        <strong>{{ items.length }}</strong
+        ><span>机会</span>
+      </template>
+
+      <template #detail>
+        <WorkbenchPane
+          id="product-selection-detail"
+          title="事实、缺口与推进任务"
+          region-label="事实、缺口与推进任务"
+        >
+          <template v-if="selected">
+            <p v-if="readingInitiative" class="empty">
+              正在读取该机会已有的立项判断
+            </p>
+            <template v-else>
+              <ProductInitiativeResultPanel
+                v-if="isReadOnly && initiative"
+                :title="selected.handoff.title"
+                :market-code="selected.handoff.marketCode"
+                :channel-code="selected.handoff.channelCode"
+                :category-ref="selected.handoff.categoryRef"
+                :opportunity-statement="selected.handoff.opportunityStatement"
+                :observed-fact-summary="selected.handoff.observedFactSummary"
+                :hypothesis="selected.handoff.hypothesis"
+                :supplemented-fact-count="
+                  selected.supplementedFieldCodes.length
+                "
+                :historical-missing-category-count="
+                  historicalMissingCategoryCount
+                "
+                :initiative="initiative"
+                :points="resultReviewPoints"
+                :candidates="evidenceCandidates"
+                :unit-economics-snapshot="unitEconomicsSnapshot"
+              />
+              <template v-else>
+                <ProductOpportunityDetail :item="selected" />
+              </template>
+
+              <details v-if="!isReadOnly" class="professional-followup">
+                <summary>专业要求与专项证据（按需展开）</summary>
+                <ProductEvaluationRequirementsPanel
+                  :key="initiativeHandoffId"
+                  :requirements="requirements.requirements"
+                  :withheld="requirements.withheld"
+                  :busy="saving"
+                  :save-evidence="addRequirementEvidence"
+                />
+              </details>
+            </template>
+          </template>
+          <p v-else class="empty">
+            {{ loading ? "正在读取经营机会" : "暂无待处理机会" }}
           </p>
-          <p v-else-if="returnPending">
-            当前责任仍在选品，市场接回前不提供编辑或重新提交动作。
+        </WorkbenchPane>
+      </template>
+
+      <template #context>
+        <WorkbenchPane
+          id="product-selection-context"
+          title="立项操作上下文"
+          region-label="当前事项操作上下文"
+          :scroll="activeGapPanel === 'review_points' ? 'contained' : 'content'"
+        >
+          <ProductInitiativeReviewPanel
+            v-if="selected && initiativeReady && !isReadOnly"
+            v-show="activeGapPanel === 'review_points'"
+            :key="initiativeHandoffId"
+            data-gap-panel="review_points"
+            tabindex="-1"
+            :dimensions="businessCaseViews"
+            :risks="riskAssessmentViews"
+            :legacy-points="initiative?.reviewPoints ?? []"
+            :candidates="evidenceCandidates"
+            :busy="deciding"
+            :add-evidence="addInitiativeEvidence"
+            :active="activeGapPanel === 'review_points'"
+            @toggle-evidence="
+              (code, id) => {
+                const draft = businessCase[code];
+                draft.evidenceRefs = draft.evidenceRefs.includes(id)
+                  ? draft.evidenceRefs.filter((ref) => ref !== id)
+                  : [...draft.evidenceRefs, id];
+              }
+            "
+            @update-decision="
+              (code, decision) => {
+                businessCase[code].decision = decision;
+                if (decision !== 'validate_before_investment')
+                  businessCase[code].criticalUnknown = '';
+              }
+            "
+            @update-conclusion="
+              (code, value) => (businessCase[code].conclusion = value)
+            "
+            @update-unknown="
+              (code, value) => (businessCase[code].criticalUnknown = value)
+            "
+            @update-risk="updateRisk"
+          />
+          <ProductOpportunityActions
+            v-if="selected && !accepted"
+            :item="selected"
+            :busy="saving"
+            @claim="claim"
+            @accept="accept"
+          />
+          <p v-else-if="selected && !initiativeReady" class="empty">
+            {{
+              readingInitiative
+                ? "正在读取该机会已有的立项判断"
+                : "立项判断没能读出来，请先用上方的“重新加载”再继续。"
+            }}
           </p>
-          <p v-else>已交 NPI，当前不提供编辑或重新提交动作。</p>
-          <dl>
-            <div>
-              <dt>{{ returnPending ? "当前责任" : "当前承接" }}</dt>
-              <dd>{{ returnPending ? "当前责任仍在选品" : currentOwner }}</dd>
-            </div>
-          </dl>
-        </section>
-        <ProductInitiativeOutcomePanel
-          v-else-if="selected"
-          :outcome="destination"
-          :objective="objective"
-          :accept-responsibility="acceptResponsibility"
-          :receiving-team-or-role="receivingTeamOrRole"
-          :resource-description="resourceDescription"
-          :target-date="targetDate"
-          :next-decision-date="nextDecisionDate"
-          :next-decision-question="nextDecisionQuestion"
-          :reconsideration-date="reconsiderationDate"
-          :reason="currentReason"
-          :return-basis="returnBasis"
-          :market-code="marketCode"
-          :channel-code="channelCode"
-          :currency-options="currencyOptions"
-          :unit-economics-draft="unitEconomicsDraft"
-          :unit-economics-snapshot="unitEconomicsSnapshot"
-          :evidence-candidates="evidenceCandidates"
-          :negative-contribution-needs-reason="negativeContributionNeedsReason"
-          :negative-conservative-reason="negativeConservativeReason"
-          :gaps="blockingGapGroups"
-          :active-panel="activeGapPanel"
-          :optional-gaps="optionalGaps"
-          :busy="deciding"
-          :decided="decided"
-          :return-pending="returnPending"
-          @change-outcome="setDestination"
-          @update-objective="setObjective"
-          @update-accept-responsibility="acceptResponsibility = $event"
-          @update-receiving-team-or-role="receivingTeamOrRole = $event"
-          @update-resource-description="resourceDescription = $event"
-          @update-target-date="targetDate = $event"
-          @update-next-decision-date="nextDecisionDate = $event"
-          @update-next-decision-question="nextDecisionQuestion = $event"
-          @update-reconsideration-date="reconsiderationDate = $event"
-          @update-reason="setCurrentReason"
-          @update-return-basis="setReturnBasis"
-          @update-unit-economics-currency="setUnitEconomicsCurrency"
-          @update-unit-economics-range="updateUnitEconomicsRange"
-          @update-unit-economics-basis="updateUnitEconomicsBasis"
-          @toggle-unit-economics-evidence="updateUnitEconomicsEvidence"
-          @update-negative-conservative-reason="setNegativeConservativeReason"
-          @submit="submitDecision"
-        />
-        <p v-else class="empty">选择一条机会后显示接收动作。</p>
-      </section>
-    </div>
+          <section
+            v-else-if="selected && isReadOnly"
+            class="initiative-readonly-context"
+            :aria-label="
+              legacyReadOnly
+                ? '历史立项判断只读'
+                : returnPending
+                  ? '等待市场接回'
+                  : '冻结立项结论'
+            "
+          >
+            <small>{{ returnPending ? "退回请求" : "立项结果" }}</small>
+            <h2 v-if="legacyReadOnly">历史记录只读</h2>
+            <h2 v-else>
+              {{ returnPending ? "等待市场接回" : "结论已冻结" }}
+            </h2>
+            <p v-if="legacyReadOnly">
+              仅供核对历史四项评审，不提供五面编辑或重新提交动作。
+            </p>
+            <p v-else-if="returnPending">
+              当前责任仍在选品，市场接回前不提供编辑或重新提交动作。
+            </p>
+            <p v-else>已交 NPI，当前不提供编辑或重新提交动作。</p>
+            <dl>
+              <div>
+                <dt>{{ returnPending ? "当前责任" : "当前承接" }}</dt>
+                <dd>
+                  {{ returnPending ? "当前责任仍在选品" : currentOwner }}
+                </dd>
+              </div>
+            </dl>
+          </section>
+          <ProductInitiativeOutcomePanel
+            v-else-if="selected"
+            v-show="activeGapPanel !== 'review_points'"
+            :outcome="destination"
+            :objective="objective"
+            :accept-responsibility="acceptResponsibility"
+            :receiving-team-or-role="receivingTeamOrRole"
+            :resource-description="resourceDescription"
+            :target-date="targetDate"
+            :next-decision-date="nextDecisionDate"
+            :next-decision-question="nextDecisionQuestion"
+            :reconsideration-date="reconsiderationDate"
+            :reason="currentReason"
+            :return-basis="returnBasis"
+            :market-code="marketCode"
+            :channel-code="channelCode"
+            :currency-options="currencyOptions"
+            :unit-economics-draft="unitEconomicsDraft"
+            :unit-economics-snapshot="unitEconomicsSnapshot"
+            :evidence-candidates="evidenceCandidates"
+            :negative-contribution-needs-reason="
+              negativeContributionNeedsReason
+            "
+            :negative-conservative-reason="negativeConservativeReason"
+            :gaps="blockingGapGroups"
+            :active-panel="activeGapPanel"
+            :optional-gaps="optionalGaps"
+            :busy="deciding"
+            :decided="decided"
+            :return-pending="returnPending"
+            @change-outcome="setDestination"
+            @update-objective="setObjective"
+            @update-accept-responsibility="acceptResponsibility = $event"
+            @update-receiving-team-or-role="receivingTeamOrRole = $event"
+            @update-resource-description="resourceDescription = $event"
+            @update-target-date="targetDate = $event"
+            @update-next-decision-date="nextDecisionDate = $event"
+            @update-next-decision-question="nextDecisionQuestion = $event"
+            @update-reconsideration-date="reconsiderationDate = $event"
+            @update-reason="setCurrentReason"
+            @update-return-basis="setReturnBasis"
+            @update-unit-economics-currency="setUnitEconomicsCurrency"
+            @update-unit-economics-range="updateUnitEconomicsRange"
+            @update-unit-economics-basis="updateUnitEconomicsBasis"
+            @toggle-unit-economics-evidence="updateUnitEconomicsEvidence"
+            @update-negative-conservative-reason="setNegativeConservativeReason"
+            @submit="submitDecision"
+          />
+          <p v-else class="empty">选择一条机会后显示接收动作。</p>
+        </WorkbenchPane>
+      </template>
+      <template #contextRail>
+        <strong>{{ blockingGapGroups.length }}</strong
+        ><span>阻塞</span>
+      </template>
+    </WorkbenchLayout>
   </main>
 </template>
 
 <style scoped>
 .selection-workbench {
   min-width: 0;
+  min-height: 0;
 }
-.progress-head {
-  display: grid;
+
+.selection-workbench :deep(.business-case__summary),
+.selection-workbench :deep(.risk-summary) {
+  grid-template-columns: 1fr;
+}
+
+.selection-workbench :deep(.business-case__summary button),
+.selection-workbench :deep(.risk-summary button) {
+  min-height: var(--touch-target);
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-2) var(--space-3);
   align-items: center;
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
+  border-width: 0 0 1px;
+  border-radius: 0;
 }
-.progress-head__copy {
+
+.selection-workbench :deep(.business-case__summary button.selected),
+.selection-workbench :deep(.risk-summary button.selected) {
+  border-left: 3px solid var(--brand);
+  box-shadow: none;
+}
+
+.selection-workbench :deep(.product-initiative-outcome) {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.selection-workbench :deep(.outcome-action) {
+  grid-row: 2;
+  position: static;
+}
+
+.selection-workbench :deep(.outcome-body) {
+  grid-row: 3;
+}
+
+.selection-feedback {
   display: grid;
-  gap: var(--space-1);
-}
-.progress-head__copy small {
-  color: var(--muted);
-  font-size: var(--text-micro);
-  font-weight: 700;
-}
-.progress-head__copy b {
-  color: var(--ink);
-  font-size: var(--text-meta);
-}
-.progress-head__bar {
-  grid-column: 1 / -1;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--line);
-  overflow: hidden;
-}
-.progress-head__bar > span {
-  display: block;
-  height: 100%;
-  background: var(--brand-strong);
+  gap: var(--space-2);
 }
 .feedback {
   display: flex;

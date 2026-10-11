@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: docs/claude-only-delivery-v1
-verification: "S2 local governance verification: docs:check, repo:check, scoped Prettier and git diff --check passed; PR/CI pending"
+verification: "PR #165 merged to main at a509e4a8 with changes/static/quality successful; local docs:check, repo:check, scoped Prettier and git diff --check passed"
 owner: main
 writer: main
 risk: medium

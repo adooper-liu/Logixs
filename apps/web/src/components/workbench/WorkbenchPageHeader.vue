@@ -17,6 +17,8 @@ const props = withDefaults(
 
 defineSlots<{
   help(): unknown;
+  switcher(): unknown;
+  moreFunctions(): unknown;
   actions(): unknown;
 }>();
 
@@ -31,6 +33,15 @@ const identity = computed(() => workbenchPurposeByCode[props.stageCode]);
     :updated-at="updatedAt"
   >
     <template v-if="$slots.help" #help><slot name="help" /></template>
-    <template v-if="$slots.actions" #actions><slot name="actions" /></template>
+    <template
+      v-if="$slots.switcher || $slots.moreFunctions || $slots.actions"
+      #actions
+    >
+      <template v-if="$slots.switcher || $slots.moreFunctions">
+        <slot name="switcher" />
+        <slot name="moreFunctions" />
+      </template>
+      <slot v-else name="actions" />
+    </template>
   </PageHeader>
 </template>

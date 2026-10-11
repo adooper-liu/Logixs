@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import RoleWorkbenchFrame from "./RoleWorkbenchFrame.vue";
+import WorkbenchLayout from "./WorkbenchLayout.vue";
 
 const container = {
   id: "container-1",
@@ -66,7 +67,56 @@ describe("RoleWorkbenchFrame", () => {
     expect(wrapper.get('[aria-label="岗位任务池"]').text()).toContain(
       "可执行任务",
     );
-    expect(wrapper.find('[aria-label="岗位事实"]').exists()).toBe(false);
+    expect(wrapper.get('[aria-label="岗位事实"]').text()).toContain(
+      "从左侧任务队列选择一项工作",
+    );
+  });
+
+  it("keeps existing consumers on the stacked compatibility response mode", () => {
+    const wrapper = mount(RoleWorkbenchFrame, {
+      props: {
+        stageCode: "cargo_ready",
+        workspaceLabel: "备货",
+        nodeScopeLabel: "备货",
+        selectedContainer: container,
+        nodes: [],
+        selectionLoading: false,
+        containerListError: "",
+        selectionError: "",
+        warnings: [],
+        contextReady: true,
+      },
+      global: { stubs: { WorkbenchPageHeader: true } },
+    });
+
+    expect(wrapper.getComponent(WorkbenchLayout).props("responsiveMode")).toBe(
+      "stacked",
+    );
+  });
+
+  it("keeps all three information responsibilities before a container is selected", () => {
+    const wrapper = mount(RoleWorkbenchFrame, {
+      props: {
+        stageCode: "cargo_ready",
+        workspaceLabel: "备货",
+        nodeScopeLabel: "备货",
+        selectedContainer: null,
+        nodes: [],
+        selectionLoading: false,
+        containerListError: "",
+        selectionError: "",
+        warnings: [],
+        contextReady: false,
+      },
+      slots: { queue: "<div>可执行任务</div>" },
+      global: { stubs: { WorkbenchPageHeader: true } },
+    });
+
+    expect(wrapper.findAll('[data-workbench-pane="queue"]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-workbench-pane="detail"]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-workbench-pane="context"]')).toHaveLength(1);
+    expect(wrapper.text()).toContain("从左侧任务队列选择一项工作");
+    expect(wrapper.text()).toContain("选择对象后显示动作");
   });
 
   it("shows auxiliary warnings without hiding the selected container", () => {

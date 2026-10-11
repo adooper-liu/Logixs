@@ -37,9 +37,41 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("uses the shared shell with real N/5 progress and right-side review editing", async ({
+  page,
+}, testInfo) => {
+  await page.goto(
+    `/workspaces/product-selection?handoffId=${handoffId}&state=working`,
+  );
+  await expect(
+    page.getByRole("region", { name: "岗位、对象与责任上下文" }),
+  ).toBeVisible();
+  const decision = page.getByRole("region", { name: "当前结论与办理缺口" });
+  await expect(decision).toContainText("0/5");
+  await expect(decision).not.toContainText("/8");
+  await expect(page.locator("[data-workbench-pane]")).toHaveCount(3);
+  await decision.getByRole("button", { name: /评审依据/ }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "当前事项操作上下文" })
+      .getByRole("region", { name: "五面商业论证" }),
+  ).toBeVisible();
+  const widths = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+  const screenshotPath = testInfo.outputPath("product-selection-working.png");
+  await page.screenshot({ path: screenshotPath });
+  await testInfo.attach("product-selection-working", {
+    path: screenshotPath,
+    contentType: "image/png",
+  });
+});
+
 test("keeps the generated purpose through historical, return-pending, and frozen states", async ({
   page,
-}) => {
+}, testInfo) => {
   for (const [state, stateText] of [
     ["legacy", "历史记录只读"],
     ["return", "等待市场接回"],
@@ -52,6 +84,16 @@ test("keeps the generated purpose through historical, return-pending, and frozen
     await expect(
       page.getByRole("heading", { name: stateText, exact: true }),
     ).toBeVisible();
+    if (state === "frozen") {
+      const screenshotPath = testInfo.outputPath(
+        "product-selection-frozen.png",
+      );
+      await page.screenshot({ path: screenshotPath });
+      await testInfo.attach("product-selection-frozen", {
+        path: screenshotPath,
+        contentType: "image/png",
+      });
+    }
   }
 });
 
@@ -125,17 +167,20 @@ function opportunityPage() {
 
 function initiativeQueue(state: string) {
   const currentDestination =
-    state === "legacy"
-      ? "deferred"
-      : state === "return"
-        ? "return_requested"
-        : "handed_off";
+    state === "working"
+      ? "needs_decision"
+      : state === "legacy"
+        ? "deferred"
+        : state === "return"
+          ? "return_requested"
+          : "handed_off";
   return {
     contractVersion: "product-initiative-queue.v1",
     items: [
       {
         handoffId,
-        outcome: state === "legacy" ? "defer" : "approve",
+        outcome:
+          state === "working" ? null : state === "legacy" ? "defer" : "approve",
         currentDestination,
         pendingFieldCodes: [],
         queueGroup: "standard",
@@ -148,44 +193,49 @@ function initiativeQueue(state: string) {
 }
 
 function initiativeDetail(state: string) {
+  const working = state === "working";
   const legacy = state === "legacy";
-  const currentDestination = legacy
-    ? "deferred"
-    : state === "return"
-      ? "return_requested"
-      : "handed_off";
+  const currentDestination = working
+    ? "needs_decision"
+    : legacy
+      ? "deferred"
+      : state === "return"
+        ? "return_requested"
+        : "handed_off";
   return {
     handoffId,
-    initiative: {
-      contractVersion: "product-initiative.v1",
-      initiativeId: "55555555-5555-4555-8555-555555555555",
-      outcome: legacy ? "defer" : "approve",
-      completion: "completed",
-      currentDestination,
-      responsibleActorId: "dev-operator",
-      objective: "重判结构方案后继续交给 NPI",
-      reviewPoints: [],
-      businessCaseDraft: [],
-      businessCaseSnapshot: null,
-      riskAssessmentDraft: legacy ? [] : [{ riskCode: "compliance" }],
-      riskAssessmentSnapshot: legacy ? null : {},
-      responsibilityAccepted: true,
-      receivingTeamOrRole: "产品开发 / NPI",
-      resourceDescription: "结构工程重新评估",
-      targetDate: "2026-11-15",
-      nextDecisionDate: "2026-10-20",
-      nextDecisionQuestion: "结构方案是否可以进入 EVT",
-      validationFocus: null,
-      reconsiderationDate: null,
-      unitEconomicsDraft: null,
-      unitEconomicsSnapshot: null,
-      negativeConservativeReason: null,
-      reason: legacy ? "等待后续重判" : null,
-      pendingFieldCodes: [],
-      version: 2,
-      createdAt: "2026-09-27T00:00:00.000Z",
-      updatedAt: "2026-10-09T09:30:00.000Z",
-    },
+    initiative: working
+      ? null
+      : {
+          contractVersion: "product-initiative.v1",
+          initiativeId: "55555555-5555-4555-8555-555555555555",
+          outcome: legacy ? "defer" : "approve",
+          completion: "completed",
+          currentDestination,
+          responsibleActorId: "dev-operator",
+          objective: "重判结构方案后继续交给 NPI",
+          reviewPoints: [],
+          businessCaseDraft: [],
+          businessCaseSnapshot: null,
+          riskAssessmentDraft: legacy ? [] : [{ riskCode: "compliance" }],
+          riskAssessmentSnapshot: legacy ? null : {},
+          responsibilityAccepted: true,
+          receivingTeamOrRole: "产品开发 / NPI",
+          resourceDescription: "结构工程重新评估",
+          targetDate: "2026-11-15",
+          nextDecisionDate: "2026-10-20",
+          nextDecisionQuestion: "结构方案是否可以进入 EVT",
+          validationFocus: null,
+          reconsiderationDate: null,
+          unitEconomicsDraft: null,
+          unitEconomicsSnapshot: null,
+          negativeConservativeReason: null,
+          reason: legacy ? "等待后续重判" : null,
+          pendingFieldCodes: [],
+          version: 2,
+          createdAt: "2026-09-27T00:00:00.000Z",
+          updatedAt: "2026-10-09T09:30:00.000Z",
+        },
     evidenceCandidates: [],
     currencyOptions: [{ code: "CAD", name: "Canadian Dollar", minorUnit: 2 }],
   };

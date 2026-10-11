@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/full-chain-demo-backup-purge-dry-run
-verification: "B2R2 focused scripts 21 tests, exact API units 15 files/50 tests, aggregate API 296 files/1529 tests, real integrations 4 files/9 tests, seed boundary receipt, root lint/typecheck/build and focused format passed; final validate pending"
+verification: "PR #166 merged to main at 84567902 with changes/static/unit/build/e2e/security/quality successful; B2R2 focused scripts 21 tests, exact API units 16 files/51 tests, real integrations 4 files/9 tests, seed boundary receipt, root lint/typecheck/build and focused format passed"
 owner: main
 writer: main
 risk: high
