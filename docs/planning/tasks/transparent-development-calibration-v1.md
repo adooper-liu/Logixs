@@ -11,6 +11,7 @@ writeScopes:
   - docs/planning/tasks/universal-workbench-layout-standard-v1.md
   - docs/superpowers/specs/2026-10-11-transparent-development-calibration-design.md
   - docs/superpowers/plans/2026-10-11-transparent-development-calibration.md
+  - docs/superpowers/plans/2026-10-11-transparent-progress-board-slice.md
   - scripts/task-brief-state.mjs
   - scripts/task-brief-state.test.mjs
   - scripts/check-repository.mjs
