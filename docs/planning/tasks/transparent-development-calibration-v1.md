@@ -1,6 +1,6 @@
 ---
-status: done
-branch: docs/transparent-development-calibration-v1
+status: fix
+branch: docs/transparent-development-calibration-closeout
 owner: main
 writer: main
 risk: high
@@ -253,6 +253,7 @@ next: one TDD fix pass, affected/full governance suites, then PR/CI integration.
 - PR 于 `2026-10-11T14:12:01Z` 以 merge commit `7fdeb1f4e59306074143aa5fe2efc840bd21926d` 合入 `main`；本地 `main` 已 fast-forward 同步该提交。
 - 完成边界：本任务只证明当前 checkout 透明校准、board 派生视图和 CI static gate 闭环；跨 worktree 校准、GitHub API 远端 evidence 投影、RAID/checklist 结构校验和自动调度仍是后续独立任务，不由本 brief 冒充完成。
 - 根 `pnpm validate` 的 `.pytest_cache` EPERM 事实保持原记录；最终 required CI 已在 clean runner 通过 `format:check`，未修改本机受保护缓存目录。
+- Closeout PR #169 首轮 run `38146474911` 证明纯 docs PR 不应要求活动 task calibration：repo check 通过后 calibration 对已完成原分支返回 `TASK_CURRENT_NOT_FOUND`。提交 `b5b03127` 将 static 分流收紧为 code PR 强制 calibration、workflow dispatch 强制 calibration、docs-only PR 跳过 calibration，同时仍运行 repo/board/format；workflow contract `2/2` RED→GREEN。该代码型修复在 #169 合并前暂将本 brief 恢复 `fix` 并绑定 closeout 分支，合并后再用纯 docs finalization 标 `done`。
 
 ## 进度 log
 
@@ -266,3 +267,4 @@ next: one TDD fix pass, affected/full governance suites, then PR/CI integration.
 | 2026-10-11 | fix    | Claude Code | 04e3fb82 | fresh 整体复审返回 4 个 Important finding；全部 accepted，进入一次 TDD fix pass                                  |
 | 2026-10-11 | review | Claude Code | 0a92ddea | 4 个 finding 全部 RED→GREEN 修复；root/affected suites 与静态门禁通过，进入 PR required quality                  |
 | 2026-10-11 | done   | Claude Code | 7fdeb1f4 | PR #168 required quality 全绿并合入 main；本 closeout 回写真实 PR/CI/merge 证据                                  |
+| 2026-10-11 | fix    | Claude Code | b5b03127 | PR #169 首轮暴露 docs-only calibration 路由缺口；规则与契约测试已修复，等待新 CI                                 |
