@@ -515,6 +515,43 @@ test("CLI converts checkout observation failures to a stable error", async () =>
   assert.doesNotMatch(result.stderr, /sensitive|Error:|at /);
 });
 
+test("CLI accepts a standalone package-runner argument separator", async () => {
+  const result = await runCalibrationCli(
+    [
+      "--",
+      "--ci",
+      "--base",
+      "base123",
+      "--head",
+      "head456",
+      "--branch",
+      "feat/calibration",
+    ],
+    {
+      loadRecords: () => [
+        {
+          path: "docs/planning/tasks/calibration.md",
+          source: taskSource(),
+        },
+      ],
+      observe: () => ({
+        actualBranch: "feat/calibration",
+        baseSha: "base123",
+        baseSource: "explicit",
+        headSha: "head456",
+        committedPaths: [],
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+      }),
+      authorityExists: () => true,
+    },
+  );
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.stderr, "");
+});
+
 test("CLI check returns findings without writing files", async () => {
   const writes = [];
   const result = await runCalibrationCli(
