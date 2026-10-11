@@ -100,6 +100,26 @@ describe("UniversalWorkbenchReferenceView", () => {
     expect(wrapper.get('[aria-current="true"]').text()).toContain("寻源");
   });
 
+  it("does not move the current session when dirty-session save fails", async () => {
+    const wrapper = mount(UniversalWorkbenchReferenceView, {
+      global: {
+        plugins: [router],
+        provide: { [uiThemeKey as symbol]: shallowRef(logixTheme) },
+      },
+    });
+
+    await wrapper.get('[data-scenario="dirty-session"]').trigger("click");
+    await wrapper
+      .get('[aria-label="切换工作现场（结构参考）"]')
+      .trigger("click");
+    await wrapper.get('[data-session="sourcing"]').trigger("click");
+    expect(wrapper.text()).toContain("草稿保存失败，仍停留在当前工作现场");
+    await wrapper
+      .get('[aria-label="切换工作现场（结构参考）"]')
+      .trigger("click");
+    expect(wrapper.get('[aria-current="true"]').text()).toContain("选品");
+  });
+
   it("opens more-functions without changing the right-pane mode", async () => {
     const wrapper = mount(UniversalWorkbenchReferenceView, {
       global: {

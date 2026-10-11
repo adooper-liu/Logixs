@@ -1357,6 +1357,52 @@ export function isVerbatimWisdomBaseline(path) {
   );
 }
 
+export function findWorkbenchVisualContractViolations({
+  routeSource,
+  visualSpecSource,
+  scenarioSource,
+  productionSources,
+}) {
+  const errors = [];
+  if (
+    !routeSource.includes("import.meta.env.DEV") ||
+    /\bnav(?:Label|Icon|Order)\b/.test(routeSource)
+  ) {
+    errors.push(
+      "workbench visual contract: reference route must be DEV-only and absent from navigation",
+    );
+  }
+  if (!visualSpecSource.includes("toHaveScreenshot")) {
+    errors.push(
+      "workbench visual contract: visual spec must contain toHaveScreenshot",
+    );
+  }
+  for (const scenario of [
+    "working",
+    "waiting",
+    "failed",
+    "conflict",
+    "readonly",
+  ]) {
+    if (!scenarioSource.includes(scenario)) {
+      errors.push(
+        `workbench visual contract: missing required scenario '${scenario}'`,
+      );
+    }
+  }
+  for (const source of productionSources) {
+    if (
+      !source.path.includes("/reference/") &&
+      source.source.includes("reference/universal-workbench")
+    ) {
+      errors.push(
+        `${source.path}: production source cannot import workbench reference fixtures`,
+      );
+    }
+  }
+  return errors;
+}
+
 export function runRepositoryChecks({ docsOnly = false } = {}) {
   const markdownFiles = walkFiles(repositoryRoot, (path) =>
     path.endsWith(".md"),
@@ -1407,6 +1453,39 @@ export function runRepositoryChecks({ docsOnly = false } = {}) {
           source: readFileSync(path, "utf8"),
         })),
       ),
+      ...findWorkbenchVisualContractViolations({
+        routeSource: readFileSync(
+          resolve(repositoryRoot, "apps/web/src/modules/reference/routes.ts"),
+          "utf8",
+        ),
+        visualSpecSource: existsSync(
+          resolve(
+            repositoryRoot,
+            "apps/web/e2e/universal-workbench-reference.visual.spec.ts",
+          ),
+        )
+          ? readFileSync(
+              resolve(
+                repositoryRoot,
+                "apps/web/e2e/universal-workbench-reference.visual.spec.ts",
+              ),
+              "utf8",
+            )
+          : "",
+        scenarioSource: readFileSync(
+          resolve(
+            repositoryRoot,
+            "apps/web/src/reference/universal-workbench/referenceScenarios.ts",
+          ),
+          "utf8",
+        ),
+        productionSources: webSourceFiles
+          .map((path) => ({
+            path: toRepositoryRelativePath(path),
+            source: readFileSync(path, "utf8"),
+          }))
+          .filter((source) => !source.path.includes("/reference/")),
+      }),
       ...findMissingStyleScaleTokens(
         readFileSync(
           resolve(repositoryRoot, "apps/web/src/themes/logix/tokens.css"),

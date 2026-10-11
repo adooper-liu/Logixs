@@ -24,6 +24,7 @@ const editing = ref(false);
 const sessionMenuOpen = ref(false);
 const moreMenuOpen = ref(false);
 const currentSession = ref("selection");
+const sessionFeedback = ref("");
 
 const scenario = computed(() => referenceScenarios[scenarioKey.value]);
 const sessions = computed(() =>
@@ -50,6 +51,12 @@ function stopEditing(): void {
 }
 
 function switchSession(id: string): void {
+  if (scenarioKey.value === "dirty-session") {
+    sessionFeedback.value = "草稿保存失败，仍停留在当前工作现场";
+    sessionMenuOpen.value = false;
+    return;
+  }
+  sessionFeedback.value = "";
   currentSession.value = id;
   sessionMenuOpen.value = false;
 }
@@ -58,18 +65,26 @@ function switchSession(id: string): void {
 <template>
   <main class="reference-page page-frame">
     <p class="reference-notice" role="note">{{ syntheticNotice }}</p>
-    <div class="reference-scenarios" aria-label="参考场景">
-      <button
-        v-for="key in (Object.keys(referenceScenarios) as ReferenceScenarioKey[])"
-        :key="key"
-        type="button"
-        :data-scenario="key"
-        :aria-pressed="scenarioKey === key"
-        @click="selectScenario(key)"
-      >
-        {{ key }}
-      </button>
-    </div>
+    <details class="reference-scenarios">
+      <summary>参考场景 · {{ scenarioKey }}</summary>
+      <div class="reference-scenarios__controls" aria-label="参考场景">
+        <button
+          v-for="key in Object.keys(
+            referenceScenarios,
+          ) as ReferenceScenarioKey[]"
+          :key="key"
+          type="button"
+          :data-scenario="key"
+          :aria-pressed="scenarioKey === key"
+          @click="selectScenario(key)"
+        >
+          {{ key }}
+        </button>
+      </div>
+    </details>
+    <p v-if="sessionFeedback" class="reference-feedback" role="alert">
+      {{ sessionFeedback }}
+    </p>
 
     <WorkbenchLayout
       v-model:left-collapsed="leftCollapsed"
@@ -120,7 +135,11 @@ function switchSession(id: string): void {
               <div v-if="moreMenuOpen" class="reference-menu__panel">
                 <button
                   type="button"
-                  @click="router.push('/linked')"
+                  @click="
+                    router.push(
+                      '/__reference/universal-workbench/linked-feature',
+                    )
+                  "
                 >
                   关联子功能结构参考
                 </button>
@@ -142,13 +161,22 @@ function switchSession(id: string): void {
           region-label="当前结论与办理缺口"
           :conclusion="scenario.conclusion"
           :disabled-reason="scenario.disabledReason"
-          :tone="scenarioKey === 'failed' || scenarioKey === 'conflict' ? 'risk' : 'info'"
+          :tone="
+            scenarioKey === 'failed' || scenarioKey === 'conflict'
+              ? 'risk'
+              : 'info'
+          "
         >
           <template v-if="scenario.progressLabel" #progress>
             <b>{{ scenario.progressLabel }}</b>
           </template>
           <template #gaps>
-            <button type="button" data-item="pricing" :class="{ 'is-selected': selectedItem === 'pricing' }" @click="startEditing">
+            <button
+              type="button"
+              data-item="pricing"
+              :class="{ 'is-selected': selectedItem === 'pricing' }"
+              @click="startEditing"
+            >
               价格带证据
             </button>
             <button type="button" data-item="risk">风险依据</button>
@@ -167,12 +195,15 @@ function switchSession(id: string): void {
           title="对象与任务队列"
           region-label="对象与任务队列"
         >
-          <button type="button" class="reference-item is-selected">合成机会 REF-001</button>
+          <button type="button" class="reference-item is-selected">
+            合成机会 REF-001
+          </button>
           <button type="button" class="reference-item">合成机会 REF-002</button>
         </WorkbenchPane>
       </template>
       <template #queueRail>
-        <span>REF-001 · 2 待办</span>
+        <strong>REF</strong>
+        <span>2 待办</span>
       </template>
 
       <template #detail>
@@ -181,7 +212,15 @@ function switchSession(id: string): void {
           :title="scenario.detailTitle"
           region-label="事实、缺口与推进任务"
         >
-          <button type="button" data-item="pricing" :class="['reference-item', { 'is-selected': selectedItem === 'pricing' }]" @click="startEditing">
+          <button
+            type="button"
+            data-item="pricing"
+            :class="[
+              'reference-item',
+              { 'is-selected': selectedItem === 'pricing' },
+            ]"
+            @click="startEditing"
+          >
             价格带证据
           </button>
           <p v-for="line in scenario.detailBody" :key="line">{{ line }}</p>
@@ -195,7 +234,13 @@ function switchSession(id: string): void {
           region-label="当前事项操作上下文"
         >
           <template v-if="editing">
-            <button type="button" aria-label="返回事项上下文" @click="stopEditing">返回</button>
+            <button
+              type="button"
+              aria-label="返回事项上下文"
+              @click="stopEditing"
+            >
+              返回
+            </button>
             <p>正在编辑：价格带证据</p>
             <label>证据说明 <input value="合成草稿" /></label>
           </template>
@@ -227,14 +272,33 @@ function switchSession(id: string): void {
   font-size: var(--text-label);
 }
 
+.reference-feedback {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--risk);
+  background: var(--risk-bg);
+  color: var(--risk);
+  font-size: var(--text-label);
+}
+
 .reference-scenarios {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
-.reference-scenarios button,
+.reference-scenarios summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+
+.reference-scenarios__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.reference-scenarios__controls button,
 .reference-menu button,
 .reference-item,
 .reference-page :deep(.decision-strip button),
@@ -249,7 +313,7 @@ function switchSession(id: string): void {
   font: inherit;
 }
 
-.reference-scenarios button[aria-pressed="true"],
+.reference-scenarios__controls button[aria-pressed="true"],
 .is-selected {
   background: var(--brand-soft);
   color: var(--brand-strong);

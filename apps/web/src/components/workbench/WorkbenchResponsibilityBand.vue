@@ -78,11 +78,11 @@ const displayValue = (item: WorkbenchResponsibilityItem) =>
 
 @media (max-width: 680px) {
   .responsibility-band dl {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .responsibility-band dl > div {
-    padding: var(--space-2);
+    padding: var(--space-1) var(--space-2);
     border-bottom: 1px solid var(--line);
   }
 }

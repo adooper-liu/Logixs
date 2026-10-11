@@ -31,6 +31,7 @@ import {
   findRouteAccessViolations,
   findStyleScaleViolations,
   findUiThemeBoundaryViolations,
+  findWorkbenchVisualContractViolations,
   runRepositoryChecks,
   validateTaskStatusRecords,
 } from "./check-repository.mjs";
@@ -1593,4 +1594,52 @@ test("route access gate rejects every audited violation", () => {
     `${ROUTE_FIXTURE_FILE}: POST /items (ItemsController.create) route access missing: ACCESS_CLASSIFICATION_MISSING`,
     `${ROUTE_FIXTURE_FILE}: POST /items/empty (ItemsController.empty) route access capability: CAPABILITY_EMPTY`,
   ]);
+});
+
+test("workbench visual contract requires a DEV-only non-navigation route", () => {
+  const violations = findWorkbenchVisualContractViolations({
+    routeSource:
+      'export const referenceRoutes = [{ path: "/__reference/universal-workbench", meta: { title: "参考", navLabel: "参考" } }];',
+    visualSpecSource:
+      'await expect(page).toHaveScreenshot("reference-default.png");',
+    scenarioSource: "working waiting failed conflict readonly dirty-session",
+    productionSources: [],
+  });
+  assert.match(
+    violations.join("\n"),
+    /reference route must be DEV-only and absent from navigation/i,
+  );
+});
+
+test("workbench visual contract rejects production imports from reference fixtures", () => {
+  const violations = findWorkbenchVisualContractViolations({
+    routeSource:
+      "export const referenceRoutes = import.meta.env.DEV ? [] : [];",
+    visualSpecSource:
+      'await expect(page).toHaveScreenshot("reference-default.png");',
+    scenarioSource: "working waiting failed conflict readonly dirty-session",
+    productionSources: [
+      {
+        path: "apps/web/src/views/ProductSelectionWorkbench.vue",
+        source:
+          'import { workingScenario } from "../reference/universal-workbench/referenceScenarios";',
+      },
+    ],
+  });
+  assert.match(
+    violations.join("\n"),
+    /production source cannot import workbench reference/i,
+  );
+});
+
+test("workbench visual contract requires screenshots and all required scenarios", () => {
+  const violations = findWorkbenchVisualContractViolations({
+    routeSource:
+      "export const referenceRoutes = import.meta.env.DEV ? [] : [];",
+    visualSpecSource: 'test("structure", async () => {});',
+    scenarioSource: "working waiting failed conflict",
+    productionSources: [],
+  });
+  assert.match(violations.join("\n"), /must contain toHaveScreenshot/i);
+  assert.match(violations.join("\n"), /missing required scenario 'readonly'/i);
 });
