@@ -124,6 +124,13 @@ test("uses one overlap rule for exact and directory scopes", () => {
   );
   assert.equal(
     writeScopesOverlap(
+      parseWriteScope("apps/api/src/contracts/**"),
+      parseWriteScope("apps/api/**"),
+    ),
+    true,
+  );
+  assert.equal(
+    writeScopesOverlap(
       parseWriteScope("apps/web/**"),
       parseWriteScope("apps/api/**"),
     ),

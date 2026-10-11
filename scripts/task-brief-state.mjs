@@ -127,7 +127,11 @@ export function parseTaskFrontmatter(source, { path }) {
   }
 
   for (const field of LIST_FIELDS) {
-    if (Object.hasOwn(values, field) && !Array.isArray(values[field])) {
+    if (
+      Object.hasOwn(values, field) &&
+      values[field] !== "" &&
+      !Array.isArray(values[field])
+    ) {
       errors.push({
         code: "TASK_PARSE_INVALID",
         path,
@@ -168,6 +172,7 @@ export function normalizeTaskRecord({ path, source }) {
     uiProgressiveDisclosure: list("uiProgressiveDisclosure"),
     uiForbidden: list("uiForbidden"),
     uiViewportEvidence: list("uiViewportEvidence"),
+    frontmatter: parsed.values,
     parseErrors: parsed.errors,
   };
 }
@@ -224,8 +229,16 @@ export function writeScopesOverlap(left, right) {
   if (left.kind === "exact" && right.kind === "exact") {
     return left.path === right.path;
   }
-  if (left.kind === "directory") {
-    return right.path === left.path || right.path.startsWith(`${left.path}/`);
+  if (left.kind === "directory" && right.kind === "directory") {
+    return (
+      left.path === right.path ||
+      left.path.startsWith(`${right.path}/`) ||
+      right.path.startsWith(`${left.path}/`)
+    );
   }
-  return left.path === right.path || left.path.startsWith(`${right.path}/`);
+  const directory = left.kind === "directory" ? left : right;
+  const exact = left.kind === "exact" ? left : right;
+  return (
+    exact.path === directory.path || exact.path.startsWith(`${directory.path}/`)
+  );
 }

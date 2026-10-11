@@ -9,6 +9,12 @@ import {
 } from "./check-architecture-boundaries.mjs";
 import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 import { auditApiControllers } from "./check-route-access-metadata.mjs";
+import {
+  ACTIVE_TASK_STATUSES,
+  normalizeTaskRecords,
+  parseWriteScope,
+  writeScopesOverlap,
+} from "./task-brief-state.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const require = createRequire(resolve(repositoryRoot, "apps/web/package.json"));
@@ -616,105 +622,6 @@ export function findBrokenMarkdownLinks(markdownFiles) {
   return errors;
 }
 
-function taskId(path) {
-  return normalizePath(path).split("/").at(-1)?.replace(/\.md$/, "") ?? path;
-}
-
-function cleanFrontmatterScalar(value) {
-  const withoutComment = value.replace(/\s+#.*$/, "").trim();
-  if (
-    (withoutComment.startsWith('"') && withoutComment.endsWith('"')) ||
-    (withoutComment.startsWith("'") && withoutComment.endsWith("'"))
-  ) {
-    return withoutComment.slice(1, -1);
-  }
-  return withoutComment;
-}
-
-function parseInlineList(value) {
-  const inner = value.slice(1, -1).trim();
-  if (!inner) return [];
-  return inner.split(",").map((item) => cleanFrontmatterScalar(item));
-}
-
-function parseTaskFrontmatter(source) {
-  const block = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
-  if (block === undefined) return null;
-
-  const result = {};
-  const lines = block.split(/\r?\n/);
-  for (let index = 0; index < lines.length; index += 1) {
-    const match = lines[index].match(/^([A-Za-z][A-Za-z0-9]*):(?:\s*(.*))?$/);
-    if (!match) continue;
-    const [, key, rawValue = ""] = match;
-    const value = cleanFrontmatterScalar(rawValue);
-
-    if (value === "|" || value === ">") {
-      const content = [];
-      while (index + 1 < lines.length && /^\s+/.test(lines[index + 1])) {
-        content.push(lines[index + 1].trim());
-        index += 1;
-      }
-      result[key] = content.join("\n").trim();
-      continue;
-    }
-
-    if (value.startsWith("[") && value.endsWith("]")) {
-      result[key] = parseInlineList(value);
-      continue;
-    }
-
-    if (!value) {
-      const items = [];
-      while (index + 1 < lines.length) {
-        const item = lines[index + 1].match(/^\s+-\s+(.+)$/);
-        if (!item) break;
-        items.push(cleanFrontmatterScalar(item[1]));
-        index += 1;
-      }
-      result[key] = items.length > 0 ? items : "";
-      continue;
-    }
-
-    result[key] = value;
-  }
-  return result;
-}
-
-function isRepositoryRelativeScope(scope) {
-  const segments = scope.split("/");
-  return (
-    scope.length > 0 &&
-    !scope.includes("\\") &&
-    !scope.startsWith("/") &&
-    !/^[A-Za-z]:/.test(scope) &&
-    !segments.includes("") &&
-    !segments.includes(".") &&
-    !segments.includes("..")
-  );
-}
-
-function parseWriteScope(scope) {
-  if (!isRepositoryRelativeScope(scope)) return { error: "outside" };
-  if (scope.endsWith("/**")) {
-    const prefix = scope.slice(0, -3).replace(/\/$/, "");
-    if (!prefix || /[*?[\]]/.test(prefix)) return { error: "pattern" };
-    return { kind: "directory", path: prefix.toLowerCase() };
-  }
-  if (/[*?[\]]/.test(scope)) return { error: "pattern" };
-  return { kind: "exact", path: scope.toLowerCase() };
-}
-
-function writeScopesOverlap(left, right) {
-  if (left.kind === "exact" && right.kind === "exact") {
-    return left.path === right.path;
-  }
-  if (left.kind === "directory") {
-    return right.path === left.path || right.path.startsWith(`${left.path}/`);
-  }
-  return left.path === right.path || left.path.startsWith(`${right.path}/`);
-}
-
 const uiStructureFields = [
   "uiStructure",
   "uiMustStayVisible",
@@ -798,11 +705,10 @@ function requireWriteTaskMetadata(record, metadata, errors) {
 
 export function validateTaskStatusRecords(records) {
   const errors = [];
-  const parsedRecords = records.map((record) => ({
-    ...record,
-    id: taskId(record.path),
-    metadata: parseTaskFrontmatter(record.source),
-  }));
+  const parsedRecords = records.map((record) => {
+    const [task] = normalizeTaskRecords([record]);
+    return { ...task, metadata: task.frontmatter };
+  });
   const recordsById = new Map(
     parsedRecords.map((record) => [record.id, record]),
   );
@@ -810,6 +716,12 @@ export function validateTaskStatusRecords(records) {
   const reviewTasks = [];
 
   for (const record of parsedRecords) {
+    if (ACTIVE_TASK_STATUSES.has(record.status)) {
+      for (const error of record.parseErrors) {
+        errors.push(`${error.path}:${error.line}: ${error.message}`);
+      }
+      if (record.parseErrors.length > 0) continue;
+    }
     if (!record.metadata || typeof record.metadata.status !== "string") {
       errors.push(`${record.path}: missing frontmatter status`);
       continue;
@@ -1309,7 +1221,10 @@ function taskStatusErrors() {
     .filter((name) => name.endsWith(".md") && !name.startsWith("_"))
     .map((name) => resolve(taskDirectory, name));
   return validateTaskStatusRecords(
-    taskFiles.map((path) => ({ path, source: readFileSync(path, "utf8") })),
+    taskFiles.map((path) => ({
+      path: toRepositoryRelativePath(path),
+      source: readFileSync(path, "utf8"),
+    })),
   );
 }
 
