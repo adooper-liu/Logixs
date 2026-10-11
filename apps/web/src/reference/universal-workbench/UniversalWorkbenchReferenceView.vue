@@ -299,6 +299,7 @@ function switchSession(id: string): void {
 }
 
 .reference-scenarios summary {
+  display: none;
   cursor: pointer;
   color: var(--ink-soft);
   font-size: var(--text-label);
@@ -368,5 +369,10 @@ function switchSession(id: string): void {
   margin: 0;
   color: var(--ink-soft);
   font-size: var(--text-label);
+}
+@media (max-width: 680px) {
+  .reference-scenarios summary {
+    display: list-item;
+  }
 }
 </style>

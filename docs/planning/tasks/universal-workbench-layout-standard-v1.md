@@ -252,7 +252,8 @@ uiViewportEvidence:
 - 处置：`accepted / fixed`。`WorkbenchLayout` 增加仅拥有响应式几何的 `responsiveMode`；默认 `standard` 保持本单元选品、市场与 reference 的新合同，`RoleWorkbenchFrame` 显式使用 `stacked` 保留原 1024 两列/右栏下沉和 390 顺序堆叠，避免把其余 21 台静默算作已迁移。
 - 验收反证：RoleWorkbenchFrame 单测先失败为 `responsiveMode undefined != stacked`，修复后布局/兼容单测 `13/13`；首轮 CI 失败涉及的 cargo-ready、customs、dispatch、pickup、stuffing、warehouse、container-unloading、product-NPI 与 reference 共 9 个 spec 在三项目、2 workers 下 `54 passed / 15 viewport-specific skipped`，19 张 reference 基线无漂移。
 - 测试修正：NPI 回流在移动视口显式进入“编辑”屏后执行主动作；移动 scroll/focus 反证先截标准编辑基线，再注入 overflow，避免验证代码污染像素基线。
-- `WB-LAYOUT-CI-002`：第二轮 CI 仅剩 reference narrow/mobile 默认像素差异。下载 artifact 后确认 expected SHA 与 tracked PNG 一致，actual 稳定为场景 `<details>` 折叠态；根因是 fixture 未显式声明初始 `open`，本机与 fresh CI 浏览器行为不一致。现由视口明确初始化（`>=681` 展开、移动折叠），E2E 截图前断言状态，交互 helper 只在折叠时打开；unit RED 为 `open undefined != ''`，修复后 reference/layout 单测 `21/21`，CI 同配置 2 workers 并发组合 `24 passed / 15 viewport-specific skipped`，PNG 无更新。
+- `WB-LAYOUT-CI-002`：第二轮 CI 仅剩 reference narrow/mobile 默认像素差异。下载 artifact 后确认 expected SHA 与 tracked PNG 一致，actual 稳定为场景 `<details>` 折叠态；根因是 fixture 未显式声明初始 `open`，本机与 fresh CI 浏览器行为不一致。现由视口明确初始化（`>=681` 展开、移动折叠），E2E 截图前断言状态，交互 helper 只在折叠时打开；unit RED 为 `open undefined != ''`，修复后 reference/layout 单测 `21/21`。
+- `WB-LAYOUT-CI-003`：第三轮 CI 的 `open` 状态断言通过但 narrow 像素仍固定差异；artifact 证明 `<summary>` 与 controls 同时出现，而 tracked 桌面/窄屏基线只显示 controls、移动基线只显示 summary。现 CSS 显式规定 `>=681` 隐藏 summary、移动显示 summary，消除浏览器原生 `<details>` 绘制差异；CI 同配置 2 workers 并发组合 `24 passed / 15 viewport-specific skipped`，PNG 无更新。
 
 ## 完成门槛
 
