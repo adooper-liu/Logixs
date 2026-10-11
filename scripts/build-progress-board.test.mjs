@@ -172,9 +172,9 @@ test("board loader observes an explicit synthetic PR identity", () => {
     ["remote get-url origin", ""],
     ["rev-parse --verify base123", "base123"],
     ["rev-parse --verify head456", "head456"],
-    ["diff --name-only --diff-filter=ACMRD base123...head456", ""],
-    ["diff --name-only --cached --diff-filter=ACMRD", ""],
-    ["diff --name-only --diff-filter=ACMRD", ""],
+    ["diff --name-status -z --diff-filter=ACMRD base123...head456", ""],
+    ["diff --name-status -z --cached --diff-filter=ACMRD", ""],
+    ["diff --name-status -z --diff-filter=ACMRD", ""],
     ["ls-files --others --exclude-standard", ""],
   ]);
 
@@ -196,6 +196,52 @@ test("board loader observes an explicit synthetic PR identity", () => {
   assert.ok(calls.includes("rev-parse --verify base123"));
   assert.ok(calls.includes("rev-parse --verify head456"));
   assert.ok(!calls.includes("branch --show-current"));
+});
+
+test("board loader rejects invalid synthetic head and diff reads", () => {
+  const baseOutputs = new Map([
+    ["rev-parse --short HEAD", "head456"],
+    ["rev-parse --abbrev-ref HEAD", "HEAD"],
+    ["status --porcelain", ""],
+    ["remote get-url origin", ""],
+    ["rev-parse --verify base123", "base123"],
+    ["rev-parse --verify head456", "head456"],
+    ["diff --name-status -z --diff-filter=ACMRD base123...head456", ""],
+    ["diff --name-status -z --cached --diff-filter=ACMRD", ""],
+    ["diff --name-status -z --diff-filter=ACMRD", ""],
+    ["ls-files --others --exclude-standard", ""],
+    [
+      "ls-files -z -- docs/planning/tasks/*.md",
+      "docs/planning/tasks/transparent-development-calibration-v1.md\0",
+    ],
+  ]);
+  const load = (failedCall) =>
+    loadProgressBoardData({
+      calibrationIdentity: {
+        base: "base123",
+        head: "head456",
+        branch: "docs/transparent-development-calibration-v1",
+      },
+      git: (args, fallback = "") => {
+        const key = args.join(" ");
+        if (key === failedCall) throw new Error("git read failed");
+        return baseOutputs.get(key) ?? fallback;
+      },
+    });
+
+  assert.deepEqual(load("rev-parse --verify base123").calibration, {
+    state: "not-observed",
+    reason: "TASK_BASE_UNKNOWN",
+  });
+  assert.deepEqual(load("rev-parse --verify head456").calibration, {
+    state: "not-observed",
+    reason: "GIT_READ_FAILED",
+  });
+  assert.deepEqual(
+    load("diff --name-status -z --diff-filter=ACMRD base123...head456")
+      .calibration,
+    { state: "not-observed", reason: "GIT_READ_FAILED" },
+  );
 });
 
 test("check normalization ignores only the unowned-untracked warning", () => {

@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   buildCalibrationProjection,
+  loadTrackedTaskRecords,
   normalizeTaskRecords,
   observeCheckout,
   resolveCurrentTask,
@@ -165,30 +166,28 @@ export function loadProgressBoardData({
   root = repositoryRoot,
   now = () => new Date(),
   calibrationIdentity = {},
-  git = (args, fallback = "") => {
-    try {
-      return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
-    } catch {
-      return fallback;
-    }
-  },
+  git = (args) =>
+    execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim(),
 } = {}) {
   const read = (relativePath) => readFileSync(join(root, relativePath), "utf8");
   const listDir = (relativePath) =>
     readdirSync(join(root, relativePath), { withFileTypes: true });
-  const commit = git(["rev-parse", "--short", "HEAD"], "未知");
-  const branch = git(["rev-parse", "--abbrev-ref", "HEAD"], "未知");
-  const dirty = git(["status", "--porcelain"], "") !== "";
-  const repoUrl = repositoryUrl(git(["remote", "get-url", "origin"], ""));
+  const optionalGit = (args, fallback) => {
+    try {
+      return git(args);
+    } catch {
+      return fallback;
+    }
+  };
+  const commit = optionalGit(["rev-parse", "--short", "HEAD"], "未知");
+  const branch = optionalGit(["rev-parse", "--abbrev-ref", "HEAD"], "未知");
+  const dirty = optionalGit(["status", "--porcelain"], "") !== "";
+  const repoUrl = repositoryUrl(
+    optionalGit(["remote", "get-url", "origin"], ""),
+  );
 
   const taskRecords = normalizeTaskRecords(
-    listDir("docs/planning/tasks")
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-      .filter((entry) => !entry.name.startsWith("_"))
-      .map((entry) => ({
-        path: `docs/planning/tasks/${entry.name}`,
-        source: read(`docs/planning/tasks/${entry.name}`),
-      })),
+    loadTrackedTaskRecords({ root, git, readFile: readFileSync }),
   );
   const tasks = taskRecords.map((task) => {
     const phase = (task.id.match(/^p(\d+)-/) || [])[1];
@@ -347,7 +346,7 @@ export function loadProgressBoardData({
   try {
     const observation = observeCheckout({
       ...calibrationIdentity,
-      git: (args) => git(args),
+      git,
     });
     const resolution = resolveCurrentTask({
       records: taskRecords,
@@ -376,7 +375,7 @@ export function loadProgressBoardData({
   } catch {
     calibration = {
       state: "not-observed",
-      reason: "TASK_BASE_UNKNOWN",
+      reason: "GIT_READ_FAILED",
     };
   }
 

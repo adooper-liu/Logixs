@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { basename, relative, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -29,15 +29,70 @@ export function normalizeRepositoryPath(value) {
   return String(value).replaceAll("\\", "/").replace(/^\.\//, "");
 }
 
+const stripInlineComment = (value) => {
+  let quote = null;
+  let escaped = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\" && quote === '"') {
+      escaped = true;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = quote === character ? null : (quote ?? character);
+      continue;
+    }
+    if (
+      character === "#" &&
+      quote === null &&
+      (index === 0 || /\s/.test(value[index - 1]))
+    ) {
+      return value.slice(0, index).trimEnd();
+    }
+  }
+  return value;
+};
+
 const cleanScalar = (value) => {
-  const trimmed = value.trim();
+  const trimmed = stripInlineComment(value).trim();
   if (
     (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
   ) {
     return trimmed.slice(1, -1);
   }
-  return trimmed.replace(/\s+#.*$/, "").trim();
+  return trimmed;
+};
+
+const splitInlineList = (value) => {
+  const items = [];
+  let quote = null;
+  let escaped = false;
+  let start = 0;
+  for (let index = 0; index <= value.length; index += 1) {
+    const character = value[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\" && quote === '"') {
+      escaped = true;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = quote === character ? null : (quote ?? character);
+      continue;
+    }
+    if ((character === "," && quote === null) || index === value.length) {
+      items.push(cleanScalar(value.slice(start, index)));
+      start = index + 1;
+    }
+  }
+  return items;
 };
 
 export function parseTaskFrontmatter(source, { path }) {
@@ -98,7 +153,7 @@ export function parseTaskFrontmatter(source, { path }) {
 
     if (scalar.startsWith("[") && scalar.endsWith("]")) {
       const inner = scalar.slice(1, -1).trim();
-      values[key] = inner ? inner.split(",").map(cleanScalar) : [];
+      values[key] = inner ? splitInlineList(inner) : [];
       continue;
     }
 
@@ -543,6 +598,23 @@ export const calibrationFindings = (projection) => projection.derived.findings;
 const splitPaths = (output) =>
   output.split(/\r?\n/).filter(Boolean).map(normalizeRepositoryPath).sort();
 
+const splitNameStatusPaths = (output) => {
+  const tokens = output.split("\0").filter(Boolean);
+  const paths = [];
+  for (let index = 0; index < tokens.length;) {
+    const status = tokens[index];
+    index += 1;
+    if (/^[RC]\d+$/.test(status)) {
+      paths.push(tokens[index], tokens[index + 1]);
+      index += 2;
+    } else {
+      paths.push(tokens[index]);
+      index += 1;
+    }
+  }
+  return stablePaths(paths);
+};
+
 export function observeCheckout({
   base,
   baseRef = "origin/main",
@@ -573,10 +645,11 @@ export function observeCheckout({
   })();
 
   const committedPaths = baseSha
-    ? splitPaths(
+    ? splitNameStatusPaths(
         git([
           "diff",
-          "--name-only",
+          "--name-status",
+          "-z",
           "--diff-filter=ACMRD",
           `${baseSha}...${headTarget}`,
         ]),
@@ -588,11 +661,11 @@ export function observeCheckout({
     baseSource,
     headSha,
     committedPaths,
-    stagedPaths: splitPaths(
-      git(["diff", "--name-only", "--cached", "--diff-filter=ACMRD"]),
+    stagedPaths: splitNameStatusPaths(
+      git(["diff", "--name-status", "-z", "--cached", "--diff-filter=ACMRD"]),
     ),
-    unstagedPaths: splitPaths(
-      git(["diff", "--name-only", "--diff-filter=ACMRD"]),
+    unstagedPaths: splitNameStatusPaths(
+      git(["diff", "--name-status", "-z", "--diff-filter=ACMRD"]),
     ),
     untrackedPaths: splitPaths(
       git(["ls-files", "--others", "--exclude-standard"]),
@@ -742,18 +815,29 @@ export async function runCalibrationCli(argv, dependencies) {
   };
 }
 
-const loadTaskRecords = () => {
-  const directory = resolve(repositoryRoot, "docs/planning/tasks");
-  return readdirSync(directory)
-    .filter((name) => name.endsWith(".md") && !name.startsWith("_"))
-    .map((name) => {
-      const absolutePath = resolve(directory, name);
-      return {
-        path: normalizeRepositoryPath(relative(repositoryRoot, absolutePath)),
-        source: readFileSync(absolutePath, "utf8"),
-      };
-    });
-};
+const splitNullTerminated = (output) =>
+  output.split("\0").filter(Boolean).map(normalizeRepositoryPath).sort();
+
+export function loadTrackedTaskRecords({ root, git, readFile = readFileSync }) {
+  return splitNullTerminated(
+    git(["ls-files", "-z", "--", "docs/planning/tasks/*.md"]),
+  )
+    .filter((path) => !basename(path).startsWith("_"))
+    .map((path) => ({
+      path,
+      source: readFile(resolve(root, path), "utf8"),
+    }));
+}
+
+const loadTaskRecords = () =>
+  loadTrackedTaskRecords({
+    root: repositoryRoot,
+    git: (args) =>
+      execFileSync("git", args, {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+      }),
+  });
 
 const defaultDependencies = () => ({
   loadRecords: loadTaskRecords,

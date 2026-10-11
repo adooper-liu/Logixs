@@ -12,6 +12,7 @@ import { auditApiControllers } from "./check-route-access-metadata.mjs";
 import {
   ACTIVE_TASK_STATUSES,
   buildCalibrationProjection,
+  loadTrackedTaskRecords,
   normalizeTaskRecords,
   observeCheckout,
   parseWriteScope,
@@ -1227,16 +1228,14 @@ export function calibrationErrors(projection) {
 }
 
 function loadTaskRecords() {
-  const taskDirectory = resolve(repositoryRoot, "docs/planning/tasks");
-  return readdirSync(taskDirectory)
-    .filter((name) => name.endsWith(".md") && !name.startsWith("_"))
-    .map((name) => {
-      const absolutePath = resolve(taskDirectory, name);
-      return {
-        path: toRepositoryRelativePath(absolutePath),
-        source: readFileSync(absolutePath, "utf8"),
-      };
-    });
+  return loadTrackedTaskRecords({
+    root: repositoryRoot,
+    git: (args) =>
+      execFileSync("git", args, {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+      }),
+  });
 }
 
 function taskStatusErrors() {

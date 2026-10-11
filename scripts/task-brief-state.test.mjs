@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   buildCalibrationProjection,
+  loadTrackedTaskRecords,
   normalizeTaskRecord,
   observeCheckout,
   parseTaskFrontmatter,
@@ -59,6 +60,23 @@ test("parses the supported task frontmatter subset deterministically", () => {
     { path: "quoted.md" },
   );
   assert.equal(quotedHash.values.branch, "docs/calibration#slice");
+});
+
+test("combines quoted values and trailing comments without losing internal hashes", () => {
+  const parsed = parseTaskFrontmatter(
+    `---
+branch: "feat/calibration#slice" # current branch
+authorityRefs: ['AGENTS.md', "docs/hash#authority.md"] # reviewed
+---`,
+    { path: "quoted-comments.md" },
+  );
+
+  assert.deepEqual(parsed.errors, []);
+  assert.equal(parsed.values.branch, "feat/calibration#slice");
+  assert.deepEqual(parsed.values.authorityRefs, [
+    "AGENTS.md",
+    "docs/hash#authority.md",
+  ]);
 });
 
 test("normalizes a task record once for every consumer", () => {
@@ -314,11 +332,14 @@ test("observes explicit PR branch, base, and head with read-only Git calls", () 
     ["rev-parse --verify base123", "base123\n"],
     ["rev-parse --verify head456", "head456\n"],
     [
-      "diff --name-only --diff-filter=ACMRD base123...head456",
-      "scripts/a.mjs\n",
+      "diff --name-status -z --diff-filter=ACMRD base123...head456",
+      "M\0scripts/a.mjs\0",
     ],
-    ["diff --name-only --cached --diff-filter=ACMRD", "scripts/b.mjs\n"],
-    ["diff --name-only --diff-filter=ACMRD", "scripts/c.mjs\n"],
+    [
+      "diff --name-status -z --cached --diff-filter=ACMRD",
+      "M\0scripts/b.mjs\0",
+    ],
+    ["diff --name-status -z --diff-filter=ACMRD", "M\0scripts/c.mjs\0"],
     ["ls-files --others --exclude-standard", ".tmp/evidence.json\n"],
   ]);
   const observation = observeCheckout({
@@ -339,6 +360,79 @@ test("observes explicit PR branch, base, and head with read-only Git calls", () 
     calls.every(
       (call) => !/checkout|reset|clean|stash|add|commit|push|merge/.test(call),
     ),
+  );
+});
+
+test("expands committed and staged rename sources for scope enforcement", () => {
+  const outputs = new Map([
+    ["rev-parse --verify base123", "base123\n"],
+    ["rev-parse --verify head456", "head456\n"],
+    [
+      "diff --name-status -z --diff-filter=ACMRD base123...head456",
+      "R100\0outside/committed.txt\0owned/committed.txt\0",
+    ],
+    [
+      "diff --name-status -z --cached --diff-filter=ACMRD",
+      "R100\0outside/staged.txt\0owned/staged.txt\0",
+    ],
+    ["diff --name-status -z --diff-filter=ACMRD", ""],
+    ["ls-files --others --exclude-standard", ""],
+  ]);
+  const observation = observeCheckout({
+    base: "base123",
+    head: "head456",
+    branch: "feat/calibration",
+    git: (args) => outputs.get(args.join(" ")) ?? "",
+  });
+
+  assert.deepEqual(observation.committedPaths, [
+    "outside/committed.txt",
+    "owned/committed.txt",
+  ]);
+  assert.deepEqual(observation.stagedPaths, [
+    "outside/staged.txt",
+    "owned/staged.txt",
+  ]);
+
+  const task = normalizeTaskRecord({
+    path: "docs/planning/tasks/calibration.md",
+    source: taskSource({ scopes: ["owned/**"] }),
+  });
+  const projection = buildCalibrationProjection({
+    task,
+    records: [task],
+    authorityExists: () => true,
+    observation,
+  });
+  assert.deepEqual(projection.derived.blockingOutOfScopePaths, [
+    "outside/committed.txt",
+    "outside/staged.txt",
+  ]);
+});
+
+test("loads only tracked task briefs and never reads untracked task contents", () => {
+  const reads = [];
+  const records = loadTrackedTaskRecords({
+    root: "D:/repo",
+    git: (args) => {
+      assert.deepEqual(args, [
+        "ls-files",
+        "-z",
+        "--",
+        "docs/planning/tasks/*.md",
+      ]);
+      return "docs/planning/tasks/tracked.md\0";
+    },
+    readFile: (path) => {
+      reads.push(path.replaceAll("\\", "/"));
+      return taskSource();
+    },
+  });
+
+  assert.deepEqual(reads, ["D:/repo/docs/planning/tasks/tracked.md"]);
+  assert.deepEqual(
+    records.map(({ path }) => path),
+    ["docs/planning/tasks/tracked.md"],
   );
 });
 
