@@ -112,6 +112,7 @@ jobs:
     timeout-minutes: 15
     env:
       EVENT_NAME: ${{ github.event_name }}
+      CODE_CHANGED: ${{ needs.changes.outputs.code }}
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
@@ -129,9 +130,9 @@ jobs:
       - name: Calibrate task checkout
         shell: pwsh
         run: |
-          if ($env:EVENT_NAME -eq "pull_request") {
+          if ($env:EVENT_NAME -eq "pull_request" -and $env:CODE_CHANGED -eq "true") {
             pnpm calibration:check -- --ci --base "$env:BASE_SHA" --head "$env:HEAD_SHA" --branch "$env:HEAD_BRANCH"
-          } else {
+          } elseif ($env:EVENT_NAME -eq "workflow_dispatch") {
             pnpm calibration:check
           }
       - run: pnpm board:check

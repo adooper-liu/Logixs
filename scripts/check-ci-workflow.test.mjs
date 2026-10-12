@@ -58,7 +58,11 @@ test("static job uses merge-base calibration for manual dispatch only", () => {
   );
   assert.match(
     staticJob,
-    /if \(\$env:EVENT_NAME -eq "pull_request"\)[\s\S]*?--ci[\s\S]*?else[\s\S]*?pnpm calibration:check/,
+    /CODE_CHANGED: \$\{\{ needs\.changes\.outputs\.code \}\}/,
+  );
+  assert.match(
+    staticJob,
+    /if \(\$env:EVENT_NAME -eq "pull_request" -and \$env:CODE_CHANGED -eq "true"\)[\s\S]*?--ci[\s\S]*?elseif \(\$env:EVENT_NAME -eq "workflow_dispatch"\)[\s\S]*?pnpm calibration:check/,
   );
   assert.match(workflow, /static:\n\s+if: github\.event_name != 'schedule'/);
   assert.match(

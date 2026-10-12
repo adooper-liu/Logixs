@@ -1,9 +1,12 @@
 ---
-status: review
-branch: docs/transparent-development-calibration-v1
+status: fix
+branch: docs/transparent-development-calibration-closeout
 owner: main
 writer: main
 risk: high
+verification: >
+  PR #168; CI run 38145897529 quality success;
+  merge commit 7fdeb1f4e59306074143aa5fe2efc840bd21926d
 dependsOn:
   - universal-workbench-layout-standard-v1
 writeScopes:
@@ -171,8 +174,8 @@ authorityRefs:
 - [x] `calibration:check` / `board:check` 都是只读命令，生成命令才允许写 HTML
 - [x] CI static job 运行只读 checks，失败输出稳定 finding 与修复入口
 - [x] 当前分支的既有 `.claude/worktrees/`、`.tmp/`、`apps/api/.tmp/` 只作为 unowned/untracked 现场报告，不进入当前任务提交
-- [ ] 定向测试、repository tests、格式、lint、typecheck、board 视觉核对和最终 CI 通过（本地项已通过；待远端 CI）
-- [ ] fresh Claude 整体复审 finding 全部裁决
+- [x] 定向测试、repository tests、格式、lint、typecheck、board 视觉核对和最终 CI 通过
+- [x] fresh Claude 整体复审 finding 全部裁决
 
 ## 第一薄片验证（2026-10-11）
 
@@ -241,6 +244,17 @@ next: one TDD fix pass, affected/full governance suites, then PR/CI integration.
 - fix 验证：affected governance suites `119/119`，root test fresh `59 + 192 + 5 + 747 + 1529` 全绿；lint/typecheck、repo/docs/board、task scoped Prettier、`git diff --check` 和提交后 CI calibration 通过。
 - 当前状态恢复 `review`。按一次 fix pass 的执行约束不重复派发整分支复审；下一门禁是远端 PR required `quality` 与合并证据。
 
+## PR / CI / merge 收口（2026-10-11）
+
+- PR：[**#168 · feat(governance): add transparent delivery calibration**](https://github.com/adooper-liu/Logixs/pull/168)，base `e158290a`，最终 head `09c88a99`。
+- 首轮 CI run `38145476972` 在 static calibration step 失败：Windows runner 将 package-runner separator `--` 原样传给 Node，CLI 返回 `unknown or incomplete argument '--'`。新增 `CLI accepts a standalone package-runner argument separator` 回归先 RED 后 GREEN，仅忽略独立 `--`，其他未知参数仍 fail-closed；提交 `09c88a99`。
+- 最终 CI run [`38145897529`](https://github.com/adooper-liu/Logixs/actions/runs/38145897529)：`changes/static/unit/build/security/quality` 全部 success；`e2e/dictionary` 按变更分类规则 skipped。static 中 `repo:check → calibration:check → board:check → format:check` 在线逐步通过。
+- Repository ruleset `protect-main` 的 required check `quality` 通过，PR merge state `CLEAN`；负责人明确授权本次合并。
+- PR 于 `2026-10-11T14:12:01Z` 以 merge commit `7fdeb1f4e59306074143aa5fe2efc840bd21926d` 合入 `main`；本地 `main` 已 fast-forward 同步该提交。
+- 完成边界：本任务只证明当前 checkout 透明校准、board 派生视图和 CI static gate 闭环；跨 worktree 校准、GitHub API 远端 evidence 投影、RAID/checklist 结构校验和自动调度仍是后续独立任务，不由本 brief 冒充完成。
+- 根 `pnpm validate` 的 `.pytest_cache` EPERM 事实保持原记录；最终 required CI 已在 clean runner 通过 `format:check`，未修改本机受保护缓存目录。
+- Closeout PR #169 首轮 run `38146474911` 证明纯 docs PR 不应要求活动 task calibration：repo check 通过后 calibration 对已完成原分支返回 `TASK_CURRENT_NOT_FOUND`。提交 `b5b03127` 将 static 分流收紧为 code PR 强制 calibration、workflow dispatch 强制 calibration、docs-only PR 跳过 calibration，同时仍运行 repo/board/format；workflow contract `2/2` RED→GREEN。该代码型修复在 #169 合并前暂将本 brief 恢复 `fix` 并绑定 closeout 分支，合并后再用纯 docs finalization 标 `done`。
+
 ## 进度 log
 
 | 日期       | 阶段   | 负责        | commit   | 说明                                                                                                             |
@@ -252,3 +266,5 @@ next: one TDD fix pass, affected/full governance suites, then PR/CI integration.
 | 2026-10-11 | review | Claude Code | 3c9c0307 | TDC4 本地完成：CI static 只读接线、全量门禁分轨通过；等待 fresh 整体复审与 PR CI                                 |
 | 2026-10-11 | fix    | Claude Code | 04e3fb82 | fresh 整体复审返回 4 个 Important finding；全部 accepted，进入一次 TDD fix pass                                  |
 | 2026-10-11 | review | Claude Code | 0a92ddea | 4 个 finding 全部 RED→GREEN 修复；root/affected suites 与静态门禁通过，进入 PR required quality                  |
+| 2026-10-11 | done   | Claude Code | 7fdeb1f4 | PR #168 required quality 全绿并合入 main；本 closeout 回写真实 PR/CI/merge 证据                                  |
+| 2026-10-11 | fix    | Claude Code | b5b03127 | PR #169 首轮暴露 docs-only calibration 路由缺口；规则与契约测试已修复，等待新 CI                                 |
