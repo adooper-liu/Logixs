@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { execFileSync } from "node:child_process";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { after, test } from "node:test";
 import {
   buildWorktreeCalibrationProjection,
   classifyWorktree,
   observeRegisteredWorktrees,
   parseWorktreePorcelain,
+  runReadOnlyGit,
+  runWorktreeCalibrationCli,
 } from "./worktree-calibration.mjs";
 import { normalizeTaskRecord } from "./task-brief-state.mjs";
 
@@ -799,4 +811,242 @@ test("detached tracked dirt remains unowned and produces both findings", () => {
         worktreePath === fixture.paths.healthy,
     ),
   );
+});
+
+const cliProjection = ({ blocking = false, untrackedCount = 1 } = {}) => ({
+  primaryTaskRecords: [],
+  worktrees: [
+    primaryObservation(),
+    {
+      ...observation({
+        ahead: 1,
+        fullyMerged: false,
+        untrackedPaths: Array.from(
+          { length: untrackedCount },
+          (_, index) => `.tmp/path-${index}.txt`,
+        ),
+        trackedDirtyPaths: blocking ? ["outside.txt"] : [],
+      }),
+      registration: {
+        ...observation().registration,
+        path: "D:/repo/.worktrees/ahead",
+        branch: "ahead",
+      },
+      state: blocking ? "unowned-dirty" : "dormant-ahead",
+    },
+  ],
+});
+
+const cliDependencies = (fixture) => ({
+  primaryPath: "D:/repo",
+  observe: () => fixture.worktrees,
+  loadPrimaryTasks: () => fixture.primaryTaskRecords,
+});
+
+test("CLI returns warning-only success without writes", async () => {
+  const writes = [];
+  const result = await runWorktreeCalibrationCli([], {
+    ...cliDependencies(cliProjection()),
+    writeFile: (...args) => writes.push(args),
+  });
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /worktree calibration: pass/);
+  assert.match(result.stdout, /WORKTREE_DORMANT_AHEAD/);
+  assert.deepEqual(writes, []);
+});
+
+test("CLI returns one for blocking and two for usage or registry failure", async () => {
+  const blocked = await runWorktreeCalibrationCli(
+    [],
+    cliDependencies(cliProjection({ blocking: true })),
+  );
+  assert.equal(blocked.exitCode, 1);
+
+  const usage = await runWorktreeCalibrationCli(
+    ["--unknown"],
+    cliDependencies(cliProjection()),
+  );
+  assert.equal(usage.exitCode, 2);
+  assert.match(usage.stderr, /unknown argument/);
+
+  const registry = await runWorktreeCalibrationCli([], {
+    ...cliDependencies(cliProjection()),
+    observe: () => {
+      const error = new Error("WORKTREE_REGISTRY_READ_FAILED");
+      error.code = "WORKTREE_REGISTRY_READ_FAILED";
+      throw error;
+    },
+  });
+  assert.equal(registry.exitCode, 2);
+  assert.equal(
+    registry.stderr,
+    "worktree calibration failed: WORKTREE_REGISTRY_READ_FAILED\n",
+  );
+});
+
+test("JSON output retains complete path arrays and validates primary", async () => {
+  const result = await runWorktreeCalibrationCli(
+    ["--", "--json", "--primary", "D:/repo", "--main-ref", "refs/heads/main"],
+    cliDependencies(cliProjection({ untrackedCount: 55 })),
+  );
+  const projection = JSON.parse(result.stdout);
+  assert.equal(projection.primary.mainRef, "refs/heads/main");
+  assert.equal(projection.worktrees[1].untrackedPaths.length, 55);
+
+  const textResult = await runWorktreeCalibrationCli(
+    ["--primary", "D:/repo"],
+    cliDependencies(cliProjection({ untrackedCount: 55 })),
+  );
+  assert.equal(
+    (textResult.stdout.match(/^ {2}- \.tmp\/path-/gm) ?? []).length,
+    50,
+  );
+  assert.match(textResult.stdout, /\.\.\. 5 more/);
+
+  const relative = await runWorktreeCalibrationCli(
+    ["--primary", "relative/path"],
+    cliDependencies(cliProjection()),
+  );
+  assert.equal(relative.exitCode, 2);
+  assert.match(relative.stderr, /absolute path/);
+});
+
+const temporaryRoots = [];
+after(() => {
+  for (const root of temporaryRoots) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const testGit = (cwd, ...args) =>
+  execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: "Logix Test",
+      GIT_AUTHOR_EMAIL: "logix-test@example.invalid",
+      GIT_COMMITTER_NAME: "Logix Test",
+      GIT_COMMITTER_EMAIL: "logix-test@example.invalid",
+    },
+  });
+
+const writeTask = (root, name, source) => {
+  const directory = join(root, "docs/planning/tasks");
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(join(directory, `${name}.md`), source, "utf8");
+};
+
+const createTemporaryWorktreeRepository = () => {
+  const root = mkdtempSync(join(tmpdir(), "logix-worktrees-"));
+  temporaryRoots.push(root);
+  testGit(root, "init", "-b", "main");
+  writeTask(
+    root,
+    "foundation",
+    taskSource({
+      status: "done",
+      branch: "feat/foundation",
+      verification: "CI",
+      writer: "foundation",
+      writeScopes: ["docs/foundation.md"],
+      locks: ["foundation-lock"],
+    }),
+  );
+  writeFileSync(join(root, "README.md"), "root\n", "utf8");
+  testGit(root, "add", "README.md", "docs/planning/tasks/foundation.md");
+  testGit(root, "commit", "-m", "base");
+
+  const directory = join(root, "worktrees");
+  const merged = join(directory, "merged");
+  const ahead = join(directory, "有 空格 ahead");
+  const dirty = join(directory, "dirty");
+  const active = join(directory, "active");
+  const detached = join(directory, "detached");
+  mkdirSync(directory, { recursive: true });
+
+  testGit(root, "worktree", "add", "-b", "merged", merged, "main");
+  testGit(root, "worktree", "add", "-b", "ahead", ahead, "main");
+  writeFileSync(join(ahead, "ahead.txt"), "ahead\n", "utf8");
+  testGit(ahead, "add", "ahead.txt");
+  testGit(ahead, "commit", "-m", "ahead");
+
+  testGit(root, "worktree", "add", "-b", "dirty", dirty, "main");
+  writeFileSync(join(dirty, "README.md"), "dirty\n", "utf8");
+
+  testGit(root, "worktree", "add", "-b", "active", active, "main");
+  writeTask(
+    active,
+    "active",
+    taskSource({
+      branch: "active",
+      writer: "active",
+      writeScopes: ["scripts/active/**"],
+      locks: ["active-lock"],
+    }),
+  );
+  testGit(active, "add", "docs/planning/tasks/active.md");
+  testGit(active, "commit", "-m", "active brief");
+  writeTask(
+    active,
+    "poison",
+    taskSource({ branch: "active", writer: "poison" }),
+  );
+
+  testGit(root, "worktree", "add", "--detach", detached, "main");
+  return { root, paths: { merged, ahead, dirty, active, detached } };
+};
+
+const stateCounts = (worktrees) =>
+  Object.fromEntries(
+    [...new Set(worktrees.map(({ state }) => state))]
+      .sort()
+      .map((state) => [
+        state,
+        worktrees.filter((worktree) => worktree.state === state).length,
+      ]),
+  );
+
+test("real Git registry classifies merged, ahead, dirty, active, and detached worktrees", () => {
+  const fixture = createTemporaryWorktreeRepository();
+  const reads = [];
+  const observed = observeRegisteredWorktrees({
+    primaryPath: fixture.root.replaceAll("\\", "/"),
+    mainRef: "main",
+    git: runReadOnlyGit,
+    readFile: (path, encoding) => {
+      reads.push(path.replaceAll("\\", "/"));
+      return readFileSync(path, encoding);
+    },
+    authorityExists: () => true,
+  });
+  const primary = observed.find(({ isPrimary }) => isPrimary);
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: fixture.root.replaceAll("\\", "/"),
+    mainRef: "main",
+    primaryTaskRecords: primary.taskRecords,
+    observedWorktrees: observed,
+  });
+
+  assert.deepEqual(stateCounts(projection.worktrees), {
+    active: 1,
+    "dormant-ahead": 1,
+    "dormant-merged": 2,
+    primary: 1,
+    "unowned-dirty": 1,
+  });
+  assert.ok(
+    projection.findings.some(
+      ({ code }) => code === "WORKTREE_TRACKED_DIRTY_UNOWNED",
+    ),
+  );
+  assert.ok(
+    projection.findings.some(({ code }) => code === "WORKTREE_DORMANT_AHEAD"),
+  );
+  assert.ok(
+    projection.worktrees.some(({ registration }) =>
+      registration.path.includes("有 空格"),
+    ),
+  );
+  assert.ok(reads.every((path) => !path.endsWith("poison.md")));
 });

@@ -1,4 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   buildCalibrationProjection,
   loadTrackedTaskRecords,
@@ -559,4 +562,165 @@ export function observeRegisteredWorktrees({
       };
     }
   });
+}
+
+const displayPaths = (paths, limit = 50) => {
+  const shown = paths.slice(0, limit);
+  return paths.length > limit
+    ? [...shown, `... ${paths.length - limit} more`]
+    : shown;
+};
+
+export function formatWorktreeCalibrationReport(projection) {
+  const blocking = projection.findings.filter(
+    ({ severity }) => severity === "blocking",
+  );
+  const counts = new Map();
+  for (const worktree of projection.worktrees) {
+    counts.set(worktree.state, (counts.get(worktree.state) ?? 0) + 1);
+  }
+  const lines = [
+    `worktree calibration: ${blocking.length === 0 ? "pass" : "fail"}`,
+    `primary: ${projection.primary?.path ?? "unknown"} ${projection.primary?.branch ?? "detached"} ${projection.primary?.headSha ?? "unknown"}`,
+    `main ref: ${projection.primary?.mainRef ?? "unknown"}`,
+    `worktrees: ${projection.worktrees.length} (active ${counts.get("active") ?? 0}, dormant-ahead ${counts.get("dormant-ahead") ?? 0}, dormant-merged ${counts.get("dormant-merged") ?? 0}, unowned-dirty ${counts.get("unowned-dirty") ?? 0}, unreadable ${counts.get("unreadable") ?? 0})`,
+  ];
+  for (const worktree of projection.worktrees) {
+    lines.push(
+      `- ${worktree.registration.path} [${worktree.state}] branch=${worktree.registration.branch ?? "detached"} head=${worktree.registration.headSha} ahead=${worktree.ahead} behind=${worktree.behind} tracked=${worktree.trackedDirtyPaths.length} untracked=${worktree.untrackedPaths.length} task=${worktree.activeResolution?.task?.id ?? "none"}`,
+    );
+    lines.push(
+      ...displayPaths(worktree.trackedDirtyPaths).map(
+        (path) => `    tracked: ${path}`,
+      ),
+    );
+    lines.push(
+      ...displayPaths(worktree.untrackedPaths).map(
+        (path) => `    untracked: ${path}`,
+      ),
+    );
+  }
+  for (const item of projection.findings) {
+    lines.push(`[${item.severity}] ${item.code} ${item.subject}`);
+    lines.push(
+      ...displayPaths(item.evidence).map((evidence) => `  - ${evidence}`),
+    );
+    lines.push(`  remedy: ${item.remedy}`);
+  }
+  lines.push(`next gate: ${projection.nextGate}`);
+  return `${lines.join("\n")}\n`;
+}
+
+const parseCliArguments = (argv) => {
+  const options = {
+    json: false,
+    mainRef: "origin/main",
+    primary: null,
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "--") continue;
+    if (argument === "--json") {
+      options.json = true;
+      continue;
+    }
+    if (argument === "--main-ref" || argument === "--primary") {
+      const value = argv[index + 1];
+      if (!value) return { error: `incomplete argument '${argument}'` };
+      if (argument === "--main-ref") options.mainRef = value;
+      else options.primary = value;
+      index += 1;
+      continue;
+    }
+    return { error: `unknown argument '${argument}'` };
+  }
+  if (options.primary && !isAbsolute(options.primary)) {
+    return { error: "--primary requires an absolute path" };
+  }
+  return { options };
+};
+
+export async function runWorktreeCalibrationCli(argv, dependencies) {
+  const parsed = parseCliArguments(argv);
+  if (parsed.error) {
+    return { exitCode: 2, stdout: "", stderr: `${parsed.error}\n` };
+  }
+  const primaryPath = parsed.options.primary ?? dependencies.primaryPath;
+  try {
+    const observedWorktrees = await dependencies.observe({
+      primaryPath,
+      mainRef: parsed.options.mainRef,
+    });
+    const primaryTaskRecords = await dependencies.loadPrimaryTasks(
+      observedWorktrees,
+      primaryPath,
+    );
+    const projection = buildWorktreeCalibrationProjection({
+      primaryPath,
+      mainRef: parsed.options.mainRef,
+      primaryTaskRecords,
+      observedWorktrees,
+    });
+    const hasBlocking = projection.findings.some(
+      ({ severity }) => severity === "blocking",
+    );
+    return {
+      exitCode: hasBlocking ? 1 : 0,
+      stdout: parsed.options.json
+        ? `${JSON.stringify(projection, null, 2)}\n`
+        : formatWorktreeCalibrationReport(projection),
+      stderr: "",
+    };
+  } catch (error) {
+    const code = error.code ?? "WORKTREE_READ_FAILED";
+    return {
+      exitCode: 2,
+      stdout: "",
+      stderr: `worktree calibration failed: ${code}\n`,
+    };
+  }
+}
+
+export function runReadOnlyGit({ cwd, args }) {
+  try {
+    return {
+      stdout: execFileSync("git", args, {
+        cwd,
+        encoding: "utf8",
+      }),
+      exitCode: 0,
+    };
+  } catch (error) {
+    return {
+      stdout: typeof error.stdout === "string" ? error.stdout : "",
+      exitCode: Number.isInteger(error.status) ? error.status : 2,
+    };
+  }
+}
+
+const defaultDependencies = () => ({
+  primaryPath: process.cwd().replaceAll("\\", "/"),
+  observe: ({ primaryPath, mainRef }) =>
+    observeRegisteredWorktrees({
+      primaryPath,
+      mainRef,
+      git: runReadOnlyGit,
+      readFile: readFileSync,
+      authorityExists: (absolutePath) => existsSync(absolutePath),
+    }),
+  loadPrimaryTasks: (observedWorktrees) =>
+    observedWorktrees.find(({ isPrimary }) => isPrimary)?.taskRecords ?? [],
+});
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  const result = await runWorktreeCalibrationCli(
+    process.argv.slice(2),
+    defaultDependencies(),
+  );
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  process.exitCode = result.exitCode;
 }
