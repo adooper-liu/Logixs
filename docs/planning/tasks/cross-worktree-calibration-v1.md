@@ -1,6 +1,9 @@
 ---
-status: review
+status: done
 branch: feat/cross-worktree-calibration-v1
+verification: >
+  PR #171; CI run 38207916612 quality success;
+  merge commit c42231c6e0b9966eec51e2965719b65668e4ee8c
 owner: main
 writer: main
 risk: high
@@ -149,7 +152,7 @@ authorityRefs:
 - [x] 当前注册现场 dry-run 已记录 exact counts/finding/no-change evidence
 - [x] 相关 lint/format/test/repo/docs/board 和任务级最终门禁通过或如实记录已知外部阻塞
 - [x] fresh Claude 整体复审 finding 全部裁决
-- [ ] 单一实现 PR required CI 通过并合入 main；closeout 证据可追溯
+- [x] 单一实现 PR required CI 通过并合入 main；closeout 证据可追溯
 
 ## 负责人决策记录
 
@@ -200,6 +203,16 @@ next: fix
 - Unknown 保持：required PR CI 尚未观察；E2E 本地仍被外部 5173 server fail-closed；本复审未重复完整真实 before/after，但已审阅记录证据。
 - Declined/deferred：board/hook/CI 集成、远端 evidence、RAID/checklist、自动调度、worktree 生命周期操作与 inert Compose 清理均不进入本片。
 
+## PR / CI / merge 收口（2026-10-12）
+
+- 实现 PR：[**#171 · feat(governance): add cross-worktree calibration**](https://github.com/adooper-liu/Logixs/pull/171)，base `fe37c100`，最终 head `eba67d02`。
+- 首轮 CI run `38206864764`：static/build/security/changes 通过，unit 的临时真实 Git 测试因 OS temp path spelling 与 Git canonical primary spelling不同返回 `WORKTREE_PRIMARY_READ_FAILED`。提交 `eba67d02` 改为在 `git init` 后使用 `git rev-parse --show-toplevel` 的 canonical primary；本地 real temp regression 和完整 42 项 worktree suite 通过。
+- 最终 CI run [`38207916612`](https://github.com/adooper-liu/Logixs/actions/runs/38207916612)：`quality/static/unit/build/security/changes` success，`e2e/dictionary` 按路径分类 skipped。
+- PR merge state `CLEAN`，required `quality` 通过；负责人已明确授权全绿后无 GitHub 人工 review 合并。
+- PR 于 `2026-10-12T05:31:19Z` 以 merge commit `c42231c6e0b9966eec51e2965719b65668e4ee8c` 合入 `main`。
+- 完成边界：只读本地 `worktrees:check` 已闭环；board/hook/CI 接入、远端 evidence、RAID/checklist、自动调度和任何 worktree 生命周期操作仍为后续独立任务。
+- 本机 E2E 5173 冲突与 inert Compose 资源保持原记录；required CI 在 clean runner 已完成本变更适用的 unit/static/build 门禁。
+
 ## 进度 log
 
 | 日期       | 阶段   | 负责        | commit   | 说明                                                                                         |
@@ -210,3 +223,4 @@ next: fix
 | 2026-10-12 | review | Claude Code | d792f67c | CWC1–3 实现与真实 dry-run 完成；40/40、blocking 0、no-write 0，进入完整门禁与 fresh review   |
 | 2026-10-12 | review | Claude Code | 4ce3d346 | root/integration/build 与治理门禁通过；E2E 被外部 5173 server fail-closed，等待 fresh review |
 | 2026-10-12 | review | Claude Code | fb77c545 | fresh review 1 Important 已 accepted 并 RED→GREEN；Windows path gap 同片修复，进入 PR CI     |
+| 2026-10-12 | done   | Claude Code | c42231c6 | PR #171 required quality 全绿并合入 main；closeout 回写真实 review/CI/merge 证据             |
