@@ -172,6 +172,33 @@ function normalizeText(value, limits = XLSX_LIMITS) {
     : text;
 }
 
+export function assertWorkbookContentSafety(
+  workbook,
+  { limits = XLSX_LIMITS, headerRowForSheet = () => 6 } = {},
+) {
+  if (workbook.worksheets.length > limits.sheets) unsafe("sheet count");
+  for (const sheet of workbook.worksheets) {
+    if (sheet.columnCount > limits.columnsPerSheet) unsafe("column count");
+    const headerRow = headerRowForSheet(sheet.name);
+    let dataRows = 0;
+    sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber > headerRow) {
+        dataRows += 1;
+        if (dataRows > limits.rowsPerSheet) unsafe("row count");
+      }
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        if (
+          cell.type === ExcelJS.ValueType.Formula ||
+          cell.model?.formula ||
+          cell.formula
+        )
+          throw new Error("XLSX_FORMULA_FORBIDDEN");
+        normalizeText(cell.value, limits);
+      });
+    });
+  }
+}
+
 function generatorRowKey(row, limits = XLSX_LIMITS) {
   const parts = [2, 3].map((columnNumber) => {
     const value = normalizeText(row.getCell(columnNumber).value, limits);
@@ -195,31 +222,23 @@ export async function scanWorkbook(
     fail("SOURCE_FINGERPRINT_MISMATCH");
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer, { ignoreNodes: ["extLst"] });
-  if (workbook.worksheets.length > limits.sheets) unsafe("sheet count");
+  assertWorkbookContentSafety(workbook, {
+    limits,
+    headerRowForSheet: (sheetName) =>
+      policy?.sheets?.find((item) => item.name === sheetName)?.headerRow ?? 6,
+  });
   const sheets = [];
   for (const sheet of workbook.worksheets) {
     const rule = policy?.sheets?.find((item) => item.name === sheet.name);
     if (!rule) fail("UNKNOWN_SHEET");
-    sheet.eachRow({ includeEmpty: false }, (row) => {
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        if (
-          cell.type === ExcelJS.ValueType.Formula ||
-          cell.model?.formula ||
-          cell.formula
-        )
-          throw new Error("XLSX_FORMULA_FORBIDDEN");
-      });
-    });
     const headerRow = rule.headerRow;
     const header = sheet.getRow(headerRow);
     const headers = header.values
       .slice(1)
       .map((value) => normalizeText(value, limits));
-    if (sheet.columnCount > limits.columnsPerSheet) unsafe("column count");
     const rows = [];
     sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber <= headerRow) return;
-      if (rows.length >= limits.rowsPerSheet) unsafe("row count");
       const valuesByHeader = {};
       row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
         const name = headers[columnNumber - 1];
