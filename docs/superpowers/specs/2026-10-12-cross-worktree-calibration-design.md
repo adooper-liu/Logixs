@@ -1,6 +1,6 @@
 # Cross-Worktree Calibration V1 · Design
 
-> 状态：**负责人已批准会话设计，待书面 spec 审核** · 2026-10-12
+> 状态：**负责人已批准书面 spec** · 2026-10-12
 >
 > 一句话：**从 Git 注册 worktree 与现有 task brief 重建一份只读跨 checkout 校准投影，区分 active/dormant 并阻断真实写冲突，同时不读取或处置用户未跟踪工作。**
 >
@@ -397,7 +397,10 @@ fetch pull
 pnpm worktrees:check
 pnpm worktrees:check -- --json
 pnpm worktrees:check -- --main-ref <ref>
+pnpm worktrees:check -- --primary <absolute-registered-main-path> --main-ref <ref>
 ```
+
+`--primary` 默认 `process.cwd()`，必须是绝对路径并精确匹配一个已注册 worktree；它只选择观察主 checkout，不改变进程 cwd 或 Git 状态。
 
 文本报告必须包含：
 
@@ -488,7 +491,7 @@ JSON 输出完整投影，不裁剪路径数组。文本显示每个路径轨最
 
 ## 14. 当前仓库 Dry-Run 预期
 
-基于设计时现场，排除 primary 后预期：
+基于设计开始前的现场，排除 primary 后基线为：
 
 ```text
 active: 0
@@ -498,7 +501,7 @@ unowned-dirty: 0
 unreadable: 0
 ```
 
-部分 checkout 有 untracked warning。真实实现若得到不同结果，应先核对现场是否变化，不修改测试去追逐旧数字。Dry-run 只记录事实，不清理 worktree。
+执行时实现分支若位于新的注册 worktree，则预期应增加该实现 worktree 为 `active: 1`，而原有 8 个历史 worktree 仍应保持 `dormant-ahead: 5`、`dormant-merged: 3`、`unowned-dirty: 0`、`unreadable: 0`。真实实现若得到其他结果，应先核对现场是否变化，不修改代码或测试去追逐旧数字。Dry-run 只记录事实，不清理 worktree。
 
 ## 15. 实施切片
 
