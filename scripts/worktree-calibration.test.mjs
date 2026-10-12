@@ -1087,9 +1087,10 @@ const writeTask = (root, name, source) => {
 };
 
 const createTemporaryWorktreeRepository = () => {
-  const root = mkdtempSync(join(tmpdir(), "logix-worktrees-"));
-  temporaryRoots.push(root);
-  testGit(root, "init", "-b", "main");
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "logix-worktrees-"));
+  temporaryRoots.push(temporaryRoot);
+  testGit(temporaryRoot, "init", "-b", "main");
+  const root = testGit(temporaryRoot, "rev-parse", "--show-toplevel").trim();
   writeTask(
     root,
     "foundation",
