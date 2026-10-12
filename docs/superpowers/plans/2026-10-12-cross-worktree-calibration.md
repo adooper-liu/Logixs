@@ -157,6 +157,7 @@ dependsOn:
   - transparent-development-calibration-v1
 writeScopes:
   - docs/planning/tasks/cross-worktree-calibration-v1.md
+  - docs/planning/tasks/thin-agent-orchestrator-v1.md
   - docs/INDEX.md
   - docs/superpowers/specs/2026-10-12-cross-worktree-calibration-design.md
   - docs/superpowers/plans/2026-10-12-cross-worktree-calibration.md
