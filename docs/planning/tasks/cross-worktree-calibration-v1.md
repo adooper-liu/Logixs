@@ -1,5 +1,5 @@
 ---
-status: coding
+status: review
 branch: feat/cross-worktree-calibration-v1
 owner: main
 writer: main
@@ -136,17 +136,17 @@ authorityRefs:
 
 ## 验收
 
-- [ ] 不存在第二套 worktree registry、任务状态或长期运行目录
-- [ ] 只观察 `git worktree list` 已注册 worktree
-- [ ] tracked brief 经 `git ls-files` 确认后才读取；untracked poison 内容读取次数为 0
-- [ ] primary / active / dormant-merged / dormant-ahead / unowned-dirty / unreadable 分类稳定
-- [ ] dormant-merged 不告警，dormant-ahead warning-only，unowned tracked dirty blocking
-- [ ] writer/scope/lock/dependency/WIP 冲突稳定阻断，review 不参与写冲突
-- [ ] primary main catalog 是依赖状态权威，陈旧 worktree 副本不能覆盖
-- [ ] Windows 路径、空格、中文、detached、locked、prunable 与 rename 路径测试通过
-- [ ] CLI text/JSON、退出码 0/1/2、路径显示上限和 no-write 行为稳定
-- [ ] 临时真实 Git/worktree 集成测试只清理自身系统临时目录
-- [ ] 当前注册现场 dry-run 已记录 exact counts/finding/no-change evidence
+- [x] 不存在第二套 worktree registry、任务状态或长期运行目录
+- [x] 只观察 `git worktree list` 已注册 worktree
+- [x] tracked brief 经 `git ls-files` 确认后才读取；untracked poison 内容读取次数为 0
+- [x] primary / active / dormant-merged / dormant-ahead / unowned-dirty / unreadable 分类稳定
+- [x] dormant-merged 不告警，dormant-ahead warning-only，unowned tracked dirty blocking
+- [x] writer/scope/lock/dependency/WIP 冲突稳定阻断，review 不参与写冲突
+- [x] primary main catalog 是依赖状态权威，陈旧 worktree 副本不能覆盖
+- [x] Windows 路径、空格、中文、detached、locked、prunable 与 rename 路径测试通过
+- [x] CLI text/JSON、退出码 0/1/2、路径显示上限和 no-write 行为稳定
+- [x] 临时真实 Git/worktree 集成测试只清理自身系统临时目录
+- [x] 当前注册现场 dry-run 已记录 exact counts/finding/no-change evidence
 - [ ] 相关 lint/format/test/repo/docs/board 和任务级最终门禁通过或如实记录已知外部阻塞
 - [ ] fresh Claude 整体复审 finding 全部裁决
 - [ ] 单一实现 PR required CI 通过并合入 main；closeout 证据可追溯
@@ -157,10 +157,23 @@ authorityRefs:
 | ------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------- | ------------------------ |
 | CWC-D01 | 8 个历史 worktree 均 tracked clean；5 个 ahead、3 个 merged；无 active brief | A 分级；B ahead 全阻断；C 新增生命周期 registry。A 保护现场且不永久红灯；B 过严；C 建第二套状态 | A：merged 信息、ahead warning、dirty/conflict block | 批准 A     | 本 brief/spec / approved |
 
+## CWC1–CWC3 本地证据（2026-10-12）
+
+- 治理载体：旧 `thin-agent-orchestrator-v1` 已 Git rename 为本 brief；当前实现只保留 Claude-only 主代理 + fresh Claude 最终只读复审，Codex/Cursor 编排、运行态目录和外部 adapter 均未进入实现。
+- 纯投影与 adapter：`worktree-calibration` + shared `task-brief-state` 合计 `40/40` tests 通过；覆盖 porcelain NUL、Windows/中文/空格、生命周期、writer/scope/lock/dependency/WIP、partial read failure、rename、detached、untracked poison、CLI 0/1/2 和 no-write。
+- 真实临时仓库：系统临时目录内创建 primary + merged/ahead/dirty/active/detached worktrees，状态矩阵通过；测试只删除自身临时根目录。
+- 初次现场探测正确阻断 primary：`D:/Logixs` 当时仍在设计分支，不满足 main/master primary。主代理确认 primary tracked clean、仅有既有 untracked 后切回同步 main，再执行正式 dry-run。
+- 正式 dry-run：primary `D:/Logixs` / `main` / `fe37c100`；registered worktrees `10`（含 primary 与当前实现 worktree）；`active=1`、`dormant-ahead=5`、`dormant-merged=3`、`unowned-dirty=0`、`unreadable=0`，blocking `0`。
+- Warning 汇总：`WORKTREE_BEHIND_MAIN=8`、`WORKTREE_DORMANT_AHEAD=5`、`WORKTREE_UNOWNED_UNTRACKED_PRESENT=3`。Untracked 只按路径/数量输出，文本每轨最多 50，内容读取次数为 0。
+- 真实现场 finding：3 个 fully-merged 历史 worktree 的 local `review` brief 已在 primary catalog 标为 `done`，初版误判 active；新增 `primary catalog retires merged stale tasks but preserves new ahead tasks` 回归 RED→GREEN 后降为 `dormant-merged`。当前实现 task 在 primary 尚缺失且 branch ahead，保持唯一 active。
+- No-write：以所有 registered worktree 当前 HEAD/status 为 before，执行真实 `worktrees:check`，再采 after，`NO_WRITE_CHANGED_COUNT=0`。更早的设计期 before 与实现期 after 唯一变化是当前实现 worktree 本身的开发 diff，不归因于校准命令。
+- 当前未接入 `repo:check`、CI、progress board 跨-worktree区域或 hook；远端 PR/CI、自动调度与 worktree 清理仍未观察/未实现。
+
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit   | 说明                                                                   |
-| ---------- | ------ | ----------- | -------- | ---------------------------------------------------------------------- |
-| 2026-10-01 | design | Codex       | —        | 历史 thin orchestrator 方向，现已 superseded                           |
-| 2026-10-12 | design | Claude Code | 980495f1 | 建立跨 worktree 只读校准 spec                                          |
-| 2026-10-12 | coding | Claude Code | b16527cb | 负责人选择 Native；在隔离 worktree 启动 CWC1，Dormant 采用分级校准策略 |
+| 日期       | 阶段   | 负责        | commit   | 说明                                                                                       |
+| ---------- | ------ | ----------- | -------- | ------------------------------------------------------------------------------------------ |
+| 2026-10-01 | design | Codex       | —        | 历史 thin orchestrator 方向，现已 superseded                                               |
+| 2026-10-12 | design | Claude Code | 980495f1 | 建立跨 worktree 只读校准 spec                                                              |
+| 2026-10-12 | coding | Claude Code | b16527cb | 负责人选择 Native；在隔离 worktree 启动 CWC1，Dormant 采用分级校准策略                     |
+| 2026-10-12 | review | Claude Code | d792f67c | CWC1–3 实现与真实 dry-run 完成；40/40、blocking 0、no-write 0，进入完整门禁与 fresh review |
