@@ -147,7 +147,7 @@ authorityRefs:
 - [x] CLI text/JSON、退出码 0/1/2、路径显示上限和 no-write 行为稳定
 - [x] 临时真实 Git/worktree 集成测试只清理自身系统临时目录
 - [x] 当前注册现场 dry-run 已记录 exact counts/finding/no-change evidence
-- [ ] 相关 lint/format/test/repo/docs/board 和任务级最终门禁通过或如实记录已知外部阻塞
+- [x] 相关 lint/format/test/repo/docs/board 和任务级最终门禁通过或如实记录已知外部阻塞
 - [ ] fresh Claude 整体复审 finding 全部裁决
 - [ ] 单一实现 PR required CI 通过并合入 main；closeout 证据可追溯
 
@@ -169,11 +169,22 @@ authorityRefs:
 - No-write：以所有 registered worktree 当前 HEAD/status 为 before，执行真实 `worktrees:check`，再采 after，`NO_WRITE_CHANGED_COUNT=0`。更早的设计期 before 与实现期 after 唯一变化是当前实现 worktree 本身的开发 diff，不归因于校准命令。
 - 当前未接入 `repo:check`、CI、progress board 跨-worktree区域或 hook；远端 PR/CI、自动调度与 worktree 清理仍未观察/未实现。
 
+## 任务级门禁（2026-10-12）
+
+- `pnpm validate` 已通过 repo、workbench purposes、contract schema/drift、data dictionary、Prisma generate、lint、format、typecheck；在 root `pnpm test` 阶段首次退出 `1`，完整日志未稳定复现。
+- Fresh root test 重跑退出 `0`：full-chain `59/59`、root governance `214/214`、business-worker `5/5`、web `747/747`、api `1529/1529`。
+- `test:integration`：`30 files / 204 tests` 通过；`build` 三个 workspace 通过。
+- `test:e2e` 未执行测试：5173 已存在另一个会话的 non-matching development server，global setup 按契约以 `E2E_DEV_SERVER_CONFLICT` fail-closed。未停止他人服务，也未改写端口契约；远端 CI 是最终 clean-runner 权威。
+- 隔离 worktree 的 `pnpm infra:up` 因主 `logixs-postgres-1` 已健康占用 5433 而失败，创建了未启动的 `cross-worktree-calibration-v1-*` Compose 资源。平台拒绝删除；它们保持 Created/空卷/独立网络，主 `logixs-*` 服务未改动并被 integration 复用。
+- 任务 scoped Prettier、`git diff --check`、repo/docs/board、worktree CLI lint 与 focused tests 通过。
+- 当前状态保持 `review`；fresh Claude 整体复审、finding disposition 和 required PR CI 尚未完成。
+
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit   | 说明                                                                                       |
-| ---------- | ------ | ----------- | -------- | ------------------------------------------------------------------------------------------ |
-| 2026-10-01 | design | Codex       | —        | 历史 thin orchestrator 方向，现已 superseded                                               |
-| 2026-10-12 | design | Claude Code | 980495f1 | 建立跨 worktree 只读校准 spec                                                              |
-| 2026-10-12 | coding | Claude Code | b16527cb | 负责人选择 Native；在隔离 worktree 启动 CWC1，Dormant 采用分级校准策略                     |
-| 2026-10-12 | review | Claude Code | d792f67c | CWC1–3 实现与真实 dry-run 完成；40/40、blocking 0、no-write 0，进入完整门禁与 fresh review |
+| 日期       | 阶段   | 负责        | commit   | 说明                                                                                         |
+| ---------- | ------ | ----------- | -------- | -------------------------------------------------------------------------------------------- |
+| 2026-10-01 | design | Codex       | —        | 历史 thin orchestrator 方向，现已 superseded                                                 |
+| 2026-10-12 | design | Claude Code | 980495f1 | 建立跨 worktree 只读校准 spec                                                                |
+| 2026-10-12 | coding | Claude Code | b16527cb | 负责人选择 Native；在隔离 worktree 启动 CWC1，Dormant 采用分级校准策略                       |
+| 2026-10-12 | review | Claude Code | d792f67c | CWC1–3 实现与真实 dry-run 完成；40/40、blocking 0、no-write 0，进入完整门禁与 fresh review   |
+| 2026-10-12 | review | Claude Code | 4ce3d346 | root/integration/build 与治理门禁通过；E2E 被外部 5173 server fail-closed，等待 fresh review |
