@@ -383,6 +383,64 @@ test("primary catalog retires merged stale tasks but preserves new ahead tasks",
   );
 });
 
+test("primary done suppresses stale local dependency blockers only", () => {
+  const foundation = task("foundation", {
+    status: "done",
+    branch: "feat/foundation",
+    verification: "PR merged",
+  });
+  const consumer = task("consumer", {
+    branch: "feat/consumer",
+    dependsOn: ["foundation"],
+    writer: "consumer",
+    writeScopes: ["scripts/consumer/**"],
+    locks: ["consumer-lock"],
+  });
+  const localDependencyFindings = [
+    {
+      code: "TASK_DEPENDENCY_MISSING",
+      severity: "blocking",
+      subject: "foundation",
+      evidence: ["foundation"],
+      remedy: "Use primary truth.",
+    },
+    {
+      code: "TASK_DEPENDENCY_NOT_DONE",
+      severity: "blocking",
+      subject: "foundation",
+      evidence: ["status=blocked"],
+      remedy: "Use primary truth.",
+    },
+    {
+      code: "TASK_CHANGED_PATH_OUT_OF_SCOPE",
+      severity: "blocking",
+      subject: "outside.txt",
+      evidence: ["outside.txt"],
+      remedy: "Declare or remove it.",
+    },
+  ];
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: "D:/repo",
+    mainRef: "origin/main",
+    primaryTaskRecords: [foundation, consumer],
+    observedWorktrees: [
+      primaryObservation(),
+      activeWorktree("D:/repo/.worktrees/consumer", consumer, {
+        taskRecords: [consumer],
+        checkoutProjection: {
+          task: consumer,
+          derived: { findings: localDependencyFindings },
+        },
+      }),
+    ],
+  });
+
+  assert.deepEqual(
+    projection.findings.map(({ code }) => code),
+    ["TASK_CHANGED_PATH_OUT_OF_SCOPE"],
+  );
+});
+
 test("dependency status comes only from the primary task catalog", () => {
   const dependency = task("foundation", {
     status: "blocked",
@@ -761,6 +819,54 @@ const adapterFixture = ({
     paths: { primary, healthy, broken },
   };
 };
+
+test("observer matches a native Windows primary path to normalized registry spelling", () => {
+  const registry = [
+    "worktree D:/repo",
+    `HEAD ${"1".repeat(40)}`,
+    "branch refs/heads/main",
+    "",
+  ].join("\0");
+  const git = ({ cwd, args }) => {
+    const command = args.join(" ");
+    if (command === "worktree list --porcelain -z") {
+      assert.equal(cwd, "D:\\repo");
+      return gitResult(registry);
+    }
+    assert.equal(cwd, "D:/repo");
+    if (command === "branch --show-current") return gitResult("main\n");
+    if (command === "rev-parse HEAD") return gitResult(`${"1".repeat(40)}\n`);
+    if (command === "rev-parse --verify origin/main") {
+      return gitResult(`${"1".repeat(40)}\n`);
+    }
+    if (command === "merge-base origin/main HEAD") {
+      return gitResult(`${"1".repeat(40)}\n`);
+    }
+    if (command.startsWith("diff --name-status -z")) return gitResult("");
+    if (command === "ls-files --others --exclude-standard") {
+      return gitResult("");
+    }
+    if (command === "ls-files -z -- docs/planning/tasks/*.md") {
+      return gitResult("");
+    }
+    if (command === "rev-list --left-right --count origin/main...HEAD") {
+      return gitResult("0\t0\n");
+    }
+    if (command === "merge-base --is-ancestor HEAD origin/main") {
+      return gitResult("");
+    }
+    throw new Error(`unexpected ${command}`);
+  };
+
+  const observed = observeRegisteredWorktrees({
+    primaryPath: "D:\\repo",
+    mainRef: "origin/main",
+    git,
+    readFile: () => "",
+    authorityExists: () => true,
+  });
+  assert.equal(observed[0].isPrimary, true);
+});
 
 test("one unreadable non-primary worktree does not hide readable siblings", () => {
   const fixture = adapterFixture({ failCwd: "D:/repo/.worktrees/broken" });

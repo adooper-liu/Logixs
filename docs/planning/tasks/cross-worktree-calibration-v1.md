@@ -148,7 +148,7 @@ authorityRefs:
 - [x] 临时真实 Git/worktree 集成测试只清理自身系统临时目录
 - [x] 当前注册现场 dry-run 已记录 exact counts/finding/no-change evidence
 - [x] 相关 lint/format/test/repo/docs/board 和任务级最终门禁通过或如实记录已知外部阻塞
-- [ ] fresh Claude 整体复审 finding 全部裁决
+- [x] fresh Claude 整体复审 finding 全部裁决
 - [ ] 单一实现 PR required CI 通过并合入 main；closeout 证据可追溯
 
 ## 负责人决策记录
@@ -179,6 +179,27 @@ authorityRefs:
 - 任务 scoped Prettier、`git diff --check`、repo/docs/board、worktree CLI lint 与 focused tests 通过。
 - 当前状态保持 `review`；fresh Claude 整体复审、finding disposition 和 required PR CI 尚未完成。
 
+## Fresh 整体复审与 disposition（2026-10-12）
+
+`logix-review/v1`：baseline `fe37c100`，reviewed `fb77c545`，verdict `findings`，writes `none`。复审确认 registry-only、tracked-only、read-only Git、dormant policy、冲突投影与 no-write 边界成立，返回 1 个 Important finding：
+
+```text
+logix-disposition/v1
+slice: cross-worktree-calibration-v1
+decisions:
+  - finding: CWC-REV-001
+    status: accepted
+    reason: primary catalog 已判依赖 done 后，carry-through 又带回 stale local TASK_DEPENDENCY_MISSING/NOT_DONE，违反 primary-authoritative 规则。
+    writeback: scripts/worktree-calibration.mjs + regression tests
+next: fix
+```
+
+- `CWC-REV-001 fixed`：新增 `primary done suppresses stale local dependency blockers only`，RED 观察 local dependency finding 被重新引入，GREEN 后只过滤由 primary 重算的两类 dependency finding，其他 blocking `TASK_*` 仍保留。
+- Reviewer verification gap `--primary D:\\Logixs` 也纳入当前 fix：新增 native Windows path 与 registry `/` spelling 匹配回归，RED 为 `WORKTREE_PRIMARY_READ_FAILED`，GREEN 后统一路径比较；live `D:\\Logixs` / `D:/Logixs` 两种写法均 exit `0`。
+- Fix suite：worktree + shared task-state `42/42`；lint/format/repo/docs/board 通过；real temporary Git 集成继续通过。
+- Unknown 保持：required PR CI 尚未观察；E2E 本地仍被外部 5173 server fail-closed；本复审未重复完整真实 before/after，但已审阅记录证据。
+- Declined/deferred：board/hook/CI 集成、远端 evidence、RAID/checklist、自动调度、worktree 生命周期操作与 inert Compose 清理均不进入本片。
+
 ## 进度 log
 
 | 日期       | 阶段   | 负责        | commit   | 说明                                                                                         |
@@ -188,3 +209,4 @@ authorityRefs:
 | 2026-10-12 | coding | Claude Code | b16527cb | 负责人选择 Native；在隔离 worktree 启动 CWC1，Dormant 采用分级校准策略                       |
 | 2026-10-12 | review | Claude Code | d792f67c | CWC1–3 实现与真实 dry-run 完成；40/40、blocking 0、no-write 0，进入完整门禁与 fresh review   |
 | 2026-10-12 | review | Claude Code | 4ce3d346 | root/integration/build 与治理门禁通过；E2E 被外部 5173 server fail-closed，等待 fresh review |
+| 2026-10-12 | review | Claude Code | fb77c545 | fresh review 1 Important 已 accepted 并 RED→GREEN；Windows path gap 同片修复，进入 PR CI     |

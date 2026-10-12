@@ -16,6 +16,11 @@ import {
 const WRITE_STATUSES = new Set(["design", "coding", "fix"]);
 const WIP_STATUSES = new Set(["coding", "fix"]);
 
+const normalizeWorktreePath = (value) => String(value).replaceAll("\\", "/");
+const sameWorktreePath = (left, right) =>
+  normalizeWorktreePath(left).toLowerCase() ===
+  normalizeWorktreePath(right).toLowerCase();
+
 const registryError = (message) => {
   const error = new Error(`WORKTREE_REGISTRY_INVALID: ${message}`);
   error.code = "WORKTREE_REGISTRY_INVALID";
@@ -51,7 +56,7 @@ export function parseWorktreePorcelain(source) {
         throw registryError("unsafe worktree path");
       }
       current = {
-        path: value.replaceAll("\\", "/"),
+        path: normalizeWorktreePath(value),
         headSha: null,
         branch: null,
         detached: false,
@@ -96,6 +101,12 @@ export function classifyWorktree(input) {
   return "dormant-ahead";
 }
 
+const LOCAL_FINDINGS_REPLACED_BY_PRIMARY = new Set([
+  "TASK_DEPENDENCY_MISSING",
+  "TASK_DEPENDENCY_NOT_DONE",
+  "TASK_UNOWNED_UNTRACKED_PRESENT",
+]);
+
 const finding = (code, severity, subject, evidence, remedy, location = {}) => ({
   code,
   severity,
@@ -119,6 +130,7 @@ export function buildWorktreeCalibrationProjection({
   primaryTaskRecords,
   observedWorktrees,
 }) {
+  const normalizedPrimaryPath = normalizeWorktreePath(primaryPath);
   const findings = [];
   const primaryById = new Map(
     primaryTaskRecords.map((record) => [record.id, record]),
@@ -164,10 +176,10 @@ export function buildWorktreeCalibrationProjection({
       finding(
         "WORKTREE_PRIMARY_INVALID",
         "blocking",
-        primaryPath,
+        normalizedPrimaryPath,
         primary?.trackedDirtyPaths ?? ["primary worktree is missing"],
         "Run calibration from a clean registered main or master checkout.",
-        { worktreePath: primaryPath },
+        { worktreePath: normalizedPrimaryPath },
       ),
     );
   }
@@ -390,7 +402,7 @@ export function buildWorktreeCalibrationProjection({
       ?.findings ?? []) {
       if (
         checkoutFinding.severity !== "blocking" ||
-        checkoutFinding.code === "TASK_UNOWNED_UNTRACKED_PRESENT"
+        LOCAL_FINDINGS_REPLACED_BY_PRIMARY.has(checkoutFinding.code)
       ) {
         continue;
       }
@@ -406,7 +418,7 @@ export function buildWorktreeCalibrationProjection({
   return {
     primary: primary
       ? {
-          path: primaryPath,
+          path: normalizedPrimaryPath,
           branch: primary.registration.branch,
           headSha: primary.registration.headSha,
           mainRef,
@@ -509,7 +521,7 @@ const observeOne = ({
       branch: branch || registration.branch,
       headSha: checkoutObservation.headSha,
     },
-    isPrimary: cwd.toLowerCase() === primaryPath.toLowerCase(),
+    isPrimary: sameWorktreePath(cwd, primaryPath),
     readable: true,
     readError: null,
     ahead: counts[1] ?? 0,
@@ -543,11 +555,7 @@ export function observeRegisteredWorktrees({
     error.cause = cause;
     throw error;
   }
-  if (
-    !registrations.some(
-      ({ path }) => path.toLowerCase() === primaryPath.toLowerCase(),
-    )
-  ) {
+  if (!registrations.some(({ path }) => sameWorktreePath(path, primaryPath))) {
     const error = new Error("WORKTREE_PRIMARY_READ_FAILED");
     error.code = "WORKTREE_PRIMARY_READ_FAILED";
     throw error;
@@ -564,7 +572,7 @@ export function observeRegisteredWorktrees({
         authorityExists,
       });
     } catch (cause) {
-      if (registration.path.toLowerCase() === primaryPath.toLowerCase()) {
+      if (sameWorktreePath(registration.path, primaryPath)) {
         const error = new Error("WORKTREE_PRIMARY_READ_FAILED");
         error.code = "WORKTREE_PRIMARY_READ_FAILED";
         error.cause = cause;
