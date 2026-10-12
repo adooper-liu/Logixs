@@ -1,5 +1,13 @@
-import { isAbsolute } from "node:path";
-import { parseWriteScope, writeScopesOverlap } from "./task-brief-state.mjs";
+import { isAbsolute, resolve } from "node:path";
+import {
+  buildCalibrationProjection,
+  loadTrackedTaskRecords,
+  normalizeTaskRecords,
+  observeCheckout,
+  parseWriteScope,
+  resolveCurrentTask,
+  writeScopesOverlap,
+} from "./task-brief-state.mjs";
 
 const WRITE_STATUSES = new Set(["design", "coding", "fix"]);
 const WIP_STATUSES = new Set(["coding", "fix"]);
@@ -391,4 +399,164 @@ export function buildWorktreeCalibrationProjection({
 
 export function worktreeCalibrationFindings(projection) {
   return projection.findings;
+}
+
+const requireGit = (git, cwd, args) => {
+  const result = git({ cwd, args });
+  if (!result || result.exitCode !== 0) {
+    const error = new Error("GIT_READ_FAILED");
+    error.code = "GIT_READ_FAILED";
+    throw error;
+  }
+  return result.stdout;
+};
+
+const trackedGit = (git, cwd) => (args) => requireGit(git, cwd, args);
+
+const observeOne = ({
+  registration,
+  primaryPath,
+  mainRef,
+  git,
+  readFile,
+  authorityExists,
+}) => {
+  const cwd = registration.path;
+  const branch = requireGit(git, cwd, ["branch", "--show-current"]).trim();
+  const checkoutObservation = observeCheckout({
+    baseRef: mainRef,
+    branch,
+    git: trackedGit(git, cwd),
+  });
+  if (!checkoutObservation.baseSha) {
+    const error = new Error("GIT_READ_FAILED");
+    error.code = "GIT_READ_FAILED";
+    throw error;
+  }
+  const counts = requireGit(git, cwd, [
+    "rev-list",
+    "--left-right",
+    "--count",
+    `${mainRef}...HEAD`,
+  ])
+    .trim()
+    .split(/\s+/)
+    .map(Number);
+  const ancestor = git({
+    cwd,
+    args: ["merge-base", "--is-ancestor", "HEAD", mainRef],
+  });
+  if (!ancestor || ![0, 1].includes(ancestor.exitCode)) {
+    const error = new Error("GIT_READ_FAILED");
+    error.code = "GIT_READ_FAILED";
+    throw error;
+  }
+  const trackedDirtyPaths = [
+    ...checkoutObservation.stagedPaths,
+    ...checkoutObservation.unstagedPaths,
+  ]
+    .filter((path, index, all) => all.indexOf(path) === index)
+    .sort();
+  const untrackedPaths = checkoutObservation.untrackedPaths;
+  const taskRecords = normalizeTaskRecords(
+    loadTrackedTaskRecords({
+      root: cwd,
+      git: trackedGit(git, cwd),
+      readFile,
+    }),
+  );
+  const activeResolution = resolveCurrentTask({ records: taskRecords, branch });
+  let checkoutProjection = null;
+  if (activeResolution.task) {
+    checkoutProjection = buildCalibrationProjection({
+      task: activeResolution.task,
+      records: taskRecords,
+      authorityExists: (path) => authorityExists(resolve(cwd, path), path, cwd),
+      observation: checkoutObservation,
+    });
+  }
+  const observed = {
+    registration: {
+      ...registration,
+      branch: branch || registration.branch,
+      headSha: checkoutObservation.headSha,
+    },
+    isPrimary: cwd.toLowerCase() === primaryPath.toLowerCase(),
+    readable: true,
+    readError: null,
+    ahead: counts[1] ?? 0,
+    behind: counts[0] ?? 0,
+    fullyMerged: ancestor.exitCode === 0,
+    trackedDirtyPaths,
+    untrackedPaths,
+    taskRecords,
+    activeResolution,
+    checkoutProjection,
+  };
+  observed.state = classifyWorktree(observed);
+  return observed;
+};
+
+export function observeRegisteredWorktrees({
+  primaryPath,
+  mainRef = "origin/main",
+  git,
+  readFile,
+  authorityExists,
+}) {
+  let registrations;
+  try {
+    registrations = parseWorktreePorcelain(
+      requireGit(git, primaryPath, ["worktree", "list", "--porcelain", "-z"]),
+    );
+  } catch (cause) {
+    const error = new Error("WORKTREE_REGISTRY_READ_FAILED");
+    error.code = "WORKTREE_REGISTRY_READ_FAILED";
+    error.cause = cause;
+    throw error;
+  }
+  if (
+    !registrations.some(
+      ({ path }) => path.toLowerCase() === primaryPath.toLowerCase(),
+    )
+  ) {
+    const error = new Error("WORKTREE_PRIMARY_READ_FAILED");
+    error.code = "WORKTREE_PRIMARY_READ_FAILED";
+    throw error;
+  }
+
+  return registrations.map((registration) => {
+    try {
+      return observeOne({
+        registration,
+        primaryPath,
+        mainRef,
+        git,
+        readFile,
+        authorityExists,
+      });
+    } catch (cause) {
+      if (registration.path.toLowerCase() === primaryPath.toLowerCase()) {
+        const error = new Error("WORKTREE_PRIMARY_READ_FAILED");
+        error.code = "WORKTREE_PRIMARY_READ_FAILED";
+        error.cause = cause;
+        throw error;
+      }
+      return {
+        registration,
+        isPrimary: false,
+        readable: false,
+        readError: cause.code ?? "GIT_READ_FAILED",
+        ahead: 0,
+        behind: 0,
+        fullyMerged: false,
+        trackedDirtyPaths: [],
+        untrackedPaths: [],
+        taskRecords: [],
+        activeResolution: { finding: { code: "TASK_CURRENT_NOT_FOUND" } },
+        checkoutProjection: null,
+        state: "unreadable",
+      };
+    }
+  });
 }

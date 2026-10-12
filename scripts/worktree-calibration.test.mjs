@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   buildWorktreeCalibrationProjection,
   classifyWorktree,
+  observeRegisteredWorktrees,
   parseWorktreePorcelain,
 } from "./worktree-calibration.mjs";
 import { normalizeTaskRecord } from "./task-brief-state.mjs";
@@ -440,5 +441,362 @@ test("primary, unreadable, ambiguity, detached, and checkout findings stay expli
       "WORKTREE_PRIMARY_INVALID",
       "WORKTREE_READ_FAILED",
     ],
+  );
+});
+
+const gitResult = (stdout = "", exitCode = 0) => ({ stdout, exitCode });
+
+const adapterTaskSource = ({
+  status = "coding",
+  branch = "feat/example",
+  scopes = ["scripts/example/**"],
+} = {}) => `---
+status: ${status}
+branch: ${branch}
+verification:
+owner: main
+writer: main
+risk: high
+dependsOn: []
+writeScopes:
+${scopes.map((scope) => `  - ${scope}`).join("\n")}
+exclusiveLocks:
+  - root-tooling
+sharedIntegrationScopes: []
+authorityRefs:
+  - AGENTS.md
+---
+# 任务：Adapter
+`;
+
+test("observer discovers only registered worktrees and uses read-only Git calls", () => {
+  const calls = [];
+  const registry = [
+    "worktree D:/repo",
+    `HEAD ${"1".repeat(40)}`,
+    "branch refs/heads/main",
+    "",
+    "worktree D:/repo/.worktrees/example",
+    `HEAD ${"2".repeat(40)}`,
+    "branch refs/heads/feat/example",
+    "",
+  ].join("\0");
+  const outputs = new Map([
+    ["D:/repo|worktree list --porcelain -z", gitResult(registry)],
+    ["D:/repo|branch --show-current", gitResult("main\n")],
+    ["D:/repo|rev-parse HEAD", gitResult(`${"1".repeat(40)}\n`)],
+    [
+      "D:/repo|rev-parse --verify origin/main",
+      gitResult(`${"1".repeat(40)}\n`),
+    ],
+    [
+      "D:/repo|rev-list --left-right --count origin/main...HEAD",
+      gitResult("0\t0\n"),
+    ],
+    ["D:/repo|merge-base --is-ancestor HEAD origin/main", gitResult("")],
+    ["D:/repo|merge-base origin/main HEAD", gitResult(`${"1".repeat(40)}\n`)],
+    [
+      `D:/repo|diff --name-status -z --diff-filter=ACMRD ${"1".repeat(40)}...HEAD`,
+      gitResult(""),
+    ],
+    [
+      "D:/repo|diff --name-status -z --cached --diff-filter=ACMRD",
+      gitResult(""),
+    ],
+    ["D:/repo|diff --name-status -z --diff-filter=ACMRD", gitResult("")],
+    [
+      "D:/repo|ls-files --others --exclude-standard",
+      gitResult(".tmp/local.txt\n"),
+    ],
+    [
+      "D:/repo|ls-files -z -- docs/planning/tasks/*.md",
+      gitResult("docs/planning/tasks/foundation.md\0"),
+    ],
+    [
+      "D:/repo/.worktrees/example|branch --show-current",
+      gitResult("feat/example\n"),
+    ],
+    [
+      "D:/repo/.worktrees/example|rev-parse HEAD",
+      gitResult(`${"2".repeat(40)}\n`),
+    ],
+    [
+      "D:/repo/.worktrees/example|rev-parse --verify origin/main",
+      gitResult(`${"1".repeat(40)}\n`),
+    ],
+    [
+      "D:/repo/.worktrees/example|merge-base origin/main HEAD",
+      gitResult(`${"1".repeat(40)}\n`),
+    ],
+    [
+      `D:/repo/.worktrees/example|diff --name-status -z --diff-filter=ACMRD ${"1".repeat(40)}...HEAD`,
+      gitResult(""),
+    ],
+    [
+      "D:/repo/.worktrees/example|diff --name-status -z --cached --diff-filter=ACMRD",
+      gitResult(""),
+    ],
+    [
+      "D:/repo/.worktrees/example|diff --name-status -z --diff-filter=ACMRD",
+      gitResult(""),
+    ],
+    [
+      "D:/repo/.worktrees/example|rev-list --left-right --count origin/main...HEAD",
+      gitResult("5\t1\n"),
+    ],
+    [
+      "D:/repo/.worktrees/example|merge-base --is-ancestor HEAD origin/main",
+      gitResult("", 1),
+    ],
+    [
+      "D:/repo/.worktrees/example|diff --name-status -z --diff-filter=ACMRD",
+      gitResult(""),
+    ],
+    [
+      "D:/repo/.worktrees/example|diff --name-status -z --cached --diff-filter=ACMRD",
+      gitResult(""),
+    ],
+    [
+      "D:/repo/.worktrees/example|ls-files --others --exclude-standard",
+      gitResult("draft.md\n"),
+    ],
+    [
+      "D:/repo/.worktrees/example|ls-files -z -- docs/planning/tasks/*.md",
+      gitResult("docs/planning/tasks/example.md\0"),
+    ],
+  ]);
+  const reads = [];
+  const result = observeRegisteredWorktrees({
+    primaryPath: "D:/repo",
+    mainRef: "origin/main",
+    git: ({ cwd, args }) => {
+      const key = `${cwd}|${args.join(" ")}`;
+      calls.push(key);
+      if (!outputs.has(key)) throw new Error(`unexpected ${key}`);
+      return outputs.get(key);
+    },
+    readFile: (path) => {
+      reads.push(path.replaceAll("\\", "/"));
+      return path.endsWith("foundation.md")
+        ? adapterTaskSource({ status: "done", branch: "feat/foundation" })
+        : adapterTaskSource();
+    },
+    authorityExists: () => true,
+  });
+
+  assert.equal(result.length, 2);
+  assert.deepEqual(reads.sort(), [
+    "D:/repo/.worktrees/example/docs/planning/tasks/example.md",
+    "D:/repo/docs/planning/tasks/foundation.md",
+  ]);
+  assert.equal(result[0].state, "primary");
+  assert.equal(result[1].state, "active");
+  assert.ok(
+    calls.every(
+      (call) =>
+        !/\b(checkout|reset|clean|stash|add|commit|push|merge|rebase|fetch|pull)\b/.test(
+          call,
+        ) || call.includes("merge-base"),
+    ),
+  );
+});
+
+const adapterFixture = ({
+  failCwd,
+  registryFails = false,
+  untracked = [],
+  dirtyByCwd = new Map(),
+  detachedHealthy = false,
+} = {}) => {
+  const primary = "D:/repo";
+  const healthy = "D:/repo/.worktrees/healthy";
+  const broken = "D:/repo/.worktrees/broken";
+  const mainHead = "1".repeat(40);
+  const healthyHead = "2".repeat(40);
+  const brokenHead = "3".repeat(40);
+  const registry = [
+    `worktree ${primary}`,
+    `HEAD ${mainHead}`,
+    "branch refs/heads/main",
+    "",
+    `worktree ${healthy}`,
+    `HEAD ${healthyHead}`,
+    detachedHealthy ? "detached" : "branch refs/heads/feat/healthy",
+    "",
+    `worktree ${broken}`,
+    `HEAD ${brokenHead}`,
+    "branch refs/heads/feat/broken",
+    "",
+  ].join("\0");
+  const heads = new Map([
+    [primary, mainHead],
+    [healthy, healthyHead],
+    [broken, brokenHead],
+  ]);
+  const branches = new Map([
+    [primary, "main"],
+    [healthy, detachedHealthy ? "" : "feat/healthy"],
+    [broken, "feat/broken"],
+  ]);
+  const reads = [];
+  const git = ({ cwd, args }) => {
+    const command = args.join(" ");
+    if (registryFails && command === "worktree list --porcelain -z") {
+      throw new Error("registry failed");
+    }
+    if (command === "worktree list --porcelain -z") return gitResult(registry);
+    if (cwd === failCwd) throw new Error("worktree failed");
+    if (command === "branch --show-current") {
+      return gitResult(`${branches.get(cwd)}\n`);
+    }
+    if (command === "rev-parse HEAD") return gitResult(`${heads.get(cwd)}\n`);
+    if (command === "rev-parse --verify origin/main") {
+      return gitResult(`${mainHead}\n`);
+    }
+    if (command === "merge-base origin/main HEAD") {
+      return gitResult(`${mainHead}\n`);
+    }
+    if (command.startsWith("diff --name-status -z --diff-filter=ACMRD ")) {
+      return gitResult("");
+    }
+    if (command === "diff --name-status -z --cached --diff-filter=ACMRD") {
+      return gitResult("");
+    }
+    if (command === "diff --name-status -z --diff-filter=ACMRD") {
+      return gitResult(dirtyByCwd.get(cwd) ?? "");
+    }
+    if (command === "ls-files --others --exclude-standard") {
+      return gitResult(cwd === healthy ? `${untracked.join("\n")}\n` : "");
+    }
+    if (command === "ls-files -z -- docs/planning/tasks/*.md") {
+      return gitResult(
+        cwd === primary
+          ? "docs/planning/tasks/foundation.md\0"
+          : `docs/planning/tasks/${branches.get(cwd).slice(5)}.md\0`,
+      );
+    }
+    if (command === "rev-list --left-right --count origin/main...HEAD") {
+      return gitResult(cwd === primary ? "0\t0\n" : "1\t0\n");
+    }
+    if (command === "merge-base --is-ancestor HEAD origin/main") {
+      return gitResult("", cwd === primary ? 0 : 1);
+    }
+    throw new Error(`unexpected ${cwd}|${command}`);
+  };
+  return {
+    options: {
+      primaryPath: primary,
+      mainRef: "origin/main",
+      git,
+      readFile: (path) => {
+        reads.push(path.replaceAll("\\", "/"));
+        const branch = path.includes("foundation")
+          ? "feat/foundation"
+          : path.includes("healthy")
+            ? "feat/healthy"
+            : "feat/broken";
+        return adapterTaskSource({
+          status: path.includes("foundation") ? "done" : "coding",
+          branch,
+        });
+      },
+      authorityExists: () => true,
+    },
+    reads,
+    paths: { primary, healthy, broken },
+  };
+};
+
+test("one unreadable non-primary worktree does not hide readable siblings", () => {
+  const fixture = adapterFixture({ failCwd: "D:/repo/.worktrees/broken" });
+  const observed = observeRegisteredWorktrees(fixture.options);
+  assert.equal(
+    observed.find(
+      ({ registration }) => registration.path === fixture.paths.broken,
+    ).readable,
+    false,
+  );
+  assert.equal(
+    observed.find(
+      ({ registration }) => registration.path === fixture.paths.healthy,
+    ).readable,
+    true,
+  );
+});
+
+test("untracked poison brief is listed but never opened", () => {
+  const fixture = adapterFixture({
+    untracked: ["docs/planning/tasks/poison.md"],
+  });
+  const observed = observeRegisteredWorktrees(fixture.options);
+  assert.ok(
+    observed.some(({ untrackedPaths }) =>
+      untrackedPaths.includes("docs/planning/tasks/poison.md"),
+    ),
+  );
+  assert.ok(fixture.reads.every((path) => !path.endsWith("poison.md")));
+});
+
+test("primary registry failure is fatal and stable", () => {
+  const fixture = adapterFixture({ registryFails: true });
+  assert.throws(
+    () => observeRegisteredWorktrees(fixture.options),
+    ({ code, message }) =>
+      code === "WORKTREE_REGISTRY_READ_FAILED" &&
+      message === "WORKTREE_REGISTRY_READ_FAILED",
+  );
+});
+
+test("adapter preserves rename source and target through shared checkout observation", () => {
+  const fixture = adapterFixture({
+    dirtyByCwd: new Map([
+      [
+        "D:/repo/.worktrees/healthy",
+        "R100\0outside/source.txt\0scripts/example/target.txt\0",
+      ],
+    ]),
+  });
+  const observed = observeRegisteredWorktrees(fixture.options);
+  const healthy = observed.find(
+    ({ registration }) => registration.path === fixture.paths.healthy,
+  );
+  assert.deepEqual(healthy.checkoutProjection.derived.blockingOutOfScopePaths, [
+    "outside/source.txt",
+  ]);
+  assert.deepEqual(healthy.trackedDirtyPaths, [
+    "outside/source.txt",
+    "scripts/example/target.txt",
+  ]);
+});
+
+test("detached tracked dirt remains unowned and produces both findings", () => {
+  const fixture = adapterFixture({
+    detachedHealthy: true,
+    dirtyByCwd: new Map([["D:/repo/.worktrees/healthy", "M\0outside.txt\0"]]),
+  });
+  const observed = observeRegisteredWorktrees(fixture.options);
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: fixture.paths.primary,
+    mainRef: "origin/main",
+    primaryTaskRecords: observed.find(({ isPrimary }) => isPrimary).taskRecords,
+    observedWorktrees: observed,
+  });
+  const healthy = projection.worktrees.find(
+    ({ registration }) => registration.path === fixture.paths.healthy,
+  );
+  assert.equal(healthy.state, "unowned-dirty");
+  assert.ok(
+    projection.findings.some(
+      ({ code, worktreePath }) =>
+        code === "WORKTREE_DETACHED_HEAD" &&
+        worktreePath === fixture.paths.healthy,
+    ),
+  );
+  assert.ok(
+    projection.findings.some(
+      ({ code, worktreePath }) =>
+        code === "WORKTREE_TRACKED_DIRTY_UNOWNED" &&
+        worktreePath === fixture.paths.healthy,
+    ),
   );
 });
