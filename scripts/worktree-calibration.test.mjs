@@ -340,6 +340,49 @@ test("three coding or fix tasks exceed the write WIP limit", () => {
   );
 });
 
+test("primary catalog retires merged stale tasks but preserves new ahead tasks", () => {
+  const retired = task("retired", {
+    status: "done",
+    branch: "feat/retired",
+    verification: "PR merged",
+  });
+  const staleReview = { ...retired, status: "review", verification: "" };
+  const newTask = task("new-task", { branch: "feat/new-task" });
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: "D:/repo",
+    mainRef: "origin/main",
+    primaryTaskRecords: [retired],
+    observedWorktrees: [
+      primaryObservation(),
+      activeWorktree("D:/repo/.worktrees/retired", staleReview, {
+        ahead: 0,
+        fullyMerged: true,
+      }),
+      activeWorktree("D:/repo/.worktrees/new-task", newTask, {
+        ahead: 2,
+        fullyMerged: false,
+      }),
+    ],
+  });
+
+  assert.equal(
+    projection.worktrees.find(({ registration }) =>
+      registration.path.endsWith("/retired"),
+    ).state,
+    "dormant-merged",
+  );
+  assert.equal(
+    projection.worktrees.find(({ registration }) =>
+      registration.path.endsWith("/new-task"),
+    ).state,
+    "active",
+  );
+  assert.deepEqual(
+    projection.activeTasks.map(({ task }) => task.id),
+    ["new-task"],
+  );
+});
+
 test("dependency status comes only from the primary task catalog", () => {
   const dependency = task("foundation", {
     status: "blocked",

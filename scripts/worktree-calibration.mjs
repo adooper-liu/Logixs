@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  ACTIVE_TASK_STATUSES,
   buildCalibrationProjection,
   loadTrackedTaskRecords,
   normalizeTaskRecords,
@@ -119,11 +120,38 @@ export function buildWorktreeCalibrationProjection({
   observedWorktrees,
 }) {
   const findings = [];
+  const primaryById = new Map(
+    primaryTaskRecords.map((record) => [record.id, record]),
+  );
   const worktrees = observedWorktrees
-    .map((worktree) => ({
-      ...worktree,
-      state: worktree.state ?? classifyWorktree(worktree),
-    }))
+    .map((worktree) => {
+      const localTask = worktree.activeResolution?.task;
+      const primaryTask = localTask ? primaryById.get(localTask.id) : null;
+      const staleMergedTask =
+        localTask &&
+        worktree.fullyMerged &&
+        (!primaryTask || !ACTIVE_TASK_STATUSES.has(primaryTask.status));
+      if (!staleMergedTask) {
+        return {
+          ...worktree,
+          state: worktree.state ?? classifyWorktree(worktree),
+        };
+      }
+      const retired = {
+        ...worktree,
+        activeResolution: {
+          finding: {
+            code: "TASK_CURRENT_NOT_FOUND",
+            evidence: [localTask.path],
+          },
+        },
+        checkoutProjection: null,
+      };
+      return {
+        ...retired,
+        state: classifyWorktree(retired),
+      };
+    })
     .sort((left, right) => pathOf(left).localeCompare(pathOf(right)));
   const primary = worktrees.find((worktree) => worktree.isPrimary);
 
@@ -332,9 +360,6 @@ export function buildWorktreeCalibrationProjection({
     );
   }
 
-  const primaryById = new Map(
-    primaryTaskRecords.map((record) => [record.id, record]),
-  );
   for (const active of activeTasks) {
     const blocked = active.task.dependsOn.flatMap((id) => {
       const dependency = primaryById.get(id);
