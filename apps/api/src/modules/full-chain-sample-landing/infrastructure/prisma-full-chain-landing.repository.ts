@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import {
   canonicalStringify,
   sha256Hex,
@@ -470,8 +471,54 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
     };
   }
 
-  publish(): Promise<void> {
-    throw new Error("FULL_CHAIN_PUBLISH_NOT_IMPLEMENTED");
+  async publish(input: {
+    runId: string;
+    tenantId: string;
+    reconciliation: LandingReconciliation;
+    traceId: string;
+  }): Promise<void> {
+    await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`full-chain-publish:${input.tenantId}:${input.runId}`}, 0))`;
+        const run = await tx.fullChainLandingRun.findUnique({
+          where: {
+            id_tenantId: { id: input.runId, tenantId: input.tenantId },
+          },
+        });
+        if (!run) throw new Error("FULL_CHAIN_LANDING_NOT_FOUND");
+        if (run.state === "published") return;
+        if (run.state !== "reconciling")
+          throw new Error("FULL_CHAIN_PUBLISH_STATE_INVALID");
+        const occurredAt = new Date();
+        await tx.outboxMessage.create({
+          data: {
+            id: randomUUID(),
+            tenantId: input.tenantId,
+            ownerModule: "full-chain-sample-landing",
+            eventId: randomUUID(),
+            eventType: "full_chain_sample_landing.published",
+            eventVersion: 1,
+            aggregateType: "full_chain_landing_run",
+            aggregateId: input.runId,
+            payloadRef: `full-chain-landing/${input.runId}/v1`,
+            payloadHash: input.reconciliation.projectionHash,
+            state: "pending",
+            occurredAt,
+            idempotencyKey: `full-chain-landing:${input.runId}:published`,
+            traceId: input.traceId,
+          },
+        });
+        await tx.fullChainLandingRun.update({
+          where: { id: input.runId },
+          data: {
+            state: "published",
+            reconciliationHash: input.reconciliation.projectionHash,
+            publishedAt: occurredAt,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   async getStatus(input: {

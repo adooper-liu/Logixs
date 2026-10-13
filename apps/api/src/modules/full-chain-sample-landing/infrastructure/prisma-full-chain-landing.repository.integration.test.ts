@@ -154,6 +154,44 @@ describe("PrismaFullChainLandingRepository", () => {
         businessTaskCount: 0,
       });
       expect(reconciliation.projectionHash).toMatch(/^[a-f0-9]{64}$/u);
+      await repository.publish({
+        tenantId,
+        runId: first.runId,
+        reconciliation,
+        traceId: "trace-publish",
+      });
+      await repository.publish({
+        tenantId,
+        runId: first.runId,
+        reconciliation,
+        traceId: "trace-publish-replay",
+      });
+      expect(
+        await repository.getStatus({ tenantId, runId: first.runId }),
+      ).toMatchObject({
+        state: "published",
+      });
+      expect(
+        await repository.getChain({
+          tenantId,
+          runId: first.runId,
+          planNumber: "PLAN-1",
+        }),
+      ).toMatchObject({ planNumber: "PLAN-1" });
+      expect(
+        await prisma.outboxMessage.count({
+          where: {
+            tenantId,
+            ownerModule: "full-chain-sample-landing",
+            aggregateId: first.runId,
+          },
+        }),
+      ).toBe(1);
+      expect(await prisma.canonicalEvent.count({ where: { tenantId } })).toBe(
+        0,
+      );
+      expect(await prisma.inboxMessage.count({ where: { tenantId } })).toBe(0);
+      expect(await prisma.nodeTask.count({ where: { tenantId } })).toBe(0);
     });
   }, 120_000);
 
