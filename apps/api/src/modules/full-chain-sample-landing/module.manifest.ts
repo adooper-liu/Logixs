@@ -6,5 +6,5 @@ export const moduleManifest = defineModuleManifest({
   version: "1.0.0",
   depends: ["identity"],
   permissions: ["import.read", "import.execute"],
-  publicPorts: [],
+  publicPorts: ["FULL_CHAIN_LANDING_STATUS", "FULL_CHAIN_LANDING_CHAIN"],
 });

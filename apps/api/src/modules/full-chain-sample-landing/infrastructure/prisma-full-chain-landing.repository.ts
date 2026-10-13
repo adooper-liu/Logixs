@@ -4,7 +4,8 @@ import {
   canonicalStringify,
   sha256Hex,
 } from "@logix/full-chain-sample-contracts";
-import { Prisma, PrismaClient } from "../../../../../../generated/prisma";
+import { Prisma } from "../../../../../../generated/prisma";
+import { PrismaService } from "../../../prisma/prisma.service";
 import type {
   FullChainLandingRepository,
   FullChainLandingStatus,
@@ -66,7 +67,7 @@ function mapStatus(row: {
 @Injectable()
 export class PrismaFullChainLandingRepository implements FullChainLandingRepository {
   constructor(
-    private readonly prisma: PrismaClient,
+    private readonly prisma: PrismaService,
     private readonly testHooks: { failAfterRecordType?: FailurePoint } = {},
   ) {}
 
