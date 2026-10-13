@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -31,7 +31,10 @@ function inventoryHash(value: unknown): string {
 
 @Injectable()
 export class LandingRuntimeIsolationDependencies {
-  constructor(readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService)
+    readonly prisma: PrismaService,
+  ) {}
 
   create(): LandingIsolationProbeDependencies {
     return createLandingIsolationProbeDependencies(this.prisma);

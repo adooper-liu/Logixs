@@ -5,6 +5,7 @@ export const FULL_CHAIN_LANDING_REPOSITORY = Symbol(
 );
 
 export type StageFullChainLandingInput = {
+  runId: string;
   tenantId: string;
   actorId: string;
   traceId: string;
@@ -34,13 +35,62 @@ export type LandingReconciliation = {
   outboxCount: number;
   businessTaskCount: number;
 };
-export type PublishedFullChain = Record<string, unknown>;
+export type PublishedFullChain = {
+  planNumber: string;
+  booking: {
+    bookingNumber: string;
+    displayGroupRefs: unknown;
+    documents: Array<{
+      type: "mbl" | "hbl";
+      number: string;
+      parentNumber: string | null;
+    }>;
+  };
+  cargoReady: Array<{
+    cargoReadyNumber: string;
+    displayGroupRef: string;
+    quantity: string;
+  }>;
+  stuffing: Array<{
+    containerNumber: string;
+    cargoReadyNumber: string;
+    sku: string;
+    houseBill: { type: "hbl"; number: string };
+    quantity: string;
+    grossWeight: string;
+    volume: string;
+  }>;
+  exportCustoms: Array<{
+    invoiceNumber: string;
+    houseBill: { type: "hbl"; number: string };
+    declarationNumber: string;
+    amount: string;
+    currency: string;
+  }>;
+  dispatch: Array<{
+    containerNumber: string;
+    vesselName: string;
+    voyageNumber: string;
+    masterBill: { type: "mbl"; number: string };
+    houseBills: Array<{ type: "hbl"; number: string }>;
+    gateInDate: string;
+    departedAt: string;
+    departedPrecision: string;
+    motherVesselDepartedAt: string;
+  }>;
+  gaps: Array<{ code: string; status: string }>;
+};
 
 export interface FullChainLandingRepository {
+  findByPackage(input: {
+    tenantId: string;
+    packageHash: string;
+  }): Promise<FullChainLandingStatus | null>;
   stage(input: StageFullChainLandingInput): Promise<{
     runId: string;
     state: FullChainLandingState;
     replayed: boolean;
+    createdAt: Date;
   }>;
   markReceiptPending(input: {
     runId: string;

@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import {
   canonicalStringify,
   sha256Hex,
@@ -55,7 +56,6 @@ export class ApplyFullChainPackageService {
     private readonly repository: FullChainLandingRepository,
     private readonly receiptStore: LandingReceiptStore,
     private readonly isolationProbe: LandingIsolationProbe,
-    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async execute(
@@ -65,7 +65,22 @@ export class ApplyFullChainPackageService {
     const validated = validateFullChainPackageForLanding(command.artifacts);
     const graph = buildFullChainLandingGraph(validated);
     const counts = graphCounts(graph);
+    const existing = await this.repository.findByPackage({
+      tenantId: command.identity.tenantId,
+      packageHash: graph.packageHash,
+    });
+    if (existing?.state === "published")
+      return {
+        runId: existing.runId,
+        state: "replayed",
+        counts,
+        gapCount: graph.gaps.length,
+      };
+    const candidateRunId = existing?.runId ?? randomUUID();
+    const scope = this.policy.scope(candidateRunId);
+    const before = await this.isolationProbe.capture(scope);
     const staged = await this.repository.stage({
+      runId: candidateRunId,
       tenantId: command.identity.tenantId,
       actorId: command.identity.actorId,
       traceId: command.traceId,
@@ -80,8 +95,6 @@ export class ApplyFullChainPackageService {
         counts,
         gapCount: graph.gaps.length,
       };
-    const scope = this.policy.scope(staged.runId);
-    const before = await this.isolationProbe.capture(scope);
     let stored: { keyHash: string; digest: string; replayed: boolean };
     if (staged.state === "reconciling") {
       const digest = await this.receiptStore.readDigest({
@@ -107,7 +120,7 @@ export class ApplyFullChainPackageService {
         reconciliationDigest: sha256Hex(
           canonicalStringify({ counts, gapCount: graph.gaps.length }),
         ),
-        createdAt: this.now().toISOString(),
+        createdAt: staged.createdAt.toISOString(),
       });
       const receiptBody = `${canonicalStringify(receipt)}\n`;
       try {
@@ -132,7 +145,9 @@ export class ApplyFullChainPackageService {
         throw error;
       }
     }
-    const after = await this.isolationProbe.capture(scope);
+    const after = await this.isolationProbe.capture(
+      this.policy.scope(staged.runId),
+    );
     this.isolationProbe.compare(before, after);
     const reconciliation = await this.repository.reconcile({
       tenantId: command.identity.tenantId,

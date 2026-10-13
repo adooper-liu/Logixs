@@ -9,6 +9,7 @@ import { PrismaFullChainLandingRepository } from "./prisma-full-chain-landing.re
 function stageInput(tenantId: string, idempotencyKey: string) {
   const artifacts = createValidFullChainPackage();
   return {
+    runId: randomUUID(),
     tenantId,
     actorId: "actor-1",
     traceId: randomUUID(),

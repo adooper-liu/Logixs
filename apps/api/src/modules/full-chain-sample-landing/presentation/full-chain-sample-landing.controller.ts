@@ -1,9 +1,19 @@
-import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Req,
+  UseFilters,
+} from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import { ApplyFullChainPackageService } from "../application/apply-full-chain-package.service";
 import { GetFullChainChainService } from "../application/get-full-chain-chain.service";
 import { GetFullChainLandingService } from "../application/get-full-chain-landing.service";
+import { FullChainLandingExceptionFilter } from "./full-chain-landing-exception.filter";
 import {
   FullChainLandingApplyRequestDto,
   FullChainLandingChainDto,
@@ -16,11 +26,15 @@ type IdentityRequest = {
 };
 
 @ApiTags("full-chain-sample-landings")
+@UseFilters(FullChainLandingExceptionFilter)
 @Controller("full-chain-sample-landings")
 export class FullChainSampleLandingController {
   constructor(
+    @Inject(ApplyFullChainPackageService)
     private readonly applyPackage: ApplyFullChainPackageService,
+    @Inject(GetFullChainLandingService)
     private readonly getLanding: GetFullChainLandingService,
+    @Inject(GetFullChainChainService)
     private readonly getChain: GetFullChainChainService,
   ) {}
 

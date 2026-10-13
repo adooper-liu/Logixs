@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
   canonicalStringify,
@@ -67,9 +67,25 @@ function mapStatus(row: {
 @Injectable()
 export class PrismaFullChainLandingRepository implements FullChainLandingRepository {
   constructor(
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
     private readonly testHooks: { failAfterRecordType?: FailurePoint } = {},
   ) {}
+
+  async findByPackage(input: {
+    tenantId: string;
+    packageHash: string;
+  }): Promise<FullChainLandingStatus | null> {
+    const row = await this.prisma.fullChainLandingRun.findUnique({
+      where: {
+        tenantId_packageHash: {
+          tenantId: input.tenantId,
+          packageHash: input.packageHash,
+        },
+      },
+    });
+    return row ? mapStatus(row) : null;
+  }
 
   stage(input: StageFullChainLandingInput) {
     return this.prisma.$transaction(
@@ -88,6 +104,7 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
             runId: replay.id,
             state: replay.state as FullChainLandingStatus["state"],
             replayed: true,
+            createdAt: replay.createdAt,
           };
         const keyReuse = await tx.fullChainLandingRun.findUnique({
           where: {
@@ -102,6 +119,7 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
         const inputCounts = countsFor(input);
         const run = await tx.fullChainLandingRun.create({
           data: {
+            id: input.runId,
             tenantId: input.tenantId,
             packageHash: input.graph.packageHash,
             manifestVersion: manifestField(input.manifest, "manifestVersion"),
@@ -279,7 +297,12 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
           where: { id: run.id },
           data: { state: "staged", appliedCounts: inputCounts },
         });
-        return { runId: run.id, state: "staged" as const, replayed: false };
+        return {
+          runId: run.id,
+          state: "staged" as const,
+          replayed: false,
+          createdAt: run.createdAt,
+        };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
@@ -541,16 +564,103 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
       where: { id_tenantId: { id: input.runId, tenantId: input.tenantId } },
     });
     if (!run || run.state !== "published") return null;
-    return this.prisma.fullChainShipmentPlan.findFirst({
+    const plan = await this.prisma.fullChainShipmentPlan.findFirst({
       where: {
         landingRunId: input.runId,
         tenantId: input.tenantId,
         planNumber: input.planNumber,
       },
       include: {
-        bookings: { include: { documents: true } },
-        cargoReady: { include: { cargoReadyRelease: true } },
+        bookings: {
+          include: {
+            documents: {
+              include: { parentDocument: true },
+              orderBy: [{ documentType: "asc" }, { documentNumber: "asc" }],
+            },
+          },
+        },
+        cargoReady: {
+          include: { cargoReadyRelease: true },
+        },
       },
-    }) as Promise<PublishedFullChain | null>;
+    });
+    if (!plan || plan.bookings.length !== 1) return null;
+    const booking = plan.bookings[0]!;
+    const [stuffing, exportCustoms, dispatch, gaps] = await Promise.all([
+      this.prisma.fullChainStuffingLine.findMany({
+        where: { landingRunId: input.runId, tenantId: input.tenantId },
+        orderBy: [
+          { containerNumber: "asc" },
+          { cargoReadyNumber: "asc" },
+          { sku: "asc" },
+          { houseBillNumber: "asc" },
+        ],
+      }),
+      this.prisma.fullChainExportCustomsCase.findMany({
+        where: { landingRunId: input.runId, tenantId: input.tenantId },
+        orderBy: { invoiceNumber: "asc" },
+      }),
+      this.prisma.fullChainDispatchFact.findMany({
+        where: { landingRunId: input.runId, tenantId: input.tenantId },
+        include: { houseBills: { include: { houseBillDocument: true } } },
+        orderBy: { containerNumber: "asc" },
+      }),
+      this.prisma.fullChainLandingGap.findMany({
+        where: { landingRunId: input.runId, tenantId: input.tenantId },
+        select: { code: true, status: true },
+        orderBy: [{ code: "asc" }, { status: "asc" }],
+      }),
+    ]);
+    return {
+      planNumber: plan.planNumber,
+      booking: {
+        bookingNumber: booking.bookingNumber,
+        displayGroupRefs: booking.displayGroupRefs,
+        documents: booking.documents.map((document) => ({
+          type: document.documentType as "mbl" | "hbl",
+          number: document.documentNumber,
+          parentNumber: document.parentDocument?.documentNumber ?? null,
+        })),
+      },
+      cargoReady: plan.cargoReady.map(({ cargoReadyRelease }) => ({
+        cargoReadyNumber: cargoReadyRelease.cargoReadyNumber,
+        displayGroupRef: cargoReadyRelease.displayGroupRef,
+        quantity: cargoReadyRelease.quantity.toFixed(),
+      })),
+      stuffing: stuffing.map((line) => ({
+        containerNumber: line.containerNumber,
+        cargoReadyNumber: line.cargoReadyNumber,
+        sku: line.sku,
+        houseBill: { type: "hbl" as const, number: line.houseBillNumber },
+        quantity: line.quantity.toFixed(),
+        grossWeight: line.grossWeight.toFixed(),
+        volume: line.volume.toFixed(),
+      })),
+      exportCustoms: exportCustoms.map((customsCase) => ({
+        invoiceNumber: customsCase.invoiceNumber,
+        houseBill: {
+          type: "hbl" as const,
+          number: customsCase.houseBillNumber,
+        },
+        declarationNumber: customsCase.declarationNumber,
+        amount: customsCase.amount.toFixed(),
+        currency: customsCase.currency,
+      })),
+      dispatch: dispatch.map((fact) => ({
+        containerNumber: fact.containerNumber,
+        vesselName: fact.vesselName,
+        voyageNumber: fact.voyageNumber,
+        masterBill: { type: "mbl" as const, number: fact.masterBillNumber },
+        houseBills: fact.houseBills.map(({ houseBillDocument }) => ({
+          type: "hbl" as const,
+          number: houseBillDocument.documentNumber,
+        })),
+        gateInDate: fact.gateInDate,
+        departedAt: fact.departedAt,
+        departedPrecision: fact.departedPrecision,
+        motherVesselDepartedAt: fact.motherVesselDepartedAt,
+      })),
+      gaps,
+    };
   }
 }

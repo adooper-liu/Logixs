@@ -19,12 +19,30 @@ const identity = (
 });
 
 function dependencies() {
+  const order: string[] = [];
   const repository = {
-    stage: vi.fn(async () => ({
-      runId: RUN_ID,
-      state: "staged",
-      replayed: false,
-    })),
+    findByPackage: vi.fn(
+      async (): Promise<{
+        runId: string;
+        state: "published";
+        inputCounts: Record<string, number>;
+        appliedCounts: Record<string, number>;
+        replayedCounts: Record<string, number>;
+        rejectedCounts: Record<string, number>;
+        gapCount: number;
+        checkCount: number;
+        publishedAt: Date;
+      } | null> => null,
+    ),
+    stage: vi.fn(async () => {
+      order.push("stage");
+      return {
+        runId: RUN_ID,
+        state: "staged",
+        replayed: false,
+        createdAt: new Date("2026-10-13T00:00:00.000Z"),
+      };
+    }),
     markReceiptPending: vi.fn(async () => undefined),
     markReconciling: vi.fn(async () => undefined),
     reconcile: vi.fn(async () => ({
@@ -66,38 +84,35 @@ function dependencies() {
     readDigest: vi.fn(async (): Promise<string | null> => null),
     deleteOwnedKey: vi.fn(async () => undefined),
   };
+  const before = {
+    targetTenantHash: "before",
+    oldDemoTenantHash: "old",
+    controlTenantHash: "control",
+    globalReferenceHash: "global",
+    targetReceiptDigest: null,
+    minioOutsideHash: "outside",
+    temporalHash: "temporal",
+    landingOutboxCount: 0,
+    businessTaskCount: 0,
+  };
+  const after = {
+    ...before,
+    targetTenantHash: "after",
+    targetReceiptDigest: "c".repeat(64),
+  };
   const isolationProbe = {
-    capture: vi
-      .fn()
-      .mockResolvedValueOnce({
-        targetTenantHash: "before",
-        oldDemoTenantHash: "old",
-        controlTenantHash: "control",
-        globalReferenceHash: "global",
-        targetReceiptDigest: null,
-        minioOutsideHash: "outside",
-        temporalHash: "temporal",
-        landingOutboxCount: 0,
-        businessTaskCount: 0,
-      })
-      .mockResolvedValueOnce({
-        targetTenantHash: "after",
-        oldDemoTenantHash: "old",
-        controlTenantHash: "control",
-        globalReferenceHash: "global",
-        targetReceiptDigest: "c".repeat(64),
-        minioOutsideHash: "outside",
-        temporalHash: "temporal",
-        landingOutboxCount: 0,
-        businessTaskCount: 0,
-      }),
+    capture: vi.fn(async () => {
+      const captureIndex = order.filter((item) => item === "capture").length;
+      order.push("capture");
+      return captureIndex === 0 ? before : after;
+    }),
     compare: vi.fn(() => ({
       targetChanged: true,
       receiptChanged: true,
       outboxDelta: 0,
     })),
   };
-  return { repository, receiptStore, isolationProbe };
+  return { repository, receiptStore, isolationProbe, order };
 }
 
 function command(user = identity()) {
@@ -125,7 +140,6 @@ describe("ApplyFullChainPackageService", () => {
       deps.repository as never,
       deps.receiptStore,
       deps.isolationProbe,
-      () => new Date("2026-10-13T00:00:00.000Z"),
     );
   });
 
@@ -149,6 +163,7 @@ describe("ApplyFullChainPackageService", () => {
       gapCount: 0,
     });
     expect(deps.repository.stage).toHaveBeenCalledTimes(1);
+    expect(deps.order.slice(0, 2)).toEqual(["capture", "stage"]);
     expect(deps.receiptStore.putIfAbsent).toHaveBeenCalledTimes(1);
     const receiptBody = deps.receiptStore.putIfAbsent.mock.calls[0]![0].body;
     expect(receiptBody).not.toContain("PLAN-1");
@@ -162,10 +177,16 @@ describe("ApplyFullChainPackageService", () => {
   });
 
   it("returns a published replay without S3 or probe I/O", async () => {
-    deps.repository.stage.mockResolvedValueOnce({
+    deps.repository.findByPackage.mockResolvedValueOnce({
       runId: RUN_ID,
       state: "published",
-      replayed: true,
+      inputCounts: {},
+      appliedCounts: {},
+      replayedCounts: {},
+      rejectedCounts: {},
+      gapCount: 0,
+      checkCount: 0,
+      publishedAt: new Date(),
     });
     expect(await service.execute(command())).toMatchObject({
       runId: RUN_ID,
@@ -184,12 +205,21 @@ describe("ApplyFullChainPackageService", () => {
       runId: RUN_ID,
       state: "reconciling",
       replayed: true,
+      createdAt: new Date("2026-10-13T00:00:00.000Z"),
     });
     deps.receiptStore.readDigest.mockResolvedValueOnce("c".repeat(64));
     deps.isolationProbe.capture.mockClear();
-    deps.isolationProbe.capture
-      .mockResolvedValueOnce({ targetTenantHash: "before" })
-      .mockResolvedValueOnce({ targetTenantHash: "after" });
+    deps.isolationProbe.capture.mockResolvedValueOnce({
+      targetTenantHash: "before",
+      oldDemoTenantHash: "old",
+      controlTenantHash: "control",
+      globalReferenceHash: "global",
+      targetReceiptDigest: null,
+      minioOutsideHash: "outside",
+      temporalHash: "temporal",
+      landingOutboxCount: 0,
+      businessTaskCount: 0,
+    });
 
     expect(await service.execute(command())).toMatchObject({
       state: "published",
@@ -218,11 +248,20 @@ describe("ApplyFullChainPackageService", () => {
       runId: RUN_ID,
       state: "receipt_pending",
       replayed: true,
+      createdAt: new Date("2026-10-13T00:00:00.000Z"),
     });
     deps.isolationProbe.capture.mockClear();
-    deps.isolationProbe.capture
-      .mockResolvedValueOnce({ targetTenantHash: "before" })
-      .mockResolvedValueOnce({ targetTenantHash: "after" });
+    deps.isolationProbe.capture.mockResolvedValueOnce({
+      targetTenantHash: "before",
+      oldDemoTenantHash: "old",
+      controlTenantHash: "control",
+      globalReferenceHash: "global",
+      targetReceiptDigest: null,
+      minioOutsideHash: "outside",
+      temporalHash: "temporal",
+      landingOutboxCount: 0,
+      businessTaskCount: 0,
+    });
     expect(await service.execute(command())).toMatchObject({
       state: "published",
     });
