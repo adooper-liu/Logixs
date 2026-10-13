@@ -10,6 +10,7 @@ writeScopes:
   - docs/planning/tasks/product-npi-visual-flow-return-v1.md
   - docs/superpowers/specs/2026-10-06-full-chain-sample-rebuild-design.md
   - docs/product/domain/REAL_REPLENISHMENT_SAMPLE_RELATIONSHIPS_20260921.md
+  - docs/planning/progress-board.html
   - scripts/full-chain-sample/**
   - scripts/compile-full-chain-sample.mjs
   - scripts/compile-full-chain-sample.test.mjs
@@ -19,9 +20,11 @@ writeScopes:
   - .gitignore
 exclusiveLocks:
   - root-tooling
+  - progress-board
   - external-sample-compiler:full-chain-v0-5
 sharedIntegrationScopes:
   - docs/planning/tasks/product-npi-visual-flow-return-v1.md
+  - docs/planning/progress-board.html
 authorityRefs:
   - AGENTS.md
   - docs/superpowers/specs/2026-10-06-full-chain-sample-rebuild-design.md
