@@ -12,6 +12,7 @@ writeScopes:
   - docs/planning/tasks/full-chain-rehearsal-domain-adapter-v1.md
   - docs/superpowers/specs/2026-10-13-full-chain-rehearsal-domain-adapter-design.md
   - docs/superpowers/plans/2026-10-13-full-chain-rehearsal-domain-adapter.md
+  - docs/planning/progress-board.html
   - packages/full-chain-sample-contracts/**
   - scripts/full-chain-sample/canonical-json.mjs
   - scripts/full-chain-sample/contracts.mjs
@@ -23,6 +24,8 @@ writeScopes:
   - database/schema.prisma
   - database/migrations/**
   - database/dictionary/**
+  - scripts/full-chain-demo/ownership-catalog.json
+  - scripts/full-chain-demo/ownership-catalog.test.mjs
   - scripts/generate-data-dictionary.mjs
   - scripts/generate-data-dictionary.test.mjs
   - package.json
@@ -32,15 +35,19 @@ exclusiveLocks:
   - database-migrations
   - database-dictionary
   - generated:database-catalog
+  - demo-ownership-catalog
   - public-contract:full-chain-sample-package-v1
   - public-contract:full-chain-rehearsal-receipt-v1
   - rehearsal-adapter:full-chain-v0-5
   - demo-rehearsal:full-chain-v0-5
   - root-tooling
+  - progress-board
 sharedIntegrationScopes:
+  - docs/planning/progress-board.html
   - database/schema.prisma
   - database/migrations/**
   - database/dictionary/**
+  - scripts/full-chain-demo/ownership-catalog.json
   - package.json
   - pnpm-lock.yaml
 authorityRefs:
