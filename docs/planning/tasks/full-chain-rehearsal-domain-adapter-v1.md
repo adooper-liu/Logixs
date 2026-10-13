@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/full-chain-rehearsal-domain-adapter
-verification: "code-complete；actual rehearsal execution not-run：外部 publishable package、当次独立 tenant/prefix 与人工执行回执仍属 deployment gate。代码门禁：landing unit 55/55、真实 closeout 4/4、全 API integration 34 files/215 tests、workspace unit Web 747/API 1584、compiler 81/81、contract/dictionary/generate、lint/typecheck/build 通过；Web E2E 233 passed/26 skipped/1 OIDC logout transient timeout，原样精确复跑 auth-session 5/5 通过。repo/root test 仅被未归属且未触碰的 doc/.../市场与经营信号.md 越界 working-tree diff 阻断。"
+verification: "code-complete；actual rehearsal execution not-run：外部 publishable package、当次独立 tenant/prefix 与人工执行回执仍属 deployment gate。PR #177 已合并（merge 8726629e）；必需 quality 通过（CI run 38477978283）。landing unit 63/63、全 API unit 1592/1592、全 API integration 34 files/219 tests、真实 closeout 6/6、compiler 81/81，以及 contract/dictionary/generate、lint/typecheck/build 通过。fresh Claude 8 个 blocking finding 已全部 RED→GREEN 关闭，2 个 Minor 延期；Brief 4、旧 demo 删除、生产写入和页面切换均未授权。"
 owner: main
 writer: main
 risk: high
