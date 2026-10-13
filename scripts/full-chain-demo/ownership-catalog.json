@@ -521,6 +521,78 @@
       "tenantField": "tenantId",
       "deleteRank": 100
     },
+    "FullChainLandingRun": {
+      "table": "full_chain_landing_run",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "FullChainShipmentPlan": {
+      "table": "full_chain_shipment_plan",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 200
+    },
+    "FullChainBookingCommitment": {
+      "table": "full_chain_booking_commitment",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 300
+    },
+    "FullChainBookingDocument": {
+      "table": "full_chain_booking_document",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 400
+    },
+    "FullChainCargoReadyRelease": {
+      "table": "full_chain_cargo_ready_release",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 200
+    },
+    "FullChainShipmentPlanCargoReady": {
+      "table": "full_chain_shipment_plan_cargo_ready",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 500
+    },
+    "FullChainStuffingLine": {
+      "table": "full_chain_stuffing_line",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 500
+    },
+    "FullChainExportCustomsCase": {
+      "table": "full_chain_export_customs_case",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 500
+    },
+    "FullChainDispatchFact": {
+      "table": "full_chain_dispatch_fact",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 500
+    },
+    "FullChainDispatchHouseBill": {
+      "table": "full_chain_dispatch_house_bill",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 600
+    },
+    "FullChainLandingRecordReceipt": {
+      "table": "full_chain_landing_record_receipt",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 200
+    },
+    "FullChainLandingGap": {
+      "table": "full_chain_landing_gap",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 200
+    },
     "OutboxMessage": {
       "table": "outbox_message",
       "rule": "direct_tenant",

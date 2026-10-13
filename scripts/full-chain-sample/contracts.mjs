@@ -2,21 +2,12 @@ import fs from "node:fs";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import {
-  canonicalStringify,
-  packageHash,
   packageHashProjection,
-  sha256Hex,
-} from "./canonical-json.mjs";
+  validatePackageArtifacts,
+} from "@logix/full-chain-sample-contracts";
 
 const schemaDir = new URL("./schemas/", import.meta.url);
-const schemaNames = [
-  "source-manifest",
-  "policy",
-  "package-manifest",
-  "canonical-record",
-  "gap",
-  "check",
-];
+const schemaNames = ["source-manifest", "policy"];
 const schemas = Object.fromEntries(
   schemaNames.map((name) => [
     name,
@@ -73,49 +64,6 @@ const V05_RECORD_SHEETS = new Set([
   "11a_出口报关",
   "12_出运",
 ]);
-const RECORD_PAYLOAD_FIELDS = {
-  shipment_plan: new Set(["planNo", "containerRefs", "bookingNo"]),
-  booking_commitment: new Set([
-    "bookingNo",
-    "masterBillNo",
-    "houseBillRefs",
-    "containerRefs",
-  ]),
-  cargo_ready_release: new Set([
-    "cargoReadyNo",
-    "planNo",
-    "sku",
-    "quantity",
-    "quantityUnit",
-  ]),
-  stuffing_snapshot_line: new Set([
-    "containerNo",
-    "cargoReadyNo",
-    "sku",
-    "houseBillNo",
-    "quantity",
-    "grossWeight",
-    "volume",
-  ]),
-  export_customs_case: new Set([
-    "invoiceNo",
-    "houseBillNo",
-    "declarationNo",
-    "amount",
-    "currency",
-  ]),
-  dispatch_fact: new Set([
-    "containerNo",
-    "vesselName",
-    "voyageNo",
-    "masterBillNo",
-    "houseBillRefs",
-    "gateInDate",
-    "departedAt",
-    "departedPrecision",
-    "motherVesselDepartedAt",
-  ]),
-};
 
 function fail(code, errors = []) {
   const detail = errors
@@ -123,12 +71,10 @@ function fail(code, errors = []) {
     .join("; ");
   throw new Error(`${code}${detail ? `: ${detail}` : ""}`);
 }
-
 function validate(name, value, code) {
   if (!validators[name](value)) fail(code, validators[name].errors);
   return value;
 }
-
 export function validateSourceManifest(value) {
   return validate("source-manifest", value, "SOURCE_MANIFEST_INVALID");
 }
@@ -179,63 +125,8 @@ export function validatePolicy(value) {
   }
   return value;
 }
-
-export function validatePackageArtifacts(artifacts) {
-  if (!artifacts || !Array.isArray(artifacts.records)) fail("PACKAGE_INVALID");
-  if (!validators["package-manifest"](artifacts.manifest))
-    fail("PACKAGE_MANIFEST_INVALID", validators["package-manifest"].errors);
-  if (
-    artifacts.manifest.recordCount !== artifacts.records.length ||
-    artifacts.manifest.gapCount !== (artifacts.gaps ?? []).length ||
-    artifacts.manifest.checkCount !== (artifacts.checks ?? []).length
-  )
-    fail("PACKAGE_MANIFEST_INVALID");
-  const publishable =
-    (artifacts.gaps ?? []).every((item) => item.status !== "blocking") &&
-    (artifacts.checks ?? []).every((item) => item.status !== "fail");
-  if (artifacts.manifest.publishable !== publishable)
-    fail("PACKAGE_PUBLISHABLE_INVALID");
-  if (
-    artifacts.manifest.recordsHash !==
-      sha256Hex(canonicalStringify(artifacts.records)) ||
-    artifacts.manifest.gapsHash !==
-      sha256Hex(canonicalStringify(artifacts.gaps ?? [])) ||
-    artifacts.manifest.checksHash !==
-      sha256Hex(canonicalStringify(artifacts.checks ?? [])) ||
-    artifacts.manifest.lineageCount !== (artifacts.lineage ?? []).length ||
-    artifacts.manifest.lineageHash !==
-      sha256Hex(canonicalStringify(artifacts.lineage ?? []))
-  )
-    fail("PACKAGE_MANIFEST_INVALID");
-  if (artifacts.manifest.packageHash !== packageHash(artifacts))
-    fail("PACKAGE_HASH_INVALID");
-  for (const record of artifacts.records) {
-    if (!validators["canonical-record"](record))
-      fail("PACKAGE_RECORD_INVALID", validators["canonical-record"].errors);
-    if (record.evidenceClass === "D" && !record.derivation)
-      fail("PACKAGE_RECORD_INVALID");
-    if (record.evidenceClass !== "D" && record.derivation !== null)
-      fail("PACKAGE_RECORD_INVALID");
-    if (record.evidenceClass === "S" && !record.scenario)
-      fail("PACKAGE_RECORD_INVALID");
-    if (record.evidenceClass !== "S" && record.scenario !== null)
-      fail("PACKAGE_RECORD_INVALID");
-    const allowedFields = RECORD_PAYLOAD_FIELDS[record.recordType];
-    if (
-      !allowedFields ||
-      Object.keys(record.payload).some((field) => !allowedFields.has(field))
-    )
-      fail("PACKAGE_RECORD_INVALID");
-  }
-  for (const gap of artifacts.gaps ?? [])
-    validate("gap", gap, "PACKAGE_GAP_INVALID");
-  for (const check of artifacts.checks ?? [])
-    validate("check", check, "PACKAGE_CHECK_INVALID");
-  return undefined;
-}
-
 export function packageHashProjectionFor(artifacts) {
   return packageHashProjection(artifacts);
 }
 
-export { fail };
+export { fail, validatePackageArtifacts };

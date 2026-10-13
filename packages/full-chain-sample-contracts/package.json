@@ -1,0 +1,21 @@
+{
+  "name": "@logix/full-chain-sample-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "require": "./index.cjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test contracts.test.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  }
+}

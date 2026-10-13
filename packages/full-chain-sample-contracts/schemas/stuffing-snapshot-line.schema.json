@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stuffing-snapshot-line.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "containerNo",
+    "cargoReadyNo",
+    "sku",
+    "houseBillNo",
+    "quantity",
+    "grossWeight",
+    "volume"
+  ],
+  "properties": {
+    "containerNo": { "type": "string", "minLength": 1 },
+    "cargoReadyNo": { "type": "string", "minLength": 1 },
+    "sku": { "type": "string", "minLength": 1 },
+    "houseBillNo": { "type": "string", "minLength": 1 },
+    "quantity": { "type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$" },
+    "grossWeight": { "type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$" },
+    "volume": { "type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$" }
+  }
+}

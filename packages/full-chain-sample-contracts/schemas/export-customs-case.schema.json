@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "export-customs-case.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "invoiceNo",
+    "houseBillNo",
+    "declarationNo",
+    "amount",
+    "currency"
+  ],
+  "properties": {
+    "invoiceNo": { "type": "string", "minLength": 1 },
+    "houseBillNo": { "type": "string", "minLength": 1 },
+    "declarationNo": { "type": "string", "minLength": 1 },
+    "amount": { "type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+  }
+}

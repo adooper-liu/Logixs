@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "baselineCommit": "60c14924469c9c7ae2e4445d3c429bb5aa7e2565",
+  "baselineCommit": "b44effeefe3f8192becb2f245679aa62520caf24",
   "sources": {
     "engineering-data-governance": {
       "path": "ENGINEERING_RULES.md",
@@ -332,6 +332,126 @@
       "sourceRefs": ["prisma-schema"],
       "moduleCode": null,
       "ownerModule": "lifecycle-control",
+      "notes": []
+    },
+    "public.full_chain_booking_commitment": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_house_bill": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run": {
+      "nameZh": "货柜卸货作业",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "货柜卸货作业的版本化现场事实（inland-fulfillment 拥有）。 started/partial 只记录进度；仅完整 completed 记录可支持 unloaded 过站。 全链样本隔离演练落账批次；只发布 neutral facts，不推进业务生命周期。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "inland-fulfillment",
+      "notes": []
+    },
+    "public.full_chain_shipment_plan": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan_cargo_ready": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
       "notes": []
     },
     "public.import_batch": {
@@ -5499,6 +5619,1256 @@
       "notes": []
     },
     "public.flow_instance.definition_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.shipment_plan_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.booking_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.display_group_refs": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_commitment.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.booking_commitment_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.document_type": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.document_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.parent_document_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_booking_document.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.cargo_ready_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.display_group_ref": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.quantity": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_cargo_ready_release.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.departed_at": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.departed_precision": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.mother_vessel_departed_at": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.master_bill_document_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.container_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.vessel_name": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.voyage_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.master_bill_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_fact.gate_in_date": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_house_bill.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_house_bill.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_house_bill.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_house_bill.dispatch_fact_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_house_bill.house_bill_document_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_dispatch_house_bill.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.house_bill_document_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.invoice_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.house_bill_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.declaration_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.amount": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_export_customs_case.currency": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap.code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap.status": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap.record_ref_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_gap.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.issue_codes": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.record_type": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.business_key_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.record_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.source_ref_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.target_fact_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_record_receipt.state": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.source_fingerprint_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.state": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.input_counts": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.applied_counts": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.replayed_counts": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.rejected_counts": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.gap_count": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.check_count": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.receipt_key_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.receipt_digest": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.reconciliation_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.actor_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.trace_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.idempotency_key": {
+      "nameZh": "幂等键",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "识别同一写入请求的重复提交。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.published_at": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.updated_at": {
+      "nameZh": "更新时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行最近一次更新数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.package_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.semantic_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.manifest_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.workbook_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.compiler_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.mapping_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.policy_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan.plan_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan_cargo_ready.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan_cargo_ready.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan_cargo_ready.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan_cargo_ready.shipment_plan_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan_cargo_ready.cargo_ready_release_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_shipment_plan_cargo_ready.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.quantity": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.gross_weight": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.volume": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.landing_run_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.cargo_ready_release_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.house_bill_document_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.container_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.cargo_ready_number": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.sku": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.house_bill_number": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
       "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",

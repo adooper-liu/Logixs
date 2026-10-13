@@ -10,6 +10,7 @@ import { ComplianceLifecycleOrchestrationModule } from "./modules/compliance-lif
 import { CustomsComplianceModule } from "./modules/customs-compliance";
 import { CustomsLifecycleOrchestrationModule } from "./modules/customs-lifecycle-orchestration";
 import { DocumentRecordsModule } from "./modules/document-records";
+import { FullChainSampleLandingModule } from "./modules/full-chain-sample-landing";
 import { ExceptionManagementModule } from "./modules/exception-management";
 import { IdentityModule } from "./modules/identity";
 import { InlandFulfillmentModule } from "./modules/inland-fulfillment";
@@ -42,6 +43,7 @@ import { WorkflowModule } from "./modules/workflow";
     CustomsComplianceModule,
     CustomsLifecycleOrchestrationModule,
     DocumentRecordsModule,
+    FullChainSampleLandingModule,
     ExceptionManagementModule,
     IdentityModule,
     InlandFulfillmentModule,

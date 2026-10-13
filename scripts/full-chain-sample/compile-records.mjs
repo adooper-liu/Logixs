@@ -1,4 +1,8 @@
-import { canonicalStringify, sha256Hex } from "./canonical-json.mjs";
+import {
+  canonicalStringify,
+  compareCanonicalStrings,
+  sha256Hex,
+} from "./canonical-json.mjs";
 import { classifyMappedValue } from "./classification.mjs";
 import { runPackageChecks } from "./reconcile.mjs";
 
@@ -458,14 +462,32 @@ export function compilePilotRecords({
         },
         derivation: evidence.evidenceClass === "D" ? evidence.derivation : null,
         scenario: evidence.evidenceClass === "S" ? evidence.scenario : null,
+        ...(mapping.recordType === "stuffing_snapshot_line" &&
+        (indexes.constructionContributors?.get(`${mapping.sheet}|${row.rowKey}`)
+          ?.size ?? 0) > 1
+          ? {
+              aggregation: {
+                code: "FC-D07",
+                contributorRefs: [
+                  ...indexes.constructionContributors.get(
+                    `${mapping.sheet}|${row.rowKey}`,
+                  ),
+                ].sort(compareCanonicalStrings),
+              },
+            }
+          : {}),
         payload,
       };
       records.push(record);
-      lineage.push({
-        recordRef: recordRef(record),
-        sourceRef: record.source.sourceRef,
-        payloadFields: Object.keys(payload).sort(),
-      });
+      const lineageRefs = record.aggregation?.contributorRefs ?? [
+        record.source.sourceRef,
+      ];
+      for (const contributorRef of lineageRefs)
+        lineage.push({
+          recordRef: recordRef(record),
+          sourceRef: contributorRef,
+          payloadFields: Object.keys(payload).sort(),
+        });
     }
   }
   const checks = runPackageChecks({ records, scan, policy });
