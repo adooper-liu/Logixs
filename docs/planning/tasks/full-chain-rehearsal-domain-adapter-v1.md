@@ -17,6 +17,9 @@ writeScopes:
   - scripts/full-chain-sample/canonical-json.mjs
   - scripts/full-chain-sample/contracts.mjs
   - scripts/full-chain-sample/contracts.test.mjs
+  - scripts/full-chain-sample/business-data-correction.test.mjs
+  - scripts/full-chain-sample/classification.mjs
+  - scripts/full-chain-sample/compile-records.mjs
   - scripts/full-chain-sample/schemas/**
   - apps/api/package.json
   - apps/api/src/app.module.ts
@@ -228,6 +231,39 @@ authorityRefs:
 9. fresh Claude 整体只读复审；
 10. 一个最终 PR。
 
+## Fresh Claude 整体复审处置
+
+```text
+logix-disposition/v1
+slice: B3g-final-gates
+baseline: 874b7d10..b44effee
+reviewer: fresh Claude Code read-only
+accepted:
+  - B3-REV-001: FC-D07 contributor completeness must reject omission, not only dangling refs
+  - B3-REV-002: landing state transitions must be monotonic/CAS under true first-apply concurrency
+  - B3-REV-003: reconciliation must verify typed-join counts and graph-derived projection digest
+  - B3-REV-004: reconciling recovery must bind current receipt bytes to persisted and deterministic expected digest
+  - B3-REV-005: old-demo/control protection needs content fingerprints, not ID-only ownership hashes
+  - B3-REV-006: every canonical receipt must bind enforceably to its same-run typed target fact
+  - B3-REV-007: same business key + same canonical payload across packages must reuse; changed payload must conflict
+  - B3-REV-008: DB must enforce dispatch MBL type and redundant typed-reference number equality
+rejected: []
+pending-owner: []
+deferred-non-blocking:
+  - B3-REV-009: correct sparse data-dictionary annotations for twelve landing tables
+  - B3-REV-010: add local runtime validation for command metadata/server trace IDs
+writes: accepted finding paths only, inside this brief's writeScopes
+```
+
+主代理复现后将八项 blocking finding 全部记为 `accepted`，未引入新业务政策。FC-D07 使用独立可选
+`aggregation` envelope 表达 constructed `S` record 的贡献者，不伪装为 derived `D`；其 producer 所需的三个
+compiler 精确路径已补入 `writeScopes`。单次修复批次证据：landing unit 63/63、全 API unit 1592/1592、
+全 API integration 34 files/219 tests、public contract 17/17、compiler 81/81、真实 closeout 6/6，以及 API
+lint/format/typecheck/build、root lint/typecheck/build、contract/dictionary/board 通过。完整 `validate` 与
+`repo:check` 仍只被未归属且本任务未触碰的 `doc/.../市场与经营信号.md` tracked WIP 阻断；root
+`format:check` 仍只被既有 `apps/ai-service/.pytest_cache` EPERM 阻断。实际 rehearsal execution 保持
+`not-run`，仅作为 deployment gate。
+
 ## 进度 log
 
 | 日期       | 阶段   | 负责        | commit     | 说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -241,4 +277,4 @@ authorityRefs:
 | 2026-10-13 | coding | Claude Code | `a261f26d` | B3f Application orchestration：服务端先校验 `import.execute` + configured rehearsal tenant，再 strict validate/package graph；按 staged/receipt_pending/reconciling/published 从最早未完成步骤恢复，receipt 与 isolation/reconcile/publish 分轨，publish 失败不重写 receipt；read service 要求 `import.read` 且 tenant scoped，未发布/不存在统一 not-found。focused 15/15、API typecheck/lint、根 `pnpm test`（Web 747/API 1574）通过。                                                                                                                                                                                                                                                                                                                     |
 | 2026-10-13 | coding | Claude Code | `e3850058` | B3f transport/composition：新增 protected apply/status/chain HTTP routes（`import.execute` / `import.read`）、受控 external-package CLI 和 module composition；CLI 缺参/token/HTTPS/path/package 失败均在 fetch 前拒绝且 stdout 白名单；runtime isolation 复用 ownership catalog、PostgreSQL/MinIO/Temporal read-only inventory，无 mutation port。presentation 10/10、authz 135 routes/0 missing、API typecheck/lint/build、repo check、根 `pnpm test`（Web 747/API 1584）通过。                                                                                                                                                                                                                                                                           |
 | 2026-10-13 | coding | Claude Code | `9b5e0154` | B3g non-mock closeout：真实 Nest HTTP + migrated PostgreSQL + local MinIO + read-only Temporal 完成 apply/status/full-chain typed projection、same package replay/concurrent callers、7 类 malformed/orphan/lineage/cross-tenant 零写入拒绝、mid-chain rollback、timeout-after-put same-run recovery、exactly-one Outbox/receipt 与 zero canonical event/inbox/task；错误只返回 stable code + traceId。landing unit 55/55、closeout 4/4、全 API integration 34 files/215 tests、compiler 81/81、workspace unit Web 747/API 1584、typecheck/lint/build/contract/dictionary 通过；Web E2E 233/260 + 26 skipped，唯一 OIDC logout transient timeout 原样复跑 5/5 通过。根 repo/root test 仅受外部未归属且未触碰的 `doc/.../市场与经营信号.md` 越界 diff 阻断。 |
-| 2026-10-13 | review | Claude Code | `pending`  | 代码完成并进入一次 fresh Claude 整体只读复审；actual rehearsal execution 明确保持 not-run，不启动 Brief 4、不删除旧 demo。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-10-13 | review | Claude Code | `pending`  | fresh Claude 整体只读复审 8 个 blocking finding 已全部复现并在单次 RED→GREEN 修复批次关闭：FC-D07 完整贡献者证明、单调 CAS 并发、typed join + semantic reconciliation、三方 receipt digest、direct/indirect tenant 内容指纹、receipt→typed fact 约束、语义 payload 重放/冲突、DB MBL/HBL 与冗余编号约束。最终 landing 63/63、全 API unit 1592/1592、全 API integration 34 files/219 tests、compiler 81/81、closeout 6/6 及静态/构建/contract/dictionary/board 门禁通过；2 个 Minor 明确延期。`validate`/`repo:check` 仅受外部未归属 `市场与经营信号.md` tracked WIP 阻断，root format 仅受既有 `.pytest_cache` EPERM 阻断；actual rehearsal execution 保持 not-run。                                                                                        |

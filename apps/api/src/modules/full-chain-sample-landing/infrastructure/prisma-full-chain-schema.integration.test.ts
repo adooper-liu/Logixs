@@ -16,6 +16,7 @@ async function createRun(
     data: {
       tenantId,
       packageHash,
+      semanticHash: "e".repeat(64),
       manifestVersion: "full-chain-package.v1",
       workbookVersion: "v0.5.1",
       compilerVersion: "full-chain-compiler.v1",
@@ -174,6 +175,83 @@ describe("full-chain landing schema", () => {
             declarationNumber: "DECL-A",
             amount: "1.000000",
             currency: "USD",
+            payloadHash: PAYLOAD_HASH,
+          },
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
+  it("rejects wrong document roles and redundant typed-reference numbers", async () => {
+    await withTemporaryDatabase(async ({ prisma }) => {
+      const tenantId = randomUUID();
+      const chain = await seedTypedChain(prisma, {
+        tenantId,
+        packageHash: HASH_A,
+        suffix: "A",
+      });
+
+      await expect(
+        prisma.fullChainDispatchFact.create({
+          data: {
+            tenantId,
+            landingRunId: chain.run.id,
+            masterBillDocumentId: chain.houseBill.id,
+            containerNumber: "CONT-WRONG-TYPE",
+            vesselName: "VESSEL",
+            voyageNumber: "VOY",
+            masterBillNumber: "HBL-A",
+            gateInDate: "2026-09-17",
+            departedAt: "2026-09-18",
+            departedPrecision: "date",
+            motherVesselDepartedAt: "2026-09-18",
+            payloadHash: PAYLOAD_HASH,
+          },
+        }),
+      ).rejects.toThrow();
+      await expect(
+        prisma.fullChainStuffingLine.create({
+          data: {
+            ...stuffingData({
+              tenantId,
+              runId: chain.run.id,
+              cargoReadyId: chain.cargoReady.id,
+              houseBillId: chain.houseBill.id,
+              suffix: "A",
+            }),
+            houseBillNumber: "HBL-DIFFERENT",
+          },
+        }),
+      ).rejects.toThrow();
+      await expect(
+        prisma.fullChainExportCustomsCase.create({
+          data: {
+            tenantId,
+            landingRunId: chain.run.id,
+            houseBillDocumentId: chain.houseBill.id,
+            invoiceNumber: "INV-WRONG-NUMBER",
+            houseBillNumber: "HBL-DIFFERENT",
+            declarationNumber: "DECL-A",
+            amount: "1.000000",
+            currency: "USD",
+            payloadHash: PAYLOAD_HASH,
+          },
+        }),
+      ).rejects.toThrow();
+      await expect(
+        prisma.fullChainDispatchFact.create({
+          data: {
+            tenantId,
+            landingRunId: chain.run.id,
+            masterBillDocumentId: chain.masterBill.id,
+            containerNumber: "CONT-WRONG-NUMBER",
+            vesselName: "VESSEL",
+            voyageNumber: "VOY",
+            masterBillNumber: "MBL-DIFFERENT",
+            gateInDate: "2026-09-17",
+            departedAt: "2026-09-18",
+            departedPrecision: "date",
+            motherVesselDepartedAt: "2026-09-18",
             payloadHash: PAYLOAD_HASH,
           },
         }),

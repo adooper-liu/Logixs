@@ -14,6 +14,7 @@ import type { LandingReceiptStore } from "../domain/landing-receipt-store.port";
 import type { FullChainLandingRepository } from "../domain/full-chain-landing.repository";
 import {
   buildFullChainLandingGraph,
+  fullChainLandingProjectionHash,
   type FullChainLandingGraph,
 } from "../domain/landing-graph";
 import { FullChainLandingPolicy } from "./full-chain-landing-policy";
@@ -56,6 +57,7 @@ export class ApplyFullChainPackageService {
     private readonly repository: FullChainLandingRepository,
     private readonly receiptStore: LandingReceiptStore,
     private readonly isolationProbe: LandingIsolationProbe,
+    private readonly afterStage: () => Promise<void> = async () => undefined,
   ) {}
 
   async execute(
@@ -77,8 +79,8 @@ export class ApplyFullChainPackageService {
         gapCount: graph.gaps.length,
       };
     const candidateRunId = existing?.runId ?? randomUUID();
-    const scope = this.policy.scope(candidateRunId);
-    const before = await this.isolationProbe.capture(scope);
+    const candidateScope = this.policy.scope(candidateRunId);
+    let before = await this.isolationProbe.capture(candidateScope);
     const staged = await this.repository.stage({
       runId: candidateRunId,
       tenantId: command.identity.tenantId,
@@ -88,6 +90,11 @@ export class ApplyFullChainPackageService {
       manifest: validated.manifest,
       graph,
     });
+    await this.afterStage();
+    if (staged.runId !== candidateRunId)
+      before = await this.isolationProbe.capture(
+        this.policy.scope(staged.runId),
+      );
     if (staged.state === "published")
       return {
         runId: staged.runId,
@@ -96,46 +103,59 @@ export class ApplyFullChainPackageService {
         gapCount: graph.gaps.length,
       };
     let stored: { keyHash: string; digest: string; replayed: boolean };
+    const receiptBody = this.receiptBody(
+      staged.runId,
+      staged.createdAt,
+      command.identity.tenantId,
+      graph,
+      counts,
+    );
+    const expectedReceiptDigest = sha256Hex(receiptBody);
     if (staged.state === "reconciling") {
+      const status = await this.repository.getStatus({
+        tenantId: command.identity.tenantId,
+        runId: staged.runId,
+      });
       const digest = await this.receiptStore.readDigest({
         tenantId: command.identity.tenantId,
         runId: staged.runId,
       });
       if (!digest) throw new Error("FULL_CHAIN_RECEIPT_MISSING");
-      stored = { keyHash: "", digest, replayed: true };
+      if (
+        !status?.receiptDigest ||
+        digest !== status.receiptDigest ||
+        digest !== expectedReceiptDigest
+      )
+        throw new Error("FULL_CHAIN_RECEIPT_CONFLICT");
+      stored = { keyHash: status.receiptKeyHash ?? "", digest, replayed: true };
+      if (existing?.state !== "reconciling")
+        return this.waitForPublishedReplay(
+          command.identity.tenantId,
+          staged.runId,
+          counts,
+          graph.gaps.length,
+        );
     } else {
-      const receipt = validateRehearsalReceipt({
-        receiptVersion: "full-chain-rehearsal-receipt.v1",
-        runId: staged.runId,
-        packageId: sha256Hex(graph.packageHash).slice(0, 16),
-        tenantRef: sha256Hex(command.identity.tenantId).slice(0, 16),
-        state: "staged",
-        counts,
-        gapCounts: Object.fromEntries(
-          ["open", "blocking", "informational"].map((status) => [
-            status,
-            graph.gaps.filter((gap) => gap.status === status).length,
-          ]),
-        ),
-        reconciliationDigest: sha256Hex(
-          canonicalStringify({ counts, gapCount: graph.gaps.length }),
-        ),
-        createdAt: staged.createdAt.toISOString(),
-      });
-      const receiptBody = `${canonicalStringify(receipt)}\n`;
       try {
         stored = await this.receiptStore.putIfAbsent({
           tenantId: command.identity.tenantId,
           runId: staged.runId,
           body: receiptBody,
-          digest: sha256Hex(receiptBody),
+          digest: expectedReceiptDigest,
         });
-        await this.repository.markReconciling({
+        const wonPublication = await this.repository.markReconciling({
           tenantId: command.identity.tenantId,
           runId: staged.runId,
           receiptKeyHash: stored.keyHash,
           receiptDigest: stored.digest,
         });
+        if (!wonPublication)
+          return this.waitForPublishedReplay(
+            command.identity.tenantId,
+            staged.runId,
+            counts,
+            graph.gaps.length,
+          );
       } catch (error) {
         await this.repository.markReceiptPending({
           tenantId: command.identity.tenantId,
@@ -160,12 +180,61 @@ export class ApplyFullChainPackageService {
       reconciliation,
       traceId: command.traceId,
     });
+    const published = await this.isolationProbe.capture(
+      this.policy.scope(staged.runId),
+    );
+    const publicationComparison = this.isolationProbe.compare(after, published);
+    if (publicationComparison.outboxDelta !== 1)
+      throw new Error("FULL_CHAIN_ISOLATION_VIOLATION");
     return {
       runId: staged.runId,
       state: "published",
       counts,
       gapCount: graph.gaps.length,
     };
+  }
+
+  private async waitForPublishedReplay(
+    tenantId: string,
+    runId: string,
+    counts: Record<FullChainRecordType, number>,
+    gapCount: number,
+  ): Promise<ApplyFullChainPackageResult> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = await this.repository.getStatus({ tenantId, runId });
+      if (status?.state === "published")
+        return { runId, state: "replayed", counts, gapCount };
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error("FULL_CHAIN_PUBLICATION_IN_PROGRESS");
+  }
+
+  private receiptBody(
+    runId: string,
+    createdAt: Date,
+    tenantId: string,
+    graph: FullChainLandingGraph,
+    counts: Record<FullChainRecordType, number>,
+  ): string {
+    const receipt = validateRehearsalReceipt({
+      receiptVersion: "full-chain-rehearsal-receipt.v1",
+      runId,
+      packageId: sha256Hex(graph.packageHash).slice(0, 16),
+      tenantRef: sha256Hex(tenantId).slice(0, 16),
+      state: "staged",
+      counts,
+      gapCounts: Object.fromEntries(
+        ["open", "blocking", "informational"].map((status) => [
+          status,
+          graph.gaps.filter((gap) => gap.status === status).length,
+        ]),
+      ),
+      reconciliationDigest: sha256Hex(
+        canonicalStringify({ counts, gapCount: graph.gaps.length }),
+      ),
+      createdAt: createdAt.toISOString(),
+    });
+    return `${canonicalStringify(receipt)}\n`;
   }
 
   private assertReconciled(
@@ -183,6 +252,11 @@ export class ApplyFullChainPackageService {
       ) ||
       reconciliation.receiptCount !== graph.recordReceipts.length ||
       reconciliation.gapCount !== graph.gaps.length ||
+      reconciliation.relationCounts.planCargoReady !==
+        graph.planCargoReadyLinks.length ||
+      reconciliation.relationCounts.dispatchHouseBill !==
+        graph.dispatchHouseBillLinks.length ||
+      reconciliation.semanticHash !== fullChainLandingProjectionHash(graph) ||
       reconciliation.outboxCount !== 0 ||
       reconciliation.businessTaskCount !== 0 ||
       !/^[a-f0-9]{64}$/u.test(receiptDigest)

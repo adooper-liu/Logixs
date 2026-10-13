@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthenticatedUserIdentity } from "../../identity";
+import type { FullChainLandingStatus } from "../domain/full-chain-landing.repository";
+import {
+  buildFullChainLandingGraph,
+  fullChainLandingProjectionHash,
+} from "../domain/landing-graph";
 import { createValidFullChainPackage } from "../test-support/full-chain-package.fixture";
 import { FullChainLandingPolicy } from "./full-chain-landing-policy";
 import { ApplyFullChainPackageService } from "./apply-full-chain-package.service";
@@ -22,17 +27,7 @@ function dependencies() {
   const order: string[] = [];
   const repository = {
     findByPackage: vi.fn(
-      async (): Promise<{
-        runId: string;
-        state: "published";
-        inputCounts: Record<string, number>;
-        appliedCounts: Record<string, number>;
-        replayedCounts: Record<string, number>;
-        rejectedCounts: Record<string, number>;
-        gapCount: number;
-        checkCount: number;
-        publishedAt: Date;
-      } | null> => null,
+      async (): Promise<FullChainLandingStatus | null> => null,
     ),
     stage: vi.fn(async () => {
       order.push("stage");
@@ -44,9 +39,12 @@ function dependencies() {
       };
     }),
     markReceiptPending: vi.fn(async () => undefined),
-    markReconciling: vi.fn(async () => undefined),
+    markReconciling: vi.fn(async () => true),
     reconcile: vi.fn(async () => ({
       projectionHash: "a".repeat(64),
+      semanticHash: fullChainLandingProjectionHash(
+        buildFullChainLandingGraph(createValidFullChainPackage()),
+      ),
       factCounts: {
         shipment_plan: 1,
         booking_commitment: 1,
@@ -62,7 +60,7 @@ function dependencies() {
       businessTaskCount: 0,
     })),
     publish: vi.fn(async () => undefined),
-    getStatus: vi.fn(async () => null),
+    getStatus: vi.fn(async (): Promise<FullChainLandingStatus | null> => null),
     getChain: vi.fn(async () => null),
   };
   const receiptStore = {
@@ -76,7 +74,7 @@ function dependencies() {
         void input;
         return {
           keyHash: "b".repeat(64),
-          digest: "c".repeat(64),
+          digest: input.digest,
           replayed: false,
         };
       },
@@ -95,22 +93,34 @@ function dependencies() {
     landingOutboxCount: 0,
     businessTaskCount: 0,
   };
-  const after = {
+  const staged = {
     ...before,
     targetTenantHash: "after",
+  };
+  const after = {
+    ...staged,
     targetReceiptDigest: "c".repeat(64),
+  };
+  const published = {
+    ...after,
+    landingOutboxCount: 1,
   };
   const isolationProbe = {
     capture: vi.fn(async () => {
       const captureIndex = order.filter((item) => item === "capture").length;
       order.push("capture");
-      return captureIndex === 0 ? before : after;
+      return [before, staged, after, published][captureIndex] ?? published;
     }),
-    compare: vi.fn(() => ({
-      targetChanged: true,
-      receiptChanged: true,
-      outboxDelta: 0,
-    })),
+    compare: vi.fn(
+      (
+        left: { landingOutboxCount: number },
+        right: { landingOutboxCount: number },
+      ) => ({
+        targetChanged: true,
+        receiptChanged: true,
+        outboxDelta: right.landingOutboxCount - left.landingOutboxCount,
+      }),
+    ),
   };
   return { repository, receiptStore, isolationProbe, order };
 }
@@ -172,7 +182,8 @@ describe("ApplyFullChainPackageService", () => {
       createValidFullChainPackage().manifest.packageHash,
     );
     expect(deps.repository.markReconciling).toHaveBeenCalledTimes(1);
-    expect(deps.isolationProbe.compare).toHaveBeenCalledTimes(1);
+    expect(deps.isolationProbe.compare).toHaveBeenCalledTimes(2);
+    expect(deps.isolationProbe.capture).toHaveBeenCalledTimes(4);
     expect(deps.repository.publish).toHaveBeenCalledTimes(1);
   });
 
@@ -186,6 +197,8 @@ describe("ApplyFullChainPackageService", () => {
       rejectedCounts: {},
       gapCount: 0,
       checkCount: 0,
+      receiptKeyHash: null,
+      receiptDigest: null,
       publishedAt: new Date(),
     });
     expect(await service.execute(command())).toMatchObject({
@@ -201,25 +214,56 @@ describe("ApplyFullChainPackageService", () => {
       .mockRejectedValueOnce(new Error("PUBLISH_TIMEOUT"))
       .mockResolvedValueOnce(undefined);
     await expect(service.execute(command())).rejects.toThrow(/PUBLISH_TIMEOUT/);
+    const storedDigest = deps.receiptStore.putIfAbsent.mock.calls[0]![0].digest;
+    deps.repository.findByPackage.mockResolvedValueOnce({
+      runId: RUN_ID,
+      state: "reconciling",
+      inputCounts: {},
+      appliedCounts: {},
+      replayedCounts: {},
+      rejectedCounts: {},
+      gapCount: 0,
+      checkCount: 0,
+      receiptKeyHash: "b".repeat(64),
+      receiptDigest: storedDigest,
+      publishedAt: null,
+    });
     deps.repository.stage.mockResolvedValueOnce({
       runId: RUN_ID,
       state: "reconciling",
       replayed: true,
       createdAt: new Date("2026-10-13T00:00:00.000Z"),
     });
-    deps.receiptStore.readDigest.mockResolvedValueOnce("c".repeat(64));
-    deps.isolationProbe.capture.mockClear();
-    deps.isolationProbe.capture.mockResolvedValueOnce({
+    deps.repository.getStatus.mockResolvedValueOnce({
+      runId: RUN_ID,
+      state: "reconciling",
+      inputCounts: {},
+      appliedCounts: {},
+      replayedCounts: {},
+      rejectedCounts: {},
+      gapCount: 0,
+      checkCount: 0,
+      receiptKeyHash: "b".repeat(64),
+      receiptDigest: storedDigest,
+      publishedAt: null,
+    });
+    deps.receiptStore.readDigest.mockResolvedValueOnce(storedDigest);
+    const recoveryBefore = {
       targetTenantHash: "before",
       oldDemoTenantHash: "old",
       controlTenantHash: "control",
       globalReferenceHash: "global",
-      targetReceiptDigest: null,
+      targetReceiptDigest: storedDigest,
       minioOutsideHash: "outside",
       temporalHash: "temporal",
       landingOutboxCount: 0,
       businessTaskCount: 0,
-    });
+    };
+    deps.isolationProbe.capture.mockClear();
+    deps.isolationProbe.capture
+      .mockResolvedValueOnce(recoveryBefore)
+      .mockResolvedValueOnce(recoveryBefore)
+      .mockResolvedValueOnce({ ...recoveryBefore, landingOutboxCount: 1 });
 
     expect(await service.execute(command())).toMatchObject({
       state: "published",
@@ -228,6 +272,69 @@ describe("ApplyFullChainPackageService", () => {
     expect(deps.repository.markReconciling).toHaveBeenCalledTimes(1);
     expect(deps.repository.reconcile).toHaveBeenCalledTimes(2);
     expect(deps.repository.publish).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects relation-count or semantic-hash drift before publish", async () => {
+    const graph = buildFullChainLandingGraph(createValidFullChainPackage());
+    deps.repository.reconcile.mockResolvedValueOnce({
+      ...(await deps.repository.reconcile()),
+      semanticHash: fullChainLandingProjectionHash(graph),
+      relationCounts: { planCargoReady: 0, dispatchHouseBill: 1 },
+    });
+    await expect(service.execute(command())).rejects.toThrow(
+      /FULL_CHAIN_RECONCILIATION_FAILED/,
+    );
+    expect(deps.repository.publish).not.toHaveBeenCalled();
+
+    deps = dependencies();
+    service = new ApplyFullChainPackageService(
+      new FullChainLandingPolicy({
+        rehearsalTenantId: TENANT,
+        oldDemoTenantId: "demo-real-sample-20260921",
+        controlTenantId: "control-tenant",
+        prefixRoot: "rehearsal",
+      }),
+      deps.repository as never,
+      deps.receiptStore,
+      deps.isolationProbe,
+    );
+    deps.repository.reconcile.mockResolvedValueOnce({
+      ...(await deps.repository.reconcile()),
+      semanticHash: "f".repeat(64),
+    });
+    await expect(service.execute(command())).rejects.toThrow(
+      /FULL_CHAIN_RECONCILIATION_FAILED/,
+    );
+    expect(deps.repository.publish).not.toHaveBeenCalled();
+  });
+
+  it("rejects a reconciling retry when object and persisted receipt digests differ", async () => {
+    const graph = buildFullChainLandingGraph(createValidFullChainPackage());
+    deps.repository.findByPackage.mockResolvedValueOnce({
+      runId: RUN_ID,
+      state: "reconciling",
+      inputCounts: {},
+      appliedCounts: {},
+      replayedCounts: {},
+      rejectedCounts: {},
+      gapCount: 0,
+      checkCount: 0,
+      receiptKeyHash: "b".repeat(64),
+      receiptDigest: "c".repeat(64),
+      publishedAt: null,
+    });
+    deps.repository.stage.mockResolvedValueOnce({
+      runId: RUN_ID,
+      state: "reconciling",
+      replayed: true,
+      createdAt: new Date("2026-10-13T00:00:00.000Z"),
+    });
+    deps.receiptStore.readDigest.mockResolvedValueOnce("d".repeat(64));
+    await expect(service.execute(command())).rejects.toThrow(
+      /FULL_CHAIN_RECEIPT_CONFLICT/,
+    );
+    expect(deps.repository.publish).not.toHaveBeenCalled();
+    expect(fullChainLandingProjectionHash(graph)).toMatch(/^[a-f0-9]{64}$/u);
   });
 
   it("marks receipt_pending and resumes the same run after object failure", async () => {
@@ -251,17 +358,51 @@ describe("ApplyFullChainPackageService", () => {
       createdAt: new Date("2026-10-13T00:00:00.000Z"),
     });
     deps.isolationProbe.capture.mockClear();
-    deps.isolationProbe.capture.mockResolvedValueOnce({
-      targetTenantHash: "before",
-      oldDemoTenantHash: "old",
-      controlTenantHash: "control",
-      globalReferenceHash: "global",
-      targetReceiptDigest: null,
-      minioOutsideHash: "outside",
-      temporalHash: "temporal",
-      landingOutboxCount: 0,
-      businessTaskCount: 0,
-    });
+    deps.isolationProbe.capture
+      .mockResolvedValueOnce({
+        targetTenantHash: "before",
+        oldDemoTenantHash: "old",
+        controlTenantHash: "control",
+        globalReferenceHash: "global",
+        targetReceiptDigest: null,
+        minioOutsideHash: "outside",
+        temporalHash: "temporal",
+        landingOutboxCount: 0,
+        businessTaskCount: 0,
+      })
+      .mockResolvedValueOnce({
+        targetTenantHash: "after-stage",
+        oldDemoTenantHash: "old",
+        controlTenantHash: "control",
+        globalReferenceHash: "global",
+        targetReceiptDigest: null,
+        minioOutsideHash: "outside",
+        temporalHash: "temporal",
+        landingOutboxCount: 0,
+        businessTaskCount: 0,
+      })
+      .mockResolvedValueOnce({
+        targetTenantHash: "after-stage",
+        oldDemoTenantHash: "old",
+        controlTenantHash: "control",
+        globalReferenceHash: "global",
+        targetReceiptDigest: "c".repeat(64),
+        minioOutsideHash: "outside",
+        temporalHash: "temporal",
+        landingOutboxCount: 0,
+        businessTaskCount: 0,
+      })
+      .mockResolvedValueOnce({
+        targetTenantHash: "after-stage",
+        oldDemoTenantHash: "old",
+        controlTenantHash: "control",
+        globalReferenceHash: "global",
+        targetReceiptDigest: "c".repeat(64),
+        minioOutsideHash: "outside",
+        temporalHash: "temporal",
+        landingOutboxCount: 1,
+        businessTaskCount: 0,
+      });
     expect(await service.execute(command())).toMatchObject({
       state: "published",
     });

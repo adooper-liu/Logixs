@@ -19,8 +19,14 @@ export type FullChainRecord<T extends FullChainRecordType, P> = {
     sourceRef: string;
     originalValueHash: string;
   };
-  derivation: null | { code: string; version: string; inputRefs: string[] };
+  derivation: null | {
+    code: string;
+    version: string;
+    inputRefs: string[];
+    contributorRefs?: string[];
+  };
   scenario: null | { label: string; allowedUse: "local_demo_rehearsal" };
+  aggregation?: null | { code: "FC-D07"; contributorRefs: string[] };
   payload: P;
 };
 

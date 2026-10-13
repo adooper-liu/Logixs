@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "baselineCommit": "56113022286bbf4850605f46efcdb37556c3689c",
+  "baselineCommit": "b44effeefe3f8192becb2f245679aa62520caf24",
   "sources": {
     "engineering-data-governance": {
       "path": "ENGINEERING_RULES.md",
@@ -6368,6 +6368,16 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.full_chain_landing_run.source_fingerprint_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
     "public.full_chain_landing_run.state": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
@@ -6458,22 +6468,22 @@
       "ownerModule": null,
       "notes": []
     },
-    "public.full_chain_landing_run.reconciliation_hash": {
-      "nameZh": "待业务确认",
-      "nameStatus": "needs_business_confirmation",
-      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
-      "purposeStatus": "needs_business_confirmation",
-      "sourceRefs": [],
-      "moduleCode": null,
-      "ownerModule": null,
-      "notes": []
-    },
     "public.full_chain_landing_run.tenant_id": {
       "nameZh": "租户标识",
       "nameStatus": "confirmed_implementation",
       "purposeZh": "限定记录所属租户并参与租户隔离。",
       "purposeStatus": "confirmed_implementation",
       "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_landing_run.reconciliation_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
       "moduleCode": null,
       "ownerModule": null,
       "notes": []
@@ -6548,6 +6558,16 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.full_chain_landing_run.semantic_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
     "public.full_chain_landing_run.manifest_version": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
@@ -6589,16 +6609,6 @@
       "notes": []
     },
     "public.full_chain_landing_run.policy_version": {
-      "nameZh": "待业务确认",
-      "nameStatus": "needs_business_confirmation",
-      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
-      "purposeStatus": "needs_business_confirmation",
-      "sourceRefs": [],
-      "moduleCode": null,
-      "ownerModule": null,
-      "notes": []
-    },
-    "public.full_chain_landing_run.source_fingerprint_hash": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
       "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",

@@ -24,10 +24,13 @@ export type FullChainLandingStatus = {
   rejectedCounts: Record<string, number>;
   gapCount: number;
   checkCount: number;
+  receiptKeyHash: string | null;
+  receiptDigest: string | null;
   publishedAt: Date | null;
 };
 export type LandingReconciliation = {
   projectionHash: string;
+  semanticHash: string;
   factCounts: Record<string, number>;
   relationCounts: Record<string, number>;
   receiptCount: number;
@@ -102,7 +105,7 @@ export interface FullChainLandingRepository {
     tenantId: string;
     receiptKeyHash: string;
     receiptDigest: string;
-  }): Promise<void>;
+  }): Promise<boolean>;
   reconcile(input: {
     runId: string;
     tenantId: string;

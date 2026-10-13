@@ -531,11 +531,23 @@ test("unfixed workbook reproduces both failed checks and v0.5.1 clears them thro
     ).length,
     1,
   );
+  const stuffingRecord = after.records.find(
+    (record) => record.recordType === "stuffing_snapshot_line",
+  );
+  assert.equal(stuffingRecord.aggregation.code, "FC-D07");
+  assert.equal(stuffingRecord.aggregation.contributorRefs.length, 2);
+  assert.equal(new Set(stuffingRecord.aggregation.contributorRefs).size, 2);
   assert.equal(
-    after.lineage.filter((entry) =>
-      entry.recordRef.startsWith("stuffing_snapshot_line:"),
-    ).length,
-    1,
+    stuffingRecord.aggregation.contributorRefs.every((ref) =>
+      /^fc-d07:[a-f0-9]{64}$/u.test(ref),
+    ),
+    true,
+  );
+  assert.deepEqual(
+    after.lineage
+      .filter((entry) => entry.recordRef.startsWith("stuffing_snapshot_line:"))
+      .map((entry) => entry.sourceRef),
+    stuffingRecord.aggregation.contributorRefs,
   );
 });
 

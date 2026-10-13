@@ -2840,6 +2840,7 @@ model FullChainLandingRun {
   id                    String                            @id @default(uuid()) @map("id") @db.Uuid
   tenantId              String                            @map("tenant_id")
   packageHash           String                            @map("package_hash")
+  semanticHash          String                            @map("semantic_hash")
   manifestVersion       String                            @map("manifest_version")
   workbookVersion       String                            @map("workbook_version")
   compilerVersion       String                            @map("compiler_version")
@@ -3076,7 +3077,7 @@ model FullChainLandingRecordReceipt {
   businessKeyHash String              @map("business_key_hash")
   recordHash      String              @map("record_hash")
   sourceRefHash   String              @map("source_ref_hash")
-  targetFactId    String?             @map("target_fact_id") @db.Uuid
+  targetFactId    String              @map("target_fact_id") @db.Uuid
   state           String              @map("state")
   issueCodes      String[]            @map("issue_codes")
   createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz

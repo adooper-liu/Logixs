@@ -32,6 +32,7 @@ export function buildProvenanceIndexes(scan, policy) {
   const constructed = new Map();
   const derivations = new Map();
   const derivationBindings = new Map();
+  const constructionContributors = new Map();
   const pending = new Set();
   const provenanceConflicts = new Set();
   for (const row of scan.sheets.find(
@@ -55,6 +56,22 @@ export function buildProvenanceIndexes(scan, policy) {
       candidate.bases.add(basisToken);
       candidates.set(rawToken, candidate);
       constructed.set(key, candidates);
+      if (
+        sheet === "11_装箱" &&
+        basisToken &&
+        !basisToken.startsWith("v0.5.1 provenance-only") &&
+        !basisToken.startsWith("v0.5.1 typed HBL")
+      ) {
+        const contributorKey = `${sheet}|${identity}`;
+        const contributors =
+          constructionContributors.get(contributorKey) ?? new Set();
+        for (const basis of basisToken
+          .replace(/^v0\.5\.1 aggregate;?\s*/u, "")
+          .split(/;\s*/u)
+          .filter(Boolean))
+          contributors.add(`fc-d07:${sha256Hex(basis)}`);
+        constructionContributors.set(contributorKey, contributors);
+      }
       if (candidate.bases.size > 1)
         provenanceConflicts.add(`constructed:${key}`);
     }
@@ -120,6 +137,7 @@ export function buildProvenanceIndexes(scan, policy) {
     constructed,
     derivations,
     derivationBindings,
+    constructionContributors,
     pending,
     approvedDirectSources,
     constructionOverrides,

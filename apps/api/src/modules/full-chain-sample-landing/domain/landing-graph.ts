@@ -80,6 +80,7 @@ export type DispatchHouseBillLinkInput = {
 };
 export type LandingRecordReceiptInput = {
   recordType: FullChainRecordType;
+  targetRef: string;
   businessKeyHash: string;
   recordHash: string;
   sourceRefHash: string;
@@ -282,11 +283,39 @@ function assertLineage(packageArtifacts: ValidatedFullChainPackage): void {
   for (const record of packageArtifacts.records) {
     const recordRef = `${record.recordType}:${record.businessKey}`;
     const matches = lineageByRecord.get(recordRef) ?? [];
+    const actualRefs = new Set(
+      matches.map((item) => String(item.sourceRef ?? "")),
+    );
+    const expectedRefs = record.aggregation?.contributorRefs
+      ? new Set(record.aggregation.contributorRefs)
+      : new Set([record.source.sourceRef]);
     if (
-      matches.length !== 1 ||
-      String(matches[0]?.sourceRef ?? "") !== record.source.sourceRef
+      matches.length !== expectedRefs.size ||
+      actualRefs.size !== expectedRefs.size ||
+      [...expectedRefs].some((sourceRef) => !actualRefs.has(sourceRef))
     )
       landingGraphError("FULL_CHAIN_LINEAGE_INCOMPLETE");
+    if (record.aggregation?.code === "FC-D07") {
+      const contributors = record.aggregation.contributorRefs;
+      if (
+        contributors.length < 2 ||
+        contributors.some((inputRef) => !lineageSourceRefs.has(inputRef))
+      )
+        landingGraphError("FULL_CHAIN_LINEAGE_INCOMPLETE");
+    }
+    if (record.derivation?.code === "FC-D07") {
+      const contributors = record.derivation.contributorRefs ?? [];
+      if (
+        contributors.length < 2 ||
+        contributors.length !== record.derivation.inputRefs.length ||
+        contributors.some(
+          (inputRef) =>
+            !record.derivation?.inputRefs.includes(inputRef) ||
+            !lineageSourceRefs.has(inputRef),
+        )
+      )
+        landingGraphError("FULL_CHAIN_LINEAGE_INCOMPLETE");
+    }
     if (
       record.derivation?.inputRefs.some(
         (inputRef) => !lineageSourceRefs.has(inputRef),
@@ -344,6 +373,48 @@ function assertReferences(graph: FullChainLandingGraph): void {
       landingGraphError("FULL_CHAIN_TYPED_REFERENCE_NOT_FOUND");
 }
 
+function semanticDecimal(value: string): string {
+  if (!value.includes(".")) return value;
+  const normalized = value.replace(/0+$/u, "").replace(/\.$/u, "");
+  return normalized === "-0" ? "0" : normalized;
+}
+
+export function fullChainLandingProjectionHash(
+  graph: FullChainLandingGraph,
+): string {
+  return sha256Hex(
+    canonicalStringify({
+      plans: graph.plans,
+      bookings: graph.bookings,
+      documents: graph.documents,
+      cargoReadyReleases: graph.cargoReadyReleases.map((item) => ({
+        ...item,
+        quantity: semanticDecimal(item.quantity),
+      })),
+      planCargoReadyLinks: graph.planCargoReadyLinks,
+      stuffingLines: graph.stuffingLines.map((item) => ({
+        ...item,
+        quantity: semanticDecimal(item.quantity),
+        grossWeight: semanticDecimal(item.grossWeight),
+        volume: semanticDecimal(item.volume),
+      })),
+      exportCustomsCases: graph.exportCustomsCases.map((item) => ({
+        ...item,
+        amount: semanticDecimal(item.amount),
+      })),
+      dispatchFacts: graph.dispatchFacts,
+      dispatchHouseBillLinks: graph.dispatchHouseBillLinks,
+      recordReceipts: graph.recordReceipts.map((receipt) => ({
+        recordType: receipt.recordType,
+        businessKeyHash: receipt.businessKeyHash,
+        recordHash: receipt.recordHash,
+        sourceRefHash: receipt.sourceRefHash,
+      })),
+      gaps: graph.gaps,
+    }),
+  );
+}
+
 export function buildFullChainLandingGraph(
   packageArtifacts: ValidatedFullChainPackage,
 ): FullChainLandingGraph {
@@ -392,6 +463,7 @@ export function buildFullChainLandingGraph(
     recordReceipts: sortBy(
       packageArtifacts.records.map((record) => ({
         recordType: record.recordType,
+        targetRef: `${record.recordType}:${record.businessKey}`,
         businessKeyHash: sha256Hex(record.businessKey),
         recordHash: sha256Hex(canonicalStringify(record)),
         sourceRefHash: sha256Hex(record.source.sourceRef),

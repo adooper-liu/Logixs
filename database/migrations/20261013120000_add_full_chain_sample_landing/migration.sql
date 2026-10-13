@@ -5,6 +5,7 @@ CREATE TABLE "full_chain_landing_run" (
     "id" UUID NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "package_hash" TEXT NOT NULL,
+    "semantic_hash" TEXT NOT NULL,
     "manifest_version" TEXT NOT NULL,
     "workbook_version" TEXT NOT NULL,
     "compiler_version" TEXT NOT NULL,
@@ -175,7 +176,7 @@ CREATE TABLE "full_chain_landing_record_receipt" (
     "business_key_hash" TEXT NOT NULL,
     "record_hash" TEXT NOT NULL,
     "source_ref_hash" TEXT NOT NULL,
-    "target_fact_id" UUID,
+    "target_fact_id" UUID NOT NULL,
     "state" TEXT NOT NULL,
     "issue_codes" TEXT[],
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -385,6 +386,7 @@ ALTER TABLE "full_chain_landing_run"
   ),
   ADD CONSTRAINT "full_chain_landing_run_hash_shape_check" CHECK (
     length("package_hash") = 64 AND
+    length("semantic_hash") = 64 AND
     length("source_fingerprint_hash") = 64 AND
     ("receipt_key_hash" IS NULL OR length("receipt_key_hash") = 64) AND
     ("receipt_digest" IS NULL OR length("receipt_digest") = 64) AND
@@ -471,6 +473,10 @@ BEGIN
   WHERE "id" = NEW."house_bill_document_id";
   IF NOT FOUND OR
      document_row."document_type" <> 'hbl' OR
+     (
+       TG_TABLE_NAME <> 'full_chain_dispatch_house_bill' AND
+       document_row."document_number" <> (to_jsonb(NEW)->>'house_bill_number')
+     ) OR
      document_row."tenant_id" <> NEW."tenant_id" OR
      document_row."landing_run_id" <> NEW."landing_run_id" THEN
     RAISE EXCEPTION 'FULL_CHAIN_HOUSE_BILL_REFERENCE_INVALID' USING ERRCODE = '23514';
@@ -499,6 +505,72 @@ ON "full_chain_dispatch_house_bill"
 DEFERRABLE INITIALLY IMMEDIATE
 FOR EACH ROW
 EXECUTE FUNCTION "validate_full_chain_house_bill_reference"();
+
+CREATE FUNCTION "validate_full_chain_master_bill_reference"()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  document_row "full_chain_booking_document"%ROWTYPE;
+BEGIN
+  SELECT * INTO document_row
+  FROM "full_chain_booking_document"
+  WHERE "id" = NEW."master_bill_document_id";
+  IF NOT FOUND OR
+     document_row."document_type" <> 'mbl' OR
+     document_row."document_number" <> NEW."master_bill_number" OR
+     document_row."tenant_id" <> NEW."tenant_id" OR
+     document_row."landing_run_id" <> NEW."landing_run_id" THEN
+    RAISE EXCEPTION 'FULL_CHAIN_MASTER_BILL_REFERENCE_INVALID' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER "full_chain_dispatch_fact_mbl_type_trigger"
+AFTER INSERT OR UPDATE OF "master_bill_document_id", "master_bill_number", "tenant_id", "landing_run_id"
+ON "full_chain_dispatch_fact"
+DEFERRABLE INITIALLY IMMEDIATE
+FOR EACH ROW
+EXECUTE FUNCTION "validate_full_chain_master_bill_reference"();
+
+CREATE FUNCTION "validate_full_chain_receipt_target"()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name TEXT;
+  matched BOOLEAN;
+BEGIN
+  table_name := CASE NEW."record_type"
+    WHEN 'shipment_plan' THEN 'full_chain_shipment_plan'
+    WHEN 'booking_commitment' THEN 'full_chain_booking_commitment'
+    WHEN 'cargo_ready_release' THEN 'full_chain_cargo_ready_release'
+    WHEN 'stuffing_snapshot_line' THEN 'full_chain_stuffing_line'
+    WHEN 'export_customs_case' THEN 'full_chain_export_customs_case'
+    WHEN 'dispatch_fact' THEN 'full_chain_dispatch_fact'
+    ELSE NULL
+  END;
+  IF table_name IS NULL THEN
+    RAISE EXCEPTION 'FULL_CHAIN_RECEIPT_TARGET_INVALID' USING ERRCODE = '23514';
+  END IF;
+  EXECUTE format(
+    'SELECT EXISTS (SELECT 1 FROM %I WHERE id = $1 AND tenant_id = $2 AND landing_run_id = $3)',
+    table_name
+  ) INTO matched USING NEW."target_fact_id", NEW."tenant_id", NEW."landing_run_id";
+  IF NOT matched THEN
+    RAISE EXCEPTION 'FULL_CHAIN_RECEIPT_TARGET_INVALID' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER "full_chain_landing_receipt_target_trigger"
+AFTER INSERT OR UPDATE OF "record_type", "target_fact_id", "tenant_id", "landing_run_id"
+ON "full_chain_landing_record_receipt"
+DEFERRABLE INITIALLY IMMEDIATE
+FOR EACH ROW
+EXECUTE FUNCTION "validate_full_chain_receipt_target"();
 
 COMMIT;
 

@@ -13,6 +13,8 @@ import {
 import {
   collectPostgresInventory,
   type OwnershipCatalog,
+  type PostgresInventoryResult,
+  type QueryClient,
 } from "../../../tools/full-chain-demo/postgres-inventory";
 import type { LandingIsolationProbeDependencies } from "./full-chain-landing-isolation.probe";
 
@@ -27,6 +29,70 @@ function queryClient(prisma: PrismaService) {
 }
 function inventoryHash(value: unknown): string {
   return sha256Hex(canonicalStringify(value));
+}
+
+export function tenantContentHash(
+  tables: Array<{ table: string; rows: Array<Record<string, unknown>> }>,
+): string {
+  return inventoryHash(
+    tables
+      .map((entry) => ({
+        table: entry.table,
+        rows: [...entry.rows].sort((left, right) =>
+          Buffer.from(canonicalStringify(left)).compare(
+            Buffer.from(canonicalStringify(right)),
+          ),
+        ),
+      }))
+      .sort((left, right) =>
+        Buffer.from(left.table).compare(Buffer.from(right.table)),
+      ),
+  );
+}
+
+function assertTableIdentifier(table: string): string {
+  if (!/^[a-z][a-z0-9_]*$/u.test(table))
+    throw new Error("OWNERSHIP_IDENTIFIER_INVALID");
+  return `"${table}"`;
+}
+
+export async function loadTenantOwnedContent(
+  client: QueryClient,
+  inventory: PostgresInventoryResult,
+): Promise<Array<{ table: string; rows: Array<Record<string, unknown>> }>> {
+  if (inventory.blockers.length)
+    throw new Error("FULL_CHAIN_ISOLATION_CAPTURE_BLOCKED");
+  const tables = [];
+  for (const entry of inventory.entries) {
+    if (entry.status !== "candidate" || entry.candidateCount === 0) continue;
+    const primaryKeys = entry.primaryKeys ?? [];
+    if (primaryKeys.length !== entry.candidateCount)
+      throw new Error("FULL_CHAIN_ISOLATION_CAPTURE_BLOCKED");
+    const result = await client.query?.(
+      `SELECT row_to_json(source_row)::jsonb AS row_json FROM ${assertTableIdentifier(entry.table)} source_row WHERE "id" = ANY($1) ORDER BY row_to_json(source_row)::text`,
+      [primaryKeys],
+    );
+    if (!result) throw new Error("POSTGRES_CLIENT_INVALID");
+    tables.push({
+      table: entry.table,
+      rows: result.rows.map((row) => row.row_json as Record<string, unknown>),
+    });
+  }
+  return tables;
+}
+
+async function captureTenantContent(
+  prisma: PrismaService,
+  catalog: OwnershipCatalog,
+  tenantId: string,
+): Promise<string> {
+  const client = queryClient(prisma);
+  const inventory = await collectPostgresInventory({
+    client,
+    catalog,
+    tenantId,
+  });
+  return tenantContentHash(await loadTenantOwnedContent(client, inventory));
 }
 
 @Injectable()
@@ -56,30 +122,24 @@ export function createLandingIsolationProbeDependencies(
   const minio = createMinioInventoryAdapter();
   return {
     captureTargetTenantHash: async ({ targetTenantId }) =>
-      inventoryHash(
-        await collectPostgresInventory({
-          client: queryClient(prisma),
-          catalog,
-          tenantId: targetTenantId,
-        }),
-      ),
+      captureTenantContent(prisma, catalog, targetTenantId),
     captureTenantHash: async (tenantId) =>
-      inventoryHash(
-        await collectPostgresInventory({
-          client: queryClient(prisma),
-          catalog,
-          tenantId,
-        }),
-      ),
+      captureTenantContent(prisma, catalog, tenantId),
     captureGlobalReferenceHash: async () => {
       const inventory = await collectPostgresInventory({
         client: queryClient(prisma),
         catalog,
         tenantId: "__global_probe__",
       });
-      return inventoryHash(
-        inventory.entries.filter((entry) => entry.status === "preserved"),
+      const migrations = await prisma.$queryRawUnsafe(
+        `SELECT row_to_json(source_row)::jsonb AS row_json FROM "_prisma_migrations" source_row ORDER BY row_to_json(source_row)::text`,
       );
+      return inventoryHash({
+        preserved: inventory.entries.filter(
+          (entry) => entry.status === "preserved",
+        ),
+        migrations,
+      });
     },
     captureTargetReceiptDigest: async (targetPrefix) =>
       (await minio.headObject(`${targetPrefix}/receipt.json`))?.checksum ??

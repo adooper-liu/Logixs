@@ -228,6 +228,8 @@ function validatePackageArtifacts(artifacts) {
       fail("PACKAGE_RECORD_INVALID");
     if (record.evidenceClass !== "S" && record.scenario !== null)
       fail("PACKAGE_RECORD_INVALID");
+    if (record.recordType !== "stuffing_snapshot_line" && record.aggregation)
+      fail("PACKAGE_RECORD_INVALID");
     const allowedFields = RECORD_PAYLOAD_FIELDS[record.recordType];
     if (
       !allowedFields ||

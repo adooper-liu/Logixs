@@ -3,9 +3,39 @@ import {
   createValidFullChainPackage,
   mutateRecord,
 } from "../test-support/full-chain-package.fixture";
-import { buildFullChainLandingGraph } from "./landing-graph";
+import {
+  buildFullChainLandingGraph,
+  fullChainLandingProjectionHash,
+} from "./landing-graph";
 
 describe("full-chain landing graph", () => {
+  it("derives a stable semantic projection hash from facts and typed joins", () => {
+    const graph = buildFullChainLandingGraph(createValidFullChainPackage());
+    const same = structuredClone(graph);
+    same.packageHash = "f".repeat(64);
+    expect(fullChainLandingProjectionHash(graph)).toMatch(/^[a-f0-9]{64}$/u);
+    expect(fullChainLandingProjectionHash(same)).toBe(
+      fullChainLandingProjectionHash(graph),
+    );
+    same.planCargoReadyLinks = [];
+    expect(fullChainLandingProjectionHash(same)).not.toBe(
+      fullChainLandingProjectionHash(graph),
+    );
+  });
+
+  it("normalizes equivalent decimal scales in the semantic projection hash", () => {
+    const graph = buildFullChainLandingGraph(createValidFullChainPackage());
+    const scaled = structuredClone(graph);
+    scaled.cargoReadyReleases[0]!.quantity = "1.000000";
+    scaled.stuffingLines[0]!.quantity = "9007199254740993.000000";
+    scaled.stuffingLines[0]!.grossWeight = "2.000000";
+    scaled.stuffingLines[0]!.volume = "3.000000";
+    scaled.exportCustomsCases[0]!.amount = "4.000000";
+    expect(fullChainLandingProjectionHash(scaled)).toBe(
+      fullChainLandingProjectionHash(graph),
+    );
+  });
+
   it("builds exact typed HBL and MBL links without using display groups", () => {
     const graph = buildFullChainLandingGraph(createValidFullChainPackage());
 
@@ -169,6 +199,51 @@ describe("full-chain landing graph", () => {
     expect(() => buildFullChainLandingGraph(packageArtifacts)).toThrowError(
       /FULL_CHAIN_LINEAGE_INCOMPLETE/,
     );
+  });
+
+  it("rejects FC-D07 contributor omission even when every declared ref exists", () => {
+    const packageArtifacts = mutateRecord(
+      createValidFullChainPackage(),
+      "stuffing_snapshot_line",
+      (record) => {
+        if (record.recordType === "stuffing_snapshot_line")
+          record.aggregation = {
+            code: "FC-D07",
+            contributorRefs: [record.source.sourceRef],
+          };
+      },
+    );
+    expect(() => buildFullChainLandingGraph(packageArtifacts)).toThrowError(
+      /FULL_CHAIN_LINEAGE_INCOMPLETE/,
+    );
+  });
+
+  it("accepts complete FC-D07 contributor proof", () => {
+    const packageArtifacts = mutateRecord(
+      createValidFullChainPackage(),
+      "stuffing_snapshot_line",
+      (record) => {
+        if (record.recordType === "stuffing_snapshot_line")
+          record.aggregation = {
+            code: "FC-D07",
+            contributorRefs: [record.source.sourceRef, "11_装箱#source-two"],
+          };
+      },
+    );
+    packageArtifacts.lineage.push({
+      recordRef: "stuffing_snapshot_line:CONT-1|CR-1|SKU-1|HBL-1",
+      sourceRef: "11_装箱#source-two",
+      payloadFields: [
+        "containerNo",
+        "cargoReadyNo",
+        "sku",
+        "houseBillNo",
+        "quantity",
+        "grossWeight",
+        "volume",
+      ],
+    });
+    expect(() => buildFullChainLandingGraph(packageArtifacts)).not.toThrow();
   });
 
   it("rejects derived multi-source input refs absent from package lineage", () => {

@@ -1,8 +1,10 @@
 import {
   CreateBucketCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { INestApplication } from "@nestjs/common";
@@ -19,8 +21,16 @@ import {
 import { PrismaModule } from "../../prisma/prisma.module";
 import { PrismaService } from "../../prisma/prisma.service";
 import { FullChainSampleLandingModule } from "../../modules/full-chain-sample-landing";
+import { ApplyFullChainPackageService } from "../../modules/full-chain-sample-landing/application/apply-full-chain-package.service";
+import { FullChainLandingPolicy } from "../../modules/full-chain-sample-landing/application/full-chain-landing-policy";
+import { FULL_CHAIN_LANDING_POLICY } from "../../modules/full-chain-sample-landing/full-chain-sample-landing.module";
 import { FULL_CHAIN_LANDING_REPOSITORY } from "../../modules/full-chain-sample-landing/domain/full-chain-landing.repository";
+import {
+  LANDING_ISOLATION_PROBE,
+  type LandingIsolationProbe,
+} from "../../modules/full-chain-sample-landing/domain/landing-isolation-probe.port";
 import { LANDING_RECEIPT_STORE } from "../../modules/full-chain-sample-landing/domain/landing-receipt-store.port";
+import { createLandingIsolationProbeDependencies } from "../../modules/full-chain-sample-landing/infrastructure/landing-runtime-isolation.dependencies";
 import { PrismaFullChainLandingRepository } from "../../modules/full-chain-sample-landing/infrastructure/prisma-full-chain-landing.repository";
 import { S3LandingReceiptStore } from "../../modules/full-chain-sample-landing/infrastructure/s3-landing-receipt.store";
 import { createValidFullChainPackage } from "../../modules/full-chain-sample-landing/test-support/full-chain-package.fixture";
@@ -237,6 +247,21 @@ describe("full-chain rehearsal domain adapter closeout", () => {
         "request-2",
       );
       expect(replay.body).toMatchObject({ runId, state: "replayed" });
+      const metadataVariant = structuredClone(artifacts);
+      const prohibitedProof = metadataVariant.manifest.prohibitedProof;
+      expect(Array.isArray(prohibitedProof)).toBe(true);
+      metadataVariant.manifest.prohibitedProof = [
+        ...(Array.isArray(prohibitedProof) ? prohibitedProof : []),
+        "variant metadata",
+      ];
+      rehash(metadataVariant);
+      const semanticReplay = await postPackage(
+        baseUrl,
+        headers,
+        metadataVariant,
+        "request-semantic-reuse",
+      );
+      expect(semanticReplay.body).toMatchObject({ runId, state: "replayed" });
       const concurrent = await Promise.all([
         postPackage(baseUrl, headers, artifacts, "request-3"),
         postPackage(baseUrl, headers, artifacts, "request-4"),
@@ -372,6 +397,113 @@ describe("full-chain rehearsal domain adapter closeout", () => {
     });
   }, 180_000);
 
+  it("keeps first-apply concurrency monotonic and exactly once", async () => {
+    let arrived = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await withCloseout(
+      async ({ baseUrl, prisma, tenantId, headers }) => {
+        const artifacts = createValidFullChainPackage();
+        const first = postPackage(
+          baseUrl,
+          headers,
+          artifacts,
+          "first-concurrent-a",
+        );
+        while (arrived < 1)
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        const second = postPackage(
+          baseUrl,
+          headers,
+          artifacts,
+          "first-concurrent-b",
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        release();
+        const results = await Promise.all([first, second]);
+        expect(
+          results.map(({ status, body }) => ({ status, code: body.code })),
+        ).toEqual([
+          { status: 201, code: undefined },
+          { status: 201, code: undefined },
+        ]);
+        const runIds = results.map(({ body }) => String(body.runId));
+        expect(new Set(runIds).size).toBe(1);
+        expect(
+          await prisma.fullChainLandingRun.count({ where: { tenantId } }),
+        ).toBe(1);
+        expect(
+          await prisma.outboxMessage.count({
+            where: { tenantId, ownerModule: "full-chain-sample-landing" },
+          }),
+        ).toBe(1);
+        expect(await receiptObjectCount(`rehearsal/${tenantId}/`)).toBe(1);
+        expect(
+          await prisma.fullChainLandingRun.findFirst({ where: { tenantId } }),
+        ).toMatchObject({ state: "published" });
+      },
+      (builder) =>
+        builder.overrideProvider(ApplyFullChainPackageService).useFactory({
+          inject: [
+            FULL_CHAIN_LANDING_POLICY,
+            FULL_CHAIN_LANDING_REPOSITORY,
+            LANDING_RECEIPT_STORE,
+            LANDING_ISOLATION_PROBE,
+          ],
+          factory: (
+            policy: FullChainLandingPolicy,
+            repository: PrismaFullChainLandingRepository,
+            receiptStore: S3LandingReceiptStore,
+            isolationProbe: LandingIsolationProbe,
+          ) =>
+            new ApplyFullChainPackageService(
+              policy,
+              repository,
+              receiptStore,
+              isolationProbe,
+              async () => {
+                arrived += 1;
+                if (arrived === 1) await gate;
+              },
+            ),
+        }),
+    );
+  }, 180_000);
+
+  it("detects same-id content mutation in old-demo and control tenants", async () => {
+    await withCloseout(async ({ prisma }) => {
+      await prisma.replenishmentOrder.createMany({
+        data: [
+          { tenantId: "demo-real-sample-20260921", orderNumber: "OLD-BEFORE" },
+          { tenantId: "control-tenant", orderNumber: "CONTROL-BEFORE" },
+        ],
+      });
+      const deps = createLandingIsolationProbeDependencies(
+        prisma as unknown as PrismaService,
+      );
+      const oldBefore = await deps.captureTenantHash(
+        "demo-real-sample-20260921",
+      );
+      const controlBefore = await deps.captureTenantHash("control-tenant");
+      await prisma.replenishmentOrder.updateMany({
+        where: { tenantId: "demo-real-sample-20260921" },
+        data: { orderNumber: "OLD-AFTER" },
+      });
+      await prisma.replenishmentOrder.updateMany({
+        where: { tenantId: "control-tenant" },
+        data: { orderNumber: "CONTROL-AFTER" },
+      });
+      expect(
+        await deps.captureTenantHash("demo-real-sample-20260921"),
+      ).not.toBe(oldBefore);
+      expect(await deps.captureTenantHash("control-tenant")).not.toBe(
+        controlBefore,
+      );
+    });
+  }, 180_000);
+
   it("rolls back the full stage transaction when a mid-chain adapter fails", async () => {
     await withCloseout(
       async ({ baseUrl, prisma, tenantId, headers }) => {
@@ -428,6 +560,41 @@ describe("full-chain rehearsal domain adapter closeout", () => {
           }),
         ).toBe(0);
         expect(await receiptObjectCount(`rehearsal/${tenantId}/`)).toBe(1);
+        const receiptKey = `rehearsal/${tenantId}/${staged.id}/receipt.json`;
+        const originalReceipt = await minio.send(
+          new GetObjectCommand({ Bucket: bucket, Key: receiptKey }),
+        );
+        const originalBytes = Buffer.from(
+          await originalReceipt.Body!.transformToByteArray(),
+        );
+        await minio.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: receiptKey,
+            Body: Buffer.from("corrupted", "utf8"),
+          }),
+        );
+        const corruptedRetry = await postPackage(
+          baseUrl,
+          headers,
+          artifacts,
+          "receipt-timeout-corrupt",
+        );
+        expect(corruptedRetry.body).toMatchObject({
+          code: "FULL_CHAIN_RECEIPT_CONFLICT",
+        });
+        expect(
+          await prisma.outboxMessage.count({
+            where: { tenantId, ownerModule: "full-chain-sample-landing" },
+          }),
+        ).toBe(0);
+        await minio.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: receiptKey,
+            Body: originalBytes,
+          }),
+        );
 
         const retried = await postPackage(
           baseUrl,

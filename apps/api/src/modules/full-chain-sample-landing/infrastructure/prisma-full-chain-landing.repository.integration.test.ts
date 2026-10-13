@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { PrismaClient } from "../../../../../../generated/prisma";
 import { describe, expect, it } from "vitest";
-import { buildFullChainLandingGraph } from "../domain/landing-graph";
+import {
+  buildFullChainLandingGraph,
+  fullChainLandingProjectionHash,
+} from "../domain/landing-graph";
 import { createValidFullChainPackage } from "../test-support/full-chain-package.fixture";
 import { withTemporaryDatabase } from "../../../tools/full-chain-demo/integration-support";
 import { PrismaFullChainLandingRepository } from "./prisma-full-chain-landing.repository";
@@ -75,6 +78,56 @@ describe("PrismaFullChainLandingRepository", () => {
         fullChainLandingRecordReceipt: 6,
         fullChainLandingGap: 0,
       });
+      const recordReceipts =
+        await prisma.fullChainLandingRecordReceipt.findMany({
+          where: { tenantId, landingRunId: first.runId },
+          orderBy: { recordType: "asc" },
+        });
+      expect(recordReceipts).toHaveLength(6);
+      expect(
+        recordReceipts.every((receipt) => receipt.targetFactId !== null),
+      ).toBe(true);
+      const typedIds = new Set([
+        ...(
+          await prisma.fullChainShipmentPlan.findMany({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).map(({ id }) => id),
+        ...(
+          await prisma.fullChainBookingCommitment.findMany({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).map(({ id }) => id),
+        ...(
+          await prisma.fullChainCargoReadyRelease.findMany({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).map(({ id }) => id),
+        ...(
+          await prisma.fullChainStuffingLine.findMany({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).map(({ id }) => id),
+        ...(
+          await prisma.fullChainExportCustomsCase.findMany({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).map(({ id }) => id),
+        ...(
+          await prisma.fullChainDispatchFact.findMany({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).map(({ id }) => id),
+      ]);
+      expect(
+        recordReceipts.every((receipt) => typedIds.has(receipt.targetFactId!)),
+      ).toBe(true);
       expect(
         await repository.getChain({
           tenantId,
@@ -124,6 +177,21 @@ describe("PrismaFullChainLandingRepository", () => {
         fullChainLandingRecordReceipt: 6,
       });
 
+      const samePayloadInput = stageInput(tenantId, "request-same-payload");
+      samePayloadInput.runId = randomUUID();
+      samePayloadInput.graph.packageHash = "d".repeat(64);
+      samePayloadInput.manifest = {
+        ...samePayloadInput.manifest,
+        packageHash: "d".repeat(64),
+      };
+      expect(await repository.stage(samePayloadInput)).toMatchObject({
+        runId: first.runId,
+        replayed: true,
+      });
+      expect(
+        await prisma.fullChainLandingRun.count({ where: { tenantId } }),
+      ).toBe(1);
+
       const conflictInput = stageInput(tenantId, "request-d");
       conflictInput.graph.packageHash = "f".repeat(64);
       conflictInput.manifest = {
@@ -142,6 +210,11 @@ describe("PrismaFullChainLandingRepository", () => {
         tenantId,
         runId: first.runId,
       });
+      expect(reconciliation.semanticHash).toBe(
+        fullChainLandingProjectionHash(
+          stageInput(tenantId, "semantic-probe").graph,
+        ),
+      );
       expect(reconciliation).toMatchObject({
         factCounts: {
           shipment_plan: 1,
@@ -188,11 +261,76 @@ describe("PrismaFullChainLandingRepository", () => {
           },
         }),
       ).toBe(1);
+      await repository.markReconciling({
+        tenantId,
+        runId: first.runId,
+        receiptKeyHash: "d".repeat(64),
+        receiptDigest: "e".repeat(64),
+      });
+      await repository.markReceiptPending({
+        tenantId,
+        runId: first.runId,
+        errorCode: "LATE_TIMEOUT",
+      });
+      expect(
+        await repository.getStatus({ tenantId, runId: first.runId }),
+      ).toMatchObject({ state: "published" });
       expect(await prisma.canonicalEvent.count({ where: { tenantId } })).toBe(
         0,
       );
       expect(await prisma.inboxMessage.count({ where: { tenantId } })).toBe(0);
       expect(await prisma.nodeTask.count({ where: { tenantId } })).toBe(0);
+    });
+  }, 120_000);
+
+  it("detects typed-join and payload drift before publication", async () => {
+    await withTemporaryDatabase(async ({ prisma }) => {
+      const tenantId = randomUUID();
+      const repository = new PrismaFullChainLandingRepository(prisma as never);
+      const staged = await repository.stage(stageInput(tenantId, "drift-1"));
+      const original = await repository.reconcile({
+        tenantId,
+        runId: staged.runId,
+      });
+      await prisma.fullChainShipmentPlanCargoReady.deleteMany({
+        where: { tenantId, landingRunId: staged.runId },
+      });
+      const missingLink = await repository.reconcile({
+        tenantId,
+        runId: staged.runId,
+      });
+      expect(missingLink.semanticHash).not.toBe(original.semanticHash);
+
+      await prisma.fullChainShipmentPlanCargoReady.create({
+        data: {
+          tenantId,
+          landingRunId: staged.runId,
+          shipmentPlanId: (
+            await prisma.fullChainShipmentPlan.findFirstOrThrow({
+              where: { tenantId, landingRunId: staged.runId },
+            })
+          ).id,
+          cargoReadyReleaseId: (
+            await prisma.fullChainCargoReadyRelease.findFirstOrThrow({
+              where: { tenantId, landingRunId: staged.runId },
+            })
+          ).id,
+        },
+      });
+      await prisma.fullChainShipmentPlan.updateMany({
+        where: { tenantId, landingRunId: staged.runId },
+        data: { payloadHash: "f".repeat(64) },
+      });
+      const changedPayload = await repository.reconcile({
+        tenantId,
+        runId: staged.runId,
+      });
+      expect(changedPayload.semanticHash).not.toBe(original.semanticHash);
+      expect(
+        await prisma.outboxMessage.count({
+          where: { tenantId, ownerModule: "full-chain-sample-landing" },
+        }),
+      ).toBe(0);
     });
   }, 120_000);
 
