@@ -23,6 +23,7 @@ writeScopes:
   - database/dictionary/dictionary.annotations.json
   - database/dictionary/DATA_DICTIONARY.generated.md
   - database/dictionary/NATIVE_OBJECTS.generated.md
+  - database/dictionary/database-data-dictionary.xlsx
   - apps/api/src/app.module.ts
   - apps/api/src/modules/identity/domain/role-capabilities.ts
   - apps/api/src/modules/identity/domain/role-capabilities.test.ts

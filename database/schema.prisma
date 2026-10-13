@@ -2174,41 +2174,42 @@ model ProductOpportunityIntake {
 }
 
 model ProductInitiative {
-  id                         String                     @id @default(uuid()) @map("id") @db.Uuid
-  tenantId                   String                     @map("tenant_id")
-  handoffId                  String                     @map("handoff_id") @db.Uuid
-  handoff                    MarketOpportunityHandoff   @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  version                    Int                        @map("version")
-  outcome                    String                     @map("outcome")
-  completionState            String                     @map("completion_state")
-  currentDestination         String                     @map("current_destination")
-  responsibleActorId         String                     @map("responsible_actor_id")
-  responsibilityAccepted     Boolean?                   @map("responsibility_accepted")
-  receivingTeamOrRole        String?                    @map("receiving_team_or_role")
-  resourceDescription        String?                    @map("resource_description")
-  targetDate                 DateTime?                  @map("target_date") @db.Date
-  nextDecisionDate           DateTime?                  @map("next_decision_date") @db.Date
-  nextDecisionQuestion       String?                    @map("next_decision_question")
-  validationFocus            String?                    @map("validation_focus")
-  reconsiderationDate        DateTime?                  @map("reconsideration_date") @db.Date
-  unitEconomicsDraft         Json?                      @map("unit_economics_draft")
-  unitEconomicsSnapshot      Json?                      @map("unit_economics_snapshot")
-  negativeConservativeReason String?                    @map("negative_conservative_reason")
-  objective                  String?                    @map("objective")
-  reviewPoints               Json                       @map("review_points")
-  businessCaseDraft          Json                       @default("[]") @map("business_case_draft")
-  businessCaseSnapshot       Json?                      @map("business_case_snapshot")
-  riskAssessmentDraft        Json                       @default("[]") @map("risk_assessment_draft")
-  riskAssessmentSnapshot     Json?                      @map("risk_assessment_snapshot")
-  reason                     String?                    @map("reason")
-  returnBasis                String?                    @map("return_basis")
-  pendingFieldCodes          String[]                   @map("pending_field_codes")
-  actedBy                    String                     @map("acted_by")
-  idempotencyKey             String                     @map("idempotency_key")
-  payloadHash                String                     @map("payload_hash")
-  createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  id                         String                          @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                   String                          @map("tenant_id")
+  handoffId                  String                          @map("handoff_id") @db.Uuid
+  handoff                    MarketOpportunityHandoff        @relation(fields: [handoffId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  version                    Int                             @map("version")
+  outcome                    String                          @map("outcome")
+  completionState            String                          @map("completion_state")
+  currentDestination         String                          @map("current_destination")
+  responsibleActorId         String                          @map("responsible_actor_id")
+  responsibilityAccepted     Boolean?                        @map("responsibility_accepted")
+  receivingTeamOrRole        String?                         @map("receiving_team_or_role")
+  resourceDescription        String?                         @map("resource_description")
+  targetDate                 DateTime?                       @map("target_date") @db.Date
+  nextDecisionDate           DateTime?                       @map("next_decision_date") @db.Date
+  nextDecisionQuestion       String?                         @map("next_decision_question")
+  validationFocus            String?                         @map("validation_focus")
+  reconsiderationDate        DateTime?                       @map("reconsideration_date") @db.Date
+  unitEconomicsDraft         Json?                           @map("unit_economics_draft")
+  unitEconomicsSnapshot      Json?                           @map("unit_economics_snapshot")
+  negativeConservativeReason String?                         @map("negative_conservative_reason")
+  objective                  String?                         @map("objective")
+  reviewPoints               Json                            @map("review_points")
+  businessCaseDraft          Json                            @default("[]") @map("business_case_draft")
+  businessCaseSnapshot       Json?                           @map("business_case_snapshot")
+  riskAssessmentDraft        Json                            @default("[]") @map("risk_assessment_draft")
+  riskAssessmentSnapshot     Json?                           @map("risk_assessment_snapshot")
+  reason                     String?                         @map("reason")
+  returnBasis                String?                         @map("return_basis")
+  pendingFieldCodes          String[]                        @map("pending_field_codes")
+  actedBy                    String                          @map("acted_by")
+  idempotencyKey             String                          @map("idempotency_key")
+  payloadHash                String                          @map("payload_hash")
+  createdAt                  DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime                        @updatedAt @map("updated_at") @db.Timestamptz
   handoffs                   ProductInitiativeHandoff[]
+  decisionDraft              ProductInitiativeDecisionDraft?
 
   @@unique([id, tenantId], map: "product_initiative_id_tenant_key")
   @@unique([tenantId, handoffId], map: "product_initiative_handoff_key")
@@ -2216,6 +2217,62 @@ model ProductInitiative {
   @@index([tenantId, currentDestination, updatedAt, id], map: "product_initiative_queue_idx")
   @@index([tenantId, currentDestination, reconsiderationDate, updatedAt, id], map: "product_initiative_reconsideration_queue_idx")
   @@map("product_initiative")
+}
+
+model ProductInitiativeDecisionDraft {
+  id                         String             @id @default(uuid()) @map("id") @db.Uuid
+  tenantId                   String             @map("tenant_id")
+  handoffId                  String             @map("handoff_id") @db.Uuid
+  initiativeId               String?            @map("initiative_id") @db.Uuid
+  initiative                 ProductInitiative? @relation(fields: [initiativeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  draftVersion               Int                @map("draft_version")
+  initiativeVersionSeen      Int                @map("initiative_version_seen")
+  objective                  String?            @map("objective")
+  reviewPoints               Json               @map("review_points")
+  businessCaseDraft          Json               @map("business_case_draft")
+  riskAssessmentDraft        Json               @map("risk_assessment_draft")
+  unitEconomicsDraft         Json?              @map("unit_economics_draft")
+  negativeConservativeReason String?            @map("negative_conservative_reason")
+  actedBy                    String             @map("acted_by")
+  idempotencyKey             String             @map("idempotency_key")
+  payloadHash                String             @map("payload_hash")
+  createdAt                  DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([id, tenantId], map: "product_initiative_decision_draft_id_tenant_key")
+  @@unique([tenantId, handoffId], map: "product_initiative_decision_draft_handoff_key")
+  @@unique([initiativeId, tenantId], map: "product_initiative_decision_draft_initiative_key")
+  @@unique([tenantId, idempotencyKey], map: "product_initiative_decision_draft_idempotency_key")
+  @@map("product_initiative_decision_draft")
+}
+
+model WorkSession {
+  id                String   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String   @map("tenant_id")
+  ownerActorId      String   @map("owner_actor_id")
+  version           Int      @map("version")
+  status            String   @map("status")
+  workbenchCode     String   @map("workbench_code")
+  contextKind       String   @map("context_kind")
+  contextKey        String   @map("context_key")
+  subjectKind       String   @map("subject_kind")
+  subjectId         String   @map("subject_id") @db.Uuid
+  taskKind          String?  @map("task_kind")
+  taskId            String?  @map("task_id") @db.Uuid
+  draftKind         String?  @map("draft_kind")
+  draftId           String?  @map("draft_id") @db.Uuid
+  draftVersion      Int?     @map("draft_version")
+  domainVersionSeen Int?     @map("domain_version_seen")
+  activeItemKey     String?  @map("active_item_key")
+  contextMode       String?  @map("context_mode")
+  displaySummary    String   @map("display_summary")
+  lastOpenedAt      DateTime @map("last_opened_at") @db.Timestamptz
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([id, tenantId, ownerActorId], map: "work_session_owner_key")
+  @@index([tenantId, ownerActorId, lastOpenedAt, id], map: "work_session_owner_list_idx")
+  @@map("work_session")
 }
 
 model ProductInitiativeHandoff {
