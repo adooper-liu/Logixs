@@ -1,3 +1,4 @@
+import { PrismaClient } from "../../../../../../generated/prisma";
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { withTemporaryDatabase } from "../../../tools/full-chain-demo/integration-support";
@@ -6,7 +7,11 @@ const HASH_A = "a".repeat(64);
 const HASH_B = "b".repeat(64);
 const PAYLOAD_HASH = "c".repeat(64);
 
-async function createRun(prisma: any, tenantId: string, packageHash: string) {
+async function createRun(
+  prisma: PrismaClient,
+  tenantId: string,
+  packageHash: string,
+) {
   return prisma.fullChainLandingRun.create({
     data: {
       tenantId,
@@ -32,7 +37,7 @@ async function createRun(prisma: any, tenantId: string, packageHash: string) {
 }
 
 async function seedTypedChain(
-  prisma: any,
+  prisma: PrismaClient,
   input: { tenantId: string; packageHash: string; suffix: string },
 ) {
   const run = await createRun(prisma, input.tenantId, input.packageHash);
@@ -125,7 +130,7 @@ describe("full-chain landing schema", () => {
       });
 
       await expect(
-        (prisma as any).fullChainStuffingLine.create({
+        prisma.fullChainStuffingLine.create({
           data: stuffingData({
             tenantId,
             runId: first.run.id,
@@ -148,7 +153,7 @@ describe("full-chain landing schema", () => {
       });
 
       await expect(
-        (prisma as any).fullChainStuffingLine.create({
+        prisma.fullChainStuffingLine.create({
           data: stuffingData({
             tenantId,
             runId: chain.run.id,
@@ -159,7 +164,7 @@ describe("full-chain landing schema", () => {
         }),
       ).rejects.toThrow();
       await expect(
-        (prisma as any).fullChainExportCustomsCase.create({
+        prisma.fullChainExportCustomsCase.create({
           data: {
             tenantId,
             landingRunId: chain.run.id,
@@ -187,7 +192,7 @@ describe("full-chain landing schema", () => {
 
       await expect(createRun(prisma, tenantId, HASH_A)).rejects.toThrow();
       await expect(
-        (prisma as any).fullChainShipmentPlan.create({
+        prisma.fullChainShipmentPlan.create({
           data: {
             tenantId,
             landingRunId: first.run.id,
@@ -209,7 +214,7 @@ describe("full-chain landing schema", () => {
       });
 
       await expect(
-        (prisma as any).fullChainBookingDocument.create({
+        prisma.fullChainBookingDocument.create({
           data: {
             tenantId,
             landingRunId: chain.run.id,
