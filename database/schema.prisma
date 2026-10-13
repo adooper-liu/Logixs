@@ -2835,6 +2835,274 @@ model WarehouseDeliveryInstruction {
 
 // 货柜卸货作业的版本化现场事实（inland-fulfillment 拥有）。
 // started/partial 只记录进度；仅完整 completed 记录可支持 unloaded 过站。
+// 全链样本隔离演练落账批次；只发布 neutral facts，不推进业务生命周期。
+model FullChainLandingRun {
+  id                    String                            @id @default(uuid()) @map("id") @db.Uuid
+  tenantId              String                            @map("tenant_id")
+  packageHash           String                            @map("package_hash")
+  manifestVersion       String                            @map("manifest_version")
+  workbookVersion       String                            @map("workbook_version")
+  compilerVersion       String                            @map("compiler_version")
+  mappingVersion        String                            @map("mapping_version")
+  policyVersion         String                            @map("policy_version")
+  sourceFingerprintHash String                            @map("source_fingerprint_hash")
+  state                 String                            @map("state")
+  inputCounts           Json                              @map("input_counts")
+  appliedCounts         Json                              @map("applied_counts")
+  replayedCounts        Json                              @map("replayed_counts")
+  rejectedCounts        Json                              @map("rejected_counts")
+  gapCount              Int                               @map("gap_count")
+  checkCount            Int                               @map("check_count")
+  receiptKeyHash        String?                           @map("receipt_key_hash")
+  receiptDigest         String?                           @map("receipt_digest")
+  reconciliationHash    String?                           @map("reconciliation_hash")
+  actorId               String                            @map("actor_id")
+  traceId               String                            @map("trace_id")
+  idempotencyKey        String                            @map("idempotency_key")
+  publishedAt           DateTime?                         @map("published_at") @db.Timestamptz
+  createdAt             DateTime                          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime                          @updatedAt @map("updated_at") @db.Timestamptz
+  shipmentPlans         FullChainShipmentPlan[]
+  bookingCommitments    FullChainBookingCommitment[]
+  bookingDocuments      FullChainBookingDocument[]
+  cargoReadyReleases    FullChainCargoReadyRelease[]
+  planCargoReadyLinks   FullChainShipmentPlanCargoReady[]
+  stuffingLines         FullChainStuffingLine[]
+  exportCustomsCases    FullChainExportCustomsCase[]
+  dispatchFacts         FullChainDispatchFact[]
+  dispatchHouseBills    FullChainDispatchHouseBill[]
+  recordReceipts        FullChainLandingRecordReceipt[]
+  gaps                  FullChainLandingGap[]
+
+  @@unique([id, tenantId], map: "full_chain_landing_run_id_tenant_key")
+  @@unique([id, tenantId, packageHash], map: "full_chain_landing_run_scope_key")
+  @@unique([tenantId, packageHash], map: "full_chain_landing_run_tenant_package_key")
+  @@unique([tenantId, idempotencyKey], map: "full_chain_landing_run_tenant_idempotency_key")
+  @@index([tenantId, state, createdAt], map: "full_chain_landing_run_state_idx")
+  @@map("full_chain_landing_run")
+}
+
+model FullChainShipmentPlan {
+  id           String                            @id @default(uuid()) @map("id") @db.Uuid
+  tenantId     String                            @map("tenant_id")
+  landingRunId String                            @map("landing_run_id") @db.Uuid
+  landingRun   FullChainLandingRun               @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  planNumber   String                            @map("plan_number")
+  payloadHash  String                            @map("payload_hash")
+  createdAt    DateTime                          @default(now()) @map("created_at") @db.Timestamptz
+  bookings     FullChainBookingCommitment[]
+  cargoReady   FullChainShipmentPlanCargoReady[]
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_shipment_plan_scope_key")
+  @@unique([tenantId, planNumber], map: "full_chain_shipment_plan_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_shipment_plan_run_idx")
+  @@map("full_chain_shipment_plan")
+}
+
+model FullChainBookingCommitment {
+  id               String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId         String                     @map("tenant_id")
+  landingRunId     String                     @map("landing_run_id") @db.Uuid
+  landingRun       FullChainLandingRun        @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentPlanId   String                     @map("shipment_plan_id") @db.Uuid
+  shipmentPlan     FullChainShipmentPlan      @relation(fields: [shipmentPlanId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  bookingNumber    String                     @map("booking_number")
+  displayGroupRefs Json                       @map("display_group_refs")
+  payloadHash      String                     @map("payload_hash")
+  createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  documents        FullChainBookingDocument[]
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_booking_commitment_scope_key")
+  @@unique([tenantId, bookingNumber], map: "full_chain_booking_commitment_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_booking_commitment_run_idx")
+  @@map("full_chain_booking_commitment")
+}
+
+model FullChainBookingDocument {
+  id                    String                       @id @default(uuid()) @map("id") @db.Uuid
+  tenantId              String                       @map("tenant_id")
+  landingRunId          String                       @map("landing_run_id") @db.Uuid
+  landingRun            FullChainLandingRun          @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  bookingCommitmentId   String                       @map("booking_commitment_id") @db.Uuid
+  bookingCommitment     FullChainBookingCommitment   @relation(fields: [bookingCommitmentId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  documentType          String                       @map("document_type")
+  documentNumber        String                       @map("document_number")
+  parentDocumentId      String?                      @map("parent_document_id") @db.Uuid
+  parentDocument        FullChainBookingDocument?    @relation("FullChainBookingDocumentParent", fields: [parentDocumentId, tenantId, landingRunId, bookingCommitmentId], references: [id, tenantId, landingRunId, bookingCommitmentId], onDelete: Restrict)
+  childDocuments        FullChainBookingDocument[]   @relation("FullChainBookingDocumentParent")
+  createdAt             DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  stuffingLines         FullChainStuffingLine[]
+  exportCustomsCases    FullChainExportCustomsCase[]
+  dispatchMasterBills   FullChainDispatchFact[]      @relation("FullChainDispatchMasterBill")
+  dispatchHouseBillRefs FullChainDispatchHouseBill[]
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_booking_document_scope_key")
+  @@unique([id, tenantId, landingRunId, bookingCommitmentId], map: "full_chain_booking_document_parent_scope_key")
+  @@unique([tenantId, bookingCommitmentId, documentType, documentNumber], map: "full_chain_booking_document_business_key")
+  @@index([landingRunId, tenantId, documentType], map: "full_chain_booking_document_run_type_idx")
+  @@map("full_chain_booking_document")
+}
+
+model FullChainCargoReadyRelease {
+  id               String                            @id @default(uuid()) @map("id") @db.Uuid
+  tenantId         String                            @map("tenant_id")
+  landingRunId     String                            @map("landing_run_id") @db.Uuid
+  landingRun       FullChainLandingRun               @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  cargoReadyNumber String                            @map("cargo_ready_number")
+  displayGroupRef  String                            @map("display_group_ref")
+  quantity         Decimal                           @map("quantity") @db.Decimal(24, 6)
+  payloadHash      String                            @map("payload_hash")
+  createdAt        DateTime                          @default(now()) @map("created_at") @db.Timestamptz
+  plans            FullChainShipmentPlanCargoReady[]
+  stuffingLines    FullChainStuffingLine[]
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_cargo_ready_release_scope_key")
+  @@unique([tenantId, cargoReadyNumber], map: "full_chain_cargo_ready_release_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_cargo_ready_release_run_idx")
+  @@map("full_chain_cargo_ready_release")
+}
+
+model FullChainShipmentPlanCargoReady {
+  id                  String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                     @map("tenant_id")
+  landingRunId        String                     @map("landing_run_id") @db.Uuid
+  landingRun          FullChainLandingRun        @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentPlanId      String                     @map("shipment_plan_id") @db.Uuid
+  shipmentPlan        FullChainShipmentPlan      @relation(fields: [shipmentPlanId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  cargoReadyReleaseId String                     @map("cargo_ready_release_id") @db.Uuid
+  cargoReadyRelease   FullChainCargoReadyRelease @relation(fields: [cargoReadyReleaseId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_plan_cargo_ready_scope_key")
+  @@unique([tenantId, shipmentPlanId, cargoReadyReleaseId], map: "full_chain_plan_cargo_ready_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_plan_cargo_ready_run_idx")
+  @@map("full_chain_shipment_plan_cargo_ready")
+}
+
+model FullChainStuffingLine {
+  id                  String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                     @map("tenant_id")
+  landingRunId        String                     @map("landing_run_id") @db.Uuid
+  landingRun          FullChainLandingRun        @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  cargoReadyReleaseId String                     @map("cargo_ready_release_id") @db.Uuid
+  cargoReadyRelease   FullChainCargoReadyRelease @relation(fields: [cargoReadyReleaseId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  houseBillDocumentId String                     @map("house_bill_document_id") @db.Uuid
+  houseBillDocument   FullChainBookingDocument   @relation(fields: [houseBillDocumentId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  containerNumber     String                     @map("container_number")
+  cargoReadyNumber    String                     @map("cargo_ready_number")
+  sku                 String                     @map("sku")
+  houseBillNumber     String                     @map("house_bill_number")
+  quantity            Decimal                    @map("quantity") @db.Decimal(24, 6)
+  grossWeight         Decimal                    @map("gross_weight") @db.Decimal(24, 6)
+  volume              Decimal                    @map("volume") @db.Decimal(24, 6)
+  payloadHash         String                     @map("payload_hash")
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_stuffing_line_scope_key")
+  @@unique([tenantId, containerNumber, cargoReadyNumber, sku, houseBillNumber], map: "full_chain_stuffing_line_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_stuffing_line_run_idx")
+  @@map("full_chain_stuffing_line")
+}
+
+model FullChainExportCustomsCase {
+  id                  String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                   @map("tenant_id")
+  landingRunId        String                   @map("landing_run_id") @db.Uuid
+  landingRun          FullChainLandingRun      @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  houseBillDocumentId String                   @map("house_bill_document_id") @db.Uuid
+  houseBillDocument   FullChainBookingDocument @relation(fields: [houseBillDocumentId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  invoiceNumber       String                   @map("invoice_number")
+  houseBillNumber     String                   @map("house_bill_number")
+  declarationNumber   String                   @map("declaration_number")
+  amount              Decimal                  @map("amount") @db.Decimal(24, 6)
+  currency            String                   @map("currency") @db.Char(3)
+  payloadHash         String                   @map("payload_hash")
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_export_customs_case_scope_key")
+  @@unique([tenantId, invoiceNumber], map: "full_chain_export_customs_case_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_export_customs_case_run_idx")
+  @@map("full_chain_export_customs_case")
+}
+
+model FullChainDispatchFact {
+  id                     String                       @id @default(uuid()) @map("id") @db.Uuid
+  tenantId               String                       @map("tenant_id")
+  landingRunId           String                       @map("landing_run_id") @db.Uuid
+  landingRun             FullChainLandingRun          @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  masterBillDocumentId   String                       @map("master_bill_document_id") @db.Uuid
+  masterBillDocument     FullChainBookingDocument     @relation("FullChainDispatchMasterBill", fields: [masterBillDocumentId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  containerNumber        String                       @map("container_number")
+  vesselName             String                       @map("vessel_name")
+  voyageNumber           String                       @map("voyage_number")
+  masterBillNumber       String                       @map("master_bill_number")
+  gateInDate             String                       @map("gate_in_date")
+  departedAt             String                       @map("departed_at")
+  departedPrecision      String                       @map("departed_precision")
+  motherVesselDepartedAt String                       @map("mother_vessel_departed_at")
+  payloadHash            String                       @map("payload_hash")
+  createdAt              DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  houseBills             FullChainDispatchHouseBill[]
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_dispatch_fact_scope_key")
+  @@unique([tenantId, containerNumber], map: "full_chain_dispatch_fact_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_dispatch_fact_run_idx")
+  @@map("full_chain_dispatch_fact")
+}
+
+model FullChainDispatchHouseBill {
+  id                  String                   @id @default(uuid()) @map("id") @db.Uuid
+  tenantId            String                   @map("tenant_id")
+  landingRunId        String                   @map("landing_run_id") @db.Uuid
+  landingRun          FullChainLandingRun      @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  dispatchFactId      String                   @map("dispatch_fact_id") @db.Uuid
+  dispatchFact        FullChainDispatchFact    @relation(fields: [dispatchFactId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  houseBillDocumentId String                   @map("house_bill_document_id") @db.Uuid
+  houseBillDocument   FullChainBookingDocument @relation(fields: [houseBillDocumentId, tenantId, landingRunId], references: [id, tenantId, landingRunId], onDelete: Restrict)
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_dispatch_house_bill_scope_key")
+  @@unique([tenantId, dispatchFactId, houseBillDocumentId], map: "full_chain_dispatch_house_bill_business_key")
+  @@index([landingRunId, tenantId], map: "full_chain_dispatch_house_bill_run_idx")
+  @@map("full_chain_dispatch_house_bill")
+}
+
+model FullChainLandingRecordReceipt {
+  id              String              @id @default(uuid()) @map("id") @db.Uuid
+  tenantId        String              @map("tenant_id")
+  landingRunId    String              @map("landing_run_id") @db.Uuid
+  landingRun      FullChainLandingRun @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  recordType      String              @map("record_type")
+  businessKeyHash String              @map("business_key_hash")
+  recordHash      String              @map("record_hash")
+  sourceRefHash   String              @map("source_ref_hash")
+  targetFactId    String?             @map("target_fact_id") @db.Uuid
+  state           String              @map("state")
+  issueCodes      String[]            @map("issue_codes")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_landing_record_receipt_scope_key")
+  @@unique([tenantId, landingRunId, recordType, businessKeyHash], map: "full_chain_landing_record_receipt_business_key")
+  @@index([landingRunId, tenantId, state], map: "full_chain_landing_record_receipt_run_idx")
+  @@map("full_chain_landing_record_receipt")
+}
+
+model FullChainLandingGap {
+  id            String              @id @default(uuid()) @map("id") @db.Uuid
+  tenantId      String              @map("tenant_id")
+  landingRunId  String              @map("landing_run_id") @db.Uuid
+  landingRun    FullChainLandingRun @relation(fields: [landingRunId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  code          String              @map("code")
+  status        String              @map("status")
+  recordRefHash String?             @map("record_ref_hash")
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([id, tenantId, landingRunId], map: "full_chain_landing_gap_scope_key")
+  @@unique([tenantId, landingRunId, code, recordRefHash], map: "full_chain_landing_gap_business_key")
+  @@index([landingRunId, tenantId, status], map: "full_chain_landing_gap_run_idx")
+  @@map("full_chain_landing_gap")
+}
+
 model ContainerUnloadingReport {
   id                  String                    @id @default(uuid()) @map("id") @db.Uuid
   tenantId            String                    @map("tenant_id")

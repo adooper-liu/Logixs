@@ -87,6 +87,48 @@ test("approved ownership partitions cannot be reclassified", () => {
   }
 });
 
+test("full-chain landing models remain tenant-owned and child-first", () => {
+  const catalog = loadOwnershipCatalog(
+    "scripts/full-chain-demo/ownership-catalog.json",
+  );
+  const expectedRanks = {
+    FullChainLandingRun: 100,
+    FullChainShipmentPlan: 200,
+    FullChainBookingCommitment: 300,
+    FullChainBookingDocument: 400,
+    FullChainCargoReadyRelease: 200,
+    FullChainShipmentPlanCargoReady: 500,
+    FullChainStuffingLine: 500,
+    FullChainExportCustomsCase: 500,
+    FullChainDispatchFact: 500,
+    FullChainDispatchHouseBill: 600,
+    FullChainLandingRecordReceipt: 200,
+    FullChainLandingGap: 200,
+  };
+  for (const [model, deleteRank] of Object.entries(expectedRanks)) {
+    assert.deepEqual(catalog.models[model], {
+      table: catalog.models[model].table,
+      rule: "direct_tenant",
+      tenantField: "tenantId",
+      deleteRank,
+    });
+  }
+  for (const [child, parent] of [
+    ["FullChainShipmentPlan", "FullChainLandingRun"],
+    ["FullChainBookingCommitment", "FullChainShipmentPlan"],
+    ["FullChainBookingDocument", "FullChainBookingCommitment"],
+    ["FullChainShipmentPlanCargoReady", "FullChainCargoReadyRelease"],
+    ["FullChainStuffingLine", "FullChainBookingDocument"],
+    ["FullChainExportCustomsCase", "FullChainBookingDocument"],
+    ["FullChainDispatchHouseBill", "FullChainDispatchFact"],
+  ]) {
+    assert.ok(
+      catalog.models[child].deleteRank > catalog.models[parent].deleteRank,
+      `${child} must delete before ${parent}`,
+    );
+  }
+});
+
 test("catalog delete ranks place every declared child before its parent", () => {
   const catalog = loadOwnershipCatalog(
     "scripts/full-chain-demo/ownership-catalog.json",
