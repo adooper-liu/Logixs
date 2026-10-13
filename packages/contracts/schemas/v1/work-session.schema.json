@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/work-session.schema.json",
+  "title": "Recoverable Work Session Contracts V1",
+  "$defs": {
+    "WorkSessionStatusV1": {
+      "enum": [
+        "current",
+        "resumable",
+        "draft_saved",
+        "browser_held",
+        "conflict",
+        "closed"
+      ]
+    },
+    "WorkSessionWorkbenchCodeV1": {
+      "enum": ["product_selection", "stuffing"]
+    },
+    "WorkSessionRouteContextV1": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "handoffId"],
+          "properties": {
+            "kind": { "const": "product_selection.v1" },
+            "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "containerId", "taskId"],
+          "properties": {
+            "kind": { "const": "stuffing.v1" },
+            "containerId": { "$ref": "common.schema.json#/$defs/Uuid" },
+            "taskId": { "$ref": "common.schema.json#/$defs/Uuid" }
+          }
+        }
+      ]
+    },
+    "WorkSessionSubjectRefV1": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "product_initiative_handoff" },
+            "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "container" },
+            "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+          }
+        }
+      ]
+    },
+    "WorkSessionTaskRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "const": "node_task" },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "WorkSessionDraftRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "version"],
+      "properties": {
+        "kind": { "const": "product_initiative_decision_draft" },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "WorkSessionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "sessionId",
+        "version",
+        "status",
+        "workbenchCode",
+        "contextKey",
+        "routeContext",
+        "subjectRef",
+        "displaySummary",
+        "lastOpenedAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "work-session.v1" },
+        "sessionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "status": { "$ref": "#/$defs/WorkSessionStatusV1" },
+        "workbenchCode": { "$ref": "#/$defs/WorkSessionWorkbenchCodeV1" },
+        "contextKey": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "routeContext": { "$ref": "#/$defs/WorkSessionRouteContextV1" },
+        "subjectRef": { "$ref": "#/$defs/WorkSessionSubjectRefV1" },
+        "taskRef": {
+          "oneOf": [
+            { "$ref": "#/$defs/WorkSessionTaskRefV1" },
+            { "type": "null" }
+          ]
+        },
+        "draftRef": {
+          "oneOf": [
+            { "$ref": "#/$defs/WorkSessionDraftRefV1" },
+            { "type": "null" }
+          ]
+        },
+        "domainVersionSeen": { "type": ["integer", "null"], "minimum": 0 },
+        "activeItemKey": { "type": ["string", "null"], "maxLength": 200 },
+        "contextMode": { "type": ["string", "null"], "maxLength": 100 },
+        "displaySummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lastOpenedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "WorkSessionOpenCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "workbenchCode",
+        "routeContext",
+        "subjectRef",
+        "displaySummary"
+      ],
+      "properties": {
+        "contractVersion": { "const": "work-session-open.v1" },
+        "workbenchCode": { "$ref": "#/$defs/WorkSessionWorkbenchCodeV1" },
+        "routeContext": { "$ref": "#/$defs/WorkSessionRouteContextV1" },
+        "subjectRef": { "$ref": "#/$defs/WorkSessionSubjectRefV1" },
+        "taskRef": {
+          "oneOf": [
+            { "$ref": "#/$defs/WorkSessionTaskRefV1" },
+            { "type": "null" }
+          ]
+        },
+        "draftRef": {
+          "oneOf": [
+            { "$ref": "#/$defs/WorkSessionDraftRefV1" },
+            { "type": "null" }
+          ]
+        },
+        "domainVersionSeen": { "type": ["integer", "null"], "minimum": 0 },
+        "activeItemKey": { "type": ["string", "null"], "maxLength": 200 },
+        "contextMode": { "type": ["string", "null"], "maxLength": 100 },
+        "displaySummary": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "WorkSessionUpdateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "expectedVersion"],
+      "properties": {
+        "contractVersion": { "const": "work-session-update.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 1 },
+        "status": {
+          "enum": ["resumable", "draft_saved", "browser_held", "conflict"]
+        },
+        "draftRef": {
+          "oneOf": [
+            { "$ref": "#/$defs/WorkSessionDraftRefV1" },
+            { "type": "null" }
+          ]
+        },
+        "domainVersionSeen": { "type": ["integer", "null"], "minimum": 0 },
+        "activeItemKey": { "type": ["string", "null"], "maxLength": 200 },
+        "contextMode": { "type": ["string", "null"], "maxLength": 100 },
+        "displaySummary": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "WorkSessionActivateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "sourceSessionId",
+        "expectedSourceSessionVersion",
+        "expectedTargetSessionVersion",
+        "sourceStatus",
+        "domainVersionSeen"
+      ],
+      "properties": {
+        "contractVersion": { "const": "work-session-activate.v1" },
+        "sourceSessionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "expectedSourceSessionVersion": { "type": "integer", "minimum": 1 },
+        "expectedTargetSessionVersion": { "type": "integer", "minimum": 1 },
+        "sourceStatus": {
+          "enum": ["resumable", "draft_saved", "browser_held", "conflict"]
+        },
+        "domainVersionSeen": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "WorkSessionCloseCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "expectedVersion"],
+      "properties": {
+        "contractVersion": { "const": "work-session-close.v1" },
+        "expectedVersion": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "WorkSessionPageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "items", "pageSize", "nextCursor"],
+      "properties": {
+        "contractVersion": { "const": "work-session-page.v1" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/WorkSessionV1" }
+        },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

@@ -483,6 +483,39 @@ basis: ProductInitiativeUnitEconomicsBasisV1
 evidenceRefs: Uuid[]
 }
 /**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionStatusV1".
+ */
+export type WorkSessionStatusV1 = ("current" | "resumable" | "draft_saved" | "browser_held" | "conflict" | "closed")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionWorkbenchCodeV1".
+ */
+export type WorkSessionWorkbenchCodeV1 = ("product_selection" | "stuffing")
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionRouteContextV1".
+ */
+export type WorkSessionRouteContextV1 = ({
+kind: "product_selection.v1"
+handoffId: Uuid
+} | {
+kind: "stuffing.v1"
+containerId: Uuid
+taskId: Uuid
+})
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionSubjectRefV1".
+ */
+export type WorkSessionSubjectRefV1 = ({
+kind: "product_initiative_handoff"
+id: Uuid
+} | {
+kind: "container"
+id: Uuid
+})
+/**
  * NPI 执行阶段。用行业通用的四段名，代工厂说的就是这四个词，运营与供应商之间不用翻译。
  * 
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
@@ -2203,6 +2236,41 @@ conservative: ProductInitiativeUnitEconomicsScenarioSnapshotV1
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ProductInitiativeDecisionDraftV1".
+ */
+export interface ProductInitiativeDecisionDraftV1 {
+contractVersion: "product-initiative-decision-draft.v1"
+draftId: Uuid
+handoffId: Uuid
+draftVersion: number
+initiativeVersionSeen: number
+objective: (string | null)
+reviewPoints: ProductInitiativeReviewPointV1[]
+businessCaseDraft: ProductInitiativeBusinessCaseDimensionDraftV1[]
+riskAssessmentDraft: ProductInitiativeRiskAssessmentDraftV1[]
+unitEconomicsDraft: (ProductInitiativeUnitEconomicsDraftV1 | null)
+negativeConservativeReason: (string | null)
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "SaveProductInitiativeDecisionDraftCommandV1".
+ */
+export interface SaveProductInitiativeDecisionDraftCommandV1 {
+contractVersion: "product-initiative-decision-draft-save.v1"
+expectedDraftVersion: number
+initiativeVersionSeen: number
+objective: (string | null)
+reviewPoints: ProductInitiativeReviewPointV1[]
+businessCaseDraft: ProductInitiativeBusinessCaseDimensionDraftV1[]
+riskAssessmentDraft: ProductInitiativeRiskAssessmentDraftV1[]
+unitEconomicsDraft: (ProductInitiativeUnitEconomicsDraftV1 | null)
+negativeConservativeReason: (string | null)
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "ProductInitiativeDecisionCommandV1".
  */
 export interface ProductInitiativeDecisionCommandV1 {
@@ -2398,6 +2466,106 @@ initiativeDestination: ProductInitiativeDestinationV1
 export interface ProductInitiativeNpiQueuePageV1 {
 contractVersion: "product-initiative-npi-queue.v1"
 items: ProductInitiativeNpiQueueEntryV1[]
+pageSize: number
+nextCursor: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionTaskRefV1".
+ */
+export interface WorkSessionTaskRefV1 {
+kind: "node_task"
+id: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionDraftRefV1".
+ */
+export interface WorkSessionDraftRefV1 {
+kind: "product_initiative_decision_draft"
+id: Uuid
+version: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionV1".
+ */
+export interface WorkSessionV1 {
+contractVersion: "work-session.v1"
+sessionId: Uuid
+version: number
+status: WorkSessionStatusV1
+workbenchCode: WorkSessionWorkbenchCodeV1
+contextKey: string
+routeContext: WorkSessionRouteContextV1
+subjectRef: WorkSessionSubjectRefV1
+taskRef?: (WorkSessionTaskRefV1 | null)
+draftRef?: (WorkSessionDraftRefV1 | null)
+domainVersionSeen?: (number | null)
+activeItemKey?: (string | null)
+contextMode?: (string | null)
+displaySummary: string
+lastOpenedAt: DateTime
+createdAt: DateTime
+updatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionOpenCommandV1".
+ */
+export interface WorkSessionOpenCommandV1 {
+contractVersion: "work-session-open.v1"
+workbenchCode: WorkSessionWorkbenchCodeV1
+routeContext: WorkSessionRouteContextV1
+subjectRef: WorkSessionSubjectRefV1
+taskRef?: (WorkSessionTaskRefV1 | null)
+draftRef?: (WorkSessionDraftRefV1 | null)
+domainVersionSeen?: (number | null)
+activeItemKey?: (string | null)
+contextMode?: (string | null)
+displaySummary: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionUpdateCommandV1".
+ */
+export interface WorkSessionUpdateCommandV1 {
+contractVersion: "work-session-update.v1"
+expectedVersion: number
+status?: ("resumable" | "draft_saved" | "browser_held" | "conflict")
+draftRef?: (WorkSessionDraftRefV1 | null)
+domainVersionSeen?: (number | null)
+activeItemKey?: (string | null)
+contextMode?: (string | null)
+displaySummary?: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionActivateCommandV1".
+ */
+export interface WorkSessionActivateCommandV1 {
+contractVersion: "work-session-activate.v1"
+sourceSessionId: Uuid
+expectedSourceSessionVersion: number
+expectedTargetSessionVersion: number
+sourceStatus: ("resumable" | "draft_saved" | "browser_held" | "conflict")
+domainVersionSeen: (number | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionCloseCommandV1".
+ */
+export interface WorkSessionCloseCommandV1 {
+contractVersion: "work-session-close.v1"
+expectedVersion: number
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "WorkSessionPageV1".
+ */
+export interface WorkSessionPageV1 {
+contractVersion: "work-session-page.v1"
+items: WorkSessionV1[]
 pageSize: number
 nextCursor: (string | null)
 }

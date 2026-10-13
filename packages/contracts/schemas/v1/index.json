@@ -34,6 +34,7 @@
       "shipment-handoff.schema.json",
       "market-opportunity.schema.json",
       "product-initiative.schema.json",
+      "work-session.schema.json",
       "workbench-network-volume.schema.json"
     ],
     "GC-008": ["action-command.schema.json"],
@@ -89,6 +90,9 @@
     },
     "errorResponse": {
       "$ref": "error-response.schema.json"
+    },
+    "workSession": {
+      "$ref": "work-session.schema.json"
     },
     "workbenchNetworkVolume": {
       "$ref": "workbench-network-volume.schema.json"

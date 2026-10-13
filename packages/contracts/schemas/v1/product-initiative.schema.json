@@ -784,6 +784,120 @@
         }
       }
     },
+    "ProductInitiativeDecisionDraftV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "draftId",
+        "handoffId",
+        "draftVersion",
+        "initiativeVersionSeen",
+        "objective",
+        "reviewPoints",
+        "businessCaseDraft",
+        "riskAssessmentDraft",
+        "unitEconomicsDraft",
+        "negativeConservativeReason",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "product-initiative-decision-draft.v1" },
+        "draftId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "draftVersion": { "type": "integer", "minimum": 1 },
+        "initiativeVersionSeen": { "type": "integer", "minimum": 0 },
+        "objective": { "type": ["string", "null"], "maxLength": 4000 },
+        "reviewPoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
+        },
+        "businessCaseDraft": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1"
+          },
+          "not": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
+          }
+        },
+        "riskAssessmentDraft": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeRiskAssessmentDraftV1" },
+          "not": { "$ref": "#/$defs/ProductInitiativeDuplicateRiskCodesV1" }
+        },
+        "unitEconomicsDraft": {
+          "oneOf": [
+            { "$ref": "#/$defs/ProductInitiativeUnitEconomicsDraftV1" },
+            { "type": "null" }
+          ]
+        },
+        "negativeConservativeReason": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "SaveProductInitiativeDecisionDraftCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "expectedDraftVersion",
+        "initiativeVersionSeen",
+        "objective",
+        "reviewPoints",
+        "businessCaseDraft",
+        "riskAssessmentDraft",
+        "unitEconomicsDraft",
+        "negativeConservativeReason",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "product-initiative-decision-draft-save.v1"
+        },
+        "expectedDraftVersion": { "type": "integer", "minimum": 0 },
+        "initiativeVersionSeen": { "type": "integer", "minimum": 0 },
+        "objective": { "type": ["string", "null"], "maxLength": 4000 },
+        "reviewPoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeReviewPointV1" }
+        },
+        "businessCaseDraft": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDimensionDraftV1"
+          },
+          "not": {
+            "$ref": "#/$defs/ProductInitiativeBusinessCaseDuplicateDimensionCodesV1"
+          }
+        },
+        "riskAssessmentDraft": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProductInitiativeRiskAssessmentDraftV1" },
+          "not": { "$ref": "#/$defs/ProductInitiativeDuplicateRiskCodesV1" }
+        },
+        "unitEconomicsDraft": {
+          "oneOf": [
+            { "$ref": "#/$defs/ProductInitiativeUnitEconomicsDraftV1" },
+            { "type": "null" }
+          ]
+        },
+        "negativeConservativeReason": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
     "ProductInitiativeDecisionCommandV1": {
       "type": "object",
       "additionalProperties": false,
