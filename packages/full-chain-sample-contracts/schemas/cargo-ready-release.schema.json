@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cargo-ready-release.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["cargoReadyNo", "planNo", "quantity"],
+  "properties": {
+    "cargoReadyNo": { "type": "string", "minLength": 1 },
+    "planNo": { "type": "string", "minLength": 1 },
+    "sku": { "type": "string", "minLength": 1 },
+    "quantity": { "type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$" },
+    "quantityUnit": { "type": "string", "minLength": 1 }
+  }
+}

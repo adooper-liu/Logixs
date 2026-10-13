@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "canonical-record.schema.json",
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sheet", "row", "sourceRef", "originalValueHash"],
+      "properties": {
+        "sheet": { "type": "string" },
+        "row": { "type": "integer", "minimum": 1 },
+        "sourceRef": { "type": "string" },
+        "originalValueHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "derivation": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "version", "inputRefs"],
+          "properties": {
+            "code": { "type": "string" },
+            "version": { "type": "string" },
+            "inputRefs": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "scenario": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "allowedUse"],
+          "properties": {
+            "label": { "type": "string" },
+            "allowedUse": { "const": "local_demo_rehearsal" }
+          }
+        }
+      ]
+    },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordType",
+        "recordVersion",
+        "businessKey",
+        "sampleLine",
+        "evidenceClass",
+        "source",
+        "derivation",
+        "scenario",
+        "payload"
+      ],
+      "properties": {
+        "recordType": { "type": "string", "minLength": 1 },
+        "recordVersion": { "const": "v1" },
+        "businessKey": { "type": "string", "minLength": 1 },
+        "sampleLine": { "type": "string", "minLength": 1 },
+        "evidenceClass": { "enum": ["R", "D", "S"] },
+        "source": { "$ref": "#/$defs/source" },
+        "derivation": { "$ref": "#/$defs/derivation" },
+        "scenario": { "$ref": "#/$defs/scenario" },
+        "payload": { "type": "object" }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "recordType": { "const": "shipment_plan" },
+            "payload": { "$ref": "shipment-plan.schema.json" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "recordType": { "const": "booking_commitment" },
+            "payload": { "$ref": "booking-commitment.schema.json" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "recordType": { "const": "cargo_ready_release" },
+            "payload": { "$ref": "cargo-ready-release.schema.json" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "recordType": { "const": "stuffing_snapshot_line" },
+            "payload": { "$ref": "stuffing-snapshot-line.schema.json" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "recordType": { "const": "export_customs_case" },
+            "payload": { "$ref": "export-customs-case.schema.json" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "recordType": { "const": "dispatch_fact" },
+            "payload": { "$ref": "dispatch-fact.schema.json" }
+          }
+        }
+      ]
+    }
+  ]
+}

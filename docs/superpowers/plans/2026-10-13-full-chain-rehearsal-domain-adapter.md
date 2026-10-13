@@ -114,6 +114,7 @@
 - Delete: `scripts/full-chain-sample/schemas/gap.schema.json`
 - Delete: `scripts/full-chain-sample/schemas/check.schema.json`
 - Modify: `package.json`
+- Modify: `apps/api/package.json`
 - Modify: `pnpm-lock.yaml`
 
 **Interfaces:**

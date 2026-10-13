@@ -18,6 +18,7 @@ writeScopes:
   - scripts/full-chain-sample/contracts.mjs
   - scripts/full-chain-sample/contracts.test.mjs
   - scripts/full-chain-sample/schemas/**
+  - apps/api/package.json
   - apps/api/src/app.module.ts
   - apps/api/src/modules/full-chain-sample-landing/**
   - apps/api/src/infrastructure/integration/full-chain-rehearsal-domain-adapter.integration.test.ts
@@ -44,6 +45,7 @@ exclusiveLocks:
   - progress-board
 sharedIntegrationScopes:
   - docs/planning/progress-board.html
+  - apps/api/package.json
   - database/schema.prisma
   - database/migrations/**
   - database/dictionary/**
@@ -228,6 +230,7 @@ authorityRefs:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责        | commit | 说明                                                                                                                     |
-| ---------- | ------ | ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
-| 2026-10-13 | design | Claude Code | —      | 核对 main/worktrees/brief/六类领域承载、Brief 1/2 和智慧基线；负责人批准推荐设计，建立唯一 Brief 3 brief 与聚焦书面 spec |
+| 日期       | 阶段   | 负责        | commit    | 说明                                                                                                                                                                                                                                                                                                                                    |
+| ---------- | ------ | ----------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-13 | design | Claude Code | —         | 核对 main/worktrees/brief/六类领域承载、Brief 1/2 和智慧基线；负责人批准推荐设计，建立唯一 Brief 3 brief 与聚焦书面 spec                                                                                                                                                                                                                |
+| 2026-10-13 | coding | Claude Code | `pending` | B3a contract boundary：新增双运行时 public package、六类 strict landing schemas、兼容矩阵、外部目录 reader 与 rehearsal receipt schema；compiler 保持 envelope+allowlist producer 语义并改为 facade。RED 覆盖缺 package、reader、commit provenance、producer/landing 分轨与 receipt；focused public 17/17、compiler parity 15/15 通过。 |

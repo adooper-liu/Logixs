@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dispatch-fact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "containerNo",
+    "vesselName",
+    "voyageNo",
+    "masterBillNo",
+    "houseBillRefs",
+    "gateInDate",
+    "departedAt",
+    "departedPrecision",
+    "motherVesselDepartedAt"
+  ],
+  "properties": {
+    "containerNo": { "type": "string", "minLength": 1 },
+    "vesselName": { "type": "string", "minLength": 1 },
+    "voyageNo": { "type": "string", "minLength": 1 },
+    "masterBillNo": { "type": "string", "minLength": 1 },
+    "houseBillRefs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "gateInDate": { "type": "string", "format": "date" },
+    "departedAt": { "type": "string", "format": "date" },
+    "departedPrecision": { "const": "date" },
+    "motherVesselDepartedAt": { "type": "string", "format": "date" }
+  }
+}
