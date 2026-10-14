@@ -41,6 +41,37 @@ describe("switchWorkSession", () => {
     ]);
   });
 
+  it("does not activate or navigate when target validation conflicts", async () => {
+    const activate = vi.fn();
+    const navigate = vi.fn();
+    const result = await switchWorkSession({
+      source: SOURCE,
+      target: TARGET,
+      adapter: {
+        settleBeforeLeave: vi.fn(async () => ({
+          kind: "ready" as const,
+          sourceStatus: "resumable" as const,
+        })),
+        validateTarget: vi.fn(async () => ({
+          kind: "conflict" as const,
+          seenVersion: 3,
+          latestVersion: 4,
+          message: "目标版本已更新",
+        })),
+        restorePointer: vi.fn(),
+      },
+      activate,
+      navigate,
+    });
+    expect(result).toMatchObject({
+      kind: "conflict",
+      seenVersion: 3,
+      latestVersion: 4,
+    });
+    expect(activate).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("does not activate or navigate when source settlement fails", async () => {
     const activate = vi.fn();
     const navigate = vi.fn();

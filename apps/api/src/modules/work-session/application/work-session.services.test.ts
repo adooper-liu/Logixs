@@ -5,6 +5,7 @@ import type {
   WorkSessionRepository,
 } from "../domain/work-session.repository";
 import { ActivateWorkSessionService } from "./activate-work-session.service";
+import { UpdateWorkSessionService } from "./update-work-session.service";
 import { OpenWorkSessionService } from "./open-work-session.service";
 
 const HANDOFF_ID = "22222222-2222-4222-8222-222222222222";
@@ -98,6 +99,47 @@ describe("OpenWorkSessionService", () => {
         } as never,
       }),
     ).rejects.toThrow("VALIDATION_FORMAT: request");
+  });
+  it("rejects undeclared nested RouteContext keys", async () => {
+    const repository = repositoryHarness();
+    const service = new OpenWorkSessionService(repository);
+    await expect(
+      service.execute({
+        tenantId: "tenant-1",
+        actorId: "actor-1",
+        command: {
+          contractVersion: "work-session-open.v1",
+          workbenchCode: "product_selection",
+          routeContext: {
+            kind: "product_selection.v1",
+            handoffId: HANDOFF_ID,
+            freeUrl: "https://evil.example",
+          },
+          subjectRef: { kind: "product_initiative_handoff", id: HANDOFF_ID },
+          displaySummary: "选品",
+        } as never,
+      }),
+    ).rejects.toThrow("VALIDATION_FORMAT: routeContext");
+  });
+});
+
+describe("UpdateWorkSessionService", () => {
+  it("rejects an unknown status before persistence", async () => {
+    const repository = repositoryHarness();
+    const service = new UpdateWorkSessionService(repository);
+    await expect(
+      service.execute({
+        tenantId: "tenant-1",
+        actorId: "actor-1",
+        sessionId: EXISTING.sessionId,
+        command: {
+          contractVersion: "work-session-update.v1",
+          expectedVersion: 4,
+          status: "business_completed",
+        } as never,
+      }),
+    ).rejects.toThrow("VALIDATION_FORMAT: status");
+    expect(repository.updatePointer).not.toHaveBeenCalled();
   });
 });
 

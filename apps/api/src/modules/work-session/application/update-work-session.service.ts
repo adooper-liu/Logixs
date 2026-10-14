@@ -44,6 +44,18 @@ export class UpdateWorkSessionService {
     if (input.command.draftRef !== undefined) {
       throw new Error("WORK_SESSION_DRAFT_REF_SERVER_DERIVED");
     }
+    if (
+      !Number.isSafeInteger(input.command.expectedVersion) ||
+      input.command.expectedVersion < 1
+    ) {
+      throw new Error("VALIDATION_FORMAT: expectedVersion");
+    }
+    if (
+      input.command.status !== undefined &&
+      !["resumable", "browser_held", "conflict"].includes(input.command.status)
+    ) {
+      throw new Error("VALIDATION_FORMAT: status");
+    }
     try {
       const row = await this.repository.updatePointer({
         tenantId: input.tenantId,

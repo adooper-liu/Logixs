@@ -48,6 +48,38 @@ export class OpenWorkSessionService {
         "displaySummary",
       ],
     );
+    assertExactKeys(
+      input.command.routeContext,
+      input.command.routeContext.kind === "product_selection.v1"
+        ? ["kind", "handoffId"]
+        : ["kind", "containerId", "taskId"],
+      input.command.routeContext.kind === "product_selection.v1"
+        ? ["kind", "handoffId"]
+        : ["kind", "containerId", "taskId"],
+      "routeContext",
+    );
+    assertExactKeys(
+      input.command.subjectRef,
+      ["kind", "id"],
+      ["kind", "id"],
+      "subjectRef",
+    );
+    if (input.command.taskRef) {
+      assertExactKeys(
+        input.command.taskRef,
+        ["kind", "id"],
+        ["kind", "id"],
+        "taskRef",
+      );
+    }
+    assertBoundedString(input.command.displaySummary, "displaySummary", 200);
+    assertOptionalVersion(input.command.domainVersionSeen, "domainVersionSeen");
+    assertOptionalBoundedString(
+      input.command.activeItemKey,
+      "activeItemKey",
+      200,
+    );
+    assertOptionalBoundedString(input.command.contextMode, "contextMode", 100);
     assertReferenceCoherence(input.command);
     if (input.command.draftRef !== undefined) {
       throw new Error("WORK_SESSION_DRAFT_REF_SERVER_DERIVED");
@@ -67,6 +99,32 @@ export class OpenWorkSessionService {
       displaySummary: input.command.displaySummary,
     });
     return toWorkSessionV1(result.record);
+  }
+}
+
+function assertBoundedString(
+  value: unknown,
+  field: string,
+  maxLength: number,
+): void {
+  if (typeof value !== "string" || !value.trim() || value.length > maxLength) {
+    throw new Error(`VALIDATION_FORMAT: ${field}`);
+  }
+}
+
+function assertOptionalBoundedString(
+  value: unknown,
+  field: string,
+  maxLength: number,
+): void {
+  if (value === undefined || value === null) return;
+  assertBoundedString(value, field, maxLength);
+}
+
+function assertOptionalVersion(value: unknown, field: string): void {
+  if (value === undefined || value === null) return;
+  if (!Number.isSafeInteger(value) || Number(value) < 0) {
+    throw new Error(`VALIDATION_FORMAT: ${field}`);
   }
 }
 
