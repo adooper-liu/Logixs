@@ -116,6 +116,7 @@ export function parseTaskFrontmatter(source, { path }) {
   const lines = match[1].split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
+    if (line.trimStart().startsWith("#")) continue;
     const entry = line.match(/^([A-Za-z][A-Za-z0-9]*):(?:\s*(.*))?$/);
     if (!entry) {
       if (line.trim()) {

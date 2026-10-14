@@ -94,6 +94,34 @@ describe("RoleWorkbenchFrame", () => {
     );
   });
 
+  it("forwards the production work-session switcher slot", () => {
+    const wrapper = mount(RoleWorkbenchFrame, {
+      props: {
+        stageCode: "stuffing",
+        workspaceLabel: "装箱",
+        nodeScopeLabel: "装箱",
+        selectedContainer: container,
+        nodes: [],
+        selectionLoading: false,
+        containerListError: "",
+        selectionError: "",
+        warnings: [],
+      },
+      slots: {
+        switcher: '<button aria-label="切换工作现场">切换</button>',
+      },
+      global: {
+        stubs: {
+          WorkbenchPageHeader: {
+            template: '<header><slot name="switcher" /></header>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('[aria-label="切换工作现场"]').exists()).toBe(true);
+  });
+
   it("keeps all three information responsibilities before a container is selected", () => {
     const wrapper = mount(RoleWorkbenchFrame, {
       props: {

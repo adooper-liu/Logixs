@@ -12,6 +12,11 @@ writeScopes:
   - docs/planning/tasks/recoverable-work-sessions-v1.md
   - docs/superpowers/plans/2026-10-14-recoverable-work-sessions.md
   - docs/product/UI_SYSTEM.md
+  - doc/cross-border-supply-chain/14-roadmap-decisions.md
+  - docs/planning/tasks/mainline-priority-confirmation-v1.md
+  - docs/superpowers/specs/2026-10-06-full-chain-sample-rebuild-design.md
+  - scripts/task-brief-state.mjs
+  - scripts/task-brief-state.test.mjs
   - packages/contracts/schemas/v1/work-session.schema.json
   - packages/contracts/schemas/v1/product-initiative.schema.json
   - packages/contracts/schemas/v1/index.json
@@ -75,6 +80,7 @@ exclusiveLocks:
   - public-contract:work-session-v1
   - public-contract:product-initiative-v1
   - generated:contracts
+  - root-tooling
   - authz-control-plane
   - ui-pattern:workbench-session-v1
   - visual-baseline:workbench-session-v1
