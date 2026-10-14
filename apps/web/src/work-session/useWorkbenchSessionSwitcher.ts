@@ -77,7 +77,14 @@ export function useWorkbenchSessionSwitcher(input: {
       contextMode: input.contextMode?.value ?? null,
       displaySummary: input.displaySummary.value,
     });
-    sessions.value = [opened, ...sessions.value];
+    sessions.value = [
+      opened,
+      ...sessions.value.filter(
+        (session) =>
+          session.sessionId !== opened.sessionId &&
+          session.contextKey !== opened.contextKey,
+      ),
+    ];
   }
 
   async function select(

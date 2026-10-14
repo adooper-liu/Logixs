@@ -341,6 +341,11 @@ watch(
   min-height: 0;
 }
 
+.workbench-layout__header {
+  position: relative;
+  z-index: var(--z-content-raised);
+}
+
 .workbench-layout__workspace {
   position: relative;
   display: grid;

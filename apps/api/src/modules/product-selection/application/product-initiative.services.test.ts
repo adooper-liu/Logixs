@@ -60,8 +60,10 @@ describe("DecideProductInitiativeService", () => {
     });
   });
 
-  it("正式判断成功后关闭中性草稿", async () => {
-    const { service, drafts } = decideHarness({ currentVersion: 0 });
+  it("正式判断成功由仓储事务统一处理决定与中性草稿", async () => {
+    const { service, persistDecision, drafts } = decideHarness({
+      currentVersion: 0,
+    });
 
     await service.execute({
       tenantId: "t",
@@ -70,7 +72,8 @@ describe("DecideProductInitiativeService", () => {
       command: completeCommand(),
     });
 
-    expect(drafts.closeByHandoffId).toHaveBeenCalledWith("t", HANDOFF_ID);
+    expect(persistDecision).toHaveBeenCalledTimes(1);
+    expect(drafts.closeByHandoffId).not.toHaveBeenCalled();
   });
 
   it("无效证据排序去重后稳定失败，且不调用持久化", async () => {

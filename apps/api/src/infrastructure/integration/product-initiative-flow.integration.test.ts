@@ -133,8 +133,22 @@ describe("product initiative persistence flow", () => {
     });
 
     expect(saved).toMatchObject({ draftVersion: 1, initiativeVersionSeen: 0 });
+    const decided = await initiatives.persistDecision({
+      tenantId: opportunity.tenantId,
+      actorId: "selector-1",
+      handoffId: opportunity.handoffId,
+      command: decide(
+        { handoffId: opportunity.handoffId },
+        {
+          outcome: "defer",
+          validationFocus: "补单位经济依据",
+          reconsiderationDate: "2027-01-01",
+        },
+      ),
+    });
+    expect(decided.record.currentDestination).toBe("deferred");
     expect(
-      await prisma.productInitiative.findFirst({
+      await prisma.productInitiativeDecisionDraft.findFirst({
         where: {
           tenantId: opportunity.tenantId,
           handoffId: opportunity.handoffId,
@@ -142,10 +156,13 @@ describe("product initiative persistence flow", () => {
       }),
     ).toBeNull();
     expect(
-      await prisma.productInitiativeHandoff.count({
-        where: { tenantId: opportunity.tenantId },
+      await prisma.productInitiative.findFirst({
+        where: {
+          tenantId: opportunity.tenantId,
+          handoffId: opportunity.handoffId,
+        },
       }),
-    ).toBe(0);
+    ).not.toBeNull();
   });
 
   it("只引用当前租户当前来源信号的真实证据时可立项", async () => {

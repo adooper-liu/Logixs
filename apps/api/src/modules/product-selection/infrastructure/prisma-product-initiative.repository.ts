@@ -359,6 +359,10 @@ export class PrismaProductInitiativeRepository implements ProductInitiativeRepos
         });
       }
 
+      await tx.productInitiativeDecisionDraft.deleteMany({
+        where: { tenantId: input.tenantId, handoffId: input.handoffId },
+      });
+
       return { record: toRecord(row), duplicate: false };
     });
   }

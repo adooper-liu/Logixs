@@ -1,7 +1,7 @@
 ---
-status: coding
+status: review
 branch: feat/recoverable-work-sessions-v1
-verification: not-run
+verification: "Local: contract/dictionary/db generate, API lint/typecheck/unit/build, Web lint/typecheck/unit/build, WorkSession integration, Product Initiative integration and recoverable-session 3-viewport E2E all passed; repo:check remains blocked by pre-existing .superpowers/sdd stale-copy links; full validate not-run because that gate fails first on the same unowned paths."
 owner: main
 writer: main
 risk: high
@@ -54,6 +54,8 @@ writeScopes:
   - apps/web/src/api/marketSignals.ts
   - apps/web/src/api/marketSignals.test.ts
   - apps/web/src/work-session/**
+  - apps/web/src/components/workbench/WorkbenchLayout.vue
+  - apps/web/src/components/workbench/WorkbenchLayout.test.ts
   - apps/web/src/components/workbench/WorkbenchSessionSwitcher.vue
   - apps/web/src/components/workbench/WorkbenchSessionSwitcher.test.ts
   - apps/web/src/components/workbench/RoleWorkbenchFrame.vue

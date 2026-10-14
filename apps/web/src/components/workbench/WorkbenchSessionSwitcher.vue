@@ -218,7 +218,7 @@ function statusLabel(status: WorkSessionV1["status"]): string {
 }
 .session-switcher__panel {
   position: absolute;
-  z-index: var(--z-popover);
+  z-index: var(--z-command);
   top: calc(100% + var(--space-2));
   right: 0;
   width: min(360px, calc(100vw - var(--space-8)));
