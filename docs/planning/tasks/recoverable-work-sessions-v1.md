@@ -245,15 +245,15 @@ uiViewportEvidence:
 
 ## 验收
 
-- [ ] 同一用户同一 context 重复打开只返回原会话；不会产生重复现场。
-- [ ] 任一 tenant + actor 最多一个 current；并发 activate 不能产生两个 current 或静默丢失 current。
-- [ ] 菜单打开不改变页面；目标授权、重读、版本校验全部成功后才迁移 current 和导航。
-- [ ] 目标 401/403/404/409、领域草稿保存失败或 WorkSession 版本冲突时，来源 current、路由和本地输入保持。
-- [ ] 选品中性保存跨刷新恢复 typed draft，但不改变 outcome、destination、责任、期限、SLA 或交接。
-- [ ] 装箱 dirty 路径不伪装服务端草稿；放弃、留下和新标签页三条路径均可验证。
-- [ ] 暂停/关闭 WorkSession 不完成、不延期、不释放、不转移任何领域任务。
-- [ ] 当前/待续办/草稿已保存/仅浏览器保留/冲突/关闭均有文字，不只靠颜色。
-- [ ] 1440×900、1024×768、390×844 的选品与装箱真实页面无横向溢出，切换器、失败、冲突和恢复入口可达。
+- [x] 同一用户同一 context 重复打开只返回原会话；不会产生重复现场。
+- [x] 任一 tenant + actor 最多一个 current；并发 activate 不能产生两个 current 或静默丢失 current。
+- [x] 菜单打开不改变页面；目标授权、重读、版本校验全部成功后才迁移 current 和导航。
+- [x] 目标 401/403/404/409、领域草稿保存失败或 WorkSession 版本冲突时，来源 current、路由和本地输入保持。
+- [x] 选品中性保存跨刷新恢复 typed draft，但不改变 outcome、destination、责任、期限、SLA 或交接。
+- [x] 装箱 dirty 路径不伪装服务端草稿；放弃、留下和新标签页三条路径均可验证。
+- [x] 暂停/关闭 WorkSession 不完成、不延期、不释放、不转移任何领域任务。
+- [x] 当前/待续办/草稿已保存/仅浏览器保留/冲突/关闭均有文字，不只靠颜色。
+- [x] 1440×900、1024×768、390×844 的选品与装箱真实页面无横向溢出，切换器、失败、冲突和恢复入口可达。
 - [ ] 当前切片相关 API/Web/合同/迁移/字典门禁通过；最终 PR 候选执行一次完整 `pnpm validate`。
 - [ ] 高风险 fresh Claude 只读整体复审完成，finding 均有裁决。
 
@@ -270,3 +270,14 @@ uiViewportEvidence:
 | 日期       | 阶段   | 负责              | commit   | 说明                                                                                                 |
 | ---------- | ------ | ----------------- | -------- | ---------------------------------------------------------------------------------------------------- |
 | 2026-10-14 | coding | Claude / Opus 4.8 | 4bca8233 | 从负责人固定主线提交建立功能分支；完成权威、真实消费者、旧 worktree 与实现事实核对；未触碰受保护 WIP |
+
+## 最终验证记录（2026-10-14）
+
+- API lint/typecheck/build 通过；API 单元测试 311 文件、1607 项通过。
+- Web lint/typecheck/build 通过；Web 单元测试 161 文件、763 项通过。
+- 真实 PostgreSQL 全量 integration 35 文件、222 项通过；其中 WorkSession 2 项、选品流程 38 项、迁移升级 14 项。
+- 可恢复工作会话三视口 E2E 12/12 通过；选品与装箱在 1440×900、1024×768、390×844 共 6 张像素基线经人工核对通过，无页面横向溢出。
+- contract:check、contract:drift、data-dictionary:check、db:generate、root lint/typecheck/build、workbench-purposes:check 和 git diff --check 通过。
+- pnpm validate 与 pnpm test 在既有 .superpowers/sdd/2026-10-13-full-chain-rehearsal-domain-adapter/** 临时副本的失效链接检查处失败；未进入其后的门禁，未删除他人临时证据，也未声称完整 validate 通过。相关生产门禁已按上列命令逐项执行。
+- fresh Claude 整体复审进行中；brief 保持
+  eview，外部 push/PR/CI 尚未执行。
