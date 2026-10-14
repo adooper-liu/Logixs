@@ -15,6 +15,8 @@ writeScopes:
   - doc/cross-border-supply-chain/14-roadmap-decisions.md
   - docs/planning/tasks/mainline-priority-confirmation-v1.md
   - docs/superpowers/specs/2026-10-06-full-chain-sample-rebuild-design.md
+  - scripts/check-repository.mjs
+  - scripts/check-repository.test.mjs
   - scripts/task-brief-state.mjs
   - scripts/task-brief-state.test.mjs
   - packages/contracts/schemas/v1/work-session.schema.json

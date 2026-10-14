@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, extname, resolve } from "node:path";
+import { dirname, extname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   findArchitectureBoundaryViolations,
@@ -1201,8 +1201,15 @@ export function findRouteAccessViolations(routes) {
 function walkFiles(directory, predicate) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const absolutePath = resolve(directory, entry.name);
+    const relativePath = normalizePath(relative(repositoryRoot, absolutePath));
+    if (
+      entry.isDirectory() &&
+      (ignoredDirectories.has(entry.name) ||
+        relativePath === ".superpowers/sdd")
+    ) {
+      continue;
+    }
     if (entry.isDirectory()) files.push(...walkFiles(absolutePath, predicate));
     else if (predicate(absolutePath)) files.push(absolutePath);
   }
