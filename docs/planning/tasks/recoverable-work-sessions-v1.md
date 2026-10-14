@@ -259,7 +259,7 @@ uiViewportEvidence:
 - [ ] 当前/待续办/草稿已保存/仅浏览器保留/冲突/关闭均有文字，不只靠颜色。
 - [x] 1440×900、1024×768、390×844 的选品与装箱真实页面无横向溢出，切换器、失败、冲突和恢复入口可达。
 - [ ] 当前切片相关 API/Web/合同/迁移/字典门禁通过；最终 PR 候选执行一次完整 `pnpm validate`。
-- [ ] 高风险 fresh Claude 只读整体复审完成，finding 均有裁决。
+- [x] 高风险 fresh Claude 只读整体复审完成，finding 均有裁决。
 
 ## 明确不做
 
@@ -282,7 +282,7 @@ uiViewportEvidence:
 - 真实 PostgreSQL 全量 integration 35 文件、224 项通过；其中 WorkSession 4 项、选品流程 38 项、迁移升级 14 项。
 - 可恢复工作会话三视口 E2E 12/12 通过；选品与装箱在 1440×900、1024×768、390×844 共 6 张像素基线经人工核对通过，无页面横向溢出。
 - contract:check、contract:drift、data-dictionary:check、db:generate、root lint/typecheck/build、workbench-purposes:check 和 git diff --check 通过。
-- pnpm validate 与 pnpm test 在既有 .superpowers/sdd/2026-10-13-full-chain-rehearsal-domain-adapter/** 临时副本的失效链接检查处失败；未进入其后的门禁，未删除他人临时证据，也未声称完整 validate 通过。相关生产门禁已按上列命令逐项执行。
+- repository walker 已经 TDD 修复为只排除 git-ignored 的 `.superpowers/sdd/**` 执行 workspace，其他 `.superpowers/**` 仍受检查；clean clone 的 `repo:check` 通过。当前 checkout 只因受保护市场基线 WIP 不属于本 brief 而正确阻断 scope。`n- 最终 committed HEAD 的 clean clone 中，repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build 全部通过；API 311 文件/1611 项、Web 161 文件/764 项、PostgreSQL integration 35 文件/224 项。`n- 标准 `pnpm validate` 在 E2E 阶段因另一个会话占用 5173 且指纹不同而失败关闭；未终止该服务。等价分轨门禁通过：非 OIDC E2E 241 passed / 26 viewport skips，OIDC 5/5，reference visual 18 passed / 15 viewport skips。未声称单命令 validate 通过。
 - fresh Claude 整体复审已完成；9 项 findings 全部 accepted 并在唯一修复批次处置，当前回到 `review`，外部 push/PR/CI 尚未执行。
 
 ## 独立复审裁决（2026-10-14）
@@ -295,6 +295,6 @@ uiViewportEvidence:
 - `WS-REV-006 accepted/fixed`：接入 BroadcastChannel、window focus、visibilitychange 与 sessionStorage active pointer；每次变更发布并重读服务端唯一 current。
 - `WS-REV-007 accepted/fixed`：关闭 current 固定 409，必须先切换；不会留下零 current。
 - `WS-REV-008 accepted/fixed`：切换器补 Tab/Shift+Tab 循环、Escape/关闭后焦点返回，并在打开时令工作区 inert。
-- `WS-REV-009 accepted/fixed`：撤回未直接验真的验收勾选；修复后证据更新为 API 1611、Web 764、integration 224、E2E 12/12，完整 validate 仍如实记录为既有临时副本链接阻塞。
+- `WS-REV-009 accepted/fixed`：撤回未直接验真的验收勾选；修复后证据更新为 API 1611、Web 764、integration 224、E2E 12/12，完整 validate 仍如实记录为本机 5173 外部会话冲突，等价 clean-clone/分轨门禁通过。
 
 所有 accepted finding 均已用失败反证转绿并完成相关全套回归；按执行纪律不发起第二轮 reviewer。无 deferred minor。
