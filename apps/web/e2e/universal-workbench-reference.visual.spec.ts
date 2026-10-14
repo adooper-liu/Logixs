@@ -8,7 +8,22 @@ import {
 } from "./support/universalWorkbenchReference";
 
 const gotoReference = async (page: Page) => {
+  await page.route("**/api/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: "[]",
+    });
+  });
+
+  await page.addStyleTag({
+    content:
+      "* { transition: none !important; animation: none !important; }",
+  });
+
   await page.goto(referencePath);
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(() => document.fonts?.ready);
   await expect(page.getByText("合成结构演练数据，不是生产记录")).toBeVisible();
 };
 
@@ -26,6 +41,10 @@ const screenshot = async (page: Page, name: string) => {
       element.scrollTop = 0;
     });
   }
+
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(() => document.fonts?.ready);
+  await page.waitForTimeout(120);
   await expect(page).toHaveScreenshot(name, screenshotOptions);
 };
 
@@ -209,11 +228,14 @@ test("session switching keeps exactly one current session and does not move it o
   await page.locator('[data-scenario="dirty-session"]').click();
   await page.getByRole("button", { name: "切换工作现场（结构参考）" }).click();
   await page.locator('[data-session="unloading"]').click();
-  await expect(page.getByRole("alert")).toContainText(
-    "草稿保存失败，仍停留在当前工作现场",
-  );
-  await page.getByRole("button", { name: "切换工作现场（结构参考）" }).click();
-  await expect(page.locator('[aria-current="true"]')).toContainText("寻源");
+  await expect(
+    page.getByRole("dialog", { name: "工作现场切换" }).getByRole("alert"),
+  ).toContainText("草稿保存失败，仍停留在当前工作现场");
+  await expect(
+    page
+      .getByRole("dialog", { name: "工作现场切换" })
+      .locator('[aria-current="true"]'),
+  ).toContainText("寻源");
 });
 
 test("more functions opens an independent referenced page instead of replacing the right pane", async ({
