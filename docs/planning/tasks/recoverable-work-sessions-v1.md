@@ -1,5 +1,5 @@
 ---
-status: fix
+status: review
 branch: feat/recoverable-work-sessions-v1
 verification: "Local: contract/dictionary/db generate, API lint/typecheck/unit/build, Web lint/typecheck/unit/build, WorkSession integration, Product Initiative integration and recoverable-session 3-viewport E2E all passed; repo:check remains blocked by pre-existing .superpowers/sdd stale-copy links; full validate not-run because that gate fails first on the same unowned paths."
 owner: main
@@ -273,10 +273,10 @@ uiViewportEvidence:
 
 ## 最终验证记录（2026-10-14）
 
-- API lint/typecheck/build 通过；API 单元测试 311 文件、1607 项通过。
-- Web lint/typecheck/build 通过；Web 单元测试 161 文件、763 项通过。
-- 真实 PostgreSQL 全量 integration 35 文件、222 项通过；其中 WorkSession 2 项、选品流程 38 项、迁移升级 14 项。
+- API lint/typecheck/build 通过；API 单元测试 311 文件、1611 项通过。
+- Web lint/typecheck/build 通过；Web 单元测试 161 文件、764 项通过。
+- 真实 PostgreSQL 全量 integration 35 文件、224 项通过；其中 WorkSession 4 项、选品流程 38 项、迁移升级 14 项。
 - 可恢复工作会话三视口 E2E 12/12 通过；选品与装箱在 1440×900、1024×768、390×844 共 6 张像素基线经人工核对通过，无页面横向溢出。
 - contract:check、contract:drift、data-dictionary:check、db:generate、root lint/typecheck/build、workbench-purposes:check 和 git diff --check 通过。
 - pnpm validate 与 pnpm test 在既有 .superpowers/sdd/2026-10-13-full-chain-rehearsal-domain-adapter/** 临时副本的失效链接检查处失败；未进入其后的门禁，未删除他人临时证据，也未声称完整 validate 通过。相关生产门禁已按上列命令逐项执行。
-- fresh Claude 整体复审已完成并给出 findings；当前处于 `fix`，外部 push/PR/CI 尚未执行。
+- fresh Claude 整体复审已完成；9 项 findings 全部 accepted 并在唯一修复批次处置，当前回到 `review`，外部 push/PR/CI 尚未执行。
