@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import StuffingActionPanel from "../components/stuffing/StuffingActionPanel.vue";
 import StuffingSnapshotPanel from "../components/stuffing/StuffingSnapshotPanel.vue";
 import StuffingWorkQueue from "../components/stuffing/StuffingWorkQueue.vue";
 import RoleWorkbenchFrame from "../components/workbench/RoleWorkbenchFrame.vue";
+import WorkbenchSessionSwitcher from "../components/workbench/WorkbenchSessionSwitcher.vue";
 import {
   useStuffingCommands,
   type StuffingSnapshotDraft,
@@ -15,6 +16,9 @@ import type {
   StuffingQueueFilter,
   StuffingQueueItem,
 } from "../data/stuffingWorkbench";
+import { getContainerStuffingSnapshot } from "../api/containerStuffing";
+import { useWorkbenchSessionSwitcher } from "../work-session/useWorkbenchSessionSwitcher";
+import type { WorkSessionSwitchAdapter } from "../work-session/workSessionAdapter";
 
 const route = useRoute();
 const router = useRouter();
@@ -43,11 +47,78 @@ const {
   reloadSelection,
 } = useStuffingWorkbench(containerId, taskId);
 const commands = useStuffingCommands(reloadWorkbench);
+const snapshotDirty = shallowRef(false);
+const actionPanel = shallowRef<InstanceType<typeof StuffingActionPanel> | null>(
+  null,
+);
 const taskOperation = useStuffingTaskOperation(
   selectedTask,
   snapshot,
   reloadWorkbench,
 );
+const sessionAdapter: WorkSessionSwitchAdapter & { discardLocal(): void } = {
+  async settleBeforeLeave(intent) {
+    if (!snapshotDirty.value)
+      return { kind: "ready", sourceStatus: "resumable" };
+    return {
+      kind: "needs-choice",
+      choices:
+        intent === "new-tab"
+          ? ["new-tab", "stay"]
+          : ["discard", "new-tab", "stay"],
+    };
+  },
+  async validateTarget(session) {
+    if (session.routeContext.kind !== "stuffing.v1") {
+      return { kind: "failed", message: "目标工作现场类型不匹配" };
+    }
+    try {
+      const latest = await getContainerStuffingSnapshot(
+        session.routeContext.containerId,
+      );
+      return { kind: "ready", domainVersionSeen: latest?.version ?? 0 };
+    } catch (caught) {
+      return {
+        kind: "failed",
+        message: caught instanceof Error ? caught.message : "目标现场无法读取",
+      };
+    }
+  },
+  async restorePointer() {},
+  discardLocal() {
+    actionPanel.value?.discardSnapshotLocal();
+    snapshotDirty.value = false;
+  },
+};
+const workSessions = useWorkbenchSessionSwitcher({
+  router,
+  currentContext: computed(() =>
+    containerId.value && taskId.value
+      ? ({
+          kind: "stuffing.v1" as const,
+          containerId: containerId.value,
+          taskId: taskId.value,
+        } as const)
+      : null,
+  ),
+  currentSubjectRef: computed(() =>
+    containerId.value
+      ? ({ kind: "container" as const, id: containerId.value } as const)
+      : null,
+  ),
+  currentTaskRef: computed(() =>
+    taskId.value
+      ? ({ kind: "node_task" as const, id: taskId.value } as const)
+      : null,
+  ),
+  displaySummary: computed(
+    () => `装箱 · ${selectedContainer.value?.containerNumber ?? "未选择货柜"}`,
+  ),
+  domainVersionSeen: computed(() => snapshot.value?.version ?? 0),
+  activeItemKey: computed(() => "stuffing-snapshot"),
+  contextMode: computed(() => "edit_snapshot"),
+  adapter: sessionAdapter,
+});
 
 onMounted(() => {
   void loadContainerList();
@@ -93,6 +164,13 @@ async function reloadWorkbench(): Promise<void> {
     :selection-error="selectionError"
     :warnings="warnings"
   >
+    <template #switcher>
+      <WorkbenchSessionSwitcher
+        :sessions="workSessions.sessions.value"
+        :on-select="workSessions.select"
+        :on-resolve-choice="workSessions.resolveChoice"
+      />
+    </template>
     <template #queue>
       <StuffingWorkQueue
         :items="queueItems"
@@ -115,6 +193,7 @@ async function reloadWorkbench(): Promise<void> {
     <template #secondary>
       <StuffingActionPanel
         v-if="selectedContainer"
+        ref="actionPanel"
         :container-number="selectedContainer.containerNumber"
         :cargo="cargo"
         :snapshot="snapshot"
@@ -132,6 +211,7 @@ async function reloadWorkbench(): Promise<void> {
         @submit-actual="submitActual"
         @execute-task="taskOperation.execute()"
         @retry-task="taskOperation.retry()"
+        @snapshot-dirty-change="snapshotDirty = $event"
       />
     </template>
   </RoleWorkbenchFrame>

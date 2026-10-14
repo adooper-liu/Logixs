@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight, CheckCircle2, Clock3 } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { ContainerStuffingSnapshot } from "../../api/containerStuffing";
 import type { ContainerCargoScope } from "../../api/containers";
 import type {
@@ -43,7 +43,14 @@ const emit = defineEmits<{
   submitActual: [localDateTime: string];
   executeTask: [];
   retryTask: [];
+  snapshotDirtyChange: [dirty: boolean];
 }>();
+const snapshotForm = ref<InstanceType<typeof StuffingSnapshotForm> | null>(
+  null,
+);
+defineExpose({
+  discardSnapshotLocal: () => snapshotForm.value?.discardLocal(),
+});
 
 const actionLabel = computed(() => {
   if (props.task?.nextAction?.actionCode === CLAIM_WORK_ORDER_ACTION)
@@ -63,6 +70,7 @@ const actionLabel = computed(() => {
       ><CheckCircle2 :size="20" />
     </header>
     <StuffingSnapshotForm
+      ref="snapshotForm"
       :container-number="containerNumber"
       :cargo="cargo"
       :snapshot="snapshot"
@@ -70,6 +78,7 @@ const actionLabel = computed(() => {
       :error="snapshotError"
       :message="snapshotMessage"
       @save="emit('saveSnapshot', $event)"
+      @dirty-change="emit('snapshotDirtyChange', $event)"
     />
     <StuffingActualTimeForm
       :snapshot="snapshot"

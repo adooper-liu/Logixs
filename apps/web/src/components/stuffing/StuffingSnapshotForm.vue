@@ -14,7 +14,10 @@ const props = defineProps<{
   message: string;
 }>();
 
-const emit = defineEmits<{ save: [draft: StuffingSnapshotDraft] }>();
+const emit = defineEmits<{
+  save: [draft: StuffingSnapshotDraft];
+  "dirty-change": [dirty: boolean];
+}>();
 
 const form = reactive({
   containerNumber: "",
@@ -31,26 +34,54 @@ const form = reactive({
   reasonCode: "stuffing_confirmed",
 });
 
+const baseline = reactive({ value: "" });
+let hydrating = false;
+
+function serialized(): string {
+  return JSON.stringify(form);
+}
+
+function hydrateFromProps(): void {
+  hydrating = true;
+  const snapshot = props.snapshot;
+  const containerNumber = props.containerNumber;
+  form.containerNumber = snapshot?.containerNumber ?? containerNumber ?? "";
+  form.sealNumber = snapshot?.sealNumber ?? "";
+  form.packageCount = snapshot ? String(snapshot.packageCount) : "";
+  form.grossWeight = snapshot?.grossWeight ?? "";
+  form.netWeight = snapshot?.netWeight ?? "";
+  form.volume = snapshot?.volume ?? "";
+  form.hasVgm = Boolean(snapshot?.vgm);
+  form.vgmWeight = snapshot?.vgm?.weight ?? "";
+  form.vgmMethod = snapshot?.vgm?.method ?? "method_1";
+  form.vgmVerifiedAt = snapshot?.vgm
+    ? toLocalDateTime(snapshot.vgm.verifiedAt)
+    : "";
+  form.evidenceInput = snapshot?.evidenceRefs.join("\n") ?? "";
+  form.reasonCode = snapshot ? "stuffing_corrected" : "stuffing_confirmed";
+  baseline.value = serialized();
+  hydrating = false;
+  emit("dirty-change", false);
+}
+
 watch(
   () => [props.snapshot, props.containerNumber] as const,
-  ([snapshot, containerNumber]) => {
-    form.containerNumber = snapshot?.containerNumber ?? containerNumber ?? "";
-    form.sealNumber = snapshot?.sealNumber ?? "";
-    form.packageCount = snapshot ? String(snapshot.packageCount) : "";
-    form.grossWeight = snapshot?.grossWeight ?? "";
-    form.netWeight = snapshot?.netWeight ?? "";
-    form.volume = snapshot?.volume ?? "";
-    form.hasVgm = Boolean(snapshot?.vgm);
-    form.vgmWeight = snapshot?.vgm?.weight ?? "";
-    form.vgmMethod = snapshot?.vgm?.method ?? "method_1";
-    form.vgmVerifiedAt = snapshot?.vgm
-      ? toLocalDateTime(snapshot.vgm.verifiedAt)
-      : "";
-    form.evidenceInput = snapshot?.evidenceRefs.join("\n") ?? "";
-    form.reasonCode = snapshot ? "stuffing_corrected" : "stuffing_confirmed";
-  },
+  hydrateFromProps,
   { immediate: true },
 );
+watch(
+  form,
+  () => {
+    if (!hydrating) emit("dirty-change", serialized() !== baseline.value);
+  },
+  { deep: true },
+);
+
+function discardLocal(): void {
+  hydrateFromProps();
+}
+
+defineExpose({ discardLocal });
 
 function submit(): void {
   if (
