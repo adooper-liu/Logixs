@@ -60,8 +60,8 @@ describe("DecideProductInitiativeService", () => {
     });
   });
 
-  it("正式判断成功由仓储事务统一处理决定与中性草稿", async () => {
-    const { service, persistDecision, drafts } = decideHarness({
+  it("正式判断成功交给仓储事务统一处理决定与中性草稿", async () => {
+    const { service, persistDecision } = decideHarness({
       currentVersion: 0,
     });
 
@@ -73,7 +73,6 @@ describe("DecideProductInitiativeService", () => {
     });
 
     expect(persistDecision).toHaveBeenCalledTimes(1);
-    expect(drafts.closeByHandoffId).not.toHaveBeenCalled();
   });
 
   it("无效证据排序去重后稳定失败，且不调用持久化", async () => {
@@ -404,7 +403,6 @@ function decideHarness(input: {
         : [],
     ),
   };
-  const drafts = { closeByHandoffId: vi.fn().mockResolvedValue(undefined) };
   const service = new DecideProductInitiativeService(
     repository as never,
     opportunities as never,
@@ -416,7 +414,6 @@ function decideHarness(input: {
       }),
     } as never,
     signalLive as never,
-    drafts as never,
   );
   return {
     service,
@@ -424,7 +421,6 @@ function decideHarness(input: {
     opportunities,
     evidenceReader,
     signalLive,
-    drafts,
   };
 }
 
