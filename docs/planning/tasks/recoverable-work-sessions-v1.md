@@ -39,6 +39,8 @@ writeScopes:
   - apps/api/src/modules/product-selection/presentation/product-initiative-draft.controller.test.ts
   - apps/api/src/modules/product-selection/application/save-product-initiative-draft.service.ts
   - apps/api/src/modules/product-selection/application/product-initiative-draft.services.test.ts
+  - apps/api/src/modules/product-selection/application/product-initiative-errors.ts
+  - apps/api/src/modules/product-selection/application/product-initiative.services.test.ts
   - apps/api/src/modules/product-selection/domain/product-initiative-draft.ts
   - apps/api/src/modules/product-selection/domain/product-initiative-draft.test.ts
   - apps/api/src/modules/product-selection/domain/product-initiative-draft.repository.ts
