@@ -1,7 +1,7 @@
 ---
 status: review
 branch: feat/recoverable-work-sessions-v1
-verification: "Local: contract/dictionary/db generate, API lint/typecheck/unit/build, Web lint/typecheck/unit/build, WorkSession integration, Product Initiative integration and recoverable-session 3-viewport E2E all passed; repo:check remains blocked by pre-existing .superpowers/sdd stale-copy links; full validate not-run because that gate fails first on the same unowned paths."
+verification: "Final committed code: clean-clone repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build passed; API 311/1611, Web 161/764, PostgreSQL 35/224; non-OIDC E2E 241 passed/26 viewport skips, OIDC 5/5, reference visual 18 passed/15 skips. Standard validate reached E2E then failed closed only because another local session owned port 5173. PR #179 opened; final CI pending."
 owner: main
 writer: main
 risk: high
@@ -286,7 +286,7 @@ uiViewportEvidence:
 - 可恢复工作会话三视口 E2E 12/12 通过；选品与装箱在 1440×900、1024×768、390×844 共 6 张像素基线经人工核对通过，无页面横向溢出。
 - contract:check、contract:drift、data-dictionary:check、db:generate、root lint/typecheck/build、workbench-purposes:check 和 git diff --check 通过。
 - repository walker 已经 TDD 修复为只排除 git-ignored 的 `.superpowers/sdd/**` 执行 workspace，其他 `.superpowers/**` 仍受检查；clean clone 的 `repo:check` 通过。当前 checkout 只因受保护市场基线 WIP 不属于本 brief 而正确阻断 scope。`n- 最终 committed HEAD 的 clean clone 中，repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build 全部通过；API 311 文件/1611 项、Web 161 文件/764 项、PostgreSQL integration 35 文件/224 项。`n- 标准 `pnpm validate` 在 E2E 阶段因另一个会话占用 5173 且指纹不同而失败关闭；未终止该服务。等价分轨门禁通过：非 OIDC E2E 241 passed / 26 viewport skips，OIDC 5/5，reference visual 18 passed / 15 viewport skips。未声称单命令 validate 通过。
-- fresh Claude 整体复审已完成；9 项 findings 全部 accepted 并在唯一修复批次处置，当前回到 `review`，外部 push/PR/CI 尚未执行。
+- fresh Claude 整体复审已完成；9 项 findings 全部 accepted 并在唯一修复批次处置，当前回到 `review`；PR #179 已创建并等待最终 CI。
 
 ## 独立复审裁决（2026-10-14）
 
