@@ -209,11 +209,14 @@ test("session switching keeps exactly one current session and does not move it o
   await page.locator('[data-scenario="dirty-session"]').click();
   await page.getByRole("button", { name: "切换工作现场（结构参考）" }).click();
   await page.locator('[data-session="unloading"]').click();
-  await expect(page.getByRole("alert")).toContainText(
-    "草稿保存失败，仍停留在当前工作现场",
-  );
-  await page.getByRole("button", { name: "切换工作现场（结构参考）" }).click();
-  await expect(page.locator('[aria-current="true"]')).toContainText("寻源");
+  await expect(
+    page.getByRole("dialog", { name: "工作现场切换" }).getByRole("alert"),
+  ).toContainText("草稿保存失败，仍停留在当前工作现场");
+  await expect(
+    page
+      .getByRole("dialog", { name: "工作现场切换" })
+      .locator('[aria-current="true"]'),
+  ).toContainText("寻源");
 });
 
 test("more functions opens an independent referenced page instead of replacing the right pane", async ({

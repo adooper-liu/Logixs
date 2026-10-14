@@ -11,7 +11,9 @@ test.beforeEach(async ({ page }) => {
     if (
       path !== "/api/product-opportunities" &&
       path !== "/api/product-initiatives" &&
-      path !== `/api/product-initiatives/${handoffId}`
+      path !== `/api/product-initiatives/${handoffId}` &&
+      path !== "/api/work-sessions" &&
+      path !== "/api/work-sessions/open"
     ) {
       await route.continue();
       return;
@@ -21,6 +23,40 @@ test.beforeEach(async ({ page }) => {
       new URL(page.url()).searchParams.get("state") ??
       "frozen";
 
+    if (path === "/api/work-sessions") {
+      await route.fulfill({
+        json: {
+          contractVersion: "work-session-page.v1",
+          items: [],
+          pageSize: 50,
+          nextCursor: null,
+        },
+      });
+      return;
+    }
+    if (path === "/api/work-sessions/open") {
+      const body = route.request().postDataJSON();
+      await route.fulfill({
+        json: {
+          contractVersion: "work-session.v1",
+          sessionId: "88888888-8888-4888-8888-888888888888",
+          version: 1,
+          status: "current",
+          workbenchCode: body.workbenchCode,
+          contextKey: `product_selection|product_initiative_handoff:${handoffId}`,
+          routeContext: body.routeContext,
+          subjectRef: body.subjectRef,
+          domainVersionSeen: 0,
+          activeItemKey: body.activeItemKey,
+          contextMode: body.contextMode,
+          displaySummary: body.displaySummary,
+          lastOpenedAt: "2026-10-09T09:30:00.000Z",
+          createdAt: "2026-10-09T09:30:00.000Z",
+          updatedAt: "2026-10-09T09:30:00.000Z",
+        },
+      });
+      return;
+    }
     if (path === "/api/product-opportunities") {
       await route.fulfill({ json: opportunityPage() });
       return;

@@ -2,6 +2,8 @@
 import { AlertCircle, RefreshCw } from "@lucide/vue";
 import { computed, nextTick, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { getContainerStuffingSnapshot } from "../api/containerStuffing";
+import { getProductInitiative } from "../api/marketSignals";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
 import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
 import ProductInitiativeGapGroup from "../components/product-selection/ProductInitiativeGapGroup.vue";
@@ -15,6 +17,7 @@ import WorkbenchLayout from "../components/workbench/WorkbenchLayout.vue";
 import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import WorkbenchPane from "../components/workbench/WorkbenchPane.vue";
 import WorkbenchResponsibilityBand from "../components/workbench/WorkbenchResponsibilityBand.vue";
+import WorkbenchSessionSwitcher from "../components/workbench/WorkbenchSessionSwitcher.vue";
 import {
   useProductInitiativeDecision,
   type ProductInitiativeOutcome,
@@ -25,6 +28,8 @@ import {
 } from "../composables/useProductInitiativeDecision";
 import { useProductOpportunityWorkbench } from "../composables/useProductOpportunityWorkbench";
 import type { ProductEvaluationEvidenceDraft } from "../data/productEvaluationRequirements";
+import { useWorkbenchSessionSwitcher } from "../work-session/useWorkbenchSessionSwitcher";
+import type { WorkSessionSwitchAdapter } from "../work-session/workSessionAdapter";
 
 const route = useRoute();
 const router = useRouter();
@@ -98,6 +103,8 @@ const {
   saving: deciding,
   error: initiativeError,
   receipt: initiativeReceipt,
+  isDraftDirty,
+  decisionDraftVersion,
   load: loadInitiative,
   setDestination,
   setUnitEconomicsCurrency,
@@ -106,6 +113,7 @@ const {
   toggleUnitEconomicsEvidence,
   setNegativeConservativeReason,
   addEvidence: addInitiativeEvidence,
+  saveDraft: saveInitiativeDraft,
   decide: decideInitiative,
 } = useProductInitiativeDecision({
   handoffId: initiativeHandoffId,
@@ -255,7 +263,118 @@ async function submitDecision(
   if (ok) await load();
 }
 
+const activeGapPanel = shallowRef<ProductInitiativeGapPanel>("objective");
+const leftCollapsed = ref(false);
+const rightCollapsed = ref(false);
+const mobileScreen = ref<"queue" | "detail" | "context">("queue");
 const isReadOnly = computed(() => decided.value);
+const sessionAdapter: WorkSessionSwitchAdapter & { discardLocal(): void } = {
+  async settleBeforeLeave() {
+    if (!isDraftDirty.value)
+      return { kind: "ready", sourceStatus: "resumable" };
+    return { kind: "needs-choice", choices: ["save", "discard", "stay"] };
+  },
+  async validateTarget(session) {
+    try {
+      const latestVersion =
+        session.routeContext.kind === "product_selection.v1"
+          ? ((await getProductInitiative(session.routeContext.handoffId))
+              .initiative?.version ?? 0)
+          : ((
+              await getContainerStuffingSnapshot(
+                session.routeContext.containerId,
+              )
+            )?.version ?? 0);
+      if (session.domainVersionSeen !== latestVersion) {
+        return {
+          kind: "conflict",
+          seenVersion: session.domainVersionSeen ?? null,
+          latestVersion,
+          message: `目标现场版本已从 ${session.domainVersionSeen ?? "未知"} 更新为 ${latestVersion}；请先比较最新事实。`,
+        };
+      }
+      return {
+        kind: "ready",
+        domainVersionSeen: latestVersion,
+      };
+    } catch (caught) {
+      return {
+        kind: "failed",
+        message: caught instanceof Error ? caught.message : "目标现场无法读取",
+      };
+    }
+  },
+  async restorePointer(session) {
+    if (session.activeItemKey) {
+      activeGapPanel.value = session.activeItemKey as ProductInitiativeGapPanel;
+    }
+    if (
+      session.contextMode === "queue" ||
+      session.contextMode === "detail" ||
+      session.contextMode === "context"
+    ) {
+      mobileScreen.value = session.contextMode;
+    }
+  },
+  discardLocal() {
+    void loadInitiative();
+  },
+};
+const workSessions = useWorkbenchSessionSwitcher({
+  router,
+  currentContext: computed(() =>
+    initiativeHandoffId.value
+      ? ({
+          kind: "product_selection.v1" as const,
+          handoffId: initiativeHandoffId.value,
+        } as const)
+      : null,
+  ),
+  currentSubjectRef: computed(() =>
+    initiativeHandoffId.value
+      ? ({
+          kind: "product_initiative_handoff" as const,
+          id: initiativeHandoffId.value,
+        } as const)
+      : null,
+  ),
+  displaySummary: computed(
+    () => `选品 · ${selected.value?.handoff.title ?? "未选择机会"}`,
+  ),
+  domainVersionSeen: computed(() => initiative.value?.version ?? 0),
+  activeItemKey: computed(() => activeGapPanel.value),
+  contextMode: computed(() => mobileScreen.value),
+  adapter: {
+    ...sessionAdapter,
+    async settleBeforeLeave(intent) {
+      if (intent === "switch" && isDraftDirty.value) {
+        return { kind: "needs-choice", choices: ["save", "discard", "stay"] };
+      }
+      if (intent === "switch" && decisionDraftVersion.value > 0) {
+        return { kind: "ready", sourceStatus: "draft_saved" };
+      }
+      return { kind: "ready", sourceStatus: "resumable" };
+    },
+  },
+});
+
+async function resolveSessionChoice(
+  session: import("@logix/contracts").WorkSessionV1,
+  choice: import("../work-session/workSessionAdapter").DirtyChoice,
+) {
+  if (choice === "save") {
+    const saved = await saveInitiativeDraft();
+    if (!saved) {
+      return {
+        kind: "failed" as const,
+        message: initiativeError.value ?? "草稿没有保存",
+      };
+    }
+    return workSessions.select(session);
+  }
+  return workSessions.resolveChoice(session, choice);
+}
+
 const resultReviewPoints = computed(() =>
   legacyReadOnly.value
     ? reviewPointViews.value.filter(
@@ -270,10 +389,6 @@ watch(isReadOnly, async (readOnly) => {
     .querySelector<HTMLElement>(".app-content")
     ?.scrollTo({ top: 0, behavior: "auto" });
 });
-const activeGapPanel = shallowRef<ProductInitiativeGapPanel>("objective");
-const leftCollapsed = ref(false);
-const rightCollapsed = ref(false);
-const mobileScreen = ref<"queue" | "detail" | "context">("queue");
 watch(
   blockingGapGroups,
   (groups) => {
@@ -353,6 +468,13 @@ const decisionDisabledReason = computed(() =>
           eyebrow="选品岗位工作台"
           :class="{ 'page-header--result': isReadOnly }"
         >
+          <template #switcher>
+            <WorkbenchSessionSwitcher
+              :sessions="workSessions.sessions.value"
+              :on-select="workSessions.select"
+              :on-resolve-choice="resolveSessionChoice"
+            />
+          </template>
           <template #help>
             <span v-if="isReadOnly && legacyReadOnly"
               >历史四项评审（只读，非五面判断）</span

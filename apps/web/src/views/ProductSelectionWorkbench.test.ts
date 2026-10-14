@@ -9,7 +9,12 @@ const intakeProductOpportunity = vi.fn();
 const registerMarketSignalEvidence = vi.fn();
 const getProductInitiative = vi.fn();
 const decideProductInitiative = vi.fn();
+const saveProductInitiativeDraft = vi.fn();
 const listProductInitiatives = vi.fn();
+const listWorkSessions = vi.fn();
+const openWorkSession = vi.fn();
+const updateWorkSession = vi.fn();
+const activateWorkSession = vi.fn();
 
 vi.mock("../api/marketSignals", () => ({
   listProductOpportunities: (...args: unknown[]) =>
@@ -21,8 +26,17 @@ vi.mock("../api/marketSignals", () => ({
   getProductInitiative: (...args: unknown[]) => getProductInitiative(...args),
   decideProductInitiative: (...args: unknown[]) =>
     decideProductInitiative(...args),
+  saveProductInitiativeDraft: (...args: unknown[]) =>
+    saveProductInitiativeDraft(...args),
   listProductInitiatives: (...args: unknown[]) =>
     listProductInitiatives(...args),
+}));
+
+vi.mock("../api/workSessions", () => ({
+  listWorkSessions: (...args: unknown[]) => listWorkSessions(...args),
+  openWorkSession: (...args: unknown[]) => openWorkSession(...args),
+  updateWorkSession: (...args: unknown[]) => updateWorkSession(...args),
+  activateWorkSession: (...args: unknown[]) => activateWorkSession(...args),
 }));
 
 describe("ProductSelectionWorkbench", () => {
@@ -31,6 +45,33 @@ describe("ProductSelectionWorkbench", () => {
     registerMarketSignalEvidence.mockResolvedValue(undefined);
     getProductInitiative.mockResolvedValue(initiativeDetail());
     decideProductInitiative.mockResolvedValue({});
+    saveProductInitiativeDraft.mockResolvedValue({});
+    listWorkSessions.mockResolvedValue({
+      contractVersion: "work-session-page.v1",
+      items: [],
+      pageSize: 50,
+      nextCursor: null,
+    });
+    openWorkSession.mockResolvedValue({
+      contractVersion: "work-session.v1",
+      sessionId: "77777777-7777-4777-8777-777777777777",
+      version: 1,
+      status: "current",
+      workbenchCode: "product_selection",
+      contextKey: "selection",
+      routeContext: {
+        kind: "product_selection.v1",
+        handoffId: "22222222-2222-4222-8222-222222222222",
+      },
+      subjectRef: {
+        kind: "product_initiative_handoff",
+        id: "22222222-2222-4222-8222-222222222222",
+      },
+      displaySummary: "选品",
+      lastOpenedAt: "2026-10-14T08:00:00.000Z",
+      createdAt: "2026-10-14T08:00:00.000Z",
+      updatedAt: "2026-10-14T08:00:00.000Z",
+    });
     listProductInitiatives.mockResolvedValue({
       contractVersion: "product-initiative-queue.v1",
       items: [],
@@ -1204,7 +1245,7 @@ async function mountPage() {
         PageHeader: {
           props: ["eyebrow", "title", "summary"],
           template:
-            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p><slot name='help' /></header>",
+            "<header><small>{{ eyebrow }}</small><h1>{{ title }}</h1><p>{{ summary }}</p><slot name='switcher' /><slot name='help' /></header>",
         },
       },
     },

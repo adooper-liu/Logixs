@@ -18,12 +18,15 @@ import {
 
 const getProductInitiative = vi.fn();
 const decideProductInitiative = vi.fn();
+const saveProductInitiativeDraft = vi.fn();
 const registerMarketSignalEvidence = vi.fn();
 
 vi.mock("../api/marketSignals", () => ({
   getProductInitiative: (...args: unknown[]) => getProductInitiative(...args),
   decideProductInitiative: (...args: unknown[]) =>
     decideProductInitiative(...args),
+  saveProductInitiativeDraft: (...args: unknown[]) =>
+    saveProductInitiativeDraft(...args),
   registerMarketSignalEvidence: (...args: unknown[]) =>
     registerMarketSignalEvidence(...args),
 }));
@@ -47,6 +50,21 @@ describe("useProductInitiativeDecision", () => {
     vi.clearAllMocks();
     getProductInitiative.mockResolvedValue(detail());
     decideProductInitiative.mockResolvedValue({});
+    saveProductInitiativeDraft.mockResolvedValue({
+      contractVersion: "product-initiative-decision-draft.v1",
+      draftId: "44444444-4444-4444-8444-444444444444",
+      handoffId: HANDOFF_ID,
+      draftVersion: 1,
+      initiativeVersionSeen: 0,
+      objective: "写了一半的目标",
+      reviewPoints: [],
+      businessCaseDraft: [],
+      riskAssessmentDraft: [],
+      unitEconomicsDraft: null,
+      negativeConservativeReason: null,
+      createdAt: "2026-10-14T08:00:00.000Z",
+      updatedAt: "2026-10-14T08:00:00.000Z",
+    });
     registerMarketSignalEvidence.mockResolvedValue(undefined);
   });
 
@@ -155,6 +173,28 @@ describe("useProductInitiativeDecision", () => {
     state.businessCase.value_differentiation.evidenceRefs = [EVIDENCE_ID];
 
     expect(gapLabels(state)).toContain("价值与差异");
+  });
+
+  it("saves typed working material and becomes clean without choosing a business outcome", async () => {
+    const state = await mountComposable();
+    expect(state.isDraftDirty.value).toBe(false);
+
+    state.objective.value = "写了一半的目标";
+    expect(state.isDraftDirty.value).toBe(true);
+    await expect(state.saveDraft()).resolves.toBe(true);
+
+    expect(saveProductInitiativeDraft).toHaveBeenCalledWith(
+      HANDOFF_ID,
+      expect.objectContaining({
+        expectedDraftVersion: 0,
+        initiativeVersionSeen: 0,
+        objective: "写了一半的目标",
+      }),
+    );
+    expect(saveProductInitiativeDraft.mock.calls[0]?.[1]).not.toHaveProperty(
+      "outcome",
+    );
+    expect(state.isDraftDirty.value).toBe(false);
   });
 
   it("提交立项时带上服务端版本、幂等键与五面草稿", async () => {

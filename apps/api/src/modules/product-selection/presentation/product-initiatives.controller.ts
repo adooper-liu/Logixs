@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { ApiOkResponse, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type {
   ProductInitiativeDetailV1,
+  ProductInitiativeDecisionDraftV1,
   ProductInitiativeQueuePageV1,
   ProductInitiativeV1,
 } from "@logix/contracts";
@@ -9,11 +10,14 @@ import { RequireCapabilities } from "../../../security/require-capabilities.deco
 import { DecideProductInitiativeService } from "../application/decide-product-initiative.service";
 import { GetProductInitiativeService } from "../application/get-product-initiative.service";
 import { ListProductInitiativesService } from "../application/list-product-initiatives.service";
+import { SaveProductInitiativeDraftService } from "../application/save-product-initiative-draft.service";
 import {
+  ProductInitiativeDecisionDraftResponseDto,
   ProductInitiativeDecisionRequestDto,
   ProductInitiativeDetailResponseDto,
   ProductInitiativeQueuePageResponseDto,
   ProductInitiativeResponseDto,
+  SaveProductInitiativeDecisionDraftRequestDto,
 } from "./product-initiative.dto";
 
 type IdentityRequest = { identity: { tenantId: string; actorId: string } };
@@ -25,6 +29,7 @@ export class ProductInitiativesController {
     private readonly listInitiatives: ListProductInitiativesService,
     private readonly getInitiative: GetProductInitiativeService,
     private readonly decideInitiative: DecideProductInitiativeService,
+    private readonly saveInitiativeDraft: SaveProductInitiativeDraftService,
   ) {}
 
   @Get()
@@ -54,6 +59,22 @@ export class ProductInitiativesController {
     return this.getInitiative.execute({
       tenantId: request.identity.tenantId,
       handoffId,
+    });
+  }
+
+  @Post(":handoffId/drafts")
+  @RequireCapabilities("planning.draft")
+  @ApiOkResponse({ type: ProductInitiativeDecisionDraftResponseDto })
+  saveDraft(
+    @Req() request: IdentityRequest,
+    @Param("handoffId") handoffId: string,
+    @Body() body: SaveProductInitiativeDecisionDraftRequestDto,
+  ): Promise<ProductInitiativeDecisionDraftV1> {
+    return this.saveInitiativeDraft.execute({
+      tenantId: request.identity.tenantId,
+      actorId: request.identity.actorId,
+      handoffId,
+      command: body,
     });
   }
 

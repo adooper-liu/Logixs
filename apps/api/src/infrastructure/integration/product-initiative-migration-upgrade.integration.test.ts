@@ -109,6 +109,9 @@ beforeAll(async () => {
     `DROP TABLE IF EXISTS "${schemaName}"."product_initiative_claim"`,
   );
   await prisma.$executeRawUnsafe(
+    `DROP TABLE IF EXISTS "${schemaName}"."product_initiative_decision_draft"`,
+  );
+  await prisma.$executeRawUnsafe(
     `DROP TABLE IF EXISTS "${schemaName}"."product_initiative_handoff"`,
   );
   await prisma.$executeRawUnsafe(

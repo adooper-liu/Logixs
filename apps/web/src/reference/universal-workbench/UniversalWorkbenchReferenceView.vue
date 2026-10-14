@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import type { WorkSessionV1 } from "@logix/contracts";
 import { useRouter } from "vue-router";
 import WorkbenchDecisionStrip from "../../components/workbench/WorkbenchDecisionStrip.vue";
 import WorkbenchLayout from "../../components/workbench/WorkbenchLayout.vue";
 import WorkbenchPageHeader from "../../components/workbench/WorkbenchPageHeader.vue";
 import WorkbenchPane from "../../components/workbench/WorkbenchPane.vue";
 import WorkbenchResponsibilityBand from "../../components/workbench/WorkbenchResponsibilityBand.vue";
+import WorkbenchSessionSwitcher from "../../components/workbench/WorkbenchSessionSwitcher.vue";
 import type { WorkbenchMobileScreen } from "../../components/workbench/workbenchLayout.types";
 import {
   referenceScenarios,
@@ -34,16 +36,36 @@ const rightCollapsed = ref(false);
 const mobileScreen = ref<WorkbenchMobileScreen>("queue");
 const selectedItem = ref("pricing");
 const editing = ref(false);
-const sessionMenuOpen = ref(false);
 const moreMenuOpen = ref(false);
 const currentSession = ref("selection");
 const sessionFeedback = ref("");
 
 const scenario = computed(() => referenceScenarios[scenarioKey.value]);
-const sessions = computed(() =>
-  referenceSessions.map((session) => ({
-    ...session,
-    current: session.id === currentSession.value,
+const sessions = computed<WorkSessionV1[]>(() =>
+  referenceSessions.map((session, index) => ({
+    contractVersion: "work-session.v1",
+    sessionId: session.id,
+    version: 1,
+    status:
+      session.id === currentSession.value
+        ? "current"
+        : session.status === "current"
+          ? "resumable"
+          : session.status,
+    workbenchCode: "product_selection",
+    contextKey: `reference:${session.id}`,
+    routeContext: {
+      kind: "product_selection.v1",
+      handoffId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    },
+    subjectRef: {
+      kind: "product_initiative_handoff",
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    },
+    displaySummary: session.label,
+    lastOpenedAt: "2026-10-11T08:00:00.000Z",
+    createdAt: "2026-10-11T08:00:00.000Z",
+    updatedAt: "2026-10-11T08:00:00.000Z",
   })),
 );
 
@@ -63,15 +85,17 @@ function stopEditing(): void {
   mobileScreen.value = "detail";
 }
 
-function switchSession(id: string): void {
+async function switchSession(session: WorkSessionV1) {
   if (scenarioKey.value === "dirty-session") {
     sessionFeedback.value = "草稿保存失败，仍停留在当前工作现场";
-    sessionMenuOpen.value = false;
-    return;
+    return { kind: "failed" as const, message: sessionFeedback.value };
   }
   sessionFeedback.value = "";
-  currentSession.value = id;
-  sessionMenuOpen.value = false;
+  currentSession.value = session.sessionId;
+  return {
+    kind: "switched" as const,
+    session: { ...session, status: "current" as const },
+  };
 }
 </script>
 
@@ -114,27 +138,11 @@ function switchSession(id: string): void {
           eyebrow="结构参考 · 选品岗位"
         >
           <template #switcher>
-            <div class="reference-menu">
-              <button
-                type="button"
-                aria-label="切换工作现场（结构参考）"
-                @click="sessionMenuOpen = !sessionMenuOpen"
-              >
-                切换 · {{ sessions.length }}
-              </button>
-              <div v-if="sessionMenuOpen" class="reference-menu__panel">
-                <button
-                  v-for="session in sessions"
-                  :key="session.id"
-                  type="button"
-                  :data-session="session.id"
-                  :aria-current="session.current || undefined"
-                  @click="switchSession(session.id)"
-                >
-                  {{ session.label }}
-                </button>
-              </div>
-            </div>
+            <WorkbenchSessionSwitcher
+              :sessions="sessions"
+              :on-select="switchSession"
+              trigger-label="切换工作现场（结构参考）"
+            />
           </template>
           <template #moreFunctions>
             <div class="reference-menu">

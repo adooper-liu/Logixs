@@ -16,6 +16,7 @@ vi.mock("../auth/session", async (importOriginal) => ({
 const {
   createMarketSignal,
   decideMarketSignal,
+  saveProductInitiativeDraft,
   listMarketSignals,
   listProductInitiatives,
   listProductOpportunities,
@@ -56,6 +57,32 @@ afterEach(() => {
 });
 
 describe("marketSignals 经共享 Client", () => {
+  it("POST 保存选品中性草稿使用专用端点", async () => {
+    fetchMock.mockResolvedValue(ok({ draftVersion: 1 }));
+    const command = {
+      contractVersion: "product-initiative-decision-draft-save.v1" as const,
+      expectedDraftVersion: 0,
+      initiativeVersionSeen: 0,
+      objective: null,
+      reviewPoints: [],
+      businessCaseDraft: [],
+      riskAssessmentDraft: [],
+      unitEconomicsDraft: null,
+      negativeConservativeReason: null,
+      idempotencyKey: "draft-1",
+    };
+
+    await saveProductInitiativeDraft("handoff-1", command);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/product-initiatives/handoff-1/drafts",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(command),
+      }),
+    );
+  });
+
   it("GET 列表按业务分组请求并保持服务端分页", async () => {
     const page = { items: [], pageSize: 50, totalCount: 0, nextCursor: null };
     fetchMock.mockResolvedValue(ok(page));

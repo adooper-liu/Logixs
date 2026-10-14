@@ -126,9 +126,6 @@ describe("UniversalWorkbenchReferenceView", () => {
       .trigger("click");
     await wrapper.get('[data-session="sourcing"]').trigger("click");
     expect(wrapper.text()).toContain("草稿保存失败，仍停留在当前工作现场");
-    await wrapper
-      .get('[aria-label="切换工作现场（结构参考）"]')
-      .trigger("click");
     expect(wrapper.get('[aria-current="true"]').text()).toContain("选品");
   });
 

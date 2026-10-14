@@ -21,6 +21,8 @@ import type {
   ProductOpportunityPageV1,
   ProductOpportunityV1,
   ProductInitiativeDecisionCommandV1,
+  ProductInitiativeDecisionDraftV1,
+  SaveProductInitiativeDecisionDraftCommandV1,
   ProductInitiativeDetailV1,
   ProductInitiativeQueuePageV1,
   ProductInitiativeV1,
@@ -199,6 +201,20 @@ export async function getProductInitiative(
   return requestJson<ProductInitiativeDetailV1>(
     `/api/product-initiatives/${encodeURIComponent(handoffId)}`,
     { fallback: "暂时无法加载立项判断" },
+  );
+}
+
+export async function saveProductInitiativeDraft(
+  handoffId: string,
+  command: SaveProductInitiativeDecisionDraftCommandV1,
+): Promise<ProductInitiativeDecisionDraftV1> {
+  return requestJson<ProductInitiativeDecisionDraftV1>(
+    `/api/product-initiatives/${encodeURIComponent(handoffId)}/drafts`,
+    {
+      method: "POST",
+      body: command,
+      fallback: "暂时无法保存立项草稿",
+    },
   );
 }
 

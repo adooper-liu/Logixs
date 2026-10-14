@@ -96,9 +96,21 @@ export const referenceScenarios: Readonly<
 };
 
 export const referenceSessions = [
-  { id: "selection", label: "选品 · 合成机会 REF-001", current: true },
-  { id: "sourcing", label: "寻源 · 合成 SKU REF-002", current: false },
-  { id: "unloading", label: "卸货 · 合成货柜 REF-003", current: false },
+  {
+    id: "selection",
+    label: "选品 · 合成机会 REF-001",
+    status: "current" as const,
+  },
+  {
+    id: "sourcing",
+    label: "寻源 · 合成 SKU REF-002",
+    status: "resumable" as const,
+  },
+  {
+    id: "unloading",
+    label: "卸货 · 合成货柜 REF-003",
+    status: "draft_saved" as const,
+  },
 ] as const;
 
 export const syntheticNotice = "合成结构演练数据，不是生产记录";

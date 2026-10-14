@@ -7,6 +7,8 @@ import type {
   ProductInitiativeUnitEconomicsSnapshotV1,
   ProductInitiativeRiskAssessmentDraftV1,
   ProductInitiativeRiskAssessmentSnapshotV1,
+  ProductInitiativeDecisionDraftV1,
+  SaveProductInitiativeDecisionDraftCommandV1,
 } from "@logix/contracts";
 
 const REVIEW_POINT_CODES = [
@@ -74,6 +76,47 @@ export class ProductInitiativeDecisionRequestDto implements ProductInitiativeDec
   @ApiProperty() idempotencyKey!: string;
 }
 
+export class SaveProductInitiativeDecisionDraftRequestDto implements SaveProductInitiativeDecisionDraftCommandV1 {
+  @ApiProperty({ enum: ["product-initiative-decision-draft-save.v1"] })
+  contractVersion!: "product-initiative-decision-draft-save.v1";
+  @ApiProperty() expectedDraftVersion!: number;
+  @ApiProperty() initiativeVersionSeen!: number;
+  @ApiPropertyOptional({ nullable: true }) objective!: string | null;
+  @ApiProperty({ type: [Object] })
+  reviewPoints!: SaveProductInitiativeDecisionDraftCommandV1["reviewPoints"];
+  @ApiProperty({ type: [Object] })
+  businessCaseDraft!: SaveProductInitiativeDecisionDraftCommandV1["businessCaseDraft"];
+  @ApiProperty({ type: [Object] })
+  riskAssessmentDraft!: SaveProductInitiativeDecisionDraftCommandV1["riskAssessmentDraft"];
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  unitEconomicsDraft!: SaveProductInitiativeDecisionDraftCommandV1["unitEconomicsDraft"];
+  @ApiPropertyOptional({ nullable: true })
+  negativeConservativeReason!: string | null;
+  @ApiProperty() idempotencyKey!: string;
+}
+
+export class ProductInitiativeDecisionDraftResponseDto implements ProductInitiativeDecisionDraftV1 {
+  @ApiProperty({ enum: ["product-initiative-decision-draft.v1"] })
+  contractVersion!: "product-initiative-decision-draft.v1";
+  @ApiProperty() draftId!: string;
+  @ApiProperty() handoffId!: string;
+  @ApiProperty() draftVersion!: number;
+  @ApiProperty() initiativeVersionSeen!: number;
+  @ApiPropertyOptional({ nullable: true }) objective!: string | null;
+  @ApiProperty({ type: [Object] })
+  reviewPoints!: ProductInitiativeDecisionDraftV1["reviewPoints"];
+  @ApiProperty({ type: [Object] })
+  businessCaseDraft!: ProductInitiativeDecisionDraftV1["businessCaseDraft"];
+  @ApiProperty({ type: [Object] })
+  riskAssessmentDraft!: ProductInitiativeDecisionDraftV1["riskAssessmentDraft"];
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  unitEconomicsDraft!: ProductInitiativeDecisionDraftV1["unitEconomicsDraft"];
+  @ApiPropertyOptional({ nullable: true })
+  negativeConservativeReason!: string | null;
+  @ApiProperty() createdAt!: string;
+  @ApiProperty() updatedAt!: string;
+}
+
 export class ProductInitiativeResponseDto {
   @ApiProperty() initiativeId!: string;
   @ApiProperty({ enum: RESPONSE_OUTCOMES }) outcome!: string;
@@ -128,6 +171,11 @@ export class ProductInitiativeDetailResponseDto {
   @ApiProperty() handoffId!: string;
   @ApiPropertyOptional({ type: ProductInitiativeResponseDto, nullable: true })
   initiative!: ProductInitiativeResponseDto | null;
+  @ApiPropertyOptional({
+    type: ProductInitiativeDecisionDraftResponseDto,
+    nullable: true,
+  })
+  decisionDraft!: ProductInitiativeDecisionDraftResponseDto | null;
   @ApiProperty({ type: [Object] }) currencyOptions!: object[];
   @ApiProperty({ type: [Object] }) evidenceCandidates!: object[];
 }

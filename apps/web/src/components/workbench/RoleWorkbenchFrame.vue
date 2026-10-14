@@ -38,6 +38,7 @@ const props = withDefaults(
 
 defineSlots<{
   actions(): unknown;
+  switcher(): unknown;
   context(): unknown;
   queue(): unknown;
   primary(): unknown;
@@ -99,6 +100,9 @@ const contextState = computed<WorkbenchPaneState>(() => {
     >
       <template #header>
         <WorkbenchPageHeader v-if="!embedded" :stage-code="stageCode">
+          <template v-if="$slots.switcher" #switcher>
+            <slot name="switcher" />
+          </template>
           <template v-if="$slots.actions" #actions>
             <slot name="actions" />
           </template>

@@ -2,13 +2,14 @@
 
 # 数据库原生对象清单
 
-- verifiedThroughMigration: `20261013120000_add_full_chain_sample_landing`
+- verifiedThroughMigration: `20261014120000_add_recoverable_work_sessions`
 - 结构对账差异统一见 [主字典 reconciliation findings](./DATA_DICTIONARY.generated.md#findings)。
 
 ## Prisma 未完整表达的约束与索引
 
 | 表 | 名称 | 类型 | Prisma 已声明 | 定义/谓词 |
 | --- | --- | --- | --- | --- |
+| product_initiative_decision_draft | product_initiative_decision_draft_handoff_fkey | foreign_key | 否 | FOREIGN KEY (handoff_id, tenant_id) REFERENCES market_opportunity_handoff(id, tenant_id) ON UPDATE CASCADE ON DELETE RESTRICT |
 | supplier_quotation | supplier_quotation_sku_fkey | foreign_key | 否 | FOREIGN KEY (sku_id, tenant_id) REFERENCES product_sku(id, tenant_id) ON UPDATE CASCADE ON DELETE RESTRICT |
 | canonical_event | canonical_event_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_pkey ON public.canonical_event USING btree (id) |
 | canonical_event_scope_member | canonical_event_scope_member_pkey | unique_index | 否 | CREATE UNIQUE INDEX canonical_event_scope_member_pkey ON public.canonical_event_scope_member USING btree (id) |
@@ -119,6 +120,7 @@
 | product_identity_release | product_identity_release_pkey | unique_index | 否 | CREATE UNIQUE INDEX product_identity_release_pkey ON public.product_identity_release USING btree (id) |
 | product_initiative | product_initiative_pkey | unique_index | 否 | CREATE UNIQUE INDEX product_initiative_pkey ON public.product_initiative USING btree (id) |
 | product_initiative_claim | product_initiative_claim_pkey | unique_index | 否 | CREATE UNIQUE INDEX product_initiative_claim_pkey ON public.product_initiative_claim USING btree (id) |
+| product_initiative_decision_draft | product_initiative_decision_draft_pkey | unique_index | 否 | CREATE UNIQUE INDEX product_initiative_decision_draft_pkey ON public.product_initiative_decision_draft USING btree (id) |
 | product_initiative_handoff | product_initiative_handoff_pkey | unique_index | 否 | CREATE UNIQUE INDEX product_initiative_handoff_pkey ON public.product_initiative_handoff USING btree (id) |
 | product_inspection_requirement | product_inspection_requirement_pkey | unique_index | 否 | CREATE UNIQUE INDEX product_inspection_requirement_pkey ON public.product_inspection_requirement USING btree (id) |
 | product_inspection_requirement | product_inspection_requirement_scope_key | unique_index | 否 | CREATE UNIQUE INDEX product_inspection_requirement_scope_key ON public.product_inspection_requirement USING btree (profile_id, requirement_type, jurisdiction_country_code) NULLS NOT DISTINCT |
@@ -158,6 +160,9 @@
 | warehouse_unload_capacity | warehouse_unload_capacity_pkey | unique_index | 否 | CREATE UNIQUE INDEX warehouse_unload_capacity_pkey ON public.warehouse_unload_capacity USING btree (id) |
 | work_order | work_order_pkey | unique_index | 否 | CREATE UNIQUE INDEX work_order_pkey ON public.work_order USING btree (id) |
 | work_order_fact_application | work_order_fact_application_pkey | unique_index | 否 | CREATE UNIQUE INDEX work_order_fact_application_pkey ON public.work_order_fact_application USING btree (id) |
+| work_session | work_session_live_context_key | unique_index | 否 | CREATE UNIQUE INDEX work_session_live_context_key ON public.work_session USING btree (tenant_id, owner_actor_id, context_key) WHERE (status <> 'closed'::text) |
+| work_session | work_session_one_current_key | unique_index | 否 | CREATE UNIQUE INDEX work_session_one_current_key ON public.work_session USING btree (tenant_id, owner_actor_id) WHERE (status = 'current'::text) |
+| work_session | work_session_pkey | unique_index | 否 | CREATE UNIQUE INDEX work_session_pkey ON public.work_session USING btree (id) |
 
 ## 函数
 

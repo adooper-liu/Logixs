@@ -40,6 +40,36 @@ import {
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
+test("repository checks ignore the git-ignored Superpowers execution workspace", () => {
+  const workspace = join(
+    repositoryRoot,
+    ".superpowers",
+    "sdd",
+    "repository-check-boundary-test",
+  );
+  const governed = join(repositoryRoot, ".superpowers", "governed-test.md");
+  mkdirSync(workspace, { recursive: true });
+  writeFileSync(
+    join(workspace, "stale.md"),
+    "[stale](missing-review-copy.md)\n",
+  );
+  writeFileSync(governed, "[governed](missing-governed.md)\n");
+  try {
+    const errors = runRepositoryChecks({ docsOnly: true });
+    assert.equal(
+      errors.some((error) => error.includes("repository-check-boundary-test")),
+      false,
+    );
+    assert.equal(
+      errors.some((error) => error.includes("governed-test.md")),
+      true,
+    );
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+    rmSync(governed, { force: true });
+  }
+});
+
 const COMPLETE_WORKBENCH_SCREENSHOT_SOURCE = [
   "const screenshot = () => expect(page).toHaveScreenshot();",
   "reference-default.png",

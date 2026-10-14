@@ -60,6 +60,21 @@ describe("DecideProductInitiativeService", () => {
     });
   });
 
+  it("正式判断成功交给仓储事务统一处理决定与中性草稿", async () => {
+    const { service, persistDecision } = decideHarness({
+      currentVersion: 0,
+    });
+
+    await service.execute({
+      tenantId: "t",
+      actorId: "selector-1",
+      handoffId: HANDOFF_ID,
+      command: completeCommand(),
+    });
+
+    expect(persistDecision).toHaveBeenCalledTimes(1);
+  });
+
   it("无效证据排序去重后稳定失败，且不调用持久化", async () => {
     const { service, persistDecision } = decideHarness({ currentVersion: 0 });
     const reviewPoints = [
@@ -280,6 +295,7 @@ describe("GetProductInitiativeService", () => {
     ).resolves.toEqual({
       handoffId: HANDOFF_ID,
       initiative: null,
+      decisionDraft: null,
       currencyOptions: [
         { code: "EUR", name: "Euro", minorUnit: 2 },
         { code: "USD", name: "US Dollar", minorUnit: 2 },

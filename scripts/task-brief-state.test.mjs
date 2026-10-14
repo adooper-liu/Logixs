@@ -93,6 +93,23 @@ test("normalizes a task record once for every consumer", () => {
   ]);
 });
 
+test("ignores full-line comments inside frontmatter", () => {
+  const parsed = parseTaskFrontmatter(
+    `---
+status: design
+writeScopes:
+  - apps/web/src/view.vue
+# UI task fields follow
+uiStructure: [stable shell]
+---`,
+    { path: "template.md" },
+  );
+
+  assert.deepEqual(parsed.errors, []);
+  assert.equal(parsed.values.status, "design");
+  assert.deepEqual(parsed.values.uiStructure, ["stable shell"]);
+});
+
 test("fails closed on duplicate keys, nested mappings, and malformed list fields", () => {
   const parsed = parseTaskFrontmatter(
     `---\nstatus: coding\nstatus: fix\nwriteScopes:\n  nested: value\nauthorityRefs: AGENTS.md\n---`,
