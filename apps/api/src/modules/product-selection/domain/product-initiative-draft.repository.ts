@@ -47,4 +47,5 @@ export interface ProductInitiativeDraftRepository {
     record: ProductInitiativeDecisionDraftRecord;
     duplicate: boolean;
   }>;
+  closeByHandoffId(tenantId: string, handoffId: string): Promise<void>;
 }

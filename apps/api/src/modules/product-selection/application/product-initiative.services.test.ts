@@ -60,6 +60,19 @@ describe("DecideProductInitiativeService", () => {
     });
   });
 
+  it("正式判断成功后关闭中性草稿", async () => {
+    const { service, drafts } = decideHarness({ currentVersion: 0 });
+
+    await service.execute({
+      tenantId: "t",
+      actorId: "selector-1",
+      handoffId: HANDOFF_ID,
+      command: completeCommand(),
+    });
+
+    expect(drafts.closeByHandoffId).toHaveBeenCalledWith("t", HANDOFF_ID);
+  });
+
   it("无效证据排序去重后稳定失败，且不调用持久化", async () => {
     const { service, persistDecision } = decideHarness({ currentVersion: 0 });
     const reviewPoints = [
@@ -280,6 +293,7 @@ describe("GetProductInitiativeService", () => {
     ).resolves.toEqual({
       handoffId: HANDOFF_ID,
       initiative: null,
+      decisionDraft: null,
       currencyOptions: [
         { code: "EUR", name: "Euro", minorUnit: 2 },
         { code: "USD", name: "US Dollar", minorUnit: 2 },
@@ -387,6 +401,7 @@ function decideHarness(input: {
         : [],
     ),
   };
+  const drafts = { closeByHandoffId: vi.fn().mockResolvedValue(undefined) };
   const service = new DecideProductInitiativeService(
     repository as never,
     opportunities as never,
@@ -398,6 +413,7 @@ function decideHarness(input: {
       }),
     } as never,
     signalLive as never,
+    drafts as never,
   );
   return {
     service,
@@ -405,6 +421,7 @@ function decideHarness(input: {
     opportunities,
     evidenceReader,
     signalLive,
+    drafts,
   };
 }
 

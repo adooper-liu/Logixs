@@ -1,4 +1,9 @@
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Optional,
+} from "@nestjs/common";
 import type { ProductInitiativeDetailV1 } from "@logix/contracts";
 import {
   READ_EVIDENCE_REFS,
@@ -10,6 +15,10 @@ import {
 } from "../../master-data";
 import { ProductInitiativeNotFoundError } from "../domain/product-initiative";
 import {
+  PRODUCT_INITIATIVE_DRAFT_REPOSITORY,
+  type ProductInitiativeDraftRepository,
+} from "../domain/product-initiative-draft.repository";
+import {
   PRODUCT_INITIATIVE_REPOSITORY,
   type ProductInitiativeRepository,
 } from "../domain/product-initiative.repository";
@@ -18,6 +27,7 @@ import {
   type ProductOpportunityRepository,
 } from "../domain/product-opportunity.repository";
 import { toProductInitiativeV1 } from "./decide-product-initiative.service";
+import { toDraftV1 } from "./save-product-initiative-draft.service";
 import { throwProductInitiativeHttpError } from "./product-initiative-errors";
 
 /** 证据挂在来源信号上；立项只引用，不另存事实。 */
@@ -34,6 +44,9 @@ export class GetProductInitiativeService {
     private readonly evidenceReader: ReadEvidenceRefsPort,
     @Inject(REFERENCE_CURRENCY_DIRECTORY)
     private readonly currencies: ReferenceCurrencyDirectoryPort,
+    @Optional()
+    @Inject(PRODUCT_INITIATIVE_DRAFT_REPOSITORY)
+    private readonly drafts: ProductInitiativeDraftRepository | null = null,
   ) {}
 
   async execute(input: {
@@ -62,17 +75,21 @@ export class GetProductInitiativeService {
           "PRODUCT_INITIATIVE_OPPORTUNITY_NOT_FOUND",
         );
       }
-      const [candidates, currencies] = await Promise.all([
+      const [candidates, currencies, decisionDraft] = await Promise.all([
         this.evidenceReader.executeDetails({
           tenantId: input.tenantId,
           subjectType: MARKET_SIGNAL_SUBJECT,
           subjectIds: [signalId],
         }),
         this.currencies.listActive(),
+        this.drafts
+          ? this.drafts.findByHandoffId(input.tenantId, input.handoffId)
+          : Promise.resolve(null),
       ]);
       return {
         handoffId: input.handoffId,
         initiative: record ? toProductInitiativeV1(record) : null,
+        decisionDraft: decisionDraft ? toDraftV1(decisionDraft) : null,
         currencyOptions: currencies
           .map((currency) => ({
             code: currency.alphaCode,

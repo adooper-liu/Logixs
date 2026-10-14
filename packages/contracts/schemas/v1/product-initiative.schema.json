@@ -1161,12 +1161,24 @@
     "ProductInitiativeDetailV1": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["handoffId", "currencyOptions", "evidenceCandidates"],
+      "required": [
+        "handoffId",
+        "initiative",
+        "decisionDraft",
+        "currencyOptions",
+        "evidenceCandidates"
+      ],
       "properties": {
         "handoffId": { "$ref": "common.schema.json#/$defs/Uuid" },
         "initiative": {
           "anyOf": [
             { "$ref": "#/$defs/ProductInitiativeV1" },
+            { "type": "null" }
+          ]
+        },
+        "decisionDraft": {
+          "anyOf": [
+            { "$ref": "#/$defs/ProductInitiativeDecisionDraftV1" },
             { "type": "null" }
           ]
         },

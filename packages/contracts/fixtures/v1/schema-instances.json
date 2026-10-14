@@ -1102,6 +1102,7 @@
       "data": {
         "handoffId": "00000000-0000-4000-8000-000000000001",
         "initiative": null,
+        "decisionDraft": null,
         "currencyOptions": [
           { "code": "JPY", "name": "Yen", "minorUnit": 0 },
           { "code": "XUA", "name": "ADB Unit of Account", "minorUnit": null }

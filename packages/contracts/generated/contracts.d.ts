@@ -2358,7 +2358,8 @@ minorUnit: (number | null)
  */
 export interface ProductInitiativeDetailV1 {
 handoffId: Uuid
-initiative?: (ProductInitiativeV1 | null)
+initiative: (ProductInitiativeV1 | null)
+decisionDraft: (ProductInitiativeDecisionDraftV1 | null)
 evidenceCandidates: ProductInitiativeEvidenceCandidateV1[]
 currencyOptions: ProductInitiativeCurrencyOptionV1[]
 }

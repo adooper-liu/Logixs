@@ -24,6 +24,8 @@ import {
 import { prepareProductDefinitionClaim } from "../../modules/product-selection/domain/product-initiative-claim";
 import { prepareProductInitiativeNpiReturn } from "../../modules/product-selection/domain/product-initiative-npi-return";
 import { DecideProductInitiativeService } from "../../modules/product-selection/application/decide-product-initiative.service";
+import { SaveProductInitiativeDraftService } from "../../modules/product-selection/application/save-product-initiative-draft.service";
+import { PrismaProductInitiativeDraftRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative-draft.repository";
 import { PrismaProductInitiativeRepository } from "../../modules/product-selection/infrastructure/prisma-product-initiative.repository";
 import { PrismaProductOpportunityRepository } from "../../modules/product-selection/infrastructure/prisma-product-opportunity.repository";
 import { toOpportunityV1 } from "../../modules/product-selection/application/list-product-opportunities.service";
@@ -42,6 +44,7 @@ let marketSignals: PrismaMarketSignalRepository;
 let initiatives: PrismaProductInitiativeRepository;
 let productOpportunities: PrismaProductOpportunityRepository;
 let decideInitiatives: DecideProductInitiativeService;
+let saveDrafts: SaveProductInitiativeDraftService;
 
 const REVIEW_POINT_CODES = [
   "target_user_and_market",
@@ -72,12 +75,21 @@ beforeAll(async () => {
   productOpportunities = new PrismaProductOpportunityRepository(
     prisma as never,
   );
+  const evidenceReader = new ReadEvidenceRefsService(
+    new PrismaEvidenceRepository(prisma as never),
+  );
   decideInitiatives = new DecideProductInitiativeService(
     initiatives,
     productOpportunities,
-    new ReadEvidenceRefsService(new PrismaEvidenceRepository(prisma as never)),
+    evidenceReader,
     new PrismaReferenceCurrencyDirectory(prisma as never),
     new ReadMarketSignalLiveService(marketSignals),
+  );
+  saveDrafts = new SaveProductInitiativeDraftService(
+    new PrismaProductInitiativeDraftRepository(prisma as never),
+    initiatives,
+    productOpportunities,
+    evidenceReader,
   );
 });
 
@@ -99,6 +111,43 @@ afterAll(async () => {
 });
 
 describe("product initiative persistence flow", () => {
+  it("saves typed working material without changing a business decision", async () => {
+    const opportunity = await seedOpportunity();
+
+    const saved = await saveDrafts.execute({
+      tenantId: opportunity.tenantId,
+      actorId: "selector-1",
+      handoffId: opportunity.handoffId,
+      command: {
+        contractVersion: "product-initiative-decision-draft-save.v1",
+        expectedDraftVersion: 0,
+        initiativeVersionSeen: 0,
+        objective: "先验证需求和单位经济",
+        reviewPoints: [],
+        businessCaseDraft: [],
+        riskAssessmentDraft: [],
+        unitEconomicsDraft: null,
+        negativeConservativeReason: null,
+        idempotencyKey: `draft:${opportunity.handoffId}:0`,
+      },
+    });
+
+    expect(saved).toMatchObject({ draftVersion: 1, initiativeVersionSeen: 0 });
+    expect(
+      await prisma.productInitiative.findFirst({
+        where: {
+          tenantId: opportunity.tenantId,
+          handoffId: opportunity.handoffId,
+        },
+      }),
+    ).toBeNull();
+    expect(
+      await prisma.productInitiativeHandoff.count({
+        where: { tenantId: opportunity.tenantId },
+      }),
+    ).toBe(0);
+  });
+
   it("只引用当前租户当前来源信号的真实证据时可立项", async () => {
     const opportunity = await seedOpportunity();
     const evidenceId = await seedSignalEvidence(

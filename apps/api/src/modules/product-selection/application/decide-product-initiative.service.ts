@@ -22,6 +22,10 @@ import {
 } from "../../market-intelligence";
 import { mergeHandoffWithSignalLive } from "../domain/merge-handoff-with-signal";
 import {
+  PRODUCT_INITIATIVE_DRAFT_REPOSITORY,
+  type ProductInitiativeDraftRepository,
+} from "../domain/product-initiative-draft.repository";
+import {
   assertProductInitiativeEvidenceRefs,
   prepareProductInitiativeDecision,
   ProductInitiativeNotFoundError,
@@ -54,6 +58,9 @@ export class DecideProductInitiativeService {
     @Optional()
     @Inject(READ_MARKET_SIGNAL_LIVE)
     private readonly signalLive: ReadMarketSignalLivePort | null = null,
+    @Optional()
+    @Inject(PRODUCT_INITIATIVE_DRAFT_REPOSITORY)
+    private readonly drafts: ProductInitiativeDraftRepository | null = null,
   ) {}
 
   async execute(input: {
@@ -120,6 +127,7 @@ export class DecideProductInitiativeService {
         actorId: input.actorId,
         command: prepared,
       });
+      await this.drafts?.closeByHandoffId(input.tenantId, input.handoffId);
       return toProductInitiativeV1(result.record);
     } catch (error) {
       throwProductInitiativeHttpError(error);

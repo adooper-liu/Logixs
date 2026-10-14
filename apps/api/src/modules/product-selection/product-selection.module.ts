@@ -19,10 +19,13 @@ import { GetProductInitiativeService } from "./application/get-product-initiativ
 import { IntakeProductOpportunityService } from "./application/intake-product-opportunity.service";
 import { ListProductInitiativesService } from "./application/list-product-initiatives.service";
 import { ListProductOpportunitiesService } from "./application/list-product-opportunities.service";
+import { SaveProductInitiativeDraftService } from "./application/save-product-initiative-draft.service";
 import { PRODUCT_DEFINITION_REPOSITORY } from "./domain/product-definition.repository";
+import { PRODUCT_INITIATIVE_DRAFT_REPOSITORY } from "./domain/product-initiative-draft.repository";
 import { PRODUCT_INITIATIVE_REPOSITORY } from "./domain/product-initiative.repository";
 import { PRODUCT_OPPORTUNITY_REPOSITORY } from "./domain/product-opportunity.repository";
 import { PrismaProductDefinitionRepository } from "./infrastructure/prisma-product-definition.repository";
+import { PrismaProductInitiativeDraftRepository } from "./infrastructure/prisma-product-initiative-draft.repository";
 import { PrismaProductInitiativeRepository } from "./infrastructure/prisma-product-initiative.repository";
 import { PrismaProductOpportunityRepository } from "./infrastructure/prisma-product-opportunity.repository";
 import { ProductInitiativesController } from "./presentation/product-initiatives.controller";
@@ -51,6 +54,7 @@ import { SelectionReturnTakebackController } from "./presentation/selection-retu
     ListProductInitiativesService,
     GetProductInitiativeService,
     DecideProductInitiativeService,
+    SaveProductInitiativeDraftService,
     TakeBackSelectionReturnService,
     ListNpiQueueService,
     ClaimProductInitiativeService,
@@ -61,6 +65,10 @@ import { SelectionReturnTakebackController } from "./presentation/selection-retu
     {
       provide: PRODUCT_OPPORTUNITY_REPOSITORY,
       useClass: PrismaProductOpportunityRepository,
+    },
+    {
+      provide: PRODUCT_INITIATIVE_DRAFT_REPOSITORY,
+      useClass: PrismaProductInitiativeDraftRepository,
     },
     {
       provide: PRODUCT_INITIATIVE_REPOSITORY,

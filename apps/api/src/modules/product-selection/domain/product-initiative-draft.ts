@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   ProductInitiativeBusinessCaseDimensionDraftV1,
-  ProductInitiativeReviewPointV1,
+  ProductInitiativeReviewPointCodeV1,
   ProductInitiativeRiskAssessmentDraftV1,
   ProductInitiativeUnitEconomicsDraftV1,
   SaveProductInitiativeDecisionDraftCommandV1,
@@ -16,7 +16,11 @@ export interface PreparedProductInitiativeDecisionDraft {
   draftVersion: number;
   initiativeVersionSeen: number;
   objective: string | null;
-  reviewPoints: ProductInitiativeReviewPointV1[];
+  reviewPoints: {
+    code: ProductInitiativeReviewPointCodeV1;
+    evidenceRefs: string[];
+    conclusion: string | null;
+  }[];
   businessCaseDraft: ProductInitiativeBusinessCaseDimensionDraftV1[];
   riskAssessmentDraft: ProductInitiativeRiskAssessmentDraftV1[];
   unitEconomicsDraft: ProductInitiativeUnitEconomicsDraftV1 | null;
@@ -60,7 +64,11 @@ export function prepareProductInitiativeDecisionDraft(
     draftVersion: current.draftVersion + 1,
     initiativeVersionSeen,
     objective: optionalText(command.objective, "objective", 4000),
-    reviewPoints: structuredClone(command.reviewPoints),
+    reviewPoints: command.reviewPoints.map((point) => ({
+      code: point.code,
+      evidenceRefs: [...point.evidenceRefs],
+      conclusion: point.conclusion?.trim() || null,
+    })),
     businessCaseDraft: structuredClone(command.businessCaseDraft),
     riskAssessmentDraft: structuredClone(command.riskAssessmentDraft),
     unitEconomicsDraft: command.unitEconomicsDraft
