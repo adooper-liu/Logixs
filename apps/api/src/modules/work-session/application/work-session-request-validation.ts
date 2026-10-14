@@ -1,3 +1,5 @@
+import { BadRequestException } from "@nestjs/common";
+
 export function assertExactKeys(
   value: object,
   allowed: readonly string[],
@@ -9,6 +11,6 @@ export function assertExactKeys(
     keys.some((key) => !allowed.includes(key)) ||
     required.some((key) => !Object.hasOwn(value, key))
   ) {
-    throw new Error(`VALIDATION_FORMAT: ${field}`);
+    throw new BadRequestException(`VALIDATION_FORMAT: ${field}`);
   }
 }
