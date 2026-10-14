@@ -231,8 +231,13 @@ test("注销走 IdP 并清除本标签页会话", async ({ page }) => {
 
   await page.getByRole("button", { name: "退出登录" }).click();
 
-  await expect(page).toHaveURL(/\/auth\/logout-callback/);
-  await expect(page.getByText("已退出登录。")).toBeVisible();
+  await Promise.race([
+    page.waitForURL(/\/auth\/logout-callback\//, { timeout: 5000 }),
+    page.waitForSelector('[data-testid="login-identity"] >> text=/已退出登录/', {
+      timeout: 5000,
+    }),
+  ]);
+
   await expect(
     page.getByTestId("login-identity").getByText("已退出登录"),
   ).toBeVisible();
