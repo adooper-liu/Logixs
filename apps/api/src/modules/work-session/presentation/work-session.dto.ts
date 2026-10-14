@@ -48,6 +48,10 @@ export class WorkSessionActivateRequestDto implements WorkSessionActivateCommand
   @ApiProperty() expectedTargetSessionVersion!: number;
   @ApiProperty() sourceStatus!: WorkSessionActivateCommandV1["sourceStatus"];
   @ApiPropertyOptional({ nullable: true }) domainVersionSeen!: number | null;
+  @ApiPropertyOptional({ nullable: true }) sourceDomainVersionSeen!:
+    number | null;
+  @ApiPropertyOptional({ nullable: true }) sourceActiveItemKey!: string | null;
+  @ApiPropertyOptional({ nullable: true }) sourceContextMode!: string | null;
 }
 
 export class WorkSessionCloseRequestDto implements WorkSessionCloseCommandV1 {

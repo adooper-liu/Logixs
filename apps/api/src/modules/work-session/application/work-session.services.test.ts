@@ -58,6 +58,47 @@ describe("OpenWorkSessionService", () => {
       }),
     );
   });
+
+  it("rejects mismatched route and subject references before persistence", async () => {
+    const repository = repositoryHarness();
+    const service = new OpenWorkSessionService(repository);
+    await expect(
+      service.execute({
+        tenantId: "tenant-1",
+        actorId: "actor-1",
+        command: {
+          contractVersion: "work-session-open.v1",
+          workbenchCode: "product_selection",
+          routeContext: { kind: "product_selection.v1", handoffId: HANDOFF_ID },
+          subjectRef: {
+            kind: "product_initiative_handoff",
+            id: "33333333-3333-4333-8333-333333333333",
+          },
+          displaySummary: "错配现场",
+        },
+      }),
+    ).rejects.toThrow("WORK_SESSION_REFERENCE_MISMATCH");
+    expect(repository.openOrFocus).not.toHaveBeenCalled();
+  });
+
+  it("rejects undeclared request keys at runtime", async () => {
+    const repository = repositoryHarness();
+    const service = new OpenWorkSessionService(repository);
+    await expect(
+      service.execute({
+        tenantId: "tenant-1",
+        actorId: "actor-1",
+        command: {
+          contractVersion: "work-session-open.v1",
+          workbenchCode: "product_selection",
+          routeContext: { kind: "product_selection.v1", handoffId: HANDOFF_ID },
+          subjectRef: { kind: "product_initiative_handoff", id: HANDOFF_ID },
+          displaySummary: "选品",
+          arbitrary: "forbidden",
+        } as never,
+      }),
+    ).rejects.toThrow("VALIDATION_FORMAT: request");
+  });
 });
 
 describe("ActivateWorkSessionService", () => {
@@ -80,6 +121,9 @@ describe("ActivateWorkSessionService", () => {
           expectedTargetSessionVersion: 1,
           sourceStatus: "resumable",
           domainVersionSeen: 0,
+          sourceDomainVersionSeen: 0,
+          sourceActiveItemKey: null,
+          sourceContextMode: null,
         },
       }),
     ).rejects.toMatchObject({ status: 409 });

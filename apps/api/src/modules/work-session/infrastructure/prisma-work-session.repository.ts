@@ -157,6 +157,12 @@ export class PrismaWorkSessionRepository implements WorkSessionRepository {
         }),
       ]);
       if (!source || !target) notFound();
+      if (source.id === target.id) {
+        throw new WorkSessionConflictError("WORK_SESSION_SOURCE_TARGET_SAME");
+      }
+      if (source.status !== "current") {
+        throw new WorkSessionConflictError("WORK_SESSION_SOURCE_NOT_CURRENT");
+      }
       prepareWorkSessionActivation(
         {
           sourceVersion: source.version,
@@ -176,11 +182,39 @@ export class PrismaWorkSessionRepository implements WorkSessionRepository {
         );
       }
       const now = new Date();
+      let sourceDraft: { id: string; draftVersion: number } | null = null;
+      if (input.sourceStatus === "draft_saved") {
+        if (source.contextKind !== "product_selection.v1") {
+          throw new WorkSessionConflictError(
+            "WORK_SESSION_DRAFT_STATUS_UNSUPPORTED",
+          );
+        }
+        sourceDraft = await tx.productInitiativeDecisionDraft.findFirst({
+          where: {
+            tenantId: input.tenantId,
+            handoffId: source.subjectId,
+          },
+          select: { id: true, draftVersion: true },
+        });
+        if (!sourceDraft) {
+          throw new WorkSessionConflictError(
+            "WORK_SESSION_DOMAIN_DRAFT_NOT_FOUND",
+          );
+        }
+      }
       const updatedSource = await tx.workSession.update({
         where: { id: source.id },
         data: {
           version: { increment: 1 },
           status: input.sourceStatus,
+          domainVersionSeen: input.sourceDomainVersionSeen,
+          activeItemKey: input.sourceActiveItemKey,
+          contextMode: input.sourceContextMode,
+          draftKind: sourceDraft
+            ? "product_initiative_decision_draft"
+            : source.draftKind,
+          draftId: sourceDraft?.id ?? source.draftId,
+          draftVersion: sourceDraft?.draftVersion ?? source.draftVersion,
           updatedAt: now,
         },
       });
@@ -203,6 +237,11 @@ export class PrismaWorkSessionRepository implements WorkSessionRepository {
   async close(input: Parameters<WorkSessionRepository["close"]>[0]) {
     const current = await this.requireOwned(input);
     if (current.version !== input.expectedVersion) conflict();
+    if (current.status === "current") {
+      throw new WorkSessionConflictError(
+        "WORK_SESSION_CURRENT_CLOSE_REQUIRES_SWITCH",
+      );
+    }
     const row = await this.prisma.workSession.update({
       where: { id: current.id },
       data: {

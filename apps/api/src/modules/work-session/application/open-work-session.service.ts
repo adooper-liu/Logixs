@@ -6,6 +6,7 @@ import {
   type WorkSessionRepository,
   type WorkSessionRecord,
 } from "../domain/work-session.repository";
+import { assertExactKeys } from "./work-session-request-validation";
 
 @Injectable()
 export class OpenWorkSessionService {
@@ -25,6 +26,32 @@ export class OpenWorkSessionService {
     if (input.command.contractVersion !== "work-session-open.v1") {
       throw new Error("VALIDATION_FORMAT: contractVersion");
     }
+    assertExactKeys(
+      input.command,
+      [
+        "contractVersion",
+        "workbenchCode",
+        "routeContext",
+        "subjectRef",
+        "taskRef",
+        "draftRef",
+        "domainVersionSeen",
+        "activeItemKey",
+        "contextMode",
+        "displaySummary",
+      ],
+      [
+        "contractVersion",
+        "workbenchCode",
+        "routeContext",
+        "subjectRef",
+        "displaySummary",
+      ],
+    );
+    assertReferenceCoherence(input.command);
+    if (input.command.draftRef !== undefined) {
+      throw new Error("WORK_SESSION_DRAFT_REF_SERVER_DERIVED");
+    }
     const result = await this.repository.openOrFocus({
       tenantId: input.tenantId,
       actorId: input.actorId,
@@ -33,13 +60,37 @@ export class OpenWorkSessionService {
       routeContext: input.command.routeContext,
       subjectRef: input.command.subjectRef,
       taskRef: input.command.taskRef ?? null,
-      draftRef: input.command.draftRef ?? null,
+      draftRef: null,
       domainVersionSeen: input.command.domainVersionSeen ?? null,
       activeItemKey: input.command.activeItemKey ?? null,
       contextMode: input.command.contextMode ?? null,
       displaySummary: input.command.displaySummary,
     });
     return toWorkSessionV1(result.record);
+  }
+}
+
+function assertReferenceCoherence(command: WorkSessionOpenCommandV1): void {
+  const context = command.routeContext;
+  if (context.kind === "product_selection.v1") {
+    if (
+      command.workbenchCode !== "product_selection" ||
+      command.subjectRef.kind !== "product_initiative_handoff" ||
+      command.subjectRef.id !== context.handoffId ||
+      command.taskRef
+    ) {
+      throw new Error("WORK_SESSION_REFERENCE_MISMATCH");
+    }
+    return;
+  }
+  if (
+    command.workbenchCode !== "stuffing" ||
+    command.subjectRef.kind !== "container" ||
+    command.subjectRef.id !== context.containerId ||
+    command.taskRef?.kind !== "node_task" ||
+    command.taskRef.id !== context.taskId
+  ) {
+    throw new Error("WORK_SESSION_REFERENCE_MISMATCH");
   }
 }
 

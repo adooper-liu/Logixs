@@ -16,6 +16,7 @@ import type {
   StuffingQueueFilter,
   StuffingQueueItem,
 } from "../data/stuffingWorkbench";
+import { getProductInitiative } from "../api/marketSignals";
 import { getContainerStuffingSnapshot } from "../api/containerStuffing";
 import { useWorkbenchSessionSwitcher } from "../work-session/useWorkbenchSessionSwitcher";
 import type { WorkSessionSwitchAdapter } from "../work-session/workSessionAdapter";
@@ -69,14 +70,25 @@ const sessionAdapter: WorkSessionSwitchAdapter & { discardLocal(): void } = {
     };
   },
   async validateTarget(session) {
-    if (session.routeContext.kind !== "stuffing.v1") {
-      return { kind: "failed", message: "目标工作现场类型不匹配" };
-    }
     try {
-      const latest = await getContainerStuffingSnapshot(
-        session.routeContext.containerId,
-      );
-      return { kind: "ready", domainVersionSeen: latest?.version ?? 0 };
+      const latestVersion =
+        session.routeContext.kind === "product_selection.v1"
+          ? ((await getProductInitiative(session.routeContext.handoffId))
+              .initiative?.version ?? 0)
+          : ((
+              await getContainerStuffingSnapshot(
+                session.routeContext.containerId,
+              )
+            )?.version ?? 0);
+      if (session.domainVersionSeen !== latestVersion) {
+        return {
+          kind: "conflict",
+          seenVersion: session.domainVersionSeen ?? null,
+          latestVersion,
+          message: `目标装箱版本已从 ${session.domainVersionSeen ?? "未知"} 更新为 ${latestVersion}；请先比较最新装箱事实。`,
+        };
+      }
+      return { kind: "ready", domainVersionSeen: latestVersion };
     } catch (caught) {
       return {
         kind: "failed",

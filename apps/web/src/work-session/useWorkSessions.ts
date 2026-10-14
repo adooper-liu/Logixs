@@ -4,6 +4,12 @@ import type { WorkSessionSwitchAdapter } from "./workSessionAdapter";
 export type SwitchWorkSessionResult =
   | { kind: "switched"; session: WorkSessionV1 }
   | { kind: "needs-choice"; choices: readonly string[] }
+  | {
+      kind: "conflict";
+      seenVersion: number | null;
+      latestVersion: number | null;
+      message: string;
+    }
   | { kind: "failed"; message: string };
 
 export async function switchWorkSession(input: {

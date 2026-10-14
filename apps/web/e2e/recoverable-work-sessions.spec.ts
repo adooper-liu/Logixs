@@ -71,6 +71,19 @@ test("stuffing dirty input never claims a server draft", async ({ page }) => {
   await expect(page.getByText("在新标签页打开目标")).toBeVisible();
   await expect(page.getByText("留在当前页")).toBeVisible();
   await expect(page.getByText("保存领域草稿并切换")).toHaveCount(0);
+
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByText("在新标签页打开目标", { exact: true }).click();
+  const popup = await popupPromise;
+  await popup.waitForURL(
+    new RegExp(`/workspaces/product-selection\\?handoffId=${HANDOFF}$`),
+  );
+  expect(page.url()).toContain("/workspaces/stuffing");
+  await expect(seal).toHaveValue("NEW-SEAL");
+  expect(popup.url()).toContain(
+    `/workspaces/product-selection?handoffId=${HANDOFF}`,
+  );
+  await popup.close();
 });
 
 async function mockRecoverableSessions(page: Page): Promise<void> {
@@ -88,6 +101,21 @@ async function mockRecoverableSessions(page: Page): Promise<void> {
       await route.fulfill({ json: sessionFor(body.workbenchCode) });
       return;
     }
+    if (/^\/api\/work-sessions\/[^/]+\/activate$/.test(path)) {
+      const target = path.includes(STUFFING_SESSION)
+        ? "stuffing"
+        : "product_selection";
+      await route.fulfill({ json: sessionFor(target) });
+      return;
+    }
+    if (/^\/api\/work-sessions\/[^/]+\/pointer$/.test(path)) {
+      await route.fulfill({
+        json: sessionFor(
+          page.url().includes("stuffing") ? "stuffing" : "product_selection",
+        ),
+      });
+      return;
+    }
     if (path === "/api/product-opportunities") {
       await route.fulfill({ json: opportunityPage() });
       return;
@@ -96,7 +124,10 @@ async function mockRecoverableSessions(page: Page): Promise<void> {
       await route.fulfill({ json: initiativeQueue() });
       return;
     }
-    if (path === `/api/product-initiatives/${HANDOFF}`) {
+    if (
+      path === `/api/product-initiatives/${HANDOFF}` ||
+      path === `/api/product-initiatives/${OTHER_HANDOFF}`
+    ) {
       await route.fulfill({ json: initiativeDetail() });
       return;
     }

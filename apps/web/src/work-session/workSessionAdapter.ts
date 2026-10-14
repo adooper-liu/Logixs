@@ -13,6 +13,12 @@ export type SourceSettlement =
 
 export type TargetValidation =
   | { kind: "ready"; domainVersionSeen: number | null }
+  | {
+      kind: "conflict";
+      seenVersion: number | null;
+      latestVersion: number | null;
+      message: string;
+    }
   | { kind: "failed"; message: string };
 
 export interface WorkSessionSwitchAdapter {

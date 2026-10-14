@@ -9,6 +9,7 @@ import {
 } from "../domain/work-session.repository";
 import { toWorkSessionV1 } from "./open-work-session.service";
 import { throwWorkSessionHttpError } from "./work-session-errors";
+import { assertExactKeys } from "./work-session-request-validation";
 
 @Injectable()
 export class ActivateWorkSessionService {
@@ -23,6 +24,34 @@ export class ActivateWorkSessionService {
     targetSessionId: string;
     command: WorkSessionActivateCommandV1;
   }): Promise<WorkSessionV1> {
+    assertExactKeys(
+      input.command,
+      [
+        "contractVersion",
+        "sourceSessionId",
+        "expectedSourceSessionVersion",
+        "expectedTargetSessionVersion",
+        "sourceStatus",
+        "domainVersionSeen",
+        "sourceDomainVersionSeen",
+        "sourceActiveItemKey",
+        "sourceContextMode",
+      ],
+      [
+        "contractVersion",
+        "sourceSessionId",
+        "expectedSourceSessionVersion",
+        "expectedTargetSessionVersion",
+        "sourceStatus",
+        "domainVersionSeen",
+        "sourceDomainVersionSeen",
+        "sourceActiveItemKey",
+        "sourceContextMode",
+      ],
+    );
+    if (input.command.contractVersion !== "work-session-activate.v1") {
+      throw new Error("VALIDATION_FORMAT: contractVersion");
+    }
     try {
       const result = await this.repository.activate({
         tenantId: input.tenantId,
@@ -32,6 +61,9 @@ export class ActivateWorkSessionService {
         expectedSourceVersion: input.command.expectedSourceSessionVersion,
         expectedTargetVersion: input.command.expectedTargetSessionVersion,
         sourceStatus: input.command.sourceStatus,
+        sourceDomainVersionSeen: input.command.sourceDomainVersionSeen,
+        sourceActiveItemKey: input.command.sourceActiveItemKey,
+        sourceContextMode: input.command.sourceContextMode,
         targetDomainVersionSeen: input.command.domainVersionSeen,
       });
       return toWorkSessionV1(result.target);

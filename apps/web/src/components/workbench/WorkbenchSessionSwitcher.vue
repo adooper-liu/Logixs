@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import type { WorkSessionV1 } from "@logix/contracts";
 import type { DirtyChoice } from "../../work-session/workSessionAdapter";
 import type { SwitchWorkSessionResult } from "../../work-session/useWorkSessions";
@@ -54,7 +54,9 @@ async function select(session: WorkSessionV1): Promise<void> {
     trigger.value?.focus();
     return;
   }
-  if (result.kind === "failed") feedback.value = result.message;
+  if (result.kind === "failed" || result.kind === "conflict") {
+    feedback.value = result.message;
+  }
   if (result.kind === "needs-choice") {
     pendingSession.value = session;
     pendingChoices.value = result.choices as readonly DirtyChoice[];
@@ -77,7 +79,7 @@ async function resolveChoice(choice: DirtyChoice): Promise<void> {
     open.value = false;
     await nextTick();
     trigger.value?.focus();
-  } else if (result.kind === "failed") {
+  } else if (result.kind === "failed" || result.kind === "conflict") {
     feedback.value = result.message;
   }
 }
@@ -88,10 +90,31 @@ function close(): void {
   void nextTick(() => trigger.value?.focus());
 }
 
+function focusable(): HTMLElement[] {
+  return Array.from(
+    panel.value?.querySelectorAll<HTMLElement>(
+      "button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+    ) ?? [],
+  ).filter((element) => element.getClientRects().length > 0);
+}
+
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape") {
     event.preventDefault();
     close();
+    return;
+  }
+  if (event.key !== "Tab" || !open.value) return;
+  const controls = focusable();
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
@@ -103,9 +126,21 @@ function onDocumentPointer(event: PointerEvent): void {
 }
 
 document.addEventListener("pointerdown", onDocumentPointer);
-onBeforeUnmount(() =>
-  document.removeEventListener("pointerdown", onDocumentPointer),
-);
+watch(open, (value) => {
+  const root = trigger.value?.closest(".workbench-layout");
+  const workspace = root?.querySelector<HTMLElement>(
+    ".workbench-layout__workspace",
+  );
+  if (workspace) workspace.inert = value;
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", onDocumentPointer);
+  const workspace = trigger.value
+    ?.closest(".workbench-layout")
+    ?.querySelector<HTMLElement>(".workbench-layout__workspace");
+  if (workspace) workspace.inert = false;
+});
 
 function statusLabel(status: WorkSessionV1["status"]): string {
   return {

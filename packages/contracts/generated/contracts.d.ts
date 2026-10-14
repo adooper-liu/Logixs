@@ -2551,6 +2551,9 @@ expectedSourceSessionVersion: number
 expectedTargetSessionVersion: number
 sourceStatus: ("resumable" | "draft_saved" | "browser_held" | "conflict")
 domainVersionSeen: (number | null)
+sourceDomainVersionSeen: (number | null)
+sourceActiveItemKey: (string | null)
+sourceContextMode: (string | null)
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema

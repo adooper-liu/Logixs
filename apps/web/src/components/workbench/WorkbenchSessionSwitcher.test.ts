@@ -47,6 +47,24 @@ describe("WorkbenchSessionSwitcher", () => {
     expect(resolveChoice).toHaveBeenCalledWith(sessions[1], "save");
   });
 
+  it("traps keyboard focus inside the modal and returns focus on Escape", async () => {
+    const wrapper = mount(WorkbenchSessionSwitcher, {
+      attachTo: document.body,
+      props: { sessions, onSelect: vi.fn() },
+    });
+    const trigger = wrapper.get('[aria-label="切换工作现场"]');
+    await trigger.trigger("click");
+    const dialog = wrapper.get('[role="dialog"]');
+    const controls = dialog.findAll("button");
+    controls.at(-1)!.element.focus();
+    await dialog.trigger("keydown", { key: "Tab" });
+    expect(document.activeElement).toBe(controls[0]!.element);
+    await dialog.trigger("keydown", { key: "Escape" });
+    await wrapper.vm.$nextTick();
+    expect(document.activeElement).toBe(trigger.element);
+    wrapper.unmount();
+  });
+
   it("keeps the current marker when switching fails", async () => {
     const wrapper = mount(WorkbenchSessionSwitcher, {
       props: {

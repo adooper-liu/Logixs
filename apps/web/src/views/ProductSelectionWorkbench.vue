@@ -2,6 +2,7 @@
 import { AlertCircle, RefreshCw } from "@lucide/vue";
 import { computed, nextTick, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { getContainerStuffingSnapshot } from "../api/containerStuffing";
 import { getProductInitiative } from "../api/marketSignals";
 import ProductEvaluationRequirementsPanel from "../components/product-selection/ProductEvaluationRequirementsPanel.vue";
 import ProductInitiativeOutcomePanel from "../components/product-selection/ProductInitiativeOutcomePanel.vue";
@@ -274,14 +275,27 @@ const sessionAdapter: WorkSessionSwitchAdapter & { discardLocal(): void } = {
     return { kind: "needs-choice", choices: ["save", "discard", "stay"] };
   },
   async validateTarget(session) {
-    if (session.routeContext.kind !== "product_selection.v1") {
-      return { kind: "failed", message: "目标工作现场类型不匹配" };
-    }
     try {
-      const loaded = await getProductInitiative(session.routeContext.handoffId);
+      const latestVersion =
+        session.routeContext.kind === "product_selection.v1"
+          ? ((await getProductInitiative(session.routeContext.handoffId))
+              .initiative?.version ?? 0)
+          : ((
+              await getContainerStuffingSnapshot(
+                session.routeContext.containerId,
+              )
+            )?.version ?? 0);
+      if (session.domainVersionSeen !== latestVersion) {
+        return {
+          kind: "conflict",
+          seenVersion: session.domainVersionSeen ?? null,
+          latestVersion,
+          message: `目标现场版本已从 ${session.domainVersionSeen ?? "未知"} 更新为 ${latestVersion}；请先比较最新事实。`,
+        };
+      }
       return {
         kind: "ready",
-        domainVersionSeen: loaded.initiative?.version ?? 0,
+        domainVersionSeen: latestVersion,
       };
     } catch (caught) {
       return {

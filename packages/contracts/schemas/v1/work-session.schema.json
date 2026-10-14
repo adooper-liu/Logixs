@@ -195,7 +195,10 @@
         "expectedSourceSessionVersion",
         "expectedTargetSessionVersion",
         "sourceStatus",
-        "domainVersionSeen"
+        "domainVersionSeen",
+        "sourceDomainVersionSeen",
+        "sourceActiveItemKey",
+        "sourceContextMode"
       ],
       "properties": {
         "contractVersion": { "const": "work-session-activate.v1" },
@@ -205,7 +208,19 @@
         "sourceStatus": {
           "enum": ["resumable", "draft_saved", "browser_held", "conflict"]
         },
-        "domainVersionSeen": { "type": ["integer", "null"], "minimum": 0 }
+        "domainVersionSeen": { "type": ["integer", "null"], "minimum": 0 },
+        "sourceDomainVersionSeen": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "sourceActiveItemKey": {
+          "type": ["string", "null"],
+          "maxLength": 200
+        },
+        "sourceContextMode": {
+          "type": ["string", "null"],
+          "maxLength": 100
+        }
       }
     },
     "WorkSessionCloseCommandV1": {

@@ -8,6 +8,8 @@ import {
   type WorkSessionRepository,
 } from "../domain/work-session.repository";
 import { toWorkSessionV1 } from "./open-work-session.service";
+import { assertExactKeys } from "./work-session-request-validation";
+import { throwWorkSessionHttpError } from "./work-session-errors";
 
 @Injectable()
 export class CloseWorkSessionService {
@@ -22,13 +24,25 @@ export class CloseWorkSessionService {
     sessionId: string;
     command: WorkSessionCloseCommandV1;
   }): Promise<WorkSessionV1> {
-    return toWorkSessionV1(
-      await this.repository.close({
-        tenantId: input.tenantId,
-        actorId: input.actorId,
-        sessionId: input.sessionId,
-        expectedVersion: input.command.expectedVersion,
-      }),
+    assertExactKeys(
+      input.command,
+      ["contractVersion", "expectedVersion"],
+      ["contractVersion", "expectedVersion"],
     );
+    if (input.command.contractVersion !== "work-session-close.v1") {
+      throw new Error("VALIDATION_FORMAT: contractVersion");
+    }
+    try {
+      return toWorkSessionV1(
+        await this.repository.close({
+          tenantId: input.tenantId,
+          actorId: input.actorId,
+          sessionId: input.sessionId,
+          expectedVersion: input.command.expectedVersion,
+        }),
+      );
+    } catch (error) {
+      throwWorkSessionHttpError(error);
+    }
   }
 }

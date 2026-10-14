@@ -73,6 +73,9 @@ export interface WorkSessionRepository {
     expectedSourceVersion: number;
     expectedTargetVersion: number;
     sourceStatus: Exclude<WorkSessionStatusV1, "current" | "closed">;
+    sourceDomainVersionSeen: number | null;
+    sourceActiveItemKey: string | null;
+    sourceContextMode: string | null;
     targetDomainVersionSeen: number | null;
   }): Promise<{ source: WorkSessionRecord; target: WorkSessionRecord }>;
   close(input: {
