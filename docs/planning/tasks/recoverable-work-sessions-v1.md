@@ -280,3 +280,17 @@ uiViewportEvidence:
 - contract:check、contract:drift、data-dictionary:check、db:generate、root lint/typecheck/build、workbench-purposes:check 和 git diff --check 通过。
 - pnpm validate 与 pnpm test 在既有 .superpowers/sdd/2026-10-13-full-chain-rehearsal-domain-adapter/** 临时副本的失效链接检查处失败；未进入其后的门禁，未删除他人临时证据，也未声称完整 validate 通过。相关生产门禁已按上列命令逐项执行。
 - fresh Claude 整体复审已完成；9 项 findings 全部 accepted 并在唯一修复批次处置，当前回到 `review`，外部 push/PR/CI 尚未执行。
+
+## 独立复审裁决（2026-10-14）
+
+- `WS-REV-001 accepted/fixed`：activate 要求 source 是真实 current 且 source != target；真实 PostgreSQL 并发 A→B / A→C 只有一人成功，另一人稳定冲突，数据库仍恰好一个 current。
+- `WS-REV-002 accepted/fixed`：来源指针与 sourceStatus 并入 activate 同一事务，前端不再先 PATCH 来源；目标拒绝或冲突不产生来源部分提交。
+- `WS-REV-003 accepted/fixed`：两个消费者重读后比较 `domainVersionSeen`；不一致先把目标标为 conflict 并显示 seen/latest，未进入 write context。
+- `WS-REV-004 accepted/fixed`：装箱 `new-tab` 预开真实标签页、验证目标、原子 activate 后导航；Playwright 证明原标签和未保存 seal 保留，目标进入新标签页。
+- `WS-REV-005 accepted/fixed`：Open/Update/Activate/Close 对 top-level keys、contractVersion、RouteContext/subject/task 一致性、状态和版本做运行时失败关闭；客户端 draftRef 被拒绝，`draft_saved` 只在事务内绑定真实领域草稿。
+- `WS-REV-006 accepted/fixed`：接入 BroadcastChannel、window focus、visibilitychange 与 sessionStorage active pointer；每次变更发布并重读服务端唯一 current。
+- `WS-REV-007 accepted/fixed`：关闭 current 固定 409，必须先切换；不会留下零 current。
+- `WS-REV-008 accepted/fixed`：切换器补 Tab/Shift+Tab 循环、Escape/关闭后焦点返回，并在打开时令工作区 inert。
+- `WS-REV-009 accepted/fixed`：撤回未直接验真的验收勾选；修复后证据更新为 API 1611、Web 764、integration 224、E2E 12/12，完整 validate 仍如实记录为既有临时副本链接阻塞。
+
+所有 accepted finding 均已用失败反证转绿并完成相关全套回归；按执行纪律不发起第二轮 reviewer。无 deferred minor。
