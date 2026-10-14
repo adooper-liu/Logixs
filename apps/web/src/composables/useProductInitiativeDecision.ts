@@ -23,6 +23,7 @@ import {
   decideProductInitiative,
   getProductInitiative,
   registerMarketSignalEvidence,
+  saveProductInitiativeDraft,
 } from "../api/marketSignals";
 
 export const REVIEW_POINTS = [
@@ -264,6 +265,10 @@ export function useProductInitiativeDecision(options: {
     >,
   );
   const touchedRiskCodes = new Set<ProductInitiativeRiskCodeV1>();
+  const draftBaseline = shallowRef("");
+  const decisionDraftVersion = computed(
+    () => detail.value?.decisionDraft?.draftVersion ?? 0,
+  );
 
   // 三个带原因的去向各存各的：来回切换时已写了一半的依据不该被清掉，
   // 也不该把暂缓的理由带到退回里。
@@ -519,6 +524,71 @@ export function useProductInitiativeDecision(options: {
     }
   }
 
+  const isDraftDirty = computed(
+    () => draftBaseline.value !== serializeDraftForComparison(),
+  );
+
+  async function saveDraft(): Promise<boolean> {
+    const handoffId = toValue(options.handoffId);
+    if (!handoffId || saving.value) return false;
+    saving.value = true;
+    error.value = null;
+    receipt.value = null;
+    try {
+      const saved = await saveProductInitiativeDraft(handoffId, {
+        contractVersion: "product-initiative-decision-draft-save.v1",
+        expectedDraftVersion: decisionDraftVersion.value,
+        initiativeVersionSeen: initiative.value?.version ?? 0,
+        ...draftPayload(),
+        idempotencyKey: `product-initiative-draft:${handoffId}:${decisionDraftVersion.value}:${crypto.randomUUID()}`,
+      });
+      detail.value = detail.value
+        ? { ...detail.value, decisionDraft: saved }
+        : detail.value;
+      draftBaseline.value = serializeDraftForComparison();
+      receipt.value = "立项草稿已保存；没有改变正式去向、责任或交接。";
+      return true;
+    } catch (caught) {
+      error.value = initiativeErrorMessage(message(caught));
+      return false;
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  function draftPayload() {
+    return {
+      objective: objective.value.trim() || null,
+      reviewPoints: REVIEW_POINTS.map(({ code }) => ({
+        code,
+        evidenceRefs: [...points[code].evidenceRefs],
+        conclusion: points[code].conclusion.trim() || null,
+      })),
+      businessCaseDraft: BUSINESS_CASE_DIMENSIONS.map(({ code }) => ({
+        dimensionCode: code,
+        ...(businessCase[code].decision
+          ? { decision: businessCase[code].decision }
+          : {}),
+        conclusion: businessCase[code].conclusion.trim() || null,
+        evidenceRefs: [...businessCase[code].evidenceRefs],
+        criticalUnknown: businessCase[code].criticalUnknown.trim() || null,
+      })),
+      riskAssessmentDraft: RISK_ASSESSMENTS.filter(({ code }) =>
+        touchedRiskCodes.has(code),
+      ).map(({ code }) => ({ ...riskAssessment[code] })),
+      unitEconomicsDraft: serializeUnitEconomicsDraft(
+        unitEconomicsDraft,
+        channelCode.value,
+      ),
+      negativeConservativeReason:
+        negativeConservativeReason.value.trim() || null,
+    };
+  }
+
+  function serializeDraftForComparison(): string {
+    return JSON.stringify(draftPayload());
+  }
+
   /** 没有可读的机会时清空草稿，避免把上一条的引用、原因和去向留给下一条。 */
   function reset(): void {
     detail.value = null;
@@ -544,6 +614,11 @@ export function useProductInitiativeDecision(options: {
     }
     for (const { code } of BUSINESS_CASE_DIMENSIONS)
       businessCase[code] = emptyBusinessCaseDimension();
+    for (const { code } of RISK_ASSESSMENTS) {
+      Object.assign(riskAssessment[code], emptyRiskAssessment(code));
+      touchedRiskCodes.delete(code);
+    }
+    draftBaseline.value = serializeDraftForComparison();
   }
 
   /**
@@ -554,10 +629,11 @@ export function useProductInitiativeDecision(options: {
    * —— 服务端 `reason` 是整体覆盖写入，没有历史可恢复。
    */
   function hydrate(loaded: ProductInitiativeDetailV1): void {
-    const saved = loaded.initiative;
+    const formal = loaded.initiative;
+    const saved = loaded.decisionDraft ?? formal;
     objective.value = saved?.objective ?? "";
     // `returned_from_npi` 不是选品决定去向，不能回填进决定草稿。
-    const outcome = saved?.outcome;
+    const outcome = formal?.outcome;
     destination.value =
       outcome === "approve" ||
       outcome === "defer" ||
@@ -566,22 +642,22 @@ export function useProductInitiativeDecision(options: {
         ? outcome
         : "approve";
     deferReason.value =
-      saved?.outcome === "defer"
-        ? (saved.validationFocus ?? saved.reason ?? "")
+      formal?.outcome === "defer"
+        ? (formal.validationFocus ?? formal.reason ?? "")
         : "";
-    acceptResponsibility.value = saved?.responsibilityAccepted ?? false;
-    receivingTeamOrRole.value = saved?.receivingTeamOrRole ?? "";
-    resourceDescription.value = saved?.resourceDescription ?? "";
-    targetDate.value = saved?.targetDate ?? "";
-    nextDecisionDate.value = saved?.nextDecisionDate ?? "";
-    nextDecisionQuestion.value = saved?.nextDecisionQuestion ?? "";
-    reconsiderationDate.value = saved?.reconsiderationDate ?? "";
+    acceptResponsibility.value = formal?.responsibilityAccepted ?? false;
+    receivingTeamOrRole.value = formal?.receivingTeamOrRole ?? "";
+    resourceDescription.value = formal?.resourceDescription ?? "";
+    targetDate.value = formal?.targetDate ?? "";
+    nextDecisionDate.value = formal?.nextDecisionDate ?? "";
+    nextDecisionQuestion.value = formal?.nextDecisionQuestion ?? "";
+    reconsiderationDate.value = formal?.reconsiderationDate ?? "";
     rejectReason.value =
-      saved?.outcome === "reject" ? (saved.reason ?? "") : "";
+      formal?.outcome === "reject" ? (formal.reason ?? "") : "";
     returnReason.value =
-      saved?.outcome === "return_to_market" ? (saved.reason ?? "") : "";
+      formal?.outcome === "return_to_market" ? (formal.reason ?? "") : "";
     returnBasis.value =
-      saved?.outcome === "return_to_market" ? (saved.returnBasis ?? "") : "";
+      formal?.outcome === "return_to_market" ? (formal.returnBasis ?? "") : "";
     Object.assign(
       unitEconomicsDraft,
       unitEconomicsDraftFrom(saved?.unitEconomicsDraft ?? null),
@@ -589,7 +665,7 @@ export function useProductInitiativeDecision(options: {
     negativeConservativeReason.value = saved?.negativeConservativeReason ?? "";
     unitEconomicsDirty.value = false;
     serverUnitEconomicsPending.value = new Set(
-      (saved?.pendingFieldCodes ?? []).filter(isUnitEconomicsPendingCode),
+      (formal?.pendingFieldCodes ?? []).filter(isUnitEconomicsPendingCode),
     );
     for (const point of REVIEW_POINTS) {
       const savedPoint = saved?.reviewPoints.find(
@@ -622,6 +698,7 @@ export function useProductInitiativeDecision(options: {
       if (savedRisk) touchedRiskCodes.add(code);
       else touchedRiskCodes.delete(code);
     }
+    draftBaseline.value = serializeDraftForComparison();
   }
 
   function updateRisk(
@@ -868,6 +945,8 @@ export function useProductInitiativeDecision(options: {
     saving,
     error,
     receipt,
+    isDraftDirty,
+    decisionDraftVersion,
     objective,
     acceptResponsibility,
     receivingTeamOrRole,
@@ -900,6 +979,7 @@ export function useProductInitiativeDecision(options: {
     toggleUnitEconomicsEvidence,
     setNegativeConservativeReason,
     addEvidence,
+    saveDraft,
     decide,
   };
 }

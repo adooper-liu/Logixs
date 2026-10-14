@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import type { WorkSessionV1 } from "@logix/contracts";
+import type { DirtyChoice } from "../../work-session/workSessionAdapter";
 import type { SwitchWorkSessionResult } from "../../work-session/useWorkSessions";
 
 const props = withDefaults(
   defineProps<{
     sessions: readonly WorkSessionV1[];
     onSelect: (session: WorkSessionV1) => Promise<SwitchWorkSessionResult>;
+    onResolveChoice?: (
+      session: WorkSessionV1,
+      choice: DirtyChoice,
+    ) => Promise<SwitchWorkSessionResult>;
     triggerLabel?: string;
   }>(),
-  { triggerLabel: "切换工作现场" },
+  { triggerLabel: "切换工作现场", onResolveChoice: undefined },
 );
 
 const open = ref(false);
 const busyId = ref<string | null>(null);
 const feedback = ref("");
+const pendingSession = ref<WorkSessionV1 | null>(null);
+const pendingChoices = ref<readonly DirtyChoice[]>([]);
 const trigger = ref<HTMLButtonElement | null>(null);
 const panel = ref<HTMLElement | null>(null);
 const current = computed(() =>
@@ -40,12 +47,39 @@ async function select(session: WorkSessionV1): Promise<void> {
   const result = await props.onSelect(session);
   busyId.value = null;
   if (result.kind === "switched") {
+    pendingSession.value = null;
+    pendingChoices.value = [];
     open.value = false;
     await nextTick();
     trigger.value?.focus();
     return;
   }
   if (result.kind === "failed") feedback.value = result.message;
+  if (result.kind === "needs-choice") {
+    pendingSession.value = session;
+    pendingChoices.value = result.choices as readonly DirtyChoice[];
+  }
+}
+
+async function resolveChoice(choice: DirtyChoice): Promise<void> {
+  const session = pendingSession.value;
+  if (!session) return;
+  if (choice === "stay") {
+    pendingSession.value = null;
+    pendingChoices.value = [];
+    return;
+  }
+  if (!props.onResolveChoice) return;
+  const result = await props.onResolveChoice(session, choice);
+  if (result.kind === "switched") {
+    pendingSession.value = null;
+    pendingChoices.value = [];
+    open.value = false;
+    await nextTick();
+    trigger.value?.focus();
+  } else if (result.kind === "failed") {
+    feedback.value = result.message;
+  }
 }
 
 function close(): void {
@@ -116,6 +150,30 @@ function statusLabel(status: WorkSessionV1["status"]): string {
       <p v-if="feedback" class="session-switcher__feedback" role="alert">
         {{ feedback }}
       </p>
+      <section
+        v-if="pendingSession"
+        class="session-switcher__choices"
+        aria-label="离开前处理未保存输入"
+      >
+        <p>当前输入尚未处理，选择后再切换。</p>
+        <button
+          v-for="choice in pendingChoices"
+          :key="choice"
+          type="button"
+          :data-dirty-choice="choice"
+          @click="resolveChoice(choice)"
+        >
+          {{
+            choice === "save"
+              ? "保存领域草稿并切换"
+              : choice === "discard"
+                ? "放弃本地改动并切换"
+                : choice === "new-tab"
+                  ? "在新标签页打开目标"
+                  : "留在当前页"
+          }}
+        </button>
+      </section>
       <button
         v-for="session in sessions"
         :key="session.sessionId"
@@ -187,6 +245,24 @@ function statusLabel(status: WorkSessionV1["status"]): string {
 .session-switcher__item[aria-current="true"] {
   border-color: var(--brand);
   background: var(--brand-soft);
+}
+.session-switcher__choices {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--warn);
+  background: var(--warn-bg);
+}
+.session-switcher__choices p {
+  margin: 0;
+}
+.session-switcher__choices button {
+  min-height: var(--touch-target);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
 }
 .session-switcher__feedback {
   margin: 0;

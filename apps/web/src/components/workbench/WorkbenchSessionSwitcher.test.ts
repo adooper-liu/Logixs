@@ -22,6 +22,31 @@ describe("WorkbenchSessionSwitcher", () => {
     expect(wrapper.text()).toContain("待续办");
   });
 
+  it("shows truthful dirty choices before retrying a switch", async () => {
+    const resolveChoice = vi.fn(async () => ({
+      kind: "switched" as const,
+      session: { ...sessions[1]!, status: "current" as const },
+    }));
+    const wrapper = mount(WorkbenchSessionSwitcher, {
+      props: {
+        sessions,
+        onSelect: vi.fn(async () => ({
+          kind: "needs-choice" as const,
+          choices: ["save", "discard", "stay"] as const,
+        })),
+        onResolveChoice: resolveChoice,
+      },
+    });
+
+    await wrapper.get('[aria-label="切换工作现场"]').trigger("click");
+    await wrapper.get('[data-session-id="stuffing"]').trigger("click");
+    expect(wrapper.text()).toContain("保存领域草稿并切换");
+    expect(wrapper.text()).toContain("放弃本地改动并切换");
+    expect(wrapper.text()).toContain("留在当前页");
+    await wrapper.get('[data-dirty-choice="save"]').trigger("click");
+    expect(resolveChoice).toHaveBeenCalledWith(sessions[1], "save");
+  });
+
   it("keeps the current marker when switching fails", async () => {
     const wrapper = mount(WorkbenchSessionSwitcher, {
       props: {
