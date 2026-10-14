@@ -32,6 +32,19 @@ describe("role-capabilities", () => {
     );
   });
 
+  it("grants personal work session management without granting domain writes", () => {
+    for (const role of [
+      "operations_dispatcher",
+      "review_supervisor",
+      "manager",
+      "business_admin",
+      "audit_analyst",
+    ]) {
+      expect(capabilitiesForRoles([role])).toContain("work_session.manage");
+    }
+    expect(capabilitiesForRoles(["manager"])).not.toContain("planning.draft");
+  });
+
   it("unions capabilities across roles and ignores unknown roles", () => {
     const caps = capabilitiesForRoles([
       "field_operator",

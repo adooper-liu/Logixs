@@ -30,6 +30,7 @@ import { ShipmentLifecycleOrchestrationModule } from "./modules/shipment-lifecyc
 import { WorkExecutionModule } from "./modules/work-execution";
 import { WorkbenchNetworkModule } from "./modules/workbench-network";
 import { WorkflowModule } from "./modules/workflow";
+import { WorkSessionModule } from "./modules/work-session";
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { WorkflowModule } from "./modules/workflow";
     WorkbenchNetworkModule,
     WorkExecutionModule,
     WorkflowModule,
+    WorkSessionModule,
   ],
   controllers: [HealthController],
 })

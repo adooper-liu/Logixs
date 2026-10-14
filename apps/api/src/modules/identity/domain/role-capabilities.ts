@@ -32,6 +32,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "compliance.read",
     "reliability.read",
     "notification.read",
+    "work_session.manage",
   ],
   import_operator: [
     "container.read",
@@ -55,6 +56,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "reliability.recover",
     "notification.read",
     "audit.read",
+    "work_session.manage",
   ],
   finance_controller: [
     "container.read",
@@ -64,6 +66,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "charges.read",
     "charges.manage",
     "audit.read",
+    "work_session.manage",
   ],
   manager: [
     "container.read",
@@ -77,6 +80,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "reliability.read",
     "notification.read",
     "audit.read",
+    "work_session.manage",
   ],
   business_admin: [
     "container.read",
@@ -89,6 +93,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "notification.read",
     "audit.read",
     "identity.manage",
+    "work_session.manage",
   ],
   audit_analyst: [
     "container.read",
@@ -102,6 +107,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "reliability.read",
     "notification.read",
     "audit.read",
+    "work_session.manage",
   ],
 };
 

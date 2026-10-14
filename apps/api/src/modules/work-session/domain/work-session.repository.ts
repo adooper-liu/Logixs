@@ -39,4 +39,46 @@ export interface WorkSessionRepository {
     actorId: string,
     sessionId: string,
   ): Promise<WorkSessionRecord | null>;
+  openOrFocus(input: {
+    tenantId: string;
+    actorId: string;
+    contextKey: string;
+    workbenchCode: WorkSessionRecord["workbenchCode"];
+    routeContext: WorkSessionRouteContextV1;
+    subjectRef: WorkSessionSubjectRefV1;
+    taskRef: WorkSessionTaskRefV1 | null;
+    draftRef: WorkSessionDraftRefV1 | null;
+    domainVersionSeen: number | null;
+    activeItemKey: string | null;
+    contextMode: string | null;
+    displaySummary: string;
+  }): Promise<{ record: WorkSessionRecord; created: boolean }>;
+  updatePointer(input: {
+    tenantId: string;
+    actorId: string;
+    sessionId: string;
+    expectedVersion: number;
+    status?: Exclude<WorkSessionStatusV1, "current" | "closed">;
+    draftRef?: WorkSessionDraftRefV1 | null;
+    domainVersionSeen?: number | null;
+    activeItemKey?: string | null;
+    contextMode?: string | null;
+    displaySummary?: string;
+  }): Promise<WorkSessionRecord>;
+  activate(input: {
+    tenantId: string;
+    actorId: string;
+    targetSessionId: string;
+    sourceSessionId: string;
+    expectedSourceVersion: number;
+    expectedTargetVersion: number;
+    sourceStatus: Exclude<WorkSessionStatusV1, "current" | "closed">;
+    targetDomainVersionSeen: number | null;
+  }): Promise<{ source: WorkSessionRecord; target: WorkSessionRecord }>;
+  close(input: {
+    tenantId: string;
+    actorId: string;
+    sessionId: string;
+    expectedVersion: number;
+  }): Promise<WorkSessionRecord>;
 }
