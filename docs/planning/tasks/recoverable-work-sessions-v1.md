@@ -10,6 +10,7 @@ dependsOn:
   - mainline-priority-confirmation-v1
 writeScopes:
   - docs/planning/tasks/recoverable-work-sessions-v1.md
+  - docs/planning/progress-board.html
   - docs/superpowers/plans/2026-10-14-recoverable-work-sessions.md
   - docs/product/UI_SYSTEM.md
   - doc/cross-border-supply-chain/14-roadmap-decisions.md
@@ -81,6 +82,7 @@ writeScopes:
   - apps/web/e2e/universal-workbench-reference.visual.spec.ts
   - apps/web/e2e/universal-workbench-reference.visual.spec.ts-snapshots/reference-default-mobile-chromium-win32.png
   - apps/web/e2e/universal-workbench-reference.visual.spec.ts-snapshots/reference-edit-mobile-chromium-win32.png
+  - apps/web/e2e/universal-workbench-reference.visual.spec.ts-snapshots/reference-mobile-detail-mobile-chromium-win32.png
   - apps/web/e2e/recoverable-work-sessions.spec.ts
   - apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/**
   - apps/web/e2e/support/recoverableWorkSessions.ts
