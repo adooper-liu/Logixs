@@ -76,6 +76,8 @@ writeScopes:
   - apps/web/src/reference/universal-workbench/UniversalWorkbenchReferenceView.vue
   - apps/web/src/reference/universal-workbench/UniversalWorkbenchReferenceView.test.ts
   - apps/web/src/reference/universal-workbench/referenceScenarios.ts
+  - apps/web/e2e/product-selection-workbench.spec.ts
+  - apps/web/e2e/stuffing-workbench.spec.ts
   - apps/web/e2e/recoverable-work-sessions.spec.ts
   - apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/**
   - apps/web/e2e/support/recoverableWorkSessions.ts

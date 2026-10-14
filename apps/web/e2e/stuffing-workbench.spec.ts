@@ -90,6 +90,45 @@ test("stuffing operator records a versioned snapshot and submits the actual time
       }
       return;
     }
+    if (path === "/api/work-sessions") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: {
+          contractVersion: "work-session-page.v1",
+          items: [],
+          pageSize: 50,
+          nextCursor: null,
+        },
+      });
+      return;
+    }
+    if (path === "/api/work-sessions/open") {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: {
+          contractVersion: "work-session.v1",
+          sessionId: "88888888-8888-4888-8888-888888888888",
+          version: 1,
+          status: "current",
+          workbenchCode: body.workbenchCode,
+          contextKey: "stuffing|container:container-1|task:task-1",
+          routeContext: body.routeContext,
+          subjectRef: body.subjectRef,
+          taskRef: body.taskRef,
+          domainVersionSeen: 0,
+          activeItemKey: body.activeItemKey,
+          contextMode: body.contextMode,
+          displaySummary: body.displaySummary,
+          lastOpenedAt: "2026-09-21T00:00:00.000Z",
+          createdAt: "2026-09-21T00:00:00.000Z",
+          updatedAt: "2026-09-21T00:00:00.000Z",
+        },
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
