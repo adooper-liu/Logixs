@@ -4,19 +4,21 @@ export type FullChainLandingPolicyConfig = {
   rehearsalTenantId: string;
   oldDemoTenantId: string;
   controlTenantId: string;
-  prefixRoot: string;
+  prefixRoot: "rehearsal" | "demo-switch";
+  mode?: "rehearsal" | "demo_switch";
 };
 
 export class FullChainLandingPolicy {
   constructor(readonly config: FullChainLandingPolicyConfig) {}
 
   assertCanApply(identity: AuthenticatedUserIdentity): void {
+    const demoSwitch = this.config.mode === "demo_switch";
     if (
       !identity.capabilities.includes("import.execute") ||
       identity.tenantId !== this.config.rehearsalTenantId ||
-      identity.tenantId === this.config.oldDemoTenantId ||
+      (!demoSwitch && identity.tenantId === this.config.oldDemoTenantId) ||
       identity.tenantId === this.config.controlTenantId ||
-      this.config.prefixRoot !== "rehearsal"
+      this.config.prefixRoot !== (demoSwitch ? "demo-switch" : "rehearsal")
     )
       throw new Error("FULL_CHAIN_REHEARSAL_ACCESS_DENIED");
   }
@@ -24,7 +26,8 @@ export class FullChainLandingPolicy {
   assertCanRead(identity: AuthenticatedUserIdentity): void {
     if (
       !identity.capabilities.includes("import.read") ||
-      identity.tenantId !== this.config.rehearsalTenantId
+      (identity.tenantId !== this.config.rehearsalTenantId &&
+        identity.tenantId !== this.config.oldDemoTenantId)
     )
       throw new Error("FULL_CHAIN_REHEARSAL_ACCESS_DENIED");
   }

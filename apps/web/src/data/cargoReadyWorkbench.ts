@@ -14,6 +14,7 @@ export interface CargoReadyQueueItem {
   relatedContainerLabel: string;
   lineCount: number;
   gapCount: number;
+  gapUnit: "个 SKU" | "项";
 }
 
 export interface CargoReadyEvidenceRequirement {
@@ -73,7 +74,7 @@ export function buildCargoReadyOrderQueue(
       responsibility: order.workReason.responsibility,
       relatedContainerLabel: relatedContainerLabel(order),
       lineCount: order.lines.length,
-      gapCount: order.lines.filter((line) => line.gaps.length > 0).length,
+      ...queueGap(order),
     }))
     .sort(
       (left, right) =>
@@ -82,6 +83,17 @@ export function buildCargoReadyOrderQueue(
         right.order.updatedAt.localeCompare(left.order.updatedAt) ||
         left.order.id.localeCompare(right.order.id),
     );
+}
+
+function queueGap(
+  order: ReplenishmentOrderWorkbenchItem,
+): Pick<CargoReadyQueueItem, "gapCount" | "gapUnit"> {
+  if (order.workReason.code === "complete_order_lines")
+    return { gapCount: 1, gapUnit: "项" };
+  return {
+    gapCount: order.lines.filter((line) => line.gaps.length > 0).length,
+    gapUnit: "个 SKU",
+  };
 }
 
 export function filterCargoReadyQueue(

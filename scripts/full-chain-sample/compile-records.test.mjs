@@ -3,9 +3,12 @@ import test from "node:test";
 import {
   compilePilotRecords,
   normalizeCode,
+  normalizeCurrency,
   normalizeDate,
+  normalizeDatePrecision,
   normalizeDecimal,
   normalizeList,
+  normalizeQuantityUnit,
 } from "./compile-records.mjs";
 import { runPackageChecks } from "./reconcile.mjs";
 import { createV05LikeScan } from "./test-support.mjs";
@@ -193,6 +196,12 @@ test("v0.5-like fixture compiles six records with R/D/S/P provenance", () => {
     new Set(result.records.map((record) => record.evidenceClass)),
     new Set(["R", "D", "S"]),
   );
+  assert.equal(
+    result.records.find(
+      (record) => record.recordType === "stuffing_snapshot_line",
+    ).payload.quantityUnit,
+    "piece",
+  );
   assert.equal(indexes.pending.has("P-FIXTURE-001"), true);
   assert.equal(
     result.records.some((record) => record.evidenceClass === "P"),
@@ -203,6 +212,29 @@ test("v0.5-like fixture compiles six records with R/D/S/P provenance", () => {
     false,
   );
 });
+test("new stuffing records fail closed when the quantity unit source is missing", () => {
+  const policy = loadCompilerPolicy(
+    fileURLToPath(new URL("./policies/v0.5.json", import.meta.url)),
+  );
+  const scan = createV05LikeScan();
+  const stuffing = scan.sheets.find(({ name }) => name === "11_装箱");
+  delete stuffing.rows[0].valuesByHeader["数量单位"];
+  const indexes = buildProvenanceIndexes(scan, policy);
+  const result = compilePilotRecords({ scan, policy, indexes });
+
+  assert.equal(
+    result.records.some(
+      ({ recordType }) => recordType === "stuffing_snapshot_line",
+    ),
+    false,
+  );
+  assert.equal(
+    result.gaps.some(({ status }) => status === "blocking"),
+    true,
+  );
+  assert.equal(result.publishable, false);
+});
+
 test("general text fields do not use stable-code normalization", () => {
   const result = compilePilotRecords({
     policy: {
@@ -299,6 +331,25 @@ test("normalizers require explicit temporal and financial semantics", () => {
   assert.throws(() => normalizeDecimal("1,2,3"), /DECIMAL_INVALID/);
   assert.throws(() => normalizeDecimal("1e3"), /DECIMAL_INVALID/);
   assert.deepEqual(normalizeList("A + B/C"), ["A", "B", "C"]);
+  assert.deepEqual(normalizeList("HBL-1 / HBL-1 / HBL-2 / HBL-1"), [
+    "HBL-1",
+    "HBL-2",
+  ]);
+  assert.equal(normalizeCurrency("人民币"), "CNY");
+  assert.equal(normalizeCurrency("USD"), "USD");
+  assert.throws(() => normalizeCurrency("未知币种"), /CURRENCY_INVALID/);
+  assert.equal(normalizeQuantityUnit("件"), "piece");
+  assert.equal(normalizeQuantityUnit("套"), "set");
+  assert.equal(normalizeQuantityUnit("set"), "set");
+  assert.throws(() => normalizeQuantityUnit("箱"), /QUANTITY_UNIT_INVALID/);
+  assert.equal(
+    normalizeDatePrecision("date_only，按起运港时区 UTC+08:00"),
+    "date",
+  );
+  assert.throws(
+    () => normalizeDatePrecision("datetime"),
+    /DATE_PRECISION_INVALID/,
+  );
   assert.equal(normalizeCode("BOOK-DEMO-001"), "BOOK-DEMO-001");
   assert.throws(() => normalizeCode("bad code"), /CODE_INVALID/);
 });

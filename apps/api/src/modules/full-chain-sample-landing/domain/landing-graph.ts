@@ -51,6 +51,7 @@ export type StuffingLineFactInput = {
   sku: string;
   houseBillNumber: string;
   quantity: string;
+  quantityUnit: "piece" | "set" | null;
   grossWeight: string;
   volume: string;
   payloadHash: string;
@@ -208,6 +209,7 @@ function adaptStuffing(
         sku: record.payload.sku,
         houseBillNumber: record.payload.houseBillNo,
         quantity: record.payload.quantity,
+        quantityUnit: record.payload.quantityUnit ?? null,
         grossWeight: record.payload.grossWeight,
         volume: record.payload.volume,
         payloadHash: payloadHash(record),

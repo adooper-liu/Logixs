@@ -21,6 +21,12 @@ const attentionRows = computed(() =>
 const readyRows = computed(() =>
   props.skuViews.filter((row) => row.overall === "ready"),
 );
+const pendingCount = computed(() =>
+  props.order.lines.length === 0 ? 1 : attentionRows.value.length,
+);
+const pendingUnit = computed(() =>
+  props.order.lines.length === 0 ? "项" : "个",
+);
 
 function allocationLabel(row: CargoReadySkuView): string {
   if (row.line.allocations.length === 0) return "尚未分配货柜";
@@ -42,7 +48,7 @@ function allocationLabel(row: CargoReadySkuView): string {
         <small>已知事实与真实缺口</small>
         <h2>{{ order.orderNumber }}</h2>
       </span>
-      <b>{{ attentionRows.length }} 个需处理</b>
+      <b>{{ pendingCount }} {{ pendingUnit }}需处理</b>
     </header>
 
     <section v-if="attentionRows.length" aria-label="需要处理的 SKU">
@@ -97,6 +103,14 @@ function allocationLabel(row: CargoReadySkuView): string {
         </section>
       </article>
     </section>
+
+    <div v-else-if="order.lines.length === 0" class="missing-lines">
+      <AlertCircle :size="16" aria-hidden="true" />
+      <span>
+        <b>备货明细尚未导入</b>
+        <small>请导入当前备货单的 SKU、数量和单位。</small>
+      </span>
+    </div>
 
     <p v-else class="all-ready">
       <CheckCircle2 :size="16" aria-hidden="true" />
@@ -302,14 +316,34 @@ function allocationLabel(row: CargoReadySkuView): string {
   font-size: var(--text-micro);
 }
 
+.missing-lines,
 .all-ready {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin: 0;
   padding: var(--space-4) var(--space-3);
-  color: var(--ok);
   font-size: var(--text-label);
+}
+
+.missing-lines {
+  align-items: flex-start;
+  color: var(--warn);
+}
+
+.missing-lines > span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.missing-lines small {
+  color: var(--muted);
+  font-size: var(--text-micro);
+}
+
+.all-ready {
+  color: var(--ok);
 }
 
 .ready-group {

@@ -82,7 +82,9 @@ function countFor(filter: CargoReadyQueueFilter): number {
         <span class="queue-copy">
           <span class="reason-row">
             <b>{{ item.title }}</b>
-            <em v-if="item.gapCount">{{ item.gapCount }} 个 SKU</em>
+            <em v-if="item.gapCount">
+              {{ item.gapCount }} {{ item.gapUnit }}
+            </em>
           </span>
           <strong>{{ item.order.orderNumber }}</strong>
           <span>{{ item.detail }}</span>

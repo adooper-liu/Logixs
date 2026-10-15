@@ -1086,6 +1086,16 @@
       "ownerModule": "shipment-registry",
       "notes": []
     },
+    "public.replenishment_order_projection_batch": {
+      "nameZh": "备货投影批次回执",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录备货单投影批次的内容哈希与行数，使空批次和非空批次均可精确重放且不回滚较新事实。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "shipment-registry",
+      "notes": []
+    },
     "public.shipment": {
       "nameZh": "已实际出运",
       "nameStatus": "confirmed_implementation",
@@ -6820,6 +6830,16 @@
       "sourceRefs": ["engineering-data-governance"],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.full_chain_stuffing_line.quantity_unit": {
+      "nameZh": "装载数量单位",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保留 canonical 装箱行的受控数量单位；旧 package 缺失时保持空值且不得默认推断。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "full-chain-sample-landing",
       "notes": []
     },
     "public.full_chain_stuffing_line.tenant_id": {
@@ -15553,6 +15573,76 @@
       "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
       "purposeStatus": "needs_business_confirmation",
       "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.replenishment_order_projection_batch.id": {
+      "nameZh": "投影批次回执标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "唯一标识一条备货投影批次回执。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "shipment-registry",
+      "notes": []
+    },
+    "public.replenishment_order_projection_batch.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.replenishment_order_projection_batch.replenishment_order_id": {
+      "nameZh": "备货单标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "关联本次投影批次所属的备货单。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "shipment-registry",
+      "notes": []
+    },
+    "public.replenishment_order_projection_batch.source_batch_id": {
+      "nameZh": "来源批次标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "标识产生本次备货投影的 landing run 或受审计修复批次。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "shipment-registry",
+      "notes": []
+    },
+    "public.replenishment_order_projection_batch.content_hash": {
+      "nameZh": "内容哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "用于内容完整性、去重或审计比对。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.replenishment_order_projection_batch.line_count": {
+      "nameZh": "投影行数",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该投影批次的精确 SKU 行数；零表示已执行的空批次而非未执行。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "shipment-registry",
+      "notes": []
+    },
+    "public.replenishment_order_projection_batch.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
       "moduleCode": null,
       "ownerModule": null,
       "notes": []

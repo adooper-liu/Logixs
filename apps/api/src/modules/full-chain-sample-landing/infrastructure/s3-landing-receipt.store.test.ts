@@ -85,6 +85,32 @@ describe("S3LandingReceiptStore", () => {
     expect(sender.send).not.toHaveBeenCalled();
   });
 
+  it("allows the old demo tenant only in explicit demo-switch scope", async () => {
+    const sender = memorySender();
+    const receiptStore = new S3LandingReceiptStore(
+      { send: sender.send } as never,
+      "receipts",
+      {
+        rehearsalTenantId: "demo-real-sample-20260921",
+        oldDemoTenantId: "demo-real-sample-20260921",
+        prefixRoot: "demo-switch",
+        mode: "demo_switch",
+      },
+    );
+
+    await expect(
+      receiptStore.putIfAbsent({
+        tenantId: "demo-real-sample-20260921",
+        runId: RUN,
+        body: BODY,
+        digest: DIGEST,
+      }),
+    ).resolves.toMatchObject({ replayed: false });
+    expect([...sender.objects.keys()]).toEqual([
+      `demo-switch/demo-real-sample-20260921/${RUN}/receipt.json`,
+    ]);
+  });
+
   it("stores once and replays only the same digest", async () => {
     const sender = memorySender();
     const receiptStore = store(sender);

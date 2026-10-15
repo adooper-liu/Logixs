@@ -12,6 +12,7 @@ import type { AuthenticatedUserIdentity } from "../../identity";
 import type { LandingIsolationProbe } from "../domain/landing-isolation-probe.port";
 import type { LandingReceiptStore } from "../domain/landing-receipt-store.port";
 import type { FullChainLandingRepository } from "../domain/full-chain-landing.repository";
+import type { FullChainWorkbenchProjector } from "../domain/full-chain-workbench-projector.port";
 import {
   buildFullChainLandingGraph,
   fullChainLandingProjectionHash,
@@ -58,6 +59,7 @@ export class ApplyFullChainPackageService {
     private readonly receiptStore: LandingReceiptStore,
     private readonly isolationProbe: LandingIsolationProbe,
     private readonly afterStage: () => Promise<void> = async () => undefined,
+    private readonly workbenchProjector?: FullChainWorkbenchProjector,
   ) {}
 
   async execute(
@@ -72,12 +74,12 @@ export class ApplyFullChainPackageService {
       packageHash: graph.packageHash,
     });
     if (existing?.state === "published")
-      return {
-        runId: existing.runId,
-        state: "replayed",
+      return this.publishedReplay(
+        command.identity.tenantId,
+        existing.runId,
+        graph,
         counts,
-        gapCount: graph.gaps.length,
-      };
+      );
     const candidateRunId = existing?.runId ?? randomUUID();
     const candidateScope = this.policy.scope(candidateRunId);
     let before = await this.isolationProbe.capture(candidateScope);
@@ -96,12 +98,12 @@ export class ApplyFullChainPackageService {
         this.policy.scope(staged.runId),
       );
     if (staged.state === "published")
-      return {
-        runId: staged.runId,
-        state: "replayed",
+      return this.publishedReplay(
+        command.identity.tenantId,
+        staged.runId,
+        graph,
         counts,
-        gapCount: graph.gaps.length,
-      };
+      );
     let stored: { keyHash: string; digest: string; replayed: boolean };
     const receiptBody = this.receiptBody(
       staged.runId,
@@ -132,8 +134,8 @@ export class ApplyFullChainPackageService {
         return this.waitForPublishedReplay(
           command.identity.tenantId,
           staged.runId,
+          graph,
           counts,
-          graph.gaps.length,
         );
     } else {
       try {
@@ -153,8 +155,8 @@ export class ApplyFullChainPackageService {
           return this.waitForPublishedReplay(
             command.identity.tenantId,
             staged.runId,
+            graph,
             counts,
-            graph.gaps.length,
           );
       } catch (error) {
         await this.repository.markReceiptPending({
@@ -186,6 +188,7 @@ export class ApplyFullChainPackageService {
     const publicationComparison = this.isolationProbe.compare(after, published);
     if (publicationComparison.outboxDelta !== 1)
       throw new Error("FULL_CHAIN_ISOLATION_VIOLATION");
+    await this.projectWorkbench(command.identity.tenantId, staged.runId, graph);
     return {
       runId: staged.runId,
       state: "published",
@@ -194,16 +197,34 @@ export class ApplyFullChainPackageService {
     };
   }
 
+  private async projectWorkbench(
+    tenantId: string,
+    runId: string,
+    graph: FullChainLandingGraph,
+  ): Promise<void> {
+    await this.workbenchProjector?.project({ tenantId, runId, graph });
+  }
+
+  private async publishedReplay(
+    tenantId: string,
+    runId: string,
+    graph: FullChainLandingGraph,
+    counts: Record<FullChainRecordType, number>,
+  ): Promise<ApplyFullChainPackageResult> {
+    await this.projectWorkbench(tenantId, runId, graph);
+    return { runId, state: "replayed", counts, gapCount: graph.gaps.length };
+  }
+
   private async waitForPublishedReplay(
     tenantId: string,
     runId: string,
+    graph: FullChainLandingGraph,
     counts: Record<FullChainRecordType, number>,
-    gapCount: number,
   ): Promise<ApplyFullChainPackageResult> {
     for (let attempt = 0; attempt < 100; attempt += 1) {
       const status = await this.repository.getStatus({ tenantId, runId });
       if (status?.state === "published")
-        return { runId, state: "replayed", counts, gapCount };
+        return this.publishedReplay(tenantId, runId, graph, counts);
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     throw new Error("FULL_CHAIN_PUBLICATION_IN_PROGRESS");
@@ -245,22 +266,37 @@ export class ApplyFullChainPackageService {
     receiptDigest: string,
   ): void {
     const counts = graphCounts(graph);
-    if (
-      Object.entries(counts).some(
-        ([recordType, count]) =>
-          reconciliation.factCounts[recordType] !== count,
-      ) ||
-      reconciliation.receiptCount !== graph.recordReceipts.length ||
-      reconciliation.gapCount !== graph.gaps.length ||
-      reconciliation.relationCounts.planCargoReady !==
-        graph.planCargoReadyLinks.length ||
-      reconciliation.relationCounts.dispatchHouseBill !==
-        graph.dispatchHouseBillLinks.length ||
-      reconciliation.semanticHash !== fullChainLandingProjectionHash(graph) ||
-      reconciliation.outboxCount !== 0 ||
-      reconciliation.businessTaskCount !== 0 ||
-      !/^[a-f0-9]{64}$/u.test(receiptDigest)
-    )
-      throw new Error("FULL_CHAIN_RECONCILIATION_FAILED");
+    const mismatches = [
+      ...Object.entries(counts)
+        .filter(
+          ([recordType, count]) =>
+            reconciliation.factCounts[recordType] !== count,
+        )
+        .map(([recordType]) => `fact_count:${recordType}`),
+      ...(reconciliation.receiptCount !== graph.recordReceipts.length
+        ? ["receipt_count"]
+        : []),
+      ...(reconciliation.gapCount !== graph.gaps.length ? ["gap_count"] : []),
+      ...(reconciliation.relationCounts.planCargoReady !==
+      graph.planCargoReadyLinks.length
+        ? ["plan_cargo_ready_count"]
+        : []),
+      ...(reconciliation.relationCounts.dispatchHouseBill !==
+      graph.dispatchHouseBillLinks.length
+        ? ["dispatch_house_bill_count"]
+        : []),
+      ...(reconciliation.semanticHash !== fullChainLandingProjectionHash(graph)
+        ? ["semantic_hash"]
+        : []),
+      ...(reconciliation.outboxCount !== 0 ? ["outbox_count"] : []),
+      ...(reconciliation.businessTaskCount !== 0
+        ? ["business_task_count"]
+        : []),
+      ...(!/^[a-f0-9]{64}$/u.test(receiptDigest) ? ["receipt_digest"] : []),
+    ];
+    if (mismatches.length)
+      throw new Error(
+        `FULL_CHAIN_RECONCILIATION_FAILED:${mismatches.join(",")}`,
+      );
   }
 }

@@ -14,7 +14,8 @@ import type { LandingReceiptStore } from "../domain/landing-receipt-store.port";
 export type LandingReceiptStorePolicy = {
   rehearsalTenantId: string;
   oldDemoTenantId: string;
-  prefixRoot: string;
+  prefixRoot: "rehearsal" | "demo-switch";
+  mode?: "rehearsal" | "demo_switch";
 };
 
 export class S3LandingReceiptStore implements LandingReceiptStore {
@@ -100,16 +101,26 @@ export class S3LandingReceiptStore implements LandingReceiptStore {
   }
 
   private key(tenantId: string, runId: string): string {
+    const demoSwitch = this.policy.mode === "demo_switch";
     if (
       tenantId !== this.policy.rehearsalTenantId ||
-      tenantId === this.policy.oldDemoTenantId ||
+      (!demoSwitch && tenantId === this.policy.oldDemoTenantId) ||
       tenantId.includes("..") ||
       tenantId.includes("\\") ||
       tenantId.startsWith("/") ||
-      this.policy.prefixRoot !== "rehearsal"
+      this.policy.prefixRoot !== (demoSwitch ? "demo-switch" : "rehearsal")
     )
       throw new Error("FULL_CHAIN_RECEIPT_SCOPE_INVALID");
     try {
+      if (demoSwitch) {
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+            runId,
+          )
+        )
+          throw new Error("FULL_CHAIN_RECEIPT_SCOPE_INVALID");
+        return `${this.policy.prefixRoot}/${tenantId}/${runId}/receipt.json`;
+      }
       return buildRehearsalObjectKey(
         `${this.policy.prefixRoot}/${tenantId}/${runId}`,
         "receipt.json",

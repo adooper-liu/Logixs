@@ -63,6 +63,7 @@ export type StuffingSnapshotLineRecord = FullChainRecord<
     sku: string;
     houseBillNo: string;
     quantity: string;
+    quantityUnit?: "piece" | "set";
     grossWeight: string;
     volume: string;
   }

@@ -9,6 +9,9 @@ import { ApplyContainerRecordService } from "./application/apply-container-recor
 import { ApplyReplenishmentOrderImportService } from "./application/apply-replenishment-order-import.service";
 import { AssertContainerTenantService } from "./application/assert-container-tenant.service";
 import { ASSERT_CONTAINER_TENANT } from "./assert-container-tenant.port";
+import { ReplaceReplenishmentOrderLinesService } from "./application/replace-replenishment-order-lines.service";
+import { REPLACE_REPLENISHMENT_ORDER_LINES } from "./domain/replace-replenishment-order-lines";
+import { PrismaReplaceReplenishmentOrderLinesRepository } from "./infrastructure/prisma-replace-replenishment-order-lines.repository";
 import { GetContainerService } from "./application/get-container.service";
 import { ListContainersService } from "./application/list-containers.service";
 import { ListReplenishmentOrdersService } from "./application/list-replenishment-orders.service";
@@ -112,6 +115,7 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     GetContainerService,
     ApplyContainerRecordService,
     ApplyReplenishmentOrderImportService,
+    ReplaceReplenishmentOrderLinesService,
     AssertContainerTenantService,
     ResolveContainerByNumberService,
     BindReplenishmentLineProductSkuService,
@@ -143,6 +147,10 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     {
       provide: REPLENISHMENT_ORDER_IMPORT_WRITER,
       useClass: PrismaReplenishmentOrderImportWriter,
+    },
+    {
+      provide: REPLACE_REPLENISHMENT_ORDER_LINES,
+      useClass: PrismaReplaceReplenishmentOrderLinesRepository,
     },
     {
       provide: REPLENISHMENT_LINE_SKU_BINDER,
@@ -258,6 +266,7 @@ import { SHIPMENT_PENDING_DOCUMENT_COMPLETION } from "./shipment-pending-documen
     ListContainersService,
     ApplyContainerRecordService,
     ApplyReplenishmentOrderImportService,
+    ReplaceReplenishmentOrderLinesService,
     AssertContainerTenantService,
     ASSERT_CONTAINER_TENANT,
     ListContainerTaskFactsService,

@@ -21,6 +21,16 @@ import { FullChainSampleLandingController } from "./presentation/full-chain-samp
 
 export const FULL_CHAIN_LANDING_POLICY = Symbol("FULL_CHAIN_LANDING_POLICY");
 
+function landingPolicyConfig() {
+  return {
+    rehearsalTenantId: process.env.FULL_CHAIN_REHEARSAL_TENANT_ID ?? "",
+    oldDemoTenantId: "demo-real-sample-20260921",
+    controlTenantId: process.env.FULL_CHAIN_REHEARSAL_CONTROL_TENANT_ID ?? "",
+    prefixRoot: "rehearsal" as const,
+    mode: "rehearsal" as const,
+  };
+}
+
 @Module({
   imports: [IdentityModule],
   controllers: [FullChainSampleLandingController],
@@ -29,14 +39,7 @@ export const FULL_CHAIN_LANDING_POLICY = Symbol("FULL_CHAIN_LANDING_POLICY");
     LandingRuntimeIsolationDependencies,
     {
       provide: FULL_CHAIN_LANDING_POLICY,
-      useFactory: () =>
-        new FullChainLandingPolicy({
-          rehearsalTenantId: process.env.FULL_CHAIN_REHEARSAL_TENANT_ID ?? "",
-          oldDemoTenantId: "demo-real-sample-20260921",
-          controlTenantId:
-            process.env.FULL_CHAIN_REHEARSAL_CONTROL_TENANT_ID ?? "",
-          prefixRoot: "rehearsal",
-        }),
+      useFactory: () => new FullChainLandingPolicy(landingPolicyConfig()),
     },
     {
       provide: FULL_CHAIN_LANDING_REPOSITORY,
@@ -55,11 +58,11 @@ export const FULL_CHAIN_LANDING_POLICY = Symbol("FULL_CHAIN_LANDING_POLICY");
             secretAccessKey: storage.secretKey,
           },
         });
-        return new S3LandingReceiptStore(client, storage.bucket, {
-          rehearsalTenantId: process.env.FULL_CHAIN_REHEARSAL_TENANT_ID ?? "",
-          oldDemoTenantId: "demo-real-sample-20260921",
-          prefixRoot: "rehearsal",
-        });
+        return new S3LandingReceiptStore(
+          client,
+          storage.bucket,
+          landingPolicyConfig(),
+        );
       },
     },
     {

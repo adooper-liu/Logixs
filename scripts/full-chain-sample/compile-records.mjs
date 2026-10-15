@@ -58,6 +58,8 @@ function normalizeIdentityValue(field, raw) {
 }
 
 function normalizePayloadField(output, raw, row, fieldPolicy) {
+  if (output === "quantityUnit" && (raw === null || raw === ""))
+    throw new Error("QUANTITY_UNIT_REQUIRED");
   if (raw === null || raw === "") return null;
   if (output === "houseBillNo") return normalizeHouseBillReference(raw);
   if (
@@ -75,6 +77,9 @@ function normalizePayloadField(output, raw, row, fieldPolicy) {
     ].includes(output)
   )
     return normalizeCode(raw);
+  if (output === "currency") return normalizeCurrency(raw);
+  if (output === "quantityUnit") return normalizeQuantityUnit(raw);
+  if (output === "departedPrecision") return normalizeDatePrecision(raw);
   if (
     output === "amount" ||
     ["quantity", "grossWeight", "volume"].includes(output)
@@ -276,12 +281,53 @@ export function normalizeDecimal(
     : output;
 }
 
+export function normalizeQuantityUnit(value) {
+  const normalized = String(value ?? "")
+    .normalize("NFC")
+    .trim();
+  const aliases = new Map([
+    ["件", "piece"],
+    ["套", "set"],
+    ["piece", "piece"],
+    ["set", "set"],
+  ]);
+  const code = aliases.get(normalized.toLowerCase()) ?? aliases.get(normalized);
+  if (!code) throw new Error("QUANTITY_UNIT_INVALID");
+  return code;
+}
+
+export function normalizeCurrency(value) {
+  const normalized = String(value ?? "")
+    .normalize("NFC")
+    .trim();
+  const aliases = new Map([
+    ["人民币", "CNY"],
+    ["美元", "USD"],
+  ]);
+  const code = aliases.get(normalized) ?? normalized.toUpperCase();
+  if (!/^[A-Z]{3}$/u.test(code)) throw new Error("CURRENCY_INVALID");
+  return code;
+}
+
+export function normalizeDatePrecision(value) {
+  const normalized = String(value ?? "")
+    .normalize("NFC")
+    .trim();
+  if (normalized === "date" || normalized.startsWith("date_only"))
+    return "date";
+  throw new Error("DATE_PRECISION_INVALID");
+}
+
 export function normalizeList(value, { separator = /\s*[+,/]\s*/u } = {}) {
   return value
-    ? String(value)
-        .split(separator)
-        .map((item) => item.trim())
-        .filter(Boolean)
+    ? [
+        ...new Set(
+          String(value)
+            .split(separator)
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ),
+      ]
     : [];
 }
 export function normalizeCode(value, { pattern = /^[^\s]+$/u } = {}) {

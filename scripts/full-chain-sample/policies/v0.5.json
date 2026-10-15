@@ -170,6 +170,7 @@
         "sku": "SKU",
         "houseBillNo": "分提单",
         "quantity": "装载数量",
+        "quantityUnit": "数量单位",
         "grossWeight": "毛重kg",
         "volume": "体积m³"
       },
@@ -193,6 +194,10 @@
         "quantity": {
           "directSource": true,
           "constructionOverrideAllowed": true
+        },
+        "quantityUnit": {
+          "directSource": true,
+          "constructionOverrideAllowed": false
         },
         "grossWeight": {
           "directSource": true,

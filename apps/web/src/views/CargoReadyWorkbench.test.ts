@@ -79,6 +79,16 @@ describe("CargoReadyWorkbench", () => {
     expect(getCargoReadyCompliance).not.toHaveBeenCalled();
   });
 
+  it("keeps an order with no lines visible as one order-level gap", async () => {
+    listReplenishmentOrders.mockResolvedValue({ items: [emptyOrder()] });
+    const wrapper = await mountPage("?orderId=order-empty");
+
+    expect(wrapper.text()).toContain("26DSC01811");
+    expect(wrapper.text()).toContain("备货明细尚未导入");
+    expect(wrapper.get(".order-context").text()).toContain("需处理1 项");
+    expect(wrapper.text()).not.toContain("需处理0 个");
+  });
+
   it("retains order facts and reports an auxiliary projection failure", async () => {
     listExternalWorkItems.mockRejectedValue(new Error("network"));
     const wrapper = await mountPage("?orderId=order-1");
@@ -113,6 +123,27 @@ async function mountPage(query: string) {
   });
   await flushPromises();
   return wrapper;
+}
+
+function emptyOrder() {
+  return {
+    id: "order-empty",
+    orderNumber: "26DSC01811",
+    updatedAt: "2026-10-15T00:00:00.000Z",
+    workReason: {
+      code: "complete_order_lines",
+      label: "补充备货明细",
+      detail: "备货单尚无当前 SKU 明细",
+      responsibility: "mine",
+    },
+    nextAction: {
+      code: "replenishment.import",
+      label: "导入备货明细",
+    },
+    relatedContainers: [],
+    handoffShipments: [],
+    lines: [],
+  };
 }
 
 function order(withContainer: boolean) {

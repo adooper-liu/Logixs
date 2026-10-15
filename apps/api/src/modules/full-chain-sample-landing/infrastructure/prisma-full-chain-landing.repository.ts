@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
   canonicalStringify,
@@ -72,8 +72,8 @@ function mapStatus(row: {
 @Injectable()
 export class PrismaFullChainLandingRepository implements FullChainLandingRepository {
   constructor(
-    @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Optional()
     private readonly testHooks: { failAfterRecordType?: FailurePoint } = {},
   ) {}
 
@@ -263,6 +263,7 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
               sku: line.sku,
               houseBillNumber: line.houseBillNumber,
               quantity: line.quantity,
+              quantityUnit: line.quantityUnit,
               grossWeight: line.grossWeight,
               volume: line.volume,
               payloadHash: line.payloadHash,
@@ -565,12 +566,23 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
           ],
         })
         .then((rows) =>
-          rows.map((row) => ({
-            bookingNumber: row.bookingCommitment.bookingNumber,
-            documentType: row.documentType,
-            number: row.documentNumber,
-            parentMasterBillNumber: row.parentDocument?.documentNumber ?? null,
-          })),
+          rows
+            .map((row) => ({
+              bookingNumber: row.bookingCommitment.bookingNumber,
+              documentType: row.documentType,
+              number: row.documentNumber,
+              parentMasterBillNumber:
+                row.parentDocument?.documentNumber ?? null,
+            }))
+            .sort((left, right) =>
+              Buffer.from(
+                `${left.bookingNumber}|${left.documentType}|${left.number}`,
+              ).compare(
+                Buffer.from(
+                  `${right.bookingNumber}|${right.documentType}|${right.number}`,
+                ),
+              ),
+            ),
         ),
       cargoReadyReleases: cargoReady.map((row) => ({
         cargoReadyNumber: row.cargoReadyNumber,
@@ -578,10 +590,16 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
         quantity: row.quantity.toString(),
         payloadHash: row.payloadHash,
       })),
-      planCargoReadyLinks: planLinks.map((row) => ({
-        planNumber: row.shipmentPlan.planNumber,
-        cargoReadyNumber: row.cargoReadyRelease.cargoReadyNumber,
-      })),
+      planCargoReadyLinks: planLinks
+        .map((row) => ({
+          planNumber: row.shipmentPlan.planNumber,
+          cargoReadyNumber: row.cargoReadyRelease.cargoReadyNumber,
+        }))
+        .sort((left, right) =>
+          Buffer.from(`${left.planNumber}|${left.cargoReadyNumber}`).compare(
+            Buffer.from(`${right.planNumber}|${right.cargoReadyNumber}`),
+          ),
+        ),
       stuffingLines: stuffing.map((row) => ({
         businessKey: `${row.containerNumber}|${row.cargoReadyNumber}|${row.sku}|${row.houseBillNumber}`,
         containerNumber: row.containerNumber,
@@ -589,6 +607,7 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
         sku: row.sku,
         houseBillNumber: row.houseBillNumber,
         quantity: row.quantity.toString(),
+        quantityUnit: row.quantityUnit,
         grossWeight: row.grossWeight.toString(),
         volume: row.volume.toString(),
         payloadHash: row.payloadHash,
@@ -612,10 +631,18 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
         motherVesselDepartedAt: row.motherVesselDepartedAt,
         payloadHash: row.payloadHash,
       })),
-      dispatchHouseBillLinks: dispatchLinks.map((row) => ({
-        containerNumber: row.dispatchFact.containerNumber,
-        houseBillNumber: row.houseBillDocument.documentNumber,
-      })),
+      dispatchHouseBillLinks: dispatchLinks
+        .map((row) => ({
+          containerNumber: row.dispatchFact.containerNumber,
+          houseBillNumber: row.houseBillDocument.documentNumber,
+        }))
+        .sort((left, right) =>
+          Buffer.from(
+            `${left.containerNumber}|${left.houseBillNumber}`,
+          ).compare(
+            Buffer.from(`${right.containerNumber}|${right.houseBillNumber}`),
+          ),
+        ),
       recordReceipts: receipts.map((row) => ({
         recordType: row.recordType,
         businessKeyHash: row.businessKeyHash,
@@ -741,9 +768,17 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
     });
     if (!plan || plan.bookings.length !== 1) return null;
     const booking = plan.bookings[0]!;
+    const cargoReadyReleaseIds = plan.cargoReady.map(
+      ({ cargoReadyReleaseId }) => cargoReadyReleaseId,
+    );
+    const bookingDocumentIds = booking.documents.map(({ id }) => id);
     const [stuffing, exportCustoms, dispatch, gaps] = await Promise.all([
       this.prisma.fullChainStuffingLine.findMany({
-        where: { landingRunId: input.runId, tenantId: input.tenantId },
+        where: {
+          landingRunId: input.runId,
+          tenantId: input.tenantId,
+          cargoReadyReleaseId: { in: cargoReadyReleaseIds },
+        },
         orderBy: [
           { containerNumber: "asc" },
           { cargoReadyNumber: "asc" },
@@ -752,11 +787,19 @@ export class PrismaFullChainLandingRepository implements FullChainLandingReposit
         ],
       }),
       this.prisma.fullChainExportCustomsCase.findMany({
-        where: { landingRunId: input.runId, tenantId: input.tenantId },
+        where: {
+          landingRunId: input.runId,
+          tenantId: input.tenantId,
+          houseBillDocumentId: { in: bookingDocumentIds },
+        },
         orderBy: { invoiceNumber: "asc" },
       }),
       this.prisma.fullChainDispatchFact.findMany({
-        where: { landingRunId: input.runId, tenantId: input.tenantId },
+        where: {
+          landingRunId: input.runId,
+          tenantId: input.tenantId,
+          masterBillDocumentId: { in: bookingDocumentIds },
+        },
         include: { houseBills: { include: { houseBillDocument: true } } },
         orderBy: { containerNumber: "asc" },
       }),
