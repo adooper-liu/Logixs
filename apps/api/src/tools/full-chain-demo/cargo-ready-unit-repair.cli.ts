@@ -25,9 +25,6 @@ const UNKNOWN_UNIT_LINES = [
   ["370-335V80RD", "51"],
   ["370-400V80BU", "75"],
 ] as const;
-const UNKNOWN_UNIT_PRODUCTS = UNKNOWN_UNIT_LINES.map(
-  ([productNumber]) => productNumber,
-);
 const FIXTURE_PATH = path.resolve(
   __dirname,
   "../../../../../database/seeds/fixtures/replenishment-26dsc01811-01812.json",
