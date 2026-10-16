@@ -3,7 +3,7 @@ status: design # design | coding | review | fix | blocked | done（机器可校�
 branch: # git 初始化后填：feat/<任务名>
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
 owner: main # 端到端主代理：Claude Code，按 AGENTS.md §1.2 第 4 条映射；design/coding/fix 必填
-writer: main # 默认由当前 Claude Code 主代理直接写入；跨会话例外按 AGENTS.md §1.3 登记
+writer: codex # 产品实现默认由 Codex Code 写入；纯治理/业务权威任务可按实际写入者登记 main
 risk: medium # low | medium | high；design/coding/fix 必填
 dependsOn: [] # task brief 文件名（不含 .md）；依赖未 done 时不得写
 writeScopes: # design/coding/fix 必填；精确文件，或目录/**；不得使用其它 glob
@@ -44,14 +44,14 @@ uiViewportEvidence: [] # 至少 1440x900 / 1024x768 / 390x844；写明首屏与�
 > 当前已确认角色/范围，以及明确延期且只阻塞相关动作的未来政策。不得把“覆盖所有未来角色”写成完成门槛；
 > 已证实的跨租户绕过也不得包装成可配置项延期。
 
-## 执行切片与跨会话例外（多代理或跨会话任务才填交接信封）
+## 执行切片与人工转发信封
 
-> 默认由当前 Claude Code 主代理在同一会话内连续完成澄清、brief、实现、验证和集成，不生成 `TASK` / `HANDOFF`。
-> 只有负责人明确要求跨会话、独立 worktree、并行处理或主代理上下文无法继续时，才使用 `AGENTS.md` §1.3 的定位指针与状态信封。
-> 需求、规则和验收只写在本 brief；跨会话消息只传文件路径、切片、准确基线和工作区指针。
+> 默认由 Claude Code 主代理完成澄清、唯一 brief、实施指令、审查、finding 裁决与集成；Codex Code 实现执行器按每个切片的
+> `TASK` 编写代码和测试，并以 `HANDOFF` 交回。负责人只负责在两者间原样复制消息，不补写需求或工程判断。
+> 需求、规则和验收只写在本 brief；`TASK` / `HANDOFF` 只传文件路径、切片、准确基线、工作区和状态信封，不建立第二套需求。
 >
 > 同一 brief 的连续切片默认共用一个任务集成分支和一个最终 PR；切片可以形成可回滚提交，但不是默认 PR
-> 边界。主代理按切片运行定向检查，在任务级收口时统一运行完整门禁和适用的 fresh Claude 独立复审。只有独立发布、
+> 边界。实现执行器按切片运行定向检查，主代理逐次审查；在任务级收口时统一运行完整门禁和适用的 fresh Claude 独立复审。只有独立发布、
 > 独立回滚、长期并行或风险隔离有证据时才拆 PR，并在本 brief 记录理由。外部环境迁移或人工验收单列为
 > deployment/done gate，只阻止生产部署与 `done`，不无故阻止代码开发、提交、PR 审查与合并。
 
@@ -60,27 +60,28 @@ uiViewportEvidence: [] # 至少 1440x900 / 1024x768 / 390x844；写明首屏与�
 | 项目        | 内容                                                                                                                                                      |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 基线        | `<commit-sha>`                                                                                                                                            |
-| 执行角色    | 当前 Claude Code 主代理直接实现；实际模型按 `AGENTS.md` §1.2 第 4 条登记                                                                                  |
-| 复审        | `不适用` 或高风险任务完成后由 fresh Claude Code 只读会话整体复审；不得继承主代理聊天上下文                                                                |
+| 执行角色    | Codex Code 实现执行器；实际模型必须在 `HANDOFF` 的 `model` 字段如实登记，未知时写 `unknown`                                                               |
+| 主代理审查  | Claude Code 主代理检查实际 diff、范围和验证证据；不得直接修改实现文件                                                                                     |
+| 独立复审    | `不适用` 或高风险任务全部切片完成后由 fresh Claude Code 只读会话整体复审；不得继承主代理聊天上下文                                                        |
 | 写入范围    | 精确文件或目录                                                                                                                                            |
 | 禁止范围    | 不得顺带修改的模块、契约、状态或入口                                                                                                                      |
 | UI 强制结构 | UI 切片逐项引用 frontmatter 的 `uiStructure` / `uiMustStayVisible` / `uiProgressiveDisclosure` / `uiForbidden` / `uiViewportEvidence`；实现前不得自行改写 |
 | 验证命令    | 切片最近测试、模块 lint/typecheck、专项门禁及预期非零结果                                                                                                 |
 | 停止条件    | 切片验收条件、真实阻塞和负责人待决项；同会话主代理满足验收后连续执行，不制造交接暂停                                                                      |
 
-跨会话例外任务：
+实现任务：
 
 ```text
-TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=<implementer|reviewer> [workspace=<worktree-path|pr-url>] [mode=<review-mode>]
+TASK docs/planning/tasks/<task>.md#<slice-id> base=<commit-sha> role=implementer workspace=<worktree-path|branch>
 ```
 
-跨会话例外交回：
+交回：
 
 ```text
-HANDOFF docs/planning/tasks/<task>.md#<slice-id> base=<current-review-base-sha> role=main workspace=<worktree-path|pr-url> commit=<sha|none>
+HANDOFF docs/planning/tasks/<task>.md#<slice-id> base=<current-review-base-sha> role=main workspace=<worktree-path|branch> commit=<sha|none>
 ```
 
-> 仅当本切片确实跨会话实现时，`HANDOFF` 才作为交回消息第一行；`base` 使用可复现当前差异的真实审核基线，不能沿用已经
+> 每个实现或修复切片的 `HANDOFF` 都作为交回消息第一行；`base` 使用可复现当前差异的真实审核基线，不能沿用已经
 > 快进、变基或合并前的初始 `TASK` SHA。单行指令后附以下状态信封，不复制 brief 或长篇 diff。
 
 ```yaml
@@ -88,7 +89,8 @@ protocol: logix-handoff/v1
 slice: <slice-id>
 state: ready-for-review # ready-for-review | blocked
 base: <commit-sha>
-worktree: <absolute-path>
+worktree: <absolute-path-or-branch>
+model: <actual-model-id|unknown>
 changed:
   - <file-or-summary>
 checks:
@@ -97,6 +99,7 @@ checks:
     detail: <count-or-reason>
 exceptions: []
 commit: none # 默认未提交；已获授权时填 SHA
+nextSuggested: <next-slice|fix|review|blocked|none>
 ```
 
 独立复审交回技术评审：
