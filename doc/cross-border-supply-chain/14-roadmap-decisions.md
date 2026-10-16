@@ -15,13 +15,7 @@
 | 5    | UI 统一：AI 辅助与确认执行 | 对话之后推进；用户确认后由服务端重授权并调用正式业务动作                            |
 | 6    | 海运运营                   | UI 统一剩余四单元完成后进入，届时继承本台业务权威及智慧基线                         |
 
-同时固定以下边界：市场 `V1-R～V4-R` 保持 `deferred`，不插入当前主线；未来生产环境切换仍须另行定案，不能由历史设计自动恢复。
-
-### 2026-10-14 全链样本本地 Demo 切换修订
-
-负责人随后明确恢复 Brief 4，要求原地切换本地租户 `demo-real-sample-20260921`：只删除该租户经 ownership manifest 精确证明归属的旧 PostgreSQL 业务数据，保留 Schema、迁移、全局参考数据、其他租户、Temporal 数据及无归属 MinIO 对象；不使用 Excel 直写或 legacy demo seed，必须由正式领域 Adapter 消费 `publishable=true` 的全链样本 package 重建。负责人同时明确接受本次**不备份、旧数据删除后不可恢复**的成本并要求立即执行；该决定仅授权本地 Demo 切换，不授权生产删除、生产写入或其他环境切换。
-
-本次修订取代本节此前“不启动 Brief 4、不删除旧 Demo、不做页面切换”的旧边界；执行范围、清理回执、重建 run、HBL 关系与验证证据统一记录在 [full-chain-demo-switch-v1](../../docs/planning/tasks/full-chain-demo-switch-v1.md)。
+同时固定以下边界：不启动 Brief 4，不删除旧 Demo，不做生产写入或页面切换；市场 `V1-R～V4-R` 保持 `deferred`，不插入当前主线。“实际演练准备”取消，不占 writer、locks 或当前优先级。未来如需环境切换，须由负责人另行定案，不能由历史设计自动恢复。
 
 本决定只确定交付顺序和排除范围，不代表四个 UI 单元或海运运营已经实现或验收，也不改变工作台自身完成标准。UI 单元继续采用[已批准标准设计](../../docs/superpowers/specs/2026-10-11-universal-workbench-ui-standard-design.md)；执行状态和本次写回证据见[定案记录](../../docs/planning/tasks/mainline-priority-confirmation-v1.md)。
 

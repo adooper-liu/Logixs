@@ -58,6 +58,8 @@ export interface ContainerStuffingSnapshotRecord {
     method: VgmMethod;
     verifiedAt: string;
   } | null;
+  ingestionChannel: StuffingIngestionChannel;
+  sourceSystem: string;
   evidenceRefs: string[];
   actorId: string;
   reasonCode: string;

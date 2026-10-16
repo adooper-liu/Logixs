@@ -27,11 +27,13 @@ export class ContainersController {
     @Req() request: { identity: { tenantId: string } },
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
+    @Query("scope") scope?: string,
   ): Promise<ContainerPageDto> {
     const page = await this.listContainers.execute({
       tenantId: request.identity.tenantId,
       pageSize,
       cursor,
+      scope,
     });
     return {
       items: page.items,

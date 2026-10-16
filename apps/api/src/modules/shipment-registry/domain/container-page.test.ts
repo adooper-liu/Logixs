@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   decodeContainerCursor,
   encodeContainerCursor,
+  parseContainerListScope,
   parsePageSize,
 } from "./container-page";
 
@@ -16,12 +17,25 @@ describe("parsePageSize", () => {
   });
 });
 
+describe("container scope", () => {
+  it("accepts only all or active stuffing snapshot", () => {
+    expect(parseContainerListScope(undefined)).toBe("all");
+    expect(parseContainerListScope("active_stuffing_snapshot")).toBe(
+      "active_stuffing_snapshot",
+    );
+    expect(() => parseContainerListScope("published_landing")).toThrow(
+      "VALIDATION_FORMAT",
+    );
+  });
+});
+
 describe("container cursor", () => {
   it("编解码往返", () => {
     const cursor = {
       tenantId: "dev-tenant",
       updatedAt: new Date("2026-09-12T10:00:00.000Z"),
       id: "c1",
+      scope: "active_stuffing_snapshot" as const,
     };
     expect(decodeContainerCursor(encodeContainerCursor(cursor))).toEqual(
       cursor,

@@ -54,6 +54,8 @@ function row(overrides: Record<string, unknown> = {}) {
     vgmMethod: null,
     vgmVerifiedAt: null,
     evidenceRefs: command.evidenceRefs,
+    ingestionChannel: command.ingestionChannel,
+    sourceSystem: command.sourceSystem,
     actorId: command.actorId,
     reasonCode: command.reasonCode,
     payloadHash: command.payloadHash,
@@ -202,6 +204,8 @@ describe("PrismaContainerStuffingSnapshotRepository", () => {
       grossWeight: "8319",
       volume: "66.74",
       vgm: null,
+      ingestionChannel: "manual_ui",
+      sourceSystem: "logix.web",
       duplicate: false,
     });
   });

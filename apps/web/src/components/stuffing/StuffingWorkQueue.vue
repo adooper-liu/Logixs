@@ -10,6 +10,7 @@ import {
 const props = defineProps<{
   items: readonly StuffingQueueItem[];
   selectedTaskId: string;
+  selectedContainerId: string;
   filter: StuffingQueueFilter;
   loading: boolean;
   error: string;
@@ -25,6 +26,7 @@ const filters: Array<{ value: StuffingQueueFilter; label: string }> = [
   { value: "executable", label: "可执行" },
   { value: "blocked", label: "阻塞" },
   { value: "due_soon", label: "临期" },
+  { value: "history", label: "历史事实" },
   { value: "all", label: "全部" },
 ];
 
@@ -74,10 +76,17 @@ function dueLabel(value: string | null): string {
     <div v-else class="queue-list" aria-label="装箱任务列表">
       <button
         v-for="item in visibleItems"
-        :key="item.task.id"
+        :key="
+          item.kind === 'task' ? item.task.id : `history:${item.container.id}`
+        "
         type="button"
         class="queue-item"
-        :class="{ selected: selectedTaskId === item.task.id }"
+        :class="{
+          selected:
+            item.kind === 'task'
+              ? selectedTaskId === item.task.id
+              : selectedContainerId === item.container.id,
+        }"
         @click="emit('select', item)"
       >
         <span class="urgency" :class="`urgency--${item.urgencyRank}`">
@@ -91,12 +100,19 @@ function dueLabel(value: string | null): string {
           </strong>
           <span class="queue-meta">
             <span><UserRound :size="13" />{{ item.responsibility }}</span>
-            <span><Clock3 :size="13" />{{ dueLabel(item.dueAt) }}</span>
+            <span v-if="item.kind === 'historical_snapshot'">
+              <Clock3 :size="13" />{{ dueLabel(item.container.updatedAt) }}
+              保存
+            </span>
+            <span v-else><Clock3 :size="13" />{{ dueLabel(item.dueAt) }}</span>
           </span>
-          <em v-if="item.blockerReason">
+          <em v-if="item.kind === 'task' && item.blockerReason">
             <AlertTriangle :size="13" />{{ item.blockerReason }}
           </em>
-          <span v-else-if="item.actionLabel" class="next-action">
+          <span
+            v-else-if="item.kind === 'historical_snapshot' || item.actionLabel"
+            class="next-action"
+          >
             <PackageOpen :size="13" />下一步：{{ item.actionLabel }}
           </span>
         </span>
@@ -146,7 +162,7 @@ function dueLabel(value: string | null): string {
 }
 .queue-filters {
   display: grid;
-  grid-template-columns: repeat(5, minmax(54px, 1fr));
+  grid-template-columns: repeat(6, minmax(54px, 1fr));
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
 }

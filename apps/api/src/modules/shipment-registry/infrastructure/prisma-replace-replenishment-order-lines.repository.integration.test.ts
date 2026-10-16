@@ -8,7 +8,7 @@ import { PrismaReplaceReplenishmentOrderLinesRepository } from "./prisma-replace
 function command(
   sourceBatchId: string,
   lines: ReplaceReplenishmentOrderLinesCommand["lines"],
-  tenantId = "demo-real-sample-20260921",
+  tenantId = "tenant-a",
   orderNumber = "CR-001",
 ): ReplaceReplenishmentOrderLinesCommand {
   return {
@@ -108,17 +108,41 @@ describe("PrismaReplaceReplenishmentOrderLinesRepository", () => {
     });
   });
 
+  it("rejects an unseen non-empty batch that omits the current batch precondition", async () => {
+    await withTemporaryDatabase(async ({ prisma }) => {
+      const repository = new PrismaReplaceReplenishmentOrderLinesRepository(
+        prisma as never,
+      );
+      await repository.execute(command("run-current", [firstLine]));
+
+      await expect(
+        repository.execute(command("run-delayed", [secondLine])),
+      ).rejects.toThrow("IMPORT_BATCH_REPLAY_CONFLICT");
+      await expect(
+        prisma.replenishmentOrderLine.findMany({
+          where: { tenantId: "tenant-a", isCurrent: true },
+          select: { sourceBatchId: true, sourceRowId: true },
+        }),
+      ).resolves.toEqual([
+        { sourceBatchId: "run-current", sourceRowId: firstLine.sourceRowId },
+      ]);
+    });
+  });
+
   it("supersedes the previous batch atomically and rolls back invalid replacements", async () => {
     await withTemporaryDatabase(async ({ prisma }) => {
       const repository = new PrismaReplaceReplenishmentOrderLinesRepository(
         prisma as never,
       );
       await repository.execute(command("run-1", [firstLine]));
-      await repository.execute(command("run-2", [secondLine]));
+      await repository.execute({
+        ...command("run-2", [secondLine]),
+        expectedCurrentSourceBatchId: "run-1",
+      });
 
       expect(
         await prisma.replenishmentOrderLine.findMany({
-          where: { tenantId: "demo-real-sample-20260921" },
+          where: { tenantId: "tenant-a" },
           orderBy: { sourceBatchId: "asc" },
           select: {
             sourceBatchId: true,
@@ -162,21 +186,21 @@ describe("PrismaReplaceReplenishmentOrderLinesRepository", () => {
       );
       const order = await prisma.replenishmentOrder.create({
         data: {
-          tenantId: "demo-real-sample-20260921",
+          tenantId: "tenant-a",
           orderNumber: "CR-001",
         },
       });
       await prisma.replenishmentOrderLine.createMany({
         data: [
           {
-            tenantId: "demo-real-sample-20260921",
+            tenantId: "tenant-a",
             replenishmentOrderId: order.id,
             sourceBatchId: "legacy-run",
             ...firstLine,
             shippedQuantity: "12.00",
           },
           {
-            tenantId: "demo-real-sample-20260921",
+            tenantId: "tenant-a",
             replenishmentOrderId: order.id,
             sourceBatchId: "legacy-run",
             ...secondLine,
@@ -195,7 +219,7 @@ describe("PrismaReplaceReplenishmentOrderLinesRepository", () => {
         await prisma.replenishmentOrderProjectionBatch.findUnique({
           where: {
             tenantId_replenishmentOrderId_sourceBatchId: {
-              tenantId: "demo-real-sample-20260921",
+              tenantId: "tenant-a",
               replenishmentOrderId: order.id,
               sourceBatchId: "legacy-run",
             },
@@ -306,7 +330,7 @@ describe("PrismaReplaceReplenishmentOrderLinesRepository", () => {
       expect(
         await prisma.replenishmentOrderLine.findMany({
           where: {
-            tenantId: "demo-real-sample-20260921",
+            tenantId: "tenant-a",
             isCurrent: true,
           },
           select: { sourceBatchId: true, sourceRowId: true },
@@ -330,7 +354,7 @@ describe("PrismaReplaceReplenishmentOrderLinesRepository", () => {
         { execute: async () => null },
       );
       const page = await workbench.execute({
-        tenantId: "demo-real-sample-20260921",
+        tenantId: "tenant-a",
       });
       expect(page.items[0]).toMatchObject({
         orderNumber: "CR-001",

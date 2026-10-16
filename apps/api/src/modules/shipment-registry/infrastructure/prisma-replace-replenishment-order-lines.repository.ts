@@ -131,27 +131,25 @@ async function applyCommand(
     await createMarker(transaction, command, order.id, contentHash);
     return;
   }
-  if (command.expectedCurrentSourceBatchId || command.lines.length === 0) {
-    const currentBatches = await transaction.replenishmentOrderLine.findMany({
-      where: {
-        tenantId: command.tenantId,
-        replenishmentOrderId: order.id,
-        isCurrent: true,
-      },
-      distinct: ["sourceBatchId"],
-      select: { sourceBatchId: true },
-    });
-    if (command.expectedCurrentSourceBatchId) {
-      if (
-        currentBatches.length !== 1 ||
-        currentBatches[0]!.sourceBatchId !==
-          command.expectedCurrentSourceBatchId
-      ) {
-        throw new ConflictException("IMPORT_BATCH_REPLAY_CONFLICT");
-      }
-    } else if (currentBatches.length > 0) {
+  const currentBatches = await transaction.replenishmentOrderLine.findMany({
+    where: {
+      tenantId: command.tenantId,
+      replenishmentOrderId: order.id,
+      isCurrent: true,
+    },
+    distinct: ["sourceBatchId"],
+    select: { sourceBatchId: true },
+  });
+  if (currentBatches.length > 0) {
+    if (
+      !command.expectedCurrentSourceBatchId ||
+      currentBatches.length !== 1 ||
+      currentBatches[0]!.sourceBatchId !== command.expectedCurrentSourceBatchId
+    ) {
       throw new ConflictException("IMPORT_BATCH_REPLAY_CONFLICT");
     }
+  } else if (command.expectedCurrentSourceBatchId) {
+    throw new ConflictException("IMPORT_BATCH_REPLAY_CONFLICT");
   }
   await transaction.replenishmentOrderLine.updateMany({
     where: { replenishmentOrderId: order.id, isCurrent: true },

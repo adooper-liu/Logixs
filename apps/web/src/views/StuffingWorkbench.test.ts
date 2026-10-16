@@ -72,7 +72,10 @@ describe("StuffingWorkbench", () => {
       activateWorkSession,
     ])
       mock.mockReset();
-    listContainers.mockResolvedValue({ items: [container] });
+    listContainers.mockResolvedValue({
+      items: [container],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+    });
     getContainer.mockResolvedValue(container);
     getContainerCargo.mockResolvedValue({
       containerRecordId: container.id,
@@ -104,7 +107,10 @@ describe("StuffingWorkbench", () => {
         },
       ],
     });
-    listNodeTasks.mockResolvedValue({ items: [nodeTask()] });
+    listNodeTasks.mockResolvedValue({
+      items: [nodeTask()],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+    });
     getSnapshot.mockResolvedValue(null);
     listDateFacts.mockResolvedValue({
       items: [],
@@ -154,6 +160,55 @@ describe("StuffingWorkbench", () => {
     expect(wrapper.text()).not.toContain("node-container_stuffing");
   });
 
+  it("shows snapshot-backed history as read-only without inventing a task", async () => {
+    listContainers.mockImplementation(async (query?: { scope?: string }) => ({
+      items:
+        query?.scope === "active_stuffing_snapshot" ? [container] : [container],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+    }));
+    listNodeTasks.mockResolvedValue({
+      items: [],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+    });
+    listLifecycleNodes.mockResolvedValue({ flow: null, nodes: [] });
+    getSnapshot.mockResolvedValue(historicalSnapshot());
+    getContainerCargo.mockResolvedValue({
+      containerRecordId: container.id,
+      allocationSetId: "allocation-1",
+      allocationSetVersion: 1,
+      items: [
+        {
+          replenishmentOrderLineId: "line-1",
+          productSkuId: "sku-1",
+          productNumber: "331-015",
+          allocatedQuantity: "118",
+          quantityUnit: "piece",
+        },
+      ],
+    });
+    const { wrapper, router } = await mountPageWithRouter();
+
+    expect(wrapper.text()).toContain("历史事实只读");
+    expect(wrapper.text()).not.toContain("保存装箱记录");
+    expect(wrapper.text()).toContain("历史事实");
+    expect(wrapper.text()).toContain("查看历史装箱事实");
+    await wrapper
+      .get('[aria-label="装箱任务列表"] button.queue-item')
+      .trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.query).toEqual({
+      containerId: container.id,
+    });
+    expect(wrapper.text()).toContain("快照与当前装载一致");
+    expect(wrapper.text()).toContain("历史事实只读");
+    expect(wrapper.text()).toContain("未建立 stuffed 结论");
+    expect(wrapper.text()).toContain("未记录、未接受");
+    expect(wrapper.text()).not.toContain("保存装箱记录");
+    expect(wrapper.text()).not.toContain("实际装箱时间表单");
+    expect(wrapper.text()).not.toContain("领取任务");
+  });
+
   it("keeps successful cargo data visible when date projection fails", async () => {
     listDateFacts.mockRejectedValue(new Error("network"));
     const wrapper = await mountPage();
@@ -163,6 +218,10 @@ describe("StuffingWorkbench", () => {
 });
 
 async function mountPage() {
+  return (await mountPageWithRouter()).wrapper;
+}
+
+async function mountPageWithRouter() {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: "/workspaces/stuffing", component: StuffingWorkbench }],
@@ -184,7 +243,33 @@ async function mountPage() {
     },
   });
   await flushPromises();
-  return wrapper;
+  return { wrapper, router };
+}
+
+function historicalSnapshot() {
+  return {
+    snapshotId: "66666666-6666-4666-8666-666666666666",
+    containerRecordId: container.id,
+    version: 1,
+    allocationSetId: "allocation-1",
+    allocationSetVersion: 1,
+    containerNumber: "HMMU4956442",
+    sealNumber: "26H0407525",
+    packageCount: 504,
+    grossWeight: "7723",
+    grossWeightUnit: "KGM" as const,
+    netWeight: null,
+    volume: "67.25",
+    volumeUnit: "MTQ" as const,
+    vgm: null,
+    ingestionChannel: "file_import" as const,
+    sourceSystem: "full-chain-sample",
+    evidenceRefs: ["33333333-3333-4333-8333-333333333333"],
+    actorId: "source-import-service",
+    reasonCode: "historical_stuffing_imported",
+    createdAt: "2026-10-15T08:00:00.000Z",
+    duplicate: false,
+  };
 }
 
 function nodeTask() {

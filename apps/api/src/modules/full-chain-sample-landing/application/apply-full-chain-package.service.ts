@@ -12,7 +12,6 @@ import type { AuthenticatedUserIdentity } from "../../identity";
 import type { LandingIsolationProbe } from "../domain/landing-isolation-probe.port";
 import type { LandingReceiptStore } from "../domain/landing-receipt-store.port";
 import type { FullChainLandingRepository } from "../domain/full-chain-landing.repository";
-import type { FullChainWorkbenchProjector } from "../domain/full-chain-workbench-projector.port";
 import {
   buildFullChainLandingGraph,
   fullChainLandingProjectionHash,
@@ -59,7 +58,6 @@ export class ApplyFullChainPackageService {
     private readonly receiptStore: LandingReceiptStore,
     private readonly isolationProbe: LandingIsolationProbe,
     private readonly afterStage: () => Promise<void> = async () => undefined,
-    private readonly workbenchProjector?: FullChainWorkbenchProjector,
   ) {}
 
   async execute(
@@ -74,12 +72,12 @@ export class ApplyFullChainPackageService {
       packageHash: graph.packageHash,
     });
     if (existing?.state === "published")
-      return this.publishedReplay(
-        command.identity.tenantId,
-        existing.runId,
-        graph,
+      return {
+        runId: existing.runId,
+        state: "replayed",
         counts,
-      );
+        gapCount: graph.gaps.length,
+      };
     const candidateRunId = existing?.runId ?? randomUUID();
     const candidateScope = this.policy.scope(candidateRunId);
     let before = await this.isolationProbe.capture(candidateScope);
@@ -98,12 +96,12 @@ export class ApplyFullChainPackageService {
         this.policy.scope(staged.runId),
       );
     if (staged.state === "published")
-      return this.publishedReplay(
-        command.identity.tenantId,
-        staged.runId,
-        graph,
+      return {
+        runId: staged.runId,
+        state: "replayed",
         counts,
-      );
+        gapCount: graph.gaps.length,
+      };
     let stored: { keyHash: string; digest: string; replayed: boolean };
     const receiptBody = this.receiptBody(
       staged.runId,
@@ -134,8 +132,8 @@ export class ApplyFullChainPackageService {
         return this.waitForPublishedReplay(
           command.identity.tenantId,
           staged.runId,
-          graph,
           counts,
+          graph.gaps.length,
         );
     } else {
       try {
@@ -155,8 +153,8 @@ export class ApplyFullChainPackageService {
           return this.waitForPublishedReplay(
             command.identity.tenantId,
             staged.runId,
-            graph,
             counts,
+            graph.gaps.length,
           );
       } catch (error) {
         await this.repository.markReceiptPending({
@@ -188,7 +186,6 @@ export class ApplyFullChainPackageService {
     const publicationComparison = this.isolationProbe.compare(after, published);
     if (publicationComparison.outboxDelta !== 1)
       throw new Error("FULL_CHAIN_ISOLATION_VIOLATION");
-    await this.projectWorkbench(command.identity.tenantId, staged.runId, graph);
     return {
       runId: staged.runId,
       state: "published",
@@ -197,34 +194,16 @@ export class ApplyFullChainPackageService {
     };
   }
 
-  private async projectWorkbench(
-    tenantId: string,
-    runId: string,
-    graph: FullChainLandingGraph,
-  ): Promise<void> {
-    await this.workbenchProjector?.project({ tenantId, runId, graph });
-  }
-
-  private async publishedReplay(
-    tenantId: string,
-    runId: string,
-    graph: FullChainLandingGraph,
-    counts: Record<FullChainRecordType, number>,
-  ): Promise<ApplyFullChainPackageResult> {
-    await this.projectWorkbench(tenantId, runId, graph);
-    return { runId, state: "replayed", counts, gapCount: graph.gaps.length };
-  }
-
   private async waitForPublishedReplay(
     tenantId: string,
     runId: string,
-    graph: FullChainLandingGraph,
     counts: Record<FullChainRecordType, number>,
+    gapCount: number,
   ): Promise<ApplyFullChainPackageResult> {
     for (let attempt = 0; attempt < 100; attempt += 1) {
       const status = await this.repository.getStatus({ tenantId, runId });
       if (status?.state === "published")
-        return this.publishedReplay(tenantId, runId, graph, counts);
+        return { runId, state: "replayed", counts, gapCount };
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     throw new Error("FULL_CHAIN_PUBLICATION_IN_PROGRESS");

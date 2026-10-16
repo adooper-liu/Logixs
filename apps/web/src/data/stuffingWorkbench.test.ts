@@ -10,13 +10,45 @@ describe("stuffing workbench projection", () => {
         task("overdue", "container_stuffing", "2026-09-20T00:00:00.000Z"),
       ],
       containers: [],
+      historicalContainers: [],
       actorId: "dev-operator",
       now: new Date("2026-09-21T00:00:00.000Z"),
     });
 
-    expect(items.map((item) => item.task.id)).toEqual(["overdue", "future"]);
+    expect(
+      items.flatMap((item) => (item.kind === "task" ? [item.task.id] : [])),
+    ).toEqual(["overdue", "future"]);
     expect(items[0]?.urgencyLabel).toBe("已逾期");
     expect(filterStuffingQueue(items, "executable")).toHaveLength(2);
+  });
+
+  it("adds snapshot-backed history without creating a task and gives real tasks precedence", () => {
+    const history = container("history", "HMMU4956442");
+    const tasked = container("tasked", "MSKU-TASKED");
+    const items = buildStuffingQueue({
+      tasks: [
+        {
+          ...task("task-1", "container_stuffing", "2026-09-25T00:00:00.000Z"),
+          containerId: tasked.id,
+        },
+      ],
+      containers: [tasked],
+      historicalContainers: [history, tasked],
+      actorId: "dev-operator",
+      now: new Date("2026-09-21T00:00:00.000Z"),
+    });
+
+    expect(items.map((item) => [item.kind, item.container?.id])).toEqual([
+      ["task", "tasked"],
+      ["historical_snapshot", "history"],
+    ]);
+    expect(filterStuffingQueue(items, "history")).toEqual([
+      expect.objectContaining({
+        kind: "historical_snapshot",
+        title: "查看历史装箱事实",
+        actionLabel: "查看只读快照",
+      }),
+    ]);
   });
 
   it("marks only tasks assigned to the session actor as mine", () => {
@@ -27,16 +59,19 @@ describe("stuffing workbench projection", () => {
         task("other", "container_stuffing", "2026-09-25T00:00:00.000Z", "a-2"),
       ],
       containers: [],
+      historicalContainers: [],
       actorId: "a-1",
       now: new Date("2026-09-21T00:00:00.000Z"),
     });
 
+    const mine = filterStuffingQueue(items, "mine");
     expect(
-      filterStuffingQueue(items, "mine").map((item) => item.task.id),
+      mine.flatMap((item) => (item.kind === "task" ? [item.task.id] : [])),
     ).toEqual(["mine"]);
-    expect(items.find((item) => item.task.id === "mine")?.responsibility).toBe(
-      "我负责",
-    );
+    expect(
+      items.find((item) => item.kind === "task" && item.task.id === "mine")
+        ?.responsibility,
+    ).toBe("我负责");
   });
 
   it("fails closed without a session actor: nothing is mine, pool stays shared", () => {
@@ -51,6 +86,7 @@ describe("stuffing workbench projection", () => {
         ),
       ],
       containers: [],
+      historicalContainers: [],
       actorId: null,
       now: new Date("2026-09-21T00:00:00.000Z"),
     });
@@ -61,6 +97,16 @@ describe("stuffing workbench projection", () => {
     );
   });
 });
+
+function container(id: string, containerNumber: string) {
+  return {
+    id,
+    orderNumber: "26DSC01812",
+    containerNumber,
+    currentStatus: "shipped" as const,
+    updatedAt: "2026-09-21T00:00:00.000Z",
+  };
+}
 
 function task(
   id: string,

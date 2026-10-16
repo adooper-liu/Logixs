@@ -138,11 +138,8 @@ describe("ApplyFullChainPackageService", () => {
   let deps: ReturnType<typeof dependencies>;
   let service: ApplyFullChainPackageService;
 
-  let projectWorkbench: ReturnType<typeof vi.fn>;
-
   beforeEach(() => {
     deps = dependencies();
-    projectWorkbench = vi.fn(async () => undefined);
     service = new ApplyFullChainPackageService(
       new FullChainLandingPolicy({
         rehearsalTenantId: TENANT,
@@ -153,8 +150,6 @@ describe("ApplyFullChainPackageService", () => {
       deps.repository as never,
       deps.receiptStore,
       deps.isolationProbe,
-      undefined,
-      { project: projectWorkbench },
     );
   });
 
@@ -190,11 +185,6 @@ describe("ApplyFullChainPackageService", () => {
     expect(deps.isolationProbe.compare).toHaveBeenCalledTimes(2);
     expect(deps.isolationProbe.capture).toHaveBeenCalledTimes(4);
     expect(deps.repository.publish).toHaveBeenCalledTimes(1);
-    expect(projectWorkbench).toHaveBeenCalledWith({
-      tenantId: TENANT,
-      runId: RUN_ID,
-      graph: expect.any(Object),
-    });
   });
 
   it("returns a published replay without S3 or probe I/O", async () => {
@@ -217,58 +207,6 @@ describe("ApplyFullChainPackageService", () => {
     });
     expect(deps.receiptStore.putIfAbsent).not.toHaveBeenCalled();
     expect(deps.isolationProbe.capture).not.toHaveBeenCalled();
-    expect(projectWorkbench).toHaveBeenCalledWith({
-      tenantId: TENANT,
-      runId: RUN_ID,
-      graph: expect.any(Object),
-    });
-  });
-
-  it("projects when staging discovers an already-published concurrent run", async () => {
-    deps.repository.stage.mockResolvedValueOnce({
-      runId: RUN_ID,
-      state: "published",
-      replayed: true,
-      createdAt: new Date("2026-10-13T00:00:00.000Z"),
-    });
-
-    expect(await service.execute(command())).toMatchObject({
-      runId: RUN_ID,
-      state: "replayed",
-    });
-    expect(projectWorkbench).toHaveBeenCalledWith({
-      tenantId: TENANT,
-      runId: RUN_ID,
-      graph: expect.any(Object),
-    });
-    expect(deps.receiptStore.putIfAbsent).not.toHaveBeenCalled();
-  });
-
-  it("projects after a concurrent publisher wins reconciliation", async () => {
-    deps.repository.markReconciling.mockResolvedValueOnce(false);
-    deps.repository.getStatus.mockResolvedValueOnce({
-      runId: RUN_ID,
-      state: "published",
-      inputCounts: {},
-      appliedCounts: {},
-      replayedCounts: {},
-      rejectedCounts: {},
-      gapCount: 0,
-      checkCount: 0,
-      receiptKeyHash: "b".repeat(64),
-      receiptDigest: "c".repeat(64),
-      publishedAt: new Date(),
-    });
-
-    expect(await service.execute(command())).toMatchObject({
-      runId: RUN_ID,
-      state: "replayed",
-    });
-    expect(projectWorkbench).toHaveBeenCalledWith({
-      tenantId: TENANT,
-      runId: RUN_ID,
-      graph: expect.any(Object),
-    });
   });
 
   it("re-runs reconciliation before retrying a failed publish", async () => {
@@ -359,8 +297,6 @@ describe("ApplyFullChainPackageService", () => {
       deps.repository as never,
       deps.receiptStore,
       deps.isolationProbe,
-      undefined,
-      { project: projectWorkbench },
     );
     deps.repository.reconcile.mockResolvedValueOnce({
       ...(await deps.repository.reconcile()),

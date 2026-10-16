@@ -5,136 +5,141 @@ test("stuffing operator records a versioned snapshot and submits the actual time
 }) => {
   let snapshot: Record<string, unknown> | null = null;
   let actualFact: Record<string, unknown> | null = null;
-  await page.route(/^http:\/\/localhost:5173\/api\//, async (route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (path === "/api/containers/container-1/stuffing-snapshot") {
-      if (request.method() === "POST") {
-        const body = request.postDataJSON() as Record<string, unknown>;
-        snapshot = {
-          snapshotId: "snapshot-1",
-          containerRecordId: "container-1",
-          version: 1,
-          allocationSetId: "allocation-1",
-          allocationSetVersion: 2,
-          containerNumber: body.containerNumber,
-          sealNumber: body.sealNumber,
-          packageCount: body.packageCount,
-          grossWeight: body.grossWeight,
-          grossWeightUnit: "KGM",
-          netWeight: body.netWeight,
-          volume: body.volume,
-          volumeUnit: "MTQ",
-          vgm: null,
-          evidenceRefs: body.evidenceRefs,
-          actorId: "dev-operator",
-          reasonCode: body.reasonCode,
-          createdAt: "2026-09-21T01:00:00.000Z",
-          duplicate: false,
-        };
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        json: snapshot,
-      });
-      return;
-    }
-    if (path === "/api/containers/container-1/date-facts") {
-      if (request.method() === "POST") {
-        actualFact = {
-          factId: "fact-1",
-          nodeCode: "container_stuffing",
-          eventCode: "stuffed",
-          timeKind: "actual",
-          occurredAt: "2026-09-21T02:00:00.000Z",
-          rawValue: "2026-09-21T10:00",
-          sourceUtcOffset: "+08:00",
-          ingestionChannel: "manual_ui",
-          captureSource: "manual_backfill",
-          sourceSystem: "logix.manual",
-          authoritySystem: "ops-team",
-          verificationState: "pending",
-          confidenceState: "unknown",
-          validity: "effective",
-          authorityPolicyRef: null,
-          evidenceRefs: ["33333333-3333-4333-8333-333333333333"],
-          applicationState: "review_required",
-          applicationReasonCode: "SOURCE_AUTHORITY_REVIEW_REQUIRED",
-          canonicalEventId: null,
-          projectionVersion: 1,
-          recordedAt: "2026-09-21T02:01:00.000Z",
-        };
+  await page.route(
+    /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\//,
+    async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === "/api/containers/container-1/stuffing-snapshot") {
+        if (request.method() === "POST") {
+          const body = request.postDataJSON() as Record<string, unknown>;
+          snapshot = {
+            snapshotId: "snapshot-1",
+            containerRecordId: "container-1",
+            version: 1,
+            allocationSetId: "allocation-1",
+            allocationSetVersion: 2,
+            containerNumber: body.containerNumber,
+            sealNumber: body.sealNumber,
+            packageCount: body.packageCount,
+            grossWeight: body.grossWeight,
+            grossWeightUnit: "KGM",
+            netWeight: body.netWeight,
+            volume: body.volume,
+            volumeUnit: "MTQ",
+            vgm: null,
+            ingestionChannel: "manual_ui",
+            sourceSystem: "logix.web",
+            evidenceRefs: body.evidenceRefs,
+            actorId: "dev-operator",
+            reasonCode: body.reasonCode,
+            createdAt: "2026-09-21T01:00:00.000Z",
+            duplicate: false,
+          };
+        }
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          json: {
+          json: snapshot,
+        });
+        return;
+      }
+      if (path === "/api/containers/container-1/date-facts") {
+        if (request.method() === "POST") {
+          actualFact = {
             factId: "fact-1",
-            recordState: "recorded",
+            nodeCode: "container_stuffing",
+            eventCode: "stuffed",
+            timeKind: "actual",
+            occurredAt: "2026-09-21T02:00:00.000Z",
+            rawValue: "2026-09-21T10:00",
+            sourceUtcOffset: "+08:00",
+            ingestionChannel: "manual_ui",
+            captureSource: "manual_backfill",
+            sourceSystem: "logix.manual",
+            authoritySystem: "ops-team",
+            verificationState: "pending",
+            confidenceState: "unknown",
+            validity: "effective",
+            authorityPolicyRef: null,
+            evidenceRefs: ["33333333-3333-4333-8333-333333333333"],
             applicationState: "review_required",
-            reasonCode: "SOURCE_AUTHORITY_REVIEW_REQUIRED",
+            applicationReasonCode: "SOURCE_AUTHORITY_REVIEW_REQUIRED",
             canonicalEventId: null,
             projectionVersion: 1,
-          },
-        });
-      } else {
+            recordedAt: "2026-09-21T02:01:00.000Z",
+          };
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            json: {
+              factId: "fact-1",
+              recordState: "recorded",
+              applicationState: "review_required",
+              reasonCode: "SOURCE_AUTHORITY_REVIEW_REQUIRED",
+              canonicalEventId: null,
+              projectionVersion: 1,
+            },
+          });
+        } else {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            json: {
+              items: actualFact ? [actualFact] : [],
+              projectionVersion: actualFact ? 1 : 0,
+              asOf: "2026-09-21T02:01:00.000Z",
+            },
+          });
+        }
+        return;
+      }
+      if (path === "/api/work-sessions") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
           json: {
-            items: actualFact ? [actualFact] : [],
-            projectionVersion: actualFact ? 1 : 0,
-            asOf: "2026-09-21T02:01:00.000Z",
+            contractVersion: "work-session-page.v1",
+            items: [],
+            pageSize: 50,
+            nextCursor: null,
           },
         });
+        return;
       }
-      return;
-    }
-    if (path === "/api/work-sessions") {
+      if (path === "/api/work-sessions/open") {
+        const body = request.postDataJSON() as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          json: {
+            contractVersion: "work-session.v1",
+            sessionId: "88888888-8888-4888-8888-888888888888",
+            version: 1,
+            status: "current",
+            workbenchCode: body.workbenchCode,
+            contextKey: "stuffing|container:container-1|task:task-1",
+            routeContext: body.routeContext,
+            subjectRef: body.subjectRef,
+            taskRef: body.taskRef,
+            domainVersionSeen: 0,
+            activeItemKey: body.activeItemKey,
+            contextMode: body.contextMode,
+            displaySummary: body.displaySummary,
+            lastOpenedAt: "2026-09-21T00:00:00.000Z",
+            createdAt: "2026-09-21T00:00:00.000Z",
+            updatedAt: "2026-09-21T00:00:00.000Z",
+          },
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        json: {
-          contractVersion: "work-session-page.v1",
-          items: [],
-          pageSize: 50,
-          nextCursor: null,
-        },
+        json: responseFor(path),
       });
-      return;
-    }
-    if (path === "/api/work-sessions/open") {
-      const body = request.postDataJSON() as Record<string, unknown>;
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        json: {
-          contractVersion: "work-session.v1",
-          sessionId: "88888888-8888-4888-8888-888888888888",
-          version: 1,
-          status: "current",
-          workbenchCode: body.workbenchCode,
-          contextKey: "stuffing|container:container-1|task:task-1",
-          routeContext: body.routeContext,
-          subjectRef: body.subjectRef,
-          taskRef: body.taskRef,
-          domainVersionSeen: 0,
-          activeItemKey: body.activeItemKey,
-          contextMode: body.contextMode,
-          displaySummary: body.displaySummary,
-          lastOpenedAt: "2026-09-21T00:00:00.000Z",
-          createdAt: "2026-09-21T00:00:00.000Z",
-          updatedAt: "2026-09-21T00:00:00.000Z",
-        },
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      json: responseFor(path),
-    });
-  });
+    },
+  );
 
   await page.goto("/workspaces/stuffing");
   await expect(page.getByRole("heading", { name: "装箱" })).toBeVisible();
@@ -167,6 +172,171 @@ test("stuffing operator records a versioned snapshot and submits the actual time
   }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
 });
+
+test("snapshot-backed history stays read-only and inspectable without inventing a task", async ({
+  page,
+}, testInfo) => {
+  await page.route(
+    /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\//,
+    async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: historicalResponseFor(path),
+      });
+    },
+  );
+
+  await page.goto("/workspaces/stuffing");
+  await page.getByRole("button", { name: /查看历史装箱事实/ }).click();
+  await expect(page.getByText("历史事实只读", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/来源：full-chain-sample · file_import/),
+  ).toBeVisible();
+  await expect(page.getByText("未创建装箱工单", { exact: true })).toBeVisible();
+  const snapshotFacts = page.getByRole("region", { name: "当前装箱记录" });
+  await expect(
+    snapshotFacts.getByText("HMMU4956442", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    snapshotFacts.getByText("26H0407525", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    snapshotFacts.getByText("7723 kg", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    snapshotFacts.getByText("67.25 m³", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("未建立 stuffed 结论", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("未记录、未接受", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /15 个 SKU 明细/ }),
+  ).toBeVisible();
+  await expect(page.getByText("311-013GY", { exact: true })).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath(`historical-${testInfo.project.name}.png`),
+    fullPage: false,
+  });
+  await page.getByRole("button", { name: /15 个 SKU 明细/ }).click();
+  await expect(page.getByText("311-013GY", { exact: true })).toBeVisible();
+  await expect(page.getByText("350-172V80PK", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "保存装箱记录" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByLabel("实际装箱时间表单")).toHaveCount(0);
+
+  const widths = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+});
+
+function historicalResponseFor(path: string): unknown {
+  if (path === "/api/containers") return historicalContainerPage;
+  if (path === "/api/node-tasks") return historicalTaskPage;
+  if (path === "/api/containers/historical-container/cargo")
+    return historicalCargo;
+  if (path === "/api/containers/historical-container/lifecycle-nodes")
+    return {
+      flow: null,
+      nodes: [],
+      asOf: "2026-10-15T08:00:00.000Z",
+      projectionVersion: 0,
+    };
+  if (path === "/api/containers/historical-container/stuffing-snapshot")
+    return historicalSnapshot;
+  if (path === "/api/containers/historical-container/date-facts")
+    return {
+      items: [],
+      projectionVersion: 0,
+      asOf: "2026-10-15T08:00:00.000Z",
+    };
+  if (path === "/api/containers/historical-container")
+    return historicalContainer;
+  if (path === "/api/work-sessions")
+    return {
+      contractVersion: "work-session-page.v1",
+      items: [],
+      pageSize: 50,
+      nextCursor: null,
+    };
+  throw new Error(`Unhandled historical stuffing API path: ${path}`);
+}
+
+const historicalContainer = {
+  id: "historical-container",
+  orderNumber: "26DSC01812",
+  containerNumber: "HMMU4956442",
+  currentStatus: "shipped",
+  updatedAt: "2026-10-15T08:00:00.000Z",
+};
+const historicalContainerPage = {
+  items: [historicalContainer],
+  pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+  asOf: "2026-10-15T08:00:00.000Z",
+  projectionVersion: 1,
+};
+const historicalTaskPage = {
+  items: [],
+  pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+  asOf: "2026-10-15T08:00:00.000Z",
+  projectionVersion: 1,
+};
+const historicalCargo = {
+  containerRecordId: historicalContainer.id,
+  allocationSetId: "allocation-history-1",
+  allocationSetVersion: 1,
+  items: [
+    "311-013GY",
+    "311-023V01CW",
+    "311-053V00PK",
+    "311-094V80WT",
+    "312-103V80WT",
+    "316-031V80PK",
+    "316-031V80WT",
+    "331-011",
+    "331-015",
+    "331-054V00OG",
+    "331-054V00YL",
+    "331-085V00PK",
+    "331-088V00YL",
+    "331-113V00YL",
+    "350-172V80PK",
+  ].map((productNumber, index) => ({
+    replenishmentOrderLineId: `line-${index}`,
+    productSkuId: `sku-${index}`,
+    productNumber,
+    allocatedQuantity: index === 14 ? "490" : "1",
+    quantityUnit: index >= 4 && index <= 6 ? "set" : "piece",
+  })),
+};
+const historicalSnapshot = {
+  snapshotId: "snapshot-history-1",
+  containerRecordId: historicalContainer.id,
+  version: 1,
+  allocationSetId: "allocation-history-1",
+  allocationSetVersion: 1,
+  containerNumber: "HMMU4956442",
+  sealNumber: "26H0407525",
+  packageCount: 504,
+  grossWeight: "7723",
+  grossWeightUnit: "KGM",
+  netWeight: null,
+  volume: "67.25",
+  volumeUnit: "MTQ",
+  vgm: null,
+  ingestionChannel: "file_import",
+  sourceSystem: "full-chain-sample",
+  evidenceRefs: ["33333333-3333-4333-8333-333333333333"],
+  actorId: "source-import-service",
+  reasonCode: "historical_stuffing_imported",
+  createdAt: "2026-10-15T08:00:00.000Z",
+  duplicate: false,
+};
 
 function responseFor(path: string): unknown {
   if (path === "/api/containers") return containerPage;

@@ -2,27 +2,40 @@ import type { ContainerSummary } from "../api/containers";
 import type { NodeTaskDetail } from "../api/nodeTasks";
 
 export type StuffingQueueFilter =
-  "mine" | "executable" | "blocked" | "due_soon" | "all";
+  "mine" | "executable" | "blocked" | "due_soon" | "history" | "all";
 
-export interface StuffingQueueItem {
-  task: NodeTaskDetail;
-  container: ContainerSummary | null;
+interface StuffingQueueItemBase {
   title: string;
   responsibility: string;
-  dueAt: string | null;
   urgencyLabel: string;
   urgencyRank: number;
+  actionLabel: string | null;
+}
+
+export interface StuffingTaskQueueItem extends StuffingQueueItemBase {
+  kind: "task";
+  task: NodeTaskDetail;
+  container: ContainerSummary | null;
+  dueAt: string | null;
   isMine: boolean;
   isExecutable: boolean;
   isBlocked: boolean;
   isDueSoon: boolean;
   blockerReason: string | null;
-  actionLabel: string | null;
 }
+
+export interface StuffingHistoricalQueueItem extends StuffingQueueItemBase {
+  kind: "historical_snapshot";
+  container: ContainerSummary;
+}
+
+export type StuffingQueueItem =
+  StuffingTaskQueueItem | StuffingHistoricalQueueItem;
 
 export function buildStuffingQueue(input: {
   tasks: readonly NodeTaskDetail[];
   containers: readonly ContainerSummary[];
+  historicalContainers: readonly ContainerSummary[];
   /** 会话 actor；缺失时不把任何任务判为“我的”。 */
   actorId: string | null;
   now?: Date;
@@ -31,7 +44,7 @@ export function buildStuffingQueue(input: {
   const dueSoonBoundary = now.getTime() + 72 * 60 * 60 * 1000;
   const containers = new Map(input.containers.map((item) => [item.id, item]));
 
-  return input.tasks
+  const taskItems: StuffingTaskQueueItem[] = input.tasks
     .filter((task) => task.nodeCode === "container_stuffing")
     .map((task) => {
       const dueAt = task.nextAction?.dueAt ?? earliestDueAt(task);
@@ -46,6 +59,7 @@ export function buildStuffingQueue(input: {
         input.actorId && assigneeId && assigneeId === input.actorId,
       );
       return {
+        kind: "task" as const,
         task,
         container: task.containerId
           ? (containers.get(task.containerId) ?? null)
@@ -79,6 +93,22 @@ export function buildStuffingQueue(input: {
         compareNullableDates(left.dueAt, right.dueAt) ||
         left.task.id.localeCompare(right.task.id),
     );
+  const taskContainerIds = new Set(
+    taskItems.flatMap((item) => (item.container ? [item.container.id] : [])),
+  );
+  const historicalItems: StuffingHistoricalQueueItem[] =
+    input.historicalContainers
+      .filter((container) => !taskContainerIds.has(container.id))
+      .map((container) => ({
+        kind: "historical_snapshot" as const,
+        container,
+        title: "查看历史装箱事实",
+        responsibility: "只读历史",
+        urgencyLabel: "历史",
+        urgencyRank: 4,
+        actionLabel: "查看只读快照",
+      }));
+  return [...taskItems, ...historicalItems];
 }
 
 export function filterStuffingQueue(
@@ -86,7 +116,10 @@ export function filterStuffingQueue(
   filter: StuffingQueueFilter,
 ): StuffingQueueItem[] {
   if (filter === "all") return [...items];
+  if (filter === "history")
+    return items.filter((item) => item.kind === "historical_snapshot");
   return items.filter((item) => {
+    if (item.kind !== "task") return false;
     if (filter === "mine") return item.isMine;
     if (filter === "executable") return item.isExecutable;
     if (filter === "blocked") return item.isBlocked;

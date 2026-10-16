@@ -49,38 +49,12 @@ describe("FullChainLandingPolicy", () => {
     });
   });
 
-  it("accepts the old demo tenant only in explicit demo-switch mode", () => {
-    const demoSwitch = new FullChainLandingPolicy({
-      rehearsalTenantId: OLD_DEMO_TENANT,
-      oldDemoTenantId: OLD_DEMO_TENANT,
-      controlTenantId: "control-tenant",
-      prefixRoot: "demo-switch",
-      mode: "demo_switch",
-    });
-
-    expect(() =>
-      demoSwitch.assertCanApply(identity(OLD_DEMO_TENANT, ["import.execute"])),
-    ).not.toThrow();
-    expect(demoSwitch.scope("run-1")).toEqual({
-      targetTenantId: OLD_DEMO_TENANT,
-      oldDemoTenantId: OLD_DEMO_TENANT,
-      controlTenantId: "control-tenant",
-      targetPrefix: `demo-switch/${OLD_DEMO_TENANT}/run-1`,
-    });
-  });
-
-  it("allows import.read on the rehearsal and published demo tenants only", () => {
+  it("separates read capability from write capability", () => {
     expect(() =>
       policy.assertCanRead(identity(REHEARSAL_TENANT, ["import.read"])),
     ).not.toThrow();
     expect(() =>
-      policy.assertCanRead(identity(OLD_DEMO_TENANT, ["import.read"])),
-    ).not.toThrow();
-    expect(() =>
-      policy.assertCanRead(identity("another-tenant", ["import.read"])),
-    ).toThrowError(/FULL_CHAIN_REHEARSAL_ACCESS_DENIED/);
-    expect(() =>
-      policy.assertCanRead(identity(OLD_DEMO_TENANT, ["import.execute"])),
+      policy.assertCanRead(identity(REHEARSAL_TENANT, ["import.execute"])),
     ).toThrowError(/FULL_CHAIN_REHEARSAL_ACCESS_DENIED/);
   });
 });

@@ -199,6 +199,8 @@ const snapshotSelect = {
   vgmWeightUnit: true,
   vgmMethod: true,
   vgmVerifiedAt: true,
+  ingestionChannel: true,
+  sourceSystem: true,
   evidenceRefs: true,
   actorId: true,
   reasonCode: true,
@@ -225,6 +227,8 @@ function toRecord(
     vgmWeightUnit: string | null;
     vgmMethod: string | null;
     vgmVerifiedAt: Date | null;
+    ingestionChannel: string;
+    sourceSystem: string;
     evidenceRefs: unknown;
     actorId: string;
     reasonCode: string;
@@ -245,7 +249,11 @@ function toRecord(
           verifiedAt: row.vgmVerifiedAt.toISOString(),
         }
       : null;
-  if (row.grossWeightUnit !== "KGM" || row.volumeUnit !== "MTQ") {
+  if (
+    row.grossWeightUnit !== "KGM" ||
+    row.volumeUnit !== "MTQ" ||
+    !isStuffingIngestionChannel(row.ingestionChannel)
+  ) {
     throw new Error("CONTAINER_STUFFING_PERSISTENCE_CONTRACT_INVALID");
   }
   return {
@@ -263,12 +271,25 @@ function toRecord(
     volume: row.volume.toString(),
     volumeUnit: "MTQ",
     vgm,
+    ingestionChannel: row.ingestionChannel,
+    sourceSystem: row.sourceSystem,
     evidenceRefs,
     actorId: row.actorId,
     reasonCode: row.reasonCode,
     createdAt: row.createdAt.toISOString(),
     duplicate,
   };
+}
+
+function isStuffingIngestionChannel(
+  value: string,
+): value is ContainerStuffingSnapshotRecord["ingestionChannel"] {
+  return (
+    value === "api" ||
+    value === "webhook" ||
+    value === "file_import" ||
+    value === "manual_ui"
+  );
 }
 
 function stringArray(value: unknown): string[] {
