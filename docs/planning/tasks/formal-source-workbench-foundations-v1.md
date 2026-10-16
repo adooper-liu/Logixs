@@ -9,6 +9,7 @@ dependsOn:
   - full-chain-rehearsal-domain-adapter-v1
 writeScopes:
   - docs/planning/tasks/formal-source-workbench-foundations-v1.md
+  - docs/planning/progress-board.html
   - docs/planning/tasks/full-chain-demo-switch-v1.md
   - .gitignore
   - package.json
