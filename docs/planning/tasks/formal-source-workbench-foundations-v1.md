@@ -77,12 +77,15 @@ writeScopes:
   - apps/web/src/data/stuffingWorkbench.ts
   - apps/web/src/data/stuffingWorkbench.test.ts
   - apps/web/src/composables/useStuffingWorkbench.ts
+  - apps/web/src/composables/useStuffingWorkbench.test.ts
   - apps/web/src/components/stuffing/StuffingWorkQueue.vue
   - apps/web/src/components/stuffing/StuffingSnapshotPanel.vue
   - apps/web/src/components/stuffing/StuffingSnapshotPanel.test.ts
   - apps/web/src/views/StuffingWorkbench.vue
   - apps/web/src/views/StuffingWorkbench.test.ts
   - apps/web/e2e/stuffing-workbench.spec.ts
+  - apps/web/e2e/recoverable-work-sessions.spec.ts
+  - apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/**
   - database/schema.prisma
   - database/migrations/**
   - database/dictionary/**

@@ -338,6 +338,9 @@ function taskPage() {
         },
       },
     ],
+    pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+    asOf: "2026-10-14T08:00:00.000Z",
+    projectionVersion: 1,
   };
 }
 function cargo() {
