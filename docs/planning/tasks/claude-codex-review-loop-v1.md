@@ -1,7 +1,7 @@
 ---
-status: fix
+status: done
 branch: docs/claude-codex-review-loop-v1
-verification: "G1 local checks passed; PR #181 CI run 38867810774 static job 116864641807 failed because the progress board was stale; G2 generated the board and passed local board/docs/repo/Prettier/diff checks; main-agent review reopened the brief to fix governance metadata and final CI remains pending"
+verification: "PR #181 merged to main at 321fe700 on 2026-10-16; final CI run 38885852494 changes/static/quality succeeded, with unit/build/e2e/dictionary/security skipped by the docs-only change classifier; G1 and G2 local board/docs/repo/Prettier/diff checks passed"
 owner: main
 writer: codex
 risk: medium
@@ -125,9 +125,10 @@ next: fix
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责  | commit | 说明                                                                                                           |
-| ---------- | ------ | ----- | ------ | -------------------------------------------------------------------------------------------------------------- |
-| 2026-10-16 | coding | main  | —      | 负责人重新定案默认协作链，建立治理 brief 并同步规则                                                            |
-| 2026-10-16 | done   | main  | —      | scoped Prettier、`docs:check`、`repo:check`、`git diff --check` 通过；当前协作规则完成切换                     |
-| 2026-10-16 | fix    | codex | —      | G2：PR #181 CI run `38867810774` 的 static job `116864641807` 暴露 progress board 漏生成；按确定性生成入口收口 |
-| 2026-10-16 | done   | codex | —      | G2：重新生成 progress board；board/docs/repo/Prettier/diff 检查通过，实际差异仅含治理 brief 与生成 HTML        |
+| 日期       | 阶段   | 负责  | commit   | 说明                                                                                                           |
+| ---------- | ------ | ----- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| 2026-10-16 | coding | main  | —        | 负责人重新定案默认协作链，建立治理 brief 并同步规则                                                            |
+| 2026-10-16 | done   | main  | —        | scoped Prettier、`docs:check`、`repo:check`、`git diff --check` 通过；当前协作规则完成切换                     |
+| 2026-10-16 | fix    | codex | —        | G2：PR #181 CI run `38867810774` 的 static job `116864641807` 暴露 progress board 漏生成；按确定性生成入口收口 |
+| 2026-10-16 | done   | codex | —        | G2：重新生成 progress board；board/docs/repo/Prettier/diff 检查通过，实际差异仅含治理 brief 与生成 HTML        |
+| 2026-10-16 | done   | main  | 321fe700 | PR #181 合并；CI run `38885852494` 的 changes/static/quality 成功，docs-only 路径下其余不适用检查跳过          |
