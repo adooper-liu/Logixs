@@ -315,9 +315,7 @@ test("accepts a legacy stuffing record without a quantity unit but rejects inven
   delete legacy.records.find(
     ({ recordType }) => recordType === "stuffing_snapshot_line",
   ).payload.quantityUnit;
-  assert.doesNotThrow(() =>
-    validateFullChainPackageForLanding(rehash(legacy)),
-  );
+  assert.doesNotThrow(() => validateFullChainPackageForLanding(rehash(legacy)));
 
   const unknown = validArtifacts();
   unknown.records.find(
