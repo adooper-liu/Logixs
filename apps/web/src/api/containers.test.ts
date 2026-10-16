@@ -31,6 +31,29 @@ describe("listContainers", () => {
     });
   });
 
+  it("requests only active stuffing snapshot containers for historical facts", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [],
+        pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
+        asOf: "2026-09-13T00:00:00.000Z",
+        projectionVersion: 0,
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await listContainers({
+      pageSize: 100,
+      scope: "active_stuffing_snapshot",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/containers?pageSize=100&scope=active_stuffing_snapshot",
+      { method: "GET", redirect: "error", headers: SESSION_HEADERS },
+    );
+  });
+
   it("带页大小与游标", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

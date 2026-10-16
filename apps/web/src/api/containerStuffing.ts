@@ -20,6 +20,8 @@ export interface ContainerStuffingSnapshot {
     method: "method_1" | "method_2";
     verifiedAt: string;
   } | null;
+  ingestionChannel: "api" | "webhook" | "file_import" | "manual_ui";
+  sourceSystem: string;
   evidenceRefs: readonly string[];
   actorId: string;
   reasonCode: string;

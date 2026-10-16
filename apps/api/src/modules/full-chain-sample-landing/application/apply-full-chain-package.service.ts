@@ -245,22 +245,37 @@ export class ApplyFullChainPackageService {
     receiptDigest: string,
   ): void {
     const counts = graphCounts(graph);
-    if (
-      Object.entries(counts).some(
-        ([recordType, count]) =>
-          reconciliation.factCounts[recordType] !== count,
-      ) ||
-      reconciliation.receiptCount !== graph.recordReceipts.length ||
-      reconciliation.gapCount !== graph.gaps.length ||
-      reconciliation.relationCounts.planCargoReady !==
-        graph.planCargoReadyLinks.length ||
-      reconciliation.relationCounts.dispatchHouseBill !==
-        graph.dispatchHouseBillLinks.length ||
-      reconciliation.semanticHash !== fullChainLandingProjectionHash(graph) ||
-      reconciliation.outboxCount !== 0 ||
-      reconciliation.businessTaskCount !== 0 ||
-      !/^[a-f0-9]{64}$/u.test(receiptDigest)
-    )
-      throw new Error("FULL_CHAIN_RECONCILIATION_FAILED");
+    const mismatches = [
+      ...Object.entries(counts)
+        .filter(
+          ([recordType, count]) =>
+            reconciliation.factCounts[recordType] !== count,
+        )
+        .map(([recordType]) => `fact_count:${recordType}`),
+      ...(reconciliation.receiptCount !== graph.recordReceipts.length
+        ? ["receipt_count"]
+        : []),
+      ...(reconciliation.gapCount !== graph.gaps.length ? ["gap_count"] : []),
+      ...(reconciliation.relationCounts.planCargoReady !==
+      graph.planCargoReadyLinks.length
+        ? ["plan_cargo_ready_count"]
+        : []),
+      ...(reconciliation.relationCounts.dispatchHouseBill !==
+      graph.dispatchHouseBillLinks.length
+        ? ["dispatch_house_bill_count"]
+        : []),
+      ...(reconciliation.semanticHash !== fullChainLandingProjectionHash(graph)
+        ? ["semantic_hash"]
+        : []),
+      ...(reconciliation.outboxCount !== 0 ? ["outbox_count"] : []),
+      ...(reconciliation.businessTaskCount !== 0
+        ? ["business_task_count"]
+        : []),
+      ...(!/^[a-f0-9]{64}$/u.test(receiptDigest) ? ["receipt_digest"] : []),
+    ];
+    if (mismatches.length)
+      throw new Error(
+        `FULL_CHAIN_RECONCILIATION_FAILED:${mismatches.join(",")}`,
+      );
   }
 }

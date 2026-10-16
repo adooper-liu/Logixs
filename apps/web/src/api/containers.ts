@@ -36,13 +36,17 @@ export interface ContainerCargoScope {
   items: readonly ContainerCargoScopeItem[];
 }
 
+export type ContainerListScope = "all" | "active_stuffing_snapshot";
+
 export async function listContainers(query?: {
   pageSize?: number;
   cursor?: string;
+  scope?: ContainerListScope;
 }): Promise<ContainerPage> {
   const params = new URLSearchParams();
   if (query?.pageSize != null) params.set("pageSize", String(query.pageSize));
   if (query?.cursor) params.set("cursor", query.cursor);
+  if (query?.scope) params.set("scope", query.scope);
   const queryString = params.toString();
   const suffix = queryString ? `?${queryString}` : "";
   const response = await requestApi(`/api/containers${suffix}`, {

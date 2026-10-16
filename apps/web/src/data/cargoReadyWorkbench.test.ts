@@ -35,6 +35,25 @@ describe("cargo-ready workbench presentation", () => {
     expect(filterCargoReadyQueue(queue, "all")).toHaveLength(2);
   });
 
+  it("shows an empty order as one order-level queue gap", () => {
+    const queue = buildCargoReadyOrderQueue([
+      workbenchOrder({
+        workReason: {
+          code: "complete_order_lines",
+          label: "补充备货明细",
+          detail: "备货单尚无当前 SKU 明细",
+          responsibility: "mine",
+        },
+        lines: [],
+      }),
+    ]);
+
+    expect(queue[0]).toMatchObject({
+      gapCount: 1,
+      gapUnit: "项",
+    });
+  });
+
   it("folds a normal SKU and describes explicit absent facts", () => {
     const order = workbenchOrder();
     const views = buildCargoReadySkuViews(order, [

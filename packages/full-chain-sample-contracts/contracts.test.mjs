@@ -85,6 +85,7 @@ function fixtureRecords() {
         sku: "SKU-1",
         houseBillNo: "HBL-1",
         quantity: "1.000",
+        quantityUnit: "piece",
         grossWeight: "2.000",
         volume: "3.000",
       },
@@ -141,7 +142,11 @@ function rehash(artifacts) {
 }
 
 function validArtifacts() {
-  const records = fixtureRecords();
+  const records = fixtureRecords().sort((left, right) =>
+    Buffer.from(`${left.recordType}|${left.businessKey}`).compare(
+      Buffer.from(`${right.recordType}|${right.businessKey}`),
+    ),
+  );
   return rehash({
     manifest: {
       manifestVersion: "full-chain-package.v1",
@@ -225,10 +230,10 @@ async function writePackageDirectory(root, artifacts = validArtifacts()) {
   return packagePath;
 }
 
-async function withExternalPackage(action) {
+async function withExternalPackage(action, artifacts = validArtifacts()) {
   const root = await mkdtemp(path.join(tmpdir(), "full-chain-contract-"));
   try {
-    const packagePath = await writePackageDirectory(root);
+    const packagePath = await writePackageDirectory(root, artifacts);
     return await action({ root, packagePath });
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -305,6 +310,23 @@ test("rejects a stuffing record missing the exact HBL", () => {
   );
 });
 
+test("accepts a legacy stuffing record without a quantity unit but rejects invented units", () => {
+  const legacy = validArtifacts();
+  delete legacy.records.find(
+    ({ recordType }) => recordType === "stuffing_snapshot_line",
+  ).payload.quantityUnit;
+  assert.doesNotThrow(() => validateFullChainPackageForLanding(rehash(legacy)));
+
+  const unknown = validArtifacts();
+  unknown.records.find(
+    ({ recordType }) => recordType === "stuffing_snapshot_line",
+  ).payload.quantityUnit = "unknown";
+  assert.throws(
+    () => validateFullChainPackageForLanding(rehash(unknown)),
+    /PACKAGE_RECORD_INVALID/,
+  );
+});
+
 test("accepts one strict record of each supported type", () => {
   const artifacts = validArtifacts();
   assert.equal(validateFullChainPackageForLanding(artifacts), artifacts);
@@ -327,6 +349,48 @@ test("validates only the redacted rehearsal receipt shape", () => {
     () => validateRehearsalReceipt({ ...receipt, sourcePath: "C:/private" }),
     /REHEARSAL_RECEIPT_INVALID/,
   );
+});
+
+test("reads a package whose global record order differs from file type order", async () => {
+  const artifacts = validArtifacts();
+  artifacts.records.push(
+    record(
+      "booking_commitment",
+      "BOOK-0",
+      {
+        bookingNo: "BOOK-0",
+        masterBillNo: "MBL-0",
+        houseBillRefs: ["HBL-0"],
+        containerRefs: ["DISPLAY-GROUP-0"],
+      },
+      7,
+    ),
+  );
+  artifacts.lineage.push({
+    recordRef: "booking_commitment:BOOK-0",
+    sourceRef: "sheet-booking_commitment:7",
+    payloadFields: [
+      "bookingNo",
+      "masterBillNo",
+      "houseBillRefs",
+      "containerRefs",
+    ],
+  });
+  artifacts.records.sort((left, right) =>
+    Buffer.from(`${left.recordType}|${left.businessKey}`).compare(
+      Buffer.from(`${right.recordType}|${right.businessKey}`),
+    ),
+  );
+  rehash(artifacts);
+
+  await withExternalPackage(async ({ root, packagePath }) => {
+    const read = await readFullChainPackageDirectory({
+      packagePath,
+      approvedRoot: root,
+      repositoryRoot: process.cwd(),
+    });
+    assert.equal(read.records.length, 7);
+  }, artifacts);
 });
 
 test("reads one exact external package directory", async () => {

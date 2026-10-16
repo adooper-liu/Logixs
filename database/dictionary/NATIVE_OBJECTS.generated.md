@@ -2,7 +2,7 @@
 
 # 数据库原生对象清单
 
-- verifiedThroughMigration: `20261014120000_add_recoverable_work_sessions`
+- verifiedThroughMigration: `20261015120000_harden_replenishment_projection_batches`
 - 结构对账差异统一见 [主字典 reconciliation findings](./DATA_DICTIONARY.generated.md#findings)。
 
 ## Prisma 未完整表达的约束与索引
@@ -132,6 +132,7 @@
 | reference_data_release | reference_data_release_pkey | unique_index | 否 | CREATE UNIQUE INDEX reference_data_release_pkey ON public.reference_data_release USING btree (id) |
 | replenishment_order | replenishment_order_pkey | unique_index | 否 | CREATE UNIQUE INDEX replenishment_order_pkey ON public.replenishment_order USING btree (id) |
 | replenishment_order_line | replenishment_order_line_pkey | unique_index | 否 | CREATE UNIQUE INDEX replenishment_order_line_pkey ON public.replenishment_order_line USING btree (id) |
+| replenishment_order_projection_batch | replenishment_order_projection_batch_pkey | unique_index | 否 | CREATE UNIQUE INDEX replenishment_order_projection_batch_pkey ON public.replenishment_order_projection_batch USING btree (id) |
 | shipment | shipment_pkey | unique_index | 否 | CREATE UNIQUE INDEX shipment_pkey ON public.shipment USING btree (id) |
 | shipment_cargo_line | shipment_cargo_line_active_number_key | unique_index | 否 | CREATE UNIQUE INDEX shipment_cargo_line_active_number_key ON public.shipment_cargo_line USING btree (tenant_id, shipment_id, line_no) WHERE (state = 'active'::text) |
 | shipment_cargo_line | shipment_cargo_line_active_source_key | unique_index | 否 | CREATE UNIQUE INDEX shipment_cargo_line_active_source_key ON public.shipment_cargo_line USING btree (tenant_id, shipment_id, source_line_id) WHERE (state = 'active'::text) |

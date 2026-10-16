@@ -4,6 +4,8 @@ export type { ContainerSummary } from "./domain/container-summary";
 export { ApplyContainerRecordService } from "./application/apply-container-record.service";
 export { GetContainerOperationalViewService } from "./application/get-container-operational-view.service";
 export { ApplyReplenishmentOrderImportService } from "./application/apply-replenishment-order-import.service";
+export { ReplaceReplenishmentOrderLinesService } from "./application/replace-replenishment-order-lines.service";
+export type { ReplaceReplenishmentOrderLinesCommand } from "./domain/replace-replenishment-order-lines";
 export { BindReplenishmentLineProductSkuService } from "./application/bind-replenishment-line-product-sku.service";
 export { ReplaceContainerCargoAllocationsService } from "./application/replace-container-cargo-allocations.service";
 export { AssertContainerTenantService } from "./application/assert-container-tenant.service";

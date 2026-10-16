@@ -1086,8 +1086,9 @@ model ReplenishmentOrder {
   orderNumber      String                   @map("order_number")
   createdAt        DateTime                 @default(now()) @map("created_at")
   updatedAt        DateTime                 @updatedAt @map("updated_at")
-  containerRecords ContainerRecord[]
-  lines            ReplenishmentOrderLine[]
+  containerRecords  ContainerRecord[]
+  lines             ReplenishmentOrderLine[]
+  projectionBatches ReplenishmentOrderProjectionBatch[]
 
   @@unique([tenantId, orderNumber], map: "replenishment_order_tenant_order_key")
   @@unique([id, tenantId], map: "replenishment_order_id_tenant_key")
@@ -1125,11 +1126,26 @@ model ReplenishmentOrderLine {
   cargoAllocations            ContainerCargoAllocation[]
   shipmentCargoLines          ShipmentCargoLine[]
 
-  @@unique([sourceBatchId, sourceRowId], map: "replenishment_order_line_source_key")
+  @@unique([tenantId, sourceBatchId, sourceRowId], map: "replenishment_order_line_tenant_source_key")
   @@unique([id, tenantId], map: "replenishment_order_line_id_tenant_key")
   @@index([replenishmentOrderId, isCurrent], map: "replenishment_order_line_current_idx")
   @@index([tenantId, productSkuId, isCurrent], map: "replenishment_order_line_sku_current_idx")
   @@map("replenishment_order_line")
+}
+
+model ReplenishmentOrderProjectionBatch {
+  id                   String             @id @default(uuid()) @map("id") @db.Uuid
+  tenantId             String             @map("tenant_id")
+  replenishmentOrderId String             @map("replenishment_order_id")
+  replenishmentOrder   ReplenishmentOrder @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "replenishment_order_projection_batch_order_tenant_fkey")
+  sourceBatchId        String             @map("source_batch_id")
+  contentHash          String             @map("content_hash") @db.Char(64)
+  lineCount            Int                @map("line_count")
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, replenishmentOrderId, sourceBatchId], map: "replenishment_order_projection_batch_scope_key")
+  @@index([tenantId, sourceBatchId], map: "replenishment_order_projection_batch_source_idx")
+  @@map("replenishment_order_projection_batch")
 }
 
 // 已实际出运的主运输执行；计划、HBL、货柜和备货单都不是 Shipment 身份。
@@ -3051,6 +3067,7 @@ model FullChainStuffingLine {
   sku                 String                     @map("sku")
   houseBillNumber     String                     @map("house_bill_number")
   quantity            Decimal                    @map("quantity") @db.Decimal(24, 6)
+  quantityUnit        String?                    @map("quantity_unit")
   grossWeight         Decimal                    @map("gross_weight") @db.Decimal(24, 6)
   volume              Decimal                    @map("volume") @db.Decimal(24, 6)
   payloadHash         String                     @map("payload_hash")

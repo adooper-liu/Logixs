@@ -37,6 +37,15 @@ const {
   reloadWorkbench,
 } = useCargoReadyWorkbench(orderId, taskId);
 
+const pendingCount = computed(() =>
+  selectedOrder.value?.lines.length === 0
+    ? 1
+    : skuViews.value.filter((row) => row.overall === "attention").length,
+);
+const pendingCountUnit = computed(() =>
+  selectedOrder.value?.lines.length === 0 ? "项" : "个",
+);
+
 const { submission, submitting, execute, retry } = useCargoReadyTaskOperation(
   selectedTask,
   reloadWorkbench,
@@ -110,12 +119,7 @@ async function selectOrderById(value: string): Promise<void> {
         </span>
         <span>
           <small>需处理</small>
-          <b
-            >{{
-              skuViews.filter((row) => row.overall === "attention").length
-            }}
-            个</b
-          >
+          <b>{{ pendingCount }} {{ pendingCountUnit }}</b>
         </span>
         <span>
           <small>关联货柜</small>

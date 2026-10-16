@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef } from "vue";
+import { computed, onMounted, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import StuffingActionPanel from "../components/stuffing/StuffingActionPanel.vue";
 import StuffingSnapshotPanel from "../components/stuffing/StuffingSnapshotPanel.vue";
@@ -47,6 +47,18 @@ const {
   loadContainerList,
   reloadSelection,
 } = useStuffingWorkbench(containerId, taskId);
+const historicalMode = computed(
+  () =>
+    Boolean(selectedContainer.value && snapshot.value) && !selectedTask.value,
+);
+watch(queueItems, (items) => {
+  if (
+    queueFilter.value === "executable" &&
+    !items.some((item) => item.kind === "task" && item.isExecutable) &&
+    items.some((item) => item.kind === "historical_snapshot")
+  )
+    queueFilter.value = "history";
+});
 const commands = useStuffingCommands(reloadWorkbench);
 const snapshotDirty = shallowRef(false);
 const actionPanel = shallowRef<InstanceType<typeof StuffingActionPanel> | null>(
@@ -137,10 +149,13 @@ onMounted(() => {
 });
 
 function selectTask(item: StuffingQueueItem): void {
-  if (!item.task.containerId) return;
+  if (!item.container?.id) return;
   void router.replace({
     path: "/workspaces/stuffing",
-    query: { containerId: item.task.containerId, taskId: item.task.id },
+    query:
+      item.kind === "task" && item.task
+        ? { containerId: item.container.id, taskId: item.task.id }
+        : { containerId: item.container.id },
   });
 }
 
@@ -187,6 +202,7 @@ async function reloadWorkbench(): Promise<void> {
       <StuffingWorkQueue
         :items="queueItems"
         :selected-task-id="selectedTask?.id ?? taskId"
+        :selected-container-id="selectedContainer?.id ?? containerId"
         :filter="queueFilter"
         :loading="queueLoading"
         :error="queueError"
@@ -200,11 +216,12 @@ async function reloadWorkbench(): Promise<void> {
         :cargo="cargo"
         :snapshot="snapshot"
         :node="stuffingNode"
+        :historical-mode="historicalMode"
       />
     </template>
     <template #secondary>
       <StuffingActionPanel
-        v-if="selectedContainer"
+        v-if="selectedContainer && !historicalMode"
         ref="actionPanel"
         :container-number="selectedContainer.containerNumber"
         :cargo="cargo"
@@ -225,6 +242,71 @@ async function reloadWorkbench(): Promise<void> {
         @retry-task="taskOperation.retry()"
         @snapshot-dirty-change="snapshotDirty = $event"
       />
+      <section
+        v-else-if="selectedContainer && historicalMode"
+        class="historical-context"
+        aria-label="历史装箱操作上下文"
+      >
+        <small>当前操作</small>
+        <h2>历史事实只读</h2>
+        <p>此快照只用于追溯柜货关系，不代表当前存在可执行装箱任务。</p>
+        <dl>
+          <div>
+            <dt>任务</dt>
+            <dd>未创建装箱工单</dd>
+          </div>
+          <div>
+            <dt>生命周期</dt>
+            <dd>未建立 stuffed 结论</dd>
+          </div>
+          <div>
+            <dt>VGM</dt>
+            <dd>未记录、未接受</dd>
+          </div>
+        </dl>
+      </section>
     </template>
   </RoleWorkbenchFrame>
 </template>
+
+<style scoped>
+.historical-context {
+  min-width: 0;
+  padding: var(--space-4);
+}
+.historical-context small,
+.historical-context dt {
+  color: var(--muted);
+  font-size: var(--text-micro);
+}
+.historical-context h2,
+.historical-context p,
+.historical-context dl,
+.historical-context dd {
+  margin: 0;
+}
+.historical-context h2 {
+  margin-top: var(--space-1);
+  font-size: var(--text-title);
+}
+.historical-context p {
+  margin-top: var(--space-3);
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+.historical-context dl {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.historical-context dl div {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.historical-context dd {
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+</style>

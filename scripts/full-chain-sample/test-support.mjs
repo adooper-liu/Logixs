@@ -136,6 +136,7 @@ export function createV05LikeScan() {
             SKU: "SKU-FIXTURE-001",
             分提单: "HBL-FIXTURE-001",
             装载数量: "10",
+            数量单位: "件",
             毛重kg: "1",
             "体积m³": "1",
           },

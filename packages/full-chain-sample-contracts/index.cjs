@@ -76,6 +76,7 @@ const RECORD_PAYLOAD_FIELDS = Object.freeze({
     "sku",
     "houseBillNo",
     "quantity",
+    "quantityUnit",
     "grossWeight",
     "volume",
   ]),
@@ -382,7 +383,14 @@ async function readFullChainPackageDirectory({
       "manifest.json",
       "PACKAGE_MANIFEST_INVALID",
     ),
-    records: recordArrays.flat(),
+    records: recordArrays
+      .flat()
+      .sort((left, right) =>
+        compareCanonicalStrings(
+          `${left.recordType}|${left.businessKey}`,
+          `${right.recordType}|${right.businessKey}`,
+        ),
+      ),
     lineage,
     gaps: await readJson(physicalPackage, "gaps.json", "PACKAGE_GAP_INVALID"),
     checks: await readJson(

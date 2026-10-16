@@ -31,6 +31,9 @@ export class ContainerStuffingSnapshotDto {
     nullable: true,
   })
   vgm!: ContainerStuffingVgmResponseDto | null;
+  @ApiProperty({ enum: ["api", "webhook", "file_import", "manual_ui"] })
+  ingestionChannel!: "api" | "webhook" | "file_import" | "manual_ui";
+  @ApiProperty() sourceSystem!: string;
   @ApiProperty({ type: [String] }) evidenceRefs!: string[];
   @ApiProperty() actorId!: string;
   @ApiProperty() reasonCode!: string;

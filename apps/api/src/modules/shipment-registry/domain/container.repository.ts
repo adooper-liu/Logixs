@@ -1,3 +1,4 @@
+import type { ContainerListScope } from "./container-page";
 import type { ContainerSummary } from "./container-summary";
 import type { ContainerTaskFact } from "./container-task-fact";
 
@@ -9,6 +10,7 @@ export interface ContainerListQuery {
   tenantId: string;
   after?: { updatedAt: Date; id: string };
   take: number;
+  scope: ContainerListScope;
 }
 
 export interface ContainerByIdQuery {

@@ -85,6 +85,7 @@ export function createValidFullChainPackage(): ValidatedFullChainPackage {
         sku: "SKU-1",
         houseBillNo: "HBL-1",
         quantity: "9007199254740993.000",
+        quantityUnit: "piece",
         grossWeight: "2.000",
         volume: "3.000",
       },

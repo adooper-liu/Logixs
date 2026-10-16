@@ -8,6 +8,7 @@ import {
 import {
   decodeContainerCursor,
   encodeContainerCursor,
+  parseContainerListScope,
   parsePageSize,
 } from "../domain/container-page";
 import type { ContainerSummary } from "../domain/container-summary";
@@ -20,6 +21,7 @@ export interface ListContainersInput {
   tenantId?: string;
   pageSize?: string;
   cursor?: string;
+  scope?: string;
 }
 
 export interface ContainerPage {
@@ -47,8 +49,10 @@ export class ListContainersService {
     const tenantId = input.tenantId;
 
     let pageSize: number;
+    let scope;
     try {
       pageSize = parsePageSize(input.pageSize);
+      scope = parseContainerListScope(input.scope);
     } catch (error) {
       throw new HttpException(
         error instanceof Error ? error.message : "VALIDATION_FORMAT",
@@ -60,7 +64,7 @@ export class ListContainersService {
     if (input.cursor) {
       try {
         const cursor = decodeContainerCursor(input.cursor);
-        if (cursor.tenantId !== tenantId) {
+        if (cursor.tenantId !== tenantId || cursor.scope !== scope) {
           throw new Error("VALIDATION_FORMAT: cursor 与过滤条件不匹配");
         }
         after = { updatedAt: cursor.updatedAt, id: cursor.id };
@@ -76,6 +80,7 @@ export class ListContainersService {
       tenantId,
       after,
       take: pageSize + 1,
+      scope,
     });
     const hasNextPage = rows.length > pageSize;
     const items = hasNextPage ? rows.slice(0, pageSize) : rows;
@@ -90,6 +95,7 @@ export class ListContainersService {
                 tenantId,
                 updatedAt: new Date(last.updatedAt),
                 id: last.id,
+                scope,
               })
             : null,
         hasNextPage,

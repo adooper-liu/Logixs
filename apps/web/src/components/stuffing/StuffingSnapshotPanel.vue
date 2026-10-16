@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ClipboardCheck, PackageOpen, Scale } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { ContainerStuffingSnapshot } from "../../api/containerStuffing";
 import type { ContainerCargoScope } from "../../api/containers";
 import type { LiveNodeView } from "../../data/liveNodeProjection";
@@ -9,8 +9,17 @@ const props = defineProps<{
   cargo: ContainerCargoScope | null;
   snapshot: ContainerStuffingSnapshot | null;
   node: LiveNodeView | null;
+  historicalMode?: boolean;
 }>();
 
+const showHistoricalLines = ref(false);
+const showCargoLines = computed(
+  () => !props.historicalMode || showHistoricalLines.value,
+);
+const sourceLabel = computed(() => {
+  if (!props.snapshot) return "未记录";
+  return `${props.snapshot.sourceSystem} · ${props.snapshot.ingestionChannel}`;
+});
 const snapshotCurrent = computed(
   () =>
     Boolean(props.cargo?.allocationSetId) &&
@@ -21,7 +30,7 @@ const readinessLabel = computed(() => {
   if (!props.cargo?.allocationSetId) return "等待装载明细";
   if (!props.snapshot) return "待记录装箱结果";
   if (!snapshotCurrent.value) return "装载已变化，需重做快照";
-  return "装箱记录齐备";
+  return props.historicalMode ? "快照与当前装载一致" : "装箱记录齐备";
 });
 </script>
 
@@ -33,8 +42,17 @@ const readinessLabel = computed(() => {
         ><small>当前装载与装箱结果</small>
         <h2>装箱核对</h2></span
       >
-      <em :class="{ ready: snapshotCurrent }">{{ readinessLabel }}</em>
+      <em :class="{ ready: snapshotCurrent && !historicalMode }">{{
+        readinessLabel
+      }}</em>
     </header>
+
+    <p v-if="historicalMode" class="historical-note">
+      历史只读事实 · 来源：{{
+        sourceLabel
+      }}；未创建装箱工单，保存时间不代表实际装箱时间，也未形成 VGM
+      或生命周期结论。
+    </p>
 
     <section class="allocation-strip">
       <div>
@@ -52,10 +70,45 @@ const readinessLabel = computed(() => {
       </div>
     </section>
 
+    <details v-if="historicalMode && snapshot" class="evidence-summary">
+      <summary>查看来源摘要</summary>
+      <dl>
+        <div>
+          <dt>来源</dt>
+          <dd>{{ sourceLabel }}</dd>
+        </div>
+        <div>
+          <dt>证据引用</dt>
+          <dd>{{ snapshot.evidenceRefs.length }} 项</dd>
+        </div>
+        <div>
+          <dt>用途</dt>
+          <dd>追溯本柜历史装载关系</dd>
+        </div>
+      </dl>
+    </details>
+
     <p v-if="!cargo?.items.length" class="empty-state">
       当前没有活动装载明细，不能确认本柜装箱范围。
     </p>
-    <div v-else class="cargo-table" role="table" aria-label="本柜 SKU 装载明细">
+    <button
+      v-else-if="historicalMode"
+      type="button"
+      class="cargo-disclosure"
+      aria-controls="historical-cargo-lines"
+      :aria-expanded="showHistoricalLines"
+      @click="showHistoricalLines = !showHistoricalLines"
+    >
+      {{ cargo.items.length }} 个 SKU 明细
+      <span>{{ showHistoricalLines ? "收起" : "展开核对" }}</span>
+    </button>
+    <div
+      v-if="cargo?.items.length && showCargoLines"
+      id="historical-cargo-lines"
+      class="cargo-table"
+      role="table"
+      aria-label="本柜 SKU 装载明细"
+    >
       <div class="table-row table-head" role="row">
         <span role="columnheader">产品货号</span>
         <span role="columnheader">本柜数量</span>
@@ -108,7 +161,10 @@ const readinessLabel = computed(() => {
     </p>
 
     <footer class="node-foot">
-      <span>装箱节点</span><b>{{ node?.stateLabel ?? "未初始化" }}</b>
+      <span>装箱节点</span
+      ><b>{{
+        historicalMode ? "未建立生命周期结论" : (node?.stateLabel ?? "未初始化")
+      }}</b>
       <time v-if="node?.completedAt">{{ node.completedAt }}</time>
     </footer>
   </div>
@@ -190,6 +246,64 @@ const readinessLabel = computed(() => {
   overflow-wrap: anywhere;
   font-size: var(--text-micro);
 }
+.evidence-summary {
+  border-bottom: 1px solid var(--line);
+}
+.evidence-summary summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  color: var(--brand-strong);
+  font-size: var(--text-label);
+  font-weight: 700;
+  cursor: pointer;
+}
+.evidence-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.evidence-summary dl div {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.evidence-summary dt {
+  color: var(--muted);
+  font-size: var(--text-micro);
+}
+.evidence-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-label);
+  font-weight: 600;
+}
+.cargo-disclosure {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.cargo-disclosure span {
+  color: var(--brand-strong);
+  font-size: var(--text-micro);
+}
 .cargo-table {
   border-bottom: 1px solid var(--line-strong);
 }
@@ -222,6 +336,14 @@ const readinessLabel = computed(() => {
   align-items: center;
   gap: var(--space-1);
 }
+.historical-note {
+  margin: 0;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--info-bg);
+  color: var(--info);
+  font-size: var(--text-label);
+}
 .empty-state,
 .snapshot-missing {
   margin: 0;
@@ -249,7 +371,8 @@ const readinessLabel = computed(() => {
 }
 @media (max-width: 560px) {
   .allocation-strip,
-  .fact-grid {
+  .fact-grid,
+  .evidence-summary dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .panel-header {

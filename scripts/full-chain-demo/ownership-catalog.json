@@ -252,6 +252,12 @@
       "tenantField": "tenantId",
       "deleteRank": 100
     },
+    "ReplenishmentOrderProjectionBatch": {
+      "table": "replenishment_order_projection_batch",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 200
+    },
     "Shipment": {
       "table": "shipment",
       "rule": "direct_tenant",
@@ -493,6 +499,18 @@
     },
     "ProductInitiative": {
       "table": "product_initiative",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 100
+    },
+    "ProductInitiativeDecisionDraft": {
+      "table": "product_initiative_decision_draft",
+      "rule": "direct_tenant",
+      "tenantField": "tenantId",
+      "deleteRank": 200
+    },
+    "WorkSession": {
+      "table": "work_session",
       "rule": "direct_tenant",
       "tenantField": "tenantId",
       "deleteRank": 100

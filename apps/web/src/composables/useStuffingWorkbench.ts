@@ -33,11 +33,36 @@ const WARNING_MESSAGES: Record<StuffingProjectionWarning["code"], string> = {
   date_facts: "装箱日期暂时没能加载",
 };
 
+type CursorPage<T> = {
+  items: T[];
+  pageInfo: { nextCursor: string | null; hasNextPage: boolean };
+};
+
+export async function collectCursorPages<T>(
+  loadPage: (cursor?: string) => Promise<CursorPage<T>>,
+): Promise<T[]> {
+  const items: T[] = [];
+  const seenCursors = new Set<string>();
+  let cursor: string | undefined;
+  while (true) {
+    const page = await loadPage(cursor);
+    items.push(...page.items);
+    if (!page.pageInfo.hasNextPage) return items;
+    const nextCursor = page.pageInfo.nextCursor;
+    if (!nextCursor || seenCursors.has(nextCursor)) {
+      throw new Error("PAGINATION_CURSOR_INVALID");
+    }
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+}
+
 export function useStuffingWorkbench(
   containerId: Ref<string>,
   taskId: Ref<string>,
 ) {
   const containers = ref<ContainerSummary[]>([]);
+  const historicalContainers = ref<ContainerSummary[]>([]);
   const taskPool = ref<NodeTaskDetail[]>([]);
   const selectedContainer = ref<ContainerSummary | null>(null);
   const cargo = ref<ContainerCargoScope | null>(null);
@@ -67,6 +92,7 @@ export function useStuffingWorkbench(
     buildStuffingQueue({
       tasks: taskPool.value,
       containers: containers.value,
+      historicalContainers: historicalContainers.value,
       actorId: actorId.value,
     }),
   );
@@ -104,16 +130,31 @@ export function useStuffingWorkbench(
     queueLoading.value = true;
     containerListError.value = "";
     queueError.value = "";
-    const [containerResult, taskResult] = await Promise.allSettled([
-      listContainers({ pageSize: 100 }),
-      listNodeTasks({ pageSize: 100 }),
-    ] as const);
+    const [containerResult, historyResult, taskResult] =
+      await Promise.allSettled([
+        collectCursorPages((cursor) =>
+          listContainers({ pageSize: 100, cursor }),
+        ),
+        collectCursorPages((cursor) =>
+          listContainers({
+            pageSize: 100,
+            cursor,
+            scope: "active_stuffing_snapshot",
+          }),
+        ),
+        collectCursorPages((cursor) =>
+          listNodeTasks({ pageSize: 100, cursor }),
+        ),
+      ] as const);
     containers.value =
-      containerResult.status === "fulfilled" ? containerResult.value.items : [];
-    taskPool.value =
-      taskResult.status === "fulfilled" ? taskResult.value.items : [];
+      containerResult.status === "fulfilled" ? containerResult.value : [];
+    historicalContainers.value =
+      historyResult.status === "fulfilled" ? historyResult.value : [];
+    taskPool.value = taskResult.status === "fulfilled" ? taskResult.value : [];
     if (containerResult.status === "rejected") {
       containerListError.value = "货柜列表暂时没能加载";
+    } else if (historyResult.status === "rejected") {
+      containerListError.value = "历史装箱事实暂时没能加载";
     }
     if (taskResult.status === "rejected") {
       queueError.value = "装箱任务池暂时没能加载，请稍后重试";
@@ -135,7 +176,9 @@ export function useStuffingWorkbench(
       getContainer(id),
       getContainerCargo(id),
       listLifecycleNodes(id),
-      listNodeTasks({ containerId: id, pageSize: 100 }),
+      collectCursorPages((cursor) =>
+        listNodeTasks({ containerId: id, pageSize: 100, cursor }),
+      ),
       getContainerStuffingSnapshot(id),
       listLifecycleDateFacts(id),
     ] as const);
@@ -162,7 +205,7 @@ export function useStuffingWorkbench(
     cargo.value = readProjection(cargoResult, "cargo");
     const nodePage = readProjection(nodeResult, "nodes");
     nodes.value = nodePage?.nodes.map(toLiveNode) ?? [];
-    nodeTasks.value = readProjection(taskResult, "tasks")?.items ?? [];
+    nodeTasks.value = readProjection(taskResult, "tasks") ?? [];
     snapshot.value = readProjection(snapshotResult, "snapshot");
     dateFacts.value = readProjection(dateFactResult, "date_facts");
     taskPool.value = [

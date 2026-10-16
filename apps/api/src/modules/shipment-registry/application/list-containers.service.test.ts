@@ -52,6 +52,7 @@ describe("ListContainersService", () => {
       tenantId: "other",
       updatedAt: new Date("2026-09-12T10:00:00Z"),
       id: "c1",
+      scope: "all",
     });
 
     await expect(
@@ -87,6 +88,7 @@ describe("ListContainersService", () => {
       tenantId: "dev-tenant",
       after: undefined,
       take: 3,
+      scope: "all",
     });
   });
 
@@ -98,6 +100,7 @@ describe("ListContainersService", () => {
       tenantId: "dev-tenant",
       updatedAt: new Date("2026-09-12T12:00:00.000Z"),
       id: "c1",
+      scope: "all",
     });
 
     const page = await service.execute({ tenantId: "dev-tenant", cursor });
@@ -111,7 +114,38 @@ describe("ListContainersService", () => {
         id: "c1",
       },
       take: 51,
+      scope: "all",
     });
+  });
+
+  it("binds the stuffing snapshot scope into the cursor and repository query", async () => {
+    const row = summary("c1", "2026-09-12T12:00:00.000Z");
+    const list = vi.fn().mockResolvedValue([row]);
+    const service = await buildService({ list });
+
+    await service.execute({
+      tenantId: "dev-tenant",
+      scope: "active_stuffing_snapshot",
+    });
+    expect(list).toHaveBeenCalledWith({
+      tenantId: "dev-tenant",
+      after: undefined,
+      take: 51,
+      scope: "active_stuffing_snapshot",
+    });
+    const wrongScopeCursor = encodeContainerCursor({
+      tenantId: "dev-tenant",
+      updatedAt: new Date(row.updatedAt),
+      id: row.id,
+      scope: "all",
+    });
+    await expect(
+      service.execute({
+        tenantId: "dev-tenant",
+        scope: "active_stuffing_snapshot",
+        cursor: wrongScopeCursor,
+      }),
+    ).rejects.toThrow("VALIDATION_FORMAT");
   });
 
   it("无货柜时返回空页", async () => {

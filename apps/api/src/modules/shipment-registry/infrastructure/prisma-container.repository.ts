@@ -4,6 +4,7 @@ import type {
 } from "@logix/contracts";
 import canonicalEvents from "@logix/contracts/canonical-events.json";
 import { Inject, Injectable } from "@nestjs/common";
+import { Prisma } from "../../../../../../generated/prisma";
 import { PrismaService } from "../../../prisma/prisma.service";
 import type { ContainerSummary } from "../domain/container-summary";
 import type { ContainerTaskFact } from "../list-container-task-facts.port";
@@ -28,6 +29,60 @@ export class PrismaContainerRepository implements ContainerRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async list(query: ContainerListQuery): Promise<ContainerSummary[]> {
+    if (query.scope === "active_stuffing_snapshot") {
+      const after = query.after
+        ? Prisma.sql`AND (
+            container.updated_at < ${query.after.updatedAt}
+            OR (
+              container.updated_at = ${query.after.updatedAt}
+              AND container.id < ${query.after.id}
+            )
+          )`
+        : Prisma.empty;
+      const rows = await this.prisma.$queryRaw<
+        Array<{
+          id: string;
+          order_number: string | null;
+          container_number: string | null;
+          current_status: string;
+          updated_at: Date;
+        }>
+      >(Prisma.sql`
+        SELECT
+          container.id,
+          container.order_number,
+          container.container_number,
+          container.current_status,
+          container.updated_at
+        FROM container_record AS container
+        WHERE container.tenant_id = ${query.tenantId}
+          ${after}
+          AND EXISTS (
+            SELECT 1
+            FROM container_stuffing_snapshot AS snapshot
+            JOIN container_cargo_allocation_set AS allocation
+              ON allocation.id = snapshot.allocation_set_id
+             AND allocation.tenant_id = snapshot.tenant_id
+             AND allocation.container_record_id = snapshot.container_record_id
+             AND allocation.version = snapshot.allocation_set_version
+            WHERE snapshot.tenant_id = container.tenant_id
+              AND snapshot.container_record_id = container.id
+              AND snapshot.state = 'active'
+              AND allocation.state = 'active'
+          )
+        ORDER BY container.updated_at DESC, container.id DESC
+        LIMIT ${query.take}
+      `);
+      return rows.map((row) =>
+        toSummary({
+          id: row.id,
+          orderNumber: row.order_number,
+          containerNumber: row.container_number,
+          currentStatus: row.current_status,
+          updatedAt: row.updated_at,
+        }),
+      );
+    }
     const rows = await this.prisma.containerRecord.findMany({
       where: {
         tenantId: query.tenantId,
