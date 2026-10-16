@@ -1,7 +1,7 @@
 ---
 status: review
 branch: feat/recoverable-work-sessions-v1
-verification: "Final committed code: clean-clone repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build passed; API 311/1611, Web 161/764, PostgreSQL 35/224; non-OIDC E2E 241 passed/26 viewport skips, OIDC 5/5, reference visual 18 passed/15 skips. Standard validate reached E2E then failed closed only because another local session owned port 5173. PR #179 opened; final CI pending."
+verification: "PR #179 merged to main at 2ed5f9b2 on 2026-10-14; final CI run 38528039982 changes/static/unit/build/e2e/dictionary/quality succeeded and security was skipped by classifier. Code is merged, but the brief remains review because acceptance items for failure preservation, typed-draft recovery, complete textual session states, and a single-command validate pass still lack direct evidence. Final committed clean-clone repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build passed: API 311 files/1611 tests, Web 161 files/764 tests, PostgreSQL integration 35 files/224 tests; non-OIDC E2E 241 passed/26 viewport skips, OIDC 5/5, reference visual 18 passed/15 viewport skips. Standard local validate stopped at E2E because another session owned port 5173; this was recorded, not claimed as pass."
 owner: main
 writer: main
 risk: high
@@ -303,3 +303,9 @@ uiViewportEvidence:
 - `WS-REV-009 accepted/fixed`：撤回未直接验真的验收勾选；修复后证据更新为 API 1611、Web 764、integration 224、E2E 12/12，完整 validate 仍如实记录为本机 5173 外部会话冲突，等价 clean-clone/分轨门禁通过。
 
 所有 accepted finding 均已用失败反证转绿并完成相关全套回归；按执行纪律不发起第二轮 reviewer。无 deferred minor。
+
+## 集成收口（2026-10-16）
+
+- PR #179 已于 2026-10-14 合并到 `main`，merge commit `2ed5f9b2`。
+- 最终 CI run `38528039982` 中 `changes`、`static`、`unit`、`build`、`e2e`、`dictionary`、`quality` 成功；`security` 由路径分类器跳过。
+- 代码已合入不等于本 brief 验收完成；本次只更新 merge/CI 事实，状态保持 `review`。验收清单中缺少直接证据的 401/403/404/409 失败保持、typed draft 跨刷新、全状态文字和单命令 `validate` 四项继续未勾选。

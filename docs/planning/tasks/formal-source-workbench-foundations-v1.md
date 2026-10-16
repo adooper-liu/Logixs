@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/formal-source-workbench-foundations-v1
-verification: "通用来源契约、租户隔离备货投影写边界、工作台真值修复与 active stuffing snapshot 只读消费已实现；生产来源 adapter、可恢复作业、证据政策、权限、回执与运行时全链仍未实现，不宣称生产接入平台完成。"
+verification: "PR #180 merged to main at 3a046e4d on 2026-10-16; final CI run 38863988836 changes/static/unit/build/e2e/dictionary/quality succeeded and security was skipped by classifier. This task completed the explicitly scoped source contract, tenant-isolated replenishment projection boundary, workbench truth fixes, and active stuffing snapshot read-only consumption. The production source adapter/recoverable job/evidence policy/capability/receipt/retry/checkpoint platform remains explicitly deferred to a separate task and was never part of this task's completion definition."
 owner: main
 writer: main
 risk: high
@@ -171,3 +171,9 @@ uiViewportEvidence:
 ## 后续生产任务入口
 
 下一任务必须单独设计：正式来源 adapter + 可恢复投影作业 + evidence policy + capability + receipt/retry/checkpoint。该任务不得在本 brief 中继续追加实现。
+
+## PR / CI / merge 收口（2026-10-16）
+
+- PR #180 已合并到 `main`，merge commit `3a046e4d`。
+- 最终 CI run `38863988836` 中 `changes`、`static`、`unit`、`build`、`e2e`、`dictionary`、`quality` 成功；`security` 由路径分类器跳过。
+- 本 brief 的 6 项范围内验收均已完成。第 7 项明确是延期到独立任务且不计入本任务完成，因此保持未勾选并不阻止本任务 `done`，也不代表正式来源持续接入平台已经完成。
