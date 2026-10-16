@@ -1,0 +1,311 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+
+const HELP = [
+  "智慧开启：<工作台>——先锁定业务目的、优先损失和负责人决策，只读",
+  "业务开工：<工作台>——从智慧基线出发，端到端执行到 PR/CI/合并",
+  "主线：<brief#slice>｜<状态>｜<唯一下一动作>——登记或更新唯一主任务线",
+  "支线：<名称>｜<brief#slice>｜<状态>｜<唯一下一动作>——登记支线并切换过去，主线保留",
+  "切线：主线 / 切线：<名称>——切换当前活动线，只召回该线指针",
+  "更新线：<状态>｜<唯一下一动作>——更新当前活动线",
+  "集成授权——一次授权当前活动线执行安全 Git/PR/CI/合并闭环，不重复索权",
+  "取消集成授权——撤销当前活动线的集成授权",
+  "收支线：<名称>——关闭支线并切回主线",
+  "任务线——只列主线、支线和当前活动线",
+  "下一步——最小核对 Git/brief/PR/CI 后给出唯一下一动作；已有集成授权时直接执行",
+  "归线——停止漂移，回到当前活动线的唯一下一动作",
+  "续线——新对话从仓库事实恢复主线、支线、当前活动线和唯一下一动作",
+  "口令——查询本清单",
+];
+
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  input += chunk;
+});
+process.stdin.on("end", () => {
+  const payload = parseJson(input, {});
+  const prompt = String(payload.prompt ?? payload.user_prompt ?? "").trim();
+  const statePath = resolveStatePath();
+  const state = loadState(statePath);
+  const commit = currentCommit();
+  let context = "";
+  let changed = false;
+
+  const main = matchCommand(prompt, "主线");
+  const branch = matchCommand(prompt, "支线");
+  const switchLine = matchCommand(prompt, "切线");
+  const update = matchCommand(prompt, "更新线");
+  const closeBranch = matchCommand(prompt, "收支线");
+
+  if (main !== null) {
+    const [pointer, status = "未记录", next = "未记录"] = fields(main);
+    if (!pointer) context = usage("主线：<brief#slice>｜<状态>｜<唯一下一动作>");
+    else {
+      state.main = line("主线", pointer, status, next, commit);
+      state.active = { type: "main", name: "主线" };
+      changed = true;
+      context = response(`已登记并切换到主线：${describe(state.main)}`);
+    }
+  } else if (branch !== null) {
+    const [name, pointer, status = "未记录", next = "未记录"] = fields(branch);
+    if (!name || !pointer)
+      context = usage("支线：<名称>｜<brief#slice>｜<状态>｜<唯一下一动作>");
+    else {
+      state.branches[name] = line(name, pointer, status, next, commit);
+      state.active = { type: "branch", name };
+      changed = true;
+      context = response(`已登记并切换到支线：${describe(state.branches[name])}`);
+    }
+  } else if (switchLine !== null) {
+    const target = switchLine.trim();
+    if (target === "主线" && state.main) {
+      state.active = { type: "main", name: "主线" };
+      changed = true;
+      context = response(`已切换到主线：${describe(state.main)}`);
+    } else if (state.branches[target]) {
+      state.active = { type: "branch", name: target };
+      changed = true;
+      context = response(`已切换到支线：${describe(state.branches[target])}`);
+    } else context = response(`未找到任务线“${target || "空"}”；发送“任务线”查看已登记任务线。`);
+  } else if (update !== null) {
+    const active = activeLine(state);
+    const [status, next] = fields(update);
+    if (!active || !status || !next)
+      context = usage("更新线：<状态>｜<唯一下一动作>");
+    else {
+      active.status = status;
+      active.next = next;
+      active.commit = commit;
+      active.updatedAt = new Date().toISOString();
+      if (/^(done|completed|merged|已完成|已合并)$/iu.test(status)) {
+        delete active.integrationAuthorization;
+      }
+      changed = true;
+      context = response(`已更新当前任务线：${describe(active)}`);
+    }
+  } else if (prompt === "集成授权") {
+    const active = activeLine(state);
+    if (!active) context = response("尚未登记当前活动线，不能绑定集成授权。");
+    else {
+      active.integrationAuthorization = {
+        grantedAt: new Date().toISOString(),
+        pointer: active.pointer,
+        scope: "safe-full-integration",
+      };
+      changed = true;
+      context = response(
+        `已授权当前活动线执行安全集成闭环：${describe(active)}\n允许：盘点全部 worktree/实际 diff/任务锁，fetch，非破坏性同步 origin/main，精确暂存与提交，推功能分支，创建或更新 PR，等待 CI，必需检查通过后合并，同步本地 main。\n不包含：强推、硬重置、覆盖或丢弃任何改动、删除 worktree/分支/标签、裸 stash pop、绕过门禁、部署或修改外部业务系统。遇到冲突、外来改动、门禁失败或授权指针变化时才暂停。`,
+      );
+    }
+  } else if (prompt === "取消集成授权") {
+    const active = activeLine(state);
+    if (!active) context = response("尚未登记当前活动线。");
+    else {
+      delete active.integrationAuthorization;
+      changed = true;
+      context = response(`已撤销当前活动线的集成授权：${active.name}｜${active.pointer}`);
+    }
+  } else if (closeBranch !== null) {
+    const name = closeBranch.trim();
+    if (!state.branches[name]) context = response(`未找到支线“${name || "空"}”。`);
+    else {
+      delete state.branches[name];
+      state.active = state.main ? { type: "main", name: "主线" } : null;
+      changed = true;
+      context = response(
+        state.main
+          ? `已关闭支线“${name}”并切回主线：${describe(state.main)}`
+          : `已关闭支线“${name}”；尚未登记主线。`,
+      );
+    }
+  } else if (prompt === "任务线") {
+    context = response(formatTaskLines(state));
+  } else if (prompt === "下一步") {
+    const active = activeLine(state);
+    if (active) {
+      const authorization = active.integrationAuthorization
+        ? "当前线已有安全完整集成授权；若唯一下一动作属于授权范围，直接执行，不要求用户再发第二条指令。"
+        : "当前线没有集成授权；若唯一下一动作是实现，只给标准 TASK；若是 outward-facing 集成动作，给出应发送的精确授权指令。";
+      context = `【下一步判断已触发】只做最小增量核对：当前 worktree/Git 状态、活动 brief frontmatter、最近 commit、对应 PR/CI；禁止重新解读完整项目上下文，禁止新增计划或切片。固定输出四行：\n当前活动线：${active.name}｜${active.pointer}\n实际状态：以核对后的 Git/brief/PR/CI 为准（登记状态：${active.status}，commit：${active.commit}）\n唯一下一动作：核对后只能给一个；优先使用已登记动作“${active.next}”\n你要发送的指令：若无需用户动作写“无需，直接执行”；否则给一条可复制的精确指令。\n${authorization}`;
+    } else {
+      context =
+        "【下一步判断已触发】当前未登记任务线。只扫描当前 Git 状态、active brief frontmatter、最近 commit 与 PR/CI，不读取完整业务文档；推荐唯一主线候选，并只输出一条可复制的“主线：<brief#slice>｜<状态>｜<唯一下一动作>”登记指令。不得擅自开工。";
+    }
+  } else if (prompt === "归线") {
+    const active = activeLine(state);
+    context = active
+      ? realign(active)
+      : response("尚未登记任务线。先发送：主线：<brief#slice>｜<状态>｜<唯一下一动作>");
+  } else if (prompt === "续线") {
+    context = resumeFromRepository(state);
+  } else if (prompt === "口令") {
+    context = response(HELP.map((item, index) => `${index + 1}. ${item}`).join("\n"));
+  } else {
+    const active = activeLine(state);
+    if (active) context = activeReminder(active);
+  }
+
+  if (changed) saveState(statePath, state);
+  output(context);
+});
+
+function defaultState() {
+  return { version: 1, main: null, branches: {}, active: null, updatedAt: null };
+}
+
+function loadState(path) {
+  if (!existsSync(path)) return defaultState();
+  const parsed = parseJson(readFileSync(path, "utf8"), defaultState());
+  return {
+    ...defaultState(),
+    ...parsed,
+    branches: parsed.branches && typeof parsed.branches === "object" ? parsed.branches : {},
+  };
+}
+
+function saveState(path, state) {
+  state.updatedAt = new Date().toISOString();
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  renameSync(temporary, path);
+}
+
+function resolveStatePath() {
+  if (process.env.LOGIX_TASK_LINES_FILE) return resolve(process.env.LOGIX_TASK_LINES_FILE);
+  try {
+    const common = execFileSync("git", ["rev-parse", "--git-common-dir"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    const absoluteCommon = resolve(common);
+    return resolve(dirname(absoluteCommon), ".claude", "task-lines.local.json");
+  } catch {
+    return resolve(".claude", "task-lines.local.json");
+  }
+}
+
+function currentCommit() {
+  if (process.env.LOGIX_TASK_LINES_COMMIT) return process.env.LOGIX_TASK_LINES_COMMIT;
+  try {
+    return execFileSync("git", ["rev-parse", "--short=8", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+function line(name, pointer, status, next, commit) {
+  return { name, pointer, status, next, commit, updatedAt: new Date().toISOString() };
+}
+
+function activeLine(state) {
+  if (!state.active) return null;
+  return state.active.type === "main"
+    ? state.main
+    : state.branches[state.active.name] ?? null;
+}
+
+function fields(value) {
+  return value
+    .split(/[|｜]/u)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function matchCommand(prompt, name) {
+  const match = prompt.match(new RegExp(`^${name}[：:]([\\s\\S]*)$`, "u"));
+  return match ? match[1].trim() : null;
+}
+
+function describe(item) {
+  const authorization = item.integrationAuthorization
+    ? "｜集成授权：安全完整闭环"
+    : "｜集成授权：未授予";
+  return `${item.name}｜${item.pointer}｜状态：${item.status}｜下一动作：${item.next}｜commit：${item.commit}${authorization}`;
+}
+
+function formatTaskLines(state) {
+  const rows = [];
+  if (state.main) rows.push(`${state.active?.type === "main" ? "*" : "-"} ${describe(state.main)}`);
+  for (const [name, item] of Object.entries(state.branches)) {
+    rows.push(`${state.active?.type === "branch" && state.active.name === name ? "*" : "-"} ${describe(item)}`);
+  }
+  return rows.length ? rows.join("\n") : "尚未登记任务线。";
+}
+
+function realign(active) {
+  const integration = active.integrationAuthorization
+    ? "\n集成授权：已授权安全完整闭环；条件具备后直接集成，不重复索权。"
+    : "\n集成授权：未授予。";
+  return `【归线纠偏已触发】\n业务主线位置：以正式业务权威和已登记主线为准，不重新解释项目背景。\n当前批准任务：${active.name}｜${active.pointer}｜${active.status}\n尚未满足的收口条件：只核对该 brief、实际 Git diff 与最近 commit ${active.commit} 的增量变化。\n唯一下一动作：${active.next}${integration}\n立即停止其他节奏，只执行上述唯一下一动作。禁止新增计划、文档或切片，禁止重复确认，禁止扩范围，禁止把横向门禁当业务主线。严格按 AGENTS.md 角色：Claude 主代理只写 brief、权威和集成；产品实现只输出标准 TASK 给真实 GPT-5.6 Codex，由负责人手工转交。`;
+}
+
+function resumeFromRepository(state) {
+  const registered = formatTaskLines(state);
+  return `【续线恢复已触发】
+这是新对话恢复，不依赖旧聊天、聊天摘要或口头复述。先读取并遵守根 AGENTS.md、当前目录适用的嵌套 AGENTS.md、项目 MEMORY.md 与相关 memory；随后只从仓库事实恢复：
+1. 扫描 docs/planning/tasks/ 的 active brief（frontmatter status 为 design/coding/fix/review/blocked 等），核对依赖、锁、进度 log 和唯一下一动作。
+2. 盘点 git worktree list 及每个 worktree 的分支、HEAD、实际 diff、未提交与未跟踪内容；不得删除或覆盖任何 worktree、.tmp 或未提交改动。
+3. 核对本地/远端分支、最近提交、对应 GitHub PR 与 CI；以 brief/Git/PR/CI 为准，登记任务线只作定位提示。
+4. 恢复关键词纪律：口令、任务线、下一步、归线、切线：<名称>、集成授权、取消集成授权、主线：…、支线：…、更新线：…、收支线：…、续线。
+
+登记任务线提示（必须用仓库事实校正，不得照抄）：
+${registered}
+
+恢复时继承以下纪律：
+- 唯一业务主线是 NPI；若 SAMP1 的两个合格真实或脱敏对比样本仍缺失，明确标为阻塞，不伪造完成。
+- 当前可执行支线候选是全链样本 v0.5；以 active brief、worktree、PR/CI 的最新事实确认其具体阶段。
+- Claude 主代理只负责 brief、业务权威、验收裁决和 Git/PR 集成；产品实现只给标准 TASK，由负责人手工转交真实 GPT-5.6 Codex；独立复审使用 fresh、只读 GPT-5.6 Codex。
+- 只有可复现的业务损失、安全越界、数据失真、兼容或发布风险才阻塞；其他问题降为非阻塞，不反复返工。
+- 不重复解读完整项目，只核对增量事实；回复使用简短人话。
+- 全链样本 Brief 1 完成后停止，不自动启动 Brief 2～4；FC1f 必须有仓外真实 workbook/manifest 才能执行，缺失时不得运行。
+
+完成核对后只输出四项，不执行恢复结果中的下一动作：
+主线：<业务主线及真实状态>
+支线：<在途支线及真实状态；无则写无>
+当前活动线：<唯一一条>
+唯一下一动作：<一个可执行动作>`;
+}
+
+function activeReminder(active) {
+  const integration = active.integrationAuthorization
+    ? "当前线已获安全完整集成授权：完成条件具备后直接执行 fetch/同步/精确提交/推分支/PR/CI/合并/同步 main，不重复询问；遇到冲突、外来改动、门禁失败或指针变化才暂停。"
+    : "当前线未授予集成闭环授权。";
+  return `【当前活动任务线】${describe(active)}。只沿该指针增量工作，不重复解读完整项目上下文；仅当 base、权威或实际 diff 变化时核对变化。禁止切到其他任务线或扩范围，除非用户发送“切线：…”。${integration}`;
+}
+
+function response(message) {
+  return `【任务线控制】只简短回复以下结果，不执行工具、不展开项目背景：\n${message}`;
+}
+
+function usage(example) {
+  return response(`格式错误。用法：${example}`);
+}
+
+function output(additionalContext) {
+  if (!additionalContext) {
+    process.stdout.write("{}");
+    return;
+  }
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "UserPromptSubmit",
+        additionalContext,
+      },
+    }),
+  );
+}
+
+function parseJson(value, fallback) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
