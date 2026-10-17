@@ -449,6 +449,58 @@ test("handoff workspace and branch contradictions block the target", () => {
   }
 });
 
+test("a canonical workspace identity accepts filesystem aliases and fails closed", () => {
+  const current = task();
+  const handoff = {
+    task: current.path,
+    slice: "CG1",
+    role: "main",
+    base: workspace.head,
+    workspace: "C:/Users/RUNNER~1/AppData/Local/Temp/logix continuation",
+    commit: "none",
+  };
+  const input = fixture({
+    intent: { explicitContinuation: true, handoff },
+    identityObservation: identityObservation({ commitResolvable: null }),
+    workspace: {
+      ...workspace,
+      path: "C:/Users/runneradmin/AppData/Local/Temp/logix continuation",
+      branch: current.branch,
+    },
+    tasks: [current],
+  });
+
+  const equivalent = buildContinuationProjection({
+    ...input,
+    workspaceIdentityObservation: {
+      equivalent: true,
+      handoffCanonicalPath:
+        "C:/Users/runneradmin/AppData/Local/Temp/logix continuation",
+      workspaceCanonicalPath:
+        "C:/Users/runneradmin/AppData/Local/Temp/logix continuation",
+    },
+  });
+  assert.equal(equivalent.safety, "clear");
+  assert.doesNotMatch(
+    JSON.stringify(equivalent.relevantConflicts),
+    /CONTINUATION_WORKSPACE_MISMATCH/,
+  );
+
+  const unresolved = buildContinuationProjection({
+    ...input,
+    workspaceIdentityObservation: {
+      equivalent: false,
+      handoffCanonicalPath: null,
+      workspaceCanonicalPath: input.workspace.path,
+    },
+  });
+  assert.equal(unresolved.safety, "block-target");
+  assert.deepEqual(
+    unresolved.relevantConflicts.map(({ code }) => code),
+    ["CONTINUATION_WORKSPACE_MISMATCH"],
+  );
+});
+
 test("handoff requires role main and every protocol field", () => {
   const current = task();
   const complete = {

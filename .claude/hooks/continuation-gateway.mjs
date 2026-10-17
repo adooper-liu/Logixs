@@ -1,5 +1,5 @@
 import { execFile, spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -191,6 +191,25 @@ const requireGit = (
 const samePath = (left, right) =>
   String(left).replaceAll("\\", "/").toLowerCase() ===
   String(right).replaceAll("\\", "/").toLowerCase();
+
+const observeWorkspaceIdentity = (handoffPath, workspacePath) => {
+  if (process.platform !== "win32") return null;
+  try {
+    const handoffCanonicalPath = realpathSync.native(handoffPath);
+    const workspaceCanonicalPath = realpathSync.native(workspacePath);
+    return {
+      equivalent: samePath(handoffCanonicalPath, workspaceCanonicalPath),
+      handoffCanonicalPath,
+      workspaceCanonicalPath,
+    };
+  } catch {
+    return {
+      equivalent: false,
+      handoffCanonicalPath: null,
+      workspaceCanonicalPath: null,
+    };
+  }
+};
 
 const resolveCheckoutRoot = (inputCwd) =>
   resolve(
@@ -476,6 +495,14 @@ const run = async (input) => {
     tasks: checkout.taskRecords,
     worktrees,
     calibrationProjection,
+    ...(!pointer && handoff?.workspace
+      ? {
+          workspaceIdentityObservation: observeWorkspaceIdentity(
+            handoff.workspace,
+            workspace.path,
+          ),
+        }
+      : {}),
     ...(!pointer && handoffIdentityReady(handoff)
       ? {
           identityObservation: observeHandoffIdentity(

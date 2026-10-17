@@ -5,10 +5,12 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   readFileSync,
   readdirSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -82,6 +84,31 @@ const createRepository = ({ active = false, status = "coding" } = {}) => {
     git(root, ["commit", "-m", "add active task"]);
   }
   return { root, base, head: git(root, ["rev-parse", "HEAD"]) };
+};
+
+const comparablePath = (value) =>
+  value.replaceAll("\\", "/").replace(/\/$/, "").toLowerCase();
+
+const workspaceSpellings = (root) => {
+  const gitRoot = git(root, ["rev-parse", "--show-toplevel"]);
+  if (process.platform !== "win32") {
+    return { handoffWorkspace: root, gitRoot };
+  }
+  if (comparablePath(root) !== comparablePath(gitRoot)) {
+    assert.equal(
+      comparablePath(realpathSync.native(root)),
+      comparablePath(realpathSync.native(gitRoot)),
+    );
+    return { handoffWorkspace: root, gitRoot };
+  }
+
+  const handoffWorkspace = `${root} handoff alias`;
+  symlinkSync(root, handoffWorkspace, "junction");
+  assert.equal(
+    comparablePath(realpathSync.native(handoffWorkspace)),
+    comparablePath(realpathSync.native(gitRoot)),
+  );
+  return { handoffWorkspace, gitRoot };
 };
 
 const runHook = (input, options = {}) =>
@@ -363,7 +390,8 @@ test("a complete HANDOFF uses read-only Git identity observation", () => {
     active: true,
     status: "review",
   });
-  const prompt = `HANDOFF docs/planning/tasks/example-v1.md#CG1 base=${base} role=main workspace=${root} commit=${head}`;
+  const { handoffWorkspace } = workspaceSpellings(root);
+  const prompt = `HANDOFF docs/planning/tasks/example-v1.md#CG1 base=${base} role=main workspace=${handoffWorkspace} commit=${head}`;
   const transcriptPath = join(root, "recovery transcript.jsonl");
   writeFileSync(
     transcriptPath,
@@ -391,7 +419,8 @@ test("recovery keeps the latest non-empty user HANDOFF across tool results", () 
     active: true,
     status: "review",
   });
-  const handoff = `HANDOFF docs/planning/tasks/example-v1.md#CG2 base=${base} role=main workspace=${root} commit=${head}`;
+  const { handoffWorkspace } = workspaceSpellings(root);
+  const handoff = `HANDOFF docs/planning/tasks/example-v1.md#CG2 base=${base} role=main workspace=${handoffWorkspace} commit=${head}`;
   const transcriptPath = join(root, "tool-result transcript.jsonl");
   writeFileSync(
     transcriptPath,
@@ -425,6 +454,7 @@ test("recovery keeps the latest non-empty user HANDOFF across tool results", () 
 
 test("a nested stdin cwd resolves to its registered checkout root", () => {
   const { root } = createRepository({ active: true });
+  const { gitRoot } = workspaceSpellings(root);
   const nested = join(root, "scripts", "example", "nested");
   mkdirSync(nested, { recursive: true });
 
@@ -439,13 +469,16 @@ test("a nested stdin cwd resolves to its registered checkout root", () => {
   assert.match(context, /action=resume safety=clear/);
   assert.match(
     context,
-    new RegExp(`workspace=${root.replaceAll("\\", "/").replaceAll("/", "\\/")}`),
+    new RegExp(
+      `workspace=${gitRoot.replaceAll("\\", "/").replaceAll("/", "\\/")}`,
+    ),
   );
 });
 
 test("commit none requires a real staged or unstaged diff", () => {
   const { root, base } = createRepository({ active: true, status: "review" });
-  const prompt = `HANDOFF docs/planning/tasks/example-v1.md#CG2 base=${base} role=main workspace=${root} commit=none`;
+  const { handoffWorkspace } = workspaceSpellings(root);
+  const prompt = `HANDOFF docs/planning/tasks/example-v1.md#CG2 base=${base} role=main workspace=${handoffWorkspace} commit=none`;
 
   const cleanContext = parseOutput(
     runHook({
@@ -471,6 +504,27 @@ test("commit none requires a real staged or unstaged diff", () => {
     }),
   );
   assert.match(dirtyContext, /action=review-handoff safety=clear/);
+});
+
+test("a HANDOFF from a different existing workspace still blocks", () => {
+  const { root, base, head } = createRepository({
+    active: true,
+    status: "review",
+  });
+  const { root: otherRoot } = createRepository();
+  const prompt = `HANDOFF docs/planning/tasks/example-v1.md#CG2 base=${base} role=main workspace=${otherRoot} commit=${head}`;
+
+  const context = parseOutput(
+    runHook({
+      hook_event_name: "SessionStart",
+      source: "resume",
+      cwd: root,
+      prompt,
+    }),
+  );
+
+  assert.match(context, /action=review-handoff safety=block-target/);
+  assert.match(context, /CONTINUATION_WORKSPACE_MISMATCH/);
 });
 
 test("an explicit blocked task receives its calibration next gate", () => {

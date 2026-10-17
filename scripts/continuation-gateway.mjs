@@ -338,7 +338,10 @@ export function buildContinuationProjection(input) {
     selectedTask.branch !== input.workspace.branch,
   );
   if (selectedTask && handoff) {
-    if (!samePath(handoff.workspace, input.workspace.path)) {
+    const workspaceMatches = input.workspaceIdentityObservation
+      ? input.workspaceIdentityObservation.equivalent === true
+      : samePath(handoff.workspace, input.workspace.path);
+    if (!workspaceMatches) {
       relevantConflicts.push(
         conflict(
           "CONTINUATION_WORKSPACE_MISMATCH",
