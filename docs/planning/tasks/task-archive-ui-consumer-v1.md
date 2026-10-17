@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/task-archive-ui-consumer-v1
-verification: not-run
+verification: "Final candidate d2762dfe: TA1 focused 44/44 and Web full unit 168 files/800 tests passed; root test passed (API 312 files/1614 tests, Web 168/800, package/script tests green); root typecheck and build passed; isolated task-archive Playwright on 1440/1024/390 passed 3 with 6 viewport skips and three versioned screenshots were visually approved; Web format/lint/typecheck/build, repo/diff, scoped formatting and security review passed. Standard pnpm validate was run once but stopped at root format:check on the known apps/ai-service/.pytest_cache Windows EPERM. Remaining gates were run separately: test:integration failed only three unchanged full-chain rehearsal domain-adapter tests (HTTP 400/timeout expectations), and standard test:e2e failed closed because an external non-test Logix server owns port 5173. Final PR CI is the merge authority."
 owner: main
 writer: codex
 risk: medium
@@ -382,18 +382,19 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA2-fix-1-backdrop-evide
 - [x] 来源裁剪沿用服务端 capability；部分来源不可见是正常有界视图，403/404/快照漂移会清除陈旧数据。
 - [x] `asOf`、分页状态、来源与记录时间、缺失来源版本、200 任务上限及未接通轨道表达真实。
 - [x] 三标准视口截图、结构、键盘、焦点、滚动与无横向溢出证据由主代理逐张核对通过。
-- [ ] 相关单测、E2E、Web lint/format/typecheck/build、repo/diff 检查通过；最终 PR 候选只运行一次适用完整门禁。
+- [x] 相关单测、隔离三视口 E2E、Web lint/format/typecheck/build、repo/diff 检查通过；最终 `pnpm validate` 已运行一次并在既有 `.pytest_cache` EPERM 停止，后续门禁分轨运行，PR CI 作为合并权威。
 - [x] fresh 独立复审 findings 全部完成裁决；PR CI 通过后才能合并并把 brief 标 `done`。
 - [x] 本切片只完成任务档案与首个共享右栏消费者，不宣称协作、AI、六轨总历史或任何岗位工作台闭环。
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明                                                                                                                          |
-| ---------- | ------ | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-17 | design | main | —      | 负责人选择继续现行“任务档案优先”；核对当前 main、共享 UI、现有对象活动读取和旧 worktree 候选，建立当前 main 唯一活动 brief    |
-| 2026-10-17 | coding | main | —      | 锁定 TA1/TA2、精确写范围、三视口与当前可见来源边界；等待 Codex Code 按 TA1 测试先行实现                                       |
-| 2026-10-17 | review | main | —      | 核对 TA1 实际 diff 并复现 33 项测试、lint/typecheck/build/repo/diff；接受 5 项真值与竞态 finding，状态转 fix                  |
-| 2026-10-17 | fix    | main | —      | 复核首轮 5 项修复与 39 项测试；原 finding 关闭，增量接受分页跨范围、opaque 责任 ID、缺 outcome 假“已入账”3 项 finding         |
-| 2026-10-17 | coding | main | —      | 第二轮 3 项修复通过 44 项定向、800 项 Web 全量、lint/typecheck/build/repo/format/diff；增量复审无 finding，TA1 验收，进入 TA2 |
-| 2026-10-17 | review | main | —      | TA2 三视口与截图人工复核通过；整体复审 3 项越界/事实错误意见驳回，接受 1 项 1024 遮罩关闭证据缺口，状态转 fix                 |
-| 2026-10-17 | review | main | —      | 遮罩关闭与焦点恢复反证通过，三 PNG 未变；安全审查无 High/Medium finding，全部实现片完成，进入最终 PR 候选门禁                 |
+| 日期       | 阶段   | 负责 | commit | 说明                                                                                                                                                 |
+| ---------- | ------ | ---- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-17 | design | main | —      | 负责人选择继续现行“任务档案优先”；核对当前 main、共享 UI、现有对象活动读取和旧 worktree 候选，建立当前 main 唯一活动 brief                           |
+| 2026-10-17 | coding | main | —      | 锁定 TA1/TA2、精确写范围、三视口与当前可见来源边界；等待 Codex Code 按 TA1 测试先行实现                                                              |
+| 2026-10-17 | review | main | —      | 核对 TA1 实际 diff 并复现 33 项测试、lint/typecheck/build/repo/diff；接受 5 项真值与竞态 finding，状态转 fix                                         |
+| 2026-10-17 | fix    | main | —      | 复核首轮 5 项修复与 39 项测试；原 finding 关闭，增量接受分页跨范围、opaque 责任 ID、缺 outcome 假“已入账”3 项 finding                                |
+| 2026-10-17 | coding | main | —      | 第二轮 3 项修复通过 44 项定向、800 项 Web 全量、lint/typecheck/build/repo/format/diff；增量复审无 finding，TA1 验收，进入 TA2                        |
+| 2026-10-17 | review | main | —      | TA2 三视口与截图人工复核通过；整体复审 3 项越界/事实错误意见驳回，接受 1 项 1024 遮罩关闭证据缺口，状态转 fix                                        |
+| 2026-10-17 | review | main | —      | 遮罩关闭与焦点恢复反证通过，三 PNG 未变；安全审查无 High/Medium finding，全部实现片完成，进入最终 PR 候选门禁                                        |
+| 2026-10-17 | review | main | —      | 最终 validate 在已知 pytest_cache EPERM 停止；后续 typecheck/test/build 通过，集成仅 3 项既有全链适配失败，标准 E2E 被外部 5173 指纹阻断；等待 PR CI |
