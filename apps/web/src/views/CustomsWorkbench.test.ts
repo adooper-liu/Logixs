@@ -52,6 +52,12 @@ const container = {
   currentStatus: "at_port",
   updatedAt: "2026-09-21T00:00:00Z",
 };
+const secondContainer = {
+  ...container,
+  id: "container-2",
+  orderNumber: "26DSS00034",
+  containerNumber: "KOCU4960727",
+};
 const mountedWrappers: VueWrapper[] = [];
 
 const outcome = {
@@ -143,9 +149,14 @@ describe("CustomsWorkbench", () => {
     listTasks.mockResolvedValue({ items: [] });
     const { wrapper } = await mountPage();
 
+    const contextPane = wrapper.get('[data-workbench-pane="context"]');
+    expect(contextPane.text()).toContain("清关办理");
     expect(wrapper.find('[aria-label="右栏模式"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="task-archive"]').exists()).toBe(false);
     expect(wrapper.find('[aria-label="清关案件表单"]').exists()).toBe(true);
+    expect(wrapper.get('[aria-label="当前清关上下文"]').text()).toContain(
+      "当前任务：清关任务待选择",
+    );
   });
 
   it("preserves action input, context scroll, and focused control across archive", async () => {
@@ -214,6 +225,86 @@ describe("CustomsWorkbench", () => {
       "完成工单只记录清关岗位工作，不等于海关放行或流程过站",
     );
   });
+
+  it("shows a neutral customs context without internal identifiers", async () => {
+    listNodes.mockResolvedValue({ nodes: [lifecycleNode()] });
+    const { wrapper } = await mountPage();
+
+    const context = wrapper.get('[aria-label="当前清关上下文"]');
+    expect(context.text()).toContain("当前货柜：KOCU4960726");
+    expect(context.text()).toContain("当前任务：清关任务");
+    expect(context.text()).toContain("当前节点：07 清关");
+    expect(context.text()).not.toContain("task-1");
+    expect(context.text()).not.toContain("customs_clearance");
+    expect(context.text()).not.toContain("flow-1");
+    expect(context.text()).not.toContain("node-1");
+  });
+
+  it("restores the context empty state when no object is selected", async () => {
+    const { wrapper } = await mountPage("/workspaces/customs");
+
+    expect(wrapper.get('[data-workbench-pane="context"]').text()).toContain(
+      "选择对象后显示动作。",
+    );
+    expect(wrapper.find('[aria-label="右栏模式"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="当前清关上下文"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="清关案件表单"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="task-archive"]').exists()).toBe(false);
+  });
+
+  it("keeps task and node unknown states independent", async () => {
+    listNodes.mockResolvedValue({ nodes: [lifecycleNode()] });
+    listTasks.mockResolvedValue({ items: [] });
+    const missingTask = await mountPage();
+    expect(
+      missingTask.wrapper.get('[aria-label="当前清关上下文"]').text(),
+    ).toContain("当前任务：清关任务待选择");
+    expect(
+      missingTask.wrapper.get('[aria-label="当前清关上下文"]').text(),
+    ).toContain("当前节点：07 清关");
+
+    listTasks.mockResolvedValue({ items: [task()] });
+    listNodes.mockResolvedValue({ nodes: [] });
+    const missingNode = await mountPage();
+    expect(
+      missingNode.wrapper.get('[aria-label="当前清关上下文"]').text(),
+    ).toContain("当前任务：清关任务");
+    expect(
+      missingNode.wrapper.get('[aria-label="当前清关上下文"]').text(),
+    ).toContain("当前节点：清关节点待加载");
+  });
+
+  it("updates the customs context when the route selects another object", async () => {
+    getContainer.mockImplementation(async (id: string) =>
+      id === secondContainer.id ? secondContainer : container,
+    );
+    listNodes.mockImplementation(async (id: string) => ({
+      nodes: [lifecycleNode({ sequence: id === secondContainer.id ? 8 : 7 })],
+    }));
+    listTasks.mockImplementation(
+      async (query: { containerId?: string } | undefined) => ({
+        items:
+          query?.containerId === secondContainer.id
+            ? [task({ id: "task-2", containerId: secondContainer.id })]
+            : [task()],
+      }),
+    );
+    const { wrapper, router } = await mountPage();
+    const context = wrapper.get('[aria-label="当前清关上下文"]');
+    expect(context.text()).toContain(container.containerNumber);
+
+    await router.push(
+      "/workspaces/customs?containerId=container-2&taskId=task-2",
+    );
+    await flushPromises();
+    await flushPromises();
+
+    const updatedContext = wrapper.get('[aria-label="当前清关上下文"]');
+    expect(updatedContext.text()).toContain(secondContainer.containerNumber);
+    expect(updatedContext.text()).toContain("当前任务：清关任务");
+    expect(updatedContext.text()).toContain("当前节点：08 清关");
+    expect(updatedContext.text()).not.toContain(container.containerNumber);
+  });
 });
 
 async function mountPage(path = "/workspaces/customs?containerId=container-1") {
@@ -240,13 +331,19 @@ async function mountPage(path = "/workspaces/customs?containerId=container-1") {
   return { wrapper, router };
 }
 
-function task(options: { id?: string; outcome?: typeof outcome | null } = {}) {
+function task(
+  options: {
+    id?: string;
+    containerId?: string;
+    outcome?: typeof outcome | null;
+  } = {},
+) {
   return {
     id: options.id ?? "task-1",
     flowInstanceId: "flow-1",
     nodeInstanceId: "node-1",
     nodeCode: "customs_clearance",
-    containerId: container.id,
+    containerId: options.containerId ?? container.id,
     taskDefinitionKey: "node-customs_clearance",
     state: "pending",
     applicability: "required",
@@ -263,5 +360,19 @@ function task(options: { id?: string; outcome?: typeof outcome | null } = {}) {
       assigneeId: null,
       dueAt: null,
     },
+  };
+}
+
+function lifecycleNode(options: { sequence?: number } = {}) {
+  return {
+    nodeInstanceId: "node-1",
+    nodeCode: "customs_clearance",
+    sequence: options.sequence ?? 7,
+    state: "active",
+    applicability: "required",
+    completedAt: null,
+    blockedReasonRefs: [],
+    isCurrent: true,
+    times: { plannedAt: null, estimatedAt: null, actualAt: null },
   };
 }

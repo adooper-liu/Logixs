@@ -63,6 +63,20 @@ const contextSummary = computed(() =>
 const mobileContextLabel = computed(() =>
   contextMode.value === "archive" ? "档案" : "办理",
 );
+const currentContainerLabel = computed(
+  () =>
+    selectedContainer.value?.containerNumber ??
+    selectedContainer.value?.orderNumber ??
+    "货柜待选择",
+);
+const currentTaskLabel = computed(() =>
+  selectedTask.value ? "清关任务" : "清关任务待选择",
+);
+const currentNodeLabel = computed(() =>
+  customsNode.value
+    ? `${String(customsNode.value.sequence).padStart(2, "0")} ${customsNode.value.name}`
+    : "清关节点待加载",
+);
 let actionScrollTop = 0;
 let lastActionFocus: HTMLElement | null = null;
 
@@ -195,7 +209,28 @@ function submitActual(localDateTime: string) {
             档案
           </button>
         </nav>
+        <section
+          v-if="selectedContainer"
+          class="customs-context__anchor"
+          aria-label="当前清关上下文"
+        >
+          <dl>
+            <div>
+              <dt>当前货柜：</dt>
+              <dd>{{ currentContainerLabel }}</dd>
+            </div>
+            <div>
+              <dt>当前任务：</dt>
+              <dd>{{ currentTaskLabel }}</dd>
+            </div>
+            <div>
+              <dt>当前节点：</dt>
+              <dd>{{ currentNodeLabel }}</dd>
+            </div>
+          </dl>
+        </section>
         <div
+          v-if="selectedContainer"
           ref="actionPanel"
           data-testid="customs-action-mode"
           :hidden="contextMode !== 'action'"
@@ -260,5 +295,50 @@ function submitActual(localDateTime: string) {
   border-color: var(--brand);
   background: var(--brand-soft);
   color: var(--brand-strong);
+}
+
+.customs-context__anchor {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  .customs-context__anchor {
+    display: block;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .customs-context__anchor dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2) var(--space-3);
+    margin: 0;
+  }
+
+  .customs-context__anchor dl > div {
+    min-width: 0;
+  }
+
+  .customs-context__anchor dl > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .customs-context__anchor dt,
+  .customs-context__anchor dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .customs-context__anchor dt {
+    color: var(--muted);
+    font-size: var(--text-micro);
+  }
+
+  .customs-context__anchor dd {
+    color: var(--ink);
+    font-size: var(--text-label);
+    font-weight: 600;
+  }
 }
 </style>
