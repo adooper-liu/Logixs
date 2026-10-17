@@ -89,9 +89,52 @@ describe("RoleWorkbenchFrame", () => {
       global: { stubs: { WorkbenchPageHeader: true } },
     });
 
-    expect(wrapper.getComponent(WorkbenchLayout).props("responsiveMode")).toBe(
-      "stacked",
+    const layout = wrapper.getComponent(WorkbenchLayout);
+    expect(layout.props("responsiveMode")).toBe("stacked");
+    expect(layout.props("rightRailLabel")).toBe("岗位待办");
+    expect(layout.props("rightRailSummary")).toBe("查看动作");
+    expect(layout.props("mobileContextLabel")).toBe("编辑");
+    expect(wrapper.get('[aria-label="岗位待办"] h2').text()).toBe("岗位待办");
+    expect(
+      wrapper
+        .findAll("[data-workbench-pane]")
+        .map((pane) => pane.attributes("data-workbench-pane")),
+    ).toEqual(["queue", "detail", "context"]);
+  });
+
+  it("only changes context labels when a consumer provides them", () => {
+    const wrapper = mount(RoleWorkbenchFrame, {
+      props: {
+        stageCode: "customs",
+        workspaceLabel: "进口清关",
+        nodeScopeLabel: "进口清关",
+        selectedContainer: container,
+        nodes: [],
+        selectionLoading: false,
+        containerListError: "",
+        selectionError: "",
+        warnings: [],
+        contextReady: true,
+        contextLabel: "当前可见档案",
+        contextSummary: "核对记录",
+        mobileContextLabel: "档案",
+      },
+      global: { stubs: { WorkbenchPageHeader: true } },
+    });
+
+    const layout = wrapper.getComponent(WorkbenchLayout);
+    expect(layout.props("responsiveMode")).toBe("stacked");
+    expect(layout.props("rightRailLabel")).toBe("当前可见档案");
+    expect(layout.props("rightRailSummary")).toBe("核对记录");
+    expect(layout.props("mobileContextLabel")).toBe("档案");
+    expect(wrapper.get('[aria-label="当前可见档案"] h2').text()).toBe(
+      "当前可见档案",
     );
+    expect(
+      wrapper
+        .findAll("[data-workbench-pane]")
+        .map((pane) => pane.attributes("data-workbench-pane")),
+    ).toEqual(["queue", "detail", "context"]);
   });
 
   it("forwards the production work-session switcher slot", () => {

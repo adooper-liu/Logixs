@@ -126,11 +126,13 @@ type CustomsContextMode = "action" | "archive";
 | UI 强制结构 | 完整遵守 frontmatter 五项；视觉沿用现有港口青绿、系统字体、紧凑作业密度，不新增 palette/type/theme                    |
 | 停止条件    | 需要修改档案接口或清关政策；无法在不销毁表单的情况下切换；需要把 taskId 变可选；其他消费者兼容性回退；出现范围外 diff |
 
-- [ ] **AC2.1 RED：标签兼容与精确透传。** 在 `RoleWorkbenchFrame.test.ts` 先断言默认仍为右轨/Pane“岗位待办”、移动“编辑”、`responsiveMode="stacked"`；传入 `contextLabel="当前可见档案"`、`contextSummary="核对记录"`、`mobileContextLabel="档案"` 时，只改变对应标签，不改变三 pane 顺序与 stacked 模式。运行该 suite，新增断言预期失败。
-- [ ] **AC2.2 GREEN：最小 frame 扩展。** 仅增加固定接口三个可选 props，并统一驱动 `WorkbenchLayout` 与右侧 `WorkbenchPane`；不增加模式状态、业务判断或样式。重跑 suite 通过。
-- [ ] **AC2.3 RED：清关第二消费者。** 在 `CustomsWorkbench.test.ts` mock `TaskArchivePanel` 并增加反证：默认只显示办理；选中任务后可进入档案且精确传入 container/task/outcome；无任务时不显示空档案入口；办理表单输入、右栏滚动与进入前焦点在档案往返后恢复；档案模式切换任务时旧 task props 立即退出；页面无协作/AI/完整案件历史文案。运行 suite，新增断言预期失败。
-- [ ] **AC2.4 GREEN：局部受控模式。** 在 `CustomsWorkbench.vue` 增加右栏模式切换与焦点/滚动记忆；办理面板以保持挂载的方式隐藏，档案仅在有效选中时挂载。根据模式传入 frame 的三个标签；不修改 `CustomsActionPanel`、档案组件或 composable。
-- [ ] **AC2.5 最近验证与交回。** 运行两个定向 suite、相关既有 `TaskArchivePanel`/`useTaskArchive` suite、Web lint/typecheck/build、精确 Prettier check、`pnpm repo:check`、`git diff --check`；核对实际 diff 全在本片范围，返回 `logix-handoff/v1`，默认不提交，`nextSuggested: AC2-viewport-evidence`。
+- [x] **AC2.1 RED：标签兼容与精确透传。** 在 `RoleWorkbenchFrame.test.ts` 先断言默认仍为右轨/Pane“岗位待办”、移动“编辑”、`responsiveMode="stacked"`；传入 `contextLabel="当前可见档案"`、`contextSummary="核对记录"`、`mobileContextLabel="档案"` 时，只改变对应标签，不改变三 pane 顺序与 stacked 模式。运行该 suite，新增断言预期失败。
+- [x] **AC2.2 GREEN：最小 frame 扩展。** 仅增加固定接口三个可选 props，并统一驱动 `WorkbenchLayout` 与右侧 `WorkbenchPane`；不增加模式状态、业务判断或样式。重跑 suite 通过。
+- [x] **AC2.3 RED：清关第二消费者。** 在 `CustomsWorkbench.test.ts` mock `TaskArchivePanel` 并增加反证：默认只显示办理；选中任务后可进入档案且精确传入 container/task/outcome；无任务时不显示空档案入口；办理表单输入、右栏滚动与进入前焦点在档案往返后恢复；档案模式切换任务时旧 task props 立即退出；页面无协作/AI/完整案件历史文案。运行 suite，新增断言预期失败。
+- [x] **AC2.4 GREEN：局部受控模式。** 在 `CustomsWorkbench.vue` 增加右栏模式切换与焦点/滚动记忆；办理面板以保持挂载的方式隐藏，档案仅在有效选中时挂载。根据模式传入 frame 的三个标签；不修改 `CustomsActionPanel`、档案组件或 composable。
+- [x] **AC2.5 最近验证与交回。** 运行两个定向 suite、相关既有 `TaskArchivePanel`/`useTaskArchive` suite、Web lint/typecheck/build、精确 Prettier check、`pnpm repo:check`、`git diff --check`；核对实际 diff 全在本片范围，返回 `logix-handoff/v1`，默认不提交，`nextSuggested: AC2-viewport-evidence`。
+
+主代理以 `4571b185055967820152ca353754e60c770eb2b1` 为基线核对实际未提交 diff：仅四个授权文件。复现定向 Vitest `4 files / 28 tests passed`、Web lint/typecheck/build、精确 Prettier、repo/diff 检查全部通过；HANDOFF 登记的 RED 分别为 frame `1 failed / 7`、Customs `5 failed / 8`。fresh 只读增量复审结论为 `no-findings`，唯一 verification gap 是本 brief 已预留的真实浏览器三视口证据。AC2 组件片验收完成，进入 `AC2-viewport-evidence`，尚不宣称三视口或任务级完成。
 
 实现任务：
 
@@ -216,3 +218,4 @@ TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-componen
 | ---------- | ------ | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-10-17 | design | main | —      | 从最新 main 核对路线、首个档案消费者、生产路由和旧 worktree 所有权；选择进口清关作为第二个差异化消费者，锁定原样接口、局部模式与两片 TDD/视口门禁 |
 | 2026-10-17 | coding | main | —      | 建立功能分支与唯一 brief；等待 Codex Code 按 AC2-component-consumer 测试先行实现                                                                  |
+| 2026-10-17 | review | main | —      | AC2 组件片四文件范围正确；复现 28 项测试、lint/typecheck/build/Prettier/repo/diff 全绿，fresh 增量复审无 finding，进入三视口证据片                |
