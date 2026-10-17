@@ -1,5 +1,5 @@
 ---
-status: coding
+status: fix
 branch: feat/task-archive-ui-consumer-v1
 verification: "Final candidate d2762dfe: TA1 focused 44/44 and Web full unit 168 files/800 tests passed; root test passed (API 312 files/1614 tests, Web 168/800, package/script tests green); root typecheck and build passed; isolated task-archive Playwright on 1440/1024/390 passed 3 with 6 viewport skips and three versioned screenshots were visually approved; Web format/lint/typecheck/build, repo/diff, scoped formatting and security review passed. Standard pnpm validate was run once but stopped at root format:check on the known apps/ai-service/.pytest_cache Windows EPERM. Remaining gates were run separately: test:integration failed only three unchanged full-chain rehearsal domain-adapter tests (HTTP 400/timeout expectations), and standard test:e2e failed closed because an external non-test Logix server owns port 5173. Final PR CI is the merge authority."
 owner: main
@@ -28,6 +28,9 @@ writeScopes:
   - apps/web/src/composables/useLiveWorkspace.test.ts
   - apps/web/e2e/task-archive.spec.ts
   - apps/web/e2e/task-archive.spec.ts-snapshots/**
+  - apps/web/e2e/visual-layout.spec.ts
+  - apps/web/e2e/shell-layout.spec.ts
+  - docs/planning/progress-board.html
 exclusiveLocks:
   - ui-pattern:task-archive-v1
   - ui-pattern:workbench-layout-v1
@@ -374,6 +377,20 @@ next: fix
 TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA2-fix-1-backdrop-evidence base=73cb7beaf3b6aa10fa25c4764ea7693837980e5a role=implementer workspace=D:/Logixs
 ```
 
+### PR #185 CI 修复切片 `TA3-ci-compatibility`
+
+首轮 CI run `39025454105`：`changes/build/unit` 通过；`static` 因当前 brief 状态使进度板 stale；`e2e` 仅两项旧 `/tasks` 壳断言失败，新 task-archive 三视口 3 项全部通过；`quality` 因依赖失败而失败。修复范围只包含旧 E2E 兼容断言与确定性进度板，不修改产品代码或截图。
+
+- [ ] `visual-layout.spec.ts` 在 1024 不再要求隐藏 drawer 内的“待处理任务”region 可见；改为按视口断言 681～1100 的“打开任务队列”窄轨触发器，桌面/手机保留各自真实可见结构，并继续检查无横向溢出。
+- [ ] `shell-layout.spec.ts` 的 mobile task panes 改为标准分屏合同“队列 / 详情 / 档案”，并断言工作台办理步骤导航只存在一个当前屏；不恢复旧两按钮文案。
+- [ ] 重跑两个定向 E2E spec 与 task-archive spec 的三项目组合；再运行 Web format/lint/typecheck/build、repo/diff；运行 `pnpm board:build` 生成 `docs/planning/progress-board.html` 并通过 `board:check`。
+
+修复任务：
+
+```text
+TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA3-ci-compatibility base=b40088608f89f7987660a94f66869db6cb757a05 role=implementer workspace=D:/Logixs
+```
+
 ## 验收
 
 - [x] `/tasks` 是首个真实消费者，完成任务可选择但不计入待处理；办理中任务行为未回退。
@@ -398,3 +415,4 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA2-fix-1-backdrop-evide
 | 2026-10-17 | review | main | —      | TA2 三视口与截图人工复核通过；整体复审 3 项越界/事实错误意见驳回，接受 1 项 1024 遮罩关闭证据缺口，状态转 fix                                        |
 | 2026-10-17 | review | main | —      | 遮罩关闭与焦点恢复反证通过，三 PNG 未变；安全审查无 High/Medium finding，全部实现片完成，进入最终 PR 候选门禁                                        |
 | 2026-10-17 | review | main | —      | 最终 validate 在已知 pytest_cache EPERM 停止；后续 typecheck/test/build 通过，集成仅 3 项既有全链适配失败，标准 E2E 被外部 5173 指纹阻断；等待 PR CI |
+| 2026-10-17 | fix    | main | —      | PR #185 首轮 changes/build/unit 通过；static 仅进度板 stale，e2e 仅两项旧 `/tasks` 响应式断言失败，新三视口用例通过；进入 TA3                        |
