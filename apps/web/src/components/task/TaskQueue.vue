@@ -61,6 +61,11 @@ const waitingTasks = computed(() =>
 const monitorTasks = computed(() =>
   props.tasks.filter((task) => task.queueKind === "monitor").map(withLanguage),
 );
+const completedTasks = computed(() =>
+  props.tasks
+    .filter((task) => task.queueKind === "human" && task.status === "completed")
+    .map(withLanguage),
+);
 
 const dueLabel = (dueAt: string) =>
   new Intl.DateTimeFormat("zh-CN", {
@@ -167,6 +172,32 @@ const dueLabel = (dueAt: string) =>
             ></span
           >
         </div>
+      </details>
+
+      <details v-if="completedTasks.length" class="completed-zone" open>
+        <summary class="monitor-head">
+          <span>已完成</span>
+          <b data-testid="completed-count">{{ completedTasks.length }}</b>
+        </summary>
+        <button
+          v-for="item in completedTasks"
+          :key="item.task.taskId"
+          class="completed-row"
+          :class="{ active: item.task.taskId === activeTaskId }"
+          type="button"
+          :disabled="selectionLocked"
+          data-testid="completed-task"
+          :data-task-id="item.task.taskId"
+          @click="emit('select', item.task.taskId)"
+        >
+          <span>
+            <b>{{ item.language.title }}</b>
+            <small class="mono"
+              >{{ item.task.containerNumber }} · {{ item.task.nodeName }}</small
+            >
+          </span>
+          <strong>{{ item.language.statusLabel }}</strong>
+        </button>
       </details>
     </div>
   </section>
@@ -335,7 +366,8 @@ const dueLabel = (dueAt: string) =>
   color: var(--muted);
 }
 .waiting-zone,
-.monitor-zone {
+.monitor-zone,
+.completed-zone {
   margin-top: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line);
@@ -343,7 +375,8 @@ const dueLabel = (dueAt: string) =>
   background: var(--surface);
 }
 
-.waiting-row {
+.waiting-row,
+.completed-row {
   width: 100%;
   display: flex;
   align-items: center;
@@ -358,19 +391,27 @@ const dueLabel = (dueAt: string) =>
   cursor: pointer;
 }
 
-.waiting-row > span {
+.waiting-row > span,
+.completed-row > span {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-.waiting-row small {
+.waiting-row small,
+.completed-row small {
   color: var(--muted);
   font-size: var(--text-micro);
 }
 
-.waiting-row strong {
+.waiting-row strong,
+.completed-row strong {
   flex: none;
   font-size: var(--text-micro);
+}
+
+.completed-row.active {
+  color: var(--brand-strong);
+  box-shadow: inset 3px 0 var(--brand);
 }
 .monitor-head {
   justify-content: space-between;

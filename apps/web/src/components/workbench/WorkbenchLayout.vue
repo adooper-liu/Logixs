@@ -15,6 +15,7 @@ const props = withDefaults(
     rightRailLabel: string;
     leftRailSummary?: string;
     rightRailSummary?: string;
+    mobileContextLabel?: string;
     responsiveMode?: "standard" | "stacked";
   }>(),
   {
@@ -23,6 +24,7 @@ const props = withDefaults(
     mobileScreen: "queue",
     leftRailSummary: undefined,
     rightRailSummary: undefined,
+    mobileContextLabel: "编辑",
     responsiveMode: "standard",
   },
 );
@@ -231,7 +233,11 @@ watch(
         @click="selectMobileScreen(screen)"
       >
         {{
-          screen === "queue" ? "队列" : screen === "detail" ? "详情" : "编辑"
+          screen === "queue"
+            ? "队列"
+            : screen === "detail"
+              ? "详情"
+              : mobileContextLabel
         }}
       </button>
     </nav>

@@ -17,6 +17,8 @@ writeScopes:
   - apps/web/src/components/task/TaskQueue.test.ts
   - apps/web/src/components/task/TaskFrozenResultPanel.vue
   - apps/web/src/components/task/TaskFrozenResultPanel.test.ts
+  - apps/web/src/components/task/TaskContextHeader.vue
+  - apps/web/src/components/task/TaskContextHeader.test.ts
   - apps/web/src/components/task/TaskArchivePanel.vue
   - apps/web/src/components/task/TaskArchivePanel.test.ts
   - apps/web/src/composables/useTaskArchive.ts
@@ -173,16 +175,16 @@ TaskArchivePanelProps = {
 | UI 强制结构 | 完整遵守 frontmatter 五项；不得把它改写成组件清单、字段卡墙或两栏长页面                                                      |
 | 停止条件    | 现有 API 无法提供至少两个真实来源；实现需要公共契约/权限/Schema 变化；完成态仍出现写动作；对象切换残留旧档案；出现范围外改动 |
 
-- [ ] **TA1.1 RED：共享布局保持兼容。** 在 `WorkbenchLayout.test.ts` 先断言消费者可传入第三屏“档案”，未传时仍显示“编辑”，三 pane DOM 顺序和 stacked/standard 既有行为不变；运行定向测试，预期新增断言失败。
-- [ ] **TA1.2 GREEN：最小共享扩展。** 仅在 `WorkbenchLayout.vue` 增加 `mobileContextLabel?: string`，默认“编辑”，移动 context 按该值显示；重跑布局测试通过。
-- [ ] **TA1.3 RED：已完成队列与正式结果。** 修改 `TaskQueue.test.ts`，断言待处理排序/计数不变、已完成独立分组、完成项可选择且不显示执行动作；新增 `TaskFrozenResultPanel.test.ts`，断言有 outcome 时显示冻结状态和形成时间，无 outcome 时显示未知，DOM 中不存在领取/完成/提交/同步/补证/上报控件；运行测试，预期失败。
-- [ ] **TA1.4 GREEN：完成态只读承接。** 修改 `TaskQueue.vue`，新增按结果形成时间不可得时保持现有返回顺序的已完成分组；创建 `TaskFrozenResultPanel.vue`，复用 `TaskContextHeader` 的岗位语言，只读显示 `NodeTaskOutcome`，不得复用会生成 submit/sync 流的 `TaskExecutionPanel`。
-- [ ] **TA1.5 RED：原始 outcome 与档案状态。** 在 `useLiveWorkspace.test.ts` 断言选择完成任务后 `activeTaskOutcome` 精确引用该 `NodeTaskDetail.outcome`，切到无 outcome 任务后为 null；新增 `useTaskArchive.test.ts` 覆盖晚到旧响应丢弃、分页边界去重、`asOf/projectionVersion` 漂移、分页撤权/404/失败清空、refresh 重读当前对象；运行测试，预期失败。
-- [ ] **TA1.6 GREEN：组合现有读取。** 修改 `useLiveWorkspace.ts`、`useTaskWorkspace.ts` 暴露原始 outcome；创建 `useTaskArchive.ts`，仅调用现有 `listObjectActivities`，实现固定接口和失败清空，不新增缓存或业务推断。
-- [ ] **TA1.7 RED：档案语义与真实消费者结构。** 新增 `TaskArchivePanel.test.ts`，断言原任务记录与中性“相关对象事实”分组、正式 outcome、有界覆盖说明、来源版本缺失、部分来源不可见不报错、加载/失败/重试/加载更多；新增 `TaskWorkbench.test.ts`，断言固定六区顺序、责任/期限或未知、办理中与完成态往返不改变三 pane、完成态中栏无写控件、移动标签为档案；运行测试，预期失败。
-- [ ] **TA1.8 GREEN：生产 `/tasks` 成为首个消费者。** 创建 `TaskArchivePanel.vue`；重构 `TaskWorkbench.vue` 使用既有共享原语和 `WorkbenchPane`，办理中继续复用 `TaskExecutionPanel`，完成态改用 `TaskFrozenResultPanel`，右栏始终保留。只显示人能理解的来源标签；内部 source code/ID 放入 details。
-- [ ] **TA1.9 最近验证。** 运行 `pnpm --filter @logix/web exec vitest run`，只指定本切片相关测试文件；再运行 `pnpm --filter @logix/web lint`、`pnpm --filter @logix/web typecheck`、`pnpm --filter @logix/web build`。任何失败如实列入 HANDOFF，不扩大范围修复无关失败。
-- [ ] **TA1.10 范围核对与交回。** 运行 `pnpm repo:check`、`git diff --check`、精确文件 Prettier check；核对实际 diff 全在 writeScopes，返回 `logix-handoff/v1`，默认不提交，`nextSuggested: TA2-viewport-evidence`。
+- [x] **TA1.1 RED：共享布局保持兼容。** 在 `WorkbenchLayout.test.ts` 先断言消费者可传入第三屏“档案”，未传时仍显示“编辑”，三 pane DOM 顺序和 stacked/standard 既有行为不变；运行定向测试，预期新增断言失败。
+- [x] **TA1.2 GREEN：最小共享扩展。** 仅在 `WorkbenchLayout.vue` 增加 `mobileContextLabel?: string`，默认“编辑”，移动 context 按该值显示；重跑布局测试通过。
+- [x] **TA1.3 RED：已完成队列与正式结果。** 修改 `TaskQueue.test.ts`，断言待处理排序/计数不变、已完成独立分组、完成项可选择且不显示执行动作；新增 `TaskFrozenResultPanel.test.ts`，断言有 outcome 时显示冻结状态和形成时间，无 outcome 时显示未知，DOM 中不存在领取/完成/提交/同步/补证/上报控件；运行测试，预期失败。
+- [x] **TA1.4 GREEN：完成态只读承接。** 修改 `TaskQueue.vue`，新增按结果形成时间不可得时保持现有返回顺序的已完成分组；创建 `TaskFrozenResultPanel.vue`，复用 `TaskContextHeader` 的岗位语言，只读显示 `NodeTaskOutcome`，不得复用会生成 submit/sync 流的 `TaskExecutionPanel`。
+- [x] **TA1.5 RED：原始 outcome 与档案状态。** 在 `useLiveWorkspace.test.ts` 断言选择完成任务后 `activeTaskOutcome` 精确引用该 `NodeTaskDetail.outcome`，切到无 outcome 任务后为 null；新增 `useTaskArchive.test.ts` 覆盖晚到旧响应丢弃、分页边界去重、`asOf/projectionVersion` 漂移、分页撤权/404/失败清空、refresh 重读当前对象；运行测试，预期失败。
+- [x] **TA1.6 GREEN：组合现有读取。** 修改 `useLiveWorkspace.ts`、`useTaskWorkspace.ts` 暴露原始 outcome；创建 `useTaskArchive.ts`，仅调用现有 `listObjectActivities`，实现固定接口和失败清空，不新增缓存或业务推断。
+- [x] **TA1.7 RED：档案语义与真实消费者结构。** 新增 `TaskArchivePanel.test.ts`，断言原任务记录与中性“相关对象事实”分组、正式 outcome、有界覆盖说明、来源版本缺失、部分来源不可见不报错、加载/失败/重试/加载更多；新增 `TaskWorkbench.test.ts`，断言固定六区顺序、责任/期限或未知、办理中与完成态往返不改变三 pane、完成态中栏无写控件、移动标签为档案；运行测试，预期失败。
+- [x] **TA1.8 GREEN：生产 `/tasks` 成为首个消费者。** 创建 `TaskArchivePanel.vue`；重构 `TaskWorkbench.vue` 使用既有共享原语和 `WorkbenchPane`，办理中继续复用 `TaskExecutionPanel`，完成态改用 `TaskFrozenResultPanel`，右栏始终保留。只显示人能理解的来源标签；内部 source code/ID 放入 details。
+- [x] **TA1.9 最近验证。** 运行 `pnpm --filter @logix/web exec vitest run`，只指定本切片相关测试文件；再运行 `pnpm --filter @logix/web lint`、`pnpm --filter @logix/web typecheck`、`pnpm --filter @logix/web build`。任何失败如实列入 HANDOFF，不扩大范围修复无关失败。
+- [x] **TA1.10 范围核对与交回。** 运行 `pnpm repo:check`、`git diff --check`、精确文件 Prettier check；核对实际 diff 全在 writeScopes，返回 `logix-handoff/v1`，默认不提交，`nextSuggested: TA2-viewport-evidence`。
 
 实现任务：
 
@@ -254,6 +256,82 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-real-consumer base=b
 4. **同柜但非原任务事实**：不同或空 `taskId` 只称相关对象事实，不称下游、后续完成证据；`TaskArchivePanel.test.ts` 固定反证。
 5. **活动/完成往返与视口变化**：栏位、顺序、宽度、焦点、滚动和动作真值保持；`TaskWorkbench.test.ts` 与 `task-archive.spec.ts` 固定反证。
 
+## TA1 主代理评审与 finding 裁决
+
+2026-10-17 主代理以 `ac4ccdc2...` 为审核基线核对实际未提交 diff；15 个实现文件全部在 TA1 授权范围内，未触及 API、Schema、契约、权限或旧 worktree。主代理复现定向 Vitest `7 files / 33 tests passed`、Web lint、typecheck、build、`pnpm repo:check` 和 `git diff --check` 均通过；TA2 三视口与截图按计划未运行。现有绿色测试仍遗漏以下当前切片失败场景，因此 TA1 保持 `fix`，不得进入 TA2。
+
+```yaml
+protocol: logix-disposition/v1
+slice: TA1-real-consumer
+decisions:
+  - finding: TA1-REV-001
+    status: accepted
+    reason: containerId 路由切换开始后，detail/archive state 未跟随 workspace loading/error 清空，旧对象结果与档案可在新 URL 下继续显示
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-1-truth-and-races
+  - finding: TA1-REV-002
+    status: accepted
+    reason: useLiveWorkspace.reload 无 generation/快照过滤，A→B 并发读取可由迟到 A 覆盖当前 B 范围
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-1-truth-and-races
+  - finding: TA1-REV-003
+    status: accepted
+    reason: completed task 的 nextAction 为 null 时投影 fallback “已分配”不是当前责任或正式交接事实
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-1-truth-and-races
+  - finding: TA1-REV-004
+    status: accepted
+    reason: real API 的 eventCode/definition key 与 assigneeId 被提升为常驻操作语言，违反内部 code/actor ID 渐进披露边界
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-1-truth-and-races
+  - finding: TA1-REV-005
+    status: accepted
+    reason: loadMore 用较晚响应覆盖首屏 nextActions，却继续显示原 asOf，形成混合快照
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-1-truth-and-races
+next: fix
+```
+
+### 切片 `TA1-fix-1-truth-and-races`
+
+- [x] 在 `useLiveWorkspace.test.ts` 先用 A/B deferred reload 证明 B 先完成、A 后完成时最终 tasks、active task/container、outcome、loading、error、分页均保持 B；再为 `reload()` 增加 generation，并在请求开始时捕获该次 `containerIdFilter`，迟到请求不得 rebuild、rememberPage 或结束当前 loading。
+- [x] 在 `TaskWorkbench.test.ts` 先证明已有 A 后切换 B 且 B pending/rejected 时 A 的中栏与档案立即消失；再让 detail/archive state 同步 workspace loading/error，路由范围变化时先隐藏旧对象内容，失败后不恢复 A。
+- [x] 在 `TaskWorkbench.test.ts` 增加 completed + `nextAction: null` 的真实投影场景，断言“当前责任”为未知或“正式交接未提供”，且不出现“已分配”或上一责任人；开放任务仍显示合法任务池/assignee。实现不得从 `TaskItem.assignment` 为完成态推断当前责任。
+- [x] 在 `TaskArchivePanel.test.ts` 使用真实 API 形状：`title: customs_cleared`、`title: wo-customs`、`assigneeId: user-uuid`。常驻标题必须通过既有事件/节点/动作语言映射或中性中文表达；原始 title、assigneeId、source code 只允许进入折叠的“来源详情/技术引用”，不得作为常驻标题或责任。
+- [x] 在 `useTaskArchive.test.ts` 让第一页 nextAction A、第二页同 asOf/version 但 nextAction B；加载更早记录后活动条目追加但 nextActions 保持第一页快照。只有显式 refresh/load 才更新 nextActions。
+- [x] 重跑 TA1 七个定向 suite、Web lint/typecheck/build、精确 Prettier check、`pnpm repo:check`、`git diff --check`；返回新的 HANDOFF，未通过前不开始 TA2。
+
+主代理复核：上述 5 项原 finding 均有对应 GREEN 反证；定向 suite `7 files / 39 tests passed`，Web lint/typecheck/build、精确 Prettier、repo/diff 检查通过。增量审查继续发现 3 项同类当前切片缺口，转入下一修复片：
+
+```yaml
+protocol: logix-disposition/v1
+slice: TA1-fix-1-truth-and-races
+decisions:
+  - finding: TA1-REV-006
+    status: accepted
+    reason: reload 有 generation，但旧范围 loadMore 没有捕获 generation/scope；迟到分页仍可把 A 追加到已经完成的 B 并覆盖 B 的分页
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-2-pagination-and-result-truth
+  - finding: TA1-REV-007
+    status: accepted
+    reason: 开放任务常驻责任仍直接显示 nextAction.assigneeId；该值是 opaque actor ID，不是人类可读责任名称
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-2-pagination-and-result-truth
+  - finding: TA1-REV-008
+    status: accepted
+    reason: completed + outcome null 时 TaskContextHeader 仍用 liveDone 显示“完成结果/已入账”，与冻结结果“尚无正式结果”直接矛盾
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-2-pagination-and-result-truth
+next: fix
+```
+
+### 切片 `TA1-fix-2-pagination-and-result-truth`
+
+- [x] 在 `useLiveWorkspace.test.ts` 先让 A 首屏产生 cursor、A `loadMore()` pending，然后切 B 并完成 B reload，最后返回 A 分页；断言 B 的 tasks/details/containers/outcome/cursor/hasMore 不变，A 行、A 缺柜补读和 A 错误均不得落入 B。实现让 `loadMore()` 捕获发起时的 reload generation、container scope 与 cursor，任何变化后只丢弃旧响应，不 rebuild、不 rememberPage、不写 error、不结束新请求状态。
+- [x] 在 `TaskWorkbench.test.ts` 使用开放、已分配且 `assigneeId=user-uuid` 的真实投影，断言责任带不显示 opaque ID，只显示“进行中”“已分配人员”等既有语义标签；pool/unassigned 仍显示“待领取”。不得修改后端或伪造人员姓名。
+- [x] 在 `TaskFrozenResultPanel.test.ts` 增加 completed + outcome null 的完整可见文案断言：页面任何位置都不得出现“已入账”或其他泛化完成结果，只显示“尚无正式结果 / 结果形成时间未知”。最小实现可以给 `TaskContextHeader` 增加不推断 completed result 的中性显示契约，但必须保持其余现有消费者和 outcome-present 行为；若触及 `TaskContextHeader.vue/.test.ts`，先将两个文件加入本 brief 精确 writeScopes，再由 Codex 测试先行修改。
+- [x] 重跑 TA1 全部相关测试以及 `TaskContextHeader.test.ts`（如触及）、Web lint/typecheck/build、精确 Prettier、repo/diff；未通过前不进入 TA2。
+
+主代理最终 TA1 验收：REV-006～008 反证通过；定向 suite `8 files / 44 tests passed`，Web 全量单测 `168 files / 800 tests passed`，Web lint/typecheck/build、精确 Prettier、repo/diff 检查均通过。fresh 增量只读复审结论为 `no findings`；TA1 当前范围完成，进入 TA2，但不宣称三视口或任务级完成。
+
+修复任务：
+
+```text
+TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-2-pagination-and-result-truth base=ac4ccdc23a9aa340f8569b5128b266db97f1da80 role=implementer workspace=D:/Logixs
+```
+
 ## 验收
 
 - [ ] `/tasks` 是首个真实消费者，完成任务可选择但不计入待处理；办理中任务行为未回退。
@@ -268,7 +346,10 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-real-consumer base=b
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明                                                                                                                       |
-| ---------- | ------ | ---- | ------ | -------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-17 | design | main | —      | 负责人选择继续现行“任务档案优先”；核对当前 main、共享 UI、现有对象活动读取和旧 worktree 候选，建立当前 main 唯一活动 brief |
-| 2026-10-17 | coding | main | —      | 锁定 TA1/TA2、精确写范围、三视口与当前可见来源边界；等待 Codex Code 按 TA1 测试先行实现                                    |
+| 日期       | 阶段   | 负责 | commit | 说明                                                                                                                          |
+| ---------- | ------ | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-17 | design | main | —      | 负责人选择继续现行“任务档案优先”；核对当前 main、共享 UI、现有对象活动读取和旧 worktree 候选，建立当前 main 唯一活动 brief    |
+| 2026-10-17 | coding | main | —      | 锁定 TA1/TA2、精确写范围、三视口与当前可见来源边界；等待 Codex Code 按 TA1 测试先行实现                                       |
+| 2026-10-17 | review | main | —      | 核对 TA1 实际 diff 并复现 33 项测试、lint/typecheck/build/repo/diff；接受 5 项真值与竞态 finding，状态转 fix                  |
+| 2026-10-17 | fix    | main | —      | 复核首轮 5 项修复与 39 项测试；原 finding 关闭，增量接受分页跨范围、opaque 责任 ID、缺 outcome 假“已入账”3 项 finding         |
+| 2026-10-17 | coding | main | —      | 第二轮 3 项修复通过 44 项定向、800 项 Web 全量、lint/typecheck/build/repo/format/diff；增量复审无 finding，TA1 验收，进入 TA2 |

@@ -4,9 +4,12 @@ import TaskQueue from "./TaskQueue.vue";
 import { createTaskSeed } from "../../data/sample";
 
 describe("TaskQueue", () => {
-  it("shows only actionable work in risk and due-time order", () => {
+  it("keeps actionable ordering and count while exposing completed tasks separately", async () => {
     const tasks = createTaskSeed();
-    tasks.find((task) => task.taskId === "task_1024")!.status = "completed";
+    const firstCompleted = tasks.find((task) => task.taskId === "task_1024")!;
+    const secondCompleted = tasks.find((task) => task.taskId === "task_1025")!;
+    firstCompleted.status = "completed";
+    secondCompleted.status = "completed";
 
     const wrapper = mount(TaskQueue, {
       props: { tasks, activeTaskId: "task_1027", selectionLocked: false },
@@ -21,11 +24,22 @@ describe("TaskQueue", () => {
     );
     expect(actionable.map((row) => row.attributes("data-task-id"))).toEqual([
       "task_1027",
-      "task_1025",
       "task_1026",
     ]);
-    expect(wrapper.get('[data-testid="actionable-count"]').text()).toBe("3");
-    expect(wrapper.text()).not.toContain("发送清关资料");
-    expect(wrapper.text()).not.toContain("现场人工执行");
+    expect(wrapper.get('[data-testid="actionable-count"]').text()).toBe("2");
+
+    const completed = wrapper.findAll('[data-testid="completed-task"]');
+    expect(completed.map((row) => row.attributes("data-task-id"))).toEqual([
+      "task_1024",
+      "task_1025",
+    ]);
+    expect(wrapper.get('[data-testid="completed-count"]').text()).toBe("2");
+    expect(completed[0]?.attributes("disabled")).toBeUndefined();
+
+    await completed[0]!.trigger("click");
+    expect(wrapper.emitted("select")).toEqual([["task_1024"]]);
+    const completedGroup = wrapper.get(".completed-zone");
+    expect(completedGroup.text()).not.toContain("领取");
+    expect(completedGroup.text()).not.toContain("提交");
   });
 });

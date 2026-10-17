@@ -37,8 +37,56 @@ async function setupWorkspace() {
   });
   app.use(router);
   app.mount(document.createElement("div"));
-  return { workspace: workspace!, app };
+  return { workspace: workspace!, app, router };
 }
+
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+};
+
+const taskPage = (
+  containerId: string,
+  options: { cursor?: string | null; hasMore?: boolean; withOutcome?: boolean },
+) => ({
+  items: [
+    {
+      id: `task-${containerId}`,
+      flowInstanceId: `flow-${containerId}`,
+      nodeInstanceId: `node-${containerId}`,
+      nodeCode: containerId === "c1" ? "customs_clearance" : "container_pickup",
+      containerId,
+      taskDefinitionKey: `definition-${containerId}`,
+      state: options.withOutcome ? "completed" : "pending",
+      workOrders: [],
+      outcome: options.withOutcome
+        ? {
+            id: `outcome-${containerId}`,
+            previousState: "in_progress",
+            nextState: "completed",
+            resultPolicyMode: "all_required_work_orders_completed",
+            eventCode: "customs_cleared",
+            requiredWorkOrderIds: [],
+            completedWorkOrderIds: [],
+            evaluatedAt: "2026-10-17T03:04:05.000Z",
+          }
+        : null,
+      nextAction: null,
+    },
+  ],
+  pageInfo: {
+    nextCursor: options.cursor ?? null,
+    hasNextPage: options.hasMore ?? false,
+    pageSize: 200,
+  },
+  asOf: "2026-10-17T03:04:05.000Z",
+  projectionVersion: 1,
+});
 
 describe("useLiveWorkspace", () => {
   beforeEach(() => {
@@ -103,6 +151,243 @@ describe("useLiveWorkspace", () => {
     await flushPromises();
     expect(workspace.error.value).toBe("任务没能加载");
     expect(workspace.tasks.value).toEqual([]);
+    app.unmount();
+  });
+
+  it("B 先完成后忽略 A 的迟到成功并保留 B 的分页和结果", async () => {
+    const first = deferred<ReturnType<typeof taskPage>>();
+    const second = deferred<ReturnType<typeof taskPage>>();
+    listContainers.mockResolvedValue({
+      items: [
+        {
+          id: "c1",
+          orderNumber: "PO-1",
+          containerNumber: "MSCU1",
+          currentStatus: "in_transit",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+        {
+          id: "c2",
+          orderNumber: "PO-2",
+          containerNumber: "MSCU2",
+          currentStatus: "at_port",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+      ],
+    });
+    listNodeTasks
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { workspace, app, router } = await setupWorkspace();
+
+    await router.replace("/tasks?containerId=c1");
+    const loadA = workspace.reload();
+    await router.replace("/tasks?containerId=c2");
+    const loadB = workspace.reload();
+    second.resolve(
+      taskPage("c2", { cursor: "cursor-b", hasMore: true, withOutcome: true }),
+    );
+    await loadB;
+    first.resolve(taskPage("c1", { cursor: null, hasMore: false }));
+    await loadA;
+
+    expect(listNodeTasks).toHaveBeenNthCalledWith(1, {
+      pageSize: 200,
+      containerId: "c1",
+    });
+    expect(listNodeTasks).toHaveBeenNthCalledWith(2, {
+      pageSize: 200,
+      containerId: "c2",
+    });
+    expect(workspace.tasks.value.map((task) => task.taskId)).toEqual([
+      "task-c2",
+    ]);
+    expect(workspace.activeTask.value?.taskId).toBe("task-c2");
+    expect(workspace.activeContainer.value?.containerRecordId).toBe("c2");
+    expect(workspace.activeTaskOutcome.value?.id).toBe("outcome-c2");
+    expect(workspace.loading.value).toBe(false);
+    expect(workspace.error.value).toBe("");
+    expect(workspace.hasMore.value).toBe(true);
+    await workspace.loadMore();
+    expect(listNodeTasks).toHaveBeenLastCalledWith({
+      pageSize: 200,
+      containerId: "c2",
+      cursor: "cursor-b",
+    });
+    app.unmount();
+  });
+
+  it("A 的迟到失败不会结束仍在进行的 B 或写入错误", async () => {
+    const first = deferred<ReturnType<typeof taskPage>>();
+    const second = deferred<ReturnType<typeof taskPage>>();
+    listContainers.mockResolvedValue({
+      items: [
+        {
+          id: "c1",
+          orderNumber: "PO-1",
+          containerNumber: "MSCU1",
+          currentStatus: "in_transit",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+        {
+          id: "c2",
+          orderNumber: "PO-2",
+          containerNumber: "MSCU2",
+          currentStatus: "at_port",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+      ],
+    });
+    listNodeTasks
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { workspace, app, router } = await setupWorkspace();
+
+    await router.replace("/tasks?containerId=c1");
+    const loadA = workspace.reload();
+    await router.replace("/tasks?containerId=c2");
+    const loadB = workspace.reload();
+    first.reject(new Error("FORBIDDEN"));
+    await loadA;
+
+    expect(workspace.loading.value).toBe(true);
+    expect(workspace.error.value).toBe("");
+    second.resolve(taskPage("c2", { cursor: null, hasMore: false }));
+    await loadB;
+    expect(workspace.tasks.value.map((task) => task.taskId)).toEqual([
+      "task-c2",
+    ]);
+    expect(workspace.activeContainer.value?.containerRecordId).toBe("c2");
+    expect(workspace.loading.value).toBe(false);
+    expect(workspace.error.value).toBe("");
+    expect(workspace.hasMore.value).toBe(false);
+    app.unmount();
+  });
+
+  it("切换到 B 后丢弃 A 的迟到分页且不结束 B 的分页状态", async () => {
+    const moreA = deferred<ReturnType<typeof taskPage>>();
+    const moreB = deferred<ReturnType<typeof taskPage>>();
+    listContainers.mockResolvedValue({
+      items: [
+        {
+          id: "c1",
+          orderNumber: "PO-1",
+          containerNumber: "MSCU1",
+          currentStatus: "in_transit",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+        {
+          id: "c2",
+          orderNumber: "PO-2",
+          containerNumber: "MSCU2",
+          currentStatus: "at_port",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+      ],
+    });
+    listNodeTasks
+      .mockResolvedValueOnce(
+        taskPage("c1", { cursor: "cursor-a", hasMore: true }),
+      )
+      .mockReturnValueOnce(moreA.promise)
+      .mockResolvedValueOnce(
+        taskPage("c2", {
+          cursor: "cursor-b",
+          hasMore: true,
+          withOutcome: true,
+        }),
+      )
+      .mockReturnValueOnce(moreB.promise);
+    const { workspace, app, router } = await setupWorkspace();
+
+    await router.replace("/tasks?containerId=c1");
+    await workspace.reload();
+    const loadMoreA = workspace.loadMore();
+    await router.replace("/tasks?containerId=c2");
+    await workspace.reload();
+    const loadMoreB = workspace.loadMore();
+
+    moreA.resolve(
+      taskPage("c-a-extra", { cursor: "cursor-a-2", hasMore: true }),
+    );
+    await loadMoreA;
+
+    expect(listNodeTasks).toHaveBeenNthCalledWith(4, {
+      pageSize: 200,
+      containerId: "c2",
+      cursor: "cursor-b",
+    });
+    expect(workspace.tasks.value.map((task) => task.taskId)).toEqual([
+      "task-c2",
+    ]);
+    expect(workspace.activeTask.value?.taskId).toBe("task-c2");
+    expect(workspace.activeContainer.value?.containerRecordId).toBe("c2");
+    expect(workspace.activeTaskOutcome.value?.id).toBe("outcome-c2");
+    expect(workspace.loading.value).toBe(false);
+    expect(workspace.loadingMore.value).toBe(true);
+    expect(workspace.moreError.value).toBe("");
+    expect(workspace.hasMore.value).toBe(true);
+    expect(getContainer).not.toHaveBeenCalled();
+
+    moreB.resolve({
+      ...taskPage("c2", { cursor: null, hasMore: false, withOutcome: true }),
+      items: [],
+    });
+    await loadMoreB;
+    expect(workspace.tasks.value.map((task) => task.taskId)).toEqual([
+      "task-c2",
+    ]);
+    expect(workspace.loadingMore.value).toBe(false);
+    expect(workspace.hasMore.value).toBe(false);
+    app.unmount();
+  });
+
+  it("切换到 B 后 A 的迟到分页失败不写入 moreError", async () => {
+    const moreA = deferred<ReturnType<typeof taskPage>>();
+    listContainers.mockResolvedValue({
+      items: [
+        {
+          id: "c1",
+          orderNumber: "PO-1",
+          containerNumber: "MSCU1",
+          currentStatus: "in_transit",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+        {
+          id: "c2",
+          orderNumber: "PO-2",
+          containerNumber: "MSCU2",
+          currentStatus: "at_port",
+          updatedAt: "2026-10-17T03:00:00.000Z",
+        },
+      ],
+    });
+    listNodeTasks
+      .mockResolvedValueOnce(
+        taskPage("c1", { cursor: "cursor-a", hasMore: true }),
+      )
+      .mockReturnValueOnce(moreA.promise)
+      .mockResolvedValueOnce(
+        taskPage("c2", { cursor: null, hasMore: false, withOutcome: true }),
+      );
+    const { workspace, app, router } = await setupWorkspace();
+
+    await router.replace("/tasks?containerId=c1");
+    await workspace.reload();
+    const loadMoreA = workspace.loadMore();
+    await router.replace("/tasks?containerId=c2");
+    await workspace.reload();
+    moreA.reject(new Error("FORBIDDEN"));
+    await loadMoreA;
+
+    expect(workspace.tasks.value.map((task) => task.taskId)).toEqual([
+      "task-c2",
+    ]);
+    expect(workspace.activeContainer.value?.containerRecordId).toBe("c2");
+    expect(workspace.activeTaskOutcome.value?.id).toBe("outcome-c2");
+    expect(workspace.moreError.value).toBe("");
+    expect(workspace.loading.value).toBe(false);
+    expect(workspace.loadingMore.value).toBe(false);
     app.unmount();
   });
 
@@ -449,6 +734,66 @@ describe("useLiveWorkspace", () => {
       "t2",
     ]);
     expect(workspace.tasks.value[1]?.containerNumber).toBe("无箱号");
+    app.unmount();
+  });
+
+  it("直接暴露当前任务的原始 outcome，并在切换后清空", async () => {
+    const outcome = {
+      id: "outcome-1",
+      previousState: "in_progress",
+      nextState: "completed",
+      resultPolicyMode: "all_required_work_orders_completed",
+      eventCode: "customs_cleared",
+      requiredWorkOrderIds: ["w1"],
+      completedWorkOrderIds: ["w1"],
+      evaluatedAt: "2026-10-17T03:04:05.000Z",
+    };
+    listNodeTasks.mockResolvedValue({
+      items: [
+        {
+          id: "t-completed",
+          flowInstanceId: "f1",
+          nodeInstanceId: "n1",
+          nodeCode: "customs_clearance",
+          containerId: "c1",
+          taskDefinitionKey: "node-customs_clearance",
+          state: "completed",
+          applicability: "required",
+          readinessState: "ready",
+          completionEligibility: "eligible",
+          conditionFactRefs: [],
+          workOrders: [],
+          outcome,
+          nextAction: null,
+        },
+        {
+          id: "t-open",
+          flowInstanceId: "f1",
+          nodeInstanceId: "n2",
+          nodeCode: "pickup",
+          containerId: "c1",
+          taskDefinitionKey: "node-pickup",
+          state: "pending",
+          applicability: "required",
+          readinessState: "ready",
+          completionEligibility: "awaiting_evidence",
+          conditionFactRefs: [],
+          workOrders: [],
+          outcome: null,
+          nextAction: null,
+        },
+      ],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 200 },
+      asOf: "2026-10-17T03:04:05.000Z",
+      projectionVersion: 1,
+    });
+
+    const { workspace, app } = await setupWorkspace();
+    await workspace.reload();
+
+    expect(workspace.activeTaskOutcome.value).toBe(outcome);
+    workspace.selectTask("t-open");
+    expect(workspace.activeTaskOutcome.value).toBeNull();
     app.unmount();
   });
 });
