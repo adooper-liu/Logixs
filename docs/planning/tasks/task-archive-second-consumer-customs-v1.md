@@ -1,5 +1,5 @@
 ---
-status: fix
+status: review
 branch: feat/task-archive-second-consumer-v1
 verification: "PR 候选本地证据（2026-10-17）：定向 Vitest 4 files / 32 tests、清关档案三项目 E2E 9/9、既有清关流程三项目 E2E 3/3、Web 与全仓 lint/typecheck/unit/build、Prettier、repo/workbench-purpose/contract/dictionary/Prisma/diff 检查通过；三张 1440/1024/390 截图由主代理逐张复核，fresh 整体独立复审 no-findings。pnpm validate 已运行一次并在已知 Windows apps/ai-service/.pytest_cache EPERM 的 format:check 停止；分轨 integration 仅 full-chain-rehearsal-domain-adapter 既有 3 项失败，标准 E2E 仅 recoverable-work-sessions 的既有 Stuffing mobile snapshot 4% 像素漂移失败，本任务 customs archive 9 项在全量调度中通过。最终 PR CI/合并待完成。"
 owner: main
@@ -225,9 +225,9 @@ decisions:
 next: fix
 ```
 
-- [ ] 只修改 `customs-task-archive.spec.ts`：保留全局 `maxDiffPixelRatio: 0.03`，仅在 `viewport.width === 390` 的 `toHaveScreenshot` 调用中覆盖为 `0.05`；不得改 `threshold`、禁用截图或放宽 desktop/narrow。
-- [ ] 不更新任何 PNG；三张截图 SHA 必须保持 `514EEB...` / `EA6D61...` / `E64CAA...`。
-- [ ] 重跑三项目专用 E2E、Prettier、Web lint/typecheck/build、repo/board/diff；随后提交、推送并等待 PR #188 新 CI。
+- [x] 只修改 `customs-task-archive.spec.ts`：保留全局 `maxDiffPixelRatio: 0.03`，仅在 `viewport.width === 390` 的 `toHaveScreenshot` 调用中覆盖为 `0.05`；不得改 `threshold`、禁用截图或放宽 desktop/narrow。
+- [x] 不更新任何 PNG；三张截图 SHA 保持 `514EEB...` / `EA6D61...` / `E64CAA...`。
+- [x] 重跑三项目专用 E2E、Prettier、Web lint/typecheck/build、repo/board/diff；本地 9/9 通过，提交推送后等待 PR #188 新 CI。
 
 修复任务：
 
@@ -302,3 +302,4 @@ TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-fix-3-po
 | 2026-10-17 | blocked | main | —        | repo:check 发现 review 上限已满；PR #182 已合并但 UI 主线收口 brief 状态滞后并占 progress-board 锁，先独立收口旧治理任务再恢复本任务集成          |
 | 2026-10-17 | review  | main | a021ebaa | PR #187 已合并并释放 review/progress-board 锁；功能分支无冲突同步最新 main，恢复 review，进入最终进度板与 PR 集成                                 |
 | 2026-10-17 | fix     | main | —        | PR #188 changes/static/unit/build 通过；E2E 仅 mobile 清关档案中文字形跨 Windows 稳定 4% 像素差失败，接受 AC2-CI-001，收窄修复截图容差            |
+| 2026-10-17 | review  | main | —        | 仅 390px 截图容差调整为 5%，desktop/narrow 仍 3%、threshold 仍 0.3、PNG 未变；专用 E2E 9/9 与质量门禁通过，等待 PR #188 新 CI                     |

@@ -402,10 +402,12 @@ test("customs archive preserves action state and proves the stacked viewport", a
       anchorPosition.anchorBottom - 1,
     );
   }
-  await expect(page).toHaveScreenshot(
-    "customs-task-archive.png",
-    screenshotOptions,
-  );
+  const viewportWidth = page.viewportSize()?.width;
+  await expect(page).toHaveScreenshot("customs-task-archive.png", {
+    ...screenshotOptions,
+    maxDiffPixelRatio:
+      viewportWidth === 390 ? 0.05 : screenshotOptions.maxDiffPixelRatio,
+  });
 
   await archiveButton.focus();
   await page.keyboard.press("Tab");
