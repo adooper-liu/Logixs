@@ -1,5 +1,5 @@
 ---
-status: coding
+status: fix
 branch: feat/task-archive-second-consumer-v1
 verification: ""
 owner: main
@@ -158,6 +158,32 @@ TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-componen
 - [ ] **AC2.9 任务级门禁与整体独立复审。** 运行相关 Web 单测、三项目 E2E、Web format/lint/typecheck/build、`pnpm repo:check`、`git diff --check`；最终 PR 候选只运行一次完整 `pnpm validate`。随后由 fresh Claude Code 只读复审第二消费者是否真的固定现有档案接口、是否回退清关办理、是否夹带协作/AI或泛化事实；主代理逐项裁决 finding。
 - [ ] **AC2.10 集成。** findings 全部处置后精确暂存；运行 `pnpm board:build` 并只纳入确定性进度板变化，创建单一 PR，等待必需 CI，通过后合并。只有合并后才把本 brief 标 `done` 并进入任务内协作对话。
 
+主代理复现三项目 `6 passed`，并逐张读取版本化截图。1440 与 1024 结构符合预期；390×844 暴露当前用例未覆盖的强制结构缺口：档案右栏顶部只有“进口清关”和档案内容，当前货柜、当前任务与生命周期定位均随上方责任带/节点轨道滚出视口。根因是 `RoleWorkbenchFrame` 的 stacked 模式在 ≤680px 隐藏移动导航和 breadcrumb 并纵向展开三栏，而截图与实际长内容场景会把用户带到右栏顶部。该结果违反 frontmatter `uiMustStayVisible` 与移动视口证据，因此视觉片保持 `fix`。
+
+```yaml
+protocol: logix-disposition/v1
+slice: AC2-viewport-evidence
+decisions:
+  - finding: AC2-VIS-001
+    status: accepted
+    reason: 390x844 档案屏没有当前货柜、当前任务或当前生命周期节点的紧凑锚点；用户无法在长页面右栏确认正在核对哪一票清关任务
+    writeback: docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-fix-1-mobile-context-anchor
+next: fix
+```
+
+### 切片 `AC2-fix-1-mobile-context-anchor`
+
+- [ ] 在 `CustomsWorkbench.test.ts` 先增加失败测试：右栏存在一个中性“当前清关上下文”锚点，精确显示当前货柜号、当前任务的人话标签“清关任务”和当前节点 `07 清关`；任务/货柜切换后立即更新，不显示内部 taskId/nodeCode。该锚点不得替代责任带或改变 RoleWorkbenchFrame 接口。
+- [ ] 在 `CustomsWorkbench.vue` 的右栏模式控制与具体内容之间加入紧凑上下文锚点；默认桌面与 1024 隐藏，仅 `max-width: 680px` 显示。事实只来自 `selectedContainer`、`selectedTask` 与 `customsNode`，缺值明确显示“货柜待选择 / 清关任务待选择 / 清关节点待加载”，不得推断责任、状态或放行。
+- [ ] 在 `customs-task-archive.spec.ts` 的三项目公共行为测试中断言锚点文本会随第二货柜更新；在 mobile 项目截图前断言锚点可见且位于档案模式按钮下、档案正文上，desktop/narrow 断言隐藏。只更新 390×844 截图；1440/1024 PNG 哈希应保持不变，否则停止解释差异。
+- [ ] 重跑定向组件测试、三项目 E2E、Web lint/typecheck/build、精确 Prettier、repo/diff；返回 HANDOFF 后主代理重新逐张核对。
+
+修复任务：
+
+```text
+TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-fix-1-mobile-context-anchor base=898154758e6c3cf52c81f13d3f7e240bdf0cb72a role=implementer workspace=D:/Logixs
+```
+
 ## 智慧开启基线继承
 
 | 基线结论                                                         | 处置     | 依据                            | 本任务落点                                             |
@@ -219,3 +245,4 @@ TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-componen
 | 2026-10-17 | design | main | —      | 从最新 main 核对路线、首个档案消费者、生产路由和旧 worktree 所有权；选择进口清关作为第二个差异化消费者，锁定原样接口、局部模式与两片 TDD/视口门禁 |
 | 2026-10-17 | coding | main | —      | 建立功能分支与唯一 brief；等待 Codex Code 按 AC2-component-consumer 测试先行实现                                                                  |
 | 2026-10-17 | review | main | —      | AC2 组件片四文件范围正确；复现 28 项测试、lint/typecheck/build/Prettier/repo/diff 全绿，fresh 增量复审无 finding，进入三视口证据片                |
+| 2026-10-17 | review | main | —      | 视口 E2E 6 项全绿，但 390 截图证明档案屏缺当前货柜/任务/节点锚点；接受 AC2-VIS-001，状态转 fix，等待移动上下文最小修复                            |
