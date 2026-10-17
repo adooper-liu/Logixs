@@ -332,17 +332,59 @@ next: fix
 TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-2-pagination-and-result-truth base=ac4ccdc23a9aa340f8569b5128b266db97f1da80 role=implementer workspace=D:/Logixs
 ```
 
+### TA2 主代理视觉复核与整体复审裁决
+
+主代理核对 TA2 只新增 E2E spec 和三张版本化截图；在不停止既有 5173 服务的前提下，以一次性隔离 5175 配置复现三项目 `3 passed / 6 viewport skips`，随后删除临时配置并停止隔离服务。三张截图尺寸为 1440×900、1024×768、390×844，逐张确认正式身份、责任未知、只读冻结结果、当前可见来源边界、主动作与恢复入口；没有页面横向溢出或状态造假。Web format/lint/typecheck/build、repo/diff 均复现通过。
+
+整体 fresh 复审提出 4 项意见，主代理裁决如下：
+
+```yaml
+protocol: logix-disposition/v1
+slice: TA2-viewport-evidence
+decisions:
+  - finding: TA2-REV-001
+    status: rejected
+    reason: 超过首 200 条任务需继续使用既有稳定分页“再看后面”；V1 已由 TA-D02 定为有界当前可见来源，不批准 task-id/completed 专用后端查询或无界加载
+    writeback: none
+  - finding: TA2-REV-002
+    status: rejected
+    reason: TA1.4 明确规定结果形成时间不可得时保持现有返回顺序；当前 TaskItem 不拥有 evaluatedAt，本片不扩公共投影契约
+    writeback: none
+  - finding: TA2-REV-003
+    status: rejected
+    reason: 活动首页与 cursor 页的 asOf 均为 2026-10-17T09:00:00.000Z、projectionVersion 均为 23；17 属于 node-task page；隔离三项目已实际通过
+    writeback: none
+  - finding: TA2-REV-004
+    status: accepted
+    reason: 1024 已验证 Escape 与选择关闭，但漏掉 brief 明文要求的遮罩关闭及焦点返回反证；产品行为已有参考页覆盖，本任务仍须在真实消费者 E2E 证明
+    writeback: docs/planning/tasks/task-archive-ui-consumer-v1.md#TA2-fix-1-backdrop-evidence
+next: fix
+```
+
+### 切片 `TA2-fix-1-backdrop-evidence`
+
+- [x] 只修改 `apps/web/e2e/task-archive.spec.ts`：在 1024 用例中重新打开 drawer，点击 `关闭任务队列抽屉` 遮罩，断言 dialog 隐藏且 `打开任务队列` 触发器重新聚焦；随后继续现有选择关闭、错误恢复和截图流程。
+- [x] 使用隔离端口运行三 Playwright 项目；截图内容若不变不得更新 PNG。再运行 E2E spec Prettier、Web format/lint/typecheck/build、repo/diff；返回 HANDOFF 后主代理继续最终门禁。
+
+主代理复核：修复只修改 E2E spec，三张 PNG 保持原哈希；隔离 5175 三项目 `3 passed / 6 viewport skips`，遮罩关闭后 dialog 隐藏且触发器恢复焦点。临时配置和服务已清理。TA2 当前验收与整体复审 finding 裁决完成，进入最终 PR 候选门禁。
+
+修复任务：
+
+```text
+TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA2-fix-1-backdrop-evidence base=73cb7beaf3b6aa10fa25c4764ea7693837980e5a role=implementer workspace=D:/Logixs
+```
+
 ## 验收
 
-- [ ] `/tasks` 是首个真实消费者，完成任务可选择但不计入待处理；办理中任务行为未回退。
-- [ ] 完成态中栏只显示冻结结果或明确未知，不出现任何写动作、提交或同步假步骤。
-- [ ] 右档案至少组合两个现有真实领域来源，原任务记录与相关对象事实分开；没有新表、后端接口或复制事实。
-- [ ] 来源裁剪沿用服务端 capability；部分来源不可见是正常有界视图，403/404/快照漂移会清除陈旧数据。
-- [ ] `asOf`、分页状态、来源与记录时间、缺失来源版本、200 任务上限及未接通轨道表达真实。
-- [ ] 三标准视口截图、结构、键盘、焦点、滚动与无横向溢出证据由主代理逐张核对通过。
+- [x] `/tasks` 是首个真实消费者，完成任务可选择但不计入待处理；办理中任务行为未回退。
+- [x] 完成态中栏只显示冻结结果或明确未知，不出现任何写动作、提交或同步假步骤。
+- [x] 右档案至少组合两个现有真实领域来源，原任务记录与相关对象事实分开；没有新表、后端接口或复制事实。
+- [x] 来源裁剪沿用服务端 capability；部分来源不可见是正常有界视图，403/404/快照漂移会清除陈旧数据。
+- [x] `asOf`、分页状态、来源与记录时间、缺失来源版本、200 任务上限及未接通轨道表达真实。
+- [x] 三标准视口截图、结构、键盘、焦点、滚动与无横向溢出证据由主代理逐张核对通过。
 - [ ] 相关单测、E2E、Web lint/format/typecheck/build、repo/diff 检查通过；最终 PR 候选只运行一次适用完整门禁。
-- [ ] fresh 独立复审 findings 全部完成裁决；PR CI 通过后才能合并并把 brief 标 `done`。
-- [ ] 本切片只完成任务档案与首个共享右栏消费者，不宣称协作、AI、六轨总历史或任何岗位工作台闭环。
+- [x] fresh 独立复审 findings 全部完成裁决；PR CI 通过后才能合并并把 brief 标 `done`。
+- [x] 本切片只完成任务档案与首个共享右栏消费者，不宣称协作、AI、六轨总历史或任何岗位工作台闭环。
 
 ## 进度 log
 
@@ -353,3 +395,5 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA1-fix-2-pagination-and
 | 2026-10-17 | review | main | —      | 核对 TA1 实际 diff 并复现 33 项测试、lint/typecheck/build/repo/diff；接受 5 项真值与竞态 finding，状态转 fix                  |
 | 2026-10-17 | fix    | main | —      | 复核首轮 5 项修复与 39 项测试；原 finding 关闭，增量接受分页跨范围、opaque 责任 ID、缺 outcome 假“已入账”3 项 finding         |
 | 2026-10-17 | coding | main | —      | 第二轮 3 项修复通过 44 项定向、800 项 Web 全量、lint/typecheck/build/repo/format/diff；增量复审无 finding，TA1 验收，进入 TA2 |
+| 2026-10-17 | review | main | —      | TA2 三视口与截图人工复核通过；整体复审 3 项越界/事实错误意见驳回，接受 1 项 1024 遮罩关闭证据缺口，状态转 fix                 |
+| 2026-10-17 | review | main | —      | 遮罩关闭与焦点恢复反证通过，三 PNG 未变；安全审查无 High/Medium finding，全部实现片完成，进入最终 PR 候选门禁                 |
