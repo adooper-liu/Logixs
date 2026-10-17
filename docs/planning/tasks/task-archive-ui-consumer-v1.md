@@ -1,5 +1,5 @@
 ---
-status: fix
+status: coding
 branch: feat/task-archive-ui-consumer-v1
 verification: "Final candidate d2762dfe: TA1 focused 44/44 and Web full unit 168 files/800 tests passed; root test passed (API 312 files/1614 tests, Web 168/800, package/script tests green); root typecheck and build passed; isolated task-archive Playwright on 1440/1024/390 passed 3 with 6 viewport skips and three versioned screenshots were visually approved; Web format/lint/typecheck/build, repo/diff, scoped formatting and security review passed. Standard pnpm validate was run once but stopped at root format:check on the known apps/ai-service/.pytest_cache Windows EPERM. Remaining gates were run separately: test:integration failed only three unchanged full-chain rehearsal domain-adapter tests (HTTP 400/timeout expectations), and standard test:e2e failed closed because an external non-test Logix server owns port 5173. Final PR CI is the merge authority."
 owner: main
@@ -381,9 +381,26 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA2-fix-1-backdrop-evide
 
 首轮 CI run `39025454105`：`changes/build/unit` 通过；`static` 因当前 brief 状态使进度板 stale；`e2e` 仅两项旧 `/tasks` 壳断言失败，新 task-archive 三视口 3 项全部通过；`quality` 因依赖失败而失败。修复范围只包含旧 E2E 兼容断言与确定性进度板，不修改产品代码或截图。
 
-- [ ] `visual-layout.spec.ts` 在 1024 不再要求隐藏 drawer 内的“待处理任务”region 可见；改为按视口断言 681～1100 的“打开任务队列”窄轨触发器，桌面/手机保留各自真实可见结构，并继续检查无横向溢出。
-- [ ] `shell-layout.spec.ts` 的 mobile task panes 改为标准分屏合同“队列 / 详情 / 档案”，并断言工作台办理步骤导航只存在一个当前屏；不恢复旧两按钮文案。
-- [ ] 重跑两个定向 E2E spec 与 task-archive spec 的三项目组合；再运行 Web format/lint/typecheck/build、repo/diff；运行 `pnpm board:build` 生成 `docs/planning/progress-board.html` 并通过 `board:check`。
+- [x] `visual-layout.spec.ts` 在 1024 不再要求隐藏 drawer 内的“待处理任务”region 可见；改为按视口断言 681～1100 的“打开任务队列”窄轨触发器，桌面/手机保留各自真实可见结构，并继续检查无横向溢出。
+- [x] `shell-layout.spec.ts` 的 mobile task panes 改为标准分屏合同“队列 / 详情 / 档案”，并断言工作台办理步骤导航只存在一个当前屏；不恢复旧两按钮文案。
+- [x] 重跑两个定向 E2E spec 与 task-archive spec 的三项目组合；再运行 Web format/lint/typecheck/build、repo/diff；运行 `pnpm board:build` 生成 `docs/planning/progress-board.html` 并通过 `board:check`。
+
+主代理审查 TA3 HANDOFF：范围与生成进度板正确，组合 E2E `54 passed / 15 viewport skips`；但新断言只证明旧文案退出，未完成 brief 明文结构验收，接受以下两个测试 finding：
+
+- `TA3-REV-001`：1024 仅断言 drawer 队列隐藏，未打开抽屉证明其中真实队列/空态/失败态和焦点恢复；错误抽屉内容仍可通过。
+- `TA3-REV-002`：390 仅断言三个导航按钮与唯一 current 数量，未点击详情/档案/队列验证对应 pane 唯一激活和无溢出；错误屏幕路由仍可通过。
+
+### 修复切片 `TA3-fix-1-structural-assertions`
+
+- [x] `visual-layout.spec.ts` 的 681～1100 分支点击 `打开任务队列`，断言 dialog `任务队列` 可见，drawer 内 `待处理任务` / 当前空态 / 当前失败态之一可见；Escape 关闭并恢复 trigger 焦点；最后继续无溢出检查。
+- [x] `shell-layout.spec.ts` 的 mobile 用例点击“详情”“档案”“队列”，每次断言只有对应的 detail/context/queue pane 具有 `data-mobile-active=true`，另外两个无该属性；全过程断言 document/app-content 无横向溢出。
+- [x] 重跑两个 spec 与 task-archive 三项目组合，截图不更新；重新生成并检查进度板，运行 Web format/lint/typecheck/build、repo/diff。
+
+主代理最终复核：隔离 5175 组合调度 `69` 项，实际 `54 passed / 15 viewport skips`；1024 抽屉内容、Escape 与触发器焦点恢复，390 队列/详情/档案三屏唯一激活和 document/app-content 无溢出均通过。`board:check` current，Web format/lint/typecheck/build、repo/diff 通过，临时配置与服务已清理。TA3 findings 关闭，可提交并触发 PR #185 新 CI。
+
+```text
+TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA3-fix-1-structural-assertions base=23267b2f role=implementer workspace=D:/Logixs
+```
 
 修复任务：
 
@@ -416,3 +433,5 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA3-ci-compatibility bas
 | 2026-10-17 | review | main | —      | 遮罩关闭与焦点恢复反证通过，三 PNG 未变；安全审查无 High/Medium finding，全部实现片完成，进入最终 PR 候选门禁                                        |
 | 2026-10-17 | review | main | —      | 最终 validate 在已知 pytest_cache EPERM 停止；后续 typecheck/test/build 通过，集成仅 3 项既有全链适配失败，标准 E2E 被外部 5173 指纹阻断；等待 PR CI |
 | 2026-10-17 | fix    | main | —      | PR #185 首轮 changes/build/unit 通过；static 仅进度板 stale，e2e 仅两项旧 `/tasks` 响应式断言失败，新三视口用例通过；进入 TA3                        |
+| 2026-10-17 | review | main | —      | TA3 范围、board 与 54 项组合 E2E 通过，但 1024 未打开抽屉、390 未切换 pane，接受 2 项结构测试缺口，进入 TA3-fix-1                                    |
+| 2026-10-17 | coding | main | —      | TA3 结构反证补齐；54/54 实际测试通过、15 视口跳过，board/static 门禁通过，等待 PR #185 新 CI                                                         |

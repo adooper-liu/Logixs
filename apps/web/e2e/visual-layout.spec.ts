@@ -80,14 +80,51 @@ test("task queue keeps the live work list bounded", async ({ page }) => {
   await disableMotion(page);
   await waitForLiveReady(page);
 
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const queuePane = page.getByRole("region", { name: "任务队列" });
   const queue = page.getByRole("region", { name: "待处理任务" });
-  const empty = page.getByText("这一范围还没有待办。");
-  const failed = liveFailed(page);
-  await expect(queue.or(empty).or(failed).first()).toBeVisible();
+  const empty = queuePane.getByText("这一范围还没有任务。");
+  const failed = queuePane.getByText(/任务没能加载/);
+
+  if (viewportWidth >= 681 && viewportWidth <= 1100) {
+    const queueTrigger = page.getByRole("button", {
+      name: "打开任务队列",
+      exact: true,
+    });
+    await expect(queueTrigger).toBeVisible();
+    await queueTrigger.click();
+
+    const drawer = page.getByRole("dialog", { name: "任务队列" });
+    const drawerQueue = drawer.getByRole("region", { name: "待处理任务" });
+    const drawerEmpty = drawer.getByText("这一范围还没有任务。");
+    const drawerFailed = drawer.getByText(/任务没能加载/);
+    await expect(drawer).toBeVisible();
+    await expect(
+      drawerQueue.or(drawerEmpty).or(drawerFailed).first(),
+    ).toBeVisible();
+
+    if (await drawerQueue.isVisible()) {
+      await expect(drawerQueue.getByLabel("任务列表")).toHaveCSS(
+        "overflow-y",
+        "auto",
+      );
+      await expect(drawer.getByText("后面的任务没能加载")).toHaveCount(0);
+    }
+
+    await drawer
+      .getByRole("button", { name: "折叠任务队列", exact: true })
+      .focus();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect(queueTrigger).toBeFocused();
+  } else {
+    await expect(queuePane).toBeVisible();
+    await expect(queue.or(empty).or(failed).first()).toBeVisible();
+  }
 
   if (await queue.isVisible()) {
     const queueViewport = queue.getByLabel("任务列表");
-    if ((page.viewportSize()?.width ?? 0) >= 768) {
+    if (viewportWidth > 1100) {
       await expect(queueViewport).toHaveCSS("overflow-y", "auto");
     }
     await expect(page.getByText("后面的任务没能加载")).toHaveCount(0);
