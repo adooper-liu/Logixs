@@ -9,11 +9,15 @@ import type {
 import { projectTaskLanguage } from "./taskLanguageContract";
 import { uiCopy } from "../../data/uiCopyCatalog";
 
-const props = defineProps<{
-  task: TaskItem;
-  container: ContainerProjection;
-  submission?: SubmissionView;
-}>();
+const props = withDefaults(
+  defineProps<{
+    task: TaskItem;
+    container: ContainerProjection;
+    submission?: SubmissionView;
+    showCompletedGuidance?: boolean;
+  }>(),
+  { submission: undefined, showCompletedGuidance: true },
+);
 
 const language = computed(() =>
   projectTaskLanguage(props.task, props.submission),
@@ -65,7 +69,10 @@ const containerHref = computed(
         <p v-if="language.showTriggerReason">
           <span>原因</span>{{ language.triggerReason }}
         </p>
-        <p class="guidance">
+        <p
+          v-if="task.status !== 'completed' || showCompletedGuidance"
+          class="guidance"
+        >
           <span>{{ language.guidanceLabel }}</span
           >{{ language.guidance }}
         </p>

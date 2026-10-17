@@ -26,6 +26,7 @@ export function useTaskWorkspace() {
     activeTaskId: live.activeTaskId,
     activeTask: live.activeTask,
     activeContainer: live.activeContainer,
+    activeTaskOutcome: live.activeTaskOutcome,
     activeSubmission: live.activeSubmission,
     canSubmit: live.canSubmit,
     isSubmitting: live.isSubmitting,

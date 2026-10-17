@@ -43,7 +43,7 @@ const idleSubmission = (taskId: string): SubmissionView => ({
 export function useLiveWorkspace() {
   const route = useRoute();
   const summaries = ref<ContainerSummary[]>([]);
-  const details = ref<NodeTaskDetail[]>([]);
+  const details = shallowRef<NodeTaskDetail[]>([]);
   const containers = ref<ContainerProjection[]>([]);
   const tasks = ref<TaskItem[]>([]);
   const submissions = ref<Record<string, SubmissionView>>({});
@@ -56,6 +56,7 @@ export function useLiveWorkspace() {
   const nextCursor = ref<string | null>(null);
   const activeTaskId = shallowRef("");
   const submitting = ref(false);
+  let reloadGeneration = 0;
 
   const containerIdFilter = computed(() =>
     String(route.query.containerId ?? "").trim(),
@@ -71,6 +72,13 @@ export function useLiveWorkspace() {
     if (!task) return undefined;
     return containers.value.find(
       (item) => item.containerRecordId === task.containerRecordId,
+    );
+  });
+  const activeTaskOutcome = computed(() => {
+    const taskId = activeTask.value?.taskId;
+    if (!taskId) return null;
+    return (
+      details.value.find((detail) => detail.id === taskId)?.outcome ?? null
     );
   });
   const activeSubmission = computed(() => {
@@ -101,11 +109,12 @@ export function useLiveWorkspace() {
       );
   });
 
-  const taskQuery = (cursor?: string | null) => ({
+  const taskQuery = (
+    cursor?: string | null,
+    containerId = containerIdFilter.value,
+  ) => ({
     pageSize: 200,
-    ...(containerIdFilter.value
-      ? { containerId: containerIdFilter.value }
-      : {}),
+    ...(containerId ? { containerId } : {}),
     ...(cursor ? { cursor } : {}),
   });
 
@@ -147,38 +156,58 @@ export function useLiveWorkspace() {
   };
 
   const reload = async () => {
+    const requestGeneration = ++reloadGeneration;
+    const requestContainerId = containerIdFilter.value;
     loading.value = true;
     error.value = "";
     moreError.value = "";
+    loadingMore.value = false;
     hasMore.value = false;
     nextCursor.value = null;
     try {
       const [page, taskPage] = await Promise.all([
         listContainers({ pageSize: 200 }),
-        listNodeTasks(taskQuery()),
+        listNodeTasks(taskQuery(null, requestContainerId)),
       ]);
-      const scoped = containerIdFilter.value
-        ? page.items.filter((item) => item.id === containerIdFilter.value)
+      if (requestGeneration !== reloadGeneration) return;
+      const scoped = requestContainerId
+        ? page.items.filter((item) => item.id === requestContainerId)
         : page.items;
       rebuild(scoped, taskPage.items);
       rememberPage(taskPage);
     } catch {
+      if (requestGeneration !== reloadGeneration) return;
       error.value = "任务没能加载";
       rebuild([], []);
     } finally {
-      loading.value = false;
+      if (requestGeneration === reloadGeneration) loading.value = false;
     }
   };
 
   const loadMore = async () => {
-    const cursor = nextCursor.value;
-    if (!hasMore.value || !cursor || loadingMore.value || loading.value) {
+    const requestGeneration = reloadGeneration;
+    const requestContainerId = containerIdFilter.value;
+    const requestCursor = nextCursor.value;
+    if (
+      !hasMore.value ||
+      !requestCursor ||
+      loadingMore.value ||
+      loading.value
+    ) {
       return;
     }
+    const isCurrentPageRequest = () =>
+      requestGeneration === reloadGeneration &&
+      requestContainerId === containerIdFilter.value &&
+      requestCursor === nextCursor.value;
+    let applied = false;
     loadingMore.value = true;
     moreError.value = "";
     try {
-      const page = await listNodeTasks(taskQuery(cursor));
+      const page = await listNodeTasks(
+        taskQuery(requestCursor, requestContainerId),
+      );
+      if (!isCurrentPageRequest()) return;
       const knownTaskIds = new Set(details.value.map((item) => item.id));
       const added = page.items.filter((item) => !knownTaskIds.has(item.id));
       const knownContainerIds = new Set(summaries.value.map((item) => item.id));
@@ -192,16 +221,19 @@ export function useLiveWorkspace() {
       const extras = await Promise.allSettled(
         missing.map((id) => getContainer(id)),
       );
+      if (!isCurrentPageRequest()) return;
       const nextSummaries = [...summaries.value];
       for (const extra of extras) {
         if (extra.status === "fulfilled") nextSummaries.push(extra.value);
       }
       rebuild(nextSummaries, [...details.value, ...added]);
       rememberPage(page);
+      applied = true;
     } catch {
+      if (!isCurrentPageRequest()) return;
       moreError.value = "后面的任务没能加载";
     } finally {
-      loadingMore.value = false;
+      if (applied || isCurrentPageRequest()) loadingMore.value = false;
     }
   };
 
@@ -336,6 +368,7 @@ export function useLiveWorkspace() {
     activeTaskId,
     activeTask,
     activeContainer,
+    activeTaskOutcome,
     activeSubmission,
     canSubmit,
     isSubmitting,

@@ -8,7 +8,7 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-const mountLayout = () => {
+const mountLayout = (props: Record<string, unknown> = {}) => {
   const wrapper = mount(WorkbenchLayout, {
     attachTo: document.body,
     props: {
@@ -17,6 +17,7 @@ const mountLayout = () => {
       mobileScreen: "queue" as const,
       leftRailLabel: "任务队列",
       rightRailLabel: "操作上下文",
+      ...props,
       "onUpdate:leftCollapsed": (value: boolean) =>
         wrapper.setProps({ leftCollapsed: value }),
       "onUpdate:rightCollapsed": (value: boolean) =>
@@ -40,6 +41,23 @@ const mountLayout = () => {
 };
 
 describe("WorkbenchLayout", () => {
+  it("lets a consumer name the mobile context screen while preserving the default", () => {
+    const defaultLayout = mountLayout();
+    const archiveLayout = mountLayout({ mobileContextLabel: "档案" });
+
+    expect(defaultLayout.get('[data-mobile-target="context"]').text()).toBe(
+      "编辑",
+    );
+    expect(archiveLayout.get('[data-mobile-target="context"]').text()).toBe(
+      "档案",
+    );
+    expect(
+      archiveLayout
+        .findAll("[data-workbench-pane]")
+        .map((node) => node.attributes("data-workbench-pane")),
+    ).toEqual(["queue", "detail", "context"]);
+  });
+
   it("keeps identity, responsibility, decision, and all three panes in stable order", () => {
     const wrapper = mountLayout();
 

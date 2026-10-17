@@ -123,8 +123,66 @@ test("mobile task panes stay available", async ({ page }) => {
   test.skip(page.viewportSize()!.width >= 768, "mobile task panes only");
   await page.goto("/tasks");
   await expect(page.getByRole("heading", { name: "我的任务" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /任务列表/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /当前任务/ })).toBeVisible();
+  const steps = page.getByRole("navigation", { name: "工作台办理步骤" });
+  const queueButton = steps.getByRole("button", {
+    name: "队列",
+    exact: true,
+  });
+  const detailButton = steps.getByRole("button", {
+    name: "详情",
+    exact: true,
+  });
+  const contextButton = steps.getByRole("button", {
+    name: "档案",
+    exact: true,
+  });
+  const queuePane = page.locator('[data-workbench-pane="queue"]');
+  const detailPane = page.locator('[data-workbench-pane="detail"]');
+  const contextPane = page.locator('[data-workbench-pane="context"]');
+  const activePane = page.locator(
+    '[data-workbench-pane][data-mobile-active="true"]',
+  );
+
+  await expect(queueButton).toBeVisible();
+  await expect(detailButton).toBeVisible();
+  await expect(contextButton).toBeVisible();
+  await expect(steps.getByRole("button")).toHaveCount(3);
+  await expect(steps.locator('[aria-current="step"]')).toHaveCount(1);
+
+  await expect(queuePane).toHaveAttribute("data-mobile-active", "true");
+  await expect(detailPane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(contextPane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(activePane).toHaveCount(1);
+
+  await detailButton.click();
+  await expect(detailPane).toHaveAttribute("data-mobile-active", "true");
+  await expect(queuePane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(contextPane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(activePane).toHaveCount(1);
+
+  await contextButton.click();
+  await expect(contextPane).toHaveAttribute("data-mobile-active", "true");
+  await expect(queuePane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(detailPane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(activePane).toHaveCount(1);
+
+  await queueButton.click();
+  await expect(queuePane).toHaveAttribute("data-mobile-active", "true");
+  await expect(detailPane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(contextPane).not.toHaveAttribute("data-mobile-active", /.+/);
+  await expect(activePane).toHaveCount(1);
+
+  const widths = await page.evaluate(() => {
+    const content = document.querySelector<HTMLElement>(".app-content");
+    return {
+      pageClient: document.documentElement.clientWidth,
+      pageScroll: document.documentElement.scrollWidth,
+      contentClient: content?.clientWidth ?? 0,
+      contentScroll: content?.scrollWidth ?? 0,
+    };
+  });
+  expect(widths.pageScroll).toBeLessThanOrEqual(widths.pageClient + 1);
+  expect(widths.contentScroll).toBeLessThanOrEqual(widths.contentClient + 1);
 });
 
 test("explanatory tooltips work with click and Escape", async ({ page }) => {
