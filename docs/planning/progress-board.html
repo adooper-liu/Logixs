@@ -1097,9 +1097,9 @@
     </div>
     <!--VOLATILE_META_START-->
     <dl class="mast-meta">
-      <dt>生成于</dt><dd>2026-10-17 11:03 UTC</dd>
-      <dt>提交</dt><dd>23267b2f（含未提交改动）</dd>
-      <dt>分支</dt><dd>feat/task-archive-ui-consumer-v1</dd>
+      <dt>生成于</dt><dd>2026-10-17 11:21 UTC</dd>
+      <dt>提交</dt><dd>b5c4ffff（含未提交改动）</dd>
+      <dt>分支</dt><dd>docs/task-archive-ui-consumer-v1-closeout</dd>
       <dt>数据源</dt><dd>175 份任务 brief · 30 份模块清单</dd>
     </dl>
     <!--VOLATILE_META_END-->
@@ -1108,7 +1108,7 @@
   <div class="band" aria-label="关键计数">
     <div class="tile"><span class="tile-label">后端模块</span><span class="tile-value">30</span><span class="tile-note">9 基座 · 21 增量</span></div>
         <div class="tile"><span class="tile-label">空壳模块</span><span class="tile-value">4</span><span class="tile-note">只有清单、入口与模块文件</span></div>
-        <div class="tile"><span class="tile-label">任务台账</span><span class="tile-value">175</span><span class="tile-note">155 完成 · 1 进行中 · 17 阻塞</span></div>
+        <div class="tile"><span class="tile-label">任务台账</span><span class="tile-value">175</span><span class="tile-note">156 完成 · 0 进行中 · 17 阻塞</span></div>
         <div class="tile"><span class="tile-label">主链已通</span><span class="tile-value">5 / 14</span><span class="tile-note">5 站仅有计划，4 站无模块</span></div>
         <div class="tile"><span class="tile-label">数据库迁移</span><span class="tile-value">106</span><span class="tile-note">单一 Prisma 入口</span></div>
         <div class="tile"><span class="tile-label">清单已了结</span><span class="tile-value">31 / 114</span><span class="tile-note">与任务台账口径不同步</span></div>
@@ -1123,23 +1123,7 @@
       从唯一 task brief 与当前 checkout 派生；其他 worktree、远端评审、PR 与 CI
       未被本页观察，不以空白或绿色代替。
     </p>
-    <div class="cal-board panel" data-state="observed">
-    <div class="cal-column">
-      <section class="cal-cell" data-fact-kind="declared"><span class="fact-tag">declared</span><h3>任务与声明</h3><p class="cal-title">任务全程档案首个真实消费者 V1</p><dl><dt>brief</dt><dd><code>docs/planning/tasks/task-archive-ui-consumer-v1.md</code></dd><dt>状态 / 风险</dt><dd>coding / medium</dd><dt>声明分支</dt><dd><code>feat/task-archive-ui-consumer-v1</code></dd></dl><h4>声明写域</h4><ul class="cal-list"><li>docs/planning/tasks/task-archive-ui-consumer-v1.md</li><li>apps/web/src/components/workbench/WorkbenchLayout.vue</li><li>apps/web/src/components/workbench/WorkbenchLayout.test.ts</li><li>apps/web/src/views/TaskWorkbench.vue</li><li>apps/web/src/views/TaskWorkbench.test.ts</li><li>apps/web/src/components/task/TaskQueue.vue</li><li>apps/web/src/components/task/TaskQueue.test.ts</li><li>apps/web/src/components/task/TaskFrozenResultPanel.vue</li><li>apps/web/src/components/task/TaskFrozenResultPanel.test.ts</li><li>apps/web/src/components/task/TaskContextHeader.vue</li><li>apps/web/src/components/task/TaskContextHeader.test.ts</li><li>apps/web/src/components/task/TaskArchivePanel.vue</li><li>apps/web/src/components/task/TaskArchivePanel.test.ts</li><li>apps/web/src/composables/useTaskArchive.ts</li><li>apps/web/src/composables/useTaskArchive.test.ts</li><li>apps/web/src/composables/useTaskWorkspace.ts</li><li>apps/web/src/composables/useLiveWorkspace.ts</li><li>apps/web/src/composables/useLiveWorkspace.test.ts</li><li>apps/web/e2e/task-archive.spec.ts</li><li>apps/web/e2e/task-archive.spec.ts-snapshots/**</li><li>apps/web/e2e/visual-layout.spec.ts</li><li>apps/web/e2e/shell-layout.spec.ts</li><li>docs/planning/progress-board.html</li></ul></section>
-      <section class="cal-cell" data-fact-kind="declared"><span class="fact-tag">declared</span><h3>正式权威与依赖</h3><h4>权威</h4><ul class="cal-list"><li>AGENTS.md — present</li><li>ENGINEERING_RULES.md — present</li><li>doc/cross-border-supply-chain/08-role-workbenches.md — present</li><li>doc/cross-border-supply-chain/14-roadmap-decisions.md — present</li><li>doc/cross-border-supply-chain/wisdom-baseline/README.md — present</li><li>doc/cross-border-supply-chain/wisdom-baseline/全局.md — present</li><li>doc/cross-border-supply-chain/wisdom-baseline/业务工作台持续打磨受阻原因.md — present</li><li>docs/product/UI_SYSTEM.md — present</li><li>docs/product/WORKSPACE_UI_INVENTORY.md — present</li><li>docs/superpowers/specs/2026-10-11-universal-workbench-ui-standard-design.md — present</li><li>docs/planning/tasks/universal-workbench-layout-standard-v1.md — present</li><li>docs/planning/tasks/recoverable-work-sessions-v1.md — present</li></ul><h4>依赖</h4><ul class="cal-list"><li>universal-workbench-layout-standard-v1 — done</li></ul></section>
-    </div>
-    <div class="cal-column">
-      <section class="cal-cell" data-fact-kind="computed"><span class="fact-tag">computed</span><h3>Checkout 与范围</h3>
-        <!--VOLATILE_CALIBRATION_START--><dl><dt>实际分支</dt><dd><code>feat/task-archive-ui-consumer-v1</code></dd><dt>base</dt><dd><code>b8e401e6822434bafb0f2023d901218bf5dd8051</code> (merge-base)</dd><dt>head</dt><dd><code>23267b2f642501ef41271462f4eea52118ecec76</code></dd></dl><div class="cal-track"><div class="cal-track-head"><span>task-owned tracked</span><span class="mono">24 total</span></div><div class="cal-paths"><code class="cal-path">apps/web/e2e/shell-layout.spec.ts</code><code class="cal-path">apps/web/e2e/task-archive.spec.ts</code><code class="cal-path">apps/web/e2e/task-archive.spec.ts-snapshots/task-archive-completed-desktop-chromium-win32.png</code><code class="cal-path">apps/web/e2e/task-archive.spec.ts-snapshots/task-archive-completed-mobile-chromium-win32.png</code><code class="cal-path">apps/web/e2e/task-archive.spec.ts-snapshots/task-archive-completed-narrow-chromium-win32.png</code><code class="cal-path">apps/web/e2e/visual-layout.spec.ts</code><code class="cal-path">apps/web/src/components/task/TaskArchivePanel.test.ts</code><code class="cal-path">apps/web/src/components/task/TaskArchivePanel.vue</code><code class="cal-path">apps/web/src/components/task/TaskContextHeader.vue</code><code class="cal-path">apps/web/src/components/task/TaskFrozenResultPanel.test.ts</code><code class="cal-path">apps/web/src/components/task/TaskFrozenResultPanel.vue</code><code class="cal-path">apps/web/src/components/task/TaskQueue.test.ts</code><code class="cal-path">apps/web/src/components/task/TaskQueue.vue</code><code class="cal-path">apps/web/src/components/workbench/WorkbenchLayout.test.ts</code><code class="cal-path">apps/web/src/components/workbench/WorkbenchLayout.vue</code><code class="cal-path">apps/web/src/composables/useLiveWorkspace.test.ts</code><code class="cal-path">apps/web/src/composables/useLiveWorkspace.ts</code><code class="cal-path">apps/web/src/composables/useTaskArchive.test.ts</code><code class="cal-path">apps/web/src/composables/useTaskArchive.ts</code><code class="cal-path">apps/web/src/composables/useTaskWorkspace.ts</code><code class="cal-path">apps/web/src/views/TaskWorkbench.test.ts</code><code class="cal-path">apps/web/src/views/TaskWorkbench.vue</code><code class="cal-path">docs/planning/progress-board.html</code><code class="cal-path">docs/planning/tasks/task-archive-ui-consumer-v1.md</code></div></div><div class="cal-track"><div class="cal-track-head"><span>out-of-scope tracked</span><span class="mono">0 total</span></div><div class="cal-paths"><span class="cal-empty">none</span></div></div><div class="cal-track"><div class="cal-track-head"><span>task-owned untracked</span><span class="mono">0 total</span></div><div class="cal-paths"><span class="cal-empty">none</span></div></div><div class="cal-track"><div class="cal-track-head"><span>unowned untracked</span><span class="mono">0 total</span></div><div class="cal-paths"><span class="cal-empty">none</span></div></div><!--VOLATILE_CALIBRATION_END-->
-      </section>
-    </div>
-    <div class="cal-column">
-      <section class="cal-cell" data-fact-kind="computed"><span class="fact-tag">computed</span><h3>Finding 与下一门禁</h3><ul class="cal-findings"><li class="cal-empty">no blocking findings</li></ul><div class="next-gate"><span>next gate</span><strong>run-slice-verification</strong></div></section>
-      <section class="cal-cell" data-fact-kind="declared"><span class="fact-tag">declared</span><h3>已声明验证</h3><p>Final candidate d2762dfe: TA1 focused 44/44 and Web full unit 168 files/800 tests passed; root test passed (API 312 files/1614 tests, Web 168/800, package/script tests green); root typecheck and build passed; isolated task-archive Playwright on 1440/1024/390 passed 3 with 6 viewport skips and three versioned screenshots were visually approved; Web format/lint/typecheck/build, repo/diff, scoped formatting and security review passed. Standard pnpm validate was run once but stopped at root format:check on the known apps/ai-service/.pytest_cache Windows EPERM. Remaining gates were run separately: test:integration failed only three unchanged full-chain rehearsal domain-adapter tests (HTTP 400/timeout expectations), and standard test:e2e failed closed because an external non-test Logix server owns port 5173. Final PR CI is the merge authority.</p></section>
-      <section class="cal-cell" data-fact-kind="unknown"><span class="fact-tag">unknown</span><h3>未观察集成证据</h3><dl><dt>其他 worktree</dt><dd>not-observed</dd><dt>远端评审 / PR / CI</dt><dd>not-observed</dd></dl></section>
-      <section class="cal-cell" data-fact-kind="editorial"><span class="fact-tag">editorial</span><h3>解释边界</h3><p>绿色校准不等于业务闭环、部署完成或负责人验收。</p></section>
-    </div>
-  </div>
+    <div class="cal-board panel" data-state="not-observed"><div class="cal-cell" data-fact-kind="unknown"><span class="fact-tag">unknown</span><h3>当前薄片未观察</h3><p>TASK_CURRENT_NOT_FOUND</p><dl><dt>其他 worktree</dt><dd>not-observed</dd><dt>远端评审 / PR / CI</dt><dd>not-observed</dd></dl></div></div>
   </section>
 
   <section id="modules">
@@ -1444,8 +1428,7 @@
     <div class="filter-set">
       <span class="filter-label">状态</span>
       <button class="fchip" type="button" data-filter="all" aria-pressed="true">全部<span class="tally">175</span></button>
-      <button class="fchip" type="button" data-filter="done" aria-pressed="false">完成<span class="tally">155</span></button>
-      <button class="fchip" type="button" data-filter="coding" aria-pressed="false">进行中<span class="tally">1</span></button>
+      <button class="fchip" type="button" data-filter="done" aria-pressed="false">完成<span class="tally">156</span></button>
       <button class="fchip" type="button" data-filter="review" aria-pressed="false">评审<span class="tally">2</span></button>
       <button class="fchip" type="button" data-filter="blocked" aria-pressed="false">阻塞<span class="tally">17</span></button>
     </div>
@@ -1474,7 +1457,7 @@
   <section id="ledger">
     <div class="sec-head">
       <h2>任务台账</h2>
-      <span class="sec-note">175 条 · 155 完成</span>
+      <span class="sec-note">175 条 · 156 完成</span>
     </div>
     <p class="lede">
       每条任务就是
@@ -1661,7 +1644,7 @@
           <tr data-status="blocked" data-id="sourcing-workbench-operational-spec-v1" data-phase="—" data-text="sourcing-workbench-operational-spec-v1 寻源工作台技术差距与实现计划 v1 feat/sourcing-fact-corrections"><td class="id">sourcing-workbench-operational-spec-v1</td><td class="title">寻源工作台技术差距与实现计划 V1</td><td><span class="chip" data-s="blocked"><span class="glyph">✕</span>阻塞</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
           <tr data-status="blocked" data-id="standard-material-identity-v1" data-phase="—" data-text="standard-material-identity-v1 标准物料身份 v1 feat/standard-material-identity-v1"><td class="id">standard-material-identity-v1</td><td class="title">标准物料身份 V1</td><td><span class="chip" data-s="blocked"><span class="glyph">✕</span>阻塞</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
           <tr data-status="done" data-id="supplier-nomination-v1" data-phase="—" data-text="supplier-nomination-v1 供应商准入、报价与定点 v1 feat/supplier-nomination"><td class="id">supplier-nomination-v1</td><td class="title">供应商准入、报价与定点 V1</td><td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
-          <tr data-status="coding" data-id="task-archive-ui-consumer-v1" data-phase="—" data-text="task-archive-ui-consumer-v1 任务全程档案首个真实消费者 v1 feat/task-archive-ui-consumer-v1"><td class="id">task-archive-ui-consumer-v1</td><td class="title">任务全程档案首个真实消费者 V1</td><td><span class="chip" data-s="active"><span class="glyph">◐</span>进行中</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
+          <tr data-status="done" data-id="task-archive-ui-consumer-v1" data-phase="—" data-text="task-archive-ui-consumer-v1 任务全程档案首个真实消费者 v1 feat/task-archive-ui-consumer-v1"><td class="id">task-archive-ui-consumer-v1</td><td class="title">任务全程档案首个真实消费者 V1</td><td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
           <tr data-status="blocked" data-id="tenant-account-owner-scope-v1" data-phase="—" data-text="tenant-account-owner-scope-v1 集团租户、账套主体与用户范围 v1 feat/tenant-account-owner-scope-v1"><td class="id">tenant-account-owner-scope-v1</td><td class="title">集团租户、账套主体与用户范围 V1</td><td><span class="chip" data-s="blocked"><span class="glyph">✕</span>阻塞</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
           <tr data-status="done" data-id="transparent-development-calibration-v1" data-phase="—" data-text="transparent-development-calibration-v1 透明开发校准 v1 docs/transparent-development-calibration-v1"><td class="id">transparent-development-calibration-v1</td><td class="title">透明开发校准 V1</td><td><span class="chip" data-s="done"><span class="glyph">✓</span>完成</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
           <tr data-status="review" data-id="ui-unification-mainline-closeout-v1" data-phase="—" data-text="ui-unification-mainline-closeout-v1 ui 统一主线状态收口 v1 docs/ui-unification-mainline-closeout-v1"><td class="id">ui-unification-mainline-closeout-v1</td><td class="title">UI 统一主线状态收口 V1</td><td><span class="chip" data-s="active"><span class="glyph">◑</span>评审</span></td><td class="phase mono">—</td><td class="proof"><span class="tick" title="frontmatter 带 verification">✓</span></td></tr>
@@ -1700,7 +1683,7 @@
 
   <footer>
     <p>
-      本页由 <a href="https://github.com/adooper-liu/Logixs/blob/HEAD/scripts/build-progress-board.mjs">scripts/build-progress-board.mjs</a> 从仓库生成，快照取自 <!--VOLATILE_COMMIT_START--><span class="mono">23267b2f</span><!--VOLATILE_COMMIT_END-->。frontmatter 变了要重跑生成再发布，页面本身不会自己去读仓库。
+      本页由 <a href="https://github.com/adooper-liu/Logixs/blob/HEAD/scripts/build-progress-board.mjs">scripts/build-progress-board.mjs</a> 从仓库生成，快照取自 <!--VOLATILE_COMMIT_START--><span class="mono">b5c4ffff</span><!--VOLATILE_COMMIT_END-->。frontmatter 变了要重跑生成再发布，页面本身不会自己去读仓库。
     </p>
     <p>
       重新生成：<code>pnpm board:build</code
