@@ -184,6 +184,32 @@ next: fix
 TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-fix-1-mobile-context-anchor base=898154758e6c3cf52c81f13d3f7e240bdf0cb72a role=implementer workspace=D:/Logixs
 ```
 
+主代理复现修复片的组件测试 `4 files / 32 tests passed`、三项目 E2E `6 passed`、Web lint/typecheck/build、Prettier、repo/diff 全部通过；移动截图已出现当前货柜、清关任务与 `07 清关`，desktop/narrow 哈希保持不变。增量代码审查仍确认一项当前范围兼容性回退：实现用 `:context-ready="true"` 强制右栏进入 ready，而 `CustomsActionPanel` 仅在有 `selectedContainer` 时挂载、移动锚点在桌面与 1024 隐藏；因此直接打开无 `containerId` 的 `/workspaces/customs` 时，原有“选择对象后显示动作。”被空白“清关办理”pane 取代。
+
+```yaml
+protocol: logix-disposition/v1
+slice: AC2-fix-1-mobile-context-anchor
+decisions:
+  - finding: AC2-FIX1-001
+    status: accepted
+    reason: 无 route selection 时 contextReady=true 绕过 RoleWorkbenchFrame 原有 empty state；桌面和 1024 的唯一锚点又被隐藏，形成无可见正文的 ready pane
+    writeback: docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-fix-2-preserve-empty-state
+next: fix
+```
+
+### 切片 `AC2-fix-2-preserve-empty-state`
+
+- [ ] 在 `CustomsWorkbench.test.ts` 先把无对象场景固定为失败反证：直接进入 `/workspaces/customs` 时，右栏必须显示既有“选择对象后显示动作。”，不得显示空白 ready pane；此时“当前清关上下文”不渲染。已有货柜但缺任务或节点的测试继续分别证明“清关任务待选择 / 清关节点待加载”。
+- [ ] 在 `CustomsWorkbench.vue` 删除无条件 `:context-ready="true"`，恢复 `RoleWorkbenchFrame` 以 `selectedContainer` 判断 empty/ready；不修改 shared frame，不把移动锚点改成桌面常驻，也不改变 action/archive 模式。
+- [ ] 在 `customs-task-archive.spec.ts` 增加跨三项目的直接无选择反证：右栏可见“选择对象后显示动作。”且无档案模式入口；已有货柜后的现有锚点、档案和对象切换用例保持不变。
+- [ ] 重跑组件、三项目 E2E 和质量门禁；三张 PNG 均不得变化。若任何截图哈希变化，停止并报告，不更新基线。
+
+修复任务：
+
+```text
+TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-fix-2-preserve-empty-state base=<finding-writeback-sha> role=implementer workspace=D:/Logixs
+```
+
 ## 智慧开启基线继承
 
 | 基线结论                                                         | 处置     | 依据                            | 本任务落点                                             |
@@ -246,3 +272,4 @@ TASK docs/planning/tasks/task-archive-second-consumer-customs-v1.md#AC2-fix-1-mo
 | 2026-10-17 | coding | main | —      | 建立功能分支与唯一 brief；等待 Codex Code 按 AC2-component-consumer 测试先行实现                                                                  |
 | 2026-10-17 | review | main | —      | AC2 组件片四文件范围正确；复现 28 项测试、lint/typecheck/build/Prettier/repo/diff 全绿，fresh 增量复审无 finding，进入三视口证据片                |
 | 2026-10-17 | review | main | —      | 视口 E2E 6 项全绿，但 390 截图证明档案屏缺当前货柜/任务/节点锚点；接受 AC2-VIS-001，状态转 fix，等待移动上下文最小修复                            |
+| 2026-10-17 | review | main | —      | 移动锚点与截图已修复且门禁通过；增量复审确认 contextReady=true 使无对象桌面/1024 右栏退化为空白，接受 AC2-FIX1-001，继续最小兼容修复              |
