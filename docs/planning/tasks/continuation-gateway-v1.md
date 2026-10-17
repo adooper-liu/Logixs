@@ -1,7 +1,7 @@
 ---
-status: coding
+status: done
 branch: feat/continuation-gateway-v1
-verification: "CG1 pure projection 32/32 and CG1/CG2 combined regressions passed after all Standards/Spec findings were closed. CG2 SessionStart Hook 18/18 and combined 94/94 passed; live 12-worktree runs completed in 1682-1872ms without fallback, with raw Git no-write proven. CG3 tasks:list/Skills implementation and historical compatibility regressions passed. Text advisories, fresh-transcript startup handling, source-aware recovery fallback, shared status trust across parser/resolver/query/repo/worktree, canonical worktree blockers, authority-aware stale retirement, exact status-token attribution, and trusted dependency completion all passed scoped two-axis review with no remaining finding. A true independent fresh Claude startup returned resume/clear for this brief with nextGate=run-slice-verification and the correct authority reminder. Security review found no high-confidence vulnerability. Final board generation/check, docs/repo/calibration, explicit task-file formatting, lint, typecheck, unit tests, contracts, dictionary, Prisma generation, and production build passed. Full validate did not exit 0: root format:check hit the known apps/ai-service/.pytest_cache EPERM although all task-owned files passed explicit Prettier; the unchanged full-chain domain-adapter integration test reproducibly failed 3/6 (HTTP 400/time-out) outside this task's API/DB/fixture diff; E2E was not run because the session permission classifier denied connected-service execution. PR #183 initial CI static/build/security passed; unit failed 4 Windows Hook cases because `%TEMP%` short path `RUNNER~1` and Git long path `runneradmin` were treated as different workspaces. The canonical workspace identity fix passed two-axis review, Hook 22/22, gateway 55/55, combined continuation 130/130, root script tests 307/307, API 1614/1614, Web 775/775, lint and formatting. CI rerun and merge remain pending."
+verification: "PR #183 merged to main at d7a791efbe66d7bcb25643eb7178797b69036c20 on 2026-10-17 after CI run 39006557146 passed changes, static, unit, build, security, and quality; e2e and dictionary were skipped by changed-path classification. Before merge, focused projection/Hook/parser/repository/worktree regressions, independent fresh-session rehearsal, security review, board/docs/repo/calibration, explicit task-file formatting, lint, typecheck, root unit tests, contracts, dictionary, Prisma generation, and production build passed. The Windows `%TEMP%` short-path/long-path CI regression was fixed in 8bfaeb94 and the rerun passed. Full local validate did not exit 0 because root format scanning hit the known apps/ai-service/.pytest_cache EPERM, an unchanged full-chain domain-adapter integration test failed outside this task diff, and local E2E was denied by the session permission classifier; merge authority was the final green PR CI."
 owner: main
 writer: codex
 risk: high
@@ -398,29 +398,30 @@ next: fix
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责  | commit | 说明                                                                                                                                                                       |
-| ---------- | ------ | ----- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-16 | design | main  | —      | 从最新 main 建独立分支；并行核对现有机制、Hook 官方语义与 UX，收窄为无状态只读投影 + 单一 SessionStart Hook                                                                |
-| 2026-10-17 | coding | codex | —      | CG1 纯投影完成；经多轮反例修复真实 producer 形状、scope、HANDOFF identity、blocked gate、target-relative dirt 与 UTF-8 限制                                                |
-| 2026-10-17 | review | main  | —      | CG1 定向 32/32、组合 76/76，Standards/Spec 原审查上下文最终均无 finding；进入 CG2 SessionStart Hook                                                                        |
-| 2026-10-17 | coding | codex | —      | CG2 Hook 完成并修复 no-write、deadline、transcript、nested cwd、HANDOFF diff、blocked projection、root tests 与 sibling 冲突                                               |
-| 2026-10-17 | review | main  | —      | CG2 Hook 18/18、组合 94/94、pnpm test 通过；真实 12-worktree 三次 1682–1872ms 非 fallback；双轴定向复审无 finding，进入 CG3                                                |
-| 2026-10-17 | coding | codex | —      | CG3 完成 tasks:list、四个 Skills 接线与 progress board；修复 ambiguity、malformed/verification、JSON banner、nested cwd 和历史兼容                                         |
-| 2026-10-17 | review | main  | —      | CG3 文本 advisory 修复经双轴复审无 finding；focused 49/49、组合 111/111、lint/format/diff/calibration 与 live default/current/JSON 通过                                    |
-| 2026-10-17 | coding | main  | —      | 本次真实 fresh session 收到 fail-open fallback；直接 Hook 10/10 在 1731–1806ms 返回 resume/clear，暂记验证缺口；恢复 coding 继续真实演练                                   |
-| 2026-10-17 | coding | main  | —      | 真实重叠 worktree 下 deadline 包装 10/10 在 1764–1984ms 返回 protect-read-only；compact 与完整 HANDOFF 投影正确，临时现场已授权清理；仅独立 fresh Claude 接管待验收        |
-| 2026-10-17 | fix    | main  | —      | 独立 fresh Claude 再现 fallback；transcript 证据定位为 startup 传入尚不存在的 transcript_path，Hook readFileSync 抛 ENOENT；接受 CG3-FRESH-TRANSCRIPT-ENOENT               |
-| 2026-10-17 | fix    | main  | —      | 首次 ENOENT 修复审查发现 source 边界过宽；真实 resume + 缺失 transcript 错误返回 resume/clear；接受 CG3-TRANSCRIPT-SOURCE-BOUNDARY，要求仅 startup 例外                    |
-| 2026-10-17 | review | main  | —      | startup-only ENOENT 边界双轴无 finding；focused 21/21、组合 114/114、lint/format/治理检查及真实四来源矩阵通过；恢复 coding 等待独立 fresh startup 验收                     |
-| 2026-10-17 | review | main  | —      | 修复后独立全新 Claude 会话准确返回 resume/clear、本 brief、run-slice-verification 与 AGENTS/brief/real diff 权威提醒；进入高风险整体复审                                   |
-| 2026-10-17 | fix    | main  | —      | 高风险整体复审复现 status 歧义绕过：done→coding 重复 key 被降为历史 advisory 且 current exit 0；接受 CG-WHOLE-TASKS-HISTORICAL-STATUS-01；board stale 留待最终生成         |
-| 2026-10-17 | fix    | main  | —      | 首次 status 修复只覆盖重复 key；复审继续复现 status 数组无错误、缩进 status-like 声明仅 advisory，并缺 review→blocked 回归；保持同一 finding 继续修复                      |
-| 2026-10-17 | fix    | main  | —      | 第二次 status 修复收紧 tasks:list 后，跨消费者复审证明 resolver/Hook/worktree/repo 仍信任保留值，且 whitespace-colon/missing status 未统一；改为共享 status trust 根因修复 |
-| 2026-10-17 | fix    | main  | —      | 共享 trust 实现交回时发现 worktree 投影丢失 status-invalid：primary 未聚合，fully merged sibling 被 retirement 清空；确认原 writeScopes 已授权，接受 finding 继续修复      |
-| 2026-10-17 | fix    | main  | —      | worktree blocker 保留修复后，多错误 brief 被复制为多个 TASK_STATUS_INVALID 且丢失 resolver 聚合 evidence；接受 canonical 单 finding 收口                                   |
-| 2026-10-17 | fix    | main  | —      | canonical finding 修复后复现 primary catalog 同 ID status-invalid 仍错误退休 local valid sibling 并返回 continue；接受 authority-aware retirement；拒绝伪造单 taskPath     |
-| 2026-10-17 | fix    | main  | —      | 最终增量复审代码主线无 finding；仅复现 `status coding` 未归因和 repo dependency 仍读 raw metadata 两个既有 trust 分裂，限定最小修复后直接收口                              |
-| 2026-10-17 | review | main  | —      | 最后两个 trust 修复双轴无 finding；代码审查停止扩边界，恢复 coding 仅执行 progress board 生成、最终完整门禁与 Git/PR 集成                                                  |
-| 2026-10-17 | review | main  | —      | board 与任务相关静态/unit/build 门禁通过；完整 validate 分轨记录既有 pytest-cache EPERM、未改 full-chain integration 失败及 E2E 权限拒绝；进入 PR CI 权威验证              |
-| 2026-10-17 | fix    | main  | —      | PR #183 static/build/security 通过；unit 301/305，4 个 Hook 用例因 Windows `%TEMP%` 短路径 RUNNER~1 与 Git 长路径 runneradmin 同目录误判失败；接受路径别名修复             |
-| 2026-10-17 | review | main  | —      | canonical workspace identity 修复双轴无 finding；Hook 22/22、gateway 55/55、组合 130/130、root 307/307、API 1614/1614、Web 775/775 通过；准备补提交重跑 CI                 |
+| 日期       | 阶段   | 负责  | commit   | 说明                                                                                                                                                                       |
+| ---------- | ------ | ----- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-16 | design | main  | —        | 从最新 main 建独立分支；并行核对现有机制、Hook 官方语义与 UX，收窄为无状态只读投影 + 单一 SessionStart Hook                                                                |
+| 2026-10-17 | coding | codex | —        | CG1 纯投影完成；经多轮反例修复真实 producer 形状、scope、HANDOFF identity、blocked gate、target-relative dirt 与 UTF-8 限制                                                |
+| 2026-10-17 | review | main  | —        | CG1 定向 32/32、组合 76/76，Standards/Spec 原审查上下文最终均无 finding；进入 CG2 SessionStart Hook                                                                        |
+| 2026-10-17 | coding | codex | —        | CG2 Hook 完成并修复 no-write、deadline、transcript、nested cwd、HANDOFF diff、blocked projection、root tests 与 sibling 冲突                                               |
+| 2026-10-17 | review | main  | —        | CG2 Hook 18/18、组合 94/94、pnpm test 通过；真实 12-worktree 三次 1682–1872ms 非 fallback；双轴定向复审无 finding，进入 CG3                                                |
+| 2026-10-17 | coding | codex | —        | CG3 完成 tasks:list、四个 Skills 接线与 progress board；修复 ambiguity、malformed/verification、JSON banner、nested cwd 和历史兼容                                         |
+| 2026-10-17 | review | main  | —        | CG3 文本 advisory 修复经双轴复审无 finding；focused 49/49、组合 111/111、lint/format/diff/calibration 与 live default/current/JSON 通过                                    |
+| 2026-10-17 | coding | main  | —        | 本次真实 fresh session 收到 fail-open fallback；直接 Hook 10/10 在 1731–1806ms 返回 resume/clear，暂记验证缺口；恢复 coding 继续真实演练                                   |
+| 2026-10-17 | coding | main  | —        | 真实重叠 worktree 下 deadline 包装 10/10 在 1764–1984ms 返回 protect-read-only；compact 与完整 HANDOFF 投影正确，临时现场已授权清理；仅独立 fresh Claude 接管待验收        |
+| 2026-10-17 | fix    | main  | —        | 独立 fresh Claude 再现 fallback；transcript 证据定位为 startup 传入尚不存在的 transcript_path，Hook readFileSync 抛 ENOENT；接受 CG3-FRESH-TRANSCRIPT-ENOENT               |
+| 2026-10-17 | fix    | main  | —        | 首次 ENOENT 修复审查发现 source 边界过宽；真实 resume + 缺失 transcript 错误返回 resume/clear；接受 CG3-TRANSCRIPT-SOURCE-BOUNDARY，要求仅 startup 例外                    |
+| 2026-10-17 | review | main  | —        | startup-only ENOENT 边界双轴无 finding；focused 21/21、组合 114/114、lint/format/治理检查及真实四来源矩阵通过；恢复 coding 等待独立 fresh startup 验收                     |
+| 2026-10-17 | review | main  | —        | 修复后独立全新 Claude 会话准确返回 resume/clear、本 brief、run-slice-verification 与 AGENTS/brief/real diff 权威提醒；进入高风险整体复审                                   |
+| 2026-10-17 | fix    | main  | —        | 高风险整体复审复现 status 歧义绕过：done→coding 重复 key 被降为历史 advisory 且 current exit 0；接受 CG-WHOLE-TASKS-HISTORICAL-STATUS-01；board stale 留待最终生成         |
+| 2026-10-17 | fix    | main  | —        | 首次 status 修复只覆盖重复 key；复审继续复现 status 数组无错误、缩进 status-like 声明仅 advisory，并缺 review→blocked 回归；保持同一 finding 继续修复                      |
+| 2026-10-17 | fix    | main  | —        | 第二次 status 修复收紧 tasks:list 后，跨消费者复审证明 resolver/Hook/worktree/repo 仍信任保留值，且 whitespace-colon/missing status 未统一；改为共享 status trust 根因修复 |
+| 2026-10-17 | fix    | main  | —        | 共享 trust 实现交回时发现 worktree 投影丢失 status-invalid：primary 未聚合，fully merged sibling 被 retirement 清空；确认原 writeScopes 已授权，接受 finding 继续修复      |
+| 2026-10-17 | fix    | main  | —        | worktree blocker 保留修复后，多错误 brief 被复制为多个 TASK_STATUS_INVALID 且丢失 resolver 聚合 evidence；接受 canonical 单 finding 收口                                   |
+| 2026-10-17 | fix    | main  | —        | canonical finding 修复后复现 primary catalog 同 ID status-invalid 仍错误退休 local valid sibling 并返回 continue；接受 authority-aware retirement；拒绝伪造单 taskPath     |
+| 2026-10-17 | fix    | main  | —        | 最终增量复审代码主线无 finding；仅复现 `status coding` 未归因和 repo dependency 仍读 raw metadata 两个既有 trust 分裂，限定最小修复后直接收口                              |
+| 2026-10-17 | review | main  | —        | 最后两个 trust 修复双轴无 finding；代码审查停止扩边界，恢复 coding 仅执行 progress board 生成、最终完整门禁与 Git/PR 集成                                                  |
+| 2026-10-17 | review | main  | —        | board 与任务相关静态/unit/build 门禁通过；完整 validate 分轨记录既有 pytest-cache EPERM、未改 full-chain integration 失败及 E2E 权限拒绝；进入 PR CI 权威验证              |
+| 2026-10-17 | fix    | main  | —        | PR #183 static/build/security 通过；unit 301/305，4 个 Hook 用例因 Windows `%TEMP%` 短路径 RUNNER~1 与 Git 长路径 runneradmin 同目录误判失败；接受路径别名修复             |
+| 2026-10-17 | review | main  | —        | canonical workspace identity 修复双轴无 finding；Hook 22/22、gateway 55/55、组合 130/130、root 307/307、API 1614/1614、Web 775/775 通过；准备补提交重跑 CI                 |
+| 2026-10-17 | done   | main  | d7a791ef | PR #183 CI run 39006557146 的 changes/static/unit/build/security/quality 全部通过，e2e/dictionary 按路径跳过；合并至 main，进入 brief/board 状态收口                       |
