@@ -80,7 +80,9 @@ uiViewportEvidence:
 3. `WorkbenchLayout` 在左右栏折叠前分别记录共享 scroll owner 的 scrollTop，展开后的 nextTick 恢复该栏 scrollTop；不改变另一栏或页面滚动。
 4. `CargoReadyWorkQueue` 与 `StuffingWorkQueue` 删除 `.queue-list` 的纵向 `max-height/overflow-y`，内容自然流入共享 pane owner；横向筛选 overflow 保留。
 5. 1024/390 保留当前 stacked 兼容拓扑，由页面主滚动承接；本片只保证业务 slot 不再嵌套纵向滚动，不把历史兼容拓扑宣称为最终 UI 标准。
-6. 不持久化折叠或 scrollTop 到 localStorage、URL 或 WorkSession。
+6. `WorkbenchLayout` 的滚动状态机以父级实际接受后的 `leftCollapsed/rightCollapsed` props transition 为唯一权威；按钮只 emit。每栏使用独立 generation 与 mounted guard，陈旧异步恢复不得覆盖最新状态、另一栏或用户新滚动。
+7. 折叠 toggle 不覆盖最近业务焦点记忆；真实鼠标/键盘折叠后焦点转到可见展开入口，展开后由共享壳恢复到折叠前业务控件。
+8. 不持久化折叠或 scrollTop 到 localStorage、URL 或 WorkSession。
 
 ## 执行切片 `RWC1-state-connection`
 
@@ -95,8 +97,9 @@ uiViewportEvidence:
 - [ ] **RED 1：共享 wrapper 真实交互。** 保留当前 `RoleWorkbenchFrame.test.ts` 的实际点击失败反证；补充在 `setProps` 模拟 selection/loading/contextLabel 异步 rerender 后左右仍保持折叠，证明状态不因业务重读重置。
 - [ ] **GREEN 1：最小折叠状态接线。** 保留 `RoleWorkbenchFrame.vue` 两个内部 ref 与 v-model；不增加业务 props、样式或持久化。
 - [ ] **RED 2：共享滚动契约。** 在 `WorkbenchLayout.test.ts` 用左右两个长内容 pane：分别设置不同 scrollTop，折叠/展开一栏后只恢复该栏值，另一栏不变；焦点继续由 CollapsibleRail 恢复。`WorkbenchPane.test.ts` 固定每栏只有一个 `.workbench-pane__scroll--independent`。
-- [ ] **GREEN 2：折叠滚动记忆。** `WorkbenchLayout` 在接收左右 collapse=true 前记忆对应 pane owner 的 scrollTop，在 collapse=false 后 nextTick 恢复；不改变 mobile screen 既有 memory，不新增公开事件。
-- [ ] **RED/GREEN 3：移除业务嵌套纵向滚动。** 扩展 `OperationalWorkQueues.test.ts` 挂载 CargoReady 与 Stuffing queue，并在真实 DOM/computed style 中证明 `.queue-list` 不再是纵向 auto/scroll owner；删除两个组件的 `max-height:680px` 与 `overflow-y:auto`，保留 Stuffing filters 的 `overflow-x:auto`。
+- [ ] **GREEN 2：受控折叠滚动状态机。** `WorkbenchLayout` 的按钮 handler 只 emit；watch 实际 `leftCollapsed/rightCollapsed` transition 负责折叠前记忆、展开后恢复。每栏独立 generation + mounted guard，settle 前核对当前 prop 与 generation；陈旧任务不得写入该栏或另一栏，也不得覆盖用户展开后新滚动。外部程序化、延迟与拒绝回写均有反证。
+- [ ] **RED/GREEN 3：真实焦点恢复。** `WorkbenchLayout` 的 focus memory 忽略 `.collapsible-rail__toggle`；折叠后把焦点落到该栏可见展开入口，展开后恢复最近业务控件。单测与 Playwright 必须使用真实 click/keyboard，不得 `element.click()` 绕过焦点。
+- [ ] **RED/GREEN 4：移除业务嵌套纵向滚动。** 扩展 `OperationalWorkQueues.test.ts` 挂载 CargoReady 与 Stuffing queue，并在真实 DOM/computed style 中证明 `.queue-list` 不再是纵向 auto/scroll owner；删除两个组件的 `max-height:680px` 与 `overflow-y:auto`，保留 Stuffing filters 的 `overflow-x:auto`。
 - [ ] **真实消费者 E2E。** 使用 fresh Vite。Customs 在 1440 验证左右独立/同时折叠、root collapsed classes、`48px / 中栏 / 48px`、各自 scrollTop/焦点恢复与另一栏不动；1024/390 只验兼容拓扑、页面主滚动和无嵌套纵向 owner。CargoReady/Stuffing 各验证 `.queue-list` 非纵向 owner、共享 pane/页面 owner 可滚且无横向溢出。现有 PNG 不更新。
 - [ ] **验证与交回。** 运行相关 Vitest、三条 E2E 的三项目组合、Web lint/typecheck/build、精确 Prettier、repo/board/diff；返回 HANDOFF，默认不提交。
 
@@ -104,6 +107,43 @@ uiViewportEvidence:
 
 ```text
 TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-state-connection base=<brief-commit-sha> role=implementer workspace=D:/Logixs
+```
+
+## RWC1 fresh 复审裁决
+
+主代理复现当前实现的 Vitest `4 files / 29 tests`、fresh 标准 Playwright `3 specs / 30 tests`、Web lint/typecheck/build、Prettier、repo/diff 全部通过，PNG 哈希不变。fresh 整体复审仍发现以下当前切片竞态与可访问性缺口：
+
+```yaml
+protocol: logix-disposition/v1
+slice: RWC1-state-connection
+decisions:
+  - finding: RWC1-F01
+    status: accepted
+    reason: 无 generation/mounted guard 的双 requestAnimationFrame 恢复任务可能覆盖最新折叠状态、用户新滚动或卸载后的实例
+    writeback: docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlled-scroll-focus
+  - finding: RWC1-F02
+    status: accepted
+    reason: 滚动记忆只绑定 CollapsibleRail 点击事件，未以实际受控 props transition 为权威；外部程序化、父级拒绝或延迟回写路径错误
+    writeback: docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlled-scroll-focus
+  - finding: RWC1-F03
+    status: accepted
+    reason: E2E 用 element.click 绕过真实指针焦点转移，现有“展开恢复业务控件”证据无法代表用户操作
+    writeback: docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlled-scroll-focus
+next: fix
+```
+
+### 切片 `RWC1-fix-1-controlled-scroll-focus`
+
+- [ ] 用 props watch 重写折叠 scroll transition；按钮只 emit，actual prop transition 才记忆/恢复。
+- [ ] 每栏独立 generation，组件 mounted guard；快速 collapse→expand→collapse、展开后用户新滚动、左右交错、pending 后 unmount 均有失败反证。
+- [ ] 父级拒绝/延迟 v-model 回写时不得提前恢复；外部 `setProps` collapse/expand 与按钮路径等价。
+- [ ] focus memory 忽略 toggle；真实点击折叠后焦点进入对应展开入口，真实点击/键盘展开后恢复业务控件。
+- [ ] E2E 移除所有为折叠保焦点使用的 `evaluate(element.click())`，用真实 Playwright click/keyboard；重新跑 30 项与全套门禁。
+
+修复任务：
+
+```text
+TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlled-scroll-focus base=<finding-writeback-sha> role=implementer workspace=D:/Logixs
 ```
 
 ## 验收
@@ -125,7 +165,8 @@ TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-state-connectio
 
 ## 进度 log
 
-| 日期       | 阶段 | 负责 | commit | 说明                                                                                                                                      |
-| ---------- | ---- | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-17 | fix  | main | —      | 复现并定位 RoleWorkbenchFrame 丢失左右折叠受控状态；锁定 wrapper 内部状态接线与真实消费者 TDD/E2E 边界                                    |
-| 2026-10-17 | fix  | main | —      | 负责人要求左右栏纵向滚动也由共享壳统一；核对 WorkbenchPane 唯一 owner、CargoReady/Stuffing 嵌套 overflow 与折叠 scroll 恢复，扩写当前薄片 |
+| 日期       | 阶段   | 负责 | commit | 说明                                                                                                                                      |
+| ---------- | ------ | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-17 | fix    | main | —      | 复现并定位 RoleWorkbenchFrame 丢失左右折叠受控状态；锁定 wrapper 内部状态接线与真实消费者 TDD/E2E 边界                                    |
+| 2026-10-17 | fix    | main | —      | 负责人要求左右栏纵向滚动也由共享壳统一；核对 WorkbenchPane 唯一 owner、CargoReady/Stuffing 嵌套 overflow 与折叠 scroll 恢复，扩写当前薄片 |
+| 2026-10-18 | review | main | —      | 29 项单测、30 项三视口 E2E 与质量门禁通过；fresh 复审接受受控 props、陈旧 rAF 和真实焦点 3 项 finding，继续精确修复                       |
