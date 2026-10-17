@@ -1,7 +1,7 @@
 ---
-status: coding
+status: done
 branch: feat/task-archive-ui-consumer-v1
-verification: "Final candidate d2762dfe: TA1 focused 44/44 and Web full unit 168 files/800 tests passed; root test passed (API 312 files/1614 tests, Web 168/800, package/script tests green); root typecheck and build passed; isolated task-archive Playwright on 1440/1024/390 passed 3 with 6 viewport skips and three versioned screenshots were visually approved; Web format/lint/typecheck/build, repo/diff, scoped formatting and security review passed. Standard pnpm validate was run once but stopped at root format:check on the known apps/ai-service/.pytest_cache Windows EPERM. Remaining gates were run separately: test:integration failed only three unchanged full-chain rehearsal domain-adapter tests (HTTP 400/timeout expectations), and standard test:e2e failed closed because an external non-test Logix server owns port 5173. Final PR CI is the merge authority."
+verification: "PR #185 merged to main at b5c4ffff19d51527b352009cc90e2c63839fbe40 on 2026-10-17 after CI run 39027251331 passed changes, static, unit, build, e2e, and quality; dictionary and security were skipped by changed-path classification. Before merge, TA1 focused 44/44, Web full unit 168 files/800 tests, root unit (API 312 files/1614 tests plus Web and package/script tests), root typecheck/build, isolated 1440/1024/390 Playwright and versioned visual review, security review, scoped formatting, repo/diff, and deterministic board checks passed. Standard pnpm validate was run once but stopped at the known apps/ai-service/.pytest_cache Windows EPERM; separate integration had three unchanged full-chain rehearsal domain-adapter failures, and local standard E2E was blocked by a foreign 5173 server. Final merge authority was the green PR CI."
 owner: main
 writer: codex
 risk: medium
@@ -422,16 +422,17 @@ TASK docs/planning/tasks/task-archive-ui-consumer-v1.md#TA3-ci-compatibility bas
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明                                                                                                                                                 |
-| ---------- | ------ | ---- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-17 | design | main | —      | 负责人选择继续现行“任务档案优先”；核对当前 main、共享 UI、现有对象活动读取和旧 worktree 候选，建立当前 main 唯一活动 brief                           |
-| 2026-10-17 | coding | main | —      | 锁定 TA1/TA2、精确写范围、三视口与当前可见来源边界；等待 Codex Code 按 TA1 测试先行实现                                                              |
-| 2026-10-17 | review | main | —      | 核对 TA1 实际 diff 并复现 33 项测试、lint/typecheck/build/repo/diff；接受 5 项真值与竞态 finding，状态转 fix                                         |
-| 2026-10-17 | fix    | main | —      | 复核首轮 5 项修复与 39 项测试；原 finding 关闭，增量接受分页跨范围、opaque 责任 ID、缺 outcome 假“已入账”3 项 finding                                |
-| 2026-10-17 | coding | main | —      | 第二轮 3 项修复通过 44 项定向、800 项 Web 全量、lint/typecheck/build/repo/format/diff；增量复审无 finding，TA1 验收，进入 TA2                        |
-| 2026-10-17 | review | main | —      | TA2 三视口与截图人工复核通过；整体复审 3 项越界/事实错误意见驳回，接受 1 项 1024 遮罩关闭证据缺口，状态转 fix                                        |
-| 2026-10-17 | review | main | —      | 遮罩关闭与焦点恢复反证通过，三 PNG 未变；安全审查无 High/Medium finding，全部实现片完成，进入最终 PR 候选门禁                                        |
-| 2026-10-17 | review | main | —      | 最终 validate 在已知 pytest_cache EPERM 停止；后续 typecheck/test/build 通过，集成仅 3 项既有全链适配失败，标准 E2E 被外部 5173 指纹阻断；等待 PR CI |
-| 2026-10-17 | fix    | main | —      | PR #185 首轮 changes/build/unit 通过；static 仅进度板 stale，e2e 仅两项旧 `/tasks` 响应式断言失败，新三视口用例通过；进入 TA3                        |
-| 2026-10-17 | review | main | —      | TA3 范围、board 与 54 项组合 E2E 通过，但 1024 未打开抽屉、390 未切换 pane，接受 2 项结构测试缺口，进入 TA3-fix-1                                    |
-| 2026-10-17 | coding | main | —      | TA3 结构反证补齐；54/54 实际测试通过、15 视口跳过，board/static 门禁通过，等待 PR #185 新 CI                                                         |
+| 日期       | 阶段   | 负责 | commit   | 说明                                                                                                                                                 |
+| ---------- | ------ | ---- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-17 | design | main | —        | 负责人选择继续现行“任务档案优先”；核对当前 main、共享 UI、现有对象活动读取和旧 worktree 候选，建立当前 main 唯一活动 brief                           |
+| 2026-10-17 | coding | main | —        | 锁定 TA1/TA2、精确写范围、三视口与当前可见来源边界；等待 Codex Code 按 TA1 测试先行实现                                                              |
+| 2026-10-17 | review | main | —        | 核对 TA1 实际 diff 并复现 33 项测试、lint/typecheck/build/repo/diff；接受 5 项真值与竞态 finding，状态转 fix                                         |
+| 2026-10-17 | fix    | main | —        | 复核首轮 5 项修复与 39 项测试；原 finding 关闭，增量接受分页跨范围、opaque 责任 ID、缺 outcome 假“已入账”3 项 finding                                |
+| 2026-10-17 | coding | main | —        | 第二轮 3 项修复通过 44 项定向、800 项 Web 全量、lint/typecheck/build/repo/format/diff；增量复审无 finding，TA1 验收，进入 TA2                        |
+| 2026-10-17 | review | main | —        | TA2 三视口与截图人工复核通过；整体复审 3 项越界/事实错误意见驳回，接受 1 项 1024 遮罩关闭证据缺口，状态转 fix                                        |
+| 2026-10-17 | review | main | —        | 遮罩关闭与焦点恢复反证通过，三 PNG 未变；安全审查无 High/Medium finding，全部实现片完成，进入最终 PR 候选门禁                                        |
+| 2026-10-17 | review | main | —        | 最终 validate 在已知 pytest_cache EPERM 停止；后续 typecheck/test/build 通过，集成仅 3 项既有全链适配失败，标准 E2E 被外部 5173 指纹阻断；等待 PR CI |
+| 2026-10-17 | fix    | main | —        | PR #185 首轮 changes/build/unit 通过；static 仅进度板 stale，e2e 仅两项旧 `/tasks` 响应式断言失败，新三视口用例通过；进入 TA3                        |
+| 2026-10-17 | review | main | —        | TA3 范围、board 与 54 项组合 E2E 通过，但 1024 未打开抽屉、390 未切换 pane，接受 2 项结构测试缺口，进入 TA3-fix-1                                    |
+| 2026-10-17 | coding | main | —        | TA3 结构反证补齐；54/54 实际测试通过、15 视口跳过，board/static 门禁通过，等待 PR #185 新 CI                                                         |
+| 2026-10-17 | done   | main | b5c4ffff | PR #185 CI run 39027251331 的 changes/static/unit/build/e2e/quality 全部通过并合并；dictionary/security 按分类跳过，任务收口为 done                  |
