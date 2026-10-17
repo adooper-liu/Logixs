@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { runTasksListCli } from "./continuation-gateway.mjs";
 import {
   buildCalibrationProjection,
   loadTrackedTaskRecords,
@@ -65,6 +66,7 @@ test("parses the supported task frontmatter subset deterministically", () => {
 test("combines quoted values and trailing comments without losing internal hashes", () => {
   const parsed = parseTaskFrontmatter(
     `---
+status: coding
 branch: "feat/calibration#slice" # current branch
 authorityRefs: ['AGENTS.md', "docs/hash#authority.md"] # reviewed
 ---`,
@@ -122,6 +124,132 @@ test("fails closed on duplicate keys, nested mappings, and malformed list fields
         code === "TASK_PARSE_INVALID" && path === "bad.md" && line > 0,
     ),
   );
+  assert.deepEqual(
+    parsed.errors.find(({ key }) => key === "status"),
+    {
+      code: "TASK_PARSE_INVALID",
+      path: "bad.md",
+      line: 3,
+      key: "status",
+      message: "duplicate frontmatter key 'status'",
+    },
+  );
+});
+
+test("fails closed when status is a non-scalar value", () => {
+  const cases = [
+    ["inline array", "status: [done, coding]"],
+    ["empty inline list", "status: []"],
+    ["block list", "status:\n  - done"],
+    ["nested value", "status:\n  state: done"],
+    ["unsupported scalar", "status: paused"],
+  ];
+
+  for (const [label, declaration] of cases) {
+    const parsed = parseTaskFrontmatter(`---\n${declaration}\n---`, {
+      path: `status-${label.replaceAll(" ", "-")}.md`,
+    });
+
+    assert.ok(
+      parsed.errors.some(
+        ({ code, key }) => code === "TASK_PARSE_INVALID" && key === "status",
+      ),
+      label,
+    );
+  }
+});
+
+test("attributes malformed status-like syntax to the status field", () => {
+  for (const [label, declaration] of [
+    ["missing colon", "status coding"],
+    ["leading indent", " status: coding"],
+    ["space before colon", "status : coding"],
+    ["tab before colon", "status\t: review"],
+  ]) {
+    const parsed = parseTaskFrontmatter(
+      `---\nstatus: done\n${declaration}\n---`,
+      { path: `malformed-${label.replaceAll(" ", "-")}.md` },
+    );
+
+    assert.ok(
+      parsed.errors.some(
+        ({ code, key }) => code === "TASK_PARSE_INVALID" && key === "status",
+      ),
+      label,
+    );
+  }
+});
+
+test("status token syntax fails closed across consumers without matching prefixes", () => {
+  const path = "docs/planning/tasks/status-token.md";
+  const source = `---
+status: done
+status coding
+branch: feat/status-token
+---`;
+  const parsed = parseTaskFrontmatter(source, { path });
+  const statusError = parsed.errors.find(({ key }) => key === "status");
+  assert.equal(statusError.code, "TASK_PARSE_INVALID");
+
+  const record = normalizeTaskRecord({ path, source });
+  assert.equal(record.statusValidity, "invalid");
+  assert.equal(record.status, "");
+  assert.equal(
+    resolveCurrentTask({ records: [record], branch: "feat/status-token" })
+      .finding.code,
+    "TASK_STATUS_INVALID",
+  );
+
+  const query = runTasksListCli(["--current", "--json"], {
+    loadRecords: () => [{ path, source }],
+    getBranch: () => "feat/status-token",
+  });
+  assert.equal(query.exitCode, 2);
+  assert.deepEqual(JSON.parse(query.stdout), {
+    query: "error",
+    errors: [{ path, code: "TASK_PARSE_INVALID" }],
+  });
+
+  for (const declaration of ["statusCode coding", "statuses coding"]) {
+    const prefixRecord = normalizeTaskRecord({
+      path: `docs/planning/tasks/${declaration.split(" ")[0]}.md`,
+      source: `---\nstatus: done\n${declaration}\nbranch: feat/prefix\n---`,
+    });
+    assert.equal(prefixRecord.statusValidity, "valid", declaration);
+    assert.equal(prefixRecord.status, "done", declaration);
+    assert.ok(
+      prefixRecord.parseErrors.every(({ key }) => key !== "status"),
+      declaration,
+    );
+  }
+});
+
+test("normalizes one shared status trust verdict", () => {
+  const cases = [
+    ["missing", "branch: feat/current"],
+    ["inline array", "status: [done, coding]"],
+    ["block list", "status:\n  - done"],
+    ["nested", "status:\n  value: done"],
+    ["unsupported", "status: paused"],
+    ["duplicate", "status: done\nstatus: coding"],
+    ["leading indent", "status: done\n status: coding"],
+    ["space before colon", "status: done\nstatus : coding"],
+    ["tab before colon", "status: done\nstatus\t: review"],
+  ];
+
+  for (const [label, declarations] of cases) {
+    const record = normalizeTaskRecord({
+      path: `docs/planning/tasks/${label.replaceAll(" ", "-")}.md`,
+      source: `---\n${declarations}\nbranch: feat/current\n---`,
+    });
+
+    assert.equal(record.statusValidity, "invalid", label);
+    assert.ok(record.statusErrors.length > 0, label);
+    assert.ok(
+      record.statusErrors.every(({ key }) => key === "status"),
+      label,
+    );
+  }
 });
 
 test("normalizes file paths but rejects unsafe declared scopes", () => {
@@ -246,6 +374,33 @@ test("fails closed for zero or ambiguous current tasks", () => {
     }).finding.code,
     "TASK_CURRENT_AMBIGUOUS",
   );
+  assert.equal(
+    resolveCurrentTask({ records: [], branch: "feat/calibration" }).finding
+      .code,
+    "TASK_CURRENT_NOT_FOUND",
+  );
+});
+
+test("current task resolution blocks an untrusted status instead of reporting no task", () => {
+  const invalid = normalizeTaskRecord({
+    path: "docs/planning/tasks/ambiguous-status.md",
+    source: taskSource({ status: "done", branch: "feat/current" }).replace(
+      "status: done",
+      "status: done\nstatus: coding",
+    ),
+  });
+
+  const resolution = resolveCurrentTask({
+    records: [invalid],
+    branch: "feat/current",
+  });
+
+  assert.equal(resolution.task.path, invalid.path);
+  assert.equal(resolution.finding.code, "TASK_STATUS_INVALID");
+  assert.equal(resolution.finding.severity, "blocking");
+  assert.ok(
+    resolution.finding.evidence.some((item) => item.includes(invalid.path)),
+  );
 });
 
 test("splits tracked and untracked paths into four ownership tracks", () => {
@@ -299,6 +454,30 @@ test("splits tracked and untracked paths into four ownership tracks", () => {
     projection.derived.findings.map(({ code }) => code),
     ["TASK_CHANGED_PATH_OUT_OF_SCOPE", "TASK_UNOWNED_UNTRACKED_PRESENT"],
   );
+});
+
+test("a blocked task derives the blocker revalidation gate", () => {
+  const task = normalizeTaskRecord({
+    path: "docs/planning/tasks/calibration.md",
+    source: taskSource({ status: "blocked" }),
+  });
+  const projection = buildCalibrationProjection({
+    task,
+    records: [task],
+    authorityExists: (path) => path === "AGENTS.md",
+    observation: {
+      actualBranch: "feat/calibration",
+      baseSha: "base123",
+      baseSource: "explicit",
+      headSha: "head456",
+      committedPaths: [],
+      stagedPaths: [],
+      unstagedPaths: [],
+      untrackedPaths: [],
+    },
+  });
+
+  assert.equal(projection.derived.nextGate, "revalidate-blocker");
 });
 
 test("reports branch, base, authority, and dependency contradictions", () => {

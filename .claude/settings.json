@@ -12,6 +12,22 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/continuation-gateway.mjs"
+            ],
+            "timeout": 5,
+            "statusMessage": "Loading local continuation checkpoint"
+          }
+        ]
+      }
     ]
   }
 }

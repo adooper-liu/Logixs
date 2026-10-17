@@ -11,11 +11,13 @@ import { findModuleManifestViolations } from "./check-module-manifests.mjs";
 import { auditApiControllers } from "./check-route-access-metadata.mjs";
 import {
   ACTIVE_TASK_STATUSES,
+  TASK_STATUSES,
   buildCalibrationProjection,
   loadTrackedTaskRecords,
   normalizeTaskRecords,
   observeCheckout,
   parseWriteScope,
+  taskStatusIsValid,
   writeScopesOverlap,
 } from "./task-brief-state.mjs";
 
@@ -37,14 +39,6 @@ const ignoredDirectories = new Set([
   "playwright-report",
   "test-results",
   "generated",
-]);
-const allowedTaskStatuses = new Set([
-  "design",
-  "coding",
-  "review",
-  "fix",
-  "blocked",
-  "done",
 ]);
 const scheduledWriteTaskStatuses = new Set(["design", "coding", "fix"]);
 const writeTaskWipStatuses = new Set(["coding", "fix"]);
@@ -719,18 +713,20 @@ export function validateTaskStatusRecords(records) {
   const reviewTasks = [];
 
   for (const record of parsedRecords) {
+    if (!taskStatusIsValid(record)) {
+      for (const error of record.statusErrors) {
+        errors.push(`${error.path}:${error.line}: status: ${error.message}`);
+      }
+      continue;
+    }
     if (ACTIVE_TASK_STATUSES.has(record.status)) {
       for (const error of record.parseErrors) {
         errors.push(`${error.path}:${error.line}: ${error.message}`);
       }
       if (record.parseErrors.length > 0) continue;
     }
-    if (!record.metadata || typeof record.metadata.status !== "string") {
-      errors.push(`${record.path}: missing frontmatter status`);
-      continue;
-    }
-    const status = record.metadata.status;
-    if (!allowedTaskStatuses.has(status)) {
+    const status = record.status;
+    if (!TASK_STATUSES.has(status)) {
       errors.push(`${record.path}: invalid task status '${status}'`);
       continue;
     }
@@ -752,9 +748,15 @@ export function validateTaskStatusRecords(records) {
         errors.push(
           `${record.path}: dependency '${dependencyId}' does not exist`,
         );
-      } else if (dependency.metadata?.status !== "done") {
+      } else if (
+        !taskStatusIsValid(dependency) ||
+        dependency.status !== "done"
+      ) {
+        const dependencyStatus = taskStatusIsValid(dependency)
+          ? dependency.status
+          : "invalid";
         errors.push(
-          `${record.path}: dependency '${dependencyId}' is not done (status: ${dependency.metadata?.status ?? "missing"})`,
+          `${record.path}: dependency '${dependencyId}' is not done (status: ${dependencyStatus})`,
         );
       }
     }

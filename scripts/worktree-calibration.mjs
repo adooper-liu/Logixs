@@ -10,6 +10,7 @@ import {
   observeCheckout,
   parseWriteScope,
   resolveCurrentTask,
+  taskStatusIsValid,
   writeScopesOverlap,
 } from "./task-brief-state.mjs";
 
@@ -139,18 +140,45 @@ export function buildWorktreeCalibrationProjection({
     .map((worktree) => {
       const localTask = worktree.activeResolution?.task;
       const primaryTask = localTask ? primaryById.get(localTask.id) : null;
+      const localStatusInvalid =
+        worktree.activeResolution?.finding?.code === "TASK_STATUS_INVALID";
+      const activeResolution =
+        !localStatusInvalid && primaryTask && !taskStatusIsValid(primaryTask)
+          ? resolveCurrentTask({
+              records: primaryTaskRecords,
+              branch: primaryTask.branch,
+              explicitBrief: primaryTask.path,
+            })
+          : worktree.activeResolution;
+      const projectedWorktree =
+        activeResolution === worktree.activeResolution
+          ? worktree
+          : { ...worktree, activeResolution };
+      const statusInvalid =
+        activeResolution?.finding?.code === "TASK_STATUS_INVALID";
       const staleMergedTask =
         localTask &&
+        !statusInvalid &&
         worktree.fullyMerged &&
         (!primaryTask || !ACTIVE_TASK_STATUSES.has(primaryTask.status));
       if (!staleMergedTask) {
+        const classificationInput = statusInvalid
+          ? {
+              ...projectedWorktree,
+              activeResolution: {
+                finding: activeResolution.finding,
+              },
+            }
+          : projectedWorktree;
         return {
-          ...worktree,
-          state: worktree.state ?? classifyWorktree(worktree),
+          ...projectedWorktree,
+          state: statusInvalid
+            ? classifyWorktree(classificationInput)
+            : (worktree.state ?? classifyWorktree(projectedWorktree)),
         };
       }
       const retired = {
-        ...worktree,
+        ...projectedWorktree,
         activeResolution: {
           finding: {
             code: "TASK_CURRENT_NOT_FOUND",
@@ -273,9 +301,27 @@ export function buildWorktreeCalibrationProjection({
     }
   }
 
+  for (const worktree of worktrees) {
+    if (worktree.activeResolution?.finding?.code !== "TASK_STATUS_INVALID") {
+      continue;
+    }
+    const taskPath =
+      worktree.activeResolution.task?.path ??
+      worktree.checkoutProjection?.task?.path;
+    findings.push({
+      ...worktree.activeResolution.finding,
+      worktreePath: pathOf(worktree),
+      ...(taskPath ? { taskPath } : {}),
+    });
+  }
+
   findings.sort(findingSort);
   const activeTasks = worktrees
-    .filter(({ state }) => state === "active")
+    .filter(
+      ({ state, activeResolution }) =>
+        state === "active" &&
+        activeResolution?.finding?.code !== "TASK_STATUS_INVALID",
+    )
     .map(({ activeResolution, registration, checkoutProjection }) => ({
       task: activeResolution.task,
       worktreePath: registration.path,

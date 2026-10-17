@@ -28,6 +28,7 @@ disable-model-invocation: true
 
 - **本会话当前实际可用的全部 Slash 命令**：在交互终端输入 `/help`，或直接输入 `/` 打开并筛选命令菜单。
 - **当前可用 Skills 及来源**：输入 `/skills`，可按名称、description 或 source 过滤。
+- **任务查询**：`pnpm -w tasks:list` 显示 current 与状态汇总；`pnpm -w tasks:list -- --current` 查询当前分支唯一活动任务；`pnpm -w tasks:list -- --status coding|review|fix|blocked|design|done` 按 tracked brief 状态筛选。机器读取使用 `pnpm -w --silent tasks:list -- --current --json`，避免 pnpm banner 污染 JSON。
 - 本帮助不能读取完整运行时命令注册表；插件、MCP、个人/企业 Skills、同步 Skills、目录作用域和平台能力会动态变化，故不维护静态“全部命令”副本。
 
 ## 有参数：中文搜索与解释

@@ -992,6 +992,83 @@ test("legacy done and blocked records are not retroactively failed", () => {
   );
 });
 
+test("task status validation rejects every untrusted status shape", () => {
+  const cases = [
+    ["missing", "branch: feat/current"],
+    ["inline-array", "status: [done, coding]"],
+    ["block-list", "status:\n  - done"],
+    ["nested", "status:\n  value: done"],
+    ["unsupported", "status: paused"],
+    ["duplicate", "status: done\nstatus: coding"],
+    ["leading-indent", "status: done\n status: coding"],
+    ["space-colon", "status: done\nstatus : coding"],
+    ["tab-colon", "status: done\nstatus\t: review"],
+  ];
+
+  for (const [label, declarations] of cases) {
+    const path = `${label}.md`;
+    const errors = validateTaskStatusRecords([
+      {
+        path,
+        source: `---\n${declarations}\nbranch: feat/current\n---`,
+      },
+    ]);
+
+    assert.ok(
+      errors.some((error) => error.includes(path) && /status/i.test(error)),
+      label,
+    );
+    assert.ok(
+      errors.every(
+        (error) => !error.includes("done task is missing verification"),
+      ),
+      label,
+    );
+  }
+});
+
+test("dependency completion requires trusted normalized done status", () => {
+  const consumer = taskRecord({
+    path: "consumer",
+    status: "coding",
+    writer: "consumer",
+    dependsOn: ["dep"],
+    writeScopes: ["scripts/consumer/**"],
+    exclusiveLocks: ["consumer-lock"],
+  });
+  const invalidDependency = taskRecord({ path: "dep", status: "done" });
+  invalidDependency.source = invalidDependency.source.replace(
+    "status: done",
+    "status: done\nstatus: coding",
+  );
+  const invalidErrors = validateTaskStatusRecords([
+    invalidDependency,
+    consumer,
+  ]);
+  assert.ok(
+    invalidErrors.some((error) =>
+      error.includes("dep.md:3: status: duplicate frontmatter key 'status'"),
+    ),
+  );
+  assert.ok(
+    invalidErrors.includes(
+      "consumer.md: dependency 'dep' is not done (status: invalid)",
+    ),
+  );
+
+  const trustedDone = taskRecord({ path: "dep", status: "done" });
+  trustedDone.source = trustedDone.source.replace(
+    "status: done",
+    "status: done\nverification: CI passed",
+  );
+  assert.deepEqual(validateTaskStatusRecords([trustedDone, consumer]), []);
+
+  const trustedBlocked = taskRecord({ path: "dep", status: "blocked" });
+  assert.deepEqual(validateTaskStatusRecords([trustedBlocked, consumer]), [
+    "consumer.md: dependency 'dep' is not done (status: blocked)",
+  ]);
+});
+
 test("requires mandatory UI structure metadata for active Vue implementation briefs", () => {
   assert.deepEqual(
     validateTaskStatusRecords([
