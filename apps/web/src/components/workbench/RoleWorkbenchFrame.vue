@@ -25,12 +25,18 @@ const props = withDefaults(
     selectionError: string;
     warnings: readonly { code: string; message: string }[];
     contextReady?: boolean;
+    contextLabel?: string;
+    contextSummary?: string;
+    mobileContextLabel?: string;
     emptyMessage?: string;
     loadingMessage?: string;
   }>(),
   {
     embedded: false,
     contextReady: undefined,
+    contextLabel: "岗位待办",
+    contextSummary: undefined,
+    mobileContextLabel: "编辑",
     emptyMessage: "从左侧任务队列选择一项工作，查看事实与当前可执行动作。",
     loadingMessage: "正在加载当前岗位事实…",
   },
@@ -94,9 +100,12 @@ const contextState = computed<WorkbenchPaneState>(() => {
     <WorkbenchLayout
       responsive-mode="stacked"
       left-rail-label="岗位任务池"
-      right-rail-label="岗位待办"
+      :right-rail-label="contextLabel"
       :left-rail-summary="selectedContainer?.containerNumber ?? '待选择'"
-      :right-rail-summary="hasContext ? '查看动作' : '待选择'"
+      :right-rail-summary="
+        contextSummary ?? (hasContext ? '查看动作' : '待选择')
+      "
+      :mobile-context-label="mobileContextLabel"
     >
       <template #header>
         <WorkbenchPageHeader v-if="!embedded" :stage-code="stageCode">
@@ -171,8 +180,8 @@ const contextState = computed<WorkbenchPaneState>(() => {
       <template #context>
         <WorkbenchPane
           id="role-workbench-context"
-          title="岗位待办"
-          :region-label="'岗位待办'"
+          :title="contextLabel"
+          :region-label="contextLabel"
           :state="contextState"
         >
           <slot name="secondary" />
