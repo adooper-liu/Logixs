@@ -18,7 +18,11 @@ import {
   runReadOnlyGit,
   runWorktreeCalibrationCli,
 } from "./worktree-calibration.mjs";
-import { normalizeTaskRecord } from "./task-brief-state.mjs";
+import {
+  buildCalibrationProjection,
+  normalizeTaskRecord,
+  resolveCurrentTask,
+} from "./task-brief-state.mjs";
 
 const porcelain = [
   "worktree D:/Logixs",
@@ -347,14 +351,28 @@ test("primary catalog retires merged stale tasks but preserves new ahead tasks",
     verification: "PR merged",
   });
   const staleReview = { ...retired, status: "review", verification: "" };
+  const blocked = task("blocked", {
+    status: "blocked",
+    branch: "feat/blocked",
+  });
+  const staleFix = { ...blocked, status: "fix" };
+  const orphan = task("orphan", { branch: "feat/orphan" });
   const newTask = task("new-task", { branch: "feat/new-task" });
   const projection = buildWorktreeCalibrationProjection({
     primaryPath: "D:/repo",
     mainRef: "origin/main",
-    primaryTaskRecords: [retired],
+    primaryTaskRecords: [retired, blocked],
     observedWorktrees: [
       primaryObservation(),
       activeWorktree("D:/repo/.worktrees/retired", staleReview, {
+        ahead: 0,
+        fullyMerged: true,
+      }),
+      activeWorktree("D:/repo/.worktrees/blocked", staleFix, {
+        ahead: 0,
+        fullyMerged: true,
+      }),
+      activeWorktree("D:/repo/.worktrees/orphan", orphan, {
         ahead: 0,
         fullyMerged: true,
       }),
@@ -373,6 +391,18 @@ test("primary catalog retires merged stale tasks but preserves new ahead tasks",
   );
   assert.equal(
     projection.worktrees.find(({ registration }) =>
+      registration.path.endsWith("/blocked"),
+    ).state,
+    "dormant-merged",
+  );
+  assert.equal(
+    projection.worktrees.find(({ registration }) =>
+      registration.path.endsWith("/orphan"),
+    ).state,
+    "dormant-merged",
+  );
+  assert.equal(
+    projection.worktrees.find(({ registration }) =>
       registration.path.endsWith("/new-task"),
     ).state,
     "active",
@@ -381,6 +411,92 @@ test("primary catalog retires merged stale tasks but preserves new ahead tasks",
     projection.activeTasks.map(({ task }) => task.id),
     ["new-task"],
   );
+});
+
+test("invalid primary status authority blocks retirement without joining active conflicts", () => {
+  const primaryInvalid = normalizeTaskRecord({
+    path: "docs/planning/tasks/authority-invalid.md",
+    source: taskSource({
+      status: "done",
+      branch: "feat/authority-invalid",
+      writer: "shared",
+      writeScopes: ["scripts/shared/**"],
+      locks: ["shared-lock"],
+    }).replace("status: done", "status: done\nstatus: coding"),
+  });
+  const localValid = task("authority-invalid", {
+    branch: "feat/authority-invalid",
+    writer: "shared",
+    dependsOn: ["missing"],
+    writeScopes: ["scripts/shared/**"],
+    locks: ["shared-lock"],
+  });
+  const valid = task("valid", {
+    branch: "feat/valid",
+    writer: "shared",
+    writeScopes: ["scripts/shared/**"],
+    locks: ["shared-lock"],
+  });
+  const otherValid = task("other-valid", {
+    branch: "feat/other-valid",
+    writer: "other",
+    writeScopes: ["scripts/other/**"],
+    locks: ["other-lock"],
+  });
+  const localResolution = resolveCurrentTask({
+    records: [localValid],
+    branch: localValid.branch,
+  });
+  const primaryResolution = resolveCurrentTask({
+    records: [primaryInvalid],
+    branch: primaryInvalid.branch,
+    explicitBrief: primaryInvalid.path,
+  });
+  const invalidWorktreePath = "D:/repo/.worktrees/authority-invalid";
+
+  assert.equal(primaryInvalid.statusValidity, "invalid");
+  assert.ok(primaryInvalid.statusErrors.length >= 1);
+  assert.equal(primaryResolution.finding.code, "TASK_STATUS_INVALID");
+  assert.equal(localResolution.task.path, localValid.path);
+
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: "D:/repo",
+    mainRef: "origin/main",
+    primaryTaskRecords: [primaryInvalid, valid, otherValid],
+    observedWorktrees: [
+      primaryObservation(),
+      activeWorktree(invalidWorktreePath, localValid, {
+        ahead: 0,
+        fullyMerged: true,
+        activeResolution: localResolution,
+      }),
+      activeWorktree("D:/repo/.worktrees/valid", valid),
+      activeWorktree("D:/repo/.worktrees/other-valid", otherValid),
+    ],
+  });
+
+  const statusFindings = projection.findings.filter(
+    ({ code }) => code === "TASK_STATUS_INVALID",
+  );
+  assert.equal(statusFindings.length, 1);
+  assert.equal(statusFindings[0].severity, "blocking");
+  assert.deepEqual(
+    statusFindings[0].evidence,
+    primaryResolution.finding.evidence,
+  );
+  assert.equal(statusFindings[0].remedy, primaryResolution.finding.remedy);
+  assert.equal(statusFindings[0].worktreePath, invalidWorktreePath);
+  assert.equal(statusFindings[0].taskPath, primaryInvalid.path);
+  assert.equal(projection.nextGate, "fix-worktree-findings");
+  assert.deepEqual(
+    projection.activeTasks.map(({ task: activeTask }) => activeTask.id),
+    ["other-valid", "valid"],
+  );
+  assert.deepEqual(projection.conflicts.writers, []);
+  assert.deepEqual(projection.conflicts.scopes, []);
+  assert.deepEqual(projection.conflicts.locks, []);
+  assert.deepEqual(projection.conflicts.dependencies, []);
+  assert.deepEqual(projection.conflicts.wip, []);
 });
 
 test("primary done suppresses stale local dependency blockers only", () => {
@@ -555,6 +671,247 @@ test("primary, unreadable, ambiguity, detached, and checkout findings stay expli
       "WORKTREE_READ_FAILED",
     ],
   );
+});
+
+test("fully merged status-invalid sibling preserves the shared blocker without write conflicts", () => {
+  const invalid = normalizeTaskRecord({
+    path: "docs/planning/tasks/invalid.md",
+    source: taskSource({
+      status: "coding",
+      branch: "feat/invalid",
+      writer: "shared",
+      writeScopes: ["scripts/shared/**"],
+      locks: ["shared-lock"],
+    }).replace(
+      "status: coding",
+      "status: coding\nstatus: review\nstatus: done",
+    ),
+  });
+  const valid = task("valid", {
+    branch: "feat/valid",
+    writer: "shared",
+    writeScopes: ["scripts/shared/**"],
+    locks: ["shared-lock"],
+  });
+  const activeResolution = resolveCurrentTask({
+    records: [invalid],
+    branch: invalid.branch,
+  });
+  const checkoutProjection = buildCalibrationProjection({
+    task: invalid,
+    records: [invalid],
+    authorityExists: () => true,
+    observation: {
+      actualBranch: invalid.branch,
+      baseSha: "b".repeat(40),
+      baseSource: "explicit",
+      headSha: "a".repeat(40),
+      committedPaths: [],
+      stagedPaths: [],
+      unstagedPaths: [],
+      untrackedPaths: [],
+    },
+  });
+  const invalidWorktreePath = "D:/repo/.worktrees/invalid";
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: "D:/repo",
+    mainRef: "origin/main",
+    primaryTaskRecords: [invalid, valid],
+    observedWorktrees: [
+      primaryObservation(),
+      activeWorktree(invalidWorktreePath, invalid, {
+        ahead: 0,
+        fullyMerged: true,
+        activeResolution,
+        checkoutProjection,
+      }),
+      activeWorktree("D:/repo/.worktrees/valid", valid),
+    ],
+  });
+
+  assert.equal(activeResolution.finding.code, "TASK_STATUS_INVALID");
+  assert.equal(activeResolution.finding.evidence.length, 2);
+  assert.equal(
+    checkoutProjection.derived.findings.filter(
+      ({ code }) => code === "TASK_STATUS_INVALID",
+    ).length,
+    2,
+  );
+  const statusFindings = projection.findings.filter(
+    ({ code }) => code === "TASK_STATUS_INVALID",
+  );
+  assert.equal(statusFindings.length, 1);
+  assert.equal(statusFindings[0].severity, "blocking");
+  assert.deepEqual(
+    statusFindings[0].evidence,
+    activeResolution.finding.evidence,
+  );
+  assert.equal(statusFindings[0].remedy, activeResolution.finding.remedy);
+  assert.equal(statusFindings[0].worktreePath, invalidWorktreePath);
+  assert.equal(statusFindings[0].taskPath, invalid.path);
+  assert.equal(projection.nextGate, "fix-worktree-findings");
+  assert.equal(
+    projection.worktrees.find(
+      ({ registration }) => registration.path === invalidWorktreePath,
+    ).state,
+    "dormant-merged",
+  );
+  assert.deepEqual(
+    projection.activeTasks.map(({ task }) => task.id),
+    ["valid"],
+  );
+  assert.deepEqual(projection.conflicts.writers, []);
+  assert.deepEqual(projection.conflicts.scopes, []);
+  assert.deepEqual(projection.conflicts.locks, []);
+  assert.deepEqual(projection.conflicts.wip, []);
+  assert.ok(
+    projection.findings.every(
+      ({ code }) =>
+        ![
+          "WORKTREE_ACTIVE_WRITER_CONFLICT",
+          "WORKTREE_ACTIVE_SCOPE_CONFLICT",
+          "WORKTREE_ACTIVE_LOCK_CONFLICT",
+        ].includes(code),
+    ),
+  );
+});
+
+test("status-invalid primary preserves the shared blocker without write conflicts", () => {
+  const invalid = normalizeTaskRecord({
+    path: "docs/planning/tasks/invalid-primary.md",
+    source: taskSource({
+      status: "coding",
+      branch: "main",
+      writer: "shared",
+      writeScopes: ["scripts/shared/**"],
+      locks: ["shared-lock"],
+    }).replace(
+      "status: coding",
+      "status: coding\nstatus: review\nstatus: done",
+    ),
+  });
+  const valid = task("valid", {
+    branch: "feat/valid",
+    writer: "shared",
+    writeScopes: ["scripts/shared/**"],
+    locks: ["shared-lock"],
+  });
+  const activeResolution = resolveCurrentTask({
+    records: [invalid],
+    branch: "main",
+  });
+  const checkoutProjection = buildCalibrationProjection({
+    task: invalid,
+    records: [invalid],
+    authorityExists: () => true,
+    observation: {
+      actualBranch: "main",
+      baseSha: "b".repeat(40),
+      baseSource: "explicit",
+      headSha: "a".repeat(40),
+      committedPaths: [],
+      stagedPaths: [],
+      unstagedPaths: [],
+      untrackedPaths: [],
+    },
+  });
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: "D:/repo",
+    mainRef: "origin/main",
+    primaryTaskRecords: [invalid, valid],
+    observedWorktrees: [
+      primaryObservation({
+        taskRecords: [invalid],
+        activeResolution,
+        checkoutProjection,
+      }),
+      activeWorktree("D:/repo/.worktrees/valid", valid),
+    ],
+  });
+
+  assert.equal(activeResolution.finding.code, "TASK_STATUS_INVALID");
+  assert.equal(activeResolution.finding.evidence.length, 2);
+  assert.equal(
+    checkoutProjection.derived.findings.filter(
+      ({ code }) => code === "TASK_STATUS_INVALID",
+    ).length,
+    2,
+  );
+  const statusFindings = projection.findings.filter(
+    ({ code }) => code === "TASK_STATUS_INVALID",
+  );
+  assert.equal(statusFindings.length, 1);
+  assert.equal(statusFindings[0].severity, "blocking");
+  assert.deepEqual(
+    statusFindings[0].evidence,
+    activeResolution.finding.evidence,
+  );
+  assert.equal(statusFindings[0].remedy, activeResolution.finding.remedy);
+  assert.equal(statusFindings[0].worktreePath, "D:/repo");
+  assert.equal(statusFindings[0].taskPath, invalid.path);
+  assert.equal(projection.nextGate, "fix-worktree-findings");
+  assert.equal(
+    projection.worktrees.find(({ isPrimary }) => isPrimary).state,
+    "primary",
+  );
+  assert.deepEqual(
+    projection.activeTasks.map(({ task }) => task.id),
+    ["valid"],
+  );
+  assert.deepEqual(projection.conflicts.writers, []);
+  assert.deepEqual(projection.conflicts.scopes, []);
+  assert.deepEqual(projection.conflicts.locks, []);
+  assert.deepEqual(projection.conflicts.wip, []);
+  assert.ok(
+    projection.findings.every(
+      ({ code }) =>
+        ![
+          "WORKTREE_PRIMARY_INVALID",
+          "WORKTREE_ACTIVE_WRITER_CONFLICT",
+          "WORKTREE_ACTIVE_SCOPE_CONFLICT",
+          "WORKTREE_ACTIVE_LOCK_CONFLICT",
+        ].includes(code),
+    ),
+  );
+});
+
+test("status-invalid worktree preserves the resolver blocker without a checkout projection", () => {
+  const invalid = normalizeTaskRecord({
+    path: "docs/planning/tasks/invalid-no-checkout.md",
+    source: taskSource({ branch: "feat/invalid-no-checkout" }).replace(
+      "status: coding",
+      "status: coding\nstatus: done",
+    ),
+  });
+  const activeResolution = resolveCurrentTask({
+    records: [invalid],
+    branch: invalid.branch,
+  });
+  const invalidWorktreePath = "D:/repo/.worktrees/invalid-no-checkout";
+  const projection = buildWorktreeCalibrationProjection({
+    primaryPath: "D:/repo",
+    mainRef: "origin/main",
+    primaryTaskRecords: [invalid],
+    observedWorktrees: [
+      primaryObservation(),
+      activeWorktree(invalidWorktreePath, invalid, {
+        activeResolution,
+        checkoutProjection: null,
+      }),
+    ],
+  });
+
+  const statusFindings = projection.findings.filter(
+    ({ code }) => code === "TASK_STATUS_INVALID",
+  );
+  assert.equal(statusFindings.length, 1);
+  assert.deepEqual(
+    statusFindings[0].evidence,
+    activeResolution.finding.evidence,
+  );
+  assert.equal(statusFindings[0].remedy, activeResolution.finding.remedy);
+  assert.equal(statusFindings[0].worktreePath, invalidWorktreePath);
+  assert.equal(statusFindings[0].taskPath, invalid.path);
 });
 
 const gitResult = (stdout = "", exitCode = 0) => ({ stdout, exitCode });

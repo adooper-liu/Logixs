@@ -11,9 +11,10 @@ disable-model-invocation: true
 
 ## 先确认校准对象
 
-1. 报告当前 workspace 绝对路径、是否 linked worktree、分支和 HEAD。
-2. 核对 `git status --short --branch`、活动 brief、其他会话、全部 worktree、writeScopes/locks 和实际 diff。
-3. 若 `$ARGUMENTS` 指向另一个 workspace，或当前 checkout 看不到其最新 brief，先用 `git worktree list`、跨会话状态和明确的目标 workspace 做只读核对；仍不可见时写“当前 workspace 无法判定”，不得把旧快照当最新事实。
+1. 读取 SessionStart 注入的 `logix-continuation/v1` 投影，并运行 `pnpm -w --silent tasks:list -- --current --json`；用同一 tracked brief 事实选定目标，展开投影中的 `action`、`safety`、conflicts 和 advisories，但不把投影当权威。
+2. 报告当前 workspace 绝对路径、是否 linked worktree、分支和 HEAD。
+3. 核对 `git status --short --branch`、活动 brief、其他会话、全部 worktree、writeScopes/locks 和实际 diff。
+4. 若 `$ARGUMENTS` 指向另一个 workspace，或当前 checkout 看不到其最新 brief，先用 `git worktree list`、跨会话状态和明确的目标 workspace 做只读核对；仍不可见时写“当前 workspace 无法判定”，不得把旧快照当最新事实。
 
 ## 对照链
 

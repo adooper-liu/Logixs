@@ -5,12 +5,20 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
-export const ACTIVE_TASK_STATUSES = new Set([
-  "design",
+export const TASK_STATUSES = new Set([
   "coding",
-  "fix",
   "review",
+  "fix",
+  "blocked",
+  "design",
+  "done",
 ]);
+
+export const ACTIVE_TASK_STATUSES = new Set(
+  [...TASK_STATUSES].filter(
+    (status) => status !== "blocked" && status !== "done",
+  ),
+);
 
 const LIST_FIELDS = new Set([
   "dependsOn",
@@ -105,6 +113,7 @@ export function parseTaskFrontmatter(source, { path }) {
           code: "TASK_PARSE_INVALID",
           path,
           line: 1,
+          key: "status",
           message: "task brief is missing a frontmatter block",
         },
       ],
@@ -113,6 +122,7 @@ export function parseTaskFrontmatter(source, { path }) {
 
   const values = {};
   const errors = [];
+  const keyLines = new Map();
   const lines = match[1].split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -120,10 +130,14 @@ export function parseTaskFrontmatter(source, { path }) {
     const entry = line.match(/^([A-Za-z][A-Za-z0-9]*):(?:\s*(.*))?$/);
     if (!entry) {
       if (line.trim()) {
+        const key = /^status(?::|\s|$)/.test(line.trimStart())
+          ? "status"
+          : undefined;
         errors.push({
           code: "TASK_PARSE_INVALID",
           path,
           line: index + 2,
+          ...(key ? { key } : {}),
           message: "unsupported frontmatter syntax",
         });
       }
@@ -136,10 +150,12 @@ export function parseTaskFrontmatter(source, { path }) {
         code: "TASK_PARSE_INVALID",
         path,
         line: index + 2,
+        key,
         message: `duplicate frontmatter key '${key}'`,
       });
       continue;
     }
+    keyLines.set(key, index + 2);
 
     const scalar = cleanScalar(raw);
     if (scalar === ">" || scalar === "|") {
@@ -187,6 +203,27 @@ export function parseTaskFrontmatter(source, { path }) {
     values[key] = scalar;
   }
 
+  if (!Object.hasOwn(values, "status")) {
+    errors.push({
+      code: "TASK_PARSE_INVALID",
+      path,
+      line: 1,
+      key: "status",
+      message: "task status is missing",
+    });
+  } else if (
+    typeof values.status !== "string" ||
+    !TASK_STATUSES.has(values.status)
+  ) {
+    errors.push({
+      code: "TASK_PARSE_INVALID",
+      path,
+      line: keyLines.get("status") ?? 1,
+      key: "status",
+      message: "status must be a supported scalar value",
+    });
+  }
+
   for (const field of LIST_FIELDS) {
     if (
       Object.hasOwn(values, field) &&
@@ -208,6 +245,8 @@ export function parseTaskFrontmatter(source, { path }) {
 export function normalizeTaskRecord({ path, source }) {
   const normalizedPath = normalizeRepositoryPath(path);
   const parsed = parseTaskFrontmatter(source, { path: normalizedPath });
+  const statusErrors = parsed.errors.filter(({ key }) => key === "status");
+  const statusValidity = statusErrors.length === 0 ? "valid" : "invalid";
   const heading =
     source.match(/^#\s+(.+)$/m)?.[1] ?? basename(normalizedPath, ".md");
   const list = (field) =>
@@ -217,7 +256,9 @@ export function normalizeTaskRecord({ path, source }) {
     id: basename(normalizedPath, ".md"),
     path: normalizedPath,
     title: heading.replace(/^任务[：:]\s*/, "").trim(),
-    status: parsed.values.status ?? "",
+    status: statusValidity === "valid" ? parsed.values.status : "",
+    statusValidity,
+    statusErrors,
     branch: parsed.values.branch ?? "",
     verification: parsed.values.verification ?? "",
     owner: parsed.values.owner ?? "",
@@ -242,6 +283,8 @@ export const normalizeTaskRecords = (records) =>
   records
     .map(normalizeTaskRecord)
     .sort((left, right) => left.path.localeCompare(right.path));
+
+export const taskStatusIsValid = (record) => record?.statusValidity === "valid";
 
 export function parseWriteScope(raw) {
   const value = String(raw);
@@ -326,22 +369,59 @@ export function resolveCurrentTask({ records, branch, explicitBrief }) {
     const task = records.find(
       (record) => record.path.toLowerCase() === expected,
     );
-    return task
-      ? { task }
-      : {
-          finding: makeFinding(
-            "TASK_CURRENT_NOT_FOUND",
-            "blocking",
-            explicitBrief,
-            [explicitBrief],
-            "Pass an existing task brief path.",
+    if (!task) {
+      return {
+        finding: makeFinding(
+          "TASK_CURRENT_NOT_FOUND",
+          "blocking",
+          explicitBrief,
+          [explicitBrief],
+          "Pass an existing task brief path.",
+        ),
+      };
+    }
+    if (!taskStatusIsValid(task)) {
+      return {
+        task,
+        finding: makeFinding(
+          "TASK_STATUS_INVALID",
+          "blocking",
+          task.path,
+          task.statusErrors.map(
+            (error) => `${error.path}:${error.line}: ${error.message}`,
           ),
-        };
+          "Fix the task status before selecting this brief.",
+        ),
+      };
+    }
+    return { task };
+  }
+
+  const invalidMatches = records.filter(
+    (record) => record.branch === branch && !taskStatusIsValid(record),
+  );
+  if (invalidMatches.length > 0) {
+    return {
+      ...(invalidMatches.length === 1 ? { task: invalidMatches[0] } : {}),
+      finding: makeFinding(
+        "TASK_STATUS_INVALID",
+        "blocking",
+        branch,
+        invalidMatches.flatMap((record) =>
+          record.statusErrors.map(
+            (error) => `${error.path}:${error.line}: ${error.message}`,
+          ),
+        ),
+        "Fix every task status declared for this branch before continuing.",
+      ),
+    };
   }
 
   const matches = records.filter(
     (record) =>
-      ACTIVE_TASK_STATUSES.has(record.status) && record.branch === branch,
+      taskStatusIsValid(record) &&
+      ACTIVE_TASK_STATUSES.has(record.status) &&
+      record.branch === branch,
   );
   if (matches.length === 1) return { task: matches[0] };
 
@@ -393,6 +473,7 @@ const nextGate = (findings, task) => {
   if (findings.some(({ severity }) => severity === "blocking")) {
     return "fix-calibration-findings";
   }
+  if (task.status === "blocked") return "revalidate-blocker";
   if (task.status === "design") return "approve-spec-or-plan";
   if (task.status === "coding" || task.status === "fix") {
     return "run-slice-verification";
@@ -447,7 +528,7 @@ export function buildCalibrationProjection({
   for (const error of task.parseErrors) {
     findings.push(
       makeFinding(
-        "TASK_PARSE_INVALID",
+        error.key === "status" ? "TASK_STATUS_INVALID" : "TASK_PARSE_INVALID",
         "blocking",
         `${error.path}:${error.line}`,
         [error.message],
