@@ -19,6 +19,7 @@ writeScopes:
   - apps/web/src/components/cargo-ready/CargoReadyWorkQueue.vue
   - apps/web/src/components/stuffing/StuffingWorkQueue.vue
   - apps/web/e2e/customs-task-archive.spec.ts
+  - apps/web/e2e/customs-task-archive.spec.ts-snapshots/customs-task-archive-narrow-chromium-win32.png
   - apps/web/e2e/cargo-ready-workbench.spec.ts
   - apps/web/e2e/stuffing-workbench.spec.ts
   - docs/planning/progress-board.html
@@ -162,6 +163,27 @@ TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlle
 TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-2-preserve-user-scroll base=<finding-writeback-sha> role=implementer workspace=D:/Logixs
 ```
 
+### CI 修复切片 `RWC1-fix-3-narrow-scroll-baseline`
+
+PR #190 首轮 CI run `39084635662` 的 changes/static/unit/build 通过，dictionary/security 按分类跳过；E2E 唯一失败为 narrow `customs-task-archive.png`，三次稳定为 23,841 pixels / ratio 0.04。CI expected SHA 与仓库 narrow baseline 均为 `EA6D61FE08FC189E00BBF9B4D5BC085C69795DD6D15F40B1BCC2FA86338199B9`，三次 actual SHA 均为 `CDA8C7A38CA3A2FB3D757CEA32AEDEE8C3B83C37FD3148759EEA626C2E8F59CF`。
+
+主代理逐张核对后确认这不是字体栅格差异：旧 expected 反映固定高度 + pane 内滚动，只显示右栏顶部；新 actual 反映本任务已定的 1024 stacked 页面主滚动，`scrollIntoView(context)` 后右栏正文完整展开。新图保留清关身份、档案模式、有界来源、原任务结果、后续办理、原任务/相关事实和恢复入口，无横向溢出或虚假状态。
+
+```yaml
+protocol: logix-disposition/v1
+slice: RWC1-ci-1
+decisions:
+  - finding: RWC1-CI-001
+    status: accepted
+    reason: 1024 统一滚动 owner 后产生预期结构变化；旧 narrow baseline 已失真，不能通过放宽容差保留
+    writeback: docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-3-narrow-scroll-baseline
+next: fix
+```
+
+- [x] 只更新 `customs-task-archive-narrow-chromium-win32.png` 为 CI actual `CDA8C...` 对应的新结构；desktop/mobile PNG 不变。
+- [x] 不修改产品代码、spec 行为或 screenshot 容差。
+- [x] 本地 customs 三项目 12/12 通过；Prettier/diff 通过，写域精确扩展到单张 narrow PNG，待 repo/board 与 CI 复验。
+
 ## 验收
 
 - [x] RoleWorkbenchFrame 左右栏可独立及同时折叠和展开，异步 props rerender 后状态不重置。
@@ -188,3 +210,5 @@ TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-2-preserve-
 | 2026-10-18 | review | main | —      | 29 项单测、30 项三视口 E2E 与质量门禁通过；fresh 复审接受受控 props、陈旧 rAF 和真实焦点 3 项 finding，继续精确修复                       |
 | 2026-10-18 | fix    | main | —      | 三项修复后 36 项组件与 30 项 E2E 全绿；复核仍确认展开 rAF 期间无新 prop transition 的用户滚动会被旧 memory 覆盖，接受 RWC1-F01A           |
 | 2026-10-18 | review | main | —      | F01A 修复后定向 37、Web 全量 825、三 spec 三视口 30、desktop repeat 3 与质量门禁全绿；fresh 最终 no-findings，进入进度板与 PR 集成        |
+| 2026-10-18 | fix    | main | —      | PR #190 首轮 CI 仅 narrow customs archive 旧视觉基线失败；确认是 1024 页面主滚动的预期结构变化，接受 RWC1-CI-001 更新单张基线             |
+| 2026-10-18 | review | main | —      | 单张 narrow 基线更新为 CI actual，desktop/mobile 未变；本地 customs 三项目 12/12 通过，恢复 review 等待 PR #190 新 CI                     |
