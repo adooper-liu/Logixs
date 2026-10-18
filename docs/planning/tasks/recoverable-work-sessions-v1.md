@@ -490,12 +490,13 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-finding
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                 |
-| ---------- | ------ | ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-14 | coding | Claude / Opus 4.8 | 4bca8233 | 从负责人固定主线提交建立功能分支；完成权威、真实消费者、旧 worktree 与实现事实核对；未触碰受保护 WIP                                                                 |
-| 2026-10-18 | fix    | Claude / Opus 4.8 | 2d84c567 | 核对四项缺口后建立 `WS6-acceptance-closeout`：只补直接验收证据，测试暴露真实缺陷时才允许最小生产修复；切换到最新 main 的专用验收分支                                 |
-| 2026-10-18 | fix    | Codex / unknown   | none     | `WS6` 首次交回 blocked：确认 closed 被列表过滤且无真实 UI 证据，OIDC 项目不匹配验收 spec；主代理复核后 accepted 并下发 `WS6R1`                                       |
-| 2026-10-18 | fix    | Codex / unknown   | none     | `WS6R1` 实现交回但 fresh validate 被既有 CLI 五秒边界阻断；主代理复现定向/全量 API 通过，审查形成 4 项行为 finding、typed refresh E2E 缺口与视觉基线裁决，转 `WS6R2` |
+| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                                                      |
+| ---------- | ------ | ----------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-14 | coding | Claude / Opus 4.8 | 4bca8233 | 从负责人固定主线提交建立功能分支；完成权威、真实消费者、旧 worktree 与实现事实核对；未触碰受保护 WIP                                                                                                      |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 2d84c567 | 核对四项缺口后建立 `WS6-acceptance-closeout`：只补直接验收证据，测试暴露真实缺陷时才允许最小生产修复；切换到最新 main 的专用验收分支                                                                      |
+| 2026-10-18 | fix    | Codex / unknown   | none     | `WS6` 首次交回 blocked：确认 closed 被列表过滤且无真实 UI 证据，OIDC 项目不匹配验收 spec；主代理复核后 accepted 并下发 `WS6R1`                                                                            |
+| 2026-10-18 | fix    | Codex / GPT-5     | 5037ebba | `WS6R2` 完成 4 项行为修复、普通 typed refresh E2E、OIDC、六状态与单张视觉基线；候选定向门禁全绿，但 fresh validate 稳定失败于范围外 full-chain rehearsal 集成                                             |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 5037ebba | 主代理定向复现同一 full-chain 文件 3/6 失败并追到 `PrismaFullChainLandingRepository.prisma` 为 undefined；`ccd1f2b1` 加 `@Optional()` 时误删首参 `@Inject(PrismaService)`，单独修复后再回到本分支最终门禁 |
 
 ## 最终验证记录（2026-10-14）
 
