@@ -673,6 +673,68 @@ TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-local-f
 HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-local-failure-truth base=64d769e0704628d695d1ebf8602efa2a874d94f0 role=main workspace=D:\Logixs commit=<sha|none>
 ```
 
+### `WS6R6-single-pointer-restore-owner`
+
+fresh Claude 对增量 `58d15586..53fd8066` 的复审与主代理裁决：
+
+```yaml
+protocol: logix-review/v1
+slice: WS6R5-activated-local-failure-truth
+baseline: 58d155862fcdff27eb5833793dbad76ccca33b8c
+reviewed: 58d15586..53fd8066
+verdict: findings
+findings:
+  - id: WS6R5-RESTORE-RACE-01
+    severity: medium
+    type: concurrency/recoverability
+    evidence: apps/web/src/work-session/useWorkbenchSessionSwitcher.ts:189-228,353-357; apps/web/src/work-session/useWorkSessions.ts:94-141
+    scopeBasis: 正常成功路径 restorePointer 必须恰好一次；post-activation load 与 route watcher 不能和显式 switch restore 竞争
+    impact: post-activation load 先返回 B=current，随后 router.replace 提交 B route；currentContext watcher 调用 ensureAndRestoreCurrent 并 restore B，switchWorkSession 在 navigate 后又显式 restore B，造成两次恢复。非幂等恢复可重复滚动/聚焦/模式切换，任一调用失败还会产生误导反馈
+    acceptanceProbe: 延迟 router.replace，先让 post-activation list 返回 B=current，再提交 B context；最终 switched 且 restorePointer(B) 只能调用一次
+    currentSliceNecessity: WS6R5 要求正常路径 activate/navigate/restore 各一次；现有测试只覆盖 route 先于 list，没有覆盖 list 先于 route
+    suggestedDisposition: accepted
+unknowns: []
+verificationGaps:
+  - focused 3 files/31 tests passed，但缺 post-list-before-route 的确定性测试
+writes: none
+```
+
+```yaml
+protocol: logix-disposition/v1
+slice: WS6R5-activated-local-failure-truth
+decisions:
+  - finding: WS6R5-RESTORE-RACE-01
+    status: accepted
+    reason: activate 成功后的显式 switch 流程与 route watcher 必须共享同一 context restore ownership；不能靠执行先后碰巧避免双恢复
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer-restore-owner
+next: fix
+```
+
+修复要求：
+
+1. activate 确认后，为目标 context 建立“显式切换恢复进行中”的 ownership/promise，覆盖 navigate + explicit restore 阶段。route watcher 若看到同一 context，必须共享/等待该 ownership，不得另起 `ensureAndRestoreCurrent`。
+2. explicit restore 成功后把 context 加入 `restoredContextKeys`，清理 ownership；后续 background/route watcher pointer-neutral。
+3. explicit restore 失败时清理 ownership但不要永久标记 restored；本次仍返回 `activated-local-failed stage=restore`，服务端 current 由 post-mutation load 保持。后续明确重新进入/路由重建必须仍有恢复机会。
+4. navigate 失败时没有 route watcher；清理 ownership，不标记 restored，保持 `activated-local-failed stage=navigate` 与服务端 current 真相。
+5. 新增确定性 deferred 测试：
+   - **list-before-route**：post-activation list 先返回 B=current，router.replace 后提交 B context，再允许 explicit restore 完成；断言 restore B 恰好一次、结果 switched、epoch/Broadcast/load 各一次。
+   - **route-before-list**：保留现有顺序也恰好一次。
+   - **restore failure retryability**：第一次 explicit restore 拒绝并返回 activated-local-failed；ownership 被清理且未标记 restored，随后明确重新进入 B context 可再 restore 一次并成功。
+   - **navigate failure**：不残留 ownership，不标记 restored，新 epoch current 仍为 B。
+6. 不改结果协议、服务端/API、分页、HTTP、OIDC、typed draft、截图或业务语义。完成后运行 focused/affected Web、lint/typecheck、repo/format/diff，并做 fresh 增量复审；`no-findings` 后才创建新 detached checkout 执行唯一一次 `pnpm validate`。
+
+实现任务：
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer-restore-owner base=53fd80666790e2b26604c82add264bf3976d7867 role=implementer workspace=D:\Logixs
+```
+
+交回：
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer-restore-owner base=53fd80666790e2b26604c82add264bf3976d7867 role=main workspace=D:\Logixs commit=<sha|none>
+```
+
 ## 验收
 
 - [x] 同一用户同一 context 重复打开只返回原会话；不会产生重复现场。
@@ -709,7 +771,8 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-loca
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 475e522f | 增量审查确认同 mutation epoch 并发 load 的“较新失败、较旧成功”会丢弃唯一成功响应；接受 `WS6R3-CONCURRENT-FIRST-SUCCESS-01`，下发 `WS6R4`                                                                                   |
 | 2026-10-18 | fix    | Codex / GPT-5     | 64d769e0 | `WS6R4` 以 mutation epoch authoritative promise 修复同 epoch 并发首次成功丢失；主代理复现 focused 17/17、Web lint/typecheck、repo/diff 通过                                                                                |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 64d769e0 | fresh 增量复审确认 activate 已成功但 navigate/restore 失败时未推进 epoch，旧 list 可回退 current；接受 `WS6R4-ACTIVATE-EPOCH-01`，下发 `WS6R5`                                                                             |
-| 2026-10-18 | fix    | Codex / GPT-5     | pending  | `WS6R5` 在 activate 确认时推进 epoch、广播并启动 pointer-neutral reload；导航/恢复失败返回服务端已切换的分阶段事实，旧 list 不再回退 current；四场景 deferred 回归与受影响 Web 113/113 通过                                |
+| 2026-10-18 | fix    | Codex / GPT-5     | 53fd8066 | `WS6R5` 在 activate 确认时推进 epoch、广播并启动 pointer-neutral reload；导航/恢复失败返回服务端已切换的分阶段事实，旧 list 不再回退 current；四场景 deferred 回归与受影响 Web 113/113 通过                                |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 53fd8066 | fresh 增量复审确认 post-activation list 先于 route 提交时 route watcher 与显式流程会双重 restore；接受 `WS6R5-RESTORE-RACE-01`，下发 `WS6R6`                                                                               |
 
 ## WS6R3 实现证据（2026-10-18）
 
