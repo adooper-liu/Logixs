@@ -224,19 +224,37 @@ test("403 保留拒绝原因，不重新登录", async ({ page }) => {
 });
 
 test("注销走 IdP 并清除本标签页会话", async ({ page }) => {
+  let releaseMarketSignalsRoute!: () => void;
+  const marketSignalsRoute = new Promise<void>((resolve) => {
+    releaseMarketSignalsRoute = resolve;
+  });
+  await page.route(
+    (url) =>
+      url.origin === OIDC_APP_URL &&
+      url.pathname.endsWith("/src/views/MarketSignalsWorkbench.vue"),
+    async (route) => {
+      await marketSignalsRoute;
+      await route.continue();
+    },
+  );
   const { idp, urls } = await setup(page, () => null);
   await page.goto(MARKET_SIGNALS);
   await expect(signedIn(page)).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/auth/callback");
+  releaseMarketSignalsRoute();
+  await expect(page).toHaveURL(`${OIDC_APP_URL}${MARKET_SIGNALS}`);
   expect(await idp.tokenInStorage(page, "sessionStorage")).toBe(true);
 
   await page.getByRole("button", { name: "退出登录" }).click();
 
-  await expect(page).toHaveURL(/\/auth\/logout-callback/);
   await expect(page.getByText("已退出登录。")).toBeVisible();
   await expect(
     page.getByTestId("login-identity").getByText("已退出登录"),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "退出登录" })).toHaveCount(0);
+  expect(
+    urls.some((url) => new URL(url).pathname === "/auth/logout-callback"),
+  ).toBe(true);
   expect(idp.endSessionRequests).toBe(1);
   expect(await idp.tokenInStorage(page, "sessionStorage")).toBe(false);
   await expectNoTokenLeak(page, idp, urls);
