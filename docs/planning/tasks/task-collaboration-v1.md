@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/task-collaboration-v1
-verification: "TC-D01 confirmed on 2026-10-18: task.read + tenant/subject/work coherence can read fixed task_scope threads; task.collaborate required to post/reply; completed tasks read-only; Mention limited to server-projected current actor and known assignee. TC0 implementation pending."
+verification: "TC0 accepted at 52a9d6d5 on 2026-10-18 after TC0-R1 through TC0-R5 were fixed: focused domain 33/33, contract 27 schemas/73 fixtures, API lint/typecheck, Prisma validate/generate, dictionary drift, repo/format/diff checks passed; fresh read-only re-review returned no findings. Live PostgreSQL collaboration integration remains assigned to TC1 and full validate to TC4. Current slice: TC1-service-auth-persistence."
 owner: main
 writer: codex
 risk: high
@@ -26,6 +26,7 @@ writeScopes:
   - apps/api/src/modules/identity/domain/role-capabilities.test.ts
   - apps/api/src/modules/work-execution/index.ts
   - apps/api/src/modules/work-execution/work-execution.module.ts
+  - apps/api/src/modules/document-records/**
   - apps/api/src/modules/task-collaboration/**
   - apps/api/src/infrastructure/integration/task-collaboration.integration.test.ts
   - apps/web/src/api/taskCollaboration.ts
@@ -221,13 +222,48 @@ type TaskContextPanelProps = {
 
 - **目标**：负责人选定 TC-D01 后，把唯一政策写入本 brief；Codex 测试先行交付公共 JSON Schema/生成类型、DB 模型/迁移、字典与 domain normalization，不接 Controller/UI。
 - **TDD**：契约覆盖消息/回复/Mention/EvidenceRef/sourceRef、cursor page、post command/result；domain 测试固定 body 限制、parent 同 thread、visibility 固定值、mention/evidence 去重、idempotency payload hash 和 append-only。
+- **契约与持久化边界**：
+  - `CollaborationSubjectRefV1.id`、`CollaborationWorkRefV1.id`、thread/message/parent/EvidenceRecord ID 继续使用 UUID；认证 `actorId` 与 `WorkOrder.assigneeId` 沿用 identity/work-execution 的非空字符串身份，长度 `1..128`，不得收窄为 UUID。Mention option 与 POST 的 `mentionActorIds` 使用同一 actor ID 规则。
+  - POST command 只允许 `contractVersion / subjectRef / workRef / body / parentMessageId / mentionActorIds / evidenceRecordIds / sourceRefs / idempotencyKey`；runtime domain normalization 必须拒绝所有额外字段，至少直接覆盖 `tenantId`、`authorActorId`、`visibility`，并拒绝错误的 subject/work `kind`，不得静默丢弃或改正客户端伪造值。tenant/author 仍只来自认证身份。
+  - `body` trim 后 `1..4000`；Mention/EvidenceRef/sourceRef 各最多 20，规范化后排序去重；idempotency key trim 后 `1..200`；payload hash 只覆盖规范化业务 payload，不含 idempotency key。source kind 固定 `action | result | evidence`，ID trim 后 `1..200`，version 为 `>=1` 的整数或 `null`；数据库唯一性按 `NULLS NOT DISTINCT` 对齐。
+  - thread scope 唯一键固定 tenant + container subject + node_task work + `task_scope`；policy version V1 固定从服务端写入正整数。message 幂等唯一键固定 thread + authorActorId + idempotencyKey；同 key/同 payload 重放、同 key/异 payload 冲突由 TC1 persistence 实现。
+  - 迁移必须是单事务的 additive migration，显式 `BEGIN` / `COMMIT`；5 张表、索引、复合父消息 FK、nullable source-version 唯一性和 append-only trigger 必须随迁移全成或全不成。Prisma 可表达对象与迁移一致；EvidenceRecord 只做逻辑引用，TC1 每次重验 tenant/subject/evidence.read，不增加类型不兼容 FK。
+  - 字典 annotations 必须把本 brief 已定的 5 张表和各字段语义标为已确认实现，引用 `task-collaboration-v1` 权威来源并登记 `task-collaboration` owner module；不得把已定 thread/work/body/actor/parent/Mention/EvidenceRef/sourceRef/visibility/policy 语义留作 `needs_business_confirmation`。
+- **TC0 首轮评审 disposition（2026-10-18）**：
+  - `TC0-R1 accepted`：ActorRef/mentionActorIds 被错误收窄为 UUID；会拒绝仓库真实身份 `operator-1` / `user-1` 与既有 assignee。按上述 `1..128` 字符串规则修复契约、fixtures、生成类型、domain 测试与实现。
+  - `TC0-R2 accepted`：domain normalizer 只拒绝 visibility；实测会静默接受并丢弃伪造 tenant/author，且把错误 kind 改成固定 kind。增加 exact-key runtime 校验和明确拒绝测试。
+  - `TC0-R3 accepted`：迁移含 17 个 DDL 对象但无显式事务边界；按数据库迁移原子性要求增加 `BEGIN` / `COMMIT`。
+  - `TC0-R4 accepted`：字典生成物将本 brief 已定的大多数新字段标为 `needs_business_confirmation`；补齐字段级语义、来源和 owner 后重新生成全部字典派生产物。
+  - `TC0-R5 accepted`：现有 9 个 domain 测试没有覆盖 EvidenceRef/sourceRef 非法值、数组上限、错误 kind、伪造 tenant/author、parent missing/unexpected、duplicate message、mixed-thread append 等失败边界；补齐后再以新总数报告，不得仍以 9/9 作为完整 TC0 domain 证据。
+- **验证命令**：先运行新增回归测试确认 RED，再实现并运行 `pnpm --filter @logix/api test -- src/modules/task-collaboration/domain/task-collaboration.test.ts`、`pnpm contract:generate`、`pnpm contract:check`、`pnpm contract:drift`、`pnpm db:generate`、`pnpm exec prisma validate --schema database/schema.prisma`、`pnpm data-dictionary:generate`、`pnpm data-dictionary:check`、`pnpm --filter @logix/api lint`、`pnpm --filter @logix/api typecheck`、`pnpm repo:check`、TC0 文本文件 scoped Prettier check 与 `git diff --check`。不运行全仓 `pnpm validate`，留待 TC4。
 - **停止条件**：政策未定；需要任意参与者/外部方；EvidenceRef 无法通过正式 port 验证；设计试图复用 assistant/notification/archive。
 
 ### `TC1-service-auth-persistence`
 
-- **目标**：新增独立 `task-collaboration` 模块和 work-execution task-context resolver public port；实现 tenant/task/subject/coherence、capability、分页、回复、Mention/EvidenceRef/sourceRef、幂等和真实 PostgreSQL。
-- **TDD**：跨租户/跨 actor scope、无 task.read、无 task.collaborate、task/container mismatch、completed post、invalid parent、invisible mention/evidence、重复 key same/different payload、cursor drift、并发首写与 thread 唯一。
-- **停止条件**：只能靠前端隐藏；需要跨写 NodeTask/Evidence；错误泄露他租户存在性；事务无法原子保存 message/mentions/refs。
+- **目标**：新增独立 `task-collaboration` 模块和两个跨模块窄公共 port；实现 tenant/task/subject coherence、capability、分页、回复、Mention/EvidenceRef/sourceRef、幂等与真实 PostgreSQL，不接 Web/UI。
+- **服务端授权**：
+  - GET route 绑定 `task.read`；POST route 同时绑定 `task.read + task.collaborate`，继续由全局认证/授权 guard 执行，不做 Controller 角色判断。
+  - `field_operator / operations_dispatcher / review_supervisor / manager` 增加 `task.collaborate`；`audit_analyst` 与其他既有角色不获得该 capability。completed task GET 可读、POST 返回稳定只读业务拒绝。
+  - task 不存在、跨 tenant、container subject 与 NodeTask 不一致、不可见 EvidenceRef 在协作边界统一 `RESOURCE_NOT_FOUND`，不得枚举是哪一层失败；capability 缺失继续使用全局 403。
+- **跨模块公共 port**：
+  - work-execution 新增只读 task-collaboration context resolver public port；按 tenant + NodeTask.id 读取，验证 `containerId === subjectRef.id`，只投影 task id/state/containerId 与去重后的非空 `WorkOrder.assigneeId`。`work-execution/index.ts` 只导出 token/type，module 注册并导出 port，collaboration 禁止导入 work-execution 内部 repository/service 路径。
+  - document-records 新增窄 EvidenceRef 可读性/coherence public port；输入 tenant + container subject + 精确 evidence IDs，只确认这些 EvidenceRecord 当前属于同 tenant/container 且当前可读。缺失、跨 tenant、跨 subject 或不可见一律失败关闭；不导出 repository，不增加 DB FK，不返回/复制证据正文、文件名或核验结论。
+- **Application / persistence**：
+  - 独立 `task-collaboration` module 按 Transport → Application → Domain ← Infrastructure 分层；Controller 只解析/映射，Application 每次 GET/POST 重新调用 task context port，POST 再调用 EvidenceRef port 并校验 capability、completed、parent 同 thread、Mention option 和 source refs。
+  - mention options 只由当前认证 actor 与 task resolver 返回的已知 assignee 组成，按 actor ID 去重；客户端 displayName、author、tenant、任意 actor ID 或角色字符串均不可信。V1 没有正式人员目录时 label 使用服务端确定的稳定 actor ID，不发明姓名。
+  - 列表按 `(recordedAt DESC, id DESC)` keyset，pageSize `1..100`；cursor 必须绑定 tenant、subject、work、`task_scope`、`asOf` 和最后 tuple。所有后续页固定 `recordedAt <= asOf`，cursor 损坏或上下文不符明确 400，不静默回第一页；读取 `pageSize + 1` 判定 nextCursor。
+  - POST 单事务：以精确 thread scope 取得 PostgreSQL transaction advisory lock，find-or-create thread，再按 `thread + authorActorId + idempotencyKey` 判定 replay/conflict，并原子写 message、mentions、evidence refs 与 source refs。相同 key + 相同 normalized payload hash 返回原 message；相同 key + 不同 hash 返回稳定 409。唯一约束为并发兜底，处理 Prisma `P2002/P2034`，不得仅靠 upsert。
+  - 错误使用稳定应用错误码和现有响应边界；不泄露 Prisma、SQL、栈、其他 tenant/task/evidence 存在性。POST 的 `occurredAt/recordedAt/author` 均由服务端产生，客户端 command 不扩字段。
+- **TDD**：
+  - role capability 测试覆盖四个 grant、`audit_analyst` deny 及无关角色不扩权；Controller metadata 测试覆盖 GET/POST capability 组合。
+  - task context port 覆盖 missing/cross-tenant/null-or-mismatch container、completed state、当前 actor + assignee Mention 投影与公共导出边界。
+  - EvidenceRef port 覆盖同 tenant/container 成功，以及 missing/cross-tenant/wrong-container/unreadable 统一失败。
+  - service/repository/API 覆盖无 task.read、无 task.collaborate、task/container mismatch、completed POST、invalid parent、invisible Mention/Evidence、same-key same/different payload、malformed/cross-scope cursor、`asOf` snapshot drift。
+  - 真实 PostgreSQL integration 覆盖两个 tenant/container/task/assignee/evidence；并发首写得到一个 thread、消息/子引用无孤儿；同 key 并发收敛；数据库复合父 FK、nullable source uniqueness 与五表 append-only trigger 实际生效。
+- **精确写入范围**：仅 frontmatter 已授权的 `apps/api/src/app.module.ts`、identity role capability 两文件、work-execution `index.ts/module.ts` 与 `apps/api/src/modules/task-collaboration/**`、`apps/api/src/infrastructure/integration/task-collaboration.integration.test.ts` 可直接用于 TC1。为实现已定 EvidenceRef 再授权，额外允许在 `apps/api/src/modules/document-records/**` 内新增/修改窄 public port、module/index/manifest 和对应测试；不得修改 EvidenceRecord Schema/迁移。若实际路径超出这些范围，先 blocked 交回主代理更新 frontmatter。
+- **验证命令**：先运行新增测试取得 RED；GREEN 后运行 focused API unit、`pnpm --filter @logix/api test:integration -- src/infrastructure/integration/task-collaboration.integration.test.ts`、API lint/typecheck/build、`contract:check`、`contract:drift`、`db:generate`、Prisma validate、dictionary check、`authz:routes`、`repo:check`、TC1 支持文本 scoped Prettier check 与 `git diff --check`。运行 integration 前按仓库契约启动本地 PostgreSQL；全仓 `pnpm validate` 仍留 TC4。
+- **不做**：Web/UI、TaskWorkbench/Customs、Mention 任意查询/人员目录、participant membership、notification、ObjectActivity/Archive 投影、频道/私聊/read receipt/edit/delete/file upload/AI；不修改 TC0 migration/domain 语义来迁就 service。
+- **停止条件**：只能靠前端隐藏；需要跨写 NodeTask/Evidence；错误泄露他租户存在性；事务无法原子保存 message/mentions/refs；EvidenceRef 无法经正式窄 public port 独立重验。
 
 ### `TC2-shared-ui-first-consumer`
 
@@ -276,7 +312,9 @@ type TaskContextPanelProps = {
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                             |
-| ---------- | ------ | ----------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-18 | design | Claude / Opus 4.8 | 046f7932 | 从最新 main 快进既有空分支；核对路线、任务档案两个消费者、NodeTask 身份、现有消息模型与共享 UI seam；负责人明确只建一套共享协作组件，建立唯一 brief，TC-D01 待定 |
-| 2026-10-18 | coding | Claude / Opus 4.8 | 046f7932 | 负责人选择 TC-D01 A：task.read 可读、task.collaborate 可发、completed 只读、Mention 限当前 actor/已知 assignee；写回批准设计与 brief，进入 TC0                   |
+| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                                                               |
+| ---------- | ------ | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-18 | design | Claude / Opus 4.8 | 046f7932 | 从最新 main 快进既有空分支；核对路线、任务档案两个消费者、NodeTask 身份、现有消息模型与共享 UI seam；负责人明确只建一套共享协作组件，建立唯一 brief，TC-D01 待定                                                   |
+| 2026-10-18 | coding | Claude / Opus 4.8 | 046f7932 | 负责人选择 TC-D01 A：task.read 可读、task.collaborate 可发、completed 只读、Mention 限当前 actor/已知 assignee；写回批准设计与 brief，进入 TC0                                                                     |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC0 未提交实现；接受 TC0-R1～R5：actor identity 错收窄 UUID、runtime extra/kind 静默改正、迁移缺显式事务、字典已定字段仍待业务确认、domain 失败边界不足；定向门禁均通过，待 Codex 修复后重审                  |
+| 2026-10-18 | coding | Codex / GPT-5     | 52a9d6d5 | 修复 TC0-R1～R5；主代理复跑 domain 33/33、contract 27 schemas/73 fixtures、API lint/typecheck、Prisma validate/generate、dictionary/repo/format/diff 均通过，fresh Claude TC0 重审 no-findings；接受 TC0，进入 TC1 |
