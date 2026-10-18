@@ -8,6 +8,7 @@ risk: high
 dependsOn:
   - universal-workbench-layout-standard-v1
   - mainline-priority-confirmation-v1
+  - full-chain-landing-prisma-injection-v1
 writeScopes:
   - docs/planning/tasks/recoverable-work-sessions-v1.md
   - docs/planning/progress-board.html
@@ -54,6 +55,8 @@ writeScopes:
   - apps/api/src/infrastructure/integration/work-session.integration.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts
   - apps/api/src/infrastructure/integration/product-initiative-migration-upgrade.integration.test.ts
+  - apps/api/src/modules/full-chain-sample-landing/infrastructure/prisma-full-chain-landing.repository.ts
+  - docs/planning/tasks/full-chain-landing-prisma-injection-v1.md
   - apps/web/src/api/workSessions.ts
   - apps/web/src/api/workSessions.test.ts
   - apps/web/src/api/marketSignals.ts
@@ -101,7 +104,9 @@ exclusiveLocks:
   - authz-control-plane
   - ui-pattern:workbench-session-v1
   - visual-baseline:workbench-session-v1
-sharedIntegrationScopes: []
+sharedIntegrationScopes:
+  - apps/api/src/modules/full-chain-sample-landing/infrastructure/prisma-full-chain-landing.repository.ts
+  - docs/planning/tasks/full-chain-landing-prisma-injection-v1.md
 authorityRefs:
   - AGENTS.md
   - ENGINEERING_RULES.md
@@ -466,6 +471,82 @@ TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-a
 HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate base=2d84c5675b0a2859b87577d784771bdc5a1e81e3 role=main workspace=D:\Logixs commit=<sha|none>
 ```
 
+### `WS6R3-independent-review-findings`
+
+fresh Claude 对集成候选 `2d84c567..7e0ea889` 的复审裁决：
+
+```yaml
+protocol: logix-disposition/v1
+slice: WS6R2-review-findings-and-final-gate
+decisions:
+  - finding: WS6R2-BROWSER-HELD-SERVER-CLOSE-01
+    status: accepted
+    reason: 前端虽拒绝 browser_held，但服务端 close 只拒绝 current；直接或陈旧客户端可关闭装箱未保存输入的唯一恢复指针。安全边界必须在 Application/Repository 服务端执行。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6R2-PAGINATED-SESSION-LOSS-01
+    status: accepted
+    reason: includeClosed 与 live 混排且客户端只读第一页并忽略 nextCursor，51+ mixed rows 时 live/resumable 或 closed history 可不可达；V1 无总数上限，恢复列表必须消费完整分页。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6R2-TYPED-REVIEW-POINT-PROOF-01
+    status: rejected
+    reason: 生产 UI 的“历史四项评审”是只读兼容信息，不存在可编辑 review-point 控件；要求用户编辑它会发明产品能力。保留其 typed draft round-trip 证据：普通 refresh E2E 使用区别于 formal initiative 的 draft reviewPoint 并在 reload 后断言 draft 值即可。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6-FAILURE-HOLD-MATRIX-PROOF-01
+    status: accepted
+    reason: 现有矩阵只断言 URL、current 和 objective；brief 还要求当前对象/事项/右栏 mode 保持。每个错误码可共用 before/after helper，但必须直接断言 activeItemKey/contextMode 与当前对象/任务。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6-VISUAL-STATE-EVIDENCE-01
+    status: accepted
+    reason: 六张 normal 菜单截图不能证明 conflict/closed/browser_held/失败恢复控件未遮挡。按原计划补代表性桌面状态截图，并在 1024x768/390x844 对这些状态执行可达与 overflow 断言；不机械生成每状态×三视口的脆弱基线。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6R2-CLOSED-TERMINAL-01
+    status: accepted
+    reason: includeClosed 让 closed ID/version 可检查后，现有 pointer PATCH 可把 closed 改回 resumable/browser_held/conflict；V1 没有 reopen 命令，closed 必须保持终态，重新进入只能由 openOrFocus 新建会话。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6R2-INITIAL-LOAD-RECOVERY-01
+    status: accepted
+    reason: initialize 首次 list 失败后永久返回，后续 focus/visibility/Broadcast 只 load 不 ensure/restore；必须让任意首次成功 load 执行恰好一次初始化恢复，之后后台加载保持 pointer-neutral。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6R2-CLOSE-STALE-LOAD-01
+    status: accepted
+    reason: 关闭前已发出的 list 可晚到并覆盖服务端已确认的 closed 本地事实；加载必须有 generation/序列化保护，确认 mutation 前启动的响应不得覆盖 mutation 结果。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6R1-INCLUDE-CLOSED-VALIDATION-01
+    status: accepted
+    reason: 新增 public query 对非法或重复 includeClosed 抛普通 Error，HTTP 边界可能变成 500；应稳定返回 400 且不调用 repository。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings
+  - finding: WS6R3-OLD-CANDIDATE-VALIDATE
+    status: rejected
+    reason: 对 7e0ea889 启动的 validate 在 fresh review finding 确认后由主代理停止；候选将改变，旧结果无论成功失败都不能作为最终证据。
+    writeback: none
+next: fix
+```
+
+修复要求：
+
+1. 服务端 `CloseWorkSessionService` 和 repository 双层拒绝 `browser_held`，返回稳定 409 码 `WORK_SESSION_BROWSER_HELD_CLOSE_REQUIRES_ORIGINAL_TAB`；已有 tenant/actor/version/current 检查保持。先写 service 与真实 PostgreSQL 失败反证，前端文案使用服务端错误。
+2. 客户端加载 WorkSession 时循环消费 `nextCursor`，每页请求 `pageSize=100`，合并所有页后再确定唯一 current、closed inspection 与 live sessions；对重复 cursor/异常循环失败关闭。增加 51+ mixed rows 的 API-client/orchestrator 测试，证明第二页 live resumable 与 closed history 均可达。不得移除服务端分页上限。
+3. 普通 typed refresh E2E 的 `decisionDraft.reviewPoints` 设置为区别于 formal initiative 的只读历史值；reload 后同时在 UI/GET 断言 draft 值，证明 typed round-trip，不新增编辑控件。
+4. 失败保持矩阵为 target 403/404/409、draft 500/409、activate 409 建立统一 before/after 证据：当前 route、subject/object、task/item、`activeItemKey/contextMode`、唯一 current、typed input 均不变；401 继续由专用 OIDC 路径证明。
+5. 补代表性桌面状态截图：至少 `draft_saved`、`conflict`、`closed inspection`、`browser_held`、一个失败保持状态；1024x768 与 390x844 不新增每状态像素基线，但逐项断言状态文字、错误/恢复动作可见且页面/面板无横向溢出、主动作未遮挡。主代理逐张人工核对后才可接受。
+6. closed 保持服务端终态：`UpdateWorkSessionService` 与 repository 双层拒绝对 closed 的任何 pointer/status 更新，使用稳定 409；真实 service/HTTP/PostgreSQL 测试证明 closed 不能 PATCH 复活，而同 context 的重新进入通过 `openOrFocus` 新建不同 sessionId 并保留旧历史。重复 close 已关闭行也必须稳定拒绝，不增加版本。
+7. 初始化恢复改为“首次成功 load 恰好一次”：mount 首次失败后，后续 focus/visibility/Broadcast 任一成功加载必须执行 ensure current + restore pointer 一次；之后所有后台加载不得重复恢复。用 first fail → background success 测试固定。
+8. 为列表加载增加 generation/串行保护：在 close/activate/update 等已确认 mutation 后，使更早启动的 list 响应失效；测试延迟旧 GET → close 成功 → 新 GET 失败 → 旧 GET 晚到时 closed 仍保留且不可再次关闭。
+9. `includeClosed` HTTP 边界只接受单个 `true|false` 或省略；非法 `yes`、空值和重复 query 稳定返回 400，repository 未调用。使用真实 Controller/HTTP 反证，不只测 service 抛错。
+10. 修复后重跑定向门禁与 fresh Claude 增量复审；再创建新的 detached clean checkout，只运行一次最终 `pnpm validate`。旧 checkout `7e0ea889` 的被停止运行不计证据。
+
+实现任务：
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings base=7e0ea889b52834fd993e82a11d327ba5f30cf602 role=implementer workspace=D:\Logixs
+```
+
+交回：
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R3-independent-review-findings base=7e0ea889b52834fd993e82a11d327ba5f30cf602 role=main workspace=D:\Logixs commit=<sha|none>
+```
+
 ## 验收
 
 - [x] 同一用户同一 context 重复打开只返回原会话；不会产生重复现场。
@@ -490,13 +571,14 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-finding
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                                                      |
-| ---------- | ------ | ----------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-14 | coding | Claude / Opus 4.8 | 4bca8233 | 从负责人固定主线提交建立功能分支；完成权威、真实消费者、旧 worktree 与实现事实核对；未触碰受保护 WIP                                                                                                      |
-| 2026-10-18 | fix    | Claude / Opus 4.8 | 2d84c567 | 核对四项缺口后建立 `WS6-acceptance-closeout`：只补直接验收证据，测试暴露真实缺陷时才允许最小生产修复；切换到最新 main 的专用验收分支                                                                      |
-| 2026-10-18 | fix    | Codex / unknown   | none     | `WS6` 首次交回 blocked：确认 closed 被列表过滤且无真实 UI 证据，OIDC 项目不匹配验收 spec；主代理复核后 accepted 并下发 `WS6R1`                                                                            |
-| 2026-10-18 | fix    | Codex / GPT-5     | 5037ebba | `WS6R2` 完成 4 项行为修复、普通 typed refresh E2E、OIDC、六状态与单张视觉基线；候选定向门禁全绿，但 fresh validate 稳定失败于范围外 full-chain rehearsal 集成                                             |
-| 2026-10-18 | fix    | Claude / Opus 4.8 | 5037ebba | 主代理定向复现同一 full-chain 文件 3/6 失败并追到 `PrismaFullChainLandingRepository.prisma` 为 undefined；`ccd1f2b1` 加 `@Optional()` 时误删首参 `@Inject(PrismaService)`，单独修复后再回到本分支最终门禁 |
+| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                                                                       |
+| ---------- | ------ | ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-14 | coding | Claude / Opus 4.8 | 4bca8233 | 从负责人固定主线提交建立功能分支；完成权威、真实消费者、旧 worktree 与实现事实核对；未触碰受保护 WIP                                                                                                                       |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 2d84c567 | 核对四项缺口后建立 `WS6-acceptance-closeout`：只补直接验收证据，测试暴露真实缺陷时才允许最小生产修复；切换到最新 main 的专用验收分支                                                                                       |
+| 2026-10-18 | fix    | Codex / unknown   | none     | `WS6` 首次交回 blocked：确认 closed 被列表过滤且无真实 UI 证据，OIDC 项目不匹配验收 spec；主代理复核后 accepted 并下发 `WS6R1`                                                                                             |
+| 2026-10-18 | fix    | Codex / GPT-5     | 5037ebba | `WS6R2` 完成 4 项行为修复、普通 typed refresh E2E、OIDC、六状态与单张视觉基线；候选定向门禁全绿，但 fresh validate 稳定失败于范围外 full-chain rehearsal 集成                                                              |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 5037ebba | 主代理定向复现同一 full-chain 文件 3/6 失败并追到 `PrismaFullChainLandingRepository.prisma` 为 undefined；`ccd1f2b1` 加 `@Optional()` 时误删首参 `@Inject(PrismaService)`，单独修复后再回到本分支最终门禁                  |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 7e0ea889 | 串行集成 full-chain 注入修复后 fresh 复审发现 browser_held/closed 服务端终态、完整分页、首次成功恢复、陈旧列表竞态、includeClosed HTTP 校验及验收证据缺口；按实际只读 UI 边界驳回 review-point“可编辑”前提，统一转 `WS6R3` |
 
 ## 最终验证记录（2026-10-14）
 
