@@ -129,6 +129,10 @@ decisions:
     status: accepted
     reason: E2E 用 element.click 绕过真实指针焦点转移，现有“展开恢复业务控件”证据无法代表用户操作
     writeback: docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlled-scroll-focus
+  - finding: RWC1-F01A
+    status: accepted
+    reason: generation 只能淘汰后续折叠 transition；若展开双 rAF 期间用户滚动但 collapsed prop 未再变化，旧 memory 仍会覆盖用户新 scrollTop
+    writeback: docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-2-preserve-user-scroll
 next: fix
 ```
 
@@ -144,6 +148,18 @@ next: fix
 
 ```text
 TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlled-scroll-focus base=<finding-writeback-sha> role=implementer workspace=D:/Logixs
+```
+
+### 切片 `RWC1-fix-2-preserve-user-scroll`
+
+- [ ] 在 `WorkbenchLayout.test.ts` 增加精确失败反证：queue memory=121，controlled collapse 后清零，再 expand；watchers 已调度但不再改变任何 collapsed prop，把 queue scrollTop 改为 77；推进全部 frame 后仍为 77，context/page 不变。另保留“用户未滚动时恢复 121”的正向路径。
+- [ ] `settleRailTransition(false)` 在双 rAF 前捕获当前 scroll owner 节点与其 post-expand scrollTop；frame 后只有 owner 仍是同一节点、scrollTop 与捕获值一致、generation/prop/mounted 仍有效时才写 rememberedScroll。期间发生滚动则跳过 scroll restore，但仍执行合法的业务焦点恢复。
+- [ ] 重跑 36 项组件、desktop 折叠 repeat、30 项三视口 E2E 和全套质量门禁；PNG 不更新。
+
+修复任务：
+
+```text
+TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-2-preserve-user-scroll base=<finding-writeback-sha> role=implementer workspace=D:/Logixs
 ```
 
 ## 验收
@@ -170,3 +186,4 @@ TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlle
 | 2026-10-17 | fix    | main | —      | 复现并定位 RoleWorkbenchFrame 丢失左右折叠受控状态；锁定 wrapper 内部状态接线与真实消费者 TDD/E2E 边界                                    |
 | 2026-10-17 | fix    | main | —      | 负责人要求左右栏纵向滚动也由共享壳统一；核对 WorkbenchPane 唯一 owner、CargoReady/Stuffing 嵌套 overflow 与折叠 scroll 恢复，扩写当前薄片 |
 | 2026-10-18 | review | main | —      | 29 项单测、30 项三视口 E2E 与质量门禁通过；fresh 复审接受受控 props、陈旧 rAF 和真实焦点 3 项 finding，继续精确修复                       |
+| 2026-10-18 | fix    | main | —      | 三项修复后 36 项组件与 30 项 E2E 全绿；复核仍确认展开 rAF 期间无新 prop transition 的用户滚动会被旧 memory 覆盖，接受 RWC1-F01A           |
