@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/task-collaboration-v1
-verification: "TC0 accepted at 52a9d6d5 on 2026-10-18 after TC0-R1 through TC0-R5 were fixed: focused domain 33/33, contract 27 schemas/73 fixtures, API lint/typecheck, Prisma validate/generate, dictionary drift, repo/format/diff checks passed; fresh read-only re-review returned no findings. Live PostgreSQL collaboration integration remains assigned to TC1 and full validate to TC4. Current slice: TC1-service-auth-persistence."
+verification: "TC1 accepted at 169e7b49 on 2026-10-18 after TC1-R1 through TC1-R3 were fixed. Main review reproduced focused API unit 36 files/248 tests, PostgreSQL integration 11/11, API lint/typecheck/build, contract/drift, Prisma generate/validate, dictionary, authz routes, repo/format/diff checks; final routes are GET /node-tasks/:taskId/collaboration and POST /node-tasks/:taskId/collaboration/messages. Full high-risk fresh review and validate remain assigned to TC4. Current slice: TC2-shared-ui-first-consumer."
 owner: main
 writer: codex
 risk: high
@@ -261,6 +261,10 @@ type TaskContextPanelProps = {
   - service/repository/API 覆盖无 task.read、无 task.collaborate、task/container mismatch、completed POST、invalid parent、invisible Mention/Evidence、same-key same/different payload、malformed/cross-scope cursor、`asOf` snapshot drift。
   - 真实 PostgreSQL integration 覆盖两个 tenant/container/task/assignee/evidence；并发首写得到一个 thread、消息/子引用无孤儿；同 key 并发收敛；数据库复合父 FK、nullable source uniqueness 与五表 append-only trigger 实际生效。
 - **精确写入范围**：仅 frontmatter 已授权的 `apps/api/src/app.module.ts`、identity role capability 两文件、work-execution `index.ts/module.ts` 与 `apps/api/src/modules/task-collaboration/**`、`apps/api/src/infrastructure/integration/task-collaboration.integration.test.ts` 可直接用于 TC1。为实现已定 EvidenceRef 再授权，额外允许在 `apps/api/src/modules/document-records/**` 内新增/修改窄 public port、module/index/manifest 和对应测试；不得修改 EvidenceRecord Schema/迁移。若实际路径超出这些范围，先 blocked 交回主代理更新 frontmatter。
+- **TC1 首轮评审 disposition（2026-10-18）**：
+  - `TC1-R1 accepted`：Controller 把 POST 注册为 `/node-tasks/:taskId/collaboration`，与本 brief 固定的 `/node-tasks/:taskId/collaboration/messages` 不一致，且现有 metadata 测试把错误路径固化。修复 Controller、测试和 authz route 证据；GET 路径保持不变。
+  - `TC1-R2 accepted`：当前 GET 只要求 `task.read` 却无条件查询 Evidence options，并通过 presenter 返回历史消息中的全部 EvidenceRef ID；POST 也只要求 `task.read + task.collaborate` 就允许引用 Evidence。违反“thread 可见不等于 evidence 可见”和 EvidenceRef 独立 `evidence.read` 再授权。修复为：线程与消息正文仍按 `task.read` 可读；没有 `evidence.read` 时不查询/不返回 `evidenceOptions`，所有消息的 `evidenceRefs` 服务端按当前请求身份过滤为空；有 `evidence.read` 时才逐页批量重新授权并返回当前仍可读的引用。POST 含非空 `evidenceRecordIds` 时还必须要求 `evidence.read`，缺 capability 返回全局一致的 403；无附件消息仍只需 `task.read + task.collaborate`。
+  - `TC1-R3 accepted`：`resolveExact` 使用 repository `findByIds(ids)` 先跨 tenant 读取，再在 Application 内存中过滤；违反用户读写从数据访问边界携带 tenant scope 的安全基线。新增/收窄专用 repository 查询，使 exact IDs 在 SQL/Prisma where 中同时携带 `tenantId + subjectType=container + subjectId + validity=effective + id IN (...)`；不得把通用 `findByIds` 当作协作授权查询。测试必须直接断言 repository 调用带完整 scope，并在 PostgreSQL integration 证明跨 tenant/subject 不返回。
 - **验证命令**：先运行新增测试取得 RED；GREEN 后运行 focused API unit、`pnpm --filter @logix/api test:integration -- src/infrastructure/integration/task-collaboration.integration.test.ts`、API lint/typecheck/build、`contract:check`、`contract:drift`、`db:generate`、Prisma validate、dictionary check、`authz:routes`、`repo:check`、TC1 支持文本 scoped Prettier check 与 `git diff --check`。运行 integration 前按仓库契约启动本地 PostgreSQL；全仓 `pnpm validate` 仍留 TC4。
 - **不做**：Web/UI、TaskWorkbench/Customs、Mention 任意查询/人员目录、participant membership、notification、ObjectActivity/Archive 投影、频道/私聊/read receipt/edit/delete/file upload/AI；不修改 TC0 migration/domain 语义来迁就 service。
 - **停止条件**：只能靠前端隐藏；需要跨写 NodeTask/Evidence；错误泄露他租户存在性；事务无法原子保存 message/mentions/refs；EvidenceRef 无法经正式窄 public port 独立重验。
@@ -318,3 +322,5 @@ type TaskContextPanelProps = {
 | 2026-10-18 | coding | Claude / Opus 4.8 | 046f7932 | 负责人选择 TC-D01 A：task.read 可读、task.collaborate 可发、completed 只读、Mention 限当前 actor/已知 assignee；写回批准设计与 brief，进入 TC0                                                                     |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC0 未提交实现；接受 TC0-R1～R5：actor identity 错收窄 UUID、runtime extra/kind 静默改正、迁移缺显式事务、字典已定字段仍待业务确认、domain 失败边界不足；定向门禁均通过，待 Codex 修复后重审                  |
 | 2026-10-18 | coding | Codex / GPT-5     | 52a9d6d5 | 修复 TC0-R1～R5；主代理复跑 domain 33/33、contract 27 schemas/73 fixtures、API lint/typecheck、Prisma validate/generate、dictionary/repo/format/diff 均通过，fresh Claude TC0 重审 no-findings；接受 TC0，进入 TC1 |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC1 未提交实现；接受 TC1-R1～R3：POST 路径漏 `/messages`、EvidenceRef 未独立执行 evidence.read 且读取泄露引用、exact Evidence 查询未在数据访问边界携带 tenant/subject；其余定向门禁通过，待 Codex 修复后重审  |
+| 2026-10-18 | coding | Codex / GPT-5     | 169e7b49 | 修复 TC1-R1～R3；主代理复跑 focused API 36 files/248 tests、PostgreSQL 11/11、API lint/typecheck/build、contract/Prisma/dictionary/authz/repo/format/diff 均通过；接受 TC1，进入 TC2                               |
