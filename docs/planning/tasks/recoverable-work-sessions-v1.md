@@ -1,9 +1,9 @@
 ---
-status: review
-branch: test/recoverable-work-sessions-acceptance-v1
-verification: "Final acceptance candidate f44c01ef passed one complete pnpm validate in a fresh detached clean checkout on 2026-10-18: repository/purpose/contracts/dictionary/Prisma generation/lint/format/typecheck passed; API unit 313 files/1628 tests, Web unit 169 files/857 tests, PostgreSQL integration 36 files/238 tests, Playwright E2E 321 passed/34 intentional skips, and production build passed. Direct acceptance evidence covers failure preservation, typed-draft refresh neutrality, six textual states, OIDC 401, closed/browser-held lifecycle, full pagination, concurrent recovery, three viewports, and stable OIDC logout. Fresh Claude incremental reviews ended no-findings. Awaiting final PR/CI/merge before status done."
+status: done
+branch: docs/recoverable-work-sessions-closeout-v1
+verification: "PR #192 merged to main at 8eba0601 on 2026-10-18. Final CI run 39119396077 passed changes/static/unit/build/e2e/quality; dictionary and security were skipped by path classification. Fresh detached clean checkout f44c01ef passed one complete pnpm validate: API unit 313 files/1628 tests, Web unit 169 files/857 tests, PostgreSQL integration 36 files/238 tests, Playwright E2E 321 passed/34 intentional skips, and API/Web/business-worker build 3/3. Direct acceptance evidence covers failure preservation, typed-draft refresh neutrality, six textual states, OIDC 401, closed/browser-held lifecycle, full pagination, concurrent recovery, three viewports, and stable OIDC logout. Fresh Claude incremental reviews ended no-findings; WS6R8 CI-authoritative mobile baseline was visually accepted and CI-verified."
 owner: main
-writer: codex
+writer: main
 risk: high
 dependsOn:
   - universal-workbench-layout-standard-v1
@@ -780,6 +780,7 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 | 2026-10-18 | review | Claude / Opus 4.8 | 5a8eacd8 | `WS6R7` 稳定 signin-route 前置并以导航记录证明 logout callback；全 E2E 321/321 通过，fresh 增量复审 `no-findings`，进入新 clean detached 最终门禁                                                                          |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | a4d476d0 | 本地 clean `pnpm validate` exit 0；PR #192 CI 仅 Product Selection mobile 基线失败，3 次 actual 哈希一致且视觉为已批准 close 入口，转 `WS6R8` 精确单图校准                                                                 |
 | 2026-10-18 | review | Claude / Opus 4.8 | d2e25973 | 唯一 mobile 基线精确替换为三次 CI actual；本机 renderer 差异保留为非阻塞 unknown，fresh 增量复审 `no-findings`，推送 PR #192 由 CI 验证                                                                                    |
+| 2026-10-18 | done   | Claude / Opus 4.8 | 8eba0601 | PR #192 CI run `39119396077` 全部适用检查通过并 squash merge；本地完整 validate、直接验收和独立复审均满足，任务收口并释放共享锁                                                                                            |
 | 2026-10-18 | review | Claude / Opus 4.8 | f44c01ef | 新 detached clean checkout 单条 `pnpm validate` exit 0：API 1628、Web 857、integration 238、E2E 321/34 skips、build 3/3；等待 PR/CI/merge 后标 done                                                                        |
 
 ## WS6R3 实现证据（2026-10-18）
@@ -848,6 +849,7 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-pr
 - **范围**：只允许以 CI actual 精确替换 `apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/product-selection-mobile-chromium-session-menu-mobile-chromium-win32.png`，并更新本 brief/派生板证据。不得运行 `--update-snapshots`，不得改测试阈值、组件/CSS、fixture、其他图片或生产代码。
 - **验证**：替换后文件 SHA 必须等于 CI actual；运行该 mobile screenshot test 两次、完整 recoverable E2E、repo/format/diff；fresh 增量复审后推送现有 PR，等待 CI 全绿。此前 `f44c01ef` 本地完整 validate exit 0 保持有效，因为本切片只校准已人工接受且 CI 稳定生成的二进制视觉基线，不改变产品行为或风险面。
 - **交回与复审**：提交 `d2e25973` 精确替换唯一 Product Selection mobile PNG；目标 SHA-256 等于三次 CI actual 的 `F334402A780385791D25A4A445B7878B589CFE9C9DD5F78D1469A330BFDA5D40`，无 spec/阈值/fixture/生产代码或其他图片变化。本机 renderer 稳定生成不同字体度量哈希 `06F5A8D8...3AFBB`，单图两轮及 recoverable E2E 因跨环境基线差 4% 而失败，未用本机图覆盖 CI 权威。fresh 独立复审 verdict `no-findings`，确认 390×844 关闭动作完整可见、无裁切或横向溢出；本地 renderer 原因记为非阻塞 unknown，PR CI 作为合并权威。
+- **PR/CI/合并**：PR #192 第二轮 CI run `39119396077` 中 `changes/static/unit/build/e2e/quality` 全绿，`dictionary/security` 按路径分类跳过；负责人明确授权后 squash merge，`main` merge commit 为 `8eba0601`。至此四项验收、完整门禁、独立复审与最终 CI 均满足，任务转 `done` 并释放全部声明锁。
 
 ```text
 TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R8-product-selection-mobile-baseline base=a4d476d062b388fd3df3853f1f69eb6f735a8c78 role=implementer workspace=D:\Logixs
