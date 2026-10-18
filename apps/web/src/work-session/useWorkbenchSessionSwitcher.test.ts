@@ -1,5 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
-import { defineComponent, h, shallowRef } from "vue";
+import { defineComponent, h, shallowRef, type ShallowRef } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   WorkSessionRouteContextV1,
@@ -25,6 +25,7 @@ vi.mock("../api/workSessions", () => ({
 class TestBroadcastChannel {
   static instances: TestBroadcastChannel[] = [];
   readonly listeners = new Set<(event: MessageEvent) => void>();
+  readonly postedMessages: unknown[] = [];
 
   constructor(readonly name: string) {
     TestBroadcastChannel.instances.push(this);
@@ -38,7 +39,9 @@ class TestBroadcastChannel {
     this.listeners.delete(listener);
   }
 
-  postMessage(): void {}
+  postMessage(message: unknown): void {
+    this.postedMessages.push(message);
+  }
   close(): void {}
 
   emit(): void {
@@ -285,6 +288,187 @@ describe("useWorkbenchSessionSwitcher", () => {
     expect(restorePointer).toHaveBeenCalledOnce();
     wrapper.unmount();
   });
+
+  it("keeps the activated server truth when local navigation fails", async () => {
+    const { source, target, activated } = switchSessions();
+    const staleList = deferred<ReturnType<typeof sessionPage>>();
+    const postMutationList = deferred<ReturnType<typeof sessionPage>>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([source, target]))
+      .mockImplementationOnce(() => staleList.promise)
+      .mockImplementationOnce(() => postMutationList.promise);
+    vi.mocked(activateWorkSession).mockResolvedValue(activated);
+    const replace = vi.fn().mockRejectedValue(new Error("路由不可用"));
+    const restorePointer = vi.fn();
+    const { result, wrapper } = mountSwitcher({
+      currentContext: null,
+      replace,
+      restorePointer,
+    });
+    await flushPromises();
+
+    const staleLoad = result.load();
+    await flushPromises();
+    const selection = result.select(target);
+    await flushPromises();
+    postMutationList.resolve(
+      sessionPage([activated, { ...source, status: "resumable" }]),
+    );
+    const selectionResult = await selection;
+    staleList.resolve(sessionPage([source, target]));
+    await staleLoad;
+    await flushPromises();
+
+    expect(selectionResult).toEqual({
+      kind: "activated-local-failed",
+      session: activated,
+      stage: "navigate",
+      message: "服务端已切换工作现场，但本页导航失败，请按当前工作现场重新进入",
+    });
+    expect(result.current.value).toEqual(activated);
+    expect(result.sessions.value).toEqual([
+      activated,
+      { ...source, status: "resumable" },
+    ]);
+    expect(activateWorkSession).toHaveBeenCalledOnce();
+    expect(replace).toHaveBeenCalledOnce();
+    expect(restorePointer).not.toHaveBeenCalled();
+    expect(listWorkSessions).toHaveBeenCalledTimes(3);
+    expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it("keeps the activated server truth when local pointer restore fails", async () => {
+    const { source, target, activated } = switchSessions();
+    const staleList = deferred<ReturnType<typeof sessionPage>>();
+    const postMutationList = deferred<ReturnType<typeof sessionPage>>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([source, target]))
+      .mockImplementationOnce(() => staleList.promise)
+      .mockImplementationOnce(() => postMutationList.promise);
+    vi.mocked(activateWorkSession).mockResolvedValue(activated);
+    const replace = vi.fn().mockResolvedValue(undefined);
+    const restorePointer = vi.fn().mockRejectedValue(new Error("恢复指针失败"));
+    const { result, wrapper } = mountSwitcher({
+      currentContext: null,
+      replace,
+      restorePointer,
+    });
+    await flushPromises();
+
+    const staleLoad = result.load();
+    await flushPromises();
+    const selection = result.select(target);
+    await flushPromises();
+    postMutationList.resolve(
+      sessionPage([activated, { ...source, status: "resumable" }]),
+    );
+    const selectionResult = await selection;
+    staleList.resolve(sessionPage([source, target]));
+    await staleLoad;
+    await flushPromises();
+
+    expect(selectionResult).toEqual({
+      kind: "activated-local-failed",
+      session: activated,
+      stage: "restore",
+      message: "服务端已切换工作现场，但本页恢复失败，请按当前工作现场重新进入",
+    });
+    expect(result.current.value).toEqual(activated);
+    expect(activateWorkSession).toHaveBeenCalledOnce();
+    expect(replace).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledWith(activated);
+    expect(listWorkSessions).toHaveBeenCalledTimes(3);
+    expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it("keeps the pre-mutation epoch authoritative when activation fails", async () => {
+    const { source, target } = switchSessions();
+    const staleList = deferred<ReturnType<typeof sessionPage>>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([source, target]))
+      .mockImplementationOnce(() => staleList.promise);
+    vi.mocked(activateWorkSession).mockRejectedValue(
+      new Error("工作现场版本冲突"),
+    );
+    const replace = vi.fn();
+    const restorePointer = vi.fn();
+    const { result, wrapper } = mountSwitcher({
+      currentContext: null,
+      replace,
+      restorePointer,
+    });
+    await flushPromises();
+
+    const staleLoad = result.load();
+    await flushPromises();
+    const selectionResult = await result.select(target);
+    staleList.resolve(sessionPage([source, target]));
+    await staleLoad;
+    await flushPromises();
+
+    expect(selectionResult).toEqual({
+      kind: "failed",
+      message: "工作现场版本冲突",
+    });
+    expect(result.current.value).toEqual(source);
+    expect(activateWorkSession).toHaveBeenCalledOnce();
+    expect(replace).not.toHaveBeenCalled();
+    expect(restorePointer).not.toHaveBeenCalled();
+    expect(listWorkSessions).toHaveBeenCalledTimes(2);
+    expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(0);
+    wrapper.unmount();
+  });
+
+  it("advances one epoch and reloads once after a successful activation", async () => {
+    const { source, target, activated } = switchSessions();
+    const staleList = deferred<ReturnType<typeof sessionPage>>();
+    const postMutationList = deferred<ReturnType<typeof sessionPage>>();
+    const restored = deferred<void>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([source, target]))
+      .mockImplementationOnce(() => staleList.promise)
+      .mockImplementationOnce(() => postMutationList.promise);
+    vi.mocked(activateWorkSession).mockResolvedValue(activated);
+    const routeContext = shallowRef<WorkSessionRouteContextV1 | null>(null);
+    const replace = vi.fn(async () => {
+      routeContext.value = target.routeContext;
+    });
+    const restorePointer = vi.fn(() => restored.promise);
+    const mounted = mountSwitcher({
+      currentContextRef: routeContext,
+      replace,
+      restorePointer,
+    });
+    const { result, wrapper } = mounted;
+    await flushPromises();
+
+    const staleLoad = result.load();
+    await flushPromises();
+    const selection = result.select(target);
+    await flushPromises();
+    postMutationList.resolve(
+      sessionPage([activated, { ...source, status: "resumable" }]),
+    );
+    await flushPromises();
+    restored.resolve(undefined);
+    const selectionResult = await selection;
+    staleList.resolve(sessionPage([source, target]));
+    await staleLoad;
+    await flushPromises();
+
+    expect(selectionResult).toEqual({ kind: "switched", session: activated });
+    expect(result.current.value).toEqual(activated);
+    expect(activateWorkSession).toHaveBeenCalledOnce();
+    expect(replace).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledWith(activated);
+    expect(listWorkSessions).toHaveBeenCalledTimes(3);
+    expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(1);
+    wrapper.unmount();
+  });
 });
 
 const SELECTION_CONTEXT =
@@ -293,23 +477,27 @@ const SELECTION_CONTEXT =
 function mountSwitcher(
   overrides: {
     currentContext?: WorkSessionRouteContextV1 | null;
+    currentContextRef?: ShallowRef<WorkSessionRouteContextV1 | null>;
     restorePointer?: ReturnType<typeof vi.fn>;
+    replace?: ReturnType<typeof vi.fn>;
   } = {},
 ) {
-  const currentContext = shallowRef<WorkSessionRouteContextV1 | null>(
-    overrides.currentContext === undefined
-      ? {
-          kind: "product_selection.v1",
-          handoffId: "33333333-3333-4333-8333-333333333333",
-        }
-      : overrides.currentContext,
-  );
+  const currentContext =
+    overrides.currentContextRef ??
+    shallowRef<WorkSessionRouteContextV1 | null>(
+      overrides.currentContext === undefined
+        ? {
+            kind: "product_selection.v1",
+            handoffId: "33333333-3333-4333-8333-333333333333",
+          }
+        : overrides.currentContext,
+    );
   let result!: ReturnType<typeof useWorkbenchSessionSwitcher>;
   const Host = defineComponent({
     setup() {
       result = useWorkbenchSessionSwitcher({
         router: {
-          replace: vi.fn(),
+          replace: overrides.replace ?? vi.fn(),
           resolve: vi.fn(() => ({ href: "/target" })),
         },
         currentContext,
@@ -386,6 +574,31 @@ function deferred<T>() {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+function switchSessions() {
+  const targetContext: WorkSessionRouteContextV1 = {
+    kind: "product_selection.v1",
+    handoffId: "44444444-4444-4444-8444-444444444444",
+  };
+  const source = session("selection", "current", SELECTION_CONTEXT);
+  const target = {
+    ...session(
+      "selection-target",
+      "resumable",
+      "product_selection|product_initiative_handoff:44444444-4444-4444-8444-444444444444",
+    ),
+    routeContext: targetContext,
+    subjectRef: {
+      kind: "product_initiative_handoff" as const,
+      id: targetContext.handoffId,
+    },
+  };
+  return {
+    source,
+    target,
+    activated: { ...target, status: "current" as const, version: 2 },
+  };
 }
 
 void activateWorkSession;

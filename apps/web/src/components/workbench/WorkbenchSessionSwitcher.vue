@@ -66,7 +66,11 @@ async function select(session: WorkSessionV1): Promise<void> {
     trigger.value?.focus();
     return;
   }
-  if (result.kind === "failed" || result.kind === "conflict") {
+  if (
+    result.kind === "failed" ||
+    result.kind === "conflict" ||
+    result.kind === "activated-local-failed"
+  ) {
     feedback.value = result.message;
   }
   if (result.kind === "needs-choice") {
@@ -91,7 +95,11 @@ async function resolveChoice(choice: DirtyChoice): Promise<void> {
     open.value = false;
     await nextTick();
     trigger.value?.focus();
-  } else if (result.kind === "failed" || result.kind === "conflict") {
+  } else if (
+    result.kind === "failed" ||
+    result.kind === "conflict" ||
+    result.kind === "activated-local-failed"
+  ) {
     feedback.value = result.message;
   }
 }

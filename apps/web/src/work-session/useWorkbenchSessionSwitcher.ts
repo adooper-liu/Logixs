@@ -63,6 +63,7 @@ export function useWorkbenchSessionSwitcher(input: {
   let mutationEpoch = 0;
   let authoritativeLoad: {
     epoch: number;
+    restoreCurrent: boolean;
     promise?: Promise<boolean>;
   } | null = null;
   const refresh = () => void load();
@@ -77,12 +78,15 @@ export function useWorkbenchSessionSwitcher(input: {
     );
   });
 
-  function load(): Promise<boolean> {
+  function load(restoreCurrent = true): Promise<boolean> {
     const epoch = mutationEpoch;
     if (authoritativeLoad?.epoch === epoch && authoritativeLoad.promise) {
       return authoritativeLoad.promise;
     }
-    const flight: NonNullable<typeof authoritativeLoad> = { epoch };
+    const flight: NonNullable<typeof authoritativeLoad> = {
+      epoch,
+      restoreCurrent,
+    };
     authoritativeLoad = flight;
     flight.promise = runLoad(flight);
     return flight.promise;
@@ -106,7 +110,7 @@ export function useWorkbenchSessionSwitcher(input: {
         window.sessionStorage,
         serverCurrent?.sessionId ?? null,
       );
-      await ensureAndRestoreCurrent();
+      if (flight.restoreCurrent) await ensureAndRestoreCurrent();
       return true;
     } catch (caught) {
       if (authoritativeLoad === flight) {
@@ -187,11 +191,17 @@ export function useWorkbenchSessionSwitcher(input: {
   ): Promise<SwitchWorkSessionResult> {
     const source = current.value;
     if (!source) return { kind: "failed", message: "当前工作现场尚未建立" };
+    let postActivationLoad: Promise<boolean> | null = null;
     const result = await switchWorkSession({
       source,
       target,
       adapter: input.adapter,
       activate: activate,
+      onActivated: () => {
+        mutationEpoch += 1;
+        channel?.postMessage({ type: "work-session-changed" });
+        postActivationLoad = load(false);
+      },
       navigate: (context) => input.router.replace(toRouteLocation(context)),
     });
     if (result.kind === "conflict") {
@@ -206,10 +216,13 @@ export function useWorkbenchSessionSwitcher(input: {
       return result;
     }
     if (result.kind === "switched") {
-      mutationEpoch += 1;
       restoredContextKeys.add(contextKey(result.session.routeContext));
-      channel?.postMessage({ type: "work-session-changed" });
-      await load();
+    }
+    if (
+      result.kind === "switched" ||
+      result.kind === "activated-local-failed"
+    ) {
+      await postActivationLoad;
     }
     return result;
   }

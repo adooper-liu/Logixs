@@ -3,6 +3,12 @@ import type { WorkSessionSwitchAdapter } from "./workSessionAdapter";
 
 export type SwitchWorkSessionResult =
   | { kind: "switched"; session: WorkSessionV1 }
+  | {
+      kind: "activated-local-failed";
+      session: WorkSessionV1;
+      stage: "navigate" | "restore";
+      message: string;
+    }
   | { kind: "needs-choice"; choices: readonly string[] }
   | {
       kind: "conflict";
@@ -88,26 +94,47 @@ export async function switchWorkSession(input: {
     sourceStatus: Exclude<WorkSessionV1["status"], "current" | "closed">;
     domainVersionSeen: number | null;
   }): Promise<WorkSessionV1>;
+  onActivated?(session: WorkSessionV1): void;
   navigate(context: WorkSessionV1["routeContext"]): Promise<unknown>;
 }): Promise<SwitchWorkSessionResult> {
   const settlement = await input.adapter.settleBeforeLeave("switch");
   if (settlement.kind !== "ready") return settlement;
   const validation = await input.adapter.validateTarget(input.target);
   if (validation.kind !== "ready") return validation;
+  let activated: WorkSessionV1;
   try {
-    const activated = await input.activate({
+    activated = await input.activate({
       source: input.source,
       target: input.target,
       sourceStatus: settlement.sourceStatus,
       domainVersionSeen: validation.domainVersionSeen,
     });
-    await input.navigate(input.target.routeContext);
-    await input.adapter.restorePointer(activated);
-    return { kind: "switched", session: activated };
   } catch (error) {
     return {
       kind: "failed",
       message: error instanceof Error ? error.message : "工作现场切换失败",
     };
   }
+  input.onActivated?.(activated);
+  try {
+    await input.navigate(input.target.routeContext);
+  } catch {
+    return {
+      kind: "activated-local-failed",
+      session: activated,
+      stage: "navigate",
+      message: "服务端已切换工作现场，但本页导航失败，请按当前工作现场重新进入",
+    };
+  }
+  try {
+    await input.adapter.restorePointer(activated);
+  } catch {
+    return {
+      kind: "activated-local-failed",
+      session: activated,
+      stage: "restore",
+      message: "服务端已切换工作现场，但本页恢复失败，请按当前工作现场重新进入",
+    };
+  }
+  return { kind: "switched", session: activated };
 }

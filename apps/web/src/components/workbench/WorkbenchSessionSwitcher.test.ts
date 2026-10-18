@@ -82,6 +82,29 @@ describe("WorkbenchSessionSwitcher", () => {
     expect(wrapper.get('[aria-current="true"]').text()).toContain("选品");
   });
 
+  it("shows that the server switched when local navigation fails", async () => {
+    const activated = { ...sessions[1]!, status: "current" as const };
+    const wrapper = mount(WorkbenchSessionSwitcher, {
+      props: {
+        sessions,
+        onSelect: vi.fn(async () => ({
+          kind: "activated-local-failed" as const,
+          session: activated,
+          stage: "navigate" as const,
+          message:
+            "服务端已切换工作现场，但本页导航失败，请按当前工作现场重新进入",
+        })),
+      },
+    });
+    await wrapper.get('[aria-label="切换工作现场"]').trigger("click");
+    await wrapper.get('[data-session-id="stuffing"]').trigger("click");
+
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      "服务端已切换工作现场，但本页导航失败，请按当前工作现场重新进入",
+    );
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+  });
+
   it("renders all six states as text and keeps closed sessions in a collapsed inspection area", async () => {
     const allStates = [
       session("current", "current", "当前现场"),

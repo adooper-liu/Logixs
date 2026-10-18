@@ -709,6 +709,7 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-loca
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 475e522f | 增量审查确认同 mutation epoch 并发 load 的“较新失败、较旧成功”会丢弃唯一成功响应；接受 `WS6R3-CONCURRENT-FIRST-SUCCESS-01`，下发 `WS6R4`                                                                                   |
 | 2026-10-18 | fix    | Codex / GPT-5     | 64d769e0 | `WS6R4` 以 mutation epoch authoritative promise 修复同 epoch 并发首次成功丢失；主代理复现 focused 17/17、Web lint/typecheck、repo/diff 通过                                                                                |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 64d769e0 | fresh 增量复审确认 activate 已成功但 navigate/restore 失败时未推进 epoch，旧 list 可回退 current；接受 `WS6R4-ACTIVATE-EPOCH-01`，下发 `WS6R5`                                                                             |
+| 2026-10-18 | fix    | Codex / GPT-5     | pending  | `WS6R5` 在 activate 确认时推进 epoch、广播并启动 pointer-neutral reload；导航/恢复失败返回服务端已切换的分阶段事实，旧 list 不再回退 current；四场景 deferred 回归与受影响 Web 113/113 通过                                |
 
 ## WS6R3 实现证据（2026-10-18）
 
@@ -725,6 +726,14 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-loca
 - **跨 epoch 基线**：新增的双 deferred A/B 用例在生产修改前已通过，证明 WS6R3 的 mutation epoch 隔离原本有效；该项是必须保留的回归护栏，不伪造第二个 RED。close 确认后 B 独立启动，A 最后返回旧 current/resumable 集合时 closed 不复活、current 不回退、restore 不增加。
 - **最小实现**：`load()` 在每个 mutation epoch 内只创建一个 authoritative in-flight promise；同 epoch 调用共享结果，mutation 后因 epoch 不同创建新 flight。只有当前 flight 可写 loading/error，旧 flight 不能清除新 flight 的状态。
 - **GREEN**：同一 focused 命令为 2 files / 17 tests passed；同 epoch 唯一成功结果被采用且首次 restore 恰好一次，后续后台成功 pointer-neutral；跨 epoch A 晚到仍被丢弃。Web lint 与 typecheck 均通过；未修改 `useWorkSessions`、API、契约、分页、OIDC、E2E 或截图。
+
+## WS6R5 实现证据（2026-10-18）
+
+- **协议 RED**：`pnpm --filter @logix/web test -- src/work-session/useWorkSessions.test.ts src/work-session/useWorkbenchSessionSwitcher.test.ts src/components/workbench/WorkbenchSessionSwitcher.test.ts` 为 6 failed / 25 passed；activate 后未调用确认回调，navigate/restore 异常均错误返回普通 `failed`，组件不显示服务端已切换事实。
+- **四场景 RED/GREEN**：双 deferred 旧/新 list 覆盖导航失败、恢复失败、activate 失败和正常成功。前两项 RED 均收到普通失败且旧 epoch 仍可能生效；修复后四项证明 activate 成功时新 list 各 1 次、Broadcast 各 1 次，旧 list 被丢弃且 B 保持唯一 current；activate 失败时新 list 0 次、Broadcast 0 次，原 epoch 的 A=current 正常采用；成功路径 activate/navigate/restore 各 1 次。
+- **重复恢复 RED/GREEN**：路由先更新且新 epoch list 在显式 restore 完成前返回时，focused 测试 RED 为 1 failed / 11 passed，`restorePointer` 实际 2 次；将 activate 后的 authoritative reload 标记为 pointer-neutral 后为 3 files / 31 tests passed，restore 严格 1 次，只有显式恢复成功才登记目标 context 已恢复。
+- **真实反馈**：新增 `activated-local-failed` 结果，区分 `navigate` 与 `restore`，并分别显示“服务端已切换工作现场，但本页导航/恢复失败，请按当前工作现场重新进入”；activate API 失败继续返回原错误，不推进 epoch、不广播、不导航或恢复。
+- **受影响回归**：API client、session helpers、switcher composable/component、typed decision composable 与选品工作台合计 6 files / 113 tests passed；Web lint 与 typecheck 通过。未修改 API、公共契约、Schema、迁移、分页、OIDC、typed draft、E2E 或截图。
 
 ## 最终验证记录（2026-10-14）
 
