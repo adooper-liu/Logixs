@@ -827,11 +827,11 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 - **验证**：logout 单测至少连续 5 轮；完整 auth spec；auth + recoverable OIDC 组合默认 workers 与 workers=1；全 E2E；Web lint/typecheck、repo/format/diff。fresh 增量复审无 finding 后再创建新的 clean detached checkout，只运行一次最终 `pnpm validate`。
 
 ```text
-TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-precondition base=adfd131d6ebba55eb3d850238eff79b824473e56 role=implementer workspace=D:\Logixs
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-precondition base=4bf1aa81812d28d803e2fc01c944b338563d7a35 role=implementer workspace=D:\Logixs
 ```
 
 ```text
-HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-precondition base=adfd131d6ebba55eb3d850238eff79b824473e56 role=main workspace=D:\Logixs commit=<sha|none>
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-precondition base=4bf1aa81812d28d803e2fc01c944b338563d7a35 role=main workspace=D:\Logixs commit=<sha|none>
 ```
 
 ## 最终验证记录（2026-10-14）
