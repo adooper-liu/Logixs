@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test("stuffing operator records a versioned snapshot and submits the actual time", async ({
   page,
@@ -172,6 +172,92 @@ test("stuffing operator records a versioned snapshot and submits the actual time
   }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
 });
+
+test("stuffing queue delegates vertical scrolling to the shared shell", async ({
+  page,
+}) => {
+  await page.route(
+    /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\//,
+    async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: historicalResponseFor(path),
+      });
+    },
+  );
+
+  await page.goto("/workspaces/stuffing");
+  await expect(page.locator(".queue-list")).toBeVisible();
+  await expectSharedQueueScrollOwnership(page);
+});
+
+async function expectSharedQueueScrollOwnership(page: Page): Promise<void> {
+  const queueList = page.locator(".queue-list");
+  const listStyle = await queueList.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { maxHeight: style.maxHeight, overflowY: style.overflowY };
+  });
+  expect(listStyle.maxHeight).not.toBe("680px");
+  expect(listStyle.overflowY).not.toMatch(/auto|scroll/);
+
+  await queueList.evaluate((element) => {
+    (element as HTMLElement).style.minHeight = "1400px";
+  });
+  const paneOwner = page.locator(
+    '[data-workbench-pane="queue"] .workbench-pane__scroll--independent',
+  );
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  if (viewportWidth >= 1101) {
+    const result = await paneOwner.evaluate((element) => {
+      const owner = element as HTMLElement;
+      const maxScroll = owner.scrollHeight - owner.clientHeight;
+      owner.scrollTop = Math.min(73, maxScroll);
+      return { maxScroll, scrollTop: owner.scrollTop };
+    });
+    expect(result.maxScroll).toBeGreaterThan(0);
+    expect(result.scrollTop).toBeGreaterThan(0);
+  } else {
+    const paneDimensions = await paneOwner.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(paneDimensions.scrollHeight).toBeLessThanOrEqual(
+      paneDimensions.clientHeight + 1,
+    );
+    const pageScroll = await page
+      .locator(".workbench-layout__workspace")
+      .evaluate((workspace) => {
+        let candidate: HTMLElement | null = workspace.parentElement;
+        while (candidate) {
+          const style = getComputedStyle(candidate);
+          if (
+            /(auto|scroll)/.test(`${style.overflow} ${style.overflowY}`) &&
+            candidate.scrollHeight > candidate.clientHeight + 1
+          ) {
+            break;
+          }
+          candidate = candidate.parentElement;
+        }
+        const owner = candidate ?? document.scrollingElement;
+        if (!(owner instanceof HTMLElement)) {
+          return { maxScroll: 0, scrollTop: 0 };
+        }
+        const maxScroll = owner.scrollHeight - owner.clientHeight;
+        owner.scrollTop = Math.min(73, maxScroll);
+        return { maxScroll, scrollTop: owner.scrollTop };
+      });
+    expect(pageScroll.maxScroll).toBeGreaterThan(0);
+    expect(pageScroll.scrollTop).toBeGreaterThan(0);
+  }
+
+  const widths = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+}
 
 test("snapshot-backed history stays read-only and inspectable without inventing a task", async ({
   page,

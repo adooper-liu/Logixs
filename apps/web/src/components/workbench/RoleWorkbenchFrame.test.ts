@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import RoleWorkbenchFrame from "./RoleWorkbenchFrame.vue";
 import WorkbenchLayout from "./WorkbenchLayout.vue";
 
@@ -10,6 +10,12 @@ const container = {
   currentStatus: "not_shipped" as const,
   updatedAt: "2026-09-21T00:00:00.000Z",
 };
+const attachedWrappers: Array<ReturnType<typeof mount>> = [];
+
+afterEach(() => {
+  attachedWrappers.splice(0).forEach((wrapper) => wrapper.unmount());
+  document.body.innerHTML = "";
+});
 
 describe("RoleWorkbenchFrame", () => {
   it("keeps the queue as the only selector and shows the selected context", () => {
@@ -100,6 +106,144 @@ describe("RoleWorkbenchFrame", () => {
         .findAll("[data-workbench-pane]")
         .map((pane) => pane.attributes("data-workbench-pane")),
     ).toEqual(["queue", "detail", "context"]);
+  });
+
+  it("collapses and expands the queue without unmounting its content", async () => {
+    const wrapper = mountInteractiveFrame();
+    const layout = wrapper.getComponent(WorkbenchLayout);
+    const queueAction = wrapper.get<HTMLElement>(
+      '[data-testid="queue-action"]',
+    );
+
+    expect(layout.props("responsiveMode")).toBe("stacked");
+    expect(layout.props("leftCollapsed")).toBe(false);
+    expect(layout.props("rightCollapsed")).toBe(false);
+    expect(wrapper.find('[aria-label="折叠岗位任务池"]').exists()).toBe(true);
+    expect(wrapper.find('[aria-label="折叠岗位待办"]').exists()).toBe(true);
+
+    queueAction.element.focus();
+    expect(document.activeElement).toBe(queueAction.element);
+    await wrapper.get('[aria-label="折叠岗位任务池"]').trigger("click");
+
+    expect(wrapper.find('[aria-label="展开岗位任务池"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-workbench-pane="queue"]')).toHaveLength(1);
+    expect(wrapper.find('[data-testid="queue-action"]').exists()).toBe(true);
+    const collapsedBody = wrapper.get(
+      '[data-workbench-pane="queue"] .collapsible-rail__body',
+    );
+    expect(collapsedBody.attributes()).toHaveProperty("hidden");
+    expect(collapsedBody.attributes()).toHaveProperty("inert");
+
+    await wrapper.get('[aria-label="展开岗位任务池"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[aria-label="折叠岗位任务池"]').exists()).toBe(true);
+    const expandedBody = wrapper.get(
+      '[data-workbench-pane="queue"] .collapsible-rail__body',
+    );
+    expect(expandedBody.attributes()).not.toHaveProperty("hidden");
+    expect(expandedBody.attributes()).not.toHaveProperty("inert");
+    expect(document.activeElement).toBe(queueAction.element);
+  });
+
+  it("collapses both rails while preserving pane order and restores context focus", async () => {
+    const wrapper = mountInteractiveFrame();
+    const contextAction = wrapper.get<HTMLElement>(
+      '[data-testid="context-action"]',
+    );
+
+    await wrapper.get('[aria-label="折叠岗位任务池"]').trigger("click");
+    contextAction.element.focus();
+    expect(document.activeElement).toBe(contextAction.element);
+    await wrapper.get('[aria-label="折叠岗位待办"]').trigger("click");
+
+    expect(wrapper.find('[aria-label="展开岗位任务池"]').exists()).toBe(true);
+    expect(wrapper.find('[aria-label="展开岗位待办"]').exists()).toBe(true);
+    expect(
+      wrapper
+        .findAll("[data-workbench-pane]")
+        .map((pane) => pane.attributes("data-workbench-pane")),
+    ).toEqual(["queue", "detail", "context"]);
+    expect(wrapper.find('[data-testid="detail-fact"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="context-action"]').exists()).toBe(true);
+    const contextBody = wrapper.get(
+      '[data-workbench-pane="context"] .collapsible-rail__body',
+    );
+    expect(contextBody.attributes()).toHaveProperty("hidden");
+    expect(contextBody.attributes()).toHaveProperty("inert");
+
+    await wrapper.get('[aria-label="展开岗位待办"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[aria-label="折叠岗位待办"]').exists()).toBe(true);
+    expect(document.activeElement).toBe(contextAction.element);
+
+    await wrapper.get('[aria-label="展开岗位任务池"]').trigger("click");
+    expect(wrapper.find('[aria-label="折叠岗位任务池"]').exists()).toBe(true);
+  });
+
+  it("keeps both rails collapsed across asynchronous context rerenders", async () => {
+    const wrapper = mountInteractiveFrame();
+    const queueAction = wrapper.get<HTMLElement>(
+      '[data-testid="queue-action"]',
+    );
+    const assertCollapsedState = () => {
+      const layout = wrapper.getComponent(WorkbenchLayout);
+      expect(layout.props("leftCollapsed")).toBe(true);
+      expect(layout.props("rightCollapsed")).toBe(true);
+      expect(wrapper.findAll('[aria-label^="展开"]')).toHaveLength(2);
+      expect(
+        wrapper
+          .findAll("[data-workbench-pane]")
+          .map((pane) => pane.attributes("data-workbench-pane")),
+      ).toEqual(["queue", "detail", "context"]);
+      expect(wrapper.find('[data-testid="queue-action"]').exists()).toBe(true);
+    };
+    const assertReadySlots = () => {
+      expect(wrapper.find('[data-testid="detail-fact"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="context-action"]').exists()).toBe(
+        true,
+      );
+    };
+
+    queueAction.element.focus();
+    await wrapper.get('[aria-label="折叠岗位任务池"]').trigger("click");
+    await wrapper.get('[aria-label="折叠岗位待办"]').trigger("click");
+    assertCollapsedState();
+
+    await wrapper.setProps({ selectionLoading: true });
+    assertCollapsedState();
+    await wrapper.setProps({ selectionLoading: false });
+    assertCollapsedState();
+    assertReadySlots();
+    await wrapper.setProps({ contextLabel: "当前办理" });
+    assertCollapsedState();
+    assertReadySlots();
+    await wrapper.setProps({
+      selectedContainer: {
+        ...container,
+        id: "container-2",
+        containerNumber: "MSCU7654321",
+      },
+    });
+    assertCollapsedState();
+    assertReadySlots();
+
+    await wrapper.get('[aria-label="展开岗位任务池"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(document.activeElement).toBe(queueAction.element);
+    expect(
+      wrapper
+        .get('[data-workbench-pane="queue"] .collapsible-rail__body')
+        .attributes(),
+    ).not.toHaveProperty("hidden");
+
+    await wrapper.get('[aria-label="展开当前办理"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(
+      wrapper
+        .get('[data-workbench-pane="context"] .collapsible-rail__body')
+        .attributes(),
+    ).not.toHaveProperty("hidden");
   });
 
   it("only changes context labels when a consumer provides them", () => {
@@ -212,3 +356,30 @@ describe("RoleWorkbenchFrame", () => {
     expect(wrapper.text()).toContain("MSCU1234567");
   });
 });
+
+function mountInteractiveFrame() {
+  const wrapper = mount(RoleWorkbenchFrame, {
+    attachTo: document.body,
+    props: {
+      stageCode: "cargo_ready",
+      workspaceLabel: "备货",
+      nodeScopeLabel: "备货",
+      selectedContainer: container,
+      nodes: [],
+      selectionLoading: false,
+      containerListError: "",
+      selectionError: "",
+      warnings: [],
+    },
+    slots: {
+      queue:
+        '<button type="button" data-testid="queue-action">处理队列</button>',
+      primary: '<p data-testid="detail-fact">岗位事实内容</p>',
+      secondary:
+        '<button type="button" data-testid="context-action">处理待办</button>',
+    },
+    global: { stubs: { WorkbenchPageHeader: true } },
+  });
+  attachedWrappers.push(wrapper);
+  return wrapper;
+}

@@ -1,7 +1,7 @@
 ---
-status: fix
+status: review
 branch: fix/role-workbench-rail-collapse-v1
-verification: ""
+verification: "PR candidate local evidence (2026-10-18): focused Vitest 4 files / 37 tests, full Web unit 168 files / 825 tests, Customs/CargoReady/Stuffing three-project Playwright 30/30, desktop rail-fold stress 3/3, Web lint/typecheck/build, scoped Prettier, repo/diff checks, and fresh overall review passed with no remaining findings. Existing customs archive viewport PNG hashes remained unchanged. Final deterministic progress board, PR CI, merge, and post-merge closeout are pending."
 owner: main
 writer: codex
 risk: medium
@@ -94,14 +94,14 @@ uiViewportEvidence:
 | 禁止范围 | 七个业务页面、CollapsibleRail、截图、API/契约/Schema、工作会话持久化                                                                                                           |
 | 停止条件 | 必须改变折叠事件契约；需要重做 1024/390 拓扑；除 CargoReady/Stuffing 外发现更多业务纵向 owner；范围外 diff                                                                     |
 
-- [ ] **RED 1：共享 wrapper 真实交互。** 保留当前 `RoleWorkbenchFrame.test.ts` 的实际点击失败反证；补充在 `setProps` 模拟 selection/loading/contextLabel 异步 rerender 后左右仍保持折叠，证明状态不因业务重读重置。
-- [ ] **GREEN 1：最小折叠状态接线。** 保留 `RoleWorkbenchFrame.vue` 两个内部 ref 与 v-model；不增加业务 props、样式或持久化。
-- [ ] **RED 2：共享滚动契约。** 在 `WorkbenchLayout.test.ts` 用左右两个长内容 pane：分别设置不同 scrollTop，折叠/展开一栏后只恢复该栏值，另一栏不变；焦点继续由 CollapsibleRail 恢复。`WorkbenchPane.test.ts` 固定每栏只有一个 `.workbench-pane__scroll--independent`。
-- [ ] **GREEN 2：受控折叠滚动状态机。** `WorkbenchLayout` 的按钮 handler 只 emit；watch 实际 `leftCollapsed/rightCollapsed` transition 负责折叠前记忆、展开后恢复。每栏独立 generation + mounted guard，settle 前核对当前 prop 与 generation；陈旧任务不得写入该栏或另一栏，也不得覆盖用户展开后新滚动。外部程序化、延迟与拒绝回写均有反证。
-- [ ] **RED/GREEN 3：真实焦点恢复。** `WorkbenchLayout` 的 focus memory 忽略 `.collapsible-rail__toggle`；折叠后把焦点落到该栏可见展开入口，展开后恢复最近业务控件。单测与 Playwright 必须使用真实 click/keyboard，不得 `element.click()` 绕过焦点。
-- [ ] **RED/GREEN 4：移除业务嵌套纵向滚动。** 扩展 `OperationalWorkQueues.test.ts` 挂载 CargoReady 与 Stuffing queue，并在真实 DOM/computed style 中证明 `.queue-list` 不再是纵向 auto/scroll owner；删除两个组件的 `max-height:680px` 与 `overflow-y:auto`，保留 Stuffing filters 的 `overflow-x:auto`。
-- [ ] **真实消费者 E2E。** 使用 fresh Vite。Customs 在 1440 验证左右独立/同时折叠、root collapsed classes、`48px / 中栏 / 48px`、各自 scrollTop/焦点恢复与另一栏不动；1024/390 只验兼容拓扑、页面主滚动和无嵌套纵向 owner。CargoReady/Stuffing 各验证 `.queue-list` 非纵向 owner、共享 pane/页面 owner 可滚且无横向溢出。现有 PNG 不更新。
-- [ ] **验证与交回。** 运行相关 Vitest、三条 E2E 的三项目组合、Web lint/typecheck/build、精确 Prettier、repo/board/diff；返回 HANDOFF，默认不提交。
+- [x] **RED 1：共享 wrapper 真实交互。** 保留当前 `RoleWorkbenchFrame.test.ts` 的实际点击失败反证；补充在 `setProps` 模拟 selection/loading/contextLabel 异步 rerender 后左右仍保持折叠，证明状态不因业务重读重置。
+- [x] **GREEN 1：最小折叠状态接线。** 保留 `RoleWorkbenchFrame.vue` 两个内部 ref 与 v-model；不增加业务 props、样式或持久化。
+- [x] **RED 2：共享滚动契约。** 在 `WorkbenchLayout.test.ts` 用左右两个长内容 pane：分别设置不同 scrollTop，折叠/展开一栏后只恢复该栏值，另一栏不变；焦点继续由 CollapsibleRail 恢复。`WorkbenchPane.test.ts` 固定每栏只有一个 `.workbench-pane__scroll--independent`。
+- [x] **GREEN 2：受控折叠滚动状态机。** `WorkbenchLayout` 的按钮 handler 只 emit；watch 实际 `leftCollapsed/rightCollapsed` transition 负责折叠前记忆、展开后恢复。每栏独立 generation + mounted guard，settle 前核对当前 prop 与 generation；陈旧任务不得写入该栏或另一栏，也不得覆盖用户展开后新滚动。外部程序化、延迟与拒绝回写均有反证。
+- [x] **RED/GREEN 3：真实焦点恢复。** `WorkbenchLayout` 的 focus memory 忽略 `.collapsible-rail__toggle`；折叠后把焦点落到该栏可见展开入口，展开后恢复最近业务控件。单测与 Playwright 使用真实 click/keyboard。
+- [x] **RED/GREEN 4：移除业务嵌套纵向滚动。** CargoReady 与 Stuffing queue 不再是纵向 owner，Stuffing 横向筛选保留；桌面由 WorkbenchPane owner 滚动，stacked 由页面主滚动承接。
+- [x] **真实消费者 E2E。** Fresh Vite 下 Customs 1440 折叠/滚动/焦点与 1024/390 owner 规则成立；CargoReady/Stuffing 三视口无业务嵌套纵向 owner，现有 PNG 未更新。
+- [x] **验证与复审。** 定向 37、Web 全量 825、三项目 E2E 30、desktop repeat 3、质量门禁通过；fresh findings 全部关闭，最终 no-findings。
 
 实现任务：
 
@@ -138,11 +138,11 @@ next: fix
 
 ### 切片 `RWC1-fix-1-controlled-scroll-focus`
 
-- [ ] 用 props watch 重写折叠 scroll transition；按钮只 emit，actual prop transition 才记忆/恢复。
-- [ ] 每栏独立 generation，组件 mounted guard；快速 collapse→expand→collapse、展开后用户新滚动、左右交错、pending 后 unmount 均有失败反证。
-- [ ] 父级拒绝/延迟 v-model 回写时不得提前恢复；外部 `setProps` collapse/expand 与按钮路径等价。
-- [ ] focus memory 忽略 toggle；真实点击折叠后焦点进入对应展开入口，真实点击/键盘展开后恢复业务控件。
-- [ ] E2E 移除所有为折叠保焦点使用的 `evaluate(element.click())`，用真实 Playwright click/keyboard；重新跑 30 项与全套门禁。
+- [x] 用 props watch 重写折叠 scroll transition；按钮只 emit，actual prop transition 才记忆/恢复。
+- [x] 每栏独立 generation，组件 mounted guard；快速 collapse→expand→collapse、展开后用户新滚动、左右交错、pending 后 unmount 均有失败反证。
+- [x] 父级拒绝/延迟 v-model 回写时不得提前恢复；外部 `setProps` collapse/expand 与按钮路径等价。
+- [x] focus memory 忽略 toggle；真实点击折叠后焦点进入对应展开入口，真实点击/键盘展开后恢复业务控件。
+- [x] E2E 移除所有为折叠保焦点使用的 `evaluate(element.click())`，改用真实 Playwright click/keyboard；30 项与全套门禁通过。
 
 修复任务：
 
@@ -152,9 +152,9 @@ TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-1-controlle
 
 ### 切片 `RWC1-fix-2-preserve-user-scroll`
 
-- [ ] 在 `WorkbenchLayout.test.ts` 增加精确失败反证：queue memory=121，controlled collapse 后清零，再 expand；watchers 已调度但不再改变任何 collapsed prop，把 queue scrollTop 改为 77；推进全部 frame 后仍为 77，context/page 不变。另保留“用户未滚动时恢复 121”的正向路径。
-- [ ] `settleRailTransition(false)` 在双 rAF 前捕获当前 scroll owner 节点与其 post-expand scrollTop；frame 后只有 owner 仍是同一节点、scrollTop 与捕获值一致、generation/prop/mounted 仍有效时才写 rememberedScroll。期间发生滚动则跳过 scroll restore，但仍执行合法的业务焦点恢复。
-- [ ] 重跑 36 项组件、desktop 折叠 repeat、30 项三视口 E2E 和全套质量门禁；PNG 不更新。
+- [x] 在 `WorkbenchLayout.test.ts` 增加精确失败反证：queue memory=121，controlled collapse 后清零，再 expand；watchers 已调度但不再改变任何 collapsed prop，把 queue scrollTop 改为 77；推进全部 frame 后仍为 77，context/page 不变。另保留“用户未滚动时恢复 121”的正向路径。
+- [x] `settleRailTransition(false)` 在双 rAF 前捕获当前 scroll owner 节点与其 post-expand scrollTop；frame 后只有 owner 仍是同一节点、scrollTop 与捕获值一致、generation/prop/mounted 仍有效时才写 rememberedScroll。期间发生滚动则跳过 scroll restore，但仍执行合法的业务焦点恢复。
+- [x] 重跑 37 项组件、desktop 折叠 repeat、30 项三视口 E2E 和全套质量门禁；PNG 未更新。
 
 修复任务：
 
@@ -164,13 +164,13 @@ TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-2-preserve-
 
 ## 验收
 
-- [ ] RoleWorkbenchFrame 左右栏可独立及同时折叠和展开，异步 props rerender 后状态不重置。
-- [ ] 折叠后正文 hidden/inert、摘要和展开入口可见，slot 内容未卸载；展开恢复内容、焦点和该栏 scrollTop。
-- [ ] 桌面左右/中栏各只有一个 WorkbenchPane 纵向 owner，滚动一栏不改变另一栏或页面位置。
-- [ ] CargoReady 与 Stuffing 不再自建 `.queue-list` 纵向滚动；其他五个消费者无需修改。
-- [ ] 1024/390 保持当前兼容拓扑，页面主滚动唯一且 slot 内无嵌套纵向 auto/scroll。
-- [ ] Fresh server 下 1440/1024/390 行为和几何通过，现有截图不变化。
-- [ ] 相关单测、E2E、lint/typecheck/build、repo/board/diff 通过，PR CI 合并后才标 done。
+- [x] RoleWorkbenchFrame 左右栏可独立及同时折叠和展开，异步 props rerender 后状态不重置。
+- [x] 折叠后正文 hidden/inert、摘要和展开入口可见，slot 内容未卸载；展开恢复内容、焦点和该栏 scrollTop。
+- [x] 桌面左右/中栏各只有一个 WorkbenchPane 纵向 owner，滚动一栏不改变另一栏或页面位置。
+- [x] CargoReady 与 Stuffing 不再自建 `.queue-list` 纵向滚动；其他五个消费者无需修改。
+- [x] 1024/390 保持当前兼容拓扑，页面主滚动唯一且 slot 内无嵌套纵向 auto/scroll。
+- [x] Fresh server 下 1440/1024/390 行为和几何通过，现有截图不变化。
+- [ ] 相关单测、E2E、lint/typecheck/build、repo/board/diff 与 PR CI 通过后才标 done。
 
 ## 调度与边界说明
 
@@ -187,3 +187,4 @@ TASK docs/planning/tasks/role-workbench-rail-collapse-v1.md#RWC1-fix-2-preserve-
 | 2026-10-17 | fix    | main | —      | 负责人要求左右栏纵向滚动也由共享壳统一；核对 WorkbenchPane 唯一 owner、CargoReady/Stuffing 嵌套 overflow 与折叠 scroll 恢复，扩写当前薄片 |
 | 2026-10-18 | review | main | —      | 29 项单测、30 项三视口 E2E 与质量门禁通过；fresh 复审接受受控 props、陈旧 rAF 和真实焦点 3 项 finding，继续精确修复                       |
 | 2026-10-18 | fix    | main | —      | 三项修复后 36 项组件与 30 项 E2E 全绿；复核仍确认展开 rAF 期间无新 prop transition 的用户滚动会被旧 memory 覆盖，接受 RWC1-F01A           |
+| 2026-10-18 | review | main | —      | F01A 修复后定向 37、Web 全量 825、三 spec 三视口 30、desktop repeat 3 与质量门禁全绿；fresh 最终 no-findings，进入进度板与 PR 集成        |

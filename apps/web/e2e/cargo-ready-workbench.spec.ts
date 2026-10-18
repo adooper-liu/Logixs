@@ -44,6 +44,82 @@ test("an unallocated replenishment order remains usable on mobile", async ({
   expect(pageWidths.scroll).toBeLessThanOrEqual(pageWidths.client + 1);
 });
 
+test("cargo-ready queue delegates vertical scrolling to the shared shell", async ({
+  page,
+}) => {
+  await routeWorkbench(page, [orderWithEvidenceGap]);
+  await page.goto("/workspaces/cargo-ready?orderId=order-1");
+
+  await expect(page.locator(".queue-list")).toBeVisible();
+  await expectSharedQueueScrollOwnership(page);
+});
+
+async function expectSharedQueueScrollOwnership(page: Page): Promise<void> {
+  const queueList = page.locator(".queue-list");
+  const listStyle = await queueList.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { maxHeight: style.maxHeight, overflowY: style.overflowY };
+  });
+  expect(listStyle.maxHeight).not.toBe("680px");
+  expect(listStyle.overflowY).not.toMatch(/auto|scroll/);
+
+  await queueList.evaluate((element) => {
+    (element as HTMLElement).style.minHeight = "1400px";
+  });
+  const paneOwner = page.locator(
+    '[data-workbench-pane="queue"] .workbench-pane__scroll--independent',
+  );
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  if (viewportWidth >= 1101) {
+    const result = await paneOwner.evaluate((element) => {
+      const owner = element as HTMLElement;
+      const maxScroll = owner.scrollHeight - owner.clientHeight;
+      owner.scrollTop = Math.min(73, maxScroll);
+      return { maxScroll, scrollTop: owner.scrollTop };
+    });
+    expect(result.maxScroll).toBeGreaterThan(0);
+    expect(result.scrollTop).toBeGreaterThan(0);
+  } else {
+    const paneDimensions = await paneOwner.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(paneDimensions.scrollHeight).toBeLessThanOrEqual(
+      paneDimensions.clientHeight + 1,
+    );
+    const pageScroll = await page
+      .locator(".workbench-layout__workspace")
+      .evaluate((workspace) => {
+        let candidate: HTMLElement | null = workspace.parentElement;
+        while (candidate) {
+          const style = getComputedStyle(candidate);
+          if (
+            /(auto|scroll)/.test(`${style.overflow} ${style.overflowY}`) &&
+            candidate.scrollHeight > candidate.clientHeight + 1
+          ) {
+            break;
+          }
+          candidate = candidate.parentElement;
+        }
+        const owner = candidate ?? document.scrollingElement;
+        if (!(owner instanceof HTMLElement)) {
+          return { maxScroll: 0, scrollTop: 0 };
+        }
+        const maxScroll = owner.scrollHeight - owner.clientHeight;
+        owner.scrollTop = Math.min(73, maxScroll);
+        return { maxScroll, scrollTop: owner.scrollTop };
+      });
+    expect(pageScroll.maxScroll).toBeGreaterThan(0);
+    expect(pageScroll.scrollTop).toBeGreaterThan(0);
+  }
+
+  const widths = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+}
+
 async function routeWorkbench(
   page: Page,
   orders: readonly Record<string, unknown>[],

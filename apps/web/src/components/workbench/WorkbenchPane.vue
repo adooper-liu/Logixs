@@ -70,6 +70,7 @@ const canRetry = computed(() => Boolean(instance?.vnode.props?.onRetry));
 .workbench-pane {
   min-width: 0;
   min-height: 0;
+  height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   border: 1px solid var(--line);
