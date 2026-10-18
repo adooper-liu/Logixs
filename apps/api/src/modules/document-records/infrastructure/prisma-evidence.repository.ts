@@ -7,6 +7,7 @@ import type {
   EvidenceRecord,
   EvidenceRepository,
   EvidenceSourceSnapshot,
+  TaskCollaborationEvidenceQuery,
 } from "../domain/evidence.repository";
 import {
   MANUAL_VERIFY_CHECKS,
@@ -27,6 +28,22 @@ export class PrismaEvidenceRepository implements EvidenceRepository {
     if (ids.length === 0) return [];
     const rows = await this.prisma.evidenceRecord.findMany({
       where: { id: { in: ids } },
+    });
+    return rows.map(mapRecord);
+  }
+
+  async findTaskCollaborationEvidence(
+    input: TaskCollaborationEvidenceQuery,
+  ): Promise<EvidenceRecord[]> {
+    if (input.evidenceRecordIds.length === 0) return [];
+    const rows = await this.prisma.evidenceRecord.findMany({
+      where: {
+        tenantId: input.tenantId,
+        subjectType: input.subjectType,
+        subjectId: input.subjectId,
+        validity: input.validity,
+        id: { in: input.evidenceRecordIds },
+      },
     });
     return rows.map(mapRecord);
   }

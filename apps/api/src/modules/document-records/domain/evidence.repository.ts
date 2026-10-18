@@ -65,9 +65,20 @@ export interface AppendDecisionResult {
   appended: boolean;
 }
 
+export interface TaskCollaborationEvidenceQuery {
+  tenantId: string;
+  subjectType: "container";
+  subjectId: string;
+  validity: "effective";
+  evidenceRecordIds: string[];
+}
+
 export interface EvidenceRepository {
   findById(id: string): Promise<EvidenceRecord | null>;
   findByIds(ids: string[]): Promise<EvidenceRecord[]>;
+  findTaskCollaborationEvidence(
+    input: TaskCollaborationEvidenceQuery,
+  ): Promise<EvidenceRecord[]>;
   listBySubjects(input: {
     tenantId: string;
     subjectType: string;
