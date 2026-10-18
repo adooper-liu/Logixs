@@ -71,7 +71,7 @@ describe("useWorkbenchSessionSwitcher", () => {
     TestBroadcastChannel.instances[0]!.emit();
     await flushPromises();
 
-    expect(listWorkSessions).toHaveBeenCalledTimes(4);
+    expect(listWorkSessions).toHaveBeenCalledTimes(2);
     expect(restorePointer).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
@@ -120,6 +120,38 @@ describe("useWorkbenchSessionSwitcher", () => {
 
     document.dispatchEvent(new Event("visibilitychange"));
     TestBroadcastChannel.instances[0]!.emit();
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it("shares the authoritative in-flight load within one mutation epoch", async () => {
+    const current = session("selection", "current", SELECTION_CONTEXT);
+    const firstLoad = deferred<ReturnType<typeof sessionPage>>();
+    vi.mocked(listWorkSessions)
+      .mockImplementationOnce(() => firstLoad.promise)
+      .mockRejectedValueOnce(new Error("较新的并发读取失败"));
+    const restorePointer = vi.fn();
+    const { result, wrapper } = mountSwitcher({ restorePointer });
+
+    const concurrentLoad = result.load();
+    await flushPromises();
+    expect(result.loading.value).toBe(true);
+    firstLoad.resolve(sessionPage([current]));
+
+    await expect(concurrentLoad).resolves.toBe(true);
+    await flushPromises();
+    expect(listWorkSessions).toHaveBeenCalledOnce();
+    expect(result.sessions.value).toEqual([current]);
+    expect(result.current.value).toEqual(current);
+    expect(result.error.value).toBe("");
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledWith(current);
+
+    vi.mocked(listWorkSessions)
+      .mockReset()
+      .mockResolvedValue(sessionPage([current]));
+    window.dispatchEvent(new Event("focus"));
     await flushPromises();
     expect(restorePointer).toHaveBeenCalledOnce();
     wrapper.unmount();
@@ -207,35 +239,50 @@ describe("useWorkbenchSessionSwitcher", () => {
     wrapper.unmount();
   });
 
-  it("does not let a pre-close list response resurrect a closed session", async () => {
+  it("discards a pre-mutation load after the next epoch becomes authoritative", async () => {
     const current = session("selection", "current", SELECTION_CONTEXT);
     const target = session("stuffing", "resumable", "other-context");
     const closed = { ...target, status: "closed" as const, version: 2 };
     const staleList = deferred<ReturnType<typeof sessionPage>>();
+    const postCloseList = deferred<ReturnType<typeof sessionPage>>();
+    const postCloseListStarted = deferred<void>();
     vi.mocked(listWorkSessions)
-      .mockResolvedValueOnce(sessionPage([current, target]))
       .mockImplementationOnce(() => staleList.promise)
-      .mockRejectedValueOnce(new Error("列表暂时不可用"));
+      .mockImplementationOnce(() => {
+        postCloseListStarted.resolve(undefined);
+        return postCloseList.promise;
+      });
     vi.mocked(closeWorkSession).mockResolvedValue(closed);
-    const { result, wrapper } = mountSwitcher();
-    await flushPromises();
+    const restorePointer = vi.fn();
+    const { result, wrapper } = mountSwitcher({ restorePointer });
 
-    const oldLoad = result.load();
-    await Promise.resolve();
     const closeResult = result.close(target);
-    await flushPromises();
+    await postCloseListStarted.promise;
+    expect(listWorkSessions).toHaveBeenCalledTimes(2);
+
+    postCloseList.resolve(sessionPage([current, closed]));
     await expect(closeResult).resolves.toMatchObject({
       kind: "closed",
       session: closed,
     });
+    expect(result.current.value).toEqual(current);
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledWith(current);
 
-    staleList.resolve(sessionPage([current, target]));
-    await oldLoad;
+    staleList.resolve(
+      sessionPage([
+        { ...target, status: "current" },
+        { ...current, status: "resumable" },
+      ]),
+    );
+    await flushPromises();
     expect(
       result.sessions.value.find(
         ({ sessionId }) => sessionId === target.sessionId,
       ),
     ).toEqual(closed);
+    expect(result.current.value).toEqual(current);
+    expect(restorePointer).toHaveBeenCalledOnce();
     wrapper.unmount();
   });
 });

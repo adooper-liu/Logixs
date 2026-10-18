@@ -60,9 +60,11 @@ export function useWorkbenchSessionSwitcher(input: {
       : new BroadcastChannel("logix.work-sessions.v1");
   const restoredContextKeys = new Set<string>();
   const contextRecoveries = new Map<string, Promise<void>>();
-  let loadSequence = 0;
-  let latestLoad = 0;
   let mutationEpoch = 0;
+  let authoritativeLoad: {
+    epoch: number;
+    promise?: Promise<boolean>;
+  } | null = null;
   const refresh = () => void load();
   channel?.addEventListener("message", refresh);
 
@@ -75,15 +77,25 @@ export function useWorkbenchSessionSwitcher(input: {
     );
   });
 
-  async function load(): Promise<boolean> {
-    const sequence = ++loadSequence;
-    latestLoad = sequence;
-    const startedAtMutation = mutationEpoch;
+  function load(): Promise<boolean> {
+    const epoch = mutationEpoch;
+    if (authoritativeLoad?.epoch === epoch && authoritativeLoad.promise) {
+      return authoritativeLoad.promise;
+    }
+    const flight: NonNullable<typeof authoritativeLoad> = { epoch };
+    authoritativeLoad = flight;
+    flight.promise = runLoad(flight);
+    return flight.promise;
+  }
+
+  async function runLoad(
+    flight: NonNullable<typeof authoritativeLoad>,
+  ): Promise<boolean> {
     loading.value = true;
     error.value = "";
     try {
       const page = await listWorkSessions({ includeClosed: true });
-      if (sequence !== latestLoad || startedAtMutation !== mutationEpoch) {
+      if (flight.epoch !== mutationEpoch) {
         return true;
       }
       sessions.value = page.items;
@@ -97,13 +109,16 @@ export function useWorkbenchSessionSwitcher(input: {
       await ensureAndRestoreCurrent();
       return true;
     } catch (caught) {
-      if (sequence === latestLoad) {
+      if (authoritativeLoad === flight) {
         error.value =
           caught instanceof Error ? caught.message : "工作现场没有加载";
       }
       return false;
     } finally {
-      if (sequence === latestLoad) loading.value = false;
+      if (authoritativeLoad === flight) {
+        authoritativeLoad = null;
+        loading.value = false;
+      }
     }
   }
 

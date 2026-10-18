@@ -641,6 +641,7 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R4-concurrent-fir
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 7e0ea889 | 串行集成 full-chain 注入修复后 fresh 复审发现 browser_held/closed 服务端终态、完整分页、首次成功恢复、陈旧列表竞态、includeClosed HTTP 校验及验收证据缺口；按实际只读 UI 边界驳回 review-point“可编辑”前提，统一转 `WS6R3` |
 | 2026-10-18 | fix    | Codex / GPT-5     | 475e522f | `WS6R3` 修复服务端终态/400-409 边界、完整分页、首次成功恢复、旧响应竞态与验收视觉证据；主代理复现 API 26、Web 105、PostgreSQL 46、OIDC 2、E2E 61 通过                                                                      |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 475e522f | 增量审查确认同 mutation epoch 并发 load 的“较新失败、较旧成功”会丢弃唯一成功响应；接受 `WS6R3-CONCURRENT-FIRST-SUCCESS-01`，下发 `WS6R4`                                                                                   |
+| 2026-10-18 | fix    | Codex / GPT-5     | none     | `WS6R4` 将同一 mutation epoch 的并发 list 合并为单一 authoritative promise；首次成功恢复不再被后发失败调用作废，mutation 后仍开启新 epoch 并拒绝旧响应覆盖                                                                 |
 
 ## WS6R3 实现证据（2026-10-18）
 
@@ -650,6 +651,13 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R4-concurrent-fir
 - **客户端 GREEN**：每页固定 100 并消费完整 cursor，首屏 100 + 第二页 live/closed 可达且 sessionId 去重，循环 cursor 失败关闭；首次成功 load 按 context 恢复一次，后续后台 load pointer-neutral；close/activate/update/open 确认后使旧 list epoch 失效；失败长文案可在面板内换行。受影响 Web 单测 105/105。
 - **业务与 OIDC 证据**：403/404/409、draft 500/409、activate 409 的统一 before/after 快照直接比较 URL、subjectRef、taskRef、服务端 `activeItemKey/contextMode`、界面当前事项/模式、唯一 current 与 typed 输入。typed refresh 使用正式 review point A 与服务端 decisionDraft review point B，刷新后 UI/GET 恢复 typed draft，formal outcome/destination/责任/期限保持。OIDC 2/2 证明单次 401 只重登一次，持续 401 显示“会话无效”且不 activate、不循环重登。
 - **视口与截图**：`recoverable-work-sessions.spec.ts` 在 1440×900、1024×768、390×844 为 61 passed / 2 desktop-only skips；新增 desktop `draft_saved`、`conflict`、closed inspection、`browser_held`、失败恢复五张基线，逐张人工核对状态文字、唯一 current、关闭边界、恢复动作和遮挡；窄屏/移动端逐状态验证面板/页面无横向溢出且动作可达。未使用 `--update-snapshots`，原有基线未改。
+
+## WS6R4 实现证据（2026-10-18）
+
+- **同 epoch RED**：`pnpm --filter @logix/web test -- src/work-session/useWorkbenchSessionSwitcher.test.ts src/work-session/useWorkSessions.test.ts` 为 1 failed / 16 passed；mount 的 deferred A 未完成时后发 `load()` 启动 B，B 失败后返回 `false`，A 随后成功仍因 sequence 失效，唯一成功结果没有建立 current 或执行首次 restore。
+- **跨 epoch 基线**：新增的双 deferred A/B 用例在生产修改前已通过，证明 WS6R3 的 mutation epoch 隔离原本有效；该项是必须保留的回归护栏，不伪造第二个 RED。close 确认后 B 独立启动，A 最后返回旧 current/resumable 集合时 closed 不复活、current 不回退、restore 不增加。
+- **最小实现**：`load()` 在每个 mutation epoch 内只创建一个 authoritative in-flight promise；同 epoch 调用共享结果，mutation 后因 epoch 不同创建新 flight。只有当前 flight 可写 loading/error，旧 flight 不能清除新 flight 的状态。
+- **GREEN**：同一 focused 命令为 2 files / 17 tests passed；同 epoch 唯一成功结果被采用且首次 restore 恰好一次，后续后台成功 pointer-neutral；跨 epoch A 晚到仍被丢弃。Web lint 与 typecheck 均通过；未修改 `useWorkSessions`、API、契约、分页、OIDC、E2E 或截图。
 
 ## 最终验证记录（2026-10-14）
 
