@@ -192,10 +192,6 @@ function dueLabel(value: string | null): string {
   background: var(--surface-2);
   font-size: var(--text-micro);
 }
-.queue-list {
-  max-height: 680px;
-  overflow-y: auto;
-}
 .queue-item {
   width: 100%;
   min-width: 0;

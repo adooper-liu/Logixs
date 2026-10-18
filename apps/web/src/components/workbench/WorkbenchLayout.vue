@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from "vue";
+import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 import CollapsibleRail from "./CollapsibleRail.vue";
 import type {
   WorkbenchMobileScreen,
@@ -54,6 +54,13 @@ const narrowQueueTrigger = ref<HTMLButtonElement | null>(null);
 const paneFocusMemory = new Map<WorkbenchPaneId, HTMLElement>();
 const paneScrollMemory = new Map<WorkbenchPaneId, number>();
 const pageScrollMemory = new Map<WorkbenchPaneId, number>();
+type RailPane = "queue" | "context";
+const railScrollMemory = new Map<RailPane, number>();
+const railGeneration = new Map<RailPane, number>([
+  ["queue", 0],
+  ["context", 0],
+]);
+let mounted = true;
 
 function containingScrollOwner(): HTMLElement | null {
   let candidate = workspace.value?.parentElement ?? null;
@@ -82,6 +89,91 @@ function scrollOwnerFor(pane: HTMLElement | null): HTMLElement | null {
   );
 }
 
+function rememberRailScroll(pane: RailPane): void {
+  const scrollOwner = scrollOwnerFor(paneFor(pane));
+  if (scrollOwner) railScrollMemory.set(pane, scrollOwner.scrollTop);
+}
+
+function railIsCollapsed(pane: RailPane): boolean {
+  return pane === "queue" ? props.leftCollapsed : props.rightCollapsed;
+}
+
+function nextRailGeneration(pane: RailPane): number {
+  const generation = (railGeneration.get(pane) ?? 0) + 1;
+  railGeneration.set(pane, generation);
+  return generation;
+}
+
+async function waitForLayoutFrame(): Promise<void> {
+  if (typeof requestAnimationFrame !== "function") return;
+  await new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
+}
+
+function railTransitionIsCurrent(
+  pane: RailPane,
+  collapsed: boolean,
+  generation: number,
+): boolean {
+  return (
+    mounted &&
+    railGeneration.get(pane) === generation &&
+    railIsCollapsed(pane) === collapsed
+  );
+}
+
+function focusRailExpandToggle(pane: RailPane): void {
+  paneFor(pane)
+    ?.querySelector<HTMLElement>(
+      ".collapsible-rail__summary .collapsible-rail__toggle",
+    )
+    ?.focus();
+}
+
+function restoreRailFocus(pane: RailPane): void {
+  const rail = paneFor(pane);
+  const control = paneFocusMemory.get(pane);
+  if (control?.isConnected && rail?.contains(control)) {
+    control.focus({ preventScroll: true });
+  }
+}
+
+async function settleRailTransition(
+  pane: RailPane,
+  collapsed: boolean,
+): Promise<void> {
+  const generation = nextRailGeneration(pane);
+  if (collapsed) rememberRailScroll(pane);
+
+  await nextTick();
+  if (!railTransitionIsCurrent(pane, collapsed, generation)) return;
+  if (collapsed) {
+    focusRailExpandToggle(pane);
+    return;
+  }
+
+  const scrollOwner = scrollOwnerFor(paneFor(pane));
+  const postExpandScrollTop = scrollOwner?.scrollTop;
+  await waitForLayoutFrame();
+  if (!railTransitionIsCurrent(pane, collapsed, generation)) return;
+  const rememberedScroll = railScrollMemory.get(pane);
+  if (
+    scrollOwner &&
+    scrollOwnerFor(paneFor(pane)) === scrollOwner &&
+    scrollOwner.scrollTop === postExpandScrollTop &&
+    rememberedScroll !== undefined
+  ) {
+    scrollOwner.scrollTop = rememberedScroll;
+  }
+  restoreRailFocus(pane);
+}
+
+function updateRailCollapsed(pane: RailPane, value: boolean): void {
+  if (pane === "queue") emit("update:leftCollapsed", value);
+  else emit("update:rightCollapsed", value);
+}
+
 function rememberPane(screen: WorkbenchPaneId): void {
   const scrollOwner = scrollOwnerFor(paneFor(screen));
   if (scrollOwner) paneScrollMemory.set(screen, scrollOwner.scrollTop);
@@ -94,9 +186,11 @@ function rememberPane(screen: WorkbenchPaneId): void {
 function rememberFocusedControl(event: FocusEvent): void {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
+  if (target.closest(".collapsible-rail__toggle")) return;
   const pane = target.closest<HTMLElement>("[data-workbench-pane]");
   const id = pane?.dataset.workbenchPane as WorkbenchPaneId | undefined;
-  if (id) paneFocusMemory.set(id, target);
+  if (!id) return;
+  paneFocusMemory.set(id, target);
 }
 
 function selectMobileScreen(screen: WorkbenchMobileScreen): void {
@@ -206,6 +300,26 @@ watch(
     }
   },
 );
+
+watch(
+  () => props.leftCollapsed,
+  (collapsed, previous) => {
+    if (collapsed !== previous) void settleRailTransition("queue", collapsed);
+  },
+);
+
+watch(
+  () => props.rightCollapsed,
+  (collapsed, previous) => {
+    if (collapsed !== previous) void settleRailTransition("context", collapsed);
+  },
+);
+
+onBeforeUnmount(() => {
+  mounted = false;
+  nextRailGeneration("queue");
+  nextRailGeneration("context");
+});
 </script>
 
 <template>
@@ -289,7 +403,7 @@ watch(
           :collapsed="leftCollapsed"
           :label="leftRailLabel"
           :summary="leftRailSummary"
-          @update:collapsed="emit('update:leftCollapsed', $event)"
+          @update:collapsed="updateRailCollapsed('queue', $event)"
         >
           <slot name="queue" />
           <template v-if="$slots.queueRail" #rail
@@ -316,7 +430,7 @@ watch(
           :collapsed="rightCollapsed"
           :label="rightRailLabel"
           :summary="rightRailSummary"
-          @update:collapsed="emit('update:rightCollapsed', $event)"
+          @update:collapsed="updateRailCollapsed('context', $event)"
         >
           <slot name="context" />
           <template v-if="$slots.contextRail" #rail
@@ -381,6 +495,10 @@ watch(
   overflow: hidden;
 }
 
+.workbench-layout__pane :deep(.workbench-pane__scroll--independent) {
+  overflow-anchor: none;
+}
+
 .workbench-layout__mobile-nav,
 .workbench-layout__breadcrumb,
 .workbench-layout__narrow-queue {
@@ -388,6 +506,12 @@ watch(
 }
 
 @media (max-width: 1100px) and (min-width: 681px) {
+  .workbench-layout--stacked-responsive {
+    height: auto;
+    grid-template-rows: repeat(5, auto);
+    align-content: start;
+  }
+
   .workbench-layout--stacked-responsive .workbench-layout__workspace {
     grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
     overflow: visible;
@@ -401,8 +525,27 @@ watch(
     display: block;
   }
 
+  .workbench-layout--stacked-responsive .workbench-layout__pane {
+    height: auto;
+    overflow: visible;
+  }
+
   .workbench-layout--stacked-responsive .workbench-layout__pane--context {
     grid-column: 1 / -1;
+  }
+
+  .workbench-layout--stacked-responsive
+    .workbench-layout__pane
+    :deep(.workbench-pane) {
+    height: auto;
+    overflow: visible;
+  }
+
+  .workbench-layout--stacked-responsive
+    .workbench-layout__pane
+    :deep(.workbench-pane__scroll--independent) {
+    overflow-y: visible;
+    overscroll-behavior: auto;
   }
 
   .workbench-layout__workspace,
@@ -557,6 +700,20 @@ watch(
     clip: auto;
     transform: none;
     white-space: normal;
+  }
+
+  .workbench-layout--stacked-responsive
+    .workbench-layout__pane
+    :deep(.workbench-pane) {
+    height: auto;
+    overflow: visible;
+  }
+
+  .workbench-layout--stacked-responsive
+    .workbench-layout__pane
+    :deep(.workbench-pane__scroll--independent) {
+    overflow-y: visible;
+    overscroll-behavior: auto;
   }
 
   .workbench-layout__pane :deep(.collapsible-rail__toggle) {

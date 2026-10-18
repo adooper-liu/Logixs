@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { ContainerSummary } from "../../api/containers";
 import type { LiveNodeView } from "../../data/liveNodeProjection";
 import LiveNodeRail from "../container/LiveNodeRail.vue";
@@ -54,6 +54,8 @@ defineSlots<{
 const hasContext = computed(
   () => props.contextReady ?? Boolean(props.selectedContainer),
 );
+const leftCollapsed = ref(false);
+const rightCollapsed = ref(false);
 
 const responsibilityItems = computed<readonly WorkbenchResponsibilityItem[]>(
   () => [
@@ -98,6 +100,8 @@ const contextState = computed<WorkbenchPaneState>(() => {
     :class="{ 'page-frame': !embedded }"
   >
     <WorkbenchLayout
+      v-model:left-collapsed="leftCollapsed"
+      v-model:right-collapsed="rightCollapsed"
       responsive-mode="stacked"
       left-rail-label="岗位任务池"
       :right-rail-label="contextLabel"

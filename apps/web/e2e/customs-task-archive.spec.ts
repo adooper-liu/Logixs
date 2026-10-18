@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 // Synthetic, controlled E2E fixture data. It is not a real business sample.
 const fixture = {
@@ -131,6 +131,104 @@ function contextScrollOwner(page: Page) {
   return contextPane(page).locator(".workbench-pane__scroll--independent");
 }
 
+function queueScrollOwner(page: Page) {
+  return page
+    .locator('[data-workbench-pane="queue"]')
+    .locator(".workbench-pane__scroll--independent");
+}
+
+async function makeScrollOwnerScrollable(
+  owner: Locator,
+  scrollTop: number,
+): Promise<number> {
+  return owner.evaluate((element, requestedScrollTop) => {
+    const target = element as HTMLElement;
+    const spacer = document.createElement("div");
+    spacer.dataset.e2eRailSpacer = "true";
+    spacer.setAttribute("aria-hidden", "true");
+    spacer.style.height = `${target.clientHeight + requestedScrollTop + 320}px`;
+    target.appendChild(spacer);
+    target.scrollTop = requestedScrollTop;
+    return target.scrollTop;
+  }, scrollTop);
+}
+
+async function addTallRailContent(owner: Locator): Promise<void> {
+  await owner.evaluate((element) => {
+    const target = element as HTMLElement;
+    const spacer = document.createElement("div");
+    spacer.dataset.e2eStackedSpacer = "true";
+    spacer.setAttribute("aria-hidden", "true");
+    spacer.style.height = "1400px";
+    target.appendChild(spacer);
+  });
+}
+
+async function expectNoNestedVerticalOwner(page: Page): Promise<void> {
+  const offenders = await page
+    .locator("[data-workbench-pane]")
+    .evaluateAll((panes) =>
+      panes.flatMap((pane) =>
+        Array.from(pane.querySelectorAll<HTMLElement>("*")).flatMap(
+          (element) => {
+            if (
+              element.classList.contains("workbench-pane__scroll--independent")
+            ) {
+              return [];
+            }
+            const style = getComputedStyle(element);
+            const scrollable =
+              /auto|scroll/.test(style.overflowY) &&
+              element.scrollHeight > element.clientHeight + 1;
+            return scrollable
+              ? [element.className || element.tagName.toLowerCase()]
+              : [];
+          },
+        ),
+      ),
+    );
+  expect(offenders).toEqual([]);
+}
+
+async function expectStackedPageScroll(page: Page): Promise<void> {
+  const result = await page
+    .locator(".workbench-layout__workspace")
+    .evaluate((workspace) => {
+      let candidate: HTMLElement | null = workspace.parentElement;
+      while (candidate) {
+        const style = getComputedStyle(candidate);
+        if (
+          /(auto|scroll)/.test(`${style.overflow} ${style.overflowY}`) &&
+          candidate.scrollHeight > candidate.clientHeight + 1
+        ) {
+          break;
+        }
+        candidate = candidate.parentElement;
+      }
+      const owner = candidate ?? document.scrollingElement;
+      if (!(owner instanceof HTMLElement)) {
+        return { maxScroll: 0, scrollTop: 0 };
+      }
+      const maxScroll = owner.scrollHeight - owner.clientHeight;
+      owner.scrollTop = Math.min(64, maxScroll);
+      return { maxScroll, scrollTop: owner.scrollTop };
+    });
+  expect(result.maxScroll).toBeGreaterThan(0);
+  expect(result.scrollTop).toBeGreaterThan(0);
+}
+
+function railBody(page: Page, pane: "queue" | "context") {
+  return page
+    .locator(`[data-workbench-pane="${pane}"]`)
+    .locator(".collapsible-rail__body");
+}
+
+function railSummary(page: Page, pane: "queue" | "context") {
+  return page
+    .locator(`[data-workbench-pane="${pane}"]`)
+    .locator(".collapsible-rail__summary");
+}
+
 async function capturePaneGeometry(page: Page) {
   return page.locator("[data-workbench-pane]").evaluateAll((panes) =>
     panes.map((pane) => {
@@ -144,6 +242,15 @@ async function capturePaneGeometry(page: Page) {
       };
     }),
   );
+}
+
+function paneGeometry(
+  geometry: Awaited<ReturnType<typeof capturePaneGeometry>>,
+  id: "queue" | "detail" | "context",
+) {
+  const pane = geometry.find((candidate) => candidate.id === id);
+  if (!pane) throw new Error(`Missing ${id} workbench pane`);
+  return pane;
 }
 
 async function expectPaneOrder(page: Page): Promise<void> {
@@ -253,6 +360,174 @@ test("customs workbench preserves the context empty state without a selection", 
   await expectNoHorizontalOverflow(page);
 });
 
+test("customs consumer folds role rails without changing responsive structure", async ({
+  page,
+}) => {
+  await gotoFirstTask(page);
+  const viewportWidth = page.viewportSize()?.width;
+  const leftCollapse = page.getByRole("button", {
+    name: "折叠岗位任务池",
+  });
+  const rightCollapse = page.getByRole("button", { name: "折叠清关办理" });
+
+  await expectPaneOrder(page);
+  await expectNoHorizontalOverflow(page);
+
+  if (viewportWidth === 390) {
+    await expect(leftCollapse).toBeHidden();
+    await expect(rightCollapse).toBeHidden();
+    const geometry = await capturePaneGeometry(page);
+    expect(paneGeometry(geometry, "queue").y).toBeLessThan(
+      paneGeometry(geometry, "detail").y,
+    );
+    expect(paneGeometry(geometry, "detail").y).toBeLessThan(
+      paneGeometry(geometry, "context").y,
+    );
+    await addTallRailContent(queueScrollOwner(page));
+    await expectNoNestedVerticalOwner(page);
+    await expectStackedPageScroll(page);
+    await expectNoHorizontalOverflow(page);
+    return;
+  }
+
+  const initialGeometry = await capturePaneGeometry(page);
+  const queueContent = queueItem(page, fixture.firstContainerNumber);
+  const contextContent = page.getByTestId("context-mode-action");
+  const layout = page.locator(".workbench-layout");
+  const desktopPageScroll = await page.evaluate(() => window.scrollY);
+  if (viewportWidth === 1440) {
+    expect(await makeScrollOwnerScrollable(queueScrollOwner(page), 121)).toBe(
+      121,
+    );
+    expect(await makeScrollOwnerScrollable(contextScrollOwner(page), 233)).toBe(
+      233,
+    );
+  }
+  await queueContent.focus();
+  if (viewportWidth === 1440) {
+    await queueScrollOwner(page).evaluate((element) => {
+      element.scrollTop = 121;
+    });
+  }
+
+  await leftCollapse.click();
+  const leftExpand = page.getByRole("button", { name: "展开岗位任务池" });
+  await expect(leftExpand).toBeVisible();
+  await expect(leftExpand).toBeFocused();
+  await expect(railSummary(page, "queue")).toBeVisible();
+  await expect(railBody(page, "queue")).toHaveAttribute("hidden", "");
+  await expect(railBody(page, "queue")).toHaveAttribute("inert", "");
+  await expect(queueContent).toBeHidden();
+  await expect(layout).toHaveClass(/workbench-layout--left-collapsed/);
+  if (viewportWidth === 1440) {
+    await expect(contextScrollOwner(page)).toHaveJSProperty("scrollTop", 233);
+    expect(await page.evaluate(() => window.scrollY)).toBe(desktopPageScroll);
+  }
+  await contextContent.focus();
+  if (viewportWidth === 1440) {
+    await contextScrollOwner(page).evaluate((element) => {
+      element.scrollTop = 233;
+    });
+  }
+  const leftCollapsedGeometry = await capturePaneGeometry(page);
+
+  await rightCollapse.click();
+  const rightExpand = page.getByRole("button", { name: "展开清关办理" });
+  await expect(rightExpand).toBeVisible();
+  await expect(rightExpand).toBeFocused();
+  await expect(railSummary(page, "context")).toBeVisible();
+  await expect(railBody(page, "context")).toHaveAttribute("hidden", "");
+  await expect(railBody(page, "context")).toHaveAttribute("inert", "");
+  await expect(contextContent).toBeHidden();
+  await expect(layout).toHaveClass(/workbench-layout--right-collapsed/);
+  if (viewportWidth === 1440) {
+    await expect
+      .poll(async () => {
+        const geometry = await capturePaneGeometry(page);
+        return Math.abs(paneGeometry(geometry, "context").width - 48);
+      })
+      .toBeLessThanOrEqual(1);
+  }
+  const bothCollapsedGeometry = await capturePaneGeometry(page);
+
+  await expectPaneOrder(page);
+  await expectNoHorizontalOverflow(page);
+
+  if (viewportWidth === 1440) {
+    expect(
+      Math.abs(paneGeometry(leftCollapsedGeometry, "queue").width - 48),
+    ).toBeLessThanOrEqual(1);
+    expect(paneGeometry(leftCollapsedGeometry, "detail").width).toBeGreaterThan(
+      paneGeometry(initialGeometry, "detail").width,
+    );
+    expect(
+      Math.abs(paneGeometry(bothCollapsedGeometry, "context").width - 48),
+    ).toBeLessThanOrEqual(1);
+    expect(paneGeometry(bothCollapsedGeometry, "detail").width).toBeGreaterThan(
+      paneGeometry(leftCollapsedGeometry, "detail").width,
+    );
+    await queueScrollOwner(page).evaluate((element) => {
+      (element as HTMLElement).scrollTop = 0;
+    });
+    await contextScrollOwner(page).evaluate((element) => {
+      (element as HTMLElement).scrollTop = 0;
+    });
+  } else {
+    const workspace = await page
+      .locator(".workbench-layout__workspace")
+      .boundingBox();
+    const queue = paneGeometry(bothCollapsedGeometry, "queue");
+    const detail = paneGeometry(bothCollapsedGeometry, "detail");
+    const context = paneGeometry(bothCollapsedGeometry, "context");
+    expect(Math.abs(queue.y - detail.y)).toBeLessThanOrEqual(1);
+    expect(context.y).toBeGreaterThan(queue.y + 1);
+    expect(Math.abs(context.x - (workspace?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(context.width - (workspace?.width ?? 0)),
+    ).toBeLessThanOrEqual(1);
+  }
+
+  await leftExpand.click();
+  await expect(leftCollapse).toBeVisible();
+  await expect(railBody(page, "queue")).not.toHaveAttribute("hidden", "");
+  await expect(railBody(page, "queue")).not.toHaveAttribute("inert", "");
+  await expect(queueContent).toBeVisible();
+  await expect(layout).not.toHaveClass(/workbench-layout--left-collapsed/);
+  if (viewportWidth === 1440) {
+    await expect
+      .poll(() =>
+        queueScrollOwner(page).evaluate((element) => element.scrollTop),
+      )
+      .toBe(121);
+    await expect(contextScrollOwner(page)).toHaveJSProperty("scrollTop", 0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(desktopPageScroll);
+  }
+  await expect(queueContent).toBeFocused();
+
+  await rightExpand.click();
+  await expect(rightCollapse).toBeVisible();
+  await expect(railBody(page, "context")).not.toHaveAttribute("hidden", "");
+  await expect(railBody(page, "context")).not.toHaveAttribute("inert", "");
+  await expect(contextContent).toBeVisible();
+  await expect(layout).not.toHaveClass(/workbench-layout--right-collapsed/);
+  if (viewportWidth === 1440) {
+    await expect
+      .poll(() =>
+        contextScrollOwner(page).evaluate((element) => element.scrollTop),
+      )
+      .toBe(233);
+    await expect(queueScrollOwner(page)).toHaveJSProperty("scrollTop", 121);
+    expect(await page.evaluate(() => window.scrollY)).toBe(desktopPageScroll);
+  } else {
+    await addTallRailContent(queueScrollOwner(page));
+    await expectNoNestedVerticalOwner(page);
+    await expectStackedPageScroll(page);
+  }
+  await expect(contextContent).toBeFocused();
+  await expectPaneOrder(page);
+  await expectNoHorizontalOverflow(page);
+});
+
 test("customs archive preserves action state and proves the stacked viewport", async ({
   page,
 }) => {
@@ -288,7 +563,9 @@ test("customs archive preserves action state and proves the stacked viewport", a
     return target.scrollTop;
   });
 
-  await archiveButton.focus();
+  await archiveButton.evaluate((element) =>
+    (element as HTMLButtonElement).focus({ preventScroll: true }),
+  );
   await page.keyboard.press("Enter");
   const archiveRegion = page.getByRole("region", {
     name: "当前可见任务档案",

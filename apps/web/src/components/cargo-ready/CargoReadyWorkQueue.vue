@@ -180,11 +180,6 @@ function countFor(filter: CargoReadyQueueFilter): number {
   background: var(--surface-2);
 }
 
-.queue-list {
-  max-height: 680px;
-  overflow-y: auto;
-}
-
 .queue-item {
   width: 100%;
   min-width: 0;
@@ -270,11 +265,5 @@ function countFor(filter: CargoReadyQueueFilter): number {
 .queue-notice--error {
   background: var(--risk-bg);
   color: var(--risk);
-}
-
-@media (max-width: 720px) {
-  .queue-list {
-    max-height: none;
-  }
 }
 </style>

@@ -73,5 +73,8 @@ describe("WorkbenchPane", () => {
 
     expect(wrapper.get(".workbench-pane__scroll").text()).toContain("队列内容");
     expect(wrapper.findAll(".workbench-pane__scroll")).toHaveLength(1);
+    expect(
+      wrapper.findAll(".workbench-pane__scroll--independent"),
+    ).toHaveLength(1);
   });
 });
