@@ -607,6 +607,72 @@ TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R4-concurrent-first-
 HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R4-concurrent-first-success-recovery base=475e522f5ca3697abe4ceaeb9ed4569882575a29 role=main workspace=D:\Logixs commit=<sha|none>
 ```
 
+### `WS6R5-activated-local-failure-truth`
+
+fresh Claude 对增量 `a185fedf..64d769e0` 的复审与主代理裁决：
+
+```yaml
+protocol: logix-review/v1
+slice: WS6R4-concurrent-first-success-recovery
+baseline: a185fedf73dfff70534fce1e0822e8b4bdadf9cd
+reviewed: a185fedf..64d769e0
+verdict: findings
+findings:
+  - id: WS6R4-ACTIVATE-EPOCH-01
+    severity: high
+    type: recoverability
+    evidence: apps/web/src/work-session/useWorkbenchSessionSwitcher.ts:185-214; apps/web/src/work-session/useWorkSessions.ts:81-112
+    scopeBasis: server activate 一旦确认即为权威 mutation，必须立刻切换 epoch；后续导航或 pointer 恢复失败不得让 mutation 前 list 覆盖服务端 current
+    impact: activateWorkSession 已成功把 B 设为 current，但 router.replace 或 restorePointer 随后失败；switchWorkSession 返回普通 failed，外层不推进 epoch、不启动 mutation 后 load，旧 flight 可应用 A=current/B=resumable，界面与服务端真相相反
+    acceptanceProbe: 延迟 mutation 前 list A，activate B 成功，随后让 navigate 或 restorePointer 拒绝，再让 A 返回旧 current；必须丢弃 A，并从新 epoch 重读 B=current，同时显示“服务端已切换但本地恢复失败”的真实反馈
+    currentSliceNecessity: WS6R4 明确要求 activate 确认后新 epoch 且 mutation 前响应失效；现有跨 epoch 测试只覆盖 close
+    suggestedDisposition: accepted
+unknowns: []
+verificationGaps:
+  - 现有 focused 17/17 通过，但无 activate 成功后 navigate/restore 失败且旧 list pending 的测试
+writes: none
+```
+
+```yaml
+protocol: logix-disposition/v1
+slice: WS6R4-concurrent-first-success-recovery
+decisions:
+  - finding: WS6R4-ACTIVATE-EPOCH-01
+    status: accepted
+    reason: activate API 成功与本地导航/恢复是两个事实；不能用最终 switched 才推进 epoch，也不能把服务端已切换误报为完全未切换
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-local-failure-truth
+next: fix
+```
+
+修复要求：
+
+1. `switchWorkSession` 或其调用协议必须区分：
+   - activate 请求失败：服务端 mutation 未确认，保持原 epoch/现场；
+   - activate 已成功但 navigate 失败；
+   - activate 与 navigate 已成功但 restorePointer 失败。
+2. activate API 成功返回的同一时刻，外层必须推进 `mutationEpoch`，使所有 mutation 前 list flight 失效；不得等到最终 `kind: switched`。
+3. activate 确认后必须发布跨标签变更并启动/安排新 epoch authoritative load。navigate/restore 后续失败时，新 load 仍须执行，最终 sessions/current 以服务端为准。
+4. 本地反馈必须真实区分：`服务端已切换工作现场，但本页导航/恢复失败，请按当前工作现场重新进入`；不得显示成普通“切换失败”而暗示服务端未变。
+5. 成功路径只能推进 epoch 一次，不得重复 Broadcast/load；new-tab 路径已有直接 activate 流程，保持相同 mutation 时点并避免双增。
+6. 新增确定性 deferred 测试：
+   - mutation 前 list A pending；activate B 成功；navigate 拒绝；A 返回旧 current。断言 A 丢弃、mutation 后 load 读取 B=current、结果标明 server activated/local failed、current 不回退。
+   - 同上但 navigate 成功、restorePointer 拒绝。
+   - activate API 本身拒绝时不推进 epoch、不发布变更、不启动 mutation 后 load，旧 A 仍可作为原现场有效结果。
+   - 正常成功路径 epoch/Broadcast/load 各恰好一次。
+7. 不改服务端生命周期、分页、HTTP 校验、视觉基线、OIDC 或业务语义。修复后运行 Web 定向单测、lint/typecheck、repo/format/diff；fresh 增量复审无 finding 后才创建新 detached checkout 执行唯一一次 `pnpm validate`。
+
+实现任务：
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-local-failure-truth base=64d769e0704628d695d1ebf8602efa2a874d94f0 role=implementer workspace=D:\Logixs
+```
+
+交回：
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R5-activated-local-failure-truth base=64d769e0704628d695d1ebf8602efa2a874d94f0 role=main workspace=D:\Logixs commit=<sha|none>
+```
+
 ## 验收
 
 - [x] 同一用户同一 context 重复打开只返回原会话；不会产生重复现场。
@@ -641,7 +707,8 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R4-concurrent-fir
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 7e0ea889 | 串行集成 full-chain 注入修复后 fresh 复审发现 browser_held/closed 服务端终态、完整分页、首次成功恢复、陈旧列表竞态、includeClosed HTTP 校验及验收证据缺口；按实际只读 UI 边界驳回 review-point“可编辑”前提，统一转 `WS6R3` |
 | 2026-10-18 | fix    | Codex / GPT-5     | 475e522f | `WS6R3` 修复服务端终态/400-409 边界、完整分页、首次成功恢复、旧响应竞态与验收视觉证据；主代理复现 API 26、Web 105、PostgreSQL 46、OIDC 2、E2E 61 通过                                                                      |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 475e522f | 增量审查确认同 mutation epoch 并发 load 的“较新失败、较旧成功”会丢弃唯一成功响应；接受 `WS6R3-CONCURRENT-FIRST-SUCCESS-01`，下发 `WS6R4`                                                                                   |
-| 2026-10-18 | fix    | Codex / GPT-5     | none     | `WS6R4` 将同一 mutation epoch 的并发 list 合并为单一 authoritative promise；首次成功恢复不再被后发失败调用作废，mutation 后仍开启新 epoch 并拒绝旧响应覆盖                                                                 |
+| 2026-10-18 | fix    | Codex / GPT-5     | 64d769e0 | `WS6R4` 以 mutation epoch authoritative promise 修复同 epoch 并发首次成功丢失；主代理复现 focused 17/17、Web lint/typecheck、repo/diff 通过                                                                                |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 64d769e0 | fresh 增量复审确认 activate 已成功但 navigate/restore 失败时未推进 epoch，旧 list 可回退 current；接受 `WS6R4-ACTIVATE-EPOCH-01`，下发 `WS6R5`                                                                             |
 
 ## WS6R3 实现证据（2026-10-18）
 
