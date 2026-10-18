@@ -1,7 +1,7 @@
 ---
-status: fix
+status: done
 branch: fix/full-chain-landing-prisma-injection-v1
-verification: "FCLPI1 GREEN: full-chain rehearsal integration 6/6 and full-chain landing unit 63/63; API lint/typecheck, board, repo, format and diff checks passed"
+verification: "commit 61c523b7 restores explicit PrismaService injection; main-agent reproduction passed full-chain rehearsal integration 6/6 (59.33s), full-chain landing unit 9 files/63 tests, API lint/typecheck, board/repo/format/diff checks"
 owner: main
 writer: codex
 risk: low
@@ -73,4 +73,5 @@ HANDOFF docs/planning/tasks/full-chain-landing-prisma-injection-v1.md#FCLPI1-exp
 | 日期       | 阶段 | 负责              | commit   | 说明                                                                                       |
 | ---------- | ---- | ----------------- | -------- | ------------------------------------------------------------------------------------------ |
 | 2026-10-18 | fix  | Claude / Opus 4.8 | 2d84c567 | 从 recoverable fresh validate 稳定失败追到 repository 显式注入回归，建立独立低风险修复切片 |
-| 2026-10-18 | fix  | Codex / GPT-5     | pending  | 恢复 PrismaService 显式注入；定向集成 6/6、相关单元测试 63/63、API lint/typecheck 通过     |
+| 2026-10-18 | fix  | Codex / GPT-5     | 61c523b7 | 恢复 PrismaService 显式注入；定向集成 6/6、相关单元测试 63/63、API lint/typecheck 通过     |
+| 2026-10-18 | done | Claude / Opus 4.8 | 61c523b7 | 主代理复现集成 6/6（59.33 秒）、单元 9 文件/63 项及 API lint/typecheck 通过；无 finding    |
