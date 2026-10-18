@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: fix/role-workbench-rail-collapse-v1
-verification: "PR candidate local evidence (2026-10-18): focused Vitest 4 files / 37 tests, full Web unit 168 files / 825 tests, Customs/CargoReady/Stuffing three-project Playwright 30/30, desktop rail-fold stress 3/3, Web lint/typecheck/build, scoped Prettier, repo/diff checks, and fresh overall review passed with no remaining findings. Existing customs archive viewport PNG hashes remained unchanged. Final deterministic progress board, PR CI, merge, and post-merge closeout are pending."
+verification: "PR #190 merged to main at a310e5de240c5c74d9e36cf7a45da224da685e6f on 2026-10-18; final CI run 39085486330 passed changes, static, unit, build, e2e, and quality, while dictionary/security were skipped by changed-path classification. Before merge, focused Vitest 4 files / 37 tests, full Web unit 168 files / 825 tests, Customs/CargoReady/Stuffing three-project Playwright 30/30, desktop rail-fold stress 3/3, Web lint/typecheck/build, scoped Prettier, repo/diff checks, and fresh overall no-findings review passed. The first CI run exposed an outdated narrow customs archive baseline after the intended 1024 page-scroll change; the single approved narrow PNG was updated from the stable CI actual, local customs three-project E2E passed 12/12, and final CI passed."
 owner: main
 writer: codex
 risk: medium
@@ -192,7 +192,7 @@ next: fix
 - [x] CargoReady 与 Stuffing 不再自建 `.queue-list` 纵向滚动；其他五个消费者无需修改。
 - [x] 1024/390 保持当前兼容拓扑，页面主滚动唯一且 slot 内无嵌套纵向 auto/scroll。
 - [x] Fresh server 下 1440/1024/390 行为和几何通过，现有截图不变化。
-- [ ] 相关单测、E2E、lint/typecheck/build、repo/board/diff 与 PR CI 通过后才标 done。
+- [x] 相关单测、E2E、lint/typecheck/build、repo/board/diff 与 PR CI 全绿并合并，任务收口为 done。
 
 ## 调度与边界说明
 
@@ -203,12 +203,13 @@ next: fix
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责 | commit | 说明                                                                                                                                      |
-| ---------- | ------ | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-17 | fix    | main | —      | 复现并定位 RoleWorkbenchFrame 丢失左右折叠受控状态；锁定 wrapper 内部状态接线与真实消费者 TDD/E2E 边界                                    |
-| 2026-10-17 | fix    | main | —      | 负责人要求左右栏纵向滚动也由共享壳统一；核对 WorkbenchPane 唯一 owner、CargoReady/Stuffing 嵌套 overflow 与折叠 scroll 恢复，扩写当前薄片 |
-| 2026-10-18 | review | main | —      | 29 项单测、30 项三视口 E2E 与质量门禁通过；fresh 复审接受受控 props、陈旧 rAF 和真实焦点 3 项 finding，继续精确修复                       |
-| 2026-10-18 | fix    | main | —      | 三项修复后 36 项组件与 30 项 E2E 全绿；复核仍确认展开 rAF 期间无新 prop transition 的用户滚动会被旧 memory 覆盖，接受 RWC1-F01A           |
-| 2026-10-18 | review | main | —      | F01A 修复后定向 37、Web 全量 825、三 spec 三视口 30、desktop repeat 3 与质量门禁全绿；fresh 最终 no-findings，进入进度板与 PR 集成        |
-| 2026-10-18 | fix    | main | —      | PR #190 首轮 CI 仅 narrow customs archive 旧视觉基线失败；确认是 1024 页面主滚动的预期结构变化，接受 RWC1-CI-001 更新单张基线             |
-| 2026-10-18 | review | main | —      | 单张 narrow 基线更新为 CI actual，desktop/mobile 未变；本地 customs 三项目 12/12 通过，恢复 review 等待 PR #190 新 CI                     |
+| 日期       | 阶段   | 负责 | commit   | 说明                                                                                                                                      |
+| ---------- | ------ | ---- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-17 | fix    | main | —        | 复现并定位 RoleWorkbenchFrame 丢失左右折叠受控状态；锁定 wrapper 内部状态接线与真实消费者 TDD/E2E 边界                                    |
+| 2026-10-17 | fix    | main | —        | 负责人要求左右栏纵向滚动也由共享壳统一；核对 WorkbenchPane 唯一 owner、CargoReady/Stuffing 嵌套 overflow 与折叠 scroll 恢复，扩写当前薄片 |
+| 2026-10-18 | review | main | —        | 29 项单测、30 项三视口 E2E 与质量门禁通过；fresh 复审接受受控 props、陈旧 rAF 和真实焦点 3 项 finding，继续精确修复                       |
+| 2026-10-18 | fix    | main | —        | 三项修复后 36 项组件与 30 项 E2E 全绿；复核仍确认展开 rAF 期间无新 prop transition 的用户滚动会被旧 memory 覆盖，接受 RWC1-F01A           |
+| 2026-10-18 | review | main | —        | F01A 修复后定向 37、Web 全量 825、三 spec 三视口 30、desktop repeat 3 与质量门禁全绿；fresh 最终 no-findings，进入进度板与 PR 集成        |
+| 2026-10-18 | fix    | main | —        | PR #190 首轮 CI 仅 narrow customs archive 旧视觉基线失败；确认是 1024 页面主滚动的预期结构变化，接受 RWC1-CI-001 更新单张基线             |
+| 2026-10-18 | review | main | —        | 单张 narrow 基线更新为 CI actual，desktop/mobile 未变；本地 customs 三项目 12/12 通过，恢复 review 等待 PR #190 新 CI                     |
+| 2026-10-18 | done   | main | a310e5de | PR #190 final CI run 39085486330 的 changes/static/unit/build/e2e/quality 全绿并合并；dictionary/security 按分类跳过，任务收口完成        |
