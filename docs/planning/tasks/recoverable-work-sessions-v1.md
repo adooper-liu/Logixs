@@ -778,6 +778,8 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 | 2026-10-18 | review | Claude / Opus 4.8 | 379c9053 | fresh 增量复审 `f768b20d..379c9053` 返回 `no-findings`，独立复现 focused 26/26、Web lint/typecheck、diff check；进入最终 clean detached 单命令门禁                                                                         |
 | 2026-10-18 | review | Claude / Opus 4.8 | f99cff8d | clean detached `pnpm validate` 首次在 root test 非确定 exit 1；受控 unit 压力均全绿。`adfd131d` 重试完整 unit/integration 通过，E2E 320/355 后唯一失败 OIDC logout 瞬态 URL 竞态，转 `WS6R7`                               |
 | 2026-10-18 | review | Claude / Opus 4.8 | 5a8eacd8 | `WS6R7` 稳定 signin-route 前置并以导航记录证明 logout callback；全 E2E 321/321 通过，fresh 增量复审 `no-findings`，进入新 clean detached 最终门禁                                                                          |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | a4d476d0 | 本地 clean `pnpm validate` exit 0；PR #192 CI 仅 Product Selection mobile 基线失败，3 次 actual 哈希一致且视觉为已批准 close 入口，转 `WS6R8` 精确单图校准                                                                 |
+| 2026-10-18 | review | Claude / Opus 4.8 | d2e25973 | 唯一 mobile 基线精确替换为三次 CI actual；本机 renderer 差异保留为非阻塞 unknown，fresh 增量复审 `no-findings`，推送 PR #192 由 CI 验证                                                                                    |
 | 2026-10-18 | review | Claude / Opus 4.8 | f44c01ef | 新 detached clean checkout 单条 `pnpm validate` exit 0：API 1628、Web 857、integration 238、E2E 321/34 skips、build 3/3；等待 PR/CI/merge 后标 done                                                                        |
 
 ## WS6R3 实现证据（2026-10-18）
@@ -836,6 +838,23 @@ TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-preco
 
 ```text
 HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-precondition base=3c4e63027e2181a8b5033c1b1ff6f1477f1ba2dd role=main workspace=D:\Logixs commit=<sha|none>
+```
+
+### `WS6R8-product-selection-mobile-baseline`
+
+- **CI 反证**：PR #192 run `39113615042` 仅 E2E 失败；static/unit/build 通过，quality 因汇总失败。唯一用例为 Product Selection mobile 默认 session menu，三次 retry 都稳定差 9891 pixels / 4%。
+- **视觉裁决**：旧 expected 无“关闭此工作现场”；CI actual 显示非 current resumable 装箱行的关闭入口，正是 WS6R1 已批准能力。其余 PageHeader、岗位目的、对象/结果/责任、五类缺口、唯一 current、切换器与正文结构一致；按钮未遮挡、无横向溢出。差异不是字体噪声或错误业务状态。
+- **确定性**：三份 CI actual SHA-256 均为 `F334402A780385791D25A4A445B7878B589CFE9C9DD5F78D1469A330BFDA5D40`；当前 tracked expected SHA-256 为 `000B0588F24B1A3D4B46DD0D3D8069BA8BEBE52FB5AF33CC23C029B561864363`。
+- **范围**：只允许以 CI actual 精确替换 `apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/product-selection-mobile-chromium-session-menu-mobile-chromium-win32.png`，并更新本 brief/派生板证据。不得运行 `--update-snapshots`，不得改测试阈值、组件/CSS、fixture、其他图片或生产代码。
+- **验证**：替换后文件 SHA 必须等于 CI actual；运行该 mobile screenshot test 两次、完整 recoverable E2E、repo/format/diff；fresh 增量复审后推送现有 PR，等待 CI 全绿。此前 `f44c01ef` 本地完整 validate exit 0 保持有效，因为本切片只校准已人工接受且 CI 稳定生成的二进制视觉基线，不改变产品行为或风险面。
+- **交回与复审**：提交 `d2e25973` 精确替换唯一 Product Selection mobile PNG；目标 SHA-256 等于三次 CI actual 的 `F334402A780385791D25A4A445B7878B589CFE9C9DD5F78D1469A330BFDA5D40`，无 spec/阈值/fixture/生产代码或其他图片变化。本机 renderer 稳定生成不同字体度量哈希 `06F5A8D8...3AFBB`，单图两轮及 recoverable E2E 因跨环境基线差 4% 而失败，未用本机图覆盖 CI 权威。fresh 独立复审 verdict `no-findings`，确认 390×844 关闭动作完整可见、无裁切或横向溢出；本地 renderer 原因记为非阻塞 unknown，PR CI 作为合并权威。
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R8-product-selection-mobile-baseline base=a4d476d062b388fd3df3853f1f69eb6f735a8c78 role=implementer workspace=D:\Logixs
+```
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R8-product-selection-mobile-baseline base=a4d476d062b388fd3df3853f1f69eb6f735a8c78 role=main workspace=D:\Logixs commit=<sha|none>
 ```
 
 ## 最终验证记录（2026-10-14）
