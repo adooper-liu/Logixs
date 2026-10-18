@@ -1,5 +1,5 @@
 ---
-status: fix
+status: review
 branch: test/recoverable-work-sessions-acceptance-v1
 verification: "PR #179 merged to main at 2ed5f9b2 on 2026-10-14; final CI run 38528039982 changes/static/unit/build/e2e/dictionary/quality succeeded and security was skipped by classifier. Code is merged, but the brief is in an acceptance-only fix slice because failure preservation, typed-draft recovery, complete textual session states, and a single-command validate pass still lack direct evidence. Final committed clean-clone repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build passed: API 311 files/1611 tests, Web 161 files/764 tests, PostgreSQL integration 35 files/224 tests; non-OIDC E2E 241 passed/26 viewport skips, OIDC 5/5, reference visual 18 passed/15 viewport skips. Standard local validate stopped at E2E because another session owned port 5173; this was recorded, not claimed as pass."
 owner: main
@@ -773,7 +773,8 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 64d769e0 | fresh 增量复审确认 activate 已成功但 navigate/restore 失败时未推进 epoch，旧 list 可回退 current；接受 `WS6R4-ACTIVATE-EPOCH-01`，下发 `WS6R5`                                                                             |
 | 2026-10-18 | fix    | Codex / GPT-5     | 53fd8066 | `WS6R5` 在 activate 确认时推进 epoch、广播并启动 pointer-neutral reload；导航/恢复失败返回服务端已切换的分阶段事实，旧 list 不再回退 current；四场景 deferred 回归与受影响 Web 113/113 通过                                |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 53fd8066 | fresh 增量复审确认 post-activation list 先于 route 提交时 route watcher 与显式流程会双重 restore；接受 `WS6R5-RESTORE-RACE-01`，下发 `WS6R6`                                                                               |
-| 2026-10-18 | fix    | Codex / GPT-5     | pending  | `WS6R6` 为普通切换建立按 context 隔离的短期 explicit restore ownership；list/route 两种顺序均只恢复一次，navigate/restore 失败清理后仍可明确重入恢复；受影响 Web 116/116 通过                                              |
+| 2026-10-18 | fix    | Codex / GPT-5     | 379c9053 | `WS6R6` 为显式切换建立按 context 隔离的 restore owner；list/route 两种顺序都只恢复一次，失败清理后仍可明确重入恢复；受影响 Web 116/116 通过                                                                                |
+| 2026-10-18 | review | Claude / Opus 4.8 | 379c9053 | fresh 增量复审 `f768b20d..379c9053` 返回 `no-findings`，独立复现 focused 26/26、Web lint/typecheck、diff check；进入最终 clean detached 单命令门禁                                                                         |
 
 ## WS6R3 实现证据（2026-10-18）
 
@@ -806,6 +807,7 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 - **失败清理与重试**：首次 explicit restore 拒绝时只调用 1 次并保持 `activated-local-failed / stage=restore`，B 仍为 current；owner 清理且 B 不进入 restored 集合，随后 context 明确离开再进入时允许第 2 次 restore 成功，后续 background load 不产生第 3 次。navigate 拒绝时本次 restore 为 0，后续进入 B 恢复 1 次且后台不重复。
 - **最小实现**：activate 确认时为目标 context 登记只解析、不拒绝的短期 owner promise；同 context watcher 只等待 owner，其他 context 仍使用既有 `contextRecoveries`。`try/finally` 在成功、navigate 失败和 restore 失败后按 identity 清理 owner；只有显式 restore 成功才登记 `restoredContextKeys`。
 - **受影响回归**：API client、session helpers、switcher composable/component、typed decision composable与选品工作台合计 6 files / 116 tests passed；Web lint 与 typecheck 通过。未修改 `useWorkSessions`、组件文案、API、公共契约、Schema、迁移、分页、OIDC、typed draft、E2E 或截图。
+- **fresh 增量复审**：独立只读复审 `f768b20d..379c9053` verdict 为 `no-findings`；复审方独立运行 focused 2 files / 26 tests、Web lint/typecheck 与 `git diff --check` 均通过，确认 ownership 按 context 隔离、成功后登记 restored、navigate/restore 失败清理且可重试，new-tab 与结果协议未变化。
 
 ## 最终验证记录（2026-10-14）
 
