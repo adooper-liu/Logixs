@@ -378,11 +378,13 @@ function statusLabel(status: WorkSessionV1["status"]): string {
   text-align: left;
 }
 .session-switcher__feedback {
+  min-width: 0;
   margin: 0;
   padding: var(--space-2);
   border-left: 3px solid var(--risk);
   background: var(--risk-bg);
   color: var(--risk);
+  overflow-wrap: anywhere;
 }
 .session-switcher__closed {
   border-top: 1px solid var(--line);

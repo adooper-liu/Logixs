@@ -58,7 +58,11 @@ export function useWorkbenchSessionSwitcher(input: {
     typeof BroadcastChannel === "undefined"
       ? null
       : new BroadcastChannel("logix.work-sessions.v1");
-  let initialPointerRestore: Promise<void> | null = null;
+  const restoredContextKeys = new Set<string>();
+  const contextRecoveries = new Map<string, Promise<void>>();
+  let loadSequence = 0;
+  let latestLoad = 0;
+  let mutationEpoch = 0;
   const refresh = () => void load();
   channel?.addEventListener("message", refresh);
 
@@ -72,10 +76,16 @@ export function useWorkbenchSessionSwitcher(input: {
   });
 
   async function load(): Promise<boolean> {
+    const sequence = ++loadSequence;
+    latestLoad = sequence;
+    const startedAtMutation = mutationEpoch;
     loading.value = true;
     error.value = "";
     try {
       const page = await listWorkSessions({ includeClosed: true });
+      if (sequence !== latestLoad || startedAtMutation !== mutationEpoch) {
+        return true;
+      }
       sessions.value = page.items;
       const serverCurrent = page.items.find(
         (session) => session.status === "current",
@@ -84,45 +94,44 @@ export function useWorkbenchSessionSwitcher(input: {
         window.sessionStorage,
         serverCurrent?.sessionId ?? null,
       );
+      await ensureAndRestoreCurrent();
       return true;
     } catch (caught) {
-      error.value =
-        caught instanceof Error ? caught.message : "工作现场没有加载";
+      if (sequence === latestLoad) {
+        error.value =
+          caught instanceof Error ? caught.message : "工作现场没有加载";
+      }
       return false;
     } finally {
-      loading.value = false;
+      if (sequence === latestLoad) loading.value = false;
     }
   }
 
   async function initialize(): Promise<void> {
-    if (!(await load())) return;
-    try {
-      await ensureAndRestoreCurrent();
-    } catch (caught) {
-      error.value =
-        caught instanceof Error ? caught.message : "工作现场没有建立";
-    }
+    await load();
   }
 
   async function ensureAndRestoreCurrent(): Promise<void> {
-    await ensureCurrent();
-    if (initialPointerRestore) return initialPointerRestore;
     const context = input.currentContext.value;
-    const pageCurrent = context
-      ? sessions.value.find(
-          (session) =>
-            session.contextKey === contextKey(context) &&
-            session.status === "current",
-        )
-      : null;
-    if (pageCurrent) {
-      initialPointerRestore = Promise.resolve(
-        input.adapter.restorePointer(pageCurrent),
-      ).catch((caught) => {
-        initialPointerRestore = null;
-        throw caught;
-      });
-      await initialPointerRestore;
+    if (!context) return;
+    const key = contextKey(context);
+    if (restoredContextKeys.has(key)) return;
+    const existing = contextRecoveries.get(key);
+    if (existing) return existing;
+    const recovery = (async () => {
+      await ensureCurrent();
+      const pageCurrent = sessions.value.find(
+        (session) => session.contextKey === key && session.status === "current",
+      );
+      if (!pageCurrent) return;
+      await input.adapter.restorePointer(pageCurrent);
+      restoredContextKeys.add(key);
+    })();
+    contextRecoveries.set(key, recovery);
+    try {
+      await recovery;
+    } finally {
+      contextRecoveries.delete(key);
     }
   }
 
@@ -146,6 +155,7 @@ export function useWorkbenchSessionSwitcher(input: {
       contextMode: input.contextMode?.value ?? null,
       displaySummary: input.displaySummary.value,
     });
+    mutationEpoch += 1;
     sessions.value = [
       opened,
       ...sessions.value.filter(
@@ -176,10 +186,13 @@ export function useWorkbenchSessionSwitcher(input: {
         status: "conflict",
         domainVersionSeen: result.latestVersion,
       });
+      mutationEpoch += 1;
       await load();
       return result;
     }
     if (result.kind === "switched") {
+      mutationEpoch += 1;
+      restoredContextKeys.add(contextKey(result.session.routeContext));
       channel?.postMessage({ type: "work-session-changed" });
       await load();
     }
@@ -193,6 +206,7 @@ export function useWorkbenchSessionSwitcher(input: {
       session,
       close: closeWorkSession,
       onClosed: (closed) => {
+        mutationEpoch += 1;
         sessions.value = sessions.value.map((item) =>
           item.sessionId === closed.sessionId ? closed : item,
         );
@@ -240,6 +254,7 @@ export function useWorkbenchSessionSwitcher(input: {
           sourceActiveItemKey: input.activeItemKey?.value ?? null,
           sourceContextMode: input.contextMode?.value ?? null,
         });
+        mutationEpoch += 1;
         const href = input.router.resolve(
           toRouteLocation(target.routeContext),
         ).href;
@@ -307,7 +322,12 @@ export function useWorkbenchSessionSwitcher(input: {
     channel?.removeEventListener("message", refresh);
     channel?.close();
   });
-  watch(input.currentContext, () => void ensureAndRestoreCurrent());
+  watch(input.currentContext, () => {
+    void ensureAndRestoreCurrent().catch((caught) => {
+      error.value =
+        caught instanceof Error ? caught.message : "工作现场没有建立";
+    });
+  });
 
   return {
     sessions: readonly(sessions),

@@ -10,6 +10,7 @@ import {
 import { toWorkSessionV1 } from "./open-work-session.service";
 import { assertExactKeys } from "./work-session-request-validation";
 import { throwWorkSessionHttpError } from "./work-session-errors";
+import { WorkSessionConflictError } from "../domain/work-session";
 
 @Injectable()
 export class CloseWorkSessionService {
@@ -33,6 +34,19 @@ export class CloseWorkSessionService {
       throw new Error("VALIDATION_FORMAT: contractVersion");
     }
     try {
+      const session = await this.repository.findById(
+        input.tenantId,
+        input.actorId,
+        input.sessionId,
+      );
+      if (session?.status === "browser_held") {
+        throw new WorkSessionConflictError(
+          "WORK_SESSION_BROWSER_HELD_CLOSE_REQUIRES_ORIGINAL_TAB",
+        );
+      }
+      if (session?.status === "closed") {
+        throw new WorkSessionConflictError("WORK_SESSION_CLOSED_TERMINAL");
+      }
       return toWorkSessionV1(
         await this.repository.close({
           tenantId: input.tenantId,

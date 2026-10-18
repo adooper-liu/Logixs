@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import type { WorkSessionPageV1 } from "@logix/contracts";
 import {
   WORK_SESSION_REPOSITORY,
@@ -54,7 +54,7 @@ export class ListWorkSessionsService {
 function parseIncludeClosed(value: string | undefined): boolean {
   if (value === undefined || value === "false") return false;
   if (value === "true") return true;
-  throw new Error("VALIDATION_FORMAT: includeClosed");
+  throw new BadRequestException("VALIDATION_FORMAT: includeClosed");
 }
 
 function parsePageSize(value: string | undefined): number {

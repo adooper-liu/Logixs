@@ -102,6 +102,68 @@ describe("useWorkbenchSessionSwitcher", () => {
     wrapper.unmount();
   });
 
+  it("completes first-load recovery after mount fails and a background load succeeds", async () => {
+    const current = session("selection", "current", SELECTION_CONTEXT);
+    vi.mocked(listWorkSessions)
+      .mockRejectedValueOnce(new Error("首次读取失败"))
+      .mockResolvedValue(sessionPage([current]));
+    const restorePointer = vi.fn();
+    const { wrapper } = mountSwitcher({ restorePointer });
+
+    await flushPromises();
+    expect(restorePointer).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new Event("focus"));
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledWith(current);
+
+    document.dispatchEvent(new Event("visibilitychange"));
+    TestBroadcastChannel.instances[0]!.emit();
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it("restores the pointer once for each newly current route context", async () => {
+    const contextB: WorkSessionRouteContextV1 = {
+      kind: "product_selection.v1",
+      handoffId: "44444444-4444-4444-8444-444444444444",
+    };
+    const contextKeyB =
+      "product_selection|product_initiative_handoff:44444444-4444-4444-8444-444444444444";
+    const currentA = session("selection-a", "current", SELECTION_CONTEXT);
+    const currentB = {
+      ...session("selection-b", "current", contextKeyB),
+      routeContext: contextB,
+      subjectRef: {
+        kind: "product_initiative_handoff" as const,
+        id: contextB.handoffId,
+      },
+    };
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([currentA]))
+      .mockResolvedValue(sessionPage([currentB]));
+    const restorePointer = vi.fn();
+    const { currentContext, result, wrapper } = mountSwitcher({
+      restorePointer,
+    });
+
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledOnce();
+
+    await result.load();
+    currentContext.value = contextB;
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledTimes(2);
+    expect(restorePointer).toHaveBeenLastCalledWith(currentB);
+
+    window.dispatchEvent(new Event("focus"));
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledTimes(2);
+    wrapper.unmount();
+  });
+
   it("keeps closed history when re-entering the same context", async () => {
     const otherCurrent = session("stuffing", "current", "other-context");
     const closed = session("closed-selection", "closed", SELECTION_CONTEXT);
@@ -137,6 +199,38 @@ describe("useWorkbenchSessionSwitcher", () => {
       session: closed,
       message: "工作现场已关闭，但列表刷新失败，请重新加载",
     });
+    expect(
+      result.sessions.value.find(
+        ({ sessionId }) => sessionId === target.sessionId,
+      ),
+    ).toEqual(closed);
+    wrapper.unmount();
+  });
+
+  it("does not let a pre-close list response resurrect a closed session", async () => {
+    const current = session("selection", "current", SELECTION_CONTEXT);
+    const target = session("stuffing", "resumable", "other-context");
+    const closed = { ...target, status: "closed" as const, version: 2 };
+    const staleList = deferred<ReturnType<typeof sessionPage>>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([current, target]))
+      .mockImplementationOnce(() => staleList.promise)
+      .mockRejectedValueOnce(new Error("列表暂时不可用"));
+    vi.mocked(closeWorkSession).mockResolvedValue(closed);
+    const { result, wrapper } = mountSwitcher();
+    await flushPromises();
+
+    const oldLoad = result.load();
+    await Promise.resolve();
+    const closeResult = result.close(target);
+    await flushPromises();
+    await expect(closeResult).resolves.toMatchObject({
+      kind: "closed",
+      session: closed,
+    });
+
+    staleList.resolve(sessionPage([current, target]));
+    await oldLoad;
     expect(
       result.sessions.value.find(
         ({ sessionId }) => sessionId === target.sessionId,
@@ -237,6 +331,14 @@ function sessionPage(items: WorkSessionV1[]) {
     pageSize: 50,
     nextCursor: null,
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
 
 void activateWorkSession;

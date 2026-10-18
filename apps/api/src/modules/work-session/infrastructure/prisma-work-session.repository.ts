@@ -107,6 +107,9 @@ export class PrismaWorkSessionRepository implements WorkSessionRepository {
   ) {
     const current = await this.requireOwned(input);
     if (current.version !== input.expectedVersion) conflict();
+    if (current.status === "closed") {
+      throw new WorkSessionConflictError("WORK_SESSION_CLOSED_TERMINAL");
+    }
     const row = await this.prisma.workSession.update({
       where: { id: current.id },
       data: {
@@ -241,6 +244,14 @@ export class PrismaWorkSessionRepository implements WorkSessionRepository {
       throw new WorkSessionConflictError(
         "WORK_SESSION_CURRENT_CLOSE_REQUIRES_SWITCH",
       );
+    }
+    if (current.status === "browser_held") {
+      throw new WorkSessionConflictError(
+        "WORK_SESSION_BROWSER_HELD_CLOSE_REQUIRES_ORIGINAL_TAB",
+      );
+    }
+    if (current.status === "closed") {
+      throw new WorkSessionConflictError("WORK_SESSION_CLOSED_TERMINAL");
     }
     const row = await this.prisma.workSession.update({
       where: { id: current.id },

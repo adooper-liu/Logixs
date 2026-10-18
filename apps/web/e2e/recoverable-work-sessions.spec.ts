@@ -7,6 +7,8 @@ const CONTAINER = "66666666-6666-4666-8666-666666666666";
 const TASK = "77777777-7777-4777-8777-777777777777";
 const SELECTION_SESSION = "88888888-8888-4888-8888-888888888888";
 const STUFFING_SESSION = "99999999-9999-4999-8999-999999999999";
+const FORMAL_REVIEW_POINT = "正式评审要点 A";
+const DRAFT_REVIEW_POINT = "服务端草稿评审要点 B";
 
 for (const target of ["product-selection", "stuffing"] as const) {
   test(`${target} renders truthful recoverable-session UI without overflow`, async ({
@@ -95,15 +97,16 @@ for (const status of [403, 404, 409] as const) {
       targetReadStatus: status,
     });
     const originalUrl = await openDirtyProductSelection(page);
+    const before = await productSelectionHoldState(page);
 
     await chooseStuffingAndSave(page);
 
-    await expect(page).toHaveURL(originalUrl);
-    await expect(page.getByLabel("目标结果")).toHaveValue("尚未保存的目标结果");
-    await expectUniqueCurrent(page, SELECTION_SESSION);
     await expect(
       page.getByRole("dialog", { name: "工作现场切换" }).getByRole("alert"),
     ).toContainText(String(status));
+    await expectProductSelectionHoldState(page, before);
+    await expect(page).toHaveURL(originalUrl);
+    await expectUniqueCurrent(page, SELECTION_SESSION);
     expect(evidence.draftSaveCalls).toBe(1);
     expect(evidence.targetReadCalls).toBe(1);
     expect(evidence.activateCalls).toBe(0);
@@ -118,15 +121,16 @@ for (const status of [500, 409] as const) {
       draftSaveStatus: status,
     });
     const originalUrl = await openDirtyProductSelection(page);
+    const before = await productSelectionHoldState(page);
 
     await chooseStuffingAndSave(page);
 
-    await expect(page).toHaveURL(originalUrl);
-    await expect(page.getByLabel("目标结果")).toHaveValue("尚未保存的目标结果");
-    await expectUniqueCurrent(page, SELECTION_SESSION);
     await expect(
       page.getByRole("dialog", { name: "工作现场切换" }).getByRole("alert"),
     ).toContainText(String(status));
+    await expectProductSelectionHoldState(page, before);
+    await expect(page).toHaveURL(originalUrl);
+    await expectUniqueCurrent(page, SELECTION_SESSION);
     expect(evidence.draftSaveCalls).toBe(1);
     expect(evidence.targetReadCalls).toBe(0);
     expect(evidence.activateCalls).toBe(0);
@@ -138,13 +142,14 @@ test("activate 409 keeps the source current, route, pointer, and typed input", a
 }) => {
   const evidence = await mockRecoverableSessions(page, { activateStatus: 409 });
   const originalUrl = await openDirtyProductSelection(page);
+  const before = await productSelectionHoldState(page);
 
   await chooseStuffingAndSave(page);
 
-  await expect(page).toHaveURL(originalUrl);
-  await expect(page.getByLabel("目标结果")).toHaveValue("尚未保存的目标结果");
-  await expectUniqueCurrent(page, SELECTION_SESSION);
   await expect(page.getByRole("alert")).toContainText("409");
+  await expectProductSelectionHoldState(page, before);
+  await expect(page).toHaveURL(originalUrl);
+  await expectUniqueCurrent(page, SELECTION_SESSION);
   expect(evidence.draftSaveCalls).toBe(1);
   expect(evidence.targetReadCalls).toBe(1);
   expect(evidence.activateCalls).toBe(1);
@@ -276,7 +281,7 @@ test("typed decision draft and pointer survive switch-back and an explicit reloa
     reviewPoints: expect.arrayContaining([
       expect.objectContaining({
         code: "target_user_and_market",
-        conclusion: "正式评审要点保持",
+        conclusion: DRAFT_REVIEW_POINT,
       }),
     ]),
     businessCaseDraft: expect.arrayContaining([
@@ -316,7 +321,17 @@ test("typed decision draft and pointer survive switch-back and an explicit reloa
     targetDate: "2026-11-15",
     nextDecisionDate: "2026-10-20",
     reconsiderationDate: null,
+    reviewPoints: expect.arrayContaining([
+      expect.objectContaining({
+        code: "target_user_and_market",
+        conclusion: FORMAL_REVIEW_POINT,
+      }),
+    ]),
   });
+  await page.getByText("历史四项评审（只读，不作为五面判断）").click();
+  await expect(
+    page.getByText(FORMAL_REVIEW_POINT, { exact: false }),
+  ).toBeVisible();
   expect(evidence.draftSaveCalls).toBe(1);
   expect(evidence.lastDraftCommand).toMatchObject({
     objective: "刷新后仍在的 typed 目标",
@@ -420,6 +435,74 @@ test("stuffing new-tab transition exposes browser_held through the session API s
   expect(evidence.activateCalls).toBe(1);
 });
 
+for (const state of [
+  {
+    name: "draft-saved",
+    status: "draft_saved",
+    text: "领域草稿已保存",
+  },
+  { name: "conflict", status: "conflict", text: "冲突" },
+  {
+    name: "closed-inspection",
+    status: "closed",
+    text: "工作现场已关闭",
+  },
+  {
+    name: "browser-held",
+    status: "browser_held",
+    text: "仅此标签保留",
+  },
+] as const) {
+  test(`visual evidence keeps ${state.name} reachable without overflow`, async ({
+    page,
+  }, testInfo) => {
+    await mockRecoverableSessions(page, {
+      initialStuffingStatus: state.status,
+    });
+    await page.goto(`/workspaces/product-selection?handoffId=${HANDOFF}`);
+    await page.getByRole("button", { name: "切换工作现场" }).click();
+    if (state.status === "closed") {
+      await page.getByText("已关闭工作现场（1）").click();
+    }
+    const stateText = page.getByText(state.text, { exact: true });
+    await stateText.scrollIntoViewIfNeeded();
+    await expect(stateText).toBeVisible();
+    await expectSessionPanelFitsViewport(page);
+    await expectNoOverflow(page);
+    await expectUniqueCurrent(page, SELECTION_SESSION);
+    if (testInfo.project.name === "desktop-chromium") {
+      await expect(page).toHaveScreenshot(
+        `product-selection-${state.name}.png`,
+        { animations: "disabled", maxDiffPixelRatio: 0.03, threshold: 0.3 },
+      );
+    }
+  });
+}
+
+test("visual evidence keeps a failed switch and recovery action reachable", async ({
+  page,
+}, testInfo) => {
+  await mockRecoverableSessions(page, { draftSaveStatus: 500 });
+  await openDirtyProductSelection(page);
+  await chooseStuffingAndSave(page);
+  await expect(
+    page.getByRole("dialog", { name: "工作现场切换" }).getByRole("alert"),
+  ).toContainText("500");
+  const recovery = page.getByText("留在当前页", { exact: true });
+  await recovery.scrollIntoViewIfNeeded();
+  await expect(recovery).toBeVisible();
+  await expectSessionPanelFitsViewport(page);
+  await expectNoOverflow(page);
+  await expectUniqueCurrent(page, SELECTION_SESSION);
+  if (testInfo.project.name === "desktop-chromium") {
+    await expect(page).toHaveScreenshot("product-selection-failed-switch.png", {
+      animations: "disabled",
+      maxDiffPixelRatio: 0.03,
+      threshold: 0.3,
+    });
+  }
+});
+
 interface MockScenario {
   readonly targetReadStatus?: 401 | 403 | 404 | 409;
   readonly draftSaveStatus?: 409 | 500;
@@ -427,6 +510,7 @@ interface MockScenario {
   readonly closeStatus?: 409 | 500;
   readonly targetDomainVersion?: number;
   readonly richDraftRefresh?: boolean;
+  readonly initialStuffingStatus?: Exclude<WorkSessionStatusV1, "current">;
 }
 
 interface MockEvidence {
@@ -466,7 +550,9 @@ async function mockRecoverableSessions(
       selection,
       session(
         STUFFING_SESSION,
-        stuffingCurrent ? "current" : "resumable",
+        stuffingCurrent
+          ? "current"
+          : (scenario.initialStuffingStatus ?? "resumable"),
         "stuffing",
       ),
     ];
@@ -612,6 +698,18 @@ async function mockRecoverableSessions(
         unknown
       >;
       decisionDraft = savedDraft(evidence.lastDraftCommand);
+      if (scenario.richDraftRefresh) {
+        decisionDraft = {
+          ...decisionDraft,
+          reviewPoints: [
+            {
+              code: "target_user_and_market",
+              evidenceRefs: [],
+              conclusion: DRAFT_REVIEW_POINT,
+            },
+          ],
+        };
+      }
       await route.fulfill({ json: decisionDraft });
       return;
     }
@@ -821,7 +919,7 @@ function formalInitiative() {
       {
         code: "target_user_and_market",
         evidenceRefs: [],
-        conclusion: "正式评审要点保持",
+        conclusion: FORMAL_REVIEW_POINT,
       },
     ],
     businessCaseDraft: [],
@@ -944,6 +1042,92 @@ async function expectNoOverflow(page: Page): Promise<void> {
     scroll: document.documentElement.scrollWidth,
   }));
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 1);
+}
+
+async function expectSessionPanelFitsViewport(page: Page): Promise<void> {
+  const metrics = await page
+    .getByRole("dialog", { name: "工作现场切换" })
+    .evaluate((panel) => {
+      const rect = panel.getBoundingClientRect();
+      return {
+        clientWidth: panel.clientWidth,
+        scrollWidth: panel.scrollWidth,
+        left: rect.left,
+        right: rect.right,
+        viewportWidth: window.innerWidth,
+      };
+    });
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+  expect(metrics.left).toBeGreaterThanOrEqual(0);
+  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+}
+
+interface ProductSelectionHoldState {
+  url: string;
+  subjectRef: WorkSessionV1["subjectRef"];
+  taskRef: WorkSessionV1["taskRef"];
+  activeItemKey: string | null | undefined;
+  contextMode: string | null | undefined;
+  currentCount: number;
+  currentSessionId: string;
+  typedInput: string;
+  objectText: string;
+  activeItemText: string;
+  visibleContextMode: string | null;
+}
+
+async function productSelectionHoldState(
+  page: Page,
+): Promise<ProductSelectionHoldState> {
+  const server = await page.evaluate(async () => {
+    const response = await fetch(
+      "/api/work-sessions?pageSize=100&includeClosed=true",
+    );
+    return response.json();
+  });
+  const current = (server.items as WorkSessionV1[]).filter(
+    ({ status }) => status === "current",
+  );
+  const source = current[0]!;
+  return {
+    url: page.url(),
+    subjectRef: source.subjectRef,
+    taskRef: source.taskRef,
+    activeItemKey: source.activeItemKey,
+    contextMode: source.contextMode,
+    currentCount: current.length,
+    currentSessionId: source.sessionId,
+    typedInput: await page.getByLabel("目标结果").inputValue(),
+    objectText: await page
+      .getByRole("region", { name: "岗位、对象与责任上下文" })
+      .innerText(),
+    activeItemText: await page
+      .getByRole("navigation", { name: "立项缺口导航" })
+      .locator('[aria-current="step"]')
+      .innerText(),
+    visibleContextMode: await page
+      .locator('.workbench-layout__mobile-nav [aria-current="step"]')
+      .getAttribute("data-mobile-target"),
+  };
+}
+
+async function expectProductSelectionHoldState(
+  page: Page,
+  before: ProductSelectionHoldState,
+): Promise<void> {
+  expect(await productSelectionHoldState(page)).toEqual(before);
+  expect(before).toMatchObject({
+    subjectRef: { kind: "product_initiative_handoff", id: HANDOFF },
+    taskRef: null,
+    activeItemKey: "objective",
+    contextMode: "context",
+    currentCount: 1,
+    currentSessionId: SELECTION_SESSION,
+    typedInput: "尚未保存的目标结果",
+    visibleContextMode: "context",
+  });
+  expect(before.objectText).toContain("宠物出行品类");
+  expect(before.activeItemText).toContain("责任与资源");
 }
 
 async function openDirtyProductSelection(page: Page): Promise<string> {
