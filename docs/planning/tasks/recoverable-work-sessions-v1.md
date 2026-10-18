@@ -773,6 +773,7 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 64d769e0 | fresh 增量复审确认 activate 已成功但 navigate/restore 失败时未推进 epoch，旧 list 可回退 current；接受 `WS6R4-ACTIVATE-EPOCH-01`，下发 `WS6R5`                                                                             |
 | 2026-10-18 | fix    | Codex / GPT-5     | 53fd8066 | `WS6R5` 在 activate 确认时推进 epoch、广播并启动 pointer-neutral reload；导航/恢复失败返回服务端已切换的分阶段事实，旧 list 不再回退 current；四场景 deferred 回归与受影响 Web 113/113 通过                                |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 53fd8066 | fresh 增量复审确认 post-activation list 先于 route 提交时 route watcher 与显式流程会双重 restore；接受 `WS6R5-RESTORE-RACE-01`，下发 `WS6R6`                                                                               |
+| 2026-10-18 | fix    | Codex / GPT-5     | pending  | `WS6R6` 为普通切换建立按 context 隔离的短期 explicit restore ownership；list/route 两种顺序均只恢复一次，navigate/restore 失败清理后仍可明确重入恢复；受影响 Web 116/116 通过                                              |
 
 ## WS6R3 实现证据（2026-10-18）
 
@@ -797,6 +798,14 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 - **重复恢复 RED/GREEN**：路由先更新且新 epoch list 在显式 restore 完成前返回时，focused 测试 RED 为 1 failed / 11 passed，`restorePointer` 实际 2 次；将 activate 后的 authoritative reload 标记为 pointer-neutral 后为 3 files / 31 tests passed，restore 严格 1 次，只有显式恢复成功才登记目标 context 已恢复。
 - **真实反馈**：新增 `activated-local-failed` 结果，区分 `navigate` 与 `restore`，并分别显示“服务端已切换工作现场，但本页导航/恢复失败，请按当前工作现场重新进入”；activate API 失败继续返回原错误，不推进 epoch、不广播、不导航或恢复。
 - **受影响回归**：API client、session helpers、switcher composable/component、typed decision composable 与选品工作台合计 6 files / 113 tests passed；Web lint 与 typecheck 通过。未修改 API、公共契约、Schema、迁移、分页、OIDC、typed draft、E2E 或截图。
+
+## WS6R6 实现证据（2026-10-18）
+
+- **竞争 RED**：`pnpm --filter @logix/web test -- src/work-session/useWorkbenchSessionSwitcher.test.ts src/work-session/useWorkSessions.test.ts` 为 2 failed / 24 passed。post-mutation list 在 pending navigation 前先写入 B=current 后，route watcher 与显式流程都调用 `restorePointer(B)`；成功与首次 restore 失败场景均在重入前实际调用 2 次。
+- **顺序 GREEN**：list-before-route 与 route-before-list 都保持 activate 1 次、Broadcast 1 次、post-mutation list 1 次、`restorePointer(B)` 1 次并返回 `switched`；mutation 前 list 最后返回时不覆盖 B=current。focused 为 2 files / 26 tests passed。
+- **失败清理与重试**：首次 explicit restore 拒绝时只调用 1 次并保持 `activated-local-failed / stage=restore`，B 仍为 current；owner 清理且 B 不进入 restored 集合，随后 context 明确离开再进入时允许第 2 次 restore 成功，后续 background load 不产生第 3 次。navigate 拒绝时本次 restore 为 0，后续进入 B 恢复 1 次且后台不重复。
+- **最小实现**：activate 确认时为目标 context 登记只解析、不拒绝的短期 owner promise；同 context watcher 只等待 owner，其他 context 仍使用既有 `contextRecoveries`。`try/finally` 在成功、navigate 失败和 restore 失败后按 identity 清理 owner；只有显式 restore 成功才登记 `restoredContextKeys`。
+- **受影响回归**：API client、session helpers、switcher composable/component、typed decision composable与选品工作台合计 6 files / 116 tests passed；Web lint 与 typecheck 通过。未修改 `useWorkSessions`、组件文案、API、公共契约、Schema、迁移、分页、OIDC、typed draft、E2E 或截图。
 
 ## 最终验证记录（2026-10-14）
 

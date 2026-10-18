@@ -422,10 +422,11 @@ describe("useWorkbenchSessionSwitcher", () => {
     wrapper.unmount();
   });
 
-  it("advances one epoch and reloads once after a successful activation", async () => {
+  it("shares explicit restore ownership when the post-mutation list finishes before navigation", async () => {
     const { source, target, activated } = switchSessions();
     const staleList = deferred<ReturnType<typeof sessionPage>>();
     const postMutationList = deferred<ReturnType<typeof sessionPage>>();
+    const navigation = deferred<void>();
     const restored = deferred<void>();
     vi.mocked(listWorkSessions)
       .mockResolvedValueOnce(sessionPage([source, target]))
@@ -434,6 +435,7 @@ describe("useWorkbenchSessionSwitcher", () => {
     vi.mocked(activateWorkSession).mockResolvedValue(activated);
     const routeContext = shallowRef<WorkSessionRouteContextV1 | null>(null);
     const replace = vi.fn(async () => {
+      await navigation.promise;
       routeContext.value = target.routeContext;
     });
     const restorePointer = vi.fn(() => restored.promise);
@@ -453,6 +455,11 @@ describe("useWorkbenchSessionSwitcher", () => {
       sessionPage([activated, { ...source, status: "resumable" }]),
     );
     await flushPromises();
+    expect(result.current.value).toEqual(activated);
+    expect(restorePointer).not.toHaveBeenCalled();
+
+    navigation.resolve(undefined);
+    await flushPromises();
     restored.resolve(undefined);
     const selectionResult = await selection;
     staleList.resolve(sessionPage([source, target]));
@@ -465,6 +472,162 @@ describe("useWorkbenchSessionSwitcher", () => {
     expect(replace).toHaveBeenCalledOnce();
     expect(restorePointer).toHaveBeenCalledOnce();
     expect(restorePointer).toHaveBeenCalledWith(activated);
+    expect(listWorkSessions).toHaveBeenCalledTimes(3);
+    expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it("restores once when navigation commits before the post-mutation list", async () => {
+    const { source, target, activated } = switchSessions();
+    const staleList = deferred<ReturnType<typeof sessionPage>>();
+    const postMutationList = deferred<ReturnType<typeof sessionPage>>();
+    const restored = deferred<void>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([source, target]))
+      .mockImplementationOnce(() => staleList.promise)
+      .mockImplementationOnce(() => postMutationList.promise);
+    vi.mocked(activateWorkSession).mockResolvedValue(activated);
+    const routeContext = shallowRef<WorkSessionRouteContextV1 | null>(null);
+    const replace = vi.fn(async () => {
+      routeContext.value = target.routeContext;
+    });
+    const restorePointer = vi.fn(() => restored.promise);
+    const { result, wrapper } = mountSwitcher({
+      currentContextRef: routeContext,
+      replace,
+      restorePointer,
+    });
+    await flushPromises();
+
+    const staleLoad = result.load();
+    await flushPromises();
+    const selection = result.select(target);
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    restored.resolve(undefined);
+    await flushPromises();
+    postMutationList.resolve(
+      sessionPage([activated, { ...source, status: "resumable" }]),
+    );
+    const selectionResult = await selection;
+    staleList.resolve(sessionPage([source, target]));
+    await staleLoad;
+    await flushPromises();
+
+    expect(selectionResult).toEqual({ kind: "switched", session: activated });
+    expect(result.current.value).toEqual(activated);
+    expect(activateWorkSession).toHaveBeenCalledOnce();
+    expect(replace).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledWith(activated);
+    expect(listWorkSessions).toHaveBeenCalledTimes(3);
+    expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it("clears failed restore ownership so an explicit re-entry can retry once", async () => {
+    const { source, target, activated } = switchSessions();
+    const postMutationList = deferred<ReturnType<typeof sessionPage>>();
+    const navigation = deferred<void>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([source, target]))
+      .mockImplementationOnce(() => postMutationList.promise)
+      .mockResolvedValue(
+        sessionPage([activated, { ...source, status: "resumable" }]),
+      );
+    vi.mocked(activateWorkSession).mockResolvedValue(activated);
+    const routeContext = shallowRef<WorkSessionRouteContextV1 | null>(null);
+    const replace = vi.fn(async () => {
+      await navigation.promise;
+      routeContext.value = target.routeContext;
+    });
+    const restorePointer = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("恢复指针失败"))
+      .mockResolvedValue(undefined);
+    const { result, wrapper } = mountSwitcher({
+      currentContextRef: routeContext,
+      replace,
+      restorePointer,
+    });
+    await flushPromises();
+
+    const selection = result.select(target);
+    await flushPromises();
+    postMutationList.resolve(
+      sessionPage([activated, { ...source, status: "resumable" }]),
+    );
+    await flushPromises();
+    navigation.resolve(undefined);
+    const selectionResult = await selection;
+    await flushPromises();
+
+    expect(selectionResult).toMatchObject({
+      kind: "activated-local-failed",
+      session: activated,
+      stage: "restore",
+    });
+    expect(result.current.value).toEqual(activated);
+    expect(restorePointer).toHaveBeenCalledOnce();
+
+    routeContext.value = null;
+    await flushPromises();
+    routeContext.value = target.routeContext;
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledTimes(2);
+    expect(restorePointer).toHaveBeenLastCalledWith(activated);
+
+    await result.load();
+    expect(restorePointer).toHaveBeenCalledTimes(2);
+    expect(activateWorkSession).toHaveBeenCalledOnce();
+    expect(listWorkSessions).toHaveBeenCalledTimes(3);
+    expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it("clears navigation-failure ownership so a later entry can restore", async () => {
+    const { source, target, activated } = switchSessions();
+    const postMutationList = deferred<ReturnType<typeof sessionPage>>();
+    vi.mocked(listWorkSessions)
+      .mockResolvedValueOnce(sessionPage([source, target]))
+      .mockImplementationOnce(() => postMutationList.promise)
+      .mockResolvedValue(
+        sessionPage([activated, { ...source, status: "resumable" }]),
+      );
+    vi.mocked(activateWorkSession).mockResolvedValue(activated);
+    const routeContext = shallowRef<WorkSessionRouteContextV1 | null>(null);
+    const replace = vi.fn().mockRejectedValue(new Error("路由不可用"));
+    const restorePointer = vi.fn().mockResolvedValue(undefined);
+    const { result, wrapper } = mountSwitcher({
+      currentContextRef: routeContext,
+      replace,
+      restorePointer,
+    });
+    await flushPromises();
+
+    const selection = result.select(target);
+    await flushPromises();
+    postMutationList.resolve(
+      sessionPage([activated, { ...source, status: "resumable" }]),
+    );
+    const selectionResult = await selection;
+
+    expect(selectionResult).toMatchObject({
+      kind: "activated-local-failed",
+      session: activated,
+      stage: "navigate",
+    });
+    expect(result.current.value).toEqual(activated);
+    expect(restorePointer).not.toHaveBeenCalled();
+
+    routeContext.value = target.routeContext;
+    await flushPromises();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(restorePointer).toHaveBeenCalledWith(activated);
+
+    await result.load();
+    expect(restorePointer).toHaveBeenCalledOnce();
+    expect(activateWorkSession).toHaveBeenCalledOnce();
     expect(listWorkSessions).toHaveBeenCalledTimes(3);
     expect(TestBroadcastChannel.instances[0]!.postedMessages).toHaveLength(1);
     wrapper.unmount();

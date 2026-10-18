@@ -60,6 +60,7 @@ export function useWorkbenchSessionSwitcher(input: {
       : new BroadcastChannel("logix.work-sessions.v1");
   const restoredContextKeys = new Set<string>();
   const contextRecoveries = new Map<string, Promise<void>>();
+  const explicitContextRecoveries = new Map<string, Promise<void>>();
   let mutationEpoch = 0;
   let authoritativeLoad: {
     epoch: number;
@@ -135,6 +136,8 @@ export function useWorkbenchSessionSwitcher(input: {
     if (!context) return;
     const key = contextKey(context);
     if (restoredContextKeys.has(key)) return;
+    const explicitRecovery = explicitContextRecoveries.get(key);
+    if (explicitRecovery) return explicitRecovery;
     const existing = contextRecoveries.get(key);
     if (existing) return existing;
     const recovery = (async () => {
@@ -192,39 +195,59 @@ export function useWorkbenchSessionSwitcher(input: {
     const source = current.value;
     if (!source) return { kind: "failed", message: "当前工作现场尚未建立" };
     let postActivationLoad: Promise<boolean> | null = null;
-    const result = await switchWorkSession({
-      source,
-      target,
-      adapter: input.adapter,
-      activate: activate,
-      onActivated: () => {
-        mutationEpoch += 1;
-        channel?.postMessage({ type: "work-session-changed" });
-        postActivationLoad = load(false);
-      },
-      navigate: (context) => input.router.replace(toRouteLocation(context)),
-    });
-    if (result.kind === "conflict") {
-      await updateWorkSession(target.sessionId, {
-        contractVersion: "work-session-update.v1",
-        expectedVersion: target.version,
-        status: "conflict",
-        domainVersionSeen: result.latestVersion,
+    const explicitRecoveryOwner: { value: ExplicitRecoveryOwner | null } = {
+      value: null,
+    };
+    try {
+      const result = await switchWorkSession({
+        source,
+        target,
+        adapter: input.adapter,
+        activate: activate,
+        onActivated: (activated) => {
+          explicitRecoveryOwner.value = createExplicitRecoveryOwner(
+            contextKey(activated.routeContext),
+          );
+          explicitContextRecoveries.set(
+            explicitRecoveryOwner.value.key,
+            explicitRecoveryOwner.value.promise,
+          );
+          mutationEpoch += 1;
+          channel?.postMessage({ type: "work-session-changed" });
+          postActivationLoad = load(false);
+        },
+        navigate: (context) => input.router.replace(toRouteLocation(context)),
       });
-      mutationEpoch += 1;
-      await load();
+      if (result.kind === "conflict") {
+        await updateWorkSession(target.sessionId, {
+          contractVersion: "work-session-update.v1",
+          expectedVersion: target.version,
+          status: "conflict",
+          domainVersionSeen: result.latestVersion,
+        });
+        mutationEpoch += 1;
+        await load();
+        return result;
+      }
+      if (result.kind === "switched") {
+        restoredContextKeys.add(contextKey(result.session.routeContext));
+      }
+      if (
+        result.kind === "switched" ||
+        result.kind === "activated-local-failed"
+      ) {
+        await postActivationLoad;
+      }
       return result;
+    } finally {
+      const owner = explicitRecoveryOwner.value;
+      if (owner) {
+        if (explicitContextRecoveries.get(owner.key) === owner.promise) {
+          explicitContextRecoveries.delete(owner.key);
+        }
+        owner.release();
+      }
     }
-    if (result.kind === "switched") {
-      restoredContextKeys.add(contextKey(result.session.routeContext));
-    }
-    if (
-      result.kind === "switched" ||
-      result.kind === "activated-local-failed"
-    ) {
-      await postActivationLoad;
-    }
-    return result;
   }
 
   async function close(
@@ -373,4 +396,18 @@ function contextKey(context: WorkSessionRouteContextV1): string {
   return context.kind === "product_selection.v1"
     ? `product_selection|product_initiative_handoff:${context.handoffId}`
     : `stuffing|container:${context.containerId}|task:${context.taskId}`;
+}
+
+interface ExplicitRecoveryOwner {
+  key: string;
+  promise: Promise<void>;
+  release(): void;
+}
+
+function createExplicitRecoveryOwner(key: string): ExplicitRecoveryOwner {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { key, promise, release };
 }
