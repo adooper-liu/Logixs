@@ -13,6 +13,7 @@ import type {
 } from "@logix/contracts";
 import {
   activateWorkSession,
+  closeWorkSession,
   listWorkSessions,
   openWorkSession,
   updateWorkSession,
@@ -28,6 +29,9 @@ import type {
 } from "./workSessionAdapter";
 import {
   switchWorkSession,
+  closeWorkSessionAndReload,
+  hasLiveWorkSessionContext,
+  type CloseWorkSessionResult,
   type SwitchWorkSessionResult,
 } from "./useWorkSessions";
 
@@ -54,6 +58,15 @@ export function useWorkbenchSessionSwitcher(input: {
     typeof BroadcastChannel === "undefined"
       ? null
       : new BroadcastChannel("logix.work-sessions.v1");
+  const restoredContextKeys = new Set<string>();
+  const contextRecoveries = new Map<string, Promise<void>>();
+  const explicitContextRecoveries = new Map<string, Promise<void>>();
+  let mutationEpoch = 0;
+  let authoritativeLoad: {
+    epoch: number;
+    restoreCurrent: boolean;
+    promise?: Promise<boolean>;
+  } | null = null;
   const refresh = () => void load();
   channel?.addEventListener("message", refresh);
 
@@ -66,11 +79,30 @@ export function useWorkbenchSessionSwitcher(input: {
     );
   });
 
-  async function load(): Promise<void> {
+  function load(restoreCurrent = true): Promise<boolean> {
+    const epoch = mutationEpoch;
+    if (authoritativeLoad?.epoch === epoch && authoritativeLoad.promise) {
+      return authoritativeLoad.promise;
+    }
+    const flight: NonNullable<typeof authoritativeLoad> = {
+      epoch,
+      restoreCurrent,
+    };
+    authoritativeLoad = flight;
+    flight.promise = runLoad(flight);
+    return flight.promise;
+  }
+
+  async function runLoad(
+    flight: NonNullable<typeof authoritativeLoad>,
+  ): Promise<boolean> {
     loading.value = true;
     error.value = "";
     try {
-      const page = await listWorkSessions();
+      const page = await listWorkSessions({ includeClosed: true });
+      if (flight.epoch !== mutationEpoch) {
+        return true;
+      }
       sessions.value = page.items;
       const serverCurrent = page.items.find(
         (session) => session.status === "current",
@@ -79,12 +111,49 @@ export function useWorkbenchSessionSwitcher(input: {
         window.sessionStorage,
         serverCurrent?.sessionId ?? null,
       );
-      await ensureCurrent();
+      if (flight.restoreCurrent) await ensureAndRestoreCurrent();
+      return true;
     } catch (caught) {
-      error.value =
-        caught instanceof Error ? caught.message : "工作现场没有加载";
+      if (authoritativeLoad === flight) {
+        error.value =
+          caught instanceof Error ? caught.message : "工作现场没有加载";
+      }
+      return false;
     } finally {
-      loading.value = false;
+      if (authoritativeLoad === flight) {
+        authoritativeLoad = null;
+        loading.value = false;
+      }
+    }
+  }
+
+  async function initialize(): Promise<void> {
+    await load();
+  }
+
+  async function ensureAndRestoreCurrent(): Promise<void> {
+    const context = input.currentContext.value;
+    if (!context) return;
+    const key = contextKey(context);
+    if (restoredContextKeys.has(key)) return;
+    const explicitRecovery = explicitContextRecoveries.get(key);
+    if (explicitRecovery) return explicitRecovery;
+    const existing = contextRecoveries.get(key);
+    if (existing) return existing;
+    const recovery = (async () => {
+      await ensureCurrent();
+      const pageCurrent = sessions.value.find(
+        (session) => session.contextKey === key && session.status === "current",
+      );
+      if (!pageCurrent) return;
+      await input.adapter.restorePointer(pageCurrent);
+      restoredContextKeys.add(key);
+    })();
+    contextRecoveries.set(key, recovery);
+    try {
+      await recovery;
+    } finally {
+      contextRecoveries.delete(key);
     }
   }
 
@@ -93,8 +162,7 @@ export function useWorkbenchSessionSwitcher(input: {
     const subjectRef = input.currentSubjectRef.value;
     if (!context || !subjectRef) return;
     const currentKey = contextKey(context);
-    if (sessions.value.some((session) => session.contextKey === currentKey))
-      return;
+    if (hasLiveWorkSessionContext(sessions.value, currentKey)) return;
     const opened = await openWorkSession({
       contractVersion: "work-session-open.v1",
       workbenchCode:
@@ -109,12 +177,14 @@ export function useWorkbenchSessionSwitcher(input: {
       contextMode: input.contextMode?.value ?? null,
       displaySummary: input.displaySummary.value,
     });
+    mutationEpoch += 1;
     sessions.value = [
       opened,
       ...sessions.value.filter(
         (session) =>
           session.sessionId !== opened.sessionId &&
-          session.contextKey !== opened.contextKey,
+          (session.contextKey !== opened.contextKey ||
+            session.status === "closed"),
       ),
     ];
   }
@@ -124,26 +194,80 @@ export function useWorkbenchSessionSwitcher(input: {
   ): Promise<SwitchWorkSessionResult> {
     const source = current.value;
     if (!source) return { kind: "failed", message: "当前工作现场尚未建立" };
-    const result = await switchWorkSession({
-      source,
-      target,
-      adapter: input.adapter,
-      activate: activate,
-      navigate: (context) => input.router.replace(toRouteLocation(context)),
-    });
-    if (result.kind === "conflict") {
-      await updateWorkSession(target.sessionId, {
-        contractVersion: "work-session-update.v1",
-        expectedVersion: target.version,
-        status: "conflict",
-        domainVersionSeen: result.latestVersion,
+    let postActivationLoad: Promise<boolean> | null = null;
+    const explicitRecoveryOwner: { value: ExplicitRecoveryOwner | null } = {
+      value: null,
+    };
+    try {
+      const result = await switchWorkSession({
+        source,
+        target,
+        adapter: input.adapter,
+        activate: activate,
+        onActivated: (activated) => {
+          explicitRecoveryOwner.value = createExplicitRecoveryOwner(
+            contextKey(activated.routeContext),
+          );
+          explicitContextRecoveries.set(
+            explicitRecoveryOwner.value.key,
+            explicitRecoveryOwner.value.promise,
+          );
+          mutationEpoch += 1;
+          channel?.postMessage({ type: "work-session-changed" });
+          postActivationLoad = load(false);
+        },
+        navigate: (context) => input.router.replace(toRouteLocation(context)),
       });
-      await load();
+      if (result.kind === "conflict") {
+        await updateWorkSession(target.sessionId, {
+          contractVersion: "work-session-update.v1",
+          expectedVersion: target.version,
+          status: "conflict",
+          domainVersionSeen: result.latestVersion,
+        });
+        mutationEpoch += 1;
+        await load();
+        return result;
+      }
+      if (result.kind === "switched") {
+        restoredContextKeys.add(contextKey(result.session.routeContext));
+      }
+      if (
+        result.kind === "switched" ||
+        result.kind === "activated-local-failed"
+      ) {
+        await postActivationLoad;
+      }
       return result;
+    } finally {
+      const owner = explicitRecoveryOwner.value;
+      if (owner) {
+        if (explicitContextRecoveries.get(owner.key) === owner.promise) {
+          explicitContextRecoveries.delete(owner.key);
+        }
+        owner.release();
+      }
     }
-    if (result.kind === "switched") {
+  }
+
+  async function close(
+    session: WorkSessionV1,
+  ): Promise<CloseWorkSessionResult> {
+    const result = await closeWorkSessionAndReload({
+      session,
+      close: closeWorkSession,
+      onClosed: (closed) => {
+        mutationEpoch += 1;
+        sessions.value = sessions.value.map((item) =>
+          item.sessionId === closed.sessionId ? closed : item,
+        );
+      },
+      reload: async () => {
+        if (!(await load())) throw new Error(error.value);
+      },
+    });
+    if (result.kind === "closed") {
       channel?.postMessage({ type: "work-session-changed" });
-      await load();
     }
     return result;
   }
@@ -181,6 +305,7 @@ export function useWorkbenchSessionSwitcher(input: {
           sourceActiveItemKey: input.activeItemKey?.value ?? null,
           sourceContextMode: input.contextMode?.value ?? null,
         });
+        mutationEpoch += 1;
         const href = input.router.resolve(
           toRouteLocation(target.routeContext),
         ).href;
@@ -240,7 +365,7 @@ export function useWorkbenchSessionSwitcher(input: {
   onMounted(() => {
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
-    void load();
+    void initialize();
   });
   onBeforeUnmount(() => {
     window.removeEventListener("focus", refresh);
@@ -248,7 +373,12 @@ export function useWorkbenchSessionSwitcher(input: {
     channel?.removeEventListener("message", refresh);
     channel?.close();
   });
-  watch(input.currentContext, () => void ensureCurrent());
+  watch(input.currentContext, () => {
+    void ensureAndRestoreCurrent().catch((caught) => {
+      error.value =
+        caught instanceof Error ? caught.message : "工作现场没有建立";
+    });
+  });
 
   return {
     sessions: readonly(sessions),
@@ -257,6 +387,7 @@ export function useWorkbenchSessionSwitcher(input: {
     error: readonly(error),
     load,
     select,
+    close,
     resolveChoice,
   };
 }
@@ -265,4 +396,18 @@ function contextKey(context: WorkSessionRouteContextV1): string {
   return context.kind === "product_selection.v1"
     ? `product_selection|product_initiative_handoff:${context.handoffId}`
     : `stuffing|container:${context.containerId}|task:${context.taskId}`;
+}
+
+interface ExplicitRecoveryOwner {
+  key: string;
+  promise: Promise<void>;
+  release(): void;
+}
+
+function createExplicitRecoveryOwner(key: string): ExplicitRecoveryOwner {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { key, promise, release };
 }

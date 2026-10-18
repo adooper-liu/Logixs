@@ -1,4 +1,4 @@
-import { Injectable, Optional } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
   canonicalStringify,
@@ -72,6 +72,7 @@ function mapStatus(row: {
 @Injectable()
 export class PrismaFullChainLandingRepository implements FullChainLandingRepository {
   constructor(
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
     @Optional()
     private readonly testHooks: { failAfterRecordType?: FailurePoint } = {},

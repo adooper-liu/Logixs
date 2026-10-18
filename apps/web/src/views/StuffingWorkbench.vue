@@ -195,6 +195,7 @@ async function reloadWorkbench(): Promise<void> {
       <WorkbenchSessionSwitcher
         :sessions="workSessions.sessions.value"
         :on-select="workSessions.select"
+        :on-close="workSessions.close"
         :on-resolve-choice="workSessions.resolveChoice"
       />
     </template>

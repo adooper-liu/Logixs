@@ -165,6 +165,110 @@ describe("product initiative persistence flow", () => {
     ).not.toBeNull();
   });
 
+  it("round-trips non-empty typed draft without changing formal facts or outbox", async () => {
+    const opportunity = await seedOpportunity();
+    const formal = await initiatives.persistDecision({
+      tenantId: opportunity.tenantId,
+      actorId: "selector-1",
+      handoffId: opportunity.handoffId,
+      command: decide(
+        { handoffId: opportunity.handoffId },
+        {
+          outcome: "defer",
+          objective: "正式目标保持不变",
+          validationFocus: "等待真实复购证据",
+          reconsiderationDate: "2027-01-15",
+        },
+      ),
+    });
+    const formalBefore = await prisma.productInitiative.findUniqueOrThrow({
+      where: { id: formal.record.initiativeId },
+    });
+    const outboxBefore = await prisma.outboxMessage.findMany({
+      where: { tenantId: opportunity.tenantId },
+      orderBy: { createdAt: "asc" },
+    });
+    const draft = {
+      reviewPoints: [
+        {
+          code: "target_user_and_market" as const,
+          evidenceRefs: [],
+          conclusion: "先确认高频出行用户的真实使用频次",
+        },
+      ],
+      businessCaseDraft: [
+        {
+          dimensionCode: "customer_need" as const,
+          decision: "validate_before_investment" as const,
+          conclusion: "需求方向存在，但复购依据仍需补齐",
+          evidenceRefs: [],
+          criticalUnknown: "家庭多宠场景是否愿意支付溢价",
+        },
+      ],
+      riskAssessmentDraft: [
+        {
+          riskCode: "compliance" as const,
+          applicability: "applicable" as const,
+          applicabilityReason: null,
+          investmentDecision: "validate_before_investment" as const,
+          conclusion: "需核对目标市场标签要求",
+          evidenceRefs: [],
+          criticalUnknown: "标签测试周期",
+        },
+      ],
+      unitEconomicsDraft: completeUnitEconomicsDraft(),
+    };
+
+    const saved = await saveDrafts.execute({
+      tenantId: opportunity.tenantId,
+      actorId: "selector-1",
+      handoffId: opportunity.handoffId,
+      command: {
+        contractVersion: "product-initiative-decision-draft-save.v1",
+        expectedDraftVersion: 0,
+        initiativeVersionSeen: formal.record.version,
+        objective: "草稿中的候选目标",
+        ...draft,
+        negativeConservativeReason: "草稿先记录保守情景解释",
+        idempotencyKey: `draft-round-trip:${opportunity.handoffId}`,
+      },
+    });
+    const persisted =
+      await prisma.productInitiativeDecisionDraft.findUniqueOrThrow({
+        where: {
+          tenantId_handoffId: {
+            tenantId: opportunity.tenantId,
+            handoffId: opportunity.handoffId,
+          },
+        },
+      });
+
+    expect(saved).toMatchObject({
+      draftVersion: 1,
+      initiativeVersionSeen: formal.record.version,
+      objective: "草稿中的候选目标",
+      ...draft,
+      negativeConservativeReason: "草稿先记录保守情景解释",
+    });
+    expect(persisted).toMatchObject({
+      draftVersion: 1,
+      initiativeVersionSeen: formal.record.version,
+      objective: "草稿中的候选目标",
+      negativeConservativeReason: "草稿先记录保守情景解释",
+    });
+    await expect(
+      prisma.productInitiative.findUniqueOrThrow({
+        where: { id: formal.record.initiativeId },
+      }),
+    ).resolves.toEqual(formalBefore);
+    await expect(
+      prisma.outboxMessage.findMany({
+        where: { tenantId: opportunity.tenantId },
+        orderBy: { createdAt: "asc" },
+      }),
+    ).resolves.toEqual(outboxBefore);
+  });
+
   it("只引用当前租户当前来源信号的真实证据时可立项", async () => {
     const opportunity = await seedOpportunity();
     const evidenceId = await seedSignalEvidence(

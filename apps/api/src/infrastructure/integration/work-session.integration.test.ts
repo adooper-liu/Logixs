@@ -118,6 +118,137 @@ describe("recoverable work session persistence", () => {
       }),
     ).rejects.toThrow("WORK_SESSION_CURRENT_CLOSE_REQUIRES_SWITCH");
   });
+
+  it("keeps browser-held sessions unchanged when a close is attempted", async () => {
+    await prisma.workSession.deleteMany({ where: { tenantId } });
+    await repository.openOrFocus(productSelectionInput(handoffA));
+    const resumable = await repository.openOrFocus(
+      productSelectionInput(handoffB),
+    );
+    const browserHeld = await repository.updatePointer({
+      tenantId,
+      actorId,
+      sessionId: resumable.record.sessionId,
+      expectedVersion: resumable.record.version,
+      status: "browser_held",
+    });
+
+    await expect(
+      repository.close({
+        tenantId,
+        actorId,
+        sessionId: browserHeld.sessionId,
+        expectedVersion: browserHeld.version,
+      }),
+    ).rejects.toThrow("WORK_SESSION_BROWSER_HELD_CLOSE_REQUIRES_ORIGINAL_TAB");
+    await expect(
+      repository.findById(tenantId, actorId, browserHeld.sessionId),
+    ).resolves.toMatchObject({
+      status: "browser_held",
+      version: browserHeld.version,
+    });
+  });
+
+  it("keeps closed terminal and reopens the same context as a new session", async () => {
+    await prisma.workSession.deleteMany({ where: { tenantId } });
+    await repository.openOrFocus(productSelectionInput(handoffA));
+    const resumable = await repository.openOrFocus(
+      productSelectionInput(handoffB),
+    );
+    const closed = await repository.close({
+      tenantId,
+      actorId,
+      sessionId: resumable.record.sessionId,
+      expectedVersion: resumable.record.version,
+    });
+
+    for (const status of ["resumable", "browser_held", "conflict"] as const) {
+      await expect(
+        repository.updatePointer({
+          tenantId,
+          actorId,
+          sessionId: closed.sessionId,
+          expectedVersion: closed.version,
+          status,
+        }),
+      ).rejects.toThrow("WORK_SESSION_CLOSED_TERMINAL");
+    }
+    await expect(
+      repository.close({
+        tenantId,
+        actorId,
+        sessionId: closed.sessionId,
+        expectedVersion: closed.version,
+      }),
+    ).rejects.toThrow("WORK_SESSION_CLOSED_TERMINAL");
+    await expect(
+      repository.findById(tenantId, actorId, closed.sessionId),
+    ).resolves.toMatchObject({ status: "closed", version: closed.version });
+
+    const reopened = await repository.openOrFocus(
+      productSelectionInput(handoffB),
+    );
+    expect(reopened.record.sessionId).not.toBe(closed.sessionId);
+    expect(reopened.record.contextKey).toBe(closed.contextKey);
+    const history = await repository.list({
+      tenantId,
+      actorId,
+      take: 10,
+      includeClosed: true,
+    });
+    expect(history.map(({ sessionId }) => sessionId)).toEqual(
+      expect.arrayContaining([closed.sessionId, reopened.record.sessionId]),
+    );
+  });
+
+  it("hides a closed session by default and returns it only when explicitly requested", async () => {
+    await prisma.workSession.deleteMany({ where: { tenantId } });
+    const current = await repository.openOrFocus(
+      productSelectionInput(handoffA),
+    );
+    const closable = await repository.openOrFocus(
+      productSelectionInput(handoffB),
+    );
+    await repository.close({
+      tenantId,
+      actorId,
+      sessionId: closable.record.sessionId,
+      expectedVersion: closable.record.version,
+    });
+
+    const visible = await repository.list({
+      tenantId,
+      actorId,
+      take: 10,
+      includeClosed: false,
+    });
+    const withClosed = await repository.list({
+      tenantId,
+      actorId,
+      take: 10,
+      includeClosed: true,
+    });
+
+    expect(visible.map(({ sessionId }) => sessionId)).toEqual([
+      current.record.sessionId,
+    ]);
+    expect(withClosed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sessionId: closable.record.sessionId,
+          status: "closed",
+        }),
+      ]),
+    );
+
+    const reopened = await repository.openOrFocus(
+      productSelectionInput(handoffB),
+    );
+    expect(reopened.created).toBe(true);
+    expect(reopened.record.sessionId).not.toBe(closable.record.sessionId);
+    expect(reopened.record.contextKey).toBe(closable.record.contextKey);
+    expect(reopened.record.status).toBe("resumable");
+  });
 });
 
 function activate(

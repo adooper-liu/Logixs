@@ -10,6 +10,7 @@ import {
 import { toWorkSessionV1 } from "./open-work-session.service";
 import { assertExactKeys } from "./work-session-request-validation";
 import { throwWorkSessionHttpError } from "./work-session-errors";
+import { WorkSessionConflictError } from "../domain/work-session";
 
 @Injectable()
 export class UpdateWorkSessionService {
@@ -57,6 +58,14 @@ export class UpdateWorkSessionService {
       throw new Error("VALIDATION_FORMAT: status");
     }
     try {
+      const session = await this.repository.findById(
+        input.tenantId,
+        input.actorId,
+        input.sessionId,
+      );
+      if (session?.status === "closed") {
+        throw new WorkSessionConflictError("WORK_SESSION_CLOSED_TERMINAL");
+      }
       const row = await this.repository.updatePointer({
         tenantId: input.tenantId,
         actorId: input.actorId,

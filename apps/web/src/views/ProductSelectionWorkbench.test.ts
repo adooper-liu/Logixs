@@ -99,6 +99,48 @@ describe("ProductSelectionWorkbench", () => {
     expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
   });
 
+  it("restores the current session right-panel pointer after rebuilding the page", async () => {
+    listProductOpportunities.mockResolvedValue(acceptedPage());
+    listWorkSessions.mockResolvedValue({
+      contractVersion: "work-session-page.v1",
+      items: [
+        {
+          contractVersion: "work-session.v1",
+          sessionId: "77777777-7777-4777-8777-777777777777",
+          version: 4,
+          status: "current",
+          workbenchCode: "product_selection",
+          contextKey: `product_selection|product_initiative_handoff:${HANDOFF_ID}`,
+          routeContext: {
+            kind: "product_selection.v1",
+            handoffId: HANDOFF_ID,
+          },
+          subjectRef: {
+            kind: "product_initiative_handoff",
+            id: HANDOFF_ID,
+          },
+          taskRef: null,
+          draftRef: null,
+          domainVersionSeen: 3,
+          activeItemKey: "review_points",
+          contextMode: "context",
+          displaySummary: "选品 · 加拿大站宠物出行需求上升",
+          lastOpenedAt: "2026-10-18T08:00:00.000Z",
+          createdAt: "2026-10-14T08:00:00.000Z",
+          updatedAt: "2026-10-18T08:00:00.000Z",
+        },
+      ],
+      pageSize: 50,
+      nextCursor: null,
+    });
+
+    const wrapper = await mountPage();
+
+    expect(
+      wrapper.get('[data-gap-panel="review_points"]').attributes("style"),
+    ).toBeUndefined();
+  });
+
   it("shows compact opportunity facts and keeps handoff gaps on demand", async () => {
     const wrapper = await mountPage();
 

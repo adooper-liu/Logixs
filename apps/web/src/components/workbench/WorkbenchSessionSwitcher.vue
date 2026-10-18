@@ -3,18 +3,24 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import type { WorkSessionV1 } from "@logix/contracts";
 import type { DirtyChoice } from "../../work-session/workSessionAdapter";
 import type { SwitchWorkSessionResult } from "../../work-session/useWorkSessions";
+import type { CloseWorkSessionResult } from "../../work-session/useWorkSessions";
 
 const props = withDefaults(
   defineProps<{
     sessions: readonly WorkSessionV1[];
     onSelect: (session: WorkSessionV1) => Promise<SwitchWorkSessionResult>;
+    onClose?: (session: WorkSessionV1) => Promise<CloseWorkSessionResult>;
     onResolveChoice?: (
       session: WorkSessionV1,
       choice: DirtyChoice,
     ) => Promise<SwitchWorkSessionResult>;
     triggerLabel?: string;
   }>(),
-  { triggerLabel: "切换工作现场", onResolveChoice: undefined },
+  {
+    triggerLabel: "切换工作现场",
+    onClose: undefined,
+    onResolveChoice: undefined,
+  },
 );
 
 const open = ref(false);
@@ -26,6 +32,12 @@ const trigger = ref<HTMLButtonElement | null>(null);
 const panel = ref<HTMLElement | null>(null);
 const current = computed(() =>
   props.sessions.find((session) => session.status === "current"),
+);
+const liveSessions = computed(() =>
+  props.sessions.filter((session) => session.status !== "closed"),
+);
+const closedSessions = computed(() =>
+  props.sessions.filter((session) => session.status === "closed"),
 );
 
 function toggle(): void {
@@ -54,7 +66,11 @@ async function select(session: WorkSessionV1): Promise<void> {
     trigger.value?.focus();
     return;
   }
-  if (result.kind === "failed" || result.kind === "conflict") {
+  if (
+    result.kind === "failed" ||
+    result.kind === "conflict" ||
+    result.kind === "activated-local-failed"
+  ) {
     feedback.value = result.message;
   }
   if (result.kind === "needs-choice") {
@@ -79,7 +95,28 @@ async function resolveChoice(choice: DirtyChoice): Promise<void> {
     open.value = false;
     await nextTick();
     trigger.value?.focus();
-  } else if (result.kind === "failed" || result.kind === "conflict") {
+  } else if (
+    result.kind === "failed" ||
+    result.kind === "conflict" ||
+    result.kind === "activated-local-failed"
+  ) {
+    feedback.value = result.message;
+  }
+}
+
+async function closeSession(session: WorkSessionV1): Promise<void> {
+  if (
+    !props.onClose ||
+    session.status === "current" ||
+    session.status === "browser_held" ||
+    session.status === "closed"
+  )
+    return;
+  busyId.value = session.sessionId;
+  feedback.value = "";
+  const result = await props.onClose(session);
+  busyId.value = null;
+  if (result.message) {
     feedback.value = result.message;
   }
 }
@@ -209,20 +246,54 @@ function statusLabel(status: WorkSessionV1["status"]): string {
           }}
         </button>
       </section>
-      <button
-        v-for="session in sessions"
+      <div
+        v-for="session in liveSessions"
         :key="session.sessionId"
-        type="button"
-        class="session-switcher__item"
-        :data-session-id="session.sessionId"
-        :data-session="session.sessionId"
-        :aria-current="session.status === 'current' || undefined"
-        :disabled="session.status === 'closed' || busyId === session.sessionId"
-        @click="select(session)"
+        class="session-switcher__row"
       >
-        <span>{{ session.displaySummary }}</span>
-        <small>{{ statusLabel(session.status) }}</small>
-      </button>
+        <button
+          type="button"
+          class="session-switcher__item"
+          :data-session-id="session.sessionId"
+          :data-session="session.sessionId"
+          :aria-current="session.status === 'current' || undefined"
+          :disabled="busyId === session.sessionId"
+          @click="select(session)"
+        >
+          <span>{{ session.displaySummary }}</span>
+          <small>{{ statusLabel(session.status) }}</small>
+        </button>
+        <button
+          v-if="
+            onClose &&
+            session.status !== 'current' &&
+            session.status !== 'browser_held'
+          "
+          type="button"
+          class="session-switcher__close"
+          :data-close-session="session.sessionId"
+          :disabled="busyId === session.sessionId"
+          :aria-label="`关闭此工作现场：${session.displaySummary}`"
+          @click="closeSession(session)"
+        >
+          关闭此工作现场
+        </button>
+      </div>
+      <details v-if="closedSessions.length" class="session-switcher__closed">
+        <summary>已关闭工作现场（{{ closedSessions.length }}）</summary>
+        <p><b>工作现场已关闭</b></p>
+        <p>关闭现场不等于业务完成、延期或责任转移。</p>
+        <p>重新进入该对象会建立新的受控现场，并重新授权和重读。</p>
+        <div
+          v-for="session in closedSessions"
+          :key="session.sessionId"
+          class="session-switcher__closed-item"
+          :data-session-id="session.sessionId"
+        >
+          <span>{{ session.displaySummary }}</span>
+          <small>{{ statusLabel(session.status) }}</small>
+        </div>
+      </details>
     </section>
   </div>
 </template>
@@ -272,10 +343,25 @@ function statusLabel(status: WorkSessionV1["status"]): string {
   justify-content: space-between;
   gap: var(--space-3);
 }
+.session-switcher__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: stretch;
+}
 .session-switcher__item {
   width: 100%;
   padding: var(--space-3);
   text-align: left;
+}
+.session-switcher__close {
+  min-height: var(--touch-target);
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--risk);
+  font: inherit;
 }
 .session-switcher__item[aria-current="true"] {
   border-color: var(--brand);
@@ -300,11 +386,27 @@ function statusLabel(status: WorkSessionV1["status"]): string {
   text-align: left;
 }
 .session-switcher__feedback {
+  min-width: 0;
   margin: 0;
   padding: var(--space-2);
   border-left: 3px solid var(--risk);
   background: var(--risk-bg);
   color: var(--risk);
+  overflow-wrap: anywhere;
+}
+.session-switcher__closed {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-2);
+}
+.session-switcher__closed p {
+  margin: var(--space-1) 0;
+  color: var(--muted);
+}
+.session-switcher__closed-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
 }
 @media (max-width: 680px) {
   .session-switcher__panel {

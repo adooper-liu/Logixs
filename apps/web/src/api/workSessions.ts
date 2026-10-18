@@ -8,19 +8,35 @@ import type {
 } from "@logix/contracts";
 import { requestJson } from "./httpClient";
 
-export function listWorkSessions(
-  input: {
-    pageSize?: number;
-    cursor?: string;
-  } = {},
+export async function listWorkSessions(
+  input: { includeClosed?: boolean } = {},
 ): Promise<WorkSessionPageV1> {
-  const params = new URLSearchParams({
-    pageSize: String(input.pageSize ?? 50),
-  });
-  if (input.cursor) params.set("cursor", input.cursor);
-  return requestJson<WorkSessionPageV1>(`/api/work-sessions?${params}`, {
-    fallback: "暂时无法读取工作现场",
-  });
+  const items = new Map<string, WorkSessionV1>();
+  const seenCursors = new Set<string>();
+  let cursor: string | null = null;
+  do {
+    const params = new URLSearchParams({ pageSize: "100" });
+    if (cursor) params.set("cursor", cursor);
+    if (input.includeClosed) params.set("includeClosed", "true");
+    const page = await requestJson<WorkSessionPageV1>(
+      `/api/work-sessions?${params}`,
+      { fallback: "暂时无法读取工作现场" },
+    );
+    for (const session of page.items) {
+      if (!items.has(session.sessionId)) items.set(session.sessionId, session);
+    }
+    cursor = page.nextCursor;
+    if (cursor && seenCursors.has(cursor)) {
+      throw new Error("WORK_SESSION_PAGINATION_CURSOR_LOOP");
+    }
+    if (cursor) seenCursors.add(cursor);
+  } while (cursor);
+  return {
+    contractVersion: "work-session-page.v1",
+    items: [...items.values()],
+    pageSize: 100,
+    nextCursor: null,
+  };
 }
 
 export function openWorkSession(

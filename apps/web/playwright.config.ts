@@ -2,7 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 import { OIDC_PROJECT } from "./e2e/support/testServers";
 import { APP_URL, OIDC_APP_URL } from "./src/e2eDevServer";
 
-const AUTH_SESSION_SPEC = /auth-session\.spec\.ts$/;
+const OIDC_ONLY_SPECS =
+  /(?:auth-session|recoverable-work-sessions\.oidc)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -23,7 +24,7 @@ export default defineConfig({
   projects: [
     {
       name: "desktop-chromium",
-      testIgnore: AUTH_SESSION_SPEC,
+      testIgnore: OIDC_ONLY_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
@@ -31,7 +32,7 @@ export default defineConfig({
     },
     {
       name: "narrow-chromium",
-      testIgnore: AUTH_SESSION_SPEC,
+      testIgnore: OIDC_ONLY_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1024, height: 768 },
@@ -39,7 +40,7 @@ export default defineConfig({
     },
     {
       name: "mobile-chromium",
-      testIgnore: AUTH_SESSION_SPEC,
+      testIgnore: OIDC_ONLY_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 390, height: 844 },
@@ -47,7 +48,7 @@ export default defineConfig({
     },
     {
       name: OIDC_PROJECT,
-      testMatch: AUTH_SESSION_SPEC,
+      testMatch: OIDC_ONLY_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: OIDC_APP_URL,
