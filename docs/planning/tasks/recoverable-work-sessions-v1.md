@@ -1,5 +1,5 @@
 ---
-status: review
+status: fix
 branch: test/recoverable-work-sessions-acceptance-v1
 verification: "Final acceptance candidate f99cff8d includes WS6R1-R6 plus full-chain Prisma injection fix; fresh Claude incremental review of WS6R6 returned no-findings. Direct acceptance evidence now covers failure preservation, typed-draft refresh neutrality, six textual states, OIDC 401, closed/browser-held lifecycle, pagination, concurrency and three viewports. On 2026-10-18 one clean detached pnpm validate at f99cff8d passed repo/purpose/contracts/dictionary/db generation/lint/format/typecheck, then exited 1 during root pnpm test; output truncation did not preserve a failing test name. The same untouched checkout immediately completed full pnpm test with exit 0 (Turbo 4/4; API 313 files/1628 tests). Integration/E2E/build were not reached in the single validate, so status remains review and no full-gate pass is claimed."
 owner: main
@@ -88,6 +88,7 @@ writeScopes:
   - apps/web/e2e/universal-workbench-reference.visual.spec.ts-snapshots/reference-mobile-detail-mobile-chromium-win32.png
   - apps/web/e2e/recoverable-work-sessions.spec.ts
   - apps/web/e2e/recoverable-work-sessions.oidc.spec.ts
+  - apps/web/e2e/auth-session.spec.ts
   - apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/**
   - apps/web/e2e/support/recoverableWorkSessions.ts
   - apps/web/e2e/support/oidcIdentityProvider.ts
@@ -775,7 +776,7 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 | 2026-10-18 | fix    | Claude / Opus 4.8 | 53fd8066 | fresh 增量复审确认 post-activation list 先于 route 提交时 route watcher 与显式流程会双重 restore；接受 `WS6R5-RESTORE-RACE-01`，下发 `WS6R6`                                                                               |
 | 2026-10-18 | fix    | Codex / GPT-5     | 379c9053 | `WS6R6` 为显式切换建立按 context 隔离的 restore owner；list/route 两种顺序都只恢复一次，失败清理后仍可明确重入恢复；受影响 Web 116/116 通过                                                                                |
 | 2026-10-18 | review | Claude / Opus 4.8 | 379c9053 | fresh 增量复审 `f768b20d..379c9053` 返回 `no-findings`，独立复现 focused 26/26、Web lint/typecheck、diff check；进入最终 clean detached 单命令门禁                                                                         |
-| 2026-10-18 | review | Claude / Opus 4.8 | f99cff8d | clean detached `pnpm validate` 仅运行一次：静态阶段通过，root test exit 1 且输出未保留失败名；同 checkout 完整 `pnpm test` 诊断重跑 exit 0。未到达 integration/E2E/build，不声称门禁通过                                   |
+| 2026-10-18 | review | Claude / Opus 4.8 | f99cff8d | clean detached `pnpm validate` 首次在 root test 非确定 exit 1；受控 unit 压力均全绿。`adfd131d` 重试完整 unit/integration 通过，E2E 320/355 后唯一失败 OIDC logout 瞬态 URL 竞态，转 `WS6R7`                               |
 
 ## WS6R3 实现证据（2026-10-18）
 
@@ -813,9 +814,25 @@ HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R6-single-pointer
 ## 最终候选验证记录（2026-10-18）
 
 - 候选 `f99cff8d` 在新的 detached clean checkout `D:\Logixs-ws6-final-f99cff8d` 验证；Node `v22.22.3`、pnpm `10.15.1`、Playwright `1.63.0`，PostgreSQL/MinIO/Temporal/Temporal DB 健康，5173/5174 无监听。
-- 严格只启动一次 `pnpm validate`。该命令依次通过 `repo:check`、workbench purposes、contract check/drift、dictionary、Prisma generate、lint、format 和 typecheck；随后在 root `pnpm test` 阶段 exit 1，未到达 integration、E2E 和 build。
-- 首次失败输出因终端截断未保留具体失败测试名。为诊断而非替代门禁，在同一未修改 checkout 单独运行完整 `pnpm test`，结果 exit 0：仓库脚本全部通过、Turbo 4/4，API 313 文件/1628 项通过；未形成可复现的业务代码或单一测试失败反证。
-- 不以分段诊断通过冒充 `pnpm validate` 通过，不盲目放宽 timeout，不启动第二次 `validate`。单命令门禁继续未勾选，task 保持 `review`。
+- 首次 `pnpm validate` 通过静态阶段后在 root `pnpm test` exit 1；输出截断未保留失败项。同一 checkout 完整 `pnpm test` 诊断重跑 exit 0。之后对 exact candidate 的 continuation hook 单文件 5 轮、root 11 文件脚本组 3 轮、完整 `pnpm test` 3 轮均全绿，没有形成 unit 稳定性修复反证。
+- 受控重试候选 `adfd131d` 使用新的 detached clean checkout、相同工具版本/健康基础设施/空闲端口，并将完整 `pnpm validate` 输出持久化。该命令通过 repo/purpose/contracts/dictionary/db generation/lint/format/typecheck、完整 unit（API 313 文件/1628、Web 857）、integration（36 文件/238），在 E2E 得到 320 passed / 34 skipped / 1 failed；唯一失败是 `auth-session.spec.ts` 的“注销走 IdP 并清除本标签页会话”，未到达 build。
+- 失败日志显示点击退出后仍停在 `/workspaces/market-signals`，没有稳定进入 `/auth/logout-callback`。单独 logout、完整 auth spec、auth + recoverable OIDC 组合均通过。代码路径确认 signin callback 先发布 authenticated、再 `router.replace(returnUrl)`；测试只等用户名可见便点击退出，导致全量并发负载下未完成的 signin route replacement 与 logout redirect 竞争。该测试前置竞态进入 `WS6R7`，不修改认证生产逻辑、不增加 timeout。
+- 分段诊断通过不冒充 `pnpm validate` 通过。单命令门禁继续未勾选，task 保持 `review`。
+
+### `WS6R7-oidc-logout-precondition`
+
+- **范围**：仅稳定 `apps/web/e2e/auth-session.spec.ts` 的 logout 前置条件；不改认证生产代码、IdP fixture、recoverable 业务逻辑、timeout 或重试数。
+- **RED**：用可控延迟或现有导航事件证明“身份已显示但 signin callback 的 `router.replace(MARKET_SIGNALS)` 尚未完成”时立即点击退出，会被晚到的 signin replace 拉回业务页；测试应失败在缺失的稳定前置，而不是靠全量负载偶现。
+- **GREEN**：logout 用例在点击退出前同时等待 signed-in 身份和 `page.toHaveURL(OIDC_APP_URL + MARKET_SIGNALS)`；点击后不再轮询瞬态 callback 当前 URL，而以 `urls` 导航记录证明 `/auth/logout-callback` 曾发生，并断言稳定结果：`已退出登录。`、identity signed_out、退出按钮消失、`endSessionRequests === 1`、sessionStorage token 清除、无 token 泄漏。
+- **验证**：logout 单测至少连续 5 轮；完整 auth spec；auth + recoverable OIDC 组合默认 workers 与 workers=1；全 E2E；Web lint/typecheck、repo/format/diff。fresh 增量复审无 finding 后再创建新的 clean detached checkout，只运行一次最终 `pnpm validate`。
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-precondition base=adfd131d6ebba55eb3d850238eff79b824473e56 role=implementer workspace=D:\Logixs
+```
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R7-oidc-logout-precondition base=adfd131d6ebba55eb3d850238eff79b824473e56 role=main workspace=D:\Logixs commit=<sha|none>
+```
 
 ## 最终验证记录（2026-10-14）
 
