@@ -271,9 +271,35 @@ type TaskContextPanelProps = {
 
 ### `TC2-shared-ui-first-consumer`
 
-- **目标**：一次性建立 `useTaskCollaboration`、`TaskContextPanel`、`TaskCollaborationPanel`，并在 `TaskWorkbench` 首次真实消费；不修改其他工作台。
-- **TDD**：任务切换晚到响应、分页快照、403/404 清空、发送失败保留 draft、同 key 重试、回复/Mention/EvidenceRef、completed read-only、hidden/inert、每 mode focus/scroll；三视口真实页面和截图。
-- **停止条件**：页面出现私有消息实现；共享组件读取任务状态/角色推断权限；档案与协作混在同一时间线；移动端新增第四屏或嵌套 scroll。
+- **目标**：一次性建立唯一 Web API adapter、`useTaskCollaboration`、`TaskContextPanel`、`TaskCollaborationPanel`，并在 `TaskWorkbench` 首次真实消费；不修改 Customs 或其他工作台。
+- **共享接口与状态所有权**：
+  - `taskCollaboration.ts` 只消费 `@logix/contracts` 生成类型并暴露 GET list 与 POST message 两个操作；只提交 subject/work/body/parent/Mention/Evidence/sourceRefs/idempotencyKey，不接受 tenant/author/visibility/capability。路径严格使用 TC1 的 GET `/api/node-tasks/:taskId/collaboration` 与 POST `/api/node-tasks/:taskId/collaboration/messages`。
+  - `useTaskCollaboration` 是唯一 API、AbortController、generation guard、cursor/asOf、消息/options、draft、reply、Mention/Evidence 选择、发送/重试/idempotency key 编排者；工作台和组件不得直接调用 adapter 或自行推断权限。
+  - context 变化必须在发新请求前同步清空旧 messages/cursor/asOf/error/reply/selections/draft/pending command/key，abort 旧请求，并以 generation + contextKey 丢弃所有晚到 success/error/finally。403/404/撤权、首屏或分页失败清空敏感线程；发送失败仅在同一 context 保留 draft 与完全相同 command/key，用户修改 draft 后生成新 key，切 context 后不可重试旧命令。
+  - 首屏固定 `asOf`；更早页只追加同 snapshot、按 messageId 去重。后续页 `asOf` 不同即清空并显示可重试 snapshot-change 错误，不混合快照。
+- **共享组件结构**：
+  - `TaskContextPanel` 固定模式 `work | archive | collaboration` 和人话标签“办理 / 档案 / 协作”；实现 brief 已定 props/slots/emits，自身唯一渲染 `TaskCollaborationPanel`，collaboration 不开放 consumer slot。未列入 `modes` 的入口不出现，不显示 coming soon。
+  - inactive mode 保持挂载时必须同时 `hidden + inert + aria-hidden`，不可被 Tab 聚焦。切 mode 前记录该模式在外层 `WorkbenchPane` 唯一 scroll owner 中的 scroll/focus，`nextTick` 后仅在 context/mode 未变时恢复；找不到旧焦点则聚焦当前可用模式控制。不得创建组件内第二个 `overflow-y` scroll owner。
+  - `TaskCollaborationPanel` 唯一渲染当前任务消息、单层父消息摘要、作者/时间、服务端 options、composer、发送中/失败/重试、加载更早；不建递归楼中楼。ID、sourceRef、visibility code、idempotency/trace 等技术值只进折叠详情。
+  - 常驻边界文字保持精简：消息不改变任务状态、责任或期限；EvidenceRef 只是当前有权读取的证据引用，不代表已核验。无权或被过滤时不显示附件行、计数、文件名、ID或“隐藏附件”标记，只显示“仅显示当前有权读取的证据引用；未显示不表示不存在”的通用说明，避免泄露存在性。
+- **TaskWorkbench 首个消费者**：
+  - 只把现有右栏档案组合替换为单一 `TaskContextPanel`；PageHeader、责任上下文、决策条、左队列、中办理/冻结结果、`WorkbenchLayout` 几何不变。移动端仍只有“队列 → 详情 → 上下文”三屏，协作是上下文内模式，不得新增第四屏。
+  - subject/work 只能来自当前已解析 `visibleContainer.containerRecordId` 与 `visibleTask.taskId`，contextKey 固定由二者确定；不得直接信任 route query。无当前 task/container 时不显示 collaboration；completed task 仍可进入协作，由服务端 `canPost/postDisabledReason` 决定只读，不由前端 task state 推断。
+  - 右栏标题、rail 与移动标签表达“任务上下文”和当前模式；档案与协作分轨，不合并为一条时间线。加载/错误/对象切换必须立即移除旧上下文。
+- **TDD**：
+  - adapter：URL 编码/query/POST path、生成类型、signal、HTTP 错误、禁止受保护字段。
+  - composable：A→B 晚到首屏/分页/POST 全丢弃；context 同步清空；首屏+更早页去重；asOf 漂移/403/404/分页失败清空；成功 append/de-dupe；失败保留同 key，修改 draft 换 key，切 context 删除 retry；完全消费服务端 canPost/options，不自行推断。
+  - panels：loading/empty/error/retry/loadMore、reply/Mention/Evidence、read-only reason、失败 draft、hidden/inert/aria-hidden、每 mode scroll/focus、无内层 scroll owner、技术详情默认折叠。
+  - TaskWorkbench：六区域与三栏顺序不变；精确 refs/contextKey；live/completed 只切中右局部；loading/error 清旧上下文；移动端仍三屏。
+  - E2E：真实生产 `/tasks` 消费路径 mock GET/POST；任务切换竞态、403/404/分页失败清空、同 key retry、回复/Mention/Evidence、无 evidence.read 不泄露 ID、completed read-only；三标准视口截图与 overflow/scroll/focus/键盘可达断言。
+- **视口证据**：
+  - `1440x900`：三栏同高，协作只切右栏；消息、回复、附件、composer 同屏可达；只有外层 WorkbenchPane 滚动，无横向溢出。
+  - `1024x768`：左窄轨/抽屉与中右并列不回退；composer、重试、加载更早可达；无嵌套纵向 scroll。
+  - `390x844`：严格三屏；协作在“上下文”内，面包屑保留 container/task；返回详情恢复焦点/scroll；composer、取消回复和失败恢复不被底部或软键盘模拟遮挡，无横向溢出。
+  - 使用 `apps/web/e2e/task-collaboration.spec.ts` 与三个版本化 `task-collaboration-*-chromium-win32.png`；只有在主代理人工逐张核对后才更新 snapshot，不用阈值掩盖几何失败。
+- **验证命令**：focused Vitest 五个文件、Web lint/format/typecheck/build、Playwright `task-collaboration.spec.ts` 的 desktop/narrow/mobile 三项目（`--workers=1`）、`repo:check` 与 `git diff --check`。全仓 `pnpm validate` 留 TC4。
+- **不做**：Customs/TC3、其他工作台、后端/契约/数据库修改、显式 redacted count/marker、人员目录、任意邀请、通知、频道/私聊/read receipt/edit/delete/file upload/AI、TaskArchive/ObjectActivity 写投影。
+- **停止条件**：页面出现私有消息实现；共享组件读取任务状态/角色推断权限；档案与协作混在同一时间线；移动端新增第四屏或嵌套 scroll；需要扩公共契约才能如实呈现信息。
 
 ### `TC3-customs-second-consumer`
 
