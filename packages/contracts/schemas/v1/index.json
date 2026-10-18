@@ -35,7 +35,8 @@
       "market-opportunity.schema.json",
       "product-initiative.schema.json",
       "work-session.schema.json",
-      "workbench-network-volume.schema.json"
+      "workbench-network-volume.schema.json",
+      "task-collaboration.schema.json"
     ],
     "GC-008": ["action-command.schema.json"],
     "GC-009": ["client-operation.schema.json"],
@@ -96,6 +97,9 @@
     },
     "workbenchNetworkVolume": {
       "$ref": "workbench-network-volume.schema.json"
+    },
+    "taskCollaboration": {
+      "$ref": "task-collaboration.schema.json"
     }
   }
 }

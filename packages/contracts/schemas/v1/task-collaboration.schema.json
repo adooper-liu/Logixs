@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.logixs.internal/contracts/v1/task-collaboration.schema.json",
+  "title": "TaskCollaborationV1",
+  "oneOf": [
+    { "$ref": "#/$defs/TaskCollaborationPageV1" },
+    { "$ref": "#/$defs/TaskCollaborationPostCommandV1" },
+    { "$ref": "#/$defs/TaskCollaborationPostResultV1" }
+  ],
+  "$defs": {
+    "TaskCollaborationVisibilityV1": { "const": "task_scope" },
+    "CollaborationSubjectRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "const": "container" },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "CollaborationWorkRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "const": "node_task" },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "CollaborationActorRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "displayName"],
+      "properties": {
+        "kind": { "const": "actor" },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "\\S"
+        },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "CollaborationEvidenceRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "const": "evidence_record" },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "CollaborationEvidenceOptionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "label"],
+      "properties": {
+        "ref": { "$ref": "#/$defs/CollaborationEvidenceRefV1" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "CollaborationSourceRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["action", "result", "evidence"] },
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "version": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "TaskCollaborationThreadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "threadId",
+        "subjectRef",
+        "workRef",
+        "visibility",
+        "policyVersion",
+        "createdAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "task-collaboration-thread.v1" },
+        "threadId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "subjectRef": { "$ref": "#/$defs/CollaborationSubjectRefV1" },
+        "workRef": { "$ref": "#/$defs/CollaborationWorkRefV1" },
+        "visibility": {
+          "$ref": "#/$defs/TaskCollaborationVisibilityV1"
+        },
+        "policyVersion": { "type": "integer", "minimum": 1 },
+        "createdAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "TaskCollaborationMessageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "messageId",
+        "threadId",
+        "author",
+        "body",
+        "parentMessageId",
+        "mentions",
+        "evidenceRefs",
+        "sourceRefs",
+        "occurredAt",
+        "recordedAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": "task-collaboration-message.v1" },
+        "messageId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "threadId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "author": { "$ref": "#/$defs/CollaborationActorRefV1" },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        },
+        "parentMessageId": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "mentions": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/CollaborationActorRefV1" }
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/CollaborationEvidenceRefV1" }
+        },
+        "sourceRefs": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/CollaborationSourceRefV1" }
+        },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "recordedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      }
+    },
+    "TaskCollaborationPageV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "thread",
+        "subjectRef",
+        "workRef",
+        "visibility",
+        "visibilityLabel",
+        "messages",
+        "asOf",
+        "pageSize",
+        "nextCursor",
+        "canPost",
+        "postDisabledReason",
+        "mentionOptions",
+        "evidenceOptions"
+      ],
+      "properties": {
+        "contractVersion": { "const": "task-collaboration-page.v1" },
+        "thread": {
+          "oneOf": [
+            { "$ref": "#/$defs/TaskCollaborationThreadV1" },
+            { "type": "null" }
+          ]
+        },
+        "subjectRef": { "$ref": "#/$defs/CollaborationSubjectRefV1" },
+        "workRef": { "$ref": "#/$defs/CollaborationWorkRefV1" },
+        "visibility": {
+          "$ref": "#/$defs/TaskCollaborationVisibilityV1"
+        },
+        "visibilityLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "messages": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TaskCollaborationMessageV1" }
+        },
+        "asOf": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "nextCursor": { "type": ["string", "null"], "maxLength": 500 },
+        "canPost": { "type": "boolean" },
+        "postDisabledReason": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        },
+        "mentionOptions": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/CollaborationActorRefV1" }
+        },
+        "evidenceOptions": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/CollaborationEvidenceOptionV1" }
+        }
+      }
+    },
+    "TaskCollaborationPostCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "subjectRef",
+        "workRef",
+        "body",
+        "parentMessageId",
+        "mentionActorIds",
+        "evidenceRecordIds",
+        "sourceRefs",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "task-collaboration-post-command.v1"
+        },
+        "subjectRef": { "$ref": "#/$defs/CollaborationSubjectRefV1" },
+        "workRef": { "$ref": "#/$defs/CollaborationWorkRefV1" },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        },
+        "parentMessageId": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Uuid" },
+            { "type": "null" }
+          ]
+        },
+        "mentionActorIds": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
+          }
+        },
+        "evidenceRecordIds": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "common.schema.json#/$defs/Uuid" }
+        },
+        "sourceRefs": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/CollaborationSourceRefV1" }
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "TaskCollaborationPostResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "message", "idempotencyReplay"],
+      "properties": {
+        "contractVersion": { "const": "task-collaboration-post-result.v1" },
+        "message": { "$ref": "#/$defs/TaskCollaborationMessageV1" },
+        "idempotencyReplay": { "type": "boolean" }
+      }
+    }
+  }
+}

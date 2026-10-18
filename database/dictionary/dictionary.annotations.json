@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "baselineCommit": "fc6981e2304f3fa90b83cb677d494ab759e2c2d3",
+  "baselineCommit": "e1528345be9d9f38dff8697259bb5284639884a0",
   "sources": {
     "engineering-data-governance": {
       "path": "ENGINEERING_RULES.md",
@@ -26,6 +26,11 @@
       "path": "doc/cross-border-supply-chain/08-role-workbenches.md",
       "authority": "business",
       "note": "选品立项工作台的资源责任、暂缓重判与 NPI 交接快照业务规则。"
+    },
+    "task-collaboration-v1": {
+      "path": "database/schema.prisma",
+      "authority": "implementation",
+      "note": "任务协作 V1 的表、字段、关系、索引和模块归属语义。"
     }
   },
   "tables": {
@@ -1254,6 +1259,56 @@
       "sourceRefs": ["prisma-schema"],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.task_collaboration_message": {
+      "nameZh": "任务协作消息",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "任务协作消息：追加不可变；回复只能指向同一线程，幂等键按线程和作者隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_evidence_ref": {
+      "nameZh": "任务协作消息证据引用",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "EvidenceRef 只保存正式证据 ID；不复制文件名、正文或核验结论。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_mention": {
+      "nameZh": "任务协作消息提醒对象",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "Mention 只是提醒引用，不授予线程可见权，也不转移任务责任。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_source_ref": {
+      "nameZh": "任务协作消息来源引用",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "正式 action/result/evidence 的类型化来源引用；不嵌入业务 payload。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread": {
+      "nameZh": "任务协作线程",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "任务协作线程（task-collaboration 拥有）：固定 task_scope，精确绑定 container + NodeTask。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
       "notes": []
     },
     "public.unlocode_area_reference": {
@@ -18495,6 +18550,286 @@
       "sourceRefs": [],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.task_collaboration_message.id": {
+      "nameZh": "消息标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "稳定标识一条追加不可变的任务协作消息。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.thread_id": {
+      "nameZh": "协作线程标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "把消息限定到唯一任务协作线程，并参与同线程回复约束。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.author_actor_id": {
+      "nameZh": "作者身份标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录服务端认证的消息作者，使用 trim 后长度 1..128 的身份字符串。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.parent_message_id": {
+      "nameZh": "父消息标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "可空地引用同一线程内的父消息，表达回复关系。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.body": {
+      "nameZh": "消息正文",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存 trim 后长度 1..4000 的任务协作消息正文。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.occurred_at": {
+      "nameZh": "消息发生时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录消息在协作时间线上的发生时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.recorded_at": {
+      "nameZh": "消息入库时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录消息首次追加到数据库的时间，并支持稳定分页排序。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.idempotency_key": {
+      "nameZh": "幂等键",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "识别同一写入请求的重复提交。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_evidence_ref.message_id": {
+      "nameZh": "消息标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "标识持有该正式证据引用的任务协作消息。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_evidence_ref.evidence_record_id": {
+      "nameZh": "证据记录标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "逻辑引用正式 EvidenceRecord；不复制证据内容且不建立物理外键。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_mention.message_id": {
+      "nameZh": "消息标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "标识包含该 Mention 提醒的任务协作消息。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_mention.actor_id": {
+      "nameZh": "被提醒身份标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录服务端投影的当前 actor 或任务已知 assignee；Mention 不授予可见权且不转移责任。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_source_ref.id": {
+      "nameZh": "来源引用标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "稳定标识一条任务协作消息的类型化来源引用。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_source_ref.message_id": {
+      "nameZh": "消息标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "标识持有该来源引用的任务协作消息。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_source_ref.source_kind": {
+      "nameZh": "来源类型",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定来源引用类型为 action、result 或 evidence。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_source_ref.source_id": {
+      "nameZh": "来源对象标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存 trim 后长度 1..200 的正式 action、result 或 evidence 对象标识。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_message_source_ref.source_version": {
+      "nameZh": "来源版本",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "可空地锁定来源对象的正整数版本；空版本在唯一性比较中按相同值处理。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.id": {
+      "nameZh": "协作线程标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "稳定标识一个精确绑定 container 与 NodeTask 的任务协作线程。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance", "task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.subject_kind": {
+      "nameZh": "协作主体类型",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 container，禁止线程绑定其他主体类型。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.subject_id": {
+      "nameZh": "货柜主体标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存线程绑定的 container UUID，并参与任务范围唯一性。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.work_kind": {
+      "nameZh": "协作工作类型",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 node_task，禁止线程绑定其他工作类型。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.work_id": {
+      "nameZh": "节点任务标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存线程绑定的 NodeTask UUID，并参与任务范围唯一性。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.visibility_scope": {
+      "nameZh": "可见范围",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 task_scope；Mention 不扩大该可见范围。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.policy_version": {
+      "nameZh": "协作政策版本",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录服务端应用的正整数协作政策版本，V1 不接受客户端自定义。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
+      "notes": []
+    },
+    "public.task_collaboration_thread.created_by_actor_id": {
+      "nameZh": "线程创建身份标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录服务端认证的线程创建者，使用 trim 后长度 1..128 的身份字符串。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-collaboration-v1"],
+      "moduleCode": "task-collaboration",
+      "ownerModule": "task-collaboration",
       "notes": []
     },
     "public.unlocode_area_reference.id": {

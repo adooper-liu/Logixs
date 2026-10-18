@@ -83,6 +83,7 @@ const CONTRACT_FILES = [
   "container-operational-view.schema.json",
   "ops-assistant.schema.json",
   "workbench-network-volume.schema.json",
+  "task-collaboration.schema.json",
   "error-response.schema.json",
 ];
 
