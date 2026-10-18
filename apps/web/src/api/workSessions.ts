@@ -12,12 +12,14 @@ export function listWorkSessions(
   input: {
     pageSize?: number;
     cursor?: string;
+    includeClosed?: boolean;
   } = {},
 ): Promise<WorkSessionPageV1> {
   const params = new URLSearchParams({
     pageSize: String(input.pageSize ?? 50),
   });
   if (input.cursor) params.set("cursor", input.cursor);
+  if (input.includeClosed) params.set("includeClosed", "true");
   return requestJson<WorkSessionPageV1>(`/api/work-sessions?${params}`, {
     fallback: "暂时无法读取工作现场",
   });

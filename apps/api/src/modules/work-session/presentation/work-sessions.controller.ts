@@ -44,12 +44,14 @@ export class WorkSessionsController {
     @Req() request: WorkSessionIdentityRequest,
     @Query("pageSize") pageSize?: string,
     @Query("cursor") cursor?: string,
+    @Query("includeClosed") includeClosed?: string,
   ): Promise<WorkSessionPageV1> {
     return this.listSessions.execute({
       tenantId: request.identity.tenantId,
       actorId: request.identity.actorId,
       pageSize,
       cursor,
+      includeClosed,
     });
   }
 

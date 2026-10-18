@@ -33,6 +33,7 @@ export interface WorkSessionRepository {
     actorId: string;
     after?: { lastOpenedAt: Date; id: string };
     take: number;
+    includeClosed: boolean;
   }): Promise<WorkSessionRecord[]>;
   findById(
     tenantId: string,

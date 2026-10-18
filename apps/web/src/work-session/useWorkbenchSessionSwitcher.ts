@@ -13,6 +13,7 @@ import type {
 } from "@logix/contracts";
 import {
   activateWorkSession,
+  closeWorkSession,
   listWorkSessions,
   openWorkSession,
   updateWorkSession,
@@ -28,6 +29,9 @@ import type {
 } from "./workSessionAdapter";
 import {
   switchWorkSession,
+  closeWorkSessionAndReload,
+  hasLiveWorkSessionContext,
+  type CloseWorkSessionResult,
   type SwitchWorkSessionResult,
 } from "./useWorkSessions";
 
@@ -54,6 +58,7 @@ export function useWorkbenchSessionSwitcher(input: {
     typeof BroadcastChannel === "undefined"
       ? null
       : new BroadcastChannel("logix.work-sessions.v1");
+  let initialPointerRestore: Promise<void> | null = null;
   const refresh = () => void load();
   channel?.addEventListener("message", refresh);
 
@@ -66,11 +71,11 @@ export function useWorkbenchSessionSwitcher(input: {
     );
   });
 
-  async function load(): Promise<void> {
+  async function load(): Promise<boolean> {
     loading.value = true;
     error.value = "";
     try {
-      const page = await listWorkSessions();
+      const page = await listWorkSessions({ includeClosed: true });
       sessions.value = page.items;
       const serverCurrent = page.items.find(
         (session) => session.status === "current",
@@ -79,12 +84,45 @@ export function useWorkbenchSessionSwitcher(input: {
         window.sessionStorage,
         serverCurrent?.sessionId ?? null,
       );
-      await ensureCurrent();
+      return true;
     } catch (caught) {
       error.value =
         caught instanceof Error ? caught.message : "工作现场没有加载";
+      return false;
     } finally {
       loading.value = false;
+    }
+  }
+
+  async function initialize(): Promise<void> {
+    if (!(await load())) return;
+    try {
+      await ensureAndRestoreCurrent();
+    } catch (caught) {
+      error.value =
+        caught instanceof Error ? caught.message : "工作现场没有建立";
+    }
+  }
+
+  async function ensureAndRestoreCurrent(): Promise<void> {
+    await ensureCurrent();
+    if (initialPointerRestore) return initialPointerRestore;
+    const context = input.currentContext.value;
+    const pageCurrent = context
+      ? sessions.value.find(
+          (session) =>
+            session.contextKey === contextKey(context) &&
+            session.status === "current",
+        )
+      : null;
+    if (pageCurrent) {
+      initialPointerRestore = Promise.resolve(
+        input.adapter.restorePointer(pageCurrent),
+      ).catch((caught) => {
+        initialPointerRestore = null;
+        throw caught;
+      });
+      await initialPointerRestore;
     }
   }
 
@@ -93,8 +131,7 @@ export function useWorkbenchSessionSwitcher(input: {
     const subjectRef = input.currentSubjectRef.value;
     if (!context || !subjectRef) return;
     const currentKey = contextKey(context);
-    if (sessions.value.some((session) => session.contextKey === currentKey))
-      return;
+    if (hasLiveWorkSessionContext(sessions.value, currentKey)) return;
     const opened = await openWorkSession({
       contractVersion: "work-session-open.v1",
       workbenchCode:
@@ -114,7 +151,8 @@ export function useWorkbenchSessionSwitcher(input: {
       ...sessions.value.filter(
         (session) =>
           session.sessionId !== opened.sessionId &&
-          session.contextKey !== opened.contextKey,
+          (session.contextKey !== opened.contextKey ||
+            session.status === "closed"),
       ),
     ];
   }
@@ -144,6 +182,27 @@ export function useWorkbenchSessionSwitcher(input: {
     if (result.kind === "switched") {
       channel?.postMessage({ type: "work-session-changed" });
       await load();
+    }
+    return result;
+  }
+
+  async function close(
+    session: WorkSessionV1,
+  ): Promise<CloseWorkSessionResult> {
+    const result = await closeWorkSessionAndReload({
+      session,
+      close: closeWorkSession,
+      onClosed: (closed) => {
+        sessions.value = sessions.value.map((item) =>
+          item.sessionId === closed.sessionId ? closed : item,
+        );
+      },
+      reload: async () => {
+        if (!(await load())) throw new Error(error.value);
+      },
+    });
+    if (result.kind === "closed") {
+      channel?.postMessage({ type: "work-session-changed" });
     }
     return result;
   }
@@ -240,7 +299,7 @@ export function useWorkbenchSessionSwitcher(input: {
   onMounted(() => {
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
-    void load();
+    void initialize();
   });
   onBeforeUnmount(() => {
     window.removeEventListener("focus", refresh);
@@ -248,7 +307,7 @@ export function useWorkbenchSessionSwitcher(input: {
     channel?.removeEventListener("message", refresh);
     channel?.close();
   });
-  watch(input.currentContext, () => void ensureCurrent());
+  watch(input.currentContext, () => void ensureAndRestoreCurrent());
 
   return {
     sessions: readonly(sessions),
@@ -257,6 +316,7 @@ export function useWorkbenchSessionSwitcher(input: {
     error: readonly(error),
     load,
     select,
+    close,
     resolveChoice,
   };
 }

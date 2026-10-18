@@ -304,6 +304,113 @@ describe("useProductInitiativeDecision", () => {
     expect(gapLabels(state)).toContain("价值与差异");
   });
 
+  it("保存 typed draft 后重建 composable 恢复全部草稿且正式事实保持来自 initiative", async () => {
+    const formal = {
+      ...initiative(),
+      outcome: "defer" as const,
+      currentDestination: "deferred" as const,
+      responsibleActorId: "formal-owner",
+      responsibilityAccepted: true,
+      receivingTeamOrRole: "formal-npi-team",
+      resourceDescription: "formal-resource",
+      targetDate: "2026-12-10",
+      nextDecisionDate: "2026-11-20",
+      nextDecisionQuestion: "formal-next-question",
+      reconsiderationDate: "2026-11-25",
+    };
+    const savedDraft = {
+      contractVersion: "product-initiative-decision-draft.v1" as const,
+      draftId: "44444444-4444-4444-8444-444444444444",
+      handoffId: HANDOFF_ID,
+      draftVersion: 7,
+      initiativeVersionSeen: formal.version,
+      objective: "draft-objective-distinct",
+      reviewPoints: [
+        {
+          code: "competitive_supply" as const,
+          evidenceRefs: [EVIDENCE_ID],
+          conclusion: "draft-review-distinct",
+        },
+      ],
+      businessCaseDraft: [
+        {
+          dimensionCode: "customer_need" as const,
+          decision: "validate_before_investment" as const,
+          conclusion: "draft-business-distinct",
+          evidenceRefs: [EVIDENCE_ID],
+          criticalUnknown: "draft-unknown-distinct",
+        },
+      ],
+      riskAssessmentDraft: [
+        {
+          riskCode: "returns" as const,
+          applicability: "not_applicable" as const,
+          applicabilityReason: "draft-risk-distinct",
+          investmentDecision: null,
+          conclusion: null,
+          evidenceRefs: [],
+          criticalUnknown: null,
+        },
+      ],
+      unitEconomicsDraft: completeUnitEconomicsDraft(),
+      negativeConservativeReason: "draft-economics-distinct",
+      createdAt: "2026-10-14T08:00:00.000Z",
+      updatedAt: "2026-10-18T08:00:00.000Z",
+    };
+    saveProductInitiativeDraft.mockResolvedValue(savedDraft);
+    getProductInitiative.mockResolvedValue(detail({ initiative: formal }));
+    const first = await mountComposable();
+    first.objective.value = savedDraft.objective;
+    first.points.competitive_supply = {
+      evidenceRefs: [EVIDENCE_ID],
+      conclusion: "draft-review-distinct",
+    };
+    Object.assign(first.businessCase.customer_need, {
+      decision: "validate_before_investment",
+      conclusion: "draft-business-distinct",
+      evidenceRefs: [EVIDENCE_ID],
+      criticalUnknown: "draft-unknown-distinct",
+    });
+    first.updateRisk("returns", savedDraft.riskAssessmentDraft[0]);
+    Object.assign(first.unitEconomicsDraft, completeUnitEconomicsDraft());
+    first.setNegativeConservativeReason("draft-economics-distinct");
+
+    await expect(first.saveDraft()).resolves.toBe(true);
+    getProductInitiative.mockResolvedValue(
+      detail({ initiative: formal, decisionDraft: savedDraft }),
+    );
+    const restored = await mountComposable();
+
+    expect(restored.objective.value).toBe("draft-objective-distinct");
+    expect(restored.points.competitive_supply.conclusion).toBe(
+      "draft-review-distinct",
+    );
+    expect(restored.businessCase.customer_need).toMatchObject({
+      conclusion: "draft-business-distinct",
+      criticalUnknown: "draft-unknown-distinct",
+    });
+    expect(restored.riskAssessment.returns.applicabilityReason).toBe(
+      "draft-risk-distinct",
+    );
+    expect(restored.unitEconomicsDraft.currencyCode).toBe("CAD");
+    expect(restored.unitEconomicsDraft.scenarios.baseline.salePrice.min).toBe(
+      "100.00",
+    );
+    expect(restored.negativeConservativeReason.value).toBe(
+      "draft-economics-distinct",
+    );
+    expect(restored.destination.value).toBe("defer");
+    expect(restored.initiative.value).toMatchObject({
+      currentDestination: "deferred",
+      responsibleActorId: "formal-owner",
+      responsibilityAccepted: true,
+      receivingTeamOrRole: "formal-npi-team",
+      targetDate: "2026-12-10",
+      nextDecisionDate: "2026-11-20",
+      reconsiderationDate: "2026-11-25",
+    });
+  });
+
   it("已立项是终态，界面不再提供判断动作", async () => {
     getProductInitiative.mockResolvedValue(
       detail({

@@ -60,4 +60,30 @@ describe("WorkSessionsController", () => {
       command: OPEN,
     });
   });
+
+  it("forwards the explicit closed-session query without changing the owner scope", async () => {
+    const list = { execute: vi.fn().mockResolvedValue({ items: [] }) };
+    const controller = new WorkSessionsController(
+      list as unknown as ListWorkSessionsService,
+      {} as OpenWorkSessionService,
+      {} as UpdateWorkSessionService,
+      {} as ActivateWorkSessionService,
+      {} as CloseWorkSessionService,
+    );
+
+    await controller.list(
+      { identity: { tenantId: "tenant-1", actorId: "actor-1" } },
+      "50",
+      undefined,
+      "true",
+    );
+
+    expect(list.execute).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      actorId: "actor-1",
+      pageSize: "50",
+      cursor: undefined,
+      includeClosed: "true",
+    });
+  });
 });

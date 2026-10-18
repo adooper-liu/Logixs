@@ -1,9 +1,9 @@
 ---
-status: review
-branch: feat/recoverable-work-sessions-v1
-verification: "PR #179 merged to main at 2ed5f9b2 on 2026-10-14; final CI run 38528039982 changes/static/unit/build/e2e/dictionary/quality succeeded and security was skipped by classifier. Code is merged, but the brief remains review because acceptance items for failure preservation, typed-draft recovery, complete textual session states, and a single-command validate pass still lack direct evidence. Final committed clean-clone repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build passed: API 311 files/1611 tests, Web 161 files/764 tests, PostgreSQL integration 35 files/224 tests; non-OIDC E2E 241 passed/26 viewport skips, OIDC 5/5, reference visual 18 passed/15 viewport skips. Standard local validate stopped at E2E because another session owned port 5173; this was recorded, not claimed as pass."
+status: fix
+branch: test/recoverable-work-sessions-acceptance-v1
+verification: "PR #179 merged to main at 2ed5f9b2 on 2026-10-14; final CI run 38528039982 changes/static/unit/build/e2e/dictionary/quality succeeded and security was skipped by classifier. Code is merged, but the brief is in an acceptance-only fix slice because failure preservation, typed-draft recovery, complete textual session states, and a single-command validate pass still lack direct evidence. Final committed clean-clone repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build passed: API 311 files/1611 tests, Web 161 files/764 tests, PostgreSQL integration 35 files/224 tests; non-OIDC E2E 241 passed/26 viewport skips, OIDC 5/5, reference visual 18 passed/15 viewport skips. Standard local validate stopped at E2E because another session owned port 5173; this was recorded, not claimed as pass."
 owner: main
-writer: main
+writer: codex
 risk: high
 dependsOn:
   - universal-workbench-layout-standard-v1
@@ -84,8 +84,12 @@ writeScopes:
   - apps/web/e2e/universal-workbench-reference.visual.spec.ts-snapshots/reference-edit-mobile-chromium-win32.png
   - apps/web/e2e/universal-workbench-reference.visual.spec.ts-snapshots/reference-mobile-detail-mobile-chromium-win32.png
   - apps/web/e2e/recoverable-work-sessions.spec.ts
+  - apps/web/e2e/recoverable-work-sessions.oidc.spec.ts
   - apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/**
   - apps/web/e2e/support/recoverableWorkSessions.ts
+  - apps/web/e2e/support/oidcIdentityProvider.ts
+  - apps/web/e2e/support/testServers.ts
+  - apps/web/playwright.config.ts
 exclusiveLocks:
   - database-schema
   - database-migrations
@@ -252,6 +256,216 @@ uiViewportEvidence:
 - **范围**：定向测试、真实 PostgreSQL、Web lint/typecheck/build、三视口 E2E/截图、完整 `pnpm validate`、fresh Claude 只读整体复审、finding 裁决、PR/CI/合并。
 - **停止条件**：所有 accepted finding 已修复；外部推送/PR 若被平台权限阻塞则保留本地提交和证据并如实报告。
 
+### `WS6-acceptance-closeout`
+
+| 项目        | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 基线        | `2d84c5675b0a2859b87577d784771bdc5a1e81e3`（当前 `main`，包含 PR #190/#191 的共享工作台壳修复）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 执行角色    | Codex Code 实现执行器；`HANDOFF.model` 如实登记实际模型                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 主代理审查  | Claude Code 主代理核对实际 diff、RED/GREEN 证据、三视口截图和 fresh checkout 门禁；不直接修改实现文件                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 独立复审    | 若测试暴露并修正生产行为，全部修复后由 fresh Claude Code 只读复审新增风险差异；纯测试/证据无生产行为变化时不机械重复 2026-10-14 的整体复审                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 写入范围    | `docs/planning/tasks/recoverable-work-sessions-v1.md`；`docs/planning/progress-board.html`；`apps/web/e2e/recoverable-work-sessions.spec.ts`；`apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/**`；`apps/web/src/components/workbench/WorkbenchSessionSwitcher.test.ts`；`apps/web/src/work-session/useWorkSessions.test.ts`；`apps/web/src/composables/useProductInitiativeDecision.test.ts`；`apps/web/src/views/ProductSelectionWorkbench.test.ts`；`apps/api/src/infrastructure/integration/work-session.integration.test.ts`；`apps/api/src/infrastructure/integration/product-initiative-flow.integration.test.ts`；仅当新增失败测试证明真实缺陷时，允许最小修改 `apps/web/src/components/workbench/WorkbenchSessionSwitcher.vue`、`apps/web/src/work-session/useWorkbenchSessionSwitcher.ts`、`apps/web/src/work-session/useWorkSessions.ts`、`apps/web/src/composables/useProductInitiativeDecision.ts`、`apps/web/src/views/ProductSelectionWorkbench.vue`、`apps/web/src/views/StuffingWorkbench.vue` |
+| 禁止范围    | 不改公共契约、Schema、迁移、字典、权限政策、领域 outcome/destination/责任/期限/SLA；不新增通用草稿、关闭/重开流程、任务内协作、聊天或 AI；不读取、修改、暂存或提交 `.tmp/`；不使用 `--update-snapshots` 接受 Stuffing mobile 漂移                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| UI 强制结构 | 继承 frontmatter 全部 `uiStructure` / `uiMustStayVisible` / `uiProgressiveDisclosure` / `uiForbidden` / `uiViewportEvidence`；状态只补真实文字与恢复证据，不改变固定办理壳、三栏顺序或主动作                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 验证命令    | 先逐项运行新增 Web/API 定向测试并保存预期 RED，再做最小 GREEN；随后运行相关 Web lint/typecheck/unit/E2E、API unit/integration（如有 API 测试改动）、`pnpm board:build`、`pnpm repo:check`、本 brief 与派生板格式检查；最终在干净 fresh checkout、5173/5174 无外部 owner、PostgreSQL/Chromium 就绪且不更新截图的条件下只运行一次 `pnpm validate`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 停止条件    | 四项验收均有直接证据且 `pnpm validate` 单命令退出 0 才可回到 `review`/`done`；实际 OIDC 401 若重定向导致未保存内存输入丢失，或 `closed` 在真实产品路径不可检查，则返回 `blocked` 并给出失败反证，不得把开发认证、注入假数据或纯映射单测冒充通过                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+
+TDD 与验收顺序：
+
+1. **失败保持矩阵**：先写会失败的真实页面验收，分别覆盖目标读取 `401/403/404/409`、领域草稿保存 `500/409`、WorkSession activate `409`。每例同时断言来源 session 仍是唯一 `aria-current`、URL/当前对象/事项与右栏 mode 不变、未保存 typed 输入逐字保留；目标读取或草稿失败不得调用 activate，activate 409 只能调用一次且不得导航。实际 OIDC 401 必须单列，不得只用 development-auth 的抛错替代。
+2. **Typed draft 跨刷新**：Web 测试必须让 GET 返回非空 `decisionDraft`，证明保存后刷新/重建 composable 可恢复 objective、review points、business case、risk、unit economics 与右栏指针；正式 `outcome/currentDestination/responsibility/targetDate/nextDecisionAt/reconsiderationAt` 必须继续来自 formal initiative 且前后相同。真实 PostgreSQL 集成测试同时断言 typed draft round-trip，正式事实、交接和 Outbox 不变。
+3. **六状态文字矩阵**：真实组件渲染并逐项断言 `当前 / 待续办 / 领域草稿已保存 / 仅此标签保留 / 冲突 / 已关闭`，同时验证状态不只靠颜色。E2E 至少证明 Product Selection 的 `draft_saved`、Stuffing 新标签后的 `browser_held`、目标版本变化后的 `conflict`。`closed` 若因默认查询过滤而只能由人工注入组件 fixture，则不能单凭该 fixture 勾选真实界面验收；需证明产品内可检查的收拢入口，或明确返回 blocker 由主代理裁决原需求与实现边界。
+4. **视觉与回归**：在 `1440×900`、`1024×768`、`390×844` 复跑真实选品/装箱页面，核对当前标识、状态真实性、冲突/恢复入口、主动作和页面级无横向溢出。Stuffing mobile 必须人工比较 PR #179 原基线与当前 main 基线，记录队列内容变化的业务原因；不得因像素门禁方便而更新基线。
+5. **单命令门禁**：最终候选在 fresh checkout 记录 commit、clean status、Node/pnpm/Playwright 版本、infra health 与 5173/5174 空闲事实；只接受一条 `pnpm validate` 从 `repo:check` 顺序跑到 `build` 且 exit 0。分轨成功、历史 CI 或当前 checkout 的诊断运行不能替代该证据。
+
+实现任务：
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6-acceptance-closeout base=2d84c5675b0a2859b87577d784771bdc5a1e81e3 role=implementer workspace=D:\Logixs
+```
+
+交回：
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6-acceptance-closeout base=2d84c5675b0a2859b87577d784771bdc5a1e81e3 role=main workspace=D:\Logixs commit=<sha|none>
+```
+
+### `WS6R1-closed-and-oidc-evidence`
+
+主代理对首次 `blocked` HANDOFF 的裁决：
+
+```yaml
+protocol: logix-disposition/v1
+slice: WS6-acceptance-closeout
+decisions:
+  - finding: WS6-CLOSED-01
+    status: accepted
+    reason: closed 在契约、服务端 close 命令和状态文案中已定义，但默认 list 排除且前端无归档入口，真实产品路径无法检查；这违反本 brief 已批准的“默认收拢但原因和重新打开边界仍可检查”，不是组件测试可以补齐的证据缺口。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R1-closed-and-oidc-evidence
+  - finding: WS6-OIDC-01
+    status: accepted
+    reason: oidc-chromium 只匹配 auth-session.spec.ts，当前验收 spec 无法运行真实 401；这是测试配置/写域缺口。401 保持口径不得要求未保存内存跨整页 OIDC 重定向魔法保存，而应遵循既有业务边界：选品先中性保存 typed draft，再重登回原路由并从服务端草稿恢复；装箱无草稿时仍只能留在原标签页或放弃。
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R1-closed-and-oidc-evidence
+next: fix
+```
+
+修复边界：
+
+1. **Closed 真实入口**：测试先行地让 list 支持显式 `includeClosed`（默认仍排除），前端切换器提供收拢的“已关闭工作现场”检查区。每个关闭项必须显示 `工作现场已关闭`，明确“关闭现场不等于业务完成/延期/责任转移”，并提供“重新进入该对象会新建受控现场、仍须重新授权和重读”的边界文字。V1 不新增 reopen 命令，不新增 close reason 字段，不把 closed 行设为可激活；如需产生 closed fixture，必须通过真实 close API/服务端路径而非手工注入组件数组。
+2. **关闭动作**：已有 close API 只允许关闭非 current 会话；切换器可对非 current 行提供“关闭此工作现场”，成功后从默认列表移入收拢区。失败保持当前、路由和本地输入不变，并显示可行动错误。不得关闭 current，不得改变领域任务、责任、期限、SLA 或业务状态。
+3. **OIDC 真实 401**：新增 OIDC 专用 recoverable-session E2E（或将专用文件加入 `oidc-chromium` 的 testMatch），复用现有 OIDC IdP/API 支持。选品流程先通过正式 typed-draft 保存取得服务端恢复点，再让目标读取返回一次 401，证明只重登一次、回到原路由、来源仍 current、目标未 activate，并从正式 draft 恢复输入；服务端持续 401 时显示会话无效且不发生切换。不得把任意业务表单放入 sessionStorage/localStorage。
+4. **原矩阵继续执行**：完成上述 RED/GREEN 后继续 `WS6` 的 403/404/409、draft 500/409、activate 409、typed draft 刷新、六状态文字、三视口与 fresh-checkout `pnpm validate`；不得因本次修复只验证两个 blocker 就交回完成。
+
+追加写入范围：
+
+- `packages/contracts/schemas/v1/work-session.schema.json`
+- `packages/contracts/fixtures/v1/schema-instances.json`
+- `packages/contracts/generated/contracts.d.ts`
+- `scripts/generate-contracts.mjs`
+- `apps/api/src/modules/work-session/application/list-work-sessions.service.ts`
+- `apps/api/src/modules/work-session/application/work-session.services.test.ts`
+- `apps/api/src/modules/work-session/infrastructure/prisma-work-session.repository.ts`
+- `apps/api/src/modules/work-session/infrastructure/prisma-work-session.repository.test.ts`
+- `apps/api/src/modules/work-session/presentation/work-session.dto.ts`
+- `apps/api/src/modules/work-session/presentation/work-sessions.controller.ts`
+- `apps/api/src/modules/work-session/presentation/work-sessions.controller.test.ts`
+- `apps/api/src/infrastructure/integration/work-session.integration.test.ts`
+- `apps/web/src/api/workSessions.ts`
+- `apps/web/src/api/workSessions.test.ts`
+- `apps/web/src/work-session/useWorkSessions.ts`
+- `apps/web/src/work-session/useWorkSessions.test.ts`
+- `apps/web/src/components/workbench/WorkbenchSessionSwitcher.vue`
+- `apps/web/src/components/workbench/WorkbenchSessionSwitcher.test.ts`
+- `apps/web/e2e/recoverable-work-sessions.oidc.spec.ts`
+- `apps/web/e2e/support/oidcIdentityProvider.ts`
+- `apps/web/e2e/support/testServers.ts`
+- `apps/web/playwright.config.ts`
+
+除上述追加外，其余范围、UI 强制结构、TDD、禁止项、验证与停止条件继续继承 `WS6-acceptance-closeout`。
+
+实现任务：
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R1-closed-and-oidc-evidence base=2d84c5675b0a2859b87577d784771bdc5a1e81e3 role=implementer workspace=D:\Logixs
+```
+
+交回：
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R1-closed-and-oidc-evidence base=2d84c5675b0a2859b87577d784771bdc5a1e81e3 role=main workspace=D:\Logixs commit=<sha|none>
+```
+
+### `WS6R2-review-findings-and-final-gate`
+
+主代理对 `WS6R1` HANDOFF 的审查与裁决：
+
+```yaml
+protocol: logix-review/v1
+slice: WS6R1-closed-and-oidc-evidence
+baseline: 2d84c5675b0a2859b87577d784771bdc5a1e81e3
+reviewed: workspace-diff
+verdict: findings
+findings:
+  - id: WS6R1-RESTORE-01
+    severity: high
+    type: confirmed
+    evidence: apps/web/src/work-session/useWorkbenchSessionSwitcher.ts:73-105,270-281
+    scopeBasis: 当前对象、事项和右栏现场必须保持；后台同步不得覆盖当前标签页尚未持久化的个人操作位置
+    impact: load 同时由 mounted、focus、visibilitychange、BroadcastChannel 和关闭后刷新调用；每次都 restorePointer，用户在当前标签页刚切到的新 gap/右栏 mode 会被服务端旧指针拉回
+    acceptanceProbe: 服务端 current 指针为 A，用户本地切到 B 后触发 focus/visibility/Broadcast reload，仍保持 B；首次重建页面时才恢复 A
+    currentSliceNecessity: 本次为修复刷新恢复新增该行为，直接改变核心恢复语义
+    suggestedDisposition: accepted
+  - id: WS6R1-BROWSER-HELD-CLOSE-01
+    severity: high
+    type: confirmed
+    evidence: apps/web/src/components/workbench/WorkbenchSessionSwitcher.vue:230-273
+    scopeBasis: browser_held 是装箱无服务端草稿时对原标签未保存输入的唯一恢复指针
+    impact: 所有非 current 会话都显示关闭动作，包括 browser_held；用户可无处置确认地关闭唯一恢复指针，随后关闭原标签即失去未保存输入
+    acceptanceProbe: browser_held 行不提供关闭动作，close helper 也必须失败关闭；resumable/draft_saved/conflict 仍可关闭
+    currentSliceNecessity: 直接违背本任务优先减少“未保存输入丢失”的核心结果
+    suggestedDisposition: accepted
+  - id: WS6R1-CLOSE-RESULT-01
+    severity: medium
+    type: confirmed
+    evidence: apps/web/src/work-session/useWorkSessions.ts:38-49
+    scopeBasis: 操作结果必须反映服务端真实落账，并区分成功与刷新失败
+    impact: close API 已成功但随后 reload 失败时，catch 返回“关闭失败”；服务端已关闭、界面仍显示可关闭，重试只会得到版本冲突
+    acceptanceProbe: close 成功且 reload 拒绝时返回“已关闭但列表刷新失败”的真实结果，不得显示“关闭失败”，本地不得继续把该行当可关闭现场
+    currentSliceNecessity: 新增关闭入口的真实回执错误
+    suggestedDisposition: accepted
+  - id: WS6R1-REOPEN-HISTORY-01
+    severity: medium
+    type: confirmed
+    evidence: apps/web/src/work-session/useWorkbenchSessionSwitcher.ts:108-135
+    scopeBasis: closed 默认收拢但重新进入后仍可检查历史边界
+    impact: 同 context 只有 closed 行时，open 成功后的本地合并按 contextKey 删除所有旧行，导致刚刚重进对象后关闭历史暂时从检查区消失，直到下一次服务端 load
+    acceptanceProbe: 重进 closed context 后同时保留新 live 会话与原 closed 历史行
+    currentSliceNecessity: 本次 accepted closed 产品路径的直接验收要求
+    suggestedDisposition: accepted
+unknowns: []
+verificationGaps:
+  - 非 OIDC 浏览器矩阵尚无“保存 typed draft -> 切走 -> 回到选品并显式 page.reload -> 恢复完整 typed 字段和右栏指针”的直接 E2E；composable 单测和 OIDC 重登仅提供部分证据
+  - fresh-checkout pnpm validate 尚未 exit 0
+writes: none
+```
+
+```yaml
+protocol: logix-disposition/v1
+slice: WS6R1-closed-and-oidc-evidence
+decisions:
+  - finding: WS6R1-RESTORE-01
+    status: accepted
+    reason: 新增的通用 load 恢复会把后台同步变成强制 UI 回滚；恢复只能发生在页面首次重建、成功导航到目标或明确重新进入上下文时
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate
+  - finding: WS6R1-BROWSER-HELD-CLOSE-01
+    status: accepted
+    reason: browser_held 没有服务端领域草稿，关闭其唯一恢复指针会制造未保存输入丢失风险；V1 直接禁止关闭该状态
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate
+  - finding: WS6R1-CLOSE-RESULT-01
+    status: accepted
+    reason: close 与 reload 是两个事实，不能把已落账关闭误报为关闭失败
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate
+  - finding: WS6R1-REOPEN-HISTORY-01
+    status: accepted
+    reason: 新 live 会话和旧 closed 历史具有不同身份，应同时保留；只替换同 context 的未关闭副本
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate
+  - finding: WS6R1-TYPED-REFRESH-E2E-01
+    status: accepted
+    reason: 负责人要求 typed draft 刷新恢复 E2E；现有单元与 OIDC 测试未在普通产品路径显式 reload 后验证完整 typed 字段和右栏指针
+    writeback: docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate
+  - finding: WS6R1-STUFFING-MOBILE-BASELINE-01
+    status: accepted
+    reason: 主代理逐图核对确认实际图是 PR #190/#191 后可办理队列，旧基线仍显示任务池加载失败；新图当前标识、可执行主任务、关闭动作和面板均可见，无横向溢出，差异属于已批准业务修复而非视觉回归
+    writeback: apps/web/e2e/recoverable-work-sessions.spec.ts-snapshots/stuffing-mobile-chromium-session-menu-mobile-chromium-win32.png
+  - finding: WS6R1-VALIDATE-TIMEOUT-01
+    status: rejected
+    reason: purge-dry-run 文件、依赖和脚本不在当前 diff；定向重跑 7/7 通过且子进程约 1.05 秒，完整 API 单测 312 文件/1617 项也通过。单次 5.07 秒命中既有固定 5 秒边界，不支持扩大本业务切片修改 full-chain-demo；修复当前 finding 后从 fresh checkout 重跑 validate，只有再次复现才另立低风险测试稳定性修复
+    writeback: none
+next: fix
+```
+
+修复与最终门禁要求：
+
+1. `load` 只刷新服务端会话集合和唯一 current；首次页面重建单独恢复 current 指针。focus、visibility、BroadcastChannel、close 后 reload 不得覆盖当前标签页更新后的 `activeItemKey/contextMode`。成功切换仍在导航后恢复目标指针。
+2. `browser_held` 不显示关闭动作，关闭 helper 同样失败关闭；组件隐藏不能代替应用层保护。其余非 current 且非 closed 状态保持可关闭。
+3. close 成功与 reload 失败分轨：保留 close 返回的 closed 服务端记录，立即让本地行进入 closed 检查区；刷新失败显示“工作现场已关闭，但列表刷新失败，请重新加载”，不得显示“关闭失败”或允许重复关闭。close 请求本身失败仍保持原现场并显示失败。
+4. 重进 closed context 时保留旧 closed 历史，只替换/去重同 context 的未关闭行；新增自动化反证。
+5. 在普通 `recoverable-work-sessions.spec.ts` 增加 desktop 真实浏览器路径：填入 objective、review point、business case、risk、unit economics 和右栏指针，正式保存并切走，再回到选品执行 `page.reload()`，GET 返回正式非空 `decisionDraft`；逐项断言 typed 字段和右栏恢复，同时正式 outcome/destination/责任/期限不变。
+6. 主代理已人工核对 Stuffing mobile expected/actual/diff；只更新 `stuffing-mobile-chromium-session-menu-mobile-chromium-win32.png` 为当前已批准实际图，不改阈值、不更新其他截图。更新后单测该截图两次以确认稳定。
+7. 完成定向回归后，在最终候选的干净 fresh checkout、5173/5174 空闲、PostgreSQL/Chromium 就绪条件下重新运行一次 `pnpm validate`。若仍只在 `purge-dry-run.cli.test.ts` 的固定 5 秒边界失败，交回完整输出并停止，不在本切片修改 `full-chain-demo/**`。
+
+实现任务：
+
+```text
+TASK docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate base=2d84c5675b0a2859b87577d784771bdc5a1e81e3 role=implementer workspace=D:\Logixs
+```
+
+交回：
+
+```text
+HANDOFF docs/planning/tasks/recoverable-work-sessions-v1.md#WS6R2-review-findings-and-final-gate base=2d84c5675b0a2859b87577d784771bdc5a1e81e3 role=main workspace=D:\Logixs commit=<sha|none>
+```
+
 ## 验收
 
 - [x] 同一用户同一 context 重复打开只返回原会话；不会产生重复现场。
@@ -276,9 +490,12 @@ uiViewportEvidence:
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                 |
-| ---------- | ------ | ----------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| 2026-10-14 | coding | Claude / Opus 4.8 | 4bca8233 | 从负责人固定主线提交建立功能分支；完成权威、真实消费者、旧 worktree 与实现事实核对；未触碰受保护 WIP |
+| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                 |
+| ---------- | ------ | ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-14 | coding | Claude / Opus 4.8 | 4bca8233 | 从负责人固定主线提交建立功能分支；完成权威、真实消费者、旧 worktree 与实现事实核对；未触碰受保护 WIP                                                                 |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | 2d84c567 | 核对四项缺口后建立 `WS6-acceptance-closeout`：只补直接验收证据，测试暴露真实缺陷时才允许最小生产修复；切换到最新 main 的专用验收分支                                 |
+| 2026-10-18 | fix    | Codex / unknown   | none     | `WS6` 首次交回 blocked：确认 closed 被列表过滤且无真实 UI 证据，OIDC 项目不匹配验收 spec；主代理复核后 accepted 并下发 `WS6R1`                                       |
+| 2026-10-18 | fix    | Codex / unknown   | none     | `WS6R1` 实现交回但 fresh validate 被既有 CLI 五秒边界阻断；主代理复现定向/全量 API 通过，审查形成 4 项行为 finding、typed refresh E2E 缺口与视觉基线裁决，转 `WS6R2` |
 
 ## 最终验证记录（2026-10-14）
 
@@ -287,7 +504,9 @@ uiViewportEvidence:
 - 真实 PostgreSQL 全量 integration 35 文件、224 项通过；其中 WorkSession 4 项、选品流程 38 项、迁移升级 14 项。
 - 可恢复工作会话三视口 E2E 12/12 通过；选品与装箱在 1440×900、1024×768、390×844 共 6 张像素基线经人工核对通过，无页面横向溢出。
 - contract:check、contract:drift、data-dictionary:check、db:generate、root lint/typecheck/build、workbench-purposes:check 和 git diff --check 通过。
-- repository walker 已经 TDD 修复为只排除 git-ignored 的 `.superpowers/sdd/**` 执行 workspace，其他 `.superpowers/**` 仍受检查；clean clone 的 `repo:check` 通过。当前 checkout 只因受保护市场基线 WIP 不属于本 brief 而正确阻断 scope。`n- 最终 committed HEAD 的 clean clone 中，repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build 全部通过；API 311 文件/1611 项、Web 161 文件/764 项、PostgreSQL integration 35 文件/224 项。`n- 标准 `pnpm validate` 在 E2E 阶段因另一个会话占用 5173 且指纹不同而失败关闭；未终止该服务。等价分轨门禁通过：非 OIDC E2E 241 passed / 26 viewport skips，OIDC 5/5，reference visual 18 passed / 15 viewport skips。未声称单命令 validate 通过。
+- repository walker 已经 TDD 修复为只排除 git-ignored 的 `.superpowers/sdd/**` 执行 workspace，其他 `.superpowers/**` 仍受检查；clean clone 的 `repo:check` 通过。当前 checkout 只因受保护市场基线 WIP 不属于本 brief 而正确阻断 scope。
+- 最终 committed HEAD 的 clean clone 中，repo/purpose/contracts/dictionary/db/lint/format/typecheck/test/integration/build 全部通过；API 311 文件/1611 项、Web 161 文件/764 项、PostgreSQL integration 35 文件/224 项。
+- 标准 `pnpm validate` 在 E2E 阶段因另一个会话占用 5173 且指纹不同而失败关闭；未终止该服务。等价分轨门禁通过：非 OIDC E2E 241 passed / 26 viewport skips，OIDC 5/5，reference visual 18 passed / 15 viewport skips。未声称单命令 validate 通过。
 - fresh Claude 整体复审已完成；9 项 findings 全部 accepted 并在唯一修复批次处置，当前回到 `review`；PR #179 已创建并等待最终 CI。
 
 ## 独立复审裁决（2026-10-14）
@@ -308,4 +527,4 @@ uiViewportEvidence:
 
 - PR #179 已于 2026-10-14 合并到 `main`，merge commit `2ed5f9b2`。
 - 最终 CI run `38528039982` 中 `changes`、`static`、`unit`、`build`、`e2e`、`dictionary`、`quality` 成功；`security` 由路径分类器跳过。
-- 代码已合入不等于本 brief 验收完成；本次只更新 merge/CI 事实，状态保持 `review`。验收清单中缺少直接证据的 401/403/404/409 失败保持、typed draft 跨刷新、全状态文字和单命令 `validate` 四项继续未勾选。
+- 代码已合入不等于本 brief 验收完成；2026-10-16 只更新 merge/CI 事实并保持 `review`。2026-10-18 已按四项缺口建立 `WS6-acceptance-closeout` 并转为 `fix`；401/403/404/409 失败保持、typed draft 跨刷新、全状态文字和单命令 `validate` 仍未勾选，必须由当前切片直接验真。

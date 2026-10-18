@@ -5,6 +5,7 @@ import type {
   WorkSessionRepository,
 } from "../domain/work-session.repository";
 import { ActivateWorkSessionService } from "./activate-work-session.service";
+import { ListWorkSessionsService } from "./list-work-sessions.service";
 import { UpdateWorkSessionService } from "./update-work-session.service";
 import { OpenWorkSessionService } from "./open-work-session.service";
 
@@ -120,6 +121,41 @@ describe("OpenWorkSessionService", () => {
         } as never,
       }),
     ).rejects.toThrow("VALIDATION_FORMAT: routeContext");
+  });
+});
+
+describe("ListWorkSessionsService", () => {
+  it("keeps closed sessions excluded by default and includes them only when requested", async () => {
+    const repository = repositoryHarness();
+    vi.mocked(repository.list).mockResolvedValue([]);
+    const service = new ListWorkSessionsService(repository);
+
+    await service.execute({ tenantId: "tenant-1", actorId: "actor-1" });
+    await service.execute({
+      tenantId: "tenant-1",
+      actorId: "actor-1",
+      includeClosed: "true",
+    });
+
+    expect(repository.list).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ includeClosed: false }),
+    );
+    expect(repository.list).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ includeClosed: true }),
+    );
+  });
+
+  it("rejects unknown includeClosed values", async () => {
+    const service = new ListWorkSessionsService(repositoryHarness());
+    await expect(
+      service.execute({
+        tenantId: "tenant-1",
+        actorId: "actor-1",
+        includeClosed: "yes",
+      }),
+    ).rejects.toThrow("VALIDATION_FORMAT: includeClosed");
   });
 });
 

@@ -24,7 +24,7 @@ export class PrismaWorkSessionRepository implements WorkSessionRepository {
       where: {
         tenantId: input.tenantId,
         ownerActorId: input.actorId,
-        status: { not: "closed" },
+        ...(input.includeClosed ? {} : { status: { not: "closed" } }),
         ...(input.after
           ? {
               OR: [

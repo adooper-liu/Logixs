@@ -118,6 +118,55 @@ describe("recoverable work session persistence", () => {
       }),
     ).rejects.toThrow("WORK_SESSION_CURRENT_CLOSE_REQUIRES_SWITCH");
   });
+
+  it("hides a closed session by default and returns it only when explicitly requested", async () => {
+    await prisma.workSession.deleteMany({ where: { tenantId } });
+    const current = await repository.openOrFocus(
+      productSelectionInput(handoffA),
+    );
+    const closable = await repository.openOrFocus(
+      productSelectionInput(handoffB),
+    );
+    await repository.close({
+      tenantId,
+      actorId,
+      sessionId: closable.record.sessionId,
+      expectedVersion: closable.record.version,
+    });
+
+    const visible = await repository.list({
+      tenantId,
+      actorId,
+      take: 10,
+      includeClosed: false,
+    });
+    const withClosed = await repository.list({
+      tenantId,
+      actorId,
+      take: 10,
+      includeClosed: true,
+    });
+
+    expect(visible.map(({ sessionId }) => sessionId)).toEqual([
+      current.record.sessionId,
+    ]);
+    expect(withClosed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sessionId: closable.record.sessionId,
+          status: "closed",
+        }),
+      ]),
+    );
+
+    const reopened = await repository.openOrFocus(
+      productSelectionInput(handoffB),
+    );
+    expect(reopened.created).toBe(true);
+    expect(reopened.record.sessionId).not.toBe(closable.record.sessionId);
+    expect(reopened.record.contextKey).toBe(closable.record.contextKey);
+    expect(reopened.record.status).toBe("resumable");
+  });
 });
 
 function activate(

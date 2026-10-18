@@ -1,3 +1,4 @@
+import type { WorkSessionStatusV1, WorkSessionV1 } from "@logix/contracts";
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 const HANDOFF = "44444444-4444-4444-8444-444444444444";
@@ -46,7 +47,7 @@ test("product selection dirty input offers typed draft choices", async ({
   const objective = page.getByLabel("目标结果");
   await objective.fill("尚未保存的目标结果");
   await page.getByRole("button", { name: "切换工作现场" }).click();
-  await page.getByRole("button", { name: /装箱 · KOCU4960726/ }).click();
+  await page.locator(`[data-session="${STUFFING_SESSION}"]`).click();
   await expect(page.getByText("保存领域草稿并切换")).toBeVisible();
   await expect(page.getByText("放弃本地改动并切换")).toBeVisible();
   await expect(page.getByText("留在当前页")).toBeVisible();
@@ -66,7 +67,7 @@ test("stuffing dirty input never claims a server draft", async ({ page }) => {
   const seal = page.getByLabel("封号");
   await seal.fill("NEW-SEAL");
   await page.getByRole("button", { name: "切换工作现场" }).click();
-  await page.getByRole("button", { name: /选品 · 宠物出行品类/ }).click();
+  await page.locator(`[data-session="${SELECTION_SESSION}"]`).click();
   await expect(page.getByText("放弃本地改动并切换")).toBeVisible();
   await expect(page.getByText("在新标签页打开目标")).toBeVisible();
   await expect(page.getByText("留在当前页")).toBeVisible();
@@ -86,33 +87,497 @@ test("stuffing dirty input never claims a server draft", async ({ page }) => {
   await popup.close();
 });
 
-async function mockRecoverableSessions(page: Page): Promise<void> {
+for (const status of [403, 404, 409] as const) {
+  test(`target read ${status} keeps the source current and typed input`, async ({
+    page,
+  }) => {
+    const evidence = await mockRecoverableSessions(page, {
+      targetReadStatus: status,
+    });
+    const originalUrl = await openDirtyProductSelection(page);
+
+    await chooseStuffingAndSave(page);
+
+    await expect(page).toHaveURL(originalUrl);
+    await expect(page.getByLabel("目标结果")).toHaveValue("尚未保存的目标结果");
+    await expectUniqueCurrent(page, SELECTION_SESSION);
+    await expect(
+      page.getByRole("dialog", { name: "工作现场切换" }).getByRole("alert"),
+    ).toContainText(String(status));
+    expect(evidence.draftSaveCalls).toBe(1);
+    expect(evidence.targetReadCalls).toBe(1);
+    expect(evidence.activateCalls).toBe(0);
+  });
+}
+
+for (const status of [500, 409] as const) {
+  test(`typed draft save ${status} keeps the source current and typed input`, async ({
+    page,
+  }) => {
+    const evidence = await mockRecoverableSessions(page, {
+      draftSaveStatus: status,
+    });
+    const originalUrl = await openDirtyProductSelection(page);
+
+    await chooseStuffingAndSave(page);
+
+    await expect(page).toHaveURL(originalUrl);
+    await expect(page.getByLabel("目标结果")).toHaveValue("尚未保存的目标结果");
+    await expectUniqueCurrent(page, SELECTION_SESSION);
+    await expect(
+      page.getByRole("dialog", { name: "工作现场切换" }).getByRole("alert"),
+    ).toContainText(String(status));
+    expect(evidence.draftSaveCalls).toBe(1);
+    expect(evidence.targetReadCalls).toBe(0);
+    expect(evidence.activateCalls).toBe(0);
+  });
+}
+
+test("activate 409 keeps the source current, route, pointer, and typed input", async ({
+  page,
+}) => {
+  const evidence = await mockRecoverableSessions(page, { activateStatus: 409 });
+  const originalUrl = await openDirtyProductSelection(page);
+
+  await chooseStuffingAndSave(page);
+
+  await expect(page).toHaveURL(originalUrl);
+  await expect(page.getByLabel("目标结果")).toHaveValue("尚未保存的目标结果");
+  await expectUniqueCurrent(page, SELECTION_SESSION);
+  await expect(page.getByRole("alert")).toContainText("409");
+  expect(evidence.draftSaveCalls).toBe(1);
+  expect(evidence.targetReadCalls).toBe(1);
+  expect(evidence.activateCalls).toBe(1);
+});
+
+test("successful typed draft switch exposes draft_saved through the session API state", async ({
+  page,
+}) => {
+  const evidence = await mockRecoverableSessions(page);
+  await openDirtyProductSelection(page);
+
+  await chooseStuffingAndSave(page);
+
+  await expect(page).toHaveURL(
+    new RegExp(
+      `/workspaces/stuffing\\?containerId=${CONTAINER}&taskId=${TASK}$`,
+    ),
+  );
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+  await expectUniqueCurrent(page, STUFFING_SESSION);
+  await expect(
+    page.locator(`[data-session="${SELECTION_SESSION}"]`),
+  ).toContainText("领域草稿已保存");
+  expect(evidence.activateCalls).toBe(1);
+});
+
+test("typed decision draft and pointer survive switch-back and an explicit reload", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium");
+  const evidence = await mockRecoverableSessions(page, {
+    richDraftRefresh: true,
+  });
+  await page.goto(`/workspaces/product-selection?handoffId=${HANDOFF}`);
+
+  await page.getByLabel("目标结果").fill("刷新后仍在的 typed 目标");
+  await page.getByRole("button", { name: /评审依据/ }).click();
+  const reviewPanel = page.locator(".review-panel");
+  const businessEditor = reviewPanel.locator(".business-case__editor");
+  await businessEditor
+    .getByRole("radio", { name: "支持投入", exact: true })
+    .check();
+  await businessEditor.locator("textarea").first().fill("客户需求结论可恢复");
+  await businessEditor.getByText(/引用来源信号证据/).click();
+  await businessEditor.getByLabel(/站点类目周报/).check();
+
+  await reviewPanel
+    .locator(".risk-summary")
+    .getByRole("button", {
+      name: /合规/,
+    })
+    .click();
+  const riskEditor = reviewPanel.locator(".risk-editor");
+  await riskEditor.getByRole("radio", { name: "适用", exact: true }).check();
+  await riskEditor
+    .getByRole("radio", { name: "支持投入", exact: true })
+    .check();
+  await riskEditor.locator("textarea").first().fill("合规风险结论可恢复");
+  await riskEditor.getByText(/引用来源信号证据/).click();
+  await riskEditor.getByLabel(/站点类目周报/).check();
+
+  await page.getByRole("button", { name: /单位经济/ }).click();
+  await page.getByLabel("单位经济币种").selectOption("CAD");
+  await page.getByText("填写基准情景金额与依据", { exact: true }).click();
+  await page.getByLabel("基准情景 销售价 最低值").fill("49.90");
+  await page.getByLabel("基准情景 销售价 最高值").fill("59.90");
+  await page.getByLabel("基准情景 销售价 依据类型").selectOption("assumption");
+
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+  await page.locator(`[data-session="${STUFFING_SESSION}"]`).click();
+  await page.getByText("保存领域草稿并切换", { exact: true }).click();
+  await expect(page).toHaveURL(
+    new RegExp(
+      `/workspaces/stuffing\\?containerId=${CONTAINER}&taskId=${TASK}$`,
+    ),
+  );
+
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+  const selectionSession = page.locator(
+    `[data-session="${SELECTION_SESSION}"]`,
+  );
+  await selectionSession.focus();
+  await selectionSession.press("Enter");
+  await expect(page).toHaveURL(
+    new RegExp(`/workspaces/product-selection\\?handoffId=${HANDOFF}$`),
+  );
+  await page.reload();
+
+  await expect(page.getByLabel("目标结果")).toHaveValue(
+    "刷新后仍在的 typed 目标",
+  );
+  await expect(page.getByRole("button", { name: /单位经济/ })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await expect(page.getByLabel("单位经济币种")).toHaveValue("CAD");
+  await page.getByText("填写基准情景金额与依据", { exact: true }).click();
+  await expect(page.getByLabel("基准情景 销售价 最低值")).toHaveValue("49.90");
+  await expect(page.getByLabel("基准情景 销售价 最高值")).toHaveValue("59.90");
+  await expect(page.getByLabel("基准情景 销售价 依据类型")).toHaveValue(
+    "assumption",
+  );
+
+  await page.getByRole("button", { name: /评审依据/ }).click();
+  await expect(
+    page.locator(".business-case__editor textarea").first(),
+  ).toHaveValue("客户需求结论可恢复");
+  await expect(
+    page.locator(".risk-summary").getByRole("button", {
+      name: /合规/,
+    }),
+  ).toContainText("适用 · 支持投入");
+  await page
+    .locator(".risk-summary")
+    .getByRole("button", {
+      name: /合规/,
+    })
+    .click();
+  await expect(page.locator(".risk-editor textarea").first()).toHaveValue(
+    "合规风险结论可恢复",
+  );
+
+  const detail = await page.evaluate(async (handoffId) => {
+    const response = await fetch(`/api/product-initiatives/${handoffId}`);
+    return response.json();
+  }, HANDOFF);
+  expect(detail.decisionDraft).toMatchObject({
+    objective: "刷新后仍在的 typed 目标",
+    reviewPoints: expect.arrayContaining([
+      expect.objectContaining({
+        code: "target_user_and_market",
+        conclusion: "正式评审要点保持",
+      }),
+    ]),
+    businessCaseDraft: expect.arrayContaining([
+      expect.objectContaining({
+        dimensionCode: "customer_need",
+        decision: "supports_investment",
+        conclusion: "客户需求结论可恢复",
+      }),
+    ]),
+    riskAssessmentDraft: expect.arrayContaining([
+      expect.objectContaining({
+        riskCode: "compliance",
+        applicability: "applicable",
+        investmentDecision: "supports_investment",
+        conclusion: "合规风险结论可恢复",
+      }),
+    ]),
+    unitEconomicsDraft: {
+      currencyCode: "CAD",
+      scenarios: {
+        baseline: {
+          salePrice: {
+            min: "49.90",
+            max: "59.90",
+            basis: "assumption",
+          },
+        },
+      },
+    },
+  });
+  expect(detail.initiative).toMatchObject({
+    outcome: "approve",
+    currentDestination: "needs_decision",
+    responsibleActorId: "formal-owner",
+    responsibilityAccepted: true,
+    receivingTeamOrRole: "产品开发 / NPI",
+    targetDate: "2026-11-15",
+    nextDecisionDate: "2026-10-20",
+    reconsiderationDate: null,
+  });
+  expect(evidence.draftSaveCalls).toBe(1);
+  expect(evidence.lastDraftCommand).toMatchObject({
+    objective: "刷新后仍在的 typed 目标",
+  });
+});
+
+test("version mismatch records and exposes conflict without activation", async ({
+  page,
+}) => {
+  const evidence = await mockRecoverableSessions(page, {
+    targetDomainVersion: 2,
+  });
+  await page.goto(`/workspaces/product-selection?handoffId=${HANDOFF}`);
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+  await page.locator(`[data-session="${STUFFING_SESSION}"]`).click();
+
+  await expect(page.getByRole("alert")).toContainText(
+    "目标现场版本已从 0 更新为 2",
+  );
+  await expectUniqueCurrent(page, SELECTION_SESSION);
+  await expect(
+    page.locator(`[data-session="${STUFFING_SESSION}"]`),
+  ).toContainText("冲突");
+  expect(evidence.pointerCalls).toBe(1);
+  expect(evidence.activateCalls).toBe(0);
+});
+
+test("close uses the close endpoint and moves the session into collapsed inspection", async ({
+  page,
+}) => {
+  const evidence = await mockRecoverableSessions(page);
+  await page.goto(`/workspaces/product-selection?handoffId=${HANDOFF}`);
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+  await page
+    .getByRole("button", { name: "关闭此工作现场：装箱 · KOCU4960726" })
+    .click();
+
+  await expect(page.getByText("已关闭工作现场（1）")).toBeVisible();
+  await page.getByText("已关闭工作现场（1）").click();
+  await expect(page.getByText("工作现场已关闭", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("关闭现场不等于业务完成、延期或责任转移。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("重新进入该对象会建立新的受控现场，并重新授权和重读。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.locator(`[data-session="${STUFFING_SESSION}"]`),
+  ).toHaveCount(0);
+  await expectUniqueCurrent(page, SELECTION_SESSION);
+  expect(evidence.closeCalls).toBe(1);
+});
+
+test("close failure preserves the current session, route, and local input", async ({
+  page,
+}) => {
+  const evidence = await mockRecoverableSessions(page, { closeStatus: 409 });
+  const originalUrl = await openDirtyProductSelection(page);
+  await page
+    .getByRole("button", { name: "关闭此工作现场：装箱 · KOCU4960726" })
+    .click();
+
+  await expect(page).toHaveURL(originalUrl);
+  await expect(page.getByLabel("目标结果")).toHaveValue("尚未保存的目标结果");
+  await expectUniqueCurrent(page, SELECTION_SESSION);
+  await expect(page.getByRole("alert")).toContainText("409");
+  expect(evidence.closeCalls).toBe(1);
+});
+
+test("stuffing new-tab transition exposes browser_held through the session API state", async ({
+  page,
+}) => {
+  const evidence = await mockRecoverableSessions(page);
+  await page.goto(
+    `/workspaces/stuffing?containerId=${CONTAINER}&taskId=${TASK}`,
+  );
+  await page.getByLabel("封号").fill("NEW-SEAL");
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+  await page.locator(`[data-session="${SELECTION_SESSION}"]`).click();
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByText("在新标签页打开目标", { exact: true }).click();
+  const popup = await popupPromise;
+  await popup.waitForURL(
+    new RegExp(`/workspaces/product-selection\\?handoffId=${HANDOFF}$`),
+  );
+  await popup.close();
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+
+  await expect(
+    page.locator(`[data-session="${STUFFING_SESSION}"]`),
+  ).toContainText("仅此标签保留");
+  await expect(
+    page.getByRole("button", {
+      name: "关闭此工作现场：装箱 · KOCU4960726",
+    }),
+  ).toHaveCount(0);
+  expect(evidence.activateCalls).toBe(1);
+});
+
+interface MockScenario {
+  readonly targetReadStatus?: 401 | 403 | 404 | 409;
+  readonly draftSaveStatus?: 409 | 500;
+  readonly activateStatus?: 409;
+  readonly closeStatus?: 409 | 500;
+  readonly targetDomainVersion?: number;
+  readonly richDraftRefresh?: boolean;
+}
+
+interface MockEvidence {
+  draftSaveCalls: number;
+  targetReadCalls: number;
+  activateCalls: number;
+  pointerCalls: number;
+  closeCalls: number;
+  lastDraftCommand: Record<string, unknown> | null;
+}
+
+async function mockRecoverableSessions(
+  page: Page,
+  scenario: MockScenario = {},
+): Promise<MockEvidence> {
+  const evidence: MockEvidence = {
+    draftSaveCalls: 0,
+    targetReadCalls: 0,
+    activateCalls: 0,
+    pointerCalls: 0,
+    closeCalls: 0,
+    lastDraftCommand: null,
+  };
+  let sessions: WorkSessionV1[] = [];
+  let decisionDraft: ReturnType<typeof savedDraft> | null = null;
+
+  function ensureSessions(): void {
+    if (sessions.length) return;
+    const stuffingCurrent = page.url().includes("stuffing");
+    const selection = session(
+      SELECTION_SESSION,
+      stuffingCurrent ? "resumable" : "current",
+      "product_selection",
+    );
+    if (scenario.richDraftRefresh) selection.domainVersionSeen = 3;
+    sessions = [
+      selection,
+      session(
+        STUFFING_SESSION,
+        stuffingCurrent ? "current" : "resumable",
+        "stuffing",
+      ),
+    ];
+  }
+
   await page.route("**/api/**", async (route) => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
+    const url = new URL(request.url());
+    const path = url.pathname;
+    ensureSessions();
     if (path === "/api/work-sessions") {
+      const includeClosed = url.searchParams.get("includeClosed") === "true";
       await route.fulfill({
-        json: sessionPage(page.url().includes("stuffing")),
+        json: sessionPage(
+          includeClosed
+            ? sessions
+            : sessions.filter(({ status }) => status !== "closed"),
+        ),
       });
       return;
     }
     if (path === "/api/work-sessions/open") {
-      const body = request.postDataJSON();
-      await route.fulfill({ json: sessionFor(body.workbenchCode) });
+      const body = request.postDataJSON() as { workbenchCode: string };
+      const opened = sessionFor(body.workbenchCode);
+      const existing = sessions.find(
+        ({ contextKey, status }) =>
+          contextKey === opened.contextKey && status !== "closed",
+      );
+      if (!existing) sessions.unshift(opened);
+      await route.fulfill({ json: existing ?? opened });
       return;
     }
     if (/^\/api\/work-sessions\/[^/]+\/activate$/.test(path)) {
+      evidence.activateCalls += 1;
+      if (scenario.activateStatus) {
+        await route.fulfill({
+          status: scenario.activateStatus,
+          json: { code: "WORK_SESSION_VERSION_CONFLICT" },
+        });
+        return;
+      }
+      const body = request.postDataJSON() as {
+        sourceSessionId: string;
+        sourceStatus: Exclude<WorkSessionStatusV1, "current" | "closed">;
+        sourceActiveItemKey?: string | null;
+        sourceContextMode?: string | null;
+      };
       const target = path.includes(STUFFING_SESSION)
         ? "stuffing"
         : "product_selection";
-      await route.fulfill({ json: sessionFor(target) });
+      sessions = sessions.map((item) =>
+        item.sessionId === body.sourceSessionId
+          ? {
+              ...item,
+              status: body.sourceStatus,
+              version: item.version + 1,
+              activeItemKey: body.sourceActiveItemKey ?? item.activeItemKey,
+              contextMode: body.sourceContextMode ?? item.contextMode,
+            }
+          : item.sessionId === sessionFor(target).sessionId
+            ? { ...item, status: "current", version: item.version + 1 }
+            : item,
+      );
+      await route.fulfill({
+        json: sessions.find(
+          ({ sessionId }) => sessionId === sessionFor(target).sessionId,
+        ),
+      });
       return;
     }
     if (/^\/api\/work-sessions\/[^/]+\/pointer$/.test(path)) {
+      evidence.pointerCalls += 1;
+      const sessionId = path.split("/")[3]!;
+      const body = request.postDataJSON() as {
+        status?: WorkSessionStatusV1;
+        domainVersionSeen?: number | null;
+      };
+      sessions = sessions.map((item) =>
+        item.sessionId === sessionId
+          ? {
+              ...item,
+              ...(body.status ? { status: body.status } : {}),
+              ...(body.domainVersionSeen === undefined
+                ? {}
+                : { domainVersionSeen: body.domainVersionSeen }),
+              version: item.version + 1,
+            }
+          : item,
+      );
       await route.fulfill({
-        json: sessionFor(
-          page.url().includes("stuffing") ? "stuffing" : "product_selection",
-        ),
+        json: sessions.find((item) => item.sessionId === sessionId),
+      });
+      return;
+    }
+    if (/^\/api\/work-sessions\/[^/]+\/close$/.test(path)) {
+      evidence.closeCalls += 1;
+      if (scenario.closeStatus) {
+        await route.fulfill({
+          status: scenario.closeStatus,
+          json: { code: "WORK_SESSION_VERSION_CONFLICT" },
+        });
+        return;
+      }
+      const sessionId = path.split("/")[3]!;
+      sessions = sessions.map((item) =>
+        item.sessionId === sessionId
+          ? { ...item, status: "closed", version: item.version + 1 }
+          : item,
+      );
+      await route.fulfill({
+        json: sessions.find((item) => item.sessionId === sessionId),
       });
       return;
     }
@@ -128,7 +593,26 @@ async function mockRecoverableSessions(page: Page): Promise<void> {
       path === `/api/product-initiatives/${HANDOFF}` ||
       path === `/api/product-initiatives/${OTHER_HANDOFF}`
     ) {
-      await route.fulfill({ json: initiativeDetail() });
+      await route.fulfill({
+        json: initiativeDetail(decisionDraft, scenario.richDraftRefresh),
+      });
+      return;
+    }
+    if (path === `/api/product-initiatives/${HANDOFF}/drafts`) {
+      evidence.draftSaveCalls += 1;
+      if (scenario.draftSaveStatus) {
+        await route.fulfill({
+          status: scenario.draftSaveStatus,
+          json: { code: "PRODUCT_INITIATIVE_DRAFT_VERSION_CONFLICT" },
+        });
+        return;
+      }
+      evidence.lastDraftCommand = request.postDataJSON() as Record<
+        string,
+        unknown
+      >;
+      decisionDraft = savedDraft(evidence.lastDraftCommand);
+      await route.fulfill({ json: decisionDraft });
       return;
     }
     if (path === "/api/containers") {
@@ -152,6 +636,20 @@ async function mockRecoverableSessions(page: Page): Promise<void> {
       return;
     }
     if (path === `/api/containers/${CONTAINER}/stuffing-snapshot`) {
+      evidence.targetReadCalls += 1;
+      if (scenario.targetReadStatus) {
+        await route.fulfill({
+          status: scenario.targetReadStatus,
+          json: { code: "E2E_TARGET_READ_FAILED" },
+        });
+        return;
+      }
+      if (scenario.targetDomainVersion !== undefined) {
+        await route.fulfill({
+          json: { version: scenario.targetDomainVersion },
+        });
+        return;
+      }
       await route.fulfill({ json: null });
       return;
     }
@@ -167,6 +665,7 @@ async function mockRecoverableSessions(page: Page): Promise<void> {
     }
     await continueStatic(route);
   });
+  return evidence;
 }
 
 async function continueStatic(route: Route): Promise<void> {
@@ -178,21 +677,10 @@ async function continueStatic(route: Route): Promise<void> {
   } else await route.continue();
 }
 
-function sessionPage(stuffingCurrent: boolean) {
+function sessionPage(items: readonly WorkSessionV1[]) {
   return {
     contractVersion: "work-session-page.v1",
-    items: [
-      session(
-        SELECTION_SESSION,
-        stuffingCurrent ? "resumable" : "current",
-        "product_selection",
-      ),
-      session(
-        STUFFING_SESSION,
-        stuffingCurrent ? "current" : "resumable",
-        "stuffing",
-      ),
-    ],
+    items,
     pageSize: 50,
     nextCursor: null,
   };
@@ -200,9 +688,9 @@ function sessionPage(stuffingCurrent: boolean) {
 
 function session(
   id: string,
-  status: string,
+  status: WorkSessionStatusV1,
   kind: "product_selection" | "stuffing",
-) {
+): WorkSessionV1 {
   const product = kind === "product_selection";
   return {
     contractVersion: "work-session.v1",
@@ -285,13 +773,85 @@ function initiativeQueue() {
     nextCursor: null,
   };
 }
-function initiativeDetail() {
+function initiativeDetail(
+  decisionDraft: ReturnType<typeof savedDraft> | null = null,
+  richDraftRefresh = false,
+) {
   return {
     handoffId: HANDOFF,
-    initiative: null,
-    decisionDraft: null,
-    evidenceCandidates: [],
-    currencyOptions: [],
+    initiative: richDraftRefresh ? formalInitiative() : null,
+    decisionDraft,
+    evidenceCandidates: richDraftRefresh
+      ? [
+          {
+            evidenceId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            sourceName: "站点类目周报",
+            summary: "需求增长证据",
+            contentRef: "https://example.test/evidence",
+            recordedAt: "2026-10-14T08:00:00.000Z",
+          },
+        ]
+      : [],
+    currencyOptions: richDraftRefresh
+      ? [{ code: "CAD", name: "Canadian Dollar", minorUnit: 2 }]
+      : [],
+  };
+}
+
+function formalInitiative() {
+  return {
+    initiativeId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    outcome: "approve",
+    completion: "pending_completion",
+    currentDestination: "needs_decision",
+    responsibleActorId: "formal-owner",
+    responsibilityAccepted: true,
+    receivingTeamOrRole: "产品开发 / NPI",
+    resourceDescription: "正式资源承诺",
+    targetDate: "2026-11-15",
+    nextDecisionDate: "2026-10-20",
+    nextDecisionQuestion: "是否进入 EVT 打样",
+    validationFocus: null,
+    reconsiderationDate: null,
+    unitEconomicsDraft: null,
+    unitEconomicsSnapshot: null,
+    negativeConservativeReason: null,
+    objective: null,
+    reviewPoints: [
+      {
+        code: "target_user_and_market",
+        evidenceRefs: [],
+        conclusion: "正式评审要点保持",
+      },
+    ],
+    businessCaseDraft: [],
+    businessCaseSnapshot: null,
+    riskAssessmentDraft: [],
+    riskAssessmentSnapshot: null,
+    reason: null,
+    returnBasis: null,
+    pendingFieldCodes: [],
+    version: 3,
+    createdAt: "2026-10-14T08:00:00.000Z",
+    updatedAt: "2026-10-18T08:00:00.000Z",
+  };
+}
+
+function savedDraft(command: Record<string, unknown>) {
+  return {
+    contractVersion: "product-initiative-decision-draft.v1",
+    draftId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    handoffId: HANDOFF,
+    draftVersion: 1,
+    initiativeVersionSeen: 0,
+    objective: command.objective ?? null,
+    reviewPoints: command.reviewPoints ?? [],
+    businessCaseDraft: command.businessCaseDraft ?? [],
+    riskAssessmentDraft: command.riskAssessmentDraft ?? [],
+    unitEconomicsDraft: command.unitEconomicsDraft ?? null,
+    negativeConservativeReason: command.negativeConservativeReason ?? null,
+    createdAt: "2026-10-14T08:00:00.000Z",
+    updatedAt: "2026-10-14T08:00:00.000Z",
   };
 }
 function container() {
@@ -384,4 +944,31 @@ async function expectNoOverflow(page: Page): Promise<void> {
     scroll: document.documentElement.scrollWidth,
   }));
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 1);
+}
+
+async function openDirtyProductSelection(page: Page): Promise<string> {
+  await page.goto(`/workspaces/product-selection?handoffId=${HANDOFF}`);
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.getByRole("button", { name: "编辑", exact: true }).click();
+  }
+  await page.getByLabel("目标结果").fill("尚未保存的目标结果");
+  await page.getByRole("button", { name: "切换工作现场" }).click();
+  return page.url();
+}
+
+async function chooseStuffingAndSave(page: Page): Promise<void> {
+  await page.locator(`[data-session="${STUFFING_SESSION}"]`).click();
+  await page.getByText("保存领域草稿并切换", { exact: true }).click();
+}
+
+async function expectUniqueCurrent(
+  page: Page,
+  sessionId: string,
+): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: "工作现场切换" });
+  await expect(dialog.locator('[aria-current="true"]')).toHaveCount(1);
+  await expect(dialog.locator(`[data-session="${sessionId}"]`)).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
 }

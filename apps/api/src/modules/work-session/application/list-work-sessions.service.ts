@@ -18,8 +18,10 @@ export class ListWorkSessionsService {
     actorId: string;
     pageSize?: string;
     cursor?: string;
+    includeClosed?: string;
   }): Promise<WorkSessionPageV1> {
     const pageSize = parsePageSize(input.pageSize);
+    const includeClosed = parseIncludeClosed(input.includeClosed);
     const after = input.cursor
       ? decodeCursor(input.cursor, input.tenantId, input.actorId)
       : undefined;
@@ -28,6 +30,7 @@ export class ListWorkSessionsService {
       actorId: input.actorId,
       after,
       take: pageSize + 1,
+      includeClosed,
     });
     const visible = rows.slice(0, pageSize);
     const last = visible.at(-1);
@@ -46,6 +49,12 @@ export class ListWorkSessionsService {
           : null,
     };
   }
+}
+
+function parseIncludeClosed(value: string | undefined): boolean {
+  if (value === undefined || value === "false") return false;
+  if (value === "true") return true;
+  throw new Error("VALIDATION_FORMAT: includeClosed");
 }
 
 function parsePageSize(value: string | undefined): number {

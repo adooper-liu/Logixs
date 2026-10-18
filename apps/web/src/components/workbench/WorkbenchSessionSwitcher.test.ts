@@ -81,6 +81,102 @@ describe("WorkbenchSessionSwitcher", () => {
     expect(wrapper.text()).toContain("草稿保存失败，仍停留在当前工作现场");
     expect(wrapper.get('[aria-current="true"]').text()).toContain("选品");
   });
+
+  it("renders all six states as text and keeps closed sessions in a collapsed inspection area", async () => {
+    const allStates = [
+      session("current", "current", "当前现场"),
+      session("resumable", "resumable", "待续办现场"),
+      session("draft", "draft_saved", "草稿现场"),
+      session("browser", "browser_held", "标签现场"),
+      session("conflict", "conflict", "冲突现场"),
+      session("closed", "closed", "关闭现场"),
+    ];
+    const wrapper = mount(WorkbenchSessionSwitcher, {
+      props: { sessions: allStates, onSelect: vi.fn(), onClose: vi.fn() },
+    });
+
+    await wrapper.get('[aria-label="切换工作现场"]').trigger("click");
+
+    for (const label of [
+      "当前",
+      "待续办",
+      "领域草稿已保存",
+      "仅此标签保留",
+      "冲突",
+      "已关闭",
+    ]) {
+      expect(wrapper.text()).toContain(label);
+    }
+    expect(wrapper.get("details").attributes("open")).toBeUndefined();
+    expect(wrapper.get("details").text()).toContain("已关闭工作现场");
+    expect(wrapper.get("details").text()).toContain("工作现场已关闭");
+    expect(wrapper.get("details").text()).toContain(
+      "关闭现场不等于业务完成、延期或责任转移",
+    );
+    expect(wrapper.get("details").text()).toContain(
+      "重新进入该对象会建立新的受控现场，并重新授权和重读",
+    );
+    expect(
+      wrapper.find('[data-session-id="closed"][aria-current]').exists(),
+    ).toBe(false);
+  });
+
+  it("closes only a non-current live session and keeps the menu open on failure", async () => {
+    const close = vi
+      .fn()
+      .mockResolvedValueOnce({ kind: "closed" as const })
+      .mockResolvedValueOnce({
+        kind: "failed" as const,
+        message: "关闭失败，请重新加载后再试",
+      });
+    const wrapper = mount(WorkbenchSessionSwitcher, {
+      props: { sessions, onSelect: vi.fn(), onClose: close },
+    });
+    await wrapper.get('[aria-label="切换工作现场"]').trigger("click");
+
+    expect(wrapper.find('[data-close-session="selection"]').exists()).toBe(
+      false,
+    );
+    await wrapper.get('[data-close-session="stuffing"]').trigger("click");
+    expect(close).toHaveBeenCalledWith(sessions[1]);
+
+    await wrapper.get('[data-close-session="stuffing"]').trigger("click");
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      "关闭失败，请重新加载后再试",
+    );
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+    expect(wrapper.get('[aria-current="true"]').text()).toContain("选品");
+  });
+
+  it("hides close for browser-held input while keeping other non-current live states closable", async () => {
+    const close = vi.fn();
+    const protectedSessions = [
+      session("current", "current", "当前现场"),
+      session("resumable", "resumable", "待续办现场"),
+      session("draft", "draft_saved", "草稿现场"),
+      session("browser", "browser_held", "标签现场"),
+      session("conflict", "conflict", "冲突现场"),
+      session("closed", "closed", "关闭现场"),
+    ];
+    const wrapper = mount(WorkbenchSessionSwitcher, {
+      props: {
+        sessions: protectedSessions,
+        onSelect: vi.fn(),
+        onClose: close,
+      },
+    });
+
+    await wrapper.get('[aria-label="切换工作现场"]').trigger("click");
+
+    expect(wrapper.find('[data-close-session="current"]').exists()).toBe(false);
+    expect(wrapper.find('[data-close-session="browser"]').exists()).toBe(false);
+    expect(wrapper.find('[data-close-session="closed"]').exists()).toBe(false);
+    expect(wrapper.find('[data-close-session="resumable"]').exists()).toBe(
+      true,
+    );
+    expect(wrapper.find('[data-close-session="draft"]').exists()).toBe(true);
+    expect(wrapper.find('[data-close-session="conflict"]').exists()).toBe(true);
+  });
 });
 
 function session(

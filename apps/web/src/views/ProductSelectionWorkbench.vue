@@ -472,6 +472,7 @@ const decisionDisabledReason = computed(() =>
             <WorkbenchSessionSwitcher
               :sessions="workSessions.sessions.value"
               :on-select="workSessions.select"
+              :on-close="workSessions.close"
               :on-resolve-choice="resolveSessionChoice"
             />
           </template>

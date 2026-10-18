@@ -49,6 +49,23 @@ describe("workSessions API", () => {
     });
   });
 
+  it("requests closed sessions only through an explicit query", async () => {
+    fetchMock.mockResolvedValue(
+      ok({
+        contractVersion: "work-session-page.v1",
+        items: [],
+        pageSize: 50,
+        nextCursor: null,
+      }),
+    );
+
+    await listWorkSessions({ includeClosed: true });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "/api/work-sessions?pageSize=50&includeClosed=true",
+    );
+  });
+
   it("does not add tenant or owner fields to open commands", async () => {
     fetchMock.mockResolvedValue(ok({ sessionId: "session-1" }));
     await openWorkSession({
