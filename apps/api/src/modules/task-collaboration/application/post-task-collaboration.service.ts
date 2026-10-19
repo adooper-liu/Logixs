@@ -34,6 +34,10 @@ import {
   collaborationScope,
   requireCapabilities,
 } from "./list-task-collaboration.service";
+import {
+  TASK_COLLABORATION_CLOCK,
+  type TaskCollaborationClock,
+} from "./task-collaboration-clock";
 import { presentMessage } from "./task-collaboration-presenter";
 
 export interface PostTaskCollaborationInput {
@@ -53,7 +57,8 @@ export class PostTaskCollaborationService {
     private readonly evidence: TaskCollaborationEvidencePort,
     @Inject(TASK_COLLABORATION_REPOSITORY)
     private readonly repository: TaskCollaborationRepository,
-    private readonly now: () => Date = () => new Date(),
+    @Inject(TASK_COLLABORATION_CLOCK)
+    private readonly now: TaskCollaborationClock = () => new Date(),
   ) {}
 
   async execute(input: PostTaskCollaborationInput) {
