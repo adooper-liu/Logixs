@@ -2,6 +2,8 @@
 import { computed, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TaskArchivePanel from "../components/task/TaskArchivePanel.vue";
+import TaskContextPanel from "../components/task/TaskContextPanel.vue";
+import type { TaskContextMode } from "../components/task/TaskContextPanel.vue";
 import TaskExecutionPanel from "../components/task/TaskExecutionPanel.vue";
 import TaskFrozenResultPanel from "../components/task/TaskFrozenResultPanel.vue";
 import TaskQueue from "../components/task/TaskQueue.vue";
@@ -15,6 +17,11 @@ import type {
   WorkbenchPaneState,
   WorkbenchResponsibilityItem,
 } from "../components/workbench/workbenchLayout.types";
+import {
+  useTaskCollaboration,
+  type TaskCollaborationContext,
+  type TaskCollaborationRetryTarget,
+} from "../composables/useTaskCollaboration";
 import { useTaskWorkspace } from "../composables/useTaskWorkspace";
 
 const {
@@ -49,6 +56,12 @@ const scopedContainer = computed(() =>
 const leftCollapsed = shallowRef(false);
 const rightCollapsed = shallowRef(false);
 const mobileScreen = shallowRef<WorkbenchMobileScreen>("queue");
+const contextMode = shallowRef<TaskContextMode>("work");
+const contextModeLabels: Record<TaskContextMode, string> = {
+  work: "办理",
+  archive: "档案",
+  collaboration: "协作",
+};
 const actionableStatuses = new Set([
   "available",
   "in_progress",
@@ -74,6 +87,46 @@ const visibleContainer = computed(() =>
 const visibleOutcome = computed(() =>
   visibleTask.value ? activeTaskOutcome.value : null,
 );
+const collaborationContextKey = computed(() =>
+  visibleTask.value && visibleContainer.value
+    ? `container:${visibleContainer.value.containerRecordId}|node_task:${visibleTask.value.taskId}`
+    : null,
+);
+const collaborationSubjectRef = computed(() =>
+  visibleContainer.value
+    ? {
+        kind: "container" as const,
+        id: visibleContainer.value.containerRecordId,
+      }
+    : null,
+);
+const collaborationWorkRef = computed(() =>
+  visibleTask.value
+    ? { kind: "node_task" as const, id: visibleTask.value.taskId }
+    : null,
+);
+const collaborationContext = computed<TaskCollaborationContext | null>(() =>
+  collaborationContextKey.value &&
+  visibleTask.value &&
+  collaborationSubjectRef.value &&
+  collaborationWorkRef.value
+    ? {
+        contextKey: collaborationContextKey.value,
+        taskId: visibleTask.value.taskId,
+        subjectRef: collaborationSubjectRef.value,
+        workRef: collaborationWorkRef.value,
+      }
+    : null,
+);
+const collaboration = useTaskCollaboration(collaborationContext);
+const taskContextModes = computed<readonly TaskContextMode[]>(() =>
+  collaborationContext.value
+    ? ["work", "archive", "collaboration"]
+    : ["work", "archive"],
+);
+const contextTitle = computed(
+  () => `任务上下文 · ${contextModeLabels[contextMode.value]}`,
+);
 
 function formatDueAt(value: string): string {
   const date = new Date(value);
@@ -85,6 +138,22 @@ function formatDueAt(value: string): string {
     minute: "2-digit",
     hour12: false,
   }).format(date);
+}
+
+function submitCollaboration(): void {
+  void collaboration.send();
+}
+
+function retryCollaboration(target: TaskCollaborationRetryTarget): void {
+  if (target === "send") {
+    void collaboration.retrySend();
+    return;
+  }
+  void collaboration.refresh();
+}
+
+function loadMoreCollaboration(): void {
+  void collaboration.loadMore();
 }
 
 const responsibilityItems = computed<WorkbenchResponsibilityItem[]>(() => [
@@ -136,13 +205,21 @@ const detailState = computed<WorkbenchPaneState>(() => {
     : { kind: "empty", message: "选择任务后查看详情。" };
 });
 
-const archiveState = computed<WorkbenchPaneState>(() => {
-  if (loading.value) return { kind: "loading", message: "正在读取任务档案…" };
+const contextState = computed<WorkbenchPaneState>(() => {
+  if (loading.value) return { kind: "loading", message: "正在读取任务上下文…" };
   if (error.value) return { kind: "error", message: error.value };
   return visibleTask.value && visibleContainer.value
     ? { kind: "ready" }
-    : { kind: "empty", message: "选择任务后查看当前可见档案。" };
+    : { kind: "empty", message: "选择任务后查看办理、档案与协作。" };
 });
+
+watch(
+  collaborationContextKey,
+  () => {
+    contextMode.value = "work";
+  },
+  { flush: "sync" },
+);
 
 watch(
   [() => route.query.task, tasks],
@@ -174,12 +251,14 @@ function handleSelect(taskId: string): void {
     v-model:mobile-screen="mobileScreen"
     class="task-workbench page-frame"
     left-rail-label="任务队列"
-    right-rail-label="任务档案"
+    right-rail-label="任务上下文"
     :left-rail-summary="`${humanTaskCount} 项待处理`"
     :right-rail-summary="
-      visibleTask ? visibleTask.containerNumber : '未选择任务'
+      visibleTask
+        ? `${contextModeLabels[contextMode]} · ${visibleTask.containerNumber}`
+        : '未选择任务'
     "
-    mobile-context-label="档案"
+    mobile-context-label="上下文"
   >
     <template #header>
       <PageHeader
@@ -287,17 +366,63 @@ function handleSelect(taskId: string): void {
 
     <template #context>
       <WorkbenchPane
-        id="task-archive-pane"
-        title="当前可见档案"
-        region-label="任务档案"
-        :state="archiveState"
+        id="task-context-pane"
+        :title="contextTitle"
+        region-label="任务上下文"
+        :state="contextState"
       >
-        <TaskArchivePanel
+        <TaskContextPanel
           v-if="visibleTask && visibleContainer"
-          :container-id="visibleContainer.containerRecordId"
-          :task-id="visibleTask.taskId"
-          :outcome="visibleOutcome"
-        />
+          v-model="contextMode"
+          :context-key="collaborationContextKey"
+          :modes="taskContextModes"
+          :collaboration="collaboration"
+          @submit="submitCollaboration"
+          @retry="retryCollaboration"
+          @load-more="loadMoreCollaboration"
+        >
+          <template #work>
+            <section class="task-context-facts" aria-label="当前任务办理上下文">
+              <dl>
+                <div>
+                  <dt>当前对象</dt>
+                  <dd>{{ visibleTask.containerNumber }}</dd>
+                </div>
+                <div>
+                  <dt>当前任务</dt>
+                  <dd>{{ visibleTask.nodeName }}</dd>
+                </div>
+                <div>
+                  <dt>当前责任</dt>
+                  <dd>
+                    {{
+                      visibleTask.status === "completed"
+                        ? "未知"
+                        : visibleTask.assignment.label
+                    }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>期限</dt>
+                  <dd>
+                    {{
+                      visibleTask.dueAt
+                        ? formatDueAt(visibleTask.dueAt)
+                        : "未设截止"
+                    }}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </template>
+          <template #archive>
+            <TaskArchivePanel
+              :container-id="visibleContainer.containerRecordId"
+              :task-id="visibleTask.taskId"
+              :outcome="visibleOutcome"
+            />
+          </template>
+        </TaskContextPanel>
       </WorkbenchPane>
     </template>
   </WorkbenchLayout>
@@ -335,6 +460,36 @@ function handleSelect(taskId: string): void {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.task-context-facts {
+  min-width: 0;
+  padding: var(--space-3);
+}
+
+.task-context-facts dl {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.task-context-facts dl > div {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.task-context-facts dt,
+.task-context-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-label);
+}
+
+.task-context-facts dt {
+  color: var(--muted);
 }
 
 .workspace-hint {

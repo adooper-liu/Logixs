@@ -65,4 +65,25 @@ describe("role-capabilities", () => {
       ),
     ).toBe(false);
   });
+
+  it("grants task collaboration only to the four approved role packs", () => {
+    for (const role of [
+      "field_operator",
+      "operations_dispatcher",
+      "review_supervisor",
+      "manager",
+    ]) {
+      expect(capabilitiesForRoles([role])).toContain("task.collaborate");
+    }
+
+    for (const role of [
+      "audit_analyst",
+      "business_admin",
+      "finance_controller",
+      "import_operator",
+      "unknown_role",
+    ]) {
+      expect(capabilitiesForRoles([role])).not.toContain("task.collaborate");
+    }
+  });
 });

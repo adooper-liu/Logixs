@@ -133,7 +133,7 @@ test("mobile task panes stay available", async ({ page }) => {
     exact: true,
   });
   const contextButton = steps.getByRole("button", {
-    name: "档案",
+    name: "上下文",
     exact: true,
   });
   const queuePane = page.locator('[data-workbench-pane="queue"]');

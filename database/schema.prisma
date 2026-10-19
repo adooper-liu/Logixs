@@ -1081,11 +1081,11 @@ model SourceAuthorityPolicy {
 
 // 备货单身份表（shipment-registry 拥有）：租户内备货单号唯一。
 model ReplenishmentOrder {
-  id               String                   @id @default(uuid()) @map("id")
-  tenantId         String                   @map("tenant_id")
-  orderNumber      String                   @map("order_number")
-  createdAt        DateTime                 @default(now()) @map("created_at")
-  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  id                String                              @id @default(uuid()) @map("id")
+  tenantId          String                              @map("tenant_id")
+  orderNumber       String                              @map("order_number")
+  createdAt         DateTime                            @default(now()) @map("created_at")
+  updatedAt         DateTime                            @updatedAt @map("updated_at")
   containerRecords  ContainerRecord[]
   lines             ReplenishmentOrderLine[]
   projectionBatches ReplenishmentOrderProjectionBatch[]
@@ -2289,6 +2289,83 @@ model WorkSession {
   @@unique([id, tenantId, ownerActorId], map: "work_session_owner_key")
   @@index([tenantId, ownerActorId, lastOpenedAt, id], map: "work_session_owner_list_idx")
   @@map("work_session")
+}
+
+// 任务协作线程（task-collaboration 拥有）：固定 task_scope，精确绑定 container + NodeTask。
+model TaskCollaborationThread {
+  id               String                     @id @default(uuid()) @map("id") @db.Uuid
+  tenantId         String                     @map("tenant_id")
+  subjectKind      String                     @map("subject_kind")
+  subjectId        String                     @map("subject_id") @db.Uuid
+  workKind         String                     @map("work_kind")
+  workId           String                     @map("work_id") @db.Uuid
+  visibilityScope  String                     @map("visibility_scope")
+  policyVersion    Int                        @map("policy_version")
+  createdByActorId String                     @map("created_by_actor_id")
+  createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  messages         TaskCollaborationMessage[]
+
+  @@unique([tenantId, subjectKind, subjectId, workKind, workId, visibilityScope], map: "task_collaboration_thread_scope_key")
+  @@index([tenantId, workKind, workId], map: "task_collaboration_thread_work_idx")
+  @@map("task_collaboration_thread")
+}
+
+// 任务协作消息：追加不可变；回复只能指向同一线程，幂等键按线程和作者隔离。
+model TaskCollaborationMessage {
+  id              String                                @id @default(uuid()) @map("id") @db.Uuid
+  threadId        String                                @map("thread_id") @db.Uuid
+  thread          TaskCollaborationThread               @relation(fields: [threadId], references: [id], onDelete: Restrict)
+  authorActorId   String                                @map("author_actor_id")
+  parentMessageId String?                               @map("parent_message_id") @db.Uuid
+  parentMessage   TaskCollaborationMessage?             @relation("TaskCollaborationReply", fields: [parentMessageId, threadId], references: [id, threadId], onDelete: Restrict)
+  replies         TaskCollaborationMessage[]            @relation("TaskCollaborationReply")
+  body            String                                @map("body")
+  occurredAt      DateTime                              @map("occurred_at") @db.Timestamptz
+  recordedAt      DateTime                              @default(now()) @map("recorded_at") @db.Timestamptz
+  idempotencyKey  String                                @map("idempotency_key")
+  payloadHash     String                                @map("payload_hash")
+  mentions        TaskCollaborationMessageMention[]
+  evidenceRefs    TaskCollaborationMessageEvidenceRef[]
+  sourceRefs      TaskCollaborationMessageSourceRef[]
+
+  @@unique([id, threadId], map: "task_collaboration_message_thread_key")
+  @@unique([threadId, authorActorId, idempotencyKey], map: "task_collaboration_message_idempotency_key")
+  @@index([threadId, recordedAt(sort: Desc), id(sort: Desc)], map: "task_collaboration_message_page_idx")
+  @@map("task_collaboration_message")
+}
+
+// Mention 只是提醒引用，不授予线程可见权，也不转移任务责任。
+model TaskCollaborationMessageMention {
+  messageId String                   @map("message_id") @db.Uuid
+  message   TaskCollaborationMessage @relation(fields: [messageId], references: [id], onDelete: Restrict)
+  actorId   String                   @map("actor_id")
+
+  @@id([messageId, actorId], map: "task_collaboration_message_mention_pkey")
+  @@map("task_collaboration_message_mention")
+}
+
+// EvidenceRef 只保存正式证据 ID；不复制文件名、正文或核验结论。
+model TaskCollaborationMessageEvidenceRef {
+  messageId        String                   @map("message_id") @db.Uuid
+  message          TaskCollaborationMessage @relation(fields: [messageId], references: [id], onDelete: Restrict)
+  evidenceRecordId String                   @map("evidence_record_id") @db.Uuid
+
+  @@id([messageId, evidenceRecordId], map: "task_collaboration_message_evidence_ref_pkey")
+  @@index([evidenceRecordId], map: "task_collaboration_message_evidence_lookup_idx")
+  @@map("task_collaboration_message_evidence_ref")
+}
+
+// 正式 action/result/evidence 的类型化来源引用；不嵌入业务 payload。
+model TaskCollaborationMessageSourceRef {
+  id            String                   @id @default(uuid()) @map("id") @db.Uuid
+  messageId     String                   @map("message_id") @db.Uuid
+  message       TaskCollaborationMessage @relation(fields: [messageId], references: [id], onDelete: Restrict)
+  sourceKind    String                   @map("source_kind")
+  sourceId      String                   @map("source_id")
+  sourceVersion Int?                     @map("source_version")
+
+  @@unique([messageId, sourceKind, sourceId, sourceVersion], map: "task_collaboration_message_source_ref_key")
+  @@map("task_collaboration_message_source_ref")
 }
 
 model ProductInitiativeHandoff {

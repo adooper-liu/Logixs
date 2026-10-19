@@ -31,6 +31,7 @@ import { WorkExecutionModule } from "./modules/work-execution";
 import { WorkbenchNetworkModule } from "./modules/workbench-network";
 import { WorkflowModule } from "./modules/workflow";
 import { WorkSessionModule } from "./modules/work-session";
+import { TaskCollaborationModule } from "./modules/task-collaboration";
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { WorkSessionModule } from "./modules/work-session";
     WorkExecutionModule,
     WorkflowModule,
     WorkSessionModule,
+    TaskCollaborationModule,
   ],
   controllers: [HealthController],
 })

@@ -1,5 +1,5 @@
 // work-execution 公开入口：其他模块只消费端口，不得引用内部实现。
-export * from "./work-execution.module";
+export { WorkExecutionModule } from "./work-execution.module";
 export {
   CREATE_NODE_TASK,
   type CreateNodeTaskInput,
@@ -25,3 +25,14 @@ export {
   type ReconcileAppliedLifecycleFactPort,
   type ReconcileAppliedLifecycleFactResult,
 } from "./reconcile-applied-lifecycle-fact.port";
+export {
+  TASK_COLLABORATION_CONTEXT,
+  type TaskCollaborationContext,
+  type TaskCollaborationContextPort,
+} from "./work-execution.module";
+export {
+  TASK_COLLABORATION_WRITE_CONTEXT,
+  type LockedTaskCollaborationContext,
+  type TaskCollaborationWriteContextPort,
+  type TaskCollaborationWriteTransaction,
+} from "./task-collaboration-write-context.port";

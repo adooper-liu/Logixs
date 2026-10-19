@@ -11,6 +11,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "container.read",
     "container.operate",
     "task.read",
+    "task.collaborate",
     "task.execute",
     "evidence.read",
     "evidence.submit",
@@ -20,6 +21,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
     "container.read",
     "container.operate",
     "task.read",
+    "task.collaborate",
     "task.execute",
     "evidence.read",
     "evidence.submit",
@@ -43,6 +45,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
   review_supervisor: [
     "container.read",
     "task.read",
+    "task.collaborate",
     "evidence.read",
     "evidence.review",
     "import.read",
@@ -71,6 +74,7 @@ const ROLE_CAPABILITY_MATRIX: Record<RoleCode, readonly CapabilityCode[]> = {
   manager: [
     "container.read",
     "task.read",
+    "task.collaborate",
     "evidence.read",
     "import.read",
     "lifecycle.read",

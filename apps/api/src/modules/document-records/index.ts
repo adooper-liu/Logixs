@@ -22,3 +22,13 @@ export {
   READ_EVIDENCE_REFS,
   type ReadEvidenceRefsPort,
 } from "./read-evidence-refs.port";
+export {
+  TASK_COLLABORATION_EVIDENCE,
+  type TaskCollaborationEvidenceOption,
+  type TaskCollaborationEvidencePort,
+} from "./task-collaboration-evidence.port";
+export {
+  TASK_COLLABORATION_EVIDENCE_WRITE,
+  type TaskCollaborationEvidenceWritePort,
+  type TaskCollaborationEvidenceWriteTransaction,
+} from "./task-collaboration-evidence-write.port";

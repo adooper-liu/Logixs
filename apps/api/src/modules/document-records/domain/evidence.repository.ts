@@ -50,24 +50,54 @@ export interface CreateEvidenceInput {
 
 export interface AppendDecisionInput {
   evidenceId: string;
+  tenantId: string;
   decision: "verified" | "rejected" | "revoked";
-  nextState: "verified" | "rejected" | "revoked";
-  nextValidity: "effective" | "revoked";
   actorOrServiceId: string;
   reasonCode: string;
   reason?: string;
-  previousDecisionId?: string | null;
 }
 
 export interface AppendDecisionResult {
   record: EvidenceRecord;
-  decisionId: string;
+  decisionId: string | null;
   appended: boolean;
+}
+
+export class EvidenceDecisionNotFoundError extends Error {
+  constructor() {
+    super("RESOURCE_NOT_FOUND");
+  }
+}
+
+export class EvidenceDecisionScopeDeniedError extends Error {
+  constructor() {
+    super("AUTHORIZATION_SCOPE_DENIED");
+  }
+}
+
+export class EvidenceDecisionTransitionError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(`${code}: ${message}`);
+  }
+}
+
+export interface TaskCollaborationEvidenceQuery {
+  tenantId: string;
+  subjectType: "container";
+  subjectId: string;
+  validity: "effective";
+  evidenceRecordIds: string[];
 }
 
 export interface EvidenceRepository {
   findById(id: string): Promise<EvidenceRecord | null>;
   findByIds(ids: string[]): Promise<EvidenceRecord[]>;
+  findTaskCollaborationEvidence(
+    input: TaskCollaborationEvidenceQuery,
+  ): Promise<EvidenceRecord[]>;
   listBySubjects(input: {
     tenantId: string;
     subjectType: string;

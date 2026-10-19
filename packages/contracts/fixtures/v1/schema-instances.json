@@ -3,6 +3,222 @@
   "cases": [
     {
       "contractId": "GC-007",
+      "name": "task collaboration page with reply and typed references",
+      "schemaRef": "task-collaboration.schema.json#/$defs/TaskCollaborationPageV1",
+      "data": {
+        "contractVersion": "task-collaboration-page.v1",
+        "thread": {
+          "contractVersion": "task-collaboration-thread.v1",
+          "threadId": "60000000-0000-4000-8000-000000000001",
+          "subjectRef": {
+            "kind": "container",
+            "id": "10000000-0000-4000-8000-000000000001"
+          },
+          "workRef": {
+            "kind": "node_task",
+            "id": "20000000-0000-4000-8000-000000000001"
+          },
+          "visibility": "task_scope",
+          "policyVersion": 1,
+          "createdAt": "2026-10-18T06:00:00Z"
+        },
+        "subjectRef": {
+          "kind": "container",
+          "id": "10000000-0000-4000-8000-000000000001"
+        },
+        "workRef": {
+          "kind": "node_task",
+          "id": "20000000-0000-4000-8000-000000000001"
+        },
+        "visibility": "task_scope",
+        "visibilityLabel": "当前任务范围",
+        "messages": [
+          {
+            "contractVersion": "task-collaboration-message.v1",
+            "messageId": "70000000-0000-4000-8000-000000000001",
+            "threadId": "60000000-0000-4000-8000-000000000001",
+            "author": {
+              "kind": "actor",
+              "id": "operator-1",
+              "displayName": "现场操作员"
+            },
+            "body": "封志照片已引用，请复核。",
+            "parentMessageId": null,
+            "mentions": [
+              {
+                "kind": "actor",
+                "id": "user-1",
+                "displayName": "复核主管"
+              }
+            ],
+            "evidenceRefs": [
+              {
+                "kind": "evidence_record",
+                "id": "50000000-0000-4000-8000-000000000001"
+              }
+            ],
+            "sourceRefs": [
+              { "kind": "action", "id": "verify-seal", "version": 1 },
+              { "kind": "result", "id": "seal-check-1" }
+            ],
+            "occurredAt": "2026-10-18T06:01:00Z",
+            "recordedAt": "2026-10-18T06:01:01Z"
+          },
+          {
+            "contractVersion": "task-collaboration-message.v1",
+            "messageId": "70000000-0000-4000-8000-000000000002",
+            "threadId": "60000000-0000-4000-8000-000000000001",
+            "author": {
+              "kind": "actor",
+              "id": "user-1",
+              "displayName": "复核主管"
+            },
+            "body": "收到，正式核验仍在证据办理入口完成。",
+            "parentMessageId": "70000000-0000-4000-8000-000000000001",
+            "mentions": [],
+            "evidenceRefs": [],
+            "sourceRefs": [
+              {
+                "kind": "evidence",
+                "id": "50000000-0000-4000-8000-000000000001"
+              }
+            ],
+            "occurredAt": "2026-10-18T06:02:00Z",
+            "recordedAt": "2026-10-18T06:02:01Z"
+          }
+        ],
+        "asOf": "2026-10-18T06:03:00Z",
+        "pageSize": 50,
+        "nextCursor": null,
+        "canPost": true,
+        "postDisabledReason": null,
+        "mentionOptions": [
+          {
+            "kind": "actor",
+            "id": "operator-1",
+            "displayName": "现场操作员"
+          },
+          {
+            "kind": "actor",
+            "id": "user-1",
+            "displayName": "复核主管"
+          }
+        ],
+        "evidenceOptions": [
+          {
+            "ref": {
+              "kind": "evidence_record",
+              "id": "50000000-0000-4000-8000-000000000001"
+            },
+            "label": "封志照片"
+          }
+        ]
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "task collaboration post command",
+      "schemaRef": "task-collaboration.schema.json#/$defs/TaskCollaborationPostCommandV1",
+      "data": {
+        "contractVersion": "task-collaboration-post-command.v1",
+        "subjectRef": {
+          "kind": "container",
+          "id": "10000000-0000-4000-8000-000000000001"
+        },
+        "workRef": {
+          "kind": "node_task",
+          "id": "20000000-0000-4000-8000-000000000001"
+        },
+        "body": "请复核封志照片。",
+        "parentMessageId": "70000000-0000-4000-8000-000000000001",
+        "mentionActorIds": ["user-1", "user-1"],
+        "evidenceRecordIds": [
+          "50000000-0000-4000-8000-000000000001",
+          "50000000-0000-4000-8000-000000000001"
+        ],
+        "sourceRefs": [
+          { "kind": "action", "id": "verify-seal", "version": 1 },
+          { "kind": "action", "id": "verify-seal", "version": 1 }
+        ],
+        "idempotencyKey": "post-seal-review-1"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "task collaboration post result",
+      "schemaRef": "task-collaboration.schema.json#/$defs/TaskCollaborationPostResultV1",
+      "data": {
+        "contractVersion": "task-collaboration-post-result.v1",
+        "message": {
+          "contractVersion": "task-collaboration-message.v1",
+          "messageId": "70000000-0000-4000-8000-000000000003",
+          "threadId": "60000000-0000-4000-8000-000000000001",
+          "author": {
+            "kind": "actor",
+            "id": "operator-1",
+            "displayName": "现场操作员"
+          },
+          "body": "请复核封志照片。",
+          "parentMessageId": "70000000-0000-4000-8000-000000000001",
+          "mentions": [],
+          "evidenceRefs": [],
+          "sourceRefs": [],
+          "occurredAt": "2026-10-18T06:04:00Z",
+          "recordedAt": "2026-10-18T06:04:01Z"
+        },
+        "idempotencyReplay": false
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "task collaboration rejects client visibility and author",
+      "schemaRef": "task-collaboration.schema.json#/$defs/TaskCollaborationPostCommandV1",
+      "valid": false,
+      "data": {
+        "contractVersion": "task-collaboration-post-command.v1",
+        "subjectRef": {
+          "kind": "container",
+          "id": "10000000-0000-4000-8000-000000000001"
+        },
+        "workRef": {
+          "kind": "node_task",
+          "id": "20000000-0000-4000-8000-000000000001"
+        },
+        "body": "伪造范围",
+        "parentMessageId": null,
+        "mentionActorIds": [],
+        "evidenceRecordIds": [],
+        "sourceRefs": [],
+        "idempotencyKey": "forged-scope-1",
+        "visibility": "private",
+        "authorActorId": "forged-actor"
+      }
+    },
+    {
+      "contractId": "GC-007",
+      "name": "task collaboration rejects blank message body",
+      "schemaRef": "task-collaboration.schema.json#/$defs/TaskCollaborationPostCommandV1",
+      "valid": false,
+      "data": {
+        "contractVersion": "task-collaboration-post-command.v1",
+        "subjectRef": {
+          "kind": "container",
+          "id": "10000000-0000-4000-8000-000000000001"
+        },
+        "workRef": {
+          "kind": "node_task",
+          "id": "20000000-0000-4000-8000-000000000001"
+        },
+        "body": "   ",
+        "parentMessageId": null,
+        "mentionActorIds": [],
+        "evidenceRecordIds": [],
+        "sourceRefs": [],
+        "idempotencyKey": "blank-body-1"
+      }
+    },
+    {
+      "contractId": "GC-007",
       "name": "workbench network volume with undefined block",
       "schemaRef": "workbench-network-volume.schema.json",
       "data": {
