@@ -5,9 +5,67 @@ test("customs operator saves release case and sends actual clearance for review"
 }) => {
   let clearanceCase: Record<string, unknown> | null = null;
   let customsFact: Record<string, unknown> | null = null;
+  let selectedContainerId: string | null = null;
+  let selectedTaskId: string | null = null;
   await page.route(/^http:\/\/localhost:5173\/api\//, async (route) => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
+    const url = new URL(request.url());
+    const path = url.pathname;
+    if (path === "/api/node-tasks") {
+      const requestedContainerId = url.searchParams.get("containerId");
+      if (requestedContainerId) {
+        if (requestedContainerId !== container.id) {
+          throw new Error(
+            `Unexpected selected customs container: ${requestedContainerId}`,
+          );
+        }
+        selectedContainerId = requestedContainerId;
+        selectedTaskId = taskPage.items[0]?.id ?? null;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: taskPage,
+      });
+      return;
+    }
+    const collaborationMatch = path.match(
+      /^\/api\/node-tasks\/([^/]+)\/collaboration$/,
+    );
+    if (collaborationMatch?.[1]) {
+      const requestedTaskId = decodeURIComponent(collaborationMatch[1]);
+      if (
+        request.method() !== "GET" ||
+        !selectedContainerId ||
+        !selectedTaskId ||
+        requestedTaskId !== selectedTaskId ||
+        url.searchParams.get("subjectKind") !== "container" ||
+        url.searchParams.get("subjectId") !== selectedContainerId
+      ) {
+        throw new Error(
+          `Mismatched collaboration request: method=${request.method()} task=${requestedTaskId} subjectKind=${url.searchParams.get("subjectKind")} subjectId=${url.searchParams.get("subjectId")} selectedTask=${selectedTaskId} selectedContainer=${selectedContainerId}`,
+        );
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: collaborationPage(selectedContainerId, selectedTaskId),
+      });
+      return;
+    }
+    if (path === "/api/containers/container-1/activities") {
+      if (request.method() !== "GET" || selectedContainerId !== container.id) {
+        throw new Error(
+          `Mismatched archive request: method=${request.method()} selectedContainer=${selectedContainerId}`,
+        );
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: activityPage,
+      });
+      return;
+    }
     if (path === "/api/containers/container-1/customs-clearance-case") {
       if (request.method() === "POST") {
         const body = request.postDataJSON() as Record<string, unknown>;
@@ -129,11 +187,29 @@ test("customs operator saves release case and sends actual clearance for review"
 
 function responseFor(path: string): unknown {
   if (path === "/api/containers") return containerPage;
-  if (path === "/api/node-tasks") return taskPage;
   if (path === "/api/containers/container-1") return container;
   if (path === "/api/containers/container-1/lifecycle-nodes")
     return lifecycleNodes;
   throw new Error(`Unhandled API path in customs E2E: ${path}`);
+}
+
+function collaborationPage(containerId: string, taskId: string) {
+  return {
+    contractVersion: "task-collaboration-page.v1",
+    thread: null,
+    subjectRef: { kind: "container", id: containerId },
+    workRef: { kind: "node_task", id: taskId },
+    visibility: "task_scope",
+    visibilityLabel: "当前任务参与者",
+    messages: [],
+    asOf: "2026-09-21T05:10:00Z",
+    pageSize: 25,
+    nextCursor: null,
+    canPost: true,
+    postDisabledReason: null,
+    mentionOptions: [],
+    evidenceOptions: [],
+  };
 }
 
 const container = {
@@ -147,6 +223,13 @@ const containerPage = {
   items: [container],
   pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 100 },
   asOf: "2026-09-21T00:00:00Z",
+  projectionVersion: 1,
+};
+const activityPage = {
+  items: [],
+  nextActions: [],
+  pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 25 },
+  asOf: "2026-09-21T05:10:00Z",
   projectionVersion: 1,
 };
 const taskPage = {

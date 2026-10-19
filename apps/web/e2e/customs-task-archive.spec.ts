@@ -33,6 +33,8 @@ interface FixtureControl {
   failNextActivity: ActivityFailure | null;
   holdNextActivityFor: string | null;
   releaseHeldActivity: (() => void) | null;
+  selectedContainerId: string | null;
+  selectedTaskId: string | null;
 }
 
 async function installFixture(page: Page): Promise<FixtureControl> {
@@ -40,6 +42,8 @@ async function installFixture(page: Page): Promise<FixtureControl> {
     failNextActivity: null,
     holdNextActivityFor: null,
     releaseHeldActivity: null,
+    selectedContainerId: null,
+    selectedTaskId: null,
   };
 
   await page.route(/^http:\/\/localhost:5173\/api\//, async (route) => {
@@ -51,8 +55,48 @@ async function installFixture(page: Page): Promise<FixtureControl> {
       return;
     }
     if (path === "/api/node-tasks") {
+      const selectedContainerId = url.searchParams.get("containerId");
+      if (selectedContainerId) {
+        const selectedTask = taskForContainer(selectedContainerId);
+        if (!selectedTask) {
+          throw new Error(
+            `Unknown selected customs container: ${selectedContainerId}`,
+          );
+        }
+        control.selectedContainerId = selectedContainerId;
+        control.selectedTaskId = selectedTask.id;
+      }
       await route.fulfill({
-        json: taskPage(url.searchParams.get("containerId")),
+        json: taskPage(selectedContainerId),
+      });
+      return;
+    }
+
+    const collaborationMatch = path.match(
+      /^\/api\/node-tasks\/([^/]+)\/collaboration$/,
+    );
+    if (collaborationMatch?.[1]) {
+      const request = route.request();
+      const requestedTaskId = decodeURIComponent(collaborationMatch[1]);
+      if (request.method() !== "GET") {
+        throw new Error(`Unexpected collaboration method: ${request.method()}`);
+      }
+      if (
+        !control.selectedContainerId ||
+        !control.selectedTaskId ||
+        requestedTaskId !== control.selectedTaskId ||
+        url.searchParams.get("subjectKind") !== "container" ||
+        url.searchParams.get("subjectId") !== control.selectedContainerId
+      ) {
+        throw new Error(
+          `Mismatched collaboration request: task=${requestedTaskId} subjectKind=${url.searchParams.get("subjectKind")} subjectId=${url.searchParams.get("subjectId")} selectedTask=${control.selectedTaskId} selectedContainer=${control.selectedContainerId}`,
+        );
+      }
+      await route.fulfill({
+        json: collaborationPage(
+          control.selectedContainerId,
+          control.selectedTaskId,
+        ),
       });
       return;
     }
@@ -353,7 +397,7 @@ test("customs workbench preserves the context empty state without a selection", 
 
   await expect(page.getByRole("heading", { name: "进口清关" })).toBeVisible();
   await expect(contextPane(page)).toContainText("选择对象后显示动作。");
-  await expect(page.getByLabel("右栏模式")).toHaveCount(0);
+  await expect(page.getByLabel("任务上下文模式")).toHaveCount(0);
   await expect(page.getByLabel("当前清关上下文")).toHaveCount(0);
   await expect(page.getByLabel("清关案件表单")).toHaveCount(0);
   await expect(page.locator(".task-archive")).toHaveCount(0);
@@ -392,7 +436,10 @@ test("customs consumer folds role rails without changing responsive structure", 
 
   const initialGeometry = await capturePaneGeometry(page);
   const queueContent = queueItem(page, fixture.firstContainerNumber);
-  const contextContent = page.getByTestId("context-mode-action");
+  const contextContent = page.getByRole("button", {
+    name: "办理",
+    exact: true,
+  });
   const layout = page.locator(".workbench-layout");
   const desktopPageScroll = await page.evaluate(() => window.scrollY);
   if (viewportWidth === 1440) {
@@ -533,9 +580,20 @@ test("customs archive preserves action state and proves the stacked viewport", a
 }) => {
   const control = await gotoFirstTask(page);
   const countryInput = page.getByLabel("进口国/地区代码");
-  const actionButton = page.getByTestId("context-mode-action");
-  const archiveButton = page.getByTestId("context-mode-archive");
-  const actionPanel = page.getByTestId("customs-action-mode");
+  const actionButton = page.getByRole("button", {
+    name: "办理",
+    exact: true,
+  });
+  const archiveButton = page.getByRole("button", {
+    name: "档案",
+    exact: true,
+  });
+  const collaborationButton = page.getByRole("button", {
+    name: "协作",
+    exact: true,
+  });
+  const actionPanel = page.locator('[data-context-mode="work"]');
+  const archivePanel = page.locator('[data-context-mode="archive"]');
   const customsContextAnchor = page.getByLabel("当前清关上下文");
   const responsibility = page.getByRole("region", {
     name: "岗位与货柜范围",
@@ -543,7 +601,11 @@ test("customs archive preserves action state and proves the stacked viewport", a
 
   await expect(actionButton).toHaveAttribute("aria-pressed", "true");
   await expect(archiveButton).toHaveAttribute("aria-pressed", "false");
-  await expect(page.locator(".task-archive")).toHaveCount(0);
+  await expect(page.locator(".task-archive")).toBeHidden();
+  await expect(archivePanel).toHaveAttribute("hidden", "");
+  await expect(archivePanel).toHaveAttribute("inert", "");
+  await expect(archivePanel).toHaveAttribute("aria-hidden", "true");
+  await expect(collaborationButton).toBeVisible();
   await expect(responsibility).toContainText("进口清关");
   await expect(responsibility).toContainText(fixture.firstContainerNumber);
   await expect(queueItem(page, fixture.firstContainerNumber)).toHaveClass(
@@ -568,7 +630,7 @@ test("customs archive preserves action state and proves the stacked viewport", a
   );
   await page.keyboard.press("Enter");
   const archiveRegion = page.getByRole("region", {
-    name: "当前可见任务档案",
+    name: "任务上下文 · 档案",
   });
   await expect(archiveRegion).toBeVisible();
   await expect(archiveButton).toHaveAttribute("aria-pressed", "true");
@@ -606,7 +668,7 @@ test("customs archive preserves action state and proves the stacked viewport", a
     page.getByText("任务完成等于海关放行", { exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: /聊天|协作|AI|助手|更多功能/ }),
+    page.getByRole("button", { name: /聊天|AI|助手|更多功能/ }),
   ).toHaveCount(0);
 
   const nextActions = page.getByRole("region", {
@@ -633,7 +695,7 @@ test("customs archive preserves action state and proves the stacked viewport", a
     );
     const header = pane?.querySelector<HTMLElement>(".workbench-pane__header");
     const archiveButton = pane?.querySelector<HTMLElement>(
-      '[data-testid="context-mode-archive"]',
+      '[data-mode-control="archive"]',
     );
     return {
       paneTop: pane?.getBoundingClientRect().top ?? -1,
@@ -656,7 +718,7 @@ test("customs archive preserves action state and proves the stacked viewport", a
     await expect(customsContextAnchor).toContainText("当前节点：07 清关");
     const anchorPosition = await page.evaluate(() => {
       const modes = document.querySelector<HTMLElement>(
-        '[aria-label="右栏模式"]',
+        '[aria-label="任务上下文模式"]',
       );
       const anchor = document.querySelector<HTMLElement>(
         '[aria-label="当前清关上下文"]',
@@ -666,17 +728,18 @@ test("customs archive preserves action state and proves the stacked viewport", a
       const anchorBox = anchor?.getBoundingClientRect();
       const archiveBox = archive?.getBoundingClientRect();
       return {
+        modesTop: modesBox?.top ?? -1,
         modesBottom: modesBox?.bottom ?? Number.MAX_VALUE,
         anchorTop: anchorBox?.top ?? -1,
         anchorBottom: anchorBox?.bottom ?? Number.MAX_VALUE,
         archiveTop: archiveBox?.top ?? -1,
       };
     });
-    expect(anchorPosition.anchorTop).toBeGreaterThanOrEqual(
-      anchorPosition.modesBottom - 1,
+    expect(anchorPosition.modesTop).toBeGreaterThanOrEqual(
+      anchorPosition.anchorBottom - 1,
     );
     expect(anchorPosition.archiveTop).toBeGreaterThanOrEqual(
-      anchorPosition.anchorBottom - 1,
+      anchorPosition.modesBottom - 1,
     );
   }
   const viewportWidth = page.viewportSize()?.width;
@@ -690,9 +753,7 @@ test("customs archive preserves action state and proves the stacked viewport", a
   await page.keyboard.press("Tab");
   expect(
     await page.evaluate(() =>
-      Boolean(
-        document.activeElement?.closest('[data-testid="customs-action-mode"]'),
-      ),
+      Boolean(document.activeElement?.closest('[data-context-mode="work"]')),
     ),
   ).toBe(false);
 
@@ -747,7 +808,7 @@ test("customs archive drops stale object data and ignores a late response", asyn
   await expect(customsContextAnchor).toContainText(
     fixture.firstContainerNumber,
   );
-  await page.getByTestId("context-mode-archive").click();
+  await page.getByRole("button", { name: "档案", exact: true }).click();
   await expect(page.getByText(fixture.firstActivityText)).toBeVisible();
 
   control.holdNextActivityFor = fixture.firstContainerId;
@@ -775,7 +836,7 @@ test("customs archive drops stale object data and ignores a late response", asyn
     fixture.firstContainerNumber,
   );
 
-  await page.getByTestId("context-mode-archive").click();
+  await page.getByRole("button", { name: "档案", exact: true }).click();
   await expect(page.getByText(fixture.secondActivityText)).toBeVisible();
   await expect(page.getByText(fixture.secondRelatedText)).toBeVisible();
   await expect(page.getByTestId("archive-outcome")).toHaveText("尚无正式结果");
@@ -888,6 +949,32 @@ const secondTask = {
     dueAt: null,
   },
 };
+
+function taskForContainer(containerId: string) {
+  return [firstTask, secondTask].find(
+    (task) => task.containerId === containerId,
+  );
+}
+
+function collaborationPage(containerId: string, taskId: string) {
+  const completed = taskId === fixture.firstTaskId;
+  return {
+    contractVersion: "task-collaboration-page.v1",
+    thread: null,
+    subjectRef: { kind: "container", id: containerId },
+    workRef: { kind: "node_task", id: taskId },
+    visibility: "task_scope",
+    visibilityLabel: "当前任务参与者",
+    messages: [],
+    asOf: "2026-10-17T09:00:00.000Z",
+    pageSize: 25,
+    nextCursor: null,
+    canPost: !completed,
+    postDisabledReason: completed ? "任务已完成，只能查看历史协作。" : null,
+    mentionOptions: [],
+    evidenceOptions: [],
+  };
+}
 
 function lifecyclePage(containerId: string) {
   const first = containerId === fixture.firstContainerId;

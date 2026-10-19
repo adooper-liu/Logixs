@@ -1,5 +1,10 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
-import { toRaw } from "vue";
+import type {
+  TaskCollaborationMessageV1,
+  TaskCollaborationPageV1,
+  TaskCollaborationPostResultV1,
+} from "@logix/contracts";
+import { nextTick, toRaw } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TaskArchivePanel from "../components/task/TaskArchivePanel.vue";
@@ -11,6 +16,9 @@ const listNodes = vi.fn();
 const listTasks = vi.fn();
 const getCase = vi.fn();
 const listDates = vi.fn();
+const listTaskCollaboration = vi.fn();
+const postTaskCollaborationMessage = vi.fn();
+const collaborationComposable = vi.hoisted(() => ({ calls: 0 }));
 
 vi.mock("../api/containers", () => ({
   listContainers: (...args: unknown[]) => listContainers(...args),
@@ -36,6 +44,26 @@ vi.mock("../api/evidence", () => ({
   isEvidenceUuid: () => true,
   registerAndVerifyFloorEvidence: vi.fn(),
 }));
+vi.mock("../api/taskCollaboration", () => ({
+  listTaskCollaboration: (...args: unknown[]) => listTaskCollaboration(...args),
+  postTaskCollaborationMessage: (...args: unknown[]) =>
+    postTaskCollaborationMessage(...args),
+}));
+vi.mock("../composables/useTaskCollaboration", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../composables/useTaskCollaboration")
+    >();
+  return {
+    ...actual,
+    useTaskCollaboration: (
+      context: Parameters<typeof actual.useTaskCollaboration>[0],
+    ) => {
+      collaborationComposable.calls += 1;
+      return actual.useTaskCollaboration(context);
+    },
+  };
+});
 vi.mock("../components/task/TaskArchivePanel.vue", () => ({
   default: {
     name: "TaskArchivePanel",
@@ -80,8 +108,11 @@ describe("CustomsWorkbench", () => {
       listTasks,
       getCase,
       listDates,
+      listTaskCollaboration,
+      postTaskCollaborationMessage,
     ])
       mock.mockReset();
+    collaborationComposable.calls = 0;
     listContainers.mockResolvedValue({ items: [container] });
     getContainer.mockResolvedValue(container);
     listNodes.mockResolvedValue({ nodes: [] });
@@ -91,6 +122,15 @@ describe("CustomsWorkbench", () => {
       items: [],
       projectionVersion: 0,
       asOf: "2026-09-21T00:00:00Z",
+    });
+    listTaskCollaboration.mockResolvedValue(collaborationPage());
+    postTaskCollaborationMessage.mockResolvedValue({
+      contractVersion: "task-collaboration-post-result.v1",
+      message: collaborationMessage("posted-message", "已发送"),
+      idempotencyReplay: false,
+    } satisfies TaskCollaborationPostResultV1);
+    vi.stubGlobal("crypto", {
+      randomUUID: vi.fn(() => "99999999-9999-4999-8999-999999999999"),
     });
   });
 
@@ -114,22 +154,33 @@ describe("CustomsWorkbench", () => {
     );
   });
 
-  it("defaults to action and only offers archive for a selected task", async () => {
+  it("owns one shared collaboration model for the selected container and task", async () => {
     const { wrapper } = await mountPage();
 
     expect(wrapper.find('[aria-label="清关案件表单"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="task-archive"]').exists()).toBe(false);
-    const modeControl = wrapper.get('[aria-label="右栏模式"]');
-    expect(modeControl.get('[data-testid="context-mode-action"]').text()).toBe(
-      "办理",
-    );
+    expect(wrapper.find('[data-testid="task-archive"]').exists()).toBe(true);
     expect(
-      modeControl
-        .get('[data-testid="context-mode-action"]')
-        .attributes("aria-pressed"),
+      wrapper.get('[data-context-mode="archive"]').attributes(),
+    ).toHaveProperty("hidden");
+    const modeControl = wrapper.get('[aria-label="任务上下文模式"]');
+    expect(
+      modeControl.get('[data-mode-control="work"]').attributes("aria-pressed"),
     ).toBe("true");
-    expect(modeControl.get('[data-testid="context-mode-archive"]').text()).toBe(
+    expect(modeControl.get('[data-mode-control="archive"]').text()).toBe(
       "档案",
+    );
+    expect(modeControl.get('[data-mode-control="collaboration"]').text()).toBe(
+      "协作",
+    );
+    expect(collaborationComposable.calls).toBe(1);
+    expect(listTaskCollaboration).toHaveBeenCalledTimes(1);
+    expect(listTaskCollaboration).toHaveBeenCalledWith(
+      "task-1",
+      {
+        subjectRef: { kind: "container", id: "container-1" },
+        pageSize: 25,
+      },
+      expect.any(AbortSignal),
     );
   });
 
@@ -137,7 +188,7 @@ describe("CustomsWorkbench", () => {
     listTasks.mockResolvedValue({ items: [task({ outcome })] });
     const { wrapper } = await mountPage();
 
-    await wrapper.get('[data-testid="context-mode-archive"]').trigger("click");
+    await wrapper.get('[data-mode-control="archive"]').trigger("click");
 
     const archive = wrapper.getComponent(TaskArchivePanel);
     expect(archive.props("containerId")).toBe("container-1");
@@ -151,15 +202,18 @@ describe("CustomsWorkbench", () => {
 
     const contextPane = wrapper.get('[data-workbench-pane="context"]');
     expect(contextPane.text()).toContain("清关办理");
-    expect(wrapper.find('[aria-label="右栏模式"]').exists()).toBe(false);
+    const modes = wrapper.get('[aria-label="任务上下文模式"]');
+    expect(modes.findAll("button")).toHaveLength(1);
+    expect(modes.get('[data-mode-control="work"]').text()).toBe("办理");
     expect(wrapper.find('[data-testid="task-archive"]').exists()).toBe(false);
     expect(wrapper.find('[aria-label="清关案件表单"]').exists()).toBe(true);
     expect(wrapper.get('[aria-label="当前清关上下文"]').text()).toContain(
       "当前任务：清关任务待选择",
     );
+    expect(listTaskCollaboration).not.toHaveBeenCalled();
   });
 
-  it("preserves action input, context scroll, and focused control across archive", async () => {
+  it("preserves work input, context scroll, and focus across archive and collaboration", async () => {
     const { wrapper } = await mountPage();
     const input = wrapper.get<HTMLInputElement>(
       '[aria-label="清关案件表单"] input',
@@ -173,9 +227,15 @@ describe("CustomsWorkbench", () => {
     input.element.focus();
     await input.trigger("focusin");
     scrollOwner.element.scrollTop = 137;
-    await wrapper.get('[data-testid="context-mode-archive"]').trigger("click");
+    await wrapper.get('[data-mode-control="archive"]').trigger("pointerdown");
+    await wrapper.get('[data-mode-control="archive"]').trigger("click");
+    scrollOwner.element.scrollTop = 41;
+    await wrapper
+      .get('[data-mode-control="collaboration"]')
+      .trigger("pointerdown");
+    await wrapper.get('[data-mode-control="collaboration"]').trigger("click");
     scrollOwner.element.scrollTop = 0;
-    await wrapper.get('[data-testid="context-mode-action"]').trigger("click");
+    await wrapper.get('[data-mode-control="work"]').trigger("click");
     await flushPromises();
 
     expect(input.element.value).toBe("CN");
@@ -183,15 +243,22 @@ describe("CustomsWorkbench", () => {
     expect(document.activeElement).toBe(input.element);
   });
 
-  it("keeps the hidden action panel mounted but outside interaction and tab order", async () => {
+  it("keeps inactive shared modes mounted but hidden, inert, and outside the tab order", async () => {
     const { wrapper } = await mountPage();
-    await wrapper.get('[data-testid="context-mode-archive"]').trigger("click");
+    await wrapper.get('[data-mode-control="archive"]').trigger("click");
 
-    const actionPanel = wrapper.get('[data-testid="customs-action-mode"]');
-    expect(actionPanel.find('[aria-label="清关案件表单"]').exists()).toBe(true);
-    expect(actionPanel.attributes()).toHaveProperty("hidden");
-    expect(actionPanel.attributes()).toHaveProperty("inert");
-    expect(actionPanel.attributes("aria-hidden")).toBe("true");
+    const workPanel = wrapper.get('[data-context-mode="work"]');
+    const collaborationPanel = wrapper.get(
+      '[data-context-mode="collaboration"]',
+    );
+    expect(workPanel.find('[aria-label="清关案件表单"]').exists()).toBe(true);
+    expect(workPanel.attributes()).toHaveProperty("hidden");
+    expect(workPanel.attributes()).toHaveProperty("inert");
+    expect(workPanel.attributes("aria-hidden")).toBe("true");
+    expect(collaborationPanel.attributes()).toHaveProperty("hidden");
+    expect(collaborationPanel.attributes()).toHaveProperty("inert");
+    expect(collaborationPanel.attributes("aria-hidden")).toBe("true");
+    expect(workPanel.get("input").attributes("tabindex")).toBe("-1");
   });
 
   it("replaces old archive props immediately when the selected task changes", async () => {
@@ -200,7 +267,7 @@ describe("CustomsWorkbench", () => {
     const { wrapper, router } = await mountPage(
       "/workspaces/customs?containerId=container-1&taskId=task-1",
     );
-    await wrapper.get('[data-testid="context-mode-archive"]').trigger("click");
+    await wrapper.get('[data-mode-control="archive"]').trigger("click");
     expect(wrapper.getComponent(TaskArchivePanel).props("taskId")).toBe(
       "task-1",
     );
@@ -216,7 +283,7 @@ describe("CustomsWorkbench", () => {
     expect(wrapper.text()).not.toContain("task-1");
   });
 
-  it("does not add collaboration or overstate the bounded archive", async () => {
+  it("does not overstate collaboration or the bounded archive", async () => {
     const { wrapper } = await mountPage();
     expect(wrapper.text()).not.toMatch(
       /聊天|助手|更多功能|完整清关案件历史|全局审计/,
@@ -246,7 +313,7 @@ describe("CustomsWorkbench", () => {
     expect(wrapper.get('[data-workbench-pane="context"]').text()).toContain(
       "选择对象后显示动作。",
     );
-    expect(wrapper.find('[aria-label="右栏模式"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="任务上下文模式"]').exists()).toBe(false);
     expect(wrapper.find('[aria-label="当前清关上下文"]').exists()).toBe(false);
     expect(wrapper.find('[aria-label="清关案件表单"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="task-archive"]').exists()).toBe(false);
@@ -305,6 +372,81 @@ describe("CustomsWorkbench", () => {
     expect(updatedContext.text()).toContain("当前节点：08 清关");
     expect(updatedContext.text()).not.toContain(container.containerNumber);
   });
+
+  it("uses server canPost and reason for a completed task without hiding history", async () => {
+    listTasks.mockResolvedValue({ items: [task({ state: "completed" })] });
+    listTaskCollaboration.mockResolvedValue(
+      collaborationPage({
+        canPost: false,
+        postDisabledReason: "任务已完成，只能查看历史协作。",
+        messages: [collaborationMessage("completed", "已完成任务的历史协作")],
+      }),
+    );
+    const { wrapper } = await mountPage();
+
+    await wrapper.get('[data-mode-control="collaboration"]').trigger("click");
+
+    expect(wrapper.text()).toContain("已完成任务的历史协作");
+    expect(wrapper.text()).toContain("任务已完成，只能查看历史协作。");
+    expect(wrapper.find('[aria-label="协作消息"]').exists()).toBe(false);
+  });
+
+  it("clears the old collaboration and returns to work while late GET and POST settle", async () => {
+    const oldPost = deferred<TaskCollaborationPostResultV1>();
+    const newGet = deferred<TaskCollaborationPageV1>();
+    listTaskCollaboration
+      .mockResolvedValueOnce(
+        collaborationPage({
+          messages: [collaborationMessage("old", "旧任务消息")],
+        }),
+      )
+      .mockReturnValueOnce(newGet.promise);
+    postTaskCollaborationMessage.mockReturnValueOnce(oldPost.promise);
+    getContainer.mockImplementation(async (id: string) =>
+      id === secondContainer.id ? secondContainer : container,
+    );
+    listTasks.mockImplementation(
+      async (query: { containerId?: string } | undefined) => ({
+        items:
+          query?.containerId === secondContainer.id
+            ? [task({ id: "task-2", containerId: secondContainer.id })]
+            : [task()],
+      }),
+    );
+    const { wrapper, router } = await mountPage();
+    await wrapper.get('[data-mode-control="collaboration"]').trigger("click");
+    await wrapper.get('[aria-label="协作消息"]').setValue("旧任务待发送");
+    await wrapper.get('[data-testid="collaboration-send"]').trigger("click");
+
+    await router.push(
+      "/workspaces/customs?containerId=container-2&taskId=task-2",
+    );
+    await nextTick();
+
+    expect(wrapper.text()).not.toContain("旧任务消息");
+    await flushPromises();
+    expect(
+      wrapper.get('[data-mode-control="work"]').attributes("aria-pressed"),
+    ).toBe("true");
+
+    newGet.resolve(
+      collaborationPage({
+        containerId: "container-2",
+        taskId: "task-2",
+        messages: [collaborationMessage("new", "新任务消息")],
+      }),
+    );
+    oldPost.resolve({
+      contractVersion: "task-collaboration-post-result.v1",
+      message: collaborationMessage("late", "旧任务晚到发送结果"),
+      idempotencyReplay: false,
+    });
+    await flushPromises();
+
+    await wrapper.get('[data-mode-control="collaboration"]').trigger("click");
+    expect(wrapper.text()).toContain("新任务消息");
+    expect(wrapper.text()).not.toContain("旧任务晚到发送结果");
+  });
 });
 
 async function mountPage(path = "/workspaces/customs?containerId=container-1") {
@@ -336,6 +478,7 @@ function task(
     id?: string;
     containerId?: string;
     outcome?: typeof outcome | null;
+    state?: "pending" | "completed";
   } = {},
 ) {
   return {
@@ -345,7 +488,7 @@ function task(
     nodeCode: "customs_clearance",
     containerId: options.containerId ?? container.id,
     taskDefinitionKey: "node-customs_clearance",
-    state: "pending",
+    state: options.state ?? "pending",
     applicability: "required",
     readinessState: "ready",
     completionEligibility: "eligible",
@@ -361,6 +504,73 @@ function task(
       dueAt: null,
     },
   };
+}
+
+function collaborationPage(
+  options: {
+    containerId?: string;
+    taskId?: string;
+    messages?: TaskCollaborationMessageV1[];
+    canPost?: boolean;
+    postDisabledReason?: string | null;
+  } = {},
+): TaskCollaborationPageV1 {
+  return {
+    contractVersion: "task-collaboration-page.v1",
+    thread: null,
+    subjectRef: {
+      kind: "container",
+      id: options.containerId ?? "container-1",
+    },
+    workRef: { kind: "node_task", id: options.taskId ?? "task-1" },
+    visibility: "task_scope",
+    visibilityLabel: "当前任务参与者",
+    messages: options.messages ?? [
+      collaborationMessage("current", "当前任务协作消息"),
+    ],
+    asOf: "2026-10-18T08:30:00.000Z",
+    pageSize: 25,
+    nextCursor: null,
+    canPost: options.canPost ?? true,
+    postDisabledReason: options.postDisabledReason ?? null,
+    mentionOptions: [],
+    evidenceOptions: [],
+  };
+}
+
+function collaborationMessage(
+  id: string,
+  body: string,
+): TaskCollaborationMessageV1 {
+  return {
+    contractVersion: "task-collaboration-message.v1",
+    messageId: uuidFor(id),
+    threadId: "88888888-8888-4888-8888-888888888888",
+    author: { kind: "actor", id: "customs-operator", displayName: "清关经办" },
+    body,
+    parentMessageId: null,
+    mentions: [],
+    evidenceRefs: [],
+    sourceRefs: [],
+    occurredAt: "2026-10-18T08:01:00.000Z",
+    recordedAt: "2026-10-18T08:01:01.000Z",
+  };
+}
+
+function uuidFor(value: string): string {
+  let sum = 1;
+  for (const char of value) sum = (sum * 31 + char.charCodeAt(0)) % 99999999;
+  return `${String(sum).padStart(8, "0")}-7777-4777-8777-777777777777`;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
 }
 
 function lifecycleNode(options: { sequence?: number } = {}) {

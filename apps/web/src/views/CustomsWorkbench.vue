@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import CustomsActionPanel from "../components/customs/CustomsActionPanel.vue";
 import CustomsCasePanel from "../components/customs/CustomsCasePanel.vue";
 import CustomsWorkQueue from "../components/customs/CustomsWorkQueue.vue";
 import TaskArchivePanel from "../components/task/TaskArchivePanel.vue";
+import TaskContextPanel from "../components/task/TaskContextPanel.vue";
+import type { TaskContextMode } from "../components/task/TaskContextPanel.vue";
 import RoleWorkbenchFrame from "../components/workbench/RoleWorkbenchFrame.vue";
 import {
   useCustomsCommands,
@@ -12,6 +14,11 @@ import {
 } from "../composables/useCustomsCommands";
 import { useCustomsWorkbench } from "../composables/useCustomsWorkbench";
 import { useStuffingTaskOperation } from "../composables/useStuffingTaskOperation";
+import {
+  useTaskCollaboration,
+  type TaskCollaborationContext,
+  type TaskCollaborationRetryTarget,
+} from "../composables/useTaskCollaboration";
 import type { CustomsQueueItem } from "../data/customsWorkbench";
 
 const route = useRoute();
@@ -43,26 +50,46 @@ const taskOperation = useStuffingTaskOperation(
   clearanceCase,
   reload,
 );
-type CustomsContextMode = "action" | "archive";
-
-const contextMode = ref<CustomsContextMode>("action");
-const actionPanel = useTemplateRef<HTMLElement>("actionPanel");
-const hasArchiveContext = computed(() =>
-  Boolean(selectedContainer.value && selectedTask.value),
+const contextMode = ref<TaskContextMode>("work");
+const contextModeLabels: Record<TaskContextMode, string> = {
+  work: "办理",
+  archive: "档案",
+  collaboration: "协作",
+};
+const collaborationContextKey = computed(() =>
+  selectedContainer.value && selectedTask.value
+    ? `container:${selectedContainer.value.id}|node_task:${selectedTask.value.id}`
+    : null,
+);
+const collaborationContext = computed<TaskCollaborationContext | null>(() =>
+  collaborationContextKey.value && selectedContainer.value && selectedTask.value
+    ? {
+        contextKey: collaborationContextKey.value,
+        taskId: selectedTask.value.id,
+        subjectRef: { kind: "container", id: selectedContainer.value.id },
+        workRef: { kind: "node_task", id: selectedTask.value.id },
+      }
+    : null,
+);
+const collaboration = useTaskCollaboration(collaborationContext);
+const contextModes = computed<readonly TaskContextMode[]>(() =>
+  collaborationContext.value ? ["work", "archive", "collaboration"] : ["work"],
 );
 const contextLabel = computed(() =>
-  contextMode.value === "archive" ? "当前可见任务档案" : "清关办理",
+  contextMode.value === "work"
+    ? "清关办理"
+    : `任务上下文 · ${contextModeLabels[contextMode.value]}`,
 );
 const contextSummary = computed(() =>
   contextMode.value === "archive"
     ? "核对记录"
-    : hasArchiveContext.value
-      ? "继续办理"
-      : "待选择",
+    : contextMode.value === "collaboration"
+      ? "共同处理"
+      : collaborationContext.value
+        ? "继续办理"
+        : "待选择",
 );
-const mobileContextLabel = computed(() =>
-  contextMode.value === "archive" ? "档案" : "办理",
-);
+const mobileContextLabel = computed(() => contextModeLabels[contextMode.value]);
 const currentContainerLabel = computed(
   () =>
     selectedContainer.value?.containerNumber ??
@@ -77,59 +104,15 @@ const currentNodeLabel = computed(() =>
     ? `${String(customsNode.value.sequence).padStart(2, "0")} ${customsNode.value.name}`
     : "清关节点待加载",
 );
-let actionScrollTop = 0;
-let lastActionFocus: HTMLElement | null = null;
-
 onMounted(() => void loadQueue());
 
 watch(
-  hasArchiveContext,
-  (ready) => {
-    if (!ready) contextMode.value = "action";
+  collaborationContextKey,
+  () => {
+    contextMode.value = "work";
   },
   { flush: "sync" },
 );
-
-function contextScrollOwner(): HTMLElement | null {
-  return (
-    actionPanel.value
-      ?.closest<HTMLElement>('[data-workbench-pane="context"]')
-      ?.querySelector<HTMLElement>(".workbench-pane__scroll--independent") ??
-    null
-  );
-}
-
-function rememberActionFocus(event: FocusEvent): void {
-  if (event.target instanceof HTMLElement) lastActionFocus = event.target;
-}
-
-function selectContextMode(mode: CustomsContextMode): void {
-  if (mode === contextMode.value) return;
-  if (mode === "archive") {
-    if (!hasArchiveContext.value) return;
-    const active = document.activeElement;
-    if (active instanceof HTMLElement && actionPanel.value?.contains(active)) {
-      lastActionFocus = active;
-    }
-    actionScrollTop = contextScrollOwner()?.scrollTop ?? 0;
-    contextMode.value = "archive";
-    return;
-  }
-  contextMode.value = "action";
-  void restoreActionContext();
-}
-
-async function restoreActionContext(): Promise<void> {
-  await nextTick();
-  const scrollOwner = contextScrollOwner();
-  if (scrollOwner) scrollOwner.scrollTop = actionScrollTop;
-  if (
-    lastActionFocus?.isConnected &&
-    actionPanel.value?.contains(lastActionFocus)
-  ) {
-    lastActionFocus.focus({ preventScroll: true });
-  }
-}
 
 function selectTask(item: CustomsQueueItem) {
   if (!item.task.containerId) return;
@@ -151,6 +134,19 @@ function submitActual(localDateTime: string) {
     expectedVersion: dates.value?.projectionVersion ?? 0,
     clearanceCase: clearanceCase.value,
   });
+}
+
+function submitCollaboration(): void {
+  void collaboration.send();
+}
+
+function retryCollaboration(target: TaskCollaborationRetryTarget): void {
+  if (target === "thread") void collaboration.refresh();
+  else void collaboration.retrySend();
+}
+
+function loadMoreCollaboration(): void {
+  void collaboration.loadMore();
 }
 </script>
 
@@ -187,79 +183,63 @@ function submitActual(localDateTime: string) {
     </template>
     <template #secondary>
       <div class="customs-context">
-        <nav
-          v-if="hasArchiveContext"
-          class="customs-context__modes"
-          aria-label="右栏模式"
-        >
-          <button
-            type="button"
-            data-testid="context-mode-action"
-            :aria-pressed="contextMode === 'action'"
-            @click="selectContextMode('action')"
-          >
-            办理
-          </button>
-          <button
-            type="button"
-            data-testid="context-mode-archive"
-            :aria-pressed="contextMode === 'archive'"
-            @click="selectContextMode('archive')"
-          >
-            档案
-          </button>
-        </nav>
-        <section
+        <TaskContextPanel
           v-if="selectedContainer"
-          class="customs-context__anchor"
-          aria-label="当前清关上下文"
+          v-model="contextMode"
+          :context-key="collaborationContextKey"
+          :modes="contextModes"
+          :collaboration="collaboration"
+          @submit="submitCollaboration"
+          @retry="retryCollaboration"
+          @load-more="loadMoreCollaboration"
         >
-          <dl>
-            <div>
-              <dt>当前货柜：</dt>
-              <dd>{{ currentContainerLabel }}</dd>
-            </div>
-            <div>
-              <dt>当前任务：</dt>
-              <dd>{{ currentTaskLabel }}</dd>
-            </div>
-            <div>
-              <dt>当前节点：</dt>
-              <dd>{{ currentNodeLabel }}</dd>
-            </div>
-          </dl>
-        </section>
-        <div
-          v-if="selectedContainer"
-          ref="actionPanel"
-          data-testid="customs-action-mode"
-          :hidden="contextMode !== 'action'"
-          :inert="contextMode !== 'action' || undefined"
-          :aria-hidden="contextMode !== 'action' ? 'true' : undefined"
-          @focusin="rememberActionFocus"
-        >
-          <CustomsActionPanel
-            :clearance-case="clearanceCase"
-            :task="selectedTask"
-            :projection-version="dates?.projectionVersion ?? 0"
-            :saving="commands.saving.value"
-            :save-error="commands.saveError.value"
-            :save-message="commands.saveMessage.value"
-            :date-submitting="commands.dateSubmitting.value"
-            :date-error="commands.dateError.value"
-            :date-result="commands.dateResult.value"
-            :task-submitting="taskOperation.submitting.value"
-            @save="saveCase"
-            @submit-actual="submitActual"
-            @execute-task="taskOperation.execute()"
-          />
-        </div>
-        <TaskArchivePanel
-          v-if="contextMode === 'archive' && selectedContainer && selectedTask"
-          :container-id="selectedContainer.id"
-          :task-id="selectedTask.id"
-          :outcome="selectedTask.outcome"
-        />
+          <template #anchor>
+            <section
+              class="customs-context__anchor"
+              aria-label="当前清关上下文"
+            >
+              <dl>
+                <div>
+                  <dt>当前货柜：</dt>
+                  <dd>{{ currentContainerLabel }}</dd>
+                </div>
+                <div>
+                  <dt>当前任务：</dt>
+                  <dd>{{ currentTaskLabel }}</dd>
+                </div>
+                <div>
+                  <dt>当前节点：</dt>
+                  <dd>{{ currentNodeLabel }}</dd>
+                </div>
+              </dl>
+            </section>
+          </template>
+          <template #work>
+            <CustomsActionPanel
+              :clearance-case="clearanceCase"
+              :task="selectedTask"
+              :projection-version="dates?.projectionVersion ?? 0"
+              :saving="commands.saving.value"
+              :save-error="commands.saveError.value"
+              :save-message="commands.saveMessage.value"
+              :date-submitting="commands.dateSubmitting.value"
+              :date-error="commands.dateError.value"
+              :date-result="commands.dateResult.value"
+              :task-submitting="taskOperation.submitting.value"
+              @save="saveCase"
+              @submit-actual="submitActual"
+              @execute-task="taskOperation.execute()"
+            />
+          </template>
+          <template #archive>
+            <TaskArchivePanel
+              v-if="selectedTask"
+              :container-id="selectedContainer.id"
+              :task-id="selectedTask.id"
+              :outcome="selectedTask.outcome"
+            />
+          </template>
+        </TaskContextPanel>
       </div>
     </template>
   </RoleWorkbenchFrame>
@@ -268,33 +248,6 @@ function submitActual(localDateTime: string) {
 <style scoped>
 .customs-context {
   min-width: 0;
-}
-
-.customs-context__modes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--line-strong);
-  background: var(--surface-2);
-}
-
-.customs-context__modes button {
-  min-width: 0;
-  min-height: 36px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--ink-soft);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-}
-
-.customs-context__modes button[aria-pressed="true"] {
-  border-color: var(--brand);
-  background: var(--brand-soft);
-  color: var(--brand-strong);
 }
 
 .customs-context__anchor {
