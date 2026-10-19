@@ -47,6 +47,8 @@ writeScopes:
   - apps/web/e2e/customs-task-collaboration.spec.ts-snapshots/**
   - apps/web/e2e/task-collaboration.spec.ts
   - apps/web/e2e/task-collaboration.spec.ts-snapshots/**
+  - apps/web/e2e/task-archive.spec.ts
+  - apps/web/e2e/shell-layout.spec.ts
 exclusiveLocks:
   - business-policy:task-collaboration-v1
   - database-schema
@@ -332,7 +334,8 @@ type TaskContextPanelProps = {
   - `TC4-R4 accepted / medium / revocation-ui`：POST 403/404 只设置 sendError，旧 messages/options/reply/pending retry 仍显示。composable 对当前 generation 的 POST 403/404 必须同步清空所有服务端线程/options 与 context-bound draft/reply/selections/pending command/key，显示重新读取/授权反馈；普通 409/5xx 仍保留同 key draft 以重试。TaskWorkbench 与 Customs E2E 各至少覆盖一个撤权清屏路径，可在各自现有 collaboration spec 内扩展。
   - `TC4-R5 accepted / medium / idempotency-recovery`：已提交但响应丢失后，task 完成、evidence 撤销或 assignee 变化会让同 key retry 在到达幂等记录前被新前置拒绝。修复顺序：认证并解析同 tenant/task/thread read scope后，先按 thread+author+key 查既有消息并比较 payload hash；same hash 返回原消息 `idempotencyReplay=true`，再按当前 evidence 权限过滤响应引用；different hash 409。仅新建路径执行 mutable task/evidence/Mention/source preconditions 和事务内复核。增加 response-loss 后 task completion、evidence revocation、assignee change 的 replay 测试。
 - **TC4-R2 负责人结论（2026-10-19）**：选择 **A（V1 安全收口，暂不接受客户端 sourceRefs）**。理由：当前两个真实消费者只使用 EvidenceRef，UI 无 sourceRef 输入；立即关闭伪造正式来源和跨租户泄露，不为无消费者能力扩展多个领域 resolver。成本是正式 action/result 来源链接延期；高可逆，未来无需迁移现有消息语义即可开放。B（当前建设三个 kind resolver）不采用。
-- **统一修复纪律**：负责人裁决 TC4-R2 后，全部 accepted finding 作为 TC4 唯一修复波由一个 Codex 实现，不拆执行器、不启动第二个 fresh reviewer。修复后主代理只做一次 scoped 主审和定向复现；残余真实 load-bearing 问题直接裁决。完整 `pnpm validate` 不重复执行；只补跑修复影响的 API/Web unit、PostgreSQL integration、两组 collaboration E2E、lint/typecheck/build、authz/repo/diff，以及本次完整门禁因 EPERM 未执行到的阶段证据。
+- **完整门禁实际结果（2026-10-19）**：唯一一次 `pnpm validate` 通过 repo/workbench-purpose/contract/drift/dictionary/Prisma/lint，随后被已知 Windows `apps/ai-service/.pytest_cache` EPERM 阻断；branch-scoped Prettier 与 diff 通过，root typecheck 通过，root unit 首次组合返回 1 后独立重跑通过，PostgreSQL integration 37 files/249 tests 通过。全量 E2E 暴露两类本分支旧断言：`task-archive.spec.ts` 仍查找“任务档案”region，`shell-layout.spec.ts` 移动步骤仍查找/期待“档案”，而已批准共享壳现在是“任务上下文/上下文”；纳入统一修复，只改 selector/期望，不弱化行为。另有既有 `product-selection-mobile-chromium-session-menu.png` 4% 像素漂移，属于其他工作台视觉基线，当前任务不修改、不作为本分支 finding。build 因 E2E 提前失败未执行，修复波后补跑。
+- **统一修复纪律**：负责人裁决 TC4-R2 后，全部 accepted finding 作为 TC4 唯一修复波由一个 Codex 实现，不拆执行器、不启动第二个 fresh reviewer。修复后主代理只做一次 scoped 主审和定向复现；残余真实 load-bearing 问题直接裁决。完整 `pnpm validate` 不重复执行；只补跑修复影响的 API/Web unit、PostgreSQL integration、两组 collaboration E2E、上述两项旧断言、lint/typecheck/build、authz/repo/diff，以及本次完整门禁因 EPERM 未执行到的阶段证据。
 
 ## 五面映射
 
