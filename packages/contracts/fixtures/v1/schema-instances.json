@@ -2,6 +2,285 @@
   "fixtureVersion": "1.0.0",
   "cases": [
     {
+      "contractId": "GC-008",
+      "name": "task action candidate generate command",
+      "schemaRef": "ops-assistant.schema.json#/$defs/GenerateTaskActionCandidateCommandV1",
+      "data": {
+        "contractVersion": "task-action-candidate-generate.v1",
+        "subjectRef": {
+          "kind": "container",
+          "id": "10000000-0000-4000-8000-000000000001"
+        },
+        "workRef": {
+          "kind": "node_task",
+          "id": "20000000-0000-4000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action candidate",
+      "schemaRef": "ops-assistant.schema.json#/$defs/TaskActionCandidateV1",
+      "data": {
+        "candidateId": "40000000-0000-4000-8000-000000000001",
+        "candidateHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "context": {
+          "subjectRef": {
+            "kind": "container",
+            "id": "10000000-0000-4000-8000-000000000001"
+          },
+          "workRef": {
+            "kind": "node_task",
+            "id": "20000000-0000-4000-8000-000000000001"
+          }
+        },
+        "workOrderId": "30000000-0000-4000-8000-000000000001",
+        "actionCode": "work_execution.claim_work_order",
+        "actionVersion": 1,
+        "title": "Claim current work order",
+        "rationale": "The work order is ready and unassigned.",
+        "impact": "Responsibility moves to the current actor.",
+        "riskLevel": "low",
+        "warningCodes": ["confirm_required", "scope_revalidated"],
+        "status": "proposed",
+        "source": {
+          "kind": "rule",
+          "capabilityId": "task.claim-assistance",
+          "capabilityVersion": 1,
+          "schemaVersion": 1,
+          "promptVersion": null,
+          "modelId": null,
+          "inputSnapshotHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "inputRefs": [
+            {
+              "kind": "node_task",
+              "id": "20000000-0000-4000-8000-000000000001",
+              "version": 3
+            },
+            {
+              "kind": "work_order",
+              "id": "30000000-0000-4000-8000-000000000001",
+              "version": 2
+            }
+          ],
+          "generatedAt": "2026-10-19T06:00:00.000Z"
+        }
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action candidate confirm command",
+      "schemaRef": "ops-assistant.schema.json#/$defs/ConfirmTaskActionCandidateCommandV1",
+      "data": {
+        "contractVersion": "task-action-candidate-confirm.v1",
+        "candidateId": "40000000-0000-4000-8000-000000000001",
+        "candidateHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "idempotencyKey": "confirm-candidate-1"
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action candidate reject command",
+      "schemaRef": "ops-assistant.schema.json#/$defs/RejectTaskActionCandidateCommandV1",
+      "data": {
+        "contractVersion": "task-action-candidate-reject.v1",
+        "candidateId": "40000000-0000-4000-8000-000000000001",
+        "reason": "Not my responsibility"
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action candidate decision",
+      "schemaRef": "ops-assistant.schema.json#/$defs/TaskActionDecisionV1",
+      "data": {
+        "decisionId": "50000000-0000-4000-8000-000000000001",
+        "candidateId": "40000000-0000-4000-8000-000000000001",
+        "decidedByActorId": "operator-1",
+        "decision": "accepted",
+        "reason": null,
+        "idempotencyKey": "confirm-candidate-1",
+        "decidedAt": "2026-10-19T06:01:00.000Z",
+        "clientOperationId": "60000000-0000-4000-8000-000000000001",
+        "traceId": "trace-ai0-1",
+        "executionState": "applied",
+        "resultRefs": [
+          {
+            "kind": "client_operation",
+            "id": "60000000-0000-4000-8000-000000000001",
+            "version": null
+          },
+          {
+            "kind": "work_order",
+            "id": "30000000-0000-4000-8000-000000000001",
+            "version": 3
+          }
+        ]
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action candidate confirm result",
+      "schemaRef": "ops-assistant.schema.json#/$defs/TaskActionConfirmResultV1",
+      "data": {
+        "contractVersion": "task-action-candidate-confirm-result.v1",
+        "candidate": {
+          "candidateId": "40000000-0000-4000-8000-000000000001",
+          "candidateHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "context": {
+            "subjectRef": {
+              "kind": "container",
+              "id": "10000000-0000-4000-8000-000000000001"
+            },
+            "workRef": {
+              "kind": "node_task",
+              "id": "20000000-0000-4000-8000-000000000001"
+            }
+          },
+          "workOrderId": "30000000-0000-4000-8000-000000000001",
+          "actionCode": "work_execution.claim_work_order",
+          "actionVersion": 1,
+          "title": "Claim current work order",
+          "rationale": "The work order is ready and unassigned.",
+          "impact": "Responsibility moves to the current actor.",
+          "riskLevel": "low",
+          "warningCodes": ["confirm_required", "scope_revalidated"],
+          "status": "accepted",
+          "source": {
+            "kind": "rule",
+            "capabilityId": "task.claim-assistance",
+            "capabilityVersion": 1,
+            "schemaVersion": 1,
+            "promptVersion": null,
+            "modelId": null,
+            "inputSnapshotHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "inputRefs": [
+              {
+                "kind": "node_task",
+                "id": "20000000-0000-4000-8000-000000000001",
+                "version": 3
+              },
+              {
+                "kind": "work_order",
+                "id": "30000000-0000-4000-8000-000000000001",
+                "version": 2
+              }
+            ],
+            "generatedAt": "2026-10-19T06:00:00.000Z"
+          }
+        },
+        "decision": {
+          "decisionId": "50000000-0000-4000-8000-000000000001",
+          "candidateId": "40000000-0000-4000-8000-000000000001",
+          "decidedByActorId": "operator-1",
+          "decision": "accepted",
+          "reason": null,
+          "idempotencyKey": "confirm-candidate-1",
+          "decidedAt": "2026-10-19T06:01:00.000Z",
+          "clientOperationId": "60000000-0000-4000-8000-000000000001",
+          "traceId": "trace-ai0-1",
+          "executionState": "applied",
+          "resultRefs": [
+            {
+              "kind": "client_operation",
+              "id": "60000000-0000-4000-8000-000000000001",
+              "version": null
+            },
+            {
+              "kind": "work_order",
+              "id": "30000000-0000-4000-8000-000000000001",
+              "version": 3
+            }
+          ]
+        },
+        "claimWorkOrderResult": {
+          "workOrderId": "30000000-0000-4000-8000-000000000001",
+          "workOrderState": "in_progress",
+          "assignmentState": "assigned",
+          "assigneeId": "operator-1",
+          "taskId": "20000000-0000-4000-8000-000000000001",
+          "taskState": "in_progress",
+          "applied": true,
+          "clientOperationId": "60000000-0000-4000-8000-000000000001",
+          "receptionState": "received",
+          "businessDecisionState": "accepted",
+          "commitState": "committed",
+          "rejectionReasonCode": null
+        },
+        "idempotencyReplay": false
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action decision rejects applied state without operation",
+      "schemaRef": "ops-assistant.schema.json#/$defs/TaskActionDecisionV1",
+      "valid": false,
+      "data": {
+        "decisionId": "50000000-0000-4000-8000-000000000002",
+        "candidateId": "40000000-0000-4000-8000-000000000002",
+        "decidedByActorId": "operator-1",
+        "decision": "accepted",
+        "reason": null,
+        "idempotencyKey": "confirm-candidate-2",
+        "decidedAt": "2026-10-19T06:02:00.000Z",
+        "clientOperationId": null,
+        "traceId": null,
+        "executionState": "applied",
+        "resultRefs": []
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action decision rejects result refs on rejection",
+      "schemaRef": "ops-assistant.schema.json#/$defs/TaskActionDecisionV1",
+      "valid": false,
+      "data": {
+        "decisionId": "50000000-0000-4000-8000-000000000003",
+        "candidateId": "40000000-0000-4000-8000-000000000003",
+        "decidedByActorId": "operator-1",
+        "decision": "rejected",
+        "reason": "Not my responsibility",
+        "idempotencyKey": "reject-candidate-3",
+        "decidedAt": "2026-10-19T06:03:00.000Z",
+        "clientOperationId": null,
+        "traceId": null,
+        "executionState": null,
+        "resultRefs": [
+          {
+            "kind": "work_order",
+            "id": "30000000-0000-4000-8000-000000000001",
+            "version": 3
+          }
+        ]
+      }
+    },
+    {
+      "contractId": "GC-008",
+      "name": "task action generate rejects protected fields",
+      "schemaRef": "ops-assistant.schema.json#/$defs/GenerateTaskActionCandidateCommandV1",
+      "valid": false,
+      "data": {
+        "contractVersion": "task-action-candidate-generate.v1",
+        "subjectRef": {
+          "kind": "container",
+          "id": "10000000-0000-4000-8000-000000000001"
+        },
+        "workRef": {
+          "kind": "node_task",
+          "id": "20000000-0000-4000-8000-000000000001"
+        },
+        "tenantId": "forged-tenant",
+        "actorId": "forged-actor",
+        "actionCode": "work_execution.complete_work_order",
+        "actionVersion": 2,
+        "workOrderId": "30000000-0000-4000-8000-000000000001",
+        "capability": "task.execute",
+        "riskLevel": "high",
+        "payload": {},
+        "command": "claim",
+        "idempotencyKey": "forged-key"
+      }
+    },
+    {
       "contractId": "GC-007",
       "name": "task collaboration page with reply and typed references",
       "schemaRef": "task-collaboration.schema.json#/$defs/TaskCollaborationPageV1",

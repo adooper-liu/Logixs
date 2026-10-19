@@ -12,6 +12,8 @@ import { WorkExecutionModule } from "../work-execution";
 import { BuildAssistantObjectContextService } from "./application/build-assistant-object-context.service";
 import { OpenAssistantSessionService } from "./application/open-assistant-session.service";
 import { PostAssistantMessageService } from "./application/post-assistant-message.service";
+import { TASK_ACTION_CANDIDATE_REPOSITORY } from "./domain/task-action-candidate.repository";
+import { PrismaTaskActionCandidateRepository } from "./infrastructure/prisma-task-action-candidate.repository";
 import { OpsAssistantController } from "./presentation/ops-assistant.controller";
 
 @Module({
@@ -28,6 +30,10 @@ import { OpsAssistantController } from "./presentation/ops-assistant.controller"
     BuildAssistantObjectContextService,
     OpenAssistantSessionService,
     PostAssistantMessageService,
+    {
+      provide: TASK_ACTION_CANDIDATE_REPOSITORY,
+      useClass: PrismaTaskActionCandidateRepository,
+    },
   ],
 })
 export class OpsAssistantModule implements NestModule {
