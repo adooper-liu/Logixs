@@ -1,7 +1,7 @@
 ---
-status: review
+status: fix
 branch: feat/task-collaboration-v1
-verification: "TC3 accepted at 6f4663c7 on 2026-10-19 after one main review: focused Customs unit 14/14, combined Customs E2E 21/21 across 1440/1024/390, Web lint/format/typecheck/build, repo/diff checks passed; shared TC2 files had zero diff and three Customs screenshots passed manual structural review. Current slice: TC4-review-gate-integration. TC4 will run exactly one whole-branch fresh independent review and one full pnpm validate."
+verification: "TC4 whole-branch fresh review completed once on 2026-10-19 and returned TC4-R1 through TC4-R5; all five are accepted for one consolidated fix wave. The single full pnpm validate reached repo/contract/dictionary/Prisma/lint then stopped at the known Windows apps/ai-service/.pytest_cache EPERM; branch-scoped formatting and typecheck passed, root unit passed on isolated rerun, and the remaining integration/E2E/build continuation is still running. No additional reviewer or second full validate will be started."
 owner: main
 writer: codex
 risk: high
@@ -325,6 +325,14 @@ type TaskContextPanelProps = {
 
 - **目标**：整体 high-risk fresh 复审、accepted finding 修复、完整门禁、单一 PR/CI/merge；完成后才进入 AI 单元。
 - **验收**：contract/schema/migration/dictionary、API unit/integration/authz、Web unit/E2E/三视口、fresh clean `pnpm validate`、fresh Claude no-findings 或全部处置。
+- **唯一整体复审 disposition（2026-10-19）**：
+  - `TC4-R1 accepted / high / concurrency-data-integrity`：POST 在 Application 先校验 task/evidence，再进入 collaboration repository 独立事务；校验后 task 可完成或 Evidence 可撤销，仍会写入 append-only 消息。修复必须让创建路径在同一 PostgreSQL 事务/锁协议中重新读取并锁定 NodeTask/container/state 与 requested EvidenceRecord tenant/subject/effective，再插入全部协作行；增加 barrier integration，证明校验后完成/撤销会稳定拒绝且零写入。
+  - `TC4-R2 accepted / high / source-reference-authorization`：`sourceRefs` 目前只校验形状并原样持久化/展示，任何 task.collaborate 用户可伪造跨 tenant/task 或不存在的正式 action/result/evidence 引用。负责人 2026-10-19 选择 **A 安全延期**：V1 公开 POST 对任何非空 `sourceRefs` 稳定 400/业务校验拒绝且零写入；GET 不展示未经服务端权威 resolver 确认的来源。公共 schema、生成类型和 DB 字段保留作向后兼容，TC2/TC3 composer 继续不提供 sourceRef 输入。未来出现真实正式动作消费者并具备对应领域 tenant/subject/work scoped resolver、capability、创建原子校验和读取再授权后，另片开放；当前禁止扩建无消费者 resolver 平台。
+  - `TC4-R3 accepted / medium / terminal-state`：只把 `completed` 当只读，`cancelled` 会错误显示 canPost 并允许写入。建立单一 domain postable predicate（V1 仅 live `pending | in_progress` 可发；`completed | cancelled` 只读）供 GET/POST/事务内复核共用，覆盖 cancelled unit/API/PostgreSQL。
+  - `TC4-R4 accepted / medium / revocation-ui`：POST 403/404 只设置 sendError，旧 messages/options/reply/pending retry 仍显示。composable 对当前 generation 的 POST 403/404 必须同步清空所有服务端线程/options 与 context-bound draft/reply/selections/pending command/key，显示重新读取/授权反馈；普通 409/5xx 仍保留同 key draft 以重试。TaskWorkbench 与 Customs E2E 各至少覆盖一个撤权清屏路径，可在各自现有 collaboration spec 内扩展。
+  - `TC4-R5 accepted / medium / idempotency-recovery`：已提交但响应丢失后，task 完成、evidence 撤销或 assignee 变化会让同 key retry 在到达幂等记录前被新前置拒绝。修复顺序：认证并解析同 tenant/task/thread read scope后，先按 thread+author+key 查既有消息并比较 payload hash；same hash 返回原消息 `idempotencyReplay=true`，再按当前 evidence 权限过滤响应引用；different hash 409。仅新建路径执行 mutable task/evidence/Mention/source preconditions 和事务内复核。增加 response-loss 后 task completion、evidence revocation、assignee change 的 replay 测试。
+- **TC4-R2 负责人结论（2026-10-19）**：选择 **A（V1 安全收口，暂不接受客户端 sourceRefs）**。理由：当前两个真实消费者只使用 EvidenceRef，UI 无 sourceRef 输入；立即关闭伪造正式来源和跨租户泄露，不为无消费者能力扩展多个领域 resolver。成本是正式 action/result 来源链接延期；高可逆，未来无需迁移现有消息语义即可开放。B（当前建设三个 kind resolver）不采用。
+- **统一修复纪律**：负责人裁决 TC4-R2 后，全部 accepted finding 作为 TC4 唯一修复波由一个 Codex 实现，不拆执行器、不启动第二个 fresh reviewer。修复后主代理只做一次 scoped 主审和定向复现；残余真实 load-bearing 问题直接裁决。完整 `pnpm validate` 不重复执行；只补跑修复影响的 API/Web unit、PostgreSQL integration、两组 collaboration E2E、lint/typecheck/build、authz/repo/diff，以及本次完整门禁因 EPERM 未执行到的阶段证据。
 
 ## 五面映射
 

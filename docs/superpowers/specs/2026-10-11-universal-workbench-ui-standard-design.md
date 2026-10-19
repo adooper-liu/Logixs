@@ -422,8 +422,9 @@ Toptip 必须支持 hover、键盘 focus、点击和触屏关闭。字段名已�
 - 消息与回复；
 - Mention；
 - 可见范围；
-- `EvidenceRef` 附件引用；
-- 链接正式业务动作、结果或证据的来源引用。
+- `EvidenceRef` 附件引用。
+
+正式业务动作、结果或证据的来源引用保留 typed contract/存储形态，但 V1 不接受客户端非空提交：2026-10-19 负责人选择安全延期，等真实消费者与对应领域 tenant/subject/work scoped resolver、capability、创建原子校验和读取再授权具备后另片开放；当前不得把未经服务端验证的客户端 ID 持久化或展示为正式来源。
 
 严格分轨：
 
