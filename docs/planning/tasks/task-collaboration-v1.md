@@ -41,6 +41,10 @@ writeScopes:
   - apps/web/src/views/TaskWorkbench.test.ts
   - apps/web/src/views/CustomsWorkbench.vue
   - apps/web/src/views/CustomsWorkbench.test.ts
+  - apps/web/e2e/customs-task-archive.spec.ts
+  - apps/web/e2e/customs-workbench.spec.ts
+  - apps/web/e2e/customs-task-collaboration.spec.ts
+  - apps/web/e2e/customs-task-collaboration.spec.ts-snapshots/**
   - apps/web/e2e/task-collaboration.spec.ts
   - apps/web/e2e/task-collaboration.spec.ts-snapshots/**
 exclusiveLocks:
@@ -314,6 +318,7 @@ type TaskContextPanelProps = {
 - **视口证据**：创建 `apps/web/e2e/customs-task-collaboration.spec.ts` 及 1440/1024/390 三张版本化截图；主代理逐张人工核对。TC3 不修改 TC2 的 TaskWorkbench 截图或共享组件截图。
 - **评审节奏**：TC3 只做一次主代理真实 diff + 定向验证；无当前范围 finding 即接受并进入 TC4，不启动逐片 fresh reviewer。TC4 才执行一次 whole-branch fresh 独立复审和完整 `pnpm validate`。
 - **验证命令**：focused Customs unit、既有 customs archive/flow E2E 加新的 customs collaboration 三项目、Web lint/format/typecheck/build、`repo:check` 与 `git diff --check`；完整门禁留 TC4。
+- **TC3 测试适配裁决（2026-10-19）**：首次实现的新 collaboration E2E 6/6 与 focused unit 14/14 通过，但既有 `customs-task-archive.spec.ts` 的网络白名单拒绝新增合法 collaboration GET 且仍引用已删除的 Customs 私有 mode selectors，`customs-workbench.spec.ts` 同样未处理新增 GET。两文件属于同一消费者的必要回归适配，不改变业务、共享接口或截图基线；允许仅新增 collaboration GET mock/断言并把 mode selector 改为共享 `TaskContextPanel` 的可访问按钮或固定 data 属性，不得放宽原清关/档案断言或复制协作 fixture 逻辑。修复后重跑三个 Customs E2E 文件的三项目；本片仍只做一次主审。
 - **停止条件**：为 Customs 新建协作组件/API；修改共享组件/composable/adapter；必须给共享组件增加清关字段；破坏 RoleWorkbenchFrame empty state/stacked 几何；修改清关业务动作。
 
 ### `TC4-review-gate-integration`
