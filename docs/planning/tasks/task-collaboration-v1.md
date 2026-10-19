@@ -1,7 +1,7 @@
 ---
-status: coding
+status: review
 branch: feat/task-collaboration-v1
-verification: "TC2 accepted at 23594064 on 2026-10-19 under the fixed review cadence: one main review per slice, one whole-branch independent review only at TC4. Main review verified the repaired subject-scoped GET and consumer-owned collaboration model, focused Web unit 5 files/48 tests, Web lint/format/typecheck/build, Playwright three projects 6 applicable tests, repo/diff checks, and manual review of 1440/1024/390 screenshots. Current slice: TC3-customs-second-consumer."
+verification: "TC3 accepted at 6f4663c7 on 2026-10-19 after one main review: focused Customs unit 14/14, combined Customs E2E 21/21 across 1440/1024/390, Web lint/format/typecheck/build, repo/diff checks passed; shared TC2 files had zero diff and three Customs screenshots passed manual structural review. Current slice: TC4-review-gate-integration. TC4 will run exactly one whole-branch fresh independent review and one full pnpm validate."
 owner: main
 writer: codex
 risk: high
@@ -366,3 +366,4 @@ type TaskContextPanelProps = {
 | 2026-10-18 | coding | Codex / GPT-5     | 169e7b49 | 修复 TC1-R1～R3；主代理复跑 focused API 36 files/248 tests、PostgreSQL 11/11、API lint/typecheck/build、contract/Prisma/dictionary/authz/repo/format/diff 均通过；接受 TC1，进入 TC2                               |
 | 2026-10-19 | fix    | Claude / Opus 4.8 | none     | 审查 TC2 未提交实现与三视口截图；接受 TC2-R1～R2：GET 漏 subject 父链 query、TaskContextPanel 内部拥有 composable 偏离固定 facade；46 unit、6 applicable E2E 及 Web 门禁通过但未覆盖真实失败，待 Codex 修复        |
 | 2026-10-19 | coding | Codex / unknown   | 23594064 | 修复 TC2-R1～R2；负责人要求立即收敛为逐片一次主审 + TC4 一次整体独立复审。主代理按新节奏复跑 48 unit、6 applicable E2E、Web lint/format/typecheck/build、repo/diff 并人工核对三视口截图；接受 TC2，进入 TC3        |
+| 2026-10-19 | coding | Codex / GPT-5     | 6f4663c7 | Customs 原样接入共享 context/composable/panel；主代理按一次主审节奏验证共享文件零 diff、14 unit、三项目组合 E2E 21/21、Web/repo/diff 与三视口截图；无 finding，接受 TC3，进入 TC4                                  |
