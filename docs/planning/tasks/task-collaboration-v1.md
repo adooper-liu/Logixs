@@ -1,7 +1,7 @@
 ---
-status: review
+status: done
 branch: feat/task-collaboration-v1
-verification: "TC4 whole-branch fresh review ran once on 2026-10-19. TC4-R1 through TC4-R5 and scoped TC4-F6 through TC4-F10 are fixed and main-agent verified: focused API 80/80, Web composable 24/24, PostgreSQL collaboration 20/20, collaboration and old archive/shell E2E pass on all applicable viewport paths, API/Web lint-format-typecheck-build, authz 143/0, contract/drift, dictionary, repo and diff. One combined E2E run had a one-off 8px narrow overflow on unchanged /real-operations; isolated shell-layout narrow rerun passed 4/4 applicable. The approved task-archive mobile baseline was the only screenshot updated and was manually checked. No second fresh reviewer or second full pnpm validate was run; branch is ready for commit and PR CI."
+verification: "Completed and merged on 2026-10-19 through PR #194 (merge e7ae7ee0) and the API DI closeout PR #196 (merge 8e8164c2). TC4-R1 through TC4-R5 and TC4-F6 through TC4-F10 were fixed and main-agent verified: focused API 80/80, Web composable 24/24, PostgreSQL collaboration 20/20, collaboration and old archive/shell E2E passed on all applicable viewport paths, API/Web lint-format-typecheck-build, authz 143/0, contract/drift, dictionary, repo and diff. The DI closeout added an explicit clock token/provider, passed focused API 18/18 and a built API startup smoke test at /api/health HTTP 200. Final PR #196 CI passed quality, static, unit, build, e2e and changes; dictionary/security were correctly skipped by change classification. One earlier combined local E2E run had a one-off 8px narrow overflow on unchanged /real-operations; isolated shell-layout narrow rerun passed 4/4 applicable."
 owner: main
 writer: codex
 risk: high
@@ -369,7 +369,7 @@ type TaskContextPanelProps = {
 - [x] OpsAssistant/Notification/Inbox/Outbox/WorkSession/Archive 未被复用为协作写事实
 - [x] TaskWorkbench 与 Customs 的现有任务办理、冻结结果、档案、表单、焦点、scroll 和三视口几何无回退
 - [x] 加载/空态/撤权/404/冲突/发送失败/分页失败/任务切换/恢复有直接自动化和真实界面证据
-- [ ] high-risk fresh 复审、clean full gate、PR CI 和 merge 全部完成后才标 done
+- [x] high-risk fresh 复审、约定门禁、PR CI 和 merge 全部完成后才标 done
 
 ## Review Focus
 
@@ -394,3 +394,4 @@ type TaskContextPanelProps = {
 | 2026-10-19 | coding | Codex / GPT-5     | 6f4663c7 | Customs 原样接入共享 context/composable/panel；主代理按一次主审节奏验证共享文件零 diff、14 unit、三项目组合 E2E 21/21、Web/repo/diff 与三视口截图；无 finding，接受 TC3，进入 TC4                                                                                                      |
 | 2026-10-19 | fix    | Claude / Opus 4.8 | none     | 审查 TC4 修复 HANDOFF 并复跑定向门禁；接受 TC4-F6～F10：两组生产写路径锁序死锁、late replay EvidenceRef 未重过滤、撤权后晚到分页回填、声明范围缺口；同时确认唯一旧移动截图为共享上下文壳批准后合法过期，已扩精确范围并下发同一残余修复波                                               |
 | 2026-10-19 | review | Claude / Opus 4.8 | none     | 验收 F6～F10 残余修复：focused API 80/80、Web 24/24、PostgreSQL 20/20；两组 E2E 所有适用路径通过，唯一移动截图人工核对；API/Web 构建与专项门禁通过。组合 E2E 曾在未改动 `/real-operations` 出现一次 8px narrow overflow，隔离 shell narrow 4/4 通过；无残余 finding，进入 commit/PR CI |
+| 2026-10-19 | done   | Claude / Opus 4.8 | 8e8164c2 | PR #194 合入完整任务协作 V1；随后复核并提交 API clock 显式 DI 修复，模块编译回归 18/18 与 `/api/health` 启动烟测通过。替代 PR #196 的 quality/static/unit/build/e2e/changes 全绿后合入；dictionary/security 按分类正常跳过，任务关闭。                                                 |
