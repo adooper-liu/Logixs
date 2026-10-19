@@ -3,6 +3,10 @@ import { computed, nextTick, ref, shallowRef } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NodeTaskOutcome } from "../api/nodeTasks";
+import type {
+  TaskCollaborationContext,
+  TaskCollaborationPanelModel,
+} from "../composables/useTaskCollaboration";
 import {
   createContainerSeed,
   createTaskSeed,
@@ -29,6 +33,20 @@ const workspaceError = shallowRef("");
 const selectTask = vi.fn((taskId: string) => {
   activeTaskId.value = taskId;
 });
+const collaborationModel = {
+  send: vi.fn(),
+  refresh: vi.fn(),
+  retrySend: vi.fn(),
+  loadMore: vi.fn(),
+} as unknown as TaskCollaborationPanelModel;
+const useTaskCollaboration = vi.fn((context: unknown) => {
+  void context;
+  return collaborationModel;
+});
+
+vi.mock("../composables/useTaskCollaboration", () => ({
+  useTaskCollaboration: (context: unknown) => useTaskCollaboration(context),
+}));
 
 vi.mock("../composables/useTaskWorkspace", () => ({
   useTaskWorkspace: () => ({
@@ -57,9 +75,9 @@ vi.mock("../composables/useTaskWorkspace", () => ({
 }));
 
 const LayoutStub = {
-  props: ["mobileContextLabel"],
+  props: ["mobileContextLabel", "rightRailLabel"],
   template: `
-    <main data-testid="layout" :data-mobile-context-label="mobileContextLabel">
+    <main data-testid="layout" :data-mobile-context-label="mobileContextLabel" :data-right-rail-label="rightRailLabel">
       <div data-region="header"><slot name="header" /></div>
       <div data-region="responsibility"><slot name="responsibility" /></div>
       <div data-region="decision"><slot name="decision" /></div>
@@ -77,6 +95,27 @@ const PaneStub = {
       <h2>{{ title }}</h2>
       <slot v-if="state.kind === 'ready'" />
       <p v-else>{{ state.message }}</p>
+    </section>
+  `,
+};
+
+const ContextPanelStub = {
+  name: "TaskContextPanel",
+  props: ["modelValue", "contextKey", "modes", "collaboration"],
+  emits: ["update:modelValue", "submit", "retry", "loadMore"],
+  template: `
+    <section
+      data-testid="task-context-panel"
+      :data-context-key="contextKey"
+      :data-modes="modes.join(',')"
+      :data-has-collaboration="String(Boolean(collaboration))"
+    >
+      <div data-testid="context-work"><slot name="work" /></div>
+      <div data-testid="context-archive"><slot name="archive" /></div>
+      <button data-testid="context-submit" @click="$emit('submit')">发送</button>
+      <button data-testid="context-retry-thread" @click="$emit('retry', 'thread')">重试读取</button>
+      <button data-testid="context-retry-send" @click="$emit('retry', 'send')">重试发送</button>
+      <button data-testid="context-load-more" @click="$emit('loadMore')">更早消息</button>
     </section>
   `,
 };
@@ -118,6 +157,7 @@ async function mountWorkbench() {
           template:
             '<section data-testid="archive-panel">来源档案 {{ taskId }} {{ containerId }} {{ outcome?.id }}</section>',
         },
+        TaskContextPanel: ContextPanelStub,
       },
     },
   });
@@ -134,9 +174,14 @@ describe("TaskWorkbench", () => {
     workspaceLoading.value = false;
     workspaceError.value = "";
     selectTask.mockClear();
+    useTaskCollaboration.mockClear();
+    vi.mocked(collaborationModel.send).mockClear();
+    vi.mocked(collaborationModel.refresh).mockClear();
+    vi.mocked(collaborationModel.retrySend).mockClear();
+    vi.mocked(collaborationModel.loadMore).mockClear();
   });
 
-  it("keeps the six regions and three panes in causal order with archive mobile label", async () => {
+  it("keeps the six regions and three panes with one shared task context", async () => {
     const { wrapper } = await mountWorkbench();
 
     expect(
@@ -153,7 +198,8 @@ describe("TaskWorkbench", () => {
     ]);
     expect(wrapper.findAll("[data-workbench-pane]")).toHaveLength(3);
     expect(wrapper.get('[data-testid="layout"]').attributes()).toMatchObject({
-      "data-mobile-context-label": "档案",
+      "data-mobile-context-label": "上下文",
+      "data-right-rail-label": "任务上下文",
     });
     expect(wrapper.get('[aria-label="责任上下文"]').text()).toMatch(
       /当前责任:|期限:/,
@@ -161,6 +207,40 @@ describe("TaskWorkbench", () => {
     expect(wrapper.get('[data-testid="archive-panel"]').text()).toContain(
       "来源档案",
     );
+    const context = wrapper.get('[data-testid="task-context-panel"]');
+    expect(context.attributes()).toMatchObject({
+      "data-context-key": `container:${activeContainer.value!.containerRecordId}|node_task:${activeTask.value!.taskId}`,
+      "data-modes": "work,archive,collaboration",
+      "data-has-collaboration": "true",
+    });
+    expect(useTaskCollaboration).toHaveBeenCalledTimes(1);
+    const collaborationContext = useTaskCollaboration.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskCollaborationContext | null;
+    }>;
+    expect(collaborationContext.value).toEqual({
+      contextKey: `container:${activeContainer.value!.containerRecordId}|node_task:${activeTask.value!.taskId}`,
+      taskId: activeTask.value!.taskId,
+      subjectRef: {
+        kind: "container",
+        id: activeContainer.value!.containerRecordId,
+      },
+      workRef: { kind: "node_task", id: activeTask.value!.taskId },
+    });
+    expect(wrapper.findAll('[data-testid="task-context-panel"]')).toHaveLength(
+      1,
+    );
+    expect(wrapper.get('[data-testid="context-work"]').text()).toContain(
+      activeTask.value!.nodeName,
+    );
+    await wrapper.get('[data-testid="context-submit"]').trigger("click");
+    await wrapper.get('[data-testid="context-retry-thread"]').trigger("click");
+    await wrapper.get('[data-testid="context-retry-send"]').trigger("click");
+    await wrapper.get('[data-testid="context-load-more"]').trigger("click");
+    expect(collaborationModel.send).toHaveBeenCalledTimes(1);
+    expect(collaborationModel.refresh).toHaveBeenCalledTimes(1);
+    expect(collaborationModel.retrySend).toHaveBeenCalledTimes(1);
+    expect(collaborationModel.loadMore).toHaveBeenCalledTimes(1);
   });
 
   it("switches only the middle pane between execution and frozen result", async () => {
@@ -344,8 +424,11 @@ describe("TaskWorkbench", () => {
       wrapper.get('[data-testid="task-detail-pane"]').attributes(),
     ).toMatchObject({ "data-pane-state": "loading" });
     expect(
-      wrapper.get('[data-testid="task-archive-pane"]').attributes(),
+      wrapper.get('[data-testid="task-context-pane"]').attributes(),
     ).toMatchObject({ "data-pane-state": "loading" });
+    expect(wrapper.find('[data-testid="task-context-panel"]').exists()).toBe(
+      false,
+    );
     expect(wrapper.text()).not.toContain("outcome-container-a");
 
     workspaceLoading.value = false;
@@ -358,9 +441,34 @@ describe("TaskWorkbench", () => {
       wrapper.get('[data-testid="task-detail-pane"]').attributes(),
     ).toMatchObject({ "data-pane-state": "error" });
     expect(
-      wrapper.get('[data-testid="task-archive-pane"]').attributes(),
+      wrapper.get('[data-testid="task-context-pane"]').attributes(),
     ).toMatchObject({ "data-pane-state": "error" });
+    expect(wrapper.find('[data-testid="task-context-panel"]').exists()).toBe(
+      false,
+    );
     expect(wrapper.text()).not.toContain(oldTaskId);
     expect(wrapper.text()).not.toContain(oldContainerId);
+  });
+
+  it("derives collaboration refs from resolved entities instead of route input", async () => {
+    const { router } = await mountWorkbench();
+    await router.replace({
+      path: "/tasks",
+      query: {
+        task: "untrusted-task",
+        containerId: "untrusted-container",
+      },
+    });
+    await nextTick();
+
+    const collaborationContext = useTaskCollaboration.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskCollaborationContext | null;
+    }>;
+    expect(collaborationContext.value).toMatchObject({
+      taskId: activeTask.value!.taskId,
+      subjectRef: { id: activeContainer.value!.containerRecordId },
+    });
+    expect(collaborationContext.value?.contextKey).not.toContain("untrusted");
   });
 });
