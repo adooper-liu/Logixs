@@ -8,6 +8,7 @@ import { DevIdentityMiddleware, IdentityModule } from "../identity";
 import { WorkExecutionModule } from "../work-execution";
 import { ListTaskCollaborationService } from "./application/list-task-collaboration.service";
 import { PostTaskCollaborationService } from "./application/post-task-collaboration.service";
+import { TASK_COLLABORATION_CLOCK } from "./application/task-collaboration-clock";
 import { TASK_COLLABORATION_REPOSITORY } from "./domain/task-collaboration.repository";
 import { PrismaTaskCollaborationRepository } from "./infrastructure/prisma-task-collaboration.repository";
 import { TaskCollaborationController } from "./presentation/task-collaboration.controller";
@@ -18,6 +19,10 @@ import { TaskCollaborationController } from "./presentation/task-collaboration.c
   providers: [
     ListTaskCollaborationService,
     PostTaskCollaborationService,
+    {
+      provide: TASK_COLLABORATION_CLOCK,
+      useValue: () => new Date(),
+    },
     {
       provide: TASK_COLLABORATION_REPOSITORY,
       useClass: PrismaTaskCollaborationRepository,
