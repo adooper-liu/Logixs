@@ -38,7 +38,7 @@ describe("task collaboration application", () => {
     ]);
   });
 
-  it("keeps collaboration readable without evidence.read while hiding all evidence data", async () => {
+  it("keeps collaboration readable while hiding evidence and unresolved historical source refs", async () => {
     const deps = fakes();
     deps.repository.listMessages.mockResolvedValue([
       message(undefined, undefined, {
@@ -64,7 +64,7 @@ describe("task collaboration application", () => {
         { kind: "actor", id: "assignee-a", displayName: "assignee-a" },
       ],
       evidenceRefs: [],
-      sourceRefs: [{ kind: "evidence", id: "source-a", version: 1 }],
+      sourceRefs: [],
     });
     expect(deps.evidence.listOptions).not.toHaveBeenCalled();
     expect(deps.evidence.filterReadable).not.toHaveBeenCalled();
@@ -146,6 +146,26 @@ describe("task collaboration application", () => {
     });
   });
 
+  it("keeps cancelled tasks readable but reports posting disabled", async () => {
+    const deps = fakes();
+    deps.context.resolve.mockResolvedValue({
+      taskId,
+      state: "cancelled",
+      containerId,
+      assigneeActorIds: [],
+    });
+    const service = new ListTaskCollaborationService(
+      deps.context,
+      deps.evidence,
+      deps.repository,
+    );
+
+    await expect(service.execute(listInput())).resolves.toMatchObject({
+      canPost: false,
+      postDisabledReason: "TASK_CANCELLED_READ_ONLY",
+    });
+  });
+
   it("binds cursors to the complete request scope and rejects corruption", async () => {
     const deps = fakes();
     deps.repository.listMessages.mockResolvedValue([
@@ -194,7 +214,7 @@ describe("task collaboration application", () => {
     ).rejects.toThrow("CURSOR_INVALID");
   });
 
-  it("requires both capabilities and rejects completed, unknown mention and invisible evidence", async () => {
+  it("requires both capabilities and rejects terminal tasks, unknown mention and invisible evidence", async () => {
     const deps = fakes();
     const service = new PostTaskCollaborationService(
       deps.context,
@@ -216,6 +236,16 @@ describe("task collaboration application", () => {
       "BUSINESS_STATE_VIOLATION",
     );
 
+    deps.context.resolve.mockResolvedValueOnce({
+      taskId,
+      state: "cancelled",
+      containerId,
+      assigneeActorIds: [],
+    });
+    await expect(service.execute(postInput())).rejects.toThrow(
+      "BUSINESS_STATE_VIOLATION",
+    );
+
     await expect(
       service.execute({
         ...postInput(),
@@ -229,6 +259,65 @@ describe("task collaboration application", () => {
     await expect(service.execute(postInput())).rejects.toThrow(
       "RESOURCE_NOT_FOUND",
     );
+  });
+
+  it("rejects non-empty sourceRefs before persistence", async () => {
+    const deps = fakes();
+    const service = new PostTaskCollaborationService(
+      deps.context,
+      deps.evidence,
+      deps.repository,
+    );
+
+    await expect(
+      service.execute({
+        ...postInput(),
+        command: {
+          ...postInput().command,
+          sourceRefs: [{ kind: "action", id: "action-1", version: null }],
+        },
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(deps.context.resolve).not.toHaveBeenCalled();
+    expect(deps.evidence.resolveExact).not.toHaveBeenCalled();
+    expect(deps.repository.findIdempotentMessage).not.toHaveBeenCalled();
+    expect(deps.repository.appendMessage).not.toHaveBeenCalled();
+  });
+
+  it("returns an existing same-payload message before mutable task, mention, and evidence checks", async () => {
+    const deps = fakes();
+    deps.context.resolve.mockResolvedValue({
+      taskId,
+      state: "completed",
+      containerId,
+      assigneeActorIds: [],
+    });
+    deps.repository.findIdempotentMessage.mockResolvedValue({
+      thread: thread(),
+      message: message(undefined, undefined, {
+        evidenceRecordIds: [evidenceId, inaccessibleEvidenceId],
+        sourceRefs: [{ kind: "action", id: "historical", version: 1 }],
+      }),
+      idempotencyReplay: true,
+    });
+    deps.evidence.filterReadable.mockResolvedValue([
+      { evidenceRecordId: evidenceId, label: evidenceId },
+    ]);
+    const service = new PostTaskCollaborationService(
+      deps.context,
+      deps.evidence,
+      deps.repository,
+    );
+
+    await expect(service.execute(postInput())).resolves.toMatchObject({
+      idempotencyReplay: true,
+      message: {
+        evidenceRefs: [{ kind: "evidence_record", id: evidenceId }],
+        sourceRefs: [],
+      },
+    });
+    expect(deps.evidence.resolveExact).not.toHaveBeenCalled();
+    expect(deps.repository.appendMessage).not.toHaveBeenCalled();
   });
 
   it("passes normalized payload to one repository append and preserves replay", async () => {
@@ -258,6 +347,33 @@ describe("task collaboration application", () => {
         }),
       }),
     );
+  });
+
+  it("filters current EvidenceRefs when append converges to an in-transaction replay", async () => {
+    const deps = fakes();
+    deps.repository.appendMessage.mockResolvedValue({
+      thread: thread(),
+      message: message(undefined, undefined, {
+        evidenceRecordIds: [evidenceId],
+      }),
+      idempotencyReplay: true,
+    });
+    deps.evidence.filterReadable.mockResolvedValue([]);
+    const service = new PostTaskCollaborationService(
+      deps.context,
+      deps.evidence,
+      deps.repository,
+    );
+
+    await expect(service.execute(postInput())).resolves.toMatchObject({
+      idempotencyReplay: true,
+      message: { evidenceRefs: [] },
+    });
+    expect(deps.evidence.filterReadable).toHaveBeenCalledWith({
+      tenantId: "tenant-a",
+      subjectRef: { kind: "container", id: containerId },
+      evidenceRecordIds: [evidenceId],
+    });
   });
 
   it("allows posting without evidence.read when no EvidenceRef is present", async () => {
@@ -340,6 +456,7 @@ function fakes() {
     repository: {
       findThread: vi.fn().mockResolvedValue(thread()),
       listMessages: vi.fn().mockResolvedValue([]),
+      findIdempotentMessage: vi.fn().mockResolvedValue(null),
       appendMessage: vi.fn().mockResolvedValue({
         thread: thread(),
         message: message(),

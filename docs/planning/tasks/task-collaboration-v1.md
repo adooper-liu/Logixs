@@ -1,7 +1,7 @@
 ---
-status: fix
+status: review
 branch: feat/task-collaboration-v1
-verification: "TC4 whole-branch fresh review completed once on 2026-10-19 and returned TC4-R1 through TC4-R5; all five are accepted for one consolidated fix wave. The single full pnpm validate reached repo/contract/dictionary/Prisma/lint then stopped at the known Windows apps/ai-service/.pytest_cache EPERM; branch-scoped formatting and typecheck passed, root unit passed on isolated rerun, and the remaining integration/E2E/build continuation is still running. No additional reviewer or second full validate will be started."
+verification: "TC4 whole-branch fresh review ran once on 2026-10-19. TC4-R1 through TC4-R5 and scoped TC4-F6 through TC4-F10 are fixed and main-agent verified: focused API 80/80, Web composable 24/24, PostgreSQL collaboration 20/20, collaboration and old archive/shell E2E pass on all applicable viewport paths, API/Web lint-format-typecheck-build, authz 143/0, contract/drift, dictionary, repo and diff. One combined E2E run had a one-off 8px narrow overflow on unchanged /real-operations; isolated shell-layout narrow rerun passed 4/4 applicable. The approved task-archive mobile baseline was the only screenshot updated and was manually checked. No second fresh reviewer or second full pnpm validate was run; branch is ready for commit and PR CI."
 owner: main
 writer: codex
 risk: high
@@ -26,6 +26,10 @@ writeScopes:
   - apps/api/src/modules/identity/domain/role-capabilities.test.ts
   - apps/api/src/modules/work-execution/index.ts
   - apps/api/src/modules/work-execution/work-execution.module.ts
+  - apps/api/src/modules/work-execution/task-collaboration-write-context.port.ts
+  - apps/api/src/modules/work-execution/infrastructure/prisma-task-collaboration-write-context.ts
+  - apps/api/src/modules/work-execution/infrastructure/prisma-work-execution.repository.ts
+  - apps/api/src/modules/work-execution/infrastructure/prisma-work-execution.repository.test.ts
   - apps/api/src/modules/document-records/**
   - apps/api/src/modules/task-collaboration/**
   - apps/api/src/infrastructure/integration/task-collaboration.integration.test.ts
@@ -48,6 +52,7 @@ writeScopes:
   - apps/web/e2e/task-collaboration.spec.ts
   - apps/web/e2e/task-collaboration.spec.ts-snapshots/**
   - apps/web/e2e/task-archive.spec.ts
+  - apps/web/e2e/task-archive.spec.ts-snapshots/task-archive-completed-mobile-chromium-win32.png
   - apps/web/e2e/shell-layout.spec.ts
 exclusiveLocks:
   - business-policy:task-collaboration-v1
@@ -337,6 +342,15 @@ type TaskContextPanelProps = {
 - **完整门禁实际结果（2026-10-19）**：唯一一次 `pnpm validate` 通过 repo/workbench-purpose/contract/drift/dictionary/Prisma/lint，随后被已知 Windows `apps/ai-service/.pytest_cache` EPERM 阻断；branch-scoped Prettier 与 diff 通过，root typecheck 通过，root unit 首次组合返回 1 后独立重跑通过，PostgreSQL integration 37 files/249 tests 通过。全量 E2E 暴露两类本分支旧断言：`task-archive.spec.ts` 仍查找“任务档案”region，`shell-layout.spec.ts` 移动步骤仍查找/期待“档案”，而已批准共享壳现在是“任务上下文/上下文”；纳入统一修复，只改 selector/期望，不弱化行为。另有既有 `product-selection-mobile-chromium-session-menu.png` 4% 像素漂移，属于其他工作台视觉基线，当前任务不修改、不作为本分支 finding。build 因 E2E 提前失败未执行，修复波后补跑。
 - **统一修复纪律**：负责人裁决 TC4-R2 后，全部 accepted finding 作为 TC4 唯一修复波由一个 Codex 实现，不拆执行器、不启动第二个 fresh reviewer。修复后主代理只做一次 scoped 主审和定向复现；残余真实 load-bearing 问题直接裁决。完整 `pnpm validate` 不重复执行；只补跑修复影响的 API/Web unit、PostgreSQL integration、两组 collaboration E2E、上述两项旧断言、lint/typecheck/build、authz/repo/diff，以及本次完整门禁因 EPERM 未执行到的阶段证据。
 
+- **TC4 修复波主审 disposition（2026-10-19）**：主代理按 HANDOFF 实际检查工作区、范围与差异，并复跑 focused API 60/60、Web composable 22/22、PostgreSQL 16/16、collaboration E2E 18 applicable/12 skipped、受影响旧 E2E 19 passed/13 skipped/1 failed，以及 API/Web lint、format、typecheck、build、authz 143/0、contract/drift、dictionary、repo、diff。安全复审无 high/medium finding；整体只读复审新增 5 项，主代理对照生产写路径后全部接受：
+  - `TC4-F6 accepted / high / work-execution-lock-order`：协作 adapter 按 `work_order -> node_task` 锁定，而既有 readiness refresh 的 existing-task 路径按 `node_task -> work_order` 更新；并发时存在真实死锁环，且 lifecycle activation 捕获异常后会留下“生命周期已推进、下一任务未激活”。统一为 aggregate 的 `work_order -> node_task` 顺序；不得只依赖 collaboration-side retry。新增真实 PostgreSQL overlap，证明 readiness refresh 与 collaboration append 均完成且任务/工单状态、消息及子引用一致。
+  - `TC4-F7 accepted / medium / evidence-lock-order`：协作按 `evidence_record` 加锁，而正式 decision writer 先插入带 FK 的 decision 子行、再更新 parent；撤销与协作并发会形成父行锁升级死锁，decision writer 无 retry。把 `appendDecision` 改为事务内先锁并重新读取精确 `evidence_record`、再校验/计算序列与前序决定、插入 decision、更新 parent；新增 revoke-vs-collaboration PostgreSQL overlap，证明撤销与协作按串行结果收敛且无死锁/孤儿/陈旧引用。
+  - `TC4-F8 accepted / medium / late-idempotency-replay-filter`：早期 replay 已重新过滤 EvidenceRef，但 advisory lock 后才发现的 repository replay 被 Application 按原 command IDs 直接展示；并发提交后撤权可返回已撤销 ID。`appendMessage.idempotencyReplay=true` 的返回必须与早期 replay 共用当前 `evidence.filterReadable` 过滤路径；增加确定性 concurrent convergence + revocation 测试。
+  - `TC4-F9 accepted / medium / revocation-late-page`：POST 403/404 清屏未递增 generation/abort sibling requests；同 context 的晚到分页仍可重新写入旧消息/cursor 或覆盖撤权反馈。撤权分支先使 generation 失效并 abort 全部在途请求，再清空；增加 deferred pagination-over-revocation composable 测试及至少一个消费者 overlap E2E。
+  - `TC4-F10 accepted / medium / declared-scope`：新增 work-execution port/adapter 超出原精确范围，旧移动截图也未授权。frontmatter 已精确扩到该 port/adapter、F6 所需 repository/test，以及唯一合法过期截图；document-records 仍由既有目录范围覆盖。不得扩到其他文件，`.tmp` 继续排除。
+- **旧移动截图裁决（2026-10-19）**：三项目实际复跑稳定仅 `task-archive-completed-mobile-chromium-win32.png` 失败 `20116` pixels / `0.07`；实际页正确显示已批准的外层“上下文”与内层“办理/档案/协作”，旧基线仍显示被替换的外层“档案”。这是合法过期 baseline，不是产品回退；在人工视觉核对后仅更新该一张截图，不改生产 Vue/CSS、不改阈值、不更新其他截图。
+- **后续修复纪律**：F6～F10 与单张旧截图作为同一 TC4 残余修复波交给同一个 Codex；不再启动 fresh reviewer，也不重复完整 `pnpm validate`。主代理在 HANDOFF 后逐项检查真实 diff，复跑新增 concurrency/replay/revocation tests、focused API/Web、PostgreSQL、collaboration E2E、旧 task-archive/shell 三项目、lint/format/typecheck/build、authz/repo/diff，并人工核对更新后的单张截图；无残余 finding 后直接提交与集成。
+
 ## 五面映射
 
 | 业务步骤与岗位结果 | 岗位任务                                              | 数据事实                                                        | 技术保障                                            | 权限边界                                                     | 界面承接                                    | 状态          |
@@ -348,13 +362,13 @@ type TaskContextPanelProps = {
 
 ## 验收
 
-- [ ] 一套共享 API、composable 和 UI 被 TaskWorkbench 与 CustomsWorkbench 原样消费；没有工作台私有协作组件或权限逻辑
-- [ ] thread 精确绑定 tenant + container subject + NodeTask work；不匹配、跨租户和不可见统一失败关闭
-- [ ] 消息/回复/Mention/EvidenceRef/sourceRef typed、append-only、分页稳定、写入幂等且并发安全
-- [ ] Mention、消息、附件、已读均不改变责任、任务、工作单、生命周期、Evidence 核验或 SLA
-- [ ] OpsAssistant/Notification/Inbox/Outbox/WorkSession/Archive 未被复用为协作写事实
-- [ ] TaskWorkbench 与 Customs 的现有任务办理、冻结结果、档案、表单、焦点、scroll 和三视口几何无回退
-- [ ] 加载/空态/撤权/404/冲突/发送失败/分页失败/任务切换/恢复有直接自动化和真实界面证据
+- [x] 一套共享 API、composable 和 UI 被 TaskWorkbench 与 CustomsWorkbench 原样消费；没有工作台私有协作组件或权限逻辑
+- [x] thread 精确绑定 tenant + container subject + NodeTask work；不匹配、跨租户和不可见统一失败关闭
+- [x] 消息/回复/Mention/EvidenceRef/sourceRef typed、append-only、分页稳定、写入幂等且并发安全
+- [x] Mention、消息、附件、已读均不改变责任、任务、工作单、生命周期、Evidence 核验或 SLA
+- [x] OpsAssistant/Notification/Inbox/Outbox/WorkSession/Archive 未被复用为协作写事实
+- [x] TaskWorkbench 与 Customs 的现有任务办理、冻结结果、档案、表单、焦点、scroll 和三视口几何无回退
+- [x] 加载/空态/撤权/404/冲突/发送失败/分页失败/任务切换/恢复有直接自动化和真实界面证据
 - [ ] high-risk fresh 复审、clean full gate、PR CI 和 merge 全部完成后才标 done
 
 ## Review Focus
@@ -367,14 +381,16 @@ type TaskContextPanelProps = {
 
 ## 进度 log
 
-| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                                                               |
-| ---------- | ------ | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-10-18 | design | Claude / Opus 4.8 | 046f7932 | 从最新 main 快进既有空分支；核对路线、任务档案两个消费者、NodeTask 身份、现有消息模型与共享 UI seam；负责人明确只建一套共享协作组件，建立唯一 brief，TC-D01 待定                                                   |
-| 2026-10-18 | coding | Claude / Opus 4.8 | 046f7932 | 负责人选择 TC-D01 A：task.read 可读、task.collaborate 可发、completed 只读、Mention 限当前 actor/已知 assignee；写回批准设计与 brief，进入 TC0                                                                     |
-| 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC0 未提交实现；接受 TC0-R1～R5：actor identity 错收窄 UUID、runtime extra/kind 静默改正、迁移缺显式事务、字典已定字段仍待业务确认、domain 失败边界不足；定向门禁均通过，待 Codex 修复后重审                  |
-| 2026-10-18 | coding | Codex / GPT-5     | 52a9d6d5 | 修复 TC0-R1～R5；主代理复跑 domain 33/33、contract 27 schemas/73 fixtures、API lint/typecheck、Prisma validate/generate、dictionary/repo/format/diff 均通过，fresh Claude TC0 重审 no-findings；接受 TC0，进入 TC1 |
-| 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC1 未提交实现；接受 TC1-R1～R3：POST 路径漏 `/messages`、EvidenceRef 未独立执行 evidence.read 且读取泄露引用、exact Evidence 查询未在数据访问边界携带 tenant/subject；其余定向门禁通过，待 Codex 修复后重审  |
-| 2026-10-18 | coding | Codex / GPT-5     | 169e7b49 | 修复 TC1-R1～R3；主代理复跑 focused API 36 files/248 tests、PostgreSQL 11/11、API lint/typecheck/build、contract/Prisma/dictionary/authz/repo/format/diff 均通过；接受 TC1，进入 TC2                               |
-| 2026-10-19 | fix    | Claude / Opus 4.8 | none     | 审查 TC2 未提交实现与三视口截图；接受 TC2-R1～R2：GET 漏 subject 父链 query、TaskContextPanel 内部拥有 composable 偏离固定 facade；46 unit、6 applicable E2E 及 Web 门禁通过但未覆盖真实失败，待 Codex 修复        |
-| 2026-10-19 | coding | Codex / unknown   | 23594064 | 修复 TC2-R1～R2；负责人要求立即收敛为逐片一次主审 + TC4 一次整体独立复审。主代理按新节奏复跑 48 unit、6 applicable E2E、Web lint/format/typecheck/build、repo/diff 并人工核对三视口截图；接受 TC2，进入 TC3        |
-| 2026-10-19 | coding | Codex / GPT-5     | 6f4663c7 | Customs 原样接入共享 context/composable/panel；主代理按一次主审节奏验证共享文件零 diff、14 unit、三项目组合 E2E 21/21、Web/repo/diff 与三视口截图；无 finding，接受 TC3，进入 TC4                                  |
+| 日期       | 阶段   | 负责              | commit   | 说明                                                                                                                                                                                                                                                                                   |
+| ---------- | ------ | ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-18 | design | Claude / Opus 4.8 | 046f7932 | 从最新 main 快进既有空分支；核对路线、任务档案两个消费者、NodeTask 身份、现有消息模型与共享 UI seam；负责人明确只建一套共享协作组件，建立唯一 brief，TC-D01 待定                                                                                                                       |
+| 2026-10-18 | coding | Claude / Opus 4.8 | 046f7932 | 负责人选择 TC-D01 A：task.read 可读、task.collaborate 可发、completed 只读、Mention 限当前 actor/已知 assignee；写回批准设计与 brief，进入 TC0                                                                                                                                         |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC0 未提交实现；接受 TC0-R1～R5：actor identity 错收窄 UUID、runtime extra/kind 静默改正、迁移缺显式事务、字典已定字段仍待业务确认、domain 失败边界不足；定向门禁均通过，待 Codex 修复后重审                                                                                      |
+| 2026-10-18 | coding | Codex / GPT-5     | 52a9d6d5 | 修复 TC0-R1～R5；主代理复跑 domain 33/33、contract 27 schemas/73 fixtures、API lint/typecheck、Prisma validate/generate、dictionary/repo/format/diff 均通过，fresh Claude TC0 重审 no-findings；接受 TC0，进入 TC1                                                                     |
+| 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC1 未提交实现；接受 TC1-R1～R3：POST 路径漏 `/messages`、EvidenceRef 未独立执行 evidence.read 且读取泄露引用、exact Evidence 查询未在数据访问边界携带 tenant/subject；其余定向门禁通过，待 Codex 修复后重审                                                                      |
+| 2026-10-18 | coding | Codex / GPT-5     | 169e7b49 | 修复 TC1-R1～R3；主代理复跑 focused API 36 files/248 tests、PostgreSQL 11/11、API lint/typecheck/build、contract/Prisma/dictionary/authz/repo/format/diff 均通过；接受 TC1，进入 TC2                                                                                                   |
+| 2026-10-19 | fix    | Claude / Opus 4.8 | none     | 审查 TC2 未提交实现与三视口截图；接受 TC2-R1～R2：GET 漏 subject 父链 query、TaskContextPanel 内部拥有 composable 偏离固定 facade；46 unit、6 applicable E2E 及 Web 门禁通过但未覆盖真实失败，待 Codex 修复                                                                            |
+| 2026-10-19 | coding | Codex / unknown   | 23594064 | 修复 TC2-R1～R2；负责人要求立即收敛为逐片一次主审 + TC4 一次整体独立复审。主代理按新节奏复跑 48 unit、6 applicable E2E、Web lint/format/typecheck/build、repo/diff 并人工核对三视口截图；接受 TC2，进入 TC3                                                                            |
+| 2026-10-19 | coding | Codex / GPT-5     | 6f4663c7 | Customs 原样接入共享 context/composable/panel；主代理按一次主审节奏验证共享文件零 diff、14 unit、三项目组合 E2E 21/21、Web/repo/diff 与三视口截图；无 finding，接受 TC3，进入 TC4                                                                                                      |
+| 2026-10-19 | fix    | Claude / Opus 4.8 | none     | 审查 TC4 修复 HANDOFF 并复跑定向门禁；接受 TC4-F6～F10：两组生产写路径锁序死锁、late replay EvidenceRef 未重过滤、撤权后晚到分页回填、声明范围缺口；同时确认唯一旧移动截图为共享上下文壳批准后合法过期，已扩精确范围并下发同一残余修复波                                               |
+| 2026-10-19 | review | Claude / Opus 4.8 | none     | 验收 F6～F10 残余修复：focused API 80/80、Web 24/24、PostgreSQL 20/20；两组 E2E 所有适用路径通过，唯一移动截图人工核对；API/Web 构建与专项门禁通过。组合 E2E 曾在未改动 `/real-operations` 出现一次 8px narrow overflow，隔离 shell narrow 4/4 通过；无残余 finding，进入 commit/PR CI |

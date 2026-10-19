@@ -1,13 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { PrismaClient } from "../../../../../generated/prisma";
+import { PrismaClient, type Prisma } from "../../../../../generated/prisma";
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
+import { DecideEvidenceService } from "../../modules/document-records/application/decide-evidence.service";
 import { ResolveTaskCollaborationEvidenceService } from "../../modules/document-records/application/resolve-task-collaboration-evidence.service";
 import { PrismaEvidenceRepository } from "../../modules/document-records/infrastructure/prisma-evidence.repository";
+import { PrismaTaskCollaborationEvidenceWrite } from "../../modules/document-records/infrastructure/prisma-task-collaboration-evidence-write";
 import { ListTaskCollaborationService } from "../../modules/task-collaboration/application/list-task-collaboration.service";
 import { PostTaskCollaborationService } from "../../modules/task-collaboration/application/post-task-collaboration.service";
+import type { TaskCollaborationRepository } from "../../modules/task-collaboration/domain/task-collaboration.repository";
 import { PrismaTaskCollaborationRepository } from "../../modules/task-collaboration/infrastructure/prisma-task-collaboration.repository";
 import { PrismaWorkExecutionRepository } from "../../modules/work-execution/infrastructure/prisma-work-execution.repository";
+import { PrismaTaskCollaborationWriteContext } from "../../modules/work-execution/infrastructure/prisma-task-collaboration-write-context";
 import { WorkExecutionTaskCollaborationContext } from "../../modules/work-execution/work-execution.module";
 
 const DATABASE_URL =
@@ -23,6 +27,7 @@ const containerB = randomUUID();
 const taskA = randomUUID();
 const taskB = randomUUID();
 const completedTask = randomUUID();
+const cancelledTask = randomUUID();
 const nullContainerTask = randomUUID();
 const evidenceA = randomUUID();
 const evidenceB = randomUUID();
@@ -35,6 +40,7 @@ let listService: ListTaskCollaborationService;
 let postService: PostTaskCollaborationService;
 let context: WorkExecutionTaskCollaborationContext;
 let evidence: ResolveTaskCollaborationEvidenceService;
+let repository: PrismaTaskCollaborationRepository;
 
 beforeAll(async () => {
   prisma = new PrismaClient({
@@ -48,7 +54,11 @@ beforeAll(async () => {
   evidence = new ResolveTaskCollaborationEvidenceService(
     new PrismaEvidenceRepository(prisma as never),
   );
-  const repository = new PrismaTaskCollaborationRepository(prisma as never);
+  repository = new PrismaTaskCollaborationRepository(
+    prisma as never,
+    new PrismaTaskCollaborationWriteContext(),
+    new PrismaTaskCollaborationEvidenceWrite(),
+  );
   listService = new ListTaskCollaborationService(context, evidence, repository);
   postService = new PostTaskCollaborationService(context, evidence, repository);
 });
@@ -124,6 +134,14 @@ describe("task collaboration PostgreSQL integration", () => {
         }),
       ),
     });
+    await prisma.taskCollaborationMessageSourceRef.create({
+      data: {
+        messageId: posted.message.messageId,
+        sourceKind: "action",
+        sourceId: "historical-unresolved-source",
+        sourceVersion: 1,
+      },
+    });
 
     const readable = await listService.execute({
       ...listInput(taskA, containerA),
@@ -135,6 +153,7 @@ describe("task collaboration PostgreSQL integration", () => {
     expect(readableMessage?.evidenceRefs).toEqual([
       { kind: "evidence_record", id: evidenceA },
     ]);
+    expect(readableMessage?.sourceRefs).toEqual([]);
 
     const redacted = await listService.execute({
       ...listInput(taskA, containerA),
@@ -171,18 +190,42 @@ describe("task collaboration PostgreSQL integration", () => {
     await expect(prisma.taskCollaborationMessage.count()).resolves.toBe(before);
   });
 
-  it("allows completed GET but rejects POST without writing", async () => {
+  it.each([
+    [completedTask, "TASK_COMPLETED_READ_ONLY"],
+    [cancelledTask, "TASK_CANCELLED_READ_ONLY"],
+  ])(
+    "allows terminal GET for %s but rejects POST without writing",
+    async (taskId, reason) => {
+      await expect(
+        listService.execute(listInput(taskId, containerA)),
+      ).resolves.toMatchObject({
+        canPost: false,
+        postDisabledReason: reason,
+      });
+      const before = await prisma.taskCollaborationMessage.count();
+      await expect(
+        postService.execute(
+          postInput(taskId, containerA, `terminal-${taskId}`),
+        ),
+      ).rejects.toThrow("BUSINESS_STATE_VIOLATION");
+      await expect(prisma.taskCollaborationMessage.count()).resolves.toBe(
+        before,
+      );
+    },
+  );
+
+  it("rejects non-empty sourceRefs with zero collaboration writes", async () => {
+    const scenario = await createScenario();
+    const before = await collaborationCounts();
+
     await expect(
-      listService.execute(listInput(completedTask, containerA)),
-    ).resolves.toMatchObject({
-      canPost: false,
-      postDisabledReason: "TASK_COMPLETED_READ_ONLY",
-    });
-    const before = await prisma.taskCollaborationMessage.count();
-    await expect(
-      postService.execute(postInput(completedTask, containerA, "completed")),
-    ).rejects.toThrow("BUSINESS_STATE_VIOLATION");
-    await expect(prisma.taskCollaborationMessage.count()).resolves.toBe(before);
+      postService.execute(
+        postInput(scenario.taskId, scenario.containerId, randomUUID(), {
+          sourceRefs: [{ kind: "action", id: "unsupported", version: null }],
+        }),
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(collaborationCounts()).resolves.toEqual(before);
   });
 
   it("rejects cross-scope task, unknown Mention, invisible EvidenceRef and invalid parent", async () => {
@@ -218,11 +261,10 @@ describe("task collaboration PostgreSQL integration", () => {
     ).rejects.toThrow("RESOURCE_NOT_FOUND");
   });
 
-  it("atomically writes joins and replays the same key while conflicting on another payload", async () => {
+  it("atomically writes supported joins and replays the same key while conflicting on another payload", async () => {
     const input = postInput(taskA, containerA, "replay-key", {
       mentionActorIds: [actorB],
       evidenceRecordIds: [evidenceA],
-      sourceRefs: [{ kind: "action", id: "work-action", version: null }],
     });
     const first = await postService.execute(input);
     const replay = await postService.execute(input);
@@ -247,6 +289,106 @@ describe("task collaboration PostgreSQL integration", () => {
     ).resolves.toBe(1);
     await expect(
       prisma.taskCollaborationMessageSourceRef.count({
+        where: { messageId: first.message.messageId },
+      }),
+    ).resolves.toBe(0);
+  });
+
+  it.each(["task", "evidence"] as const)(
+    "revalidates and locks mutable %s state after the application precheck barrier",
+    async (target) => {
+      const scenario = await createScenario();
+      const before = await collaborationCounts();
+      const barrier = appendBarrier(repository);
+      const service = new PostTaskCollaborationService(
+        context,
+        evidence,
+        barrier.repository,
+      );
+      const posting = service.execute(
+        postInput(scenario.taskId, scenario.containerId, randomUUID(), {
+          evidenceRecordIds: target === "evidence" ? [scenario.evidenceId] : [],
+        }),
+      );
+
+      await barrier.entered;
+      if (target === "task") {
+        await prisma.nodeTask.update({
+          where: { id: scenario.taskId },
+          data: { state: "cancelled" },
+        });
+      } else {
+        await prisma.evidenceRecord.update({
+          where: { id: scenario.evidenceId },
+          data: { validity: "revoked" },
+        });
+      }
+      barrier.release();
+
+      await expect(posting).rejects.toThrow(
+        target === "task" ? "BUSINESS_STATE_VIOLATION" : "RESOURCE_NOT_FOUND",
+      );
+      await expect(collaborationCounts()).resolves.toEqual(before);
+    },
+  );
+
+  it("replays a response-loss submission before changed task, evidence, and assignee facts", async () => {
+    const scenario = await createScenario();
+    const input = postInput(
+      scenario.taskId,
+      scenario.containerId,
+      randomUUID(),
+      {
+        mentionActorIds: [actorB],
+        evidenceRecordIds: [scenario.evidenceId],
+      },
+    );
+    const first = await postService.execute(input);
+
+    await prisma.nodeTask.update({
+      where: { id: scenario.taskId },
+      data: { state: "completed" },
+    });
+    const afterCompletion = await postService.execute(input);
+    expect(afterCompletion).toMatchObject({
+      idempotencyReplay: true,
+      message: {
+        messageId: first.message.messageId,
+        evidenceRefs: [{ kind: "evidence_record", id: scenario.evidenceId }],
+      },
+    });
+
+    await prisma.evidenceRecord.update({
+      where: { id: scenario.evidenceId },
+      data: { validity: "revoked" },
+    });
+    const afterRevocation = await postService.execute(input);
+    expect(afterRevocation).toMatchObject({
+      idempotencyReplay: true,
+      message: { messageId: first.message.messageId, evidenceRefs: [] },
+    });
+
+    await prisma.workOrder.update({
+      where: { id: scenario.workOrderId },
+      data: { assigneeId: "replacement-assignee" },
+    });
+    const afterAssigneeChange = await postService.execute(input);
+    expect(afterAssigneeChange).toMatchObject({
+      idempotencyReplay: true,
+      message: { messageId: first.message.messageId, evidenceRefs: [] },
+    });
+    await expect(
+      prisma.taskCollaborationMessage.count({
+        where: { id: first.message.messageId },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.taskCollaborationMessageMention.count({
+        where: { messageId: first.message.messageId },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.taskCollaborationMessageEvidenceRef.count({
         where: { messageId: first.message.messageId },
       }),
     ).resolves.toBe(1);
@@ -277,6 +419,272 @@ describe("task collaboration PostgreSQL integration", () => {
     ).toBe(1);
   });
 
+  it("runs readiness refresh and collaboration append with one work-order-first lock order", async () => {
+    const scenario = await createReadinessScenario();
+    const readinessLock = transactionQueryBarrier(
+      (sql) => sql.includes('FROM "work_order"'),
+      "after",
+    );
+    const refreshRepository = new PrismaWorkExecutionRepository({
+      $transaction: <T>(
+        callback: (transaction: Prisma.TransactionClient) => Promise<T>,
+      ) =>
+        prisma.$transaction((transaction) =>
+          callback(readinessLock.wrap(transaction)),
+        ),
+    } as never);
+    const collaborationAttempt = signalBarrier();
+    const overlapRepository = new PrismaTaskCollaborationRepository(
+      prisma as never,
+      {
+        lock: async (transaction, input) => {
+          collaborationAttempt.enter();
+          return new PrismaTaskCollaborationWriteContext().lock(
+            transaction,
+            input,
+          );
+        },
+      },
+      new PrismaTaskCollaborationEvidenceWrite(),
+    );
+    const overlapService = new PostTaskCollaborationService(
+      context,
+      evidence,
+      overlapRepository,
+    );
+
+    const refreshing = refreshRepository.upsertTaskWithRequiredWorkOrder({
+      tenantId: tenantA,
+      flowInstanceId: scenario.flowInstanceId,
+      nodeInstanceId: scenario.nodeInstanceId,
+      nodeCode: "container_stuffing",
+      containerId: scenario.containerId,
+      taskDefinitionKey: "task-collaboration-readiness",
+      workOrderDefinitionKey: "collaboration-assignee",
+      applicability: "required",
+      readinessState: "ready",
+      completionEligibility: "eligible",
+      conditionFactRefs: ["readiness-fact"],
+    });
+    await readinessLock.entered;
+    const posting = overlapService.execute(
+      postInput(scenario.taskId, scenario.containerId, randomUUID(), {
+        mentionActorIds: [actorB],
+        evidenceRecordIds: [scenario.evidenceId],
+      }),
+    );
+    await collaborationAttempt.entered;
+    readinessLock.release();
+
+    const [refreshed, posted] = await Promise.all([refreshing, posting]);
+    expect(refreshed.task).toMatchObject({
+      id: scenario.taskId,
+      readinessState: "ready",
+      completionEligibility: "eligible",
+      conditionFactRefs: ["readiness-fact"],
+    });
+    await expect(
+      prisma.workOrder.findUnique({ where: { id: scenario.workOrderId } }),
+    ).resolves.toMatchObject({ state: "ready" });
+    await expect(
+      prisma.taskCollaborationMessage.findUnique({
+        where: { id: posted.message.messageId },
+        include: { mentions: true, evidenceRefs: true },
+      }),
+    ).resolves.toMatchObject({
+      mentions: [{ actorId: actorB }],
+      evidenceRefs: [{ evidenceRecordId: scenario.evidenceId }],
+    });
+  }, 15_000);
+
+  it("serializes collaboration-first evidence revoke without deadlock or stale joins", async () => {
+    const scenario = await createVerifiedScenario();
+    const collaborationEvidenceLock = signalBarrier();
+    const overlapRepository = new PrismaTaskCollaborationRepository(
+      prisma as never,
+      new PrismaTaskCollaborationWriteContext(),
+      {
+        lockExact: async (transaction, input) => {
+          const valid =
+            await new PrismaTaskCollaborationEvidenceWrite().lockExact(
+              transaction,
+              input,
+            );
+          collaborationEvidenceLock.enter();
+          await collaborationEvidenceLock.released;
+          return valid;
+        },
+      },
+    );
+    const overlapService = new PostTaskCollaborationService(
+      context,
+      evidence,
+      overlapRepository,
+    );
+    const revokeAttempt = transactionQueryBarrier(
+      (sql) => sql.includes('FROM "evidence_record"'),
+      "before",
+    );
+    const revokeService = decisionService(revokeAttempt);
+
+    const posting = overlapService.execute(
+      postInput(scenario.taskId, scenario.containerId, randomUUID(), {
+        evidenceRecordIds: [scenario.evidenceId],
+      }),
+    );
+    await collaborationEvidenceLock.entered;
+    const revoking = revokeService.execute(
+      revokeInput(scenario.evidenceId, "collaboration-first"),
+    );
+    await revokeAttempt.entered;
+    revokeAttempt.release();
+    collaborationEvidenceLock.release();
+
+    const [posted, revoked] = await Promise.all([posting, revoking]);
+    expect(revoked).toMatchObject({ appended: true });
+    await expect(
+      prisma.taskCollaborationMessageEvidenceRef.count({
+        where: {
+          messageId: posted.message.messageId,
+          evidenceRecordId: scenario.evidenceId,
+        },
+      }),
+    ).resolves.toBe(1);
+    await expect(decisionFacts(scenario.evidenceId)).resolves.toEqual([
+      expect.objectContaining({
+        verificationSequence: 1,
+        decision: "verified",
+        previousDecisionId: null,
+      }),
+      expect.objectContaining({
+        verificationSequence: 2,
+        decision: "revoked",
+        previousDecisionId: scenario.verifiedDecisionId,
+      }),
+    ]);
+  }, 15_000);
+
+  it("serializes revoke-first collaboration to a stable rejection with zero writes", async () => {
+    const scenario = await createVerifiedScenario();
+    const before = await collaborationCountsForTask(scenario.taskId);
+    const revokeLock = transactionQueryBarrier(
+      (sql) => sql.includes('FROM "evidence_record"'),
+      "after",
+    );
+    const revokeService = decisionService(revokeLock);
+    const collaborationEvidenceAttempt = signalBarrier();
+    const overlapRepository = new PrismaTaskCollaborationRepository(
+      prisma as never,
+      new PrismaTaskCollaborationWriteContext(),
+      {
+        lockExact: async (transaction, input) => {
+          collaborationEvidenceAttempt.enter();
+          return new PrismaTaskCollaborationEvidenceWrite().lockExact(
+            transaction,
+            input,
+          );
+        },
+      },
+    );
+    const overlapService = new PostTaskCollaborationService(
+      context,
+      evidence,
+      overlapRepository,
+    );
+
+    const revoking = revokeService.execute(
+      revokeInput(scenario.evidenceId, "revoke-first"),
+    );
+    await revokeLock.entered;
+    const posting = overlapService.execute(
+      postInput(scenario.taskId, scenario.containerId, randomUUID(), {
+        evidenceRecordIds: [scenario.evidenceId],
+      }),
+    );
+    await collaborationEvidenceAttempt.entered;
+    revokeLock.release();
+
+    await expect(revoking).resolves.toMatchObject({ appended: true });
+    await expect(posting).rejects.toThrow("RESOURCE_NOT_FOUND");
+    await expect(collaborationCountsForTask(scenario.taskId)).resolves.toEqual(
+      before,
+    );
+    await expect(decisionFacts(scenario.evidenceId)).resolves.toEqual([
+      expect.objectContaining({
+        verificationSequence: 1,
+        decision: "verified",
+      }),
+      expect.objectContaining({
+        verificationSequence: 2,
+        decision: "revoked",
+        previousDecisionId: scenario.verifiedDecisionId,
+      }),
+    ]);
+  }, 15_000);
+
+  it("filters evidence after concurrent requests converge to an in-transaction replay", async () => {
+    const scenario = await createVerifiedScenario();
+    const input = postInput(
+      scenario.taskId,
+      scenario.containerId,
+      randomUUID(),
+      { evidenceRecordIds: [scenario.evidenceId] },
+    );
+    const earlyLookups = twoPartyLookupBarrier(repository);
+    const replayFilter = signalBarrier();
+    const guardedEvidence = {
+      resolveExact: (request: Parameters<typeof evidence.resolveExact>[0]) =>
+        evidence.resolveExact(request),
+      listOptions: (request: Parameters<typeof evidence.listOptions>[0]) =>
+        evidence.listOptions(request),
+      filterReadable: async (
+        request: Parameters<typeof evidence.filterReadable>[0],
+      ) => {
+        replayFilter.enter();
+        await replayFilter.released;
+        return evidence.filterReadable(request);
+      },
+    };
+    const overlapService = new PostTaskCollaborationService(
+      context,
+      guardedEvidence,
+      earlyLookups,
+    );
+
+    const first = overlapService.execute(input);
+    const second = overlapService.execute(input);
+    await replayFilter.entered;
+    await decisionService().execute(
+      revokeInput(scenario.evidenceId, "late-replay-filter"),
+    );
+    replayFilter.release();
+
+    const results = await Promise.all([first, second]);
+    const replay = results.find(({ idempotencyReplay }) => idempotencyReplay);
+    expect(replay).toMatchObject({
+      idempotencyReplay: true,
+      message: { evidenceRefs: [] },
+    });
+    expect(new Set(results.map(({ message }) => message.messageId)).size).toBe(
+      1,
+    );
+    const messageId = results[0]!.message.messageId;
+    await expect(
+      prisma.taskCollaborationMessage.count({ where: { id: messageId } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.taskCollaborationMessageEvidenceRef.count({
+        where: { messageId },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      overlapService.execute({
+        ...input,
+        command: { ...input.command, body: "different payload" },
+      }),
+    ).rejects.toThrow("IDEMPOTENCY_KEY_CONFLICT");
+  }, 15_000);
+
   it("keeps later messages out of an asOf pagination snapshot", async () => {
     await postService.execute(
       postInput(taskA, containerA, `page-1-${randomUUID()}`),
@@ -305,14 +713,20 @@ describe("task collaboration PostgreSQL integration", () => {
 
   it("enforces composite parent FK and NULLS NOT DISTINCT source uniqueness", async () => {
     const parent = await postService.execute(
-      postInput(taskA, containerA, `parent-${randomUUID()}`, {
-        sourceRefs: [{ kind: "result", id: "nullable-source", version: null }],
-      }),
+      postInput(taskA, containerA, `parent-${randomUUID()}`),
     );
     const other = await postService.execute(
       postInput(taskB, containerB, `other-${randomUUID()}`),
     );
 
+    await prisma.taskCollaborationMessageSourceRef.create({
+      data: {
+        messageId: parent.message.messageId,
+        sourceKind: "result",
+        sourceId: "nullable-source",
+        sourceVersion: null,
+      },
+    });
     await expect(
       prisma.$executeRaw`
         INSERT INTO "task_collaboration_message" (
@@ -342,11 +756,18 @@ describe("task collaboration PostgreSQL integration", () => {
       postInput(taskA, containerA, `immutable-${randomUUID()}`, {
         mentionActorIds: [actorB],
         evidenceRecordIds: [evidenceA],
-        sourceRefs: [{ kind: "evidence", id: "immutable", version: 1 }],
       }),
     );
     const messageId = created.message.messageId;
     const threadId = created.message.threadId;
+    await prisma.taskCollaborationMessageSourceRef.create({
+      data: {
+        messageId,
+        sourceKind: "evidence",
+        sourceId: "immutable",
+        sourceVersion: 1,
+      },
+    });
     const mutations = [
       () =>
         prisma.$executeRaw`UPDATE "task_collaboration_thread" SET "policy_version" = "policy_version" WHERE "id" = ${threadId}::uuid`,
@@ -378,6 +799,12 @@ async function seed(): Promise<void> {
       tenantId: tenantA,
       containerId: containerA,
       state: "completed",
+    },
+    {
+      id: cancelledTask,
+      tenantId: tenantA,
+      containerId: containerA,
+      state: "cancelled",
     },
     {
       id: taskB,
@@ -421,6 +848,275 @@ async function seed(): Promise<void> {
       evidenceRecord(evidenceWrongContainer, tenantA, containerB, "effective"),
     ],
   });
+}
+
+async function createScenario() {
+  const taskId = randomUUID();
+  const containerId = randomUUID();
+  const evidenceId = randomUUID();
+  const workOrderId = randomUUID();
+  await prisma.nodeTask.create({
+    data: {
+      id: taskId,
+      tenantId: tenantA,
+      flowInstanceId: randomUUID(),
+      nodeInstanceId: randomUUID(),
+      nodeCode: "container_stuffing",
+      containerId,
+      taskDefinitionKey: "task-collaboration-scenario",
+      state: "in_progress",
+    },
+  });
+  await prisma.workOrder.create({
+    data: { ...workOrder(taskId, actorB), id: workOrderId },
+  });
+  await prisma.evidenceRecord.create({
+    data: evidenceRecord(evidenceId, tenantA, containerId, "effective"),
+  });
+  return { taskId, containerId, evidenceId, workOrderId };
+}
+
+async function createReadinessScenario() {
+  const taskId = randomUUID();
+  const containerId = randomUUID();
+  const evidenceId = randomUUID();
+  const workOrderId = randomUUID();
+  const flowInstanceId = randomUUID();
+  const nodeInstanceId = randomUUID();
+  await prisma.nodeTask.create({
+    data: {
+      id: taskId,
+      tenantId: tenantA,
+      flowInstanceId,
+      nodeInstanceId,
+      nodeCode: "container_stuffing",
+      containerId,
+      taskDefinitionKey: "task-collaboration-readiness",
+      state: "pending",
+      readinessState: "waiting_conditions",
+      completionEligibility: "awaiting_evidence",
+    },
+  });
+  await prisma.workOrder.create({
+    data: {
+      ...workOrder(taskId, actorB),
+      id: workOrderId,
+      state: "draft",
+    },
+  });
+  await prisma.evidenceRecord.create({
+    data: evidenceRecord(evidenceId, tenantA, containerId, "effective"),
+  });
+  return {
+    taskId,
+    containerId,
+    evidenceId,
+    workOrderId,
+    flowInstanceId,
+    nodeInstanceId,
+  };
+}
+
+async function createVerifiedScenario() {
+  const scenario = await createScenario();
+  const verified = await decisionService().execute({
+    evidenceId: scenario.evidenceId,
+    tenantId: tenantA,
+    actorOrServiceId: actorA,
+    reasonCode: "integration_verify",
+    decision: "verified",
+  });
+  if (!verified.decisionId)
+    throw new Error("verification decision was not created");
+  return { ...scenario, verifiedDecisionId: verified.decisionId };
+}
+
+function revokeInput(evidenceId: string, reasonCode: string) {
+  return {
+    evidenceId,
+    tenantId: tenantA,
+    actorOrServiceId: actorA,
+    reasonCode,
+    decision: "revoked" as const,
+  };
+}
+
+function decisionService(barrier?: ReturnType<typeof transactionQueryBarrier>) {
+  const repositoryPrisma = barrier
+    ? {
+        evidenceRecord: prisma.evidenceRecord,
+        evidenceVerificationDecision: prisma.evidenceVerificationDecision,
+        $transaction: <T>(
+          callback: (transaction: Prisma.TransactionClient) => Promise<T>,
+        ) =>
+          prisma.$transaction((transaction) =>
+            callback(barrier.wrap(transaction)),
+          ),
+      }
+    : prisma;
+  return new DecideEvidenceService(
+    new PrismaEvidenceRepository(repositoryPrisma as never),
+  );
+}
+
+async function decisionFacts(evidenceId: string) {
+  return prisma.evidenceVerificationDecision.findMany({
+    where: { evidenceId },
+    orderBy: { verificationSequence: "asc" },
+    select: {
+      verificationSequence: true,
+      decision: true,
+      previousDecisionId: true,
+    },
+  });
+}
+
+async function collaborationCounts() {
+  const [threads, messages, mentions, evidenceRefs, sourceRefs] =
+    await Promise.all([
+      prisma.taskCollaborationThread.count(),
+      prisma.taskCollaborationMessage.count(),
+      prisma.taskCollaborationMessageMention.count(),
+      prisma.taskCollaborationMessageEvidenceRef.count(),
+      prisma.taskCollaborationMessageSourceRef.count(),
+    ]);
+  return { threads, messages, mentions, evidenceRefs, sourceRefs };
+}
+
+async function collaborationCountsForTask(taskId: string) {
+  const threads = await prisma.taskCollaborationThread.findMany({
+    where: { workId: taskId },
+    select: { id: true },
+  });
+  const threadIds = threads.map(({ id }) => id);
+  const messages = await prisma.taskCollaborationMessage.findMany({
+    where: { threadId: { in: threadIds } },
+    select: { id: true },
+  });
+  const messageIds = messages.map(({ id }) => id);
+  const [mentions, evidenceRefs, sourceRefs] = await Promise.all([
+    prisma.taskCollaborationMessageMention.count({
+      where: { messageId: { in: messageIds } },
+    }),
+    prisma.taskCollaborationMessageEvidenceRef.count({
+      where: { messageId: { in: messageIds } },
+    }),
+    prisma.taskCollaborationMessageSourceRef.count({
+      where: { messageId: { in: messageIds } },
+    }),
+  ]);
+  return {
+    threads: threads.length,
+    messages: messages.length,
+    mentions,
+    evidenceRefs,
+    sourceRefs,
+  };
+}
+
+function signalBarrier() {
+  let enter!: () => void;
+  let release!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    enter = resolve;
+  });
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { enter, entered, release, released };
+}
+
+function transactionQueryBarrier(
+  matches: (sql: string) => boolean,
+  pause: "before" | "after",
+) {
+  const barrier = signalBarrier();
+  let pending = true;
+  return {
+    ...barrier,
+    wrap(transaction: Prisma.TransactionClient): Prisma.TransactionClient {
+      return new Proxy(transaction, {
+        get(target, property, receiver) {
+          if (property !== "$queryRaw") {
+            return Reflect.get(target, property, receiver);
+          }
+          const queryRaw = target.$queryRaw.bind(target) as <T>(
+            strings: TemplateStringsArray,
+            ...values: unknown[]
+          ) => Promise<T>;
+          return async <T>(
+            strings: TemplateStringsArray,
+            ...values: unknown[]
+          ) => {
+            const shouldPause = pending && matches(strings.join(" "));
+            if (shouldPause && pause === "before") {
+              pending = false;
+              barrier.enter();
+              await barrier.released;
+            }
+            const result = await queryRaw<T>(strings, ...values);
+            if (shouldPause && pause === "after") {
+              pending = false;
+              barrier.enter();
+              await barrier.released;
+            }
+            return result;
+          };
+        },
+      });
+    },
+  };
+}
+
+function twoPartyLookupBarrier(delegate: TaskCollaborationRepository) {
+  let completedLookups = 0;
+  let releaseLookups!: () => void;
+  const bothCompleted = new Promise<void>((resolve) => {
+    releaseLookups = resolve;
+  });
+  return {
+    findThread: (input: Parameters<typeof delegate.findThread>[0]) =>
+      delegate.findThread(input),
+    listMessages: (input: Parameters<typeof delegate.listMessages>[0]) =>
+      delegate.listMessages(input),
+    findIdempotentMessage: async (
+      input: Parameters<typeof delegate.findIdempotentMessage>[0],
+    ) => {
+      const result = await delegate.findIdempotentMessage(input);
+      completedLookups += 1;
+      if (completedLookups === 2) releaseLookups();
+      await bothCompleted;
+      return result;
+    },
+    appendMessage: (input: Parameters<typeof delegate.appendMessage>[0]) =>
+      delegate.appendMessage(input),
+  } satisfies TaskCollaborationRepository;
+}
+
+function appendBarrier(delegate: TaskCollaborationRepository) {
+  let enter!: () => void;
+  let resume!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    enter = resolve;
+  });
+  const released = new Promise<void>((resolve) => {
+    resume = resolve;
+  });
+  const barrierRepository: TaskCollaborationRepository = {
+    findThread: (input) => delegate.findThread(input),
+    listMessages: (input) => delegate.listMessages(input),
+    findIdempotentMessage: (input) => delegate.findIdempotentMessage(input),
+    appendMessage: async (input) => {
+      enter();
+      await released;
+      return delegate.appendMessage(input);
+    },
+  };
+  return {
+    repository: barrierRepository,
+    entered,
+    release: resume,
+  };
 }
 
 function workOrder(nodeTaskId: string, assigneeId: string | null) {

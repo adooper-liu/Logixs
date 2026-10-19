@@ -19,7 +19,9 @@ import { READ_EVIDENCE_REFS } from "./read-evidence-refs.port";
 import { TASK_COLLABORATION_EVIDENCE } from "./task-collaboration-evidence.port";
 import { EVIDENCE_REPOSITORY } from "./domain/evidence.repository";
 import { PrismaEvidenceRepository } from "./infrastructure/prisma-evidence.repository";
+import { PrismaTaskCollaborationEvidenceWrite } from "./infrastructure/prisma-task-collaboration-evidence-write";
 import { EvidenceController } from "./presentation/evidence.controller";
+import { TASK_COLLABORATION_EVIDENCE_WRITE } from "./task-collaboration-evidence-write.port";
 
 @Module({
   imports: [IdentityModule],
@@ -32,6 +34,7 @@ import { EvidenceController } from "./presentation/evidence.controller";
     ReadEvidenceAuthorityContextService,
     ReadEvidenceRefsService,
     ResolveTaskCollaborationEvidenceService,
+    PrismaTaskCollaborationEvidenceWrite,
     { provide: EVIDENCE_REPOSITORY, useClass: PrismaEvidenceRepository },
     { provide: ASSERT_EVIDENCE_REFS, useExisting: AssertEvidenceRefsService },
     {
@@ -48,6 +51,10 @@ import { EvidenceController } from "./presentation/evidence.controller";
       provide: TASK_COLLABORATION_EVIDENCE,
       useExisting: ResolveTaskCollaborationEvidenceService,
     },
+    {
+      provide: TASK_COLLABORATION_EVIDENCE_WRITE,
+      useExisting: PrismaTaskCollaborationEvidenceWrite,
+    },
   ],
   exports: [
     AssertEvidenceRefsService,
@@ -57,6 +64,7 @@ import { EvidenceController } from "./presentation/evidence.controller";
     REGISTER_EVIDENCE,
     READ_EVIDENCE_REFS,
     TASK_COLLABORATION_EVIDENCE,
+    TASK_COLLABORATION_EVIDENCE_WRITE,
   ],
 })
 export class DocumentRecordsModule implements NestModule {

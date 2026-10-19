@@ -254,7 +254,8 @@ async function gotoCompletedTask(page: Page): Promise<FixtureControl> {
   );
   await expect(page.getByRole("heading", { name: "我的任务" })).toBeVisible();
   await expect(page.getByTestId("frozen-outcome")).toHaveText("已完成");
-  await expect(page.getByRole("region", { name: "任务档案" })).toContainText(
+  await page.getByRole("button", { name: "档案", exact: true }).click();
+  await expect(page.getByRole("region", { name: "任务上下文" })).toContainText(
     "E2E fixture",
   );
   return control;
@@ -367,7 +368,7 @@ test("1440 keeps the archive consumer in three stable read-only panes", async ({
   await expect(
     page.getByRole("region", { name: "当前任务详情" }),
   ).toContainText("这是该任务完成时形成的只读结果");
-  await expect(page.getByRole("region", { name: "任务档案" })).toContainText(
+  await expect(page.getByRole("region", { name: "任务上下文" })).toContainText(
     "当前身份可见来源",
   );
   await expect(
@@ -392,7 +393,8 @@ test("1440 keeps the archive consumer in three stable read-only panes", async ({
 
   await page.locator(`[data-task-id="${fixture.completedTaskId}"]`).click();
   await expect(page.getByTestId("frozen-outcome")).toHaveText("已完成");
-  await expect(page.getByRole("region", { name: "任务档案" })).toContainText(
+  await page.getByRole("button", { name: "档案", exact: true }).click();
+  await expect(page.getByRole("region", { name: "任务上下文" })).toContainText(
     "原任务操作回执",
   );
   await expect(
@@ -462,6 +464,7 @@ test("1024 keeps detail and archive adjacent while the queue uses an accessible 
   await expect(drawer).toBeHidden();
   await expect(queueTrigger).toBeFocused();
   await expect(page.getByTestId("frozen-outcome")).toHaveText("已完成");
+  await page.getByRole("button", { name: "档案", exact: true }).click();
 
   control.failNextActivity = true;
   await page.getByTestId("archive-refresh").click();
@@ -498,7 +501,7 @@ test("390 uses explicit queue detail and archive screens with stable return stat
   await expectCausalRegionOrder(page);
   await expect(
     page.getByRole("navigation", { name: "工作台办理步骤" }),
-  ).toContainText("队列详情档案");
+  ).toContainText("队列详情上下文");
   const queuePane = page.locator('[data-workbench-pane="queue"]');
   const detailPane = page.locator('[data-workbench-pane="detail"]');
   const contextPane = page.locator('[data-workbench-pane="context"]');
@@ -534,11 +537,12 @@ test("390 uses explicit queue detail and archive screens with stable return stat
   );
   expect(detailScroll).toBeGreaterThan(0);
 
-  await page.getByRole("button", { name: "档案", exact: true }).click();
+  await page.getByRole("button", { name: "上下文", exact: true }).click();
   await expect(contextPane).toHaveAttribute("data-mobile-active", "true");
+  await page.getByRole("button", { name: "档案", exact: true }).click();
   await expect(detailPane).not.toHaveAttribute("data-mobile-active", "true");
   await expect(page.locator('[data-mobile-active="true"]')).toHaveCount(1);
-  await expect(page.getByRole("region", { name: "任务档案" })).toContainText(
+  await expect(page.getByRole("region", { name: "任务上下文" })).toContainText(
     "当前身份可见来源",
   );
 

@@ -204,26 +204,52 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
         include: { workOrders: true, outcome: true },
       });
       if (existing) {
+        await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id"
+          FROM "work_order"
+          WHERE "node_task_id" = ${existing.id}
+          ORDER BY "id"
+          FOR UPDATE
+        `;
+        const lockedTasks = await tx.$queryRaw<LockedReadinessTaskRow[]>`
+          SELECT
+            "id",
+            "container_id" AS "containerId",
+            "readiness_state" AS "readinessState",
+            "completion_eligibility" AS "completionEligibility",
+            "condition_fact_refs" AS "conditionFactRefs"
+          FROM "node_task"
+          WHERE "id" = ${existing.id}
+          FOR UPDATE
+        `;
+        const locked = lockedTasks[0];
+        if (!locked) throw new Error("NODE_TASK_NOT_FOUND_AFTER_LOCK");
+        await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id"
+          FROM "work_order"
+          WHERE "node_task_id" = ${existing.id}
+          ORDER BY "id"
+          FOR UPDATE
+        `;
         const readinessState =
-          existing.readinessState === "ready" ||
-          input.readinessState === "ready"
+          locked.readinessState === "ready" || input.readinessState === "ready"
             ? "ready"
             : "waiting_conditions";
         const completionEligibility =
-          existing.completionEligibility === "eligible" ||
+          locked.completionEligibility === "eligible" ||
           input.completionEligibility === "eligible"
             ? "eligible"
             : "awaiting_evidence";
         const conditionFactRefs = [
           ...new Set([
-            ...asStringArray(existing.conditionFactRefs),
+            ...asStringArray(locked.conditionFactRefs),
             ...input.conditionFactRefs,
           ]),
         ];
         const task = await tx.nodeTask.update({
           where: { id: existing.id },
           data: {
-            containerId: input.containerId ?? existing.containerId,
+            containerId: input.containerId ?? locked.containerId,
             applicability: input.applicability,
             readinessState,
             completionEligibility,
@@ -546,6 +572,14 @@ export class PrismaWorkExecutionRepository implements WorkExecutionRepository {
       outcome: task.outcome ? mapOutcome(task.outcome) : null,
     };
   }
+}
+
+interface LockedReadinessTaskRow {
+  id: string;
+  containerId: string | null;
+  readinessState: string;
+  completionEligibility: string;
+  conditionFactRefs: unknown;
 }
 
 function mapTask(task: {

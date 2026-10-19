@@ -33,7 +33,7 @@ export function presentMessage(
         kind: "evidence_record" as const,
         id,
       })),
-    sourceRefs: message.sourceRefs.map((ref) => ({ ...ref })),
+    sourceRefs: [],
     occurredAt: message.occurredAt.toISOString(),
     recordedAt: message.recordedAt.toISOString(),
   };

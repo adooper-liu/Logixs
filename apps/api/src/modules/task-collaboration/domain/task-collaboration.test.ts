@@ -3,6 +3,7 @@ import {
   CollaborationValidationError,
   appendCollaborationMessage,
   assertReplyParentInThread,
+  isTaskCollaborationPostable,
   normalizeCollaborationPostCommand,
 } from "./task-collaboration";
 
@@ -22,16 +23,12 @@ const command = () => ({
   parentMessageId: PARENT_ID,
   mentionActorIds: [` ${ACTOR_B} `, ` ${ACTOR_A} `, ACTOR_B],
   evidenceRecordIds: [EVIDENCE_B, EVIDENCE_A, EVIDENCE_B],
-  sourceRefs: [
-    { kind: "result" as const, id: "result-2", version: 2 },
-    { kind: "action" as const, id: "action-1" },
-    { kind: "result" as const, id: "result-2", version: 2 },
-  ],
+  sourceRefs: [],
   idempotencyKey: " post-1 ",
 });
 
 describe("normalizeCollaborationPostCommand", () => {
-  it("normalizes fixed task scope input and deduplicates references", () => {
+  it("normalizes fixed task scope input and deduplicates supported references", () => {
     expect(normalizeCollaborationPostCommand(command())).toMatchObject({
       contractVersion: "task-collaboration-post-command.v1",
       visibility: "task_scope",
@@ -41,10 +38,7 @@ describe("normalizeCollaborationPostCommand", () => {
       parentMessageId: PARENT_ID,
       mentionActorIds: [ACTOR_A, ACTOR_B],
       evidenceRecordIds: [EVIDENCE_A, EVIDENCE_B],
-      sourceRefs: [
-        { kind: "action", id: "action-1", version: null },
-        { kind: "result", id: "result-2", version: 2 },
-      ],
+      sourceRefs: [],
       idempotencyKey: "post-1",
       payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
@@ -56,10 +50,6 @@ describe("normalizeCollaborationPostCommand", () => {
       ...command(),
       mentionActorIds: [ACTOR_B, ACTOR_A],
       evidenceRecordIds: [EVIDENCE_A, EVIDENCE_B],
-      sourceRefs: [
-        { kind: "action", id: "action-1" },
-        { kind: "result", id: "result-2", version: 2 },
-      ],
       idempotencyKey: "another-retry-key",
     });
 
@@ -144,14 +134,15 @@ describe("normalizeCollaborationPostCommand", () => {
   );
 
   it.each([
-    [{ kind: "unknown", id: "source-1" }],
-    [{ kind: "action", id: "   " }],
-    [{ kind: "action", id: "x".repeat(201) }],
-    [{ kind: "action", id: "source-1", version: 0 }],
-    [{ kind: "action", id: "source-1", version: 1.5 }],
-  ])("rejects invalid source refs %#", (sourceRefs) => {
+    [[{ kind: "unknown", id: "source-1" }]],
+    [[{ kind: "action", id: "   " }]],
+    [[{ kind: "action", id: "x".repeat(201) }]],
+    [[{ kind: "action", id: "source-1", version: 0 }]],
+    [[{ kind: "action", id: "source-1", version: 1.5 }]],
+    [[{ kind: "action", id: "source-1", version: 1 }]],
+  ])("rejects every non-empty V1 source ref payload %#", (sourceRefs) => {
     expect(() => normalizeUnsafe({ ...command(), sourceRefs })).toThrowError(
-      CollaborationValidationError,
+      new CollaborationValidationError("SOURCE_REFS_NOT_SUPPORTED"),
     );
   });
 
@@ -180,6 +171,22 @@ describe("normalizeCollaborationPostCommand", () => {
       normalizeUnsafe({ ...command(), [field]: values }),
     ).toThrowError(CollaborationValidationError);
   });
+});
+
+describe("task collaboration posting state", () => {
+  it.each(["pending", "in_progress"] as const)(
+    "allows %s tasks to accept new messages",
+    (state) => {
+      expect(isTaskCollaborationPostable(state)).toBe(true);
+    },
+  );
+
+  it.each(["blocked", "completed", "reopened", "cancelled"] as const)(
+    "keeps %s tasks read-only",
+    (state) => {
+      expect(isTaskCollaborationPostable(state)).toBe(false);
+    },
+  );
 });
 
 describe("reply and append-only invariants", () => {

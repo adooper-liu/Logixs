@@ -28,10 +28,12 @@ import { EXTERNAL_WORK_ITEM_REPOSITORY } from "./domain/external-work-item.repos
 import { LIST_OBJECT_TASK_ACTIVITY } from "./list-object-task-activity.port";
 import { PrismaWorkClientOperationRepository } from "./infrastructure/prisma-client-operation.repository";
 import { PrismaWorkExecutionRepository } from "./infrastructure/prisma-work-execution.repository";
+import { PrismaTaskCollaborationWriteContext } from "./infrastructure/prisma-task-collaboration-write-context";
 import { PrismaExternalWorkItemRepository } from "./infrastructure/prisma-external-work-item.repository";
 import { PROJECT_EXTERNAL_WORK_ITEMS } from "./project-external-work-items.port";
 import { RECONCILE_APPLIED_LIFECYCLE_FACT } from "./reconcile-applied-lifecycle-fact.port";
 import { WorkExecutionController } from "./presentation/work-execution.controller";
+import { TASK_COLLABORATION_WRITE_CONTEXT } from "./task-collaboration-write-context.port";
 
 export const TASK_COLLABORATION_CONTEXT = Symbol.for(
   "logix.TaskCollaborationContext",
@@ -101,6 +103,7 @@ export class WorkExecutionTaskCollaborationContext implements TaskCollaborationC
     ClaimWorkOrderService,
     ReconcileAppliedLifecycleFactService,
     WorkExecutionTaskCollaborationContext,
+    PrismaTaskCollaborationWriteContext,
     {
       provide: WORK_EXECUTION_REPOSITORY,
       useClass: PrismaWorkExecutionRepository,
@@ -130,6 +133,10 @@ export class WorkExecutionTaskCollaborationContext implements TaskCollaborationC
       provide: TASK_COLLABORATION_CONTEXT,
       useExisting: WorkExecutionTaskCollaborationContext,
     },
+    {
+      provide: TASK_COLLABORATION_WRITE_CONTEXT,
+      useExisting: PrismaTaskCollaborationWriteContext,
+    },
   ],
   exports: [
     CREATE_NODE_TASK,
@@ -138,6 +145,7 @@ export class WorkExecutionTaskCollaborationContext implements TaskCollaborationC
     ListObjectTaskActivityService,
     RECONCILE_APPLIED_LIFECYCLE_FACT,
     TASK_COLLABORATION_CONTEXT,
+    TASK_COLLABORATION_WRITE_CONTEXT,
   ],
 })
 export class WorkExecutionModule implements NestModule {

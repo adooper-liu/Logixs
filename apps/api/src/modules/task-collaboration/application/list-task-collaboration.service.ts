@@ -19,6 +19,7 @@ import {
   parseCollaborationPageSize,
   CollaborationCursorError,
 } from "../domain/task-collaboration-cursor";
+import { isTaskCollaborationPostable } from "../domain/task-collaboration";
 import {
   TASK_COLLABORATION_REPOSITORY,
   type CollaborationScope,
@@ -123,7 +124,7 @@ export class ListTaskCollaborationService {
     );
     const canPost =
       input.capabilities.includes("task.collaborate") &&
-      task.state !== "completed";
+      isTaskCollaborationPostable(task.state);
 
     return {
       contractVersion: "task-collaboration-page.v1" as const,
@@ -144,9 +145,7 @@ export class ListTaskCollaborationService {
       canPost,
       postDisabledReason: canPost
         ? null
-        : task.state === "completed"
-          ? "TASK_COMPLETED_READ_ONLY"
-          : "AUTHORIZATION_FORBIDDEN",
+        : (terminalPostDisabledReason(task.state) ?? "AUTHORIZATION_FORBIDDEN"),
       mentionOptions,
       evidenceOptions: evidenceOptions.map(({ evidenceRecordId, label }) => ({
         ref: { kind: "evidence_record" as const, id: evidenceRecordId },
@@ -154,6 +153,13 @@ export class ListTaskCollaborationService {
       })),
     };
   }
+}
+
+function terminalPostDisabledReason(state: string): string | null {
+  if (state === "completed") return "TASK_COMPLETED_READ_ONLY";
+  if (state === "cancelled") return "TASK_CANCELLED_READ_ONLY";
+  if (!isTaskCollaborationPostable(state)) return "TASK_NOT_POSTABLE";
+  return null;
 }
 
 export function requireCapabilities(

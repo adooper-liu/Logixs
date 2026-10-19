@@ -47,6 +47,16 @@ export interface TaskCollaborationRepository {
     after?: { recordedAt: Date; id: string };
     take: number;
   }): Promise<CollaborationMessageRecord[]>;
+  findIdempotentMessage(input: {
+    scope: CollaborationScope;
+    authorActorId: string;
+    idempotencyKey: string;
+    payloadHash: string;
+  }): Promise<{
+    thread: CollaborationThreadRecord;
+    message: CollaborationMessageRecord;
+    idempotencyReplay: true;
+  } | null>;
   appendMessage(input: {
     scope: CollaborationScope;
     tenantId: string;
@@ -75,5 +85,17 @@ export class CollaborationParentNotFoundError extends Error {
 export class CollaborationPersistenceConflictError extends Error {
   constructor() {
     super("CONCURRENCY_VERSION_CONFLICT");
+  }
+}
+
+export class CollaborationScopeNotFoundError extends Error {
+  constructor() {
+    super("RESOURCE_NOT_FOUND");
+  }
+}
+
+export class CollaborationBusinessStateViolationError extends Error {
+  constructor() {
+    super("BUSINESS_STATE_VIOLATION");
   }
 }

@@ -19,6 +19,7 @@ import {
   listTaskCollaboration,
   postTaskCollaborationMessage,
 } from "../api/taskCollaboration";
+import { HttpRequestError } from "../api/httpClient";
 
 const PAGE_SIZE = 25;
 const SNAPSHOT_CHANGED = "协作消息分页快照已变化，请重试";
@@ -327,6 +328,17 @@ export function useTaskCollaboration(
       idempotencyReplay.value = result.idempotencyReplay;
     } catch (cause) {
       if (!requestIsCurrent(requestGeneration, selected.contextKey)) return;
+      if (
+        cause instanceof HttpRequestError &&
+        (cause.status === 403 || cause.status === 404)
+      ) {
+        generation += 1;
+        abortRequests();
+        clearContextState();
+        error.value = "任务协作范围已变化，请重新读取或确认授权。";
+        retryable.value = true;
+        return;
+      }
       sendError.value = errorMessage(cause, "发送协作消息失败，请重试");
     } finally {
       controllers.delete(controller);

@@ -11,5 +11,6 @@ export const moduleManifest = defineModuleManifest({
     "READ_EVIDENCE_AUTHORITY_CONTEXT",
     "REGISTER_EVIDENCE",
     "TASK_COLLABORATION_EVIDENCE",
+    "TASK_COLLABORATION_EVIDENCE_WRITE",
   ],
 });

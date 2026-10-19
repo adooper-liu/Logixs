@@ -3,6 +3,99 @@ import { buildCommittedClientOperation } from "../domain/client-operation";
 import { PrismaWorkExecutionRepository } from "./prisma-work-execution.repository";
 
 describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => {
+  it("locks work orders before re-reading the task and derives readiness from the locked row", async () => {
+    const stale = {
+      id: "task-1",
+      tenantId: "tenant-1",
+      flowInstanceId: "flow-1",
+      nodeInstanceId: "node-1",
+      nodeCode: "customs_clearance",
+      containerId: "container-1",
+      taskDefinitionKey: "node-customs_clearance",
+      state: "pending",
+      applicability: "required",
+      readinessState: "waiting_conditions",
+      completionEligibility: "awaiting_evidence",
+      version: 0,
+      conditionFactRefs: [],
+      createdAt: new Date("2026-09-17T00:00:00Z"),
+      workOrders: [],
+      outcome: null,
+    };
+    const locked = {
+      ...stale,
+      readinessState: "ready",
+      completionEligibility: "eligible",
+      conditionFactRefs: ["concurrent-fact"],
+      version: 1,
+    };
+    const updated = {
+      ...locked,
+      conditionFactRefs: ["concurrent-fact", "incoming-fact"],
+      version: 2,
+    };
+    const order: string[] = [];
+    const tx = {
+      $queryRaw: vi.fn(async (strings: TemplateStringsArray) => {
+        const sql = strings.join(" ");
+        if (sql.includes('FROM "work_order"')) {
+          order.push("work_order");
+          return [];
+        }
+        if (sql.includes('FROM "node_task"')) {
+          order.push("node_task");
+          return [locked];
+        }
+        throw new Error(`unexpected query: ${sql}`);
+      }),
+      nodeTask: {
+        findUnique: vi.fn().mockResolvedValue(stale),
+        update: vi.fn(async () => {
+          order.push("task_update");
+          return updated;
+        }),
+      },
+      workOrder: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) =>
+        fn(tx),
+      ),
+    };
+    const repository = new PrismaWorkExecutionRepository(prisma as never);
+
+    const result = await repository.upsertTaskWithRequiredWorkOrder({
+      tenantId: "tenant-1",
+      flowInstanceId: "flow-1",
+      nodeInstanceId: "node-1",
+      nodeCode: "customs_clearance",
+      containerId: "container-1",
+      taskDefinitionKey: "node-customs-clearance",
+      workOrderDefinitionKey: "wo-customs-clearance",
+      applicability: "required",
+      readinessState: "waiting_conditions",
+      completionEligibility: "awaiting_evidence",
+      conditionFactRefs: ["incoming-fact"],
+    });
+
+    expect(order.slice(0, 2)).toEqual(["work_order", "node_task"]);
+    expect(order.indexOf("task_update")).toBeGreaterThan(
+      order.indexOf("node_task"),
+    );
+    expect(tx.nodeTask.update).toHaveBeenCalledWith({
+      where: { id: "task-1" },
+      data: expect.objectContaining({
+        readinessState: "ready",
+        completionEligibility: "eligible",
+        conditionFactRefs: ["concurrent-fact", "incoming-fact"],
+      }),
+    });
+    expect(result.task.version).toBe(2);
+  });
+
   it("先行事实把既有计划任务提升为可执行且具备完成资格", async () => {
     const existing = {
       id: "task-1",
@@ -40,6 +133,12 @@ describe("PrismaWorkExecutionRepository.upsertTaskWithRequiredWorkOrder", () => 
       version: 0,
     };
     const tx = {
+      $queryRaw: vi.fn(async (strings: TemplateStringsArray) => {
+        const sql = strings.join(" ");
+        if (sql.includes('FROM "work_order"')) return [];
+        if (sql.includes('FROM "node_task"')) return [existing];
+        throw new Error(`unexpected query: ${sql}`);
+      }),
       nodeTask: {
         findUnique: vi.fn().mockResolvedValue(existing),
         update: vi.fn().mockResolvedValue(updated),

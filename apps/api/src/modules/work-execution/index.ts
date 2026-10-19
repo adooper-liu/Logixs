@@ -30,3 +30,9 @@ export {
   type TaskCollaborationContext,
   type TaskCollaborationContextPort,
 } from "./work-execution.module";
+export {
+  TASK_COLLABORATION_WRITE_CONTEXT,
+  type LockedTaskCollaborationContext,
+  type TaskCollaborationWriteContextPort,
+  type TaskCollaborationWriteTransaction,
+} from "./task-collaboration-write-context.port";

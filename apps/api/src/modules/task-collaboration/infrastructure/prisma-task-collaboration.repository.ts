@@ -1,10 +1,23 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import type { NormalizedCollaborationPostCommand } from "../domain/task-collaboration";
 import {
+  TASK_COLLABORATION_EVIDENCE_WRITE,
+  type TaskCollaborationEvidenceWritePort,
+} from "../../document-records";
+import {
+  TASK_COLLABORATION_WRITE_CONTEXT,
+  type TaskCollaborationWriteContextPort,
+} from "../../work-execution";
+import {
+  isTaskCollaborationPostable,
+  type NormalizedCollaborationPostCommand,
+} from "../domain/task-collaboration";
+import {
+  CollaborationBusinessStateViolationError,
   CollaborationIdempotencyConflictError,
   CollaborationParentNotFoundError,
   CollaborationPersistenceConflictError,
+  CollaborationScopeNotFoundError,
   type CollaborationMessageRecord,
   type CollaborationScope,
   type CollaborationThreadRecord,
@@ -13,7 +26,13 @@ import {
 
 @Injectable()
 export class PrismaTaskCollaborationRepository implements TaskCollaborationRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(TASK_COLLABORATION_WRITE_CONTEXT)
+    private readonly writeContext: TaskCollaborationWriteContextPort,
+    @Inject(TASK_COLLABORATION_EVIDENCE_WRITE)
+    private readonly writeEvidence: TaskCollaborationEvidenceWritePort,
+  ) {}
 
   async findThread(
     scope: CollaborationScope,
@@ -53,6 +72,44 @@ export class PrismaTaskCollaborationRepository implements TaskCollaborationRepos
       take: input.take,
     });
     return rows.map(mapMessage);
+  }
+
+  async findIdempotentMessage(input: {
+    scope: CollaborationScope;
+    authorActorId: string;
+    idempotencyKey: string;
+    payloadHash: string;
+  }): Promise<{
+    thread: CollaborationThreadRecord;
+    message: CollaborationMessageRecord;
+    idempotencyReplay: true;
+  } | null> {
+    const thread = await this.prisma.taskCollaborationThread.findUnique({
+      where: {
+        tenantId_subjectKind_subjectId_workKind_workId_visibilityScope:
+          input.scope,
+      },
+    });
+    if (!thread) return null;
+    const message = await this.prisma.taskCollaborationMessage.findUnique({
+      where: {
+        threadId_authorActorId_idempotencyKey: {
+          threadId: thread.id,
+          authorActorId: input.authorActorId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      },
+      include: MESSAGE_INCLUDE,
+    });
+    if (!message) return null;
+    if (message.payloadHash !== input.payloadHash) {
+      throw new CollaborationIdempotencyConflictError();
+    }
+    return {
+      thread: mapThread(thread),
+      message: mapMessage(message),
+      idempotencyReplay: true,
+    };
   }
 
   async appendMessage(input: {
@@ -101,6 +158,56 @@ export class PrismaTaskCollaborationRepository implements TaskCollaborationRepos
             input.scope,
         },
       });
+      if (thread) {
+        const replay = await tx.taskCollaborationMessage.findUnique({
+          where: {
+            threadId_authorActorId_idempotencyKey: {
+              threadId: thread.id,
+              authorActorId: input.authorActorId,
+              idempotencyKey: input.command.idempotencyKey,
+            },
+          },
+          include: MESSAGE_INCLUDE,
+        });
+        if (replay) {
+          if (replay.payloadHash !== input.command.payloadHash) {
+            throw new CollaborationIdempotencyConflictError();
+          }
+          return {
+            thread: mapThread(thread),
+            message: mapMessage(replay),
+            idempotencyReplay: true,
+          };
+        }
+      }
+
+      const lockedContext = await this.writeContext.lock(tx, {
+        tenantId: input.tenantId,
+        taskId: input.command.workRef.id,
+        subjectRef: input.command.subjectRef,
+      });
+      if (!lockedContext) throw new CollaborationScopeNotFoundError();
+      if (!isTaskCollaborationPostable(lockedContext.state)) {
+        throw new CollaborationBusinessStateViolationError();
+      }
+      const allowedActors = new Set([
+        input.authorActorId,
+        ...lockedContext.assigneeActorIds,
+      ]);
+      if (
+        input.command.mentionActorIds.some(
+          (actorId) => !allowedActors.has(actorId),
+        )
+      ) {
+        throw new CollaborationScopeNotFoundError();
+      }
+      const evidenceIsCurrent = await this.writeEvidence.lockExact(tx, {
+        tenantId: input.tenantId,
+        subjectRef: input.command.subjectRef,
+        evidenceRecordIds: input.command.evidenceRecordIds,
+      });
+      if (!evidenceIsCurrent) throw new CollaborationScopeNotFoundError();
+
       thread ??= await tx.taskCollaborationThread.create({
         data: {
           ...input.scope,
@@ -108,27 +215,6 @@ export class PrismaTaskCollaborationRepository implements TaskCollaborationRepos
           createdByActorId: input.authorActorId,
         },
       });
-
-      const replay = await tx.taskCollaborationMessage.findUnique({
-        where: {
-          threadId_authorActorId_idempotencyKey: {
-            threadId: thread.id,
-            authorActorId: input.authorActorId,
-            idempotencyKey: input.command.idempotencyKey,
-          },
-        },
-        include: MESSAGE_INCLUDE,
-      });
-      if (replay) {
-        if (replay.payloadHash !== input.command.payloadHash) {
-          throw new CollaborationIdempotencyConflictError();
-        }
-        return {
-          thread: mapThread(thread),
-          message: mapMessage(replay),
-          idempotencyReplay: true,
-        };
-      }
 
       if (input.command.parentMessageId) {
         const parent = await tx.taskCollaborationMessage.findFirst({

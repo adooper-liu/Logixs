@@ -8,6 +8,9 @@ import {
 } from "@nestjs/common";
 import {
   EVIDENCE_REPOSITORY,
+  EvidenceDecisionNotFoundError,
+  EvidenceDecisionScopeDeniedError,
+  EvidenceDecisionTransitionError,
   type EvidenceRecord,
   type EvidenceRepository,
 } from "../domain/evidence.repository";
@@ -90,16 +93,26 @@ export class DecideEvidenceService {
       );
     }
 
-    return this.repository.appendDecision({
-      evidenceId: existing.id,
-      decision: input.decision,
-      nextState: transition.nextState,
-      nextValidity: transition.nextValidity,
-      actorOrServiceId: input.actorOrServiceId.trim(),
-      reasonCode: input.reasonCode.trim(),
-      reason: input.reason?.trim() || undefined,
-      previousDecisionId:
-        input.decision === "revoked" ? latestVerifiedDecisionId : undefined,
-    });
+    try {
+      return await this.repository.appendDecision({
+        evidenceId: existing.id,
+        tenantId: input.tenantId,
+        decision: input.decision,
+        actorOrServiceId: input.actorOrServiceId.trim(),
+        reasonCode: input.reasonCode.trim(),
+        reason: input.reason?.trim() || undefined,
+      });
+    } catch (error) {
+      if (error instanceof EvidenceDecisionNotFoundError) {
+        throw new NotFoundException("RESOURCE_NOT_FOUND");
+      }
+      if (error instanceof EvidenceDecisionScopeDeniedError) {
+        throw new ForbiddenException("AUTHORIZATION_SCOPE_DENIED");
+      }
+      if (error instanceof EvidenceDecisionTransitionError) {
+        throw new HttpException(error.message, HttpStatus.CONFLICT);
+      }
+      throw error;
+    }
   }
 }

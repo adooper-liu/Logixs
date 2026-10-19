@@ -22,7 +22,7 @@ const screenshotOptions = {
 interface FixtureControl {
   visibleTaskId: string;
   failNextGetStatus: number | null;
-  failNextPost: boolean;
+  failNextPostStatus: number | null;
   hideEvidence: boolean;
   nextPagination: "normal" | "drift" | "fail";
   holdNextTaskId: string | null;
@@ -249,7 +249,7 @@ async function installFixture(page: Page): Promise<FixtureControl> {
   const control: FixtureControl = {
     visibleTaskId: fixture.activeTaskId,
     failNextGetStatus: null,
-    failNextPost: false,
+    failNextPostStatus: null,
     hideEvidence: false,
     nextPagination: "normal",
     holdNextTaskId: null,
@@ -343,11 +343,15 @@ async function installFixture(page: Page): Promise<FixtureControl> {
     async (route) => {
       const command = route.request().postDataJSON() as Record<string, unknown>;
       control.posts.push(command);
-      if (control.failNextPost) {
-        control.failNextPost = false;
+      if (control.failNextPostStatus !== null) {
+        const status = control.failNextPostStatus;
+        control.failNextPostStatus = null;
         await route.fulfill({
-          status: 503,
-          json: { message: "POST_FAILED", traceId: "trace-post" },
+          status,
+          json: {
+            message: status === 503 ? "POST_FAILED" : `POST_${status}`,
+            traceId: "trace-post",
+          },
         });
         return;
       }
@@ -524,7 +528,7 @@ test("desktop consumes DTOs, restores modes, and retries the exact command", asy
   await page.locator('[data-mention-id="' + fixture.actorId + '"]').check();
   await page.locator('[data-evidence-id="' + fixture.evidenceId + '"]').check();
   await draft.fill("E2E 协作回复");
-  control.failNextPost = true;
+  control.failNextPostStatus = 503;
   await page.getByTestId("collaboration-send").click();
   await expect(page.getByTestId("send-error")).toContainText("POST_FAILED");
   await expect(draft).toHaveValue("E2E 协作回复");
@@ -548,6 +552,75 @@ test("desktop consumes DTOs, restores modes, and retries the exact command", asy
   expect(control.posts[0]).not.toHaveProperty("visibility");
   await expectNoNestedScrollOwner(page);
   await expectNoHorizontalOverflow(page);
+});
+
+test("POST 403 clears task collaboration and removes the stale send retry", async ({
+  page,
+}) => {
+  const control = await gotoActiveTask(page);
+  await openCollaboration(page);
+  await expect(page.getByText("请回复并核对当前证据引用")).toBeVisible();
+  await expect(
+    page.locator(`[data-evidence-id="${fixture.evidenceId}"]`),
+  ).toBeVisible();
+  const replyButton = page.locator(
+    `[data-reply-id="${fixture.latestMessageId}"]`,
+  );
+  await replyButton.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("replying-to")).toBeVisible();
+  await page.locator(`[data-mention-id="${fixture.actorId}"]`).check();
+  await page.locator(`[data-evidence-id="${fixture.evidenceId}"]`).check();
+  await page.getByLabel("协作消息").fill("撤权后不得保留");
+
+  control.failNextPostStatus = 403;
+  await page.getByTestId("collaboration-send").click();
+
+  await expect(page.getByRole("alert")).toContainText("重新读取");
+  await expect(page.getByText("请回复并核对当前证据引用")).toHaveCount(0);
+  await expect(
+    page.locator(`[data-evidence-id="${fixture.evidenceId}"]`),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("replying-to")).toHaveCount(0);
+  await expect(page.getByLabel("协作消息")).toHaveCount(0);
+  await expect(page.getByTestId("collaboration-send-retry")).toHaveCount(0);
+  expect(control.posts).toHaveLength(1);
+});
+
+test("POST revocation aborts delayed pagination without restoring stale collaboration", async ({
+  page,
+}) => {
+  const control = await gotoActiveTask(page);
+  await openCollaboration(page);
+  const replyButton = page.locator(
+    `[data-reply-id="${fixture.latestMessageId}"]`,
+  );
+  await replyButton.focus();
+  await page.keyboard.press("Enter");
+  await page.locator(`[data-mention-id="${fixture.actorId}"]`).check();
+  await page.locator(`[data-evidence-id="${fixture.evidenceId}"]`).check();
+  await page.getByLabel("协作消息").fill("撤权时分页仍在途中");
+  control.holdNextTaskId = fixture.activeTaskId;
+  await page.getByTestId("collaboration-load-more").click();
+  await expect.poll(() => control.releaseHeld !== null).toBe(true);
+  control.failNextPostStatus = 403;
+  await page.getByTestId("collaboration-send").click();
+
+  await expect(page.getByRole("alert")).toContainText("重新读取");
+  control.releaseHeld?.();
+  await expect(page.getByText("更早的协作记录")).toHaveCount(0);
+  await expect(page.getByText("请回复并核对当前证据引用")).toHaveCount(0);
+  await expect(
+    page.locator(`[data-mention-id="${fixture.actorId}"]`),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(`[data-evidence-id="${fixture.evidenceId}"]`),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("replying-to")).toHaveCount(0);
+  await expect(page.getByLabel("协作消息")).toHaveCount(0);
+  await expect(page.getByTestId("collaboration-send-retry")).toHaveCount(0);
+  await expect(page.getByTestId("collaboration-retry")).toBeVisible();
+  expect(control.posts).toHaveLength(1);
 });
 
 test("desktop clears late, forbidden, missing, and changed pages", async ({

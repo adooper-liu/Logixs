@@ -50,19 +50,38 @@ export interface CreateEvidenceInput {
 
 export interface AppendDecisionInput {
   evidenceId: string;
+  tenantId: string;
   decision: "verified" | "rejected" | "revoked";
-  nextState: "verified" | "rejected" | "revoked";
-  nextValidity: "effective" | "revoked";
   actorOrServiceId: string;
   reasonCode: string;
   reason?: string;
-  previousDecisionId?: string | null;
 }
 
 export interface AppendDecisionResult {
   record: EvidenceRecord;
-  decisionId: string;
+  decisionId: string | null;
   appended: boolean;
+}
+
+export class EvidenceDecisionNotFoundError extends Error {
+  constructor() {
+    super("RESOURCE_NOT_FOUND");
+  }
+}
+
+export class EvidenceDecisionScopeDeniedError extends Error {
+  constructor() {
+    super("AUTHORIZATION_SCOPE_DENIED");
+  }
+}
+
+export class EvidenceDecisionTransitionError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(`${code}: ${message}`);
+  }
 }
 
 export interface TaskCollaborationEvidenceQuery {

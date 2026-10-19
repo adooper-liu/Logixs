@@ -138,42 +138,15 @@ function body(value: unknown): string {
 function normalizeSourceRefs(
   refs: readonly CollaborationSourceRefV1[],
 ): Array<CollaborationSourceRefV1 & { version: number | null }> {
-  if (!Array.isArray(refs) || refs.length > 20) {
+  if (!Array.isArray(refs)) {
     invalid("VALIDATION_RANGE: sourceRefs");
   }
-  const values = refs.map((ref) => {
-    assertExactKeys(
-      ref,
-      SOURCE_REFERENCE_KEYS,
-      "sourceRefs",
-      REQUIRED_SOURCE_REFERENCE_KEYS,
-    );
-    if (!SOURCE_KINDS.includes(ref.kind)) {
-      invalid("VALIDATION_ENUM: sourceRefs.kind");
-    }
-    const version = ref.version ?? null;
-    if (version !== null && (!Number.isInteger(version) || version < 1)) {
-      invalid("VALIDATION_RANGE: sourceRefs.version");
-    }
-    return {
-      kind: ref.kind,
-      id: text(ref.id, "sourceRefs.id", 200),
-      version,
-    };
-  });
-  return [
-    ...new Map(
-      values.map((value) => [
-        `${value.kind}\u0000${value.id}\u0000${value.version ?? ""}`,
-        value,
-      ]),
-    ).values(),
-  ].sort((left, right) =>
-    `${left.kind}\u0000${left.id}\u0000${left.version ?? ""}`.localeCompare(
-      `${right.kind}\u0000${right.id}\u0000${right.version ?? ""}`,
-      "en",
-    ),
-  );
+  if (refs.length > 0) invalid("SOURCE_REFS_NOT_SUPPORTED");
+  return [];
+}
+
+export function isTaskCollaborationPostable(state: string): boolean {
+  return state === "pending" || state === "in_progress";
 }
 
 function uniqueTexts(
@@ -237,7 +210,6 @@ function invalid(message: string): never {
   throw new CollaborationValidationError(message);
 }
 
-const SOURCE_KINDS = ["action", "result", "evidence"] as const;
 const COMMAND_KEYS = new Set([
   "contractVersion",
   "subjectRef",
@@ -250,7 +222,5 @@ const COMMAND_KEYS = new Set([
   "idempotencyKey",
 ]);
 const REFERENCE_KEYS = new Set(["kind", "id"]);
-const SOURCE_REFERENCE_KEYS = new Set(["kind", "id", "version"]);
-const REQUIRED_SOURCE_REFERENCE_KEYS = new Set(["kind", "id"]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

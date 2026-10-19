@@ -6,6 +6,7 @@ import type {
   TaskCollaborationPostCommandV1,
   TaskCollaborationPostResultV1,
 } from "@logix/contracts";
+import { HttpRequestError } from "../api/httpClient";
 
 const listTaskCollaboration = vi.fn();
 const postTaskCollaborationMessage = vi.fn();
@@ -378,6 +379,116 @@ describe("useTaskCollaboration", () => {
     );
     expect(state.messages.value.map((item) => item.body)).toEqual(["draft"]);
   });
+
+  it.each([403, 404])(
+    "clears all collaboration and pending retry state after POST %s revokes scope",
+    async (status) => {
+      listTaskCollaboration.mockResolvedValueOnce(
+        page("A", [message("secret", "secret")], { taskId: taskA }),
+      );
+      postTaskCollaborationMessage.mockRejectedValueOnce(
+        new HttpRequestError({
+          kind: status === 403 ? "forbidden" : "http",
+          status,
+          message: `POST_${status}`,
+        }),
+      );
+      const context = shallowRef(collaborationContext("A", subjectA, taskA));
+      const state = useTaskCollaboration(context);
+      await flush();
+      state.draft.value = "sensitive draft";
+      state.replyTo.value = message("parent", "parent");
+      state.selectedMentionIds.value = ["actor-1"];
+      state.selectedEvidenceIds.value = [
+        "55555555-5555-4555-8555-555555555555",
+      ];
+
+      await state.send();
+
+      expect(state.messages.value).toEqual([]);
+      expect(state.asOf.value).toBeNull();
+      expect(state.visibility.value).toBeNull();
+      expect(state.visibilityLabel.value).toBe("");
+      expect(state.canPost.value).toBe(false);
+      expect(state.mentionOptions.value).toEqual([]);
+      expect(state.evidenceOptions.value).toEqual([]);
+      expect(state.draft.value).toBe("");
+      expect(state.replyTo.value).toBeNull();
+      expect(state.selectedMentionIds.value).toEqual([]);
+      expect(state.selectedEvidenceIds.value).toEqual([]);
+      expect(state.pendingCommand.value).toBeNull();
+      expect(state.sendError.value).toBe("");
+      expect(state.error.value).toContain("重新读取");
+      expect(state.retryable.value).toBe(true);
+      await state.retrySend();
+      expect(postTaskCollaborationMessage).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([
+    { status: 403, latePage: "success" },
+    { status: 404, latePage: "failure" },
+  ] as const)(
+    "keeps POST $status revocation state after a late pagination $latePage",
+    async ({ status, latePage }) => {
+      const pagination = deferred<TaskCollaborationPageV1>();
+      listTaskCollaboration
+        .mockResolvedValueOnce(
+          page("A", [message("secret", "secret")], {
+            taskId: taskA,
+            nextCursor: "older-A",
+          }),
+        )
+        .mockReturnValueOnce(pagination.promise);
+      postTaskCollaborationMessage.mockRejectedValueOnce(
+        new HttpRequestError({
+          kind: status === 403 ? "forbidden" : "http",
+          status,
+          message: `POST_${status}`,
+        }),
+      );
+      const context = shallowRef(collaborationContext("A", subjectA, taskA));
+      const state = useTaskCollaboration(context);
+      await flush();
+
+      const loadingMore = state.loadMore();
+      const paginationSignal = listTaskCollaboration.mock
+        .calls[1]?.[2] as AbortSignal;
+      state.draft.value = "sensitive draft";
+      state.replyTo.value = message("parent", "parent");
+      state.selectedMentionIds.value = ["actor-1"];
+      state.selectedEvidenceIds.value = [
+        "55555555-5555-4555-8555-555555555555",
+      ];
+      await state.send();
+
+      expect(paginationSignal.aborted).toBe(true);
+      expect(state.messages.value).toEqual([]);
+      expect(state.error.value).toContain("重新读取");
+      if (latePage === "success") {
+        pagination.resolve(
+          page("A", [message("late-secret", "late secret")], {
+            taskId: taskA,
+          }),
+        );
+      } else {
+        pagination.reject(new Error("late pagination failed"));
+      }
+      await loadingMore;
+      await flush();
+
+      expect(state.messages.value).toEqual([]);
+      expect(state.mentionOptions.value).toEqual([]);
+      expect(state.evidenceOptions.value).toEqual([]);
+      expect(state.draft.value).toBe("");
+      expect(state.replyTo.value).toBeNull();
+      expect(state.selectedMentionIds.value).toEqual([]);
+      expect(state.selectedEvidenceIds.value).toEqual([]);
+      expect(state.pendingCommand.value).toBeNull();
+      expect(state.error.value).toContain("重新读取");
+      expect(state.retryable.value).toBe(true);
+    },
+  );
 
   it.each(["body", "reply", "mention", "evidence"])(
     "invalidates the failed command and creates a new key after %s changes",

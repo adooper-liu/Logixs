@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   DocumentRecordsModule,
   TASK_COLLABORATION_EVIDENCE,
+  TASK_COLLABORATION_EVIDENCE_WRITE,
 } from "../document-records";
 import * as documentRecordsEntry from "../document-records";
 import {
   TASK_COLLABORATION_CONTEXT,
+  TASK_COLLABORATION_WRITE_CONTEXT,
   WorkExecutionModule,
 } from "../work-execution";
 import * as workExecutionEntry from "../work-execution";
@@ -26,6 +28,14 @@ describe("task collaboration public ports", () => {
     expect(workExecutionEntry).not.toHaveProperty(
       "WorkExecutionTaskCollaborationContext",
     );
+    expect(exports).toContain(TASK_COLLABORATION_WRITE_CONTEXT);
+    expect(workExecutionEntry).toHaveProperty(
+      "TASK_COLLABORATION_WRITE_CONTEXT",
+      TASK_COLLABORATION_WRITE_CONTEXT,
+    );
+    expect(workExecutionEntry).not.toHaveProperty(
+      "PrismaTaskCollaborationWriteContext",
+    );
   });
 
   it("exports the document-records evidence token without its service", () => {
@@ -41,6 +51,14 @@ describe("task collaboration public ports", () => {
     );
     expect(documentRecordsEntry).not.toHaveProperty(
       "ResolveTaskCollaborationEvidenceService",
+    );
+    expect(exports).toContain(TASK_COLLABORATION_EVIDENCE_WRITE);
+    expect(documentRecordsEntry).toHaveProperty(
+      "TASK_COLLABORATION_EVIDENCE_WRITE",
+      TASK_COLLABORATION_EVIDENCE_WRITE,
+    );
+    expect(documentRecordsEntry).not.toHaveProperty(
+      "PrismaTaskCollaborationEvidenceWrite",
     );
   });
 });

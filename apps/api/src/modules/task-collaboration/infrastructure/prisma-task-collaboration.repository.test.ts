@@ -12,9 +12,13 @@ describe("PrismaTaskCollaborationRepository transaction retries", () => {
         .mockRejectedValueOnce({ code })
         .mockRejectedValueOnce({ code })
         .mockResolvedValueOnce(expected);
-      const repository = new PrismaTaskCollaborationRepository({
-        $transaction: transaction,
-      } as never);
+      const repository = new PrismaTaskCollaborationRepository(
+        {
+          $transaction: transaction,
+        } as never,
+        writeContext(),
+        writeEvidence(),
+      );
 
       await expect(repository.appendMessage(input())).resolves.toBe(expected);
       expect(transaction).toHaveBeenCalledTimes(3);
@@ -24,9 +28,13 @@ describe("PrismaTaskCollaborationRepository transaction retries", () => {
   it.each(["P2002", "P2034"])(
     "maps exhausted %s retries to a stable persistence conflict",
     async (code) => {
-      const repository = new PrismaTaskCollaborationRepository({
-        $transaction: vi.fn().mockRejectedValue({ code }),
-      } as never);
+      const repository = new PrismaTaskCollaborationRepository(
+        {
+          $transaction: vi.fn().mockRejectedValue({ code }),
+        } as never,
+        writeContext(),
+        writeEvidence(),
+      );
 
       await expect(repository.appendMessage(input())).rejects.toBeInstanceOf(
         CollaborationPersistenceConflictError,
@@ -68,4 +76,12 @@ function input() {
     },
     occurredAt: new Date("2026-10-18T12:00:00.000Z"),
   };
+}
+
+function writeContext() {
+  return { lock: vi.fn() } as never;
+}
+
+function writeEvidence() {
+  return { lockExact: vi.fn() } as never;
 }

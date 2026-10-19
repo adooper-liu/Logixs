@@ -27,3 +27,8 @@ export {
   type TaskCollaborationEvidenceOption,
   type TaskCollaborationEvidencePort,
 } from "./task-collaboration-evidence.port";
+export {
+  TASK_COLLABORATION_EVIDENCE_WRITE,
+  type TaskCollaborationEvidenceWritePort,
+  type TaskCollaborationEvidenceWriteTransaction,
+} from "./task-collaboration-evidence-write.port";

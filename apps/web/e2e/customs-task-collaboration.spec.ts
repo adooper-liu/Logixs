@@ -23,7 +23,7 @@ const screenshotOptions = {
 interface FixtureControl {
   gets: string[];
   posts: Array<Record<string, unknown>>;
-  failNextPost: boolean;
+  failNextPostStatus: number | null;
   holdPostFor: string | null;
   releasePost: (() => void) | null;
   holdGetFor: string | null;
@@ -34,7 +34,7 @@ async function installFixture(page: Page): Promise<FixtureControl> {
   const control: FixtureControl = {
     gets: [],
     posts: [],
-    failNextPost: false,
+    failNextPostStatus: null,
     holdPostFor: null,
     releasePost: null,
     holdGetFor: null,
@@ -137,11 +137,17 @@ async function handlePost(
     });
     control.releasePost = null;
   }
-  if (control.failNextPost) {
-    control.failNextPost = false;
+  if (control.failNextPostStatus !== null) {
+    const status = control.failNextPostStatus;
+    control.failNextPostStatus = null;
     await route.fulfill({
-      status: 503,
-      json: { message: "CUSTOMS_COLLABORATION_POST_FAILED" },
+      status,
+      json: {
+        message:
+          status === 503
+            ? "CUSTOMS_COLLABORATION_POST_FAILED"
+            : `POST_${status}`,
+      },
     });
     return;
   }
@@ -313,7 +319,7 @@ test("customs consumes shared work, archive, and collaboration modes in every vi
         : screenshotOptions.maxDiffPixelRatio,
   });
 
-  control.failNextPost = true;
+  control.failNextPostStatus = 503;
   await page.getByTestId("collaboration-send").click();
   await expect(page.getByTestId("send-error")).toContainText(
     "CUSTOMS_COLLABORATION_POST_FAILED",
@@ -335,6 +341,26 @@ test("customs consumes shared work, archive, and collaboration modes in every vi
   await expect(queueItem(page, fixture.activeContainerNumber)).toHaveClass(
     /queue-item--active/,
   );
+});
+
+test("customs POST 404 clears stale collaboration and pending retry", async ({
+  page,
+}) => {
+  const control = await gotoActiveTask(page);
+  await page.getByRole("button", { name: "协作", exact: true }).click();
+  await expect(page.getByText("清关协作：请核对当前申报事实")).toBeVisible();
+  await page.getByRole("button", { name: "回复", exact: true }).click();
+  await page.getByLabel("协作消息").fill("任务撤销后不得保留");
+
+  control.failNextPostStatus = 404;
+  await page.getByTestId("collaboration-send").click();
+
+  await expect(page.getByRole("alert")).toContainText("重新读取");
+  await expect(page.getByText("清关协作：请核对当前申报事实")).toHaveCount(0);
+  await expect(page.getByTestId("replying-to")).toHaveCount(0);
+  await expect(page.getByLabel("协作消息")).toHaveCount(0);
+  await expect(page.getByTestId("collaboration-send-retry")).toHaveCount(0);
+  expect(control.posts).toHaveLength(1);
 });
 
 test("customs clears switched collaboration, ignores late requests, and has a work-only no-task state", async ({

@@ -101,10 +101,8 @@ describe("DecideEvidenceService", () => {
     ).resolves.toMatchObject({ appended: true });
     expect(appendDecision).toHaveBeenCalledWith(
       expect.objectContaining({
+        tenantId: "dev-tenant",
         decision: "revoked",
-        nextState: "revoked",
-        nextValidity: "revoked",
-        previousDecisionId: "d1",
       }),
     );
 
