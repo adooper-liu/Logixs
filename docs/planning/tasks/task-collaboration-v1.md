@@ -1,7 +1,7 @@
 ---
 status: coding
 branch: feat/task-collaboration-v1
-verification: "TC1 accepted at 169e7b49 on 2026-10-18 after TC1-R1 through TC1-R3 were fixed. Main review reproduced focused API unit 36 files/248 tests, PostgreSQL integration 11/11, API lint/typecheck/build, contract/drift, Prisma generate/validate, dictionary, authz routes, repo/format/diff checks; final routes are GET /node-tasks/:taskId/collaboration and POST /node-tasks/:taskId/collaboration/messages. Full high-risk fresh review and validate remain assigned to TC4. Current slice: TC2-shared-ui-first-consumer."
+verification: "TC2 accepted at 23594064 on 2026-10-19 under the fixed review cadence: one main review per slice, one whole-branch independent review only at TC4. Main review verified the repaired subject-scoped GET and consumer-owned collaboration model, focused Web unit 5 files/48 tests, Web lint/format/typecheck/build, Playwright three projects 6 applicable tests, repo/diff checks, and manual review of 1440/1024/390 screenshots. Current slice: TC3-customs-second-consumer."
 owner: main
 writer: codex
 risk: high
@@ -297,15 +297,24 @@ type TaskContextPanelProps = {
   - `1024x768`：左窄轨/抽屉与中右并列不回退；composer、重试、加载更早可达；无嵌套纵向 scroll。
   - `390x844`：严格三屏；协作在“上下文”内，面包屑保留 container/task；返回详情恢复焦点/scroll；composer、取消回复和失败恢复不被底部或软键盘模拟遮挡，无横向溢出。
   - 使用 `apps/web/e2e/task-collaboration.spec.ts` 与三个版本化 `task-collaboration-*-chromium-win32.png`；只有在主代理人工逐张核对后才更新 snapshot，不用阈值掩盖几何失败。
+- **TC2 首轮评审 disposition（2026-10-19）**：
+  - `TC2-R1 accepted`：Web GET adapter 只发送 `pageSize/cursor`，遗漏服务端必需的 `subjectKind=container` 与 `subjectId`；真实 TC1 API 会在父链复核前返回 `RESOURCE_NOT_FOUND`，而 unit/E2E mock 把错误 URL 固化并掩盖。adapter 必须接收 typed `subjectRef` 并编码两个 query 字段；composable 每次首屏/分页都传当前 subjectRef；unit 与 E2E route 必须直接断言 query 与当前 task/container 匹配，错误即让测试失败。
+  - `TC2-R2 accepted`：`TaskContextPanel` 当前接收 `taskId/subjectRef/workRef/mode` 并在内部调用 `useTaskCollaboration`，偏离 brief 固定的 `modelValue/contextKey/modes/collaboration` facade，导致 API/竞态状态所有权藏进展示组件，TC3 无法把同一共享 model 原样传入。把 `useTaskCollaboration` 上移到 `TaskWorkbench`（TC3 将由 Customs 同样持有），`TaskContextPanel` 只接收 `modelValue/contextKey/modes/collaboration`，emits 固定 `update:modelValue / submit / retry / loadMore`，保留 work/archive slots，内部唯一渲染 `TaskCollaborationPanel`。组件不得 import/call composable 或 adapter；其 context change 只负责 mode/focus/scroll facade，协作清空由传入 model 的 composable generation 负责。
 - **验证命令**：focused Vitest 五个文件、Web lint/format/typecheck/build、Playwright `task-collaboration.spec.ts` 的 desktop/narrow/mobile 三项目（`--workers=1`）、`repo:check` 与 `git diff --check`。全仓 `pnpm validate` 留 TC4。
 - **不做**：Customs/TC3、其他工作台、后端/契约/数据库修改、显式 redacted count/marker、人员目录、任意邀请、通知、频道/私聊/read receipt/edit/delete/file upload/AI、TaskArchive/ObjectActivity 写投影。
 - **停止条件**：页面出现私有消息实现；共享组件读取任务状态/角色推断权限；档案与协作混在同一时间线；移动端新增第四屏或嵌套 scroll；需要扩公共契约才能如实呈现信息。
 
 ### `TC3-customs-second-consumer`
 
-- **目标**：Customs 原样消费同一个 `TaskContextPanel/TaskCollaborationPanel/useTaskCollaboration`，删除其本地 action/archive mode/focus/scroll 重复；共享接口只有在本片不需改动时才固定。
-- **TDD**：work/archive/collaboration 往返保持清关表单、当前任务/货柜/节点锚点、scroll/focus；任务切换清空旧线程；无 task 不显示协作；stacked 1440/1024/390 无回退。
-- **停止条件**：为 Customs 新建协作组件/API；必须给共享组件增加清关字段；破坏 RoleWorkbenchFrame empty state/stacked 几何；修改清关业务动作。
+- **目标**：Customs 原样消费 TC2 固定的同一个 `TaskContextPanel + TaskCollaborationPanel + useTaskCollaboration`，删除其本地 action/archive mode、focus 与 scroll 复制；共享接口在本片不得再修改。
+- **固定接法**：Customs 只在页面层由当前 `selectedContainer + selectedTask` 生成 `subjectRef={kind:'container',id:selectedContainer.id}`、`workRef={kind:'node_task',id:selectedTask.id}` 和稳定 contextKey；页面唯一调用 `useTaskCollaboration(context)`，把 model 传给 `TaskContextPanel`。`CustomsActionPanel` 放入 work slot，现有 `TaskArchivePanel` 放入 archive slot；协作仍由共享 panel 内部唯一渲染。
+- **结构不变量**：保留 `RoleWorkbenchFrame responsive-mode='stacked'`、岗位/货柜范围、生命周期轨道、左任务池、中清关事实和右任务上下文的顺序。1440 维持三栏；1024 维持队列+事实在上、右栏跨整行；390 维持任务池→清关事实→任务上下文。协作只切右栏局部，不改变清关事实、案件表单、业务动作或移动锚点。
+- **状态与恢复**：`TaskContextPanel` 接管办理/档案/协作模式的 hidden/inert/aria-hidden、focus/scroll 记忆；删除 Customs 本地 `CustomsContextMode`、`actionScrollTop`、`lastActionFocus` 与手写 mode nav。办理表单保持挂载，往返三模式不丢输入；task/container 切换同步清空旧协作并回到 work；无真实 task 时不显示 archive/collaboration，只保留办理上下文。
+- **TDD**：证明共享接口文件在 TC3 diff 中零修改；work/archive/collaboration 往返保持清关表单值、当前 container/task/node、focus/scroll；task switch 丢弃旧协作晚到结果；无 task 不请求/不显示协作；completed task 由服务端只读；stacked 三视口几何、移动三段顺序、无横向溢出、无嵌套 scroll owner均不回退。
+- **视口证据**：创建 `apps/web/e2e/customs-task-collaboration.spec.ts` 及 1440/1024/390 三张版本化截图；主代理逐张人工核对。TC3 不修改 TC2 的 TaskWorkbench 截图或共享组件截图。
+- **评审节奏**：TC3 只做一次主代理真实 diff + 定向验证；无当前范围 finding 即接受并进入 TC4，不启动逐片 fresh reviewer。TC4 才执行一次 whole-branch fresh 独立复审和完整 `pnpm validate`。
+- **验证命令**：focused Customs unit、既有 customs archive/flow E2E 加新的 customs collaboration 三项目、Web lint/format/typecheck/build、`repo:check` 与 `git diff --check`；完整门禁留 TC4。
+- **停止条件**：为 Customs 新建协作组件/API；修改共享组件/composable/adapter；必须给共享组件增加清关字段；破坏 RoleWorkbenchFrame empty state/stacked 几何；修改清关业务动作。
 
 ### `TC4-review-gate-integration`
 
@@ -350,3 +359,5 @@ type TaskContextPanelProps = {
 | 2026-10-18 | coding | Codex / GPT-5     | 52a9d6d5 | 修复 TC0-R1～R5；主代理复跑 domain 33/33、contract 27 schemas/73 fixtures、API lint/typecheck、Prisma validate/generate、dictionary/repo/format/diff 均通过，fresh Claude TC0 重审 no-findings；接受 TC0，进入 TC1 |
 | 2026-10-18 | fix    | Claude / Opus 4.8 | none     | 审查 TC1 未提交实现；接受 TC1-R1～R3：POST 路径漏 `/messages`、EvidenceRef 未独立执行 evidence.read 且读取泄露引用、exact Evidence 查询未在数据访问边界携带 tenant/subject；其余定向门禁通过，待 Codex 修复后重审  |
 | 2026-10-18 | coding | Codex / GPT-5     | 169e7b49 | 修复 TC1-R1～R3；主代理复跑 focused API 36 files/248 tests、PostgreSQL 11/11、API lint/typecheck/build、contract/Prisma/dictionary/authz/repo/format/diff 均通过；接受 TC1，进入 TC2                               |
+| 2026-10-19 | fix    | Claude / Opus 4.8 | none     | 审查 TC2 未提交实现与三视口截图；接受 TC2-R1～R2：GET 漏 subject 父链 query、TaskContextPanel 内部拥有 composable 偏离固定 facade；46 unit、6 applicable E2E 及 Web 门禁通过但未覆盖真实失败，待 Codex 修复        |
+| 2026-10-19 | coding | Codex / unknown   | 23594064 | 修复 TC2-R1～R2；负责人要求立即收敛为逐片一次主审 + TC4 一次整体独立复审。主代理按新节奏复跑 48 unit、6 applicable E2E、Web lint/format/typecheck/build、repo/diff 并人工核对三视口截图；接受 TC2，进入 TC3        |
