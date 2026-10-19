@@ -1,11 +1,10 @@
 ---
-status: design
+status: blocked
 branch: docs/p6-abc-field-mapping-v1
 owner: main
 writer: main
 risk: low
-dependsOn:
-  - p6-workbench-action-index-v1
+dependsOn: []
 writeScopes:
   - docs/planning/tasks/p6-abc-field-mapping-v1.md
 exclusiveLocks: []
@@ -27,6 +26,8 @@ authorityRefs:
 ---
 
 # 任务：已有动作的 7 字段 ABC 映射视图（D2）
+
+> 当前为候选设计稿全集的一部分，未触发 `业务开工`，因此保持 `blocked`；恢复顺序上消费 D1 的审计结果，但当前不登记未完成硬依赖。
 
 ## 已有 vs 补强（定位先行）
 

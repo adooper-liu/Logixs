@@ -1,12 +1,10 @@
 ---
-status: design
+status: blocked
 branch: docs/p6-charges-three-segment-fields-v1
 owner: main
 writer: main
 risk: medium
-dependsOn:
-  - p6-workbench-action-index-v1
-  - p6-abc-field-mapping-v1
+dependsOn: []
 writeScopes:
   - docs/planning/tasks/p6-charges-three-segment-fields-v1.md
 exclusiveLocks:
@@ -28,6 +26,8 @@ authorityRefs:
 ---
 
 # 任务：`charges` 工作台三段闭环字段补强（D3）
+
+> 当前为候选设计稿全集的一部分，未触发 `业务开工：charges`，因此保持 `blocked`；正文可引用 D1/D2 的未来产物，但当前不登记未完成硬依赖。
 
 ## 已有 vs 补强
 

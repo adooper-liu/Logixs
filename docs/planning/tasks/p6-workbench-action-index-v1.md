@@ -1,5 +1,5 @@
 ---
-status: design
+status: blocked
 branch: docs/p6-workbench-action-index-v1
 owner: main
 writer: main
@@ -19,6 +19,8 @@ authorityRefs:
 ---
 
 # 任务：23 工作台已有动作索引视图（D1）
+
+> 当前为候选设计稿全集的一部分，未触发 `业务开工`，因此保持 `blocked`；负责人选择本线开工后，D1 应先恢复为 `design`，完成来源审计后再供 D2～D6 消费。
 
 ## 已有 vs 补强（定位先行）
 

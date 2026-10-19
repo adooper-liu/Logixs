@@ -1,13 +1,10 @@
 ---
-status: design
+status: blocked
 branch: docs/p6-quasi-loss-ladder-mapping-v1
 owner: main
 writer: main
 risk: medium
-dependsOn:
-  - p6-workbench-action-index-v1
-  - p6-abc-field-mapping-v1
-  - p6-charges-three-segment-fields-v1
+dependsOn: []
 writeScopes:
   - docs/planning/tasks/p6-quasi-loss-ladder-mapping-v1.md
 exclusiveLocks:
@@ -26,6 +23,8 @@ authorityRefs:
 ---
 
 # 任务：已有动作的 5 阶准损失触发 mapping 与落账候选补强（D4）
+
+> 当前为候选设计稿全集的一部分；5 阶与落账语义尚未写回正式业务权威，且未触发对应 `业务开工`，因此保持 `blocked`。恢复时按正文顺序消费 D1/D2/D3，不登记当前未完成硬依赖。
 
 ## 已有 vs 补强（定位先行）
 

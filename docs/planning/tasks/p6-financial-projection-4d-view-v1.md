@@ -1,15 +1,10 @@
 ---
-status: design
+status: blocked
 branch: docs/p6-financial-projection-4d-view-v1
 owner: main
 writer: main
 risk: low
-dependsOn:
-  - p6-workbench-action-index-v1
-  - p6-abc-field-mapping-v1
-  - p6-charges-three-segment-fields-v1
-  - p6-quasi-loss-ladder-mapping-v1
-  - p6-exception-risk-acceptance-fields-v1
+dependsOn: []
 writeScopes:
   - docs/planning/tasks/p6-financial-projection-4d-view-v1.md
 exclusiveLocks: []
@@ -33,6 +28,8 @@ authorityRefs:
 ---
 
 # 任务：已有财务投影的 4 维视图、时间分轨落实与对账派生（D5）
+
+> 当前为候选设计稿全集的收口视图，未触发 `业务开工`，因此保持 `blocked`；恢复时最后消费 D1/D2/D3 及已获权威写回的 D4/D6 overlay，不登记当前未完成硬依赖。
 
 ## 已有 vs 补强（定位先行）
 
