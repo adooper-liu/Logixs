@@ -1,5 +1,5 @@
 ---
-status: coding
+status: fix
 branch: feat/task-ai-assisted-confirmed-execution-v1
 owner: main
 writer: codex
@@ -317,6 +317,17 @@ warningCodes 当前不形成 finding：V1 已常驻显示人话 rationale/impact
 #### AI3 主审验收（2026-10-20）
 
 主代理核对 `eb71d25c...worktree` 的 AI3 实际差异，确认只修改 Customs consumer、对应 unit/E2E/三张 baseline 与 brief；共享 AI adapter/composable/panel/facade 相对基线零差异。复跑 focused Web 5 files/78 tests、Web lint/format/typecheck/build、repo/diff，全部通过。正式 Playwright setup 仍被既有 5173 非测试 Logix dev server 阻断；首次仓库外配置误用 `127.0.0.1`，导致只匹配 `localhost` 的 Customs route mock 未生效并出现按钮等待超时，修正临时配置 host 后以同一代码复跑七 spec 三视口 106 passed/35 skipped，临时配置运行后删除。三张 Customs AI baseline 逐张人工核对通过：1440 三栏与清关事实/办理区域保持，1024 既定 stacked 布局保持，390 “任务池 → 清关事实 → 任务上下文”顺序保持；AI 为上下文内部模式，WorkOrder、capability、影响/风险和人员决定可达，无页面级横向截断或 AI 内层滚动。精确 task/container refs、切换失效、表单草稿/焦点/scroll 保持、确认重读、撤权/冲突和同键恢复成立。AI3 无 finding，接受并进入 whole-branch fresh review gate。
+
+#### Whole-branch 独立复审 disposition（2026-10-20）
+
+fresh Claude 只读复审 `a153e3fc..a82261e5`，并复跑 API unit 107/107、PostgreSQL confirmed-execution 19/19、Web unit 87/87、AI-service 11/11、contract/drift、authz、repo/diff；现有检查未覆盖以下 4 项反例，因此全部接受，任务回到 `fix`，不得运行最终 `pnpm validate` 或进入 PR：
+
+- `AI-WBR-001 accepted / high / cross-candidate-claim-concurrency`：decision 只按 candidateId 串行；同 actor/work-order/snapshot 的两个候选使用不同 key 并发确认时可同时通过快照检查，第二次 formal claim 在 same-actor `already_done`/state-conflict 分支再写 committed ClientOperation，最终形成两个 accepted decision/operation。修复必须把决定性快照检查与领取按 tenant+workOrder 串行，或在正式领取事务内强制预期 task/work-order version；另一个候选必须 expired/conflict 且不得新增正式操作。补真实 PostgreSQL 双 candidate/barrier 反证。
+- `AI-WBR-002 accepted / medium / immutable-recovery-receipt`：`findClaimReceipt` 从当前可变 WorkOrder/NodeTask 重构并固定 `applied:false`，但 accepted decision 写 `executionState:applied`、operation 已 committed，UI 主结果会显示“未应用”。响应丢失恢复必须重放领取提交时的不可变业务结果；若 `applied` 仅表示本次 HTTP 是否执行写入，则不得把它当最终业务落账标签。补真实 adapter/HTTP 恢复，并覆盖领取后状态再次变化的反证；不得用强制 `applied:true` 的 Web mock 代替。
+- `AI-WBR-003 accepted / medium / task-action-public-contract`：四个新公共路由的 Swagger success DTO 只声明 candidateId/decisionId/contractVersion，未描述权威 V1 响应；400/404/409/dependency/500 仍是 Nest 默认异常，不符合 GC-011 稳定信封与 server trace。只在 task-action 新路由建立完整 DTO/parity 与窄异常映射，不扩成全仓 G7 平台；补 OpenAPI required-field 对拍和 HTTP 错误信封测试。
+- `AI-WBR-004 accepted / medium / production-copy-realism`：生产 rule 解释、API title 与 fallback 使用英文和 task/work-order UUID，两个工作台却用中文 route mock 做视觉验收，常驻证据脊柱的真实生产文案不符合 UI-D09。把 rule/fallback 改为服务端受控中文岗位文案，UUID 只保留 typed refs/折叠详情；至少一条 integration/E2E 使用实际生产解释 shape，证明截图与真实路径一致。不得新增供应商 SDK、前端私有文案目录或业务字段。
+
+修复范围仅限上述并发/恢复回执、新路由公共契约与生产文案及其直接测试、派生契约和 brief；不得扩展到 complete、任意工具、其他公共 API 的全局 GC-011 改造、人员目录或新工作台。修复后主代理逐项 scoped 重审，不启动第二个 whole-branch reviewer；4 项全部处置后才在当前工作区运行一次最终 `pnpm validate`。
 
 ## 五面映射
 
