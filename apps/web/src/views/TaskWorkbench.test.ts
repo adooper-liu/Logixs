@@ -1,8 +1,15 @@
 import { mount } from "@vue/test-utils";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { computed, nextTick, ref, shallowRef } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NodeTaskOutcome } from "../api/nodeTasks";
+import type {
+  TaskAiAssistanceContext,
+  TaskAiAssistancePanelModel,
+  TaskAiAssistanceState,
+} from "../composables/useTaskAiAssistance";
 import type {
   TaskCollaborationContext,
   TaskCollaborationPanelModel,
@@ -33,6 +40,7 @@ const workspaceError = shallowRef("");
 const selectTask = vi.fn((taskId: string) => {
   activeTaskId.value = taskId;
 });
+const refreshTask = vi.fn().mockResolvedValue(undefined);
 const collaborationModel = {
   send: vi.fn(),
   refresh: vi.fn(),
@@ -43,9 +51,28 @@ const useTaskCollaboration = vi.fn((context: unknown) => {
   void context;
   return collaborationModel;
 });
+const aiState = {
+  confirm: vi.fn(),
+  reject: vi.fn(),
+  retry: vi.fn(),
+  refresh: vi.fn(),
+} as unknown as TaskAiAssistanceState;
+const useTaskAiAssistance = vi.fn(
+  (context: unknown, options: { refreshTask(): Promise<void> | void }) => {
+    void context;
+    void options;
+    return aiState;
+  },
+);
 
 vi.mock("../composables/useTaskCollaboration", () => ({
   useTaskCollaboration: (context: unknown) => useTaskCollaboration(context),
+}));
+vi.mock("../composables/useTaskAiAssistance", () => ({
+  useTaskAiAssistance: (
+    context: unknown,
+    options: { refreshTask(): Promise<void> | void },
+  ) => useTaskAiAssistance(context, options),
 }));
 
 vi.mock("../composables/useTaskWorkspace", () => ({
@@ -71,13 +98,16 @@ vi.mock("../composables/useTaskWorkspace", () => ({
     reportException: vi.fn(),
     retrySubmission: vi.fn(),
     loadMore: vi.fn(),
+    refreshTask,
   }),
 }));
 
 const LayoutStub = {
-  props: ["mobileContextLabel", "rightRailLabel"],
+  name: "WorkbenchLayout",
+  props: ["mobileContextLabel", "rightRailLabel", "mobileScreen"],
+  emits: ["update:mobileScreen"],
   template: `
-    <main data-testid="layout" :data-mobile-context-label="mobileContextLabel" :data-right-rail-label="rightRailLabel">
+    <main data-testid="layout" :data-mobile-context-label="mobileContextLabel" :data-right-rail-label="rightRailLabel" :data-mobile-screen="mobileScreen">
       <div data-region="header"><slot name="header" /></div>
       <div data-region="responsibility"><slot name="responsibility" /></div>
       <div data-region="decision"><slot name="decision" /></div>
@@ -101,14 +131,25 @@ const PaneStub = {
 
 const ContextPanelStub = {
   name: "TaskContextPanel",
-  props: ["modelValue", "contextKey", "modes", "collaboration"],
-  emits: ["update:modelValue", "submit", "retry", "loadMore"],
+  props: ["modelValue", "contextKey", "modes", "collaboration", "ai"],
+  emits: [
+    "update:modelValue",
+    "submit",
+    "retry",
+    "loadMore",
+    "confirmAi",
+    "rejectAi",
+    "retryAi",
+    "refreshAi",
+  ],
   template: `
     <section
       data-testid="task-context-panel"
       :data-context-key="contextKey"
       :data-modes="modes.join(',')"
+      :data-active-mode="modelValue"
       :data-has-collaboration="String(Boolean(collaboration))"
+      :data-has-ai="String(Boolean(ai))"
     >
       <div data-testid="context-work"><slot name="work" /></div>
       <div data-testid="context-archive"><slot name="archive" /></div>
@@ -116,6 +157,10 @@ const ContextPanelStub = {
       <button data-testid="context-retry-thread" @click="$emit('retry', 'thread')">重试读取</button>
       <button data-testid="context-retry-send" @click="$emit('retry', 'send')">重试发送</button>
       <button data-testid="context-load-more" @click="$emit('loadMore')">更早消息</button>
+      <button data-testid="context-confirm-ai" @click="$emit('confirmAi')">确认 AI</button>
+      <button data-testid="context-reject-ai" @click="$emit('rejectAi', '稍后处理')">拒绝 AI</button>
+      <button data-testid="context-retry-ai" @click="$emit('retryAi', 'confirm')">恢复 AI</button>
+      <button data-testid="context-refresh-ai" @click="$emit('refreshAi')">刷新 AI</button>
     </section>
   `,
 };
@@ -175,10 +220,16 @@ describe("TaskWorkbench", () => {
     workspaceError.value = "";
     selectTask.mockClear();
     useTaskCollaboration.mockClear();
+    useTaskAiAssistance.mockClear();
+    refreshTask.mockClear();
     vi.mocked(collaborationModel.send).mockClear();
     vi.mocked(collaborationModel.refresh).mockClear();
     vi.mocked(collaborationModel.retrySend).mockClear();
     vi.mocked(collaborationModel.loadMore).mockClear();
+    vi.mocked(aiState.confirm).mockClear();
+    vi.mocked(aiState.reject).mockClear();
+    vi.mocked(aiState.retry).mockClear();
+    vi.mocked(aiState.refresh).mockClear();
   });
 
   it("keeps the six regions and three panes with one shared task context", async () => {
@@ -210,10 +261,12 @@ describe("TaskWorkbench", () => {
     const context = wrapper.get('[data-testid="task-context-panel"]');
     expect(context.attributes()).toMatchObject({
       "data-context-key": `container:${activeContainer.value!.containerRecordId}|node_task:${activeTask.value!.taskId}`,
-      "data-modes": "work,archive,collaboration",
+      "data-modes": "work,archive,collaboration,ai",
       "data-has-collaboration": "true",
+      "data-has-ai": "true",
     });
     expect(useTaskCollaboration).toHaveBeenCalledTimes(1);
+    expect(useTaskAiAssistance).toHaveBeenCalledTimes(1);
     const collaborationContext = useTaskCollaboration.mock
       .calls[0]![0] as unknown as Readonly<{
       value: TaskCollaborationContext | null;
@@ -226,6 +279,21 @@ describe("TaskWorkbench", () => {
         id: activeContainer.value!.containerRecordId,
       },
       workRef: { kind: "node_task", id: activeTask.value!.taskId },
+    });
+    const aiContext = useTaskAiAssistance.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskAiAssistanceContext | null;
+    }>;
+    expect(aiContext.value).toEqual(collaborationContext.value);
+    const ai = wrapper
+      .getComponent({ name: "TaskContextPanel" })
+      .props("ai") as TaskAiAssistancePanelModel;
+    expect(ai.facts).toEqual({
+      objectLabel: activeTask.value!.containerNumber,
+      taskLabel: activeTask.value!.nodeName,
+      actionLabel: "领取",
+      responsibilityLabel: activeTask.value!.assignment.label,
+      dueLabel: expect.any(String),
     });
     expect(wrapper.findAll('[data-testid="task-context-panel"]')).toHaveLength(
       1,
@@ -241,6 +309,19 @@ describe("TaskWorkbench", () => {
     expect(collaborationModel.refresh).toHaveBeenCalledTimes(1);
     expect(collaborationModel.retrySend).toHaveBeenCalledTimes(1);
     expect(collaborationModel.loadMore).toHaveBeenCalledTimes(1);
+
+    await wrapper.get('[data-testid="context-confirm-ai"]').trigger("click");
+    await wrapper.get('[data-testid="context-reject-ai"]').trigger("click");
+    await wrapper.get('[data-testid="context-retry-ai"]').trigger("click");
+    await wrapper.get('[data-testid="context-refresh-ai"]').trigger("click");
+    expect(aiState.confirm).toHaveBeenCalledTimes(1);
+    expect(aiState.reject).toHaveBeenCalledWith("稍后处理");
+    expect(aiState.retry).toHaveBeenCalledWith("confirm");
+    expect(aiState.refresh).toHaveBeenCalledTimes(1);
+
+    const options = useTaskAiAssistance.mock.calls[0]![1];
+    await options.refreshTask();
+    expect(refreshTask).toHaveBeenCalledTimes(1);
   });
 
   it("switches only the middle pane between execution and frozen result", async () => {
@@ -470,5 +551,96 @@ describe("TaskWorkbench", () => {
       subjectRef: { id: activeContainer.value!.containerRecordId },
     });
     expect(collaborationContext.value?.contextKey).not.toContain("untrusted");
+    const aiContext = useTaskAiAssistance.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskAiAssistanceContext | null;
+    }>;
+    expect(aiContext.value).toMatchObject({
+      taskId: activeTask.value!.taskId,
+      subjectRef: { id: activeContainer.value!.containerRecordId },
+    });
+    expect(aiContext.value?.contextKey).not.toContain("untrusted");
+  });
+
+  it("updates AI context synchronously on task switch and keeps AI available for completed tasks", async () => {
+    const { wrapper } = await mountWorkbench();
+    const aiContext = useTaskAiAssistance.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskAiAssistanceContext | null;
+    }>;
+    const firstTaskId = aiContext.value!.taskId;
+
+    activeTaskId.value = tasks.value[0]!.taskId;
+
+    expect(aiContext.value?.taskId).toBe(tasks.value[0]!.taskId);
+    expect(aiContext.value?.taskId).not.toBe(firstTaskId);
+    await nextTick();
+    const context = wrapper.get('[data-testid="task-context-panel"]');
+    expect(context.attributes("data-modes")).toBe(
+      "work,archive,collaboration,ai",
+    );
+    expect(context.attributes("data-has-ai")).toBe("true");
+  });
+
+  it("returns to AI after its own same-context task refresh", async () => {
+    refreshTask.mockImplementationOnce(async () => {
+      workspaceLoading.value = true;
+      await nextTick();
+      workspaceLoading.value = false;
+      tasks.value = [...tasks.value];
+      await nextTick();
+    });
+    const { wrapper } = await mountWorkbench();
+    wrapper
+      .getComponent({ name: "WorkbenchLayout" })
+      .vm.$emit("update:mobileScreen", "context");
+    const panel = wrapper.getComponent({ name: "TaskContextPanel" });
+    panel.vm.$emit("update:modelValue", "ai");
+    await nextTick();
+    expect(
+      wrapper
+        .get('[data-testid="task-context-panel"]')
+        .attributes("data-active-mode"),
+    ).toBe("ai");
+
+    const options = useTaskAiAssistance.mock.calls[0]![1];
+    await options.refreshTask();
+    await nextTick();
+
+    expect(
+      wrapper
+        .get('[data-testid="task-context-panel"]')
+        .attributes("data-active-mode"),
+    ).toBe("ai");
+    expect(
+      wrapper.get('[data-testid="layout"]').attributes("data-mobile-screen"),
+    ).toBe("context");
+  });
+
+  it("removes AI mode and model whenever exact task context is unavailable", async () => {
+    const { wrapper } = await mountWorkbench();
+    workspaceLoading.value = true;
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="task-context-panel"]').exists()).toBe(
+      false,
+    );
+    const aiContext = useTaskAiAssistance.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskAiAssistanceContext | null;
+    }>;
+    expect(aiContext.value).toBeNull();
+  });
+
+  it("keeps AI transport and permission policy outside the consumer view", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/views/TaskWorkbench.vue"),
+      "utf8",
+    );
+
+    expect(source).not.toContain("api/taskAiAssistance");
+    expect(source).not.toContain("task.execute");
+    expect(source).not.toMatch(/capabilit(?:y|ies)/i);
+    expect(source).not.toMatch(/\brole\b/i);
   });
 });

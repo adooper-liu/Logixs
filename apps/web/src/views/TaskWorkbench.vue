@@ -3,7 +3,7 @@ import { computed, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TaskArchivePanel from "../components/task/TaskArchivePanel.vue";
 import TaskContextPanel from "../components/task/TaskContextPanel.vue";
-import type { TaskContextMode } from "../components/task/TaskContextPanel.vue";
+import type { TaskContextPanelMode } from "../components/task/TaskContextPanel.vue";
 import TaskExecutionPanel from "../components/task/TaskExecutionPanel.vue";
 import TaskFrozenResultPanel from "../components/task/TaskFrozenResultPanel.vue";
 import TaskQueue from "../components/task/TaskQueue.vue";
@@ -17,6 +17,12 @@ import type {
   WorkbenchPaneState,
   WorkbenchResponsibilityItem,
 } from "../components/workbench/workbenchLayout.types";
+import {
+  useTaskAiAssistance,
+  type TaskAiAssistanceContext,
+  type TaskAiAssistancePanelModel,
+  type TaskAiAssistanceRetryTarget,
+} from "../composables/useTaskAiAssistance";
 import {
   useTaskCollaboration,
   type TaskCollaborationContext,
@@ -45,6 +51,7 @@ const {
   executeAction,
   reportException,
   retrySubmission,
+  refreshTask,
   loadMore,
 } = useTaskWorkspace();
 
@@ -56,11 +63,12 @@ const scopedContainer = computed(() =>
 const leftCollapsed = shallowRef(false);
 const rightCollapsed = shallowRef(false);
 const mobileScreen = shallowRef<WorkbenchMobileScreen>("queue");
-const contextMode = shallowRef<TaskContextMode>("work");
-const contextModeLabels: Record<TaskContextMode, string> = {
+const contextMode = shallowRef<TaskContextPanelMode>("work");
+const contextModeLabels: Record<TaskContextPanelMode, string> = {
   work: "办理",
   archive: "档案",
   collaboration: "协作",
+  ai: "AI 辅助",
 };
 const actionableStatuses = new Set([
   "available",
@@ -87,12 +95,12 @@ const visibleContainer = computed(() =>
 const visibleOutcome = computed(() =>
   visibleTask.value ? activeTaskOutcome.value : null,
 );
-const collaborationContextKey = computed(() =>
+const taskContextKey = computed(() =>
   visibleTask.value && visibleContainer.value
     ? `container:${visibleContainer.value.containerRecordId}|node_task:${visibleTask.value.taskId}`
     : null,
 );
-const collaborationSubjectRef = computed(() =>
+const taskSubjectRef = computed(() =>
   visibleContainer.value
     ? {
         kind: "container" as const,
@@ -100,28 +108,59 @@ const collaborationSubjectRef = computed(() =>
       }
     : null,
 );
-const collaborationWorkRef = computed(() =>
+const taskWorkRef = computed(() =>
   visibleTask.value
     ? { kind: "node_task" as const, id: visibleTask.value.taskId }
     : null,
 );
 const collaborationContext = computed<TaskCollaborationContext | null>(() =>
-  collaborationContextKey.value &&
+  taskContextKey.value &&
   visibleTask.value &&
-  collaborationSubjectRef.value &&
-  collaborationWorkRef.value
+  taskSubjectRef.value &&
+  taskWorkRef.value
     ? {
-        contextKey: collaborationContextKey.value,
+        contextKey: taskContextKey.value,
         taskId: visibleTask.value.taskId,
-        subjectRef: collaborationSubjectRef.value,
-        workRef: collaborationWorkRef.value,
+        subjectRef: taskSubjectRef.value,
+        workRef: taskWorkRef.value,
       }
     : null,
 );
 const collaboration = useTaskCollaboration(collaborationContext);
-const taskContextModes = computed<readonly TaskContextMode[]>(() =>
-  collaborationContext.value
-    ? ["work", "archive", "collaboration"]
+const aiContext = computed<TaskAiAssistanceContext | null>(() =>
+  taskContextKey.value &&
+  visibleTask.value &&
+  taskSubjectRef.value &&
+  taskWorkRef.value
+    ? {
+        contextKey: taskContextKey.value,
+        taskId: visibleTask.value.taskId,
+        subjectRef: taskSubjectRef.value,
+        workRef: taskWorkRef.value,
+      }
+    : null,
+);
+const aiAssistance = useTaskAiAssistance(aiContext, {
+  refreshTask: refreshTaskForAi,
+});
+const aiPanelModel = computed<TaskAiAssistancePanelModel | null>(() => {
+  const task = visibleTask.value;
+  if (!aiContext.value || !task) return null;
+  return {
+    ...aiAssistance,
+    facts: {
+      objectLabel: task.containerNumber,
+      taskLabel: task.nodeName,
+      actionLabel: "领取",
+      responsibilityLabel:
+        task.status === "completed" ? "未知" : task.assignment.label,
+      dueLabel: task.dueAt ? formatDueAt(task.dueAt) : "未设截止",
+    },
+  };
+});
+const taskContextModes = computed<readonly TaskContextPanelMode[]>(() =>
+  collaborationContext.value && aiContext.value
+    ? ["work", "archive", "collaboration", "ai"]
     : ["work", "archive"],
 );
 const contextTitle = computed(
@@ -140,6 +179,16 @@ function formatDueAt(value: string): string {
   }).format(date);
 }
 
+async function refreshTaskForAi(): Promise<void> {
+  const requestContextKey = taskContextKey.value;
+  const requestMobileScreen = mobileScreen.value;
+  await refreshTask();
+  if (requestContextKey && taskContextKey.value === requestContextKey) {
+    contextMode.value = "ai";
+    if (requestMobileScreen === "context") mobileScreen.value = "context";
+  }
+}
+
 function submitCollaboration(): void {
   void collaboration.send();
 }
@@ -154,6 +203,22 @@ function retryCollaboration(target: TaskCollaborationRetryTarget): void {
 
 function loadMoreCollaboration(): void {
   void collaboration.loadMore();
+}
+
+function confirmAi(): void {
+  void aiAssistance.confirm();
+}
+
+function rejectAi(reason?: string): void {
+  void aiAssistance.reject(reason);
+}
+
+function retryAi(target: TaskAiAssistanceRetryTarget): void {
+  void aiAssistance.retry(target);
+}
+
+function refreshAi(): void {
+  void aiAssistance.refresh();
 }
 
 const responsibilityItems = computed<WorkbenchResponsibilityItem[]>(() => [
@@ -210,11 +275,11 @@ const contextState = computed<WorkbenchPaneState>(() => {
   if (error.value) return { kind: "error", message: error.value };
   return visibleTask.value && visibleContainer.value
     ? { kind: "ready" }
-    : { kind: "empty", message: "选择任务后查看办理、档案与协作。" };
+    : { kind: "empty", message: "选择任务后查看办理、档案、协作与 AI 辅助。" };
 });
 
 watch(
-  collaborationContextKey,
+  taskContextKey,
   () => {
     contextMode.value = "work";
   },
@@ -374,12 +439,17 @@ function handleSelect(taskId: string): void {
         <TaskContextPanel
           v-if="visibleTask && visibleContainer"
           v-model="contextMode"
-          :context-key="collaborationContextKey"
+          :context-key="taskContextKey"
           :modes="taskContextModes"
           :collaboration="collaboration"
+          :ai="aiPanelModel"
           @submit="submitCollaboration"
           @retry="retryCollaboration"
           @load-more="loadMoreCollaboration"
+          @confirm-ai="confirmAi"
+          @reject-ai="rejectAi"
+          @retry-ai="retryAi"
+          @refresh-ai="refreshAi"
         >
           <template #work>
             <section class="task-context-facts" aria-label="当前任务办理上下文">
