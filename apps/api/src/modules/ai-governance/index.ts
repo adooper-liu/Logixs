@@ -4,9 +4,13 @@ export {
   AiGatewayService,
   type MappingSuggestion,
   type OpsQuestionInput,
+  type TaskClaimExplanation,
+  type TaskClaimExplanationInput,
   buildDeterministicOpsAnswer,
 } from "./ai-gateway.service";
 export {
   AI_GOVERNANCE_PORT,
   type AiGovernancePort,
+  TASK_CLAIM_EXPLANATION,
+  type TaskClaimExplanationPort,
 } from "./ai-governance.port";

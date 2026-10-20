@@ -10,10 +10,52 @@ export interface MappingSuggestion {
   confidence: number;
 }
 
+export interface TaskClaimExplanationInput {
+  taskId: string;
+  workOrderId: string;
+  taskState: string;
+  workOrderState: string;
+  assignmentState: string;
+  assigneeId: string | null;
+}
+
+export type TaskClaimExplanation = {
+  rationale: string;
+  impact: string;
+  warningCodes: string[];
+} & (
+  | {
+      kind: "rule";
+      modelId: null;
+      promptVersion: null;
+    }
+  | {
+      kind: "model";
+      modelId: string;
+      promptVersion: string;
+    }
+);
+
 // 业务 AI Gateway 的最小转发（ADR-006）：integration-import 经此调用 AI 能力，
 // 禁止直连 AI Service / 模型供应商。完整治理（authorize/预算/审计）属 P5，本阶段只做转发。
 @Injectable()
 export class AiGatewayService {
+  async explainTaskClaim(
+    input: TaskClaimExplanationInput,
+  ): Promise<TaskClaimExplanation> {
+    const response = await fetch(
+      `${config.aiServiceUrl}/capabilities/explain-task-claim`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+        signal: AbortSignal.timeout(2_000),
+      },
+    );
+    if (!response.ok) throw new Error("TASK_CLAIM_EXPLANATION_UNAVAILABLE");
+    return parseTaskClaimExplanation(await response.json());
+  }
+
   async suggestImportMapping(columns: string[]): Promise<MappingSuggestion[]> {
     const response = await fetch(
       `${config.aiServiceUrl}/capabilities/suggest-import-mapping`,
@@ -56,6 +98,78 @@ export class AiGatewayService {
     }
     return buildDeterministicOpsAnswer(input);
   }
+}
+
+function parseTaskClaimExplanation(value: unknown): TaskClaimExplanation {
+  exactObject(value, ["rationale", "impact", "warningCodes", "source"]);
+  exactObject(value.source, ["kind", "modelId", "promptVersion"]);
+  const rationale = boundedText(value.rationale, 4_000);
+  const impact = boundedText(value.impact, 4_000);
+  if (!Array.isArray(value.warningCodes) || value.warningCodes.length > 20) {
+    throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+  }
+  const warningCodes = [
+    ...new Set(
+      value.warningCodes.map((code) => {
+        const normalized = boundedText(code, 100);
+        if (!/^[a-z][a-z0-9_.-]*$/.test(normalized)) {
+          throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+        }
+        return normalized;
+      }),
+    ),
+  ].sort();
+  if (value.source.kind === "rule") {
+    if (value.source.modelId !== null || value.source.promptVersion !== null) {
+      throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+    }
+    return {
+      kind: "rule",
+      rationale,
+      impact,
+      warningCodes,
+      modelId: null,
+      promptVersion: null,
+    };
+  }
+  if (value.source.kind === "model") {
+    return {
+      kind: "model",
+      rationale,
+      impact,
+      warningCodes,
+      modelId: boundedText(value.source.modelId, 200),
+      promptVersion: boundedText(value.source.promptVersion, 100),
+    };
+  }
+  throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+}
+
+function exactObject(
+  value: unknown,
+  keys: readonly string[],
+): asserts value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+  }
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index])
+  ) {
+    throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+  }
+}
+
+function boundedText(value: unknown, max: number): string {
+  if (typeof value !== "string")
+    throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+  const normalized = value.trim();
+  if (!normalized || normalized.length > max) {
+    throw new Error("TASK_CLAIM_EXPLANATION_INVALID");
+  }
+  return normalized;
 }
 
 export function buildDeterministicOpsAnswer(input: OpsQuestionInput): string {

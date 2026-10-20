@@ -12,5 +12,5 @@ export const moduleManifest = defineModuleManifest({
     "lifecycle-control",
     "work-execution",
   ],
-  permissions: ["notification.read"],
+  permissions: ["notification.read", "task.read", "task.execute"],
 });

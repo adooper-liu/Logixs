@@ -4,6 +4,17 @@ import { PrismaClient } from "../../../../../generated/prisma";
 import { CandidateNotFoundError } from "../../modules/ops-assistant/domain/task-action-candidate.repository";
 import { normalizeTaskActionDecision } from "../../modules/ops-assistant/domain/task-action-candidate";
 import { PrismaTaskActionCandidateRepository } from "../../modules/ops-assistant/infrastructure/prisma-task-action-candidate.repository";
+import {
+  ConfirmTaskActionCandidateService,
+  GenerateTaskActionCandidateService,
+  GetTaskActionCandidateService,
+  RejectTaskActionCandidateService,
+} from "../../modules/ops-assistant/application/task-action-candidate.services";
+import { ClaimWorkOrderService } from "../../modules/work-execution/application/claim-work-order.service";
+import { PrismaWorkClientOperationRepository } from "../../modules/work-execution/infrastructure/prisma-client-operation.repository";
+import { PrismaWorkExecutionRepository } from "../../modules/work-execution/infrastructure/prisma-work-execution.repository";
+import { TaskAssistantClaimExecutionAdapter } from "../../modules/work-execution/infrastructure/task-assistant-claim-execution.adapter";
+import type { TaskActionCandidateRepository } from "../../modules/ops-assistant/domain/task-action-candidate.repository";
 import { createPostgresAdapter } from "../../prisma/postgres-adapter";
 
 const DATABASE_URL =
@@ -344,6 +355,477 @@ describe("ops assistant confirmed execution PostgreSQL foundation", () => {
     ).resolves.toMatchObject({ body: "read-only question", role: "user" });
   });
 });
+
+describe("AI1 confirmed claim PostgreSQL control chain", () => {
+  it("closes tenant, actor and task scope while preserving the owner view", async () => {
+    const runtime = buildRuntime();
+    const context = await seedClaimContext();
+    const generated = await runtime.generate.execute(generateCommand(context));
+
+    await expect(
+      runtime.get.execute(getCommand(context, generated.candidateId)),
+    ).resolves.toMatchObject({ candidateId: generated.candidateId });
+    await expect(
+      runtime.get.execute({
+        ...getCommand(context, generated.candidateId),
+        tenantId: `${context.tenantId}-other`,
+      }),
+    ).rejects.toThrow("RESOURCE_NOT_FOUND");
+    await expect(
+      runtime.get.execute({
+        ...getCommand(context, generated.candidateId),
+        actorId: "actor-b",
+      }),
+    ).rejects.toThrow("RESOURCE_NOT_FOUND");
+    await expect(
+      runtime.get.execute({
+        ...getCommand(context, generated.candidateId),
+        taskId: randomUUID(),
+      }),
+    ).rejects.toThrow("RESOURCE_NOT_FOUND");
+  });
+
+  it("rejects a drifted snapshot with zero business writes", async () => {
+    const runtime = buildRuntime();
+    const context = await seedClaimContext();
+    const generated = await runtime.generate.execute(generateCommand(context));
+    await prisma.nodeTask.update({
+      where: { id: context.taskId },
+      data: { version: { increment: 1 } },
+    });
+
+    await expect(
+      runtime.confirm.execute(confirmCommand(context, generated)),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(decisionCount(generated.candidateId)).resolves.toBe(0);
+    await expect(operationCount(context)).resolves.toBe(0);
+    await expect(
+      prisma.workOrder.findUnique({ where: { id: context.workOrderId } }),
+    ).resolves.toMatchObject({
+      assignmentState: "unassigned",
+      assigneeId: null,
+    });
+  });
+
+  it("reject writes one immutable decision and zero work-execution facts", async () => {
+    const runtime = buildRuntime();
+    const context = await seedClaimContext();
+    const generated = await runtime.generate.execute(generateCommand(context));
+    const input = rejectCommand(context, generated.candidateId);
+    const first = await runtime.reject.execute(input);
+    const replay = await runtime.reject.execute(input);
+
+    expect(replay.decisionId).toBe(first.decisionId);
+    await expect(decisionCount(generated.candidateId)).resolves.toBe(1);
+    await expect(operationCount(context)).resolves.toBe(0);
+    await expect(
+      prisma.workOrder.findUnique({ where: { id: context.workOrderId } }),
+    ).resolves.toMatchObject({
+      assignmentState: "unassigned",
+      assigneeId: null,
+    });
+  });
+
+  it("converges same-key confirm replay and rejects a different second key", async () => {
+    const runtime = buildRuntime();
+    const context = await seedClaimContext();
+    const generated = await runtime.generate.execute(generateCommand(context));
+    const input = confirmCommand(context, generated);
+    const first = await runtime.confirm.execute(input);
+    const replay = await runtime.confirm.execute(input);
+
+    expect(replay.idempotencyReplay).toBe(true);
+    expect(replay.claimWorkOrderResult.clientOperationId).toBe(
+      first.claimWorkOrderResult.clientOperationId,
+    );
+    await expect(
+      runtime.confirm.execute({
+        ...input,
+        command: { ...input.command, idempotencyKey: "different-key" },
+      }),
+    ).rejects.toThrow("CANDIDATE_ALREADY_DECIDED");
+    const persistedDecision =
+      await prisma.opsAssistantActionDecision.findUnique({
+        where: { candidateId: generated.candidateId },
+      });
+    const persistedOperation = await prisma.clientOperation.findUnique({
+      where: { id: first.claimWorkOrderResult.clientOperationId },
+    });
+    expect(persistedDecision).toMatchObject({
+      decision: "accepted",
+      clientOperationId: first.claimWorkOrderResult.clientOperationId,
+      traceId: persistedOperation?.traceId,
+      executionState: "applied",
+    });
+    expect(persistedDecision?.resultRefs).toEqual(
+      expect.arrayContaining([
+        { kind: "container", id: context.containerId, version: null },
+        { kind: "node_task", id: context.taskId, version: null },
+        { kind: "work_order", id: context.workOrderId, version: null },
+        {
+          kind: "client_operation",
+          id: first.claimWorkOrderResult.clientOperationId,
+          version: null,
+        },
+      ]),
+    );
+    await expect(
+      prisma.workOrder.findUnique({ where: { id: context.workOrderId } }),
+    ).resolves.toMatchObject({
+      assignmentState: "assigned",
+      assigneeId: context.actorId,
+    });
+    await expect(
+      prisma.nodeTask.findUnique({ where: { id: context.taskId } }),
+    ).resolves.toMatchObject({ state: "in_progress" });
+    await expect(decisionCount(generated.candidateId)).resolves.toBe(1);
+    await expect(operationCount(context)).resolves.toBe(1);
+  });
+
+  it("serializes concurrent confirms at the PostgreSQL candidate lock", async () => {
+    const gate = barrier(2);
+    const realRepository = new PrismaTaskActionCandidateRepository(
+      prisma as never,
+    );
+    const runtime = buildRuntime(withEntryBarrier(realRepository, gate));
+    const context = await seedClaimContext();
+    const generated = await runtime.generate.execute(generateCommand(context));
+    const results = await Promise.all([
+      runtime.confirm.execute(confirmCommand(context, generated)),
+      runtime.confirm.execute(confirmCommand(context, generated)),
+    ]);
+
+    expect(
+      results.map(({ idempotencyReplay }) => idempotencyReplay).sort(),
+    ).toEqual([false, true]);
+    expect(results[0].claimWorkOrderResult.clientOperationId).toBe(
+      results[1].claimWorkOrderResult.clientOperationId,
+    );
+    await expect(decisionCount(generated.candidateId)).resolves.toBe(1);
+    await expect(operationCount(context)).resolves.toBe(1);
+  });
+
+  it("serializes concurrent confirm and reject without a rejected-but-claimed split", async () => {
+    const gate = barrier(2);
+    const realRepository = new PrismaTaskActionCandidateRepository(
+      prisma as never,
+    );
+    const runtime = buildRuntime(withEntryBarrier(realRepository, gate));
+    const context = await seedClaimContext();
+    const generated = await runtime.generate.execute(generateCommand(context));
+    const settled = await Promise.allSettled([
+      runtime.confirm.execute(confirmCommand(context, generated)),
+      runtime.reject.execute(rejectCommand(context, generated.candidateId)),
+    ]);
+
+    expect(settled.filter(({ status }) => status === "fulfilled")).toHaveLength(
+      1,
+    );
+    const decision = await prisma.opsAssistantActionDecision.findUnique({
+      where: { candidateId: generated.candidateId },
+    });
+    const workOrder = await prisma.workOrder.findUnique({
+      where: { id: context.workOrderId },
+    });
+    expect(decision).not.toBeNull();
+    if (decision?.decision === "rejected") {
+      expect(workOrder).toMatchObject({
+        assignmentState: "unassigned",
+        assigneeId: null,
+      });
+      await expect(operationCount(context)).resolves.toBe(0);
+    } else {
+      expect(workOrder).toMatchObject({
+        assignmentState: "assigned",
+        assigneeId: context.actorId,
+      });
+      await expect(operationCount(context)).resolves.toBe(1);
+    }
+  });
+
+  it("recovers the same receipt after claim commit but decision/response loss", async () => {
+    const realRepository = new PrismaTaskActionCandidateRepository(
+      prisma as never,
+    );
+    const requestTraces = [
+      "server-first-request-trace",
+      "server-second-request-trace",
+    ];
+    const traceFactory = () => requestTraces.shift() ?? randomUUID();
+    const context = await seedClaimContext();
+    const initial = buildRuntime(realRepository, traceFactory);
+    const generated = await initial.generate.execute(generateCommand(context));
+    const lossy = buildRuntime(
+      responseLossAfterClaim(realRepository),
+      traceFactory,
+    );
+
+    await expect(
+      lossy.confirm.execute(confirmCommand(context, generated)),
+    ).rejects.toThrow("SIMULATED_RESPONSE_LOSS");
+    const committed = await prisma.clientOperation.findFirst({
+      where: { tenantId: context.tenantId, idempotencyKey: "confirm-1" },
+    });
+    expect(committed).toMatchObject({ commitState: "committed" });
+    await expect(decisionCount(generated.candidateId)).resolves.toBe(0);
+
+    const recovered = await initial.confirm.execute(
+      confirmCommand(context, generated),
+    );
+    expect(recovered.idempotencyReplay).toBe(true);
+    expect(recovered.claimWorkOrderResult.clientOperationId).toBe(
+      committed?.id,
+    );
+    const recoveredDecision =
+      await prisma.opsAssistantActionDecision.findUnique({
+        where: { candidateId: generated.candidateId },
+      });
+    expect(committed?.traceId).toBe("server-first-request-trace");
+    expect(recoveredDecision?.traceId).toBe(committed?.traceId);
+    expect(recoveredDecision?.traceId).not.toBe("server-second-request-trace");
+    expect(requestTraces).toEqual([]);
+    await expect(decisionCount(generated.candidateId)).resolves.toBe(1);
+    await expect(operationCount(context)).resolves.toBe(1);
+  });
+
+  it("writes no accepted decision when the official claim conflicts", async () => {
+    const runtime = buildRuntime();
+    const context = await seedClaimContext();
+    const generated = await runtime.generate.execute(generateCommand(context));
+    const original = await runtime.execution.resolve({
+      tenantId: context.tenantId,
+      taskId: context.taskId,
+      subjectRef: { kind: "container", id: context.containerId },
+      workOrderId: context.workOrderId,
+    });
+    await prisma.workOrder.update({
+      where: { id: context.workOrderId },
+      data: { assignmentState: "assigned", assigneeId: "actor-b" },
+    });
+    const staleProjectionExecution = {
+      ...runtime.execution,
+      resolve: async () => original,
+      claim: runtime.execution.claim.bind(runtime.execution),
+      findClaimReceipt: runtime.execution.findClaimReceipt.bind(
+        runtime.execution,
+      ),
+    };
+    const confirm = new ConfirmTaskActionCandidateService(
+      runtime.repository,
+      staleProjectionExecution as never,
+      randomUUID,
+    );
+
+    await expect(
+      confirm.execute(confirmCommand(context, generated)),
+    ).rejects.toMatchObject({
+      status: 409,
+    });
+    await expect(decisionCount(generated.candidateId)).resolves.toBe(0);
+  });
+});
+
+function buildRuntime(
+  candidateRepository: TaskActionCandidateRepository = new PrismaTaskActionCandidateRepository(
+    prisma as never,
+  ),
+  traceFactory: () => string = randomUUID,
+) {
+  const workRepository = new PrismaWorkExecutionRepository(prisma as never);
+  const operations = new PrismaWorkClientOperationRepository(prisma as never);
+  const claim = new ClaimWorkOrderService(workRepository, operations, {
+    execute: async () => undefined,
+  } as never);
+  const execution = new TaskAssistantClaimExecutionAdapter(
+    workRepository,
+    operations,
+    claim,
+  );
+  const explanation = {
+    explainTaskClaim: async () => ({
+      kind: "rule" as const,
+      rationale: "The current work order is ready and unassigned.",
+      impact: "Confirming assigns responsibility to the current actor.",
+      warningCodes: ["confirm_required"],
+      modelId: null,
+      promptVersion: null,
+    }),
+  };
+  return {
+    repository: candidateRepository,
+    execution,
+    generate: new GenerateTaskActionCandidateService(
+      candidateRepository,
+      execution,
+      explanation as never,
+    ),
+    get: new GetTaskActionCandidateService(candidateRepository, execution),
+    reject: new RejectTaskActionCandidateService(candidateRepository),
+    confirm: new ConfirmTaskActionCandidateService(
+      candidateRepository,
+      execution,
+      traceFactory,
+    ),
+  };
+}
+
+function withEntryBarrier(
+  delegate: TaskActionCandidateRepository,
+  wait: () => Promise<void>,
+): TaskActionCandidateRepository {
+  return {
+    createCandidate: (input) => delegate.createCandidate(input),
+    findCandidate: (input) => delegate.findCandidate(input),
+    appendDecision: (input) => delegate.appendDecision(input),
+    appendDecisionWithLock: async (input, build) => {
+      await wait();
+      return delegate.appendDecisionWithLock(input, build);
+    },
+  };
+}
+
+function responseLossAfterClaim(
+  delegate: TaskActionCandidateRepository,
+): TaskActionCandidateRepository {
+  return {
+    createCandidate: (input) => delegate.createCandidate(input),
+    findCandidate: (input) => delegate.findCandidate(input),
+    appendDecision: (input) => delegate.appendDecision(input),
+    appendDecisionWithLock: async (input, build) => {
+      const candidate = await delegate.findCandidate(input);
+      if (!candidate) throw new Error("CANDIDATE_NOT_FOUND");
+      await build(candidate);
+      throw new Error("SIMULATED_RESPONSE_LOSS");
+    },
+  };
+}
+
+function barrier(parties: number) {
+  let arrived = 0;
+  let release: (() => void) | undefined;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return async () => {
+    arrived += 1;
+    if (arrived === parties) release?.();
+    await ready;
+  };
+}
+
+async function seedClaimContext() {
+  const suffix = randomUUID();
+  const context = {
+    tenantId: `ai1-${suffix}`,
+    actorId: "actor-a",
+    containerId: randomUUID(),
+    taskId: randomUUID(),
+    workOrderId: randomUUID(),
+  };
+  await prisma.nodeTask.create({
+    data: {
+      id: context.taskId,
+      tenantId: context.tenantId,
+      flowInstanceId: randomUUID(),
+      nodeInstanceId: randomUUID(),
+      nodeCode: "customs_clearance",
+      containerId: context.containerId,
+      taskDefinitionKey: "ai1-confirmed-claim",
+      state: "pending",
+      applicability: "required",
+      readinessState: "ready",
+      completionEligibility: "awaiting_evidence",
+      conditionFactRefs: [],
+      version: 4,
+    },
+  });
+  await prisma.workOrder.create({
+    data: {
+      id: context.workOrderId,
+      nodeTaskId: context.taskId,
+      workOrderDefinitionKey: "ai1-claim",
+      state: "ready",
+      applicability: "required",
+      assignmentState: "unassigned",
+      version: 2,
+    },
+  });
+  return context;
+}
+
+function generateCommand(
+  context: Awaited<ReturnType<typeof seedClaimContext>>,
+) {
+  return {
+    tenantId: context.tenantId,
+    actorId: context.actorId,
+    capabilities: ["task.read"],
+    taskId: context.taskId,
+    command: {
+      contractVersion: "task-action-candidate-generate.v1" as const,
+      subjectRef: { kind: "container" as const, id: context.containerId },
+      workRef: { kind: "node_task" as const, id: context.taskId },
+    },
+  };
+}
+
+function getCommand(
+  context: Awaited<ReturnType<typeof seedClaimContext>>,
+  candidateId: string,
+) {
+  return {
+    tenantId: context.tenantId,
+    actorId: context.actorId,
+    capabilities: ["task.read"],
+    taskId: context.taskId,
+    candidateId,
+  };
+}
+
+function confirmCommand(
+  context: Awaited<ReturnType<typeof seedClaimContext>>,
+  candidate: { candidateId: string; candidateHash: string },
+) {
+  return {
+    ...getCommand(context, candidate.candidateId),
+    capabilities: ["task.read", "task.execute"],
+    command: {
+      contractVersion: "task-action-candidate-confirm.v1" as const,
+      candidateId: candidate.candidateId,
+      candidateHash: candidate.candidateHash,
+      idempotencyKey: "confirm-1",
+    },
+  };
+}
+
+function rejectCommand(
+  context: Awaited<ReturnType<typeof seedClaimContext>>,
+  candidateId: string,
+) {
+  return {
+    ...getCommand(context, candidateId),
+    command: {
+      contractVersion: "task-action-candidate-reject.v1" as const,
+      candidateId,
+      reason: "not applicable now",
+    },
+  };
+}
+
+function decisionCount(candidateId: string) {
+  return prisma.opsAssistantActionDecision.count({ where: { candidateId } });
+}
+
+function operationCount(context: Awaited<ReturnType<typeof seedClaimContext>>) {
+  return prisma.clientOperation.count({
+    where: {
+      tenantId: context.tenantId,
+      actorId: context.actorId,
+      actionCode: "work_execution.claim_work_order",
+      targetId: context.workOrderId,
+    },
+  });
+}
 
 function candidateRow() {
   const suffix = randomUUID();

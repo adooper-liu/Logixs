@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   Module,
   type MiddlewareConsumer,
@@ -12,9 +13,17 @@ import { WorkExecutionModule } from "../work-execution";
 import { BuildAssistantObjectContextService } from "./application/build-assistant-object-context.service";
 import { OpenAssistantSessionService } from "./application/open-assistant-session.service";
 import { PostAssistantMessageService } from "./application/post-assistant-message.service";
+import {
+  ConfirmTaskActionCandidateService,
+  GenerateTaskActionCandidateService,
+  GetTaskActionCandidateService,
+  RejectTaskActionCandidateService,
+  TASK_ACTION_TRACE_FACTORY,
+} from "./application/task-action-candidate.services";
 import { TASK_ACTION_CANDIDATE_REPOSITORY } from "./domain/task-action-candidate.repository";
 import { PrismaTaskActionCandidateRepository } from "./infrastructure/prisma-task-action-candidate.repository";
 import { OpsAssistantController } from "./presentation/ops-assistant.controller";
+import { TaskActionCandidateController } from "./presentation/task-action-candidate.controller";
 
 @Module({
   imports: [
@@ -25,11 +34,16 @@ import { OpsAssistantController } from "./presentation/ops-assistant.controller"
     LifecycleControlModule,
     WorkExecutionModule,
   ],
-  controllers: [OpsAssistantController],
+  controllers: [OpsAssistantController, TaskActionCandidateController],
   providers: [
     BuildAssistantObjectContextService,
     OpenAssistantSessionService,
     PostAssistantMessageService,
+    GenerateTaskActionCandidateService,
+    GetTaskActionCandidateService,
+    RejectTaskActionCandidateService,
+    ConfirmTaskActionCandidateService,
+    { provide: TASK_ACTION_TRACE_FACTORY, useValue: randomUUID },
     {
       provide: TASK_ACTION_CANDIDATE_REPOSITORY,
       useClass: PrismaTaskActionCandidateRepository,
@@ -38,6 +52,8 @@ import { OpsAssistantController } from "./presentation/ops-assistant.controller"
 })
 export class OpsAssistantModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(DevIdentityMiddleware).forRoutes(OpsAssistantController);
+    consumer
+      .apply(DevIdentityMiddleware)
+      .forRoutes(OpsAssistantController, TaskActionCandidateController);
   }
 }

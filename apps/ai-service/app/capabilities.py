@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Callable, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.generated_import_field_catalog import IMPORT_FIELD_ALIAS_RULES
 
@@ -106,6 +106,72 @@ register(
     "0.1.0",
     "列头→标准字段映射建议（Mock 关键词规则，不调模型）",
     suggest_mapping_handler,
+)
+
+
+class TaskClaimExplanationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    taskId: str = Field(min_length=1, max_length=100)
+    workOrderId: str = Field(min_length=1, max_length=100)
+    taskState: str = Field(min_length=1, max_length=100)
+    workOrderState: str = Field(min_length=1, max_length=100)
+    assignmentState: str = Field(min_length=1, max_length=100)
+    assigneeId: str | None = Field(default=None, max_length=128)
+
+
+class TaskClaimExplanationSource(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["rule", "model"]
+    modelId: str | None
+    promptVersion: str | None
+
+    @model_validator(mode="after")
+    def validate_metadata(self) -> "TaskClaimExplanationSource":
+        if self.kind == "rule" and (
+            self.modelId is not None or self.promptVersion is not None
+        ):
+            raise ValueError("rule source cannot claim model metadata")
+        if self.kind == "model" and (
+            not self.modelId or not self.promptVersion
+        ):
+            raise ValueError("model source requires model metadata")
+        return self
+
+
+class TaskClaimExplanationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rationale: str = Field(min_length=1, max_length=4000)
+    impact: str = Field(min_length=1, max_length=4000)
+    warningCodes: list[str] = Field(max_length=20)
+    source: TaskClaimExplanationSource
+
+
+def task_claim_explanation_handler(
+    request: TaskClaimExplanationRequest,
+) -> TaskClaimExplanationResponse:
+    return TaskClaimExplanationResponse(
+        rationale=(
+            f"Task {request.taskId} has work order {request.workOrderId} "
+            "ready for an explicit claim decision."
+        ),
+        impact="Confirming assigns the current work order to the current actor.",
+        warningCodes=["confirm_required"],
+        source=TaskClaimExplanationSource(
+            kind="rule",
+            modelId=None,
+            promptVersion=None,
+        ),
+    )
+
+
+register(
+    "explain_task_claim",
+    "1.0.0",
+    "任务领取的受控结构化解释（确定性规则，不执行动作）",
+    task_claim_explanation_handler,
 )
 
 

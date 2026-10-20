@@ -98,56 +98,98 @@ export class PrismaTaskActionCandidateRepository implements TaskActionCandidateR
     decision: TaskActionDecisionRecord;
     idempotencyReplay: boolean;
   }> {
+    return this.appendDecisionWithLock(
+      {
+        candidateId: input.candidateId,
+        tenantId: input.tenantId,
+        actorId: input.actorId,
+        decision: input.decision.decision,
+        idempotencyKey: input.decision.idempotencyKey,
+        decisionHash: input.decision.decisionHash,
+      },
+      async () => input.decision,
+    );
+  }
+
+  async appendDecisionWithLock(
+    input: {
+      candidateId: string;
+      tenantId: string;
+      actorId: string;
+      decision: "accepted" | "rejected";
+      idempotencyKey: string;
+      decisionHash?: string;
+    },
+    buildDecision: (
+      candidate: TaskActionCandidateRecord,
+    ) => Promise<TaskActionDecisionPersistenceInput>,
+  ): Promise<{
+    decision: TaskActionDecisionRecord;
+    idempotencyReplay: boolean;
+  }> {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw<Array<{ locked: boolean }>>`
+      return await this.prisma.$transaction(
+        async (tx) => {
+          await tx.$queryRaw<Array<{ locked: boolean }>>`
           SELECT true AS locked
           FROM (SELECT pg_advisory_xact_lock(hashtextextended(${input.candidateId}, 0))) AS acquired
         `;
-        const candidate = await tx.opsAssistantActionCandidate.findFirst({
-          where: {
-            id: input.candidateId,
-            tenantId: input.tenantId,
-            actorId: input.actorId,
-          },
-          include: { decisions: true },
-        });
-        if (!candidate) throw new CandidateNotFoundError();
-        const existing = candidate.decisions[0];
-        if (existing) return replayOrConflict(existing, input);
-
-        if (input.decision.clientOperationId !== null) {
-          const operation = await tx.clientOperation.findFirst({
+          const candidate = await tx.opsAssistantActionCandidate.findFirst({
             where: {
-              id: input.decision.clientOperationId,
-              tenantId: candidate.tenantId,
+              id: input.candidateId,
+              tenantId: input.tenantId,
               actorId: input.actorId,
-              actionCode: TASK_ACTION_CODE,
-              targetId: candidate.workOrderId,
             },
-            select: { id: true },
+            include: { decisions: true },
           });
-          if (!operation) throw new CandidateNotFoundError();
-        }
+          if (!candidate) throw new CandidateNotFoundError();
+          const existing = candidate.decisions[0];
+          if (existing) return replayIntentOrConflict(existing, input);
 
-        const decision = await tx.opsAssistantActionDecision.create({
-          data: {
-            id: input.decision.decisionId,
-            candidateId: input.candidateId,
-            decidedByActorId: input.actorId,
-            decision: input.decision.decision,
-            reason: input.decision.reason,
-            idempotencyKey: input.decision.idempotencyKey,
-            decisionHash: input.decision.decisionHash,
-            decidedAt: input.decision.decidedAt,
-            clientOperationId: input.decision.clientOperationId,
-            traceId: input.decision.traceId,
-            executionState: input.decision.executionState,
-            resultRefs: refsForWrite(input.decision.resultRefs),
-          },
-        });
-        return { decision: mapDecision(decision), idempotencyReplay: false };
-      });
+          const decisionInput = await buildDecision(mapCandidate(candidate));
+          if (
+            decisionInput.decision !== input.decision ||
+            decisionInput.idempotencyKey !== input.idempotencyKey ||
+            (input.decisionHash !== undefined &&
+              decisionInput.decisionHash !== input.decisionHash)
+          ) {
+            throw new CandidateDecisionConflictError();
+          }
+
+          if (decisionInput.clientOperationId !== null) {
+            const operation = await tx.clientOperation.findFirst({
+              where: {
+                id: decisionInput.clientOperationId,
+                tenantId: candidate.tenantId,
+                actorId: input.actorId,
+                actionCode: TASK_ACTION_CODE,
+                targetId: candidate.workOrderId,
+              },
+              select: { id: true },
+            });
+            if (!operation) throw new CandidateNotFoundError();
+          }
+
+          const decision = await tx.opsAssistantActionDecision.create({
+            data: {
+              id: decisionInput.decisionId,
+              candidateId: input.candidateId,
+              decidedByActorId: input.actorId,
+              decision: decisionInput.decision,
+              reason: decisionInput.reason,
+              idempotencyKey: decisionInput.idempotencyKey,
+              decisionHash: decisionInput.decisionHash,
+              decidedAt: decisionInput.decidedAt,
+              clientOperationId: decisionInput.clientOperationId,
+              traceId: decisionInput.traceId,
+              executionState: decisionInput.executionState,
+              resultRefs: refsForWrite(decisionInput.resultRefs),
+            },
+          });
+          return { decision: mapDecision(decision), idempotencyReplay: false };
+        },
+        { maxWait: 10_000, timeout: 30_000 },
+      );
     } catch (error) {
       if (prismaErrorCode(error) !== "P2002") throw error;
       const candidate = await this.prisma.opsAssistantActionCandidate.findFirst(
@@ -163,22 +205,26 @@ export class PrismaTaskActionCandidateRepository implements TaskActionCandidateR
       if (!candidate) throw new CandidateNotFoundError();
       const existing = candidate.decisions[0];
       if (!existing) throw error;
-      return replayOrConflict(existing, input);
+      return replayIntentOrConflict(existing, input);
     }
   }
 }
 
-function replayOrConflict(
+function replayIntentOrConflict(
   existing: Parameters<typeof mapDecision>[0],
   input: {
     actorId: string;
-    decision: TaskActionDecisionPersistenceInput;
+    decision: "accepted" | "rejected";
+    idempotencyKey: string;
+    decisionHash?: string;
   },
 ) {
   if (
     existing.decidedByActorId !== input.actorId ||
-    existing.idempotencyKey !== input.decision.idempotencyKey ||
-    existing.decisionHash !== input.decision.decisionHash
+    existing.decision !== input.decision ||
+    existing.idempotencyKey !== input.idempotencyKey ||
+    (input.decisionHash !== undefined &&
+      existing.decisionHash !== input.decisionHash)
   ) {
     throw new CandidateDecisionConflictError();
   }

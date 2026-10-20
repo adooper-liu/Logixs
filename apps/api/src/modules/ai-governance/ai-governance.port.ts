@@ -9,3 +9,25 @@ export interface AiGovernancePort {
   checkBudget(tenantId: string, capability: string): Promise<void>;
   audit(entry: unknown): Promise<void>;
 }
+
+export const TASK_CLAIM_EXPLANATION = Symbol.for("logix.TaskClaimExplanation");
+
+export interface TaskClaimExplanationPort {
+  explainTaskClaim(input: {
+    taskId: string;
+    workOrderId: string;
+    taskState: string;
+    workOrderState: string;
+    assignmentState: string;
+    assigneeId: string | null;
+  }): Promise<
+    {
+      rationale: string;
+      impact: string;
+      warningCodes: string[];
+    } & (
+      | { kind: "rule"; modelId: null; promptVersion: null }
+      | { kind: "model"; modelId: string; promptVersion: string }
+    )
+  >;
+}

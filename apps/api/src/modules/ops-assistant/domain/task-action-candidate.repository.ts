@@ -80,6 +80,22 @@ export interface TaskActionCandidateRepository {
     decision: TaskActionDecisionRecord;
     idempotencyReplay: boolean;
   }>;
+  appendDecisionWithLock(
+    input: {
+      candidateId: string;
+      tenantId: string;
+      actorId: string;
+      decision: "accepted" | "rejected";
+      idempotencyKey: string;
+      decisionHash?: string;
+    },
+    buildDecision: (
+      candidate: TaskActionCandidateRecord,
+    ) => Promise<TaskActionDecisionPersistenceInput>,
+  ): Promise<{
+    decision: TaskActionDecisionRecord;
+    idempotencyReplay: boolean;
+  }>;
 }
 
 export class CandidateNotFoundError extends Error {
