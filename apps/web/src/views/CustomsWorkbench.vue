@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { isEvidenceUuid } from "../api/evidence";
 import CustomsActionPanel from "../components/customs/CustomsActionPanel.vue";
 import CustomsCasePanel from "../components/customs/CustomsCasePanel.vue";
 import CustomsWorkQueue from "../components/customs/CustomsWorkQueue.vue";
 import TaskArchivePanel from "../components/task/TaskArchivePanel.vue";
 import TaskContextPanel from "../components/task/TaskContextPanel.vue";
-import type { TaskContextMode } from "../components/task/TaskContextPanel.vue";
+import type { TaskContextPanelMode } from "../components/task/TaskContextPanel.vue";
 import RoleWorkbenchFrame from "../components/workbench/RoleWorkbenchFrame.vue";
 import {
   useCustomsCommands,
@@ -14,6 +15,12 @@ import {
 } from "../composables/useCustomsCommands";
 import { useCustomsWorkbench } from "../composables/useCustomsWorkbench";
 import { useStuffingTaskOperation } from "../composables/useStuffingTaskOperation";
+import {
+  useTaskAiAssistance,
+  type TaskAiAssistanceContext,
+  type TaskAiAssistancePanelModel,
+  type TaskAiAssistanceRetryTarget,
+} from "../composables/useTaskAiAssistance";
 import {
   useTaskCollaboration,
   type TaskCollaborationContext,
@@ -50,31 +57,93 @@ const taskOperation = useStuffingTaskOperation(
   clearanceCase,
   reload,
 );
-const contextMode = ref<TaskContextMode>("work");
-const contextModeLabels: Record<TaskContextMode, string> = {
+const contextMode = shallowRef<TaskContextPanelMode>("work");
+const contextModeLabels: Record<TaskContextPanelMode, string> = {
   work: "办理",
   archive: "档案",
   collaboration: "协作",
+  ai: "AI 辅助",
 };
-const collaborationContextKey = computed(() =>
+const taskContextKey = computed(() =>
   selectedContainer.value && selectedTask.value
     ? `container:${selectedContainer.value.id}|node_task:${selectedTask.value.id}`
     : null,
 );
+const taskSubjectRef = computed(() =>
+  selectedContainer.value
+    ? { kind: "container" as const, id: selectedContainer.value.id }
+    : null,
+);
+const taskWorkRef = computed(() =>
+  selectedTask.value
+    ? { kind: "node_task" as const, id: selectedTask.value.id }
+    : null,
+);
 const collaborationContext = computed<TaskCollaborationContext | null>(() =>
-  collaborationContextKey.value && selectedContainer.value && selectedTask.value
+  taskContextKey.value &&
+  selectedTask.value &&
+  taskSubjectRef.value &&
+  taskWorkRef.value
     ? {
-        contextKey: collaborationContextKey.value,
+        contextKey: taskContextKey.value,
         taskId: selectedTask.value.id,
-        subjectRef: { kind: "container", id: selectedContainer.value.id },
-        workRef: { kind: "node_task", id: selectedTask.value.id },
+        subjectRef: taskSubjectRef.value,
+        workRef: taskWorkRef.value,
       }
     : null,
 );
 const collaboration = useTaskCollaboration(collaborationContext);
-const contextModes = computed<readonly TaskContextMode[]>(() =>
-  collaborationContext.value ? ["work", "archive", "collaboration"] : ["work"],
+const availableAiContext = computed<TaskAiAssistanceContext | null>(() =>
+  taskContextKey.value &&
+  selectedTask.value &&
+  taskSubjectRef.value &&
+  taskWorkRef.value &&
+  isEvidenceUuid(taskSubjectRef.value.id) &&
+  isEvidenceUuid(taskWorkRef.value.id)
+    ? {
+        contextKey: taskContextKey.value,
+        taskId: selectedTask.value.id,
+        subjectRef: taskSubjectRef.value,
+        workRef: taskWorkRef.value,
+      }
+    : null,
 );
+const aiRefreshInFlight = shallowRef(false);
+const aiActivatedContextKey = shallowRef<string | null>(null);
+const aiContext = computed<TaskAiAssistanceContext | null>(() =>
+  availableAiContext.value?.contextKey === aiActivatedContextKey.value
+    ? availableAiContext.value
+    : null,
+);
+const formContainer = shallowRef(selectedContainer.value);
+const formClearanceCase = shallowRef(clearanceCase.value);
+const aiAssistance = useTaskAiAssistance(aiContext, {
+  refreshTask: refreshTaskForAi,
+});
+const aiPanelModel = computed<TaskAiAssistancePanelModel | null>(() => {
+  const task = selectedTask.value;
+  const selected = selectedContainer.value;
+  if (!availableAiContext.value || !task || !selected) return null;
+  return {
+    ...aiAssistance,
+    facts: {
+      objectLabel:
+        selected.containerNumber ?? selected.orderNumber ?? "货柜待选择",
+      taskLabel: customsNode.value?.name ?? "清关任务",
+      actionLabel: "领取",
+      responsibilityLabel: taskResponsibility(task),
+      dueLabel: task.nextAction?.dueAt
+        ? formatDueAt(task.nextAction.dueAt)
+        : "未设截止",
+    },
+  };
+});
+const contextModes = computed<readonly TaskContextPanelMode[]>(() => {
+  if (!collaborationContext.value) return ["work"];
+  return availableAiContext.value
+    ? ["work", "archive", "collaboration", "ai"]
+    : ["work", "archive", "collaboration"];
+});
 const contextLabel = computed(() =>
   contextMode.value === "work"
     ? "清关办理"
@@ -85,9 +154,11 @@ const contextSummary = computed(() =>
     ? "核对记录"
     : contextMode.value === "collaboration"
       ? "共同处理"
-      : collaborationContext.value
-        ? "继续办理"
-        : "待选择",
+      : contextMode.value === "ai"
+        ? "核对建议"
+        : collaborationContext.value
+          ? "继续办理"
+          : "待选择",
 );
 const mobileContextLabel = computed(() => contextModeLabels[contextMode.value]);
 const currentContainerLabel = computed(
@@ -107,12 +178,73 @@ const currentNodeLabel = computed(() =>
 onMounted(() => void loadQueue());
 
 watch(
-  collaborationContextKey,
-  () => {
+  taskContextKey,
+  (nextContextKey, previousContextKey) => {
     contextMode.value = "work";
+    if (!aiRefreshInFlight.value && nextContextKey !== previousContextKey) {
+      aiActivatedContextKey.value = null;
+    }
   },
   { flush: "sync" },
 );
+
+watch(
+  contextMode,
+  (mode) => {
+    if (mode === "ai" && availableAiContext.value) {
+      aiActivatedContextKey.value = availableAiContext.value.contextKey;
+    }
+  },
+  { flush: "sync" },
+);
+
+watch(
+  clearanceCase,
+  (value) => {
+    if (!aiRefreshInFlight.value || value) formClearanceCase.value = value;
+  },
+  { immediate: true },
+);
+
+watch(
+  selectedContainer,
+  (value) => {
+    if (!aiRefreshInFlight.value || value) formContainer.value = value;
+  },
+  { immediate: true },
+);
+
+function formatDueAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function taskResponsibility(task: NonNullable<typeof selectedTask.value>) {
+  if (task.state === "completed") return "未知";
+  if (task.nextAction?.assigneeId) return "已分配人员";
+  if (task.nextAction?.assignmentState === "automatic") return "系统";
+  return "待领取";
+}
+
+async function refreshTaskForAi(): Promise<void> {
+  const requestContextKey = taskContextKey.value;
+  aiRefreshInFlight.value = true;
+  try {
+    await reload();
+  } finally {
+    aiRefreshInFlight.value = false;
+  }
+  if (requestContextKey && taskContextKey.value === requestContextKey) {
+    contextMode.value = "ai";
+  }
+}
 
 function selectTask(item: CustomsQueueItem) {
   if (!item.task.containerId) return;
@@ -148,6 +280,22 @@ function retryCollaboration(target: TaskCollaborationRetryTarget): void {
 function loadMoreCollaboration(): void {
   void collaboration.loadMore();
 }
+
+function confirmAi(): void {
+  void aiAssistance.confirm();
+}
+
+function rejectAi(reason?: string): void {
+  void aiAssistance.reject(reason);
+}
+
+function retryAi(target: TaskAiAssistanceRetryTarget): void {
+  void aiAssistance.retry(target);
+}
+
+function refreshAi(): void {
+  void aiAssistance.refresh();
+}
 </script>
 
 <template>
@@ -155,9 +303,9 @@ function loadMoreCollaboration(): void {
     stage-code="customs"
     workspace-label="进口清关"
     node-scope-label="进口清关"
-    :selected-container="selectedContainer"
+    :selected-container="formContainer"
     :nodes="nodes"
-    :selection-loading="loading"
+    :selection-loading="loading && !aiRefreshInFlight"
     :container-list-error="error"
     :selection-error="error"
     :warnings="warnings"
@@ -184,14 +332,19 @@ function loadMoreCollaboration(): void {
     <template #secondary>
       <div class="customs-context">
         <TaskContextPanel
-          v-if="selectedContainer"
+          v-if="formContainer"
           v-model="contextMode"
-          :context-key="collaborationContextKey"
+          :context-key="taskContextKey"
           :modes="contextModes"
           :collaboration="collaboration"
+          :ai="aiPanelModel"
           @submit="submitCollaboration"
           @retry="retryCollaboration"
           @load-more="loadMoreCollaboration"
+          @confirm-ai="confirmAi"
+          @reject-ai="rejectAi"
+          @retry-ai="retryAi"
+          @refresh-ai="refreshAi"
         >
           <template #anchor>
             <section
@@ -216,7 +369,7 @@ function loadMoreCollaboration(): void {
           </template>
           <template #work>
             <CustomsActionPanel
-              :clearance-case="clearanceCase"
+              :clearance-case="formClearanceCase"
               :task="selectedTask"
               :projection-version="dates?.projectionVersion ?? 0"
               :saving="commands.saving.value"
@@ -234,7 +387,7 @@ function loadMoreCollaboration(): void {
           <template #archive>
             <TaskArchivePanel
               v-if="selectedTask"
-              :container-id="selectedContainer.id"
+              :container-id="formContainer.id"
               :task-id="selectedTask.id"
               :outcome="selectedTask.outcome"
             />

@@ -4,10 +4,17 @@ import type {
   TaskCollaborationPageV1,
   TaskCollaborationPostResultV1,
 } from "@logix/contracts";
-import { nextTick, toRaw } from "vue";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { nextTick, shallowRef, toRaw } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TaskArchivePanel from "../components/task/TaskArchivePanel.vue";
+import type {
+  TaskAiAssistanceContext,
+  TaskAiAssistancePanelModel,
+  TaskAiAssistanceState,
+} from "../composables/useTaskAiAssistance";
 import CustomsWorkbench from "./CustomsWorkbench.vue";
 
 const listContainers = vi.fn();
@@ -19,6 +26,35 @@ const listDates = vi.fn();
 const listTaskCollaboration = vi.fn();
 const postTaskCollaborationMessage = vi.fn();
 const collaborationComposable = vi.hoisted(() => ({ calls: 0 }));
+const aiState = {
+  loading: shallowRef(false),
+  error: shallowRef(""),
+  retryable: shallowRef(false),
+  primaryRetryTarget: shallowRef(null),
+  candidate: shallowRef(null),
+  decision: shallowRef(null),
+  confirming: shallowRef(false),
+  rejecting: shallowRef(false),
+  confirmError: shallowRef(""),
+  rejectError: shallowRef(""),
+  pendingConfirmCommand: shallowRef(null),
+  receipt: shallowRef(null),
+  idempotencyReplay: shallowRef(null),
+  confirm: vi.fn(),
+  reject: vi.fn(),
+  retry: vi.fn(),
+  refresh: vi.fn(),
+} as TaskAiAssistanceState;
+const useTaskAiAssistance = vi.fn(
+  (
+    context: Readonly<{ value: TaskAiAssistanceContext | null }>,
+    options: { refreshTask(): Promise<void> | void },
+  ) => {
+    void context;
+    void options;
+    return aiState;
+  },
+);
 
 vi.mock("../api/containers", () => ({
   listContainers: (...args: unknown[]) => listContainers(...args),
@@ -64,6 +100,12 @@ vi.mock("../composables/useTaskCollaboration", async (importOriginal) => {
     },
   };
 });
+vi.mock("../composables/useTaskAiAssistance", () => ({
+  useTaskAiAssistance: (
+    context: Readonly<{ value: TaskAiAssistanceContext | null }>,
+    options: { refreshTask(): Promise<void> | void },
+  ) => useTaskAiAssistance(context, options),
+}));
 vi.mock("../components/task/TaskArchivePanel.vue", () => ({
   default: {
     name: "TaskArchivePanel",
@@ -113,6 +155,11 @@ describe("CustomsWorkbench", () => {
     ])
       mock.mockReset();
     collaborationComposable.calls = 0;
+    useTaskAiAssistance.mockClear();
+    vi.mocked(aiState.confirm).mockClear();
+    vi.mocked(aiState.reject).mockClear();
+    vi.mocked(aiState.retry).mockClear();
+    vi.mocked(aiState.refresh).mockClear();
     listContainers.mockResolvedValue({ items: [container] });
     getContainer.mockResolvedValue(container);
     listNodes.mockResolvedValue({ nodes: [] });
@@ -154,7 +201,7 @@ describe("CustomsWorkbench", () => {
     );
   });
 
-  it("owns one shared collaboration model for the selected container and task", async () => {
+  it("owns the shared collaboration and AI models for the selected container and task", async () => {
     const { wrapper } = await mountPage();
 
     expect(wrapper.find('[aria-label="清关案件表单"]').exists()).toBe(true);
@@ -172,7 +219,9 @@ describe("CustomsWorkbench", () => {
     expect(modeControl.get('[data-mode-control="collaboration"]').text()).toBe(
       "协作",
     );
+    expect(modeControl.get('[data-mode-control="ai"]').text()).toBe("AI 辅助");
     expect(collaborationComposable.calls).toBe(1);
+    expect(useTaskAiAssistance).toHaveBeenCalledTimes(1);
     expect(listTaskCollaboration).toHaveBeenCalledTimes(1);
     expect(listTaskCollaboration).toHaveBeenCalledWith(
       "task-1",
@@ -182,6 +231,28 @@ describe("CustomsWorkbench", () => {
       },
       expect.any(AbortSignal),
     );
+
+    await modeControl.get('[data-mode-control="ai"]').trigger("click");
+    const aiContext = useTaskAiAssistance.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskAiAssistanceContext | null;
+    }>;
+    expect(aiContext.value).toEqual({
+      contextKey: "container:container-1|node_task:task-1",
+      taskId: "task-1",
+      subjectRef: { kind: "container", id: "container-1" },
+      workRef: { kind: "node_task", id: "task-1" },
+    });
+    const ai = wrapper
+      .getComponent({ name: "TaskContextPanel" })
+      .props("ai") as TaskAiAssistancePanelModel;
+    expect(ai.facts).toEqual({
+      objectLabel: container.containerNumber,
+      taskLabel: "清关任务",
+      actionLabel: "领取",
+      responsibilityLabel: "待领取",
+      dueLabel: "未设截止",
+    });
   });
 
   it("passes the current container, task, and original outcome to the archive", async () => {
@@ -213,7 +284,7 @@ describe("CustomsWorkbench", () => {
     expect(listTaskCollaboration).not.toHaveBeenCalled();
   });
 
-  it("preserves work input, context scroll, and focus across archive and collaboration", async () => {
+  it("preserves work input, context scroll, and focus across archive, collaboration, and AI", async () => {
     const { wrapper } = await mountPage();
     const input = wrapper.get<HTMLInputElement>(
       '[aria-label="清关案件表单"] input',
@@ -234,6 +305,9 @@ describe("CustomsWorkbench", () => {
       .get('[data-mode-control="collaboration"]')
       .trigger("pointerdown");
     await wrapper.get('[data-mode-control="collaboration"]').trigger("click");
+    scrollOwner.element.scrollTop = 23;
+    await wrapper.get('[data-mode-control="ai"]').trigger("pointerdown");
+    await wrapper.get('[data-mode-control="ai"]').trigger("click");
     scrollOwner.element.scrollTop = 0;
     await wrapper.get('[data-mode-control="work"]').trigger("click");
     await flushPromises();
@@ -241,6 +315,86 @@ describe("CustomsWorkbench", () => {
     expect(input.element.value).toBe("CN");
     expect(scrollOwner.element.scrollTop).toBe(137);
     expect(document.activeElement).toBe(input.element);
+  });
+
+  it("replaces the exact AI refs when the selected container and task change", async () => {
+    getContainer.mockImplementation(async (id: string) =>
+      id === secondContainer.id ? secondContainer : container,
+    );
+    listTasks.mockImplementation(
+      async (query: { containerId?: string } | undefined) => ({
+        items:
+          query?.containerId === secondContainer.id
+            ? [task({ id: "task-2", containerId: secondContainer.id })]
+            : [task()],
+      }),
+    );
+    const { wrapper, router } = await mountPage();
+    const aiContext = useTaskAiAssistance.mock
+      .calls[0]![0] as unknown as Readonly<{
+      value: TaskAiAssistanceContext | null;
+    }>;
+    expect(aiContext.value).toBeNull();
+    await wrapper.get('[data-mode-control="ai"]').trigger("click");
+    expect(aiContext.value?.taskId).toBe("task-1");
+    await router.push(
+      "/workspaces/customs?containerId=container-2&taskId=task-2",
+    );
+    await flushPromises();
+    await flushPromises();
+
+    expect(aiContext.value).toBeNull();
+    expect(
+      wrapper.get('[data-mode-control="work"]').attributes("aria-pressed"),
+    ).toBe("true");
+    await wrapper.get('[data-mode-control="ai"]').trigger("click");
+    expect(aiContext.value).toEqual({
+      contextKey: "container:container-2|node_task:task-2",
+      taskId: "task-2",
+      subjectRef: { kind: "container", id: "container-2" },
+      workRef: { kind: "node_task", id: "task-2" },
+    });
+  });
+
+  it("rereads Customs tasks after AI confirmation without losing the form draft or worksite", async () => {
+    getCase.mockResolvedValue({
+      caseId: "55555555-5555-4555-8555-555555555555",
+      containerRecordId: "11111111-1111-4111-8111-111111111111",
+      version: 1,
+      jurisdictionCountryCode: "CN",
+      customsBrokerPartyId: null,
+      declarationNumber: null,
+      filingState: "not_filed",
+      decisionState: "pending",
+      activeHoldCodes: [],
+      evidenceRefs: [],
+      actorId: "customs-operator",
+      reasonCode: "CUSTOMS_CASE_CREATED",
+      createdAt: "2026-10-20T08:00:00.000Z",
+      duplicate: false,
+    });
+    const { wrapper, router } = await mountPage(
+      "/workspaces/customs?containerId=container-1&taskId=task-1",
+    );
+    const input = wrapper.get<HTMLInputElement>(
+      '[aria-label="清关案件表单"] input',
+    );
+    await input.setValue("US");
+    await wrapper.get('[data-mode-control="ai"]').trigger("click");
+    const readsBefore = listTasks.mock.calls.length;
+
+    const options = useTaskAiAssistance.mock.calls[0]![1];
+    await options.refreshTask();
+    await flushPromises();
+
+    expect(listTasks.mock.calls.length).toBeGreaterThan(readsBefore);
+    expect(router.currentRoute.value.fullPath).toBe(
+      "/workspaces/customs?containerId=container-1&taskId=task-1",
+    );
+    expect(input.element.value).toBe("US");
+    expect(
+      wrapper.get('[data-mode-control="ai"]').attributes("aria-pressed"),
+    ).toBe("true");
   });
 
   it("keeps inactive shared modes mounted but hidden, inert, and outside the tab order", async () => {
@@ -446,6 +600,19 @@ describe("CustomsWorkbench", () => {
     await wrapper.get('[data-mode-control="collaboration"]').trigger("click");
     expect(wrapper.text()).toContain("新任务消息");
     expect(wrapper.text()).not.toContain("旧任务晚到发送结果");
+  });
+
+  it("keeps AI transport, claim execution, and permission policy outside the Customs consumer", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/views/CustomsWorkbench.vue"),
+      "utf8",
+    );
+
+    expect(source).toContain("useTaskAiAssistance");
+    expect(source).not.toContain("api/taskAiAssistance");
+    expect(source).not.toContain("claimWorkOrder");
+    expect(source).not.toContain("CustomsAi");
+    expect(source).not.toContain("task.execute");
   });
 });
 
