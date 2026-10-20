@@ -1,5 +1,5 @@
 ---
-status: fix
+status: coding
 branch: feat/task-ai-assisted-confirmed-execution-v1
 owner: main
 writer: codex
