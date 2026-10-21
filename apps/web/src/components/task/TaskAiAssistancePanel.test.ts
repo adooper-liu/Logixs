@@ -8,6 +8,30 @@ import type {
 import TaskAiAssistancePanel from "./TaskAiAssistancePanel.vue";
 
 describe("TaskAiAssistancePanel", () => {
+  it("renders a committed replay as applied business work", () => {
+    const state = model();
+    state.receipt.value = {
+      workOrderId: id(4),
+      workOrderState: "in_progress",
+      assignmentState: "assigned",
+      assigneeId: "actor-1",
+      taskId: id(2),
+      taskState: "in_progress",
+      applied: true,
+      clientOperationId: id(6),
+      receptionState: "received",
+      businessDecisionState: "accepted",
+      commitState: "committed",
+      rejectionReasonCode: null,
+    };
+    state.idempotencyReplay.value = true;
+
+    const wrapper = mount(TaskAiAssistancePanel, { props: { state } });
+
+    expect(wrapper.text()).toContain("已应用");
+    expect(wrapper.text()).not.toContain("未应用");
+    expect(wrapper.text()).toContain("同一操作的幂等恢复回执");
+  });
   it("renders the evidence spine and keeps an unaccepted proposal separate from task state", () => {
     const wrapper = mount(TaskAiAssistancePanel, {
       props: { state: model() },
@@ -175,6 +199,7 @@ describe("TaskAiAssistancePanel", () => {
     });
     const confirmState = model();
     confirmState.confirmError.value = "响应丢失";
+    confirmState.retryable.value = true;
     confirmState.pendingConfirmCommand.value = {
       contractVersion: "task-action-candidate-confirm.v1",
       candidateId: id(3),
@@ -205,6 +230,39 @@ describe("TaskAiAssistancePanel", () => {
       expect(wrapper.emitted("retry")).toEqual([[item.target]]);
       wrapper.unmount();
     }
+  });
+
+  it.each(["confirm", "reject"] as const)(
+    "keeps a non-retryable %s error visible without a recovery control",
+    (action) => {
+      const state = model();
+      const message = "建议来源返回了无效响应";
+      if (action === "confirm") state.confirmError.value = message;
+      else state.rejectError.value = message;
+      state.retryable.value = false;
+
+      const wrapper = mount(TaskAiAssistancePanel, { props: { state } });
+      const alert = wrapper.get('[role="alert"]');
+
+      expect(alert.text()).toContain(message);
+      expect(alert.find("button").exists()).toBe(false);
+      expect(wrapper.emitted("refresh")).toBeUndefined();
+      expect(wrapper.emitted("retry")).toBeUndefined();
+    },
+  );
+
+  it("preserves explicit refresh after a conflict reloads a terminal candidate", async () => {
+    const state = model();
+    state.candidate.value = { ...state.candidate.value!, status: "rejected" };
+    state.confirmError.value = "建议已发生冲突，已重新读取当前候选和任务。";
+
+    const wrapper = mount(TaskAiAssistancePanel, { props: { state } });
+    const refresh = wrapper.get('[role="alert"]').get("button");
+
+    expect(refresh.text()).toContain("重新读取建议");
+    await refresh.trigger("click");
+
+    expect(wrapper.emitted("refresh")).toEqual([[]]);
   });
 
   it("does not create an inner vertical scroll owner", () => {

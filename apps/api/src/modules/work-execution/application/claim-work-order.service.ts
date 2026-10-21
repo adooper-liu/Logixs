@@ -147,6 +147,9 @@ export class ClaimWorkOrderService {
     existing: ClientOperationRecord,
     tenantId: string,
   ): Promise<ClaimWorkOrderResult> {
+    if (existing.claimResult) {
+      return { ...existing.claimResult, ...receipt(existing) };
+    }
     const workOrder = await this.repository.findWorkOrderInTenant({
       workOrderId: existing.targetId,
       tenantId,
@@ -210,20 +213,16 @@ export class ClaimWorkOrderService {
       );
     }
 
-    const operation = buildCommittedClientOperation({
-      ...base,
-      resultRefs: [
-        { entityType: "work_order", entityId: workOrderId },
-        { entityType: "node_task", entityId: bundle.task.id },
-        ...(bundle.task.containerId
-          ? [{ entityType: "container", entityId: bundle.task.containerId }]
-          : []),
-      ],
-    });
+    const resultRefs = [
+      { entityType: "work_order", entityId: workOrderId },
+      { entityType: "node_task", entityId: bundle.task.id },
+      ...(bundle.task.containerId
+        ? [{ entityType: "container", entityId: bundle.task.containerId }]
+        : []),
+    ];
 
     if (decision.kind === "already_done") {
-      await this.operations.insert(operation);
-      return {
+      const claimResult = {
         workOrderId,
         workOrderState: workOrder.state,
         assignmentState: workOrder.assignmentState,
@@ -231,8 +230,14 @@ export class ClaimWorkOrderService {
         taskId: bundle.task.id,
         taskState: bundle.task.state,
         applied: false,
-        ...receipt(operation),
-      };
+      } as const;
+      const operation = buildCommittedClientOperation({
+        ...base,
+        resultRefs,
+        claimResult,
+      });
+      await this.operations.insert(operation);
+      return { ...claimResult, ...receipt(operation) };
     }
 
     const nextWorkOrders = bundle.workOrders.map((item) =>
@@ -265,6 +270,21 @@ export class ClaimWorkOrderService {
         ? (taskDecision.next as NodeTaskState)
         : bundle.task.state;
 
+    const claimResult = {
+      workOrderId,
+      workOrderState: decision.nextState,
+      assignmentState: decision.assignmentState,
+      assigneeId: actorId,
+      taskId: bundle.task.id,
+      taskState: nextTaskState,
+      applied: true,
+    } as const;
+    const operation = buildCommittedClientOperation({
+      ...base,
+      resultRefs,
+      claimResult,
+    });
+
     const persisted = await this.repository.applyWorkOrderClaim({
       tenantId,
       workOrderId,
@@ -291,8 +311,7 @@ export class ClaimWorkOrderService {
         actorId,
       });
       if (retry.kind === "already_done") {
-        await this.operations.insert(operation);
-        return {
+        const retryResult = {
           workOrderId,
           workOrderState: latest.state,
           assignmentState: latest.assignmentState,
@@ -300,8 +319,14 @@ export class ClaimWorkOrderService {
           taskId: bundle.task.id,
           taskState: bundle.task.state,
           applied: false,
-          ...receipt(operation),
-        };
+        } as const;
+        const retryOperation = buildCommittedClientOperation({
+          ...base,
+          resultRefs,
+          claimResult: retryResult,
+        });
+        await this.operations.insert(retryOperation);
+        return { ...retryResult, ...receipt(retryOperation) };
       }
       throw new HttpException(
         "BUSINESS_STATE_VIOLATION: 工单已被他人领取",
@@ -309,16 +334,7 @@ export class ClaimWorkOrderService {
       );
     }
 
-    return {
-      workOrderId,
-      workOrderState: decision.nextState,
-      assignmentState: decision.assignmentState,
-      assigneeId: actorId,
-      taskId: bundle.task.id,
-      taskState: nextTaskState,
-      applied: true,
-      ...receipt(operation),
-    };
+    return { ...claimResult, ...receipt(operation) };
   }
 }
 

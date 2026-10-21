@@ -110,10 +110,12 @@ def test_registry_has_answer_ops_question():
 
 
 def test_task_claim_explanation_is_strict_and_deterministic():
+    task_id = "10000000-0000-4000-8000-000000000001"
+    work_order_id = "20000000-0000-4000-8000-000000000001"
     response = task_claim_explanation_handler(
         TaskClaimExplanationRequest(
-            taskId="10000000-0000-4000-8000-000000000001",
-            workOrderId="20000000-0000-4000-8000-000000000001",
+            taskId=task_id,
+            workOrderId=work_order_id,
             taskState="in_progress",
             workOrderState="ready",
             assignmentState="unassigned",
@@ -124,6 +126,12 @@ def test_task_claim_explanation_is_strict_and_deterministic():
     assert response.source.modelId is None
     assert response.source.promptVersion is None
     assert response.warningCodes == ["confirm_required"]
+    assert response.rationale == "当前工单处于可领取且未分配状态。"
+    assert response.impact == "确认后由服务端重新校验并将当前工单分配给你；未确认不会改变任务状态。"
+    assert task_id not in response.rationale
+    assert work_order_id not in response.rationale
+    assert task_id not in response.impact
+    assert work_order_id not in response.impact
     assert "actionCode" not in response.model_dump()
 
 

@@ -129,6 +129,19 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.client_operation_claim_result": {
+      "nameZh": "正式领取操作不可变回执",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "与正式 ClientOperation 一对一保存领取提交时的工单、任务和责任归属结果；响应丢失重放只读取此记录，不从当前可变行重构。记录追加后不可修改。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "prisma-schema",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
     "public.compensation_record": {
       "nameZh": "契约",
       "nameStatus": "confirmed_implementation",
@@ -2734,6 +2747,99 @@
       "sourceRefs": [],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.client_operation_claim_result.client_operation_id": {
+      "nameZh": "正式操作标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "主键并外键引用唯一的正式 ClientOperation，保证每次领取操作最多一条不可变结果。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.work_order_id": {
+      "nameZh": "领取工单标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录正式操作实际领取的 WorkOrder 标识；作为原始回执事实保存，不依赖后续工单当前状态。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.work_order_state": {
+      "nameZh": "领取后工单状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的工单状态，后续状态变化不得改写此值。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.assignment_state": {
+      "nameZh": "领取后分配状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的受控分配状态。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.assignee_id": {
+      "nameZh": "领取后负责人标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的负责人 actor 标识；不从人员目录派生显示名称。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.task_id": {
+      "nameZh": "所属节点任务标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录领取工单所属 NodeTask 标识，供正式回执恢复和类型化结果关联。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.task_state": {
+      "nameZh": "领取后任务状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的 NodeTask 状态，后续任务变化不得改写此值。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.applied": {
+      "nameZh": "原操作已落账",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "表示该 ClientOperation 对应的原始领取结果是否真实落账；HTTP 重放不会把已落账结果改写为未应用。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.recorded_at": {
+      "nameZh": "回执入库时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录不可变领取回执随正式操作首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "engineering-data-governance",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
       "notes": []
     },
     "public.compensation_record.id": {

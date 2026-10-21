@@ -211,8 +211,8 @@ export function useTaskAiAssistance(
         );
       } else {
         error.value = errorMessage(cause);
-        retryable.value = true;
-        primaryRetryTarget.value = "generate";
+        retryable.value = canRetry(cause);
+        primaryRetryTarget.value = retryable.value ? "generate" : null;
       }
     } finally {
       release(controller);
@@ -231,6 +231,8 @@ export function useTaskAiAssistance(
     const { requestGeneration, requestContext, controller } = scope;
     loading.value = true;
     error.value = "";
+    retryable.value = false;
+    primaryRetryTarget.value = null;
     try {
       const next = await getTaskActionCandidate(
         requestContext.taskId,
@@ -249,7 +251,7 @@ export function useTaskAiAssistance(
         );
       } else {
         error.value = errorMessage(cause);
-        retryable.value = true;
+        retryable.value = canRetry(cause);
       }
     } finally {
       release(controller);
@@ -350,6 +352,8 @@ export function useTaskAiAssistance(
     const { requestGeneration, requestContext, controller } = scope;
     confirming.value = true;
     confirmError.value = "";
+    retryable.value = false;
+    primaryRetryTarget.value = null;
     try {
       const result = await confirmTaskActionCandidate(
         requestContext.taskId,
@@ -395,6 +399,8 @@ export function useTaskAiAssistance(
           confirmError.value = outcome.message;
         }
       } else {
+        retryable.value = canRetry(cause);
+        if (!retryable.value) pendingConfirmCommand.value = null;
         confirmError.value = errorMessage(cause);
       }
     } finally {
@@ -412,6 +418,8 @@ export function useTaskAiAssistance(
     const { requestGeneration, requestContext, controller } = scope;
     rejecting.value = true;
     rejectError.value = "";
+    retryable.value = false;
+    primaryRetryTarget.value = null;
     try {
       const result = await rejectTaskActionCandidate(
         requestContext.taskId,
@@ -455,6 +463,7 @@ export function useTaskAiAssistance(
           rejectError.value = outcome.message;
         }
       } else {
+        retryable.value = canRetry(cause);
         rejectError.value = errorMessage(cause);
       }
     } finally {
@@ -548,8 +557,8 @@ function accessRecoveryMessage(cause?: unknown): string {
 function isNoClaim(cause: unknown): boolean {
   return (
     cause instanceof HttpRequestError &&
-    cause.status === 409 &&
-    /NO_CLAIM_ACTION|BUSINESS_PRECONDITION_FAILED/.test(cause.message)
+    cause.code === "BUSINESS_PRECONDITION_FAILED" &&
+    cause.details.some(({ reasonCode }) => reasonCode === "NO_CLAIM_ACTION")
   );
 }
 
@@ -559,6 +568,12 @@ function isAccessChange(cause: unknown): boolean {
 
 function isConflict(cause: unknown): boolean {
   return cause instanceof HttpRequestError && cause.status === 409;
+}
+
+function canRetry(cause: unknown): boolean {
+  return cause instanceof HttpRequestError && cause.retryable !== null
+    ? cause.retryable
+    : true;
 }
 
 function errorMessage(cause: unknown): string {

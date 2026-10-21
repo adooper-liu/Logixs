@@ -1,5 +1,6 @@
 import type {
   ConfirmTaskActionCandidateCommandV1,
+  ErrorCategory,
   GenerateTaskActionCandidateCommandV1,
   RejectTaskActionCandidateCommandV1,
   TaskActionCandidateV1,
@@ -106,19 +107,32 @@ describe("useTaskAiAssistance", () => {
     expect(model.error.value).toBe("");
   });
 
-  it.each(["NO_CLAIM_ACTION", "BUSINESS_PRECONDITION_FAILED"])(
-    "shows non-retryable no-claim state for %s",
-    async (code) => {
-      generateTaskActionCandidate.mockRejectedValueOnce(httpError(409, code));
-      const context = ref<Context | null>(taskContext("A"));
-      const model = useTaskAiAssistance(context, { refreshTask: vi.fn() });
-      await flushPromises();
+  it("uses structured GC-011 code and reason detail for no-claim", async () => {
+    generateTaskActionCandidate.mockRejectedValueOnce(
+      httpError(409, "localized message", {
+        code: "BUSINESS_PRECONDITION_FAILED",
+        reasonCode: "NO_CLAIM_ACTION",
+      }),
+    );
+    const context = ref<Context | null>(taskContext("A"));
+    const model = useTaskAiAssistance(context, { refreshTask: vi.fn() });
+    await flushPromises();
 
-      expect(model.candidate.value).toBeNull();
-      expect(model.error.value).toBe("当前没有可建议的领取动作");
-      expect(model.retryable.value).toBe(false);
-    },
-  );
+    expect(model.candidate.value).toBeNull();
+    expect(model.error.value).toBe("当前没有可建议的领取动作");
+    expect(model.retryable.value).toBe(false);
+  });
+
+  it("does not infer no-claim from an unstructured human message", async () => {
+    generateTaskActionCandidate.mockRejectedValueOnce(
+      httpError(409, "NO_CLAIM_ACTION should not be parsed"),
+    );
+    const context = ref<Context | null>(taskContext("A"));
+    const model = useTaskAiAssistance(context, { refreshTask: vi.fn() });
+    await flushPromises();
+
+    expect(model.error.value).not.toBe("当前没有可建议的领取动作");
+  });
 
   it.each([403, 404])(
     "clears sensitive state and requests context reread for generate HTTP %s",
@@ -153,7 +167,22 @@ describe("useTaskAiAssistance", () => {
   );
 
   it.each([
-    ["HTTP 503", httpError(503, "TEMPORARY")],
+    [
+      "HTTP 503",
+      httpError(503, "TEMPORARY", {
+        code: "DEPENDENCY_UNAVAILABLE",
+        category: "dependency",
+        retryable: true,
+      }),
+    ],
+    [
+      "HTTP 504",
+      httpError(504, "TIMEOUT", {
+        code: "DEPENDENCY_TIMEOUT",
+        category: "dependency",
+        retryable: true,
+      }),
+    ],
     ["network failure", new Error("NETWORK_UNAVAILABLE")],
   ])("keeps generate retryable after %s", async (_label, cause) => {
     generateTaskActionCandidate.mockRejectedValueOnce(cause);
@@ -173,6 +202,80 @@ describe("useTaskAiAssistance", () => {
 
     expect(refreshTask).not.toHaveBeenCalled();
     expect(generateTaskActionCandidate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer generate retry for a non-retryable dependency response", async () => {
+    generateTaskActionCandidate.mockRejectedValueOnce(
+      httpError(502, "invalid dependency payload", {
+        code: "DEPENDENCY_RESPONSE_INVALID",
+        category: "dependency",
+        retryable: false,
+      }),
+    );
+    const context = ref<Context | null>(taskContext("A"));
+    const model = useTaskAiAssistance(context, { refreshTask: vi.fn() });
+    await flushPromises();
+
+    expect(model.candidate.value).toBeNull();
+    expect(model.retryable.value).toBe(false);
+    expect(retryTarget(model).value).toBeNull();
+  });
+
+  it("does not mark candidate refresh retryable when GC-011 forbids retry", async () => {
+    const context = ref<Context | null>(taskContext("A"));
+    const model = useTaskAiAssistance(context, { refreshTask: vi.fn() });
+    await flushPromises();
+    getTaskActionCandidate.mockRejectedValueOnce(
+      httpError(502, "invalid dependency payload", {
+        code: "DEPENDENCY_RESPONSE_INVALID",
+        category: "dependency",
+        retryable: false,
+      }),
+    );
+
+    await model.refresh();
+
+    expect(model.retryable.value).toBe(false);
+    expect(retryTarget(model).value).toBeNull();
+  });
+
+  it("drops same-key confirm recovery when GC-011 forbids retry", async () => {
+    confirmTaskActionCandidate.mockRejectedValueOnce(
+      httpError(502, "invalid dependency payload", {
+        code: "DEPENDENCY_RESPONSE_INVALID",
+        category: "dependency",
+        retryable: false,
+      }),
+    );
+    const context = ref<Context | null>(taskContext("A"));
+    const model = useTaskAiAssistance(context, { refreshTask: vi.fn() });
+    await flushPromises();
+
+    await model.confirm();
+
+    expect(model.retryable.value).toBe(false);
+    expect(model.pendingConfirmCommand.value).toBeNull();
+    expect(model.confirmError.value).toContain("invalid dependency payload");
+  });
+
+  it("clears stale retry qualification after a non-retryable reject failure", async () => {
+    rejectTaskActionCandidate.mockRejectedValueOnce(
+      httpError(502, "invalid dependency payload", {
+        code: "DEPENDENCY_RESPONSE_INVALID",
+        category: "dependency",
+        retryable: false,
+      }),
+    );
+    const context = ref<Context | null>(taskContext("A"));
+    const model = useTaskAiAssistance(context, { refreshTask: vi.fn() });
+    await flushPromises();
+    model.retryable.value = true;
+
+    await model.reject("不领取");
+
+    expect(model.retryable.value).toBe(false);
+    expect(retryTarget(model).value).toBeNull();
+    expect(model.rejectError.value).toContain("invalid dependency payload");
   });
 
   it("rejects explicitly without confirming or generating a replacement", async () => {
@@ -781,11 +884,26 @@ function confirmResult(suffix = "A"): TaskActionConfirmResultV1 {
   };
 }
 
-function httpError(status: number, code: string): HttpRequestError {
+function httpError(
+  status: number,
+  message: string,
+  structured?: {
+    code: string;
+    reasonCode?: string;
+    category?: ErrorCategory;
+    retryable?: boolean;
+  },
+): HttpRequestError {
   return new HttpRequestError({
     kind: status === 403 ? "forbidden" : "http",
     status,
-    message: code,
+    message,
+    code: structured?.code,
+    category: structured?.category,
+    retryable: structured?.retryable,
+    details: structured?.reasonCode
+      ? [{ reasonCode: structured.reasonCode, message: "detail" }]
+      : undefined,
   });
 }
 

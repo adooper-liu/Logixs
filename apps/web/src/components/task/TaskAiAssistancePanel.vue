@@ -37,6 +37,17 @@ const contextRecoveryError = computed(() =>
     ? props.state.confirmError.value || props.state.rejectError.value
     : "",
 );
+const canRetryConfirmation = computed(
+  () =>
+    props.state.retryable.value &&
+    props.state.pendingConfirmCommand.value !== null,
+);
+const canRefreshDecisionError = computed(
+  () =>
+    props.state.retryable.value ||
+    props.state.primaryRetryTarget.value === "context" ||
+    (candidate.value !== null && candidate.value.status !== "proposed"),
+);
 
 function formatTime(value: string): string {
   const date = new Date(value);
@@ -277,14 +288,18 @@ function emitReject(): void {
           >
             <p>{{ state.confirmError.value }}</p>
             <button
-              v-if="state.pendingConfirmCommand.value"
+              v-if="canRetryConfirmation"
               type="button"
               data-testid="ai-retry-confirm"
               @click="emit('retry', 'confirm')"
             >
               <RotateCcw :size="15" aria-hidden="true" />恢复确认结果
             </button>
-            <button v-else type="button" @click="emit('refresh')">
+            <button
+              v-else-if="canRefreshDecisionError"
+              type="button"
+              @click="emit('refresh')"
+            >
               <RefreshCw :size="15" aria-hidden="true" />重新读取建议
             </button>
           </div>
@@ -294,7 +309,11 @@ function emitReject(): void {
             role="alert"
           >
             <p>{{ state.rejectError.value }}</p>
-            <button type="button" @click="emit('refresh')">
+            <button
+              v-if="canRefreshDecisionError"
+              type="button"
+              @click="emit('refresh')"
+            >
               <RefreshCw :size="15" aria-hidden="true" />重新读取建议
             </button>
           </div>

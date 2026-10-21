@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Req,
+  UseFilters,
+} from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { RequireCapabilities } from "../../../security/require-capabilities.decorator";
 import {
@@ -15,6 +24,7 @@ import {
   TaskActionConfirmResponseDto,
   TaskActionDecisionResponseDto,
 } from "./task-action-candidate.dto";
+import { TaskActionCandidateExceptionFilter } from "./task-action-candidate-exception.filter";
 
 interface TaskActionRequest {
   identity: {
@@ -26,11 +36,16 @@ interface TaskActionRequest {
 
 @ApiTags("task-action-candidates")
 @Controller("node-tasks")
+@UseFilters(TaskActionCandidateExceptionFilter)
 export class TaskActionCandidateController {
   constructor(
+    @Inject(GenerateTaskActionCandidateService)
     private readonly generateCandidate: GenerateTaskActionCandidateService,
+    @Inject(GetTaskActionCandidateService)
     private readonly getCandidate: GetTaskActionCandidateService,
+    @Inject(RejectTaskActionCandidateService)
     private readonly rejectCandidate: RejectTaskActionCandidateService,
+    @Inject(ConfirmTaskActionCandidateService)
     private readonly confirmCandidate: ConfirmTaskActionCandidateService,
   ) {}
 

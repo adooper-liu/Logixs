@@ -90,20 +90,24 @@ export class TaskAssistantClaimExecutionAdapter implements TaskAssistantClaimExe
   }): Promise<TaskAssistantClaimResult> {
     const result = await this.claimWorkOrder.execute(input);
     const operation = await this.findCommittedOperation(input);
-    if (!operation || operation.id !== result.clientOperationId) {
+    if (
+      !operation ||
+      operation.id !== result.clientOperationId ||
+      !operation.claimResult
+    ) {
       throw new InternalServerErrorException("CLAIM_RECEIPT_NOT_FOUND");
     }
     return {
-      ...result,
+      ...operation.claimResult,
+      clientOperationId: operation.id,
       traceId: operation.traceId,
-      assignmentState:
-        result.assignmentState as TaskAssistantClaimResult["assignmentState"],
       receptionState:
-        result.receptionState as TaskAssistantClaimResult["receptionState"],
+        operation.receptionState as TaskAssistantClaimResult["receptionState"],
       businessDecisionState:
-        result.businessDecisionState as TaskAssistantClaimResult["businessDecisionState"],
+        operation.businessDecisionState as TaskAssistantClaimResult["businessDecisionState"],
       commitState:
-        result.commitState as TaskAssistantClaimResult["commitState"],
+        operation.commitState as TaskAssistantClaimResult["commitState"],
+      rejectionReasonCode: operation.rejectionReasonCode,
     };
   }
 
@@ -115,24 +119,9 @@ export class TaskAssistantClaimExecutionAdapter implements TaskAssistantClaimExe
   }) {
     const operation = await this.findCommittedOperation(input);
     if (!operation) return null;
-    const workOrder = await this.repository.findWorkOrderInTenant({
-      tenantId: input.tenantId,
-      workOrderId: input.workOrderId,
-    });
-    if (!workOrder) return null;
-    const bundle = await this.repository.findTaskInTenant({
-      tenantId: input.tenantId,
-      taskId: workOrder.nodeTaskId,
-    });
-    if (!bundle) return null;
+    if (!operation.claimResult) return null;
     return {
-      workOrderId: workOrder.id,
-      workOrderState: workOrder.state,
-      assignmentState: workOrder.assignmentState,
-      assigneeId: workOrder.assigneeId,
-      taskId: bundle.task.id,
-      taskState: bundle.task.state,
-      applied: false,
+      ...operation.claimResult,
       clientOperationId: operation.id,
       traceId: operation.traceId,
       receptionState: operation.receptionState,

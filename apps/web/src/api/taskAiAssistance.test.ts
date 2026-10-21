@@ -145,6 +145,42 @@ describe("task AI assistance API", () => {
       expect(error).toMatchObject({ status, traceId: "trace-1" });
     },
   );
+
+  it("preserves GC-011 code and reason details through the task adapter", async () => {
+    fetchMock.mockResolvedValue(
+      response(409, {
+        success: false,
+        error: {
+          code: "BUSINESS_PRECONDITION_FAILED",
+          message: "当前没有可建议的领取动作。",
+          category: "precondition",
+          retryable: false,
+          details: [
+            {
+              reasonCode: "NO_CLAIM_ACTION",
+              message: "当前任务没有可领取的工单动作。",
+            },
+          ],
+        },
+        traceId: "server-trace",
+        timestamp: "2026-10-20T00:00:00.000Z",
+      }),
+    );
+
+    const error = await getTaskActionCandidate(
+      "task-1",
+      id(3),
+      new AbortController().signal,
+    ).catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(HttpRequestError);
+    expect(error).toMatchObject({
+      status: 409,
+      code: "BUSINESS_PRECONDITION_FAILED",
+      details: [expect.objectContaining({ reasonCode: "NO_CLAIM_ACTION" })],
+      traceId: "server-trace",
+    });
+  });
 });
 
 function expectRequest(

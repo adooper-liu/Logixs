@@ -50,6 +50,12 @@ import {
 const TASK_ACTION_NOW = Symbol("TaskActionNow");
 const TASK_ACTION_ID_FACTORY = Symbol("TaskActionIdFactory");
 export const TASK_ACTION_TRACE_FACTORY = Symbol("TaskActionTraceFactory");
+export const TASK_CLAIM_COPY = {
+  title: "建议领取当前工单",
+  rationale: "当前工单处于可领取且未分配状态。",
+  impact:
+    "确认后由服务端重新校验并将当前工单分配给你；未确认不会改变任务状态。",
+} as const;
 
 interface RequestScope {
   tenantId: string;
@@ -113,7 +119,7 @@ export class GenerateTaskActionCandidateService {
       workOrderId: workOrder.id,
       actionCode: TASK_ACTION_CODE,
       actionVersion: TASK_ACTION_VERSION,
-      title: "Claim current work order",
+      title: TASK_CLAIM_COPY.title,
       rationale: explanation.rationale,
       impact: explanation.impact,
       riskLevel: TASK_ACTION_RISK,
@@ -538,8 +544,8 @@ function decisionResponse(
 function fallbackExplanation() {
   return {
     kind: "fallback" as const,
-    rationale: "The current work order is ready and unassigned.",
-    impact: "Confirming assigns the work order to the current actor.",
+    rationale: TASK_CLAIM_COPY.rationale,
+    impact: TASK_CLAIM_COPY.impact,
     warningCodes: ["confirm_required", "explanation_fallback"],
     modelId: null,
     promptVersion: null,

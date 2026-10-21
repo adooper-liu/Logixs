@@ -1,4 +1,38 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const contractFixtures = JSON.parse(
+  readFileSync(
+    resolve(
+      process.cwd(),
+      "../../packages/contracts/fixtures/v1/schema-instances.json",
+    ),
+    "utf8",
+  ),
+) as { cases: Array<{ name: string; data: unknown }> };
+
+const productionClaimCopy = taskClaimCopy();
+
+function taskClaimCopy() {
+  const fixtureCase = contractFixtures.cases.find(
+    ({ name }) => name === "task action candidate",
+  );
+  const data = fixtureCase?.data as
+    { title?: unknown; rationale?: unknown; impact?: unknown } | undefined;
+  if (
+    typeof data?.title !== "string" ||
+    typeof data.rationale !== "string" ||
+    typeof data.impact !== "string"
+  ) {
+    throw new Error("TASK_ACTION_CANDIDATE_COPY_FIXTURE_INVALID");
+  }
+  return {
+    title: data.title,
+    rationale: data.rationale,
+    impact: data.impact,
+  };
+}
 
 const fixture = {
   containerId: "11111111-1111-4111-8111-111111111111",
@@ -122,9 +156,9 @@ function candidate(
     workOrderId: isA ? fixture.workOrderA : fixture.workOrderB,
     actionCode: "work_execution.claim_work_order",
     actionVersion: 1,
-    title: `当前测试 fixture：建议领取任务 ${isA ? "A" : "B"}`,
-    rationale: "当前服务端快照表明该工单可领取。",
-    impact: "确认后将执行正式领取，并重读当前任务。",
+    title: productionClaimCopy.title,
+    rationale: productionClaimCopy.rationale,
+    impact: productionClaimCopy.impact,
     riskLevel: "low",
     warningCodes: [],
     status,
@@ -304,7 +338,12 @@ async function installFixture(page: Page): Promise<FixtureControl> {
         control.generateFailure = null;
         await route.fulfill({
           status: failure.status,
-          json: { message: failure.code, traceId: "trace-generate" },
+          json:
+            failure.code === "NO_CLAIM_ACTION"
+              ? noClaimError("trace-generate")
+              : failure.code === "DEPENDENCY_RESPONSE_INVALID"
+                ? dependencyInvalidError("trace-generate")
+                : { message: failure.code, traceId: "trace-generate" },
         });
         return;
       }
@@ -394,6 +433,41 @@ async function installFixture(page: Page): Promise<FixtureControl> {
     },
   );
   return control;
+}
+
+function noClaimError(traceId: string) {
+  return {
+    success: false,
+    error: {
+      code: "BUSINESS_PRECONDITION_FAILED",
+      message: "当前没有可建议的领取动作。",
+      category: "precondition",
+      retryable: false,
+      details: [
+        {
+          reasonCode: "NO_CLAIM_ACTION",
+          message: "当前任务没有可领取的工单动作。",
+        },
+      ],
+    },
+    traceId,
+    timestamp: "2026-10-20T09:00:00.000Z",
+  };
+}
+
+function dependencyInvalidError(traceId: string) {
+  return {
+    success: false,
+    error: {
+      code: "DEPENDENCY_RESPONSE_INVALID",
+      message: "建议来源返回了无效响应。",
+      category: "dependency",
+      retryable: false,
+      details: [],
+    },
+    traceId,
+    timestamp: "2026-10-20T09:00:00.000Z",
+  };
 }
 
 async function safelyFulfill(
@@ -493,9 +567,7 @@ test("auto-generates a structured proposal while leaving task responsibility unc
   const control = await gotoTask(page);
   await openAi(page);
 
-  await expect(
-    page.getByText("当前测试 fixture：建议领取任务 A"),
-  ).toBeVisible();
+  await expect(page.getByText(productionClaimCopy.title)).toBeVisible();
   await expect(page.getByText("未采信，不改变任务状态")).toBeVisible();
   await expect(page.getByText("规则建议")).toBeVisible();
   await expect(
@@ -561,9 +633,7 @@ test("confirm 403 clears the sensitive candidate and recovery command", async ({
   await page.getByTestId("ai-confirm").click();
 
   await expect(page.getByRole("alert")).toContainText("重新读取任务和授权");
-  await expect(page.getByText("当前测试 fixture：建议领取任务 A")).toHaveCount(
-    0,
-  );
+  await expect(page.getByText(productionClaimCopy.title)).toHaveCount(0);
   await expect(page.getByTestId("ai-retry-confirm")).toHaveCount(0);
   expect(control.confirmations).toHaveLength(1);
 });
@@ -583,9 +653,7 @@ for (const status of [403, 404]) {
 
     await page.getByTestId("ai-retry-context").click();
 
-    await expect(
-      page.getByText("当前测试 fixture：建议领取任务 A"),
-    ).toBeVisible();
+    await expect(page.getByText(productionClaimCopy.title)).toBeVisible();
     expect(control.nodeTaskReads).toBe(readsBefore + 1);
     expect(control.generates).toHaveLength(generatesBefore + 1);
   });
@@ -664,9 +732,7 @@ test("expired conflict candidate is non-executable and regenerates after context
 
   await page.getByTestId("ai-retry-context").click();
 
-  await expect(
-    page.getByText("当前测试 fixture：建议领取任务 A"),
-  ).toBeVisible();
+  await expect(page.getByText(productionClaimCopy.title)).toBeVisible();
   await expect(page.getByText("等待你的决定", { exact: true })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   expect(control.generates).toHaveLength(generatesBefore + 1);
@@ -711,6 +777,22 @@ test("renders fallback source and a non-retryable no-claim state", async ({
   await expect(page.getByTestId("ai-retry-generate")).toHaveCount(0);
 });
 
+test("does not offer retry when candidate generation receives an invalid dependency response", async ({
+  page,
+}) => {
+  await gotoTask(page, (control) => {
+    control.generateFailure = {
+      status: 502,
+      code: "DEPENDENCY_RESPONSE_INVALID",
+    };
+  });
+  await openAi(page);
+
+  await expect(page.getByRole("alert")).toContainText("建议来源返回了无效响应");
+  await expect(page.getByTestId("ai-retry-generate")).toHaveCount(0);
+  await expect(page.getByTestId("ai-retry-context")).toHaveCount(0);
+});
+
 test("drops late generate, get, confirm, and reject responses after task A switches to B", async ({
   page,
 }) => {
@@ -726,16 +808,16 @@ test("drops late generate, get, confirm, and reject responses after task A switc
   control.releases.generate?.();
   await openAi(page);
   await expect(
-    page.getByText("当前测试 fixture：建议领取任务 B"),
+    page.getByText(`当前领取工单 ${fixture.workOrderB}`),
   ).toBeVisible();
-  await expect(page.getByText("当前测试 fixture：建议领取任务 A")).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByText(`当前领取工单 ${fixture.workOrderA}`),
+  ).toHaveCount(0);
 
   await selectTask(page, control, fixture.taskA);
   await openAi(page);
   await expect(
-    page.getByText("当前测试 fixture：建议领取任务 A"),
+    page.getByText(`当前领取工单 ${fixture.workOrderA}`),
   ).toBeVisible();
   control.confirmStatuses.push(409);
   control.holdNext.get = fixture.taskA;
@@ -745,7 +827,7 @@ test("drops late generate, get, confirm, and reject responses after task A switc
   control.releases.get?.();
   await openAi(page);
   await expect(
-    page.getByText("当前测试 fixture：建议领取任务 B"),
+    page.getByText(`当前领取工单 ${fixture.workOrderB}`),
   ).toBeVisible();
 
   await selectTask(page, control, fixture.taskA);
@@ -768,7 +850,7 @@ test("drops late generate, get, confirm, and reject responses after task A switc
   await openAi(page);
   await expect(page.getByText("已拒绝建议")).toHaveCount(0);
   await expect(
-    page.getByText("当前测试 fixture：建议领取任务 B"),
+    page.getByText(`当前领取工单 ${fixture.workOrderB}`),
   ).toBeVisible();
 });
 
@@ -818,9 +900,7 @@ test("AI viewport evidence keeps the established three-pane geometry", async ({
 }) => {
   await gotoTask(page);
   await openAi(page);
-  await expect(
-    page.getByText("当前测试 fixture：建议领取任务 A"),
-  ).toBeVisible();
+  await expect(page.getByText(productionClaimCopy.title)).toBeVisible();
   const contextPane = page.locator('[data-workbench-pane="context"]');
   if (page.viewportSize()?.width === 390) {
     await contextPane.evaluate((element) => {
@@ -879,7 +959,7 @@ test("AI viewport evidence keeps the established three-pane geometry", async ({
       .locator(".task-ai__reference"),
   ).toHaveText("task.claim-assistance / v1");
   await expect(
-    aiPanel.getByText("当前服务端快照表明该工单可领取。", { exact: true }),
+    aiPanel.getByText(productionClaimCopy.rationale, { exact: true }),
   ).toBeVisible();
   await expect(
     aiPanel.getByText(

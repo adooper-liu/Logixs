@@ -146,6 +146,17 @@ export class PrismaTaskActionCandidateRepository implements TaskActionCandidateR
           const existing = candidate.decisions[0];
           if (existing) return replayIntentOrConflict(existing, input);
 
+          if (input.decision === "accepted") {
+            await tx.$queryRaw<Array<{ locked: boolean }>>`
+              SELECT true AS locked
+              FROM (
+                SELECT pg_advisory_xact_lock(
+                  hashtextextended(${`${input.tenantId}:${candidate.workOrderId}`}, 0)
+                )
+              ) AS acquired
+            `;
+          }
+
           const decisionInput = await buildDecision(mapCandidate(candidate));
           if (
             decisionInput.decision !== input.decision ||

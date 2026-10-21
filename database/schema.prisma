@@ -2664,10 +2664,29 @@ model ClientOperation {
   createdAt             DateTime                     @default(now()) @map("created_at")
   updatedAt             DateTime                     @updatedAt @map("updated_at")
   assistantDecisions    OpsAssistantActionDecision[]
+  claimResult           ClientOperationClaimResult?
 
   @@unique([tenantId, actorId, actionCode, idempotencyKey], map: "client_operation_idempotency_key")
   @@index([tenantId, createdAt, id], map: "client_operation_tenant_created_idx")
   @@map("client_operation")
+}
+
+// work-execution 领取操作的不可变正式回执；重放不得从当前任务/工单行重构。
+model ClientOperationClaimResult {
+  clientOperationId String          @id @map("client_operation_id")
+  clientOperation   ClientOperation @relation(fields: [clientOperationId], references: [id], onDelete: Restrict)
+  workOrderId       String          @map("work_order_id")
+  workOrderState    String          @map("work_order_state")
+  assignmentState   String          @map("assignment_state")
+  assigneeId        String?         @map("assignee_id")
+  taskId            String          @map("task_id")
+  taskState         String          @map("task_state")
+  applied           Boolean         @map("applied")
+  recordedAt        DateTime        @default(now()) @map("recorded_at") @db.Timestamptz
+
+  @@index([workOrderId], map: "client_operation_claim_result_work_order_idx")
+  @@index([taskId], map: "client_operation_claim_result_task_idx")
+  @@map("client_operation_claim_result")
 }
 
 // 契约：GC-009 CompensationRecord。补偿是新事实，不回写 ClientOperation。

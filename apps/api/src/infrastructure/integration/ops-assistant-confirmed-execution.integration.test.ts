@@ -505,6 +505,57 @@ describe("AI1 confirmed claim PostgreSQL control chain", () => {
     await expect(operationCount(context)).resolves.toBe(1);
   });
 
+  it("serializes different candidates for the same work order with one formal claim", async () => {
+    const gate = barrier(2);
+    const realRepository = new PrismaTaskActionCandidateRepository(
+      prisma as never,
+    );
+    const runtime = buildRuntime(withEntryBarrier(realRepository, gate));
+    const context = await seedClaimContext();
+    const firstCandidate = await runtime.generate.execute(
+      generateCommand(context),
+    );
+    const secondCandidate = await runtime.generate.execute(
+      generateCommand(context),
+    );
+    expect(secondCandidate.candidateId).not.toBe(firstCandidate.candidateId);
+    expect(secondCandidate.candidateHash).toBe(firstCandidate.candidateHash);
+
+    const settled = await Promise.allSettled([
+      runtime.confirm.execute(confirmCommand(context, firstCandidate)),
+      runtime.confirm.execute(
+        confirmCommand(context, secondCandidate, "confirm-2"),
+      ),
+    ]);
+
+    expect(settled.filter(({ status }) => status === "fulfilled")).toHaveLength(
+      1,
+    );
+    const rejection = settled.find(({ status }) => status === "rejected");
+    expect(rejection).toMatchObject({
+      status: "rejected",
+      reason: expect.objectContaining({ status: 409 }),
+    });
+    await expect(
+      prisma.opsAssistantActionDecision.count({
+        where: {
+          candidateId: {
+            in: [firstCandidate.candidateId, secondCandidate.candidateId],
+          },
+          decision: "accepted",
+        },
+      }),
+    ).resolves.toBe(1);
+    await expect(operationCount(context)).resolves.toBe(1);
+    await expect(
+      prisma.workOrder.findUnique({ where: { id: context.workOrderId } }),
+    ).resolves.toMatchObject({
+      state: "in_progress",
+      assignmentState: "assigned",
+      assigneeId: context.actorId,
+    });
+  });
+
   it("serializes concurrent confirm and reject without a rejected-but-claimed split", async () => {
     const gate = barrier(2);
     const realRepository = new PrismaTaskActionCandidateRepository(
@@ -569,6 +620,15 @@ describe("AI1 confirmed claim PostgreSQL control chain", () => {
     expect(committed).toMatchObject({ commitState: "committed" });
     await expect(decisionCount(generated.candidateId)).resolves.toBe(0);
 
+    await prisma.workOrder.update({
+      where: { id: context.workOrderId },
+      data: { state: "completed", version: { increment: 1 } },
+    });
+    await prisma.nodeTask.update({
+      where: { id: context.taskId },
+      data: { state: "completed", version: { increment: 1 } },
+    });
+
     const recovered = await initial.confirm.execute(
       confirmCommand(context, generated),
     );
@@ -576,6 +636,19 @@ describe("AI1 confirmed claim PostgreSQL control chain", () => {
     expect(recovered.claimWorkOrderResult.clientOperationId).toBe(
       committed?.id,
     );
+    expect(recovered.claimWorkOrderResult).toMatchObject({
+      workOrderId: context.workOrderId,
+      workOrderState: "in_progress",
+      assignmentState: "assigned",
+      assigneeId: context.actorId,
+      taskId: context.taskId,
+      taskState: "in_progress",
+      applied: true,
+      receptionState: "received",
+      businessDecisionState: "accepted",
+      commitState: "committed",
+      rejectionReasonCode: null,
+    });
     const recoveredDecision =
       await prisma.opsAssistantActionDecision.findUnique({
         where: { candidateId: generated.candidateId },
@@ -584,6 +657,18 @@ describe("AI1 confirmed claim PostgreSQL control chain", () => {
     expect(recoveredDecision?.traceId).toBe(committed?.traceId);
     expect(recoveredDecision?.traceId).not.toBe("server-second-request-trace");
     expect(requestTraces).toEqual([]);
+    await expect(
+      prisma.$executeRawUnsafe(
+        'UPDATE "client_operation_claim_result" SET "recorded_at" = NOW() WHERE "client_operation_id" = $1',
+        committed?.id,
+      ),
+    ).rejects.toThrow("append-only");
+    await expect(
+      prisma.$executeRawUnsafe(
+        'DELETE FROM "client_operation_claim_result" WHERE "client_operation_id" = $1',
+        committed?.id,
+      ),
+    ).rejects.toThrow("append-only");
     await expect(decisionCount(generated.candidateId)).resolves.toBe(1);
     await expect(operationCount(context)).resolves.toBe(1);
   });
@@ -785,6 +870,7 @@ function getCommand(
 function confirmCommand(
   context: Awaited<ReturnType<typeof seedClaimContext>>,
   candidate: { candidateId: string; candidateHash: string },
+  idempotencyKey = "confirm-1",
 ) {
   return {
     ...getCommand(context, candidate.candidateId),
@@ -793,7 +879,7 @@ function confirmCommand(
       contractVersion: "task-action-candidate-confirm.v1" as const,
       candidateId: candidate.candidateId,
       candidateHash: candidate.candidateHash,
-      idempotencyKey: "confirm-1",
+      idempotencyKey,
     },
   };
 }

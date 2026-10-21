@@ -17,6 +17,15 @@ describe("TaskAssistantClaimExecutionAdapter trace receipt", () => {
       businessDecisionState: "accepted",
       commitState: "committed",
       rejectionReasonCode: null,
+      claimResult: {
+        workOrderId,
+        workOrderState: "in_progress",
+        assignmentState: "assigned",
+        assigneeId: "actor-a",
+        taskId,
+        taskState: "in_progress",
+        applied: true,
+      },
     };
     const repository = {
       findWorkOrderInTenant: vi.fn().mockResolvedValue({
@@ -69,6 +78,11 @@ describe("TaskAssistantClaimExecutionAdapter trace receipt", () => {
     await expect(adapter.findClaimReceipt(input)).resolves.toMatchObject({
       clientOperationId: operationId,
       traceId: "official-operation-trace",
+      workOrderState: "in_progress",
+      taskState: "in_progress",
+      applied: true,
     });
+    expect(repository.findWorkOrderInTenant).not.toHaveBeenCalled();
+    expect(repository.findTaskInTenant).not.toHaveBeenCalled();
   });
 });

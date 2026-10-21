@@ -113,6 +113,18 @@ describe("task action candidate application", () => {
       modelId: null,
       promptVersion: null,
     });
+    expect(result).toMatchObject({
+      title: "建议领取当前工单",
+      rationale: "当前工单处于可领取且未分配状态。",
+      impact:
+        "确认后由服务端重新校验并将当前工单分配给你；未确认不会改变任务状态。",
+    });
+    expect(`${result.title}${result.rationale}${result.impact}`).not.toContain(
+      taskId,
+    );
+    expect(`${result.title}${result.rationale}${result.impact}`).not.toContain(
+      workOrderId,
+    );
     expect(result.warningCodes).toContain("explanation_fallback");
   });
 

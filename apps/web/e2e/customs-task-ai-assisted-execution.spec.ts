@@ -1,4 +1,38 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const contractFixtures = JSON.parse(
+  readFileSync(
+    resolve(
+      process.cwd(),
+      "../../packages/contracts/fixtures/v1/schema-instances.json",
+    ),
+    "utf8",
+  ),
+) as { cases: Array<{ name: string; data: unknown }> };
+
+const productionClaimCopy = taskClaimCopy();
+
+function taskClaimCopy() {
+  const fixtureCase = contractFixtures.cases.find(
+    ({ name }) => name === "task action candidate",
+  );
+  const data = fixtureCase?.data as
+    { title?: unknown; rationale?: unknown; impact?: unknown } | undefined;
+  if (
+    typeof data?.title !== "string" ||
+    typeof data.rationale !== "string" ||
+    typeof data.impact !== "string"
+  ) {
+    throw new Error("TASK_ACTION_CANDIDATE_COPY_FIXTURE_INVALID");
+  }
+  return {
+    title: data.title,
+    rationale: data.rationale,
+    impact: data.impact,
+  };
+}
 
 // Synthetic, controlled E2E fixture data. It is not a real business sample.
 const fixture = {
@@ -146,7 +180,7 @@ async function handleAi(
     if (taskId === fixture.completedTaskId) {
       await route.fulfill({
         status: 409,
-        json: { message: "NO_CLAIM_ACTION" },
+        json: noClaimError("trace-customs-no-claim"),
       });
       return;
     }
@@ -181,6 +215,26 @@ async function handleAi(
       control.getCandidateStatuses.shift() ?? "rejected",
     ),
   });
+}
+
+function noClaimError(traceId: string) {
+  return {
+    success: false,
+    error: {
+      code: "BUSINESS_PRECONDITION_FAILED",
+      message: "当前没有可建议的领取动作。",
+      category: "precondition",
+      retryable: false,
+      details: [
+        {
+          reasonCode: "NO_CLAIM_ACTION",
+          message: "当前任务没有可领取的工单动作。",
+        },
+      ],
+    },
+    traceId,
+    timestamp: "2026-10-20T09:00:00.000Z",
+  };
 }
 
 async function gotoTask(
@@ -315,9 +369,7 @@ test("Customs reuses the shared four-mode AI facade without losing its form or s
     await button.dispatchEvent("pointerdown");
     await button.click();
   }
-  await expect(
-    page.getByText("当前测试 fixture：建议领取清关任务 1"),
-  ).toBeVisible();
+  await expect(page.getByText(productionClaimCopy.title)).toBeVisible();
   await expect(page.getByText("未采信，不改变任务状态")).toBeVisible();
   await expect(
     page.getByText(`当前领取工单 ${fixture.activeWorkOrderId}`, {
@@ -420,9 +472,7 @@ test("container switch removes the old candidate and binds exact new refs", asyn
   test.skip(page.viewportSize()?.width !== 1440, "switch regression runs once");
   const control = await gotoTask(page);
   await openAi(page);
-  await expect(
-    page.getByText("当前测试 fixture：建议领取清关任务 1"),
-  ).toBeVisible();
+  await expect(page.getByText(productionClaimCopy.title)).toBeVisible();
 
   await queueItem(page, fixture.secondContainerNumber).click();
   await expect(page).toHaveURL(
@@ -434,11 +484,11 @@ test("container switch removes the old candidate and binds exact new refs", asyn
     page.getByRole("button", { name: "办理", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.getByText("当前测试 fixture：建议领取清关任务 1"),
+    page.getByText(`当前领取工单 ${fixture.activeWorkOrderId}`),
   ).toHaveCount(0);
   await openAi(page);
   await expect(
-    page.getByText("当前测试 fixture：建议领取清关任务 2"),
+    page.getByText(`当前领取工单 ${fixture.secondWorkOrderId}`),
   ).toBeVisible();
   expect(control.generates.at(-1)).toEqual({
     contractVersion: "task-action-candidate-generate.v1",
@@ -488,9 +538,7 @@ test("Customs preserves shared withdrawal and conflict recovery semantics", asyn
   await openAi(page);
   await page.getByTestId("ai-confirm").click();
   await expect(page.getByRole("alert")).toContainText("重新读取任务和授权");
-  await expect(
-    page.getByText("当前测试 fixture：建议领取清关任务 1"),
-  ).toHaveCount(0);
+  await expect(page.getByText(productionClaimCopy.title)).toHaveCount(0);
   await expect(page.getByTestId("ai-retry-confirm")).toHaveCount(0);
 
   await page.reload();
@@ -645,9 +693,9 @@ function candidate(
     workOrderId: second ? fixture.secondWorkOrderId : fixture.activeWorkOrderId,
     actionCode: "work_execution.claim_work_order",
     actionVersion: 1,
-    title: `当前测试 fixture：建议领取清关任务 ${suffix}`,
-    rationale: "当前服务端快照表明该清关工单可领取。",
-    impact: "确认后将执行正式领取，并重读当前清关任务。",
+    title: productionClaimCopy.title,
+    rationale: productionClaimCopy.rationale,
+    impact: productionClaimCopy.impact,
     riskLevel: "low",
     warningCodes: [],
     status: control.claimed.has(taskId) ? "accepted" : status,

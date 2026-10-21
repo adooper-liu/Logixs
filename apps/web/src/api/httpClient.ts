@@ -3,7 +3,8 @@ import {
   SessionUnavailableError,
   type RequestCredentials,
 } from "../auth/session";
-import { formatHttpError } from "./httpError";
+import type { ErrorCategory, ErrorDetail } from "@logix/contracts";
+import { formatHttpError, parseHttpErrorResponse } from "./httpError";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -34,6 +35,10 @@ export type HttpRequestErrorKind =
 export class HttpRequestError extends Error {
   readonly kind: HttpRequestErrorKind;
   readonly status: number;
+  readonly code: string | null;
+  readonly category: ErrorCategory | null;
+  readonly retryable: boolean | null;
+  readonly details: readonly ErrorDetail[];
   readonly traceId: string | null;
   readonly cause: unknown;
 
@@ -41,6 +46,10 @@ export class HttpRequestError extends Error {
     kind: HttpRequestErrorKind;
     status: number;
     message: string;
+    code?: string | null;
+    category?: ErrorCategory | null;
+    retryable?: boolean | null;
+    details?: readonly ErrorDetail[];
     traceId?: string | null;
     cause?: unknown;
   }) {
@@ -48,6 +57,10 @@ export class HttpRequestError extends Error {
     this.name = "HttpRequestError";
     this.kind = input.kind;
     this.status = input.status;
+    this.code = input.code ?? null;
+    this.category = input.category ?? null;
+    this.retryable = input.retryable ?? null;
+    this.details = input.details ?? [];
     this.traceId = input.traceId ?? null;
     this.cause = input.cause;
   }
@@ -219,21 +232,17 @@ function httpError(
   body: string,
   fallback: string,
 ): HttpRequestError {
+  const parsed = parseHttpErrorResponse(body);
   return new HttpRequestError({
     kind,
     status,
     message: formatHttpError(status, body, fallback),
-    traceId: readTraceId(body),
+    code: parsed.code,
+    category: parsed.category,
+    retryable: parsed.retryable,
+    details: parsed.details,
+    traceId: parsed.traceId,
   });
-}
-
-function readTraceId(body: string): string | null {
-  try {
-    const parsed = JSON.parse(body) as { traceId?: unknown };
-    return typeof parsed.traceId === "string" ? parsed.traceId : null;
-  } catch {
-    return null;
-  }
 }
 
 function currentLocation(): string {

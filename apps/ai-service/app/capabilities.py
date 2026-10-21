@@ -153,11 +153,11 @@ def task_claim_explanation_handler(
     request: TaskClaimExplanationRequest,
 ) -> TaskClaimExplanationResponse:
     return TaskClaimExplanationResponse(
-        rationale=(
-            f"Task {request.taskId} has work order {request.workOrderId} "
-            "ready for an explicit claim decision."
+        rationale="当前工单处于可领取且未分配状态。",
+        impact=(
+            "确认后由服务端重新校验并将当前工单分配给你；"
+            "未确认不会改变任务状态。"
         ),
-        impact="Confirming assigns the current work order to the current actor.",
         warningCodes=["confirm_required"],
         source=TaskClaimExplanationSource(
             kind="rule",

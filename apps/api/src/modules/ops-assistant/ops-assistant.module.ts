@@ -24,6 +24,7 @@ import { TASK_ACTION_CANDIDATE_REPOSITORY } from "./domain/task-action-candidate
 import { PrismaTaskActionCandidateRepository } from "./infrastructure/prisma-task-action-candidate.repository";
 import { OpsAssistantController } from "./presentation/ops-assistant.controller";
 import { TaskActionCandidateController } from "./presentation/task-action-candidate.controller";
+import { TaskActionCandidateExceptionFilter } from "./presentation/task-action-candidate-exception.filter";
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { TaskActionCandidateController } from "./presentation/task-action-candid
     GetTaskActionCandidateService,
     RejectTaskActionCandidateService,
     ConfirmTaskActionCandidateService,
+    TaskActionCandidateExceptionFilter,
     { provide: TASK_ACTION_TRACE_FACTORY, useValue: randomUUID },
     {
       provide: TASK_ACTION_CANDIDATE_REPOSITORY,

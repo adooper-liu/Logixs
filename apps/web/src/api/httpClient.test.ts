@@ -232,6 +232,39 @@ describe("requestJson 失败分类", () => {
     });
   });
 
+  it("exposes stable GC-011 code and details without branching on message", async () => {
+    session.credentials.mockResolvedValue(DEVELOPMENT);
+    fetchMock.mockResolvedValue(
+      response(409, {
+        success: false,
+        error: {
+          code: "BUSINESS_PRECONDITION_FAILED",
+          message: "localized human message",
+          category: "precondition",
+          retryable: false,
+          details: [
+            { reasonCode: "NO_CLAIM_ACTION", message: "localized detail" },
+          ],
+        },
+        traceId: "server-trace",
+        timestamp: "2026-10-20T00:00:00.000Z",
+      }),
+    );
+
+    await expect(
+      requestJson("/api/x", { fallback: "生成失败" }),
+    ).rejects.toMatchObject({
+      kind: "http",
+      status: 409,
+      code: "BUSINESS_PRECONDITION_FAILED",
+      category: "precondition",
+      retryable: false,
+      details: [{ reasonCode: "NO_CLAIM_ACTION", message: "localized detail" }],
+      traceId: "server-trace",
+      message: "生成失败（409）：localized human message",
+    });
+  });
+
   it("网络失败与 HTTP 错误可区分", async () => {
     session.credentials.mockResolvedValue(DEVELOPMENT);
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
@@ -241,6 +274,8 @@ describe("requestJson 失败分类", () => {
     ).rejects.toMatchObject({
       kind: "network",
       status: 0,
+      category: null,
+      retryable: null,
       message: "Failed to fetch",
     });
     expect(session.handleUnauthorized).not.toHaveBeenCalled();
