@@ -25,6 +25,7 @@ writeScopes:
   - apps/api/src/modules/ops-assistant/**
   - apps/api/src/modules/work-execution/**
   - apps/api/src/infrastructure/integration/ops-assistant-confirmed-execution.integration.test.ts
+  - apps/api/src/infrastructure/integration/client-operation-claim-result-migration-upgrade.integration.test.ts
   - apps/ai-service/app/**
   - apps/ai-service/tests/**
   - apps/web/src/api/httpClient.ts
