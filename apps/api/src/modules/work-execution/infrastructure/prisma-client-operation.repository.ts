@@ -29,6 +29,7 @@ export class PrismaWorkClientOperationRepository implements WorkClientOperationR
           idempotencyKey: input.idempotencyKey,
         },
       },
+      include: { claimResult: true },
     });
     return row ? toRecord(row) : null;
   }
@@ -64,6 +65,15 @@ function toRecord(row: {
   receivedAt: Date | null;
   decidedAt: Date | null;
   committedAt: Date | null;
+  claimResult: {
+    workOrderId: string;
+    workOrderState: string;
+    assignmentState: string;
+    assigneeId: string | null;
+    taskId: string;
+    taskState: string;
+    applied: boolean;
+  } | null;
 }): ClientOperationRecord {
   return {
     id: row.id,
@@ -91,5 +101,22 @@ function toRecord(row: {
     receivedAt: row.receivedAt,
     decidedAt: row.decidedAt,
     committedAt: row.committedAt,
+    claimResult: row.claimResult
+      ? {
+          workOrderId: row.claimResult.workOrderId,
+          workOrderState: row.claimResult.workOrderState as NonNullable<
+            ClientOperationRecord["claimResult"]
+          >["workOrderState"],
+          assignmentState: row.claimResult.assignmentState as NonNullable<
+            ClientOperationRecord["claimResult"]
+          >["assignmentState"],
+          assigneeId: row.claimResult.assigneeId,
+          taskId: row.claimResult.taskId,
+          taskState: row.claimResult.taskState as NonNullable<
+            ClientOperationRecord["claimResult"]
+          >["taskState"],
+          applied: row.claimResult.applied,
+        }
+      : null,
   };
 }

@@ -25,5 +25,20 @@ export function clientOperationCreateData(record: ClientOperationRecord) {
     receivedAt: record.receivedAt,
     decidedAt: record.decidedAt,
     committedAt: record.committedAt,
+    ...(record.claimResult
+      ? {
+          claimResult: {
+            create: {
+              workOrderId: record.claimResult.workOrderId,
+              workOrderState: record.claimResult.workOrderState,
+              assignmentState: record.claimResult.assignmentState,
+              assigneeId: record.claimResult.assigneeId,
+              taskId: record.claimResult.taskId,
+              taskState: record.claimResult.taskState,
+              applied: record.claimResult.applied,
+            },
+          },
+        }
+      : {}),
   };
 }

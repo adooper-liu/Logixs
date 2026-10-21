@@ -36,3 +36,9 @@ export {
   type TaskCollaborationWriteContextPort,
   type TaskCollaborationWriteTransaction,
 } from "./task-collaboration-write-context.port";
+export {
+  TASK_ASSISTANT_CLAIM_EXECUTION,
+  type TaskAssistantClaimExecutionPort,
+  type TaskAssistantClaimResult,
+  type TaskAssistantClaimSnapshot,
+} from "./task-assistant-claim-execution.port";

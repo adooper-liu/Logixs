@@ -5,7 +5,13 @@
   "oneOf": [
     { "$ref": "#/$defs/OpenAssistantSessionRequest" },
     { "$ref": "#/$defs/AssistantSessionResponse" },
-    { "$ref": "#/$defs/OpsQuestionInput" }
+    { "$ref": "#/$defs/OpsQuestionInput" },
+    { "$ref": "#/$defs/GenerateTaskActionCandidateCommandV1" },
+    { "$ref": "#/$defs/ConfirmTaskActionCandidateCommandV1" },
+    { "$ref": "#/$defs/RejectTaskActionCandidateCommandV1" },
+    { "$ref": "#/$defs/TaskActionCandidateV1" },
+    { "$ref": "#/$defs/TaskActionDecisionV1" },
+    { "$ref": "#/$defs/TaskActionConfirmResultV1" }
   ],
   "$defs": {
     "OpenAssistantSessionRequest": {
@@ -205,6 +211,395 @@
           "maxItems": 100,
           "items": { "$ref": "#/$defs/OpsQuestionHistoryMessage" }
         }
+      }
+    },
+    "TaskAssistantSubjectRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "const": "container" },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "TaskAssistantWorkRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "const": "node_task" },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" }
+      }
+    },
+    "TaskAssistantContextRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subjectRef", "workRef"],
+      "properties": {
+        "subjectRef": { "$ref": "#/$defs/TaskAssistantSubjectRefV1" },
+        "workRef": { "$ref": "#/$defs/TaskAssistantWorkRefV1" }
+      }
+    },
+    "TaskActionInputRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "version"],
+      "properties": {
+        "kind": {
+          "enum": ["container", "node_task", "work_order"]
+        },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "TaskActionCandidateSourceV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "capabilityId",
+        "capabilityVersion",
+        "schemaVersion",
+        "promptVersion",
+        "modelId",
+        "inputSnapshotHash",
+        "inputRefs",
+        "generatedAt"
+      ],
+      "properties": {
+        "kind": { "enum": ["rule", "model", "fallback"] },
+        "capabilityId": { "const": "task.claim-assistance" },
+        "capabilityVersion": { "const": 1 },
+        "schemaVersion": { "const": 1 },
+        "promptVersion": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "modelId": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "inputSnapshotHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "inputRefs": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/TaskActionInputRefV1" }
+        },
+        "generatedAt": { "$ref": "common.schema.json#/$defs/DateTime" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "model" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "promptVersion": { "type": "string", "minLength": 1 },
+              "modelId": { "type": "string", "minLength": 1 }
+            }
+          },
+          "else": {
+            "properties": {
+              "promptVersion": { "type": "null" },
+              "modelId": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "GenerateTaskActionCandidateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "subjectRef", "workRef"],
+      "properties": {
+        "contractVersion": { "const": "task-action-candidate-generate.v1" },
+        "subjectRef": { "$ref": "#/$defs/TaskAssistantSubjectRefV1" },
+        "workRef": { "$ref": "#/$defs/TaskAssistantWorkRefV1" }
+      }
+    },
+    "ConfirmTaskActionCandidateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "candidateId",
+        "candidateHash",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "contractVersion": { "const": "task-action-candidate-confirm.v1" },
+        "candidateId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "candidateHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "RejectTaskActionCandidateCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "candidateId"],
+      "properties": {
+        "contractVersion": { "const": "task-action-candidate-reject.v1" },
+        "candidateId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "TaskActionCandidateV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "candidateHash",
+        "context",
+        "workOrderId",
+        "actionCode",
+        "actionVersion",
+        "title",
+        "rationale",
+        "impact",
+        "riskLevel",
+        "warningCodes",
+        "status",
+        "source"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "candidateHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "context": { "$ref": "#/$defs/TaskAssistantContextRefV1" },
+        "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "actionCode": { "const": "work_execution.claim_work_order" },
+        "actionVersion": { "const": 1 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "rationale": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "impact": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "riskLevel": { "const": "low" },
+        "warningCodes": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          }
+        },
+        "status": { "enum": ["proposed", "accepted", "rejected", "expired"] },
+        "source": { "$ref": "#/$defs/TaskActionCandidateSourceV1" }
+      }
+    },
+    "TaskActionDecisionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisionId",
+        "candidateId",
+        "decidedByActorId",
+        "decision",
+        "reason",
+        "idempotencyKey",
+        "decidedAt",
+        "clientOperationId",
+        "traceId",
+        "executionState",
+        "resultRefs"
+      ],
+      "properties": {
+        "decisionId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "candidateId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "decidedByActorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "decision": { "enum": ["accepted", "rejected"] },
+        "reason": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "decidedAt": { "$ref": "common.schema.json#/$defs/DateTime" },
+        "clientOperationId": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "traceId": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "executionState": {
+          "type": ["string", "null"],
+          "enum": ["pending", "applied", "failed", null]
+        },
+        "resultRefs": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/TaskActionResultRefV1" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "decision": { "const": "rejected" } },
+            "required": ["decision"]
+          },
+          "then": {
+            "properties": {
+              "clientOperationId": { "type": "null" },
+              "executionState": { "type": "null" },
+              "resultRefs": { "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "accepted" },
+              "clientOperationId": { "type": "null" }
+            },
+            "required": ["decision", "clientOperationId"]
+          },
+          "then": {
+            "properties": {
+              "executionState": { "enum": ["pending", null] },
+              "resultRefs": {
+                "not": {
+                  "contains": {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "const": "client_operation" }
+                    },
+                    "required": ["kind"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "accepted" },
+              "clientOperationId": { "type": "string" }
+            },
+            "required": ["decision", "clientOperationId"]
+          },
+          "then": {
+            "properties": {
+              "executionState": {
+                "enum": ["pending", "applied", "failed"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "TaskActionResultRefV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "version"],
+      "properties": {
+        "kind": {
+          "enum": ["container", "node_task", "work_order", "client_operation"]
+        },
+        "id": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "version": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "TaskActionClaimWorkOrderResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workOrderId",
+        "workOrderState",
+        "assignmentState",
+        "assigneeId",
+        "taskId",
+        "taskState",
+        "applied",
+        "clientOperationId",
+        "receptionState",
+        "businessDecisionState",
+        "commitState",
+        "rejectionReasonCode"
+      ],
+      "properties": {
+        "workOrderId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "workOrderState": {
+          "$ref": "common.schema.json#/$defs/WorkOrderState"
+        },
+        "assignmentState": {
+          "$ref": "common.schema.json#/$defs/AssignmentState"
+        },
+        "assigneeId": { "type": ["string", "null"], "maxLength": 128 },
+        "taskId": { "$ref": "common.schema.json#/$defs/Uuid" },
+        "taskState": { "$ref": "common.schema.json#/$defs/NodeTaskState" },
+        "applied": { "type": "boolean" },
+        "clientOperationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "receptionState": {
+          "$ref": "common.schema.json#/$defs/ReceptionState"
+        },
+        "businessDecisionState": {
+          "$ref": "common.schema.json#/$defs/BusinessDecisionState"
+        },
+        "commitState": { "$ref": "common.schema.json#/$defs/CommitState" },
+        "rejectionReasonCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "TaskActionConfirmResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "candidate",
+        "decision",
+        "claimWorkOrderResult",
+        "idempotencyReplay"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "task-action-candidate-confirm-result.v1"
+        },
+        "candidate": { "$ref": "#/$defs/TaskActionCandidateV1" },
+        "decision": { "$ref": "#/$defs/TaskActionDecisionV1" },
+        "claimWorkOrderResult": {
+          "$ref": "#/$defs/TaskActionClaimWorkOrderResultV1"
+        },
+        "idempotencyReplay": { "type": "boolean" }
       }
     }
   }

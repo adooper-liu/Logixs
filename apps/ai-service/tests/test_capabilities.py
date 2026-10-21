@@ -9,7 +9,11 @@ from app.capabilities import (
     echo_handler,
     suggest_mapping_handler,
     answer_ops_question_handler,
+    TaskClaimExplanationRequest,
+    task_claim_explanation_handler,
+    TaskClaimExplanationSource,
 )
+from pydantic import ValidationError
 
 
 def test_echo_handler():
@@ -103,3 +107,45 @@ def test_answer_ops_question_keeps_object_context_read_only():
 
 def test_registry_has_answer_ops_question():
     assert "answer_ops_question" in CAPABILITIES
+
+
+def test_task_claim_explanation_is_strict_and_deterministic():
+    task_id = "10000000-0000-4000-8000-000000000001"
+    work_order_id = "20000000-0000-4000-8000-000000000001"
+    response = task_claim_explanation_handler(
+        TaskClaimExplanationRequest(
+            taskId=task_id,
+            workOrderId=work_order_id,
+            taskState="in_progress",
+            workOrderState="ready",
+            assignmentState="unassigned",
+            assigneeId=None,
+        ),
+    )
+    assert response.source.kind == "rule"
+    assert response.source.modelId is None
+    assert response.source.promptVersion is None
+    assert response.warningCodes == ["confirm_required"]
+    assert response.rationale == "当前工单处于可领取且未分配状态。"
+    assert response.impact == "确认后由服务端重新校验并将当前工单分配给你；未确认不会改变任务状态。"
+    assert task_id not in response.rationale
+    assert work_order_id not in response.rationale
+    assert task_id not in response.impact
+    assert work_order_id not in response.impact
+    assert "actionCode" not in response.model_dump()
+
+
+def test_registry_has_task_claim_explanation():
+    assert CAPABILITIES["explain_task_claim"]["version"] == "1.0.0"
+
+
+def test_task_claim_source_rejects_false_model_provenance():
+    try:
+        TaskClaimExplanationSource(
+            kind="model",
+            modelId=None,
+            promptVersion=None,
+        )
+    except ValidationError:
+        return
+    raise AssertionError("model provenance without metadata must fail")

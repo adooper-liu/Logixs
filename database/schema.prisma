@@ -2636,37 +2636,57 @@ model OceanProviderEventIngestion {
 // 契约：GC-009 ClientOperationV1。
 // lifecycle-control 写入 lifecycle.apply_event；work-execution 写入 work_execution.complete_work_order。
 model ClientOperation {
-  id                    String    @id @map("id")
-  tenantId              String    @map("tenant_id")
-  actorType             String    @map("actor_type")
-  actorId               String    @map("actor_id")
-  actionCode            String    @map("action_code")
-  actionVersion         Int       @map("action_version")
-  targetType            String    @map("target_type")
-  targetId              String    @map("target_id")
-  targetOwnerModule     String    @map("target_owner_module")
-  correlationId         String    @map("correlation_id")
-  causationId           String?   @map("causation_id")
-  traceId               String    @map("trace_id")
-  idempotencyKey        String    @map("idempotency_key")
-  requestHash           String    @map("request_hash")
-  receptionState        String    @map("reception_state")
-  businessDecisionState String    @map("business_decision_state")
-  commitState           String    @map("commit_state")
-  resultRefs            Json      @map("result_refs")
-  rejectionReasonCode   String?   @map("rejection_reason_code")
-  attemptCount          Int       @default(0) @map("attempt_count")
-  lastAttemptAt         DateTime? @map("last_attempt_at")
-  nextAttemptAt         DateTime? @map("next_attempt_at")
-  receivedAt            DateTime? @map("received_at")
-  decidedAt             DateTime? @map("decided_at")
-  committedAt           DateTime? @map("committed_at")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  id                    String                       @id @map("id")
+  tenantId              String                       @map("tenant_id")
+  actorType             String                       @map("actor_type")
+  actorId               String                       @map("actor_id")
+  actionCode            String                       @map("action_code")
+  actionVersion         Int                          @map("action_version")
+  targetType            String                       @map("target_type")
+  targetId              String                       @map("target_id")
+  targetOwnerModule     String                       @map("target_owner_module")
+  correlationId         String                       @map("correlation_id")
+  causationId           String?                      @map("causation_id")
+  traceId               String                       @map("trace_id")
+  idempotencyKey        String                       @map("idempotency_key")
+  requestHash           String                       @map("request_hash")
+  receptionState        String                       @map("reception_state")
+  businessDecisionState String                       @map("business_decision_state")
+  commitState           String                       @map("commit_state")
+  resultRefs            Json                         @map("result_refs")
+  rejectionReasonCode   String?                      @map("rejection_reason_code")
+  attemptCount          Int                          @default(0) @map("attempt_count")
+  lastAttemptAt         DateTime?                    @map("last_attempt_at")
+  nextAttemptAt         DateTime?                    @map("next_attempt_at")
+  receivedAt            DateTime?                    @map("received_at")
+  decidedAt             DateTime?                    @map("decided_at")
+  committedAt           DateTime?                    @map("committed_at")
+  createdAt             DateTime                     @default(now()) @map("created_at")
+  updatedAt             DateTime                     @updatedAt @map("updated_at")
+  assistantDecisions    OpsAssistantActionDecision[]
+  claimResult           ClientOperationClaimResult?
 
   @@unique([tenantId, actorId, actionCode, idempotencyKey], map: "client_operation_idempotency_key")
   @@index([tenantId, createdAt, id], map: "client_operation_tenant_created_idx")
   @@map("client_operation")
+}
+
+// work-execution 领取操作的不可变正式回执；重放不得从当前任务/工单行重构。
+model ClientOperationClaimResult {
+  clientOperationId String          @id @map("client_operation_id")
+  clientOperation   ClientOperation @relation(fields: [clientOperationId], references: [id], onDelete: Restrict)
+  workOrderId       String          @map("work_order_id")
+  workOrderState    String          @map("work_order_state")
+  assignmentState   String          @map("assignment_state")
+  assigneeId        String?         @map("assignee_id")
+  taskId            String          @map("task_id")
+  taskState         String          @map("task_state")
+  applied           Boolean         @map("applied")
+  recordedAt        DateTime        @default(now()) @map("recorded_at") @db.Timestamptz
+
+  @@index([workOrderId], map: "client_operation_claim_result_work_order_idx")
+  @@index([taskId], map: "client_operation_claim_result_task_idx")
+  @@map("client_operation_claim_result")
 }
 
 // 契约：GC-009 CompensationRecord。补偿是新事实，不回写 ClientOperation。
@@ -2692,24 +2712,25 @@ model CompensationRecord {
 
 // 节点任务（work-execution 拥有）：货柜到节点的工序任务（第一刀最小集）。
 model NodeTask {
-  id                    String           @id @default(uuid()) @map("id")
-  tenantId              String           @map("tenant_id")
-  flowInstanceId        String           @map("flow_instance_id")
-  nodeInstanceId        String           @map("node_instance_id")
-  nodeCode              String           @map("node_code")
-  containerId           String?          @map("container_id") // 逻辑引用，无跨模块外键
-  taskDefinitionKey     String           @map("task_definition_key")
-  state                 String           @map("state") // pending | in_progress | completed
-  applicability         String           @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
-  readinessState        String           @default("waiting_conditions") @map("readiness_state") // waiting_conditions | ready
-  completionEligibility String           @default("awaiting_evidence") @map("completion_eligibility") // awaiting_evidence | eligible
-  version               Int              @default(0) @map("version")
-  conditionFactRefs     Json             @default("[]") @map("condition_fact_refs")
-  conditionsEvaluatedAt DateTime         @default(now()) @map("conditions_evaluated_at") @db.Timestamptz
-  createdAt             DateTime         @default(now()) @map("created_at")
-  updatedAt             DateTime         @updatedAt @map("updated_at")
+  id                    String                        @id @default(uuid()) @map("id")
+  tenantId              String                        @map("tenant_id")
+  flowInstanceId        String                        @map("flow_instance_id")
+  nodeInstanceId        String                        @map("node_instance_id")
+  nodeCode              String                        @map("node_code")
+  containerId           String?                       @map("container_id") // 逻辑引用，无跨模块外键
+  taskDefinitionKey     String                        @map("task_definition_key")
+  state                 String                        @map("state") // pending | in_progress | completed
+  applicability         String                        @default("required") @map("applicability") // required | optional_applicable | optional_not_applicable
+  readinessState        String                        @default("waiting_conditions") @map("readiness_state") // waiting_conditions | ready
+  completionEligibility String                        @default("awaiting_evidence") @map("completion_eligibility") // awaiting_evidence | eligible
+  version               Int                           @default(0) @map("version")
+  conditionFactRefs     Json                          @default("[]") @map("condition_fact_refs")
+  conditionsEvaluatedAt DateTime                      @default(now()) @map("conditions_evaluated_at") @db.Timestamptz
+  createdAt             DateTime                      @default(now()) @map("created_at")
+  updatedAt             DateTime                      @updatedAt @map("updated_at")
   workOrders            WorkOrder[]
   outcome               NodeTaskOutcome?
+  assistantCandidates   OpsAssistantActionCandidate[]
 
   @@unique([nodeInstanceId])
   @@index([tenantId, containerId, flowInstanceId, nodeInstanceId], map: "node_task_tenant_container_flow_node_idx")
@@ -2719,21 +2740,23 @@ model NodeTask {
 
 // 作业工单（work-execution 拥有）：任务拆出的工单（第一刀最小集）。
 model WorkOrder {
-  id                     String                     @id @default(uuid()) @map("id")
-  nodeTaskId             String                     @map("node_task_id")
-  nodeTask               NodeTask                   @relation(fields: [nodeTaskId], references: [id])
-  workOrderDefinitionKey String                     @map("work_order_definition_key")
-  state                  String                     @map("state") // ready | in_progress | completed
-  applicability          String                     @map("applicability")
-  assignmentState        String                     @map("assignment_state") // unassigned | assigned | pool | automatic
-  assigneeId             String?                    @map("assignee_id")
-  dueAt                  DateTime?                  @map("due_at") @db.Timestamptz
-  completedAt            DateTime?                  @map("completed_at")
-  version                Int                        @default(0) @map("version")
-  createdAt              DateTime                   @default(now()) @map("created_at")
-  updatedAt              DateTime                   @updatedAt @map("updated_at")
+  id                     String                        @id @default(uuid()) @map("id")
+  nodeTaskId             String                        @map("node_task_id")
+  nodeTask               NodeTask                      @relation(fields: [nodeTaskId], references: [id])
+  workOrderDefinitionKey String                        @map("work_order_definition_key")
+  state                  String                        @map("state") // ready | in_progress | completed
+  applicability          String                        @map("applicability")
+  assignmentState        String                        @map("assignment_state") // unassigned | assigned | pool | automatic
+  assigneeId             String?                       @map("assignee_id")
+  dueAt                  DateTime?                     @map("due_at") @db.Timestamptz
+  completedAt            DateTime?                     @map("completed_at")
+  version                Int                           @default(0) @map("version")
+  createdAt              DateTime                      @default(now()) @map("created_at")
+  updatedAt              DateTime                      @updatedAt @map("updated_at")
   factApplications       WorkOrderFactApplication[]
+  assistantCandidates    OpsAssistantActionCandidate[]
 
+  @@unique([id, nodeTaskId], map: "work_order_id_node_task_key")
   @@index([nodeTaskId], map: "work_order_node_task_idx")
   @@map("work_order")
 }
@@ -3405,4 +3428,69 @@ model OpsAssistantMessage {
 
   @@index([sessionId, createdAt], map: "ops_assistant_message_session_idx")
   @@map("ops_assistant_message")
+}
+
+// 任务绑定的结构化动作候选（ops-assistant 拥有）：只记录服务端固定的领取建议及其来源快照。
+// 候选不保存命令 payload、prompt 原文、token/cookie 或证据正文；记录追加后不可修改。
+model OpsAssistantActionCandidate {
+  id                String                       @id @default(uuid()) @map("id") @db.Uuid
+  tenantId          String                       @map("tenant_id")
+  actorId           String                       @map("actor_id")
+  subjectKind       String                       @map("subject_kind")
+  subjectId         String                       @map("subject_id") @db.Uuid
+  workKind          String                       @map("work_kind")
+  workId            String                       @map("work_id")
+  work              NodeTask                     @relation(fields: [workId], references: [id], onDelete: Restrict)
+  workOrderId       String                       @map("work_order_id")
+  workOrder         WorkOrder                    @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  actionCode        String                       @map("action_code")
+  actionVersion     Int                          @map("action_version")
+  title             String                       @map("title")
+  rationale         String                       @map("rationale")
+  impact            String                       @map("impact")
+  riskLevel         String                       @map("risk_level")
+  warningCodes      String[]                     @map("warning_codes")
+  status            String                       @map("status")
+  candidateHash     String                       @map("candidate_hash")
+  sourceKind        String                       @map("source_kind")
+  capabilityId      String                       @map("capability_id")
+  capabilityVersion Int                          @map("capability_version")
+  schemaVersion     Int                          @map("schema_version")
+  promptVersion     String?                      @map("prompt_version")
+  modelId           String?                      @map("model_id")
+  inputSnapshotHash String                       @map("input_snapshot_hash")
+  inputRefs         Json                         @map("input_refs")
+  generatedAt       DateTime                     @map("generated_at") @db.Timestamptz
+  recordedAt        DateTime                     @default(now()) @map("recorded_at") @db.Timestamptz
+  decisions         OpsAssistantActionDecision[]
+
+  @@index([tenantId, actorId, recordedAt, id], map: "ops_assistant_action_candidate_actor_idx")
+  @@index([tenantId, workId, recordedAt, id], map: "ops_assistant_action_candidate_work_idx")
+  @@index([candidateHash], map: "ops_assistant_action_candidate_hash_idx")
+  @@map("ops_assistant_action_candidate")
+}
+
+// 用户对候选的单一终局决定（ops-assistant 拥有）：接受/拒绝与正式 ClientOperation 分轨关联。
+// 同候选只追加一次；响应丢失依 candidate+actor+idempotency key 重放，不覆盖原决定。
+model OpsAssistantActionDecision {
+  id                String                      @id @default(uuid()) @map("id") @db.Uuid
+  candidateId       String                      @unique(map: "ops_assistant_action_decision_candidate_key") @map("candidate_id") @db.Uuid
+  candidate         OpsAssistantActionCandidate @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+  decidedByActorId  String                      @map("decided_by_actor_id")
+  decision          String                      @map("decision")
+  reason            String?                     @map("reason")
+  idempotencyKey    String                      @map("idempotency_key")
+  decisionHash      String                      @map("decision_hash")
+  decidedAt         DateTime                    @map("decided_at") @db.Timestamptz
+  clientOperationId String?                     @map("client_operation_id")
+  clientOperation   ClientOperation?            @relation(fields: [clientOperationId], references: [id], onDelete: Restrict)
+  traceId           String?                     @map("trace_id")
+  executionState    String?                     @map("execution_state")
+  resultRefs        Json                        @map("result_refs")
+  recordedAt        DateTime                    @default(now()) @map("recorded_at") @db.Timestamptz
+
+  @@unique([candidateId, decidedByActorId, idempotencyKey], map: "ops_assistant_action_decision_idempotency_key")
+  @@index([candidateId, recordedAt, id], map: "ops_assistant_action_decision_candidate_idx")
+  @@index([clientOperationId], map: "ops_assistant_action_decision_client_operation_idx")
+  @@map("ops_assistant_action_decision")
 }

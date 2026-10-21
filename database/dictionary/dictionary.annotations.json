@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "baselineCommit": "e1528345be9d9f38dff8697259bb5284639884a0",
+  "baselineCommit": "a153e3fc0de081564f41ffdd19a3a0097705bb22",
   "sources": {
     "engineering-data-governance": {
       "path": "ENGINEERING_RULES.md",
@@ -31,6 +31,11 @@
       "path": "database/schema.prisma",
       "authority": "implementation",
       "note": "任务协作 V1 的表、字段、关系、索引和模块归属语义。"
+    },
+    "task-ai-assisted-confirmed-execution-v1": {
+      "path": "database/schema.prisma",
+      "authority": "implementation",
+      "note": "任务 AI 辅助确认执行 V1 的候选、人员决定、来源、哈希、幂等和正式执行关联语义。"
     }
   },
   "tables": {
@@ -122,6 +127,19 @@
       "sourceRefs": ["prisma-schema"],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.client_operation_claim_result": {
+      "nameZh": "正式领取操作不可变回执",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "与正式 ClientOperation 一对一保存领取提交时的工单、任务和责任归属结果；响应丢失重放只读取此记录，不从当前可变行重构。记录追加后不可修改。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "prisma-schema",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
       "notes": []
     },
     "public.compensation_record": {
@@ -707,6 +725,32 @@
       "sourceRefs": ["prisma-schema"],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate": {
+      "nameZh": "任务动作建议候选",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "任务绑定的结构化动作候选（ops-assistant 拥有）：只记录服务端固定的领取建议及其来源快照。 候选不保存命令 payload、prompt 原文、token/cookie 或证据正文；记录追加后不可修改。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "prisma-schema",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision": {
+      "nameZh": "任务动作建议人员决定",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "用户对候选的单一终局决定（ops-assistant 拥有）：接受/拒绝与正式 ClientOperation 分轨关联。 同候选只追加一次；响应丢失依 candidate+actor+idempotency key 重放，不覆盖原决定。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "prisma-schema",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
       "notes": []
     },
     "public.ops_assistant_message": {
@@ -2703,6 +2747,99 @@
       "sourceRefs": [],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.client_operation_claim_result.client_operation_id": {
+      "nameZh": "正式操作标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "主键并外键引用唯一的正式 ClientOperation，保证每次领取操作最多一条不可变结果。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.work_order_id": {
+      "nameZh": "领取工单标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录正式操作实际领取的 WorkOrder 标识；作为原始回执事实保存，不依赖后续工单当前状态。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.work_order_state": {
+      "nameZh": "领取后工单状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的工单状态，后续状态变化不得改写此值。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.assignment_state": {
+      "nameZh": "领取后分配状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的受控分配状态。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.assignee_id": {
+      "nameZh": "领取后负责人标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的负责人 actor 标识；不从人员目录派生显示名称。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.task_id": {
+      "nameZh": "所属节点任务标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录领取工单所属 NodeTask 标识，供正式回执恢复和类型化结果关联。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.task_state": {
+      "nameZh": "领取后任务状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存该正式领取操作完成时返回的 NodeTask 状态，后续任务变化不得改写此值。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.applied": {
+      "nameZh": "原操作已落账",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "表示该 ClientOperation 对应的原始领取结果是否真实落账；HTTP 重放不会把已落账结果改写为未应用。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.client_operation_claim_result.recorded_at": {
+      "nameZh": "回执入库时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录不可变领取回执随正式操作首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "engineering-data-governance",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "work-execution",
+      "ownerModule": "work-execution",
       "notes": []
     },
     "public.compensation_record.id": {
@@ -10805,6 +10942,412 @@
       "sourceRefs": [],
       "moduleCode": null,
       "ownerModule": null,
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.id": {
+      "nameZh": "候选标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "稳定标识一条追加不可变的任务动作建议候选。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.action_version": {
+      "nameZh": "动作版本",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 1，与唯一允许的领取动作契约版本绑定。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.title": {
+      "nameZh": "建议标题",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存岗位可读的领取建议标题，trim 后长度为 1..200。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.rationale": {
+      "nameZh": "建议依据",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存结构化建议依据摘要，不保存 prompt 原文或证据正文。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.impact": {
+      "nameZh": "建议影响",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "说明采信领取建议会产生的责任变化；候选自身不执行业务动作。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.risk_level": {
+      "nameZh": "风险等级",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "V1 固定为 low，不接受客户端或模型选择其他风险等级。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.warning_codes": {
+      "nameZh": "警示代码",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存最多 20 个排序去重的稳定警示代码。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.status": {
+      "nameZh": "候选记录状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "物理候选记录固定为 proposed；人员终局决定另存决定表。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.candidate_hash": {
+      "nameZh": "候选哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存规范化业务候选与来源快照语义的 64 位小写 SHA-256；排除候选标识、物理状态、生成/入库时间，允许同一 actor 对同一快照追加多条同 hash 历史候选。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.source_kind": {
+      "nameZh": "建议来源类型",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "精确区分 rule、model 与 fallback，不把降级结果伪装成模型结果。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.capability_id": {
+      "nameZh": "AI 能力标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 task.claim-assistance，标识生成解释所用能力而非执行权限。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户；写入事务必须同时证明该租户、货柜主体、NodeTask 和 WorkOrder 父链精确一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "engineering-data-governance",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.capability_version": {
+      "nameZh": "AI 能力版本",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 1，绑定领取建议能力的输入输出语义。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.schema_version": {
+      "nameZh": "结构化输出版本",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 1，绑定模型解释或确定性降级的结构化 schema。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.prompt_version": {
+      "nameZh": "提示版本",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "仅 model 来源记录实际非空提示版本；rule/fallback 必须为空。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.model_id": {
+      "nameZh": "模型标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "仅 model 来源记录实际非空模型标识；rule/fallback 必须为空。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.input_snapshot_hash": {
+      "nameZh": "输入快照哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存候选生成时正式任务/工单输入快照的 64 位小写 SHA-256。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.input_refs": {
+      "nameZh": "类型化输入引用",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "仅保存 container、node_task、work_order 的类型化 UUID/版本引用，不保存任意业务 JSON。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.generated_at": {
+      "nameZh": "候选生成时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该候选及其来源解释实际生成的时间；该时间不进入候选业务 hash。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.recorded_at": {
+      "nameZh": "候选入库时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录不可变候选首次追加到数据库的时间；该时间不进入候选业务 hash。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.actor_id": {
+      "nameZh": "候选所属身份",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录服务端认证的候选所属 actor；读取必须同时匹配 tenant 与 actor。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.subject_kind": {
+      "nameZh": "主体类型",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 container，禁止候选绑定其他主体类型。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.subject_id": {
+      "nameZh": "货柜主体标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "保存候选绑定的 container UUID，不授予对象可见权；写入事务必须与 NodeTask.containerId 精确一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.work_kind": {
+      "nameZh": "工作类型",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 node_task，禁止候选绑定其他工作类型。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.work_id": {
+      "nameZh": "节点任务标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "外键引用候选绑定的 NodeTask，并与 WorkOrder 父链复合约束一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.work_order_id": {
+      "nameZh": "工单标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "外键引用建议领取的 WorkOrder；写入事务锁定并验证其属于同租户、同货柜的精确 NodeTask。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_candidate.action_code": {
+      "nameZh": "动作代码",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "固定为 work_execution.claim_work_order；模型和客户端均不能改写。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.id": {
+      "nameZh": "决定标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "稳定标识一条追加不可变的人员终局决定。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.trace_id": {
+      "nameZh": "追踪标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "可空关联正式执行链的追踪标识，不保存内部堆栈或 prompt；操作追踪噪音不进入决定业务 hash。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.execution_state": {
+      "nameZh": "执行关联状态",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "可空记录 pending、applied 或 failed；没有 ClientOperation 时禁止 applied/failed，人员决定不等同于正式业务执行。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.result_refs": {
+      "nameZh": "类型化结果引用",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "仅保存最多 20 个排序去重的受控 UUID/版本引用；没有 ClientOperation 时禁止 client_operation 引用，不保存任意执行回执 JSON。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.recorded_at": {
+      "nameZh": "决定入库时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录人员终局决定首次追加到数据库的时间；该时间不进入决定业务 hash。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.candidate_id": {
+      "nameZh": "候选标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "唯一外键引用被决定的候选，保证每个候选最多一个人员终局决定。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.decided_by_actor_id": {
+      "nameZh": "决定人身份",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录服务端认证的决定 actor，并参与候选+actor+幂等键约束。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.decision": {
+      "nameZh": "人员决定",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定为 accepted 或 rejected；不以候选状态替代人员决定。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.reason": {
+      "nameZh": "决定理由",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "可空保存 trim 后长度 1..500 的拒绝或确认说明。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.idempotency_key": {
+      "nameZh": "幂等键",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "识别同一写入请求的重复提交，并作为决定业务 hash 的组成部分绑定同一次幂等意图。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": [
+        "engineering-data-governance",
+        "task-ai-assisted-confirmed-execution-v1"
+      ],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.decision_hash": {
+      "nameZh": "决定哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "由服务端从规范化决定、理由、幂等键、正式操作链接、执行状态和结果引用计算 64 位小写 SHA-256；排除决定标识、决定/入库时间和 traceId，用于同键重放一致性。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.decided_at": {
+      "nameZh": "决定发生时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录人员作出终局决定的时间；该时间不进入决定业务 hash。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
+      "notes": []
+    },
+    "public.ops_assistant_action_decision.client_operation_id": {
+      "nameZh": "正式操作标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "可空外键关联既有 ClientOperation；决定写入事务必须验证其 tenant、actor、claim action 和 WorkOrder target 与候选一致，不创建第二套正式执行回执。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["task-ai-assisted-confirmed-execution-v1"],
+      "moduleCode": "ops-assistant",
+      "ownerModule": "ops-assistant",
       "notes": []
     },
     "public.ops_assistant_message.id": {

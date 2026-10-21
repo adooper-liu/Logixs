@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import type {
+  AssignmentState,
+  NodeTaskState,
+  WorkOrderState,
+} from "@logix/contracts";
 
 export const WORK_COMPLETE_ACTION = "work_execution.complete_work_order";
 export const WORK_CLAIM_ACTION = "work_execution.claim_work_order";
@@ -10,6 +15,16 @@ export type ReceptionState =
   "pending" | "received" | "duplicate" | "boundary_rejected";
 export type BusinessDecisionState = "pending" | "accepted" | "rejected";
 export type CommitState = "pending" | "committed" | "commit_failed";
+
+export interface ClientOperationClaimResult {
+  workOrderId: string;
+  workOrderState: WorkOrderState;
+  assignmentState: AssignmentState;
+  assigneeId: string | null;
+  taskId: string;
+  taskState: NodeTaskState;
+  applied: boolean;
+}
 
 export interface ClientOperationRecord {
   id: string;
@@ -35,6 +50,7 @@ export interface ClientOperationRecord {
   receivedAt: Date | null;
   decidedAt: Date | null;
   committedAt: Date | null;
+  claimResult: ClientOperationClaimResult | null;
 }
 
 export function defaultCompleteIdempotencyKey(workOrderId: string): string {
@@ -110,6 +126,7 @@ export function buildCommittedClientOperation(input: {
   idempotencyKey: string;
   requestHash: string;
   resultRefs: Array<{ entityType: string; entityId: string }>;
+  claimResult?: ClientOperationClaimResult;
   now: Date;
 }): ClientOperationRecord {
   return baseOperation(input, {
@@ -121,6 +138,7 @@ export function buildCommittedClientOperation(input: {
     receivedAt: input.now,
     decidedAt: input.now,
     committedAt: input.now,
+    claimResult: input.claimResult ?? null,
   });
 }
 
@@ -152,6 +170,7 @@ export function buildRejectedClientOperation(input: {
     receivedAt: input.now,
     decidedAt: input.now,
     committedAt: null,
+    claimResult: null,
   });
 }
 
@@ -180,6 +199,7 @@ export function buildBoundaryRejectedClientOperation(input: {
     receivedAt: input.now,
     decidedAt: null,
     committedAt: null,
+    claimResult: null,
   });
 }
 
@@ -207,6 +227,7 @@ function baseOperation(
     | "receivedAt"
     | "decidedAt"
     | "committedAt"
+    | "claimResult"
   >,
 ): ClientOperationRecord {
   const tenantId = input.tenantId.trim();

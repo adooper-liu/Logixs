@@ -39,6 +39,7 @@ export function useTaskWorkspace() {
     },
     reportException: live.reportException,
     retrySubmission: live.retrySubmission,
+    refreshTask: live.reload,
     loadMore: () => {
       void live.loadMore();
     },

@@ -38,7 +38,15 @@
       "workbench-network-volume.schema.json",
       "task-collaboration.schema.json"
     ],
-    "GC-008": ["action-command.schema.json"],
+    "GC-008": [
+      "action-command.schema.json",
+      "ops-assistant.schema.json#/$defs/GenerateTaskActionCandidateCommandV1",
+      "ops-assistant.schema.json#/$defs/ConfirmTaskActionCandidateCommandV1",
+      "ops-assistant.schema.json#/$defs/RejectTaskActionCandidateCommandV1",
+      "ops-assistant.schema.json#/$defs/TaskActionCandidateV1",
+      "ops-assistant.schema.json#/$defs/TaskActionDecisionV1",
+      "ops-assistant.schema.json#/$defs/TaskActionConfirmResultV1"
+    ],
     "GC-009": ["client-operation.schema.json"],
     "GC-010": ["container-operational-view.schema.json"],
     "GC-011": ["error-response.schema.json"]

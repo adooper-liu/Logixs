@@ -686,6 +686,44 @@ export type ShipmentRiskDeadlineKindV1 = ("eta" | "task_due" | "free_time")
 export type ShipmentRiskSortV1 = ("nearest_deadline" | "eta" | "task_due" | "updated_at")
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskActionCandidateSourceV1".
+ */
+export type TaskActionCandidateSourceV1 = {
+kind: ("rule" | "model" | "fallback")
+capabilityId: "task.claim-assistance"
+capabilityVersion: 1
+schemaVersion: 1
+promptVersion: (string | null)
+modelId: (string | null)
+inputSnapshotHash: string
+/**
+ * @maxItems 20
+ */
+inputRefs: []|[TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]|[TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1, TaskActionInputRefV1]
+generatedAt: DateTime
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskActionDecisionV1".
+ */
+export type TaskActionDecisionV1 = {
+decisionId: Uuid
+candidateId: Uuid
+decidedByActorId: string
+decision: ("accepted" | "rejected")
+reason: (string | null)
+idempotencyKey: string
+decidedAt: DateTime
+clientOperationId: (string | null)
+traceId: (string | null)
+executionState: ("pending" | "applied" | "failed" | null)
+/**
+ * @maxItems 20
+ */
+resultRefs: []|[TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]|[TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1, TaskActionResultRefV1]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
  * via the `definition` "WorkbenchNetworkVolumeMetricV1".
  */
 export type WorkbenchNetworkVolumeMetricV1 = (WorkbenchNetworkVolumeCountMetricV1 | WorkbenchNetworkVolumeSemanticMetricV1)
@@ -4720,6 +4758,127 @@ objectContext: (AssistantObjectContext | null)
  * @maxItems 100
  */
 history: OpsQuestionHistoryMessage[]
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskAssistantSubjectRefV1".
+ */
+export interface TaskAssistantSubjectRefV1 {
+kind: "container"
+id: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskAssistantWorkRefV1".
+ */
+export interface TaskAssistantWorkRefV1 {
+kind: "node_task"
+id: Uuid
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskAssistantContextRefV1".
+ */
+export interface TaskAssistantContextRefV1 {
+subjectRef: TaskAssistantSubjectRefV1
+workRef: TaskAssistantWorkRefV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskActionInputRefV1".
+ */
+export interface TaskActionInputRefV1 {
+kind: ("container" | "node_task" | "work_order")
+id: Uuid
+version: (number | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "GenerateTaskActionCandidateCommandV1".
+ */
+export interface GenerateTaskActionCandidateCommandV1 {
+contractVersion: "task-action-candidate-generate.v1"
+subjectRef: TaskAssistantSubjectRefV1
+workRef: TaskAssistantWorkRefV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "ConfirmTaskActionCandidateCommandV1".
+ */
+export interface ConfirmTaskActionCandidateCommandV1 {
+contractVersion: "task-action-candidate-confirm.v1"
+candidateId: Uuid
+candidateHash: string
+idempotencyKey: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "RejectTaskActionCandidateCommandV1".
+ */
+export interface RejectTaskActionCandidateCommandV1 {
+contractVersion: "task-action-candidate-reject.v1"
+candidateId: Uuid
+reason?: string
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskActionCandidateV1".
+ */
+export interface TaskActionCandidateV1 {
+candidateId: Uuid
+candidateHash: string
+context: TaskAssistantContextRefV1
+workOrderId: Uuid
+actionCode: "work_execution.claim_work_order"
+actionVersion: 1
+title: string
+rationale: string
+impact: string
+riskLevel: "low"
+/**
+ * @maxItems 20
+ */
+warningCodes: []|[string]|[string, string]|[string, string, string]|[string, string, string, string]|[string, string, string, string, string]|[string, string, string, string, string, string]|[string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string]|[string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+status: ("proposed" | "accepted" | "rejected" | "expired")
+source: TaskActionCandidateSourceV1
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskActionResultRefV1".
+ */
+export interface TaskActionResultRefV1 {
+kind: ("container" | "node_task" | "work_order" | "client_operation")
+id: Uuid
+version: (number | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskActionClaimWorkOrderResultV1".
+ */
+export interface TaskActionClaimWorkOrderResultV1 {
+workOrderId: Uuid
+workOrderState: WorkOrderState
+assignmentState: AssignmentState
+assigneeId: (string | null)
+taskId: Uuid
+taskState: NodeTaskState
+applied: boolean
+clientOperationId: string
+receptionState: ReceptionState
+businessDecisionState: BusinessDecisionState
+commitState: CommitState
+rejectionReasonCode: (string | null)
+}
+/**
+ * This interface was referenced by `LogixContractsV1`'s JSON-Schema
+ * via the `definition` "TaskActionConfirmResultV1".
+ */
+export interface TaskActionConfirmResultV1 {
+contractVersion: "task-action-candidate-confirm-result.v1"
+candidate: TaskActionCandidateV1
+decision: TaskActionDecisionV1
+claimWorkOrderResult: TaskActionClaimWorkOrderResultV1
+idempotencyReplay: boolean
 }
 /**
  * This interface was referenced by `LogixContractsV1`'s JSON-Schema

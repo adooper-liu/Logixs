@@ -1,25 +1,39 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type {
+  TaskAiAssistancePanelModel,
+  TaskAiAssistanceRetryTarget,
+} from "../../composables/useTaskAiAssistance";
+import type {
   TaskCollaborationPanelModel,
   TaskCollaborationRetryTarget,
 } from "../../composables/useTaskCollaboration";
 import TaskCollaborationPanel from "./TaskCollaborationPanel.vue";
+import TaskAiAssistancePanel from "./TaskAiAssistancePanel.vue";
 
 export type TaskContextMode = "work" | "archive" | "collaboration";
+export type TaskContextPanelMode = TaskContextMode | "ai";
 
-const props = defineProps<{
-  modelValue: TaskContextMode;
-  contextKey: string | null;
-  modes: readonly TaskContextMode[];
-  collaboration: TaskCollaborationPanelModel | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: TaskContextPanelMode;
+    contextKey: string | null;
+    modes: readonly TaskContextPanelMode[];
+    collaboration: TaskCollaborationPanelModel | null;
+    ai?: TaskAiAssistancePanelModel | null;
+  }>(),
+  { ai: null },
+);
 
 const emit = defineEmits<{
-  "update:modelValue": [mode: TaskContextMode];
+  "update:modelValue": [mode: TaskContextPanelMode];
   submit: [];
   retry: [target: TaskCollaborationRetryTarget];
   loadMore: [];
+  confirmAi: [];
+  rejectAi: [reason?: string];
+  retryAi: [target: TaskAiAssistanceRetryTarget];
+  refreshAi: [];
 }>();
 
 defineSlots<{
@@ -28,27 +42,33 @@ defineSlots<{
   archive?(): unknown;
 }>();
 
-const modeLabels: Record<TaskContextMode, string> = {
+const modeLabels: Record<TaskContextPanelMode, string> = {
   work: "办理",
   archive: "档案",
   collaboration: "协作",
+  ai: "AI 辅助",
 };
-const fixedModes: TaskContextMode[] = ["work", "archive", "collaboration"];
+const fixedModes: TaskContextPanelMode[] = [
+  "work",
+  "archive",
+  "collaboration",
+  "ai",
+];
 const availableModes = computed(() =>
   fixedModes.filter((mode) => props.modes.includes(mode)),
 );
-const activeMode = computed<TaskContextMode>(() =>
+const activeMode = computed<TaskContextPanelMode>(() =>
   availableModes.value.includes(props.modelValue)
     ? props.modelValue
     : (availableModes.value[0] ?? "work"),
 );
 const panelRoot = ref<HTMLElement | null>(null);
-const scrollMemory = new Map<TaskContextMode, number>();
-const focusMemory = new Map<TaskContextMode, HTMLElement>();
+const scrollMemory = new Map<TaskContextPanelMode, number>();
+const focusMemory = new Map<TaskContextPanelMode, HTMLElement>();
 const originalTabIndex = new WeakMap<HTMLElement, string | null>();
 let transitionGeneration = 0;
 
-function modeRoot(mode: TaskContextMode): HTMLElement | null {
+function modeRoot(mode: TaskContextPanelMode): HTMLElement | null {
   return (
     panelRoot.value?.querySelector<HTMLElement>(
       `[data-context-mode="${mode}"]`,
@@ -88,7 +108,7 @@ function syncTabStops(): void {
   }
 }
 
-function rememberMode(mode: TaskContextMode): void {
+function rememberMode(mode: TaskContextPanelMode): void {
   const owner = scrollOwner();
   if (owner) scrollMemory.set(mode, owner.scrollTop);
   const focused = document.activeElement;
@@ -99,7 +119,7 @@ function rememberMode(mode: TaskContextMode): void {
 }
 
 function rememberFocusedControl(
-  mode: TaskContextMode,
+  mode: TaskContextPanelMode,
   event: FocusEvent,
 ): void {
   if (event.target instanceof HTMLElement) {
@@ -108,7 +128,7 @@ function rememberFocusedControl(
 }
 
 async function restoreMode(
-  mode: TaskContextMode,
+  mode: TaskContextPanelMode,
   contextKey: string | null,
   generation: number,
 ): Promise<void> {
@@ -134,7 +154,7 @@ async function restoreMode(
     ?.focus({ preventScroll: true });
 }
 
-function selectMode(mode: TaskContextMode): void {
+function selectMode(mode: TaskContextPanelMode): void {
   if (!availableModes.value.includes(mode) || mode === activeMode.value) return;
   rememberMode(activeMode.value);
   emit("update:modelValue", mode);
@@ -253,6 +273,23 @@ onMounted(syncTabStops);
         @load-more="emit('loadMore')"
       />
     </section>
+    <section
+      v-if="availableModes.includes('ai') && ai"
+      class="task-context__mode"
+      data-context-mode="ai"
+      :hidden="activeMode !== 'ai'"
+      :inert="activeMode !== 'ai' || undefined"
+      :aria-hidden="activeMode !== 'ai' ? 'true' : undefined"
+      @focusin="rememberFocusedControl('ai', $event)"
+    >
+      <TaskAiAssistancePanel
+        :state="ai"
+        @confirm="emit('confirmAi')"
+        @reject="emit('rejectAi', $event)"
+        @retry="emit('retryAi', $event)"
+        @refresh="emit('refreshAi')"
+      />
+    </section>
   </article>
 </template>
 
@@ -269,7 +306,7 @@ onMounted(syncTabStops);
   z-index: 2;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-1);
   padding: var(--space-2);
   border-bottom: 1px solid var(--line);

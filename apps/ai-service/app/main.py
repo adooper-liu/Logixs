@@ -11,6 +11,8 @@ from .capabilities import (
     SuggestMappingResponse,
     OpsQuestionRequest,
     OpsQuestionResponse,
+    TaskClaimExplanationRequest,
+    TaskClaimExplanationResponse,
 )
 
 app = FastAPI(title="Logix AI Service", version="0.1.0")
@@ -56,6 +58,19 @@ def suggest_import_mapping(
 )
 def answer_ops_question(request: OpsQuestionRequest) -> OpsQuestionResponse:
     capability = CAPABILITIES.get("answer_ops_question")
+    if capability is None:
+        raise HTTPException(status_code=404, detail="capability not found")
+    return capability["handler"](request)
+
+
+@app.post(
+    "/capabilities/explain-task-claim",
+    response_model=TaskClaimExplanationResponse,
+)
+def explain_task_claim(
+    request: TaskClaimExplanationRequest,
+) -> TaskClaimExplanationResponse:
+    capability = CAPABILITIES.get("explain_task_claim")
     if capability is None:
         raise HTTPException(status_code=404, detail="capability not found")
     return capability["handler"](request)
