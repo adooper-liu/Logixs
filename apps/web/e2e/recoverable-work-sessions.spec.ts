@@ -66,8 +66,13 @@ test("stuffing dirty input never claims a server draft", async ({ page }) => {
   await page.goto(
     `/workspaces/stuffing?containerId=${CONTAINER}&taskId=${TASK}`,
   );
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.locator('[data-mobile-target="detail"]').click();
+    await page.locator('[data-mobile-target="context"]').click();
+  }
   const seal = page.getByLabel("封号");
   await seal.fill("NEW-SEAL");
+  await expect(seal).toHaveValue("NEW-SEAL");
   await page.getByRole("button", { name: "切换工作现场" }).click();
   await page.locator(`[data-session="${SELECTION_SESSION}"]`).click();
   await expect(page.getByText("放弃本地改动并切换")).toBeVisible();
@@ -412,7 +417,13 @@ test("stuffing new-tab transition exposes browser_held through the session API s
   await page.goto(
     `/workspaces/stuffing?containerId=${CONTAINER}&taskId=${TASK}`,
   );
-  await page.getByLabel("封号").fill("NEW-SEAL");
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.locator('[data-mobile-target="detail"]').click();
+    await page.locator('[data-mobile-target="context"]').click();
+  }
+  const seal = page.getByLabel("封号");
+  await seal.fill("NEW-SEAL");
+  await expect(seal).toHaveValue("NEW-SEAL");
   await page.getByRole("button", { name: "切换工作现场" }).click();
   await page.locator(`[data-session="${SELECTION_SESSION}"]`).click();
   const popupPromise = page.waitForEvent("popup");
@@ -984,7 +995,17 @@ function taskPage() {
         readinessState: "ready",
         completionEligibility: "eligible",
         conditionFactRefs: [],
-        workOrders: [],
+        workOrders: [
+          {
+            id: OTHER_HANDOFF,
+            workOrderDefinitionKey: "stuffing",
+            state: "available",
+            assignmentState: "pool",
+            assigneeId: null,
+            dueAt: null,
+            completedAt: null,
+          },
+        ],
         outcome: null,
         nextAction: {
           actionCode: "work_execution.claim_work_order",
