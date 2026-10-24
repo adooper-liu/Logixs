@@ -48,6 +48,12 @@ This change does not modify APIs, contracts, database migrations, backend servic
 - Responsive desktop, narrow and mobile paths preserve the workbench decision sequence without horizontal overflow.
 - Snapshot baselines are reviewed artifacts and are not silently regenerated.
 
+## Delivery priority decision
+
+On 2026-10-25 the project owner confirmed business-first, workbench-by-workbench delivery. Standalone whole-repository UI spreading stops. Each future business slice delivers its required UI together with role tasks, authoritative facts, technical safeguards and permissions, with observable results in the existing page. Existing UI standards remain reusable guidance, not an independent prerequisite for business implementation.
+
+This PR preserves the reviewed UI work and is limited to necessary operational, safety and CI/integration recovery. No new workbench or presentation-only expansion is authorized by this brief. Open CI failures are not waived and the PR must not claim completion before its applicable gates pass. Independent business discovery and implementation that does not depend on this unmerged code need not wait for this PR. Any real code dependency must be named explicitly rather than assumed merged.
+
 ## CI recovery slice
 
 The public release branch includes a generated progress board and browser-fixture corrections. The fixture correction keeps exact task/work-order binding, enters the visible mobile work pane before editing, verifies the edited value, and preserves the supported dirty-switch choices. No production component, public configuration, API, contract, database or snapshot tolerance is changed by this slice.
