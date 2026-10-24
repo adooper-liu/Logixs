@@ -10,6 +10,7 @@ writeScopes:
   - apps/web/e2e/recoverable-work-sessions.spec.ts
   - docs/planning/progress-board.html
   - apps/web/e2e/**
+  - apps/web/src/**
 exclusiveLocks:
   - ui-pattern:public-workbench-ci-recovery
 sharedIntegrationScopes: []
