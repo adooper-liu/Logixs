@@ -10,19 +10,29 @@ import type {
   PickupFactDraft,
   PickupFactKind,
 } from "../../composables/usePickupCommands";
+import SubmissionProgress from "../task/SubmissionProgress.vue";
+import type { SubmissionView } from "../../data/sample";
 
-const props = defineProps<{
-  availableFact: LifecycleDateFact | null;
-  gateOutFact: LifecycleDateFact | null;
-  task: NodeTaskDetail | null;
-  submitting: PickupFactKind | null;
-  error: string;
-  results: Partial<Record<PickupFactKind, RecordLifecycleDateFactResult>>;
-  taskSubmitting: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    draftIdentity: string;
+    disabled?: boolean;
+    availableFact: LifecycleDateFact | null;
+    gateOutFact: LifecycleDateFact | null;
+    task: NodeTaskDetail | null;
+    submitting: PickupFactKind | null;
+    error: string;
+    results: Partial<Record<PickupFactKind, RecordLifecycleDateFactResult>>;
+    taskSubmitting: boolean;
+    submission?: SubmissionView | null;
+  }>(),
+  { disabled: false, submission: null },
+);
 const emit = defineEmits<{
   submit: [draft: PickupFactDraft];
   executeTask: [];
+  retryTask: [];
+  dirtyChange: [dirty: boolean];
 }>();
 
 const location = reactive({
@@ -36,6 +46,17 @@ const availableAt = shallowRef("");
 const gateOutAt = shallowRef("");
 const availableEvidence = shallowRef("");
 const gateOutEvidence = shallowRef("");
+const cleanLocation = shallowRef(JSON.stringify(location));
+const dirty = computed(
+  () =>
+    JSON.stringify(location) !== cleanLocation.value ||
+    Boolean(
+      availableAt.value ||
+      availableEvidence.value ||
+      gateOutAt.value ||
+      gateOutEvidence.value,
+    ),
+);
 const locationValid = computed(
   () =>
     /^[A-Za-z]{2}[A-Za-z0-9]{3}$/.test(location.unlocode.trim()) &&
@@ -43,21 +64,49 @@ const locationValid = computed(
     (!location.locationId.trim() || uuid(location.locationId.trim())),
 );
 
+function hydrateLocation(value: LifecycleDateFact["location"] | undefined) {
+  if (!value) return;
+  if (value.locationType === "terminal" || value.locationType === "port")
+    location.locationType = value.locationType;
+  location.unlocode = value.unlocode ?? "";
+  location.locationId = value.locationId ?? "";
+  location.portCallId = value.portCallId ?? "";
+  location.timezone = value.timezone;
+  cleanLocation.value = JSON.stringify(location);
+}
+
 watch(
-  () => props.gateOutFact?.location ?? props.availableFact?.location,
-  (value) => {
-    if (!value) return;
-    if (value.locationType === "terminal" || value.locationType === "port")
-      location.locationType = value.locationType;
-    location.unlocode = value.unlocode ?? "";
-    location.locationId = value.locationId ?? "";
-    location.portCallId = value.portCallId ?? "";
-    location.timezone = value.timezone;
+  [
+    () => props.draftIdentity,
+    () => props.gateOutFact?.location ?? props.availableFact?.location,
+  ],
+  ([identity, value], previous) => {
+    const identityChanged =
+      previous[0] !== undefined && identity !== previous[0];
+    if (identityChanged) {
+      Object.assign(location, {
+        locationType: "terminal",
+        unlocode: "",
+        locationId: "",
+        portCallId: "",
+        timezone: "",
+      });
+      availableAt.value = "";
+      gateOutAt.value = "";
+      availableEvidence.value = "";
+      gateOutEvidence.value = "";
+      cleanLocation.value = JSON.stringify(location);
+    }
+    // A new identity can arrive before its facts. Never reuse the old location.
+    if (!dirty.value && (!identityChanged || value !== previous[1]))
+      hydrateLocation(value);
   },
   { immediate: true },
 );
+watch(dirty, (value) => emit("dirtyChange", value), { immediate: true });
 
 function submit(kind: PickupFactKind) {
+  if (props.disabled || props.submitting !== null) return;
   const localDateTime =
     kind === "available" ? availableAt.value : gateOutAt.value;
   const evidence =
@@ -83,6 +132,20 @@ function submit(kind: PickupFactKind) {
     ...(current ? { supersedesFactId: current.factId } : {}),
   });
 }
+
+function executeTask() {
+  if (!props.disabled && !props.taskSubmitting && props.submitting === null)
+    emit("executeTask");
+}
+function retryTask() {
+  if (!props.disabled && !props.taskSubmitting && props.submitting === null)
+    emit("retryTask");
+}
+const taskActionLabel = computed(() =>
+  props.task?.nextAction?.actionCode === "work_execution.claim_work_order"
+    ? "领取提柜任务"
+    : "完成提柜工单",
+);
 
 function split(value: string): string[] {
   return [
@@ -113,7 +176,7 @@ function resultLabel(kind: PickupFactKind): string {
 </script>
 
 <template>
-  <section class="actions" aria-label="提柜操作区">
+  <section class="actions" aria-label="提柜操作区" :data-dirty="dirty">
     <section class="location-form" aria-label="提柜地点">
       <header><span>目的码头</span><MapPin :size="16" /></header>
       <div class="fields">
@@ -163,6 +226,7 @@ function resultLabel(kind: PickupFactKind): string {
         class="primary"
         type="button"
         :disabled="
+          disabled ||
           submitting !== null ||
           !locationValid ||
           !availableAt ||
@@ -209,6 +273,7 @@ function resultLabel(kind: PickupFactKind): string {
         class="primary"
         type="button"
         :disabled="
+          disabled ||
           submitting !== null ||
           !locationValid ||
           !gateOutAt ||
@@ -247,16 +312,10 @@ function resultLabel(kind: PickupFactKind): string {
       <button
         v-if="task?.nextAction"
         type="button"
-        :disabled="taskSubmitting"
-        @click="emit('executeTask')"
+        :disabled="disabled || taskSubmitting || submitting !== null"
+        @click="executeTask"
       >
-        {{
-          taskSubmitting
-            ? "处理中…"
-            : task.nextAction.actionCode === "work_execution.claim_work_order"
-              ? "领取提柜任务"
-              : "完成提柜工单"
-        }}
+        {{ taskSubmitting ? "处理中…" : taskActionLabel }}
       </button>
       <p v-else class="notice">
         {{
@@ -264,6 +323,16 @@ function resultLabel(kind: PickupFactKind): string {
         }}
       </p>
     </section>
+    <SubmissionProgress
+      v-if="submission"
+      :submission="submission"
+      :action-label="
+        submission.actionCode === 'work_execution.claim_work_order'
+          ? '领取提柜任务'
+          : '完成提柜工单'
+      "
+      @retry="retryTask"
+    />
   </section>
 </template>
 

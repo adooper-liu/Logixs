@@ -1,4 +1,5 @@
 import { mount } from "@vue/test-utils";
+import { h } from "vue";
 import { afterEach, describe, expect, it } from "vitest";
 import RoleWorkbenchFrame from "./RoleWorkbenchFrame.vue";
 import WorkbenchLayout from "./WorkbenchLayout.vue";
@@ -106,6 +107,116 @@ describe("RoleWorkbenchFrame", () => {
         .findAll("[data-workbench-pane]")
         .map((pane) => pane.attributes("data-workbench-pane")),
     ).toEqual(["queue", "detail", "context"]);
+  });
+
+  it("lets any consumer explicitly opt in to standard geometry without changing pane order", () => {
+    const wrapper = mount(RoleWorkbenchFrame, {
+      props: {
+        stageCode: "cargo_ready",
+        workspaceLabel: "备货",
+        nodeScopeLabel: "备货",
+        selectedContainer: container,
+        nodes: [],
+        selectionLoading: false,
+        containerListError: "",
+        selectionError: "",
+        warnings: [],
+        responsiveMode: "standard",
+      },
+      global: { stubs: { WorkbenchPageHeader: true } },
+    });
+
+    expect(wrapper.getComponent(WorkbenchLayout).props("responsiveMode")).toBe(
+      "standard",
+    );
+    expect(
+      wrapper
+        .findAll("[data-workbench-pane]")
+        .map((pane) => pane.attributes("data-workbench-pane")),
+    ).toEqual(["queue", "detail", "context"]);
+  });
+
+  it("forwards controlled mobile screen and neutral layout events unchanged", async () => {
+    const wrapper = mount(RoleWorkbenchFrame, {
+      props: {
+        stageCode: "cargo_ready",
+        workspaceLabel: "备货",
+        nodeScopeLabel: "备货",
+        selectedContainer: container,
+        nodes: [],
+        selectionLoading: false,
+        containerListError: "",
+        selectionError: "",
+        warnings: [],
+        responsiveMode: "standard",
+        mobileScreen: "queue",
+      },
+      global: { stubs: { WorkbenchPageHeader: true } },
+    });
+    const layout = wrapper.getComponent(WorkbenchLayout);
+
+    expect(layout.props("mobileScreen")).toBe("queue");
+
+    layout.vm.$emit("update:mobileScreen", "detail");
+    layout.vm.$emit("update:mobileScreen", "context");
+    layout.vm.$emit("restoreFocus", "detail");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.emitted("update:mobileScreen")).toEqual([
+      ["detail"],
+      ["context"],
+    ]);
+    expect(wrapper.emitted("restoreFocus")).toEqual([["detail"]]);
+    expect(layout.props("mobileScreen")).toBe("queue");
+  });
+
+  it("transparently forwards neutral mobile and rail slots once", () => {
+    const WorkbenchLayoutProbe = {
+      name: "WorkbenchLayout",
+      props: ["mobileScreen"],
+      template: `
+        <section>
+          <slot name="mobileBreadcrumb" :screen="mobileScreen" />
+          <slot name="queueRail" />
+          <slot name="contextRail" />
+        </section>
+      `,
+    };
+    const wrapper = mount(RoleWorkbenchFrame, {
+      props: {
+        stageCode: "cargo_ready",
+        workspaceLabel: "备货",
+        nodeScopeLabel: "备货",
+        selectedContainer: container,
+        nodes: [],
+        selectionLoading: false,
+        containerListError: "",
+        selectionError: "",
+        warnings: [],
+        responsiveMode: "standard",
+        mobileScreen: "detail",
+      },
+      slots: {
+        mobileBreadcrumb: ({ screen }: { screen: string }) =>
+          h("span", { "data-testid": "mobile-breadcrumb" }, screen),
+        queueRail: '<span data-testid="queue-rail">队列摘要</span>',
+        contextRail: '<span data-testid="context-rail">上下文摘要</span>',
+      },
+      global: {
+        stubs: {
+          WorkbenchLayout: WorkbenchLayoutProbe,
+          WorkbenchPageHeader: true,
+        },
+      },
+    });
+
+    expect(wrapper.get('[data-testid="mobile-breadcrumb"]').text()).toBe(
+      "detail",
+    );
+    expect(wrapper.findAll('[data-testid="queue-rail"]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-testid="context-rail"]')).toHaveLength(1);
+    expect(wrapper.text()).not.toContain("装箱");
+    expect(wrapper.text()).not.toContain("提柜");
   });
 
   it("collapses and expands the queue without unmounting its content", async () => {

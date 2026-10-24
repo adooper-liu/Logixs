@@ -38,6 +38,22 @@ type CursorPage<T> = {
   pageInfo: { nextCursor: string | null; hasNextPage: boolean };
 };
 
+export function selectStuffingTask(
+  tasks: readonly NodeTaskDetail[],
+  requestedTaskId: string,
+  containerId: string,
+): NodeTaskDetail | null {
+  const candidates = tasks.filter(
+    (task) =>
+      task.nodeCode === "container_stuffing" &&
+      task.containerId === containerId,
+  );
+  if (requestedTaskId) {
+    return candidates.find((task) => task.id === requestedTaskId) ?? null;
+  }
+  return candidates[0] ?? null;
+}
+
 export async function collectCursorPages<T>(
   loadPage: (cursor?: string) => Promise<CursorPage<T>>,
 ): Promise<T[]> {
@@ -85,22 +101,24 @@ export function useStuffingWorkbench(
       nodes.value.find((node) => node.nodeCode === "container_stuffing") ??
       null,
   );
-  const stuffingTasks = computed(() =>
-    nodeTasks.value.filter((task) => task.nodeCode === "container_stuffing"),
-  );
   const queueItems = computed(() =>
     buildStuffingQueue({
       tasks: taskPool.value,
       containers: containers.value,
       historicalContainers: historicalContainers.value,
       actorId: actorId.value,
-    }),
+    }).map((item) =>
+      item.kind === "task" && item.responsibility.startsWith("已分配：")
+        ? { ...item, responsibility: "已分配人员" }
+        : item,
+    ),
   );
-  const selectedTask = computed(
-    () =>
-      stuffingTasks.value.find((task) => task.id === taskId.value) ??
-      stuffingTasks.value[0] ??
-      null,
+  const selectedTask = computed(() =>
+    selectStuffingTask(
+      nodeTasks.value,
+      taskId.value,
+      selectedContainer.value?.id ?? containerId.value,
+    ),
   );
   const stuffingActualFact = computed(
     () =>

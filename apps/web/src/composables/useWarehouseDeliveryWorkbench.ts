@@ -1,5 +1,13 @@
 import type { WarehouseDeliveryInstruction } from "@logix/contracts";
-import { computed, readonly, ref, shallowRef, watch, type Ref } from "vue";
+import {
+  computed,
+  onScopeDispose,
+  readonly,
+  ref,
+  shallowRef,
+  watch,
+  type Ref,
+} from "vue";
 import {
   getContainer,
   listContainers,
@@ -32,16 +40,22 @@ export function useWarehouseDeliveryWorkbench(
   const error = shallowRef("");
   const warnings = ref<{ code: string; message: string }[]>([]);
   let revision = 0;
+  let queueRevision = 0;
 
   const queueItems = computed(() =>
     buildDeliveryQueue({ tasks: taskPool.value, containers: containers.value }),
   );
-  const selectedTask = computed(
-    () =>
-      tasks.value.find((task) => task.id === taskId.value) ??
-      tasks.value.find((task) => task.nodeCode === "warehouse_delivery") ??
-      null,
-  );
+  const selectedTask = computed(() => {
+    if (selectedContainer.value?.id !== containerId.value) return null;
+    const candidates = tasks.value.filter(
+      (task) =>
+        task.nodeCode === "warehouse_delivery" &&
+        task.containerId === containerId.value,
+    );
+    return taskId.value
+      ? (candidates.find((task) => task.id === taskId.value) ?? null)
+      : (candidates[0] ?? null);
+  });
   const deliveryNode = computed(
     () =>
       nodes.value.find((node) => node.nodeCode === "warehouse_delivery") ??
@@ -68,16 +82,31 @@ export function useWarehouseDeliveryWorkbench(
     ),
   );
 
-  watch(containerId, (id) => void loadSelection(id, ++revision), {
-    immediate: true,
+  watch(
+    containerId,
+    (id) => {
+      ++queueRevision;
+      queueLoading.value = false;
+      void loadSelection(id, ++revision);
+    },
+    {
+      immediate: true,
+      flush: "sync",
+    },
+  );
+  onScopeDispose(() => {
+    ++revision;
+    ++queueRevision;
   });
 
   async function loadQueue(): Promise<void> {
+    const currentQueueRevision = ++queueRevision;
     queueLoading.value = true;
     const [containerResult, taskResult] = await Promise.allSettled([
       listContainers({ pageSize: 100 }),
       listNodeTasks({ pageSize: 100 }),
     ]);
+    if (currentQueueRevision !== queueRevision) return;
     containers.value =
       containerResult.status === "fulfilled" ? containerResult.value.items : [];
     taskPool.value =
@@ -138,6 +167,7 @@ export function useWarehouseDeliveryWorkbench(
   }
 
   function reset() {
+    loading.value = false;
     selectedContainer.value = null;
     nodes.value = [];
     tasks.value = [];

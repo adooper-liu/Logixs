@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { shallowRef, type ShallowRef } from "vue";
+import { nextTick, shallowRef, type ShallowRef } from "vue";
 import { describe, expect, it } from "vitest";
 import type {
   TaskAiAssistancePanelModel,
@@ -106,6 +106,40 @@ describe("TaskAiAssistancePanel", () => {
 
     expect(wrapper.emitted("confirm")).toEqual([[]]);
     expect(wrapper.emitted("reject")).toEqual([["暂不领取"]]);
+  });
+
+  it("keeps a reject reason through same-context churn and clears it for a new candidate context", async () => {
+    const state = model();
+    const firstCandidate = state.candidate.value!;
+    const wrapper = mount(TaskAiAssistancePanel, { props: { state } });
+    await wrapper
+      .get('[aria-label="拒绝原因（可选）"]')
+      .setValue("当前任务稍后处理");
+
+    state.candidate.value = null;
+    await nextTick();
+    state.candidate.value = { ...firstCandidate };
+    await nextTick();
+    expect(
+      wrapper.get('[aria-label="拒绝原因（可选）"]').element,
+    ).toHaveProperty("value", "当前任务稍后处理");
+
+    state.candidate.value = {
+      ...firstCandidate,
+      candidateId: id(13),
+      context: {
+        subjectRef: { kind: "container", id: id(11) },
+        workRef: { kind: "node_task", id: id(12) },
+      },
+      workOrderId: id(14),
+    };
+    await nextTick();
+
+    expect(
+      wrapper.get('[aria-label="拒绝原因（可选）"]').element,
+    ).toHaveProperty("value", "");
+    await wrapper.get('[data-testid="ai-reject"]').trigger("click");
+    expect(wrapper.emitted("reject")?.at(-1)).toEqual([undefined]);
   });
 
   it("shows a rejected decision read-only and removes both decision buttons", () => {

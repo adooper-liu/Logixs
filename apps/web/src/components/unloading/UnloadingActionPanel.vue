@@ -4,23 +4,32 @@ import type {
   WarehouseDeliveryInstruction,
 } from "@logix/contracts";
 import { ClipboardCheck, Save } from "@lucide/vue";
-import { reactive, shallowRef, watch } from "vue";
+import { computed, reactive, shallowRef, watch } from "vue";
+import SubmissionProgress from "../task/SubmissionProgress.vue";
+import type { SubmissionView } from "../../data/sample";
 import type { RecordLifecycleDateFactResult } from "../../api/lifecycleDateFacts";
 import type { NodeTaskDetail } from "../../api/nodeTasks";
 import type { UnloadingReportDraft } from "../../composables/useContainerUnloadingCommands";
 
 const props = defineProps<{
   instruction: WarehouseDeliveryInstruction | null;
+  draftIdentity?: string;
+  disabled?: boolean;
+  submission?: SubmissionView | null;
   report: ContainerUnloadingReport | null;
   task: NodeTaskDetail | null;
   submitting: boolean;
   taskSubmitting: boolean;
   factResult: RecordLifecycleDateFactResult | null;
   error: string;
+  attemptStage?: "report" | "date" | "reload" | null;
 }>();
 const emit = defineEmits<{
   submit: [draft: UnloadingReportDraft];
   executeTask: [];
+  retryTask: [];
+  dirtyChange: [dirty: boolean];
+  retryAttempt: [];
 }>();
 const form = reactive<UnloadingReportDraft>({
   operationState: "started",
@@ -38,15 +47,69 @@ const form = reactive<UnloadingReportDraft>({
   evidenceInputs: [],
 });
 const evidenceText = shallowRef("");
+const reconciledReportId = shallowRef<string | null>(null);
+const semanticConflict = shallowRef(false);
+const baseline = shallowRef("");
+const dirty = computed(
+  () =>
+    JSON.stringify({
+      ...form,
+      evidenceInputs: undefined,
+      evidenceText: evidenceText.value,
+    }) !== baseline.value,
+);
+const authorityConflict = computed(() =>
+  Boolean(
+    props.report &&
+    props.instruction &&
+    props.report.warehouseLocationId !==
+      props.instruction.warehouseLocationId &&
+    reconciledReportId.value !== props.report.reportId,
+  ),
+);
+const draftConflict = computed(() => {
+  const basis = formBasis.value;
+  const current = props.instruction;
+  return Boolean(
+    dirty.value &&
+    basis &&
+    current &&
+    (basis.locationId !== current.warehouseLocationId ||
+      basis.timezone !== current.timezone),
+  );
+});
+const needsReconciliation = computed(
+  () =>
+    draftConflict.value || authorityConflict.value || semanticConflict.value,
+);
+const formBasis = shallowRef<{
+  instructionId: string;
+  version: number;
+  locationId: string;
+  timezone: string;
+} | null>(null);
+baseline.value = JSON.stringify({
+  ...form,
+  evidenceInputs: undefined,
+  evidenceText: evidenceText.value,
+});
 
 watch(
   () => props.report,
   (report) => {
-    if (!report) return;
-    form.operationState =
-      report.operationState === "completed" ? "completed" : "partial";
-    form.startedLocal = localInput(report.startedAt);
-    form.completedLocal = localInput(report.completedAt);
+    if (report?.reportId !== reconciledReportId.value)
+      reconciledReportId.value = null;
+    semanticConflict.value = false;
+    if (!report || dirty.value) return;
+    form.operationState = report.operationState;
+    form.startedLocal = localInput(
+      report.startedAt,
+      props.instruction?.timezone,
+    );
+    form.completedLocal = localInput(
+      report.completedAt,
+      props.instruction?.timezone,
+    );
     form.expectedQuantity = report.expectedQuantity;
     form.unloadedQuantity = report.unloadedQuantity;
     form.remainingQuantity = report.remainingQuantity;
@@ -57,13 +120,127 @@ watch(
     form.exceptionResolved = report.exceptionResolved;
     form.exceptionNotes = report.exceptionNotes ?? "";
     evidenceText.value = report.evidenceRefs.join("\n");
+    baseline.value = snapshot();
+    bindBasis();
   },
   { immediate: true },
 );
 
+watch(
+  () => props.draftIdentity,
+  () => {
+    resetForm();
+  },
+);
+watch(
+  dirty,
+  (value) => {
+    if (value) bindBasis();
+    emit("dirtyChange", value);
+  },
+  { immediate: true, flush: "sync" },
+);
+watch(
+  () => [
+    props.instruction?.instructionId,
+    props.instruction?.version,
+    props.instruction?.warehouseLocationId,
+    props.instruction?.timezone,
+  ],
+  () => {
+    const current = props.instruction;
+    const basis = formBasis.value;
+    if (!current) return;
+    if (
+      !dirty.value &&
+      !semanticConflict.value &&
+      props.report &&
+      basis &&
+      basis.locationId === current.warehouseLocationId &&
+      basis.timezone !== current.timezone
+    ) {
+      // A clean report's local clock is already a user-facing fact. Preserve
+      // it until the operator explicitly starts a new authority-bound draft.
+      semanticConflict.value = true;
+      return;
+    }
+    if (semanticConflict.value) return;
+    if (!dirty.value) {
+      bindBasis();
+      if (
+        props.report &&
+        props.report.warehouseLocationId === current.warehouseLocationId
+      ) {
+        form.startedLocal = localInput(
+          props.report.startedAt,
+          current.timezone,
+        );
+        form.completedLocal = localInput(
+          props.report.completedAt,
+          current.timezone,
+        );
+        baseline.value = snapshot();
+      }
+    }
+  },
+);
+function snapshot() {
+  return JSON.stringify({
+    ...form,
+    evidenceInputs: undefined,
+    evidenceText: evidenceText.value,
+  });
+}
+function bindBasis() {
+  if (props.instruction)
+    formBasis.value = {
+      instructionId: props.instruction.instructionId,
+      version: props.instruction.version,
+      locationId: props.instruction.warehouseLocationId,
+      timezone: props.instruction.timezone,
+    };
+}
+function reconcile() {
+  resetForm();
+  semanticConflict.value = false;
+  bindBasis();
+  reconciledReportId.value = props.report?.reportId ?? null;
+}
+function resetForm() {
+  Object.assign(form, {
+    operationState: "started",
+    startedLocal: "",
+    completedLocal: "",
+    expectedQuantity: "",
+    unloadedQuantity: "0",
+    remainingQuantity: "",
+    damagedQuantity: "0",
+    shortageQuantity: "0",
+    quantityUnit: "carton",
+    sealCheck: "matched",
+    exceptionResolved: false,
+    exceptionNotes: "",
+    evidenceInputs: [],
+  });
+  evidenceText.value = "";
+  baseline.value = snapshot();
+  formBasis.value = null;
+  semanticConflict.value = false;
+}
+
 function submit() {
+  if (props.disabled || needsReconciliation.value) return;
   form.evidenceInputs = split(evidenceText.value);
   emit("submit", { ...form, evidenceInputs: [...form.evidenceInputs] });
+}
+function retryTask() {
+  if (
+    !props.disabled &&
+    !props.taskSubmitting &&
+    !props.submitting &&
+    props.submission?.canRetry
+  )
+    emit("retryTask");
 }
 function split(value: string) {
   return [
@@ -75,8 +252,22 @@ function split(value: string) {
     ),
   ];
 }
-function localInput(value: string | null | undefined) {
+function localInput(value: string | null | undefined, timezone?: string) {
   if (!value) return "";
+  if (timezone) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(value));
+    const pick = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? "";
+    return `${pick("year")}-${pick("month")}-${pick("day")}T${pick("hour")}:${pick("minute")}`;
+  }
   const date = new Date(value);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
@@ -194,11 +385,30 @@ function resultLabel() {
     <p v-if="!instruction" class="notice">
       先在送仓工作台锁定目的仓，系统才能核对卸货地点。
     </p>
+    <p v-if="needsReconciliation" class="notice notice--error" role="alert">
+      {{
+        authorityConflict
+          ? "当前报告属于旧目的仓，请重新核对后再提交"
+          : semanticConflict
+            ? "指令时区已变化，原本地时间不能静默重解释；请重新核对并开始新草稿"
+            : "目的仓或时区已变更，请重新核对后再提交"
+      }}
+    </p>
+    <button
+      v-if="needsReconciliation"
+      type="button"
+      class="secondary"
+      @click="reconcile()"
+    >
+      重新核对并开始新草稿
+    </button>
     <button
       class="primary"
       type="button"
       :disabled="
         !instruction ||
+        disabled ||
+        needsReconciliation ||
         submitting ||
         !form.startedLocal ||
         !form.expectedQuantity ||
@@ -228,6 +438,30 @@ function resultLabel() {
       {{ resultLabel() }}
     </p>
     <p v-if="error" class="result result--risk" role="alert">{{ error }}</p>
+    <section
+      v-if="attemptStage"
+      class="result result--warn"
+      aria-label="未完成卸柜尝试"
+    >
+      <strong
+        >存在未完成的{{
+          attemptStage === "date"
+            ? "完成日期"
+            : attemptStage === "reload"
+              ? "刷新"
+              : "报告"
+        }}尝试</strong
+      >
+      <span>已保存阶段会按原版本和原幂等键恢复，编辑中的新值尚未保存。</span>
+      <button
+        type="button"
+        class="secondary"
+        :disabled="submitting || disabled"
+        @click="emit('retryAttempt')"
+      >
+        恢复原尝试
+      </button>
+    </section>
     <section class="task-action" aria-label="卸柜工单操作">
       <header>
         <span><ClipboardCheck :size="16" />岗位工单</span>
@@ -238,7 +472,7 @@ function resultLabel() {
       <button
         v-if="task?.nextAction"
         type="button"
-        :disabled="taskSubmitting"
+        :disabled="disabled || taskSubmitting || submitting"
         @click="emit('executeTask')"
       >
         {{
@@ -254,6 +488,11 @@ function resultLabel() {
           task?.state === "completed" ? "卸柜工单已完成" : "当前没有可执行动作"
         }}
       </p>
+      <SubmissionProgress
+        v-if="submission"
+        :submission="submission"
+        @retry="retryTask"
+      />
     </section>
   </section>
 </template>
@@ -336,13 +575,17 @@ button {
   color: var(--brand-strong);
 }
 .primary,
-.task-action > button {
+.task-action > button,
+.secondary {
   margin: 0 var(--space-3);
 }
 .primary {
   background: var(--brand);
   border-color: var(--brand);
   color: var(--on-brand);
+}
+.secondary {
+  background: var(--surface);
 }
 button:disabled {
   cursor: not-allowed;

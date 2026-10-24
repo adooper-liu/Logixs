@@ -8,7 +8,7 @@ import {
   X,
 } from "@lucide/vue";
 import type { NodeTaskState } from "@logix/contracts";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import type {
   TaskAiAssistancePanelModel,
   TaskAiAssistanceRetryTarget,
@@ -30,6 +30,32 @@ const sourceLabels = {
   fallback: "确定性降级建议",
 } as const;
 const candidate = computed(() => props.state.candidate.value);
+const candidateContextSignature = computed(() => {
+  const value = candidate.value;
+  if (!value) return null;
+  return [
+    value.context.subjectRef.kind,
+    value.context.subjectRef.id,
+    value.context.workRef.kind,
+    value.context.workRef.id,
+    value.workOrderId,
+  ].join("|");
+});
+const lastCandidateContextSignature = ref<string | null>(null);
+watch(
+  candidateContextSignature,
+  (signature) => {
+    if (!signature) return;
+    if (
+      lastCandidateContextSignature.value &&
+      lastCandidateContextSignature.value !== signature
+    ) {
+      rejectReason.value = "";
+    }
+    lastCandidateContextSignature.value = signature;
+  },
+  { immediate: true },
+);
 const decision = computed(() => props.state.decision.value);
 const receipt = computed(() => props.state.receipt.value);
 const contextRecoveryError = computed(() =>

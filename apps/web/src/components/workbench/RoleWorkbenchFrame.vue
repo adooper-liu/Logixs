@@ -8,6 +8,7 @@ import WorkbenchPageHeader from "./WorkbenchPageHeader.vue";
 import WorkbenchPane from "./WorkbenchPane.vue";
 import WorkbenchResponsibilityBand from "./WorkbenchResponsibilityBand.vue";
 import type {
+  WorkbenchMobileScreen,
   WorkbenchPaneState,
   WorkbenchResponsibilityItem,
 } from "./workbenchLayout.types";
@@ -28,6 +29,8 @@ const props = withDefaults(
     contextLabel?: string;
     contextSummary?: string;
     mobileContextLabel?: string;
+    responsiveMode?: "standard" | "stacked";
+    mobileScreen?: WorkbenchMobileScreen;
     emptyMessage?: string;
     loadingMessage?: string;
   }>(),
@@ -37,10 +40,17 @@ const props = withDefaults(
     contextLabel: "岗位待办",
     contextSummary: undefined,
     mobileContextLabel: "编辑",
+    responsiveMode: "stacked",
+    mobileScreen: "queue",
     emptyMessage: "从左侧任务队列选择一项工作，查看事实与当前可执行动作。",
     loadingMessage: "正在加载当前岗位事实…",
   },
 );
+
+const emit = defineEmits<{
+  "update:mobileScreen": [value: WorkbenchMobileScreen];
+  restoreFocus: [pane: WorkbenchMobileScreen];
+}>();
 
 defineSlots<{
   actions(): unknown;
@@ -49,6 +59,9 @@ defineSlots<{
   queue(): unknown;
   primary(): unknown;
   secondary(): unknown;
+  mobileBreadcrumb?(props: { screen: WorkbenchMobileScreen }): unknown;
+  queueRail?(): unknown;
+  contextRail?(): unknown;
 }>();
 
 const hasContext = computed(
@@ -102,7 +115,8 @@ const contextState = computed<WorkbenchPaneState>(() => {
     <WorkbenchLayout
       v-model:left-collapsed="leftCollapsed"
       v-model:right-collapsed="rightCollapsed"
-      responsive-mode="stacked"
+      :responsive-mode="responsiveMode"
+      :mobile-screen="mobileScreen"
       left-rail-label="岗位任务池"
       :right-rail-label="contextLabel"
       :left-rail-summary="selectedContainer?.containerNumber ?? '待选择'"
@@ -110,6 +124,8 @@ const contextState = computed<WorkbenchPaneState>(() => {
         contextSummary ?? (hasContext ? '查看动作' : '待选择')
       "
       :mobile-context-label="mobileContextLabel"
+      @update:mobile-screen="emit('update:mobileScreen', $event)"
+      @restore-focus="emit('restoreFocus', $event)"
     >
       <template #header>
         <WorkbenchPageHeader v-if="!embedded" :stage-code="stageCode">
@@ -160,6 +176,14 @@ const contextState = computed<WorkbenchPaneState>(() => {
         </div>
       </template>
 
+      <template v-if="$slots.mobileBreadcrumb" #mobileBreadcrumb="{ screen }">
+        <slot name="mobileBreadcrumb" :screen="screen" />
+      </template>
+
+      <template v-if="$slots.queueRail" #queueRail>
+        <slot name="queueRail" />
+      </template>
+
       <template #queue>
         <WorkbenchPane
           id="role-workbench-queue"
@@ -190,6 +214,10 @@ const contextState = computed<WorkbenchPaneState>(() => {
         >
           <slot name="secondary" />
         </WorkbenchPane>
+      </template>
+
+      <template v-if="$slots.contextRail" #contextRail>
+        <slot name="contextRail" />
       </template>
     </WorkbenchLayout>
   </component>

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { WarehouseDeliveryInstruction } from "@logix/contracts";
 import { BadgeCheck, ClipboardCheck } from "@lucide/vue";
-import { shallowRef } from "vue";
+import { computed, shallowRef, watch } from "vue";
+import SubmissionProgress from "../task/SubmissionProgress.vue";
+import type { SubmissionView } from "../../data/sample";
 import type {
   LifecycleDateFact,
   RecordLifecycleDateFactResult,
@@ -14,6 +16,9 @@ import type {
 
 const props = defineProps<{
   instruction: WarehouseDeliveryInstruction | null;
+  draftIdentity: string;
+  disabled?: boolean;
+  submission?: SubmissionView | null;
   deliveredFact: LifecycleDateFact | null;
   warehouseArrivalFact: LifecycleDateFact | null;
   task: NodeTaskDetail | null;
@@ -25,12 +30,94 @@ const props = defineProps<{
 const emit = defineEmits<{
   submit: [draft: DeliveryFactDraft];
   executeTask: [];
+  retryTask: [];
+  dirtyChange: [dirty: boolean];
 }>();
 const kind = shallowRef<DeliveryFactKind>("delivered");
 const localDateTime = shallowRef("");
 const evidence = shallowRef("");
+const dirty = computed(() => Boolean(localDateTime.value || evidence.value));
+const draftBasis = shallowRef<{
+  instructionId: string;
+  version: number;
+  location: string;
+} | null>(null);
+const instructionLocation = computed(() =>
+  props.instruction
+    ? JSON.stringify([
+        props.instruction.containerRecordId,
+        props.instruction.warehouseLocationId,
+        props.instruction.timezone,
+      ])
+    : null,
+);
+const semanticConflict = computed(
+  () =>
+    dirty.value &&
+    draftBasis.value !== null &&
+    instructionLocation.value !== null &&
+    draftBasis.value.location !== instructionLocation.value,
+);
+watch(
+  dirty,
+  (value) => {
+    if (!value) draftBasis.value = null;
+    if (
+      value &&
+      draftBasis.value === null &&
+      props.instruction &&
+      instructionLocation.value
+    ) {
+      draftBasis.value = {
+        instructionId: props.instruction.instructionId,
+        version: props.instruction.version,
+        location: instructionLocation.value,
+      };
+    }
+    emit("dirtyChange", value);
+  },
+  { immediate: true, flush: "sync" },
+);
+watch(
+  () => props.draftIdentity,
+  () => {
+    kind.value = "delivered";
+    resetDraft();
+  },
+);
+watch(kind, resetDraft, { flush: "sync" });
+function resetDraft() {
+  localDateTime.value = "";
+  evidence.value = "";
+  draftBasis.value = null;
+}
+function executeTask() {
+  if (
+    !props.disabled &&
+    !props.taskSubmitting &&
+    !props.submitting &&
+    props.task?.nextAction
+  )
+    emit("executeTask");
+}
+function retryTask() {
+  if (
+    !props.disabled &&
+    !props.taskSubmitting &&
+    !props.submitting &&
+    props.submission?.canRetry
+  )
+    emit("retryTask");
+}
 function submit() {
-  if (!props.instruction || !localDateTime.value || !evidence.value.trim())
+  if (
+    props.disabled ||
+    props.submitting ||
+    semanticConflict.value ||
+    !props.instruction ||
+    !localDateTime.value ||
+    !evidence.value.trim()
+  )
     return;
   const current =
     kind.value === "delivered"
@@ -63,7 +150,7 @@ function resultLabel() {
 </script>
 
 <template>
-  <section class="actions" aria-label="送仓操作区">
+  <section class="actions" aria-label="送仓操作区" :data-dirty="dirty">
     <header>
       <span><BadgeCheck :size="16" />登记实际送仓</span>
     </header>
@@ -106,11 +193,24 @@ function resultLabel() {
     <p v-if="!instruction" class="notice">
       先锁定当前目的仓，系统才能核对实际到仓地点。
     </p>
+    <p v-if="semanticConflict" class="notice" role="alert">
+      目的仓或时区已变化。原输入保留供核对；请重新录入当前目的仓的时间和证据。
+    </p>
+    <button
+      v-if="semanticConflict"
+      type="button"
+      data-recheck-delivery
+      @click="resetDraft"
+    >
+      核对新目的仓并重新录入
+    </button>
     <button
       class="primary"
       type="button"
       :disabled="
         !instruction ||
+        disabled ||
+        semanticConflict ||
         submitting !== null ||
         !localDateTime ||
         !evidence.trim()
@@ -141,8 +241,8 @@ function resultLabel() {
       <button
         v-if="task?.nextAction"
         type="button"
-        :disabled="taskSubmitting"
-        @click="emit('executeTask')"
+        :disabled="disabled || taskSubmitting || submitting !== null"
+        @click="executeTask"
       >
         {{
           taskSubmitting
@@ -157,6 +257,11 @@ function resultLabel() {
           task?.state === "completed" ? "送仓工单已完成" : "当前没有可执行动作"
         }}
       </p>
+      <SubmissionProgress
+        v-if="submission"
+        :submission="submission"
+        @retry="retryTask"
+      />
     </section>
   </section>
 </template>
