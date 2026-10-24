@@ -20,6 +20,20 @@ import { getWarehouseDeliveryInstruction } from "../api/warehouseDelivery";
 import { buildUnloadingQueue } from "../data/unloadingWorkbench";
 import { toLiveNode, type LiveNodeView } from "../data/liveNodeProjection";
 
+export function selectUnloadingTask(
+  tasks: readonly NodeTaskDetail[],
+  taskId: string,
+  containerId: string,
+): NodeTaskDetail | null {
+  const candidates = tasks.filter(
+    (task) =>
+      task.nodeCode === "container_unloading" &&
+      task.containerId === containerId,
+  );
+  if (taskId) return candidates.find((task) => task.id === taskId) ?? null;
+  return candidates[0] ?? null;
+}
+
 export function useContainerUnloadingWorkbench(
   containerId: Ref<string>,
   taskId: Ref<string>,
@@ -34,9 +48,11 @@ export function useContainerUnloadingWorkbench(
   const report = ref<ContainerUnloadingReport | null>(null);
   const loading = shallowRef(false);
   const queueLoading = shallowRef(false);
+  const queueError = shallowRef("");
   const error = shallowRef("");
   const warnings = ref<{ code: string; message: string }[]>([]);
   let revision = 0;
+  let queueRevision = 0;
 
   const queueItems = computed(() =>
     buildUnloadingQueue({
@@ -44,11 +60,10 @@ export function useContainerUnloadingWorkbench(
       containers: containers.value,
     }),
   );
-  const selectedTask = computed(
-    () =>
-      tasks.value.find((task) => task.id === taskId.value) ??
-      tasks.value.find((task) => task.nodeCode === "container_unloading") ??
-      null,
+  const selectedTask = computed(() =>
+    selectedContainer.value?.id === containerId.value
+      ? selectUnloadingTask(tasks.value, taskId.value, containerId.value)
+      : null,
   );
   const unloadingNode = computed(
     () =>
@@ -75,23 +90,43 @@ export function useContainerUnloadingWorkbench(
     currentFact(dates.value, "container_unloading", "unloaded", "actual"),
   );
 
-  watch(containerId, (id) => void loadSelection(id, ++revision), {
-    immediate: true,
-  });
+  watch(
+    containerId,
+    (id) => {
+      ++queueRevision;
+      void loadSelection(id, ++revision);
+      void loadQueue();
+    },
+    {
+      immediate: true,
+      flush: "sync",
+    },
+  );
 
   async function loadQueue(): Promise<void> {
+    const currentQueueRevision = ++queueRevision;
     queueLoading.value = true;
-    const [containerResult, taskResult] = await Promise.allSettled([
-      listContainers({ pageSize: 100 }),
-      listNodeTasks({ pageSize: 100 }),
-    ]);
-    containers.value =
-      containerResult.status === "fulfilled" ? containerResult.value.items : [];
-    taskPool.value =
-      taskResult.status === "fulfilled" ? taskResult.value.items : [];
-    if (taskResult.status === "rejected")
-      error.value = "卸柜任务池暂时没能加载";
-    queueLoading.value = false;
+    queueError.value = "";
+    try {
+      const [containerResult, taskResult] = await Promise.allSettled([
+        listContainers({ pageSize: 100 }),
+        listNodeTasks({ pageSize: 100 }),
+      ]);
+      if (currentQueueRevision !== queueRevision) return;
+      containers.value =
+        containerResult.status === "fulfilled"
+          ? containerResult.value.items
+          : [];
+      taskPool.value =
+        taskResult.status === "fulfilled" ? taskResult.value.items : [];
+      if (
+        taskResult.status === "rejected" ||
+        containerResult.status === "rejected"
+      )
+        queueError.value = "卸柜任务池暂时没能加载，专业事实办理仍可继续";
+    } finally {
+      if (currentQueueRevision === queueRevision) queueLoading.value = false;
+    }
   }
 
   async function reload(): Promise<void> {
@@ -99,6 +134,12 @@ export function useContainerUnloadingWorkbench(
       loadSelection(containerId.value, ++revision),
       loadQueue(),
     ]);
+    if (
+      error.value ||
+      warnings.value.length > 0 ||
+      (containerId.value && selectedContainer.value?.id !== containerId.value)
+    )
+      throw new Error("RELOAD_UNAVAILABLE: 当前柜事实未完整读取");
   }
 
   async function loadSelection(id: string, currentRevision: number) {
@@ -143,6 +184,7 @@ export function useContainerUnloadingWorkbench(
   }
 
   function reset() {
+    loading.value = false;
     selectedContainer.value = null;
     nodes.value = [];
     tasks.value = [];
@@ -169,8 +211,16 @@ export function useContainerUnloadingWorkbench(
     actualFact,
     loading: readonly(loading),
     queueLoading: readonly(queueLoading),
+    queueError: readonly(queueError),
     error: readonly(error),
     warnings: readonly(warnings),
+    reportReadState: computed(() =>
+      warnings.value.some((warning) => warning.code === "report")
+        ? "failed"
+        : report.value === null
+          ? "ready-empty"
+          : "ready",
+    ),
     loadQueue,
     reload,
   };
