@@ -112,6 +112,12 @@ The initial failure is the published mobile Stuffing expected/actual state misma
 
 Run the closest spec lint, Web typecheck, targeted formatting and repository checks. Run the session suite with snapshots disabled for updates in a clean authorized local test environment if available. If the protected development listener still prevents startup, return the actual blocked command once, plus the code-level assertions and exact CI tests required; do not repeat full suites that cannot start. Return one HANDOFF with actual model, changed paths, all pass/fail/not-run results and a precise baseline proposal only if still needed. Do not commit or push. The main agent performs the final before/after visual review and integration; no new fresh whole-task review is needed.
 
+### Snapshot-state handoff review
+
+The implementation handoff changes only `apps/web/e2e/recoverable-work-sessions.spec.ts`. It waits for the initial session-list response, controls initial fixture response ordering for the Stuffing screenshot case, selects the intended mobile background pane through normal navigation, checks the exact current session and service-provided order, and asserts menu opening preserves the measured page scroll position. Production code, PNGs, thresholds and shared configuration are unchanged. The initial-response ordering belongs to this visual fixture; it is not evidence that arbitrary production request ordering has been verified.
+
+The main agent independently reran spec ESLint, Web typecheck, targeted formatting and repository policy checks: all passed. Playwright test discovery retains all 63 session cases across the three configured viewports. Test listing is not browser execution. Local browser execution remains unverified because the protected development listener prevents global setup; no post-fix screenshot comparison or end-to-end GREEN is claimed. Integrate this as a CI verification candidate and inspect the resulting assertions and specific mobile snapshot before deciding whether any baseline change is justified. Existing unresolved text-rendering comparisons remain open.
+
 ### Stop conditions
 
 Changes beyond the exact repair scope, new business or authorization semantics, new dependencies/fonts, shared test configuration, snapshot replacement or unrelated service/process changes require a concrete evidence-backed proposal. Do not weaken exact context binding, disable checks, stop unrelated local services or include internal paths, temporary logs or private provenance in public documentation.

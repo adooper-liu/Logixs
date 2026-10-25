@@ -1,5 +1,11 @@
 import type { WorkSessionStatusV1, WorkSessionV1 } from "@logix/contracts";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Locator,
+  type Page,
+  type Route,
+} from "@playwright/test";
 
 const HANDOFF = "44444444-4444-4444-8444-444444444444";
 const OTHER_HANDOFF = "55555555-5555-4555-8555-555555555555";
@@ -14,22 +20,60 @@ for (const target of ["product-selection", "stuffing"] as const) {
   test(`${target} renders truthful recoverable-session UI without overflow`, async ({
     page,
   }, testInfo) => {
-    await mockRecoverableSessions(page);
+    const sessionsReady = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/work-sessions?") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+    );
+    await mockRecoverableSessions(page, {
+      stabilizeInitialSessionState: target === "stuffing",
+    });
     await page.goto(
       target === "product-selection"
         ? `/workspaces/product-selection?handoffId=${HANDOFF}`
         : `/workspaces/stuffing?containerId=${CONTAINER}&taskId=${TASK}`,
     );
+    await sessionsReady;
     await expect(
       page.getByRole("button", { name: "切换工作现场" }),
     ).toBeVisible();
+    const backgroundPane = target === "stuffing" ? "queue" : "context";
+    if (testInfo.project.name === "mobile-chromium") {
+      const mobileTarget = page.locator(
+        `[data-mobile-target="${backgroundPane}"]`,
+      );
+      await mobileTarget.click();
+      await expect(mobileTarget).toHaveAttribute("aria-current", "step");
+      await expect(
+        page.locator(
+          `[data-workbench-pane="${backgroundPane}"][data-mobile-active="true"]`,
+        ),
+      ).toHaveCount(1);
+      await expect(
+        page.locator('[data-workbench-pane][data-mobile-active="true"]'),
+      ).toHaveCount(1);
+    }
+    const pageScrollBeforeMenu = await page
+      .locator(".app-content")
+      .evaluate((element) => element.scrollTop);
     await page.getByRole("button", { name: "切换工作现场" }).click();
+    const dialog = page.getByRole("dialog", { name: "工作现场切换" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-session]")).toHaveCount(2);
+    await expectSessionOrder(page, dialog);
     await expect(
-      page.getByRole("dialog", { name: "工作现场切换" }),
-    ).toBeVisible();
-    await expect(page.locator('[aria-current="true"]')).toHaveCount(1);
+      dialog.locator(
+        `[data-session="${target === "stuffing" ? STUFFING_SESSION : SELECTION_SESSION}"]`,
+      ),
+    ).toHaveAttribute("aria-current", "true");
+    await expect(dialog.locator('[aria-current="true"]')).toHaveCount(1);
     await expect(page.getByText("当前", { exact: true })).toBeVisible();
     await expect(page.getByText("待续办", { exact: true })).toBeVisible();
+    await expect(page.locator(".app-content")).toHaveJSProperty(
+      "scrollTop",
+      pageScrollBeforeMenu,
+    );
     await expectNoOverflow(page);
     await expect(page).toHaveScreenshot(
       `${target}-${testInfo.project.name}-session-menu.png`,
@@ -522,6 +566,7 @@ interface MockScenario {
   readonly targetDomainVersion?: number;
   readonly richDraftRefresh?: boolean;
   readonly initialStuffingStatus?: Exclude<WorkSessionStatusV1, "current">;
+  readonly stabilizeInitialSessionState?: boolean;
 }
 
 interface MockEvidence {
@@ -547,6 +592,11 @@ async function mockRecoverableSessions(
   };
   let sessions: WorkSessionV1[] = [];
   let decisionDraft: ReturnType<typeof savedDraft> | null = null;
+  let releaseInitialSessionState!: () => void;
+  const initialSessionStateReady = new Promise<void>((resolve) => {
+    releaseInitialSessionState = resolve;
+  });
+  let sessionListServed = !scenario.stabilizeInitialSessionState;
 
   function ensureSessions(): void {
     if (sessions.length) return;
@@ -575,6 +625,10 @@ async function mockRecoverableSessions(
     const path = url.pathname;
     ensureSessions();
     if (path === "/api/work-sessions") {
+      if (!sessionListServed) {
+        sessionListServed = true;
+        releaseInitialSessionState();
+      }
       const includeClosed = url.searchParams.get("includeClosed") === "true";
       await route.fulfill({
         json: sessionPage(
@@ -584,6 +638,13 @@ async function mockRecoverableSessions(
         ),
       });
       return;
+    }
+    if (
+      scenario.stabilizeInitialSessionState &&
+      !sessionListServed &&
+      (path === "/api/node-tasks" || path.startsWith("/api/containers"))
+    ) {
+      await initialSessionStateReady;
     }
     if (path === "/api/work-sessions/open") {
       const body = request.postDataJSON() as { workbenchCode: string };
@@ -1063,6 +1124,26 @@ async function expectNoOverflow(page: Page): Promise<void> {
     scroll: document.documentElement.scrollWidth,
   }));
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 1);
+}
+
+async function expectSessionOrder(page: Page, dialog: Locator): Promise<void> {
+  const serviceOrder = await page.evaluate(async () => {
+    const response = await fetch(
+      "/api/work-sessions?pageSize=100&includeClosed=true",
+    );
+    const body = (await response.json()) as { items: WorkSessionV1[] };
+    return body.items.map((session) => session.sessionId);
+  });
+  expect(serviceOrder).toEqual([SELECTION_SESSION, STUFFING_SESSION]);
+  await expect
+    .poll(() =>
+      dialog
+        .locator("[data-session]")
+        .evaluateAll((items) =>
+          items.map((item) => item.getAttribute("data-session")),
+        ),
+    )
+    .toEqual(serviceOrder);
 }
 
 async function expectSessionPanelFitsViewport(page: Page): Promise<void> {
