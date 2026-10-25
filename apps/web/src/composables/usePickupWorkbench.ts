@@ -14,6 +14,20 @@ import { listNodeTasks, type NodeTaskDetail } from "../api/nodeTasks";
 import { buildPickupQueue } from "../data/pickupWorkbench";
 import { toLiveNode, type LiveNodeView } from "../data/liveNodeProjection";
 
+export function selectPickupTask(
+  tasks: readonly NodeTaskDetail[],
+  taskId: string,
+  containerId: string,
+): NodeTaskDetail | null {
+  const candidates = tasks.filter(
+    (task) =>
+      task.nodeCode === "container_pickup" && task.containerId === containerId,
+  );
+  return taskId
+    ? (candidates.find((task) => task.id === taskId) ?? null)
+    : (candidates[0] ?? null);
+}
+
 export function usePickupWorkbench(
   containerId: Ref<string>,
   taskId: Ref<string>,
@@ -33,11 +47,10 @@ export function usePickupWorkbench(
   const queueItems = computed(() =>
     buildPickupQueue({ tasks: taskPool.value, containers: containers.value }),
   );
-  const selectedTask = computed(
-    () =>
-      tasks.value.find((task) => task.id === taskId.value) ??
-      tasks.value.find((task) => task.nodeCode === "container_pickup") ??
-      null,
+  const selectedTask = computed(() =>
+    selectedContainer.value?.id === containerId.value
+      ? selectPickupTask(tasks.value, taskId.value, containerId.value)
+      : null,
   );
   const pickupNode = computed(
     () =>
@@ -62,6 +75,7 @@ export function usePickupWorkbench(
 
   watch(containerId, (id) => void loadSelection(id, ++revision), {
     immediate: true,
+    flush: "sync",
   });
 
   async function loadQueue(): Promise<void> {

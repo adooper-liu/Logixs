@@ -1,5 +1,11 @@
 import type { WorkSessionStatusV1, WorkSessionV1 } from "@logix/contracts";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Locator,
+  type Page,
+  type Route,
+} from "@playwright/test";
 
 const HANDOFF = "44444444-4444-4444-8444-444444444444";
 const OTHER_HANDOFF = "55555555-5555-4555-8555-555555555555";
@@ -7,6 +13,7 @@ const CONTAINER = "66666666-6666-4666-8666-666666666666";
 const TASK = "77777777-7777-4777-8777-777777777777";
 const SELECTION_SESSION = "88888888-8888-4888-8888-888888888888";
 const STUFFING_SESSION = "99999999-9999-4999-8999-999999999999";
+const EXPECTED_SESSION_ORDER = [SELECTION_SESSION, STUFFING_SESSION] as const;
 const FORMAL_REVIEW_POINT = "正式评审要点 A";
 const DRAFT_REVIEW_POINT = "服务端草稿评审要点 B";
 
@@ -14,7 +21,9 @@ for (const target of ["product-selection", "stuffing"] as const) {
   test(`${target} renders truthful recoverable-session UI without overflow`, async ({
     page,
   }, testInfo) => {
-    await mockRecoverableSessions(page);
+    await mockRecoverableSessions(page, {
+      stabilizeInitialSessionState: target === "stuffing",
+    });
     await page.goto(
       target === "product-selection"
         ? `/workspaces/product-selection?handoffId=${HANDOFF}`
@@ -23,13 +32,55 @@ for (const target of ["product-selection", "stuffing"] as const) {
     await expect(
       page.getByRole("button", { name: "切换工作现场" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "切换工作现场" }).click();
+    const switcher = page.getByRole("button", { name: "切换工作现场" });
+    await expect(switcher).toContainText(
+      target === "stuffing" ? "装箱 · KOCU4960726" : "选品 · 宠物出行品类",
+    );
+    const restoredPane = target === "stuffing" ? "detail" : "context";
     await expect(
-      page.getByRole("dialog", { name: "工作现场切换" }),
-    ).toBeVisible();
-    await expect(page.locator('[aria-current="true"]')).toHaveCount(1);
+      page.locator(`[data-mobile-target="${restoredPane}"]`),
+    ).toHaveAttribute("aria-current", "step");
+    await expect(
+      page.locator(
+        `[data-workbench-pane="${restoredPane}"][data-mobile-active="true"]`,
+      ),
+    ).toHaveCount(1);
+    const backgroundPane = target === "stuffing" ? "queue" : "context";
+    if (testInfo.project.name === "mobile-chromium") {
+      const mobileTarget = page.locator(
+        `[data-mobile-target="${backgroundPane}"]`,
+      );
+      await mobileTarget.click();
+      await expect(mobileTarget).toHaveAttribute("aria-current", "step");
+      await expect(
+        page.locator(
+          `[data-workbench-pane="${backgroundPane}"][data-mobile-active="true"]`,
+        ),
+      ).toHaveCount(1);
+      await expect(
+        page.locator('[data-workbench-pane][data-mobile-active="true"]'),
+      ).toHaveCount(1);
+    }
+    const pageScrollBeforeMenu = await page
+      .locator(".app-content")
+      .evaluate((element) => element.scrollTop);
+    await switcher.click();
+    const dialog = page.getByRole("dialog", { name: "工作现场切换" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-session]")).toHaveCount(2);
+    await expectSessionOrder(dialog);
+    await expect(
+      dialog.locator(
+        `[data-session="${target === "stuffing" ? STUFFING_SESSION : SELECTION_SESSION}"]`,
+      ),
+    ).toHaveAttribute("aria-current", "true");
+    await expect(dialog.locator('[aria-current="true"]')).toHaveCount(1);
     await expect(page.getByText("当前", { exact: true })).toBeVisible();
     await expect(page.getByText("待续办", { exact: true })).toBeVisible();
+    await expect(page.locator(".app-content")).toHaveJSProperty(
+      "scrollTop",
+      pageScrollBeforeMenu,
+    );
     await expectNoOverflow(page);
     await expect(page).toHaveScreenshot(
       `${target}-${testInfo.project.name}-session-menu.png`,
@@ -66,8 +117,13 @@ test("stuffing dirty input never claims a server draft", async ({ page }) => {
   await page.goto(
     `/workspaces/stuffing?containerId=${CONTAINER}&taskId=${TASK}`,
   );
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.locator('[data-mobile-target="detail"]').click();
+    await page.locator('[data-mobile-target="context"]').click();
+  }
   const seal = page.getByLabel("封号");
   await seal.fill("NEW-SEAL");
+  await expect(seal).toHaveValue("NEW-SEAL");
   await page.getByRole("button", { name: "切换工作现场" }).click();
   await page.locator(`[data-session="${SELECTION_SESSION}"]`).click();
   await expect(page.getByText("放弃本地改动并切换")).toBeVisible();
@@ -412,7 +468,13 @@ test("stuffing new-tab transition exposes browser_held through the session API s
   await page.goto(
     `/workspaces/stuffing?containerId=${CONTAINER}&taskId=${TASK}`,
   );
-  await page.getByLabel("封号").fill("NEW-SEAL");
+  if ((page.viewportSize()?.width ?? 0) < 681) {
+    await page.locator('[data-mobile-target="detail"]').click();
+    await page.locator('[data-mobile-target="context"]').click();
+  }
+  const seal = page.getByLabel("封号");
+  await seal.fill("NEW-SEAL");
+  await expect(seal).toHaveValue("NEW-SEAL");
   await page.getByRole("button", { name: "切换工作现场" }).click();
   await page.locator(`[data-session="${SELECTION_SESSION}"]`).click();
   const popupPromise = page.waitForEvent("popup");
@@ -511,6 +573,7 @@ interface MockScenario {
   readonly targetDomainVersion?: number;
   readonly richDraftRefresh?: boolean;
   readonly initialStuffingStatus?: Exclude<WorkSessionStatusV1, "current">;
+  readonly stabilizeInitialSessionState?: boolean;
 }
 
 interface MockEvidence {
@@ -536,6 +599,11 @@ async function mockRecoverableSessions(
   };
   let sessions: WorkSessionV1[] = [];
   let decisionDraft: ReturnType<typeof savedDraft> | null = null;
+  let releaseInitialSessionState!: () => void;
+  const initialSessionStateReady = new Promise<void>((resolve) => {
+    releaseInitialSessionState = resolve;
+  });
+  let sessionListServed = !scenario.stabilizeInitialSessionState;
 
   function ensureSessions(): void {
     if (sessions.length) return;
@@ -572,7 +640,18 @@ async function mockRecoverableSessions(
             : sessions.filter(({ status }) => status !== "closed"),
         ),
       });
+      if (!sessionListServed) {
+        sessionListServed = true;
+        releaseInitialSessionState();
+      }
       return;
+    }
+    if (
+      scenario.stabilizeInitialSessionState &&
+      !sessionListServed &&
+      (path === "/api/node-tasks" || path.startsWith("/api/containers"))
+    ) {
+      await initialSessionStateReady;
     }
     if (path === "/api/work-sessions/open") {
       const body = request.postDataJSON() as { workbenchCode: string };
@@ -984,7 +1063,17 @@ function taskPage() {
         readinessState: "ready",
         completionEligibility: "eligible",
         conditionFactRefs: [],
-        workOrders: [],
+        workOrders: [
+          {
+            id: OTHER_HANDOFF,
+            workOrderDefinitionKey: "stuffing",
+            state: "available",
+            assignmentState: "pool",
+            assigneeId: null,
+            dueAt: null,
+            completedAt: null,
+          },
+        ],
         outcome: null,
         nextAction: {
           actionCode: "work_execution.claim_work_order",
@@ -1042,6 +1131,18 @@ async function expectNoOverflow(page: Page): Promise<void> {
     scroll: document.documentElement.scrollWidth,
   }));
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 1);
+}
+
+async function expectSessionOrder(dialog: Locator): Promise<void> {
+  await expect
+    .poll(() =>
+      dialog
+        .locator("[data-session]")
+        .evaluateAll((items) =>
+          items.map((item) => item.getAttribute("data-session")),
+        ),
+    )
+    .toEqual(EXPECTED_SESSION_ORDER);
 }
 
 async function expectSessionPanelFitsViewport(page: Page): Promise<void> {

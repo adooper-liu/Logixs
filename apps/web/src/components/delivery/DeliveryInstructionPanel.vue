@@ -6,9 +6,15 @@ import type { DeliveryInstructionDraft } from "../../composables/useWarehouseDel
 
 const props = defineProps<{
   instruction: WarehouseDeliveryInstruction | null;
+  draftIdentity: string;
+  disabled?: boolean;
+  result?: Readonly<Pick<WarehouseDeliveryInstruction, "version">> | null;
   saving: boolean;
 }>();
-const emit = defineEmits<{ save: [draft: DeliveryInstructionDraft] }>();
+const emit = defineEmits<{
+  save: [draft: DeliveryInstructionDraft];
+  dirtyChange: [dirty: boolean];
+}>();
 const form = reactive({
   warehouseLocationId: "",
   warehouseCode: "",
@@ -20,6 +26,11 @@ const form = reactive({
   appointmentReference: "",
 });
 const evidence = shallowRef("");
+const cleanForm = shallowRef(JSON.stringify(form));
+const dirty = computed(
+  () => JSON.stringify(form) !== cleanForm.value || Boolean(evidence.value),
+);
+watch(dirty, (value) => emit("dirtyChange", value), { immediate: true });
 const valid = computed(
   () =>
     uuid(form.warehouseLocationId.trim()) &&
@@ -32,23 +43,30 @@ const valid = computed(
 );
 
 watch(
-  () => props.instruction,
-  (value) => {
+  [() => props.draftIdentity, () => props.instruction],
+  ([identity, value], previous) => {
+    const changed = previous[0] !== undefined && identity !== previous[0];
+    if (!changed && dirty.value) return;
+    if (changed && value?.containerRecordId !== identity) value = null;
     form.warehouseLocationId = value?.warehouseLocationId ?? "";
     form.warehouseCode = value?.warehouseCode ?? "";
     form.warehouseName = value?.warehouseName ?? "";
     form.unlocode = value?.unlocode ?? "";
     form.timezone = value?.timezone ?? "";
-    form.appointmentStartLocal = local(value?.appointmentStartAt);
-    form.appointmentEndLocal = local(value?.appointmentEndAt);
+    form.appointmentStartLocal = local(
+      value?.appointmentStartAt,
+      value?.timezone,
+    );
+    form.appointmentEndLocal = local(value?.appointmentEndAt, value?.timezone);
     form.appointmentReference = value?.appointmentReference ?? "";
     evidence.value = "";
+    cleanForm.value = JSON.stringify(form);
   },
   { immediate: true },
 );
 
 function save() {
-  if (!valid.value) return;
+  if (props.disabled || props.saving || !valid.value) return;
   emit("save", { ...form, evidenceInputs: split(evidence.value) });
 }
 function split(value: string) {
@@ -66,16 +84,27 @@ function uuid(value: string) {
     value,
   );
 }
-function local(value?: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+function local(value?: string | null, timeZone?: string) {
+  if (!value || !timeZone) return "";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+      .formatToParts(new Date(value))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 </script>
 
 <template>
-  <section class="instruction" aria-label="目的仓指令">
+  <section class="instruction" aria-label="目的仓指令" :data-dirty="dirty">
     <header>
       <span><MapPinned :size="16" />目的仓与预约</span
       ><b>{{ instruction ? `第 ${instruction.version} 版` : "待建立" }}</b>
@@ -124,13 +153,16 @@ function local(value?: string | null) {
     <button
       class="primary"
       type="button"
-      :disabled="saving || !valid"
+      :disabled="disabled || saving || !valid"
       @click="save"
     >
       <Save :size="15" />{{
         saving ? "保存中…" : instruction ? "保存更正版本" : "锁定目的仓"
       }}
     </button>
+    <p v-if="result" class="instruction-receipt" role="status">
+      指令已保存 · 第 {{ result.version }} 版；不代表仓方已确认预约。
+    </p>
   </section>
 </template>
 

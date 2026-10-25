@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import CollapsibleRail from "./CollapsibleRail.vue";
 import type {
   WorkbenchMobileScreen,
@@ -49,6 +56,7 @@ defineSlots<{
 }>();
 
 const narrowQueueOpen = ref(false);
+const layout = ref<HTMLElement | null>(null);
 const workspace = ref<HTMLElement | null>(null);
 const narrowQueueTrigger = ref<HTMLButtonElement | null>(null);
 const paneFocusMemory = new Map<WorkbenchPaneId, HTMLElement>();
@@ -60,7 +68,165 @@ const railGeneration = new Map<RailPane, number>([
   ["queue", 0],
   ["context", 0],
 ]);
+const mobileQuery = ref<MediaQueryList | null>(null);
+const narrowQuery = ref<MediaQueryList | null>(null);
+const isMobileViewport = ref(false);
+const isNarrowViewport = ref(false);
+const viewportObservationAvailable = ref(false);
 let mounted = true;
+let recoveryGeneration = 0;
+let drawerGeneration = 0;
+let mediaCleanup: (() => void) | null = null;
+let lastFocusedElement: HTMLElement | null = null;
+
+const narrowDrawerAvailable = computed(
+  () =>
+    props.responsiveMode === "standard" &&
+    !isMobileViewport.value &&
+    (isNarrowViewport.value || !viewportObservationAvailable.value),
+);
+const drawerActive = computed(
+  () => narrowQueueOpen.value && narrowDrawerAvailable.value,
+);
+const effectiveLeftCollapsed = computed(() =>
+  props.responsiveMode === "standard" &&
+  (isMobileViewport.value || drawerActive.value)
+    ? false
+    : props.leftCollapsed,
+);
+const effectiveRightCollapsed = computed(() =>
+  props.responsiveMode === "standard" && isMobileViewport.value
+    ? false
+    : props.rightCollapsed,
+);
+
+function invalidateRecovery(): number {
+  recoveryGeneration += 1;
+  return recoveryGeneration;
+}
+
+function shouldRecoverMobile(): boolean {
+  return (
+    props.responsiveMode === "standard" &&
+    (isMobileViewport.value || !viewportObservationAvailable.value)
+  );
+}
+
+function isVisibleElement(
+  element: HTMLElement,
+  allowEmptyRect = false,
+): boolean {
+  if (!element.isConnected || element.hidden) return false;
+  if (element.getAttribute("aria-hidden") === "true") return false;
+  let current: HTMLElement | null = element;
+  while (current) {
+    if (current.hidden || current.hasAttribute("inert")) return false;
+    const style = getComputedStyle(current);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    current = current.parentElement;
+  }
+  return (
+    allowEmptyRect ||
+    element.getClientRects().length > 0 ||
+    !viewportObservationAvailable.value
+  );
+}
+
+function isUsableControl(
+  element: HTMLElement | undefined,
+  pane: HTMLElement | null,
+): element is HTMLElement {
+  if (
+    !element ||
+    element === pane ||
+    !pane?.contains(element) ||
+    !isVisibleElement(element)
+  ) {
+    return false;
+  }
+  if (element instanceof HTMLButtonElement && element.disabled) return false;
+  if (element instanceof HTMLInputElement && element.disabled) return false;
+  if (element instanceof HTMLTextAreaElement && element.disabled) return false;
+  if (element instanceof HTMLSelectElement && element.disabled) return false;
+  return true;
+}
+
+function paneIsInert(pane: WorkbenchPaneId): boolean {
+  if (props.responsiveMode === "stacked") return false;
+  if (drawerActive.value) return pane !== "queue";
+  return isMobileViewport.value && props.mobileScreen !== pane;
+}
+
+function updateViewport(): void {
+  const previousFocus = ownedFocus();
+  const nextMobile = mobileQuery.value?.matches ?? false;
+  const nextNarrow = (narrowQuery.value?.matches ?? false) && !nextMobile;
+  isMobileViewport.value = nextMobile;
+  isNarrowViewport.value = nextNarrow;
+  invalidateRecovery();
+  if (!narrowDrawerAvailable.value) closeNarrowQueue(false);
+  void recoverPresentationFocus(previousFocus);
+}
+
+function ownedFocus(): HTMLElement | null {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && layout.value?.contains(active))
+    return active;
+  // A CSS media change can blur the old control before its change listener runs.
+  return active === document.body ? lastFocusedElement : null;
+}
+
+function hasUsableFocus(element: Element | null): element is HTMLElement {
+  return (
+    element instanceof HTMLElement &&
+    element !== document.body &&
+    !element.matches(":disabled") &&
+    isVisibleElement(element)
+  );
+}
+
+async function recoverPresentationFocus(
+  previousFocus: HTMLElement | null,
+): Promise<void> {
+  const recovery = recoveryGeneration;
+  await nextTick();
+  if (
+    !mounted ||
+    recovery !== recoveryGeneration ||
+    !previousFocus ||
+    hasUsableFocus(previousFocus) ||
+    hasUsableFocus(document.activeElement)
+  )
+    return;
+
+  const screen = shouldRecoverMobile() ? props.mobileScreen : "detail";
+  const pane = paneFor(screen);
+  if (!pane || paneIsInert(screen)) return;
+  const control = availablePaneControl(screen, pane);
+  const target =
+    control ??
+    (isVisibleElement(pane) ? pane : null) ??
+    layout.value?.querySelector<HTMLElement>(
+      `[data-mobile-target="${screen}"]`,
+    );
+  if (!target || !isVisibleElement(target)) return;
+  target.scrollIntoView({ block: "nearest" });
+  target.focus({ preventScroll: true });
+  if (recovery === recoveryGeneration && document.activeElement === target)
+    emit("restoreFocus", screen);
+}
+
+function addMediaListener(
+  query: MediaQueryList,
+  listener: () => void,
+): () => void {
+  query.addEventListener?.("change", listener);
+  if (!query.addEventListener) query.addListener(listener);
+  return () => {
+    query.removeEventListener?.("change", listener);
+    if (!query.removeEventListener) query.removeListener(listener);
+  };
+}
 
 function containingScrollOwner(): HTMLElement | null {
   let candidate = workspace.value?.parentElement ?? null;
@@ -95,7 +261,9 @@ function rememberRailScroll(pane: RailPane): void {
 }
 
 function railIsCollapsed(pane: RailPane): boolean {
-  return pane === "queue" ? props.leftCollapsed : props.rightCollapsed;
+  return pane === "queue"
+    ? effectiveLeftCollapsed.value
+    : effectiveRightCollapsed.value;
 }
 
 function nextRailGeneration(pane: RailPane): number {
@@ -115,26 +283,27 @@ function railTransitionIsCurrent(
   pane: RailPane,
   collapsed: boolean,
   generation: number,
+  recovery: number,
 ): boolean {
   return (
     mounted &&
+    recoveryGeneration === recovery &&
     railGeneration.get(pane) === generation &&
     railIsCollapsed(pane) === collapsed
   );
 }
 
 function focusRailExpandToggle(pane: RailPane): void {
-  paneFor(pane)
-    ?.querySelector<HTMLElement>(
-      ".collapsible-rail__summary .collapsible-rail__toggle",
-    )
-    ?.focus();
+  const toggle = paneFor(pane)?.querySelector<HTMLElement>(
+    ".collapsible-rail__summary .collapsible-rail__toggle",
+  );
+  if (toggle && isUsableControl(toggle, paneFor(pane))) toggle.focus();
 }
 
 function restoreRailFocus(pane: RailPane): void {
   const rail = paneFor(pane);
   const control = paneFocusMemory.get(pane);
-  if (control?.isConnected && rail?.contains(control)) {
+  if (control && isUsableControl(control, rail)) {
     control.focus({ preventScroll: true });
   }
 }
@@ -144,10 +313,11 @@ async function settleRailTransition(
   collapsed: boolean,
 ): Promise<void> {
   const generation = nextRailGeneration(pane);
+  const recovery = recoveryGeneration;
   if (collapsed) rememberRailScroll(pane);
 
   await nextTick();
-  if (!railTransitionIsCurrent(pane, collapsed, generation)) return;
+  if (!railTransitionIsCurrent(pane, collapsed, generation, recovery)) return;
   if (collapsed) {
     focusRailExpandToggle(pane);
     return;
@@ -156,7 +326,7 @@ async function settleRailTransition(
   const scrollOwner = scrollOwnerFor(paneFor(pane));
   const postExpandScrollTop = scrollOwner?.scrollTop;
   await waitForLayoutFrame();
-  if (!railTransitionIsCurrent(pane, collapsed, generation)) return;
+  if (!railTransitionIsCurrent(pane, collapsed, generation, recovery)) return;
   const rememberedScroll = railScrollMemory.get(pane);
   if (
     scrollOwner &&
@@ -186,6 +356,7 @@ function rememberPane(screen: WorkbenchPaneId): void {
 function rememberFocusedControl(event: FocusEvent): void {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
+  lastFocusedElement = target;
   if (target.closest(".collapsible-rail__toggle")) return;
   const pane = target.closest<HTMLElement>("[data-workbench-pane]");
   const id = pane?.dataset.workbenchPane as WorkbenchPaneId | undefined;
@@ -193,15 +364,39 @@ function rememberFocusedControl(event: FocusEvent): void {
   paneFocusMemory.set(id, target);
 }
 
+function availablePaneControl(
+  screen: WorkbenchPaneId,
+  pane: HTMLElement,
+): HTMLElement | undefined {
+  const remembered = paneFocusMemory.get(screen);
+  if (isUsableControl(remembered, pane)) return remembered;
+  return Array.from(
+    pane.querySelectorAll<HTMLElement>(
+      "button:not([disabled]):not(.collapsible-rail__toggle), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]",
+    ),
+  ).find((candidate) => isUsableControl(candidate, pane));
+}
+
 function selectMobileScreen(screen: WorkbenchMobileScreen): void {
+  if (screen !== props.mobileScreen) invalidateRecovery();
   emit("update:mobileScreen", screen);
 }
 
 async function revealMobileScreen(
   screen: WorkbenchMobileScreen,
 ): Promise<void> {
+  const recovery = recoveryGeneration;
   await nextTick();
+  if (
+    !mounted ||
+    recoveryGeneration !== recovery ||
+    props.responsiveMode !== "standard" ||
+    !shouldRecoverMobile() ||
+    props.mobileScreen !== screen
+  )
+    return;
   const pane = paneFor(screen);
+  if (!pane || paneIsInert(screen)) return;
   const rememberedPageScroll = pageScrollMemory.get(screen);
   if (rememberedPageScroll !== undefined) {
     const pageScrollOwner = containingScrollOwner();
@@ -211,41 +406,75 @@ async function revealMobileScreen(
     pane?.scrollIntoView({ block: "start" });
   }
   const rememberedControl = paneFocusMemory.get(screen);
-  const control =
-    rememberedControl?.isConnected && pane?.contains(rememberedControl)
-      ? rememberedControl
-      : Array.from(
-          pane?.querySelectorAll<HTMLElement>(
-            "button:not([disabled]):not(.collapsible-rail__toggle), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]",
-          ) ?? [],
-        ).find((candidate) => candidate.getClientRects().length > 0);
+  const control = availablePaneControl(screen, pane);
   const scrollOwner = scrollOwnerFor(pane);
   const rememberedScroll = paneScrollMemory.get(screen);
   if (scrollOwner && rememberedScroll !== undefined) {
     scrollOwner.scrollTop = rememberedScroll;
   }
-  if (control) {
+  if (control && recoveryGeneration === recovery) {
     if (control !== rememberedControl) {
       control.scrollIntoView({ block: "nearest" });
     }
     control.focus({ preventScroll: true });
+  } else if (isVisibleElement(pane, true) && recoveryGeneration === recovery) {
+    pane.focus({ preventScroll: true });
+  } else {
+    const navigation = document.querySelector<HTMLElement>(
+      `[data-mobile-target="${screen}"]`,
+    );
+    if (navigation && isVisibleElement(navigation))
+      navigation.focus({ preventScroll: true });
   }
-  emit("restoreFocus", screen);
+  if (recoveryGeneration === recovery) emit("restoreFocus", screen);
 }
 
 function openNarrowQueue(): void {
+  if (!narrowDrawerAvailable.value) return;
+  invalidateRecovery();
   narrowQueueOpen.value = true;
+  const generation = ++drawerGeneration;
+  const recovery = recoveryGeneration;
   void nextTick(() => {
-    const firstControl = paneFor("queue")?.querySelector<HTMLElement>(
+    if (
+      !mounted ||
+      recovery !== recoveryGeneration ||
+      drawerGeneration !== generation ||
+      !drawerActive.value
+    ) {
+      return;
+    }
+    const queue = paneFor("queue");
+    const firstControl = queue?.querySelector<HTMLElement>(
       "button:not([disabled]):not(.collapsible-rail__toggle), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled])",
     );
-    firstControl?.focus();
+    if (firstControl && isUsableControl(firstControl, queue ?? null))
+      firstControl.focus();
   });
 }
 
-function closeNarrowQueue(): void {
+function closeNarrowQueue(restoreFocus = true): void {
+  if (!narrowQueueOpen.value) return;
   narrowQueueOpen.value = false;
-  void nextTick(() => narrowQueueTrigger.value?.focus());
+  invalidateRecovery();
+  const generation = ++drawerGeneration;
+  const recovery = recoveryGeneration;
+  if (!restoreFocus) return;
+  void nextTick(() => {
+    if (
+      !mounted ||
+      recovery !== recoveryGeneration ||
+      drawerGeneration !== generation ||
+      !narrowDrawerAvailable.value
+    )
+      return;
+    if (
+      narrowQueueTrigger.value &&
+      isVisibleElement(narrowQueueTrigger.value)
+    ) {
+      narrowQueueTrigger.value.focus();
+    }
+  });
 }
 
 function toggleNarrowQueue(): void {
@@ -262,6 +491,7 @@ function drawerControls(): HTMLElement[] {
 }
 
 function handleNarrowQueueKeydown(event: KeyboardEvent): void {
+  if (!drawerActive.value) return;
   if (event.key === "Escape") {
     closeNarrowQueue();
     return;
@@ -283,7 +513,7 @@ function handleNarrowQueueKeydown(event: KeyboardEvent): void {
 function handleQueueInteraction(event: Event): void {
   const target = event.target;
   if (
-    narrowQueueOpen.value &&
+    drawerActive.value &&
     target instanceof HTMLElement &&
     target.closest("button, a[href]")
   ) {
@@ -295,28 +525,62 @@ watch(
   () => props.mobileScreen,
   (screen, previous) => {
     if (screen !== previous) {
-      rememberPane(previous);
-      void revealMobileScreen(screen);
+      if (shouldRecoverMobile()) rememberPane(previous);
+      invalidateRecovery();
+      if (shouldRecoverMobile()) void revealMobileScreen(screen);
     }
   },
 );
 
 watch(
-  () => props.leftCollapsed,
-  (collapsed, previous) => {
-    if (collapsed !== previous) void settleRailTransition("queue", collapsed);
+  () => [props.leftCollapsed, effectiveLeftCollapsed.value] as const,
+  ([explicit, collapsed], [previousExplicit, previous]) => {
+    if (explicit !== previousExplicit && collapsed !== previous) {
+      void settleRailTransition("queue", collapsed);
+    } else if (collapsed !== previous) {
+      nextRailGeneration("queue");
+    }
   },
 );
 
 watch(
-  () => props.rightCollapsed,
-  (collapsed, previous) => {
-    if (collapsed !== previous) void settleRailTransition("context", collapsed);
+  () => [props.rightCollapsed, effectiveRightCollapsed.value] as const,
+  ([explicit, collapsed], [previousExplicit, previous]) => {
+    if (explicit !== previousExplicit && collapsed !== previous) {
+      void settleRailTransition("context", collapsed);
+    } else if (collapsed !== previous) {
+      nextRailGeneration("context");
+    }
   },
 );
 
+watch(
+  () => props.responsiveMode,
+  () => {
+    const previousFocus = ownedFocus();
+    invalidateRecovery();
+    if (props.responsiveMode !== "standard") closeNarrowQueue(false);
+    void recoverPresentationFocus(previousFocus);
+  },
+);
+
+onMounted(() => {
+  if (typeof window.matchMedia !== "function") return;
+  viewportObservationAvailable.value = true;
+  mobileQuery.value = window.matchMedia("(max-width: 680px)");
+  narrowQuery.value = window.matchMedia("(max-width: 1100px)");
+  updateViewport();
+  const cleanups = [
+    addMediaListener(mobileQuery.value, updateViewport),
+    addMediaListener(narrowQuery.value, updateViewport),
+  ];
+  mediaCleanup = () => cleanups.forEach((cleanup) => cleanup());
+});
+
 onBeforeUnmount(() => {
   mounted = false;
+  invalidateRecovery();
+  mediaCleanup?.();
   nextRailGeneration("queue");
   nextRailGeneration("context");
 });
@@ -324,12 +588,14 @@ onBeforeUnmount(() => {
 
 <template>
   <section
+    ref="layout"
     class="workbench-layout"
     :class="{
-      'workbench-layout--left-collapsed': leftCollapsed,
-      'workbench-layout--right-collapsed': rightCollapsed,
+      'workbench-layout--left-collapsed': effectiveLeftCollapsed,
+      'workbench-layout--right-collapsed': effectiveRightCollapsed,
       'workbench-layout--stacked-responsive': responsiveMode === 'stacked',
     }"
+    @focusin="rememberFocusedControl"
   >
     <div class="workbench-layout__header"><slot name="header" /></div>
     <div class="workbench-layout__responsibility">
@@ -359,19 +625,15 @@ onBeforeUnmount(() => {
       <slot name="mobileBreadcrumb" :screen="mobileScreen" />
     </div>
 
-    <div
-      ref="workspace"
-      class="workbench-layout__workspace"
-      @focusin="rememberFocusedControl"
-    >
+    <div ref="workspace" class="workbench-layout__workspace">
       <button
         ref="narrowQueueTrigger"
         class="workbench-layout__narrow-queue"
         type="button"
         :aria-label="
-          narrowQueueOpen ? `关闭${leftRailLabel}` : `打开${leftRailLabel}`
+          drawerActive ? `关闭${leftRailLabel}` : `打开${leftRailLabel}`
         "
-        :aria-expanded="narrowQueueOpen"
+        :aria-expanded="drawerActive"
         aria-controls="workbench-narrow-queue-drawer"
         @click="toggleNarrowQueue"
       >
@@ -380,27 +642,29 @@ onBeforeUnmount(() => {
         </slot>
       </button>
       <button
-        v-if="narrowQueueOpen"
+        v-if="drawerActive"
         class="workbench-layout__narrow-backdrop"
         type="button"
         aria-label="关闭任务队列抽屉"
-        @click="closeNarrowQueue"
+        @click="closeNarrowQueue()"
       />
       <div
         id="workbench-narrow-queue-drawer"
         class="workbench-layout__pane workbench-layout__pane--queue"
-        :class="{ 'workbench-layout__pane--queue-open': narrowQueueOpen }"
+        :class="{ 'workbench-layout__pane--queue-open': drawerActive }"
         data-workbench-pane="queue"
         :data-mobile-active="mobileScreen === 'queue' || undefined"
-        :role="narrowQueueOpen ? 'dialog' : undefined"
-        :aria-modal="narrowQueueOpen || undefined"
-        :aria-label="narrowQueueOpen ? leftRailLabel : undefined"
+        :role="drawerActive ? 'dialog' : undefined"
+        :aria-modal="drawerActive || undefined"
+        :aria-label="drawerActive ? leftRailLabel : undefined"
+        :inert="paneIsInert('queue') || undefined"
+        tabindex="-1"
         @keydown="handleNarrowQueueKeydown"
         @click="handleQueueInteraction"
       >
         <CollapsibleRail
           side="left"
-          :collapsed="leftCollapsed"
+          :collapsed="effectiveLeftCollapsed"
           :label="leftRailLabel"
           :summary="leftRailSummary"
           @update:collapsed="updateRailCollapsed('queue', $event)"
@@ -415,7 +679,8 @@ onBeforeUnmount(() => {
         class="workbench-layout__pane workbench-layout__pane--detail"
         data-workbench-pane="detail"
         :data-mobile-active="mobileScreen === 'detail' || undefined"
-        :inert="narrowQueueOpen || undefined"
+        :inert="paneIsInert('detail') || undefined"
+        tabindex="-1"
       >
         <slot name="detail" />
       </div>
@@ -423,11 +688,12 @@ onBeforeUnmount(() => {
         class="workbench-layout__pane workbench-layout__pane--context"
         data-workbench-pane="context"
         :data-mobile-active="mobileScreen === 'context' || undefined"
-        :inert="narrowQueueOpen || undefined"
+        :inert="paneIsInert('context') || undefined"
+        tabindex="-1"
       >
         <CollapsibleRail
           side="right"
-          :collapsed="rightCollapsed"
+          :collapsed="effectiveRightCollapsed"
           :label="rightRailLabel"
           :summary="rightRailSummary"
           @update:collapsed="updateRailCollapsed('context', $event)"
@@ -463,7 +729,7 @@ onBeforeUnmount(() => {
 
 .workbench-layout__header {
   position: relative;
-  z-index: var(--z-content-raised);
+  z-index: calc(var(--z-content-raised) + 1);
 }
 
 .workbench-layout__workspace {
