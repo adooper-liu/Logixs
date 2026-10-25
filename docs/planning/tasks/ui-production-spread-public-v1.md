@@ -82,6 +82,14 @@ Do not stop or reuse an unrelated development server, weaken the server identity
 
 Run focused layout tests, both consumers' real session-switch interactions across three viewports, the affected browser combination and the closest lint/typecheck/build/format checks. Preserve dirty values and existing snapshot hashes. Report pass/fail/not-run, all remaining screenshot differences and actual implementation model. No new full-repository review is required; review is limited to this shared stacking delta and any explicitly proposed visual-parity change. No commit or push by the implementation executor. The main agent maintains this brief and regenerates the board during integration.
 
+### Overlay repair handoff
+
+The implementation handoff reports a one-line neutral repair: the workbench header moves from the raised-content level to one level above it, remaining below backdrop, sidebar and command levels. The source baseline was followed by documentation-only priority updates; review covers the actual current diff, not an assumed clean original baseline. No other product file, snapshot or threshold was changed.
+
+The main agent reran layout and frame regression tests: 52/52 passed, with Web lint, typecheck, build, post-build formatting, targeted formatting, repository and board checks passing. A scoped read-only stacking review found no remaining static finding; it did not execute browser tests. This establishes a reviewed candidate, not post-fix browser acceptance.
+
+The main agent verified that the preceding CI run passes static, unit and build. Its E2E and aggregate quality checks still fail; the handoff is partial, not full browser acceptance. Local browser verification remains unavailable because the server identity guard rejects the existing development listener; it was not stopped or reused. CI must verify real-pointer session selection after this repair. The fifteen visual comparisons and mobile session-menu state difference remain unresolved; no font root cause is declared and no baseline update is authorized by this handoff.
+
 ### Stop conditions
 
 Changes beyond the exact repair scope, new business or authorization semantics, new dependencies/fonts, shared test configuration, snapshot replacement or unrelated service/process changes require a concrete evidence-backed proposal. Do not weaken exact context binding, disable checks, stop unrelated local services or include internal paths, temporary logs or private provenance in public documentation.

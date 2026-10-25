@@ -729,7 +729,7 @@ onBeforeUnmount(() => {
 
 .workbench-layout__header {
   position: relative;
-  z-index: var(--z-content-raised);
+  z-index: calc(var(--z-content-raised) + 1);
 }
 
 .workbench-layout__workspace {
