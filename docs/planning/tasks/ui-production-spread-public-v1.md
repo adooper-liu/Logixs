@@ -138,6 +138,12 @@ Moving the fixture release until after `route.fulfill` is a useful transport-ord
 
 Next HANDOFF should include only the corrected single-file diff, closest static checks, preserved case count and honest runtime/pixel status. Do not commit or push. No baseline replacement is permitted by this correction.
 
+### Corrected locator candidate
+
+At the handoff based on `355af24d`, the main agent verified that the new accessible name and both summary expectations now match the existing Chinese labels and fixture values. `PUBLIC-ORDER-001` is closed as a literal-matching defect. The main agent reran spec ESLint, Web typecheck, targeted formatting and repository policy checks successfully. Only the session spec has an implementation diff; PNGs, thresholds, production code and configuration are unchanged.
+
+This candidate preserves exact current-session, restored-pane and order assertions and removes the extra readiness fetch. Initial fixture release occurs after response fulfillment. Client scheduling, browser behavior and pixel parity remain unverified until CI executes this candidate; no runtime GREEN or production ordering guarantee is claimed. The protected local listener was not retried. Publish the corrected candidate for CI verification without reopening the already closed overlay interaction repair or expanding standalone UI work.
+
 ### Stop conditions
 
 Changes beyond the exact repair scope, new business or authorization semantics, new dependencies/fonts, shared test configuration, snapshot replacement or unrelated service/process changes require a concrete evidence-backed proposal. Do not weaken exact context binding, disable checks, stop unrelated local services or include internal paths, temporary logs or private provenance in public documentation.

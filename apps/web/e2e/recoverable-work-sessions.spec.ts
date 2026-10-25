@@ -13,6 +13,7 @@ const CONTAINER = "66666666-6666-4666-8666-666666666666";
 const TASK = "77777777-7777-4777-8777-777777777777";
 const SELECTION_SESSION = "88888888-8888-4888-8888-888888888888";
 const STUFFING_SESSION = "99999999-9999-4999-8999-999999999999";
+const EXPECTED_SESSION_ORDER = [SELECTION_SESSION, STUFFING_SESSION] as const;
 const FORMAL_REVIEW_POINT = "正式评审要点 A";
 const DRAFT_REVIEW_POINT = "服务端草稿评审要点 B";
 
@@ -20,12 +21,6 @@ for (const target of ["product-selection", "stuffing"] as const) {
   test(`${target} renders truthful recoverable-session UI without overflow`, async ({
     page,
   }, testInfo) => {
-    const sessionsReady = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/work-sessions?") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-    );
     await mockRecoverableSessions(page, {
       stabilizeInitialSessionState: target === "stuffing",
     });
@@ -34,10 +29,22 @@ for (const target of ["product-selection", "stuffing"] as const) {
         ? `/workspaces/product-selection?handoffId=${HANDOFF}`
         : `/workspaces/stuffing?containerId=${CONTAINER}&taskId=${TASK}`,
     );
-    await sessionsReady;
     await expect(
       page.getByRole("button", { name: "切换工作现场" }),
     ).toBeVisible();
+    const switcher = page.getByRole("button", { name: "切换工作现场" });
+    await expect(switcher).toContainText(
+      target === "stuffing" ? "装箱 · KOCU4960726" : "选品 · 宠物出行品类",
+    );
+    const restoredPane = target === "stuffing" ? "detail" : "context";
+    await expect(
+      page.locator(`[data-mobile-target="${restoredPane}"]`),
+    ).toHaveAttribute("aria-current", "step");
+    await expect(
+      page.locator(
+        `[data-workbench-pane="${restoredPane}"][data-mobile-active="true"]`,
+      ),
+    ).toHaveCount(1);
     const backgroundPane = target === "stuffing" ? "queue" : "context";
     if (testInfo.project.name === "mobile-chromium") {
       const mobileTarget = page.locator(
@@ -57,11 +64,11 @@ for (const target of ["product-selection", "stuffing"] as const) {
     const pageScrollBeforeMenu = await page
       .locator(".app-content")
       .evaluate((element) => element.scrollTop);
-    await page.getByRole("button", { name: "切换工作现场" }).click();
+    await switcher.click();
     const dialog = page.getByRole("dialog", { name: "工作现场切换" });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator("[data-session]")).toHaveCount(2);
-    await expectSessionOrder(page, dialog);
+    await expectSessionOrder(dialog);
     await expect(
       dialog.locator(
         `[data-session="${target === "stuffing" ? STUFFING_SESSION : SELECTION_SESSION}"]`,
@@ -625,10 +632,6 @@ async function mockRecoverableSessions(
     const path = url.pathname;
     ensureSessions();
     if (path === "/api/work-sessions") {
-      if (!sessionListServed) {
-        sessionListServed = true;
-        releaseInitialSessionState();
-      }
       const includeClosed = url.searchParams.get("includeClosed") === "true";
       await route.fulfill({
         json: sessionPage(
@@ -637,6 +640,10 @@ async function mockRecoverableSessions(
             : sessions.filter(({ status }) => status !== "closed"),
         ),
       });
+      if (!sessionListServed) {
+        sessionListServed = true;
+        releaseInitialSessionState();
+      }
       return;
     }
     if (
@@ -1126,15 +1133,7 @@ async function expectNoOverflow(page: Page): Promise<void> {
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 1);
 }
 
-async function expectSessionOrder(page: Page, dialog: Locator): Promise<void> {
-  const serviceOrder = await page.evaluate(async () => {
-    const response = await fetch(
-      "/api/work-sessions?pageSize=100&includeClosed=true",
-    );
-    const body = (await response.json()) as { items: WorkSessionV1[] };
-    return body.items.map((session) => session.sessionId);
-  });
-  expect(serviceOrder).toEqual([SELECTION_SESSION, STUFFING_SESSION]);
+async function expectSessionOrder(dialog: Locator): Promise<void> {
   await expect
     .poll(() =>
       dialog
@@ -1143,7 +1142,7 @@ async function expectSessionOrder(page: Page, dialog: Locator): Promise<void> {
           items.map((item) => item.getAttribute("data-session")),
         ),
     )
-    .toEqual(serviceOrder);
+    .toEqual(EXPECTED_SESSION_ORDER);
 }
 
 async function expectSessionPanelFitsViewport(page: Page): Promise<void> {
