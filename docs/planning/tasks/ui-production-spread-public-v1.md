@@ -128,6 +128,16 @@ Only `apps/web/e2e/recoverable-work-sessions.spec.ts` may change in this repair.
 
 Do not change production code, PNGs, thresholds, typography, shared configuration or ports. Verify the targeted spec's lint, typecheck, format and repository checks; run focused session-menu checks when a clean authorized browser environment is available. Do not repeat attempts against the protected development listener. Browser not-run and remaining pixel failures must remain explicit. Return one grouped HANDOFF with the observed response schedule, assertions, results and remaining unknowns; do not commit or push. Other fourteen geometry comparisons are not included in this repair.
 
+### Ordering handoff review and correction
+
+The handoff at base `a14670ee` changes only the session spec and keeps PNGs, thresholds and production code unchanged. The main agent found one deterministic blocker in the actual diff: the new `switcher` locator uses a mojibake accessible name, and both expected summary strings are also mojibake, while the rendered trigger label and fixture summaries remain valid Chinese. All six session-menu cases execute this lookup. Passing lint/typecheck/format cannot prove that locator matches the page. This candidate must not be published as a verified ordering repair.
+
+Disposition `PUBLIC-ORDER-001`: accepted, test correctness, current scope. Reuse the existing correct accessible name `切换工作现场` and the fixture summaries `装箱 · KOCU4960726` / `选品 · 宠物出行品类`; keep exact current-session, restored-pane and order assertions. Do not replace user-facing matching with a forced click or weaken assertions. Check all newly added non-ASCII literals for the same corruption. The repair remains in the same single spec and slice; no new implementation project or whole-task review is needed.
+
+Moving the fixture release until after `route.fulfill` is a useful transport-order change but is not proof the client consumed the list. The visible summary/pane/order assertions are checks to be verified, not runtime GREEN. The requested two response schedules were not run. Do not describe the race as fixed or as a confirmed production defect without execution evidence. Retain browser not-run if the protected listener still prevents startup; do not repeat an already blocked command just for paperwork.
+
+Next HANDOFF should include only the corrected single-file diff, closest static checks, preserved case count and honest runtime/pixel status. Do not commit or push. No baseline replacement is permitted by this correction.
+
 ### Stop conditions
 
 Changes beyond the exact repair scope, new business or authorization semantics, new dependencies/fonts, shared test configuration, snapshot replacement or unrelated service/process changes require a concrete evidence-backed proposal. Do not weaken exact context binding, disable checks, stop unrelated local services or include internal paths, temporary logs or private provenance in public documentation.
