@@ -43,6 +43,10 @@ const LIFECYCLE_STATUS: Record<
   cancelled: { label: "已取消", tone: "muted" },
 };
 
+export function lifecycleStatusLabel(status: string): string {
+  return LIFECYCLE_STATUS[status as ContainerLifecycleState]?.label ?? "未知";
+}
+
 const emptyNodeDisplaySchema: DisplayFieldSchema = {
   schemaId: "live-container-node",
   schemaVersion: 1,

@@ -18,7 +18,11 @@ export class PrismaContainerDispatchSnapshotRepository implements ContainerDispa
     containerRecordId: string;
   }): Promise<ContainerDispatchSnapshotRecord | null> {
     const row = await this.prisma.containerDispatchSnapshot.findFirst({
-      where: { ...input, state: "active" },
+      where: {
+        tenantId: input.tenantId,
+        containerRecordId: input.containerRecordId,
+        state: "active",
+      },
       orderBy: [{ version: "desc" }, { id: "desc" }],
       select: dispatchSelect,
     });

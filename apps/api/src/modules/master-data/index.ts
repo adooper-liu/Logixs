@@ -1,5 +1,16 @@
 export * from "./master-data.module";
 export {
+  REFERENCE_EXTERNAL_OCEAN_MAPPING,
+  type ExternalOceanMappingDirectoryPort,
+  type MappingQuery,
+  type MappingResolution,
+} from "./reference-external-ocean-mapping.port";
+export {
+  REFERENCE_INTERNAL_OCEAN_BASELINE,
+  type ReferenceInternalOceanBaselinePort,
+  type InternalOceanBaseline,
+} from "./reference-internal-ocean-baseline.port";
+export {
   GET_PRODUCT_COMPLIANCE_PROFILE,
   type GetProductComplianceProfilePort,
   type GetProductComplianceProfileQuery,

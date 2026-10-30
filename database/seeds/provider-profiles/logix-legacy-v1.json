@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "provider": "logix_legacy",
+  "version": "container-type-2026-10-30-v1",
+  "source": {
+    "reference": "project://legacy-container-type",
+    "description": "Project historical 40HQ spelling, not extracted from Freightower documentation"
+  },
+  "datasets": [
+    {
+      "dataset": "container_type",
+      "canonicalReleaseId": "00000000-0000-5000-8000-000000000001",
+      "namespaces": ["legacy_container_type", "logix"],
+      "mappings": [
+        {
+          "namespace": "legacy_container_type",
+          "sourceCode": "40HQ",
+          "canonicalCode": "40HC",
+          "reason": "Historical spelling candidate; no automatic conversion of existing containers",
+          "evidence": "docs/product/domain/AS_IS_LEGACY_BASELINE.md"
+        }
+      ]
+    }
+  ]
+}

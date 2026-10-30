@@ -22,6 +22,7 @@ import { SourcingModule } from "./modules/sourcing";
 import { MarketIntelligenceModule } from "./modules/market-intelligence";
 import { NotificationModule } from "./modules/notification";
 import { OceanPortVisibilityModule } from "./modules/ocean-port-visibility";
+import { OceanOperationsModule } from "./modules/ocean-operations";
 import { OpsAssistantModule } from "./modules/ops-assistant";
 import { PerformanceImprovementModule } from "./modules/performance-improvement";
 import { ProductSelectionModule } from "./modules/product-selection";
@@ -57,6 +58,7 @@ import { TaskCollaborationModule } from "./modules/task-collaboration";
     MarketIntelligenceModule,
     NotificationModule,
     OceanPortVisibilityModule,
+    OceanOperationsModule,
     OpsAssistantModule,
     PerformanceImprovementModule,
     ProductSelectionModule,
