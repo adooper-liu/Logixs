@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, shallowRef, watch } from "vue";
 import { MapPin, Ship } from "@lucide/vue";
 import AttachmentControl, {
   type AttachmentItem,
 } from "../components/attachment/AttachmentControl.vue";
+import { isEvidenceUuid } from "../api/evidence";
+import { listNodeTasks } from "../api/nodeTasks";
 import {
   checklistStatusLabel,
   customsDocumentChecklist,
@@ -19,19 +21,30 @@ import {
   type ArrivalPreparationResult,
   type SourceReviewDecision,
 } from "../api/oceanOperations";
-import { HttpRequestError } from "../api/httpClient";
+import TaskContextPanel from "../components/task/TaskContextPanel.vue";
+import type { TaskContextPanelMode } from "../components/task/TaskContextPanel.vue";
 import WorkbenchLayout from "../components/workbench/WorkbenchLayout.vue";
 import WorkbenchPane from "../components/workbench/WorkbenchPane.vue";
 import WorkbenchPageHeader from "../components/workbench/WorkbenchPageHeader.vue";
 import WorkbenchResponsibilityBand from "../components/workbench/WorkbenchResponsibilityBand.vue";
 import WorkbenchDecisionStrip from "../components/workbench/WorkbenchDecisionStrip.vue";
+import {
+  useTaskAiAssistance,
+  type TaskAiAssistanceContext,
+  type TaskAiAssistancePanelModel,
+  type TaskAiAssistanceRetryTarget,
+} from "../composables/useTaskAiAssistance";
+import {
+  useTaskCollaboration,
+  type TaskCollaborationContext,
+  type TaskCollaborationRetryTarget,
+} from "../composables/useTaskCollaboration";
 
 const leftCollapsed = ref(false);
 const rightCollapsed = ref(false);
 const mobileScreen = ref<"queue" | "detail" | "context">("queue");
 
 type ReviewPayload = Parameters<typeof saveOceanOperationsReview>[1];
-type ReviewIntent = Omit<ReviewPayload, "idempotencyKey">;
 interface ReviewDraft {
   sourceObservationId: string;
   reason: string;
@@ -47,7 +60,6 @@ const DESTINATION_ETA_EVENTS = new Set([
   "eta",
   "vessel_arrival",
 ]);
-let attemptSequence = 0;
 
 const route = useRoute();
 const router = useRouter();
@@ -61,7 +73,6 @@ const loadingObject = ref(false);
 const generalError = ref("");
 const objectErrors = ref<Record<string, string>>({});
 const versionConflicts = ref<Set<string>>(new Set());
-const submittingIds = ref<Set<string>>(new Set());
 type ContextTab =
   "progress" | "route_risk" | "information" | "coordination" | "fees";
 const contextTabs: { id: ContextTab; label: string }[] = [
@@ -72,6 +83,81 @@ const contextTabs: { id: ContextTab; label: string }[] = [
   { id: "fees", label: "财务" },
 ];
 const contextTab = ref<ContextTab>("progress");
+const OCEAN_COLLABORATION_NODE = "ocean_transit";
+const collaborationModes = ["collaboration", "ai"] as const;
+const collaborationMode = ref<TaskContextPanelMode>("collaboration");
+const coordinationTaskId = ref<string | null>(null);
+const coordinationTaskLoading = ref(false);
+const coordinationTaskError = ref("");
+const collaborationContext = computed<TaskCollaborationContext | null>(() => {
+  const containerId = selected.value?.container.id;
+  const taskId = coordinationTaskId.value;
+  if (!containerId || !taskId || containerId !== selectedId.value) return null;
+  return {
+    contextKey: `container:${containerId}|node_task:${taskId}`,
+    taskId,
+    subjectRef: { kind: "container", id: containerId },
+    workRef: { kind: "node_task", id: taskId },
+  };
+});
+const collaboration = useTaskCollaboration(collaborationContext);
+const aiAvailableContext = computed<TaskAiAssistanceContext | null>(() => {
+  const current = collaborationContext.value;
+  if (!current) return null;
+  if (
+    !isEvidenceUuid(current.subjectRef.id) ||
+    !isEvidenceUuid(current.workRef.id)
+  ) {
+    return null;
+  }
+  return current;
+});
+const aiActivatedContextKey = shallowRef<string | null>(null);
+const aiContext = computed<TaskAiAssistanceContext | null>(() =>
+  aiAvailableContext.value?.contextKey === aiActivatedContextKey.value
+    ? aiAvailableContext.value
+    : null,
+);
+const aiAssistance = useTaskAiAssistance(aiContext, {
+  refreshTask: () => {
+    if (selectedId.value) return select(selectedId.value, false);
+  },
+});
+const aiPanel = computed<TaskAiAssistancePanelModel>(() => ({
+  ...aiAssistance,
+  facts: {
+    objectLabel: selected.value?.container.number ?? "当前运输",
+    taskLabel: "海运在途",
+    actionLabel: "领取",
+    responsibilityLabel:
+      selected.value?.task.currentResponsibility ?? "海运运营",
+    dueLabel: selected.value?.task.deadline ?? "未设截止",
+  },
+}));
+watch(
+  [collaborationMode, aiAvailableContext],
+  () => {
+    if (collaborationMode.value === "ai" && aiAvailableContext.value) {
+      aiActivatedContextKey.value = aiAvailableContext.value.contextKey;
+    }
+  },
+  { flush: "sync" },
+);
+watch(
+  [collaborationContext, coordinationTaskLoading, coordinationTaskError],
+  () => {
+    if (collaborationContext.value) return;
+    collaboration.loading.value = coordinationTaskLoading.value;
+    collaboration.error.value = coordinationTaskError.value;
+    collaboration.retryable.value = Boolean(coordinationTaskError.value);
+    if (coordinationTaskLoading.value || coordinationTaskError.value) return;
+    collaboration.canPost.value = true;
+    collaboration.postDisabledReason.value = null;
+    if (!collaboration.visibilityLabel.value)
+      collaboration.visibilityLabel.value = "当前运输";
+  },
+  { flush: "sync", immediate: true },
+);
 function selectTab(tab: ContextTab): void {
   contextTab.value = tab;
   mobileScreen.value = "context";
@@ -169,9 +255,6 @@ const error = computed(
     (selectedId.value ? objectErrors.value[selectedId.value] : "") ||
     generalError.value,
 );
-const submitting = computed(() =>
-  selectedId.value ? submittingIds.value.has(selectedId.value) : false,
-);
 const hasVersionConflict = computed(() =>
   selectedId.value ? versionConflicts.value.has(selectedId.value) : false,
 );
@@ -183,14 +266,54 @@ const etaObservations = computed(
         DESTINATION_ETA_EVENTS.has(item.semanticKey.toLowerCase()),
     ) ?? [],
 );
-const selectedObservation = computed(
-  () =>
-    selected.value?.observations.find(
-      (item) => item.id === selectedObservationId.value,
-    ) ??
-    etaObservations.value[0] ??
-    null,
-);
+const TRANSIT_NOTICES = new Set(["transit_arrived", "transit_departed"]);
+const ROLL_NOTICES = new Set(["rolled", "dumped"]);
+function currentNotice(keys: Set<string>): string | null {
+  const hits =
+    selected.value?.observations.filter(
+      (item) => item.isCurrent && keys.has(item.semanticKey.toLowerCase()),
+    ) ?? [];
+  if (hits.length === 0) return null;
+  const text = hits
+    .map((item) => item.rawValue.trim())
+    .filter(Boolean)
+    .join("；");
+  return text || "已有通知";
+}
+const riskSignals = computed(() => {
+  const transit = currentNotice(TRANSIT_NOTICES);
+  const roll = currentNotice(ROLL_NOTICES);
+  return [
+    {
+      code: "transshipment",
+      name: "中转",
+      status: transit ? "已有通知" : "未接入",
+      evidence: transit ?? "未接入",
+      impact: "未知",
+    },
+    {
+      code: "roll",
+      name: "甩柜或改港",
+      status: roll ? "已有通知" : "未接入",
+      evidence: roll ?? "未接入",
+      impact: "未知",
+    },
+    {
+      code: "stale",
+      name: "长时间无更新",
+      status: "未知",
+      evidence: "新鲜度未定",
+      impact: "未知",
+    },
+    {
+      code: "arrangement",
+      name: "承运安排变化",
+      status: "未接入",
+      evidence: "未接入",
+      impact: "未知",
+    },
+  ];
+});
 const costAmount = computed(() => {
   const cost = selected.value?.financialProjection.costFee;
   if (!cost?.amount || !cost.currency) return null;
@@ -428,10 +551,92 @@ async function loadQueue(): Promise<void> {
   }
 }
 
+function submitCollaboration(): void {
+  if (!collaborationContext.value) {
+    collaboration.sendError.value = "消息没有发出。";
+    return;
+  }
+  void collaboration.send();
+}
+
+function retryCollaboration(target: TaskCollaborationRetryTarget): void {
+  if (!collaborationContext.value) {
+    void reloadCoordinationTask();
+    return;
+  }
+  if (target === "thread") void collaboration.refresh();
+  else void collaboration.retrySend();
+}
+
+function loadMoreCollaboration(): void {
+  void collaboration.loadMore();
+}
+
+function confirmAi(): void {
+  void aiAssistance.confirm();
+}
+
+function rejectAi(reason?: string): void {
+  void aiAssistance.reject(reason);
+}
+
+function retryAi(target: TaskAiAssistanceRetryTarget): void {
+  void aiAssistance.retry(target);
+}
+
+function refreshAi(): void {
+  void aiAssistance.refresh();
+}
+
+async function loadCoordinationTask(
+  containerId: string,
+  request: number,
+): Promise<void> {
+  if (request !== projectionRequest || selectedId.value !== containerId) return;
+  coordinationTaskLoading.value = true;
+  coordinationTaskError.value = "";
+  coordinationTaskId.value = null;
+  try {
+    const page = await listNodeTasks({ containerId, pageSize: 50 });
+    if (request !== projectionRequest || selectedId.value !== containerId)
+      return;
+    const matches = page.items.filter(
+      (item) =>
+        item.nodeCode === OCEAN_COLLABORATION_NODE &&
+        item.containerId === containerId,
+    );
+    if (matches.length === 1) {
+      coordinationTaskId.value = matches[0]?.id ?? null;
+      return;
+    }
+    coordinationTaskError.value =
+      matches.length > 1
+        ? "这票有多条海运任务，协同对话未接通"
+        : page.pageInfo.hasNextPage
+          ? "海运任务未在当前读取范围确认，协同对话未接通"
+          : "";
+  } catch (cause) {
+    if (request !== projectionRequest || selectedId.value !== containerId)
+      return;
+    coordinationTaskError.value =
+      cause instanceof Error ? cause.message : "确认海运任务失败";
+  } finally {
+    if (request === projectionRequest) coordinationTaskLoading.value = false;
+  }
+}
+
+async function reloadCoordinationTask(): Promise<void> {
+  const containerId = selectedId.value;
+  if (containerId) await loadCoordinationTask(containerId, projectionRequest);
+}
+
 async function select(containerId: string, updateUrl = true): Promise<void> {
   snapshotDraft();
   const request = ++projectionRequest;
   selectedId.value = containerId;
+  coordinationTaskId.value = null;
+  coordinationTaskError.value = "";
+  coordinationTaskLoading.value = true;
   if (updateUrl) mobileScreen.value = "detail";
   loadingObject.value = true;
   if (selected.value?.container.id !== containerId) selected.value = null;
@@ -449,9 +654,11 @@ async function select(containerId: string, updateUrl = true): Promise<void> {
     const nextConflicts = new Set(versionConflicts.value);
     nextConflicts.delete(containerId);
     versionConflicts.value = nextConflicts;
+    await loadCoordinationTask(containerId, request);
   } catch (cause) {
     if (request !== projectionRequest || selectedId.value !== containerId)
       return;
+    coordinationTaskLoading.value = false;
     objectErrors.value = {
       ...objectErrors.value,
       [containerId]:
@@ -459,89 +666,6 @@ async function select(containerId: string, updateUrl = true): Promise<void> {
     };
   } finally {
     if (request === projectionRequest) loadingObject.value = false;
-  }
-}
-
-function idempotencyKey(containerId: string): string {
-  attemptSequence += 1;
-  return `ocean-review:${containerId}:${Date.now()}:${attemptSequence}`;
-}
-
-function isVersionConflict(cause: unknown): boolean {
-  return (
-    cause instanceof HttpRequestError &&
-    cause.status === 409 &&
-    (cause.code === "SOURCE_REVIEW_VERSION_CONFLICT" ||
-      cause.code === "ARRIVAL_PREPARATION_VERSION_CONFLICT")
-  );
-}
-
-async function refreshQueue(): Promise<void> {
-  try {
-    queue.value = await listOceanOperationsQueue();
-  } catch (cause) {
-    generalError.value =
-      cause instanceof Error ? cause.message : "刷新运输待办失败";
-  }
-}
-
-async function submit(): Promise<void> {
-  if (!selected.value || !selectedObservation.value || !reason.value.trim())
-    return;
-  snapshotDraft();
-  const containerId = selected.value.container.id;
-  const observation = selectedObservation.value;
-  const draft = drafts.get(containerId);
-  const intent: ReviewIntent = {
-    sourceObservationId: observation.id,
-    reviewDecision: decision.value,
-    reason: reason.value.trim(),
-    expectedVersion: selected.value.review?.version ?? 0,
-    arrivalPreparationResult: arrivalResult.value,
-    nextStep: nextStep.value.trim(),
-    expectedArrivalPreparationVersion:
-      selected.value.arrivalPreparation?.version ?? 0,
-  };
-  const fingerprint = JSON.stringify(intent);
-  const payload =
-    draft?.retry?.fingerprint === fingerprint
-      ? draft.retry.payload
-      : { ...intent, idempotencyKey: idempotencyKey(containerId) };
-  if (draft) draft.retry = { fingerprint, payload };
-  submittingIds.value = new Set(submittingIds.value).add(containerId);
-  const nextErrors = { ...objectErrors.value };
-  delete nextErrors[containerId];
-  objectErrors.value = nextErrors;
-  try {
-    const result = await saveOceanOperationsReview(containerId, payload);
-    drafts.delete(containerId);
-    if (selectedId.value === containerId && selected.value && result.review) {
-      selected.value = {
-        ...selected.value,
-        review: result.review,
-        traceability: {
-          ...selected.value.traceability,
-          sourceVersion: observation.sourceVersion,
-          reviewVersion: result.review.version,
-          arrivalPreparationVersion:
-            result.arrivalPreparation?.version ??
-            selected.value.traceability.arrivalPreparationVersion,
-        },
-        arrivalPreparation: result.arrivalPreparation,
-      };
-    }
-    await refreshQueue();
-  } catch (cause) {
-    objectErrors.value = {
-      ...objectErrors.value,
-      [containerId]: cause instanceof Error ? cause.message : "记录判断失败",
-    };
-    if (isVersionConflict(cause))
-      versionConflicts.value = new Set(versionConflicts.value).add(containerId);
-  } finally {
-    const next = new Set(submittingIds.value);
-    next.delete(containerId);
-    submittingIds.value = next;
   }
 }
 
@@ -957,15 +1081,46 @@ onMounted(() => void loadQueue());
                 </form>
               </section>
               <section
-                v-if="
-                  contextTab === 'route_risk' || contextTab === 'coordination'
-                "
+                v-if="contextTab === 'route_risk'"
                 class="focus-context flow-section"
-                aria-label="所选关注"
+                aria-label="风险"
               >
-                <h2>
-                  {{ contextTab === "route_risk" ? "风险" : "下游信息与协同" }}
-                </h2>
+                <h2>风险</h2>
+                <ol class="risk-signals">
+                  <li v-for="signal in riskSignals" :key="signal.code">
+                    <div>
+                      <strong>{{ signal.name }}</strong>
+                      <b :data-status="signal.status">{{ signal.status }}</b>
+                    </div>
+                    <span>依据 {{ signal.evidence }}</span>
+                    <small>影响 {{ signal.impact }}</small>
+                  </li>
+                </ol>
+              </section>
+              <section
+                v-if="contextTab === 'coordination'"
+                class="focus-context flow-section coordination-thread"
+                aria-label="下游信息与协同"
+              >
+                <h2>下游信息与协同</h2>
+                <TaskContextPanel
+                  v-model="collaborationMode"
+                  :context-key="
+                    collaborationContext?.contextKey ??
+                    selected?.container.id ??
+                    null
+                  "
+                  :modes="collaborationModes"
+                  :collaboration="collaboration"
+                  :ai="aiPanel"
+                  @submit="submitCollaboration"
+                  @retry="retryCollaboration"
+                  @load-more="loadMoreCollaboration"
+                  @confirm-ai="confirmAi"
+                  @reject-ai="rejectAi"
+                  @retry-ai="retryAi"
+                  @refresh-ai="refreshAi"
+                />
               </section>
               <section
                 v-if="contextTab === 'information'"
@@ -1639,6 +1794,64 @@ onMounted(() => void loadQueue());
   display: grid;
   gap: var(--space-3);
   overflow-wrap: anywhere;
+}
+
+.risk-signals {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.risk-signals li {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.risk-signals span,
+.risk-signals small {
+  color: var(--ink-soft);
+  font-size: var(--text-label);
+}
+
+.risk-signals strong {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.risk-signals {
+  list-style: none;
+}
+
+.risk-signals li > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.risk-signals b {
+  flex: 0 0 auto;
+  font-size: var(--text-label);
+  font-weight: 600;
+}
+
+.risk-signals b[data-status="未接入"],
+.risk-signals b[data-status="未知"] {
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
+.coordination-thread :deep(.task-context__modes) {
+  grid-template-columns: repeat(2, max-content);
+}
+
+.coordination-thread :deep(.collaboration__boundary p) {
+  display: none;
 }
 
 .focus-context h2 {

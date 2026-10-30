@@ -6,7 +6,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { buildOceanFocus, comparableObservations } from "../domain/ocean-operations-focus";
+import {
+  buildOceanFocus,
+  comparableObservations,
+} from "../domain/ocean-operations-focus";
 import { PrismaService } from "../../../prisma/prisma.service";
 import {
   ARRIVAL_PREPARATION_RESULTS,
@@ -438,19 +441,33 @@ export class PrismaOceanOperationsSourceReviewRepository implements OceanOperati
         semanticKey: event.canonicalEventCode ?? event.rawCode,
       }),
     );
-    const lifecycleObservations: SourceObservation[] = oceanLifecycleFacts.map((fact) => ({
-      id: `lifecycle:${fact.id}`,
-      nodeCode: fact.nodeCode, segmentId: fact.segmentId ?? null, unlocode: fact.unlocode ?? null,
-      supersedesObservationId: fact.supersedesFactId ? `lifecycle:${fact.supersedesFactId}` : null,
-      reviewRequired: fact.applicationState === "review_required",
-      semanticKey: fact.eventCode, sourceSystem: fact.sourceSystem,
-      sourceVersion: fact.mappingVersion ?? fact.projectionVersion.toString(),
-      parseState: fact.validity, sourcePrecision: precisionFor(fact.rawValue),
-      rawValue: fact.rawValue, normalizedValue: normalizedSourceDate(fact.validity, fact.occurredAt),
-      timeKind: fact.timeKind,
-      evidenceRefs: Array.isArray(fact.evidenceRefs) ? fact.evidenceRefs.filter((value): value is string => typeof value === "string") : [],
-      isCurrent: fact.isCurrent, conflict: false,
-    }));
+    const lifecycleObservations: SourceObservation[] = oceanLifecycleFacts.map(
+      (fact) => ({
+        id: `lifecycle:${fact.id}`,
+        nodeCode: fact.nodeCode,
+        segmentId: fact.segmentId ?? null,
+        unlocode: fact.unlocode ?? null,
+        supersedesObservationId: fact.supersedesFactId
+          ? `lifecycle:${fact.supersedesFactId}`
+          : null,
+        reviewRequired: fact.applicationState === "review_required",
+        semanticKey: fact.eventCode,
+        sourceSystem: fact.sourceSystem,
+        sourceVersion: fact.mappingVersion ?? fact.projectionVersion.toString(),
+        parseState: fact.validity,
+        sourcePrecision: precisionFor(fact.rawValue),
+        rawValue: fact.rawValue,
+        normalizedValue: normalizedSourceDate(fact.validity, fact.occurredAt),
+        timeKind: fact.timeKind,
+        evidenceRefs: Array.isArray(fact.evidenceRefs)
+          ? fact.evidenceRefs.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [],
+        isCurrent: fact.isCurrent,
+        conflict: false,
+      }),
+    );
     const observations: SourceObservation[] = [
       ...oceanTimeFacts.map((fact) => ({
         id: `shipment-time:${fact.id}`,
@@ -518,8 +535,10 @@ export class PrismaOceanOperationsSourceReviewRepository implements OceanOperati
         deadlineStatus: "unknown",
       },
       focus: buildOceanFocus({
-        shipmentLinked: Boolean(shipment), actualDepartureAt: shipmentIdentity?.actualDepartureAt ?? null,
-        observations, history: lifecycleObservations.filter((item) => !item.isCurrent),
+        shipmentLinked: Boolean(shipment),
+        actualDepartureAt: shipmentIdentity?.actualDepartureAt ?? null,
+        observations,
+        history: lifecycleObservations.filter((item) => !item.isCurrent),
       }),
       observations,
       review: latestReview
@@ -632,6 +651,32 @@ export class PrismaOceanOperationsSourceReviewRepository implements OceanOperati
       select: { id: true },
     });
     if (!container) throw new NotFoundException("RESOURCE_NOT_FOUND");
+    const recorded = await this.prisma.oceanOperationsSourceReview.findUnique({
+      where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
+    });
+    if (recorded) {
+      const arrival =
+        await this.prisma.oceanOperationsArrivalPreparationResult.findUnique({
+          where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
+        });
+      if (
+        recorded.containerId !== containerId ||
+        recorded.sourceObservationId !== sourceObservationId ||
+        recorded.reviewDecision !== input.reviewDecision ||
+        recorded.reason !== reason ||
+        Boolean(arrival) !== (input.arrivalPreparationResult !== undefined) ||
+        (arrival &&
+          (arrival.result !== input.arrivalPreparationResult ||
+            arrival.reason !== reason ||
+            arrival.nextStep !== nextStep))
+      )
+        throw new ConflictException("SOURCE_REVIEW_IDEMPOTENCY_CONFLICT");
+      return {
+        recordState: "duplicate" as const,
+        review: toReview(recorded),
+        arrivalPreparation: arrival ? toArrivalPreparation(arrival) : null,
+      };
+    }
     const sourceObservation = await this.findSourceObservation(
       tenantId,
       containerId,
@@ -1025,12 +1070,16 @@ function precisionFor(rawValue: string): string {
 
 function markObservationConflicts(observations: SourceObservation[]): void {
   for (const observation of observations) {
-    observation.conflict = observations.some((other) =>
-      other.id !== observation.id && comparableObservations(observation, other) &&
-      observation.normalizedValue && other.normalizedValue &&
-      (observation.sourcePrecision === "date-only"
-        ? observation.rawValue !== other.rawValue
-        : Date.parse(observation.normalizedValue) !== Date.parse(other.normalizedValue)),
+    observation.conflict = observations.some(
+      (other) =>
+        other.id !== observation.id &&
+        comparableObservations(observation, other) &&
+        observation.normalizedValue &&
+        other.normalizedValue &&
+        (observation.sourcePrecision === "date-only"
+          ? observation.rawValue !== other.rawValue
+          : Date.parse(observation.normalizedValue) !==
+            Date.parse(other.normalizedValue)),
     );
   }
 }

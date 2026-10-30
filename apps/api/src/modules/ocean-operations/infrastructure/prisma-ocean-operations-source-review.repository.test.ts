@@ -104,6 +104,34 @@ describe("PrismaOceanOperationsSourceReviewRepository", () => {
     );
   });
 
+  it("replays an existing receipt after its source is superseded without accepting changed intent", async () => {
+    const prisma = makePrisma();
+    const service = new PrismaOceanOperationsSourceReviewRepository(
+      prisma as never,
+    );
+    const input = {
+      tenantId: "tenant-a",
+      actorId: "operator-a",
+      containerId: "container-1",
+      sourceObservationId: "shipment-time:1",
+      reviewDecision: "review_required" as const,
+      reason: "待核",
+      expectedVersion: 0,
+      idempotencyKey: "superseded-retry",
+      traceId: "trace-1",
+    };
+    const first = await service.save(input);
+    prisma.shipmentTimeFact.findFirst.mockResolvedValue(null);
+    await expect(service.save(input)).resolves.toMatchObject({
+      recordState: "duplicate",
+      review: { id: first.review.id, version: 1 },
+    });
+    await expect(
+      service.save({ ...input, reason: "different" }),
+    ).rejects.toThrow("SOURCE_REVIEW_IDEMPOTENCY_CONFLICT");
+    expect(prisma.oceanOperationsSourceReview.create).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects a stale expected version and never overwrites the first result", async () => {
     const prisma = makePrisma();
     const service = new PrismaOceanOperationsSourceReviewRepository(
@@ -592,14 +620,24 @@ describe("PrismaOceanOperationsSourceReviewRepository", () => {
       }),
     );
     expect(projection.focus.map((item) => item.code)).toEqual([
-      "progress", "arrival_change", "route_risk", "information", "coordination",
+      "progress",
+      "arrival_change",
+      "route_risk",
+      "information",
+      "coordination",
     ]);
     expect(projection.task.question).not.toContain("能否作为清关");
-    expect(projection.downstream.missingFacts).not.toContain("实际到港尚未回流");
-    expect(projection.downstream.nextStep).not.toContain("完成本次到港准备判断后等待");
-    expect(projection.observations[0]).toEqual(expect.objectContaining({
-      nodeCode: "destination_arrival",
-    }));
+    expect(projection.downstream.missingFacts).not.toContain(
+      "实际到港尚未回流",
+    );
+    expect(projection.downstream.nextStep).not.toContain(
+      "完成本次到港准备判断后等待",
+    );
+    expect(projection.observations[0]).toEqual(
+      expect.objectContaining({
+        nodeCode: "destination_arrival",
+      }),
+    );
     expect(projection.traceability).toEqual(
       expect.objectContaining({
         sourceVersion: "post-departure-20260923-v1",

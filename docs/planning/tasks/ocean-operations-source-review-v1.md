@@ -42,6 +42,24 @@ writeScopes:
   - database/seeds/internal-ocean-reference-data.ts
   - database/seeds/seed-external-ocean-reference-mappings.ts
   - database/seeds/provider-profiles/**
+  - apps/web/src/data/customsClearanceDocumentRequirements.ts
+  - database/seed.ts
+  - database/seeds/freightower-reference-data.ts
+  - database/seeds/internal-ocean-reference-v1.1.ts
+  - database/seeds/reference-data/smdg-liner-codes-20261028.json
+  - database/seeds/reference-data/smdg-liner-codes-20261028.xlsx
+  - database/seeds/seed-internal-ocean-reference-data.ts
+  - database/seeds/seed-ocean-reference-v1.1.ts
+  - database/seeds/smdg-liner-directory.ts
+  - doc/cross-border-supply-chain/01-authoritative-business-chain.md
+  - doc/cross-border-supply-chain/14-roadmap-decisions.md
+  - doc/cross-border-supply-chain/wisdom-baseline/海运运营工作台.md
+  - docs/product/domain/INDUSTRY_STANDARDS_ALIGN.md
+  - docs/product/domain/TARGET_FIELD_CATALOG.md
+  - scripts/freightower-reference-data.test.ts
+  - .gitignore
+  - .claude/commands/workbench-slic.md
+  - database/dictionary/**
 exclusiveLocks:
   - database-schema
   - public-contract
@@ -97,7 +115,19 @@ uiViewportEvidence:
 
 ### S6：MEDU7620177 标准数据消费与五类关注验收（2026-10-30）
 
-本轮Claude直接实施，仅通过MasterData公开Port给海运读模型补标准解释（船司名称/柜型原值及映射待核/港口精确识别）；不改业务原值、不采信候选、不新增迁移/seed/API。保留当前三栏、概况、环节轨与财务/清关资料现有内容，不回退负责人现有视觉调整。右栏必须可达已定五类关注（运输进展、到港时间变化、航程及承运风险、信息缺失或冲突、下游信息与协同），显示各自实际依据/已识别触发，不以财务替代到港时间变化。财务/清关资料作为现有附属只读内容，不冒充已核验。未接通的日期/附件保存不得以浏览器内存或无处理file控件制造已办理；关闭此类无落账写入口并说明，不扩实施新写功能。按对象查看真实来源并展开/定位，刷新仍读取同票；仅有业务必要才提交本岗判断，不为验收造问题。本轮先只读真实基准，不重跑seed/恢复脚本，截图分别1440×900、1024×768、390×844，无mock替代；写界面仅page/API局部type及tests，服务端仅ocean module/app service/tests，通过public port消费标准目录，不改共享壳/状态机/原运输数据。其他并行变化保持现状。
+本轮Claude直接实施，仅通过MasterData公开Port给海运读模型补标准解释（船司名称/柜型原值及映射待核/港口精确识别）；不改业务原值、不采信候选、不新增迁移/seed/API。验收中发现页面与test反复被同工作区其他修改覆盖，负责人在选项中明确选择“保留当前页面”，因此本轮范围收窄为标准数据消费、同票刷新与三视口只读核验，不再恢复五类页签或修改页面日期/附件功能。原定五类关注的完整内容、可靠日期/附件落账、查看来源定位和保存判断路径作为未通过/未验证项，不能宣称已办理或闭环。保留当前三栏、概况、环节轨、财务/清关资料及视觉调整。实际使用1440×900、1024×768、390×844，无mock，不重跑seed/恢复脚本，不为验收造新判断或提交业务记录。服务端只改ocean module/app service/tests及读仓储containerTypeCode投影，经MasterData公开Port消费；不改共享壳/状态机/运输原值。
+
+#### S6 保留当前页面的只读验收结果（2026-10-30）
+
+- 负责人在冲突选项中选择保留当前页面；未恢复五类页签、不再修改页面/test，未运行seed或POST业务操作。页面/test最终hash与本轮保留起点相同：`b318486c91527ab2eadddd44e5352903b11f3e0b` / `9c8f2574b341c44ab13c279f2c8885bdb337eec6`。
+- 真实5173→3000→数据库，同一柜`e6a45d96-46e3-43c9-8fa3-3794b36c1d96`：MSC由MasterData基准1.1.0解释为地中海航运；柜型40HQ原值保留，candidate不显示为40HC；CNFOC标来源码待映射，USSAV精确识别为Savannah。不覆写港口中文候选、不猜地图关联。
+- 本机Playwright三视口1440×900、1024×768、390×844已实际切当前5个页签并刷新，同票投影前后相同，无API写请求、无横向文档溢出。截图在既有临时目录`acceptance-preserved-{1440x900,1024x768,390x844}.png`及`acceptance-preserved-390-context.png`，对应API/readback/页签内容/溢出数据在`acceptance-preserved-readonly.json`。截图逐张人工查看：桌面三栏、窄屏左轨、手机分屏保留；手机责任带挤压和日期断行明显，未以无横溢冒称视觉质量通过。
+- 核对四张业务表全行hash（本轮只读前后）一致：Shipment=`d91c549745ff0eac54627ace7578232f`，ContainerRecord=`ac0bef9b55f430385562957876c758c0`，source review=`d952883229fa0c7d624b0787ac99c87c`，arrival result=`d41d8cd98f00b204e9800998ecf8427e`。历史来源review仍v6，arrivalPreparation为空，不把它变成新的到港准备判断。
+- 不通过/未验证：当前右侧是进展/风险/信息/协同/财务，缺独立到港变化内容；风险和协同仅标题；日期记录和附件保存在浏览器内存，不是正式落账；“查看依据”恢复与保存新判断不在保留页面版本通过项。国别资料清单仅参考，不能证明本票适用、缺失或已经核验。页面/API存在不等于岗位办理或下游接收完成。
+- 服务端定向20/20、当前页面16/16、API/Web typecheck通过，服务端增量ESLint通过。一次API typecheck进程异常退出3221226505，串行复跑通过，未篡改工具配置。容器浏览器因Vite allowedHosts被拒，用本机浏览器验证，未修改运行配置。fresh局部只读复审无已核阻塞，覆盖app service/module；reviewer明确未完整核测试/domain/repository输出，主代理另有定向测试和真实读回，不冒称整任务复审完成。
+- 验收时其他会话将基线提交至`f4dac5e6c42689f198505754b32794db25a44439`，本轮未执行提交/回退/暂存。当前`repo:check`失败项为任务权威/写域对账（TASK_AUTHORITY_WRITE_UNDECLARED和15个历史tracked path out-of-scope），不因本轮验收而扩大写域或覆盖他人改动；`git diff --check`通过。该门禁失败与本轮只读业务结果分轨，整brief不标done。
+
+- 最终补充：API完整343文件1870项、Web完整178文件999项全部通过；API build通过。此前边界检查失败保持如实记录，不用单测通过覆盖repo门禁；本轮只读消费验收可确认，五类办理/最终集成仍未通过。
 
 ### S5：船公司初始目录及柜型依据（2026-10-30）
 

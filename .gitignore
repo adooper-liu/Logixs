@@ -38,3 +38,10 @@ Thumbs.db
 .superpowers/
 .sample-output/
 .demo-maintenance-output/
+
+# Local browser diagnostics and temporary acceptance evidence
+.tmp/
+.tmp-trace/
+apps/web/.tmp/
+# Non-authoritative local discussion notes
+.claude/discussion/

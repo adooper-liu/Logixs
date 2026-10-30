@@ -61,6 +61,8 @@ const focus: OceanFocusItem[] = [
 const listQueue = vi.fn();
 const getProjection = vi.fn();
 const saveReview = vi.fn();
+const listTasks = vi.fn();
+const listCollaboration = vi.fn();
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -72,6 +74,13 @@ vi.mock("../api/oceanOperations", () => ({
   listOceanOperationsQueue: (...args: unknown[]) => listQueue(...args),
   getOceanOperationsProjection: (...args: unknown[]) => getProjection(...args),
   saveOceanOperationsReview: (...args: unknown[]) => saveReview(...args),
+}));
+vi.mock("../api/nodeTasks", () => ({
+  listNodeTasks: (...args: unknown[]) => listTasks(...args),
+}));
+vi.mock("../api/taskCollaboration", () => ({
+  listTaskCollaboration: (...args: unknown[]) => listCollaboration(...args),
+  postTaskCollaborationMessage: vi.fn(),
 }));
 vi.mock("../components/ui/PageHeader.vue", () => ({
   default: {
@@ -234,6 +243,28 @@ describe("OceanOperationsWorkbench", () => {
     getProjection.mockResolvedValue(
       projectionFor("container-1", "MEDU7620177"),
     );
+    listTasks.mockResolvedValue({
+      items: [],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-10-30T00:00:00.000Z",
+      projectionVersion: 1,
+    });
+    listCollaboration.mockResolvedValue({
+      contractVersion: "task-collaboration-page.v1",
+      thread: null,
+      subjectRef: { kind: "container", id: "container-1" },
+      workRef: { kind: "node_task", id: "task-ocean" },
+      visibility: "task_scope",
+      visibilityLabel: "当前任务参与者",
+      messages: [],
+      asOf: "2026-10-30T00:00:00.000Z",
+      pageSize: 25,
+      nextCursor: null,
+      canPost: false,
+      postDisabledReason: "当前任务协作只读。",
+      mentionOptions: [],
+      evidenceOptions: [],
+    });
     saveReview.mockResolvedValue({
       recordState: "recorded",
       review: {
@@ -258,6 +289,23 @@ describe("OceanOperationsWorkbench", () => {
         recordedAt: "2026-10-26T08:00:00.000Z",
       },
     });
+  });
+
+  it("labels date and attachment selections as temporary rather than saved business results", async () => {
+    const wrapper = await mountWorkbench();
+    expect(wrapper.get(".date-form").text()).toContain("未保存");
+    expect(wrapper.get(".date-form").text()).toContain("刷新丢失");
+    await wrapper.get('[data-tab="information"]').trigger("click");
+    const customs = wrapper.get('[aria-label="清关资料与发送"]');
+    expect(customs.text()).toContain("未上传");
+    const input = customs.get('input[aria-label="提单附件"]');
+    Object.defineProperty(input.element, "files", {
+      value: [new File(["test"], "draft.txt")],
+      configurable: true,
+    });
+    await input.trigger("change");
+    expect(customs.text()).toContain("本地已选 · 未核验");
+    expect(customs.text()).not.toContain("1 / 9 已满足");
   });
 
   it("shows standard carrier names while keeping legacy type and port values explicit", async () => {
@@ -595,6 +643,113 @@ describe("OceanOperationsWorkbench", () => {
       "未核验",
     );
     expect(saveReview).not.toHaveBeenCalled();
+  });
+
+  it("shows the shared AI assistance surface beside collaboration", async () => {
+    const wrapper = await mountWorkbench();
+    await wrapper.get('[data-tab="coordination"]').trigger("click");
+    await wrapper.get('[data-mode-control="ai"]').trigger("click");
+    const ai = wrapper.get("[data-task-ai-assistance-panel]");
+    expect(ai.text()).toContain("AI 辅助");
+    expect(ai.text()).toContain("领取建议");
+    expect(wrapper.text()).toContain("MEDU7620177");
+  });
+
+  it("shows voyage facts and unconnected risk signals without a score", async () => {
+    const wrapper = await mountWorkbench();
+    await wrapper.get('[data-tab="route_risk"]').trigger("click");
+    const risk = wrapper.get('[aria-label="风险"]');
+    expect(risk.text()).not.toContain("MSC MAKALU III");
+    expect(risk.text()).not.toContain("福州");
+    expect(risk.text()).toContain("中转");
+    expect(risk.text()).toContain("甩柜或改港");
+    expect(risk.text()).toContain("长时间无更新");
+    expect(risk.text()).toContain("承运安排变化");
+    expect(risk.text()).toContain("未接入");
+    expect(risk.text()).toContain("新鲜度未定");
+    expect(risk.text()).not.toContain("无风险");
+    expect(risk.text()).not.toContain("风险分");
+  });
+
+  it("uses the shared task conversation for downstream coordination", async () => {
+    listTasks.mockResolvedValue({
+      items: [
+        {
+          id: "task-ocean",
+          nodeCode: "ocean_transit",
+          containerId: "container-1",
+        },
+      ],
+      pageInfo: { nextCursor: null, hasNextPage: false, pageSize: 50 },
+      asOf: "2026-10-30T00:00:00.000Z",
+      projectionVersion: 1,
+    });
+    listCollaboration.mockResolvedValue({
+      contractVersion: "task-collaboration-page.v1",
+      thread: null,
+      subjectRef: { kind: "container", id: "container-1" },
+      workRef: { kind: "node_task", id: "task-ocean" },
+      visibility: "task_scope",
+      visibilityLabel: "当前任务参与者",
+      messages: [
+        {
+          contractVersion: "task-collaboration-message.v1",
+          messageId: "11111111-1111-4111-8111-111111111111",
+          threadId: "22222222-2222-4222-8222-222222222222",
+          author: {
+            kind: "actor",
+            id: "actor-1",
+            displayName: "海运值班",
+          },
+          body: "清关可以按 11/1 窗口开始准备",
+          parentMessageId: null,
+          mentions: [],
+          evidenceRefs: [],
+          sourceRefs: [],
+          occurredAt: "2026-10-30T01:00:00.000Z",
+          recordedAt: "2026-10-30T01:00:01.000Z",
+        },
+      ],
+      asOf: "2026-10-30T01:00:00.000Z",
+      pageSize: 25,
+      nextCursor: null,
+      canPost: true,
+      postDisabledReason: null,
+      mentionOptions: [],
+      evidenceOptions: [],
+    });
+    const wrapper = await mountWorkbench();
+    await wrapper.get('[data-tab="coordination"]').trigger("click");
+    await flushPromises();
+    const thread = wrapper.get('[aria-label="下游信息与协同"]');
+    expect(thread.get("[data-task-collaboration-panel]").text()).toContain(
+      "清关可以按 11/1 窗口开始准备",
+    );
+    expect(thread.get('textarea[aria-label="协作消息"]').exists()).toBe(true);
+    expect(listTasks).toHaveBeenCalledWith({
+      containerId: "container-1",
+      pageSize: 50,
+    });
+    expect(listCollaboration).toHaveBeenCalledWith(
+      "task-ocean",
+      expect.objectContaining({
+        subjectRef: { kind: "container", id: "container-1" },
+      }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("keeps downstream conversation disconnected without an ocean task", async () => {
+    const wrapper = await mountWorkbench();
+    await wrapper.get('[data-tab="coordination"]').trigger("click");
+    await flushPromises();
+    const thread = wrapper.get('[aria-label="下游信息与协同"]');
+    expect(thread.get("[data-task-collaboration-panel]").text()).toContain(
+      "还没有协作消息",
+    );
+    expect(thread.get('textarea[aria-label="协作消息"]').exists()).toBe(true);
+    expect(thread.text()).not.toContain("协同对话未接通");
+    expect(listCollaboration).not.toHaveBeenCalled();
   });
 
   it("does not reuse the arrival judgment form on the concern tabs", async () => {
