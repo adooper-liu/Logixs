@@ -1,3 +1,43 @@
+export interface OceanDeadlineContext {
+  query: {
+    portId: string;
+    shippingCompanyId: string;
+    freightForwarderId: string;
+    transportMode?: string | null;
+    terminalId?: string | null;
+    referenceAt: Date;
+  } | null;
+  calendarBasis: string | null;
+  facts: {
+    estimatedArrival: {
+      at: Date;
+      sourceRef: string;
+      sourceVersion: string;
+    } | null;
+    estimatedDischarge: {
+      at: Date;
+      sourceRef: string;
+      sourceVersion: string;
+    } | null;
+    estimatedPickup: {
+      at: Date;
+      sourceRef: string;
+      sourceVersion: string;
+    } | null;
+    actualArrival: {
+      at: Date;
+      sourceRef: string;
+      sourceVersion: string;
+    } | null;
+    actualDischarge: {
+      at: Date;
+      sourceRef: string;
+      sourceVersion: string;
+    } | null;
+    actualPickup: { at: Date; sourceRef: string; sourceVersion: string } | null;
+  };
+}
+
 export const SOURCE_REVIEW_DECISIONS = [
   "review_required",
   "adopt_observation_for_review",
@@ -38,6 +78,7 @@ export interface SourceObservation {
 }
 
 export interface OceanOperationsReviewProjection {
+  deadlineContext?: OceanDeadlineContext;
   container: {
     id: string;
     number: string | null;

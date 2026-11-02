@@ -31,7 +31,12 @@ export interface SourceObservation {
   conflict: boolean;
 }
 export interface OceanFocusItem {
-  code: "progress" | "arrival_change" | "route_risk" | "information" | "coordination";
+  code:
+    | "progress"
+    | "arrival_change"
+    | "route_risk"
+    | "information"
+    | "coordination";
   title: string;
   status: "information" | "attention" | "unavailable";
   summary: string;
@@ -49,9 +54,39 @@ export interface OceanStandardExplanation {
   version: string | null;
 }
 
+export interface OceanDeadlineSummary {
+  state: "complete" | "incomplete" | "not_applicable" | "historical";
+  date: string | null;
+  nature: "estimated" | "planned" | "historical" | null;
+  limitingStandardIds: string[];
+  issues: string[];
+}
 export interface OceanOperationsProjection {
-  standards?: { carrier: OceanStandardExplanation; containerType: OceanStandardExplanation; origin: OceanStandardExplanation; destination: OceanStandardExplanation };
-  container: { id: string; number: string | null; status: string; typeCode?: string | null };
+  deadlines?: {
+    stage: "before_arrival" | "after_arrival" | "after_pickup";
+    pickup: OceanDeadlineSummary;
+    return: OceanDeadlineSummary;
+    items: {
+      standardId: string;
+      sourceRef: string | null;
+      sourceVersion: string | null;
+      date: string | null;
+      nature: "estimated" | "planned" | null;
+      issues: string[];
+    }[];
+  };
+  standards?: {
+    carrier: OceanStandardExplanation;
+    containerType: OceanStandardExplanation;
+    origin: OceanStandardExplanation;
+    destination: OceanStandardExplanation;
+  };
+  container: {
+    id: string;
+    number: string | null;
+    status: string;
+    typeCode?: string | null;
+  };
   shipment: {
     id: string;
     number: string | null;

@@ -557,6 +557,7 @@ describe("PrismaOceanOperationsSourceReviewRepository", () => {
         findMany: vi.fn().mockResolvedValue([
           {
             id: "eta-1",
+            unlocode: "USSAV",
             nodeCode: "destination_arrival",
             eventCode: "arrived",
             sourceSystem: "development_demo.retained_source_package",
@@ -583,6 +584,14 @@ describe("PrismaOceanOperationsSourceReviewRepository", () => {
 
     const projection = await service.getProjection("tenant-a", "container-1");
 
+    expect(projection.deadlineContext).toMatchObject({
+      query: null,
+      calendarBasis: null,
+    });
+    expect(projection.deadlineContext?.facts.actualArrival).toBeNull();
+    expect(projection.deadlineContext?.facts.estimatedArrival?.sourceRef).toBe(
+      "lifecycle:eta-1",
+    );
     expect(projection.shipment).toEqual(
       expect.objectContaining({
         id: "shipment-1",

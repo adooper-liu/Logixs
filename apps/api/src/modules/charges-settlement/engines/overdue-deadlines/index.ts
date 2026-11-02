@@ -1,3 +1,12 @@
+export {
+  computeStagedOverdueDeadlines,
+  type StagedDateFact,
+  type StagedOverdueInput,
+  type StagedOverdueResult,
+  type StagedOverdueStage,
+  type StagedDeadlineItem,
+  type StagedDeadlineSummary,
+} from "./staged-overdue-deadlines";
 export { applyFreePeriod, utcDay } from "./apply-free-period";
 export {
   computeOverdueDeadlines,

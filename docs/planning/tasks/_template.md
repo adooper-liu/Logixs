@@ -3,7 +3,7 @@ status: design # design | coding | review | fix | blocked | done（机器可校�
 branch: # git 初始化后填：feat/<任务名>
 verification: # 仅 status: done 时必填：CI/测试运行 URL 或受版本控制的验证记录路径
 owner: main # 端到端主代理：Claude Code，按 AGENTS.md §1.2 第 4 条映射；design/coding/fix 必填
-writer: codex # 产品实现默认由 Codex Code 写入；纯治理/业务权威任务可按实际写入者登记 main
+writer: claude # 当前 Claude Code 主代理直接实施；纯治理/业务权威任务可按实际写入者登记 main
 risk: medium # low | medium | high；design/coding/fix 必填
 dependsOn: [] # task brief 文件名（不含 .md）；依赖未 done 时不得写
 writeScopes: # design/coding/fix 必填；精确文件，或目录/**；不得使用其它 glob
@@ -44,11 +44,12 @@ uiViewportEvidence: [] # 至少 1440x900 / 1024x768 / 390x844；写明首屏与�
 > 当前已确认角色/范围，以及明确延期且只阻塞相关动作的未来政策。不得把“覆盖所有未来角色”写成完成门槛；
 > 已证实的跨租户绕过也不得包装成可配置项延期。
 
-## 执行切片与人工转发信封
+## 执行切片与例外交接信封
 
-> 默认由 Claude Code 主代理完成澄清、唯一 brief、实施指令、审查、finding 裁决与集成；Codex Code 实现执行器按每个切片的
-> `TASK` 编写代码和测试，并以 `HANDOFF` 交回。负责人只负责在两者间原样复制消息，不补写需求或工程判断。
-> 需求、规则和验收只写在本 brief；`TASK` / `HANDOFF` 只传文件路径、切片、准确基线、工作区和状态信封，不建立第二套需求。
+> 默认由当前 Claude Code 主代理直接完成澄清、唯一 brief、测试先行实现、验证、差异审查、finding 裁决与集成；负责人无须转发给 Codex。
+> 普通同会话切片直接更新本 brief 的进度与检查证据，不生成 TASK/HANDOFF 等待点。高风险任务完成后仍由 fresh Claude 只读上下文整体独立复审。
+> 下列 TASK/HANDOFF 格式仅供负责人明确安排的跨会话、worktree 或恢复交接使用；不作为默认执行前置。
+> 需求、规则和验收只写在本 brief，不建立第二套需求。
 >
 > 同一 brief 的连续切片默认共用一个任务集成分支和一个最终 PR；切片可以形成可回滚提交，但不是默认 PR
 > 边界。实现执行器按切片运行定向检查，主代理逐次审查；在任务级收口时统一运行完整门禁和适用的 fresh Claude 独立复审。只有独立发布、
@@ -60,8 +61,8 @@ uiViewportEvidence: [] # 至少 1440x900 / 1024x768 / 390x844；写明首屏与�
 | 项目        | 内容                                                                                                                                                      |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 基线        | `<commit-sha>`                                                                                                                                            |
-| 执行角色    | Codex Code 实现执行器；实际模型必须在 `HANDOFF` 的 `model` 字段如实登记，未知时写 `unknown`                                                               |
-| 主代理审查  | Claude Code 主代理检查实际 diff、范围和验证证据；不得直接修改实现文件                                                                                     |
+| 执行角色    | 当前 Claude Code 主代理直接实施；实际模型如实登记，未知时写 `unknown`                                                                                     |
+| 主代理审查  | 直接核对实际 diff、范围和验证证据；当前切片只有一个写入者                                                                                                 |
 | 独立复审    | `不适用` 或高风险任务全部切片完成后由 fresh Claude Code 只读会话整体复审；不得继承主代理聊天上下文                                                        |
 | 写入范围    | 精确文件或目录                                                                                                                                            |
 | 禁止范围    | 不得顺带修改的模块、契约、状态或入口                                                                                                                      |

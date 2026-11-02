@@ -10,6 +10,13 @@ writeScopes:
   - AGENTS.md
   - apps/api/src/app.module.ts
   - docs/planning/tasks/ocean-operations-source-review-v1.md
+  - docs/planning/tasks/_template.md
+  - apps/api/src/modules/charges-settlement/engines/overdue-deadlines/**
+  - apps/api/src/modules/charges-settlement/index.ts
+  - apps/api/src/modules/charges-settlement/compute-staged-overdue-deadlines.port.ts
+  - apps/api/src/modules/charges-settlement/application/compute-staged-overdue-deadlines.service.ts
+  - apps/api/src/modules/charges-settlement/application/compute-staged-overdue-deadlines.service.test.ts
+  - apps/api/src/modules/charges-settlement/charges-settlement.module.ts
   - apps/api/src/modules/ocean-operations/**
   - apps/api/src/modules/ocean-port-visibility/**
   - apps/api/src/modules/lifecycle-control/**
@@ -64,6 +71,7 @@ exclusiveLocks:
   - database-schema
   - public-contract
   - business-policy:ocean-workbench-fact-driven-attention
+  - business-policy:ocean-date-adoption-lock
   - business-policy:integration-three-layer-boundary
   - repository-governance
   - business-policy:workbench-information-action-separation
@@ -112,6 +120,122 @@ uiViewportEvidence:
 ---
 
 # 任务：海运运营到港准备首片
+
+### 治理增量：Claude 直接交付（负责人定案，2026-10-31）
+
+- 负责人明确“以后都不需要转codex执行了”，覆盖此前人工转发 TASK。当前及后续任务默认由 Claude 直接实施、测试、差异审查和集成；writer 恢复 `claude`。本轮治理留痕放在当前唯一 brief，不改已完成历史治理 brief，也不新建另一份需求。
+- 根角色映射与 `_template.md` 同步；独立复审、单写入者、范围/锁、业务待决和风险对应验证不变。历史 TASK/HANDOFF 和模型署名保留，不是当前等待负责人转发的前置。
+- 当前 S7 直接按下述接口、写域和 RED→GREEN 计划执行，不再等待 Codex/HANDOFF；S7 原文的人工转发及“主代理禁止实现”表达由本节覆盖。实现和 brief 维护串行进行，不引入第二写入者，不扩业务范围。
+
+### 当前执行：S8 海运期限读模型与页面（2026-10-31）
+
+负责人要求直接接通服务端和页面。本片使用 S7 核心，经 charges-settlement 公开只读 Port 加载当前租户标准；海运服务端在既有受保护详情 GET 派生期限和缺口，Web 只展示，不增写入口、不调用供应商、不改共享壳、不填造费率。S9 人工保存/锁定不在本片，旧日期/附件红测单列不放宽。
+
+- 文件：新增 charges `compute-staged-overdue-deadlines.port.ts`、`application/compute-staged-overdue-deadlines.service.ts/.test.ts`，修改 charges module/index；海运 repository/domain/service/module及定向测试；Web既有 oceanOperations API类型、海运页及原测试。前述路径为本片范围，不修改Schema/迁移/seed/标准写入或其他工作台。
+- 接口：`COMPUTE_STAGED_OVERDUE_DEADLINES.execute` 接收 tenantId 与服务端取得的 matching context/facts，返回 S7 分项目结果及已识别缺口。查询不得猜货代、把MSC字符串当任意UUID、从多个候选标准反推业务身份，或将 America/New_York 当UTC。缺标准与缺匹配身份/日历分别表达；无法计算时日期保持null，主业务事实继续可读。计算读取失败单独提示不可用，不伪装成没有标准。
+- 海运 context 只消费当前精确对象、地点、事件及已具备资格的实际事实；pending实际、非目的港/中转arrived、多个当前候选不得静默采信。阶段不按 ETA 已过或container.status推断。当前未维护货代/标准日历绑定必须如实缺失，不从原文猜。
+- 输出最晚提柜/最晚还箱的日期、预计/计划/历史性质、阶段、计算原因、决定性标准和分项依据；服务端日期序列化为业务date-only或明确时刻，不用浏览器时区重新换日。两项日期没有结果时各自说明原因；部分结果不冒充完整期限。既有清关期限、金额和人工表单不改变。
+- 五面：岗位可理解期限或待补；数据引用当前事实与标准；技术只读、同租户、可重读无副作用；权限沿原GET服务端认证/对象范围，内部Port不新增对外权限；UI在原日期区显示结果与原因，三栏和三视口约束不变。
+- 测试先行：Port覆盖租户隔离、零标准、缺货代/日历、匹配齐备UTC预计日期、实际起点及不支持日历；海运覆盖投影消费和服务失败事实仍可读；Web覆盖有日期、缺标准、不可用、刷新结果更新且date-only不换日。运行受影响API/Web测试、typecheck/lint/build与格式/repo/diff；真实5173→3000 GET和三视口只读截图另核，不使用mock冒充live。无业务POST/seed/迁移。
+
+### S8 实施与验证记录（2026-11-02）
+
+- Claude 直接接通 S7 到期读模型：charges-settlement 公开 `COMPUTE_STAGED_OVERDUE_DEADLINES` Port、tenant-scoped service/module export；海运 repository 构造已资格筛选的当前目的港 ETA/到港/卸船/提柜上下文，明确缺少 port/company/forwarder/calendar binding 时返回缺口，不猜身份或标准。
+- 海运 GET 投影服务消费 Port，序列化 date-only、阶段、预计/计划/历史性质、标准/来源和 issue；计算异常显示 `DEADLINE_COMPUTATION_UNAVAILABLE` 但保留运输事实。Web 期限区消费服务器结果，翻译标准/匹配/日历/缺事实/计算失败提示，不用浏览器时区换日；未接入人工日期保存/锁定。
+- RED：新增API Port/service、repository、Web日期结果与缺口测试先失败（缺模块/未投影/仍显示未取得）；GREEN：API charges+ocean定向13文件66项通过，Web期限新增2/2通过，API/Web typecheck、API/Web路径lint、API build、repo check、diff check通过。
+- Web完整测试复跑为22/23：唯一失败仍为历史日期/附件“未保存/刷新丢失”测试；该行为不在S8范围，未放宽断言或冒称全Web通过。未运行迁移、seed、业务POST或全仓validate；本票费用标准仍0条，因此只读页面会显示“未配置适用费用标准/费用匹配身份未绑定/计日日历未绑定”，不产生期限日期。
+- 架构门禁曾发现海运domain直接依赖charges，已改为本模块 `OceanDeadlineContext` 结构，S8验证后repo check通过。live 5173→3000浏览器验收因会话结束未形成证据，不能声称真实三视口完成；新逻辑由API/Web自动化测试覆盖。fresh S8局部复审待交回；不标brief done。
+
+### S7-staged-deadline-core（2026-10-31）
+
+负责人已要求开建并落地，沿本 brief 串行推进，不另建需求/计划/ledger。正式政策仍见 `08-role-workbenches.md` 日期与三阶段条款。主代理本轮完成只读运行盘点和当前切片定义；按根规则默认人工转发链登记 writer=codex，未授权其他会话同时写工作区。历史 Claude 直接实施记录保留，不沿用为本片分工变更。
+
+#### S7 实施记录（2026-10-31）
+
+- Claude 直接新增三阶段纯函数及测试，经引擎与模块 index 公开导出；复用既有匹配、费用约束目录和免费期计算，不改旧入口语义、不改 Web/Schema/业务数据。
+- RED：先缺模块导致加载失败，补最小未实现桩后明确观察 14 项行为测试全部因未实现失败。GREEN：14 新测试＋7 旧期限测试通过；费用/内陆 16 文件 76 项通过。首轮 typecheck 发现费用类型索引未正确收窄，修复后通过，未改配置或放宽测试。
+- API 全部单元测试 344 文件 1885 项通过；API typecheck/build、触及路径 ESLint/Prettier、repo/docs/diff check 通过。未运行整仓 validate、Web全套、E2E或迁移，纯函数片未进行业务写入。
+- 当前只交付显式 UTC 自然日的阶段计算，不支持工作日/业务时区，不把 UTC 测试夹具当成本票费用政策。S8 页面与服务端接线、S9 保存/锁定尚未实施；MEDU 仍无费用标准，不能宣称已算出可用期限。
+- fresh 局部只读复审 S7-001 accepted：重算输入校验失败会清空独立历史提柜期限。补两项回归观察 RED（无效匹配身份/不支持日历），将历史保持统一到失败分支后 GREEN；本修复不放宽日历或事实资格。此复审仅 S7，不代替整任务最终独立复审，brief 不标 done。现有 Web 日期/附件提示失败未在本片修复或复跑，不报告为已通过。
+
+- 最终修复后 API 全部单元测试 344 文件 1887 项通过，费用/内陆回归 78/78、typecheck 与路径 lint 复跑通过。S7 当前纯核心切片验收通过；下一步 S8 消费接线，未形成任务最终 PR 候选，不在中间片重复全仓 validate。
+
+#### 已执行的样本与规则核实
+
+- 基线 `b2e91678172338930e81e3cb903c40455617f427`，分支 `docs/business-first-workbench-delivery`，工作区 `D:/Logixs`。已知未提交内容仅本 brief 与 `08-role-workbenches.md` 的负责人日期政策，由主代理维护，必须保留。
+- 真实本地 `logix.public`，租户 `demo-real-sample-20260921`：MEDU7620177 与 Shipment `71000000-0000-4000-8000-000000000003` 有唯一 active link v1；船司 MSC，目的港 USSAV，状态 in_transit。只读事务核对，未 seed/修改数据。
+- `overdue_charge_standard`、`overdue_charge_rate_tier` 在该租户均为 0 条。因此匹配标准、免费天数、含首日、日历口径、货代匹配身份和合同适用版本尚未确定，不得为该票输出虚构期限。
+- ETA 位于 current `LifecycleDateFact`：destination_arrival/arrived/estimated，rawValue=2026-11-01，timezone=America/New_York，projectionVersion=1，pending/provisional/not_applicable。Shipment.etaAt/ataAt 为空；ShipmentTimeFact 无本票行。不能误以为没有 ETA，亦不能把该预计来源提升为实际。
+- 已核现有 `applyFreePeriod`、`computeOverdueDeadlines` 和公开 Port；当前 UTC 自然日、隐式提柜回退、还箱日期钳制只是既有行为，不能自动成为新三阶段政策。现有消费者继续兼容，新入口不复制日期加减公式。
+- 2026-10-31 `repo:check` 与 diff check 通过。跨 worktree 检查仍有 primary 功能分支/dirty、其他旧 worktree 未归属差异及 UI 任务依赖问题；本片不碰其文件或共享壳，仅新增费用期限纯核心。未声称全仓校准通过。
+
+#### 切片顺序与当前边界
+
+| 切片    | 可验收交付                                                                        | 条件与边界                                                                                                                  |
+| ------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| S7 当前 | 在已有期限引擎中提供三阶段、可解释、缺项明确的纯计算入口及测试；旧入口保持兼容    | 不依赖本票真实费率；测试标准明确为夹具，不写业务库；本片仅显式 UTC 自然日，工作日/其他时区返回未支持，不伪造日历            |
+| S8 下一 | 以海运为真实消费者，经公开 Port 读取标准并显示预计/计划期限或具体缺口；不复制公式 | S7 验收后下发精确写域；本票仍缺标准时显示缺口，不以缺标准阻塞读模型开发                                                     |
+| S9 后续 | 日期可靠更新、重算、采用/锁定和刷新回读                                           | 服务端版本/幂等/对象授权和 actual 资格；普通手工默认锁定仍待决，可用显式选择避免猜默认；涉及新存储/契约先完成精确设计与复审 |
+
+工作日日历、业务时区和金额组件按实际消费者及已定规则增量补齐；当前不批准默认节假日、默认免费期、预测提柜回退、阶梯解释、费率参数或规则优先级。费用金额仍使用已有金额域，不与期限核心合并；不扩账单/核费/支付平台。
+
+#### S7 文件、接口与测试先行计划
+
+允许实现写入仅：
+
+- 新增 `apps/api/src/modules/charges-settlement/engines/overdue-deadlines/staged-overdue-deadlines.ts` 与同名 `.test.ts`；
+- 修改同目录 `index.ts` 和 `apps/api/src/modules/charges-settlement/index.ts`，仅公开新纯函数及类型。
+
+禁止改旧 `computeOverdueDeadlines`/`applyFreePeriod` 语义、Schema/迁移、标准CRUD、HTTP入口、权限码、Web、共享壳、样本/seed、业务事实、其他 worktree 与主代理文档。当前 slice 的精确允许集优先于 frontmatter 累计历史写域。
+
+接口固定：导出 `computeStagedOverdueDeadlines(input: StagedOverdueInput): StagedOverdueResult`。
+
+- `StagedDateFact = { at: Date; sourceRef: string; sourceVersion: string }`；调用方只传经其资格判断的事实，本函数不把来源 pending 自动批准。
+- 输入含现有 `OverdueStandard[]`、`OverdueMatchQuery`，`facts: { estimatedArrival, estimatedDischarge, estimatedPickup, actualArrival, actualDischarge, actualPickup }`（各为 StagedDateFact 或 null），`calendarBasis: 'UTC/calendar_days'` 的显式声明；运行时其他日历值明确返回未支持。另可传 `previousPickupDeadline: { date: Date; calculationRef: string } | null`，仅供实际提柜后保留历史。
+- 阶段 `before_arrival | after_arrival | after_pickup`，优先看 actualPickup，其次 actualArrival/actualDischarge，最后预计；不能按今天/ETA大小猜阶段。
+- 每条匹配标准先按现有 `matchOverdueStandards` 选择，再按 calculationBasis 分别取对应事实。到港前使用相应预计输入；到港后 arrival/discharge 只用各自实际，缺实际不回退 ETA；pickup 在实际发生前只能用显式 estimatedPickup，发生后用 actualPickup。不能隐式用最晚提柜或 ETA 补提柜事实。
+- 每项沿用 `applyFreePeriod`，输出 standardId、约束目标、起算事实引用/版本、起算性质、计算日期及 issue。字段和错误码在本文件有限常量定义，不引入新全局状态目录。
+- 输出含 stage、items、`pickup`/`return` 两个汇总；每个汇总为 `{ state: 'complete' | 'incomplete' | 'not_applicable' | 'historical'; date: Date | null; nature: 'estimated' | 'planned' | 'historical' | null; limitingStandardIds: string[]; issues: string[] }`。匹配缺失时两者 incomplete；某目标有关分项缺依据时该目标 incomplete/date=null，保留 items 已算结果，不冒称最终期限；无相关类型为 not_applicable。提柜后 pickup 仅回传 previousPickupDeadline 为 historical，缺历史则明确 issue，不重算或用 actualPickup 覆盖旧期限。
+- 实际提柜前还箱如仍依赖 estimatedPickup，则 nature=estimated；相应起点全为实际时可为 planned。实际提柜后 return 仍为 planned，不变实际还箱。不同约束取最早并保留全部同日决定性标准；不将还箱日早于提柜日的矛盾钳制成另一天，保留原计算值及明确 issue，供业务处理。
+- 纯函数无IO/当前时间/状态写入/锁定副作用；锁定只影响后续采用，不进入免费期数学计算。
+
+- [ ] 先新增失败测试并运行 RED：before_arrival 使用预计 arrival，5 天含起日 2026-11-01→11-05；ETA 改为11-02结果→11-06；测试日期为 UTC 夹具，不是为本票批准免费期。
+- [ ] RED 覆盖 after_arrival：arrival 标准用 ATA；discharge 标准无实际卸船则对应汇总 incomplete，不能拿 ATA/ETA 替代；另一目标独立可计算。
+- [ ] RED 覆盖 after_pickup：实际提柜11-06、detention免费4天含起日→11-09；D&D到港起算仍用到港；保留旧pickup期限，actualPickup不覆盖；后续ETA变化不改变实际起点结果。
+- [ ] RED 覆盖缺标准、缺预测提柜、工作日拒绝、无效日期/负数天数/未知类型、同日最早多标准、结果矛盾不钳制、输入对象不被修改。新测试必须在实现前因缺函数/行为失败，不以修改旧测试换绿。
+- [ ] 最小实现 GREEN，并从公开 index 导出；旧测试保持通过。额外断言重算结果不修改任何外部采用/锁定对象。
+- [ ] 运行定向新旧期限测试、费用与内陆模块回归、API typecheck、触及路径 ESLint/Prettier、repo:check、diff check。本纯函数片不跑迁移/seed、不为机械中间片全跑 validate。
+
+验证命令：
+
+```text
+pnpm --filter @logix/api exec vitest run src/modules/charges-settlement/engines/overdue-deadlines
+pnpm --filter @logix/api exec vitest run src/modules/charges-settlement src/modules/inland-fulfillment
+pnpm --filter @logix/api typecheck
+pnpm --filter @logix/api exec eslint src/modules/charges-settlement/engines/overdue-deadlines/staged-overdue-deadlines.ts src/modules/charges-settlement/engines/overdue-deadlines/staged-overdue-deadlines.test.ts src/modules/charges-settlement/engines/overdue-deadlines/index.ts src/modules/charges-settlement/index.ts
+pnpm exec prettier --check apps/api/src/modules/charges-settlement/engines/overdue-deadlines/staged-overdue-deadlines.ts apps/api/src/modules/charges-settlement/engines/overdue-deadlines/staged-overdue-deadlines.test.ts apps/api/src/modules/charges-settlement/engines/overdue-deadlines/index.ts apps/api/src/modules/charges-settlement/index.ts
+pnpm repo:check
+git diff --check
+```
+
+期望定向测试/类型/lint/格式/政策均通过；旧 Web 红测与其他 worktree 问题继续单列，不在 S7 放宽或假称已修。主代理在 HANDOFF 后逐项审实际差异，高风险最终集成安排 fresh 整体复审，S7 不冒充页面交付/整任务完成。
+
+```text
+TASK docs/planning/tasks/ocean-operations-source-review-v1.md#S7-staged-deadline-core base=b2e91678172338930e81e3cb903c40455617f427 role=implementer workspace=D:/Logixs
+```
+
+已知两份主代理文档改动为本任务批准决策，不是待清理内容。执行器先核工作区、准确基线、规则和当前 S7；发现其他新增/不归属变化即 blocked，不覆盖。实施期间主代理停止写本工作区，等待 HANDOFF。交回必须按 `AGENTS.md` §1.3 使用 `logix-handoff/v1`，首行 `HANDOFF ...#S7-staged-deadline-core base=<实际审核基线> role=main workspace=D:/Logixs commit=<sha|none>`；列实际模型、精确 changed、RED/GREEN及所有命令结果、失败/未运行项、无业务写入事实。不得把该纯函数片称为本票期限已算出。
+
+### 日期来源与锁定决策记录（2026-10-30，待实现）
+
+- 负责人明确手工录入的目的就是修改上方对应日期；本轮确认 ETD/ATD/ETA/ATA 支持外部 API（如飞驼）与人工更新，最晚提柜/最晚还箱支持按逻辑计算与人工更新。
+- 锁定方案比较：A 锁采用值而继续接收、比较、提醒（推荐：兼顾稳定安排与新风险，增加版本对比成本，可解锁）；B 锁后停止接收（减少当前干扰，但可能漏掉提前期限和来源更正，恢复需补取）。负责人明确选 A。
+- 正式业务权威：`doc/cross-border-supply-chain/08-role-workbenches.md`“日期多来源更新与采用值锁定”。本 brief 不复制完整规则；本次只写回已确认结论，不改产品代码、Schema、公共契约、业务数据或已有验收状态。
+- 现状与缺口：页面日期仍为内存追加，不更新上方正式值；截止日计算核心已存在，但海运读模型未接且未发现 ETA 自动重算链。已有人工 actual 记录/独立复核/受控 apply 不能直接冒充 Shipment 日期同步；本轮没有完成这些接线。此前日期/附件提示红测仍是历史未通过项，不因业务定案自动关闭。
+- 五面承接目标：岗位能更新对应日期、选择采用版本与锁定/解锁；数据保留原值/来源/版本/计算依据；技术保障可靠保存、重算与采用分离、并发和恢复；权限沿服务端对象范围及 actual 资格；UI 保留三栏，只在现有日期上下文显示采用值、锁定状态、新变化差异与处理入口。五面均待实施设计及验收，不声明闭环。
+- 负责人追加三阶段定案：到港前两项期限基于 ETA 预测；到港后最晚提柜依适用标准的实际到港/卸船依据重算为计划期限；实际提柜日独立生成并锁定，并用于重算最晚还箱。正式口径已写入同一业务权威“动态期限的三阶段口径”，不是仅给日期加锁开关，不以 actual 提柜覆盖最晚提柜，也不把全部还箱标准强改为提柜起算。实现尚未开始。
+- 后续设计必须显式处理：到港但卸船事实未取得时不得冒用 ATA；提柜前按提柜起算的还箱预测须有明确预测依据；阶段切换产生新结果不静默覆盖锁定值或把旧预计值改名为计划。当前算法的 UTC 自然日、预测提柜回退及还箱早于提柜时钳制行为只是现有实现事实，本轮不将其一并批准为完整业务政策，需在当前消费者接入时核对。
+- 待负责人定案：普通人工修改后默认自动锁定，或保持原模式并由人员显式选择；已确认的实际提柜日生成并锁定不再待决。只阻塞未定默认行为，不重开已经确认的六项日期来源和锁定政策。最晚清关不在本次新增双来源决定内；附件上传/核验不在本轮范围。
 
 ### S6：MEDU7620177 标准数据消费与五类关注验收（2026-10-30）
 

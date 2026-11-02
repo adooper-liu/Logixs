@@ -514,7 +514,68 @@ export class PrismaOceanOperationsSourceReviewRepository implements OceanOperati
       ? financialSourceFrom(shipment.upstreamReferences ?? [])
       : null;
     const etaSource = observations.find(isDestinationEtaObservation) ?? null;
+    const deadlineFact = (
+      nodeCode: string,
+      eventCode: string,
+      timeKind: string,
+    ) => {
+      if (!shipment) return null;
+      const candidates = lifecycleFacts.filter(
+        (fact) =>
+          fact.isCurrent &&
+          fact.validity === "valid" &&
+          fact.nodeCode === nodeCode &&
+          fact.eventCode === eventCode &&
+          fact.timeKind === timeKind &&
+          fact.unlocode === shipment.destinationUnlocode &&
+          !fact.segmentId &&
+          (timeKind !== "actual" ||
+            (fact.verificationState === "verified" &&
+              fact.confidenceState === "confirmed" &&
+              fact.applicationState === "applied")),
+      );
+      if (candidates.length !== 1) return null;
+      const fact = candidates[0]!;
+      return {
+        at: fact.occurredAt,
+        sourceRef: `lifecycle:${fact.id}`,
+        sourceVersion: String(fact.projectionVersion),
+      };
+    };
     return {
+      deadlineContext: {
+        // Matching IDs and fee-calendar bindings have no authoritative source in this projection yet.
+        query: null,
+        calendarBasis: null,
+        facts: {
+          estimatedArrival: deadlineFact(
+            "destination_arrival",
+            "arrived",
+            "estimated",
+          ),
+          estimatedDischarge: deadlineFact(
+            "destination_arrival",
+            "discharged",
+            "estimated",
+          ),
+          estimatedPickup: deadlineFact(
+            "container_pickup",
+            "gate_out",
+            "estimated",
+          ),
+          actualArrival: deadlineFact(
+            "destination_arrival",
+            "arrived",
+            "actual",
+          ),
+          actualDischarge: deadlineFact(
+            "destination_arrival",
+            "discharged",
+            "actual",
+          ),
+          actualPickup: deadlineFact("container_pickup", "gate_out", "actual"),
+        },
+      },
       container: {
         id: container.id,
         number: container.containerNumber,

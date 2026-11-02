@@ -1,5 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  COMPUTE_STAGED_OVERDUE_DEADLINES,
+  type ComputeStagedOverdueDeadlinesPort,
+  type StagedOverdueResult,
+} from "../../charges-settlement";
+import {
   REFERENCE_INTERNAL_OCEAN_BASELINE,
   REFERENCE_PORT_DIRECTORY,
   REFERENCE_EXTERNAL_OCEAN_MAPPING,
@@ -33,6 +38,8 @@ export class OceanOperationsSourceReviewService {
     private readonly ports: ReferencePortDirectoryPort,
     @Inject(REFERENCE_EXTERNAL_OCEAN_MAPPING)
     private readonly mappings: ExternalOceanMappingDirectoryPort,
+    @Inject(COMPUTE_STAGED_OVERDUE_DEADLINES)
+    private readonly deadlines: ComputeStagedOverdueDeadlinesPort,
   ) {}
   listQueue(input: ListSourceReviewsInput) {
     return this.repository.listQueue(input);
@@ -131,8 +138,61 @@ export class OceanOperationsSourceReviewService {
       }
       return result;
     };
+    const { deadlineContext, ...publicProjection } = projection;
+    let deadlines: StagedOverdueResult;
+    try {
+      deadlines = await this.deadlines.execute({
+        ...(deadlineContext ?? {
+          query: null,
+          calendarBasis: null,
+          facts: {
+            estimatedArrival: null,
+            estimatedDischarge: null,
+            estimatedPickup: null,
+            actualArrival: null,
+            actualDischarge: null,
+            actualPickup: null,
+          },
+        }),
+        tenantId,
+      });
+    } catch {
+      const unavailable = () => ({
+        state: "incomplete" as const,
+        date: null,
+        nature: null,
+        limitingStandardIds: [],
+        issues: ["DEADLINE_COMPUTATION_UNAVAILABLE"],
+      });
+      deadlines = {
+        stage: deadlineContext?.facts.actualPickup
+          ? "after_pickup"
+          : deadlineContext?.facts.actualArrival ||
+              deadlineContext?.facts.actualDischarge
+            ? "after_arrival"
+            : "before_arrival",
+        items: [],
+        pickup: unavailable(),
+        return: unavailable(),
+      };
+    }
     return {
-      ...projection,
+      ...publicProjection,
+      deadlines: {
+        ...deadlines,
+        pickup: {
+          ...deadlines.pickup,
+          date: deadlines.pickup.date?.toISOString().slice(0, 10) ?? null,
+        },
+        return: {
+          ...deadlines.return,
+          date: deadlines.return.date?.toISOString().slice(0, 10) ?? null,
+        },
+        items: deadlines.items.map((item) => ({
+          ...item,
+          date: item.date?.toISOString().slice(0, 10) ?? null,
+        })),
+      },
       standards: {
         carrier,
         containerType,

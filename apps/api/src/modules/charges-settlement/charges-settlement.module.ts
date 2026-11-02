@@ -6,6 +6,8 @@ import {
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { ComputeOverdueAccrualService } from "./application/compute-overdue-accrual.service";
 import { ComputeOverdueDeadlinesService } from "./application/compute-overdue-deadlines.service";
+import { ComputeStagedOverdueDeadlinesService } from "./application/compute-staged-overdue-deadlines.service";
+import { COMPUTE_STAGED_OVERDUE_DEADLINES } from "./compute-staged-overdue-deadlines.port";
 import { ReplaceOverdueStandardsService } from "./application/replace-overdue-standards.service";
 import { COMPUTE_OVERDUE_ACCRUAL } from "./compute-overdue-accrual.port";
 import { COMPUTE_OVERDUE_DEADLINES } from "./compute-overdue-deadlines.port";
@@ -18,6 +20,11 @@ import { OverdueDeadlinesController } from "./presentation/overdue-deadlines.con
   imports: [IdentityModule],
   controllers: [OverdueDeadlinesController, OverdueAccrualController],
   providers: [
+    ComputeStagedOverdueDeadlinesService,
+    {
+      provide: COMPUTE_STAGED_OVERDUE_DEADLINES,
+      useExisting: ComputeStagedOverdueDeadlinesService,
+    },
     ComputeOverdueDeadlinesService,
     ComputeOverdueAccrualService,
     ReplaceOverdueStandardsService,
@@ -35,6 +42,7 @@ import { OverdueDeadlinesController } from "./presentation/overdue-deadlines.con
     },
   ],
   exports: [
+    COMPUTE_STAGED_OVERDUE_DEADLINES,
     COMPUTE_OVERDUE_DEADLINES,
     COMPUTE_OVERDUE_ACCRUAL,
     ComputeOverdueDeadlinesService,

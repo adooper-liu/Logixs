@@ -291,6 +291,64 @@ describe("OceanOperationsWorkbench", () => {
     });
   });
 
+  it("shows server-computed deadline dates and nature without browser timezone conversion", async () => {
+    getProjection.mockResolvedValueOnce({
+      ...projectionFor("container-1", "MEDU7620177"),
+      deadlines: {
+        stage: "before_arrival",
+        items: [],
+        pickup: {
+          state: "complete",
+          date: "2026-11-05",
+          nature: "estimated",
+          limitingStandardIds: ["dem"],
+          issues: [],
+        },
+        return: {
+          state: "incomplete",
+          date: null,
+          nature: null,
+          limitingStandardIds: [],
+          issues: ["MISSING_ESTIMATED_PICKUP"],
+        },
+      },
+    });
+    const wrapper = await mountWorkbench();
+    const dates = wrapper.get('[aria-label="期限与滞港费"]');
+    expect(dates.text()).toContain("2026/11/5");
+    expect(dates.text()).toContain("预计");
+    expect(dates.text()).toContain("缺少预计提柜依据");
+  });
+  it("distinguishes missing standards from computation failure", async () => {
+    getProjection.mockResolvedValueOnce({
+      ...projectionFor("container-1", "MEDU7620177"),
+      deadlines: {
+        stage: "before_arrival",
+        items: [],
+        pickup: {
+          state: "incomplete",
+          date: null,
+          nature: null,
+          limitingStandardIds: [],
+          issues: ["NO_MATCHING_STANDARD", "MISSING_MATCH_BINDING"],
+        },
+        return: {
+          state: "incomplete",
+          date: null,
+          nature: null,
+          limitingStandardIds: [],
+          issues: ["DEADLINE_COMPUTATION_UNAVAILABLE"],
+        },
+      },
+    });
+    const wrapper = await mountWorkbench();
+    const dates = wrapper.get('[aria-label="期限与滞港费"]');
+    expect(dates.text()).toContain("未配置适用费用标准");
+    expect(dates.text()).toContain("费用匹配身份未绑定");
+    expect(dates.text()).toContain("期限计算暂不可用");
+    expect(dates.text()).not.toContain("1970");
+  });
+
   it("labels date and attachment selections as temporary rather than saved business results", async () => {
     const wrapper = await mountWorkbench();
     expect(wrapper.get(".date-form").text()).toContain("未保存");
@@ -725,7 +783,7 @@ describe("OceanOperationsWorkbench", () => {
     expect(thread.get("[data-task-collaboration-panel]").text()).toContain(
       "清关可以按 11/1 窗口开始准备",
     );
-    expect(thread.get('textarea[aria-label="协作消息"]').exists()).toBe(true);
+    expect(thread.find('textarea[aria-label="协作消息"]').exists()).toBe(true);
     expect(listTasks).toHaveBeenCalledWith({
       containerId: "container-1",
       pageSize: 50,
@@ -747,7 +805,7 @@ describe("OceanOperationsWorkbench", () => {
     expect(thread.get("[data-task-collaboration-panel]").text()).toContain(
       "还没有协作消息",
     );
-    expect(thread.get('textarea[aria-label="协作消息"]').exists()).toBe(true);
+    expect(thread.find('textarea[aria-label="协作消息"]').exists()).toBe(true);
     expect(thread.text()).not.toContain("协同对话未接通");
     expect(listCollaboration).not.toHaveBeenCalled();
   });

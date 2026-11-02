@@ -4,6 +4,7 @@ import {
   type NestModule,
 } from "@nestjs/common";
 import { MasterDataModule } from "../master-data";
+import { ChargesSettlementModule } from "../charges-settlement";
 import { IdentityModule, DevIdentityMiddleware } from "../identity";
 import { OceanOperationsController } from "./presentation/ocean-operations.controller";
 import { OceanOperationsSourceReviewService } from "./application/ocean-operations-source-review.service";
@@ -11,7 +12,7 @@ import { OCEAN_OPERATIONS_SOURCE_REVIEW_REPOSITORY } from "./domain/ocean-operat
 import { PrismaOceanOperationsSourceReviewRepository } from "./infrastructure/prisma-ocean-operations-source-review.repository";
 
 @Module({
-  imports: [IdentityModule, MasterDataModule],
+  imports: [IdentityModule, MasterDataModule, ChargesSettlementModule],
   controllers: [OceanOperationsController],
   providers: [
     OceanOperationsSourceReviewService,

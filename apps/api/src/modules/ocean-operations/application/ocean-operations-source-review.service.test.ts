@@ -42,15 +42,90 @@ function setup() {
   const mappings = {
     resolve: vi.fn().mockResolvedValue({ status: "pending_review" }),
   };
+  const deadlines = {
+    execute: vi
+      .fn()
+      .mockResolvedValue({
+        stage: "before_arrival",
+        items: [],
+        pickup: {
+          state: "incomplete",
+          date: null,
+          nature: null,
+          limitingStandardIds: [],
+          issues: ["NO_MATCHING_STANDARD"],
+        },
+        return: {
+          state: "incomplete",
+          date: null,
+          nature: null,
+          limitingStandardIds: [],
+          issues: ["NO_MATCHING_STANDARD"],
+        },
+      }),
+  };
   const service = new OceanOperationsSourceReviewService(
     repository as never,
     baseline as never,
     ports as never,
     mappings as never,
+    deadlines as never,
   );
-  return { service, projection, repository, baseline, ports, mappings };
+  return {
+    service,
+    projection,
+    repository,
+    baseline,
+    ports,
+    mappings,
+    deadlines,
+  };
 }
 describe("ocean standard consumption", () => {
+  it("exposes deadline gaps and serialized business dates from the public computation port", async () => {
+    const { service, deadlines } = setup();
+    deadlines.execute.mockResolvedValueOnce({
+      stage: "before_arrival",
+      items: [],
+      pickup: {
+        state: "complete",
+        date: new Date("2026-11-05T00:00:00Z"),
+        nature: "estimated",
+        limitingStandardIds: ["dem"],
+        issues: [],
+      },
+      return: {
+        state: "incomplete",
+        date: null,
+        nature: null,
+        limitingStandardIds: [],
+        issues: ["MISSING_ESTIMATED_PICKUP"],
+      },
+    } as never);
+    const result = await service.getProjection("tenant", "c1");
+    expect(result.deadlines.pickup).toMatchObject({
+      date: "2026-11-05",
+      nature: "estimated",
+      state: "complete",
+    });
+    expect(result.deadlines.return.issues).toContain(
+      "MISSING_ESTIMATED_PICKUP",
+    );
+  });
+  it("retains transport facts if fee computation is unavailable", async () => {
+    const { service, deadlines } = setup();
+    deadlines.execute.mockRejectedValueOnce(
+      new Error("database connection details must not escape"),
+    );
+    const result = await service.getProjection("tenant", "c1");
+    expect(result.container.number).toBe("MEDU7620177");
+    expect(result.deadlines.pickup.issues).toContain(
+      "DEADLINE_COMPUTATION_UNAVAILABLE",
+    );
+    expect(JSON.stringify(result.deadlines)).not.toContain(
+      "database connection",
+    );
+  });
   it("explains MSC from master data while preserving unconfirmed type and port codes", async () => {
     const { service, projection } = setup();
     const result = await service.getProjection("tenant", "c1");

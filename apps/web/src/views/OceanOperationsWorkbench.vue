@@ -344,6 +344,53 @@ const demurrageWatch = computed(() => {
     detail: "已到港，免费期与费率未接入",
   };
 });
+const deadlineIssueLabels: Record<string, string> = {
+  NO_MATCHING_STANDARD: "未配置适用费用标准",
+  MISSING_MATCH_BINDING: "费用匹配身份未绑定",
+  MISSING_CALENDAR_BINDING: "计日日历未绑定",
+  UNSUPPORTED_CALENDAR: "当前日历口径尚不支持",
+  UNSUPPORTED_DAY_BASIS: "当前计日方式尚不支持",
+  INVALID_MATCH_QUERY: "费用匹配条件不完整",
+  MISSING_ESTIMATED_ARRIVAL: "缺少预计到港依据",
+  MISSING_ESTIMATED_DISCHARGE: "缺少预计卸船依据",
+  MISSING_ESTIMATED_PICKUP: "缺少预计提柜依据",
+  MISSING_ACTUAL_ARRIVAL: "待实际到港依据",
+  MISSING_ACTUAL_DISCHARGE: "待实际卸船依据",
+  MISSING_ACTUAL_PICKUP: "待实际提柜依据",
+  MISSING_PICKUP_HISTORY: "历史提柜期限未接入",
+  DEADLINE_COMPUTATION_UNAVAILABLE: "期限计算暂不可用，请刷新重试",
+  RETURN_BEFORE_PICKUP_DEADLINE: "还箱期限早于提柜期限，需核对安排",
+};
+function deadlineDisplay(target: "pickup" | "return", name: string) {
+  const summary = selected.value?.deadlines?.[target];
+  const known = Boolean(
+    summary?.date &&
+    (summary.state === "complete" || summary.state === "historical"),
+  );
+  const nature =
+    summary?.nature === "estimated"
+      ? "预计"
+      : summary?.nature === "planned"
+        ? "计划"
+        : summary?.nature === "historical"
+          ? "历史"
+          : "";
+  return {
+    code: target,
+    name,
+    value: known
+      ? `${nature} ${overviewDate(summary!.date)}`
+      : summary?.state === "not_applicable"
+        ? "无适用约束"
+        : "待计算",
+    known,
+    detail: summary
+      ? summary.issues
+          .map((issue) => deadlineIssueLabels[issue] ?? "计算依据需核对")
+          .join("；")
+      : "期限投影尚未接入",
+  };
+}
 const watchDates = computed(() => {
   const projection = selected.value;
   if (!projection) return [];
@@ -355,8 +402,8 @@ const watchDates = computed(() => {
       value: customs ? overviewDate(customs) : "未知",
       known: Boolean(customs),
     },
-    { code: "pickup", name: "最晚提柜", value: "未取得", known: false },
-    { code: "return", name: "最晚还箱", value: "未取得", known: false },
+    deadlineDisplay("pickup", "最晚提柜"),
+    deadlineDisplay("return", "最晚还箱"),
     {
       code: "demurrage",
       name: "滞港费",
@@ -1039,6 +1086,9 @@ onMounted(() => void loadQueue());
                   <div v-for="item in watchDates" :key="item.code">
                     <span>{{ item.name }}</span>
                     <strong :data-known="item.known">{{ item.value }}</strong>
+                    <small v-if="'detail' in item && item.detail">{{
+                      item.detail
+                    }}</small>
                   </div>
                 </div>
                 <h2>日期记录</h2>
