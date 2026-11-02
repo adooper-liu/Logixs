@@ -39,6 +39,7 @@ writeScopes:
   - apps/web/src/components/ocean-operations/**
   - apps/web/src/components/attachment/**
   - apps/web/src/modules/workbench-network/routes.ts
+  - docs/planning/progress-board.html
   - database/schema.prisma
   - database/migrations/**
   - packages/contracts/schemas/v1/**
