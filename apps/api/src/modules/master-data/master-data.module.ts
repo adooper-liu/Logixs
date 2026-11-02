@@ -37,6 +37,10 @@ import { PrismaCargoOwnerRepository } from "./infrastructure/prisma-cargo-owner.
 import { CARGO_OWNER_DIRECTORY } from "./cargo-owner-directory.port";
 import { REFERENCE_CURRENCY_DIRECTORY } from "./reference-currency-directory.port";
 import { PrismaReferenceCurrencyDirectory } from "./infrastructure/prisma-reference-currency-directory";
+import { PrismaInternalOceanReferenceRepository } from "./infrastructure/prisma-internal-ocean-reference.repository";
+import { REFERENCE_INTERNAL_OCEAN_BASELINE } from "./reference-internal-ocean-baseline.port";
+import { REFERENCE_EXTERNAL_OCEAN_MAPPING } from "./reference-external-ocean-mapping.port";
+import { PrismaExternalOceanMappingRepository } from "./infrastructure/prisma-external-ocean-mapping.repository";
 
 @Module({
   imports: [IdentityModule],
@@ -56,6 +60,8 @@ import { PrismaReferenceCurrencyDirectory } from "./infrastructure/prisma-refere
     ReferencePortDirectoryService,
     ResolveProductSkusService,
     CargoOwnerDirectoryService,
+    PrismaInternalOceanReferenceRepository,
+    PrismaExternalOceanMappingRepository,
     {
       provide: REFERENCE_CURRENCY_DIRECTORY,
       useClass: PrismaReferenceCurrencyDirectory,
@@ -83,6 +89,14 @@ import { PrismaReferenceCurrencyDirectory } from "./infrastructure/prisma-refere
     {
       provide: CARGO_OWNER_DIRECTORY,
       useExisting: CargoOwnerDirectoryService,
+    },
+    {
+      provide: REFERENCE_INTERNAL_OCEAN_BASELINE,
+      useExisting: PrismaInternalOceanReferenceRepository,
+    },
+    {
+      provide: REFERENCE_EXTERNAL_OCEAN_MAPPING,
+      useExisting: PrismaExternalOceanMappingRepository,
     },
     {
       provide: REGISTER_PRODUCT_SKU,
@@ -118,6 +132,9 @@ import { PrismaReferenceCurrencyDirectory } from "./infrastructure/prisma-refere
     REFERENCE_CURRENCY_DIRECTORY,
     REFERENCE_LOCATION_CATALOG,
     CARGO_OWNER_DIRECTORY,
+    PrismaInternalOceanReferenceRepository,
+    REFERENCE_INTERNAL_OCEAN_BASELINE,
+    REFERENCE_EXTERNAL_OCEAN_MAPPING,
     RESOLVE_PRODUCT_SKUS,
     GetProductComplianceProfileService,
     GetProductSkuService,

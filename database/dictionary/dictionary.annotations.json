@@ -252,6 +252,16 @@
       "ownerModule": "shipment-registry",
       "notes": []
     },
+    "public.container_type_reference": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
     "public.container_unloading_report": {
       "nameZh": "货柜卸货作业",
       "nameStatus": "confirmed_implementation",
@@ -297,6 +307,36 @@
       "ownerModule": "customs-compliance",
       "notes": []
     },
+    "public.customs_clearance_document_requirement": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_type": {
+      "nameZh": "各国清关资料需求",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "各国清关资料需求（2026-10-30 国别表）。required 才计入是否满足；marked/noted 不按必交。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_ens_filing_rule": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
     "public.evidence_record": {
       "nameZh": "证据主记录",
       "nameStatus": "confirmed_implementation",
@@ -315,6 +355,26 @@
       "sourceRefs": ["prisma-schema"],
       "moduleCode": null,
       "ownerModule": "document-records",
+      "notes": []
+    },
+    "public.external_ocean_provider_profile": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
       "notes": []
     },
     "public.external_work_item": {
@@ -685,6 +745,36 @@
       "sourceRefs": ["prisma-schema"],
       "moduleCode": null,
       "ownerModule": "work-execution",
+      "notes": []
+    },
+    "public.ocean_carrier_reference": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result": {
+      "nameZh": "海运运营到港准备业务结果",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "海运运营到港准备业务结果（ocean-operations 拥有）：与来源观察复核分开追加记录。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "ocean-operations",
+      "notes": []
+    },
+    "public.ocean_operations_source_review": {
+      "nameZh": "海运运营来源复核",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "海运运营来源复核（ocean-operations 拥有）：只记录来源观察的人工裁决，不推进生命周期。 每次更正追加新版本；复核采用值仍然通过 write_back_target 表达，不能冒充 canonical actual。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["prisma-schema"],
+      "moduleCode": null,
+      "ownerModule": "ocean-operations",
       "notes": []
     },
     "public.ocean_provider_event_ingestion": {
@@ -4362,6 +4452,96 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.container_type_reference.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.release_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.canonical_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.length": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.type_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.status": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.source_row_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.container_type_reference.standard_basis": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
     "public.container_unloading_report.id": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
@@ -5064,6 +5244,186 @@
       "ownerModule": null,
       "notes": []
     },
+    "public.customs_clearance_document_requirement.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_requirement.country_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_requirement.document_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_requirement.applicability": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_requirement.note": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_requirement.source_sheet": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_requirement.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_type.code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_type.name_zh": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_type.name_en": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_type.sort_order": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_clearance_document_type.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_ens_filing_rule.country_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_ens_filing_rule.direction": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_ens_filing_rule.import_file_rule": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_ens_filing_rule.export_file_rule": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_ens_filing_rule.source_sheet": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.customs_ens_filing_rule.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
     "public.evidence_record.id": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
@@ -5355,6 +5715,266 @@
       "notes": []
     },
     "public.evidence_verification_decision.actor_or_service_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.canonical_release_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.provider": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.profile_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.dataset_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.status": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.source_url": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.source_sha256": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_provider_profile.configuration": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.reason": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.source_row_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.source_namespace": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.reviewed_by": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.reviewed_at": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.evidence_ref": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.profile_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.provider": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.profile_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.dataset_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.source_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.source_name": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.canonical_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.external_ocean_reference_mapping.mapping_state": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
       "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
@@ -10125,6 +10745,586 @@
       "notes": []
     },
     "public.node_task_outcome.evaluated_at": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.standard_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.source_url": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.source_row": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.parent_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.is_vocc": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.is_nvocc": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.valid_from": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.valid_until": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.release_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.canonical_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.name_zh": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.name_en": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.status": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.source_row_hash": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_carrier_reference.standard_code": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.current_responsibility": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.next_step": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.actor_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.recorded_at": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.previous_result_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.version": {
+      "nameZh": "版本号",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "标识该记录在其对象版本链中的版本。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.idempotency_key": {
+      "nameZh": "幂等键",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "识别同一写入请求的重复提交。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.trace_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.container_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.shipment_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.source_observation_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.source_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.result": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.reason": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_arrival_preparation_result.purpose": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.raw_value": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.normalized_value": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.review_decision": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.reason": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.actor_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.reviewed_at": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.previous_review_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.write_back_target": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.version": {
+      "nameZh": "版本号",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "标识该记录在其对象版本链中的版本。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.idempotency_key": {
+      "nameZh": "幂等键",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "识别同一写入请求的重复提交。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.tenant_id": {
+      "nameZh": "租户标识",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "限定记录所属租户并参与租户隔离。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.payload_hash": {
+      "nameZh": "载荷哈希",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "校验同一幂等键对应的规范化载荷是否一致。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.trace_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.created_at": {
+      "nameZh": "创建时间",
+      "nameStatus": "confirmed_implementation",
+      "purposeZh": "记录该行首次写入数据库的时间。",
+      "purposeStatus": "confirmed_implementation",
+      "sourceRefs": ["engineering-data-governance"],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.container_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.shipment_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.source_observation_id": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.source_system": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.source_version": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.parse_state": {
+      "nameZh": "待业务确认",
+      "nameStatus": "needs_business_confirmation",
+      "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",
+      "purposeStatus": "needs_business_confirmation",
+      "sourceRefs": [],
+      "moduleCode": null,
+      "ownerModule": null,
+      "notes": []
+    },
+    "public.ocean_operations_source_review.source_precision": {
       "nameZh": "待业务确认",
       "nameStatus": "needs_business_confirmation",
       "purposeZh": "业务用途待确认；当前仅确认结构与技术消费者",

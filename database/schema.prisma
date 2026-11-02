@@ -225,27 +225,117 @@ model SupplierNominationRelease {
 
 // 全局参考数据发布（master-data 拥有）：权威数据按发布版本不可变，active 版本由数据库部分唯一索引约束。
 model ReferenceDataRelease {
-  id            String                  @id @default(uuid()) @map("id") @db.Uuid
-  authority     String                  @map("authority")
-  datasetCode   String                  @map("dataset_code")
-  version       String                  @map("version")
-  publishedAt   DateTime?               @map("published_at") @db.Date
-  sourceUrl     String                  @map("source_url")
-  retrievedAt   DateTime                @map("retrieved_at") @db.Timestamptz
-  sourceSha256  String                  @map("source_sha256") @db.Char(64)
-  recordsSha256 String                  @map("records_sha256") @db.Char(64)
-  license       String                  @map("license")
-  filterRule    String?                 @map("filter_rule")
-  status        String                  @map("status")
-  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz
-  countryCodes  CountryCodeReference[]
-  unlocodeAreas UnlocodeAreaReference[]
-  portCodes     PortCodeReference[]
-  cargoOwners   CargoOwnerReference[]
+  id             String                   @id @default(uuid()) @map("id") @db.Uuid
+  authority      String                   @map("authority")
+  datasetCode    String                   @map("dataset_code")
+  version        String                   @map("version")
+  publishedAt    DateTime?                @map("published_at") @db.Date
+  sourceUrl      String                   @map("source_url")
+  retrievedAt    DateTime                 @map("retrieved_at") @db.Timestamptz
+  sourceSha256   String                   @map("source_sha256") @db.Char(64)
+  recordsSha256  String                   @map("records_sha256") @db.Char(64)
+  license        String                   @map("license")
+  filterRule     String?                  @map("filter_rule")
+  status         String                   @map("status")
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  countryCodes   CountryCodeReference[]
+  unlocodeAreas  UnlocodeAreaReference[]
+  portCodes      PortCodeReference[]
+  cargoOwners    CargoOwnerReference[]
+  oceanCarriers  OceanCarrierReference[]
+  containerTypes ContainerTypeReference[]
 
   @@unique([authority, datasetCode, version], map: "reference_data_release_identity_key")
   @@index([datasetCode, status], map: "reference_data_release_dataset_status_idx")
   @@map("reference_data_release")
+}
+
+// Logix-owned internal ocean baseline: carrier canonical code.
+model OceanCarrierReference {
+  id              String               @id @default(uuid()) @map("id") @db.Uuid
+  releaseId       String               @map("release_id") @db.Uuid
+  release         ReferenceDataRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  canonicalCode   String               @map("canonical_code")
+  nameZh          String?              @map("name_zh")
+  nameEn          String               @map("name_en")
+  standardCode    String?              @map("standard_code")
+  standardVersion String?              @map("standard_version")
+  sourceUrl       String?              @map("source_url")
+  sourceRow       Int?                 @map("source_row")
+  parentCode      String?              @map("parent_code")
+  isVocc          Boolean?             @map("is_vocc")
+  isNvocc         Boolean?             @map("is_nvocc")
+  validFrom       DateTime?            @map("valid_from") @db.Date
+  validUntil      DateTime?            @map("valid_until") @db.Date
+  status          String               @map("status")
+  sourceRowHash   String               @map("source_row_hash") @db.Char(64)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([releaseId, canonicalCode], map: "ocean_carrier_release_code_key")
+  @@index([canonicalCode, releaseId], map: "ocean_carrier_code_release_idx")
+  @@map("ocean_carrier_reference")
+}
+
+// Logix-owned internal ocean baseline: one canonical combination code with controlled attributes.
+model ContainerTypeReference {
+  id            String               @id @default(uuid()) @map("id") @db.Uuid
+  releaseId     String               @map("release_id") @db.Uuid
+  release       ReferenceDataRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  canonicalCode String               @map("canonical_code")
+  length        Int                  @map("length")
+  typeCode      String               @map("type_code")
+  standardBasis Json?                @map("standard_basis")
+  status        String               @map("status")
+  sourceRowHash String               @map("source_row_hash") @db.Char(64)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([releaseId, canonicalCode], map: "container_type_release_code_key")
+  @@index([length, typeCode, releaseId], map: "container_type_attributes_release_idx")
+  @@map("container_type_reference")
+}
+
+// Versioned supplier profile for sparse external mappings; never a canonical business identity.
+model ExternalOceanProviderProfile {
+  id                 String                          @id @default(uuid()) @map("id") @db.Uuid
+  provider           String                          @map("provider")
+  profileVersion     String                          @map("profile_version")
+  datasetCode        String                          @map("dataset_code")
+  status             String                          @map("status")
+  sourceUrl          String                          @map("source_url")
+  sourceSha256       String                          @map("source_sha256") @db.Char(64)
+  configuration      Json?                           @map("configuration")
+  canonicalReleaseId String?                         @map("canonical_release_id") @db.Uuid
+  createdAt          DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+  mappings           ExternalOceanReferenceMapping[]
+
+  @@unique([provider, profileVersion, datasetCode], map: "external_ocean_profile_identity_key")
+  @@index([provider, status], map: "external_ocean_profile_provider_status_idx")
+  @@map("external_ocean_provider_profile")
+}
+
+// Sparse provider value -> Logix canonical mapping; candidate is not an authorization to rewrite facts.
+model ExternalOceanReferenceMapping {
+  id              String                       @id @default(uuid()) @map("id") @db.Uuid
+  profileId       String                       @map("profile_id") @db.Uuid
+  profile         ExternalOceanProviderProfile @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  provider        String                       @map("provider")
+  profileVersion  String                       @map("profile_version")
+  datasetCode     String                       @map("dataset_code")
+  sourceCode      String                       @map("source_code")
+  sourceNamespace String                       @default("legacy_unspecified") @map("source_namespace")
+  reviewedBy      String?                      @map("reviewed_by")
+  reviewedAt      DateTime?                    @map("reviewed_at") @db.Timestamptz
+  evidenceRef     String?                      @map("evidence_ref")
+  sourceName      String?                      @map("source_name")
+  canonicalCode   String?                      @map("canonical_code")
+  mappingState    String                       @map("mapping_state")
+  reason          String                       @map("reason")
+  sourceRowHash   String                       @map("source_row_hash") @db.Char(64)
+  createdAt       DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([profileId, sourceNamespace, sourceCode], map: "external_ocean_mapping_profile_namespace_source_key")
+  @@index([provider, datasetCode, sourceCode], map: "external_ocean_mapping_lookup_idx")
+  @@map("external_ocean_reference_mapping")
 }
 
 // ISO 4217 List One currency identity, bundled directly with the migration.
@@ -822,39 +912,41 @@ enum ContainerStatus {
 // 货柜业务事实主记录（shipment-registry 拥有）。
 // 字段依据：DATA_MODEL_P2-06 §B、CONTAINER_STATUS_MODEL §⑦、ContainerLifecycleState 枚举。
 model ContainerRecord {
-  id                            String                          @id @default(uuid()) @map("id")
-  tenantId                      String                          @map("tenant_id")
+  id                                       String                                    @id @default(uuid()) @map("id")
+  tenantId                                 String                                    @map("tenant_id")
   // 旧导入兼容锚；柜内货物与备货单的权威关系由 ContainerCargoAllocation 表达。
-  orderNumber                   String?                         @map("order_number")
-  replenishmentOrderId          String?                         @map("replenishment_order_id")
-  replenishmentOrder            ReplenishmentOrder?             @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "container_record_replenishment_order_tenant_fkey")
+  orderNumber                              String?                                   @map("order_number")
+  replenishmentOrderId                     String?                                   @map("replenishment_order_id")
+  replenishmentOrder                       ReplenishmentOrder?                       @relation(fields: [replenishmentOrderId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "container_record_replenishment_order_tenant_fkey")
   // 票级展示用主备货单号，不作键/关系（DATA_MODEL 不变量 2）。
-  mainOrderNumber               String?                         @map("main_order_number")
+  mainOrderNumber                          String?                                   @map("main_order_number")
   // 箱号迟绑定：装箱后与外部交换才产生；可空、非全局唯一（跨单复用）。
-  containerNumber               String?                         @map("container_number")
-  containerTypeCode             String?                         @map("container_type_code")
-  sealNumber                    String?                         @map("seal_number")
+  containerNumber                          String?                                   @map("container_number")
+  containerTypeCode                        String?                                   @map("container_type_code")
+  sealNumber                               String?                                   @map("seal_number")
   // 货柜当前阶段（历史推进由时间线事件记录，不覆盖）。
-  currentStatus                 ContainerStatus                 @map("current_status")
-  createdAt                     DateTime                        @default(now()) @map("created_at")
-  updatedAt                     DateTime                        @updatedAt @map("updated_at")
-  timeFacts                     ShipmentTimeFact[]
-  lifecycleDateFacts            LifecycleDateFact[]
-  oceanRoutePlans               OceanRoutePlan[]
-  cargoAllocationSets           ContainerCargoAllocationSet[]
-  importBindings                ContainerImportBinding[]
-  sourceIdentities              ContainerSourceIdentity[]
-  stuffingSnapshots             ContainerStuffingSnapshot[]
-  dispatchSnapshots             ContainerDispatchSnapshot[]
-  customsClearanceCases         CustomsClearanceCase[]
-  shipmentLinks                 ShipmentContainerLink[]
-  shipmentDocumentLinks         ShipmentContainerDocumentLink[]
-  shipmentUpstreamReferences    ShipmentUpstreamReference[]
-  canonicalEventScopeMembers    CanonicalEventScopeMember[]
-  warehouseDeliveryInstructions WarehouseDeliveryInstruction[]
-  unloadingReports              ContainerUnloadingReport[]
-  operationalExceptions         OperationalExceptionCase[]
-  workHandoffs                  ShipmentWorkHandoff[]
+  currentStatus                            ContainerStatus                           @map("current_status")
+  createdAt                                DateTime                                  @default(now()) @map("created_at")
+  updatedAt                                DateTime                                  @updatedAt @map("updated_at")
+  timeFacts                                ShipmentTimeFact[]
+  lifecycleDateFacts                       LifecycleDateFact[]
+  oceanRoutePlans                          OceanRoutePlan[]
+  cargoAllocationSets                      ContainerCargoAllocationSet[]
+  importBindings                           ContainerImportBinding[]
+  sourceIdentities                         ContainerSourceIdentity[]
+  stuffingSnapshots                        ContainerStuffingSnapshot[]
+  dispatchSnapshots                        ContainerDispatchSnapshot[]
+  customsClearanceCases                    CustomsClearanceCase[]
+  shipmentLinks                            ShipmentContainerLink[]
+  shipmentDocumentLinks                    ShipmentContainerDocumentLink[]
+  shipmentUpstreamReferences               ShipmentUpstreamReference[]
+  canonicalEventScopeMembers               CanonicalEventScopeMember[]
+  warehouseDeliveryInstructions            WarehouseDeliveryInstruction[]
+  unloadingReports                         ContainerUnloadingReport[]
+  operationalExceptions                    OperationalExceptionCase[]
+  workHandoffs                             ShipmentWorkHandoff[]
+  oceanOperationsSourceReviews             OceanOperationsSourceReview[]
+  oceanOperationsArrivalPreparationResults OceanOperationsArrivalPreparationResult[]
   // TODO(D2 物理形态)：节点 planned/actual 时间（子表 vs 双列，见 NODE_TIME_FIELDS 待评审）
   // TODO(D13 物理形态)：markers/attributes 受控字典扩展（不逐特征加列）
   // TODO(D7 物理形态)：字段/事件级来源权威与证据引用列
@@ -2633,6 +2725,69 @@ model OceanProviderEventIngestion {
   @@map("ocean_provider_event_ingestion")
 }
 
+// 海运运营来源复核（ocean-operations 拥有）：只记录来源观察的人工裁决，不推进生命周期。
+// 每次更正追加新版本；复核采用值仍然通过 write_back_target 表达，不能冒充 canonical actual。
+model OceanOperationsSourceReview {
+  id                  String          @id @default(uuid()) @db.Uuid
+  tenantId            String          @map("tenant_id")
+  containerId         String          @map("container_id")
+  container           ContainerRecord @relation(fields: [containerId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentId          String?         @map("shipment_id") @db.Uuid
+  sourceObservationId String          @map("source_observation_id")
+  sourceSystem        String          @map("source_system")
+  sourceVersion       String          @map("source_version")
+  parseState          String          @map("parse_state")
+  sourcePrecision     String          @map("source_precision")
+  rawValue            String          @map("raw_value")
+  normalizedValue     DateTime?       @map("normalized_value") @db.Timestamptz
+  reviewDecision      String          @map("review_decision")
+  reason              String          @map("reason")
+  actorId             String          @map("actor_id")
+  reviewedAt          DateTime        @map("reviewed_at") @db.Timestamptz
+  previousReviewId    String?         @map("previous_review_id") @db.Uuid
+  writeBackTarget     String          @map("write_back_target")
+  version             Int             @map("version")
+  idempotencyKey      String          @map("idempotency_key")
+  payloadHash         String          @map("payload_hash") @db.Char(64)
+  traceId             String          @map("trace_id")
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, idempotencyKey], map: "ocean_operations_review_idempotency_key")
+  @@unique([tenantId, containerId, version], map: "ocean_operations_review_container_version_key")
+  @@index([tenantId, containerId, createdAt, id], map: "ocean_operations_review_container_idx")
+  @@index([tenantId, reviewDecision, createdAt, id], map: "ocean_operations_review_queue_idx")
+  @@map("ocean_operations_source_review")
+}
+
+// 海运运营到港准备业务结果（ocean-operations 拥有）：与来源观察复核分开追加记录。
+model OceanOperationsArrivalPreparationResult {
+  id                    String          @id @default(uuid()) @db.Uuid
+  tenantId              String          @map("tenant_id")
+  containerId           String          @map("container_id")
+  container             ContainerRecord @relation(fields: [containerId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  shipmentId            String?         @map("shipment_id") @db.Uuid
+  sourceObservationId   String          @map("source_observation_id")
+  sourceVersion         String          @map("source_version")
+  result                String          @map("result")
+  reason                String          @map("reason")
+  purpose               String          @map("purpose")
+  currentResponsibility String          @map("current_responsibility")
+  nextStep              String          @map("next_step")
+  actorId               String          @map("actor_id")
+  recordedAt            DateTime        @map("recorded_at") @db.Timestamptz
+  previousResultId      String?         @map("previous_result_id") @db.Uuid
+  version               Int             @map("version")
+  idempotencyKey        String          @map("idempotency_key")
+  payloadHash           String          @map("payload_hash") @db.Char(64)
+  traceId               String          @map("trace_id")
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, idempotencyKey], map: "ocean_operations_arrival_result_idempotency_key")
+  @@unique([tenantId, containerId, version], map: "ocean_operations_arrival_result_container_version_key")
+  @@index([tenantId, containerId, createdAt, id], map: "ocean_operations_arrival_result_container_idx")
+  @@map("ocean_operations_arrival_preparation_result")
+}
+
 // 契约：GC-009 ClientOperationV1。
 // lifecycle-control 写入 lifecycle.apply_event；work-execution 写入 work_execution.complete_work_order。
 model ClientOperation {
@@ -3493,4 +3648,42 @@ model OpsAssistantActionDecision {
   @@index([candidateId, recordedAt, id], map: "ops_assistant_action_decision_candidate_idx")
   @@index([clientOperationId], map: "ops_assistant_action_decision_client_operation_idx")
   @@map("ops_assistant_action_decision")
+}
+
+// 各国清关资料需求（2026-10-30 国别表）。required 才计入是否满足；marked/noted 不按必交。
+model CustomsClearanceDocumentType {
+  code         String                                @id @map("code")
+  nameZh       String                                @map("name_zh")
+  nameEn       String                                @map("name_en")
+  sortOrder    Int                                   @map("sort_order")
+  createdAt    DateTime                              @default(now()) @map("created_at") @db.Timestamptz
+  requirements CustomsClearanceDocumentRequirement[]
+
+  @@map("customs_clearance_document_type")
+}
+
+model CustomsClearanceDocumentRequirement {
+  id            String                       @id @default(uuid()) @db.Uuid
+  countryCode   String                       @map("country_code")
+  documentCode  String                       @map("document_code")
+  documentType  CustomsClearanceDocumentType @relation(fields: [documentCode], references: [code], onDelete: Restrict)
+  applicability String                       @map("applicability")
+  note          String?                      @map("note")
+  sourceSheet   String                       @map("source_sheet")
+  createdAt     DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([countryCode, documentCode], map: "customs_document_requirement_country_document_key")
+  @@index([documentCode], map: "customs_document_requirement_document_idx")
+  @@map("customs_clearance_document_requirement")
+}
+
+model CustomsEnsFilingRule {
+  countryCode    String   @id @map("country_code")
+  direction      String   @map("direction")
+  importFileRule String?  @map("import_file_rule")
+  exportFileRule String?  @map("export_file_rule")
+  sourceSheet    String   @map("source_sheet")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("customs_ens_filing_rule")
 }

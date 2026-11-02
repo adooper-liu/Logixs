@@ -1,0 +1,57 @@
+{
+  "scenarioVersion": "ocean-reference-case-v1",
+  "classification": "development_demo.synthetic_scenario",
+  "tenantId": "demo-real-sample-20260921",
+  "containerId": "e6a45d96-46e3-43c9-8fa3-3794b36c1d96",
+  "shipmentId": "71000000-0000-4000-8000-000000000003",
+  "orderNumber": "26DSA01885",
+  "containerNumber": "MEDU7620177",
+  "shipmentNumber": "DEMO-OCEAN-MEDU7620177",
+  "sourceSystem": "development_demo.synthetic_scenario",
+  "retained": {
+    "sourceFile": "database/seeds/fixtures/post-departure-source-package-20260923.json",
+    "packageCount": 911,
+    "grossWeight": "12364",
+    "grossWeightUnit": "KGM",
+    "volume": "66.26",
+    "volumeUnit": "MTQ",
+    "carrierCode": "MSC",
+    "vesselName": "MSC MAKALU III",
+    "voyageNumber": "HD638A",
+    "originUnlocode": "CNFOC",
+    "destinationUnlocode": "USSAV",
+    "houseBillNumber": "1811F026PE36668R2"
+  },
+  "synthetic": {
+    "lines": [
+      {
+        "productNumber": "DEMO-OCEAN-001",
+        "quantity": "600",
+        "quantityUnit": "piece",
+        "packages": 600
+      },
+      {
+        "productNumber": "DEMO-OCEAN-002",
+        "quantity": "311",
+        "quantityUnit": "piece",
+        "packages": 311
+      }
+    ],
+    "packagingAssumption": "One piece per carton is a synthetic scenario, not a deduction from the original package total.",
+    "sealNumber": "DEMO-MEDU7620177-01",
+    "bookingNumber": "DEMO-BOOK-HD638A-001",
+    "stuffedAt": "2026-09-21T14:00:00+08:00",
+    "vgm": {
+      "weight": "16364",
+      "weightUnit": "KGM",
+      "method": "method_1",
+      "verifiedAt": "2026-09-21T16:00:00+08:00",
+      "assumedTareWeight": "4000"
+    },
+    "actualDepartureAt": "2026-09-23T10:00:00+08:00",
+    "sourceTimezone": "Asia/Shanghai",
+    "sourcePrecision": "date-time",
+    "vgmHandoffState": "accepted",
+    "notice": "Approved synthetic initial conditions only; not a carrier receipt, human approval, production occurrence, or canonical lifecycle application. Original date-only departure and mother-vessel observations remain independent."
+  }
+}

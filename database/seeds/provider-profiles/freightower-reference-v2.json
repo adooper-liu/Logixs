@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "provider": "freightower",
+  "version": "reference-2026-10-29-v2",
+  "source": {
+    "reference": "https://www.freightower.com/help-center/api/container",
+    "description": "2026-10-29 public documentation extraction; sparse codes only, no API entitlement or automatic approval"
+  },
+  "datasets": [
+    {
+      "dataset": "carrier",
+      "canonicalReleaseId": "00000000-0000-5000-8000-000000000001",
+      "namespaces": ["scac", "api_carrier_code", "logix"],
+      "mappings": [
+        {
+          "namespace": "scac",
+          "sourceCode": "MEDU",
+          "canonicalCode": "MSC",
+          "reason": "Documentation SCAC for MSC, pending independent review",
+          "evidence": "database/seeds/fixtures/freightower-container-reference-v1.json#carriers/MSC"
+        },
+        {
+          "namespace": "api_carrier_code",
+          "sourceCode": "MSC",
+          "canonicalCode": "MSC",
+          "reason": "Provider API parameter is a separate namespace, pending independent review",
+          "evidence": "database/seeds/fixtures/freightower-container-reference-v1.json#carriers/MSC"
+        },
+        {
+          "namespace": "scac",
+          "sourceCode": "HDMU",
+          "canonicalCode": "HMM",
+          "reason": "Documentation SCAC for HMM, pending independent review",
+          "evidence": "database/seeds/fixtures/freightower-container-reference-v1.json#carriers/HMM"
+        }
+      ]
+    },
+    {
+      "dataset": "container_type",
+      "canonicalReleaseId": "00000000-0000-5000-8000-000000000001",
+      "namespaces": ["logix"],
+      "mappings": []
+    },
+    {
+      "dataset": "port",
+      "canonicalReleaseId": "9d410c57-83d3-5839-9c29-7d58aa7891d7",
+      "namespaces": ["unlocode", "port_code"],
+      "mappings": [
+        {
+          "namespace": "port_code",
+          "sourceCode": "CNFOC",
+          "canonicalCode": null,
+          "reason": "Provider port code has no identical canonical entry; Fuzhou target remains unconfirmed, not a global port map",
+          "evidence": "database/seeds/fixtures/freightower-container-reference-v1.json#ports/CNFOC"
+        }
+      ]
+    }
+  ]
+}

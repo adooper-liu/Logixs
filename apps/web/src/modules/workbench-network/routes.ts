@@ -76,16 +76,32 @@ export const workbenchNetworkRoutes: RouteRecordRaw[] = [
       roles: ["planner", "manager"],
     },
   },
-  ...[...frameworkWorkbenchStages, ...catalogStubWorkbenchStages].map(
-    (stage): RouteRecordRaw => ({
-      path: stage.path,
-      component: () => import("../../views/PlannedWorkbenchView.vue"),
-      props: { stageCode: stage.code },
-      meta: {
-        title: stage.title,
-        section: "业务工作台",
-        roles: ["operator", "planner", "manager"],
-      },
-    }),
-  ),
+  ...frameworkWorkbenchStages.map((stage): RouteRecordRaw => ({
+    path: stage.path,
+    component:
+      stage.code === "ocean_operations"
+        ? () => import("../../views/OceanOperationsWorkbench.vue")
+        : () => import("../../views/PlannedWorkbenchView.vue"),
+    props:
+      stage.code === "ocean_operations" ? undefined : { stageCode: stage.code },
+    meta: {
+      title: stage.title,
+      section: "业务工作台",
+      roles: ["operator", "planner", "manager"],
+    },
+  })),
+  ...catalogStubWorkbenchStages.map((stage): RouteRecordRaw => ({
+    path: stage.path,
+    component:
+      stage.code === "ocean_operations"
+        ? () => import("../../views/OceanOperationsWorkbench.vue")
+        : () => import("../../views/PlannedWorkbenchView.vue"),
+    props:
+      stage.code === "ocean_operations" ? undefined : { stageCode: stage.code },
+    meta: {
+      title: stage.title,
+      section: "业务工作台",
+      roles: ["operator", "planner", "manager"],
+    },
+  })),
 ];
