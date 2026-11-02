@@ -523,7 +523,7 @@ export class PrismaOceanOperationsSourceReviewRepository implements OceanOperati
       const candidates = lifecycleFacts.filter(
         (fact) =>
           fact.isCurrent &&
-          fact.validity === "valid" &&
+          fact.validity === "effective" &&
           fact.nodeCode === nodeCode &&
           fact.eventCode === eventCode &&
           fact.timeKind === timeKind &&

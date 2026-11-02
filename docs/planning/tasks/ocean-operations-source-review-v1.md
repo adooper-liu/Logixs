@@ -39,6 +39,7 @@ writeScopes:
   - apps/web/src/components/ocean-operations/**
   - apps/web/src/components/attachment/**
   - apps/web/src/modules/workbench-network/routes.ts
+  - apps/web/src/modules/workbench-network/routes.test.ts
   - docs/planning/progress-board.html
   - database/schema.prisma
   - database/migrations/**
@@ -146,6 +147,14 @@ uiViewportEvidence:
 - RED：新增API Port/service、repository、Web日期结果与缺口测试先失败（缺模块/未投影/仍显示未取得）；GREEN：API charges+ocean定向13文件66项通过，Web期限新增2/2通过，API/Web typecheck、API/Web路径lint、API build、repo check、diff check通过。
 - Web完整测试复跑为22/23：唯一失败仍为历史日期/附件“未保存/刷新丢失”测试；该行为不在S8范围，未放宽断言或冒称全Web通过。未运行迁移、seed、业务POST或全仓validate；本票费用标准仍0条，因此只读页面会显示“未配置适用费用标准/费用匹配身份未绑定/计日日历未绑定”，不产生期限日期。
 - 架构门禁曾发现海运domain直接依赖charges，已改为本模块 `OceanDeadlineContext` 结构，S8验证后repo check通过。live 5173→3000浏览器验收因会话结束未形成证据，不能声称真实三视口完成；新逻辑由API/Web自动化测试覆盖。fresh S8局部复审待交回；不标brief done。
+
+### PR #201 集成修复（2026-11-02）
+
+负责人已授权提交、推送、合并；当前仅修实际CI失败和发布候选已复现风险，不绕过门禁。static失败为progress-board过期，unit首先失败为路由过滤不被静态门禁支持；沿catalog直接map选择海运组件，不降低检查器断言。追加唯一海运路径回归并删除重复显式路径。现有日期/附件红测accepted：临时日期未标未保存、本地选文件被错误计为已满足；本片只明确当前尚未落账状态并排除本地文件的正式满足计数，不实现新上传或日期写入、不改变已定S9目标。写域追加原目录routes.test.ts；最终候选需fresh只读复审和CI，真实三视口证据缺失仍不标业务done。
+
+- fresh 最终候选复审 OCEAN-INTEGRATION-001 accepted：期限fact selector误用valid，正式迁移仅允许effective；合法ETA/ATA/Gate Out因此被丢弃。修正为effective并用合法夹具先RED复现，再覆盖实际到港/提柜与pending、revoked、异港及多候选排除。复审覆盖新S7/S8、端点权限和七个迁移及选定MasterData路径，未穷尽生成字典与样本协调器；不冒称全业务验收。static第二轮暴露6文件格式，按原格式器处理，不改源数据语义。
+
+- 集成修复验证：海运页面23/23、路由1/1、Web全套179文件1007项、费用/海运66项、两端typecheck和修改路径lint通过；日期/附件历史红测已由真实展示和计数修复清除，未放宽断言。初次完整validate在data-dictionary:check退出1无诊断，全仓format:check因apps/ai-service/.pytest_cache的EPERM无法展开；逐路径格式另验，不将本机完整门禁说成通过。远程PR CI仍为最终合并门禁，不绕过。
 
 ### S7-staged-deadline-core（2026-10-31）
 

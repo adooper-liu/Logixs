@@ -206,12 +206,6 @@ function setFiles(code: string, files: AttachmentItem[]): void {
     [attachmentKey(code)]: files,
   };
 }
-const filedDocumentCodes = computed(() => {
-  const prefix = `${selectedId.value ?? ""}:`;
-  return Object.entries(heldAttachments.value)
-    .filter(([key, files]) => key.startsWith(prefix) && files.length > 0)
-    .map(([key]) => key.slice(prefix.length));
-});
 const voyageDates = computed(() => {
   const shipment = selected.value?.shipment;
   const eta = etaObservations.value[0]?.rawValue ?? null;
@@ -244,7 +238,7 @@ const voyageDates = computed(() => {
 const customsChecklist = computed(() =>
   customsDocumentChecklist(
     selected.value?.shipment?.destination.code ?? null,
-    filedDocumentCodes.value,
+    [], // Local file selections are not uploaded or verified business evidence.
   ),
 );
 const drafts = new Map<string, ReviewDraft>();
@@ -1103,6 +1097,9 @@ onMounted(() => void loadQueue());
                   </li>
                 </ul>
                 <form class="date-form" @submit.prevent="recordDate">
+                  <p class="focus-lead">
+                    日期写入尚未接通：当前记录未保存，刷新丢失，不修改上方正式日期。
+                  </p>
                   <label>
                     日期
                     <select v-model="dateKind">
@@ -1180,6 +1177,7 @@ onMounted(() => void loadQueue());
                 <div class="customs-head">
                   <div>
                     <h2>清关资料与附件</h2>
+                    <p>附件仅本地选择，未上传；不代表资料已满足或已核验。</p>
                     <p v-if="customsChecklist.countryCode">
                       <span>国别</span>
                       <strong>{{
@@ -1223,7 +1221,9 @@ onMounted(() => void loadQueue());
                       <small>{{ item.nameEn }}</small>
                     </span>
                     <b :data-met="String(item.satisfied)">{{
-                      checklistStatusLabel(item)
+                      filesFor(item.code).length
+                        ? "本地已选 · 未核验"
+                        : checklistStatusLabel(item)
                     }}</b>
                     <AttachmentControl
                       :label="`${item.nameZh}附件`"

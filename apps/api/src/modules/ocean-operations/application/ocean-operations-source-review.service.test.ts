@@ -43,26 +43,24 @@ function setup() {
     resolve: vi.fn().mockResolvedValue({ status: "pending_review" }),
   };
   const deadlines = {
-    execute: vi
-      .fn()
-      .mockResolvedValue({
-        stage: "before_arrival",
-        items: [],
-        pickup: {
-          state: "incomplete",
-          date: null,
-          nature: null,
-          limitingStandardIds: [],
-          issues: ["NO_MATCHING_STANDARD"],
-        },
-        return: {
-          state: "incomplete",
-          date: null,
-          nature: null,
-          limitingStandardIds: [],
-          issues: ["NO_MATCHING_STANDARD"],
-        },
-      }),
+    execute: vi.fn().mockResolvedValue({
+      stage: "before_arrival",
+      items: [],
+      pickup: {
+        state: "incomplete",
+        date: null,
+        nature: null,
+        limitingStandardIds: [],
+        issues: ["NO_MATCHING_STANDARD"],
+      },
+      return: {
+        state: "incomplete",
+        date: null,
+        nature: null,
+        limitingStandardIds: [],
+        issues: ["NO_MATCHING_STANDARD"],
+      },
+    }),
   };
   const service = new OceanOperationsSourceReviewService(
     repository as never,

@@ -6,15 +6,6 @@ import {
 
 export const workbenchNetworkRoutes: RouteRecordRaw[] = [
   {
-    path: "/workspaces/ocean-operations",
-    component: () => import("../../views/OceanOperationsWorkbench.vue"),
-    meta: {
-      title: "海运运营",
-      section: "业务工作台",
-      roles: ["operator", "planner", "manager"],
-    },
-  },
-  {
     path: "/workspaces",
     component: () => import("../../views/WorkbenchNetworkView.vue"),
     meta: {
@@ -87,8 +78,12 @@ export const workbenchNetworkRoutes: RouteRecordRaw[] = [
   },
   ...frameworkWorkbenchStages.map((stage): RouteRecordRaw => ({
     path: stage.path,
-    component: () => import("../../views/PlannedWorkbenchView.vue"),
-    props: { stageCode: stage.code },
+    component:
+      stage.code === "ocean_operations"
+        ? () => import("../../views/OceanOperationsWorkbench.vue")
+        : () => import("../../views/PlannedWorkbenchView.vue"),
+    props:
+      stage.code === "ocean_operations" ? undefined : { stageCode: stage.code },
     meta: {
       title: stage.title,
       section: "业务工作台",

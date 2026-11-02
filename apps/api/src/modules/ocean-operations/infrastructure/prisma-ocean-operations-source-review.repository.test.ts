@@ -563,7 +563,7 @@ describe("PrismaOceanOperationsSourceReviewRepository", () => {
             sourceSystem: "development_demo.retained_source_package",
             mappingVersion: "post-departure-20260923-v1",
             projectionVersion: 1,
-            validity: "valid",
+            validity: "effective",
             rawValue: "2026-11-01",
             occurredAt: new Date("2026-11-01T05:00:00.000Z"),
             timeKind: "estimated",
@@ -653,6 +653,55 @@ describe("PrismaOceanOperationsSourceReviewRepository", () => {
         consumer: "customs_arrival_preparation",
       }),
     );
+    const actual = {
+      id: "actual-1",
+      unlocode: "USSAV",
+      nodeCode: "destination_arrival",
+      eventCode: "arrived",
+      sourceSystem: "verified",
+      projectionVersion: 2,
+      validity: "effective",
+      rawValue: "2026-11-02T12:00:00Z",
+      occurredAt: new Date("2026-11-02T12:00:00Z"),
+      timeKind: "actual",
+      evidenceRefs: [],
+      isCurrent: true,
+      verificationState: "verified",
+      confidenceState: "confirmed",
+      applicationState: "applied",
+      segmentId: null,
+    };
+    prisma.lifecycleDateFact.findMany.mockResolvedValue([actual] as never);
+    expect(
+      (await service.getProjection("tenant-a", "container-1")).deadlineContext
+        ?.facts.actualArrival?.sourceRef,
+    ).toBe("lifecycle:actual-1");
+    prisma.lifecycleDateFact.findMany.mockResolvedValue([
+      { ...actual, nodeCode: "container_pickup", eventCode: "gate_out" },
+    ] as never);
+    expect(
+      (await service.getProjection("tenant-a", "container-1")).deadlineContext
+        ?.facts.actualPickup?.sourceRef,
+    ).toBe("lifecycle:actual-1");
+    for (const rejected of [
+      { ...actual, validity: "revoked" },
+      { ...actual, verificationState: "pending" },
+      { ...actual, unlocode: "USNYC" },
+    ]) {
+      prisma.lifecycleDateFact.findMany.mockResolvedValue([rejected] as never);
+      expect(
+        (await service.getProjection("tenant-a", "container-1")).deadlineContext
+          ?.facts.actualArrival,
+      ).toBeNull();
+    }
+    prisma.lifecycleDateFact.findMany.mockResolvedValue([
+      actual,
+      { ...actual, id: "ambiguous" },
+    ] as never);
+    expect(
+      (await service.getProjection("tenant-a", "container-1")).deadlineContext
+        ?.facts.actualArrival,
+    ).toBeNull();
   });
 
   it("rejects a non-ocean event even when a lifecycle row claims an ocean node", async () => {
